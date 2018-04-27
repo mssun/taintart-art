@@ -58,6 +58,10 @@ public class Main {
     }
     public void run() {
       int TARGET = 42;
+      if (hasJit() && expectOsr && !Main.isInterpreted()) {
+          System.out.println("Unexpectedly in jit code prior to restarting the JIT!");
+      }
+      startJit();
       // We will suspend the thread during this loop.
       while (continueBusyLoop) {
         inBusyLoop = true;
@@ -91,7 +95,9 @@ public class Main {
 
   public static void runGet() throws Exception {
     Method target = IntRunner.class.getDeclaredMethod("run");
-    // Get Int
+    // Stop jit temporarily. It will be restarted by the test itself.
+    stopJit();
+    // Get Int.
     IntRunner int_runner = new IntRunner(true);
     Thread target_get = new Thread(int_runner, "GetLocalInt - Target");
     target_get.start();
@@ -121,7 +127,9 @@ public class Main {
 
   public static void runSet() throws Exception {
     Method target = IntRunner.class.getDeclaredMethod("run");
-    // Set Int
+    // Stop jit temporarily. It will be restarted by the test itself.
+    stopJit();
+    // Set Int. Even if we start out in JIT code somehow we should be pushed out of it.
     IntRunner int_runner = new IntRunner(false);
     Thread target_set = new Thread(int_runner, "SetLocalInt - Target");
     target_set.start();
@@ -173,5 +181,7 @@ public class Main {
 
   public static native boolean isInterpreted();
   public static native boolean isInOsrCode(String methodName);
+  public static native boolean stopJit();
+  public static native boolean startJit();
   public static native boolean hasJit();
 }
