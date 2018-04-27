@@ -78,7 +78,8 @@ static void UpdateLoopPhisIn(HEnvironment* environment, HLoopInformation* info) 
   }
 }
 
-void LICM::Run() {
+bool LICM::Run() {
+  bool didLICM = false;
   DCHECK(side_effects_.HasRun());
 
   // Only used during debug.
@@ -157,6 +158,7 @@ void LICM::Run() {
           }
           instruction->MoveBefore(pre_header->GetLastInstruction());
           MaybeRecordStat(stats_, MethodCompilationStat::kLoopInvariantMoved);
+          didLICM = true;
         }
 
         if (!can_move && (instruction->CanThrow() || instruction->DoesAnyWrite())) {
@@ -167,6 +169,7 @@ void LICM::Run() {
       }
     }
   }
+  return didLICM;
 }
 
 }  // namespace art

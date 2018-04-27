@@ -43,7 +43,7 @@ class HLoopOptimization : public HOptimization {
                     OptimizingCompilerStats* stats,
                     const char* name = kLoopOptimizationPassName);
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kLoopOptimizationPassName = "loop_optimization";
 
@@ -123,7 +123,7 @@ class HLoopOptimization : public HOptimization {
   // Loop setup and traversal.
   //
 
-  void LocalRun();
+  bool LocalRun();
   void AddLoop(HLoopInformation* loop_info);
   void RemoveLoop(LoopNode* node);
 

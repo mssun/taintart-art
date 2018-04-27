@@ -41,7 +41,7 @@ class HConstantFolding : public HOptimization {
  public:
   HConstantFolding(HGraph* graph, const char* name) : HOptimization(graph, name) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kConstantFoldingPassName = "constant_folding";
 

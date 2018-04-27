@@ -572,7 +572,7 @@ class LoadStoreAnalysis : public HOptimization {
     return heap_location_collector_;
   }
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kLoadStoreAnalysisPassName = "load_store_analysis";
 

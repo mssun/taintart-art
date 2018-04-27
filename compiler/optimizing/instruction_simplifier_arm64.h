@@ -30,7 +30,7 @@ class InstructionSimplifierArm64 : public HOptimization {
 
   static constexpr const char* kInstructionSimplifierArm64PassName = "instruction_simplifier_arm64";
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 };
 
 }  // namespace arm64

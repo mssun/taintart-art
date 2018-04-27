@@ -40,7 +40,7 @@ class ReferenceTypePropagation : public HOptimization {
   // Visit a single instruction.
   void Visit(HInstruction* instruction);
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   // Returns true if klass is admissible to the propagation: non-null and resolved.
   // For an array type, we also check if the component type is admissible.

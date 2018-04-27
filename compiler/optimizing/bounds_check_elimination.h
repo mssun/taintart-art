@@ -34,7 +34,7 @@ class BoundsCheckElimination : public HOptimization {
         side_effects_(side_effects),
         induction_analysis_(induction_analysis) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kBoundsCheckEliminationPassName = "BCE";
 

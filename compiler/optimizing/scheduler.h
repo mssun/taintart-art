@@ -508,10 +508,11 @@ class HInstructionScheduling : public HOptimization {
         codegen_(cg),
         instruction_set_(instruction_set) {}
 
-  void Run() {
-    Run(/*only_optimize_loop_blocks*/ true, /*schedule_randomly*/ false);
+  bool Run() OVERRIDE {
+    return Run(/*only_optimize_loop_blocks*/ true, /*schedule_randomly*/ false);
   }
-  void Run(bool only_optimize_loop_blocks, bool schedule_randomly);
+
+  bool Run(bool only_optimize_loop_blocks, bool schedule_randomly);
 
   static constexpr const char* kInstructionSchedulingPassName = "scheduler";
 

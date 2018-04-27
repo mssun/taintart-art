@@ -256,10 +256,11 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
   HX86ComputeBaseMethodAddress* base_;
 };
 
-void PcRelativeFixups::Run() {
+bool PcRelativeFixups::Run() {
   PCRelativeHandlerVisitor visitor(graph_, codegen_);
   visitor.VisitInsertionOrder();
   visitor.MoveBaseIfNeeded();
+  return true;
 }
 
 }  // namespace x86

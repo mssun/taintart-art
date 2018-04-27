@@ -241,14 +241,15 @@ void CHAGuardVisitor::VisitShouldDeoptimizeFlag(HShouldDeoptimizeFlag* flag) {
   GetGraph()->IncrementNumberOfCHAGuards();
 }
 
-void CHAGuardOptimization::Run() {
+bool CHAGuardOptimization::Run() {
   if (graph_->GetNumberOfCHAGuards() == 0) {
-    return;
+    return false;
   }
   CHAGuardVisitor visitor(graph_);
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
     visitor.VisitBasicBlock(block);
   }
+  return true;
 }
 
 }  // namespace art
