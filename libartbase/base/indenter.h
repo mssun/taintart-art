@@ -22,7 +22,7 @@
 
 #include <android-base/logging.h>
 
-#include "base/macros.h"
+#include "macros.h"
 
 namespace art {
 

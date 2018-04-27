@@ -19,8 +19,8 @@
 
 #include <type_traits>
 
-#include "base/atomic.h"
-#include "base/macros.h"
+#include "atomic.h"
+#include "macros.h"
 
 namespace art {
 

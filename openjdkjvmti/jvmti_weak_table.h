@@ -34,11 +34,11 @@
 
 #include <unordered_map>
 
+#include "base/globals.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "gc/system_weak.h"
 #include "gc_root-inl.h"
-#include "globals.h"
 #include "jvmti.h"
 #include "jvmti_allocator.h"
 #include "mirror/object.h"

@@ -16,7 +16,7 @@
 
 #include "managed_register_mips64.h"
 
-#include "globals.h"
+#include "base/globals.h"
 
 namespace art {
 namespace mips64 {

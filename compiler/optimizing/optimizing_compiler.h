@@ -17,8 +17,8 @@
 #ifndef ART_COMPILER_OPTIMIZING_OPTIMIZING_COMPILER_H_
 #define ART_COMPILER_OPTIMIZING_OPTIMIZING_COMPILER_H_
 
+#include "base/globals.h"
 #include "base/mutex.h"
-#include "globals.h"
 
 namespace art {
 

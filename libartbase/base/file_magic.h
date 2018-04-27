@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <string>
 
-#include "base/os.h"
+#include "os.h"
 
 namespace art {
 

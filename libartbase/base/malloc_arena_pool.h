@@ -19,7 +19,7 @@
 
 #include <mutex>
 
-#include "base/arena_allocator.h"
+#include "arena_allocator.h"
 
 namespace art {
 

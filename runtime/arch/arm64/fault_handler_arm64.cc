@@ -20,10 +20,10 @@
 
 #include "art_method.h"
 #include "base/enums.h"
+#include "base/globals.h"
 #include "base/hex_dump.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
-#include "globals.h"
 #include "registers_arm64.h"
 #include "thread-current-inl.h"
 

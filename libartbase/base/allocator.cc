@@ -21,7 +21,7 @@
 
 #include <android-base/logging.h>
 
-#include "base/atomic.h"
+#include "atomic.h"
 
 namespace art {
 

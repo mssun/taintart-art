@@ -17,10 +17,10 @@
 #include "dex_cache-inl.h"
 
 #include "art_method-inl.h"
+#include "base/globals.h"
 #include "class_linker.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc/heap.h"
-#include "globals.h"
 #include "linear_alloc.h"
 #include "oat_file.h"
 #include "object-inl.h"
