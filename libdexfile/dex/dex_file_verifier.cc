@@ -674,9 +674,9 @@ bool DexFileVerifier::CheckClassDataItemMethod(uint32_t idx,
                                                uint32_t class_access_flags,
                                                dex::TypeIndex class_type_index,
                                                uint32_t code_offset,
-                                               std::unordered_set<uint32_t>* direct_method_indexes,
+                                               ClassDataItemIterator* direct_it,
                                                bool expect_direct) {
-  DCHECK(direct_method_indexes != nullptr);
+  DCHECK(expect_direct || direct_it != nullptr);
   // Check for overflow.
   if (!CheckIndex(idx, header_->method_ids_size_, "class_data_item method_idx")) {
     return false;
@@ -694,11 +694,19 @@ bool DexFileVerifier::CheckClassDataItemMethod(uint32_t idx,
   }
 
   // Check that it's not defined as both direct and virtual.
-  if (expect_direct) {
-    direct_method_indexes->insert(idx);
-  } else if (direct_method_indexes->find(idx) != direct_method_indexes->end()) {
-    ErrorStringPrintf("Found virtual method with same index as direct method: %d", idx);
-    return false;
+  if (!expect_direct) {
+    // The direct methods are already known to be in ascending index order. So just keep up
+    // with the current index.
+    for (; direct_it->HasNextDirectMethod(); direct_it->Next()) {
+      uint32_t direct_idx = direct_it->GetMemberIndex();
+      if (direct_idx > idx) {
+        break;
+      }
+      if (direct_idx == idx) {
+        ErrorStringPrintf("Found virtual method with same index as direct method: %d", idx);
+        return false;
+      }
+    }
   }
 
   std::string error_msg;
@@ -1146,7 +1154,7 @@ bool DexFileVerifier::CheckIntraClassDataItemFields(ClassDataItemIterator* it,
 template <bool kDirect>
 bool DexFileVerifier::CheckIntraClassDataItemMethods(
     ClassDataItemIterator* it,
-    std::unordered_set<uint32_t>* direct_method_indexes,
+    ClassDataItemIterator* direct_it,
     bool* have_class,
     dex::TypeIndex* class_type_index,
     const DexFile::ClassDef** class_def) {
@@ -1168,7 +1176,7 @@ bool DexFileVerifier::CheckIntraClassDataItemMethods(
                                   (*class_def)->access_flags_,
                                   *class_type_index,
                                   it->GetMethodCodeItemOffset(),
-                                  direct_method_indexes,
+                                  direct_it,
                                   kDirect)) {
       return false;
     }
@@ -1181,7 +1189,6 @@ bool DexFileVerifier::CheckIntraClassDataItemMethods(
 
 bool DexFileVerifier::CheckIntraClassDataItem() {
   ClassDataItemIterator it(*dex_file_, ptr_);
-  std::unordered_set<uint32_t> direct_method_indexes;
 
   // This code is complicated by the fact that we don't directly know which class this belongs to.
   // So we need to explicitly search with the first item we find (either field or method), and then,
@@ -1205,15 +1212,17 @@ bool DexFileVerifier::CheckIntraClassDataItem() {
   }
 
   // Check methods.
+  ClassDataItemIterator direct_it = it;
+
   if (!CheckIntraClassDataItemMethods<true>(&it,
-                                            &direct_method_indexes,
+                                            nullptr /* direct_it */,
                                             &have_class,
                                             &class_type_index,
                                             &class_def)) {
     return false;
   }
   if (!CheckIntraClassDataItemMethods<false>(&it,
-                                             &direct_method_indexes,
+                                             &direct_it,
                                              &have_class,
                                              &class_type_index,
                                              &class_def)) {

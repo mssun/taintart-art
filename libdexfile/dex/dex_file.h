@@ -1346,9 +1346,6 @@ class ClassDataItemIterator {
     uint32_t field_idx_delta_;  // delta of index into the field_ids array for FieldId
     uint32_t access_flags_;  // access flags for the field
     ClassDataField() :  field_idx_delta_(0), access_flags_(0) {}
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(ClassDataField);
   };
   ClassDataField field_;
 
@@ -1361,9 +1358,6 @@ class ClassDataItemIterator {
     uint32_t access_flags_;
     uint32_t code_off_;
     ClassDataMethod() : method_idx_delta_(0), access_flags_(0), code_off_(0) {}
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(ClassDataMethod);
   };
   ClassDataMethod method_;
 
@@ -1374,7 +1368,6 @@ class ClassDataItemIterator {
   size_t pos_;  // integral number of items passed
   const uint8_t* ptr_pos_;  // pointer into stream of class_data_item
   uint32_t last_idx_;  // last read field or method index to apply delta to
-  DISALLOW_IMPLICIT_CONSTRUCTORS(ClassDataItemIterator);
 };
 
 class EncodedArrayValueIterator {
