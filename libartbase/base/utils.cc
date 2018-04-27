@@ -30,7 +30,7 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
-#include "base/os.h"
+#include "os.h"
 
 #if defined(__APPLE__)
 #include <crt_externs.h>

@@ -17,8 +17,8 @@
 #ifndef ART_LIBARTBASE_BASE_BIT_STRING_H_
 #define ART_LIBARTBASE_BASE_BIT_STRING_H_
 
-#include "base/bit_struct.h"
-#include "base/bit_utils.h"
+#include "bit_struct.h"
+#include "bit_utils.h"
 
 #include <ostream>
 

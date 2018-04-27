@@ -18,8 +18,8 @@
 
 #include <android-base/logging.h>
 
+#include "base/globals.h"
 #include "base/macros.h"
-#include "globals.h"
 
 #include <ostream>
 

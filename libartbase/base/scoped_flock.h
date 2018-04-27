@@ -22,9 +22,9 @@
 
 #include <android-base/unique_fd.h>
 
-#include "base/macros.h"
-#include "base/os.h"
-#include "base/unix_file/fd_file.h"
+#include "macros.h"
+#include "os.h"
+#include "unix_file/fd_file.h"
 
 namespace art {
 

@@ -17,7 +17,7 @@
 #ifndef ART_LIBARTBASE_BASE_VALUE_OBJECT_H_
 #define ART_LIBARTBASE_BASE_VALUE_OBJECT_H_
 
-#include "base/macros.h"
+#include "macros.h"
 
 namespace art {
 

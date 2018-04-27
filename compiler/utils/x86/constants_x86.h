@@ -22,8 +22,8 @@
 #include <android-base/logging.h>
 
 #include "arch/x86/registers_x86.h"
+#include "base/globals.h"
 #include "base/macros.h"
-#include "globals.h"
 
 namespace art {
 namespace x86 {

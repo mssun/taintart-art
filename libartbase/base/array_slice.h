@@ -17,9 +17,9 @@
 #ifndef ART_LIBARTBASE_BASE_ARRAY_SLICE_H_
 #define ART_LIBARTBASE_BASE_ARRAY_SLICE_H_
 
-#include "base/bit_utils.h"
-#include "base/casts.h"
-#include "base/iteration_range.h"
+#include "bit_utils.h"
+#include "casts.h"
+#include "iteration_range.h"
 #include "stride_iterator.h"
 
 namespace art {

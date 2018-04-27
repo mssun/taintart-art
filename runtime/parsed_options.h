@@ -23,9 +23,9 @@
 #include <jni.h>
 
 #include "arch/instruction_set.h"
+#include "base/globals.h"
 #include "gc/collector_type.h"
 #include "gc/space/large_object_space.h"
-#include "globals.h"
 // #include "jit/profile_saver_options.h"
 #include "runtime_options.h"
 

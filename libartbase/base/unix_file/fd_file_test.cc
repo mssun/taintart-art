@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include "base/unix_file/fd_file.h"
-#include "base/unix_file/random_access_file_test.h"
 #include "common_runtime_test.h"  // For ScratchFile
 #include "gtest/gtest.h"
+#include "fd_file.h"
+#include "random_access_file_test.h"
 
 namespace unix_file {
 

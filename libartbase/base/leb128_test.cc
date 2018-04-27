@@ -17,9 +17,8 @@
 #include "leb128.h"
 
 #include "gtest/gtest.h"
-
-#include "base/histogram-inl.h"
-#include "base/time_utils.h"
+#include "histogram-inl.h"
+#include "time_utils.h"
 
 namespace art {
 

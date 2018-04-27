@@ -20,9 +20,9 @@
 #include <ostream>
 #include <type_traits>
 
+#include "base/globals.h"
 #include "base/macros.h"
 #include "base/mutex.h"  // For Locks::mutator_lock_.
-#include "globals.h"
 
 namespace art {
 

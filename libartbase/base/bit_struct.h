@@ -17,8 +17,8 @@
 #ifndef ART_LIBARTBASE_BASE_BIT_STRUCT_H_
 #define ART_LIBARTBASE_BASE_BIT_STRUCT_H_
 
-#include "base/bit_utils.h"
 #include "bit_struct_detail.h"
+#include "bit_utils.h"
 
 //
 // Zero-cost, type-safe, well-defined "structs" of bit fields.

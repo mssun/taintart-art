@@ -23,9 +23,9 @@
 
 #include <android-base/logging.h>
 
-#include "base/bit_utils.h"
-#include "base/iteration_range.h"
-#include "base/stl_util.h"
+#include "bit_utils.h"
+#include "iteration_range.h"
+#include "stl_util.h"
 
 namespace art {
 

@@ -19,7 +19,7 @@
 
 #include <ostream>
 
-#include "base/macros.h"
+#include "macros.h"
 
 namespace art {
 

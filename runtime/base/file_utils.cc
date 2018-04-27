@@ -43,11 +43,11 @@
 #include "android-base/strings.h"
 
 #include "base/bit_utils.h"
-#include "base/stl_util.h"
+#include "base/globals.h"
 #include "base/os.h"
+#include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/dex_file_loader.h"
-#include "globals.h"
 
 #if defined(__APPLE__)
 #include <crt_externs.h>

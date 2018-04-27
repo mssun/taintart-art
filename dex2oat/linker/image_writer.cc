@@ -29,6 +29,7 @@
 #include "art_method-inl.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
+#include "base/globals.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/unix_file/fd_file.h"
 #include "class_linker-inl.h"
@@ -47,7 +48,6 @@
 #include "gc/space/large_object_space.h"
 #include "gc/space/space-inl.h"
 #include "gc/verification.h"
-#include "globals.h"
 #include "handle_scope-inl.h"
 #include "image.h"
 #include "imt_conflict_table.h"

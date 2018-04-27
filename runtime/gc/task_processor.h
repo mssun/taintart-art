@@ -20,8 +20,8 @@
 #include <memory>
 #include <set>
 
+#include "base/globals.h"
 #include "base/mutex.h"
-#include "globals.h"
 #include "thread_pool.h"
 
 namespace art {
