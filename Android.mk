@@ -471,10 +471,11 @@ build-art-target-golem: dex2oat dalvikvm patchoat linker libstdc++ \
                         $(ART_TARGET_SHARED_LIBRARY_BENCHMARK) \
                         $(TARGET_CORE_IMG_OUT_BASE).art \
                         $(TARGET_CORE_IMG_OUT_BASE)-interpreter.art
-	# remove libartd.so and libdexfiled.so from public.libraries.txt because golem builds
+	# remove debug libraries from public.libraries.txt because golem builds
 	# won't have it.
 	sed -i '/libartd.so/d' $(TARGET_OUT)/etc/public.libraries.txt
 	sed -i '/libdexfiled.so/d' $(TARGET_OUT)/etc/public.libraries.txt
+	sed -i '/libprofiled.so/d' $(TARGET_OUT)/etc/public.libraries.txt
 
 ########################################################################
 # Phony target for building what go/lem requires on host.
