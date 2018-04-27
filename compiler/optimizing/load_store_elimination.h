@@ -35,7 +35,7 @@ class LoadStoreElimination : public HOptimization {
         side_effects_(side_effects),
         lsa_(lsa) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kLoadStoreEliminationPassName = "load_store_elimination";
 

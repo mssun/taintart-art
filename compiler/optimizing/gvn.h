@@ -31,7 +31,7 @@ class GVNOptimization : public HOptimization {
                   const char* pass_name = kGlobalValueNumberingPassName)
       : HOptimization(graph, pass_name), side_effects_(side_effects) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kGlobalValueNumberingPassName = "GVN";
 

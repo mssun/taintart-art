@@ -278,9 +278,10 @@ void InstructionSimplifierArm64Visitor::VisitVecStore(HVecStore* instruction) {
   }
 }
 
-void InstructionSimplifierArm64::Run() {
+bool InstructionSimplifierArm64::Run() {
   InstructionSimplifierArm64Visitor visitor(graph_, stats_);
   visitor.VisitReversePostOrder();
+  return true;
 }
 
 }  // namespace arm64

@@ -352,7 +352,7 @@ class GlobalValueNumberer : public ValueObject {
     visited_blocks_.ClearAllBits();
   }
 
-  void Run();
+  bool Run();
 
  private:
   // Per-block GVN. Will also update the ValueSet of the dominated and
@@ -397,7 +397,7 @@ class GlobalValueNumberer : public ValueObject {
   DISALLOW_COPY_AND_ASSIGN(GlobalValueNumberer);
 };
 
-void GlobalValueNumberer::Run() {
+bool GlobalValueNumberer::Run() {
   DCHECK(side_effects_.HasRun());
   sets_[graph_->GetEntryBlock()->GetBlockId()] = new (&allocator_) ValueSet(&allocator_);
 
@@ -406,6 +406,7 @@ void GlobalValueNumberer::Run() {
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
     VisitBasicBlock(block);
   }
+  return true;
 }
 
 void GlobalValueNumberer::VisitBasicBlock(HBasicBlock* block) {
@@ -557,9 +558,9 @@ HBasicBlock* GlobalValueNumberer::FindVisitedBlockWithRecyclableSet(
   return secondary_match;
 }
 
-void GVNOptimization::Run() {
+bool GVNOptimization::Run() {
   GlobalValueNumberer gvn(graph_, side_effects_);
-  gvn.Run();
+  return gvn.Run();
 }
 
 }  // namespace art

@@ -348,7 +348,7 @@ static void BoundTypeForClassCheck(HInstruction* check) {
   }
 }
 
-void ReferenceTypePropagation::Run() {
+bool ReferenceTypePropagation::Run() {
   RTPVisitor visitor(graph_, class_loader_, hint_dex_cache_, &handle_cache_, is_first_run_);
 
   // To properly propagate type info we need to visit in the dominator-based order.
@@ -360,6 +360,7 @@ void ReferenceTypePropagation::Run() {
 
   visitor.ProcessWorklist();
   ValidateTypes();
+  return true;
 }
 
 void ReferenceTypePropagation::RTPVisitor::VisitBasicBlock(HBasicBlock* block) {

@@ -18,7 +18,7 @@
 
 namespace art {
 
-void SideEffectsAnalysis::Run() {
+bool SideEffectsAnalysis::Run() {
   // Inlining might have created more blocks, so we need to increase the size
   // if needed.
   block_effects_.resize(graph_->GetBlocks().size());
@@ -69,6 +69,7 @@ void SideEffectsAnalysis::Run() {
     }
   }
   has_run_ = true;
+  return true;
 }
 
 SideEffects SideEffectsAnalysis::GetLoopEffects(HBasicBlock* block) const {

@@ -47,8 +47,9 @@ class HOptimization : public ArenaObject<kArenaAllocOptimization> {
   // 'instruction_simplifier$before_codegen'.
   const char* GetPassName() const { return pass_name_; }
 
-  // Perform the analysis itself.
-  virtual void Run() = 0;
+  // Perform the pass or analysis. Returns false if no optimizations occurred or no useful
+  // information was computed (this is best effort, returning true is always ok).
+  virtual bool Run() = 0;
 
  protected:
   HGraph* const graph_;

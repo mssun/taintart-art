@@ -1938,9 +1938,9 @@ class BCEVisitor : public HGraphVisitor {
   DISALLOW_COPY_AND_ASSIGN(BCEVisitor);
 };
 
-void BoundsCheckElimination::Run() {
+bool BoundsCheckElimination::Run() {
   if (!graph_->HasBoundsChecks()) {
-    return;
+    return false;
   }
 
   // Reverse post order guarantees a node's dominators are visited first.
@@ -1968,6 +1968,8 @@ void BoundsCheckElimination::Run() {
 
   // Perform cleanup.
   visitor.Finish();
+
+  return true;
 }
 
 }  // namespace art

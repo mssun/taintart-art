@@ -608,11 +608,11 @@ HLoopOptimization::HLoopOptimization(HGraph* graph,
                                                       global_allocator_)) {
 }
 
-void HLoopOptimization::Run() {
+bool HLoopOptimization::Run() {
   // Skip if there is no loop or the graph has try-catch/irreducible loops.
   // TODO: make this less of a sledgehammer.
   if (!graph_->HasLoops() || graph_->HasTryCatch() || graph_->HasIrreducibleLoops()) {
-    return;
+    return false;
   }
 
   // Phase-local allocator.
@@ -620,7 +620,7 @@ void HLoopOptimization::Run() {
   loop_allocator_ = &allocator;
 
   // Perform loop optimizations.
-  LocalRun();
+  bool didLoopOpt = LocalRun();
   if (top_loop_ == nullptr) {
     graph_->SetHasLoops(false);  // no more loops
   }
@@ -628,13 +628,16 @@ void HLoopOptimization::Run() {
   // Detach.
   loop_allocator_ = nullptr;
   last_loop_ = top_loop_ = nullptr;
+
+  return didLoopOpt;
 }
 
 //
 // Loop setup and traversal.
 //
 
-void HLoopOptimization::LocalRun() {
+bool HLoopOptimization::LocalRun() {
+  bool didLoopOpt = false;
   // Build the linear order using the phase-local allocator. This step enables building
   // a loop hierarchy that properly reflects the outer-inner and previous-next relation.
   ScopedArenaVector<HBasicBlock*> linear_order(loop_allocator_->Adapter(kArenaAllocLinearOrder));
@@ -666,7 +669,7 @@ void HLoopOptimization::LocalRun() {
     vector_map_ = &map;
     vector_permanent_map_ = &perm;
     // Traverse.
-    TraverseLoopsInnerToOuter(top_loop_);
+    didLoopOpt = TraverseLoopsInnerToOuter(top_loop_);
     // Detach.
     iset_ = nullptr;
     reductions_ = nullptr;
@@ -674,6 +677,7 @@ void HLoopOptimization::LocalRun() {
     vector_map_ = nullptr;
     vector_permanent_map_ = nullptr;
   }
+  return didLoopOpt;
 }
 
 void HLoopOptimization::AddLoop(HLoopInformation* loop_info) {
