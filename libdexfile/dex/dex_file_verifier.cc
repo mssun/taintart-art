@@ -3015,11 +3015,14 @@ void DexFileVerifier::ErrorStringPrintf(const char* fmt, ...) {
 }
 
 // Fields and methods may have only one of public/protected/private.
-static bool CheckAtMostOneOfPublicProtectedPrivate(uint32_t flags) {
-  size_t count = (((flags & kAccPublic) == 0) ? 0 : 1) +
-                 (((flags & kAccProtected) == 0) ? 0 : 1) +
-                 (((flags & kAccPrivate) == 0) ? 0 : 1);
-  return count <= 1;
+ALWAYS_INLINE
+static constexpr bool CheckAtMostOneOfPublicProtectedPrivate(uint32_t flags) {
+  // Semantically we want 'return POPCOUNT(flags & kAcc) <= 1;'.
+  static_assert(IsPowerOfTwo(0), "0 not marked as power of two");
+  static_assert(IsPowerOfTwo(kAccPublic), "kAccPublic not marked as power of two");
+  static_assert(IsPowerOfTwo(kAccProtected), "kAccProtected not marked as power of two");
+  static_assert(IsPowerOfTwo(kAccPrivate), "kAccPrivate not marked as power of two");
+  return IsPowerOfTwo(flags & (kAccPublic | kAccProtected | kAccPrivate));
 }
 
 // Helper functions to retrieve names from the dex file. We do not want to rely on DexFile
