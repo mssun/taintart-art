@@ -178,7 +178,7 @@ bool HInliner::Run() {
           if (callee_name.find("$noinline$") == std::string::npos) {
             if (TryInline(call)) {
               didInline = true;
-            } else {
+            } else if (honor_inline_directives) {
               bool should_have_inlined = (callee_name.find("$inline$") != std::string::npos);
               CHECK(!should_have_inlined) << "Could not inline " << callee_name;
             }
