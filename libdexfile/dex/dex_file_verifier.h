@@ -87,13 +87,8 @@ class DexFileVerifier {
                                 uint32_t code_offset,
                                 ClassDataItemIterator* direct_it,
                                 bool expect_direct);
-  bool CheckOrderAndGetClassDef(bool is_field,
-                                const char* type_descr,
-                                uint32_t curr_index,
-                                uint32_t prev_index,
-                                bool* have_class,
-                                dex::TypeIndex* class_type_index,
-                                const DexFile::ClassDef** class_def);
+  ALWAYS_INLINE
+  bool CheckOrder(const char* type_descr, uint32_t curr_index, uint32_t prev_index);
   bool CheckStaticFieldTypes(const DexFile::ClassDef* class_def);
 
   bool CheckPadding(size_t offset, uint32_t aligned_offset, DexFile::MapItemType type);
@@ -124,9 +119,12 @@ class DexFileVerifier {
   bool CheckIntraAnnotationItem();
   bool CheckIntraAnnotationsDirectoryItem();
 
-  bool CheckIntraSectionIterate(size_t offset, uint32_t count, DexFile::MapItemType type);
+  template <DexFile::MapItemType kType>
+  bool CheckIntraSectionIterate(size_t offset, uint32_t count);
+  bool CheckIntraSectionIterateByType(size_t offset, uint32_t count, DexFile::MapItemType type);
   bool CheckIntraIdSection(size_t offset, uint32_t count, DexFile::MapItemType type);
-  bool CheckIntraDataSection(size_t offset, uint32_t count, DexFile::MapItemType type);
+  template <DexFile::MapItemType kType>
+  bool CheckIntraDataSection(size_t offset, uint32_t count);
   bool CheckIntraSection();
 
   bool CheckOffsetToTypeMap(size_t offset, uint16_t type);

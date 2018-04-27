@@ -994,30 +994,15 @@ bool DexFileVerifier::FindClassIndexAndDef(uint32_t index,
   return false;
 }
 
-bool DexFileVerifier::CheckOrderAndGetClassDef(bool is_field,
-                                               const char* type_descr,
-                                               uint32_t curr_index,
-                                               uint32_t prev_index,
-                                               bool* have_class,
-                                               dex::TypeIndex* class_type_index,
-                                               const DexFile::ClassDef** class_def) {
-  if (curr_index < prev_index) {
+bool DexFileVerifier::CheckOrder(const char* type_descr,
+                                 uint32_t curr_index,
+                                 uint32_t prev_index) {
+  if (UNLIKELY(curr_index < prev_index)) {
     ErrorStringPrintf("out-of-order %s indexes %" PRIu32 " and %" PRIu32,
                       type_descr,
                       prev_index,
                       curr_index);
     return false;
-  }
-
-  if (!*have_class) {
-    *have_class = FindClassIndexAndDef(curr_index, is_field, class_type_index, class_def);
-    if (!*have_class) {
-      // Should have really found one.
-      ErrorStringPrintf("could not find declaring class for %s index %" PRIu32,
-                        type_descr,
-                        curr_index);
-      return false;
-    }
   }
   return true;
 }
@@ -1123,20 +1108,29 @@ bool DexFileVerifier::CheckIntraClassDataItemFields(ClassDataItemIterator* it,
                                                     dex::TypeIndex* class_type_index,
                                                     const DexFile::ClassDef** class_def) {
   DCHECK(it != nullptr);
+  constexpr const char* kTypeDescr = kStatic ? "static field" : "instance field";
+
   // These calls use the raw access flags to check whether the whole dex field is valid.
+
+  if (!*have_class && (kStatic ? it->HasNextStaticField() : it->HasNextInstanceField())) {
+    *have_class = FindClassIndexAndDef(it->GetMemberIndex(), true, class_type_index, class_def);
+    if (!*have_class) {
+      // Should have really found one.
+      ErrorStringPrintf("could not find declaring class for %s index %" PRIu32,
+                        kTypeDescr,
+                        it->GetMemberIndex());
+      return false;
+    }
+  }
+  DCHECK(*class_def != nullptr ||
+         !(kStatic ? it->HasNextStaticField() : it->HasNextInstanceField()));
+
   uint32_t prev_index = 0;
   for (; kStatic ? it->HasNextStaticField() : it->HasNextInstanceField(); it->Next()) {
     uint32_t curr_index = it->GetMemberIndex();
-    if (!CheckOrderAndGetClassDef(true,
-                                  kStatic ? "static field" : "instance field",
-                                  curr_index,
-                                  prev_index,
-                                  have_class,
-                                  class_type_index,
-                                  class_def)) {
+    if (!CheckOrder(kTypeDescr, curr_index, prev_index)) {
       return false;
     }
-    DCHECK(class_def != nullptr);
     if (!CheckClassDataItemField(curr_index,
                                  it->GetRawMemberAccessFlags(),
                                  (*class_def)->access_flags_,
@@ -1158,19 +1152,28 @@ bool DexFileVerifier::CheckIntraClassDataItemMethods(
     bool* have_class,
     dex::TypeIndex* class_type_index,
     const DexFile::ClassDef** class_def) {
+  DCHECK(it != nullptr);
+  constexpr const char* kTypeDescr = kDirect ? "direct method" : "virtual method";
+
+  if (!*have_class && (kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod())) {
+    *have_class = FindClassIndexAndDef(it->GetMemberIndex(), false, class_type_index, class_def);
+    if (!*have_class) {
+      // Should have really found one.
+      ErrorStringPrintf("could not find declaring class for %s index %" PRIu32,
+                        kTypeDescr,
+                        it->GetMemberIndex());
+      return false;
+    }
+  }
+  DCHECK(*class_def != nullptr ||
+         !(kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod()));
+
   uint32_t prev_index = 0;
   for (; kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod(); it->Next()) {
     uint32_t curr_index = it->GetMemberIndex();
-    if (!CheckOrderAndGetClassDef(false,
-                                  kDirect ? "direct method" : "virtual method",
-                                  curr_index,
-                                  prev_index,
-                                  have_class,
-                                  class_type_index,
-                                  class_def)) {
+    if (!CheckOrder(kTypeDescr, curr_index, prev_index)) {
       return false;
     }
-    DCHECK(class_def != nullptr);
     if (!CheckClassDataItemMethod(curr_index,
                                   it->GetRawMemberAccessFlags(),
                                   (*class_def)->access_flags_,
@@ -1297,7 +1300,19 @@ bool DexFileVerifier::CheckIntraCodeItem() {
     return false;
   }
 
-  std::unique_ptr<uint32_t[]> handler_offsets(new uint32_t[handlers_size]);
+  // Avoid an expensive allocation, if possible.
+  std::unique_ptr<uint32_t[]> handler_offsets_uptr;
+  uint32_t* handler_offsets;
+  constexpr size_t kAllocaMaxSize = 1024;
+  if (handlers_size < kAllocaMaxSize/sizeof(uint32_t)) {
+    handler_offsets =
+        AlignDown(reinterpret_cast<uint32_t*>(alloca((handlers_size + 1) * sizeof(uint32_t))),
+                  alignof(uint32_t[]));
+  } else {
+    handler_offsets_uptr.reset(new uint32_t[handlers_size]);
+    handler_offsets = handler_offsets_uptr.get();
+  }
+
   if (!CheckAndGetHandlerOffsets(code_item, &handler_offsets[0], handlers_size)) {
     return false;
   }
@@ -1622,11 +1637,11 @@ bool DexFileVerifier::CheckIntraAnnotationsDirectoryItem() {
   return true;
 }
 
-bool DexFileVerifier::CheckIntraSectionIterate(size_t offset, uint32_t section_count,
-                                               DexFile::MapItemType type) {
+template <DexFile::MapItemType kType>
+bool DexFileVerifier::CheckIntraSectionIterate(size_t offset, uint32_t section_count) {
   // Get the right alignment mask for the type of section.
   size_t alignment_mask;
-  switch (type) {
+  switch (kType) {
     case DexFile::kDexTypeClassDataItem:
     case DexFile::kDexTypeStringDataItem:
     case DexFile::kDexTypeDebugInfoItem:
@@ -1644,13 +1659,13 @@ bool DexFileVerifier::CheckIntraSectionIterate(size_t offset, uint32_t section_c
     size_t aligned_offset = (offset + alignment_mask) & ~alignment_mask;
 
     // Check the padding between items.
-    if (!CheckPadding(offset, aligned_offset, type)) {
+    if (!CheckPadding(offset, aligned_offset, kType)) {
       return false;
     }
 
     // Check depending on the section type.
     const uint8_t* start_ptr = ptr_;
-    switch (type) {
+    switch (kType) {
       case DexFile::kDexTypeStringIdItem: {
         if (!CheckListSize(ptr_, 1, sizeof(DexFile::StringId), "string_ids")) {
           return false;
@@ -1773,17 +1788,17 @@ bool DexFileVerifier::CheckIntraSectionIterate(size_t offset, uint32_t section_c
     }
 
     if (start_ptr == ptr_) {
-      ErrorStringPrintf("Unknown map item type %x", type);
+      ErrorStringPrintf("Unknown map item type %x", kType);
       return false;
     }
 
-    if (IsDataSectionType(type)) {
+    if (IsDataSectionType(kType)) {
       if (aligned_offset == 0u) {
         ErrorStringPrintf("Item %d offset is 0", i);
         return false;
       }
       DCHECK(offset_to_type_map_.Find(aligned_offset) == offset_to_type_map_.end());
-      offset_to_type_map_.Insert(std::pair<uint32_t, uint16_t>(aligned_offset, type));
+      offset_to_type_map_.Insert(std::pair<uint32_t, uint16_t>(aligned_offset, kType));
     }
 
     aligned_offset = ptr_ - begin_;
@@ -1796,6 +1811,55 @@ bool DexFileVerifier::CheckIntraSectionIterate(size_t offset, uint32_t section_c
   }
 
   return true;
+}
+
+bool DexFileVerifier::CheckIntraSectionIterateByType(size_t offset,
+                                                     uint32_t count,
+                                                     DexFile::MapItemType type) {
+  switch (type) {
+    case DexFile::kDexTypeHeaderItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeHeaderItem>(offset, count);
+    case DexFile::kDexTypeStringIdItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeStringIdItem>(offset, count);
+    case DexFile::kDexTypeTypeIdItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeTypeIdItem>(offset, count);
+    case DexFile::kDexTypeProtoIdItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeProtoIdItem>(offset, count);
+    case DexFile::kDexTypeFieldIdItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeFieldIdItem>(offset, count);
+    case DexFile::kDexTypeMethodIdItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeMethodIdItem>(offset, count);
+    case DexFile::kDexTypeClassDefItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeClassDefItem>(offset, count);
+    case DexFile::kDexTypeCallSiteIdItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeCallSiteIdItem>(offset, count);
+    case DexFile::kDexTypeMethodHandleItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeMethodHandleItem>(offset, count);
+    case DexFile::kDexTypeMapList:
+      return CheckIntraSectionIterate<DexFile::kDexTypeMapList>(offset, count);
+    case DexFile::kDexTypeTypeList:
+      return CheckIntraSectionIterate<DexFile::kDexTypeTypeList>(offset, count);
+    case DexFile::kDexTypeAnnotationSetRefList:
+      return CheckIntraSectionIterate<DexFile::kDexTypeAnnotationSetRefList>(offset, count);
+    case DexFile::kDexTypeAnnotationSetItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeAnnotationSetItem>(offset, count);
+    case DexFile::kDexTypeClassDataItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeClassDataItem>(offset, count);
+    case DexFile::kDexTypeCodeItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeCodeItem>(offset, count);
+    case DexFile::kDexTypeStringDataItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeStringDataItem>(offset, count);
+    case DexFile::kDexTypeDebugInfoItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeDebugInfoItem>(offset, count);
+    case DexFile::kDexTypeAnnotationItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeAnnotationItem>(offset, count);
+    case DexFile::kDexTypeEncodedArrayItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeEncodedArrayItem>(offset, count);
+    case DexFile::kDexTypeAnnotationsDirectoryItem:
+      return CheckIntraSectionIterate<DexFile::kDexTypeAnnotationsDirectoryItem>(offset, count);
+  }
+  LOG(FATAL) << "Unreachable";
+  UNREACHABLE();
 }
 
 bool DexFileVerifier::CheckIntraIdSection(size_t offset,
@@ -1845,12 +1909,11 @@ bool DexFileVerifier::CheckIntraIdSection(size_t offset,
     return false;
   }
 
-  return CheckIntraSectionIterate(offset, count, type);
+  return CheckIntraSectionIterateByType(offset, count, type);
 }
 
-bool DexFileVerifier::CheckIntraDataSection(size_t offset,
-                                            uint32_t count,
-                                            DexFile::MapItemType type) {
+template <DexFile::MapItemType kType>
+bool DexFileVerifier::CheckIntraDataSection(size_t offset, uint32_t count) {
   size_t data_start = header_->data_off_;
   size_t data_end = data_start + header_->data_size_;
 
@@ -1860,7 +1923,7 @@ bool DexFileVerifier::CheckIntraDataSection(size_t offset,
     return false;
   }
 
-  if (!CheckIntraSectionIterate(offset, count, type)) {
+  if (!CheckIntraSectionIterate<kType>(offset, count)) {
     return false;
   }
 
@@ -1937,21 +2000,75 @@ bool DexFileVerifier::CheckIntraSection() {
         offset = section_offset + sizeof(uint32_t) + (map->size_ * sizeof(DexFile::MapItem));
         break;
       case DexFile::kDexTypeMethodHandleItem:
+        CheckIntraSectionIterate<DexFile::kDexTypeMethodHandleItem>(section_offset, section_count);
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeCallSiteIdItem:
-        CheckIntraSectionIterate(section_offset, section_count, type);
+        CheckIntraSectionIterate<DexFile::kDexTypeCallSiteIdItem>(section_offset, section_count);
         offset = ptr_ - begin_;
         break;
       case DexFile::kDexTypeTypeList:
+        if (!CheckIntraDataSection<DexFile::kDexTypeTypeList>(section_offset, section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeAnnotationSetRefList:
+        if (!CheckIntraDataSection<DexFile::kDexTypeAnnotationSetRefList>(section_offset,
+                                                                          section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeAnnotationSetItem:
+        if (!CheckIntraDataSection<DexFile::kDexTypeAnnotationSetItem>(section_offset,
+                                                                       section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeClassDataItem:
+        if (!CheckIntraDataSection<DexFile::kDexTypeClassDataItem>(section_offset, section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeCodeItem:
+        if (!CheckIntraDataSection<DexFile::kDexTypeCodeItem>(section_offset, section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeStringDataItem:
+        if (!CheckIntraDataSection<DexFile::kDexTypeStringDataItem>(section_offset,
+                                                                    section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeDebugInfoItem:
+        if (!CheckIntraDataSection<DexFile::kDexTypeDebugInfoItem>(section_offset, section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeAnnotationItem:
+        if (!CheckIntraDataSection<DexFile::kDexTypeAnnotationItem>(section_offset,
+                                                                    section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeEncodedArrayItem:
+        if (!CheckIntraDataSection<DexFile::kDexTypeEncodedArrayItem>(section_offset,
+                                                                      section_count)) {
+          return false;
+        }
+        offset = ptr_ - begin_;
+        break;
       case DexFile::kDexTypeAnnotationsDirectoryItem:
-        if (!CheckIntraDataSection(section_offset, section_count, type)) {
+        if (!CheckIntraDataSection<DexFile::kDexTypeAnnotationsDirectoryItem>(section_offset,
+                                                                              section_count)) {
           return false;
         }
         offset = ptr_ - begin_;
