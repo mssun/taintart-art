@@ -178,10 +178,14 @@ public class Test1940 {
       }
     };
     DdmVmInternal.threadNotify(true);
+    System.out.println("threadNotify started!");
     final Thread thr = new Thread(() -> { return; }, "THREAD");
     thr.start();
+    System.out.println("Target thread started!");
     thr.join();
+    System.out.println("Target thread finished!");
     DdmVmInternal.threadNotify(false);
+    System.out.println("threadNotify Disabled!");
     // Make sure we saw at least one of Thread-create, Thread name, & thread death.
     if (!types_seen[0] || !types_seen[1] || !types_seen[2]) {
       System.out.println("Didn't see expected chunks for thread creation! got: " +

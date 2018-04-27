@@ -16,6 +16,10 @@ JVMTI returned chunk: Chunk(Type: 0xFADE7357, Len: 0, data: [])
 Sending data [1] to chunk handler 305419896
 MyDdmHandler: Chunk received: Chunk(Type: 0x12345678, Len: 1, data: [1])
 Got error: JVMTI_ERROR_INTERNAL
+threadNotify started!
+Target thread started!
+Target thread finished!
+threadNotify Disabled!
 Saw expected thread events.
 Expected chunk type published: 1213221190
 Expected chunk type published: 1297109829
