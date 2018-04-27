@@ -18,7 +18,7 @@
 
 #include <memory>
 
-#include "common_runtime_test.h"
+#include "base/common_art_test.h"
 #include "dex/dex_file-inl.h"
 #include "dex/utf-inl.h"
 #include "scoped_thread_state_change-inl.h"
@@ -26,10 +26,9 @@
 namespace art {
 
 using DescriptorClassDefIdxPair = std::pair<const char*, uint32_t>;
-class TypeLookupTableTest : public CommonRuntimeTestWithParam<DescriptorClassDefIdxPair> {};
+class TypeLookupTableTest : public CommonArtTestWithParam<DescriptorClassDefIdxPair> {};
 
 TEST_F(TypeLookupTableTest, CreateLookupTable) {
-  ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<const DexFile> dex_file(OpenTestDexFile("Lookup"));
   std::unique_ptr<TypeLookupTable> table(TypeLookupTable::Create(*dex_file));
   ASSERT_NE(nullptr, table.get());
@@ -38,7 +37,6 @@ TEST_F(TypeLookupTableTest, CreateLookupTable) {
 }
 
 TEST_P(TypeLookupTableTest, Find) {
-  ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<const DexFile> dex_file(OpenTestDexFile("Lookup"));
   std::unique_ptr<TypeLookupTable> table(TypeLookupTable::Create(*dex_file));
   ASSERT_NE(nullptr, table.get());

@@ -16,11 +16,11 @@
 
 #include "scoped_flock.h"
 
-#include "common_runtime_test.h"
+#include "base/common_art_test.h"
 
 namespace art {
 
-class ScopedFlockTest : public CommonRuntimeTest {};
+class ScopedFlockTest : public CommonArtTest {};
 
 TEST_F(ScopedFlockTest, TestLocking) {
   ScratchFile scratch_file;
