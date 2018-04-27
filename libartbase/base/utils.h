@@ -25,11 +25,11 @@
 
 #include <android-base/logging.h>
 
-#include "base/casts.h"
-#include "base/enums.h"
-#include "base/globals.h"
-#include "base/macros.h"
-#include "base/stringpiece.h"
+#include "casts.h"
+#include "enums.h"
+#include "globals.h"
+#include "macros.h"
+#include "stringpiece.h"
 
 namespace art {
 

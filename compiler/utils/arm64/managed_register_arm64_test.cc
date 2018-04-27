@@ -17,7 +17,7 @@
 #include "managed_register_arm64.h"
 
 #include "assembler_arm64.h"
-#include "globals.h"
+#include "base/globals.h"
 #include "gtest/gtest.h"
 
 namespace art {

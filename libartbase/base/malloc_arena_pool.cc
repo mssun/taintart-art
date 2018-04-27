@@ -24,7 +24,7 @@
 #include <numeric>
 
 #include <android-base/logging.h>
-#include "base/arena_allocator-inl.h"
+#include "arena_allocator-inl.h"
 
 namespace art {
 

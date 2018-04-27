@@ -18,9 +18,9 @@
 
 #include "code_simulator_container.h"
 
+#include "base/globals.h"
 #include "base/logging.h"  // For VLOG.
 #include "code_simulator.h"
-#include "globals.h"
 
 namespace art {
 

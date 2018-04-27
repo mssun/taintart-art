@@ -26,9 +26,9 @@
 
 #include <android-base/logging.h>
 
-#include "base/bit_utils.h"
-#include "base/time_utils.h"
-#include "base/utils.h"
+#include "bit_utils.h"
+#include "time_utils.h"
+#include "utils.h"
 
 namespace art {
 

@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "base/casts.h"
+#include "base/globals.h"
 #include "base/memory_region.h"
-#include "globals.h"
 
 namespace art {
 

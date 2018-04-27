@@ -20,7 +20,7 @@
 #include "../elf.h"
 #include "android-base/logging.h"
 #include "base/bit_utils.h"
-#include "globals.h"
+#include "base/globals.h"
 
 namespace art {
 

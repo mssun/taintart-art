@@ -20,8 +20,8 @@
 #include <stdint.h>
 #include <memory>
 
+#include "base/globals.h"
 #include "common_runtime_test.h"
-#include "globals.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"

@@ -20,7 +20,7 @@
 #include <string.h>
 
 #include "base/enums.h"
-#include "globals.h"
+#include "base/globals.h"
 #include "mirror/object.h"
 
 namespace art {

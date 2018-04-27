@@ -21,9 +21,9 @@
 
 #include <android-base/logging.h>
 
-#include "base/bit_utils.h"
-#include "base/globals.h"
-#include "base/macros.h"
+#include "bit_utils.h"
+#include "globals.h"
+#include "macros.h"
 
 namespace art {
 

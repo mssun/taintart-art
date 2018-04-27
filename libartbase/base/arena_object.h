@@ -20,7 +20,7 @@
 #include <android-base/logging.h>
 
 #include "arena_allocator.h"
-#include "base/macros.h"
+#include "macros.h"
 #include "scoped_arena_allocator.h"
 
 namespace art {

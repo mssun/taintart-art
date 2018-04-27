@@ -21,7 +21,7 @@
 #include "base/bit_utils.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
-#include "globals.h"
+#include "base/globals.h"
 #include "quick/quick_method_frame_info.h"
 #include "registers_arm64.h"
 

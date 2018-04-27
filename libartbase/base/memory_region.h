@@ -22,12 +22,12 @@
 
 #include <android-base/logging.h>
 
-#include "base/bit_utils.h"
-#include "base/casts.h"
-#include "base/enums.h"
-#include "base/macros.h"
-#include "base/value_object.h"
+#include "bit_utils.h"
+#include "casts.h"
+#include "enums.h"
 #include "globals.h"
+#include "macros.h"
+#include "value_object.h"
 
 namespace art {
 

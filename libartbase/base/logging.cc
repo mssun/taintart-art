@@ -21,8 +21,8 @@
 #include <sstream>
 
 #include "aborting.h"
-#include "base/os.h"
-#include "base/unix_file/fd_file.h"
+#include "os.h"
+#include "unix_file/fd_file.h"
 
 // Headers for LogMessage::LogLine.
 #ifdef ART_TARGET_ANDROID

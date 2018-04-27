@@ -22,7 +22,7 @@
 
 #include <android-base/logging.h>
 
-#include "base/stl_util_identity.h"
+#include "stl_util_identity.h"
 
 namespace art {
 
