@@ -8,3 +8,5 @@ libc++.so
 libdl.so
 libm.so
 libnativehelper.so
+libprofile.so
+libprofiled.so
