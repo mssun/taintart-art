@@ -105,7 +105,8 @@ void DexoptTest::GenerateOatForTest(const std::string& dex_location,
   }
 
   // Verify the odex file was generated as expected.
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(oat_location.c_str(),
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+                                                   oat_location.c_str(),
                                                    oat_location.c_str(),
                                                    nullptr,
                                                    nullptr,

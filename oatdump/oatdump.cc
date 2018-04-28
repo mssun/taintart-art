@@ -2080,7 +2080,8 @@ class ImageDumper {
       oat_file = runtime->GetOatFileManager().FindOpenedOatFileFromOatLocation(oat_location);
     }
     if (oat_file == nullptr) {
-      oat_file = OatFile::Open(oat_location,
+      oat_file = OatFile::Open(/* zip_fd */ -1,
+                               oat_location,
                                oat_location,
                                nullptr,
                                nullptr,
@@ -2968,7 +2969,8 @@ static int DumpImages(Runtime* runtime, OatDumperOptions* options, std::ostream*
     // We need to map the oat file in the low 4gb or else the fixup wont be able to fit oat file
     // pointers into 32 bit pointer sized ArtMethods.
     std::string error_msg;
-    std::unique_ptr<OatFile> oat_file(OatFile::Open(options->app_oat_,
+    std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                    options->app_oat_,
                                                     options->app_oat_,
                                                     nullptr,
                                                     nullptr,
@@ -3091,7 +3093,8 @@ static int DumpOat(Runtime* runtime,
                  << "oatdump might fail if the oat file does not contain the dex code.";
   }
   std::string error_msg;
-  std::unique_ptr<OatFile> oat_file(OatFile::Open(oat_filename,
+  std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                  oat_filename,
                                                   oat_filename,
                                                   nullptr,
                                                   nullptr,
@@ -3116,7 +3119,8 @@ static int SymbolizeOat(const char* oat_filename,
                         std::string& output_name,
                         bool no_bits) {
   std::string error_msg;
-  std::unique_ptr<OatFile> oat_file(OatFile::Open(oat_filename,
+  std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                  oat_filename,
                                                   oat_filename,
                                                   nullptr,
                                                   nullptr,
@@ -3163,7 +3167,8 @@ class IMTDumper {
 
     if (oat_filename != nullptr) {
       std::string error_msg;
-      std::unique_ptr<OatFile> oat_file(OatFile::Open(oat_filename,
+      std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                      oat_filename,
                                                       oat_filename,
                                                       nullptr,
                                                       nullptr,
