@@ -1160,7 +1160,7 @@ TEST_F(ProfileCompilationInfoTest, FilteredLoading) {
   ProfileCompilationInfo loaded_info;
   ASSERT_TRUE(profile.GetFile()->ResetOffset());
 
-  // Filter out dex locations. Keep only dex_location1 and dex_location2.
+  // Filter out dex locations. Keep only dex_location1 and dex_location3.
   ProfileCompilationInfo::ProfileLoadFilterFn filter_fn =
       [](const std::string& dex_location, uint32_t checksum) -> bool {
           return (dex_location == "dex_location1" && checksum == 1)
@@ -1301,6 +1301,42 @@ TEST_F(ProfileCompilationInfoTest, FilteredLoadingKeepAll) {
     ASSERT_TRUE(loaded_pmi2 != nullptr);
     ASSERT_TRUE(*loaded_pmi2 == pmi);
   }
+}
+
+// Regression test: we were failing to do a filtering loading when the filtered dex file
+// contained profiled classes.
+TEST_F(ProfileCompilationInfoTest, FilteredLoadingWithClasses) {
+  ScratchFile profile;
+
+  // Save a profile with 2 dex files containing just classes.
+  ProfileCompilationInfo saved_info;
+  uint16_t item_count = 1000;
+  for (uint16_t i = 0; i < item_count; i++) {
+    ASSERT_TRUE(AddClass("dex_location1", /* checksum */ 1, dex::TypeIndex(i), &saved_info));
+    ASSERT_TRUE(AddClass("dex_location2", /* checksum */ 2, dex::TypeIndex(i), &saved_info));
+  }
+
+  ASSERT_TRUE(saved_info.Save(GetFd(profile)));
+  ASSERT_EQ(0, profile.GetFile()->Flush());
+
+
+  // Filter out dex locations: kepp only dex_location2.
+  ProfileCompilationInfo loaded_info;
+  ASSERT_TRUE(profile.GetFile()->ResetOffset());
+  ProfileCompilationInfo::ProfileLoadFilterFn filter_fn =
+      [](const std::string& dex_location, uint32_t checksum) -> bool {
+          return (dex_location == "dex_location2" && checksum == 2);
+        };
+  ASSERT_TRUE(loaded_info.Load(GetFd(profile), true, filter_fn));
+
+  // Compute the expectation.
+  ProfileCompilationInfo expected_info;
+  for (uint16_t i = 0; i < item_count; i++) {
+    ASSERT_TRUE(AddClass("dex_location2", /* checksum */ 2, dex::TypeIndex(i), &expected_info));
+  }
+
+  // Validate the expectation.
+  ASSERT_TRUE(loaded_info.Equals(expected_info));
 }
 
 }  // namespace art

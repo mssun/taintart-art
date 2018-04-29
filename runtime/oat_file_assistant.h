@@ -378,7 +378,11 @@ class OatFileAssistant {
 
     // Clear any cached information and switch to getting info about the oat
     // file with the given filename.
-    void Reset(const std::string& filename, bool use_fd, int vdex_fd = -1, int oat_fd = -1);
+    void Reset(const std::string& filename,
+               bool use_fd,
+               int zip_fd = -1,
+               int vdex_fd = -1,
+               int oat_fd = -1);
 
     // Release the loaded oat file for runtime use.
     // Returns null if the oat file hasn't been loaded or is out of date.
@@ -415,6 +419,7 @@ class OatFileAssistant {
     bool filename_provided_ = false;
     std::string filename_;
 
+    int zip_fd_ = -1;
     int oat_fd_ = -1;
     int vdex_fd_ = -1;
     bool use_fd_ = false;

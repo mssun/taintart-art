@@ -407,7 +407,7 @@ TEST_F(OatTest, WriteRead) {
     compiler_driver_->CompileAll(class_loader, class_linker->GetBootClassPath(), &timings2);
   }
 
-  ScratchFile tmp_oat, tmp_vdex(tmp_oat, ".vdex");
+  ScratchFile tmp_base, tmp_oat(tmp_base, ".oat"), tmp_vdex(tmp_base, ".vdex");
   SafeMap<std::string, std::string> key_value_store;
   key_value_store.Put(OatHeader::kImageLocationKey, "lue.art");
   bool success = WriteElf(tmp_vdex.GetFile(),
@@ -420,7 +420,8 @@ TEST_F(OatTest, WriteRead) {
   if (kCompile) {  // OatWriter strips the code, regenerate to compare
     compiler_driver_->CompileAll(class_loader, class_linker->GetBootClassPath(), &timings);
   }
-  std::unique_ptr<OatFile> oat_file(OatFile::Open(tmp_oat.GetFilename(),
+  std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                  tmp_oat.GetFilename(),
                                                   tmp_oat.GetFilename(),
                                                   nullptr,
                                                   nullptr,
@@ -544,13 +545,18 @@ TEST_F(OatTest, EmptyTextSection) {
   compiler_driver_->SetDexFilesForOatFile(dex_files);
   compiler_driver_->CompileAll(class_loader, dex_files, &timings);
 
-  ScratchFile tmp_oat, tmp_vdex(tmp_oat, ".vdex");
+  ScratchFile tmp_base, tmp_oat(tmp_base, ".oat"), tmp_vdex(tmp_base, ".vdex");
   SafeMap<std::string, std::string> key_value_store;
   key_value_store.Put(OatHeader::kImageLocationKey, "test.art");
-  bool success = WriteElf(tmp_vdex.GetFile(), tmp_oat.GetFile(), dex_files, key_value_store, false);
+  bool success = WriteElf(tmp_vdex.GetFile(),
+                          tmp_oat.GetFile(),
+                          dex_files,
+                          key_value_store,
+                          /* verify */ false);
   ASSERT_TRUE(success);
 
-  std::unique_ptr<OatFile> oat_file(OatFile::Open(tmp_oat.GetFilename(),
+  std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                  tmp_oat.GetFilename(),
                                                   tmp_oat.GetFilename(),
                                                   nullptr,
                                                   nullptr,
@@ -606,13 +612,13 @@ void OatTest::TestDexFileInput(bool verify, bool low_4gb, bool use_profile) {
   ASSERT_TRUE(success);
   input_filenames.push_back(dex_file2.GetFilename().c_str());
 
-  ScratchFile oat_file, vdex_file(oat_file, ".vdex");
+  ScratchFile tmp_base, tmp_oat(tmp_base, ".oat"), tmp_vdex(tmp_base, ".vdex");
   SafeMap<std::string, std::string> key_value_store;
   key_value_store.Put(OatHeader::kImageLocationKey, "test.art");
   std::unique_ptr<ProfileCompilationInfo>
       profile_compilation_info(use_profile ? new ProfileCompilationInfo() : nullptr);
-  success = WriteElf(vdex_file.GetFile(),
-                     oat_file.GetFile(),
+  success = WriteElf(tmp_vdex.GetFile(),
+                     tmp_oat.GetFile(),
                      input_filenames,
                      key_value_store,
                      verify,
@@ -627,19 +633,20 @@ void OatTest::TestDexFileInput(bool verify, bool low_4gb, bool use_profile) {
   ASSERT_TRUE(success);
 
   std::string error_msg;
-  std::unique_ptr<OatFile> opened_oat_file(OatFile::Open(oat_file.GetFilename(),
-                                                         oat_file.GetFilename(),
+  std::unique_ptr<OatFile> opened_oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                         tmp_oat.GetFilename(),
+                                                         tmp_oat.GetFilename(),
                                                          nullptr,
                                                          nullptr,
                                                          false,
                                                          low_4gb,
                                                          nullptr,
                                                          &error_msg));
+  ASSERT_TRUE(opened_oat_file != nullptr) << error_msg;
   if (low_4gb) {
     uintptr_t begin = reinterpret_cast<uintptr_t>(opened_oat_file->Begin());
     EXPECT_EQ(begin, static_cast<uint32_t>(begin));
   }
-  ASSERT_TRUE(opened_oat_file != nullptr);
   ASSERT_EQ(2u, opened_oat_file->GetOatDexFiles().size());
   std::unique_ptr<const DexFile> opened_dex_file1 =
       opened_oat_file->GetOatDexFiles()[0]->OpenDexFile(&error_msg);
@@ -671,7 +678,7 @@ void OatTest::TestDexFileInput(bool verify, bool low_4gb, bool use_profile) {
     ASSERT_EQ(vdex_header.GetQuickeningInfoSize(), 0u);
   }
 
-  int64_t actual_vdex_size = vdex_file.GetFile()->GetLength();
+  int64_t actual_vdex_size = tmp_vdex.GetFile()->GetLength();
   ASSERT_GE(actual_vdex_size, 0);
   ASSERT_EQ((uint64_t) actual_vdex_size, opened_oat_file->GetVdexFile()->GetComputedFileSize());
 }
@@ -743,9 +750,13 @@ void OatTest::TestZipFileInput(bool verify) {
     // Test using the AddDexFileSource() interface with the zip file.
     std::vector<const char*> input_filenames = { zip_file.GetFilename().c_str() };
 
-    ScratchFile oat_file, vdex_file(oat_file, ".vdex");
-    success = WriteElf(vdex_file.GetFile(), oat_file.GetFile(), input_filenames,
-                       key_value_store, verify, /*profile_compilation_info*/nullptr);
+    ScratchFile tmp_base, tmp_oat(tmp_base, ".oat"), tmp_vdex(tmp_base, ".vdex");
+    success = WriteElf(tmp_vdex.GetFile(),
+                       tmp_oat.GetFile(),
+                       input_filenames,
+                       key_value_store,
+                       verify,
+                       /* profile_compilation_info */ nullptr);
 
     if (verify) {
       ASSERT_FALSE(success);
@@ -753,15 +764,16 @@ void OatTest::TestZipFileInput(bool verify) {
       ASSERT_TRUE(success);
 
       std::string error_msg;
-      std::unique_ptr<OatFile> opened_oat_file(OatFile::Open(oat_file.GetFilename(),
-                                                             oat_file.GetFilename(),
+      std::unique_ptr<OatFile> opened_oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                             tmp_oat.GetFilename(),
+                                                             tmp_oat.GetFilename(),
                                                              nullptr,
                                                              nullptr,
                                                              false,
                                                              /*low_4gb*/false,
                                                              nullptr,
                                                              &error_msg));
-      ASSERT_TRUE(opened_oat_file != nullptr);
+      ASSERT_TRUE(opened_oat_file != nullptr) << error_msg;
       ASSERT_EQ(2u, opened_oat_file->GetOatDexFiles().size());
       std::unique_ptr<const DexFile> opened_dex_file1 =
           opened_oat_file->GetOatDexFiles()[0]->OpenDexFile(&error_msg);
@@ -789,9 +801,9 @@ void OatTest::TestZipFileInput(bool verify) {
     File zip_fd(dup(zip_file.GetFd()), /* check_usage */ false);
     ASSERT_NE(-1, zip_fd.Fd());
 
-    ScratchFile oat_file, vdex_file(oat_file, ".vdex");
-    success = WriteElf(vdex_file.GetFile(),
-                       oat_file.GetFile(),
+    ScratchFile tmp_base, tmp_oat(tmp_base, ".oat"), tmp_vdex(tmp_base, ".vdex");
+    success = WriteElf(tmp_vdex.GetFile(),
+                       tmp_oat.GetFile(),
                        std::move(zip_fd),
                        zip_file.GetFilename().c_str(),
                        key_value_store,
@@ -802,15 +814,16 @@ void OatTest::TestZipFileInput(bool verify) {
       ASSERT_TRUE(success);
 
       std::string error_msg;
-      std::unique_ptr<OatFile> opened_oat_file(OatFile::Open(oat_file.GetFilename(),
-                                                             oat_file.GetFilename(),
+      std::unique_ptr<OatFile> opened_oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                             tmp_oat.GetFilename(),
+                                                             tmp_oat.GetFilename(),
                                                              nullptr,
                                                              nullptr,
                                                              false,
                                                              /*low_4gb*/false,
                                                              nullptr,
                                                              &error_msg));
-      ASSERT_TRUE(opened_oat_file != nullptr);
+      ASSERT_TRUE(opened_oat_file != nullptr) << error_msg;
       ASSERT_EQ(2u, opened_oat_file->GetOatDexFiles().size());
       std::unique_ptr<const DexFile> opened_dex_file1 =
           opened_oat_file->GetOatDexFiles()[0]->OpenDexFile(&error_msg);
@@ -855,8 +868,12 @@ void OatTest::TestZipFileInputWithEmptyDex() {
   std::vector<const char*> input_filenames = { zip_file.GetFilename().c_str() };
   ScratchFile oat_file, vdex_file(oat_file, ".vdex");
   std::unique_ptr<ProfileCompilationInfo> profile_compilation_info(new ProfileCompilationInfo());
-  success = WriteElf(vdex_file.GetFile(), oat_file.GetFile(), input_filenames,
-                     key_value_store, /*verify*/false, profile_compilation_info.get());
+  success = WriteElf(vdex_file.GetFile(),
+                     oat_file.GetFile(),
+                     input_filenames,
+                     key_value_store,
+                     /* verify */ false,
+                     profile_compilation_info.get());
   ASSERT_FALSE(success);
 }
 

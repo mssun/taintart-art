@@ -118,7 +118,7 @@ OatFileAssistant::OatFileAssistant(const char* dex_location,
   std::string error_msg;
   std::string odex_file_name;
   if (DexLocationToOdexFilename(dex_location_, isa_, &odex_file_name, &error_msg)) {
-    odex_.Reset(odex_file_name, UseFdToReadFiles(), vdex_fd, oat_fd);
+    odex_.Reset(odex_file_name, UseFdToReadFiles(), zip_fd, vdex_fd, oat_fd);
   } else {
     LOG(WARNING) << "Failed to determine odex file name: " << error_msg;
   }
@@ -1148,7 +1148,8 @@ const OatFile* OatFileAssistant::OatFileInfo::GetFile() {
       std::string error_msg;
       if (use_fd_) {
         if (oat_fd_ >= 0 && vdex_fd_ >= 0) {
-          file_.reset(OatFile::Open(vdex_fd_,
+          file_.reset(OatFile::Open(zip_fd_,
+                                    vdex_fd_,
                                     oat_fd_,
                                     filename_.c_str(),
                                     nullptr,
@@ -1159,7 +1160,8 @@ const OatFile* OatFileAssistant::OatFileInfo::GetFile() {
                                     &error_msg));
         }
       } else {
-        file_.reset(OatFile::Open(filename_.c_str(),
+        file_.reset(OatFile::Open(/* zip_fd */ -1,
+                                  filename_.c_str(),
                                   filename_.c_str(),
                                   nullptr,
                                   nullptr,
@@ -1235,11 +1237,15 @@ void OatFileAssistant::OatFileInfo::Reset() {
   status_attempted_ = false;
 }
 
-void OatFileAssistant::OatFileInfo::Reset(const std::string& filename, bool use_fd, int vdex_fd,
+void OatFileAssistant::OatFileInfo::Reset(const std::string& filename,
+                                          bool use_fd,
+                                          int zip_fd,
+                                          int vdex_fd,
                                           int oat_fd) {
   filename_provided_ = true;
   filename_ = filename;
   use_fd_ = use_fd;
+  zip_fd_ = zip_fd;
   vdex_fd_ = vdex_fd;
   oat_fd_ = oat_fd;
   Reset();

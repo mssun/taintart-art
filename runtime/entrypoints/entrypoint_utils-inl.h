@@ -70,45 +70,41 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
   }
 
   // Find which method did the call in the inlining hierarchy.
-  ArtMethod* caller = outer_method;
-  if (inlining_depth != 0) {
-    caller = GetResolvedMethod(outer_method,
-                               method_info,
-                               inline_info,
-                               encoding,
-                               inlining_depth - 1);
-  }
-
-  // Lookup the declaring class of the inlined method.
-  ObjPtr<mirror::DexCache> dex_cache = caller->GetDexCache();
-  ArtMethod* inlined_method = dex_cache->GetResolvedMethod(method_index, kRuntimePointerSize);
-  if (inlined_method != nullptr) {
-    DCHECK(!inlined_method->IsRuntimeMethod());
-    return inlined_method;
-  }
-  // TODO: Use ClassLoader::LookupResolvedMethod() instead.
-  const DexFile* dex_file = dex_cache->GetDexFile();
-  const DexFile::MethodId& method_id = dex_file->GetMethodId(method_index);
-  const char* descriptor = dex_file->StringByTypeIdx(method_id.class_idx_);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  Thread* self = Thread::Current();
-  mirror::ClassLoader* class_loader = caller->GetDeclaringClass()->GetClassLoader();
-  mirror::Class* klass = class_linker->LookupClass(self, descriptor, class_loader);
-  if (klass == nullptr) {
-    LOG(FATAL) << "Could not find an inlined method from an .oat file: the class " << descriptor
-               << " was not found in the class loader of " << caller->PrettyMethod() << ". "
-               << "This must be due to playing wrongly with class loaders";
+  ArtMethod* method = outer_method;
+  for (uint32_t depth = 0, end = inlining_depth + 1u; depth != end; ++depth) {
+    DCHECK(!inline_info.EncodesArtMethodAtDepth(encoding, depth));
+    DCHECK_NE(inline_info.GetDexPcAtDepth(encoding, depth), static_cast<uint32_t>(-1));
+    method_index = inline_info.GetMethodIndexAtDepth(encoding, method_info, depth);
+    ArtMethod* inlined_method = class_linker->LookupResolvedMethod(method_index,
+                                                                   method->GetDexCache(),
+                                                                   method->GetClassLoader());
+    if (UNLIKELY(inlined_method == nullptr)) {
+      LOG(FATAL) << "Could not find an inlined method from an .oat file: "
+                 << method->GetDexFile()->PrettyMethod(method_index) << " . "
+                 << "This must be due to duplicate classes or playing wrongly with class loaders";
+      UNREACHABLE();
+    }
+    DCHECK(!inlined_method->IsRuntimeMethod());
+    if (UNLIKELY(inlined_method->GetDexFile() != method->GetDexFile())) {
+      // TODO: We could permit inlining within a multi-dex oat file and the boot image,
+      // even going back from boot image methods to the same oat file. However, this is
+      // not currently implemented in the compiler. Therefore crossing dex file boundary
+      // indicates that the inlined definition is not the same as the one used at runtime.
+      LOG(FATAL) << "Inlined method resolution crossed dex file boundary: from "
+                 << method->PrettyMethod()
+                 << " in " << method->GetDexFile()->GetLocation() << "/"
+                 << static_cast<const void*>(method->GetDexFile())
+                 << " to " << inlined_method->PrettyMethod()
+                 << " in " << inlined_method->GetDexFile()->GetLocation() << "/"
+                 << static_cast<const void*>(inlined_method->GetDexFile()) << ". "
+                 << "This must be due to duplicate classes or playing wrongly with class loaders";
+      UNREACHABLE();
+    }
+    method = inlined_method;
   }
 
-  inlined_method = class_linker->FindResolvedMethod(klass, dex_cache, class_loader, method_index);
-  if (inlined_method == nullptr) {
-    LOG(FATAL) << "Could not find an inlined method from an .oat file: the class " << descriptor
-               << " does not have " << dex_file->GetMethodName(method_id)
-               << dex_file->GetMethodSignature(method_id) << " declared. "
-               << "This must be due to duplicate classes or playing wrongly with class loaders";
-  }
-
-  return inlined_method;
+  return method;
 }
 
 ALWAYS_INLINE inline mirror::Class* CheckObjectAlloc(mirror::Class* klass,
