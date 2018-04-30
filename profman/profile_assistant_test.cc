@@ -243,8 +243,7 @@ class ProfileAssistantTest : public CommonRuntimeTest {
 
   bool CreateProfile(const std::string& profile_file_contents,
                      const std::string& filename,
-                     const std::string& dex_location,
-                     bool skip_verification) {
+                     const std::string& dex_location) {
     ScratchFile class_names_file;
     File* file = class_names_file.GetFile();
     EXPECT_TRUE(file->WriteFully(profile_file_contents.c_str(), profile_file_contents.length()));
@@ -257,9 +256,6 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     argv_str.push_back("--reference-profile-file=" + filename);
     argv_str.push_back("--apk=" + dex_location);
     argv_str.push_back("--dex-location=" + dex_location);
-    if (skip_verification) {
-      argv_str.push_back("--skip-apk-verification");
-    }
     std::string error;
     EXPECT_EQ(ExecAndReturnCode(argv_str, &error), 0);
     return true;
@@ -276,7 +272,6 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     argv_str.push_back("--profile-file=" + filename);
     argv_str.push_back("--apk=" + GetLibCoreDexFileNames()[0]);
     argv_str.push_back("--dex-location=" + GetLibCoreDexFileNames()[0]);
-    argv_str.push_back("--skip-apk-verification");
     argv_str.push_back("--dump-output-to-fd=" + std::to_string(GetFd(output_file)));
     std::string error;
     EXPECT_EQ(ExecAndReturnCode(argv_str, &error), 0);
@@ -307,8 +302,7 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     ScratchFile profile_file;
     EXPECT_TRUE(CreateProfile(input_file_contents,
                               profile_file.GetFilename(),
-                              GetLibCoreDexFileNames()[0],
-                              /* skip_verification */ true));
+                              GetLibCoreDexFileNames()[0]));
     profile_file.GetFile()->ResetOffset();
     EXPECT_TRUE(DumpClassesAndMethods(profile_file.GetFilename(), output_file_contents));
     return true;
@@ -715,8 +709,7 @@ TEST_F(ProfileAssistantTest, TestProfileCreationGenerateMethods) {
   ScratchFile profile_file;
   EXPECT_TRUE(CreateProfile(input_file_contents,
                             profile_file.GetFilename(),
-                            GetLibCoreDexFileNames()[0],
-                            /* skip_verification */ true));
+                            GetLibCoreDexFileNames()[0]));
   ProfileCompilationInfo info;
   profile_file.GetFile()->ResetOffset();
   ASSERT_TRUE(info.Load(GetFd(profile_file)));
@@ -773,7 +766,7 @@ TEST_F(ProfileAssistantTest, TestBootImageProfile) {
       kUncommonDirtyClass;
   profiles.emplace_back(ScratchFile());
   EXPECT_TRUE(CreateProfile(
-      dex1, profiles.back().GetFilename(), core_dex, /* skip_verification */ true));
+      dex1, profiles.back().GetFilename(), core_dex));
 
   // Create a bunch of boot profiles.
   std::string dex2 =
@@ -784,7 +777,7 @@ TEST_F(ProfileAssistantTest, TestBootImageProfile) {
       kUncommonDirtyClass;
   profiles.emplace_back(ScratchFile());
   EXPECT_TRUE(CreateProfile(
-      dex2, profiles.back().GetFilename(), core_dex, /* skip_verification */ true));
+      dex2, profiles.back().GetFilename(), core_dex));
 
   // Create a bunch of boot profiles.
   std::string dex3 =
@@ -794,7 +787,7 @@ TEST_F(ProfileAssistantTest, TestBootImageProfile) {
       kDirtyClass + "\n";
   profiles.emplace_back(ScratchFile());
   EXPECT_TRUE(CreateProfile(
-      dex3, profiles.back().GetFilename(), core_dex, /* skip_verification */ true));
+      dex3, profiles.back().GetFilename(), core_dex));
 
   // Generate the boot profile.
   ScratchFile out_profile;
@@ -807,7 +800,6 @@ TEST_F(ProfileAssistantTest, TestBootImageProfile) {
   args.push_back("--reference-profile-file=" + out_profile.GetFilename());
   args.push_back("--apk=" + core_dex);
   args.push_back("--dex-location=" + core_dex);
-  args.push_back("--skip-apk-verification");
   for (const ScratchFile& profile : profiles) {
     args.push_back("--profile-file=" + profile.GetFilename());
   }
@@ -903,8 +895,7 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
   ScratchFile profile_file;
   ASSERT_TRUE(CreateProfile(input_file_contents,
                             profile_file.GetFilename(),
-                            GetTestDexFileName("ProfileTestMultiDex"),
-                            /* skip_verification */ false));
+                            GetTestDexFileName("ProfileTestMultiDex")));
 
   // Load the profile from disk.
   ProfileCompilationInfo info;
@@ -1054,8 +1045,7 @@ TEST_F(ProfileAssistantTest, TestProfileCreateWithInvalidData) {
   std::string dex_filename = GetTestDexFileName("ProfileTestMultiDex");
   ASSERT_TRUE(CreateProfile(input_file_contents,
                             profile_file.GetFilename(),
-                            dex_filename,
-                            /* skip_verification */ false));
+                            dex_filename));
 
   // Load the profile from disk.
   ProfileCompilationInfo info;
