@@ -991,14 +991,22 @@ public class Main {
   /// CHECK-START: int Main.StaticConditionNulls() constant_folding$after_inlining (before)
   /// CHECK-DAG:     <<Null:l\d+>>    NullConstant
   /// CHECK-DAG:     <<Cond:z\d+>>    NotEqual [<<Null>>,<<Null>>]
-  /// CHECK-DAG:                      Select [{{i\d+}},{{i\d+}},<<Cond>>]
+  /// CHECK-DAG:                      If [<<Cond>>]
 
   /// CHECK-START: int Main.StaticConditionNulls() constant_folding$after_inlining (after)
   /// CHECK-DAG:     <<Const0:i\d+>>  IntConstant 0
-  /// CHECK-DAG:                      Select [{{i\d+}},{{i\d+}},<<Const0>>]
+  /// CHECK-DAG:                      If [<<Const0>>]
 
   /// CHECK-START: int Main.StaticConditionNulls() constant_folding$after_inlining (after)
   /// CHECK-NOT:                      NotEqual
+
+  /// CHECK-START: int Main.StaticConditionNulls() dead_code_elimination$after_inlining (before)
+  /// CHECK-DAG:     <<Phi:i\d+>>     Phi
+  /// CHECK-DAG:                      Return [<<Phi>>]
+  //
+  /// CHECK-START: int Main.StaticConditionNulls() dead_code_elimination$after_inlining (after)
+  /// CHECK-DAG:     <<Const5:i\d+>>  IntConstant 5
+  /// CHECK-DAG:                      Return [<<Const5>>]
 
   private static Object getNull() {
     return null;

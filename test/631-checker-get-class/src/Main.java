@@ -34,11 +34,14 @@ public class Main {
   }
 
   /// CHECK-START: boolean Main.classEquality1() instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
   /// CHECK-DAG: <<Eq:z\d+>>     {{Equal|NotEqual}}
-  /// CHECK-DAG: <<Select:i\d+>> Select [{{i\d+}},{{i\d+}},<<Eq>>]
-  /// CHECK-DAG:                 Return [<<Select>>]
+  /// CHECK-DAG:                 If [<<Eq>>]
+  /// CHECK-DAG: <<Phi:i\d+>>    Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:                 Return [<<Phi>>]
 
-  /// CHECK-START: boolean Main.classEquality1() instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.classEquality1() dead_code_elimination$after_inlining (after)
   /// CHECK-DAG: <<Constant:i\d+>> IntConstant 1
   /// CHECK-DAG:                   Return [<<Constant>>]
   public static boolean classEquality1() {
@@ -46,11 +49,14 @@ public class Main {
   }
 
   /// CHECK-START: boolean Main.classEquality2() instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
   /// CHECK-DAG: <<Eq:z\d+>>     {{Equal|NotEqual}}
-  /// CHECK-DAG: <<Select:i\d+>> Select [{{i\d+}},{{i\d+}},<<Eq>>]
-  /// CHECK-DAG:                 Return [<<Select>>]
+  /// CHECK-DAG:                 If [<<Eq>>]
+  /// CHECK-DAG: <<Phi:i\d+>>    Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:                 Return [<<Phi>>]
 
-  /// CHECK-START: boolean Main.classEquality2() instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.classEquality2() dead_code_elimination$after_inlining (after)
   /// CHECK-DAG: <<Constant:i\d+>> IntConstant 0
   /// CHECK-DAG:                   Return [<<Constant>>]
   public static boolean classEquality2() {
@@ -59,11 +65,14 @@ public class Main {
   }
 
   /// CHECK-START: boolean Main.classEquality3() instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
   /// CHECK-DAG: <<Eq:z\d+>>     {{Equal|NotEqual}}
-  /// CHECK-DAG: <<Select:i\d+>> Select [{{i\d+}},{{i\d+}},<<Eq>>]
-  /// CHECK-DAG:                 Return [<<Select>>]
+  /// CHECK-DAG:                 If [<<Eq>>]
+  /// CHECK-DAG: <<Phi:i\d+>>    Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:                 Return [<<Phi>>]
 
-  /// CHECK-START: boolean Main.classEquality3() instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.classEquality3() dead_code_elimination$after_inlining (after)
   /// CHECK-DAG: <<Constant:i\d+>> IntConstant 0
   /// CHECK-DAG:                   Return [<<Constant>>]
   public static boolean classEquality3() {
@@ -71,11 +80,14 @@ public class Main {
   }
 
   /// CHECK-START: boolean Main.classEquality4() instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
   /// CHECK-DAG: <<Eq:z\d+>>     {{Equal|NotEqual}}
-  /// CHECK-DAG: <<Select:i\d+>> Select [{{i\d+}},{{i\d+}},<<Eq>>]
-  /// CHECK-DAG:                 Return [<<Select>>]
+  /// CHECK-DAG:                 If [<<Eq>>]
+  /// CHECK-DAG: <<Phi:i\d+>>    Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:                 Return [<<Phi>>]
 
-  /// CHECK-START: boolean Main.classEquality4() instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.classEquality4() dead_code_elimination$after_inlining (after)
   /// CHECK-DAG: <<Constant:i\d+>> IntConstant 1
   /// CHECK-DAG:                   Return [<<Constant>>]
   public static boolean classEquality4() {

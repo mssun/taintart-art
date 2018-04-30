@@ -215,10 +215,10 @@
 ## CHECK-DAG:     <<Const0x10:i\d+>> IntConstant 16
 ## CHECK-DAG:     <<Const0x11:i\d+>> IntConstant 17
 ## CHECK-DAG:     <<Add:i\d+>>       Add [<<Arg0>>,<<Arg1>>]
-## CHECK-DAG:     <<Select:i\d+>>    Select [<<Const0xf>>,<<Add>>,{{z\d+}}]
+## CHECK-DAG:     <<Phi:i\d+>>       Phi [<<Add>>,<<Const0xf>>] reg:3 is_catch_phi:false
 ## CHECK-DAG:                        Phi [<<Const0xa>>,<<Const0xb>>,<<Const0xd>>] reg:1 is_catch_phi:true
 ## CHECK-DAG:                        Phi [<<Add>>,<<Const0xc>>,<<Const0xe>>] reg:2 is_catch_phi:true
-## CHECK-DAG:                        Phi [<<Select>>,<<Const0x10>>,<<Const0x11>>] reg:3 is_catch_phi:true
+## CHECK-DAG:                        Phi [<<Phi>>,<<Const0x10>>,<<Const0x11>>] reg:3 is_catch_phi:true
 
 ## CHECK-START: int TestCase.testCatchPhiInputs_DefinedInTryBlock(int, int, int, int) dead_code_elimination$after_inlining (after)
 ## CHECK-DAG:     <<Const0xb:i\d+>>  IntConstant 11
