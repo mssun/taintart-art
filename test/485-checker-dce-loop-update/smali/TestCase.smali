@@ -140,13 +140,29 @@
 ## CHECK-DAG:     <<PhiX:i\d+>>  Phi [<<ArgX>>,<<Add5:i\d+>>,<<Add7:i\d+>>] loop:<<HeaderY:B\d+>>
 ## CHECK-DAG:                    If [<<ArgY>>]                              loop:<<HeaderY>>
 ## CHECK-DAG:     <<Mul9:i\d+>>  Mul [<<PhiX>>,<<Cst11>>]                   loop:<<HeaderY>>
-## CHECK-DAG:     <<SelX:i\d+>>  Select [<<PhiX>>,<<Mul9>>,<<ArgZ>>]        loop:<<HeaderY>>
+## CHECK-DAG:     <<PhiY:i\d+>>  Phi [<<PhiX>>,<<Mul9>>]                    loop:<<HeaderY>>
 ## CHECK-DAG:                    If [<<Cst1>>]                              loop:<<HeaderY>>
-## CHECK-DAG:     <<Add5>>       Add [<<SelX>>,<<Cst5>>]                    loop:<<HeaderY>>
+## CHECK-DAG:     <<Add5>>       Add [<<PhiY>>,<<Cst5>>]                    loop:<<HeaderY>>
 ## CHECK-DAG:     <<Add7>>       Add [<<PhiX>>,<<Cst7>>]                    loop:<<HeaderY>>
-## CHECK-DAG:                    Return [<<SelX>>]                          loop:none
+## CHECK-DAG:                    Return [<<PhiY>>]                          loop:none
 
 ## CHECK-START: int TestCase.testExitPredecessors(int, boolean, boolean) dead_code_elimination$after_inlining (after)
+## CHECK-DAG:     <<ArgX:i\d+>>  ParameterValue
+## CHECK-DAG:     <<ArgY:z\d+>>  ParameterValue
+## CHECK-DAG:     <<ArgZ:z\d+>>  ParameterValue
+## CHECK-DAG:     <<Cst7:i\d+>>  IntConstant 7
+## CHECK-DAG:     <<Cst11:i\d+>> IntConstant 11
+## CHECK-DAG:     <<PhiX:i\d+>>  Phi [<<ArgX>>,<<Add7:i\d+>>]               loop:<<HeaderY:B\d+>>
+## CHECK-DAG:                    If [<<ArgY>>]                              loop:<<HeaderY>>
+## CHECK-DAG:     <<Add7>>       Add [<<PhiX>>,<<Cst7>>]                    loop:<<HeaderY>>
+## CHECK-DAG:     <<Mul9:i\d+>>  Mul [<<PhiX>>,<<Cst11>>]                   loop:none
+## CHECK-DAG:     <<Phi:i\d+>>   Phi [<<PhiX>>,<<Mul9>>]                    loop:none
+## CHECK-DAG:                    Return [<<Phi>>]                           loop:none
+
+## CHECK-START: int TestCase.testExitPredecessors(int, boolean, boolean) dead_code_elimination$after_inlining (after)
+## CHECK-NOT:                    IntConstant 5
+
+## CHECK-START: int TestCase.testExitPredecessors(int, boolean, boolean) select_generator (after)
 ## CHECK-DAG:     <<ArgX:i\d+>>  ParameterValue
 ## CHECK-DAG:     <<ArgY:z\d+>>  ParameterValue
 ## CHECK-DAG:     <<ArgZ:z\d+>>  ParameterValue

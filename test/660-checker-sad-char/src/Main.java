@@ -19,22 +19,22 @@
  */
 public class Main {
 
-  /// CHECK-START: int Main.sad1(char, char) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: int Main.sad1(char, char) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG: <<Select:i\d+>> Select
   /// CHECK-DAG:                 Return [<<Select>>]
   //
-  /// CHECK-START: int Main.sad1(char, char) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.sad1(char, char) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG: <<Intrin:i\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static int sad1(char x, char y) {
     return x >= y ? x - y : y - x;
   }
 
-  /// CHECK-START: int Main.sad2(char, char) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: int Main.sad2(char, char) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG: <<Select:i\d+>> Select
   /// CHECK-DAG:                 Return [<<Select>>]
   //
-  /// CHECK-START: int Main.sad2(char, char) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.sad2(char, char) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG: <<Intrin:i\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static int sad2(char x, char y) {
@@ -43,11 +43,11 @@ public class Main {
     return diff;
   }
 
-  /// CHECK-START: int Main.sad3(char, char) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: int Main.sad3(char, char) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG: <<Select:i\d+>> Select
   /// CHECK-DAG:                 Return [<<Select>>]
   //
-  /// CHECK-START: int Main.sad3(char, char) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.sad3(char, char) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG: <<Intrin:i\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static int sad3(char x, char y) {
@@ -55,11 +55,11 @@ public class Main {
     return diff >= 0 ? diff : -diff;
   }
 
-  /// CHECK-START: int Main.sad3Alt(char, char) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: int Main.sad3Alt(char, char) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG: <<Select:i\d+>> Select
   /// CHECK-DAG:                 Return [<<Select>>]
   //
-  /// CHECK-START: int Main.sad3Alt(char, char) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.sad3Alt(char, char) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG: <<Intrin:i\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static int sad3Alt(char x, char y) {
@@ -67,11 +67,11 @@ public class Main {
     return 0 <= diff ? diff : -diff;
   }
 
-  /// CHECK-START: long Main.sadL1(char, char) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: long Main.sadL1(char, char) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG: <<Select:j\d+>> Select
   /// CHECK-DAG:                 Return [<<Select>>]
   //
-  /// CHECK-START: long Main.sadL1(char, char) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: long Main.sadL1(char, char) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sadL1(char x, char y) {
@@ -80,11 +80,11 @@ public class Main {
     return xl >= yl ? xl - yl : yl - xl;
   }
 
-  /// CHECK-START: long Main.sadL2(char, char) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: long Main.sadL2(char, char) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG: <<Select:j\d+>> Select
   /// CHECK-DAG:                 Return [<<Select>>]
   //
-  /// CHECK-START: long Main.sadL2(char, char) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: long Main.sadL2(char, char) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sadL2(char x, char y) {
@@ -93,11 +93,11 @@ public class Main {
     return diff;
   }
 
-  /// CHECK-START: long Main.sadL3(char, char) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: long Main.sadL3(char, char) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG: <<Select:j\d+>> Select
   /// CHECK-DAG:                 Return [<<Select>>]
   //
-  /// CHECK-START: long Main.sadL3(char, char) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: long Main.sadL3(char, char) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sadL3(char x, char y) {
@@ -105,11 +105,11 @@ public class Main {
     return diff >= 0L ? diff : -diff;
   }
 
-  /// CHECK-START: long Main.sadL3Alt(char, char) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: long Main.sadL3Alt(char, char) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG: <<Select:j\d+>> Select
   /// CHECK-DAG:                 Return [<<Select>>]
   //
-  /// CHECK-START: long Main.sadL3Alt(char, char) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: long Main.sadL3Alt(char, char) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sadL3Alt(char x, char y) {
