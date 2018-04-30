@@ -254,10 +254,6 @@
         "variant": "jit"
     },
     {
-        "tests": ["904-object-allocation"],
-        "variant": "jit"
-    },
-    {
         "tests": ["570-checker-select",
                   "484-checker-register-hints"],
         "description": ["These tests were based on the linear scan allocator,",

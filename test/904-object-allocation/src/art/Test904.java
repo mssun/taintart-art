@@ -47,7 +47,8 @@ public class Test904 {
     // Enable actual logging callback.
     setupObjectAllocCallback(true);
 
-    System.out.println(Arrays.toString(getTrackingEventMessages()));
+    System.out.println(Arrays.toString(getTrackingEventMessages(
+            new Thread[] { Thread.currentThread(), })));
 
     enableAllocationTracking(null, true);
 
@@ -66,22 +67,25 @@ public class Test904 {
 
     l.add(new Byte((byte)0));
 
-    System.out.println(Arrays.toString(getTrackingEventMessages()));
+    System.out.println(Arrays.toString(getTrackingEventMessages(
+            new Thread[] { Thread.currentThread(), })));
     System.out.println("Tracking on same thread");
 
-    testThread(l, true, true);
+    Thread test_thread = testThread(l, true, true);
 
     l.add(new Byte((byte)0));
 
-    System.out.println(Arrays.toString(getTrackingEventMessages()));
+    System.out.println(Arrays.toString(getTrackingEventMessages(
+            new Thread[] { Thread.currentThread(), test_thread, })));
     System.out.println("Tracking on same thread, not disabling tracking");
 
-    testThread(l, true, false);
+    test_thread = testThread(l, true, false);
 
-    System.out.println(Arrays.toString(getTrackingEventMessages()));
+    System.out.println(Arrays.toString(getTrackingEventMessages(
+            new Thread[] { Thread.currentThread(), test_thread, })));
     System.out.println("Tracking on different thread");
 
-    testThread(l, false, true);
+    test_thread = testThread(l, false, true);
 
     l.add(new Byte((byte)0));
 
@@ -89,12 +93,13 @@ public class Test904 {
     // check that shutdown works correctly.
     setupObjectAllocCallback(false);
 
-    System.out.println(Arrays.toString(getTrackingEventMessages()));
+    System.out.println(Arrays.toString(getTrackingEventMessages(
+            new Thread[] { Thread.currentThread(), test_thread, })));
 
     enableAllocationTracking(null, true);
   }
 
-  private static void testThread(final ArrayList<Object> l, final boolean sameThread,
+  private static Thread testThread(final ArrayList<Object> l, final boolean sameThread,
       final boolean disableTracking) throws Exception {
     final SimpleBarrier startBarrier = new SimpleBarrier(1);
     final SimpleBarrier trackBarrier = new SimpleBarrier(1);
@@ -126,6 +131,7 @@ public class Test904 {
     trackBarrier.dec();
 
     t.join();
+    return t;
   }
 
   private static class SimpleBarrier {
@@ -149,5 +155,5 @@ public class Test904 {
 
   private static native void setupObjectAllocCallback(boolean enable);
   private static native void enableAllocationTracking(Thread thread, boolean enable);
-  private static native String[] getTrackingEventMessages();
+  private static native String[] getTrackingEventMessages(Thread[] threads);
 }
