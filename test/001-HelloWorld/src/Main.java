@@ -14,37 +14,8 @@
  * limitations under the License.
  */
 
-import java.util.concurrent.*;
-
-interface I {
-}
-
-class A implements I {
-    static int x = (int)(10*Math.random());  // Suppress initialization.
-}
-
 public class Main {
-  public static void main(String[] args) throws Exception {
-
-      final CountDownLatch first = new CountDownLatch(1);
-      final CountDownLatch second = new CountDownLatch(1);
-
-      new Thread(new Runnable() {
-          public void run() {
-              try {
-                  synchronized(I.class) {
-                      first.countDown();
-                      second.await();
-                  }
-              } catch (Exception e) {
-                  e.printStackTrace();
-              }
-          }
-      }).start();
-
-      first.await();
-      new A();
-      second.countDown();
-      System.out.println("Hello, world!");
+  public static void main(String[] args) {
+    System.out.println("Hello, world!");
   }
 }
