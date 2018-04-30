@@ -94,7 +94,7 @@ public class Main {
    * same pass.
    */
 
-  /// CHECK-START: boolean Main.$opt$noinline$booleanAndToOr(boolean, boolean) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: boolean Main.$opt$noinline$booleanAndToOr(boolean, boolean) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG:       <<P1:z\d+>>          ParameterValue
   /// CHECK-DAG:       <<P2:z\d+>>          ParameterValue
   /// CHECK-DAG:       <<Const0:i\d+>>      IntConstant 0
@@ -104,7 +104,7 @@ public class Main {
   /// CHECK-DAG:       <<And:i\d+>>         And [<<Select1>>,<<Select2>>]
   /// CHECK-DAG:                            Return [<<And>>]
 
-  /// CHECK-START: boolean Main.$opt$noinline$booleanAndToOr(boolean, boolean) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.$opt$noinline$booleanAndToOr(boolean, boolean) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG:       <<Cond1:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<Cond2:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<Or:i\d+>>          Or [<<Cond1>>,<<Cond2>>]
@@ -165,7 +165,7 @@ public class Main {
    * same pass.
    */
 
-  /// CHECK-START: boolean Main.$opt$noinline$booleanOrToAnd(boolean, boolean) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: boolean Main.$opt$noinline$booleanOrToAnd(boolean, boolean) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG:       <<P1:z\d+>>          ParameterValue
   /// CHECK-DAG:       <<P2:z\d+>>          ParameterValue
   /// CHECK-DAG:       <<Const0:i\d+>>      IntConstant 0
@@ -175,7 +175,7 @@ public class Main {
   /// CHECK-DAG:       <<Or:i\d+>>          Or [<<Select1>>,<<Select2>>]
   /// CHECK-DAG:                            Return [<<Or>>]
 
-  /// CHECK-START: boolean Main.$opt$noinline$booleanOrToAnd(boolean, boolean) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.$opt$noinline$booleanOrToAnd(boolean, boolean) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG:       <<Cond1:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<Cond2:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<And:i\d+>>         And [<<Cond1>>,<<Cond2>>]
@@ -275,7 +275,7 @@ public class Main {
    * same pass.
    */
 
-  /// CHECK-START: boolean Main.$opt$noinline$booleanNotXorToXor(boolean, boolean) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: boolean Main.$opt$noinline$booleanNotXorToXor(boolean, boolean) instruction_simplifier$after_gvn (before)
   /// CHECK-DAG:       <<P1:z\d+>>          ParameterValue
   /// CHECK-DAG:       <<P2:z\d+>>          ParameterValue
   /// CHECK-DAG:       <<Const0:i\d+>>      IntConstant 0
@@ -285,7 +285,7 @@ public class Main {
   /// CHECK-DAG:       <<Xor:i\d+>>         Xor [<<Select1>>,<<Select2>>]
   /// CHECK-DAG:                            Return [<<Xor>>]
 
-  /// CHECK-START: boolean Main.$opt$noinline$booleanNotXorToXor(boolean, boolean) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.$opt$noinline$booleanNotXorToXor(boolean, boolean) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG:       <<Cond1:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<Cond2:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<Xor:i\d+>>         Xor [<<Cond1>>,<<Cond2>>]

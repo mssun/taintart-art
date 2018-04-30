@@ -882,7 +882,7 @@ public class Main {
   /// CHECK-NOT:                       Neg
   /// CHECK-NOT:                       Add
 
-  /// CHECK-START: int Main.$noinline$NegNeg2(int) constant_folding$after_inlining (after)
+  /// CHECK-START: int Main.$noinline$NegNeg2(int) constant_folding$after_gvn (after)
   /// CHECK:         <<Const0:i\d+>>   IntConstant 0
   /// CHECK-NOT:                       Neg
   /// CHECK-NOT:                       Add
@@ -1128,17 +1128,19 @@ public class Main {
     return res;
   }
 
-  /// CHECK-START: boolean Main.$noinline$EqualBoolVsIntConst(boolean) instruction_simplifier$after_inlining (before)
+  /// CHECK-START: boolean Main.$noinline$EqualBoolVsIntConst(boolean) dead_code_elimination$after_inlining (before)
   /// CHECK-DAG:     <<Arg:z\d+>>      ParameterValue
   /// CHECK-DAG:     <<Const0:i\d+>>   IntConstant 0
   /// CHECK-DAG:     <<Const1:i\d+>>   IntConstant 1
   /// CHECK-DAG:     <<Const2:i\d+>>   IntConstant 2
-  /// CHECK-DAG:     <<NotArg:i\d+>>   Select [<<Const1>>,<<Const0>>,<<Arg>>]
-  /// CHECK-DAG:     <<Cond:z\d+>>     Equal [<<NotArg>>,<<Const2>>]
-  /// CHECK-DAG:     <<NotCond:i\d+>>  Select [<<Const1>>,<<Const0>>,<<Cond>>]
-  /// CHECK-DAG:                       Return [<<NotCond>>]
+  /// CHECK-DAG:                       If [<<Arg>>]
+  /// CHECK-DAG:     <<Phi1:i\d+>>     Phi [<<Const0>>,<<Const1>>]
+  /// CHECK-DAG:     <<Cond:z\d+>>     Equal [<<Phi1>>,<<Const2>>]
+  /// CHECK-DAG:                       If [<<Cond>>]
+  /// CHECK-DAG:     <<Phi2:i\d+>>     Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:                       Return [<<Phi2>>]
 
-  /// CHECK-START: boolean Main.$noinline$EqualBoolVsIntConst(boolean) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.$noinline$EqualBoolVsIntConst(boolean) dead_code_elimination$after_inlining (after)
   /// CHECK-DAG:     <<True:i\d+>>     IntConstant 1
   /// CHECK-DAG:                       Return [<<True>>]
 
@@ -1157,12 +1159,14 @@ public class Main {
   /// CHECK-DAG:     <<Const0:i\d+>>   IntConstant 0
   /// CHECK-DAG:     <<Const1:i\d+>>   IntConstant 1
   /// CHECK-DAG:     <<Const2:i\d+>>   IntConstant 2
-  /// CHECK-DAG:     <<NotArg:i\d+>>   Select [<<Const1>>,<<Const0>>,<<Arg>>]
-  /// CHECK-DAG:     <<Cond:z\d+>>     NotEqual [<<NotArg>>,<<Const2>>]
-  /// CHECK-DAG:     <<NotCond:i\d+>>  Select [<<Const1>>,<<Const0>>,<<Cond>>]
-  /// CHECK-DAG:                       Return [<<NotCond>>]
+  /// CHECK-DAG:                       If [<<Arg>>]
+  /// CHECK-DAG:     <<Phi1:i\d+>>     Phi [<<Const0>>,<<Const1>>]
+  /// CHECK-DAG:     <<Cond:z\d+>>     NotEqual [<<Phi1>>,<<Const2>>]
+  /// CHECK-DAG:                       If [<<Cond>>]
+  /// CHECK-DAG:     <<Phi2:i\d+>>     Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:                       Return [<<Phi2>>]
 
-  /// CHECK-START: boolean Main.$noinline$NotEqualBoolVsIntConst(boolean) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.$noinline$NotEqualBoolVsIntConst(boolean) dead_code_elimination$after_inlining (after)
   /// CHECK-DAG:     <<False:i\d+>>    IntConstant 0
   /// CHECK-DAG:                       Return [<<False>>]
 
@@ -1198,28 +1202,14 @@ public class Main {
 
   /// CHECK-START: boolean Main.$noinline$NotNotBool(boolean) instruction_simplifier$after_inlining (before)
   /// CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
-  /// CHECK-NOT:                        BooleanNot [<<Arg>>]
-  /// CHECK-NOT:                        Phi
-
-  /// CHECK-START: boolean Main.$noinline$NotNotBool(boolean) instruction_simplifier$after_inlining (before)
-  /// CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
   /// CHECK-DAG:     <<Const0:i\d+>>    IntConstant 0
   /// CHECK-DAG:     <<Const1:i\d+>>    IntConstant 1
-  /// CHECK-DAG:     <<Sel:i\d+>>       Select [<<Const1>>,<<Const0>>,<<Arg>>]
-  /// CHECK-DAG:     <<Sel2:i\d+>>      Select [<<Const1>>,<<Const0>>,<<Sel>>]
-  /// CHECK-DAG:                        Return [<<Sel2>>]
+  /// CHECK-DAG:                        If [<<Arg>>]
+  /// CHECK-DAG:     <<Phi:i\d+>>       Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:                        Return [<<Phi>>]
 
-  /// CHECK-START: boolean Main.$noinline$NotNotBool(boolean) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: boolean Main.$noinline$NotNotBool(boolean) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
-  /// CHECK:                            BooleanNot [<<Arg>>]
-  /// CHECK-NEXT:                       Goto
-
-  /// CHECK-START: boolean Main.$noinline$NotNotBool(boolean) instruction_simplifier$after_inlining (after)
-  /// CHECK-NOT:                        Select
-
-  /// CHECK-START: boolean Main.$noinline$NotNotBool(boolean) dead_code_elimination$final (after)
-  /// CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
-  /// CHECK-NOT:                        BooleanNot [<<Arg>>]
   /// CHECK-DAG:                        Return [<<Arg>>]
 
   public static boolean NegateValue(boolean arg) {
@@ -1348,10 +1338,11 @@ public class Main {
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
   /// CHECK-DAG:      <<Field:z\d+>>    StaticFieldGet
   /// CHECK-DAG:      <<NE:z\d+>>       NotEqual [<<Field>>,<<Const1>>]
-  /// CHECK-DAG:      <<Select:i\d+>>   Select [<<Const13>>,<<Const54>>,<<NE>>]
-  /// CHECK-DAG:                        Return [<<Select>>]
+  /// CHECK-DAG:                        If [<<NE>>]
+  /// CHECK-DAG:      <<Phi:i\d+>>      Phi [<<Const13>>,<<Const54>>]
+  /// CHECK-DAG:                        Return [<<Phi>>]
 
-  /// CHECK-START: int Main.$noinline$booleanFieldNotEqualOne() instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.$noinline$booleanFieldNotEqualOne() select_generator (after)
   /// CHECK-DAG:      <<Field:z\d+>>    StaticFieldGet
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
@@ -1367,11 +1358,12 @@ public class Main {
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
   /// CHECK-DAG:      <<Field:z\d+>>    StaticFieldGet
-  /// CHECK-DAG:      <<NE:z\d+>>       Equal [<<Field>>,<<Const0>>]
-  /// CHECK-DAG:      <<Select:i\d+>>   Select [<<Const13>>,<<Const54>>,<<NE>>]
-  /// CHECK-DAG:                        Return [<<Select>>]
+  /// CHECK-DAG:      <<EQ:z\d+>>       Equal [<<Field>>,<<Const0>>]
+  /// CHECK-DAG:                        If [<<EQ>>]
+  /// CHECK-DAG:      <<Phi:i\d+>>      Phi [<<Const13>>,<<Const54>>]
+  /// CHECK-DAG:                        Return [<<Phi>>]
 
-  /// CHECK-START: int Main.$noinline$booleanFieldEqualZero() instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.$noinline$booleanFieldEqualZero() select_generator (after)
   /// CHECK-DAG:      <<Field:z\d+>>    StaticFieldGet
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
@@ -1390,18 +1382,20 @@ public class Main {
   /// CHECK-DAG:      <<Const42:i\d+>>  IntConstant 42
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
   /// CHECK-DAG:      <<LE:z\d+>>       LessThanOrEqual [<<Arg>>,<<Const42>>]
-  /// CHECK-DAG:      <<GT:i\d+>>       Select [<<Const1>>,<<Const0>>,<<LE>>]
-  /// CHECK-DAG:      <<NE:z\d+>>       NotEqual [<<GT>>,<<Const1>>]
-  /// CHECK-DAG:      <<Result:i\d+>>   Select [<<Const13>>,<<Const54>>,<<NE>>]
-  /// CHECK-DAG:                        Return [<<Result>>]
+  /// CHECK-DAG:                        If [<<LE>>]
+  /// CHECK-DAG:      <<Phi1:i\d+>>     Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:      <<NE:z\d+>>       NotEqual [<<Phi1>>,<<Const1>>]
+  /// CHECK-DAG:                        If [<<NE>>]
+  /// CHECK-DAG:      <<Phi2:i\d+>>     Phi [<<Const13>>,<<Const54>>]
+  /// CHECK-DAG:                        Return [<<Phi2>>]
 
-  /// CHECK-START: int Main.$noinline$intConditionNotEqualOne(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.$noinline$intConditionNotEqualOne(int) select_generator (after)
   /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const42:i\d+>>  IntConstant 42
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
-  /// CHECK-DAG:      <<Result:i\d+>>   Select [<<Const13>>,<<Const54>>,<<LE:z\d+>>]
-  /// CHECK-DAG:      <<LE>>            LessThanOrEqual [<<Arg>>,<<Const42>>]
+  /// CHECK-DAG:      <<LE:z\d+>>       LessThanOrEqual [<<Arg>>,<<Const42>>]
+  /// CHECK-DAG:      <<Result:i\d+>>   Select [<<Const13>>,<<Const54>>,<<LE>>]
   /// CHECK-DAG:                        Return [<<Result>>]
   // Note that we match `LE` from Select because there are two identical
   // LessThanOrEqual instructions.
@@ -1418,18 +1412,20 @@ public class Main {
   /// CHECK-DAG:      <<Const42:i\d+>>  IntConstant 42
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
   /// CHECK-DAG:      <<LE:z\d+>>       LessThanOrEqual [<<Arg>>,<<Const42>>]
-  /// CHECK-DAG:      <<GT:i\d+>>       Select [<<Const1>>,<<Const0>>,<<LE>>]
-  /// CHECK-DAG:      <<NE:z\d+>>       Equal [<<GT>>,<<Const0>>]
-  /// CHECK-DAG:      <<Result:i\d+>>   Select [<<Const13>>,<<Const54>>,<<NE>>]
-  /// CHECK-DAG:                        Return [<<Result>>]
+  /// CHECK-DAG:                        If [<<LE>>]
+  /// CHECK-DAG:      <<Phi1:i\d+>>     Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:      <<EQ:z\d+>>       Equal [<<Phi1>>,<<Const0>>]
+  /// CHECK-DAG:                        If [<<EQ>>]
+  /// CHECK-DAG:      <<Phi2:i\d+>>     Phi [<<Const13>>,<<Const54>>]
+  /// CHECK-DAG:                        Return [<<Phi2>>]
 
-  /// CHECK-START: int Main.$noinline$intConditionEqualZero(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.$noinline$intConditionEqualZero(int) select_generator (after)
   /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const42:i\d+>>  IntConstant 42
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
-  /// CHECK-DAG:      <<Result:i\d+>>   Select [<<Const13>>,<<Const54>>,<<LE:z\d+>>]
-  /// CHECK-DAG:      <<LE>>            LessThanOrEqual [<<Arg>>,<<Const42>>]
+  /// CHECK-DAG:      <<LE:z\d+>>       LessThanOrEqual [<<Arg>>,<<Const42>>]
+  /// CHECK-DAG:      <<Result:i\d+>>   Select [<<Const13>>,<<Const54>>,<<LE>>]
   /// CHECK-DAG:                        Return [<<Result>>]
   // Note that we match `LE` from Select because there are two identical
   // LessThanOrEqual instructions.
@@ -2571,12 +2567,13 @@ public class Main {
   /// CHECK-DAG:      <<Const0:i\d+>>   IntConstant 0
   /// CHECK-DAG:      <<Const1:i\d+>>   IntConstant 1
   /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
-  /// CHECK-DAG:      <<Select:i\d+>>   Select [<<Const0>>,<<Const1>>,<<Arg>>]
-  /// CHECK-DAG:      <<And:i\d+>>      And [<<Select>>,<<Const255>>]
+  /// CHECK-DAG:                        If [<<Arg>>]
+  /// CHECK-DAG:      <<Phi:i\d+>>      Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Const255>>,<<Phi>>]
   /// CHECK-DAG:      <<Conv:b\d+>>     TypeConversion [<<And>>]
   /// CHECK-DAG:                        Return [<<Conv>>]
 
-  /// CHECK-START: int Main.$noinline$bug68142795Boolean(boolean) instruction_simplifier$after_inlining (after)
+  /// CHECK-START: int Main.$noinline$bug68142795Boolean(boolean) instruction_simplifier$after_gvn (after)
   /// CHECK-DAG:      <<Arg:z\d+>>      ParameterValue
   /// CHECK-DAG:                        Return [<<Arg>>]
   public static int $noinline$bug68142795Boolean(boolean b) {
