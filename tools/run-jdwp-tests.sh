@@ -216,7 +216,11 @@ else
   if [[ "$mode" == "host" ]]; then
     dump_command="/bin/kill -3"
   else
-    dump_command="/system/xbin/su root /data/local/tmp/system/bin/debuggerd"
+    # Note that this dumping command won't work when `$android_root`
+    # is different from `/system` (e.g. on ART Buildbot devices) when
+    # the device is running Android N, as the debuggerd protocol
+    # changed in an incompatible way in Android O (see b/32466479).
+    dump_command="$android_root/xbin/su root $android_root/bin/debuggerd"
   fi
   if [[ $has_gdb = "yes" ]]; then
     if [[ $mode == "target" ]]; then
