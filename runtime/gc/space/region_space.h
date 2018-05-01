@@ -36,7 +36,7 @@ namespace space {
 // region space, but from the last allocated region. This allocation
 // strategy reduces region reuse and should help catch some GC bugs
 // earlier.
-static constexpr bool kCyclicRegionAllocation = kIsDebugBuild;
+static constexpr bool kCyclicRegionAllocation = true;
 
 // A space that consists of equal-sized regions.
 class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
