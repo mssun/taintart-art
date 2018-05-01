@@ -80,6 +80,7 @@ elif [[ $mode == "target" ]]; then
   fi
   make_command="make $j_arg $extra_args $showcommands build-art-target-tests $common_targets"
   make_command+=" libjavacrypto-target libnetd_client-target linker toybox toolbox sh"
+  make_command+=" debuggerd su"
   make_command+=" ${out_dir}/host/linux-x86/bin/adb libstdc++ "
   make_command+=" ${out_dir}/target/product/${TARGET_PRODUCT}/system/etc/public.libraries.txt"
   mode_suffix="-target"
