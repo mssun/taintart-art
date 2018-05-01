@@ -17,6 +17,7 @@
 #ifndef ART_LIBDEXFILE_DEX_DEX_FILE_VERIFIER_H_
 #define ART_LIBDEXFILE_DEX_DEX_FILE_VERIFIER_H_
 
+#include <limits>
 #include <unordered_set>
 
 #include "base/hash_map.h"
@@ -52,7 +53,11 @@ class DexFileVerifier {
         verify_checksum_(verify_checksum),
         header_(&dex_file->GetHeader()),
         ptr_(nullptr),
-        previous_item_(nullptr)  {
+        previous_item_(nullptr),
+        angle_bracket_start_index_(std::numeric_limits<size_t>::max()),
+        angle_bracket_end_index_(std::numeric_limits<size_t>::max()),
+        angle_init_angle_index_(std::numeric_limits<size_t>::max()),
+        angle_clinit_angle_index_(std::numeric_limits<size_t>::max()) {
   }
 
   bool Verify();
@@ -195,6 +200,8 @@ class DexFileVerifier {
   // Check validity of given method if it's a constructor or class initializer.
   bool CheckConstructorProperties(uint32_t method_index, uint32_t constructor_flags);
 
+  void FindStringRangesForMethodNames();
+
   const DexFile* const dex_file_;
   const uint8_t* const begin_;
   const size_t size_;
@@ -237,6 +244,20 @@ class DexFileVerifier {
 
   // Set of type ids for which there are ClassDef elements in the dex file.
   std::unordered_set<decltype(DexFile::ClassDef::class_idx_)> defined_classes_;
+
+  // Cached string indices for "interesting" entries wrt/ method names. Will be populated by
+  // FindStringRangesForMethodNames (which is automatically called before verifying the
+  // classdataitem section).
+  //
+  // Strings starting with '<' are in the range
+  //    [angle_bracket_start_index_,angle_bracket_end_index_).
+  // angle_init_angle_index_ and angle_clinit_angle_index_ denote the indices of "<init>" and
+  // angle_clinit_angle_index_, respectively. If any value is not found, the corresponding
+  // index will be larger than any valid string index for this dex file.
+  size_t angle_bracket_start_index_;
+  size_t angle_bracket_end_index_;
+  size_t angle_init_angle_index_;
+  size_t angle_clinit_angle_index_;
 };
 
 }  // namespace art

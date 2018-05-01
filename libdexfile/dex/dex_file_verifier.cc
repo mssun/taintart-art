@@ -18,7 +18,6 @@
 
 #include <inttypes.h>
 
-#include <limits>
 #include <memory>
 
 #include "android-base/stringprintf.h"
@@ -104,66 +103,6 @@ const char* DexFileVerifier::CheckLoadStringByIdx(dex::StringIndex idx, const ch
     return nullptr;
   }
   return dex_file_->StringDataByIdx(idx);
-}
-
-// Try to find the name of the method with the given index. We do not want to rely on DexFile
-// infrastructure at this point, so do it all by hand. begin and header correspond to begin_ and
-// header_ of the DexFileVerifier. str will contain the pointer to the method name on success
-// (flagged by the return value), otherwise error_msg will contain an error string.
-static bool FindMethodName(uint32_t method_index,
-                           const uint8_t* begin,
-                           const DexFile::Header* header,
-                           const char** str,
-                           std::string* error_msg) {
-  if (method_index >= header->method_ids_size_) {
-    *error_msg = "Method index not available for method flags verification";
-    return false;
-  }
-  uint32_t string_idx =
-      (reinterpret_cast<const DexFile::MethodId*>(begin + header->method_ids_off_) +
-          method_index)->name_idx_.index_;
-  if (string_idx >= header->string_ids_size_) {
-    *error_msg = "String index not available for method flags verification";
-    return false;
-  }
-  uint32_t string_off =
-      (reinterpret_cast<const DexFile::StringId*>(begin + header->string_ids_off_) + string_idx)->
-          string_data_off_;
-  if (string_off >= header->file_size_) {
-    *error_msg = "String offset out of bounds for method flags verification";
-    return false;
-  }
-  const uint8_t* str_data_ptr = begin + string_off;
-  uint32_t dummy;
-  if (!DecodeUnsignedLeb128Checked(&str_data_ptr, begin + header->file_size_, &dummy)) {
-    *error_msg = "String size out of bounds for method flags verification";
-    return false;
-  }
-  *str = reinterpret_cast<const char*>(str_data_ptr);
-  return true;
-}
-
-// Gets constructor flags based on the |method_name|. Returns true if
-// method_name is either <clinit> or <init> and sets
-// |constructor_flags_by_name| appropriately. Otherwise set
-// |constructor_flags_by_name| to zero and returns whether
-// |method_name| is valid.
-bool GetConstructorFlagsForMethodName(const char* method_name,
-                                      uint32_t* constructor_flags_by_name) {
-  if (method_name[0] != '<') {
-    *constructor_flags_by_name = 0;
-    return true;
-  }
-  if (strcmp(method_name + 1, "clinit>") == 0) {
-    *constructor_flags_by_name = kAccStatic | kAccConstructor;
-    return true;
-  }
-  if (strcmp(method_name + 1, "init>") == 0) {
-    *constructor_flags_by_name = kAccConstructor;
-    return true;
-  }
-  *constructor_flags_by_name = 0;
-  return false;
 }
 
 const char* DexFileVerifier::CheckLoadStringByTypeIdx(dex::TypeIndex type_idx,
@@ -682,10 +621,11 @@ bool DexFileVerifier::CheckClassDataItemMethod(uint32_t idx,
     return false;
   }
 
+  const DexFile::MethodId& method_id =
+      *(reinterpret_cast<const DexFile::MethodId*>(begin_ + header_->method_ids_off_) + idx);
+
   // Check that it's the right class.
-  dex::TypeIndex my_class_index =
-      (reinterpret_cast<const DexFile::MethodId*>(begin_ + header_->method_ids_off_) + idx)->
-          class_idx_;
+  dex::TypeIndex my_class_index = method_id.class_idx_;
   if (class_type_index != my_class_index) {
     ErrorStringPrintf("Method's class index unexpected, %" PRIu16 " vs %" PRIu16,
                       my_class_index.index_,
@@ -710,16 +650,23 @@ bool DexFileVerifier::CheckClassDataItemMethod(uint32_t idx,
   }
 
   std::string error_msg;
-  const char* method_name;
-  if (!FindMethodName(idx, begin_, header_, &method_name, &error_msg)) {
-    ErrorStringPrintf("%s", error_msg.c_str());
-    return false;
-  }
-
   uint32_t constructor_flags_by_name = 0;
-  if (!GetConstructorFlagsForMethodName(method_name, &constructor_flags_by_name)) {
-    ErrorStringPrintf("Bad method name: %s", method_name);
-    return false;
+  {
+    uint32_t string_idx = method_id.name_idx_.index_;
+    if (!CheckIndex(string_idx, header_->string_ids_size_, "method flags verification")) {
+      return false;
+    }
+    if (UNLIKELY(string_idx < angle_bracket_end_index_) &&
+            string_idx >= angle_bracket_start_index_) {
+      if (string_idx == angle_clinit_angle_index_) {
+        constructor_flags_by_name = kAccStatic | kAccConstructor;
+      } else if (string_idx == angle_init_angle_index_) {
+        constructor_flags_by_name = kAccConstructor;
+      } else {
+        ErrorStringPrintf("Bad method name for method index %u", idx);
+        return false;
+      }
+    }
   }
 
   bool has_code = (code_offset != 0);
@@ -1961,6 +1908,10 @@ bool DexFileVerifier::CheckIntraSection() {
       return false;
     }
 
+    if (type == DexFile::kDexTypeClassDataItem) {
+      FindStringRangesForMethodNames();
+    }
+
     // Check each item based on its type.
     switch (type) {
       case DexFile::kDexTypeHeaderItem:
@@ -3179,6 +3130,55 @@ bool DexFileVerifier::CheckFieldAccessFlags(uint32_t idx,
   }
 
   return true;
+}
+
+void DexFileVerifier::FindStringRangesForMethodNames() {
+  // Use DexFile::StringId* as RandomAccessIterator.
+  const DexFile::StringId* first = reinterpret_cast<const DexFile::StringId*>(
+      begin_ + header_->string_ids_off_);
+  const DexFile::StringId* last = first + header_->string_ids_size_;
+
+  auto get_string = [begin = begin_](const DexFile::StringId& id) {
+    const uint8_t* str_data_ptr = begin + id.string_data_off_;
+    DecodeUnsignedLeb128(&str_data_ptr);
+    return reinterpret_cast<const char*>(str_data_ptr);
+  };
+  auto compare = [&get_string](const DexFile::StringId& lhs, const char* rhs) {
+    return strcmp(get_string(lhs), rhs) < 0;
+  };
+
+  // '=' follows '<'
+  static_assert('<' + 1 == '=', "Unexpected character relation");
+  const auto angle_end = std::lower_bound(first, last, "=", compare);
+  angle_bracket_end_index_ = angle_end - first;
+
+  const auto angle_start = std::lower_bound(first, angle_end, "<", compare);
+  angle_bracket_start_index_ = angle_start - first;
+  if (angle_start == angle_end) {
+    // No strings starting with '<'.
+    angle_init_angle_index_ = std::numeric_limits<size_t>::max();
+    angle_clinit_angle_index_ = std::numeric_limits<size_t>::max();
+    return;
+  }
+
+  {
+    constexpr const char* kClinit = "<clinit>";
+    const auto it = std::lower_bound(angle_start, angle_end, kClinit, compare);
+    if (it != angle_end && strcmp(get_string(*it), kClinit) == 0) {
+      angle_clinit_angle_index_ = it - first;
+    } else {
+      angle_clinit_angle_index_ = std::numeric_limits<size_t>::max();
+    }
+  }
+  {
+    constexpr const char* kInit = "<init>";
+    const auto it = std::lower_bound(angle_start, angle_end, kInit, compare);
+    if (it != angle_end && strcmp(get_string(*it), kInit) == 0) {
+      angle_init_angle_index_ = it - first;
+    } else {
+      angle_init_angle_index_ = std::numeric_limits<size_t>::max();
+    }
+  }
 }
 
 bool DexFileVerifier::CheckMethodAccessFlags(uint32_t method_index,
