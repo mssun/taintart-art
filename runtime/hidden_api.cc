@@ -165,6 +165,10 @@ void MemberSignature::LogAccessToEventLog(AccessMethod access_method, Action act
   if (action_taken == kDeny) {
     log_maker.AddTaggedData(FIELD_HIDDEN_API_ACCESS_DENIED, 1);
   }
+  const std::string& package_name = Runtime::Current()->GetProcessPackageName();
+  if (!package_name.empty()) {
+    log_maker.SetPackageName(package_name);
+  }
   std::ostringstream signature_str;
   Dump(signature_str);
   log_maker.AddTaggedData(FIELD_HIDDEN_API_SIGNATURE, signature_str.str());
