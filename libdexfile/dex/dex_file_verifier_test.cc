@@ -173,7 +173,7 @@ TEST_F(DexFileVerifierTest, MethodId) {
         DexFile::MethodId* method_id = const_cast<DexFile::MethodId*>(&dex_file->GetMethodId(0));
         method_id->name_idx_ = dex::StringIndex(0xFF);
       },
-      "String index not available for method flags verification");
+      "Bad index for method flags verification");
 }
 
 // Method flags test class generated from the following smali code. The declared-synchronized
