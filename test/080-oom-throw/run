@@ -14,4 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Ensure the minimum log severity is at least 'WARNING' to display the
+# stack trace shown before exception
+#
+#   "java.lang.OutOfMemoryError: OutOfMemoryError thrown while trying
+#   to throw OutOfMemoryError; no stack trace available"
+#
+# is set, to try to understand a recurring crash in this test (b/77567088).
+case "$ANDROID_LOG_TAGS" in
+  # Lower the minimum log severity to WARNING if it was initialy set
+  # to a higher level ('ERROR', 'FATAL' or 'SILENT' -- see
+  # https://developer.android.com/studio/command-line/logcat#filteringOutput).
+  (\*:[efs]) export ANDROID_LOG_TAGS='*:w';;
+esac
+
 exec ${RUN} $@ --runtime-option -Xmx16m
