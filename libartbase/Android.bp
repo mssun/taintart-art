@@ -116,9 +116,26 @@ art_cc_library {
     export_shared_lib_headers: ["libbase"],
 }
 
-// For now many of these tests still use CommonRuntimeTest, almost universally because of
-// ScratchFile and related.
-// TODO: Remove CommonRuntimeTest dependency from these tests.
+art_cc_library {
+    name: "libartbase-art-gtest",
+    defaults: ["libart-gtest-defaults"],
+    srcs: [
+        "base/common_art_test.cc",
+    ],
+    shared_libs: [
+        "libartbased",
+        "libdexfiled",
+        "libbase",
+        "libbacktrace",
+    ],
+    header_libs: [
+        "libnativehelper_header_only",
+    ],
+    include_dirs: [
+        "external/icu/icu4c/source/common",
+    ],
+}
+
 art_cc_test {
     name: "art_libartbase_tests",
     defaults: [

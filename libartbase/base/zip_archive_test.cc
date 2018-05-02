@@ -22,13 +22,13 @@
 #include <zlib.h>
 #include <memory>
 
-#include "common_runtime_test.h"
+#include "base/common_art_test.h"
 #include "os.h"
 #include "unix_file/fd_file.h"
 
 namespace art {
 
-class ZipArchiveTest : public CommonRuntimeTest {};
+class ZipArchiveTest : public CommonArtTest {};
 
 TEST_F(ZipArchiveTest, FindAndExtract) {
   std::string error_msg;

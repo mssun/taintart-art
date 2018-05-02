@@ -148,6 +148,7 @@ art_cc_library {
     whole_static_libs: [
         "libart-compiler-gtest",
         "libart-runtime-gtest",
+        "libartbase-art-gtest",
         "libgtest",
     ],
     shared_libs: [

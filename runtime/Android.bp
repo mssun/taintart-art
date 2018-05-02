@@ -512,6 +512,7 @@ art_cc_library {
     ],
     shared_libs: [
         "libartd",
+	"libartbase-art-gtest",
         "libbase",
         "libbacktrace",
     ],
