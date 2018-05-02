@@ -77,7 +77,6 @@ working_packages=("libcore.dalvik.system"
                   "libcore.javax.security"
                   "libcore.javax.sql"
                   "libcore.javax.xml"
-                  "libcore.libcore.icu"
                   "libcore.libcore.io"
                   "libcore.libcore.net"
                   "libcore.libcore.reflect"
@@ -154,11 +153,14 @@ fi
 vogar_args="$vogar_args --vm-arg -Xusejit:$use_jit"
 
 # gcstress may lead to timeouts, so we need dedicated expectations files for it.
-if [[ $gcstress ]]; then
+if $gcstress; then
   expectations="$expectations --expectations art/tools/libcore_gcstress_failures.txt"
-  if [[ $debug ]]; then
+  if $debug; then
     expectations="$expectations --expectations art/tools/libcore_gcstress_debug_failures.txt"
   fi
+else
+  # We only run this package when not under gcstress as it can cause timeouts. See b/78228743.
+  working_packages+=("libcore.libcore.icu")
 fi
 
 # Disable network-related libcore tests that are failing on the following
