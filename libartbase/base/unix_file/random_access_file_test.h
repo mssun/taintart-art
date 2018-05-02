@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 
-#include "common_runtime_test.h"
+#include "base/common_art_test.h"
 
 namespace unix_file {
 
@@ -35,11 +35,11 @@ class RandomAccessFileTest : public testing::Test {
   virtual RandomAccessFile* MakeTestFile() = 0;
 
   virtual void SetUp() {
-    art::CommonRuntimeTest::SetUpAndroidData(android_data_);
+    art::CommonArtTest::SetUpAndroidData(android_data_);
   }
 
   virtual void TearDown() {
-    art::CommonRuntimeTest::TearDownAndroidData(android_data_, true);
+    art::CommonArtTest::TearDownAndroidData(android_data_, true);
   }
 
   std::string GetTmpPath(const std::string& name) {

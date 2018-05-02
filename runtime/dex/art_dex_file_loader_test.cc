@@ -353,7 +353,7 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
                         /* verify_checksum */ false,
                         &error_msg,
                         &dex_files);
-  ASSERT_TRUE(success);
+  ASSERT_TRUE(success) << error_msg;
   ASSERT_GE(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     ASSERT_FALSE(dex_file->IsPlatformDexFile());
