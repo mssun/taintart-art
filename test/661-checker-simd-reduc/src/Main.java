@@ -347,126 +347,6 @@ public class Main {
     return sum;
   }
 
-  private static byte reductionMinByte(byte[] x) {
-    byte min = Byte.MAX_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      min = (byte) Math.min(min, x[i]);
-    }
-    return min;
-  }
-
-  private static short reductionMinShort(short[] x) {
-    short min = Short.MAX_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      min = (short) Math.min(min, x[i]);
-    }
-    return min;
-  }
-
-  private static char reductionMinChar(char[] x) {
-    char min = Character.MAX_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      min = (char) Math.min(min, x[i]);
-    }
-    return min;
-  }
-
-  /// CHECK-START: int Main.reductionMinInt(int[]) loop_optimization (before)
-  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
-  /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                 loop:none
-  /// CHECK-DAG: <<ConsM:i\d+>>  IntConstant 2147483647        loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<ConsM>>,{{i\d+}}]      loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 Min [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
-  //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: int Main.reductionMinInt(int[]) loop_optimization (after)
-  /// CHECK-DAG: <<Cons:i\d+>>   IntConstant {{2|4}}           loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [{{i\d+}}] loop:none
-  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 VecMin [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 Add [<<I>>,<<Cons>>]          loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
-  /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
-  private static int reductionMinInt(int[] x) {
-    int min = Integer.MAX_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      min = Math.min(min, x[i]);
-    }
-    return min;
-  }
-
-  private static long reductionMinLong(long[] x) {
-    long min = Long.MAX_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      min = Math.min(min, x[i]);
-    }
-    return min;
-  }
-
-  private static byte reductionMaxByte(byte[] x) {
-    byte max = Byte.MIN_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      max = (byte) Math.max(max, x[i]);
-    }
-    return max;
-  }
-
-  private static short reductionMaxShort(short[] x) {
-    short max = Short.MIN_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      max = (short) Math.max(max, x[i]);
-    }
-    return max;
-  }
-
-  private static char reductionMaxChar(char[] x) {
-    char max = Character.MIN_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      max = (char) Math.max(max, x[i]);
-    }
-    return max;
-  }
-
-  /// CHECK-START: int Main.reductionMaxInt(int[]) loop_optimization (before)
-  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
-  /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                 loop:none
-  /// CHECK-DAG: <<ConsM:i\d+>>  IntConstant -2147483648       loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<ConsM>>,{{i\d+}}]      loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 Max [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
-  //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: int Main.reductionMaxInt(int[]) loop_optimization (after)
-  /// CHECK-DAG: <<Cons:i\d+>>   IntConstant {{2|4}}           loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [{{i\d+}}] loop:none
-  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 VecMax [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 Add [<<I>>,<<Cons>>]          loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
-  /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
-  private static int reductionMaxInt(int[] x) {
-    int max = Integer.MIN_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      max = Math.max(max, x[i]);
-    }
-    return max;
-  }
-
-  private static long reductionMaxLong(long[] x) {
-    long max = Long.MIN_VALUE;
-    for (int i = 0; i < x.length; i++) {
-      max = Math.max(max, x[i]);
-    }
-    return max;
-  }
-
   //
   // A few special cases.
   //
@@ -489,24 +369,6 @@ public class Main {
       sum -= x[i];
     }
     return sum;
-  }
-
-  private static int reductionMinInt10(int[] x) {
-    int min = Integer.MAX_VALUE;
-    // Amenable to complete unrolling.
-    for (int i = 10; i <= 10; i++) {
-      min = Math.min(min, x[i]);
-    }
-    return min;
-  }
-
-  private static int reductionMaxInt10(int[] x) {
-    int max = Integer.MIN_VALUE;
-    // Amenable to complete unrolling.
-    for (int i = 10; i <= 10; i++) {
-      max = Math.max(max, x[i]);
-    }
-    return max;
   }
 
   //
@@ -587,40 +449,10 @@ public class Main {
     expectEquals(27466, reductionMinusChar(xc));
     expectEquals(-365750, reductionMinusInt(xi));
     expectEquals(-365750L, reductionMinusLong(xl));
-    expectEquals(-128, reductionMinByte(xb));
-    expectEquals(-17, reductionMinShort(xs));
-    expectEquals(1, reductionMinChar(xc));
-    expectEquals(-17, reductionMinInt(xi));
-    expectEquals(-17L, reductionMinLong(xl));
-    expectEquals(3, reductionMinByte(xpb));
-    expectEquals(3, reductionMinShort(xps));
-    expectEquals(3, reductionMinChar(xpc));
-    expectEquals(3, reductionMinInt(xpi));
-    expectEquals(3L, reductionMinLong(xpl));
-    expectEquals(-103, reductionMinByte(xnb));
-    expectEquals(-103, reductionMinShort(xns));
-    expectEquals(-103, reductionMinInt(xni));
-    expectEquals(-103L, reductionMinLong(xnl));
-    expectEquals(127, reductionMaxByte(xb));
-    expectEquals(1480, reductionMaxShort(xs));
-    expectEquals(65534, reductionMaxChar(xc));
-    expectEquals(1480, reductionMaxInt(xi));
-    expectEquals(1480L, reductionMaxLong(xl));
-    expectEquals(102, reductionMaxByte(xpb));
-    expectEquals(102, reductionMaxShort(xps));
-    expectEquals(102, reductionMaxChar(xpc));
-    expectEquals(102, reductionMaxInt(xpi));
-    expectEquals(102L, reductionMaxLong(xpl));
-    expectEquals(-4, reductionMaxByte(xnb));
-    expectEquals(-4, reductionMaxShort(xns));
-    expectEquals(-4, reductionMaxInt(xni));
-    expectEquals(-4L, reductionMaxLong(xnl));
 
     // Test special cases.
     expectEquals(13, reductionInt10(xi));
     expectEquals(-13, reductionMinusInt10(xi));
-    expectEquals(13, reductionMinInt10(xi));
-    expectEquals(13, reductionMaxInt10(xi));
 
     System.out.println("passed");
   }

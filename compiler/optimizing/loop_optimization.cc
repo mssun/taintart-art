@@ -153,18 +153,6 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
         return false;
     }
   }
-  // A MIN-MAX on narrower operands qualifies as well
-  // (returning the operator itself).
-  if (instruction->IsMin() || instruction->IsMax()) {
-    HBinaryOperation* min_max = instruction->AsBinaryOperation();
-    DCHECK(min_max->GetType() == DataType::Type::kInt32 ||
-           min_max->GetType() == DataType::Type::kInt64);
-    if (IsSignExtensionAndGet(min_max->InputAt(0), type, operand) &&
-        IsSignExtensionAndGet(min_max->InputAt(1), type, operand)) {
-      *operand = min_max;
-      return true;
-    }
-  }
   return false;
 }
 
@@ -226,18 +214,6 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
                IsSignExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand);
       default:
         return false;
-    }
-  }
-  // A MIN-MAX on narrower operands qualifies as well
-  // (returning the operator itself).
-  if (instruction->IsMin() || instruction->IsMax()) {
-    HBinaryOperation* min_max = instruction->AsBinaryOperation();
-    DCHECK(min_max->GetType() == DataType::Type::kInt32 ||
-           min_max->GetType() == DataType::Type::kInt64);
-    if (IsZeroExtensionAndGet(min_max->InputAt(0), type, operand) &&
-        IsZeroExtensionAndGet(min_max->InputAt(1), type, operand)) {
-      *operand = min_max;
-      return true;
     }
   }
   return false;
@@ -363,128 +339,11 @@ static bool IsSubConst2(HGraph* graph,
   return false;
 }
 
-// Detect clipped [lo, hi] range for nested MIN-MAX operations on a clippee,
-// such as MIN(hi, MAX(lo, clippee)) for an arbitrary clippee expression.
-// Example: MIN(10, MIN(20, MAX(0, x))) yields [0, 10] with clippee x.
-static HInstruction* FindClippee(HInstruction* instruction,
-                                 /*out*/ int64_t* lo,
-                                 /*out*/ int64_t* hi) {
-  // Iterate into MIN(.., c)-MAX(.., c) expressions and 'tighten' the range [lo, hi].
-  while (instruction->IsMin() || instruction->IsMax()) {
-    HBinaryOperation* min_max = instruction->AsBinaryOperation();
-    DCHECK(min_max->GetType() == DataType::Type::kInt32 ||
-           min_max->GetType() == DataType::Type::kInt64);
-    // Process the constant.
-    HConstant* right = min_max->GetConstantRight();
-    if (right == nullptr) {
-      break;
-    } else if (instruction->IsMin()) {
-      *hi = std::min(*hi, Int64FromConstant(right));
-    } else {
-      *lo = std::max(*lo, Int64FromConstant(right));
-    }
-    instruction = min_max->GetLeastConstantLeft();
-  }
-  // Iteration ends in any other expression (possibly MIN/MAX without constant).
-  // This leaf expression is the clippee with range [lo, hi].
-  return instruction;
-}
-
-// Set value range for type (or fail).
-static bool CanSetRange(DataType::Type type,
-                        /*out*/ int64_t* uhi,
-                        /*out*/ int64_t* slo,
-                        /*out*/ int64_t* shi) {
-  if (DataType::Size(type) == 1) {
-    *uhi = std::numeric_limits<uint8_t>::max();
-    *slo = std::numeric_limits<int8_t>::min();
-    *shi = std::numeric_limits<int8_t>::max();
-    return true;
-  } else if (DataType::Size(type) == 2) {
-    *uhi = std::numeric_limits<uint16_t>::max();
-    *slo = std::numeric_limits<int16_t>::min();
-    *shi = std::numeric_limits<int16_t>::max();
-    return true;
-  }
-  return false;
-}
-
-// Accept various saturated addition forms.
-static bool IsSaturatedAdd(HInstruction* a,
-                           HInstruction* b,
-                           DataType::Type type,
-                           int64_t lo,
-                           int64_t hi,
-                           bool is_unsigned) {
-  int64_t ulo = 0, uhi = 0, slo = 0, shi = 0;
-  if (!CanSetRange(type, &uhi, &slo, &shi)) {
-    return false;
-  }
-  // Tighten the range for signed single clipping on constant.
-  if (!is_unsigned) {
-    int64_t c = 0;
-    if (IsInt64AndGet(a, &c) || IsInt64AndGet(b, &c)) {
-      // For c in proper range and narrower operand r:
-      //    MIN(r + c,  127) c > 0
-      // or MAX(r + c, -128) c < 0 (and possibly redundant bound).
-      if (0 < c && c <= shi && hi == shi) {
-        if (lo <= (slo + c)) {
-          return true;
-        }
-      } else if (slo <= c && c < 0 && lo == slo) {
-        if (hi >= (shi + c)) {
-          return true;
-        }
-      }
-    }
-  }
-  // Detect for narrower operands r and s:
-  //     MIN(r + s, 255)        => SAT_ADD_unsigned
-  // MAX(MIN(r + s, 127), -128) => SAT_ADD_signed.
-  return is_unsigned ? (lo <= ulo && hi == uhi) : (lo == slo && hi == shi);
-}
-
-// Accept various saturated subtraction forms.
-static bool IsSaturatedSub(HInstruction* a,
-                           DataType::Type type,
-                           int64_t lo,
-                           int64_t hi,
-                           bool is_unsigned) {
-  int64_t ulo = 0, uhi = 0, slo = 0, shi = 0;
-  if (!CanSetRange(type, &uhi, &slo, &shi)) {
-    return false;
-  }
-  // Tighten the range for signed single clipping on constant.
-  if (!is_unsigned) {
-    int64_t c = 0;
-    if (IsInt64AndGet(a, /*out*/ &c)) {
-      // For c in proper range and narrower operand r:
-      //    MIN(c - r,  127) c > 0
-      // or MAX(c - r, -128) c < 0 (and possibly redundant bound).
-      if (0 < c && c <= shi && hi == shi) {
-        if (lo <= (c - shi)) {
-          return true;
-        }
-      } else if (slo <= c && c < 0 && lo == slo) {
-        if (hi >= (c - slo)) {
-          return true;
-        }
-      }
-    }
-  }
-  // Detect for narrower operands r and s:
-  //     MAX(r - s, 0)          => SAT_SUB_unsigned
-  // MIN(MAX(r - s, -128), 127) => SAT_ADD_signed.
-  return is_unsigned ? (lo == ulo && hi >= uhi) : (lo == slo && hi == shi);
-}
-
 // Detect reductions of the following forms,
 //   x = x_phi + ..
 //   x = x_phi - ..
-//   x = min(x_phi, ..)
-//   x = max(x_phi, ..)
 static bool HasReductionFormat(HInstruction* reduction, HInstruction* phi) {
-  if (reduction->IsAdd() || reduction->IsMin() || reduction->IsMax()) {
+  if (reduction->IsAdd()) {
     return (reduction->InputAt(0) == phi && reduction->InputAt(1) != phi) ||
            (reduction->InputAt(0) != phi && reduction->InputAt(1) == phi);
   } else if (reduction->IsSub()) {
@@ -497,10 +356,6 @@ static bool HasReductionFormat(HInstruction* reduction, HInstruction* phi) {
 static HVecReduce::ReductionKind GetReductionKind(HVecOperation* reduction) {
   if (reduction->IsVecAdd() || reduction->IsVecSub() || reduction->IsVecSADAccumulate()) {
     return HVecReduce::kSum;
-  } else if (reduction->IsVecMin()) {
-    return HVecReduce::kMin;
-  } else if (reduction->IsVecMax()) {
-    return HVecReduce::kMax;
   }
   LOG(FATAL) << "Unsupported SIMD reduction " << reduction->GetId();
   UNREACHABLE();
@@ -1601,37 +1456,6 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
       }
       return true;
     }
-  } else if (instruction->IsMin() || instruction->IsMax()) {
-    // Recognize saturation arithmetic.
-    if (VectorizeSaturationIdiom(node, instruction, generate_code, type, restrictions)) {
-      return true;
-    }
-    // Deal with vector restrictions.
-    HInstruction* opa = instruction->InputAt(0);
-    HInstruction* opb = instruction->InputAt(1);
-    HInstruction* r = opa;
-    HInstruction* s = opb;
-    bool is_unsigned = false;
-    if (HasVectorRestrictions(restrictions, kNoMinMax)) {
-      return false;
-    } else if (HasVectorRestrictions(restrictions, kNoHiBits) &&
-               !IsNarrowerOperands(opa, opb, type, &r, &s, &is_unsigned)) {
-      return false;  // reject, unless all operands are same-extension narrower
-    }
-    // Accept MIN/MAX(x, y) for vectorizable operands.
-    DCHECK(r != nullptr && s != nullptr);
-    if (generate_code && vector_mode_ != kVector) {  // de-idiom
-      r = opa;
-      s = opb;
-    }
-    if (VectorizeUse(node, r, generate_code, type, restrictions) &&
-        VectorizeUse(node, s, generate_code, type, restrictions)) {
-      if (generate_code) {
-        GenerateVecOp(
-            instruction, vector_map_->Get(r), vector_map_->Get(s), type, is_unsigned);
-      }
-      return true;
-    }
   }
   return false;
 }
@@ -1687,7 +1511,7 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
           *restrictions |= kNoDiv;
           return TrySetVectorLength(4);
         case DataType::Type::kInt64:
-          *restrictions |= kNoDiv | kNoMul | kNoMinMax;
+          *restrictions |= kNoDiv | kNoMul;
           return TrySetVectorLength(2);
         case DataType::Type::kFloat32:
           *restrictions |= kNoReduction;
@@ -1717,13 +1541,13 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
             *restrictions |= kNoDiv | kNoSAD;
             return TrySetVectorLength(4);
           case DataType::Type::kInt64:
-            *restrictions |= kNoMul | kNoDiv | kNoShr | kNoAbs | kNoMinMax | kNoSAD;
+            *restrictions |= kNoMul | kNoDiv | kNoShr | kNoAbs | kNoSAD;
             return TrySetVectorLength(2);
           case DataType::Type::kFloat32:
-            *restrictions |= kNoMinMax | kNoReduction;  // minmax: -0.0 vs +0.0
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(4);
           case DataType::Type::kFloat64:
-            *restrictions |= kNoMinMax | kNoReduction;  // minmax: -0.0 vs +0.0
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(2);
           default:
             break;
@@ -1736,11 +1560,11 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
           case DataType::Type::kBool:
           case DataType::Type::kUint8:
           case DataType::Type::kInt8:
-            *restrictions |= kNoDiv | kNoSaturation;
+            *restrictions |= kNoDiv;
             return TrySetVectorLength(16);
           case DataType::Type::kUint16:
           case DataType::Type::kInt16:
-            *restrictions |= kNoDiv | kNoSaturation | kNoStringCharAt;
+            *restrictions |= kNoDiv | kNoStringCharAt;
             return TrySetVectorLength(8);
           case DataType::Type::kInt32:
             *restrictions |= kNoDiv;
@@ -1749,10 +1573,10 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
             *restrictions |= kNoDiv;
             return TrySetVectorLength(2);
           case DataType::Type::kFloat32:
-            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(4);
           case DataType::Type::kFloat64:
-            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(2);
           default:
             break;
@@ -1765,11 +1589,11 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
           case DataType::Type::kBool:
           case DataType::Type::kUint8:
           case DataType::Type::kInt8:
-            *restrictions |= kNoDiv | kNoSaturation;
+            *restrictions |= kNoDiv;
             return TrySetVectorLength(16);
           case DataType::Type::kUint16:
           case DataType::Type::kInt16:
-            *restrictions |= kNoDiv | kNoSaturation | kNoStringCharAt;
+            *restrictions |= kNoDiv | kNoStringCharAt;
             return TrySetVectorLength(8);
           case DataType::Type::kInt32:
             *restrictions |= kNoDiv;
@@ -1778,10 +1602,10 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
             *restrictions |= kNoDiv;
             return TrySetVectorLength(2);
           case DataType::Type::kFloat32:
-            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(4);
           case DataType::Type::kFloat64:
-            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(2);
           default:
             break;
@@ -2006,8 +1830,7 @@ HInstruction* HLoopOptimization::ReduceAndExtractIfNeeded(HInstruction* instruct
 void HLoopOptimization::GenerateVecOp(HInstruction* org,
                                       HInstruction* opa,
                                       HInstruction* opb,
-                                      DataType::Type type,
-                                      bool is_unsigned) {
+                                      DataType::Type type) {
   uint32_t dex_pc = org->GetDexPc();
   HInstruction* vector = nullptr;
   DataType::Type org_type = org->GetType();
@@ -2072,24 +1895,6 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
       GENERATE_VEC(
         new (global_allocator_) HVecUShr(global_allocator_, opa, opb, type, vector_length_, dex_pc),
         new (global_allocator_) HUShr(org_type, opa, opb, dex_pc));
-    case HInstruction::kMin:
-      GENERATE_VEC(
-        new (global_allocator_) HVecMin(global_allocator_,
-                                        opa,
-                                        opb,
-                                        HVecOperation::ToProperType(type, is_unsigned),
-                                        vector_length_,
-                                        dex_pc),
-        new (global_allocator_) HMin(org_type, opa, opb, dex_pc));
-    case HInstruction::kMax:
-      GENERATE_VEC(
-        new (global_allocator_) HVecMax(global_allocator_,
-                                        opa,
-                                        opb,
-                                        HVecOperation::ToProperType(type, is_unsigned),
-                                        vector_length_,
-                                        dex_pc),
-        new (global_allocator_) HMax(org_type, opa, opb, dex_pc));
     case HInstruction::kAbs:
       DCHECK(opb == nullptr);
       GENERATE_VEC(
@@ -2107,79 +1912,6 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
 //
 // Vectorization idioms.
 //
-
-// Method recognizes single and double clipping saturation arithmetic.
-bool HLoopOptimization::VectorizeSaturationIdiom(LoopNode* node,
-                                                 HInstruction* instruction,
-                                                 bool generate_code,
-                                                 DataType::Type type,
-                                                 uint64_t restrictions) {
-  // Deal with vector restrictions.
-  if (HasVectorRestrictions(restrictions, kNoSaturation)) {
-    return false;
-  }
-  // Restrict type (generalize if one day we generalize allowed MIN/MAX integral types).
-  if (instruction->GetType() != DataType::Type::kInt32 &&
-      instruction->GetType() != DataType::Type::kInt64) {
-    return false;
-  }
-  // Clipped addition or subtraction on narrower operands? We will try both
-  // formats since, e.g., x+c can be interpreted as x+c and x-(-c), depending
-  // on what clipping values are used, to get most benefits.
-  int64_t lo = std::numeric_limits<int64_t>::min();
-  int64_t hi = std::numeric_limits<int64_t>::max();
-  HInstruction* clippee = FindClippee(instruction, &lo, &hi);
-  HInstruction* a = nullptr;
-  HInstruction* b = nullptr;
-  HInstruction* r = nullptr;
-  HInstruction* s = nullptr;
-  bool is_unsigned = false;
-  bool is_add = true;
-  int64_t c = 0;
-  // First try for saturated addition.
-  if (IsAddConst2(graph_, clippee, /*out*/ &a, /*out*/ &b, /*out*/ &c) && c == 0 &&
-      IsNarrowerOperands(a, b, type, &r, &s, &is_unsigned) &&
-      IsSaturatedAdd(r, s, type, lo, hi, is_unsigned)) {
-    is_add = true;
-  } else {
-    // Then try again for saturated subtraction.
-    a = b = r = s = nullptr;
-    if (IsSubConst2(graph_, clippee, /*out*/ &a, /*out*/ &b) &&
-        IsNarrowerOperands(a, b, type, &r, &s, &is_unsigned) &&
-        IsSaturatedSub(r, type, lo, hi, is_unsigned)) {
-      is_add = false;
-    } else {
-      return false;
-    }
-  }
-  // Accept saturation idiom for vectorizable operands.
-  DCHECK(r != nullptr && s != nullptr);
-  if (generate_code && vector_mode_ != kVector) {  // de-idiom
-    r = instruction->InputAt(0);
-    s = instruction->InputAt(1);
-    restrictions &= ~(kNoHiBits | kNoMinMax);  // allow narrow MIN/MAX in seq
-  }
-  if (VectorizeUse(node, r, generate_code, type, restrictions) &&
-      VectorizeUse(node, s, generate_code, type, restrictions)) {
-    if (generate_code) {
-      if (vector_mode_ == kVector) {
-        DataType::Type vtype = HVecOperation::ToProperType(type, is_unsigned);
-        HInstruction* op1 = vector_map_->Get(r);
-        HInstruction* op2 = vector_map_->Get(s);
-        vector_map_->Put(instruction, is_add
-          ? reinterpret_cast<HInstruction*>(new (global_allocator_) HVecSaturationAdd(
-              global_allocator_, op1, op2, vtype, vector_length_, kNoDexPc))
-          : reinterpret_cast<HInstruction*>(new (global_allocator_) HVecSaturationSub(
-              global_allocator_, op1, op2, vtype, vector_length_, kNoDexPc)));
-        MaybeRecordStat(stats_, MethodCompilationStat::kLoopVectorizedIdiom);
-      } else {
-        GenerateVecOp(instruction, vector_map_->Get(r), vector_map_->Get(s), type);
-      }
-    }
-    return true;
-  }
-  return false;
-}
 
 // Method recognizes the following idioms:
 //   rounding  halving add (a + b + 1) >> 1 for unsigned/signed operands a, b

@@ -1,7 +1,0 @@
-ByteSimdMinMax passed
-CharSimdMinMax passed
-ShortSimdMinMax passed
-IntSimdMinMax passed
-LongSimdMinMax passed
-DoubleSimdMinMax passed
-FloatSimdMinMax passed

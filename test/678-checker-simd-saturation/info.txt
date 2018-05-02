@@ -1,1 +1,0 @@
-Functional tests on saturation arithmetic vectorization.
