@@ -21,13 +21,14 @@
 #include <memory>
 #include <random>
 
-#include "common_runtime_test.h"
+#include "base/common_art_test.h"
+#include "common_runtime_test.h"  // For TEST_DISABLED_FOR_MIPS
 #include "memory_tool.h"
 #include "unix_file/fd_file.h"
 
 namespace art {
 
-class MemMapTest : public CommonRuntimeTest {
+class MemMapTest : public CommonArtTest {
  public:
   static uint8_t* BaseBegin(MemMap* mem_map) {
     return reinterpret_cast<uint8_t*>(mem_map->base_begin_);

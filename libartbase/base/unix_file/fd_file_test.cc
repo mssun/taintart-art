@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "common_runtime_test.h"  // For ScratchFile
+#include "base/common_art_test.h"  // For ScratchFile
 #include "gtest/gtest.h"
 #include "fd_file.h"
 #include "random_access_file_test.h"
