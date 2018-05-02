@@ -107,6 +107,7 @@ class PassObserver : public ValueObject {
                CompilerDriver* compiler_driver,
                Mutex& dump_mutex)
       : graph_(graph),
+        last_seen_graph_size_(0),
         cached_method_name_(),
         timing_logger_enabled_(compiler_driver->GetCompilerOptions().GetDumpTimings()),
         timing_logger_(timing_logger_enabled_ ? GetMethodName() : "", true, true),
@@ -174,7 +175,7 @@ class PassObserver : public ValueObject {
     visualizer_oss_.clear();
   }
 
-  void EndPass(const char* pass_name) REQUIRES(!visualizer_dump_mutex_) {
+  void EndPass(const char* pass_name, bool pass_change) REQUIRES(!visualizer_dump_mutex_) {
     // Pause timer first, then dump graph.
     if (timing_logger_enabled_) {
       timing_logger_.EndTiming();
@@ -188,7 +189,7 @@ class PassObserver : public ValueObject {
     if (kIsDebugBuild) {
       if (!graph_in_bad_state_) {
         GraphChecker checker(graph_);
-        checker.Run();
+        last_seen_graph_size_ = checker.Run(pass_change, last_seen_graph_size_);
         if (!checker.IsValid()) {
           LOG(FATAL) << "Error after " << pass_name << ": " << Dumpable<GraphChecker>(checker);
         }
@@ -214,6 +215,7 @@ class PassObserver : public ValueObject {
   }
 
   HGraph* const graph_;
+  size_t last_seen_graph_size_;
 
   std::string cached_method_name_;
 
@@ -241,16 +243,22 @@ class PassScope : public ValueObject {
  public:
   PassScope(const char *pass_name, PassObserver* pass_observer)
       : pass_name_(pass_name),
+        pass_change_(true),  // assume change
         pass_observer_(pass_observer) {
     pass_observer_->StartPass(pass_name_);
   }
 
+  void SetPassNotChanged() {
+    pass_change_ = false;
+  }
+
   ~PassScope() {
-    pass_observer_->EndPass(pass_name_);
+    pass_observer_->EndPass(pass_name_, pass_change_);
   }
 
  private:
   const char* const pass_name_;
+  bool pass_change_;
   PassObserver* const pass_observer_;
 };
 
@@ -324,7 +332,11 @@ class OptimizingCompiler FINAL : public Compiler {
         PassScope scope(optimizations[i]->GetPassName(), pass_observer);
         bool pass_change = optimizations[i]->Run();
         pass_changes[static_cast<size_t>(definitions[i].pass)] = pass_change;
-        change |= pass_change;
+        if (pass_change) {
+          change = true;
+        } else {
+          scope.SetPassNotChanged();
+        }
       } else {
         // Skip the pass and record that nothing changed.
         pass_changes[static_cast<size_t>(definitions[i].pass)] = false;

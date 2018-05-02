@@ -58,6 +58,30 @@ static bool IsExitTryBoundaryIntoExitBlock(HBasicBlock* block) {
          !boundary->IsEntry();
 }
 
+
+size_t GraphChecker::Run(bool pass_change, size_t last_size) {
+  size_t current_size = GetGraph()->GetReversePostOrder().size();
+  if (!pass_change) {
+    // Nothing changed for certain. Do a quick sanity check on that assertion
+    // for anything other than the first call (when last size was still 0).
+    if (last_size != 0) {
+      if (current_size != last_size) {
+        AddError(StringPrintf("Incorrect no-change assertion, "
+                              "last graph size %zu vs current graph size %zu",
+                              last_size, current_size));
+      }
+    }
+    // TODO: if we would trust the "false" value of the flag completely, we
+    // could skip checking the graph at this point.
+  }
+
+  // VisitReversePostOrder is used instead of VisitInsertionOrder,
+  // as the latter might visit dead blocks removed by the dominator
+  // computation.
+  VisitReversePostOrder();
+  return current_size;
+}
+
 void GraphChecker::VisitBasicBlock(HBasicBlock* block) {
   current_block_ = block;
 
