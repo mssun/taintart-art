@@ -83,6 +83,10 @@ MemberSignature::MemberSignature(ArtField* field) {
 }
 
 MemberSignature::MemberSignature(ArtMethod* method) {
+  // If this is a proxy method, print the signature of the interface method.
+  method = method->GetInterfaceMethodIfProxy(
+      Runtime::Current()->GetClassLinker()->GetImagePointerSize());
+
   class_name_ = method->GetDeclaringClass()->GetDescriptor(&tmp_);
   member_name_ = method->GetName();
   type_signature_ = method->GetSignature().ToString();
