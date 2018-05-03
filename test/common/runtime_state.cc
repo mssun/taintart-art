@@ -258,17 +258,23 @@ extern "C" JNIEXPORT int JNICALL Java_Main_getHotnessCounter(JNIEnv* env,
                                                              jclass,
                                                              jclass cls,
                                                              jstring method_name) {
-  ArtMethod* method = nullptr;
-  {
-    ScopedObjectAccess soa(Thread::Current());
-
-    ScopedUtfChars chars(env, method_name);
-    CHECK(chars.c_str() != nullptr);
-    method = soa.Decode<mirror::Class>(cls)->FindDeclaredDirectMethodByName(
-        chars.c_str(), kRuntimePointerSize);
+  ScopedObjectAccess soa(Thread::Current());
+  ScopedUtfChars chars(env, method_name);
+  CHECK(chars.c_str() != nullptr);
+  ArtMethod* method =
+      soa.Decode<mirror::Class>(cls)->FindDeclaredDirectMethodByName(chars.c_str(),
+                                                                     kRuntimePointerSize);
+  if (method != nullptr) {
+    return method->GetCounter();
   }
 
-  return method->GetCounter();
+  method = soa.Decode<mirror::Class>(cls)->FindDeclaredVirtualMethodByName(chars.c_str(),
+                                                                           kRuntimePointerSize);
+  if (method != nullptr) {
+    return method->GetCounter();
+  }
+
+  return std::numeric_limits<int32_t>::min();
 }
 
 extern "C" JNIEXPORT int JNICALL Java_Main_numberOfDeoptimizations(JNIEnv*, jclass) {
