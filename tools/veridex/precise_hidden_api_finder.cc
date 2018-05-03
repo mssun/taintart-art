@@ -29,7 +29,9 @@
 
 namespace art {
 
-void PreciseHiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolver>>& resolvers) {
+void PreciseHiddenApiFinder::RunInternal(
+    const std::vector<std::unique_ptr<VeridexResolver>>& resolvers,
+    const std::function<void(VeridexResolver*, const ClassDataItemIterator&)>& action) {
   for (const std::unique_ptr<VeridexResolver>& resolver : resolvers) {
     const DexFile& dex_file = resolver->GetDexFile();
     size_t class_def_count = dex_file.NumClassDefs();
@@ -47,43 +49,67 @@ void PreciseHiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolv
         if (code_item == nullptr) {
           continue;
         }
-        CodeItemDataAccessor code_item_accessor(dex_file, code_item);
-        VeriFlowAnalysis ana(resolver.get(), code_item_accessor);
-        ana.Run();
-        if (!ana.GetFieldUses().empty()) {
-          field_uses_[MethodReference(&dex_file, it.GetMemberIndex())] = ana.GetFieldUses();
-        }
-        if (!ana.GetMethodUses().empty()) {
-          method_uses_[MethodReference(&dex_file, it.GetMemberIndex())] = ana.GetMethodUses();
-        }
+        action(resolver.get(), it);
       }
     }
   }
 }
 
+void PreciseHiddenApiFinder::AddUsesAt(const std::vector<ReflectAccessInfo>& accesses,
+                                       MethodReference ref) {
+  for (const ReflectAccessInfo& info : accesses) {
+    if (info.IsConcrete()) {
+      concrete_uses_[ref].push_back(info);
+    } else {
+      abstract_uses_[ref].push_back(info);
+    }
+  }
+}
+
+void PreciseHiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolver>>& resolvers) {
+  // Collect reflection uses.
+  RunInternal(resolvers, [this] (VeridexResolver* resolver, const ClassDataItemIterator& it) {
+    FlowAnalysisCollector collector(resolver, it);
+    collector.Run();
+    AddUsesAt(collector.GetUses(), MethodReference(&resolver->GetDexFile(), it.GetMemberIndex()));
+  });
+
+  // For non-final reflection uses, do a limited fixed point calculation over the code to try
+  // substituting them with final reflection uses.
+  // We limit the number of times we iterate over the code as one run can be long.
+  static const int kMaximumIterations = 10;
+  uint32_t i = 0;
+  while (!abstract_uses_.empty() && (i++ < kMaximumIterations)) {
+    // Fetch and clear the worklist.
+    std::map<MethodReference, std::vector<ReflectAccessInfo>> current_uses
+        = std::move(abstract_uses_);
+    RunInternal(resolvers,
+                [this, current_uses] (VeridexResolver* resolver, const ClassDataItemIterator& it) {
+      FlowAnalysisSubstitutor substitutor(resolver, it, current_uses);
+      substitutor.Run();
+      AddUsesAt(substitutor.GetUses(),
+                MethodReference(&resolver->GetDexFile(), it.GetMemberIndex()));
+    });
+  }
+}
+
 void PreciseHiddenApiFinder::Dump(std::ostream& os, HiddenApiStats* stats) {
   static const char* kPrefix = "       ";
-  std::map<std::string, std::vector<MethodReference>> uses;
-  for (auto kinds : { field_uses_, method_uses_ }) {
-    for (auto it : kinds) {
-      MethodReference ref = it.first;
-      for (const std::pair<RegisterValue, RegisterValue>& info : it.second) {
-        if ((info.first.GetSource() == RegisterSource::kClass ||
-             info.first.GetSource() == RegisterSource::kString) &&
-            info.second.GetSource() == RegisterSource::kString) {
-          std::string cls(info.first.ToString());
-          std::string name(info.second.ToString());
-          std::string full_name = cls + "->" + name;
-          HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
-          if (api_list != HiddenApiAccessFlags::kWhitelist) {
-            uses[full_name].push_back(ref);
-          }
-        }
+  std::map<std::string, std::vector<MethodReference>> named_uses;
+  for (auto it : concrete_uses_) {
+    MethodReference ref = it.first;
+    for (const ReflectAccessInfo& info : it.second) {
+      std::string cls(info.cls.ToString());
+      std::string name(info.name.ToString());
+      std::string full_name = cls + "->" + name;
+      HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
+      if (api_list != HiddenApiAccessFlags::kWhitelist) {
+        named_uses[full_name].push_back(ref);
       }
     }
   }
 
-  for (auto it : uses) {
+  for (auto it : named_uses) {
     ++stats->reflection_count;
     const std::string& full_name = it.first;
     HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
