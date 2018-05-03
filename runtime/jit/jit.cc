@@ -29,6 +29,8 @@
 #include "interpreter/interpreter.h"
 #include "java_vm_ext.h"
 #include "jit_code_cache.h"
+#include "mirror/method_handle_impl.h"
+#include "mirror/var_handle.h"
 #include "oat_file_manager.h"
 #include "oat_quick_method_header.h"
 #include "profile/profile_compilation_info.h"
@@ -638,15 +640,33 @@ class JitCompileTask FINAL : public Task {
   DISALLOW_IMPLICIT_CONSTRUCTORS(JitCompileTask);
 };
 
+static bool IgnoreSamplesForMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (method->IsClassInitializer() || !method->IsCompilable()) {
+    // We do not want to compile such methods.
+    return true;
+  }
+  if (method->IsNative()) {
+    ObjPtr<mirror::Class> klass = method->GetDeclaringClass();
+    if (klass == mirror::MethodHandle::StaticClass() || klass == mirror::VarHandle::StaticClass()) {
+      // MethodHandle and VarHandle invocation methods are required to throw an
+      // UnsupportedOperationException if invoked reflectively. We achieve this by having native
+      // implementations that arise the exception. We need to disable JIT compilation of these JNI
+      // methods as it can lead to transitioning between JIT compiled JNI stubs and generic JNI
+      // stubs. Since these stubs have different stack representations we can then crash in stack
+      // walking (b/78151261).
+      return true;
+    }
+  }
+  return false;
+}
+
 void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_backedges) {
   if (thread_pool_ == nullptr) {
     // Should only see this when shutting down.
     DCHECK(Runtime::Current()->IsShuttingDown(self));
     return;
   }
-
-  if (method->IsClassInitializer() || !method->IsCompilable()) {
-    // We do not want to compile such methods.
+  if (IgnoreSamplesForMethod(method)) {
     return;
   }
   if (hot_method_threshold_ == 0) {

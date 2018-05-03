@@ -1,0 +1,2 @@
+Test MethodHandle and VarHandle invokes do not accumulate JIT samples
+(regression test for b/78151261).
