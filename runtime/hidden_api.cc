@@ -154,10 +154,11 @@ inline static int32_t GetEnumValueForLog(AccessMethod access_method) {
 }
 
 void MemberSignature::LogAccessToEventLog(AccessMethod access_method, Action action_taken) {
-  if (access_method == kLinking) {
+  if (access_method == kLinking || access_method == kNone) {
     // Linking warnings come from static analysis/compilation of the bytecode
     // and can contain false positives (i.e. code that is never run). We choose
     // not to log these in the event log.
+    // None does not correspond to actual access, so should also be ignored.
     return;
   }
   ComplexEventLogger log_maker(ACTION_HIDDEN_API_ACCESSED);
