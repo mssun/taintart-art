@@ -615,7 +615,7 @@ bool DexFileVerifier::CheckClassDataItemMethod(uint32_t idx,
                                                uint32_t code_offset,
                                                ClassDataItemIterator* direct_it,
                                                bool expect_direct) {
-  DCHECK(expect_direct || direct_it != nullptr);
+  DCHECK_EQ(expect_direct, direct_it == nullptr);
   // Check for overflow.
   if (!CheckIndex(idx, header_->method_ids_size_, "class_data_item method_idx")) {
     return false;
@@ -1252,9 +1252,10 @@ bool DexFileVerifier::CheckIntraCodeItem() {
   uint32_t* handler_offsets;
   constexpr size_t kAllocaMaxSize = 1024;
   if (handlers_size < kAllocaMaxSize/sizeof(uint32_t)) {
+    // Note: Clang does not specify alignment guarantees for alloca. So align by hand.
     handler_offsets =
-        AlignDown(reinterpret_cast<uint32_t*>(alloca((handlers_size + 1) * sizeof(uint32_t))),
-                  alignof(uint32_t[]));
+        AlignUp(reinterpret_cast<uint32_t*>(alloca((handlers_size + 1) * sizeof(uint32_t))),
+                alignof(uint32_t[]));
   } else {
     handler_offsets_uptr.reset(new uint32_t[handlers_size]);
     handler_offsets = handler_offsets_uptr.get();
