@@ -589,6 +589,7 @@ bool HLoopOptimization::TraverseLoopsInnerToOuter(LoopNode* node) {
     // loop if the induction of any inner loop has changed.
     if (TraverseLoopsInnerToOuter(node->inner)) {
       induction_range_.ReVisit(node->loop_info);
+      changed = true;
     }
     // Repeat simplifications in the loop-body until no more changes occur.
     // Note that since each simplification consists of eliminating code (without

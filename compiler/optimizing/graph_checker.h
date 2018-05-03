@@ -38,13 +38,11 @@ class GraphChecker : public HGraphDelegateVisitor {
     seen_ids_.ClearAllBits();
   }
 
-  // Check the whole graph (in reverse post-order).
-  void Run() {
-    // VisitReversePostOrder is used instead of VisitInsertionOrder,
-    // as the latter might visit dead blocks removed by the dominator
-    // computation.
-    VisitReversePostOrder();
-  }
+  // Check the whole graph. The pass_change parameter indicates whether changes
+  // may have occurred during the just executed pass. The default value is
+  // conservatively "true" (something may have changed). The last_size parameter
+  // and return value pass along the observed graph sizes.
+  size_t Run(bool pass_change = true, size_t last_size = 0);
 
   void VisitBasicBlock(HBasicBlock* block) OVERRIDE;
 
