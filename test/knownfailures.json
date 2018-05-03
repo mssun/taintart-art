@@ -883,6 +883,7 @@
           "706-checker-scheduler",
           "707-checker-invalid-profile",
           "714-invoke-custom-lambda-metafactory",
+          "716-jli-jit-samples",
           "800-smali",
           "801-VoidCheckCast",
           "802-deoptimization",
