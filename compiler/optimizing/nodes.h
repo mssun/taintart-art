@@ -1525,9 +1525,6 @@ FOR_EACH_INSTRUCTION(FORWARD_DECLARATION)
   H##type& operator=(const H##type&) = delete;                            \
   public:                                                                 \
   const char* DebugName() const OVERRIDE { return #type; }                \
-  bool InstructionTypeEquals(const HInstruction* other) const OVERRIDE {  \
-    return other->Is##type();                                             \
-  }                                                                       \
   HInstruction* Clone(ArenaAllocator* arena) const OVERRIDE {             \
     DCHECK(IsClonable());                                                 \
     return new (arena) H##type(*this->As##type());                        \
@@ -2271,11 +2268,6 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   // TODO: this method is used by LICM and GVN with possibly different
   //       meanings? split and rename?
   virtual bool CanBeMoved() const { return false; }
-
-  // Returns whether the two instructions are of the same kind.
-  virtual bool InstructionTypeEquals(const HInstruction* other ATTRIBUTE_UNUSED) const {
-    return false;
-  }
 
   // Returns whether any data encoded in the two instructions is equal.
   // This method does not look at the inputs. Both instructions must be

@@ -2666,10 +2666,10 @@ bool InstructionSimplifierVisitor::TryHandleAssociativeAndCommutativeOperation(
   HConstant* const2;
   HBinaryOperation* y;
 
-  if (instruction->InstructionTypeEquals(left) && right->IsConstant()) {
+  if (instruction->GetKind() == left->GetKind() && right->IsConstant()) {
     const2 = right->AsConstant();
     y = left->AsBinaryOperation();
-  } else if (left->IsConstant() && instruction->InstructionTypeEquals(right)) {
+  } else if (left->IsConstant() && instruction->GetKind() == right->GetKind()) {
     const2 = left->AsConstant();
     y = right->AsBinaryOperation();
   } else {

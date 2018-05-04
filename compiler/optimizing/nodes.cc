@@ -1680,10 +1680,9 @@ bool HCondition::IsBeforeWhenDisregardMoves(HInstruction* instruction) const {
 }
 
 bool HInstruction::Equals(const HInstruction* other) const {
-  if (!InstructionTypeEquals(other)) return false;
-  DCHECK_EQ(GetKind(), other->GetKind());
-  if (!InstructionDataEquals(other)) return false;
+  if (GetKind() != other->GetKind()) return false;
   if (GetType() != other->GetType()) return false;
+  if (!InstructionDataEquals(other)) return false;
   HConstInputsRef inputs = GetInputs();
   HConstInputsRef other_inputs = other->GetInputs();
   if (inputs.size() != other_inputs.size()) return false;
