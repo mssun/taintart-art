@@ -1697,7 +1697,7 @@ bool HInstruction::Equals(const HInstruction* other) const {
 std::ostream& operator<<(std::ostream& os, const HInstruction::InstructionKind& rhs) {
 #define DECLARE_CASE(type, super) case HInstruction::k##type: os << #type; break;
   switch (rhs) {
-    FOR_EACH_INSTRUCTION(DECLARE_CASE)
+    FOR_EACH_CONCRETE_INSTRUCTION(DECLARE_CASE)
     default:
       os << "Unknown instruction kind " << static_cast<int>(rhs);
       break;

@@ -1956,7 +1956,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
  public:
 #define DECLARE_KIND(type, super) k##type,
   enum InstructionKind {
-    FOR_EACH_INSTRUCTION(DECLARE_KIND)
+    FOR_EACH_CONCRETE_INSTRUCTION(DECLARE_KIND)
     kLastInstructionKind
   };
 #undef DECLARE_KIND
