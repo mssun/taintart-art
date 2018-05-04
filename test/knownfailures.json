@@ -412,10 +412,11 @@
             ".*methodhandle.*",
             ".*method-handle.*",
             ".*varhandle.*",
-            ".*var-handle.*"
+            ".*var-handle.*",
+            "716-jli-jit-samples"
         ],
         "description": [
-            "Tests that use invoke-polymorphic/invoke-custom which is not yet supported by",
+            "Tests for bytecodes introduced after DEX version 037 that are unsupported by",
             "dexter/slicer."
         ],
         "bug": "b/37272822",
