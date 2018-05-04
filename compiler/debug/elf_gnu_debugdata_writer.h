@@ -41,23 +41,23 @@ static void XzCompress(const std::vector<uint8_t>* src, std::vector<uint8_t>* ds
   Lzma2EncProps_Normalize(&lzma2Props);
   CXzProps props;
   XzProps_Init(&props);
-  props.lzma2Props = &lzma2Props;
+  props.lzma2Props = lzma2Props;
   // Implement the required interface for communication (written in C so no virtual methods).
   struct XzCallbacks : public ISeqInStream, public ISeqOutStream, public ICompressProgress {
-    static SRes ReadImpl(void* p, void* buf, size_t* size) {
-      auto* ctx = static_cast<XzCallbacks*>(reinterpret_cast<ISeqInStream*>(p));
+    static SRes ReadImpl(const ISeqInStream* p, void* buf, size_t* size) {
+      auto* ctx = static_cast<XzCallbacks*>(const_cast<ISeqInStream*>(p));
       *size = std::min(*size, ctx->src_->size() - ctx->src_pos_);
       memcpy(buf, ctx->src_->data() + ctx->src_pos_, *size);
       ctx->src_pos_ += *size;
       return SZ_OK;
     }
-    static size_t WriteImpl(void* p, const void* buf, size_t size) {
-      auto* ctx = static_cast<XzCallbacks*>(reinterpret_cast<ISeqOutStream*>(p));
+    static size_t WriteImpl(const ISeqOutStream* p, const void* buf, size_t size) {
+      auto* ctx = static_cast<const XzCallbacks*>(p);
       const uint8_t* buffer = reinterpret_cast<const uint8_t*>(buf);
       ctx->dst_->insert(ctx->dst_->end(), buffer, buffer + size);
       return size;
     }
-    static SRes ProgressImpl(void* , UInt64, UInt64) {
+    static SRes ProgressImpl(const ICompressProgress* , UInt64, UInt64) {
       return SZ_OK;
     }
     size_t src_pos_;
@@ -113,4 +113,3 @@ static std::vector<uint8_t> MakeMiniDebugInfoInternal(
 }  // namespace art
 
 #endif  // ART_COMPILER_DEBUG_ELF_GNU_DEBUGDATA_WRITER_H_
-
