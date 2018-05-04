@@ -252,12 +252,6 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
       .Define("-Xstackdumplockprofthreshold:_")
           .WithType<unsigned int>()
           .IntoKey(M::StackDumpLockProfThreshold)
-      .Define("-Xusetombstonedtraces")
-          .WithValue(true)
-          .IntoKey(M::UseTombstonedTraces)
-      .Define("-Xstacktracefile:_")
-          .WithType<std::string>()
-          .IntoKey(M::StackTraceFile)
       .Define("-Xmethod-trace")
           .IntoKey(M::MethodTrace)
       .Define("-Xmethod-trace-file:_")
@@ -699,7 +693,6 @@ void ParsedOptions::Usage(const char* fmt, ...) {
   UsageMessage(stream, "The following Dalvik options are supported:\n");
   UsageMessage(stream, "  -Xzygote\n");
   UsageMessage(stream, "  -Xjnitrace:substring (eg NativeClass or nativeMethod)\n");
-  UsageMessage(stream, "  -Xstacktracefile:<filename>\n");
   UsageMessage(stream, "  -Xgc:[no]preverify\n");
   UsageMessage(stream, "  -Xgc:[no]postverify\n");
   UsageMessage(stream, "  -XX:HeapGrowthLimit=N\n");

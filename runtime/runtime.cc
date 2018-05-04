@@ -232,7 +232,6 @@ Runtime::Runtime()
       intern_table_(nullptr),
       class_linker_(nullptr),
       signal_catcher_(nullptr),
-      use_tombstoned_traces_(false),
       java_vm_(nullptr),
       fault_message_lock_("Fault message lock"),
       fault_message_(""),
@@ -905,7 +904,7 @@ void Runtime::InitNonZygoteOrPostFork(
 
 void Runtime::StartSignalCatcher() {
   if (!is_zygote_) {
-    signal_catcher_ = new SignalCatcher(stack_trace_file_, use_tombstoned_traces_);
+    signal_catcher_ = new SignalCatcher();
   }
 }
 
@@ -1153,12 +1152,6 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   abort_ = runtime_options.GetOrDefault(Opt::HookAbort);
 
   default_stack_size_ = runtime_options.GetOrDefault(Opt::StackSize);
-  use_tombstoned_traces_ = runtime_options.GetOrDefault(Opt::UseTombstonedTraces);
-#if !defined(ART_TARGET_ANDROID)
-  CHECK(!use_tombstoned_traces_)
-      << "-Xusetombstonedtraces is only supported in an Android environment";
-#endif
-  stack_trace_file_ = runtime_options.ReleaseOrDefault(Opt::StackTraceFile);
 
   compiler_executable_ = runtime_options.ReleaseOrDefault(Opt::Compiler);
   compiler_options_ = runtime_options.ReleaseOrDefault(Opt::CompilerOptions);
