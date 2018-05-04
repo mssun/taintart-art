@@ -68,6 +68,7 @@ template<class T> class ObjectArray;
 namespace jit {
 
 class JitInstrumentationCache;
+class ScopedCodeCacheWrite;
 
 // Alignment in bits that will suit all architectures.
 static constexpr int kJitCodeAlignment = 16;
@@ -88,6 +89,7 @@ class JitCodeCache {
   static JitCodeCache* Create(size_t initial_capacity,
                               size_t max_capacity,
                               bool generate_debug_info,
+                              bool used_only_for_profile_data,
                               std::string* error_msg);
   ~JitCodeCache();
 
@@ -270,7 +272,8 @@ class JitCodeCache {
                size_t initial_code_capacity,
                size_t initial_data_capacity,
                size_t max_capacity,
-               bool garbage_collect_code);
+               bool garbage_collect_code,
+               int memmap_flags_prot_code);
 
   // Internal version of 'CommitCode' that will not retry if the
   // allocation fails. Return null if the allocation fails.
@@ -442,7 +445,12 @@ class JitCodeCache {
   // Condition to wait on for accessing inline caches.
   ConditionVariable inline_cache_cond_ GUARDED_BY(lock_);
 
+  // Mapping flags for the code section.
+  const int memmap_flags_prot_code_;
+
   friend class art::JitJniStubTestHelper;
+  friend class ScopedCodeCacheWrite;
+
   DISALLOW_IMPLICIT_CONSTRUCTORS(JitCodeCache);
 };
 
