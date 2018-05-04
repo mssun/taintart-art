@@ -1057,18 +1057,12 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     }
     if (method == nullptr || i < stored_index) {
       if (last_class != nullptr) {
-        const char* name = dex_file.StringDataByIdx(method_id.name_idx_);
-        Signature signature = dex_file.GetMethodSignature(method_id);
-        if (last_class->IsInterface()) {
-          method = last_class->FindInterfaceMethod(name, signature, target_ptr_size_);
-        } else {
-          method = last_class->FindClassMethod(name, signature, target_ptr_size_);
-        }
-        if (method != nullptr) {
-          // If the referenced class is in the image, the defining class must also be there.
-          DCHECK(KeepClass(method->GetDeclaringClass()));
-          dex_cache->SetResolvedMethod(i, method, target_ptr_size_);
-        }
+        // Try to resolve the method with the class linker, which will insert
+        // it into the dex cache if successful.
+        method = class_linker->FindResolvedMethod(last_class, dex_cache, class_loader, i);
+        // If the referenced class is in the image, the defining class must also be there.
+        DCHECK(method == nullptr || KeepClass(method->GetDeclaringClass()));
+        DCHECK(method == nullptr || dex_cache->GetResolvedMethod(i, target_ptr_size_) == method);
       }
     } else {
       DCHECK_EQ(i, stored_index);
@@ -1102,14 +1096,10 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     }
     if (field == nullptr || i < stored_index) {
       if (last_class != nullptr) {
-        const char* name = dex_file.StringDataByIdx(field_id.name_idx_);
-        const char* type = dex_file.StringByTypeIdx(field_id.type_idx_);
-        field = mirror::Class::FindField(Thread::Current(), last_class, name, type);
-        if (field != nullptr) {
-          // If the referenced class is in the image, the defining class must also be there.
-          DCHECK(KeepClass(field->GetDeclaringClass()));
-          dex_cache->SetResolvedField(i, field, target_ptr_size_);
-        }
+        field = class_linker->FindResolvedFieldJLS(last_class, dex_cache, class_loader, i);
+        // If the referenced class is in the image, the defining class must also be there.
+        DCHECK(field == nullptr || KeepClass(field->GetDeclaringClass()));
+        DCHECK(field == nullptr || dex_cache->GetResolvedField(i, target_ptr_size_) == field);
       }
     } else {
       DCHECK_EQ(i, stored_index);
@@ -1198,7 +1188,9 @@ void ImageWriter::PruneNonImageClasses() {
     }
   }
   for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
-    PruneAndPreloadDexCache(dex_cache, class_loader);
+    // Pass the class loader associated with the DexCache. This can either be
+    // the app's `class_loader` or `nullptr` if boot class loader.
+    PruneAndPreloadDexCache(dex_cache, IsInBootImage(dex_cache.Ptr()) ? nullptr : class_loader);
   }
 
   // Drop the array class cache in the ClassLinker, as these are roots holding those classes live.
