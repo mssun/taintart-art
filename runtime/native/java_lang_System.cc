@@ -20,7 +20,7 @@
 
 #include "common_throws.h"
 #include "gc/accounting/card_table-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/array.h"
 #include "mirror/class-inl.h"
 #include "mirror/class.h"

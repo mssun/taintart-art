@@ -24,7 +24,7 @@
 #include "common_runtime_test.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "imt_conflict_table.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "linear_alloc.h"
 #include "mirror/class-inl.h"
 #include "mirror/string-inl.h"

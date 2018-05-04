@@ -31,7 +31,7 @@
 #include "imt_conflict_table.h"
 #include "imtable-inl.h"
 #include "indirect_reference_table.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/array.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"

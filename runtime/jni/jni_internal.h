@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_JNI_INTERNAL_H_
-#define ART_RUNTIME_JNI_INTERNAL_H_
+#ifndef ART_RUNTIME_JNI_JNI_INTERNAL_H_
+#define ART_RUNTIME_JNI_JNI_INTERNAL_H_
 
 #include <jni.h>
 #include <iosfwd>
@@ -59,4 +59,4 @@ static inline ArtMethod* DecodeArtMethod(jmethodID method_id) {
 
 std::ostream& operator<<(std::ostream& os, const jobjectRefType& rhs);
 
-#endif  // ART_RUNTIME_JNI_INTERNAL_H_
+#endif  // ART_RUNTIME_JNI_JNI_INTERNAL_H_

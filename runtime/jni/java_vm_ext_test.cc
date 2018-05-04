@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 
 #include <pthread.h>
 

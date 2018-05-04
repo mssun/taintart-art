@@ -36,7 +36,7 @@
 #include "base/enums.h"
 #include "dex/dex_file_annotations.h"
 #include "dex/modifiers.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/object_array-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"

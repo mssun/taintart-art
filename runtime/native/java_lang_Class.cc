@@ -28,7 +28,7 @@
 #include "dex/dex_file_annotations.h"
 #include "dex/utf.h"
 #include "hidden_api.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/field-inl.h"

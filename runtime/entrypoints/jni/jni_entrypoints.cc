@@ -18,7 +18,7 @@
 
 #include "art_method-inl.h"
 #include "entrypoints/entrypoint_utils.h"
-#include "java_vm_ext.h"
+#include "jni/java_vm_ext.h"
 #include "mirror/object-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"

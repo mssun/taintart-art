@@ -40,7 +40,7 @@
 #include "gc/heap.h"
 #include "gc/reference_processor.h"
 #include "gc_root.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "lock_word.h"
 #include "monitor.h"
 #include "native_stack_dump.h"

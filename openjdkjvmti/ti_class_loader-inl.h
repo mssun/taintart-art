@@ -36,7 +36,7 @@
 #include "art_field-inl.h"
 #include "handle.h"
 #include "handle_scope.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/object.h"
 #include "mirror/object_array-inl.h"
 #include "well_known_classes.h"

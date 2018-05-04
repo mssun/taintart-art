@@ -19,7 +19,7 @@
 #include "nativehelper/jni_macros.h"
 
 #include "common_throws.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/array.h"
 #include "mirror/object-inl.h"
 #include "mirror/string-inl.h"
