@@ -299,10 +299,17 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
    public:
     Region()
         : idx_(static_cast<size_t>(-1)),
-          begin_(nullptr), top_(nullptr), end_(nullptr),
-          state_(RegionState::kRegionStateAllocated), type_(RegionType::kRegionTypeToSpace),
-          objects_allocated_(0), alloc_time_(0), live_bytes_(static_cast<size_t>(-1)),
-          is_newly_allocated_(false), is_a_tlab_(false), thread_(nullptr) {}
+          live_bytes_(static_cast<size_t>(-1)),
+          begin_(nullptr),
+          thread_(nullptr),
+          top_(nullptr),
+          end_(nullptr),
+          objects_allocated_(0),
+          alloc_time_(0),
+          is_newly_allocated_(false),
+          is_a_tlab_(false),
+          state_(RegionState::kRegionStateAllocated),
+          type_(RegionType::kRegionTypeToSpace) {}
 
     void Init(size_t idx, uint8_t* begin, uint8_t* end) {
       idx_ = idx;
@@ -496,22 +503,22 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
    private:
     size_t idx_;                        // The region's index in the region space.
+    size_t live_bytes_;                 // The live bytes. Used to compute the live percent.
     uint8_t* begin_;                    // The begin address of the region.
+    Thread* thread_;                    // The owning thread if it's a tlab.
     // Note that `top_` can be higher than `end_` in the case of a
     // large region, where an allocated object spans multiple regions
     // (large region + one or more large tail regions).
     Atomic<uint8_t*> top_;              // The current position of the allocation.
     uint8_t* end_;                      // The end address of the region.
-    RegionState state_;                 // The region state (see RegionState).
-    RegionType type_;                   // The region type (see RegionType).
     Atomic<size_t> objects_allocated_;  // The number of objects allocated.
     uint32_t alloc_time_;               // The allocation time of the region.
     // Note that newly allocated and evacuated regions use -1 as
     // special value for `live_bytes_`.
-    size_t live_bytes_;                 // The live bytes. Used to compute the live percent.
     bool is_newly_allocated_;           // True if it's allocated after the last collection.
     bool is_a_tlab_;                    // True if it's a tlab.
-    Thread* thread_;                    // The owning thread if it's a tlab.
+    RegionState state_;                 // The region state (see RegionState).
+    RegionType type_;                   // The region type (see RegionType).
 
     friend class RegionSpace;
   };
