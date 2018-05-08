@@ -294,6 +294,8 @@ art_cc_binary {
             use_clang_lld: true,
         },
     },
+    // b/79417743, oatdump 32-bit tests failed with clang lld
+    use_clang_lld: false,
     ldflags: [
         // We need this because GC stress mode makes use of
         // _Unwind_GetIP and _Unwind_Backtrace and the symbols are also
