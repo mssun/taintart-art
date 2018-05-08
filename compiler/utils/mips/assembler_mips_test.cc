@@ -43,6 +43,16 @@ class AssemblerMIPSTest : public AssemblerTest<mips::MipsAssembler,
                         mips::FRegister,
                         uint32_t> Base;
 
+  // These tests were taking too long, so we hide the DriverStr() from AssemblerTest<>
+  // and reimplement it without the verification against `assembly_string`. b/73903608
+  void DriverStr(const std::string& assembly_string ATTRIBUTE_UNUSED,
+                 const std::string& test_name ATTRIBUTE_UNUSED) {
+    GetAssembler()->FinalizeCode();
+    std::vector<uint8_t> data(GetAssembler()->CodeSize());
+    MemoryRegion code(data.data(), data.size());
+    GetAssembler()->FinalizeInstructions(code);
+  }
+
  protected:
   // Get the typically used name for this architecture, e.g., aarch64, x86-64, ...
   std::string GetArchitectureString() OVERRIDE {
