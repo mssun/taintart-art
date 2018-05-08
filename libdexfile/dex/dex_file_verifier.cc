@@ -1761,63 +1761,13 @@ bool DexFileVerifier::CheckIntraSectionIterate(size_t offset, uint32_t section_c
   return true;
 }
 
-bool DexFileVerifier::CheckIntraSectionIterateByType(size_t offset,
-                                                     uint32_t count,
-                                                     DexFile::MapItemType type) {
-  switch (type) {
-    case DexFile::kDexTypeHeaderItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeHeaderItem>(offset, count);
-    case DexFile::kDexTypeStringIdItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeStringIdItem>(offset, count);
-    case DexFile::kDexTypeTypeIdItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeTypeIdItem>(offset, count);
-    case DexFile::kDexTypeProtoIdItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeProtoIdItem>(offset, count);
-    case DexFile::kDexTypeFieldIdItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeFieldIdItem>(offset, count);
-    case DexFile::kDexTypeMethodIdItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeMethodIdItem>(offset, count);
-    case DexFile::kDexTypeClassDefItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeClassDefItem>(offset, count);
-    case DexFile::kDexTypeCallSiteIdItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeCallSiteIdItem>(offset, count);
-    case DexFile::kDexTypeMethodHandleItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeMethodHandleItem>(offset, count);
-    case DexFile::kDexTypeMapList:
-      return CheckIntraSectionIterate<DexFile::kDexTypeMapList>(offset, count);
-    case DexFile::kDexTypeTypeList:
-      return CheckIntraSectionIterate<DexFile::kDexTypeTypeList>(offset, count);
-    case DexFile::kDexTypeAnnotationSetRefList:
-      return CheckIntraSectionIterate<DexFile::kDexTypeAnnotationSetRefList>(offset, count);
-    case DexFile::kDexTypeAnnotationSetItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeAnnotationSetItem>(offset, count);
-    case DexFile::kDexTypeClassDataItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeClassDataItem>(offset, count);
-    case DexFile::kDexTypeCodeItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeCodeItem>(offset, count);
-    case DexFile::kDexTypeStringDataItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeStringDataItem>(offset, count);
-    case DexFile::kDexTypeDebugInfoItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeDebugInfoItem>(offset, count);
-    case DexFile::kDexTypeAnnotationItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeAnnotationItem>(offset, count);
-    case DexFile::kDexTypeEncodedArrayItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeEncodedArrayItem>(offset, count);
-    case DexFile::kDexTypeAnnotationsDirectoryItem:
-      return CheckIntraSectionIterate<DexFile::kDexTypeAnnotationsDirectoryItem>(offset, count);
-  }
-  LOG(FATAL) << "Unreachable";
-  UNREACHABLE();
-}
-
-bool DexFileVerifier::CheckIntraIdSection(size_t offset,
-                                          uint32_t count,
-                                          DexFile::MapItemType type) {
+template <DexFile::MapItemType kType>
+bool DexFileVerifier::CheckIntraIdSection(size_t offset, uint32_t count) {
   uint32_t expected_offset;
   uint32_t expected_size;
 
   // Get the expected offset and size from the header.
-  switch (type) {
+  switch (kType) {
     case DexFile::kDexTypeStringIdItem:
       expected_offset = header_->string_ids_off_;
       expected_size = header_->string_ids_size_;
@@ -1843,7 +1793,7 @@ bool DexFileVerifier::CheckIntraIdSection(size_t offset,
       expected_size = header_->class_defs_size_;
       break;
     default:
-      ErrorStringPrintf("Bad type for id section: %x", type);
+      ErrorStringPrintf("Bad type for id section: %x", kType);
       return false;
   }
 
@@ -1857,7 +1807,7 @@ bool DexFileVerifier::CheckIntraIdSection(size_t offset,
     return false;
   }
 
-  return CheckIntraSectionIterateByType(offset, count, type);
+  return CheckIntraSectionIterate<kType>(offset, count);
 }
 
 template <DexFile::MapItemType kType>
@@ -1888,7 +1838,8 @@ bool DexFileVerifier::CheckIntraDataSection(size_t offset, uint32_t count) {
 }
 
 bool DexFileVerifier::CheckIntraSection() {
-  const DexFile::MapList* map = reinterpret_cast<const DexFile::MapList*>(begin_ + header_->map_off_);
+  const DexFile::MapList* map =
+      reinterpret_cast<const DexFile::MapList*>(begin_ + header_->map_off_);
   const DexFile::MapItem* item = map->list_;
   size_t offset = 0;
   uint32_t count = map->size_;
@@ -1927,17 +1878,22 @@ bool DexFileVerifier::CheckIntraSection() {
         ptr_ = begin_ + header_->header_size_;
         offset = header_->header_size_;
         break;
-      case DexFile::kDexTypeStringIdItem:
-      case DexFile::kDexTypeTypeIdItem:
-      case DexFile::kDexTypeProtoIdItem:
-      case DexFile::kDexTypeFieldIdItem:
-      case DexFile::kDexTypeMethodIdItem:
-      case DexFile::kDexTypeClassDefItem:
-        if (!CheckIntraIdSection(section_offset, section_count, type)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
+
+#define CHECK_INTRA_ID_SECTION_CASE(type)                                   \
+      case type:                                                            \
+        if (!CheckIntraIdSection<type>(section_offset, section_count)) {    \
+          return false;                                                     \
+        }                                                                   \
+        offset = ptr_ - begin_;                                             \
         break;
+      CHECK_INTRA_ID_SECTION_CASE(DexFile::kDexTypeStringIdItem)
+      CHECK_INTRA_ID_SECTION_CASE(DexFile::kDexTypeTypeIdItem)
+      CHECK_INTRA_ID_SECTION_CASE(DexFile::kDexTypeProtoIdItem)
+      CHECK_INTRA_ID_SECTION_CASE(DexFile::kDexTypeFieldIdItem)
+      CHECK_INTRA_ID_SECTION_CASE(DexFile::kDexTypeMethodIdItem)
+      CHECK_INTRA_ID_SECTION_CASE(DexFile::kDexTypeClassDefItem)
+#undef CHECK_INTRA_ID_SECTION_CASE
+
       case DexFile::kDexTypeMapList:
         if (UNLIKELY(section_count != 1)) {
           ErrorStringPrintf("Multiple map list items");
@@ -1951,80 +1907,34 @@ bool DexFileVerifier::CheckIntraSection() {
         ptr_ += sizeof(uint32_t) + (map->size_ * sizeof(DexFile::MapItem));
         offset = section_offset + sizeof(uint32_t) + (map->size_ * sizeof(DexFile::MapItem));
         break;
-      case DexFile::kDexTypeMethodHandleItem:
-        CheckIntraSectionIterate<DexFile::kDexTypeMethodHandleItem>(section_offset, section_count);
-        offset = ptr_ - begin_;
+
+#define CHECK_INTRA_SECTION_ITERATE_CASE(type)                              \
+      case type:                                                            \
+        CheckIntraSectionIterate<type>(section_offset, section_count);      \
+        offset = ptr_ - begin_;                                             \
         break;
-      case DexFile::kDexTypeCallSiteIdItem:
-        CheckIntraSectionIterate<DexFile::kDexTypeCallSiteIdItem>(section_offset, section_count);
-        offset = ptr_ - begin_;
+      CHECK_INTRA_SECTION_ITERATE_CASE(DexFile::kDexTypeMethodHandleItem)
+      CHECK_INTRA_SECTION_ITERATE_CASE(DexFile::kDexTypeCallSiteIdItem)
+#undef CHECK_INTRA_SECTION_ITERATE_CASE
+
+#define CHECK_INTRA_DATA_SECTION_CASE(type)                                 \
+      case type:                                                            \
+        if (!CheckIntraDataSection<type>(section_offset, section_count)) {  \
+          return false;                                                     \
+        }                                                                   \
+        offset = ptr_ - begin_;                                             \
         break;
-      case DexFile::kDexTypeTypeList:
-        if (!CheckIntraDataSection<DexFile::kDexTypeTypeList>(section_offset, section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeAnnotationSetRefList:
-        if (!CheckIntraDataSection<DexFile::kDexTypeAnnotationSetRefList>(section_offset,
-                                                                          section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeAnnotationSetItem:
-        if (!CheckIntraDataSection<DexFile::kDexTypeAnnotationSetItem>(section_offset,
-                                                                       section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeClassDataItem:
-        if (!CheckIntraDataSection<DexFile::kDexTypeClassDataItem>(section_offset, section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeCodeItem:
-        if (!CheckIntraDataSection<DexFile::kDexTypeCodeItem>(section_offset, section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeStringDataItem:
-        if (!CheckIntraDataSection<DexFile::kDexTypeStringDataItem>(section_offset,
-                                                                    section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeDebugInfoItem:
-        if (!CheckIntraDataSection<DexFile::kDexTypeDebugInfoItem>(section_offset, section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeAnnotationItem:
-        if (!CheckIntraDataSection<DexFile::kDexTypeAnnotationItem>(section_offset,
-                                                                    section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeEncodedArrayItem:
-        if (!CheckIntraDataSection<DexFile::kDexTypeEncodedArrayItem>(section_offset,
-                                                                      section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
-      case DexFile::kDexTypeAnnotationsDirectoryItem:
-        if (!CheckIntraDataSection<DexFile::kDexTypeAnnotationsDirectoryItem>(section_offset,
-                                                                              section_count)) {
-          return false;
-        }
-        offset = ptr_ - begin_;
-        break;
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeTypeList)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeAnnotationSetRefList)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeAnnotationSetItem)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeClassDataItem)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeCodeItem)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeStringDataItem)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeDebugInfoItem)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeAnnotationItem)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeEncodedArrayItem)
+      CHECK_INTRA_DATA_SECTION_CASE(DexFile::kDexTypeAnnotationsDirectoryItem)
+#undef CHECK_INTRA_DATA_SECTION_CASE
     }
 
     if (offset == current_offset) {

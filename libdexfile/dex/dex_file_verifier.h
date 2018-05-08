@@ -126,8 +126,8 @@ class DexFileVerifier {
 
   template <DexFile::MapItemType kType>
   bool CheckIntraSectionIterate(size_t offset, uint32_t count);
-  bool CheckIntraSectionIterateByType(size_t offset, uint32_t count, DexFile::MapItemType type);
-  bool CheckIntraIdSection(size_t offset, uint32_t count, DexFile::MapItemType type);
+  template <DexFile::MapItemType kType>
+  bool CheckIntraIdSection(size_t offset, uint32_t count);
   template <DexFile::MapItemType kType>
   bool CheckIntraDataSection(size_t offset, uint32_t count);
   bool CheckIntraSection();
