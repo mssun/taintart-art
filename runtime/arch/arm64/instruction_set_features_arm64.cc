@@ -52,6 +52,8 @@ Arm64FeaturesUniquePtr Arm64InstructionSetFeatures::FromVariant(
     // Check to see if this is an expected variant.
     static const char* arm64_known_variants[] = {
         "cortex-a35",
+        "cortex-a55",
+        "cortex-a75",
         "exynos-m1",
         "exynos-m2",
         "exynos-m3",
