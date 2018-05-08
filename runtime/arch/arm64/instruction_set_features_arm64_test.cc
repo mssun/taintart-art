@@ -64,6 +64,26 @@ TEST(Arm64InstructionSetFeaturesTest, Arm64Features) {
   EXPECT_FALSE(kryo_features->Equals(cortex_a57_features.get()));
   EXPECT_STREQ("-a53", kryo_features->GetFeatureString().c_str());
   EXPECT_EQ(kryo_features->AsBitmap(), 0U);
+
+  std::unique_ptr<const InstructionSetFeatures> cortex_a55_features(
+      InstructionSetFeatures::FromVariant(InstructionSet::kArm64, "cortex-a55", &error_msg));
+  ASSERT_TRUE(cortex_a55_features.get() != nullptr) << error_msg;
+  EXPECT_EQ(cortex_a55_features->GetInstructionSet(), InstructionSet::kArm64);
+  EXPECT_TRUE(cortex_a55_features->Equals(cortex_a55_features.get()));
+  EXPECT_TRUE(cortex_a55_features->Equals(cortex_a35_features.get()));
+  EXPECT_FALSE(cortex_a55_features->Equals(cortex_a57_features.get()));
+  EXPECT_STREQ("-a53", cortex_a55_features->GetFeatureString().c_str());
+  EXPECT_EQ(cortex_a55_features->AsBitmap(), 0U);
+
+  std::unique_ptr<const InstructionSetFeatures> cortex_a75_features(
+      InstructionSetFeatures::FromVariant(InstructionSet::kArm64, "cortex-a75", &error_msg));
+  ASSERT_TRUE(cortex_a75_features.get() != nullptr) << error_msg;
+  EXPECT_EQ(cortex_a75_features->GetInstructionSet(), InstructionSet::kArm64);
+  EXPECT_TRUE(cortex_a75_features->Equals(cortex_a75_features.get()));
+  EXPECT_TRUE(cortex_a75_features->Equals(cortex_a35_features.get()));
+  EXPECT_FALSE(cortex_a75_features->Equals(cortex_a57_features.get()));
+  EXPECT_STREQ("-a53", cortex_a75_features->GetFeatureString().c_str());
+  EXPECT_EQ(cortex_a75_features->AsBitmap(), 0U);
 }
 
 }  // namespace art
