@@ -132,27 +132,27 @@ class ProfilingInfo {
  private:
   ProfilingInfo(ArtMethod* method, const std::vector<uint32_t>& entries);
 
-  // Number of instructions we are profiling in the ArtMethod.
-  const uint32_t number_of_inline_caches_;
-
   // Method this profiling info is for.
   // Not 'const' as JVMTI introduces obsolete methods that we implement by creating new ArtMethods.
   // See JitCodeCache::MoveObsoleteMethod.
   ArtMethod* method_;
+
+  // Entry point of the corresponding ArtMethod, while the JIT code cache
+  // is poking for the liveness of compiled code.
+  const void* saved_entry_point_;
+
+  // Number of instructions we are profiling in the ArtMethod.
+  const uint32_t number_of_inline_caches_;
+
+  // When the compiler inlines the method associated to this ProfilingInfo,
+  // it updates this counter so that the GC does not try to clear the inline caches.
+  uint16_t current_inline_uses_;
 
   // Whether the ArtMethod is currently being compiled. This flag
   // is implicitly guarded by the JIT code cache lock.
   // TODO: Make the JIT code cache lock global.
   bool is_method_being_compiled_;
   bool is_osr_method_being_compiled_;
-
-  // When the compiler inlines the method associated to this ProfilingInfo,
-  // it updates this counter so that the GC does not try to clear the inline caches.
-  uint16_t current_inline_uses_;
-
-  // Entry point of the corresponding ArtMethod, while the JIT code cache
-  // is poking for the liveness of compiled code.
-  const void* saved_entry_point_;
 
   // Dynamically allocated array of size `number_of_inline_caches_`.
   InlineCache cache_[0];
