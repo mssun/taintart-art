@@ -48,6 +48,16 @@ class AssemblerMIPS64Test : public AssemblerTest<mips64::Mips64Assembler,
                         uint32_t,
                         mips64::VectorRegister> Base;
 
+  // These tests were taking too long, so we hide the DriverStr() from AssemblerTest<>
+  // and reimplement it without the verification against `assembly_string`. b/73903608
+  void DriverStr(const std::string& assembly_string ATTRIBUTE_UNUSED,
+                 const std::string& test_name ATTRIBUTE_UNUSED) {
+    GetAssembler()->FinalizeCode();
+    std::vector<uint8_t> data(GetAssembler()->CodeSize());
+    MemoryRegion code(data.data(), data.size());
+    GetAssembler()->FinalizeInstructions(code);
+  }
+
   AssemblerMIPS64Test()
       : instruction_set_features_(Mips64InstructionSetFeatures::FromVariant("default", nullptr)) {}
 
