@@ -195,8 +195,8 @@ class ScopedContentionRecorder FINAL : public ValueObject {
 };
 
 BaseMutex::BaseMutex(const char* name, LockLevel level)
-    : level_(level),
-      name_(name),
+    : name_(name),
+      level_(level),
       should_respond_to_empty_checkpoint_request_(false) {
   if (kLogLockContentions) {
     ScopedAllMutexesLock mu(this);
@@ -386,7 +386,7 @@ void BaseMutex::DumpContention(std::ostream& os) const {
 
 
 Mutex::Mutex(const char* name, LockLevel level, bool recursive)
-    : BaseMutex(name, level), exclusive_owner_(0), recursive_(recursive), recursion_count_(0) {
+    : BaseMutex(name, level), exclusive_owner_(0), recursion_count_(0), recursive_(recursive) {
 #if ART_USE_FUTEXES
   DCHECK_EQ(0, state_.load(std::memory_order_relaxed));
   DCHECK_EQ(0, num_contenders_.load(std::memory_order_relaxed));
