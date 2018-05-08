@@ -89,14 +89,14 @@ class HX86FPNeg FINAL : public HExpression<2> {
 };
 
 // X86 version of HPackedSwitch that holds a pointer to the base method address.
-class HX86PackedSwitch FINAL : public HTemplateInstruction<2> {
+class HX86PackedSwitch FINAL : public HExpression<2> {
  public:
   HX86PackedSwitch(int32_t start_value,
                    int32_t num_entries,
                    HInstruction* input,
                    HX86ComputeBaseMethodAddress* method_base,
                    uint32_t dex_pc)
-    : HTemplateInstruction(kX86PackedSwitch, SideEffects::None(), dex_pc),
+    : HExpression(kX86PackedSwitch, SideEffects::None(), dex_pc),
       start_value_(start_value),
       num_entries_(num_entries) {
     SetRawInputAt(0, input);

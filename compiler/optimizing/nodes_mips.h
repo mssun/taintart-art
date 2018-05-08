@@ -39,14 +39,14 @@ class HMipsComputeBaseMethodAddress : public HExpression<0> {
 };
 
 // Mips version of HPackedSwitch that holds a pointer to the base method address.
-class HMipsPackedSwitch FINAL : public HTemplateInstruction<2> {
+class HMipsPackedSwitch FINAL : public HExpression<2> {
  public:
   HMipsPackedSwitch(int32_t start_value,
                     int32_t num_entries,
                     HInstruction* input,
                     HMipsComputeBaseMethodAddress* method_base,
                     uint32_t dex_pc)
-    : HTemplateInstruction(kMipsPackedSwitch, SideEffects::None(), dex_pc),
+    : HExpression(kMipsPackedSwitch, SideEffects::None(), dex_pc),
       start_value_(start_value),
       num_entries_(num_entries) {
     SetRawInputAt(0, input);

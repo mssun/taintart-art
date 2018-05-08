@@ -79,13 +79,14 @@ class HVecOperation : public HVariableInputSizeInstruction {
                 size_t vector_length,
                 uint32_t dex_pc)
       : HVariableInputSizeInstruction(kind,
+                                      kSIMDType,
                                       side_effects,
                                       dex_pc,
                                       allocator,
                                       number_of_inputs,
                                       kArenaAllocVectorNode),
         vector_length_(vector_length) {
-    SetPackedField<TypeField>(packed_type);
+    SetPackedField<PackedTypeField>(packed_type);
     DCHECK_LT(1u, vector_length);
   }
 
@@ -99,14 +100,9 @@ class HVecOperation : public HVariableInputSizeInstruction {
     return vector_length_ * DataType::Size(GetPackedType());
   }
 
-  // Returns the type of the vector operation.
-  DataType::Type GetType() const OVERRIDE {
-    return kSIMDType;
-  }
-
   // Returns the true component type packed in a vector.
   DataType::Type GetPackedType() const {
-    return GetPackedField<TypeField>();
+    return GetPackedField<PackedTypeField>();
   }
 
   // Assumes vector nodes cannot be moved by default. Each concrete implementation
@@ -185,12 +181,12 @@ class HVecOperation : public HVariableInputSizeInstruction {
 
  protected:
   // Additional packed bits.
-  static constexpr size_t kFieldType = HInstruction::kNumberOfGenericPackedBits;
-  static constexpr size_t kFieldTypeSize =
+  static constexpr size_t kFieldPackedType = HInstruction::kNumberOfGenericPackedBits;
+  static constexpr size_t kFieldPackedTypeSize =
       MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
-  static constexpr size_t kNumberOfVectorOpPackedBits = kFieldType + kFieldTypeSize;
+  static constexpr size_t kNumberOfVectorOpPackedBits = kFieldPackedType + kFieldPackedTypeSize;
   static_assert(kNumberOfVectorOpPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
-  using TypeField = BitField<DataType::Type, kFieldType, kFieldTypeSize>;
+  using PackedTypeField = BitField<DataType::Type, kFieldPackedType, kFieldPackedTypeSize>;
 
   DEFAULT_COPY_CONSTRUCTOR(VecOperation);
 
@@ -358,11 +354,9 @@ class HVecExtractScalar FINAL : public HVecUnaryOperation {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
     DCHECK_LT(index, vector_length);
     DCHECK_EQ(index, 0u);
-  }
-
-  // Yields a single component in the vector.
-  DataType::Type GetType() const OVERRIDE {
-    return GetPackedType();
+    // Yields a single component in the vector.
+    // Overrides the kSIMDType set by the VecOperation constructor.
+    SetPackedField<TypeField>(packed_type);
   }
 
   // An extract needs to stay in place, since SIMD registers are not
