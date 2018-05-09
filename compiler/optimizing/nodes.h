@@ -1534,10 +1534,7 @@ FOR_EACH_INSTRUCTION(FORWARD_DECLARATION)
 #define DECLARE_ABSTRACT_INSTRUCTION(type)                              \
   private:                                                              \
   H##type& operator=(const H##type&) = delete;                          \
-  public:                                                               \
-  bool Is##type() const { return As##type() != nullptr; }               \
-  const H##type* As##type() const { return this; }                      \
-  H##type* As##type() { return this; }
+  public:
 
 #define DEFAULT_COPY_CONSTRUCTOR(type)                                  \
   explicit H##type(const H##type& other) = default;
@@ -2231,19 +2228,17 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   void MoveBeforeFirstUserAndOutOfLoops();
 
 #define INSTRUCTION_TYPE_CHECK(type, super)                                    \
-  bool Is##type() const;                                                       \
+  bool Is##type() const;
+
+  FOR_EACH_INSTRUCTION(INSTRUCTION_TYPE_CHECK)
+#undef INSTRUCTION_TYPE_CHECK
+
+#define INSTRUCTION_TYPE_CAST(type, super)                                     \
   const H##type* As##type() const;                                             \
   H##type* As##type();
 
-  FOR_EACH_CONCRETE_INSTRUCTION(INSTRUCTION_TYPE_CHECK)
-#undef INSTRUCTION_TYPE_CHECK
-
-#define INSTRUCTION_TYPE_CHECK(type, super)                                    \
-  bool Is##type() const { return (As##type() != nullptr); }                    \
-  virtual const H##type* As##type() const { return nullptr; }                  \
-  virtual H##type* As##type() { return nullptr; }
-  FOR_EACH_ABSTRACT_INSTRUCTION(INSTRUCTION_TYPE_CHECK)
-#undef INSTRUCTION_TYPE_CHECK
+  FOR_EACH_INSTRUCTION(INSTRUCTION_TYPE_CAST)
+#undef INSTRUCTION_TYPE_CAST
 
   // Return a clone of the instruction if it is clonable (shallow copy by default, custom copy
   // if a custom copy-constructor is provided for a particular type). If IsClonable() is false for
@@ -7753,7 +7748,27 @@ inline bool IsZeroBitPattern(HInstruction* instruction) {
 }
 
 #define INSTRUCTION_TYPE_CHECK(type, super)                                    \
-  inline bool HInstruction::Is##type() const { return GetKind() == k##type; }  \
+  inline bool HInstruction::Is##type() const { return GetKind() == k##type; }
+  FOR_EACH_CONCRETE_INSTRUCTION(INSTRUCTION_TYPE_CHECK)
+#undef INSTRUCTION_TYPE_CHECK
+
+#define INSTRUCTION_TYPE_CHECK_RESULT(type, super)                             \
+  std::is_base_of<BaseType, H##type>::value,
+#define INSTRUCTION_TYPE_CHECK(type, super)                                    \
+  inline bool HInstruction::Is##type() const {                                 \
+    DCHECK_LT(GetKind(), kLastInstructionKind);                                \
+    using BaseType = H##type;                                                  \
+    static constexpr bool results[] = {                                        \
+        FOR_EACH_CONCRETE_INSTRUCTION(INSTRUCTION_TYPE_CHECK_RESULT)           \
+    };                                                                         \
+    return results[static_cast<size_t>(GetKind())];                            \
+  }
+
+  FOR_EACH_ABSTRACT_INSTRUCTION(INSTRUCTION_TYPE_CHECK)
+#undef INSTRUCTION_TYPE_CHECK
+#undef INSTRUCTION_TYPE_CHECK_CASE
+
+#define INSTRUCTION_TYPE_CAST(type, super)                                     \
   inline const H##type* HInstruction::As##type() const {                       \
     return Is##type() ? down_cast<const H##type*>(this) : nullptr;             \
   }                                                                            \
@@ -7761,8 +7776,9 @@ inline bool IsZeroBitPattern(HInstruction* instruction) {
     return Is##type() ? static_cast<H##type*>(this) : nullptr;                 \
   }
 
-  FOR_EACH_CONCRETE_INSTRUCTION(INSTRUCTION_TYPE_CHECK)
-#undef INSTRUCTION_TYPE_CHECK
+  FOR_EACH_INSTRUCTION(INSTRUCTION_TYPE_CAST)
+#undef INSTRUCTION_TYPE_CAST
+
 
 // Create space in `blocks` for adding `number_of_new_blocks` entries
 // starting at location `at`. Blocks after `at` are moved accordingly.
