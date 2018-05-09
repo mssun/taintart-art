@@ -26,7 +26,7 @@
 #include "common_throws.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/field-inl.h"
 #include "native_util.h"

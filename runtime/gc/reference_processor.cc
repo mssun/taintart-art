@@ -19,7 +19,7 @@
 #include "base/time_utils.h"
 #include "base/utils.h"
 #include "collector/garbage_collector.h"
-#include "java_vm_ext.h"
+#include "jni/java_vm_ext.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/reference-inl.h"

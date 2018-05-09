@@ -43,7 +43,7 @@
 #include "base/logging.h"  // For gLogVerbosity.
 #include "base/mutex.h"
 #include "events-inl.h"
-#include "jni_env_ext-inl.h"
+#include "jni/jni_env_ext-inl.h"
 #include "obj_ptr-inl.h"
 #include "object_tagging.h"
 #include "runtime.h"

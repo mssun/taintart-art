@@ -41,7 +41,7 @@
 #include "dex/dex_file_annotations.h"
 #include "dex/modifiers.h"
 #include "events-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/object_array-inl.h"
 #include "nativehelper/scoped_local_ref.h"

@@ -22,7 +22,7 @@
 
 #include "art_method-inl.h"
 #include "gc/task_processor.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"

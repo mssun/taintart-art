@@ -37,7 +37,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "handle_scope-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
 #include "mirror/string.h"

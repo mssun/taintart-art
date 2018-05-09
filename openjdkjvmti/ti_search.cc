@@ -41,7 +41,7 @@
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/object.h"
 #include "mirror/string.h"

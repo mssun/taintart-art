@@ -45,7 +45,7 @@
 #include "dex/dex_file.h"
 #include "dex/utf.h"
 #include "gc_root-inl.h"
-#include "jni_env_ext-inl.h"
+#include "jni/jni_env_ext-inl.h"
 #include "jvmti.h"
 #include "linear_alloc.h"
 #include "mirror/array-inl.h"

@@ -19,7 +19,7 @@
 #include "nativehelper/jni_macros.h"
 
 #include "class_linker.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object_array.h"
 #include "mirror/string.h"

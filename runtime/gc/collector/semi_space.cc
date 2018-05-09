@@ -39,7 +39,7 @@
 #include "gc/space/space-inl.h"
 #include "indirect_reference_table.h"
 #include "intern_table.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mark_sweep-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object-refvisitor-inl.h"

@@ -44,7 +44,7 @@
 #include "events-inl.h"
 #include "gc_root-inl.h"
 #include "jit/jit.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"

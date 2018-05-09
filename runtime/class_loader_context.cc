@@ -25,7 +25,7 @@
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "handle_scope-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "oat_file_assistant.h"
 #include "obj_ptr-inl.h"
 #include "runtime.h"
