@@ -185,10 +185,12 @@ Jit* Jit::Create(JitOptions* options, std::string* error_msg) {
   if (jit_compiler_handle_ == nullptr && !LoadCompiler(error_msg)) {
     return nullptr;
   }
+  bool code_cache_only_for_profile_data = !options->UseJitCompilation();
   jit->code_cache_.reset(JitCodeCache::Create(
       options->GetCodeCacheInitialCapacity(),
       options->GetCodeCacheMaxCapacity(),
       jit->generate_debug_info_,
+      code_cache_only_for_profile_data,
       error_msg));
   if (jit->GetCodeCache() == nullptr) {
     return nullptr;
