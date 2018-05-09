@@ -85,6 +85,10 @@ inline bool ReadCompilerOptions(Base& map, CompilerOptions* options, std::string
     options->dump_timings_ = true;
   }
 
+  if (map.Exists(Base::DumpPassTimings)) {
+    options->dump_pass_timings_ = true;
+  }
+
   if (map.Exists(Base::DumpStats)) {
     options->dump_stats_ = true;
   }
@@ -145,6 +149,9 @@ inline void AddCompilerOptionsArgumentParserOptions(Builder& b) {
 
       .Define({"--dump-timings"})
           .IntoKey(Map::DumpTimings)
+
+      .Define({"--dump-pass-timings"})
+          .IntoKey(Map::DumpPassTimings)
 
       .Define({"--dump-stats"})
           .IntoKey(Map::DumpStats)
