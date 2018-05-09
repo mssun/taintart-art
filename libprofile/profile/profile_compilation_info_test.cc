@@ -1339,4 +1339,33 @@ TEST_F(ProfileCompilationInfoTest, FilteredLoadingWithClasses) {
   ASSERT_TRUE(loaded_info.Equals(expected_info));
 }
 
+
+TEST_F(ProfileCompilationInfoTest, ClearData) {
+  ProfileCompilationInfo info;
+  for (uint16_t i = 0; i < 10; i++) {
+    ASSERT_TRUE(AddMethod("dex_location1", /* checksum */ 1, /* method_idx */ i, &info));
+  }
+  ASSERT_FALSE(IsEmpty(info));
+  info.ClearData();
+  ASSERT_TRUE(IsEmpty(info));
+}
+
+TEST_F(ProfileCompilationInfoTest, ClearDataAndSave) {
+  ProfileCompilationInfo info;
+  for (uint16_t i = 0; i < 10; i++) {
+    ASSERT_TRUE(AddMethod("dex_location1", /* checksum */ 1, /* method_idx */ i, &info));
+  }
+  info.ClearData();
+
+  ScratchFile profile;
+  ASSERT_TRUE(info.Save(GetFd(profile)));
+  ASSERT_EQ(0, profile.GetFile()->Flush());
+
+  // Check that we get back what we saved.
+  ProfileCompilationInfo loaded_info;
+  ASSERT_TRUE(profile.GetFile()->ResetOffset());
+  ASSERT_TRUE(loaded_info.Load(GetFd(profile)));
+  ASSERT_TRUE(loaded_info.Equals(info));
+}
+
 }  // namespace art

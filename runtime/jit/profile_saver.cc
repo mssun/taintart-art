@@ -528,10 +528,24 @@ bool ProfileSaver::ProcessProfilingInfo(bool force_save, /*out*/uint16_t* number
       uint64_t last_save_number_of_methods = info.GetNumberOfMethods();
       uint64_t last_save_number_of_classes = info.GetNumberOfResolvedClasses();
 
-      info.AddMethods(profile_methods, ProfileCompilationInfo::MethodHotness::kFlagPostStartup);
+      // Try to add the method data. Note this may fail is the profile loaded from disk contains
+      // outdated data (e.g. the previous profiled dex files might have been updated).
+      // If this happens we clear the profile data and for the save to ensure the file is cleared.
+      if (!info.AddMethods(profile_methods,
+              ProfileCompilationInfo::MethodHotness::kFlagPostStartup)) {
+        LOG(WARNING) << "Could not add methods to the existing profiler. "
+            << "Clearing the profile data.";
+        info.ClearData();
+        force_save = true;
+      }
+
       auto profile_cache_it = profile_cache_.find(filename);
       if (profile_cache_it != profile_cache_.end()) {
-        info.MergeWith(*(profile_cache_it->second));
+        if (!info.MergeWith(*(profile_cache_it->second))) {
+          LOG(WARNING) << "Could not merge the profile. Clearing the profile data.";
+          info.ClearData();
+          force_save = true;
+        }
       }
 
       int64_t delta_number_of_methods =
