@@ -98,9 +98,7 @@ ProfileCompilationInfo::ProfileCompilationInfo()
 
 ProfileCompilationInfo::~ProfileCompilationInfo() {
   VLOG(profiler) << Dumpable<MemStats>(allocator_.GetMemStats());
-  for (DexFileData* data : info_) {
-    delete data;
-  }
+  ClearData();
 }
 
 void ProfileCompilationInfo::DexPcData::AddClass(uint16_t dex_profile_idx,
@@ -2105,6 +2103,14 @@ bool ProfileCompilationInfo::ProfileFilterFnAcceptAll(
     const std::string& dex_location ATTRIBUTE_UNUSED,
     uint32_t checksum ATTRIBUTE_UNUSED) {
   return true;
+}
+
+void ProfileCompilationInfo::ClearData() {
+  for (DexFileData* data : info_) {
+    delete data;
+  }
+  info_.clear();
+  profile_key_map_.clear();
 }
 
 }  // namespace art
