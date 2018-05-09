@@ -23,7 +23,7 @@
 #include "class_linker-inl.h"
 #include "class_linker.h"
 #include "dex/dex_file_annotations.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"

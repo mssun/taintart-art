@@ -22,7 +22,7 @@
 #include "class_linker.h"
 #include "gc_root-inl.h"
 #include "intrinsics_enum.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "jvalue-inl.h"
 #include "method_handles.h"
 #include "method_type.h"

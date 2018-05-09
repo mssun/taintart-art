@@ -23,7 +23,7 @@
 #include "base/casts.h"
 #include "base/mutex-inl.h"
 #include "base/time_utils.h"
-#include "jni_env_ext.h"
+#include "jni/jni_env_ext.h"
 #include "managed_stack-inl.h"
 #include "obj_ptr.h"
 #include "thread-current-inl.h"

@@ -37,7 +37,7 @@
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "entrypoints/quick/quick_entrypoints.h"
-#include "jni_env_ext.h"
+#include "jni/jni_env_ext.h"
 #include "thread.h"
 #include "utils/arm/managed_register_arm.h"
 #include "utils/arm64/managed_register_arm64.h"

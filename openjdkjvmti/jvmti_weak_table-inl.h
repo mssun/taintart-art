@@ -41,7 +41,7 @@
 #include "art_jvmti.h"
 #include "gc/allocation_listener.h"
 #include "instrumentation.h"
-#include "jni_env_ext-inl.h"
+#include "jni/jni_env_ext-inl.h"
 #include "jvmti_allocator.h"
 #include "mirror/class.h"
 #include "mirror/object.h"

@@ -24,7 +24,7 @@
 #include "dex/dex_file.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "handle_scope-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "jvalue.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"

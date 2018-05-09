@@ -17,7 +17,7 @@
 #include "hidden_api.h"
 
 #include "common_runtime_test.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "proxy_test.h"
 
 namespace art {

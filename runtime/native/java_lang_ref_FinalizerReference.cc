@@ -20,7 +20,7 @@
 
 #include "gc/heap.h"
 #include "gc/reference_processor.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/object-inl.h"
 #include "mirror/reference-inl.h"
 #include "native_util.h"

@@ -43,7 +43,7 @@
 #include "gc/gc_cause.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "gc_root-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
 #include "mirror/string.h"

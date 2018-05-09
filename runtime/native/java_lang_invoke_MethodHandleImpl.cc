@@ -20,7 +20,7 @@
 
 #include "art_method.h"
 #include "handle_scope-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/field.h"
 #include "mirror/method.h"
 #include "mirror/method_handle_impl.h"

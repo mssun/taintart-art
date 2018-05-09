@@ -21,7 +21,7 @@
 #include <android-base/macros.h>
 
 #include "art_method-inl.h"
-#include "java_vm_ext.h"
+#include "jni/java_vm_ext.h"
 #include "runtime.h"
 
 namespace art {

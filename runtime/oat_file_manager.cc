@@ -38,7 +38,7 @@
 #include "gc/scoped_gc_critical_section.h"
 #include "gc/space/image_space.h"
 #include "handle_scope-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
 #include "oat_file.h"

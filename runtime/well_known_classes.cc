@@ -25,7 +25,7 @@
 
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "hidden_api.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class.h"
 #include "mirror/throwable.h"
 #include "nativehelper/scoped_local_ref.h"

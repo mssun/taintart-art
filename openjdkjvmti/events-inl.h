@@ -23,7 +23,7 @@
 
 #include "base/mutex-inl.h"
 #include "events.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "scoped_thread_state_change-inl.h"
 #include "ti_breakpoint.h"

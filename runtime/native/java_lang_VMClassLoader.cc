@@ -20,7 +20,7 @@
 #include "class_linker.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file_loader.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
 #include "native_util.h"
