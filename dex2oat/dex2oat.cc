@@ -350,6 +350,9 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("");
   UsageError("  --dump-timings: display a breakdown of where time was spent");
   UsageError("");
+  UsageError("  --dump-pass-timings: display a breakdown of time spent in optimization");
+  UsageError("      passes for each compiled method.");
+  UsageError("");
   UsageError("  -g");
   UsageError("  --generate-debug-info: Generate debug information for native debugging,");
   UsageError("      such as stack unwinding information, ELF symbols and DWARF sections.");

@@ -51,6 +51,7 @@ CompilerOptions::CompilerOptions()
       implicit_suspend_checks_(false),
       compile_pic_(false),
       dump_timings_(false),
+      dump_pass_timings_(false),
       dump_stats_(false),
       verbose_methods_(),
       abort_on_hard_verifier_failure_(false),

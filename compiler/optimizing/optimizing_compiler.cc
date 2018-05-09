@@ -109,7 +109,7 @@ class PassObserver : public ValueObject {
       : graph_(graph),
         last_seen_graph_size_(0),
         cached_method_name_(),
-        timing_logger_enabled_(compiler_driver->GetCompilerOptions().GetDumpTimings()),
+        timing_logger_enabled_(compiler_driver->GetCompilerOptions().GetDumpPassTimings()),
         timing_logger_(timing_logger_enabled_ ? GetMethodName() : "", true, true),
         disasm_info_(graph->GetAllocator()),
         visualizer_oss_(),

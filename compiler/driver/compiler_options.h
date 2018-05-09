@@ -270,6 +270,10 @@ class CompilerOptions FINAL {
     return dump_timings_;
   }
 
+  bool GetDumpPassTimings() const {
+    return dump_pass_timings_;
+  }
+
   bool GetDumpStats() const {
     return dump_stats_;
   }
@@ -316,6 +320,7 @@ class CompilerOptions FINAL {
   bool implicit_suspend_checks_;
   bool compile_pic_;
   bool dump_timings_;
+  bool dump_pass_timings_;
   bool dump_stats_;
 
   // Vector of methods to have verbose output enabled for.
