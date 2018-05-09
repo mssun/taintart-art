@@ -451,7 +451,11 @@ class Runtime {
 
   void PreZygoteFork();
   void InitNonZygoteOrPostFork(
-      JNIEnv* env, bool is_system_server, NativeBridgeAction action, const char* isa);
+      JNIEnv* env,
+      bool is_system_server,
+      NativeBridgeAction action,
+      const char* isa,
+      bool profile_system_server = false);
 
   const instrumentation::Instrumentation* GetInstrumentation() const {
     return &instrumentation_;
