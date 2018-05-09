@@ -115,7 +115,6 @@ cc_defaults {
         "jni/java_vm_ext.cc",
         "jni/jni_env_ext.cc",
         "jni/jni_internal.cc",
-        "jobject_comparator.cc",
         "linear_alloc.cc",
         "managed_stack.cc",
         "method_handles.cc",
