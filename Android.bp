@@ -15,6 +15,7 @@ art_static_dependencies = [
     "libbase",
     "liblz4",
     "liblzma",
+    "libmetricslogger_static",
 ]
 
 subdirs = [

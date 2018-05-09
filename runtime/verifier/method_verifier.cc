@@ -3801,16 +3801,8 @@ ArtMethod* MethodVerifier::ResolveMethodAndCheckAccess(
     must_fail = true;
     // Try to find the method also with the other type for better error reporting below
     // but do not store such bogus lookup result in the DexCache or VerifierDeps.
-    if (klass->IsInterface()) {
-      // NB This is normally not really allowed but we want to get any static or private object
-      // methods for error message purposes. This will never be returned.
-      // TODO We might want to change the verifier to not require this.
-      res_method = klass->FindClassMethod(dex_cache_.Get(), dex_method_idx, pointer_size);
-    } else {
-      // If there was an interface method with the same signature,
-      // we would have found it also in the "copied" methods.
-      DCHECK(klass->FindInterfaceMethod(dex_cache_.Get(), dex_method_idx, pointer_size) == nullptr);
-    }
+    res_method = class_linker->FindIncompatibleMethod(
+        klass, dex_cache_.Get(), class_loader_.Get(), dex_method_idx);
   }
 
   if (res_method == nullptr) {
