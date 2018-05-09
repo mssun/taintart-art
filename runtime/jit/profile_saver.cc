@@ -131,6 +131,11 @@ void ProfileSaver::Run() {
   }
   FetchAndCacheResolvedClassesAndMethods(/*startup*/ true);
 
+
+  // When we save without waiting for JIT notifications we use a simple
+  // exponential back off policy bounded by max_wait_without_jit.
+  uint32_t max_wait_without_jit = options_.GetMinSavePeriodMs() * 16;
+  uint64_t cur_wait_without_jit = options_.GetMinSavePeriodMs();
   // Loop for the profiled methods.
   while (!ShuttingDown(self)) {
     uint64_t sleep_start = NanoTime();
@@ -138,7 +143,14 @@ void ProfileSaver::Run() {
       uint64_t sleep_time = 0;
       {
         MutexLock mu(self, wait_lock_);
-        period_condition_.Wait(self);
+        if (options_.GetWaitForJitNotificationsToSave()) {
+          period_condition_.Wait(self);
+        } else {
+          period_condition_.TimedWait(self, cur_wait_without_jit, 0);
+          if (cur_wait_without_jit < max_wait_without_jit) {
+            cur_wait_without_jit *= 2;
+          }
+        }
         sleep_time = NanoTime() - sleep_start;
       }
       // Check if the thread was woken up for shutdown.
@@ -597,7 +609,13 @@ void* ProfileSaver::RunProfileSaverThread(void* arg) {
   return nullptr;
 }
 
-static bool ShouldProfileLocation(const std::string& location) {
+static bool ShouldProfileLocation(const std::string& location, bool profile_aot_code) {
+  if (profile_aot_code) {
+    // If we have to profile all the code, irrespective of its compilation state, return true
+    // right away.
+    return true;
+  }
+
   OatFileManager& oat_manager = Runtime::Current()->GetOatFileManager();
   const OatFile* oat_file = oat_manager.FindOpenedOatFileFromDexLocation(location);
   if (oat_file == nullptr) {
@@ -629,7 +647,7 @@ void ProfileSaver::Start(const ProfileSaverOptions& options,
 
   std::vector<std::string> code_paths_to_profile;
   for (const std::string& location : code_paths) {
-    if (ShouldProfileLocation(location))  {
+    if (ShouldProfileLocation(location, options.GetProfileAOTCode()))  {
       code_paths_to_profile.push_back(location);
     }
   }
