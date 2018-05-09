@@ -643,6 +643,16 @@ struct CmdlineType<ProfileSaverOptions> : CmdlineTypeParser<ProfileSaverOptions>
       return Result::SuccessNoValue();
     }
 
+    if (option == "profile-aot-code") {
+      existing.profile_aot_code_ = true;
+      return Result::SuccessNoValue();
+    }
+
+    if (option == "save-without-jit-notifications") {
+      existing.wait_for_jit_notifications_to_save_ = false;
+      return Result::SuccessNoValue();
+    }
+
     // The rest of these options are always the wildcard from '-Xps-*'
     std::string suffix = RemovePrefix(option);
 
