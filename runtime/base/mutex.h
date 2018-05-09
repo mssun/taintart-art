@@ -57,7 +57,7 @@ class Mutex;
 // partial ordering and thereby cause deadlock situations to fail checks.
 //
 // [1] http://www.drdobbs.com/parallel/use-lock-hierarchies-to-avoid-deadlock/204801163
-enum LockLevel {
+enum LockLevel : uint8_t {
   kLoggingLock = 0,
   kSwapMutexesLock,
   kUnexpectedSignalLock,
@@ -142,20 +142,20 @@ enum LockLevel {
 };
 std::ostream& operator<<(std::ostream& os, const LockLevel& rhs);
 
-const bool kDebugLocking = kIsDebugBuild;
+constexpr bool kDebugLocking = kIsDebugBuild;
 
 // Record Log contention information, dumpable via SIGQUIT.
 #ifdef ART_USE_FUTEXES
 // To enable lock contention logging, set this to true.
-const bool kLogLockContentions = false;
+constexpr bool kLogLockContentions = false;
 #else
 // Keep this false as lock contention logging is supported only with
 // futex.
-const bool kLogLockContentions = false;
+constexpr bool kLogLockContentions = false;
 #endif
-const size_t kContentionLogSize = 4;
-const size_t kContentionLogDataSize = kLogLockContentions ? 1 : 0;
-const size_t kAllMutexDataSize = kLogLockContentions ? 1 : 0;
+constexpr size_t kContentionLogSize = 4;
+constexpr size_t kContentionLogDataSize = kLogLockContentions ? 1 : 0;
+constexpr size_t kAllMutexDataSize = kLogLockContentions ? 1 : 0;
 
 // Base class for all Mutex implementations
 class BaseMutex {
@@ -196,9 +196,7 @@ class BaseMutex {
   void RecordContention(uint64_t blocked_tid, uint64_t owner_tid, uint64_t nano_time_blocked);
   void DumpContention(std::ostream& os) const;
 
-  const LockLevel level_;  // Support for lock hierarchy.
   const char* const name_;
-  bool should_respond_to_empty_checkpoint_request_;
 
   // A log entry that records contention but makes no guarantee that either tid will be held live.
   struct ContentionLogEntry {
@@ -220,6 +218,9 @@ class BaseMutex {
     ContentionLogData() : wait_time(0) {}
   };
   ContentionLogData contention_log_data_[kContentionLogDataSize];
+
+  const LockLevel level_;  // Support for lock hierarchy.
+  bool should_respond_to_empty_checkpoint_request_;
 
  public:
   bool HasEverContended() const {
@@ -307,8 +308,10 @@ class LOCKABLE Mutex : public BaseMutex {
   pthread_mutex_t mutex_;
   Atomic<pid_t> exclusive_owner_;  // Guarded by mutex_. Asynchronous reads are OK.
 #endif
-  const bool recursive_;  // Can the lock be recursively held?
+
   unsigned int recursion_count_;
+  const bool recursive_;  // Can the lock be recursively held?
+
   friend class ConditionVariable;
   DISALLOW_COPY_AND_ASSIGN(Mutex);
 };
