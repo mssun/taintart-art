@@ -25,6 +25,7 @@
 #include "precise_hidden_api_finder.h"
 #include "resolver.h"
 
+#include <cstdlib>
 #include <sstream>
 
 namespace art {
@@ -62,6 +63,7 @@ VeriMethod VeriClass::getMethod_ = nullptr;
 VeriMethod VeriClass::getDeclaredMethod_ = nullptr;
 VeriMethod VeriClass::getClass_ = nullptr;
 VeriMethod VeriClass::loadClass_ = nullptr;
+VeriField VeriClass::sdkInt_ = nullptr;
 
 struct VeridexOptions {
   const char* dex_file = nullptr;
@@ -70,6 +72,7 @@ struct VeridexOptions {
   const char* light_greylist = nullptr;
   const char* dark_greylist = nullptr;
   bool precise = true;
+  int target_sdk_version = 28; /* P */
 };
 
 static const char* Substr(const char* str, int index) {
@@ -91,6 +94,7 @@ static void ParseArgs(VeridexOptions* options, int argc, char** argv) {
   static const char* kDarkGreylistOption = "--dark-greylist=";
   static const char* kLightGreylistOption = "--light-greylist=";
   static const char* kImprecise = "--imprecise";
+  static const char* kTargetSdkVersion = "--target-sdk-version=";
 
   for (int i = 0; i < argc; ++i) {
     if (StartsWith(argv[i], kDexFileOption)) {
@@ -105,6 +109,8 @@ static void ParseArgs(VeridexOptions* options, int argc, char** argv) {
       options->light_greylist = Substr(argv[i], strlen(kLightGreylistOption));
     } else if (strcmp(argv[i], kImprecise) == 0) {
       options->precise = false;
+    } else if (StartsWith(argv[i], kTargetSdkVersion)) {
+      options->target_sdk_version = atoi(Substr(argv[i], strlen(kTargetSdkVersion)));
     }
   }
 }
@@ -124,6 +130,7 @@ class Veridex {
   static int Run(int argc, char** argv) {
     VeridexOptions options;
     ParseArgs(&options, argc, argv);
+    gTargetSdkVersion = options.target_sdk_version;
 
     std::vector<std::string> boot_content;
     std::vector<std::string> app_content;
@@ -199,6 +206,11 @@ class Veridex {
         *VeriClass::object_, "getClass", "()Ljava/lang/Class;");
     VeriClass::loadClass_ = boot_resolvers[0]->LookupDeclaredMethodIn(
         *VeriClass::class_loader_, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+
+    VeriClass* version = type_map["Landroid/os/Build$VERSION;"];
+    if (version != nullptr) {
+      VeriClass::sdkInt_ = boot_resolvers[0]->LookupFieldIn(*version, "SDK_INT", "I");
+    }
 
     std::vector<std::unique_ptr<VeridexResolver>> app_resolvers;
     Resolve(app_dex_files, resolver_map, type_map, &app_resolvers);
