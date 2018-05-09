@@ -177,6 +177,7 @@ enum {
   DEBUG_GENERATE_MINI_DEBUG_INFO     = 1 << 11,
   HIDDEN_API_ENFORCEMENT_POLICY_MASK = (1 << 12)
                                      | (1 << 13),
+  PROFILE_SYSTEM_SERVER              = 1 << 14,
 
   // bits to shift (flags & HIDDEN_API_ENFORCEMENT_POLICY_MASK) by to get a value
   // corresponding to hiddenapi::EnforcementPolicy
@@ -308,6 +309,9 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
       (runtime_flags & HIDDEN_API_ENFORCEMENT_POLICY_MASK) >> API_ENFORCEMENT_POLICY_SHIFT);
   runtime_flags &= ~HIDDEN_API_ENFORCEMENT_POLICY_MASK;
 
+  bool profile_system_server = (runtime_flags & PROFILE_SYSTEM_SERVER) == PROFILE_SYSTEM_SERVER;
+  runtime_flags &= ~PROFILE_SYSTEM_SERVER;
+
   if (runtime_flags != 0) {
     LOG(ERROR) << StringPrintf("Unknown bits set in runtime_flags: %#x", runtime_flags);
   }
@@ -392,7 +396,11 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
         env, is_system_server, action, isa_string.c_str());
   } else {
     Runtime::Current()->InitNonZygoteOrPostFork(
-        env, is_system_server, Runtime::NativeBridgeAction::kUnload, nullptr);
+        env,
+        is_system_server,
+        Runtime::NativeBridgeAction::kUnload,
+        /*isa*/ nullptr,
+        profile_system_server);
   }
 }
 
