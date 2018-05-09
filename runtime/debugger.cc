@@ -51,7 +51,7 @@
 #include "handle_scope-inl.h"
 #include "jdwp/jdwp_priv.h"
 #include "jdwp/object_registry.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "jvalue-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class.h"

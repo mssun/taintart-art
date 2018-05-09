@@ -52,7 +52,7 @@
 #include "image.h"
 #include "imt_conflict_table.h"
 #include "subtype_check.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "linear_alloc.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"

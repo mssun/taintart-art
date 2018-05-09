@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_JAVA_VM_EXT_H_
-#define ART_RUNTIME_JAVA_VM_EXT_H_
+#ifndef ART_RUNTIME_JNI_JAVA_VM_EXT_H_
+#define ART_RUNTIME_JNI_JAVA_VM_EXT_H_
 
 #include "jni.h"
 
@@ -262,4 +262,4 @@ class JavaVMExt : public JavaVM {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_JAVA_VM_EXT_H_
+#endif  // ART_RUNTIME_JNI_JAVA_VM_EXT_H_

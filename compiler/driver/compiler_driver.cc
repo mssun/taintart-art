@@ -57,7 +57,7 @@
 #include "gc/space/space.h"
 #include "handle_scope-inl.h"
 #include "intrinsics_enum.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "linker/linker_patch.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"

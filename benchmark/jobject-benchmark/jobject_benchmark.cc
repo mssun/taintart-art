@@ -16,7 +16,7 @@
 
 #include "jni.h"
 
-#include "java_vm_ext.h"
+#include "jni/java_vm_ext.h"
 #include "mirror/class-inl.h"
 #include "scoped_thread_state_change-inl.h"
 

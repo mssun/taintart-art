@@ -16,7 +16,7 @@
 
 #include "jni.h"
 #include "art_method-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "instrumentation.h"
 #include "scoped_thread_state_change-inl.h"
 

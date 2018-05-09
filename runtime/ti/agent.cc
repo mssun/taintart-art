@@ -21,7 +21,7 @@
 #include "nativeloader/native_loader.h"
 
 #include "base/strlcpy.h"
-#include "java_vm_ext.h"
+#include "jni/java_vm_ext.h"
 #include "runtime.h"
 #include "thread-current-inl.h"
 #include "scoped_thread_state_change-inl.h"

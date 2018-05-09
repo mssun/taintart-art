@@ -24,7 +24,7 @@
 #include "art_method-inl.h"
 #include "class_linker-inl.h"
 #include "dex/dex_file-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "jvalue-inl.h"
 #include "mirror/field.h"
 #include "mirror/method.h"

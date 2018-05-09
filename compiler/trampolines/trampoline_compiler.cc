@@ -18,7 +18,7 @@
 
 #include "base/arena_allocator.h"
 #include "base/malloc_arena_pool.h"
-#include "jni_env_ext.h"
+#include "jni/jni_env_ext.h"
 
 #ifdef ART_ENABLE_CODEGEN_arm
 #include "utils/arm/assembler_arm_vixl.h"

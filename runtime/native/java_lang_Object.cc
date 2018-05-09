@@ -18,7 +18,7 @@
 
 #include "nativehelper/jni_macros.h"
 
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/object-inl.h"
 #include "native_util.h"
 #include "scoped_fast_native_object_access-inl.h"

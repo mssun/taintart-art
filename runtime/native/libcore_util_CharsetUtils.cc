@@ -18,7 +18,7 @@
 
 #include <string.h>
 
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/string-inl.h"
 #include "mirror/string.h"
 #include "native_util.h"

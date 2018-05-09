@@ -78,7 +78,7 @@
 #include "gc/space/space-inl.h"
 #include "gc/verification.h"
 #include "interpreter/unstarted_runtime.h"
-#include "java_vm_ext.h"
+#include "jni/java_vm_ext.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/elf_writer.h"
 #include "linker/elf_writer_quick.h"

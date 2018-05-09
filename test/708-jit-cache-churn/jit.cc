@@ -19,7 +19,7 @@
 #include "art_method.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"

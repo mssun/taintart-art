@@ -22,7 +22,7 @@
 #include "common_throws.h"
 #include "dex/dex_file-inl.h"
 #include "handle_scope-inl.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "native_util.h"

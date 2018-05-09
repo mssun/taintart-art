@@ -20,7 +20,7 @@
 #include "art_field-inl.h"
 #include "base/mutex.h"
 #include "handle_scope.h"
-#include "jni_internal.h"
+#include "jni/jni_internal.h"
 #include "mirror/class_loader.h"
 #include "native/dalvik_system_DexFile.h"
 #include "scoped_thread_state_change-inl.h"

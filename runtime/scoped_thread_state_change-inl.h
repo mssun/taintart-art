@@ -22,7 +22,7 @@
 #include <android-base/logging.h>
 
 #include "base/casts.h"
-#include "jni_env_ext-inl.h"
+#include "jni/jni_env_ext-inl.h"
 #include "obj_ptr-inl.h"
 #include "runtime.h"
 #include "thread-inl.h"
