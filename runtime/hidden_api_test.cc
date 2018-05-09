@@ -18,10 +18,12 @@
 
 #include "common_runtime_test.h"
 #include "jni_internal.h"
+#include "proxy_test.h"
 
 namespace art {
 
 using hiddenapi::detail::MemberSignature;
+using hiddenapi::GetActionFromAccessFlags;
 
 class HiddenApiTest : public CommonRuntimeTest {
  protected:
@@ -30,7 +32,7 @@ class HiddenApiTest : public CommonRuntimeTest {
     CommonRuntimeTest::SetUp();
     self_ = Thread::Current();
     self_->TransitionFromSuspendedToRunnable();
-    LoadDex("HiddenApiSignatures");
+    jclass_loader_ = LoadDex("HiddenApiSignatures");
     bool started = runtime_->Start();
     CHECK(started);
 
@@ -68,6 +70,7 @@ class HiddenApiTest : public CommonRuntimeTest {
 
  protected:
   Thread* self_;
+  jobject jclass_loader_;
   ArtField* class1_field1_;
   ArtField* class1_field12_;
   ArtMethod* class1_init_;
@@ -83,6 +86,44 @@ class HiddenApiTest : public CommonRuntimeTest {
   ArtMethod* class3_method1_;
   ArtMethod* class3_method1_i_;
 };
+
+TEST_F(HiddenApiTest, CheckGetActionFromRuntimeFlags) {
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kNoChecks);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kWhitelist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kLightGreylist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kDarkGreylist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kBlacklist), hiddenapi::kAllow);
+
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kJustWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kWhitelist),
+            hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kLightGreylist),
+            hiddenapi::kAllowButWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kDarkGreylist),
+            hiddenapi::kAllowButWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kBlacklist),
+            hiddenapi::kAllowButWarn);
+
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kDarkGreyAndBlackList);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kWhitelist),
+            hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kLightGreylist),
+            hiddenapi::kAllowButWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kDarkGreylist),
+            hiddenapi::kDeny);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kBlacklist),
+            hiddenapi::kDeny);
+
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kBlacklistOnly);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kWhitelist),
+            hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kLightGreylist),
+            hiddenapi::kAllowButWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kDarkGreylist),
+            hiddenapi::kAllowButWarnAndToast);
+  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kBlacklist),
+            hiddenapi::kDeny);
+}
 
 TEST_F(HiddenApiTest, CheckMembersRead) {
   ASSERT_NE(nullptr, class1_field1_);
@@ -270,6 +311,58 @@ TEST_F(HiddenApiTest, CheckFieldTrailingCharsNoMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->field1:Ifoo");
   ASSERT_FALSE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+}
+
+TEST_F(HiddenApiTest, CheckMemberSignatureForProxyClass) {
+  ScopedObjectAccess soa(self_);
+  StackHandleScope<4> hs(soa.Self());
+  Handle<mirror::ClassLoader> class_loader(
+      hs.NewHandle(soa.Decode<mirror::ClassLoader>(jclass_loader_)));
+
+  // Find interface we will create a proxy for.
+  Handle<mirror::Class> h_iface(hs.NewHandle(
+      class_linker_->FindClass(soa.Self(), "Lmypackage/packagea/Interface;", class_loader)));
+  ASSERT_TRUE(h_iface != nullptr);
+
+  // Create the proxy class.
+  std::vector<mirror::Class*> interfaces;
+  interfaces.push_back(h_iface.Get());
+  Handle<mirror::Class> proxyClass = hs.NewHandle(proxy_test::GenerateProxyClass(
+      soa, jclass_loader_, runtime_->GetClassLinker(), "$Proxy1234", interfaces));
+  ASSERT_TRUE(proxyClass != nullptr);
+  ASSERT_TRUE(proxyClass->IsProxyClass());
+  ASSERT_TRUE(proxyClass->IsInitialized());
+
+  // Find the "method" virtual method.
+  ArtMethod* method = nullptr;
+  for (auto& m : proxyClass->GetDeclaredVirtualMethods(kRuntimePointerSize)) {
+    if (strcmp("method", m.GetInterfaceMethodIfProxy(kRuntimePointerSize)->GetName()) == 0) {
+      method = &m;
+      break;
+    }
+  }
+  ASSERT_TRUE(method != nullptr);
+
+  // Find the "interfaces" static field. This is generated for all proxies.
+  ArtField* field = nullptr;
+  for (size_t i = 0; i < proxyClass->NumStaticFields(); ++i) {
+    ArtField* f = proxyClass->GetStaticField(i);
+    if (strcmp("interfaces", f->GetName()) == 0) {
+      field = f;
+      break;
+    }
+  }
+  ASSERT_TRUE(field != nullptr);
+
+  // Test the signature. We expect the signature from the interface class.
+  std::ostringstream ss_method;
+  MemberSignature(method).Dump(ss_method);
+  ASSERT_EQ("Lmypackage/packagea/Interface;->method()V", ss_method.str());
+
+  // Test the signature. We expect the signature of the proxy class.
+  std::ostringstream ss_field;
+  MemberSignature(field).Dump(ss_field);
+  ASSERT_EQ("L$Proxy1234;->interfaces:[Ljava/lang/Class;", ss_field.str());
 }
 
 }  // namespace art

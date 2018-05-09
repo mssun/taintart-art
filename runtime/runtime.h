@@ -569,6 +569,14 @@ class Runtime {
     return always_set_hidden_api_warning_flag_;
   }
 
+  void SetHiddenApiEventLogSampleRate(uint32_t rate) {
+    hidden_api_access_event_log_rate_ = rate;
+  }
+
+  uint32_t GetHiddenApiEventLogSampleRate() const {
+    return hidden_api_access_event_log_rate_;
+  }
+
   bool IsDexFileFallbackEnabled() const {
     return allow_dex_file_fallback_;
   }
@@ -1006,7 +1014,8 @@ class Runtime {
   // Whether access checks on hidden API should be performed.
   hiddenapi::EnforcementPolicy hidden_api_policy_;
 
-  // List of signature prefixes of methods that have been removed from the blacklist
+  // List of signature prefixes of methods that have been removed from the blacklist, and treated
+  // as if whitelisted.
   std::vector<std::string> hidden_api_exemptions_;
 
   // Whether the application has used an API which is not restricted but we
@@ -1021,6 +1030,10 @@ class Runtime {
   // framework to show a UI warning. If this flag is set, always set the flag
   // when there is a warning. This is only used for testing.
   bool always_set_hidden_api_warning_flag_;
+
+  // How often to log hidden API access to the event log. An integer between 0 (never)
+  // and 0x10000 (always).
+  uint32_t hidden_api_access_event_log_rate_;
 
   // Whether threads should dump their native stack on SIGQUIT.
   bool dump_native_stack_on_sig_quit_;

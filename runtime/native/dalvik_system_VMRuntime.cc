@@ -93,6 +93,10 @@ static void VMRuntime_setHiddenApiExemptions(JNIEnv* env,
   Runtime::Current()->SetHiddenApiExemptions(exemptions_vec);
 }
 
+static void VMRuntime_setHiddenApiAccessLogSamplingRate(JNIEnv*, jclass, jint rate) {
+  Runtime::Current()->SetHiddenApiEventLogSampleRate(rate);
+}
+
 static jobject VMRuntime_newNonMovableArray(JNIEnv* env, jobject, jclass javaElementClass,
                                             jint length) {
   ScopedFastNativeObjectAccess soa(env);
@@ -678,6 +682,12 @@ static void VMRuntime_setSystemDaemonThreadPriority(JNIEnv* env ATTRIBUTE_UNUSED
 #endif
 }
 
+static void VMRuntime_setDedupeHiddenApiWarnings(JNIEnv* env ATTRIBUTE_UNUSED,
+                                                 jclass klass ATTRIBUTE_UNUSED,
+                                                 jboolean dedupe) {
+  Runtime::Current()->SetDedupeHiddenApiWarnings(dedupe);
+}
+
 static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(VMRuntime, addressOf, "(Ljava/lang/Object;)J"),
   NATIVE_METHOD(VMRuntime, bootClassPath, "()Ljava/lang/String;"),
@@ -688,6 +698,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, disableJitCompilation, "()V"),
   NATIVE_METHOD(VMRuntime, hasUsedHiddenApi, "()Z"),
   NATIVE_METHOD(VMRuntime, setHiddenApiExemptions, "([Ljava/lang/String;)V"),
+  NATIVE_METHOD(VMRuntime, setHiddenApiAccessLogSamplingRate, "(I)V"),
   NATIVE_METHOD(VMRuntime, getTargetHeapUtilization, "()F"),
   FAST_NATIVE_METHOD(VMRuntime, isDebuggerActive, "()Z"),
   FAST_NATIVE_METHOD(VMRuntime, isNativeDebuggable, "()Z"),
@@ -718,6 +729,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, getCurrentInstructionSet, "()Ljava/lang/String;"),
   NATIVE_METHOD(VMRuntime, didPruneDalvikCache, "()Z"),
   NATIVE_METHOD(VMRuntime, setSystemDaemonThreadPriority, "()V"),
+  NATIVE_METHOD(VMRuntime, setDedupeHiddenApiWarnings, "(Z)V"),
 };
 
 void register_dalvik_system_VMRuntime(JNIEnv* env) {

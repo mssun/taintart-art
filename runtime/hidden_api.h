@@ -33,7 +33,7 @@ namespace hiddenapi {
 // frameworks/base/core/java/android/content/pm/ApplicationInfo.java
 enum class EnforcementPolicy {
   kNoChecks             = 0,
-  kAllLists             = 1,  // ban anything but whitelist
+  kJustWarn             = 1,  // keep checks enabled, but allow everything (enables logging)
   kDarkGreyAndBlackList = 2,  // ban dark grey & blacklist
   kBlacklistOnly        = 3,  // ban blacklist violations only
   kMax = kBlacklistOnly,
@@ -53,22 +53,37 @@ enum Action {
 };
 
 enum AccessMethod {
+  kNone,  // internal test that does not correspond to an actual access by app
   kReflection,
   kJNI,
   kLinking,
 };
 
-inline Action GetActionFromAccessFlags(uint32_t access_flags) {
+// Do not change the values of items in this enum, as they are written to the
+// event log for offline analysis. Any changes will interfere with that analysis.
+enum AccessContextFlags {
+  // Accessed member is a field if this bit is set, else a method
+  kMemberIsField = 1 << 0,
+  // Indicates if access was denied to the member, instead of just printing a warning.
+  kAccessDenied  = 1 << 1,
+};
+
+inline Action GetActionFromAccessFlags(HiddenApiAccessFlags::ApiList api_list) {
+  if (api_list == HiddenApiAccessFlags::kWhitelist) {
+    return kAllow;
+  }
+
   EnforcementPolicy policy = Runtime::Current()->GetHiddenApiEnforcementPolicy();
   if (policy == EnforcementPolicy::kNoChecks) {
     // Exit early. Nothing to enforce.
     return kAllow;
   }
 
-  HiddenApiAccessFlags::ApiList api_list = HiddenApiAccessFlags::DecodeFromRuntime(access_flags);
-  if (api_list == HiddenApiAccessFlags::kWhitelist) {
-    return kAllow;
+  // if policy is "just warn", always warn. We returned above for whitelist APIs.
+  if (policy == EnforcementPolicy::kJustWarn) {
+    return kAllowButWarn;
   }
+  DCHECK(policy >= EnforcementPolicy::kDarkGreyAndBlackList);
   // The logic below relies on equality of values in the enums EnforcementPolicy and
   // HiddenApiAccessFlags::ApiList, and their ordering. Assertions are in hidden_api.cc.
   if (static_cast<int>(policy) > static_cast<int>(api_list)) {
@@ -87,9 +102,18 @@ namespace detail {
 // is used as a helper when matching prefixes, and when logging the signature.
 class MemberSignature {
  private:
-  std::string member_type_;
-  std::vector<std::string> signature_parts_;
+  enum MemberType {
+    kField,
+    kMethod,
+  };
+
+  std::string class_name_;
+  std::string member_name_;
+  std::string type_signature_;
   std::string tmp_;
+  MemberType type_;
+
+  inline std::vector<const char*> GetSignatureParts() const;
 
  public:
   explicit MemberSignature(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -105,10 +129,15 @@ class MemberSignature {
   bool IsExempted(const std::vector<std::string>& exemptions);
 
   void WarnAboutAccess(AccessMethod access_method, HiddenApiAccessFlags::ApiList list);
+
+  void LogAccessToEventLog(AccessMethod access_method, Action action_taken);
 };
 
 template<typename T>
-Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method)
+Action GetMemberActionImpl(T* member,
+                           HiddenApiAccessFlags::ApiList api_list,
+                           Action action,
+                           AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 // Returns true if the caller is either loaded by the boot strap class loader or comes from
@@ -143,7 +172,15 @@ inline Action GetMemberAction(T* member,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(member != nullptr);
 
-  Action action = GetActionFromAccessFlags(member->GetAccessFlags());
+  // Decode hidden API access flags.
+  // NB Multiple threads might try to access (and overwrite) these simultaneously,
+  // causing a race. We only do that if access has not been denied, so the race
+  // cannot change Java semantics. We should, however, decode the access flags
+  // once and use it throughout this function, otherwise we may get inconsistent
+  // results, e.g. print whitelist warnings (b/78327881).
+  HiddenApiAccessFlags::ApiList api_list = member->GetHiddenApiAccessFlags();
+
+  Action action = GetActionFromAccessFlags(member->GetHiddenApiAccessFlags());
   if (action == kAllow) {
     // Nothing to do.
     return action;
@@ -157,7 +194,7 @@ inline Action GetMemberAction(T* member,
   }
 
   // Member is hidden and caller is not in the platform.
-  return detail::GetMemberActionImpl(member, action, access_method);
+  return detail::GetMemberActionImpl(member, api_list, action, access_method);
 }
 
 inline bool IsCallerInPlatformDex(ObjPtr<mirror::Class> caller)

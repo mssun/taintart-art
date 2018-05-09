@@ -86,12 +86,10 @@ class HiddenApiAccessFlags {
   }
 
   static ALWAYS_INLINE ApiList DecodeFromRuntime(uint32_t runtime_access_flags) {
-    if ((runtime_access_flags & kAccIntrinsic) != 0) {
-      return kWhitelist;
-    } else {
-      uint32_t int_value = (runtime_access_flags & kAccHiddenApiBits) >> kAccFlagsShift;
-      return static_cast<ApiList>(int_value);
-    }
+    // This is used in the fast path, only DCHECK here.
+    DCHECK_EQ(runtime_access_flags & kAccIntrinsic, 0u);
+    uint32_t int_value = (runtime_access_flags & kAccHiddenApiBits) >> kAccFlagsShift;
+    return static_cast<ApiList>(int_value);
   }
 
   static ALWAYS_INLINE uint32_t EncodeForRuntime(uint32_t runtime_access_flags, ApiList value) {
