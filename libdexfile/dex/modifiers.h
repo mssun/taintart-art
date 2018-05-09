@@ -58,6 +58,7 @@ static constexpr uint32_t kAccObsoleteMethod =        0x00040000;  // method (ru
 static constexpr uint32_t kAccSkipAccessChecks =      0x00080000;  // method (runtime, not native)
 // Used by a class to denote that the verifier has attempted to check it at least once.
 static constexpr uint32_t kAccVerificationAttempted = 0x00080000;  // class (runtime)
+static constexpr uint32_t kAccSkipHiddenApiChecks =   0x00100000;  // class (runtime)
 // This is set by the class linker during LinkInterfaceMethods. It is used by a method to represent
 // that it was copied from its declaring class into another class. All methods marked kAccMiranda
 // and kAccDefaultConflict will have this bit set. Any kAccDefault method contained in the methods_

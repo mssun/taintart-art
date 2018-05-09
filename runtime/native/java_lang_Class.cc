@@ -52,7 +52,7 @@ namespace art {
 
 // Returns true if the first caller outside of the Class class or java.lang.invoke package
 // is in a platform DEX file.
-static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
+static bool IsCallerTrusted(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
   // Walk the stack and find the first frame not from java.lang.Class and not from java.lang.invoke.
   // This is very expensive. Save this till the last.
   struct FirstExternalCallerVisitor : public StackVisitor {
@@ -99,7 +99,7 @@ static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_l
   FirstExternalCallerVisitor visitor(self);
   visitor.WalkStack();
   return visitor.caller != nullptr &&
-         hiddenapi::IsCallerInPlatformDex(visitor.caller->GetDeclaringClass());
+         hiddenapi::IsCallerTrusted(visitor.caller->GetDeclaringClass());
 }
 
 // Returns true if the first non-ClassClass caller up the stack is not allowed to
@@ -107,7 +107,7 @@ static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_l
 ALWAYS_INLINE static bool ShouldEnforceHiddenApi(Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   hiddenapi::EnforcementPolicy policy = Runtime::Current()->GetHiddenApiEnforcementPolicy();
-  return policy != hiddenapi::EnforcementPolicy::kNoChecks && !IsCallerInPlatformDex(self);
+  return policy != hiddenapi::EnforcementPolicy::kNoChecks && !IsCallerTrusted(self);
 }
 
 // Returns true if the first non-ClassClass caller up the stack should not be
@@ -116,7 +116,7 @@ template<typename T>
 ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   hiddenapi::Action action = hiddenapi::GetMemberAction(
-      member, self, IsCallerInPlatformDex, hiddenapi::kReflection);
+      member, self, IsCallerTrusted, hiddenapi::kReflection);
   if (action != hiddenapi::kAllow) {
     hiddenapi::NotifyHiddenApiListener(member);
   }
