@@ -8226,6 +8226,16 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
   }
 }
 
+void LocationsBuilderMIPS::VisitLoadMethodHandle(HLoadMethodHandle* load) {
+  InvokeRuntimeCallingConvention calling_convention;
+  Location loc = Location::RegisterLocation(calling_convention.GetRegisterAt(0));
+  CodeGenerator::CreateLoadMethodHandleRuntimeCallLocationSummary(load, loc, loc);
+}
+
+void InstructionCodeGeneratorMIPS::VisitLoadMethodHandle(HLoadMethodHandle* load) {
+  codegen_->GenerateLoadMethodHandleRuntimeCall(load);
+}
+
 void LocationsBuilderMIPS::VisitLoadMethodType(HLoadMethodType* load) {
   InvokeRuntimeCallingConvention calling_convention;
   Location loc = Location::RegisterLocation(calling_convention.GetRegisterAt(0));

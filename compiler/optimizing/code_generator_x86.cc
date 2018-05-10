@@ -6539,6 +6539,16 @@ void InstructionCodeGeneratorX86::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAFE
   }
 }
 
+void LocationsBuilderX86::VisitLoadMethodHandle(HLoadMethodHandle* load) {
+  InvokeRuntimeCallingConvention calling_convention;
+  Location location = Location::RegisterLocation(calling_convention.GetRegisterAt(0));
+  CodeGenerator::CreateLoadMethodHandleRuntimeCallLocationSummary(load, location, location);
+}
+
+void InstructionCodeGeneratorX86::VisitLoadMethodHandle(HLoadMethodHandle* load) {
+  codegen_->GenerateLoadMethodHandleRuntimeCall(load);
+}
+
 void LocationsBuilderX86::VisitLoadMethodType(HLoadMethodType* load) {
   InvokeRuntimeCallingConvention calling_convention;
   Location location = Location::RegisterLocation(calling_convention.GetRegisterAt(0));

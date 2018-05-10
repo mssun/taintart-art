@@ -6262,6 +6262,16 @@ void InstructionCodeGeneratorMIPS64::VisitLoadClass(HLoadClass* cls) NO_THREAD_S
   }
 }
 
+void LocationsBuilderMIPS64::VisitLoadMethodHandle(HLoadMethodHandle* load) {
+  InvokeRuntimeCallingConvention calling_convention;
+  Location loc = Location::RegisterLocation(calling_convention.GetRegisterAt(0));
+  CodeGenerator::CreateLoadMethodHandleRuntimeCallLocationSummary(load, loc, loc);
+}
+
+void InstructionCodeGeneratorMIPS64::VisitLoadMethodHandle(HLoadMethodHandle* load) {
+  codegen_->GenerateLoadMethodHandleRuntimeCall(load);
+}
+
 void LocationsBuilderMIPS64::VisitLoadMethodType(HLoadMethodType* load) {
   InvokeRuntimeCallingConvention calling_convention;
   Location loc = Location::RegisterLocation(calling_convention.GetRegisterAt(0));

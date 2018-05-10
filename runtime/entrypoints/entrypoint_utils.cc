@@ -260,6 +260,13 @@ ArtMethod* GetCalleeSaveOuterMethod(Thread* self, CalleeSaveType type) {
   return DoGetCalleeSaveMethodOuterCallerAndPc(sp, type).first;
 }
 
+ObjPtr<mirror::MethodHandle> ResolveMethodHandleFromCode(ArtMethod* referrer,
+                                                         uint32_t method_handle_idx) {
+  Thread::PoisonObjectPointersIfDebug();
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  return class_linker->ResolveMethodHandle(Thread::Current(), method_handle_idx, referrer);
+}
+
 ObjPtr<mirror::MethodType> ResolveMethodTypeFromCode(ArtMethod* referrer,
                                                      uint32_t proto_idx) {
   Thread::PoisonObjectPointersIfDebug();
