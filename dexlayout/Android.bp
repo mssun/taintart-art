@@ -27,6 +27,7 @@ art_cc_defaults {
     ],
     export_include_dirs: ["."],
     shared_libs: [
+        "libartbase",
         "libbase",
     ],
     static_libs: ["libz"],
@@ -39,7 +40,6 @@ art_cc_library {
         "dex2oat-pgo-defaults",
     ],
     shared_libs: [
-        "libart",
         "libdexfile",
         "libprofile",
     ],
@@ -60,7 +60,6 @@ art_cc_library {
       "art_debug_defaults",
     ],
     shared_libs: [
-        "libartd",
         "libdexfiled",
         "libprofiled",
     ],
@@ -80,8 +79,9 @@ art_cc_binary {
     name: "dexlayout",
     defaults: ["dexlayout-defaults"],
     shared_libs: [
+        "libartbase",
+        "libdexfile",
         "libprofile",
-        "libart",
         "libart-dexlayout",
     ],
 }
@@ -93,8 +93,9 @@ art_cc_binary {
         "dexlayout-defaults",
     ],
     shared_libs: [
+        "libartbased",
+        "libdexfiled",
         "libprofiled",
-        "libartd",
         "libartd-dexlayout",
     ],
 }

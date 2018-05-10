@@ -36,8 +36,8 @@
 #include "base/logging.h"  // For VLOG_IS_ON.
 #include "base/mem_map.h"
 #include "base/os.h"
+#include "base/unix_file/fd_file.h"
 #include "base/utils.h"
-#include "dex/art_dex_file_loader.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_layout.h"
@@ -1930,7 +1930,7 @@ bool DexLayout::ProcessDexFile(const char* file_name,
       std::string location = "memory mapped file for " + std::string(file_name);
       // Dex file verifier cannot handle compact dex.
       bool verify = options_.compact_dex_level_ == CompactDexLevel::kCompactDexLevelNone;
-      const ArtDexFileLoader dex_file_loader;
+      const DexFileLoader dex_file_loader;
       DexContainer::Section* const main_section = (*dex_container)->GetMainSection();
       DexContainer::Section* const data_section = (*dex_container)->GetDataSection();
       DCHECK_EQ(file_size, main_section->Size())
@@ -1980,10 +1980,32 @@ int DexLayout::ProcessFile(const char* file_name) {
   // all of which are Zip archives with "classes.dex" inside.
   const bool verify_checksum = !options_.ignore_bad_checksum_;
   std::string error_msg;
-  const ArtDexFileLoader dex_file_loader;
+  std::unique_ptr<File> input_file(OS::OpenFileForReading(file_name));
+  if (input_file == nullptr) {
+    LOG(ERROR) << "Could not open file " << file_name << " for reading";
+    return -1;
+  }
+  std::unique_ptr<MemMap> mmap(MemMap::MapFile(input_file->GetLength(),
+                                               PROT_READ,
+                                               MAP_PRIVATE,
+                                               input_file->Fd(),
+                                               /*start*/0,
+                                               /*low_4gb*/false,
+                                               file_name,
+                                               &error_msg));
+  if (mmap == nullptr) {
+    LOG(ERROR) << "MemMap failed for '" << file_name << "' " << error_msg;
+    return -1;
+  }
+  const DexFileLoader dex_file_loader;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  if (!dex_file_loader.Open(
-        file_name, file_name, /* verify */ true, verify_checksum, &error_msg, &dex_files)) {
+  if (!dex_file_loader.OpenAll(mmap->Begin(),
+                               mmap->Size(),
+                               file_name,
+                               /*verify*/true,
+                               verify_checksum,
+                               &error_msg,
+                               &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
     LOG(ERROR) << error_msg;
