@@ -588,6 +588,25 @@ static void VMDebug_nativeAttachAgent(JNIEnv* env, jclass, jstring agent, jobjec
   Runtime::Current()->AttachAgent(env, filename, classloader);
 }
 
+static void VMDebug_allowHiddenApiReflectionFrom(JNIEnv* env, jclass, jclass j_caller) {
+  Runtime* runtime = Runtime::Current();
+  ScopedObjectAccess soa(env);
+
+  if (!runtime->IsJavaDebuggable()) {
+    ThrowSecurityException("Can't exempt class, process is not debuggable.");
+    return;
+  }
+
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::Class> h_caller(hs.NewHandle(soa.Decode<mirror::Class>(j_caller)));
+  if (h_caller.IsNull()) {
+    ThrowNullPointerException("argument is null");
+    return;
+  }
+
+  h_caller->SetSkipHiddenApiChecks();
+}
+
 static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMDebug, countInstancesOfClass, "(Ljava/lang/Class;Z)J"),
   NATIVE_METHOD(VMDebug, countInstancesOfClasses, "([Ljava/lang/Class;Z)[J"),
@@ -623,6 +642,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMDebug, getRuntimeStatInternal, "(I)Ljava/lang/String;"),
   NATIVE_METHOD(VMDebug, getRuntimeStatsInternal, "()[Ljava/lang/String;"),
   NATIVE_METHOD(VMDebug, nativeAttachAgent, "(Ljava/lang/String;Ljava/lang/ClassLoader;)V"),
+  NATIVE_METHOD(VMDebug, allowHiddenApiReflectionFrom, "(Ljava/lang/Class;)V"),
 };
 
 void register_dalvik_system_VMDebug(JNIEnv* env) {
