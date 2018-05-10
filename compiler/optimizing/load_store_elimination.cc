@@ -160,7 +160,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
 
   // Scan the list of removed loads to see if we can reuse `type_conversion`, if
   // the other removed load has the same substitute and type and is dominated
-  // by `type_conversioni`.
+  // by `type_conversion`.
   void TryToReuseTypeConversion(HInstruction* type_conversion, size_t index) {
     size_t size = removed_loads_.size();
     HInstruction* load = removed_loads_[index];
@@ -542,16 +542,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
     }
   }
 
-  void VisitGetLocation(HInstruction* instruction,
-                        HInstruction* ref,
-                        size_t offset,
-                        HInstruction* index,
-                        size_t vector_length,
-                        int16_t declaring_class_def_index) {
-    HInstruction* original_ref = heap_location_collector_.HuntForOriginalReference(ref);
-    ReferenceInfo* ref_info = heap_location_collector_.FindReferenceInfoOf(original_ref);
-    size_t idx = heap_location_collector_.FindHeapLocationIndex(
-        ref_info, offset, index, vector_length, declaring_class_def_index);
+  void VisitGetLocation(HInstruction* instruction, size_t idx) {
     DCHECK_NE(idx, HeapLocationCollector::kHeapLocationNotFound);
     ScopedArenaVector<HInstruction*>& heap_values =
         heap_values_for_[instruction->GetBlock()->GetBlockId()];
@@ -569,23 +560,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
       heap_values[idx] = instruction;
       KeepStoresIfAliasedToLocation(heap_values, idx);
     } else {
-      if (DataType::Kind(heap_value->GetType()) != DataType::Kind(instruction->GetType())) {
-        // The only situation where the same heap location has different type is when
-        // we do an array get on an instruction that originates from the null constant
-        // (the null could be behind a field access, an array access, a null check or
-        // a bound type).
-        // In order to stay properly typed on primitive types, we do not eliminate
-        // the array gets.
-        if (kIsDebugBuild) {
-          DCHECK(heap_value->IsArrayGet()) << heap_value->DebugName();
-          DCHECK(instruction->IsArrayGet()) << instruction->DebugName();
-        }
-        // Load isn't eliminated. Put the load as the value into the HeapLocation.
-        // This acts like GVN but with better aliasing analysis.
-        heap_values[idx] = instruction;
-        KeepStoresIfAliasedToLocation(heap_values, idx);
-        return;
-      }
+      // Load is eliminated.
       AddRemovedLoad(instruction, heap_value);
       TryRemovingNullCheck(instruction);
     }
@@ -610,21 +585,11 @@ class LSEVisitor : public HGraphDelegateVisitor {
     return false;
   }
 
-  void VisitSetLocation(HInstruction* instruction,
-                        HInstruction* ref,
-                        size_t offset,
-                        HInstruction* index,
-                        size_t vector_length,
-                        int16_t declaring_class_def_index,
-                        HInstruction* value) {
+  void VisitSetLocation(HInstruction* instruction, size_t idx, HInstruction* value) {
+    DCHECK_NE(idx, HeapLocationCollector::kHeapLocationNotFound);
     DCHECK(!IsStore(value)) << value->DebugName();
     // value may already have a substitute.
     value = FindSubstitute(value);
-    HInstruction* original_ref = heap_location_collector_.HuntForOriginalReference(ref);
-    ReferenceInfo* ref_info = heap_location_collector_.FindReferenceInfoOf(original_ref);
-    size_t idx = heap_location_collector_.FindHeapLocationIndex(
-        ref_info, offset, index, vector_length, declaring_class_def_index);
-    DCHECK_NE(idx, HeapLocationCollector::kHeapLocationNotFound);
     ScopedArenaVector<HInstruction*>& heap_values =
         heap_values_for_[instruction->GetBlock()->GetBlockId()];
     HInstruction* heap_value = heap_values[idx];
@@ -644,7 +609,8 @@ class LSEVisitor : public HGraphDelegateVisitor {
       } else if (!loop_info->IsIrreducible()) {
         // instruction is a store in the loop so the loop must do write.
         DCHECK(side_effects_.GetLoopEffects(loop_info->GetHeader()).DoesAnyWrite());
-        if (ref_info->IsSingleton() && !loop_info->IsDefinedOutOfTheLoop(original_ref)) {
+        ReferenceInfo* ref_info = heap_location_collector_.GetHeapLocation(idx)->GetReferenceInfo();
+        if (ref_info->IsSingleton() && !loop_info->IsDefinedOutOfTheLoop(ref_info->GetReference())) {
           // original_ref is created inside the loop. Value stored to it isn't needed at
           // the loop header. This is true for outer loops also.
           possibly_redundant = true;
@@ -686,79 +652,39 @@ class LSEVisitor : public HGraphDelegateVisitor {
   }
 
   void VisitInstanceFieldGet(HInstanceFieldGet* instruction) OVERRIDE {
-    HInstruction* obj = instruction->InputAt(0);
-    size_t offset = instruction->GetFieldInfo().GetFieldOffset().SizeValue();
-    int16_t declaring_class_def_index = instruction->GetFieldInfo().GetDeclaringClassDefIndex();
-    VisitGetLocation(instruction,
-                     obj,
-                     offset,
-                     nullptr,
-                     HeapLocation::kScalar,
-                     declaring_class_def_index);
+    HInstruction* object = instruction->InputAt(0);
+    const FieldInfo& field = instruction->GetFieldInfo();
+    VisitGetLocation(instruction, heap_location_collector_.GetFieldHeapLocation(object, &field));
   }
 
   void VisitInstanceFieldSet(HInstanceFieldSet* instruction) OVERRIDE {
-    HInstruction* obj = instruction->InputAt(0);
-    size_t offset = instruction->GetFieldInfo().GetFieldOffset().SizeValue();
-    int16_t declaring_class_def_index = instruction->GetFieldInfo().GetDeclaringClassDefIndex();
+    HInstruction* object = instruction->InputAt(0);
+    const FieldInfo& field = instruction->GetFieldInfo();
     HInstruction* value = instruction->InputAt(1);
-    VisitSetLocation(instruction,
-                     obj,
-                     offset,
-                     nullptr,
-                     HeapLocation::kScalar,
-                     declaring_class_def_index,
-                     value);
+    size_t idx = heap_location_collector_.GetFieldHeapLocation(object, &field);
+    VisitSetLocation(instruction, idx, value);
   }
 
   void VisitStaticFieldGet(HStaticFieldGet* instruction) OVERRIDE {
     HInstruction* cls = instruction->InputAt(0);
-    size_t offset = instruction->GetFieldInfo().GetFieldOffset().SizeValue();
-    int16_t declaring_class_def_index = instruction->GetFieldInfo().GetDeclaringClassDefIndex();
-    VisitGetLocation(instruction,
-                     cls,
-                     offset,
-                     nullptr,
-                     HeapLocation::kScalar,
-                     declaring_class_def_index);
+    const FieldInfo& field = instruction->GetFieldInfo();
+    VisitGetLocation(instruction, heap_location_collector_.GetFieldHeapLocation(cls, &field));
   }
 
   void VisitStaticFieldSet(HStaticFieldSet* instruction) OVERRIDE {
     HInstruction* cls = instruction->InputAt(0);
-    size_t offset = instruction->GetFieldInfo().GetFieldOffset().SizeValue();
-    int16_t declaring_class_def_index = instruction->GetFieldInfo().GetDeclaringClassDefIndex();
-    HInstruction* value = instruction->InputAt(1);
-    VisitSetLocation(instruction,
-                     cls,
-                     offset,
-                     nullptr,
-                     HeapLocation::kScalar,
-                     declaring_class_def_index,
-                     value);
+    const FieldInfo& field = instruction->GetFieldInfo();
+    size_t idx = heap_location_collector_.GetFieldHeapLocation(cls, &field);
+    VisitSetLocation(instruction, idx, instruction->InputAt(1));
   }
 
   void VisitArrayGet(HArrayGet* instruction) OVERRIDE {
-    HInstruction* array = instruction->InputAt(0);
-    HInstruction* index = instruction->InputAt(1);
-    VisitGetLocation(instruction,
-                     array,
-                     HeapLocation::kInvalidFieldOffset,
-                     index,
-                     HeapLocation::kScalar,
-                     HeapLocation::kDeclaringClassDefIndexForArrays);
+    VisitGetLocation(instruction, heap_location_collector_.GetArrayHeapLocation(instruction));
   }
 
   void VisitArraySet(HArraySet* instruction) OVERRIDE {
-    HInstruction* array = instruction->InputAt(0);
-    HInstruction* index = instruction->InputAt(1);
-    HInstruction* value = instruction->InputAt(2);
-    VisitSetLocation(instruction,
-                     array,
-                     HeapLocation::kInvalidFieldOffset,
-                     index,
-                     HeapLocation::kScalar,
-                     HeapLocation::kDeclaringClassDefIndexForArrays,
-                     value);
+    size_t idx = heap_location_collector_.GetArrayHeapLocation(instruction);
+    VisitSetLocation(instruction, idx, instruction->InputAt(2));
   }
 
   void VisitDeoptimize(HDeoptimize* instruction) {
@@ -971,6 +897,7 @@ bool LoadStoreElimination::Run() {
     lse_visitor.VisitBasicBlock(block);
   }
   lse_visitor.RemoveInstructions();
+
   return true;
 }
 

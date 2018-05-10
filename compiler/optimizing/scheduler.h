@@ -310,12 +310,12 @@ class SchedulingGraph : public ValueObject {
   void AddOtherDependency(SchedulingNode* node, SchedulingNode* dependency) {
     AddDependency(node, dependency, /*is_data_dependency*/false);
   }
-  bool HasMemoryDependency(const HInstruction* node, const HInstruction* other) const;
+  bool HasMemoryDependency(HInstruction* node, HInstruction* other) const;
   bool HasExceptionDependency(const HInstruction* node, const HInstruction* other) const;
-  bool HasSideEffectDependency(const HInstruction* node, const HInstruction* other) const;
-  bool ArrayAccessMayAlias(const HInstruction* node, const HInstruction* other) const;
+  bool HasSideEffectDependency(HInstruction* node, HInstruction* other) const;
+  bool ArrayAccessMayAlias(HInstruction* node, HInstruction* other) const;
   bool FieldAccessMayAlias(const HInstruction* node, const HInstruction* other) const;
-  size_t ArrayAccessHeapLocation(HInstruction* array, HInstruction* index) const;
+  size_t ArrayAccessHeapLocation(HInstruction* instruction) const;
   size_t FieldAccessHeapLocation(HInstruction* obj, const FieldInfo* field) const;
 
   // Add dependencies nodes for the given `HInstruction`: inputs, environments, and side-effects.

@@ -296,38 +296,38 @@ class SchedulerTest : public OptimizingUnitTest {
     size_t loc2 = HeapLocationCollector::kHeapLocationNotFound;
 
     // Test side effect dependency: array[0] and array[1]
-    loc1 = heap_location_collector.GetArrayHeapLocation(arr, c0);
-    loc2 = heap_location_collector.GetArrayHeapLocation(arr, c1);
+    loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_0);
+    loc2 = heap_location_collector.GetArrayHeapLocation(arr_set_1);
     ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
     ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_1, arr_set_0));
 
     // Test side effect dependency based on LSA analysis: array[i] and array[j]
-    loc1 = heap_location_collector.GetArrayHeapLocation(arr, i);
-    loc2 = heap_location_collector.GetArrayHeapLocation(arr, j);
+    loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_i);
+    loc2 = heap_location_collector.GetArrayHeapLocation(arr_set_j);
     ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_i));
 
     // Test side effect dependency based on LSA analysis: array[i] and array[i+0]
-    loc1 = heap_location_collector.GetArrayHeapLocation(arr, i);
-    loc2 = heap_location_collector.GetArrayHeapLocation(arr, add0);
+    loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_i);
+    loc2 = heap_location_collector.GetArrayHeapLocation(arr_set_add0);
     ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_add0, arr_set_i));
 
     // Test side effect dependency based on LSA analysis: array[i] and array[i-0]
-    loc1 = heap_location_collector.GetArrayHeapLocation(arr, i);
-    loc2 = heap_location_collector.GetArrayHeapLocation(arr, sub0);
+    loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_i);
+    loc2 = heap_location_collector.GetArrayHeapLocation(arr_set_sub0);
     ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_sub0, arr_set_i));
 
     // Test side effect dependency based on LSA analysis: array[i] and array[i+1]
-    loc1 = heap_location_collector.GetArrayHeapLocation(arr, i);
-    loc2 = heap_location_collector.GetArrayHeapLocation(arr, add1);
+    loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_i);
+    loc2 = heap_location_collector.GetArrayHeapLocation(arr_set_add1);
     ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
     ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_add1, arr_set_i));
 
     // Test side effect dependency based on LSA analysis: array[i+1] and array[i-1]
-    loc1 = heap_location_collector.GetArrayHeapLocation(arr, add1);
-    loc2 = heap_location_collector.GetArrayHeapLocation(arr, sub1);
+    loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_add1);
+    loc2 = heap_location_collector.GetArrayHeapLocation(arr_set_sub1);
     ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
     ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_sub1, arr_set_add1));
 
