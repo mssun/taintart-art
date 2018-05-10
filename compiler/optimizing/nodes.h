@@ -7747,11 +7747,13 @@ inline bool IsZeroBitPattern(HInstruction* instruction) {
   return instruction->IsConstant() && instruction->AsConstant()->IsZeroBitPattern();
 }
 
+// Implement HInstruction::Is##type() for concrete instructions.
 #define INSTRUCTION_TYPE_CHECK(type, super)                                    \
   inline bool HInstruction::Is##type() const { return GetKind() == k##type; }
   FOR_EACH_CONCRETE_INSTRUCTION(INSTRUCTION_TYPE_CHECK)
 #undef INSTRUCTION_TYPE_CHECK
 
+// Implement HInstruction::Is##type() for abstract instructions.
 #define INSTRUCTION_TYPE_CHECK_RESULT(type, super)                             \
   std::is_base_of<BaseType, H##type>::value,
 #define INSTRUCTION_TYPE_CHECK(type, super)                                    \
@@ -7766,7 +7768,7 @@ inline bool IsZeroBitPattern(HInstruction* instruction) {
 
   FOR_EACH_ABSTRACT_INSTRUCTION(INSTRUCTION_TYPE_CHECK)
 #undef INSTRUCTION_TYPE_CHECK
-#undef INSTRUCTION_TYPE_CHECK_CASE
+#undef INSTRUCTION_TYPE_CHECK_RESULT
 
 #define INSTRUCTION_TYPE_CAST(type, super)                                     \
   inline const H##type* HInstruction::As##type() const {                       \
