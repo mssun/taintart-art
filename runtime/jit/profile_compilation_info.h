@@ -442,6 +442,9 @@ class ProfileCompilationInfo {
   // Checks if the profile is empty.
   bool IsEmpty() const;
 
+  // Clears all the data from the profile.
+  void ClearData();
+
  private:
   enum ProfileLoadStatus {
     kProfileLoadWouldOverwiteData,
