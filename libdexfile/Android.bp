@@ -55,6 +55,7 @@ cc_defaults {
     },
     generated_sources: ["dexfile_operator_srcs"],
     shared_libs: [
+        "libartbase",
         // Important note: relying on libartbase's header_lib is perfectly acceptable.
         // However, relying on the libartbase shared library introduces further, possibly cyclic,
 	// dependencies for clients outside of ART.
