@@ -143,31 +143,45 @@ Action GetMemberActionImpl(T* member,
 // Returns true if the caller is either loaded by the boot strap class loader or comes from
 // a dex file located in ${ANDROID_ROOT}/framework/.
 ALWAYS_INLINE
-inline bool IsCallerInPlatformDex(ObjPtr<mirror::ClassLoader> caller_class_loader,
-                                  ObjPtr<mirror::DexCache> caller_dex_cache)
+inline bool IsCallerTrusted(ObjPtr<mirror::Class> caller,
+                            ObjPtr<mirror::ClassLoader> caller_class_loader,
+                            ObjPtr<mirror::DexCache> caller_dex_cache)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (caller_class_loader.IsNull()) {
+    // Boot class loader.
     return true;
-  } else if (caller_dex_cache.IsNull()) {
-    return false;
-  } else {
-    const DexFile* caller_dex_file = caller_dex_cache->GetDexFile();
-    return caller_dex_file != nullptr && caller_dex_file->IsPlatformDexFile();
   }
+
+  if (!caller_dex_cache.IsNull()) {
+    const DexFile* caller_dex_file = caller_dex_cache->GetDexFile();
+    if (caller_dex_file != nullptr && caller_dex_file->IsPlatformDexFile()) {
+      // Caller is in a platform dex file.
+      return true;
+    }
+  }
+
+  if (!caller.IsNull() &&
+      caller->ShouldSkipHiddenApiChecks() &&
+      Runtime::Current()->IsJavaDebuggable()) {
+    // We are in debuggable mode and this caller has been marked trusted.
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace detail
 
 // Returns true if access to `member` should be denied to the caller of the
-// reflective query. The decision is based on whether the caller is in the
-// platform or not. Because different users of this function determine this
-// in a different way, `fn_caller_in_platform(self)` is called and should
-// return true if the caller is located in the platform.
+// reflective query. The decision is based on whether the caller is trusted or
+// not. Because different users of this function determine this in a different
+// way, `fn_caller_is_trusted(self)` is called and should return true if the
+// caller is allowed to access the platform.
 // This function might print warnings into the log if the member is hidden.
 template<typename T>
 inline Action GetMemberAction(T* member,
                               Thread* self,
-                              std::function<bool(Thread*)> fn_caller_in_platform,
+                              std::function<bool(Thread*)> fn_caller_is_trusted,
                               AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(member != nullptr);
@@ -188,8 +202,8 @@ inline Action GetMemberAction(T* member,
 
   // Member is hidden. Invoke `fn_caller_in_platform` and find the origin of the access.
   // This can be *very* expensive. Save it for last.
-  if (fn_caller_in_platform(self)) {
-    // Caller in the platform. Exit.
+  if (fn_caller_is_trusted(self)) {
+    // Caller is trusted. Exit.
     return kAllow;
   }
 
@@ -197,10 +211,9 @@ inline Action GetMemberAction(T* member,
   return detail::GetMemberActionImpl(member, api_list, action, access_method);
 }
 
-inline bool IsCallerInPlatformDex(ObjPtr<mirror::Class> caller)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
+inline bool IsCallerTrusted(ObjPtr<mirror::Class> caller) REQUIRES_SHARED(Locks::mutator_lock_) {
   return !caller.IsNull() &&
-      detail::IsCallerInPlatformDex(caller->GetClassLoader(), caller->GetDexCache());
+      detail::IsCallerTrusted(caller, caller->GetClassLoader(), caller->GetDexCache());
 }
 
 // Returns true if access to `member` should be denied to a caller loaded with
@@ -212,10 +225,11 @@ inline Action GetMemberAction(T* member,
                               ObjPtr<mirror::DexCache> caller_dex_cache,
                               AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  bool caller_in_platform = detail::IsCallerInPlatformDex(caller_class_loader, caller_dex_cache);
+  bool is_caller_trusted =
+      detail::IsCallerTrusted(/* caller */ nullptr, caller_class_loader, caller_dex_cache);
   return GetMemberAction(member,
                          /* thread */ nullptr,
-                         [caller_in_platform] (Thread*) { return caller_in_platform; },
+                         [is_caller_trusted] (Thread*) { return is_caller_trusted; },
                          access_method);
 }
 

@@ -80,15 +80,15 @@ namespace art {
 // things not rendering correctly. E.g. b/16858794
 static constexpr bool kWarnJniAbort = false;
 
-static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::IsCallerInPlatformDex(GetCallingClass(self, /* num_frames */ 1));
+static bool IsCallerTrusted(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
+  return hiddenapi::IsCallerTrusted(GetCallingClass(self, /* num_frames */ 1));
 }
 
 template<typename T>
 ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   hiddenapi::Action action = hiddenapi::GetMemberAction(
-      member, self, IsCallerInPlatformDex, hiddenapi::kJNI);
+      member, self, IsCallerTrusted, hiddenapi::kJNI);
   if (action != hiddenapi::kAllow) {
     hiddenapi::NotifyHiddenApiListener(member);
   }
