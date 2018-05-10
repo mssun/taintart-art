@@ -17,8 +17,7 @@
 green='\033[0;32m'
 nc='\033[0m'
 
-# Setup as root, as the next buildbot step (device cleanup) requires it.
-# This is also required to set the date, if needed.
+# Setup as root, as some actions performed here (e.g. setting the date) requires it.
 adb root
 adb wait-for-device
 
@@ -99,4 +98,59 @@ if [ $? = 124 ]; then
 else
   processes=$(adb shell "ps" | grep dalvikvm | awk '{print $2}')
   for i in $processes; do adb shell kill -9 $i; done
+fi
+
+if [[ -n "$ART_TEST_CHROOT" ]]; then
+  # Prepare the chroot dir.
+  echo -e "${green}Prepare the chroot dir in $ART_TEST_CHROOT${nc}"
+
+  # Check that ART_TEST_CHROOT is correctly defined.
+  [[ "x$ART_TEST_CHROOT" = x/* ]] || { echo "$ART_TEST_CHROOT is not an absolute path"; exit 1; }
+
+  # Create chroot.
+  adb shell mkdir -p "$ART_TEST_CHROOT"
+
+  # Provide property_contexts file(s) in chroot.
+  # This is required to have Android system properties work from the chroot.
+  # Notes:
+  # - In Android N, only '/property_contexts' is expected.
+  # - In Android O, property_context files are expected under /system and /vendor.
+  # (See bionic/libc/bionic/system_properties.cpp for more information.)
+  property_context_files="/property_contexts \
+    /system/etc/selinux/plat_property_contexts \
+    /vendor/etc/selinux/nonplat_property_context \
+    /plat_property_contexts \
+    /nonplat_property_contexts"
+  for f in $property_context_files; do
+    adb shell test -f "$f" \
+      "&&" mkdir -p "$ART_TEST_CHROOT$(dirname $f)" \
+      "&&" cp -f "$f" "$ART_TEST_CHROOT$f"
+  done
+
+  # Create directories required for ART testing in chroot.
+  adb shell mkdir -p "$ART_TEST_CHROOT/tmp"
+  adb shell mkdir -p "$ART_TEST_CHROOT/data/dalvik-cache"
+  adb shell mkdir -p "$ART_TEST_CHROOT/data/local/tmp"
+
+  # Populate /etc in chroot with required files.
+  adb shell mkdir -p "$ART_TEST_CHROOT/system/etc"
+  adb shell "cd $ART_TEST_CHROOT && ln -s system/etc etc"
+
+  # Provide /proc in chroot.
+  adb shell mkdir -p "$ART_TEST_CHROOT/proc"
+  adb shell mount | grep -q "^proc on $ART_TEST_CHROOT/proc type proc " \
+    || adb shell mount -t proc proc "$ART_TEST_CHROOT/proc"
+
+  # Provide /sys in chroot.
+  adb shell mkdir -p "$ART_TEST_CHROOT/sys"
+  adb shell mount | grep -q "^sysfs on $ART_TEST_CHROOT/sys type sysfs " \
+    || adb shell mount -t sysfs sysfs "$ART_TEST_CHROOT/sys"
+  # Provide /sys/kernel/debug in chroot.
+  adb shell mount | grep -q "^debugfs on $ART_TEST_CHROOT/sys/kernel/debug type debugfs " \
+    || adb shell mount -t debugfs debugfs "$ART_TEST_CHROOT/sys/kernel/debug"
+
+  # Provide /dev in chroot.
+  adb shell mkdir -p "$ART_TEST_CHROOT/dev"
+  adb shell mount | grep -q "^tmpfs on $ART_TEST_CHROOT/dev type tmpfs " \
+    || adb shell mount -o bind /dev "$ART_TEST_CHROOT/dev"
 fi

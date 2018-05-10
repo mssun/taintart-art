@@ -104,10 +104,14 @@ vogar_args=$@
 gcstress=false
 debug=false
 
+# Don't use device mode by default.
+device_mode=false
+# Don't use chroot by default.
+use_chroot=false
+
 while true; do
   if [[ "$1" == "--mode=device" ]]; then
-    vogar_args="$vogar_args --device-dir=/data/local/tmp"
-    vogar_args="$vogar_args --vm-command=$android_root/bin/art"
+    device_mode=true
     vogar_args="$vogar_args --vm-arg -Ximage:/data/art-test/core.art"
     shift
   elif [[ "$1" == "--mode=host" ]]; then
@@ -131,12 +135,33 @@ while true; do
   elif [[ "$1" == "-Xgc:gcstress" ]]; then
     gcstress=true
     shift
+  elif [[ "$1" == "--chroot" ]]; then
+    use_chroot=true
+    # Shift the "--chroot" flag and its argument.
+    shift 2
   elif [[ "$1" == "" ]]; then
     break
   else
     shift
   fi
 done
+
+if $device_mode; then
+  if $use_chroot; then
+    vogar_args="$vogar_args --device-dir=/tmp"
+    vogar_args="$vogar_args --vm-command=/system/bin/art"
+  else
+    vogar_args="$vogar_args --device-dir=/data/local/tmp"
+    vogar_args="$vogar_args --vm-command=$android_root/bin/art"
+  fi
+else
+  # Host mode.
+  if $use_chroot; then
+    # Chroot-based testing is not supported on host.
+    echo "Cannot use --chroot with --mode=host"
+    exit 1
+  fi
+fi
 
 # Increase the timeout, as vogar cannot set individual test
 # timeout when being asked to run packages, and some tests go above
