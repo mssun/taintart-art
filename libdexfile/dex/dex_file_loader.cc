@@ -191,6 +191,8 @@ std::string DexFileLoader::GetDexCanonicalLocation(const char* dex_location) {
   std::string base_location = GetBaseLocation(dex_location);
   const char* suffix = dex_location + base_location.size();
   DCHECK(suffix[0] == 0 || suffix[0] == kMultiDexSeparator);
+  // Warning: Bionic implementation of realpath() allocates > 12KB on the stack.
+  // Do not run this code on a small stack, e.g. in signal handler.
   UniqueCPtr<const char[]> path(realpath(base_location.c_str(), nullptr));
   if (path != nullptr && path.get() != base_location) {
     return std::string(path.get()) + suffix;
