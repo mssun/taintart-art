@@ -147,6 +147,7 @@ art_cc_test {
         "arch/instruction_set_test.cc",
         "base/arena_allocator_test.cc",
         "base/bit_field_test.cc",
+        "base/bit_memory_region_test.cc",
         "base/bit_string_test.cc",
         "base/bit_struct_test.cc",
         "base/bit_utils_test.cc",
