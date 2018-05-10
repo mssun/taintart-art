@@ -320,6 +320,9 @@ def run_tests(tests):
   if env.ART_TEST_BISECTION:
     options_all += ' --bisection-search'
 
+  if env.ART_TEST_CHROOT:
+    options_all += ' --chroot ' + env.ART_TEST_CHROOT
+
   if env.ART_TEST_ANDROID_ROOT:
     options_all += ' --android-root ' + env.ART_TEST_ANDROID_ROOT
 
