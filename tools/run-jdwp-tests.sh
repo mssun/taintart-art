@@ -68,6 +68,8 @@ test="org.apache.harmony.jpda.tests.share.AllTests"
 mode="target"
 # Use JIT compiling by default.
 use_jit=true
+# Don't use chroot by default.
+use_chroot=false
 variant_cmdline_parameter="--variant=X32"
 dump_command="/bin/true"
 # Timeout of JDWP test in ms.
@@ -110,6 +112,15 @@ while true; do
     # We don't care about jit with the RI
     use_jit=false
     shift
+  elif [[ "$1" == "--chroot" ]]; then
+    use_chroot=true
+    # Adjust settings for chroot environment.
+    art="/system/bin/art"
+    art_debugee="sh /system/bin/art"
+    vm_command="--vm-command=$art"
+    device_dir="--device-dir=/tmp"
+    # Shift the "--chroot" flag and its argument.
+    shift 2
   elif [[ $1 == --test-timeout-ms ]]; then
     # Remove the --test-timeout-ms from the arguments.
     args=${args/$1}
@@ -190,6 +201,12 @@ while true; do
     shift
   fi
 done
+
+if $use_chroot && [[ $mode == "host" ]]; then
+  # Chroot-based testing is not supported on host.
+  echo "Cannot use --chroot with --mode=host"
+  exit 1
+fi
 
 if [[ $has_gdb = "yes" ]]; then
   if [[ $explicit_debug = "no" ]]; then
