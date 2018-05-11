@@ -1115,21 +1115,10 @@ bool Thread::InitStackHwm() {
   Runtime* runtime = Runtime::Current();
   bool implicit_stack_check = !runtime->ExplicitStackOverflowChecks() && !runtime->IsAotCompiler();
 
-  // Valgrind on arm doesn't give the right values here. Do not install the guard page, and
-  // effectively disable stack overflow checks (we'll get segfaults, potentially) by setting
-  // stack_begin to 0.
-  const bool valgrind_on_arm =
-      (kRuntimeISA == InstructionSet::kArm || kRuntimeISA == InstructionSet::kArm64) &&
-      kMemoryToolIsValgrind &&
-      RUNNING_ON_MEMORY_TOOL != 0;
-  if (valgrind_on_arm) {
-    tlsPtr_.stack_begin = nullptr;
-  }
-
   ResetDefaultStackEnd();
 
   // Install the protected region if we are doing implicit overflow checks.
-  if (implicit_stack_check && !valgrind_on_arm) {
+  if (implicit_stack_check) {
     // The thread might have protected region at the bottom.  We need
     // to install our own region so we need to move the limits
     // of the stack to make room for it.

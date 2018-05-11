@@ -472,8 +472,8 @@ class Dex2oatSwapUseTest : public Dex2oatSwapTest {
 };
 
 TEST_F(Dex2oatSwapUseTest, CheckSwapUsage) {
-  // Native memory usage isn't correctly tracked under sanitization.
-  TEST_DISABLED_FOR_MEMORY_TOOL_ASAN();
+  // Native memory usage isn't correctly tracked when running under ASan.
+  TEST_DISABLED_FOR_MEMORY_TOOL();
 
   // The `native_alloc_2_ >= native_alloc_1_` assertion below may not
   // hold true on some x86 systems; disable this test while we
@@ -1054,8 +1054,6 @@ TEST_F(Dex2oatWatchdogTest, TestWatchdogOK) {
 }
 
 TEST_F(Dex2oatWatchdogTest, TestWatchdogTrigger) {
-  TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND();  // b/63052624
-
   // The watchdog is independent of dex2oat and will not delete intermediates. It is possible
   // that the compilation succeeds and the file is completely written by the time the watchdog
   // kills dex2oat (but the dex2oat threads must have been scheduled pretty badly).

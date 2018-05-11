@@ -636,8 +636,8 @@ void InstructionSimplifierVisitor::VisitCheckCast(HCheckCast* check_cast) {
     return;
   }
 
-  // Note: The `outcome` is initialized to please valgrind - the compiler can reorder
-  // the return value check with the `outcome` check, b/27651442 .
+  // Historical note: The `outcome` was initialized to please Valgrind - the compiler can reorder
+  // the return value check with the `outcome` check, b/27651442.
   bool outcome = false;
   if (TypeCheckHasKnownOutcome(check_cast->GetTargetClassRTI(), object, &outcome)) {
     if (outcome) {
@@ -682,8 +682,8 @@ void InstructionSimplifierVisitor::VisitInstanceOf(HInstanceOf* instruction) {
     return;
   }
 
-  // Note: The `outcome` is initialized to please valgrind - the compiler can reorder
-  // the return value check with the `outcome` check, b/27651442 .
+  // Historical note: The `outcome` was initialized to please Valgrind - the compiler can reorder
+  // the return value check with the `outcome` check, b/27651442.
   bool outcome = false;
   if (TypeCheckHasKnownOutcome(instruction->GetTargetClassRTI(), object, &outcome)) {
     MaybeRecordStat(stats_, MethodCompilationStat::kRemovedInstanceOf);
