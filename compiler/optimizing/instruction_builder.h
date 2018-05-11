@@ -240,7 +240,10 @@ class HInstructionBuilder : public ValueObject {
   bool LoadClassNeedsAccessCheck(Handle<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Builds a `HLoadMethodType` loading the given `proto_index`.
+  // Builds a `HLoadMethodHandle` loading the given `method_handle_idx`.
+  void BuildLoadMethodHandle(uint16_t method_handle_idx, uint32_t dex_pc);
+
+  // Builds a `HLoadMethodType` loading the given `proto_idx`.
   void BuildLoadMethodType(uint16_t proto_idx, uint32_t dex_pc);
 
   // Returns the outer-most compiling method's class.

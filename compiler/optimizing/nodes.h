@@ -1383,6 +1383,7 @@ class HLoopInformationOutwardIterator : public ValueObject {
   M(LessThanOrEqual, Condition)                                         \
   M(LoadClass, Instruction)                                             \
   M(LoadException, Instruction)                                         \
+  M(LoadMethodHandle, Instruction)                                      \
   M(LoadMethodType, Instruction)                                        \
   M(LoadString, Instruction)                                            \
   M(LongConstant, Constant)                                             \
@@ -6500,6 +6501,50 @@ inline void HLoadString::AddSpecialInput(HInstruction* special_input) {
   special_input->AddUseAt(this, 0);
 }
 
+class HLoadMethodHandle FINAL : public HInstruction {
+ public:
+  HLoadMethodHandle(HCurrentMethod* current_method,
+                  uint16_t method_handle_idx,
+                  const DexFile& dex_file,
+                  uint32_t dex_pc)
+      : HInstruction(kLoadMethodHandle,
+                     DataType::Type::kReference,
+                     SideEffectsForArchRuntimeCalls(),
+                     dex_pc),
+        special_input_(HUserRecord<HInstruction*>(current_method)),
+        method_handle_idx_(method_handle_idx),
+        dex_file_(dex_file) {
+  }
+
+  using HInstruction::GetInputRecords;  // Keep the const version visible.
+  ArrayRef<HUserRecord<HInstruction*>> GetInputRecords() OVERRIDE FINAL {
+    return ArrayRef<HUserRecord<HInstruction*>>(
+        &special_input_, (special_input_.GetInstruction() != nullptr) ? 1u : 0u);
+  }
+
+  bool IsClonable() const OVERRIDE { return true; }
+
+  uint16_t GetMethodHandleIndex() const { return method_handle_idx_; }
+
+  const DexFile& GetDexFile() const { return dex_file_; }
+
+  static SideEffects SideEffectsForArchRuntimeCalls() {
+    return SideEffects::CanTriggerGC();
+  }
+
+  DECLARE_INSTRUCTION(LoadMethodHandle);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(LoadMethodHandle);
+
+ private:
+  // The special input is the HCurrentMethod for kRuntimeCall.
+  HUserRecord<HInstruction*> special_input_;
+
+  const uint16_t method_handle_idx_;
+  const DexFile& dex_file_;
+};
+
 class HLoadMethodType FINAL : public HInstruction {
  public:
   HLoadMethodType(HCurrentMethod* current_method,
@@ -6540,7 +6585,7 @@ class HLoadMethodType FINAL : public HInstruction {
   // The special input is the HCurrentMethod for kRuntimeCall.
   HUserRecord<HInstruction*> special_input_;
 
-  uint16_t proto_idx_;
+  const uint16_t proto_idx_;
   const DexFile& dex_file_;
 };
 

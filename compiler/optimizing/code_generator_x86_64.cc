@@ -5908,6 +5908,16 @@ void LocationsBuilderX86_64::VisitClinitCheck(HClinitCheck* check) {
   }
 }
 
+void LocationsBuilderX86_64::VisitLoadMethodHandle(HLoadMethodHandle* load) {
+  // Custom calling convention: RAX serves as both input and output.
+  Location location = Location::RegisterLocation(RAX);
+  CodeGenerator::CreateLoadMethodHandleRuntimeCallLocationSummary(load, location, location);
+}
+
+void InstructionCodeGeneratorX86_64::VisitLoadMethodHandle(HLoadMethodHandle* load) {
+  codegen_->GenerateLoadMethodHandleRuntimeCall(load);
+}
+
 void LocationsBuilderX86_64::VisitLoadMethodType(HLoadMethodType* load) {
   // Custom calling convention: RAX serves as both input and output.
   Location location = Location::RegisterLocation(RAX);

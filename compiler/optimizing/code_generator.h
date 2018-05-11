@@ -564,6 +564,11 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
                                                         Location runtime_return_location);
   void GenerateLoadClassRuntimeCall(HLoadClass* cls);
 
+  static void CreateLoadMethodHandleRuntimeCallLocationSummary(HLoadMethodHandle* method_handle,
+                                                             Location runtime_handle_index_location,
+                                                             Location runtime_return_location);
+  void GenerateLoadMethodHandleRuntimeCall(HLoadMethodHandle* method_handle);
+
   static void CreateLoadMethodTypeRuntimeCallLocationSummary(HLoadMethodType* method_type,
                                                              Location runtime_type_index_location,
                                                              Location runtime_return_location);
