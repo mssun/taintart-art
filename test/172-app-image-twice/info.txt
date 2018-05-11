@@ -1,1 +1,0 @@
-Regression test for loading the same app image twice.

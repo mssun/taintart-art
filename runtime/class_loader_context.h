@@ -22,10 +22,8 @@
 
 #include "arch/instruction_set.h"
 #include "base/dchecked_vector.h"
-#include "dex/dex_file.h"
 #include "handle_scope.h"
 #include "mirror/class_loader.h"
-#include "oat_file.h"
 #include "scoped_thread_state_change.h"
 
 namespace art {
@@ -36,18 +34,6 @@ class OatFile;
 // Utility class which holds the class loader context used during compilation/verification.
 class ClassLoaderContext {
  public:
-  enum class VerificationResult {
-    kVerifies,
-    kForcedToSkipChecks,
-    kMismatch,
-  };
-
-  enum ClassLoaderType {
-    kInvalidClassLoader = 0,
-    kPathClassLoader = 1,
-    kDelegateLastClassLoader = 2
-  };
-
   ~ClassLoaderContext();
 
   // Opens requested class path files and appends them to ClassLoaderInfo::opened_dex_files.
@@ -123,7 +109,7 @@ class ClassLoaderContext {
   // This should be called after OpenDexFiles().
   // Names are only verified if verify_names is true.
   // Checksums are only verified if verify_checksums is true.
-  VerificationResult VerifyClassLoaderContextMatch(const std::string& context_spec,
+  bool VerifyClassLoaderContextMatch(const std::string& context_spec,
                                      bool verify_names = true,
                                      bool verify_checksums = true) const;
 
@@ -155,6 +141,12 @@ class ClassLoaderContext {
   static std::unique_ptr<ClassLoaderContext> Default();
 
  private:
+  enum ClassLoaderType {
+    kInvalidClassLoader = 0,
+    kPathClassLoader = 1,
+    kDelegateLastClassLoader = 2
+  };
+
   struct ClassLoaderInfo {
     // The type of this class loader.
     ClassLoaderType type;
