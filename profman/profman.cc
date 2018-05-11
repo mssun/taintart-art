@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/file.h>
-#include <sys/mman.h>
 #include <sys/param.h>
 #include <unistd.h>
 
@@ -41,6 +40,7 @@
 #include "base/utils.h"
 #include "base/zip_archive.h"
 #include "boot_image_profile.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/bytecode_utils.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file.h"
@@ -49,6 +49,7 @@
 #include "dex/type_reference.h"
 #include "profile/profile_compilation_info.h"
 #include "profile_assistant.h"
+#include "runtime.h"
 
 namespace art {
 
@@ -176,11 +177,6 @@ static constexpr char kMethodFlagStringHot = 'H';
 static constexpr char kMethodFlagStringStartup = 'S';
 static constexpr char kMethodFlagStringPostStartup = 'P';
 
-NO_RETURN static void Abort(const char* msg) {
-  LOG(ERROR) << "Aborted: " << msg;
-  exit(1);
-}
-
 // TODO(calin): This class has grown too much from its initial design. Split the functionality
 // into smaller, more contained pieces.
 class ProfMan FINAL {
@@ -206,8 +202,8 @@ class ProfMan FINAL {
     original_argc = argc;
     original_argv = argv;
 
-    MemMap::Init();
-    InitLogging(argv, Abort);
+    Locks::Init();
+    InitLogging(argv, Runtime::Abort);
 
     // Skip over the command name.
     argv++;
@@ -417,49 +413,36 @@ class ProfMan FINAL {
     }
     static constexpr bool kVerifyChecksum = true;
     for (size_t i = 0; i < dex_locations_.size(); ++i) {
-      std::unique_ptr<File> apk_file;
+      std::string error_msg;
+      const ArtDexFileLoader dex_file_loader;
+      std::vector<std::unique_ptr<const DexFile>> dex_files_for_location;
       // We do not need to verify the apk for processing profiles.
       if (use_apk_fd_list) {
-        apk_file.reset(new File(apks_fd_[i], false/*checkUsage*/));
-      } else {
-        apk_file.reset(new File(apk_files_[i], O_RDONLY, false/*checkUsage*/));
-        if (apk_file == nullptr) {
-          LOG(ERROR) << "Open failed for '" << dex_locations_[i] << "' ";
+        if (dex_file_loader.OpenZip(apks_fd_[i],
+                                    dex_locations_[i],
+                                    /* verify */ false,
+                                    kVerifyChecksum,
+                                    &error_msg,
+                                    &dex_files_for_location)) {
+        } else {
+          LOG(ERROR) << "OpenZip failed for '" << dex_locations_[i] << "' " << error_msg;
           return false;
         }
-      }
-      std::string error_msg;
-      std::unique_ptr<MemMap> mmap(MemMap::MapFile(apk_file->GetLength(),
-                                                   PROT_READ,
-                                                   MAP_PRIVATE,
-                                                   apk_file->Fd(),
-                                                   /*start*/0,
-                                                   /*low_4gb*/false,
-                                                   dex_locations_[i].c_str(),
-                                                   &error_msg));
-      if (mmap == nullptr) {
-        LOG(ERROR) << "MemMap failed for '" << dex_locations_[i] << "' " << error_msg;
-        return false;
-      }
-      const DexFileLoader dex_file_loader;
-      std::vector<std::unique_ptr<const DexFile>> dex_files_for_location;
-      if (!dex_file_loader.OpenAll(mmap->Begin(),
-                                   mmap->Size(),
-                                   dex_locations_[i],
-                                   /* verify */ false,
-                                   kVerifyChecksum,
-                                   &error_msg,
-                                   &dex_files_for_location)) {
-        LOG(ERROR) << "OpenAll failed for '" << dex_locations_[i] << "' " << error_msg;
-        return false;
+      } else {
+        if (dex_file_loader.Open(apk_files_[i].c_str(),
+                                 dex_locations_[i],
+                                 /* verify */ false,
+                                 kVerifyChecksum,
+                                 &error_msg,
+                                 &dex_files_for_location)) {
+        } else {
+          LOG(ERROR) << "Open failed for '" << dex_locations_[i] << "' " << error_msg;
+          return false;
+        }
       }
       for (std::unique_ptr<const DexFile>& dex_file : dex_files_for_location) {
         process_fn(std::move(dex_file));
       }
-      // Leak apk_file and mmap for now.
-      // TODO: close fds, etc.
-      apk_file.release();
-      mmap.release();
     }
     return true;
   }
