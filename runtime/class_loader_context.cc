@@ -672,10 +672,9 @@ static bool IsAbsoluteLocation(const std::string& location) {
   return !location.empty() && location[0] == '/';
 }
 
-ClassLoaderContext::VerificationResult ClassLoaderContext::VerifyClassLoaderContextMatch(
-    const std::string& context_spec,
-    bool verify_names,
-    bool verify_checksums) const {
+bool ClassLoaderContext::VerifyClassLoaderContextMatch(const std::string& context_spec,
+                                                       bool verify_names,
+                                                       bool verify_checksums) const {
   if (verify_names || verify_checksums) {
     DCHECK(dex_files_open_attempted_);
     DCHECK(dex_files_open_result_);
@@ -684,21 +683,15 @@ ClassLoaderContext::VerificationResult ClassLoaderContext::VerifyClassLoaderCont
   ClassLoaderContext expected_context;
   if (!expected_context.Parse(context_spec, verify_checksums)) {
     LOG(WARNING) << "Invalid class loader context: " << context_spec;
-    return VerificationResult::kMismatch;
+    return false;
   }
 
   // Special shared library contexts always match. They essentially instruct the runtime
   // to ignore the class path check because the oat file is known to be loaded in different
   // contexts. OatFileManager will further verify if the oat file can be loaded based on the
   // collision check.
-  if (expected_context.special_shared_library_) {
-    // Special case where we are the only entry in the class path.
-    if (class_loader_chain_.size() == 1 && class_loader_chain_[0].classpath.size() == 0) {
-      return VerificationResult::kVerifies;
-    }
-    return VerificationResult::kForcedToSkipChecks;
-  } else if (special_shared_library_) {
-    return VerificationResult::kForcedToSkipChecks;
+  if (special_shared_library_ || expected_context.special_shared_library_) {
+    return true;
   }
 
   if (expected_context.class_loader_chain_.size() != class_loader_chain_.size()) {
@@ -706,7 +699,7 @@ ClassLoaderContext::VerificationResult ClassLoaderContext::VerifyClassLoaderCont
         << expected_context.class_loader_chain_.size()
         << ", actual=" << class_loader_chain_.size()
         << " (" << context_spec << " | " << EncodeContextForOatFile("") << ")";
-    return VerificationResult::kMismatch;
+    return false;
   }
 
   for (size_t i = 0; i < class_loader_chain_.size(); i++) {
@@ -717,14 +710,14 @@ ClassLoaderContext::VerificationResult ClassLoaderContext::VerifyClassLoaderCont
           << ". expected=" << GetClassLoaderTypeName(expected_info.type)
           << ", found=" << GetClassLoaderTypeName(info.type)
           << " (" << context_spec << " | " << EncodeContextForOatFile("") << ")";
-      return VerificationResult::kMismatch;
+      return false;
     }
     if (info.classpath.size() != expected_info.classpath.size()) {
       LOG(WARNING) << "ClassLoaderContext classpath size mismatch for position " << i
             << ". expected=" << expected_info.classpath.size()
             << ", found=" << info.classpath.size()
             << " (" << context_spec << " | " << EncodeContextForOatFile("") << ")";
-      return VerificationResult::kMismatch;
+      return false;
     }
 
     if (verify_checksums) {
@@ -779,7 +772,7 @@ ClassLoaderContext::VerificationResult ClassLoaderContext::VerifyClassLoaderCont
             << ". expected=" << expected_info.classpath[k]
             << ", found=" << info.classpath[k]
             << " (" << context_spec << " | " << EncodeContextForOatFile("") << ")";
-        return VerificationResult::kMismatch;
+        return false;
       }
 
       // Compare the checksums.
@@ -788,11 +781,11 @@ ClassLoaderContext::VerificationResult ClassLoaderContext::VerifyClassLoaderCont
                      << ". expected=" << expected_info.checksums[k]
                      << ", found=" << info.checksums[k]
                      << " (" << context_spec << " | " << EncodeContextForOatFile("") << ")";
-        return VerificationResult::kMismatch;
+        return false;
       }
     }
   }
-  return VerificationResult::kVerifies;
+  return true;
 }
 
 jclass ClassLoaderContext::GetClassLoaderClass(ClassLoaderType type) {
