@@ -16,5 +16,13 @@
 
 # Build an app image with TestClass (specified by profile) and class loader
 # context that skips the duplicate class checks.
-exec ${RUN} $@ --profile -Xcompiler-option --compiler-filter=speed-profile \
-    -Xcompiler-option --class-loader-context=\&
+
+# Target and host use a different shell, and we need to special case the
+# passing of the class loader context marker.
+if [[ "$@" = *" --host "* ]]; then
+  ${RUN} $@ --profile -Xcompiler-option --compiler-filter=speed-profile \
+      -Xcompiler-option --class-loader-context=\&
+else
+  ${RUN} $@ --profile -Xcompiler-option --compiler-filter=speed-profile \
+      -Xcompiler-option '--class-loader-context=\&'
+fi
