@@ -317,8 +317,8 @@ class JitCodeCache {
       REQUIRES(lock_)
       REQUIRES(Locks::mutator_lock_);
 
-  // Free in the mspace allocations for `code_ptr`.
-  void FreeCode(const void* code_ptr) REQUIRES(lock_);
+  // Free code and data allocations for `code_ptr`.
+  void FreeCodeAndData(const void* code_ptr) REQUIRES(lock_);
 
   // Number of bytes allocated in the code cache.
   size_t CodeCacheSizeLocked() REQUIRES(lock_);
@@ -357,10 +357,10 @@ class JitCodeCache {
       REQUIRES(lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void FreeCode(uint8_t* code) REQUIRES(lock_);
   uint8_t* AllocateCode(size_t code_size) REQUIRES(lock_);
-  void FreeData(uint8_t* data) REQUIRES(lock_);
+  void FreeCode(uint8_t* code) REQUIRES(lock_);
   uint8_t* AllocateData(size_t data_size) REQUIRES(lock_);
+  void FreeData(uint8_t* data) REQUIRES(lock_);
 
   bool IsWeakAccessEnabled(Thread* self) const;
   void WaitUntilInlineCacheAccessible(Thread* self)
