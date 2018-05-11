@@ -1257,10 +1257,10 @@ class Dex2Oat FINAL {
         if (stored_class_loader_context_ == nullptr) {
           Usage("Option --stored-class-loader-context has an incorrect format: %s",
                 stored_context_arg.c_str());
-        } else if (class_loader_context_->VerifyClassLoaderContextMatch(
+        } else if (!class_loader_context_->VerifyClassLoaderContextMatch(
             stored_context_arg,
             /*verify_names*/ false,
-            /*verify_checksums*/ false) != ClassLoaderContext::VerificationResult::kVerifies) {
+            /*verify_checksums*/ false)) {
           Usage(
               "Option --stored-class-loader-context '%s' mismatches --class-loader-context '%s'",
               stored_context_arg.c_str(),
