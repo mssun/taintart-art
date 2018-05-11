@@ -38,6 +38,7 @@
   V(InitializeStaticStorage, void*, uint32_t) \
   V(InitializeTypeAndVerifyAccess, void*, uint32_t) \
   V(InitializeType, void*, uint32_t) \
+  V(ResolveMethodType, void*, uint32_t) \
   V(ResolveString, void*, uint32_t) \
 \
   V(Set8Instance, int, uint32_t, void*, int8_t) \

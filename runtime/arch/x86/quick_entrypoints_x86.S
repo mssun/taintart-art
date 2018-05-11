@@ -923,7 +923,10 @@ MACRO3(THREE_ARG_REF_DOWNCALL, c_name, cxx_name, return_macro)
     END_FUNCTION VAR(c_name)
 END_MACRO
 
-// Macro for string and type resolution and initialization.
+    /*
+     * Macro for resolution and initialization of indexed DEX file
+     * constants such as classes and strings.
+     */
 MACRO3(ONE_ARG_SAVE_EVERYTHING_DOWNCALL, c_name, cxx_name, runtime_method_offset = RUNTIME_SAVE_EVERYTHING_METHOD_OFFSET)
     DEFINE_FUNCTION VAR(c_name)
     SETUP_SAVE_EVERYTHING_FRAME ebx, ebx, \runtime_method_offset  // save ref containing registers for GC
@@ -932,7 +935,7 @@ MACRO3(ONE_ARG_SAVE_EVERYTHING_DOWNCALL, c_name, cxx_name, runtime_method_offset
     CFI_ADJUST_CFA_OFFSET(8)
     pushl %fs:THREAD_SELF_OFFSET                      // pass Thread::Current()
     CFI_ADJUST_CFA_OFFSET(4)
-    PUSH eax                                          // pass arg1
+    PUSH eax                                          // pass the index of the constant as arg1
     call CALLVAR(cxx_name)                            // cxx_name(arg1, Thread*)
     addl MACRO_LITERAL(16), %esp                      // pop arguments
     CFI_ADJUST_CFA_OFFSET(-16)
@@ -1278,6 +1281,7 @@ GENERATE_ALLOC_ARRAY_TLAB art_quick_alloc_array_resolved64_tlab, artAllocArrayFr
 ONE_ARG_SAVE_EVERYTHING_DOWNCALL_FOR_CLINIT art_quick_initialize_static_storage, artInitializeStaticStorageFromCode
 ONE_ARG_SAVE_EVERYTHING_DOWNCALL_FOR_CLINIT art_quick_initialize_type, artInitializeTypeFromCode
 ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_initialize_type_and_verify_access, artInitializeTypeAndVerifyAccessFromCode
+ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_resolve_method_type, artResolveMethodTypeFromCode
 ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_resolve_string, artResolveStringFromCode
 
 TWO_ARG_REF_DOWNCALL art_quick_handle_fill_data, artHandleFillArrayDataFromCode, RETURN_IF_EAX_ZERO

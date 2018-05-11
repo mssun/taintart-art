@@ -2293,8 +2293,6 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
     case Instruction::CONST_METHOD_TYPE:
       work_line_->SetRegisterType<LockOp::kClear>(
           this, inst->VRegA_21c(), reg_types_.JavaLangInvokeMethodType());
-      // TODO: add compiler support for const-method-{handle,type} (b/66890674)
-      Fail(VERIFY_ERROR_FORCE_INTERPRETER);
       break;
     case Instruction::MONITOR_ENTER:
       work_line_->PushMonitor(this, inst->VRegA_11x(), work_insn_idx_);
