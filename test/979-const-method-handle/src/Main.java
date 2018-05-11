@@ -20,10 +20,23 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
 class Main {
+    /**
+     * Number of iterations run to attempt to trigger JIT compilation. These tests run on ART and
+     * the RI so they iterate rather than using the ART only native method ensureJitCompiled().
+     */
+    private static final int ITERATIONS_FOR_JIT = 12000;
+
+    /** A static field updated by method handle getters and setters. */
     private static String name = "default";
 
     private static void unreachable() {
         throw new Error("Unreachable");
+    }
+
+    private static void assertEquals(Object expected, Object actual) {
+        if (!expected.equals(actual)) {
+            throw new AssertionError("Assertion failure: " + expected + " != " + actual);
+        }
     }
 
     private static class LocalClass {
@@ -52,15 +65,9 @@ class Main {
         System.out.print("repeatConstMethodType0(");
         System.out.print(expected);
         System.out.println(")");
-        for (int i = 0; i < 12000; ++i) {
+        for (int i = 0; i < ITERATIONS_FOR_JIT; ++i) {
             MethodType actual = methodType0();
-            if (!actual.equals(expected)) {
-                System.out.print("Expected: ");
-                System.out.println(expected);
-                System.out.print("Actual: ");
-                System.out.println(actual);
-                unreachable();
-            }
+            assertEquals(expected, actual);
         }
     }
 
@@ -68,15 +75,9 @@ class Main {
         System.out.print("repeatConstMethodType1(");
         System.out.print(expected);
         System.out.println(")");
-        for (int i = 0; i < 12000; ++i) {
+        for (int i = 0; i < ITERATIONS_FOR_JIT; ++i) {
             MethodType actual = methodType1();
-            if (!actual.equals(expected)) {
-                System.out.print("Expected: ");
-                System.out.println(expected);
-                System.out.print("Actual: ");
-                System.out.println(actual);
-                unreachable();
-            }
+            assertEquals(expected, actual);
         }
     }
 
@@ -107,6 +108,16 @@ class Main {
 
     @ConstantMethodHandle(
             kind = ConstantMethodHandle.STATIC_GET,
+            owner = "Main",
+            fieldOrMethodName = "name",
+            descriptor = "Ljava/lang/String;")
+    private static MethodHandle getNameHandle() {
+        unreachable();
+        return null;
+    }
+
+    @ConstantMethodHandle(
+            kind = ConstantMethodHandle.STATIC_GET,
             owner = "java/lang/Math",
             fieldOrMethodName = "E",
             descriptor = "D")
@@ -125,6 +136,18 @@ class Main {
         return null;
     }
 
+    private static void repeatConstMethodHandle() throws Throwable {
+        System.out.println("repeatConstMethodHandle()");
+        String[] values = {"A", "B", "C"};
+        for (int i = 0; i < ITERATIONS_FOR_JIT; ++i) {
+            String value = values[i % values.length];
+            setNameHandle().invoke(value);
+            String actual = (String) getNameHandle().invokeExact();
+            assertEquals(value, actual);
+            assertEquals(value, name);
+        }
+    }
+
     public static void main(String[] args) throws Throwable {
         System.out.println(methodType0());
         repeatConstMethodType0(
@@ -136,6 +159,7 @@ class Main {
         System.out.print("name is ");
         System.out.println(name);
         System.out.println(getMathE().invoke());
+        repeatConstMethodHandle();
         try {
             putMathE().invokeExact(Math.PI);
             unreachable();

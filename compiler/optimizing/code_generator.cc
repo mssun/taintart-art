@@ -736,6 +736,26 @@ void CodeGenerator::GenerateLoadClassRuntimeCall(HLoadClass* cls) {
   }
 }
 
+void CodeGenerator::CreateLoadMethodHandleRuntimeCallLocationSummary(
+    HLoadMethodHandle* method_handle,
+    Location runtime_proto_index_location,
+    Location runtime_return_location) {
+  DCHECK_EQ(method_handle->InputCount(), 1u);
+  LocationSummary* locations =
+      new (method_handle->GetBlock()->GetGraph()->GetAllocator()) LocationSummary(
+          method_handle, LocationSummary::kCallOnMainOnly);
+  locations->SetInAt(0, Location::NoLocation());
+  locations->AddTemp(runtime_proto_index_location);
+  locations->SetOut(runtime_return_location);
+}
+
+void CodeGenerator::GenerateLoadMethodHandleRuntimeCall(HLoadMethodHandle* method_handle) {
+  LocationSummary* locations = method_handle->GetLocations();
+  MoveConstant(locations->GetTemp(0), method_handle->GetMethodHandleIndex());
+  CheckEntrypointTypes<kQuickResolveMethodHandle, void*, uint32_t>();
+  InvokeRuntime(kQuickResolveMethodHandle, method_handle, method_handle->GetDexPc());
+}
+
 void CodeGenerator::CreateLoadMethodTypeRuntimeCallLocationSummary(
     HLoadMethodType* method_type,
     Location runtime_proto_index_location,
