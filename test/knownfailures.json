@@ -734,7 +734,6 @@
           "164-resolution-trampoline-dex-cache",
           "167-visit-locks",
           "168-vmstack-annotated",
-          "172-app-image-twice",
           "201-built-in-except-detail-messages",
           "203-multi-checkpoint",
           "304-method-tracing",
