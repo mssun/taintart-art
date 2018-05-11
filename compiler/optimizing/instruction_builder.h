@@ -45,6 +45,7 @@ class VariableSizedHandleScope;
 
 namespace mirror {
 class Class;
+class MethodType;
 }  // namespace mirror
 
 class HInstructionBuilder : public ValueObject {
@@ -238,6 +239,9 @@ class HInstructionBuilder : public ValueObject {
 
   bool LoadClassNeedsAccessCheck(Handle<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Builds a `HLoadMethodType` loading the given `proto_index`.
+  void BuildLoadMethodType(uint16_t proto_idx, uint32_t dex_pc);
 
   // Returns the outer-most compiling method's class.
   ObjPtr<mirror::Class> GetOutermostCompilingClass() const;

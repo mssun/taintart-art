@@ -26,13 +26,58 @@ class Main {
         throw new Error("Unreachable");
     }
 
+    private static class LocalClass {
+        public LocalClass() {}
+
+        private int field;
+    }
+
     @ConstantMethodType(
-        returnType = String.class,
-        parameterTypes = {int.class, Integer.class, System.class}
-    )
+            returnType = String.class,
+            parameterTypes = {int.class, Integer.class, System.class})
     private static MethodType methodType0() {
         unreachable();
         return null;
+    }
+
+    @ConstantMethodType(
+            returnType = void.class,
+            parameterTypes = {LocalClass.class})
+    private static MethodType methodType1() {
+        unreachable();
+        return null;
+    }
+
+    private static void repeatConstMethodType0(MethodType expected) {
+        System.out.print("repeatConstMethodType0(");
+        System.out.print(expected);
+        System.out.println(")");
+        for (int i = 0; i < 12000; ++i) {
+            MethodType actual = methodType0();
+            if (!actual.equals(expected)) {
+                System.out.print("Expected: ");
+                System.out.println(expected);
+                System.out.print("Actual: ");
+                System.out.println(actual);
+                unreachable();
+            }
+        }
+    }
+
+    private static void repeatConstMethodType1(MethodType expected) {
+        System.out.print("repeatConstMethodType1(");
+        System.out.print(expected);
+        System.out.println(")");
+        for (int i = 0; i < 12000; ++i) {
+            MethodType actual = methodType1();
+            if (!actual.equals(expected)) {
+                System.out.print("Expected: ");
+                System.out.println(expected);
+                System.out.print("Actual: ");
+                System.out.println(actual);
+                unreachable();
+            }
+        }
     }
 
     static void helloWorld(String who) {
@@ -41,44 +86,40 @@ class Main {
     }
 
     @ConstantMethodHandle(
-        kind = ConstantMethodHandle.INVOKE_STATIC,
-        owner = "Main",
-        fieldOrMethodName = "helloWorld",
-        descriptor = "(Ljava/lang/String;)V"
-    )
+            kind = ConstantMethodHandle.INVOKE_STATIC,
+            owner = "Main",
+            fieldOrMethodName = "helloWorld",
+            descriptor = "(Ljava/lang/String;)V")
     private static MethodHandle printHelloHandle() {
         unreachable();
         return null;
     }
 
     @ConstantMethodHandle(
-        kind = ConstantMethodHandle.STATIC_PUT,
-        owner = "Main",
-        fieldOrMethodName = "name",
-        descriptor = "Ljava/lang/String;"
-    )
+            kind = ConstantMethodHandle.STATIC_PUT,
+            owner = "Main",
+            fieldOrMethodName = "name",
+            descriptor = "Ljava/lang/String;")
     private static MethodHandle setNameHandle() {
         unreachable();
         return null;
     }
 
     @ConstantMethodHandle(
-        kind = ConstantMethodHandle.STATIC_GET,
-        owner = "java/lang/Math",
-        fieldOrMethodName = "E",
-        descriptor = "D"
-    )
+            kind = ConstantMethodHandle.STATIC_GET,
+            owner = "java/lang/Math",
+            fieldOrMethodName = "E",
+            descriptor = "D")
     private static MethodHandle getMathE() {
         unreachable();
         return null;
     }
 
     @ConstantMethodHandle(
-        kind = ConstantMethodHandle.STATIC_PUT,
-        owner = "java/lang/Math",
-        fieldOrMethodName = "E",
-        descriptor = "D"
-    )
+            kind = ConstantMethodHandle.STATIC_PUT,
+            owner = "java/lang/Math",
+            fieldOrMethodName = "E",
+            descriptor = "D")
     private static MethodHandle putMathE() {
         unreachable();
         return null;
@@ -86,6 +127,9 @@ class Main {
 
     public static void main(String[] args) throws Throwable {
         System.out.println(methodType0());
+        repeatConstMethodType0(
+                MethodType.methodType(String.class, int.class, Integer.class, System.class));
+        repeatConstMethodType1(MethodType.methodType(void.class, LocalClass.class));
         printHelloHandle().invokeExact("Zog");
         printHelloHandle().invokeExact("Zorba");
         setNameHandle().invokeExact("HoverFly");

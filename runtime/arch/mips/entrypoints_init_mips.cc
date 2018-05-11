@@ -203,6 +203,8 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   static_assert(!IsDirectEntrypoint(kQuickInitializeType), "Non-direct C stub marked direct.");
   qpoints->pResolveString = art_quick_resolve_string;
   static_assert(!IsDirectEntrypoint(kQuickResolveString), "Non-direct C stub marked direct.");
+  qpoints->pResolveMethodType = art_quick_resolve_method_type;
+  static_assert(!IsDirectEntrypoint(kQuickResolveMethodType), "Non-direct C stub marked direct.");
 
   // Field
   qpoints->pSet8Instance = art_quick_set8_instance;

@@ -34,6 +34,7 @@ namespace art {
 namespace mirror {
 class Array;
 class Class;
+class MethodType;
 class Object;
 class String;
 }  // namespace mirror
@@ -148,6 +149,10 @@ inline ObjPtr<mirror::Class> ResolveVerifyAndClinit(dex::TypeIndex type_idx,
                                                     Thread* self,
                                                     bool can_run_clinit,
                                                     bool verify_access)
+    REQUIRES_SHARED(Locks::mutator_lock_)
+    REQUIRES(!Roles::uninterruptible_);
+
+ObjPtr<mirror::MethodType> ResolveMethodTypeFromCode(ArtMethod* referrer, uint32_t proto_idx)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 

@@ -386,6 +386,13 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
         << load_class->NeedsAccessCheck() << std::noboolalpha;
   }
 
+  void VisitLoadMethodType(HLoadMethodType* load_method_type) OVERRIDE {
+    StartAttributeStream("load_kind") << "RuntimeCall";
+    const DexFile& dex_file = load_method_type->GetDexFile();
+    const DexFile::ProtoId& proto_id = dex_file.GetProtoId(load_method_type->GetProtoIndex());
+    StartAttributeStream("method_type") << dex_file.GetProtoSignature(proto_id);
+  }
+
   void VisitLoadString(HLoadString* load_string) OVERRIDE {
     StartAttributeStream("load_kind") << load_string->GetLoadKind();
   }
