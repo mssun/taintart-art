@@ -422,6 +422,7 @@ gensrcs {
     srcs: [
         "arch/instruction_set.h",
         "base/mutex.h",
+        "class_loader_context.h",
         "class_status.h",
         "debugger.h",
         "gc_root.h",
