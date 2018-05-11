@@ -534,7 +534,10 @@ std::unique_ptr<DexFile> ArtDexFileLoader::OpenCommon(const uint8_t* base,
   // Check if this dex file is located in the framework directory.
   // If it is, set a flag on the dex file. This is used by hidden API
   // policy decision logic.
-  if (dex_file != nullptr && LocationIsOnSystemFramework(location.c_str())) {
+  // Location can contain multidex suffix, so fetch its canonical version. Note
+  // that this will call `realpath`.
+  std::string path = DexFileLoader::GetDexCanonicalLocation(location.c_str());
+  if (dex_file != nullptr && LocationIsOnSystemFramework(path.c_str())) {
     dex_file->SetIsPlatformDexFile();
   }
 
