@@ -46,9 +46,11 @@ ArmFeaturesUniquePtr ArmInstructionSetFeatures::FromVariant(
       "cortex-a53",
       "cortex-a53.a57",
       "cortex-a53.a72",
+      "cortex-a55",
       "cortex-a57",
       "cortex-a72",
       "cortex-a73",
+      "cortex-a75",
       "exynos-m1",
       "denver",
       "kryo"
