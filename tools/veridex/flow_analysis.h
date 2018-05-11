@@ -35,6 +35,7 @@ enum class RegisterSource {
   kMethod,
   kClass,
   kString,
+  kConstant,
   kNone
 };
 
@@ -44,28 +45,33 @@ enum class RegisterSource {
 class RegisterValue {
  public:
   RegisterValue() : source_(RegisterSource::kNone),
-                    parameter_index_(0),
+                    value_(0),
                     reference_(nullptr, 0),
                     type_(nullptr) {}
   RegisterValue(RegisterSource source, DexFileReference reference, const VeriClass* type)
-      : source_(source), parameter_index_(0), reference_(reference), type_(type) {}
+      : source_(source), value_(0), reference_(reference), type_(type) {}
 
   RegisterValue(RegisterSource source,
-                uint32_t parameter_index,
+                uint32_t value,
                 DexFileReference reference,
                 const VeriClass* type)
-      : source_(source), parameter_index_(parameter_index), reference_(reference), type_(type) {}
+      : source_(source), value_(value), reference_(reference), type_(type) {}
 
   RegisterSource GetSource() const { return source_; }
   DexFileReference GetDexFileReference() const { return reference_; }
   const VeriClass* GetType() const { return type_; }
   uint32_t GetParameterIndex() const {
     CHECK(IsParameter());
-    return parameter_index_;
+    return value_;
+  }
+  uint32_t GetConstant() const {
+    CHECK(IsConstant());
+    return value_;
   }
   bool IsParameter() const { return source_ == RegisterSource::kParameter; }
   bool IsClass() const { return source_ == RegisterSource::kClass; }
   bool IsString() const { return source_ == RegisterSource::kString; }
+  bool IsConstant() const { return source_ == RegisterSource::kConstant; }
 
   std::string ToString() const {
     switch (source_) {
@@ -91,7 +97,7 @@ class RegisterValue {
 
  private:
   RegisterSource source_;
-  uint32_t parameter_index_;
+  uint32_t value_;
   DexFileReference reference_;
   const VeriClass* type_;
 };
@@ -137,12 +143,15 @@ class VeriFlowAnalysis {
       uint32_t dex_register, RegisterSource kind, VeriClass* cls, uint32_t source_id);
   void UpdateRegister(uint32_t dex_register, const RegisterValue& value);
   void UpdateRegister(uint32_t dex_register, const VeriClass* cls);
+  void UpdateRegister(uint32_t dex_register, int32_t value, const VeriClass* cls);
   void ProcessDexInstruction(const Instruction& inst);
   void SetVisited(uint32_t dex_pc);
   RegisterValue GetFieldType(uint32_t field_index);
 
+  int GetBranchFlags(const Instruction& instruction) const;
+
  protected:
-  const RegisterValue& GetRegister(uint32_t dex_register);
+  const RegisterValue& GetRegister(uint32_t dex_register) const;
   RegisterValue GetReturnType(uint32_t method_index);
 
   VeridexResolver* resolver_;
