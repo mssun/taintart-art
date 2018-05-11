@@ -71,7 +71,7 @@ class DexFileLoader {
   //     of the dex file. In the second case (oat) it will include the file name
   //     and possibly some multidex annotation to uniquely identify it.
   // canonical_dex_location:
-  //     the dex_location where it's file name part has been made canonical.
+  //     the dex_location where its file name part has been made canonical.
   static std::string GetDexCanonicalLocation(const char* dex_location);
 
   // For normal dex files, location and base location coincide. If a dex file is part of a multidex
