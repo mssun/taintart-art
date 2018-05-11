@@ -59,6 +59,12 @@ ReferenceTypeInfo::TypeHandle ReferenceTypePropagation::HandleCache::GetClassCla
   return GetRootHandle(handles_, ClassLinker::kJavaLangClass, &class_class_handle_);
 }
 
+ReferenceTypeInfo::TypeHandle ReferenceTypePropagation::HandleCache::GetMethodHandleClassHandle() {
+  return GetRootHandle(handles_,
+                       ClassLinker::kJavaLangInvokeMethodHandleImpl,
+                       &method_handle_class_handle_);
+}
+
 ReferenceTypeInfo::TypeHandle ReferenceTypePropagation::HandleCache::GetMethodTypeClassHandle() {
   return GetRootHandle(handles_,
                        ClassLinker::kJavaLangInvokeMethodType,
@@ -95,6 +101,7 @@ class ReferenceTypePropagation::RTPVisitor : public HGraphDelegateVisitor {
   void VisitLoadClass(HLoadClass* load_class) OVERRIDE;
   void VisitInstanceOf(HInstanceOf* load_class) OVERRIDE;
   void VisitClinitCheck(HClinitCheck* clinit_check) OVERRIDE;
+  void VisitLoadMethodHandle(HLoadMethodHandle* instr) OVERRIDE;
   void VisitLoadMethodType(HLoadMethodType* instr) OVERRIDE;
   void VisitLoadString(HLoadString* instr) OVERRIDE;
   void VisitLoadException(HLoadException* instr) OVERRIDE;
@@ -673,6 +680,12 @@ void ReferenceTypePropagation::RTPVisitor::VisitInstanceOf(HInstanceOf* instr) {
 
 void ReferenceTypePropagation::RTPVisitor::VisitClinitCheck(HClinitCheck* instr) {
   instr->SetReferenceTypeInfo(instr->InputAt(0)->GetReferenceTypeInfo());
+}
+
+void ReferenceTypePropagation::RTPVisitor::VisitLoadMethodHandle(HLoadMethodHandle* instr) {
+  instr->SetReferenceTypeInfo(ReferenceTypeInfo::Create(
+      handle_cache_->GetMethodHandleClassHandle(),
+      /* is_exact */ true));
 }
 
 void ReferenceTypePropagation::RTPVisitor::VisitLoadMethodType(HLoadMethodType* instr) {

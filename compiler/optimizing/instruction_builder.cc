@@ -1896,6 +1896,13 @@ bool HInstructionBuilder::LoadClassNeedsAccessCheck(Handle<mirror::Class> klass)
   }
 }
 
+void HInstructionBuilder::BuildLoadMethodHandle(uint16_t proto_idx, uint32_t dex_pc) {
+  const DexFile& dex_file = *dex_compilation_unit_->GetDexFile();
+  HLoadMethodHandle* load_method_handle =
+      new (allocator_) HLoadMethodHandle(graph_->GetCurrentMethod(), proto_idx, dex_file, dex_pc);
+  AppendInstruction(load_method_handle);
+}
+
 void HInstructionBuilder::BuildLoadMethodType(uint16_t proto_idx, uint32_t dex_pc) {
   const DexFile& dex_file = *dex_compilation_unit_->GetDexFile();
   HLoadMethodType* load_method_type =
@@ -2930,6 +2937,13 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::CONST_CLASS: {
       dex::TypeIndex type_index(instruction.VRegB_21c());
       BuildLoadClass(type_index, dex_pc);
+      UpdateLocal(instruction.VRegA_21c(), current_block_->GetLastInstruction());
+      break;
+    }
+
+    case Instruction::CONST_METHOD_HANDLE: {
+      uint16_t method_handle_idx = instruction.VRegB_21c();
+      BuildLoadMethodHandle(method_handle_idx, dex_pc);
       UpdateLocal(instruction.VRegA_21c(), current_block_->GetLastInstruction());
       break;
     }
