@@ -112,7 +112,12 @@ void VeriFlowAnalysis::UpdateRegister(uint32_t dex_register, const VeriClass* cl
       RegisterValue(RegisterSource::kNone, DexFileReference(nullptr, 0), cls);
 }
 
-const RegisterValue& VeriFlowAnalysis::GetRegister(uint32_t dex_register) {
+void VeriFlowAnalysis::UpdateRegister(uint32_t dex_register, int32_t value, const VeriClass* cls) {
+  current_registers_[dex_register] =
+      RegisterValue(RegisterSource::kConstant, value, DexFileReference(nullptr, 0), cls);
+}
+
+const RegisterValue& VeriFlowAnalysis::GetRegister(uint32_t dex_register) const {
   return current_registers_[dex_register];
 }
 
@@ -129,6 +134,49 @@ RegisterValue VeriFlowAnalysis::GetFieldType(uint32_t field_index) {
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_index);
   VeriClass* cls = resolver_->GetVeriClass(field_id.type_idx_);
   return RegisterValue(RegisterSource::kField, DexFileReference(&dex_file, field_index), cls);
+}
+
+int VeriFlowAnalysis::GetBranchFlags(const Instruction& instruction) const {
+  switch (instruction.Opcode()) {
+    #define IF_XX(cond, op) \
+    case Instruction::IF_##cond: { \
+      RegisterValue lhs = GetRegister(instruction.VRegA()); \
+      RegisterValue rhs = GetRegister(instruction.VRegB()); \
+      if (lhs.IsConstant() && rhs.IsConstant()) { \
+        if (lhs.GetConstant() op rhs.GetConstant()) { \
+          return Instruction::kBranch; \
+        } else { \
+          return Instruction::kContinue; \
+        } \
+      } \
+      break; \
+    } \
+    case Instruction::IF_##cond##Z: { \
+      RegisterValue val = GetRegister(instruction.VRegA()); \
+      if (val.IsConstant()) { \
+        if (val.GetConstant() op 0) { \
+          return Instruction::kBranch; \
+        } else { \
+          return Instruction::kContinue; \
+        } \
+      } \
+      break; \
+    }
+
+    IF_XX(EQ, ==);
+    IF_XX(NE, !=);
+    IF_XX(LT, <);
+    IF_XX(LE, <=);
+    IF_XX(GT, >);
+    IF_XX(GE, >=);
+
+    #undef IF_XX
+
+    default:
+      break;
+  }
+
+  return Instruction::FlagsOf(instruction.Opcode());
 }
 
 void VeriFlowAnalysis::AnalyzeCode() {
@@ -149,16 +197,17 @@ void VeriFlowAnalysis::AnalyzeCode() {
       ProcessDexInstruction(inst);
       SetVisited(dex_pc);
 
-      int opcode_flags = Instruction::FlagsOf(inst.Opcode());
-      if ((opcode_flags & Instruction::kContinue) != 0) {
-        if ((opcode_flags & Instruction::kBranch) != 0) {
+      int branch_flags = GetBranchFlags(inst);
+
+      if ((branch_flags & Instruction::kContinue) != 0) {
+        if ((branch_flags & Instruction::kBranch) != 0) {
           uint32_t branch_dex_pc = dex_pc + inst.GetTargetOffset();
           if (MergeRegisterValues(branch_dex_pc)) {
             work_list.push_back(branch_dex_pc);
           }
         }
         dex_pc += inst.SizeInCodeUnits();
-      } else if ((opcode_flags & Instruction::kBranch) != 0) {
+      } else if ((branch_flags & Instruction::kBranch) != 0) {
         dex_pc += inst.GetTargetOffset();
         DCHECK(IsBranchTarget(dex_pc));
       } else {
@@ -178,12 +227,30 @@ void VeriFlowAnalysis::AnalyzeCode() {
 
 void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
   switch (instruction.Opcode()) {
-    case Instruction::CONST_4:
-    case Instruction::CONST_16:
-    case Instruction::CONST:
+    case Instruction::CONST_4: {
+      int32_t register_index = instruction.VRegA();
+      int32_t value = instruction.VRegB_11n();
+      UpdateRegister(register_index, value, VeriClass::integer_);
+      break;
+    }
+    case Instruction::CONST_16: {
+      int32_t register_index = instruction.VRegA();
+      int32_t value = instruction.VRegB_21s();
+      UpdateRegister(register_index, value, VeriClass::integer_);
+      break;
+    }
+
+    case Instruction::CONST: {
+      int32_t register_index = instruction.VRegA();
+      int32_t value = instruction.VRegB_31i();
+      UpdateRegister(register_index, value, VeriClass::integer_);
+      break;
+    }
+
     case Instruction::CONST_HIGH16: {
       int32_t register_index = instruction.VRegA();
-      UpdateRegister(register_index, VeriClass::integer_);
+      int32_t value = instruction.VRegB_21h();
+      UpdateRegister(register_index, value, VeriClass::integer_);
       break;
     }
 
@@ -268,6 +335,8 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
     case Instruction::RETURN: {
       break;
     }
+
+    // If operations will be handled when looking at the control flow.
     #define IF_XX(cond) \
     case Instruction::IF_##cond: break; \
     case Instruction::IF_##cond##Z: break
@@ -278,6 +347,8 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
     IF_XX(LE);
     IF_XX(GT);
     IF_XX(GE);
+
+    #undef IF_XX
 
     case Instruction::GOTO:
     case Instruction::GOTO_16:
@@ -495,7 +566,13 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
     case Instruction::SGET_BYTE:
     case Instruction::SGET_CHAR:
     case Instruction::SGET_SHORT: {
-      UpdateRegister(instruction.VRegA_22c(), GetFieldType(instruction.VRegC_22c()));
+      uint32_t dest_reg = instruction.VRegA_21c();
+      uint16_t field_index = instruction.VRegB_21c();
+      if (VeriClass::sdkInt_ != nullptr && resolver_->GetField(field_index) == VeriClass::sdkInt_) {
+        UpdateRegister(dest_reg, gTargetSdkVersion, VeriClass::integer_);
+      } else {
+        UpdateRegister(dest_reg, GetFieldType(instruction.VRegC_22c()));
+      }
       break;
     }
 
