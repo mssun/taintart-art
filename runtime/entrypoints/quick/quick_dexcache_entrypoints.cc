@@ -183,6 +183,16 @@ extern "C" mirror::Class* artInitializeTypeAndVerifyAccessFromCode(uint32_t type
   return result.Ptr();
 }
 
+extern "C" mirror::MethodType* artResolveMethodTypeFromCode(uint32_t proto_idx, Thread* self)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ScopedQuickEntrypointChecks sqec(self);
+  auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(self,
+                                                                  CalleeSaveType::kSaveEverything);
+  ArtMethod* caller = caller_and_outer.caller;
+  ObjPtr<mirror::MethodType> result = ResolveMethodTypeFromCode(caller, proto_idx);
+  return result.Ptr();
+}
+
 extern "C" mirror::String* artResolveStringFromCode(int32_t string_idx, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ScopedQuickEntrypointChecks sqec(self);

@@ -5908,6 +5908,16 @@ void LocationsBuilderX86_64::VisitClinitCheck(HClinitCheck* check) {
   }
 }
 
+void LocationsBuilderX86_64::VisitLoadMethodType(HLoadMethodType* load) {
+  // Custom calling convention: RAX serves as both input and output.
+  Location location = Location::RegisterLocation(RAX);
+  CodeGenerator::CreateLoadMethodTypeRuntimeCallLocationSummary(load, location, location);
+}
+
+void InstructionCodeGeneratorX86_64::VisitLoadMethodType(HLoadMethodType* load) {
+  codegen_->GenerateLoadMethodTypeRuntimeCall(load);
+}
+
 void InstructionCodeGeneratorX86_64::VisitClinitCheck(HClinitCheck* check) {
   // We assume the class to not be null.
   SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) LoadClassSlowPathX86_64(
