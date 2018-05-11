@@ -21,8 +21,8 @@
 #include <ostream>
 #include <vector>
 
+#include "arch/instruction_set.h"
 #include "base/macros.h"
-#include "instruction_set.h"
 
 namespace art {
 
