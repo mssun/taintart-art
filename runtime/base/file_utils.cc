@@ -261,12 +261,12 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
   }
 }
 
-bool LocationIsOnSystem(const char* location) {
-  UniqueCPtr<const char[]> path(realpath(location, nullptr));
-  return path != nullptr && android::base::StartsWith(path.get(), GetAndroidRoot().c_str());
+bool LocationIsOnSystem(const char* path) {
+  UniqueCPtr<const char[]> full_path(realpath(path, nullptr));
+  return path != nullptr && android::base::StartsWith(full_path.get(), GetAndroidRoot().c_str());
 }
 
-bool LocationIsOnSystemFramework(const char* location) {
+bool LocationIsOnSystemFramework(const char* full_path) {
   std::string error_msg;
   std::string root_path = GetAndroidRootSafe(&error_msg);
   if (root_path.empty()) {
@@ -275,12 +275,7 @@ bool LocationIsOnSystemFramework(const char* location) {
     return false;
   }
   std::string framework_path = root_path + "/framework/";
-
-  // Warning: Bionic implementation of realpath() allocates > 12KB on the stack.
-  // Do not run this code on a small stack, e.g. in signal handler.
-  UniqueCPtr<const char[]> path(realpath(location, nullptr));
-  return path != nullptr &&
-         android::base::StartsWith(path.get(), framework_path.c_str());
+  return android::base::StartsWith(full_path, framework_path);
 }
 
 }  // namespace art
