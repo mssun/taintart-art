@@ -458,8 +458,13 @@ class LSEVisitor : public HGraphDelegateVisitor {
       }
       if (from_all_predecessors) {
         if (ref_info->IsSingletonAndRemovable() &&
-            block->IsSingleReturnOrReturnVoidAllowingPhis()) {
-          // Values in the singleton are not needed anymore.
+            (block->IsSingleReturnOrReturnVoidAllowingPhis() ||
+             (block->EndsWithReturn() && (merged_value != kUnknownHeapValue ||
+                                          merged_store_value != kUnknownHeapValue)))) {
+          // Values in the singleton are not needed anymore:
+          // (1) if this block consists of a sole return, or
+          // (2) if this block returns and a usable merged value is obtained
+          //     (loads prior to the return will always use that value).
         } else if (!IsStore(merged_value)) {
           // We don't track merged value as a store anymore. We have to
           // hold the stores in predecessors live here.
