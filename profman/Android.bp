@@ -39,7 +39,7 @@ art_cc_binary {
     name: "profman",
     defaults: ["profman-defaults"],
     shared_libs: [
-        "libartbase",
+        "libart",
         "libprofile",
         "libdexfile",
     ],
@@ -52,7 +52,7 @@ art_cc_binary {
         "profman-defaults",
     ],
     shared_libs: [
-        "libartbased",
+        "libartd",
         "libprofiled",
         "libdexfiled",
     ],
