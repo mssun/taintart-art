@@ -4032,13 +4032,13 @@ bool OatWriter::WriteTypeLookupTables(
     // TypeLookupTable allocates its own and OatDexFile takes ownership.
     const DexFile& dex_file = *opened_dex_files[i];
     {
-      std::unique_ptr<TypeLookupTable> type_lookup_table =
-          TypeLookupTable::Create(dex_file, /* storage */ nullptr);
+      TypeLookupTable type_lookup_table = TypeLookupTable::Create(dex_file);
       type_lookup_table_oat_dex_files_.push_back(
           std::make_unique<art::OatDexFile>(std::move(type_lookup_table)));
       dex_file.SetOatDexFile(type_lookup_table_oat_dex_files_.back().get());
     }
-    TypeLookupTable* const table = type_lookup_table_oat_dex_files_.back()->GetTypeLookupTable();
+    const TypeLookupTable& table = type_lookup_table_oat_dex_files_.back()->GetTypeLookupTable();
+    DCHECK(table.Valid());
 
     // Type tables are required to be 4 byte aligned.
     size_t initial_offset = oat_size_;
@@ -4057,9 +4057,9 @@ bool OatWriter::WriteTypeLookupTables(
 
     DCHECK_EQ(oat_data_offset_ + rodata_offset,
               static_cast<size_t>(oat_rodata->Seek(0u, kSeekCurrent)));
-    DCHECK_EQ(table_size, table->RawDataLength());
+    DCHECK_EQ(table_size, table.RawDataLength());
 
-    if (!oat_rodata->WriteFully(table->RawData(), table_size)) {
+    if (!oat_rodata->WriteFully(table.RawData(), table_size)) {
       PLOG(ERROR) << "Failed to write lookup table."
                   << " File: " << oat_dex_file->GetLocation()
                   << " Output: " << oat_rodata->GetLocation();

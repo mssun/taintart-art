@@ -514,14 +514,14 @@ class OatDexFile FINAL {
   // Madvise the dex file based on the state we are moving to.
   static void MadviseDexFile(const DexFile& dex_file, MadviseState state);
 
-  TypeLookupTable* GetTypeLookupTable() const {
-    return lookup_table_.get();
+  const TypeLookupTable& GetTypeLookupTable() const {
+    return lookup_table_;
   }
 
   ~OatDexFile();
 
   // Create only with a type lookup table, used by the compiler to speed up compilation.
-  explicit OatDexFile(std::unique_ptr<TypeLookupTable>&& lookup_table);
+  explicit OatDexFile(TypeLookupTable&& lookup_table);
 
   // Return the dex layout sections.
   const DexLayoutSections* GetDexLayoutSections() const {
@@ -553,7 +553,7 @@ class OatDexFile FINAL {
   const IndexBssMapping* const type_bss_mapping_ = nullptr;
   const IndexBssMapping* const string_bss_mapping_ = nullptr;
   const uint32_t* const oat_class_offsets_pointer_ = 0u;
-  mutable std::unique_ptr<TypeLookupTable> lookup_table_;
+  TypeLookupTable lookup_table_;
   const DexLayoutSections* const dex_layout_sections_ = nullptr;
 
   friend class OatFile;

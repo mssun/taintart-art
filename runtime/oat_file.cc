@@ -1687,6 +1687,7 @@ OatFile::OatDexFile::OatDexFile(const OatFile* oat_file,
       type_bss_mapping_(type_bss_mapping_data),
       string_bss_mapping_(string_bss_mapping_data),
       oat_class_offsets_pointer_(oat_class_offsets_pointer),
+      lookup_table_(),
       dex_layout_sections_(dex_layout_sections) {
   // Initialize TypeLookupTable.
   if (lookup_table_data_ != nullptr) {
@@ -1706,7 +1707,7 @@ OatFile::OatDexFile::OatDexFile(const OatFile* oat_file,
   }
 }
 
-OatFile::OatDexFile::OatDexFile(std::unique_ptr<TypeLookupTable>&& lookup_table)
+OatFile::OatDexFile::OatDexFile(TypeLookupTable&& lookup_table)
     : lookup_table_(std::move(lookup_table)) {}
 
 OatFile::OatDexFile::~OatDexFile() {}
@@ -1783,9 +1784,9 @@ const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_fi
   DCHECK_EQ(ComputeModifiedUtf8Hash(descriptor), hash);
   bool used_lookup_table = false;
   const DexFile::ClassDef* lookup_table_classdef = nullptr;
-  if (LIKELY((oat_dex_file != nullptr) && (oat_dex_file->GetTypeLookupTable() != nullptr))) {
+  if (LIKELY((oat_dex_file != nullptr) && oat_dex_file->GetTypeLookupTable().Valid())) {
     used_lookup_table = true;
-    const uint32_t class_def_idx = oat_dex_file->GetTypeLookupTable()->Lookup(descriptor, hash);
+    const uint32_t class_def_idx = oat_dex_file->GetTypeLookupTable().Lookup(descriptor, hash);
     lookup_table_classdef = (class_def_idx != dex::kDexNoIndex)
         ? &dex_file.GetClassDef(class_def_idx)
         : nullptr;
@@ -1796,6 +1797,7 @@ const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_fi
   // Fast path for rare no class defs case.
   const uint32_t num_class_defs = dex_file.NumClassDefs();
   if (num_class_defs == 0) {
+    DCHECK(!used_lookup_table);
     return nullptr;
   }
   const DexFile::TypeId* type_id = dex_file.FindTypeId(descriptor);
