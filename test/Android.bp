@@ -423,6 +423,7 @@ cc_defaults {
         "154-gc-loop/heap_interface.cc",
         "167-visit-locks/visit_locks.cc",
         "169-threadgroup-jni/jni_daemon_thread.cc",
+        "172-app-image-twice/debug_print_class.cc",
         "1945-proxy-method-arguments/get_args.cc",
         "203-multi-checkpoint/multi_checkpoint.cc",
         "305-other-fault-handler/fault_handler.cc",
