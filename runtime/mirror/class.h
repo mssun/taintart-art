@@ -210,6 +210,15 @@ class MANAGED Class FINAL : public Object {
     return (GetAccessFlags() & kAccClassIsFinalizable) != 0;
   }
 
+  ALWAYS_INLINE bool ShouldSkipHiddenApiChecks() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return (GetAccessFlags() & kAccSkipHiddenApiChecks) != 0;
+  }
+
+  ALWAYS_INLINE void SetSkipHiddenApiChecks() REQUIRES_SHARED(Locks::mutator_lock_) {
+    uint32_t flags = GetAccessFlags();
+    SetAccessFlags(flags | kAccSkipHiddenApiChecks);
+  }
+
   ALWAYS_INLINE void SetRecursivelyInitialized() REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK_EQ(GetLockOwnerThreadId(), Thread::Current()->GetThreadId());
     uint32_t flags = GetField32(OFFSET_OF_OBJECT_MEMBER(Class, access_flags_));

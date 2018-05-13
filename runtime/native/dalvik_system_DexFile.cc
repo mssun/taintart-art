@@ -816,6 +816,28 @@ static jlong DexFile_getStaticSizeOfDexFile(JNIEnv* env, jclass, jobject cookie)
   return static_cast<jlong>(file_size);
 }
 
+static void DexFile_setTrusted(JNIEnv* env, jclass, jobject j_cookie) {
+  Runtime* runtime = Runtime::Current();
+  ScopedObjectAccess soa(env);
+
+  // Currently only allow this for debuggable apps.
+  if (!runtime->IsJavaDebuggable()) {
+    ThrowSecurityException("Can't exempt class, process is not debuggable.");
+    return;
+  }
+
+  std::vector<const DexFile*> dex_files;
+  const OatFile* oat_file;
+  if (!ConvertJavaArrayToDexFiles(env, j_cookie, dex_files, oat_file)) {
+    Thread::Current()->AssertPendingException();
+    return;
+  }
+
+  for (const DexFile* dex_file : dex_files) {
+    const_cast<DexFile*>(dex_file)->SetIsPlatformDexFile();
+  }
+}
+
 static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(DexFile, closeDexFile, "(Ljava/lang/Object;)Z"),
   NATIVE_METHOD(DexFile,
@@ -854,7 +876,8 @@ static JNINativeMethod gMethods[] = {
                 "(Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;"),
   NATIVE_METHOD(DexFile, getStaticSizeOfDexFile, "(Ljava/lang/Object;)J"),
   NATIVE_METHOD(DexFile, getDexFileOptimizationStatus,
-                "(Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;")
+                "(Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;"),
+  NATIVE_METHOD(DexFile, setTrusted, "(Ljava/lang/Object;)V")
 };
 
 void register_dalvik_system_DexFile(JNIEnv* env) {

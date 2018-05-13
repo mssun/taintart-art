@@ -49,20 +49,31 @@ class ArtDexFileLoaderTest : public CommonRuntimeTest {
     CommonRuntimeTest::SetUp();
 
     std::string dex_location = GetTestDexFileName("Main");
+    std::string multidex_location = GetTestDexFileName("MultiDex");
 
     data_location_path_ = android_data_ + "/foo.jar";
     system_location_path_ = GetAndroidRoot() + "/foo.jar";
     system_framework_location_path_ = GetAndroidRoot() + "/framework/foo.jar";
+    data_multi_location_path_ = android_data_ + "/multifoo.jar";
+    system_multi_location_path_ = GetAndroidRoot() + "/multifoo.jar";
+    system_framework_multi_location_path_ = GetAndroidRoot() + "/framework/multifoo.jar";
 
     Copy(dex_location, data_location_path_);
     Copy(dex_location, system_location_path_);
     Copy(dex_location, system_framework_location_path_);
+
+    Copy(multidex_location, data_multi_location_path_);
+    Copy(multidex_location, system_multi_location_path_);
+    Copy(multidex_location, system_framework_multi_location_path_);
   }
 
   virtual void TearDown() {
     remove(data_location_path_.c_str());
     remove(system_location_path_.c_str());
     remove(system_framework_location_path_.c_str());
+    remove(data_multi_location_path_.c_str());
+    remove(system_multi_location_path_.c_str());
+    remove(system_framework_multi_location_path_.c_str());
     CommonRuntimeTest::TearDown();
   }
 
@@ -70,6 +81,9 @@ class ArtDexFileLoaderTest : public CommonRuntimeTest {
   std::string data_location_path_;
   std::string system_location_path_;
   std::string system_framework_location_path_;
+  std::string data_multi_location_path_;
+  std::string system_multi_location_path_;
+  std::string system_framework_multi_location_path_;
 };
 
 // TODO: Port OpenTestDexFile(s) need to be ported to use non-ART utilities, and
@@ -387,6 +401,53 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
                         &dex_files);
   ASSERT_TRUE(success);
   ASSERT_GE(dex_files.size(), 1u);
+  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    ASSERT_TRUE(dex_file->IsPlatformDexFile());
+  }
+
+  dex_files.clear();
+
+  // Load multidex file from a non-system directory and check that it is not flagged as framework.
+  success = loader.Open(data_multi_location_path_.c_str(),
+                        data_multi_location_path_,
+                        /* verify */ false,
+                        /* verify_checksum */ false,
+                        &error_msg,
+                        &dex_files);
+  ASSERT_TRUE(success) << error_msg;
+  ASSERT_GT(dex_files.size(), 1u);
+  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    ASSERT_FALSE(dex_file->IsPlatformDexFile());
+  }
+
+  dex_files.clear();
+
+  // Load multidex file from a system, non-framework directory and check that it is not flagged
+  // as framework.
+  success = loader.Open(system_multi_location_path_.c_str(),
+                        system_multi_location_path_,
+                        /* verify */ false,
+                        /* verify_checksum */ false,
+                        &error_msg,
+                        &dex_files);
+  ASSERT_TRUE(success);
+  ASSERT_GT(dex_files.size(), 1u);
+  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    ASSERT_FALSE(dex_file->IsPlatformDexFile());
+  }
+
+  dex_files.clear();
+
+  // Load multidex file from a system/framework directory and check that it is flagged as a
+  // framework dex.
+  success = loader.Open(system_framework_multi_location_path_.c_str(),
+                        system_framework_multi_location_path_,
+                        /* verify */ false,
+                        /* verify_checksum */ false,
+                        &error_msg,
+                        &dex_files);
+  ASSERT_TRUE(success);
+  ASSERT_GT(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     ASSERT_TRUE(dex_file->IsPlatformDexFile());
   }
