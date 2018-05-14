@@ -16,8 +16,6 @@
 
 #include "instruction_set.h"
 
-// Explicitly include our own elf.h to avoid Linux and other dependencies.
-#include "../elf.h"
 #include "android-base/logging.h"
 #include "base/bit_utils.h"
 #include "base/globals.h"
@@ -80,29 +78,6 @@ InstructionSet GetInstructionSetFromString(const char* isa_str) {
     return InstructionSet::kMips64;
   }
 
-  return InstructionSet::kNone;
-}
-
-InstructionSet GetInstructionSetFromELF(uint16_t e_machine, uint32_t e_flags) {
-  switch (e_machine) {
-    case EM_ARM:
-      return InstructionSet::kArm;
-    case EM_AARCH64:
-      return InstructionSet::kArm64;
-    case EM_386:
-      return InstructionSet::kX86;
-    case EM_X86_64:
-      return InstructionSet::kX86_64;
-    case EM_MIPS: {
-      if ((e_flags & EF_MIPS_ARCH) == EF_MIPS_ARCH_32R2 ||
-          (e_flags & EF_MIPS_ARCH) == EF_MIPS_ARCH_32R6) {
-        return InstructionSet::kMips;
-      } else if ((e_flags & EF_MIPS_ARCH) == EF_MIPS_ARCH_64R6) {
-        return InstructionSet::kMips64;
-      }
-      break;
-    }
-  }
   return InstructionSet::kNone;
 }
 
