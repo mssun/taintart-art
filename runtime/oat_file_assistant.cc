@@ -860,6 +860,13 @@ bool OatFileAssistant::DexLocationToOatFilename(const std::string& location,
   CHECK(oat_filename != nullptr);
   CHECK(error_msg != nullptr);
 
+  // If ANDROID_DATA is not set, return false instead of aborting.
+  // This can occur for preopt when using a class loader context.
+  if (GetAndroidDataSafe(error_msg) == nullptr) {
+    *error_msg = "GetAndroidDataSafe failed: " + *error_msg;
+    return false;
+  }
+
   std::string cache_dir = GetDalvikCache(GetInstructionSetString(isa));
   if (cache_dir.empty()) {
     *error_msg = "Dalvik cache directory does not exist";
