@@ -29,7 +29,6 @@
 
 #include "android-base/stringprintf.h"
 #include "android-base/unique_fd.h"
-#include "backtrace/BacktraceMap.h"
 #include "cutils/ashmem.h"
 
 #include "allocator.h"
@@ -56,21 +55,6 @@ using Maps = AllocationTrackingMultiMap<void*, MemMap*, kAllocatorTagMaps>;
 
 // All the non-empty MemMaps. Use a multimap as we do a reserve-and-divide (eg ElfMap::Load()).
 static Maps* gMaps GUARDED_BY(MemMap::GetMemMapsLock()) = nullptr;
-
-static std::ostream& operator<<(
-    std::ostream& os,
-    std::pair<BacktraceMap::iterator, BacktraceMap::iterator> iters) {
-  for (BacktraceMap::iterator it = iters.first; it != iters.second; ++it) {
-    const backtrace_map_t* entry = *it;
-    os << StringPrintf("0x%08x-0x%08x %c%c%c %s\n",
-                       static_cast<uint32_t>(entry->start),
-                       static_cast<uint32_t>(entry->end),
-                       (entry->flags & PROT_READ) ? 'r' : '-',
-                       (entry->flags & PROT_WRITE) ? 'w' : '-',
-                       (entry->flags & PROT_EXEC) ? 'x' : '-', entry->name.c_str());
-  }
-  return os;
-}
 
 std::ostream& operator<<(std::ostream& os, const Maps& mem_maps) {
   os << "MemMap:" << std::endl;
@@ -149,8 +133,6 @@ bool MemMap::ContainedWithinExistingMap(uint8_t* ptr, size_t size, std::string* 
   uintptr_t begin = reinterpret_cast<uintptr_t>(ptr);
   uintptr_t end = begin + size;
 
-  // There is a suspicion that BacktraceMap::Create is occasionally missing maps. TODO: Investigate
-  // further.
   {
     std::lock_guard<std::mutex> mu(*mem_maps_lock_);
     for (auto& pair : *gMaps) {
@@ -162,58 +144,12 @@ bool MemMap::ContainedWithinExistingMap(uint8_t* ptr, size_t size, std::string* 
     }
   }
 
-  std::unique_ptr<BacktraceMap> map(BacktraceMap::Create(getpid(), true));
-  if (map == nullptr) {
-    if (error_msg != nullptr) {
-      *error_msg = StringPrintf("Failed to build process map");
-    }
-    return false;
-  }
-
-  ScopedBacktraceMapIteratorLock lock(map.get());
-  for (BacktraceMap::iterator it = map->begin(); it != map->end(); ++it) {
-    const backtrace_map_t* entry = *it;
-    if ((begin >= entry->start && begin < entry->end)     // start of new within old
-        && (end > entry->start && end <= entry->end)) {   // end of new within old
-      return true;
-    }
-  }
   if (error_msg != nullptr) {
     PrintFileToLog("/proc/self/maps", LogSeverity::ERROR);
     *error_msg = StringPrintf("Requested region 0x%08" PRIxPTR "-0x%08" PRIxPTR " does not overlap "
                               "any existing map. See process maps in the log.", begin, end);
   }
   return false;
-}
-
-// Return true if the address range does not conflict with any /proc/self/maps entry.
-static bool CheckNonOverlapping(uintptr_t begin,
-                                uintptr_t end,
-                                std::string* error_msg) {
-  std::unique_ptr<BacktraceMap> map(BacktraceMap::Create(getpid(), true));
-  if (map.get() == nullptr) {
-    *error_msg = StringPrintf("Failed to build process map");
-    return false;
-  }
-  ScopedBacktraceMapIteratorLock lock(map.get());
-  for (BacktraceMap::iterator it = map->begin(); it != map->end(); ++it) {
-    const backtrace_map_t* entry = *it;
-    if ((begin >= entry->start && begin < entry->end)      // start of new within old
-        || (end > entry->start && end < entry->end)        // end of new within old
-        || (begin <= entry->start && end > entry->end)) {  // start/end of new includes all of old
-      std::ostringstream map_info;
-      map_info << std::make_pair(it, map->end());
-      *error_msg = StringPrintf("Requested region 0x%08" PRIxPTR "-0x%08" PRIxPTR " overlaps with "
-                                "existing map 0x%08" PRIxPTR "-0x%08" PRIxPTR " (%s)\n%s",
-                                begin, end,
-                                static_cast<uintptr_t>(entry->start),
-                                static_cast<uintptr_t>(entry->end),
-                                entry->name.c_str(),
-                                map_info.str().c_str());
-      return false;
-    }
-  }
-  return true;
 }
 
 // CheckMapRequest to validate a non-MAP_FAILED mmap result based on
@@ -236,7 +172,6 @@ static bool CheckMapRequest(uint8_t* expected_ptr, void* actual_ptr, size_t byte
 
   uintptr_t actual = reinterpret_cast<uintptr_t>(actual_ptr);
   uintptr_t expected = reinterpret_cast<uintptr_t>(expected_ptr);
-  uintptr_t limit = expected + byte_count;
 
   if (expected_ptr == actual_ptr) {
     return true;
@@ -256,15 +191,16 @@ static bool CheckMapRequest(uint8_t* expected_ptr, void* actual_ptr, size_t byte
     //   true, even if there is no overlap
     // - There might have been an overlap at the point of mmap, but the
     //   overlapping region has since been unmapped.
-    std::string error_detail;
-    CheckNonOverlapping(expected, limit, &error_detail);
+
+    // Tell the client the mappings that were in place at the time.
+    if (kIsDebugBuild) {
+      PrintFileToLog("/proc/self/maps", LogSeverity::WARNING);
+    }
+
     std::ostringstream os;
     os <<  StringPrintf("Failed to mmap at expected address, mapped at "
                         "0x%08" PRIxPTR " instead of 0x%08" PRIxPTR,
                         actual, expected);
-    if (!error_detail.empty()) {
-      os << " : " << error_detail;
-    }
     *error_msg = os.str();
   }
   return false;
