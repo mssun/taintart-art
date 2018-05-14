@@ -211,11 +211,11 @@ OatFileBase* OatFileBase::OpenOatFile(int zip_fd,
     return nullptr;
   }
 
+  ret->PreSetup(elf_filename);
+
   if (!ret->LoadVdex(vdex_filename, writable, low_4gb, error_msg)) {
     return nullptr;
   }
-
-  ret->PreSetup(elf_filename);
 
   if (!ret->Setup(zip_fd, abs_dex_location, error_msg)) {
     return nullptr;
@@ -252,11 +252,11 @@ OatFileBase* OatFileBase::OpenOatFile(int zip_fd,
     return nullptr;
   }
 
+  ret->PreSetup(oat_location);
+
   if (!ret->LoadVdex(vdex_fd, vdex_location, writable, low_4gb, error_msg)) {
     return nullptr;
   }
-
-  ret->PreSetup(oat_location);
 
   if (!ret->Setup(zip_fd, abs_dex_location, error_msg)) {
     return nullptr;
