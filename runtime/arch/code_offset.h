@@ -21,9 +21,9 @@
 
 #include <android-base/logging.h>
 
+#include "arch/instruction_set.h"
 #include "base/bit_utils.h"
 #include "base/macros.h"
-#include "instruction_set.h"
 
 namespace art {
 

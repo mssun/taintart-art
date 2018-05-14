@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_FILE_UTILS_H_
-#define ART_RUNTIME_BASE_FILE_UTILS_H_
+#ifndef ART_LIBARTBASE_BASE_FILE_UTILS_H_
+#define ART_LIBARTBASE_BASE_FILE_UTILS_H_
 
 #include <stdlib.h>
 
@@ -46,6 +46,7 @@ std::string GetDefaultBootImageLocation(std::string* error_msg);
 // Returns the dalvik-cache location, with subdir appended. Returns the empty string if the cache
 // could not be found.
 std::string GetDalvikCache(const char* subdir);
+
 // Return true if we found the dalvik cache and stored it in the dalvik_cache argument.
 // have_android_data will be set to true if we have an ANDROID_DATA that exists,
 // dalvik_cache_exists will be true if there is a dalvik-cache directory that is present.
@@ -79,4 +80,4 @@ bool LocationIsOnSystemFramework(const char* location);
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_FILE_UTILS_H_
+#endif  // ART_LIBARTBASE_BASE_FILE_UTILS_H_

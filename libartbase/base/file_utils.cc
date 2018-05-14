@@ -47,7 +47,6 @@
 #include "base/os.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
-#include "dex/dex_file_loader.h"
 
 #if defined(__APPLE__)
 #include <crt_externs.h>
@@ -63,6 +62,8 @@ namespace art {
 
 using android::base::StringAppendF;
 using android::base::StringPrintf;
+
+static constexpr const char* kClassesDex = "classes.dex";
 
 bool ReadFileToString(const std::string& file_name, std::string* result) {
   File file(file_name, O_RDONLY, false);
@@ -224,7 +225,7 @@ bool GetDalvikCacheFilename(const char* location, const char* cache_location,
       !android::base::EndsWith(location, ".art") &&
       !android::base::EndsWith(location, ".oat")) {
     cache_file += "/";
-    cache_file += DexFileLoader::kClassesDex;
+    cache_file += kClassesDex;
   }
   std::replace(cache_file.begin(), cache_file.end(), '/', '@');
   *filename = StringPrintf("%s/%s", cache_location, cache_file.c_str());
