@@ -37,6 +37,9 @@ class VariableIndentationOutputStream;
 // (signed) values.
 static constexpr ssize_t kFrameSlotSize = 4;
 
+// Size of Dex virtual registers.
+static constexpr size_t kVRegSize = 4;
+
 class ArtMethod;
 class CodeInfo;
 class StackMapEncoding;
