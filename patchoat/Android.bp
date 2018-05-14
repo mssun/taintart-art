@@ -25,6 +25,7 @@ cc_defaults {
         },
     },
     shared_libs: [
+        "libartbase",
         "libbase",
         "libcrypto", // For computing the digest of image file
     ],

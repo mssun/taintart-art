@@ -32,7 +32,6 @@ cc_defaults {
         "art_field.cc",
         "art_method.cc",
         "barrier.cc",
-        "base/file_utils.cc",
         "base/mem_map_arena_pool.cc",
         "base/mutex.cc",
         "base/quasi_atomic.cc",
@@ -207,7 +206,6 @@ cc_defaults {
         "well_known_classes.cc",
 
         "arch/context.cc",
-        "arch/instruction_set.cc",
         "arch/instruction_set_features.cc",
         "arch/memcmp16.cc",
         "arch/arm/instruction_set_features_arm.cc",
@@ -420,7 +418,6 @@ gensrcs {
     cmd: "$(location generate_operator_out) art/runtime $(in) > $(out)",
     tools: ["generate_operator_out"],
     srcs: [
-        "arch/instruction_set.h",
         "base/mutex.h",
         "class_loader_context.h",
         "class_status.h",
@@ -531,7 +528,6 @@ art_cc_test {
     ],
     srcs: [
         "arch/arch_test.cc",
-        "arch/instruction_set_test.cc",
         "arch/instruction_set_features_test.cc",
         "arch/memcmp16_test.cc",
         "arch/stub_test.cc",
@@ -542,7 +538,6 @@ art_cc_test {
         "arch/x86/instruction_set_features_x86_test.cc",
         "arch/x86_64/instruction_set_features_x86_64_test.cc",
         "barrier_test.cc",
-        "base/file_utils_test.cc",
         "base/mutex_test.cc",
         "base/timing_logger_test.cc",
         "cha_test.cc",

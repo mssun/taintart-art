@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_ARCH_INSTRUCTION_SET_H_
-#define ART_RUNTIME_ARCH_INSTRUCTION_SET_H_
+#ifndef ART_LIBARTBASE_ARCH_INSTRUCTION_SET_H_
+#define ART_LIBARTBASE_ARCH_INSTRUCTION_SET_H_
 
 #include <iosfwd>
 #include <string>
@@ -88,8 +88,6 @@ const char* GetInstructionSetString(InstructionSet isa);
 
 // Note: Returns kNone when the string cannot be parsed to a known value.
 InstructionSet GetInstructionSetFromString(const char* instruction_set);
-
-InstructionSet GetInstructionSetFromELF(uint16_t e_machine, uint32_t e_flags);
 
 // Fatal logging out of line to keep the header clean of logging.h.
 NO_RETURN void InstructionSetAbort(InstructionSet isa);
@@ -299,4 +297,4 @@ static inline TwoWordReturn GetTwoWordSuccessValue(uintptr_t hi, uintptr_t lo) {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_ARCH_INSTRUCTION_SET_H_
+#endif  // ART_LIBARTBASE_ARCH_INSTRUCTION_SET_H_
