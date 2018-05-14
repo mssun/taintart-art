@@ -36,6 +36,7 @@
 #include "exec_utils.h"
 #include "gc/heap.h"
 #include "gc/space/image_space.h"
+#include "hidden_api.h"
 #include "image.h"
 #include "oat.h"
 #include "runtime.h"
@@ -821,6 +822,11 @@ bool OatFileAssistant::Dex2Oat(const std::vector<std::string>& args,
 
   if (!runtime->IsVerificationEnabled()) {
     argv.push_back("--compiler-filter=verify-none");
+  }
+
+  if (runtime->GetHiddenApiEnforcementPolicy() != hiddenapi::EnforcementPolicy::kNoChecks) {
+    argv.push_back("--runtime-arg");
+    argv.push_back("-Xhidden-api-checks");
   }
 
   if (runtime->MustRelocateIfPossible()) {
