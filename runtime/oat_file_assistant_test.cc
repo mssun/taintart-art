@@ -33,6 +33,7 @@
 #include "class_loader_context.h"
 #include "common_runtime_test.h"
 #include "dexopt_test.h"
+#include "hidden_api.h"
 #include "oat_file.h"
 #include "oat_file_manager.h"
 #include "scoped_thread_state_change-inl.h"
@@ -42,6 +43,8 @@ namespace art {
 
 static const std::string kSpecialSharedLibrary = "&";  // NOLINT [runtime/string] [4]
 static ClassLoaderContext* kSpecialSharedLibraryContext = nullptr;
+
+static constexpr char kDex2oatCmdLineHiddenApiArg[] = " --runtime-arg -Xhidden-api-checks";
 
 class OatFileAssistantTest : public DexoptTest {
  public:
@@ -1411,6 +1414,46 @@ TEST_F(OatFileAssistantTest, MakeUpToDateWithContext) {
   EXPECT_NE(nullptr, oat_file.get());
   EXPECT_EQ(context->EncodeContextForOatFile(""),
       oat_file->GetOatHeader().GetStoreValueByKey(OatHeader::kClassPathKey));
+}
+
+TEST_F(OatFileAssistantTest, MakeUpToDateWithHiddenApiDisabled) {
+  hiddenapi::ScopedHiddenApiEnforcementPolicySetting hiddenapi_exemption(
+      hiddenapi::EnforcementPolicy::kNoChecks);
+
+  std::string dex_location = GetScratchDir() + "/TestDexHiddenApiDisabled.jar";
+  Copy(GetDexSrc1(), dex_location);
+
+  OatFileAssistant oat_file_assistant(dex_location.c_str(), kRuntimeISA, false);
+  std::string error_msg;
+  int status = oat_file_assistant.MakeUpToDate(false, kSpecialSharedLibraryContext, &error_msg);
+  EXPECT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
+
+  std::unique_ptr<OatFile> oat_file = oat_file_assistant.GetBestOatFile();
+  EXPECT_NE(nullptr, oat_file.get());
+
+  const char* cmd_line = oat_file->GetOatHeader().GetStoreValueByKey(OatHeader::kDex2OatCmdLineKey);
+  EXPECT_NE(nullptr, cmd_line);
+  EXPECT_EQ(nullptr, strstr(cmd_line, kDex2oatCmdLineHiddenApiArg));
+}
+
+TEST_F(OatFileAssistantTest, MakeUpToDateWithHiddenApiEnabled) {
+  hiddenapi::ScopedHiddenApiEnforcementPolicySetting hiddenapi_exemption(
+      hiddenapi::EnforcementPolicy::kBlacklistOnly);
+
+  std::string dex_location = GetScratchDir() + "/TestDexHiddenApiEnabled.jar";
+  Copy(GetDexSrc1(), dex_location);
+
+  OatFileAssistant oat_file_assistant(dex_location.c_str(), kRuntimeISA, false);
+  std::string error_msg;
+  int status = oat_file_assistant.MakeUpToDate(false, kSpecialSharedLibraryContext, &error_msg);
+  EXPECT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
+
+  std::unique_ptr<OatFile> oat_file = oat_file_assistant.GetBestOatFile();
+  EXPECT_NE(nullptr, oat_file.get());
+
+  const char* cmd_line = oat_file->GetOatHeader().GetStoreValueByKey(OatHeader::kDex2OatCmdLineKey);
+  EXPECT_NE(nullptr, cmd_line);
+  EXPECT_NE(nullptr, strstr(cmd_line, kDex2oatCmdLineHiddenApiArg));
 }
 
 TEST_F(OatFileAssistantTest, GetDexOptNeededWithOutOfDateContext) {
