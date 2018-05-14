@@ -626,7 +626,8 @@ static bool DoMethodHandleInvokeCommon(Thread* self,
 
   // The vRegH value gives the index of the proto_id associated with this
   // signature polymorphic call site.
-  const uint32_t callsite_proto_id = (is_range) ? inst->VRegH_4rcc() : inst->VRegH_45cc();
+  const uint16_t vRegH = (is_range) ? inst->VRegH_4rcc() : inst->VRegH_45cc();
+  const dex::ProtoIndex callsite_proto_id(vRegH);
 
   // Call through to the classlinker and ask it to resolve the static type associated
   // with the callsite. This information is stored in the dex cache so it's
@@ -783,10 +784,10 @@ static bool DoVarHandleInvokeCommon(Thread* self,
     return false;
   }
 
-  const uint32_t vRegH = is_var_args ? inst->VRegH_45cc() : inst->VRegH_4rcc();
+  const uint16_t vRegH = is_var_args ? inst->VRegH_45cc() : inst->VRegH_4rcc();
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
   Handle<mirror::MethodType> callsite_type(hs.NewHandle(
-      class_linker->ResolveMethodType(self, vRegH, shadow_frame.GetMethod())));
+      class_linker->ResolveMethodType(self, dex::ProtoIndex(vRegH), shadow_frame.GetMethod())));
   // This implies we couldn't resolve one or more types in this VarHandle.
   if (UNLIKELY(callsite_type == nullptr)) {
     CHECK(self->IsExceptionPending());
@@ -965,9 +966,10 @@ static bool GetArgumentForBootstrapMethod(Thread* self,
       StackHandleScope<2> hs(self);
       Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
       Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
-      uint32_t index = static_cast<uint32_t>(encoded_value->GetI());
+      dex::ProtoIndex proto_idx(encoded_value->GetC());
       ClassLinker* cl = Runtime::Current()->GetClassLinker();
-      ObjPtr<mirror::MethodType> o = cl->ResolveMethodType(self, index, dex_cache, class_loader);
+      ObjPtr<mirror::MethodType> o =
+          cl->ResolveMethodType(self, proto_idx, dex_cache, class_loader);
       if (UNLIKELY(o.IsNull())) {
         DCHECK(self->IsExceptionPending());
         return false;

@@ -164,7 +164,7 @@ class DexFileVerifier {
   // error if not. If there is an error, null is returned.
   const DexFile::FieldId* CheckLoadFieldId(uint32_t idx, const char* error_fmt);
   const DexFile::MethodId* CheckLoadMethodId(uint32_t idx, const char* error_fmt);
-  const DexFile::ProtoId* CheckLoadProtoId(uint32_t idx, const char* error_fmt);
+  const DexFile::ProtoId* CheckLoadProtoId(dex::ProtoIndex idx, const char* error_fmt);
 
   void ErrorStringPrintf(const char* fmt, ...)
       __attribute__((__format__(__printf__, 2, 3))) COLD_ATTR;

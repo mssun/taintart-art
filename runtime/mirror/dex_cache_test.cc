@@ -169,9 +169,9 @@ TEST_F(DexCacheMethodHandlesTest, TestResolvedMethodTypes) {
 
   for (size_t i = 0; i < dex_file.NumProtoIds(); ++i) {
     const MethodTypeDexCachePair pair = method_types_cache[i].load(std::memory_order_relaxed);
-    if (pair.index == method1_id.proto_idx_) {
+    if (dex::ProtoIndex(pair.index) == method1_id.proto_idx_) {
       ASSERT_EQ(method1_type.Get(), pair.object.Read());
-    } else if (pair.index == method2_id.proto_idx_) {
+    } else if (dex::ProtoIndex(pair.index) == method2_id.proto_idx_) {
       ASSERT_EQ(method2_type.Get(), pair.object.Read());
     } else {
       ASSERT_TRUE(false);

@@ -127,7 +127,7 @@ inline const char* DexFile::GetReturnTypeDescriptor(const ProtoId& proto_id) con
   return StringByTypeIdx(proto_id.return_type_idx_);
 }
 
-inline const char* DexFile::GetShorty(uint32_t proto_idx) const {
+inline const char* DexFile::GetShorty(dex::ProtoIndex proto_idx) const {
   const ProtoId& proto_id = GetProtoId(proto_idx);
   return StringDataByIdx(proto_id.shorty_idx_);
 }

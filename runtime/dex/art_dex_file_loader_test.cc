@@ -286,7 +286,7 @@ TEST_F(ArtDexFileLoaderTest, FindTypeId) {
 
 TEST_F(ArtDexFileLoaderTest, FindProtoId) {
   for (size_t i = 0; i < java_lang_dex_file_->NumProtoIds(); i++) {
-    const DexFile::ProtoId& to_find = java_lang_dex_file_->GetProtoId(i);
+    const DexFile::ProtoId& to_find = java_lang_dex_file_->GetProtoId(dex::ProtoIndex(i));
     const DexFile::TypeList* to_find_tl = java_lang_dex_file_->GetProtoParameters(to_find);
     std::vector<dex::TypeIndex> to_find_types;
     if (to_find_tl != nullptr) {
@@ -297,7 +297,7 @@ TEST_F(ArtDexFileLoaderTest, FindProtoId) {
     const DexFile::ProtoId* found =
         java_lang_dex_file_->FindProtoId(to_find.return_type_idx_, to_find_types);
     ASSERT_TRUE(found != nullptr);
-    EXPECT_EQ(java_lang_dex_file_->GetIndexForProtoId(*found), i);
+    EXPECT_EQ(java_lang_dex_file_->GetIndexForProtoId(*found), dex::ProtoIndex(i));
   }
 }
 

@@ -565,7 +565,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
         PREAMBLE();
         ClassLinker* cl = Runtime::Current()->GetClassLinker();
         ObjPtr<mirror::MethodType> mt = cl->ResolveMethodType(self,
-                                                              inst->VRegB_21c(),
+                                                              dex::ProtoIndex(inst->VRegB_21c()),
                                                               shadow_frame.GetMethod());
         if (UNLIKELY(mt == nullptr)) {
           HANDLE_PENDING_EXCEPTION();

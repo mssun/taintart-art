@@ -332,7 +332,7 @@ void Collections::CreateTypeId(const DexFile& dex_file, uint32_t i) {
 }
 
 void Collections::CreateProtoId(const DexFile& dex_file, uint32_t i) {
-  const DexFile::ProtoId& disk_proto_id = dex_file.GetProtoId(i);
+  const DexFile::ProtoId& disk_proto_id = dex_file.GetProtoId(dex::ProtoIndex(i));
   const DexFile::TypeList* type_list = dex_file.GetProtoParameters(disk_proto_id);
   TypeList* parameter_type_list = CreateTypeList(type_list, disk_proto_id.parameters_off_);
 
@@ -353,7 +353,7 @@ void Collections::CreateFieldId(const DexFile& dex_file, uint32_t i) {
 void Collections::CreateMethodId(const DexFile& dex_file, uint32_t i) {
   const DexFile::MethodId& disk_method_id = dex_file.GetMethodId(i);
   MethodId* method_id = new MethodId(GetTypeId(disk_method_id.class_idx_.index_),
-                                     GetProtoId(disk_method_id.proto_idx_),
+                                     GetProtoId(disk_method_id.proto_idx_.index_),
                                      GetStringId(disk_method_id.name_idx_.index_));
   AddIndexedItem(method_ids_, method_id, MethodIdsOffset() + i * MethodId::ItemSize(), i);
 }
