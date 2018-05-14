@@ -38,9 +38,6 @@ static constexpr size_t kStackAlignment = 16;
 // compile-time constant so the compiler can generate better code.
 static constexpr int kPageSize = 4096;
 
-// Size of Dex virtual registers.
-static constexpr size_t kVRegSize = 4;
-
 // Returns whether the given memory offset can be used for generating
 // an implicit null check.
 static inline bool CanDoImplicitNullCheckOn(uintptr_t offset) {

@@ -35,6 +35,7 @@
 #include "optimizing_compiler_stats.h"
 #include "read_barrier_option.h"
 #include "stack.h"
+#include "stack_map.h"
 #include "utils/label.h"
 
 namespace art {
