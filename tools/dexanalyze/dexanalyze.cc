@@ -15,6 +15,7 @@
  */
 
 #include <cstdint>
+#include <iostream>
 #include <set>
 #include <sstream>
 
@@ -30,6 +31,15 @@ namespace art {
 
 class DexAnalyze {
   static const int kExitCodeUsageError = 1;
+
+  static void StdoutLogger(android::base::LogId,
+                           android::base::LogSeverity,
+                           const char*,
+                           const char*,
+                           unsigned int,
+                           const char* message) {
+    std::cout << message << std::endl;
+  }
 
   static int Usage(char** argv) {
     LOG(ERROR)
@@ -105,6 +115,8 @@ class DexAnalyze {
 
  public:
   static int Run(int argc, char** argv) {
+    android::base::SetLogger(StdoutLogger);
+
     Options options;
     int result = options.Parse(argc, argv);
     if (result != 0) {
@@ -154,7 +166,6 @@ class DexAnalyze {
 }  // namespace art
 
 int main(int argc, char** argv) {
-  android::base::SetLogger(android::base::StderrLogger);
   return art::DexAnalyze::Run(argc, argv);
 }
 
