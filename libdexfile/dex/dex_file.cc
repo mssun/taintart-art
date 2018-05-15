@@ -281,7 +281,7 @@ const DexFile::MethodId* DexFile::FindMethodId(const DexFile::TypeId& declaring_
   // Binary search MethodIds knowing that they are sorted by class_idx, name_idx then proto_idx
   const dex::TypeIndex class_idx = GetIndexForTypeId(declaring_klass);
   const dex::StringIndex name_idx = GetIndexForStringId(name);
-  const uint16_t proto_idx = GetIndexForProtoId(signature);
+  const dex::ProtoIndex proto_idx = GetIndexForProtoId(signature);
   int32_t lo = 0;
   int32_t hi = NumMethodIds() - 1;
   while (hi >= lo) {
@@ -373,7 +373,8 @@ const DexFile::ProtoId* DexFile::FindProtoId(dex::TypeIndex return_type_idx,
   int32_t hi = NumProtoIds() - 1;
   while (hi >= lo) {
     int32_t mid = (hi + lo) / 2;
-    const DexFile::ProtoId& proto = GetProtoId(mid);
+    const dex::ProtoIndex proto_idx = static_cast<dex::ProtoIndex>(mid);
+    const DexFile::ProtoId& proto = GetProtoId(proto_idx);
     int compare = return_type_idx.index_ - proto.return_type_idx_.index_;
     if (compare == 0) {
       DexFileParameterIterator it(*this, proto);
@@ -776,6 +777,11 @@ void EncodedArrayValueIterator::Next() {
 }
 
 namespace dex {
+
+std::ostream& operator<<(std::ostream& os, const ProtoIndex& index) {
+  os << "ProtoIndex[" << index.index_ << "]";
+  return os;
+}
 
 std::ostream& operator<<(std::ostream& os, const StringIndex& index) {
   os << "StringIndex[" << index.index_ << "]";

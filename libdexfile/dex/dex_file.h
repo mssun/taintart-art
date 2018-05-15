@@ -189,7 +189,7 @@ class DexFile {
   // Raw method_id_item.
   struct MethodId {
     dex::TypeIndex class_idx_;   // index into type_ids_ array for defining class
-    uint16_t proto_idx_;         // index into proto_ids_ array for method prototype
+    dex::ProtoIndex proto_idx_;  // index into proto_ids_ array for method prototype
     dex::StringIndex name_idx_;  // index into string_ids_ array for method name
 
    private:
@@ -692,15 +692,15 @@ class DexFile {
   }
 
   // Returns the ProtoId at the specified index.
-  const ProtoId& GetProtoId(uint16_t idx) const {
-    DCHECK_LT(idx, NumProtoIds()) << GetLocation();
-    return proto_ids_[idx];
+  const ProtoId& GetProtoId(dex::ProtoIndex idx) const {
+    DCHECK_LT(idx.index_, NumProtoIds()) << GetLocation();
+    return proto_ids_[idx.index_];
   }
 
-  uint16_t GetIndexForProtoId(const ProtoId& proto_id) const {
+  dex::ProtoIndex GetIndexForProtoId(const ProtoId& proto_id) const {
     CHECK_GE(&proto_id, proto_ids_) << GetLocation();
     CHECK_LT(&proto_id, proto_ids_ + header_->proto_ids_size_) << GetLocation();
-    return &proto_id - proto_ids_;
+    return dex::ProtoIndex(&proto_id - proto_ids_);
   }
 
   // Looks up a proto id for a given return type and signature type list
@@ -722,7 +722,7 @@ class DexFile {
   const Signature CreateSignature(const StringPiece& signature) const;
 
   // Returns the short form method descriptor for the given prototype.
-  const char* GetShorty(uint32_t proto_idx) const;
+  const char* GetShorty(dex::ProtoIndex proto_idx) const;
 
   const TypeList* GetProtoParameters(const ProtoId& proto_id) const {
     return DataPointer<TypeList>(proto_id.parameters_off_);

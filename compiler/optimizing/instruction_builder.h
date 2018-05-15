@@ -178,7 +178,7 @@ class HInstructionBuilder : public ValueObject {
   bool BuildInvokePolymorphic(const Instruction& instruction,
                               uint32_t dex_pc,
                               uint32_t method_idx,
-                              uint32_t proto_idx,
+                              dex::ProtoIndex proto_idx,
                               uint32_t number_of_vreg_arguments,
                               bool is_range,
                               uint32_t* args,
@@ -240,11 +240,11 @@ class HInstructionBuilder : public ValueObject {
   bool LoadClassNeedsAccessCheck(Handle<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Builds a `HLoadMethodHandle` loading the given `method_handle_idx`.
+  // Builds a `HLoadMethodHandle` loading the given `method_handle_index`.
   void BuildLoadMethodHandle(uint16_t method_handle_idx, uint32_t dex_pc);
 
-  // Builds a `HLoadMethodType` loading the given `proto_idx`.
-  void BuildLoadMethodType(uint16_t proto_idx, uint32_t dex_pc);
+  // Builds a `HLoadMethodType` loading the given `proto_index`.
+  void BuildLoadMethodType(dex::ProtoIndex proto_index, uint32_t dex_pc);
 
   // Returns the outer-most compiling method's class.
   ObjPtr<mirror::Class> GetOutermostCompilingClass() const;

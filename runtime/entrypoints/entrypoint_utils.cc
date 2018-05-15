@@ -268,7 +268,7 @@ ObjPtr<mirror::MethodHandle> ResolveMethodHandleFromCode(ArtMethod* referrer,
 }
 
 ObjPtr<mirror::MethodType> ResolveMethodTypeFromCode(ArtMethod* referrer,
-                                                     uint32_t proto_idx) {
+                                                     dex::ProtoIndex proto_idx) {
   Thread::PoisonObjectPointersIfDebug();
   ObjPtr<mirror::MethodType> method_type =
       referrer->GetDexCache()->GetResolvedMethodType(proto_idx);

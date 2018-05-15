@@ -217,7 +217,7 @@ static inline ObjPtr<mirror::MethodHandle> ResolveMethodHandle(Thread* self,
 }
 
 static inline ObjPtr<mirror::MethodType> ResolveMethodType(Thread* self,
-                                                           uint32_t method_type_index,
+                                                           dex::ProtoIndex method_type_index,
                                                            ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();

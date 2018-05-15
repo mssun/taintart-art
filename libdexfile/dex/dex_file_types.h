@@ -25,72 +25,66 @@ namespace dex {
 
 constexpr uint32_t kDexNoIndex = 0xFFFFFFFF;
 
-class StringIndex {
+template<typename T>
+class DexIndex {
  public:
-  uint32_t index_;
+  T index_;
 
-  constexpr StringIndex() : index_(std::numeric_limits<decltype(index_)>::max()) {}
-  explicit constexpr StringIndex(uint32_t idx) : index_(idx) {}
+  constexpr DexIndex() : index_(std::numeric_limits<decltype(index_)>::max()) {}
+  explicit constexpr DexIndex(T idx) : index_(idx) {}
 
   bool IsValid() const {
     return index_ != std::numeric_limits<decltype(index_)>::max();
   }
-  static StringIndex Invalid() {
-    return StringIndex(std::numeric_limits<decltype(index_)>::max());
+  static constexpr DexIndex Invalid() {
+    return DexIndex(std::numeric_limits<decltype(index_)>::max());
   }
-
-  bool operator==(const StringIndex& other) const {
+  bool operator==(const DexIndex& other) const {
     return index_ == other.index_;
   }
-  bool operator!=(const StringIndex& other) const {
+  bool operator!=(const DexIndex& other) const {
     return index_ != other.index_;
   }
-  bool operator<(const StringIndex& other) const {
+  bool operator<(const DexIndex& other) const {
     return index_ < other.index_;
   }
-  bool operator<=(const StringIndex& other) const {
+  bool operator<=(const DexIndex& other) const {
     return index_ <= other.index_;
   }
-  bool operator>(const StringIndex& other) const {
+  bool operator>(const DexIndex& other) const {
     return index_ > other.index_;
   }
-  bool operator>=(const StringIndex& other) const {
+  bool operator>=(const DexIndex& other) const {
     return index_ >= other.index_;
+  }
+};
+
+class ProtoIndex : public DexIndex<uint16_t> {
+ public:
+  ProtoIndex() {}
+  explicit constexpr ProtoIndex(uint16_t index) : DexIndex<decltype(index_)>(index) {}
+  static constexpr ProtoIndex Invalid() {
+    return ProtoIndex(std::numeric_limits<decltype(index_)>::max());
+  }
+};
+std::ostream& operator<<(std::ostream& os, const ProtoIndex& index);
+
+class StringIndex : public DexIndex<uint32_t> {
+ public:
+  StringIndex() {}
+  explicit constexpr StringIndex(uint32_t index) : DexIndex<decltype(index_)>(index) {}
+  static constexpr StringIndex Invalid() {
+    return StringIndex(std::numeric_limits<decltype(index_)>::max());
   }
 };
 std::ostream& operator<<(std::ostream& os, const StringIndex& index);
 
-class TypeIndex {
+class TypeIndex : public DexIndex<uint16_t> {
  public:
-  uint16_t index_;
-
-  constexpr TypeIndex() : index_(std::numeric_limits<decltype(index_)>::max()) {}
-  explicit constexpr TypeIndex(uint16_t idx) : index_(idx) {}
-
-  bool IsValid() const {
-    return index_ != std::numeric_limits<decltype(index_)>::max();
-  }
-  static TypeIndex Invalid() {
+  TypeIndex() {}
+  explicit constexpr TypeIndex(uint16_t index) : DexIndex<uint16_t>(index) {}
+  static constexpr TypeIndex Invalid() {
     return TypeIndex(std::numeric_limits<decltype(index_)>::max());
-  }
-
-  bool operator==(const TypeIndex& other) const {
-    return index_ == other.index_;
-  }
-  bool operator!=(const TypeIndex& other) const {
-    return index_ != other.index_;
-  }
-  bool operator<(const TypeIndex& other) const {
-    return index_ < other.index_;
-  }
-  bool operator<=(const TypeIndex& other) const {
-    return index_ <= other.index_;
-  }
-  bool operator>(const TypeIndex& other) const {
-    return index_ > other.index_;
-  }
-  bool operator>=(const TypeIndex& other) const {
-    return index_ >= other.index_;
   }
 };
 std::ostream& operator<<(std::ostream& os, const TypeIndex& index);
@@ -100,15 +94,21 @@ std::ostream& operator<<(std::ostream& os, const TypeIndex& index);
 
 namespace std {
 
+template<> struct hash<art::dex::ProtoIndex> {
+  size_t operator()(const art::dex::ProtoIndex& index) const {
+    return hash<decltype(index.index_)>()(index.index_);
+  }
+};
+
 template<> struct hash<art::dex::StringIndex> {
   size_t operator()(const art::dex::StringIndex& index) const {
-    return hash<uint32_t>()(index.index_);
+    return hash<decltype(index.index_)>()(index.index_);
   }
 };
 
 template<> struct hash<art::dex::TypeIndex> {
   size_t operator()(const art::dex::TypeIndex& index) const {
-    return hash<uint16_t>()(index.index_);
+    return hash<decltype(index.index_)>()(index.index_);
   }
 };
 
