@@ -99,15 +99,16 @@ class MANAGED VarHandle : public Object {
     return (GetAccessModesBitMask() & (1u << static_cast<uint32_t>(accessMode))) != 0;
   }
 
-  // Returns true if the MethodType specified is compatible with the
-  // method type associated with the specified AccessMode with argument
-  // and return value conversions. The supplied MethodType is assumed
-  // to be from the point of invocation so it is valid for the supplied
-  // MethodType to have a void return value when the return value for
-  // the AccessMode is non-void. This corresponds to the result of the
-  // accessor being discarded.
-  bool IsMethodTypeCompatible(AccessMode access_mode, MethodType* method_type)
-      REQUIRES_SHARED(Locks::mutator_lock_);
+  enum MatchKind : uint8_t {
+    kNone,
+    kWithConversions,
+    kExact
+  };
+
+  // Returns match information on the compatability between the exact method type for
+  // 'access_mode' and the provided 'method_type'.
+  MatchKind GetMethodTypeMatchForAccessMode(AccessMode access_mode, MethodType* method_type)
+        REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns true if the MethodType specified is compatible with the
   // specified access_mode if the first parameter of method_type is
