@@ -100,11 +100,12 @@ class MANAGED VarHandle : public Object {
   }
 
   // Returns true if the MethodType specified is compatible with the
-  // method type associated with the specified AccessMode. The
-  // supplied MethodType is assumed to be from the point of invocation
-  // so it is valid for the supplied MethodType to have a void return
-  // value when the return value for the AccessMode is non-void. This
-  // corresponds to the result of the accessor being discarded.
+  // method type associated with the specified AccessMode with argument
+  // and return value conversions. The supplied MethodType is assumed
+  // to be from the point of invocation so it is valid for the supplied
+  // MethodType to have a void return value when the return value for
+  // the AccessMode is non-void. This corresponds to the result of the
+  // accessor being discarded.
   bool IsMethodTypeCompatible(AccessMode access_mode, MethodType* method_type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -124,7 +125,7 @@ class MANAGED VarHandle : public Object {
 
   bool Access(AccessMode access_mode,
               ShadowFrame* shadow_frame,
-              InstructionOperands* operands,
+              const InstructionOperands* const operands,
               JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -192,7 +193,7 @@ class MANAGED FieldVarHandle : public VarHandle {
  public:
   bool Access(AccessMode access_mode,
               ShadowFrame* shadow_frame,
-              InstructionOperands* operands,
+              const InstructionOperands* const operands,
               JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -225,7 +226,7 @@ class MANAGED ArrayElementVarHandle : public VarHandle {
  public:
     bool Access(AccessMode access_mode,
                 ShadowFrame* shadow_frame,
-                InstructionOperands* operands,
+                const InstructionOperands* const operands,
                 JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -248,7 +249,7 @@ class MANAGED ByteArrayViewVarHandle : public VarHandle {
  public:
   bool Access(AccessMode access_mode,
               ShadowFrame* shadow_frame,
-              InstructionOperands* operands,
+              const InstructionOperands* const operands,
               JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -281,7 +282,7 @@ class MANAGED ByteBufferViewVarHandle : public VarHandle {
  public:
   bool Access(AccessMode access_mode,
               ShadowFrame* shadow_frame,
-              InstructionOperands* operands,
+              const InstructionOperands* const operands,
               JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
 

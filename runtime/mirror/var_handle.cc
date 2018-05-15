@@ -1540,7 +1540,7 @@ MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self, AccessMode acces
 
 bool VarHandle::Access(AccessMode access_mode,
                        ShadowFrame* shadow_frame,
-                       InstructionOperands* operands,
+                       const InstructionOperands* const operands,
                        JValue* result) {
   Class* klass = GetClass();
   if (klass == FieldVarHandle::StaticClass()) {
@@ -1671,7 +1671,7 @@ ArtField* FieldVarHandle::GetField() {
 
 bool FieldVarHandle::Access(AccessMode access_mode,
                             ShadowFrame* shadow_frame,
-                            InstructionOperands* operands,
+                            const InstructionOperands* const operands,
                             JValue* result) {
   ShadowFrameGetter getter(*shadow_frame, operands);
   ArtField* field = GetField();
@@ -1743,7 +1743,7 @@ GcRoot<Class> FieldVarHandle::static_class_;
 
 bool ArrayElementVarHandle::Access(AccessMode access_mode,
                                    ShadowFrame* shadow_frame,
-                                   InstructionOperands* operands,
+                                   const InstructionOperands* const operands,
                                    JValue* result) {
   ShadowFrameGetter getter(*shadow_frame, operands);
 
@@ -1856,7 +1856,7 @@ bool ByteArrayViewVarHandle::GetNativeByteOrder() {
 
 bool ByteArrayViewVarHandle::Access(AccessMode access_mode,
                                     ShadowFrame* shadow_frame,
-                                    InstructionOperands* operands,
+                                    const InstructionOperands* const operands,
                                     JValue* result) {
   ShadowFrameGetter getter(*shadow_frame, operands);
 
@@ -1965,7 +1965,7 @@ bool ByteBufferViewVarHandle::GetNativeByteOrder() {
 
 bool ByteBufferViewVarHandle::Access(AccessMode access_mode,
                                      ShadowFrame* shadow_frame,
-                                     InstructionOperands* operands,
+                                     const InstructionOperands* const operands,
                                      JValue* result) {
   ShadowFrameGetter getter(*shadow_frame, operands);
 
