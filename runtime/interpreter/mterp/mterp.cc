@@ -408,7 +408,8 @@ extern "C" size_t MterpConstMethodType(uint32_t index,
                                        ShadowFrame* shadow_frame,
                                        Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjPtr<mirror::MethodType> mt = ResolveMethodType(self, index, shadow_frame->GetMethod());
+  ObjPtr<mirror::MethodType> mt =
+      ResolveMethodType(self, dex::ProtoIndex(index), shadow_frame->GetMethod());
   if (UNLIKELY(mt == nullptr)) {
     return true;
   }

@@ -127,8 +127,9 @@ const DexFile::MethodId* DexFileVerifier::CheckLoadMethodId(uint32_t idx, const 
   return &dex_file_->GetMethodId(idx);
 }
 
-const DexFile::ProtoId* DexFileVerifier::CheckLoadProtoId(uint32_t idx, const char* err_string) {
-  if (UNLIKELY(!CheckIndex(idx, dex_file_->NumProtoIds(), err_string))) {
+const DexFile::ProtoId* DexFileVerifier::CheckLoadProtoId(dex::ProtoIndex idx,
+                                                          const char* err_string) {
+  if (UNLIKELY(!CheckIndex(idx.index_, dex_file_->NumProtoIds(), err_string))) {
     return nullptr;
   }
   return &dex_file_->GetProtoId(idx);
@@ -2208,7 +2209,7 @@ bool DexFileVerifier::CheckInterMethodIdItem() {
   }
 
   // Check that the proto id is valid.
-  if (UNLIKELY(!CheckIndex(item->proto_idx_, dex_file_->NumProtoIds(),
+  if (UNLIKELY(!CheckIndex(item->proto_idx_.index_, dex_file_->NumProtoIds(),
                            "inter_method_id_item proto_idx"))) {
     return false;
   }

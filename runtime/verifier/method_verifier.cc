@@ -3086,7 +3086,8 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         DCHECK(HasFailures());
         break;
       }
-      const uint32_t proto_idx = (is_range) ? inst->VRegH_4rcc() : inst->VRegH_45cc();
+      const uint16_t vRegH = (is_range) ? inst->VRegH_4rcc() : inst->VRegH_45cc();
+      const dex::ProtoIndex proto_idx(vRegH);
       const char* return_descriptor =
           dex_file_->GetReturnTypeDescriptor(dex_file_->GetProtoId(proto_idx));
       const RegType& return_type =
@@ -3117,7 +3118,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       CallSiteArrayValueIterator it(*dex_file_, dex_file_->GetCallSiteId(call_site_idx));
       it.Next();  // Skip to name.
       it.Next();  // Skip to method type of the method handle
-      const uint32_t proto_idx = static_cast<uint32_t>(it.GetJavaValue().i);
+      const dex::ProtoIndex proto_idx(it.GetJavaValue().c);
       const DexFile::ProtoId& proto_id = dex_file_->GetProtoId(proto_idx);
       DexFileParameterIterator param_it(*dex_file_, proto_id);
       // Treat method as static as it has yet to be determined.
@@ -4190,7 +4191,8 @@ ArtMethod* MethodVerifier::VerifyInvocationArgs(
 
   if (UNLIKELY(method_type == METHOD_POLYMORPHIC)) {
     // Process the signature of the calling site that is invoking the method handle.
-    DexFileParameterIterator it(*dex_file_, dex_file_->GetProtoId(inst->VRegH()));
+    dex::ProtoIndex proto_idx(inst->VRegH());
+    DexFileParameterIterator it(*dex_file_, dex_file_->GetProtoId(proto_idx));
     return VerifyInvocationArgsFromIterator(&it, inst, method_type, is_range, res_method);
   } else {
     // Process the target method's signature.

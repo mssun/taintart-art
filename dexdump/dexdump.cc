@@ -786,11 +786,10 @@ static void dumpLocalsCb(void* /*context*/, const DexFile::LocalInfo& entry) {
 static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
                                            const Instruction* pDecInsn,
                                            size_t bufSize) {
-  static const u4 kInvalidIndex = std::numeric_limits<u4>::max();
   std::unique_ptr<char[]> buf(new char[bufSize]);
   // Determine index and width of the string.
   u4 index = 0;
-  u4 secondary_index = kInvalidIndex;
+  u2 secondary_index = 0;
   u4 width = 4;
   switch (Instruction::FormatOf(pDecInsn->Opcode())) {
     // SOME NOT SUPPORTED:
@@ -898,7 +897,7 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
                                              signature.ToString().c_str());
       }
       if (secondary_index < pDexFile->GetHeader().proto_ids_size_) {
-        const DexFile::ProtoId& protoId = pDexFile->GetProtoId(secondary_index);
+        const DexFile::ProtoId& protoId = pDexFile->GetProtoId(dex::ProtoIndex(secondary_index));
         const Signature signature = pDexFile->GetProtoSignature(protoId);
         proto = signature.ToString();
       }
@@ -916,7 +915,7 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
       break;
     case Instruction::kIndexProtoRef:
       if (index < pDexFile->GetHeader().proto_ids_size_) {
-        const DexFile::ProtoId& protoId = pDexFile->GetProtoId(index);
+        const DexFile::ProtoId& protoId = pDexFile->GetProtoId(dex::ProtoIndex(index));
         const Signature signature = pDexFile->GetProtoSignature(protoId);
         const std::string& proto = signature.ToString();
         outSize = snprintf(buf.get(), bufSize, "%s // proto@%0*x", proto.c_str(), width, index);
@@ -1705,7 +1704,7 @@ static void dumpCallSite(const DexFile* pDexFile, u4 idx) {
   dex::StringIndex method_name_idx = static_cast<dex::StringIndex>(it.GetJavaValue().i);
   const char* method_name = pDexFile->StringDataByIdx(method_name_idx);
   it.Next();
-  uint32_t method_type_idx = static_cast<uint32_t>(it.GetJavaValue().i);
+  dex::ProtoIndex method_type_idx = static_cast<dex::ProtoIndex>(it.GetJavaValue().i);
   const DexFile::ProtoId& method_type_id = pDexFile->GetProtoId(method_type_idx);
   std::string method_type = pDexFile->GetProtoSignature(method_type_id).ToString();
   it.Next();
@@ -1763,7 +1762,7 @@ static void dumpCallSite(const DexFile* pDexFile, u4 idx) {
         break;
       case EncodedArrayValueIterator::ValueType::kMethodType: {
         type = "MethodType";
-        uint32_t proto_idx = static_cast<uint32_t>(it.GetJavaValue().i);
+        dex::ProtoIndex proto_idx = static_cast<dex::ProtoIndex>(it.GetJavaValue().i);
         const DexFile::ProtoId& proto_id = pDexFile->GetProtoId(proto_idx);
         value = pDexFile->GetProtoSignature(proto_id).ToString();
         break;

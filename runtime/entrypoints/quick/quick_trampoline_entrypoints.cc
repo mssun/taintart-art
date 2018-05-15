@@ -2766,7 +2766,7 @@ extern "C" uintptr_t artInvokePolymorphic(
   const Instruction& inst = caller_method->DexInstructions().InstructionAt(dex_pc);
   DCHECK(inst.Opcode() == Instruction::INVOKE_POLYMORPHIC ||
          inst.Opcode() == Instruction::INVOKE_POLYMORPHIC_RANGE);
-  const uint32_t proto_idx = inst.VRegH();
+  const dex::ProtoIndex proto_idx(inst.VRegH());
   const char* shorty = caller_method->GetDexFile()->GetShorty(proto_idx);
   const size_t shorty_length = strlen(shorty);
   static const bool kMethodIsStatic = false;  // invoke() and invokeExact() are not static.
