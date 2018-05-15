@@ -710,6 +710,23 @@ bool ArtMethod::HasAnyCompiledCode() {
   return GetOatMethodQuickCode(runtime->GetClassLinker()->GetImagePointerSize()) != nullptr;
 }
 
+void ArtMethod::SetNotIntrinsic() {
+  if (!IsIntrinsic()) {
+    return;
+  }
+
+  // Query the hidden API access flags of the intrinsic.
+  HiddenApiAccessFlags::ApiList intrinsic_api_list = GetHiddenApiAccessFlags();
+
+  // Clear intrinsic-related access flags.
+  ClearAccessFlags(kAccIntrinsic | kAccIntrinsicBits);
+
+  // Re-apply hidden API access flags now that the method is not an intrinsic.
+  SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(GetAccessFlags(), intrinsic_api_list));
+  DCHECK_EQ(GetHiddenApiAccessFlags(), intrinsic_api_list);
+}
+
+
 void ArtMethod::CopyFrom(ArtMethod* src, PointerSize image_pointer_size) {
   memcpy(reinterpret_cast<void*>(this), reinterpret_cast<const void*>(src),
          Size(image_pointer_size));

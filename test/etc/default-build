@@ -543,6 +543,11 @@ fi
 if [[ -d classes-ex ]] && [ ${NEED_DEX} = "true" ]; then
   make_dex classes-ex
 
+  # Apply hiddenapi on the dex files if the test has API list file(s).
+  if [ ${USE_HIDDENAPI} = "true" -a ${HAS_HIDDENAPI_SPEC} = "true" ]; then
+    make_hiddenapi classes-ex.dex
+  fi
+
   # quick shuffle so that the stored name is "classes.dex"
   mv classes.dex classes-1.dex
   mv classes-ex.dex classes.dex
