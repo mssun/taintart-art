@@ -23,7 +23,7 @@ JIT_DEBUG_REGISTER_CODE_LDFLAGS = [
     "-Wl,--keep-unique,__dex_debug_register_code"
 ]
 
-cc_defaults {
+libart_cc_defaults {
     name: "libart_defaults",
     defaults: ["art_defaults"],
     host_supported: true,
@@ -394,7 +394,6 @@ cc_defaults {
         "libbacktrace",
         "liblz4",
         "liblog",
-        "libmetricslogger",
         // For atrace, properties, ashmem, set_sched_policy and socket_peer_is_trusted.
         "libcutils",
         // For common macros.
