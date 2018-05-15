@@ -25,7 +25,6 @@
 #include <jni.h>
 
 #include "base/utils.h"
-#include "exec_utils.h"
 #include "jvmti.h"
 
 #pragma clang diagnostic push
@@ -918,6 +917,10 @@ extern "C" JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM* vm,
     }
   }
   return 0;
+}
+
+extern "C" JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM* vm, char* options, void* reserved) {
+  return Agent_OnLoad(vm, options, reserved);
 }
 
 }  // namespace art
