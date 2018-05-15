@@ -127,23 +127,23 @@ inline void DexCache::ClearResolvedType(dex::TypeIndex type_idx) {
   }
 }
 
-inline uint32_t DexCache::MethodTypeSlotIndex(uint32_t proto_idx) {
+inline uint32_t DexCache::MethodTypeSlotIndex(dex::ProtoIndex proto_idx) {
   DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
-  DCHECK_LT(proto_idx, GetDexFile()->NumProtoIds());
-  const uint32_t slot_idx = proto_idx % kDexCacheMethodTypeCacheSize;
+  DCHECK_LT(proto_idx.index_, GetDexFile()->NumProtoIds());
+  const uint32_t slot_idx = proto_idx.index_ % kDexCacheMethodTypeCacheSize;
   DCHECK_LT(slot_idx, NumResolvedMethodTypes());
   return slot_idx;
 }
 
-inline MethodType* DexCache::GetResolvedMethodType(uint32_t proto_idx) {
+inline MethodType* DexCache::GetResolvedMethodType(dex::ProtoIndex proto_idx) {
   return GetResolvedMethodTypes()[MethodTypeSlotIndex(proto_idx)].load(
-      std::memory_order_relaxed).GetObjectForIndex(proto_idx);
+      std::memory_order_relaxed).GetObjectForIndex(proto_idx.index_);
 }
 
-inline void DexCache::SetResolvedMethodType(uint32_t proto_idx, MethodType* resolved) {
+inline void DexCache::SetResolvedMethodType(dex::ProtoIndex proto_idx, MethodType* resolved) {
   DCHECK(resolved != nullptr);
   GetResolvedMethodTypes()[MethodTypeSlotIndex(proto_idx)].store(
-      MethodTypeDexCachePair(resolved, proto_idx), std::memory_order_relaxed);
+      MethodTypeDexCachePair(resolved, proto_idx.index_), std::memory_order_relaxed);
   // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
   Runtime::Current()->GetHeap()->WriteBarrierEveryFieldOf(this);
 }

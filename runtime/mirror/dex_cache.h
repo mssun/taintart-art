@@ -307,9 +307,9 @@ class MANAGED DexCache FINAL : public Object {
   ALWAYS_INLINE void ClearResolvedField(uint32_t idx, PointerSize ptr_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  MethodType* GetResolvedMethodType(uint32_t proto_idx) REQUIRES_SHARED(Locks::mutator_lock_);
+  MethodType* GetResolvedMethodType(dex::ProtoIndex proto_idx) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void SetResolvedMethodType(uint32_t proto_idx, MethodType* resolved)
+  void SetResolvedMethodType(dex::ProtoIndex proto_idx, MethodType* resolved)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   CallSite* GetResolvedCallSite(uint32_t call_site_idx) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -432,7 +432,7 @@ class MANAGED DexCache FINAL : public Object {
   uint32_t TypeSlotIndex(dex::TypeIndex type_idx) REQUIRES_SHARED(Locks::mutator_lock_);
   uint32_t FieldSlotIndex(uint32_t field_idx) REQUIRES_SHARED(Locks::mutator_lock_);
   uint32_t MethodSlotIndex(uint32_t method_idx) REQUIRES_SHARED(Locks::mutator_lock_);
-  uint32_t MethodTypeSlotIndex(uint32_t proto_idx) REQUIRES_SHARED(Locks::mutator_lock_);
+  uint32_t MethodTypeSlotIndex(dex::ProtoIndex proto_idx) REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   void Init(const DexFile* dex_file,

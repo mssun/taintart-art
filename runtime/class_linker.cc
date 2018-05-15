@@ -8174,7 +8174,7 @@ ArtField* ClassLinker::FindResolvedFieldJLS(ObjPtr<mirror::Class> klass,
 
 ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(
     Thread* self,
-    uint32_t proto_idx,
+    dex::ProtoIndex proto_idx,
     Handle<mirror::DexCache> dex_cache,
     Handle<mirror::ClassLoader> class_loader) {
   DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
@@ -8236,7 +8236,7 @@ ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(
 }
 
 ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(Thread* self,
-                                                          uint32_t proto_idx,
+                                                          dex::ProtoIndex proto_idx,
                                                           ArtMethod* referrer) {
   StackHandleScope<2> hs(self);
   Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
