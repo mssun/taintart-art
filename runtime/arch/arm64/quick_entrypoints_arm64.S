@@ -1151,45 +1151,36 @@ END art_quick_do_long_jump
      */
     .extern artLockObjectFromCode
 ENTRY art_quick_lock_object
-    cbz    w0, .Lslow_lock
-    add    x4, x0, #MIRROR_OBJECT_LOCK_WORD_OFFSET  // exclusive load/store has no immediate anymore
+    ldr    w1, [xSELF, #THREAD_ID_OFFSET]
+    cbz    w0, art_quick_lock_object_no_inline
+                                      // Exclusive load/store has no immediate anymore.
+    add    x4, x0, #MIRROR_OBJECT_LOCK_WORD_OFFSET
 .Lretry_lock:
-    ldr    w2, [xSELF, #THREAD_ID_OFFSET] // TODO: Can the thread ID really change during the loop?
-    ldaxr  w1, [x4]                   // acquire needed only in most common case
-    and    w3, w1, #LOCK_WORD_GC_STATE_MASK_SHIFTED_TOGGLED  // zero the gc bits
-    cbnz   w3, .Lnot_unlocked         // already thin locked
-    // unlocked case - x1: original lock word that's zero except for the read barrier bits.
-    orr    x2, x1, x2                 // x2 holds thread id with count of 0 with preserved read barrier bits
-    stxr   w3, w2, [x4]
-    cbnz   w3, .Llock_stxr_fail       // store failed, retry
+    ldaxr  w2, [x4]                   // Acquire needed only in most common case.
+    eor    w3, w2, w1                 // Prepare the value to store if unlocked
+                                      //   (thread id, count of 0 and preserved read barrier bits),
+                                      // or prepare to compare thread id for recursive lock check
+                                      //   (lock_word.ThreadId() ^ self->ThreadId()).
+    tst    w2, #LOCK_WORD_GC_STATE_MASK_SHIFTED_TOGGLED  // Test the non-gc bits.
+    b.ne   .Lnot_unlocked             // Check if unlocked.
+    // unlocked case - store w3: original lock word plus thread id, preserved read barrier bits.
+    stxr   w2, w3, [x4]
+    cbnz   w2, .Lretry_lock           // If the store failed, retry.
     ret
-.Lnot_unlocked:  // x1: original lock word
-    lsr    w3, w1, LOCK_WORD_STATE_SHIFT
-    cbnz   w3, .Lslow_lock            // if either of the top two bits are set, go slow path
-    eor    w2, w1, w2                 // lock_word.ThreadId() ^ self->ThreadId()
-    uxth   w2, w2                     // zero top 16 bits
-    cbnz   w2, .Lslow_lock            // lock word and self thread id's match -> recursive lock
-                                      // else contention, go to slow path
-    and    w3, w1, #LOCK_WORD_GC_STATE_MASK_SHIFTED_TOGGLED  // zero the gc bits.
-    add    w2, w3, #LOCK_WORD_THIN_LOCK_COUNT_ONE  // increment count in lock word placing in w2 to check overflow
-    lsr    w3, w2, #LOCK_WORD_GC_STATE_SHIFT     // if the first gc state bit is set, we overflowed.
-    cbnz   w3, .Lslow_lock            // if we overflow the count go slow path
-    add    w2, w1, #LOCK_WORD_THIN_LOCK_COUNT_ONE  // increment count for real
-    stxr   w3, w2, [x4]
-    cbnz   w3, .Llock_stxr_fail       // store failed, retry
+.Lnot_unlocked:  // w2: original lock word, w1: thread id, w3: w2 ^ w1
+                                      // Check lock word state and thread id together,
+    tst    w3, #(LOCK_WORD_STATE_MASK_SHIFTED | LOCK_WORD_THIN_LOCK_OWNER_MASK_SHIFTED)
+    b.ne   art_quick_lock_object_no_inline
+    add    w3, w2, #LOCK_WORD_THIN_LOCK_COUNT_ONE  // Increment the recursive lock count.
+    tst    w3, #LOCK_WORD_THIN_LOCK_COUNT_MASK_SHIFTED  // Test the new thin lock count.
+    b.eq   art_quick_lock_object_no_inline  // Zero as the new count indicates overflow, go slow path.
+    stxr   w2, w3, [x4]
+    cbnz   w2, .Lretry_lock           // If the store failed, retry.
     ret
-.Llock_stxr_fail:
-    b      .Lretry_lock               // retry
-.Lslow_lock:
-    SETUP_SAVE_REFS_ONLY_FRAME        // save callee saves in case we block
-    mov    x1, xSELF                  // pass Thread::Current
-    bl     artLockObjectFromCode      // (Object* obj, Thread*)
-    RESTORE_SAVE_REFS_ONLY_FRAME
-    REFRESH_MARKING_REGISTER
-    RETURN_IF_W0_IS_ZERO_OR_DELIVER
 END art_quick_lock_object
 
 ENTRY art_quick_lock_object_no_inline
+    // This is also the slow path for art_quick_lock_object.
     SETUP_SAVE_REFS_ONLY_FRAME        // save callee saves in case we block
     mov    x1, xSELF                  // pass Thread::Current
     bl     artLockObjectFromCode      // (Object* obj, Thread*)
@@ -1206,54 +1197,46 @@ END art_quick_lock_object_no_inline
      */
     .extern artUnlockObjectFromCode
 ENTRY art_quick_unlock_object
-    cbz    x0, .Lslow_unlock
-    add    x4, x0, #MIRROR_OBJECT_LOCK_WORD_OFFSET  // exclusive load/store has no immediate anymore
+    ldr    w1, [xSELF, #THREAD_ID_OFFSET]
+    cbz    x0, art_quick_unlock_object_no_inline
+                                      // Exclusive load/store has no immediate anymore.
+    add    x4, x0, #MIRROR_OBJECT_LOCK_WORD_OFFSET
 .Lretry_unlock:
 #ifndef USE_READ_BARRIER
-    ldr    w1, [x4]
+    ldr    w2, [x4]
 #else
-    ldxr   w1, [x4]                   // Need to use atomic instructions for read barrier
+    ldxr   w2, [x4]                   // Need to use atomic instructions for read barrier.
 #endif
-    lsr    w2, w1, LOCK_WORD_STATE_SHIFT
-    cbnz   w2, .Lslow_unlock          // if either of the top two bits are set, go slow path
-    ldr    w2, [xSELF, #THREAD_ID_OFFSET]
-    and    w3, w1, #LOCK_WORD_GC_STATE_MASK_SHIFTED_TOGGLED  // zero the gc bits
-    eor    w3, w3, w2                 // lock_word.ThreadId() ^ self->ThreadId()
-    uxth   w3, w3                     // zero top 16 bits
-    cbnz   w3, .Lslow_unlock          // do lock word and self thread id's match?
-    and    w3, w1, #LOCK_WORD_GC_STATE_MASK_SHIFTED_TOGGLED  // zero the gc bits
-    cmp    w3, #LOCK_WORD_THIN_LOCK_COUNT_ONE
-    bpl    .Lrecursive_thin_unlock
-    // transition to unlocked
-    and    w3, w1, #LOCK_WORD_GC_STATE_MASK_SHIFTED  // w3: zero except for the preserved read barrier bits
+    eor    w3, w2, w1                 // Prepare the value to store if simply locked
+                                      //   (mostly 0s, and preserved read barrier bits),
+                                      // or prepare to compare thread id for recursive lock check
+                                      //   (lock_word.ThreadId() ^ self->ThreadId()).
+    tst    w3, #LOCK_WORD_GC_STATE_MASK_SHIFTED_TOGGLED  // Test the non-gc bits.
+    b.ne   .Lnot_simply_locked        // Locked recursively or by other thread?
+    // Transition to unlocked.
 #ifndef USE_READ_BARRIER
     stlr   w3, [x4]
 #else
-    stlxr  w2, w3, [x4]               // Need to use atomic instructions for read barrier
-    cbnz   w2, .Lunlock_stxr_fail     // store failed, retry
+    stlxr  w2, w3, [x4]               // Need to use atomic instructions for read barrier.
+    cbnz   w2, .Lretry_unlock         // If the store failed, retry.
 #endif
     ret
-.Lrecursive_thin_unlock:  // w1: original lock word
-    sub    w1, w1, #LOCK_WORD_THIN_LOCK_COUNT_ONE  // decrement count
+.Lnot_simply_locked:
+                                      // Check lock word state and thread id together,
+    tst    w3, #(LOCK_WORD_STATE_MASK_SHIFTED | LOCK_WORD_THIN_LOCK_OWNER_MASK_SHIFTED)
+    b.ne   art_quick_unlock_object_no_inline
+    sub    w3, w2, #LOCK_WORD_THIN_LOCK_COUNT_ONE  // decrement count
 #ifndef USE_READ_BARRIER
-    str    w1, [x4]
+    str    w3, [x4]
 #else
-    stxr   w2, w1, [x4]               // Need to use atomic instructions for read barrier
-    cbnz   w2, .Lunlock_stxr_fail     // store failed, retry
+    stxr   w2, w3, [x4]               // Need to use atomic instructions for read barrier.
+    cbnz   w2, .Lretry_unlock         // If the store failed, retry.
 #endif
     ret
-.Lunlock_stxr_fail:
-    b      .Lretry_unlock             // retry
-.Lslow_unlock:
-    SETUP_SAVE_REFS_ONLY_FRAME        // save callee saves in case exception allocation triggers GC
-    mov    x1, xSELF                  // pass Thread::Current
-    bl     artUnlockObjectFromCode    // (Object* obj, Thread*)
-    RESTORE_SAVE_REFS_ONLY_FRAME
-    REFRESH_MARKING_REGISTER
-    RETURN_IF_W0_IS_ZERO_OR_DELIVER
 END art_quick_unlock_object
 
 ENTRY art_quick_unlock_object_no_inline
+    // This is also the slow path for art_quick_unlock_object.
     SETUP_SAVE_REFS_ONLY_FRAME        // save callee saves in case exception allocation triggers GC
     mov    x1, xSELF                  // pass Thread::Current
     bl     artUnlockObjectFromCode    // (Object* obj, Thread*)

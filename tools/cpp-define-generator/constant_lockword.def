@@ -23,23 +23,29 @@
 #define DEFINE_LOCK_WORD_EXPR(macro_name, type, constant_field_name) \
   DEFINE_EXPR(LOCK_WORD_ ## macro_name, type, art::LockWord::constant_field_name)
 
+// FIXME: The naming is inconsistent, the `Shifted` -> `_SHIFTED` suffix is sometimes missing.
 DEFINE_LOCK_WORD_EXPR(STATE_SHIFT,               int32_t,  kStateShift)
-DEFINE_LOCK_WORD_EXPR(STATE_MASK,                uint32_t, kStateMaskShifted)
+DEFINE_LOCK_WORD_EXPR(STATE_MASK_SHIFTED,        uint32_t, kStateMaskShifted)
 DEFINE_LOCK_WORD_EXPR(READ_BARRIER_STATE_SHIFT,  int32_t,  kReadBarrierStateShift)
-DEFINE_LOCK_WORD_EXPR(READ_BARRIER_STATE_MASK,   uint32_t,  kReadBarrierStateMaskShifted)
+DEFINE_LOCK_WORD_EXPR(READ_BARRIER_STATE_MASK,   uint32_t, kReadBarrierStateMaskShifted)
 DEFINE_LOCK_WORD_EXPR(READ_BARRIER_STATE_MASK_TOGGLED, uint32_t, kReadBarrierStateMaskShiftedToggled)
-DEFINE_LOCK_WORD_EXPR(THIN_LOCK_COUNT_ONE,       int32_t,  kThinLockCountOne)
+DEFINE_LOCK_WORD_EXPR(THIN_LOCK_COUNT_SIZE,      int32_t,  kThinLockCountSize)
+DEFINE_LOCK_WORD_EXPR(THIN_LOCK_COUNT_SHIFT,     int32_t,  kThinLockCountShift)
+DEFINE_LOCK_WORD_EXPR(THIN_LOCK_COUNT_MASK_SHIFTED, uint32_t, kThinLockCountMaskShifted)
+DEFINE_LOCK_WORD_EXPR(THIN_LOCK_COUNT_ONE,       uint32_t, kThinLockCountOne)
+DEFINE_LOCK_WORD_EXPR(THIN_LOCK_OWNER_MASK_SHIFTED, uint32_t, kThinLockOwnerMaskShifted)
 
-DEFINE_LOCK_WORD_EXPR(STATE_FORWARDING_ADDRESS, uint32_t, kStateForwardingAddress)
+DEFINE_LOCK_WORD_EXPR(STATE_FORWARDING_ADDRESS,  uint32_t, kStateForwardingAddress)
 DEFINE_LOCK_WORD_EXPR(STATE_FORWARDING_ADDRESS_OVERFLOW, uint32_t, kStateForwardingAddressOverflow)
 DEFINE_LOCK_WORD_EXPR(STATE_FORWARDING_ADDRESS_SHIFT, uint32_t, kForwardingAddressShift)
 
-DEFINE_LOCK_WORD_EXPR(GC_STATE_MASK_SHIFTED,   uint32_t,  kGCStateMaskShifted)
+DEFINE_LOCK_WORD_EXPR(GC_STATE_MASK_SHIFTED,     uint32_t,  kGCStateMaskShifted)
 DEFINE_LOCK_WORD_EXPR(GC_STATE_MASK_SHIFTED_TOGGLED, uint32_t, kGCStateMaskShiftedToggled)
-DEFINE_LOCK_WORD_EXPR(GC_STATE_SHIFT,   int32_t,  kGCStateShift)
+DEFINE_LOCK_WORD_EXPR(GC_STATE_SIZE,             int32_t,  kGCStateSize)
+DEFINE_LOCK_WORD_EXPR(GC_STATE_SHIFT,            int32_t,  kGCStateShift)
 
-DEFINE_LOCK_WORD_EXPR(MARK_BIT_SHIFT, int32_t, kMarkBitStateShift)
-DEFINE_LOCK_WORD_EXPR(MARK_BIT_MASK_SHIFTED, uint32_t, kMarkBitStateMaskShifted)
+DEFINE_LOCK_WORD_EXPR(MARK_BIT_SHIFT,            int32_t,  kMarkBitStateShift)
+DEFINE_LOCK_WORD_EXPR(MARK_BIT_MASK_SHIFTED,     uint32_t, kMarkBitStateMaskShifted)
 
 #undef DEFINE_LOCK_WORD_EXPR
 
