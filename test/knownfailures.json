@@ -454,7 +454,8 @@
             "674-hiddenapi",
             "649-vdex-duplicate-method",
             "804-class-extends-itself",
-            "921-hello-failure"
+            "921-hello-failure",
+            "999-redefine-hiddenapi"
         ],
         "description": [
             "Tests that use illegal dex files or otherwise break dexter assumptions"
@@ -471,7 +472,8 @@
             "629-vdex-speed",
             "647-jni-get-field-id",
             "674-hiddenapi",
-            "944-transform-classloaders"
+            "944-transform-classloaders",
+            "999-redefine-hiddenapi"
         ],
         "description": [
             "Tests that use custom class loaders or other features not supported ",
@@ -876,7 +878,6 @@
           "667-jit-jni-stub",
           "667-out-of-bounds",
           "668-aiobe",
-          "674-hiddenapi",
           "674-hotness-compiled",
           "674-vdex-uncompress",
           "675-checker-unverified-method",
@@ -954,8 +955,10 @@
     },
     {
         "tests": ["616-cha-unloading",
+                  "674-hiddenapi",
                   "678-quickening",
-                  "679-locks"],
+                  "679-locks",
+                  "999-redefine-hiddenapi"],
         "variant": "jvm",
         "description": ["Doesn't run on RI."]
     },
