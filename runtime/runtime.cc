@@ -1216,7 +1216,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   // As is, we're encoding some logic here about which specific policy to use, which would be better
   // controlled by the framework.
   hidden_api_policy_ = do_hidden_api_checks
-      ? hiddenapi::EnforcementPolicy::kBlacklistOnly
+      ? hiddenapi::EnforcementPolicy::kDarkGreyAndBlackList
       : hiddenapi::EnforcementPolicy::kNoChecks;
 
   no_sig_chain_ = runtime_options.Exists(Opt::NoSigChain);

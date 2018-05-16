@@ -95,6 +95,22 @@ inline Action GetActionFromAccessFlags(HiddenApiAccessFlags::ApiList api_list) {
   }
 }
 
+class ScopedHiddenApiEnforcementPolicySetting {
+ public:
+  explicit ScopedHiddenApiEnforcementPolicySetting(EnforcementPolicy new_policy)
+      : initial_policy_(Runtime::Current()->GetHiddenApiEnforcementPolicy()) {
+    Runtime::Current()->SetHiddenApiEnforcementPolicy(new_policy);
+  }
+
+  ~ScopedHiddenApiEnforcementPolicySetting() {
+    Runtime::Current()->SetHiddenApiEnforcementPolicy(initial_policy_);
+  }
+
+ private:
+  const EnforcementPolicy initial_policy_;
+  DISALLOW_COPY_AND_ASSIGN(ScopedHiddenApiEnforcementPolicySetting);
+};
+
 // Implementation details. DO NOT ACCESS DIRECTLY.
 namespace detail {
 

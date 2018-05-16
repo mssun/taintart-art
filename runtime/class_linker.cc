@@ -4839,6 +4839,9 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
       const uint32_t field_idx = field->GetDexFieldIndex();
       ArtField* resolved_field = dex_cache->GetResolvedField(field_idx, image_pointer_size_);
       if (resolved_field == nullptr) {
+        // Populating cache of a dex file which defines `klass` should always be allowed.
+        DCHECK_EQ(hiddenapi::GetMemberAction(
+            field, class_loader.Get(), dex_cache.Get(), hiddenapi::kNone), hiddenapi::kAllow);
         dex_cache->SetResolvedField(field_idx, field, image_pointer_size_);
       } else {
         DCHECK_EQ(field, resolved_field);
@@ -8042,26 +8045,8 @@ ArtField* ClassLinker::LookupResolvedField(uint32_t field_idx,
     return nullptr;
   }
   DCHECK(klass->IsResolved());
-  Thread* self = is_static ? Thread::Current() : nullptr;
 
-  // First try to find a field declared directly by `klass` by the field index.
-  ArtField* resolved_field = is_static
-      ? mirror::Class::FindStaticField(self, klass, dex_cache, field_idx)
-      : klass->FindInstanceField(dex_cache, field_idx);
-
-  if (resolved_field == nullptr) {
-    // If not found in `klass` by field index, search the class hierarchy using the name and type.
-    const char* name = dex_file.GetFieldName(field_id);
-    const char* type = dex_file.GetFieldTypeDescriptor(field_id);
-    resolved_field = is_static
-        ? mirror::Class::FindStaticField(self, klass, name, type)
-        : klass->FindInstanceField(name, type);
-  }
-
-  if (resolved_field != nullptr) {
-    dex_cache->SetResolvedField(field_idx, resolved_field, image_pointer_size_);
-  }
-  return resolved_field;
+  return FindResolvedField(klass, dex_cache, class_loader, field_idx, is_static);
 }
 
 ArtField* ClassLinker::ResolveField(uint32_t field_idx,
@@ -8076,39 +8061,18 @@ ArtField* ClassLinker::ResolveField(uint32_t field_idx,
   }
   const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
-  Thread* const self = Thread::Current();
   ObjPtr<mirror::Class> klass = ResolveType(field_id.class_idx_, dex_cache, class_loader);
   if (klass == nullptr) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
   }
 
-  if (is_static) {
-    resolved = mirror::Class::FindStaticField(self, klass, dex_cache.Get(), field_idx);
-  } else {
-    resolved = klass->FindInstanceField(dex_cache.Get(), field_idx);
-  }
-
+  resolved = FindResolvedField(klass, dex_cache.Get(), class_loader.Get(), field_idx, is_static);
   if (resolved == nullptr) {
     const char* name = dex_file.GetFieldName(field_id);
     const char* type = dex_file.GetFieldTypeDescriptor(field_id);
-    if (is_static) {
-      resolved = mirror::Class::FindStaticField(self, klass, name, type);
-    } else {
-      resolved = klass->FindInstanceField(name, type);
-    }
-  }
-
-  if (resolved == nullptr ||
-      hiddenapi::GetMemberAction(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
-    const char* name = dex_file.GetFieldName(field_id);
-    const char* type = dex_file.GetFieldTypeDescriptor(field_id);
     ThrowNoSuchFieldError(is_static ? "static " : "instance ", klass, type, name);
-    return nullptr;
   }
-
-  dex_cache->SetResolvedField(field_idx, resolved, image_pointer_size_);
   return resolved;
 }
 
@@ -8123,26 +8087,77 @@ ArtField* ClassLinker::ResolveFieldJLS(uint32_t field_idx,
   }
   const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
-  Thread* self = Thread::Current();
   ObjPtr<mirror::Class> klass = ResolveType(field_id.class_idx_, dex_cache, class_loader);
   if (klass == nullptr) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
   }
 
-  StringPiece name(dex_file.GetFieldName(field_id));
-  StringPiece type(dex_file.GetFieldTypeDescriptor(field_id));
-  resolved = mirror::Class::FindField(self, klass, name, type);
-  if (resolved != nullptr &&
-      hiddenapi::GetMemberAction(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
-    resolved = nullptr;
-  }
-  if (resolved != nullptr) {
-    dex_cache->SetResolvedField(field_idx, resolved, image_pointer_size_);
-  } else {
+  resolved = FindResolvedFieldJLS(klass, dex_cache.Get(), class_loader.Get(), field_idx);
+  if (resolved == nullptr) {
+    const char* name = dex_file.GetFieldName(field_id);
+    const char* type = dex_file.GetFieldTypeDescriptor(field_id);
     ThrowNoSuchFieldError("", klass, type, name);
   }
+  return resolved;
+}
+
+ArtField* ClassLinker::FindResolvedField(ObjPtr<mirror::Class> klass,
+                                         ObjPtr<mirror::DexCache> dex_cache,
+                                         ObjPtr<mirror::ClassLoader> class_loader,
+                                         uint32_t field_idx,
+                                         bool is_static) {
+  ArtField* resolved = nullptr;
+  Thread* self = is_static ? Thread::Current() : nullptr;
+  const DexFile& dex_file = *dex_cache->GetDexFile();
+
+  resolved = is_static ? mirror::Class::FindStaticField(self, klass, dex_cache, field_idx)
+                       : klass->FindInstanceField(dex_cache, field_idx);
+
+  if (resolved == nullptr) {
+    const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
+    const char* name = dex_file.GetFieldName(field_id);
+    const char* type = dex_file.GetFieldTypeDescriptor(field_id);
+    resolved = is_static ? mirror::Class::FindStaticField(self, klass, name, type)
+                         : klass->FindInstanceField(name, type);
+  }
+
+  if (resolved != nullptr &&
+      hiddenapi::GetMemberAction(
+          resolved, class_loader, dex_cache, hiddenapi::kLinking) == hiddenapi::kDeny) {
+    resolved = nullptr;
+  }
+
+  if (resolved != nullptr) {
+    dex_cache->SetResolvedField(field_idx, resolved, image_pointer_size_);
+  }
+
+  return resolved;
+}
+
+ArtField* ClassLinker::FindResolvedFieldJLS(ObjPtr<mirror::Class> klass,
+                                            ObjPtr<mirror::DexCache> dex_cache,
+                                            ObjPtr<mirror::ClassLoader> class_loader,
+                                            uint32_t field_idx) {
+  ArtField* resolved = nullptr;
+  Thread* self = Thread::Current();
+  const DexFile& dex_file = *dex_cache->GetDexFile();
+  const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
+
+  const char* name = dex_file.GetFieldName(field_id);
+  const char* type = dex_file.GetFieldTypeDescriptor(field_id);
+  resolved = mirror::Class::FindField(self, klass, name, type);
+
+  if (resolved != nullptr &&
+      hiddenapi::GetMemberAction(
+          resolved, class_loader, dex_cache, hiddenapi::kLinking) == hiddenapi::kDeny) {
+    resolved = nullptr;
+  }
+
+  if (resolved != nullptr) {
+    dex_cache->SetResolvedField(field_idx, resolved, image_pointer_size_);
+  }
+
   return resolved;
 }
 

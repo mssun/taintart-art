@@ -384,6 +384,27 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
+  // Find a field with a given ID from the DexFile associated with the given DexCache
+  // and ClassLoader, storing the result in DexCache. The declaring class is assumed
+  // to have been already resolved into `klass`. The `is_static` argument is used to
+  // determine if we are resolving a static or non-static field.
+  ArtField* FindResolvedField(ObjPtr<mirror::Class> klass,
+                              ObjPtr<mirror::DexCache> dex_cache,
+                              ObjPtr<mirror::ClassLoader> class_loader,
+                              uint32_t field_idx,
+                              bool is_static)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Find a field with a given ID from the DexFile associated with the given DexCache
+  // and ClassLoader, storing the result in DexCache. The declaring class is assumed
+  // to have been already resolved into `klass`. No is_static argument is provided
+  // so that Java field resolution semantics are followed.
+  ArtField* FindResolvedFieldJLS(ObjPtr<mirror::Class> klass,
+                                 ObjPtr<mirror::DexCache> dex_cache,
+                                 ObjPtr<mirror::ClassLoader> class_loader,
+                                 uint32_t field_idx)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // Resolve a method type with a given ID from the DexFile associated with a given DexCache
   // and ClassLoader, storing the result in the DexCache.
   ObjPtr<mirror::MethodType> ResolveMethodType(Thread* self,
