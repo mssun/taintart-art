@@ -422,6 +422,15 @@ static void TryToEvaluateIfCondition(HIf* instruction, HGraph* graph) {
   }
 }
 
+// Peel the first 'count' iterations of the loop.
+static void PeelByCount(HLoopInformation* loop_info, int count) {
+  for (int i = 0; i < count; i++) {
+    // Perform peeling.
+    PeelUnrollSimpleHelper helper(loop_info);
+    helper.DoPeeling();
+  }
+}
+
 //
 // Public methods.
 //
@@ -811,6 +820,45 @@ bool HLoopOptimization::TryPeelingForLoopInvariantExitsElimination(LoopAnalysisI
   return true;
 }
 
+bool HLoopOptimization::TryFullUnrolling(LoopAnalysisInfo* analysis_info, bool generate_code) {
+  // Fully unroll loops with a known and small trip count.
+  int64_t trip_count = analysis_info->GetTripCount();
+  if (!arch_loop_helper_->IsLoopPeelingEnabled() ||
+      trip_count == LoopAnalysisInfo::kUnknownTripCount ||
+      !arch_loop_helper_->IsFullUnrollingBeneficial(analysis_info)) {
+    return false;
+  }
+
+  if (generate_code) {
+    // Peeling of the N first iterations (where N equals to the trip count) will effectively
+    // eliminate the loop: after peeling we will have N sequential iterations copied into the loop
+    // preheader and the original loop. The trip count of this loop will be 0 as the sequential
+    // iterations are executed first and there are exactly N of them. Thus we can statically
+    // evaluate the loop exit condition to 'false' and fully eliminate it.
+    //
+    // Here is an example of full unrolling of a loop with a trip count 2:
+    //
+    //                                           loop_cond_1
+    //                                           loop_body_1        <- First iteration.
+    //                                               |
+    //                             \                 v
+    //                            ==\            loop_cond_2
+    //                            ==/            loop_body_2        <- Second iteration.
+    //                             /                 |
+    //               <-                              v     <-
+    //     loop_cond   \                         loop_cond   \      <- This cond is always false.
+    //     loop_body  _/                         loop_body  _/
+    //
+    HLoopInformation* loop_info = analysis_info->GetLoopInfo();
+    PeelByCount(loop_info, trip_count);
+    HIf* loop_hif = loop_info->GetHeader()->GetLastInstruction()->AsIf();
+    int32_t constant = loop_info->Contains(*loop_hif->IfTrueSuccessor()) ? 0 : 1;
+    loop_hif->ReplaceInput(graph_->GetIntConstant(constant), 0u);
+  }
+
+  return true;
+}
+
 bool HLoopOptimization::TryPeelingAndUnrolling(LoopNode* node) {
   // Don't run peeling/unrolling if compiler_options_ is nullptr (i.e., running under tests)
   // as InstructionSet is needed.
@@ -828,7 +876,8 @@ bool HLoopOptimization::TryPeelingAndUnrolling(LoopNode* node) {
     return false;
   }
 
-  if (!TryPeelingForLoopInvariantExitsElimination(&analysis_info, /*generate_code*/ false) &&
+  if (!TryFullUnrolling(&analysis_info, /*generate_code*/ false) &&
+      !TryPeelingForLoopInvariantExitsElimination(&analysis_info, /*generate_code*/ false) &&
       !TryUnrollingForBranchPenaltyReduction(&analysis_info, /*generate_code*/ false)) {
     return false;
   }
@@ -838,7 +887,8 @@ bool HLoopOptimization::TryPeelingAndUnrolling(LoopNode* node) {
     return false;
   }
 
-  return TryPeelingForLoopInvariantExitsElimination(&analysis_info) ||
+  return TryFullUnrolling(&analysis_info) ||
+         TryPeelingForLoopInvariantExitsElimination(&analysis_info) ||
          TryUnrollingForBranchPenaltyReduction(&analysis_info);
 }
 

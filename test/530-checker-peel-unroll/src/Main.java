@@ -1067,6 +1067,46 @@ public class Main {
     }
   }
 
+  /// CHECK-START: void Main.unrollingFull(int[]) loop_optimization (before)
+  /// CHECK-DAG: <<Param:l\d+>>     ParameterValue                          loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>    IntConstant 0                           loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>    IntConstant 1                           loop:none
+  /// CHECK-DAG: <<Limit:i\d+>>     IntConstant 2                           loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi [<<Const0>>,{{i\d+}}]               loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                    ArrayGet                                loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArrayGet                                loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet                                loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                    ArrayGet
+  /// CHECK-NOT:                    ArraySet
+
+  /// CHECK-START: void Main.unrollingFull(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Param:l\d+>>     ParameterValue                          loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>    IntConstant 0                           loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>    IntConstant 1                           loop:none
+  /// CHECK-DAG: <<Limit:i\d+>>     IntConstant 2                           loop:none
+  //            Two peeled iterations
+  /// CHECK-DAG:                    ArrayGet                                loop:none
+  /// CHECK-DAG:                    ArrayGet                                loop:none
+  /// CHECK-DAG:                    ArraySet                                loop:none
+  /// CHECK-DAG:                    ArrayGet                                loop:none
+  /// CHECK-DAG:                    ArrayGet                                loop:none
+  /// CHECK-DAG:                    ArraySet                                loop:none
+  //            Loop
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi [{{i\d+}},{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                    ArrayGet                                loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArrayGet                                loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet                                loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    If [<<Const1>>]                         loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                    ArrayGet
+  /// CHECK-NOT:                    ArraySet
+  private static final void unrollingFull(int[] a) {
+    for (int i = 0; i < 2; i++) {
+      a[i] += a[i + 1];
+    }
+  }
+
   private static void expectEquals(int expected, int result) {
     if (expected != result) {
       throw new Error("Expected: " + expected + ", found: " + result);

@@ -400,7 +400,7 @@ public class Main {
   /// CHECK:                                    ArraySet [<<Address>>,<<Index>>,<<Div>>]
 
   public static int canMergeAfterBCE1() {
-    int[] array = {0, 7, 14, 21};
+    int[] array = {0, 7, 14, 21, 28, 35, 42};
     for (int i = 0; i < array.length; i++) {
       array[i] = array[i] / 7;
     }
@@ -513,7 +513,7 @@ public class Main {
   /// CHECK-NOT:                                IntermediateAddress
 
   public static int canMergeAfterBCE2() {
-    int[] array = {64, 8, 4, 2 };
+    int[] array = {128, 64, 32, 8, 4, 2 };
     for (int i = 0; i < array.length - 1; i++) {
       array[i + 1] = array[i] << array[i + 1];
     }
@@ -571,8 +571,8 @@ public class Main {
     accrossGC(array, 0);
     assertIntEquals(125, array[0]);
 
-    assertIntEquals(3, canMergeAfterBCE1());
-    assertIntEquals(1048576, canMergeAfterBCE2());
+    assertIntEquals(6, canMergeAfterBCE1());
+    assertIntEquals(2097152, canMergeAfterBCE2());
 
     assertIntEquals(18, checkLongFloatDouble());
   }

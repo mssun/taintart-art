@@ -160,6 +160,13 @@ class ArchNoOptsLoopHelper : public ArenaObject<kArenaAllocOptimization> {
   // Returns 'false' by default, should be overridden by particular target loop helper.
   virtual bool IsLoopPeelingEnabled() const { return false; }
 
+  // Returns whether it is beneficial to fully unroll the loop.
+  //
+  // Returns 'false' by default, should be overridden by particular target loop helper.
+  virtual bool IsFullUnrollingBeneficial(LoopAnalysisInfo* analysis_info ATTRIBUTE_UNUSED) const {
+    return false;
+  }
+
   // Returns optimal SIMD unrolling factor for the loop.
   //
   // Returns kNoUnrollingFactor by default, should be overridden by particular target loop helper.
