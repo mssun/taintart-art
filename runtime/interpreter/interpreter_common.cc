@@ -24,7 +24,7 @@
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "intrinsics_enum.h"
 #include "jit/jit.h"
-#include "jvalue.h"
+#include "jvalue-inl.h"
 #include "method_handles-inl.h"
 #include "method_handles.h"
 #include "mirror/array-inl.h"
