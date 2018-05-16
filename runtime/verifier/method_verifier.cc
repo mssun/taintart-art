@@ -4210,8 +4210,6 @@ bool MethodVerifier::CheckSignaturePolymorphicMethod(ArtMethod* method) {
     expected_return_descriptor = mirror::MethodHandle::GetReturnTypeDescriptor(method_name);
   } else if (klass == mirror::VarHandle::StaticClass()) {
     expected_return_descriptor = mirror::VarHandle::GetReturnTypeDescriptor(method_name);
-    // TODO: add compiler support for VarHandle accessor methods (b/71781600)
-    Fail(VERIFY_ERROR_FORCE_INTERPRETER);
   } else {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD)
         << "Signature polymorphic method in unsuppported class: " << klass->PrettyDescriptor();
