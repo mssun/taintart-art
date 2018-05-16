@@ -33,7 +33,7 @@ union PACKED(alignof(mirror::Object*)) JValue {
   // We default initialize JValue instances to all-zeros.
   JValue() : j(0) {}
 
-  template<typename T> static JValue FromPrimitive(T v);
+  template<typename T> ALWAYS_INLINE static JValue FromPrimitive(T v);
 
   int8_t GetB() const { return b; }
   void SetB(int8_t new_b) {
@@ -62,6 +62,7 @@ union PACKED(alignof(mirror::Object*)) JValue {
   mirror::Object* GetL() const REQUIRES_SHARED(Locks::mutator_lock_) {
     return l;
   }
+  ALWAYS_INLINE
   void SetL(ObjPtr<mirror::Object> new_l) REQUIRES_SHARED(Locks::mutator_lock_);
 
   int16_t GetS() const { return s; }
