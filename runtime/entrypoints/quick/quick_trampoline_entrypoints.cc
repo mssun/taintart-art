@@ -42,6 +42,7 @@
 #include "mirror/method_handle_impl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
+#include "mirror/var_handle.h"
 #include "oat_file.h"
 #include "oat_quick_method_header.h"
 #include "quick_exception_handler.h"
@@ -49,6 +50,7 @@
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "thread-inl.h"
+#include "var_handles.h"
 #include "well_known_classes.h"
 
 namespace art {
@@ -2789,13 +2791,6 @@ extern "C" uintptr_t artInvokePolymorphic(
     return static_cast<uintptr_t>('V');
   }
 
-  // TODO(oth): Ensure this path isn't taken for VarHandle accessors (b/65872996).
-  DCHECK_EQ(resolved_method->GetDeclaringClass(),
-            WellKnownClasses::ToClass(WellKnownClasses::java_lang_invoke_MethodHandle));
-
-  Handle<mirror::MethodHandle> method_handle(hs.NewHandle(
-      ObjPtr<mirror::MethodHandle>::DownCast(MakeObjPtr(receiver_handle.Get()))));
-
   Handle<mirror::MethodType> method_type(
       hs.NewHandle(linker->ResolveMethodType(self, proto_idx, caller_method)));
 
@@ -2835,24 +2830,43 @@ extern "C" uintptr_t artInvokePolymorphic(
   // Call DoInvokePolymorphic with |is_range| = true, as shadow frame has argument registers in
   // consecutive order.
   RangeInstructionOperands operands(first_arg + 1, num_vregs - 1);
-  bool isExact = (jni::EncodeArtMethod(resolved_method) ==
-                  WellKnownClasses::java_lang_invoke_MethodHandle_invokeExact);
+  Intrinsics intrinsic = static_cast<Intrinsics>(resolved_method->GetIntrinsic());
   bool success = false;
-  if (isExact) {
-    success = MethodHandleInvokeExact(self,
+  if (resolved_method->GetDeclaringClass() == mirror::MethodHandle::StaticClass()) {
+    Handle<mirror::MethodHandle> method_handle(hs.NewHandle(
+        ObjPtr<mirror::MethodHandle>::DownCast(MakeObjPtr(receiver_handle.Get()))));
+    if (intrinsic == Intrinsics::kMethodHandleInvokeExact) {
+      success = MethodHandleInvokeExact(self,
+                                        *shadow_frame,
+                                        method_handle,
+                                        method_type,
+                                        &operands,
+                                        result);
+    } else {
+      DCHECK_EQ(static_cast<uint32_t>(intrinsic),
+                static_cast<uint32_t>(Intrinsics::kMethodHandleInvoke));
+      success = MethodHandleInvoke(self,
+                                   *shadow_frame,
+                                   method_handle,
+                                   method_type,
+                                   &operands,
+                                   result);
+    }
+  } else {
+    DCHECK_EQ(mirror::VarHandle::StaticClass(), resolved_method->GetDeclaringClass());
+    Handle<mirror::VarHandle> var_handle(hs.NewHandle(
+        ObjPtr<mirror::VarHandle>::DownCast(MakeObjPtr(receiver_handle.Get()))));
+    mirror::VarHandle::AccessMode access_mode =
+        mirror::VarHandle::GetAccessModeByIntrinsic(intrinsic);
+    success = VarHandleInvokeAccessor(self,
                                       *shadow_frame,
-                                      method_handle,
+                                      var_handle,
                                       method_type,
+                                      access_mode,
                                       &operands,
                                       result);
-  } else {
-    success = MethodHandleInvoke(self,
-                                 *shadow_frame,
-                                 method_handle,
-                                 method_type,
-                                 &operands,
-                                 result);
   }
+
   DCHECK(success || self->IsExceptionPending());
 
   // Pop transition record.

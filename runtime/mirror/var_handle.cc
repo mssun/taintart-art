@@ -1425,21 +1425,24 @@ int32_t VarHandle::GetAccessModesBitMask() {
   return GetField32(AccessModesBitMaskOffset());
 }
 
-bool VarHandle::IsMethodTypeCompatible(AccessMode access_mode, MethodType* method_type) {
-  StackHandleScope<3> hs(Thread::Current());
-  Handle<Class> mt_rtype(hs.NewHandle(method_type->GetRType()));
-  Handle<VarHandle> vh(hs.NewHandle(this));
-  Handle<Class> var_type(hs.NewHandle(vh->GetVarType()));
+VarHandle::MatchKind VarHandle::GetMethodTypeMatchForAccessMode(AccessMode access_mode,
+                                                                MethodType* method_type) {
+  MatchKind match = MatchKind::kExact;
+
+  ObjPtr<VarHandle> vh = this;
+  ObjPtr<Class> var_type = vh->GetVarType();
+  ObjPtr<Class> mt_rtype = method_type->GetRType();
   AccessModeTemplate access_mode_template = GetAccessModeTemplate(access_mode);
 
-  // Check return type first.
-  if (mt_rtype->GetPrimitiveType() == Primitive::Type::kPrimVoid) {
-    // The result of the operation will be discarded. The return type
-    // of the VarHandle is immaterial.
-  } else {
-    ObjPtr<Class> vh_rtype(GetReturnType(access_mode_template, var_type.Get()));
-    if (!IsReturnTypeConvertible(vh_rtype, mt_rtype.Get())) {
-      return false;
+  // Check return type first. If the return type of the method
+  // of the VarHandle is immaterial.
+  if (mt_rtype->GetPrimitiveType() != Primitive::Type::kPrimVoid) {
+    ObjPtr<Class> vh_rtype = GetReturnType(access_mode_template, var_type.Ptr());
+    if (vh_rtype != mt_rtype) {
+      if (!IsReturnTypeConvertible(vh_rtype, mt_rtype)) {
+        return MatchKind::kNone;
+      }
+      match = MatchKind::kWithConversions;
     }
   }
 
@@ -1447,21 +1450,25 @@ bool VarHandle::IsMethodTypeCompatible(AccessMode access_mode, MethodType* metho
   ObjPtr<Class> vh_ptypes[VarHandle::kMaxAccessorParameters];
   const int32_t vh_ptypes_count = BuildParameterArray(vh_ptypes,
                                                       access_mode_template,
-                                                      var_type.Get(),
+                                                      var_type,
                                                       GetCoordinateType0(),
                                                       GetCoordinateType1());
   if (vh_ptypes_count != method_type->GetPTypes()->GetLength()) {
-    return false;
+    return MatchKind::kNone;
   }
 
   // Check the parameter types are compatible.
   ObjPtr<ObjectArray<Class>> mt_ptypes = method_type->GetPTypes();
   for (int32_t i = 0; i < vh_ptypes_count; ++i) {
-    if (!IsParameterTypeConvertible(mt_ptypes->Get(i), vh_ptypes[i])) {
-      return false;
+    if (mt_ptypes->Get(i) == vh_ptypes[i]) {
+      continue;
     }
+    if (!IsParameterTypeConvertible(mt_ptypes->Get(i), vh_ptypes[i])) {
+      return MatchKind::kNone;
+    }
+    match = MatchKind::kWithConversions;
   }
-  return true;
+  return match;
 }
 
 bool VarHandle::IsInvokerMethodTypeCompatible(AccessMode access_mode,
@@ -1508,7 +1515,7 @@ bool VarHandle::IsInvokerMethodTypeCompatible(AccessMode access_mode,
 MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self,
                                                   ObjPtr<VarHandle> var_handle,
                                                   AccessMode access_mode) {
-  // This is a static as the var_handle might be moved by the GC during it's execution.
+  // This is a static method as the var_handle might be moved by the GC during it's execution.
   AccessModeTemplate access_mode_template = GetAccessModeTemplate(access_mode);
 
   StackHandleScope<3> hs(self);
@@ -1540,7 +1547,7 @@ MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self, AccessMode acces
 
 bool VarHandle::Access(AccessMode access_mode,
                        ShadowFrame* shadow_frame,
-                       InstructionOperands* operands,
+                       const InstructionOperands* const operands,
                        JValue* result) {
   Class* klass = GetClass();
   if (klass == FieldVarHandle::StaticClass()) {
@@ -1671,7 +1678,7 @@ ArtField* FieldVarHandle::GetField() {
 
 bool FieldVarHandle::Access(AccessMode access_mode,
                             ShadowFrame* shadow_frame,
-                            InstructionOperands* operands,
+                            const InstructionOperands* const operands,
                             JValue* result) {
   ShadowFrameGetter getter(*shadow_frame, operands);
   ArtField* field = GetField();
@@ -1743,7 +1750,7 @@ GcRoot<Class> FieldVarHandle::static_class_;
 
 bool ArrayElementVarHandle::Access(AccessMode access_mode,
                                    ShadowFrame* shadow_frame,
-                                   InstructionOperands* operands,
+                                   const InstructionOperands* const operands,
                                    JValue* result) {
   ShadowFrameGetter getter(*shadow_frame, operands);
 
@@ -1856,7 +1863,7 @@ bool ByteArrayViewVarHandle::GetNativeByteOrder() {
 
 bool ByteArrayViewVarHandle::Access(AccessMode access_mode,
                                     ShadowFrame* shadow_frame,
-                                    InstructionOperands* operands,
+                                    const InstructionOperands* const operands,
                                     JValue* result) {
   ShadowFrameGetter getter(*shadow_frame, operands);
 
@@ -1965,7 +1972,7 @@ bool ByteBufferViewVarHandle::GetNativeByteOrder() {
 
 bool ByteBufferViewVarHandle::Access(AccessMode access_mode,
                                      ShadowFrame* shadow_frame,
-                                     InstructionOperands* operands,
+                                     const InstructionOperands* const operands,
                                      JValue* result) {
   ShadowFrameGetter getter(*shadow_frame, operands);
 

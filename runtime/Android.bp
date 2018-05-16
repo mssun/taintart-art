@@ -195,6 +195,7 @@ libart_cc_defaults {
         "ti/agent.cc",
         "trace.cc",
         "transaction.cc",
+        "var_handles.cc",
         "vdex_file.cc",
         "verifier/instruction_flags.cc",
         "verifier/method_verifier.cc",
