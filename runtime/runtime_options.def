@@ -77,6 +77,7 @@ RUNTIME_OPTIONS_KEY (unsigned int,        JITWarmupThreshold)
 RUNTIME_OPTIONS_KEY (unsigned int,        JITOsrThreshold)
 RUNTIME_OPTIONS_KEY (unsigned int,        JITPriorityThreadWeight)
 RUNTIME_OPTIONS_KEY (unsigned int,        JITInvokeTransitionWeight)
+RUNTIME_OPTIONS_KEY (int,                 JITPoolThreadPthreadPriority,   jit::kJitPoolThreadPthreadDefaultPriority)
 RUNTIME_OPTIONS_KEY (MemoryKiB,           JITCodeCacheInitialCapacity,    jit::JitCodeCache::kInitialCapacity)
 RUNTIME_OPTIONS_KEY (MemoryKiB,           JITCodeCacheMaxCapacity,        jit::JitCodeCache::kMaxCapacity)
 RUNTIME_OPTIONS_KEY (MillisecondsToNanoseconds, \
