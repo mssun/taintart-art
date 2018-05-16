@@ -1360,9 +1360,15 @@ bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
   if (arg_this->IsNewInstance()) {
     ssa_builder_->AddUninitializedString(arg_this->AsNewInstance());
   } else {
+    // The only reason a HPhi can flow in a String.<init> is when there is an
+    // irreducible loop, which will create HPhi for all dex registers at loop entry.
     DCHECK(arg_this->IsPhi());
-    // NewInstance is not the direct input of the StringFactory call. It might
-    // be redundant but optimizing this case is not worth the effort.
+    DCHECK(graph_->HasIrreducibleLoops());
+    // Don't bother compiling a method in that situation. While we could look at all
+    // phis related to the HNewInstance, it's not worth the trouble.
+    MaybeRecordStat(compilation_stats_,
+                    MethodCompilationStat::kNotCompiledIrreducibleAndStringInit);
+    return false;
   }
 
   // Walk over all vregs and replace any occurrence of `arg_this` with `invoke`.
