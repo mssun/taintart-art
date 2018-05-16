@@ -43,48 +43,7 @@ static void Copy(const std::string& src, const std::string& dst) {
   dst_stream << src_stream.rdbuf();
 }
 
-class ArtDexFileLoaderTest : public CommonRuntimeTest {
- public:
-  virtual void SetUp() {
-    CommonRuntimeTest::SetUp();
-
-    std::string dex_location = GetTestDexFileName("Main");
-    std::string multidex_location = GetTestDexFileName("MultiDex");
-
-    data_location_path_ = android_data_ + "/foo.jar";
-    system_location_path_ = GetAndroidRoot() + "/foo.jar";
-    system_framework_location_path_ = GetAndroidRoot() + "/framework/foo.jar";
-    data_multi_location_path_ = android_data_ + "/multifoo.jar";
-    system_multi_location_path_ = GetAndroidRoot() + "/multifoo.jar";
-    system_framework_multi_location_path_ = GetAndroidRoot() + "/framework/multifoo.jar";
-
-    Copy(dex_location, data_location_path_);
-    Copy(dex_location, system_location_path_);
-    Copy(dex_location, system_framework_location_path_);
-
-    Copy(multidex_location, data_multi_location_path_);
-    Copy(multidex_location, system_multi_location_path_);
-    Copy(multidex_location, system_framework_multi_location_path_);
-  }
-
-  virtual void TearDown() {
-    remove(data_location_path_.c_str());
-    remove(system_location_path_.c_str());
-    remove(system_framework_location_path_.c_str());
-    remove(data_multi_location_path_.c_str());
-    remove(system_multi_location_path_.c_str());
-    remove(system_framework_multi_location_path_.c_str());
-    CommonRuntimeTest::TearDown();
-  }
-
- protected:
-  std::string data_location_path_;
-  std::string system_location_path_;
-  std::string system_framework_location_path_;
-  std::string data_multi_location_path_;
-  std::string system_multi_location_path_;
-  std::string system_framework_multi_location_path_;
-};
+class ArtDexFileLoaderTest : public CommonRuntimeTest {};
 
 // TODO: Port OpenTestDexFile(s) need to be ported to use non-ART utilities, and
 // the tests that depend upon them should be moved to dex_file_loader_test.cc
@@ -353,21 +312,24 @@ TEST_F(ArtDexFileLoaderTest, GetDexCanonicalLocation) {
   ASSERT_EQ(0, unlink(dex_location_sym.c_str()));
 }
 
-TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
-  ArtDexFileLoader loader;
-  bool success;
-  std::string error_msg;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
-
+TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_DataDir) {
   // Load file from a non-system directory and check that it is not flagged as framework.
-  ASSERT_FALSE(LocationIsOnSystemFramework(data_location_path_.c_str()));
-  success = loader.Open(data_location_path_.c_str(),
-                        data_location_path_,
-                        /* verify */ false,
-                        /* verify_checksum */ false,
-                        &error_msg,
-                        &dex_files);
+  std::string data_location_path = android_data_ + "/foo.jar";
+  ASSERT_FALSE(LocationIsOnSystemFramework(data_location_path.c_str()));
+
+  Copy(GetTestDexFileName("Main"), data_location_path);
+
+  ArtDexFileLoader loader;
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
+  std::string error_msg;
+  bool success = loader.Open(data_location_path.c_str(),
+                             data_location_path,
+                             /* verify */ false,
+                             /* verify_checksum */ false,
+                             &error_msg,
+                             &dex_files);
   ASSERT_TRUE(success) << error_msg;
+
   ASSERT_GE(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     ASSERT_FALSE(dex_file->IsPlatformDexFile());
@@ -375,15 +337,27 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
 
   dex_files.clear();
 
+  ASSERT_EQ(0, remove(data_location_path.c_str()));
+}
+
+TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemDir) {
   // Load file from a system, non-framework directory and check that it is not flagged as framework.
-  ASSERT_FALSE(LocationIsOnSystemFramework(system_location_path_.c_str()));
-  success = loader.Open(system_location_path_.c_str(),
-                        system_location_path_,
-                        /* verify */ false,
-                        /* verify_checksum */ false,
-                        &error_msg,
-                        &dex_files);
-  ASSERT_TRUE(success);
+  std::string system_location_path = GetAndroidRoot() + "/foo.jar";
+  ASSERT_FALSE(LocationIsOnSystemFramework(system_location_path.c_str()));
+
+  Copy(GetTestDexFileName("Main"), system_location_path);
+
+  ArtDexFileLoader loader;
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
+  std::string error_msg;
+  bool success = loader.Open(system_location_path.c_str(),
+                             system_location_path,
+                             /* verify */ false,
+                             /* verify_checksum */ false,
+                             &error_msg,
+                             &dex_files);
+  ASSERT_TRUE(success) << error_msg;
+
   ASSERT_GE(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     ASSERT_FALSE(dex_file->IsPlatformDexFile());
@@ -391,15 +365,27 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
 
   dex_files.clear();
 
+  ASSERT_EQ(0, remove(system_location_path.c_str()));
+}
+
+TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemFrameworkDir) {
   // Load file from a system/framework directory and check that it is flagged as a framework dex.
-  ASSERT_TRUE(LocationIsOnSystemFramework(system_framework_location_path_.c_str()));
-  success = loader.Open(system_framework_location_path_.c_str(),
-                        system_framework_location_path_,
-                        /* verify */ false,
-                        /* verify_checksum */ false,
-                        &error_msg,
-                        &dex_files);
-  ASSERT_TRUE(success);
+  std::string system_framework_location_path = GetAndroidRoot() + "/framework/foo.jar";
+  ASSERT_TRUE(LocationIsOnSystemFramework(system_framework_location_path.c_str()));
+
+  Copy(GetTestDexFileName("Main"), system_framework_location_path);
+
+  ArtDexFileLoader loader;
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
+  std::string error_msg;
+  bool success = loader.Open(system_framework_location_path.c_str(),
+                             system_framework_location_path,
+                             /* verify */ false,
+                             /* verify_checksum */ false,
+                             &error_msg,
+                             &dex_files);
+  ASSERT_TRUE(success) << error_msg;
+
   ASSERT_GE(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     ASSERT_TRUE(dex_file->IsPlatformDexFile());
@@ -407,14 +393,27 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
 
   dex_files.clear();
 
+  ASSERT_EQ(0, remove(system_framework_location_path.c_str()));
+}
+
+TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_DataDir_MultiDex) {
   // Load multidex file from a non-system directory and check that it is not flagged as framework.
-  success = loader.Open(data_multi_location_path_.c_str(),
-                        data_multi_location_path_,
-                        /* verify */ false,
-                        /* verify_checksum */ false,
-                        &error_msg,
-                        &dex_files);
+  std::string data_multi_location_path = android_data_ + "/multifoo.jar";
+  ASSERT_FALSE(LocationIsOnSystemFramework(data_multi_location_path.c_str()));
+
+  Copy(GetTestDexFileName("MultiDex"), data_multi_location_path);
+
+  ArtDexFileLoader loader;
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
+  std::string error_msg;
+  bool success = loader.Open(data_multi_location_path.c_str(),
+                             data_multi_location_path,
+                             /* verify */ false,
+                             /* verify_checksum */ false,
+                             &error_msg,
+                             &dex_files);
   ASSERT_TRUE(success) << error_msg;
+
   ASSERT_GT(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     ASSERT_FALSE(dex_file->IsPlatformDexFile());
@@ -422,15 +421,28 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
 
   dex_files.clear();
 
+  ASSERT_EQ(0, remove(data_multi_location_path.c_str()));
+}
+
+TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemDir_MultiDex) {
   // Load multidex file from a system, non-framework directory and check that it is not flagged
   // as framework.
-  success = loader.Open(system_multi_location_path_.c_str(),
-                        system_multi_location_path_,
-                        /* verify */ false,
-                        /* verify_checksum */ false,
-                        &error_msg,
-                        &dex_files);
-  ASSERT_TRUE(success);
+  std::string system_multi_location_path = GetAndroidRoot() + "/multifoo.jar";
+  ASSERT_FALSE(LocationIsOnSystemFramework(system_multi_location_path.c_str()));
+
+  Copy(GetTestDexFileName("MultiDex"), system_multi_location_path);
+
+  ArtDexFileLoader loader;
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
+  std::string error_msg;
+  bool success = loader.Open(system_multi_location_path.c_str(),
+                             system_multi_location_path,
+                             /* verify */ false,
+                             /* verify_checksum */ false,
+                             &error_msg,
+                             &dex_files);
+  ASSERT_TRUE(success) << error_msg;
+
   ASSERT_GT(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     ASSERT_FALSE(dex_file->IsPlatformDexFile());
@@ -438,19 +450,36 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
 
   dex_files.clear();
 
+  ASSERT_EQ(0, remove(system_multi_location_path.c_str()));
+}
+
+TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemFrameworkDir_MultiDex) {
   // Load multidex file from a system/framework directory and check that it is flagged as a
   // framework dex.
-  success = loader.Open(system_framework_multi_location_path_.c_str(),
-                        system_framework_multi_location_path_,
-                        /* verify */ false,
-                        /* verify_checksum */ false,
-                        &error_msg,
-                        &dex_files);
-  ASSERT_TRUE(success);
+  std::string system_framework_multi_location_path = GetAndroidRoot() + "/framework/multifoo.jar";
+  ASSERT_TRUE(LocationIsOnSystemFramework(system_framework_multi_location_path.c_str()));
+
+  Copy(GetTestDexFileName("MultiDex"), system_framework_multi_location_path);
+
+  ArtDexFileLoader loader;
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
+  std::string error_msg;
+  bool success = loader.Open(system_framework_multi_location_path.c_str(),
+                             system_framework_multi_location_path,
+                             /* verify */ false,
+                             /* verify_checksum */ false,
+                             &error_msg,
+                             &dex_files);
+  ASSERT_TRUE(success) << error_msg;
+
   ASSERT_GT(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     ASSERT_TRUE(dex_file->IsPlatformDexFile());
   }
+
+  dex_files.clear();
+
+  ASSERT_EQ(0, remove(system_framework_multi_location_path.c_str()));
 }
 
 }  // namespace art
