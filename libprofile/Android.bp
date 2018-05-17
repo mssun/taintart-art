@@ -45,6 +45,7 @@ cc_defaults {
     shared_libs: [
         "libartbase",
         "libdexfile",
+        "libartbase",
 	// For atrace.
         "libcutils",
     ],
@@ -97,6 +98,7 @@ art_cc_test {
     shared_libs: [
         "libartbased",
         "libdexfiled",
+        "libartbased",
         "libziparchive",
     ],
 }

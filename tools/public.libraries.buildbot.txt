@@ -1,5 +1,7 @@
 libart.so
 libartd.so
+libartbase.so
+libartbased.so
 libdexfile.so
 libdexfiled.so
 libbacktrace.so

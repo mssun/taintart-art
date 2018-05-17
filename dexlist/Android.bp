@@ -17,7 +17,11 @@ art_cc_binary {
     host_supported: true,
     srcs: ["dexlist.cc"],
     cflags: ["-Wall", "-Werror"],
-    shared_libs: ["libdexfile", "libbase"],
+    shared_libs: [
+        "libdexfile",
+        "libartbase",
+        "libbase"
+    ],
     // TODO: fix b/72216369 and remove the need for this.
     include_dirs: [
         "art/runtime"  // dex utils.

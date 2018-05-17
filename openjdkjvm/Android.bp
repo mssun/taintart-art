@@ -29,7 +29,10 @@ cc_defaults {
 art_cc_library {
     name: "libopenjdkjvm",
     defaults: ["libopenjdkjvm_defaults"],
-    shared_libs: ["libart"],
+    shared_libs: [
+        "libart",
+        "libartbase",
+    ],
 }
 
 art_cc_library {
@@ -38,5 +41,8 @@ art_cc_library {
         "art_debug_defaults",
         "libopenjdkjvm_defaults",
     ],
-    shared_libs: ["libartd"],
+    shared_libs: [
+        "libartd",
+        "libartbased",
+    ],
 }

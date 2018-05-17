@@ -65,6 +65,7 @@ art_cc_library {
     defaults: ["adbconnection-defaults"],
     shared_libs: [
         "libart",
+        "libartbase",
     ],
 }
 
@@ -76,5 +77,6 @@ art_cc_library {
     ],
     shared_libs: [
         "libartd",
+        "libartbased",
     ],
 }
