@@ -138,7 +138,7 @@ class DexAnalyze {
       // TODO: once added, use an api to android::base to read a std::vector<uint8_t>.
       if (!android::base::ReadFileToString(filename.c_str(), &content)) {
         LOG(ERROR) << "ReadFileToString failed for " + filename << std::endl;
-        continue;
+        return 2;
       }
       std::vector<std::unique_ptr<const DexFile>> dex_files;
       const DexFileLoader dex_file_loader;
@@ -150,14 +150,14 @@ class DexAnalyze {
                                    &error_msg,
                                    &dex_files)) {
         LOG(ERROR) << "OpenAll failed for " + filename << " with " << error_msg << std::endl;
-        continue;
+        return 3;
       }
       for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
         if (options.dump_per_input_dex_) {
           Analysis current(&options);
           if (!current.ProcessDexFile(*dex_file)) {
             LOG(ERROR) << "Failed to process " << filename << " with error " << error_msg;
-            continue;
+            return 4;
           }
           LOG(INFO) << "Analysis for " << dex_file->GetLocation() << std::endl;
           current.Dump(LOG_STREAM(INFO));
