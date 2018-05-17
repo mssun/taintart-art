@@ -828,8 +828,23 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   return true;
 }
 
+static void CreateStringInitBindings(Thread* self, ClassLinker* class_linker)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  // Find String.<init> -> StringFactory bindings.
+  ObjPtr<mirror::Class> string_factory_class =
+      class_linker->FindSystemClass(self, "Ljava/lang/StringFactory;");
+  CHECK(string_factory_class != nullptr);
+  ObjPtr<mirror::Class> string_class =
+      class_linker->GetClassRoot(ClassLinker::ClassRoot::kJavaLangString);
+  WellKnownClasses::InitStringInit(string_class, string_factory_class);
+  // Update the primordial thread.
+  self->InitStringEntryPoints();
+}
+
 void ClassLinker::FinishInit(Thread* self) {
   VLOG(startup) << "ClassLinker::FinishInit entering";
+
+  CreateStringInitBindings(self, this);
 
   // Let the heap know some key offsets into java.lang.ref instances
   // Note: we hard code the field indexes here rather than using FindInstanceField

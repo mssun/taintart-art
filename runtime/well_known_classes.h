@@ -40,6 +40,9 @@ struct WellKnownClasses {
 
   static void Clear();
 
+  static void InitStringInit(ObjPtr<mirror::Class> string_class,
+                             ObjPtr<mirror::Class> string_builder_class)
+      REQUIRES_SHARED(Locks::mutator_lock_);
   static ArtMethod* StringInitToStringFactory(ArtMethod* method);
   static uint32_t StringInitToEntryPoint(ArtMethod* method);
 
@@ -168,9 +171,6 @@ struct WellKnownClasses {
   static jfieldID org_apache_harmony_dalvik_ddmc_Chunk_length;
   static jfieldID org_apache_harmony_dalvik_ddmc_Chunk_offset;
   static jfieldID org_apache_harmony_dalvik_ddmc_Chunk_type;
-
- private:
-  static void InitStringInit(JNIEnv* env);
 };
 
 }  // namespace art
