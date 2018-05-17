@@ -24,7 +24,11 @@ cc_binary {
         "veridex.cc",
     ],
     cflags: ["-Wall", "-Werror"],
-    shared_libs: ["libdexfile", "libbase"],
+    shared_libs: [
+        "libdexfile",
+        "libartbase",
+        "libbase",
+    ],
     header_libs: [
         "art_libartbase_headers",
     ],

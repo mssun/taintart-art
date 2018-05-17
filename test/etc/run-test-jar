@@ -861,9 +861,9 @@ if [ "$HOST" = "n" ]; then
     # System libraries needed by libarttestd.so
     PUBLIC_LIBS=libc++.so:libbacktrace.so:libbase.so:libnativehelper.so
     if [ "$TEST_IS_NDEBUG" = "y" ]; then
-      PUBLIC_LIBS=$PUBLIC_LIBS:libart.so:libdexfile.so:libprofile.so
+      PUBLIC_LIBS=$PUBLIC_LIBS:libart.so:libdexfile.so:libprofile.so:libartbase.so
     else
-      PUBLIC_LIBS=$PUBLIC_LIBS:libartd.so:libdexfiled.so:libprofiled.so
+      PUBLIC_LIBS=$PUBLIC_LIBS:libartd.so:libdexfiled.so:libprofiled.so:libartbased.so
     fi
 
     # Create a script with the command. The command can get longer than the longest

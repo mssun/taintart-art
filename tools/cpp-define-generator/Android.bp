@@ -31,6 +31,7 @@ cc_binary { // Do not use art_cc_binary because HOST_PREFER_32_BIT is incompatib
     include_dirs: [
         "art/libartbase",
         "art/libdexfile",
+        "art/libartbase",
         "art/runtime",
     ],
     srcs: ["main.cc"],

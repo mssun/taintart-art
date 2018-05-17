@@ -45,7 +45,6 @@ libart_cc_defaults {
         "compiler_filter.cc",
         "debug_print.cc",
         "debugger.cc",
-        "dex/art_dex_file_loader.cc",
         "dex/dex_file_annotations.cc",
         "dex_to_dex_decompiler.cc",
         "elf_file.cc",
@@ -464,9 +463,9 @@ art_cc_library {
         keep_symbols: true,
     },
     whole_static_libs: [
-        "libartbase",
     ],
     shared_libs: [
+        "libartbase",
         "libdexfile",
         "libprofile",
     ],
@@ -489,9 +488,9 @@ art_cc_library {
         "libart_defaults",
     ],
     whole_static_libs: [
-        "libartbased",
     ],
     shared_libs: [
+        "libartbased",
         "libdexfiled",
         "libprofiled",
     ],
@@ -545,7 +544,6 @@ art_cc_test {
         "class_loader_context_test.cc",
         "class_table_test.cc",
         "compiler_filter_test.cc",
-        "dex/art_dex_file_loader_test.cc",
         "entrypoints/math_entrypoints_test.cc",
         "entrypoints/quick/quick_trampoline_entrypoints_test.cc",
         "entrypoints_order_test.cc",
