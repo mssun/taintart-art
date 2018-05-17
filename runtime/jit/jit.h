@@ -44,6 +44,110 @@ class JitOptions;
 
 static constexpr int16_t kJitCheckForOSR = -1;
 static constexpr int16_t kJitHotnessDisabled = -2;
+// At what priority to schedule jit threads. 9 is the lowest foreground priority on device.
+// See android/os/Process.java.
+static constexpr int kJitPoolThreadPthreadDefaultPriority = 9;
+
+class JitOptions {
+ public:
+  static JitOptions* CreateFromRuntimeArguments(const RuntimeArgumentMap& options);
+
+  uint16_t GetCompileThreshold() const {
+    return compile_threshold_;
+  }
+
+  uint16_t GetWarmupThreshold() const {
+    return warmup_threshold_;
+  }
+
+  uint16_t GetOsrThreshold() const {
+    return osr_threshold_;
+  }
+
+  uint16_t GetPriorityThreadWeight() const {
+    return priority_thread_weight_;
+  }
+
+  uint16_t GetInvokeTransitionWeight() const {
+    return invoke_transition_weight_;
+  }
+
+  size_t GetCodeCacheInitialCapacity() const {
+    return code_cache_initial_capacity_;
+  }
+
+  size_t GetCodeCacheMaxCapacity() const {
+    return code_cache_max_capacity_;
+  }
+
+  bool DumpJitInfoOnShutdown() const {
+    return dump_info_on_shutdown_;
+  }
+
+  const ProfileSaverOptions& GetProfileSaverOptions() const {
+    return profile_saver_options_;
+  }
+
+  bool GetSaveProfilingInfo() const {
+    return profile_saver_options_.IsEnabled();
+  }
+
+  int GetThreadPoolPthreadPriority() const {
+    return thread_pool_pthread_priority_;
+  }
+
+  bool UseJitCompilation() const {
+    return use_jit_compilation_;
+  }
+
+  void SetUseJitCompilation(bool b) {
+    use_jit_compilation_ = b;
+  }
+
+  void SetSaveProfilingInfo(bool save_profiling_info) {
+    profile_saver_options_.SetEnabled(save_profiling_info);
+  }
+
+  void SetWaitForJitNotificationsToSaveProfile(bool value) {
+    profile_saver_options_.SetWaitForJitNotificationsToSave(value);
+  }
+
+  void SetProfileAOTCode(bool value) {
+    profile_saver_options_.SetProfileAOTCode(value);
+  }
+
+  void SetJitAtFirstUse() {
+    use_jit_compilation_ = true;
+    compile_threshold_ = 0;
+  }
+
+ private:
+  bool use_jit_compilation_;
+  size_t code_cache_initial_capacity_;
+  size_t code_cache_max_capacity_;
+  uint16_t compile_threshold_;
+  uint16_t warmup_threshold_;
+  uint16_t osr_threshold_;
+  uint16_t priority_thread_weight_;
+  uint16_t invoke_transition_weight_;
+  bool dump_info_on_shutdown_;
+  int thread_pool_pthread_priority_;
+  ProfileSaverOptions profile_saver_options_;
+
+  JitOptions()
+      : use_jit_compilation_(false),
+        code_cache_initial_capacity_(0),
+        code_cache_max_capacity_(0),
+        compile_threshold_(0),
+        warmup_threshold_(0),
+        osr_threshold_(0),
+        priority_thread_weight_(0),
+        invoke_transition_weight_(0),
+        dump_info_on_shutdown_(false),
+        thread_pool_pthread_priority_(kJitPoolThreadPthreadDefaultPriority) {}
+
+  DISALLOW_COPY_AND_ASSIGN(JitOptions);
+};
 
 class Jit {
  public:
@@ -77,29 +181,29 @@ class Jit {
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  size_t OSRMethodThreshold() const {
-    return osr_method_threshold_;
+  uint16_t OSRMethodThreshold() const {
+    return options_->GetOsrThreshold();
   }
 
-  size_t HotMethodThreshold() const {
-    return hot_method_threshold_;
+  uint16_t HotMethodThreshold() const {
+    return options_->GetCompileThreshold();
   }
 
-  size_t WarmMethodThreshold() const {
-    return warm_method_threshold_;
+  uint16_t WarmMethodThreshold() const {
+    return options_->GetWarmupThreshold();
   }
 
   uint16_t PriorityThreadWeight() const {
-    return priority_thread_weight_;
+    return options_->GetPriorityThreadWeight();
   }
 
   // Returns false if we only need to save profile information and not compile methods.
   bool UseJitCompilation() const {
-    return use_jit_compilation_;
+    return options_->UseJitCompilation();
   }
 
   bool GetSaveProfilingInfo() const {
-    return profile_saver_options_.IsEnabled();
+    return options_->GetSaveProfilingInfo();
   }
 
   // Wait until there is no more pending compilation tasks.
@@ -120,12 +224,12 @@ class Jit {
 
   void NotifyInterpreterToCompiledCodeTransition(Thread* self, ArtMethod* caller)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    AddSamples(self, caller, invoke_transition_weight_, false);
+    AddSamples(self, caller, options_->GetInvokeTransitionWeight(), false);
   }
 
   void NotifyCompiledCodeToInterpreterTransition(Thread* self, ArtMethod* callee)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    AddSamples(self, callee, invoke_transition_weight_, false);
+    AddSamples(self, callee, options_->GetInvokeTransitionWeight(), false);
   }
 
   // Starts the profile saver if the config options allow profile recording.
@@ -177,7 +281,7 @@ class Jit {
   void Start();
 
  private:
-  Jit();
+  explicit Jit(JitOptions* options);
 
   static bool LoadCompiler(std::string* error_msg);
 
@@ -189,105 +293,20 @@ class Jit {
   static bool (*jit_compile_method_)(void*, ArtMethod*, Thread*, bool);
   static void (*jit_types_loaded_)(void*, mirror::Class**, size_t count);
 
+  // We make this static to simplify the interaction with libart-compiler.so.
+  static bool generate_debug_info_;
+
+  const JitOptions* const options_;
+
+  std::unique_ptr<jit::JitCodeCache> code_cache_;
+  std::unique_ptr<ThreadPool> thread_pool_;
+
   // Performance monitoring.
-  bool dump_info_on_shutdown_;
   CumulativeLogger cumulative_timings_;
   Histogram<uint64_t> memory_use_ GUARDED_BY(lock_);
   Mutex lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
-  std::unique_ptr<jit::JitCodeCache> code_cache_;
-
-  bool use_jit_compilation_;
-  ProfileSaverOptions profile_saver_options_;
-  static bool generate_debug_info_;
-  uint16_t hot_method_threshold_;
-  uint16_t warm_method_threshold_;
-  uint16_t osr_method_threshold_;
-  uint16_t priority_thread_weight_;
-  uint16_t invoke_transition_weight_;
-  std::unique_ptr<ThreadPool> thread_pool_;
-
   DISALLOW_COPY_AND_ASSIGN(Jit);
-};
-
-class JitOptions {
- public:
-  static JitOptions* CreateFromRuntimeArguments(const RuntimeArgumentMap& options);
-  size_t GetCompileThreshold() const {
-    return compile_threshold_;
-  }
-  size_t GetWarmupThreshold() const {
-    return warmup_threshold_;
-  }
-  size_t GetOsrThreshold() const {
-    return osr_threshold_;
-  }
-  uint16_t GetPriorityThreadWeight() const {
-    return priority_thread_weight_;
-  }
-  size_t GetInvokeTransitionWeight() const {
-    return invoke_transition_weight_;
-  }
-  size_t GetCodeCacheInitialCapacity() const {
-    return code_cache_initial_capacity_;
-  }
-  size_t GetCodeCacheMaxCapacity() const {
-    return code_cache_max_capacity_;
-  }
-  bool DumpJitInfoOnShutdown() const {
-    return dump_info_on_shutdown_;
-  }
-  const ProfileSaverOptions& GetProfileSaverOptions() const {
-    return profile_saver_options_;
-  }
-  bool GetSaveProfilingInfo() const {
-    return profile_saver_options_.IsEnabled();
-  }
-  bool UseJitCompilation() const {
-    return use_jit_compilation_;
-  }
-  void SetUseJitCompilation(bool b) {
-    use_jit_compilation_ = b;
-  }
-  void SetSaveProfilingInfo(bool save_profiling_info) {
-    profile_saver_options_.SetEnabled(save_profiling_info);
-  }
-  void SetWaitForJitNotificationsToSaveProfile(bool value) {
-    profile_saver_options_.SetWaitForJitNotificationsToSave(value);
-  }
-  void SetProfileAOTCode(bool value) {
-    profile_saver_options_.SetProfileAOTCode(value);
-  }
-
-  void SetJitAtFirstUse() {
-    use_jit_compilation_ = true;
-    compile_threshold_ = 0;
-  }
-
- private:
-  bool use_jit_compilation_;
-  size_t code_cache_initial_capacity_;
-  size_t code_cache_max_capacity_;
-  size_t compile_threshold_;
-  size_t warmup_threshold_;
-  size_t osr_threshold_;
-  uint16_t priority_thread_weight_;
-  size_t invoke_transition_weight_;
-  bool dump_info_on_shutdown_;
-  ProfileSaverOptions profile_saver_options_;
-
-  JitOptions()
-      : use_jit_compilation_(false),
-        code_cache_initial_capacity_(0),
-        code_cache_max_capacity_(0),
-        compile_threshold_(0),
-        warmup_threshold_(0),
-        osr_threshold_(0),
-        priority_thread_weight_(0),
-        invoke_transition_weight_(0),
-        dump_info_on_shutdown_(false) {}
-
-  DISALLOW_COPY_AND_ASSIGN(JitOptions);
 };
 
 // Helper class to stop the JIT for a given scope. This will wait for the JIT to quiesce.
