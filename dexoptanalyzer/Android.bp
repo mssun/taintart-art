@@ -38,6 +38,7 @@ art_cc_binary {
     defaults: ["dexoptanalyzer-defaults"],
     shared_libs: [
         "libart",
+        "libartbase",
     ],
 }
 
@@ -49,6 +50,7 @@ art_cc_binary {
     ],
     shared_libs: [
         "libartd",
+        "libartbased",
     ],
 }
 

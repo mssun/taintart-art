@@ -71,6 +71,7 @@ art_cc_library {
         "libart-compiler",
         "libart-dexlayout",
         "libdexfile",
+        "libartbase",
     ],
 }
 
@@ -85,5 +86,6 @@ art_cc_library {
         "libartd-compiler",
         "libartd-dexlayout",
         "libdexfiled",
+        "libartbased",
     ],
 }

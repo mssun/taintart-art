@@ -59,7 +59,6 @@ art_cc_test {
         "patchoat_test.cc",
     ],
     shared_libs: [
-        "libartd",
         "libcrypto", // For computing the digest of image file
     ],
 }
