@@ -29,6 +29,7 @@
 #include "instrumentation.h"
 #include "interpreter/shadow_frame.h"
 #include "interpreter/unstarted_runtime.h"
+#include "jvalue-inl.h"
 #include "mirror/class.h"
 #include "mirror/object.h"
 #include "obj_ptr-inl.h"

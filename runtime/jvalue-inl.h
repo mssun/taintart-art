@@ -19,7 +19,7 @@
 
 #include "jvalue.h"
 
-#include "obj_ptr.h"
+#include "obj_ptr-inl.h"
 
 namespace art {
 
