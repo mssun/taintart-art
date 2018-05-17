@@ -23,6 +23,8 @@
 #include <android-base/logging.h>
 #include <android-base/stringprintf.h>
 
+#include "base/enums.h"
+#include "class_linker.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "hidden_api.h"
 #include "jni/jni_internal.h"
@@ -30,6 +32,7 @@
 #include "mirror/throwable.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "obj_ptr-inl.h"
+#include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 
@@ -231,19 +234,28 @@ static jmethodID CachePrimitiveBoxingMethod(JNIEnv* env, char prim_name, const c
   V(java_lang_String_init_StringBuilder, "(Ljava/lang/StringBuilder;)V", newStringFromStringBuilder, "newStringFromStringBuilder", "(Ljava/lang/StringBuilder;)Ljava/lang/String;", NewStringFromStringBuilder) \
 
 #define STATIC_STRING_INIT(init_runtime_name, init_signature, new_runtime_name, ...) \
-    static ArtMethod* init_runtime_name; \
-    static ArtMethod* new_runtime_name;
+    static ArtMethod* init_runtime_name = nullptr; \
+    static ArtMethod* new_runtime_name = nullptr;
     STRING_INIT_LIST(STATIC_STRING_INIT)
 #undef STATIC_STRING_INIT
 
-void WellKnownClasses::InitStringInit(JNIEnv* env) {
-  ScopedObjectAccess soa(Thread::Current());
-  #define LOAD_STRING_INIT(init_runtime_name, init_signature, new_runtime_name,             \
-                           new_java_name, new_signature, ...)                               \
-      init_runtime_name = jni::DecodeArtMethod(                                             \
-          CacheMethod(env, java_lang_String, false, "<init>", init_signature));             \
-      new_runtime_name = jni::DecodeArtMethod(                                              \
-          CacheMethod(env, java_lang_StringFactory, true, new_java_name, new_signature));
+void WellKnownClasses::InitStringInit(ObjPtr<mirror::Class> string_class,
+                                      ObjPtr<mirror::Class> string_builder_class) {
+  PointerSize p_size = Runtime::Current()->GetClassLinker()->GetImagePointerSize();
+  auto find_method = [p_size](ObjPtr<mirror::Class> klass,
+                              const char* name,
+                              const char* sig,
+                              bool expext_static) REQUIRES_SHARED(Locks::mutator_lock_) {
+    ArtMethod* ret = klass->FindClassMethod(name, sig, p_size);
+    CHECK(ret != nullptr);
+    CHECK_EQ(expext_static, ret->IsStatic());
+    return ret;
+  };
+
+  #define LOAD_STRING_INIT(init_runtime_name, init_signature, new_runtime_name,                  \
+                           new_java_name, new_signature, ...)                                    \
+      init_runtime_name = find_method(string_class, "<init>", init_signature, false);            \
+      new_runtime_name = find_method(string_builder_class, new_java_name, new_signature, true);
       STRING_INIT_LIST(LOAD_STRING_INIT)
   #undef LOAD_STRING_INIT
 }
@@ -252,6 +264,7 @@ void Thread::InitStringEntryPoints() {
   QuickEntryPoints* qpoints = &tlsPtr_.quick_entrypoints;
   #define SET_ENTRY_POINT(init_runtime_name, init_signature, new_runtime_name,              \
                           new_java_name, new_signature, entry_point_name)                   \
+      DCHECK(!Runtime::Current()->IsStarted() || (new_runtime_name) != nullptr);            \
       qpoints->p ## entry_point_name = reinterpret_cast<void(*)()>(new_runtime_name);
       STRING_INIT_LIST(SET_ENTRY_POINT)
   #undef SET_ENTRY_POINT
@@ -260,7 +273,9 @@ void Thread::InitStringEntryPoints() {
 ArtMethod* WellKnownClasses::StringInitToStringFactory(ArtMethod* string_init) {
   #define TO_STRING_FACTORY(init_runtime_name, init_signature, new_runtime_name,            \
                             new_java_name, new_signature, entry_point_name)                 \
+      DCHECK((init_runtime_name) != nullptr);                                               \
       if (string_init == (init_runtime_name)) {                                             \
+        DCHECK((new_runtime_name) != nullptr);                                              \
         return (new_runtime_name);                                                          \
       }
       STRING_INIT_LIST(TO_STRING_FACTORY)
@@ -410,9 +425,6 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_lang_Integer_valueOf = CachePrimitiveBoxingMethod(env, 'I', "java/lang/Integer");
   java_lang_Long_valueOf = CachePrimitiveBoxingMethod(env, 'J', "java/lang/Long");
   java_lang_Short_valueOf = CachePrimitiveBoxingMethod(env, 'S', "java/lang/Short");
-
-  InitStringInit(env);
-  Thread::Current()->InitStringEntryPoints();
 }
 
 void WellKnownClasses::LateInit(JNIEnv* env) {
