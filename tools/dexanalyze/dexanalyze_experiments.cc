@@ -15,11 +15,90 @@
  */
 
 #include "dexanalyze_experiments.h"
+
+#include <stdint.h>
+#include <inttypes.h>
+#include <iostream>
+#include <map>
+#include <vector>
+
+#include "android-base/stringprintf.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex/standard_dex_file.h"
 
 namespace art {
+
+std::string Percent(uint64_t value, uint64_t max) {
+  if (max == 0) {
+    ++max;
+  }
+  return android::base::StringPrintf("%" PRId64 "(%.2f%%)",
+                                     value,
+                                     static_cast<double>(value * 100) / static_cast<double>(max));
+}
+
+static size_t PrefixLen(const std::string& a, const std::string& b) {
+  size_t len = 0;
+  for (; len < a.length() && len < b.length() && a[len] == b[len]; ++len) {}
+  return len;
+}
+
+void AnalyzeStrings::ProcessDexFile(const DexFile& dex_file) {
+  std::vector<std::string> strings;
+  for (size_t i = 0; i < dex_file.NumStringIds(); ++i) {
+    uint32_t length = 0;
+    const char* data =
+        dex_file.GetStringDataAndUtf16Length(dex_file.GetStringId(dex::StringIndex(i)), &length);
+    strings.push_back(data);
+  }
+  // Note that the strings are probably already sorted.
+  std::sort(strings.begin(), strings.end());
+
+  // Tunable parameters.
+  static const size_t kMinPrefixLen = 3;
+  static const size_t kPrefixConstantCost = 5;
+  static const size_t kPrefixIndexCost = 2;
+
+  // Calculate total shared prefix.
+  std::vector<size_t> shared_len;
+  std::set<std::string> prefixes;
+  for (size_t i = 0; i < strings.size(); ++i) {
+    size_t best_len = 0;
+    if (i > 0) {
+      best_len = std::max(best_len, PrefixLen(strings[i], strings[i - 1]));
+    }
+    if (i < strings.size() - 1) {
+      best_len = std::max(best_len, PrefixLen(strings[i], strings[i + 1]));
+    }
+    std::string prefix;
+    if (best_len >= kMinPrefixLen) {
+      prefix = strings[i].substr(0, best_len);
+      prefixes.insert(prefix);
+      total_prefix_savings_ += prefix.length();
+    }
+    total_prefix_index_cost_ += kPrefixIndexCost;
+  }
+  total_num_prefixes_ += prefixes.size();
+  for (const std::string& s : prefixes) {
+    // 4 bytes for an offset, one for length.
+    total_prefix_dict_ += s.length();
+    total_prefix_table_ += kPrefixConstantCost;
+  }
+}
+
+void AnalyzeStrings::Dump(std::ostream& os, uint64_t total_size) const {
+  os << "Total shared prefix bytes " << Percent(total_prefix_savings_, total_size) << "\n";
+  os << "Prefix dictionary cost " << Percent(total_prefix_dict_, total_size) << "\n";
+  os << "Prefix table cost " << Percent(total_prefix_table_, total_size) << "\n";
+  os << "Prefix index cost " << Percent(total_prefix_index_cost_, total_size) << "\n";
+  int64_t net_savings = total_prefix_savings_;
+  net_savings -= total_prefix_dict_;
+  net_savings -= total_prefix_table_;
+  net_savings -= total_prefix_index_cost_;
+  os << "Prefix net savings " << Percent(net_savings, total_size) << "\n";
+  os << "Prefix dictionary elements " << total_num_prefixes_ << "\n";
+}
 
 void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   num_string_ids_ += dex_file.NumStringIds();
@@ -107,7 +186,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   }
 }
 
-void CountDexIndices::Dump(std::ostream& os) const {
+void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Num string ids: " << num_string_ids_ << "\n";
   os << "Num method ids: " << num_method_ids_ << "\n";
   os << "Num field ids: " << num_field_ids_ << "\n";
@@ -127,6 +206,7 @@ void CountDexIndices::Dump(std::ostream& os) const {
   os << "Same class invoke: " << same_class_total << "\n";
   os << "Other class invoke: " << other_class_total << "\n";
   os << "Invokes from code: " << (same_class_total + other_class_total) << "\n";
+  os << "Total dex size: " << total_size << "\n";
 }
 
 }  // namespace art
