@@ -277,6 +277,16 @@ ART_GTEST_dexdump_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
   dexdump2-target
 
+# The dexanalyze test requires an image and the dexanalyze utility.
+ART_GTEST_dexanalyze_test_HOST_DEPS := \
+  $(HOST_CORE_IMAGE_DEFAULT_64) \
+  $(HOST_CORE_IMAGE_DEFAULT_32) \
+  dexanalyze-host
+ART_GTEST_dexanalyze_test_TARGET_DEPS := \
+  $(TARGET_CORE_IMAGE_DEFAULT_64) \
+  $(TARGET_CORE_IMAGE_DEFAULT_32) \
+  dexanalyze-target
+
 # The dexlayout test requires an image and the dexlayout utility.
 # TODO: rename into dexdump when migration completes
 ART_GTEST_dexlayout_test_HOST_DEPS := \
