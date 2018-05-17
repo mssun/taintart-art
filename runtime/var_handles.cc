@@ -25,35 +25,16 @@
 
 namespace art {
 
-bool VarHandleInvokeAccessor(Thread* self,
-                             ShadowFrame& shadow_frame,
-                             Handle<mirror::VarHandle> var_handle,
-                             Handle<mirror::MethodType> callsite_type,
-                             const mirror::VarHandle::AccessMode access_mode,
-                             const InstructionOperands* const operands,
-                             JValue* result) {
-  if (var_handle.IsNull()) {
-    ThrowNullPointerExceptionFromDexPC();
-    return false;
-  }
+namespace {
 
-  if (!var_handle->IsAccessModeSupported(access_mode)) {
-    ThrowUnsupportedOperationException();
-    return false;
-  }
-
-  mirror::VarHandle::MatchKind match_kind =
-      var_handle->GetMethodTypeMatchForAccessMode(access_mode, callsite_type.Get());
-  if (match_kind == mirror::VarHandle::MatchKind::kExact) {
-    return var_handle->Access(access_mode, &shadow_frame, operands, result);
-  }
-  if (match_kind == mirror::VarHandle::MatchKind::kNone) {
-    ThrowWrongMethodTypeException(var_handle->GetMethodTypeForAccessMode(self, access_mode),
-                                  callsite_type.Get());
-    return false;
-  }
-  DCHECK_EQ(mirror::VarHandle::MatchKind::kWithConversions, match_kind);
-
+bool VarHandleInvokeAccessorWithConversions(Thread* self,
+                                            ShadowFrame& shadow_frame,
+                                            Handle<mirror::VarHandle> var_handle,
+                                            Handle<mirror::MethodType> callsite_type,
+                                            const mirror::VarHandle::AccessMode access_mode,
+                                            const InstructionOperands* const operands,
+                                            JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
   Handle<mirror::MethodType> accessor_type(hs.NewHandle(
       var_handle->GetMethodTypeForAccessMode(self, access_mode)));
@@ -73,6 +54,45 @@ bool VarHandleInvokeAccessor(Thread* self,
     return false;
   }
   return ConvertReturnValue(callsite_type, accessor_type, result);
+}
+
+}  // namespace
+
+bool VarHandleInvokeAccessor(Thread* self,
+                             ShadowFrame& shadow_frame,
+                             Handle<mirror::VarHandle> var_handle,
+                             Handle<mirror::MethodType> callsite_type,
+                             const mirror::VarHandle::AccessMode access_mode,
+                             const InstructionOperands* const operands,
+                             JValue* result) {
+  if (var_handle.IsNull()) {
+    ThrowNullPointerExceptionFromDexPC();
+    return false;
+  }
+
+  if (!var_handle->IsAccessModeSupported(access_mode)) {
+    ThrowUnsupportedOperationException();
+    return false;
+  }
+
+  mirror::VarHandle::MatchKind match_kind =
+      var_handle->GetMethodTypeMatchForAccessMode(access_mode, callsite_type.Get());
+  if (LIKELY(match_kind == mirror::VarHandle::MatchKind::kExact)) {
+    return var_handle->Access(access_mode, &shadow_frame, operands, result);
+  } else if (match_kind == mirror::VarHandle::MatchKind::kWithConversions) {
+    return VarHandleInvokeAccessorWithConversions(self,
+                                                  shadow_frame,
+                                                  var_handle,
+                                                  callsite_type,
+                                                  access_mode,
+                                                  operands,
+                                                  result);
+  } else {
+    DCHECK_EQ(match_kind, mirror::VarHandle::MatchKind::kNone);
+    ThrowWrongMethodTypeException(var_handle->GetMethodTypeForAccessMode(self, access_mode),
+                                  callsite_type.Get());
+    return false;
+  }
 }
 
 }  // namespace art
