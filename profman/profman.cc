@@ -33,6 +33,7 @@
 
 #include "base/dumpable.h"
 #include "base/logging.h"  // For InitLogging.
+#include "base/mem_map.h"
 #include "base/scoped_flock.h"
 #include "base/stringpiece.h"
 #include "base/time_utils.h"
@@ -49,7 +50,6 @@
 #include "dex/type_reference.h"
 #include "profile/profile_compilation_info.h"
 #include "profile_assistant.h"
-#include "runtime.h"
 
 namespace art {
 
@@ -177,6 +177,11 @@ static constexpr char kMethodFlagStringHot = 'H';
 static constexpr char kMethodFlagStringStartup = 'S';
 static constexpr char kMethodFlagStringPostStartup = 'P';
 
+NO_RETURN static void Abort(const char* msg) {
+  LOG(ERROR) << msg;
+  exit(1);
+}
+
 // TODO(calin): This class has grown too much from its initial design. Split the functionality
 // into smaller, more contained pieces.
 class ProfMan FINAL {
@@ -202,8 +207,8 @@ class ProfMan FINAL {
     original_argc = argc;
     original_argv = argv;
 
-    Locks::Init();
-    InitLogging(argv, Runtime::Abort);
+    MemMap::Init();
+    InitLogging(argv, Abort);
 
     // Skip over the command name.
     argv++;
