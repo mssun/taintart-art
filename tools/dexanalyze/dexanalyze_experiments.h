@@ -24,12 +24,28 @@ namespace art {
 
 class DexFile;
 
+std::string Percent(uint64_t value, uint64_t max);
+
 // An experiment a stateful visitor that runs on dex files. Results are cumulative.
 class Experiment {
  public:
   virtual ~Experiment() {}
   virtual void ProcessDexFile(const DexFile& dex_file) = 0;
-  virtual void Dump(std::ostream& os) const = 0;
+  virtual void Dump(std::ostream& os, uint64_t total_size) const = 0;
+};
+
+// Analyze string data and strings accessed from code.
+class AnalyzeStrings : public Experiment {
+ public:
+  void ProcessDexFile(const DexFile& dex_file);
+  void Dump(std::ostream& os, uint64_t total_size) const;
+
+ private:
+  int64_t total_prefix_savings_ = 0u;
+  int64_t total_prefix_dict_ = 0u;
+  int64_t total_prefix_table_ = 0u;
+  int64_t total_prefix_index_cost_ = 0u;
+  int64_t total_num_prefixes_ = 0u;
 };
 
 // Count numbers of dex indices.
@@ -37,7 +53,7 @@ class CountDexIndices : public Experiment {
  public:
   void ProcessDexFile(const DexFile& dex_file);
 
-  void Dump(std::ostream& os) const;
+  void Dump(std::ostream& os, uint64_t total_size) const;
 
  private:
   // Total string ids loaded from dex code.
@@ -65,4 +81,3 @@ class CountDexIndices : public Experiment {
 }  // namespace art
 
 #endif  // ART_TOOLS_DEXANALYZE_DEXANALYZE_EXPERIMENTS_H_
-
