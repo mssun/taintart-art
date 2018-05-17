@@ -462,8 +462,8 @@ class Instruction {
 
   // Fills the given array with the 'arg' array of the instruction.
   bool HasVarArgs() const;
-  void GetVarArgs(uint32_t args[kMaxVarArgRegs], uint16_t inst_data) const;
-  void GetVarArgs(uint32_t args[kMaxVarArgRegs]) const {
+  uint32_t GetVarArgs(uint32_t args[kMaxVarArgRegs], uint16_t inst_data) const;
+  uint32_t GetVarArgs(uint32_t args[kMaxVarArgRegs]) const {
     return GetVarArgs(args, Fetch16(0));
   }
 
