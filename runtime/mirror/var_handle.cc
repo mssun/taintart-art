@@ -1545,6 +1545,37 @@ MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self, AccessMode acces
   return GetMethodTypeForAccessMode(self, this, access_mode);
 }
 
+std::string VarHandle::PrettyDescriptorForAccessMode(AccessMode access_mode) {
+  // Effect MethodType::PrettyDescriptor() without first creating a method type first.
+  std::ostringstream oss;
+  oss << '(';
+
+  AccessModeTemplate access_mode_template = GetAccessModeTemplate(access_mode);
+  ObjPtr<Class> var_type = GetVarType();
+  ObjPtr<Class> ctypes[2] = { GetCoordinateType0(), GetCoordinateType1() };
+  const int32_t ptypes_count = GetNumberOfParameters(access_mode_template, ctypes[0], ctypes[1]);
+  int32_t ptypes_done = 0;
+  for (ObjPtr<Class> ctype : ctypes) {
+    if (!ctype.IsNull()) {
+      if (ptypes_done != 0) {
+        oss << ", ";
+      }
+      oss << ctype->PrettyDescriptor();;
+      ptypes_done++;
+    }
+  }
+  while (ptypes_done != ptypes_count) {
+    if (ptypes_done != 0) {
+      oss << ", ";
+    }
+    oss << var_type->PrettyDescriptor();
+    ptypes_done++;
+  }
+  ObjPtr<Class> rtype = GetReturnType(access_mode_template, var_type);
+  oss << ')' << rtype->PrettyDescriptor();
+  return oss.str();
+}
+
 bool VarHandle::Access(AccessMode access_mode,
                        ShadowFrame* shadow_frame,
                        const InstructionOperands* const operands,

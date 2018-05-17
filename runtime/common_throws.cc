@@ -880,11 +880,14 @@ void ThrowVerifyError(ObjPtr<mirror::Class> referrer, const char* fmt, ...) {
 
 void ThrowWrongMethodTypeException(ObjPtr<mirror::MethodType> expected_type,
                                    ObjPtr<mirror::MethodType> actual_type) {
-  ThrowException("Ljava/lang/invoke/WrongMethodTypeException;",
-                 nullptr,
-                 StringPrintf("Expected %s but was %s",
-                              expected_type->PrettyDescriptor().c_str(),
-                              actual_type->PrettyDescriptor().c_str()).c_str());
+  ThrowWrongMethodTypeException(expected_type->PrettyDescriptor(), actual_type->PrettyDescriptor());
+}
+
+void ThrowWrongMethodTypeException(const std::string& expected_descriptor,
+                                   const std::string& actual_descriptor) {
+  std::ostringstream msg;
+  msg << "Expected " << expected_descriptor << " but was " << actual_descriptor;
+  ThrowException("Ljava/lang/invoke/WrongMethodTypeException;",  nullptr, msg.str().c_str());
 }
 
 }  // namespace art
