@@ -22,7 +22,7 @@
 #include "common_throws.h"
 #include "dex/dex_instruction.h"
 #include "interpreter/interpreter_common.h"
-#include "jvalue.h"
+#include "jvalue-inl.h"
 #include "mirror/class.h"
 #include "mirror/method_type.h"
 #include "mirror/object.h"
