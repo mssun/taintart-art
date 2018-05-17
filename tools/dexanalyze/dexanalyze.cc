@@ -63,6 +63,8 @@ class DexAnalyze {
           run_all_experiments_ = true;
         } else if (arg == "-count-indices") {
           exp_count_indices_ = true;
+        } else if (arg == "-analyze-strings") {
+          exp_analyze_strings_ = true;
         } else if (arg == "-d") {
           dump_per_input_dex_ = true;
         } else if (!arg.empty() && arg[0] == '-') {
@@ -82,6 +84,7 @@ class DexAnalyze {
     bool run_dex_file_verifier_ = true;
     bool dump_per_input_dex_ = false;
     bool exp_count_indices_ = false;
+    bool exp_analyze_strings_ = false;
     bool run_all_experiments_ = false;
     std::vector<std::string> filenames_;
   };
@@ -92,25 +95,30 @@ class DexAnalyze {
       if (options->run_all_experiments_ || options->exp_count_indices_) {
         experiments_.emplace_back(new CountDexIndices);
       }
+      if (options->run_all_experiments_ || options->exp_analyze_strings_) {
+        experiments_.emplace_back(new AnalyzeStrings);
+      }
     }
 
     bool ProcessDexFile(const DexFile& dex_file) {
       for (std::unique_ptr<Experiment>& experiment : experiments_) {
         experiment->ProcessDexFile(dex_file);
       }
+      total_size_ += dex_file.Size();
       ++dex_count_;
       return true;
     }
 
     void Dump(std::ostream& os) {
       for (std::unique_ptr<Experiment>& experiment : experiments_) {
-        experiment->Dump(os);
+        experiment->Dump(os, total_size_);
       }
     }
 
     const Options* const options_;
     std::vector<std::unique_ptr<Experiment>> experiments_;
     size_t dex_count_ = 0;
+    uint64_t total_size_ = 0u;
   };
 
  public:
