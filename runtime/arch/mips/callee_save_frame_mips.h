@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_ARCH_MIPS_QUICK_METHOD_FRAME_INFO_MIPS_H_
-#define ART_RUNTIME_ARCH_MIPS_QUICK_METHOD_FRAME_INFO_MIPS_H_
+#ifndef ART_RUNTIME_ARCH_MIPS_CALLEE_SAVE_FRAME_MIPS_H_
+#define ART_RUNTIME_ARCH_MIPS_CALLEE_SAVE_FRAME_MIPS_H_
 
 #include "arch/instruction_set.h"
 #include "base/bit_utils.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
+#include "base/globals.h"
 #include "quick/quick_method_frame_info.h"
 #include "registers_mips.h"
 
@@ -80,37 +81,56 @@ static constexpr uint32_t kMipsCalleeSaveFpEverythingSpills =
     (1 << art::mips::F24) | (1 << art::mips::F25) | (1 << art::mips::F26) | (1 << art::mips::F27) |
     (1 << art::mips::F28) | (1 << art::mips::F29) | (1 << art::mips::F30) | (1u << art::mips::F31);
 
-constexpr uint32_t MipsCalleeSaveCoreSpills(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return kMipsCalleeSaveAlwaysSpills | kMipsCalleeSaveRefSpills |
-      (type == CalleeSaveType::kSaveRefsAndArgs ? kMipsCalleeSaveArgSpills : 0) |
-      (type == CalleeSaveType::kSaveAllCalleeSaves ? kMipsCalleeSaveAllSpills : 0) |
-      (type == CalleeSaveType::kSaveEverything ? kMipsCalleeSaveEverythingSpills : 0);
-}
+class MipsCalleeSaveFrame {
+ public:
+  static constexpr uint32_t GetCoreSpills(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return kMipsCalleeSaveAlwaysSpills | kMipsCalleeSaveRefSpills |
+        (type == CalleeSaveType::kSaveRefsAndArgs ? kMipsCalleeSaveArgSpills : 0) |
+        (type == CalleeSaveType::kSaveAllCalleeSaves ? kMipsCalleeSaveAllSpills : 0) |
+        (type == CalleeSaveType::kSaveEverything ? kMipsCalleeSaveEverythingSpills : 0);
+  }
 
-constexpr uint32_t MipsCalleeSaveFPSpills(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return kMipsCalleeSaveFpAlwaysSpills | kMipsCalleeSaveFpRefSpills |
-      (type == CalleeSaveType::kSaveRefsAndArgs ? kMipsCalleeSaveFpArgSpills : 0) |
-      (type == CalleeSaveType::kSaveAllCalleeSaves ? kMipsCalleeSaveAllFPSpills : 0) |
-      (type == CalleeSaveType::kSaveEverything ? kMipsCalleeSaveFpEverythingSpills : 0);
-}
+  static constexpr uint32_t GetFpSpills(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return kMipsCalleeSaveFpAlwaysSpills | kMipsCalleeSaveFpRefSpills |
+        (type == CalleeSaveType::kSaveRefsAndArgs ? kMipsCalleeSaveFpArgSpills : 0) |
+        (type == CalleeSaveType::kSaveAllCalleeSaves ? kMipsCalleeSaveAllFPSpills : 0) |
+        (type == CalleeSaveType::kSaveEverything ? kMipsCalleeSaveFpEverythingSpills : 0);
+  }
 
-constexpr uint32_t MipsCalleeSaveFrameSize(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return RoundUp((POPCOUNT(MipsCalleeSaveCoreSpills(type)) /* gprs */ +
-                  POPCOUNT(MipsCalleeSaveFPSpills(type))   /* fprs */ +
-                  1 /* Method* */) * static_cast<size_t>(kMipsPointerSize), kStackAlignment);
-}
+  static constexpr uint32_t GetFrameSize(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return RoundUp((POPCOUNT(GetCoreSpills(type)) /* gprs */ +
+                    POPCOUNT(GetFpSpills(type))   /* fprs */ +
+                    1 /* Method* */) * static_cast<size_t>(kMipsPointerSize), kStackAlignment);
+  }
 
-constexpr QuickMethodFrameInfo MipsCalleeSaveMethodFrameInfo(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return QuickMethodFrameInfo(MipsCalleeSaveFrameSize(type),
-                              MipsCalleeSaveCoreSpills(type),
-                              MipsCalleeSaveFPSpills(type));
-}
+  static constexpr QuickMethodFrameInfo GetMethodFrameInfo(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return QuickMethodFrameInfo(GetFrameSize(type), GetCoreSpills(type), GetFpSpills(type));
+  }
+
+  static constexpr size_t GetFpr1Offset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) -
+           (POPCOUNT(GetCoreSpills(type)) +
+            POPCOUNT(GetFpSpills(type))) * static_cast<size_t>(kMipsPointerSize);
+  }
+
+  static constexpr size_t GetGpr1Offset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) -
+           POPCOUNT(GetCoreSpills(type)) * static_cast<size_t>(kMipsPointerSize);
+  }
+
+  static constexpr size_t GetReturnPcOffset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) - static_cast<size_t>(kMipsPointerSize);
+  }
+};
 
 }  // namespace mips
 }  // namespace art
 
-#endif  // ART_RUNTIME_ARCH_MIPS_QUICK_METHOD_FRAME_INFO_MIPS_H_
+#endif  // ART_RUNTIME_ARCH_MIPS_CALLEE_SAVE_FRAME_MIPS_H_
