@@ -62,7 +62,7 @@ static void AddCapsForEvent(jvmtiEvent event, jvmtiCapabilities* caps) {
 #define FOR_ALL_SUPPORTED_EVENTS(fun) \
     fun(SingleStep, EVENT(SINGLE_STEP), (jvmtiEnv*, JNIEnv*, jthread, jmethodID, jlocation)) \
     fun(MethodEntry, EVENT(METHOD_ENTRY), (jvmtiEnv*, JNIEnv*, jthread, jmethodID)) \
-    fun(MethodExit, EVENT(METHOD_ENTRY), (jvmtiEnv*, JNIEnv*, jthread, jmethodID, jboolean, jvalue)) \
+    fun(MethodExit, EVENT(METHOD_EXIT), (jvmtiEnv*, JNIEnv*, jthread, jmethodID, jboolean, jvalue)) \
     fun(NativeMethodBind, EVENT(NATIVE_METHOD_BIND), (jvmtiEnv*, JNIEnv*, jthread, jmethodID, void*, void**)) \
     fun(Exception, EVENT(EXCEPTION), (jvmtiEnv*, JNIEnv*, jthread, jmethodID, jlocation, jobject, jmethodID, jlocation)) \
     fun(ExceptionCatch, EVENT(EXCEPTION_CATCH), (jvmtiEnv*, JNIEnv*, jthread, jmethodID, jlocation, jobject)) \
