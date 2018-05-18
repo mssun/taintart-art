@@ -26,6 +26,7 @@
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex/standard_dex_file.h"
+#include "dex/utf-inl.h"
 
 namespace art {
 
@@ -48,8 +49,20 @@ void AnalyzeStrings::ProcessDexFile(const DexFile& dex_file) {
   std::vector<std::string> strings;
   for (size_t i = 0; i < dex_file.NumStringIds(); ++i) {
     uint32_t length = 0;
-    const char* data =
-        dex_file.GetStringDataAndUtf16Length(dex_file.GetStringId(dex::StringIndex(i)), &length);
+    const char* data = dex_file.StringDataAndUtf16LengthByIdx(dex::StringIndex(i), &length);
+    // Analyze if the string has any UTF16 chars.
+    bool have_wide_char = false;
+    const char* ptr = data;
+    for (size_t j = 0; j < length; ++j) {
+      have_wide_char = have_wide_char || GetUtf16FromUtf8(&ptr) >= 0x100;
+    }
+    if (have_wide_char) {
+      wide_string_bytes_ += 2 * length;
+    } else {
+      ascii_string_bytes_ += length;
+    }
+    string_data_bytes_ += ptr - data;
+
     strings.push_back(data);
   }
   // Note that the strings are probably already sorted.
@@ -88,6 +101,11 @@ void AnalyzeStrings::ProcessDexFile(const DexFile& dex_file) {
 }
 
 void AnalyzeStrings::Dump(std::ostream& os, uint64_t total_size) const {
+  os << "Total string data bytes " << Percent(string_data_bytes_, total_size) << "\n";
+  os << "UTF-16 string data bytes " << Percent(wide_string_bytes_, total_size) << "\n";
+  os << "ASCII string data bytes " << Percent(ascii_string_bytes_, total_size) << "\n";
+
+  // Prefix based strings.
   os << "Total shared prefix bytes " << Percent(total_prefix_savings_, total_size) << "\n";
   os << "Prefix dictionary cost " << Percent(total_prefix_dict_, total_size) << "\n";
   os << "Prefix table cost " << Percent(total_prefix_table_, total_size) << "\n";
