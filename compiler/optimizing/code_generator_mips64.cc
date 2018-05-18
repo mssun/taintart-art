@@ -5908,6 +5908,14 @@ void InstructionCodeGeneratorMIPS64::VisitInvokePolymorphic(HInvokePolymorphic* 
   codegen_->GenerateInvokePolymorphicCall(invoke);
 }
 
+void LocationsBuilderMIPS64::VisitInvokeCustom(HInvokeCustom* invoke) {
+  HandleInvoke(invoke);
+}
+
+void InstructionCodeGeneratorMIPS64::VisitInvokeCustom(HInvokeCustom* invoke) {
+  codegen_->GenerateInvokeCustomCall(invoke);
+}
+
 static bool TryGenerateIntrinsicCode(HInvoke* invoke, CodeGeneratorMIPS64* codegen) {
   if (invoke->GetLocations()->Intrinsified()) {
     IntrinsicCodeGeneratorMIPS64 intrinsic(codegen);

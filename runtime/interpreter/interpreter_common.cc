@@ -1164,7 +1164,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
                                                       ShadowFrame& shadow_frame,
                                                       uint32_t call_site_idx)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  StackHandleScope<7> hs(self);
+  StackHandleScope<5> hs(self);
   // There are three mandatory arguments expected from the call site
   // value array in the DEX file: the bootstrap method handle, the
   // method name to pass to the bootstrap method, and the method type
@@ -1358,75 +1358,80 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   }
 
   // Check the call site target is not null as we're going to invoke it.
-  Handle<mirror::CallSite> call_site =
-      hs.NewHandle(ObjPtr<mirror::CallSite>::DownCast(ObjPtr<mirror::Object>(result.GetL())));
-  Handle<mirror::MethodHandle> target = hs.NewHandle(call_site->GetTarget());
-  if (UNLIKELY(target.IsNull())) {
+  ObjPtr<mirror::CallSite> call_site =
+      ObjPtr<mirror::CallSite>::DownCast(ObjPtr<mirror::Object>(result.GetL()));
+  ObjPtr<mirror::MethodHandle> target = call_site->GetTarget();
+  if (UNLIKELY(target == nullptr)) {
     ThrowClassCastException("Bootstrap method returned a CallSite with a null target");
     return nullptr;
   }
-  return call_site.Get();
+  return call_site;
 }
 
-template<bool is_range>
+namespace {
+
+ObjPtr<mirror::CallSite> DoResolveCallSite(Thread* self,
+                                           ShadowFrame& shadow_frame,
+                                           uint32_t call_site_idx)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  StackHandleScope<1> hs(self);
+  Handle<mirror::DexCache> dex_cache(hs.NewHandle(shadow_frame.GetMethod()->GetDexCache()));
+
+  // Get the call site from the DexCache if present.
+  ObjPtr<mirror::CallSite> call_site = dex_cache->GetResolvedCallSite(call_site_idx);
+  if (LIKELY(call_site != nullptr)) {
+    return call_site;
+  }
+
+  // Invoke the bootstrap method to get a candidate call site.
+  call_site = InvokeBootstrapMethod(self, shadow_frame, call_site_idx);
+  if (UNLIKELY(call_site == nullptr)) {
+    if (!self->GetException()->IsError()) {
+      // Use a BootstrapMethodError if the exception is not an instance of java.lang.Error.
+      ThrowWrappedBootstrapMethodError("Exception from call site #%u bootstrap method",
+                                       call_site_idx);
+    }
+    return nullptr;
+  }
+
+  // Attempt to place the candidate call site into the DexCache, return the winning call site.
+  return dex_cache->SetResolvedCallSite(call_site_idx, call_site);
+}
+
+}  // namespace
+
 bool DoInvokeCustom(Thread* self,
                     ShadowFrame& shadow_frame,
-                    const Instruction* inst,
-                    uint16_t inst_data,
-                    JValue* result)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
+                    uint32_t call_site_idx,
+                    const InstructionOperands* operands,
+                    JValue* result) {
   // Make sure to check for async exceptions
   if (UNLIKELY(self->ObserveAsyncException())) {
     return false;
   }
+
   // invoke-custom is not supported in transactions. In transactions
   // there is a limited set of types supported. invoke-custom allows
   // running arbitrary code and instantiating arbitrary types.
   CHECK(!Runtime::Current()->IsActiveTransaction());
-  StackHandleScope<4> hs(self);
-  Handle<mirror::DexCache> dex_cache(hs.NewHandle(shadow_frame.GetMethod()->GetDexCache()));
-  const uint32_t call_site_idx = is_range ? inst->VRegB_3rc() : inst->VRegB_35c();
-  MutableHandle<mirror::CallSite>
-      call_site(hs.NewHandle(dex_cache->GetResolvedCallSite(call_site_idx)));
+
+  ObjPtr<mirror::CallSite> call_site = DoResolveCallSite(self, shadow_frame, call_site_idx);
   if (call_site.IsNull()) {
-    call_site.Assign(InvokeBootstrapMethod(self, shadow_frame, call_site_idx));
-    if (UNLIKELY(call_site.IsNull())) {
-      CHECK(self->IsExceptionPending());
-      if (!self->GetException()->IsError()) {
-        // Use a BootstrapMethodError if the exception is not an instance of java.lang.Error.
-        ThrowWrappedBootstrapMethodError("Exception from call site #%u bootstrap method",
-                                         call_site_idx);
-      }
-      result->SetJ(0);
-      return false;
-    }
-    mirror::CallSite* winning_call_site =
-        dex_cache->SetResolvedCallSite(call_site_idx, call_site.Get());
-    call_site.Assign(winning_call_site);
+    DCHECK(self->IsExceptionPending());
+    return false;
   }
 
+  StackHandleScope<2> hs(self);
   Handle<mirror::MethodHandle> target = hs.NewHandle(call_site->GetTarget());
   Handle<mirror::MethodType> target_method_type = hs.NewHandle(target->GetMethodType());
-  DCHECK_EQ(static_cast<size_t>(inst->VRegA()), target_method_type->NumberOfVRegs());
-  if (is_range) {
-    RangeInstructionOperands operands(inst->VRegC_3rc(), inst->VRegA_3rc());
-    return MethodHandleInvokeExact(self,
-                                   shadow_frame,
-                                   target,
-                                   target_method_type,
-                                   &operands,
-                                   result);
-  } else {
-    uint32_t args[Instruction::kMaxVarArgRegs];
-    inst->GetVarArgs(args, inst_data);
-    VarArgsInstructionOperands operands(args, inst->VRegA_35c());
-    return MethodHandleInvokeExact(self,
-                                   shadow_frame,
-                                   target,
-                                   target_method_type,
-                                   &operands,
-                                   result);
-  }
+  DCHECK_EQ(operands->GetNumberOfOperands(), target_method_type->NumberOfVRegs())
+      << " call_site_idx" << call_site_idx;
+  return MethodHandleInvokeExact(self,
+                                 shadow_frame,
+                                 target,
+                                 target_method_type,
+                                 operands,
+                                 result);
 }
 
 // Assign register 'src_reg' from shadow_frame to register 'dest_reg' into new_shadow_frame.
@@ -1846,16 +1851,6 @@ EXPLICIT_DO_CALL_TEMPLATE_DECL(true, true);
 EXPLICIT_DO_INVOKE_POLYMORPHIC_TEMPLATE_DECL(false);
 EXPLICIT_DO_INVOKE_POLYMORPHIC_TEMPLATE_DECL(true);
 #undef EXPLICIT_DO_INVOKE_POLYMORPHIC_TEMPLATE_DECL
-
-// Explicit DoInvokeCustom template function declarations.
-#define EXPLICIT_DO_INVOKE_CUSTOM_TEMPLATE_DECL(_is_range)               \
-  template REQUIRES_SHARED(Locks::mutator_lock_)                         \
-  bool DoInvokeCustom<_is_range>(                                        \
-      Thread* self, ShadowFrame& shadow_frame, const Instruction* inst,  \
-      uint16_t inst_data, JValue* result)
-EXPLICIT_DO_INVOKE_CUSTOM_TEMPLATE_DECL(false);
-EXPLICIT_DO_INVOKE_CUSTOM_TEMPLATE_DECL(true);
-#undef EXPLICIT_DO_INVOKE_CUSTOM_TEMPLATE_DECL
 
 // Explicit DoFilledNewArray template function declarations.
 #define EXPLICIT_DO_FILLED_NEW_ARRAY_TEMPLATE_DECL(_is_range_, _check, _transaction_active)       \

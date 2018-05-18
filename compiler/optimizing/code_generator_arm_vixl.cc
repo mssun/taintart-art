@@ -3742,6 +3742,15 @@ void InstructionCodeGeneratorARMVIXL::VisitInvokePolymorphic(HInvokePolymorphic*
   codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 9);
 }
 
+void LocationsBuilderARMVIXL::VisitInvokeCustom(HInvokeCustom* invoke) {
+  HandleInvoke(invoke);
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitInvokeCustom(HInvokeCustom* invoke) {
+  codegen_->GenerateInvokeCustomCall(invoke);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 10);
+}
+
 void LocationsBuilderARMVIXL::VisitNeg(HNeg* neg) {
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(neg, LocationSummary::kNoCall);
@@ -5493,7 +5502,7 @@ void InstructionCodeGeneratorARMVIXL::VisitNewInstance(HNewInstance* instruction
     codegen_->InvokeRuntime(instruction->GetEntrypoint(), instruction, instruction->GetDexPc());
     CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
   }
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 10);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 11);
 }
 
 void LocationsBuilderARMVIXL::VisitNewArray(HNewArray* instruction) {
@@ -5513,7 +5522,7 @@ void InstructionCodeGeneratorARMVIXL::VisitNewArray(HNewArray* instruction) {
   codegen_->InvokeRuntime(entrypoint, instruction, instruction->GetDexPc());
   CheckEntrypointTypes<kQuickAllocArrayResolved, void*, mirror::Class*, int32_t>();
   DCHECK(!codegen_->IsLeafMethod());
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 11);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 12);
 }
 
 void LocationsBuilderARMVIXL::VisitParameterValue(HParameterValue* instruction) {
@@ -7084,7 +7093,7 @@ void InstructionCodeGeneratorARMVIXL::VisitSuspendCheck(HSuspendCheck* instructi
     return;
   }
   GenerateSuspendCheck(instruction, nullptr);
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 12);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 13);
 }
 
 void InstructionCodeGeneratorARMVIXL::GenerateSuspendCheck(HSuspendCheck* instruction,
@@ -7437,7 +7446,7 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadClass(HLoadClass* cls) NO_THREAD_
   HLoadClass::LoadKind load_kind = cls->GetLoadKind();
   if (load_kind == HLoadClass::LoadKind::kRuntimeCall) {
     codegen_->GenerateLoadClassRuntimeCall(cls);
-    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 13);
+    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 14);
     return;
   }
   DCHECK(!cls->NeedsAccessCheck());
@@ -7523,7 +7532,7 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadClass(HLoadClass* cls) NO_THREAD_
     } else {
       __ Bind(slow_path->GetExitLabel());
     }
-    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 14);
+    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 15);
   }
 }
 
@@ -7732,7 +7741,7 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadString(HLoadString* load) NO_THRE
       codegen_->AddSlowPath(slow_path);
       __ CompareAndBranchIfZero(out, slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
-      codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 15);
+      codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 16);
       return;
     }
     case HLoadString::LoadKind::kJitTableAddress: {
@@ -7754,7 +7763,7 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadString(HLoadString* load) NO_THRE
   __ Mov(calling_convention.GetRegisterAt(0), load->GetStringIndex().index_);
   codegen_->InvokeRuntime(kQuickResolveString, load, load->GetDexPc());
   CheckEntrypointTypes<kQuickResolveString, void*, uint32_t>();
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 16);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 17);
 }
 
 static int32_t GetExceptionTlsOffset() {
@@ -8384,7 +8393,7 @@ void InstructionCodeGeneratorARMVIXL::VisitMonitorOperation(HMonitorOperation* i
   } else {
     CheckEntrypointTypes<kQuickUnlockObject, void, mirror::Object*>();
   }
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 17);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 18);
 }
 
 void LocationsBuilderARMVIXL::VisitAnd(HAnd* instruction) {
@@ -8883,7 +8892,7 @@ void CodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
     // Note that GC roots are not affected by heap poisoning, thus we
     // do not have to unpoison `root_reg` here.
   }
-  MaybeGenerateMarkingRegisterCheck(/* code */ 18);
+  MaybeGenerateMarkingRegisterCheck(/* code */ 19);
 }
 
 void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
@@ -8963,7 +8972,7 @@ void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* i
                 narrow ? BAKER_MARK_INTROSPECTION_FIELD_LDR_NARROW_OFFSET
                        : BAKER_MARK_INTROSPECTION_FIELD_LDR_WIDE_OFFSET);
     }
-    MaybeGenerateMarkingRegisterCheck(/* code */ 19, /* temp_loc */ LocationFrom(ip));
+    MaybeGenerateMarkingRegisterCheck(/* code */ 20, /* temp_loc */ LocationFrom(ip));
     return;
   }
 
@@ -9041,7 +9050,7 @@ void CodeGeneratorARMVIXL::GenerateArrayLoadWithBakerReadBarrier(HInstruction* i
       DCHECK_EQ(old_offset - GetVIXLAssembler()->GetBuffer()->GetCursorOffset(),
                 BAKER_MARK_INTROSPECTION_ARRAY_LDR_OFFSET);
     }
-    MaybeGenerateMarkingRegisterCheck(/* code */ 20, /* temp_loc */ LocationFrom(ip));
+    MaybeGenerateMarkingRegisterCheck(/* code */ 21, /* temp_loc */ LocationFrom(ip));
     return;
   }
 
@@ -9095,7 +9104,7 @@ void CodeGeneratorARMVIXL::GenerateReferenceLoadWithBakerReadBarrier(HInstructio
   // Fast path: the GC is not marking: just load the reference.
   GenerateRawReferenceLoad(instruction, ref, obj, offset, index, scale_factor, needs_null_check);
   __ Bind(slow_path->GetExitLabel());
-  MaybeGenerateMarkingRegisterCheck(/* code */ 21);
+  MaybeGenerateMarkingRegisterCheck(/* code */ 22);
 }
 
 void CodeGeneratorARMVIXL::UpdateReferenceFieldWithBakerReadBarrier(HInstruction* instruction,
@@ -9150,7 +9159,7 @@ void CodeGeneratorARMVIXL::UpdateReferenceFieldWithBakerReadBarrier(HInstruction
   // Fast path: the GC is not marking: nothing to do (the field is
   // up-to-date, and we don't need to load the reference).
   __ Bind(slow_path->GetExitLabel());
-  MaybeGenerateMarkingRegisterCheck(/* code */ 22);
+  MaybeGenerateMarkingRegisterCheck(/* code */ 23);
 }
 
 void CodeGeneratorARMVIXL::GenerateRawReferenceLoad(HInstruction* instruction,

@@ -605,6 +605,15 @@ std::string DexFile::PrettyType(dex::TypeIndex type_idx) const {
   return PrettyDescriptor(GetTypeDescriptor(type_id));
 }
 
+dex::ProtoIndex DexFile::GetProtoIndexForCallSite(uint32_t call_site_idx) const {
+  const DexFile::CallSiteIdItem& csi = GetCallSiteId(call_site_idx);
+  CallSiteArrayValueIterator it(*this, csi);
+  it.Next();
+  it.Next();
+  DCHECK_EQ(EncodedArrayValueIterator::ValueType::kMethodType, it.GetValueType());
+  return dex::ProtoIndex(it.GetJavaValue().i);
+}
+
 // Checks that visibility is as expected. Includes special behavior for M and
 // before to allow runtime and build visibility when expecting runtime.
 std::ostream& operator<<(std::ostream& os, const DexFile& dex_file) {

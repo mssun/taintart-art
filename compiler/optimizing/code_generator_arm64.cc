@@ -4695,6 +4695,15 @@ void InstructionCodeGeneratorARM64::VisitInvokePolymorphic(HInvokePolymorphic* i
   codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
 }
 
+void LocationsBuilderARM64::VisitInvokeCustom(HInvokeCustom* invoke) {
+  HandleInvoke(invoke);
+}
+
+void InstructionCodeGeneratorARM64::VisitInvokeCustom(HInvokeCustom* invoke) {
+  codegen_->GenerateInvokeCustomCall(invoke);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+}
+
 vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageRelRoPatch(
     uint32_t boot_image_offset,
     vixl::aarch64::Label* adrp_label) {

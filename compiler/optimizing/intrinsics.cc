@@ -142,6 +142,7 @@ static bool CheckInvokeType(Intrinsics intrinsic, HInvoke* invoke)
     case kSuper:
     case kInterface:
     case kPolymorphic:
+    case kCustom:
       return false;
   }
   LOG(FATAL) << "Unknown intrinsic invoke type: " << intrinsic_type;
