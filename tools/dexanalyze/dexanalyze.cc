@@ -30,7 +30,10 @@
 namespace art {
 
 class DexAnalyze {
-  static const int kExitCodeUsageError = 1;
+  static constexpr int kExitCodeUsageError = 1;
+  static constexpr int kExitCodeFailedToOpenFile = 2;
+  static constexpr int kExitCodeFailedToOpenDex = 3;
+  static constexpr int kExitCodeFailedToProcessDex = 4;
 
   static void StdoutLogger(android::base::LogId,
                            android::base::LogSeverity,
@@ -135,10 +138,10 @@ class DexAnalyze {
     Analysis cumulative(&options);
     for (const std::string& filename : options.filenames_) {
       std::string content;
-      // TODO: once added, use an api to android::base to read a std::vector<uint8_t>.
+      // TODO: once added, use an API to android::base to read a std::vector<uint8_t>.
       if (!android::base::ReadFileToString(filename.c_str(), &content)) {
         LOG(ERROR) << "ReadFileToString failed for " + filename << std::endl;
-        return 2;
+        return kExitCodeFailedToOpenFile;
       }
       std::vector<std::unique_ptr<const DexFile>> dex_files;
       const DexFileLoader dex_file_loader;
@@ -150,14 +153,14 @@ class DexAnalyze {
                                    &error_msg,
                                    &dex_files)) {
         LOG(ERROR) << "OpenAll failed for " + filename << " with " << error_msg << std::endl;
-        return 3;
+        return kExitCodeFailedToOpenDex;
       }
       for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
         if (options.dump_per_input_dex_) {
           Analysis current(&options);
           if (!current.ProcessDexFile(*dex_file)) {
             LOG(ERROR) << "Failed to process " << filename << " with error " << error_msg;
-            return 4;
+            return kExitCodeFailedToProcessDex;
           }
           LOG(INFO) << "Analysis for " << dex_file->GetLocation() << std::endl;
           current.Dump(LOG_STREAM(INFO));
