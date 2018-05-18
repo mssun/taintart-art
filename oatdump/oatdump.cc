@@ -738,6 +738,7 @@ class OatDumper {
       kByteKindCode,
       kByteKindQuickMethodHeader,
       kByteKindCodeInfoLocationCatalog,
+      kByteKindCodeInfoDexRegisterMask,
       kByteKindCodeInfoDexRegisterMap,
       kByteKindCodeInfo,
       kByteKindCodeInfoInvokeInfo,
@@ -751,7 +752,7 @@ class OatDumper {
       kByteKindStackMapStackMaskIndex,
       kByteKindInlineInfoMethodIndexIdx,
       kByteKindInlineInfoDexPc,
-      kByteKindInlineInfoExtraData,
+      kByteKindInlineInfoArtMethod,
       kByteKindInlineInfoDexRegisterMap,
       kByteKindInlineInfoIsLast,
       kByteKindCount,
@@ -788,6 +789,7 @@ class OatDumper {
         Dump(os, "QuickMethodHeader               ", bits[kByteKindQuickMethodHeader], sum);
         Dump(os, "CodeInfo                        ", bits[kByteKindCodeInfo], sum);
         Dump(os, "CodeInfoLocationCatalog         ", bits[kByteKindCodeInfoLocationCatalog], sum);
+        Dump(os, "CodeInfoDexRegisterMask         ", bits[kByteKindCodeInfoDexRegisterMask], sum);
         Dump(os, "CodeInfoDexRegisterMap          ", bits[kByteKindCodeInfoDexRegisterMap], sum);
         Dump(os, "CodeInfoStackMasks              ", bits[kByteKindCodeInfoStackMasks], sum);
         Dump(os, "CodeInfoRegisterMasks           ", bits[kByteKindCodeInfoRegisterMasks], sum);
@@ -848,8 +850,8 @@ class OatDumper {
                inline_info_bits,
                "inline info");
           Dump(os,
-               "InlineInfoExtraData           ",
-               bits[kByteKindInlineInfoExtraData],
+               "InlineInfoArtMethod           ",
+               bits[kByteKindInlineInfoArtMethod],
                inline_info_bits,
                "inline info");
           Dump(os,
@@ -1706,7 +1708,7 @@ class OatDumper {
               stack_maps.NumColumnBits(StackMap::kDexPc) * num_stack_maps);
           stats_.AddBits(
               Stats::kByteKindStackMapDexRegisterMap,
-              stack_maps.NumColumnBits(StackMap::kDexRegisterMapOffset) * num_stack_maps);
+              stack_maps.NumColumnBits(StackMap::kDexRegisterMapIndex) * num_stack_maps);
           stats_.AddBits(
               Stats::kByteKindStackMapInlineInfoIndex,
               stack_maps.NumColumnBits(StackMap::kInlineInfoIndex) * num_stack_maps);
@@ -1733,16 +1735,12 @@ class OatDumper {
               code_info.invoke_infos_.DataBitSize());
 
           // Location catalog
-          const size_t location_catalog_bytes =
-              helper.GetCodeInfo().GetDexRegisterLocationCatalogSize();
           stats_.AddBits(Stats::kByteKindCodeInfoLocationCatalog,
-                         kBitsPerByte * location_catalog_bytes);
-          // Dex register bytes.
-          const size_t dex_register_bytes =
-              helper.GetCodeInfo().GetDexRegisterMapsSize(code_item_accessor.RegistersSize());
-          stats_.AddBits(
-              Stats::kByteKindCodeInfoDexRegisterMap,
-              kBitsPerByte * dex_register_bytes);
+                         code_info.dex_register_catalog_.DataBitSize());
+          stats_.AddBits(Stats::kByteKindCodeInfoDexRegisterMask,
+                         code_info.dex_register_masks_.DataBitSize());
+          stats_.AddBits(Stats::kByteKindCodeInfoDexRegisterMap,
+                         code_info.dex_register_maps_.DataBitSize());
 
           // Inline infos.
           const BitTable<InlineInfo::kCount>& inline_infos = code_info.inline_infos_;
@@ -1755,11 +1753,12 @@ class OatDumper {
                 Stats::kByteKindInlineInfoDexPc,
                 inline_infos.NumColumnBits(InlineInfo::kDexPc) * num_inline_infos);
             stats_.AddBits(
-                Stats::kByteKindInlineInfoExtraData,
-                inline_infos.NumColumnBits(InlineInfo::kExtraData) * num_inline_infos);
+                Stats::kByteKindInlineInfoArtMethod,
+                inline_infos.NumColumnBits(InlineInfo::kArtMethodHi) * num_inline_infos +
+                inline_infos.NumColumnBits(InlineInfo::kArtMethodLo) * num_inline_infos);
             stats_.AddBits(
                 Stats::kByteKindInlineInfoDexRegisterMap,
-                inline_infos.NumColumnBits(InlineInfo::kDexRegisterMapOffset) * num_inline_infos);
+                inline_infos.NumColumnBits(InlineInfo::kDexRegisterMapIndex) * num_inline_infos);
             stats_.AddBits(Stats::kByteKindInlineInfoIsLast, num_inline_infos);
           }
         }
