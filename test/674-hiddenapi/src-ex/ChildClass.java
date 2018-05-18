@@ -87,16 +87,21 @@ public class ChildClass {
     ChildClass.everythingWhitelisted = everythingWhitelisted;
 
     boolean isSameBoot = (isParentInBoot == isChildInBoot);
+    boolean isDebuggable = VMRuntime.getRuntime().isJavaDebuggable();
 
     // Run meaningful combinations of access flags.
     for (Hiddenness hiddenness : Hiddenness.values()) {
       final Behaviour expected;
       // Warnings are now disabled whenever access is granted, even for
       // greylisted APIs. This is the behaviour for release builds.
-      if (isSameBoot || hiddenness != Hiddenness.Blacklist || everythingWhitelisted) {
+      if (isSameBoot || everythingWhitelisted || hiddenness == Hiddenness.Whitelist) {
         expected = Behaviour.Granted;
-      } else {
+      } else if (hiddenness == Hiddenness.Blacklist) {
         expected = Behaviour.Denied;
+      } else if (isDebuggable) {
+        expected = Behaviour.Warning;
+      } else {
+        expected = Behaviour.Granted;
       }
 
       for (boolean isStatic : booleanValues) {
