@@ -40,7 +40,7 @@ namespace hiddenapi {
 // Note that when flipping this flag, you must also update the expectations of test 674-hiddenapi
 // as it affects whether or not we warn for light grey APIs that have been added to the exemptions
 // list.
-static constexpr bool kLogAllAccesses = true;
+static constexpr bool kLogAllAccesses = false;
 
 static inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
   switch (value) {
@@ -223,7 +223,8 @@ Action GetMemberActionImpl(T* member,
   // - for non-debuggable apps, there is no distinction between light grey & whitelisted APIs.
   // - we want to avoid the overhead of checking for exemptions for light greylisted APIs whenever
   //   possible.
-  if (kLogAllAccesses || action == kDeny || runtime->IsJavaDebuggable()) {
+  const bool shouldWarn = kLogAllAccesses || runtime->IsJavaDebuggable();
+  if (shouldWarn || action == kDeny) {
     if (member_signature.IsExempted(runtime->GetHiddenApiExemptions())) {
       action = kAllow;
       // Avoid re-examining the exemption list next time.
@@ -264,7 +265,8 @@ Action GetMemberActionImpl(T* member,
     MaybeWhitelistMember(runtime, member);
 
     // If this action requires a UI warning, set the appropriate flag.
-    if (action == kAllowButWarnAndToast || runtime->ShouldAlwaysSetHiddenApiWarningFlag()) {
+    if (shouldWarn &&
+        (action == kAllowButWarnAndToast || runtime->ShouldAlwaysSetHiddenApiWarningFlag())) {
       runtime->SetPendingHiddenApiWarning(true);
     }
   }

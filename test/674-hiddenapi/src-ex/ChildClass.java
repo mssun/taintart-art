@@ -91,12 +91,12 @@ public class ChildClass {
     // Run meaningful combinations of access flags.
     for (Hiddenness hiddenness : Hiddenness.values()) {
       final Behaviour expected;
-      if (isSameBoot || hiddenness == Hiddenness.Whitelist || everythingWhitelisted) {
+      // Warnings are now disabled whenever access is granted, even for
+      // greylisted APIs. This is the behaviour for release builds.
+      if (isSameBoot || hiddenness != Hiddenness.Blacklist || everythingWhitelisted) {
         expected = Behaviour.Granted;
-      } else if (hiddenness == Hiddenness.Blacklist) {
-        expected = Behaviour.Denied;
       } else {
-        expected = Behaviour.Warning;
+        expected = Behaviour.Denied;
       }
 
       for (boolean isStatic : booleanValues) {
