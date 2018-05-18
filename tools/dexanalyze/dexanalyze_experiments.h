@@ -41,6 +41,9 @@ class AnalyzeStrings : public Experiment {
   void Dump(std::ostream& os, uint64_t total_size) const;
 
  private:
+  int64_t wide_string_bytes_ = 0u;
+  int64_t ascii_string_bytes_ = 0u;
+  int64_t string_data_bytes_ = 0u;
   int64_t total_prefix_savings_ = 0u;
   int64_t total_prefix_dict_ = 0u;
   int64_t total_prefix_table_ = 0u;
