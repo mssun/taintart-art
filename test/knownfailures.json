@@ -984,5 +984,11 @@
                   "991-field-trace-2"],
         "variant": "gcstress & debug & target",
         "description": ["Test can time out on gcstress with debug"]
+    },
+    {
+        "tests": ["080-oom-throw"],
+        "variant": "jit",
+        "bug": "b/77567088",
+        "description": ["Test throws exception before or during OOME."]
     }
 ]
