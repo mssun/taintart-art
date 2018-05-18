@@ -20,6 +20,7 @@
 #include "common_compiler_test.h"
 #include "compiled_method-inl.h"
 #include "compiler_callbacks.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
@@ -82,30 +83,21 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
 
     // Unquicken the dex file.
     for (uint32_t i = 0; i < updated_dex_file->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = updated_dex_file->GetClassDef(i);
-      const uint8_t* class_data = updated_dex_file->GetClassData(class_def);
-      if (class_data == nullptr) {
-        continue;
-      }
-      ClassDataItemIterator it(*updated_dex_file, class_data);
-      it.SkipAllFields();
-
       // Unquicken each method.
-      while (it.HasNextMethod()) {
-        uint32_t method_idx = it.GetMemberIndex();
-        CompiledMethod* compiled_method =
-            compiler_driver_->GetCompiledMethod(MethodReference(updated_dex_file, method_idx));
+      ClassAccessor accessor(*updated_dex_file, updated_dex_file->GetClassDef(i));
+      accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+        CompiledMethod* compiled_method = compiler_driver_->GetCompiledMethod(
+            MethodReference(updated_dex_file,
+                            method.GetIndex()));
         ArrayRef<const uint8_t> table;
         if (compiled_method != nullptr) {
           table = compiled_method->GetVmapTable();
         }
         optimizer::ArtDecompileDEX(*updated_dex_file,
-                                   *it.GetMethodCodeItem(),
+                                   *accessor.GetCodeItem(method),
                                    table,
                                    /* decompile_return_instruction */ true);
-        it.Next();
-      }
-      DCHECK(!it.HasNext());
+      });
     }
 
     // Make sure after unquickening we go back to the same contents as the original dex file.

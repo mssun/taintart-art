@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "android-base/stringprintf.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex/standard_dex_file.h"
@@ -126,79 +127,73 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   num_class_defs_ += dex_file.NumClassDefs();
   for (size_t class_def_index = 0; class_def_index < dex_file.NumClassDefs(); ++class_def_index) {
     const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
-    if (class_data == nullptr) {
-      continue;
-    }
-    ClassDataItemIterator it(dex_file, class_data);
-    it.SkipAllFields();
+    ClassAccessor accessor(dex_file, class_def);
     std::set<size_t> unique_method_ids;
     std::set<size_t> unique_string_ids;
-    while (it.HasNextMethod()) {
-      const DexFile::CodeItem* code_item = it.GetMethodCodeItem();
-      if (code_item != nullptr) {
-        CodeItemInstructionAccessor instructions(dex_file, code_item);
-        const uint16_t* code_ptr = instructions.Insns();
-        dex_code_bytes_ += instructions.InsnsSizeInCodeUnits() * sizeof(code_ptr[0]);
-        for (const DexInstructionPcPair& inst : instructions) {
-          switch (inst->Opcode()) {
-            case Instruction::CONST_STRING: {
-              const dex::StringIndex string_index(inst->VRegB_21c());
-              unique_string_ids.insert(string_index.index_);
-              ++num_string_ids_from_code_;
-              break;
-            }
-            case Instruction::CONST_STRING_JUMBO: {
-              const dex::StringIndex string_index(inst->VRegB_31c());
-              unique_string_ids.insert(string_index.index_);
-              ++num_string_ids_from_code_;
-              break;
-            }
-            // Invoke cases.
-            case Instruction::INVOKE_VIRTUAL:
-            case Instruction::INVOKE_VIRTUAL_RANGE: {
-              bool is_range = (inst->Opcode() == Instruction::INVOKE_VIRTUAL_RANGE);
-              uint32_t method_idx = is_range ? inst->VRegB_3rc() : inst->VRegB_35c();
-              if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
-                ++same_class_virtual_;
-              } else {
-                ++other_class_virtual_;
-                unique_method_ids.insert(method_idx);
-              }
-              break;
-            }
-            case Instruction::INVOKE_DIRECT:
-            case Instruction::INVOKE_DIRECT_RANGE: {
-              bool is_range = (inst->Opcode() == Instruction::INVOKE_DIRECT_RANGE);
-              uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
-              if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
-                ++same_class_direct_;
-              } else {
-                ++other_class_direct_;
-                unique_method_ids.insert(method_idx);
-              }
-              break;
-            }
-            case Instruction::INVOKE_STATIC:
-            case Instruction::INVOKE_STATIC_RANGE: {
-              bool is_range = (inst->Opcode() == Instruction::INVOKE_STATIC_RANGE);
-              uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
-              if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
-                ++same_class_static_;
-              } else {
-                ++other_class_static_;
-                unique_method_ids.insert(method_idx);
-              }
-              break;
-            }
-            default:
-              break;
+    accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+      const DexFile::CodeItem* code_item = accessor.GetCodeItem(method);
+      if (code_item == nullptr) {
+        return;
+      }
+      CodeItemInstructionAccessor instructions(dex_file, code_item);
+      const uint16_t* code_ptr = instructions.Insns();
+      dex_code_bytes_ += instructions.InsnsSizeInCodeUnits() * sizeof(code_ptr[0]);
+      for (const DexInstructionPcPair& inst : instructions) {
+        switch (inst->Opcode()) {
+          case Instruction::CONST_STRING: {
+            const dex::StringIndex string_index(inst->VRegB_21c());
+            unique_string_ids.insert(string_index.index_);
+            ++num_string_ids_from_code_;
+            break;
           }
+          case Instruction::CONST_STRING_JUMBO: {
+            const dex::StringIndex string_index(inst->VRegB_31c());
+            unique_string_ids.insert(string_index.index_);
+            ++num_string_ids_from_code_;
+            break;
+          }
+          // Invoke cases.
+          case Instruction::INVOKE_VIRTUAL:
+          case Instruction::INVOKE_VIRTUAL_RANGE: {
+            bool is_range = (inst->Opcode() == Instruction::INVOKE_VIRTUAL_RANGE);
+            uint32_t method_idx = is_range ? inst->VRegB_3rc() : inst->VRegB_35c();
+            if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
+              ++same_class_virtual_;
+            } else {
+              ++other_class_virtual_;
+              unique_method_ids.insert(method_idx);
+            }
+            break;
+          }
+          case Instruction::INVOKE_DIRECT:
+          case Instruction::INVOKE_DIRECT_RANGE: {
+            bool is_range = (inst->Opcode() == Instruction::INVOKE_DIRECT_RANGE);
+            uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
+            if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
+              ++same_class_direct_;
+            } else {
+              ++other_class_direct_;
+              unique_method_ids.insert(method_idx);
+            }
+            break;
+          }
+          case Instruction::INVOKE_STATIC:
+          case Instruction::INVOKE_STATIC_RANGE: {
+            bool is_range = (inst->Opcode() == Instruction::INVOKE_STATIC_RANGE);
+            uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
+            if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
+              ++same_class_static_;
+            } else {
+              ++other_class_static_;
+              unique_method_ids.insert(method_idx);
+            }
+            break;
+          }
+          default:
+            break;
         }
       }
-      it.Next();
-    }
-    DCHECK(!it.HasNext());
+    });
     total_unique_method_idx_ += unique_method_ids.size();
     total_unique_string_ids_ += unique_string_ids.size();
   }
