@@ -107,9 +107,8 @@ public class Main {
   /// CHECK-DAG: <<GetJ3:j\d+>>      ArrayGet [<<CheckJ>>,{{i\d+}}]
   public static void bar() {
     // We create multiple accesses that will lead the bounds check
-    // elimination pass to add a HDeoptimize. Not having the bounds check helped
-    // the load store elimination think it could merge two ArrayGet with different
-    // types.
+    // elimination pass to add a HDeoptimize. Not having the bounds check
+    // makes the ArrayGets look almost the same if it were not for the type!
     String[] array = (String[])getNull();
     objectField = array[0];
     objectField = array[1];
