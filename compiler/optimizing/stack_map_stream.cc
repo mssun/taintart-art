@@ -16,6 +16,8 @@
 
 #include "stack_map_stream.h"
 
+#include <memory>
+
 #include "art_method-inl.h"
 #include "base/stl_util.h"
 #include "dex/dex_file_types.h"
@@ -25,6 +27,8 @@
 #include "stack_map.h"
 
 namespace art {
+
+constexpr static bool kVerifyStackMaps = kIsDebugBuild;
 
 uint32_t StackMapStream::GetStackMapNativePcOffset(size_t i) {
   return StackMap::UnpackNativePc(stack_maps_[i].packed_native_pc, instruction_set_);
@@ -39,7 +43,7 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
                                         uint32_t register_mask,
                                         BitVector* stack_mask,
                                         uint32_t num_dex_registers,
-                                        uint8_t inlining_depth ATTRIBUTE_UNUSED) {
+                                        uint8_t inlining_depth) {
   DCHECK(!in_stack_map_) << "Mismatched Begin/End calls";
   in_stack_map_ = true;
 
@@ -65,8 +69,26 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
   current_dex_registers_.clear();
   expected_num_dex_registers_ = num_dex_registers;
 
-  if (kIsDebugBuild) {
-    dcheck_num_dex_registers_.push_back(num_dex_registers);
+  if (kVerifyStackMaps) {
+    size_t stack_map_index = stack_maps_.size();
+    // Create lambda method, which will be executed at the very end to verify data.
+    // Parameters and local variables will be captured(stored) by the lambda "[=]".
+    dchecks_.emplace_back([=](const CodeInfo& code_info) {
+      StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
+      CHECK_EQ(stack_map.GetNativePcOffset(instruction_set_), native_pc_offset);
+      CHECK_EQ(stack_map.GetDexPc(), dex_pc);
+      CHECK_EQ(code_info.GetRegisterMaskOf(stack_map), register_mask);
+      BitMemoryRegion seen_stack_mask = code_info.GetStackMaskOf(stack_map);
+      CHECK_GE(seen_stack_mask.size_in_bits(), stack_mask ? stack_mask->GetNumberOfBits() : 0);
+      for (size_t b = 0; b < seen_stack_mask.size_in_bits(); b++) {
+        CHECK_EQ(seen_stack_mask.LoadBit(b), stack_mask != nullptr && stack_mask->IsBitSet(b));
+      }
+      CHECK_EQ(stack_map.HasInlineInfo(), (inlining_depth != 0));
+      if (inlining_depth != 0) {
+        CHECK_EQ(code_info.GetInlineInfoOf(stack_map).GetDepth(), inlining_depth);
+      }
+      CHECK_EQ(stack_map.HasDexRegisterMap(), (num_dex_registers != 0));
+    });
   }
 }
 
@@ -94,11 +116,22 @@ void StackMapStream::AddDexRegisterEntry(DexRegisterLocation::Kind kind, int32_t
 
 void StackMapStream::AddInvoke(InvokeType invoke_type, uint32_t dex_method_index) {
   uint32_t packed_native_pc = current_stack_map_.packed_native_pc;
+  size_t invoke_info_index = invoke_infos_.size();
   invoke_infos_.Add(InvokeInfoEntry {
     .packed_native_pc = packed_native_pc,
     .invoke_type = invoke_type,
     .method_info_index = method_infos_.Dedup(&dex_method_index),
   });
+
+  if (kVerifyStackMaps) {
+    dchecks_.emplace_back([=](const CodeInfo& code_info) {
+      InvokeInfo invoke_info = code_info.GetInvokeInfo(invoke_info_index);
+      CHECK_EQ(invoke_info.GetNativePcOffset(instruction_set_),
+               StackMap::UnpackNativePc(packed_native_pc, instruction_set_));
+      CHECK_EQ(invoke_info.GetInvokeType(), invoke_type);
+      CHECK_EQ(method_infos_[invoke_info.GetMethodIndexIdx()], dex_method_index);
+    });
+  }
 }
 
 void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
@@ -137,8 +170,23 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
   current_dex_registers_.clear();
   expected_num_dex_registers_ = num_dex_registers;
 
-  if (kIsDebugBuild) {
-    dcheck_num_dex_registers_.push_back(num_dex_registers);
+  if (kVerifyStackMaps) {
+    size_t stack_map_index = stack_maps_.size();
+    size_t depth = current_inline_infos_ - 1;
+    dchecks_.emplace_back([=](const CodeInfo& code_info) {
+      StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
+      InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
+      CHECK_EQ(inline_info.GetDexPcAtDepth(depth), dex_pc);
+      bool encode_art_method = EncodeArtMethodInInlineInfo(method);
+      CHECK_EQ(inline_info.EncodesArtMethodAtDepth(depth), encode_art_method);
+      if (encode_art_method) {
+        CHECK_EQ(inline_info.GetArtMethodAtDepth(depth), method);
+      } else {
+        CHECK_EQ(method_infos_[inline_info.GetMethodIndexIdxAtDepth(depth)],
+                 method->GetDexMethodIndexUnchecked());
+      }
+      CHECK_EQ(inline_info.HasDexRegisterMapAtDepth(depth), (num_dex_registers != 0));
+    });
   }
 }
 
@@ -181,6 +229,27 @@ void StackMapStream::CreateDexRegisterMap() {
     current_stack_map_.dex_register_mask_index = mask_index;
     current_stack_map_.dex_register_map_index = map_index;
   }
+
+  if (kVerifyStackMaps) {
+    size_t stack_map_index = stack_maps_.size();
+    int32_t depth = current_inline_infos_ - 1;
+    // We need to make copy of the current registers for later (when the check is run).
+    auto expected_dex_registers = std::make_shared<std::vector<DexRegisterLocation>>(
+        current_dex_registers_.begin(), current_dex_registers_.end());
+    dchecks_.emplace_back([=](const CodeInfo& code_info) {
+      StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
+      size_t num_dex_registers = expected_dex_registers->size();
+      DexRegisterMap map = (depth == -1)
+        ? code_info.GetDexRegisterMapOf(stack_map, num_dex_registers)
+        : code_info.GetDexRegisterMapAtDepth(depth,
+                                             code_info.GetInlineInfoOf(stack_map),
+                                             num_dex_registers);
+      CHECK_EQ(map.size(), num_dex_registers);
+      for (size_t r = 0; r < num_dex_registers; r++) {
+        CHECK_EQ(expected_dex_registers->at(r), map.Get(r));
+      }
+    });
+  }
 }
 
 void StackMapStream::FillInMethodInfo(MemoryRegion region) {
@@ -190,7 +259,7 @@ void StackMapStream::FillInMethodInfo(MemoryRegion region) {
       info.SetMethodIndex(i, method_infos_[i]);
     }
   }
-  if (kIsDebugBuild) {
+  if (kVerifyStackMaps) {
     // Check the data matches.
     MethodInfo info(region.begin());
     const size_t count = info.NumMethodIndices();
@@ -239,107 +308,13 @@ void StackMapStream::FillInCodeInfo(MemoryRegion region) {
   uint8_t* ptr = EncodeUnsignedLeb128(region.begin(), out_.size());
   region.CopyFromVector(ptr - region.begin(), out_);
 
-  // Verify all written data in debug build.
-  if (kIsDebugBuild) {
-    CheckCodeInfo(region);
-  }
-}
-
-// Helper for CheckCodeInfo - check that register map has the expected content.
-void StackMapStream::CheckDexRegisterMap(const DexRegisterMap& dex_register_map,
-                                         size_t dex_register_mask_index,
-                                         size_t dex_register_map_index) const {
-  if (dex_register_map_index == kNoValue) {
-    DCHECK(!dex_register_map.IsValid());
-    return;
-  }
-  BitMemoryRegion live_dex_registers_mask = (dex_register_mask_index == kNoValue)
-      ? BitMemoryRegion()
-      : BitMemoryRegion(dex_register_masks_[dex_register_mask_index]);
-  for (size_t reg = 0; reg < dex_register_map.size(); reg++) {
-    // Find the location we tried to encode.
-    DexRegisterLocation expected = DexRegisterLocation::None();
-    if (reg < live_dex_registers_mask.size_in_bits() && live_dex_registers_mask.LoadBit(reg)) {
-      size_t catalog_index = dex_register_maps_[dex_register_map_index++];
-      DexRegisterLocation::Kind kind =
-          static_cast<DexRegisterLocation::Kind>(dex_register_catalog_[catalog_index].kind);
-      uint32_t packed_value = dex_register_catalog_[catalog_index].packed_value;
-      expected = DexRegisterLocation(kind, DexRegisterInfo::UnpackValue(kind, packed_value));
+  // Verify all written data (usually only in debug builds).
+  if (kVerifyStackMaps) {
+    CodeInfo code_info(region);
+    CHECK_EQ(code_info.GetNumberOfStackMaps(), stack_maps_.size());
+    for (const auto& dcheck : dchecks_) {
+      dcheck(code_info);
     }
-    // Compare to the seen location.
-    if (expected.GetKind() == DexRegisterLocation::Kind::kNone) {
-      DCHECK(!dex_register_map.IsValid() || !dex_register_map.IsDexRegisterLive(reg))
-          << dex_register_map.IsValid() << " " << dex_register_map.IsDexRegisterLive(reg);
-    } else {
-      DCHECK(dex_register_map.IsDexRegisterLive(reg));
-      DexRegisterLocation seen = dex_register_map.GetDexRegisterLocation(reg);
-      DCHECK_EQ(expected.GetKind(), seen.GetKind());
-      DCHECK_EQ(expected.GetValue(), seen.GetValue());
-    }
-  }
-}
-
-// Check that all StackMapStream inputs are correctly encoded by trying to read them back.
-void StackMapStream::CheckCodeInfo(MemoryRegion region) const {
-  CodeInfo code_info(region);
-  DCHECK_EQ(code_info.GetNumberOfStackMaps(), stack_maps_.size());
-  const uint32_t* num_dex_registers = dcheck_num_dex_registers_.data();
-  for (size_t s = 0; s < stack_maps_.size(); ++s) {
-    const StackMap stack_map = code_info.GetStackMapAt(s);
-    const StackMapEntry& entry = stack_maps_[s];
-
-    // Check main stack map fields.
-    DCHECK_EQ(stack_map.GetNativePcOffset(instruction_set_),
-              StackMap::UnpackNativePc(entry.packed_native_pc, instruction_set_));
-    DCHECK_EQ(stack_map.GetDexPc(), entry.dex_pc);
-    DCHECK_EQ(stack_map.GetRegisterMaskIndex(), entry.register_mask_index);
-    RegisterMaskEntry expected_register_mask = (entry.register_mask_index == kNoValue)
-        ? RegisterMaskEntry{}
-        : register_masks_[entry.register_mask_index];
-    DCHECK_EQ(code_info.GetRegisterMaskOf(stack_map),
-              expected_register_mask.value << expected_register_mask.shift);
-    DCHECK_EQ(stack_map.GetStackMaskIndex(), entry.stack_mask_index);
-    BitMemoryRegion expected_stack_mask = (entry.stack_mask_index == kNoValue)
-        ? BitMemoryRegion()
-        : BitMemoryRegion(stack_masks_[entry.stack_mask_index]);
-    BitMemoryRegion stack_mask = code_info.GetStackMaskOf(stack_map);
-    for (size_t b = 0; b < expected_stack_mask.size_in_bits(); b++) {
-      bool seen = b < stack_mask.size_in_bits() && stack_mask.LoadBit(b);
-      DCHECK_EQ(expected_stack_mask.LoadBit(b), seen);
-    }
-    CheckDexRegisterMap(code_info.GetDexRegisterMapOf(stack_map, *(num_dex_registers++)),
-                        entry.dex_register_mask_index,
-                        entry.dex_register_map_index);
-
-    // Check inline info.
-    DCHECK_EQ(stack_map.HasInlineInfo(), (entry.inline_info_index != kNoValue));
-    if (stack_map.HasInlineInfo()) {
-      InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
-      size_t inlining_depth = inline_info.GetDepth();
-      for (size_t d = 0; d < inlining_depth; ++d) {
-        size_t inline_info_index = entry.inline_info_index + d;
-        DCHECK_LT(inline_info_index, inline_infos_.size());
-        const InlineInfoEntry& inline_entry = inline_infos_[inline_info_index];
-        DCHECK_EQ(inline_info.GetDexPcAtDepth(d), inline_entry.dex_pc);
-        if (!inline_info.EncodesArtMethodAtDepth(d)) {
-          const size_t method_index_idx =
-              inline_info.GetMethodIndexIdxAtDepth(d);
-          DCHECK_EQ(method_index_idx, inline_entry.method_info_index);
-        }
-        CheckDexRegisterMap(code_info.GetDexRegisterMapAtDepth(
-                                d, inline_info, *(num_dex_registers++)),
-                            inline_entry.dex_register_mask_index,
-                            inline_entry.dex_register_map_index);
-      }
-    }
-  }
-  for (size_t i = 0; i < invoke_infos_.size(); i++) {
-    InvokeInfo invoke_info = code_info.GetInvokeInfo(i);
-    const InvokeInfoEntry& entry = invoke_infos_[i];
-    DCHECK_EQ(invoke_info.GetNativePcOffset(instruction_set_),
-              StackMap::UnpackNativePc(entry.packed_native_pc, instruction_set_));
-    DCHECK_EQ(invoke_info.GetInvokeType(), entry.invoke_type);
-    DCHECK_EQ(invoke_info.GetMethodIndexIdx(), entry.method_info_index);
   }
 }
 
