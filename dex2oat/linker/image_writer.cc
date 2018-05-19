@@ -248,7 +248,6 @@ bool ImageWriter::Write(int image_fd,
 
     CHECK_EQ(image_header->storage_mode_, image_storage_mode_);
     switch (image_storage_mode_) {
-      case ImageHeader::kStorageModeLZ4HC:  // Fall-through.
       case ImageHeader::kStorageModeLZ4: {
         const size_t compressed_max_size = LZ4_compressBound(image_data_size);
         compressed_data.reset(new char[compressed_max_size]);
@@ -257,22 +256,20 @@ bool ImageWriter::Write(int image_fd,
             &compressed_data[0],
             image_data_size,
             compressed_max_size);
-
         break;
       }
-      /*
-       * Disabled due to image_test64 flakyness. Both use same decompression. b/27560444
       case ImageHeader::kStorageModeLZ4HC: {
         // Bound is same as non HC.
         const size_t compressed_max_size = LZ4_compressBound(image_data_size);
         compressed_data.reset(new char[compressed_max_size]);
-        data_size = LZ4_compressHC(
+        data_size = LZ4_compress_HC(
             reinterpret_cast<char*>(image_info.image_->Begin()) + sizeof(ImageHeader),
             &compressed_data[0],
-            image_data_size);
+            image_data_size,
+            compressed_max_size,
+            LZ4HC_CLEVEL_MAX);
         break;
       }
-      */
       case ImageHeader::kStorageModeUncompressed: {
         data_size = image_data_size;
         image_data_to_write = image_data;
