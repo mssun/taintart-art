@@ -448,11 +448,9 @@ void HInstructionBuilder::BuildIntrinsic(ArtMethod* method) {
       invoke_type,
       target_method,
       HInvokeStaticOrDirect::ClinitCheckRequirement::kNone);
+  RangeInstructionOperands operands(graph_->GetNumberOfVRegs() - in_vregs, in_vregs);
   HandleInvoke(invoke,
-               in_vregs,
-               /* args */ nullptr,
-               graph_->GetNumberOfVRegs() - in_vregs,
-               /* is_range */ true,
+               operands,
                dex_file_->GetMethodShorty(method_idx),
                /* clinit_check */ nullptr,
                /* is_unresolved */ false);
@@ -916,10 +914,7 @@ static bool IsStringConstructor(ArtMethod* method) {
 bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                       uint32_t dex_pc,
                                       uint32_t method_idx,
-                                      uint32_t number_of_vreg_arguments,
-                                      bool is_range,
-                                      uint32_t* args,
-                                      uint32_t register_index) {
+                                      const InstructionOperands& operands) {
   InvokeType invoke_type = GetInvokeTypeFromOpCode(instruction.Opcode());
   const char* descriptor = dex_file_->GetMethodShorty(method_idx);
   DataType::Type return_type = DataType::FromShorty(descriptor[0]);
@@ -943,12 +938,9 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                                          method_idx,
                                                          invoke_type);
     return HandleInvoke(invoke,
-                        number_of_vreg_arguments,
-                        args,
-                        register_index,
-                        is_range,
+                        operands,
                         descriptor,
-                        nullptr, /* clinit_check */
+                        nullptr /* clinit_check */,
                         true /* is_unresolved */);
   }
 
@@ -976,12 +968,7 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
         invoke_type,
         target_method,
         HInvokeStaticOrDirect::ClinitCheckRequirement::kImplicit);
-    return HandleStringInit(invoke,
-                            number_of_vreg_arguments,
-                            args,
-                            register_index,
-                            is_range,
-                            descriptor);
+    return HandleStringInit(invoke, operands, descriptor);
   }
 
   // Potential class initialization check, in the case of a static method call.
@@ -1042,26 +1029,16 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                                ImTable::GetImtIndex(resolved_method));
   }
 
-  return HandleInvoke(invoke,
-                      number_of_vreg_arguments,
-                      args,
-                      register_index,
-                      is_range,
-                      descriptor,
-                      clinit_check,
-                      false /* is_unresolved */);
+  return HandleInvoke(invoke, operands, descriptor, clinit_check, false /* is_unresolved */);
 }
 
 bool HInstructionBuilder::BuildInvokePolymorphic(const Instruction& instruction ATTRIBUTE_UNUSED,
                                                  uint32_t dex_pc,
                                                  uint32_t method_idx,
                                                  dex::ProtoIndex proto_idx,
-                                                 uint32_t number_of_vreg_arguments,
-                                                 bool is_range,
-                                                 uint32_t* args,
-                                                 uint32_t register_index) {
+                                                 const InstructionOperands& operands) {
   const char* descriptor = dex_file_->GetShorty(proto_idx);
-  DCHECK_EQ(1 + ArtMethod::NumArgRegisters(descriptor), number_of_vreg_arguments);
+  DCHECK_EQ(1 + ArtMethod::NumArgRegisters(descriptor), operands.GetNumberOfOperands());
   DataType::Type return_type = DataType::FromShorty(descriptor[0]);
   size_t number_of_arguments = strlen(descriptor);
   HInvoke* invoke = new (allocator_) HInvokePolymorphic(allocator_,
@@ -1070,10 +1047,7 @@ bool HInstructionBuilder::BuildInvokePolymorphic(const Instruction& instruction 
                                                         dex_pc,
                                                         method_idx);
   return HandleInvoke(invoke,
-                      number_of_vreg_arguments,
-                      args,
-                      register_index,
-                      is_range,
+                      operands,
                       descriptor,
                       nullptr /* clinit_check */,
                       false /* is_unresolved */);
@@ -1222,26 +1196,22 @@ HClinitCheck* HInstructionBuilder::ProcessClinitCheckForInvoke(
 }
 
 bool HInstructionBuilder::SetupInvokeArguments(HInvoke* invoke,
-                                               uint32_t number_of_vreg_arguments,
-                                               uint32_t* args,
-                                               uint32_t register_index,
-                                               bool is_range,
+                                               const InstructionOperands& operands,
                                                const char* descriptor,
                                                size_t start_index,
                                                size_t* argument_index) {
   uint32_t descriptor_index = 1;  // Skip the return type.
-
+  const size_t number_of_operands = operands.GetNumberOfOperands();
   for (size_t i = start_index;
        // Make sure we don't go over the expected arguments or over the number of
        // dex registers given. If the instruction was seen as dead by the verifier,
        // it hasn't been properly checked.
-       (i < number_of_vreg_arguments) && (*argument_index < invoke->GetNumberOfArguments());
+       (i < number_of_operands) && (*argument_index < invoke->GetNumberOfArguments());
        i++, (*argument_index)++) {
     DataType::Type type = DataType::FromShorty(descriptor[descriptor_index++]);
     bool is_wide = (type == DataType::Type::kInt64) || (type == DataType::Type::kFloat64);
-    if (!is_range
-        && is_wide
-        && ((i + 1 == number_of_vreg_arguments) || (args[i] + 1 != args[i + 1]))) {
+    if (is_wide && ((i + 1 == number_of_operands) ||
+                    (operands.GetOperand(i) + 1 != operands.GetOperand(i + 1)))) {
       // Longs and doubles should be in pairs, that is, sequential registers. The verifier should
       // reject any class where this is violated. However, the verifier only does these checks
       // on non trivially dead instructions, so we just bailout the compilation.
@@ -1252,7 +1222,7 @@ bool HInstructionBuilder::SetupInvokeArguments(HInvoke* invoke,
                       MethodCompilationStat::kNotCompiledMalformedOpcode);
       return false;
     }
-    HInstruction* arg = LoadLocal(is_range ? register_index + i : args[i], type);
+    HInstruction* arg = LoadLocal(operands.GetOperand(i), type);
     invoke->SetArgumentAt(*argument_index, arg);
     if (is_wide) {
       i++;
@@ -1279,10 +1249,7 @@ bool HInstructionBuilder::SetupInvokeArguments(HInvoke* invoke,
 }
 
 bool HInstructionBuilder::HandleInvoke(HInvoke* invoke,
-                                       uint32_t number_of_vreg_arguments,
-                                       uint32_t* args,
-                                       uint32_t register_index,
-                                       bool is_range,
+                                       const InstructionOperands& operands,
                                        const char* descriptor,
                                        HClinitCheck* clinit_check,
                                        bool is_unresolved) {
@@ -1291,7 +1258,7 @@ bool HInstructionBuilder::HandleInvoke(HInvoke* invoke,
   size_t start_index = 0;
   size_t argument_index = 0;
   if (invoke->GetInvokeType() != InvokeType::kStatic) {  // Instance call.
-    uint32_t obj_reg = is_range ? register_index : args[0];
+    uint32_t obj_reg = operands.GetOperand(0);
     HInstruction* arg = is_unresolved
         ? LoadLocal(obj_reg, DataType::Type::kReference)
         : LoadNullCheckedLocal(obj_reg, invoke->GetDexPc());
@@ -1300,14 +1267,7 @@ bool HInstructionBuilder::HandleInvoke(HInvoke* invoke,
     argument_index = 1;
   }
 
-  if (!SetupInvokeArguments(invoke,
-                            number_of_vreg_arguments,
-                            args,
-                            register_index,
-                            is_range,
-                            descriptor,
-                            start_index,
-                            &argument_index)) {
+  if (!SetupInvokeArguments(invoke, operands, descriptor, start_index, &argument_index)) {
     return false;
   }
 
@@ -1327,24 +1287,14 @@ bool HInstructionBuilder::HandleInvoke(HInvoke* invoke,
 }
 
 bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
-                                           uint32_t number_of_vreg_arguments,
-                                           uint32_t* args,
-                                           uint32_t register_index,
-                                           bool is_range,
+                                           const InstructionOperands& operands,
                                            const char* descriptor) {
   DCHECK(invoke->IsInvokeStaticOrDirect());
   DCHECK(invoke->AsInvokeStaticOrDirect()->IsStringInit());
 
   size_t start_index = 1;
   size_t argument_index = 0;
-  if (!SetupInvokeArguments(invoke,
-                            number_of_vreg_arguments,
-                            args,
-                            register_index,
-                            is_range,
-                            descriptor,
-                            start_index,
-                            &argument_index)) {
+  if (!SetupInvokeArguments(invoke, operands, descriptor, start_index, &argument_index)) {
     return false;
   }
 
@@ -1352,7 +1302,7 @@ bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
 
   // This is a StringFactory call, not an actual String constructor. Its result
   // replaces the empty String pre-allocated by NewInstance.
-  uint32_t orig_this_reg = is_range ? register_index : args[0];
+  uint32_t orig_this_reg = operands.GetOperand(0);
   HInstruction* arg_this = LoadLocal(orig_this_reg, DataType::Type::kReference);
 
   // Replacing the NewInstance might render it redundant. Keep a list of these
@@ -1705,11 +1655,9 @@ void HInstructionBuilder::BuildArrayAccess(const Instruction& instruction,
 
 HNewArray* HInstructionBuilder::BuildFilledNewArray(uint32_t dex_pc,
                                                     dex::TypeIndex type_index,
-                                                    uint32_t number_of_vreg_arguments,
-                                                    bool is_range,
-                                                    uint32_t* args,
-                                                    uint32_t register_index) {
-  HInstruction* length = graph_->GetIntConstant(number_of_vreg_arguments, dex_pc);
+                                                    const InstructionOperands& operands) {
+  const size_t number_of_operands = operands.GetNumberOfOperands();
+  HInstruction* length = graph_->GetIntConstant(number_of_operands, dex_pc);
   HLoadClass* cls = BuildLoadClass(type_index, dex_pc);
   HNewArray* const object = new (allocator_) HNewArray(cls, length, dex_pc);
   AppendInstruction(object);
@@ -1723,8 +1671,8 @@ HNewArray* HInstructionBuilder::BuildFilledNewArray(uint32_t dex_pc,
   bool is_reference_array = (primitive == 'L') || (primitive == '[');
   DataType::Type type = is_reference_array ? DataType::Type::kReference : DataType::Type::kInt32;
 
-  for (size_t i = 0; i < number_of_vreg_arguments; ++i) {
-    HInstruction* value = LoadLocal(is_range ? register_index + i : args[i], type);
+  for (size_t i = 0; i < number_of_operands; ++i) {
+    HInstruction* value = LoadLocal(operands.GetOperand(i), type);
     HInstruction* index = graph_->GetIntConstant(i, dex_pc);
     HArraySet* aset = new (allocator_) HArraySet(object, index, value, type, dex_pc);
     ssa_builder_->MaybeAddAmbiguousArraySet(aset);
@@ -2157,11 +2105,10 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       } else {
         method_idx = instruction.VRegB_35c();
       }
-      uint32_t number_of_vreg_arguments = instruction.VRegA_35c();
       uint32_t args[5];
-      instruction.GetVarArgs(args);
-      if (!BuildInvoke(instruction, dex_pc, method_idx,
-                       number_of_vreg_arguments, false, args, -1)) {
+      uint32_t number_of_vreg_arguments = instruction.GetVarArgs(args);
+      VarArgsInstructionOperands operands(args, number_of_vreg_arguments);
+      if (!BuildInvoke(instruction, dex_pc, method_idx, operands)) {
         return false;
       }
       break;
@@ -2184,10 +2131,8 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       } else {
         method_idx = instruction.VRegB_3rc();
       }
-      uint32_t number_of_vreg_arguments = instruction.VRegA_3rc();
-      uint32_t register_index = instruction.VRegC();
-      if (!BuildInvoke(instruction, dex_pc, method_idx,
-                       number_of_vreg_arguments, true, nullptr, register_index)) {
+      RangeInstructionOperands operands(instruction.VRegC(), instruction.VRegA_3rc());
+      if (!BuildInvoke(instruction, dex_pc, method_idx, operands)) {
         return false;
       }
       break;
@@ -2196,32 +2141,17 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::INVOKE_POLYMORPHIC: {
       uint16_t method_idx = instruction.VRegB_45cc();
       dex::ProtoIndex proto_idx(instruction.VRegH_45cc());
-      uint32_t number_of_vreg_arguments = instruction.VRegA_45cc();
       uint32_t args[5];
-      instruction.GetVarArgs(args);
-      return BuildInvokePolymorphic(instruction,
-                                    dex_pc,
-                                    method_idx,
-                                    proto_idx,
-                                    number_of_vreg_arguments,
-                                    false,
-                                    args,
-                                    -1);
+      uint32_t number_of_vreg_arguments = instruction.GetVarArgs(args);
+      VarArgsInstructionOperands operands(args, number_of_vreg_arguments);
+      return BuildInvokePolymorphic(instruction, dex_pc, method_idx, proto_idx, operands);
     }
 
     case Instruction::INVOKE_POLYMORPHIC_RANGE: {
       uint16_t method_idx = instruction.VRegB_4rcc();
       dex::ProtoIndex proto_idx(instruction.VRegH_4rcc());
-      uint32_t number_of_vreg_arguments = instruction.VRegA_4rcc();
-      uint32_t register_index = instruction.VRegC_4rcc();
-      return BuildInvokePolymorphic(instruction,
-                                    dex_pc,
-                                    method_idx,
-                                    proto_idx,
-                                    number_of_vreg_arguments,
-                                    true,
-                                    nullptr,
-                                    register_index);
+      RangeInstructionOperands operands(instruction.VRegC_4rcc(), instruction.VRegA_4rcc());
+      return BuildInvokePolymorphic(instruction, dex_pc, method_idx, proto_idx, operands);
     }
 
     case Instruction::NEG_INT: {
@@ -2769,30 +2699,19 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     }
 
     case Instruction::FILLED_NEW_ARRAY: {
-      uint32_t number_of_vreg_arguments = instruction.VRegA_35c();
       dex::TypeIndex type_index(instruction.VRegB_35c());
       uint32_t args[5];
-      instruction.GetVarArgs(args);
-      HNewArray* new_array = BuildFilledNewArray(dex_pc,
-                                                 type_index,
-                                                 number_of_vreg_arguments,
-                                                 /* is_range */ false,
-                                                 args,
-                                                 /* register_index */ 0);
+      uint32_t number_of_vreg_arguments = instruction.GetVarArgs(args);
+      VarArgsInstructionOperands operands(args, number_of_vreg_arguments);
+      HNewArray* new_array = BuildFilledNewArray(dex_pc, type_index, operands);
       BuildConstructorFenceForAllocation(new_array);
       break;
     }
 
     case Instruction::FILLED_NEW_ARRAY_RANGE: {
-      uint32_t number_of_vreg_arguments = instruction.VRegA_3rc();
       dex::TypeIndex type_index(instruction.VRegB_3rc());
-      uint32_t register_index = instruction.VRegC_3rc();
-      HNewArray* new_array = BuildFilledNewArray(dex_pc,
-                                                 type_index,
-                                                 number_of_vreg_arguments,
-                                                 /* is_range */ true,
-                                                 /* args*/ nullptr,
-                                                 register_index);
+      RangeInstructionOperands operands(instruction.VRegC_3rc(), instruction.VRegA_3rc());
+      HNewArray* new_array = BuildFilledNewArray(dex_pc, type_index, operands);
       BuildConstructorFenceForAllocation(new_array);
       break;
     }

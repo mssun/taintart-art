@@ -38,6 +38,7 @@ class CompilerDriver;
 class DexCompilationUnit;
 class HBasicBlockBuilder;
 class Instruction;
+class InstructionOperands;
 class OptimizingCompilerStats;
 class ScopedObjectAccess;
 class SsaBuilder;
@@ -168,10 +169,7 @@ class HInstructionBuilder : public ValueObject {
   bool BuildInvoke(const Instruction& instruction,
                    uint32_t dex_pc,
                    uint32_t method_idx,
-                   uint32_t number_of_vreg_arguments,
-                   bool is_range,
-                   uint32_t* args,
-                   uint32_t register_index);
+                   const InstructionOperands& operands);
 
   // Builds an invocation node for invoke-polymorphic and returns whether the
   // instruction is supported.
@@ -179,18 +177,12 @@ class HInstructionBuilder : public ValueObject {
                               uint32_t dex_pc,
                               uint32_t method_idx,
                               dex::ProtoIndex proto_idx,
-                              uint32_t number_of_vreg_arguments,
-                              bool is_range,
-                              uint32_t* args,
-                              uint32_t register_index);
+                              const InstructionOperands& operands);
 
   // Builds a new array node and the instructions that fill it.
   HNewArray* BuildFilledNewArray(uint32_t dex_pc,
                                  dex::TypeIndex type_index,
-                                 uint32_t number_of_vreg_arguments,
-                                 bool is_range,
-                                 uint32_t* args,
-                                 uint32_t register_index);
+                                 const InstructionOperands& operands);
 
   void BuildFillArrayData(const Instruction& instruction, uint32_t dex_pc);
 
@@ -260,28 +252,19 @@ class HInstructionBuilder : public ValueObject {
                                      HInvoke* invoke);
 
   bool SetupInvokeArguments(HInvoke* invoke,
-                            uint32_t number_of_vreg_arguments,
-                            uint32_t* args,
-                            uint32_t register_index,
-                            bool is_range,
+                            const InstructionOperands& operands,
                             const char* descriptor,
                             size_t start_index,
                             size_t* argument_index);
 
   bool HandleInvoke(HInvoke* invoke,
-                    uint32_t number_of_vreg_arguments,
-                    uint32_t* args,
-                    uint32_t register_index,
-                    bool is_range,
+                    const InstructionOperands& operands,
                     const char* descriptor,
                     HClinitCheck* clinit_check,
                     bool is_unresolved);
 
   bool HandleStringInit(HInvoke* invoke,
-                        uint32_t number_of_vreg_arguments,
-                        uint32_t* args,
-                        uint32_t register_index,
-                        bool is_range,
+                        const InstructionOperands& operands,
                         const char* descriptor);
   void HandleStringInitResult(HInvokeStaticOrDirect* invoke);
 
