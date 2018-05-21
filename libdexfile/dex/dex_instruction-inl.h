@@ -508,7 +508,7 @@ inline bool Instruction::HasVarArgs() const {
   return (FormatOf(Opcode()) == k35c) || (FormatOf(Opcode()) == k45cc);
 }
 
-inline void Instruction::GetVarArgs(uint32_t arg[kMaxVarArgRegs], uint16_t inst_data) const {
+inline uint32_t Instruction::GetVarArgs(uint32_t arg[kMaxVarArgRegs], uint16_t inst_data) const {
   DCHECK(HasVarArgs());
 
   /*
@@ -551,6 +551,7 @@ inline void Instruction::GetVarArgs(uint32_t arg[kMaxVarArgRegs], uint16_t inst_
     default:  // case 0
       break;  // Valid, but no need to do anything.
   }
+  return count;
 }
 
 }  // namespace art
