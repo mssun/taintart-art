@@ -487,6 +487,7 @@ build-art-target-golem: dex2oat dalvikvm patchoat linker libstdc++ \
 	sed -i '/libartd.so/d' $(TARGET_OUT)/etc/public.libraries.txt
 	sed -i '/libdexfiled.so/d' $(TARGET_OUT)/etc/public.libraries.txt
 	sed -i '/libprofiled.so/d' $(TARGET_OUT)/etc/public.libraries.txt
+	sed -i '/libartbased.so/d' $(TARGET_OUT)/etc/public.libraries.txt
 
 ########################################################################
 # Phony target for building what go/lem requires on host.
