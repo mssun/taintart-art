@@ -264,7 +264,8 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
 
 bool LocationIsOnSystem(const char* path) {
   UniqueCPtr<const char[]> full_path(realpath(path, nullptr));
-  return path != nullptr && android::base::StartsWith(full_path.get(), GetAndroidRoot().c_str());
+  return full_path != nullptr &&
+      android::base::StartsWith(full_path.get(), GetAndroidRoot().c_str());
 }
 
 bool LocationIsOnSystemFramework(const char* full_path) {
