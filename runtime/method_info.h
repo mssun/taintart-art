@@ -21,7 +21,7 @@
 
 #include "base/leb128.h"
 #include "base/macros.h"
-#include "base/memory_region.h"
+#include "base/bit_memory_region.h"
 
 namespace art {
 
@@ -35,8 +35,8 @@ class MethodInfo {
   explicit MethodInfo(const uint8_t* ptr) {
     if (ptr != nullptr) {
       num_method_indices_ = DecodeUnsignedLeb128(&ptr);
-      region_ = MemoryRegion(const_cast<uint8_t*>(ptr),
-                             num_method_indices_ * sizeof(MethodIndexType));
+      region_ = BitMemoryRegion(
+          MemoryRegion(const_cast<uint8_t*>(ptr), num_method_indices_ * sizeof(MethodIndexType)));
     }
   }
 
@@ -44,7 +44,7 @@ class MethodInfo {
   MethodInfo(uint8_t* ptr, size_t num_method_indices) : num_method_indices_(num_method_indices) {
     DCHECK(ptr != nullptr);
     ptr = EncodeUnsignedLeb128(ptr, num_method_indices_);
-    region_ = MemoryRegion(ptr, num_method_indices_ * sizeof(MethodIndexType));
+    region_ = BitMemoryRegion(MemoryRegion(ptr, num_method_indices_ * sizeof(MethodIndexType)));
   }
 
   static size_t ComputeSize(size_t num_method_indices) {
@@ -71,7 +71,7 @@ class MethodInfo {
 
  private:
   size_t num_method_indices_ = 0u;
-  MemoryRegion region_;
+  BitMemoryRegion region_;
 };
 
 }  // namespace art

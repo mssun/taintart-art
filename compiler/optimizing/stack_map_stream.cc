@@ -427,10 +427,11 @@ void StackMapStream::FillInCodeInfo(MemoryRegion region) {
   if (stack_mask_bits > 0) {
     size_t stack_mask_bytes = RoundUp(stack_mask_bits, kBitsPerByte) / kBitsPerByte;
     for (size_t i = 0; i < encoding.stack_mask.num_entries; ++i) {
-      MemoryRegion source(&stack_masks_[i * stack_mask_bytes], stack_mask_bytes);
-      BitMemoryRegion stack_mask = code_info.GetStackMask(i, encoding);
-      for (size_t bit_index = 0; bit_index < stack_mask_bits; ++bit_index) {
-        stack_mask.StoreBit(bit_index, source.LoadBit(bit_index));
+      BitMemoryRegion src(MemoryRegion(&stack_masks_[i * stack_mask_bytes], stack_mask_bytes));
+      BitMemoryRegion dst = code_info.GetStackMask(i, encoding);
+      for (size_t bit_index = 0; bit_index < stack_mask_bits; bit_index += BitSizeOf<uint32_t>()) {
+        size_t num_bits = std::min<size_t>(stack_mask_bits - bit_index, BitSizeOf<uint32_t>());
+        dst.StoreBits(bit_index, src.LoadBits(bit_index, num_bits), num_bits);
       }
     }
   }
@@ -600,8 +601,9 @@ size_t StackMapStream::PrepareStackMasks(size_t entry_size_in_bits) {
   for (StackMapEntry& stack_map : stack_maps_) {
     size_t index = dedup.size();
     MemoryRegion stack_mask(stack_masks_.data() + index * byte_entry_size, byte_entry_size);
+    BitMemoryRegion stack_mask_bits(stack_mask);
     for (size_t i = 0; i < entry_size_in_bits; i++) {
-      stack_mask.StoreBit(i, stack_map.sp_mask != nullptr && stack_map.sp_mask->IsBitSet(i));
+      stack_mask_bits.StoreBit(i, stack_map.sp_mask != nullptr && stack_map.sp_mask->IsBitSet(i));
     }
     stack_map.stack_mask_index = dedup.emplace(stack_mask, index).first->second;
   }
