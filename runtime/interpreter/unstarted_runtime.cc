@@ -510,7 +510,7 @@ void UnstartedRuntime::UnstartedClassIsAnonymousClass(
     result->SetZ(false);
     return;
   }
-  mirror::String* class_name = nullptr;
+  ObjPtr<mirror::String> class_name = nullptr;
   if (!annotations::GetInnerClass(klass, &class_name)) {
     result->SetZ(false);
     return;
