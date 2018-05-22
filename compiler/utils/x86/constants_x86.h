@@ -40,21 +40,6 @@ enum ByteRegister {
   kNoByteRegister = -1  // Signals an illegal register.
 };
 
-
-enum XmmRegister {
-  XMM0 = 0,
-  XMM1 = 1,
-  XMM2 = 2,
-  XMM3 = 3,
-  XMM4 = 4,
-  XMM5 = 5,
-  XMM6 = 6,
-  XMM7 = 7,
-  kNumberOfXmmRegisters = 8,
-  kNoXmmRegister = -1  // Signals an illegal register.
-};
-std::ostream& operator<<(std::ostream& os, const XmmRegister& reg);
-
 enum X87Register {
   ST0 = 0,
   ST1 = 1,

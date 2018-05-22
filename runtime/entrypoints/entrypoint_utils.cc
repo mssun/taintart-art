@@ -180,10 +180,10 @@ static inline std::pair<ArtMethod*, uintptr_t> DoGetCalleeSaveMethodOuterCallerA
     ArtMethod** sp, CalleeSaveType type) REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK_EQ(*sp, Runtime::Current()->GetCalleeSaveMethod(type));
 
-  const size_t callee_frame_size = GetCalleeSaveFrameSize(kRuntimeISA, type);
+  const size_t callee_frame_size = RuntimeCalleeSaveFrame::GetFrameSize(type);
   auto** caller_sp = reinterpret_cast<ArtMethod**>(
       reinterpret_cast<uintptr_t>(sp) + callee_frame_size);
-  const size_t callee_return_pc_offset = GetCalleeSaveReturnPcOffset(kRuntimeISA, type);
+  const size_t callee_return_pc_offset = RuntimeCalleeSaveFrame::GetReturnPcOffset(type);
   uintptr_t caller_pc = *reinterpret_cast<uintptr_t*>(
       (reinterpret_cast<uint8_t*>(sp) + callee_return_pc_offset));
   ArtMethod* outer_method = *caller_sp;

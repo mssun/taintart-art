@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_ARCH_X86_64_QUICK_METHOD_FRAME_INFO_X86_64_H_
-#define ART_RUNTIME_ARCH_X86_64_QUICK_METHOD_FRAME_INFO_X86_64_H_
+#ifndef ART_RUNTIME_ARCH_X86_64_CALLEE_SAVE_FRAME_X86_64_H_
+#define ART_RUNTIME_ARCH_X86_64_CALLEE_SAVE_FRAME_X86_64_H_
 
 #include "arch/instruction_set.h"
 #include "base/bit_utils.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
+#include "base/globals.h"
 #include "quick/quick_method_frame_info.h"
 #include "registers_x86_64.h"
 
@@ -55,35 +56,54 @@ static constexpr uint32_t kX86_64CalleeSaveFpEverythingSpills =
     (1 << art::x86_64::XMM8) | (1 << art::x86_64::XMM9) |
     (1 << art::x86_64::XMM10) | (1 << art::x86_64::XMM11);
 
-constexpr uint32_t X86_64CalleeSaveCoreSpills(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return kX86_64CalleeSaveAlwaysSpills | kX86_64CalleeSaveRefSpills |
-      (type == CalleeSaveType::kSaveRefsAndArgs ? kX86_64CalleeSaveArgSpills : 0) |
-      (type == CalleeSaveType::kSaveEverything ? kX86_64CalleeSaveEverythingSpills : 0);
-}
+class X86_64CalleeSaveFrame {
+ public:
+  static constexpr uint32_t GetCoreSpills(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return kX86_64CalleeSaveAlwaysSpills | kX86_64CalleeSaveRefSpills |
+        (type == CalleeSaveType::kSaveRefsAndArgs ? kX86_64CalleeSaveArgSpills : 0) |
+        (type == CalleeSaveType::kSaveEverything ? kX86_64CalleeSaveEverythingSpills : 0);
+  }
 
-constexpr uint32_t X86_64CalleeSaveFpSpills(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return kX86_64CalleeSaveFpSpills |
-      (type == CalleeSaveType::kSaveRefsAndArgs ? kX86_64CalleeSaveFpArgSpills : 0) |
-      (type == CalleeSaveType::kSaveEverything ? kX86_64CalleeSaveFpEverythingSpills : 0);
-}
+  static constexpr uint32_t GetFpSpills(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return kX86_64CalleeSaveFpSpills |
+        (type == CalleeSaveType::kSaveRefsAndArgs ? kX86_64CalleeSaveFpArgSpills : 0) |
+        (type == CalleeSaveType::kSaveEverything ? kX86_64CalleeSaveFpEverythingSpills : 0);
+  }
 
-constexpr uint32_t X86_64CalleeSaveFrameSize(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return RoundUp((POPCOUNT(X86_64CalleeSaveCoreSpills(type)) /* gprs */ +
-                  POPCOUNT(X86_64CalleeSaveFpSpills(type)) /* fprs */ +
-                  1 /* Method* */) * static_cast<size_t>(kX86_64PointerSize), kStackAlignment);
-}
+  static constexpr uint32_t GetFrameSize(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return RoundUp((POPCOUNT(GetCoreSpills(type)) /* gprs */ +
+                    POPCOUNT(GetFpSpills(type)) /* fprs */ +
+                    1 /* Method* */) * static_cast<size_t>(kX86_64PointerSize), kStackAlignment);
+  }
 
-constexpr QuickMethodFrameInfo X86_64CalleeSaveMethodFrameInfo(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return QuickMethodFrameInfo(X86_64CalleeSaveFrameSize(type),
-                              X86_64CalleeSaveCoreSpills(type),
-                              X86_64CalleeSaveFpSpills(type));
-}
+  static constexpr QuickMethodFrameInfo GetMethodFrameInfo(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return QuickMethodFrameInfo(GetFrameSize(type), GetCoreSpills(type), GetFpSpills(type));
+  }
+
+  static constexpr size_t GetFpr1Offset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) -
+           (POPCOUNT(GetCoreSpills(type)) +
+            POPCOUNT(GetFpSpills(type))) * static_cast<size_t>(kX86_64PointerSize);
+  }
+
+  static constexpr size_t GetGpr1Offset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) -
+           POPCOUNT(GetCoreSpills(type)) * static_cast<size_t>(kX86_64PointerSize);
+  }
+
+  static constexpr size_t GetReturnPcOffset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) - static_cast<size_t>(kX86_64PointerSize);
+  }
+};
 
 }  // namespace x86_64
 }  // namespace art
 
-#endif  // ART_RUNTIME_ARCH_X86_64_QUICK_METHOD_FRAME_INFO_X86_64_H_
+#endif  // ART_RUNTIME_ARCH_X86_64_CALLEE_SAVE_FRAME_X86_64_H_
