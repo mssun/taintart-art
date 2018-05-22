@@ -21,16 +21,17 @@
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "base/mutex.h"
+#include "quick/quick_method_frame_info.h"
 #include "thread-inl.h"
 
 // Specific frame size code is in architecture-specific files. We include this to compile-time
 // specialize the code.
-#include "arch/arm/quick_method_frame_info_arm.h"
-#include "arch/arm64/quick_method_frame_info_arm64.h"
-#include "arch/mips/quick_method_frame_info_mips.h"
-#include "arch/mips64/quick_method_frame_info_mips64.h"
-#include "arch/x86/quick_method_frame_info_x86.h"
-#include "arch/x86_64/quick_method_frame_info_x86_64.h"
+#include "arch/arm/callee_save_frame_arm.h"
+#include "arch/arm64/callee_save_frame_arm64.h"
+#include "arch/mips/callee_save_frame_mips.h"
+#include "arch/mips64/callee_save_frame_mips64.h"
+#include "arch/x86/callee_save_frame_x86.h"
+#include "arch/x86_64/callee_save_frame_x86_64.h"
 
 namespace art {
 class ArtMethod;
@@ -67,57 +68,28 @@ class ScopedQuickEntrypointChecks {
   bool exit_check_;
 };
 
-static constexpr size_t GetCalleeSaveFrameSize(InstructionSet isa, CalleeSaveType type) {
-  switch (isa) {
-    case InstructionSet::kArm:
-    case InstructionSet::kThumb2:
-      return arm::ArmCalleeSaveFrameSize(type);
-    case InstructionSet::kArm64:
-      return arm64::Arm64CalleeSaveFrameSize(type);
-    case InstructionSet::kMips:
-      return mips::MipsCalleeSaveFrameSize(type);
-    case InstructionSet::kMips64:
-      return mips64::Mips64CalleeSaveFrameSize(type);
-    case InstructionSet::kX86:
-      return x86::X86CalleeSaveFrameSize(type);
-    case InstructionSet::kX86_64:
-      return x86_64::X86_64CalleeSaveFrameSize(type);
-    case InstructionSet::kNone:
-      LOG(FATAL) << "kNone has no frame size";
-      UNREACHABLE();
-  }
-  LOG(FATAL) << "Unknown ISA " << isa;
-  UNREACHABLE();
-}
+namespace detail_ {
 
-// Note: this specialized statement is sanity-checked in the quick-trampoline gtest.
-static constexpr PointerSize GetConstExprPointerSize(InstructionSet isa) {
-  switch (isa) {
-    case InstructionSet::kArm:
-    case InstructionSet::kThumb2:
-      return kArmPointerSize;
-    case InstructionSet::kArm64:
-      return kArm64PointerSize;
-    case InstructionSet::kMips:
-      return kMipsPointerSize;
-    case InstructionSet::kMips64:
-      return kMips64PointerSize;
-    case InstructionSet::kX86:
-      return kX86PointerSize;
-    case InstructionSet::kX86_64:
-      return kX86_64PointerSize;
-    case InstructionSet::kNone:
-      LOG(FATAL) << "kNone has no pointer size";
-      UNREACHABLE();
-  }
-  LOG(FATAL) << "Unknown ISA " << isa;
-  UNREACHABLE();
-}
+template <InstructionSet>
+struct CSFSelector;  // No definition for unspecialized callee save frame selector.
 
-// Note: this specialized statement is sanity-checked in the quick-trampoline gtest.
-static constexpr size_t GetCalleeSaveReturnPcOffset(InstructionSet isa, CalleeSaveType type) {
-  return GetCalleeSaveFrameSize(isa, type) - static_cast<size_t>(GetConstExprPointerSize(isa));
-}
+// Note: kThumb2 is never the kRuntimeISA.
+template <>
+struct CSFSelector<InstructionSet::kArm> { using type = arm::ArmCalleeSaveFrame; };
+template <>
+struct CSFSelector<InstructionSet::kArm64> { using type = arm64::Arm64CalleeSaveFrame; };
+template <>
+struct CSFSelector<InstructionSet::kMips> { using type = mips::MipsCalleeSaveFrame; };
+template <>
+struct CSFSelector<InstructionSet::kMips64> { using type = mips64::Mips64CalleeSaveFrame; };
+template <>
+struct CSFSelector<InstructionSet::kX86> { using type = x86::X86CalleeSaveFrame; };
+template <>
+struct CSFSelector<InstructionSet::kX86_64> { using type = x86_64::X86_64CalleeSaveFrame; };
+
+}  // namespace detail_
+
+using RuntimeCalleeSaveFrame = detail_::CSFSelector<kRuntimeISA>::type;
 
 }  // namespace art
 

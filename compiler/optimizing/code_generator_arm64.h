@@ -17,7 +17,6 @@
 #ifndef ART_COMPILER_OPTIMIZING_CODE_GENERATOR_ARM64_H_
 #define ART_COMPILER_OPTIMIZING_CODE_GENERATOR_ARM64_H_
 
-#include "arch/arm64/quick_method_frame_info_arm64.h"
 #include "base/bit_field.h"
 #include "code_generator.h"
 #include "common_arm64.h"

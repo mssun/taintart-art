@@ -399,10 +399,6 @@ class Runtime {
   ArtMethod* GetCalleeSaveMethodUnchecked(CalleeSaveType type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  QuickMethodFrameInfo GetCalleeSaveMethodFrameInfo(CalleeSaveType type) const {
-    return callee_save_method_frame_infos_[static_cast<size_t>(type)];
-  }
-
   QuickMethodFrameInfo GetRuntimeMethodFrameInfo(ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -843,7 +839,6 @@ class Runtime {
   GcRoot<mirror::Object> sentinel_;
 
   InstructionSet instruction_set_;
-  QuickMethodFrameInfo callee_save_method_frame_infos_[kCalleeSaveSize];
 
   CompilerCallbacks* compiler_callbacks_;
   bool is_zygote_;

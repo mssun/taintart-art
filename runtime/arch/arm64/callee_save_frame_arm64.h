@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_ARCH_ARM64_QUICK_METHOD_FRAME_INFO_ARM64_H_
-#define ART_RUNTIME_ARCH_ARM64_QUICK_METHOD_FRAME_INFO_ARM64_H_
+#ifndef ART_RUNTIME_ARCH_ARM64_CALLEE_SAVE_FRAME_ARM64_H_
+#define ART_RUNTIME_ARCH_ARM64_CALLEE_SAVE_FRAME_ARM64_H_
 
 #include "arch/instruction_set.h"
 #include "base/bit_utils.h"
@@ -79,57 +79,56 @@ static constexpr uint32_t kArm64CalleeSaveFpEverythingSpills =
     (1 << art::arm64::D27) | (1 << art::arm64::D28) | (1 << art::arm64::D29) |
     (1 << art::arm64::D30) | (1 << art::arm64::D31);
 
-constexpr uint32_t Arm64CalleeSaveCoreSpills(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return kArm64CalleeSaveAlwaysSpills | kArm64CalleeSaveRefSpills |
-      (type == CalleeSaveType::kSaveRefsAndArgs ? kArm64CalleeSaveArgSpills : 0) |
-      (type == CalleeSaveType::kSaveAllCalleeSaves ? kArm64CalleeSaveAllSpills : 0) |
-      (type == CalleeSaveType::kSaveEverything ? kArm64CalleeSaveEverythingSpills : 0);
-}
+class Arm64CalleeSaveFrame {
+ public:
+  static constexpr uint32_t GetCoreSpills(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return kArm64CalleeSaveAlwaysSpills | kArm64CalleeSaveRefSpills |
+        (type == CalleeSaveType::kSaveRefsAndArgs ? kArm64CalleeSaveArgSpills : 0) |
+        (type == CalleeSaveType::kSaveAllCalleeSaves ? kArm64CalleeSaveAllSpills : 0) |
+        (type == CalleeSaveType::kSaveEverything ? kArm64CalleeSaveEverythingSpills : 0);
+  }
 
-constexpr uint32_t Arm64CalleeSaveFpSpills(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return kArm64CalleeSaveFpAlwaysSpills | kArm64CalleeSaveFpRefSpills |
-      (type == CalleeSaveType::kSaveRefsAndArgs ? kArm64CalleeSaveFpArgSpills : 0) |
-      (type == CalleeSaveType::kSaveAllCalleeSaves ? kArm64CalleeSaveFpAllSpills : 0) |
-      (type == CalleeSaveType::kSaveEverything ? kArm64CalleeSaveFpEverythingSpills : 0);
-}
+  static constexpr uint32_t GetFpSpills(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return kArm64CalleeSaveFpAlwaysSpills | kArm64CalleeSaveFpRefSpills |
+        (type == CalleeSaveType::kSaveRefsAndArgs ? kArm64CalleeSaveFpArgSpills : 0) |
+        (type == CalleeSaveType::kSaveAllCalleeSaves ? kArm64CalleeSaveFpAllSpills : 0) |
+        (type == CalleeSaveType::kSaveEverything ? kArm64CalleeSaveFpEverythingSpills : 0);
+  }
 
-constexpr uint32_t Arm64CalleeSaveFrameSize(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return RoundUp((POPCOUNT(Arm64CalleeSaveCoreSpills(type)) /* gprs */ +
-                  POPCOUNT(Arm64CalleeSaveFpSpills(type)) /* fprs */ +
-                  1 /* Method* */) * static_cast<size_t>(kArm64PointerSize), kStackAlignment);
-}
+  static constexpr uint32_t GetFrameSize(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return RoundUp((POPCOUNT(GetCoreSpills(type)) /* gprs */ +
+                    POPCOUNT(GetFpSpills(type)) /* fprs */ +
+                    1 /* Method* */) * static_cast<size_t>(kArm64PointerSize), kStackAlignment);
+  }
 
-constexpr QuickMethodFrameInfo Arm64CalleeSaveMethodFrameInfo(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return QuickMethodFrameInfo(Arm64CalleeSaveFrameSize(type),
-                              Arm64CalleeSaveCoreSpills(type),
-                              Arm64CalleeSaveFpSpills(type));
-}
+  static constexpr QuickMethodFrameInfo GetMethodFrameInfo(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return QuickMethodFrameInfo(GetFrameSize(type), GetCoreSpills(type), GetFpSpills(type));
+  }
 
-constexpr size_t Arm64CalleeSaveFpr1Offset(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return Arm64CalleeSaveFrameSize(type) -
-         (POPCOUNT(Arm64CalleeSaveCoreSpills(type)) +
-          POPCOUNT(Arm64CalleeSaveFpSpills(type))) * static_cast<size_t>(kArm64PointerSize);
-}
+  static constexpr size_t GetFpr1Offset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) -
+           (POPCOUNT(GetCoreSpills(type)) +
+            POPCOUNT(GetFpSpills(type))) * static_cast<size_t>(kArm64PointerSize);
+  }
 
-constexpr size_t Arm64CalleeSaveGpr1Offset(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return Arm64CalleeSaveFrameSize(type) -
-         POPCOUNT(Arm64CalleeSaveCoreSpills(type)) * static_cast<size_t>(kArm64PointerSize);
-}
+  static constexpr size_t GetGpr1Offset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) -
+           POPCOUNT(GetCoreSpills(type)) * static_cast<size_t>(kArm64PointerSize);
+  }
 
-constexpr size_t Arm64CalleeSaveLrOffset(CalleeSaveType type) {
-  type = GetCanonicalCalleeSaveType(type);
-  return Arm64CalleeSaveFrameSize(type) -
-      POPCOUNT(Arm64CalleeSaveCoreSpills(type) & (-(1 << LR))) *
-      static_cast<size_t>(kArm64PointerSize);
-}
+  static constexpr size_t GetReturnPcOffset(CalleeSaveType type) {
+    type = GetCanonicalCalleeSaveType(type);
+    return GetFrameSize(type) - static_cast<size_t>(kArm64PointerSize);
+  }
+};
 
 }  // namespace arm64
 }  // namespace art
 
-#endif  // ART_RUNTIME_ARCH_ARM64_QUICK_METHOD_FRAME_INFO_ARM64_H_
+#endif  // ART_RUNTIME_ARCH_ARM64_CALLEE_SAVE_FRAME_ARM64_H_
