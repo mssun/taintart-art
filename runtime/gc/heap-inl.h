@@ -272,7 +272,7 @@ inline mirror::Object* Heap::TryToAllocate(Thread* self,
     }
     case kAllocatorTypeRosAlloc: {
       if (kInstrumented && UNLIKELY(is_running_on_memory_tool_)) {
-        // If running on ASan, we should be using the instrumented path.
+        // If running on valgrind or asan, we should be using the instrumented path.
         size_t max_bytes_tl_bulk_allocated = rosalloc_space_->MaxBytesBulkAllocatedFor(alloc_size);
         if (UNLIKELY(IsOutOfMemoryOnAllocation(allocator_type,
                                                max_bytes_tl_bulk_allocated,
@@ -303,7 +303,7 @@ inline mirror::Object* Heap::TryToAllocate(Thread* self,
     }
     case kAllocatorTypeDlMalloc: {
       if (kInstrumented && UNLIKELY(is_running_on_memory_tool_)) {
-        // If running on ASan, we should be using the instrumented path.
+        // If running on valgrind, we should be using the instrumented path.
         ret = dlmalloc_space_->Alloc(self,
                                      alloc_size,
                                      bytes_allocated,
