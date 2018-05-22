@@ -2160,6 +2160,9 @@ class VerifyClassVisitor : public CompilationVisitor {
         DCHECK(failure_kind == verifier::FailureKind::kNoFailure) << failure_kind;
         failure_kind = verifier::FailureKind::kSoftFailure;
       }
+    } else if (&klass->GetDexFile() != &dex_file) {
+      // Skip a duplicate class (as the resolved class is from another, earlier dex file).
+      return;  // Do not update state.
     } else if (!SkipClass(jclass_loader, dex_file, klass.Get())) {
       CHECK(klass->IsResolved()) << klass->PrettyClass();
       failure_kind = class_linker->VerifyClass(soa.Self(), klass, log_level_);
@@ -2804,6 +2807,9 @@ static void CompileDexFile(CompilerDriver* driver,
       dex_cache = hs.NewHandle(class_linker->FindDexCache(soa.Self(), dex_file));
     } else if (SkipClass(jclass_loader, dex_file, klass.Get())) {
       return;
+    } else if (&klass->GetDexFile() != &dex_file) {
+      // Skip a duplicate class (as the resolved class is from another, earlier dex file).
+      return;  // Do not update state.
     } else {
       dex_cache = hs.NewHandle(klass->GetDexCache());
     }
