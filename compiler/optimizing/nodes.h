@@ -1285,6 +1285,7 @@ class HBasicBlock : public ArenaObject<kArenaAllocBasicBlock> {
   void SetLifetimeEnd(size_t end) { lifetime_end_ = end; }
 
   bool EndsWithControlFlowInstruction() const;
+  bool EndsWithReturn() const;
   bool EndsWithIf() const;
   bool EndsWithTryBoundary() const;
   bool HasSinglePhi() const;
