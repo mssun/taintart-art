@@ -651,12 +651,6 @@
         "description": ["Requires zip, which isn't available on device"]
     },
     {
-        "tests": "712-varhandle-invocations",
-        "variant": "speed-profile & debug & gcstress & target",
-        "bug": "b/73275005",
-        "description": ["Time out"]
-    },
-    {
         "tests": ["1941-dispose-stress", "522-checker-regression-monitor-exit"],
         "variant": "jvm",
         "bug": "b/73888836",
