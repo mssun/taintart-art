@@ -124,6 +124,11 @@ class MANAGED VarHandle : public Object {
   MethodType* GetMethodTypeForAccessMode(Thread* self, AccessMode accessMode)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Returns a string representing the descriptor of the MethodType associated with
+  // this AccessMode.
+  std::string PrettyDescriptorForAccessMode(AccessMode access_mode)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   bool Access(AccessMode access_mode,
               ShadowFrame* shadow_frame,
               const InstructionOperands* const operands,

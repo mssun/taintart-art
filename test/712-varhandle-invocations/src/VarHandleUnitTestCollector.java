@@ -19,30 +19,52 @@ import java.io.PrintStream;
 // Results collector for VarHandle Unit tests
 public final class VarHandleUnitTestCollector {
     private final PrintStream out = System.out;
+    private final boolean verbose = false;
 
     private int numberOfSuccesses;
     private int numberOfSkips;
     private int numberOfFailures;
+    private int consecutiveResults = 0;
+    private String current;
+    private long startMillis;
 
     public void start(String testName) {
-        out.print(testName);
-        out.print("...");
+        out.append(testName)
+                .append("...");
+        consecutiveResults = 0;
+        current = testName;
+        startMillis = System.currentTimeMillis();
+    }
+
+    private void printStatus(String status) {
+        out.print(status);
+        if (verbose) {
+            out.print('[');
+            out.print(System.currentTimeMillis() - startMillis);
+            out.print(']');
+        }
+        out.println();
     }
 
     public void skip() {
         numberOfSkips += 1;
-        out.println("SKIP");
+        printStatus("SKIP");
+        consecutiveResults++;
     }
 
     public void success() {
         numberOfSuccesses += 1;
-        out.println("OK");
+        printStatus("OK");
+        if (consecutiveResults++ > 1) {
+            throw new AssertionError("Oops: " + consecutiveResults);
+        }
     }
 
     public void fail(String errorMessage) {
         numberOfFailures += 1;
-        out.println("FAIL");
+        printStatus("FAIL");
         out.print(errorMessage);
+        consecutiveResults++;
     }
 
     public void printSummary() {
