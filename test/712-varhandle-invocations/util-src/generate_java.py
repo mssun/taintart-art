@@ -757,7 +757,9 @@ public class ${test_class} extends VarHandleUnitTest {
 """)
     with io.StringIO() as body_text:
         compatible_types = types_that_widen_to(var_type)
-        for value_type in VALUE_TYPES:
+        incompatible_types = { RANDOM.choice(list(VALUE_TYPES - compatible_types)) }
+        test_types = compatible_types | incompatible_types
+        for value_type in test_types:
             print("try {", file=body_text)
             return_type = accessor.get_return_type(var_type)
             if return_type:
@@ -765,7 +767,7 @@ public class ${test_class} extends VarHandleUnitTest {
             print("vh.{0}(this".format(accessor.method_name), end="", file=body_text)
             num_args = accessor.get_number_of_var_type_arguments()
             for i in range(0, num_args):
-                print(", {0}({1})".format(value_type.boxing_method(), value_type.examples[i]), end="", file=body_text)
+                print(", SampleValues.get_{0}({1})".format(value_type.boxed_type, i), end="", file=body_text)
             print(");", file=body_text)
             if value_type in compatible_types:
                 print("   assertTrue(vh.isAccessModeSupported(VarHandle.AccessMode.{0}));".format(accessor.access_mode),
@@ -817,7 +819,9 @@ public class ${test_class} extends VarHandleUnitTest {
     with io.StringIO() as body_text:
         return_type = accessor.get_return_type(var_type)
         compatible_types = { return_type }
-        for value_type in VALUE_TYPES:
+        incompatible_types = { RANDOM.choice(list(VALUE_TYPES - compatible_types)) }
+        test_types = compatible_types | incompatible_types
+        for value_type in test_types:
             print("try {", file=body_text)
             print("{0} result = ({0}) ".format(value_type.boxed_type), end="", file=body_text)
             print("vh.{0}(this".format(accessor.method_name), end="", file=body_text)
