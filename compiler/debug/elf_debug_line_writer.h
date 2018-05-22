@@ -100,15 +100,14 @@ class ElfDebugLineWriter {
       if (mi->code_info != nullptr) {
         // Use stack maps to create mapping table from pc to dex.
         const CodeInfo code_info(mi->code_info);
-        const CodeInfoEncoding encoding = code_info.ExtractEncoding();
-        pc2dex_map.reserve(code_info.GetNumberOfStackMaps(encoding));
-        for (uint32_t s = 0; s < code_info.GetNumberOfStackMaps(encoding); s++) {
-          StackMap stack_map = code_info.GetStackMapAt(s, encoding);
+        pc2dex_map.reserve(code_info.GetNumberOfStackMaps());
+        for (uint32_t s = 0; s < code_info.GetNumberOfStackMaps(); s++) {
+          StackMap stack_map = code_info.GetStackMapAt(s);
           DCHECK(stack_map.IsValid());
-          const uint32_t pc = stack_map.GetNativePcOffset(encoding.stack_map.encoding, isa);
-          const int32_t dex = stack_map.GetDexPc(encoding.stack_map.encoding);
+          const uint32_t pc = stack_map.GetNativePcOffset(isa);
+          const int32_t dex = stack_map.GetDexPc();
           pc2dex_map.push_back({pc, dex});
-          if (stack_map.HasDexRegisterMap(encoding.stack_map.encoding)) {
+          if (stack_map.HasDexRegisterMap()) {
             // Guess that the first map with local variables is the end of prologue.
             prologue_end = std::min(prologue_end, pc);
           }

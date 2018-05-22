@@ -22,7 +22,6 @@
 #include "base/utils.h"
 #include "method_info.h"
 #include "quick/quick_method_frame_info.h"
-#include "stack_map.h"
 
 namespace art {
 
@@ -73,10 +72,6 @@ class PACKED(4) OatQuickMethodHeader {
   uint8_t* GetOptimizedCodeInfoPtr() {
     DCHECK(IsOptimized());
     return code_ - vmap_table_offset_;
-  }
-
-  CodeInfo GetOptimizedCodeInfo() const {
-    return CodeInfo(GetOptimizedCodeInfoPtr());
   }
 
   const void* GetOptimizedMethodInfoPtr() const {

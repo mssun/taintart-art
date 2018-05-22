@@ -753,7 +753,7 @@ class OatDumper {
       kByteKindQuickMethodHeader,
       kByteKindCodeInfoLocationCatalog,
       kByteKindCodeInfoDexRegisterMap,
-      kByteKindCodeInfoEncoding,
+      kByteKindCodeInfo,
       kByteKindCodeInfoInvokeInfo,
       kByteKindCodeInfoStackMasks,
       kByteKindCodeInfoRegisterMasks,
@@ -800,7 +800,7 @@ class OatDumper {
       if (sum > 0) {
         Dump(os, "Code                            ", bits[kByteKindCode], sum);
         Dump(os, "QuickMethodHeader               ", bits[kByteKindQuickMethodHeader], sum);
-        Dump(os, "CodeInfoEncoding                ", bits[kByteKindCodeInfoEncoding], sum);
+        Dump(os, "CodeInfo                        ", bits[kByteKindCodeInfo], sum);
         Dump(os, "CodeInfoLocationCatalog         ", bits[kByteKindCodeInfoLocationCatalog], sum);
         Dump(os, "CodeInfoDexRegisterMap          ", bits[kByteKindCodeInfoDexRegisterMap], sum);
         Dump(os, "CodeInfoStackMasks              ", bits[kByteKindCodeInfoStackMasks], sum);
@@ -819,7 +819,7 @@ class OatDumper {
                stack_map_bits,
                "stack map");
           Dump(os,
-               "StackMapDexPcEncoding         ",
+               "StackMapDexPc                 ",
                bits[kByteKindStackMapDexPc],
                stack_map_bits,
                "stack map");
@@ -1732,8 +1732,7 @@ class OatDumper {
    public:
     explicit StackMapsHelper(const uint8_t* raw_code_info, InstructionSet instruction_set)
         : code_info_(raw_code_info),
-          encoding_(code_info_.ExtractEncoding()),
-          number_of_stack_maps_(code_info_.GetNumberOfStackMaps(encoding_)),
+          number_of_stack_maps_(code_info_.GetNumberOfStackMaps()),
           indexes_(),
           offset_(static_cast<uint32_t>(-1)),
           stack_map_index_(0u),
@@ -1741,11 +1740,11 @@ class OatDumper {
       if (number_of_stack_maps_ != 0u) {
         // Check if native PCs are ordered.
         bool ordered = true;
-        StackMap last = code_info_.GetStackMapAt(0u, encoding_);
+        StackMap last = code_info_.GetStackMapAt(0u);
         for (size_t i = 1; i != number_of_stack_maps_; ++i) {
-          StackMap current = code_info_.GetStackMapAt(i, encoding_);
-          if (last.GetNativePcOffset(encoding_.stack_map.encoding, instruction_set) >
-              current.GetNativePcOffset(encoding_.stack_map.encoding, instruction_set)) {
+          StackMap current = code_info_.GetStackMapAt(i);
+          if (last.GetNativePcOffset(instruction_set) >
+              current.GetNativePcOffset(instruction_set)) {
             ordered = false;
             break;
           }
@@ -1760,27 +1759,20 @@ class OatDumper {
           std::sort(indexes_.begin(),
                     indexes_.end(),
                     [this](size_t lhs, size_t rhs) {
-                      StackMap left = code_info_.GetStackMapAt(lhs, encoding_);
-                      uint32_t left_pc = left.GetNativePcOffset(encoding_.stack_map.encoding,
-                                                                instruction_set_);
-                      StackMap right = code_info_.GetStackMapAt(rhs, encoding_);
-                      uint32_t right_pc = right.GetNativePcOffset(encoding_.stack_map.encoding,
-                                                                  instruction_set_);
+                      StackMap left = code_info_.GetStackMapAt(lhs);
+                      uint32_t left_pc = left.GetNativePcOffset(instruction_set_);
+                      StackMap right = code_info_.GetStackMapAt(rhs);
+                      uint32_t right_pc = right.GetNativePcOffset(instruction_set_);
                       // If the PCs are the same, compare indexes to preserve the original order.
                       return (left_pc < right_pc) || (left_pc == right_pc && lhs < rhs);
                     });
         }
-        offset_ = GetStackMapAt(0).GetNativePcOffset(encoding_.stack_map.encoding,
-                                                     instruction_set_);
+        offset_ = GetStackMapAt(0).GetNativePcOffset(instruction_set_);
       }
     }
 
     const CodeInfo& GetCodeInfo() const {
       return code_info_;
-    }
-
-    const CodeInfoEncoding& GetEncoding() const {
-      return encoding_;
     }
 
     uint32_t GetOffset() const {
@@ -1795,8 +1787,7 @@ class OatDumper {
       ++stack_map_index_;
       offset_ = (stack_map_index_ == number_of_stack_maps_)
           ? static_cast<uint32_t>(-1)
-          : GetStackMapAt(stack_map_index_).GetNativePcOffset(encoding_.stack_map.encoding,
-                                                              instruction_set_);
+          : GetStackMapAt(stack_map_index_).GetNativePcOffset(instruction_set_);
     }
 
    private:
@@ -1805,11 +1796,10 @@ class OatDumper {
         i = indexes_[i];
       }
       DCHECK_LT(i, number_of_stack_maps_);
-      return code_info_.GetStackMapAt(i, encoding_);
+      return code_info_.GetStackMapAt(i);
     }
 
     const CodeInfo code_info_;
-    const CodeInfoEncoding encoding_;
     const size_t number_of_stack_maps_;
     dchecked_vector<size_t> indexes_;  // Used if stack map native PCs are not ordered.
     uint32_t offset_;
@@ -1835,79 +1825,75 @@ class OatDumper {
       StackMapsHelper helper(oat_method.GetVmapTable(), instruction_set_);
       MethodInfo method_info(oat_method.GetOatQuickMethodHeader()->GetOptimizedMethodInfo());
       {
-        CodeInfoEncoding encoding(helper.GetEncoding());
-        StackMapEncoding stack_map_encoding(encoding.stack_map.encoding);
-        const size_t num_stack_maps = encoding.stack_map.num_entries;
-        if (stats_.AddBitsIfUnique(Stats::kByteKindCodeInfoEncoding,
-                                   encoding.HeaderSize() * kBitsPerByte,
+        const CodeInfo code_info = helper.GetCodeInfo();
+        const BitTable<StackMap::kCount>& stack_maps = code_info.stack_maps_;
+        const size_t num_stack_maps = stack_maps.NumRows();
+        if (stats_.AddBitsIfUnique(Stats::kByteKindCodeInfo,
+                                   code_info.size_ * kBitsPerByte,
                                    oat_method.GetVmapTable())) {
           // Stack maps
           stats_.AddBits(
               Stats::kByteKindStackMapNativePc,
-              stack_map_encoding.GetNativePcEncoding().BitSize() * num_stack_maps);
+              stack_maps.NumColumnBits(StackMap::kNativePcOffset) * num_stack_maps);
           stats_.AddBits(
               Stats::kByteKindStackMapDexPc,
-              stack_map_encoding.GetDexPcEncoding().BitSize() * num_stack_maps);
+              stack_maps.NumColumnBits(StackMap::kDexPc) * num_stack_maps);
           stats_.AddBits(
               Stats::kByteKindStackMapDexRegisterMap,
-              stack_map_encoding.GetDexRegisterMapEncoding().BitSize() * num_stack_maps);
+              stack_maps.NumColumnBits(StackMap::kDexRegisterMapOffset) * num_stack_maps);
           stats_.AddBits(
               Stats::kByteKindStackMapInlineInfoIndex,
-              stack_map_encoding.GetInlineInfoEncoding().BitSize() * num_stack_maps);
+              stack_maps.NumColumnBits(StackMap::kInlineInfoIndex) * num_stack_maps);
           stats_.AddBits(
               Stats::kByteKindStackMapRegisterMaskIndex,
-              stack_map_encoding.GetRegisterMaskIndexEncoding().BitSize() * num_stack_maps);
+              stack_maps.NumColumnBits(StackMap::kRegisterMaskIndex) * num_stack_maps);
           stats_.AddBits(
               Stats::kByteKindStackMapStackMaskIndex,
-              stack_map_encoding.GetStackMaskIndexEncoding().BitSize() * num_stack_maps);
+              stack_maps.NumColumnBits(StackMap::kStackMaskIndex) * num_stack_maps);
 
           // Stack masks
           stats_.AddBits(
               Stats::kByteKindCodeInfoStackMasks,
-              encoding.stack_mask.encoding.BitSize() * encoding.stack_mask.num_entries);
+              code_info.stack_masks_.size_in_bits());
 
           // Register masks
           stats_.AddBits(
               Stats::kByteKindCodeInfoRegisterMasks,
-              encoding.register_mask.encoding.BitSize() * encoding.register_mask.num_entries);
+              code_info.register_masks_.DataBitSize());
 
           // Invoke infos
-          if (encoding.invoke_info.num_entries > 0u) {
-            stats_.AddBits(
-                Stats::kByteKindCodeInfoInvokeInfo,
-                encoding.invoke_info.encoding.BitSize() * encoding.invoke_info.num_entries);
-          }
+          stats_.AddBits(
+              Stats::kByteKindCodeInfoInvokeInfo,
+              code_info.invoke_infos_.DataBitSize());
 
           // Location catalog
           const size_t location_catalog_bytes =
-              helper.GetCodeInfo().GetDexRegisterLocationCatalogSize(encoding);
+              helper.GetCodeInfo().GetDexRegisterLocationCatalogSize();
           stats_.AddBits(Stats::kByteKindCodeInfoLocationCatalog,
                          kBitsPerByte * location_catalog_bytes);
           // Dex register bytes.
           const size_t dex_register_bytes =
-              helper.GetCodeInfo().GetDexRegisterMapsSize(encoding,
-                                                          code_item_accessor.RegistersSize());
+              helper.GetCodeInfo().GetDexRegisterMapsSize(code_item_accessor.RegistersSize());
           stats_.AddBits(
               Stats::kByteKindCodeInfoDexRegisterMap,
               kBitsPerByte * dex_register_bytes);
 
           // Inline infos.
-          const size_t num_inline_infos = encoding.inline_info.num_entries;
+          const BitTable<InlineInfo::kCount>& inline_infos = code_info.inline_infos_;
+          const size_t num_inline_infos = inline_infos.NumRows();
           if (num_inline_infos > 0u) {
             stats_.AddBits(
                 Stats::kByteKindInlineInfoMethodIndexIdx,
-                encoding.inline_info.encoding.GetMethodIndexIdxEncoding().BitSize() *
-                    num_inline_infos);
+                inline_infos.NumColumnBits(InlineInfo::kMethodIndexIdx) * num_inline_infos);
             stats_.AddBits(
                 Stats::kByteKindInlineInfoDexPc,
-                encoding.inline_info.encoding.GetDexPcEncoding().BitSize() * num_inline_infos);
+                inline_infos.NumColumnBits(InlineInfo::kDexPc) * num_inline_infos);
             stats_.AddBits(
                 Stats::kByteKindInlineInfoExtraData,
-                encoding.inline_info.encoding.GetExtraDataEncoding().BitSize() * num_inline_infos);
+                inline_infos.NumColumnBits(InlineInfo::kExtraData) * num_inline_infos);
             stats_.AddBits(
                 Stats::kByteKindInlineInfoDexRegisterMap,
-                encoding.inline_info.encoding.GetDexRegisterMapEncoding().BitSize() *
-                    num_inline_infos);
+                inline_infos.NumColumnBits(InlineInfo::kDexRegisterMapOffset) * num_inline_infos);
             stats_.AddBits(Stats::kByteKindInlineInfoIsLast, num_inline_infos);
           }
         }
@@ -1922,7 +1908,6 @@ class OatDumper {
           DCHECK(stack_map.IsValid());
           stack_map.Dump(vios,
                          helper.GetCodeInfo(),
-                         helper.GetEncoding(),
                          method_info,
                          oat_method.GetCodeOffset(),
                          code_item_accessor.RegistersSize(),

@@ -19,6 +19,7 @@
 #include "art_method.h"
 #include "dex/dex_file_types.h"
 #include "scoped_thread_state_change-inl.h"
+#include "stack_map.h"
 #include "thread.h"
 
 namespace art {
@@ -42,11 +43,10 @@ uint32_t OatQuickMethodHeader::ToDexPc(ArtMethod* method,
   const void* entry_point = GetEntryPoint();
   uint32_t sought_offset = pc - reinterpret_cast<uintptr_t>(entry_point);
   if (IsOptimized()) {
-    CodeInfo code_info = GetOptimizedCodeInfo();
-    CodeInfoEncoding encoding = code_info.ExtractEncoding();
-    StackMap stack_map = code_info.GetStackMapForNativePcOffset(sought_offset, encoding);
+    CodeInfo code_info(this);
+    StackMap stack_map = code_info.GetStackMapForNativePcOffset(sought_offset);
     if (stack_map.IsValid()) {
-      return stack_map.GetDexPc(encoding.stack_map.encoding);
+      return stack_map.GetDexPc();
     }
   } else {
     DCHECK(method->IsNative());
@@ -71,18 +71,17 @@ uintptr_t OatQuickMethodHeader::ToNativeQuickPc(ArtMethod* method,
   DCHECK(!method->IsNative());
   DCHECK(IsOptimized());
   // Search for the dex-to-pc mapping in stack maps.
-  CodeInfo code_info = GetOptimizedCodeInfo();
-  CodeInfoEncoding encoding = code_info.ExtractEncoding();
+  CodeInfo code_info(this);
 
   // All stack maps are stored in the same CodeItem section, safepoint stack
   // maps first, then catch stack maps. We use `is_for_catch_handler` to select
   // the order of iteration.
   StackMap stack_map =
-      LIKELY(is_for_catch_handler) ? code_info.GetCatchStackMapForDexPc(dex_pc, encoding)
-                                   : code_info.GetStackMapForDexPc(dex_pc, encoding);
+      LIKELY(is_for_catch_handler) ? code_info.GetCatchStackMapForDexPc(dex_pc)
+                                   : code_info.GetStackMapForDexPc(dex_pc);
   if (stack_map.IsValid()) {
     return reinterpret_cast<uintptr_t>(entry_point) +
-           stack_map.GetNativePcOffset(encoding.stack_map.encoding, kRuntimeISA);
+           stack_map.GetNativePcOffset(kRuntimeISA);
   }
   if (abort_on_failure) {
     ScopedObjectAccess soa(Thread::Current());
