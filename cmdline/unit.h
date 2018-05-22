@@ -21,9 +21,8 @@ namespace art {
 
 // Used for arguments that simply indicate presence (e.g. "-help") without any values.
 struct Unit {
-  // Historical note: We specified a user-defined constructor to avoid
-  // 'Conditional jump or move depends on uninitialised value(s)' errors
-  // when running Valgrind.
+  // Avoid 'Conditional jump or move depends on uninitialised value(s)' errors
+  // when running valgrind by specifying a user-defined constructor.
   Unit() {}
   Unit(const Unit&) = default;
   ~Unit() {}

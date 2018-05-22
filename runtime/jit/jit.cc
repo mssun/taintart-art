@@ -332,7 +332,7 @@ void Jit::DeleteThreadPool() {
     }
 
     // When running sanitized, let all tasks finish to not leak. Otherwise just clear the queue.
-    if (!kRunningOnMemoryTool) {
+    if (!RUNNING_ON_MEMORY_TOOL) {
       pool->StopWorkers(self);
       pool->RemoveAllTasks(self);
     }

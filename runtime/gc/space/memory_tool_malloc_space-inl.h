@@ -30,14 +30,11 @@ namespace space {
 namespace memory_tool_details {
 
 template <size_t kMemoryToolRedZoneBytes, bool kUseObjSizeForUsable>
-inline mirror::Object* AdjustForMemoryTool(void* obj_with_rdz,
-                                           size_t num_bytes,
-                                           size_t bytes_allocated,
-                                           size_t usable_size,
-                                           size_t bytes_tl_bulk_allocated,
-                                           size_t* bytes_allocated_out,
-                                           size_t* usable_size_out,
-                                           size_t* bytes_tl_bulk_allocated_out) {
+inline mirror::Object* AdjustForValgrind(void* obj_with_rdz, size_t num_bytes,
+                                         size_t bytes_allocated, size_t usable_size,
+                                         size_t bytes_tl_bulk_allocated,
+                                         size_t* bytes_allocated_out, size_t* usable_size_out,
+                                         size_t* bytes_tl_bulk_allocated_out) {
   if (bytes_allocated_out != nullptr) {
     *bytes_allocated_out = bytes_allocated;
   }
@@ -87,31 +84,24 @@ template <typename S,
           bool kUseObjSizeForUsable>
 mirror::Object*
 MemoryToolMallocSpace<S,
-                      kMemoryToolRedZoneBytes,
-                      kAdjustForRedzoneInAllocSize,
-                      kUseObjSizeForUsable>::AllocWithGrowth(
-    Thread* self,
-    size_t num_bytes,
-    size_t* bytes_allocated_out,
-    size_t* usable_size_out,
+                    kMemoryToolRedZoneBytes,
+                    kAdjustForRedzoneInAllocSize,
+                    kUseObjSizeForUsable>::AllocWithGrowth(
+    Thread* self, size_t num_bytes, size_t* bytes_allocated_out, size_t* usable_size_out,
     size_t* bytes_tl_bulk_allocated_out) {
   size_t bytes_allocated;
   size_t usable_size;
   size_t bytes_tl_bulk_allocated;
-  void* obj_with_rdz = S::AllocWithGrowth(self,
-                                          num_bytes + 2 * kMemoryToolRedZoneBytes,
-                                          &bytes_allocated,
-                                          &usable_size,
+  void* obj_with_rdz = S::AllocWithGrowth(self, num_bytes + 2 * kMemoryToolRedZoneBytes,
+                                          &bytes_allocated, &usable_size,
                                           &bytes_tl_bulk_allocated);
   if (obj_with_rdz == nullptr) {
     return nullptr;
   }
 
-  return memory_tool_details::AdjustForMemoryTool<kMemoryToolRedZoneBytes, kUseObjSizeForUsable>(
-      obj_with_rdz,
-      num_bytes,
-      bytes_allocated,
-      usable_size,
+  return memory_tool_details::AdjustForValgrind<kMemoryToolRedZoneBytes, kUseObjSizeForUsable>(
+      obj_with_rdz, num_bytes,
+      bytes_allocated, usable_size,
       bytes_tl_bulk_allocated,
       bytes_allocated_out,
       usable_size_out,
@@ -123,35 +113,27 @@ template <typename S,
           bool kAdjustForRedzoneInAllocSize,
           bool kUseObjSizeForUsable>
 mirror::Object* MemoryToolMallocSpace<S,
-                                      kMemoryToolRedZoneBytes,
-                                      kAdjustForRedzoneInAllocSize,
-                                      kUseObjSizeForUsable>::Alloc(
-    Thread* self,
-    size_t num_bytes,
-    size_t* bytes_allocated_out,
-    size_t* usable_size_out,
+                                    kMemoryToolRedZoneBytes,
+                                    kAdjustForRedzoneInAllocSize,
+                                    kUseObjSizeForUsable>::Alloc(
+    Thread* self, size_t num_bytes, size_t* bytes_allocated_out, size_t* usable_size_out,
     size_t* bytes_tl_bulk_allocated_out) {
   size_t bytes_allocated;
   size_t usable_size;
   size_t bytes_tl_bulk_allocated;
-  void* obj_with_rdz = S::Alloc(self,
-                                num_bytes + 2 * kMemoryToolRedZoneBytes,
-                                &bytes_allocated,
-                                &usable_size,
-                                &bytes_tl_bulk_allocated);
+  void* obj_with_rdz = S::Alloc(self, num_bytes + 2 * kMemoryToolRedZoneBytes,
+                                &bytes_allocated, &usable_size, &bytes_tl_bulk_allocated);
   if (obj_with_rdz == nullptr) {
     return nullptr;
   }
 
-  return memory_tool_details::AdjustForMemoryTool<kMemoryToolRedZoneBytes, kUseObjSizeForUsable>(
-      obj_with_rdz,
-      num_bytes,
-      bytes_allocated,
-      usable_size,
-      bytes_tl_bulk_allocated,
-      bytes_allocated_out,
-      usable_size_out,
-      bytes_tl_bulk_allocated_out);
+  return memory_tool_details::AdjustForValgrind<kMemoryToolRedZoneBytes,
+                                             kUseObjSizeForUsable>(obj_with_rdz, num_bytes,
+                                                                   bytes_allocated, usable_size,
+                                                                   bytes_tl_bulk_allocated,
+                                                                   bytes_allocated_out,
+                                                                   usable_size_out,
+                                                                   bytes_tl_bulk_allocated_out);
 }
 
 template <typename S,
@@ -159,31 +141,24 @@ template <typename S,
           bool kAdjustForRedzoneInAllocSize,
           bool kUseObjSizeForUsable>
 mirror::Object* MemoryToolMallocSpace<S,
-                                      kMemoryToolRedZoneBytes,
-                                      kAdjustForRedzoneInAllocSize,
-                                      kUseObjSizeForUsable>::AllocThreadUnsafe(
-    Thread* self,
-    size_t num_bytes,
-    size_t* bytes_allocated_out,
-    size_t* usable_size_out,
+                                    kMemoryToolRedZoneBytes,
+                                    kAdjustForRedzoneInAllocSize,
+                                    kUseObjSizeForUsable>::AllocThreadUnsafe(
+    Thread* self, size_t num_bytes, size_t* bytes_allocated_out, size_t* usable_size_out,
     size_t* bytes_tl_bulk_allocated_out) {
   size_t bytes_allocated;
   size_t usable_size;
   size_t bytes_tl_bulk_allocated;
-  void* obj_with_rdz = S::AllocThreadUnsafe(self,
-                                            num_bytes + 2 * kMemoryToolRedZoneBytes,
-                                            &bytes_allocated,
-                                            &usable_size,
+  void* obj_with_rdz = S::AllocThreadUnsafe(self, num_bytes + 2 * kMemoryToolRedZoneBytes,
+                                            &bytes_allocated, &usable_size,
                                             &bytes_tl_bulk_allocated);
   if (obj_with_rdz == nullptr) {
     return nullptr;
   }
 
-  return memory_tool_details::AdjustForMemoryTool<kMemoryToolRedZoneBytes, kUseObjSizeForUsable>(
-      obj_with_rdz,
-      num_bytes,
-      bytes_allocated,
-      usable_size,
+  return memory_tool_details::AdjustForValgrind<kMemoryToolRedZoneBytes, kUseObjSizeForUsable>(
+      obj_with_rdz, num_bytes,
+      bytes_allocated, usable_size,
       bytes_tl_bulk_allocated,
       bytes_allocated_out,
       usable_size_out,
@@ -195,14 +170,12 @@ template <typename S,
           bool kAdjustForRedzoneInAllocSize,
           bool kUseObjSizeForUsable>
 size_t MemoryToolMallocSpace<S,
-                             kMemoryToolRedZoneBytes,
-                             kAdjustForRedzoneInAllocSize,
-                             kUseObjSizeForUsable>::AllocationSize(
+                           kMemoryToolRedZoneBytes,
+                           kAdjustForRedzoneInAllocSize,
+                           kUseObjSizeForUsable>::AllocationSize(
     mirror::Object* obj, size_t* usable_size) {
-  size_t result = S::AllocationSize(
-      reinterpret_cast<mirror::Object*>(
-          reinterpret_cast<uint8_t*>(obj)
-              - (kAdjustForRedzoneInAllocSize ? kMemoryToolRedZoneBytes : 0)),
+  size_t result = S::AllocationSize(reinterpret_cast<mirror::Object*>(
+      reinterpret_cast<uint8_t*>(obj) - (kAdjustForRedzoneInAllocSize ? kMemoryToolRedZoneBytes : 0)),
       usable_size);
   if (usable_size != nullptr) {
     if (kUseObjSizeForUsable) {
@@ -219,9 +192,10 @@ template <typename S,
           bool kAdjustForRedzoneInAllocSize,
           bool kUseObjSizeForUsable>
 size_t MemoryToolMallocSpace<S,
-                             kMemoryToolRedZoneBytes,
-                             kAdjustForRedzoneInAllocSize,
-                             kUseObjSizeForUsable>::Free(Thread* self, mirror::Object* ptr) {
+                           kMemoryToolRedZoneBytes,
+                           kAdjustForRedzoneInAllocSize,
+                           kUseObjSizeForUsable>::Free(
+    Thread* self, mirror::Object* ptr) {
   void* obj_after_rdz = reinterpret_cast<void*>(ptr);
   uint8_t* obj_with_rdz = reinterpret_cast<uint8_t*>(obj_after_rdz) - kMemoryToolRedZoneBytes;
 
@@ -246,10 +220,10 @@ template <typename S,
           bool kAdjustForRedzoneInAllocSize,
           bool kUseObjSizeForUsable>
 size_t MemoryToolMallocSpace<S,
-                             kMemoryToolRedZoneBytes,
-                             kAdjustForRedzoneInAllocSize,
-                             kUseObjSizeForUsable>::FreeList(
-                                 Thread* self, size_t num_ptrs, mirror::Object** ptrs) {
+                           kMemoryToolRedZoneBytes,
+                           kAdjustForRedzoneInAllocSize,
+                           kUseObjSizeForUsable>::FreeList(
+    Thread* self, size_t num_ptrs, mirror::Object** ptrs) {
   size_t freed = 0;
   for (size_t i = 0; i < num_ptrs; i++) {
     freed += Free(self, ptrs[i]);
@@ -264,12 +238,11 @@ template <typename S,
           bool kUseObjSizeForUsable>
 template <typename... Params>
 MemoryToolMallocSpace<S,
-                      kMemoryToolRedZoneBytes,
-                      kAdjustForRedzoneInAllocSize,
-                      kUseObjSizeForUsable>::MemoryToolMallocSpace(
-                          MemMap* mem_map, size_t initial_size, Params... params)
-                          : S(mem_map, initial_size, params...) {
-  // Don't want to change the memory tool states of the mem map here as the allocator is already
+                    kMemoryToolRedZoneBytes,
+                    kAdjustForRedzoneInAllocSize,
+                    kUseObjSizeForUsable>::MemoryToolMallocSpace(
+    MemMap* mem_map, size_t initial_size, Params... params) : S(mem_map, initial_size, params...) {
+  // Don't want to change the valgrind states of the mem map here as the allocator is already
   // initialized at this point and that may interfere with what the allocator does internally. Note
   // that the tail beyond the initial size is mprotected.
 }
@@ -279,9 +252,9 @@ template <typename S,
           bool kAdjustForRedzoneInAllocSize,
           bool kUseObjSizeForUsable>
 size_t MemoryToolMallocSpace<S,
-                             kMemoryToolRedZoneBytes,
-                             kAdjustForRedzoneInAllocSize,
-                             kUseObjSizeForUsable>::MaxBytesBulkAllocatedFor(size_t num_bytes) {
+                           kMemoryToolRedZoneBytes,
+                           kAdjustForRedzoneInAllocSize,
+                           kUseObjSizeForUsable>::MaxBytesBulkAllocatedFor(size_t num_bytes) {
   return S::MaxBytesBulkAllocatedFor(num_bytes + 2 * kMemoryToolRedZoneBytes);
 }
 

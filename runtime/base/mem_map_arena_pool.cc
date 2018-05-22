@@ -125,7 +125,7 @@ size_t MemMapArenaPool::GetBytesAllocated() const {
 }
 
 void MemMapArenaPool::FreeArenaChain(Arena* first) {
-  if (kRunningOnMemoryTool) {
+  if (UNLIKELY(RUNNING_ON_MEMORY_TOOL > 0)) {
     for (Arena* arena = first; arena != nullptr; arena = arena->next_) {
       MEMORY_TOOL_MAKE_UNDEFINED(arena->memory_, arena->bytes_allocated_);
     }

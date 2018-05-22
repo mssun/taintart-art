@@ -408,15 +408,55 @@ endif
 ART_TEST_HOST_GTEST$(ART_PHONY_TEST_HOST_SUFFIX)_RULES :=
 ART_TEST_HOST_GTEST$(2ND_ART_PHONY_TEST_HOST_SUFFIX)_RULES :=
 ART_TEST_HOST_GTEST_RULES :=
+ART_TEST_HOST_VALGRIND_GTEST$(ART_PHONY_TEST_HOST_SUFFIX)_RULES :=
+ART_TEST_HOST_VALGRIND_GTEST$(2ND_ART_PHONY_TEST_HOST_SUFFIX)_RULES :=
+ART_TEST_HOST_VALGRIND_GTEST_RULES :=
 ART_TEST_TARGET_GTEST$(ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
 ART_TEST_TARGET_GTEST$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
 ART_TEST_TARGET_GTEST_RULES :=
+ART_TEST_TARGET_VALGRIND_GTEST$(ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
+ART_TEST_TARGET_VALGRIND_GTEST$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
+ART_TEST_TARGET_VALGRIND_GTEST_RULES :=
 ART_TEST_HOST_GTEST_DEPENDENCIES :=
 
 ART_GTEST_TARGET_ANDROID_ROOT := '/system'
 ifneq ($(ART_TEST_ANDROID_ROOT),)
   ART_GTEST_TARGET_ANDROID_ROOT := $(ART_TEST_ANDROID_ROOT)
 endif
+
+ART_VALGRIND_TARGET_DEPENDENCIES :=
+
+# Has to match list in external/valgrind/Android.build_one.mk
+ART_VALGRIND_SUPPORTED_ARCH := arm arm64 x86_64
+
+# Valgrind is not supported for x86
+ifneq (,$(filter $(ART_VALGRIND_SUPPORTED_ARCH),$(TARGET_ARCH)))
+art_vg_arch := $(if $(filter x86_64,$(TARGET_ARCH)),amd64,$(TARGET_ARCH))
+ART_VALGRIND_TARGET_DEPENDENCIES += \
+  $(TARGET_OUT_EXECUTABLES)/valgrind \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/memcheck-$(art_vg_arch)-linux \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_core-$(art_vg_arch)-linux.so \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_memcheck-$(art_vg_arch)-linux.so \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/default.supp
+art_vg_arch :=
+endif
+
+ifdef TARGET_2ND_ARCH
+ifneq (,$(filter $(ART_VALGRIND_SUPPORTED_ARCH),$(TARGET_2ND_ARCH)))
+ART_VALGRIND_TARGET_DEPENDENCIES += \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/memcheck-$(TARGET_2ND_ARCH)-linux \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_core-$(TARGET_2ND_ARCH)-linux.so \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_memcheck-$(TARGET_2ND_ARCH)-linux.so
+endif
+endif
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := valgrind-target-suppressions.txt
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_TAGS := optional
+LOCAL_SRC_FILES := test/valgrind-target-suppressions.txt
+LOCAL_MODULE_PATH := $(ART_TARGET_TEST_OUT)
+include $(BUILD_PREBUILT)
 
 # Define a make rule for a target device gtest.
 # $(1): gtest name - the name of the test we're building such as leb128_test.
@@ -437,9 +477,10 @@ define define-art-gtest-rule-target
     $$($(3)TARGET_OUT_SHARED_LIBRARIES)/libjavacore.so \
     $$($(3)TARGET_OUT_SHARED_LIBRARIES)/libopenjdkd.so \
     $$(TARGET_OUT_JAVA_LIBRARIES)/core-libart-testdex.jar \
-    $$(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar
+    $$(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar \
+    $$(ART_TARGET_TEST_OUT)/valgrind-target-suppressions.txt
 
-$$(gtest_rule): PRIVATE_TARGET_EXE := $$(gtest_target_exe)
+$$(gtest_rule) valgrind-$$(gtest_rule): PRIVATE_TARGET_EXE := $$(gtest_target_exe)
 
 ifeq ($(ART_TEST_CHROOT),)
 # Non-chroot configuration.
@@ -474,7 +515,37 @@ $$(gtest_rule): test-art-target-sync
   ART_TEST_TARGET_GTEST_RULES += $$(gtest_rule)
   ART_TEST_TARGET_GTEST_$(1)_RULES += $$(gtest_rule)
 
+# File witnessing the success of the Valgrind gtest, the presence of which means the gtest's
+# success.
+valgrind_gtest_witness := \
+  $(maybe_art_test_chroot)$(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/valgrind-$$(gtest_rule)-$$$$PPID
+
+valgrind-$$(gtest_rule): VALGRIND_GTEST_WITNESS := $$(valgrind_gtest_witness)
+
+.PHONY: valgrind-$$(gtest_rule)
+valgrind-$$(gtest_rule): $(ART_VALGRIND_TARGET_DEPENDENCIES) test-art-target-sync
+	$(hide) adb shell touch $$(VALGRIND_GTEST_WITNESS)
+	$(hide) adb shell rm $$(VALGRIND_GTEST_WITNESS)
+	$(hide) adb shell chmod 755 $(maybe_art_test_chroot)$$(PRIVATE_TARGET_EXE)
+	$(hide) $$(call ART_TEST_SKIP,$$@) && \
+	  (adb shell "$(maybe_chroot_command) env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
+	       ANDROID_ROOT=$(ART_GTEST_TARGET_ANDROID_ROOT) \
+	       $(ART_GTEST_TARGET_ANDROID_ROOT)/bin/valgrind \
+	       --leak-check=full --error-exitcode=1 --workaround-gcc296-bugs=yes \
+	       --suppressions=$(ART_TARGET_TEST_DIR)/valgrind-target-suppressions.txt \
+	       --num-callers=50 --show-mismatched-frees=no $$(PRIVATE_TARGET_EXE) \
+	     && touch $$(VALGRIND_GTEST_WITNESS)" \
+	   && (adb pull $$(VALGRIND_GTEST_WITNESS) /tmp/ && $$(call ART_TEST_PASSED,$$@)) \
+	   || $$(call ART_TEST_FAILED,$$@))
+	$(hide) rm -f /tmp/$$@-$$$$PPID
+
+  ART_TEST_TARGET_VALGRIND_GTEST$$($(3)ART_PHONY_TEST_TARGET_SUFFIX)_RULES += \
+    valgrind-$$(gtest_rule)
+  ART_TEST_TARGET_VALGRIND_GTEST_RULES += valgrind-$$(gtest_rule)
+  ART_TEST_TARGET_VALGRIND_GTEST_$(1)_RULES += valgrind-$$(gtest_rule)
+
   # Clear locally defined variables.
+  valgrind_gtest_witness :=
   gtest_witness :=
   maybe_chroot_command :=
   maybe_art_test_chroot :=
@@ -482,6 +553,16 @@ $$(gtest_rule): test-art-target-sync
   gtest_exe :=
   gtest_rule :=
 endef  # define-art-gtest-rule-target
+
+ART_VALGRIND_DEPENDENCIES := \
+  $(HOST_OUT_EXECUTABLES)/valgrind \
+  $(HOST_OUT)/lib64/valgrind/memcheck-amd64-linux \
+  $(HOST_OUT)/lib64/valgrind/memcheck-x86-linux \
+  $(HOST_OUT)/lib64/valgrind/default.supp \
+  $(HOST_OUT)/lib64/valgrind/vgpreload_core-amd64-linux.so \
+  $(HOST_OUT)/lib64/valgrind/vgpreload_core-x86-linux.so \
+  $(HOST_OUT)/lib64/valgrind/vgpreload_memcheck-amd64-linux.so \
+  $(HOST_OUT)/lib64/valgrind/vgpreload_memcheck-x86-linux.so
 
 # Define make rules for a host gtests.
 # $(1): gtest name - the name of the test we're building such as leb128_test.
@@ -534,6 +615,19 @@ endif
   ART_TEST_HOST_GTEST_$(1)_RULES += $$(gtest_rule)
 
 
+.PHONY: valgrind-$$(gtest_rule)
+valgrind-$$(gtest_rule): $$(gtest_exe) $$(gtest_deps) $(ART_VALGRIND_DEPENDENCIES)
+	$(hide) $$(call ART_TEST_SKIP,$$@) && \
+	  VALGRIND_LIB=$(HOST_OUT)/lib64/valgrind \
+	  $(HOST_OUT_EXECUTABLES)/valgrind --leak-check=full --error-exitcode=1 \
+	    --suppressions=art/test/valgrind-suppressions.txt --num-callers=50 \
+	    $$< && \
+	    $$(call ART_TEST_PASSED,$$@) || $$(call ART_TEST_FAILED,$$@)
+
+  ART_TEST_HOST_VALGRIND_GTEST$$($(3)ART_PHONY_TEST_HOST_SUFFIX)_RULES += valgrind-$$(gtest_rule)
+  ART_TEST_HOST_VALGRIND_GTEST_RULES += valgrind-$$(gtest_rule)
+  ART_TEST_HOST_VALGRIND_GTEST_$(1)_RULES += valgrind-$$(gtest_rule)
+
   # Clear locally defined variables.
   gtest_deps :=
   gtest_exe :=
@@ -566,6 +660,7 @@ define define-art-gtest-target
 
   ifndef ART_TEST_TARGET_GTEST_$$(art_gtest_name)_RULES
     ART_TEST_TARGET_GTEST_$$(art_gtest_name)_RULES :=
+    ART_TEST_TARGET_VALGRIND_GTEST_$$(art_gtest_name)_RULES :=
   endif
   $$(eval $$(call define-art-gtest-rule-target,$$(art_gtest_name),$$(art_gtest_filename),$(2),$$($(2)library_path)))
 
@@ -585,6 +680,7 @@ define define-art-gtest-host
   art_gtest_name := $$(notdir $$(basename $$(art_gtest_filename)))
   ifndef ART_TEST_HOST_GTEST_$$(art_gtest_name)_RULES
     ART_TEST_HOST_GTEST_$$(art_gtest_name)_RULES :=
+    ART_TEST_HOST_VALGRIND_GTEST_$$(art_gtest_name)_RULES :=
   endif
   $$(eval $$(call define-art-gtest-rule-host,$$(art_gtest_name),$$(art_gtest_filename),$(2)))
 
@@ -603,8 +699,13 @@ define define-art-gtest-target-both
 test-art-target-gtest-$$(art_gtest_name): $$(ART_TEST_TARGET_GTEST_$$(art_gtest_name)_RULES)
 	$$(hide) $$(call ART_TEST_PREREQ_FINISHED,$$@)
 
+.PHONY: valgrind-test-art-target-gtest-$$(art_gtest_name)
+valgrind-test-art-target-gtest-$$(art_gtest_name): $$(ART_TEST_TARGET_VALGRIND_GTEST_$$(art_gtest_name)_RULES)
+	$$(hide) $$(call ART_TEST_PREREQ_FINISHED,$$@)
+
   # Clear now unused variables.
   ART_TEST_TARGET_GTEST_$$(art_gtest_name)_RULES :=
+  ART_TEST_TARGET_VALGRIND_GTEST_$$(art_gtest_name)_RULES :=
   art_gtest_name :=
 endef  # define-art-gtest-target-both
 
@@ -617,8 +718,13 @@ define define-art-gtest-host-both
 test-art-host-gtest-$$(art_gtest_name): $$(ART_TEST_HOST_GTEST_$$(art_gtest_name)_RULES)
 	$$(hide) $$(call ART_TEST_PREREQ_FINISHED,$$@)
 
+.PHONY: valgrind-test-art-host-gtest-$$(art_gtest_name)
+valgrind-test-art-host-gtest-$$(art_gtest_name): $$(ART_TEST_HOST_VALGRIND_GTEST_$$(art_gtest_name)_RULES)
+	$$(hide) $$(call ART_TEST_PREREQ_FINISHED,$$@)
+
   # Clear now unused variables.
   ART_TEST_HOST_GTEST_$$(art_gtest_name)_RULES :=
+  ART_TEST_HOST_VALGRIND_GTEST_$$(art_gtest_name)_RULES :=
   art_gtest_name :=
 endef  # define-art-gtest-host-both
 
@@ -644,11 +750,12 @@ RUNTIME_TARGET_GTEST_MAKE_TARGETS :=
 $(foreach file, $(ART_TARGET_GTEST_FILES), $(eval RUNTIME_TARGET_GTEST_MAKE_TARGETS += $$(notdir $$(patsubst %/,%,$$(dir $$(file))))_$$(notdir $$(basename $$(file)))))
 COMPILER_TARGET_GTEST_MAKE_TARGETS :=
 
-# Define all the combinations of host/target and suffix such as:
-# test-art-host-gtest or test-art-host-gtest64
+# Define all the combinations of host/target, valgrind and suffix such as:
+# test-art-host-gtest or valgrind-test-art-host-gtest64
 # $(1): host or target
 # $(2): HOST or TARGET
-# $(3): undefined, 32 or 64
+# $(3): valgrind- or undefined
+# $(4): undefined, 32 or 64
 define define-test-art-gtest-combination
   ifeq ($(1),host)
     ifneq ($(2),HOST)
@@ -663,8 +770,12 @@ define define-test-art-gtest-combination
     endif
   endif
 
-  rule_name := test-art-$(1)-gtest$(3)
-  dependencies := $$(ART_TEST_$(2)_GTEST$(3)_RULES)
+  rule_name := $(3)test-art-$(1)-gtest$(4)
+  ifeq ($(3),valgrind-)
+    dependencies := $$(ART_TEST_$(2)_VALGRIND_GTEST$(4)_RULES)
+  else
+    dependencies := $$(ART_TEST_$(2)_GTEST$(4)_RULES)
+  endif
 
 .PHONY: $$(rule_name)
 $$(rule_name): $$(dependencies) dx d8-compat-dx desugar
@@ -675,15 +786,21 @@ $$(rule_name): $$(dependencies) dx d8-compat-dx desugar
   dependencies :=
 endef  # define-test-art-gtest-combination
 
-$(eval $(call define-test-art-gtest-combination,target,TARGET,))
-$(eval $(call define-test-art-gtest-combination,target,TARGET,$(ART_PHONY_TEST_TARGET_SUFFIX)))
+$(eval $(call define-test-art-gtest-combination,target,TARGET,,))
+$(eval $(call define-test-art-gtest-combination,target,TARGET,valgrind-,))
+$(eval $(call define-test-art-gtest-combination,target,TARGET,,$(ART_PHONY_TEST_TARGET_SUFFIX)))
+$(eval $(call define-test-art-gtest-combination,target,TARGET,valgrind-,$(ART_PHONY_TEST_TARGET_SUFFIX)))
 ifdef 2ND_ART_PHONY_TEST_TARGET_SUFFIX
-$(eval $(call define-test-art-gtest-combination,target,TARGET,$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)))
+$(eval $(call define-test-art-gtest-combination,target,TARGET,,$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)))
+$(eval $(call define-test-art-gtest-combination,target,TARGET,valgrind-,$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)))
 endif
-$(eval $(call define-test-art-gtest-combination,host,HOST,))
-$(eval $(call define-test-art-gtest-combination,host,HOST,$(ART_PHONY_TEST_HOST_SUFFIX)))
+$(eval $(call define-test-art-gtest-combination,host,HOST,,))
+$(eval $(call define-test-art-gtest-combination,host,HOST,valgrind-,))
+$(eval $(call define-test-art-gtest-combination,host,HOST,,$(ART_PHONY_TEST_HOST_SUFFIX)))
+$(eval $(call define-test-art-gtest-combination,host,HOST,valgrind-,$(ART_PHONY_TEST_HOST_SUFFIX)))
 ifneq ($(HOST_PREFER_32_BIT),true)
-$(eval $(call define-test-art-gtest-combination,host,HOST,$(2ND_ART_PHONY_TEST_HOST_SUFFIX)))
+$(eval $(call define-test-art-gtest-combination,host,HOST,,$(2ND_ART_PHONY_TEST_HOST_SUFFIX)))
+$(eval $(call define-test-art-gtest-combination,host,HOST,valgrind-,$(2ND_ART_PHONY_TEST_HOST_SUFFIX)))
 endif
 
 # Clear locally defined variables.
@@ -700,9 +817,15 @@ COMPILER_GTEST_HOST_SRC_FILES :=
 ART_TEST_HOST_GTEST$(ART_PHONY_TEST_HOST_SUFFIX)_RULES :=
 ART_TEST_HOST_GTEST$(2ND_ART_PHONY_TEST_HOST_SUFFIX)_RULES :=
 ART_TEST_HOST_GTEST_RULES :=
+ART_TEST_HOST_VALGRIND_GTEST$(ART_PHONY_TEST_HOST_SUFFIX)_RULES :=
+ART_TEST_HOST_VALGRIND_GTEST$(2ND_ART_PHONY_TEST_HOST_SUFFIX)_RULES :=
+ART_TEST_HOST_VALGRIND_GTEST_RULES :=
 ART_TEST_TARGET_GTEST$(ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
 ART_TEST_TARGET_GTEST$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
 ART_TEST_TARGET_GTEST_RULES :=
+ART_TEST_TARGET_VALGRIND_GTEST$(ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
+ART_TEST_TARGET_VALGRIND_GTEST$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
+ART_TEST_TARGET_VALGRIND_GTEST_RULES :=
 ART_GTEST_TARGET_ANDROID_ROOT :=
 ART_GTEST_class_linker_test_DEX_DEPS :=
 ART_GTEST_class_table_test_DEX_DEPS :=
@@ -741,6 +864,8 @@ ART_GTEST_transaction_test_DEX_DEPS :=
 ART_GTEST_dex2oat_environment_tests_DEX_DEPS :=
 ART_GTEST_heap_verification_test_DEX_DEPS :=
 ART_GTEST_verifier_deps_test_DEX_DEPS :=
+ART_VALGRIND_DEPENDENCIES :=
+ART_VALGRIND_TARGET_DEPENDENCIES :=
 $(foreach dir,$(GTEST_DEX_DIRECTORIES), $(eval ART_TEST_TARGET_GTEST_$(dir)_DEX :=))
 $(foreach dir,$(GTEST_DEX_DIRECTORIES), $(eval ART_TEST_HOST_GTEST_$(dir)_DEX :=))
 ART_TEST_HOST_GTEST_MainStripped_DEX :=

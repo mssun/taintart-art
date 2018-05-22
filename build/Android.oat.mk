@@ -37,9 +37,11 @@ else
 endif
 
 # Use dex2oat debug version for better error reporting
-# $(1): compiler - optimizing, interpreter or interp-ac (interpreter-access-checks).
+# $(1): compiler - optimizing, interpreter or interpreter-access-checks.
 # $(2): 2ND_ or undefined, 2ND_ for 32-bit host builds.
-# $(3): multi-image.
+# $(3): wrapper, e.g., valgrind.
+# $(4): dex2oat suffix, e.g, valgrind requires 32 right now.
+# $(5): multi-image.
 # NB depending on HOST_CORE_DEX_LOCATIONS so we are sure to have the dex files in frameworks for
 # run-test --no-image
 define create-core-oat-host-rules
@@ -63,11 +65,11 @@ define create-core-oat-host-rules
   endif
   ifneq ($(filter-out interpreter interp-ac optimizing,$(1)),)
     #Technically this test is not precise, but hopefully good enough.
-    $$(error found $(1) expected interpreter, interp-ac, or optimizing)
+    $$(error found $(1) expected interpreter, interpreter-access-checks, or optimizing)
   endif
 
-  # If $(3) is true, generate a multi-image.
-  ifeq ($(3),true)
+  # If $(5) is true, generate a multi-image.
+  ifeq ($(5),true)
     core_multi_infix := -multi
     core_multi_param := --multi-image --no-inline-from=core-oj-hostdex.jar
     core_multi_group := _multi
@@ -77,18 +79,22 @@ define create-core-oat-host-rules
     core_multi_group :=
   endif
 
-  core_image_name := $($(2)HOST_CORE_IMG_OUT_BASE)$$(core_infix)$$(core_multi_infix)$(CORE_IMG_SUFFIX)
-  core_oat_name := $($(2)HOST_CORE_OAT_OUT_BASE)$$(core_infix)$$(core_multi_infix)$(CORE_OAT_SUFFIX)
+  core_image_name := $($(2)HOST_CORE_IMG_OUT_BASE)$$(core_infix)$$(core_multi_infix)$(3)$(CORE_IMG_SUFFIX)
+  core_oat_name := $($(2)HOST_CORE_OAT_OUT_BASE)$$(core_infix)$$(core_multi_infix)$(3)$(CORE_OAT_SUFFIX)
 
   # Using the bitness suffix makes it easier to add as a dependency for the run-test mk.
   ifeq ($(2),)
-    HOST_CORE_IMAGE_$(1)$$(core_multi_group)_64 := $$(core_image_name)
+    $(3)HOST_CORE_IMAGE_$(1)$$(core_multi_group)_64 := $$(core_image_name)
   else
-    HOST_CORE_IMAGE_$(1)$$(core_multi_group)_32 := $$(core_image_name)
+    $(3)HOST_CORE_IMAGE_$(1)$$(core_multi_group)_32 := $$(core_image_name)
   endif
-  HOST_CORE_IMG_OUTS += $$(core_image_name)
-  HOST_CORE_OAT_OUTS += $$(core_oat_name)
+  $(3)HOST_CORE_IMG_OUTS += $$(core_image_name)
+  $(3)HOST_CORE_OAT_OUTS += $$(core_oat_name)
 
+  # If we have a wrapper, make the target phony.
+  ifneq ($(3),)
+.PHONY: $$(core_image_name)
+  endif
 $$(core_image_name): PRIVATE_CORE_COMPILE_OPTIONS := $$(core_compile_options)
 $$(core_image_name): PRIVATE_CORE_IMG_NAME := $$(core_image_name)
 $$(core_image_name): PRIVATE_CORE_OAT_NAME := $$(core_oat_name)
@@ -96,7 +102,7 @@ $$(core_image_name): PRIVATE_CORE_MULTI_PARAM := $$(core_multi_param)
 $$(core_image_name): $$(HOST_CORE_DEX_LOCATIONS) $$(core_dex2oat_dependency)
 	@echo "host dex2oat: $$@"
 	@mkdir -p $$(dir $$@)
-	$$(hide) $$(DEX2OAT) --runtime-arg -Xms$(DEX2OAT_IMAGE_XMS) \
+	$$(hide) $(3) $$(DEX2OAT)$(4) --runtime-arg -Xms$(DEX2OAT_IMAGE_XMS) \
 	  --runtime-arg -Xmx$(DEX2OAT_IMAGE_XMX) \
 	  --image-classes=$$(PRELOADED_CLASSES) $$(addprefix --dex-file=,$$(HOST_CORE_DEX_FILES)) \
 	  $$(addprefix --dex-location=,$$(HOST_CORE_DEX_LOCATIONS)) --oat-file=$$(PRIVATE_CORE_OAT_NAME) \
@@ -118,27 +124,35 @@ $$(core_oat_name): $$(core_image_name)
   core_infix :=
 endef  # create-core-oat-host-rules
 
-# $(1): compiler - optimizing, interpreter or interp-ac (interpreter-access-checks).
-# $(2): multi-image.
+# $(1): compiler - optimizing, interpreter or interpreter-access-checks.
+# $(2): wrapper.
+# $(3): dex2oat suffix.
+# $(4): multi-image.
 define create-core-oat-host-rule-combination
-  $(call create-core-oat-host-rules,$(1),,$(2))
+  $(call create-core-oat-host-rules,$(1),,$(2),$(3),$(4))
 
   ifneq ($(HOST_PREFER_32_BIT),true)
-    $(call create-core-oat-host-rules,$(1),2ND_,$(2))
+    $(call create-core-oat-host-rules,$(1),2ND_,$(2),$(3),$(4))
   endif
 endef
 
-$(eval $(call create-core-oat-host-rule-combination,optimizing,false))
-$(eval $(call create-core-oat-host-rule-combination,interpreter,false))
-$(eval $(call create-core-oat-host-rule-combination,interp-ac,false))
-$(eval $(call create-core-oat-host-rule-combination,optimizing,true))
-$(eval $(call create-core-oat-host-rule-combination,interpreter,true))
-$(eval $(call create-core-oat-host-rule-combination,interp-ac,true))
+$(eval $(call create-core-oat-host-rule-combination,optimizing,,,false))
+$(eval $(call create-core-oat-host-rule-combination,interpreter,,,false))
+$(eval $(call create-core-oat-host-rule-combination,interp-ac,,,false))
+$(eval $(call create-core-oat-host-rule-combination,optimizing,,,true))
+$(eval $(call create-core-oat-host-rule-combination,interpreter,,,true))
+$(eval $(call create-core-oat-host-rule-combination,interp-ac,,,true))
+
+valgrindHOST_CORE_IMG_OUTS :=
+valgrindHOST_CORE_OAT_OUTS :=
+$(eval $(call create-core-oat-host-rule-combination,optimizing,valgrind,32,false))
+$(eval $(call create-core-oat-host-rule-combination,interpreter,valgrind,32,false))
+$(eval $(call create-core-oat-host-rule-combination,interp-ac,valgrind,32,false))
+
+valgrind-test-art-host-dex2oat-host: $(valgrindHOST_CORE_IMG_OUTS)
 
 test-art-host-dex2oat-host: $(HOST_CORE_IMG_OUTS)
 
-# $(1): compiler - optimizing, interpreter or interp-ac (interpreter-access-checks).
-# $(2): 2ND_ or undefined
 define create-core-oat-target-rules
   core_compile_options :=
   core_image_name :=
@@ -162,32 +176,36 @@ define create-core-oat-target-rules
   endif
   ifneq ($(filter-out interpreter interp-ac optimizing,$(1)),)
     # Technically this test is not precise, but hopefully good enough.
-    $$(error found $(1) expected interpreter, interp-ac, or optimizing)
+    $$(error found $(1) expected interpreter, interpreter-access-checks, or optimizing)
   endif
 
-  core_image_name := $($(2)TARGET_CORE_IMG_OUT_BASE)$$(core_infix)$(CORE_IMG_SUFFIX)
-  core_oat_name := $($(2)TARGET_CORE_OAT_OUT_BASE)$$(core_infix)$(CORE_OAT_SUFFIX)
+  core_image_name := $($(2)TARGET_CORE_IMG_OUT_BASE)$$(core_infix)$(3)$(CORE_IMG_SUFFIX)
+  core_oat_name := $($(2)TARGET_CORE_OAT_OUT_BASE)$$(core_infix)$(3)$(CORE_OAT_SUFFIX)
 
   # Using the bitness suffix makes it easier to add as a dependency for the run-test mk.
   ifeq ($(2),)
     ifdef TARGET_2ND_ARCH
-      TARGET_CORE_IMAGE_$(1)_64 := $$(core_image_name)
+      $(3)TARGET_CORE_IMAGE_$(1)_64 := $$(core_image_name)
     else
-      TARGET_CORE_IMAGE_$(1)_32 := $$(core_image_name)
+      $(3)TARGET_CORE_IMAGE_$(1)_32 := $$(core_image_name)
     endif
   else
-    TARGET_CORE_IMAGE_$(1)_32 := $$(core_image_name)
+    $(3)TARGET_CORE_IMAGE_$(1)_32 := $$(core_image_name)
   endif
-  TARGET_CORE_IMG_OUTS += $$(core_image_name)
-  TARGET_CORE_OAT_OUTS += $$(core_oat_name)
+  $(3)TARGET_CORE_IMG_OUTS += $$(core_image_name)
+  $(3)TARGET_CORE_OAT_OUTS += $$(core_oat_name)
 
+  # If we have a wrapper, make the target phony.
+  ifneq ($(3),)
+.PHONY: $$(core_image_name)
+  endif
 $$(core_image_name): PRIVATE_CORE_COMPILE_OPTIONS := $$(core_compile_options)
 $$(core_image_name): PRIVATE_CORE_IMG_NAME := $$(core_image_name)
 $$(core_image_name): PRIVATE_CORE_OAT_NAME := $$(core_oat_name)
 $$(core_image_name): $$(TARGET_CORE_DEX_FILES) $$(core_dex2oat_dependency)
 	@echo "target dex2oat: $$@"
 	@mkdir -p $$(dir $$@)
-	$$(hide) $$(DEX2OAT) --runtime-arg -Xms$(DEX2OAT_IMAGE_XMS) \
+	$$(hide) $(4) $$(DEX2OAT)$(5) --runtime-arg -Xms$(DEX2OAT_IMAGE_XMS) \
 	  --runtime-arg -Xmx$(DEX2OAT_IMAGE_XMX) \
 	  --image-classes=$$(PRELOADED_CLASSES) $$(addprefix --dex-file=,$$(TARGET_CORE_DEX_FILES)) \
 	  $$(addprefix --dex-location=,$$(TARGET_CORE_DEX_LOCATIONS)) --oat-file=$$(PRIVATE_CORE_OAT_NAME) \
@@ -210,18 +228,30 @@ $$(core_oat_name): $$(core_image_name)
   core_infix :=
 endef  # create-core-oat-target-rules
 
-# $(1): compiler - optimizing, interpreter or interp-ac (interpreter-access-checks).
+# $(1): compiler - optimizing, interpreter or interpreter-access-checks.
+# $(2): wrapper.
+# $(3): dex2oat suffix.
 define create-core-oat-target-rule-combination
-  $(call create-core-oat-target-rules,$(1),)
+  $(call create-core-oat-target-rules,$(1),,$(2),$(3))
 
   ifdef TARGET_2ND_ARCH
-    $(call create-core-oat-target-rules,$(1),2ND_)
+    $(call create-core-oat-target-rules,$(1),2ND_,$(2),$(3))
   endif
 endef
 
-$(eval $(call create-core-oat-target-rule-combination,optimizing))
-$(eval $(call create-core-oat-target-rule-combination,interpreter))
-$(eval $(call create-core-oat-target-rule-combination,interp-ac))
+$(eval $(call create-core-oat-target-rule-combination,optimizing,,))
+$(eval $(call create-core-oat-target-rule-combination,interpreter,,))
+$(eval $(call create-core-oat-target-rule-combination,interp-ac,,))
+
+valgrindTARGET_CORE_IMG_OUTS :=
+valgrindTARGET_CORE_OAT_OUTS :=
+$(eval $(call create-core-oat-target-rule-combination,optimizing,valgrind,32))
+$(eval $(call create-core-oat-target-rule-combination,interpreter,valgrind,32))
+$(eval $(call create-core-oat-target-rule-combination,interp-ac,valgrind,32))
+
+valgrind-test-art-host-dex2oat-target: $(valgrindTARGET_CORE_IMG_OUTS)
+
+valgrind-test-art-host-dex2oat: valgrind-test-art-host-dex2oat-host valgrind-test-art-host-dex2oat-target
 
 # Define a default core image that can be used for things like gtests that
 # need some image to run, but don't otherwise care which image is used.

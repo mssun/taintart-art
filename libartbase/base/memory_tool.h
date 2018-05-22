@@ -19,53 +19,53 @@
 
 #include <stddef.h>
 
-namespace art {
-
 #if !defined(__has_feature)
-# define __has_feature(x) 0
+#define __has_feature(x) 0
 #endif
 
 #if __has_feature(address_sanitizer)
 
-# include <sanitizer/asan_interface.h>
-# define ADDRESS_SANITIZER
+#include <sanitizer/asan_interface.h>
+#define ADDRESS_SANITIZER
 
-# ifdef ART_ENABLE_ADDRESS_SANITIZER
-#  define MEMORY_TOOL_MAKE_NOACCESS(p, s) __asan_poison_memory_region(p, s)
-#  define MEMORY_TOOL_MAKE_UNDEFINED(p, s) __asan_unpoison_memory_region(p, s)
-#  define MEMORY_TOOL_MAKE_DEFINED(p, s) __asan_unpoison_memory_region(p, s)
+#ifdef ART_ENABLE_ADDRESS_SANITIZER
+#define MEMORY_TOOL_MAKE_NOACCESS(p, s) __asan_poison_memory_region(p, s)
+#define MEMORY_TOOL_MAKE_UNDEFINED(p, s) __asan_unpoison_memory_region(p, s)
+#define MEMORY_TOOL_MAKE_DEFINED(p, s) __asan_unpoison_memory_region(p, s)
 constexpr bool kMemoryToolIsAvailable = true;
-# else
-#  define MEMORY_TOOL_MAKE_NOACCESS(p, s) do { (void)(p); (void)(s); } while (0)
-#  define MEMORY_TOOL_MAKE_UNDEFINED(p, s) do { (void)(p); (void)(s); } while (0)
-#  define MEMORY_TOOL_MAKE_DEFINED(p, s) do { (void)(p); (void)(s); } while (0)
+#else
+#define MEMORY_TOOL_MAKE_NOACCESS(p, s) do { (void)(p); (void)(s); } while (0)
+#define MEMORY_TOOL_MAKE_UNDEFINED(p, s) do { (void)(p); (void)(s); } while (0)
+#define MEMORY_TOOL_MAKE_DEFINED(p, s) do { (void)(p); (void)(s); } while (0)
 constexpr bool kMemoryToolIsAvailable = false;
-# endif
+#endif
 
 extern "C" void __asan_handle_no_return();
 
-# define ATTRIBUTE_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
-# define MEMORY_TOOL_HANDLE_NO_RETURN __asan_handle_no_return()
-constexpr bool kRunningOnMemoryTool = true;
+#define ATTRIBUTE_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#define MEMORY_TOOL_HANDLE_NO_RETURN __asan_handle_no_return()
+#define RUNNING_ON_MEMORY_TOOL 1U
+constexpr bool kMemoryToolIsValgrind = false;
 constexpr bool kMemoryToolDetectsLeaks = true;
 constexpr bool kMemoryToolAddsRedzones = true;
 constexpr size_t kMemoryToolStackGuardSizeScale = 2;
 
 #else
 
-# define MEMORY_TOOL_MAKE_NOACCESS(p, s) do { (void)(p); (void)(s); } while (0)
-# define MEMORY_TOOL_MAKE_UNDEFINED(p, s) do { (void)(p); (void)(s); } while (0)
-# define MEMORY_TOOL_MAKE_DEFINED(p, s) do { (void)(p); (void)(s); } while (0)
-# define ATTRIBUTE_NO_SANITIZE_ADDRESS
-# define MEMORY_TOOL_HANDLE_NO_RETURN do { } while (0)
-constexpr bool kRunningOnMemoryTool = false;
-constexpr bool kMemoryToolIsAvailable = false;
-constexpr bool kMemoryToolDetectsLeaks = false;
-constexpr bool kMemoryToolAddsRedzones = false;
+#include <memcheck/memcheck.h>
+#include <valgrind.h>
+#define MEMORY_TOOL_MAKE_NOACCESS(p, s) VALGRIND_MAKE_MEM_NOACCESS(p, s)
+#define MEMORY_TOOL_MAKE_UNDEFINED(p, s) VALGRIND_MAKE_MEM_UNDEFINED(p, s)
+#define MEMORY_TOOL_MAKE_DEFINED(p, s) VALGRIND_MAKE_MEM_DEFINED(p, s)
+#define ATTRIBUTE_NO_SANITIZE_ADDRESS
+#define MEMORY_TOOL_HANDLE_NO_RETURN do { } while (0)
+#define RUNNING_ON_MEMORY_TOOL RUNNING_ON_VALGRIND
+constexpr bool kMemoryToolIsAvailable = true;
+constexpr bool kMemoryToolIsValgrind = true;
+constexpr bool kMemoryToolDetectsLeaks = true;
+constexpr bool kMemoryToolAddsRedzones = true;
 constexpr size_t kMemoryToolStackGuardSizeScale = 1;
 
 #endif
-
-}  // namespace art
 
 #endif  // ART_LIBARTBASE_BASE_MEMORY_TOOL_H_
