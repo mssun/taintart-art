@@ -360,7 +360,9 @@ echo "Killing stalled dalvikvm processes..."
 if [[ $mode == "host" ]]; then
   pkill -9 -f /bin/dalvikvm
 else
-  adb shell pkill -9 -f /bin/dalvikvm
+  # Tests may run on older Android versions where pkill requires "-l SIGNAL"
+  # rather than "-SIGNAL".
+  adb shell pkill -l 9 -f /bin/dalvikvm
 fi
 echo "Done."
 
