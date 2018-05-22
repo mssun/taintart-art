@@ -19,8 +19,10 @@
 
 #include "runtime.h"
 
+#include "arch/instruction_set.h"
 #include "art_method.h"
 #include "base/callee_save_type.h"
+#include "entrypoints/quick/callee_save_frame.h"
 #include "gc_root-inl.h"
 #include "obj_ptr-inl.h"
 
@@ -38,21 +40,22 @@ inline mirror::Object* Runtime::GetClearedJniWeakGlobal() {
 
 inline QuickMethodFrameInfo Runtime::GetRuntimeMethodFrameInfo(ArtMethod* method) {
   DCHECK(method != nullptr);
+  DCHECK_EQ(instruction_set_, kRuntimeISA);
   // Cannot be imt-conflict-method or resolution-method.
   DCHECK_NE(method, GetImtConflictMethod());
   DCHECK_NE(method, GetResolutionMethod());
   // Don't use GetCalleeSaveMethod(), some tests don't set all callee save methods.
   if (method == GetCalleeSaveMethodUnchecked(CalleeSaveType::kSaveRefsAndArgs)) {
-    return GetCalleeSaveMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
+    return RuntimeCalleeSaveFrame::GetMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
   } else if (method == GetCalleeSaveMethodUnchecked(CalleeSaveType::kSaveAllCalleeSaves)) {
-    return GetCalleeSaveMethodFrameInfo(CalleeSaveType::kSaveAllCalleeSaves);
+    return RuntimeCalleeSaveFrame::GetMethodFrameInfo(CalleeSaveType::kSaveAllCalleeSaves);
   } else if (method == GetCalleeSaveMethodUnchecked(CalleeSaveType::kSaveRefsOnly)) {
-    return GetCalleeSaveMethodFrameInfo(CalleeSaveType::kSaveRefsOnly);
+    return RuntimeCalleeSaveFrame::GetMethodFrameInfo(CalleeSaveType::kSaveRefsOnly);
   } else {
     DCHECK(method == GetCalleeSaveMethodUnchecked(CalleeSaveType::kSaveEverything) ||
            method == GetCalleeSaveMethodUnchecked(CalleeSaveType::kSaveEverythingForClinit) ||
            method == GetCalleeSaveMethodUnchecked(CalleeSaveType::kSaveEverythingForSuspendCheck));
-    return GetCalleeSaveMethodFrameInfo(CalleeSaveType::kSaveEverything);
+    return RuntimeCalleeSaveFrame::GetMethodFrameInfo(CalleeSaveType::kSaveEverything);
   }
 }
 

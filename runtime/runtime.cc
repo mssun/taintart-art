@@ -39,18 +39,12 @@
 #include "android-base/strings.h"
 
 #include "aot_class_linker.h"
-#include "arch/arm/quick_method_frame_info_arm.h"
 #include "arch/arm/registers_arm.h"
-#include "arch/arm64/quick_method_frame_info_arm64.h"
 #include "arch/arm64/registers_arm64.h"
 #include "arch/instruction_set_features.h"
-#include "arch/mips/quick_method_frame_info_mips.h"
 #include "arch/mips/registers_mips.h"
-#include "arch/mips64/quick_method_frame_info_mips64.h"
 #include "arch/mips64/registers_mips64.h"
-#include "arch/x86/quick_method_frame_info_x86.h"
 #include "arch/x86/registers_x86.h"
-#include "arch/x86_64/quick_method_frame_info_x86_64.h"
 #include "arch/x86_64/registers_x86_64.h"
 #include "art_field-inl.h"
 #include "art_method-inl.h"
@@ -2203,38 +2197,21 @@ void Runtime::BroadcastForNewSystemWeaks(bool broadcast_for_checkpoint) {
 
 void Runtime::SetInstructionSet(InstructionSet instruction_set) {
   instruction_set_ = instruction_set;
-  if ((instruction_set_ == InstructionSet::kThumb2) || (instruction_set_ == InstructionSet::kArm)) {
-    for (int i = 0; i != kCalleeSaveSize; ++i) {
-      CalleeSaveType type = static_cast<CalleeSaveType>(i);
-      callee_save_method_frame_infos_[i] = arm::ArmCalleeSaveMethodFrameInfo(type);
-    }
-  } else if (instruction_set_ == InstructionSet::kMips) {
-    for (int i = 0; i != kCalleeSaveSize; ++i) {
-      CalleeSaveType type = static_cast<CalleeSaveType>(i);
-      callee_save_method_frame_infos_[i] = mips::MipsCalleeSaveMethodFrameInfo(type);
-    }
-  } else if (instruction_set_ == InstructionSet::kMips64) {
-    for (int i = 0; i != kCalleeSaveSize; ++i) {
-      CalleeSaveType type = static_cast<CalleeSaveType>(i);
-      callee_save_method_frame_infos_[i] = mips64::Mips64CalleeSaveMethodFrameInfo(type);
-    }
-  } else if (instruction_set_ == InstructionSet::kX86) {
-    for (int i = 0; i != kCalleeSaveSize; ++i) {
-      CalleeSaveType type = static_cast<CalleeSaveType>(i);
-      callee_save_method_frame_infos_[i] = x86::X86CalleeSaveMethodFrameInfo(type);
-    }
-  } else if (instruction_set_ == InstructionSet::kX86_64) {
-    for (int i = 0; i != kCalleeSaveSize; ++i) {
-      CalleeSaveType type = static_cast<CalleeSaveType>(i);
-      callee_save_method_frame_infos_[i] = x86_64::X86_64CalleeSaveMethodFrameInfo(type);
-    }
-  } else if (instruction_set_ == InstructionSet::kArm64) {
-    for (int i = 0; i != kCalleeSaveSize; ++i) {
-      CalleeSaveType type = static_cast<CalleeSaveType>(i);
-      callee_save_method_frame_infos_[i] = arm64::Arm64CalleeSaveMethodFrameInfo(type);
-    }
-  } else {
-    UNIMPLEMENTED(FATAL) << instruction_set_;
+  switch (instruction_set) {
+    case InstructionSet::kThumb2:
+      // kThumb2 is the same as kArm, use the canonical value.
+      instruction_set_ = InstructionSet::kArm;
+      break;
+    case InstructionSet::kArm:
+    case InstructionSet::kArm64:
+    case InstructionSet::kMips:
+    case InstructionSet::kMips64:
+    case InstructionSet::kX86:
+    case InstructionSet::kX86_64:
+      break;
+    default:
+      UNIMPLEMENTED(FATAL) << instruction_set_;
+      UNREACHABLE();
   }
 }
 

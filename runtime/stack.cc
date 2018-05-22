@@ -25,6 +25,7 @@
 #include "base/hex_dump.h"
 #include "dex/dex_file_types.h"
 #include "entrypoints/entrypoint_utils-inl.h"
+#include "entrypoints/quick/callee_save_frame.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/space/image_space.h"
 #include "gc/space/space-inl.h"
@@ -713,7 +714,7 @@ QuickMethodFrameInfo StackVisitor::GetCurrentQuickFrameInfo() const {
   Runtime* runtime = Runtime::Current();
 
   if (method->IsAbstract()) {
-    return runtime->GetCalleeSaveMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
+    return RuntimeCalleeSaveFrame::GetMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
   }
 
   // This goes before IsProxyMethod since runtime methods have a null declaring class.
@@ -727,7 +728,7 @@ QuickMethodFrameInfo StackVisitor::GetCurrentQuickFrameInfo() const {
     // compiled method without any stubs. Therefore the method must have a OatQuickMethodHeader.
     DCHECK(!method->IsDirect() && !method->IsConstructor())
         << "Constructors of proxy classes must have a OatQuickMethodHeader";
-    return runtime->GetCalleeSaveMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
+    return RuntimeCalleeSaveFrame::GetMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
   }
 
   // The only remaining case is if the method is native and uses the generic JNI stub,
@@ -746,8 +747,8 @@ QuickMethodFrameInfo StackVisitor::GetCurrentQuickFrameInfo() const {
   // Generic JNI frame.
   uint32_t handle_refs = GetNumberOfReferenceArgsWithoutReceiver(method) + 1;
   size_t scope_size = HandleScope::SizeOf(handle_refs);
-  QuickMethodFrameInfo callee_info =
-      runtime->GetCalleeSaveMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
+  constexpr QuickMethodFrameInfo callee_info =
+      RuntimeCalleeSaveFrame::GetMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
 
   // Callee saves + handle scope + method ref + alignment
   // Note: -sizeof(void*) since callee-save frame stores a whole method pointer.
