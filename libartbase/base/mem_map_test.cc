@@ -471,33 +471,31 @@ TEST_F(MemMapTest, MapAnonymousExactAddr32bitHighAddr) {
   // cannot allocate in the 2GB-4GB region.
   TEST_DISABLED_FOR_MIPS();
 
-  // This test may not work under Valgrind.
-  // TODO: Valgrind is no longer supported, but Address Sanitizer is:
-  // check whether this test works with ASan.
-  TEST_DISABLED_FOR_MEMORY_TOOL();
-
   CommonInit();
-  constexpr size_t size = 0x100000;
-  // Try all addresses starting from 2GB to 4GB.
-  size_t start_addr = 2 * GB;
-  std::string error_msg;
-  std::unique_ptr<MemMap> map;
-  for (; start_addr <= std::numeric_limits<uint32_t>::max() - size; start_addr += size) {
-    map.reset(MemMap::MapAnonymous("MapAnonymousExactAddr32bitHighAddr",
-                                   reinterpret_cast<uint8_t*>(start_addr),
-                                   size,
-                                   PROT_READ | PROT_WRITE,
-                                   /*low_4gb*/true,
-                                   false,
-                                   &error_msg));
-    if (map != nullptr) {
-      break;
+  // This test may not work under valgrind.
+  if (RUNNING_ON_MEMORY_TOOL == 0) {
+    constexpr size_t size = 0x100000;
+    // Try all addresses starting from 2GB to 4GB.
+    size_t start_addr = 2 * GB;
+    std::string error_msg;
+    std::unique_ptr<MemMap> map;
+    for (; start_addr <= std::numeric_limits<uint32_t>::max() - size; start_addr += size) {
+      map.reset(MemMap::MapAnonymous("MapAnonymousExactAddr32bitHighAddr",
+                                     reinterpret_cast<uint8_t*>(start_addr),
+                                     size,
+                                     PROT_READ | PROT_WRITE,
+                                     /*low_4gb*/true,
+                                     false,
+                                     &error_msg));
+      if (map != nullptr) {
+        break;
+      }
     }
+    ASSERT_TRUE(map.get() != nullptr) << error_msg;
+    ASSERT_GE(reinterpret_cast<uintptr_t>(map->End()), 2u * GB);
+    ASSERT_TRUE(error_msg.empty());
+    ASSERT_EQ(BaseBegin(map.get()), reinterpret_cast<void*>(start_addr));
   }
-  ASSERT_TRUE(map.get() != nullptr) << error_msg;
-  ASSERT_GE(reinterpret_cast<uintptr_t>(map->End()), 2u * GB);
-  ASSERT_TRUE(error_msg.empty());
-  ASSERT_EQ(BaseBegin(map.get()), reinterpret_cast<void*>(start_addr));
 }
 
 TEST_F(MemMapTest, MapAnonymousOverflow) {

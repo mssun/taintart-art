@@ -53,7 +53,7 @@ MallocArena::MallocArena(size_t size) {
     memory_ = unaligned_memory_;
   } else {
     memory_ = AlignUp(unaligned_memory_, ArenaAllocator::kArenaAlignment);
-    if (kRunningOnMemoryTool) {
+    if (UNLIKELY(RUNNING_ON_MEMORY_TOOL > 0)) {
       size_t head = memory_ - unaligned_memory_;
       size_t tail = overallocation - head;
       MEMORY_TOOL_MAKE_NOACCESS(unaligned_memory_, head);
@@ -66,7 +66,7 @@ MallocArena::MallocArena(size_t size) {
 
 MallocArena::~MallocArena() {
   constexpr size_t overallocation = RequiredOverallocation();
-  if (overallocation != 0u && kRunningOnMemoryTool) {
+  if (overallocation != 0u && UNLIKELY(RUNNING_ON_MEMORY_TOOL > 0)) {
     size_t head = memory_ - unaligned_memory_;
     size_t tail = overallocation - head;
     MEMORY_TOOL_MAKE_UNDEFINED(unaligned_memory_, head);
@@ -132,7 +132,7 @@ size_t MallocArenaPool::GetBytesAllocated() const {
 }
 
 void MallocArenaPool::FreeArenaChain(Arena* first) {
-  if (kRunningOnMemoryTool) {
+  if (UNLIKELY(RUNNING_ON_MEMORY_TOOL > 0)) {
     for (Arena* arena = first; arena != nullptr; arena = arena->next_) {
       MEMORY_TOOL_MAKE_UNDEFINED(arena->memory_, arena->bytes_allocated_);
     }
