@@ -77,7 +77,6 @@ Usage: art [OPTIONS] [--] [ART_OPTIONS] CLASS
 Supported OPTIONS include:
   --32                     Use the 32-bit Android Runtime.
   --64                     Use the 64-bit Android Runtime.
-  --callgrind              Launch the Android Runtime in callgrind.
   -d                       Use the debug ART library (libartd.so).
   --debug                  Equivalent to -d.
   --gdb                    Launch the Android Runtime in gdb.
@@ -268,9 +267,6 @@ while [[ "$1" = "-"* ]]; do
     ;;
   --64)
     ART_BINARY=dalvikvm64
-    ;;
-  --callgrind)
-    LAUNCH_WRAPPER="valgrind --tool=callgrind"
     ;;
   -d)
     ;& # Fallthrough

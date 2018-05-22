@@ -228,7 +228,7 @@ class ArenaDelete {
  protected:
   // Used for variable sized objects such as RegisterLine.
   ALWAYS_INLINE void ProtectMemory(T* ptr, size_t size) const {
-    if (RUNNING_ON_MEMORY_TOOL > 0) {
+    if (kRunningOnMemoryTool) {
       // Writing to the memory will fail ift we already destroyed the pointer with
       // DestroyOnlyDelete since we make it no access.
       memset(ptr, kMagicFill, size);

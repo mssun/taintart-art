@@ -657,7 +657,7 @@ class Dex2Oat FINAL {
     // the runtime.
     LogCompletionTime();
 
-    if (!kIsDebugBuild && !(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
+    if (!kIsDebugBuild && !(kRunningOnMemoryTool && kMemoryToolDetectsLeaks)) {
       // We want to just exit on non-debug builds, not bringing the runtime down
       // in an orderly fashion. So release the following fields.
       driver_.release();
@@ -3119,9 +3119,9 @@ static dex2oat::ReturnCode Dex2oat(int argc, char** argv) {
 int main(int argc, char** argv) {
   int result = static_cast<int>(art::Dex2oat(argc, argv));
   // Everything was done, do an explicit exit here to avoid running Runtime destructors that take
-  // time (bug 10645725) unless we're a debug or instrumented build or running on valgrind. Note:
-  // The Dex2Oat class should not destruct the runtime in this case.
-  if (!art::kIsDebugBuild && !art::kIsPGOInstrumentation && (RUNNING_ON_MEMORY_TOOL == 0)) {
+  // time (bug 10645725) unless we're a debug or instrumented build or running on a memory tool.
+  // Note: The Dex2Oat class should not destruct the runtime in this case.
+  if (!art::kIsDebugBuild && !art::kIsPGOInstrumentation && !art::kRunningOnMemoryTool) {
     _exit(result);
   }
   return result;
