@@ -245,19 +245,6 @@ endif
 test-art-host-dexdump: $(addprefix $(HOST_OUT_EXECUTABLES)/, dexdump2 dexlist)
 	ANDROID_HOST_OUT=$(realpath $(HOST_OUT)) art/test/dexdump/run-all-tests
 
-# Valgrind.
-.PHONY: valgrind-test-art-host
-valgrind-test-art-host: valgrind-test-art-host-gtest
-	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
-
-.PHONY: valgrind-test-art-host32
-valgrind-test-art-host32: valgrind-test-art-host-gtest32
-	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
-
-.PHONY: valgrind-test-art-host64
-valgrind-test-art-host64: valgrind-test-art-host-gtest64
-	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
-
 ########################################################################
 # target test rules
 
@@ -331,19 +318,6 @@ test-art-target-interpreter$(2ND_ART_PHONY_TEST_TARGET_SUFFIX): test-art-target-
 test-art-target-jit$(2ND_ART_PHONY_TEST_TARGET_SUFFIX): test-art-target-run-test-jit$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)
 	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
 endif
-
-# Valgrind.
-.PHONY: valgrind-test-art-target
-valgrind-test-art-target: valgrind-test-art-target-gtest
-	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
-
-.PHONY: valgrind-test-art-target32
-valgrind-test-art-target32: valgrind-test-art-target-gtest32
-	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
-
-.PHONY: valgrind-test-art-target64
-valgrind-test-art-target64: valgrind-test-art-target-gtest64
-	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
 
 
 #######################

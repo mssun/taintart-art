@@ -130,7 +130,8 @@ inline void SetRegistrationRange(const void* begin, size_t size, bool should_poi
     MEMORY_TOOL_MAKE_NOACCESS(begin, size);
   } else {
     // Note: MEMORY_TOOL_MAKE_UNDEFINED has the same functionality with Address
-    // Sanitizer. The difference has not been tested with Valgrind
+    // Sanitizer.
+    // Historical note: The difference has not been tested with Valgrind.
     MEMORY_TOOL_MAKE_DEFINED(begin, size);
   }
 }
