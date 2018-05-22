@@ -62,7 +62,7 @@ static jobjectArray Method_getExceptionTypes(JNIEnv* env, jobject javaMethod) {
         klass->GetProxyThrows()->Get(throws_index);
     return soa.AddLocalReference<jobjectArray>(declared_exceptions->Clone(soa.Self()));
   } else {
-    mirror::ObjectArray<mirror::Class>* result_array =
+    ObjPtr<mirror::ObjectArray<mirror::Class>> result_array =
         annotations::GetExceptionTypesForMethod(method);
     if (result_array == nullptr) {
       // Return an empty array instead of a null pointer
