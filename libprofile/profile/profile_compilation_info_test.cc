@@ -54,7 +54,7 @@ class ProfileCompilationInfoTest : public CommonRuntimeTest {
     StackHandleScope<1> hs(self);
     Handle<mirror::ClassLoader> h_loader(
         hs.NewHandle(self->DecodeJObject(class_loader)->AsClassLoader()));
-    mirror::Class* klass = class_linker->FindClass(self, clazz.c_str(), h_loader);
+    ObjPtr<mirror::Class> klass = class_linker->FindClass(self, clazz.c_str(), h_loader);
 
     const auto pointer_size = class_linker->GetImagePointerSize();
     std::vector<ArtMethod*> methods;
