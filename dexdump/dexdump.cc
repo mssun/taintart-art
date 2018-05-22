@@ -45,6 +45,7 @@
 #include "android-base/logging.h"
 #include "android-base/stringprintf.h"
 
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
@@ -611,19 +612,11 @@ static void dumpClassDef(const DexFile* pDexFile, int idx) {
           pClassDef.class_data_off_, pClassDef.class_data_off_);
 
   // Fields and methods.
-  const u1* pEncodedData = pDexFile->GetClassData(pClassDef);
-  if (pEncodedData != nullptr) {
-    ClassDataItemIterator pClassData(*pDexFile, pEncodedData);
-    fprintf(gOutFile, "static_fields_size  : %d\n", pClassData.NumStaticFields());
-    fprintf(gOutFile, "instance_fields_size: %d\n", pClassData.NumInstanceFields());
-    fprintf(gOutFile, "direct_methods_size : %d\n", pClassData.NumDirectMethods());
-    fprintf(gOutFile, "virtual_methods_size: %d\n", pClassData.NumVirtualMethods());
-  } else {
-    fprintf(gOutFile, "static_fields_size  : 0\n");
-    fprintf(gOutFile, "instance_fields_size: 0\n");
-    fprintf(gOutFile, "direct_methods_size : 0\n");
-    fprintf(gOutFile, "virtual_methods_size: 0\n");
-  }
+  ClassAccessor accessor(*pDexFile, pClassDef);
+  fprintf(gOutFile, "static_fields_size  : %d\n", accessor.NumStaticFields());
+  fprintf(gOutFile, "instance_fields_size: %d\n", accessor.NumInstanceFields());
+  fprintf(gOutFile, "direct_methods_size : %d\n", accessor.NumDirectMethods());
+  fprintf(gOutFile, "virtual_methods_size: %d\n", accessor.NumVirtualMethods());
   fprintf(gOutFile, "\n");
 }
 
