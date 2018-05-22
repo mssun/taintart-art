@@ -1137,6 +1137,126 @@ public class Main {
 
   static Object[] sArray;
 
+  /// CHECK-START: int Main.testLocalArrayMerge1(boolean) load_store_elimination (before)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
+  /// CHECK-DAG: <<A:l\d+>>      NewArray
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const0>>]
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const1>>]
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const1>>]
+  /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [<<A>>,<<Const0>>]
+  /// CHECK-DAG:                 Return [<<Get>>]
+  //
+  /// CHECK-START: int Main.testLocalArrayMerge1(boolean) load_store_elimination (after)
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
+  /// CHECK-DAG:                 Return [<<Const1>>]
+  //
+  /// CHECK-START: int Main.testLocalArrayMerge1(boolean) load_store_elimination (after)
+  /// CHECK-NOT:                 NewArray
+  /// CHECK-NOT:                 ArraySet
+  /// CHECK-NOT:                 ArrayGet
+  private static int testLocalArrayMerge1(boolean x) {
+    // The explicit store can be removed right away
+    // since it is equivalent to the default.
+    int[] a = { 0 };
+    // The diamond pattern stores/load can be replaced
+    // by the direct value.
+    if (x) {
+      a[0] = 1;
+    } else {
+      a[0] = 1;
+    }
+    return a[0];
+  }
+
+  /// CHECK-START: int Main.testLocalArrayMerge2(boolean) load_store_elimination (before)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
+  /// CHECK-DAG: <<Const2:i\d+>> IntConstant 2
+  /// CHECK-DAG: <<Const3:i\d+>> IntConstant 3
+  /// CHECK-DAG: <<A:l\d+>>      NewArray
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const1>>]
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const2>>]
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const3>>]
+  /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [<<A>>,<<Const0>>]
+  /// CHECK-DAG:                 Return [<<Get>>]
+  //
+  /// CHECK-START: int Main.testLocalArrayMerge2(boolean) load_store_elimination (after)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<A:l\d+>>      NewArray
+  /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [<<A>>,<<Const0>>]
+  /// CHECK-DAG:                 Return [<<Get>>]
+  //
+  /// CHECK-START: int Main.testLocalArrayMerge2(boolean) load_store_elimination (after)
+  /// CHECK-DAG:                 ArraySet
+  /// CHECK-DAG:                 ArraySet
+  /// CHECK-NOT:                 ArraySet
+  private static int testLocalArrayMerge2(boolean x) {
+    // The explicit store can be removed eventually even
+    // though it is not equivalent to the default.
+    int[] a = { 1 };
+    // The diamond pattern stores/load remain.
+    if (x) {
+      a[0] = 2;
+    } else {
+      a[0] = 3;
+    }
+    return a[0];
+  }
+
+  /// CHECK-START: int Main.testLocalArrayMerge3(boolean) load_store_elimination (after)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
+  /// CHECK-DAG: <<Const2:i\d+>> IntConstant 2
+  /// CHECK-DAG: <<A:l\d+>>      NewArray
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const1>>]
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const2>>]
+  /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [<<A>>,<<Const0>>]
+  /// CHECK-DAG:                 Return [<<Get>>]
+  private static int testLocalArrayMerge3(boolean x) {
+    // All stores/load remain.
+    int[] a = { 1 };
+    if (x) {
+      a[0] = 2;
+    }
+    return a[0];
+  }
+
+  /// CHECK-START: int Main.testLocalArrayMerge4(boolean) load_store_elimination (before)
+  /// CHECK-DAG: <<Const0:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
+  /// CHECK-DAG: <<A:l\d+>>      NewArray
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const0>>]
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const1>>]
+  /// CHECK-DAG:                 ArraySet [<<A>>,<<Const0>>,<<Const1>>]
+  /// CHECK-DAG: <<Get1:b\d+>>   ArrayGet [<<A>>,<<Const0>>]
+  /// CHECK-DAG: <<Get2:a\d+>>   ArrayGet [<<A>>,<<Const0>>]
+  /// CHECK-DAG: <<Add:i\d+>>    Add [<<Get1>>,<<Get2>>]
+  /// CHECK-DAG:                 Return [<<Add>>]
+  //
+  /// CHECK-START: int Main.testLocalArrayMerge4(boolean) load_store_elimination (after)
+  /// CHECK-DAG: <<Const1:i\d+>> IntConstant 1
+  /// CHECK-DAG: <<Cnv1:b\d+>>   TypeConversion [<<Const1>>]
+  /// CHECK-DAG: <<Cnv2:a\d+>>   TypeConversion [<<Const1>>]
+  /// CHECK-DAG: <<Add:i\d+>>    Add [<<Cnv1>>,<<Cnv2>>]
+  /// CHECK-DAG:                 Return [<<Add>>]
+  //
+  /// CHECK-START: int Main.testLocalArrayMerge4(boolean) load_store_elimination (after)
+  /// CHECK-NOT:                 NewArray
+  /// CHECK-NOT:                 ArraySet
+  /// CHECK-NOT:                 ArrayGet
+  private static int testLocalArrayMerge4(boolean x) {
+    byte[] a = { 0 };
+    if (x) {
+      a[0] = 1;
+    } else {
+      a[0] = 1;
+    }
+    // Differently typed (signed vs unsigned),
+    // but same reference.
+    return a[0] + (a[0] & 0xff);
+  }
+
   static void assertIntEquals(int result, int expected) {
     if (expected != result) {
       throw new Error("Expected: " + expected + ", found: " + result);
@@ -1271,6 +1391,15 @@ public class Main {
     assertIntEquals(testclass2.i, 55);
 
     assertIntEquals(testStoreStoreWithDeoptimize(new int[4]), 4);
+
+    assertIntEquals(testLocalArrayMerge1(true), 1);
+    assertIntEquals(testLocalArrayMerge1(false), 1);
+    assertIntEquals(testLocalArrayMerge2(true), 2);
+    assertIntEquals(testLocalArrayMerge2(false), 3);
+    assertIntEquals(testLocalArrayMerge3(true), 2);
+    assertIntEquals(testLocalArrayMerge3(false), 1);
+    assertIntEquals(testLocalArrayMerge4(true), 2);
+    assertIntEquals(testLocalArrayMerge4(false), 2);
   }
 
   static boolean sFlag;
