@@ -20,6 +20,7 @@
 #include "base/casts.h"
 #include "base/leb128.h"
 #include "base/stringpiece.h"
+#include "class_iterator.h"
 #include "compact_dex_file.h"
 #include "dex_file.h"
 #include "invoke_type.h"
@@ -525,6 +526,10 @@ inline void DexFile::ClassDef::VisitMethods(const DexFile* dex_file, const Visit
       visitor(it);
     }
   }
+}
+
+inline IterationRange<ClassIterator> DexFile::GetClasses() const {
+  return { ClassIterator(*this, 0u), ClassIterator(*this, NumClassDefs()) };
 }
 
 }  // namespace art

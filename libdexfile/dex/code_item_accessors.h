@@ -47,6 +47,11 @@ class CodeItemInstructionAccessor {
     return insns_size_in_code_units_;
   }
 
+  uint32_t InsnsSizeInBytes() const {
+    static constexpr uint32_t kCodeUnitSizeInBytes = 2u;
+    return insns_size_in_code_units_ * kCodeUnitSizeInBytes;
+  }
+
   const uint16_t* Insns() const {
     return insns_;
   }
