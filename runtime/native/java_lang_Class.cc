@@ -648,7 +648,7 @@ static jobjectArray Class_getDeclaredAnnotations(JNIEnv* env, jobject javaThis) 
     // Return an empty array instead of a null pointer.
     ObjPtr<mirror::Class>  annotation_array_class =
         soa.Decode<mirror::Class>(WellKnownClasses::java_lang_annotation_Annotation__array);
-    mirror::ObjectArray<mirror::Object>* empty_array =
+    ObjPtr<mirror::ObjectArray<mirror::Object>> empty_array =
         mirror::ObjectArray<mirror::Object>::Alloc(soa.Self(),
                                                    annotation_array_class.Ptr(),
                                                    0);
@@ -661,7 +661,7 @@ static jobjectArray Class_getDeclaredClasses(JNIEnv* env, jobject javaThis) {
   ScopedFastNativeObjectAccess soa(env);
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::Class> klass(hs.NewHandle(DecodeClass(soa, javaThis)));
-  mirror::ObjectArray<mirror::Class>* classes = nullptr;
+  ObjPtr<mirror::ObjectArray<mirror::Class>> classes = nullptr;
   if (!klass->IsProxyClass() && klass->GetDexCache() != nullptr) {
     classes = annotations::GetDeclaredClasses(klass);
   }
@@ -738,7 +738,7 @@ static jstring Class_getInnerClassName(JNIEnv* env, jobject javaThis) {
   if (klass->IsProxyClass() || klass->GetDexCache() == nullptr) {
     return nullptr;
   }
-  mirror::String* class_name = nullptr;
+  ObjPtr<mirror::String> class_name = nullptr;
   if (!annotations::GetInnerClass(klass, &class_name)) {
     return nullptr;
   }
@@ -763,7 +763,7 @@ static jboolean Class_isAnonymousClass(JNIEnv* env, jobject javaThis) {
   if (klass->IsProxyClass() || klass->GetDexCache() == nullptr) {
     return false;
   }
-  mirror::String* class_name = nullptr;
+  ObjPtr<mirror::String> class_name = nullptr;
   if (!annotations::GetInnerClass(klass, &class_name)) {
     return false;
   }

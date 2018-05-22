@@ -38,7 +38,7 @@ static jobjectArray Constructor_getExceptionTypes(JNIEnv* env, jobject javaMetho
   ScopedFastNativeObjectAccess soa(env);
   ArtMethod* method = ArtMethod::FromReflectedMethod(soa, javaMethod)
       ->GetInterfaceMethodIfProxy(kRuntimePointerSize);
-  mirror::ObjectArray<mirror::Class>* result_array =
+  ObjPtr<mirror::ObjectArray<mirror::Class>> result_array =
       annotations::GetExceptionTypesForMethod(method);
   if (result_array == nullptr) {
     // Return an empty array instead of a null pointer.
