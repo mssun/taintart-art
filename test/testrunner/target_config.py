@@ -266,16 +266,14 @@ target_config = {
         }
     },
     'art-gtest-valgrind32': {
-      # Disabled: Valgrind is no longer supported.
-      # Historical note: This was already disabled, as x86 valgrind did not understand SSE4.x
+      # Disabled: x86 valgrind does not understand SSE4.x
       # 'make' : 'valgrind-test-art-host32',
         'env': {
             'ART_USE_READ_BARRIER' : 'false'
         }
     },
     'art-gtest-valgrind64': {
-      # Disabled: Valgrind is no longer supported.
-      # 'make' : 'valgrind-test-art-host64',
+        'make' : 'valgrind-test-art-host64',
         'env': {
             'ART_USE_READ_BARRIER' : 'false'
         }

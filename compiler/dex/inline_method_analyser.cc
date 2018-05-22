@@ -724,8 +724,7 @@ bool InlineMethodAnalyser::ComputeSpecialAccessorInfo(ArtMethod* method,
     return false;
   }
   DCHECK_GE(field->GetOffset().Int32Value(), 0);
-  // Historical note: We made sure not to interleave function calls with bit field writes to
-  // placate Valgrind. Bug: 27552451.
+  // Do not interleave function calls with bit field writes to placate valgrind. Bug: 27552451.
   uint32_t field_offset = field->GetOffset().Uint32Value();
   bool is_volatile = field->IsVolatile();
   result->field_idx = field_idx;
