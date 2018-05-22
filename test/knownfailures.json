@@ -956,6 +956,7 @@
     {
         "tests": ["616-cha-unloading",
                   "674-hiddenapi",
+                  "677-fsi2",
                   "678-quickening",
                   "679-locks",
                   "999-redefine-hiddenapi"],
