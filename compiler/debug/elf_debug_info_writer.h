@@ -207,11 +207,10 @@ class ElfCompilationUnitWriter {
       std::vector<DexRegisterMap> dex_reg_maps;
       if (accessor.HasCodeItem() && mi->code_info != nullptr) {
         const CodeInfo code_info(mi->code_info);
-        CodeInfoEncoding encoding = code_info.ExtractEncoding();
-        for (size_t s = 0; s < code_info.GetNumberOfStackMaps(encoding); ++s) {
-          const StackMap& stack_map = code_info.GetStackMapAt(s, encoding);
+        for (size_t s = 0; s < code_info.GetNumberOfStackMaps(); ++s) {
+          const StackMap stack_map = code_info.GetStackMapAt(s);
           dex_reg_maps.push_back(code_info.GetDexRegisterMapOf(
-              stack_map, encoding, accessor.RegistersSize()));
+              stack_map, accessor.RegistersSize()));
         }
       }
 

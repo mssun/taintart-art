@@ -32,8 +32,8 @@ class InstructionSetFeatures;
 class PACKED(4) OatHeader {
  public:
   static constexpr uint8_t kOatMagic[] = { 'o', 'a', 't', '\n' };
-  // Last oat version changed reason: compiler support const-method-handle
-  static constexpr uint8_t kOatVersion[] = { '1', '4', '3', '\0' };
+  // Last oat version changed reason: Refactor stackmap encoding.
+  static constexpr uint8_t kOatVersion[] = { '1', '4', '4', '\0' };
 
   static constexpr const char* kImageLocationKey = "image-location";
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";

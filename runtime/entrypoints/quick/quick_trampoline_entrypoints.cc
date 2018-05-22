@@ -356,16 +356,14 @@ class QuickArgumentVisitor {
     uintptr_t outer_pc_offset = current_code->NativeQuickPcOffset(outer_pc);
 
     if (current_code->IsOptimized()) {
-      CodeInfo code_info = current_code->GetOptimizedCodeInfo();
-      CodeInfoEncoding encoding = code_info.ExtractEncoding();
-      StackMap stack_map = code_info.GetStackMapForNativePcOffset(outer_pc_offset, encoding);
+      CodeInfo code_info(current_code);
+      StackMap stack_map = code_info.GetStackMapForNativePcOffset(outer_pc_offset);
       DCHECK(stack_map.IsValid());
-      if (stack_map.HasInlineInfo(encoding.stack_map.encoding)) {
-        InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map, encoding);
-        return inline_info.GetDexPcAtDepth(encoding.inline_info.encoding,
-                                           inline_info.GetDepth(encoding.inline_info.encoding)-1);
+      if (stack_map.HasInlineInfo()) {
+        InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
+        return inline_info.GetDexPcAtDepth(inline_info.GetDepth()-1);
       } else {
-        return stack_map.GetDexPc(encoding.stack_map.encoding);
+        return stack_map.GetDexPc();
       }
     } else {
       return current_code->ToDexPc(*caller_sp, outer_pc);
@@ -385,13 +383,12 @@ class QuickArgumentVisitor {
       return false;
     }
     uintptr_t outer_pc_offset = current_code->NativeQuickPcOffset(outer_pc);
-    CodeInfo code_info = current_code->GetOptimizedCodeInfo();
-    CodeInfoEncoding encoding = code_info.ExtractEncoding();
+    CodeInfo code_info(current_code);
     MethodInfo method_info = current_code->GetOptimizedMethodInfo();
-    InvokeInfo invoke(code_info.GetInvokeInfoForNativePcOffset(outer_pc_offset, encoding));
+    InvokeInfo invoke(code_info.GetInvokeInfoForNativePcOffset(outer_pc_offset));
     if (invoke.IsValid()) {
-      *invoke_type = static_cast<InvokeType>(invoke.GetInvokeType(encoding.invoke_info.encoding));
-      *dex_method_index = invoke.GetMethodIndex(encoding.invoke_info.encoding, method_info);
+      *invoke_type = static_cast<InvokeType>(invoke.GetInvokeType());
+      *dex_method_index = invoke.GetMethodIndex(method_info);
       return true;
     }
     return false;
@@ -1230,12 +1227,11 @@ static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutato
   CHECK(current_code != nullptr);
   CHECK(current_code->IsOptimized());
   uintptr_t native_pc_offset = current_code->NativeQuickPcOffset(caller_pc);
-  CodeInfo code_info = current_code->GetOptimizedCodeInfo();
+  CodeInfo code_info(current_code);
   MethodInfo method_info = current_code->GetOptimizedMethodInfo();
-  CodeInfoEncoding encoding = code_info.ExtractEncoding();
-  StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
+  StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
   CHECK(stack_map.IsValid());
-  uint32_t dex_pc = stack_map.GetDexPc(encoding.stack_map.encoding);
+  uint32_t dex_pc = stack_map.GetDexPc();
 
   // Log the outer method and its associated dex file and class table pointer which can be used
   // to find out if the inlined methods were defined by other dex file(s) or class loader(s).
@@ -1249,20 +1245,17 @@ static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutato
   LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(outer_method, dex_pc);
 
   ArtMethod* caller = outer_method;
-  if (stack_map.HasInlineInfo(encoding.stack_map.encoding)) {
-    InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map, encoding);
-    const InlineInfoEncoding& inline_info_encoding = encoding.inline_info.encoding;
-    size_t depth = inline_info.GetDepth(inline_info_encoding);
+  if (stack_map.HasInlineInfo()) {
+    InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
+    size_t depth = inline_info.GetDepth();
     for (size_t d = 0; d < depth; ++d) {
       const char* tag = "";
-      dex_pc = inline_info.GetDexPcAtDepth(inline_info_encoding, d);
-      if (inline_info.EncodesArtMethodAtDepth(inline_info_encoding, d)) {
+      dex_pc = inline_info.GetDexPcAtDepth(d);
+      if (inline_info.EncodesArtMethodAtDepth(d)) {
         tag = "encoded ";
-        caller = inline_info.GetArtMethodAtDepth(inline_info_encoding, d);
+        caller = inline_info.GetArtMethodAtDepth(d);
       } else {
-        uint32_t method_index = inline_info.GetMethodIndexAtDepth(inline_info_encoding,
-                                                                  method_info,
-                                                                  d);
+        uint32_t method_index = inline_info.GetMethodIndexAtDepth(method_info, d);
         if (dex_pc == static_cast<uint32_t>(-1)) {
           tag = "special ";
           CHECK_EQ(d + 1u, depth);

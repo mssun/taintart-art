@@ -75,15 +75,14 @@ StackVisitor::StackVisitor(Thread* thread,
   }
 }
 
-static InlineInfo GetCurrentInlineInfo(const OatQuickMethodHeader* method_header,
+static InlineInfo GetCurrentInlineInfo(CodeInfo& code_info,
+                                       const OatQuickMethodHeader* method_header,
                                        uintptr_t cur_quick_frame_pc)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   uint32_t native_pc_offset = method_header->NativeQuickPcOffset(cur_quick_frame_pc);
-  CodeInfo code_info = method_header->GetOptimizedCodeInfo();
-  CodeInfoEncoding encoding = code_info.ExtractEncoding();
-  StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
+  StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
   DCHECK(stack_map.IsValid());
-  return code_info.GetInlineInfoOf(stack_map, encoding);
+  return code_info.GetInlineInfoOf(stack_map);
 }
 
 ArtMethod* StackVisitor::GetMethod() const {
@@ -92,16 +91,16 @@ ArtMethod* StackVisitor::GetMethod() const {
   } else if (cur_quick_frame_ != nullptr) {
     if (IsInInlinedFrame()) {
       size_t depth_in_stack_map = current_inlining_depth_ - 1;
-      InlineInfo inline_info = GetCurrentInlineInfo(GetCurrentOatQuickMethodHeader(),
-                                                    cur_quick_frame_pc_);
       const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
-      CodeInfoEncoding encoding = method_header->GetOptimizedCodeInfo().ExtractEncoding();
+      CodeInfo code_info(method_header);
+      InlineInfo inline_info = GetCurrentInlineInfo(code_info,
+                                                    method_header,
+                                                    cur_quick_frame_pc_);
       MethodInfo method_info = method_header->GetOptimizedMethodInfo();
       DCHECK(walk_kind_ != StackWalkKind::kSkipInlinedFrames);
       return GetResolvedMethod(*GetCurrentQuickFrame(),
                                method_info,
                                inline_info,
-                               encoding.inline_info.encoding,
                                depth_in_stack_map);
     } else {
       return *cur_quick_frame_;
@@ -115,11 +114,11 @@ uint32_t StackVisitor::GetDexPc(bool abort_on_failure) const {
     return cur_shadow_frame_->GetDexPC();
   } else if (cur_quick_frame_ != nullptr) {
     if (IsInInlinedFrame()) {
-      size_t depth_in_stack_map = current_inlining_depth_ - 1;
       const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
-      CodeInfoEncoding encoding = method_header->GetOptimizedCodeInfo().ExtractEncoding();
-      return GetCurrentInlineInfo(GetCurrentOatQuickMethodHeader(), cur_quick_frame_pc_).
-          GetDexPcAtDepth(encoding.inline_info.encoding, depth_in_stack_map);
+      CodeInfo code_info(method_header);
+      size_t depth_in_stack_map = current_inlining_depth_ - 1;
+      return GetCurrentInlineInfo(code_info, method_header, cur_quick_frame_pc_).
+          GetDexPcAtDepth(depth_in_stack_map);
     } else if (cur_oat_quick_method_header_ == nullptr) {
       return dex::kDexNoIndex;
     } else {
@@ -229,32 +228,29 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
   uint16_t number_of_dex_registers = accessor.RegistersSize();
   DCHECK_LT(vreg, number_of_dex_registers);
   const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
-  CodeInfo code_info = method_header->GetOptimizedCodeInfo();
-  CodeInfoEncoding encoding = code_info.ExtractEncoding();
+  CodeInfo code_info(method_header);
 
   uint32_t native_pc_offset = method_header->NativeQuickPcOffset(cur_quick_frame_pc_);
-  StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
+  StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
   DCHECK(stack_map.IsValid());
   size_t depth_in_stack_map = current_inlining_depth_ - 1;
 
   DexRegisterMap dex_register_map = IsInInlinedFrame()
       ? code_info.GetDexRegisterMapAtDepth(depth_in_stack_map,
-                                           code_info.GetInlineInfoOf(stack_map, encoding),
-                                           encoding,
+                                           code_info.GetInlineInfoOf(stack_map),
                                            number_of_dex_registers)
-      : code_info.GetDexRegisterMapOf(stack_map, encoding, number_of_dex_registers);
+      : code_info.GetDexRegisterMapOf(stack_map, number_of_dex_registers);
 
   if (!dex_register_map.IsValid()) {
     return false;
   }
   DexRegisterLocation::Kind location_kind =
-      dex_register_map.GetLocationKind(vreg, number_of_dex_registers, code_info, encoding);
+      dex_register_map.GetLocationKind(vreg, number_of_dex_registers, code_info);
   switch (location_kind) {
     case DexRegisterLocation::Kind::kInStack: {
       const int32_t offset = dex_register_map.GetStackOffsetInBytes(vreg,
                                                                     number_of_dex_registers,
-                                                                    code_info,
-                                                                    encoding);
+                                                                    code_info);
       const uint8_t* addr = reinterpret_cast<const uint8_t*>(cur_quick_frame_) + offset;
       *val = *reinterpret_cast<const uint32_t*>(addr);
       return true;
@@ -264,11 +260,11 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
     case DexRegisterLocation::Kind::kInFpuRegister:
     case DexRegisterLocation::Kind::kInFpuRegisterHigh: {
       uint32_t reg =
-          dex_register_map.GetMachineRegister(vreg, number_of_dex_registers, code_info, encoding);
+          dex_register_map.GetMachineRegister(vreg, number_of_dex_registers, code_info);
       return GetRegisterIfAccessible(reg, kind, val);
     }
     case DexRegisterLocation::Kind::kConstant:
-      *val = dex_register_map.GetConstant(vreg, number_of_dex_registers, code_info, encoding);
+      *val = dex_register_map.GetConstant(vreg, number_of_dex_registers, code_info);
       return true;
     case DexRegisterLocation::Kind::kNone:
       return false;
@@ -277,8 +273,7 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
           << "Unexpected location kind "
           << dex_register_map.GetLocationInternalKind(vreg,
                                                       number_of_dex_registers,
-                                                      code_info,
-                                                      encoding);
+                                                      code_info);
       UNREACHABLE();
   }
 }
@@ -830,15 +825,14 @@ void StackVisitor::WalkStack(bool include_transitions) {
         if ((walk_kind_ == StackWalkKind::kIncludeInlinedFrames)
             && (cur_oat_quick_method_header_ != nullptr)
             && cur_oat_quick_method_header_->IsOptimized()) {
-          CodeInfo code_info = cur_oat_quick_method_header_->GetOptimizedCodeInfo();
-          CodeInfoEncoding encoding = code_info.ExtractEncoding();
+          CodeInfo code_info(cur_oat_quick_method_header_);
           uint32_t native_pc_offset =
               cur_oat_quick_method_header_->NativeQuickPcOffset(cur_quick_frame_pc_);
-          StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
-          if (stack_map.IsValid() && stack_map.HasInlineInfo(encoding.stack_map.encoding)) {
-            InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map, encoding);
+          StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
+          if (stack_map.IsValid() && stack_map.HasInlineInfo()) {
+            InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
             DCHECK_EQ(current_inlining_depth_, 0u);
-            for (current_inlining_depth_ = inline_info.GetDepth(encoding.inline_info.encoding);
+            for (current_inlining_depth_ = inline_info.GetDepth();
                  current_inlining_depth_ != 0;
                  --current_inlining_depth_) {
               bool should_continue = VisitFrame();

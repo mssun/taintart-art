@@ -150,6 +150,7 @@ art_cc_test {
         "base/bit_memory_region_test.cc",
         "base/bit_string_test.cc",
         "base/bit_struct_test.cc",
+        "base/bit_table_test.cc",
         "base/bit_utils_test.cc",
         "base/bit_vector_test.cc",
         "base/file_utils_test.cc",

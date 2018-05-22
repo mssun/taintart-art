@@ -48,9 +48,8 @@ static void do_checks(jclass cls, const char* method_name) {
     }
   }
 
-  CodeInfo info = header->GetOptimizedCodeInfo();
-  CodeInfoEncoding encoding = info.ExtractEncoding();
-  CHECK(info.HasInlineInfo(encoding));
+  CodeInfo info(header);
+  CHECK(info.HasInlineInfo());
 }
 
 static void allocate_profiling_info(jclass cls, const char* method_name) {
