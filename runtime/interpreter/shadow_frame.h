@@ -37,6 +37,7 @@ class Object;
 
 class ArtMethod;
 class ShadowFrame;
+template<class MirrorType> class ObjPtr;
 class Thread;
 union JValue;
 
@@ -245,18 +246,8 @@ class ShadowFrame {
   }
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  void SetVRegReference(size_t i, mirror::Object* val) REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK_LT(i, NumberOfVRegs());
-    if (kVerifyFlags & kVerifyWrites) {
-      VerifyObject(val);
-    }
-    ReadBarrier::MaybeAssertToSpaceInvariant(val);
-    uint32_t* vreg = &vregs_[i];
-    reinterpret_cast<StackReference<mirror::Object>*>(vreg)->Assign(val);
-    if (HasReferenceArray()) {
-      References()[i].Assign(val);
-    }
-  }
+  void SetVRegReference(size_t i, ObjPtr<mirror::Object> val)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   void SetMethod(ArtMethod* method) REQUIRES(Locks::mutator_lock_) {
     DCHECK(method != nullptr);
