@@ -20,6 +20,9 @@
 #include "base/utils.h"
 #include "code_item_accessors.h"
 #include "dex_file.h"
+#include "invoke_type.h"
+#include "method_reference.h"
+#include "modifiers.h"
 
 namespace art {
 
@@ -27,55 +30,81 @@ class ClassIteratorData;
 
 // Classes to access Dex data.
 class ClassAccessor {
- public:
-  // Class method data.
-  class Method {
+ private:
+  class BaseItem {
    public:
     uint32_t GetIndex() const {
-      return method_idx_;
+      return index_;
     }
 
     uint32_t GetAccessFlags() const {
       return access_flags_;
     }
 
+    bool IsFinal() const {
+      return (GetAccessFlags() & kAccFinal) != 0;
+    }
+
+   public:
+    uint32_t index_ = 0u;
+    uint32_t access_flags_ = 0u;
+  };
+
+ public:
+  // A decoded version of the method of a class_data_item.
+  class Method : public BaseItem {
+   public:
     uint32_t GetCodeItemOffset() const {
       return code_off_;
     }
 
+    InvokeType GetInvokeType(uint32_t class_access_flags) const {
+      return is_static_or_direct_
+          ? GetDirectMethodInvokeType()
+          : GetVirtualMethodInvokeType(class_access_flags);
+    }
+
+    MethodReference GetReference() const {
+      return MethodReference(&dex_file_, GetIndex());
+    }
+
     CodeItemInstructionAccessor GetInstructions() const;
 
+    const DexFile::CodeItem* GetCodeItem() const;
+
    private:
-    explicit Method(const DexFile& dex_file) : dex_file_(dex_file) {}
+    explicit Method(const DexFile& dex_file, bool is_static_or_direct)
+        : dex_file_(dex_file),
+          is_static_or_direct_(is_static_or_direct) {}
 
     const uint8_t* Read(const uint8_t* ptr);
 
-    // A decoded version of the method of a class_data_item.
+    InvokeType GetDirectMethodInvokeType() const {
+      return (GetAccessFlags() & kAccStatic) != 0 ? kStatic : kDirect;
+    }
+
+    InvokeType GetVirtualMethodInvokeType(uint32_t class_access_flags) const {
+      DCHECK_EQ(GetAccessFlags() & kAccStatic, 0U);
+      if ((class_access_flags & kAccInterface) != 0) {
+        return kInterface;
+      } else if ((GetAccessFlags() & kAccConstructor) != 0) {
+        return kSuper;
+      } else {
+        return kVirtual;
+      }
+    }
+
     const DexFile& dex_file_;
-    uint32_t method_idx_ = 0u;
-    uint32_t access_flags_ = 0u;
+    const bool is_static_or_direct_;
     uint32_t code_off_ = 0u;
 
     friend class ClassAccessor;
   };
 
-  // Class field data.
-  class Field {
-   public:
-    uint32_t GetIndex() const {
-      return field_idx_;
-    }
-
-    uint32_t GetAccessFlags() const {
-      return access_flags_;
-    }
-
+  // A decoded version of the field of a class_data_item.
+  class Field : public BaseItem {
    private:
     const uint8_t* Read(const uint8_t* ptr);
-
-    // A decoded version of the field of a class_data_item.
-    uint32_t field_idx_ = 0u;
-    uint32_t access_flags_ = 0u;
 
     friend class ClassAccessor;
   };
@@ -89,19 +118,26 @@ class ClassAccessor {
   const DexFile::CodeItem* GetCodeItem(const Method& method) const;
 
   // Iterator data is not very iterator friendly, use visitors to get around this.
+  // No thread safety analysis since the visitor may require capabilities.
   template <typename StaticFieldVisitor,
             typename InstanceFieldVisitor,
             typename DirectMethodVisitor,
             typename VirtualMethodVisitor>
-  void VisitMethodsAndFields(const StaticFieldVisitor& static_field_visitor,
+  void VisitFieldsAndMethods(const StaticFieldVisitor& static_field_visitor,
                              const InstanceFieldVisitor& instance_field_visitor,
                              const DirectMethodVisitor& direct_method_visitor,
-                             const VirtualMethodVisitor& virtual_method_visitor) const;
+                             const VirtualMethodVisitor& virtual_method_visitor) const
+      NO_THREAD_SAFETY_ANALYSIS;
 
   template <typename DirectMethodVisitor,
             typename VirtualMethodVisitor>
   void VisitMethods(const DirectMethodVisitor& direct_method_visitor,
                     const VirtualMethodVisitor& virtual_method_visitor) const;
+
+  template <typename StaticFieldVisitor,
+            typename InstanceFieldVisitor>
+  void VisitFields(const StaticFieldVisitor& static_field_visitor,
+                   const InstanceFieldVisitor& instance_field_visitor) const;
 
   // Visit direct and virtual methods.
   template <typename MethodVisitor>
@@ -123,9 +159,14 @@ class ClassAccessor {
     return num_virtual_methods_;
   }
 
-  // TODO: Deprecate
-  dex::TypeIndex GetDescriptorIndex() const {
+  const char* GetDescriptor() const;
+
+  dex::TypeIndex GetClassIdx() const {
     return descriptor_index_;
+  }
+
+  const DexFile& GetDexFile() const {
+    return dex_file_;
   }
 
  protected:

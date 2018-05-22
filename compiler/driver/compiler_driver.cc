@@ -42,6 +42,7 @@
 #include "compiler.h"
 #include "compiler_callbacks.h"
 #include "compiler_driver-inl.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
@@ -771,39 +772,6 @@ void CompilerDriver::Resolve(jobject class_loader,
   }
 }
 
-// Resolve const-strings in the code. Done to have deterministic allocation behavior. Right now
-// this is single-threaded for simplicity.
-// TODO: Collect the relevant string indices in parallel, then allocate them sequentially in a
-//       stable order.
-
-static void ResolveConstStrings(ClassLinker* class_linker,
-                                Handle<mirror::DexCache> dex_cache,
-                                const DexFile& dex_file,
-                                const DexFile::CodeItem* code_item)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-  if (code_item == nullptr) {
-    // Abstract or native method.
-    return;
-  }
-
-  for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(dex_file, code_item)) {
-    switch (inst->Opcode()) {
-      case Instruction::CONST_STRING:
-      case Instruction::CONST_STRING_JUMBO: {
-        dex::StringIndex string_index((inst->Opcode() == Instruction::CONST_STRING)
-            ? inst->VRegB_21c()
-            : inst->VRegB_31c());
-        ObjPtr<mirror::String> string = class_linker->ResolveString(string_index, dex_cache);
-        CHECK(string != nullptr) << "Could not allocate a string when forcing determinism";
-        break;
-      }
-
-      default:
-        break;
-    }
-  }
-}
-
 static void ResolveConstStrings(CompilerDriver* driver,
                                 const std::vector<const DexFile*>& dex_files,
                                 TimingLogger* timings) {
@@ -816,33 +784,35 @@ static void ResolveConstStrings(CompilerDriver* driver,
     dex_cache.Assign(class_linker->FindDexCache(soa.Self(), *dex_file));
     TimingLogger::ScopedTiming t("Resolve const-string Strings", timings);
 
-    size_t class_def_count = dex_file->NumClassDefs();
-    for (size_t class_def_index = 0; class_def_index < class_def_count; ++class_def_index) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
-
-      const uint8_t* class_data = dex_file->GetClassData(class_def);
-      if (class_data == nullptr) {
-        // empty class, probably a marker interface
-        continue;
-      }
-
-      ClassDataItemIterator it(*dex_file, class_data);
-      it.SkipAllFields();
-
-      bool compilation_enabled = driver->IsClassToCompile(
-          dex_file->StringByTypeIdx(class_def.class_idx_));
-      if (!compilation_enabled) {
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
+      if (!driver->IsClassToCompile(accessor.GetDescriptor())) {
         // Compilation is skipped, do not resolve const-string in code of this class.
         // FIXME: Make sure that inlining honors this. b/26687569
         continue;
       }
+      accessor.VisitMethods([&](const ClassAccessor::Method& method)
+          REQUIRES_SHARED(Locks::mutator_lock_) {
+        // Resolve const-strings in the code. Done to have deterministic allocation behavior. Right
+        // now this is single-threaded for simplicity.
+        // TODO: Collect the relevant string indices in parallel, then allocate them sequentially
+        // in a stable order.
+        for (const DexInstructionPcPair& inst : method.GetInstructions()) {
+          switch (inst->Opcode()) {
+            case Instruction::CONST_STRING:
+            case Instruction::CONST_STRING_JUMBO: {
+              dex::StringIndex string_index((inst->Opcode() == Instruction::CONST_STRING)
+                  ? inst->VRegB_21c()
+                  : inst->VRegB_31c());
+              ObjPtr<mirror::String> string = class_linker->ResolveString(string_index, dex_cache);
+              CHECK(string != nullptr) << "Could not allocate a string when forcing determinism";
+              break;
+            }
 
-      // Direct and virtual methods.
-      while (it.HasNextMethod()) {
-        ResolveConstStrings(class_linker, dex_cache, *dex_file, it.GetMethodCodeItem());
-        it.Next();
-      }
-      DCHECK(!it.HasNext());
+            default:
+              break;
+          }
+        }
+      });
     }
   }
 }
@@ -856,14 +826,9 @@ static void InitializeTypeCheckBitstrings(CompilerDriver* driver,
                                           ClassLinker* class_linker,
                                           Handle<mirror::DexCache> dex_cache,
                                           const DexFile& dex_file,
-                                          const DexFile::CodeItem* code_item)
+                                          const ClassAccessor::Method& method)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-  if (code_item == nullptr) {
-    // Abstract or native method.
-    return;
-  }
-
-  for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(dex_file, code_item)) {
+  for (const DexInstructionPcPair& inst : method.GetInstructions()) {
     switch (inst->Opcode()) {
       case Instruction::CHECK_CAST:
       case Instruction::INSTANCE_OF: {
@@ -907,34 +872,18 @@ static void InitializeTypeCheckBitstrings(CompilerDriver* driver,
     dex_cache.Assign(class_linker->FindDexCache(soa.Self(), *dex_file));
     TimingLogger::ScopedTiming t("Initialize type check bitstrings", timings);
 
-    size_t class_def_count = dex_file->NumClassDefs();
-    for (size_t class_def_index = 0; class_def_index < class_def_count; ++class_def_index) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
-
-      const uint8_t* class_data = dex_file->GetClassData(class_def);
-      if (class_data == nullptr) {
-        // empty class, probably a marker interface
-        continue;
-      }
-
-      ClassDataItemIterator it(*dex_file, class_data);
-      it.SkipAllFields();
-
-      bool compilation_enabled = driver->IsClassToCompile(
-          dex_file->StringByTypeIdx(class_def.class_idx_));
-      if (!compilation_enabled) {
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
+      if (!driver->IsClassToCompile(accessor.GetDescriptor())) {
         // Compilation is skipped, do not look for type checks in code of this class.
         // FIXME: Make sure that inlining honors this. b/26687569
         continue;
       }
 
       // Direct and virtual methods.
-      while (it.HasNextMethod()) {
-        InitializeTypeCheckBitstrings(
-            driver, class_linker, dex_cache, *dex_file, it.GetMethodCodeItem());
-        it.Next();
-      }
-      DCHECK(!it.HasNext());
+      accessor.VisitMethods([&](const ClassAccessor::Method& method)
+          REQUIRES_SHARED(Locks::mutator_lock_) {
+        InitializeTypeCheckBitstrings(driver, class_linker, dex_cache, *dex_file, method);
+      });
     }
   }
 }
@@ -954,10 +903,8 @@ static void EnsureVerifiedOrVerifyAtRuntime(jobject jclass_loader,
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
 
   for (const DexFile* dex_file : dex_files) {
-    for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
-      const char* descriptor = dex_file->GetClassDescriptor(class_def);
-      cls.Assign(class_linker->FindClass(soa.Self(), descriptor, class_loader));
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
+      cls.Assign(class_linker->FindClass(soa.Self(), accessor.GetDescriptor(), class_loader));
       if (cls == nullptr) {
         soa.Self()->ClearException();
       } else if (&cls->GetDexFile() == dex_file) {
@@ -1740,22 +1687,16 @@ static void CheckAndClearResolveException(Thread* self)
 
 bool CompilerDriver::RequiresConstructorBarrier(const DexFile& dex_file,
                                                 uint16_t class_def_idx) const {
-  const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_idx);
-  const uint8_t* class_data = dex_file.GetClassData(class_def);
-  if (class_data == nullptr) {
-    // Empty class such as a marker interface.
-    return false;
-  }
-  ClassDataItemIterator it(dex_file, class_data);
-  it.SkipStaticFields();
+  ClassAccessor accessor(dex_file, dex_file.GetClassDef(class_def_idx));
+  bool has_is_final = false;
   // We require a constructor barrier if there are final instance fields.
-  while (it.HasNextInstanceField()) {
-    if (it.MemberIsFinal()) {
-      return true;
+  accessor.VisitFields(/*static*/ VoidFunctor(),
+                       [&](const ClassAccessor::Field& field) {
+    if (field.IsFinal()) {
+      has_is_final = true;
     }
-    it.Next();
-  }
-  return false;
+  });
+  return has_is_final;
 }
 
 class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
@@ -1769,11 +1710,6 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
     jobject jclass_loader = manager_->GetClassLoader();
     const DexFile& dex_file = *manager_->GetDexFile();
     ClassLinker* class_linker = manager_->GetClassLinker();
-
-    // If an instance field is final then we need to have a barrier on the return, static final
-    // fields are assigned within the lock held for class initialization. Conservatively assume
-    // constructor barriers are always required.
-    bool requires_constructor_barrier = true;
 
     // Method and Field are the worst. We can't resolve without either
     // context from the code use (to disambiguate virtual vs direct
@@ -1806,56 +1742,53 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
       // We want to resolve the methods and fields eagerly.
       resolve_fields_and_methods = true;
     }
-    // Note the class_data pointer advances through the headers,
-    // static fields, instance fields, direct methods, and virtual
-    // methods.
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
-    if (class_data == nullptr) {
-      // Empty class such as a marker interface.
-      requires_constructor_barrier = false;
-    } else {
-      ClassDataItemIterator it(dex_file, class_data);
-      while (it.HasNextStaticField()) {
-        if (resolve_fields_and_methods) {
-          ArtField* field = class_linker->ResolveField(
-              it.GetMemberIndex(), dex_cache, class_loader, /* is_static */ true);
-          if (field == nullptr) {
-            CheckAndClearResolveException(soa.Self());
-          }
-        }
-        it.Next();
-      }
-      // We require a constructor barrier if there are final instance fields.
-      requires_constructor_barrier = false;
-      while (it.HasNextInstanceField()) {
-        if (it.MemberIsFinal()) {
-          requires_constructor_barrier = true;
-        }
-        if (resolve_fields_and_methods) {
-          ArtField* field = class_linker->ResolveField(
-              it.GetMemberIndex(), dex_cache, class_loader, /* is_static */ false);
-          if (field == nullptr) {
-            CheckAndClearResolveException(soa.Self());
-          }
-        }
-        it.Next();
-      }
+    // If an instance field is final then we need to have a barrier on the return, static final
+    // fields are assigned within the lock held for class initialization.
+    bool requires_constructor_barrier = false;
+
+    ClassAccessor accessor(dex_file, class_def);
+    // Optionally resolve fields and methods and figure out if we need a constructor barrier.
+    auto method_visitor = [&](const ClassAccessor::Method& method)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
       if (resolve_fields_and_methods) {
-        while (it.HasNextMethod()) {
-          ArtMethod* method = class_linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-              it.GetMemberIndex(),
-              dex_cache,
-              class_loader,
-              /* referrer */ nullptr,
-              it.GetMethodInvokeType(class_def));
-          if (method == nullptr) {
-            CheckAndClearResolveException(soa.Self());
-          }
-          it.Next();
+        ArtMethod* resolved = class_linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
+            method.GetIndex(),
+            dex_cache,
+            class_loader,
+            /* referrer */ nullptr,
+            method.GetInvokeType(class_def.access_flags_));
+        if (resolved == nullptr) {
+          CheckAndClearResolveException(soa.Self());
         }
-        DCHECK(!it.HasNext());
       }
-    }
+    };
+    accessor.VisitFieldsAndMethods(
+        // static fields
+        [&](ClassAccessor::Field& field) REQUIRES_SHARED(Locks::mutator_lock_) {
+          if (resolve_fields_and_methods) {
+            ArtField* resolved = class_linker->ResolveField(
+                field.GetIndex(), dex_cache, class_loader, /* is_static */ true);
+            if (resolved == nullptr) {
+              CheckAndClearResolveException(soa.Self());
+            }
+          }
+        },
+        // instance fields
+        [&](ClassAccessor::Field& field) REQUIRES_SHARED(Locks::mutator_lock_) {
+          if (field.IsFinal()) {
+            // We require a constructor barrier if there are final instance fields.
+            requires_constructor_barrier = true;
+          }
+          if (resolve_fields_and_methods) {
+            ArtField* resolved = class_linker->ResolveField(
+                field.GetIndex(), dex_cache, class_loader, /* is_static */ false);
+            if (resolved == nullptr) {
+              CheckAndClearResolveException(soa.Self());
+            }
+          }
+        },
+        /*direct methods*/ method_visitor,
+        /*virtual methods*/ method_visitor);
     manager_->GetCompiler()->SetRequiresConstructorBarrier(self,
                                                            &dex_file,
                                                            class_def_index,
@@ -1942,32 +1875,13 @@ void CompilerDriver::SetVerified(jobject class_loader,
   }
 }
 
-static void PopulateVerifiedMethods(const DexFile& dex_file,
-                                    uint32_t class_def_index,
-                                    VerificationResults* verification_results) {
-  const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-  const uint8_t* class_data = dex_file.GetClassData(class_def);
-  if (class_data == nullptr) {
-    return;
-  }
-  ClassDataItemIterator it(dex_file, class_data);
-  it.SkipAllFields();
-
-  while (it.HasNextMethod()) {
-    verification_results->CreateVerifiedMethodFor(MethodReference(&dex_file, it.GetMemberIndex()));
-    it.Next();
-  }
-  DCHECK(!it.HasNext());
-}
-
-static void LoadAndUpdateStatus(const DexFile& dex_file,
-                                const DexFile::ClassDef& class_def,
+static void LoadAndUpdateStatus(const ClassAccessor& accessor,
                                 ClassStatus status,
                                 Handle<mirror::ClassLoader> class_loader,
                                 Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
-  const char* descriptor = dex_file.GetClassDescriptor(class_def);
+  const char* descriptor = accessor.GetDescriptor();
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   Handle<mirror::Class> cls(hs.NewHandle<mirror::Class>(
       class_linker->FindClass(self, descriptor, class_loader)));
@@ -1975,7 +1889,7 @@ static void LoadAndUpdateStatus(const DexFile& dex_file,
     // Check that the class is resolved with the current dex file. We might get
     // a boot image class, or a class in a different dex file for multidex, and
     // we should not update the status in that case.
-    if (&cls->GetDexFile() == &dex_file) {
+    if (&cls->GetDexFile() == &accessor.GetDexFile()) {
       ObjectLock<mirror::Class> lock(self, cls);
       mirror::Class::SetStatus(cls, status, self);
     }
@@ -2014,13 +1928,13 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
     // Fetch the list of unverified classes.
     const std::set<dex::TypeIndex>& unverified_classes =
         verifier_deps->GetUnverifiedClasses(*dex_file);
-    for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
-      if (unverified_classes.find(class_def.class_idx_) == unverified_classes.end()) {
+    uint32_t class_def_idx = 0u;
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
+      if (unverified_classes.find(accessor.GetClassIdx()) == unverified_classes.end()) {
         if (compiler_only_verifies) {
           // Just update the compiled_classes_ map. The compiler doesn't need to resolve
           // the type.
-          ClassReference ref(dex_file, i);
+          ClassReference ref(dex_file, class_def_idx);
           ClassStatus existing = ClassStatus::kNotReady;
           DCHECK(compiled_classes_.Get(ref, &existing)) << ref.dex_file->GetLocation();
           ClassStateTable::InsertResult result =
@@ -2029,26 +1943,27 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
         } else {
           // Update the class status, so later compilation stages know they don't need to verify
           // the class.
-          LoadAndUpdateStatus(
-              *dex_file, class_def, ClassStatus::kVerified, class_loader, soa.Self());
+          LoadAndUpdateStatus(accessor, ClassStatus::kVerified, class_loader, soa.Self());
           // Create `VerifiedMethod`s for each methods, the compiler expects one for
           // quickening or compiling.
           // Note that this means:
           // - We're only going to compile methods that did verify.
           // - Quickening will not do checkcast ellision.
           // TODO(ngeoffray): Reconsider this once we refactor compiler filters.
-          PopulateVerifiedMethods(*dex_file, i, verification_results_);
+          accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+            verification_results_->CreateVerifiedMethodFor(method.GetReference());
+          });
         }
       } else if (!compiler_only_verifies) {
         // Make sure later compilation stages know they should not try to verify
         // this class again.
-        LoadAndUpdateStatus(*dex_file,
-                            class_def,
+        LoadAndUpdateStatus(accessor,
                             ClassStatus::kRetryVerificationAtRuntime,
                             class_loader,
                             soa.Self());
       }
     }
+    ++class_def_idx;
   }
   return true;
 }
@@ -2784,22 +2699,22 @@ static void CompileDexFile(CompilerDriver* driver,
   auto compile = [&context, &compile_fn](size_t class_def_index) {
     ScopedTrace trace(__FUNCTION__);
     const DexFile& dex_file = *context.GetDexFile();
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
     ClassLinker* class_linker = context.GetClassLinker();
     jobject jclass_loader = context.GetClassLoader();
     ClassReference ref(&dex_file, class_def_index);
+    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
+    ClassAccessor accessor(dex_file, class_def);
     // Skip compiling classes with generic verifier failures since they will still fail at runtime
     if (context.GetCompiler()->GetVerificationResults()->IsClassRejected(ref)) {
       return;
     }
     // Use a scoped object access to perform to the quick SkipClass check.
-    const char* descriptor = dex_file.GetClassDescriptor(class_def);
     ScopedObjectAccess soa(Thread::Current());
     StackHandleScope<3> hs(soa.Self());
     Handle<mirror::ClassLoader> class_loader(
         hs.NewHandle(soa.Decode<mirror::ClassLoader>(jclass_loader)));
     Handle<mirror::Class> klass(
-        hs.NewHandle(class_linker->FindClass(soa.Self(), descriptor, class_loader)));
+        hs.NewHandle(class_linker->FindClass(soa.Self(), accessor.GetDescriptor(), class_loader)));
     Handle<mirror::DexCache> dex_cache;
     if (klass == nullptr) {
       soa.Self()->AssertPendingException();
@@ -2814,9 +2729,8 @@ static void CompileDexFile(CompilerDriver* driver,
       dex_cache = hs.NewHandle(klass->GetDexCache());
     }
 
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
-    if (class_data == nullptr) {
-      // empty class, probably a marker interface
+    // Avoid suspension if there are no methods to compile.
+    if (accessor.NumDirectMethods() + accessor.NumVirtualMethods() == 0) {
       return;
     }
 
@@ -2829,28 +2743,24 @@ static void CompileDexFile(CompilerDriver* driver,
     optimizer::DexToDexCompiler::CompilationLevel dex_to_dex_compilation_level =
         GetDexToDexCompilationLevel(soa.Self(), *driver, jclass_loader, dex_file, class_def);
 
-    ClassDataItemIterator it(dex_file, class_data);
-    it.SkipAllFields();
 
-    bool compilation_enabled = driver->IsClassToCompile(
-        dex_file.StringByTypeIdx(class_def.class_idx_));
+    const bool compilation_enabled = driver->IsClassToCompile(accessor.GetDescriptor());
 
     // Compile direct and virtual methods.
     int64_t previous_method_idx = -1;
-    while (it.HasNextMethod()) {
-      uint32_t method_idx = it.GetMemberIndex();
+    accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+      const uint32_t method_idx = method.GetIndex();
       if (method_idx == previous_method_idx) {
         // smali can create dex files with two encoded_methods sharing the same method_idx
         // http://code.google.com/p/smali/issues/detail?id=119
-        it.Next();
-        continue;
+        return;
       }
       previous_method_idx = method_idx;
       compile_fn(soa.Self(),
                  driver,
-                 it.GetMethodCodeItem(),
-                 it.GetMethodAccessFlags(),
-                 it.GetMethodInvokeType(class_def),
+                 method.GetCodeItem(),
+                 method.GetAccessFlags(),
+                 method.GetInvokeType(class_def.access_flags_),
                  class_def_index,
                  method_idx,
                  class_loader,
@@ -2858,9 +2768,7 @@ static void CompileDexFile(CompilerDriver* driver,
                  dex_to_dex_compilation_level,
                  compilation_enabled,
                  dex_cache);
-      it.Next();
-    }
-    DCHECK(!it.HasNext());
+    });
   };
   context.ForAllLambda(0, dex_file.NumClassDefs(), compile, thread_count);
 }

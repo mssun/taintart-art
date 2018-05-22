@@ -26,6 +26,7 @@
 #include "base/mutex.h"
 #include "compiled_method.h"
 #include "dex/bytecode_utils.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex_to_dex_decompiler.h"
@@ -633,21 +634,14 @@ void DexToDexCompiler::SetDexFiles(const std::vector<const DexFile*>& dex_files)
   // item.
   std::unordered_set<const DexFile::CodeItem*> seen_code_items;
   for (const DexFile* dex_file : dex_files) {
-    for (size_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
-      const uint8_t* class_data = dex_file->GetClassData(class_def);
-      if (class_data == nullptr) {
-        continue;
-      }
-      ClassDataItemIterator it(*dex_file, class_data);
-      it.SkipAllFields();
-      for (; it.HasNextMethod(); it.Next()) {
-        const DexFile::CodeItem* code_item = it.GetMethodCodeItem();
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
+      accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+        const DexFile::CodeItem* code_item = method.GetCodeItem();
         // Detect the shared code items.
         if (!seen_code_items.insert(code_item).second) {
           shared_code_items_.insert(code_item);
         }
-      }
+      });
     }
   }
   VLOG(compiler) << "Shared code items " << shared_code_items_.size();
