@@ -185,6 +185,10 @@ static jboolean VMRuntime_isNativeDebuggable(JNIEnv*, jobject) {
   return Runtime::Current()->IsNativeDebuggable();
 }
 
+static jboolean VMRuntime_isJavaDebuggable(JNIEnv*, jobject) {
+  return Runtime::Current()->IsJavaDebuggable();
+}
+
 static jobjectArray VMRuntime_properties(JNIEnv* env, jobject) {
   DCHECK(WellKnownClasses::java_lang_String != nullptr);
 
@@ -709,6 +713,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, getTargetHeapUtilization, "()F"),
   FAST_NATIVE_METHOD(VMRuntime, isDebuggerActive, "()Z"),
   FAST_NATIVE_METHOD(VMRuntime, isNativeDebuggable, "()Z"),
+  NATIVE_METHOD(VMRuntime, isJavaDebuggable, "()Z"),
   NATIVE_METHOD(VMRuntime, nativeSetTargetHeapUtilization, "(F)V"),
   FAST_NATIVE_METHOD(VMRuntime, newNonMovableArray, "(Ljava/lang/Class;I)Ljava/lang/Object;"),
   FAST_NATIVE_METHOD(VMRuntime, newUnpaddedArray, "(Ljava/lang/Class;I)Ljava/lang/Object;"),
