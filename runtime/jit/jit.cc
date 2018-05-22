@@ -473,11 +473,10 @@ bool Jit::MaybeDoOnStackReplacement(Thread* thread,
       return false;
     }
 
-    CodeInfo code_info = osr_method->GetOptimizedCodeInfo();
-    CodeInfoEncoding encoding = code_info.ExtractEncoding();
+    CodeInfo code_info(osr_method);
 
     // Find stack map starting at the target dex_pc.
-    StackMap stack_map = code_info.GetOsrStackMapForDexPc(dex_pc + dex_pc_offset, encoding);
+    StackMap stack_map = code_info.GetOsrStackMapForDexPc(dex_pc + dex_pc_offset);
     if (!stack_map.IsValid()) {
       // There is no OSR stack map for this dex pc offset. Just return to the interpreter in the
       // hope that the next branch has one.
@@ -494,7 +493,7 @@ bool Jit::MaybeDoOnStackReplacement(Thread* thread,
     // We found a stack map, now fill the frame with dex register values from the interpreter's
     // shadow frame.
     DexRegisterMap vreg_map =
-        code_info.GetDexRegisterMapOf(stack_map, encoding, number_of_vregs);
+        code_info.GetDexRegisterMapOf(stack_map, number_of_vregs);
 
     frame_size = osr_method->GetFrameSizeInBytes();
 
@@ -516,7 +515,7 @@ bool Jit::MaybeDoOnStackReplacement(Thread* thread,
     } else {
       for (uint16_t vreg = 0; vreg < number_of_vregs; ++vreg) {
         DexRegisterLocation::Kind location =
-            vreg_map.GetLocationKind(vreg, number_of_vregs, code_info, encoding);
+            vreg_map.GetLocationKind(vreg, number_of_vregs, code_info);
         if (location == DexRegisterLocation::Kind::kNone) {
           // Dex register is dead or uninitialized.
           continue;
@@ -532,15 +531,14 @@ bool Jit::MaybeDoOnStackReplacement(Thread* thread,
         int32_t vreg_value = shadow_frame->GetVReg(vreg);
         int32_t slot_offset = vreg_map.GetStackOffsetInBytes(vreg,
                                                              number_of_vregs,
-                                                             code_info,
-                                                             encoding);
+                                                             code_info);
         DCHECK_LT(slot_offset, static_cast<int32_t>(frame_size));
         DCHECK_GT(slot_offset, 0);
         (reinterpret_cast<int32_t*>(memory))[slot_offset / sizeof(int32_t)] = vreg_value;
       }
     }
 
-    native_pc = stack_map.GetNativePcOffset(encoding.stack_map.encoding, kRuntimeISA) +
+    native_pc = stack_map.GetNativePcOffset(kRuntimeISA) +
         osr_method->GetEntryPoint();
     VLOG(jit) << "Jumping to "
               << method_name

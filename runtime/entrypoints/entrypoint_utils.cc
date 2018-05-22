@@ -201,18 +201,16 @@ static inline ArtMethod* DoGetCalleeSaveMethodCaller(ArtMethod* outer_method,
       DCHECK(current_code != nullptr);
       DCHECK(current_code->IsOptimized());
       uintptr_t native_pc_offset = current_code->NativeQuickPcOffset(caller_pc);
-      CodeInfo code_info = current_code->GetOptimizedCodeInfo();
+      CodeInfo code_info(current_code);
       MethodInfo method_info = current_code->GetOptimizedMethodInfo();
-      CodeInfoEncoding encoding = code_info.ExtractEncoding();
-      StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
+      StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
       DCHECK(stack_map.IsValid());
-      if (stack_map.HasInlineInfo(encoding.stack_map.encoding)) {
-        InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map, encoding);
+      if (stack_map.HasInlineInfo()) {
+        InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
         caller = GetResolvedMethod(outer_method,
                                    method_info,
                                    inline_info,
-                                   encoding.inline_info.encoding,
-                                   inline_info.GetDepth(encoding.inline_info.encoding) - 1);
+                                   inline_info.GetDepth() - 1);
       }
     }
     if (kIsDebugBuild && do_caller_check) {
