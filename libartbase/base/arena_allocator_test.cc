@@ -16,6 +16,7 @@
 
 #include "arena_allocator-inl.h"
 #include "arena_bit_vector.h"
+#include "base/common_art_test.h"
 #include "gtest/gtest.h"
 #include "malloc_arena_pool.h"
 #include "memory_tool.h"
@@ -146,11 +147,8 @@ TEST_F(ArenaAllocatorTest, AllocAlignment) {
 }
 
 TEST_F(ArenaAllocatorTest, ReallocReuse) {
-  // Realloc does not reuse arenas when running under sanitization. So we cannot do those
-  if (RUNNING_ON_MEMORY_TOOL != 0) {
-    printf("WARNING: TEST DISABLED FOR MEMORY_TOOL\n");
-    return;
-  }
+  // Realloc does not reuse arenas when running under sanitization.
+  TEST_DISABLED_FOR_MEMORY_TOOL();
 
   {
     // Case 1: small aligned allocation, aligned extend inside arena.

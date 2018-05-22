@@ -289,8 +289,10 @@ void DumpNativeStack(std::ostream& os,
                      ArtMethod* current_method,
                      void* ucontext_ptr,
                      bool skip_frames) {
-  // b/18119146
-  if (RUNNING_ON_MEMORY_TOOL != 0) {
+  // Historical note: This was disabled when running under Valgrind (b/18119146).
+  // TODO: Valgrind is no longer supported, but Address Sanitizer is:
+  // check whether this test works with ASan.
+  if (kRunningOnMemoryTool) {
     return;
   }
 

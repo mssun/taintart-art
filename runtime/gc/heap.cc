@@ -2248,7 +2248,8 @@ class ZygoteCompactingCollector FINAL : public collector::SemiSpace {
       // Add a new bin with the remaining space.
       AddBin(size - alloc_size, pos + alloc_size);
     }
-    // Copy the object over to its new location. Don't use alloc_size to avoid valgrind error.
+    // Copy the object over to its new location.
+    // Historical note: We did not use `alloc_size` to avoid a Valgrind error.
     memcpy(reinterpret_cast<void*>(forward_address), obj, obj_size);
     if (kUseBakerReadBarrier) {
       obj->AssertReadBarrierState();

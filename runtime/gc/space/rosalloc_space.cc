@@ -77,7 +77,7 @@ RosAllocSpace* RosAllocSpace::CreateFromMemMap(MemMap* mem_map, const std::strin
 
   // Everything is set so record in immutable structure and leave
   uint8_t* begin = mem_map->Begin();
-  // TODO: Fix RosAllocSpace to support Valgrind/ASan. There is currently some issues with
+  // TODO: Fix RosAllocSpace to support ASan. There is currently some issues with
   // AllocationSize caused by redzones. b/12944686
   if (running_on_memory_tool) {
     return new MemoryToolMallocSpace<RosAllocSpace, kDefaultMemoryToolRedZoneBytes, false, true>(
@@ -382,12 +382,12 @@ size_t RosAllocSpace::AllocationSizeNonvirtual(mirror::Object* obj, size_t* usab
   size_t size = obj->SizeOf<kVerifyNone>();
   bool add_redzones = false;
   if (kMaybeIsRunningOnMemoryTool) {
-    add_redzones = RUNNING_ON_MEMORY_TOOL ? kMemoryToolAddsRedzones : 0;
+    add_redzones = kRunningOnMemoryTool ? kMemoryToolAddsRedzones : 0;
     if (add_redzones) {
       size += 2 * kDefaultMemoryToolRedZoneBytes;
     }
   } else {
-    DCHECK_EQ(RUNNING_ON_MEMORY_TOOL, 0U);
+    DCHECK(!kRunningOnMemoryTool);
   }
   size_t size_by_size = rosalloc_->UsableSize(size);
   if (kIsDebugBuild) {
