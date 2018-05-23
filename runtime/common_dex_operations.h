@@ -205,7 +205,12 @@ ALWAYS_INLINE bool DoFieldPutCommon(Thread* self,
           HandleWrapperObjPtr<mirror::Object> h_obj(hs.NewHandleWrapper(&obj));
           field_class = field->ResolveType();
         }
-        if (!reg->VerifierInstanceOf(field_class.Ptr())) {
+        // ArtField::ResolveType() may fail as evidenced with a dexing bug (b/78788577).
+        if (UNLIKELY(field_class.IsNull())) {
+          Thread::Current()->AssertPendingException();
+          return false;
+        }
+        if (UNLIKELY(!reg->VerifierInstanceOf(field_class.Ptr()))) {
           // This should never happen.
           std::string temp1, temp2, temp3;
           self->ThrowNewExceptionF("Ljava/lang/InternalError;",
