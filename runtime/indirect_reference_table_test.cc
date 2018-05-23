@@ -60,8 +60,9 @@ TEST_F(IndirectReferenceTableTest, BasicTest) {
                              &error_msg);
   ASSERT_TRUE(irt.IsValid()) << error_msg;
 
-  mirror::Class* c = class_linker_->FindSystemClass(soa.Self(), "Ljava/lang/Object;");
-  StackHandleScope<4> hs(soa.Self());
+  StackHandleScope<5> hs(soa.Self());
+  Handle<mirror::Class> c =
+      hs.NewHandle(class_linker_->FindSystemClass(soa.Self(), "Ljava/lang/Object;"));
   ASSERT_TRUE(c != nullptr);
   Handle<mirror::Object> obj0 = hs.NewHandle(c->AllocObject(soa.Self()));
   ASSERT_TRUE(obj0 != nullptr);
@@ -278,8 +279,9 @@ TEST_F(IndirectReferenceTableTest, Holes) {
   ScopedObjectAccess soa(Thread::Current());
   static const size_t kTableMax = 10;
 
-  mirror::Class* c = class_linker_->FindSystemClass(soa.Self(), "Ljava/lang/Object;");
-  StackHandleScope<5> hs(soa.Self());
+  StackHandleScope<6> hs(soa.Self());
+  Handle<mirror::Class> c = hs.NewHandle(
+      class_linker_->FindSystemClass(soa.Self(), "Ljava/lang/Object;"));
   ASSERT_TRUE(c != nullptr);
   Handle<mirror::Object> obj0 = hs.NewHandle(c->AllocObject(soa.Self()));
   ASSERT_TRUE(obj0 != nullptr);
@@ -487,8 +489,9 @@ TEST_F(IndirectReferenceTableTest, Resize) {
   ScopedObjectAccess soa(Thread::Current());
   static const size_t kTableMax = 512;
 
-  mirror::Class* c = class_linker_->FindSystemClass(soa.Self(), "Ljava/lang/Object;");
-  StackHandleScope<1> hs(soa.Self());
+  StackHandleScope<2> hs(soa.Self());
+  Handle<mirror::Class> c = hs.NewHandle(
+      class_linker_->FindSystemClass(soa.Self(), "Ljava/lang/Object;"));
   ASSERT_TRUE(c != nullptr);
   Handle<mirror::Object> obj0 = hs.NewHandle(c->AllocObject(soa.Self()));
   ASSERT_TRUE(obj0 != nullptr);

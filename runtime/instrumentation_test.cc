@@ -520,7 +520,7 @@ TEST_F(InstrumentationTest, MethodEntryEvent) {
   ClassLinker* class_linker = runtime->GetClassLinker();
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
-  mirror::Class* klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
+  ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
   ASSERT_TRUE(klass != nullptr);
   ArtMethod* method =
       klass->FindClassMethod("returnReference", "()Ljava/lang/Object;", kRuntimePointerSize);
@@ -540,7 +540,7 @@ TEST_F(InstrumentationTest, MethodExitObjectEvent) {
   ClassLinker* class_linker = runtime->GetClassLinker();
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
-  mirror::Class* klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
+  ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
   ASSERT_TRUE(klass != nullptr);
   ArtMethod* method =
       klass->FindClassMethod("returnReference", "()Ljava/lang/Object;", kRuntimePointerSize);
@@ -560,7 +560,7 @@ TEST_F(InstrumentationTest, MethodExitPrimEvent) {
   ClassLinker* class_linker = runtime->GetClassLinker();
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
-  mirror::Class* klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
+  ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
   ASSERT_TRUE(klass != nullptr);
   ArtMethod* method = klass->FindClassMethod("returnPrimitive", "()I", kRuntimePointerSize);
   ASSERT_TRUE(method != nullptr);
@@ -595,7 +595,7 @@ TEST_F(InstrumentationTest, FieldWriteObjectEvent) {
   ClassLinker* class_linker = runtime->GetClassLinker();
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
-  mirror::Class* klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
+  ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
   ASSERT_TRUE(klass != nullptr);
   ArtField* field = klass->FindDeclaredStaticField("referenceField", "Ljava/lang/Object;");
   ASSERT_TRUE(field != nullptr);
@@ -613,7 +613,7 @@ TEST_F(InstrumentationTest, FieldWritePrimEvent) {
   ClassLinker* class_linker = runtime->GetClassLinker();
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
-  mirror::Class* klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
+  ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
   ASSERT_TRUE(klass != nullptr);
   ArtField* field = klass->FindDeclaredStaticField("primitiveField", "I");
   ASSERT_TRUE(field != nullptr);
@@ -648,7 +648,7 @@ TEST_F(InstrumentationTest, DeoptimizeDirectMethod) {
   ClassLinker* class_linker = runtime->GetClassLinker();
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
-  mirror::Class* klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
+  ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
   ASSERT_TRUE(klass != nullptr);
   ArtMethod* method_to_deoptimize =
       klass->FindClassMethod("instanceMethod", "()V", kRuntimePointerSize);
@@ -697,7 +697,7 @@ TEST_F(InstrumentationTest, MixedDeoptimization) {
   ClassLinker* class_linker = runtime->GetClassLinker();
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
-  mirror::Class* klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
+  ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
   ASSERT_TRUE(klass != nullptr);
   ArtMethod* method_to_deoptimize =
       klass->FindClassMethod("instanceMethod", "()V", kRuntimePointerSize);

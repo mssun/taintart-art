@@ -394,7 +394,8 @@ inline void ImageTest::Compile(ImageHeader::StorageMode storage_mode,
     ScopedObjectAccess soa(Thread::Current());
     ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
     for (const std::string& image_class : image_classes) {
-      mirror::Class* klass = class_linker->FindSystemClass(Thread::Current(), image_class.c_str());
+      ObjPtr<mirror::Class> klass =
+          class_linker->FindSystemClass(Thread::Current(), image_class.c_str());
       EXPECT_TRUE(klass != nullptr);
       EXPECT_TRUE(klass->IsInitialized());
     }
@@ -492,15 +493,15 @@ inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode) {
     for (size_t j = 0; j < dex->NumClassDefs(); ++j) {
       const DexFile::ClassDef& class_def = dex->GetClassDef(j);
       const char* descriptor = dex->GetClassDescriptor(class_def);
-      mirror::Class* klass = class_linker_->FindSystemClass(soa.Self(), descriptor);
+      ObjPtr<mirror::Class> klass = class_linker_->FindSystemClass(soa.Self(), descriptor);
       EXPECT_TRUE(klass != nullptr) << descriptor;
+      uint8_t* raw_klass = reinterpret_cast<uint8_t*>(klass.Ptr());
       if (image_classes.find(descriptor) == image_classes.end()) {
-        EXPECT_TRUE(reinterpret_cast<uint8_t*>(klass) >= image_end ||
-                    reinterpret_cast<uint8_t*>(klass) < image_begin) << descriptor;
+        EXPECT_TRUE(raw_klass >= image_end || raw_klass < image_begin) << descriptor;
       } else {
         // Image classes should be located inside the image.
-        EXPECT_LT(image_begin, reinterpret_cast<uint8_t*>(klass)) << descriptor;
-        EXPECT_LT(reinterpret_cast<uint8_t*>(klass), image_end) << descriptor;
+        EXPECT_LT(image_begin, raw_klass) << descriptor;
+        EXPECT_LT(raw_klass, image_end) << descriptor;
       }
       EXPECT_TRUE(Monitor::IsValidLockWord(klass->GetLockWord(false)));
     }

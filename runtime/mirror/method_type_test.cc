@@ -54,7 +54,7 @@ static mirror::MethodType* CreateMethodType(const std::string& return_type,
   CHECK(return_clazz != nullptr);
 
   ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-  mirror::Class* class_array_type = class_linker->FindArrayClass(self, &class_type);
+  ObjPtr<mirror::Class> class_array_type = class_linker->FindArrayClass(self, &class_type);
   Handle<mirror::ObjectArray<mirror::Class>> param_classes = hs.NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(self, class_array_type, param_types.size()));
 
