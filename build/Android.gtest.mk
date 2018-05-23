@@ -464,6 +464,16 @@ include $(BUILD_PREBUILT)
 # $(3): 2ND_ or undefined - used to differentiate between the primary and secondary architecture.
 # $(4): LD_LIBRARY_PATH or undefined - used in case libartd.so is not in /system/lib/
 define define-art-gtest-rule-target
+  ifeq ($(ART_TEST_CHROOT),)
+    # Non-chroot configuration.
+    maybe_art_test_chroot :=
+    maybe_chroot_command :=
+  else
+    # Chroot configuration.
+    maybe_art_test_chroot := $(ART_TEST_CHROOT)
+    maybe_chroot_command := chroot $(ART_TEST_CHROOT)
+  endif
+
   gtest_rule := test-art-target-gtest-$(1)$$($(3)ART_PHONY_TEST_TARGET_SUFFIX)
   gtest_exe := $(OUT_DIR)/$(2)
   gtest_target_exe := $$(patsubst $(PRODUCT_OUT)/%,/%,$$(gtest_exe))
@@ -481,33 +491,24 @@ define define-art-gtest-rule-target
     $$(ART_TARGET_TEST_OUT)/valgrind-target-suppressions.txt
 
 $$(gtest_rule) valgrind-$$(gtest_rule): PRIVATE_TARGET_EXE := $$(gtest_target_exe)
-
-ifeq ($(ART_TEST_CHROOT),)
-# Non-chroot configuration.
-maybe_art_test_chroot :=
-maybe_chroot_command :=
-else
-# Chroot configuration.
-maybe_art_test_chroot := $(ART_TEST_CHROOT)/
-maybe_chroot_command := chroot $(ART_TEST_CHROOT)
-endif
+$$(gtest_rule) valgrind-$$(gtest_rule): PRIVATE_MAYBE_CHROOT_COMMAND := $$(maybe_chroot_command)
 
 # File witnessing the success of the gtest, the presence of which means the gtest's success.
 gtest_witness := \
-  $(maybe_art_test_chroot)$(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$(gtest_rule)-$$$$PPID
+  $$(maybe_art_test_chroot)$(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$(gtest_rule)-$$$$PPID
 
-$$(gtest_rule): GTEST_WITNESS := $$(gtest_witness)
+$$(gtest_rule): PRIVATE_GTEST_WITNESS := $$(gtest_witness)
 
 .PHONY: $$(gtest_rule)
 $$(gtest_rule): test-art-target-sync
-	$(hide) adb shell touch $$(GTEST_WITNESS)
-	$(hide) adb shell rm $$(GTEST_WITNESS)
-	$(hide) adb shell chmod 755 $(maybe_art_test_chroot)$$(PRIVATE_TARGET_EXE)
+	$(hide) adb shell touch $$(PRIVATE_GTEST_WITNESS)
+	$(hide) adb shell rm $$(PRIVATE_GTEST_WITNESS)
+	$(hide) adb shell $$(PRIVATE_MAYBE_CHROOT_COMMAND) chmod 755 $$(PRIVATE_TARGET_EXE)
 	$(hide) $$(call ART_TEST_SKIP,$$@) && \
-	  (adb shell "$(maybe_chroot_command) env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
+	  (adb shell "$$(PRIVATE_MAYBE_CHROOT_COMMAND) env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
 	       ANDROID_ROOT=$(ART_GTEST_TARGET_ANDROID_ROOT) $$(PRIVATE_TARGET_EXE) \
-	     && touch $$(GTEST_WITNESS)" \
-	   && (adb pull $$(GTEST_WITNESS) /tmp/ && $$(call ART_TEST_PASSED,$$@)) \
+	     && touch $$(PRIVATE_GTEST_WITNESS)" \
+	   && (adb pull $$(PRIVATE_GTEST_WITNESS) /tmp/ && $$(call ART_TEST_PASSED,$$@)) \
 	   || $$(call ART_TEST_FAILED,$$@))
 	$(hide) rm -f /tmp/$$@-$$$$PPID
 
@@ -518,24 +519,24 @@ $$(gtest_rule): test-art-target-sync
 # File witnessing the success of the Valgrind gtest, the presence of which means the gtest's
 # success.
 valgrind_gtest_witness := \
-  $(maybe_art_test_chroot)$(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/valgrind-$$(gtest_rule)-$$$$PPID
+  $$(maybe_art_test_chroot)$(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/valgrind-$$(gtest_rule)-$$$$PPID
 
-valgrind-$$(gtest_rule): VALGRIND_GTEST_WITNESS := $$(valgrind_gtest_witness)
+valgrind-$$(gtest_rule): PRIVATE_VALGRIND_GTEST_WITNESS := $$(valgrind_gtest_witness)
 
 .PHONY: valgrind-$$(gtest_rule)
 valgrind-$$(gtest_rule): $(ART_VALGRIND_TARGET_DEPENDENCIES) test-art-target-sync
-	$(hide) adb shell touch $$(VALGRIND_GTEST_WITNESS)
-	$(hide) adb shell rm $$(VALGRIND_GTEST_WITNESS)
-	$(hide) adb shell chmod 755 $(maybe_art_test_chroot)$$(PRIVATE_TARGET_EXE)
+	$(hide) adb shell touch $$(PRIVATE_VALGRIND_GTEST_WITNESS)
+	$(hide) adb shell rm $$(PRIVATE_VALGRIND_GTEST_WITNESS)
+	$(hide) adb shell $$(PRIVATE_MAYBE_CHROOT_COMMAND) chmod 755 $$(PRIVATE_TARGET_EXE)
 	$(hide) $$(call ART_TEST_SKIP,$$@) && \
-	  (adb shell "$(maybe_chroot_command) env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
+	  (adb shell "$$(PRIVATE_MAYBE_CHROOT_COMMAND) env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
 	       ANDROID_ROOT=$(ART_GTEST_TARGET_ANDROID_ROOT) \
 	       $(ART_GTEST_TARGET_ANDROID_ROOT)/bin/valgrind \
 	       --leak-check=full --error-exitcode=1 --workaround-gcc296-bugs=yes \
 	       --suppressions=$(ART_TARGET_TEST_DIR)/valgrind-target-suppressions.txt \
 	       --num-callers=50 --show-mismatched-frees=no $$(PRIVATE_TARGET_EXE) \
-	     && touch $$(VALGRIND_GTEST_WITNESS)" \
-	   && (adb pull $$(VALGRIND_GTEST_WITNESS) /tmp/ && $$(call ART_TEST_PASSED,$$@)) \
+	     && touch $$(PRIVATE_VALGRIND_GTEST_WITNESS)" \
+	   && (adb pull $$(PRIVATE_VALGRIND_GTEST_WITNESS) /tmp/ && $$(call ART_TEST_PASSED,$$@)) \
 	   || $$(call ART_TEST_FAILED,$$@))
 	$(hide) rm -f /tmp/$$@-$$$$PPID
 
