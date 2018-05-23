@@ -34,6 +34,7 @@
 #include "index_bss_mapping.h"
 #include "instrumentation.h"
 #include "interpreter/interpreter.h"
+#include "interpreter/shadow_frame-inl.h"
 #include "jit/jit.h"
 #include "linear_alloc.h"
 #include "method_handles.h"

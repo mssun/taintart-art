@@ -35,6 +35,7 @@
 #include "mirror/string-inl.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
+#include "shadow_frame-inl.h"
 #include "thread.h"
 #include "transaction.h"
 
@@ -82,7 +83,7 @@ class UnstartedRuntimeTest : public CommonRuntimeTest {
   // Note: as we have to use handles, we use StackHandleScope to transfer data. Hardcode a size
   //       of three everywhere. That is enough to test all cases.
 
-  static mirror::ObjectArray<mirror::Object>* CreateObjectArray(
+  static ObjPtr<mirror::ObjectArray<mirror::Object>> CreateObjectArray(
       Thread* self,
       ObjPtr<mirror::Class> component_type,
       const StackHandleScope<3>& data)
@@ -98,10 +99,10 @@ class UnstartedRuntimeTest : public CommonRuntimeTest {
       result->Set(static_cast<int32_t>(i), data.GetReference(i));
       CHECK(!self->IsExceptionPending());
     }
-    return result.Ptr();
+    return result;
   }
 
-  static void CheckObjectArray(mirror::ObjectArray<mirror::Object>* array,
+  static void CheckObjectArray(ObjPtr<mirror::ObjectArray<mirror::Object>> array,
                                const StackHandleScope<3>& data)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     CHECK_EQ(array->GetLength(), 3);
@@ -114,9 +115,9 @@ class UnstartedRuntimeTest : public CommonRuntimeTest {
   void RunArrayCopy(Thread* self,
                     ShadowFrame* tmp,
                     bool expect_exception,
-                    mirror::ObjectArray<mirror::Object>* src,
+                    ObjPtr<mirror::ObjectArray<mirror::Object>> src,
                     int32_t src_pos,
-                    mirror::ObjectArray<mirror::Object>* dst,
+                    ObjPtr<mirror::ObjectArray<mirror::Object>> dst,
                     int32_t dst_pos,
                     int32_t length)
       REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -137,8 +138,8 @@ class UnstartedRuntimeTest : public CommonRuntimeTest {
   void RunArrayCopy(Thread* self,
                     ShadowFrame* tmp,
                     bool expect_exception,
-                    mirror::Class* src_component_class,
-                    mirror::Class* dst_component_class,
+                    ObjPtr<mirror::Class> src_component_class,
+                    ObjPtr<mirror::Class> dst_component_class,
                     const StackHandleScope<3>& src_data,
                     int32_t src_pos,
                     const StackHandleScope<3>& dst_data,
@@ -366,7 +367,7 @@ TEST_F(UnstartedRuntimeTest, StringCharAt) {
   // TODO: Actual UTF.
   constexpr const char* base_string = "abcdefghijklmnop";
   int32_t base_len = static_cast<int32_t>(strlen(base_string));
-  mirror::String* test_string = mirror::String::AllocFromModifiedUtf8(self, base_string);
+  ObjPtr<mirror::String> test_string = mirror::String::AllocFromModifiedUtf8(self, base_string);
 
   JValue result;
   ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
@@ -386,7 +387,7 @@ TEST_F(UnstartedRuntimeTest, StringCharAt) {
 TEST_F(UnstartedRuntimeTest, StringInit) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
-  mirror::Class* klass = mirror::String::GetJavaLangString();
+  ObjPtr<mirror::Class> klass = mirror::String::GetJavaLangString();
   ArtMethod* method =
       klass->FindConstructor("(Ljava/lang/String;)V",
                              Runtime::Current()->GetClassLinker()->GetImagePointerSize());
@@ -398,10 +399,13 @@ TEST_F(UnstartedRuntimeTest, StringInit) {
   JValue result;
   ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, method, 0);
   const char* base_string = "hello_world";
-  mirror::String* string_arg = mirror::String::AllocFromModifiedUtf8(self, base_string);
-  mirror::String* reference_empty_string = mirror::String::AllocFromModifiedUtf8(self, "");
-  shadow_frame->SetVRegReference(0, reference_empty_string);
-  shadow_frame->SetVRegReference(1, string_arg);
+  StackHandleScope<2> hs(self);
+  Handle<mirror::String> string_arg =
+      hs.NewHandle(mirror::String::AllocFromModifiedUtf8(self, base_string));
+  Handle<mirror::String> reference_empty_string =
+      hs.NewHandle(mirror::String::AllocFromModifiedUtf8(self, ""));
+  shadow_frame->SetVRegReference(0, reference_empty_string.Get());
+  shadow_frame->SetVRegReference(1, string_arg.Get());
 
   interpreter::DoCall<false, false>(method,
                                     self,
@@ -409,7 +413,7 @@ TEST_F(UnstartedRuntimeTest, StringInit) {
                                     Instruction::At(inst_data),
                                     inst_data[0],
                                     &result);
-  mirror::String* string_result = reinterpret_cast<mirror::String*>(result.GetL());
+  ObjPtr<mirror::String> string_result = down_cast<mirror::String*>(result.GetL());
   EXPECT_EQ(string_arg->GetLength(), string_result->GetLength());
 
   if (string_arg->IsCompressed() && string_result->IsCompressed()) {
@@ -442,7 +446,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTestExceptions) {
 
   // Note: all tests are not GC safe. Assume there's no GC running here with the few objects we
   //       allocate.
-  StackHandleScope<2> hs_misc(self);
+  StackHandleScope<3> hs_misc(self);
   Handle<mirror::Class> object_class(
       hs_misc.NewHandle(mirror::Class::GetJavaLangClass()->GetSuperClass()));
 
@@ -461,10 +465,10 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTestExceptions) {
   RunArrayCopy(self, tmp, true, array.Get(), 0, array.Get(), 1, 3);
   RunArrayCopy(self, tmp, true, array.Get(), 1, array.Get(), 0, 3);
 
-  mirror::ObjectArray<mirror::Object>* class_as_array =
-      reinterpret_cast<mirror::ObjectArray<mirror::Object>*>(object_class.Get());
-  RunArrayCopy(self, tmp, true, class_as_array, 0, array.Get(), 0, 0);
-  RunArrayCopy(self, tmp, true, array.Get(), 0, class_as_array, 0, 0);
+  Handle<mirror::ObjectArray<mirror::Object>> class_as_array =
+      hs_misc.NewHandle(reinterpret_cast<mirror::ObjectArray<mirror::Object>*>(object_class.Get()));
+  RunArrayCopy(self, tmp, true, class_as_array.Get(), 0, array.Get(), 0, 0);
+  RunArrayCopy(self, tmp, true, array.Get(), 0, class_as_array.Get(), 0, 0);
 
   ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
@@ -897,7 +901,7 @@ TEST_F(UnstartedRuntimeTest, IsAnonymousClass) {
   JValue result;
   ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
 
-  mirror::Class* class_klass = mirror::Class::GetJavaLangClass();
+  ObjPtr<mirror::Class> class_klass = mirror::Class::GetJavaLangClass();
   shadow_frame->SetVRegReference(0, class_klass);
   UnstartedClassIsAnonymousClass(self, shadow_frame, &result, 0);
   EXPECT_EQ(result.GetZ(), 0);
@@ -906,7 +910,7 @@ TEST_F(UnstartedRuntimeTest, IsAnonymousClass) {
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> loader(
       hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
-  mirror::Class* c = class_linker_->FindClass(soa.Self(), "LNested$1;", loader);
+  ObjPtr<mirror::Class> c = class_linker_->FindClass(soa.Self(), "LNested$1;", loader);
   ASSERT_TRUE(c != nullptr);
   shadow_frame->SetVRegReference(0, c);
   UnstartedClassIsAnonymousClass(self, shadow_frame, &result, 0);
@@ -1042,7 +1046,7 @@ TEST_F(UnstartedRuntimeTest, FloatConversion) {
                                     Instruction::At(inst_data),
                                     inst_data[0],
                                     &result);
-  ObjPtr<mirror::String> string_result = reinterpret_cast<mirror::String*>(result.GetL());
+  ObjPtr<mirror::String> string_result = down_cast<mirror::String*>(result.GetL());
   ASSERT_TRUE(string_result != nullptr);
 
   std::string mod_utf = string_result->ToModifiedUtf8();
@@ -1138,7 +1142,7 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
     ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
 
     for (const char* name : kTestCases) {
-      mirror::String* name_string = mirror::String::AllocFromModifiedUtf8(self, name);
+      ObjPtr<mirror::String> name_string = mirror::String::AllocFromModifiedUtf8(self, name);
       CHECK(name_string != nullptr);
 
       if (in_transaction) {
@@ -1213,8 +1217,10 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
 };
 
 TEST_F(UnstartedClassForNameTest, ClassForName) {
-  auto runner = [](Thread* self, ShadowFrame* shadow_frame, mirror::String* name, JValue* result)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
+  auto runner = [](Thread* self,
+                   ShadowFrame* shadow_frame,
+                   ObjPtr<mirror::String> name,
+                   JValue* result) REQUIRES_SHARED(Locks::mutator_lock_) {
     shadow_frame->SetVRegReference(0, name);
     UnstartedClassForName(self, shadow_frame, result, 0);
   };
@@ -1222,8 +1228,10 @@ TEST_F(UnstartedClassForNameTest, ClassForName) {
 }
 
 TEST_F(UnstartedClassForNameTest, ClassForNameLong) {
-  auto runner = [](Thread* self, ShadowFrame* shadow_frame, mirror::String* name, JValue* result)
-            REQUIRES_SHARED(Locks::mutator_lock_) {
+  auto runner = [](Thread* self,
+                   ShadowFrame* shadow_frame,
+                   ObjPtr<mirror::String> name,
+                   JValue* result) REQUIRES_SHARED(Locks::mutator_lock_) {
     shadow_frame->SetVRegReference(0, name);
     shadow_frame->SetVReg(1, 0);
     shadow_frame->SetVRegReference(2, nullptr);
@@ -1239,8 +1247,10 @@ TEST_F(UnstartedClassForNameTest, ClassForNameLongWithClassLoader) {
   StackHandleScope<1> hs(self);
   Handle<mirror::ClassLoader> boot_cp = hs.NewHandle(GetBootClassLoader());
 
-  auto runner = [&](Thread* th, ShadowFrame* shadow_frame, mirror::String* name, JValue* result)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
+  auto runner = [&](Thread* th,
+                    ShadowFrame* shadow_frame,
+                    ObjPtr<mirror::String> name,
+                    JValue* result) REQUIRES_SHARED(Locks::mutator_lock_) {
     shadow_frame->SetVRegReference(0, name);
     shadow_frame->SetVReg(1, 0);
     shadow_frame->SetVRegReference(2, boot_cp.Get());
@@ -1256,7 +1266,10 @@ TEST_F(UnstartedClassForNameTest, ClassForNameLongWithClassLoaderTransaction) {
   StackHandleScope<1> hs(self);
   Handle<mirror::ClassLoader> boot_cp = hs.NewHandle(GetBootClassLoader());
 
-  auto runner = [&](Thread* th, ShadowFrame* shadow_frame, mirror::String* name, JValue* result)
+  auto runner = [&](Thread* th,
+                    ShadowFrame* shadow_frame,
+                    ObjPtr<mirror::String> name,
+                    JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     shadow_frame->SetVRegReference(0, name);
     shadow_frame->SetVReg(1, 0);
@@ -1277,8 +1290,10 @@ TEST_F(UnstartedClassForNameTest, ClassForNameLongWithClassLoaderFail) {
   Handle<mirror::ClassLoader> path_cp = hs.NewHandle<mirror::ClassLoader>(
       self->DecodeJObject(path_jobj)->AsClassLoader());
 
-  auto runner = [&](Thread* th, ShadowFrame* shadow_frame, mirror::String* name, JValue* result)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
+  auto runner = [&](Thread* th,
+                    ShadowFrame* shadow_frame,
+                    ObjPtr<mirror::String> name,
+                    JValue* result) REQUIRES_SHARED(Locks::mutator_lock_) {
     shadow_frame->SetVRegReference(0, name);
     shadow_frame->SetVReg(1, 0);
     shadow_frame->SetVRegReference(2, path_cp.Get());
@@ -1376,7 +1391,7 @@ TEST_F(UnstartedRuntimeTest, ConstructorNewInstance0) {
   // Should have the right string.
   ObjPtr<mirror::String> result_msg =
       reinterpret_cast<mirror::Throwable*>(result.GetL())->GetDetailMessage();
-  EXPECT_EQ(input.Get(), result_msg.Ptr());
+  EXPECT_OBJ_PTR_EQ(input.Get(), result_msg);
 
   ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 }
@@ -1393,7 +1408,7 @@ TEST_F(UnstartedRuntimeTest, IdentityHashCode) {
   ASSERT_FALSE(self->IsExceptionPending());
 
   ObjPtr<mirror::String> str = mirror::String::AllocFromModifiedUtf8(self, "abd");
-  tmp->SetVRegReference(0, str.Ptr());
+  tmp->SetVRegReference(0, str);
   UnstartedSystemIdentityHashCode(self, tmp, &result, 0);
   EXPECT_NE(0, result.GetI());
   EXPECT_EQ(str->IdentityHashCode(), result.GetI());

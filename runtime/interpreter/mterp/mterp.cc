@@ -24,6 +24,7 @@
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "interpreter/interpreter_common.h"
 #include "interpreter/interpreter_intrinsics.h"
+#include "interpreter/shadow_frame-inl.h"
 
 namespace art {
 namespace interpreter {
@@ -369,7 +370,7 @@ extern "C" size_t MterpConstString(uint32_t index,
   if (UNLIKELY(s == nullptr)) {
     return true;
   }
-  shadow_frame->SetVRegReference(tgt_vreg, s.Ptr());
+  shadow_frame->SetVRegReference(tgt_vreg, s);
   return false;
 }
 
@@ -386,7 +387,7 @@ extern "C" size_t MterpConstClass(uint32_t index,
   if (UNLIKELY(c == nullptr)) {
     return true;
   }
-  shadow_frame->SetVRegReference(tgt_vreg, c.Ptr());
+  shadow_frame->SetVRegReference(tgt_vreg, c);
   return false;
 }
 
@@ -399,7 +400,7 @@ extern "C" size_t MterpConstMethodHandle(uint32_t index,
   if (UNLIKELY(mh == nullptr)) {
     return true;
   }
-  shadow_frame->SetVRegReference(tgt_vreg, mh.Ptr());
+  shadow_frame->SetVRegReference(tgt_vreg, mh);
   return false;
 }
 
@@ -413,7 +414,7 @@ extern "C" size_t MterpConstMethodType(uint32_t index,
   if (UNLIKELY(mt == nullptr)) {
     return true;
   }
-  shadow_frame->SetVRegReference(tgt_vreg, mt.Ptr());
+  shadow_frame->SetVRegReference(tgt_vreg, mt);
   return false;
 }
 
