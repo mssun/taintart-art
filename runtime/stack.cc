@@ -29,7 +29,7 @@
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/space/image_space.h"
 #include "gc/space/space-inl.h"
-#include "interpreter/shadow_frame.h"
+#include "interpreter/shadow_frame-inl.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "linear_alloc.h"
