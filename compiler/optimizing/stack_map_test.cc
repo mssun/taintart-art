@@ -32,10 +32,10 @@ static bool CheckStackMask(
     const StackMap& stack_map,
     const BitVector& bit_vector) {
   BitMemoryRegion stack_mask = code_info.GetStackMaskOf(stack_map);
-  if (bit_vector.GetNumberOfBits() > code_info.GetNumberOfStackMaskBits()) {
+  if (bit_vector.GetNumberOfBits() > stack_mask.size_in_bits()) {
     return false;
   }
-  for (size_t i = 0; i < code_info.GetNumberOfStackMaskBits(); ++i) {
+  for (size_t i = 0; i < stack_mask.size_in_bits(); ++i) {
     if (stack_mask.LoadBit(i) != bit_vector.IsBitSet(i)) {
       return false;
     }
