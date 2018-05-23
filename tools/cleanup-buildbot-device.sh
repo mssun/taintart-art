@@ -40,10 +40,6 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
   #
   # TODO: Reorder ART Buildbot steps so that "device cleanup" happens
   # before "setup device" and remove this special case.
-  #
-  # TODO: Also consider adding a "tear down device" step on the ART
-  # Buildbot (at the very end of a build) undoing (some of) the work
-  # done in the "device setup" step.
   adb shell test -f "$ART_TEST_CHROOT/system" \
     "&&" find "$ART_TEST_CHROOT/system" \
       ! -path "$ART_TEST_CHROOT/system/etc/selinux/plat_property_contexts" \
