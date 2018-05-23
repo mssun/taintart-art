@@ -34,6 +34,7 @@
 #include "mirror/var_handle.h"
 #include "reflection-inl.h"
 #include "reflection.h"
+#include "shadow_frame-inl.h"
 #include "stack.h"
 #include "thread-inl.h"
 #include "transaction.h"
@@ -1428,6 +1429,24 @@ bool DoInvokeCustom(Thread* self,
   }
 }
 
+// Assign register 'src_reg' from shadow_frame to register 'dest_reg' into new_shadow_frame.
+static inline void AssignRegister(ShadowFrame* new_shadow_frame, const ShadowFrame& shadow_frame,
+                                  size_t dest_reg, size_t src_reg)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  // Uint required, so that sign extension does not make this wrong on 64b systems
+  uint32_t src_value = shadow_frame.GetVReg(src_reg);
+  ObjPtr<mirror::Object> o = shadow_frame.GetVRegReference<kVerifyNone>(src_reg);
+
+  // If both register locations contains the same value, the register probably holds a reference.
+  // Note: As an optimization, non-moving collectors leave a stale reference value
+  // in the references array even after the original vreg was overwritten to a non-reference.
+  if (src_value == reinterpret_cast<uintptr_t>(o.Ptr())) {
+    new_shadow_frame->SetVRegReference(dest_reg, o);
+  } else {
+    new_shadow_frame->SetVReg(dest_reg, src_value);
+  }
+}
+
 template <bool is_range>
 inline void CopyRegisters(ShadowFrame& caller_frame,
                           ShadowFrame* callee_frame,
@@ -1612,7 +1631,7 @@ static inline bool DoCallCommon(ArtMethod* called_method,
               return false;
             }
           }
-          new_shadow_frame->SetVRegReference(dest_reg, o.Ptr());
+          new_shadow_frame->SetVRegReference(dest_reg, o);
           break;
         }
         // Handle doubles and longs. 2 consecutive virtual register slots.

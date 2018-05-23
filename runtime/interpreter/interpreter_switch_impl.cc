@@ -24,6 +24,7 @@
 #include "jit/jit.h"
 #include "jvalue-inl.h"
 #include "safe_math.h"
+#include "shadow_frame-inl.h"
 
 namespace art {
 namespace interpreter {
@@ -299,7 +300,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
         PREAMBLE();
         ObjPtr<mirror::Throwable> exception = self->GetException();
         DCHECK(exception != nullptr) << "No pending exception on MOVE_EXCEPTION instruction";
-        shadow_frame.SetVRegReference(inst->VRegA_11x(inst_data), exception.Ptr());
+        shadow_frame.SetVRegReference(inst->VRegA_11x(inst_data), exception);
         self->ClearException();
         inst = inst->Next_1xx();
         break;
@@ -514,7 +515,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
         if (UNLIKELY(s == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
-          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), s.Ptr());
+          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), s);
           inst = inst->Next_2xx();
         }
         break;
@@ -527,7 +528,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
         if (UNLIKELY(s == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
-          shadow_frame.SetVRegReference(inst->VRegA_31c(inst_data), s.Ptr());
+          shadow_frame.SetVRegReference(inst->VRegA_31c(inst_data), s);
           inst = inst->Next_3xx();
         }
         break;
@@ -542,7 +543,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
         if (UNLIKELY(c == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
-          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), c.Ptr());
+          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), c);
           inst = inst->Next_2xx();
         }
         break;
@@ -556,7 +557,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
         if (UNLIKELY(mh == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
-          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), mh.Ptr());
+          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), mh);
           inst = inst->Next_2xx();
         }
         break;
@@ -570,7 +571,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
         if (UNLIKELY(mt == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
-          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), mt.Ptr());
+          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), mt);
           inst = inst->Next_2xx();
         }
         break;
@@ -681,7 +682,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
             HANDLE_PENDING_EXCEPTION();
             break;
           }
-          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), obj.Ptr());
+          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), obj);
           inst = inst->Next_2xx();
         }
         break;
@@ -698,7 +699,7 @@ void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
         if (UNLIKELY(obj == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
-          shadow_frame.SetVRegReference(inst->VRegA_22c(inst_data), obj.Ptr());
+          shadow_frame.SetVRegReference(inst->VRegA_22c(inst_data), obj);
           inst = inst->Next_2xx();
         }
         break;

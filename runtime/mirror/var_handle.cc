@@ -24,7 +24,7 @@
 #include "intrinsics_enum.h"
 #include "jni/jni_internal.h"
 #include "jvalue-inl.h"
-#include "method_handles.h"
+#include "method_handles-inl.h"
 #include "method_type.h"
 #include "well_known_classes.h"
 
