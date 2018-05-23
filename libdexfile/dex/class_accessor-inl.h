@@ -20,19 +20,22 @@
 #include "class_accessor.h"
 
 #include "base/leb128.h"
+#include "class_iterator.h"
+#include "code_item_accessors-inl.h"
 
 namespace art {
 
-inline ClassAccessor::ClassAccessor(const DexFile& dex_file, const DexFile::ClassDef& class_def)
-    : ClassAccessor(dex_file, dex_file.GetClassData(class_def)) {}
+inline ClassAccessor::ClassAccessor(const ClassIteratorData& data)
+    : ClassAccessor(data.dex_file_, data.dex_file_.GetClassDef(data.class_def_idx_)) {}
 
-inline ClassAccessor::ClassAccessor(const DexFile& dex_file, const uint8_t* class_data)
+inline ClassAccessor::ClassAccessor(const DexFile& dex_file, const DexFile::ClassDef& class_def)
     : dex_file_(dex_file),
-      ptr_pos_(class_data),
-      num_static_fields_(class_data != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
-      num_instance_fields_(class_data != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
-      num_direct_methods_(class_data != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
-      num_virtual_methods_(class_data != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u) {}
+      descriptor_index_(class_def.class_idx_),
+      ptr_pos_(dex_file.GetClassData(class_def)),
+      num_static_fields_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
+      num_instance_fields_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
+      num_direct_methods_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
+      num_virtual_methods_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u) {}
 
 inline const uint8_t* ClassAccessor::Method::Read(const uint8_t* ptr) {
   method_idx_ += DecodeUnsignedLeb128(&ptr);
@@ -57,25 +60,33 @@ inline void ClassAccessor::VisitMethodsAndFields(
     const DirectMethodVisitor& direct_method_visitor,
     const VirtualMethodVisitor& virtual_method_visitor) const {
   const uint8_t* ptr = ptr_pos_;
-  for (size_t i = 0; i < num_static_fields_; ++i) {
+  {
     Field data;
-    ptr = data.Read(ptr);
-    static_field_visitor(data);
+    for (size_t i = 0; i < num_static_fields_; ++i) {
+      ptr = data.Read(ptr);
+      static_field_visitor(data);
+    }
   }
-  for (size_t i = 0; i < num_instance_fields_; ++i) {
+  {
     Field data;
-    ptr = data.Read(ptr);
-    instance_field_visitor(data);
+    for (size_t i = 0; i < num_instance_fields_; ++i) {
+      ptr = data.Read(ptr);
+      instance_field_visitor(data);
+    }
   }
-  for (size_t i = 0; i < num_direct_methods_; ++i) {
-    Method data;
-    ptr = data.Read(ptr);
-    direct_method_visitor(data);
+  {
+    Method data(dex_file_);
+    for (size_t i = 0; i < num_direct_methods_; ++i) {
+      ptr = data.Read(ptr);
+      direct_method_visitor(data);
+    }
   }
-  for (size_t i = 0; i < num_virtual_methods_; ++i) {
-    Method data;
-    ptr = data.Read(ptr);
-    virtual_method_visitor(data);
+  {
+    Method data(dex_file_);
+    for (size_t i = 0; i < num_virtual_methods_; ++i) {
+      ptr = data.Read(ptr);
+      virtual_method_visitor(data);
+    }
   }
 }
 
@@ -97,6 +108,10 @@ inline void ClassAccessor::VisitMethods(const MethodVisitor& method_visitor) con
 
 inline const DexFile::CodeItem* ClassAccessor::GetCodeItem(const Method& method) const {
   return dex_file_.GetCodeItem(method.GetCodeItemOffset());
+}
+
+inline CodeItemInstructionAccessor ClassAccessor::Method::GetInstructions() const {
+  return CodeItemInstructionAccessor(dex_file_, dex_file_.GetCodeItem(GetCodeItemOffset()));
 }
 
 }  // namespace art
