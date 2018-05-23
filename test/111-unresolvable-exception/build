@@ -21,15 +21,7 @@ mkdir classes
 ${JAVAC} -d classes `find src -name '*.java'`
 rm classes/TestException.class
 
-if [ ${USE_JACK} = "true" ]; then
-  jar cf classes.jill.jar -C classes .
-  ${JACK} --import classes.jill.jar --output-dex .
-else
-  if [ ${NEED_DEX} = "true" ]; then
-    ${DX} -JXmx256m --debug --dex --dump-to=classes.lst --output=classes.dex classes
-  fi
-fi
-
 if [ ${NEED_DEX} = "true" ]; then
+  ${DX} -JXmx256m --debug --dex --dump-to=classes.lst --output=classes.dex classes
   zip $TEST_NAME.jar classes.dex
 fi

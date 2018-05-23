@@ -482,12 +482,6 @@ def run_tests(tests):
           options_test += ' --instruction-set-features ' + \
                           env.HOST_2ND_ARCH_PREFIX_DEX2OAT_HOST_INSTRUCTION_SET_FEATURES
 
-      # Use the default run-test behavior unless ANDROID_COMPILE_WITH_JACK is explicitly set.
-      if env.ANDROID_COMPILE_WITH_JACK == True:
-        options_test += ' --build-with-jack'
-      elif env.ANDROID_COMPILE_WITH_JACK == False:
-        options_test += ' --build-with-javac-dx'
-
       # TODO(http://36039166): This is a temporary solution to
       # fix build breakages.
       options_test = (' --output-path %s') % (
@@ -1010,8 +1004,6 @@ def main():
     build_command += ' -j'
     build_command += ' -C ' + env.ANDROID_BUILD_TOP
     build_command += ' ' + build_targets
-    # Add 'dist' to avoid Jack issues b/36169180.
-    build_command += ' dist'
     if subprocess.call(build_command.split()):
       sys.exit(1)
   if user_requested_tests:

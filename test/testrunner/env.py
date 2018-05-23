@@ -68,9 +68,6 @@ def _get_android_build_top():
 
 ANDROID_BUILD_TOP = _get_android_build_top()
 
-# Compiling with jack? Possible values in (True, False, 'default')
-ANDROID_COMPILE_WITH_JACK = _get_build_var_boolean('ANDROID_COMPILE_WITH_JACK', 'default')
-
 # Directory used for temporary test files on the host.
 ART_HOST_TEST_DIR = tempfile.mkdtemp(prefix = 'test-art-')
 
@@ -134,8 +131,8 @@ else:
 HOST_OUT_EXECUTABLES = os.path.join(ANDROID_BUILD_TOP,
                                     _get_build_var("HOST_OUT_EXECUTABLES"))
 
-# Set up default values for $JACK, $DX, $SMALI, etc to the $HOST_OUT_EXECUTABLES/$name path.
-for tool in ['jack', 'dx', 'smali', 'jasmin', 'd8']:
+# Set up default values for $DX, $SMALI, etc to the $HOST_OUT_EXECUTABLES/$name path.
+for tool in ['dx', 'smali', 'jasmin', 'd8']:
   os.environ.setdefault(tool.upper(), HOST_OUT_EXECUTABLES + '/' + tool)
 
 ANDROID_JAVA_TOOLCHAIN = os.path.join(ANDROID_BUILD_TOP,
