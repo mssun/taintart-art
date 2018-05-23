@@ -463,16 +463,6 @@ public class Main {
 
   public SubclassA $noinline$getSubclass() { throw new RuntimeException(); }
 
-  /// CHECK-START: void Main.testArraySimpleRemove() instruction_simplifier (before)
-  /// CHECK:         CheckCast
-
-  /// CHECK-START: void Main.testArraySimpleRemove() instruction_simplifier (after)
-  /// CHECK-NOT:     CheckCast
-  public void testArraySimpleRemove() {
-    Super[] b = new SubclassA[10];
-    SubclassA[] c = (SubclassA[])b;
-  }
-
   /// CHECK-START: void Main.testInvokeSimpleRemove() instruction_simplifier (before)
   /// CHECK:         CheckCast
 
