@@ -123,7 +123,7 @@ void CommonCompilerTest::MakeExecutable(ObjPtr<mirror::ClassLoader> class_loader
   Thread* self = Thread::Current();
   StackHandleScope<1> hs(self);
   Handle<mirror::ClassLoader> loader(hs.NewHandle(class_loader));
-  mirror::Class* klass = class_linker_->FindClass(self, class_descriptor.c_str(), loader);
+  ObjPtr<mirror::Class> klass = class_linker_->FindClass(self, class_descriptor.c_str(), loader);
   CHECK(klass != nullptr) << "Class not found " << class_name;
   PointerSize pointer_size = class_linker_->GetImagePointerSize();
   for (auto& m : klass->GetMethods(pointer_size)) {
@@ -222,7 +222,7 @@ void CommonCompilerTest::CompileClass(mirror::ClassLoader* class_loader, const c
   Thread* self = Thread::Current();
   StackHandleScope<1> hs(self);
   Handle<mirror::ClassLoader> loader(hs.NewHandle(class_loader));
-  mirror::Class* klass = class_linker_->FindClass(self, class_descriptor.c_str(), loader);
+  ObjPtr<mirror::Class> klass = class_linker_->FindClass(self, class_descriptor.c_str(), loader);
   CHECK(klass != nullptr) << "Class not found " << class_name;
   auto pointer_size = class_linker_->GetImagePointerSize();
   for (auto& m : klass->GetMethods(pointer_size)) {
@@ -244,7 +244,8 @@ void CommonCompilerTest::CompileDirectMethod(Handle<mirror::ClassLoader> class_l
                                              const char* signature) {
   std::string class_descriptor(DotToDescriptor(class_name));
   Thread* self = Thread::Current();
-  mirror::Class* klass = class_linker_->FindClass(self, class_descriptor.c_str(), class_loader);
+  ObjPtr<mirror::Class> klass =
+      class_linker_->FindClass(self, class_descriptor.c_str(), class_loader);
   CHECK(klass != nullptr) << "Class not found " << class_name;
   auto pointer_size = class_linker_->GetImagePointerSize();
   ArtMethod* method = klass->FindClassMethod(method_name, signature, pointer_size);
@@ -258,7 +259,8 @@ void CommonCompilerTest::CompileVirtualMethod(Handle<mirror::ClassLoader> class_
                                               const char* signature) {
   std::string class_descriptor(DotToDescriptor(class_name));
   Thread* self = Thread::Current();
-  mirror::Class* klass = class_linker_->FindClass(self, class_descriptor.c_str(), class_loader);
+  ObjPtr<mirror::Class> klass =
+      class_linker_->FindClass(self, class_descriptor.c_str(), class_loader);
   CHECK(klass != nullptr) << "Class not found " << class_name;
   auto pointer_size = class_linker_->GetImagePointerSize();
   ArtMethod* method = klass->FindClassMethod(method_name, signature, pointer_size);

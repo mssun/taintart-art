@@ -83,7 +83,7 @@ TEST_F(DexCacheTest, LinearAlloc) {
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> class_loader(hs.NewHandle(
       soa.Decode<mirror::ClassLoader>(jclass_loader)));
-  mirror::Class* klass = class_linker_->FindClass(soa.Self(), "LMain;", class_loader);
+  ObjPtr<mirror::Class> klass = class_linker_->FindClass(soa.Self(), "LMain;", class_loader);
   ASSERT_TRUE(klass != nullptr);
   LinearAlloc* const linear_alloc = klass->GetClassLoader()->GetAllocator();
   EXPECT_NE(linear_alloc, runtime_->GetLinearAlloc());

@@ -463,9 +463,9 @@ TEST_F(OatTest, WriteRead) {
     }
 
     const char* descriptor = dex_file.GetClassDescriptor(class_def);
-    mirror::Class* klass = class_linker->FindClass(soa.Self(),
-                                                   descriptor,
-                                                   ScopedNullHandle<mirror::ClassLoader>());
+    ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(),
+                                                          descriptor,
+                                                          ScopedNullHandle<mirror::ClassLoader>());
 
     const OatFile::OatClass oat_class = oat_dex_file->GetOatClass(i);
     CHECK_EQ(ClassStatus::kNotReady, oat_class.GetStatus()) << descriptor;
