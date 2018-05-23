@@ -37,7 +37,9 @@ mirror::Class* GenerateProxyClass(ScopedObjectAccess& soa,
                                   const char* className,
                                   const std::vector<mirror::Class*>& interfaces)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  mirror::Class* javaLangObject = class_linker->FindSystemClass(soa.Self(), "Ljava/lang/Object;");
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::Class> javaLangObject = hs.NewHandle(
+      class_linker->FindSystemClass(soa.Self(), "Ljava/lang/Object;"));
   CHECK(javaLangObject != nullptr);
 
   jclass javaLangClass = soa.AddLocalReference<jclass>(mirror::Class::GetJavaLangClass());
@@ -67,7 +69,7 @@ mirror::Class* GenerateProxyClass(ScopedObjectAccess& soa,
       "equals", "(Ljava/lang/Object;)Z", kRuntimePointerSize);
   CHECK(method != nullptr);
   CHECK(!method->IsDirect());
-  CHECK(method->GetDeclaringClass() == javaLangObject);
+  CHECK(method->GetDeclaringClass() == javaLangObject.Get());
   DCHECK(!Runtime::Current()->IsActiveTransaction());
   soa.Env()->SetObjectArrayElement(
       proxyClassMethods, array_index++, soa.AddLocalReference<jobject>(
@@ -75,7 +77,7 @@ mirror::Class* GenerateProxyClass(ScopedObjectAccess& soa,
   method = javaLangObject->FindClassMethod("hashCode", "()I", kRuntimePointerSize);
   CHECK(method != nullptr);
   CHECK(!method->IsDirect());
-  CHECK(method->GetDeclaringClass() == javaLangObject);
+  CHECK(method->GetDeclaringClass() == javaLangObject.Get());
   soa.Env()->SetObjectArrayElement(
       proxyClassMethods, array_index++, soa.AddLocalReference<jobject>(
           mirror::Method::CreateFromArtMethod<kRuntimePointerSize, false>(soa.Self(), method)));
@@ -83,7 +85,7 @@ mirror::Class* GenerateProxyClass(ScopedObjectAccess& soa,
       "toString", "()Ljava/lang/String;", kRuntimePointerSize);
   CHECK(method != nullptr);
   CHECK(!method->IsDirect());
-  CHECK(method->GetDeclaringClass() == javaLangObject);
+  CHECK(method->GetDeclaringClass() == javaLangObject.Get());
   soa.Env()->SetObjectArrayElement(
       proxyClassMethods, array_index++, soa.AddLocalReference<jobject>(
           mirror::Method::CreateFromArtMethod<kRuntimePointerSize, false>(soa.Self(), method)));

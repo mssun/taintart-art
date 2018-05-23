@@ -91,7 +91,7 @@ class JniInternalTest : public CommonCompilerTest {
 
   jclass GetPrimitiveClass(char descriptor) {
     ScopedObjectAccess soa(env_);
-    mirror::Class* c = class_linker_->FindPrimitiveClass(descriptor);
+    ObjPtr<mirror::Class> c = class_linker_->FindPrimitiveClass(descriptor);
     CHECK(c != nullptr);
     return soa.AddLocalReference<jclass>(c);
   }
@@ -624,7 +624,7 @@ class JniInternalTest : public CommonCompilerTest {
         StackHandleScope<1> hs(soa.Self());
         Handle<mirror::ClassLoader> loader(
             hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader_)));
-        mirror::Class* c = class_linker_->FindClass(soa.Self(), "LMyClassNatives;", loader);
+        ObjPtr<mirror::Class> c = class_linker_->FindClass(soa.Self(), "LMyClassNatives;", loader);
         const auto pointer_size = class_linker_->GetImagePointerSize();
         ArtMethod* method = c->FindClassMethod(method_name, method_sig, pointer_size);
         ASSERT_TRUE(method != nullptr) << method_name << " " << method_sig;
