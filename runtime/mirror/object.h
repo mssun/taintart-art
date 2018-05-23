@@ -176,7 +176,6 @@ class MANAGED LOCKABLE Object {
       UNLOCK_FUNCTION();
   void Notify(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
   void NotifyAll(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
-  void Wait(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
   void Wait(Thread* self, int64_t timeout, int32_t nanos) REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,

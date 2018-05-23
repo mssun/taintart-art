@@ -114,10 +114,6 @@ inline void Object::NotifyAll(Thread* self) {
   Monitor::NotifyAll(self, this);
 }
 
-inline void Object::Wait(Thread* self) {
-  Monitor::Wait(self, this, 0, 0, true, kWaiting);
-}
-
 inline void Object::Wait(Thread* self, int64_t ms, int32_t ns) {
   Monitor::Wait(self, this, ms, ns, true, kTimedWaiting);
 }
