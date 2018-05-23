@@ -18,9 +18,12 @@
 #define ART_LIBDEXFILE_DEX_CLASS_ACCESSOR_H_
 
 #include "base/utils.h"
+#include "code_item_accessors.h"
 #include "dex_file.h"
 
 namespace art {
+
+class ClassIteratorData;
 
 // Classes to access Dex data.
 class ClassAccessor {
@@ -40,10 +43,15 @@ class ClassAccessor {
       return code_off_;
     }
 
+    CodeItemInstructionAccessor GetInstructions() const;
+
    private:
+    explicit Method(const DexFile& dex_file) : dex_file_(dex_file) {}
+
     const uint8_t* Read(const uint8_t* ptr);
 
     // A decoded version of the method of a class_data_item.
+    const DexFile& dex_file_;
     uint32_t method_idx_ = 0u;
     uint32_t access_flags_ = 0u;
     uint32_t code_off_ = 0u;
@@ -72,7 +80,10 @@ class ClassAccessor {
     friend class ClassAccessor;
   };
 
-  ALWAYS_INLINE ClassAccessor(const DexFile& dex_file, const DexFile::ClassDef& class_def);
+  // Not explicit specifically for range-based loops.
+  ALWAYS_INLINE ClassAccessor(const ClassIteratorData& data);
+
+  ClassAccessor(const DexFile& dex_file, const DexFile::ClassDef& class_def);
 
   // Return the code item for a method.
   const DexFile::CodeItem* GetCodeItem(const Method& method) const;
@@ -112,18 +123,19 @@ class ClassAccessor {
     return num_virtual_methods_;
   }
 
- protected:
-  ALWAYS_INLINE ClassAccessor(const DexFile& dex_file, const uint8_t* class_data);
+  // TODO: Deprecate
+  dex::TypeIndex GetDescriptorIndex() const {
+    return descriptor_index_;
+  }
 
+ protected:
   const DexFile& dex_file_;
+  const dex::TypeIndex descriptor_index_ = {};
   const uint8_t* ptr_pos_ = nullptr;  // Pointer into stream of class_data_item.
   const uint32_t num_static_fields_ = 0u;
   const uint32_t num_instance_fields_ = 0u;
   const uint32_t num_direct_methods_ = 0u;
   const uint32_t num_virtual_methods_ = 0u;
-  // Only cache descriptor.
-  const void* class_def_ = nullptr;
-  const void* class_data_ = nullptr;
 };
 
 }  // namespace art

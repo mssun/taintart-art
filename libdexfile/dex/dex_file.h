@@ -27,6 +27,7 @@
 #include "base/iteration_range.h"
 #include "base/macros.h"
 #include "base/value_object.h"
+#include "class_iterator.h"
 #include "dex_file_types.h"
 #include "dex_instruction_iterator.h"
 #include "hidden_api_access_flags.h"
@@ -1011,6 +1012,8 @@ class DexFile {
 
   // Changes the dex file pointed to by class_it to not have any hiddenapi flags.
   static void UnHideAccessFlags(ClassDataItemIterator& class_it);
+
+  inline IterationRange<ClassIterator> GetClasses() const;
 
  protected:
   // First Dex format version supporting default methods.

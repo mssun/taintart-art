@@ -24,6 +24,7 @@
 
 #include "android-base/stringprintf.h"
 #include "dex/class_accessor-inl.h"
+#include "dex/class_iterator.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex/standard_dex_file.h"
@@ -125,20 +126,12 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   num_field_ids_ += dex_file.NumFieldIds();
   num_type_ids_ += dex_file.NumTypeIds();
   num_class_defs_ += dex_file.NumClassDefs();
-  for (size_t class_def_index = 0; class_def_index < dex_file.NumClassDefs(); ++class_def_index) {
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-    ClassAccessor accessor(dex_file, class_def);
+  for (ClassAccessor accessor : dex_file.GetClasses()) {
     std::set<size_t> unique_method_ids;
     std::set<size_t> unique_string_ids;
     accessor.VisitMethods([&](const ClassAccessor::Method& method) {
-      const DexFile::CodeItem* code_item = accessor.GetCodeItem(method);
-      if (code_item == nullptr) {
-        return;
-      }
-      CodeItemInstructionAccessor instructions(dex_file, code_item);
-      const uint16_t* code_ptr = instructions.Insns();
-      dex_code_bytes_ += instructions.InsnsSizeInCodeUnits() * sizeof(code_ptr[0]);
-      for (const DexInstructionPcPair& inst : instructions) {
+      dex_code_bytes_ += method.GetInstructions().InsnsSizeInBytes();
+      for (const DexInstructionPcPair& inst : method.GetInstructions()) {
         switch (inst->Opcode()) {
           case Instruction::CONST_STRING: {
             const dex::StringIndex string_index(inst->VRegB_21c());
@@ -157,7 +150,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_VIRTUAL_RANGE: {
             bool is_range = (inst->Opcode() == Instruction::INVOKE_VIRTUAL_RANGE);
             uint32_t method_idx = is_range ? inst->VRegB_3rc() : inst->VRegB_35c();
-            if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
+            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetDescriptorIndex()) {
               ++same_class_virtual_;
             } else {
               ++other_class_virtual_;
@@ -169,7 +162,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_DIRECT_RANGE: {
             bool is_range = (inst->Opcode() == Instruction::INVOKE_DIRECT_RANGE);
             uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
-            if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
+            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetDescriptorIndex()) {
               ++same_class_direct_;
             } else {
               ++other_class_direct_;
@@ -181,7 +174,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_STATIC_RANGE: {
             bool is_range = (inst->Opcode() == Instruction::INVOKE_STATIC_RANGE);
             uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
-            if (dex_file.GetMethodId(method_idx).class_idx_ == class_def.class_idx_) {
+            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetDescriptorIndex()) {
               ++same_class_static_;
             } else {
               ++other_class_static_;
