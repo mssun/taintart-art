@@ -44,10 +44,11 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
   # TODO: Also consider adding a "tear down device" step on the ART
   # Buildbot (at the very end of a build) undoing (some of) the work
   # done in the "device setup" step.
-  adb shell find "$ART_TEST_CHROOT/system" \
-    ! -path "$ART_TEST_CHROOT/system/etc/selinux/plat_property_contexts" \
-    ! -type d \
-    -exec rm -f \{\} +
+  adb shell test -f "$ART_TEST_CHROOT/system" \
+    "&&" find "$ART_TEST_CHROOT/system" \
+      ! -path "$ART_TEST_CHROOT/system/etc/selinux/plat_property_contexts" \
+      ! -type d \
+      -exec rm -f \{\} +
 
   echo -e "${green}Clean up some subdirs in /data in chroot${nc}"
   adb shell rm -rf \
