@@ -14,10 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# The work does by this script is (mostly) undone by tools/teardown-buildbot-device.sh.
+# Make sure to keep these files in sync.
+
 green='\033[0;32m'
 nc='\033[0m'
 
-# Setup as root, as some actions performed here (e.g. setting the date) requires it.
+# Setup as root, as some actions performed here require it.
 adb root
 adb wait-for-device
 
