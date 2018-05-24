@@ -35,6 +35,7 @@ class LoopAnalysisInfo : public ValueObject {
         exits_num_(0),
         has_instructions_preventing_scalar_peeling_(false),
         has_instructions_preventing_scalar_unrolling_(false),
+        has_long_type_instructions_(false),
         loop_info_(loop_info) {}
 
   size_t GetNumberOfBasicBlocks() const { return bb_num_; }
@@ -47,6 +48,10 @@ class LoopAnalysisInfo : public ValueObject {
 
   bool HasInstructionsPreventingScalarUnrolling() const {
     return has_instructions_preventing_scalar_unrolling_;
+  }
+
+  bool HasLongTypeInstructions() const {
+    return has_long_type_instructions_;
   }
 
   const HLoopInformation* GetLoopInfo() const { return loop_info_; }
@@ -62,6 +67,9 @@ class LoopAnalysisInfo : public ValueObject {
   bool has_instructions_preventing_scalar_peeling_;
   // Whether the loop has instructions which make scalar loop unrolling non-beneficial.
   bool has_instructions_preventing_scalar_unrolling_;
+  // Whether the loop has instructions of primitive long type; unrolling these loop will
+  // likely introduce spill/fills on 32-bit targets.
+  bool has_long_type_instructions_;
 
   // Corresponding HLoopInformation.
   const HLoopInformation* loop_info_;
@@ -117,22 +125,21 @@ class LoopAnalysis : public ValueObject {
 // To support peeling/unrolling for a new architecture one needs to create new helper class,
 // inherit it from this and add implementation for the following methods.
 //
-class ArchDefaultLoopHelper : public ArenaObject<kArenaAllocOptimization> {
+class ArchNoOptsLoopHelper : public ArenaObject<kArenaAllocOptimization> {
  public:
-  virtual ~ArchDefaultLoopHelper() {}
+  virtual ~ArchNoOptsLoopHelper() {}
 
   // Creates an instance of specialised helper for the target or default helper if the target
   // doesn't support loop peeling and unrolling.
-  static ArchDefaultLoopHelper* Create(InstructionSet isa, ArenaAllocator* allocator);
+  static ArchNoOptsLoopHelper* Create(InstructionSet isa, ArenaAllocator* allocator);
 
-  // Returns whether the loop is too big for loop peeling/unrolling by checking its total number of
-  // basic blocks and instructions.
+  // Returns whether the loop is not beneficial for loop peeling/unrolling.
   //
-  // If the loop body has too many instructions then peeling/unrolling optimization will not bring
-  // any noticeable performance improvement however will increase the code size.
+  // For example, if the loop body has too many instructions then peeling/unrolling optimization
+  // will not bring any noticeable performance improvement however will increase the code size.
   //
   // Returns 'true' by default, should be overridden by particular target loop helper.
-  virtual bool IsLoopTooBigForScalarPeelingUnrolling(
+  virtual bool IsLoopNonBeneficialForScalarOpts(
       LoopAnalysisInfo* loop_analysis_info ATTRIBUTE_UNUSED) const { return true; }
 
   // Returns optimal scalar unrolling factor for the loop.

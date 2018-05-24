@@ -33,9 +33,6 @@ namespace art {
 // Enables vectorization (SIMDization) in the loop optimizer.
 static constexpr bool kEnableVectorization = true;
 
-// Enables scalar loop unrolling in the loop optimizer.
-static constexpr bool kEnableScalarPeelingUnrolling = false;
-
 //
 // Static helpers.
 //
@@ -457,7 +454,7 @@ HLoopOptimization::HLoopOptimization(HGraph* graph,
       vector_header_(nullptr),
       vector_body_(nullptr),
       vector_index_(nullptr),
-      arch_loop_helper_(ArchDefaultLoopHelper::Create(compiler_driver_ != nullptr
+      arch_loop_helper_(ArchNoOptsLoopHelper::Create(compiler_driver_ != nullptr
                                                           ? compiler_driver_->GetInstructionSet()
                                                           : InstructionSet::kNone,
                                                       global_allocator_)) {
@@ -761,7 +758,7 @@ bool HLoopOptimization::OptimizeInnerLoop(LoopNode* node) {
 bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopNode* node) {
   // Don't run peeling/unrolling if compiler_driver_ is nullptr (i.e., running under tests)
   // as InstructionSet is needed.
-  if (!kEnableScalarPeelingUnrolling || compiler_driver_ == nullptr) {
+  if (compiler_driver_ == nullptr) {
     return false;
   }
 
@@ -781,9 +778,9 @@ bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopNode* node) {
   LoopAnalysis::CalculateLoopBasicProperties(loop_info, &loop_analysis_info);
 
   // Check "IsLoopClonable" last as it can be time-consuming.
-  if (arch_loop_helper_->IsLoopTooBigForScalarPeelingUnrolling(&loop_analysis_info) ||
+  if (loop_analysis_info.HasInstructionsPreventingScalarUnrolling() ||
+      arch_loop_helper_->IsLoopNonBeneficialForScalarOpts(&loop_analysis_info) ||
       (loop_analysis_info.GetNumberOfExits() > 1) ||
-      loop_analysis_info.HasInstructionsPreventingScalarUnrolling() ||
       !PeelUnrollHelper::IsLoopClonable(loop_info)) {
     return false;
   }
@@ -807,7 +804,7 @@ bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopNode* node) {
 bool HLoopOptimization::TryPeelingForLoopInvariantExitsElimination(LoopNode* node) {
   // Don't run peeling/unrolling if compiler_driver_ is nullptr (i.e., running under tests)
   // as InstructionSet is needed.
-  if (!kEnableScalarPeelingUnrolling || compiler_driver_ == nullptr) {
+  if (compiler_driver_ == nullptr) {
     return false;
   }
 
@@ -821,8 +818,8 @@ bool HLoopOptimization::TryPeelingForLoopInvariantExitsElimination(LoopNode* nod
   LoopAnalysis::CalculateLoopBasicProperties(loop_info, &loop_analysis_info);
 
   // Check "IsLoopClonable" last as it can be time-consuming.
-  if (arch_loop_helper_->IsLoopTooBigForScalarPeelingUnrolling(&loop_analysis_info) ||
-      loop_analysis_info.HasInstructionsPreventingScalarPeeling() ||
+  if (loop_analysis_info.HasInstructionsPreventingScalarPeeling() ||
+      arch_loop_helper_->IsLoopNonBeneficialForScalarOpts(&loop_analysis_info) ||
       !LoopAnalysis::HasLoopAtLeastOneInvariantExit(loop_info) ||
       !PeelUnrollHelper::IsLoopClonable(loop_info)) {
     return false;

@@ -35,6 +35,9 @@ void LoopAnalysis::CalculateLoopBasicProperties(HLoopInformation* loop_info,
 
     for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
       HInstruction* instruction = it.Current();
+      if (it.Current()->GetType() == DataType::Type::kInt64) {
+        analysis_results->has_long_type_instructions_ = true;
+      }
       if (MakesScalarPeelingUnrollingNonBeneficial(instruction)) {
         analysis_results->has_instructions_preventing_scalar_peeling_ = true;
         analysis_results->has_instructions_preventing_scalar_unrolling_ = true;
@@ -61,34 +64,29 @@ bool LoopAnalysis::HasLoopAtLeastOneInvariantExit(HLoopInformation* loop_info) {
   return false;
 }
 
-class Arm64LoopHelper : public ArchDefaultLoopHelper {
+// Default implementation of loop helper; used for all targets unless a custom implementation
+// is provided. Enables scalar loop peeling and unrolling with the most conservative heuristics.
+class ArchDefaultLoopHelper : public ArchNoOptsLoopHelper {
  public:
   // Scalar loop unrolling parameters and heuristics.
   //
   // Maximum possible unrolling factor.
-  static constexpr uint32_t kArm64ScalarMaxUnrollFactor = 2;
+  static constexpr uint32_t kScalarMaxUnrollFactor = 2;
   // Loop's maximum instruction count. Loops with higher count will not be peeled/unrolled.
-  static constexpr uint32_t kArm64ScalarHeuristicMaxBodySizeInstr = 40;
+  static constexpr uint32_t kScalarHeuristicMaxBodySizeInstr = 17;
   // Loop's maximum basic block count. Loops with higher count will not be peeled/unrolled.
-  static constexpr uint32_t kArm64ScalarHeuristicMaxBodySizeBlocks = 8;
+  static constexpr uint32_t kScalarHeuristicMaxBodySizeBlocks = 6;
 
-  // SIMD loop unrolling parameters and heuristics.
-  //
-  // Maximum possible unrolling factor.
-  static constexpr uint32_t kArm64SimdMaxUnrollFactor = 8;
-  // Loop's maximum instruction count. Loops with higher count will not be unrolled.
-  static constexpr uint32_t kArm64SimdHeuristicMaxBodySizeInstr = 50;
-
-  bool IsLoopTooBigForScalarPeelingUnrolling(LoopAnalysisInfo* loop_analysis_info) const OVERRIDE {
-    size_t instr_num = loop_analysis_info->GetNumberOfInstructions();
-    size_t bb_num = loop_analysis_info->GetNumberOfBasicBlocks();
-    return (instr_num >= kArm64ScalarHeuristicMaxBodySizeInstr ||
-            bb_num >= kArm64ScalarHeuristicMaxBodySizeBlocks);
+  bool IsLoopNonBeneficialForScalarOpts(LoopAnalysisInfo* loop_analysis_info) const OVERRIDE {
+    return loop_analysis_info->HasLongTypeInstructions() ||
+           IsLoopTooBig(loop_analysis_info,
+                        kScalarHeuristicMaxBodySizeInstr,
+                        kScalarHeuristicMaxBodySizeBlocks);
   }
 
   uint32_t GetScalarUnrollingFactor(HLoopInformation* loop_info ATTRIBUTE_UNUSED,
                                     uint64_t trip_count) const OVERRIDE {
-    uint32_t desired_unrolling_factor = kArm64ScalarMaxUnrollFactor;
+    uint32_t desired_unrolling_factor = kScalarMaxUnrollFactor;
     if (trip_count < desired_unrolling_factor || trip_count % desired_unrolling_factor != 0) {
       return kNoUnrollingFactor;
     }
@@ -97,6 +95,38 @@ class Arm64LoopHelper : public ArchDefaultLoopHelper {
   }
 
   bool IsLoopPeelingEnabled() const OVERRIDE { return true; }
+
+ protected:
+  bool IsLoopTooBig(LoopAnalysisInfo* loop_analysis_info,
+                    size_t instr_threshold,
+                    size_t bb_threshold) const {
+    size_t instr_num = loop_analysis_info->GetNumberOfInstructions();
+    size_t bb_num = loop_analysis_info->GetNumberOfBasicBlocks();
+    return (instr_num >= instr_threshold || bb_num >= bb_threshold);
+  }
+};
+
+// Custom implementation of loop helper for arm64 target. Enables heuristics for scalar loop
+// peeling and unrolling and supports SIMD loop unrolling.
+class Arm64LoopHelper : public ArchDefaultLoopHelper {
+ public:
+  // SIMD loop unrolling parameters and heuristics.
+  //
+  // Maximum possible unrolling factor.
+  static constexpr uint32_t kArm64SimdMaxUnrollFactor = 8;
+  // Loop's maximum instruction count. Loops with higher count will not be unrolled.
+  static constexpr uint32_t kArm64SimdHeuristicMaxBodySizeInstr = 50;
+
+  // Loop's maximum instruction count. Loops with higher count will not be peeled/unrolled.
+  static constexpr uint32_t kArm64ScalarHeuristicMaxBodySizeInstr = 40;
+  // Loop's maximum basic block count. Loops with higher count will not be peeled/unrolled.
+  static constexpr uint32_t kArm64ScalarHeuristicMaxBodySizeBlocks = 8;
+
+  bool IsLoopNonBeneficialForScalarOpts(LoopAnalysisInfo* loop_analysis_info) const OVERRIDE {
+    return IsLoopTooBig(loop_analysis_info,
+                        kArm64ScalarHeuristicMaxBodySizeInstr,
+                        kArm64ScalarHeuristicMaxBodySizeBlocks);
+  }
 
   uint32_t GetSIMDUnrollingFactor(HBasicBlock* block,
                                   int64_t trip_count,
@@ -126,8 +156,8 @@ class Arm64LoopHelper : public ArchDefaultLoopHelper {
   }
 };
 
-ArchDefaultLoopHelper* ArchDefaultLoopHelper::Create(InstructionSet isa,
-                                                     ArenaAllocator* allocator) {
+ArchNoOptsLoopHelper* ArchNoOptsLoopHelper::Create(InstructionSet isa,
+                                                   ArenaAllocator* allocator) {
   switch (isa) {
     case InstructionSet::kArm64: {
       return new (allocator) Arm64LoopHelper;

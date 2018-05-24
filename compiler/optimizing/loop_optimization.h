@@ -28,7 +28,7 @@
 namespace art {
 
 class CompilerDriver;
-class ArchDefaultLoopHelper;
+class ArchNoOptsLoopHelper;
 
 /**
  * Loop optimizations. Builds a loop hierarchy and applies optimizations to
@@ -308,7 +308,7 @@ class HLoopOptimization : public HOptimization {
   HInstruction* vector_index_;  // normalized index of the new loop
 
   // Helper for target-specific behaviour for loop optimizations.
-  ArchDefaultLoopHelper* arch_loop_helper_;
+  ArchNoOptsLoopHelper* arch_loop_helper_;
 
   friend class LoopOptimizationTest;
 
