@@ -46,7 +46,6 @@ export RUN="${progdir}/etc/run-test-jar"
 export DEX_LOCATION=/data/run-test/${test_dir}
 export NEED_DEX="true"
 export USE_D8="true"
-export USE_JACK="false"
 export USE_DESUGAR="true"
 export SMALI_ARGS=""
 
@@ -72,11 +71,6 @@ if [ -z "$SMALI" ]; then
   export SMALI="smali"
 fi
 
-# If jack was not set by the environment variable, assume it is in the path.
-if [ -z "$JACK" ]; then
-  export JACK="jack"
-fi
-
 # ANDROID_BUILD_TOP is not set in a build environment.
 if [ -z "$ANDROID_BUILD_TOP" ]; then
     export ANDROID_BUILD_TOP=$oldwd
@@ -86,13 +80,6 @@ fi
 if [ -z "$ANDROID_HOST_OUT" ]; then
     export ANDROID_HOST_OUT=${OUT_DIR:-$ANDROID_BUILD_TOP/out}/host/linux-x86
 fi
-
-# If JACK_CLASSPATH is not set, assume it only contains core-libart.
-if [ -z "$JACK_CLASSPATH" ]; then
-  export JACK_CLASSPATH="${ANDROID_HOST_OUT}/../common/obj/JAVA_LIBRARIES/core-libart-hostdex_intermediates/classes.jack:${ANDROID_HOST_OUT}/../common/obj/JAVA_LIBRARIES/core-oj-hostdex_intermediates/classes.jack"
-fi
-
-export JACK="$JACK -g -cp $JACK_CLASSPATH"
 
 # Allow changing DESUGAR script to something else, or to disable it with DESUGAR=false.
 if [ -z "$DESUGAR" ]; then
@@ -197,7 +184,6 @@ while true; do
         image_args=""
         prebuild_mode="no"
         NEED_DEX="false"
-        USE_JACK="false"
         run_args="${run_args} --jvm"
         shift
     elif [ "x$1" = "x-O" ]; then
@@ -366,12 +352,6 @@ while true; do
         shift
     elif [ "x$1" = "x--build-only" ]; then
         build_only="yes"
-        shift
-    elif [ "x$1" = "x--build-with-javac-dx" ]; then
-        USE_JACK="false"
-        shift
-    elif [ "x$1" = "x--build-with-jack" ]; then
-        USE_JACK="true"
         shift
     elif [ "x$1" = "x--output-path" ]; then
         shift
@@ -678,7 +658,7 @@ fi
 # For building with javac and dx always use Java 7. The dx compiler
 # only support byte codes from Java 7 or earlier (class file major
 # version 51 or lower).
-if [ "$USE_JACK" != "true" ] && [ "$NEED_DEX" = "true" ]; then
+if [ "$NEED_DEX" = "true" ]; then
   export JAVAC="${JAVAC} -source 1.7 -target 1.7"
 fi
 
@@ -711,9 +691,6 @@ if [ "$usage" = "yes" ]; then
         echo "    --gdb                 Run under gdb; incompatible with some tests."
         echo "    --gdb-arg             Pass an option to gdb."
         echo "    --build-only          Build test files only (off by default)."
-        echo "    --build-with-d8       Build test files with javac and d8 (off by default)."
-        echo "    --build-with-javac-dx Build test files with javac and dx (off by default)."
-        echo "    --build-with-jack     Build test files with jack and jill (on by default)."
         echo "    --interpreter         Enable interpreter only mode (off by default)."
         echo "    --jit                 Enable jit (off by default)."
         echo "    --optimizing          Enable optimizing compiler (default)."

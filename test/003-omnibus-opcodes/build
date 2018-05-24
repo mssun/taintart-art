@@ -22,15 +22,7 @@ ${JAVAC} -d classes `find src -name '*.java'`
 rm classes/UnresClass.class
 ${JAVAC} -d classes `find src2 -name '*.java'`
 
-if [ ${USE_JACK} = "true" ]; then
-  jar cf classes.jill.jar -C classes .
-  ${JACK} --import classes.jill.jar --output-dex .
-else
-  if [ ${NEED_DEX} = "true" ]; then
-    ${DX} -JXmx256m --debug --dex --output=classes.dex classes
-  fi
-fi
-
 if [ ${NEED_DEX} = "true" ]; then
+  ${DX} -JXmx256m --debug --dex --output=classes.dex classes
   zip $TEST_NAME.jar classes.dex
 fi

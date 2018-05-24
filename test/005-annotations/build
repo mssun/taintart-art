@@ -28,16 +28,7 @@ ${JAVAC} -d classes `find src2 -name '*.java'`
 rm 'classes/android/test/anno/MissingAnnotation.class'
 rm 'classes/android/test/anno/ClassWithInnerAnnotationClass$MissingInnerAnnotationClass.class'
 
-if [ ${USE_JACK} = "true" ]; then
-  jar cf classes.jill.jar -C classes .
-  # Jack needs to emit annotations with CLASS retention.
-  ${JACK} -D jack.dex.annotation.class-retention=true --import classes.jill.jar --output-dex .
-else
-  if [ ${NEED_DEX} = "true" ]; then
-    ${DX} -JXmx256m --debug --dex --output=classes.dex classes
-  fi
-fi
-
 if [ ${NEED_DEX} = "true" ]; then
+  ${DX} -JXmx256m --debug --dex --output=classes.dex classes
   zip $TEST_NAME.jar classes.dex
 fi

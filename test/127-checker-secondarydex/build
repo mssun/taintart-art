@@ -23,19 +23,9 @@ ${JAVAC} -d classes `find src -name '*.java'`
 mkdir classes-ex
 mv classes/Super.class classes-ex
 
-if [ ${USE_JACK} = "true" ]; then
-  jar cf classes.jill.jar -C classes .
-  jar cf classes-ex.jill.jar -C classes-ex .
-
-  ${JACK} --import classes.jill.jar --output-dex .
+if [ ${NEED_DEX} = "true" ]; then
+  ${DX} -JXmx256m --debug --dex --dump-to=classes.lst --output=classes.dex --dump-width=1000 classes
   zip $TEST_NAME.jar classes.dex
-  ${JACK} --import classes-ex.jill.jar --output-dex .
+  ${DX} -JXmx256m --debug --dex --dump-to=classes-ex.lst --output=classes.dex --dump-width=1000 classes-ex
   zip ${TEST_NAME}-ex.jar classes.dex
-else
-  if [ ${NEED_DEX} = "true" ]; then
-    ${DX} -JXmx256m --debug --dex --dump-to=classes.lst --output=classes.dex --dump-width=1000 classes
-    zip $TEST_NAME.jar classes.dex
-    ${DX} -JXmx256m --debug --dex --dump-to=classes-ex.lst --output=classes.dex --dump-width=1000 classes-ex
-    zip ${TEST_NAME}-ex.jar classes.dex
-  fi
 fi

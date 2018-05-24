@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# The standard dx/jack/d8 all would leave the move-exception instructions outside of either catch
+# The standard dx/d8 would leave the move-exception instructions outside of either catch
 # block. This is different from the RI which will leave the corresponding aload.
 #
 # See b/65203529 for more information.
