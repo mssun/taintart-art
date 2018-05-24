@@ -123,7 +123,7 @@ class DexInstructionIterator : public DexInstructionIteratorBase {
   using DexInstructionIteratorBase::DexInstructionIteratorBase;
 
   explicit DexInstructionIterator(const uint16_t* inst, uint32_t dex_pc)
-      : DexInstructionIteratorBase(Instruction::At(inst), dex_pc) {}
+      : DexInstructionIteratorBase(inst != nullptr ? Instruction::At(inst) : nullptr, dex_pc) {}
 
   explicit DexInstructionIterator(const DexInstructionPcPair& pair)
       : DexInstructionIterator(pair.Instructions(), pair.DexPc()) {}

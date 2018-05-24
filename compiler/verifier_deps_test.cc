@@ -22,6 +22,8 @@
 #include "class_linker.h"
 #include "common_compiler_test.h"
 #include "compiler_callbacks.h"
+#include "dex/class_accessor-inl.h"
+#include "dex/class_iterator.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_types.h"
 #include "dex/verification_results.h"
@@ -148,48 +150,45 @@ class VerifierDepsTest : public CommonCompilerTest {
     Handle<mirror::DexCache> dex_cache_handle(hs.NewHandle(klass_Main_->GetDexCache()));
 
     const DexFile::ClassDef* class_def = klass_Main_->GetClassDef();
-    const uint8_t* class_data = primary_dex_file_->GetClassData(*class_def);
-    CHECK(class_data != nullptr);
+    ClassAccessor accessor(*primary_dex_file_, *class_def);
 
-    ClassDataItemIterator it(*primary_dex_file_, class_data);
-    it.SkipAllFields();
+    bool has_failures = true;
+    bool found_method = false;
 
-    ArtMethod* method = nullptr;
-    while (it.HasNextDirectMethod()) {
+    accessor.VisitMethods([&](const ClassAccessor::Method& method)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
       ArtMethod* resolved_method =
           class_linker_->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-              it.GetMemberIndex(),
+              method.GetIndex(),
               dex_cache_handle,
               class_loader_handle,
               /* referrer */ nullptr,
-              it.GetMethodInvokeType(*class_def));
+              method.GetInvokeType(class_def->access_flags_));
       CHECK(resolved_method != nullptr);
       if (method_name == resolved_method->GetName()) {
-        method = resolved_method;
-        break;
+        soa.Self()->SetVerifierDeps(callbacks_->GetVerifierDeps());
+        MethodVerifier verifier(soa.Self(),
+                                primary_dex_file_,
+                                dex_cache_handle,
+                                class_loader_handle,
+                                *class_def,
+                                method.GetCodeItem(),
+                                method.GetIndex(),
+                                resolved_method,
+                                method.GetAccessFlags(),
+                                true /* can_load_classes */,
+                                true /* allow_soft_failures */,
+                                true /* need_precise_constants */,
+                                false /* verify to dump */,
+                                true /* allow_thread_suspension */);
+        verifier.Verify();
+        soa.Self()->SetVerifierDeps(nullptr);
+        has_failures = verifier.HasFailures();
+        found_method = true;
       }
-      it.Next();
-    }
-    CHECK(method != nullptr);
-
-    Thread::Current()->SetVerifierDeps(callbacks_->GetVerifierDeps());
-    MethodVerifier verifier(Thread::Current(),
-                            primary_dex_file_,
-                            dex_cache_handle,
-                            class_loader_handle,
-                            *class_def,
-                            it.GetMethodCodeItem(),
-                            it.GetMemberIndex(),
-                            method,
-                            it.GetMethodAccessFlags(),
-                            true /* can_load_classes */,
-                            true /* allow_soft_failures */,
-                            true /* need_precise_constants */,
-                            false /* verify to dump */,
-                            true /* allow_thread_suspension */);
-    verifier.Verify();
-    Thread::Current()->SetVerifierDeps(nullptr);
-    return !verifier.HasFailures();
+    });
+    CHECK(found_method) << "Expected to find method " << method_name;
+    return !has_failures;
   }
 
   void VerifyDexFile(const char* multidex = nullptr) {
