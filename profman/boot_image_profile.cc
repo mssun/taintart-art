@@ -18,6 +18,7 @@
 #include <set>
 
 #include "boot_image_profile.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/method_reference.h"
 #include "dex/type_reference.h"
@@ -74,38 +75,31 @@ void GenerateBootImageProfile(
       }
     }
     // Walk all of the classes and add them to the profile if they meet the requirements.
-    for (size_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
-      TypeReference ref(dex_file.get(), class_def.class_idx_);
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
+      TypeReference ref(dex_file.get(), accessor.GetClassIdx());
       bool is_clean = true;
-      const uint8_t* class_data = dex_file->GetClassData(class_def);
-      if (class_data != nullptr) {
-        ClassDataItemIterator it(*dex_file, class_data);
-        while (it.HasNextStaticField()) {
-          const uint32_t flags = it.GetFieldAccessFlags();
-          if ((flags & kAccFinal) == 0) {
-            // Not final static field will probably dirty the class.
-            is_clean = false;
-            break;
-          }
-          it.Next();
+      auto method_visitor = [&](const ClassAccessor::Method& method) {
+        const uint32_t flags = method.GetAccessFlags();
+        if ((flags & kAccNative) != 0) {
+          // Native method will get dirtied.
+          is_clean = false;
         }
-        it.SkipInstanceFields();
-        while (it.HasNextMethod()) {
-          const uint32_t flags = it.GetMethodAccessFlags();
-          if ((flags & kAccNative) != 0) {
-            // Native method will get dirtied.
-            is_clean = false;
-            break;
-          }
-          if ((flags & kAccConstructor) != 0 && (flags & kAccStatic) != 0) {
-            // Class initializer, may get dirtied (not sure).
-            is_clean = false;
-            break;
-          }
-          it.Next();
+        if ((flags & kAccConstructor) != 0 && (flags & kAccStatic) != 0) {
+          // Class initializer, may get dirtied (not sure).
+          is_clean = false;
         }
-      }
+      };
+      accessor.VisitFieldsAndMethods(
+          [&](const ClassAccessor::Field& field) {
+            if (!field.IsFinal()) {
+              // Not final static field will probably dirty the class.
+              is_clean = false;
+            }
+          },
+          /*instance_fields*/ VoidFunctor(),
+          method_visitor,
+          method_visitor);
+
       ++(is_clean ? clean_count : dirty_count);
       // This counter is how many profiles contain the class.
       size_t counter = 0;
