@@ -14,11 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Jack has a different set of bytecode offsets/method IDs in the expected.txt
-if [[ "$USE_JACK" == true ]]; then
-  patch -p0 expected.txt < expected_jack.diff
-fi
-
 if [[ "$DX" == 'd8' ]]; then
   patch -p0 expected.txt < expected_d8.diff
 fi

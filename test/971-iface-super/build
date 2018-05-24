@@ -17,8 +17,6 @@
 # make us exit on a failure
 set -e
 
-# TODO: Support running with jack.
-
 if [[ $@ == *"--jvm"* ]]; then
   # Build the Java files if we are running a --jvm test
   mkdir -p classes
