@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Jack/D8 has a different set of bytecode offsets/method IDs in the expected.txt
+# D8 has a different set of bytecode offsets/method IDs in the expected.txt
 if [[ "$USE_D8" == true ]]; then
   patch -p0 expected.txt < expected_d8.diff
 fi
