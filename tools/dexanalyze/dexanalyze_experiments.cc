@@ -150,7 +150,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_VIRTUAL_RANGE: {
             bool is_range = (inst->Opcode() == Instruction::INVOKE_VIRTUAL_RANGE);
             uint32_t method_idx = is_range ? inst->VRegB_3rc() : inst->VRegB_35c();
-            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetDescriptorIndex()) {
+            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_virtual_;
             } else {
               ++other_class_virtual_;
@@ -162,7 +162,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_DIRECT_RANGE: {
             bool is_range = (inst->Opcode() == Instruction::INVOKE_DIRECT_RANGE);
             uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
-            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetDescriptorIndex()) {
+            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_direct_;
             } else {
               ++other_class_direct_;
@@ -174,7 +174,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_STATIC_RANGE: {
             bool is_range = (inst->Opcode() == Instruction::INVOKE_STATIC_RANGE);
             uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
-            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetDescriptorIndex()) {
+            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_static_;
             } else {
               ++other_class_static_;
