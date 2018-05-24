@@ -26,6 +26,7 @@
 #include "class_ext.h"
 #include "class_linker-inl.h"
 #include "class_loader.h"
+#include "class_root.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
@@ -75,26 +76,26 @@ void Class::VisitRoots(RootVisitor* visitor) {
 
 ObjPtr<mirror::Class> Class::GetPrimitiveClass(ObjPtr<mirror::String> name) {
   const char* expected_name = nullptr;
-  ClassLinker::ClassRoot class_root = ClassLinker::kJavaLangObject;  // Invalid.
+  ClassRoot class_root = ClassRoot::kJavaLangObject;  // Invalid.
   if (name != nullptr && name->GetLength() >= 2) {
     // Perfect hash for the expected values: from the second letters of the primitive types,
     // only 'y' has the bit 0x10 set, so use it to change 'b' to 'B'.
     char hash = name->CharAt(0) ^ ((name->CharAt(1) & 0x10) << 1);
     switch (hash) {
-      case 'b': expected_name = "boolean"; class_root = ClassLinker::kPrimitiveBoolean; break;
-      case 'B': expected_name = "byte";    class_root = ClassLinker::kPrimitiveByte;    break;
-      case 'c': expected_name = "char";    class_root = ClassLinker::kPrimitiveChar;    break;
-      case 'd': expected_name = "double";  class_root = ClassLinker::kPrimitiveDouble;  break;
-      case 'f': expected_name = "float";   class_root = ClassLinker::kPrimitiveFloat;   break;
-      case 'i': expected_name = "int";     class_root = ClassLinker::kPrimitiveInt;     break;
-      case 'l': expected_name = "long";    class_root = ClassLinker::kPrimitiveLong;    break;
-      case 's': expected_name = "short";   class_root = ClassLinker::kPrimitiveShort;   break;
-      case 'v': expected_name = "void";    class_root = ClassLinker::kPrimitiveVoid;    break;
+      case 'b': expected_name = "boolean"; class_root = ClassRoot::kPrimitiveBoolean; break;
+      case 'B': expected_name = "byte";    class_root = ClassRoot::kPrimitiveByte;    break;
+      case 'c': expected_name = "char";    class_root = ClassRoot::kPrimitiveChar;    break;
+      case 'd': expected_name = "double";  class_root = ClassRoot::kPrimitiveDouble;  break;
+      case 'f': expected_name = "float";   class_root = ClassRoot::kPrimitiveFloat;   break;
+      case 'i': expected_name = "int";     class_root = ClassRoot::kPrimitiveInt;     break;
+      case 'l': expected_name = "long";    class_root = ClassRoot::kPrimitiveLong;    break;
+      case 's': expected_name = "short";   class_root = ClassRoot::kPrimitiveShort;   break;
+      case 'v': expected_name = "void";    class_root = ClassRoot::kPrimitiveVoid;    break;
       default: break;
     }
   }
   if (expected_name != nullptr && name->Equals(expected_name)) {
-    ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->GetClassRoot(class_root);
+    ObjPtr<mirror::Class> klass = GetClassRoot(class_root);
     DCHECK(klass != nullptr);
     return klass;
   } else {
