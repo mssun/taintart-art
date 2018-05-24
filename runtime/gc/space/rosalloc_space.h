@@ -159,8 +159,8 @@ class RosAllocSpace : public MallocSpace {
 
   void* CreateAllocator(void* base, size_t morecore_start, size_t initial_size,
                         size_t maximum_size, bool low_memory_mode) OVERRIDE {
-    return CreateRosAlloc(base, morecore_start, initial_size, maximum_size, low_memory_mode,
-                          RUNNING_ON_MEMORY_TOOL != 0);
+    return CreateRosAlloc(
+        base, morecore_start, initial_size, maximum_size, low_memory_mode, kRunningOnMemoryTool);
   }
   static allocator::RosAlloc* CreateRosAlloc(void* base, size_t morecore_start, size_t initial_size,
                                              size_t maximum_size, bool low_memory_mode,

@@ -148,34 +148,9 @@ class ArenaAllocatorStatsImpl {
 
 typedef ArenaAllocatorStatsImpl<kArenaAllocatorCountAllocations> ArenaAllocatorStats;
 
-template <bool kAvailable, bool kValgrind>
-class ArenaAllocatorMemoryToolCheckImpl {
-  // This is the generic template but since there is a partial specialization
-  // for kValgrind == false, this can be instantiated only for kValgrind == true.
-  static_assert(kValgrind, "This template can be instantiated only for Valgrind.");
-  static_assert(kAvailable, "Valgrind implies memory tool availability.");
-
+class ArenaAllocatorMemoryTool {
  public:
-  ArenaAllocatorMemoryToolCheckImpl() : is_running_on_valgrind_(RUNNING_ON_MEMORY_TOOL) { }
-  bool IsRunningOnMemoryTool() { return is_running_on_valgrind_; }
-
- private:
-  const bool is_running_on_valgrind_;
-};
-
-template <bool kAvailable>
-class ArenaAllocatorMemoryToolCheckImpl<kAvailable, false> {
- public:
-  ArenaAllocatorMemoryToolCheckImpl() { }
-  bool IsRunningOnMemoryTool() { return kAvailable; }
-};
-
-typedef ArenaAllocatorMemoryToolCheckImpl<kMemoryToolIsAvailable, kMemoryToolIsValgrind>
-    ArenaAllocatorMemoryToolCheck;
-
-class ArenaAllocatorMemoryTool : private ArenaAllocatorMemoryToolCheck {
- public:
-  using ArenaAllocatorMemoryToolCheck::IsRunningOnMemoryTool;
+  bool IsRunningOnMemoryTool() { return kMemoryToolIsAvailable; }
 
   void MakeDefined(void* ptr, size_t size) {
     if (UNLIKELY(IsRunningOnMemoryTool())) {
