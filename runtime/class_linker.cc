@@ -499,7 +499,6 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   Handle<mirror::Class> char_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
   char_array_class->SetComponentType(char_class.Get());
-  mirror::CharArray::SetArrayClass(char_array_class.Get());
 
   // Setup String.
   Handle<mirror::Class> java_lang_String(hs.NewHandle(
@@ -549,14 +548,12 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   Handle<mirror::Class> int_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
   int_array_class->SetComponentType(GetClassRoot(ClassRoot::kPrimitiveInt, this));
-  mirror::IntArray::SetArrayClass(int_array_class.Get());
   SetClassRoot(ClassRoot::kIntArrayClass, int_array_class.Get());
 
   // Create long array type for AllocDexCache (done in AppendToBootClassPath).
   Handle<mirror::Class> long_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
   long_array_class->SetComponentType(GetClassRoot(ClassRoot::kPrimitiveLong, this));
-  mirror::LongArray::SetArrayClass(long_array_class.Get());
   SetClassRoot(ClassRoot::kLongArrayClass, long_array_class.Get());
 
   // now that these are registered, we can use AllocClass() and AllocObjectArray
@@ -637,24 +634,19 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
 
   // Setup the primitive array type classes - can't be done until Object has a vtable.
   SetClassRoot(ClassRoot::kBooleanArrayClass, FindSystemClass(self, "[Z"));
-  mirror::BooleanArray::SetArrayClass(GetClassRoot(ClassRoot::kBooleanArrayClass, this));
 
   SetClassRoot(ClassRoot::kByteArrayClass, FindSystemClass(self, "[B"));
-  mirror::ByteArray::SetArrayClass(GetClassRoot(ClassRoot::kByteArrayClass, this));
 
   CheckSystemClass(self, char_array_class, "[C");
 
   SetClassRoot(ClassRoot::kShortArrayClass, FindSystemClass(self, "[S"));
-  mirror::ShortArray::SetArrayClass(GetClassRoot(ClassRoot::kShortArrayClass, this));
 
   CheckSystemClass(self, int_array_class, "[I");
   CheckSystemClass(self, long_array_class, "[J");
 
   SetClassRoot(ClassRoot::kFloatArrayClass, FindSystemClass(self, "[F"));
-  mirror::FloatArray::SetArrayClass(GetClassRoot(ClassRoot::kFloatArrayClass, this));
 
   SetClassRoot(ClassRoot::kDoubleArrayClass, FindSystemClass(self, "[D"));
-  mirror::DoubleArray::SetArrayClass(GetClassRoot(ClassRoot::kDoubleArrayClass, this));
 
   // Run Class through FindSystemClass. This initializes the dex_cache_ fields and register it
   // in class_table_.
@@ -1081,14 +1073,6 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   mirror::ByteBufferViewVarHandle::SetClass(
       GetClassRoot(ClassRoot::kJavaLangInvokeByteBufferViewVarHandle, this).Ptr());
   mirror::Reference::SetClass(GetClassRoot(ClassRoot::kJavaLangRefReference, this));
-  mirror::BooleanArray::SetArrayClass(GetClassRoot(ClassRoot::kBooleanArrayClass, this));
-  mirror::ByteArray::SetArrayClass(GetClassRoot(ClassRoot::kByteArrayClass, this));
-  mirror::CharArray::SetArrayClass(GetClassRoot(ClassRoot::kCharArrayClass, this));
-  mirror::DoubleArray::SetArrayClass(GetClassRoot(ClassRoot::kDoubleArrayClass, this));
-  mirror::FloatArray::SetArrayClass(GetClassRoot(ClassRoot::kFloatArrayClass, this));
-  mirror::IntArray::SetArrayClass(GetClassRoot(ClassRoot::kIntArrayClass, this));
-  mirror::LongArray::SetArrayClass(GetClassRoot(ClassRoot::kLongArrayClass, this));
-  mirror::ShortArray::SetArrayClass(GetClassRoot(ClassRoot::kShortArrayClass, this));
   mirror::Throwable::SetClass(GetClassRoot(ClassRoot::kJavaLangThrowable, this));
   mirror::StackTraceElement::SetClass(GetClassRoot(ClassRoot::kJavaLangStackTraceElement, this));
   mirror::EmulatedStackFrame::SetClass(
@@ -2179,17 +2163,9 @@ ClassLinker::~ClassLinker() {
   mirror::StackTraceElement::ResetClass();
   mirror::String::ResetClass();
   mirror::Throwable::ResetClass();
-  mirror::BooleanArray::ResetArrayClass();
-  mirror::ByteArray::ResetArrayClass();
-  mirror::CharArray::ResetArrayClass();
   mirror::Constructor::ResetArrayClass();
-  mirror::DoubleArray::ResetArrayClass();
   mirror::Field::ResetArrayClass();
-  mirror::FloatArray::ResetArrayClass();
   mirror::Method::ResetArrayClass();
-  mirror::IntArray::ResetArrayClass();
-  mirror::LongArray::ResetArrayClass();
-  mirror::ShortArray::ResetArrayClass();
   mirror::CallSite::ResetClass();
   mirror::MethodType::ResetClass();
   mirror::MethodHandleImpl::ResetClass();

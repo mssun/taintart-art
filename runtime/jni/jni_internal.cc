@@ -33,6 +33,7 @@
 #include "base/safe_map.h"
 #include "base/stl_util.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "dex/dex_file-inl.h"
 #include "dex/utf.h"
 #include "fault_handler.h"
@@ -305,7 +306,7 @@ static jfieldID FindFieldID(const ScopedObjectAccess& soa, jclass jni_class, con
     return nullptr;
   }
   ArtField* field = nullptr;
-  mirror::Class* field_type;
+  ObjPtr<mirror::Class> field_type;
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   if (sig[1] != '\0') {
     Handle<mirror::ClassLoader> class_loader(hs.NewHandle(c->GetClassLoader()));
@@ -346,8 +347,11 @@ static jfieldID FindFieldID(const ScopedObjectAccess& soa, jclass jni_class, con
   return jni::EncodeArtField(field);
 }
 
-static void ThrowAIOOBE(ScopedObjectAccess& soa, mirror::Array* array, jsize start,
-                        jsize length, const char* identifier)
+static void ThrowAIOOBE(ScopedObjectAccess& soa,
+                        ObjPtr<mirror::Array> array,
+                        jsize start,
+                        jsize length,
+                        const char* identifier)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   std::string type(array->PrettyTypeOf());
   soa.Self()->ThrowNewExceptionF("Ljava/lang/ArrayIndexOutOfBoundsException;",
@@ -434,7 +438,9 @@ static JavaVMExt* JavaVmExtFromEnv(JNIEnv* env) {
   }
 
 template <bool kNative>
-static ArtMethod* FindMethod(mirror::Class* c, const StringPiece& name, const StringPiece& sig)
+static ArtMethod* FindMethod(ObjPtr<mirror::Class> c,
+                             const StringPiece& name,
+                             const StringPiece& sig)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   auto pointer_size = Runtime::Current()->GetClassLinker()->GetImagePointerSize();
   for (auto& method : c->GetMethods(pointer_size)) {
@@ -462,7 +468,7 @@ class JNI {
     ClassLinker* class_linker = runtime->GetClassLinker();
     std::string descriptor(NormalizeJniClassDescriptor(name));
     ScopedObjectAccess soa(env);
-    mirror::Class* c = nullptr;
+    ObjPtr<mirror::Class> c = nullptr;
     if (runtime->IsStarted()) {
       StackHandleScope<1> hs(soa.Self());
       Handle<mirror::ClassLoader> class_loader(hs.NewHandle(GetClassLoader(soa)));
@@ -608,7 +614,7 @@ class JNI {
 
   static jthrowable ExceptionOccurred(JNIEnv* env) {
     ScopedObjectAccess soa(env);
-    mirror::Object* exception = soa.Self()->GetException();
+    ObjPtr<mirror::Object> exception = soa.Self()->GetException();
     return soa.AddLocalReference<jthrowable>(exception);
   }
 
@@ -1979,7 +1985,7 @@ class JNI {
     ObjPtr<mirror::ObjectArray<mirror::Object>> array =
         soa.Decode<mirror::ObjectArray<mirror::Object>>(java_array);
     ObjPtr<mirror::Object> value = soa.Decode<mirror::Object>(java_value);
-    array->Set<false>(index, value.Ptr());
+    array->Set<false>(index, value);
   }
 
   static jbooleanArray NewBooleanArray(JNIEnv* env, jsize length) {
@@ -2022,7 +2028,7 @@ class JNI {
     ScopedObjectAccess soa(env);
     ObjPtr<mirror::Class> array_class;
     {
-      ObjPtr<mirror::Class> element_class = soa.Decode<mirror::Class>(element_jclass).Ptr();
+      ObjPtr<mirror::Class> element_class = soa.Decode<mirror::Class>(element_jclass);
       if (UNLIKELY(element_class->IsPrimitive())) {
         soa.Vm()->JniAbortF("NewObjectArray",
                             "not an object type: %s",
@@ -2042,7 +2048,7 @@ class JNI {
     if (result != nullptr && initial_element != nullptr) {
       ObjPtr<mirror::Object> initial_object = soa.Decode<mirror::Object>(initial_element);
       if (initial_object != nullptr) {
-        mirror::Class* element_class = result->GetClass()->GetComponentType();
+        ObjPtr<mirror::Class> element_class = result->GetClass()->GetComponentType();
         if (UNLIKELY(!element_class->IsAssignableFrom(initial_object->GetClass()))) {
           soa.Vm()->JniAbortF("NewObjectArray", "cannot assign object of type '%s' to array with "
                               "element type of '%s'",
@@ -2051,7 +2057,7 @@ class JNI {
           return nullptr;
         } else {
           for (jsize i = 0; i < length; ++i) {
-            result->SetWithoutChecks<false>(i, initial_object.Ptr());
+            result->SetWithoutChecks<false>(i, initial_object);
           }
         }
       }
@@ -2101,7 +2107,7 @@ class JNI {
       return;
     }
     const size_t component_size = array->GetClass()->GetComponentSize();
-    ReleasePrimitiveArray(soa, array.Ptr(), component_size, elements, mode);
+    ReleasePrimitiveArray(soa, array, component_size, elements, mode);
   }
 
   static jboolean* GetBooleanArrayElements(JNIEnv* env, jbooleanArray array, jboolean* is_copy) {
@@ -2338,13 +2344,13 @@ class JNI {
            current_class != nullptr;
            current_class = current_class->GetSuperClass()) {
         // Search first only comparing methods which are native.
-        m = FindMethod<true>(current_class.Ptr(), name, sig);
+        m = FindMethod<true>(current_class, name, sig);
         if (m != nullptr) {
           break;
         }
 
         // Search again comparing to all methods, to find non-native methods that match.
-        m = FindMethod<false>(current_class.Ptr(), name, sig);
+        m = FindMethod<false>(current_class, name, sig);
         if (m != nullptr) {
           break;
         }
@@ -2547,30 +2553,32 @@ class JNI {
   }
 
   template <typename JArrayT, typename ElementT, typename ArtArrayT>
-  static ArtArrayT* DecodeAndCheckArrayType(ScopedObjectAccess& soa, JArrayT java_array,
-                                           const char* fn_name, const char* operation)
+  static ObjPtr<ArtArrayT> DecodeAndCheckArrayType(ScopedObjectAccess& soa,
+                                                   JArrayT java_array,
+                                                   const char* fn_name,
+                                                   const char* operation)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     ObjPtr<ArtArrayT> array = soa.Decode<ArtArrayT>(java_array);
-    if (UNLIKELY(ArtArrayT::GetArrayClass() != array->GetClass())) {
+    ObjPtr<mirror::Class> expected_array_class = GetClassRoot<ArtArrayT>();
+    if (UNLIKELY(expected_array_class != array->GetClass())) {
       soa.Vm()->JniAbortF(fn_name,
                           "attempt to %s %s primitive array elements with an object of type %s",
                           operation,
                           mirror::Class::PrettyDescriptor(
-                              ArtArrayT::GetArrayClass()->GetComponentType()).c_str(),
+                              expected_array_class->GetComponentType()).c_str(),
                           mirror::Class::PrettyDescriptor(array->GetClass()).c_str());
       return nullptr;
     }
     DCHECK_EQ(sizeof(ElementT), array->GetClass()->GetComponentSize());
-    return array.Ptr();
+    return array;
   }
 
   template <typename ArrayT, typename ElementT, typename ArtArrayT>
   static ElementT* GetPrimitiveArray(JNIEnv* env, ArrayT java_array, jboolean* is_copy) {
     CHECK_NON_NULL_ARGUMENT(java_array);
     ScopedObjectAccess soa(env);
-    ArtArrayT* array = DecodeAndCheckArrayType<ArrayT, ElementT, ArtArrayT>(soa, java_array,
-                                                                            "GetArrayElements",
-                                                                            "get");
+    ObjPtr<ArtArrayT> array = DecodeAndCheckArrayType<ArrayT, ElementT, ArtArrayT>(
+        soa, java_array, "GetArrayElements", "get");
     if (UNLIKELY(array == nullptr)) {
       return nullptr;
     }
@@ -2596,17 +2604,19 @@ class JNI {
   static void ReleasePrimitiveArray(JNIEnv* env, ArrayT java_array, ElementT* elements, jint mode) {
     CHECK_NON_NULL_ARGUMENT_RETURN_VOID(java_array);
     ScopedObjectAccess soa(env);
-    ArtArrayT* array = DecodeAndCheckArrayType<ArrayT, ElementT, ArtArrayT>(soa, java_array,
-                                                                            "ReleaseArrayElements",
-                                                                            "release");
+    ObjPtr<ArtArrayT> array = DecodeAndCheckArrayType<ArrayT, ElementT, ArtArrayT>(
+        soa, java_array, "ReleaseArrayElements", "release");
     if (array == nullptr) {
       return;
     }
     ReleasePrimitiveArray(soa, array, sizeof(ElementT), elements, mode);
   }
 
-  static void ReleasePrimitiveArray(ScopedObjectAccess& soa, mirror::Array* array,
-                                    size_t component_size, void* elements, jint mode)
+  static void ReleasePrimitiveArray(ScopedObjectAccess& soa,
+                                    ObjPtr<mirror::Array> array,
+                                    size_t component_size,
+                                    void* elements,
+                                    jint mode)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     void* array_data = array->GetRawData(component_size, 0);
     gc::Heap* heap = Runtime::Current()->GetHeap();
@@ -2649,10 +2659,8 @@ class JNI {
                                       jsize start, jsize length, ElementT* buf) {
     CHECK_NON_NULL_ARGUMENT_RETURN_VOID(java_array);
     ScopedObjectAccess soa(env);
-    ArtArrayT* array =
-        DecodeAndCheckArrayType<JArrayT, ElementT, ArtArrayT>(soa, java_array,
-                                                              "GetPrimitiveArrayRegion",
-                                                              "get region of");
+    ObjPtr<ArtArrayT> array = DecodeAndCheckArrayType<JArrayT, ElementT, ArtArrayT>(
+        soa, java_array, "GetPrimitiveArrayRegion", "get region of");
     if (array != nullptr) {
       if (start < 0 || length < 0 || length > array->GetLength() - start) {
         ThrowAIOOBE(soa, array, start, length, "src");
@@ -2669,10 +2677,8 @@ class JNI {
                                       jsize start, jsize length, const ElementT* buf) {
     CHECK_NON_NULL_ARGUMENT_RETURN_VOID(java_array);
     ScopedObjectAccess soa(env);
-    ArtArrayT* array =
-        DecodeAndCheckArrayType<JArrayT, ElementT, ArtArrayT>(soa, java_array,
-                                                              "SetPrimitiveArrayRegion",
-                                                              "set region of");
+    ObjPtr<ArtArrayT> array = DecodeAndCheckArrayType<JArrayT, ElementT, ArtArrayT>(
+        soa, java_array, "SetPrimitiveArrayRegion", "set region of");
     if (array != nullptr) {
       if (start < 0 || length < 0 || length > array->GetLength() - start) {
         ThrowAIOOBE(soa, array, start, length, "dst");

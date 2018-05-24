@@ -167,24 +167,7 @@ class MANAGED PrimitiveArray : public Array {
   void Memcpy(int32_t dst_pos, ObjPtr<PrimitiveArray<T>> src, int32_t src_pos, int32_t count)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static void SetArrayClass(ObjPtr<Class> array_class);
-
-  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  static Class* GetArrayClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK(!array_class_.IsNull());
-    return array_class_.Read<kReadBarrierOption>();
-  }
-
-  static void ResetArrayClass() {
-    CHECK(!array_class_.IsNull());
-    array_class_ = GcRoot<Class>(nullptr);
-  }
-
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
-  static GcRoot<Class> array_class_;
-
   DISALLOW_IMPLICIT_CONSTRUCTORS(PrimitiveArray);
 };
 
