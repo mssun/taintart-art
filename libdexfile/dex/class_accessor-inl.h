@@ -38,14 +38,14 @@ inline ClassAccessor::ClassAccessor(const DexFile& dex_file, const DexFile::Clas
       num_virtual_methods_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u) {}
 
 inline const uint8_t* ClassAccessor::Method::Read(const uint8_t* ptr) {
-  method_idx_ += DecodeUnsignedLeb128(&ptr);
+  index_ += DecodeUnsignedLeb128(&ptr);
   access_flags_ = DecodeUnsignedLeb128(&ptr);
   code_off_ = DecodeUnsignedLeb128(&ptr);
   return ptr;
 }
 
 inline const uint8_t* ClassAccessor::Field::Read(const uint8_t* ptr) {
-  field_idx_ += DecodeUnsignedLeb128(&ptr);
+  index_ += DecodeUnsignedLeb128(&ptr);
   access_flags_ = DecodeUnsignedLeb128(&ptr);
   return ptr;
 }
@@ -54,7 +54,7 @@ template <typename StaticFieldVisitor,
           typename InstanceFieldVisitor,
           typename DirectMethodVisitor,
           typename VirtualMethodVisitor>
-inline void ClassAccessor::VisitMethodsAndFields(
+inline void ClassAccessor::VisitFieldsAndMethods(
     const StaticFieldVisitor& static_field_visitor,
     const InstanceFieldVisitor& instance_field_visitor,
     const DirectMethodVisitor& direct_method_visitor,
@@ -75,14 +75,14 @@ inline void ClassAccessor::VisitMethodsAndFields(
     }
   }
   {
-    Method data(dex_file_);
+    Method data(dex_file_, /*is_static_or_direct*/ true);
     for (size_t i = 0; i < num_direct_methods_; ++i) {
       ptr = data.Read(ptr);
       direct_method_visitor(data);
     }
   }
   {
-    Method data(dex_file_);
+    Method data(dex_file_, /*is_static_or_direct*/ false);
     for (size_t i = 0; i < num_virtual_methods_; ++i) {
       ptr = data.Read(ptr);
       virtual_method_visitor(data);
@@ -94,10 +94,20 @@ template <typename DirectMethodVisitor,
           typename VirtualMethodVisitor>
 inline void ClassAccessor::VisitMethods(const DirectMethodVisitor& direct_method_visitor,
                                         const VirtualMethodVisitor& virtual_method_visitor) const {
-  VisitMethodsAndFields(VoidFunctor(),
+  VisitFieldsAndMethods(VoidFunctor(),
                         VoidFunctor(),
                         direct_method_visitor,
                         virtual_method_visitor);
+}
+
+template <typename StaticFieldVisitor,
+          typename InstanceFieldVisitor>
+inline void ClassAccessor::VisitFields(const StaticFieldVisitor& static_field_visitor,
+                                       const InstanceFieldVisitor& instance_field_visitor) const {
+  VisitFieldsAndMethods(static_field_visitor,
+                        instance_field_visitor,
+                        VoidFunctor(),
+                        VoidFunctor());
 }
 
 // Visit direct and virtual methods.
@@ -112,6 +122,14 @@ inline const DexFile::CodeItem* ClassAccessor::GetCodeItem(const Method& method)
 
 inline CodeItemInstructionAccessor ClassAccessor::Method::GetInstructions() const {
   return CodeItemInstructionAccessor(dex_file_, dex_file_.GetCodeItem(GetCodeItemOffset()));
+}
+
+inline const char* ClassAccessor::GetDescriptor() const {
+  return dex_file_.StringByTypeIdx(descriptor_index_);
+}
+
+inline const DexFile::CodeItem* ClassAccessor::Method::GetCodeItem() const {
+  return dex_file_.GetCodeItem(code_off_);
 }
 
 }  // namespace art
