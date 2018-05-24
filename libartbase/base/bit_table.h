@@ -17,11 +17,17 @@
 #ifndef ART_LIBARTBASE_BASE_BIT_TABLE_H_
 #define ART_LIBARTBASE_BASE_BIT_TABLE_H_
 
-#include <vector>
+#include <array>
+#include <numeric>
+#include <string.h>
+#include <type_traits>
+#include <unordered_map>
 
 #include "base/bit_memory_region.h"
-#include "base/bit_utils.h"
+#include "base/casts.h"
 #include "base/memory_region.h"
+#include "base/scoped_arena_containers.h"
+#include "base/stl_util.h"
 
 namespace art {
 
@@ -104,8 +110,7 @@ class BitTable {
       column_offset_[0] = 0;
       for (uint32_t i = 0; i < kNumColumns; i++) {
         size_t column_end = column_offset_[i] + DecodeVarintBits(region, bit_offset);
-        column_offset_[i + 1] = column_end;
-        DCHECK_EQ(column_offset_[i + 1], column_end) << "Overflow";
+        column_offset_[i + 1] = dchecked_integral_cast<uint16_t>(column_end);
       }
     }
 
@@ -146,74 +151,96 @@ constexpr uint32_t BitTable<kNumColumns>::Accessor::kNoValue;
 template<uint32_t kNumColumns>
 constexpr uint32_t BitTable<kNumColumns>::kValueBias;
 
-template<uint32_t kNumColumns, typename Alloc = std::allocator<uint32_t>>
+// Helper class for encoding BitTable. It can optionally de-duplicate the inputs.
+// Type 'T' must be POD type consisting of uint32_t fields (one for each column).
+template<typename T>
 class BitTableBuilder {
  public:
-  explicit BitTableBuilder(Alloc alloc = Alloc()) : buffer_(alloc) {}
+  static_assert(std::is_pod<T>::value, "Type 'T' must be POD");
+  static constexpr size_t kNumColumns = sizeof(T) / sizeof(uint32_t);
 
-  template<typename ... T>
-  uint32_t AddRow(T ... values) {
-    constexpr size_t count = sizeof...(values);
-    static_assert(count == kNumColumns, "Incorrect argument count");
-    uint32_t data[count] = { values... };
-    buffer_.insert(buffer_.end(), data, data + count);
-    return num_rows_++;
+  explicit BitTableBuilder(ScopedArenaAllocator* allocator)
+      : rows_(allocator->Adapter(kArenaAllocBitTableBuilder)) {
+  }
+
+  T& operator[](size_t row) { return rows_[row]; }
+  const T& operator[](size_t row) const { return rows_[row]; }
+  size_t size() const { return rows_.size(); }
+
+  void Add(T value) {
+    rows_.push_back(value);
   }
 
   ALWAYS_INLINE uint32_t Get(uint32_t row, uint32_t column) const {
-    return buffer_[row * kNumColumns + column];
+    DCHECK_LT(row, size());
+    DCHECK_LT(column, kNumColumns);
+    const uint32_t* data = reinterpret_cast<const uint32_t*>(&rows_[row]);
+    return data[column];
   }
 
+  // Calculate the column bit widths based on the current data.
+  void Measure(/*out*/ std::array<uint32_t, kNumColumns>* column_bits) const {
+    uint32_t max_column_value[kNumColumns];
+    std::fill_n(max_column_value, kNumColumns, 0);
+    for (uint32_t r = 0; r < size(); r++) {
+      for (uint32_t c = 0; c < kNumColumns; c++) {
+        max_column_value[c] |= Get(r, c) - BitTable<kNumColumns>::kValueBias;
+      }
+    }
+    for (uint32_t c = 0; c < kNumColumns; c++) {
+      (*column_bits)[c] = MinimumBitsToStore(max_column_value[c]);
+    }
+  }
+
+  // Encode the stored data into a BitTable.
   template<typename Vector>
-  void Encode(Vector* out, size_t* bit_offset) {
+  void Encode(Vector* out, size_t* bit_offset) const {
     constexpr uint32_t bias = BitTable<kNumColumns>::kValueBias;
     size_t initial_bit_offset = *bit_offset;
-    // Measure data size.
-    uint32_t max_column_value[kNumColumns] = {};
-    for (uint32_t r = 0; r < num_rows_; r++) {
+
+    std::array<uint32_t, kNumColumns> column_bits;
+    Measure(&column_bits);
+    EncodeVarintBits(out, bit_offset, size());
+    if (size() != 0) {
+      // Write table header.
       for (uint32_t c = 0; c < kNumColumns; c++) {
-        max_column_value[c] |= Get(r, c) - bias;
-      }
-    }
-    // Write table header.
-    uint32_t table_data_bits = 0;
-    uint32_t column_bits[kNumColumns] = {};
-    EncodeVarintBits(out, bit_offset, num_rows_);
-    if (num_rows_ != 0) {
-      for (uint32_t c = 0; c < kNumColumns; c++) {
-        column_bits[c] = MinimumBitsToStore(max_column_value[c]);
         EncodeVarintBits(out, bit_offset, column_bits[c]);
-        table_data_bits += num_rows_ * column_bits[c];
+      }
+
+      // Write table data.
+      uint32_t row_bits = std::accumulate(column_bits.begin(), column_bits.end(), 0u);
+      out->resize(BitsToBytesRoundUp(*bit_offset + row_bits * size()));
+      BitMemoryRegion region(MemoryRegion(out->data(), out->size()));
+      for (uint32_t r = 0; r < size(); r++) {
+        for (uint32_t c = 0; c < kNumColumns; c++) {
+          region.StoreBitsAndAdvance(bit_offset, Get(r, c) - bias, column_bits[c]);
+        }
       }
     }
-    // Write table data.
-    out->resize(BitsToBytesRoundUp(*bit_offset + table_data_bits));
-    BitMemoryRegion region(MemoryRegion(out->data(), out->size()));
-    for (uint32_t r = 0; r < num_rows_; r++) {
-      for (uint32_t c = 0; c < kNumColumns; c++) {
-        region.StoreBitsAndAdvance(bit_offset, Get(r, c) - bias, column_bits[c]);
-      }
-    }
+
     // Verify the written data.
     if (kIsDebugBuild) {
       BitTable<kNumColumns> table;
+      BitMemoryRegion region(MemoryRegion(out->data(), out->size()));
       table.Decode(region, &initial_bit_offset);
-      DCHECK_EQ(this->num_rows_, table.NumRows());
+      DCHECK_EQ(size(), table.NumRows());
       for (uint32_t c = 0; c < kNumColumns; c++) {
         DCHECK_EQ(column_bits[c], table.NumColumnBits(c));
       }
-      for (uint32_t r = 0; r < num_rows_; r++) {
+      for (uint32_t r = 0; r < size(); r++) {
         for (uint32_t c = 0; c < kNumColumns; c++) {
-          DCHECK_EQ(this->Get(r, c), table.Get(r, c)) << " (" << r << ", " << c << ")";
+          DCHECK_EQ(Get(r, c), table.Get(r, c)) << " (" << r << ", " << c << ")";
         }
       }
     }
   }
 
  protected:
-  std::vector<uint32_t, Alloc> buffer_;
-  uint32_t num_rows_ = 0;
+  ScopedArenaDeque<T> rows_;
 };
+
+template<typename T>
+constexpr size_t BitTableBuilder<T>::kNumColumns;
 
 }  // namespace art
 
