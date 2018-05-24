@@ -314,9 +314,14 @@ art_cc_defaults {
         "909-attach-agent/attach.cc",
         "912-classes/classes_art.cc",
         "936-search-onload/search_onload.cc",
+        "980-redefine-object/redef_object.cc",
         "983-source-transform-verify/source_transform_art.cc",
         "1940-ddms-ext/ddm_ext.cc",
         "1944-sudden-exit/sudden_exit.cc",
+    ],
+    static_libs: [
+        "libz",
+        "slicer",
     ],
 }
 
