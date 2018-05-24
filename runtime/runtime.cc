@@ -1984,17 +1984,8 @@ void Runtime::VisitConstantRoots(RootVisitor* visitor) {
   mirror::String::VisitRoots(visitor);
   mirror::Throwable::VisitRoots(visitor);
   mirror::Field::VisitRoots(visitor);
-  mirror::MethodType::VisitRoots(visitor);
-  mirror::MethodHandleImpl::VisitRoots(visitor);
-  mirror::MethodHandlesLookup::VisitRoots(visitor);
   mirror::EmulatedStackFrame::VisitRoots(visitor);
   mirror::ClassExt::VisitRoots(visitor);
-  mirror::CallSite::VisitRoots(visitor);
-  mirror::VarHandle::VisitRoots(visitor);
-  mirror::FieldVarHandle::VisitRoots(visitor);
-  mirror::ArrayElementVarHandle::VisitRoots(visitor);
-  mirror::ByteArrayViewVarHandle::VisitRoots(visitor);
-  mirror::ByteBufferViewVarHandle::VisitRoots(visitor);
   // Visiting the roots of these ArtMethods is not currently required since all the GcRoots are
   // null.
   BufferedRootVisitor<16> buffered_visitor(visitor, RootInfo(kRootVMInternal));

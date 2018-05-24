@@ -721,55 +721,47 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   class_root = FindSystemClass(self, "Ljava/lang/invoke/CallSite;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeCallSite, class_root);
-  mirror::CallSite::SetClass(class_root);
 
   // Create java.lang.invoke.MethodType.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/MethodType;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeMethodType, class_root);
-  mirror::MethodType::SetClass(class_root);
 
   // Create java.lang.invoke.MethodHandleImpl.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/MethodHandleImpl;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeMethodHandleImpl, class_root);
-  mirror::MethodHandleImpl::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeMethodHandle, class_root->GetSuperClass());
 
   // Create java.lang.invoke.MethodHandles.Lookup.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/MethodHandles$Lookup;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeMethodHandlesLookup, class_root);
-  mirror::MethodHandlesLookup::SetClass(class_root);
 
   // Create java.lang.invoke.VarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/VarHandle;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeVarHandle, class_root);
-  mirror::VarHandle::SetClass(class_root);
 
   // Create java.lang.invoke.FieldVarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/FieldVarHandle;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeFieldVarHandle, class_root);
-  mirror::FieldVarHandle::SetClass(class_root);
 
   // Create java.lang.invoke.ArrayElementVarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/ArrayElementVarHandle;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeArrayElementVarHandle, class_root);
-  mirror::ArrayElementVarHandle::SetClass(class_root);
 
   // Create java.lang.invoke.ByteArrayViewVarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/ByteArrayViewVarHandle;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeByteArrayViewVarHandle, class_root);
-  mirror::ByteArrayViewVarHandle::SetClass(class_root);
 
   // Create java.lang.invoke.ByteBufferViewVarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/ByteBufferViewVarHandle;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangInvokeByteBufferViewVarHandle, class_root);
-  mirror::ByteBufferViewVarHandle::SetClass(class_root);
 
   class_root = FindSystemClass(self, "Ldalvik/system/EmulatedStackFrame;");
   CHECK(class_root != nullptr);
@@ -1056,22 +1048,6 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   mirror::Method::SetClass(GetClassRoot(ClassRoot::kJavaLangReflectMethod, this).Ptr());
   mirror::Method::SetArrayClass(
       GetClassRoot(ClassRoot::kJavaLangReflectMethodArrayClass, this).Ptr());
-  mirror::CallSite::SetClass(GetClassRoot(ClassRoot::kJavaLangInvokeCallSite, this).Ptr());
-  mirror::MethodHandleImpl::SetClass(
-      GetClassRoot(ClassRoot::kJavaLangInvokeMethodHandleImpl, this).Ptr());
-  mirror::MethodHandlesLookup::SetClass(
-      GetClassRoot(ClassRoot::kJavaLangInvokeMethodHandlesLookup, this).Ptr());
-  mirror::MethodType::SetClass(
-      GetClassRoot(ClassRoot::kJavaLangInvokeMethodType, this).Ptr());
-  mirror::VarHandle::SetClass(GetClassRoot(ClassRoot::kJavaLangInvokeVarHandle, this).Ptr());
-  mirror::FieldVarHandle::SetClass(
-      GetClassRoot(ClassRoot::kJavaLangInvokeFieldVarHandle, this).Ptr());
-  mirror::ArrayElementVarHandle::SetClass(
-      GetClassRoot(ClassRoot::kJavaLangInvokeArrayElementVarHandle, this).Ptr());
-  mirror::ByteArrayViewVarHandle::SetClass(
-      GetClassRoot(ClassRoot::kJavaLangInvokeByteArrayViewVarHandle, this).Ptr());
-  mirror::ByteBufferViewVarHandle::SetClass(
-      GetClassRoot(ClassRoot::kJavaLangInvokeByteBufferViewVarHandle, this).Ptr());
   mirror::Reference::SetClass(GetClassRoot(ClassRoot::kJavaLangRefReference, this));
   mirror::Throwable::SetClass(GetClassRoot(ClassRoot::kJavaLangThrowable, this));
   mirror::StackTraceElement::SetClass(GetClassRoot(ClassRoot::kJavaLangStackTraceElement, this));
@@ -2166,15 +2142,6 @@ ClassLinker::~ClassLinker() {
   mirror::Constructor::ResetArrayClass();
   mirror::Field::ResetArrayClass();
   mirror::Method::ResetArrayClass();
-  mirror::CallSite::ResetClass();
-  mirror::MethodType::ResetClass();
-  mirror::MethodHandleImpl::ResetClass();
-  mirror::MethodHandlesLookup::ResetClass();
-  mirror::VarHandle::ResetClass();
-  mirror::FieldVarHandle::ResetClass();
-  mirror::ArrayElementVarHandle::ResetClass();
-  mirror::ByteArrayViewVarHandle::ResetClass();
-  mirror::ByteBufferViewVarHandle::ResetClass();
   mirror::EmulatedStackFrame::ResetClass();
   Thread* const self = Thread::Current();
   for (const ClassLoaderData& data : class_loaders_) {

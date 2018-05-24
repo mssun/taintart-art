@@ -33,17 +33,9 @@ class MANAGED CallSite : public Object {
                                   Handle<MethodHandle> method_handle)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return static_class_.Read();
-  }
-
   MethodHandle* GetTarget() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetFieldObject<MethodHandle>(TargetOffset());
   }
-
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   static inline MemberOffset TargetOffset() {
@@ -51,8 +43,6 @@ class MANAGED CallSite : public Object {
   }
 
   HeapReference<mirror::MethodHandle> target_;
-
-  static GcRoot<mirror::Class> static_class_;  // java.lang.invoke.CallSite.class
 
   friend struct art::CallSiteOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(CallSite);

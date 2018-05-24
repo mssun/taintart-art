@@ -68,6 +68,7 @@ class VarHandle;
   M(kJavaLangReflectFieldArrayClass,        "[Ljava/lang/reflect/Field;",                 mirror::ObjectArray<mirror::Field>)                       \
   M(kJavaLangReflectMethodArrayClass,       "[Ljava/lang/reflect/Method;",                mirror::ObjectArray<mirror::Method>)                      \
   M(kJavaLangInvokeCallSite,                "Ljava/lang/invoke/CallSite;",                mirror::CallSite)                                         \
+  M(kJavaLangInvokeMethodHandle,            "Ljava/lang/invoke/MethodHandle;",            mirror::MethodHandle)                                     \
   M(kJavaLangInvokeMethodHandleImpl,        "Ljava/lang/invoke/MethodHandleImpl;",        mirror::MethodHandleImpl)                                 \
   M(kJavaLangInvokeMethodHandlesLookup,     "Ljava/lang/invoke/MethodHandles$Lookup;",    mirror::MethodHandlesLookup)                              \
   M(kJavaLangInvokeMethodType,              "Ljava/lang/invoke/MethodType;",              mirror::MethodType)                                       \

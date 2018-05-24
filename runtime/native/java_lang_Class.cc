@@ -22,6 +22,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "common_throws.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
@@ -82,7 +83,7 @@ static bool IsCallerTrusted(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) 
         // is subject to change so conservatively cover the entire package.
         // NB Static initializers within java.lang.invoke are permitted and do not
         // need further stack inspection.
-        ObjPtr<mirror::Class> lookup_class = mirror::MethodHandlesLookup::StaticClass();
+        ObjPtr<mirror::Class> lookup_class = GetClassRoot<mirror::MethodHandlesLookup>();
         if ((declaring_class == lookup_class || declaring_class->IsInSamePackage(lookup_class))
             && !m->IsClassInitializer()) {
           return true;
