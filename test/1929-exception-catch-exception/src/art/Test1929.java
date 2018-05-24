@@ -149,7 +149,7 @@ public class Test1929 {
     public void run() { throwCatchBaseTestException(); }
   }
 
-  // dx/d8/jack all do an optimization around catch blocks that (while legal) breaks assumptions
+  // dx and d8 do an optimization around catch blocks that (while legal) breaks assumptions
   // this test relies on so we have the actual implementation be corrected smali. This does work
   // for RI however.
 

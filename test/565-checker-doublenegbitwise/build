@@ -14,12 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This checker test is incompatible with jack bytecode output,
-# so force it to use javac/dx.
-export USE_JACK=false
-# Also disable desugar because it is missing in jack platform builds.
-export DESUGAR=false
-
 # See b/65168732
 export USE_D8=false
 

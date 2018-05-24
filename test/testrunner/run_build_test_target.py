@@ -68,8 +68,6 @@ if 'make' in target:
   build_command += ' -j' + str(n_threads)
   build_command += ' -C ' + env.ANDROID_BUILD_TOP
   build_command += ' ' + target.get('make')
-  # Add 'dist' to avoid Jack issues b/36169180.
-  build_command += ' dist'
   sys.stdout.write(str(build_command) + '\n')
   sys.stdout.flush()
   if subprocess.call(build_command.split()):

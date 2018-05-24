@@ -64,11 +64,8 @@ if options.gtest or not options.run_test:
 
   build_command = 'make'
   build_command += ' -j' + str(options.n_threads)
-
   build_command += ' -C ' + ANDROID_BUILD_TOP
   build_command += ' ' + build_target
-  # Add 'dist' to avoid Jack issues b/36169180.
-  build_command += ' dist'
 
   print build_command
 
