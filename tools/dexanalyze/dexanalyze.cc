@@ -49,7 +49,7 @@ class DexAnalyze {
         << "Usage " << argv[0] << " [options] <dex files>\n"
         << "    [options] is a combination of the following\n"
         << "    -count_indices (Count dex indices accessed from code items)\n"
-        << "    -i (Ignore DEX checksum failure)\n"
+        << "    -i (Ignore Dex checksum and verification failures)\n"
         << "    -a (Run all experiments)\n"
         << "    -d (Dump on per DEX basis)\n";
     return kExitCodeUsageError;
@@ -62,6 +62,7 @@ class DexAnalyze {
         const std::string arg = argv[i];
         if (arg == "-i") {
           verify_checksum_ = false;
+          run_dex_file_verifier_ = false;
         } else if (arg == "-a") {
           run_all_experiments_ = true;
         } else if (arg == "-count-indices") {
