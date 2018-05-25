@@ -1984,26 +1984,8 @@ void Runtime::VisitConstantRoots(RootVisitor* visitor) {
   mirror::String::VisitRoots(visitor);
   mirror::Throwable::VisitRoots(visitor);
   mirror::Field::VisitRoots(visitor);
-  mirror::MethodType::VisitRoots(visitor);
-  mirror::MethodHandleImpl::VisitRoots(visitor);
-  mirror::MethodHandlesLookup::VisitRoots(visitor);
   mirror::EmulatedStackFrame::VisitRoots(visitor);
   mirror::ClassExt::VisitRoots(visitor);
-  mirror::CallSite::VisitRoots(visitor);
-  mirror::VarHandle::VisitRoots(visitor);
-  mirror::FieldVarHandle::VisitRoots(visitor);
-  mirror::ArrayElementVarHandle::VisitRoots(visitor);
-  mirror::ByteArrayViewVarHandle::VisitRoots(visitor);
-  mirror::ByteBufferViewVarHandle::VisitRoots(visitor);
-  // Visit all the primitive array types classes.
-  mirror::PrimitiveArray<uint8_t>::VisitRoots(visitor);   // BooleanArray
-  mirror::PrimitiveArray<int8_t>::VisitRoots(visitor);    // ByteArray
-  mirror::PrimitiveArray<uint16_t>::VisitRoots(visitor);  // CharArray
-  mirror::PrimitiveArray<double>::VisitRoots(visitor);    // DoubleArray
-  mirror::PrimitiveArray<float>::VisitRoots(visitor);     // FloatArray
-  mirror::PrimitiveArray<int32_t>::VisitRoots(visitor);   // IntArray
-  mirror::PrimitiveArray<int64_t>::VisitRoots(visitor);   // LongArray
-  mirror::PrimitiveArray<int16_t>::VisitRoots(visitor);   // ShortArray
   // Visiting the roots of these ArtMethods is not currently required since all the GcRoots are
   // null.
   BufferedRootVisitor<16> buffered_visitor(visitor, RootInfo(kRootVMInternal));

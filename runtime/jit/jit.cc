@@ -24,6 +24,7 @@
 #include "base/memory_tool.h"
 #include "base/runtime_debug.h"
 #include "base/utils.h"
+#include "class_root.h"
 #include "debugger.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "interpreter/interpreter.h"
@@ -632,7 +633,8 @@ static bool IgnoreSamplesForMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mut
   }
   if (method->IsNative()) {
     ObjPtr<mirror::Class> klass = method->GetDeclaringClass();
-    if (klass == mirror::MethodHandle::StaticClass() || klass == mirror::VarHandle::StaticClass()) {
+    if (klass == GetClassRoot<mirror::MethodHandle>() ||
+        klass == GetClassRoot<mirror::VarHandle>()) {
       // MethodHandle and VarHandle invocation methods are required to throw an
       // UnsupportedOperationException if invoked reflectively. We achieve this by having native
       // implementations that arise the exception. We need to disable JIT compilation of these JNI

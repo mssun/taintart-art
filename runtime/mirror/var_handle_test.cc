@@ -23,6 +23,7 @@
 #include "class-inl.h"
 #include "class_linker-inl.h"
 #include "class_loader.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "handle_scope-inl.h"
 #include "jvalue-inl.h"
@@ -43,7 +44,7 @@ class VarHandleTest : public CommonRuntimeTest {
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
     StackHandleScope<4> hs(self);
     Handle<FieldVarHandle> fvh = hs.NewHandle(
-        ObjPtr<FieldVarHandle>::DownCast(FieldVarHandle::StaticClass()->AllocObject(self)));
+        ObjPtr<FieldVarHandle>::DownCast(GetClassRoot<FieldVarHandle>()->AllocObject(self)));
     Handle<Class> var_type = hs.NewHandle(art_field->ResolveType());
 
     if (art_field->IsStatic()) {
@@ -67,7 +68,7 @@ class VarHandleTest : public CommonRuntimeTest {
     StackHandleScope<3> hs(self);
     Handle<ArrayElementVarHandle> vh = hs.NewHandle(
         ObjPtr<ArrayElementVarHandle>::DownCast(
-            ArrayElementVarHandle::StaticClass()->AllocObject(self)));
+            GetClassRoot<ArrayElementVarHandle>()->AllocObject(self)));
 
     // Initialize super class fields
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
@@ -85,7 +86,7 @@ class VarHandleTest : public CommonRuntimeTest {
     StackHandleScope<4> hs(self);
     Handle<ByteArrayViewVarHandle> bvh = hs.NewHandle(
         ObjPtr<ByteArrayViewVarHandle>::DownCast(
-            ByteArrayViewVarHandle::StaticClass()->AllocObject(self)));
+            GetClassRoot<ByteArrayViewVarHandle>()->AllocObject(self)));
 
     // Initialize super class fields
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
@@ -106,7 +107,7 @@ class VarHandleTest : public CommonRuntimeTest {
     StackHandleScope<5> hs(self);
     Handle<ByteBufferViewVarHandle> bvh = hs.NewHandle(
         ObjPtr<ByteBufferViewVarHandle>::DownCast(
-            ByteArrayViewVarHandle::StaticClass()->AllocObject(self)));
+            GetClassRoot<ByteArrayViewVarHandle>()->AllocObject(self)));
     // Initialize super class fields
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     Handle<Class> var_type = hs.NewHandle(view_array_class->GetComponentType());

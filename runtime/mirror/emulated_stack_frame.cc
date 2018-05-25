@@ -17,6 +17,7 @@
 #include "emulated_stack_frame.h"
 
 #include "class-inl.h"
+#include "class_root.h"
 #include "gc_root-inl.h"
 #include "jvalue-inl.h"
 #include "method_handles-inl.h"
@@ -166,8 +167,7 @@ mirror::EmulatedStackFrame* EmulatedStackFrame::CreateFromShadowFrameAndArgs(
   CalculateFrameAndReferencesSize(to_types.Get(), r_type.Get(), &frame_size, &refs_size);
 
   // Step 3 : Allocate the arrays.
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  ObjPtr<mirror::Class> array_class(class_linker->GetClassRoot(ClassLinker::kObjectArrayClass));
+  ObjPtr<mirror::Class> array_class(GetClassRoot<mirror::ObjectArray<mirror::Object>>());
 
   Handle<mirror::ObjectArray<mirror::Object>> references(hs.NewHandle(
       mirror::ObjectArray<mirror::Object>::Alloc(self, array_class, refs_size)));

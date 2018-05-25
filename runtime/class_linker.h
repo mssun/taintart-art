@@ -68,6 +68,7 @@ using MethodDexCacheType = std::atomic<MethodDexCachePair>;
 }  // namespace mirror
 
 class ClassHierarchyAnalysis;
+enum class ClassRoot : uint32_t;
 class ClassTable;
 template<class T> class Handle;
 class ImtConflictTable;
@@ -107,59 +108,6 @@ class AllocatorVisitor {
 
 class ClassLinker {
  public:
-  // Well known mirror::Class roots accessed via GetClassRoot.
-  enum ClassRoot {
-    kJavaLangClass,
-    kJavaLangObject,
-    kClassArrayClass,
-    kObjectArrayClass,
-    kJavaLangString,
-    kJavaLangDexCache,
-    kJavaLangRefReference,
-    kJavaLangReflectConstructor,
-    kJavaLangReflectField,
-    kJavaLangReflectMethod,
-    kJavaLangReflectProxy,
-    kJavaLangStringArrayClass,
-    kJavaLangReflectConstructorArrayClass,
-    kJavaLangReflectFieldArrayClass,
-    kJavaLangReflectMethodArrayClass,
-    kJavaLangInvokeCallSite,
-    kJavaLangInvokeMethodHandleImpl,
-    kJavaLangInvokeMethodHandlesLookup,
-    kJavaLangInvokeMethodType,
-    kJavaLangInvokeVarHandle,
-    kJavaLangInvokeFieldVarHandle,
-    kJavaLangInvokeArrayElementVarHandle,
-    kJavaLangInvokeByteArrayViewVarHandle,
-    kJavaLangInvokeByteBufferViewVarHandle,
-    kJavaLangClassLoader,
-    kJavaLangThrowable,
-    kJavaLangClassNotFoundException,
-    kJavaLangStackTraceElement,
-    kDalvikSystemEmulatedStackFrame,
-    kPrimitiveBoolean,
-    kPrimitiveByte,
-    kPrimitiveChar,
-    kPrimitiveDouble,
-    kPrimitiveFloat,
-    kPrimitiveInt,
-    kPrimitiveLong,
-    kPrimitiveShort,
-    kPrimitiveVoid,
-    kBooleanArrayClass,
-    kByteArrayClass,
-    kCharArrayClass,
-    kDoubleArrayClass,
-    kFloatArrayClass,
-    kIntArrayClass,
-    kLongArrayClass,
-    kShortArrayClass,
-    kJavaLangStackTraceElementArrayClass,
-    kDalvikSystemClassExt,
-    kClassRootsMax,
-  };
-
   static constexpr bool kAppImageMayContainStrings = false;
 
   explicit ClassLinker(InternTable* intern_table);
@@ -552,10 +500,6 @@ class ClassLinker {
   pid_t GetClassesLockOwner();  // For SignalCatcher.
   pid_t GetDexLockOwner();  // For SignalCatcher.
 
-  mirror::Class* GetClassRoot(ClassRoot class_root) REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static const char* GetClassRootDescriptor(ClassRoot class_root);
-
   // Is the given entry point quick code to run the resolution stub?
   bool IsQuickResolutionStub(const void* entry_point) const;
 
@@ -597,8 +541,9 @@ class ClassLinker {
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   mirror::ObjectArray<mirror::Class>* GetClassRoots() REQUIRES_SHARED(Locks::mutator_lock_) {
-    mirror::ObjectArray<mirror::Class>* class_roots = class_roots_.Read();
+    mirror::ObjectArray<mirror::Class>* class_roots = class_roots_.Read<kReadBarrierOption>();
     DCHECK(class_roots != nullptr);
     return class_roots;
   }

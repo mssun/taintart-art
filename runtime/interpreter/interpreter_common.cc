@@ -19,6 +19,7 @@
 #include <cmath>
 
 #include "base/enums.h"
+#include "class_root.h"
 #include "debugger.h"
 #include "dex/dex_file_types.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
@@ -865,6 +866,7 @@ static JValue ConvertScalarBootstrapArgument(jvalue value) {
 static ObjPtr<mirror::Class> GetClassForBootstrapArgument(EncodedArrayValueIterator::ValueType type)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots = class_linker->GetClassRoots();
   switch (type) {
     case EncodedArrayValueIterator::ValueType::kBoolean:
     case EncodedArrayValueIterator::ValueType::kByte:
@@ -874,21 +876,21 @@ static ObjPtr<mirror::Class> GetClassForBootstrapArgument(EncodedArrayValueItera
       // will result in CCE's being raised if the BSM has one of these
       // types.
     case EncodedArrayValueIterator::ValueType::kInt:
-      return class_linker->FindPrimitiveClass('I');
+      return GetClassRoot(ClassRoot::kPrimitiveInt, class_roots);
     case EncodedArrayValueIterator::ValueType::kLong:
-      return class_linker->FindPrimitiveClass('J');
+      return GetClassRoot(ClassRoot::kPrimitiveLong, class_roots);
     case EncodedArrayValueIterator::ValueType::kFloat:
-      return class_linker->FindPrimitiveClass('F');
+      return GetClassRoot(ClassRoot::kPrimitiveFloat, class_roots);
     case EncodedArrayValueIterator::ValueType::kDouble:
-      return class_linker->FindPrimitiveClass('D');
+      return GetClassRoot(ClassRoot::kPrimitiveDouble, class_roots);
     case EncodedArrayValueIterator::ValueType::kMethodType:
-      return mirror::MethodType::StaticClass();
+      return GetClassRoot<mirror::MethodType>(class_roots);
     case EncodedArrayValueIterator::ValueType::kMethodHandle:
-      return mirror::MethodHandle::StaticClass();
+      return GetClassRoot<mirror::MethodHandle>(class_roots);
     case EncodedArrayValueIterator::ValueType::kString:
-      return mirror::String::GetJavaLangString();
+      return GetClassRoot<mirror::String>();
     case EncodedArrayValueIterator::ValueType::kType:
-      return mirror::Class::GetJavaLangClass();
+      return GetClassRoot<mirror::Class>();
     case EncodedArrayValueIterator::ValueType::kField:
     case EncodedArrayValueIterator::ValueType::kMethod:
     case EncodedArrayValueIterator::ValueType::kEnum:
@@ -1091,21 +1093,23 @@ static bool PackCollectorArrayForBootstrapMethod(Thread* self,
   setter->SetReference(array.Get());                                    \
   return true;
 
-  if (array_type->GetComponentType() == class_linker->FindPrimitiveClass('I')) {
+  ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots = class_linker->GetClassRoots();
+  ObjPtr<mirror::Class> component_type = array_type->GetComponentType();
+  if (component_type == GetClassRoot(ClassRoot::kPrimitiveInt, class_roots)) {
     COLLECT_PRIMITIVE_ARRAY(I, Int);
-  } else if (array_type->GetComponentType() == class_linker->FindPrimitiveClass('J')) {
+  } else if (component_type == GetClassRoot(ClassRoot::kPrimitiveLong, class_roots)) {
     COLLECT_PRIMITIVE_ARRAY(J, Long);
-  } else if (array_type->GetComponentType() == class_linker->FindPrimitiveClass('F')) {
+  } else if (component_type == GetClassRoot(ClassRoot::kPrimitiveFloat, class_roots)) {
     COLLECT_PRIMITIVE_ARRAY(F, Float);
-  } else if (array_type->GetComponentType() == class_linker->FindPrimitiveClass('D')) {
+  } else if (component_type == GetClassRoot(ClassRoot::kPrimitiveDouble, class_roots)) {
     COLLECT_PRIMITIVE_ARRAY(D, Double);
-  } else if (array_type->GetComponentType() == mirror::MethodType::StaticClass()) {
+  } else if (component_type == GetClassRoot<mirror::MethodType>()) {
     COLLECT_REFERENCE_ARRAY(mirror::MethodType, MethodType);
-  } else if (array_type->GetComponentType() == mirror::MethodHandle::StaticClass()) {
+  } else if (component_type == GetClassRoot<mirror::MethodHandle>()) {
     COLLECT_REFERENCE_ARRAY(mirror::MethodHandle, MethodHandle);
-  } else if (array_type->GetComponentType() == mirror::String::GetJavaLangString()) {
+  } else if (component_type == GetClassRoot<mirror::String>(class_roots)) {
     COLLECT_REFERENCE_ARRAY(mirror::String, String);
-  } else if (array_type->GetComponentType() == mirror::Class::GetJavaLangClass()) {
+  } else if (component_type == GetClassRoot<mirror::Class>()) {
     COLLECT_REFERENCE_ARRAY(mirror::Class, Type);
   } else {
     UNREACHABLE();
@@ -1125,8 +1129,8 @@ static ObjPtr<mirror::MethodType> BuildCallSiteForBootstrapMethod(Thread* self,
   StackHandleScope<2> hs(self);
   // Create array for parameter types.
   ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-  mirror::Class* class_array_type =
-      Runtime::Current()->GetClassLinker()->FindArrayClass(self, &class_type);
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  ObjPtr<mirror::Class> class_array_type = class_linker->FindArrayClass(self, &class_type);
   Handle<mirror::ObjectArray<mirror::Class>> ptypes = hs.NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(self,
                                                 class_array_type,
@@ -1138,7 +1142,7 @@ static ObjPtr<mirror::MethodType> BuildCallSiteForBootstrapMethod(Thread* self,
 
   // Populate the first argument with an instance of j.l.i.MethodHandles.Lookup
   // that the runtime will construct.
-  ptypes->Set(0, mirror::MethodHandlesLookup::StaticClass());
+  ptypes->Set(0, GetClassRoot<mirror::MethodHandlesLookup>(class_linker));
   it.Next();
 
   // The remaining parameter types are derived from the types of
@@ -1157,7 +1161,7 @@ static ObjPtr<mirror::MethodType> BuildCallSiteForBootstrapMethod(Thread* self,
   DCHECK_EQ(static_cast<size_t>(index), it.Size());
 
   // By definition, the return type is always a j.l.i.CallSite.
-  Handle<mirror::Class> rtype = hs.NewHandle(mirror::CallSite::StaticClass());
+  Handle<mirror::Class> rtype = hs.NewHandle(GetClassRoot<mirror::CallSite>());
   return mirror::MethodType::Create(self, rtype, ptypes);
 }
 
@@ -1352,8 +1356,9 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   }
 
   // Check the result type is a subclass of j.l.i.CallSite.
-  if (UNLIKELY(!object->InstanceOf(mirror::CallSite::StaticClass()))) {
-    ThrowClassCastException(object->GetClass(), mirror::CallSite::StaticClass());
+  ObjPtr<mirror::Class> call_site_class = GetClassRoot<mirror::CallSite>(class_linker);
+  if (UNLIKELY(!object->InstanceOf(call_site_class))) {
+    ThrowClassCastException(object->GetClass(), call_site_class);
     return nullptr;
   }
 

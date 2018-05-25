@@ -17,6 +17,7 @@
 #include "mod_union_table-inl.h"
 
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "gc/space/space-inl.h"
 #include "mirror/array-inl.h"
@@ -70,8 +71,7 @@ class ModUnionTableTest : public CommonRuntimeTest {
   mirror::Class* GetObjectArrayClass(Thread* self, space::ContinuousMemMapAllocSpace* space)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (java_lang_object_array_ == nullptr) {
-      java_lang_object_array_ =
-          Runtime::Current()->GetClassLinker()->GetClassRoot(ClassLinker::kObjectArrayClass);
+      java_lang_object_array_ = GetClassRoot<mirror::ObjectArray<mirror::Object>>().Ptr();
       // Since the test doesn't have an image, the class of the object array keeps cards live
       // inside the card cache mod-union table and causes the check
       // ASSERT_FALSE(table->ContainsCardFor(reinterpret_cast<uintptr_t>(obj3)));

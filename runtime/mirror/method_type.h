@@ -48,10 +48,6 @@ class MANAGED MethodType : public Object {
                                               int32_t start_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return static_class_.Read();
-  }
-
   ObjectArray<Class>* GetPTypes() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetFieldObject<ObjectArray<Class>>(OFFSET_OF_OBJECT_MEMBER(MethodType, p_types_));
   }
@@ -67,10 +63,6 @@ class MANAGED MethodType : public Object {
   Class* GetRType() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetFieldObject<Class>(OFFSET_OF_OBJECT_MEMBER(MethodType, r_type_));
   }
-
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns true iff. |this| is an exact match for method type |target|, i.e
   // iff. they have the same return types and parameter types.
@@ -110,8 +102,6 @@ class MANAGED MethodType : public Object {
   HeapReference<ObjectArray<Class>> p_types_;
   HeapReference<Class> r_type_;
   HeapReference<Object> wrap_alt_;  // Unused in the runtime
-
-  static GcRoot<Class> static_class_;  // java.lang.invoke.MethodType.class
 
   friend struct art::MethodTypeOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(MethodType);

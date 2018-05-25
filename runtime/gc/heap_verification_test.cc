@@ -18,6 +18,7 @@
 
 #include "base/memory_tool.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "handle_scope-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
@@ -36,10 +37,9 @@ class VerificationTest : public CommonRuntimeTest {
   template <class T>
   mirror::ObjectArray<T>* AllocObjectArray(Thread* self, size_t length)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
     return mirror::ObjectArray<T>::Alloc(
         self,
-        class_linker->GetClassRoot(ClassLinker::ClassRoot::kObjectArrayClass),
+        GetClassRoot<mirror::ObjectArray<mirror::Object>>(),
         length);
   }
 };

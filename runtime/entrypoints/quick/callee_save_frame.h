@@ -68,7 +68,7 @@ class ScopedQuickEntrypointChecks {
   bool exit_check_;
 };
 
-namespace detail_ {
+namespace detail {
 
 template <InstructionSet>
 struct CSFSelector;  // No definition for unspecialized callee save frame selector.
@@ -87,9 +87,9 @@ struct CSFSelector<InstructionSet::kX86> { using type = x86::X86CalleeSaveFrame;
 template <>
 struct CSFSelector<InstructionSet::kX86_64> { using type = x86_64::X86_64CalleeSaveFrame; };
 
-}  // namespace detail_
+}  // namespace detail
 
-using RuntimeCalleeSaveFrame = detail_::CSFSelector<kRuntimeISA>::type;
+using RuntimeCalleeSaveFrame = detail::CSFSelector<kRuntimeISA>::type;
 
 }  // namespace art
 
