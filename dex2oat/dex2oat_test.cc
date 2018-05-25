@@ -1912,29 +1912,35 @@ TEST_F(Dex2oatTest, DontExtract) {
     ASSERT_EQ(dm_file.GetFile()->Flush(), 0);
   }
 
+  auto generate_and_check = [&](CompilerFilter::Filter filter) {
+    GenerateOdexForTest(dex_location,
+                        odex_location,
+                        filter,
+                        { "--dump-timings",
+                          "--dm-file=" + dm_file.GetFilename(),
+                          // Pass -Xuse-stderr-logger have dex2oat output in output_ on target.
+                          "--runtime-arg",
+                          "-Xuse-stderr-logger" },
+                        true,  // expect_success
+                        false,  // use_fd
+                        [](const OatFile& o) {
+                          CHECK(o.ContainsDexCode());
+                        });
+    // Check the output for "Fast verify", this is printed from --dump-timings.
+    std::istringstream iss(output_);
+    std::string line;
+    bool found_fast_verify = false;
+    const std::string kFastVerifyString = "Fast Verify";
+    while (std::getline(iss, line) && !found_fast_verify) {
+      found_fast_verify = found_fast_verify || line.find(kFastVerifyString) != std::string::npos;
+    }
+    EXPECT_TRUE(found_fast_verify) << "Expected to find " << kFastVerifyString << "\n" << output_;
+  };
+
   // Generate a quickened dex by using the input dm file to verify.
-  GenerateOdexForTest(dex_location,
-                      odex_location,
-                      CompilerFilter::Filter::kQuicken,
-                      { "--dump-timings",
-                        "--dm-file=" + dm_file.GetFilename(),
-                        // Pass -Xuse-stderr-logger have dex2oat output in output_ on target.
-                        "--runtime-arg",
-                        "-Xuse-stderr-logger" },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [](const OatFile& o) {
-                        CHECK(o.ContainsDexCode());
-                      });
-  // Check the output for "Fast verify", this is printed from --dump-timings.
-  std::istringstream iss(output_);
-  std::string line;
-  bool found_fast_verify = false;
-  const std::string kFastVerifyString = "Fast Verify";
-  while (std::getline(iss, line) && !found_fast_verify) {
-    found_fast_verify = found_fast_verify || line.find(kFastVerifyString) != std::string::npos;
-  }
-  EXPECT_TRUE(found_fast_verify) << "Expected to find " << kFastVerifyString << "\n" << output_;
+  generate_and_check(CompilerFilter::Filter::kQuicken);
+  // Use verify compiler filter to sanity check that FastVerify works for that filter too.
+  generate_and_check(CompilerFilter::Filter::kVerify);
 }
 
 // Test that dex files with quickened opcodes aren't dequickened.
