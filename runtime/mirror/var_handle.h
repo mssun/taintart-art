@@ -19,7 +19,6 @@
 
 #include "handle.h"
 #include "interpreter/shadow_frame.h"
-#include "gc_root.h"
 #include "jvalue.h"
 #include "object.h"
 

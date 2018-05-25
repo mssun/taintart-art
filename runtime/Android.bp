@@ -130,7 +130,6 @@ libart_cc_defaults {
         "mirror/method_handles_lookup.cc",
         "mirror/method_type.cc",
         "mirror/object.cc",
-        "mirror/reference.cc",
         "mirror/stack_trace_element.cc",
         "mirror/string.cc",
         "mirror/throwable.cc",
