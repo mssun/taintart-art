@@ -455,6 +455,235 @@ public class Main {
     }
   }
 
+  /// CHECK-START: int Main.unrollingSimpleLiveOuts(int[]) loop_optimization (before)
+  /// CHECK-DAG: <<Array:l\d+>>   ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>  IntConstant 0                             loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>  IntConstant 1                             loop:none
+  /// CHECK-DAG: <<Const2:i\d+>>  IntConstant 2                             loop:none
+  /// CHECK-DAG: <<Limit:i\d+>>   IntConstant 4094                          loop:none
+  /// CHECK-DAG: <<PhiS:i\d+>>    Phi [<<Const1>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<PhiT:i\d+>>    Phi [<<Const2>>,{{i\d+}}]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<PhiI:i\d+>>    Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Check:z\d+>>   GreaterThanOrEqual [<<PhiI>>,<<Limit>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                  If [<<Check>>]                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddI:i\d+>>    Add [<<PhiI>>,<<Const1>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get0:i\d+>>    ArrayGet [<<Array>>,<<AddI>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddS:i\d+>>    Add [<<PhiS>>,<<Get0>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddT:i\d+>>    Mul [<<PhiT>>,<<Get0>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:i\d+>>    ArrayGet [<<Array>>,<<PhiI>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddArr:i\d+>>  Add [<<AddS>>,<<Get1>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                  ArraySet [<<Array>>,<<PhiI>>,<<AddArr>>]  loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-DAG: <<STAdd:i\d+>>   Add [<<PhiS>>,<<PhiT>>]                   loop:none
+  /// CHECK-DAG: <<ZCheck:i\d+>>  DivZeroCheck [<<STAdd>>] env:[[<<PhiS>>,<<PhiT>>,<<STAdd>>,<<Const1>>,_,<<Array>>]] loop:none
+  /// CHECK-DAG: <<Div:i\d+>>     Div [<<Const1>>,<<ZCheck>>]               loop:none
+  /// CHECK-DAG:                  Return [<<Div>>]                          loop:none
+  /// CHECK-NOT:                  ArrayGet
+  /// CHECK-NOT:                  ArraySet
+
+  /// CHECK-START: int Main.unrollingSimpleLiveOuts(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Array:l\d+>>   ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>  IntConstant 0                             loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>  IntConstant 1                             loop:none
+  /// CHECK-DAG: <<Const2:i\d+>>  IntConstant 2                             loop:none
+  /// CHECK-DAG: <<Limit:i\d+>>   IntConstant 4094                          loop:none
+  /// CHECK-DAG: <<PhiS:i\d+>>    Phi [<<Const1>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<PhiT:i\d+>>    Phi [<<Const2>>,{{i\d+}}]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<PhiI:i\d+>>    Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Check:z\d+>>   GreaterThanOrEqual [<<PhiI>>,<<Limit>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                  If [<<Check>>]                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddI:i\d+>>    Add [<<PhiI>>,<<Const1>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get0:i\d+>>    ArrayGet [<<Array>>,<<AddI>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddS:i\d+>>    Add [<<PhiS>>,<<Get0>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddT:i\d+>>    Mul [<<PhiT>>,<<Get0>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:i\d+>>    ArrayGet [<<Array>>,<<PhiI>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddArr:i\d+>>  Add [<<AddS>>,<<Get1>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                  ArraySet [<<Array>>,<<PhiI>>,<<AddArr>>]  loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-DAG:                  GreaterThanOrEqual [<<AddI>>,<<Limit>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                  If [<<Const0>>]                           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddIA:i\d+>>   Add [<<AddI>>,<<Const1>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get0A:i\d+>>   ArrayGet [<<Array>>,<<AddIA>>]            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddSA:i\d+>>   Add [<<AddS>>,<<Get0A>>]                  loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddTA:i\d+>>   Mul [<<AddT>>,<<Get0A>>]                  loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1A:i\d+>>   ArrayGet [<<Array>>,<<AddI>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddArrA:i\d+>> Add [<<AddSA>>,<<Get1A>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                  ArraySet [<<Array>>,<<AddI>>,<<AddArrA>>] loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-DAG: <<RetPhiS:i\d+>> Phi [<<PhiS>>,<<AddS>>]                   loop:none
+  /// CHECK-DAG: <<RetPhiT:i\d+>> Phi [<<PhiT>>,<<AddT>>]                   loop:none
+  /// CHECK-DAG: <<STAdd:i\d+>>   Add [<<RetPhiS>>,<<RetPhiT>>]             loop:none
+  /// CHECK-DAG: <<ZCheck:i\d+>>  DivZeroCheck [<<STAdd>>] env:[[<<RetPhiS>>,<<RetPhiT>>,<<STAdd>>,<<Const1>>,_,<<Array>>]] loop:none
+  /// CHECK-DAG: <<Div:i\d+>>     Div [<<Const1>>,<<ZCheck>>]               loop:none
+  /// CHECK-DAG:                  Return [<<Div>>]                          loop:none
+  //
+  /// CHECK-NOT:                  ArrayGet
+  /// CHECK-NOT:                  ArraySet
+  private static final int unrollingSimpleLiveOuts(int[] a) {
+    int s = 1;
+    int t = 2;
+    for (int i = 0; i < LENGTH - 2; i++) {
+      int temp = a[i + 1];
+      s += temp;
+      t *= temp;
+      a[i] += s;
+    }
+
+    return 1 / (s + t);
+  }
+
+  /// CHECK-START: int Main.unrollingWhileLiveOuts(int[]) loop_optimization (before)
+  /// CHECK-DAG: <<Array:l\d+>>    ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>   IntConstant 1                             loop:none
+  /// CHECK-DAG: <<Const2:i\d+>>   IntConstant 2                             loop:none
+  /// CHECK-DAG: <<Const128:i\d+>> IntConstant 128                           loop:none
+  /// CHECK-DAG: <<Limit:i\d+>>    IntConstant 4094                          loop:none
+  /// CHECK-DAG: <<PhiI:i\d+>>     Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<PhiS:i\d+>>     Phi [<<Const128>>,{{i\d+}}]               loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddI:i\d+>>     Add [<<PhiI>>,<<Const1>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Check:z\d+>>    GreaterThanOrEqual [<<PhiI>>,<<Limit>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<If:v\d+>>       If [<<Check>>]                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Rem:i\d+>>      Rem [<<AddI>>,<<Const2>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<NE:z\d+>>       NotEqual [<<Rem>>,<<Const0>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   If [<<NE>>]                               loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddS:i\d+>>     Add [<<PhiS>>,<<Const1>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   ArraySet                                  loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   Phi [<<PhiS>>,<<AddS>>]                   loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   ArrayGet
+  /// CHECK-NOT:                   ArraySet
+
+  /// CHECK-START: int Main.unrollingWhileLiveOuts(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Array:l\d+>>    ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>   IntConstant 1                             loop:none
+  /// CHECK-DAG: <<Const2:i\d+>>   IntConstant 2                             loop:none
+  /// CHECK-DAG: <<Const128:i\d+>> IntConstant 128                           loop:none
+  /// CHECK-DAG: <<Limit:i\d+>>    IntConstant 4094                          loop:none
+  /// CHECK-DAG: <<PhiI:i\d+>>     Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<PhiS:i\d+>>     Phi [<<Const128>>,{{i\d+}}]               loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddI:i\d+>>     Add [<<PhiI>>,<<Const1>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Check:z\d+>>    GreaterThanOrEqual [<<PhiI>>,<<Limit>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<If:v\d+>>       If [<<Check>>]                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Rem:i\d+>>      Rem [<<AddI>>,<<Const2>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<NE:z\d+>>       NotEqual [<<Rem>>,<<Const0>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   If [<<NE>>]                               loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddS:i\d+>>     Add [<<PhiS>>,<<Const1>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   ArraySet [{{l\d+}},{{i\d+}},<<PhiS>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<PhiSM:i\d+>>    Phi [<<PhiS>>,<<AddS>>]                   loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-DAG: <<AddIA:i\d+>>    Add [<<AddI>>,<<Const1>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<CheckA:z\d+>>   GreaterThanOrEqual [<<AddI>>,<<Limit>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<IfA:v\d+>>      If [<<Const0>>]                           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<RemA:i\d+>>     Rem [<<AddIA>>,<<Const2>>]                loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<NEA:z\d+>>      NotEqual [<<RemA>>,<<Const0>>]            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   If [<<NEA>>]                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<AddSA:i\d+>>    Add [<<PhiSM>>,<<Const1>>]                loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   ArraySet [{{l\d+}},{{i\d+}},<<PhiSM>>]    loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   Phi [<<AddSA>>,<<PhiSM>>]                 loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-DAG: <<RetPhi:i\d+>>   Phi [<<PhiS>>,<<PhiSM>>]                  loop:none
+  /// CHECK-DAG:                   Return [<<RetPhi>>]                       loop:none
+  //
+  /// CHECK-NOT:                   ArrayGet
+  /// CHECK-NOT:                   ArraySet
+  private static final int unrollingWhileLiveOuts(int[] a) {
+    int i = 0;
+    int s = 128;
+    while (i++ < LENGTH - 2) {
+      if (i % 2 == 0) {
+        a[i] = s++;
+      }
+    }
+    return s;
+  }
+
+  /// CHECK-START: int Main.unrollingLiveOutsNested(int[]) loop_optimization (before)
+  /// CHECK-DAG: <<Array:l\d+>>   ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>  IntConstant 0                             loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>  IntConstant 1                             loop:none
+  /// CHECK-DAG: <<Const2:i\d+>>  IntConstant 2                             loop:none
+  /// CHECK-DAG: <<Limit:i\d+>>   IntConstant 4094                          loop:none
+  //
+  /// CHECK-DAG: <<OutPhiJ:i\d+>> Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop0:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<OutPhiS:i\d+>> Phi [<<Const1>>,{{i\d+}}]                 loop:<<Loop0>>      outer_loop:none
+  /// CHECK-DAG: <<OutPhiT:i\d+>> Phi [<<Const2>>,{{i\d+}}]                 loop:<<Loop0>>      outer_loop:none
+  //
+  /// CHECK-DAG: <<PhiI:i\d+>>    Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop1:B\d+>> outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<PhiS:i\d+>>    Phi [<<OutPhiS>>,{{i\d+}}]                loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<PhiT:i\d+>>    Phi [<<OutPhiT>>,{{i\d+}}]                loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<Check:z\d+>>   GreaterThanOrEqual [<<PhiI>>,<<Limit>>]   loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG:                  If [<<Check>>]                            loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddI:i\d+>>    Add [<<PhiI>>,<<Const1>>]                 loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<Get0:i\d+>>    ArrayGet [<<Array>>,<<AddI>>]             loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddS:i\d+>>    Add [<<PhiS>>,<<Get0>>]                   loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddT:i\d+>>    Mul [<<PhiT>>,<<Get0>>]                   loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<Get1:i\d+>>    ArrayGet [<<Array>>,<<PhiI>>]             loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddArr:i\d+>>  Add [<<AddS>>,<<Get1>>]                   loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG:                  ArraySet [<<Array>>,<<PhiI>>,<<AddArr>>]  loop:<<Loop1>>      outer_loop:<<Loop0>>
+  //
+  /// CHECK-DAG:                  Add [<<OutPhiJ>>,<<Const1>>]              loop:<<Loop0>>      outer_loop:none
+  //
+  /// CHECK-NOT:                  ArrayGet
+  /// CHECK-NOT:                  ArraySet
+
+  /// CHECK-START: int Main.unrollingLiveOutsNested(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Array:l\d+>>   ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>  IntConstant 0                             loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>  IntConstant 1                             loop:none
+  /// CHECK-DAG: <<Const2:i\d+>>  IntConstant 2                             loop:none
+  /// CHECK-DAG: <<Limit:i\d+>>   IntConstant 4094                          loop:none
+  //
+  /// CHECK-DAG: <<OutPhiJ:i\d+>> Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop0:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<OutPhiS:i\d+>> Phi [<<Const1>>,{{i\d+}}]                 loop:<<Loop0>>      outer_loop:none
+  /// CHECK-DAG: <<OutPhiT:i\d+>> Phi [<<Const2>>,{{i\d+}}]                 loop:<<Loop0>>      outer_loop:none
+  //
+  /// CHECK-DAG: <<PhiI:i\d+>>    Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop1:B\d+>> outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<PhiS:i\d+>>    Phi [<<OutPhiS>>,{{i\d+}}]                loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<PhiT:i\d+>>    Phi [<<OutPhiT>>,{{i\d+}}]                loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<Check:z\d+>>   GreaterThanOrEqual [<<PhiI>>,<<Limit>>]   loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG:                  If [<<Check>>]                            loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddI:i\d+>>    Add [<<PhiI>>,<<Const1>>]                 loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<Get0:i\d+>>    ArrayGet [<<Array>>,<<AddI>>]             loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddS:i\d+>>    Add [<<PhiS>>,<<Get0>>]                   loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddT:i\d+>>    Mul [<<PhiT>>,<<Get0>>]                   loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<Get1:i\d+>>    ArrayGet [<<Array>>,<<PhiI>>]             loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddArr:i\d+>>  Add [<<AddS>>,<<Get1>>]                   loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG:                  ArraySet [<<Array>>,<<PhiI>>,<<AddArr>>]  loop:<<Loop1>>      outer_loop:<<Loop0>>
+  //
+  /// CHECK-DAG:                  If [<<Const0>>]                           loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddIA:i\d+>>   Add [<<AddI>>,<<Const1>>]                 loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<Get0A:i\d+>>   ArrayGet [<<Array>>,<<AddIA>>]            loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddSA:i\d+>>   Add [<<AddS>>,<<Get0A>>]                  loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddTA:i\d+>>   Mul [<<AddT>>,<<Get0A>>]                  loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<Get1A:i\d+>>   ArrayGet [<<Array>>,<<AddI>>]             loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG: <<AddArrA:i\d+>> Add [<<AddSA>>,<<Get1A>>]                 loop:<<Loop1>>      outer_loop:<<Loop0>>
+  /// CHECK-DAG:                  ArraySet [<<Array>>,<<AddI>>,<<AddArrA>>] loop:<<Loop1>>      outer_loop:<<Loop0>>
+  //
+  /// CHECK-DAG: <<RetPhiS:i\d+>> Phi [<<PhiS>>,<<AddS>>]                   loop:<<Loop0>>      outer_loop:none
+  /// CHECK-DAG: <<RetPhiT:i\d+>> Phi [<<PhiT>>,<<AddT>>]                   loop:<<Loop0>>      outer_loop:none
+  /// CHECK-DAG:                  Add [<<OutPhiJ>>,<<Const1>>]              loop:<<Loop0>>      outer_loop:none
+  //
+  /// CHECK-DAG: <<RetAdd:i\d+>>  Add [<<OutPhiS>>,<<OutPhiT>>]             loop:none
+  /// CHECK-DAG:                  Return [<<RetAdd>>]                       loop:none
+  //
+  /// CHECK-NOT:                  ArrayGet
+  /// CHECK-NOT:                  ArraySet
+  private static final int unrollingLiveOutsNested(int[] a) {
+    int s = 1;
+    int t = 2;
+    for (int j = 0; j < 16; j++) {
+      for (int i = 0; i < LENGTH - 2; i++) {
+        int temp = a[i + 1];
+        s += temp;
+        t *= temp;
+        a[i] += s;
+      }
+    }
+    return s + t;
+  }
+
   /// CHECK-START: void Main.noUnrollingOddTripCount(int[]) loop_optimization (before)
   /// CHECK-DAG: <<Array:l\d+>>   ParameterValue                            loop:none
   /// CHECK-DAG: <<Const1:i\d+>>  IntConstant 1                             loop:none
@@ -802,7 +1031,11 @@ public class Main {
     peelingBreakFromNest(a, false);
     peelingBreakFromNest(a, true);
 
-    int expected = 141312;
+    unrollingSimpleLiveOuts(a);
+    unrollingWhileLiveOuts(a);
+    unrollingLiveOutsNested(a);
+
+    int expected = 51565978;
     int found = 0;
     for (int i = 0; i < a.length; i++) {
       found += a[i];
