@@ -32,8 +32,6 @@ else
   out_dir=${OUT_DIR}
 fi
 
-using_jack=$(get_build_var ANDROID_COMPILE_WITH_JACK)
-
 java_libraries_dir=${out_dir}/target/common/obj/JAVA_LIBRARIES
 common_targets="vogar core-tests apache-harmony-jdwp-tests-hostdex jsr166-tests mockito-target"
 mode="target"
@@ -61,10 +59,6 @@ while true; do
     exit 1
   fi
 done
-
-if [[ $using_jack == "true" ]]; then
-  common_targets="$common_targets ${out_dir}/host/linux-x86/bin/jack"
-fi
 
 # Allow to build successfully in master-art.
 extra_args=SOONG_ALLOW_MISSING_DEPENDENCIES=true
