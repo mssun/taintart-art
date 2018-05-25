@@ -33,7 +33,6 @@ sys.path.append(os.path.dirname(os.path.dirname(
 from common.common import RetCode
 from common.common import CommandListToCommandString
 from common.common import FatalError
-from common.common import GetJackClassPath
 from common.common import GetEnvVariableOrError
 from common.common import RunCommand
 from common.common import RunCommandForOutput
@@ -127,8 +126,6 @@ class TestRunnerWithHostCompilation(TestRunner):
     """
     self._dexer = dexer
     self._debug_info = debug_info
-    self._jack_args = ['-cp', GetJackClassPath(), '--output-dex', '.',
-                       'Test.java']
 
   def CompileOnHost(self):
     if self._dexer == 'dx' or self._dexer == 'd8':
@@ -140,9 +137,6 @@ class TestRunnerWithHostCompilation(TestRunner):
                           out=None, err='dxerr.txt', timeout=30)
       else:
         retc = RetCode.NOTCOMPILED
-    elif self._dexer == 'jack':
-      retc = RunCommand(['jack'] + self._jack_args,
-                        out=None, err='jackerr.txt', timeout=30)
     else:
       raise FatalError('Unknown dexer: ' + self._dexer)
     return retc
@@ -632,7 +626,7 @@ def main():
   parser.add_argument('--true_divergence', default=False, action='store_true',
                       help='do not bisect timeout divergences')
   parser.add_argument('--dexer', default='dx', type=str,
-                      help='defines dexer as dx, d8, or jack (default: dx)')
+                      help='defines dexer as dx or d8 (default: dx)')
   parser.add_argument('--debug_info', default=False, action='store_true',
                       help='include debugging info')
   args = parser.parse_args()

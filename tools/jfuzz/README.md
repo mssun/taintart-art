@@ -37,8 +37,10 @@ The current version of JFuzz sends all output to stdout, and uses
 a fixed testing class named Test. So a typical test run looks as follows.
 
     jfuzz > Test.java
-    jack -cp ${JACK_CLASSPATH} --output-dex . Test.java
-    art -classpath classes.dex Test
+    mkdir classes
+    javac -d classes Test.java
+    dx --dex --output=classes.dex classes
+    art -cp classes.dex Test
 
 How to start JFuzz testing
 ==========================
@@ -67,7 +69,7 @@ where
     --report_script   : path to script called for each divergence
     --jfuzz_arg       : argument for jfuzz
     --true_divergence : don't bisect timeout divergences
-    --dexer=DEXER     : use either dx, d8, or jack to obtain dex files
+    --dexer=DEXER     : use either dx or d8 to obtain dex files
     --debug_info      : include debugging info
 
 How to start JFuzz nightly testing
@@ -97,7 +99,7 @@ where
     --num_tests   : number of tests to run (10000 by default)
     --num_inputs  : number of JFuzz programs to generate
     --device      : target device serial number (passed to adb -s)
-    --dexer=DEXER : use either dx, d8, or jack to obtain dex files
+    --dexer=DEXER : use either dx or d8 to obtain dex files
     --debug_info  : include debugging info
 
 Background

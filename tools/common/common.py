@@ -116,14 +116,6 @@ def GetEnvVariableOrError(variable_name):
   return top
 
 
-def GetJackClassPath():
-  """Returns Jack's classpath."""
-  top = GetEnvVariableOrError('ANDROID_BUILD_TOP')
-  libdir = top + '/out/host/common/obj/JAVA_LIBRARIES'
-  return libdir + '/core-libart-hostdex_intermediates/classes.jack:' \
-       + libdir + '/core-oj-hostdex_intermediates/classes.jack'
-
-
 def _DexArchCachePaths(android_data_path):
   """Returns paths to architecture specific caches.
 
