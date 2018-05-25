@@ -126,11 +126,13 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   num_field_ids_ += dex_file.NumFieldIds();
   num_type_ids_ += dex_file.NumTypeIds();
   num_class_defs_ += dex_file.NumClassDefs();
+  std::set<size_t> unique_code_items;
   for (ClassAccessor accessor : dex_file.GetClasses()) {
     std::set<size_t> unique_method_ids;
     std::set<size_t> unique_string_ids;
     accessor.VisitMethods([&](const ClassAccessor::Method& method) {
       dex_code_bytes_ += method.GetInstructions().InsnsSizeInBytes();
+      unique_code_items.insert(method.GetCodeItemOffset());
       for (const DexInstructionPcPair& inst : method.GetInstructions()) {
         switch (inst->Opcode()) {
           case Instruction::CONST_STRING: {
@@ -190,6 +192,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
     total_unique_method_idx_ += unique_method_ids.size();
     total_unique_string_ids_ += unique_string_ids.size();
   }
+  total_unique_code_items_ += unique_code_items.size();
 }
 
 void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
@@ -212,7 +215,9 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Same class invoke: " << same_class_total << "\n";
   os << "Other class invoke: " << other_class_total << "\n";
   os << "Invokes from code: " << (same_class_total + other_class_total) << "\n";
-  os << "Total dex size: " << total_size << "\n";
+  os << "Total Dex code bytes: " << Percent(dex_code_bytes_, total_size) << "\n";
+  os << "Total unique code items: " << total_unique_code_items_ << "\n";
+  os << "Total Dex size: " << total_size << "\n";
 }
 
 }  // namespace art
