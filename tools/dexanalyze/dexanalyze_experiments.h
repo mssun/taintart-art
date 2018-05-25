@@ -63,6 +63,7 @@ class CountDexIndices : public Experiment {
   size_t num_string_ids_from_code_ = 0;
   size_t total_unique_method_idx_ = 0;
   size_t total_unique_string_ids_ = 0;
+  uint64_t total_unique_code_items_ = 0u;
 
   // Other dex ids.
   size_t dex_code_bytes_ = 0;
