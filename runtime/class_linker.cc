@@ -51,6 +51,7 @@
 #include "cha.h"
 #include "class_linker-inl.h"
 #include "class_loader_utils.h"
+#include "class_root.h"
 #include "class_table-inl.h"
 #include "compiler_callbacks.h"
 #include "debug_print.h"
@@ -498,7 +499,6 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   Handle<mirror::Class> char_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
   char_array_class->SetComponentType(char_class.Get());
-  mirror::CharArray::SetArrayClass(char_array_class.Get());
 
   // Setup String.
   Handle<mirror::Class> java_lang_String(hs.NewHandle(
@@ -516,29 +516,30 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
 
   // Create storage for root classes, save away our work so far (requires descriptors).
   class_roots_ = GcRoot<mirror::ObjectArray<mirror::Class>>(
-      mirror::ObjectArray<mirror::Class>::Alloc(self, object_array_class.Get(),
-                                                kClassRootsMax));
+      mirror::ObjectArray<mirror::Class>::Alloc(self,
+                                                object_array_class.Get(),
+                                                static_cast<int32_t>(ClassRoot::kMax)));
   CHECK(!class_roots_.IsNull());
-  SetClassRoot(kJavaLangClass, java_lang_Class.Get());
-  SetClassRoot(kJavaLangObject, java_lang_Object.Get());
-  SetClassRoot(kClassArrayClass, class_array_class.Get());
-  SetClassRoot(kObjectArrayClass, object_array_class.Get());
-  SetClassRoot(kCharArrayClass, char_array_class.Get());
-  SetClassRoot(kJavaLangString, java_lang_String.Get());
-  SetClassRoot(kJavaLangRefReference, java_lang_ref_Reference.Get());
+  SetClassRoot(ClassRoot::kJavaLangClass, java_lang_Class.Get());
+  SetClassRoot(ClassRoot::kJavaLangObject, java_lang_Object.Get());
+  SetClassRoot(ClassRoot::kClassArrayClass, class_array_class.Get());
+  SetClassRoot(ClassRoot::kObjectArrayClass, object_array_class.Get());
+  SetClassRoot(ClassRoot::kCharArrayClass, char_array_class.Get());
+  SetClassRoot(ClassRoot::kJavaLangString, java_lang_String.Get());
+  SetClassRoot(ClassRoot::kJavaLangRefReference, java_lang_ref_Reference.Get());
 
   // Fill in the empty iftable. Needs to be done after the kObjectArrayClass root is set.
   java_lang_Object->SetIfTable(AllocIfTable(self, 0));
 
   // Setup the primitive type classes.
-  SetClassRoot(kPrimitiveBoolean, CreatePrimitiveClass(self, Primitive::kPrimBoolean));
-  SetClassRoot(kPrimitiveByte, CreatePrimitiveClass(self, Primitive::kPrimByte));
-  SetClassRoot(kPrimitiveShort, CreatePrimitiveClass(self, Primitive::kPrimShort));
-  SetClassRoot(kPrimitiveInt, CreatePrimitiveClass(self, Primitive::kPrimInt));
-  SetClassRoot(kPrimitiveLong, CreatePrimitiveClass(self, Primitive::kPrimLong));
-  SetClassRoot(kPrimitiveFloat, CreatePrimitiveClass(self, Primitive::kPrimFloat));
-  SetClassRoot(kPrimitiveDouble, CreatePrimitiveClass(self, Primitive::kPrimDouble));
-  SetClassRoot(kPrimitiveVoid, CreatePrimitiveClass(self, Primitive::kPrimVoid));
+  SetClassRoot(ClassRoot::kPrimitiveBoolean, CreatePrimitiveClass(self, Primitive::kPrimBoolean));
+  SetClassRoot(ClassRoot::kPrimitiveByte, CreatePrimitiveClass(self, Primitive::kPrimByte));
+  SetClassRoot(ClassRoot::kPrimitiveShort, CreatePrimitiveClass(self, Primitive::kPrimShort));
+  SetClassRoot(ClassRoot::kPrimitiveInt, CreatePrimitiveClass(self, Primitive::kPrimInt));
+  SetClassRoot(ClassRoot::kPrimitiveLong, CreatePrimitiveClass(self, Primitive::kPrimLong));
+  SetClassRoot(ClassRoot::kPrimitiveFloat, CreatePrimitiveClass(self, Primitive::kPrimFloat));
+  SetClassRoot(ClassRoot::kPrimitiveDouble, CreatePrimitiveClass(self, Primitive::kPrimDouble));
+  SetClassRoot(ClassRoot::kPrimitiveVoid, CreatePrimitiveClass(self, Primitive::kPrimVoid));
 
   // Create array interface entries to populate once we can load system classes.
   array_iftable_ = GcRoot<mirror::IfTable>(AllocIfTable(self, 2));
@@ -546,23 +547,21 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   // Create int array type for AllocDexCache (done in AppendToBootClassPath).
   Handle<mirror::Class> int_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
-  int_array_class->SetComponentType(GetClassRoot(kPrimitiveInt));
-  mirror::IntArray::SetArrayClass(int_array_class.Get());
-  SetClassRoot(kIntArrayClass, int_array_class.Get());
+  int_array_class->SetComponentType(GetClassRoot(ClassRoot::kPrimitiveInt, this));
+  SetClassRoot(ClassRoot::kIntArrayClass, int_array_class.Get());
 
   // Create long array type for AllocDexCache (done in AppendToBootClassPath).
   Handle<mirror::Class> long_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
-  long_array_class->SetComponentType(GetClassRoot(kPrimitiveLong));
-  mirror::LongArray::SetArrayClass(long_array_class.Get());
-  SetClassRoot(kLongArrayClass, long_array_class.Get());
+  long_array_class->SetComponentType(GetClassRoot(ClassRoot::kPrimitiveLong, this));
+  SetClassRoot(ClassRoot::kLongArrayClass, long_array_class.Get());
 
   // now that these are registered, we can use AllocClass() and AllocObjectArray
 
   // Set up DexCache. This cannot be done later since AppendToBootClassPath calls AllocDexCache.
   Handle<mirror::Class> java_lang_DexCache(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::DexCache::ClassSize(image_pointer_size_))));
-  SetClassRoot(kJavaLangDexCache, java_lang_DexCache.Get());
+  SetClassRoot(ClassRoot::kJavaLangDexCache, java_lang_DexCache.Get());
   java_lang_DexCache->SetDexCacheClass();
   java_lang_DexCache->SetObjectSize(mirror::DexCache::InstanceSize());
   mirror::Class::SetStatus(java_lang_DexCache, ClassStatus::kResolved, self);
@@ -571,7 +570,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   // Setup dalvik.system.ClassExt
   Handle<mirror::Class> dalvik_system_ClassExt(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::ClassExt::ClassSize(image_pointer_size_))));
-  SetClassRoot(kDalvikSystemClassExt, dalvik_system_ClassExt.Get());
+  SetClassRoot(ClassRoot::kDalvikSystemClassExt, dalvik_system_ClassExt.Get());
   mirror::ClassExt::SetClass(dalvik_system_ClassExt.Get());
   mirror::Class::SetStatus(dalvik_system_ClassExt, ClassStatus::kResolved, self);
 
@@ -580,7 +579,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
       AllocClass(self, java_lang_Class.Get(),
                  mirror::ObjectArray<mirror::String>::ClassSize(image_pointer_size_))));
   object_array_string->SetComponentType(java_lang_String.Get());
-  SetClassRoot(kJavaLangStringArrayClass, object_array_string.Get());
+  SetClassRoot(ClassRoot::kJavaLangStringArrayClass, object_array_string.Get());
 
   LinearAlloc* linear_alloc = runtime->GetLinearAlloc();
   // Create runtime resolution and imt conflict methods.
@@ -608,7 +607,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
 
   // run char class through InitializePrimitiveClass to finish init
   InitializePrimitiveClass(char_class.Get(), Primitive::kPrimChar);
-  SetClassRoot(kPrimitiveChar, char_class.Get());  // needs descriptor
+  SetClassRoot(ClassRoot::kPrimitiveChar, char_class.Get());  // needs descriptor
 
   // Set up GenericJNI entrypoint. That is mainly a hack for common_compiler_test.h so that
   // we do not need friend classes or a publicly exposed setter.
@@ -634,25 +633,20 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   CHECK_EQ(dalvik_system_ClassExt->GetObjectSize(), mirror::ClassExt::InstanceSize());
 
   // Setup the primitive array type classes - can't be done until Object has a vtable.
-  SetClassRoot(kBooleanArrayClass, FindSystemClass(self, "[Z"));
-  mirror::BooleanArray::SetArrayClass(GetClassRoot(kBooleanArrayClass));
+  SetClassRoot(ClassRoot::kBooleanArrayClass, FindSystemClass(self, "[Z"));
 
-  SetClassRoot(kByteArrayClass, FindSystemClass(self, "[B"));
-  mirror::ByteArray::SetArrayClass(GetClassRoot(kByteArrayClass));
+  SetClassRoot(ClassRoot::kByteArrayClass, FindSystemClass(self, "[B"));
 
   CheckSystemClass(self, char_array_class, "[C");
 
-  SetClassRoot(kShortArrayClass, FindSystemClass(self, "[S"));
-  mirror::ShortArray::SetArrayClass(GetClassRoot(kShortArrayClass));
+  SetClassRoot(ClassRoot::kShortArrayClass, FindSystemClass(self, "[S"));
 
   CheckSystemClass(self, int_array_class, "[I");
   CheckSystemClass(self, long_array_class, "[J");
 
-  SetClassRoot(kFloatArrayClass, FindSystemClass(self, "[F"));
-  mirror::FloatArray::SetArrayClass(GetClassRoot(kFloatArrayClass));
+  SetClassRoot(ClassRoot::kFloatArrayClass, FindSystemClass(self, "[F"));
 
-  SetClassRoot(kDoubleArrayClass, FindSystemClass(self, "[D"));
-  mirror::DoubleArray::SetArrayClass(GetClassRoot(kDoubleArrayClass));
+  SetClassRoot(ClassRoot::kDoubleArrayClass, FindSystemClass(self, "[D"));
 
   // Run Class through FindSystemClass. This initializes the dex_cache_ fields and register it
   // in class_table_.
@@ -683,102 +677,95 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
            mirror::Class::GetDirectInterface(self, object_array_class.Get(), 1));
 
   CHECK_EQ(object_array_string.Get(),
-           FindSystemClass(self, GetClassRootDescriptor(kJavaLangStringArrayClass)));
+           FindSystemClass(self, GetClassRootDescriptor(ClassRoot::kJavaLangStringArrayClass)));
 
   // End of special init trickery, all subsequent classes may be loaded via FindSystemClass.
 
   // Create java.lang.reflect.Proxy root.
-  SetClassRoot(kJavaLangReflectProxy, FindSystemClass(self, "Ljava/lang/reflect/Proxy;"));
+  SetClassRoot(ClassRoot::kJavaLangReflectProxy,
+               FindSystemClass(self, "Ljava/lang/reflect/Proxy;"));
 
   // Create java.lang.reflect.Field.class root.
   auto* class_root = FindSystemClass(self, "Ljava/lang/reflect/Field;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangReflectField, class_root);
+  SetClassRoot(ClassRoot::kJavaLangReflectField, class_root);
   mirror::Field::SetClass(class_root);
 
   // Create java.lang.reflect.Field array root.
   class_root = FindSystemClass(self, "[Ljava/lang/reflect/Field;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangReflectFieldArrayClass, class_root);
+  SetClassRoot(ClassRoot::kJavaLangReflectFieldArrayClass, class_root);
   mirror::Field::SetArrayClass(class_root);
 
   // Create java.lang.reflect.Constructor.class root and array root.
   class_root = FindSystemClass(self, "Ljava/lang/reflect/Constructor;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangReflectConstructor, class_root);
+  SetClassRoot(ClassRoot::kJavaLangReflectConstructor, class_root);
   mirror::Constructor::SetClass(class_root);
   class_root = FindSystemClass(self, "[Ljava/lang/reflect/Constructor;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangReflectConstructorArrayClass, class_root);
+  SetClassRoot(ClassRoot::kJavaLangReflectConstructorArrayClass, class_root);
   mirror::Constructor::SetArrayClass(class_root);
 
   // Create java.lang.reflect.Method.class root and array root.
   class_root = FindSystemClass(self, "Ljava/lang/reflect/Method;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangReflectMethod, class_root);
+  SetClassRoot(ClassRoot::kJavaLangReflectMethod, class_root);
   mirror::Method::SetClass(class_root);
   class_root = FindSystemClass(self, "[Ljava/lang/reflect/Method;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangReflectMethodArrayClass, class_root);
+  SetClassRoot(ClassRoot::kJavaLangReflectMethodArrayClass, class_root);
   mirror::Method::SetArrayClass(class_root);
 
   // Create java.lang.invoke.CallSite.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/CallSite;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeCallSite, class_root);
-  mirror::CallSite::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeCallSite, class_root);
 
   // Create java.lang.invoke.MethodType.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/MethodType;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeMethodType, class_root);
-  mirror::MethodType::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeMethodType, class_root);
 
   // Create java.lang.invoke.MethodHandleImpl.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/MethodHandleImpl;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeMethodHandleImpl, class_root);
-  mirror::MethodHandleImpl::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeMethodHandleImpl, class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeMethodHandle, class_root->GetSuperClass());
 
   // Create java.lang.invoke.MethodHandles.Lookup.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/MethodHandles$Lookup;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeMethodHandlesLookup, class_root);
-  mirror::MethodHandlesLookup::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeMethodHandlesLookup, class_root);
 
   // Create java.lang.invoke.VarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/VarHandle;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeVarHandle, class_root);
-  mirror::VarHandle::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeVarHandle, class_root);
 
   // Create java.lang.invoke.FieldVarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/FieldVarHandle;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeFieldVarHandle, class_root);
-  mirror::FieldVarHandle::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeFieldVarHandle, class_root);
 
   // Create java.lang.invoke.ArrayElementVarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/ArrayElementVarHandle;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeArrayElementVarHandle, class_root);
-  mirror::ArrayElementVarHandle::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeArrayElementVarHandle, class_root);
 
   // Create java.lang.invoke.ByteArrayViewVarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/ByteArrayViewVarHandle;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeByteArrayViewVarHandle, class_root);
-  mirror::ByteArrayViewVarHandle::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeByteArrayViewVarHandle, class_root);
 
   // Create java.lang.invoke.ByteBufferViewVarHandle.class root
   class_root = FindSystemClass(self, "Ljava/lang/invoke/ByteBufferViewVarHandle;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kJavaLangInvokeByteBufferViewVarHandle, class_root);
-  mirror::ByteBufferViewVarHandle::SetClass(class_root);
+  SetClassRoot(ClassRoot::kJavaLangInvokeByteBufferViewVarHandle, class_root);
 
   class_root = FindSystemClass(self, "Ldalvik/system/EmulatedStackFrame;");
   CHECK(class_root != nullptr);
-  SetClassRoot(kDalvikSystemEmulatedStackFrame, class_root);
+  SetClassRoot(ClassRoot::kDalvikSystemEmulatedStackFrame, class_root);
   mirror::EmulatedStackFrame::SetClass(class_root);
 
   // java.lang.ref classes need to be specially flagged, but otherwise are normal classes
@@ -805,18 +792,19 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   class_root = FindSystemClass(self, "Ljava/lang/ClassLoader;");
   class_root->SetClassLoaderClass();
   CHECK_EQ(class_root->GetObjectSize(), mirror::ClassLoader::InstanceSize());
-  SetClassRoot(kJavaLangClassLoader, class_root);
+  SetClassRoot(ClassRoot::kJavaLangClassLoader, class_root);
 
   // Set up java.lang.Throwable, java.lang.ClassNotFoundException, and
   // java.lang.StackTraceElement as a convenience.
-  SetClassRoot(kJavaLangThrowable, FindSystemClass(self, "Ljava/lang/Throwable;"));
-  mirror::Throwable::SetClass(GetClassRoot(kJavaLangThrowable));
-  SetClassRoot(kJavaLangClassNotFoundException,
+  SetClassRoot(ClassRoot::kJavaLangThrowable, FindSystemClass(self, "Ljava/lang/Throwable;"));
+  mirror::Throwable::SetClass(GetClassRoot(ClassRoot::kJavaLangThrowable, this));
+  SetClassRoot(ClassRoot::kJavaLangClassNotFoundException,
                FindSystemClass(self, "Ljava/lang/ClassNotFoundException;"));
-  SetClassRoot(kJavaLangStackTraceElement, FindSystemClass(self, "Ljava/lang/StackTraceElement;"));
-  SetClassRoot(kJavaLangStackTraceElementArrayClass,
+  SetClassRoot(ClassRoot::kJavaLangStackTraceElement,
+               FindSystemClass(self, "Ljava/lang/StackTraceElement;"));
+  SetClassRoot(ClassRoot::kJavaLangStackTraceElementArrayClass,
                FindSystemClass(self, "[Ljava/lang/StackTraceElement;"));
-  mirror::StackTraceElement::SetClass(GetClassRoot(kJavaLangStackTraceElement));
+  mirror::StackTraceElement::SetClass(GetClassRoot(ClassRoot::kJavaLangStackTraceElement, this));
 
   // Create conflict tables that depend on the class linker.
   runtime->FixupConflictTables();
@@ -834,8 +822,7 @@ static void CreateStringInitBindings(Thread* self, ClassLinker* class_linker)
   ObjPtr<mirror::Class> string_factory_class =
       class_linker->FindSystemClass(self, "Ljava/lang/StringFactory;");
   CHECK(string_factory_class != nullptr);
-  ObjPtr<mirror::Class> string_class =
-      class_linker->GetClassRoot(ClassLinker::ClassRoot::kJavaLangString);
+  ObjPtr<mirror::Class> string_class = GetClassRoot<mirror::String>(class_linker);
   WellKnownClasses::InitStringInit(string_class, string_factory_class);
   // Update the primordial thread.
   self->InitStringEntryPoints();
@@ -851,7 +838,8 @@ void ClassLinker::FinishInit(Thread* self) {
   // as the types of the field can't be resolved prior to the runtime being
   // fully initialized
   StackHandleScope<2> hs(self);
-  Handle<mirror::Class> java_lang_ref_Reference = hs.NewHandle(GetClassRoot(kJavaLangRefReference));
+  Handle<mirror::Class> java_lang_ref_Reference =
+      hs.NewHandle(GetClassRoot<mirror::Reference>(this));
   Handle<mirror::Class> java_lang_ref_FinalizerReference =
       hs.NewHandle(FindSystemClass(self, "Ljava/lang/ref/FinalizerReference;"));
 
@@ -876,7 +864,7 @@ void ClassLinker::FinishInit(Thread* self) {
   CHECK_STREQ(zombie->GetTypeDescriptor(), "Ljava/lang/Object;");
 
   // ensure all class_roots_ are initialized
-  for (size_t i = 0; i < kClassRootsMax; i++) {
+  for (size_t i = 0; i < static_cast<size_t>(ClassRoot::kMax); i++) {
     ClassRoot class_root = static_cast<ClassRoot>(i);
     ObjPtr<mirror::Class> klass = GetClassRoot(class_root);
     CHECK(klass != nullptr);
@@ -896,11 +884,11 @@ void ClassLinker::FinishInit(Thread* self) {
 
 void ClassLinker::RunRootClinits() {
   Thread* self = Thread::Current();
-  for (size_t i = 0; i < ClassLinker::kClassRootsMax; ++i) {
-    ObjPtr<mirror::Class> c = GetClassRoot(ClassRoot(i));
+  for (size_t i = 0; i < static_cast<size_t>(ClassRoot::kMax); ++i) {
+    ObjPtr<mirror::Class> c = GetClassRoot(ClassRoot(i), this);
     if (!c->IsArrayClass() && !c->IsPrimitive()) {
       StackHandleScope<1> hs(self);
-      Handle<mirror::Class> h_class(hs.NewHandle(GetClassRoot(ClassRoot(i))));
+      Handle<mirror::Class> h_class(hs.NewHandle(c));
       EnsureInitialized(self, h_class, true, true);
       self->AssertNoPendingException();
     }
@@ -1034,13 +1022,13 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   class_roots_ = GcRoot<mirror::ObjectArray<mirror::Class>>(
       down_cast<mirror::ObjectArray<mirror::Class>*>(
           spaces[0]->GetImageHeader().GetImageRoot(ImageHeader::kClassRoots)));
-  mirror::Class::SetClassClass(class_roots_.Read()->Get(kJavaLangClass));
+  mirror::Class::SetClassClass(GetClassRoot(ClassRoot::kJavaLangClass, this));
 
   // Special case of setting up the String class early so that we can test arbitrary objects
   // as being Strings or not
-  mirror::String::SetClass(GetClassRoot(kJavaLangString));
+  mirror::String::SetClass(GetClassRoot<mirror::String>(this));
 
-  ObjPtr<mirror::Class> java_lang_Object = GetClassRoot(kJavaLangObject);
+  ObjPtr<mirror::Class> java_lang_Object = GetClassRoot<mirror::Object>(this);
   java_lang_Object->SetObjectSize(sizeof(mirror::Object));
   // Allocate in non-movable so that it's possible to check if a JNI weak global ref has been
   // cleared without triggering the read barrier and unintentionally mark the sentinel alive.
@@ -1048,37 +1036,24 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
       self, java_lang_Object, java_lang_Object->GetObjectSize(), VoidFunctor()));
 
   // reinit array_iftable_ from any array class instance, they should be ==
-  array_iftable_ = GcRoot<mirror::IfTable>(GetClassRoot(kObjectArrayClass)->GetIfTable());
-  DCHECK_EQ(array_iftable_.Read(), GetClassRoot(kBooleanArrayClass)->GetIfTable());
+  array_iftable_ =
+      GcRoot<mirror::IfTable>(GetClassRoot(ClassRoot::kObjectArrayClass, this)->GetIfTable());
+  DCHECK_EQ(array_iftable_.Read(), GetClassRoot(ClassRoot::kBooleanArrayClass, this)->GetIfTable());
   // String class root was set above
-  mirror::Field::SetClass(GetClassRoot(kJavaLangReflectField));
-  mirror::Field::SetArrayClass(GetClassRoot(kJavaLangReflectFieldArrayClass));
-  mirror::Constructor::SetClass(GetClassRoot(kJavaLangReflectConstructor));
-  mirror::Constructor::SetArrayClass(GetClassRoot(kJavaLangReflectConstructorArrayClass));
-  mirror::Method::SetClass(GetClassRoot(kJavaLangReflectMethod));
-  mirror::Method::SetArrayClass(GetClassRoot(kJavaLangReflectMethodArrayClass));
-  mirror::CallSite::SetClass(GetClassRoot(kJavaLangInvokeCallSite));
-  mirror::MethodHandleImpl::SetClass(GetClassRoot(kJavaLangInvokeMethodHandleImpl));
-  mirror::MethodHandlesLookup::SetClass(GetClassRoot(kJavaLangInvokeMethodHandlesLookup));
-  mirror::MethodType::SetClass(GetClassRoot(kJavaLangInvokeMethodType));
-  mirror::VarHandle::SetClass(GetClassRoot(kJavaLangInvokeVarHandle));
-  mirror::FieldVarHandle::SetClass(GetClassRoot(kJavaLangInvokeFieldVarHandle));
-  mirror::ArrayElementVarHandle::SetClass(GetClassRoot(kJavaLangInvokeArrayElementVarHandle));
-  mirror::ByteArrayViewVarHandle::SetClass(GetClassRoot(kJavaLangInvokeByteArrayViewVarHandle));
-  mirror::ByteBufferViewVarHandle::SetClass(GetClassRoot(kJavaLangInvokeByteBufferViewVarHandle));
-  mirror::Reference::SetClass(GetClassRoot(kJavaLangRefReference));
-  mirror::BooleanArray::SetArrayClass(GetClassRoot(kBooleanArrayClass));
-  mirror::ByteArray::SetArrayClass(GetClassRoot(kByteArrayClass));
-  mirror::CharArray::SetArrayClass(GetClassRoot(kCharArrayClass));
-  mirror::DoubleArray::SetArrayClass(GetClassRoot(kDoubleArrayClass));
-  mirror::FloatArray::SetArrayClass(GetClassRoot(kFloatArrayClass));
-  mirror::IntArray::SetArrayClass(GetClassRoot(kIntArrayClass));
-  mirror::LongArray::SetArrayClass(GetClassRoot(kLongArrayClass));
-  mirror::ShortArray::SetArrayClass(GetClassRoot(kShortArrayClass));
-  mirror::Throwable::SetClass(GetClassRoot(kJavaLangThrowable));
-  mirror::StackTraceElement::SetClass(GetClassRoot(kJavaLangStackTraceElement));
-  mirror::EmulatedStackFrame::SetClass(GetClassRoot(kDalvikSystemEmulatedStackFrame));
-  mirror::ClassExt::SetClass(GetClassRoot(kDalvikSystemClassExt));
+  mirror::Field::SetClass(GetClassRoot(ClassRoot::kJavaLangReflectField, this));
+  mirror::Field::SetArrayClass(GetClassRoot(ClassRoot::kJavaLangReflectFieldArrayClass, this));
+  mirror::Constructor::SetClass(GetClassRoot(ClassRoot::kJavaLangReflectConstructor, this).Ptr());
+  mirror::Constructor::SetArrayClass(
+      GetClassRoot(ClassRoot::kJavaLangReflectConstructorArrayClass, this).Ptr());
+  mirror::Method::SetClass(GetClassRoot(ClassRoot::kJavaLangReflectMethod, this).Ptr());
+  mirror::Method::SetArrayClass(
+      GetClassRoot(ClassRoot::kJavaLangReflectMethodArrayClass, this).Ptr());
+  mirror::Reference::SetClass(GetClassRoot(ClassRoot::kJavaLangRefReference, this));
+  mirror::Throwable::SetClass(GetClassRoot(ClassRoot::kJavaLangThrowable, this));
+  mirror::StackTraceElement::SetClass(GetClassRoot(ClassRoot::kJavaLangStackTraceElement, this));
+  mirror::EmulatedStackFrame::SetClass(
+      GetClassRoot(ClassRoot::kDalvikSystemEmulatedStackFrame, this).Ptr());
+  mirror::ClassExt::SetClass(GetClassRoot(ClassRoot::kDalvikSystemClassExt, this));
 
   for (gc::space::ImageSpace* image_space : spaces) {
     // Boot class loader, use a null handle.
@@ -1695,15 +1670,16 @@ bool ClassLinker::AddImageSpace(
   MutableHandle<mirror::ClassLoader> image_class_loader(hs.NewHandle(
       app_image ? header.GetImageRoot(ImageHeader::kClassLoader)->AsClassLoader() : nullptr));
   DCHECK(class_roots != nullptr);
-  if (class_roots->GetLength() != static_cast<int32_t>(kClassRootsMax)) {
+  if (class_roots->GetLength() != static_cast<int32_t>(ClassRoot::kMax)) {
     *error_msg = StringPrintf("Expected %d class roots but got %d",
                               class_roots->GetLength(),
-                              static_cast<int32_t>(kClassRootsMax));
+                              static_cast<int32_t>(ClassRoot::kMax));
     return false;
   }
   // Check against existing class roots to make sure they match the ones in the boot image.
-  for (size_t i = 0; i < kClassRootsMax; i++) {
-    if (class_roots->Get(i) != GetClassRoot(static_cast<ClassRoot>(i))) {
+  ObjPtr<mirror::ObjectArray<mirror::Class>> existing_class_roots = GetClassRoots();
+  for (size_t i = 0; i < static_cast<size_t>(ClassRoot::kMax); i++) {
+    if (class_roots->Get(i) != GetClassRoot(static_cast<ClassRoot>(i), existing_class_roots)) {
       *error_msg = "App image class roots must have pointer equality with runtime ones.";
       return false;
     }
@@ -2163,26 +2139,9 @@ ClassLinker::~ClassLinker() {
   mirror::StackTraceElement::ResetClass();
   mirror::String::ResetClass();
   mirror::Throwable::ResetClass();
-  mirror::BooleanArray::ResetArrayClass();
-  mirror::ByteArray::ResetArrayClass();
-  mirror::CharArray::ResetArrayClass();
   mirror::Constructor::ResetArrayClass();
-  mirror::DoubleArray::ResetArrayClass();
   mirror::Field::ResetArrayClass();
-  mirror::FloatArray::ResetArrayClass();
   mirror::Method::ResetArrayClass();
-  mirror::IntArray::ResetArrayClass();
-  mirror::LongArray::ResetArrayClass();
-  mirror::ShortArray::ResetArrayClass();
-  mirror::CallSite::ResetClass();
-  mirror::MethodType::ResetClass();
-  mirror::MethodHandleImpl::ResetClass();
-  mirror::MethodHandlesLookup::ResetClass();
-  mirror::VarHandle::ResetClass();
-  mirror::FieldVarHandle::ResetClass();
-  mirror::ArrayElementVarHandle::ResetClass();
-  mirror::ByteArrayViewVarHandle::ResetClass();
-  mirror::ByteBufferViewVarHandle::ResetClass();
   mirror::EmulatedStackFrame::ResetClass();
   Thread* const self = Thread::Current();
   for (const ClassLoaderData& data : class_loaders_) {
@@ -2231,7 +2190,7 @@ mirror::DexCache* ClassLinker::AllocDexCache(ObjPtr<mirror::String>* out_locatio
   StackHandleScope<1> hs(self);
   DCHECK(out_location != nullptr);
   auto dex_cache(hs.NewHandle(ObjPtr<mirror::DexCache>::DownCast(
-      GetClassRoot(kJavaLangDexCache)->AllocObject(self))));
+      GetClassRoot<mirror::DexCache>(this)->AllocObject(self))));
   if (dex_cache == nullptr) {
     self->AssertPendingOOMException();
     return nullptr;
@@ -2280,14 +2239,14 @@ mirror::Class* ClassLinker::AllocClass(Thread* self,
 }
 
 mirror::Class* ClassLinker::AllocClass(Thread* self, uint32_t class_size) {
-  return AllocClass(self, GetClassRoot(kJavaLangClass), class_size);
+  return AllocClass(self, GetClassRoot<mirror::Class>(this), class_size);
 }
 
 mirror::ObjectArray<mirror::StackTraceElement>* ClassLinker::AllocStackTraceElementArray(
     Thread* self,
     size_t length) {
   return mirror::ObjectArray<mirror::StackTraceElement>::Alloc(
-      self, GetClassRoot(kJavaLangStackTraceElementArrayClass), length);
+      self, GetClassRoot<mirror::ObjectArray<mirror::StackTraceElement>>(this), length);
 }
 
 mirror::Class* ClassLinker::EnsureResolved(Thread* self,
@@ -2684,17 +2643,17 @@ mirror::Class* ClassLinker::DefineClass(Thread* self,
   if (UNLIKELY(!init_done_)) {
     // finish up init of hand crafted class_roots_
     if (strcmp(descriptor, "Ljava/lang/Object;") == 0) {
-      klass.Assign(GetClassRoot(kJavaLangObject));
+      klass.Assign(GetClassRoot<mirror::Object>(this));
     } else if (strcmp(descriptor, "Ljava/lang/Class;") == 0) {
-      klass.Assign(GetClassRoot(kJavaLangClass));
+      klass.Assign(GetClassRoot<mirror::Class>(this));
     } else if (strcmp(descriptor, "Ljava/lang/String;") == 0) {
-      klass.Assign(GetClassRoot(kJavaLangString));
+      klass.Assign(GetClassRoot<mirror::String>(this));
     } else if (strcmp(descriptor, "Ljava/lang/ref/Reference;") == 0) {
-      klass.Assign(GetClassRoot(kJavaLangRefReference));
+      klass.Assign(GetClassRoot<mirror::Reference>(this));
     } else if (strcmp(descriptor, "Ljava/lang/DexCache;") == 0) {
-      klass.Assign(GetClassRoot(kJavaLangDexCache));
+      klass.Assign(GetClassRoot<mirror::DexCache>(this));
     } else if (strcmp(descriptor, "Ldalvik/system/ClassExt;") == 0) {
-      klass.Assign(GetClassRoot(kDalvikSystemClassExt));
+      klass.Assign(GetClassRoot<mirror::ClassExt>(this));
     }
   }
 
@@ -2744,7 +2703,7 @@ mirror::Class* ClassLinker::DefineClass(Thread* self,
   ObjectLock<mirror::Class> lock(self, klass);
   klass->SetClinitThreadId(self->GetTid());
   // Make sure we have a valid empty iftable even if there are errors.
-  klass->SetIfTable(GetClassRoot(kJavaLangObject)->GetIfTable());
+  klass->SetIfTable(GetClassRoot<mirror::Object>(this)->GetIfTable());
 
   // Add the newly loaded class to the loaded classes table.
   ObjPtr<mirror::Class> existing = InsertClass(descriptor, klass.Get(), hash);
@@ -3084,7 +3043,7 @@ void ClassLinker::SetupClass(const DexFile& dex_file,
   const char* descriptor = dex_file.GetClassDescriptor(dex_class_def);
   CHECK(descriptor != nullptr);
 
-  klass->SetClass(GetClassRoot(kJavaLangClass));
+  klass->SetClass(GetClassRoot<mirror::Class>(this));
   uint32_t access_flags = dex_class_def.GetJavaAccessFlags();
   CHECK_EQ(access_flags & ~kAccJavaFlagsMask, 0U);
   klass->SetAccessFlags(access_flags);
@@ -3654,7 +3613,7 @@ mirror::Class* ClassLinker::InitializePrimitiveClass(ObjPtr<mirror::Class> primi
   ObjectLock<mirror::Class> lock(self, h_class);
   h_class->SetAccessFlags(kAccPublic | kAccFinal | kAccAbstract);
   h_class->SetPrimitiveType(type);
-  h_class->SetIfTable(GetClassRoot(kJavaLangObject)->GetIfTable());
+  h_class->SetIfTable(GetClassRoot<mirror::Object>(this)->GetIfTable());
   mirror::Class::SetStatus(h_class, ClassStatus::kInitialized, self);
   const char* descriptor = Primitive::Descriptor(type);
   ObjPtr<mirror::Class> existing = InsertClass(descriptor,
@@ -3737,17 +3696,17 @@ mirror::Class* ClassLinker::CreateArrayClass(Thread* self, const char* descripto
   if (UNLIKELY(!init_done_)) {
     // Classes that were hand created, ie not by FindSystemClass
     if (strcmp(descriptor, "[Ljava/lang/Class;") == 0) {
-      new_class.Assign(GetClassRoot(kClassArrayClass));
+      new_class.Assign(GetClassRoot<mirror::ObjectArray<mirror::Class>>(this));
     } else if (strcmp(descriptor, "[Ljava/lang/Object;") == 0) {
-      new_class.Assign(GetClassRoot(kObjectArrayClass));
-    } else if (strcmp(descriptor, GetClassRootDescriptor(kJavaLangStringArrayClass)) == 0) {
-      new_class.Assign(GetClassRoot(kJavaLangStringArrayClass));
+      new_class.Assign(GetClassRoot<mirror::ObjectArray<mirror::Object>>(this));
+    } else if (strcmp(descriptor, "[Ljava/lang/String;") == 0) {
+      new_class.Assign(GetClassRoot<mirror::ObjectArray<mirror::String>>(this));
     } else if (strcmp(descriptor, "[C") == 0) {
-      new_class.Assign(GetClassRoot(kCharArrayClass));
+      new_class.Assign(GetClassRoot<mirror::CharArray>(this));
     } else if (strcmp(descriptor, "[I") == 0) {
-      new_class.Assign(GetClassRoot(kIntArrayClass));
+      new_class.Assign(GetClassRoot<mirror::IntArray>(this));
     } else if (strcmp(descriptor, "[J") == 0) {
-      new_class.Assign(GetClassRoot(kLongArrayClass));
+      new_class.Assign(GetClassRoot<mirror::LongArray>(this));
     }
   }
   if (new_class == nullptr) {
@@ -3760,7 +3719,7 @@ mirror::Class* ClassLinker::CreateArrayClass(Thread* self, const char* descripto
   }
   ObjectLock<mirror::Class> lock(self, new_class);  // Must hold lock on object when initializing.
   DCHECK(new_class->GetComponentType() != nullptr);
-  ObjPtr<mirror::Class> java_lang_Object = GetClassRoot(kJavaLangObject);
+  ObjPtr<mirror::Class> java_lang_Object = GetClassRoot<mirror::Object>(this);
   new_class->SetSuperClass(java_lang_Object);
   new_class->SetVTable(java_lang_Object->GetVTable());
   new_class->SetPrimitiveType(Primitive::kPrimNot);
@@ -3828,25 +3787,26 @@ mirror::Class* ClassLinker::CreateArrayClass(Thread* self, const char* descripto
 }
 
 mirror::Class* ClassLinker::FindPrimitiveClass(char type) {
+  ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots = GetClassRoots();
   switch (type) {
     case 'B':
-      return GetClassRoot(kPrimitiveByte);
+      return GetClassRoot(ClassRoot::kPrimitiveByte, class_roots).Ptr();
     case 'C':
-      return GetClassRoot(kPrimitiveChar);
+      return GetClassRoot(ClassRoot::kPrimitiveChar, class_roots).Ptr();
     case 'D':
-      return GetClassRoot(kPrimitiveDouble);
+      return GetClassRoot(ClassRoot::kPrimitiveDouble, class_roots).Ptr();
     case 'F':
-      return GetClassRoot(kPrimitiveFloat);
+      return GetClassRoot(ClassRoot::kPrimitiveFloat, class_roots).Ptr();
     case 'I':
-      return GetClassRoot(kPrimitiveInt);
+      return GetClassRoot(ClassRoot::kPrimitiveInt, class_roots).Ptr();
     case 'J':
-      return GetClassRoot(kPrimitiveLong);
+      return GetClassRoot(ClassRoot::kPrimitiveLong, class_roots).Ptr();
     case 'S':
-      return GetClassRoot(kPrimitiveShort);
+      return GetClassRoot(ClassRoot::kPrimitiveShort, class_roots).Ptr();
     case 'Z':
-      return GetClassRoot(kPrimitiveBoolean);
+      return GetClassRoot(ClassRoot::kPrimitiveBoolean, class_roots).Ptr();
     case 'V':
-      return GetClassRoot(kPrimitiveVoid);
+      return GetClassRoot(ClassRoot::kPrimitiveVoid, class_roots).Ptr();
     default:
       break;
   }
@@ -4381,7 +4341,7 @@ mirror::Class* ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRunnable& 
   Thread* self = soa.Self();
   StackHandleScope<10> hs(self);
   MutableHandle<mirror::Class> temp_klass(hs.NewHandle(
-      AllocClass(self, GetClassRoot(kJavaLangClass), sizeof(mirror::Class))));
+      AllocClass(self, GetClassRoot<mirror::Class>(this), sizeof(mirror::Class))));
   if (temp_klass == nullptr) {
     CHECK(self->IsExceptionPending());  // OOME.
     return nullptr;
@@ -4394,9 +4354,9 @@ mirror::Class* ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRunnable& 
   temp_klass->SetClassLoader(soa.Decode<mirror::ClassLoader>(loader));
   DCHECK_EQ(temp_klass->GetPrimitiveType(), Primitive::kPrimNot);
   temp_klass->SetName(soa.Decode<mirror::String>(name));
-  temp_klass->SetDexCache(GetClassRoot(kJavaLangReflectProxy)->GetDexCache());
+  temp_klass->SetDexCache(GetClassRoot<mirror::Proxy>(this)->GetDexCache());
   // Object has an empty iftable, copy it for that reason.
-  temp_klass->SetIfTable(GetClassRoot(kJavaLangObject)->GetIfTable());
+  temp_klass->SetIfTable(GetClassRoot<mirror::Object>(this)->GetIfTable());
   mirror::Class::SetStatus(temp_klass, ClassStatus::kIdx, self);
   std::string descriptor(GetDescriptorForProxy(temp_klass.Get()));
   const size_t hash = ComputeModifiedUtf8Hash(descriptor.c_str());
@@ -4463,7 +4423,7 @@ mirror::Class* ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRunnable& 
   }
 
   // The super class is java.lang.reflect.Proxy
-  temp_klass->SetSuperClass(GetClassRoot(kJavaLangReflectProxy));
+  temp_klass->SetSuperClass(GetClassRoot<mirror::Proxy>(this));
   // Now effectively in the loaded state.
   mirror::Class::SetStatus(temp_klass, ClassStatus::kLoaded, self);
   self->AssertNoPendingException();
@@ -4551,11 +4511,12 @@ std::string ClassLinker::GetDescriptorForProxy(ObjPtr<mirror::Class> proxy_class
 
 void ClassLinker::CreateProxyConstructor(Handle<mirror::Class> klass, ArtMethod* out) {
   // Create constructor for Proxy that must initialize the method.
-  CHECK_EQ(GetClassRoot(kJavaLangReflectProxy)->NumDirectMethods(), 21u);
+  ObjPtr<mirror::Class> proxy_class = GetClassRoot<mirror::Proxy>(this);
+  CHECK_EQ(proxy_class->NumDirectMethods(), 21u);
 
   // Find the <init>(InvocationHandler)V method. The exact method offset varies depending
   // on which front-end compiler was used to build the libcore DEX files.
-  ArtMethod* proxy_constructor = GetClassRoot(kJavaLangReflectProxy)->FindConstructor(
+  ArtMethod* proxy_constructor = proxy_class->FindConstructor(
       "(Ljava/lang/reflect/InvocationHandler;)V", image_pointer_size_);
   DCHECK(proxy_constructor != nullptr)
       << "Could not find <init> method in java.lang.reflect.Proxy";
@@ -5553,7 +5514,8 @@ bool ClassLinker::LoadSuperAndInterfaces(Handle<mirror::Class> klass, const DexF
 bool ClassLinker::LinkSuperClass(Handle<mirror::Class> klass) {
   CHECK(!klass->IsPrimitive());
   ObjPtr<mirror::Class> super = klass->GetSuperClass();
-  if (klass.Get() == GetClassRoot(kJavaLangObject)) {
+  ObjPtr<mirror::Class> object_class = GetClassRoot<mirror::Object>(this);
+  if (klass.Get() == object_class) {
     if (super != nullptr) {
       ThrowClassFormatError(klass.Get(), "java.lang.Object must not have a superclass");
       return false;
@@ -5566,7 +5528,7 @@ bool ClassLinker::LinkSuperClass(Handle<mirror::Class> klass) {
     return false;
   }
   // Verify
-  if (klass->IsInterface() && super != GetClassRoot(kJavaLangObject)) {
+  if (klass->IsInterface() && super != object_class) {
     ThrowClassFormatError(klass.Get(), "Interfaces must have java.lang.Object as superclass");
     return false;
   }
@@ -5609,7 +5571,7 @@ bool ClassLinker::LinkSuperClass(Handle<mirror::Class> klass) {
     klass->SetClassFlags(klass->GetClassFlags() | reference_flags);
   }
   // Disallow custom direct subclasses of java.lang.ref.Reference.
-  if (init_done_ && super == GetClassRoot(kJavaLangRefReference)) {
+  if (init_done_ && super == GetClassRoot<mirror::Reference>(this)) {
     ThrowLinkageError(klass.Get(),
                       "Class %s attempts to subclass java.lang.ref.Reference, which is not allowed",
                       klass->PrettyDescriptor().c_str());
@@ -5974,7 +5936,7 @@ bool ClassLinker::LinkVirtualMethods(
     }
     klass->SetVTable(vtable.Get());
   } else {
-    CHECK_EQ(klass.Get(), GetClassRoot(kJavaLangObject));
+    CHECK_EQ(klass.Get(), GetClassRoot<mirror::Object>(this));
     if (!IsUint<16>(num_virtual_methods)) {
       ThrowClassFormatError(klass.Get(), "Too many methods: %d",
                             static_cast<int>(num_virtual_methods));
@@ -7851,7 +7813,7 @@ ObjPtr<mirror::Class> ClassLinker::DoResolveType(dex::TypeIndex type_idx,
     // Convert a ClassNotFoundException to a NoClassDefFoundError.
     StackHandleScope<1> hs(self);
     Handle<mirror::Throwable> cause(hs.NewHandle(self->GetException()));
-    if (cause->InstanceOf(GetClassRoot(kJavaLangClassNotFoundException))) {
+    if (cause->InstanceOf(GetClassRoot(ClassRoot::kJavaLangClassNotFoundException, this))) {
       DCHECK(resolved == nullptr);  // No Handle needed to preserve resolved.
       self->ClearException();
       ThrowNoClassDefFoundError("Failed resolution of: %s", descriptor);
@@ -8678,67 +8640,10 @@ void ClassLinker::SetClassRoot(ClassRoot class_root, ObjPtr<mirror::Class> klass
 
   mirror::ObjectArray<mirror::Class>* class_roots = class_roots_.Read();
   DCHECK(class_roots != nullptr);
-  DCHECK(class_roots->Get(class_root) == nullptr);
-  class_roots->Set<false>(class_root, klass);
-}
-
-const char* ClassLinker::GetClassRootDescriptor(ClassRoot class_root) {
-  static const char* class_roots_descriptors[] = {
-    "Ljava/lang/Class;",
-    "Ljava/lang/Object;",
-    "[Ljava/lang/Class;",
-    "[Ljava/lang/Object;",
-    "Ljava/lang/String;",
-    "Ljava/lang/DexCache;",
-    "Ljava/lang/ref/Reference;",
-    "Ljava/lang/reflect/Constructor;",
-    "Ljava/lang/reflect/Field;",
-    "Ljava/lang/reflect/Method;",
-    "Ljava/lang/reflect/Proxy;",
-    "[Ljava/lang/String;",
-    "[Ljava/lang/reflect/Constructor;",
-    "[Ljava/lang/reflect/Field;",
-    "[Ljava/lang/reflect/Method;",
-    "Ljava/lang/invoke/CallSite;",
-    "Ljava/lang/invoke/MethodHandleImpl;",
-    "Ljava/lang/invoke/MethodHandles$Lookup;",
-    "Ljava/lang/invoke/MethodType;",
-    "Ljava/lang/invoke/VarHandle;",
-    "Ljava/lang/invoke/FieldVarHandle;",
-    "Ljava/lang/invoke/ArrayElementVarHandle;",
-    "Ljava/lang/invoke/ByteArrayViewVarHandle;",
-    "Ljava/lang/invoke/ByteBufferViewVarHandle;",
-    "Ljava/lang/ClassLoader;",
-    "Ljava/lang/Throwable;",
-    "Ljava/lang/ClassNotFoundException;",
-    "Ljava/lang/StackTraceElement;",
-    "Ldalvik/system/EmulatedStackFrame;",
-    "Z",
-    "B",
-    "C",
-    "D",
-    "F",
-    "I",
-    "J",
-    "S",
-    "V",
-    "[Z",
-    "[B",
-    "[C",
-    "[D",
-    "[F",
-    "[I",
-    "[J",
-    "[S",
-    "[Ljava/lang/StackTraceElement;",
-    "Ldalvik/system/ClassExt;",
-  };
-  static_assert(arraysize(class_roots_descriptors) == size_t(kClassRootsMax),
-                "Mismatch between class descriptors and class-root enum");
-
-  const char* descriptor = class_roots_descriptors[class_root];
-  CHECK(descriptor != nullptr);
-  return descriptor;
+  DCHECK_LT(static_cast<uint32_t>(class_root), static_cast<uint32_t>(ClassRoot::kMax));
+  int32_t index = static_cast<int32_t>(class_root);
+  DCHECK(class_roots->Get(index) == nullptr);
+  class_roots->Set<false>(index, klass);
 }
 
 jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
@@ -9071,7 +8976,7 @@ mirror::Class* ClassLinker::GetHoldingClassOfCopiedMethod(ArtMethod* method) {
 mirror::IfTable* ClassLinker::AllocIfTable(Thread* self, size_t ifcount) {
   return down_cast<mirror::IfTable*>(
       mirror::IfTable::Alloc(self,
-                             GetClassRoot(kObjectArrayClass),
+                             GetClassRoot<mirror::ObjectArray<mirror::Object>>(this),
                              ifcount * mirror::IfTable::kMax));
 }
 

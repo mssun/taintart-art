@@ -20,6 +20,7 @@
 #include "class-inl.h"
 #include "class.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "common_throws.h"
 #include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
@@ -118,6 +119,16 @@ Array* Array::CreateMultiArray(Thread* self, Handle<Class> element_class,
   return new_array.Ptr();
 }
 
+template<typename T>
+PrimitiveArray<T>* PrimitiveArray<T>::Alloc(Thread* self, size_t length) {
+  Array* raw_array = Array::Alloc<true>(self,
+                                        GetClassRoot<PrimitiveArray<T>>(),
+                                        length,
+                                        ComponentSizeShiftWidth(sizeof(T)),
+                                        Runtime::Current()->GetHeap()->GetCurrentAllocator());
+  return down_cast<PrimitiveArray<T>*>(raw_array);
+}
+
 void Array::ThrowArrayIndexOutOfBoundsException(int32_t index) {
   art::ThrowArrayIndexOutOfBoundsException(index, GetLength());
 }
@@ -145,9 +156,6 @@ Array* Array::CopyOf(Thread* self, int32_t new_length) {
   }
   return new_array.Ptr();
 }
-
-
-template <typename T> GcRoot<Class> PrimitiveArray<T>::array_class_;
 
 // Explicitly instantiate all the primitive array types.
 template class PrimitiveArray<uint8_t>;   // BooleanArray

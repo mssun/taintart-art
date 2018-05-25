@@ -24,6 +24,7 @@
 #include "art_method-inl.h"
 #include "base/stringpiece.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "debugger.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
@@ -47,7 +48,6 @@
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
 #include "vdex_file.h"
-#include "well_known_classes.h"
 
 namespace art {
 
@@ -68,7 +68,7 @@ ArtMethod* ArtMethod::GetCanonicalMethod(PointerSize pointer_size) {
   if (LIKELY(!IsDefault())) {
     return this;
   } else {
-    mirror::Class* declaring_class = GetDeclaringClass();
+    ObjPtr<mirror::Class> declaring_class = GetDeclaringClass();
     DCHECK(declaring_class->IsInterface());
     ArtMethod* ret = declaring_class->FindInterfaceMethod(declaring_class->GetDexCache(),
                                                           GetDexMethodIndex(),
@@ -213,8 +213,8 @@ ArtMethod* ArtMethod::FindOverriddenMethod(PointerSize pointer_size) {
   if (IsStatic()) {
     return nullptr;
   }
-  mirror::Class* declaring_class = GetDeclaringClass();
-  mirror::Class* super_class = declaring_class->GetSuperClass();
+  ObjPtr<mirror::Class> declaring_class = GetDeclaringClass();
+  ObjPtr<mirror::Class> super_class = declaring_class->GetSuperClass();
   uint16_t method_index = GetMethodIndex();
   ArtMethod* result = nullptr;
   // Did this method override a super class method? If so load the result from the super class'
@@ -229,7 +229,7 @@ ArtMethod* ArtMethod::FindOverriddenMethod(PointerSize pointer_size) {
     } else {
       mirror::IfTable* iftable = GetDeclaringClass()->GetIfTable();
       for (size_t i = 0; i < iftable->Count() && result == nullptr; i++) {
-        mirror::Class* interface = iftable->GetInterface(i);
+        ObjPtr<mirror::Class> interface = iftable->GetInterface(i);
         for (ArtMethod& interface_method : interface->GetVirtualMethods(pointer_size)) {
           if (HasSameNameAndSignature(interface_method.GetInterfaceMethodIfProxy(pointer_size))) {
             result = &interface_method;
@@ -424,9 +424,11 @@ bool ArtMethod::IsPolymorphicSignature() {
   if (!IsNative() || !IsVarargs()) {
     return false;
   }
-  mirror::Class* cls = GetDeclaringClass();
-  return (cls == WellKnownClasses::ToClass(WellKnownClasses::java_lang_invoke_MethodHandle) ||
-          cls == WellKnownClasses::ToClass(WellKnownClasses::java_lang_invoke_VarHandle));
+  ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
+      Runtime::Current()->GetClassLinker()->GetClassRoots();
+  ObjPtr<mirror::Class> cls = GetDeclaringClass();
+  return (cls == GetClassRoot<mirror::MethodHandle>(class_roots) ||
+          cls == GetClassRoot<mirror::VarHandle>(class_roots));
 }
 
 static uint32_t GetOatMethodIndexFromMethodIndex(const DexFile& dex_file,
@@ -510,7 +512,7 @@ static const OatFile::OatMethod FindOatMethodFor(ArtMethod* method,
   }
   // Although we overwrite the trampoline of non-static methods, we may get here via the resolution
   // method for direct methods (or virtual methods made direct).
-  mirror::Class* declaring_class = method->GetDeclaringClass();
+  ObjPtr<mirror::Class> declaring_class = method->GetDeclaringClass();
   size_t oat_method_index;
   if (method->IsStatic() || method->IsDirect()) {
     // Simple case where the oat method index was stashed at load time.

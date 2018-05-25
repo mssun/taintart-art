@@ -23,6 +23,7 @@
 #include "base/enums.h"
 #include "base/memory_tool.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_instruction.h"
@@ -1370,7 +1371,7 @@ TEST_F(UnstartedRuntimeTest, ConstructorNewInstance0) {
 
   Handle<mirror::ObjectArray<mirror::Object>> args = hs.NewHandle(
       mirror::ObjectArray<mirror::Object>::Alloc(
-          self, class_linker_->GetClassRoot(ClassLinker::ClassRoot::kObjectArrayClass), 1));
+          self, GetClassRoot<mirror::ObjectArray<mirror::Object>>(class_linker_), 1));
   ASSERT_TRUE(args != nullptr);
   args->Set(0, input.Get());
 

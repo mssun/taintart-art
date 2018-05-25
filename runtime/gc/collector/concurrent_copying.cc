@@ -23,6 +23,7 @@
 #include "base/quasi_atomic.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
+#include "class_root.h"
 #include "debugger.h"
 #include "gc/accounting/atomic_stack.h"
 #include "gc/accounting/heap_bitmap-inl.h"
@@ -2244,7 +2245,7 @@ void ConcurrentCopying::FillWithDummyObject(mirror::Object* dummy_obj, size_t by
   // Avoid going through read barrier for since kDisallowReadBarrierDuringScan may be enabled.
   // Explicitly mark to make sure to get an object in the to-space.
   mirror::Class* int_array_class = down_cast<mirror::Class*>(
-      Mark(mirror::IntArray::GetArrayClass<kWithoutReadBarrier>()));
+      Mark(GetClassRoot<mirror::IntArray, kWithoutReadBarrier>().Ptr()));
   CHECK(int_array_class != nullptr);
   if (ReadBarrier::kEnableToSpaceInvariantChecks) {
     AssertToSpaceInvariant(nullptr, MemberOffset(0), int_array_class);
@@ -2324,7 +2325,7 @@ mirror::Object* ConcurrentCopying::AllocateInSkippedBlock(size_t alloc_size) {
     CHECK_GE(byte_size - alloc_size, min_object_size);
     // FillWithDummyObject may mark an object, avoid holding skipped_blocks_lock_ to prevent lock
     // violation and possible deadlock. The deadlock case is a recursive case:
-    // FillWithDummyObject -> IntArray::GetArrayClass -> Mark -> Copy -> AllocateInSkippedBlock.
+    // FillWithDummyObject -> Mark(IntArray.class) -> Copy -> AllocateInSkippedBlock.
     FillWithDummyObject(reinterpret_cast<mirror::Object*>(addr + alloc_size),
                         byte_size - alloc_size);
     CHECK(region_space_->IsInToSpace(reinterpret_cast<mirror::Object*>(addr + alloc_size)));

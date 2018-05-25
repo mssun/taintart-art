@@ -201,11 +201,6 @@ inline Array* Array::Alloc(Thread* self,
   return result;
 }
 
-template<class T>
-inline void PrimitiveArray<T>::VisitRoots(RootVisitor* visitor) {
-  array_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
-}
-
 template<typename T>
 inline PrimitiveArray<T>* PrimitiveArray<T>::AllocateAndFill(Thread* self,
                                                              const T* data,
@@ -217,16 +212,6 @@ inline PrimitiveArray<T>* PrimitiveArray<T>::AllocateAndFill(Thread* self,
     memcpy(arr->GetData(), data, sizeof(T) * length);
   }
   return arr.Get();
-}
-
-template<typename T>
-inline PrimitiveArray<T>* PrimitiveArray<T>::Alloc(Thread* self, size_t length) {
-  Array* raw_array = Array::Alloc<true>(self,
-                                        GetArrayClass(),
-                                        length,
-                                        ComponentSizeShiftWidth(sizeof(T)),
-                                        Runtime::Current()->GetHeap()->GetCurrentAllocator());
-  return down_cast<PrimitiveArray<T>*>(raw_array);
 }
 
 template<typename T>
@@ -459,13 +444,6 @@ void PointerArray::Memcpy(int32_t dst_pos,
                                   : src->AsIntArray());
     i_this->Memcpy(dst_pos, i_src, src_pos, count);
   }
-}
-
-template<typename T>
-inline void PrimitiveArray<T>::SetArrayClass(ObjPtr<Class> array_class) {
-  CHECK(array_class_.IsNull());
-  CHECK(array_class != nullptr);
-  array_class_ = GcRoot<Class>(array_class);
 }
 
 }  // namespace mirror

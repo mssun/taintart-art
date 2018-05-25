@@ -365,14 +365,6 @@ inline ArtField* ClassLinker::ResolveField(uint32_t field_idx,
   return resolved_field;
 }
 
-inline mirror::Class* ClassLinker::GetClassRoot(ClassRoot class_root) {
-  DCHECK(!class_roots_.IsNull());
-  mirror::ObjectArray<mirror::Class>* class_roots = class_roots_.Read();
-  ObjPtr<mirror::Class> klass = class_roots->Get(class_root);
-  DCHECK(klass != nullptr);
-  return klass.Ptr();
-}
-
 template <class Visitor>
 inline void ClassLinker::VisitClassTables(const Visitor& visitor) {
   Thread* const self = Thread::Current();

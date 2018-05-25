@@ -18,6 +18,7 @@
 
 #include "art_method-inl.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "data_type-inl.h"
 #include "escape.h"
 #include "intrinsics.h"
@@ -1563,8 +1564,7 @@ static bool RecognizeAndSimplifyClassCheck(HCondition* condition) {
 
   {
     ScopedObjectAccess soa(Thread::Current());
-    ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-    ArtField* field = class_linker->GetClassRoot(ClassLinker::kJavaLangObject)->GetInstanceField(0);
+    ArtField* field = GetClassRoot<mirror::Object>()->GetInstanceField(0);
     DCHECK_EQ(std::string(field->GetName()), "shadow$_klass_");
     if (field_get->GetFieldInfo().GetField() != field) {
       return false;

@@ -33,6 +33,7 @@
 #include "base/logging.h"  // For VLOG.
 #include "base/unix_file/fd_file.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "compiled_method.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_types.h"
@@ -618,8 +619,7 @@ void ImageWriter::AssignImageBinSlot(mirror::Object* object, size_t oat_index) {
       }
     } else if (object->GetClass<kVerifyNone>()->IsStringClass()) {
       bin = Bin::kString;  // Strings are almost always immutable (except for object header).
-    } else if (object->GetClass<kVerifyNone>() ==
-        Runtime::Current()->GetClassLinker()->GetClassRoot(ClassLinker::kJavaLangObject)) {
+    } else if (object->GetClass<kVerifyNone>() == GetClassRoot<mirror::Object>()) {
       // Instance of java lang object, probably a lock object. This means it will be dirty when we
       // synchronize on it.
       bin = Bin::kMiscDirty;
@@ -2409,8 +2409,7 @@ void ImageWriter::FixupObject(Object* orig, Object* copy) {
       ArtMethod* src_method = src->GetArtMethod();
       dest->SetArtMethod(GetImageMethodAddress(src_method));
     } else if (!klass->IsArrayClass()) {
-      ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-      if (klass == class_linker->GetClassRoot(ClassLinker::kJavaLangDexCache)) {
+      if (klass == GetClassRoot<mirror::DexCache>()) {
         FixupDexCache(down_cast<mirror::DexCache*>(orig), down_cast<mirror::DexCache*>(copy));
       } else if (klass->IsClassLoaderClass()) {
         mirror::ClassLoader* copy_loader = down_cast<mirror::ClassLoader*>(copy);

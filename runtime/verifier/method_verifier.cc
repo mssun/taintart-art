@@ -33,6 +33,7 @@
 #include "base/time_utils.h"
 #include "base/utils.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "compiler_callbacks.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
@@ -4206,9 +4207,11 @@ bool MethodVerifier::CheckSignaturePolymorphicMethod(ArtMethod* method) {
   const char* method_name = method->GetName();
 
   const char* expected_return_descriptor;
-  if (klass == mirror::MethodHandle::StaticClass()) {
+  ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
+      Runtime::Current()->GetClassLinker()->GetClassRoots();
+  if (klass == GetClassRoot<mirror::MethodHandle>(class_roots)) {
     expected_return_descriptor = mirror::MethodHandle::GetReturnTypeDescriptor(method_name);
-  } else if (klass == mirror::VarHandle::StaticClass()) {
+  } else if (klass == GetClassRoot<mirror::VarHandle>(class_roots)) {
     expected_return_descriptor = mirror::VarHandle::GetReturnTypeDescriptor(method_name);
   } else {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD)
@@ -4268,12 +4271,16 @@ bool MethodVerifier::CheckSignaturePolymorphicReceiver(const Instruction* inst) 
         << "invoke-polymorphic receiver has no class: "
         << this_type;
     return false;
-  } else if (!this_type.GetClass()->IsSubClass(mirror::MethodHandle::StaticClass()) &&
-             !this_type.GetClass()->IsSubClass(mirror::VarHandle::StaticClass())) {
-    Fail(VERIFY_ERROR_BAD_CLASS_HARD)
-        << "invoke-polymorphic receiver is not a subclass of MethodHandle or VarHandle: "
-        << this_type;
-    return false;
+  } else {
+    ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
+        Runtime::Current()->GetClassLinker()->GetClassRoots();
+    if (!this_type.GetClass()->IsSubClass(GetClassRoot<mirror::MethodHandle>(class_roots)) &&
+        !this_type.GetClass()->IsSubClass(GetClassRoot<mirror::VarHandle>(class_roots))) {
+      Fail(VERIFY_ERROR_BAD_CLASS_HARD)
+          << "invoke-polymorphic receiver is not a subclass of MethodHandle or VarHandle: "
+          << this_type;
+      return false;
+    }
   }
   return true;
 }

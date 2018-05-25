@@ -31,6 +31,7 @@
 #include "base/scoped_arena_allocator.h"
 #include "base/timing_logger.h"
 #include "builder.h"
+#include "class_root.h"
 #include "code_generator.h"
 #include "compiled_method.h"
 #include "compiler.h"
@@ -1309,13 +1310,12 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   size_t method_info_size = 0;
   codegen->ComputeStackMapAndMethodInfoSize(&stack_map_size, &method_info_size);
   size_t number_of_roots = codegen->GetNumberOfJitRoots();
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   // We allocate an object array to ensure the JIT roots that we will collect in EmitJitRoots
   // will be visible by the GC between EmitLiterals and CommitCode. Once CommitCode is
   // executed, this array is not needed.
   Handle<mirror::ObjectArray<mirror::Object>> roots(
       hs.NewHandle(mirror::ObjectArray<mirror::Object>::Alloc(
-          self, class_linker->GetClassRoot(ClassLinker::kObjectArrayClass), number_of_roots)));
+          self, GetClassRoot<mirror::ObjectArray<mirror::Object>>(), number_of_roots)));
   if (roots == nullptr) {
     // Out of memory, just clear the exception to avoid any Java exception uncaught problems.
     MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kJitOutOfMemoryForCommit);

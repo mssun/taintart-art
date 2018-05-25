@@ -33,6 +33,7 @@
 
 #include "base/array_slice.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "dex/dex_file.h"
 #include "fixed_up_dex_file.h"
 #include "handle.h"
@@ -162,8 +163,7 @@ static void GetDexDataForRetransformation(art::Handle<art::mirror::Class> klass,
             << "Expected java/lang/Long but found object of type "
             << orig_dex->GetClass()->PrettyClass();
         art::ObjPtr<art::mirror::Class> prim_long_class(
-            art::Runtime::Current()->GetClassLinker()->GetClassRoot(
-                art::ClassLinker::kPrimitiveLong));
+            art::GetClassRoot(art::ClassRoot::kPrimitiveLong));
         art::JValue val;
         if (!art::UnboxPrimitiveForResult(orig_dex.Get(), prim_long_class, &val)) {
           // This should never happen.
@@ -226,8 +226,7 @@ static const art::DexFile* GetQuickenedDexFile(art::Handle<art::mirror::Class> k
       << "Expected java/lang/Long but found object of type "
       << orig_dex->GetClass()->PrettyClass();
   art::ObjPtr<art::mirror::Class> prim_long_class(
-      art::Runtime::Current()->GetClassLinker()->GetClassRoot(
-          art::ClassLinker::kPrimitiveLong));
+      art::GetClassRoot(art::ClassRoot::kPrimitiveLong));
   art::JValue val;
   if (!art::UnboxPrimitiveForResult(orig_dex.Ptr(), prim_long_class, &val)) {
     LOG(FATAL) << "Unable to unwrap a long value!";

@@ -18,6 +18,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "class_root.h"
 #include "common_dex_operations.h"
 #include "interpreter/shadow_frame-inl.h"
 #include "jvalue-inl.h"
@@ -1022,7 +1023,7 @@ bool DoVarHandleInvokeTranslation(Thread* self,
   // Check that the first parameter is a VarHandle
   if (callsite_ptypes->GetLength() < 1 ||
       !mh_ptypes->Get(0)->IsAssignableFrom(callsite_ptypes->Get(0)) ||
-      mh_ptypes->Get(0) != mirror::VarHandle::StaticClass()) {
+      mh_ptypes->Get(0) != GetClassRoot<mirror::VarHandle>()) {
     ThrowWrongMethodTypeException(method_handle->GetMethodType(), callsite_type.Get());
     return false;
   }
@@ -1036,7 +1037,7 @@ bool DoVarHandleInvokeTranslation(Thread* self,
 
   // Cast to VarHandle instance
   Handle<mirror::VarHandle> vh(hs.NewHandle(down_cast<mirror::VarHandle*>(receiver)));
-  DCHECK(mirror::VarHandle::StaticClass()->IsAssignableFrom(vh->GetClass()));
+  DCHECK(GetClassRoot<mirror::VarHandle>()->IsAssignableFrom(vh->GetClass()));
 
   // Determine the accessor kind to dispatch
   ArtMethod* target_method = method_handle->GetTargetMethod();

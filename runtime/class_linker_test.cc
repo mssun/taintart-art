@@ -25,6 +25,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "dex/dex_file_types.h"
 #include "dex/standard_dex_file.h"
@@ -1387,11 +1388,10 @@ TEST_F(ClassLinkerTest, FinalizableBit) {
 TEST_F(ClassLinkerTest, ClassRootDescriptors) {
   ScopedObjectAccess soa(Thread::Current());
   std::string temp;
-  for (int i = 0; i < ClassLinker::kClassRootsMax; i++) {
-    ObjPtr<mirror::Class> klass = class_linker_->GetClassRoot(ClassLinker::ClassRoot(i));
+  for (size_t i = 0; i < static_cast<size_t>(ClassRoot::kMax); i++) {
+    ObjPtr<mirror::Class> klass = GetClassRoot(ClassRoot(i), class_linker_);
     EXPECT_GT(strlen(klass->GetDescriptor(&temp)), 0U);
-    EXPECT_STREQ(klass->GetDescriptor(&temp),
-                 class_linker_->GetClassRootDescriptor(ClassLinker::ClassRoot(i))) << " i = " << i;
+    EXPECT_STREQ(klass->GetDescriptor(&temp), GetClassRootDescriptor(ClassRoot(i))) << " i = " << i;
   }
 }
 

@@ -50,6 +50,7 @@
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "common_throws.h"
 #include "debugger.h"
 #include "dex/dex_file-inl.h"
@@ -1418,8 +1419,7 @@ void Hprof::DumpFakeObjectArray(mirror::Object* obj, const std::set<mirror::Obje
   __ AddObjectId(obj);
   __ AddStackTraceSerialNumber(LookupStackTraceSerialNumber(obj));
   __ AddU4(elements.size());
-  __ AddClassId(LookupClassId(
-      Runtime::Current()->GetClassLinker()->GetClassRoot(ClassLinker::kObjectArrayClass)));
+  __ AddClassId(LookupClassId(GetClassRoot<mirror::ObjectArray<mirror::Object>>().Ptr()));
   for (mirror::Object* e : elements) {
     __ AddObjectId(e);
   }
