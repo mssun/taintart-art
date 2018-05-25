@@ -155,8 +155,7 @@ class VerifierDepsTest : public CommonCompilerTest {
     bool has_failures = true;
     bool found_method = false;
 
-    accessor.VisitMethods([&](const ClassAccessor::Method& method)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
       ArtMethod* resolved_method =
           class_linker_->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
               method.GetIndex(),
@@ -186,7 +185,7 @@ class VerifierDepsTest : public CommonCompilerTest {
         has_failures = verifier.HasFailures();
         found_method = true;
       }
-    });
+    }
     CHECK(found_method) << "Expected to find method " << method_name;
     return !has_failures;
   }

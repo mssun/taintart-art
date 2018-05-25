@@ -45,7 +45,7 @@ class ClassAccessor {
       return (GetAccessFlags() & kAccFinal) != 0;
     }
 
-   public:
+   protected:
     uint32_t index_ = 0u;
     uint32_t access_flags_ = 0u;
   };
@@ -72,8 +72,13 @@ class ClassAccessor {
 
     const DexFile::CodeItem* GetCodeItem() const;
 
+    bool IsStaticOrDirect() const {
+      return is_static_or_direct_;
+    }
+
    private:
-    explicit Method(const DexFile& dex_file, bool is_static_or_direct)
+    explicit Method(const DexFile& dex_file,
+                    bool is_static_or_direct = true)
         : dex_file_(dex_file),
           is_static_or_direct_(is_static_or_direct) {}
 
@@ -94,8 +99,14 @@ class ClassAccessor {
       }
     }
 
+    void NextSection() {
+      DCHECK(is_static_or_direct_) << "Already in the virtual methods section";
+      is_static_or_direct_ = false;
+      index_ = 0u;
+    }
+
     const DexFile& dex_file_;
-    const bool is_static_or_direct_;
+    bool is_static_or_direct_ = true;
     uint32_t code_off_ = 0u;
 
     friend class ClassAccessor;
@@ -103,10 +114,111 @@ class ClassAccessor {
 
   // A decoded version of the field of a class_data_item.
   class Field : public BaseItem {
+   public:
+    explicit Field(const DexFile& dex_file) : dex_file_(dex_file) {}
+
+    const DexFile& GetDexFile() const {
+      return dex_file_;
+    }
+
    private:
     const uint8_t* Read(const uint8_t* ptr);
 
+    void NextSection() {
+      index_ = 0u;
+    }
+
+    const DexFile& dex_file_;
     friend class ClassAccessor;
+  };
+
+  template <typename DataType>
+  class DataIterator : public std::iterator<std::forward_iterator_tag, DataType> {
+   public:
+    using value_type = typename std::iterator<std::forward_iterator_tag, DataType>::value_type;
+    using difference_type =
+        typename std::iterator<std::forward_iterator_tag, value_type>::difference_type;
+
+    DataIterator(const DexFile& dex_file,
+                 uint32_t position,
+                 uint32_t partition_pos,
+                 uint32_t iterator_end,
+                 const uint8_t* ptr_pos)
+        : data_(dex_file),
+          position_(position),
+          partition_pos_(partition_pos),
+          iterator_end_(iterator_end),
+          ptr_pos_(ptr_pos) {
+      ReadData();
+    }
+
+    bool IsValid() const {
+      return position_ < iterator_end_;
+    }
+
+    // Value after modification.
+    DataIterator& operator++() {
+      ++position_;
+      ReadData();
+      return *this;
+    }
+
+    const value_type& operator*() const {
+      return data_;
+    }
+
+    const value_type* operator->() const {
+      return &data_;
+    }
+
+    bool operator==(const DataIterator& rhs) const {
+      DCHECK_EQ(&data_.dex_file_, &rhs.data_.dex_file_) << "Comparing different dex files.";
+      return position_ == rhs.position_;
+    }
+
+    bool operator!=(const DataIterator& rhs) const {
+      return !(*this == rhs);
+    }
+
+    bool operator<(const DataIterator& rhs) const {
+      DCHECK_EQ(&data_.dex_file_, &rhs.data_.dex_file_) << "Comparing different dex files.";
+      return position_ < rhs.position_;
+    }
+
+    bool operator>(const DataIterator& rhs) const {
+      return rhs < *this;
+    }
+
+    bool operator<=(const DataIterator& rhs) const {
+      return !(rhs < *this);
+    }
+
+    bool operator>=(const DataIterator& rhs) const {
+      return !(*this < rhs);
+    }
+
+   private:
+    // Read data at current position.
+    void ReadData() {
+      if (IsValid()) {
+        // At the end of the first section, go to the next section.
+        if (position_ == partition_pos_) {
+          data_.NextSection();
+        }
+        DCHECK(ptr_pos_ != nullptr);
+        ptr_pos_ = data_.Read(ptr_pos_);
+      }
+    }
+
+    DataType data_;
+    // Iterator position.
+    uint32_t position_;
+    // At partition_pos_, we go to the next section.
+    const uint32_t partition_pos_;
+    // At iterator_end_, the iterator is no longer valid.
+    const uint32_t iterator_end_;
+    // Internal data pointer.
+    const uint8_t* ptr_pos_;
   };
 
   // Not explicit specifically for range-based loops.
@@ -118,7 +230,6 @@ class ClassAccessor {
   const DexFile::CodeItem* GetCodeItem(const Method& method) const;
 
   // Iterator data is not very iterator friendly, use visitors to get around this.
-  // No thread safety analysis since the visitor may require capabilities.
   template <typename StaticFieldVisitor,
             typename InstanceFieldVisitor,
             typename DirectMethodVisitor,
@@ -126,8 +237,7 @@ class ClassAccessor {
   void VisitFieldsAndMethods(const StaticFieldVisitor& static_field_visitor,
                              const InstanceFieldVisitor& instance_field_visitor,
                              const DirectMethodVisitor& direct_method_visitor,
-                             const VirtualMethodVisitor& virtual_method_visitor) const
-      NO_THREAD_SAFETY_ANALYSIS;
+                             const VirtualMethodVisitor& virtual_method_visitor) const;
 
   template <typename DirectMethodVisitor,
             typename VirtualMethodVisitor>
@@ -139,9 +249,11 @@ class ClassAccessor {
   void VisitFields(const StaticFieldVisitor& static_field_visitor,
                    const InstanceFieldVisitor& instance_field_visitor) const;
 
-  // Visit direct and virtual methods.
-  template <typename MethodVisitor>
-  void VisitMethods(const MethodVisitor& method_visitor) const;
+  // Return the iteration range for all the fields.
+  IterationRange<DataIterator<Field>> GetFields() const;
+
+  // Return the iteration range for all the methods.
+  IterationRange<DataIterator<Method>> GetMethods() const;
 
   uint32_t NumStaticFields() const {
     return num_static_fields_;
@@ -170,6 +282,14 @@ class ClassAccessor {
   }
 
  protected:
+  // Template visitor to reduce copy paste for visiting elements.
+  // No thread safety analysis since the visitor may require capabilities.
+  template <typename DataType, typename Visitor>
+  const uint8_t* VisitMembers(size_t count,
+                              const Visitor& visitor,
+                              const uint8_t* ptr,
+                              DataType* data) const NO_THREAD_SAFETY_ANALYSIS;
+
   const DexFile& dex_file_;
   const dex::TypeIndex descriptor_index_ = {};
   const uint8_t* ptr_pos_ = nullptr;  // Pointer into stream of class_data_item.
