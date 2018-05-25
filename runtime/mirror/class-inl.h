@@ -36,7 +36,6 @@
 #include "object-inl.h"
 #include "object_array.h"
 #include "read_barrier-inl.h"
-#include "reference-inl.h"
 #include "runtime.h"
 #include "string.h"
 
@@ -857,11 +856,6 @@ inline uint32_t Class::ComputeClassSize(bool has_embedded_vtable,
   return size;
 }
 
-template<ReadBarrierOption kReadBarrierOption>
-inline bool Class::IsReferenceClass() const {
-  return this == Reference::GetJavaLangRefReference<kReadBarrierOption>();
-}
-
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
 inline bool Class::IsClassClass() {
   ObjPtr<Class> java_lang_Class = GetClass<kVerifyFlags, kReadBarrierOption>()->
@@ -914,30 +908,6 @@ inline ObjectArray<ObjectArray<Class>>* Class::GetProxyThrows() {
   DCHECK_STREQ(field->GetName(), "throws");
   MemberOffset field_offset = field->GetOffset();
   return GetFieldObject<ObjectArray<ObjectArray<Class>>>(field_offset);
-}
-
-inline MemberOffset Class::GetDisableIntrinsicFlagOffset() {
-  CHECK(IsReferenceClass());
-  // First static field
-  auto* field = GetStaticField(0);
-  DCHECK_STREQ(field->GetName(), "disableIntrinsic");
-  return field->GetOffset();
-}
-
-inline MemberOffset Class::GetSlowPathFlagOffset() {
-  CHECK(IsReferenceClass());
-  // Second static field
-  auto* field = GetStaticField(1);
-  DCHECK_STREQ(field->GetName(), "slowPathEnabled");
-  return field->GetOffset();
-}
-
-inline bool Class::GetSlowPathEnabled() {
-  return GetFieldBoolean(GetSlowPathFlagOffset());
-}
-
-inline void Class::SetSlowPath(bool enabled) {
-  SetFieldBoolean<false, false>(GetSlowPathFlagOffset(), enabled);
 }
 
 inline void Class::InitializeClassVisitor::operator()(ObjPtr<Object> obj,

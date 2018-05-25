@@ -20,7 +20,6 @@
 #include "art_field.h"
 #include "art_method.h"
 #include "class.h"
-#include "gc_root.h"
 #include "method_type.h"
 #include "object.h"
 
