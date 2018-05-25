@@ -149,11 +149,6 @@ class MANAGED VarHandle : public Object {
   // VarHandle access method, such as "setOpaque". Returns false otherwise.
   static bool GetAccessModeByMethodName(const char* method_name, AccessMode* access_mode);
 
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
   Class* GetCoordinateType0() REQUIRES_SHARED(Locks::mutator_lock_);
   Class* GetCoordinateType1() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -185,9 +180,6 @@ class MANAGED VarHandle : public Object {
   HeapReference<mirror::Class> var_type_;
   int32_t access_modes_bit_mask_;
 
-  // Root representing java.lang.invoke.VarHandle.class.
-  static GcRoot<mirror::Class> static_class_;
-
   friend class VarHandleTest;  // for testing purposes
   friend struct art::VarHandleOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(VarHandle);
@@ -218,9 +210,6 @@ class MANAGED FieldVarHandle : public VarHandle {
   // ArtField instance corresponding to variable for accessors.
   int64_t art_field_;
 
-  // Root representing java.lang.invoke.FieldVarHandle.class.
-  static GcRoot<mirror::Class> static_class_;
-
   friend class VarHandleTest;  // for var_handle_test.
   friend struct art::FieldVarHandleOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(FieldVarHandle);
@@ -236,15 +225,7 @@ class MANAGED ArrayElementVarHandle : public VarHandle {
                 JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
-  // Root representing java.lang.invoke.ArrayElementVarHandle.class.
-  static GcRoot<mirror::Class> static_class_;
-
   friend class VarHandleTest;
   DISALLOW_IMPLICIT_CONSTRUCTORS(ArrayElementVarHandle);
 };
@@ -261,11 +242,6 @@ class MANAGED ByteArrayViewVarHandle : public VarHandle {
 
   bool GetNativeByteOrder() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
   static MemberOffset NativeByteOrderOffset() {
     return MemberOffset(OFFSETOF_MEMBER(ByteArrayViewVarHandle, native_byte_order_));
@@ -273,9 +249,6 @@ class MANAGED ByteArrayViewVarHandle : public VarHandle {
 
   // Flag indicating that accessors should use native byte-ordering.
   uint8_t native_byte_order_;
-
-  // Root representing java.lang.invoke.ByteArrayViewVarHandle.class.
-  static GcRoot<mirror::Class> static_class_;
 
   friend class VarHandleTest;  // for var_handle_test.
   friend struct art::ByteArrayViewVarHandleOffsets;  // for verifying offset information
@@ -293,11 +266,6 @@ class MANAGED ByteBufferViewVarHandle : public VarHandle {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool GetNativeByteOrder() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   bool AccessHeapBuffer(AccessMode access_mode,
@@ -321,9 +289,6 @@ class MANAGED ByteBufferViewVarHandle : public VarHandle {
 
   // Flag indicating that accessors should use native byte-ordering.
   uint8_t native_byte_order_;
-
-  // Root representing java.lang.invoke.ByteBufferViewVarHandle.class.
-  static GcRoot<mirror::Class> static_class_;
 
   friend class VarHandleTest;  // for var_handle_test.
   friend struct art::ByteBufferViewVarHandleOffsets;  // for verifying offset information

@@ -23,6 +23,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "dex/dex_file-inl.h"
 #include "jni/jni_internal.h"
 #include "jvalue-inl.h"
@@ -1211,7 +1212,7 @@ bool GetParametersMetadataForMethod(ArtMethod* method,
   }
 
   // Extract the parameters' access flags int[].
-  Handle<mirror::Class> int_array_class(hs.NewHandle(mirror::IntArray::GetArrayClass()));
+  Handle<mirror::Class> int_array_class(hs.NewHandle(GetClassRoot<mirror::IntArray>()));
   if (UNLIKELY(int_array_class == nullptr)) {
     return false;
   }

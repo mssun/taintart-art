@@ -28,6 +28,7 @@
 #include "class-inl.h"
 #include "class_linker-inl.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "dex/dex_file.h"
 #include "entrypoints/entrypoint_utils-inl.h"
@@ -78,7 +79,7 @@ class ObjectTest : public CommonRuntimeTest {
   mirror::ObjectArray<T>* AllocObjectArray(Thread* self, size_t length)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return mirror::ObjectArray<T>::Alloc(
-        self, class_linker_->GetClassRoot(ClassLinker::ClassRoot::kObjectArrayClass), length);
+        self, GetClassRoot(ClassRoot::kObjectArrayClass, class_linker_), length);
   }
 };
 

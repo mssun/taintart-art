@@ -47,6 +47,7 @@
 #include "base/to_str.h"
 #include "base/utils.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "debugger.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
@@ -2510,7 +2511,8 @@ class BuildInternalStackTraceVisitor : public StackVisitor {
     // class of the ArtMethod pointers.
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     StackHandleScope<1> hs(self_);
-    ObjPtr<mirror::Class> array_class = class_linker->GetClassRoot(ClassLinker::kObjectArrayClass);
+    ObjPtr<mirror::Class> array_class =
+        GetClassRoot<mirror::ObjectArray<mirror::Object>>(class_linker);
     // The first element is the methods and dex pc array, the other elements are declaring classes
     // for the methods to ensure classes in the stack trace don't get unloaded.
     Handle<mirror::ObjectArray<mirror::Object>> trace(

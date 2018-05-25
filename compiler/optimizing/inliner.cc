@@ -20,6 +20,7 @@
 #include "base/enums.h"
 #include "builder.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "constant_folding.h"
 #include "data_type-inl.h"
 #include "dead_code_elimination.h"
@@ -537,7 +538,7 @@ static Handle<mirror::ObjectArray<mirror::Class>> AllocateInlineCacheHolder(
   Handle<mirror::ObjectArray<mirror::Class>> inline_cache = hs->NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(
           self,
-          class_linker->GetClassRoot(ClassLinker::kClassArrayClass),
+          GetClassRoot<mirror::ObjectArray<mirror::Class>>(class_linker),
           InlineCache::kIndividualCacheSize));
   if (inline_cache == nullptr) {
     // We got an OOME. Just clear the exception, and don't inline.
@@ -777,7 +778,7 @@ HInliner::InlineCacheType HInliner::ExtractClassesFromOfflineProfile(
 HInstanceFieldGet* HInliner::BuildGetReceiverClass(ClassLinker* class_linker,
                                                    HInstruction* receiver,
                                                    uint32_t dex_pc) const {
-  ArtField* field = class_linker->GetClassRoot(ClassLinker::kJavaLangObject)->GetInstanceField(0);
+  ArtField* field = GetClassRoot<mirror::Object>(class_linker)->GetInstanceField(0);
   DCHECK_EQ(std::string(field->GetName()), "shadow$_klass_");
   HInstanceFieldGet* result = new (graph_->GetAllocator()) HInstanceFieldGet(
       receiver,
@@ -2120,9 +2121,8 @@ bool HInliner::ReturnTypeMoreSpecific(HInvoke* invoke_instruction,
         return true;
       } else if (return_replacement->IsInstanceFieldGet()) {
         HInstanceFieldGet* field_get = return_replacement->AsInstanceFieldGet();
-        ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
         if (field_get->GetFieldInfo().GetField() ==
-              class_linker->GetClassRoot(ClassLinker::kJavaLangObject)->GetInstanceField(0)) {
+                GetClassRoot<mirror::Object>()->GetInstanceField(0)) {
           return true;
         }
       }

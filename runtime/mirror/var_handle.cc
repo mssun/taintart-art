@@ -20,6 +20,7 @@
 #include "art_field-inl.h"
 #include "class-inl.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "gc_root-inl.h"
 #include "intrinsics_enum.h"
 #include "jni/jni_internal.h"
@@ -1580,17 +1581,18 @@ bool VarHandle::Access(AccessMode access_mode,
                        ShadowFrame* shadow_frame,
                        const InstructionOperands* const operands,
                        JValue* result) {
-  Class* klass = GetClass();
-  if (klass == FieldVarHandle::StaticClass()) {
+  ObjPtr<ObjectArray<Class>> class_roots = Runtime::Current()->GetClassLinker()->GetClassRoots();
+  ObjPtr<Class> klass = GetClass();
+  if (klass == GetClassRoot<FieldVarHandle>(class_roots)) {
     auto vh = reinterpret_cast<FieldVarHandle*>(this);
     return vh->Access(access_mode, shadow_frame, operands, result);
-  } else if (klass == ArrayElementVarHandle::StaticClass()) {
+  } else if (klass == GetClassRoot<ArrayElementVarHandle>(class_roots)) {
     auto vh = reinterpret_cast<ArrayElementVarHandle*>(this);
     return vh->Access(access_mode, shadow_frame, operands, result);
-  } else if (klass == ByteArrayViewVarHandle::StaticClass()) {
+  } else if (klass == GetClassRoot<ByteArrayViewVarHandle>(class_roots)) {
     auto vh = reinterpret_cast<ByteArrayViewVarHandle*>(this);
     return vh->Access(access_mode, shadow_frame, operands, result);
-  } else if (klass == ByteBufferViewVarHandle::StaticClass()) {
+  } else if (klass == GetClassRoot<ByteBufferViewVarHandle>(class_roots)) {
     auto vh = reinterpret_cast<ByteBufferViewVarHandle*>(this);
     return vh->Access(access_mode, shadow_frame, operands, result);
   } else {
@@ -1681,27 +1683,6 @@ bool VarHandle::GetAccessModeByMethodName(const char* method_name, AccessMode* a
   return true;
 }
 
-Class* VarHandle::StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-  return static_class_.Read();
-}
-
-void VarHandle::SetClass(Class* klass) {
-  CHECK(static_class_.IsNull()) << static_class_.Read() << " " << klass;
-  CHECK(klass != nullptr);
-  static_class_ = GcRoot<Class>(klass);
-}
-
-void VarHandle::ResetClass() {
-  CHECK(!static_class_.IsNull());
-  static_class_ = GcRoot<Class>(nullptr);
-}
-
-void VarHandle::VisitRoots(RootVisitor* visitor) {
-  static_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
-}
-
-GcRoot<Class> VarHandle::static_class_;
-
 ArtField* FieldVarHandle::GetField() {
   uintptr_t opaque_field = static_cast<uintptr_t>(GetField64(ArtFieldOffset()));
   return reinterpret_cast<ArtField*>(opaque_field);
@@ -1757,27 +1738,6 @@ bool FieldVarHandle::Access(AccessMode access_mode,
   LOG(FATAL) << "Unreachable: Unexpected primitive " << primitive_type;
   UNREACHABLE();
 }
-
-Class* FieldVarHandle::StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-  return static_class_.Read();
-}
-
-void FieldVarHandle::SetClass(Class* klass) {
-  CHECK(static_class_.IsNull()) << static_class_.Read() << " " << klass;
-  CHECK(klass != nullptr);
-  static_class_ = GcRoot<Class>(klass);
-}
-
-void FieldVarHandle::ResetClass() {
-  CHECK(!static_class_.IsNull());
-  static_class_ = GcRoot<Class>(nullptr);
-}
-
-void FieldVarHandle::VisitRoots(RootVisitor* visitor) {
-  static_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
-}
-
-GcRoot<Class> FieldVarHandle::static_class_;
 
 bool ArrayElementVarHandle::Access(AccessMode access_mode,
                                    ShadowFrame* shadow_frame,
@@ -1867,27 +1827,6 @@ bool ArrayElementVarHandle::Access(AccessMode access_mode,
   UNREACHABLE();
 }
 
-Class* ArrayElementVarHandle::StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-  return static_class_.Read();
-}
-
-void ArrayElementVarHandle::SetClass(Class* klass) {
-  CHECK(static_class_.IsNull()) << static_class_.Read() << " " << klass;
-  CHECK(klass != nullptr);
-  static_class_ = GcRoot<Class>(klass);
-}
-
-void ArrayElementVarHandle::ResetClass() {
-  CHECK(!static_class_.IsNull());
-  static_class_ = GcRoot<Class>(nullptr);
-}
-
-void ArrayElementVarHandle::VisitRoots(RootVisitor* visitor) {
-  static_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
-}
-
-GcRoot<Class> ArrayElementVarHandle::static_class_;
-
 bool ByteArrayViewVarHandle::GetNativeByteOrder() {
   return GetFieldBoolean(NativeByteOrderOffset());
 }
@@ -1975,27 +1914,6 @@ bool ByteArrayViewVarHandle::Access(AccessMode access_mode,
   LOG(FATAL) << "Unreachable: Unexpected primitive " << primitive_type;
   UNREACHABLE();
 }
-
-Class* ByteArrayViewVarHandle::StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-  return static_class_.Read();
-}
-
-void ByteArrayViewVarHandle::SetClass(Class* klass) {
-  CHECK(static_class_.IsNull()) << static_class_.Read() << " " << klass;
-  CHECK(klass != nullptr);
-  static_class_ = GcRoot<Class>(klass);
-}
-
-void ByteArrayViewVarHandle::ResetClass() {
-  CHECK(!static_class_.IsNull());
-  static_class_ = GcRoot<Class>(nullptr);
-}
-
-void ByteArrayViewVarHandle::VisitRoots(RootVisitor* visitor) {
-  static_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
-}
-
-GcRoot<Class> ByteArrayViewVarHandle::static_class_;
 
 bool ByteBufferViewVarHandle::GetNativeByteOrder() {
   return GetFieldBoolean(NativeByteOrderOffset());
@@ -2116,27 +2034,6 @@ bool ByteBufferViewVarHandle::Access(AccessMode access_mode,
   LOG(FATAL) << "Unreachable: Unexpected primitive " << primitive_type;
   UNREACHABLE();
 }
-
-Class* ByteBufferViewVarHandle::StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-  return static_class_.Read();
-}
-
-void ByteBufferViewVarHandle::SetClass(Class* klass) {
-  CHECK(static_class_.IsNull()) << static_class_.Read() << " " << klass;
-  CHECK(klass != nullptr);
-  static_class_ = GcRoot<Class>(klass);
-}
-
-void ByteBufferViewVarHandle::ResetClass() {
-  CHECK(!static_class_.IsNull());
-  static_class_ = GcRoot<Class>(nullptr);
-}
-
-void ByteBufferViewVarHandle::VisitRoots(RootVisitor* visitor) {
-  static_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
-}
-
-GcRoot<Class> ByteBufferViewVarHandle::static_class_;
 
 }  // namespace mirror
 }  // namespace art

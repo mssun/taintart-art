@@ -22,6 +22,7 @@
 #include "base/bit_vector-inl.h"
 #include "base/stl_util.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "code_generator.h"
 #include "common_dominator.h"
 #include "intrinsics.h"
@@ -40,9 +41,8 @@ static constexpr bool kEnableFloatingPointStaticEvaluation = (FLT_EVAL_METHOD ==
 void HGraph::InitializeInexactObjectRTI(VariableSizedHandleScope* handles) {
   ScopedObjectAccess soa(Thread::Current());
   // Create the inexact Object reference type and store it in the HGraph.
-  ClassLinker* linker = Runtime::Current()->GetClassLinker();
   inexact_object_rti_ = ReferenceTypeInfo::Create(
-      handles->NewHandle(linker->GetClassRoot(ClassLinker::kJavaLangObject)),
+      handles->NewHandle(GetClassRoot<mirror::Object>()),
       /* is_exact */ false);
 }
 

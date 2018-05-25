@@ -40,6 +40,7 @@ libart_cc_defaults {
         "check_jni.cc",
         "class_linker.cc",
         "class_loader_context.cc",
+        "class_root.cc",
         "class_table.cc",
         "common_throws.cc",
         "compiler_filter.cc",

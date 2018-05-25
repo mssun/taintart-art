@@ -18,6 +18,7 @@
 #define ART_RUNTIME_VERIFIER_REG_TYPE_CACHE_INL_H_
 
 #include "class_linker.h"
+#include "class_root.h"
 #include "mirror/class-inl.h"
 #include "mirror/method_handle_impl.h"
 #include "mirror/method_type.h"
@@ -138,14 +139,14 @@ inline const PreciseReferenceType& RegTypeCache::JavaLangString() {
 
 inline const PreciseReferenceType& RegTypeCache::JavaLangInvokeMethodHandle() {
   const RegType* result = &FromClass("Ljava/lang/invoke/MethodHandle;",
-                                     mirror::MethodHandle::StaticClass(), true);
+                                     GetClassRoot<mirror::MethodHandle>().Ptr(), true);
   DCHECK(result->IsPreciseReference());
   return *down_cast<const PreciseReferenceType*>(result);
 }
 
 inline const PreciseReferenceType& RegTypeCache::JavaLangInvokeMethodType() {
   const RegType* result = &FromClass("Ljava/lang/invoke/MethodType;",
-                                     mirror::MethodType::StaticClass(), true);
+                                     GetClassRoot<mirror::MethodType>().Ptr(), true);
   DCHECK(result->IsPreciseReference());
   return *down_cast<const PreciseReferenceType*>(result);
 }

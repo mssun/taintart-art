@@ -17,6 +17,7 @@
 #include "method_handle_impl-inl.h"
 
 #include "class-inl.h"
+#include "class_root.h"
 #include "gc_root-inl.h"
 
 namespace art {
@@ -28,12 +29,6 @@ const char* MethodHandle::GetReturnTypeDescriptor(const char* invoke_method_name
   } else {
     return nullptr;
   }
-}
-
-mirror::Class* MethodHandle::StaticClass() {
-  mirror::Class* klass = MethodHandleImpl::StaticClass()->GetSuperClass();
-  DCHECK(klass->DescriptorEquals("Ljava/lang/invoke/MethodHandle;"));
-  return klass;
 }
 
 void MethodHandle::Initialize(uintptr_t art_field_or_method,
@@ -48,35 +43,14 @@ void MethodHandle::Initialize(uintptr_t art_field_or_method,
   SetField64<false>(ArtFieldOrMethodOffset(), art_field_or_method);
 }
 
-GcRoot<mirror::Class> MethodHandleImpl::static_class_;
-
-mirror::Class* MethodHandleImpl::StaticClass()  {
-  return static_class_.Read();
-}
-
-void MethodHandleImpl::SetClass(Class* klass) {
-  CHECK(static_class_.IsNull()) << static_class_.Read() << " " << klass;
-  CHECK(klass != nullptr);
-  static_class_ = GcRoot<Class>(klass);
-}
-
-void MethodHandleImpl::ResetClass() {
-  CHECK(!static_class_.IsNull());
-  static_class_ = GcRoot<Class>(nullptr);
-}
-
-void MethodHandleImpl::VisitRoots(RootVisitor* visitor) {
-  static_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
-}
-
 mirror::MethodHandleImpl* MethodHandleImpl::Create(Thread* const self,
                                                    uintptr_t art_field_or_method,
                                                    MethodHandle::Kind kind,
                                                    Handle<MethodType> method_type)
     REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
   StackHandleScope<1> hs(self);
-  Handle<mirror::MethodHandleImpl> mh(
-      hs.NewHandle(ObjPtr<MethodHandleImpl>::DownCast(StaticClass()->AllocObject(self))));
+  Handle<mirror::MethodHandleImpl> mh(hs.NewHandle(ObjPtr<MethodHandleImpl>::DownCast(
+      GetClassRoot<MethodHandleImpl>()->AllocObject(self))));
   mh->Initialize(art_field_or_method, kind, method_type);
   return mh.Get();
 }
