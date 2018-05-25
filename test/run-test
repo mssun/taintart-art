@@ -441,6 +441,11 @@ while true; do
     fi
 done
 
+if [ "$usage" = "no" -a "x$1" = "x" ]; then
+  echo "missing test to run" 1>&2
+  usage="yes"
+fi
+
 # The DEX_LOCATION with the chroot prefix, if any.
 chroot_dex_location="$chroot$DEX_LOCATION"
 
