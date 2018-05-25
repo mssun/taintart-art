@@ -14,26 +14,25 @@
  * limitations under the License.
  */
 
+#include "art_dex_file_loader.h"
+
 #include <sys/mman.h>
 
 #include <fstream>
 #include <memory>
 
-#include "art_dex_file_loader.h"
+#include "base/common_art_test.h"
 #include "base/file_utils.h"
 #include "base/mem_map.h"
 #include "base/os.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
-#include "common_runtime_test.h"
 #include "dex/base64_test_util.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
-#include "scoped_thread_state_change-inl.h"
-#include "thread-current-inl.h"
 
 namespace art {
 
@@ -43,26 +42,35 @@ static void Copy(const std::string& src, const std::string& dst) {
   dst_stream << src_stream.rdbuf();
 }
 
-class ArtDexFileLoaderTest : public CommonRuntimeTest {};
+class ArtDexFileLoaderTest : public CommonArtTest {
+  void SetUp() OVERRIDE {
+    CommonArtTest::SetUp();
+    // Open a jar file from the boot classpath for use in basic tests of dex accessors.
+    std::vector<std::string> lib_core_dex_file_names = GetLibCoreDexFileNames();
+    CHECK_NE(lib_core_dex_file_names.size(), 0U);
+    dex_files_ = OpenDexFiles(lib_core_dex_file_names[0].c_str());
+    CHECK_NE(dex_files_.size(), 0U);
+    // Save a dex file for use by tests.
+    java_lang_dex_file_ = dex_files_[0].get();
+  }
 
-// TODO: Port OpenTestDexFile(s) need to be ported to use non-ART utilities, and
-// the tests that depend upon them should be moved to dex_file_loader_test.cc
+ protected:
+  std::vector<std::unique_ptr<const DexFile>> dex_files_;
+  const DexFile* java_lang_dex_file_;
+};
 
 TEST_F(ArtDexFileLoaderTest, Open) {
-  ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<const DexFile> dex(OpenTestDexFile("Nested"));
   ASSERT_TRUE(dex.get() != nullptr);
 }
 
 TEST_F(ArtDexFileLoaderTest, GetLocationChecksum) {
-  ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<const DexFile> raw(OpenTestDexFile("Main"));
   EXPECT_NE(raw->GetHeader().checksum_, raw->GetLocationChecksum());
 }
 
 TEST_F(ArtDexFileLoaderTest, GetChecksum) {
   std::vector<uint32_t> checksums;
-  ScopedObjectAccess soa(Thread::Current());
   std::string error_msg;
   const ArtDexFileLoader dex_file_loader;
   EXPECT_TRUE(dex_file_loader.GetMultiDexChecksums(GetLibCoreDexFileNames()[0].c_str(),
@@ -94,7 +102,6 @@ TEST_F(ArtDexFileLoaderTest, GetMultiDexChecksums) {
 }
 
 TEST_F(ArtDexFileLoaderTest, ClassDefs) {
-  ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<const DexFile> raw(OpenTestDexFile("Nested"));
   ASSERT_TRUE(raw.get() != nullptr);
   EXPECT_EQ(3U, raw->NumClassDefs());
@@ -110,7 +117,6 @@ TEST_F(ArtDexFileLoaderTest, ClassDefs) {
 }
 
 TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
-  ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<const DexFile> raw(OpenTestDexFile("GetMethodSignature"));
   ASSERT_TRUE(raw.get() != nullptr);
   EXPECT_EQ(1U, raw->NumClassDefs());
@@ -215,7 +221,6 @@ TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
 }
 
 TEST_F(ArtDexFileLoaderTest, FindStringId) {
-  ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<const DexFile> raw(OpenTestDexFile("GetMethodSignature"));
   ASSERT_TRUE(raw.get() != nullptr);
   EXPECT_EQ(1U, raw->NumClassDefs());
