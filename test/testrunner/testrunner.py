@@ -411,8 +411,9 @@ def run_tests(tests):
       elif prebuild == 'no-dex2oat':
         options_test += ' --no-prebuild --no-dex2oat'
 
-      # Add option and remove the cdex- prefix.
-      options_test += ' --compact-dex-level ' + cdex_level.replace('cdex-','')
+      if cdex_level:
+        # Add option and remove the cdex- prefix.
+        options_test += ' --compact-dex-level ' + cdex_level.replace('cdex-','')
 
       if compiler == 'optimizing':
         options_test += ' --optimizing'
