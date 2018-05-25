@@ -437,9 +437,6 @@ class MANAGED Class FINAL : public Object {
 
   bool IsThrowableClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  bool IsReferenceClass() const REQUIRES_SHARED(Locks::mutator_lock_);
-
   static MemberOffset ComponentTypeOffset() {
     return OFFSET_OF_OBJECT_MEMBER(Class, component_type_);
   }
@@ -1211,12 +1208,6 @@ class MANAGED Class FINAL : public Object {
 
   // For proxy class only.
   ObjectArray<ObjectArray<Class>>* GetProxyThrows() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // For reference class only.
-  MemberOffset GetDisableIntrinsicFlagOffset() REQUIRES_SHARED(Locks::mutator_lock_);
-  MemberOffset GetSlowPathFlagOffset() REQUIRES_SHARED(Locks::mutator_lock_);
-  bool GetSlowPathEnabled() REQUIRES_SHARED(Locks::mutator_lock_);
-  void SetSlowPath(bool enabled) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // May cause thread suspension due to EqualParameters.
   ArtMethod* GetDeclaredConstructor(Thread* self,

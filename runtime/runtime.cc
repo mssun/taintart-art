@@ -1978,7 +1978,6 @@ void Runtime::VisitConstantRoots(RootVisitor* visitor) {
   // need to be visited once per GC since they never change.
   mirror::Class::VisitRoots(visitor);
   mirror::Constructor::VisitRoots(visitor);
-  mirror::Reference::VisitRoots(visitor);
   mirror::Method::VisitRoots(visitor);
   mirror::StackTraceElement::VisitRoots(visitor);
   mirror::String::VisitRoots(visitor);

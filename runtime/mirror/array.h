@@ -19,7 +19,6 @@
 
 #include "base/enums.h"
 #include "gc/allocator_type.h"
-#include "gc_root.h"
 #include "obj_ptr.h"
 #include "object.h"
 
