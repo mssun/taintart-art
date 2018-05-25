@@ -510,7 +510,6 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   // Setup java.lang.ref.Reference.
   Handle<mirror::Class> java_lang_ref_Reference(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Reference::ClassSize(image_pointer_size_))));
-  mirror::Reference::SetClass(java_lang_ref_Reference.Get());
   java_lang_ref_Reference->SetObjectSize(mirror::Reference::InstanceSize());
   mirror::Class::SetStatus(java_lang_ref_Reference, ClassStatus::kResolved, self);
 
@@ -1048,7 +1047,6 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   mirror::Method::SetClass(GetClassRoot(ClassRoot::kJavaLangReflectMethod, this).Ptr());
   mirror::Method::SetArrayClass(
       GetClassRoot(ClassRoot::kJavaLangReflectMethodArrayClass, this).Ptr());
-  mirror::Reference::SetClass(GetClassRoot(ClassRoot::kJavaLangRefReference, this));
   mirror::Throwable::SetClass(GetClassRoot(ClassRoot::kJavaLangThrowable, this));
   mirror::StackTraceElement::SetClass(GetClassRoot(ClassRoot::kJavaLangStackTraceElement, this));
   mirror::EmulatedStackFrame::SetClass(
@@ -2135,7 +2133,6 @@ ClassLinker::~ClassLinker() {
   mirror::Constructor::ResetClass();
   mirror::Field::ResetClass();
   mirror::Method::ResetClass();
-  mirror::Reference::ResetClass();
   mirror::StackTraceElement::ResetClass();
   mirror::String::ResetClass();
   mirror::Throwable::ResetClass();

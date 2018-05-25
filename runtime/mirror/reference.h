@@ -20,8 +20,6 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/mutex.h"
-#include "class.h"
-#include "gc_root.h"
 #include "obj_ptr.h"
 #include "object.h"
 #include "read_barrier_option.h"
@@ -98,12 +96,6 @@ class MANAGED Reference : public Object {
     return GetPendingNext<kWithoutReadBarrier>() == nullptr;
   }
 
-  template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  static ALWAYS_INLINE Class* GetJavaLangRefReference() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void SetClass(ObjPtr<Class> klass);
-  static void ResetClass();
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
   // Note: This avoids a read barrier, it should only be used by the GC.
   HeapReference<Object>* GetReferentReferenceAddr() REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -115,8 +107,6 @@ class MANAGED Reference : public Object {
   HeapReference<Object> queue_;
   HeapReference<Reference> queue_next_;
   HeapReference<Object> referent_;  // Note this is Java volatile:
-
-  static GcRoot<Class> java_lang_ref_Reference_;
 
   friend struct art::ReferenceOffsets;  // for verifying offset information
   friend class gc::ReferenceProcessor;

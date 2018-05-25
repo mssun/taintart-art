@@ -16,8 +16,10 @@
 
 #include "reference_processor.h"
 
+#include "art_field-inl.h"
 #include "base/time_utils.h"
 #include "base/utils.h"
+#include "class_root.h"
 #include "collector/garbage_collector.h"
 #include "jni/java_vm_ext.h"
 #include "mirror/class-inl.h"
@@ -25,7 +27,6 @@
 #include "mirror/reference-inl.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "object_callbacks.h"
-#include "reference_processor-inl.h"
 #include "reflection.h"
 #include "scoped_thread_state_change-inl.h"
 #include "task_processor.h"
@@ -47,13 +48,35 @@ ReferenceProcessor::ReferenceProcessor()
       cleared_references_(Locks::reference_queue_cleared_references_lock_) {
 }
 
+static inline MemberOffset GetSlowPathFlagOffset(ObjPtr<mirror::Class> reference_class)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  DCHECK(reference_class == GetClassRoot<mirror::Reference>());
+  // Second static field
+  ArtField* field = reference_class->GetStaticField(1);
+  DCHECK_STREQ(field->GetName(), "slowPathEnabled");
+  return field->GetOffset();
+}
+
+static inline void SetSlowPathFlag(bool enabled) REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::Class> reference_class = GetClassRoot<mirror::Reference>();
+  MemberOffset slow_path_offset = GetSlowPathFlagOffset(reference_class);
+  reference_class->SetFieldBoolean</* kTransactionActive */ false, /* kCheckTransaction */ false>(
+      slow_path_offset, enabled ? 1 : 0);
+}
+
 void ReferenceProcessor::EnableSlowPath() {
-  mirror::Reference::GetJavaLangRefReference()->SetSlowPath(true);
+  SetSlowPathFlag(/* enabled */ true);
 }
 
 void ReferenceProcessor::DisableSlowPath(Thread* self) {
-  mirror::Reference::GetJavaLangRefReference()->SetSlowPath(false);
+  SetSlowPathFlag(/* enabled */ false);
   condition_.Broadcast(self);
+}
+
+bool ReferenceProcessor::SlowPathEnabled() {
+  ObjPtr<mirror::Class> reference_class = GetClassRoot<mirror::Reference>();
+  MemberOffset slow_path_offset = GetSlowPathFlagOffset(reference_class);
+  return reference_class->GetFieldBoolean(slow_path_offset);
 }
 
 void ReferenceProcessor::BroadcastForSlowPath(Thread* self) {

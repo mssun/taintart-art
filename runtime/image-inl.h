@@ -22,6 +22,7 @@
 #include "art_method.h"
 #include "imt_conflict_table.h"
 #include "imtable.h"
+#include "mirror/object_array-inl.h"
 #include "read_barrier-inl.h"
 
 namespace art {

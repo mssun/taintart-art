@@ -49,12 +49,6 @@ inline void FinalizerReference::SetZombie(ObjPtr<Object> zombie) {
   return SetFieldObjectVolatile<kTransactionActive>(ZombieOffset(), zombie);
 }
 
-template<ReadBarrierOption kReadBarrierOption>
-inline Class* Reference::GetJavaLangRefReference() {
-  DCHECK(!java_lang_ref_Reference_.IsNull());
-  return java_lang_ref_Reference_.Read<kReadBarrierOption>();
-}
-
 }  // namespace mirror
 }  // namespace art
 

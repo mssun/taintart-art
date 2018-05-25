@@ -63,7 +63,7 @@
 #include "mirror/object-refvisitor-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/object_reference.h"
-#include "mirror/reference.h"
+#include "mirror/reference-inl.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "reflection.h"
 #include "runtime.h"

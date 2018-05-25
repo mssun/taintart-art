@@ -20,6 +20,7 @@
 #include "class_table.h"
 
 #include "gc_root-inl.h"
+#include "mirror/class.h"
 #include "oat_file.h"
 
 namespace art {
