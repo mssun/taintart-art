@@ -43,6 +43,7 @@
 #include "boot_image_profile.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/bytecode_utils.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
@@ -929,21 +930,13 @@ class ProfMan FINAL {
       dex_resolved_classes.first->AddClass(class_ref.TypeIndex());
       std::vector<ProfileMethodInfo> methods;
       if (method_str == kClassAllMethods) {
-        // Add all of the methods.
-        const DexFile::ClassDef* class_def = dex_file->FindClassDef(class_ref.TypeIndex());
-        const uint8_t* class_data = dex_file->GetClassData(*class_def);
-        if (class_data != nullptr) {
-          ClassDataItemIterator it(*dex_file, class_data);
-          it.SkipAllFields();
-          while (it.HasNextMethod()) {
-            if (it.GetMethodCodeItemOffset() != 0) {
-              // Add all of the methods that have code to the profile.
-              const uint32_t method_idx = it.GetMemberIndex();
-              methods.push_back(ProfileMethodInfo(MethodReference(dex_file, method_idx)));
-            }
-            it.Next();
+        ClassAccessor accessor(*dex_file, *dex_file->FindClassDef(class_ref.TypeIndex()));
+        accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+          if (method.GetCodeItemOffset() != 0) {
+            // Add all of the methods that have code to the profile.
+            methods.push_back(ProfileMethodInfo(method.GetReference()));
           }
-        }
+        });
       }
       // TODO: Check return values?
       profile->AddMethods(methods, static_cast<ProfileCompilationInfo::MethodHotness::Flag>(flags));
