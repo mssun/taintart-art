@@ -28,7 +28,6 @@ sys.path.append(os.path.dirname(os.path.dirname(
 
 from common.common import FatalError
 from common.common import GetEnvVariableOrError
-from common.common import GetJackClassPath
 from common.common import RetCode
 from common.common import RunCommand
 
@@ -106,7 +105,7 @@ class DexFuzzTester(object):
     self.RunDexFuzz()
 
   def CompileOnHost(self):
-    """Compiles Test.java into classes.dex using either javac/dx,d8 or jack.
+    """Compiles Test.java into classes.dex using either javac/dx or d8.
 
     Raises:
       FatalError: error when compilation fails
@@ -128,15 +127,6 @@ class DexFuzzTester(object):
         os.unlink(cfile)
       os.unlink('jerr.txt')
       os.unlink('dxerr.txt')
-
-    elif self._dexer == 'jack':
-      jack_args = ['-cp', GetJackClassPath(), '--output-dex', '.', 'Test.java']
-      if RunCommand(['jack'] + jack_args, out=None, err='jackerr.txt',
-                    timeout=30) != RetCode.SUCCESS:
-        print('Unexpected error while running Jack')
-        raise FatalError('Unexpected error while running Jack')
-      # Cleanup on success (nothing to see).
-      os.unlink('jackerr.txt')
     else:
       raise FatalError('Unknown dexer: ' + self._dexer)
 
@@ -188,7 +178,7 @@ def main():
                       help='number of JFuzz program to generate (default: 10)')
   parser.add_argument('--device', help='target device serial number')
   parser.add_argument('--dexer', default='dx', type=str,
-                      help='defines dexer as dx, d8, or jack (default: dx)')
+                      help='defines dexer as dx or d8 (default: dx)')
   parser.add_argument('--debug_info', default=False, action='store_true',
                       help='include debugging info')
   args = parser.parse_args()
