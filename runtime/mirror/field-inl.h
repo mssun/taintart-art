@@ -21,6 +21,7 @@
 
 #include "art_field-inl.h"
 #include "class-inl.h"
+#include "class_root.h"
 #include "dex_cache-inl.h"
 
 namespace art {
@@ -48,7 +49,7 @@ inline mirror::Field* Field::CreateFromArtField(Thread* self, ArtField* field, b
       self->ClearException();
     }
   }
-  auto ret = hs.NewHandle(ObjPtr<Field>::DownCast(StaticClass()->AllocObject(self)));
+  auto ret = hs.NewHandle(ObjPtr<Field>::DownCast(GetClassRoot<Field>()->AllocObject(self)));
   if (UNLIKELY(ret == nullptr)) {
     self->AssertPendingOOMException();
     return nullptr;

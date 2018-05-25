@@ -22,6 +22,7 @@
 
 #include "art_method-inl.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "mirror/class-inl.h"
 #include "mirror/method.h"
 
@@ -59,7 +60,7 @@ mirror::Class* GenerateProxyClass(ScopedObjectAccess& soa,
     methods_count += interface->NumVirtualMethods();
   }
   jobjectArray proxyClassMethods = soa.Env()->NewObjectArray(
-      methods_count, soa.AddLocalReference<jclass>(mirror::Method::StaticClass()), nullptr);
+      methods_count, soa.AddLocalReference<jclass>(GetClassRoot<mirror::Method>()), nullptr);
   soa.Self()->AssertNoPendingException();
 
   jsize array_index = 0;
