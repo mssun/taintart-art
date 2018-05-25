@@ -1773,9 +1773,8 @@ static void dumpCallSite(const DexFile* pDexFile, u4 idx) {
       case EncodedArrayValueIterator::ValueType::kType: {
         type = "Class";
         dex::TypeIndex type_idx = static_cast<dex::TypeIndex>(it.GetJavaValue().i);
-        const DexFile::ClassDef* class_def = pDexFile->FindClassDef(type_idx);
-        value = pDexFile->GetClassDescriptor(*class_def);
-        value = descriptorClassToDot(value.c_str()).get();
+        const DexFile::TypeId& type_id = pDexFile->GetTypeId(type_idx);
+        value = pDexFile->GetTypeDescriptor(type_id);
         break;
       }
       case EncodedArrayValueIterator::ValueType::kField:
