@@ -320,12 +320,6 @@ def run_tests(tests):
   if env.ART_TEST_BISECTION:
     options_all += ' --bisection-search'
 
-  if env.ART_TEST_CHROOT:
-    options_all += ' --chroot ' + env.ART_TEST_CHROOT
-
-  if env.ART_TEST_ANDROID_ROOT:
-    options_all += ' --android-root ' + env.ART_TEST_ANDROID_ROOT
-
   if gdb:
     options_all += ' --gdb'
     if gdb_arg:
@@ -400,6 +394,13 @@ def run_tests(tests):
         options_test += ' --host'
       elif target == 'jvm':
         options_test += ' --jvm'
+
+      # Honor ART_TEST_CHROOT and ART_TEST_ANDROID_ROOT, but only for target tests.
+      if target == 'target':
+        if env.ART_TEST_CHROOT:
+          options_test += ' --chroot ' + env.ART_TEST_CHROOT
+        if env.ART_TEST_ANDROID_ROOT:
+          options_test += ' --android-root ' + env.ART_TEST_ANDROID_ROOT
 
       if run == 'ndebug':
         options_test += ' -O'
