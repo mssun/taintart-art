@@ -527,7 +527,6 @@ class OatDumper {
     }
 
     // Dumping the dex file overview is compact enough to do even if header only.
-    DexFileData cumulative;
     for (size_t i = 0; i < oat_dex_files_.size(); i++) {
       const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
       CHECK(oat_dex_file != nullptr);
@@ -538,18 +537,13 @@ class OatDumper {
            << error_msg;
         continue;
       }
-      DexFileData data(*dex_file);
-      os << "Dex file data for " << dex_file->GetLocation() << "\n";
-      data.Dump(os);
-      os << "\n";
+
       const DexLayoutSections* const layout_sections = oat_dex_file->GetDexLayoutSections();
       if (layout_sections != nullptr) {
         os << "Layout data\n";
         os << *layout_sections;
         os << "\n";
       }
-
-      cumulative.Add(data);
 
       // Dump .bss entries.
       DumpBssEntries(
@@ -574,9 +568,6 @@ class OatDumper {
           sizeof(GcRoot<mirror::Class>),
           [=](uint32_t index) { return dex_file->StringDataByIdx(dex::StringIndex(index)); });
     }
-    os << "Cumulative dex file data\n";
-    cumulative.Dump(os);
-    os << "\n";
 
     if (!options_.dump_header_only_) {
       VariableIndentationOutputStream vios(&os);
@@ -949,120 +940,6 @@ class OatDumper {
     offsets_.insert(code_offset);
     offsets_.insert(oat_method.GetVmapTableOffset());
   }
-
-  // Dex file data, may be for multiple different dex files.
-  class DexFileData {
-   public:
-    DexFileData() {}
-
-    explicit DexFileData(const DexFile& dex_file)
-        : num_string_ids_(dex_file.NumStringIds()),
-          num_method_ids_(dex_file.NumMethodIds()),
-          num_field_ids_(dex_file.NumFieldIds()),
-          num_type_ids_(dex_file.NumTypeIds()),
-          num_class_defs_(dex_file.NumClassDefs()) {
-      for (size_t class_def_index = 0; class_def_index < num_class_defs_; ++class_def_index) {
-        const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-        WalkClass(dex_file, class_def);
-      }
-    }
-
-    void Add(const DexFileData& other) {
-      AddAll(unique_string_ids_from_code_, other.unique_string_ids_from_code_);
-      num_string_ids_from_code_ += other.num_string_ids_from_code_;
-      AddAll(dex_code_item_ptrs_, other.dex_code_item_ptrs_);
-      dex_code_bytes_ += other.dex_code_bytes_;
-      num_string_ids_ += other.num_string_ids_;
-      num_method_ids_ += other.num_method_ids_;
-      num_field_ids_ += other.num_field_ids_;
-      num_type_ids_ += other.num_type_ids_;
-      num_class_defs_ += other.num_class_defs_;
-    }
-
-    void Dump(std::ostream& os) {
-      os << "Num string ids: " << num_string_ids_ << "\n";
-      os << "Num method ids: " << num_method_ids_ << "\n";
-      os << "Num field ids: " << num_field_ids_ << "\n";
-      os << "Num type ids: " << num_type_ids_ << "\n";
-      os << "Num class defs: " << num_class_defs_ << "\n";
-      os << "Unique strings loaded from dex code: " << unique_string_ids_from_code_.size() << "\n";
-      os << "Total strings loaded from dex code: " << num_string_ids_from_code_ << "\n";
-      os << "Number of unique dex code items: " << dex_code_item_ptrs_.size() << "\n";
-      os << "Total number of dex code bytes: " << dex_code_bytes_ << "\n";
-    }
-
-   private:
-    // All of the elements from one container to another.
-    template <typename Dest, typename Src>
-    static void AddAll(Dest& dest, const Src& src) {
-      dest.insert(src.begin(), src.end());
-    }
-
-    void WalkClass(const DexFile& dex_file, const DexFile::ClassDef& class_def) {
-      const uint8_t* class_data = dex_file.GetClassData(class_def);
-      if (class_data == nullptr) {  // empty class such as a marker interface?
-        return;
-      }
-      ClassDataItemIterator it(dex_file, class_data);
-      it.SkipAllFields();
-      while (it.HasNextMethod()) {
-        WalkCodeItem(dex_file, it.GetMethodCodeItem());
-        it.Next();
-      }
-      DCHECK(!it.HasNext());
-    }
-
-    void WalkCodeItem(const DexFile& dex_file, const DexFile::CodeItem* code_item) {
-      if (code_item == nullptr) {
-        return;
-      }
-      CodeItemInstructionAccessor instructions(dex_file, code_item);
-
-      // If we inserted a new dex code item pointer, add to total code bytes.
-      const uint16_t* code_ptr = instructions.Insns();
-      if (dex_code_item_ptrs_.insert(code_ptr).second) {
-        dex_code_bytes_ += instructions.InsnsSizeInCodeUnits() * sizeof(code_ptr[0]);
-      }
-
-      for (const DexInstructionPcPair& inst : instructions) {
-        switch (inst->Opcode()) {
-          case Instruction::CONST_STRING: {
-            const dex::StringIndex string_index(inst->VRegB_21c());
-            unique_string_ids_from_code_.insert(StringReference(&dex_file, string_index));
-            ++num_string_ids_from_code_;
-            break;
-          }
-          case Instruction::CONST_STRING_JUMBO: {
-            const dex::StringIndex string_index(inst->VRegB_31c());
-            unique_string_ids_from_code_.insert(StringReference(&dex_file, string_index));
-            ++num_string_ids_from_code_;
-            break;
-          }
-          default:
-            break;
-        }
-      }
-    }
-
-    // Unique string ids loaded from dex code.
-    std::set<StringReference> unique_string_ids_from_code_;
-
-    // Total string ids loaded from dex code.
-    size_t num_string_ids_from_code_ = 0;
-
-    // Unique code pointers.
-    std::set<const void*> dex_code_item_ptrs_;
-
-    // Total "unique" dex code bytes.
-    size_t dex_code_bytes_ = 0;
-
-    // Other dex ids.
-    size_t num_string_ids_ = 0;
-    size_t num_method_ids_ = 0;
-    size_t num_field_ids_ = 0;
-    size_t num_type_ids_ = 0;
-    size_t num_class_defs_ = 0;
-  };
 
   bool DumpOatDexFile(std::ostream& os, const OatFile::OatDexFile& oat_dex_file) {
     bool success = true;

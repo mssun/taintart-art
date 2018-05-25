@@ -151,10 +151,6 @@ class OatDumpTest : public CommonRuntimeTest {
       exec_argv.push_back("--symbolize=" + core_oat_location_);
       exec_argv.push_back("--output=" + core_oat_location_ + ".symbolize");
     } else {
-      expected_prefixes.push_back("Dex file data for");
-      expected_prefixes.push_back("Num string ids:");
-      expected_prefixes.push_back("Num field ids:");
-      expected_prefixes.push_back("Num method ids:");
       expected_prefixes.push_back("LOCATION:");
       expected_prefixes.push_back("MAGIC:");
       expected_prefixes.push_back("DEX FILE COUNT:");
