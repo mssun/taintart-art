@@ -322,7 +322,9 @@ struct GetAllStackTracesVectorClosure : public art::Closure {
 };
 
 template <typename Data>
-static void RunCheckpointAndWait(Data* data, size_t max_frame_count) {
+static void RunCheckpointAndWait(Data* data, size_t max_frame_count)
+    REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  // Note: requires the mutator lock as the checkpoint requires the mutator lock.
   GetAllStackTracesVectorClosure<Data> closure(max_frame_count, data);
   size_t barrier_count = art::Runtime::Current()->GetThreadList()->RunCheckpoint(&closure, nullptr);
   if (barrier_count == 0) {
@@ -380,9 +382,11 @@ jvmtiError StackUtil::GetAllStackTraces(jvmtiEnv* env,
   };
 
   AllStackTracesData data;
-  RunCheckpointAndWait(&data, static_cast<size_t>(max_frame_count));
-
   art::Thread* current = art::Thread::Current();
+  {
+    art::ScopedObjectAccess soa(current);
+    RunCheckpointAndWait(&data, static_cast<size_t>(max_frame_count));
+  }
 
   // Convert the data into our output format.
 
