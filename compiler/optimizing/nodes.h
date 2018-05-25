@@ -1909,6 +1909,11 @@ class HEnvironment : public ArenaObject<kArenaAllocEnvironment> {
 
   void RemoveAsUserOfInput(size_t index) const;
 
+  // Replaces the input at the position 'index' with the replacement; the replacement and old
+  // input instructions' env_uses_ lists are adjusted. The function works similar to
+  // HInstruction::ReplaceInput.
+  void ReplaceInput(HInstruction* replacement, size_t index);
+
   size_t Size() const { return vregs_.size(); }
 
   HEnvironment* GetParent() const { return parent_; }

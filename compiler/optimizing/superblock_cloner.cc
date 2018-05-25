@@ -409,7 +409,7 @@ void SuperblockCloner::ResolvePhi(HPhi* phi) {
 // Main algorithm methods.
 //
 
-void SuperblockCloner::SearchForSubgraphExits(ArenaVector<HBasicBlock*>* exits) {
+void SuperblockCloner::SearchForSubgraphExits(ArenaVector<HBasicBlock*>* exits) const {
   DCHECK(exits->empty());
   for (uint32_t block_id : orig_bb_set_.Indexes()) {
     HBasicBlock* block = GetBlockById(block_id);
@@ -517,6 +517,113 @@ void SuperblockCloner::ResolveDataFlow() {
         CheckInstructionInputsRemapping(it.Current());
       }
     }
+  }
+}
+
+//
+// Helpers for live-outs processing and Subgraph-closed SSA.
+//
+
+bool SuperblockCloner::CollectLiveOutsAndCheckClonable(HInstructionMap* live_outs) const {
+  DCHECK(live_outs->empty());
+  for (uint32_t idx : orig_bb_set_.Indexes()) {
+    HBasicBlock* block = GetBlockById(idx);
+
+    for (HInstructionIterator it(block->GetPhis()); !it.Done(); it.Advance()) {
+      HInstruction* instr = it.Current();
+      DCHECK(instr->IsClonable());
+
+      if (IsUsedOutsideRegion(instr, orig_bb_set_)) {
+        live_outs->FindOrAdd(instr, instr);
+      }
+    }
+
+    for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
+      HInstruction* instr = it.Current();
+      if (!instr->IsClonable()) {
+        return false;
+      }
+
+      if (IsUsedOutsideRegion(instr, orig_bb_set_)) {
+        // TODO: Investigate why HNewInstance, HCheckCast has a requirement for the input.
+        if (instr->IsLoadClass()) {
+          return false;
+        }
+        live_outs->FindOrAdd(instr, instr);
+      }
+    }
+  }
+  return true;
+}
+
+void SuperblockCloner::ConstructSubgraphClosedSSA() {
+  if (live_outs_.empty()) {
+    return;
+  }
+
+  ArenaVector<HBasicBlock*> exits(arena_->Adapter(kArenaAllocSuperblockCloner));
+  SearchForSubgraphExits(&exits);
+  if (exits.empty()) {
+    DCHECK(live_outs_.empty());
+    return;
+  }
+
+  DCHECK_EQ(exits.size(), 1u);
+  HBasicBlock* exit_block = exits[0];
+  // There should be no critical edges.
+  DCHECK_EQ(exit_block->GetPredecessors().size(), 1u);
+  DCHECK(exit_block->GetPhis().IsEmpty());
+
+  // For each live-out value insert a phi into the loop exit and replace all the value's uses
+  // external to the loop with this phi. The phi will have the original value as its only input;
+  // after copying is done FixSubgraphClosedSSAAfterCloning will add a corresponding copy of the
+  // original value as the second input thus merging data flow from the original and copy parts of
+  // the subgraph. Also update the record in the live_outs_ map from (value, value) to
+  // (value, new_phi).
+  for (auto live_out_it = live_outs_.begin(); live_out_it != live_outs_.end(); ++live_out_it) {
+    HInstruction* value = live_out_it->first;
+    HPhi* phi = new (arena_) HPhi(arena_, kNoRegNumber, 0, value->GetType());
+
+    if (value->GetType() == DataType::Type::kReference) {
+      phi->SetReferenceTypeInfo(value->GetReferenceTypeInfo());
+    }
+
+    exit_block->AddPhi(phi);
+    live_out_it->second = phi;
+
+    const HUseList<HInstruction*>& uses = value->GetUses();
+    for (auto it = uses.begin(), end = uses.end(); it != end; /* ++it below */) {
+      HInstruction* user = it->GetUser();
+      size_t index = it->GetIndex();
+      // Increment `it` now because `*it` may disappear thanks to user->ReplaceInput().
+      ++it;
+      if (!IsInOrigBBSet(user->GetBlock())) {
+        user->ReplaceInput(phi, index);
+      }
+    }
+
+    const HUseList<HEnvironment*>& env_uses = value->GetEnvUses();
+    for (auto it = env_uses.begin(), e = env_uses.end(); it != e; /* ++it below */) {
+      HEnvironment* env = it->GetUser();
+      size_t index = it->GetIndex();
+      ++it;
+      if (!IsInOrigBBSet(env->GetHolder()->GetBlock())) {
+        env->ReplaceInput(phi, index);
+      }
+    }
+
+    phi->AddInput(value);
+  }
+}
+
+void SuperblockCloner::FixSubgraphClosedSSAAfterCloning() {
+  for (auto it : live_outs_) {
+    DCHECK(it.first != it.second);
+    HInstruction* orig_value = it.first;
+    HPhi* phi = it.second->AsPhi();
+    HInstruction* copy_value = GetInstrCopy(orig_value);
+    // Copy edges are inserted after the original so we can just add new input to the phi.
+    phi->AddInput(copy_value);
   }
 }
 
@@ -644,7 +751,6 @@ void DumpBBSet(const ArenaBitVector* set) {
 }
 
 void SuperblockCloner::DumpInputSets() {
-  std::cout << graph_->PrettyMethod() << "\n";
   std::cout << "orig_bb_set:\n";
   for (uint32_t idx : orig_bb_set_.Indexes()) {
     std::cout << idx << "\n";
@@ -680,7 +786,9 @@ SuperblockCloner::SuperblockCloner(HGraph* graph,
     bb_map_(bb_map),
     hir_map_(hir_map),
     outer_loop_(nullptr),
-    outer_loop_bb_set_(arena_, orig_bb_set->GetSizeOf(), true, kArenaAllocSuperblockCloner) {
+    outer_loop_bb_set_(arena_, orig_bb_set->GetSizeOf(), true, kArenaAllocSuperblockCloner),
+    live_outs_(std::less<HInstruction*>(),
+        graph->GetAllocator()->Adapter(kArenaAllocSuperblockCloner)) {
   orig_bb_set_.Copy(orig_bb_set);
 }
 
@@ -699,26 +807,19 @@ bool SuperblockCloner::IsSubgraphClonable() const {
     return false;
   }
 
-  // Check that there are no instructions defined in the subgraph and used outside.
-  // TODO: Improve this by accepting graph with such uses but only one exit.
-  for (uint32_t idx : orig_bb_set_.Indexes()) {
-    HBasicBlock* block = GetBlockById(idx);
+  HInstructionMap live_outs(
+      std::less<HInstruction*>(), graph_->GetAllocator()->Adapter(kArenaAllocSuperblockCloner));
 
-    for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
-      HInstruction* instr = it.Current();
-      if (!instr->IsClonable() ||
-          IsUsedOutsideRegion(instr, orig_bb_set_)) {
-        return false;
-      }
-    }
+  if (!CollectLiveOutsAndCheckClonable(&live_outs)) {
+    return false;
+  }
 
-    for (HInstructionIterator it(block->GetPhis()); !it.Done(); it.Advance()) {
-      HInstruction* instr = it.Current();
-      if (!instr->IsClonable() ||
-          IsUsedOutsideRegion(instr, orig_bb_set_)) {
-        return false;
-      }
-    }
+  ArenaVector<HBasicBlock*> exits(arena_->Adapter(kArenaAllocSuperblockCloner));
+  SearchForSubgraphExits(&exits);
+
+  // The only loops with live-outs which are currently supported are loops with a single exit.
+  if (!live_outs.empty() && exits.size() != 1) {
+    return false;
   }
 
   return true;
@@ -794,8 +895,10 @@ void SuperblockCloner::Run() {
     DumpInputSets();
   }
 
+  CollectLiveOutsAndCheckClonable(&live_outs_);
   // Find an area in the graph for which control flow information should be adjusted.
   FindAndSetLocalAreaForAdjustments();
+  ConstructSubgraphClosedSSA();
   // Clone the basic blocks from the orig_bb_set_; data flow is invalid after the call and is to be
   // adjusted.
   CloneBasicBlocks();
@@ -819,6 +922,7 @@ void SuperblockCloner::Run() {
   AdjustControlFlowInfo();
   // Fix data flow of the graph.
   ResolveDataFlow();
+  FixSubgraphClosedSSAAfterCloning();
 }
 
 void SuperblockCloner::CleanUp() {
@@ -985,8 +1089,14 @@ HBasicBlock* PeelUnrollHelper::DoPeelUnrollImpl(bool to_unroll) {
   HBasicBlock* loop_header = loop_info_->GetHeader();
   // Check that loop info is up-to-date.
   DCHECK(loop_info_ == loop_header->GetLoopInformation());
-
   HGraph* graph = loop_header->GetGraph();
+
+  if (kSuperblockClonerLogging) {
+    std::cout << "Method: " << graph->PrettyMethod() << std::endl;
+    std::cout << "Scalar loop " << (to_unroll ? "unrolling" : "peeling") <<
+                 " was applied to the loop <" << loop_header->GetBlockId() << ">." << std::endl;
+  }
+
   ArenaAllocator allocator(graph->GetAllocator()->GetArenaPool());
 
   HEdgeSet remap_orig_internal(graph->GetAllocator()->Adapter(kArenaAllocSuperblockCloner));

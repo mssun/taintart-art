@@ -218,7 +218,7 @@ class SuperblockCloner : public ValueObject {
 
  private:
   // Fills the 'exits' vector with the subgraph exits.
-  void SearchForSubgraphExits(ArenaVector<HBasicBlock*>* exits);
+  void SearchForSubgraphExits(ArenaVector<HBasicBlock*>* exits) const;
 
   // Finds and records information about the area in the graph for which control flow (back edges,
   // loops, dominators) needs to be adjusted.
@@ -238,6 +238,33 @@ class SuperblockCloner : public ValueObject {
   // Resolves Data Flow - adjusts phis' and instructions' inputs in order to have a valid graph in
   // the SSA form.
   void ResolveDataFlow();
+
+  //
+  // Helpers for live-outs processing and Subgraph-closed SSA.
+  //
+  //  - live-outs - values which are defined inside the subgraph and have uses outside.
+  //  - Subgraph-closed SSA - SSA form for which all the values defined inside the subgraph
+  //    have no outside uses except for the phi-nodes in the subgraph exits.
+  //
+  // Note: now if the subgraph has live-outs it is only clonable if it has a single exit; this
+  // makes the subgraph-closed SSA form construction much easier.
+  //
+  // TODO: Support subgraphs with live-outs and multiple exits.
+  //
+
+  // For each live-out value 'val' in the region puts a record <val, val> into the map.
+  // Returns whether all of the instructions in the subgraph are clonable.
+  bool CollectLiveOutsAndCheckClonable(HInstructionMap* live_outs_) const;
+
+  // Constructs Subgraph-closed SSA; precondition - a subgraph has a single exit.
+  //
+  // For each live-out 'val' in 'live_outs_' map inserts a HPhi 'phi' into the exit node, updates
+  // the record in the map to <val, phi> and replaces all outside uses with this phi.
+  void ConstructSubgraphClosedSSA();
+
+  // Fixes the data flow for the live-out 'val' by adding a 'copy_val' input to the corresponding
+  // (<val, phi>) phi after the cloning is done.
+  void FixSubgraphClosedSSAAfterCloning();
 
   //
   // Helpers for CloneBasicBlock.
@@ -315,6 +342,8 @@ class SuperblockCloner : public ValueObject {
   // Area in the graph for which control flow (back edges, loops, dominators) needs to be adjusted.
   HLoopInformation* outer_loop_;
   HBasicBlockSet outer_loop_bb_set_;
+
+  HInstructionMap live_outs_;
 
   ART_FRIEND_TEST(SuperblockClonerTest, AdjustControlFlowInfo);
   ART_FRIEND_TEST(SuperblockClonerTest, IsGraphConnected);
