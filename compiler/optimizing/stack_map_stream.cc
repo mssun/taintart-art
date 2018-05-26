@@ -199,9 +199,6 @@ static MemoryRegion EncodeMemoryRegion(Vector* out, size_t* bit_offset, uint32_t
   return region;
 }
 
-template<uint32_t NumColumns>
-using ScopedBitTableBuilder = BitTableBuilder<NumColumns, ScopedArenaAllocatorAdapter<uint32_t>>;
-
 size_t StackMapStream::PrepareForFillIn() {
   size_t bit_offset = 0;
   out_.clear();
@@ -258,20 +255,21 @@ size_t StackMapStream::PrepareForFillIn() {
   DCHECK_EQ(location_catalog_offset, dex_register_location_catalog_region.size());
 
   // Write stack maps.
-  ScopedArenaAllocatorAdapter<void> adapter = allocator_->Adapter(kArenaAllocStackMapStream);
-  ScopedBitTableBuilder<StackMap::Field::kCount> stack_map_builder((adapter));
-  ScopedBitTableBuilder<InvokeInfo::Field::kCount> invoke_info_builder((adapter));
-  ScopedBitTableBuilder<InlineInfo::Field::kCount> inline_info_builder((adapter));
+  BitTableBuilder<std::array<uint32_t, StackMap::kCount>> stack_map_builder(allocator_);
+  BitTableBuilder<std::array<uint32_t, InvokeInfo::kCount>> invoke_info_builder(allocator_);
+  BitTableBuilder<std::array<uint32_t, InlineInfo::kCount>> inline_info_builder(allocator_);
   for (const StackMapEntry& entry : stack_maps_) {
     if (entry.dex_method_index != dex::kDexNoIndex) {
-      invoke_info_builder.AddRow(
+      std::array<uint32_t, InvokeInfo::kCount> invoke_info_entry {
           entry.native_pc_code_offset.CompressedValue(),
           entry.invoke_type,
-          entry.dex_method_index_idx);
+          entry.dex_method_index_idx
+      };
+      invoke_info_builder.Add(invoke_info_entry);
     }
 
     // Set the inlining info.
-    uint32_t inline_info_index = StackMap::kNoValue;
+    uint32_t inline_info_index = inline_info_builder.size();
     DCHECK_LE(entry.inline_infos_start_index + entry.inlining_depth, inline_infos_.size());
     for (size_t depth = 0; depth < entry.inlining_depth; ++depth) {
       InlineInfoEntry inline_entry = inline_infos_[depth + entry.inline_infos_start_index];
@@ -281,32 +279,33 @@ size_t StackMapStream::PrepareForFillIn() {
         method_index_idx = High32Bits(reinterpret_cast<uintptr_t>(inline_entry.method));
         extra_data = Low32Bits(reinterpret_cast<uintptr_t>(inline_entry.method));
       }
-      uint32_t index = inline_info_builder.AddRow(
+      std::array<uint32_t, InlineInfo::kCount> inline_info_entry {
           (depth == entry.inlining_depth - 1) ? InlineInfo::kLast : InlineInfo::kMore,
           method_index_idx,
           inline_entry.dex_pc,
           extra_data,
-          dex_register_entries_[inline_entry.dex_register_map_index].offset);
-      if (depth == 0) {
-        inline_info_index = index;
-      }
+          dex_register_entries_[inline_entry.dex_register_map_index].offset,
+      };
+      inline_info_builder.Add(inline_info_entry);
     }
-    stack_map_builder.AddRow(
+    std::array<uint32_t, StackMap::kCount> stack_map_entry {
         entry.native_pc_code_offset.CompressedValue(),
         entry.dex_pc,
         dex_register_entries_[entry.dex_register_map_index].offset,
-        inline_info_index,
+        entry.inlining_depth != 0 ? inline_info_index : InlineInfo::kNoValue,
         entry.register_mask_index,
-        entry.stack_mask_index);
+        entry.stack_mask_index,
+    };
+    stack_map_builder.Add(stack_map_entry);
   }
   stack_map_builder.Encode(&out_, &bit_offset);
   invoke_info_builder.Encode(&out_, &bit_offset);
   inline_info_builder.Encode(&out_, &bit_offset);
 
   // Write register masks table.
-  ScopedBitTableBuilder<1> register_mask_builder((adapter));
+  BitTableBuilder<uint32_t> register_mask_builder(allocator_);
   for (size_t i = 0; i < num_register_masks; ++i) {
-    register_mask_builder.AddRow(register_masks_[i]);
+    register_mask_builder.Add(register_masks_[i]);
   }
   register_mask_builder.Encode(&out_, &bit_offset);
 

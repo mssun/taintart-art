@@ -82,6 +82,7 @@ const char* const ArenaAllocatorStatsImpl<kCount>::kAllocNames[] = {
   "RegAllocator ",
   "RegAllocVldt ",
   "StackMapStm  ",
+  "BitTableBld  ",
   "VectorNode   ",
   "CodeGen      ",
   "Assembler    ",

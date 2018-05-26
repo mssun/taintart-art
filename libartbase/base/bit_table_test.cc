@@ -16,7 +16,13 @@
 
 #include "bit_table.h"
 
+#include <map>
+
 #include "gtest/gtest.h"
+
+#include "base/arena_allocator.h"
+#include "base/bit_utils.h"
+#include "base/malloc_arena_pool.h"
 
 namespace art {
 
@@ -38,9 +44,13 @@ TEST(BitTableTest, TestVarint) {
 }
 
 TEST(BitTableTest, TestEmptyTable) {
+  MallocArenaPool pool;
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
+
   std::vector<uint8_t> buffer;
   size_t encode_bit_offset = 0;
-  BitTableBuilder<1> builder;
+  BitTableBuilder<uint32_t> builder(&allocator);
   builder.Encode(&buffer, &encode_bit_offset);
 
   size_t decode_bit_offset = 0;
@@ -50,14 +60,18 @@ TEST(BitTableTest, TestEmptyTable) {
 }
 
 TEST(BitTableTest, TestSingleColumnTable) {
+  MallocArenaPool pool;
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
+
   constexpr uint32_t kNoValue = -1;
   std::vector<uint8_t> buffer;
   size_t encode_bit_offset = 0;
-  BitTableBuilder<1> builder;
-  builder.AddRow(42u);
-  builder.AddRow(kNoValue);
-  builder.AddRow(1000u);
-  builder.AddRow(kNoValue);
+  BitTableBuilder<uint32_t> builder(&allocator);
+  builder.Add(42u);
+  builder.Add(kNoValue);
+  builder.Add(1000u);
+  builder.Add(kNoValue);
   builder.Encode(&buffer, &encode_bit_offset);
 
   size_t decode_bit_offset = 0;
@@ -72,11 +86,15 @@ TEST(BitTableTest, TestSingleColumnTable) {
 }
 
 TEST(BitTableTest, TestUnalignedTable) {
+  MallocArenaPool pool;
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
+
   for (size_t start_bit_offset = 0; start_bit_offset <= 32; start_bit_offset++) {
     std::vector<uint8_t> buffer;
     size_t encode_bit_offset = start_bit_offset;
-    BitTableBuilder<1> builder;
-    builder.AddRow(42u);
+    BitTableBuilder<uint32_t> builder(&allocator);
+    builder.Add(42u);
     builder.Encode(&buffer, &encode_bit_offset);
 
     size_t decode_bit_offset = start_bit_offset;
@@ -88,12 +106,22 @@ TEST(BitTableTest, TestUnalignedTable) {
 }
 
 TEST(BitTableTest, TestBigTable) {
+  MallocArenaPool pool;
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
+
   constexpr uint32_t kNoValue = -1;
   std::vector<uint8_t> buffer;
   size_t encode_bit_offset = 0;
-  BitTableBuilder<4> builder;
-  builder.AddRow(42u, kNoValue, 0u, static_cast<uint32_t>(-2));
-  builder.AddRow(62u, kNoValue, 63u, static_cast<uint32_t>(-3));
+  struct RowData {
+    uint32_t a;
+    uint32_t b;
+    uint32_t c;
+    uint32_t d;
+  };
+  BitTableBuilder<RowData> builder(&allocator);
+  builder.Add(RowData{42u, kNoValue, 0u, static_cast<uint32_t>(-2)});
+  builder.Add(RowData{62u, kNoValue, 63u, static_cast<uint32_t>(-3)});
   builder.Encode(&buffer, &encode_bit_offset);
 
   size_t decode_bit_offset = 0;
