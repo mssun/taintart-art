@@ -160,15 +160,58 @@ class BitTableBuilder {
   static constexpr size_t kNumColumns = sizeof(T) / sizeof(uint32_t);
 
   explicit BitTableBuilder(ScopedArenaAllocator* allocator)
-      : rows_(allocator->Adapter(kArenaAllocBitTableBuilder)) {
+      : rows_(allocator->Adapter(kArenaAllocBitTableBuilder)),
+        dedup_(8, allocator->Adapter(kArenaAllocBitTableBuilder)) {
   }
 
   T& operator[](size_t row) { return rows_[row]; }
   const T& operator[](size_t row) const { return rows_[row]; }
   size_t size() const { return rows_.size(); }
 
+  // Append given value to the vector without de-duplication.
+  // This will not add the element to the dedup map to avoid its associated costs.
   void Add(T value) {
     rows_.push_back(value);
+  }
+
+  // Append given list of values and return the index of the first value.
+  // If the exact same set of values was already added, return the old index.
+  uint32_t Dedup(T* values, size_t count = 1) {
+    FNVHash<MemoryRegion> hasher;
+    uint32_t hash = hasher(MemoryRegion(values, sizeof(T) * count));
+
+    // Check if we have already added identical set of values.
+    auto range = dedup_.equal_range(hash);
+    for (auto it = range.first; it != range.second; ++it) {
+      uint32_t index = it->second;
+      if (count <= size() - index &&
+          std::equal(values,
+                     values + count,
+                     &rows_[index],
+                     [](const T& lhs, const T& rhs) {
+                       return memcmp(&lhs, &rhs, sizeof(T)) == 0;
+                     })) {
+        return index;
+      }
+    }
+
+    // Add the set of values and add the index to the dedup map.
+    uint32_t index = size();
+    rows_.insert(rows_.end(), values, values + count);
+    dedup_.emplace(hash, index);
+    return index;
+  }
+
+  // Check if the table already contains given values starting at the given index.
+  bool RangeEquals(uint32_t index, T* values, size_t count = 1) {
+    DCHECK_LE(index, size());
+    DCHECK_LE(count, size() - index);
+    for (uint32_t i = 0; i < count; i++) {
+      if (memcmp(&values[i], &rows_[index + i], sizeof(T)) != 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   ALWAYS_INLINE uint32_t Get(uint32_t row, uint32_t column) const {
@@ -237,6 +280,7 @@ class BitTableBuilder {
 
  protected:
   ScopedArenaDeque<T> rows_;
+  ScopedArenaUnorderedMultimap<uint32_t, uint32_t> dedup_;  // Hash -> row index.
 };
 
 template<typename T>

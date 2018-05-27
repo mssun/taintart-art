@@ -142,4 +142,32 @@ TEST(BitTableTest, TestBigTable) {
   EXPECT_EQ(32u, table.NumColumnBits(3));
 }
 
+TEST(BitTableTest, TestDedup) {
+  MallocArenaPool pool;
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
+
+  struct RowData {
+    uint32_t a;
+    uint32_t b;
+  };
+  BitTableBuilder<RowData> builder(&allocator);
+  RowData value0{1, 2};
+  RowData value1{3, 4};
+  RowData value2{56948505, 0};
+  RowData value3{67108869, 0};
+  FNVHash<MemoryRegion> hasher;
+  EXPECT_EQ(hasher(MemoryRegion(&value2, sizeof(RowData))),
+            hasher(MemoryRegion(&value3, sizeof(RowData))));  // Test hash collision.
+  EXPECT_EQ(0u, builder.Dedup(&value0));
+  EXPECT_EQ(1u, builder.Dedup(&value1));
+  EXPECT_EQ(2u, builder.Dedup(&value2));
+  EXPECT_EQ(3u, builder.Dedup(&value3));
+  EXPECT_EQ(0u, builder.Dedup(&value0));
+  EXPECT_EQ(1u, builder.Dedup(&value1));
+  EXPECT_EQ(2u, builder.Dedup(&value2));
+  EXPECT_EQ(3u, builder.Dedup(&value3));
+  EXPECT_EQ(4u, builder.size());
+}
+
 }  // namespace art
