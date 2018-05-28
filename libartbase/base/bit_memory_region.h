@@ -67,7 +67,7 @@ class BitMemoryRegion FINAL : public ValueObject {
     return ((data_[index] >> shift) & 1) != 0;
   }
 
-  ALWAYS_INLINE void StoreBit(uintptr_t bit_offset, bool value) const {
+  ALWAYS_INLINE void StoreBit(uintptr_t bit_offset, bool value) {
     DCHECK_LT(bit_offset, bit_size_);
     uint8_t* data = reinterpret_cast<uint8_t*>(data_);
     size_t index = (bit_start_ + bit_offset) / kBitsPerByte;
@@ -136,6 +136,19 @@ class BitMemoryRegion FINAL : public ValueObject {
   ALWAYS_INLINE void StoreBitsAndAdvance(size_t* bit_offset, uint32_t value, size_t bit_length) {
     StoreBits(*bit_offset, value, bit_length);
     *bit_offset += bit_length;
+  }
+
+  // Store bits from other bit region.
+  ALWAYS_INLINE void StoreBits(size_t bit_offset, const BitMemoryRegion& src, size_t bit_length) {
+    DCHECK_LE(bit_offset, bit_size_);
+    DCHECK_LE(bit_length, bit_size_ - bit_offset);
+    size_t bit = 0;
+    constexpr size_t kNumBits = BitSizeOf<uint32_t>();
+    for (; bit + kNumBits <= bit_length; bit += kNumBits) {
+      StoreBits(bit_offset + bit, src.LoadBits(bit, kNumBits), kNumBits);
+    }
+    size_t num_bits = bit_length - bit;
+    StoreBits(bit_offset + bit, src.LoadBits(bit, num_bits), num_bits);
   }
 
   ALWAYS_INLINE bool Equals(const BitMemoryRegion& other) const {

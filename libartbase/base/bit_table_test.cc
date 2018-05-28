@@ -154,20 +154,73 @@ TEST(BitTableTest, TestDedup) {
   BitTableBuilder<RowData> builder(&allocator);
   RowData value0{1, 2};
   RowData value1{3, 4};
-  RowData value2{56948505, 0};
-  RowData value3{67108869, 0};
+  EXPECT_EQ(0u, builder.Dedup(&value0));
+  EXPECT_EQ(1u, builder.Dedup(&value1));
+  EXPECT_EQ(0u, builder.Dedup(&value0));
+  EXPECT_EQ(1u, builder.Dedup(&value1));
+  EXPECT_EQ(2u, builder.size());
+}
+
+TEST(BitTableTest, TestBitmapTable) {
+  MallocArenaPool pool;
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
+
+  std::vector<uint8_t> buffer;
+  size_t encode_bit_offset = 0;
+  const uint64_t value = 0xDEADBEEF0BADF00Dull;
+  BitmapTableBuilder builder(&allocator);
+  std::multimap<uint64_t, size_t> indicies;  // bitmap -> row.
+  for (size_t bit_length = 0; bit_length <= BitSizeOf<uint64_t>(); ++bit_length) {
+    uint64_t bitmap = value & MaxInt<uint64_t>(bit_length);
+    indicies.emplace(bitmap, builder.Dedup(&bitmap, MinimumBitsToStore(bitmap)));
+  }
+  builder.Encode(&buffer, &encode_bit_offset);
+  EXPECT_EQ(1 + static_cast<uint32_t>(POPCOUNT(value)), builder.size());
+
+  size_t decode_bit_offset = 0;
+  BitTable<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
+  EXPECT_EQ(encode_bit_offset, decode_bit_offset);
+  for (auto it : indicies) {
+    uint64_t expected = it.first;
+    BitMemoryRegion actual = table.GetBitMemoryRegion(it.second);
+    EXPECT_GE(actual.size_in_bits(), MinimumBitsToStore(expected));
+    for (size_t b = 0; b < actual.size_in_bits(); b++, expected >>= 1) {
+      EXPECT_EQ(expected & 1, actual.LoadBit(b)) << "b=" << b;
+    }
+  }
+}
+
+TEST(BitTableTest, TestCollisions) {
+  MallocArenaPool pool;
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   FNVHash<MemoryRegion> hasher;
-  EXPECT_EQ(hasher(MemoryRegion(&value2, sizeof(RowData))),
-            hasher(MemoryRegion(&value3, sizeof(RowData))));  // Test hash collision.
+
+  struct RowData {
+    uint32_t a;
+    uint32_t b;
+  };
+  RowData value0{56948505, 0};
+  RowData value1{67108869, 0};
+
+  BitTableBuilder<RowData> builder(&allocator);
+  EXPECT_EQ(hasher(MemoryRegion(&value0, sizeof(RowData))),
+            hasher(MemoryRegion(&value1, sizeof(RowData))));
   EXPECT_EQ(0u, builder.Dedup(&value0));
   EXPECT_EQ(1u, builder.Dedup(&value1));
-  EXPECT_EQ(2u, builder.Dedup(&value2));
-  EXPECT_EQ(3u, builder.Dedup(&value3));
   EXPECT_EQ(0u, builder.Dedup(&value0));
   EXPECT_EQ(1u, builder.Dedup(&value1));
-  EXPECT_EQ(2u, builder.Dedup(&value2));
-  EXPECT_EQ(3u, builder.Dedup(&value3));
-  EXPECT_EQ(4u, builder.size());
+  EXPECT_EQ(2u, builder.size());
+
+  BitmapTableBuilder builder2(&allocator);
+  EXPECT_EQ(hasher(MemoryRegion(&value0, BitsToBytesRoundUp(MinimumBitsToStore(value0.a)))),
+            hasher(MemoryRegion(&value1, BitsToBytesRoundUp(MinimumBitsToStore(value1.a)))));
+  EXPECT_EQ(0u, builder2.Dedup(&value0.a, MinimumBitsToStore(value0.a)));
+  EXPECT_EQ(1u, builder2.Dedup(&value1.a, MinimumBitsToStore(value1.a)));
+  EXPECT_EQ(0u, builder2.Dedup(&value0.a, MinimumBitsToStore(value0.a)));
+  EXPECT_EQ(1u, builder2.Dedup(&value1.a, MinimumBitsToStore(value1.a)));
+  EXPECT_EQ(2u, builder2.size());
 }
 
 }  // namespace art
