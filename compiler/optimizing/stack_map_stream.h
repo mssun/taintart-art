@@ -68,8 +68,11 @@ class StackMapStream : public ValueObject {
         location_catalog_entries_indices_(allocator->Adapter(kArenaAllocStackMapStream)),
         dex_register_locations_(allocator->Adapter(kArenaAllocStackMapStream)),
         inline_infos_(allocator->Adapter(kArenaAllocStackMapStream)),
+        stack_masks_(allocator->Adapter(kArenaAllocStackMapStream)),
+        register_masks_(allocator->Adapter(kArenaAllocStackMapStream)),
         method_indices_(allocator->Adapter(kArenaAllocStackMapStream)),
         dex_register_entries_(allocator->Adapter(kArenaAllocStackMapStream)),
+        stack_mask_max_(-1),
         out_(allocator->Adapter(kArenaAllocStackMapStream)),
         dex_map_hash_to_stack_map_indices_(std::less<uint32_t>(),
                                            allocator->Adapter(kArenaAllocStackMapStream)),
@@ -168,6 +171,12 @@ class StackMapStream : public ValueObject {
  private:
   size_t ComputeDexRegisterLocationCatalogSize() const;
 
+  // Returns the number of unique stack masks.
+  size_t PrepareStackMasks(size_t entry_size_in_bits);
+
+  // Returns the number of unique register masks.
+  size_t PrepareRegisterMasks();
+
   // Prepare and deduplicate method indices.
   void PrepareMethodIndices();
 
@@ -208,8 +217,11 @@ class StackMapStream : public ValueObject {
   // A set of concatenated maps of Dex register locations indices to `location_catalog_entries_`.
   ScopedArenaVector<size_t> dex_register_locations_;
   ScopedArenaVector<InlineInfoEntry> inline_infos_;
+  ScopedArenaVector<uint8_t> stack_masks_;
+  ScopedArenaVector<uint32_t> register_masks_;
   ScopedArenaVector<uint32_t> method_indices_;
   ScopedArenaVector<DexRegisterMapEntry> dex_register_entries_;
+  int stack_mask_max_;
 
   ScopedArenaVector<uint8_t> out_;
 

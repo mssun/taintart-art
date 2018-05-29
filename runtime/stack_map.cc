@@ -200,7 +200,7 @@ void StackMap::Dump(VariableIndentationOutputStream* vios,
       << std::dec
       << ", stack_mask=0b";
   BitMemoryRegion stack_mask = code_info.GetStackMaskOf(*this);
-  for (size_t i = 0, e = stack_mask.size_in_bits(); i < e; ++i) {
+  for (size_t i = 0, e = code_info.GetNumberOfStackMaskBits(); i < e; ++i) {
     vios->Stream() << stack_mask.LoadBit(e - i - 1);
   }
   vios->Stream() << ")\n";
