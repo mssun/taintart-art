@@ -75,7 +75,7 @@ class VerifierDeps {
   // If `klass` is null, the class is assumed unresolved.
   static void MaybeRecordClassResolution(const DexFile& dex_file,
                                          dex::TypeIndex type_idx,
-                                         mirror::Class* klass)
+                                         ObjPtr<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::verifier_deps_lock_);
 
@@ -99,8 +99,8 @@ class VerifierDeps {
   // to `destination` as defined by RegType::AssignableFrom. `dex_file` is the
   // owner of the method for which MethodVerifier performed the assignability test.
   static void MaybeRecordAssignability(const DexFile& dex_file,
-                                       mirror::Class* destination,
-                                       mirror::Class* source,
+                                       ObjPtr<mirror::Class> destination,
+                                       ObjPtr<mirror::Class> source,
                                        bool is_strict,
                                        bool is_assignable)
       REQUIRES_SHARED(Locks::mutator_lock_)
@@ -218,8 +218,8 @@ class VerifierDeps {
   // Finds the class in the classpath that makes `source` inherit` from `destination`.
   // Returns null if a class defined in the compiled DEX files, and assignable to
   // `source`, direclty inherits from `destination`.
-  mirror::Class* FindOneClassPathBoundaryForInterface(mirror::Class* destination,
-                                                      mirror::Class* source) const
+  ObjPtr<mirror::Class> FindOneClassPathBoundaryForInterface(ObjPtr<mirror::Class> destination,
+                                                             ObjPtr<mirror::Class> source) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns the index of `str`. If it is defined in `dex_file_`, this is the dex
@@ -234,8 +234,8 @@ class VerifierDeps {
 
   // Returns the bytecode access flags of `element` (bottom 16 bits), or
   // `kUnresolvedMarker` if `element` is null.
-  template <typename T>
-  static uint16_t GetAccessFlags(T* element)
+  template <typename Ptr>
+  static uint16_t GetAccessFlags(Ptr element)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns a string ID of the descriptor of the declaring class of `element`,
@@ -256,7 +256,7 @@ class VerifierDeps {
 
   void AddClassResolution(const DexFile& dex_file,
                           dex::TypeIndex type_idx,
-                          mirror::Class* klass)
+                          ObjPtr<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::verifier_deps_lock_);
 
@@ -273,8 +273,8 @@ class VerifierDeps {
       REQUIRES(!Locks::verifier_deps_lock_);
 
   void AddAssignability(const DexFile& dex_file,
-                        mirror::Class* destination,
-                        mirror::Class* source,
+                        ObjPtr<mirror::Class> destination,
+                        ObjPtr<mirror::Class> source,
                         bool is_strict,
                         bool is_assignable)
       REQUIRES_SHARED(Locks::mutator_lock_);

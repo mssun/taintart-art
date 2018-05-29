@@ -691,7 +691,7 @@ class MethodVerifier {
   // non-precise reference will be returned.
   // Note: we reuse NO_CLASS as this will throw an exception at runtime, when the failing class is
   //       actually touched.
-  const RegType& FromClass(const char* descriptor, mirror::Class* klass, bool precise)
+  const RegType& FromClass(const char* descriptor, ObjPtr<mirror::Class> klass, bool precise)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE bool FailOrAbort(bool condition, const char* error_msg, uint32_t work_insn_idx);

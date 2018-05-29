@@ -3366,7 +3366,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
           }
           break;
         }
-        auto* klass = declaring_class.GetClass();
+        ObjPtr<mirror::Class> klass = declaring_class.GetClass();
         for (uint32_t i = 0, num_fields = klass->NumInstanceFields(); i < num_fields; ++i) {
           if (klass->GetInstanceField(i)->IsFinal()) {
             Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "return-void-no-barrier not expected for "
@@ -3667,10 +3667,10 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
       UninstantiableError(descriptor);
       precise = false;
     }
-    result = reg_types_.FindClass(klass.Ptr(), precise);
+    result = reg_types_.FindClass(klass, precise);
     if (result == nullptr) {
       const char* descriptor = dex_file_->StringByTypeIdx(class_idx);
-      result = reg_types_.InsertClass(descriptor, klass.Ptr(), precise);
+      result = reg_types_.InsertClass(descriptor, klass, precise);
     }
   } else {
     const char* descriptor = dex_file_->StringByTypeIdx(class_idx);
@@ -4943,7 +4943,7 @@ const RegType& MethodVerifier::GetDeclaringClass() {
     const char* descriptor
         = dex_file_->GetTypeDescriptor(dex_file_->GetTypeId(method_id.class_idx_));
     if (method_being_verified_ != nullptr) {
-      mirror::Class* klass = method_being_verified_->GetDeclaringClass();
+      ObjPtr<mirror::Class> klass = method_being_verified_->GetDeclaringClass();
       declaring_class_ = &FromClass(descriptor, klass, klass->CannotBeAssignedFromOtherTypes());
     } else {
       declaring_class_ = &reg_types_.FromDescriptor(GetClassLoader(), descriptor, false);
@@ -5045,7 +5045,7 @@ void MethodVerifier::VisitRoots(RootVisitor* visitor, const RootInfo& root_info)
 }
 
 const RegType& MethodVerifier::FromClass(const char* descriptor,
-                                         mirror::Class* klass,
+                                         ObjPtr<mirror::Class> klass,
                                          bool precise) {
   DCHECK(klass != nullptr);
   if (precise && !klass->IsInstantiable() && !klass->IsPrimitive()) {
