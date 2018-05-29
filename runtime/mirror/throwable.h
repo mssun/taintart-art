@@ -46,17 +46,7 @@ class MANAGED Throwable : public Object {
   bool IsCheckedException() REQUIRES_SHARED(Locks::mutator_lock_);
   bool IsError() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static Class* GetJavaLangThrowable() REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK(!java_lang_Throwable_.IsNull());
-    return java_lang_Throwable_.Read();
-  }
-
   int32_t GetStackDepth() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static void SetClass(ObjPtr<Class> java_lang_Throwable);
-  static void ResetClass();
-  static void VisitRoots(RootVisitor* visitor)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   Object* GetStackState() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -68,8 +58,6 @@ class MANAGED Throwable : public Object {
   HeapReference<String> detail_message_;
   HeapReference<Object> stack_trace_;
   HeapReference<Object> suppressed_exceptions_;
-
-  static GcRoot<Class> java_lang_Throwable_;
 
   friend struct art::ThrowableOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(Throwable);
