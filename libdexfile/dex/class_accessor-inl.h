@@ -50,6 +50,19 @@ inline const uint8_t* ClassAccessor::Field::Read(const uint8_t* ptr) {
   return ptr;
 }
 
+template <typename DataType, typename Visitor>
+inline const uint8_t* ClassAccessor::VisitMembers(size_t count,
+                                                  const Visitor& visitor,
+                                                  const uint8_t* ptr,
+                                                  DataType* data) const {
+  DCHECK(data != nullptr);
+  for ( ; count != 0; --count) {
+    ptr = data->Read(ptr);
+    visitor(*data);
+  }
+  return ptr;
+}
+
 template <typename StaticFieldVisitor,
           typename InstanceFieldVisitor,
           typename DirectMethodVisitor,
@@ -59,35 +72,15 @@ inline void ClassAccessor::VisitFieldsAndMethods(
     const InstanceFieldVisitor& instance_field_visitor,
     const DirectMethodVisitor& direct_method_visitor,
     const VirtualMethodVisitor& virtual_method_visitor) const {
-  const uint8_t* ptr = ptr_pos_;
-  {
-    Field data;
-    for (size_t i = 0; i < num_static_fields_; ++i) {
-      ptr = data.Read(ptr);
-      static_field_visitor(data);
-    }
-  }
-  {
-    Field data;
-    for (size_t i = 0; i < num_instance_fields_; ++i) {
-      ptr = data.Read(ptr);
-      instance_field_visitor(data);
-    }
-  }
-  {
-    Method data(dex_file_, /*is_static_or_direct*/ true);
-    for (size_t i = 0; i < num_direct_methods_; ++i) {
-      ptr = data.Read(ptr);
-      direct_method_visitor(data);
-    }
-  }
-  {
-    Method data(dex_file_, /*is_static_or_direct*/ false);
-    for (size_t i = 0; i < num_virtual_methods_; ++i) {
-      ptr = data.Read(ptr);
-      virtual_method_visitor(data);
-    }
-  }
+  Field field(dex_file_);
+  const uint8_t* ptr = VisitMembers(num_static_fields_, static_field_visitor, ptr_pos_, &field);
+  field.NextSection();
+  ptr = VisitMembers(num_instance_fields_, instance_field_visitor, ptr, &field);
+
+  Method method(dex_file_, /*is_static_or_direct*/ true);
+  ptr = VisitMembers(num_direct_methods_, direct_method_visitor, ptr, &method);
+  method.NextSection();
+  ptr = VisitMembers(num_virtual_methods_, virtual_method_visitor, ptr, &method);
 }
 
 template <typename DirectMethodVisitor,
@@ -110,12 +103,6 @@ inline void ClassAccessor::VisitFields(const StaticFieldVisitor& static_field_vi
                         VoidFunctor());
 }
 
-// Visit direct and virtual methods.
-template <typename MethodVisitor>
-inline void ClassAccessor::VisitMethods(const MethodVisitor& method_visitor) const {
-  VisitMethods(method_visitor, method_visitor);
-}
-
 inline const DexFile::CodeItem* ClassAccessor::GetCodeItem(const Method& method) const {
   return dex_file_.GetCodeItem(method.GetCodeItemOffset());
 }
@@ -130,6 +117,25 @@ inline const char* ClassAccessor::GetDescriptor() const {
 
 inline const DexFile::CodeItem* ClassAccessor::Method::GetCodeItem() const {
   return dex_file_.GetCodeItem(code_off_);
+}
+
+inline IterationRange<ClassAccessor::DataIterator<ClassAccessor::Field>> ClassAccessor::GetFields()
+    const {
+  const uint32_t limit = num_static_fields_ + num_instance_fields_;
+  return { DataIterator<Field>(dex_file_, 0u, num_static_fields_, limit, ptr_pos_),
+           DataIterator<Field>(dex_file_, limit, num_static_fields_, limit, ptr_pos_) };
+}
+
+inline IterationRange<ClassAccessor::DataIterator<ClassAccessor::Method>>
+    ClassAccessor::GetMethods() const {
+  // Skip over the fields.
+  Field field(dex_file_);
+  const size_t skip_count = num_static_fields_ + num_instance_fields_;
+  const uint8_t* ptr_pos = VisitMembers(skip_count, VoidFunctor(), ptr_pos_, &field);
+  // Return the iterator pair for all the methods.
+  const uint32_t limit = num_direct_methods_ + num_virtual_methods_;
+  return { DataIterator<Method>(dex_file_, 0u, num_direct_methods_, limit, ptr_pos),
+           DataIterator<Method>(dex_file_, limit, num_direct_methods_, limit, ptr_pos) };
 }
 
 }  // namespace art
