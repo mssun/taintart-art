@@ -574,6 +574,7 @@ art_cc_test {
         "interpreter/safe_math_test.cc",
         "interpreter/unstarted_runtime_test.cc",
         "jdwp/jdwp_options_test.cc",
+        "jit/profiling_info_test.cc",
         "jni/java_vm_ext_test.cc",
         "method_handles_test.cc",
         "mirror/dex_cache_test.cc",
