@@ -90,7 +90,7 @@ void StackMap::DumpEncoding(const BitTable<6>& table,
                             VariableIndentationOutputStream* vios) {
   vios->Stream()
       << "StackMapEncoding"
-      << " (NativePcOffsetBits=" << table.NumColumnBits(kNativePcOffset)
+      << " (PackedNativePcBits=" << table.NumColumnBits(kPackedNativePc)
       << ", DexPcBits=" << table.NumColumnBits(kDexPc)
       << ", DexRegisterMapOffsetBits=" << table.NumColumnBits(kDexRegisterMapOffset)
       << ", InlineInfoIndexBits=" << table.NumColumnBits(kInlineInfoIndex)

@@ -918,26 +918,31 @@ TEST(StackMapTest, InlineTest) {
   }
 }
 
-TEST(StackMapTest, CodeOffsetTest) {
-  // Test minimum alignments, and decoding.
-  CodeOffset offset_thumb2 =
-      CodeOffset::FromOffset(kThumb2InstructionAlignment, InstructionSet::kThumb2);
-  CodeOffset offset_arm64 =
-      CodeOffset::FromOffset(kArm64InstructionAlignment, InstructionSet::kArm64);
-  CodeOffset offset_x86 =
-      CodeOffset::FromOffset(kX86InstructionAlignment, InstructionSet::kX86);
-  CodeOffset offset_x86_64 =
-      CodeOffset::FromOffset(kX86_64InstructionAlignment, InstructionSet::kX86_64);
-  CodeOffset offset_mips =
-      CodeOffset::FromOffset(kMipsInstructionAlignment, InstructionSet::kMips);
-  CodeOffset offset_mips64 =
-      CodeOffset::FromOffset(kMips64InstructionAlignment, InstructionSet::kMips64);
-  EXPECT_EQ(offset_thumb2.Uint32Value(InstructionSet::kThumb2), kThumb2InstructionAlignment);
-  EXPECT_EQ(offset_arm64.Uint32Value(InstructionSet::kArm64), kArm64InstructionAlignment);
-  EXPECT_EQ(offset_x86.Uint32Value(InstructionSet::kX86), kX86InstructionAlignment);
-  EXPECT_EQ(offset_x86_64.Uint32Value(InstructionSet::kX86_64), kX86_64InstructionAlignment);
-  EXPECT_EQ(offset_mips.Uint32Value(InstructionSet::kMips), kMipsInstructionAlignment);
-  EXPECT_EQ(offset_mips64.Uint32Value(InstructionSet::kMips64), kMips64InstructionAlignment);
+TEST(StackMapTest, PackedNativePcTest) {
+  uint32_t packed_thumb2 =
+      StackMap::PackNativePc(kThumb2InstructionAlignment, InstructionSet::kThumb2);
+  uint32_t packed_arm64 =
+      StackMap::PackNativePc(kArm64InstructionAlignment, InstructionSet::kArm64);
+  uint32_t packed_x86 =
+      StackMap::PackNativePc(kX86InstructionAlignment, InstructionSet::kX86);
+  uint32_t packed_x86_64 =
+      StackMap::PackNativePc(kX86_64InstructionAlignment, InstructionSet::kX86_64);
+  uint32_t packed_mips =
+      StackMap::PackNativePc(kMipsInstructionAlignment, InstructionSet::kMips);
+  uint32_t packed_mips64 =
+      StackMap::PackNativePc(kMips64InstructionAlignment, InstructionSet::kMips64);
+  EXPECT_EQ(StackMap::UnpackNativePc(packed_thumb2, InstructionSet::kThumb2),
+            kThumb2InstructionAlignment);
+  EXPECT_EQ(StackMap::UnpackNativePc(packed_arm64, InstructionSet::kArm64),
+            kArm64InstructionAlignment);
+  EXPECT_EQ(StackMap::UnpackNativePc(packed_x86, InstructionSet::kX86),
+            kX86InstructionAlignment);
+  EXPECT_EQ(StackMap::UnpackNativePc(packed_x86_64, InstructionSet::kX86_64),
+            kX86_64InstructionAlignment);
+  EXPECT_EQ(StackMap::UnpackNativePc(packed_mips, InstructionSet::kMips),
+            kMipsInstructionAlignment);
+  EXPECT_EQ(StackMap::UnpackNativePc(packed_mips64, InstructionSet::kMips64),
+            kMips64InstructionAlignment);
 }
 
 TEST(StackMapTest, TestDeduplicateStackMask) {
