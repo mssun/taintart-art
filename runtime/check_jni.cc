@@ -31,6 +31,7 @@
 #include "base/time_utils.h"
 #include "class_linker-inl.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "gc/space/space.h"
@@ -638,8 +639,11 @@ class ScopedCheck {
       AbortF("expected non-null method");
       return false;
     }
+    ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
+        Runtime::Current()->GetClassLinker()->GetClassRoots();
     ObjPtr<mirror::Class> c = method->GetClass();
-    if (mirror::Method::StaticClass() != c && mirror::Constructor::StaticClass() != c) {
+    if (c != GetClassRoot<mirror::Method>(class_roots) &&
+        c != GetClassRoot<mirror::Constructor>(class_roots)) {
       AbortF("expected java.lang.reflect.Method or "
           "java.lang.reflect.Constructor but got object of type %s: %p",
           method->PrettyTypeOf().c_str(), jmethod);
@@ -669,7 +673,7 @@ class ScopedCheck {
       return false;
     }
     ObjPtr<mirror::Class> c = field->GetClass();
-    if (mirror::Field::StaticClass() != c) {
+    if (GetClassRoot<mirror::Field>() != c) {
       AbortF("expected java.lang.reflect.Field but got object of type %s: %p",
              field->PrettyTypeOf().c_str(), jfield);
       return false;
