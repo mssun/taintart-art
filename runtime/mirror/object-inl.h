@@ -37,7 +37,7 @@
 #include "read_barrier-inl.h"
 #include "reference.h"
 #include "runtime.h"
-#include "string-inl.h"
+#include "string.h"
 #include "throwable.h"
 
 namespace art {

@@ -36,32 +36,19 @@
 
 #include <jni.h>
 
-#include "art_jvmti.h"
-#include "art_method.h"
-#include "base/array_slice.h"
 #include "base/globals.h"
-#include "base/mem_map.h"
-#include "class_linker.h"
-#include "dex/dex_file.h"
-#include "dex/utf.h"
-#include "gc_root-inl.h"
-#include "jni/jni_env_ext-inl.h"
+#include "base/mutex.h"
 #include "jvmti.h"
-#include "linear_alloc.h"
-#include "mirror/array-inl.h"
 #include "mirror/array.h"
-#include "mirror/class-inl.h"
-#include "mirror/class.h"
-#include "mirror/class_loader-inl.h"
-#include "mirror/string-inl.h"
-#include "oat_file.h"
-#include "obj_ptr.h"
-#include "scoped_thread_state_change-inl.h"
-#include "stack.h"
-#include "thread_list.h"
-#include "ti_class_definition.h"
-#include "transform.h"
-#include "utils/dex_cache_arrays_layout-inl.h"
+
+namespace art {
+
+class DexFile;
+template <class MirrorType> class Handle;
+template <class MirrorType> class ObjPtr;
+class Thread;
+
+}  // namespace art
 
 namespace openjdkjvmti {
 

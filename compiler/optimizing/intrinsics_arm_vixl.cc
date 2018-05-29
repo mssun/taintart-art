@@ -25,7 +25,7 @@
 #include "mirror/array-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/reference.h"
-#include "mirror/string.h"
+#include "mirror/string-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 
