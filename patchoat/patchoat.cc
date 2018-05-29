@@ -43,6 +43,7 @@
 #include "base/unix_file/fd_file.h"
 #include "base/unix_file/random_access_file_utils.h"
 #include "base/utils.h"
+#include "class_root.h"
 #include "elf_file.h"
 #include "elf_file_impl.h"
 #include "elf_utils.h"
@@ -1053,8 +1054,8 @@ void PatchOat::VisitObject(mirror::Object* object) {
                             native_visitor);
       }
     }
-  } else if (object->GetClass() == mirror::Method::StaticClass() ||
-             object->GetClass() == mirror::Constructor::StaticClass()) {
+  } else if (object->GetClass() == GetClassRoot<mirror::Method>() ||
+             object->GetClass() == GetClassRoot<mirror::Constructor>()) {
     // Need to go update the ArtMethod.
     auto* dest = down_cast<mirror::Executable*>(copy);
     auto* src = down_cast<mirror::Executable*>(object);

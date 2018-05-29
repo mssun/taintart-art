@@ -67,6 +67,7 @@
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "compiler_callbacks.h"
 #include "debugger.h"
 #include "dex/art_dex_file_loader.h"
@@ -736,8 +737,9 @@ bool Runtime::Start() {
     ScopedObjectAccess soa(self);
     StackHandleScope<2> hs(soa.Self());
 
-    auto class_class(hs.NewHandle<mirror::Class>(mirror::Class::GetJavaLangClass()));
-    auto field_class(hs.NewHandle<mirror::Class>(mirror::Field::StaticClass()));
+    ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots = GetClassLinker()->GetClassRoots();
+    auto class_class(hs.NewHandle<mirror::Class>(GetClassRoot<mirror::Class>(class_roots)));
+    auto field_class(hs.NewHandle<mirror::Class>(GetClassRoot<mirror::Field>(class_roots)));
 
     class_linker_->EnsureInitialized(soa.Self(), class_class, true, true);
     // Field class is needed for register_java_net_InetAddress in libcore, b/28153851.
@@ -1977,12 +1979,9 @@ void Runtime::VisitConstantRoots(RootVisitor* visitor) {
   // Visit the classes held as static in mirror classes, these can be visited concurrently and only
   // need to be visited once per GC since they never change.
   mirror::Class::VisitRoots(visitor);
-  mirror::Constructor::VisitRoots(visitor);
-  mirror::Method::VisitRoots(visitor);
   mirror::StackTraceElement::VisitRoots(visitor);
   mirror::String::VisitRoots(visitor);
   mirror::Throwable::VisitRoots(visitor);
-  mirror::Field::VisitRoots(visitor);
   mirror::EmulatedStackFrame::VisitRoots(visitor);
   mirror::ClassExt::VisitRoots(visitor);
   // Visiting the roots of these ArtMethods is not currently required since all the GcRoots are
