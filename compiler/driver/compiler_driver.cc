@@ -790,8 +790,7 @@ static void ResolveConstStrings(CompilerDriver* driver,
         // FIXME: Make sure that inlining honors this. b/26687569
         continue;
       }
-      accessor.VisitMethods([&](const ClassAccessor::Method& method)
-          REQUIRES_SHARED(Locks::mutator_lock_) {
+      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
         // Resolve const-strings in the code. Done to have deterministic allocation behavior. Right
         // now this is single-threaded for simplicity.
         // TODO: Collect the relevant string indices in parallel, then allocate them sequentially
@@ -812,7 +811,7 @@ static void ResolveConstStrings(CompilerDriver* driver,
               break;
           }
         }
-      });
+      }
     }
   }
 }
@@ -880,10 +879,9 @@ static void InitializeTypeCheckBitstrings(CompilerDriver* driver,
       }
 
       // Direct and virtual methods.
-      accessor.VisitMethods([&](const ClassAccessor::Method& method)
-          REQUIRES_SHARED(Locks::mutator_lock_) {
+      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
         InitializeTypeCheckBitstrings(driver, class_linker, dex_cache, *dex_file, method);
-      });
+      }
     }
   }
 }
@@ -1949,9 +1947,9 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
           // - We're only going to compile methods that did verify.
           // - Quickening will not do checkcast ellision.
           // TODO(ngeoffray): Reconsider this once we refactor compiler filters.
-          accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+          for (const ClassAccessor::Method& method : accessor.GetMethods()) {
             verification_results_->CreateVerifiedMethodFor(method.GetReference());
-          });
+          }
         }
       } else if (!compiler_only_verifies) {
         // Make sure later compilation stages know they should not try to verify
@@ -2747,12 +2745,12 @@ static void CompileDexFile(CompilerDriver* driver,
 
     // Compile direct and virtual methods.
     int64_t previous_method_idx = -1;
-    accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
       const uint32_t method_idx = method.GetIndex();
       if (method_idx == previous_method_idx) {
         // smali can create dex files with two encoded_methods sharing the same method_idx
         // http://code.google.com/p/smali/issues/detail?id=119
-        return;
+        continue;
       }
       previous_method_idx = method_idx;
       compile_fn(soa.Self(),
@@ -2767,7 +2765,7 @@ static void CompileDexFile(CompilerDriver* driver,
                  dex_to_dex_compilation_level,
                  compilation_enabled,
                  dex_cache);
-    });
+    }
   };
   context.ForAllLambda(0, dex_file.NumClassDefs(), compile, thread_count);
 }

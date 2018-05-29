@@ -635,13 +635,13 @@ void DexToDexCompiler::SetDexFiles(const std::vector<const DexFile*>& dex_files)
   std::unordered_set<const DexFile::CodeItem*> seen_code_items;
   for (const DexFile* dex_file : dex_files) {
     for (ClassAccessor accessor : dex_file->GetClasses()) {
-      accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
         const DexFile::CodeItem* code_item = method.GetCodeItem();
         // Detect the shared code items.
         if (!seen_code_items.insert(code_item).second) {
           shared_code_items_.insert(code_item);
         }
-      });
+      }
     }
   }
   VLOG(compiler) << "Shared code items " << shared_code_items_.size();

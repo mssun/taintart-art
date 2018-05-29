@@ -130,7 +130,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   for (ClassAccessor accessor : dex_file.GetClasses()) {
     std::set<size_t> unique_method_ids;
     std::set<size_t> unique_string_ids;
-    accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
       dex_code_bytes_ += method.GetInstructions().InsnsSizeInBytes();
       unique_code_items.insert(method.GetCodeItemOffset());
       for (const DexInstructionPcPair& inst : method.GetInstructions()) {
@@ -188,7 +188,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
             break;
         }
       }
-    });
+    }
     total_unique_method_idx_ += unique_method_ids.size();
     total_unique_string_ids_ += unique_string_ids.size();
   }

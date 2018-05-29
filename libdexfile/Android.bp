@@ -112,6 +112,7 @@ art_cc_test {
     ],
     srcs: [
         "dex/art_dex_file_loader_test.cc",
+        "dex/class_accessor_test.cc",
         "dex/code_item_accessors_test.cc",
         "dex/compact_dex_file_test.cc",
         "dex/compact_offset_table_test.cc",
