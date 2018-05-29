@@ -85,10 +85,9 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
     for (uint32_t i = 0; i < updated_dex_file->NumClassDefs(); ++i) {
       // Unquicken each method.
       ClassAccessor accessor(*updated_dex_file, updated_dex_file->GetClassDef(i));
-      accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
         CompiledMethod* compiled_method = compiler_driver_->GetCompiledMethod(
-            MethodReference(updated_dex_file,
-                            method.GetIndex()));
+            method.GetReference());
         ArrayRef<const uint8_t> table;
         if (compiled_method != nullptr) {
           table = compiled_method->GetVmapTable();
@@ -97,7 +96,7 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
                                    *accessor.GetCodeItem(method),
                                    table,
                                    /* decompile_return_instruction */ true);
-      });
+      }
     }
 
     // Make sure after unquickening we go back to the same contents as the original dex file.

@@ -931,12 +931,12 @@ class ProfMan FINAL {
       std::vector<ProfileMethodInfo> methods;
       if (method_str == kClassAllMethods) {
         ClassAccessor accessor(*dex_file, *dex_file->FindClassDef(class_ref.TypeIndex()));
-        accessor.VisitMethods([&](const ClassAccessor::Method& method) {
+        for (const ClassAccessor::Method& method : accessor.GetMethods()) {
           if (method.GetCodeItemOffset() != 0) {
             // Add all of the methods that have code to the profile.
             methods.push_back(ProfileMethodInfo(method.GetReference()));
           }
-        });
+        }
       }
       // TODO: Check return values?
       profile->AddMethods(methods, static_cast<ProfileCompilationInfo::MethodHotness::Flag>(flags));
