@@ -799,6 +799,24 @@ class InvokeInfo : public BitTable<3>::Accessor {
   }
 };
 
+// Register masks tend to have many tailing zero bits,
+// therefore it is worth encoding them as value+shift.
+class RegisterMask : public BitTable<2>::Accessor {
+ public:
+  enum Field {
+    kValue,
+    kShift,
+    kCount,
+  };
+
+  RegisterMask(const BitTable<kCount>* table, uint32_t row)
+    : BitTable<kCount>::Accessor(table, row) {}
+
+  ALWAYS_INLINE uint32_t GetMask() const {
+    return Get<kValue>() << Get<kShift>();
+  }
+};
+
 /**
  * Wrapper around all compiler information collected for a method.
  * The information is of the form:
@@ -833,24 +851,22 @@ class CodeInfo {
     return DexRegisterLocationCatalog(location_catalog_);
   }
 
-  ALWAYS_INLINE size_t GetNumberOfStackMaskBits() const {
-    return stack_mask_bits_;
-  }
-
   ALWAYS_INLINE StackMap GetStackMapAt(size_t index) const {
     return StackMap(&stack_maps_, index);
   }
 
   BitMemoryRegion GetStackMask(size_t index) const {
-    return stack_masks_.Subregion(index * stack_mask_bits_, stack_mask_bits_);
+    return stack_masks_.GetBitMemoryRegion(index);
   }
 
   BitMemoryRegion GetStackMaskOf(const StackMap& stack_map) const {
-    return GetStackMask(stack_map.GetStackMaskIndex());
+    uint32_t index = stack_map.GetStackMaskIndex();
+    return (index == StackMap::kNoValue) ? BitMemoryRegion() : GetStackMask(index);
   }
 
   uint32_t GetRegisterMaskOf(const StackMap& stack_map) const {
-    return register_masks_.Get(stack_map.GetRegisterMaskIndex());
+    uint32_t index = stack_map.GetRegisterMaskIndex();
+    return (index == StackMap::kNoValue) ? 0 : RegisterMask(&register_masks_, index).GetMask();
   }
 
   uint32_t GetNumberOfLocationCatalogEntries() const {
@@ -1045,8 +1061,8 @@ class CodeInfo {
     invoke_infos_.Decode(bit_region, &bit_offset);
     inline_infos_.Decode(bit_region, &bit_offset);
     register_masks_.Decode(bit_region, &bit_offset);
-    stack_mask_bits_ = DecodeVarintBits(bit_region, &bit_offset);
-    stack_masks_ = bit_region.Subregion(bit_offset, non_header_size * kBitsPerByte - bit_offset);
+    stack_masks_.Decode(bit_region, &bit_offset);
+    CHECK_EQ(BitsToBytesRoundUp(bit_offset), non_header_size);
   }
 
   size_t size_;
@@ -1056,9 +1072,8 @@ class CodeInfo {
   BitTable<StackMap::Field::kCount> stack_maps_;
   BitTable<InvokeInfo::Field::kCount> invoke_infos_;
   BitTable<InlineInfo::Field::kCount> inline_infos_;
-  BitTable<1> register_masks_;
-  uint32_t stack_mask_bits_ = 0;
-  BitMemoryRegion stack_masks_;
+  BitTable<RegisterMask::Field::kCount> register_masks_;
+  BitTable<1> stack_masks_;
 
   friend class OatDumper;
 };
