@@ -282,7 +282,7 @@ static mirror::ObjectArray<mirror::Field>* GetDeclaredFields(
   }
   size_t array_idx = 0;
   auto object_array = hs.NewHandle(mirror::ObjectArray<mirror::Field>::Alloc(
-      self, mirror::Field::ArrayClass(), array_size));
+      self, GetClassRoot<mirror::ObjectArray<mirror::Field>>(), array_size));
   if (object_array == nullptr) {
     return nullptr;
   }
@@ -539,7 +539,7 @@ static jobjectArray Class_getDeclaredConstructorsInternal(
     constructor_count += MethodMatchesConstructor(&m, public_only, enforce_hidden_api) ? 1u : 0u;
   }
   auto h_constructors = hs.NewHandle(mirror::ObjectArray<mirror::Constructor>::Alloc(
-      soa.Self(), mirror::Constructor::ArrayClass(), constructor_count));
+      soa.Self(), GetClassRoot<mirror::ObjectArray<mirror::Constructor>>(), constructor_count));
   if (UNLIKELY(h_constructors == nullptr)) {
     soa.Self()->AssertPendingException();
     return nullptr;
@@ -598,7 +598,7 @@ static jobjectArray Class_getDeclaredMethodsUnchecked(JNIEnv* env, jobject javaT
     }
   }
   auto ret = hs.NewHandle(mirror::ObjectArray<mirror::Method>::Alloc(
-      soa.Self(), mirror::Method::ArrayClass(), num_methods));
+      soa.Self(), GetClassRoot<mirror::ObjectArray<mirror::Method>>(), num_methods));
   if (ret == nullptr) {
     soa.Self()->AssertPendingOOMException();
     return nullptr;
@@ -702,7 +702,7 @@ static jobject Class_getEnclosingConstructorNative(JNIEnv* env, jobject javaThis
   }
   ObjPtr<mirror::Object> method = annotations::GetEnclosingMethod(klass);
   if (method != nullptr) {
-    if (mirror::Constructor::StaticClass() == method->GetClass()) {
+    if (GetClassRoot<mirror::Constructor>() == method->GetClass()) {
       return soa.AddLocalReference<jobject>(method);
     }
   }
@@ -718,7 +718,7 @@ static jobject Class_getEnclosingMethodNative(JNIEnv* env, jobject javaThis) {
   }
   ObjPtr<mirror::Object> method = annotations::GetEnclosingMethod(klass);
   if (method != nullptr) {
-    if (mirror::Method::StaticClass() == method->GetClass()) {
+    if (GetClassRoot<mirror::Method>() == method->GetClass()) {
       return soa.AddLocalReference<jobject>(method);
     }
   }

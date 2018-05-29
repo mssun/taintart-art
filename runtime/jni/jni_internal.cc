@@ -489,7 +489,7 @@ class JNI {
     CHECK_NON_NULL_ARGUMENT(jlr_field);
     ScopedObjectAccess soa(env);
     ObjPtr<mirror::Object> obj_field = soa.Decode<mirror::Object>(jlr_field);
-    if (obj_field->GetClass() != mirror::Field::StaticClass()) {
+    if (obj_field->GetClass() != GetClassRoot<mirror::Field>()) {
       // Not even a java.lang.reflect.Field, return null. TODO, is this check necessary?
       return nullptr;
     }

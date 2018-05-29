@@ -18,7 +18,6 @@
 #define ART_RUNTIME_MIRROR_METHOD_H_
 
 #include "executable.h"
-#include "gc_root.h"
 
 namespace art {
 namespace mirror {
@@ -32,28 +31,7 @@ class MANAGED Method : public Executable {
   static Method* CreateFromArtMethod(Thread* self, ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return static_class_.Read();
-  }
-
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static mirror::Class* ArrayClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return array_class_.Read();
-  }
-
-  static void SetArrayClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static void ResetArrayClass() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
-  static GcRoot<Class> static_class_;  // java.lang.reflect.Method.class.
-  static GcRoot<Class> array_class_;  // [java.lang.reflect.Method.class.
-
   DISALLOW_COPY_AND_ASSIGN(Method);
 };
 
@@ -64,28 +42,7 @@ class MANAGED Constructor: public Executable {
   static Constructor* CreateFromArtMethod(Thread* self, ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return static_class_.Read();
-  }
-
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static mirror::Class* ArrayClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return array_class_.Read();
-  }
-
-  static void SetArrayClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static void ResetArrayClass() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
-  static GcRoot<Class> static_class_;  // java.lang.reflect.Constructor.class.
-  static GcRoot<Class> array_class_;  // [java.lang.reflect.Constructor.class.
-
   DISALLOW_COPY_AND_ASSIGN(Constructor);
 };
 

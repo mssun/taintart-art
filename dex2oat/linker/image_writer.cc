@@ -778,8 +778,11 @@ class ImageWriter::PruneObjectReferenceVisitor {
       return;
     }
 
+    ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
+        Runtime::Current()->GetClassLinker()->GetClassRoots();
     ObjPtr<mirror::Class> klass = ref->IsClass() ? ref->AsClass() : ref->GetClass();
-    if (klass == mirror::Method::StaticClass() || klass == mirror::Constructor::StaticClass()) {
+    if (klass == GetClassRoot<mirror::Method>(class_roots) ||
+        klass == GetClassRoot<mirror::Constructor>(class_roots)) {
       // Prune all classes using reflection because the content they held will not be fixup.
       *result_ = true;
     }
@@ -2402,7 +2405,10 @@ void ImageWriter::FixupObject(Object* orig, Object* copy) {
   if (orig->IsClass()) {
     FixupClass(orig->AsClass<kVerifyNone>(), down_cast<mirror::Class*>(copy));
   } else {
-    if (klass == mirror::Method::StaticClass() || klass == mirror::Constructor::StaticClass()) {
+    ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
+        Runtime::Current()->GetClassLinker()->GetClassRoots();
+    if (klass == GetClassRoot<mirror::Method>(class_roots) ||
+        klass == GetClassRoot<mirror::Constructor>(class_roots)) {
       // Need to go update the ArtMethod.
       auto* dest = down_cast<mirror::Executable*>(copy);
       auto* src = down_cast<mirror::Executable*>(orig);
