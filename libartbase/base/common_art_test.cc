@@ -355,23 +355,29 @@ std::string CommonArtTestImpl::GetTestDexFileName(const char* name) const {
   return filename;
 }
 
-std::vector<std::unique_ptr<const DexFile>> CommonArtTestImpl::OpenTestDexFiles(const char* name) {
-  std::string filename = GetTestDexFileName(name);
+std::vector<std::unique_ptr<const DexFile>> CommonArtTestImpl::OpenDexFiles(const char* filename) {
+  static constexpr bool kVerify = true;
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   const ArtDexFileLoader dex_file_loader;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  bool success = dex_file_loader.Open(filename.c_str(),
-                                      filename.c_str(),
-                                      /* verify */ true,
+  bool success = dex_file_loader.Open(filename,
+                                      filename,
+                                      kVerify,
                                       kVerifyChecksum,
-                                      &error_msg, &dex_files);
+                                      &error_msg,
+                                      &dex_files);
   CHECK(success) << "Failed to open '" << filename << "': " << error_msg;
   for (auto& dex_file : dex_files) {
     CHECK_EQ(PROT_READ, dex_file->GetPermissions());
     CHECK(dex_file->IsReadOnly());
   }
   return dex_files;
+}
+
+std::vector<std::unique_ptr<const DexFile>> CommonArtTestImpl::OpenTestDexFiles(
+    const char* name) {
+  return OpenDexFiles(GetTestDexFileName(name).c_str());
 }
 
 std::unique_ptr<const DexFile> CommonArtTestImpl::OpenTestDexFile(const char* name) {

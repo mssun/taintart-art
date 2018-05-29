@@ -148,6 +148,9 @@ class CommonArtTestImpl {
 
   std::string GetTestAndroidRoot();
 
+  // Open a file (allows reading of framework jars).
+  std::vector<std::unique_ptr<const DexFile>> OpenDexFiles(const char* filename);
+  // Open a test file (art-gtest-*.jar).
   std::vector<std::unique_ptr<const DexFile>> OpenTestDexFiles(const char* name);
 
   std::unique_ptr<const DexFile> OpenTestDexFile(const char* name);

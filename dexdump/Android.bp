@@ -23,10 +23,6 @@ cc_defaults {
         "dexdump.cc",
     ],
     cflags: ["-Wall", "-Werror"],
-    // TODO: fix b/72216369 and remove the need for this.
-    include_dirs: [
-        "art/runtime"  // dex utils.
-    ],
 }
 
 art_cc_binary {
