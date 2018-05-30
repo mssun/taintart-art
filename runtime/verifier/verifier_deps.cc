@@ -77,8 +77,8 @@ const VerifierDeps::DexFileDeps* VerifierDeps::GetDexFileDeps(const DexFile& dex
 static constexpr uint32_t kAccVdexAccessFlags =
     kAccPublic | kAccPrivate | kAccProtected | kAccStatic | kAccInterface;
 
-template <typename T>
-uint16_t VerifierDeps::GetAccessFlags(T* element) {
+template <typename Ptr>
+uint16_t VerifierDeps::GetAccessFlags(Ptr element) {
   static_assert(kAccJavaFlagsMask == 0xFFFF, "Unexpected value of a constant");
   if (element == nullptr) {
     return VerifierDeps::kUnresolvedMarker;
@@ -277,7 +277,7 @@ bool VerifierDeps::IsInClassPath(ObjPtr<mirror::Class> klass) const {
 
 void VerifierDeps::AddClassResolution(const DexFile& dex_file,
                                       dex::TypeIndex type_idx,
-                                      mirror::Class* klass) {
+                                      ObjPtr<mirror::Class> klass) {
   DexFileDeps* dex_deps = GetDexFileDeps(dex_file);
   if (dex_deps == nullptr) {
     // This invocation is from verification of a dex file which is not being compiled.
@@ -336,12 +336,13 @@ void VerifierDeps::AddMethodResolution(const DexFile& dex_file,
   dex_deps->methods_.insert(method_tuple);
 }
 
-mirror::Class* VerifierDeps::FindOneClassPathBoundaryForInterface(mirror::Class* destination,
-                                                                  mirror::Class* source) const {
+ObjPtr<mirror::Class> VerifierDeps::FindOneClassPathBoundaryForInterface(
+    ObjPtr<mirror::Class> destination,
+    ObjPtr<mirror::Class> source) const {
   DCHECK(destination->IsInterface());
   DCHECK(IsInClassPath(destination));
   Thread* thread = Thread::Current();
-  mirror::Class* current = source;
+  ObjPtr<mirror::Class> current = source;
   // Record the classes that are at the boundary between the compiled DEX files and
   // the classpath. We will check those classes later to find one class that inherits
   // `destination`.
@@ -367,7 +368,7 @@ mirror::Class* VerifierDeps::FindOneClassPathBoundaryForInterface(mirror::Class*
   int32_t iftable_count = source->GetIfTableCount();
   ObjPtr<mirror::IfTable> iftable = source->GetIfTable();
   for (int32_t i = 0; i < iftable_count; ++i) {
-    mirror::Class* itf = iftable->GetInterface(i);
+    ObjPtr<mirror::Class> itf = iftable->GetInterface(i);
     if (!IsInClassPath(itf)) {
       for (size_t j = 0; j < itf->NumDirectInterfaces(); ++j) {
         ObjPtr<mirror::Class> direct = mirror::Class::GetDirectInterface(thread, itf, j);
@@ -391,8 +392,8 @@ mirror::Class* VerifierDeps::FindOneClassPathBoundaryForInterface(mirror::Class*
 }
 
 void VerifierDeps::AddAssignability(const DexFile& dex_file,
-                                    mirror::Class* destination,
-                                    mirror::Class* source,
+                                    ObjPtr<mirror::Class> destination,
+                                    ObjPtr<mirror::Class> source,
                                     bool is_strict,
                                     bool is_assignable) {
   // Test that the method is only called on reference types.
@@ -429,8 +430,8 @@ void VerifierDeps::AddAssignability(const DexFile& dex_file,
     // Both types are arrays. Break down to component types and add recursively.
     // This helps filter out destinations from compiled DEX files (see below)
     // and deduplicate entries with the same canonical component type.
-    mirror::Class* destination_component = destination->GetComponentType();
-    mirror::Class* source_component = source->GetComponentType();
+    ObjPtr<mirror::Class> destination_component = destination->GetComponentType();
+    ObjPtr<mirror::Class> source_component = source->GetComponentType();
 
     // Only perform the optimization if both types are resolved which guarantees
     // that they linked successfully, as required at the top of this method.
@@ -511,7 +512,7 @@ void VerifierDeps::MaybeRecordVerificationStatus(const DexFile& dex_file,
 
 void VerifierDeps::MaybeRecordClassResolution(const DexFile& dex_file,
                                               dex::TypeIndex type_idx,
-                                              mirror::Class* klass) {
+                                              ObjPtr<mirror::Class> klass) {
   VerifierDeps* thread_deps = GetThreadLocalVerifierDeps();
   if (thread_deps != nullptr) {
     thread_deps->AddClassResolution(dex_file, type_idx, klass);
@@ -537,8 +538,8 @@ void VerifierDeps::MaybeRecordMethodResolution(const DexFile& dex_file,
 }
 
 void VerifierDeps::MaybeRecordAssignability(const DexFile& dex_file,
-                                            mirror::Class* destination,
-                                            mirror::Class* source,
+                                            ObjPtr<mirror::Class> destination,
+                                            ObjPtr<mirror::Class> source,
                                             bool is_strict,
                                             bool is_assignable) {
   VerifierDeps* thread_deps = GetThreadLocalVerifierDeps();
@@ -858,12 +859,12 @@ bool VerifierDeps::ValidateDependencies(Handle<mirror::ClassLoader> class_loader
 
 // TODO: share that helper with other parts of the compiler that have
 // the same lookup pattern.
-static mirror::Class* FindClassAndClearException(ClassLinker* class_linker,
-                                                 Thread* self,
-                                                 const char* name,
-                                                 Handle<mirror::ClassLoader> class_loader)
+static ObjPtr<mirror::Class> FindClassAndClearException(ClassLinker* class_linker,
+                                                        Thread* self,
+                                                        const char* name,
+                                                        Handle<mirror::ClassLoader> class_loader)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  mirror::Class* result = class_linker->FindClass(self, name, class_loader);
+  ObjPtr<mirror::Class> result = class_linker->FindClass(self, name, class_loader);
   if (result == nullptr) {
     DCHECK(self->IsExceptionPending());
     self->ClearException();
@@ -971,7 +972,7 @@ bool VerifierDeps::VerifyFields(Handle<mirror::ClassLoader> class_loader,
     std::string expected_decl_klass = entry.IsResolved()
         ? GetStringFromId(dex_file, entry.GetDeclaringClassIndex())
         : dex_file.StringByTypeIdx(field_id.class_idx_);
-    mirror::Class* cls = FindClassAndClearException(
+    ObjPtr<mirror::Class> cls = FindClassAndClearException(
         class_linker, self, expected_decl_klass.c_str(), class_loader);
     if (cls == nullptr) {
       LOG(INFO) << "VerifierDeps: Could not resolve class " << expected_decl_klass;
@@ -1034,7 +1035,7 @@ bool VerifierDeps::VerifyMethods(Handle<mirror::ClassLoader> class_loader,
         ? GetStringFromId(dex_file, entry.GetDeclaringClassIndex())
         : dex_file.StringByTypeIdx(method_id.class_idx_);
 
-    mirror::Class* cls = FindClassAndClearException(
+    ObjPtr<mirror::Class> cls = FindClassAndClearException(
         class_linker, self, expected_decl_klass.c_str(), class_loader);
     if (cls == nullptr) {
       LOG(INFO) << "VerifierDeps: Could not resolve class " << expected_decl_klass;

@@ -39,6 +39,7 @@
 #include "object-refvisitor-inl.h"
 #include "object_array-inl.h"
 #include "object_lock.h"
+#include "string-inl.h"
 #include "runtime.h"
 #include "thread.h"
 #include "throwable.h"
