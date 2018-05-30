@@ -1719,7 +1719,7 @@ class OatDumper {
           // Stack masks
           stats_.AddBits(
               Stats::kByteKindCodeInfoStackMasks,
-              code_info.stack_masks_.size_in_bits());
+              code_info.stack_masks_.DataBitSize());
 
           // Register masks
           stats_.AddBits(
