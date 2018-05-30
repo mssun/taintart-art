@@ -194,21 +194,6 @@ int32_t String::FastIndexOf(MemoryType* chars, int32_t ch, int32_t start) {
   return -1;
 }
 
-template<VerifyObjectFlags kVerifyFlags>
-inline size_t String::SizeOf() {
-  size_t size = sizeof(String);
-  if (IsCompressed()) {
-    size += (sizeof(uint8_t) * GetLength<kVerifyFlags>());
-  } else {
-    size += (sizeof(uint16_t) * GetLength<kVerifyFlags>());
-  }
-  // String.equals() intrinsics assume zero-padding up to kObjectAlignment,
-  // so make sure the zero-padding is actually copied around if GC compaction
-  // chooses to copy only SizeOf() bytes.
-  // http://b/23528461
-  return RoundUp(size, kObjectAlignment);
-}
-
 template <bool kIsInstrumented, typename PreFenceVisitor>
 inline String* String::Alloc(Thread* self, int32_t utf16_length_with_flag,
                              gc::AllocatorType allocator_type,

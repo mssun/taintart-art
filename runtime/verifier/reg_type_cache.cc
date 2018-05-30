@@ -77,7 +77,7 @@ void RegTypeCache::FillPrimitiveAndSmallConstantTypes() {
   DCHECK_EQ(entries_.size(), primitive_count_);
 }
 
-const RegType& RegTypeCache::FromDescriptor(mirror::ClassLoader* loader,
+const RegType& RegTypeCache::FromDescriptor(ObjPtr<mirror::ClassLoader> loader,
                                             const char* descriptor,
                                             bool precise) {
   DCHECK(RegTypeCache::primitive_initialized_);
@@ -149,14 +149,15 @@ bool RegTypeCache::MatchDescriptor(size_t idx, const StringPiece& descriptor, bo
   return true;
 }
 
-mirror::Class* RegTypeCache::ResolveClass(const char* descriptor, mirror::ClassLoader* loader) {
+ObjPtr<mirror::Class> RegTypeCache::ResolveClass(const char* descriptor,
+                                                 ObjPtr<mirror::ClassLoader> loader) {
   // Class was not found, must create new type.
   // Try resolving class
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   Thread* self = Thread::Current();
   StackHandleScope<1> hs(self);
   Handle<mirror::ClassLoader> class_loader(hs.NewHandle(loader));
-  mirror::Class* klass = nullptr;
+  ObjPtr<mirror::Class> klass = nullptr;
   if (can_load_classes_) {
     klass = class_linker->FindClass(self, descriptor, class_loader);
   } else {
@@ -175,7 +176,7 @@ StringPiece RegTypeCache::AddString(const StringPiece& string_piece) {
   return StringPiece(ptr, string_piece.length());
 }
 
-const RegType& RegTypeCache::From(mirror::ClassLoader* loader,
+const RegType& RegTypeCache::From(ObjPtr<mirror::ClassLoader> loader,
                                   const char* descriptor,
                                   bool precise) {
   StringPiece sp_descriptor(descriptor);
@@ -188,7 +189,7 @@ const RegType& RegTypeCache::From(mirror::ClassLoader* loader,
   }
   // Class not found in the cache, will create a new type for that.
   // Try resolving class.
-  mirror::Class* klass = ResolveClass(descriptor, loader);
+  ObjPtr<mirror::Class> klass = ResolveClass(descriptor, loader);
   if (klass != nullptr) {
     // Class resolved, first look for the class in the list of entries
     // Class was not found, must create new type.
@@ -234,7 +235,7 @@ const RegType& RegTypeCache::MakeUnresolvedReference() {
   return AddEntry(new (&allocator_) UnresolvedReferenceType(AddString("a"), entries_.size()));
 }
 
-const RegType* RegTypeCache::FindClass(mirror::Class* klass, bool precise) const {
+const RegType* RegTypeCache::FindClass(ObjPtr<mirror::Class> klass, bool precise) const {
   DCHECK(klass != nullptr);
   if (klass->IsPrimitive()) {
     // Note: precise isn't used for primitive classes. A char is assignable to an int. All
@@ -242,7 +243,7 @@ const RegType* RegTypeCache::FindClass(mirror::Class* klass, bool precise) const
     return &RegTypeFromPrimitiveType(klass->GetPrimitiveType());
   }
   for (auto& pair : klass_entries_) {
-    mirror::Class* const reg_klass = pair.first.Read();
+    ObjPtr<mirror::Class> const reg_klass = pair.first.Read();
     if (reg_klass == klass) {
       const RegType* reg_type = pair.second;
       if (MatchingPrecisionForClass(reg_type, precise)) {
@@ -254,7 +255,7 @@ const RegType* RegTypeCache::FindClass(mirror::Class* klass, bool precise) const
 }
 
 const RegType* RegTypeCache::InsertClass(const StringPiece& descriptor,
-                                         mirror::Class* klass,
+                                         ObjPtr<mirror::Class> klass,
                                          bool precise) {
   // No reference to the class was found, create new reference.
   DCHECK(FindClass(klass, precise) == nullptr);
@@ -265,7 +266,9 @@ const RegType* RegTypeCache::InsertClass(const StringPiece& descriptor,
   return &AddEntry(reg_type);
 }
 
-const RegType& RegTypeCache::FromClass(const char* descriptor, mirror::Class* klass, bool precise) {
+const RegType& RegTypeCache::FromClass(const char* descriptor,
+                                       ObjPtr<mirror::Class> klass,
+                                       bool precise) {
   DCHECK(klass != nullptr);
   const RegType* reg_type = FindClass(klass, precise);
   if (reg_type == nullptr) {
@@ -342,7 +345,7 @@ void RegTypeCache::CreatePrimitiveAndSmallConstantTypes() {
   // code cannot leak to other users.
   auto create_primitive_type_instance = [&](auto type) REQUIRES_SHARED(Locks::mutator_lock_) {
     using Type = typename decltype(type)::type;
-    mirror::Class* klass = nullptr;
+    ObjPtr<mirror::Class> klass = nullptr;
     // Try loading the class from linker.
     DCHECK(type.descriptor != nullptr);
     if (strlen(type.descriptor) > 0) {
@@ -500,7 +503,7 @@ const UninitializedType& RegTypeCache::Uninitialized(const RegType& type, uint32
                                                              allocation_pc,
                                                              entries_.size());
   } else {
-    mirror::Class* klass = type.GetClass();
+    ObjPtr<mirror::Class> klass = type.GetClass();
     for (size_t i = primitive_count_; i < entries_.size(); i++) {
       const RegType* cur_entry = entries_[i];
       if (cur_entry->IsUninitializedReference() &&
@@ -532,7 +535,7 @@ const RegType& RegTypeCache::FromUninitialized(const RegType& uninit_type) {
     }
     entry = new (&allocator_) UnresolvedReferenceType(descriptor, entries_.size());
   } else {
-    mirror::Class* klass = uninit_type.GetClass();
+    ObjPtr<mirror::Class> klass = uninit_type.GetClass();
     if (uninit_type.IsUninitializedThisReference() && !klass->IsFinal()) {
       // For uninitialized "this reference" look for reference types that are not precise.
       for (size_t i = primitive_count_; i < entries_.size(); i++) {
@@ -583,7 +586,7 @@ const UninitializedType& RegTypeCache::UninitializedThisArgument(const RegType& 
     }
     entry = new (&allocator_) UnresolvedUninitializedThisRefType(descriptor, entries_.size());
   } else {
-    mirror::Class* klass = type.GetClass();
+    ObjPtr<mirror::Class> klass = type.GetClass();
     for (size_t i = primitive_count_; i < entries_.size(); i++) {
       const RegType* cur_entry = entries_[i];
       if (cur_entry->IsUninitializedThisReference() && cur_entry->GetClass() == klass) {
@@ -647,7 +650,8 @@ const ConstantType& RegTypeCache::FromCat2ConstHi(int32_t value, bool precise) {
   return AddEntry(entry);
 }
 
-const RegType& RegTypeCache::GetComponentType(const RegType& array, mirror::ClassLoader* loader) {
+const RegType& RegTypeCache::GetComponentType(const RegType& array,
+                                              ObjPtr<mirror::ClassLoader> loader) {
   if (!array.IsArrayTypes()) {
     return Conflict();
   } else if (array.IsUnresolvedTypes()) {
@@ -655,7 +659,7 @@ const RegType& RegTypeCache::GetComponentType(const RegType& array, mirror::Clas
     const std::string descriptor(array.GetDescriptor().as_string());
     return FromDescriptor(loader, descriptor.c_str() + 1, false);
   } else {
-    mirror::Class* klass = array.GetClass()->GetComponentType();
+    ObjPtr<mirror::Class> klass = array.GetClass()->GetComponentType();
     std::string temp;
     const char* descriptor = klass->GetDescriptor(&temp);
     if (klass->IsErroneous()) {

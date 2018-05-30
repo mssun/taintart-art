@@ -54,17 +54,19 @@ const DoubleHiType* DoubleHiType::instance_ = nullptr;
 const IntegerType* IntegerType::instance_ = nullptr;
 const NullType* NullType::instance_ = nullptr;
 
-PrimitiveType::PrimitiveType(mirror::Class* klass, const StringPiece& descriptor, uint16_t cache_id)
+PrimitiveType::PrimitiveType(ObjPtr<mirror::Class> klass,
+                             const StringPiece& descriptor,
+                             uint16_t cache_id)
     : RegType(klass, descriptor, cache_id) {
   CHECK(klass != nullptr);
   CHECK(!descriptor.empty());
 }
 
-Cat1Type::Cat1Type(mirror::Class* klass, const StringPiece& descriptor, uint16_t cache_id)
+Cat1Type::Cat1Type(ObjPtr<mirror::Class> klass, const StringPiece& descriptor, uint16_t cache_id)
     : PrimitiveType(klass, descriptor, cache_id) {
 }
 
-Cat2Type::Cat2Type(mirror::Class* klass, const StringPiece& descriptor, uint16_t cache_id)
+Cat2Type::Cat2Type(ObjPtr<mirror::Class> klass, const StringPiece& descriptor, uint16_t cache_id)
     : PrimitiveType(klass, descriptor, cache_id) {
 }
 
@@ -129,7 +131,7 @@ std::string IntegerType::Dump() const {
   return "Integer";
 }
 
-const DoubleHiType* DoubleHiType::CreateInstance(mirror::Class* klass,
+const DoubleHiType* DoubleHiType::CreateInstance(ObjPtr<mirror::Class> klass,
                                                  const StringPiece& descriptor,
                                                  uint16_t cache_id) {
   CHECK(instance_ == nullptr);
@@ -144,7 +146,7 @@ void DoubleHiType::Destroy() {
   }
 }
 
-const DoubleLoType* DoubleLoType::CreateInstance(mirror::Class* klass,
+const DoubleLoType* DoubleLoType::CreateInstance(ObjPtr<mirror::Class> klass,
                                                  const StringPiece& descriptor,
                                                  uint16_t cache_id) {
   CHECK(instance_ == nullptr);
@@ -159,14 +161,16 @@ void DoubleLoType::Destroy() {
   }
 }
 
-const LongLoType* LongLoType::CreateInstance(mirror::Class* klass, const StringPiece& descriptor,
+const LongLoType* LongLoType::CreateInstance(ObjPtr<mirror::Class> klass,
+                                             const StringPiece& descriptor,
                                              uint16_t cache_id) {
   CHECK(instance_ == nullptr);
   instance_ = new LongLoType(klass, descriptor, cache_id);
   return instance_;
 }
 
-const LongHiType* LongHiType::CreateInstance(mirror::Class* klass, const StringPiece& descriptor,
+const LongHiType* LongHiType::CreateInstance(ObjPtr<mirror::Class> klass,
+                                             const StringPiece& descriptor,
                                              uint16_t cache_id) {
   CHECK(instance_ == nullptr);
   instance_ = new LongHiType(klass, descriptor, cache_id);
@@ -187,7 +191,8 @@ void LongLoType::Destroy() {
   }
 }
 
-const FloatType* FloatType::CreateInstance(mirror::Class* klass, const StringPiece& descriptor,
+const FloatType* FloatType::CreateInstance(ObjPtr<mirror::Class> klass,
+                                           const StringPiece& descriptor,
                                            uint16_t cache_id) {
   CHECK(instance_ == nullptr);
   instance_ = new FloatType(klass, descriptor, cache_id);
@@ -201,7 +206,8 @@ void FloatType::Destroy() {
   }
 }
 
-const CharType* CharType::CreateInstance(mirror::Class* klass, const StringPiece& descriptor,
+const CharType* CharType::CreateInstance(ObjPtr<mirror::Class> klass,
+                                         const StringPiece& descriptor,
                                          uint16_t cache_id) {
   CHECK(instance_ == nullptr);
   instance_ = new CharType(klass, descriptor, cache_id);
@@ -215,7 +221,8 @@ void CharType::Destroy() {
   }
 }
 
-const ShortType* ShortType::CreateInstance(mirror::Class* klass, const StringPiece& descriptor,
+const ShortType* ShortType::CreateInstance(ObjPtr<mirror::Class> klass,
+                                           const StringPiece& descriptor,
                                            uint16_t cache_id) {
   CHECK(instance_ == nullptr);
   instance_ = new ShortType(klass, descriptor, cache_id);
@@ -229,7 +236,8 @@ void ShortType::Destroy() {
   }
 }
 
-const ByteType* ByteType::CreateInstance(mirror::Class* klass, const StringPiece& descriptor,
+const ByteType* ByteType::CreateInstance(ObjPtr<mirror::Class> klass,
+                                         const StringPiece& descriptor,
                                          uint16_t cache_id) {
   CHECK(instance_ == nullptr);
   instance_ = new ByteType(klass, descriptor, cache_id);
@@ -243,7 +251,8 @@ void ByteType::Destroy() {
   }
 }
 
-const IntegerType* IntegerType::CreateInstance(mirror::Class* klass, const StringPiece& descriptor,
+const IntegerType* IntegerType::CreateInstance(ObjPtr<mirror::Class> klass,
+                                               const StringPiece& descriptor,
                                                uint16_t cache_id) {
   CHECK(instance_ == nullptr);
   instance_ = new IntegerType(klass, descriptor, cache_id);
@@ -257,7 +266,7 @@ void IntegerType::Destroy() {
   }
 }
 
-const ConflictType* ConflictType::CreateInstance(mirror::Class* klass,
+const ConflictType* ConflictType::CreateInstance(ObjPtr<mirror::Class> klass,
                                                  const StringPiece& descriptor,
                                                  uint16_t cache_id) {
   CHECK(instance_ == nullptr);
@@ -272,8 +281,9 @@ void ConflictType::Destroy() {
   }
 }
 
-const BooleanType* BooleanType::CreateInstance(mirror::Class* klass, const StringPiece& descriptor,
-                                         uint16_t cache_id) {
+const BooleanType* BooleanType::CreateInstance(ObjPtr<mirror::Class> klass,
+                                               const StringPiece& descriptor,
+                                               uint16_t cache_id) {
   CHECK(BooleanType::instance_ == nullptr);
   instance_ = new BooleanType(klass, descriptor, cache_id);
   return BooleanType::instance_;
@@ -290,7 +300,7 @@ std::string UndefinedType::Dump() const REQUIRES_SHARED(Locks::mutator_lock_) {
   return "Undefined";
 }
 
-const UndefinedType* UndefinedType::CreateInstance(mirror::Class* klass,
+const UndefinedType* UndefinedType::CreateInstance(ObjPtr<mirror::Class> klass,
                                                    const StringPiece& descriptor,
                                                    uint16_t cache_id) {
   CHECK(instance_ == nullptr);
@@ -305,7 +315,8 @@ void UndefinedType::Destroy() {
   }
 }
 
-PreciseReferenceType::PreciseReferenceType(mirror::Class* klass, const StringPiece& descriptor,
+PreciseReferenceType::PreciseReferenceType(ObjPtr<mirror::Class> klass,
+                                           const StringPiece& descriptor,
                                            uint16_t cache_id)
     : RegType(klass, descriptor, cache_id) {
   // Note: no check for IsInstantiable() here. We may produce this in case an InstantiationError
@@ -505,7 +516,7 @@ bool UnresolvedType::IsNonZeroReferenceTypes() const {
 
 const RegType& RegType::GetSuperClass(RegTypeCache* cache) const {
   if (!IsUnresolvedTypes()) {
-    mirror::Class* super_klass = GetClass()->GetSuperClass();
+    ObjPtr<mirror::Class> super_klass = GetClass()->GetSuperClass();
     if (super_klass != nullptr) {
       // A super class of a precise type isn't precise as a precise type indicates the register
       // holds exactly that type.
@@ -543,7 +554,7 @@ bool RegType::IsObjectArrayTypes() const REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(descriptor_[1] == 'L' || descriptor_[1] == '[');
     return descriptor_[0] == '[';
   } else if (HasClass()) {
-    mirror::Class* type = GetClass();
+    ObjPtr<mirror::Class> type = GetClass();
     return type->IsArrayClass() && !type->GetComponentType()->IsPrimitive();
   } else {
     return false;
@@ -569,7 +580,7 @@ bool RegType::IsArrayTypes() const REQUIRES_SHARED(Locks::mutator_lock_) {
 
 bool RegType::IsJavaLangObjectArray() const {
   if (HasClass()) {
-    mirror::Class* type = GetClass();
+    ObjPtr<mirror::Class> type = GetClass();
     return type->IsArrayClass() && type->GetComponentType()->IsObjectClass();
   }
   return false;
@@ -712,11 +723,9 @@ const RegType& RegType::Merge(const RegType& incoming_type,
       // mechanics to continue.
       return reg_types->FromUnresolvedMerge(*this, incoming_type, verifier);
     } else {  // Two reference types, compute Join
-      mirror::Class* c1 = GetClass();
-      mirror::Class* c2 = incoming_type.GetClass();
-      DCHECK(c1 != nullptr && !c1->IsPrimitive());
-      DCHECK(c2 != nullptr && !c2->IsPrimitive());
-      mirror::Class* join_class = ClassJoin(c1, c2);
+      DCHECK(GetClass() != nullptr && !GetClass()->IsPrimitive());
+      DCHECK(incoming_type.GetClass() != nullptr && !incoming_type.GetClass()->IsPrimitive());
+      ObjPtr<mirror::Class> join_class = ClassJoin(GetClass(), incoming_type.GetClass());
       if (UNLIKELY(join_class == nullptr)) {
         // Internal error joining the classes (e.g., OOME). Report an unresolved reference type.
         // We cannot report an unresolved merge type, as that will attempt to merge the resolved
@@ -731,30 +740,37 @@ const RegType& RegType::Merge(const RegType& incoming_type,
         // (In that case, it is likely a misconfiguration of dex2oat.)
         if (!kIsTargetBuild && Runtime::Current()->IsAotCompiler()) {
           LOG(FATAL) << "Could not create class join of "
-                     << c1->PrettyClass()
+                     << GetClass()->PrettyClass()
                      << " & "
-                     << c2->PrettyClass();
+                     << incoming_type.GetClass()->PrettyClass();
           UNREACHABLE();
         }
 
         return reg_types->MakeUnresolvedReference();
       }
 
-      // Record the dependency that both `c1` and `c2` are assignable to `join_class`.
-      // The `verifier` is null during unit tests.
+      // Record the dependency that both `GetClass()` and `incoming_type.GetClass()`
+      // are assignable to `join_class`. The `verifier` is null during unit tests.
       if (verifier != nullptr) {
-        VerifierDeps::MaybeRecordAssignability(
-            verifier->GetDexFile(), join_class, c1, true /* strict */, true /* is_assignable */);
-        VerifierDeps::MaybeRecordAssignability(
-            verifier->GetDexFile(), join_class, c2, true /* strict */, true /* is_assignable */);
+        VerifierDeps::MaybeRecordAssignability(verifier->GetDexFile(),
+                                               join_class,
+                                               GetClass(),
+                                               /* strict */ true,
+                                               /* is_assignable */ true);
+        VerifierDeps::MaybeRecordAssignability(verifier->GetDexFile(),
+                                               join_class,
+                                               incoming_type.GetClass(),
+                                               /* strict */ true,
+                                               /* is_assignable */ true);
       }
-      if (c1 == join_class && !IsPreciseReference()) {
+      if (GetClass() == join_class && !IsPreciseReference()) {
         return *this;
-      } else if (c2 == join_class && !incoming_type.IsPreciseReference()) {
+      } else if (incoming_type.GetClass() == join_class && !incoming_type.IsPreciseReference()) {
         return incoming_type;
       } else {
         std::string temp;
-        return reg_types->FromClass(join_class->GetDescriptor(&temp), join_class, false);
+        const char* descriptor = join_class->GetDescriptor(&temp);
+        return reg_types->FromClass(descriptor, join_class, /* precise */ false);
       }
     }
   } else {
@@ -763,7 +779,7 @@ const RegType& RegType::Merge(const RegType& incoming_type,
 }
 
 // See comment in reg_type.h
-mirror::Class* RegType::ClassJoin(mirror::Class* s, mirror::Class* t) {
+ObjPtr<mirror::Class> RegType::ClassJoin(ObjPtr<mirror::Class> s, ObjPtr<mirror::Class> t) {
   DCHECK(!s->IsPrimitive()) << s->PrettyClass();
   DCHECK(!t->IsPrimitive()) << t->PrettyClass();
   if (s == t) {
@@ -773,12 +789,12 @@ mirror::Class* RegType::ClassJoin(mirror::Class* s, mirror::Class* t) {
   } else if (t->IsAssignableFrom(s)) {
     return t;
   } else if (s->IsArrayClass() && t->IsArrayClass()) {
-    mirror::Class* s_ct = s->GetComponentType();
-    mirror::Class* t_ct = t->GetComponentType();
+    ObjPtr<mirror::Class> s_ct = s->GetComponentType();
+    ObjPtr<mirror::Class> t_ct = t->GetComponentType();
     if (s_ct->IsPrimitive() || t_ct->IsPrimitive()) {
       // Given the types aren't the same, if either array is of primitive types then the only
       // common parent is java.lang.Object
-      mirror::Class* result = s->GetSuperClass();  // short-cut to java.lang.Object
+      ObjPtr<mirror::Class> result = s->GetSuperClass();  // short-cut to java.lang.Object
       DCHECK(result->IsObjectClass());
       return result;
     }
@@ -788,8 +804,9 @@ mirror::Class* RegType::ClassJoin(mirror::Class* s, mirror::Class* t) {
       self->AssertPendingException();
       return nullptr;
     }
-    ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-    mirror::Class* array_class = class_linker->FindArrayClass(self, &common_elem);
+    // Note: The following lookup invalidates existing ObjPtr<>s.
+    ObjPtr<mirror::Class> array_class =
+        Runtime::Current()->GetClassLinker()->FindArrayClass(self, &common_elem);
     if (UNLIKELY(array_class == nullptr)) {
       self->AssertPendingException();
       return nullptr;
@@ -971,7 +988,7 @@ bool RegType::CanAssignArray(const RegType& src,
   return cmp1.CanAssignArray(cmp2, reg_types, class_loader, verifier, soft_error);
 }
 
-const NullType* NullType::CreateInstance(mirror::Class* klass,
+const NullType* NullType::CreateInstance(ObjPtr<mirror::Class> klass,
                                          const StringPiece& descriptor,
                                          uint16_t cache_id) {
   CHECK(instance_ == nullptr);
