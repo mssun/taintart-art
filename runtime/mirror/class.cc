@@ -1461,12 +1461,12 @@ template<VerifyObjectFlags kVerifyFlags> void Class::GetAccessFlagsDCheck() {
   // circularity issue during loading the names of its members
   DCHECK(IsIdxLoaded<kVerifyFlags>() || IsRetired<kVerifyFlags>() ||
          IsErroneous<static_cast<VerifyObjectFlags>(kVerifyFlags & ~kVerifyThis)>() ||
-         this == String::GetJavaLangString())
+         this == GetClassRoot<String>())
               << "IsIdxLoaded=" << IsIdxLoaded<kVerifyFlags>()
               << " IsRetired=" << IsRetired<kVerifyFlags>()
               << " IsErroneous=" <<
               IsErroneous<static_cast<VerifyObjectFlags>(kVerifyFlags & ~kVerifyThis)>()
-              << " IsString=" << (this == String::GetJavaLangString())
+              << " IsString=" << (this == GetClassRoot<String>())
               << " status= " << GetStatus<kVerifyFlags>()
               << " descriptor=" << PrettyDescriptor();
 }

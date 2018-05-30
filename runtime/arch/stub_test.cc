@@ -21,6 +21,7 @@
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "imt_conflict_table.h"
@@ -2096,7 +2097,7 @@ TEST_F(StubTest, ReadBarrierForRoot) {
 
   EXPECT_FALSE(self->IsExceptionPending());
 
-  GcRoot<mirror::Class>& root = mirror::String::java_lang_String_;
+  GcRoot<mirror::Class> root(GetClassRoot<mirror::String>());
   size_t result = Invoke3(reinterpret_cast<size_t>(&root), 0U, 0U, readBarrierForRootSlow, self);
 
   EXPECT_FALSE(self->IsExceptionPending());

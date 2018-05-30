@@ -228,15 +228,6 @@ class MANAGED String FINAL : public Object {
         : length;
   }
 
-  static Class* GetJavaLangString() REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK(!java_lang_String_.IsNull());
-    return java_lang_String_.Read();
-  }
-
-  static void SetClass(ObjPtr<Class> java_lang_String) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
   // Returns a human-readable equivalent of 'descriptor'. So "I" would be "int",
   // "[[I" would be "int[][]", "[Ljava/lang/String;" would be
   // "java.lang.String[]", and so forth.
@@ -281,10 +272,7 @@ class MANAGED String FINAL : public Object {
     uint8_t value_compressed_[0];
   };
 
-  static GcRoot<Class> java_lang_String_;
-
   friend struct art::StringOffsets;  // for verifying offset information
-  ART_FRIEND_TEST(art::StubTest, ReadBarrierForRoot);  // For java_lang_String_.
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(String);
 };
