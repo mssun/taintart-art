@@ -1,6 +1,4 @@
-#!/bin/bash
-#
-# Copyright 2018 The Android Open Source Project
+# Copyright (C) 2018 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Use the jasmin sources for JVM, otherwise the smali sources.
-extra_arg="--no-jasmin"
-
-for arg in "$@"; do
-  if [[ "$arg" == "--jvm" ]]; then
-    extra_arg="--no-smali"
-    break
-  fi
-done
-
-./default-build "$@" "$extra_arg"
+.class public interface LBadSuper2;
+.super LBaseClass;
+.source "BadSuper2.j"
