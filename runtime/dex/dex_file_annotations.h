@@ -41,7 +41,7 @@ ObjPtr<mirror::Object> GetAnnotationForField(ArtField* field,
     REQUIRES_SHARED(Locks::mutator_lock_);
 ObjPtr<mirror::ObjectArray<mirror::Object>> GetAnnotationsForField(ArtField* field)
     REQUIRES_SHARED(Locks::mutator_lock_);
-mirror::ObjectArray<mirror::String>* GetSignatureAnnotationForField(ArtField* field)
+ObjPtr<mirror::ObjectArray<mirror::String>> GetSignatureAnnotationForField(ArtField* field)
     REQUIRES_SHARED(Locks::mutator_lock_);
 bool IsFieldAnnotationPresent(ArtField* field, Handle<mirror::Class> annotation_class)
     REQUIRES_SHARED(Locks::mutator_lock_);
@@ -64,11 +64,11 @@ ObjPtr<mirror::Object> GetAnnotationForMethodParameter(ArtMethod* method,
                                                        uint32_t parameter_idx,
                                                        Handle<mirror::Class> annotation_class)
     REQUIRES_SHARED(Locks::mutator_lock_);
-bool GetParametersMetadataForMethod(ArtMethod* method,
-                                    MutableHandle<mirror::ObjectArray<mirror::String>>* names,
-                                    MutableHandle<mirror::IntArray>* access_flags)
-    REQUIRES_SHARED(Locks::mutator_lock_);
-mirror::ObjectArray<mirror::String>* GetSignatureAnnotationForMethod(ArtMethod* method)
+bool GetParametersMetadataForMethod(
+    ArtMethod* method,
+    /*out*/ MutableHandle<mirror::ObjectArray<mirror::String>>* names,
+    /*out*/ MutableHandle<mirror::IntArray>* access_flags) REQUIRES_SHARED(Locks::mutator_lock_);
+ObjPtr<mirror::ObjectArray<mirror::String>> GetSignatureAnnotationForMethod(ArtMethod* method)
     REQUIRES_SHARED(Locks::mutator_lock_);
 // Check whether `method` is annotated with `annotation_class`.
 // If `lookup_in_resolved_boot_classes` is true, look up any of the
@@ -101,12 +101,12 @@ ObjPtr<mirror::Class> GetEnclosingClass(Handle<mirror::Class> klass)
     REQUIRES_SHARED(Locks::mutator_lock_);
 ObjPtr<mirror::Object> GetEnclosingMethod(Handle<mirror::Class> klass)
     REQUIRES_SHARED(Locks::mutator_lock_);
-bool GetInnerClass(Handle<mirror::Class> klass, ObjPtr<mirror::String>* name)
+bool GetInnerClass(Handle<mirror::Class> klass, /*out*/ ObjPtr<mirror::String>* name)
     REQUIRES_SHARED(Locks::mutator_lock_);
 bool GetInnerClassFlags(Handle<mirror::Class> klass, uint32_t* flags)
     REQUIRES_SHARED(Locks::mutator_lock_);
-mirror::ObjectArray<mirror::String>* GetSignatureAnnotationForClass(Handle<mirror::Class> klass)
-    REQUIRES_SHARED(Locks::mutator_lock_);
+ObjPtr<mirror::ObjectArray<mirror::String>> GetSignatureAnnotationForClass(
+    Handle<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_);
 const char* GetSourceDebugExtension(Handle<mirror::Class> klass)
     REQUIRES_SHARED(Locks::mutator_lock_);
 bool IsClassAnnotationPresent(Handle<mirror::Class> klass,

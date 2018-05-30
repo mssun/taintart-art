@@ -35,6 +35,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "common_dex_operations.h"
 #include "common_throws.h"
 #include "dex/dex_file-inl.h"
@@ -328,7 +329,7 @@ static inline ObjPtr<mirror::String> ResolveString(Thread* self,
                                                    ShadowFrame& shadow_frame,
                                                    dex::StringIndex string_idx)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjPtr<mirror::Class> java_lang_string_class = mirror::String::GetJavaLangString();
+  ObjPtr<mirror::Class> java_lang_string_class = GetClassRoot<mirror::String>();
   if (UNLIKELY(!java_lang_string_class->IsInitialized())) {
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     StackHandleScope<1> hs(self);
