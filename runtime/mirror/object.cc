@@ -271,7 +271,7 @@ void Object::CheckFieldAssignmentImpl(MemberOffset field_offset, ObjPtr<Object> 
     }
   }
   LOG(FATAL) << "Failed to find field for assignment to " << reinterpret_cast<void*>(this)
-      << " of type " << c->PrettyDescriptor() << " at offset " << field_offset;
+             << " of type " << c->PrettyDescriptor() << " at offset " << field_offset;
   UNREACHABLE();
 }
 
