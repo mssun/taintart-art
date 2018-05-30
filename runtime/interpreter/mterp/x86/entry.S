@@ -18,6 +18,7 @@
  */
 
     .text
+    ASM_HIDDEN SYMBOL(ExecuteMterpImpl)
     .global SYMBOL(ExecuteMterpImpl)
     FUNCTION_TYPE(ExecuteMterpImpl)
 
