@@ -19,7 +19,6 @@
 
 #include <limits>
 
-#include "arch/code_offset.h"
 #include "base/bit_memory_region.h"
 #include "base/bit_table.h"
 #include "base/bit_utils.h"
@@ -658,7 +657,7 @@ class DexRegisterMap {
 class StackMap : public BitTable<6>::Accessor {
  public:
   enum Field {
-    kNativePcOffset,
+    kPackedNativePc,
     kDexPc,
     kDexRegisterMapOffset,
     kInlineInfoIndex,
@@ -672,8 +671,7 @@ class StackMap : public BitTable<6>::Accessor {
     : BitTable<kCount>::Accessor(table, row) {}
 
   ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
-    CodeOffset offset(CodeOffset::FromCompressedOffset(Get<kNativePcOffset>()));
-    return offset.Uint32Value(instruction_set);
+    return UnpackNativePc(Get<kPackedNativePc>(), instruction_set);
   }
 
   uint32_t GetDexPc() const { return Get<kDexPc>(); }
@@ -687,6 +685,17 @@ class StackMap : public BitTable<6>::Accessor {
   uint32_t GetRegisterMaskIndex() const { return Get<kRegisterMaskIndex>(); }
 
   uint32_t GetStackMaskIndex() const { return Get<kStackMaskIndex>(); }
+
+  static uint32_t PackNativePc(uint32_t native_pc, InstructionSet isa) {
+    // TODO: DCHECK_ALIGNED_PARAM(native_pc, GetInstructionSetInstructionAlignment(isa));
+    return native_pc / GetInstructionSetInstructionAlignment(isa);
+  }
+
+  static uint32_t UnpackNativePc(uint32_t packed_native_pc, InstructionSet isa) {
+    uint32_t native_pc = packed_native_pc * GetInstructionSetInstructionAlignment(isa);
+    DCHECK_EQ(native_pc / GetInstructionSetInstructionAlignment(isa), packed_native_pc);
+    return native_pc;
+  }
 
   static void DumpEncoding(const BitTable<6>& table, VariableIndentationOutputStream* vios);
   void Dump(VariableIndentationOutputStream* vios,
@@ -776,7 +785,7 @@ class InlineInfo : public BitTable<5>::Accessor {
 class InvokeInfo : public BitTable<3>::Accessor {
  public:
   enum Field {
-    kNativePcOffset,
+    kPackedNativePc,
     kInvokeType,
     kMethodIndexIdx,
     kCount,
@@ -786,8 +795,7 @@ class InvokeInfo : public BitTable<3>::Accessor {
     : BitTable<kCount>::Accessor(table, row) {}
 
   ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
-    CodeOffset offset(CodeOffset::FromCompressedOffset(Get<kNativePcOffset>()));
-    return offset.Uint32Value(instruction_set);
+    return StackMap::UnpackNativePc(Get<kPackedNativePc>(), instruction_set);
   }
 
   uint32_t GetInvokeType() const { return Get<kInvokeType>(); }

@@ -103,7 +103,7 @@ class StackMapStream : public ValueObject {
   // See runtime/stack_map.h to know what these fields contain.
   struct StackMapEntry {
     uint32_t dex_pc;
-    CodeOffset native_pc_code_offset;
+    uint32_t packed_native_pc;
     uint32_t register_mask;
     BitVector* sp_mask;
     uint32_t inlining_depth;
@@ -148,14 +148,8 @@ class StackMapStream : public ValueObject {
     return stack_maps_.size();
   }
 
-  const StackMapEntry& GetStackMap(size_t i) const {
-    return stack_maps_[i];
-  }
-
-  void SetStackMapNativePcOffset(size_t i, uint32_t native_pc_offset) {
-    stack_maps_[i].native_pc_code_offset =
-        CodeOffset::FromOffset(native_pc_offset, instruction_set_);
-  }
+  uint32_t GetStackMapNativePcOffset(size_t i);
+  void SetStackMapNativePcOffset(size_t i, uint32_t native_pc_offset);
 
   // Prepares the stream to fill in a memory region. Must be called before FillIn.
   // Returns the size (in bytes) needed to store this stream.
