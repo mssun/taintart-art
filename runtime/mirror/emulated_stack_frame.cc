@@ -27,8 +27,6 @@
 namespace art {
 namespace mirror {
 
-GcRoot<mirror::Class> EmulatedStackFrame::static_class_;
-
 // Calculates the size of a stack frame based on the size of its argument
 // types and return types.
 static void CalculateFrameAndReferencesSize(ObjPtr<mirror::ObjectArray<mirror::Class>> p_types,
@@ -192,7 +190,7 @@ mirror::EmulatedStackFrame* EmulatedStackFrame::CreateFromShadowFrameAndArgs(
 
   // Step 5: Construct the EmulatedStackFrame object.
   Handle<EmulatedStackFrame> sf(hs.NewHandle(
-      ObjPtr<EmulatedStackFrame>::DownCast(StaticClass()->AllocObject(self))));
+      ObjPtr<EmulatedStackFrame>::DownCast(GetClassRoot<EmulatedStackFrame>()->AllocObject(self))));
   sf->SetFieldObject<false>(CallsiteTypeOffset(), caller_type.Get());
   sf->SetFieldObject<false>(TypeOffset(), callee_type.Get());
   sf->SetFieldObject<false>(ReferencesOffset(), references.Get());
@@ -270,21 +268,6 @@ void EmulatedStackFrame::SetReturnValue(Thread* self, const JValue& value) {
       memcpy(array + length - sizeof(uint32_t), &primitive, sizeof(uint32_t));
     }
   }
-}
-
-void EmulatedStackFrame::SetClass(Class* klass) {
-  CHECK(static_class_.IsNull()) << static_class_.Read() << " " << klass;
-  CHECK(klass != nullptr);
-  static_class_ = GcRoot<Class>(klass);
-}
-
-void EmulatedStackFrame::ResetClass() {
-  CHECK(!static_class_.IsNull());
-  static_class_ = GcRoot<Class>(nullptr);
-}
-
-void EmulatedStackFrame::VisitRoots(RootVisitor* visitor) {
-  static_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
 }
 
 }  // namespace mirror

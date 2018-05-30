@@ -1348,7 +1348,7 @@ TEST_F(UnstartedRuntimeTest, ConstructorNewInstance0) {
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
 
   // Get Throwable.
-  Handle<mirror::Class> throw_class = hs.NewHandle(mirror::Throwable::GetJavaLangThrowable());
+  Handle<mirror::Class> throw_class = hs.NewHandle(GetClassRoot<mirror::Throwable>());
   ASSERT_TRUE(class_linker->EnsureInitialized(self, throw_class, true, true));
 
   // Get an input object.
@@ -1387,8 +1387,8 @@ TEST_F(UnstartedRuntimeTest, ConstructorNewInstance0) {
 
   // Should be a new object.
   ASSERT_NE(result.GetL(), input.Get());
-  // Should be a String.
-  ASSERT_EQ(mirror::Throwable::GetJavaLangThrowable(), result.GetL()->GetClass());
+  // Should be of type Throwable.
+  ASSERT_OBJ_PTR_EQ(GetClassRoot<mirror::Throwable>(), result.GetL()->GetClass());
   // Should have the right string.
   ObjPtr<mirror::String> result_msg =
       reinterpret_cast<mirror::Throwable*>(result.GetL())->GetDetailMessage();
