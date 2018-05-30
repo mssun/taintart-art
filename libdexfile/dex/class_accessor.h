@@ -271,6 +271,10 @@ class ClassAccessor {
     return num_virtual_methods_;
   }
 
+  uint32_t NumMethods() const {
+    return NumDirectMethods() + NumVirtualMethods();
+  }
+
   const char* GetDescriptor() const;
 
   dex::TypeIndex GetClassIdx() const {
