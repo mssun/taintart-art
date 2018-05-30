@@ -71,9 +71,11 @@
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 #include "thread_list.h"
+#include "ti_class_definition.h"
 #include "ti_class_loader-inl.h"
 #include "ti_phase.h"
 #include "ti_redefine.h"
+#include "transform.h"
 #include "well_known_classes.h"
 
 namespace openjdkjvmti {
