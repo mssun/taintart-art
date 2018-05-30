@@ -169,6 +169,9 @@ while true; do
   elif [ "x$1" = "x--no-smali" ]; then
     HAS_SMALI=false
     shift
+  elif [ "x$1" = "x--no-jasmin" ]; then
+    HAS_JASMIN=false
+    shift
   elif [ "x$1" = "x--experimental" ]; then
     shift
     # We have a specific experimental configuration so don't use the default.
