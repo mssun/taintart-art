@@ -445,53 +445,39 @@ class DexRegisterLocationCatalog {
  */
 class DexRegisterMap {
  public:
-  explicit DexRegisterMap(MemoryRegion region) : region_(region) {}
-  DexRegisterMap() {}
+  DexRegisterMap(MemoryRegion region, uint16_t number_of_dex_registers, const CodeInfo& code_info)
+      : region_(region),
+        number_of_dex_registers_(number_of_dex_registers),
+        code_info_(code_info) {}
 
   bool IsValid() const { return region_.IsValid(); }
 
   // Get the surface kind of Dex register `dex_register_number`.
-  DexRegisterLocation::Kind GetLocationKind(uint16_t dex_register_number,
-                                            uint16_t number_of_dex_registers,
-                                            const CodeInfo& code_info) const {
-    return DexRegisterLocation::ConvertToSurfaceKind(
-        GetLocationInternalKind(dex_register_number, number_of_dex_registers, code_info));
+  DexRegisterLocation::Kind GetLocationKind(uint16_t dex_register_number) const {
+    return DexRegisterLocation::ConvertToSurfaceKind(GetLocationInternalKind(dex_register_number));
   }
 
   // Get the internal kind of Dex register `dex_register_number`.
-  DexRegisterLocation::Kind GetLocationInternalKind(uint16_t dex_register_number,
-                                                    uint16_t number_of_dex_registers,
-                                                    const CodeInfo& code_info) const;
+  DexRegisterLocation::Kind GetLocationInternalKind(uint16_t dex_register_number) const;
 
   // Get the Dex register location `dex_register_number`.
-  DexRegisterLocation GetDexRegisterLocation(uint16_t dex_register_number,
-                                             uint16_t number_of_dex_registers,
-                                             const CodeInfo& code_info) const;
+  DexRegisterLocation GetDexRegisterLocation(uint16_t dex_register_number) const;
 
-  int32_t GetStackOffsetInBytes(uint16_t dex_register_number,
-                                uint16_t number_of_dex_registers,
-                                const CodeInfo& code_info) const {
-    DexRegisterLocation location =
-        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info);
+  int32_t GetStackOffsetInBytes(uint16_t dex_register_number) const {
+    DexRegisterLocation location = GetDexRegisterLocation(dex_register_number);
     DCHECK(location.GetKind() == DexRegisterLocation::Kind::kInStack);
     // GetDexRegisterLocation returns the offset in bytes.
     return location.GetValue();
   }
 
-  int32_t GetConstant(uint16_t dex_register_number,
-                      uint16_t number_of_dex_registers,
-                      const CodeInfo& code_info) const {
-    DexRegisterLocation location =
-        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info);
+  int32_t GetConstant(uint16_t dex_register_number) const {
+    DexRegisterLocation location = GetDexRegisterLocation(dex_register_number);
     DCHECK_EQ(location.GetKind(), DexRegisterLocation::Kind::kConstant);
     return location.GetValue();
   }
 
-  int32_t GetMachineRegister(uint16_t dex_register_number,
-                             uint16_t number_of_dex_registers,
-                             const CodeInfo& code_info) const {
-    DexRegisterLocation location =
-        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info);
+  int32_t GetMachineRegister(uint16_t dex_register_number) const {
+    DexRegisterLocation location = GetDexRegisterLocation(dex_register_number);
     DCHECK(location.GetInternalKind() == DexRegisterLocation::Kind::kInRegister ||
            location.GetInternalKind() == DexRegisterLocation::Kind::kInRegisterHigh ||
            location.GetInternalKind() == DexRegisterLocation::Kind::kInFpuRegister ||
@@ -503,7 +489,6 @@ class DexRegisterMap {
   // Get the index of the entry in the Dex register location catalog
   // corresponding to `dex_register_number`.
   size_t GetLocationCatalogEntryIndex(uint16_t dex_register_number,
-                                      uint16_t number_of_dex_registers,
                                       size_t number_of_location_catalog_entries) const {
     if (!IsDexRegisterLive(dex_register_number)) {
       return DexRegisterLocationCatalog::kNoLocationEntryIndex;
@@ -518,9 +503,9 @@ class DexRegisterMap {
 
     // The bit offset of the beginning of the map locations.
     size_t map_locations_offset_in_bits =
-        GetLocationMappingDataOffset(number_of_dex_registers) * kBitsPerByte;
+        GetLocationMappingDataOffset(number_of_dex_registers_) * kBitsPerByte;
     size_t index_in_dex_register_map = GetIndexInDexRegisterMap(dex_register_number);
-    DCHECK_LT(index_in_dex_register_map, GetNumberOfLiveDexRegisters(number_of_dex_registers));
+    DCHECK_LT(index_in_dex_register_map, GetNumberOfLiveDexRegisters());
     // The bit size of an entry.
     size_t map_entry_size_in_bits = SingleEntrySizeInBits(number_of_location_catalog_entries);
     // The bit offset where `index_in_dex_register_map` is located.
@@ -535,9 +520,8 @@ class DexRegisterMap {
   // Map entry at `index_in_dex_register_map` to `location_catalog_entry_index`.
   void SetLocationCatalogEntryIndex(size_t index_in_dex_register_map,
                                     size_t location_catalog_entry_index,
-                                    uint16_t number_of_dex_registers,
                                     size_t number_of_location_catalog_entries) {
-    DCHECK_LT(index_in_dex_register_map, GetNumberOfLiveDexRegisters(number_of_dex_registers));
+    DCHECK_LT(index_in_dex_register_map, GetNumberOfLiveDexRegisters());
     DCHECK_LT(location_catalog_entry_index, number_of_location_catalog_entries);
 
     if (number_of_location_catalog_entries == 1) {
@@ -548,7 +532,7 @@ class DexRegisterMap {
 
     // The bit offset of the beginning of the map locations.
     size_t map_locations_offset_in_bits =
-        GetLocationMappingDataOffset(number_of_dex_registers) * kBitsPerByte;
+        GetLocationMappingDataOffset(number_of_dex_registers_) * kBitsPerByte;
     // The bit size of an entry.
     size_t map_entry_size_in_bits = SingleEntrySizeInBits(number_of_location_catalog_entries);
     // The bit offset where `index_in_dex_register_map` is located.
@@ -580,6 +564,10 @@ class DexRegisterMap {
     return number_of_live_dex_registers;
   }
 
+  size_t GetNumberOfLiveDexRegisters() const {
+    return GetNumberOfLiveDexRegisters(number_of_dex_registers_);
+  }
+
   static size_t GetLiveBitMaskOffset() {
     return kFixedSize;
   }
@@ -594,10 +582,9 @@ class DexRegisterMap {
     return GetLiveBitMaskOffset() + GetLiveBitMaskSize(number_of_dex_registers);
   }
 
-  size_t GetLocationMappingDataSize(uint16_t number_of_dex_registers,
-                                    size_t number_of_location_catalog_entries) const {
+  size_t GetLocationMappingDataSize(size_t number_of_location_catalog_entries) const {
     size_t location_mapping_data_size_in_bits =
-        GetNumberOfLiveDexRegisters(number_of_dex_registers)
+        GetNumberOfLiveDexRegisters()
         * SingleEntrySizeInBits(number_of_location_catalog_entries);
     return RoundUp(location_mapping_data_size_in_bits, kBitsPerByte) / kBitsPerByte;
   }
@@ -620,8 +607,7 @@ class DexRegisterMap {
     return BitsToBytesRoundUp(region_.size_in_bits());
   }
 
-  void Dump(VariableIndentationOutputStream* vios,
-            const CodeInfo& code_info, uint16_t number_of_dex_registers) const;
+  void Dump(VariableIndentationOutputStream* vios) const;
 
  private:
   // Return the index in the Dex register map corresponding to the Dex
@@ -641,6 +627,8 @@ class DexRegisterMap {
   static constexpr int kFixedSize = 0;
 
   BitMemoryRegion region_;
+  uint16_t number_of_dex_registers_;
+  const CodeInfo& code_info_;
 
   friend class CodeInfo;
   friend class StackMapStream;
@@ -896,11 +884,13 @@ class CodeInfo {
   DexRegisterMap GetDexRegisterMapOf(StackMap stack_map,
                                      size_t number_of_dex_registers) const {
     if (!stack_map.HasDexRegisterMap()) {
-      return DexRegisterMap();
+      return DexRegisterMap(MemoryRegion(), 0, *this);
     }
     const uint32_t offset = stack_map.GetDexRegisterMapOffset();
     size_t size = ComputeDexRegisterMapSizeOf(offset, number_of_dex_registers);
-    return DexRegisterMap(dex_register_maps_.Subregion(offset, size));
+    return DexRegisterMap(dex_register_maps_.Subregion(offset, size),
+                          number_of_dex_registers,
+                          *this);
   }
 
   size_t GetDexRegisterMapsSize(uint32_t number_of_dex_registers) const {
@@ -918,11 +908,13 @@ class CodeInfo {
                                           InlineInfo inline_info,
                                           uint32_t number_of_dex_registers) const {
     if (!inline_info.HasDexRegisterMapAtDepth(depth)) {
-      return DexRegisterMap();
+      return DexRegisterMap(MemoryRegion(), 0, *this);
     } else {
       uint32_t offset = inline_info.GetDexRegisterMapOffsetAtDepth(depth);
       size_t size = ComputeDexRegisterMapSizeOf(offset, number_of_dex_registers);
-      return DexRegisterMap(dex_register_maps_.Subregion(offset, size));
+      return DexRegisterMap(dex_register_maps_.Subregion(offset, size),
+                            number_of_dex_registers,
+                            *this);
     }
   }
 
@@ -1036,9 +1028,11 @@ class CodeInfo {
     // art::DexRegisterMap::GetNumberOfLiveDexRegisters and
     DexRegisterMap dex_register_map_without_locations(
         MemoryRegion(dex_register_maps_.Subregion(dex_register_map_offset,
-                                        location_mapping_data_offset_in_dex_register_map)));
+                                        location_mapping_data_offset_in_dex_register_map)),
+        number_of_dex_registers,
+        *this);
     size_t number_of_live_dex_registers =
-        dex_register_map_without_locations.GetNumberOfLiveDexRegisters(number_of_dex_registers);
+        dex_register_map_without_locations.GetNumberOfLiveDexRegisters();
     size_t location_mapping_data_size_in_bits =
         DexRegisterMap::SingleEntrySizeInBits(GetNumberOfLocationCatalogEntries())
         * number_of_live_dex_registers;
@@ -1084,6 +1078,7 @@ class CodeInfo {
   BitTable<1> stack_masks_;
 
   friend class OatDumper;
+  friend class StackMapStream;
 };
 
 #undef ELEMENT_BYTE_OFFSET_AFTER

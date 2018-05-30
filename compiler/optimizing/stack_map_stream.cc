@@ -248,20 +248,8 @@ size_t StackMapStream::PrepareForFillIn() {
     }
   }
 
-  // Write dex register maps.
-  MemoryRegion dex_register_map_region =
-      EncodeMemoryRegion(&out_, &bit_offset, dex_register_map_bytes * kBitsPerByte);
-  for (DexRegisterMapEntry& entry : dex_register_entries_) {
-    size_t entry_size = entry.ComputeSize(location_catalog_entries_.size());
-    if (entry_size != 0) {
-      DexRegisterMap dex_register_map(
-          dex_register_map_region.Subregion(entry.offset, entry_size));
-      FillInDexRegisterMap(dex_register_map,
-                           entry.num_dex_registers,
-                           *entry.live_dex_registers_mask,
-                           entry.locations_start_index);
-    }
-  }
+  // Allocate space for dex register maps.
+  EncodeMemoryRegion(&out_, &bit_offset, dex_register_map_bytes * kBitsPerByte);
 
   // Write dex register catalog.
   EncodeVarintBits(&out_, &bit_offset, location_catalog_entries_.size());
@@ -340,6 +328,22 @@ void StackMapStream::FillInCodeInfo(MemoryRegion region) {
   uint8_t* ptr = EncodeUnsignedLeb128(region.begin(), out_.size());
   region.CopyFromVector(ptr - region.begin(), out_);
 
+  // Write dex register maps.
+  CodeInfo code_info(region);
+  for (DexRegisterMapEntry& entry : dex_register_entries_) {
+    size_t entry_size = entry.ComputeSize(location_catalog_entries_.size());
+    if (entry_size != 0) {
+      DexRegisterMap dex_register_map(
+          code_info.dex_register_maps_.Subregion(entry.offset, entry_size),
+          entry.num_dex_registers,
+          code_info);
+      FillInDexRegisterMap(dex_register_map,
+                           entry.num_dex_registers,
+                           *entry.live_dex_registers_mask,
+                           entry.locations_start_index);
+    }
+  }
+
   // Verify all written data in debug build.
   if (kIsDebugBuild) {
     CheckCodeInfo(region);
@@ -364,7 +368,6 @@ void StackMapStream::FillInDexRegisterMap(DexRegisterMap dex_register_map,
     dex_register_map.SetLocationCatalogEntryIndex(
         index_in_dex_register_locations,
         location_catalog_entry_index,
-        num_dex_registers,
         location_catalog_entries_.size());
   }
 }
@@ -421,8 +424,7 @@ bool StackMapStream::DexRegisterMapEntryEquals(const DexRegisterMapEntry& a,
 }
 
 // Helper for CheckCodeInfo - check that register map has the expected content.
-void StackMapStream::CheckDexRegisterMap(const CodeInfo& code_info,
-                                         const DexRegisterMap& dex_register_map,
+void StackMapStream::CheckDexRegisterMap(const DexRegisterMap& dex_register_map,
                                          size_t num_dex_registers,
                                          BitVector* live_dex_registers_mask,
                                          size_t dex_register_locations_index) const {
@@ -439,8 +441,7 @@ void StackMapStream::CheckDexRegisterMap(const CodeInfo& code_info,
           << dex_register_map.IsValid() << " " << dex_register_map.IsDexRegisterLive(reg);
     } else {
       DCHECK(dex_register_map.IsDexRegisterLive(reg));
-      DexRegisterLocation seen = dex_register_map.GetDexRegisterLocation(
-          reg, num_dex_registers, code_info);
+      DexRegisterLocation seen = dex_register_map.GetDexRegisterLocation(reg);
       DCHECK_EQ(expected.GetKind(), seen.GetKind());
       DCHECK_EQ(expected.GetValue(), seen.GetValue());
     }
@@ -506,8 +507,7 @@ void StackMapStream::CheckCodeInfo(MemoryRegion region) const {
       DCHECK_EQ(invoke_info.GetMethodIndexIdx(), entry.dex_method_index_idx);
       invoke_info_index++;
     }
-    CheckDexRegisterMap(code_info,
-                        code_info.GetDexRegisterMapOf(
+    CheckDexRegisterMap(code_info.GetDexRegisterMapOf(
                             stack_map, entry.dex_register_entry.num_dex_registers),
                         entry.dex_register_entry.num_dex_registers,
                         entry.dex_register_entry.live_dex_registers_mask,
@@ -533,8 +533,7 @@ void StackMapStream::CheckCodeInfo(MemoryRegion region) const {
           DCHECK_EQ(method_indices_[method_index_idx], inline_entry.method_index);
         }
 
-        CheckDexRegisterMap(code_info,
-                            code_info.GetDexRegisterMapAtDepth(
+        CheckDexRegisterMap(code_info.GetDexRegisterMapAtDepth(
                                 d,
                                 inline_info,
                                 inline_entry.dex_register_entry.num_dex_registers),
