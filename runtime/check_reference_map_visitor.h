@@ -75,8 +75,7 @@ class CheckReferenceMapVisitor : public StackVisitor {
     for (int i = 0; i < number_of_references; ++i) {
       int reg = registers[i];
       CHECK_LT(reg, accessor.RegistersSize());
-      DexRegisterLocation location = dex_register_map.GetDexRegisterLocation(
-          reg, number_of_dex_registers, code_info);
+      DexRegisterLocation location = dex_register_map.GetDexRegisterLocation(reg);
       switch (location.GetKind()) {
         case DexRegisterLocation::Kind::kNone:
           // Not set, should not be a reference.
