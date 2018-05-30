@@ -28,10 +28,9 @@ else
   JAVA_LIBRARIES=${ANDROID_PRODUCT_OUT}/../../common/obj/JAVA_LIBRARIES
 fi
 
-android_root="/system"
-if [ -n "$ART_TEST_ANDROID_ROOT" ]; then
-  android_root="$ART_TEST_ANDROID_ROOT"
-fi
+# "Root" (actually "system") directory on device (in the case of
+# target testing).
+android_root=${ART_TEST_ANDROID_ROOT:-/system}
 
 function classes_jar_path {
   local var="$1"
@@ -106,8 +105,6 @@ debug=false
 
 # Don't use device mode by default.
 device_mode=false
-# Don't use chroot by default.
-use_chroot=false
 
 while true; do
   if [[ "$1" == "--mode=device" ]]; then
@@ -135,10 +132,6 @@ while true; do
   elif [[ "$1" == "-Xgc:gcstress" ]]; then
     gcstress=true
     shift
-  elif [[ "$1" == "--chroot" ]]; then
-    use_chroot=true
-    # Shift the "--chroot" flag and its argument.
-    shift 2
   elif [[ "$1" == "" ]]; then
     break
   else
@@ -147,20 +140,17 @@ while true; do
 done
 
 if $device_mode; then
-  if $use_chroot; then
+  # Honor environment variable ART_TEST_CHROOT.
+  if [[ -n "$ART_TEST_CHROOT" ]]; then
+    # Set Vogar's `--chroot` option.
+    vogar_args="$vogar_args --chroot $ART_TEST_CHROOT"
     vogar_args="$vogar_args --device-dir=/tmp"
-    vogar_args="$vogar_args --vm-command=/system/bin/art"
   else
+    # When not using a chroot on device, set Vogar's work directory to
+    # /data/local/tmp.
     vogar_args="$vogar_args --device-dir=/data/local/tmp"
-    vogar_args="$vogar_args --vm-command=$android_root/bin/art"
   fi
-else
-  # Host mode.
-  if $use_chroot; then
-    # Chroot-based testing is not supported on host.
-    echo "Cannot use --chroot with --mode=host"
-    exit 1
-  fi
+  vogar_args="$vogar_args --vm-command=$android_root/bin/art"
 fi
 
 # Increase the timeout, as vogar cannot set individual test
