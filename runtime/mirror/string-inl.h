@@ -25,6 +25,7 @@
 #include "base/globals.h"
 #include "base/utils.h"
 #include "class.h"
+#include "class_root.h"
 #include "common_throws.h"
 #include "dex/utf.h"
 #include "gc/heap-inl.h"
@@ -211,7 +212,8 @@ inline String* String::Alloc(Thread* self, int32_t utf16_length_with_flag,
   // http://b/23528461
   size_t alloc_size = RoundUp(size, kObjectAlignment);
 
-  Class* string_class = GetJavaLangString();
+  Runtime* runtime = Runtime::Current();
+  ObjPtr<Class> string_class = GetClassRoot<String>(runtime->GetClassLinker());
   // Check for overflow and throw OutOfMemoryError if this was an unreasonable request.
   // Do this by comparing with the maximum length that will _not_ cause an overflow.
   const size_t overflow_length = (-header_size) / block_size;   // Unsigned arithmetic.
@@ -227,7 +229,7 @@ inline String* String::Alloc(Thread* self, int32_t utf16_length_with_flag,
     return nullptr;
   }
 
-  gc::Heap* heap = Runtime::Current()->GetHeap();
+  gc::Heap* heap = runtime->GetHeap();
   return down_cast<String*>(
       heap->AllocObjectWithAllocator<kIsInstrumented, true>(self, string_class, alloc_size,
                                                             allocator_type, pre_fence_visitor));

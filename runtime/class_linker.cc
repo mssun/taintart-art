@@ -484,27 +484,10 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
                  mirror::ObjectArray<mirror::Object>::ClassSize(image_pointer_size_))));
   object_array_class->SetComponentType(java_lang_Object.Get());
 
-  // Setup the char (primitive) class to be used for char[].
-  Handle<mirror::Class> char_class(hs.NewHandle(
-      AllocClass(self, java_lang_Class.Get(),
-                 mirror::Class::PrimitiveClassSize(image_pointer_size_))));
-  // The primitive char class won't be initialized by
-  // InitializePrimitiveClass until line 459, but strings (and
-  // internal char arrays) will be allocated before that and the
-  // component size, which is computed from the primitive type, needs
-  // to be set here.
-  char_class->SetPrimitiveType(Primitive::kPrimChar);
-
-  // Setup the char[] class to be used for String.
-  Handle<mirror::Class> char_array_class(hs.NewHandle(
-      AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
-  char_array_class->SetComponentType(char_class.Get());
-
   // Setup String.
   Handle<mirror::Class> java_lang_String(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::String::ClassSize(image_pointer_size_))));
   java_lang_String->SetStringClass();
-  mirror::String::SetClass(java_lang_String.Get());
   mirror::Class::SetStatus(java_lang_String, ClassStatus::kResolved, self);
 
   // Setup java.lang.ref.Reference.
@@ -523,7 +506,6 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   SetClassRoot(ClassRoot::kJavaLangObject, java_lang_Object.Get());
   SetClassRoot(ClassRoot::kClassArrayClass, class_array_class.Get());
   SetClassRoot(ClassRoot::kObjectArrayClass, object_array_class.Get());
-  SetClassRoot(ClassRoot::kCharArrayClass, char_array_class.Get());
   SetClassRoot(ClassRoot::kJavaLangString, java_lang_String.Get());
   SetClassRoot(ClassRoot::kJavaLangRefReference, java_lang_ref_Reference.Get());
 
@@ -533,6 +515,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   // Setup the primitive type classes.
   SetClassRoot(ClassRoot::kPrimitiveBoolean, CreatePrimitiveClass(self, Primitive::kPrimBoolean));
   SetClassRoot(ClassRoot::kPrimitiveByte, CreatePrimitiveClass(self, Primitive::kPrimByte));
+  SetClassRoot(ClassRoot::kPrimitiveChar, CreatePrimitiveClass(self, Primitive::kPrimChar));
   SetClassRoot(ClassRoot::kPrimitiveShort, CreatePrimitiveClass(self, Primitive::kPrimShort));
   SetClassRoot(ClassRoot::kPrimitiveInt, CreatePrimitiveClass(self, Primitive::kPrimInt));
   SetClassRoot(ClassRoot::kPrimitiveLong, CreatePrimitiveClass(self, Primitive::kPrimLong));
@@ -543,13 +526,13 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   // Create array interface entries to populate once we can load system classes.
   array_iftable_ = GcRoot<mirror::IfTable>(AllocIfTable(self, 2));
 
-  // Create int array type for AllocDexCache (done in AppendToBootClassPath).
+  // Create int array type for native pointer arrays (for example vtables) on 32-bit archs.
   Handle<mirror::Class> int_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
   int_array_class->SetComponentType(GetClassRoot(ClassRoot::kPrimitiveInt, this));
   SetClassRoot(ClassRoot::kIntArrayClass, int_array_class.Get());
 
-  // Create long array type for AllocDexCache (done in AppendToBootClassPath).
+  // Create long array type for native pointer arrays (for example vtables) on 64-bit archs.
   Handle<mirror::Class> long_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
   long_array_class->SetComponentType(GetClassRoot(ClassRoot::kPrimitiveLong, this));
@@ -604,10 +587,6 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
 
   // now we can use FindSystemClass
 
-  // run char class through InitializePrimitiveClass to finish init
-  InitializePrimitiveClass(char_class.Get(), Primitive::kPrimChar);
-  SetClassRoot(ClassRoot::kPrimitiveChar, char_class.Get());  // needs descriptor
-
   // Set up GenericJNI entrypoint. That is mainly a hack for common_compiler_test.h so that
   // we do not need friend classes or a publicly exposed setter.
   quick_generic_jni_trampoline_ = GetQuickGenericJniStub();
@@ -636,7 +615,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
 
   SetClassRoot(ClassRoot::kByteArrayClass, FindSystemClass(self, "[B"));
 
-  CheckSystemClass(self, char_array_class, "[C");
+  SetClassRoot(ClassRoot::kCharArrayClass, FindSystemClass(self, "[C"));
 
   SetClassRoot(ClassRoot::kShortArrayClass, FindSystemClass(self, "[S"));
 
@@ -685,7 +664,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
                FindSystemClass(self, "Ljava/lang/reflect/Proxy;"));
 
   // Create java.lang.reflect.Field.class root.
-  auto* class_root = FindSystemClass(self, "Ljava/lang/reflect/Field;");
+  ObjPtr<mirror::Class> class_root = FindSystemClass(self, "Ljava/lang/reflect/Field;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kJavaLangReflectField, class_root);
 
@@ -1013,10 +992,6 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
       down_cast<mirror::ObjectArray<mirror::Class>*>(
           spaces[0]->GetImageHeader().GetImageRoot(ImageHeader::kClassRoots)));
   mirror::Class::SetClassClass(GetClassRoot(ClassRoot::kJavaLangClass, this));
-
-  // Special case of setting up the String class early so that we can test arbitrary objects
-  // as being Strings or not
-  mirror::String::SetClass(GetClassRoot<mirror::String>(this));
 
   ObjPtr<mirror::Class> java_lang_Object = GetClassRoot<mirror::Object>(this);
   java_lang_Object->SetObjectSize(sizeof(mirror::Object));
@@ -2109,7 +2084,6 @@ void ClassLinker::VisitClassesWithoutClassesLock(ClassVisitor* visitor) {
 
 ClassLinker::~ClassLinker() {
   mirror::Class::ResetClass();
-  mirror::String::ResetClass();
   Thread* const self = Thread::Current();
   for (const ClassLoaderData& data : class_loaders_) {
     // CHA unloading analysis is not needed. No negative consequences are expected because
@@ -3561,20 +3535,13 @@ ClassLinker::DexCacheData ClassLinker::FindDexCacheDataLocked(const DexFile& dex
 }
 
 mirror::Class* ClassLinker::CreatePrimitiveClass(Thread* self, Primitive::Type type) {
-  ObjPtr<mirror::Class> klass =
+  ObjPtr<mirror::Class> primitive_class =
       AllocClass(self, mirror::Class::PrimitiveClassSize(image_pointer_size_));
-  if (UNLIKELY(klass == nullptr)) {
+  if (UNLIKELY(primitive_class == nullptr)) {
     self->AssertPendingOOMException();
     return nullptr;
   }
-  return InitializePrimitiveClass(klass, type);
-}
-
-mirror::Class* ClassLinker::InitializePrimitiveClass(ObjPtr<mirror::Class> primitive_class,
-                                                     Primitive::Type type) {
-  CHECK(primitive_class != nullptr);
   // Must hold lock on object when initializing.
-  Thread* self = Thread::Current();
   StackHandleScope<1> hs(self);
   Handle<mirror::Class> h_class(hs.NewHandle(primitive_class));
   ObjectLock<mirror::Class> lock(self, h_class);
@@ -3668,8 +3635,6 @@ mirror::Class* ClassLinker::CreateArrayClass(Thread* self, const char* descripto
       new_class.Assign(GetClassRoot<mirror::ObjectArray<mirror::Object>>(this));
     } else if (strcmp(descriptor, "[Ljava/lang/String;") == 0) {
       new_class.Assign(GetClassRoot<mirror::ObjectArray<mirror::String>>(this));
-    } else if (strcmp(descriptor, "[C") == 0) {
-      new_class.Assign(GetClassRoot<mirror::CharArray>(this));
     } else if (strcmp(descriptor, "[I") == 0) {
       new_class.Assign(GetClassRoot<mirror::IntArray>(this));
     } else if (strcmp(descriptor, "[J") == 0) {

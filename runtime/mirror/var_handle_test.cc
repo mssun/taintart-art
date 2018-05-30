@@ -92,8 +92,7 @@ class VarHandleTest : public CommonRuntimeTest {
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     Handle<Class> var_type = hs.NewHandle(view_array_class->GetComponentType());
     Handle<Class> index_type = hs.NewHandle(class_linker->FindPrimitiveClass('I'));
-    ObjPtr<mirror::Class> byte_class = class_linker->FindPrimitiveClass('B');
-    Handle<Class> byte_array_class(hs.NewHandle(class_linker->FindArrayClass(self, &byte_class)));
+    Handle<Class> byte_array_class(hs.NewHandle(GetClassRoot<mirror::ByteArray>()));
     InitializeVarHandle(bvh.Get(), var_type, byte_array_class, index_type, access_modes_bit_mask);
     bvh->SetFieldBoolean<false>(ByteArrayViewVarHandle::NativeByteOrderOffset(), native_byte_order);
     return bvh.Get();
@@ -234,8 +233,7 @@ static MethodType* MethodTypeOf(const std::string& method_descriptor) {
   ScopedObjectAccess soa(self);
   StackHandleScope<3> hs(self);
   int ptypes_count = static_cast<int>(descriptors.size()) - 1;
-  ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-  ObjPtr<mirror::Class> array_of_class = class_linker->FindArrayClass(self, &class_type);
+  ObjPtr<mirror::Class> array_of_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>();
   Handle<ObjectArray<Class>> ptypes = hs.NewHandle(
       ObjectArray<Class>::Alloc(Thread::Current(), array_of_class, ptypes_count));
   Handle<mirror::ClassLoader> boot_class_loader = hs.NewHandle<mirror::ClassLoader>(nullptr);
@@ -599,10 +597,10 @@ TEST_F(VarHandleTest, ArrayElementVarHandle) {
                                     VarHandle::AccessMode::kGetAndBitwiseXorRelease,
                                     VarHandle::AccessMode::kGetAndBitwiseXorAcquire);
 
-  ObjPtr<mirror::Class> string_class = mirror::String::GetJavaLangString();
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  Handle<Class> string_array_class(hs.NewHandle(class_linker->FindArrayClass(self, &string_class)));
-  Handle<mirror::ArrayElementVarHandle> vh(hs.NewHandle(CreateArrayElementVarHandle(self, string_array_class, mask)));
+  Handle<mirror::Class> string_array_class = hs.NewHandle(
+      GetClassRoot<mirror::ObjectArray<mirror::String>>());
+  Handle<mirror::ArrayElementVarHandle> vh(
+      hs.NewHandle(CreateArrayElementVarHandle(self, string_array_class, mask)));
   EXPECT_FALSE(vh.IsNull());
 
   // Check access modes
@@ -746,11 +744,10 @@ TEST_F(VarHandleTest, ByteArrayViewVarHandle) {
                                     VarHandle::AccessMode::kGetAndBitwiseXor,
                                     VarHandle::AccessMode::kGetAndBitwiseXorAcquire);
 
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  ObjPtr<mirror::Class> char_class = class_linker->FindPrimitiveClass('C');
-  Handle<Class> char_array_class(hs.NewHandle(class_linker->FindArrayClass(self, &char_class)));
+  Handle<Class> char_array_class(hs.NewHandle(GetClassRoot<mirror::CharArray>()));
   const bool native_byte_order = true;
-  Handle<mirror::ByteArrayViewVarHandle> vh(hs.NewHandle(CreateByteArrayViewVarHandle(self, char_array_class, native_byte_order, mask)));
+  Handle<mirror::ByteArrayViewVarHandle> vh(
+      hs.NewHandle(CreateByteArrayViewVarHandle(self, char_array_class, native_byte_order, mask)));
   EXPECT_FALSE(vh.IsNull());
   EXPECT_EQ(native_byte_order, vh->GetNativeByteOrder());
 
@@ -895,11 +892,10 @@ TEST_F(VarHandleTest, ByteBufferViewVarHandle) {
                                     VarHandle::AccessMode::kGetAndBitwiseXor,
                                     VarHandle::AccessMode::kGetAndBitwiseXorAcquire);
 
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  ObjPtr<mirror::Class> double_class = class_linker->FindPrimitiveClass('D');
-  Handle<Class> double_array_class(hs.NewHandle(class_linker->FindArrayClass(self, &double_class)));
+  Handle<Class> double_array_class(hs.NewHandle(GetClassRoot<mirror::DoubleArray>()));
   const bool native_byte_order = false;
-  Handle<mirror::ByteBufferViewVarHandle> vh(hs.NewHandle(CreateByteBufferViewVarHandle(self, double_array_class, native_byte_order, mask)));
+  Handle<mirror::ByteBufferViewVarHandle> vh(hs.NewHandle(
+      CreateByteBufferViewVarHandle(self, double_array_class, native_byte_order, mask)));
   EXPECT_FALSE(vh.IsNull());
   EXPECT_EQ(native_byte_order, vh->GetNativeByteOrder());
 

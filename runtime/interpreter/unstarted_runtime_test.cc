@@ -388,7 +388,7 @@ TEST_F(UnstartedRuntimeTest, StringCharAt) {
 TEST_F(UnstartedRuntimeTest, StringInit) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
-  ObjPtr<mirror::Class> klass = mirror::String::GetJavaLangString();
+  ObjPtr<mirror::Class> klass = GetClassRoot<mirror::String>();
   ArtMethod* method =
       klass->FindConstructor("(Ljava/lang/String;)V",
                              Runtime::Current()->GetClassLinker()->GetImagePointerSize());
@@ -537,7 +537,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
                  tmp,
                  false,
                  object_class.Get(),
-                 mirror::String::GetJavaLangString(),
+                 GetClassRoot<mirror::String>(),
                  hs_src,
                  1,
                  hs_dst,
@@ -551,7 +551,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
   {
     StackHandleScope<3> hs_src(self);
     hs_src.NewHandle(mirror::String::AllocFromModifiedUtf8(self, "1"));
-    hs_src.NewHandle(mirror::String::GetJavaLangString());
+    hs_src.NewHandle(GetClassRoot<mirror::String>());
     hs_src.NewHandle(mirror::String::AllocFromModifiedUtf8(self, "3"));
 
     StackHandleScope<3> hs_dst(self);
@@ -568,7 +568,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
                  tmp,
                  true,
                  object_class.Get(),
-                 mirror::String::GetJavaLangString(),
+                 GetClassRoot<mirror::String>(),
                  hs_src,
                  0,
                  hs_dst,

@@ -345,7 +345,7 @@ jvmtiError MethodUtil::GetMethodName(jvmtiEnv* env,
   if (generic_ptr != nullptr) {
     *generic_ptr = nullptr;
     if (!art_method->GetDeclaringClass()->IsProxyClass()) {
-      art::mirror::ObjectArray<art::mirror::String>* str_array =
+      art::ObjPtr<art::mirror::ObjectArray<art::mirror::String>> str_array =
           art::annotations::GetSignatureAnnotationForMethod(art_method);
       if (str_array != nullptr) {
         std::ostringstream oss;
