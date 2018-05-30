@@ -52,27 +52,21 @@ std::ostream& operator<<(std::ostream& stream, const DexRegisterLocation::Kind& 
 }
 
 DexRegisterLocation::Kind DexRegisterMap::GetLocationInternalKind(
-    uint16_t dex_register_number,
-    uint16_t number_of_dex_registers,
-    const CodeInfo& code_info) const {
+    uint16_t dex_register_number) const {
   DexRegisterLocationCatalog dex_register_location_catalog =
-      code_info.GetDexRegisterLocationCatalog();
+      code_info_.GetDexRegisterLocationCatalog();
   size_t location_catalog_entry_index = GetLocationCatalogEntryIndex(
       dex_register_number,
-      number_of_dex_registers,
-      code_info.GetNumberOfLocationCatalogEntries());
+      code_info_.GetNumberOfLocationCatalogEntries());
   return dex_register_location_catalog.GetLocationInternalKind(location_catalog_entry_index);
 }
 
-DexRegisterLocation DexRegisterMap::GetDexRegisterLocation(uint16_t dex_register_number,
-                                                           uint16_t number_of_dex_registers,
-                                                           const CodeInfo& code_info) const {
+DexRegisterLocation DexRegisterMap::GetDexRegisterLocation(uint16_t dex_register_number) const {
   DexRegisterLocationCatalog dex_register_location_catalog =
-      code_info.GetDexRegisterLocationCatalog();
+      code_info_.GetDexRegisterLocationCatalog();
   size_t location_catalog_entry_index = GetLocationCatalogEntryIndex(
       dex_register_number,
-      number_of_dex_registers,
-      code_info.GetNumberOfLocationCatalogEntries());
+      code_info_.GetNumberOfLocationCatalogEntries());
   return dex_register_location_catalog.GetDexRegisterLocation(location_catalog_entry_index);
 }
 
@@ -160,18 +154,15 @@ void DexRegisterLocationCatalog::Dump(VariableIndentationOutputStream* vios,
   }
 }
 
-void DexRegisterMap::Dump(VariableIndentationOutputStream* vios,
-                          const CodeInfo& code_info,
-                          uint16_t number_of_dex_registers) const {
-  size_t number_of_location_catalog_entries = code_info.GetNumberOfLocationCatalogEntries();
+void DexRegisterMap::Dump(VariableIndentationOutputStream* vios) const {
+  size_t number_of_location_catalog_entries = code_info_.GetNumberOfLocationCatalogEntries();
   // TODO: Display the bit mask of live Dex registers.
-  for (size_t j = 0; j < number_of_dex_registers; ++j) {
+  for (size_t j = 0; j < number_of_dex_registers_; ++j) {
     if (IsDexRegisterLive(j)) {
       size_t location_catalog_entry_index = GetLocationCatalogEntryIndex(
-          j, number_of_dex_registers, number_of_location_catalog_entries);
-      DexRegisterLocation location = GetDexRegisterLocation(j,
-                                                            number_of_dex_registers,
-                                                            code_info);
+          j,
+          number_of_location_catalog_entries);
+      DexRegisterLocation location = GetDexRegisterLocation(j);
       ScopedIndentation indent1(vios);
       DumpRegisterMapping(
           vios->Stream(), j, location, "v",
@@ -207,7 +198,7 @@ void StackMap::Dump(VariableIndentationOutputStream* vios,
   if (HasDexRegisterMap()) {
     DexRegisterMap dex_register_map = code_info.GetDexRegisterMapOf(
         *this, number_of_dex_registers);
-    dex_register_map.Dump(vios, code_info, number_of_dex_registers);
+    dex_register_map.Dump(vios);
   }
   if (HasInlineInfo()) {
     InlineInfo inline_info = code_info.GetInlineInfoOf(*this);
@@ -244,7 +235,7 @@ void InlineInfo::Dump(VariableIndentationOutputStream* vios,
       DexRegisterMap dex_register_map =
           code_info.GetDexRegisterMapAtDepth(i, *this, number_of_dex_registers[i]);
       ScopedIndentation indent1(vios);
-      dex_register_map.Dump(vios, code_info, number_of_dex_registers[i]);
+      dex_register_map.Dump(vios);
     }
   }
 }
