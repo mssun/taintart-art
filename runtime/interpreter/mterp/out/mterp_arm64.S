@@ -346,6 +346,7 @@ codes.
  */
 .macro ENTRY name
     .type \name, #function
+    .hidden \name  // Hide this as a global symbol, so we do not incur plt calls.
     .global \name
     /* Cache alignment for function entry */
     .balign 16
