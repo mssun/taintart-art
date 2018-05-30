@@ -759,7 +759,6 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   class_root = FindSystemClass(self, "Ldalvik/system/EmulatedStackFrame;");
   CHECK(class_root != nullptr);
   SetClassRoot(ClassRoot::kDalvikSystemEmulatedStackFrame, class_root);
-  mirror::EmulatedStackFrame::SetClass(class_root);
 
   // java.lang.ref classes need to be specially flagged, but otherwise are normal classes
   // finish initializing Reference class
@@ -790,14 +789,12 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   // Set up java.lang.Throwable, java.lang.ClassNotFoundException, and
   // java.lang.StackTraceElement as a convenience.
   SetClassRoot(ClassRoot::kJavaLangThrowable, FindSystemClass(self, "Ljava/lang/Throwable;"));
-  mirror::Throwable::SetClass(GetClassRoot(ClassRoot::kJavaLangThrowable, this));
   SetClassRoot(ClassRoot::kJavaLangClassNotFoundException,
                FindSystemClass(self, "Ljava/lang/ClassNotFoundException;"));
   SetClassRoot(ClassRoot::kJavaLangStackTraceElement,
                FindSystemClass(self, "Ljava/lang/StackTraceElement;"));
   SetClassRoot(ClassRoot::kJavaLangStackTraceElementArrayClass,
                FindSystemClass(self, "[Ljava/lang/StackTraceElement;"));
-  mirror::StackTraceElement::SetClass(GetClassRoot(ClassRoot::kJavaLangStackTraceElement, this));
 
   // Create conflict tables that depend on the class linker.
   runtime->FixupConflictTables();
@@ -1033,10 +1030,6 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
       GcRoot<mirror::IfTable>(GetClassRoot(ClassRoot::kObjectArrayClass, this)->GetIfTable());
   DCHECK_EQ(array_iftable_.Read(), GetClassRoot(ClassRoot::kBooleanArrayClass, this)->GetIfTable());
   // String class root was set above
-  mirror::Throwable::SetClass(GetClassRoot(ClassRoot::kJavaLangThrowable, this));
-  mirror::StackTraceElement::SetClass(GetClassRoot(ClassRoot::kJavaLangStackTraceElement, this));
-  mirror::EmulatedStackFrame::SetClass(
-      GetClassRoot(ClassRoot::kDalvikSystemEmulatedStackFrame, this).Ptr());
   mirror::ClassExt::SetClass(GetClassRoot(ClassRoot::kDalvikSystemClassExt, this));
 
   for (gc::space::ImageSpace* image_space : spaces) {
@@ -2116,10 +2109,7 @@ void ClassLinker::VisitClassesWithoutClassesLock(ClassVisitor* visitor) {
 
 ClassLinker::~ClassLinker() {
   mirror::Class::ResetClass();
-  mirror::StackTraceElement::ResetClass();
   mirror::String::ResetClass();
-  mirror::Throwable::ResetClass();
-  mirror::EmulatedStackFrame::ResetClass();
   Thread* const self = Thread::Current();
   for (const ClassLoaderData& data : class_loaders_) {
     // CHA unloading analysis is not needed. No negative consequences are expected because

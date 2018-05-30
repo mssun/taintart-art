@@ -3529,7 +3529,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         ObjPtr<mirror::Class> klass =
             linker->ResolveType(handler_type_idx, dex_cache_, class_loader_);
         if (klass != nullptr) {
-          if (klass == mirror::Throwable::GetJavaLangThrowable()) {
+          if (klass == GetClassRoot<mirror::Throwable>()) {
             has_catch_all_handler = true;
           }
         } else {

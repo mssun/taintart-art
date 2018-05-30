@@ -22,6 +22,7 @@
 #include "base/enums.h"
 #include "base/utils.h"
 #include "class-inl.h"
+#include "class_root.h"
 #include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "object-inl.h"
@@ -35,8 +36,6 @@ namespace art {
 namespace mirror {
 
 using android::base::StringPrintf;
-
-GcRoot<Class> Throwable::java_lang_Throwable_;
 
 void Throwable::SetDetailMessage(ObjPtr<String> new_detail_message) {
   if (Runtime::Current()->IsActiveTransaction()) {
@@ -128,8 +127,7 @@ std::string Throwable::Dump() {
   } else {
     ObjPtr<Object> stack_trace = GetStackTrace();
     if (stack_trace != nullptr && stack_trace->IsObjectArray()) {
-      CHECK_EQ(stack_trace->GetClass()->GetComponentType(),
-               StackTraceElement::GetStackTraceElement());
+      CHECK_EQ(stack_trace->GetClass()->GetComponentType(), GetClassRoot<StackTraceElement>());
       ObjPtr<ObjectArray<StackTraceElement>> ste_array =
           ObjPtr<ObjectArray<StackTraceElement>>::DownCast(stack_trace);
       if (ste_array->GetLength() == 0) {
@@ -157,21 +155,6 @@ std::string Throwable::Dump() {
     result += cause->Dump();
   }
   return result;
-}
-
-void Throwable::SetClass(ObjPtr<Class> java_lang_Throwable) {
-  CHECK(java_lang_Throwable_.IsNull());
-  CHECK(java_lang_Throwable != nullptr);
-  java_lang_Throwable_ = GcRoot<Class>(java_lang_Throwable);
-}
-
-void Throwable::ResetClass() {
-  CHECK(!java_lang_Throwable_.IsNull());
-  java_lang_Throwable_ = GcRoot<Class>(nullptr);
-}
-
-void Throwable::VisitRoots(RootVisitor* visitor) {
-  java_lang_Throwable_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
 }
 
 Object* Throwable::GetStackState() {
