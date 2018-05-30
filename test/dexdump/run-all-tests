@@ -37,51 +37,73 @@ prog="${progdir}"/`basename "${prog}"`
 tmpdir=/tmp/test-$$
 mkdir ${tmpdir}
 
-# Set up dexdump binary and flags to test.
-DEXD="${ANDROID_HOST_OUT}/bin/dexdump2"
-DEXDFLAGS1="-adfh"
-DEXDFLAGS2="-e -l xml"
+# Set up tools and commands to run
+DEXDUMP="${ANDROID_HOST_OUT}/bin/dexdump2"
+DEXLIST="${ANDROID_HOST_OUT}/bin/dexlist"
 
-# Set up dexlist binary and flags to test.
-DEXL="${ANDROID_HOST_OUT}/bin/dexlist"
-DEXLFLAGS=""
+declare -A SUFFIX_COMMAND_MAP
+SUFFIX_COMMAND_MAP[txt]="${DEXDUMP} -adfh"
+SUFFIX_COMMAND_MAP[xml]="${DEXDUMP} -e -l xml"
+SUFFIX_COMMAND_MAP[lst]="${DEXLIST}"
+
+# Parse command-line options
+UPDATE="no"
+USAGE="no"
+while [ $# -ne 0 ]; do
+  case "$1" in
+    --update)
+      UPDATE="yes"
+      ;;
+    *)
+      echo "Unknown option $1" 1>&2
+      USAGE="yes"
+      ;;
+  esac
+  shift
+done
+
+if [ "${USAGE}" = "yes" ]; then
+  cat 1>&2 <<USAGE_END
+Usage:
+  ${prog##*/} [--update]
+Options:
+  --update     Update reference outputs
+USAGE_END
+  exit 1
+fi
+
+if [ "${UPDATE}" = "yes" ]; then
+  for dex in *.dex; do
+    for suffix in ${!SUFFIX_COMMAND_MAP[@]}; do
+      new_output=${dex%%.*}.${suffix}
+      ${SUFFIX_COMMAND_MAP[${suffix}]} ${dex} > ${new_output}
+      if [ $? -ne 0 ]; then
+        echo "Failed running ${SUFFIX_COMMAND_MAP[${suffix}]} ${dex} > ${new_output}" 2>&1
+        exit 1
+      fi
+    done
+  done
+  exit 0
+fi
 
 # Run the tests.
 passed=0
 failed=0
-for i in *.dex; do
-    echo $i
-    basenm=`basename "${i}" .dex`
-    txtfile=${basenm}.txt
-    xmlfile=${basenm}.xml
-    lstfile=${basenm}.lst
-    gentxtfile=${tmpdir}/${txtfile}
-    genxmlfile=${tmpdir}/${xmlfile}
-    genlstfile=${tmpdir}/${lstfile}
-    ${DEXD} ${DEXDFLAGS1} ${i} > ${gentxtfile}
-    cmp ${txtfile} ${gentxtfile}
+for dex in *.dex; do
+  echo ${dex}
+  for suffix in ${!SUFFIX_COMMAND_MAP[@]}; do
+    expected_output=${dex%%.*}.${suffix}
+    actual_output=${tmpdir}/${expected_output}
+    cmd="${SUFFIX_COMMAND_MAP[${suffix}]} ${dex}"
+    ${cmd} > ${actual_output}
+    cmp ${expected_output} ${actual_output}
     if [ "$?" = "0" ]; then
         ((passed += 1))
     else
         ((failed += 1))
-        echo failed: ${i}
+        echo failed: ${cmd}
     fi
-    ${DEXD} ${DEXDFLAGS2} ${i} > ${genxmlfile}
-    cmp ${xmlfile} ${genxmlfile}
-    if [ "$?" = "0" ]; then
-        ((passed += 1))
-    else
-        ((failed += 1))
-        echo failed: ${i}
-    fi
-    ${DEXL} ${DEXLFLAGS} ${i} > ${genlstfile}
-    cmp ${lstfile} ${genlstfile}
-    if [ "$?" = "0" ]; then
-        ((passed += 1))
-    else
-        ((failed += 1))
-        echo failed: ${i}
-    fi
+  done
 done
 
 # Report results.
