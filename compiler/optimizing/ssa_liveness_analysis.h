@@ -300,8 +300,7 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
   void AddUse(HInstruction* instruction,
               HEnvironment* environment,
               size_t input_index,
-              HInstruction* actual_user = nullptr,
-              bool keep_alive = false) {
+              HInstruction* actual_user = nullptr) {
     bool is_environment = (environment != nullptr);
     LocationSummary* locations = instruction->GetLocations();
     if (actual_user == nullptr) {
@@ -357,12 +356,6 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
       DCHECK(uses_.empty() || position <= uses_.front().GetPosition());
       UsePosition* new_use = new (allocator_) UsePosition(instruction, input_index, position);
       uses_.push_front(*new_use);
-    }
-
-    if (is_environment && !keep_alive) {
-      // If this environment use does not keep the instruction live, it does not
-      // affect the live range of that instruction.
-      return;
     }
 
     size_t start_block_position = instruction->GetBlock()->GetLifetimeStart();
@@ -1157,8 +1150,11 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
  *     of an instruction that has a primitive type make the instruction live.
  *     If the graph does not have the debuggable property, the environment
  *     use has no effect, and may get a 'none' value after register allocation.
+ * (d) When compiling in OSR mode, all loops in the compiled method may be entered
+ *     from the interpreter via SuspendCheck; such use in SuspendCheck makes the instruction
+ *     live.
  *
- * (b) and (c) are implemented through SsaLivenessAnalysis::ShouldBeLiveForEnvironment.
+ * (b), (c) and (d) are implemented through SsaLivenessAnalysis::ShouldBeLiveForEnvironment.
  */
 class SsaLivenessAnalysis : public ValueObject {
  public:
@@ -1259,14 +1255,18 @@ class SsaLivenessAnalysis : public ValueObject {
   // Returns whether `instruction` in an HEnvironment held by `env_holder`
   // should be kept live by the HEnvironment.
   static bool ShouldBeLiveForEnvironment(HInstruction* env_holder, HInstruction* instruction) {
-    if (instruction == nullptr) return false;
+    DCHECK(instruction != nullptr);
     // A value that's not live in compiled code may still be needed in interpreter,
     // due to code motion, etc.
     if (env_holder->IsDeoptimize()) return true;
     // A value live at a throwing instruction in a try block may be copied by
     // the exception handler to its location at the top of the catch block.
     if (env_holder->CanThrowIntoCatchBlock()) return true;
-    if (instruction->GetBlock()->GetGraph()->IsDebuggable()) return true;
+    HGraph* graph = instruction->GetBlock()->GetGraph();
+    if (graph->IsDebuggable()) return true;
+    // When compiling in OSR mode, all loops in the compiled method may be entered
+    // from the interpreter via SuspendCheck; thus we need to preserve the environment.
+    if (env_holder->IsSuspendCheck() && graph->IsCompilingOsr()) return true;
     return instruction->GetType() == DataType::Type::kReference;
   }
 

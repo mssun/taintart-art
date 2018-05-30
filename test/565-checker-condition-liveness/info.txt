@@ -1,1 +1,1 @@
-Test the use positions of inputs of non-materialized conditions.
+Test the results of liveness analysis e.g. use positions of inputs of non-materialized conditions.
