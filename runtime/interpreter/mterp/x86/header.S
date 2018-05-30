@@ -99,11 +99,13 @@ unspecified registers or condition codes.
     #define SIZE(start,end)
     // Mac OS' symbols have an _ prefix.
     #define SYMBOL(name) _ ## name
+    #define ASM_HIDDEN .private_extern
 #else
     #define MACRO_LITERAL(value) $$value
     #define FUNCTION_TYPE(name) .type name, @function
     #define SIZE(start,end) .size start, .-end
     #define SYMBOL(name) name
+    #define ASM_HIDDEN .hidden
 #endif
 
 .macro PUSH _reg
