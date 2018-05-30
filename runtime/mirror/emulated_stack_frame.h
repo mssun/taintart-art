@@ -64,15 +64,7 @@ class MANAGED EmulatedStackFrame : public Object {
     return GetReferences()->Get(0);
   }
 
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return static_class_.Read();
-  }
-
   mirror::ObjectArray<mirror::Object>* GetReferences() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetFieldObject<mirror::ObjectArray<mirror::Object>>(
         OFFSET_OF_OBJECT_MEMBER(EmulatedStackFrame, references_));
@@ -103,8 +95,6 @@ class MANAGED EmulatedStackFrame : public Object {
   HeapReference<mirror::ObjectArray<mirror::Object>> references_;
   HeapReference<mirror::ByteArray> stack_frame_;
   HeapReference<mirror::MethodType> type_;
-
-  static GcRoot<mirror::Class> static_class_;  // dalvik.system.EmulatedStackFrame.class
 
   friend struct art::EmulatedStackFrameOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(EmulatedStackFrame);

@@ -2461,7 +2461,7 @@ class FetchStackTraceVisitor : public StackVisitor {
     // save frame)
     ArtMethod* m = GetMethod();
     if (skipping_ && !m->IsRuntimeMethod() &&
-        !mirror::Throwable::GetJavaLangThrowable()->IsAssignableFrom(m->GetDeclaringClass())) {
+        !GetClassRoot<mirror::Throwable>()->IsAssignableFrom(m->GetDeclaringClass())) {
       skipping_ = false;
     }
     if (!skipping_) {
