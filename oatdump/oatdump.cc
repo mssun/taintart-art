@@ -45,6 +45,7 @@
 #include "debug/debug_info.h"
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
@@ -268,25 +269,18 @@ class OatSymbolizer FINAL {
   void WalkOatClass(const OatFile::OatClass& oat_class,
                     const DexFile& dex_file,
                     uint32_t class_def_index) {
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
-    if (class_data == nullptr) {  // empty class such as a marker interface?
-      return;
-    }
+    ClassAccessor accessor(dex_file, dex_file.GetClassDef(class_def_index));
     // Note: even if this is an interface or a native class, we still have to walk it, as there
     //       might be a static initializer.
-    ClassDataItemIterator it(dex_file, class_data);
     uint32_t class_method_idx = 0;
-    it.SkipAllFields();
-    for (; it.HasNextMethod(); it.Next()) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
       WalkOatMethod(oat_class.GetOatMethod(class_method_idx++),
                     dex_file,
                     class_def_index,
-                    it.GetMemberIndex(),
-                    it.GetMethodCodeItem(),
-                    it.GetMethodAccessFlags());
+                    method.GetIndex(),
+                    method.GetCodeItem(),
+                    method.GetAccessFlags());
     }
-    DCHECK(!it.HasNext());
   }
 
   void WalkOatMethod(const OatFile::OatMethod& oat_method,
@@ -904,21 +898,15 @@ class OatDumper {
         continue;
       }
       offsets_.insert(reinterpret_cast<uintptr_t>(&dex_file->GetHeader()));
-      for (size_t class_def_index = 0;
-           class_def_index < dex_file->NumClassDefs();
-           class_def_index++) {
-        const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
+      uint32_t class_def_index = 0u;
+      for (ClassAccessor accessor : dex_file->GetClasses()) {
         const OatFile::OatClass oat_class = oat_dex_file->GetOatClass(class_def_index);
-        const uint8_t* class_data = dex_file->GetClassData(class_def);
-        if (class_data != nullptr) {
-          ClassDataItemIterator it(*dex_file, class_data);
-          it.SkipAllFields();
-          uint32_t class_method_index = 0;
-          while (it.HasNextMethod()) {
-            AddOffsets(oat_class.GetOatMethod(class_method_index++));
-            it.Next();
-          }
+        for (uint32_t class_method_index = 0;
+            class_method_index < accessor.NumMethods();
+            ++class_method_index) {
+          AddOffsets(oat_class.GetOatMethod(class_method_index));
         }
+        ++class_def_index;
       }
     }
 
