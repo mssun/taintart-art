@@ -56,9 +56,12 @@ static void CauseSegfault() {
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_sleep(JNIEnv*, jobject, jint, jboolean, jdouble) {
   // Keep pausing.
+  struct timespec ts = { .tv_sec = 100, .tv_nsec = 0 };
   printf("Going to sleep\n");
   for (;;) {
-    sleep(1);
+    // Use nanosleep since it gets to the system call quickly and doesn't
+    // have any points at which an unwind will fail.
+    nanosleep(&ts, nullptr);
   }
 }
 
