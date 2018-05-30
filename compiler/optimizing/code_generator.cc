@@ -1161,8 +1161,8 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
     // last emitted is different than the native pc of the stack map just emitted.
     size_t number_of_stack_maps = stack_map_stream->GetNumberOfStackMaps();
     if (number_of_stack_maps > 1) {
-      DCHECK_NE(stack_map_stream->GetStackMap(number_of_stack_maps - 1).native_pc_code_offset,
-                stack_map_stream->GetStackMap(number_of_stack_maps - 2).native_pc_code_offset);
+      DCHECK_NE(stack_map_stream->GetStackMapNativePcOffset(number_of_stack_maps - 1),
+                stack_map_stream->GetStackMapNativePcOffset(number_of_stack_maps - 2));
     }
   }
 }
@@ -1174,8 +1174,7 @@ bool CodeGenerator::HasStackMapAtCurrentPc() {
   if (count == 0) {
     return false;
   }
-  CodeOffset native_pc_offset = stack_map_stream->GetStackMap(count - 1).native_pc_code_offset;
-  return (native_pc_offset.Uint32Value(GetInstructionSet()) == pc);
+  return stack_map_stream->GetStackMapNativePcOffset(count - 1) == pc;
 }
 
 void CodeGenerator::MaybeRecordNativeDebugInfo(HInstruction* instruction,

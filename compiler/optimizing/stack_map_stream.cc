@@ -25,6 +25,14 @@
 
 namespace art {
 
+uint32_t StackMapStream::GetStackMapNativePcOffset(size_t i) {
+  return StackMap::UnpackNativePc(stack_maps_[i].packed_native_pc, instruction_set_);
+}
+
+void StackMapStream::SetStackMapNativePcOffset(size_t i, uint32_t native_pc_offset) {
+  stack_maps_[i].packed_native_pc = StackMap::PackNativePc(native_pc_offset, instruction_set_);
+}
+
 void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
                                         uint32_t native_pc_offset,
                                         uint32_t register_mask,
@@ -33,7 +41,7 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
                                         uint8_t inlining_depth) {
   DCHECK_EQ(0u, current_entry_.dex_pc) << "EndStackMapEntry not called after BeginStackMapEntry";
   current_entry_.dex_pc = dex_pc;
-  current_entry_.native_pc_code_offset = CodeOffset::FromOffset(native_pc_offset, instruction_set_);
+  current_entry_.packed_native_pc = StackMap::PackNativePc(native_pc_offset, instruction_set_);
   current_entry_.register_mask = register_mask;
   current_entry_.sp_mask = sp_mask;
   current_entry_.inlining_depth = inlining_depth;
@@ -278,7 +286,7 @@ size_t StackMapStream::PrepareForFillIn() {
   for (const StackMapEntry& entry : stack_maps_) {
     if (entry.dex_method_index != dex::kDexNoIndex) {
       std::array<uint32_t, InvokeInfo::kCount> invoke_info_entry {
-          entry.native_pc_code_offset.CompressedValue(),
+          entry.packed_native_pc,
           entry.invoke_type,
           entry.dex_method_index_idx
       };
@@ -306,7 +314,7 @@ size_t StackMapStream::PrepareForFillIn() {
       inline_info_builder.Add(inline_info_entry);
     }
     std::array<uint32_t, StackMap::kCount> stack_map_entry {
-        entry.native_pc_code_offset.CompressedValue(),
+        entry.packed_native_pc,
         entry.dex_pc,
         dex_register_entries_[entry.dex_register_map_index].offset,
         entry.inlining_depth != 0 ? inline_info_index : InlineInfo::kNoValue,
@@ -476,7 +484,7 @@ void StackMapStream::CheckCodeInfo(MemoryRegion region) const {
 
     // Check main stack map fields.
     DCHECK_EQ(stack_map.GetNativePcOffset(instruction_set_),
-              entry.native_pc_code_offset.Uint32Value(instruction_set_));
+              StackMap::UnpackNativePc(entry.packed_native_pc, instruction_set_));
     DCHECK_EQ(stack_map.GetDexPc(), entry.dex_pc);
     DCHECK_EQ(stack_map.GetRegisterMaskIndex(), entry.register_mask_index);
     DCHECK_EQ(code_info.GetRegisterMaskOf(stack_map), entry.register_mask);
@@ -493,7 +501,7 @@ void StackMapStream::CheckCodeInfo(MemoryRegion region) const {
     if (entry.dex_method_index != dex::kDexNoIndex) {
       InvokeInfo invoke_info = code_info.GetInvokeInfo(invoke_info_index);
       DCHECK_EQ(invoke_info.GetNativePcOffset(instruction_set_),
-                entry.native_pc_code_offset.Uint32Value(instruction_set_));
+                StackMap::UnpackNativePc(entry.packed_native_pc, instruction_set_));
       DCHECK_EQ(invoke_info.GetInvokeType(), entry.invoke_type);
       DCHECK_EQ(invoke_info.GetMethodIndexIdx(), entry.dex_method_index_idx);
       invoke_info_index++;

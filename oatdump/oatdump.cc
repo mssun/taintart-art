@@ -1699,7 +1699,7 @@ class OatDumper {
           // Stack maps
           stats_.AddBits(
               Stats::kByteKindStackMapNativePc,
-              stack_maps.NumColumnBits(StackMap::kNativePcOffset) * num_stack_maps);
+              stack_maps.NumColumnBits(StackMap::kPackedNativePc) * num_stack_maps);
           stats_.AddBits(
               Stats::kByteKindStackMapDexPc,
               stack_maps.NumColumnBits(StackMap::kDexPc) * num_stack_maps);
