@@ -396,6 +396,7 @@ ENTRY ExecuteMterpImpl
     GOTO_OPCODE ip                      @ jump to next instruction
     /* NOTE: no fallthrough */
 
+/* File: arm/instruction_start.S */
 
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
@@ -7509,18 +7510,24 @@ constvalop_long_to_double:
 
 
     .balign 128
+/* File: arm/instruction_end.S */
+
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
+
 
 /*
  * ===========================================================================
  *  Sister implementations
  * ===========================================================================
  */
+/* File: arm/instruction_start_sister.S */
+
     .global artMterpAsmSisterStart
     .text
     .balign 4
 artMterpAsmSisterStart:
+
 
 /* continuation for op_float_to_long */
 /*
@@ -7583,14 +7590,17 @@ d2l_maybeNaN:
     mov     r0, #0
     mov     r1, #0
     bx      lr                          @ return 0 for NaN
+/* File: arm/instruction_end_sister.S */
+
     .global artMterpAsmSisterEnd
 artMterpAsmSisterEnd:
 
+/* File: arm/instruction_start_alt.S */
 
     .global artMterpAsmAltInstructionStart
+artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
 
-artMterpAsmAltInstructionStart = .L_ALT_op_nop
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */
@@ -11944,8 +11954,11 @@ artMterpAsmAltInstructionStart = .L_ALT_op_nop
     b      MterpCheckBefore     @ (self, shadow_frame, dex_pc_ptr)  @ Tail call.
 
     .balign 128
+/* File: arm/instruction_end_alt.S */
+
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
+
 /* File: arm/footer.S */
 /*
  * ===========================================================================

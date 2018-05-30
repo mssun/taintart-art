@@ -810,6 +810,7 @@ ExecuteMterpImpl:
     GOTO_OPCODE(t0)                        # jump to next instruction
     /* NOTE: no fallthrough */
 
+/* File: mips/instruction_start.S */
 
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
@@ -7873,18 +7874,24 @@ artMterpAsmInstructionStart = .L_op_nop
 
 
     .balign 128
+/* File: mips/instruction_end.S */
+
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
+
 
 /*
  * ===========================================================================
  *  Sister implementations
  * ===========================================================================
  */
+/* File: mips/instruction_start_sister.S */
+
     .global artMterpAsmSisterStart
     .text
     .balign 4
 artMterpAsmSisterStart:
+
 
 /* continuation for op_float_to_long */
 
@@ -7941,14 +7948,17 @@ artMterpAsmSisterStart:
 
 .Lop_ushr_long_2addr_finish:
     SET_VREG64_GOTO(v1, zero, t3, t0)      #  vA/vA+1 <- rlo/rhi
+/* File: mips/instruction_end_sister.S */
+
     .global artMterpAsmSisterEnd
 artMterpAsmSisterEnd:
 
+/* File: mips/instruction_start_alt.S */
 
     .global artMterpAsmAltInstructionStart
+artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
 
-artMterpAsmAltInstructionStart = .L_ALT_op_nop
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */
@@ -12558,8 +12568,11 @@ artMterpAsmAltInstructionStart = .L_ALT_op_nop
     jalr   zero, t9                     # Tail call to Mterp(self, shadow_frame, dex_pc_ptr)
 
     .balign 128
+/* File: mips/instruction_end_alt.S */
+
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
+
 /* File: mips/footer.S */
 /*
  * ===========================================================================
