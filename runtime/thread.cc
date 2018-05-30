@@ -3679,8 +3679,7 @@ class ReferenceMapVisitor : public StackVisitor {
           REQUIRES_SHARED(Locks::mutator_lock_) {
         bool found = false;
         for (size_t dex_reg = 0; dex_reg != number_of_dex_registers; ++dex_reg) {
-          DexRegisterLocation location = dex_register_map.GetDexRegisterLocation(
-              dex_reg, number_of_dex_registers, code_info);
+          DexRegisterLocation location = dex_register_map.GetDexRegisterLocation(dex_reg);
           if (location.GetKind() == kind && static_cast<size_t>(location.GetValue()) == index) {
             visitor(ref, dex_reg, stack_visitor);
             found = true;

@@ -245,13 +245,10 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
   if (!dex_register_map.IsValid()) {
     return false;
   }
-  DexRegisterLocation::Kind location_kind =
-      dex_register_map.GetLocationKind(vreg, number_of_dex_registers, code_info);
+  DexRegisterLocation::Kind location_kind = dex_register_map.GetLocationKind(vreg);
   switch (location_kind) {
     case DexRegisterLocation::Kind::kInStack: {
-      const int32_t offset = dex_register_map.GetStackOffsetInBytes(vreg,
-                                                                    number_of_dex_registers,
-                                                                    code_info);
+      const int32_t offset = dex_register_map.GetStackOffsetInBytes(vreg);
       const uint8_t* addr = reinterpret_cast<const uint8_t*>(cur_quick_frame_) + offset;
       *val = *reinterpret_cast<const uint32_t*>(addr);
       return true;
@@ -260,21 +257,18 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
     case DexRegisterLocation::Kind::kInRegisterHigh:
     case DexRegisterLocation::Kind::kInFpuRegister:
     case DexRegisterLocation::Kind::kInFpuRegisterHigh: {
-      uint32_t reg =
-          dex_register_map.GetMachineRegister(vreg, number_of_dex_registers, code_info);
+      uint32_t reg = dex_register_map.GetMachineRegister(vreg);
       return GetRegisterIfAccessible(reg, kind, val);
     }
     case DexRegisterLocation::Kind::kConstant:
-      *val = dex_register_map.GetConstant(vreg, number_of_dex_registers, code_info);
+      *val = dex_register_map.GetConstant(vreg);
       return true;
     case DexRegisterLocation::Kind::kNone:
       return false;
     default:
       LOG(FATAL)
           << "Unexpected location kind "
-          << dex_register_map.GetLocationInternalKind(vreg,
-                                                      number_of_dex_registers,
-                                                      code_info);
+          << dex_register_map.GetLocationInternalKind(vreg);
       UNREACHABLE();
   }
 }
