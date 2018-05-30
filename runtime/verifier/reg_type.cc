@@ -723,6 +723,7 @@ const RegType& RegType::Merge(const RegType& incoming_type,
       // mechanics to continue.
       return reg_types->FromUnresolvedMerge(*this, incoming_type, verifier);
     } else {  // Two reference types, compute Join
+      // Do not cache the classes as ClassJoin() can suspend and invalidate ObjPtr<>s.
       DCHECK(GetClass() != nullptr && !GetClass()->IsPrimitive());
       DCHECK(incoming_type.GetClass() != nullptr && !incoming_type.GetClass()->IsPrimitive());
       ObjPtr<mirror::Class> join_class = ClassJoin(GetClass(), incoming_type.GetClass());

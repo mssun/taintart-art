@@ -35,9 +35,6 @@
 namespace art {
 namespace mirror {
 
-// TODO: get global references for these
-GcRoot<Class> String::java_lang_String_;
-
 int32_t String::FastIndexOf(int32_t ch, int32_t start) {
   int32_t count = GetLength();
   if (start < 0) {
@@ -50,18 +47,6 @@ int32_t String::FastIndexOf(int32_t ch, int32_t start) {
   } else {
     return FastIndexOf<uint16_t>(GetValue(), ch, start);
   }
-}
-
-void String::SetClass(ObjPtr<Class> java_lang_String) {
-  CHECK(java_lang_String_.IsNull());
-  CHECK(java_lang_String != nullptr);
-  CHECK(java_lang_String->IsStringClass());
-  java_lang_String_ = GcRoot<Class>(java_lang_String);
-}
-
-void String::ResetClass() {
-  CHECK(!java_lang_String_.IsNull());
-  java_lang_String_ = GcRoot<Class>(nullptr);
 }
 
 int String::ComputeHashCode() {
@@ -370,10 +355,6 @@ int32_t String::CompareTo(ObjPtr<String> rhs) {
     }
   }
   return count_diff;
-}
-
-void String::VisitRoots(RootVisitor* visitor) {
-  java_lang_String_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
 }
 
 CharArray* String::ToCharArray(Thread* self) {

@@ -793,10 +793,6 @@ class ClassLinker {
   mirror::Class* CreatePrimitiveClass(Thread* self, Primitive::Type type)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
-  mirror::Class* InitializePrimitiveClass(ObjPtr<mirror::Class> primitive_class,
-                                          Primitive::Type type)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      REQUIRES(!Roles::uninterruptible_);
 
   mirror::Class* CreateArrayClass(Thread* self,
                                   const char* descriptor,
