@@ -130,17 +130,17 @@ class VarHandleTest : public CommonRuntimeTest {
   }
 
   // Helper to get the VarType of a VarHandle.
-  static Class* GetVarType(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
+  static ObjPtr<Class> GetVarType(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
     return vh->GetVarType();
   }
 
   // Helper to get the CoordinateType0 of a VarHandle.
-  static Class* GetCoordinateType0(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
+  static ObjPtr<Class> GetCoordinateType0(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
     return vh->GetCoordinateType0();
   }
 
   // Helper to get the CoordinateType1 of a VarHandle.
-  static Class* GetCoordinateType1(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
+  static ObjPtr<Class> GetCoordinateType1(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
     return vh->GetCoordinateType1();
   }
 
@@ -150,7 +150,7 @@ class VarHandleTest : public CommonRuntimeTest {
   }
 
  private:
-  static void InitializeVarHandle(VarHandle* vh,
+  static void InitializeVarHandle(ObjPtr<VarHandle> vh,
                                   Handle<Class> var_type,
                                   int32_t access_modes_bit_mask)
       REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -158,7 +158,7 @@ class VarHandleTest : public CommonRuntimeTest {
     vh->SetField32<false>(VarHandle::AccessModesBitMaskOffset(), access_modes_bit_mask);
   }
 
-  static void InitializeVarHandle(VarHandle* vh,
+  static void InitializeVarHandle(ObjPtr<VarHandle> vh,
                                   Handle<Class> var_type,
                                   Handle<Class> coordinate_type0,
                                   int32_t access_modes_bit_mask)
@@ -167,7 +167,7 @@ class VarHandleTest : public CommonRuntimeTest {
     vh->SetFieldObject<false>(VarHandle::CoordinateType0Offset(), coordinate_type0.Get());
   }
 
-  static void InitializeVarHandle(VarHandle* vh,
+  static void InitializeVarHandle(ObjPtr<VarHandle> vh,
                                   Handle<Class> var_type,
                                   Handle<Class> coordinate_type0,
                                   Handle<Class> coordinate_type1,

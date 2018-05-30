@@ -215,17 +215,9 @@ static jstring Class_getNameNative(JNIEnv* env, jobject javaThis) {
   return soa.AddLocalReference<jstring>(mirror::Class::ComputeName(hs.NewHandle(c)));
 }
 
-// TODO: Move this to mirror::Class ? Other mirror types that commonly appear
-// as arrays have a GetArrayClass() method.
-static ObjPtr<mirror::Class> GetClassArrayClass(Thread* self)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjPtr<mirror::Class> class_class = mirror::Class::GetJavaLangClass();
-  return Runtime::Current()->GetClassLinker()->FindArrayClass(self, &class_class);
-}
-
 static jobjectArray Class_getInterfacesInternal(JNIEnv* env, jobject javaThis) {
   ScopedFastNativeObjectAccess soa(env);
-  StackHandleScope<4> hs(soa.Self());
+  StackHandleScope<1> hs(soa.Self());
   Handle<mirror::Class> klass = hs.NewHandle(DecodeClass(soa, javaThis));
 
   if (klass->IsProxyClass()) {
@@ -237,10 +229,12 @@ static jobjectArray Class_getInterfacesInternal(JNIEnv* env, jobject javaThis) {
     return nullptr;
   }
 
+  ClassLinker* linker = Runtime::Current()->GetClassLinker();
   const uint32_t num_ifaces = iface_list->Size();
-  Handle<mirror::Class> class_array_class = hs.NewHandle(GetClassArrayClass(soa.Self()));
-  Handle<mirror::ObjectArray<mirror::Class>> ifaces = hs.NewHandle(
-      mirror::ObjectArray<mirror::Class>::Alloc(soa.Self(), class_array_class.Get(), num_ifaces));
+  ObjPtr<mirror::Class> class_array_class =
+      GetClassRoot<mirror::ObjectArray<mirror::Class>>(linker);
+  ObjPtr<mirror::ObjectArray<mirror::Class>> ifaces =
+      mirror::ObjectArray<mirror::Class>::Alloc(soa.Self(), class_array_class, num_ifaces);
   if (ifaces.IsNull()) {
     DCHECK(soa.Self()->IsExceptionPending());
     return nullptr;
@@ -250,20 +244,21 @@ static jobjectArray Class_getInterfacesInternal(JNIEnv* env, jobject javaThis) {
   // with kActiveTransaction == false.
   DCHECK(!Runtime::Current()->IsActiveTransaction());
 
-  ClassLinker* linker = Runtime::Current()->GetClassLinker();
-  MutableHandle<mirror::Class> interface(hs.NewHandle<mirror::Class>(nullptr));
   for (uint32_t i = 0; i < num_ifaces; ++i) {
     const dex::TypeIndex type_idx = iface_list->GetTypeItem(i).type_idx_;
-    interface.Assign(linker->LookupResolvedType(type_idx, klass.Get()));
-    ifaces->SetWithoutChecks<false>(i, interface.Get());
+    ObjPtr<mirror::Class> interface = linker->LookupResolvedType(type_idx, klass.Get());
+    DCHECK(interface != nullptr);
+    ifaces->SetWithoutChecks<false>(i, interface);
   }
 
-  return soa.AddLocalReference<jobjectArray>(ifaces.Get());
+  return soa.AddLocalReference<jobjectArray>(ifaces);
 }
 
-static mirror::ObjectArray<mirror::Field>* GetDeclaredFields(
-    Thread* self, ObjPtr<mirror::Class> klass, bool public_only, bool force_resolve)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
+static ObjPtr<mirror::ObjectArray<mirror::Field>> GetDeclaredFields(
+    Thread* self,
+    ObjPtr<mirror::Class> klass,
+    bool public_only,
+    bool force_resolve) REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
   IterationRange<StrideIterator<ArtField>> ifields = klass->GetIFields();
   IterationRange<StrideIterator<ArtField>> sfields = klass->GetSFields();
@@ -672,10 +667,8 @@ static jobjectArray Class_getDeclaredClasses(JNIEnv* env, jobject javaThis) {
       // Pending exception from GetDeclaredClasses.
       return nullptr;
     }
-    ObjPtr<mirror::Class> class_array_class = GetClassArrayClass(soa.Self());
-    if (class_array_class == nullptr) {
-      return nullptr;
-    }
+    ObjPtr<mirror::Class> class_array_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>();
+    DCHECK(class_array_class != nullptr);
     ObjPtr<mirror::ObjectArray<mirror::Class>> empty_array =
         mirror::ObjectArray<mirror::Class>::Alloc(soa.Self(), class_array_class, 0);
     return soa.AddLocalReference<jobjectArray>(empty_array);

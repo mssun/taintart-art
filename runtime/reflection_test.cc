@@ -80,7 +80,7 @@ class ReflectionTest : public CommonCompilerTest {
 
   jclass GetPrimitiveClass(char descriptor) {
     ScopedObjectAccess soa(env_);
-    mirror::Class* c = class_linker_->FindPrimitiveClass(descriptor);
+    ObjPtr<mirror::Class> c = class_linker_->FindPrimitiveClass(descriptor);
     CHECK(c != nullptr);
     return soa.AddLocalReference<jclass>(c);
   }
@@ -518,7 +518,7 @@ TEST_F(ReflectionTest, StaticMainMethod) {
       hs.NewHandle(soa.Decode<mirror::ClassLoader>(jclass_loader)));
   CompileDirectMethod(class_loader, "Main", "main", "([Ljava/lang/String;)V");
 
-  mirror::Class* klass = class_linker_->FindClass(soa.Self(), "LMain;", class_loader);
+  ObjPtr<mirror::Class> klass = class_linker_->FindClass(soa.Self(), "LMain;", class_loader);
   ASSERT_TRUE(klass != nullptr);
 
   ArtMethod* method = klass->FindClassMethod("main",

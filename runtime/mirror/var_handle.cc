@@ -27,6 +27,7 @@
 #include "jvalue-inl.h"
 #include "method_handles-inl.h"
 #include "method_type.h"
+#include "obj_ptr-inl.h"
 #include "well_known_classes.h"
 
 namespace art {
@@ -266,29 +267,20 @@ int32_t BuildParameterArray(ObjPtr<Class> (&parameters)[VarHandle::kMaxAccessorP
 
 // Returns the return type associated with an AccessModeTemplate based
 // on the template and the variable type specified.
-Class* GetReturnType(AccessModeTemplate access_mode_template, ObjPtr<Class> varType)
+static ObjPtr<Class> GetReturnType(AccessModeTemplate access_mode_template, ObjPtr<Class> varType)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(varType != nullptr);
   switch (access_mode_template) {
     case AccessModeTemplate::kCompareAndSet:
-      return Runtime::Current()->GetClassLinker()->FindPrimitiveClass('Z');
+      return GetClassRoot(ClassRoot::kPrimitiveBoolean);
     case AccessModeTemplate::kCompareAndExchange:
     case AccessModeTemplate::kGet:
     case AccessModeTemplate::kGetAndUpdate:
-      return varType.Ptr();
+      return varType;
     case AccessModeTemplate::kSet:
-      return Runtime::Current()->GetClassLinker()->FindPrimitiveClass('V');
+      return GetClassRoot(ClassRoot::kPrimitiveVoid);
   }
   return nullptr;
-}
-
-ObjectArray<Class>* NewArrayOfClasses(Thread* self, int count)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  Runtime* const runtime = Runtime::Current();
-  ClassLinker* const class_linker = runtime->GetClassLinker();
-  ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-  ObjPtr<mirror::Class> array_of_class = class_linker->FindArrayClass(self, &class_type);
-  return ObjectArray<Class>::Alloc(Thread::Current(), array_of_class, count);
 }
 
 // Method to insert a read barrier for accessors to reference fields.
@@ -1410,15 +1402,15 @@ class ByteArrayViewAccessor {
 
 }  // namespace
 
-Class* VarHandle::GetVarType() {
+ObjPtr<Class> VarHandle::GetVarType() {
   return GetFieldObject<Class>(VarTypeOffset());
 }
 
-Class* VarHandle::GetCoordinateType0() {
+ObjPtr<Class> VarHandle::GetCoordinateType0() {
   return GetFieldObject<Class>(CoordinateType0Offset());
 }
 
-Class* VarHandle::GetCoordinateType1() {
+ObjPtr<Class> VarHandle::GetCoordinateType1() {
   return GetFieldObject<Class>(CoordinateType1Offset());
 }
 
@@ -1438,7 +1430,7 @@ VarHandle::MatchKind VarHandle::GetMethodTypeMatchForAccessMode(AccessMode acces
   // Check return type first. If the return type of the method
   // of the VarHandle is immaterial.
   if (mt_rtype->GetPrimitiveType() != Primitive::Type::kPrimVoid) {
-    ObjPtr<Class> vh_rtype = GetReturnType(access_mode_template, var_type.Ptr());
+    ObjPtr<Class> vh_rtype = GetReturnType(access_mode_template, var_type);
     if (vh_rtype != mt_rtype) {
       if (!IsReturnTypeConvertible(vh_rtype, mt_rtype)) {
         return MatchKind::kNone;
@@ -1513,9 +1505,9 @@ bool VarHandle::IsInvokerMethodTypeCompatible(AccessMode access_mode,
   return true;
 }
 
-MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self,
-                                                  ObjPtr<VarHandle> var_handle,
-                                                  AccessMode access_mode) {
+ObjPtr<MethodType> VarHandle::GetMethodTypeForAccessMode(Thread* self,
+                                                         ObjPtr<VarHandle> var_handle,
+                                                         AccessMode access_mode) {
   // This is a static method as the var_handle might be moved by the GC during it's execution.
   AccessModeTemplate access_mode_template = GetAccessModeTemplate(access_mode);
 
@@ -1525,7 +1517,9 @@ MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self,
   const int32_t ptypes_count = GetNumberOfParameters(access_mode_template,
                                                      vh->GetCoordinateType0(),
                                                      vh->GetCoordinateType1());
-  Handle<ObjectArray<Class>> ptypes = hs.NewHandle(NewArrayOfClasses(self, ptypes_count));
+  ObjPtr<Class> array_of_class = GetClassRoot<ObjectArray<Class>>();
+  Handle<ObjectArray<Class>> ptypes =
+      hs.NewHandle(ObjectArray<Class>::Alloc(Thread::Current(), array_of_class, ptypes_count));
   if (ptypes == nullptr) {
     return nullptr;
   }
@@ -1537,12 +1531,12 @@ MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self,
                       vh->GetCoordinateType0(),
                       vh->GetCoordinateType1());
   for (int32_t i = 0; i < ptypes_count; ++i) {
-    ptypes->Set(i, ptypes_array[i].Ptr());
+    ptypes->Set(i, ptypes_array[i]);
   }
   return MethodType::Create(self, rtype, ptypes);
 }
 
-MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self, AccessMode access_mode) {
+ObjPtr<MethodType> VarHandle::GetMethodTypeForAccessMode(Thread* self, AccessMode access_mode) {
   return GetMethodTypeForAccessMode(self, this, access_mode);
 }
 

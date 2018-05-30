@@ -146,22 +146,22 @@ class ClassLinker {
 
   // Finds a class by its descriptor, loading it if necessary.
   // If class_loader is null, searches boot_class_path_.
-  mirror::Class* FindClass(Thread* self,
-                           const char* descriptor,
-                           Handle<mirror::ClassLoader> class_loader)
+  ObjPtr<mirror::Class> FindClass(Thread* self,
+                                  const char* descriptor,
+                                  Handle<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
 
   // Finds a class by its descriptor using the "system" class loader, ie by searching the
   // boot_class_path_.
-  mirror::Class* FindSystemClass(Thread* self, const char* descriptor)
+  ObjPtr<mirror::Class> FindSystemClass(Thread* self, const char* descriptor)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_) {
     return FindClass(self, descriptor, ScopedNullHandle<mirror::ClassLoader>());
   }
 
   // Finds the array class given for the element class.
-  mirror::Class* FindArrayClass(Thread* self, ObjPtr<mirror::Class>* element_class)
+  ObjPtr<mirror::Class> FindArrayClass(Thread* self, ObjPtr<mirror::Class>* element_class)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
 
@@ -171,20 +171,20 @@ class ClassLinker {
   }
 
   // Define a new a class based on a ClassDef from a DexFile
-  mirror::Class* DefineClass(Thread* self,
-                             const char* descriptor,
-                             size_t hash,
-                             Handle<mirror::ClassLoader> class_loader,
-                             const DexFile& dex_file,
-                             const DexFile::ClassDef& dex_class_def)
+  ObjPtr<mirror::Class> DefineClass(Thread* self,
+                                    const char* descriptor,
+                                    size_t hash,
+                                    Handle<mirror::ClassLoader> class_loader,
+                                    const DexFile& dex_file,
+                                    const DexFile::ClassDef& dex_class_def)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
 
   // Finds a class by its descriptor, returning null if it isn't wasn't loaded
   // by the given 'class_loader'.
-  mirror::Class* LookupClass(Thread* self,
-                             const char* descriptor,
-                             ObjPtr<mirror::ClassLoader> class_loader)
+  ObjPtr<mirror::Class> LookupClass(Thread* self,
+                                    const char* descriptor,
+                                    ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -193,7 +193,7 @@ class ClassLinker {
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::Class* FindPrimitiveClass(char type) REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::Class> FindPrimitiveClass(char type) REQUIRES_SHARED(Locks::mutator_lock_);
 
   void DumpForSigQuit(std::ostream& os) REQUIRES(!Locks::classlinker_classes_lock_);
 
@@ -456,7 +456,7 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
-  mirror::IfTable* AllocIfTable(Thread* self, size_t ifcount)
+  ObjPtr<mirror::IfTable> AllocIfTable(Thread* self, size_t ifcount)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
@@ -483,12 +483,12 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
 
-  mirror::Class* CreateProxyClass(ScopedObjectAccessAlreadyRunnable& soa,
-                                  jstring name,
-                                  jobjectArray interfaces,
-                                  jobject loader,
-                                  jobjectArray methods,
-                                  jobjectArray throws)
+  ObjPtr<mirror::Class> CreateProxyClass(ScopedObjectAccessAlreadyRunnable& soa,
+                                         jstring name,
+                                         jobjectArray interfaces,
+                                         jobject loader,
+                                         jobjectArray methods,
+                                         jobjectArray throws)
       REQUIRES_SHARED(Locks::mutator_lock_);
   std::string GetDescriptorForProxy(ObjPtr<mirror::Class> proxy_class)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -531,7 +531,9 @@ class ClassLinker {
   // Attempts to insert a class into a class table.  Returns null if
   // the class was inserted, otherwise returns an existing class with
   // the same descriptor and ClassLoader.
-  mirror::Class* InsertClass(const char* descriptor, ObjPtr<mirror::Class> klass, size_t hash)
+  ObjPtr<mirror::Class> InsertClass(const char* descriptor,
+                                    ObjPtr<mirror::Class> klass,
+                                    size_t hash)
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -659,7 +661,7 @@ class ClassLinker {
       REQUIRES(!Locks::dex_lock_);
 
   // Get the actual holding class for a copied method. Pretty slow, don't call often.
-  mirror::Class* GetHoldingClassOfCopiedMethod(ArtMethod* method)
+  ObjPtr<mirror::Class> GetHoldingClassOfCopiedMethod(ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns null if not found.
@@ -763,16 +765,16 @@ class ClassLinker {
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
   // For early bootstrapping by Init
-  mirror::Class* AllocClass(Thread* self,
-                            ObjPtr<mirror::Class> java_lang_Class,
-                            uint32_t class_size)
+  ObjPtr<mirror::Class> AllocClass(Thread* self,
+                                   ObjPtr<mirror::Class> java_lang_Class,
+                                   uint32_t class_size)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
-  // Alloc* convenience functions to avoid needing to pass in mirror::Class*
-  // values that are known to the ClassLinker such as
-  // kObjectArrayClass and kJavaLangString etc.
-  mirror::Class* AllocClass(Thread* self, uint32_t class_size)
+  // Alloc* convenience functions to avoid needing to pass in ObjPtr<mirror::Class>
+  // values that are known to the ClassLinker such as classes corresponding to
+  // ClassRoot::kObjectArrayClass and ClassRoot::kJavaLangString etc.
+  ObjPtr<mirror::Class> AllocClass(Thread* self, uint32_t class_size)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
@@ -790,14 +792,14 @@ class ClassLinker {
       REQUIRES(!Locks::dex_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
-  mirror::Class* CreatePrimitiveClass(Thread* self, Primitive::Type type)
+  ObjPtr<mirror::Class> CreatePrimitiveClass(Thread* self, Primitive::Type type)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
-  mirror::Class* CreateArrayClass(Thread* self,
-                                  const char* descriptor,
-                                  size_t hash,
-                                  Handle<mirror::ClassLoader> class_loader)
+  ObjPtr<mirror::Class> CreateArrayClass(Thread* self,
+                                         const char* descriptor,
+                                         size_t hash,
+                                         Handle<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
@@ -889,10 +891,10 @@ class ClassLinker {
 
   // Finds a class by its descriptor, returning NULL if it isn't wasn't loaded
   // by the given 'class_loader'. Uses the provided hash for the descriptor.
-  mirror::Class* LookupClass(Thread* self,
-                             const char* descriptor,
-                             size_t hash,
-                             ObjPtr<mirror::ClassLoader> class_loader)
+  ObjPtr<mirror::Class> LookupClass(Thread* self,
+                                    const char* descriptor,
+                                    size_t hash,
+                                    ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -1163,7 +1165,9 @@ class ClassLinker {
   // when resolution has occurred. This happens in mirror::Class::SetStatus. As resolution may
   // retire a class, the version of the class in the table is returned and this may differ from
   // the class passed in.
-  mirror::Class* EnsureResolved(Thread* self, const char* descriptor, ObjPtr<mirror::Class> klass)
+  ObjPtr<mirror::Class> EnsureResolved(Thread* self,
+                                       const char* descriptor,
+                                       ObjPtr<mirror::Class> klass)
       WARN_UNUSED
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
