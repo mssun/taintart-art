@@ -14,7 +14,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# We want to be at the root for simplifying the "out" detection
+echo "NOTE: appcompat.sh is still under development. It can report"
+echo "API uses that do not execute at runtime, and reflection uses"
+echo "that do not exist. It can also miss on reflection uses."
+
+# First check if the script is invoked from a prebuilts location.
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [[ -e ${SCRIPT_DIR}/veridex && \
+      -e ${SCRIPT_DIR}/hiddenapi-blacklist.txt && \
+      -e ${SCRIPT_DIR}/hiddenapi-light-greylist.txt && \
+      -e ${SCRIPT_DIR}/hiddenapi-dark-greylist.txt && \
+      -e ${SCRIPT_DIR}/org.apache.http.legacy-stubs.dex && \
+      -e ${SCRIPT_DIR}/system-stubs.dex ]]; then
+  exec ${SCRIPT_DIR}/veridex \
+    --core-stubs=${SCRIPT_DIR}/system-stubs.dex:${SCRIPT_DIR}/org.apache.http.legacy-stubs.dex \
+    --blacklist=${SCRIPT_DIR}/hiddenapi-blacklist.txt \
+    --light-greylist=${SCRIPT_DIR}/hiddenapi-light-greylist.txt \
+    --dark-greylist=${SCRIPT_DIR}/hiddenapi-dark-greylist.txt \
+    $@
+fi
+
+# Otherwise, we want to be at the root for simplifying the "out" detection
 # logic.
 if [ ! -d art ]; then
   echo "Script needs to be run at the root of the android tree."
@@ -37,10 +58,6 @@ PACKAGING=${OUT}/target/common/obj/PACKAGING
 if [ -z "$ANDROID_HOST_OUT" ] ; then
   ANDROID_HOST_OUT=${OUT}/host/linux-x86
 fi
-
-echo "NOTE: appcompat.sh is still under development. It can report"
-echo "API uses that do not execute at runtime, and reflection uses"
-echo "that do not exist. It can also miss on reflection uses."
 
 
 ${ANDROID_HOST_OUT}/bin/veridex \
