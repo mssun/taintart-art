@@ -65,6 +65,6 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
     /plat_property_contexts \
     /nonplat_property_contexts"
   for f in $property_context_files; do
-    adb shell test -f "$f" "&&" rm -f "$ART_TEST_CHROOT$f"
+    adb shell rm -f "$ART_TEST_CHROOT$f"
   done
 fi
