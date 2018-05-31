@@ -56,6 +56,7 @@
 #include "compiler_callbacks.h"
 #include "debug_print.h"
 #include "debugger.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
@@ -2733,52 +2734,50 @@ ObjPtr<mirror::Class> ClassLinker::DefineClass(Thread* self,
 
 uint32_t ClassLinker::SizeOfClassWithoutEmbeddedTables(const DexFile& dex_file,
                                                        const DexFile::ClassDef& dex_class_def) {
-  const uint8_t* class_data = dex_file.GetClassData(dex_class_def);
   size_t num_ref = 0;
   size_t num_8 = 0;
   size_t num_16 = 0;
   size_t num_32 = 0;
   size_t num_64 = 0;
-  if (class_data != nullptr) {
-    // We allow duplicate definitions of the same field in a class_data_item
-    // but ignore the repeated indexes here, b/21868015.
-    uint32_t last_field_idx = dex::kDexNoIndex;
-    for (ClassDataItemIterator it(dex_file, class_data); it.HasNextStaticField(); it.Next()) {
-      uint32_t field_idx = it.GetMemberIndex();
-      // Ordering enforced by DexFileVerifier.
-      DCHECK(last_field_idx == dex::kDexNoIndex || last_field_idx <= field_idx);
-      if (UNLIKELY(field_idx == last_field_idx)) {
-        continue;
-      }
-      last_field_idx = field_idx;
-      const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
-      const char* descriptor = dex_file.GetFieldTypeDescriptor(field_id);
-      char c = descriptor[0];
-      switch (c) {
-        case 'L':
-        case '[':
-          num_ref++;
-          break;
-        case 'J':
-        case 'D':
-          num_64++;
-          break;
-        case 'I':
-        case 'F':
-          num_32++;
-          break;
-        case 'S':
-        case 'C':
-          num_16++;
-          break;
-        case 'B':
-        case 'Z':
-          num_8++;
-          break;
-        default:
-          LOG(FATAL) << "Unknown descriptor: " << c;
-          UNREACHABLE();
-      }
+  ClassAccessor accessor(dex_file, dex_class_def);
+  // We allow duplicate definitions of the same field in a class_data_item
+  // but ignore the repeated indexes here, b/21868015.
+  uint32_t last_field_idx = dex::kDexNoIndex;
+  for (const ClassAccessor::Field& field : accessor.GetStaticFields()) {
+    uint32_t field_idx = field.GetIndex();
+    // Ordering enforced by DexFileVerifier.
+    DCHECK(last_field_idx == dex::kDexNoIndex || last_field_idx <= field_idx);
+    if (UNLIKELY(field_idx == last_field_idx)) {
+      continue;
+    }
+    last_field_idx = field_idx;
+    const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
+    const char* descriptor = dex_file.GetFieldTypeDescriptor(field_id);
+    char c = descriptor[0];
+    switch (c) {
+      case 'L':
+      case '[':
+        num_ref++;
+        break;
+      case 'J':
+      case 'D':
+        num_64++;
+        break;
+      case 'I':
+      case 'F':
+        num_32++;
+        break;
+      case 'S':
+      case 'C':
+        num_16++;
+        break;
+      case 'B':
+      case 'Z':
+        num_8++;
+        break;
+      default:
+        LOG(FATAL) << "Unknown descriptor: " << c;
+        UNREACHABLE();
     }
   }
   return mirror::Class::ComputeClassSize(false,
@@ -2876,17 +2875,15 @@ void ClassLinker::FixupStaticTrampolines(ObjPtr<mirror::Class> klass) {
   const DexFile& dex_file = klass->GetDexFile();
   const DexFile::ClassDef* dex_class_def = klass->GetClassDef();
   CHECK(dex_class_def != nullptr);
-  const uint8_t* class_data = dex_file.GetClassData(*dex_class_def);
+  ClassAccessor accessor(dex_file, *dex_class_def);
   // There should always be class data if there were direct methods.
-  CHECK(class_data != nullptr) << klass->PrettyDescriptor();
-  ClassDataItemIterator it(dex_file, class_data);
-  it.SkipAllFields();
+  CHECK(accessor.HasClassData()) << klass->PrettyDescriptor();
   bool has_oat_class;
   OatFile::OatClass oat_class = OatFile::FindOatClass(dex_file,
                                                       klass->GetDexClassDefIndex(),
                                                       &has_oat_class);
   // Link the code of methods skipped by LinkCode.
-  for (size_t method_index = 0; it.HasNextDirectMethod(); ++method_index, it.Next()) {
+  for (size_t method_index = 0; method_index < accessor.NumDirectMethods(); ++method_index) {
     ArtMethod* method = klass->GetDirectMethod(method_index, image_pointer_size_);
     if (!method->IsStatic()) {
       // Only update static methods.
@@ -2995,17 +2992,6 @@ void ClassLinker::SetupClass(const DexFile& dex_file,
   klass->SetDexTypeIndex(dex_class_def.class_idx_);
 }
 
-void ClassLinker::LoadClass(Thread* self,
-                            const DexFile& dex_file,
-                            const DexFile::ClassDef& dex_class_def,
-                            Handle<mirror::Class> klass) {
-  const uint8_t* class_data = dex_file.GetClassData(dex_class_def);
-  if (class_data == nullptr) {
-    return;  // no fields or methods - for example a marker interface
-  }
-  LoadClassMembers(self, dex_file, class_data, klass);
-}
-
 LengthPrefixedArray<ArtField>* ClassLinker::AllocArtFieldArray(Thread* self,
                                                                LinearAlloc* allocator,
                                                                size_t length) {
@@ -3064,10 +3050,15 @@ LinearAlloc* ClassLinker::GetOrCreateAllocatorForClassLoader(ObjPtr<mirror::Clas
   return allocator;
 }
 
-void ClassLinker::LoadClassMembers(Thread* self,
-                                   const DexFile& dex_file,
-                                   const uint8_t* class_data,
-                                   Handle<mirror::Class> klass) {
+void ClassLinker::LoadClass(Thread* self,
+                            const DexFile& dex_file,
+                            const DexFile::ClassDef& dex_class_def,
+                            Handle<mirror::Class> klass) {
+  ClassAccessor accessor(dex_file, dex_class_def);
+  if (!accessor.HasClassData()) {
+    return;
+  }
+  Runtime* const runtime = Runtime::Current();
   {
     // Note: We cannot have thread suspension until the field and method arrays are setup or else
     // Class::VisitFieldRoots may miss some fields or methods.
@@ -3076,45 +3067,79 @@ void ClassLinker::LoadClassMembers(Thread* self,
     // We allow duplicate definitions of the same field in a class_data_item
     // but ignore the repeated indexes here, b/21868015.
     LinearAlloc* const allocator = GetAllocatorForClassLoader(klass->GetClassLoader());
-    ClassDataItemIterator it(dex_file, class_data);
     LengthPrefixedArray<ArtField>* sfields = AllocArtFieldArray(self,
                                                                 allocator,
-                                                                it.NumStaticFields());
-    size_t num_sfields = 0;
-    uint32_t last_field_idx = 0u;
-    for (; it.HasNextStaticField(); it.Next()) {
-      uint32_t field_idx = it.GetMemberIndex();
-      DCHECK_GE(field_idx, last_field_idx);  // Ordering enforced by DexFileVerifier.
-      if (num_sfields == 0 || LIKELY(field_idx > last_field_idx)) {
-        DCHECK_LT(num_sfields, it.NumStaticFields());
-        LoadField(it, klass, &sfields->At(num_sfields));
-        ++num_sfields;
-        last_field_idx = field_idx;
-      }
-    }
-
-    // Load instance fields.
+                                                                accessor.NumStaticFields());
     LengthPrefixedArray<ArtField>* ifields = AllocArtFieldArray(self,
                                                                 allocator,
-                                                                it.NumInstanceFields());
+                                                                accessor.NumInstanceFields());
+    size_t num_sfields = 0u;
     size_t num_ifields = 0u;
-    last_field_idx = 0u;
-    for (; it.HasNextInstanceField(); it.Next()) {
-      uint32_t field_idx = it.GetMemberIndex();
-      DCHECK_GE(field_idx, last_field_idx);  // Ordering enforced by DexFileVerifier.
-      if (num_ifields == 0 || LIKELY(field_idx > last_field_idx)) {
-        DCHECK_LT(num_ifields, it.NumInstanceFields());
-        LoadField(it, klass, &ifields->At(num_ifields));
-        ++num_ifields;
-        last_field_idx = field_idx;
-      }
-    }
+    uint32_t last_static_field_idx = 0u;
+    uint32_t last_instance_field_idx = 0u;
 
-    if (UNLIKELY(num_sfields != it.NumStaticFields()) ||
-        UNLIKELY(num_ifields != it.NumInstanceFields())) {
+    // Methods
+    bool has_oat_class = false;
+    const OatFile::OatClass oat_class = (runtime->IsStarted() && !runtime->IsAotCompiler())
+        ? OatFile::FindOatClass(dex_file, klass->GetDexClassDefIndex(), &has_oat_class)
+        : OatFile::OatClass::Invalid();
+    const OatFile::OatClass* oat_class_ptr = has_oat_class ? &oat_class : nullptr;
+    klass->SetMethodsPtr(
+        AllocArtMethodArray(self, allocator, accessor.NumMethods()),
+        accessor.NumDirectMethods(),
+        accessor.NumVirtualMethods());
+    size_t class_def_method_index = 0;
+    uint32_t last_dex_method_index = dex::kDexNoIndex;
+    size_t last_class_def_method_index = 0;
+
+    // Use the visitor since the ranged based loops are bit slower from seeking. Seeking to the
+    // methods needs to decode all of the fields.
+    accessor.VisitFieldsAndMethods([&](
+        const ClassAccessor::Field& field) REQUIRES_SHARED(Locks::mutator_lock_) {
+          uint32_t field_idx = field.GetIndex();
+          DCHECK_GE(field_idx, last_static_field_idx);  // Ordering enforced by DexFileVerifier.
+          if (num_sfields == 0 || LIKELY(field_idx > last_static_field_idx)) {
+            LoadField(field, klass, &sfields->At(num_sfields));
+            ++num_sfields;
+            last_static_field_idx = field_idx;
+          }
+        }, [&](const ClassAccessor::Field& field) REQUIRES_SHARED(Locks::mutator_lock_) {
+          uint32_t field_idx = field.GetIndex();
+          DCHECK_GE(field_idx, last_instance_field_idx);  // Ordering enforced by DexFileVerifier.
+          if (num_ifields == 0 || LIKELY(field_idx > last_instance_field_idx)) {
+            LoadField(field, klass, &ifields->At(num_ifields));
+            ++num_ifields;
+            last_instance_field_idx = field_idx;
+          }
+        }, [&](const ClassAccessor::Method& method) REQUIRES_SHARED(Locks::mutator_lock_) {
+          ArtMethod* art_method = klass->GetDirectMethodUnchecked(class_def_method_index,
+              image_pointer_size_);
+          LoadMethod(dex_file, method, klass, art_method);
+          LinkCode(this, art_method, oat_class_ptr, class_def_method_index);
+          uint32_t it_method_index = method.GetIndex();
+          if (last_dex_method_index == it_method_index) {
+            // duplicate case
+            art_method->SetMethodIndex(last_class_def_method_index);
+          } else {
+            art_method->SetMethodIndex(class_def_method_index);
+            last_dex_method_index = it_method_index;
+            last_class_def_method_index = class_def_method_index;
+          }
+          ++class_def_method_index;
+        }, [&](const ClassAccessor::Method& method) REQUIRES_SHARED(Locks::mutator_lock_) {
+          ArtMethod* art_method = klass->GetVirtualMethodUnchecked(
+              class_def_method_index - accessor.NumDirectMethods(),
+              image_pointer_size_);
+          LoadMethod(dex_file, method, klass, art_method);
+          LinkCode(this, art_method, oat_class_ptr, class_def_method_index);
+          ++class_def_method_index;
+        });
+
+    if (UNLIKELY(num_ifields + num_sfields != accessor.NumFields())) {
       LOG(WARNING) << "Duplicate fields in class " << klass->PrettyDescriptor()
-          << " (unique static fields: " << num_sfields << "/" << it.NumStaticFields()
-          << ", unique instance fields: " << num_ifields << "/" << it.NumInstanceFields() << ")";
+          << " (unique static fields: " << num_sfields << "/" << accessor.NumStaticFields()
+          << ", unique instance fields: " << num_ifields << "/" << accessor.NumInstanceFields()
+          << ")";
       // NOTE: Not shrinking the over-allocated sfields/ifields, just setting size.
       if (sfields != nullptr) {
         sfields->SetSize(num_sfields);
@@ -3128,87 +3153,49 @@ void ClassLinker::LoadClassMembers(Thread* self,
     DCHECK_EQ(klass->NumStaticFields(), num_sfields);
     klass->SetIFieldsPtr(ifields);
     DCHECK_EQ(klass->NumInstanceFields(), num_ifields);
-    // Load methods.
-    bool has_oat_class = false;
-    const OatFile::OatClass oat_class =
-        (Runtime::Current()->IsStarted() && !Runtime::Current()->IsAotCompiler())
-            ? OatFile::FindOatClass(dex_file, klass->GetDexClassDefIndex(), &has_oat_class)
-            : OatFile::OatClass::Invalid();
-    const OatFile::OatClass* oat_class_ptr = has_oat_class ? &oat_class : nullptr;
-    klass->SetMethodsPtr(
-        AllocArtMethodArray(self, allocator, it.NumDirectMethods() + it.NumVirtualMethods()),
-        it.NumDirectMethods(),
-        it.NumVirtualMethods());
-    size_t class_def_method_index = 0;
-    uint32_t last_dex_method_index = dex::kDexNoIndex;
-    size_t last_class_def_method_index = 0;
-    // TODO These should really use the iterators.
-    for (size_t i = 0; it.HasNextDirectMethod(); i++, it.Next()) {
-      ArtMethod* method = klass->GetDirectMethodUnchecked(i, image_pointer_size_);
-      LoadMethod(dex_file, it, klass, method);
-      LinkCode(this, method, oat_class_ptr, class_def_method_index);
-      uint32_t it_method_index = it.GetMemberIndex();
-      if (last_dex_method_index == it_method_index) {
-        // duplicate case
-        method->SetMethodIndex(last_class_def_method_index);
-      } else {
-        method->SetMethodIndex(class_def_method_index);
-        last_dex_method_index = it_method_index;
-        last_class_def_method_index = class_def_method_index;
-      }
-      class_def_method_index++;
-    }
-    for (size_t i = 0; it.HasNextVirtualMethod(); i++, it.Next()) {
-      ArtMethod* method = klass->GetVirtualMethodUnchecked(i, image_pointer_size_);
-      LoadMethod(dex_file, it, klass, method);
-      DCHECK_EQ(class_def_method_index, it.NumDirectMethods() + i);
-      LinkCode(this, method, oat_class_ptr, class_def_method_index);
-      class_def_method_index++;
-    }
-    DCHECK(!it.HasNext());
   }
   // Ensure that the card is marked so that remembered sets pick up native roots.
   Runtime::Current()->GetHeap()->WriteBarrierEveryFieldOf(klass.Get());
   self->AllowThreadSuspension();
 }
 
-void ClassLinker::LoadField(const ClassDataItemIterator& it,
+void ClassLinker::LoadField(const ClassAccessor::Field& field,
                             Handle<mirror::Class> klass,
                             ArtField* dst) {
-  const uint32_t field_idx = it.GetMemberIndex();
+  const uint32_t field_idx = field.GetIndex();
   dst->SetDexFieldIndex(field_idx);
   dst->SetDeclaringClass(klass.Get());
 
   // Get access flags from the DexFile. If this is a boot class path class,
   // also set its runtime hidden API access flags.
-  uint32_t access_flags = it.GetFieldAccessFlags();
+  uint32_t access_flags = field.GetAccessFlags();
   if (klass->IsBootStrapClassLoaded()) {
     access_flags =
-        HiddenApiAccessFlags::EncodeForRuntime(access_flags, it.DecodeHiddenAccessFlags());
+        HiddenApiAccessFlags::EncodeForRuntime(access_flags, field.DecodeHiddenAccessFlags());
   }
   dst->SetAccessFlags(access_flags);
 }
 
 void ClassLinker::LoadMethod(const DexFile& dex_file,
-                             const ClassDataItemIterator& it,
+                             const ClassAccessor::Method& method,
                              Handle<mirror::Class> klass,
                              ArtMethod* dst) {
-  uint32_t dex_method_idx = it.GetMemberIndex();
+  const uint32_t dex_method_idx = method.GetIndex();
   const DexFile::MethodId& method_id = dex_file.GetMethodId(dex_method_idx);
   const char* method_name = dex_file.StringDataByIdx(method_id.name_idx_);
 
   ScopedAssertNoThreadSuspension ants("LoadMethod");
   dst->SetDexMethodIndex(dex_method_idx);
   dst->SetDeclaringClass(klass.Get());
-  dst->SetCodeItemOffset(it.GetMethodCodeItemOffset());
+  dst->SetCodeItemOffset(method.GetCodeItemOffset());
 
   // Get access flags from the DexFile. If this is a boot class path class,
   // also set its runtime hidden API access flags.
-  uint32_t access_flags = it.GetMethodAccessFlags();
+  uint32_t access_flags = method.GetAccessFlags();
 
   if (klass->IsBootStrapClassLoaded()) {
     access_flags =
-        HiddenApiAccessFlags::EncodeForRuntime(access_flags, it.DecodeHiddenAccessFlags());
+        HiddenApiAccessFlags::EncodeForRuntime(access_flags, method.DecodeHiddenAccessFlags());
   }
 
   if (UNLIKELY(strcmp("finalize", method_name) == 0)) {
@@ -4775,24 +4762,29 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
                                                                  this,
                                                                  *dex_class_def);
     const DexFile& dex_file = *dex_cache->GetDexFile();
-    const uint8_t* class_data = dex_file.GetClassData(*dex_class_def);
-    ClassDataItemIterator field_it(dex_file, class_data);
+
     if (value_it.HasNext()) {
-      DCHECK(field_it.HasNextStaticField());
+      ClassAccessor accessor(dex_file, *dex_class_def);
       CHECK(can_init_statics);
-      for ( ; value_it.HasNext(); value_it.Next(), field_it.Next()) {
-        ArtField* field = ResolveField(
-            field_it.GetMemberIndex(), dex_cache, class_loader, /* is_static */ true);
+      for (const ClassAccessor::Field& field : accessor.GetStaticFields()) {
+        if (!value_it.HasNext()) {
+          break;
+        }
+        ArtField* art_field = ResolveField(field.GetIndex(),
+                                           dex_cache,
+                                           class_loader,
+                                           /* is_static */ true);
         if (Runtime::Current()->IsActiveTransaction()) {
-          value_it.ReadValueToField<true>(field);
+          value_it.ReadValueToField<true>(art_field);
         } else {
-          value_it.ReadValueToField<false>(field);
+          value_it.ReadValueToField<false>(art_field);
         }
         if (self->IsExceptionPending()) {
           break;
         }
-        DCHECK(!value_it.HasNext() || field_it.HasNextStaticField());
+        value_it.Next();
       }
+      DCHECK(self->IsExceptionPending() || !value_it.HasNext());
     }
   }
 
