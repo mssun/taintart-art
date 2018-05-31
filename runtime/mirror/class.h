@@ -933,12 +933,10 @@ class MANAGED Class FINAL : public Object {
   ArtMethod* FindConstructor(const StringPiece& signature, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtMethod* FindDeclaredVirtualMethodByName(const StringPiece& name,
-                                             PointerSize pointer_size)
+  ArtMethod* FindDeclaredVirtualMethodByName(const StringPiece& name, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtMethod* FindDeclaredDirectMethodByName(const StringPiece& name,
-                                            PointerSize pointer_size)
+  ArtMethod* FindDeclaredDirectMethodByName(const StringPiece& name, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   ArtMethod* FindClassInitializer(PointerSize pointer_size) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -1197,10 +1195,7 @@ class MANAGED Class FINAL : public Object {
   void AssertInitializedOrInitializingInThread(Thread* self)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  Class* CopyOf(Thread* self,
-                int32_t new_length,
-                ImTable* imt,
-                PointerSize pointer_size)
+  Class* CopyOf(Thread* self, int32_t new_length, ImTable* imt, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   // For proxy class only.
