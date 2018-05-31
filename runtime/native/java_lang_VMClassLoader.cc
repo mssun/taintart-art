@@ -37,11 +37,11 @@ namespace art {
 // A class so we can be friends with ClassLinker and access internal methods.
 class VMClassLoader {
  public:
-  static mirror::Class* LookupClass(ClassLinker* cl,
-                                    Thread* self,
-                                    const char* descriptor,
-                                    size_t hash,
-                                    ObjPtr<mirror::ClassLoader> class_loader)
+  static ObjPtr<mirror::Class> LookupClass(ClassLinker* cl,
+                                           Thread* self,
+                                           const char* descriptor,
+                                           size_t hash,
+                                           ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return cl->LookupClass(self, descriptor, hash, class_loader);

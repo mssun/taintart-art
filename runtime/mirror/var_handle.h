@@ -26,6 +26,7 @@ namespace art {
 
 template<class T> class Handle;
 class InstructionOperands;
+template<class T> class ObjPtr;
 
 enum class Intrinsics;
 
@@ -120,7 +121,7 @@ class MANAGED VarHandle : public Object {
   // AccessMode. No check is made for whether the AccessMode is a
   // supported operation so the MethodType can be used when raising a
   // WrongMethodTypeException exception.
-  MethodType* GetMethodTypeForAccessMode(Thread* self, AccessMode accessMode)
+  ObjPtr<MethodType> GetMethodTypeForAccessMode(Thread* self, AccessMode accessMode)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns a string representing the descriptor of the MethodType associated with
@@ -135,7 +136,7 @@ class MANAGED VarHandle : public Object {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Gets the variable type that is operated on by this VarHandle instance.
-  Class* GetVarType() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<Class> GetVarType() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Gets the return type descriptor for a named accessor method,
   // nullptr if accessor_method is not supported.
@@ -149,13 +150,13 @@ class MANAGED VarHandle : public Object {
   static bool GetAccessModeByMethodName(const char* method_name, AccessMode* access_mode);
 
  private:
-  Class* GetCoordinateType0() REQUIRES_SHARED(Locks::mutator_lock_);
-  Class* GetCoordinateType1() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<Class> GetCoordinateType0() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<Class> GetCoordinateType1() REQUIRES_SHARED(Locks::mutator_lock_);
   int32_t GetAccessModesBitMask() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static MethodType* GetMethodTypeForAccessMode(Thread* self,
-                                                ObjPtr<VarHandle> var_handle,
-                                                AccessMode access_mode)
+  static ObjPtr<MethodType> GetMethodTypeForAccessMode(Thread* self,
+                                                       ObjPtr<VarHandle> var_handle,
+                                                       AccessMode access_mode)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   static MemberOffset VarTypeOffset() {

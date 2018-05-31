@@ -97,7 +97,7 @@ class ImageTest : public CommonCompilerTest {
     return new std::unordered_set<std::string>(image_classes_);
   }
 
-  ArtMethod* FindCopiedMethod(ArtMethod* origin, mirror::Class* klass)
+  ArtMethod* FindCopiedMethod(ArtMethod* origin, ObjPtr<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     PointerSize pointer_size = class_linker_->GetImagePointerSize();
     for (ArtMethod& m : klass->GetCopiedMethods(pointer_size)) {

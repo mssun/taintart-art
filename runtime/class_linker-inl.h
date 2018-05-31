@@ -33,8 +33,8 @@
 
 namespace art {
 
-inline mirror::Class* ClassLinker::FindArrayClass(Thread* self,
-                                                  ObjPtr<mirror::Class>* element_class) {
+inline ObjPtr<mirror::Class> ClassLinker::FindArrayClass(Thread* self,
+                                                         ObjPtr<mirror::Class>* element_class) {
   for (size_t i = 0; i < kFindArrayCacheSize; ++i) {
     // Read the cached array class once to avoid races with other threads setting it.
     ObjPtr<mirror::Class> array_class = find_array_class_cache_[i].Read();

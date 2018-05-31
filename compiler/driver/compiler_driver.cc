@@ -391,7 +391,7 @@ static optimizer::DexToDexCompiler::CompilationLevel GetDexToDexCompilationLevel
   DCHECK(driver.GetCompilerOptions().IsQuickeningCompilationEnabled());
   const char* descriptor = dex_file.GetClassDescriptor(class_def);
   ClassLinker* class_linker = runtime->GetClassLinker();
-  mirror::Class* klass = class_linker->FindClass(self, descriptor, class_loader);
+  ObjPtr<mirror::Class> klass = class_linker->FindClass(self, descriptor, class_loader);
   if (klass == nullptr) {
     CHECK(self->IsExceptionPending());
     self->ClearException();

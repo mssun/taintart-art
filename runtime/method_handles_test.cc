@@ -17,6 +17,7 @@
 #include "method_handles.h"
 
 #include "class_linker-inl.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "handle_scope-inl.h"
 #include "jvalue-inl.h"
@@ -49,12 +50,11 @@ namespace {
         REQUIRES_SHARED(Locks::mutator_lock_) {
     ClassLinker* cl = Runtime::Current()->GetClassLinker();
     StackHandleScope<2> hs(self);
-    ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-    ObjPtr<mirror::Class> class_array_type = cl->FindArrayClass(self, &class_type);
+    ObjPtr<mirror::Class> class_array_type = GetClassRoot<mirror::ObjectArray<mirror::Class>>(cl);
     auto parameter_types = hs.NewHandle(
         mirror::ObjectArray<mirror::Class>::Alloc(self, class_array_type, 1));
     parameter_types->Set(0, parameter_type.Get());
-    Handle<mirror::Class> void_class = hs.NewHandle(cl->FindPrimitiveClass('V'));
+    Handle<mirror::Class> void_class = hs.NewHandle(GetClassRoot(ClassRoot::kPrimitiveVoid, cl));
     return mirror::MethodType::Create(self, void_class, parameter_types);
   }
 

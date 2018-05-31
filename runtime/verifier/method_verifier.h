@@ -96,7 +96,7 @@ class MethodVerifier {
  public:
   // Verify a class. Returns "kNoFailure" on success.
   static FailureKind VerifyClass(Thread* self,
-                                 mirror::Class* klass,
+                                 ObjPtr<mirror::Class> klass,
                                  CompilerCallbacks* callbacks,
                                  bool allow_soft_failures,
                                  HardFailLogMode log_level,
