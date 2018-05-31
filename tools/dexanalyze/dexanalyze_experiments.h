@@ -75,11 +75,28 @@ class CountDexIndices : public Experiment {
 
   // Invokes
   size_t same_class_direct_ = 0;
-  size_t other_class_direct_ = 0;
+  size_t total_direct_ = 0;
   size_t same_class_virtual_ = 0;
-  size_t other_class_virtual_ = 0;
+  size_t total_virtual_ = 0;
   size_t same_class_static_ = 0;
-  size_t other_class_static_ = 0;
+  size_t total_static_ = 0;
+  size_t same_class_interface_ = 0;
+  size_t total_interface_ = 0;
+  size_t same_class_super_ = 0;
+  size_t total_super_ = 0;
+};
+
+// Measure various code metrics including args per invoke-virtual, fill/spill move paterns.
+class CodeMetrics : public Experiment {
+ public:
+  void ProcessDexFile(const DexFile& dex_file);
+
+  void Dump(std::ostream& os, uint64_t total_size) const;
+
+ private:
+  static constexpr size_t kMaxArgCount = 6;
+  uint64_t arg_counts_[kMaxArgCount] = {};
+  uint64_t move_result_savings_ = 0u;
 };
 
 }  // namespace art
