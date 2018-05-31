@@ -272,7 +272,8 @@ IntrinsicVisitor::IntegerValueOfInfo IntrinsicVisitor::ComputeIntegerValueOfInfo
   ClassLinker* class_linker = runtime->GetClassLinker();
   gc::Heap* heap = runtime->GetHeap();
   IntegerValueOfInfo info;
-  info.integer_cache = class_linker->FindSystemClass(self, "Ljava/lang/Integer$IntegerCache;");
+  info.integer_cache =
+      class_linker->FindSystemClass(self, "Ljava/lang/Integer$IntegerCache;").Ptr();
   if (info.integer_cache == nullptr) {
     self->ClearException();
     return info;
@@ -281,7 +282,7 @@ IntrinsicVisitor::IntegerValueOfInfo IntrinsicVisitor::ComputeIntegerValueOfInfo
     // Optimization only works if the class is initialized and in the boot image.
     return info;
   }
-  info.integer = class_linker->FindSystemClass(self, "Ljava/lang/Integer;");
+  info.integer = class_linker->FindSystemClass(self, "Ljava/lang/Integer;").Ptr();
   if (info.integer == nullptr) {
     self->ClearException();
     return info;

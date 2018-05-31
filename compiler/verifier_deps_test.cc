@@ -65,17 +65,16 @@ class VerifierDepsTest : public CommonCompilerTest {
     callbacks_.reset(new VerifierDepsCompilerCallbacks());
   }
 
-  mirror::Class* FindClassByName(const std::string& name, ScopedObjectAccess* soa)
+  ObjPtr<mirror::Class> FindClassByName(ScopedObjectAccess& soa, const std::string& name)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    StackHandleScope<1> hs(Thread::Current());
+    StackHandleScope<1> hs(soa.Self());
     Handle<mirror::ClassLoader> class_loader_handle(
-        hs.NewHandle(soa->Decode<mirror::ClassLoader>(class_loader_)));
-    mirror::Class* klass = class_linker_->FindClass(Thread::Current(),
-                                                    name.c_str(),
-                                                    class_loader_handle);
+        hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader_)));
+    ObjPtr<mirror::Class> klass =
+        class_linker_->FindClass(soa.Self(), name.c_str(), class_loader_handle);
     if (klass == nullptr) {
-      DCHECK(Thread::Current()->IsExceptionPending());
-      Thread::Current()->ClearException();
+      DCHECK(soa.Self()->IsExceptionPending());
+      soa.Self()->ClearException();
     }
     return klass;
   }
@@ -114,16 +113,16 @@ class VerifierDepsTest : public CommonCompilerTest {
     callbacks->SetVerifierDeps(verifier_deps_.get());
   }
 
-  void LoadDexFile(ScopedObjectAccess* soa, const char* name1, const char* name2 = nullptr)
+  void LoadDexFile(ScopedObjectAccess& soa, const char* name1, const char* name2 = nullptr)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     class_loader_ = (name2 == nullptr) ? LoadDex(name1) : LoadMultiDex(name1, name2);
     dex_files_ = GetDexFiles(class_loader_);
     primary_dex_file_ = dex_files_.front();
 
     SetVerifierDeps(dex_files_);
-    StackHandleScope<1> hs(soa->Self());
+    StackHandleScope<1> hs(soa.Self());
     Handle<mirror::ClassLoader> loader =
-        hs.NewHandle(soa->Decode<mirror::ClassLoader>(class_loader_));
+        hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader_));
     for (const DexFile* dex_file : dex_files_) {
       class_linker_->RegisterDexFile(*dex_file, loader.Get());
     }
@@ -133,16 +132,16 @@ class VerifierDepsTest : public CommonCompilerTest {
     compiler_driver_->SetDexFilesForOatFile(dex_files_);
   }
 
-  void LoadDexFile(ScopedObjectAccess* soa) REQUIRES_SHARED(Locks::mutator_lock_) {
+  void LoadDexFile(ScopedObjectAccess& soa) REQUIRES_SHARED(Locks::mutator_lock_) {
     LoadDexFile(soa, "VerifierDeps");
     CHECK_EQ(dex_files_.size(), 1u);
-    klass_Main_ = FindClassByName("LMain;", soa);
+    klass_Main_ = FindClassByName(soa, "LMain;");
     CHECK(klass_Main_ != nullptr);
   }
 
   bool VerifyMethod(const std::string& method_name) {
     ScopedObjectAccess soa(Thread::Current());
-    LoadDexFile(&soa);
+    LoadDexFile(soa);
 
     StackHandleScope<2> hs(soa.Self());
     Handle<mirror::ClassLoader> class_loader_handle(
@@ -193,7 +192,7 @@ class VerifierDepsTest : public CommonCompilerTest {
   void VerifyDexFile(const char* multidex = nullptr) {
     {
       ScopedObjectAccess soa(Thread::Current());
-      LoadDexFile(&soa, "VerifierDeps", multidex);
+      LoadDexFile(soa, "VerifierDeps", multidex);
     }
     SetupCompilerDriver();
     VerifyWithCompilerDriver(/* verifier_deps */ nullptr);
@@ -204,13 +203,14 @@ class VerifierDepsTest : public CommonCompilerTest {
                                   bool is_strict,
                                   bool is_assignable) {
     ScopedObjectAccess soa(Thread::Current());
-    LoadDexFile(&soa);
-    mirror::Class* klass_dst = FindClassByName(dst, &soa);
+    LoadDexFile(soa);
+    StackHandleScope<1> hs(soa.Self());
+    Handle<mirror::Class> klass_dst = hs.NewHandle(FindClassByName(soa, dst));
     DCHECK(klass_dst != nullptr) << dst;
-    mirror::Class* klass_src = FindClassByName(src, &soa);
+    ObjPtr<mirror::Class> klass_src = FindClassByName(soa, src);
     DCHECK(klass_src != nullptr) << src;
     verifier_deps_->AddAssignability(*primary_dex_file_,
-                                     klass_dst,
+                                     klass_dst.Get(),
                                      klass_src,
                                      is_strict,
                                      is_assignable);
@@ -453,12 +453,12 @@ class VerifierDepsTest : public CommonCompilerTest {
   std::vector<const DexFile*> dex_files_;
   const DexFile* primary_dex_file_;
   jobject class_loader_;
-  mirror::Class* klass_Main_;
+  ObjPtr<mirror::Class> klass_Main_;
 };
 
 TEST_F(VerifierDepsTest, StringToId) {
   ScopedObjectAccess soa(Thread::Current());
-  LoadDexFile(&soa);
+  LoadDexFile(soa);
 
   dex::StringIndex id_Main1 = verifier_deps_->GetIdFromString(*primary_dex_file_, "LMain;");
   ASSERT_LT(id_Main1.index_, primary_dex_file_->NumStringIds());
@@ -1441,7 +1441,7 @@ TEST_F(VerifierDepsTest, CompilerDriver) {
     for (bool verify_failure : { false, true }) {
       {
         ScopedObjectAccess soa(Thread::Current());
-        LoadDexFile(&soa, "VerifierDeps", multi);
+        LoadDexFile(soa, "VerifierDeps", multi);
       }
       VerifyWithCompilerDriver(/* verifier_deps */ nullptr);
 
@@ -1450,7 +1450,7 @@ TEST_F(VerifierDepsTest, CompilerDriver) {
 
       {
         ScopedObjectAccess soa(Thread::Current());
-        LoadDexFile(&soa, "VerifierDeps", multi);
+        LoadDexFile(soa, "VerifierDeps", multi);
       }
       verifier::VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
       if (verify_failure) {

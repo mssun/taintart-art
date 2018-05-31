@@ -28,9 +28,7 @@ namespace {
 
 ObjPtr<ObjectArray<Class>> AllocatePTypesArray(Thread* self, int count)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjPtr<Class> class_type = Class::GetJavaLangClass();
-  ObjPtr<Class> class_array_type =
-      Runtime::Current()->GetClassLinker()->FindArrayClass(self, &class_type);
+  ObjPtr<Class> class_array_type = GetClassRoot<mirror::ObjectArray<mirror::Class>>();
   return ObjectArray<Class>::Alloc(self, class_array_type, count);
 }
 

@@ -196,7 +196,7 @@ class UnstartedRuntimeTest : public CommonRuntimeTest {
   // Prepare for aborts. Aborts assume that the exception class is already resolved, as the
   // loading code doesn't work under transactions.
   void PrepareForAborts() REQUIRES_SHARED(Locks::mutator_lock_) {
-    mirror::Object* result = Runtime::Current()->GetClassLinker()->FindClass(
+    ObjPtr<mirror::Object> result = Runtime::Current()->GetClassLinker()->FindClass(
         Thread::Current(),
         Transaction::kAbortExceptionSignature,
         ScopedNullHandle<mirror::ClassLoader>());

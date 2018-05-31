@@ -22,6 +22,7 @@
 #include "class-inl.h"
 #include "class_linker-inl.h"
 #include "class_loader.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "handle_scope-inl.h"
 #include "object_array-inl.h"
@@ -53,8 +54,8 @@ static mirror::MethodType* CreateMethodType(const std::string& return_type,
           soa.Self(), FullyQualifiedType(return_type).c_str(), boot_class_loader));
   CHECK(return_clazz != nullptr);
 
-  ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-  ObjPtr<mirror::Class> class_array_type = class_linker->FindArrayClass(self, &class_type);
+  ObjPtr<mirror::Class> class_array_type =
+      GetClassRoot<mirror::ObjectArray<mirror::Class>>(class_linker);
   Handle<mirror::ObjectArray<mirror::Class>> param_classes = hs.NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(self, class_array_type, param_types.size()));
 

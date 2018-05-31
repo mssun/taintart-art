@@ -325,8 +325,8 @@ TEST_F(HiddenApiTest, CheckMemberSignatureForProxyClass) {
   ASSERT_TRUE(h_iface != nullptr);
 
   // Create the proxy class.
-  std::vector<mirror::Class*> interfaces;
-  interfaces.push_back(h_iface.Get());
+  std::vector<Handle<mirror::Class>> interfaces;
+  interfaces.push_back(h_iface);
   Handle<mirror::Class> proxyClass = hs.NewHandle(proxy_test::GenerateProxyClass(
       soa, jclass_loader_, runtime_->GetClassLinker(), "$Proxy1234", interfaces));
   ASSERT_TRUE(proxyClass != nullptr);

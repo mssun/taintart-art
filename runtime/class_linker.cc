@@ -2059,8 +2059,7 @@ void ClassLinker::VisitClassesWithoutClassesLock(ClassVisitor* visitor) {
         // Add 100 in case new classes get loaded when we are filling in the object array.
         class_table_size = NumZygoteClasses() + NumNonZygoteClasses() + 100;
       }
-      ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-      ObjPtr<mirror::Class> array_of_class = FindArrayClass(self, &class_type);
+      ObjPtr<mirror::Class> array_of_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>(this);
       classes.Assign(
           mirror::ObjectArray<mirror::Class>::Alloc(self, array_of_class, class_table_size));
       CHECK(classes != nullptr);  // OOME.
@@ -2163,9 +2162,9 @@ mirror::DexCache* ClassLinker::AllocAndInitializeDexCache(Thread* self,
   return dex_cache.Ptr();
 }
 
-mirror::Class* ClassLinker::AllocClass(Thread* self,
-                                       ObjPtr<mirror::Class> java_lang_Class,
-                                       uint32_t class_size) {
+ObjPtr<mirror::Class> ClassLinker::AllocClass(Thread* self,
+                                              ObjPtr<mirror::Class> java_lang_Class,
+                                              uint32_t class_size) {
   DCHECK_GE(class_size, sizeof(mirror::Class));
   gc::Heap* heap = Runtime::Current()->GetHeap();
   mirror::Class::InitializeClassVisitor visitor(class_size);
@@ -2179,7 +2178,7 @@ mirror::Class* ClassLinker::AllocClass(Thread* self,
   return k->AsClass();
 }
 
-mirror::Class* ClassLinker::AllocClass(Thread* self, uint32_t class_size) {
+ObjPtr<mirror::Class> ClassLinker::AllocClass(Thread* self, uint32_t class_size) {
   return AllocClass(self, GetClassRoot<mirror::Class>(this), class_size);
 }
 
@@ -2190,9 +2189,9 @@ mirror::ObjectArray<mirror::StackTraceElement>* ClassLinker::AllocStackTraceElem
       self, GetClassRoot<mirror::ObjectArray<mirror::StackTraceElement>>(this), length);
 }
 
-mirror::Class* ClassLinker::EnsureResolved(Thread* self,
-                                           const char* descriptor,
-                                           ObjPtr<mirror::Class> klass) {
+ObjPtr<mirror::Class> ClassLinker::EnsureResolved(Thread* self,
+                                                  const char* descriptor,
+                                                  ObjPtr<mirror::Class> klass) {
   DCHECK(klass != nullptr);
   if (kIsDebugBuild) {
     StackHandleScope<1> hs(self);
@@ -2400,9 +2399,9 @@ ObjPtr<mirror::Class> ClassLinker::FindClassInBaseDexClassLoaderClassPath(
   return ret;
 }
 
-mirror::Class* ClassLinker::FindClass(Thread* self,
-                                      const char* descriptor,
-                                      Handle<mirror::ClassLoader> class_loader) {
+ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
+                                             const char* descriptor,
+                                             Handle<mirror::ClassLoader> class_loader) {
   DCHECK_NE(*descriptor, '\0') << "descriptor is empty string";
   DCHECK(self != nullptr);
   self->AssertNoPendingException();
@@ -2571,12 +2570,12 @@ mirror::Class* ClassLinker::FindClass(Thread* self,
   return result_ptr.Ptr();
 }
 
-mirror::Class* ClassLinker::DefineClass(Thread* self,
-                                        const char* descriptor,
-                                        size_t hash,
-                                        Handle<mirror::ClassLoader> class_loader,
-                                        const DexFile& dex_file,
-                                        const DexFile::ClassDef& dex_class_def) {
+ObjPtr<mirror::Class> ClassLinker::DefineClass(Thread* self,
+                                               const char* descriptor,
+                                               size_t hash,
+                                               Handle<mirror::ClassLoader> class_loader,
+                                               const DexFile& dex_file,
+                                               const DexFile::ClassDef& dex_class_def) {
   StackHandleScope<3> hs(self);
   auto klass = hs.NewHandle<mirror::Class>(nullptr);
 
@@ -3534,7 +3533,7 @@ ClassLinker::DexCacheData ClassLinker::FindDexCacheDataLocked(const DexFile& dex
   return DexCacheData();
 }
 
-mirror::Class* ClassLinker::CreatePrimitiveClass(Thread* self, Primitive::Type type) {
+ObjPtr<mirror::Class> ClassLinker::CreatePrimitiveClass(Thread* self, Primitive::Type type) {
   ObjPtr<mirror::Class> primitive_class =
       AllocClass(self, mirror::Class::PrimitiveClassSize(image_pointer_size_));
   if (UNLIKELY(primitive_class == nullptr)) {
@@ -3570,8 +3569,10 @@ mirror::Class* ClassLinker::CreatePrimitiveClass(Thread* self, Primitive::Type t
 // array class; that always comes from the base element class.
 //
 // Returns null with an exception raised on failure.
-mirror::Class* ClassLinker::CreateArrayClass(Thread* self, const char* descriptor, size_t hash,
-                                             Handle<mirror::ClassLoader> class_loader) {
+ObjPtr<mirror::Class> ClassLinker::CreateArrayClass(Thread* self,
+                                                    const char* descriptor,
+                                                    size_t hash,
+                                                    Handle<mirror::ClassLoader> class_loader) {
   // Identify the underlying component type
   CHECK_EQ('[', descriptor[0]);
   StackHandleScope<2> hs(self);
@@ -3718,27 +3719,27 @@ mirror::Class* ClassLinker::CreateArrayClass(Thread* self, const char* descripto
   return existing.Ptr();
 }
 
-mirror::Class* ClassLinker::FindPrimitiveClass(char type) {
+ObjPtr<mirror::Class> ClassLinker::FindPrimitiveClass(char type) {
   ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots = GetClassRoots();
   switch (type) {
     case 'B':
-      return GetClassRoot(ClassRoot::kPrimitiveByte, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveByte, class_roots);
     case 'C':
-      return GetClassRoot(ClassRoot::kPrimitiveChar, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveChar, class_roots);
     case 'D':
-      return GetClassRoot(ClassRoot::kPrimitiveDouble, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveDouble, class_roots);
     case 'F':
-      return GetClassRoot(ClassRoot::kPrimitiveFloat, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveFloat, class_roots);
     case 'I':
-      return GetClassRoot(ClassRoot::kPrimitiveInt, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveInt, class_roots);
     case 'J':
-      return GetClassRoot(ClassRoot::kPrimitiveLong, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveLong, class_roots);
     case 'S':
-      return GetClassRoot(ClassRoot::kPrimitiveShort, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveShort, class_roots);
     case 'Z':
-      return GetClassRoot(ClassRoot::kPrimitiveBoolean, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveBoolean, class_roots);
     case 'V':
-      return GetClassRoot(ClassRoot::kPrimitiveVoid, class_roots).Ptr();
+      return GetClassRoot(ClassRoot::kPrimitiveVoid, class_roots);
     default:
       break;
   }
@@ -3747,7 +3748,9 @@ mirror::Class* ClassLinker::FindPrimitiveClass(char type) {
   return nullptr;
 }
 
-mirror::Class* ClassLinker::InsertClass(const char* descriptor, ObjPtr<mirror::Class> klass, size_t hash) {
+ObjPtr<mirror::Class> ClassLinker::InsertClass(const char* descriptor,
+                                               ObjPtr<mirror::Class> klass,
+                                               size_t hash) {
   if (VLOG_IS_ON(class_linker)) {
     ObjPtr<mirror::DexCache> dex_cache = klass->GetDexCache();
     std::string source;
@@ -3802,16 +3805,16 @@ void ClassLinker::UpdateClassMethods(ObjPtr<mirror::Class> klass,
   Runtime::Current()->GetHeap()->WriteBarrierEveryFieldOf(klass);
 }
 
-mirror::Class* ClassLinker::LookupClass(Thread* self,
-                           const char* descriptor,
-                           ObjPtr<mirror::ClassLoader> class_loader) {
+ObjPtr<mirror::Class> ClassLinker::LookupClass(Thread* self,
+                                               const char* descriptor,
+                                               ObjPtr<mirror::ClassLoader> class_loader) {
   return LookupClass(self, descriptor, ComputeModifiedUtf8Hash(descriptor), class_loader);
 }
 
-mirror::Class* ClassLinker::LookupClass(Thread* self,
-                                        const char* descriptor,
-                                        size_t hash,
-                                        ObjPtr<mirror::ClassLoader> class_loader) {
+ObjPtr<mirror::Class> ClassLinker::LookupClass(Thread* self,
+                                               const char* descriptor,
+                                               size_t hash,
+                                               ObjPtr<mirror::ClassLoader> class_loader) {
   ReaderMutexLock mu(self, *Locks::classlinker_classes_lock_);
   ClassTable* const class_table = ClassTableForClassLoader(class_loader);
   if (class_table != nullptr) {
@@ -4264,12 +4267,12 @@ void ClassLinker::ResolveMethodExceptionHandlerTypes(ArtMethod* method) {
   }
 }
 
-mirror::Class* ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRunnable& soa,
-                                             jstring name,
-                                             jobjectArray interfaces,
-                                             jobject loader,
-                                             jobjectArray methods,
-                                             jobjectArray throws) {
+ObjPtr<mirror::Class> ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRunnable& soa,
+                                                    jstring name,
+                                                    jobjectArray interfaces,
+                                                    jobject loader,
+                                                    jobjectArray methods,
+                                                    jobjectArray throws) {
   Thread* self = soa.Self();
   StackHandleScope<10> hs(self);
   MutableHandle<mirror::Class> temp_klass(hs.NewHandle(
@@ -8112,8 +8115,7 @@ ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(
   // other than by looking at the shorty ?
   const size_t num_method_args = strlen(dex_file.StringDataByIdx(proto_id.shorty_idx_)) - 1;
 
-  ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-  ObjPtr<mirror::Class> array_of_class = FindArrayClass(self, &class_type);
+  ObjPtr<mirror::Class> array_of_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>(this);
   Handle<mirror::ObjectArray<mirror::Class>> method_params(hs.NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(self, array_of_class, num_method_args)));
   if (method_params == nullptr) {
@@ -8219,11 +8221,10 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
   }
 
   StackHandleScope<4> hs(self);
-  ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-  ObjPtr<mirror::Class> array_of_class = FindArrayClass(self, &class_type);
+  ObjPtr<mirror::Class> array_of_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>(this);
   Handle<mirror::ObjectArray<mirror::Class>> method_params(hs.NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(self, array_of_class, num_params)));
-  if (UNLIKELY(method_params.Get() == nullptr)) {
+  if (UNLIKELY(method_params == nullptr)) {
     DCHECK(self->IsExceptionPending());
     return nullptr;
   }
@@ -8398,8 +8399,7 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
   int32_t num_params = static_cast<int32_t>(shorty_length + receiver_count - 1);
 
   StackHandleScope<7> hs(self);
-  ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
-  ObjPtr<mirror::Class> array_of_class = FindArrayClass(self, &class_type);
+  ObjPtr<mirror::Class> array_of_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>(this);
   Handle<mirror::ObjectArray<mirror::Class>> method_params(hs.NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(self, array_of_class, num_params)));
   if (method_params.Get() == nullptr) {
@@ -8897,19 +8897,19 @@ class ClassLinker::FindVirtualMethodHolderVisitor : public ClassVisitor {
   const PointerSize pointer_size_;
 };
 
-mirror::Class* ClassLinker::GetHoldingClassOfCopiedMethod(ArtMethod* method) {
+ObjPtr<mirror::Class> ClassLinker::GetHoldingClassOfCopiedMethod(ArtMethod* method) {
   ScopedTrace trace(__FUNCTION__);  // Since this function is slow, have a trace to notify people.
   CHECK(method->IsCopied());
   FindVirtualMethodHolderVisitor visitor(method, image_pointer_size_);
   VisitClasses(&visitor);
-  return visitor.holder_.Ptr();
+  return visitor.holder_;
 }
 
-mirror::IfTable* ClassLinker::AllocIfTable(Thread* self, size_t ifcount) {
-  return down_cast<mirror::IfTable*>(
+ObjPtr<mirror::IfTable> ClassLinker::AllocIfTable(Thread* self, size_t ifcount) {
+  return ObjPtr<mirror::IfTable>::DownCast(ObjPtr<mirror::ObjectArray<mirror::Object>>(
       mirror::IfTable::Alloc(self,
                              GetClassRoot<mirror::ObjectArray<mirror::Object>>(this),
-                             ifcount * mirror::IfTable::kMax));
+                             ifcount * mirror::IfTable::kMax)));
 }
 
 // Instantiate ResolveMethod.

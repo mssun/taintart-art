@@ -44,9 +44,9 @@ TEST_F(ProxyTest, ProxyClassHelper) {
   ASSERT_TRUE(I != nullptr);
   ASSERT_TRUE(J != nullptr);
 
-  std::vector<mirror::Class*> interfaces;
-  interfaces.push_back(I.Get());
-  interfaces.push_back(J.Get());
+  std::vector<Handle<mirror::Class>> interfaces;
+  interfaces.push_back(I);
+  interfaces.push_back(J);
   Handle<mirror::Class> proxy_class(hs.NewHandle(
       GenerateProxyClass(soa, jclass_loader, class_linker_, "$Proxy1234", interfaces)));
   interfaces.clear();  // Don't least possibly stale objects in the array as good practice.
@@ -80,9 +80,9 @@ TEST_F(ProxyTest, ProxyFieldHelper) {
 
   Handle<mirror::Class> proxyClass;
   {
-    std::vector<mirror::Class*> interfaces;
-    interfaces.push_back(I.Get());
-    interfaces.push_back(J.Get());
+    std::vector<Handle<mirror::Class>> interfaces;
+    interfaces.push_back(I);
+    interfaces.push_back(J);
     proxyClass = hs.NewHandle(
         GenerateProxyClass(soa, jclass_loader, class_linker_, "$Proxy1234", interfaces));
   }
@@ -131,7 +131,7 @@ TEST_F(ProxyTest, CheckArtMirrorFieldsOfProxyStaticFields) {
   Handle<mirror::Class> proxyClass0;
   Handle<mirror::Class> proxyClass1;
   {
-    std::vector<mirror::Class*> interfaces;
+    std::vector<Handle<mirror::Class>> interfaces;
     proxyClass0 = hs.NewHandle(
         GenerateProxyClass(soa, jclass_loader, class_linker_, "$Proxy0", interfaces));
     proxyClass1 = hs.NewHandle(

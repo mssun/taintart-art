@@ -34,6 +34,7 @@
 #include "mirror/object_array-inl.h"
 #include "mirror/stack_trace_element.h"
 #include "oat_quick_method_header.h"
+#include "obj_ptr-inl.h"
 #include "optimizing/stack_map_stream.h"
 #include "runtime-inl.h"
 #include "scoped_thread_state_change-inl.h"
@@ -122,7 +123,7 @@ class ExceptionTest : public CommonRuntimeTest {
   ArtMethod* method_g_;
 
  private:
-  mirror::Class* my_klass_;
+  ObjPtr<mirror::Class> my_klass_;
 };
 
 TEST_F(ExceptionTest, FindCatchHandler) {
