@@ -675,7 +675,7 @@ class StackMap : public BitTable<6>::Accessor {
   uint32_t GetStackMaskIndex() const { return Get<kStackMaskIndex>(); }
 
   static uint32_t PackNativePc(uint32_t native_pc, InstructionSet isa) {
-    // TODO: DCHECK_ALIGNED_PARAM(native_pc, GetInstructionSetInstructionAlignment(isa));
+    DCHECK_ALIGNED_PARAM(native_pc, GetInstructionSetInstructionAlignment(isa));
     return native_pc / GetInstructionSetInstructionAlignment(isa);
   }
 
