@@ -32,13 +32,41 @@
 
 namespace art {
 
+static inline bool IsRange(Instruction::Code code) {
+  return code == Instruction::INVOKE_VIRTUAL_RANGE ||
+      code == Instruction::INVOKE_DIRECT_RANGE ||
+      code == Instruction::INVOKE_SUPER_RANGE ||
+      code == Instruction::INVOKE_STATIC_RANGE ||
+      code == Instruction::INVOKE_INTERFACE_RANGE;
+}
+
+static inline uint16_t NumberOfArgs(const Instruction& inst) {
+  return IsRange(inst.Opcode()) ? inst.VRegA_3rc() : inst.VRegA_35c();
+}
+
+static inline uint16_t DexMethodIndex(const Instruction& inst) {
+  return IsRange(inst.Opcode()) ? inst.VRegB_3rc() : inst.VRegB_35c();
+}
+
 std::string Percent(uint64_t value, uint64_t max) {
   if (max == 0) {
-    ++max;
+    return "0";
   }
-  return android::base::StringPrintf("%" PRId64 "(%.2f%%)",
-                                     value,
-                                     static_cast<double>(value * 100) / static_cast<double>(max));
+  return android::base::StringPrintf(
+      "%" PRId64 "(%.2f%%)",
+      value,
+      static_cast<double>(value * 100) / static_cast<double>(max));
+}
+
+std::string PercentDivide(uint64_t value, uint64_t max) {
+  if (max == 0) {
+    return "0";
+  }
+  return android::base::StringPrintf(
+      "%" PRId64 "/%" PRId64 "(%.2f%%)",
+      value,
+      max,
+      static_cast<double>(value * 100) / static_cast<double>(max));
 }
 
 static size_t PrefixLen(const std::string& a, const std::string& b) {
@@ -150,38 +178,52 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           // Invoke cases.
           case Instruction::INVOKE_VIRTUAL:
           case Instruction::INVOKE_VIRTUAL_RANGE: {
-            bool is_range = (inst->Opcode() == Instruction::INVOKE_VIRTUAL_RANGE);
-            uint32_t method_idx = is_range ? inst->VRegB_3rc() : inst->VRegB_35c();
+            uint32_t method_idx = DexMethodIndex(inst.Inst());
             if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_virtual_;
-            } else {
-              ++other_class_virtual_;
-              unique_method_ids.insert(method_idx);
             }
+            ++total_virtual_;
+            unique_method_ids.insert(method_idx);
             break;
           }
           case Instruction::INVOKE_DIRECT:
           case Instruction::INVOKE_DIRECT_RANGE: {
-            bool is_range = (inst->Opcode() == Instruction::INVOKE_DIRECT_RANGE);
-            uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
+            uint32_t method_idx = DexMethodIndex(inst.Inst());
             if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_direct_;
-            } else {
-              ++other_class_direct_;
-              unique_method_ids.insert(method_idx);
             }
+            ++total_direct_;
+            unique_method_ids.insert(method_idx);
             break;
           }
           case Instruction::INVOKE_STATIC:
           case Instruction::INVOKE_STATIC_RANGE: {
-            bool is_range = (inst->Opcode() == Instruction::INVOKE_STATIC_RANGE);
-            uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
+            uint32_t method_idx = DexMethodIndex(inst.Inst());
             if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_static_;
-            } else {
-              ++other_class_static_;
-              unique_method_ids.insert(method_idx);
             }
+            ++total_static_;
+            unique_method_ids.insert(method_idx);
+            break;
+          }
+          case Instruction::INVOKE_INTERFACE:
+          case Instruction::INVOKE_INTERFACE_RANGE: {
+            uint32_t method_idx = DexMethodIndex(inst.Inst());
+            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
+              ++same_class_interface_;
+            }
+            ++total_interface_;
+            unique_method_ids.insert(method_idx);
+            break;
+          }
+          case Instruction::INVOKE_SUPER:
+          case Instruction::INVOKE_SUPER_RANGE: {
+            uint32_t method_idx = DexMethodIndex(inst.Inst());
+            if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
+              ++same_class_super_;
+            }
+            ++total_super_;
+            unique_method_ids.insert(method_idx);
             break;
           }
           default:
@@ -201,24 +243,75 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Num field ids: " << num_field_ids_ << "\n";
   os << "Num type ids: " << num_type_ids_ << "\n";
   os << "Num class defs: " << num_class_defs_ << "\n";
-  os << "Same class direct: " << same_class_direct_ << "\n";
-  os << "Other class direct: " << other_class_direct_ << "\n";
-  os << "Same class virtual: " << same_class_virtual_ << "\n";
-  os << "Other class virtual: " << other_class_virtual_ << "\n";
-  os << "Same class static: " << same_class_static_ << "\n";
-  os << "Other class static: " << other_class_static_ << "\n";
+  os << "Direct same class: " << PercentDivide(same_class_direct_, total_direct_) << "\n";
+  os << "Virtual same class: " << PercentDivide(same_class_virtual_, total_virtual_) << "\n";
+  os << "Static same class: " << PercentDivide(same_class_static_, total_static_) << "\n";
+  os << "Interface same class: " << PercentDivide(same_class_interface_, total_interface_) << "\n";
+  os << "Super same class: " << PercentDivide(same_class_super_, total_super_) << "\n";
   os << "Num strings accessed from code: " << num_string_ids_from_code_ << "\n";
   os << "Unique(per class) method ids accessed from code: " << total_unique_method_idx_ << "\n";
   os << "Unique(per class) string ids accessed from code: " << total_unique_string_ids_ << "\n";
-  size_t same_class_total = same_class_direct_ + same_class_virtual_ + same_class_static_;
-  size_t other_class_total = other_class_direct_ + other_class_virtual_ + other_class_static_;
-  os << "Same class invoke: " << same_class_total << "\n";
-  os << "Other class invoke: " << other_class_total << "\n";
+  const size_t same_class_total =
+      same_class_direct_ +
+      same_class_virtual_ +
+      same_class_static_ +
+      same_class_interface_ +
+      same_class_super_;
+  const size_t other_class_total =
+      total_direct_ +
+      total_virtual_ +
+      total_static_ +
+      total_interface_ +
+      total_super_;
+  os << "Same class invokes: " << PercentDivide(same_class_total, other_class_total) << "\n";
   os << "Invokes from code: " << (same_class_total + other_class_total) << "\n";
   os << "Total Dex code bytes: " << Percent(dex_code_bytes_, total_size) << "\n";
   os << "Total unique code items: " << total_unique_code_items_ << "\n";
   os << "Total Dex size: " << total_size << "\n";
 }
 
-}  // namespace art
+void CodeMetrics::ProcessDexFile(const DexFile& dex_file) {
+  for (ClassAccessor accessor : dex_file.GetClasses()) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+      bool space_for_out_arg = false;
+      for (const DexInstructionPcPair& inst : method.GetInstructions()) {
+        switch (inst->Opcode()) {
+          case Instruction::INVOKE_VIRTUAL:
+          case Instruction::INVOKE_DIRECT:
+          case Instruction::INVOKE_SUPER:
+          case Instruction::INVOKE_INTERFACE:
+          case Instruction::INVOKE_STATIC: {
+            const uint32_t args = NumberOfArgs(inst.Inst());
+            CHECK_LT(args, kMaxArgCount);
+            ++arg_counts_[args];
+            space_for_out_arg = args < kMaxArgCount - 1;
+            break;
+          }
+          case Instruction::MOVE_RESULT:
+          case Instruction::MOVE_RESULT_OBJECT: {
+            if (space_for_out_arg) {
+              move_result_savings_ += inst->SizeInCodeUnits() * 2;
+            }
+            break;
+          }
+          default:
+            space_for_out_arg = false;
+            break;
+        }
+      }
+    }
+  }
+}
 
+void CodeMetrics::Dump(std::ostream& os, uint64_t total_size) const {
+  const uint64_t total = std::accumulate(arg_counts_, arg_counts_ + kMaxArgCount, 0u);
+  for (size_t i = 0; i < kMaxArgCount; ++i) {
+    os << "args=" << i << ": " << Percent(arg_counts_[i], total) << "\n";
+  }
+  os << "Move result savings: " << Percent(move_result_savings_, total_size) << "\n";
+  os << "One byte invoke savings: " << Percent(total, total_size) << "\n";
+  const uint64_t low_arg_total = std::accumulate(arg_counts_, arg_counts_ + 3, 0u);
+  os << "Low arg savings: " << Percent(low_arg_total * 2, total_size) << "\n";
+}
+
+}  // namespace art
