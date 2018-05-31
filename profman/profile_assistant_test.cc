@@ -22,6 +22,7 @@
 #include "base/utils.h"
 #include "common_runtime_test.h"
 #include "dex/descriptors_names.h"
+#include "dex/type_reference.h"
 #include "exec_utils.h"
 #include "linear_alloc.h"
 #include "mirror/class-inl.h"
@@ -33,6 +34,7 @@
 namespace art {
 
 using Hotness = ProfileCompilationInfo::MethodHotness;
+using TypeReferenceSet = std::set<TypeReference, TypeReferenceValueComparator>;
 
 static constexpr size_t kMaxMethodIds = 65535;
 
@@ -308,25 +310,24 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     return true;
   }
 
-  mirror::Class* GetClass(jobject class_loader, const std::string& clazz) {
+  ObjPtr<mirror::Class> GetClass(ScopedObjectAccess& soa,
+                                 jobject class_loader,
+                                 const std::string& clazz) REQUIRES_SHARED(Locks::mutator_lock_) {
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-    Thread* self = Thread::Current();
-    ScopedObjectAccess soa(self);
-    StackHandleScope<1> hs(self);
-    Handle<mirror::ClassLoader> h_loader(
-        hs.NewHandle(ObjPtr<mirror::ClassLoader>::DownCast(self->DecodeJObject(class_loader))));
-    return class_linker->FindClass(self, clazz.c_str(), h_loader);
+    StackHandleScope<1> hs(soa.Self());
+    Handle<mirror::ClassLoader> h_loader(hs.NewHandle(
+        ObjPtr<mirror::ClassLoader>::DownCast(soa.Self()->DecodeJObject(class_loader))));
+    return class_linker->FindClass(soa.Self(), clazz.c_str(), h_loader);
   }
 
   ArtMethod* GetVirtualMethod(jobject class_loader,
                               const std::string& clazz,
                               const std::string& name) {
-    mirror::Class* klass = GetClass(class_loader, clazz);
+    ScopedObjectAccess soa(Thread::Current());
+    ObjPtr<mirror::Class> klass = GetClass(soa, class_loader, clazz);
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     const auto pointer_size = class_linker->GetImagePointerSize();
     ArtMethod* method = nullptr;
-    Thread* self = Thread::Current();
-    ScopedObjectAccess soa(self);
     for (auto& m : klass->GetVirtualMethods(pointer_size)) {
       if (name == m.GetName()) {
         EXPECT_TRUE(method == nullptr);
@@ -336,9 +337,14 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     return method;
   }
 
+  static TypeReference MakeTypeReference(ObjPtr<mirror::Class> klass)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    return TypeReference(&klass->GetDexFile(), klass->GetDexTypeIndex());
+  }
+
   // Verify that given method has the expected inline caches and nothing else.
   void AssertInlineCaches(ArtMethod* method,
-                          const std::set<mirror::Class*>& expected_clases,
+                          const TypeReferenceSet& expected_clases,
                           const ProfileCompilationInfo& info,
                           bool is_megamorphic,
                           bool is_missing_types)
@@ -355,12 +361,11 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     ASSERT_EQ(dex_pc_data.is_missing_types, is_missing_types);
     ASSERT_EQ(expected_clases.size(), dex_pc_data.classes.size());
     size_t found = 0;
-    for (mirror::Class* it : expected_clases) {
+    for (const TypeReference& type_ref : expected_clases) {
       for (const auto& class_ref : dex_pc_data.classes) {
         ProfileCompilationInfo::DexReference dex_ref =
             pmi->dex_references[class_ref.dex_profile_index];
-        if (dex_ref.MatchesDex(&(it->GetDexFile())) &&
-            class_ref.type_index == it->GetDexTypeIndex()) {
+        if (dex_ref.MatchesDex(type_ref.dex_file) && class_ref.type_index == type_ref.TypeIndex()) {
           found++;
         }
       }
@@ -715,7 +720,7 @@ TEST_F(ProfileAssistantTest, TestProfileCreationGenerateMethods) {
   ASSERT_TRUE(info.Load(GetFd(profile_file)));
   // Verify that the profile has matching methods.
   ScopedObjectAccess soa(Thread::Current());
-  ObjPtr<mirror::Class> klass = GetClass(nullptr, "Ljava/lang/Math;");
+  ObjPtr<mirror::Class> klass = GetClass(soa, /* class_loader */ nullptr, "Ljava/lang/Math;");
   ASSERT_TRUE(klass != nullptr);
   size_t method_count = 0;
   for (ArtMethod& method : klass->GetMethods(kRuntimePointerSize)) {
@@ -907,9 +912,10 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
   jobject class_loader = LoadDex("ProfileTestMultiDex");
   ASSERT_NE(class_loader, nullptr);
 
-  mirror::Class* sub_a = GetClass(class_loader, "LSubA;");
-  mirror::Class* sub_b = GetClass(class_loader, "LSubB;");
-  mirror::Class* sub_c = GetClass(class_loader, "LSubC;");
+  StackHandleScope<3> hs(soa.Self());
+  Handle<mirror::Class> sub_a = hs.NewHandle(GetClass(soa, class_loader, "LSubA;"));
+  Handle<mirror::Class> sub_b = hs.NewHandle(GetClass(soa, class_loader, "LSubB;"));
+  Handle<mirror::Class> sub_c = hs.NewHandle(GetClass(soa, class_loader, "LSubC;"));
 
   ASSERT_TRUE(sub_a != nullptr);
   ASSERT_TRUE(sub_b != nullptr);
@@ -921,8 +927,8 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
                                                      "LTestInline;",
                                                      "inlineMonomorphic");
     ASSERT_TRUE(inline_monomorphic != nullptr);
-    std::set<mirror::Class*> expected_monomorphic;
-    expected_monomorphic.insert(sub_a);
+    TypeReferenceSet expected_monomorphic;
+    expected_monomorphic.insert(MakeTypeReference(sub_a.Get()));
     AssertInlineCaches(inline_monomorphic,
                        expected_monomorphic,
                        info,
@@ -936,10 +942,10 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
                                                     "LTestInline;",
                                                     "inlinePolymorphic");
     ASSERT_TRUE(inline_polymorhic != nullptr);
-    std::set<mirror::Class*> expected_polymorphic;
-    expected_polymorphic.insert(sub_a);
-    expected_polymorphic.insert(sub_b);
-    expected_polymorphic.insert(sub_c);
+    TypeReferenceSet expected_polymorphic;
+    expected_polymorphic.insert(MakeTypeReference(sub_a.Get()));
+    expected_polymorphic.insert(MakeTypeReference(sub_b.Get()));
+    expected_polymorphic.insert(MakeTypeReference(sub_c.Get()));
     AssertInlineCaches(inline_polymorhic,
                        expected_polymorphic,
                        info,
@@ -953,7 +959,7 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
                                                      "LTestInline;",
                                                      "inlineMegamorphic");
     ASSERT_TRUE(inline_megamorphic != nullptr);
-    std::set<mirror::Class*> expected_megamorphic;
+    TypeReferenceSet expected_megamorphic;
     AssertInlineCaches(inline_megamorphic,
                        expected_megamorphic,
                        info,
@@ -967,7 +973,7 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
                                                        "LTestInline;",
                                                        "inlineMissingTypes");
     ASSERT_TRUE(inline_missing_types != nullptr);
-    std::set<mirror::Class*> expected_missing_Types;
+    TypeReferenceSet expected_missing_Types;
     AssertInlineCaches(inline_missing_types,
                        expected_missing_Types,
                        info,

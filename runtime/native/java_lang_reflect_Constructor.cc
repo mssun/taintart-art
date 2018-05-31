@@ -20,8 +20,8 @@
 
 #include "art_method-inl.h"
 #include "base/enums.h"
-#include "class_linker-inl.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "dex/dex_file_annotations.h"
 #include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
@@ -42,12 +42,8 @@ static jobjectArray Constructor_getExceptionTypes(JNIEnv* env, jobject javaMetho
       annotations::GetExceptionTypesForMethod(method);
   if (result_array == nullptr) {
     // Return an empty array instead of a null pointer.
-    ObjPtr<mirror::Class> class_class = mirror::Class::GetJavaLangClass();
-    ObjPtr<mirror::Class> class_array_class =
-        Runtime::Current()->GetClassLinker()->FindArrayClass(soa.Self(), &class_class);
-    if (class_array_class == nullptr) {
-      return nullptr;
-    }
+    ObjPtr<mirror::Class> class_array_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>();
+    DCHECK(class_array_class != nullptr);
     ObjPtr<mirror::ObjectArray<mirror::Class>> empty_array =
         mirror::ObjectArray<mirror::Class>::Alloc(soa.Self(), class_array_class, 0);
     return soa.AddLocalReference<jobjectArray>(empty_array);

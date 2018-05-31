@@ -144,7 +144,7 @@ static void SafelyMarkAllRegistersAsConflicts(MethodVerifier* verifier, Register
 }
 
 FailureKind MethodVerifier::VerifyClass(Thread* self,
-                                        mirror::Class* klass,
+                                        ObjPtr<mirror::Class> klass,
                                         CompilerCallbacks* callbacks,
                                         bool allow_soft_failures,
                                         HardFailLogMode log_level,

@@ -111,18 +111,18 @@ TEST_F(ImageTest, TestDefaultMethods) {
 
   // Test the pointer to quick code is the same in origin method
   // and in the copied method form the same oat file.
-  mirror::Class* iface_klass = class_linker_->LookupClass(
-      self, "LIface;", ObjPtr<mirror::ClassLoader>());
+  ObjPtr<mirror::Class> iface_klass =
+      class_linker_->LookupClass(self, "LIface;", /* class_loader */ nullptr);
   ASSERT_NE(nullptr, iface_klass);
   ArtMethod* origin = iface_klass->FindInterfaceMethod("defaultMethod", "()V", pointer_size);
   ASSERT_NE(nullptr, origin);
-  ASSERT_TRUE(origin->GetDeclaringClass() == iface_klass);
+  ASSERT_OBJ_PTR_EQ(origin->GetDeclaringClass(), iface_klass);
   const void* code = origin->GetEntryPointFromQuickCompiledCodePtrSize(pointer_size);
   // The origin method should have a pointer to quick code
   ASSERT_NE(nullptr, code);
   ASSERT_FALSE(class_linker_->IsQuickToInterpreterBridge(code));
-  mirror::Class* impl_klass = class_linker_->LookupClass(
-      self, "LImpl;", ObjPtr<mirror::ClassLoader>());
+  ObjPtr<mirror::Class> impl_klass =
+      class_linker_->LookupClass(self, "LImpl;", /* class_loader */ nullptr);
   ASSERT_NE(nullptr, impl_klass);
   ArtMethod* copied = FindCopiedMethod(origin, impl_klass);
   ASSERT_NE(nullptr, copied);
@@ -132,20 +132,20 @@ TEST_F(ImageTest, TestDefaultMethods) {
   // Test the origin method has pointer to quick code
   // but the copied method has pointer to interpreter
   // because these methods are in different oat files.
-  mirror::Class* iterable_klass = class_linker_->LookupClass(
-      self, "Ljava/lang/Iterable;", ObjPtr<mirror::ClassLoader>());
+  ObjPtr<mirror::Class> iterable_klass =
+      class_linker_->LookupClass(self, "Ljava/lang/Iterable;", /* class_loader */ nullptr);
   ASSERT_NE(nullptr, iterable_klass);
   origin = iterable_klass->FindClassMethod(
       "forEach", "(Ljava/util/function/Consumer;)V", pointer_size);
   ASSERT_NE(nullptr, origin);
   ASSERT_FALSE(origin->IsDirect());
-  ASSERT_TRUE(origin->GetDeclaringClass() == iterable_klass);
+  ASSERT_OBJ_PTR_EQ(origin->GetDeclaringClass(), iterable_klass);
   code = origin->GetEntryPointFromQuickCompiledCodePtrSize(pointer_size);
   // the origin method should have a pointer to quick code
   ASSERT_NE(nullptr, code);
   ASSERT_FALSE(class_linker_->IsQuickToInterpreterBridge(code));
-  mirror::Class* iterablebase_klass = class_linker_->LookupClass(
-      self, "LIterableBase;", ObjPtr<mirror::ClassLoader>());
+  ObjPtr<mirror::Class> iterablebase_klass =
+      class_linker_->LookupClass(self, "LIterableBase;", /* class_loader */ nullptr);
   ASSERT_NE(nullptr, iterablebase_klass);
   copied = FindCopiedMethod(origin, iterablebase_klass);
   ASSERT_NE(nullptr, copied);

@@ -53,13 +53,11 @@ class SpaceTest : public Super {
   }
 
   mirror::Class* GetByteArrayClass(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
-    StackHandleScope<1> hs(self);
-    auto null_loader(hs.NewHandle<mirror::ClassLoader>(nullptr));
     if (byte_array_class_ == nullptr) {
-      mirror::Class* byte_array_class =
-          Runtime::Current()->GetClassLinker()->FindClass(self, "[B", null_loader);
+      ObjPtr<mirror::Class> byte_array_class =
+          Runtime::Current()->GetClassLinker()->FindSystemClass(self, "[B");
       EXPECT_TRUE(byte_array_class != nullptr);
-      byte_array_class_ = self->GetJniEnv()->NewLocalRef(byte_array_class);
+      byte_array_class_ = self->GetJniEnv()->NewLocalRef(byte_array_class.Ptr());
       EXPECT_TRUE(byte_array_class_ != nullptr);
     }
     return self->DecodeJObject(byte_array_class_)->AsClass();

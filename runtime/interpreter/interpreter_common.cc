@@ -1128,9 +1128,9 @@ static ObjPtr<mirror::MethodType> BuildCallSiteForBootstrapMethod(Thread* self,
 
   StackHandleScope<2> hs(self);
   // Create array for parameter types.
-  ObjPtr<mirror::Class> class_type = mirror::Class::GetJavaLangClass();
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  ObjPtr<mirror::Class> class_array_type = class_linker->FindArrayClass(self, &class_type);
+  ObjPtr<mirror::Class> class_array_type =
+      GetClassRoot<mirror::ObjectArray<mirror::Class>>(class_linker);
   Handle<mirror::ObjectArray<mirror::Class>> ptypes = hs.NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(self,
                                                 class_array_type,
