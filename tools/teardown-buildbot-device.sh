@@ -25,6 +25,27 @@ adb root
 adb wait-for-device
 
 if [[ -n "$ART_TEST_CHROOT" ]]; then
+
+  # remove_filesystem_from_chroot DIR-IN-CHROOT FSTYPE REMOVE-DIR-IN-CHROOT
+  # -----------------------------------------------------------------------
+  # Unmount filesystem with type FSTYPE mounted in directory DIR-IN-CHROOT
+  # under the chroot directory.
+  # Remove DIR-IN-CHROOT under the chroot if REMOVE-DIR-IN-CHROOT is
+  # true.
+  remove_filesystem_from_chroot() {
+    local dir_in_chroot=$1
+    local fstype=$2
+    local remove_dir=$3
+    local dir="$ART_TEST_CHROOT/$dir_in_chroot"
+    adb shell test -d "$dir" \
+      && adb shell mount | grep -q "^$fstype on $dir type $fstype " \
+      && if adb shell umount "$dir"; then
+           $remove_dir && adb shell rmdir "$dir"
+         else
+           adb shell lsof "$dir"
+         fi
+  }
+
   # Tear down the chroot dir.
   echo -e "${green}Tear down the chroot dir in $ART_TEST_CHROOT${nc}"
 
@@ -32,22 +53,17 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
   [[ "x$ART_TEST_CHROOT" = x/* ]] || { echo "$ART_TEST_CHROOT is not an absolute path"; exit 1; }
 
   # Remove /dev from chroot.
-  adb shell mount | grep -q "^tmpfs on $ART_TEST_CHROOT/dev type tmpfs " \
-    && adb shell umount "$ART_TEST_CHROOT/dev" \
-    && adb shell rmdir "$ART_TEST_CHROOT/dev"
+  remove_filesystem_from_chroot dev tmpfs true
 
   # Remove /sys/kernel/debug from chroot.
-  adb shell mount | grep -q "^debugfs on $ART_TEST_CHROOT/sys/kernel/debug type debugfs " \
-    && adb shell umount "$ART_TEST_CHROOT/sys/kernel/debug"
+  # The /sys/kernel/debug directory under the chroot dir cannot be
+  # deleted, as it is part of the host device's /sys filesystem.
+  remove_filesystem_from_chroot sys/kernel/debug debugfs false
   # Remove /sys from chroot.
-  adb shell mount | grep -q "^sysfs on $ART_TEST_CHROOT/sys type sysfs " \
-    && adb shell umount "$ART_TEST_CHROOT/sys" \
-    && adb shell rmdir "$ART_TEST_CHROOT/sys"
+  remove_filesystem_from_chroot sys sysfs true
 
   # Remove /proc from chroot.
-  adb shell mount | grep -q "^proc on $ART_TEST_CHROOT/proc type proc " \
-    && adb shell umount "$ART_TEST_CHROOT/proc" \
-    && adb shell rmdir "$ART_TEST_CHROOT/proc"
+  remove_filesystem_from_chroot proc proc true
 
   # Remove /etc from chroot.
   adb shell rm -f "$ART_TEST_CHROOT/etc"
