@@ -55,26 +55,6 @@ namespace mirror {
 
 using android::base::StringPrintf;
 
-GcRoot<Class> Class::java_lang_Class_;
-
-void Class::SetClassClass(ObjPtr<Class> java_lang_Class) {
-  CHECK(java_lang_Class_.IsNull())
-      << java_lang_Class_.Read()
-      << " " << java_lang_Class;
-  CHECK(java_lang_Class != nullptr);
-  java_lang_Class->SetClassFlags(kClassFlagClass);
-  java_lang_Class_ = GcRoot<Class>(java_lang_Class);
-}
-
-void Class::ResetClass() {
-  CHECK(!java_lang_Class_.IsNull());
-  java_lang_Class_ = GcRoot<Class>(nullptr);
-}
-
-void Class::VisitRoots(RootVisitor* visitor) {
-  java_lang_Class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
-}
-
 ObjPtr<mirror::Class> Class::GetPrimitiveClass(ObjPtr<mirror::String> name) {
   const char* expected_name = nullptr;
   ClassRoot class_root = ClassRoot::kJavaLangObject;  // Invalid.
@@ -1211,13 +1191,15 @@ Class* Class::CopyOf(Thread* self, int32_t new_length, ImTable* imt, PointerSize
   // We may get copied by a compacting GC.
   StackHandleScope<1> hs(self);
   Handle<Class> h_this(hs.NewHandle(this));
-  gc::Heap* heap = Runtime::Current()->GetHeap();
+  Runtime* runtime = Runtime::Current();
+  gc::Heap* heap = runtime->GetHeap();
   // The num_bytes (3rd param) is sizeof(Class) as opposed to SizeOf()
   // to skip copying the tail part that we will overwrite here.
   CopyClassVisitor visitor(self, &h_this, new_length, sizeof(Class), imt, pointer_size);
+  ObjPtr<mirror::Class> java_lang_Class = GetClassRoot<mirror::Class>(runtime->GetClassLinker());
   ObjPtr<Object> new_class = kMovingClasses ?
-      heap->AllocObject<true>(self, java_lang_Class_.Read(), new_length, visitor) :
-      heap->AllocNonMovableObject<true>(self, java_lang_Class_.Read(), new_length, visitor);
+      heap->AllocObject<true>(self, java_lang_Class, new_length, visitor) :
+      heap->AllocNonMovableObject<true>(self, java_lang_Class, new_length, visitor);
   if (UNLIKELY(new_class == nullptr)) {
     self->AssertPendingOOMException();
     return nullptr;

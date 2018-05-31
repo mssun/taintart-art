@@ -17,7 +17,6 @@
 #ifndef ART_RUNTIME_MIRROR_STACK_TRACE_ELEMENT_H_
 #define ART_RUNTIME_MIRROR_STACK_TRACE_ELEMENT_H_
 
-#include "gc_root.h"
 #include "object.h"
 
 namespace art {

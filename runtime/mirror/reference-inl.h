@@ -19,7 +19,6 @@
 
 #include "reference.h"
 
-#include "gc_root-inl.h"
 #include "obj_ptr-inl.h"
 #include "runtime.h"
 

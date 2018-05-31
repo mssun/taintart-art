@@ -3913,9 +3913,9 @@ void Heap::BroadcastForNewAllocationRecords() const {
 }
 
 void Heap::CheckGcStressMode(Thread* self, ObjPtr<mirror::Object>* obj) {
+  DCHECK(gc_stress_mode_);
   auto* const runtime = Runtime::Current();
-  if (gc_stress_mode_ && runtime->GetClassLinker()->IsInitialized() &&
-      !runtime->IsActiveTransaction() && mirror::Class::HasJavaLangClass()) {
+  if (runtime->GetClassLinker()->IsInitialized() && !runtime->IsActiveTransaction()) {
     // Check if we should GC.
     bool new_backtrace = false;
     {

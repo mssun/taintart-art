@@ -18,7 +18,6 @@
 
 #include "class-inl.h"
 #include "class_root.h"
-#include "gc_root-inl.h"
 
 namespace art {
 namespace mirror {

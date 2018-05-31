@@ -20,7 +20,6 @@
 #include "array.h"
 #include "class.h"
 #include "dex_cache.h"
-#include "gc_root.h"
 #include "object.h"
 #include "object_array.h"
 #include "string.h"
@@ -72,10 +71,6 @@ class MANAGED ClassExt : public Object {
   bool ExtendObsoleteArrays(Thread* self, uint32_t increase)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static void SetClass(ObjPtr<Class> dalvik_system_ClassExt);
-  static void ResetClass();
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
   template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier, class Visitor>
   inline void VisitNativeRoots(Visitor& visitor, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -92,8 +87,6 @@ class MANAGED ClassExt : public Object {
 
   // The saved verification error of this class.
   HeapReference<Object> verify_error_;
-
-  static GcRoot<Class> dalvik_system_ClassExt_;
 
   friend struct art::ClassExtOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(ClassExt);

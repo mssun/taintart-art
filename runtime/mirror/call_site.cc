@@ -18,18 +18,17 @@
 
 #include "class-inl.h"
 #include "class_root.h"
-#include "gc_root-inl.h"
+#include "obj_ptr-inl.h"
 
 namespace art {
 namespace mirror {
 
 mirror::CallSite* CallSite::Create(Thread* const self, Handle<MethodHandle> target) {
-  StackHandleScope<1> hs(self);
-  Handle<mirror::CallSite> cs(
-      hs.NewHandle(ObjPtr<CallSite>::DownCast(GetClassRoot<CallSite>()->AllocObject(self))));
+  ObjPtr<mirror::CallSite> cs =
+      ObjPtr<CallSite>::DownCast(GetClassRoot<CallSite>()->AllocObject(self));
   CHECK(!Runtime::Current()->IsActiveTransaction());
   cs->SetFieldObject<false>(TargetOffset(), target.Get());
-  return cs.Get();
+  return cs.Ptr();
 }
 
 }  // namespace mirror

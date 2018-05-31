@@ -17,7 +17,6 @@
 #ifndef ART_RUNTIME_MIRROR_THROWABLE_H_
 #define ART_RUNTIME_MIRROR_THROWABLE_H_
 
-#include "gc_root.h"
 #include "object.h"
 
 namespace art {

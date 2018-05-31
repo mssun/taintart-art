@@ -18,7 +18,6 @@
 
 #include "art_method.h"
 #include "class_root.h"
-#include "gc_root-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 

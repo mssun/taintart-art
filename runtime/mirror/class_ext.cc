@@ -21,6 +21,7 @@
 #include "base/enums.h"
 #include "base/utils.h"
 #include "class-inl.h"
+#include "class_root.h"
 #include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "object-inl.h"
@@ -30,8 +31,6 @@
 
 namespace art {
 namespace mirror {
-
-GcRoot<Class> ClassExt::dalvik_system_ClassExt_;
 
 uint32_t ClassExt::ClassSize(PointerSize pointer_size) {
   uint32_t vtable_entries = Object::kVTableLength;
@@ -102,8 +101,7 @@ bool ClassExt::ExtendObsoleteArrays(Thread* self, uint32_t increase) {
 }
 
 ClassExt* ClassExt::Alloc(Thread* self) {
-  DCHECK(dalvik_system_ClassExt_.Read() != nullptr);
-  return down_cast<ClassExt*>(dalvik_system_ClassExt_.Read()->AllocObject(self).Ptr());
+  return down_cast<ClassExt*>(GetClassRoot<ClassExt>()->AllocObject(self).Ptr());
 }
 
 void ClassExt::SetVerifyError(ObjPtr<Object> err) {
@@ -117,20 +115,6 @@ void ClassExt::SetVerifyError(ObjPtr<Object> err) {
 void ClassExt::SetOriginalDexFile(ObjPtr<Object> bytes) {
   DCHECK(!Runtime::Current()->IsActiveTransaction());
   SetFieldObject<false>(OFFSET_OF_OBJECT_MEMBER(ClassExt, original_dex_file_), bytes);
-}
-
-void ClassExt::SetClass(ObjPtr<Class> dalvik_system_ClassExt) {
-  CHECK(dalvik_system_ClassExt != nullptr);
-  dalvik_system_ClassExt_ = GcRoot<Class>(dalvik_system_ClassExt);
-}
-
-void ClassExt::ResetClass() {
-  CHECK(!dalvik_system_ClassExt_.IsNull());
-  dalvik_system_ClassExt_ = GcRoot<Class>(nullptr);
-}
-
-void ClassExt::VisitRoots(RootVisitor* visitor) {
-  dalvik_system_ClassExt_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
 }
 
 }  // namespace mirror
