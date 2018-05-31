@@ -25,10 +25,10 @@ if [[ -e ${SCRIPT_DIR}/veridex && \
       -e ${SCRIPT_DIR}/hiddenapi-blacklist.txt && \
       -e ${SCRIPT_DIR}/hiddenapi-light-greylist.txt && \
       -e ${SCRIPT_DIR}/hiddenapi-dark-greylist.txt && \
-      -e ${SCRIPT_DIR}/org.apache.http.legacy-stubs.dex && \
-      -e ${SCRIPT_DIR}/system-stubs.dex ]]; then
+      -e ${SCRIPT_DIR}/org.apache.http.legacy-stubs.zip && \
+      -e ${SCRIPT_DIR}/system-stubs.zip ]]; then
   exec ${SCRIPT_DIR}/veridex \
-    --core-stubs=${SCRIPT_DIR}/system-stubs.dex:${SCRIPT_DIR}/org.apache.http.legacy-stubs.dex \
+    --core-stubs=${SCRIPT_DIR}/system-stubs.zip:${SCRIPT_DIR}/org.apache.http.legacy-stubs.zip \
     --blacklist=${SCRIPT_DIR}/hiddenapi-blacklist.txt \
     --light-greylist=${SCRIPT_DIR}/hiddenapi-light-greylist.txt \
     --dark-greylist=${SCRIPT_DIR}/hiddenapi-dark-greylist.txt \
