@@ -88,6 +88,7 @@ class DexAnalyze {
     bool run_dex_file_verifier_ = true;
     bool dump_per_input_dex_ = false;
     bool exp_count_indices_ = false;
+    bool exp_code_metrics_ = false;
     bool exp_analyze_strings_ = false;
     bool run_all_experiments_ = false;
     std::vector<std::string> filenames_;
@@ -101,6 +102,9 @@ class DexAnalyze {
       }
       if (options->run_all_experiments_ || options->exp_analyze_strings_) {
         experiments_.emplace_back(new AnalyzeStrings);
+      }
+      if (options->run_all_experiments_ || options->exp_code_metrics_) {
+        experiments_.emplace_back(new CodeMetrics);
       }
     }
 
