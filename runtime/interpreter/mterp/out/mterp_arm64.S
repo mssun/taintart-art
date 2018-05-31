@@ -429,6 +429,8 @@ ENTRY ExecuteMterpImpl
 
 /* File: arm64/instruction_start.S */
 
+    .type artMterpAsmInstructionStart, #object
+    .hidden artMterpAsmInstructionStart
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
     .text
@@ -7078,6 +7080,8 @@ artMterpAsmInstructionStart = .L_op_nop
     .balign 128
 /* File: arm64/instruction_end.S */
 
+    .type artMterpAsmInstructionEnd, #object
+    .hidden artMterpAsmInstructionEnd
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
 
@@ -7089,6 +7093,8 @@ artMterpAsmInstructionEnd:
  */
 /* File: arm64/instruction_start_sister.S */
 
+    .type artMterpAsmSisterStart, #object
+    .hidden artMterpAsmSisterStart
     .global artMterpAsmSisterStart
     .text
     .balign 4
@@ -7096,6 +7102,8 @@ artMterpAsmSisterStart:
 
 /* File: arm64/instruction_end_sister.S */
 
+    .type artMterpAsmSisterEnd, #object
+    .hidden artMterpAsmSisterEnd
     .global artMterpAsmSisterEnd
 artMterpAsmSisterEnd:
 
@@ -7409,6 +7417,8 @@ MterpProfileActive:
 
 /* File: arm64/instruction_start_alt.S */
 
+    .type artMterpAsmAltInstructionStart, #object
+    .hidden artMterpAsmAltInstructionStart
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
@@ -11768,6 +11778,8 @@ artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .balign 128
 /* File: arm64/instruction_end_alt.S */
 
+    .type artMterpAsmAltInstructionEnd, #object
+    .hidden artMterpAsmAltInstructionEnd
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
 

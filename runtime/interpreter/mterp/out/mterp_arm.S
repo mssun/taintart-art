@@ -398,6 +398,8 @@ ENTRY ExecuteMterpImpl
 
 /* File: arm/instruction_start.S */
 
+    .type artMterpAsmInstructionStart, #object
+    .hidden artMterpAsmInstructionStart
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
     .text
@@ -7512,6 +7514,8 @@ constvalop_long_to_double:
     .balign 128
 /* File: arm/instruction_end.S */
 
+    .type artMterpAsmInstructionEnd, #object
+    .hidden artMterpAsmInstructionEnd
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
 
@@ -7523,6 +7527,8 @@ artMterpAsmInstructionEnd:
  */
 /* File: arm/instruction_start_sister.S */
 
+    .type artMterpAsmSisterStart, #object
+    .hidden artMterpAsmSisterStart
     .global artMterpAsmSisterStart
     .text
     .balign 4
@@ -7592,11 +7598,15 @@ d2l_maybeNaN:
     bx      lr                          @ return 0 for NaN
 /* File: arm/instruction_end_sister.S */
 
+    .type artMterpAsmSisterEnd, #object
+    .hidden artMterpAsmSisterEnd
     .global artMterpAsmSisterEnd
 artMterpAsmSisterEnd:
 
 /* File: arm/instruction_start_alt.S */
 
+    .type artMterpAsmAltInstructionStart, #object
+    .hidden artMterpAsmAltInstructionStart
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
@@ -11956,6 +11966,8 @@ artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .balign 128
 /* File: arm/instruction_end_alt.S */
 
+    .type artMterpAsmAltInstructionEnd, #object
+    .hidden artMterpAsmAltInstructionEnd
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
 
