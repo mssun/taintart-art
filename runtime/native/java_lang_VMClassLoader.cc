@@ -86,7 +86,7 @@ static jclass VMClassLoader_findLoadedClass(JNIEnv* env, jclass, jobject javaLoa
   }
   // If class is erroneous, throw the earlier failure, wrapped in certain cases. See b/28787733.
   if (c != nullptr && c->IsErroneous()) {
-    cl->ThrowEarlierClassFailure(c.Ptr());
+    cl->ThrowEarlierClassFailure(c);
     Thread* self = soa.Self();
     ObjPtr<mirror::Class> iae_class =
         self->DecodeJObject(WellKnownClasses::java_lang_IllegalAccessError)->AsClass();

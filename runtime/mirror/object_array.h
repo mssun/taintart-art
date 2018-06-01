@@ -31,15 +31,15 @@ class MANAGED ObjectArray: public Array {
     return Array::ClassSize(pointer_size);
   }
 
-  static ObjectArray<T>* Alloc(Thread* self,
-                               ObjPtr<Class> object_array_class,
-                               int32_t length,
-                               gc::AllocatorType allocator_type)
+  static ObjPtr<ObjectArray<T>> Alloc(Thread* self,
+                                      ObjPtr<Class> object_array_class,
+                                      int32_t length,
+                                      gc::AllocatorType allocator_type)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static ObjectArray<T>* Alloc(Thread* self,
-                               ObjPtr<Class> object_array_class,
-                               int32_t length)
+  static ObjPtr<ObjectArray<T>> Alloc(Thread* self,
+                                      ObjPtr<Class> object_array_class,
+                                      int32_t length)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
@@ -99,7 +99,7 @@ class MANAGED ObjectArray: public Array {
                                 bool throw_exception)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ObjectArray<T>* CopyOf(Thread* self, int32_t new_length)
+  ObjPtr<ObjectArray<T>> CopyOf(Thread* self, int32_t new_length)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 

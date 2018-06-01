@@ -781,7 +781,7 @@ class MANAGED Class FINAL : public Object {
 
   ALWAYS_INLINE PointerArray* GetVTableDuringLinking() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void SetVTable(PointerArray* new_vtable) REQUIRES_SHARED(Locks::mutator_lock_);
+  void SetVTable(ObjPtr<PointerArray> new_vtable) REQUIRES_SHARED(Locks::mutator_lock_);
 
   static MemberOffset VTableOffset() {
     return OFFSET_OF_OBJECT_MEMBER(Class, vtable_);

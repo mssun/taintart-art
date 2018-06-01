@@ -243,7 +243,7 @@ class ArgArray {
         // we've seen cases where it's not b/34440020.
         ObjPtr<mirror::Class> dst_class(
             m->ResolveClassFromTypeIndex(classes->GetTypeItem(args_offset).type_idx_));
-        if (dst_class.Ptr() == nullptr) {
+        if (dst_class == nullptr) {
           CHECK(self->IsExceptionPending());
           return false;
         }

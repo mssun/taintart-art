@@ -69,7 +69,7 @@ static jobjectArray Method_getExceptionTypes(JNIEnv* env, jobject javaMethod) {
       // Return an empty array instead of a null pointer
       ObjPtr<mirror::Class> class_array_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>();
       DCHECK(class_array_class != nullptr);
-      mirror::ObjectArray<mirror::Class>* empty_array =
+      ObjPtr<mirror::ObjectArray<mirror::Class>> empty_array =
           mirror::ObjectArray<mirror::Class>::Alloc(soa.Self(), class_array_class, 0);
       return soa.AddLocalReference<jobjectArray>(empty_array);
     } else {
