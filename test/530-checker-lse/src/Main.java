@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import java.lang.reflect.Method;
+
 class Circle {
   Circle(double radius) {
     this.radius = radius;
@@ -165,51 +167,6 @@ public class Main {
     obj2.i = 3;
     obj2.j = 4;
     return obj.i + obj1.j + obj2.i + obj2.j;
-  }
-
-  /// CHECK-START: int Main.test4(TestClass, boolean) load_store_elimination (before)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: Return
-  /// CHECK: InstanceFieldSet
-
-  /// CHECK-START: int Main.test4(TestClass, boolean) load_store_elimination (after)
-  /// CHECK: InstanceFieldSet
-  /// CHECK-NOT: NullCheck
-  /// CHECK-NOT: InstanceFieldGet
-  /// CHECK: Return
-  /// CHECK: InstanceFieldSet
-
-  // Set and merge the same value in two branches.
-  static int test4(TestClass obj, boolean b) {
-    if (b) {
-      obj.i = 1;
-    } else {
-      obj.i = 1;
-    }
-    return obj.i;
-  }
-
-  /// CHECK-START: int Main.test5(TestClass, boolean) load_store_elimination (before)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: Return
-  /// CHECK: InstanceFieldSet
-
-  /// CHECK-START: int Main.test5(TestClass, boolean) load_store_elimination (after)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: Return
-  /// CHECK: InstanceFieldSet
-
-  // Set and merge different values in two branches.
-  static int test5(TestClass obj, boolean b) {
-    if (b) {
-      obj.i = 1;
-    } else {
-      obj.i = 2;
-    }
-    return obj.i;
   }
 
   /// CHECK-START: int Main.test6(TestClass, TestClass, boolean) load_store_elimination (before)
@@ -555,66 +512,6 @@ public class Main {
     obj3.i = 5;    // This store can be eliminated since the singleton is created after the loop.
     sum += obj1.i + obj3.i;
     return sum;
-  }
-
-  /// CHECK-START: int Main.test23(boolean) load_store_elimination (before)
-  /// CHECK: NewInstance
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: Return
-  /// CHECK: InstanceFieldGet
-  /// CHECK: InstanceFieldSet
-
-  /// CHECK-START: int Main.test23(boolean) load_store_elimination (after)
-  /// CHECK: NewInstance
-  /// CHECK-NOT: InstanceFieldSet
-  /// CHECK-NOT: InstanceFieldGet
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: Return
-  /// CHECK-NOT: InstanceFieldGet
-  /// CHECK: InstanceFieldSet
-
-  // Test store elimination on merging.
-  static int test23(boolean b) {
-    TestClass obj = new TestClass();
-    obj.i = 3;      // This store can be eliminated since the value flows into each branch.
-    if (b) {
-      obj.i += 1;   // This store cannot be eliminated due to the merge later.
-    } else {
-      obj.i += 2;   // This store cannot be eliminated due to the merge later.
-    }
-    return obj.i;
-  }
-
-  /// CHECK-START: float Main.test24() load_store_elimination (before)
-  /// CHECK-DAG:     <<True:i\d+>>     IntConstant 1
-  /// CHECK-DAG:     <<Float8:f\d+>>   FloatConstant 8
-  /// CHECK-DAG:     <<Float42:f\d+>>  FloatConstant 42
-  /// CHECK-DAG:     <<Obj:l\d+>>      NewInstance
-  /// CHECK-DAG:                       InstanceFieldSet [<<Obj>>,<<True>>]
-  /// CHECK-DAG:                       InstanceFieldSet [<<Obj>>,<<Float8>>]
-  /// CHECK-DAG:     <<GetTest:z\d+>>  InstanceFieldGet [<<Obj>>]
-  /// CHECK-DAG:     <<GetField:f\d+>> InstanceFieldGet [<<Obj>>]
-  /// CHECK-DAG:     <<Select:f\d+>>   Select [<<Float42>>,<<GetField>>,<<GetTest>>]
-  /// CHECK-DAG:                       Return [<<Select>>]
-
-  /// CHECK-START: float Main.test24() load_store_elimination (after)
-  /// CHECK-DAG:     <<True:i\d+>>     IntConstant 1
-  /// CHECK-DAG:     <<Float8:f\d+>>   FloatConstant 8
-  /// CHECK-DAG:     <<Float42:f\d+>>  FloatConstant 42
-  /// CHECK-DAG:     <<Select:f\d+>>   Select [<<Float42>>,<<Float8>>,<<True>>]
-  /// CHECK-DAG:                       Return [<<Select>>]
-
-  static float test24() {
-    float a = 42.0f;
-    TestClass3 obj = new TestClass3();
-    if (obj.test1) {
-      a = obj.floatField;
-    }
-    return a;
   }
 
   /// CHECK-START: void Main.testFinalizable() load_store_elimination (before)
@@ -1275,7 +1172,14 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
+
+    Class main2 = Class.forName("Main2");
+    Method test4 = main2.getMethod("test4", TestClass.class, boolean.class);
+    Method test5 = main2.getMethod("test5", TestClass.class, boolean.class);
+    Method test23 = main2.getMethod("test23", boolean.class);
+    Method test24 = main2.getMethod("test24");
+
     assertDoubleEquals(Math.PI * Math.PI * Math.PI, calcCircleArea(Math.PI));
     assertIntEquals(test1(new TestClass(), new TestClass()), 3);
     assertIntEquals(test2(new TestClass()), 1);
@@ -1283,10 +1187,10 @@ public class Main {
     TestClass obj2 = new TestClass();
     obj1.next = obj2;
     assertIntEquals(test3(obj1), 10);
-    assertIntEquals(test4(new TestClass(), true), 1);
-    assertIntEquals(test4(new TestClass(), false), 1);
-    assertIntEquals(test5(new TestClass(), true), 1);
-    assertIntEquals(test5(new TestClass(), false), 2);
+    assertIntEquals((int)test4.invoke(null, new TestClass(), true), 1);
+    assertIntEquals((int)test4.invoke(null, new TestClass(), false), 1);
+    assertIntEquals((int)test5.invoke(null, new TestClass(), true), 1);
+    assertIntEquals((int)test5.invoke(null, new TestClass(), false), 2);
     assertIntEquals(test6(new TestClass(), new TestClass(), true), 4);
     assertIntEquals(test6(new TestClass(), new TestClass(), false), 2);
     assertIntEquals(test7(new TestClass()), 1);
@@ -1312,9 +1216,9 @@ public class Main {
     assertFloatEquals(test20().i, 0);
     test21(new TestClass());
     assertIntEquals(test22(), 13);
-    assertIntEquals(test23(true), 4);
-    assertIntEquals(test23(false), 5);
-    assertFloatEquals(test24(), 8.0f);
+    assertIntEquals((int)test23.invoke(null, true), 4);
+    assertIntEquals((int)test23.invoke(null, false), 5);
+    assertFloatEquals((float)test24.invoke(null), 8.0f);
     testFinalizableByForcingGc();
     assertIntEquals($noinline$testHSelect(true), 0xdead);
     int[] array = {2, 5, 9, -1, -3, 10, 8, 4};
