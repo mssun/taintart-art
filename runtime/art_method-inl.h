@@ -324,7 +324,7 @@ inline mirror::ClassLoader* ArtMethod::GetClassLoader() {
 template <ReadBarrierOption kReadBarrierOption>
 inline mirror::DexCache* ArtMethod::GetDexCache() {
   if (LIKELY(!IsObsolete<kReadBarrierOption>())) {
-    mirror::Class* klass = GetDeclaringClass<kReadBarrierOption>();
+    ObjPtr<mirror::Class> klass = GetDeclaringClass<kReadBarrierOption>();
     return klass->GetDexCache<kDefaultVerifyFlags, kReadBarrierOption>();
   } else {
     DCHECK(!IsProxyMethod());
