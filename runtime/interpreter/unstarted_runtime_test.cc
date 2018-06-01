@@ -448,8 +448,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTestExceptions) {
   // Note: all tests are not GC safe. Assume there's no GC running here with the few objects we
   //       allocate.
   StackHandleScope<3> hs_misc(self);
-  Handle<mirror::Class> object_class(
-      hs_misc.NewHandle(mirror::Class::GetJavaLangClass()->GetSuperClass()));
+  Handle<mirror::Class> object_class(hs_misc.NewHandle(GetClassRoot<mirror::Object>()));
 
   StackHandleScope<3> hs_data(self);
   hs_data.NewHandle(mirror::String::AllocFromModifiedUtf8(self, "1"));
@@ -481,8 +480,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
   ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
 
   StackHandleScope<1> hs_object(self);
-  Handle<mirror::Class> object_class(
-      hs_object.NewHandle(mirror::Class::GetJavaLangClass()->GetSuperClass()));
+  Handle<mirror::Class> object_class(hs_object.NewHandle(GetClassRoot<mirror::Object>()));
 
   // Simple test:
   // [1,2,3]{1 @ 2} into [4,5,6] = [4,2,6]
@@ -902,7 +900,7 @@ TEST_F(UnstartedRuntimeTest, IsAnonymousClass) {
   JValue result;
   ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
 
-  ObjPtr<mirror::Class> class_klass = mirror::Class::GetJavaLangClass();
+  ObjPtr<mirror::Class> class_klass = GetClassRoot<mirror::Class>();
   shadow_frame->SetVRegReference(0, class_klass);
   UnstartedClassIsAnonymousClass(self, shadow_frame, &result, 0);
   EXPECT_EQ(result.GetZ(), 0);
@@ -996,7 +994,7 @@ TEST_F(UnstartedRuntimeTest, ThreadLocalGet) {
 
   {
     // Just use a method in Class.
-    ObjPtr<mirror::Class> class_class = mirror::Class::GetJavaLangClass();
+    ObjPtr<mirror::Class> class_class = GetClassRoot<mirror::Class>();
     ArtMethod* caller_method =
         &*class_class->GetDeclaredMethods(class_linker->GetImagePointerSize()).begin();
     ShadowFrame* caller_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, caller_method, 0);
@@ -1111,7 +1109,7 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
     {
       ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
       StackHandleScope<1> hs(self);
-      Handle<mirror::Class> h_class = hs.NewHandle(mirror::Class::GetJavaLangClass());
+      Handle<mirror::Class> h_class = hs.NewHandle(GetClassRoot<mirror::Class>());
       CHECK(class_linker->EnsureInitialized(self, h_class, true, true));
     }
 

@@ -1976,10 +1976,6 @@ mirror::Throwable* Runtime::GetPreAllocatedNoClassDefFoundError() {
 }
 
 void Runtime::VisitConstantRoots(RootVisitor* visitor) {
-  // Visit the classes held as static in mirror classes, these can be visited concurrently and only
-  // need to be visited once per GC since they never change.
-  mirror::Class::VisitRoots(visitor);
-  mirror::ClassExt::VisitRoots(visitor);
   // Visiting the roots of these ArtMethods is not currently required since all the GcRoots are
   // null.
   BufferedRootVisitor<16> buffered_visitor(visitor, RootInfo(kRootVMInternal));
