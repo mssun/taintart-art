@@ -362,6 +362,12 @@
     },
     {
         "test_patterns": ["616-cha.*"],
+        "description": ["cha tests rely on knowing the exact set of optimizations available. ",
+                        "Debuggable runtimes change the set of optimizations."],
+        "variant": "debuggable"
+    },
+    {
+        "test_patterns": ["616-cha.*"],
         "description": ["cha tests rely on knowing more about the state of the JIT then is possible with jvmti-stress"],
         "variant": "jvmti-stress & jit | redefine-stress & jit"
     },
