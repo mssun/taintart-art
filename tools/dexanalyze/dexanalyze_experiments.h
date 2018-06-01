@@ -51,6 +51,32 @@ class AnalyzeStrings : public Experiment {
   int64_t total_num_prefixes_ = 0u;
 };
 
+// Analyze debug info sizes.
+class AnalyzeDebugInfo  : public Experiment {
+ public:
+  void ProcessDexFile(const DexFile& dex_file);
+  void Dump(std::ostream& os, uint64_t total_size) const;
+
+ private:
+  int64_t total_bytes_ = 0u;
+  int64_t total_entropy_ = 0u;
+  int64_t total_opcode_bytes_ = 0u;
+  int64_t total_opcode_entropy_ = 0u;
+  int64_t total_non_header_bytes_ = 0u;
+  int64_t total_unique_non_header_bytes_ = 0u;
+  // Opcode and related data.
+  int64_t total_end_seq_bytes_ = 0u;
+  int64_t total_advance_pc_bytes_ = 0u;
+  int64_t total_advance_line_bytes_ = 0u;
+  int64_t total_start_local_bytes_ = 0u;
+  int64_t total_start_local_extended_bytes_ = 0u;
+  int64_t total_end_local_bytes_ = 0u;
+  int64_t total_restart_local_bytes_ = 0u;
+  int64_t total_epilogue_bytes_ = 0u;
+  int64_t total_set_file_bytes_ = 0u;
+  int64_t total_other_bytes_ = 0u;
+};
+
 // Count numbers of dex indices.
 class CountDexIndices : public Experiment {
  public:
