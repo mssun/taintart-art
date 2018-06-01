@@ -958,12 +958,9 @@ static bool GetArgumentForBootstrapMethod(Thread* self,
       return true;
     }
     case EncodedArrayValueIterator::ValueType::kType: {
-      StackHandleScope<2> hs(self);
-      Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
-      Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
       dex::TypeIndex index(static_cast<uint32_t>(encoded_value->GetI()));
       ClassLinker* cl = Runtime::Current()->GetClassLinker();
-      ObjPtr<mirror::Class> o = cl->ResolveType(index, dex_cache, class_loader);
+      ObjPtr<mirror::Class> o = cl->ResolveType(index, referrer);
       if (UNLIKELY(o.IsNull())) {
         DCHECK(self->IsExceptionPending());
         return false;
