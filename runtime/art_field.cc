@@ -52,13 +52,6 @@ ObjPtr<mirror::Class> ArtField::ProxyFindSystemClass(const char* descriptor) {
   return klass;
 }
 
-ObjPtr<mirror::String> ArtField::ResolveGetStringName(Thread* self,
-                                                      dex::StringIndex string_idx,
-                                                      ObjPtr<mirror::DexCache> dex_cache) {
-  StackHandleScope<1> hs(self);
-  return Runtime::Current()->GetClassLinker()->ResolveString(string_idx, hs.NewHandle(dex_cache));
-}
-
 std::string ArtField::PrettyField(ArtField* f, bool with_type) {
   if (f == nullptr) {
     return "null";

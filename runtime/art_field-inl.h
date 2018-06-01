@@ -21,7 +21,7 @@
 
 #include <android-base/logging.h>
 
-#include "class_linker.h"
+#include "class_linker-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/primitive.h"
 #include "gc/accounting/card_table-inl.h"
@@ -339,16 +339,11 @@ inline const DexFile* ArtField::GetDexFile() REQUIRES_SHARED(Locks::mutator_lock
   return GetDexCache<kWithoutReadBarrier>()->GetDexFile();
 }
 
-inline ObjPtr<mirror::String> ArtField::GetStringName(Thread* self, bool resolve) {
-  auto dex_field_index = GetDexFieldIndex();
+inline ObjPtr<mirror::String> ArtField::ResolveNameString() {
+  uint32_t dex_field_index = GetDexFieldIndex();
   CHECK_NE(dex_field_index, dex::kDexNoIndex);
-  ObjPtr<mirror::DexCache> dex_cache = GetDexCache();
-  const DexFile::FieldId& field_id = dex_cache->GetDexFile()->GetFieldId(dex_field_index);
-  ObjPtr<mirror::String> name = dex_cache->GetResolvedString(field_id.name_idx_);
-  if (resolve && name == nullptr) {
-    name = ResolveGetStringName(self, field_id.name_idx_, dex_cache);
-  }
-  return name;
+  const DexFile::FieldId& field_id = GetDexFile()->GetFieldId(dex_field_index);
+  return Runtime::Current()->GetClassLinker()->ResolveString(field_id.name_idx_, this);
 }
 
 template <typename Visitor>

@@ -142,16 +142,6 @@ uint16_t ArtMethod::FindObsoleteDexClassDefIndex() {
   return dex_file->GetIndexForClassDef(*class_def);
 }
 
-ObjPtr<mirror::String> ArtMethod::GetNameAsString(Thread* self) {
-  CHECK(!IsProxyMethod());
-  StackHandleScope<1> hs(self);
-  Handle<mirror::DexCache> dex_cache(hs.NewHandle(GetDexCache()));
-  auto* dex_file = dex_cache->GetDexFile();
-  uint32_t dex_method_idx = GetDexMethodIndex();
-  const DexFile::MethodId& method_id = dex_file->GetMethodId(dex_method_idx);
-  return Runtime::Current()->GetClassLinker()->ResolveString(method_id.name_idx_, dex_cache);
-}
-
 void ArtMethod::ThrowInvocationTimeError() {
   DCHECK(!IsInvokable());
   // NOTE: IsDefaultConflicting must be first since the actual method might or might not be abstract

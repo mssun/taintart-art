@@ -201,8 +201,7 @@ class ArtField FINAL {
   const char* GetName() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Resolves / returns the name from the dex cache.
-  ObjPtr<mirror::String> GetStringName(Thread* self, bool resolve)
-      REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::String> ResolveNameString() REQUIRES_SHARED(Locks::mutator_lock_);
 
   const char* GetTypeDescriptor() REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -240,10 +239,6 @@ class ArtField FINAL {
   bool IsProxyField() REQUIRES_SHARED(Locks::mutator_lock_);
 
   ObjPtr<mirror::Class> ProxyFindSystemClass(const char* descriptor)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  ObjPtr<mirror::String> ResolveGetStringName(Thread* self,
-                                              dex::StringIndex string_idx,
-                                              ObjPtr<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void GetAccessFlagsDCheck() REQUIRES_SHARED(Locks::mutator_lock_);

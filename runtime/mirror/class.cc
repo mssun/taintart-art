@@ -1269,7 +1269,7 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal(
   for (auto& m : h_klass->GetDeclaredVirtualMethods(kPointerSize)) {
     auto* np_method = m.GetInterfaceMethodIfProxy(kPointerSize);
     // May cause thread suspension.
-    ObjPtr<String> np_name = np_method->GetNameAsString(self);
+    ObjPtr<String> np_name = np_method->ResolveNameString();
     if (!np_name->Equals(h_method_name.Get()) || !np_method->EqualParameters(h_args)) {
       if (UNLIKELY(self->IsExceptionPending())) {
         return nullptr;
@@ -1291,7 +1291,7 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal(
       }
       auto* np_method = m.GetInterfaceMethodIfProxy(kPointerSize);
       // May cause thread suspension.
-      ObjPtr<String> np_name = np_method->GetNameAsString(self);
+      ObjPtr<String> np_name = np_method->ResolveNameString();
       if (np_name == nullptr) {
         self->AssertPendingException();
         return nullptr;

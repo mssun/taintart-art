@@ -290,7 +290,7 @@ TEST_F(ReferenceTableTest, SummaryOrder) {
   }
 
   {
-    // Differently sized byte arrays. Should be sorted by identical (non-unique cound).
+    // Differently sized byte arrays. Should be sorted by identical (non-unique count).
     StackHandleScope<1> hs(soa.Self());
     Handle<mirror::ByteArray> b1_1 = hs.NewHandle(mirror::ByteArray::Alloc(soa.Self(), 1));
     rt.Add(b1_1.Get());
