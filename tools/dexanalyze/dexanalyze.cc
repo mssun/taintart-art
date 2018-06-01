@@ -49,6 +49,8 @@ class DexAnalyze {
         << "Usage " << argv[0] << " [options] <dex files>\n"
         << "    [options] is a combination of the following\n"
         << "    -count_indices (Count dex indices accessed from code items)\n"
+        << "    -analyze-strings (Analyze string data)\n"
+        << "    -analyze-debug-info (Analyze debug info)\n"
         << "    -i (Ignore Dex checksum and verification failures)\n"
         << "    -a (Run all experiments)\n"
         << "    -d (Dump on per DEX basis)\n";
@@ -69,6 +71,8 @@ class DexAnalyze {
           exp_count_indices_ = true;
         } else if (arg == "-analyze-strings") {
           exp_analyze_strings_ = true;
+        } else if (arg == "-analyze-debug-info") {
+          exp_debug_info_ = true;
         } else if (arg == "-d") {
           dump_per_input_dex_ = true;
         } else if (!arg.empty() && arg[0] == '-') {
@@ -90,6 +94,7 @@ class DexAnalyze {
     bool exp_count_indices_ = false;
     bool exp_code_metrics_ = false;
     bool exp_analyze_strings_ = false;
+    bool exp_debug_info_ = false;
     bool run_all_experiments_ = false;
     std::vector<std::string> filenames_;
   };
@@ -106,6 +111,9 @@ class DexAnalyze {
       if (options->run_all_experiments_ || options->exp_code_metrics_) {
         experiments_.emplace_back(new CodeMetrics);
       }
+      if (options->run_all_experiments_ || options->exp_debug_info_) {
+        experiments_.emplace_back(new AnalyzeDebugInfo);
+      }
     }
 
     bool ProcessDexFile(const DexFile& dex_file) {
@@ -120,6 +128,7 @@ class DexAnalyze {
     void Dump(std::ostream& os) {
       for (std::unique_ptr<Experiment>& experiment : experiments_) {
         experiment->Dump(os, total_size_);
+        os << "\n";
       }
     }
 
