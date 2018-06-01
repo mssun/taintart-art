@@ -430,6 +430,7 @@ ExecuteMterpImpl:
 
     /* NOTE: no fallthrough */
 
+/* File: mips64/instruction_start.S */
 
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
@@ -7299,26 +7300,35 @@ artMterpAsmInstructionStart = .L_op_nop
 
 
     .balign 128
+/* File: mips64/instruction_end.S */
+
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
+
 
 /*
  * ===========================================================================
  *  Sister implementations
  * ===========================================================================
  */
+/* File: mips64/instruction_start_sister.S */
+
     .global artMterpAsmSisterStart
     .text
     .balign 4
 artMterpAsmSisterStart:
+
+/* File: mips64/instruction_end_sister.S */
+
     .global artMterpAsmSisterEnd
 artMterpAsmSisterEnd:
 
+/* File: mips64/instruction_start_alt.S */
 
     .global artMterpAsmAltInstructionStart
+artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
 
-artMterpAsmAltInstructionStart = .L_ALT_op_nop
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */
@@ -12184,8 +12194,11 @@ artMterpAsmAltInstructionStart = .L_ALT_op_nop
     jalr    zero, t9                            # (self, shadow_frame, dex_pc_ptr) Note: tail call.
 
     .balign 128
+/* File: mips64/instruction_end_alt.S */
+
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
+
 /* File: mips64/footer.S */
 /*
  * We've detected a condition that will result in an exception, but the exception
