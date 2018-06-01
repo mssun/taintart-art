@@ -38,18 +38,27 @@ TEST_F(ClassAccessorTest, TestVisiting) {
       auto fields = accessor.GetFields();
       auto method_it = methods.begin();
       auto field_it = fields.begin();
+      auto instance_fields = accessor.GetInstanceFields();
+      auto instance_field_it = instance_fields.begin();
       accessor.VisitFieldsAndMethods(
           // Static fields.
           [&](const ClassAccessor::Field& field) {
+            EXPECT_TRUE(field.IsStatic());
+            EXPECT_TRUE(field_it->IsStatic());
             EXPECT_EQ(field.GetIndex(), field_it->GetIndex());
             EXPECT_EQ(field.GetAccessFlags(), field_it->GetAccessFlags());
             ++field_it;
           },
           // Instance fields.
           [&](const ClassAccessor::Field& field) {
+            EXPECT_FALSE(field.IsStatic());
+            EXPECT_FALSE(field_it->IsStatic());
             EXPECT_EQ(field.GetIndex(), field_it->GetIndex());
             EXPECT_EQ(field.GetAccessFlags(), field_it->GetAccessFlags());
+            EXPECT_EQ(field.GetIndex(), instance_field_it->GetIndex());
+            EXPECT_EQ(field.GetAccessFlags(), instance_field_it->GetAccessFlags());
             ++field_it;
+            ++instance_field_it;
           },
           // Direct methods.
           [&](const ClassAccessor::Method& method) {
@@ -71,6 +80,7 @@ TEST_F(ClassAccessorTest, TestVisiting) {
           });
       ASSERT_TRUE(field_it == fields.end());
       ASSERT_TRUE(method_it == methods.end());
+      ASSERT_TRUE(instance_field_it == instance_fields.end());
     }
     EXPECT_EQ(class_def_idx, dex_file->NumClassDefs());
   }

@@ -32,6 +32,7 @@ extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #include "class_linker-inl.h"
 #include "common_throws.h"
 #include "debugger.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_types.h"
 #include "gc/accounting/card_table-inl.h"
@@ -573,30 +574,12 @@ static void VMRuntime_preloadDexCaches(JNIEnv* env, jobject) {
     }
 
     if (kPreloadDexCachesFieldsAndMethods) {
-      for (size_t class_def_index = 0;
-           class_def_index < dex_file->NumClassDefs();
-           class_def_index++) {
-        const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
-        const uint8_t* class_data = dex_file->GetClassData(class_def);
-        if (class_data == nullptr) {
-          continue;
+      for (ClassAccessor accessor : dex_file->GetClasses()) {
+        for (const ClassAccessor::Field& field : accessor.GetFields()) {
+          PreloadDexCachesResolveField(dex_cache, field.GetIndex(), field.IsStatic());
         }
-        ClassDataItemIterator it(*dex_file, class_data);
-        for (; it.HasNextStaticField(); it.Next()) {
-          uint32_t field_idx = it.GetMemberIndex();
-          PreloadDexCachesResolveField(dex_cache, field_idx, true);
-        }
-        for (; it.HasNextInstanceField(); it.Next()) {
-          uint32_t field_idx = it.GetMemberIndex();
-          PreloadDexCachesResolveField(dex_cache, field_idx, false);
-        }
-        for (; it.HasNextDirectMethod(); it.Next()) {
-          uint32_t method_idx = it.GetMemberIndex();
-          PreloadDexCachesResolveMethod(dex_cache, method_idx);
-        }
-        for (; it.HasNextVirtualMethod(); it.Next()) {
-          uint32_t method_idx = it.GetMemberIndex();
-          PreloadDexCachesResolveMethod(dex_cache, method_idx);
+        for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+          PreloadDexCachesResolveMethod(dex_cache, method.GetIndex());
         }
       }
     }

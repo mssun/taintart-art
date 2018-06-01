@@ -28,6 +28,7 @@
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "dex/hidden_api_access_flags.h"
@@ -283,30 +284,25 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
   std::unordered_set<const DexFile::CodeItem*> unquickened_code_item;
   CompactOffsetTable::Accessor accessor(GetQuickenInfoOffsetTable(source_dex_begin,
                                                                   quickening_info));
-  for (uint32_t i = 0; i < target_dex_file.NumClassDefs(); ++i) {
-    const DexFile::ClassDef& class_def = target_dex_file.GetClassDef(i);
-    const uint8_t* class_data = target_dex_file.GetClassData(class_def);
-    if (class_data != nullptr) {
-      for (ClassDataItemIterator class_it(target_dex_file, class_data);
-           class_it.HasNext();
-           class_it.Next()) {
-        if (class_it.IsAtMethod()) {
-          const DexFile::CodeItem* code_item = class_it.GetMethodCodeItem();
-          if (code_item != nullptr && unquickened_code_item.emplace(code_item).second) {
-            const uint32_t offset = accessor.GetOffset(class_it.GetMemberIndex());
-            // Offset being 0 means not quickened.
-            if (offset != 0u) {
-              ArrayRef<const uint8_t> quicken_data = GetQuickeningInfoAt(quickening_info, offset);
-              optimizer::ArtDecompileDEX(
-                  target_dex_file,
-                  *code_item,
-                  quicken_data,
-                  decompile_return_instruction);
-            }
-          }
+  for (ClassAccessor class_accessor : target_dex_file.GetClasses()) {
+    for (const ClassAccessor::Method& method : class_accessor.GetMethods()) {
+      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      if (code_item != nullptr && unquickened_code_item.emplace(code_item).second) {
+        const uint32_t offset = accessor.GetOffset(method.GetIndex());
+        // Offset being 0 means not quickened.
+        if (offset != 0u) {
+          ArrayRef<const uint8_t> quicken_data = GetQuickeningInfoAt(quickening_info, offset);
+          optimizer::ArtDecompileDEX(
+              target_dex_file,
+              *code_item,
+              quicken_data,
+              decompile_return_instruction);
         }
-        DexFile::UnHideAccessFlags(class_it);
+        method.UnHideAccessFlags();
       }
+    }
+    for (const ClassAccessor::Field& field : class_accessor.GetFields()) {
+      field.UnHideAccessFlags();
     }
   }
 }
