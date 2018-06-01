@@ -68,6 +68,8 @@ using MethodDexCachePair = NativeDexCachePair<ArtMethod>;
 using MethodDexCacheType = std::atomic<MethodDexCachePair>;
 }  // namespace mirror
 
+class ArtField;
+class ArtMethod;
 class ClassHierarchyAnalysis;
 enum class ClassRoot : uint32_t;
 class ClassTable;
@@ -220,10 +222,9 @@ class ClassLinker {
   ObjPtr<mirror::Class> ResolveType(dex::TypeIndex type_idx, ObjPtr<mirror::Class> referrer)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
-
-  // Resolve a type with the given index from the DexFile associated with the given `referrer`,
-  // storing the result in the DexCache. The `referrer` is used to identify the target DexCache
-  // and ClassLoader to use for resolution.
+  ObjPtr<mirror::Class> ResolveType(dex::TypeIndex type_idx, ArtField* referrer)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
   ObjPtr<mirror::Class> ResolveType(dex::TypeIndex type_idx, ArtMethod* referrer)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
@@ -243,10 +244,8 @@ class ClassLinker {
   ObjPtr<mirror::Class> LookupResolvedType(dex::TypeIndex type_idx,
                                            ObjPtr<mirror::Class> referrer)
       REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // Look up a resolved type with the given index from the DexFile associated with the given
-  // `referrer`, storing the result in the DexCache. The `referrer` is used to identify the
-  // target DexCache and ClassLoader to use for lookup.
+  ObjPtr<mirror::Class> LookupResolvedType(dex::TypeIndex type_idx, ArtField* referrer)
+      REQUIRES_SHARED(Locks::mutator_lock_);
   ObjPtr<mirror::Class> LookupResolvedType(dex::TypeIndex type_idx, ArtMethod* referrer)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -875,11 +874,18 @@ class ClassLinker {
 
   // Implementation of LookupResolvedType() called when the type was not found in the dex cache.
   ObjPtr<mirror::Class> DoLookupResolvedType(dex::TypeIndex type_idx,
+                                             ObjPtr<mirror::Class> referrer)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::Class> DoLookupResolvedType(dex::TypeIndex type_idx,
                                              ObjPtr<mirror::DexCache> dex_cache,
                                              ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Implementation of ResolveType() called when the type was not found in the dex cache.
+  ObjPtr<mirror::Class> DoResolveType(dex::TypeIndex type_idx,
+                                      ObjPtr<mirror::Class> referrer)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
   ObjPtr<mirror::Class> DoResolveType(dex::TypeIndex type_idx,
                                       Handle<mirror::DexCache> dex_cache,
                                       Handle<mirror::ClassLoader> class_loader)

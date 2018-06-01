@@ -7693,6 +7693,11 @@ ObjPtr<mirror::String> ClassLinker::LookupString(dex::StringIndex string_idx,
 }
 
 ObjPtr<mirror::Class> ClassLinker::DoLookupResolvedType(dex::TypeIndex type_idx,
+                                                        ObjPtr<mirror::Class> referrer) {
+  return DoLookupResolvedType(type_idx, referrer->GetDexCache(), referrer->GetClassLoader());
+}
+
+ObjPtr<mirror::Class> ClassLinker::DoLookupResolvedType(dex::TypeIndex type_idx,
                                                         ObjPtr<mirror::DexCache> dex_cache,
                                                         ObjPtr<mirror::ClassLoader> class_loader) {
   const DexFile& dex_file = *dex_cache->GetDexFile();
@@ -7718,6 +7723,14 @@ ObjPtr<mirror::Class> ClassLinker::DoLookupResolvedType(dex::TypeIndex type_idx,
     }
   }
   return type;
+}
+
+ObjPtr<mirror::Class> ClassLinker::DoResolveType(dex::TypeIndex type_idx,
+                                                 ObjPtr<mirror::Class> referrer) {
+  StackHandleScope<2> hs(Thread::Current());
+  Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
+  Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
+  return DoResolveType(type_idx, dex_cache, class_loader);
 }
 
 ObjPtr<mirror::Class> ClassLinker::DoResolveType(dex::TypeIndex type_idx,
