@@ -28,7 +28,7 @@
 #include "class_linker.h"
 #include "dex/dex_file.h"
 #include "gc/heap-inl.h"
-#include "gc_root.h"
+#include "gc_root-inl.h"
 #include "mirror/call_site.h"
 #include "mirror/class.h"
 #include "mirror/method_type.h"

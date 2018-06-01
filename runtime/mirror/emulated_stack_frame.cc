@@ -18,7 +18,6 @@
 
 #include "class-inl.h"
 #include "class_root.h"
-#include "gc_root-inl.h"
 #include "jvalue-inl.h"
 #include "method_handles-inl.h"
 #include "method_handles.h"

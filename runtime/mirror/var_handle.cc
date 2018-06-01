@@ -21,7 +21,6 @@
 #include "class-inl.h"
 #include "class_linker.h"
 #include "class_root.h"
-#include "gc_root-inl.h"
 #include "intrinsics_enum.h"
 #include "jni/jni_internal.h"
 #include "jvalue-inl.h"

@@ -20,7 +20,6 @@
 #include "base/bit_utils.h"
 #include "base/globals.h"
 #include "gc/allocator_type.h"
-#include "gc_root-inl.h"
 #include "class.h"
 #include "object.h"
 

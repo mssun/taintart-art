@@ -436,7 +436,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   Handle<mirror::Class> java_lang_Class(hs.NewHandle(down_cast<mirror::Class*>(
       heap->AllocNonMovableObject<true>(self, nullptr, class_class_size, VoidFunctor()))));
   CHECK(java_lang_Class != nullptr);
-  mirror::Class::SetClassClass(java_lang_Class.Get());
+  java_lang_Class->SetClassFlags(mirror::kClassFlagClass);
   java_lang_Class->SetClass(java_lang_Class.Get());
   if (kUseBakerReadBarrier) {
     java_lang_Class->AssertReadBarrierState();
@@ -554,7 +554,6 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   Handle<mirror::Class> dalvik_system_ClassExt(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(), mirror::ClassExt::ClassSize(image_pointer_size_))));
   SetClassRoot(ClassRoot::kDalvikSystemClassExt, dalvik_system_ClassExt.Get());
-  mirror::ClassExt::SetClass(dalvik_system_ClassExt.Get());
   mirror::Class::SetStatus(dalvik_system_ClassExt, ClassStatus::kResolved, self);
 
   // Set up array classes for string, field, method
@@ -992,7 +991,8 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   class_roots_ = GcRoot<mirror::ObjectArray<mirror::Class>>(
       down_cast<mirror::ObjectArray<mirror::Class>*>(
           spaces[0]->GetImageHeader().GetImageRoot(ImageHeader::kClassRoots)));
-  mirror::Class::SetClassClass(GetClassRoot(ClassRoot::kJavaLangClass, this));
+  DCHECK_EQ(GetClassRoot(ClassRoot::kJavaLangClass, this)->GetClassFlags(),
+            mirror::kClassFlagClass);
 
   ObjPtr<mirror::Class> java_lang_Object = GetClassRoot<mirror::Object>(this);
   java_lang_Object->SetObjectSize(sizeof(mirror::Object));
@@ -1005,8 +1005,6 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   array_iftable_ =
       GcRoot<mirror::IfTable>(GetClassRoot(ClassRoot::kObjectArrayClass, this)->GetIfTable());
   DCHECK_EQ(array_iftable_.Read(), GetClassRoot(ClassRoot::kBooleanArrayClass, this)->GetIfTable());
-  // String class root was set above
-  mirror::ClassExt::SetClass(GetClassRoot(ClassRoot::kDalvikSystemClassExt, this));
 
   for (gc::space::ImageSpace* image_space : spaces) {
     // Boot class loader, use a null handle.
@@ -2083,7 +2081,6 @@ void ClassLinker::VisitClassesWithoutClassesLock(ClassVisitor* visitor) {
 }
 
 ClassLinker::~ClassLinker() {
-  mirror::Class::ResetClass();
   Thread* const self = Thread::Current();
   for (const ClassLoaderData& data : class_loaders_) {
     // CHA unloading analysis is not needed. No negative consequences are expected because
