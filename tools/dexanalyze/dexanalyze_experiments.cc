@@ -75,6 +75,128 @@ static size_t PrefixLen(const std::string& a, const std::string& b) {
   return len;
 }
 
+void AnalyzeDebugInfo::ProcessDexFile(const DexFile& dex_file) {
+  std::set<const uint8_t*> seen;
+  std::vector<size_t> counts(256, 0u);
+  std::vector<size_t> opcode_counts(256, 0u);
+  std::set<std::vector<uint8_t>> unique_non_header;
+  for (ClassAccessor accessor : dex_file.GetClasses()) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+      CodeItemDebugInfoAccessor code_item(dex_file, method.GetCodeItem(), method.GetIndex());
+      const uint8_t* debug_info = dex_file.GetDebugInfoStream(code_item.DebugInfoOffset());
+      if (debug_info != nullptr && seen.insert(debug_info).second) {
+        const uint8_t* stream = debug_info;
+        DecodeUnsignedLeb128(&stream);  // line_start
+        uint32_t parameters_size = DecodeUnsignedLeb128(&stream);
+        for (uint32_t i = 0; i < parameters_size; ++i) {
+          DecodeUnsignedLeb128P1(&stream);  // Parameter name.
+        }
+        bool done = false;
+        const uint8_t* after_header_start = stream;
+        while (!done) {
+          const uint8_t* const op_start = stream;
+          uint8_t opcode = *stream++;
+          ++opcode_counts[opcode];
+          ++total_opcode_bytes_;
+          switch (opcode) {
+            case DexFile::DBG_END_SEQUENCE:
+              ++total_end_seq_bytes_;
+              done = true;
+              break;
+            case DexFile::DBG_ADVANCE_PC:
+              DecodeUnsignedLeb128(&stream);  // addr_diff
+              total_advance_pc_bytes_ += stream - op_start;
+              break;
+            case DexFile::DBG_ADVANCE_LINE:
+              DecodeSignedLeb128(&stream);  // line_diff
+              total_advance_line_bytes_ += stream - op_start;
+              break;
+            case DexFile::DBG_START_LOCAL:
+              DecodeUnsignedLeb128(&stream);  // register_num
+              DecodeUnsignedLeb128P1(&stream);  // name_idx
+              DecodeUnsignedLeb128P1(&stream);  // type_idx
+              total_start_local_bytes_ += stream - op_start;
+              break;
+            case DexFile::DBG_START_LOCAL_EXTENDED:
+              DecodeUnsignedLeb128(&stream);  // register_num
+              DecodeUnsignedLeb128P1(&stream);  // name_idx
+              DecodeUnsignedLeb128P1(&stream);  // type_idx
+              DecodeUnsignedLeb128P1(&stream);  // sig_idx
+              total_start_local_extended_bytes_ += stream - op_start;
+              break;
+            case DexFile::DBG_END_LOCAL:
+              DecodeUnsignedLeb128(&stream);  // register_num
+              total_end_local_bytes_ += stream - op_start;
+              break;
+            case DexFile::DBG_RESTART_LOCAL:
+              DecodeUnsignedLeb128(&stream);  // register_num
+              total_restart_local_bytes_ += stream - op_start;
+              break;
+            case DexFile::DBG_SET_PROLOGUE_END:
+            case DexFile::DBG_SET_EPILOGUE_BEGIN:
+              total_epilogue_bytes_ += stream - op_start;
+              break;
+            case DexFile::DBG_SET_FILE: {
+              DecodeUnsignedLeb128P1(&stream);  // name_idx
+              total_set_file_bytes_ += stream - op_start;
+              break;
+            }
+            default: {
+              total_other_bytes_ += stream - op_start;
+              break;
+            }
+          }
+        }
+        const size_t bytes = stream - debug_info;
+        total_bytes_ += bytes;
+        total_non_header_bytes_ += stream - after_header_start;
+        if (unique_non_header.insert(std::vector<uint8_t>(after_header_start, stream)).second) {
+          total_unique_non_header_bytes_ += stream - after_header_start;
+        }
+        for (size_t i = 0; i < bytes; ++i) {
+          ++counts[debug_info[i]];
+        }
+      }
+    }
+  }
+  auto calc_entropy = [](std::vector<size_t> data) {
+    size_t total = std::accumulate(data.begin(), data.end(), 0u);
+    double avg_entropy = 0.0;
+    for (size_t c : data) {
+      if (c > 0) {
+        double ratio = static_cast<double>(c) / static_cast<double>(total);
+        avg_entropy -= ratio * log(ratio) / log(256.0);
+      }
+    }
+    return avg_entropy * total;
+  };
+  total_entropy_ += calc_entropy(counts);
+  total_opcode_entropy_ += calc_entropy(opcode_counts);
+}
+
+void AnalyzeDebugInfo::Dump(std::ostream& os, uint64_t total_size) const {
+  os << "Debug info bytes " << Percent(total_bytes_, total_size) << "\n";
+
+  os << "  DBG_END_SEQUENCE: " << Percent(total_end_seq_bytes_, total_size) << "\n";
+  os << "  DBG_ADVANCE_PC: " << Percent(total_advance_pc_bytes_, total_size) << "\n";
+  os << "  DBG_ADVANCE_LINE: " << Percent(total_advance_line_bytes_, total_size) << "\n";
+  os << "  DBG_START_LOCAL: " << Percent(total_start_local_bytes_, total_size) << "\n";
+  os << "  DBG_START_LOCAL_EXTENDED: "
+     << Percent(total_start_local_extended_bytes_, total_size) << "\n";
+  os << "  DBG_END_LOCAL: " << Percent(total_end_local_bytes_, total_size) << "\n";
+  os << "  DBG_RESTART_LOCAL: " << Percent(total_restart_local_bytes_, total_size) << "\n";
+  os << "  DBG_SET_PROLOGUE bytes " << Percent(total_epilogue_bytes_, total_size) << "\n";
+  os << "  DBG_SET_FILE bytes " << Percent(total_set_file_bytes_, total_size) << "\n";
+  os << "  special: "
+      << Percent(total_other_bytes_, total_size) << "\n";
+  os << "Debug info entropy " << Percent(total_entropy_, total_size) << "\n";
+  os << "Debug info opcode bytes " << Percent(total_opcode_bytes_, total_size) << "\n";
+  os << "Debug info opcode entropy " << Percent(total_opcode_entropy_, total_size) << "\n";
+  os << "Debug info non header bytes " << Percent(total_non_header_bytes_, total_size) << "\n";
+  os << "Debug info deduped non header bytes "
+     << Percent(total_unique_non_header_bytes_, total_size) << "\n";
+}
+
 void AnalyzeStrings::ProcessDexFile(const DexFile& dex_file) {
   std::vector<std::string> strings;
   for (size_t i = 0; i < dex_file.NumStringIds(); ++i) {
