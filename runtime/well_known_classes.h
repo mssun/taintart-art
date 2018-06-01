@@ -66,8 +66,6 @@ struct WellKnownClasses {
   static jclass java_lang_Daemons;
   static jclass java_lang_Error;
   static jclass java_lang_IllegalAccessError;
-  static jclass java_lang_invoke_MethodHandle;
-  static jclass java_lang_invoke_VarHandle;
   static jclass java_lang_NoClassDefFoundError;
   static jclass java_lang_Object;
   static jclass java_lang_OutOfMemoryError;
@@ -82,7 +80,6 @@ struct WellKnownClasses {
   static jclass java_lang_Thread;
   static jclass java_lang_ThreadGroup;
   static jclass java_lang_Throwable;
-  static jclass java_util_ArrayList;
   static jclass java_util_Collections;
   static jclass java_util_function_Consumer;
   static jclass java_nio_ByteBuffer;
@@ -100,14 +97,11 @@ struct WellKnownClasses {
   static jmethodID java_lang_Character_valueOf;
   static jmethodID java_lang_ClassLoader_loadClass;
   static jmethodID java_lang_ClassNotFoundException_init;
-  static jmethodID java_lang_Daemons_requestHeapTrim;
   static jmethodID java_lang_Daemons_start;
   static jmethodID java_lang_Daemons_stop;
   static jmethodID java_lang_Double_valueOf;
   static jmethodID java_lang_Float_valueOf;
   static jmethodID java_lang_Integer_valueOf;
-  static jmethodID java_lang_invoke_MethodHandle_invoke;
-  static jmethodID java_lang_invoke_MethodHandle_invokeExact;
   static jmethodID java_lang_invoke_MethodHandles_lookup;
   static jmethodID java_lang_invoke_MethodHandles_Lookup_findConstructor;
   static jmethodID java_lang_Long_valueOf;
@@ -118,7 +112,6 @@ struct WellKnownClasses {
   static jmethodID java_lang_Runtime_nativeLoad;
   static jmethodID java_lang_Short_valueOf;
   static jmethodID java_lang_String_charAt;
-  static jmethodID java_lang_System_runFinalization;
   static jmethodID java_lang_Thread_dispatchUncaughtException;
   static jmethodID java_lang_Thread_init;
   static jmethodID java_lang_Thread_run;
@@ -137,7 +130,6 @@ struct WellKnownClasses {
   static jfieldID dalvik_system_DexPathList_dexElements;
   static jfieldID dalvik_system_DexPathList__Element_dexFile;
   static jfieldID dalvik_system_VMRuntime_nonSdkApiUsageConsumer;
-  static jfieldID java_lang_reflect_Proxy_h;
   static jfieldID java_lang_Thread_daemon;
   static jfieldID java_lang_Thread_group;
   static jfieldID java_lang_Thread_lock;
@@ -163,8 +155,6 @@ struct WellKnownClasses {
   static jfieldID java_nio_DirectByteBuffer_capacity;
   static jfieldID java_nio_DirectByteBuffer_effectiveDirectAddress;
 
-  static jfieldID java_util_ArrayList_array;
-  static jfieldID java_util_ArrayList_size;
   static jfieldID java_util_Collections_EMPTY_LIST;
   static jfieldID libcore_util_EmptyArray_STACK_TRACE_ELEMENT;
   static jfieldID org_apache_harmony_dalvik_ddmc_Chunk_data;
