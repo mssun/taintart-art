@@ -405,6 +405,7 @@ SYMBOL(ExecuteMterpImpl):
     GOTO_NEXT
     /* NOTE: no fallthrough */
 
+/* File: x86/instruction_start.S */
 
     .global SYMBOL(artMterpAsmInstructionStart)
 SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
@@ -6470,26 +6471,35 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
 
 
     .balign 128
+/* File: x86/instruction_end.S */
+
     .global SYMBOL(artMterpAsmInstructionEnd)
 SYMBOL(artMterpAsmInstructionEnd):
+
 
 /*
  * ===========================================================================
  *  Sister implementations
  * ===========================================================================
  */
+/* File: x86/instruction_start_sister.S */
+
     .global SYMBOL(artMterpAsmSisterStart)
     .text
     .balign 4
 SYMBOL(artMterpAsmSisterStart):
+
+/* File: x86/instruction_end_sister.S */
+
     .global SYMBOL(artMterpAsmSisterEnd)
 SYMBOL(artMterpAsmSisterEnd):
 
+/* File: x86/instruction_start_alt.S */
 
     .global SYMBOL(artMterpAsmAltInstructionStart)
     .text
-
 SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
+
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */
@@ -12635,8 +12645,11 @@ SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
     jmp     .L_op_nop+(255*128)
 
     .balign 128
+/* File: x86/instruction_end_alt.S */
+
     .global SYMBOL(artMterpAsmAltInstructionEnd)
 SYMBOL(artMterpAsmAltInstructionEnd):
+
 /* File: x86/footer.S */
 /*
  * ===========================================================================
