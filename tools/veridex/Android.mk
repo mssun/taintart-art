@@ -46,10 +46,19 @@ VERIDEX_FILES := $(LOCAL_PATH)/appcompat.sh
 
 $(VERIDEX_FILES_PATH): PRIVATE_VERIDEX_FILES := $(VERIDEX_FILES)
 $(VERIDEX_FILES_PATH): PRIVATE_APP_COMPAT_LISTS := $(app_compat_lists)
-$(VERIDEX_FILES_PATH) : $(SOONG_ZIP) $(VERIDEX_FILES) $(app_compat_lists) $(HOST_OUT_EXECUTABLES)/veridex
+$(VERIDEX_FILES_PATH): PRIVATE_SYSTEM_STUBS_ZIP := $(dir $(VERIDEX_FILES_PATH))/system-stubs.zip
+$(VERIDEX_FILES_PATH): PRIVATE_OAHL_STUBS_ZIP := $(dir $(VERIDEX_FILES_PATH))/org.apache.http.legacy-stubs.zip
+$(VERIDEX_FILES_PATH) : $(SOONG_ZIP) $(VERIDEX_FILES) $(app_compat_lists) $(HOST_OUT_EXECUTABLES)/veridex $(system_stub_dex) $(oahl_stub_dex)
+	$(hide) rm -f $(PRIVATE_SYSTEM_STUBS_ZIP) $(PRIVATE_OAHL_STUBS_ZIP)
+	$(hide) zip -j $(PRIVATE_SYSTEM_STUBS_ZIP) $(dir $(system_stub_dex))/classes*.dex
+	$(hide) zip -j $(PRIVATE_OAHL_STUBS_ZIP) $(dir $(oahl_stub_dex))/classes*.dex
 	$(hide) $(SOONG_ZIP) -o $@ -C art/tools/veridex -f $(PRIVATE_VERIDEX_FILES) \
                              -C $(dir $(lastword $(PRIVATE_APP_COMPAT_LISTS))) $(addprefix -f , $(PRIVATE_APP_COMPAT_LISTS)) \
-                             -C $(HOST_OUT_EXECUTABLES) -f $(HOST_OUT_EXECUTABLES)/veridex
+                             -C $(HOST_OUT_EXECUTABLES) -f $(HOST_OUT_EXECUTABLES)/veridex \
+                             -C $(dir $(PRIVATE_SYSTEM_STUBS_ZIP)) -f $(PRIVATE_SYSTEM_STUBS_ZIP) \
+                             -C $(dir $(PRIVATE_OAHL_STUBS_ZIP)) -f $(PRIVATE_OAHL_STUBS_ZIP)
+	$(hide) rm -f $(PRIVATE_SYSTEM_STUBS_ZIP)
+	$(hide) rm -f $(PRIVATE_OAHL_STUBS_ZIP)
 
 # Make the zip file available for prebuilts.
 $(call dist-for-goals,sdk,$(VERIDEX_FILES_PATH))
