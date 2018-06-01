@@ -40,11 +40,10 @@ ObjPtr<mirror::Class> GenerateProxyClass(ScopedObjectAccess& soa,
                                          const std::vector<Handle<mirror::Class>>& interfaces)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(soa.Self());
-  Handle<mirror::Class> javaLangObject = hs.NewHandle(
-      class_linker->FindSystemClass(soa.Self(), "Ljava/lang/Object;"));
+  Handle<mirror::Class> javaLangObject = hs.NewHandle(GetClassRoot<mirror::Object>());
   CHECK(javaLangObject != nullptr);
 
-  jclass javaLangClass = soa.AddLocalReference<jclass>(mirror::Class::GetJavaLangClass());
+  jclass javaLangClass = soa.AddLocalReference<jclass>(GetClassRoot<mirror::Class>());
 
   // Builds the interfaces array.
   jobjectArray proxyClassInterfaces =

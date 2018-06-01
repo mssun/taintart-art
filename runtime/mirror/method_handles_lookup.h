@@ -18,7 +18,6 @@
 #define ART_RUNTIME_MIRROR_METHOD_HANDLES_LOOKUP_H_
 
 #include "base/utils.h"
-#include "gc_root.h"
 #include "handle.h"
 #include "obj_ptr.h"
 #include "object.h"

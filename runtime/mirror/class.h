@@ -30,7 +30,6 @@
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
 #include "gc/allocator_type.h"
-#include "gc_root.h"
 #include "imtable.h"
 #include "object.h"
 #include "object_array.h"
@@ -1128,21 +1127,6 @@ class MANAGED Class FINAL : public Object {
   dex::TypeIndex FindTypeIndexInOtherDexFile(const DexFile& dex_file)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static Class* GetJavaLangClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK(HasJavaLangClass());
-    return java_lang_Class_.Read();
-  }
-
-  static bool HasJavaLangClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return !java_lang_Class_.IsNull();
-  }
-
-  // Can't call this SetClass or else gets called instead of Object::SetClass in places.
-  static void SetClassClass(ObjPtr<Class> java_lang_Class) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass();
-  static void VisitRoots(RootVisitor* visitor)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   // Visit native roots visits roots which are keyed off the native pointers such as ArtFields and
   // ArtMethods.
   template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier, class Visitor>
@@ -1498,9 +1482,6 @@ class MANAGED Class FINAL : public Object {
   // VTableEntry embedded_vtable_[0];
   // Static fields, variable size.
   // uint32_t fields_[0];
-
-  // java.lang.Class
-  static GcRoot<Class> java_lang_Class_;
 
   ART_FRIEND_TEST(DexCacheTest, TestResolvedFieldAccess);  // For ResolvedFieldAccessTest
   friend struct art::ClassOffsets;  // for verifying offset information

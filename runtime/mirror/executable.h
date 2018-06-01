@@ -18,7 +18,6 @@
 #define ART_RUNTIME_MIRROR_EXECUTABLE_H_
 
 #include "accessible_object.h"
-#include "gc_root.h"
 #include "object.h"
 #include "read_barrier_option.h"
 
