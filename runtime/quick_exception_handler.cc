@@ -232,7 +232,7 @@ void QuickExceptionHandler::SetCatchEnvironmentForOptimizedHandler(StackVisitor*
   DCHECK(catch_stack_map.IsValid());
   DexRegisterMap catch_vreg_map =
       code_info.GetDexRegisterMapOf(catch_stack_map, number_of_vregs);
-  if (!catch_vreg_map.IsValid()) {
+  if (!catch_vreg_map.IsValid() || !catch_vreg_map.HasAnyLiveDexRegisters()) {
     return;
   }
 
