@@ -116,12 +116,14 @@ class DexAnalyze {
       }
     }
 
-    bool ProcessDexFile(const DexFile& dex_file) {
+    bool ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) {
       for (std::unique_ptr<Experiment>& experiment : experiments_) {
-        experiment->ProcessDexFile(dex_file);
+        experiment->ProcessDexFiles(dex_files);
       }
-      total_size_ += dex_file.Size();
-      ++dex_count_;
+      for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
+        total_size_ += dex_file->Size();
+      }
+      dex_count_ += dex_files.size();
       return true;
     }
 
@@ -169,18 +171,16 @@ class DexAnalyze {
         LOG(ERROR) << "OpenAll failed for " + filename << " with " << error_msg << std::endl;
         return kExitCodeFailedToOpenDex;
       }
-      for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-        if (options.dump_per_input_dex_) {
-          Analysis current(&options);
-          if (!current.ProcessDexFile(*dex_file)) {
-            LOG(ERROR) << "Failed to process " << filename << " with error " << error_msg;
-            return kExitCodeFailedToProcessDex;
-          }
-          LOG(INFO) << "Analysis for " << dex_file->GetLocation() << std::endl;
-          current.Dump(LOG_STREAM(INFO));
+      if (options.dump_per_input_dex_) {
+        Analysis current(&options);
+        if (!current.ProcessDexFiles(dex_files)) {
+          LOG(ERROR) << "Failed to process " << filename << " with error " << error_msg;
+          return kExitCodeFailedToProcessDex;
         }
-        cumulative.ProcessDexFile(*dex_file);
+        LOG(INFO) << "Analysis for " << filename << std::endl;
+        current.Dump(LOG_STREAM(INFO));
       }
+      cumulative.ProcessDexFiles(dex_files);
     }
     LOG(INFO) << "Cumulative analysis for " << cumulative.dex_count_ << " DEX files" << std::endl;
     cumulative.Dump(LOG_STREAM(INFO));
