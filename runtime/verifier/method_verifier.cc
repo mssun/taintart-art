@@ -35,7 +35,6 @@
 #include "class_linker.h"
 #include "class_root.h"
 #include "compiler_callbacks.h"
-#include "dex/class_accessor-inl.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
@@ -191,6 +190,11 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
                      error);
 }
 
+template <bool kDirect>
+static bool HasNextMethod(ClassDataItemIterator* it) {
+  return kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod();
+}
+
 static FailureKind FailureKindMax(FailureKind fk1, FailureKind fk2) {
   static_assert(FailureKind::kNoFailure < FailureKind::kSoftFailure
                     && FailureKind::kSoftFailure < FailureKind::kHardFailure,
@@ -201,6 +205,80 @@ static FailureKind FailureKindMax(FailureKind fk1, FailureKind fk2) {
 void MethodVerifier::FailureData::Merge(const MethodVerifier::FailureData& fd) {
   kind = FailureKindMax(kind, fd.kind);
   types |= fd.types;
+}
+
+template <bool kDirect>
+MethodVerifier::FailureData MethodVerifier::VerifyMethods(Thread* self,
+                                                          ClassLinker* linker,
+                                                          const DexFile* dex_file,
+                                                          const DexFile::ClassDef& class_def,
+                                                          ClassDataItemIterator* it,
+                                                          Handle<mirror::DexCache> dex_cache,
+                                                          Handle<mirror::ClassLoader> class_loader,
+                                                          CompilerCallbacks* callbacks,
+                                                          bool allow_soft_failures,
+                                                          HardFailLogMode log_level,
+                                                          bool need_precise_constants,
+                                                          std::string* error_string) {
+  DCHECK(it != nullptr);
+
+  MethodVerifier::FailureData failure_data;
+
+  int64_t previous_method_idx = -1;
+  while (HasNextMethod<kDirect>(it)) {
+    self->AllowThreadSuspension();
+    uint32_t method_idx = it->GetMemberIndex();
+    if (method_idx == previous_method_idx) {
+      // smali can create dex files with two encoded_methods sharing the same method_idx
+      // http://code.google.com/p/smali/issues/detail?id=119
+      it->Next();
+      continue;
+    }
+    previous_method_idx = method_idx;
+    InvokeType type = it->GetMethodInvokeType(class_def);
+    ArtMethod* method = linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
+        method_idx, dex_cache, class_loader, /* referrer */ nullptr, type);
+    if (method == nullptr) {
+      DCHECK(self->IsExceptionPending());
+      // We couldn't resolve the method, but continue regardless.
+      self->ClearException();
+    } else {
+      DCHECK(method->GetDeclaringClassUnchecked() != nullptr) << type;
+    }
+    StackHandleScope<1> hs(self);
+    std::string hard_failure_msg;
+    MethodVerifier::FailureData result = VerifyMethod(self,
+                                                      method_idx,
+                                                      dex_file,
+                                                      dex_cache,
+                                                      class_loader,
+                                                      class_def,
+                                                      it->GetMethodCodeItem(),
+                                                      method,
+                                                      it->GetMethodAccessFlags(),
+                                                      callbacks,
+                                                      allow_soft_failures,
+                                                      log_level,
+                                                      need_precise_constants,
+                                                      &hard_failure_msg);
+    if (result.kind == FailureKind::kHardFailure) {
+      if (failure_data.kind == FailureKind::kHardFailure) {
+        // If we logged an error before, we need a newline.
+        *error_string += "\n";
+      } else {
+        // If we didn't log a hard failure before, print the header of the message.
+        *error_string += "Verifier rejected class ";
+        *error_string += PrettyDescriptor(dex_file->GetClassDescriptor(class_def));
+        *error_string += ":";
+      }
+      *error_string += " ";
+      *error_string += hard_failure_msg;
+    }
+    failure_data.Merge(result);
+    it->Next();
+  }
+
+  return failure_data;
 }
 
 FailureKind MethodVerifier::VerifyClass(Thread* self,
@@ -222,72 +300,52 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
     return FailureKind::kHardFailure;
   }
 
-  ClassAccessor accessor(*dex_file, class_def);
-
-  int64_t previous_method_idx[2] = { -1, -1 };
-  MethodVerifier::FailureData failure_data;
-  ClassLinker* const linker = Runtime::Current()->GetClassLinker();
-
-  for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-    int64_t* previous_idx = &previous_method_idx[method.IsStaticOrDirect() ? 0u : 1u];
-    self->AllowThreadSuspension();
-    const uint32_t method_idx = method.GetIndex();
-    if (method_idx == *previous_idx) {
-      // smali can create dex files with two encoded_methods sharing the same method_idx
-      // http://code.google.com/p/smali/issues/detail?id=119
-      continue;
-    }
-    *previous_idx = method_idx;
-    const InvokeType type = method.GetInvokeType(class_def.access_flags_);
-    ArtMethod* resolved_method = linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-        method_idx, dex_cache, class_loader, /* referrer */ nullptr, type);
-    if (resolved_method == nullptr) {
-      DCHECK(self->IsExceptionPending());
-      // We couldn't resolve the method, but continue regardless.
-      self->ClearException();
-    } else {
-      DCHECK(resolved_method->GetDeclaringClassUnchecked() != nullptr) << type;
-    }
-    std::string hard_failure_msg;
-    MethodVerifier::FailureData result = VerifyMethod(self,
-                                                      method_idx,
-                                                      dex_file,
-                                                      dex_cache,
-                                                      class_loader,
-                                                      class_def,
-                                                      method.GetCodeItem(),
-                                                      resolved_method,
-                                                      method.GetAccessFlags(),
-                                                      callbacks,
-                                                      allow_soft_failures,
-                                                      log_level,
-                                                      /*need_precise_constants*/ false,
-                                                      &hard_failure_msg);
-    if (result.kind == FailureKind::kHardFailure) {
-      if (failure_data.kind == FailureKind::kHardFailure) {
-        // If we logged an error before, we need a newline.
-        *error += "\n";
-      } else {
-        // If we didn't log a hard failure before, print the header of the message.
-        *error += "Verifier rejected class ";
-        *error += PrettyDescriptor(dex_file->GetClassDescriptor(class_def));
-        *error += ":";
-      }
-      *error += " ";
-      *error += hard_failure_msg;
-    }
-    failure_data.Merge(result);
+  const uint8_t* class_data = dex_file->GetClassData(class_def);
+  if (class_data == nullptr) {
+    // empty class, probably a marker interface
+    return FailureKind::kNoFailure;
   }
+  ClassDataItemIterator it(*dex_file, class_data);
+  it.SkipAllFields();
+  ClassLinker* linker = Runtime::Current()->GetClassLinker();
+  // Direct methods.
+  MethodVerifier::FailureData data1 = VerifyMethods<true>(self,
+                                                          linker,
+                                                          dex_file,
+                                                          class_def,
+                                                          &it,
+                                                          dex_cache,
+                                                          class_loader,
+                                                          callbacks,
+                                                          allow_soft_failures,
+                                                          log_level,
+                                                          false /* need precise constants */,
+                                                          error);
+  // Virtual methods.
+  MethodVerifier::FailureData data2 = VerifyMethods<false>(self,
+                                                           linker,
+                                                           dex_file,
+                                                           class_def,
+                                                           &it,
+                                                           dex_cache,
+                                                           class_loader,
+                                                           callbacks,
+                                                           allow_soft_failures,
+                                                           log_level,
+                                                           false /* need precise constants */,
+                                                           error);
 
-  if (failure_data.kind == FailureKind::kNoFailure) {
+  data1.Merge(data2);
+
+  if (data1.kind == FailureKind::kNoFailure) {
     return FailureKind::kNoFailure;
   } else {
-    if ((failure_data.types & VERIFY_ERROR_LOCKING) != 0) {
+    if ((data1.types & VERIFY_ERROR_LOCKING) != 0) {
       // Print a warning about expected slow-down. Use a string temporary to print one contiguous
       // warning.
       std::string tmp =
           StringPrintf("Class %s failed lock verification and will run slower.",
-                       PrettyDescriptor(accessor.GetDescriptor()).c_str());
+                       PrettyDescriptor(dex_file->GetClassDescriptor(class_def)).c_str());
       if (!gPrintedDxMonitorText) {
         tmp = tmp + "\nCommon causes for lock verification issues are non-optimized dex code\n"
                     "and incorrect proguard optimizations.";
@@ -295,7 +353,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
       }
       LOG(WARNING) << tmp;
     }
-    return failure_data.kind;
+    return data1.kind;
   }
 }
 
@@ -1866,11 +1924,15 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
 static uint32_t GetFirstFinalInstanceFieldIndex(const DexFile& dex_file, dex::TypeIndex type_idx) {
   const DexFile::ClassDef* class_def = dex_file.FindClassDef(type_idx);
   DCHECK(class_def != nullptr);
-  ClassAccessor accessor(dex_file, *class_def);
-  for (const ClassAccessor::Field& field : accessor.GetInstanceFields()) {
-    if (field.IsFinal()) {
-      return field.GetIndex();
+  const uint8_t* class_data = dex_file.GetClassData(*class_def);
+  DCHECK(class_data != nullptr);
+  ClassDataItemIterator it(dex_file, class_data);
+  it.SkipStaticFields();
+  while (it.HasNextInstanceField()) {
+    if ((it.GetFieldAccessFlags() & kAccFinal) != 0) {
+      return it.GetMemberIndex();
     }
+    it.Next();
   }
   return dex::kDexNoIndex;
 }
