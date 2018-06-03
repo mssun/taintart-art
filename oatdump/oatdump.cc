@@ -753,7 +753,7 @@ class OatDumper {
       kByteKindInlineInfoMethodIndexIdx,
       kByteKindInlineInfoDexPc,
       kByteKindInlineInfoArtMethod,
-      kByteKindInlineInfoDexRegisterMap,
+      kByteKindInlineInfoNumDexRegisters,
       kByteKindInlineInfoIsLast,
       kByteKindCount,
       // Special ranges for std::accumulate convenience.
@@ -855,8 +855,8 @@ class OatDumper {
                inline_info_bits,
                "inline info");
           Dump(os,
-               "InlineInfoDexRegisterMap      ",
-               bits[kByteKindInlineInfoDexRegisterMap],
+               "InlineInfoNumDexRegisters     ",
+               bits[kByteKindInlineInfoNumDexRegisters],
                inline_info_bits,
                "inline info");
           Dump(os,
@@ -1757,8 +1757,8 @@ class OatDumper {
                 inline_infos.NumColumnBits(InlineInfo::kArtMethodHi) * num_inline_infos +
                 inline_infos.NumColumnBits(InlineInfo::kArtMethodLo) * num_inline_infos);
             stats_.AddBits(
-                Stats::kByteKindInlineInfoDexRegisterMap,
-                inline_infos.NumColumnBits(InlineInfo::kDexRegisterMapIndex) * num_inline_infos);
+                Stats::kByteKindInlineInfoNumDexRegisters,
+                inline_infos.NumColumnBits(InlineInfo::kNumberOfDexRegisters) * num_inline_infos);
             stats_.AddBits(Stats::kByteKindInlineInfoIsLast, num_inline_infos);
           }
         }
