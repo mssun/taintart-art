@@ -54,15 +54,38 @@ static void CauseSegfault() {
 #endif
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_Main_sleep(JNIEnv*, jobject, jint, jboolean, jdouble) {
-  // Keep pausing.
-  struct timespec ts = { .tv_sec = 100, .tv_nsec = 0 };
-  printf("Going to sleep\n");
-  for (;;) {
-    // Use nanosleep since it gets to the system call quickly and doesn't
-    // have any points at which an unwind will fail.
-    nanosleep(&ts, nullptr);
+extern "C" JNIEXPORT jint JNICALL Java_Main_startSecondaryProcess(JNIEnv*, jclass) {
+#if __linux__
+  // Get our command line so that we can use it to start identical process.
+  std::string cmdline;  // null-separated and null-terminated arguments.
+  ReadFileToString("/proc/self/cmdline", &cmdline);
+  cmdline = cmdline + "--secondary" + '\0';  // Let the child know it is a helper.
+
+  // Split the string into individual arguments suitable for execv.
+  std::vector<char*> argv;
+  for (size_t i = 0; i < cmdline.size(); i += strlen(&cmdline[i]) + 1) {
+    argv.push_back(&cmdline[i]);
   }
+  argv.push_back(nullptr);  // Terminate the list.
+
+  pid_t pid = fork();
+  if (pid < 0) {
+    LOG(FATAL) << "Fork failed";
+  } else if (pid == 0) {
+    execv(argv[0], argv.data());
+    exit(1);
+  }
+  return pid;
+#else
+  return 0;
+#endif
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_Main_sigstop(JNIEnv*, jclass) {
+#if __linux__
+  raise(SIGSTOP);
+#endif
+  return true;  // Prevent the compiler from tail-call optimizing this method away.
 }
 
 // Helper to look for a sequence in the stack trace.
@@ -107,12 +130,7 @@ static void MoreErrorInfo(pid_t pid, bool sig_quit_on_fail) {
 }
 #endif
 
-extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
-    JNIEnv*,
-    jobject,
-    jboolean,
-    jint,
-    jboolean) {
+extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(JNIEnv*, jclass) {
 #if __linux__
   std::unique_ptr<Backtrace> bt(Backtrace::Create(BACKTRACE_CURRENT_PROCESS, GetTid()));
   if (!bt->Unwind(0, nullptr)) {
@@ -128,10 +146,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
   // only unique functions are being expected.
   // "mini-debug-info" does not include parameters to save space.
   std::vector<std::string> seq = {
-      "Java_Main_unwindInProcess",                   // This function.
-      "java.util.Arrays.binarySearch0",              // Framework method.
-      "Base.runBase",                                // Method in other dex file.
-      "Main.main"                                    // The Java entry method.
+      "Java_Main_unwindInProcess",       // This function.
+      "java.util.Arrays.binarySearch0",  // Framework method.
+      "Base.runTest",                    // Method in other dex file.
+      "Main.main"                        // The Java entry method.
   };
 
   bool result = CheckStack(bt.get(), seq);
@@ -150,8 +168,8 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
 }
 
 #if __linux__
-static constexpr int kSleepTimeMicroseconds = 50000;            // 0.05 seconds
-static constexpr int kMaxTotalSleepTimeMicroseconds = 1000000;  // 1 second
+static constexpr int kSleepTimeMicroseconds = 50000;             // 0.05 seconds
+static constexpr int kMaxTotalSleepTimeMicroseconds = 10000000;  // 10 seconds
 
 // Wait for a sigstop. This code is copied from libbacktrace.
 int wait_for_sigstop(pid_t tid, int* total_sleep_time_usec, bool* detach_failed ATTRIBUTE_UNUSED) {
@@ -183,17 +201,12 @@ int wait_for_sigstop(pid_t tid, int* total_sleep_time_usec, bool* detach_failed 
 }
 #endif
 
-extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(
-    JNIEnv*,
-    jobject,
-    jboolean,
-    jint pid_int) {
+extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(JNIEnv*, jclass, jint pid_int) {
 #if __linux__
   pid_t pid = static_cast<pid_t>(pid_int);
 
-  // OK, this is painful. debuggerd uses ptrace to unwind other processes.
-
-  if (ptrace(PTRACE_ATTACH, pid, 0, 0)) {
+  // SEIZE is like ATTACH, but it does not stop the process (we let it stop itself).
+  if (ptrace(PTRACE_SEIZE, pid, 0, 0)) {
     // Were not able to attach, bad.
     printf("Failed to attach to other process.\n");
     PLOG(ERROR) << "Failed to attach.";
@@ -201,13 +214,12 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(
     return JNI_FALSE;
   }
 
-  kill(pid, SIGSTOP);
-
   bool detach_failed = false;
   int total_sleep_time_usec = 0;
   int signal = wait_for_sigstop(pid, &total_sleep_time_usec, &detach_failed);
-  if (signal == -1) {
+  if (signal != SIGSTOP) {
     LOG(WARNING) << "wait_for_sigstop failed.";
+    return JNI_FALSE;
   }
 
   std::unique_ptr<Backtrace> bt(Backtrace::Create(pid, BACKTRACE_CURRENT_THREAD));
@@ -224,10 +236,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(
     // See comment in unwindInProcess for non-exact stack matching.
     // "mini-debug-info" does not include parameters to save space.
     std::vector<std::string> seq = {
-        "Java_Main_sleep",                           // The sleep function in the other process.
-        "java.util.Arrays.binarySearch0",            // Framework method.
-        "Base.runBase",                              // Method in other dex file.
-        "Main.main"                                  // The Java entry method.
+        "Java_Main_sigstop",                // The stop function in the other process.
+        "java.util.Arrays.binarySearch0",   // Framework method.
+        "Base.runTest",                     // Method in other dex file.
+        "Main.main"                         // The Java entry method.
     };
 
     result = CheckStack(bt.get(), seq);
