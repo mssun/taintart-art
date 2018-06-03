@@ -584,6 +584,18 @@ public class Main {
            s24 + s25 + s26 + s27 + s28 + s29 + s30 + s31;
   }
 
+  public static int reductionIntoReplication() {
+    int[] a = { 1, 2, 3, 4 };
+    int x = 0;
+    for (int i = 0; i < 4; i++) {
+      x += a[i];
+    }
+    for (int i = 0; i < 4; i++) {
+      a[i] = x;
+    }
+    return a[3];
+  }
+
   public static void main(String[] args) {
     System.loadLibrary(args[0]);
 
@@ -766,6 +778,8 @@ public class Main {
       }
       expectEquals(85800, reduction32Values(a1, a2, a3, a4));
     }
+
+    expectEquals(10, reductionIntoReplication());
 
     System.out.println("passed");
   }
