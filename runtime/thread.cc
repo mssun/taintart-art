@@ -3656,8 +3656,7 @@ class ReferenceMapVisitor : public StackVisitor {
                        RootVisitor& _visitor)
           : number_of_dex_registers(method->DexInstructionData().RegistersSize()),
             code_info(_code_info),
-            dex_register_map(code_info.GetDexRegisterMapOf(map,
-                                                           number_of_dex_registers)),
+            dex_register_map(code_info.GetDexRegisterMapOf(map)),
             visitor(_visitor) {
       }
 

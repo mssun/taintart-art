@@ -147,7 +147,7 @@ static std::vector<VariableLocation> GetVariableLocations(
     DexRegisterLocation reg_hi = DexRegisterLocation::None();
     DCHECK_LT(stack_map_index, dex_register_maps.size());
     DexRegisterMap dex_register_map = dex_register_maps[stack_map_index];
-    DCHECK(dex_register_map.IsValid());
+    DCHECK(!dex_register_map.empty());
     CodeItemDataAccessor accessor(*method_info->dex_file, method_info->code_item);
     reg_lo = dex_register_map.GetDexRegisterLocation(vreg);
     if (is64bitValue) {

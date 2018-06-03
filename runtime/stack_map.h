@@ -75,7 +75,7 @@ class DexRegisterMap {
 
   size_t size() const { return count_; }
 
-  bool IsValid() const { return count_ != 0; }
+  bool empty() const { return count_ == 0; }
 
   DexRegisterLocation Get(size_t index) const {
     DCHECK_LT(index, count_);
@@ -194,7 +194,6 @@ class StackMap : public BitTable<7>::Accessor {
             const CodeInfo& code_info,
             const MethodInfo& method_info,
             uint32_t code_offset,
-            uint16_t number_of_dex_registers,
             InstructionSet instruction_set) const;
 };
 
@@ -234,8 +233,7 @@ class InlineInfo : public BitTable<6>::Accessor {
   void Dump(VariableIndentationOutputStream* vios,
             const CodeInfo& info,
             const StackMap& stack_map,
-            const MethodInfo& method_info,
-            uint16_t number_of_dex_registers) const;
+            const MethodInfo& method_info) const;
 };
 
 class InvokeInfo : public BitTable<3>::Accessor {
@@ -358,8 +356,7 @@ class CodeInfo {
     return InvokeInfo(&invoke_infos_, index);
   }
 
-  ALWAYS_INLINE DexRegisterMap GetDexRegisterMapOf(StackMap stack_map,
-                                                   size_t vregs ATTRIBUTE_UNUSED = 0) const {
+  ALWAYS_INLINE DexRegisterMap GetDexRegisterMapOf(StackMap stack_map) const {
     if (stack_map.HasDexRegisterMap()) {
       DexRegisterMap map(number_of_dex_registers_, DexRegisterLocation::Invalid());
       DecodeDexRegisterMap(stack_map.Row(), /* first_dex_register */ 0, &map);
@@ -368,9 +365,7 @@ class CodeInfo {
     return DexRegisterMap(0, DexRegisterLocation::None());
   }
 
-  ALWAYS_INLINE DexRegisterMap GetDexRegisterMapAtDepth(uint8_t depth,
-                                                        StackMap stack_map,
-                                                        size_t vregs ATTRIBUTE_UNUSED = 0) const {
+  ALWAYS_INLINE DexRegisterMap GetDexRegisterMapAtDepth(uint8_t depth, StackMap stack_map) const {
     if (stack_map.HasDexRegisterMap()) {
       // The register counts are commutative and include all outer levels.
       // This allows us to determine the range [first, last) in just two lookups.
@@ -481,7 +476,6 @@ class CodeInfo {
   // `code_offset` is the (absolute) native PC of the compiled method.
   void Dump(VariableIndentationOutputStream* vios,
             uint32_t code_offset,
-            uint16_t number_of_dex_registers,
             bool verbose,
             InstructionSet instruction_set,
             const MethodInfo& method_info) const;
