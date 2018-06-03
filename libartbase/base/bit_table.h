@@ -68,8 +68,10 @@ class BitTable {
  public:
   class Accessor {
    public:
+    static constexpr uint32_t kCount = kNumColumns;
     static constexpr uint32_t kNoValue = std::numeric_limits<uint32_t>::max();
 
+    Accessor() {}
     Accessor(const BitTable* table, uint32_t row) : table_(table), row_(row) {}
 
     ALWAYS_INLINE uint32_t Row() const { return row_; }
@@ -86,14 +88,27 @@ class BitTable {
       return this->table_ == other.table_ && this->row_ == other.row_;
     }
 
-    Accessor& operator++() {
-      row_++;
-      return *this;
-    }
+// Helper macro to create constructors and per-table utilities in derived class.
+#define BIT_TABLE_HEADER()                                                     \
+    using BitTable<kCount>::Accessor::Accessor; /* inherit the constructors */ \
+    template<int COLUMN, int UNUSED /*needed to compile*/> struct ColumnName;  \
+
+// Helper macro to create named column accessors in derived class.
+#define BIT_TABLE_COLUMN(COLUMN, NAME)                                         \
+    static constexpr uint32_t k##NAME = COLUMN;                                \
+    ALWAYS_INLINE uint32_t Get##NAME() const {                                 \
+      return table_->Get(row_, COLUMN);                                        \
+    }                                                                          \
+    ALWAYS_INLINE bool Has##NAME() const {                                     \
+      return table_->Get(row_, COLUMN) != kNoValue;                            \
+    }                                                                          \
+    template<int UNUSED> struct ColumnName<COLUMN, UNUSED> {                   \
+      static constexpr const char* Value = #NAME;                              \
+    };                                                                         \
 
    protected:
-    const BitTable* table_;
-    uint32_t row_;
+    const BitTable* table_ = nullptr;
+    uint32_t row_ = -1;
   };
 
   static constexpr uint32_t kValueBias = -1;
@@ -152,11 +167,17 @@ class BitTable {
   uint16_t column_offset_[kNumColumns + 1] = {};
 };
 
-template<uint32_t kNumColumns>
-constexpr uint32_t BitTable<kNumColumns>::Accessor::kNoValue;
+// Template meta-programming helper.
+template<typename Accessor, size_t... Columns>
+static const char** GetBitTableColumnNamesImpl(std::index_sequence<Columns...>) {
+  static const char* names[] = { Accessor::template ColumnName<Columns, 0>::Value... };
+  return names;
+}
 
-template<uint32_t kNumColumns>
-constexpr uint32_t BitTable<kNumColumns>::kValueBias;
+template<typename Accessor>
+static const char** GetBitTableColumnNames() {
+  return GetBitTableColumnNamesImpl<Accessor>(std::make_index_sequence<Accessor::kCount>());
+}
 
 // Helper class for encoding BitTable. It can optionally de-duplicate the inputs.
 // Type 'T' must be POD type consisting of uint32_t fields (one for each column).
@@ -207,18 +228,6 @@ class BitTableBuilder {
     rows_.insert(rows_.end(), values, values + count);
     dedup_.emplace(hash, index);
     return index;
-  }
-
-  // Check if the table already contains given values starting at the given index.
-  bool RangeEquals(uint32_t index, T* values, size_t count = 1) {
-    DCHECK_LE(index, size());
-    DCHECK_LE(count, size() - index);
-    for (uint32_t i = 0; i < count; i++) {
-      if (memcmp(&values[i], &rows_[index + i], sizeof(T)) != 0) {
-        return false;
-      }
-    }
-    return true;
   }
 
   ALWAYS_INLINE uint32_t Get(uint32_t row, uint32_t column) const {
@@ -289,9 +298,6 @@ class BitTableBuilder {
   ScopedArenaDeque<T> rows_;
   ScopedArenaUnorderedMultimap<uint32_t, uint32_t> dedup_;  // Hash -> row index.
 };
-
-template<typename T>
-constexpr size_t BitTableBuilder<T>::kNumColumns;
 
 // Helper class for encoding single-column BitTable of bitmaps (allows more than 32 bits).
 class BitmapTableBuilder {
