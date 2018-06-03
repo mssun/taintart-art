@@ -84,9 +84,7 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
         CHECK_EQ(seen_stack_mask.LoadBit(b), stack_mask != nullptr && stack_mask->IsBitSet(b));
       }
       CHECK_EQ(stack_map.HasInlineInfo(), (inlining_depth != 0));
-      if (inlining_depth != 0) {
-        CHECK_EQ(code_info.GetInlineInfoOf(stack_map).GetDepth(), inlining_depth);
-      }
+      CHECK_EQ(code_info.GetInlineDepthOf(stack_map), inlining_depth);
       CHECK_EQ(stack_map.HasDexRegisterMap(), (num_dex_registers != 0));
     });
   }
@@ -174,17 +172,17 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
     size_t depth = current_inline_infos_.size() - 1;
     dchecks_.emplace_back([=](const CodeInfo& code_info) {
       StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
-      InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
-      CHECK_EQ(inline_info.GetDexPcAtDepth(depth), dex_pc);
+      InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, depth);
+      CHECK_EQ(inline_info.GetDexPc(), dex_pc);
       bool encode_art_method = EncodeArtMethodInInlineInfo(method);
-      CHECK_EQ(inline_info.EncodesArtMethodAtDepth(depth), encode_art_method);
+      CHECK_EQ(inline_info.EncodesArtMethod(), encode_art_method);
       if (encode_art_method) {
-        CHECK_EQ(inline_info.GetArtMethodAtDepth(depth), method);
+        CHECK_EQ(inline_info.GetArtMethod(), method);
       } else {
-        CHECK_EQ(method_infos_[inline_info.GetMethodIndexIdxAtDepth(depth)],
+        CHECK_EQ(method_infos_[inline_info.GetMethodIndexIdx()],
                  method->GetDexMethodIndexUnchecked());
       }
-      CHECK_EQ(inline_info.HasDexRegisterMapAtDepth(depth), (num_dex_registers != 0));
+      CHECK_EQ(inline_info.HasDexRegisterMap(), (num_dex_registers != 0));
     });
   }
 }
@@ -240,9 +238,7 @@ void StackMapStream::CreateDexRegisterMap() {
       size_t num_dex_registers = expected_dex_registers->size();
       DexRegisterMap map = (depth == -1)
         ? code_info.GetDexRegisterMapOf(stack_map, num_dex_registers)
-        : code_info.GetDexRegisterMapAtDepth(depth,
-                                             code_info.GetInlineInfoOf(stack_map),
-                                             num_dex_registers);
+        : code_info.GetDexRegisterMapAtDepth(depth, stack_map, num_dex_registers);
       CHECK_EQ(map.size(), num_dex_registers);
       for (size_t r = 0; r < num_dex_registers; r++) {
         CHECK_EQ(expected_dex_registers->at(r), map.Get(r));

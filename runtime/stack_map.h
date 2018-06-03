@@ -222,54 +222,47 @@ class InlineInfo : public BitTable<7>::Accessor {
   InlineInfo(const BitTable<kCount>* table, uint32_t row)
     : BitTable<kCount>::Accessor(table, row) {}
 
-  ALWAYS_INLINE InlineInfo AtDepth(uint32_t depth) const {
-    return InlineInfo(table_, this->row_ + depth);
+  uint32_t GetIsLast() const { return Get<kIsLast>(); }
+
+  uint32_t GetMethodIndexIdx() const {
+    DCHECK(!EncodesArtMethod());
+    return Get<kMethodIndexIdx>();
   }
 
-  uint32_t GetDepth() const {
-    size_t depth = 0;
-    while (AtDepth(depth++).Get<kIsLast>() == kMore) { }
-    return depth;
+  uint32_t GetMethodIndex(const MethodInfo& method_info) const {
+    return method_info.GetMethodIndex(GetMethodIndexIdx());
   }
 
-  uint32_t GetMethodIndexIdxAtDepth(uint32_t depth) const {
-    DCHECK(!EncodesArtMethodAtDepth(depth));
-    return AtDepth(depth).Get<kMethodIndexIdx>();
+  uint32_t GetDexPc() const {
+    return Get<kDexPc>();
   }
 
-  uint32_t GetMethodIndexAtDepth(const MethodInfo& method_info, uint32_t depth) const {
-    return method_info.GetMethodIndex(GetMethodIndexIdxAtDepth(depth));
+  bool EncodesArtMethod() const {
+    return Get<kArtMethodLo>() != kNoValue;
   }
 
-  uint32_t GetDexPcAtDepth(uint32_t depth) const {
-    return AtDepth(depth).Get<kDexPc>();
-  }
-
-  bool EncodesArtMethodAtDepth(uint32_t depth) const {
-    return AtDepth(depth).Get<kArtMethodLo>() != kNoValue;
-  }
-
-  ArtMethod* GetArtMethodAtDepth(uint32_t depth) const {
-    uint64_t lo = AtDepth(depth).Get<kArtMethodLo>();
-    uint64_t hi = AtDepth(depth).Get<kArtMethodHi>();
+  ArtMethod* GetArtMethod() const {
+    uint64_t lo = Get<kArtMethodLo>();
+    uint64_t hi = Get<kArtMethodHi>();
     return reinterpret_cast<ArtMethod*>((hi << 32) | lo);
   }
 
-  uint32_t GetDexRegisterMaskIndexAtDepth(uint32_t depth) const {
-    return AtDepth(depth).Get<kDexRegisterMaskIndex>();
+  uint32_t GetDexRegisterMaskIndex() const {
+    return Get<kDexRegisterMaskIndex>();
   }
 
-  uint32_t GetDexRegisterMapIndexAtDepth(uint32_t depth) const {
-    return AtDepth(depth).Get<kDexRegisterMapIndex>();
+  uint32_t GetDexRegisterMapIndex() const {
+    return Get<kDexRegisterMapIndex>();
   }
-  bool HasDexRegisterMapAtDepth(uint32_t depth) const {
-    return GetDexRegisterMapIndexAtDepth(depth) != kNoValue;
+  bool HasDexRegisterMap() const {
+    return GetDexRegisterMapIndex() != kNoValue;
   }
 
   void Dump(VariableIndentationOutputStream* vios,
             const CodeInfo& info,
+            const StackMap& stack_map,
             const MethodInfo& method_info,
-            uint16_t* number_of_dex_registers) const;
+            uint16_t number_of_dex_registers) const;
 };
 
 class InvokeInfo : public BitTable<3>::Accessor {
@@ -417,10 +410,11 @@ class CodeInfo {
   }
 
   ALWAYS_INLINE DexRegisterMap GetDexRegisterMapAtDepth(uint8_t depth,
-                                                        InlineInfo inline_info,
+                                                        StackMap stack_map,
                                                         size_t num_dex_registers) const {
-    return DecodeDexRegisterMap(inline_info.GetDexRegisterMaskIndexAtDepth(depth),
-                                inline_info.GetDexRegisterMapIndexAtDepth(depth),
+    InlineInfo inline_info = GetInlineInfoAtDepth(stack_map, depth);
+    return DecodeDexRegisterMap(inline_info.GetDexRegisterMaskIndex(),
+                                inline_info.GetDexRegisterMapIndex(),
                                 num_dex_registers);
   }
 
@@ -428,10 +422,19 @@ class CodeInfo {
     return InlineInfo(&inline_infos_, index);
   }
 
-  InlineInfo GetInlineInfoOf(StackMap stack_map) const {
-    DCHECK(stack_map.HasInlineInfo());
+  uint32_t GetInlineDepthOf(StackMap stack_map) const {
+    uint32_t depth = 0;
     uint32_t index = stack_map.GetInlineInfoIndex();
-    return GetInlineInfo(index);
+    if (index != StackMap::kNoValue) {
+      while (GetInlineInfo(index + depth++).GetIsLast() == InlineInfo::kMore) { }
+    }
+    return depth;
+  }
+
+  InlineInfo GetInlineInfoAtDepth(StackMap stack_map, uint32_t depth) const {
+    DCHECK(stack_map.HasInlineInfo());
+    DCHECK_LT(depth, GetInlineDepthOf(stack_map));
+    return GetInlineInfo(stack_map.GetInlineInfoIndex() + depth);
   }
 
   StackMap GetStackMapForDexPc(uint32_t dex_pc) const {
@@ -473,7 +476,6 @@ class CodeInfo {
                 stack_map.GetNativePcOffset(kRuntimeISA)) {
           DCHECK_EQ(other.GetDexRegisterMapIndex(),
                     stack_map.GetDexRegisterMapIndex());
-          DCHECK(!stack_map.HasInlineInfo());
           if (i < e - 2) {
             // Make sure there are not three identical stack maps following each other.
             DCHECK_NE(
