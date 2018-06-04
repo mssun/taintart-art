@@ -30,7 +30,7 @@
 
 namespace art {
 
-class DexRegisterMap;
+class CodeInfo;
 
 /**
  * Collects and builds stack maps for a method. All the stack maps
@@ -138,11 +138,6 @@ class StackMapStream : public ValueObject {
 
   void CreateDexRegisterMap();
 
-  void CheckDexRegisterMap(const DexRegisterMap& dex_register_map,
-                           size_t dex_register_mask_index,
-                           size_t dex_register_map_index) const;
-  void CheckCodeInfo(MemoryRegion region) const;
-
   const InstructionSet instruction_set_;
   BitTableBuilder<StackMapEntry> stack_maps_;
   BitTableBuilder<RegisterMaskEntry> register_masks_;
@@ -171,9 +166,9 @@ class StackMapStream : public ValueObject {
   ArenaBitVector temp_dex_register_mask_;
   ScopedArenaVector<uint32_t> temp_dex_register_map_;
 
-  // Records num_dex_registers for every StackMapEntry and InlineInfoEntry.
-  // Only used in debug builds to verify the dex registers at the end.
-  std::vector<uint32_t> dcheck_num_dex_registers_;
+  // A set of lambda functions to be executed at the end to verify
+  // the encoded data. It is generally only used in debug builds.
+  std::vector<std::function<void(CodeInfo&)>> dchecks_;
 
   DISALLOW_COPY_AND_ASSIGN(StackMapStream);
 };
