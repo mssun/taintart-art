@@ -105,6 +105,10 @@ const char* image_methods_descriptions_[] = {
 const char* image_roots_descriptions_[] = {
   "kDexCaches",
   "kClassRoots",
+  "kOomeWhenThrowingException",
+  "kOomeWhenThrowingOome",
+  "kOomeWhenHandlingStackOverflow",
+  "kNoClassDefFoundError",
   "kClassLoader",
 };
 
@@ -1942,17 +1946,17 @@ class ImageDumper {
     os << "COMPILE PIC: " << (image_header_.CompilePic() ? "yes" : "no") << "\n\n";
 
     {
-      os << "ROOTS: " << reinterpret_cast<void*>(image_header_.GetImageRoots()) << "\n";
+      os << "ROOTS: " << reinterpret_cast<void*>(image_header_.GetImageRoots().Ptr()) << "\n";
       static_assert(arraysize(image_roots_descriptions_) ==
           static_cast<size_t>(ImageHeader::kImageRootsMax), "sizes must match");
       DCHECK_LE(image_header_.GetImageRoots()->GetLength(), ImageHeader::kImageRootsMax);
       for (int32_t i = 0, size = image_header_.GetImageRoots()->GetLength(); i != size; ++i) {
         ImageHeader::ImageRoot image_root = static_cast<ImageHeader::ImageRoot>(i);
         const char* image_root_description = image_roots_descriptions_[i];
-        mirror::Object* image_root_object = image_header_.GetImageRoot(image_root);
-        indent_os << StringPrintf("%s: %p\n", image_root_description, image_root_object);
+        ObjPtr<mirror::Object> image_root_object = image_header_.GetImageRoot(image_root);
+        indent_os << StringPrintf("%s: %p\n", image_root_description, image_root_object.Ptr());
         if (image_root_object != nullptr && image_root_object->IsObjectArray()) {
-          mirror::ObjectArray<mirror::Object>* image_root_object_array
+          ObjPtr<mirror::ObjectArray<mirror::Object>> image_root_object_array
               = image_root_object->AsObjectArray<mirror::Object>();
           ScopedIndentation indent2(&vios_);
           for (int j = 0; j < image_root_object_array->GetLength(); j++) {

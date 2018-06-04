@@ -1342,6 +1342,14 @@ ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
       ObjectArray<Object>::Alloc(self, object_array_class.Get(), image_roots_size)));
   image_roots->Set<false>(ImageHeader::kDexCaches, dex_caches.Get());
   image_roots->Set<false>(ImageHeader::kClassRoots, class_linker->GetClassRoots());
+  image_roots->Set<false>(ImageHeader::kOomeWhenThrowingException,
+                          runtime->GetPreAllocatedOutOfMemoryErrorWhenThrowingException());
+  image_roots->Set<false>(ImageHeader::kOomeWhenThrowingOome,
+                          runtime->GetPreAllocatedOutOfMemoryErrorWhenThrowingOOME());
+  image_roots->Set<false>(ImageHeader::kOomeWhenHandlingStackOverflow,
+                          runtime->GetPreAllocatedOutOfMemoryErrorWhenHandlingStackOverflow());
+  image_roots->Set<false>(ImageHeader::kNoClassDefFoundError,
+                          runtime->GetPreAllocatedNoClassDefFoundError());
   // image_roots[ImageHeader::kClassLoader] will be set later for app image.
   static_assert(ImageHeader::kClassLoader + 1u == ImageHeader::kImageRootsMax,
                 "Class loader should be the last image root.");

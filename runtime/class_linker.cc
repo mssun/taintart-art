@@ -197,8 +197,7 @@ static void HandleEarlierVerifyError(Thread* self,
     }
   } else {
     // Previous error has been stored as an instance. Just rethrow.
-    ObjPtr<mirror::Class> throwable_class =
-        self->DecodeJObject(WellKnownClasses::java_lang_Throwable)->AsClass();
+    ObjPtr<mirror::Class> throwable_class = GetClassRoot<mirror::Throwable>(class_linker);
     ObjPtr<mirror::Class> error_class = obj->GetClass();
     CHECK(throwable_class->IsAssignableFrom(error_class));
     self->SetException(obj->AsThrowable());

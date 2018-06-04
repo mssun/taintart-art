@@ -23,18 +23,19 @@
 #include "imt_conflict_table.h"
 #include "imtable.h"
 #include "mirror/object_array-inl.h"
+#include "obj_ptr-inl.h"
 #include "read_barrier-inl.h"
 
 namespace art {
 
 template <ReadBarrierOption kReadBarrierOption>
-inline mirror::Object* ImageHeader::GetImageRoot(ImageRoot image_root) const {
-  mirror::ObjectArray<mirror::Object>* image_roots = GetImageRoots<kReadBarrierOption>();
+inline ObjPtr<mirror::Object> ImageHeader::GetImageRoot(ImageRoot image_root) const {
+  ObjPtr<mirror::ObjectArray<mirror::Object>> image_roots = GetImageRoots<kReadBarrierOption>();
   return image_roots->Get<kVerifyNone, kReadBarrierOption>(static_cast<int32_t>(image_root));
 }
 
 template <ReadBarrierOption kReadBarrierOption>
-inline mirror::ObjectArray<mirror::Object>* ImageHeader::GetImageRoots() const {
+inline ObjPtr<mirror::ObjectArray<mirror::Object>> ImageHeader::GetImageRoots() const {
   // Need a read barrier as it's not visited during root scan.
   // Pass in the address of the local variable to the read barrier
   // rather than image_roots_ because it won't move (asserted below)
