@@ -275,6 +275,23 @@ class MethodVerifier {
     void Merge(const FailureData& src);
   };
 
+  // Verify all direct or virtual methods of a class. The method assumes that the iterator is
+  // positioned correctly, and the iterator will be updated.
+  template <bool kDirect>
+  static FailureData VerifyMethods(Thread* self,
+                                   ClassLinker* linker,
+                                   const DexFile* dex_file,
+                                   const DexFile::ClassDef& class_def,
+                                   ClassDataItemIterator* it,
+                                   Handle<mirror::DexCache> dex_cache,
+                                   Handle<mirror::ClassLoader> class_loader,
+                                   CompilerCallbacks* callbacks,
+                                   bool allow_soft_failures,
+                                   HardFailLogMode log_level,
+                                   bool need_precise_constants,
+                                   std::string* error_string)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   /*
    * Perform verification on a single method.
    *

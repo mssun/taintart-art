@@ -27,7 +27,6 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/mutex.h"
-#include "dex/class_accessor.h"
 #include "dex/dex_cache_resolved_classes.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
@@ -825,14 +824,18 @@ class ClassLinker {
                  const DexFile::ClassDef& dex_class_def,
                  Handle<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
+  void LoadClassMembers(Thread* self,
+                        const DexFile& dex_file,
+                        const uint8_t* class_data,
+                        Handle<mirror::Class> klass)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void LoadField(const ClassAccessor::Field& field, Handle<mirror::Class> klass, ArtField* dst)
+  void LoadField(const ClassDataItemIterator& it, Handle<mirror::Class> klass, ArtField* dst)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void LoadMethod(const DexFile& dex_file,
-                  const ClassAccessor::Method& method,
-                  Handle<mirror::Class> klass,
-                  ArtMethod* dst)
+                  const ClassDataItemIterator& it,
+                  Handle<mirror::Class> klass, ArtMethod* dst)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void FixupStaticTrampolines(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_);
