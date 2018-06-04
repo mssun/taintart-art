@@ -56,7 +56,7 @@ public class AllTraces {
 
     printAll(0);
 
-    printAll(5);
+    printAll(7);
 
     printAll(25);
 
