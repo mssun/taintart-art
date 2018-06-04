@@ -26,7 +26,6 @@
 #include "class_linker-inl.h"
 #include "class_root.h"
 #include "debugger.h"
-#include "dex/class_accessor-inl.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
@@ -435,14 +434,28 @@ bool ArtMethod::IsPolymorphicSignature() {
 static uint32_t GetOatMethodIndexFromMethodIndex(const DexFile& dex_file,
                                                  uint16_t class_def_idx,
                                                  uint32_t method_idx) {
-  ClassAccessor accessor(dex_file, dex_file.GetClassDef(class_def_idx));
-  uint32_t class_def_method_index = 0u;
-  for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-    if (method.GetIndex() == method_idx) {
+  const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_idx);
+  const uint8_t* class_data = dex_file.GetClassData(class_def);
+  CHECK(class_data != nullptr);
+  ClassDataItemIterator it(dex_file, class_data);
+  it.SkipAllFields();
+  // Process methods
+  size_t class_def_method_index = 0;
+  while (it.HasNextDirectMethod()) {
+    if (it.GetMemberIndex() == method_idx) {
       return class_def_method_index;
     }
     class_def_method_index++;
+    it.Next();
   }
+  while (it.HasNextVirtualMethod()) {
+    if (it.GetMemberIndex() == method_idx) {
+      return class_def_method_index;
+    }
+    class_def_method_index++;
+    it.Next();
+  }
+  DCHECK(!it.HasNext());
   LOG(FATAL) << "Failed to find method index " << method_idx << " in " << dex_file.GetLocation();
   UNREACHABLE();
 }
