@@ -37,17 +37,17 @@ class MANAGED Array : public Object {
   // least component_count size, however, if there's usable space at the end of the allocation the
   // array will fill it.
   template <bool kIsInstrumented, bool kFillUsable = false>
-  ALWAYS_INLINE static Array* Alloc(Thread* self,
-                                    ObjPtr<Class> array_class,
-                                    int32_t component_count,
-                                    size_t component_size_shift,
-                                    gc::AllocatorType allocator_type)
+  ALWAYS_INLINE static ObjPtr<Array> Alloc(Thread* self,
+                                           ObjPtr<Class> array_class,
+                                           int32_t component_count,
+                                           size_t component_size_shift,
+                                           gc::AllocatorType allocator_type)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
-  static Array* CreateMultiArray(Thread* self,
-                                 Handle<Class> element_class,
-                                 Handle<IntArray> dimensions)
+  static ObjPtr<Array> CreateMultiArray(Thread* self,
+                                        Handle<Class> element_class,
+                                        Handle<IntArray> dimensions)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
@@ -90,7 +90,7 @@ class MANAGED Array : public Object {
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   ALWAYS_INLINE bool CheckIsValidIndex(int32_t index) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  Array* CopyOf(Thread* self, int32_t new_length) REQUIRES_SHARED(Locks::mutator_lock_)
+  ObjPtr<Array> CopyOf(Thread* self, int32_t new_length) REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
  protected:
@@ -114,10 +114,10 @@ class MANAGED PrimitiveArray : public Array {
  public:
   typedef T ElementType;
 
-  static PrimitiveArray<T>* Alloc(Thread* self, size_t length)
+  static ObjPtr<PrimitiveArray<T>> Alloc(Thread* self, size_t length)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static PrimitiveArray<T>* AllocateAndFill(Thread* self, const T* data, size_t length)
+  static ObjPtr<PrimitiveArray<T>> AllocateAndFill(Thread* self, const T* data, size_t length)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
 

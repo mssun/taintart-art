@@ -67,7 +67,7 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
       class_loader = LoadDex(dex_name);
       updated_dex_file = GetDexFiles(class_loader)[0];
       Runtime::Current()->GetClassLinker()->RegisterDexFile(
-          *updated_dex_file, soa.Decode<mirror::ClassLoader>(class_loader).Ptr());
+          *updated_dex_file, soa.Decode<mirror::ClassLoader>(class_loader));
     }
     // The dex files should be identical.
     int cmp = memcmp(original_dex_file->Begin(),

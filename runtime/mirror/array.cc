@@ -42,17 +42,18 @@ using android::base::StringPrintf;
 // piece and work our way in.
 // Recursively create an array with multiple dimensions.  Elements may be
 // Objects or primitive types.
-static Array* RecursiveCreateMultiArray(Thread* self,
-                                        Handle<Class> array_class, int current_dimension,
-                                        Handle<mirror::IntArray> dimensions)
+static ObjPtr<Array> RecursiveCreateMultiArray(Thread* self,
+                                               Handle<Class> array_class,
+                                               int current_dimension,
+                                               Handle<mirror::IntArray> dimensions)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   int32_t array_length = dimensions->Get(current_dimension);
-  StackHandleScope<1> hs(self);
-  Handle<Array> new_array(
-      hs.NewHandle(
-          Array::Alloc<true>(self, array_class.Get(), array_length,
-                             array_class->GetComponentSizeShift(),
-                             Runtime::Current()->GetHeap()->GetCurrentAllocator())));
+  StackHandleScope<2> hs(self);
+  Handle<mirror::Class> h_component_type(hs.NewHandle(array_class->GetComponentType()));
+  size_t component_size_shift = h_component_type->GetPrimitiveTypeSizeShift();
+  gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
+  Handle<Array> new_array(hs.NewHandle(Array::Alloc<true>(
+      self, array_class.Get(), array_length, component_size_shift, allocator_type)));
   if (UNLIKELY(new_array == nullptr)) {
     CHECK(self->IsExceptionPending());
     return nullptr;
@@ -60,10 +61,8 @@ static Array* RecursiveCreateMultiArray(Thread* self,
   if (current_dimension + 1 < dimensions->GetLength()) {
     // Create a new sub-array in every element of the array.
     for (int32_t i = 0; i < array_length; i++) {
-      StackHandleScope<1> hs2(self);
-      Handle<mirror::Class> h_component_type(hs2.NewHandle(array_class->GetComponentType()));
-      ObjPtr<Array> sub_array = RecursiveCreateMultiArray(self, h_component_type,
-                                                   current_dimension + 1, dimensions);
+      ObjPtr<Array> sub_array =
+          RecursiveCreateMultiArray(self, h_component_type, current_dimension + 1, dimensions);
       if (UNLIKELY(sub_array == nullptr)) {
         CHECK(self->IsExceptionPending());
         return nullptr;
@@ -75,8 +74,9 @@ static Array* RecursiveCreateMultiArray(Thread* self,
   return new_array.Get();
 }
 
-Array* Array::CreateMultiArray(Thread* self, Handle<Class> element_class,
-                               Handle<IntArray> dimensions) {
+ObjPtr<Array> Array::CreateMultiArray(Thread* self,
+                                      Handle<Class> element_class,
+                                      Handle<IntArray> dimensions) {
   // Verify dimensions.
   //
   // The caller is responsible for verifying that "dimArray" is non-null
@@ -95,17 +95,15 @@ Array* Array::CreateMultiArray(Thread* self, Handle<Class> element_class,
 
   // Find/generate the array class.
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  ObjPtr<mirror::Class>  element_class_ptr = element_class.Get();
   StackHandleScope<1> hs(self);
   MutableHandle<mirror::Class> array_class(
-      hs.NewHandle(class_linker->FindArrayClass(self, &element_class_ptr)));
+      hs.NewHandle(class_linker->FindArrayClass(self, element_class.Get())));
   if (UNLIKELY(array_class == nullptr)) {
     CHECK(self->IsExceptionPending());
     return nullptr;
   }
   for (int32_t i = 1; i < dimensions->GetLength(); ++i) {
-    ObjPtr<mirror::Class> array_class_ptr = array_class.Get();
-    array_class.Assign(class_linker->FindArrayClass(self, &array_class_ptr));
+    array_class.Assign(class_linker->FindArrayClass(self, array_class.Get()));
     if (UNLIKELY(array_class == nullptr)) {
       CHECK(self->IsExceptionPending());
       return nullptr;
@@ -120,13 +118,14 @@ Array* Array::CreateMultiArray(Thread* self, Handle<Class> element_class,
 }
 
 template<typename T>
-PrimitiveArray<T>* PrimitiveArray<T>::Alloc(Thread* self, size_t length) {
-  Array* raw_array = Array::Alloc<true>(self,
-                                        GetClassRoot<PrimitiveArray<T>>(),
-                                        length,
-                                        ComponentSizeShiftWidth(sizeof(T)),
-                                        Runtime::Current()->GetHeap()->GetCurrentAllocator());
-  return down_cast<PrimitiveArray<T>*>(raw_array);
+ObjPtr<PrimitiveArray<T>> PrimitiveArray<T>::Alloc(Thread* self, size_t length) {
+  gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
+  ObjPtr<Array> raw_array = Array::Alloc<true>(self,
+                                               GetClassRoot<PrimitiveArray<T>>(),
+                                               length,
+                                               ComponentSizeShiftWidth(sizeof(T)),
+                                               allocator_type);
+  return ObjPtr<PrimitiveArray<T>>::DownCast(raw_array);
 }
 
 void Array::ThrowArrayIndexOutOfBoundsException(int32_t index) {
@@ -137,7 +136,7 @@ void Array::ThrowArrayStoreException(ObjPtr<Object> object) {
   art::ThrowArrayStoreException(object->GetClass(), this->GetClass());
 }
 
-Array* Array::CopyOf(Thread* self, int32_t new_length) {
+ObjPtr<Array> Array::CopyOf(Thread* self, int32_t new_length) {
   CHECK(GetClass()->GetComponentType()->IsPrimitive()) << "Will miss write barriers";
   DCHECK_GE(new_length, 0);
   // We may get copied by a compacting GC.
@@ -148,7 +147,8 @@ Array* Array::CopyOf(Thread* self, int32_t new_length) {
       heap->GetCurrentNonMovingAllocator();
   const auto component_size = GetClass()->GetComponentSize();
   const auto component_shift = GetClass()->GetComponentSizeShift();
-  ObjPtr<Array> new_array = Alloc<true>(self, GetClass(), new_length, component_shift, allocator_type);
+  ObjPtr<Array> new_array =
+      Alloc<true>(self, GetClass(), new_length, component_shift, allocator_type);
   if (LIKELY(new_array != nullptr)) {
     memcpy(new_array->GetRawData(component_size, 0),
            h_this->GetRawData(component_size, 0),

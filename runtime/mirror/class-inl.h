@@ -294,7 +294,7 @@ inline PointerArray* Class::GetVTableDuringLinking() {
   return GetFieldObject<PointerArray>(OFFSET_OF_OBJECT_MEMBER(Class, vtable_));
 }
 
-inline void Class::SetVTable(PointerArray* new_vtable) {
+inline void Class::SetVTable(ObjPtr<PointerArray> new_vtable) {
   SetFieldObject<false>(OFFSET_OF_OBJECT_MEMBER(Class, vtable_), new_vtable);
 }
 
@@ -486,7 +486,7 @@ inline bool Class::ResolvedMethodAccessTest(ObjPtr<Class> access_to,
     if (UNLIKELY(!this->CanAccess(dex_access_to))) {
       if (throw_on_failure) {
         ThrowIllegalAccessErrorClassForMethodDispatch(this,
-                                                      dex_access_to.Ptr(),
+                                                      dex_access_to,
                                                       method,
                                                       throw_invoke_type);
       }
@@ -797,7 +797,7 @@ inline ObjPtr<Object> Class::Alloc(Thread* self, gc::AllocatorType allocator_typ
       obj = nullptr;
     }
   }
-  return obj.Ptr();
+  return obj;
 }
 
 inline ObjPtr<Object> Class::AllocObject(Thread* self) {

@@ -127,7 +127,7 @@ inline ObjPtr<mirror::Class> GetClassRoot(
   ObjPtr<mirror::Class> klass =
       class_roots->GetWithoutChecks<kDefaultVerifyFlags, kReadBarrierOption>(index);
   DCHECK(klass != nullptr);
-  return klass.Ptr();
+  return klass;
 }
 
 template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>

@@ -35,7 +35,7 @@ class VerificationTest : public CommonRuntimeTest {
   VerificationTest() {}
 
   template <class T>
-  mirror::ObjectArray<T>* AllocObjectArray(Thread* self, size_t length)
+  ObjPtr<mirror::ObjectArray<T>> AllocObjectArray(Thread* self, size_t length)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return mirror::ObjectArray<T>::Alloc(
         self,

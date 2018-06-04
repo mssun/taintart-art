@@ -807,7 +807,7 @@ ObjPtr<mirror::Class> RegType::ClassJoin(ObjPtr<mirror::Class> s, ObjPtr<mirror:
     }
     // Note: The following lookup invalidates existing ObjPtr<>s.
     ObjPtr<mirror::Class> array_class =
-        Runtime::Current()->GetClassLinker()->FindArrayClass(self, &common_elem);
+        Runtime::Current()->GetClassLinker()->FindArrayClass(self, common_elem);
     if (UNLIKELY(array_class == nullptr)) {
       self->AssertPendingException();
       return nullptr;

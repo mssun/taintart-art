@@ -545,8 +545,7 @@ TEST_F(OatTest, EmptyTextSection) {
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
   for (const DexFile* dex_file : dex_files) {
     ScopedObjectAccess soa(Thread::Current());
-    class_linker->RegisterDexFile(*dex_file,
-                                  soa.Decode<mirror::ClassLoader>(class_loader).Ptr());
+    class_linker->RegisterDexFile(*dex_file, soa.Decode<mirror::ClassLoader>(class_loader));
   }
   compiler_driver_->SetDexFilesForOatFile(dex_files);
   compiler_driver_->CompileAll(class_loader, dex_files, &timings);

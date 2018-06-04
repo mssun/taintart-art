@@ -91,7 +91,7 @@ class UnstartedRuntimeTest : public CommonRuntimeTest {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     Runtime* runtime = Runtime::Current();
     ObjPtr<mirror::Class> array_type =
-        runtime->GetClassLinker()->FindArrayClass(self, &component_type);
+        runtime->GetClassLinker()->FindArrayClass(self, component_type);
     CHECK(array_type != nullptr);
     ObjPtr<mirror::ObjectArray<mirror::Object>> result =
         mirror::ObjectArray<mirror::Object>::Alloc(self, array_type, 3);
