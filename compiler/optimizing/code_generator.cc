@@ -63,6 +63,7 @@
 #include "parallel_move_resolver.h"
 #include "scoped_thread_state_change-inl.h"
 #include "ssa_liveness_analysis.h"
+#include "stack_map.h"
 #include "stack_map_stream.h"
 #include "thread-current-inl.h"
 #include "utils/assembler.h"
