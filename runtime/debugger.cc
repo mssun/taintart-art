@@ -1388,7 +1388,7 @@ JDWP::JdwpError Dbg::CreateObject(JDWP::RefTypeId class_id, JDWP::ObjectId* new_
     *new_object_id = 0;
     return JDWP::ERR_OUT_OF_MEMORY;
   }
-  *new_object_id = gRegistry->Add(new_object.Ptr());
+  *new_object_id = gRegistry->Add(new_object);
   return JDWP::ERR_NONE;
 }
 
@@ -1404,10 +1404,9 @@ JDWP::JdwpError Dbg::CreateArrayObject(JDWP::RefTypeId array_class_id, uint32_t 
     return error;
   }
   Thread* self = Thread::Current();
-  gc::Heap* heap = Runtime::Current()->GetHeap();
-  mirror::Array* new_array = mirror::Array::Alloc<true>(self, c, length,
-                                                        c->GetComponentSizeShift(),
-                                                        heap->GetCurrentAllocator());
+  gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
+  ObjPtr<mirror::Array> new_array =
+      mirror::Array::Alloc<true>(self, c, length, c->GetComponentSizeShift(), allocator_type);
   if (new_array == nullptr) {
     DCHECK(self->IsExceptionPending());
     self->ClearException();
@@ -1849,7 +1848,7 @@ static JValue GetArtFieldValue(ArtField* f, mirror::Object* o)
       return field_value;
 
     case Primitive::kPrimNot:
-      field_value.SetL(f->GetObject(o).Ptr());
+      field_value.SetL(f->GetObject(o));
       return field_value;
 
     case Primitive::kPrimVoid:

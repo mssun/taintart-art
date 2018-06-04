@@ -359,7 +359,7 @@ ObjPtr<mirror::Object> ProcessEncodedAnnotation(const ClassData& klass, const ui
   ObjPtr<mirror::Class> annotation_member_class =
       soa.Decode<mirror::Class>(WellKnownClasses::libcore_reflect_AnnotationMember);
   ObjPtr<mirror::Class> annotation_member_array_class =
-      class_linker->FindArrayClass(self, &annotation_member_class);
+      class_linker->FindArrayClass(self, annotation_member_class);
   if (annotation_member_array_class == nullptr) {
     return nullptr;
   }
@@ -967,7 +967,7 @@ ObjPtr<mirror::ObjectArray<mirror::Object>> ProcessAnnotationSetRefList(
   ObjPtr<mirror::Class> annotation_array_class =
       soa.Decode<mirror::Class>(WellKnownClasses::java_lang_annotation_Annotation__array);
   ObjPtr<mirror::Class> annotation_array_array_class =
-      Runtime::Current()->GetClassLinker()->FindArrayClass(self, &annotation_array_class);
+      Runtime::Current()->GetClassLinker()->FindArrayClass(self, annotation_array_class);
   if (annotation_array_array_class == nullptr) {
     return nullptr;
   }

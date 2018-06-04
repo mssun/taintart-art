@@ -2036,14 +2036,14 @@ class JNI {
         return nullptr;
       }
       ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-      array_class = class_linker->FindArrayClass(soa.Self(), &element_class);
+      array_class = class_linker->FindArrayClass(soa.Self(), element_class);
       if (UNLIKELY(array_class == nullptr)) {
         return nullptr;
       }
     }
 
     // Allocate and initialize if necessary.
-    mirror::ObjectArray<mirror::Object>* result =
+    ObjPtr<mirror::ObjectArray<mirror::Object>> result =
         mirror::ObjectArray<mirror::Object>::Alloc(soa.Self(), array_class, length);
     if (result != nullptr && initial_element != nullptr) {
       ObjPtr<mirror::Object> initial_object = soa.Decode<mirror::Object>(initial_element);
@@ -2548,7 +2548,7 @@ class JNI {
       soa.Vm()->JniAbortF("NewPrimitiveArray", "negative array length: %d", length);
       return nullptr;
     }
-    ArtT* result = ArtT::Alloc(soa.Self(), length);
+    ObjPtr<ArtT> result = ArtT::Alloc(soa.Self(), length);
     return soa.AddLocalReference<JniT>(result);
   }
 

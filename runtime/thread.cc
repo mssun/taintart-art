@@ -491,7 +491,7 @@ Thread* Thread::FromManagedThread(const ScopedObjectAccessAlreadyRunnable& soa,
 
 Thread* Thread::FromManagedThread(const ScopedObjectAccessAlreadyRunnable& soa,
                                   jobject java_thread) {
-  return FromManagedThread(soa, soa.Decode<mirror::Object>(java_thread).Ptr());
+  return FromManagedThread(soa, soa.Decode<mirror::Object>(java_thread));
 }
 
 static size_t FixStackSize(size_t stack_size) {
@@ -2728,7 +2728,7 @@ jobjectArray Thread::InternalStackTraceToStackTraceElementArray(
     depth = std::min(depth, traces_length);
   } else {
     // Create java_trace array and place in local reference table
-    mirror::ObjectArray<mirror::StackTraceElement>* java_traces =
+    ObjPtr<mirror::ObjectArray<mirror::StackTraceElement>> java_traces =
         class_linker->AllocStackTraceElementArray(soa.Self(), depth);
     if (java_traces == nullptr) {
       return nullptr;

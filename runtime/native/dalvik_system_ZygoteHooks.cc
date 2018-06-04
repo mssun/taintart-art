@@ -100,7 +100,7 @@ class ClassSet {
   }
 
   void AddClass(ObjPtr<mirror::Class> klass) REQUIRES(Locks::mutator_lock_) {
-    class_set_.insert(self_->GetJniEnv()->AddLocalReference<jclass>(klass.Ptr()));
+    class_set_.insert(self_->GetJniEnv()->AddLocalReference<jclass>(klass));
   }
 
   const std::unordered_set<jclass>& GetClasses() const {

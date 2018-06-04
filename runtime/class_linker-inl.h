@@ -35,20 +35,19 @@
 namespace art {
 
 inline ObjPtr<mirror::Class> ClassLinker::FindArrayClass(Thread* self,
-                                                         ObjPtr<mirror::Class>* element_class) {
+                                                         ObjPtr<mirror::Class> element_class) {
   for (size_t i = 0; i < kFindArrayCacheSize; ++i) {
     // Read the cached array class once to avoid races with other threads setting it.
     ObjPtr<mirror::Class> array_class = find_array_class_cache_[i].Read();
-    if (array_class != nullptr && array_class->GetComponentType() == *element_class) {
-      return array_class.Ptr();
+    if (array_class != nullptr && array_class->GetComponentType() == element_class) {
+      return array_class;
     }
   }
   std::string descriptor = "[";
   std::string temp;
-  descriptor += (*element_class)->GetDescriptor(&temp);
-  StackHandleScope<2> hs(Thread::Current());
-  Handle<mirror::ClassLoader> class_loader(hs.NewHandle((*element_class)->GetClassLoader()));
-  HandleWrapperObjPtr<mirror::Class> h_element_class(hs.NewHandleWrapper(element_class));
+  descriptor += element_class->GetDescriptor(&temp);
+  StackHandleScope<1> hs(Thread::Current());
+  Handle<mirror::ClassLoader> class_loader(hs.NewHandle(element_class->GetClassLoader()));
   ObjPtr<mirror::Class> array_class = FindClass(self, descriptor.c_str(), class_loader);
   if (array_class != nullptr) {
     // Benign races in storing array class and incrementing index.
@@ -59,7 +58,7 @@ inline ObjPtr<mirror::Class> ClassLinker::FindArrayClass(Thread* self,
     // We should have a NoClassDefFoundError.
     self->AssertPendingException();
   }
-  return array_class.Ptr();
+  return array_class;
 }
 
 inline ObjPtr<mirror::Class> ClassLinker::ResolveType(dex::TypeIndex type_idx,

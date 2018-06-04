@@ -233,8 +233,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
     ObjPtr<mirror::Class> direct_interface1 =
         mirror::Class::GetDirectInterface(self, array.Get(), 1);
     EXPECT_STREQ(direct_interface1->GetDescriptor(&temp), "Ljava/io/Serializable;");
-    ObjPtr<mirror::Class> array_ptr = array->GetComponentType();
-    EXPECT_OBJ_PTR_EQ(class_linker_->FindArrayClass(self, &array_ptr), array.Get());
+    EXPECT_OBJ_PTR_EQ(class_linker_->FindArrayClass(self, array->GetComponentType()), array.Get());
 
     PointerSize pointer_size = class_linker_->GetImagePointerSize();
     ObjPtr<mirror::Class> JavaLangObject =
