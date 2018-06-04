@@ -179,7 +179,7 @@ TEST_F(MethodHandlesTest, SupportedReferenceCast) {
   StackHandleScope<3> hs(soa.Self());
   static const int32_t kInitialValue = 101;
   JValue value = JValue::FromPrimitive(kInitialValue);
-  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimInt, value).Ptr());
+  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimInt, value));
   Handle<mirror::Class> from = hs.NewHandle(boxed_value->GetClass());
   Handle<mirror::Class> to = hs.NewHandle(cl->FindSystemClass(soa.Self(), "Ljava/lang/Number;"));
   value.SetL(boxed_value.Get());
@@ -195,8 +195,7 @@ TEST_F(MethodHandlesTest, UnsupportedReferenceCast) {
   ClassLinker* cl = Runtime::Current()->GetClassLinker();
   StackHandleScope<3> hs(soa.Self());
   JValue value = JValue::FromPrimitive(3.733e2);
-  Handle<mirror::Object> boxed_value =
-      hs.NewHandle(BoxPrimitive(Primitive::kPrimDouble, value).Ptr());
+  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimDouble, value));
   Handle<mirror::Class> from = hs.NewHandle(boxed_value->GetClass());
   Handle<mirror::Class> to = hs.NewHandle(cl->FindSystemClass(soa.Self(), "Ljava/lang/Integer;"));
   value.SetL(boxed_value.Get());
@@ -293,7 +292,7 @@ TEST_F(MethodHandlesTest, SupportedBoxedToPrimitiveConversion) {
   StackHandleScope<3> hs(soa.Self());
   const int32_t kInitialValue = 101;
   JValue value = JValue::FromPrimitive(kInitialValue);
-  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimInt, value).Ptr());
+  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimInt, value));
   Handle<mirror::Class> from = hs.NewHandle(cl->FindSystemClass(soa.Self(), "Ljava/lang/Integer;"));
   Handle<mirror::Class> to = hs.NewHandle(cl->FindPrimitiveClass('I'));
   value.SetL(boxed_value.Get());
@@ -308,7 +307,7 @@ TEST_F(MethodHandlesTest, SupportedBoxedToWiderPrimitiveConversion) {
   StackHandleScope<3> hs(soa.Self());
   static const int32_t kInitialValue = 101;
   JValue value = JValue::FromPrimitive(kInitialValue);
-  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimInt, value).Ptr());
+  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimInt, value));
   Handle<mirror::Class> from = hs.NewHandle(cl->FindSystemClass(soa.Self(), "Ljava/lang/Integer;"));
   Handle<mirror::Class> to = hs.NewHandle(cl->FindPrimitiveClass('J'));
   value.SetL(boxed_value.Get());
@@ -352,7 +351,7 @@ TEST_F(MethodHandlesTest, UnsupportedBoxedToNarrowerPrimitiveConversionNoCast) {
   StackHandleScope<3> hs(soa.Self());
   static const int32_t kInitialValue = 101;
   JValue value = JValue::FromPrimitive(kInitialValue);
-  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimInt, value).Ptr());
+  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimInt, value));
   Handle<mirror::Class> from = hs.NewHandle(cl->FindSystemClass(soa.Self(), "Ljava/lang/Integer;"));
   Handle<mirror::Class> to = hs.NewHandle(cl->FindPrimitiveClass('S'));
   value.SetL(boxed_value.Get());
@@ -368,8 +367,7 @@ TEST_F(MethodHandlesTest, UnsupportedBoxedToNarrowerPrimitiveConversionWithCast)
   StackHandleScope<3> hs(soa.Self());
   static const double kInitialValue = 1e77;
   JValue value = JValue::FromPrimitive(kInitialValue);
-  Handle<mirror::Object> boxed_value =
-      hs.NewHandle(BoxPrimitive(Primitive::kPrimDouble, value).Ptr());
+  Handle<mirror::Object> boxed_value = hs.NewHandle(BoxPrimitive(Primitive::kPrimDouble, value));
   Handle<mirror::Class> from = hs.NewHandle(cl->FindSystemClass(soa.Self(), "Ljava/lang/Number;"));
   Handle<mirror::Class> to = hs.NewHandle(cl->FindPrimitiveClass('F'));
   value.SetL(boxed_value.Get());

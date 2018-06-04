@@ -526,7 +526,7 @@ art::mirror::Object* Redefiner::ClassRedefinition::AllocateOrGetOriginalDexFile(
     return art::mirror::ByteArray::AllocateAndFill(
         driver_->self_,
         reinterpret_cast<const signed char*>(original_dex_file_.data()),
-        original_dex_file_.size());
+        original_dex_file_.size()).Ptr();
   }
 
   // See if we already have one set.

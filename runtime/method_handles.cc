@@ -268,7 +268,7 @@ bool ConvertJValueCommon(
 
     // Then perform the actual boxing, and then set the reference.
     ObjPtr<mirror::Object> boxed = BoxPrimitive(type, src_value);
-    value->SetL(boxed.Ptr());
+    value->SetL(boxed);
     return true;
   } else {
     // The source type is a reference and the target type is a primitive, so we must unbox.
@@ -323,7 +323,7 @@ inline void CopyArgumentsFromCallerFrame(const ShadowFrame& caller_frame,
     // Note: As an optimization, non-moving collectors leave a stale reference value
     // in the references array even after the original vreg was overwritten to a non-reference.
     if (src_value == reinterpret_cast<uintptr_t>(o.Ptr())) {
-      callee_frame->SetVRegReference(dst_reg, o.Ptr());
+      callee_frame->SetVRegReference(dst_reg, o);
     } else {
       callee_frame->SetVReg(dst_reg, src_value);
     }

@@ -384,7 +384,7 @@ ObjPtr<mirror::Class> VerifierDeps::FindOneClassPathBoundaryForInterface(
   // Find a boundary making `source` inherit from `destination`. We must find one.
   for (const ObjPtr<mirror::Class>& boundary : boundaries) {
     if (destination->IsAssignableFrom(boundary)) {
-      return boundary.Ptr();
+      return boundary;
     }
   }
   LOG(FATAL) << "Should have found a classpath boundary";

@@ -268,14 +268,14 @@ inline mirror::Class* CheckArrayAlloc(dex::TypeIndex type_idx,
 // check.
 template <bool kAccessCheck, bool kInstrumented>
 ALWAYS_INLINE
-inline mirror::Array* AllocArrayFromCode(dex::TypeIndex type_idx,
-                                         int32_t component_count,
-                                         ArtMethod* method,
-                                         Thread* self,
-                                         gc::AllocatorType allocator_type) {
+inline ObjPtr<mirror::Array> AllocArrayFromCode(dex::TypeIndex type_idx,
+                                                int32_t component_count,
+                                                ArtMethod* method,
+                                                Thread* self,
+                                                gc::AllocatorType allocator_type) {
   bool slow_path = false;
-  mirror::Class* klass = CheckArrayAlloc<kAccessCheck>(type_idx, component_count, method,
-                                                       &slow_path);
+  ObjPtr<mirror::Class> klass =
+      CheckArrayAlloc<kAccessCheck>(type_idx, component_count, method, &slow_path);
   if (UNLIKELY(slow_path)) {
     if (klass == nullptr) {
       return nullptr;
@@ -306,7 +306,7 @@ inline mirror::Array* AllocArrayFromCodeResolved(mirror::Class* klass,
   // No need to retry a slow-path allocation as the above code won't cause a GC or thread
   // suspension.
   return mirror::Array::Alloc<kInstrumented>(self, klass, component_count,
-                                             klass->GetComponentSizeShift(), allocator_type);
+                                             klass->GetComponentSizeShift(), allocator_type).Ptr();
 }
 
 template<FindFieldType type, bool access_check>

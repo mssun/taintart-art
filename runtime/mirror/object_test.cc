@@ -76,7 +76,7 @@ class ObjectTest : public CommonRuntimeTest {
   }
 
   template <class T>
-  mirror::ObjectArray<T>* AllocObjectArray(Thread* self, size_t length)
+  ObjPtr<mirror::ObjectArray<T>> AllocObjectArray(Thread* self, size_t length)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return mirror::ObjectArray<T>::Alloc(
         self, GetClassRoot(ClassRoot::kObjectArrayClass, class_linker_), length);
@@ -206,7 +206,8 @@ void TestPrimitiveArray(ClassLinker* cl) {
   ScopedObjectAccess soa(Thread::Current());
   typedef typename ArrayT::ElementType T;
 
-  ArrayT* a = ArrayT::Alloc(soa.Self(), 2);
+  StackHandleScope<2> hs(soa.Self());
+  Handle<ArrayT> a = hs.NewHandle(ArrayT::Alloc(soa.Self(), 2));
   EXPECT_EQ(2, a->GetLength());
   EXPECT_EQ(0, a->Get(0));
   EXPECT_EQ(0, a->Get(1));
@@ -217,7 +218,6 @@ void TestPrimitiveArray(ClassLinker* cl) {
   EXPECT_EQ(T(123), a->Get(0));
   EXPECT_EQ(T(321), a->Get(1));
 
-  StackHandleScope<1> hs(soa.Self());
   Handle<Class> aioobe = hs.NewHandle(
       cl->FindSystemClass(soa.Self(), "Ljava/lang/ArrayIndexOutOfBoundsException;"));
 
@@ -256,7 +256,8 @@ TEST_F(ObjectTest, PrimitiveArray_Double_Alloc) {
   ScopedObjectAccess soa(Thread::Current());
   typedef typename ArrayT::ElementType T;
 
-  ArrayT* a = ArrayT::Alloc(soa.Self(), 2);
+  StackHandleScope<2> hs(soa.Self());
+  Handle<ArrayT> a = hs.NewHandle(ArrayT::Alloc(soa.Self(), 2));
   EXPECT_EQ(2, a->GetLength());
   EXPECT_DOUBLE_EQ(0, a->Get(0));
   EXPECT_DOUBLE_EQ(0, a->Get(1));
@@ -267,7 +268,6 @@ TEST_F(ObjectTest, PrimitiveArray_Double_Alloc) {
   EXPECT_DOUBLE_EQ(T(123), a->Get(0));
   EXPECT_DOUBLE_EQ(T(321), a->Get(1));
 
-  StackHandleScope<1> hs(soa.Self());
   Handle<Class> aioobe = hs.NewHandle(
       class_linker_->FindSystemClass(soa.Self(), "Ljava/lang/ArrayIndexOutOfBoundsException;"));
 
@@ -287,7 +287,8 @@ TEST_F(ObjectTest, PrimitiveArray_Float_Alloc) {
   ScopedObjectAccess soa(Thread::Current());
   typedef typename ArrayT::ElementType T;
 
-  ArrayT* a = ArrayT::Alloc(soa.Self(), 2);
+  StackHandleScope<2> hs(soa.Self());
+  Handle<ArrayT> a = hs.NewHandle(ArrayT::Alloc(soa.Self(), 2));
   EXPECT_FLOAT_EQ(2, a->GetLength());
   EXPECT_FLOAT_EQ(0, a->Get(0));
   EXPECT_FLOAT_EQ(0, a->Get(1));
@@ -298,7 +299,6 @@ TEST_F(ObjectTest, PrimitiveArray_Float_Alloc) {
   EXPECT_FLOAT_EQ(T(123), a->Get(0));
   EXPECT_FLOAT_EQ(T(321), a->Get(1));
 
-  StackHandleScope<1> hs(soa.Self());
   Handle<Class> aioobe = hs.NewHandle(
       class_linker_->FindSystemClass(soa.Self(), "Ljava/lang/ArrayIndexOutOfBoundsException;"));
 
@@ -317,16 +317,17 @@ TEST_F(ObjectTest, PrimitiveArray_Float_Alloc) {
 TEST_F(ObjectTest, CreateMultiArray) {
   ScopedObjectAccess soa(Thread::Current());
 
-  StackHandleScope<2> hs(soa.Self());
-  Handle<Class> c(hs.NewHandle(class_linker_->FindSystemClass(soa.Self(), "I")));
+  StackHandleScope<4> hs(soa.Self());
+  Handle<Class> int_class(hs.NewHandle(class_linker_->FindSystemClass(soa.Self(), "I")));
+  Handle<Class> int_array_class = hs.NewHandle(class_linker_->FindSystemClass(soa.Self(), "[I"));
   MutableHandle<IntArray> dims(hs.NewHandle(IntArray::Alloc(soa.Self(), 1)));
   dims->Set<false>(0, 1);
-  Array* multi = Array::CreateMultiArray(soa.Self(), c, dims);
-  EXPECT_TRUE(multi->GetClass() == class_linker_->FindSystemClass(soa.Self(), "[I"));
+  MutableHandle<Array> multi = hs.NewHandle(Array::CreateMultiArray(soa.Self(), int_class, dims));
+  EXPECT_OBJ_PTR_EQ(int_array_class.Get(), multi->GetClass());
   EXPECT_EQ(1, multi->GetLength());
 
   dims->Set<false>(0, -1);
-  multi = Array::CreateMultiArray(soa.Self(), c, dims);
+  multi.Assign(Array::CreateMultiArray(soa.Self(), int_class, dims));
   EXPECT_TRUE(soa.Self()->IsExceptionPending());
   EXPECT_EQ(mirror::Class::PrettyDescriptor(soa.Self()->GetException()->GetClass()),
             "java.lang.NegativeArraySizeException");
@@ -337,12 +338,12 @@ TEST_F(ObjectTest, CreateMultiArray) {
     for (int j = 0; j < 20; ++j) {
       dims->Set<false>(0, i);
       dims->Set<false>(1, j);
-      multi = Array::CreateMultiArray(soa.Self(), c, dims);
+      multi.Assign(Array::CreateMultiArray(soa.Self(), int_class, dims));
       EXPECT_TRUE(multi->GetClass() == class_linker_->FindSystemClass(soa.Self(), "[[I"));
       EXPECT_EQ(i, multi->GetLength());
       for (int k = 0; k < i; ++k) {
-        Array* outer = multi->AsObjectArray<Array>()->Get(k);
-        EXPECT_TRUE(outer->GetClass() == class_linker_->FindSystemClass(soa.Self(), "[I"));
+        ObjPtr<Array> outer = multi->AsObjectArray<Array>()->Get(k);
+        EXPECT_OBJ_PTR_EQ(int_array_class.Get(), outer->GetClass());
         EXPECT_EQ(j, outer->GetLength());
       }
     }
@@ -817,7 +818,7 @@ TEST_F(ObjectTest, PrettyTypeOf) {
 
   ObjPtr<mirror::Class> c = class_linker_->FindSystemClass(soa.Self(), "[Ljava/lang/String;");
   ASSERT_TRUE(c != nullptr);
-  mirror::Object* o = mirror::ObjectArray<mirror::String>::Alloc(soa.Self(), c, 0);
+  ObjPtr<mirror::Object> o = mirror::ObjectArray<mirror::String>::Alloc(soa.Self(), c, 0);
   EXPECT_EQ("java.lang.String[]", mirror::Object::PrettyTypeOf(o));
   EXPECT_EQ("java.lang.Class<java.lang.String[]>", mirror::Object::PrettyTypeOf(o->GetClass()));
 }

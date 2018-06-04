@@ -106,7 +106,7 @@ TEST_F(ReferenceTableTest, Basics) {
   }
 
   // Add a second object 10 times and check dumping is sane.
-  mirror::Object* o2 = mirror::ShortArray::Alloc(soa.Self(), 0);
+  ObjPtr<mirror::Object> o2 = mirror::ShortArray::Alloc(soa.Self(), 0);
   for (size_t i = 0; i < 10; ++i) {
     rt.Add(o2);
     EXPECT_EQ(i + 2, rt.Size());
@@ -276,23 +276,26 @@ TEST_F(ReferenceTableTest, SummaryOrder) {
   ReferenceTable rt("test", 0, 20);
 
   {
-    mirror::Object* s1 = mirror::String::AllocFromModifiedUtf8(soa.Self(), "hello");
-    mirror::Object* s2 = mirror::String::AllocFromModifiedUtf8(soa.Self(), "world");
+    StackHandleScope<1> hs(soa.Self());
+    Handle<mirror::String> s1 =
+        hs.NewHandle(mirror::String::AllocFromModifiedUtf8(soa.Self(), "hello"));
+    ObjPtr<mirror::String> s2 = mirror::String::AllocFromModifiedUtf8(soa.Self(), "world");
 
     // 3 copies of s1, 2 copies of s2, interleaved.
     for (size_t i = 0; i != 2; ++i) {
-      rt.Add(s1);
+      rt.Add(s1.Get());
       rt.Add(s2);
     }
-    rt.Add(s1);
+    rt.Add(s1.Get());
   }
 
   {
     // Differently sized byte arrays. Should be sorted by identical (non-unique cound).
-    mirror::Object* b1_1 = mirror::ByteArray::Alloc(soa.Self(), 1);
-    rt.Add(b1_1);
+    StackHandleScope<1> hs(soa.Self());
+    Handle<mirror::ByteArray> b1_1 = hs.NewHandle(mirror::ByteArray::Alloc(soa.Self(), 1));
+    rt.Add(b1_1.Get());
     rt.Add(mirror::ByteArray::Alloc(soa.Self(), 2));
-    rt.Add(b1_1);
+    rt.Add(b1_1.Get());
     rt.Add(mirror::ByteArray::Alloc(soa.Self(), 2));
     rt.Add(mirror::ByteArray::Alloc(soa.Self(), 1));
     rt.Add(mirror::ByteArray::Alloc(soa.Self(), 2));

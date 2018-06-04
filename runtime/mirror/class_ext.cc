@@ -43,8 +43,8 @@ void ClassExt::SetObsoleteArrays(ObjPtr<PointerArray> methods,
   auto obsolete_dex_cache_off = OFFSET_OF_OBJECT_MEMBER(ClassExt, obsolete_dex_caches_);
   auto obsolete_methods_off = OFFSET_OF_OBJECT_MEMBER(ClassExt, obsolete_methods_);
   DCHECK(!Runtime::Current()->IsActiveTransaction());
-  SetFieldObject<false>(obsolete_dex_cache_off, dex_caches.Ptr());
-  SetFieldObject<false>(obsolete_methods_off, methods.Ptr());
+  SetFieldObject<false>(obsolete_dex_cache_off, dex_caches);
+  SetFieldObject<false>(obsolete_methods_off, methods);
 }
 
 // We really need to be careful how we update this. If we ever in the future make it so that

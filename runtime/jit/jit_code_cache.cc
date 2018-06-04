@@ -471,7 +471,7 @@ static void FillRootTable(uint8_t* roots_data, Handle<mirror::ObjectArray<mirror
     if (kIsDebugBuild) {
       // Ensure the string is strongly interned. b/32995596
       if (object->IsString()) {
-        ObjPtr<mirror::String> str = reinterpret_cast<mirror::String*>(object.Ptr());
+        ObjPtr<mirror::String> str = ObjPtr<mirror::String>::DownCast(object);
         ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
         CHECK(class_linker->GetInternTable()->LookupStrong(Thread::Current(), str) != nullptr);
       }

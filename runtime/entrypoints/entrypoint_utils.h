@@ -87,11 +87,11 @@ ALWAYS_INLINE inline mirror::Class* CheckArrayAlloc(dex::TypeIndex type_idx,
 // When verification/compiler hasn't been able to verify access, optionally perform an access
 // check.
 template <bool kAccessCheck, bool kInstrumented>
-ALWAYS_INLINE inline mirror::Array* AllocArrayFromCode(dex::TypeIndex type_idx,
-                                                       int32_t component_count,
-                                                       ArtMethod* method,
-                                                       Thread* self,
-                                                       gc::AllocatorType allocator_type)
+ALWAYS_INLINE inline ObjPtr<mirror::Array> AllocArrayFromCode(dex::TypeIndex type_idx,
+                                                              int32_t component_count,
+                                                              ArtMethod* method,
+                                                              Thread* self,
+                                                              gc::AllocatorType allocator_type)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 

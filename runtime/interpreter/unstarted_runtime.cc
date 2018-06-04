@@ -1691,7 +1691,7 @@ void UnstartedRuntime::UnstartedJNIVMRuntimeNewUnpaddedArray(
   ObjPtr<mirror::Class> element_class = reinterpret_cast<mirror::Object*>(args[0])->AsClass();
   Runtime* runtime = Runtime::Current();
   ObjPtr<mirror::Class> array_class =
-      runtime->GetClassLinker()->FindArrayClass(self, &element_class);
+      runtime->GetClassLinker()->FindArrayClass(self, element_class);
   DCHECK(array_class != nullptr);
   gc::AllocatorType allocator = runtime->GetHeap()->GetCurrentAllocator();
   result->SetL(mirror::Array::Alloc<true, true>(self,
@@ -1818,13 +1818,13 @@ void UnstartedRuntime::UnstartedJNIArrayCreateObjectArray(
   ObjPtr<mirror::Class> element_class = reinterpret_cast<mirror::Class*>(args[0])->AsClass();
   Runtime* runtime = Runtime::Current();
   ClassLinker* class_linker = runtime->GetClassLinker();
-  ObjPtr<mirror::Class> array_class = class_linker->FindArrayClass(self, &element_class);
+  ObjPtr<mirror::Class> array_class = class_linker->FindArrayClass(self, element_class);
   if (UNLIKELY(array_class == nullptr)) {
     CHECK(self->IsExceptionPending());
     return;
   }
   DCHECK(array_class->IsObjectArrayClass());
-  mirror::Array* new_array = mirror::ObjectArray<mirror::Object*>::Alloc(
+  ObjPtr<mirror::Array> new_array = mirror::ObjectArray<mirror::Object>::Alloc(
       self, array_class, length, runtime->GetHeap()->GetCurrentAllocator());
   result->SetL(new_array);
 }

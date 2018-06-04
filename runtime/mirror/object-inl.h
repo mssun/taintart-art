@@ -776,7 +776,7 @@ inline void Object::SetFieldObjectWithoutWriteBarrier(MemberOffset field_offset,
     } else {
       obj = GetFieldObject<Object>(field_offset);
     }
-    Runtime::Current()->RecordWriteFieldReference(this, field_offset, obj.Ptr(), true);
+    Runtime::Current()->RecordWriteFieldReference(this, field_offset, obj, true);
   }
   if (kVerifyFlags & kVerifyThis) {
     VerifyObject(this);

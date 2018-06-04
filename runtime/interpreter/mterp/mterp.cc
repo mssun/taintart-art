@@ -559,7 +559,7 @@ extern "C" size_t MterpNewArray(ShadowFrame* shadow_frame,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const Instruction* inst = Instruction::At(dex_pc_ptr);
   int32_t length = shadow_frame->GetVReg(inst->VRegB_22c(inst_data));
-  mirror::Object* obj = AllocArrayFromCode<false, true>(
+  ObjPtr<mirror::Object> obj = AllocArrayFromCode<false, true>(
       dex::TypeIndex(inst->VRegC_22c()), length, shadow_frame->GetMethod(), self,
       Runtime::Current()->GetHeap()->GetCurrentAllocator());
   if (UNLIKELY(obj == nullptr)) {
