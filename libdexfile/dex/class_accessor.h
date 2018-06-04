@@ -20,6 +20,7 @@
 #include "base/utils.h"
 #include "code_item_accessors.h"
 #include "dex_file.h"
+#include "hidden_api_access_flags.h"
 #include "invoke_type.h"
 #include "method_reference.h"
 #include "modifiers.h"
@@ -33,12 +34,18 @@ class ClassAccessor {
  private:
   class BaseItem {
    public:
+    explicit BaseItem(const uint8_t* ptr_pos) : ptr_pos_(ptr_pos) {}
+
     uint32_t GetIndex() const {
       return index_;
     }
 
     uint32_t GetAccessFlags() const {
-      return access_flags_;
+      return HiddenApiAccessFlags::RemoveFromDex(access_flags_);
+    }
+
+    HiddenApiAccessFlags::ApiList DecodeHiddenAccessFlags() const {
+      return HiddenApiAccessFlags::DecodeFromDex(access_flags_);
     }
 
     bool IsFinal() const {
@@ -46,6 +53,8 @@ class ClassAccessor {
     }
 
    protected:
+    // Internal data pointer for reading.
+    const uint8_t* ptr_pos_ = nullptr;
     uint32_t index_ = 0u;
     uint32_t access_flags_ = 0u;
   };
@@ -76,13 +85,18 @@ class ClassAccessor {
       return is_static_or_direct_;
     }
 
+    // Unhide the hidden API access flags at the iterator position. TODO: Deprecate.
+    void UnHideAccessFlags() const;
+
    private:
     explicit Method(const DexFile& dex_file,
+                    const uint8_t* ptr_pos,
                     bool is_static_or_direct = true)
-        : dex_file_(dex_file),
+        : BaseItem(ptr_pos),
+          dex_file_(dex_file),
           is_static_or_direct_(is_static_or_direct) {}
 
-    const uint8_t* Read(const uint8_t* ptr);
+    void Read();
 
     InvokeType GetDirectMethodInvokeType() const {
       return (GetAccessFlags() & kAccStatic) != 0 ? kStatic : kDirect;
@@ -99,6 +113,7 @@ class ClassAccessor {
       }
     }
 
+    // Move to virtual method section.
     void NextSection() {
       DCHECK(is_static_or_direct_) << "Already in the virtual methods section";
       is_static_or_direct_ = false;
@@ -115,20 +130,31 @@ class ClassAccessor {
   // A decoded version of the field of a class_data_item.
   class Field : public BaseItem {
    public:
-    explicit Field(const DexFile& dex_file) : dex_file_(dex_file) {}
+    explicit Field(const DexFile& dex_file,
+                   const uint8_t* ptr_pos) : BaseItem(ptr_pos), dex_file_(dex_file) {}
 
     const DexFile& GetDexFile() const {
       return dex_file_;
     }
 
-   private:
-    const uint8_t* Read(const uint8_t* ptr);
+    bool IsStatic() const {
+     return is_static_;
+    }
 
+    // Unhide the hidden API access flags at the iterator position. TODO: Deprecate.
+    void UnHideAccessFlags() const;
+
+   private:
+    void Read();
+
+    // Move to instance fields section.
     void NextSection() {
       index_ = 0u;
+      is_static_ = false;
     }
 
     const DexFile& dex_file_;
+    bool is_static_ = true;
     friend class ClassAccessor;
   };
 
@@ -144,11 +170,10 @@ class ClassAccessor {
                  uint32_t partition_pos,
                  uint32_t iterator_end,
                  const uint8_t* ptr_pos)
-        : data_(dex_file),
+        : data_(dex_file, ptr_pos),
           position_(position),
           partition_pos_(partition_pos),
-          iterator_end_(iterator_end),
-          ptr_pos_(ptr_pos) {
+          iterator_end_(iterator_end) {
       ReadData();
     }
 
@@ -205,8 +230,7 @@ class ClassAccessor {
         if (position_ == partition_pos_) {
           data_.NextSection();
         }
-        DCHECK(ptr_pos_ != nullptr);
-        ptr_pos_ = data_.Read(ptr_pos_);
+        data_.Read();
       }
     }
 
@@ -217,8 +241,6 @@ class ClassAccessor {
     const uint32_t partition_pos_;
     // At iterator_end_, the iterator is no longer valid.
     const uint32_t iterator_end_;
-    // Internal data pointer.
-    const uint8_t* ptr_pos_;
   };
 
   // Not explicit specifically for range-based loops.
@@ -252,8 +274,20 @@ class ClassAccessor {
   // Return the iteration range for all the fields.
   IterationRange<DataIterator<Field>> GetFields() const;
 
+  // Return the iteration range for all the static fields.
+  IterationRange<DataIterator<Field>> GetStaticFields() const;
+
+  // Return the iteration range for all the instance fields.
+  IterationRange<DataIterator<Field>> GetInstanceFields() const;
+
   // Return the iteration range for all the methods.
   IterationRange<DataIterator<Method>> GetMethods() const;
+
+  // Return the iteration range for the direct methods.
+  IterationRange<DataIterator<Method>> GetDirectMethods() const;
+
+  // Return the iteration range for the virtual methods.
+  IterationRange<DataIterator<Method>> GetVirtualMethods() const;
 
   uint32_t NumStaticFields() const {
     return num_static_fields_;
@@ -261,6 +295,10 @@ class ClassAccessor {
 
   uint32_t NumInstanceFields() const {
     return num_instance_fields_;
+  }
+
+  uint32_t NumFields() const {
+    return NumStaticFields() + NumInstanceFields();
   }
 
   uint32_t NumDirectMethods() const {
@@ -285,14 +323,22 @@ class ClassAccessor {
     return dex_file_;
   }
 
+  bool HasClassData() const {
+    return ptr_pos_ != nullptr;
+  }
+
  protected:
   // Template visitor to reduce copy paste for visiting elements.
   // No thread safety analysis since the visitor may require capabilities.
   template <typename DataType, typename Visitor>
-  const uint8_t* VisitMembers(size_t count,
-                              const Visitor& visitor,
-                              const uint8_t* ptr,
-                              DataType* data) const NO_THREAD_SAFETY_ANALYSIS;
+  void VisitMembers(size_t count, const Visitor& visitor, DataType* data) const
+      NO_THREAD_SAFETY_ANALYSIS;
+
+  // Return an iteration range for the first <count> fields.
+  IterationRange<DataIterator<Field>> GetFieldsInternal(size_t count) const;
+
+  // Return an iteration range for the first <count> methods.
+  IterationRange<DataIterator<Method>> GetMethodsInternal(size_t count) const;
 
   const DexFile& dex_file_;
   const dex::TypeIndex descriptor_index_ = {};
