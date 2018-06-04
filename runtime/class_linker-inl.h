@@ -61,6 +61,54 @@ inline ObjPtr<mirror::Class> ClassLinker::FindArrayClass(Thread* self,
   return array_class;
 }
 
+inline ObjPtr<mirror::String> ClassLinker::ResolveString(dex::StringIndex string_idx,
+                                                         ArtField* referrer) {
+  Thread::PoisonObjectPointersIfDebug();
+  DCHECK(!Thread::Current()->IsExceptionPending());
+  // We do not need the read barrier for getting the DexCache for the initial resolved type
+  // lookup as both from-space and to-space copies point to the same native resolved types array.
+  ObjPtr<mirror::String> resolved =
+      referrer->GetDexCache<kWithoutReadBarrier>()->GetResolvedString(string_idx);
+  if (resolved == nullptr) {
+    resolved = DoResolveString(string_idx, referrer->GetDexCache());
+  }
+  return resolved;
+}
+
+inline ObjPtr<mirror::String> ClassLinker::ResolveString(dex::StringIndex string_idx,
+                                                         ArtMethod* referrer) {
+  Thread::PoisonObjectPointersIfDebug();
+  DCHECK(!Thread::Current()->IsExceptionPending());
+  // We do not need the read barrier for getting the DexCache for the initial resolved type
+  // lookup as both from-space and to-space copies point to the same native resolved types array.
+  ObjPtr<mirror::String> resolved =
+      referrer->GetDexCache<kWithoutReadBarrier>()->GetResolvedString(string_idx);
+  if (resolved == nullptr) {
+    resolved = DoResolveString(string_idx, referrer->GetDexCache());
+  }
+  return resolved;
+}
+
+inline ObjPtr<mirror::String> ClassLinker::ResolveString(dex::StringIndex string_idx,
+                                                         Handle<mirror::DexCache> dex_cache) {
+  Thread::PoisonObjectPointersIfDebug();
+  DCHECK(!Thread::Current()->IsExceptionPending());
+  ObjPtr<mirror::String> resolved = dex_cache->GetResolvedString(string_idx);
+  if (resolved == nullptr) {
+    resolved = DoResolveString(string_idx, dex_cache);
+  }
+  return resolved;
+}
+
+inline ObjPtr<mirror::String> ClassLinker::LookupString(dex::StringIndex string_idx,
+                                                        ObjPtr<mirror::DexCache> dex_cache) {
+  ObjPtr<mirror::String> resolved = dex_cache->GetResolvedString(string_idx);
+  if (resolved == nullptr) {
+    resolved = DoLookupString(string_idx, dex_cache);
+  }
+  return resolved;
+}
+
 inline ObjPtr<mirror::Class> ClassLinker::ResolveType(dex::TypeIndex type_idx,
                                                       ObjPtr<mirror::Class> referrer) {
   if (kObjPtrPoisoning) {

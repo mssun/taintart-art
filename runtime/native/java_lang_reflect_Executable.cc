@@ -320,7 +320,7 @@ static jstring Executable_getMethodNameInternal(JNIEnv* env, jobject javaMethod)
   ScopedFastNativeObjectAccess soa(env);
   ArtMethod* method = ArtMethod::FromReflectedMethod(soa, javaMethod);
   method = method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
-  return soa.AddLocalReference<jstring>(method->GetNameAsString(soa.Self()));
+  return soa.AddLocalReference<jstring>(method->ResolveNameString());
 }
 
 static jclass Executable_getMethodReturnTypeInternal(JNIEnv* env, jobject javaMethod) {

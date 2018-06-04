@@ -743,33 +743,6 @@ inline ObjPtr<mirror::Class> ResolveVerifyAndClinit(dex::TypeIndex type_idx,
   return h_class.Get();
 }
 
-static inline ObjPtr<mirror::String> ResolveString(ClassLinker* class_linker,
-                                                   dex::StringIndex string_idx,
-                                                   ArtMethod* referrer)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  Thread::PoisonObjectPointersIfDebug();
-  ObjPtr<mirror::String> string = referrer->GetDexCache()->GetResolvedString(string_idx);
-  if (UNLIKELY(string == nullptr)) {
-    StackHandleScope<1> hs(Thread::Current());
-    Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
-    string = class_linker->ResolveString(string_idx, dex_cache);
-  }
-  return string;
-}
-
-inline ObjPtr<mirror::String> ResolveStringFromCode(ArtMethod* referrer,
-                                                    dex::StringIndex string_idx) {
-  Thread::PoisonObjectPointersIfDebug();
-  ObjPtr<mirror::String> string = referrer->GetDexCache()->GetResolvedString(string_idx);
-  if (UNLIKELY(string == nullptr)) {
-    StackHandleScope<1> hs(Thread::Current());
-    Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
-    ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-    string = class_linker->ResolveString(string_idx, dex_cache);
-  }
-  return string;
-}
-
 inline void UnlockJniSynchronizedMethod(jobject locked, Thread* self) {
   // Save any pending exception over monitor exit call.
   mirror::Throwable* saved_exception = nullptr;

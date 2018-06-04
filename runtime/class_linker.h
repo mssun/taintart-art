@@ -203,6 +203,16 @@ class ClassLinker {
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Resolve a String with the given index from the DexFile associated with the given `referrer`,
+  // storing the result in the DexCache. The `referrer` is used to identify the target DexCache
+  // to use for resolution.
+  ObjPtr<mirror::String> ResolveString(dex::StringIndex string_idx,
+                                       ArtField* referrer)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::String> ResolveString(dex::StringIndex string_idx,
+                                       ArtMethod* referrer)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // Resolve a String with the given index from the DexFile associated with the given DexCache,
   // storing the result in the DexCache.
   ObjPtr<mirror::String> ResolveString(dex::StringIndex string_idx,
@@ -883,6 +893,19 @@ class ClassLinker {
   ObjPtr<mirror::Class> DoLookupResolvedType(dex::TypeIndex type_idx,
                                              ObjPtr<mirror::DexCache> dex_cache,
                                              ObjPtr<mirror::ClassLoader> class_loader)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Implementation of ResolveString() called when the string was not found in the dex cache.
+  ObjPtr<mirror::String> DoResolveString(dex::StringIndex string_idx,
+                                         ObjPtr<mirror::DexCache> dex_cache)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::String> DoResolveString(dex::StringIndex string_idx,
+                                         Handle<mirror::DexCache> dex_cache)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Implementation of LookupString() called when the string was not found in the dex cache.
+  ObjPtr<mirror::String> DoLookupString(dex::StringIndex string_idx,
+                                        ObjPtr<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Implementation of ResolveType() called when the type was not found in the dex cache.
