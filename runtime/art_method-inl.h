@@ -245,6 +245,12 @@ inline const char* ArtMethod::GetName() {
   }
 }
 
+inline ObjPtr<mirror::String> ArtMethod::ResolveNameString() {
+  DCHECK(!IsProxyMethod());
+  const DexFile::MethodId& method_id = GetDexFile()->GetMethodId(GetDexMethodIndex());
+  return Runtime::Current()->GetClassLinker()->ResolveString(method_id.name_idx_, this);
+}
+
 inline const DexFile::CodeItem* ArtMethod::GetCodeItem() {
   return GetDexFile()->GetCodeItem(GetCodeItemOffset());
 }
