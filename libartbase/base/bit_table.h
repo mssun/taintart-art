@@ -194,7 +194,7 @@ class BitTableBuilder {
       if (count <= size() - index &&
           std::equal(values,
                      values + count,
-                     &rows_[index],
+                     rows_.begin() + index,
                      [](const T& lhs, const T& rhs) {
                        return memcmp(&lhs, &rhs, sizeof(T)) == 0;
                      })) {
