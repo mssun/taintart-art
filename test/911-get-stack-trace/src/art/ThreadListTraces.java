@@ -51,7 +51,7 @@ public class ThreadListTraces {
 
     printList(list, 0);
 
-    printList(list, 5);
+    printList(list, 7);
 
     printList(list, 25);
 
