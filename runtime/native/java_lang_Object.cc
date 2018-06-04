@@ -41,11 +41,6 @@ static void Object_notifyAll(JNIEnv* env, jobject java_this) {
   soa.Decode<mirror::Object>(java_this)->NotifyAll(soa.Self());
 }
 
-static void Object_wait(JNIEnv* env, jobject java_this) {
-  ScopedFastNativeObjectAccess soa(env);
-  soa.Decode<mirror::Object>(java_this)->Wait(soa.Self());
-}
-
 static void Object_waitJI(JNIEnv* env, jobject java_this, jlong ms, jint ns) {
   ScopedFastNativeObjectAccess soa(env);
   soa.Decode<mirror::Object>(java_this)->Wait(soa.Self(), ms, ns);
@@ -61,7 +56,6 @@ static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(Object, internalClone, "()Ljava/lang/Object;"),
   FAST_NATIVE_METHOD(Object, notify, "()V"),
   FAST_NATIVE_METHOD(Object, notifyAll, "()V"),
-  OVERLOADED_FAST_NATIVE_METHOD(Object, wait, "()V", wait),
   OVERLOADED_FAST_NATIVE_METHOD(Object, wait, "(JI)V", waitJI),
   FAST_NATIVE_METHOD(Object, identityHashCodeNative, "(Ljava/lang/Object;)I"),
 };
