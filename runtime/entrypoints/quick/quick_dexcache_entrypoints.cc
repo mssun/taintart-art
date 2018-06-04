@@ -210,7 +210,8 @@ extern "C" mirror::String* artResolveStringFromCode(int32_t string_idx, Thread* 
   auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(self,
                                                                   CalleeSaveType::kSaveEverything);
   ArtMethod* caller = caller_and_outer.caller;
-  ObjPtr<mirror::String> result = ResolveStringFromCode(caller, dex::StringIndex(string_idx));
+  ObjPtr<mirror::String> result =
+      Runtime::Current()->GetClassLinker()->ResolveString(dex::StringIndex(string_idx), caller);
   if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
     StoreStringInBss(caller_and_outer.outer_method, dex::StringIndex(string_idx), result);
   }
