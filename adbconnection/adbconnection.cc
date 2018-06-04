@@ -489,7 +489,7 @@ bool AdbConnectionState::SetupAdbConnection() {
   int        sleep_ms     = 500;
   const int  sleep_max_ms = 2*1000;
 
-  android::base::unique_fd sock(socket(AF_UNIX, SOCK_SEQPACKET, 0));
+  android::base::unique_fd sock(socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0));
   if (sock < 0) {
     PLOG(ERROR) << "Could not create ADB control socket";
     return false;
