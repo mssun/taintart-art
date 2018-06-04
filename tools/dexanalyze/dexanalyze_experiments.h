@@ -18,7 +18,9 @@
 #define ART_TOOLS_DEXANALYZE_DEXANALYZE_EXPERIMENTS_H_
 
 #include <iosfwd>
+#include <memory>
 #include <set>
+#include <vector>
 
 namespace art {
 
@@ -30,7 +32,8 @@ std::string Percent(uint64_t value, uint64_t max);
 class Experiment {
  public:
   virtual ~Experiment() {}
-  virtual void ProcessDexFile(const DexFile& dex_file) = 0;
+  virtual void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files);
+  virtual void ProcessDexFile(const DexFile&) {}
   virtual void Dump(std::ostream& os, uint64_t total_size) const = 0;
 };
 
@@ -54,7 +57,7 @@ class AnalyzeStrings : public Experiment {
 // Analyze debug info sizes.
 class AnalyzeDebugInfo  : public Experiment {
  public:
-  void ProcessDexFile(const DexFile& dex_file);
+  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files);
   void Dump(std::ostream& os, uint64_t total_size) const;
 
  private:
@@ -112,7 +115,7 @@ class CountDexIndices : public Experiment {
   size_t total_super_ = 0;
 };
 
-// Measure various code metrics including args per invoke-virtual, fill/spill move paterns.
+// Measure various code metrics including args per invoke-virtual, fill/spill move patterns.
 class CodeMetrics : public Experiment {
  public:
   void ProcessDexFile(const DexFile& dex_file);
