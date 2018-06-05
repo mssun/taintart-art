@@ -274,7 +274,7 @@ class OatSymbolizer FINAL {
   void WalkOatClass(const OatFile::OatClass& oat_class,
                     const DexFile& dex_file,
                     uint32_t class_def_index) {
-    ClassAccessor accessor(dex_file, dex_file.GetClassDef(class_def_index));
+    ClassAccessor accessor(dex_file, class_def_index);
     // Note: even if this is an interface or a native class, we still have to walk it, as there
     //       might be a static initializer.
     uint32_t class_method_idx = 0;
@@ -905,15 +905,13 @@ class OatDumper {
         continue;
       }
       offsets_.insert(reinterpret_cast<uintptr_t>(&dex_file->GetHeader()));
-      uint32_t class_def_index = 0u;
       for (ClassAccessor accessor : dex_file->GetClasses()) {
-        const OatFile::OatClass oat_class = oat_dex_file->GetOatClass(class_def_index);
+        const OatFile::OatClass oat_class = oat_dex_file->GetOatClass(accessor.GetClassDefIndex());
         for (uint32_t class_method_index = 0;
             class_method_index < accessor.NumMethods();
             ++class_method_index) {
           AddOffsets(oat_class.GetOatMethod(class_method_index));
         }
-        ++class_def_index;
       }
     }
 

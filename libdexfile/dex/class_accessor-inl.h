@@ -26,12 +26,15 @@
 namespace art {
 
 inline ClassAccessor::ClassAccessor(const ClassIteratorData& data)
-    : ClassAccessor(data.dex_file_, data.dex_file_.GetClassDef(data.class_def_idx_)) {}
+    : ClassAccessor(data.dex_file_, data.class_def_idx_) {}
 
 inline ClassAccessor::ClassAccessor(const DexFile& dex_file, const DexFile::ClassDef& class_def)
+    : ClassAccessor(dex_file, dex_file.GetIndexForClassDef(class_def)) {}
+
+inline ClassAccessor::ClassAccessor(const DexFile& dex_file, uint32_t class_def_index)
     : dex_file_(dex_file),
-      descriptor_index_(class_def.class_idx_),
-      ptr_pos_(dex_file.GetClassData(class_def)),
+      class_def_index_(class_def_index),
+      ptr_pos_(dex_file.GetClassData(dex_file.GetClassDef(class_def_index))),
       num_static_fields_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
       num_instance_fields_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
       num_direct_methods_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
@@ -108,7 +111,7 @@ inline CodeItemInstructionAccessor ClassAccessor::Method::GetInstructions() cons
 }
 
 inline const char* ClassAccessor::GetDescriptor() const {
-  return dex_file_.StringByTypeIdx(descriptor_index_);
+  return dex_file_.StringByTypeIdx(GetClassIdx());
 }
 
 inline const DexFile::CodeItem* ClassAccessor::Method::GetCodeItem() const {
@@ -173,6 +176,10 @@ inline void ClassAccessor::Field::UnHideAccessFlags() const {
 
 inline void ClassAccessor::Method::UnHideAccessFlags() const {
   DexFile::UnHideAccessFlags(const_cast<uint8_t*>(ptr_pos_), GetAccessFlags(), /*is_method*/ true);
+}
+
+inline dex::TypeIndex ClassAccessor::GetClassIdx() const {
+  return dex_file_.GetClassDef(class_def_index_).class_idx_;
 }
 
 }  // namespace art
