@@ -27,6 +27,7 @@
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "gc/accounting/card_table.h"
+#include "gc/space/image_space.h"
 #include "heap_poisoning.h"
 #include "intrinsics_arm_vixl.h"
 #include "linker/linker_patch.h"
@@ -9534,6 +9535,22 @@ VIXLUInt32Literal* CodeGeneratorARMVIXL::DeduplicateJitClassLiteral(const DexFil
       [this]() {
         return GetAssembler()->CreateLiteralDestroyedWithPool<uint32_t>(/* placeholder */ 0u);
       });
+}
+
+void CodeGeneratorARMVIXL::LoadBootImageAddress(vixl32::Register reg, uint32_t boot_image_offset) {
+  DCHECK(!GetCompilerOptions().IsBootImage());
+  if (GetCompilerOptions().GetCompilePic()) {
+    DCHECK(Runtime::Current()->IsAotCompiler());
+    CodeGeneratorARMVIXL::PcRelativePatchInfo* labels = NewBootImageRelRoPatch(boot_image_offset);
+    EmitMovwMovtPlaceholder(labels, reg);
+    __ Ldr(reg, MemOperand(reg, /* offset */ 0));
+  } else {
+    gc::Heap* heap = Runtime::Current()->GetHeap();
+    DCHECK(!heap->GetBootImageSpaces().empty());
+    uintptr_t address =
+        reinterpret_cast<uintptr_t>(heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset);
+    __ Ldr(reg, DeduplicateBootImageAddressLiteral(dchecked_integral_cast<uint32_t>(address)));
+  }
 }
 
 template <linker::LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>

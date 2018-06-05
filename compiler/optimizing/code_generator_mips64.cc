@@ -24,6 +24,7 @@
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "gc/accounting/card_table.h"
+#include "gc/space/image_space.h"
 #include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_mips64.h"
@@ -1635,6 +1636,24 @@ void CodeGeneratorMIPS64::EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchIn
   if (info_low != nullptr) {
     DCHECK_EQ(info_low->patch_info_high, info_high);
     __ Bind(&info_low->label);
+  }
+}
+
+void CodeGeneratorMIPS64::LoadBootImageAddress(GpuRegister reg, uint32_t boot_image_offset) {
+  DCHECK(!GetCompilerOptions().IsBootImage());
+  if (GetCompilerOptions().GetCompilePic()) {
+    DCHECK(Runtime::Current()->IsAotCompiler());
+    PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_offset);
+    PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_offset, info_high);
+    EmitPcRelativeAddressPlaceholderHigh(info_high, AT, info_low);
+    // Note: Boot image is in the low 4GiB and the entry is 32-bit, so emit a 32-bit load.
+    __ Lwu(reg, AT, /* placeholder */ 0x5678);
+  } else {
+    gc::Heap* heap = Runtime::Current()->GetHeap();
+    DCHECK(!heap->GetBootImageSpaces().empty());
+    uintptr_t address =
+        reinterpret_cast<uintptr_t>(heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset);
+    __ LoadLiteral(reg, kLoadDoubleword, DeduplicateBootImageAddressLiteral(address));
   }
 }
 

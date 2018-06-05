@@ -1,0 +1,2 @@
+Regression test for JIT crash when compiling Integer.valueOf() intrinsic after
+having messed up the IntegerCache through reflection.

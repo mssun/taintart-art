@@ -426,6 +426,11 @@ class CodeGeneratorX86 : public CodeGenerator {
   Label* NewTypeBssEntryPatch(HLoadClass* load_class);
   void RecordBootImageStringPatch(HLoadString* load_string);
   Label* NewStringBssEntryPatch(HLoadString* load_string);
+
+  void LoadBootImageAddress(Register reg,
+                            uint32_t boot_image_offset,
+                            HInvokeStaticOrDirect* invoke);
+
   Label* NewJitRootStringPatch(const DexFile& dex_file,
                                dex::StringIndex string_index,
                                Handle<mirror::String> handle);

@@ -22,6 +22,7 @@
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "gc/accounting/card_table.h"
+#include "gc/space/image_space.h"
 #include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_x86_64.h"
@@ -1105,6 +1106,20 @@ Label* CodeGeneratorX86_64::NewStringBssEntryPatch(HLoadString* load_string) {
   string_bss_entry_patches_.emplace_back(
       &load_string->GetDexFile(), load_string->GetStringIndex().index_);
   return &string_bss_entry_patches_.back().label;
+}
+
+void CodeGeneratorX86_64::LoadBootImageAddress(CpuRegister reg, uint32_t boot_image_offset) {
+  DCHECK(!GetCompilerOptions().IsBootImage());
+  if (GetCompilerOptions().GetCompilePic()) {
+    DCHECK(Runtime::Current()->IsAotCompiler());
+    __ movl(reg, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
+    RecordBootImageRelRoPatch(boot_image_offset);
+  } else {
+    gc::Heap* heap = Runtime::Current()->GetHeap();
+    DCHECK(!heap->GetBootImageSpaces().empty());
+    const uint8_t* address = heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset;
+    __ movl(reg, Immediate(dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(address))));
+  }
 }
 
 // The label points to the end of the "movl" or another instruction but the literal offset
