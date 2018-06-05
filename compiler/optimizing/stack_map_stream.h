@@ -53,7 +53,7 @@ class StackMapStream : public ValueObject {
         lazy_stack_masks_(allocator->Adapter(kArenaAllocStackMapStream)),
         in_stack_map_(false),
         in_inline_info_(false),
-        current_inline_infos_(0),
+        current_inline_infos_(allocator->Adapter(kArenaAllocStackMapStream)),
         current_dex_registers_(allocator->Adapter(kArenaAllocStackMapStream)),
         temp_dex_register_mask_(allocator, 32, true, kArenaAllocStackMapStream),
         temp_dex_register_map_(allocator->Adapter(kArenaAllocStackMapStream)) {
@@ -157,7 +157,7 @@ class StackMapStream : public ValueObject {
   bool in_stack_map_;
   bool in_inline_info_;
   StackMapEntry current_stack_map_;
-  uint32_t current_inline_infos_;
+  ScopedArenaVector<InlineInfoEntry> current_inline_infos_;
   ScopedArenaVector<DexRegisterLocation> current_dex_registers_;
   size_t expected_num_dex_registers_;
 

@@ -65,7 +65,7 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
   // and it might modify the data before that. Therefore, just store the pointer.
   // See ClearSpillSlotsFromLoopPhisInStackMap in code_generator.h.
   lazy_stack_masks_.push_back(stack_mask);
-  current_inline_infos_ = 0;
+  current_inline_infos_.clear();
   current_dex_registers_.clear();
   expected_num_dex_registers_ = num_dex_registers;
 
@@ -97,9 +97,11 @@ void StackMapStream::EndStackMapEntry() {
   in_stack_map_ = false;
   DCHECK_EQ(expected_num_dex_registers_, current_dex_registers_.size());
 
-  // Mark the last inline info as last in the list for the stack map.
-  if (current_inline_infos_ > 0) {
-    inline_infos_[inline_infos_.size() - 1].is_last = InlineInfo::kLast;
+  // Generate index into the InlineInfo table.
+  if (!current_inline_infos_.empty()) {
+    current_inline_infos_.back().is_last = InlineInfo::kLast;
+    current_stack_map_.inline_info_index =
+        inline_infos_.Dedup(current_inline_infos_.data(), current_inline_infos_.size());
   }
 
   stack_maps_.Add(current_stack_map_);
@@ -162,17 +164,14 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
     uint32_t dex_method_index = method->GetDexMethodIndexUnchecked();
     entry.method_info_index = method_infos_.Dedup(&dex_method_index);
   }
-  if (current_inline_infos_++ == 0) {
-    current_stack_map_.inline_info_index = inline_infos_.size();
-  }
-  inline_infos_.Add(entry);
+  current_inline_infos_.push_back(entry);
 
   current_dex_registers_.clear();
   expected_num_dex_registers_ = num_dex_registers;
 
   if (kVerifyStackMaps) {
     size_t stack_map_index = stack_maps_.size();
-    size_t depth = current_inline_infos_ - 1;
+    size_t depth = current_inline_infos_.size() - 1;
     dchecks_.emplace_back([=](const CodeInfo& code_info) {
       StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
       InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
@@ -222,9 +221,9 @@ void StackMapStream::CreateDexRegisterMap() {
   }
   uint32_t map_index = dex_register_maps_.Dedup(temp_dex_register_map_.data(),
                                                 temp_dex_register_map_.size());
-  if (current_inline_infos_ > 0) {
-    inline_infos_[inline_infos_.size() - 1].dex_register_mask_index = mask_index;
-    inline_infos_[inline_infos_.size() - 1].dex_register_map_index = map_index;
+  if (!current_inline_infos_.empty()) {
+    current_inline_infos_.back().dex_register_mask_index = mask_index;
+    current_inline_infos_.back().dex_register_map_index = map_index;
   } else {
     current_stack_map_.dex_register_mask_index = mask_index;
     current_stack_map_.dex_register_map_index = map_index;
@@ -232,7 +231,7 @@ void StackMapStream::CreateDexRegisterMap() {
 
   if (kVerifyStackMaps) {
     size_t stack_map_index = stack_maps_.size();
-    int32_t depth = current_inline_infos_ - 1;
+    int32_t depth = current_inline_infos_.size() - 1;
     // We need to make copy of the current registers for later (when the check is run).
     auto expected_dex_registers = std::make_shared<std::vector<DexRegisterLocation>>(
         current_dex_registers_.begin(), current_dex_registers_.end());
