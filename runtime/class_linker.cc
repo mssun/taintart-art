@@ -3381,6 +3381,11 @@ void ClassLinker::RegisterExistingDexCache(ObjPtr<mirror::DexCache> dex_cache,
     WriterMutexLock mu(self, *Locks::classlinker_classes_lock_);
     table = InsertClassTableForClassLoader(h_class_loader.Get());
   }
+  // Avoid a deadlock between a garbage collecting thread running a checkpoint,
+  // a thread holding the dex lock and blocking on a condition variable regarding
+  // weak references access, and a thread blocking on the dex lock.
+  ScopedThreadStateChange tsc(self, kSuspended);
+  gc::ScopedGCCriticalSection gcs(self, gc::kGcCauseClassLinker, gc::kCollectorTypeClassLinker);
   WriterMutexLock mu(self, *Locks::dex_lock_);
   RegisterDexFileLocked(*dex_file, h_dex_cache.Get(), h_class_loader.Get());
   table->InsertStrongRoot(h_dex_cache.Get());
@@ -3421,6 +3426,11 @@ ObjPtr<mirror::DexCache> ClassLinker::RegisterDexFile(const DexFile& dex_file,
                                                                   dex_file)));
   Handle<mirror::String> h_location(hs.NewHandle(location));
   {
+    // Avoid a deadlock between a garbage collecting thread running a checkpoint,
+    // a thread holding the dex lock and blocking on a condition variable regarding
+    // weak references access, and a thread blocking on the dex lock.
+    ScopedThreadStateChange tsc(self, kSuspended);
+    gc::ScopedGCCriticalSection gcs(self, gc::kGcCauseClassLinker, gc::kCollectorTypeClassLinker);
     WriterMutexLock mu(self, *Locks::dex_lock_);
     old_data = FindDexCacheDataLocked(dex_file);
     old_dex_cache = DecodeDexCache(self, old_data);
