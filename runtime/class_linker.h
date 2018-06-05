@@ -1272,6 +1272,8 @@ class ClassLinker {
                                 ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  ObjPtr<mirror::IfTable> GetArrayIfTable() REQUIRES_SHARED(Locks::mutator_lock_);
+
   std::vector<const DexFile*> boot_class_path_;
   std::vector<std::unique_ptr<const DexFile>> boot_dex_files_;
 
@@ -1300,9 +1302,6 @@ class ClassLinker {
 
   // Well known mirror::Class roots.
   GcRoot<mirror::ObjectArray<mirror::Class>> class_roots_;
-
-  // The interface table used by all arrays.
-  GcRoot<mirror::IfTable> array_iftable_;
 
   // A cache of the last FindArrayClass results. The cache serves to avoid creating array class
   // descriptors for the sake of performing FindClass.

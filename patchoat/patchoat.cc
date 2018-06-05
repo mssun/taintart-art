@@ -973,7 +973,7 @@ bool PatchOat::PatchImage(bool primary_image) {
   ImageHeader* image_header = reinterpret_cast<ImageHeader*>(image_->Begin());
   CHECK_GT(image_->Size(), sizeof(ImageHeader));
   // These are the roots from the original file.
-  auto* img_roots = image_header->GetImageRoots();
+  mirror::ObjectArray<mirror::Object>* img_roots = image_header->GetImageRoots().Ptr();
   image_header->RelocateImage(delta_);
 
   PatchArtFields(image_header);
