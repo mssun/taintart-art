@@ -57,5 +57,79 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {  }
+  /// CHECK-START: void Main.boundTypeInLoop(int[]) licm (before)
+  /// CHECK-DAG: <<Param:l\d+>>     ParameterValue                        loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi                                   loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<BoundT:l\d+>>    BoundType [<<Param>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArrayLength [<<BoundT>>]              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArrayGet                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet                              loop:<<Loop>>      outer_loop:none
+
+  /// CHECK-START: void Main.boundTypeInLoop(int[]) licm (after)
+  /// CHECK-DAG: <<Param:l\d+>>     ParameterValue                        loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi                                   loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<BoundT:l\d+>>    BoundType [<<Param>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArrayLength [<<BoundT>>]              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArrayGet                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet                              loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                    BoundType
+
+  /// CHECK-START: void Main.boundTypeInLoop(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Param:l\d+>>     ParameterValue                        loop:none
+  /// CHECK-DAG: <<BoundTA:l\d+>>   BoundType [<<Param>>]                 loop:none
+  /// CHECK-DAG:                    ArrayLength [<<BoundTA>>]             loop:none
+  /// CHECK-DAG:                    ArrayGet                              loop:none
+  /// CHECK-DAG:                    ArraySet                              loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi                                   loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<BoundT:l\d+>>    BoundType [<<Param>>]                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArrayLength [<<BoundT>>]              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArrayGet                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet                              loop:<<Loop>>      outer_loop:none
+
+  /// CHECK-START: void Main.boundTypeInLoop(int[]) GVN$after_arch (after)
+  /// CHECK-DAG: <<Param:l\d+>>     ParameterValue                        loop:none
+  /// CHECK-DAG: <<BoundTA:l\d+>>   BoundType [<<Param>>]                 loop:none
+  /// CHECK-DAG:                    ArrayLength [<<BoundTA>>]             loop:none
+  /// CHECK-DAG:                    ArrayGet                              loop:none
+  /// CHECK-DAG:                    ArraySet                              loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi                                   loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                    ArrayGet                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet                              loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                    BoundType
+  /// CHECK-NOT:                    ArrayLength
+  private static void boundTypeInLoop(int[] a) {
+    for (int i = 0; a != null && i < a.length; i++) {
+      a[i] += 1;
+    }
+  }
+
+  //  BoundType must not be hoisted by LICM, in this example it leads to ArrayLength being
+  //  hoisted as well which is invalid.
+  //
+  /// CHECK-START: void Main.BoundTypeNoLICM(java.lang.Object) licm (before)
+  /// CHECK-DAG: <<Param:l\d+>>   ParameterValue             loop:none
+  /// CHECK-DAG:                  SuspendCheck               loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Bound1:l\d+>>  BoundType [<<Param>>]      loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Bound2:l\d+>>  BoundType [<<Bound1>>]     loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                  ArrayLength [<<Bound2>>]   loop:<<Loop>> outer_loop:none
+  //
+  /// CHECK-START: void Main.BoundTypeNoLICM(java.lang.Object) licm (after)
+  /// CHECK-DAG: <<Param:l\d+>>   ParameterValue             loop:none
+  /// CHECK-DAG:                  SuspendCheck               loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Bound1:l\d+>>  BoundType [<<Param>>]      loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Bound2:l\d+>>  BoundType [<<Bound1>>]     loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                  ArrayLength [<<Bound2>>]   loop:<<Loop>> outer_loop:none
+  //
+  /// CHECK-NOT:                  BoundType                  loop:none
+  private static void BoundTypeNoLICM(Object obj) {
+    int i = 0;
+    while (obj instanceof int[]) {
+      int[] a = (int[])obj;
+      a[0] = 1;
+    }
+  }
+
+  public static void main(String[] args) { }
 }
