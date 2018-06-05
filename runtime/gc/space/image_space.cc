@@ -1287,7 +1287,7 @@ class ImageSpaceLoader {
       bitmap->VisitMarkedRange(objects_begin, objects_end, fixup_object_visitor);
       // Fixup image roots.
       CHECK(app_image.InSource(reinterpret_cast<uintptr_t>(
-          image_header.GetImageRoots<kWithoutReadBarrier>())));
+          image_header.GetImageRoots<kWithoutReadBarrier>().Ptr())));
       image_header.RelocateImageObjects(app_image.Delta());
       CHECK_EQ(image_header.GetImageBegin(), target_base);
       // Fix up dex cache DexFile pointers.

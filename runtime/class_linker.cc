@@ -198,8 +198,7 @@ static void HandleEarlierVerifyError(Thread* self,
     }
   } else {
     // Previous error has been stored as an instance. Just rethrow.
-    ObjPtr<mirror::Class> throwable_class =
-        self->DecodeJObject(WellKnownClasses::java_lang_Throwable)->AsClass();
+    ObjPtr<mirror::Class> throwable_class = GetClassRoot<mirror::Throwable>(class_linker);
     ObjPtr<mirror::Class> error_class = obj->GetClass();
     CHECK(throwable_class->IsAssignableFrom(error_class));
     self->SetException(obj->AsThrowable());
@@ -377,7 +376,6 @@ ClassLinker::ClassLinker(InternTable* intern_table)
     : boot_class_table_(new ClassTable()),
       failed_dex_cache_class_lookups_(0),
       class_roots_(nullptr),
-      array_iftable_(nullptr),
       find_array_class_cache_next_victim_(0),
       init_done_(false),
       log_new_roots_(false),
@@ -513,6 +511,10 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   // Fill in the empty iftable. Needs to be done after the kObjectArrayClass root is set.
   java_lang_Object->SetIfTable(AllocIfTable(self, 0));
 
+  // Create array interface entries to populate once we can load system classes.
+  object_array_class->SetIfTable(AllocIfTable(self, 2));
+  DCHECK_EQ(GetArrayIfTable(), object_array_class->GetIfTable());
+
   // Setup the primitive type classes.
   SetClassRoot(ClassRoot::kPrimitiveBoolean, CreatePrimitiveClass(self, Primitive::kPrimBoolean));
   SetClassRoot(ClassRoot::kPrimitiveByte, CreatePrimitiveClass(self, Primitive::kPrimByte));
@@ -523,9 +525,6 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   SetClassRoot(ClassRoot::kPrimitiveFloat, CreatePrimitiveClass(self, Primitive::kPrimFloat));
   SetClassRoot(ClassRoot::kPrimitiveDouble, CreatePrimitiveClass(self, Primitive::kPrimDouble));
   SetClassRoot(ClassRoot::kPrimitiveVoid, CreatePrimitiveClass(self, Primitive::kPrimVoid));
-
-  // Create array interface entries to populate once we can load system classes.
-  array_iftable_ = GcRoot<mirror::IfTable>(AllocIfTable(self, 2));
 
   // Create int array type for native pointer arrays (for example vtables) on 32-bit archs.
   Handle<mirror::Class> int_array_class(hs.NewHandle(
@@ -640,8 +639,8 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   CHECK(java_io_Serializable != nullptr);
   // We assume that Cloneable/Serializable don't have superinterfaces -- normally we'd have to
   // crawl up and explicitly list all of the supers as well.
-  array_iftable_.Read()->SetInterface(0, java_lang_Cloneable.Get());
-  array_iftable_.Read()->SetInterface(1, java_io_Serializable.Get());
+  object_array_class->GetIfTable()->SetInterface(0, java_lang_Cloneable.Get());
+  object_array_class->GetIfTable()->SetInterface(1, java_io_Serializable.Get());
 
   // Sanity check Class[] and Object[]'s interfaces. GetDirectInterface may cause thread
   // suspension.
@@ -842,7 +841,7 @@ void ClassLinker::FinishInit(Thread* self) {
     // if possible add new checks there to catch errors early
   }
 
-  CHECK(!array_iftable_.IsNull());
+  CHECK(GetArrayIfTable() != nullptr);
 
   // disable the slow paths in FindClass and CreatePrimitiveClass now
   // that Object, Class, and Object[] are setup
@@ -1000,11 +999,6 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   // cleared without triggering the read barrier and unintentionally mark the sentinel alive.
   runtime->SetSentinel(heap->AllocNonMovableObject<true>(
       self, java_lang_Object, java_lang_Object->GetObjectSize(), VoidFunctor()));
-
-  // reinit array_iftable_ from any array class instance, they should be ==
-  array_iftable_ =
-      GcRoot<mirror::IfTable>(GetClassRoot(ClassRoot::kObjectArrayClass, this)->GetIfTable());
-  DCHECK_EQ(array_iftable_.Read(), GetClassRoot(ClassRoot::kBooleanArrayClass, this)->GetIfTable());
 
   for (gc::space::ImageSpace* image_space : spaces) {
     // Boot class loader, use a null handle.
@@ -1932,7 +1926,6 @@ void ClassLinker::VisitClassRoots(RootVisitor* visitor, VisitRootFlags flags) {
 void ClassLinker::VisitRoots(RootVisitor* visitor, VisitRootFlags flags) {
   class_roots_.VisitRootIfNonNull(visitor, RootInfo(kRootVMInternal));
   VisitClassRoots(visitor, flags);
-  array_iftable_.VisitRootIfNonNull(visitor, RootInfo(kRootVMInternal));
   // Instead of visiting the find_array_class_cache_ drop it so that it doesn't prevent class
   // unloading if we are marking roots.
   DropFindArrayClassCache();
@@ -3540,6 +3533,10 @@ ObjPtr<mirror::Class> ClassLinker::CreatePrimitiveClass(Thread* self, Primitive:
   return h_class.Get();
 }
 
+inline ObjPtr<mirror::IfTable> ClassLinker::GetArrayIfTable() {
+  return GetClassRoot<mirror::ObjectArray<mirror::Object>>(this)->GetIfTable();
+}
+
 // Create an array class (i.e. the class object for the array, not the
 // array itself).  "descriptor" looks like "[C" or "[[[[B" or
 // "[Ljava/lang/String;".
@@ -3667,7 +3664,7 @@ ObjPtr<mirror::Class> ClassLinker::CreateArrayClass(Thread* self,
   // Use the single, global copies of "interfaces" and "iftable"
   // (remember not to free them for arrays).
   {
-    ObjPtr<mirror::IfTable> array_iftable = array_iftable_.Read();
+    ObjPtr<mirror::IfTable> array_iftable = GetArrayIfTable();
     CHECK(array_iftable != nullptr);
     new_class->SetIfTable(array_iftable);
   }
