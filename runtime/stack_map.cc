@@ -21,6 +21,7 @@
 
 #include "art_method.h"
 #include "base/indenter.h"
+#include "base/stats.h"
 #include "scoped_thread_state_change-inl.h"
 
 namespace art {
@@ -113,9 +114,39 @@ std::ostream& operator<<(std::ostream& stream, const DexRegisterLocation& reg) {
   }
 }
 
+template<typename Accessor>
+static void AddTableSizeStats(const char* table_name,
+                              const BitTable<Accessor::kCount>& table,
+                              /*out*/ Stats* parent) {
+  Stats* table_stats = parent->Child(table_name);
+  table_stats->AddBits(table.BitSize());
+  table_stats->Child("Header")->AddBits(table.HeaderBitSize());
+  const char* const* column_names = GetBitTableColumnNames<Accessor>();
+  for (size_t c = 0; c < table.NumColumns(); c++) {
+    if (table.NumColumnBits(c) > 0) {
+      Stats* column_stats = table_stats->Child(column_names[c]);
+      column_stats->AddBits(table.NumRows() * table.NumColumnBits(c), table.NumRows());
+    }
+  }
+}
+
+void CodeInfo::AddSizeStats(/*out*/ Stats* parent) const {
+  Stats* stats = parent->Child("CodeInfo");
+  stats->AddBytes(size_);
+  stats->Child("Header")->AddBytes(UnsignedLeb128Size(size_));
+  AddTableSizeStats<StackMap>("StackMaps", stack_maps_, stats);
+  AddTableSizeStats<RegisterMask>("RegisterMasks", register_masks_, stats);
+  AddTableSizeStats<MaskInfo>("StackMasks", stack_masks_, stats);
+  AddTableSizeStats<InvokeInfo>("InvokeInfos", invoke_infos_, stats);
+  AddTableSizeStats<InlineInfo>("InlineInfos", inline_infos_, stats);
+  AddTableSizeStats<MaskInfo>("DexRegisterMasks", dex_register_masks_, stats);
+  AddTableSizeStats<DexRegisterMapInfo>("DexRegisterMaps", dex_register_maps_, stats);
+  AddTableSizeStats<DexRegisterInfo>("DexRegisterCatalog", dex_register_catalog_, stats);
+}
+
 static void DumpDexRegisterMap(VariableIndentationOutputStream* vios,
                                const DexRegisterMap& map) {
-  if (!map.empty()) {
+  if (map.HasAnyLiveDexRegisters()) {
     ScopedIndentation indent1(vios);
     for (size_t i = 0; i < map.size(); ++i) {
       if (map.IsDexRegisterLive(i)) {
@@ -126,18 +157,19 @@ static void DumpDexRegisterMap(VariableIndentationOutputStream* vios,
   }
 }
 
-template<uint32_t kNumColumns>
+template<typename Accessor>
 static void DumpTable(VariableIndentationOutputStream* vios,
                       const char* table_name,
-                      const BitTable<kNumColumns>& table,
+                      const BitTable<Accessor::kCount>& table,
                       bool verbose,
                       bool is_mask = false) {
   if (table.NumRows() != 0) {
-    vios->Stream() << table_name << " BitSize=" << table.NumRows() * table.NumRowBits();
+    vios->Stream() << table_name << " BitSize=" << table.BitSize();
     vios->Stream() << " Rows=" << table.NumRows() << " Bits={";
+    const char* const* column_names = GetBitTableColumnNames<Accessor>();
     for (size_t c = 0; c < table.NumColumns(); c++) {
       vios->Stream() << (c != 0 ? " " : "");
-      vios->Stream() << table.NumColumnBits(c);
+      vios->Stream() << column_names[c] << "=" << table.NumColumnBits(c);
     }
     vios->Stream() << "}\n";
     if (verbose) {
@@ -171,14 +203,14 @@ void CodeInfo::Dump(VariableIndentationOutputStream* vios,
       << " BitSize="  << size_ * kBitsPerByte
       << "\n";
   ScopedIndentation indent1(vios);
-  DumpTable(vios, "StackMaps", stack_maps_, verbose);
-  DumpTable(vios, "RegisterMasks", register_masks_, verbose);
-  DumpTable(vios, "StackMasks", stack_masks_, verbose, true /* is_mask */);
-  DumpTable(vios, "InvokeInfos", invoke_infos_, verbose);
-  DumpTable(vios, "InlineInfos", inline_infos_, verbose);
-  DumpTable(vios, "DexRegisterMasks", dex_register_masks_, verbose, true /* is_mask */);
-  DumpTable(vios, "DexRegisterMaps", dex_register_maps_, verbose);
-  DumpTable(vios, "DexRegisterCatalog", dex_register_catalog_, verbose);
+  DumpTable<StackMap>(vios, "StackMaps", stack_maps_, verbose);
+  DumpTable<RegisterMask>(vios, "RegisterMasks", register_masks_, verbose);
+  DumpTable<MaskInfo>(vios, "StackMasks", stack_masks_, verbose, true /* is_mask */);
+  DumpTable<InvokeInfo>(vios, "InvokeInfos", invoke_infos_, verbose);
+  DumpTable<InlineInfo>(vios, "InlineInfos", inline_infos_, verbose);
+  DumpTable<MaskInfo>(vios, "DexRegisterMasks", dex_register_masks_, verbose, true /* is_mask */);
+  DumpTable<DexRegisterMapInfo>(vios, "DexRegisterMaps", dex_register_maps_, verbose);
+  DumpTable<DexRegisterInfo>(vios, "DexRegisterCatalog", dex_register_catalog_, verbose);
 
   // Display stack maps along with (live) Dex register maps.
   if (verbose) {
