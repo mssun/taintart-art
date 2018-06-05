@@ -912,7 +912,11 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
               return utf.c_str();
             }
           }
-          env->ExceptionClear();
+          if (env->ExceptionCheck()) {
+            // We can't do much better logging, really. So leave it with a Describe.
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+          }
           return "(Error calling toString)";
         }
         return "null";
