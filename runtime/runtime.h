@@ -786,11 +786,6 @@ class Runtime {
 
   bool Init(RuntimeArgumentMap&& runtime_options)
       SHARED_TRYLOCK_FUNCTION(true, Locks::mutator_lock_);
-  void InitPreAllocatedException(Thread* self,
-                                 GcRoot<mirror::Throwable> Runtime::* exception,
-                                 const char* exception_class_descriptor,
-                                 const char* msg)
-      REQUIRES_SHARED(Locks::mutator_lock_);
   void InitNativeMethods() REQUIRES(!Locks::mutator_lock_);
   void RegisterRuntimeNativeMethods(JNIEnv* env);
 

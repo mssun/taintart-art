@@ -419,7 +419,7 @@ bool Class::IsInSamePackage(ObjPtr<Class> that) {
 }
 
 bool Class::IsThrowableClass() {
-  return WellKnownClasses::ToClass(WellKnownClasses::java_lang_Throwable)->IsAssignableFrom(this);
+  return GetClassRoot<mirror::Throwable>()->IsAssignableFrom(this);
 }
 
 void Class::SetClassLoader(ObjPtr<ClassLoader> new_class_loader) {

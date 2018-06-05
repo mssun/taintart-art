@@ -27,6 +27,7 @@ namespace art {
 
 class ArtField;
 class ArtMethod;
+template <class MirrorType> class ObjPtr;
 
 namespace linker {
 class ImageWriter;
@@ -206,7 +207,11 @@ class PACKED(4) ImageHeader {
   enum ImageRoot {
     kDexCaches,
     kClassRoots,
-    kClassLoader,  // App image only.
+    kOomeWhenThrowingException,       // Pre-allocated OOME when throwing exception.
+    kOomeWhenThrowingOome,            // Pre-allocated OOME when throwing OOME.
+    kOomeWhenHandlingStackOverflow,   // Pre-allocated OOME when handling StackOverflowError.
+    kNoClassDefFoundError,            // Pre-allocated NoClassDefFoundError.
+    kClassLoader,                     // App image only.
     kImageRootsMax,
   };
 
@@ -277,11 +282,11 @@ class PACKED(4) ImageHeader {
   }
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  mirror::Object* GetImageRoot(ImageRoot image_root) const
+  ObjPtr<mirror::Object> GetImageRoot(ImageRoot image_root) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  mirror::ObjectArray<mirror::Object>* GetImageRoots() const
+  ObjPtr<mirror::ObjectArray<mirror::Object>> GetImageRoots() const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void RelocateImage(off_t delta);
