@@ -438,103 +438,173 @@ TEST_F(PatchoatTest, PatchoatRelocationSameAsDex2oatRelocation) {
 #endif
 }
 
-TEST_F(PatchoatTest, RelFileVerification) {
-  // This test checks that a boot image relocated using patchoat can be unrelocated using the .rel
-  // file created by patchoat.
+// These tests check that a boot image relocated using patchoat can be unrelocated
+// using the .rel file created by patchoat.
+//
+// The tests don't work when heap poisoning is enabled because some of the
+// references are negated. b/72117833 is tracking the effort to have patchoat
+// and its tests support heap poisoning.
+class PatchoatVerificationTest : public PatchoatTest {
+ protected:
+  void CreateRelocatedBootImage() {
+    // Compile boot image into a random directory using dex2oat
+    ScratchFile dex2oat_orig_scratch;
+    dex2oat_orig_scratch.Unlink();
+    dex2oat_orig_dir_ = dex2oat_orig_scratch.GetFilename();
+    ASSERT_EQ(0, mkdir(dex2oat_orig_dir_.c_str(), 0700));
+    const uint32_t orig_base_addr = 0x60000000;
+    std::vector<std::string> dex2oat_extra_args;
+    std::string error_msg;
+    if (!CompileBootImageToDir(dex2oat_orig_dir_, dex2oat_extra_args, orig_base_addr, &error_msg)) {
+      FAIL() << "CompileBootImage1 failed: " << error_msg;
+    }
 
-  // This test doesn't work when heap poisoning is enabled because some of the
-  // references are negated. b/72117833 is tracking the effort to have patchoat
-  // and its tests support heap poisoning.
+    // Generate image relocation file for the original boot image
+    std::string dex2oat_orig_with_arch_dir =
+        dex2oat_orig_dir_ + "/" + GetInstructionSetString(kRuntimeISA);
+    // The arch-including symlink is needed by patchoat
+    ASSERT_EQ(0, symlink(dex2oat_orig_dir_.c_str(), dex2oat_orig_with_arch_dir.c_str()));
+    base_addr_delta_ = 0x100000;
+    if (!GenerateBootImageRelFile(
+        dex2oat_orig_dir_ + "/boot.art",
+        dex2oat_orig_dir_,
+        base_addr_delta_,
+        &error_msg)) {
+      FAIL() << "RelocateBootImage failed: " << error_msg;
+    }
+
+    // Relocate the original boot image using patchoat
+    ScratchFile relocated_scratch;
+    relocated_scratch.Unlink();
+    relocated_dir_ = relocated_scratch.GetFilename();
+    ASSERT_EQ(0, mkdir(relocated_dir_.c_str(), 0700));
+    // Use a different relocation delta from the one used when generating .rel files above. This is
+    // to make sure .rel files are not specific to a particular relocation delta.
+    base_addr_delta_ -= 0x10000;
+    if (!RelocateBootImage(
+        dex2oat_orig_dir_ + "/boot.art",
+        relocated_dir_,
+        base_addr_delta_,
+        &error_msg)) {
+      FAIL() << "RelocateBootImage failed: " << error_msg;
+    }
+
+    // Assert that patchoat created the same set of .art and .art.rel files
+    std::vector<std::string> rel_basenames;
+    std::vector<std::string> relocated_image_basenames;
+    if (!ListDirFilesEndingWith(dex2oat_orig_dir_, ".rel", &rel_basenames, &error_msg)) {
+      FAIL() << "Failed to list *.art.rel files in " << dex2oat_orig_dir_ << ": " << error_msg;
+    }
+    if (!ListDirFilesEndingWith(relocated_dir_, ".art", &relocated_image_basenames, &error_msg)) {
+      FAIL() << "Failed to list *.art files in " << relocated_dir_ << ": " << error_msg;
+    }
+    std::sort(rel_basenames.begin(), rel_basenames.end());
+    std::sort(relocated_image_basenames.begin(), relocated_image_basenames.end());
+
+    // .art and .art.rel file names output by patchoat look like
+    // tmp@art-data-<random>-<random>@boot*.art, encoding the name of the directory in their name.
+    // To compare these with each other, we retain only the part of the file name after the last @,
+    // and we also drop the extension.
+    std::vector<std::string> rel_shortened_basenames(rel_basenames.size());
+    std::vector<std::string> relocated_image_shortened_basenames(relocated_image_basenames.size());
+    for (size_t i = 0; i < rel_basenames.size(); i++) {
+      rel_shortened_basenames[i] = rel_basenames[i].substr(rel_basenames[i].find_last_of("@") + 1);
+      rel_shortened_basenames[i] =
+          rel_shortened_basenames[i].substr(0, rel_shortened_basenames[i].find("."));
+    }
+    for (size_t i = 0; i < relocated_image_basenames.size(); i++) {
+      relocated_image_shortened_basenames[i] =
+          relocated_image_basenames[i].substr(relocated_image_basenames[i].find_last_of("@") + 1);
+      relocated_image_shortened_basenames[i] =
+          relocated_image_shortened_basenames[i].substr(
+              0, relocated_image_shortened_basenames[i].find("."));
+    }
+    ASSERT_EQ(rel_shortened_basenames, relocated_image_shortened_basenames);
+  }
+
+  virtual void TearDown() {
+    if (!dex2oat_orig_dir_.empty()) {
+      ClearDirectory(dex2oat_orig_dir_.c_str(), /*recursive*/ true);
+      rmdir(dex2oat_orig_dir_.c_str());
+    }
+    if (!relocated_dir_.empty()) {
+      ClearDirectory(relocated_dir_.c_str(), /*recursive*/ true);
+      rmdir(relocated_dir_.c_str());
+    }
+    PatchoatTest::TearDown();
+  }
+
+  std::string dex2oat_orig_dir_;
+  std::string relocated_dir_;
+  off_t base_addr_delta_;
+};
+
+// Assert that verification works with the .rel files.
+TEST_F(PatchoatVerificationTest, Sucessful) {
   TEST_DISABLED_FOR_HEAP_POISONING();
+  CreateRelocatedBootImage();
 
-  // Compile boot image into a random directory using dex2oat
-  ScratchFile dex2oat_orig_scratch;
-  dex2oat_orig_scratch.Unlink();
-  std::string dex2oat_orig_dir = dex2oat_orig_scratch.GetFilename();
-  ASSERT_EQ(0, mkdir(dex2oat_orig_dir.c_str(), 0700));
-  const uint32_t orig_base_addr = 0x60000000;
-  std::vector<std::string> dex2oat_extra_args;
   std::string error_msg;
-  if (!CompileBootImageToDir(dex2oat_orig_dir, dex2oat_extra_args, orig_base_addr, &error_msg)) {
-    FAIL() << "CompileBootImage1 failed: " << error_msg;
-  }
-
-  // Generate image relocation file for the original boot image
-  std::string dex2oat_orig_with_arch_dir =
-      dex2oat_orig_dir + "/" + GetInstructionSetString(kRuntimeISA);
-  // The arch-including symlink is needed by patchoat
-  ASSERT_EQ(0, symlink(dex2oat_orig_dir.c_str(), dex2oat_orig_with_arch_dir.c_str()));
-  off_t base_addr_delta = 0x100000;
-  if (!GenerateBootImageRelFile(
-      dex2oat_orig_dir + "/boot.art",
-      dex2oat_orig_dir,
-      base_addr_delta,
-      &error_msg)) {
-    FAIL() << "RelocateBootImage failed: " << error_msg;
-  }
-
-  // Relocate the original boot image using patchoat
-  ScratchFile relocated_scratch;
-  relocated_scratch.Unlink();
-  std::string relocated_dir = relocated_scratch.GetFilename();
-  ASSERT_EQ(0, mkdir(relocated_dir.c_str(), 0700));
-  // Use a different relocation delta from the one used when generating .rel files above. This is
-  // to make sure .rel files are not specific to a particular relocation delta.
-  base_addr_delta -= 0x10000;
-  if (!RelocateBootImage(
-      dex2oat_orig_dir + "/boot.art",
-      relocated_dir,
-      base_addr_delta,
-      &error_msg)) {
-    FAIL() << "RelocateBootImage failed: " << error_msg;
-  }
-
-  // Assert that patchoat created the same set of .art and .art.rel files
-  std::vector<std::string> rel_basenames;
-  std::vector<std::string> relocated_image_basenames;
-  if (!ListDirFilesEndingWith(dex2oat_orig_dir, ".rel", &rel_basenames, &error_msg)) {
-    FAIL() << "Failed to list *.art.rel files in " << dex2oat_orig_dir << ": " << error_msg;
-  }
-  if (!ListDirFilesEndingWith(relocated_dir, ".art", &relocated_image_basenames, &error_msg)) {
-    FAIL() << "Failed to list *.art files in " << relocated_dir << ": " << error_msg;
-  }
-  std::sort(rel_basenames.begin(), rel_basenames.end());
-  std::sort(relocated_image_basenames.begin(), relocated_image_basenames.end());
-
-  // .art and .art.rel file names output by patchoat look like
-  // tmp@art-data-<random>-<random>@boot*.art, encoding the name of the directory in their name.
-  // To compare these with each other, we retain only the part of the file name after the last @,
-  // and we also drop the extension.
-  std::vector<std::string> rel_shortened_basenames(rel_basenames.size());
-  std::vector<std::string> relocated_image_shortened_basenames(relocated_image_basenames.size());
-  for (size_t i = 0; i < rel_basenames.size(); i++) {
-    rel_shortened_basenames[i] = rel_basenames[i].substr(rel_basenames[i].find_last_of("@") + 1);
-    rel_shortened_basenames[i] =
-        rel_shortened_basenames[i].substr(0, rel_shortened_basenames[i].find("."));
-  }
-  for (size_t i = 0; i < relocated_image_basenames.size(); i++) {
-    relocated_image_shortened_basenames[i] =
-        relocated_image_basenames[i].substr(relocated_image_basenames[i].find_last_of("@") + 1);
-    relocated_image_shortened_basenames[i] =
-        relocated_image_shortened_basenames[i].substr(
-            0, relocated_image_shortened_basenames[i].find("."));
-  }
-  ASSERT_EQ(rel_shortened_basenames, relocated_image_shortened_basenames);
-
-  // Assert that verification works with the .rel files.
   if (!VerifyBootImage(
-      dex2oat_orig_dir + "/boot.art",
-      relocated_dir,
-      base_addr_delta,
+      dex2oat_orig_dir_ + "/boot.art",
+      relocated_dir_,
+      base_addr_delta_,
       &error_msg)) {
     FAIL() << "VerifyBootImage failed: " << error_msg;
   }
+}
 
-  ClearDirectory(dex2oat_orig_dir.c_str(), /*recursive*/ true);
-  ClearDirectory(relocated_dir.c_str(), /*recursive*/ true);
+// Corrupt the image file and check that the verification fails gracefully.
+TEST_F(PatchoatVerificationTest, CorruptedImage) {
+  TEST_DISABLED_FOR_HEAP_POISONING();
+  CreateRelocatedBootImage();
 
-  rmdir(dex2oat_orig_dir.c_str());
-  rmdir(relocated_dir.c_str());
+  std::string error_msg;
+  std::string relocated_image_filename;
+  if (!GetDalvikCacheFilename((dex2oat_orig_dir_ + "/boot.art").c_str(),
+                               relocated_dir_.c_str(),
+                               &relocated_image_filename,
+                               &error_msg)) {
+    FAIL() << "Failed to find relocated image file name: " << error_msg;
+  }
+  ASSERT_EQ(truncate(relocated_image_filename.c_str(), sizeof(ImageHeader)), 0)
+    << relocated_image_filename;
+
+  if (VerifyBootImage(
+      dex2oat_orig_dir_ + "/boot.art",
+      relocated_dir_,
+      base_addr_delta_,
+      &error_msg)) {
+    FAIL() << "VerifyBootImage should have failed since the image was intentionally corrupted";
+  }
+}
+
+// Corrupt the relocation file and check that the verification fails gracefully.
+TEST_F(PatchoatVerificationTest, CorruptedRelFile) {
+  TEST_DISABLED_FOR_HEAP_POISONING();
+  CreateRelocatedBootImage();
+
+  std::string error_msg;
+  std::string art_filename = dex2oat_orig_dir_ + "/boot.art";
+  std::string rel_filename = dex2oat_orig_dir_ + "/boot.art.rel";
+  std::unique_ptr<File> art_file(OS::OpenFileForReading(art_filename.c_str()));
+  std::unique_ptr<File> rel_file(OS::OpenFileReadWrite(rel_filename.c_str()));
+  rel_file->ClearContent();
+  uint8_t buffer[64] = {};
+  ASSERT_TRUE(rel_file->WriteFully(&buffer, SHA256_DIGEST_LENGTH));
+  // Encode single relocation which is just past the end of the image file.
+  size_t leb_size = EncodeUnsignedLeb128(buffer, art_file->GetLength()) - buffer;
+  ASSERT_TRUE(rel_file->WriteFully(&buffer, leb_size));
+  ASSERT_EQ(rel_file->FlushClose(), 0);
+  ASSERT_EQ(art_file->Close(), 0);
+
+  if (VerifyBootImage(
+      dex2oat_orig_dir_ + "/boot.art",
+      relocated_dir_,
+      base_addr_delta_,
+      &error_msg)) {
+    FAIL() << "VerifyBootImage should have failed since the rel file was intentionally corrupted";
+  }
 }
 
 }  // namespace art
