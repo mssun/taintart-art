@@ -44,7 +44,7 @@ target_config = {
         'run-test' : ['--interp-ac']
     },
     'art-jit' : {
-        'run-test' : ['--jit']
+        'run-test' : ['--jit', '--debuggable', '--ndebuggable']
     },
     'art-jit-on-first-use' : {
         'run-test' : ['--jit',
