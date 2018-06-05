@@ -17,9 +17,8 @@
 #ifndef ART_LIBDEXFILE_DEX_TYPE_LOOKUP_TABLE_H_
 #define ART_LIBDEXFILE_DEX_TYPE_LOOKUP_TABLE_H_
 
-#include "base/leb128.h"
+#include "base/logging.h"
 #include "dex/dex_file_types.h"
-#include "dex/utf.h"
 
 namespace art {
 
@@ -34,140 +33,146 @@ class DexFile;
  */
 class TypeLookupTable {
  public:
-  ~TypeLookupTable();
+  // Method creates lookup table for dex file.
+  static TypeLookupTable Create(const DexFile& dex_file);
+
+  // Method opens lookup table from binary data. Lookups will traverse strings and other
+  // data contained in dex_file as well.  Lookup table does not own raw_data or dex_file.
+  static TypeLookupTable Open(const uint8_t* dex_data_pointer,
+                              const uint8_t* raw_data,
+                              uint32_t num_class_defs);
+
+  // Create an invalid lookup table.
+  TypeLookupTable()
+      : dex_data_begin_(nullptr),
+        mask_bits_(0u),
+        entries_(nullptr),
+        owned_entries_(nullptr) {}
+
+  TypeLookupTable(TypeLookupTable&& src) noexcept = default;
+  TypeLookupTable& operator=(TypeLookupTable&& src) noexcept = default;
+
+  ~TypeLookupTable() {
+    // Implicit deallocation by std::unique_ptr<> destructor.
+  }
+
+  // Returns whether the TypeLookupTable is valid.
+  bool Valid() const {
+    return entries_ != nullptr;
+  }
 
   // Return the number of buckets in the lookup table.
   uint32_t Size() const {
-    return mask_ + 1;
+    DCHECK(Valid());
+    return 1u << mask_bits_;
   }
 
   // Method search class_def_idx by class descriptor and it's hash.
   // If no data found then the method returns dex::kDexNoIndex.
-  uint32_t Lookup(const char* str, uint32_t hash) const {
-    uint32_t pos = hash & GetSizeMask();
-    // Thanks to special insertion algorithm, the element at position pos can be empty or start of
-    // bucket.
-    const Entry* entry = &entries_[pos];
-    while (!entry->IsEmpty()) {
-      if (CmpHashBits(entry->data, hash) && IsStringsEquals(str, entry->str_offset)) {
-        return GetClassDefIdx(entry->data);
-      }
-      if (entry->IsLast()) {
-        return dex::kDexNoIndex;
-      }
-      pos = (pos + entry->next_pos_delta) & GetSizeMask();
-      entry = &entries_[pos];
-    }
-    return dex::kDexNoIndex;
-  }
-
-  // Method creates lookup table for dex file
-  static std::unique_ptr<TypeLookupTable> Create(const DexFile& dex_file,
-                                                 uint8_t* storage = nullptr);
-
-  // Method opens lookup table from binary data. Lookups will traverse strings and other
-  // data contained in dex_file as well.  Lookup table does not own raw_data or dex_file.
-  static std::unique_ptr<TypeLookupTable> Open(const uint8_t* dex_file_pointer,
-                                               const uint8_t* raw_data,
-                                               uint32_t num_class_defs);
+  uint32_t Lookup(const char* str, uint32_t hash) const;
 
   // Method returns pointer to binary data of lookup table. Used by the oat writer.
   const uint8_t* RawData() const {
-    return reinterpret_cast<const uint8_t*>(entries_.get());
+    DCHECK(Valid());
+    return reinterpret_cast<const uint8_t*>(entries_);
   }
 
   // Method returns length of binary data. Used by the oat writer.
-  uint32_t RawDataLength() const { return raw_data_length_; }
+  uint32_t RawDataLength() const {
+    DCHECK(Valid());
+    return Size() * sizeof(Entry);
+  }
 
   // Method returns length of binary data for the specified number of class definitions.
   static uint32_t RawDataLength(uint32_t num_class_defs);
 
  private:
-   /**
-    * To find element we need to compare strings.
-    * It is faster to compare first hashes and then strings itself.
-    * But we have no full hash of element of table. But we can use 2 ideas.
-    * 1. All minor bits of hash inside one bucket are equals.
-    * 2. If dex file contains N classes and size of hash table is 2^n (where N <= 2^n)
-    *    then 16-n bits are free. So we can encode part of element's hash into these bits.
-    * So hash of element can be divided on three parts:
-    * XXXX XXXX XXXX YYYY YZZZ ZZZZ ZZZZZ
-    * Z - a part of hash encoded in bucket (these bits of has are same for all elements in bucket) -
-    * n bits
-    * Y - a part of hash that we can write into free 16-n bits (because only n bits used to store
-    * class_def_idx)
-    * X - a part of has that we can't use without increasing increase
-    * So the data element of Entry used to store class_def_idx and part of hash of the entry.
-    */
-  struct Entry {
-    uint32_t str_offset;
-    uint16_t data;
-    uint16_t next_pos_delta;
+  /**
+   * To find element we need to compare strings.
+   * It is faster to compare first hashes and then strings itself.
+   * But we have no full hash of element of table. But we can use 2 ideas.
+   * 1. All minor bits of hash inside one bucket are equal.
+   *    (TODO: We're not actually using this, are we?)
+   * 2. If the dex file contains N classes and the size of the hash table is 2^n (where N <= 2^n)
+   *    then we need n bits for the class def index and n bits for the next position delta.
+   *    So we can encode part of element's hash into the remaining 32-2*n (n <= 16) bits which
+   *    would be otherwise wasted as a padding.
+   * So hash of element can be divided on three parts:
+   *     XXXX XXXX XXXY YYYY YYYY YZZZ ZZZZ ZZZZ  (example with n=11)
+   *     Z - a part of hash encoded implicitly in the bucket index
+   *         (these bits are same for all elements in bucket)
+   *     Y - a part of hash that we can write into free 32-2*n bits
+   *     X - a part of hash that we can't use without increasing the size of the entry
+   * So the `data` element of Entry is used to store the next position delta, class_def_index
+   * and a part of hash of the entry.
+   */
+  class Entry {
+   public:
+    Entry() : str_offset_(0u), data_(0u) {}
+    Entry(uint32_t str_offset, uint32_t hash, uint32_t class_def_index, uint32_t mask_bits)
+        : str_offset_(str_offset),
+          data_(((hash & ~GetMask(mask_bits)) | class_def_index) << mask_bits) {
+      DCHECK_EQ(class_def_index & ~GetMask(mask_bits), 0u);
+    }
 
-    Entry() : str_offset(0), data(0), next_pos_delta(0) {}
+    void SetNextPosDelta(uint32_t next_pos_delta, uint32_t mask_bits) {
+      DCHECK_EQ(GetNextPosDelta(mask_bits), 0u);
+      DCHECK_EQ(next_pos_delta & ~GetMask(mask_bits), 0u);
+      DCHECK_NE(next_pos_delta, 0u);
+      data_ |= next_pos_delta;
+    }
 
     bool IsEmpty() const {
-      return str_offset == 0;
+      return str_offset_ == 0u;
     }
 
-    bool IsLast() const {
-      return next_pos_delta == 0;
+    bool IsLast(uint32_t mask_bits) const {
+      return GetNextPosDelta(mask_bits) == 0u;
     }
+
+    uint32_t GetStringOffset() const {
+      return str_offset_;
+    }
+
+    uint32_t GetNextPosDelta(uint32_t mask_bits) const {
+      return data_ & GetMask(mask_bits);
+    }
+
+    uint32_t GetClassDefIdx(uint32_t mask_bits) const {
+      return (data_ >> mask_bits) & GetMask(mask_bits);
+    }
+
+    uint32_t GetHashBits(uint32_t mask_bits) const {
+      DCHECK_LE(mask_bits, 16u);
+      return data_ >> (2u * mask_bits);
+    }
+
+    static uint32_t GetMask(uint32_t mask_bits) {
+      DCHECK_LE(mask_bits, 16u);
+      return ~(std::numeric_limits<uint32_t>::max() << mask_bits);
+    }
+
+   private:
+    uint32_t str_offset_;
+    uint32_t data_;
   };
 
-  static uint32_t CalculateMask(uint32_t num_class_defs);
+  static uint32_t CalculateMaskBits(uint32_t num_class_defs);
   static bool SupportedSize(uint32_t num_class_defs);
 
-  // Construct from a dex file.
-  explicit TypeLookupTable(const DexFile& dex_file, uint8_t* storage);
+  // Construct the TypeLookupTable.
+  TypeLookupTable(const uint8_t* dex_data_pointer,
+                  uint32_t mask_bits,
+                  const Entry* entries,
+                  std::unique_ptr<Entry[]> owned_entries);
 
-  // Construct from a dex file with existing data.
-  TypeLookupTable(const uint8_t* dex_file_pointer,
-                  const uint8_t* raw_data,
-                  uint32_t num_class_defs);
-
-  bool IsStringsEquals(const char* str, uint32_t str_offset) const {
-    const uint8_t* ptr = dex_data_begin_ + str_offset;
-    CHECK(dex_data_begin_ != nullptr);
-    // Skip string length.
-    DecodeUnsignedLeb128(&ptr);
-    return CompareModifiedUtf8ToModifiedUtf8AsUtf16CodePointValues(
-        str, reinterpret_cast<const char*>(ptr)) == 0;
-  }
-
-  // Method extracts hash bits from element's data and compare them with
-  // the corresponding bits of the specified hash
-  bool CmpHashBits(uint32_t data, uint32_t hash) const {
-    uint32_t mask = static_cast<uint16_t>(~GetSizeMask());
-    return (hash & mask) == (data & mask);
-  }
-
-  uint32_t GetClassDefIdx(uint32_t data) const {
-    return data & mask_;
-  }
-
-  uint32_t GetSizeMask() const {
-    return mask_;
-  }
-
-  // Attempt to set an entry on its hash's slot. If there is already something there, return false.
-  // Otherwise return true.
-  bool SetOnInitialPos(const Entry& entry, uint32_t hash);
-
-  // Insert an entry, probes until there is an empty slot.
-  void Insert(const Entry& entry, uint32_t hash);
-
-  // Find the last entry in a chain.
-  uint32_t FindLastEntryInBucket(uint32_t cur_pos) const;
+  const char* GetStringData(const Entry& entry) const;
 
   const uint8_t* dex_data_begin_;
-  const uint32_t raw_data_length_;
-  const uint32_t mask_;
-  std::unique_ptr<Entry[]> entries_;
-  // owns_entries_ specifies if the lookup table owns the entries_ array.
-  const bool owns_entries_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(TypeLookupTable);
+  uint32_t mask_bits_;
+  const Entry* entries_;
+  // `owned_entries_` is either null (not owning `entries_`) or same pointer as `entries_`.
+  std::unique_ptr<Entry[]> owned_entries_;
 };
 
 }  // namespace art
