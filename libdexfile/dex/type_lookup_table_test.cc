@@ -30,20 +30,20 @@ class TypeLookupTableTest : public CommonArtTestWithParam<DescriptorClassDefIdxP
 
 TEST_F(TypeLookupTableTest, CreateLookupTable) {
   std::unique_ptr<const DexFile> dex_file(OpenTestDexFile("Lookup"));
-  std::unique_ptr<TypeLookupTable> table(TypeLookupTable::Create(*dex_file));
-  ASSERT_NE(nullptr, table.get());
-  ASSERT_NE(nullptr, table->RawData());
-  ASSERT_EQ(32U, table->RawDataLength());
+  TypeLookupTable table = TypeLookupTable::Create(*dex_file);
+  ASSERT_TRUE(table.Valid());
+  ASSERT_NE(nullptr, table.RawData());
+  ASSERT_EQ(32U, table.RawDataLength());
 }
 
 TEST_P(TypeLookupTableTest, Find) {
   std::unique_ptr<const DexFile> dex_file(OpenTestDexFile("Lookup"));
-  std::unique_ptr<TypeLookupTable> table(TypeLookupTable::Create(*dex_file));
-  ASSERT_NE(nullptr, table.get());
+  TypeLookupTable table(TypeLookupTable::Create(*dex_file));
+  ASSERT_TRUE(table.Valid());
   auto pair = GetParam();
   const char* descriptor = pair.first;
   size_t hash = ComputeModifiedUtf8Hash(descriptor);
-  uint32_t class_def_idx = table->Lookup(descriptor, hash);
+  uint32_t class_def_idx = table.Lookup(descriptor, hash);
   ASSERT_EQ(pair.second, class_def_idx);
 }
 
