@@ -990,8 +990,7 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   class_roots_ = GcRoot<mirror::ObjectArray<mirror::Class>>(
       ObjPtr<mirror::ObjectArray<mirror::Class>>::DownCast(MakeObjPtr(
           spaces[0]->GetImageHeader().GetImageRoot(ImageHeader::kClassRoots))));
-  DCHECK_EQ(GetClassRoot(ClassRoot::kJavaLangClass, this)->GetClassFlags(),
-            mirror::kClassFlagClass);
+  DCHECK_EQ(GetClassRoot<mirror::Class>(this)->GetClassFlags(), mirror::kClassFlagClass);
 
   ObjPtr<mirror::Class> java_lang_Object = GetClassRoot<mirror::Object>(this);
   java_lang_Object->SetObjectSize(sizeof(mirror::Object));
@@ -1610,10 +1609,9 @@ bool ClassLinker::AddImageSpace(
       hs.NewHandle(dex_caches_object->AsObjectArray<mirror::DexCache>()));
   Handle<mirror::ObjectArray<mirror::Class>> class_roots(hs.NewHandle(
       header.GetImageRoot(ImageHeader::kClassRoots)->AsObjectArray<mirror::Class>()));
-  static_assert(ImageHeader::kClassLoader + 1u == ImageHeader::kImageRootsMax,
-                "Class loader should be the last image root.");
   MutableHandle<mirror::ClassLoader> image_class_loader(hs.NewHandle(
-      app_image ? header.GetImageRoot(ImageHeader::kClassLoader)->AsClassLoader() : nullptr));
+      app_image ? header.GetImageRoot(ImageHeader::kAppImageClassLoader)->AsClassLoader()
+                : nullptr));
   DCHECK(class_roots != nullptr);
   if (class_roots->GetLength() != static_cast<int32_t>(ClassRoot::kMax)) {
     *error_msg = StringPrintf("Expected %d class roots but got %d",

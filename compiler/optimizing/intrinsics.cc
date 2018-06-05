@@ -272,34 +272,33 @@ IntrinsicVisitor::IntegerValueOfInfo IntrinsicVisitor::ComputeIntegerValueOfInfo
   ClassLinker* class_linker = runtime->GetClassLinker();
   gc::Heap* heap = runtime->GetHeap();
   IntegerValueOfInfo info;
-  info.integer_cache =
-      class_linker->FindSystemClass(self, "Ljava/lang/Integer$IntegerCache;").Ptr();
-  if (info.integer_cache == nullptr) {
-    self->ClearException();
+  info.integer_cache = class_linker->LookupClass(self,
+                                                 "Ljava/lang/Integer$IntegerCache;",
+                                                 /* class_loader */ nullptr).Ptr();
+  if (info.integer_cache == nullptr || !info.integer_cache->IsInitialized()) {
+    // Optimization only works if the class is initialized.
     return info;
   }
-  if (!heap->ObjectIsInBootImageSpace(info.integer_cache) || !info.integer_cache->IsInitialized()) {
-    // Optimization only works if the class is initialized and in the boot image.
+  if (!heap->ObjectIsInBootImageSpace(info.integer_cache)) {
+    // Optimization only works if the class is in the boot image.
+    // TODO: Implement the intrinsic for boot image compilation.
     return info;
   }
-  info.integer = class_linker->FindSystemClass(self, "Ljava/lang/Integer;").Ptr();
-  if (info.integer == nullptr) {
-    self->ClearException();
-    return info;
-  }
-  if (!heap->ObjectIsInBootImageSpace(info.integer) || !info.integer->IsInitialized()) {
-    // Optimization only works if the class is initialized and in the boot image.
+  info.integer =
+      class_linker->LookupClass(self, "Ljava/lang/Integer;", /* class_loader */ nullptr).Ptr();
+  DCHECK(info.integer != nullptr);
+  DCHECK(info.integer->IsInitialized());  // Must be initialized since IntegerCache is initialized.
+  if (!heap->ObjectIsInBootImageSpace(info.integer)) {
+    // Optimization only works if the class is in the boot image.
     return info;
   }
 
   ArtField* field = info.integer_cache->FindDeclaredStaticField("cache", "[Ljava/lang/Integer;");
-  if (field == nullptr) {
-    return info;
-  }
+  CHECK(field != nullptr);
   info.cache = static_cast<mirror::ObjectArray<mirror::Object>*>(
       field->GetObject(info.integer_cache).Ptr());
   if (info.cache == nullptr) {
-    return info;
+    return info;  // Did someone mess up the IntegerCache using reflection?
   }
 
   if (!heap->ObjectIsInBootImageSpace(info.cache)) {
@@ -308,21 +307,15 @@ IntrinsicVisitor::IntegerValueOfInfo IntrinsicVisitor::ComputeIntegerValueOfInfo
   }
 
   field = info.integer->FindDeclaredInstanceField("value", "I");
-  if (field == nullptr) {
-    return info;
-  }
+  CHECK(field != nullptr);
   info.value_offset = field->GetOffset().Int32Value();
 
   field = info.integer_cache->FindDeclaredStaticField("low", "I");
-  if (field == nullptr) {
-    return info;
-  }
+  CHECK(field != nullptr);
   info.low = field->GetInt(info.integer_cache);
 
   field = info.integer_cache->FindDeclaredStaticField("high", "I");
-  if (field == nullptr) {
-    return info;
-  }
+  CHECK(field != nullptr);
   info.high = field->GetInt(info.integer_cache);
 
   DCHECK_EQ(info.cache->GetLength(), info.high - info.low + 1);
