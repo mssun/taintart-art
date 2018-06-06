@@ -102,6 +102,7 @@ public class Main {
     testAsType();
     testConstructors();
     testStringConstructors();
+    testReturnValues();
     testReturnValueConversions();
     testVariableArity();
     testVariableArity_MethodHandles_bind();
@@ -871,6 +872,89 @@ public class Main {
     }
 
     System.out.println("String constructors done.");
+  }
+
+  private static void testReturnValues() throws Throwable {
+    Lookup lookup = MethodHandles.lookup();
+
+    // byte
+    MethodHandle mhByteValue =
+        lookup.findVirtual(Byte.class, "byteValue", MethodType.methodType(byte.class));
+    assertEquals((byte) -77, (byte) mhByteValue.invokeExact(Byte.valueOf((byte) -77)));
+    assertEquals((byte) -77, (byte) mhByteValue.invoke(Byte.valueOf((byte) -77)));
+
+    // char
+    MethodHandle mhCharacterValue =
+        lookup.findStaticGetter(Character.class, "MAX_SURROGATE", char.class);
+    assertEquals(Character.MAX_SURROGATE, (char) mhCharacterValue.invokeExact());
+    assertEquals(Character.MAX_SURROGATE, (char) mhCharacterValue.invoke());
+
+    // double
+    MethodHandle mhSin =
+        lookup.findStatic(
+            Math.class, "sin", MethodType.methodType(double.class, double.class));
+    for (double i = -Math.PI; i <= Math.PI; i += Math.PI / 8) {
+      assertEquals(Math.sin(i), (double) mhSin.invokeExact(i));
+      assertEquals(Math.sin(i), (double) mhSin.invoke(i));
+    }
+
+    // float
+    MethodHandle mhAbsFloat =
+        lookup.findStatic(
+            Math.class, "abs", MethodType.methodType(float.class, float.class));
+    assertEquals(Math.abs(-3.3e6f), (float) mhAbsFloat.invokeExact(-3.3e6f));
+    assertEquals(Math.abs(-3.3e6f), (float) mhAbsFloat.invoke(-3.3e6f));
+
+    // int
+    MethodHandle mhAbsInt =
+        lookup.findStatic(Math.class, "abs", MethodType.methodType(int.class, int.class));
+    assertEquals(Math.abs(-1000), (int) mhAbsInt.invokeExact(-1000));
+    assertEquals(Math.abs(-1000), (int) mhAbsInt.invoke(-1000));
+
+    // long
+    MethodHandle mhMaxLong =
+        lookup.findStatic(
+            Math.class,
+            "max",
+            MethodType.methodType(long.class, long.class, long.class));
+    assertEquals(
+        Long.MAX_VALUE, (long) mhMaxLong.invokeExact(Long.MAX_VALUE, Long.MAX_VALUE / 2));
+    assertEquals(Long.MAX_VALUE, (long) mhMaxLong.invoke(Long.MAX_VALUE, Long.MAX_VALUE / 2));
+    assertEquals(0x0123456789abcdefL, (long) mhMaxLong.invokeExact(0x0123456789abcdefL, 0L));
+    assertEquals(0x0123456789abcdefL, (long) mhMaxLong.invoke(0x0123456789abcdefL, 0L));
+
+    // ref
+    MethodHandle mhShortValueOf =
+        lookup.findStatic(
+            Short.class, "valueOf", MethodType.methodType(Short.class, short.class));
+    assertEquals(
+        (short) -7890, ((Short) mhShortValueOf.invokeExact((short) -7890)).shortValue());
+    assertEquals((short) -7890, ((Short) mhShortValueOf.invoke((short) -7890)).shortValue());
+
+    // array
+    int [] array = {Integer.MIN_VALUE, -1, 0, +1, Integer.MAX_VALUE};
+    MethodHandle mhCopyOf =
+            lookup.findStatic(
+                Arrays.class, "copyOf", MethodType.methodType(int[].class, int[].class, int.class));
+    assertTrue(Arrays.equals(array, (int[]) mhCopyOf.invokeExact(array, array.length)));
+    assertTrue(Arrays.equals(array, (int[]) mhCopyOf.invoke(array, array.length)));
+
+    // short
+    MethodHandle mhShortValue =
+        lookup.findVirtual(Short.class, "shortValue", MethodType.methodType(short.class));
+    assertEquals((short) 12131, (short) mhShortValue.invokeExact(Short.valueOf((short) 12131)));
+    assertEquals((short) 12131, (short) mhShortValue.invoke(Short.valueOf((short) 12131)));
+
+    // boolean
+    MethodHandle mhBooleanValue =
+        lookup.findVirtual(
+            Boolean.class, "booleanValue", MethodType.methodType(boolean.class));
+    assertEquals(true, (boolean) mhBooleanValue.invokeExact(Boolean.valueOf(true)));
+    assertEquals(true, (boolean) mhBooleanValue.invoke(Boolean.valueOf(true)));
+    assertEquals(false, (boolean) mhBooleanValue.invokeExact(Boolean.valueOf(false)));
+    assertEquals(false, (boolean) mhBooleanValue.invoke(Boolean.valueOf(false)));
+
+    System.out.println("testReturnValues done.");
   }
 
   private static void testReferenceReturnValueConversions() throws Throwable {

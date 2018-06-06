@@ -2844,82 +2844,15 @@ END art_quick_read_barrier_mark_introspection
 
 .extern artInvokePolymorphic
 ENTRY art_quick_invoke_polymorphic
-    SETUP_SAVE_REFS_AND_ARGS_FRAME                // Save callee saves in case allocation triggers GC.
-    mov     x2, xSELF
-    mov     x3, sp
-    INCREASE_FRAME 16                             // Reserve space for JValue result.
-    str     xzr, [sp, #0]                         // Initialize result to zero.
-    mov     x0, sp                                // Set r0 to point to result.
-    bl      artInvokePolymorphic                  // artInvokePolymorphic(result, receiver, thread, save_area)
-    uxtb    w0, w0                                // Result is the return type descriptor as a char.
-    sub     w0, w0, 'A'                           // Convert to zero based index.
-    cmp     w0, 'Z' - 'A'
-    bhi     .Lcleanup_and_return                  // Clean-up if out-of-bounds.
-    adrp    x1, .Lhandler_table                   // Compute address of handler table.
-    add     x1, x1, :lo12:.Lhandler_table
-    ldrb    w0, [x1, w0, uxtw]                    // Lookup handler offset in handler table.
-    adr     x1, .Lstart_of_handlers
-    add     x0, x1, w0, sxtb #2                   // Convert relative offset to absolute address.
-    br      x0                                    // Branch to handler.
-
-.Lstart_of_handlers:
-.Lstore_boolean_result:
-    ldrb    w0, [sp]
-    b       .Lcleanup_and_return
-.Lstore_char_result:
-    ldrh    w0, [sp]
-    b       .Lcleanup_and_return
-.Lstore_float_result:
-    ldr     s0, [sp]
-    str     s0, [sp, #32]
-    b       .Lcleanup_and_return
-.Lstore_double_result:
-    ldr     d0, [sp]
-    str     d0, [sp, #32]
-    b       .Lcleanup_and_return
-.Lstore_long_result:
-    ldr     x0, [sp]
-    // Fall-through
-.Lcleanup_and_return:
-    DECREASE_FRAME 16
+    SETUP_SAVE_REFS_AND_ARGS_FRAME      // Save callee saves in case allocation triggers GC.
+    mov     x0, x1                      // x0 := receiver
+    mov     x1, xSELF                   // x1 := Thread::Current()
+    mov     x2, sp                      // x2 := SP
+    bl      artInvokePolymorphic        // artInvokePolymorphic(receiver, thread, save_area)
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
     REFRESH_MARKING_REGISTER
-    RETURN_OR_DELIVER_PENDING_EXCEPTION_X1
-
-    .section    .rodata                           // Place handler table in read-only section away from text.
-    .align  2
-.macro HANDLER_TABLE_OFFSET handler_label
-    .byte (\handler_label - .Lstart_of_handlers) / 4
-.endm
-.Lhandler_table:
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // A
-    HANDLER_TABLE_OFFSET(.Lstore_long_result)     // B (byte)
-    HANDLER_TABLE_OFFSET(.Lstore_char_result)     // C (char)
-    HANDLER_TABLE_OFFSET(.Lstore_double_result)   // D (double)
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // E
-    HANDLER_TABLE_OFFSET(.Lstore_float_result)    // F (float)
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // G
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // H
-    HANDLER_TABLE_OFFSET(.Lstore_long_result)     // I (int)
-    HANDLER_TABLE_OFFSET(.Lstore_long_result)     // J (long)
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // K
-    HANDLER_TABLE_OFFSET(.Lstore_long_result)     // L (object - references are compressed and only 32-bits)
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // M
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // N
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // O
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // P
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // Q
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // R
-    HANDLER_TABLE_OFFSET(.Lstore_long_result)     // S (short)
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // T
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // U
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // V (void)
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // W
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // X
-    HANDLER_TABLE_OFFSET(.Lcleanup_and_return)    // Y
-    HANDLER_TABLE_OFFSET(.Lstore_boolean_result)  // Z (boolean)
-    .text
-
+    fmov    d0, x0                      // Result is in x0. Copy to floating return register.
+    RETURN_OR_DELIVER_PENDING_EXCEPTION
 END  art_quick_invoke_polymorphic
 
 // Wrap ExecuteSwitchImpl in assembly method which specifies DEX PC for unwinding.
