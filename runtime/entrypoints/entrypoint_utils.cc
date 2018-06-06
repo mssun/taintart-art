@@ -205,12 +205,9 @@ static inline ArtMethod* DoGetCalleeSaveMethodCaller(ArtMethod* outer_method,
       MethodInfo method_info = current_code->GetOptimizedMethodInfo();
       StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
       DCHECK(stack_map.IsValid());
-      if (stack_map.HasInlineInfo()) {
-        InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
-        caller = GetResolvedMethod(outer_method,
-                                   method_info,
-                                   inline_info,
-                                   inline_info.GetDepth() - 1);
+      uint32_t depth = code_info.GetInlineDepthOf(stack_map);
+      if (depth != 0) {
+        caller = GetResolvedMethod(outer_method, method_info, code_info, stack_map, depth - 1);
       }
     }
     if (kIsDebugBuild && do_caller_check) {

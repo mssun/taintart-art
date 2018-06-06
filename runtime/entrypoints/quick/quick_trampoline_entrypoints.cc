@@ -344,9 +344,10 @@ class QuickArgumentVisitor {
       CodeInfo code_info(current_code);
       StackMap stack_map = code_info.GetStackMapForNativePcOffset(outer_pc_offset);
       DCHECK(stack_map.IsValid());
-      if (stack_map.HasInlineInfo()) {
-        InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
-        return inline_info.GetDexPcAtDepth(inline_info.GetDepth()-1);
+      uint32_t depth = code_info.GetInlineDepthOf(stack_map);
+      if (depth != 0) {
+        InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, depth - 1);
+        return inline_info.GetDexPc();
       } else {
         return stack_map.GetDexPc();
       }
@@ -1231,17 +1232,17 @@ static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutato
   LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(outer_method, dex_pc);
 
   ArtMethod* caller = outer_method;
-  if (stack_map.HasInlineInfo()) {
-    InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
-    size_t depth = inline_info.GetDepth();
+  uint32_t depth = code_info.GetInlineDepthOf(stack_map);
+  if (depth != 0) {
     for (size_t d = 0; d < depth; ++d) {
+      InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, d);
       const char* tag = "";
-      dex_pc = inline_info.GetDexPcAtDepth(d);
-      if (inline_info.EncodesArtMethodAtDepth(d)) {
+      dex_pc = inline_info.GetDexPc();
+      if (inline_info.EncodesArtMethod()) {
         tag = "encoded ";
-        caller = inline_info.GetArtMethodAtDepth(d);
+        caller = inline_info.GetArtMethod();
       } else {
-        uint32_t method_index = inline_info.GetMethodIndexAtDepth(method_info, d);
+        uint32_t method_index = inline_info.GetMethodIndex(method_info);
         if (dex_pc == static_cast<uint32_t>(-1)) {
           tag = "special ";
           CHECK_EQ(d + 1u, depth);

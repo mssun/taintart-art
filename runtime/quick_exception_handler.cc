@@ -406,7 +406,7 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
     BitMemoryRegion stack_mask = code_info.GetStackMaskOf(stack_map);
     DexRegisterMap vreg_map = IsInInlinedFrame()
         ? code_info.GetDexRegisterMapAtDepth(GetCurrentInliningDepth() - 1,
-                                             code_info.GetInlineInfoOf(stack_map),
+                                             stack_map,
                                              number_of_vregs)
         : code_info.GetDexRegisterMapOf(stack_map, number_of_vregs);
 

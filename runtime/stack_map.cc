@@ -146,38 +146,39 @@ void StackMap::Dump(VariableIndentationOutputStream* vios,
   }
   vios->Stream() << ")\n";
   DumpDexRegisterMap(vios, code_info.GetDexRegisterMapOf(*this, number_of_dex_registers));
-  if (HasInlineInfo()) {
-    InlineInfo inline_info = code_info.GetInlineInfoOf(*this);
+  uint32_t depth = code_info.GetInlineDepthOf(*this);
+  for (size_t d = 0; d < depth; d++) {
+    InlineInfo inline_info = code_info.GetInlineInfoAtDepth(*this, d);
     // We do not know the length of the dex register maps of inlined frames
     // at this level, so we just pass null to `InlineInfo::Dump` to tell
     // it not to look at these maps.
-    inline_info.Dump(vios, code_info, method_info, nullptr);
+    inline_info.Dump(vios, code_info, *this, method_info, 0);
   }
 }
 
 void InlineInfo::Dump(VariableIndentationOutputStream* vios,
                       const CodeInfo& code_info,
+                      const StackMap& stack_map,
                       const MethodInfo& method_info,
-                      uint16_t number_of_dex_registers[]) const {
-  for (size_t i = 0; i < GetDepth(); ++i) {
+                      uint16_t number_of_dex_registers) const {
+  uint32_t depth = Row() - stack_map.GetInlineInfoIndex();
+  vios->Stream()
+      << "InlineInfo[" << Row() << "]"
+      << " (depth=" << depth
+      << std::hex
+      << ", dex_pc=0x" << GetDexPc();
+  if (EncodesArtMethod()) {
+    ScopedObjectAccess soa(Thread::Current());
+    vios->Stream() << ", method=" << GetArtMethod()->PrettyMethod();
+  } else {
     vios->Stream()
-        << "InlineInfo[" << Row() + i << "]"
-        << " (depth=" << i
-        << std::hex
-        << ", dex_pc=0x" << GetDexPcAtDepth(i);
-    if (EncodesArtMethodAtDepth(i)) {
-      ScopedObjectAccess soa(Thread::Current());
-      vios->Stream() << ", method=" << GetArtMethodAtDepth(i)->PrettyMethod();
-    } else {
-      vios->Stream()
-          << std::dec
-          << ", method_index=" << GetMethodIndexAtDepth(method_info, i);
-    }
-    vios->Stream() << ")\n";
-    if (number_of_dex_registers != nullptr) {
-      uint16_t vregs = number_of_dex_registers[i];
-      DumpDexRegisterMap(vios, code_info.GetDexRegisterMapAtDepth(i, *this, vregs));
-    }
+        << std::dec
+        << ", method_index=" << GetMethodIndex(method_info);
+  }
+  vios->Stream() << ")\n";
+  if (number_of_dex_registers != 0) {
+    uint16_t vregs = number_of_dex_registers;
+    DumpDexRegisterMap(vios, code_info.GetDexRegisterMapAtDepth(depth, stack_map, vregs));
   }
 }
 
