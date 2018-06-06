@@ -445,19 +445,15 @@ TEST_F(PatchoatTest, PatchoatRelocationSameAsDex2oatRelocation) {
 #endif
 }
 
+// These tests check that a boot image relocated using patchoat can be unrelocated
+// using the .rel file created by patchoat.
+//
+// The tests don't work when heap poisoning is enabled because some of the
+// references are negated. b/72117833 is tracking the effort to have patchoat
+// and its tests support heap poisoning.
 class PatchoatVerificationTest : public PatchoatTest {
  protected:
-  virtual void SetUp() {
-    PatchoatTest::SetUp();
-
-    // This test checks that a boot image relocated using patchoat can be unrelocated using the .rel
-    // file created by patchoat.
-
-    // This test doesn't work when heap poisoning is enabled because some of the
-    // references are negated. b/72117833 is tracking the effort to have patchoat
-    // and its tests support heap poisoning.
-    TEST_DISABLED_FOR_HEAP_POISONING();
-
+  void CreateRelocatedBootImage() {
     // Compile boot image into a random directory using dex2oat
     ScratchFile dex2oat_orig_scratch;
     dex2oat_orig_scratch.Unlink();
@@ -534,12 +530,14 @@ class PatchoatVerificationTest : public PatchoatTest {
   }
 
   virtual void TearDown() {
-    ClearDirectory(dex2oat_orig_dir_.c_str(), /*recursive*/ true);
-    ClearDirectory(relocated_dir_.c_str(), /*recursive*/ true);
-
-    rmdir(dex2oat_orig_dir_.c_str());
-    rmdir(relocated_dir_.c_str());
-
+    if (!dex2oat_orig_dir_.empty()) {
+      ClearDirectory(dex2oat_orig_dir_.c_str(), /*recursive*/ true);
+      rmdir(dex2oat_orig_dir_.c_str());
+    }
+    if (!relocated_dir_.empty()) {
+      ClearDirectory(relocated_dir_.c_str(), /*recursive*/ true);
+      rmdir(relocated_dir_.c_str());
+    }
     PatchoatTest::TearDown();
   }
 
@@ -550,6 +548,9 @@ class PatchoatVerificationTest : public PatchoatTest {
 
 // Assert that verification works with the .rel files.
 TEST_F(PatchoatVerificationTest, Sucessful) {
+  TEST_DISABLED_FOR_HEAP_POISONING();
+  CreateRelocatedBootImage();
+
   std::string error_msg;
   if (!VerifyBootImage(
       dex2oat_orig_dir_ + "/boot.art",
@@ -562,6 +563,9 @@ TEST_F(PatchoatVerificationTest, Sucessful) {
 
 // Corrupt the image file and check that the verification fails gracefully.
 TEST_F(PatchoatVerificationTest, CorruptedImage) {
+  TEST_DISABLED_FOR_HEAP_POISONING();
+  CreateRelocatedBootImage();
+
   std::string error_msg;
   std::string relocated_image_filename;
   if (!GetDalvikCacheFilename((dex2oat_orig_dir_ + "/boot.art").c_str(),
@@ -584,6 +588,9 @@ TEST_F(PatchoatVerificationTest, CorruptedImage) {
 
 // Corrupt the relocation file and check that the verification fails gracefully.
 TEST_F(PatchoatVerificationTest, CorruptedRelFile) {
+  TEST_DISABLED_FOR_HEAP_POISONING();
+  CreateRelocatedBootImage();
+
   std::string error_msg;
   std::string art_filename = dex2oat_orig_dir_ + "/boot.art";
   std::string rel_filename = dex2oat_orig_dir_ + "/boot.art.rel";
