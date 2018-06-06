@@ -363,6 +363,10 @@ static bool CheckImageIdenticalToOriginalExceptForRelocation(
     uint32_t offset_delta = 0;
     if (DecodeUnsignedLeb128Checked(&rel_ptr, rel_end, &offset_delta)) {
       offset += offset_delta;
+      if (static_cast<int64_t>(offset) + static_cast<int64_t>(sizeof(uint32_t)) > image_size) {
+        *error_msg = StringPrintf("Relocation out of bounds in %s", relocated_filename.c_str());
+        return false;
+      }
       uint32_t *image_value = reinterpret_cast<uint32_t*>(image_start + offset);
       *image_value -= expected_diff;
     } else {
