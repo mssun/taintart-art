@@ -76,14 +76,14 @@ StackVisitor::StackVisitor(Thread* thread,
   }
 }
 
-static InlineInfo GetCurrentInlineInfo(CodeInfo& code_info,
-                                       const OatQuickMethodHeader* method_header,
-                                       uintptr_t cur_quick_frame_pc)
+static StackMap GetCurrentStackMap(CodeInfo& code_info,
+                                   const OatQuickMethodHeader* method_header,
+                                   uintptr_t cur_quick_frame_pc)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   uint32_t native_pc_offset = method_header->NativeQuickPcOffset(cur_quick_frame_pc);
   StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
   DCHECK(stack_map.IsValid());
-  return code_info.GetInlineInfoOf(stack_map);
+  return stack_map;
 }
 
 ArtMethod* StackVisitor::GetMethod() const {
@@ -94,14 +94,13 @@ ArtMethod* StackVisitor::GetMethod() const {
       size_t depth_in_stack_map = current_inlining_depth_ - 1;
       const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
       CodeInfo code_info(method_header);
-      InlineInfo inline_info = GetCurrentInlineInfo(code_info,
-                                                    method_header,
-                                                    cur_quick_frame_pc_);
+      StackMap stack_map = GetCurrentStackMap(code_info, method_header, cur_quick_frame_pc_);
       MethodInfo method_info = method_header->GetOptimizedMethodInfo();
       DCHECK(walk_kind_ != StackWalkKind::kSkipInlinedFrames);
       return GetResolvedMethod(*GetCurrentQuickFrame(),
                                method_info,
-                               inline_info,
+                               code_info,
+                               stack_map,
                                depth_in_stack_map);
     } else {
       return *cur_quick_frame_;
@@ -118,8 +117,8 @@ uint32_t StackVisitor::GetDexPc(bool abort_on_failure) const {
       const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
       CodeInfo code_info(method_header);
       size_t depth_in_stack_map = current_inlining_depth_ - 1;
-      return GetCurrentInlineInfo(code_info, method_header, cur_quick_frame_pc_).
-          GetDexPcAtDepth(depth_in_stack_map);
+      StackMap stack_map = GetCurrentStackMap(code_info, method_header, cur_quick_frame_pc_);
+      return code_info.GetInlineInfoAtDepth(stack_map, depth_in_stack_map).GetDexPc();
     } else if (cur_oat_quick_method_header_ == nullptr) {
       return dex::kDexNoIndex;
     } else {
@@ -237,9 +236,7 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
   size_t depth_in_stack_map = current_inlining_depth_ - 1;
 
   DexRegisterMap dex_register_map = IsInInlinedFrame()
-      ? code_info.GetDexRegisterMapAtDepth(depth_in_stack_map,
-                                           code_info.GetInlineInfoOf(stack_map),
-                                           number_of_dex_registers)
+      ? code_info.GetDexRegisterMapAtDepth(depth_in_stack_map, stack_map, number_of_dex_registers)
       : code_info.GetDexRegisterMapOf(stack_map, number_of_dex_registers);
 
   if (!dex_register_map.IsValid()) {
@@ -825,9 +822,8 @@ void StackVisitor::WalkStack(bool include_transitions) {
               cur_oat_quick_method_header_->NativeQuickPcOffset(cur_quick_frame_pc_);
           StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
           if (stack_map.IsValid() && stack_map.HasInlineInfo()) {
-            InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
             DCHECK_EQ(current_inlining_depth_, 0u);
-            for (current_inlining_depth_ = inline_info.GetDepth();
+            for (current_inlining_depth_ = code_info.GetInlineDepthOf(stack_map);
                  current_inlining_depth_ != 0;
                  --current_inlining_depth_) {
               bool should_continue = VisitFrame();

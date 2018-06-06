@@ -189,12 +189,13 @@ TEST(StackMapTest, Test2) {
     ASSERT_EQ(-2, location1.GetValue());
 
     ASSERT_TRUE(stack_map.HasInlineInfo());
-    InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
-    ASSERT_EQ(2u, inline_info.GetDepth());
-    ASSERT_EQ(3u, inline_info.GetDexPcAtDepth(0));
-    ASSERT_EQ(2u, inline_info.GetDexPcAtDepth(1));
-    ASSERT_TRUE(inline_info.EncodesArtMethodAtDepth(0));
-    ASSERT_TRUE(inline_info.EncodesArtMethodAtDepth(1));
+    InlineInfo inline_info0 = code_info.GetInlineInfoAtDepth(stack_map, 0);
+    InlineInfo inline_info1 = code_info.GetInlineInfoAtDepth(stack_map, 1);
+    ASSERT_EQ(2u, code_info.GetInlineDepthOf(stack_map));
+    ASSERT_EQ(3u, inline_info0.GetDexPc());
+    ASSERT_EQ(2u, inline_info1.GetDexPc());
+    ASSERT_TRUE(inline_info0.EncodesArtMethod());
+    ASSERT_TRUE(inline_info1.EncodesArtMethod());
   }
 
   // Second stack map.
@@ -361,8 +362,8 @@ TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
     // Test that the inline info dex register map deduplicated to the same offset as the stack map
     // one.
     ASSERT_TRUE(stack_map.HasInlineInfo());
-    InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map);
-    EXPECT_EQ(inline_info.GetDexRegisterMapIndexAtDepth(0),
+    InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, 0);
+    EXPECT_EQ(inline_info.GetDexRegisterMapIndex(),
               stack_map.GetDexRegisterMapIndex());
   }
 }
@@ -605,17 +606,18 @@ TEST(StackMapTest, InlineTest) {
     ASSERT_EQ(0, dex_registers0.GetStackOffsetInBytes(0));
     ASSERT_EQ(4, dex_registers0.GetConstant(1));
 
-    InlineInfo if0 = ci.GetInlineInfoOf(sm0);
-    ASSERT_EQ(2u, if0.GetDepth());
-    ASSERT_EQ(2u, if0.GetDexPcAtDepth(0));
-    ASSERT_TRUE(if0.EncodesArtMethodAtDepth(0));
-    ASSERT_EQ(3u, if0.GetDexPcAtDepth(1));
-    ASSERT_TRUE(if0.EncodesArtMethodAtDepth(1));
+    InlineInfo if0_0 = ci.GetInlineInfoAtDepth(sm0, 0);
+    InlineInfo if0_1 = ci.GetInlineInfoAtDepth(sm0, 1);
+    ASSERT_EQ(2u, ci.GetInlineDepthOf(sm0));
+    ASSERT_EQ(2u, if0_0.GetDexPc());
+    ASSERT_TRUE(if0_0.EncodesArtMethod());
+    ASSERT_EQ(3u, if0_1.GetDexPc());
+    ASSERT_TRUE(if0_1.EncodesArtMethod());
 
-    DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(0, if0, 1);
+    DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(0, sm0, 1);
     ASSERT_EQ(8, dex_registers1.GetStackOffsetInBytes(0));
 
-    DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(1, if0, 3);
+    DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(1, sm0, 3);
     ASSERT_EQ(16, dex_registers2.GetStackOffsetInBytes(0));
     ASSERT_EQ(20, dex_registers2.GetConstant(1));
     ASSERT_EQ(15, dex_registers2.GetMachineRegister(2));
@@ -629,24 +631,26 @@ TEST(StackMapTest, InlineTest) {
     ASSERT_EQ(56, dex_registers0.GetStackOffsetInBytes(0));
     ASSERT_EQ(0, dex_registers0.GetConstant(1));
 
-    InlineInfo if1 = ci.GetInlineInfoOf(sm1);
-    ASSERT_EQ(3u, if1.GetDepth());
-    ASSERT_EQ(2u, if1.GetDexPcAtDepth(0));
-    ASSERT_TRUE(if1.EncodesArtMethodAtDepth(0));
-    ASSERT_EQ(3u, if1.GetDexPcAtDepth(1));
-    ASSERT_TRUE(if1.EncodesArtMethodAtDepth(1));
-    ASSERT_EQ(5u, if1.GetDexPcAtDepth(2));
-    ASSERT_TRUE(if1.EncodesArtMethodAtDepth(2));
+    InlineInfo if1_0 = ci.GetInlineInfoAtDepth(sm1, 0);
+    InlineInfo if1_1 = ci.GetInlineInfoAtDepth(sm1, 1);
+    InlineInfo if1_2 = ci.GetInlineInfoAtDepth(sm1, 2);
+    ASSERT_EQ(3u, ci.GetInlineDepthOf(sm1));
+    ASSERT_EQ(2u, if1_0.GetDexPc());
+    ASSERT_TRUE(if1_0.EncodesArtMethod());
+    ASSERT_EQ(3u, if1_1.GetDexPc());
+    ASSERT_TRUE(if1_1.EncodesArtMethod());
+    ASSERT_EQ(5u, if1_2.GetDexPc());
+    ASSERT_TRUE(if1_2.EncodesArtMethod());
 
-    DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(0, if1, 1);
+    DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(0, sm1, 1);
     ASSERT_EQ(12, dex_registers1.GetStackOffsetInBytes(0));
 
-    DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(1, if1, 3);
+    DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(1, sm1, 3);
     ASSERT_EQ(80, dex_registers2.GetStackOffsetInBytes(0));
     ASSERT_EQ(10, dex_registers2.GetConstant(1));
     ASSERT_EQ(5, dex_registers2.GetMachineRegister(2));
 
-    ASSERT_FALSE(if1.HasDexRegisterMapAtDepth(2));
+    ASSERT_FALSE(if1_2.HasDexRegisterMap());
   }
 
   {
@@ -667,21 +671,23 @@ TEST(StackMapTest, InlineTest) {
     ASSERT_EQ(56, dex_registers0.GetStackOffsetInBytes(0));
     ASSERT_EQ(0, dex_registers0.GetConstant(1));
 
-    InlineInfo if2 = ci.GetInlineInfoOf(sm3);
-    ASSERT_EQ(3u, if2.GetDepth());
-    ASSERT_EQ(2u, if2.GetDexPcAtDepth(0));
-    ASSERT_TRUE(if2.EncodesArtMethodAtDepth(0));
-    ASSERT_EQ(5u, if2.GetDexPcAtDepth(1));
-    ASSERT_TRUE(if2.EncodesArtMethodAtDepth(1));
-    ASSERT_EQ(10u, if2.GetDexPcAtDepth(2));
-    ASSERT_TRUE(if2.EncodesArtMethodAtDepth(2));
+    InlineInfo if2_0 = ci.GetInlineInfoAtDepth(sm3, 0);
+    InlineInfo if2_1 = ci.GetInlineInfoAtDepth(sm3, 1);
+    InlineInfo if2_2 = ci.GetInlineInfoAtDepth(sm3, 2);
+    ASSERT_EQ(3u, ci.GetInlineDepthOf(sm3));
+    ASSERT_EQ(2u, if2_0.GetDexPc());
+    ASSERT_TRUE(if2_0.EncodesArtMethod());
+    ASSERT_EQ(5u, if2_1.GetDexPc());
+    ASSERT_TRUE(if2_1.EncodesArtMethod());
+    ASSERT_EQ(10u, if2_2.GetDexPc());
+    ASSERT_TRUE(if2_2.EncodesArtMethod());
 
-    ASSERT_FALSE(if2.HasDexRegisterMapAtDepth(0));
+    ASSERT_FALSE(if2_0.HasDexRegisterMap());
 
-    DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(1, if2, 1);
+    DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(1, sm3, 1);
     ASSERT_EQ(2, dex_registers1.GetMachineRegister(0));
 
-    DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(2, if2, 2);
+    DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(2, sm3, 2);
     ASSERT_FALSE(dex_registers2.IsDexRegisterLive(0));
     ASSERT_EQ(3, dex_registers2.GetMachineRegister(1));
   }
