@@ -3360,6 +3360,7 @@ ObjPtr<mirror::DexCache> ClassLinker::EnsureSameClassLoader(
 
 void ClassLinker::RegisterExistingDexCache(ObjPtr<mirror::DexCache> dex_cache,
                                            ObjPtr<mirror::ClassLoader> class_loader) {
+  SCOPED_TRACE << __FUNCTION__ << " " << dex_cache->GetDexFile()->GetLocation();
   Thread* self = Thread::Current();
   StackHandleScope<2> hs(self);
   Handle<mirror::DexCache> h_dex_cache(hs.NewHandle(dex_cache));
@@ -3384,7 +3385,6 @@ void ClassLinker::RegisterExistingDexCache(ObjPtr<mirror::DexCache> dex_cache,
   // Avoid a deadlock between a garbage collecting thread running a checkpoint,
   // a thread holding the dex lock and blocking on a condition variable regarding
   // weak references access, and a thread blocking on the dex lock.
-  ScopedThreadStateChange tsc(self, kSuspended);
   gc::ScopedGCCriticalSection gcs(self, gc::kGcCauseClassLinker, gc::kCollectorTypeClassLinker);
   WriterMutexLock mu(self, *Locks::dex_lock_);
   RegisterDexFileLocked(*dex_file, h_dex_cache.Get(), h_class_loader.Get());
@@ -3408,6 +3408,7 @@ ObjPtr<mirror::DexCache> ClassLinker::RegisterDexFile(const DexFile& dex_file,
   if (old_dex_cache != nullptr) {
     return EnsureSameClassLoader(self, old_dex_cache, old_data, class_loader);
   }
+  SCOPED_TRACE << __FUNCTION__ << " " << dex_file.GetLocation();
   LinearAlloc* const linear_alloc = GetOrCreateAllocatorForClassLoader(class_loader);
   DCHECK(linear_alloc != nullptr);
   ClassTable* table;
@@ -3429,7 +3430,6 @@ ObjPtr<mirror::DexCache> ClassLinker::RegisterDexFile(const DexFile& dex_file,
     // Avoid a deadlock between a garbage collecting thread running a checkpoint,
     // a thread holding the dex lock and blocking on a condition variable regarding
     // weak references access, and a thread blocking on the dex lock.
-    ScopedThreadStateChange tsc(self, kSuspended);
     gc::ScopedGCCriticalSection gcs(self, gc::kGcCauseClassLinker, gc::kCollectorTypeClassLinker);
     WriterMutexLock mu(self, *Locks::dex_lock_);
     old_data = FindDexCacheDataLocked(dex_file);
