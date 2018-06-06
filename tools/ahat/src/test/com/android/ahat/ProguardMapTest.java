@@ -25,7 +25,11 @@ import static org.junit.Assert.assertEquals;
 
 public class ProguardMapTest {
   private static final String TEST_MAP =
-    "class.that.is.Empty -> a:\n"
+      "# compiler: richard\n"
+    + "# compiler_version: 3.0-dev\n"
+    + "# min_api: 10000\n"
+    + "# compiler_hash: b7e25308967a577aa1f05a4b5a745c26\n"
+    + "class.that.is.Empty -> a:\n"
     + "class.that.is.Empty$subclass -> b:\n"
     + "class.with.only.Fields -> c:\n"
     + "    int prim_type_field -> a\n"

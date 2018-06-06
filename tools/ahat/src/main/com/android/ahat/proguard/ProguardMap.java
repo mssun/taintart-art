@@ -184,6 +184,12 @@ public class ProguardMap {
     BufferedReader reader = new BufferedReader(mapReader);
     String line = reader.readLine();
     while (line != null) {
+      // Comment lines start with '#'. Skip over them.
+      if (line.startsWith("#")) {
+        line = reader.readLine();
+        continue;
+      }
+
       // Class lines are of the form:
       //   'clear.class.name -> obfuscated_class_name:'
       int sep = line.indexOf(" -> ");
