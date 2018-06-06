@@ -129,7 +129,7 @@ void StackMapStream::AddInvoke(InvokeType invoke_type, uint32_t dex_method_index
       CHECK_EQ(invoke_info.GetNativePcOffset(instruction_set_),
                StackMap::UnpackNativePc(packed_native_pc, instruction_set_));
       CHECK_EQ(invoke_info.GetInvokeType(), invoke_type);
-      CHECK_EQ(method_infos_[invoke_info.GetMethodIndexIdx()], dex_method_index);
+      CHECK_EQ(method_infos_[invoke_info.GetMethodInfoIndex()], dex_method_index);
     });
   }
 }
@@ -179,7 +179,7 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
       if (encode_art_method) {
         CHECK_EQ(inline_info.GetArtMethod(), method);
       } else {
-        CHECK_EQ(method_infos_[inline_info.GetMethodIndexIdx()],
+        CHECK_EQ(method_infos_[inline_info.GetMethodInfoIndex()],
                  method->GetDexMethodIndexUnchecked());
       }
       CHECK_EQ(inline_info.HasDexRegisterMap(), (num_dex_registers != 0));

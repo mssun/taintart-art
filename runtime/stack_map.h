@@ -147,38 +147,26 @@ class DexRegisterMap {
  */
 class StackMap : public BitTable<7>::Accessor {
  public:
-  enum Field {
-    kPackedNativePc,
-    kDexPc,
-    kRegisterMaskIndex,
-    kStackMaskIndex,
-    kInlineInfoIndex,
-    kDexRegisterMaskIndex,
-    kDexRegisterMapIndex,
-    kCount,
-  };
-
-  StackMap() : BitTable<kCount>::Accessor(nullptr, -1) {}
-  StackMap(const BitTable<kCount>* table, uint32_t row)
-    : BitTable<kCount>::Accessor(table, row) {}
+  BIT_TABLE_HEADER()
+  BIT_TABLE_COLUMN(0, PackedNativePc)
+  BIT_TABLE_COLUMN(1, DexPc)
+  BIT_TABLE_COLUMN(2, RegisterMaskIndex)
+  BIT_TABLE_COLUMN(3, StackMaskIndex)
+  BIT_TABLE_COLUMN(4, InlineInfoIndex)
+  BIT_TABLE_COLUMN(5, DexRegisterMaskIndex)
+  BIT_TABLE_COLUMN(6, DexRegisterMapIndex)
 
   ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
     return UnpackNativePc(Get<kPackedNativePc>(), instruction_set);
   }
 
-  uint32_t GetDexPc() const { return Get<kDexPc>(); }
+  ALWAYS_INLINE bool HasInlineInfo() const {
+    return HasInlineInfoIndex();
+  }
 
-  uint32_t GetDexRegisterMaskIndex() const { return Get<kDexRegisterMaskIndex>(); }
-
-  uint32_t GetDexRegisterMapIndex() const { return Get<kDexRegisterMapIndex>(); }
-  bool HasDexRegisterMap() const { return GetDexRegisterMapIndex() != kNoValue; }
-
-  uint32_t GetInlineInfoIndex() const { return Get<kInlineInfoIndex>(); }
-  bool HasInlineInfo() const { return GetInlineInfoIndex() != kNoValue; }
-
-  uint32_t GetRegisterMaskIndex() const { return Get<kRegisterMaskIndex>(); }
-
-  uint32_t GetStackMaskIndex() const { return Get<kStackMaskIndex>(); }
+  ALWAYS_INLINE bool HasDexRegisterMap() const {
+    return HasDexRegisterMapIndex();
+  }
 
   static uint32_t PackNativePc(uint32_t native_pc, InstructionSet isa) {
     DCHECK_ALIGNED_PARAM(native_pc, GetInstructionSetInstructionAlignment(isa));
@@ -206,56 +194,34 @@ class StackMap : public BitTable<7>::Accessor {
  */
 class InlineInfo : public BitTable<7>::Accessor {
  public:
-  enum Field {
-    kIsLast,  // Determines if there are further rows for further depths.
-    kDexPc,
-    kMethodIndexIdx,
-    kArtMethodHi,  // High bits of ArtMethod*.
-    kArtMethodLo,  // Low bits of ArtMethod*.
-    kDexRegisterMaskIndex,
-    kDexRegisterMapIndex,
-    kCount,
-  };
+  BIT_TABLE_HEADER()
+  BIT_TABLE_COLUMN(0, IsLast)  // Determines if there are further rows for further depths.
+  BIT_TABLE_COLUMN(1, DexPc)
+  BIT_TABLE_COLUMN(2, MethodInfoIndex)
+  BIT_TABLE_COLUMN(3, ArtMethodHi)  // High bits of ArtMethod*.
+  BIT_TABLE_COLUMN(4, ArtMethodLo)  // Low bits of ArtMethod*.
+  BIT_TABLE_COLUMN(5, DexRegisterMaskIndex)
+  BIT_TABLE_COLUMN(6, DexRegisterMapIndex)
+
   static constexpr uint32_t kLast = -1;
   static constexpr uint32_t kMore = 0;
 
-  InlineInfo(const BitTable<kCount>* table, uint32_t row)
-    : BitTable<kCount>::Accessor(table, row) {}
-
-  uint32_t GetIsLast() const { return Get<kIsLast>(); }
-
-  uint32_t GetMethodIndexIdx() const {
-    DCHECK(!EncodesArtMethod());
-    return Get<kMethodIndexIdx>();
-  }
-
   uint32_t GetMethodIndex(const MethodInfo& method_info) const {
-    return method_info.GetMethodIndex(GetMethodIndexIdx());
-  }
-
-  uint32_t GetDexPc() const {
-    return Get<kDexPc>();
+    return method_info.GetMethodIndex(GetMethodInfoIndex());
   }
 
   bool EncodesArtMethod() const {
-    return Get<kArtMethodLo>() != kNoValue;
+    return HasArtMethodLo();
   }
 
   ArtMethod* GetArtMethod() const {
-    uint64_t lo = Get<kArtMethodLo>();
-    uint64_t hi = Get<kArtMethodHi>();
+    uint64_t lo = GetArtMethodLo();
+    uint64_t hi = GetArtMethodHi();
     return reinterpret_cast<ArtMethod*>((hi << 32) | lo);
   }
 
-  uint32_t GetDexRegisterMaskIndex() const {
-    return Get<kDexRegisterMaskIndex>();
-  }
-
-  uint32_t GetDexRegisterMapIndex() const {
-    return Get<kDexRegisterMapIndex>();
-  }
-  bool HasDexRegisterMap() const {
-    return GetDexRegisterMapIndex() != kNoValue;
+  ALWAYS_INLINE bool HasDexRegisterMap() const {
+    return HasDexRegisterMapIndex();
   }
 
   void Dump(VariableIndentationOutputStream* vios,
@@ -267,43 +233,29 @@ class InlineInfo : public BitTable<7>::Accessor {
 
 class InvokeInfo : public BitTable<3>::Accessor {
  public:
-  enum Field {
-    kPackedNativePc,
-    kInvokeType,
-    kMethodIndexIdx,
-    kCount,
-  };
-
-  InvokeInfo(const BitTable<kCount>* table, uint32_t row)
-    : BitTable<kCount>::Accessor(table, row) {}
+  BIT_TABLE_HEADER()
+  BIT_TABLE_COLUMN(0, PackedNativePc)
+  BIT_TABLE_COLUMN(1, InvokeType)
+  BIT_TABLE_COLUMN(2, MethodInfoIndex)
 
   ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
     return StackMap::UnpackNativePc(Get<kPackedNativePc>(), instruction_set);
   }
 
-  uint32_t GetInvokeType() const { return Get<kInvokeType>(); }
-
-  uint32_t GetMethodIndexIdx() const { return Get<kMethodIndexIdx>(); }
-
   uint32_t GetMethodIndex(MethodInfo method_info) const {
-    return method_info.GetMethodIndex(GetMethodIndexIdx());
+    return method_info.GetMethodIndex(GetMethodInfoIndex());
   }
 };
 
 class DexRegisterInfo : public BitTable<2>::Accessor {
  public:
-  enum Field {
-    kKind,
-    kPackedValue,
-    kCount,
-  };
-
-  DexRegisterInfo(const BitTable<kCount>* table, uint32_t row)
-    : BitTable<kCount>::Accessor(table, row) {}
+  BIT_TABLE_HEADER()
+  BIT_TABLE_COLUMN(0, Kind)
+  BIT_TABLE_COLUMN(1, PackedValue)
 
   ALWAYS_INLINE DexRegisterLocation GetLocation() const {
-    DexRegisterLocation::Kind kind = static_cast<DexRegisterLocation::Kind>(Get<kKind>());
-    return DexRegisterLocation(kind, UnpackValue(kind, Get<kPackedValue>()));
+    DexRegisterLocation::Kind kind = static_cast<DexRegisterLocation::Kind>(GetKind());
+    return DexRegisterLocation(kind, UnpackValue(kind, GetPackedValue()));
   }
 
   static uint32_t PackValue(DexRegisterLocation::Kind kind, uint32_t value) {
@@ -328,17 +280,12 @@ class DexRegisterInfo : public BitTable<2>::Accessor {
 // therefore it is worth encoding the mask as value+shift.
 class RegisterMask : public BitTable<2>::Accessor {
  public:
-  enum Field {
-    kValue,
-    kShift,
-    kCount,
-  };
-
-  RegisterMask(const BitTable<kCount>* table, uint32_t row)
-    : BitTable<kCount>::Accessor(table, row) {}
+  BIT_TABLE_HEADER()
+  BIT_TABLE_COLUMN(0, Value)
+  BIT_TABLE_COLUMN(1, Shift)
 
   ALWAYS_INLINE uint32_t GetMask() const {
-    return Get<kValue>() << Get<kShift>();
+    return GetValue() << GetShift();
   }
 };
 
@@ -509,7 +456,7 @@ class CodeInfo {
         return item;
       }
     }
-    return InvokeInfo(&invoke_infos_, -1);
+    return InvokeInfo();
   }
 
   // Dump this CodeInfo object on `vios`.
@@ -557,14 +504,14 @@ class CodeInfo {
   }
 
   size_t size_;
-  BitTable<StackMap::Field::kCount> stack_maps_;
-  BitTable<RegisterMask::Field::kCount> register_masks_;
+  BitTable<StackMap::kCount> stack_maps_;
+  BitTable<RegisterMask::kCount> register_masks_;
   BitTable<1> stack_masks_;
-  BitTable<InvokeInfo::Field::kCount> invoke_infos_;
-  BitTable<InlineInfo::Field::kCount> inline_infos_;
+  BitTable<InvokeInfo::kCount> invoke_infos_;
+  BitTable<InlineInfo::kCount> inline_infos_;
   BitTable<1> dex_register_masks_;
   BitTable<1> dex_register_maps_;
-  BitTable<DexRegisterInfo::Field::kCount> dex_register_catalog_;
+  BitTable<DexRegisterInfo::kCount> dex_register_catalog_;
 
   friend class OatDumper;
 };

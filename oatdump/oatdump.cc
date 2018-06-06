@@ -1752,7 +1752,7 @@ class OatDumper {
           if (num_inline_infos > 0u) {
             stats_.AddBits(
                 Stats::kByteKindInlineInfoMethodIndexIdx,
-                inline_infos.NumColumnBits(InlineInfo::kMethodIndexIdx) * num_inline_infos);
+                inline_infos.NumColumnBits(InlineInfo::kMethodInfoIndex) * num_inline_infos);
             stats_.AddBits(
                 Stats::kByteKindInlineInfoDexPc,
                 inline_infos.NumColumnBits(InlineInfo::kDexPc) * num_inline_infos);
