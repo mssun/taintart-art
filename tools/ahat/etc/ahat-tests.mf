@@ -1,1 +1,1 @@
-Main-Class: com.android.ahat.Tests
+Main-Class: com.android.ahat.AhatTestSuite
