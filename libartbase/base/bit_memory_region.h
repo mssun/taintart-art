@@ -151,6 +151,20 @@ class BitMemoryRegion FINAL : public ValueObject {
     StoreBits(bit_offset + bit, src.LoadBits(bit, num_bits), num_bits);
   }
 
+  // Count the number of set bits within the given bit range.
+  ALWAYS_INLINE size_t PopCount(size_t bit_offset, size_t bit_length) const {
+    DCHECK_LE(bit_offset, bit_size_);
+    DCHECK_LE(bit_length, bit_size_ - bit_offset);
+    size_t count = 0;
+    size_t bit = 0;
+    constexpr size_t kNumBits = BitSizeOf<uint32_t>();
+    for (; bit + kNumBits <= bit_length; bit += kNumBits) {
+      count += POPCOUNT(LoadBits(bit_offset + bit, kNumBits));
+    }
+    count += POPCOUNT(LoadBits(bit_offset + bit, bit_length - bit));
+    return count;
+  }
+
   ALWAYS_INLINE bool Equals(const BitMemoryRegion& other) const {
     return data_ == other.data_ &&
            bit_start_ == other.bit_start_ &&
