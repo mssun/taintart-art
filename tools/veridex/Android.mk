@@ -22,13 +22,13 @@ LOCAL_PATH := $(call my-dir)
 system_stub_dex := $(TARGET_OUT_COMMON_INTERMEDIATES)/PACKAGING/core_dex_intermediates/classes.dex
 $(system_stub_dex): PRIVATE_MIN_SDK_VERSION := 1000
 $(system_stub_dex): $(call resolve-prebuilt-sdk-jar-path,system_current) | $(ZIP2ZIP) $(DX)
-	$(transform-classes-d8.jar-to-dex)
+	$(transform-classes.jar-to-dex)
 
 
 oahl_stub_dex := $(TARGET_OUT_COMMON_INTERMEDIATES)/PACKAGING/oahl_dex_intermediates/classes.dex
 $(oahl_stub_dex): PRIVATE_MIN_SDK_VERSION := 1000
 $(oahl_stub_dex): $(call get-prebuilt-sdk-dir,current)/org.apache.http.legacy.jar | $(ZIP2ZIP) $(DX)
-	$(transform-classes-d8.jar-to-dex)
+	$(transform-classes.jar-to-dex)
 
 app_compat_lists := \
   $(INTERNAL_PLATFORM_HIDDENAPI_LIGHT_GREYLIST) \
