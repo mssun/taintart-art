@@ -25,6 +25,69 @@
 
 namespace art {
 
+// Scan backward to determine dex register locations at given stack map.
+// All registers for a stack map are combined - inlined registers are just appended,
+// therefore 'first_dex_register' allows us to select a sub-range to decode.
+void CodeInfo::DecodeDexRegisterMap(uint32_t stack_map_index,
+                                    uint32_t first_dex_register,
+                                    /*out*/ DexRegisterMap* map) const {
+  // Count remaining work so we know when we have finished.
+  uint32_t remaining_registers = map->size();
+
+  // Keep scanning backwards and collect the most recent location of each register.
+  for (int32_t s = stack_map_index; s >= 0 && remaining_registers != 0; s--) {
+    StackMap stack_map = GetStackMapAt(s);
+    DCHECK_LE(stack_map_index - s, kMaxDexRegisterMapSearchDistance) << "Unbounded search";
+
+    // The mask specifies which registers where modified in this stack map.
+    // NB: the mask can be shorter than expected if trailing zero bits were removed.
+    uint32_t mask_index = stack_map.GetDexRegisterMaskIndex();
+    if (mask_index == StackMap::kNoValue) {
+      continue;  // Nothing changed at this stack map.
+    }
+    BitMemoryRegion mask = dex_register_masks_.GetBitMemoryRegion(mask_index);
+    if (mask.size_in_bits() <= first_dex_register) {
+      continue;  // Nothing changed after the first register we are interested in.
+    }
+
+    // The map stores one catalogue index per each modified register location.
+    uint32_t map_index = stack_map.GetDexRegisterMapIndex();
+    DCHECK_NE(map_index, StackMap::kNoValue);
+
+    // Skip initial registers which we are not interested in (to get to inlined registers).
+    map_index += mask.PopCount(0, first_dex_register);
+    mask = mask.Subregion(first_dex_register, mask.size_in_bits() - first_dex_register);
+
+    // Update registers that we see for first time (i.e. most recent value).
+    DexRegisterLocation* regs = map->data();
+    const uint32_t end = std::min<uint32_t>(map->size(), mask.size_in_bits());
+    const size_t kNumBits = BitSizeOf<uint32_t>();
+    for (uint32_t reg = 0; reg < end; reg += kNumBits) {
+      // Process the mask in chunks of kNumBits for performance.
+      uint32_t bits = mask.LoadBits(reg, std::min<uint32_t>(end - reg, kNumBits));
+      while (bits != 0) {
+        uint32_t bit = CTZ(bits);
+        if (regs[reg + bit].GetKind() == DexRegisterLocation::Kind::kInvalid) {
+          regs[reg + bit] = GetDexRegisterCatalogEntry(dex_register_maps_.Get(map_index));
+          remaining_registers--;
+        }
+        map_index++;
+        bits ^= 1u << bit;  // Clear the bit.
+      }
+    }
+  }
+
+  // Set any remaining registers to None (which is the default state at first stack map).
+  if (remaining_registers != 0) {
+    DexRegisterLocation* regs = map->data();
+    for (uint32_t r = 0; r < map->size(); r++) {
+      if (regs[r].GetKind() == DexRegisterLocation::Kind::kInvalid) {
+        regs[r] = DexRegisterLocation::None();
+      }
+    }
+  }
+}
+
 std::ostream& operator<<(std::ostream& stream, const DexRegisterLocation& reg) {
   using Kind = DexRegisterLocation::Kind;
   switch (reg.GetKind()) {
@@ -42,6 +105,8 @@ std::ostream& operator<<(std::ostream& stream, const DexRegisterLocation& reg) {
       return stream << "f" << reg.GetValue() << "/hi";
     case Kind::kConstant:
       return stream << "#" << reg.GetValue();
+    case Kind::kInvalid:
+      return stream << "Invalid";
     default:
       return stream << "DexRegisterLocation(" << static_cast<uint32_t>(reg.GetKind())
                     << "," << reg.GetValue() << ")";

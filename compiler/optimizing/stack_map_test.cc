@@ -358,13 +358,6 @@ TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
     ASSERT_EQ(Kind::kConstant, location1.GetKind());
     ASSERT_EQ(0, location0.GetValue());
     ASSERT_EQ(-2, location1.GetValue());
-
-    // Test that the inline info dex register map deduplicated to the same offset as the stack map
-    // one.
-    ASSERT_TRUE(stack_map.HasInlineInfo());
-    InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, 0);
-    EXPECT_EQ(inline_info.GetDexRegisterMapIndex(),
-              stack_map.GetDexRegisterMapIndex());
   }
 }
 
@@ -466,13 +459,9 @@ TEST(StackMapTest, TestShareDexRegisterMap) {
   ASSERT_EQ(2, dex_registers2.GetMachineRegister(0));
   ASSERT_EQ(-2, dex_registers2.GetConstant(1));
 
-  // Verify dex register map offsets.
-  ASSERT_EQ(sm0.GetDexRegisterMapIndex(),
-            sm1.GetDexRegisterMapIndex());
-  ASSERT_NE(sm0.GetDexRegisterMapIndex(),
-            sm2.GetDexRegisterMapIndex());
-  ASSERT_NE(sm1.GetDexRegisterMapIndex(),
-            sm2.GetDexRegisterMapIndex());
+  // Verify dex register mask offsets.
+  ASSERT_FALSE(sm1.HasDexRegisterMaskIndex());  // No delta.
+  ASSERT_TRUE(sm2.HasDexRegisterMaskIndex());  // Has delta.
 }
 
 TEST(StackMapTest, TestNoDexRegisterMap) {
@@ -649,8 +638,6 @@ TEST(StackMapTest, InlineTest) {
     ASSERT_EQ(80, dex_registers2.GetStackOffsetInBytes(0));
     ASSERT_EQ(10, dex_registers2.GetConstant(1));
     ASSERT_EQ(5, dex_registers2.GetMachineRegister(2));
-
-    ASSERT_FALSE(if1_2.HasDexRegisterMap());
   }
 
   {
@@ -681,8 +668,6 @@ TEST(StackMapTest, InlineTest) {
     ASSERT_TRUE(if2_1.EncodesArtMethod());
     ASSERT_EQ(10u, if2_2.GetDexPc());
     ASSERT_TRUE(if2_2.EncodesArtMethod());
-
-    ASSERT_FALSE(if2_0.HasDexRegisterMap());
 
     DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(1, sm3, 1);
     ASSERT_EQ(2, dex_registers1.GetMachineRegister(0));
