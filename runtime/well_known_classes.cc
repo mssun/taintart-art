@@ -76,7 +76,6 @@ jclass WellKnownClasses::java_util_Collections;
 jclass WellKnownClasses::java_util_function_Consumer;
 jclass WellKnownClasses::libcore_reflect_AnnotationFactory;
 jclass WellKnownClasses::libcore_reflect_AnnotationMember;
-jclass WellKnownClasses::libcore_util_EmptyArray;
 jclass WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk;
 jclass WellKnownClasses::org_apache_harmony_dalvik_ddmc_DdmServer;
 
@@ -137,6 +136,7 @@ jfieldID WellKnownClasses::java_lang_Throwable_detailMessage;
 jfieldID WellKnownClasses::java_lang_Throwable_stackTrace;
 jfieldID WellKnownClasses::java_lang_Throwable_stackState;
 jfieldID WellKnownClasses::java_lang_Throwable_suppressedExceptions;
+jfieldID WellKnownClasses::java_lang_Throwable_UNASSIGNED_STACK;
 jfieldID WellKnownClasses::java_nio_ByteBuffer_address;
 jfieldID WellKnownClasses::java_nio_ByteBuffer_hb;
 jfieldID WellKnownClasses::java_nio_ByteBuffer_isReadOnly;
@@ -145,7 +145,6 @@ jfieldID WellKnownClasses::java_nio_ByteBuffer_offset;
 jfieldID WellKnownClasses::java_nio_DirectByteBuffer_capacity;
 jfieldID WellKnownClasses::java_nio_DirectByteBuffer_effectiveDirectAddress;
 jfieldID WellKnownClasses::java_util_Collections_EMPTY_LIST;
-jfieldID WellKnownClasses::libcore_util_EmptyArray_STACK_TRACE_ELEMENT;
 jfieldID WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_data;
 jfieldID WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_length;
 jfieldID WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_offset;
@@ -331,7 +330,6 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_util_function_Consumer = CacheClass(env, "java/util/function/Consumer");
   libcore_reflect_AnnotationFactory = CacheClass(env, "libcore/reflect/AnnotationFactory");
   libcore_reflect_AnnotationMember = CacheClass(env, "libcore/reflect/AnnotationMember");
-  libcore_util_EmptyArray = CacheClass(env, "libcore/util/EmptyArray");
   org_apache_harmony_dalvik_ddmc_Chunk = CacheClass(env, "org/apache/harmony/dalvik/ddmc/Chunk");
   org_apache_harmony_dalvik_ddmc_DdmServer = CacheClass(env, "org/apache/harmony/dalvik/ddmc/DdmServer");
 
@@ -385,6 +383,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_lang_Throwable_stackTrace = CacheField(env, java_lang_Throwable, false, "stackTrace", "[Ljava/lang/StackTraceElement;");
   java_lang_Throwable_stackState = CacheField(env, java_lang_Throwable, false, "backtrace", "Ljava/lang/Object;");
   java_lang_Throwable_suppressedExceptions = CacheField(env, java_lang_Throwable, false, "suppressedExceptions", "Ljava/util/List;");
+  java_lang_Throwable_UNASSIGNED_STACK = CacheField(env, java_lang_Throwable, true, "UNASSIGNED_STACK", "[Ljava/lang/StackTraceElement;");
   java_nio_ByteBuffer_address = CacheField(env, java_nio_ByteBuffer, false, "address", "J");
   java_nio_ByteBuffer_hb = CacheField(env, java_nio_ByteBuffer, false, "hb", "[B");
   java_nio_ByteBuffer_isReadOnly = CacheField(env, java_nio_ByteBuffer, false, "isReadOnly", "Z");
@@ -393,7 +392,6 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_nio_DirectByteBuffer_capacity = CacheField(env, java_nio_DirectByteBuffer, false, "capacity", "I");
   java_nio_DirectByteBuffer_effectiveDirectAddress = CacheField(env, java_nio_DirectByteBuffer, false, "address", "J");
   java_util_Collections_EMPTY_LIST = CacheField(env, java_util_Collections, true, "EMPTY_LIST", "Ljava/util/List;");
-  libcore_util_EmptyArray_STACK_TRACE_ELEMENT = CacheField(env, libcore_util_EmptyArray, true, "STACK_TRACE_ELEMENT", "[Ljava/lang/StackTraceElement;");
   org_apache_harmony_dalvik_ddmc_Chunk_data = CacheField(env, org_apache_harmony_dalvik_ddmc_Chunk, false, "data", "[B");
   org_apache_harmony_dalvik_ddmc_Chunk_length = CacheField(env, org_apache_harmony_dalvik_ddmc_Chunk, false, "length", "I");
   org_apache_harmony_dalvik_ddmc_Chunk_offset = CacheField(env, org_apache_harmony_dalvik_ddmc_Chunk, false, "offset", "I");
@@ -462,7 +460,6 @@ void WellKnownClasses::Clear() {
   java_nio_DirectByteBuffer = nullptr;
   libcore_reflect_AnnotationFactory = nullptr;
   libcore_reflect_AnnotationMember = nullptr;
-  libcore_util_EmptyArray = nullptr;
   org_apache_harmony_dalvik_ddmc_Chunk = nullptr;
   org_apache_harmony_dalvik_ddmc_DdmServer = nullptr;
 
@@ -522,6 +519,7 @@ void WellKnownClasses::Clear() {
   java_lang_Throwable_stackTrace = nullptr;
   java_lang_Throwable_stackState = nullptr;
   java_lang_Throwable_suppressedExceptions = nullptr;
+  java_lang_Throwable_UNASSIGNED_STACK = nullptr;
   java_nio_ByteBuffer_address = nullptr;
   java_nio_ByteBuffer_hb = nullptr;
   java_nio_ByteBuffer_isReadOnly = nullptr;
@@ -530,7 +528,6 @@ void WellKnownClasses::Clear() {
   java_nio_DirectByteBuffer_capacity = nullptr;
   java_nio_DirectByteBuffer_effectiveDirectAddress = nullptr;
   java_util_Collections_EMPTY_LIST = nullptr;
-  libcore_util_EmptyArray_STACK_TRACE_ELEMENT = nullptr;
   org_apache_harmony_dalvik_ddmc_Chunk_data = nullptr;
   org_apache_harmony_dalvik_ddmc_Chunk_length = nullptr;
   org_apache_harmony_dalvik_ddmc_Chunk_offset = nullptr;
