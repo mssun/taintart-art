@@ -140,3 +140,6 @@ ANDROID_JAVA_TOOLCHAIN = os.path.join(ANDROID_BUILD_TOP,
 
 # include platform prebuilt java, javac, etc in $PATH.
 os.environ['PATH'] = ANDROID_JAVA_TOOLCHAIN + ':' + os.environ['PATH']
+
+DIST_DIR = _get_build_var('DIST_DIR')
+SOONG_OUT_DIR = _get_build_var('SOONG_OUT_DIR')
