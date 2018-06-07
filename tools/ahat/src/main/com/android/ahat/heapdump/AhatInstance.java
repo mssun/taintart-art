@@ -330,6 +330,25 @@ public abstract class AhatInstance implements Diffable<AhatInstance> {
   }
 
   /**
+   * Returns true if this is an instance of a (subclass of a) class with the
+   * given name.
+   *
+   * @param className the name of the class to check for
+   * @return true if this is an instance of a (subclass of a) class with the
+   *              given name
+   */
+  public boolean isInstanceOfClass(String className) {
+    AhatClassObj cls = getClassObj();
+    while (cls != null) {
+      if (className.equals(cls.getName())) {
+        return true;
+      }
+      cls = cls.getSuperClassObj();
+    }
+    return false;
+  }
+
+  /**
    * Returns true if the given instance is an array instance.
    *
    * @return true if the given instance is an array instance

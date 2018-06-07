@@ -79,7 +79,9 @@ class Query {
   /**
    * Return a uri suitable for an href target that links to the current
    * page, except with the named query parameter set to the new value.
-   *
+   * <p>
+   * <code>value</code> may be null to remove the named query parameter.
+   * <p>
    * The generated parameters will be sorted alphabetically so it is easier to
    * test.
    */
@@ -92,11 +94,13 @@ class Query {
     params.put(name, value);
     String and = "";
     for (Map.Entry<String, String> entry : params.entrySet()) {
-      newQuery.append(and);
-      newQuery.append(entry.getKey());
-      newQuery.append('=');
-      newQuery.append(entry.getValue());
-      and = "&";
+      if (entry.getValue() != null) {
+        newQuery.append(and);
+        newQuery.append(entry.getKey());
+        newQuery.append('=');
+        newQuery.append(entry.getValue());
+        and = "&";
+      }
     }
     return DocString.uri(newQuery.toString());
   }
