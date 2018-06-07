@@ -55,6 +55,8 @@ class StackMapStream : public ValueObject {
         in_inline_info_(false),
         current_inline_infos_(allocator->Adapter(kArenaAllocStackMapStream)),
         current_dex_registers_(allocator->Adapter(kArenaAllocStackMapStream)),
+        previous_dex_registers_(allocator->Adapter(kArenaAllocStackMapStream)),
+        dex_register_timestamp_(allocator->Adapter(kArenaAllocStackMapStream)),
         temp_dex_register_mask_(allocator, 32, true, kArenaAllocStackMapStream),
         temp_dex_register_map_(allocator->Adapter(kArenaAllocStackMapStream)) {
   }
@@ -113,8 +115,7 @@ class StackMapStream : public ValueObject {
     uint32_t method_info_index;
     uint32_t art_method_hi;
     uint32_t art_method_lo;
-    uint32_t dex_register_mask_index;
-    uint32_t dex_register_map_index;
+    uint32_t num_dex_registers;
   };
 
   // The fields must be uint32_t and mirror the InvokeInfo accessor in stack_map.h!
@@ -147,6 +148,7 @@ class StackMapStream : public ValueObject {
   BitmapTableBuilder dex_register_masks_;
   BitTableBuilder<uint32_t> dex_register_maps_;
   BitTableBuilder<DexRegisterEntry> dex_register_catalog_;
+  uint32_t num_dex_registers_ = 0;  // TODO: Make this const and get the value in constructor.
   ScopedArenaVector<uint8_t> out_;
 
   BitTableBuilder<uint32_t> method_infos_;
@@ -159,6 +161,8 @@ class StackMapStream : public ValueObject {
   StackMapEntry current_stack_map_;
   ScopedArenaVector<InlineInfoEntry> current_inline_infos_;
   ScopedArenaVector<DexRegisterLocation> current_dex_registers_;
+  ScopedArenaVector<DexRegisterLocation> previous_dex_registers_;
+  ScopedArenaVector<uint32_t> dex_register_timestamp_;  // Stack map index of last change.
   size_t expected_num_dex_registers_;
 
   // Temporary variables used in CreateDexRegisterMap.

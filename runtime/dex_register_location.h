@@ -29,6 +29,7 @@ namespace art {
 class DexRegisterLocation {
  public:
   enum class Kind : int32_t {
+    kInvalid = -2,       // only used internally during register map decoding.
     kNone = -1,          // vreg has not been set.
     kInStack,            // vreg is on the stack, value holds the stack offset.
     kConstant,           // vreg is a constant value.
@@ -40,9 +41,8 @@ class DexRegisterLocation {
 
   DexRegisterLocation(Kind kind, int32_t value) : kind_(kind), value_(value) {}
 
-  static DexRegisterLocation None() {
-    return DexRegisterLocation(Kind::kNone, 0);
-  }
+  static DexRegisterLocation None() { return DexRegisterLocation(Kind::kNone, 0); }
+  static DexRegisterLocation Invalid() { return DexRegisterLocation(Kind::kInvalid, 0); }
 
   bool IsLive() const { return kind_ != Kind::kNone; }
 

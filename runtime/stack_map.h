@@ -39,6 +39,12 @@ class VariableIndentationOutputStream;
 // (signed) values.
 static constexpr ssize_t kFrameSlotSize = 4;
 
+// The delta compression of dex register maps means we need to scan the stackmaps backwards.
+// We compress the data in such a way so that there is an upper bound on the search distance.
+// Max distance 0 means each stack map must be fully defined and no scanning back is allowed.
+// If this value is changed, the oat file version should be incremented (for DCHECK to pass).
+static constexpr size_t kMaxDexRegisterMapSearchDistance = 32;
+
 class ArtMethod;
 class CodeInfo;
 
@@ -49,18 +55,23 @@ std::ostream& operator<<(std::ostream& stream, const DexRegisterLocation& reg);
 // If the size is small enough, it keeps the data on the stack.
 class DexRegisterMap {
  public:
-  // Create map for given number of registers and initialize all locations to None.
-  explicit DexRegisterMap(size_t count) : count_(count), regs_small_{} {
+  using iterator = DexRegisterLocation*;
+
+  // Create map for given number of registers and initialize them to the given value.
+  DexRegisterMap(size_t count, DexRegisterLocation value) : count_(count), regs_small_{} {
     if (count_ <= kSmallCount) {
-      std::fill_n(regs_small_.begin(), count, DexRegisterLocation::None());
+      std::fill_n(regs_small_.begin(), count, value);
     } else {
-      regs_large_.resize(count, DexRegisterLocation::None());
+      regs_large_.resize(count, value);
     }
   }
 
   DexRegisterLocation* data() {
     return count_ <= kSmallCount ? regs_small_.data() : regs_large_.data();
   }
+
+  iterator begin() { return data(); }
+  iterator end() { return data() + count_; }
 
   size_t size() const { return count_; }
 
@@ -192,7 +203,7 @@ class StackMap : public BitTable<7>::Accessor {
  * The row referenced from the StackMap holds information at depth 0.
  * Following rows hold information for further depths.
  */
-class InlineInfo : public BitTable<7>::Accessor {
+class InlineInfo : public BitTable<6>::Accessor {
  public:
   BIT_TABLE_HEADER()
   BIT_TABLE_COLUMN(0, IsLast)  // Determines if there are further rows for further depths.
@@ -200,7 +211,7 @@ class InlineInfo : public BitTable<7>::Accessor {
   BIT_TABLE_COLUMN(2, MethodInfoIndex)
   BIT_TABLE_COLUMN(3, ArtMethodHi)  // High bits of ArtMethod*.
   BIT_TABLE_COLUMN(4, ArtMethodLo)  // Low bits of ArtMethod*.
-  BIT_TABLE_COLUMN(5, DexRegisterMaskIndex)
+  BIT_TABLE_COLUMN(5, NumberOfDexRegisters)  // Includes outer levels and the main method.
   BIT_TABLE_COLUMN(6, DexRegisterMapIndex)
 
   static constexpr uint32_t kLast = -1;
@@ -218,10 +229,6 @@ class InlineInfo : public BitTable<7>::Accessor {
     uint64_t lo = GetArtMethodLo();
     uint64_t hi = GetArtMethodHi();
     return reinterpret_cast<ArtMethod*>((hi << 32) | lo);
-  }
-
-  ALWAYS_INLINE bool HasDexRegisterMap() const {
-    return HasDexRegisterMapIndex();
   }
 
   void Dump(VariableIndentationOutputStream* vios,
@@ -338,7 +345,9 @@ class CodeInfo {
   }
 
   ALWAYS_INLINE DexRegisterLocation GetDexRegisterCatalogEntry(size_t index) const {
-    return DexRegisterInfo(&dex_register_catalog_, index).GetLocation();
+    return (index == StackMap::kNoValue)
+      ? DexRegisterLocation::None()
+      : DexRegisterInfo(&dex_register_catalog_, index).GetLocation();
   }
 
   uint32_t GetNumberOfStackMaps() const {
@@ -350,19 +359,30 @@ class CodeInfo {
   }
 
   ALWAYS_INLINE DexRegisterMap GetDexRegisterMapOf(StackMap stack_map,
-                                                   size_t num_dex_registers) const {
-    return DecodeDexRegisterMap(stack_map.GetDexRegisterMaskIndex(),
-                                stack_map.GetDexRegisterMapIndex(),
-                                num_dex_registers);
+                                                   size_t vregs ATTRIBUTE_UNUSED = 0) const {
+    if (stack_map.HasDexRegisterMap()) {
+      DexRegisterMap map(number_of_dex_registers_, DexRegisterLocation::Invalid());
+      DecodeDexRegisterMap(stack_map.Row(), /* first_dex_register */ 0, &map);
+      return map;
+    }
+    return DexRegisterMap(0, DexRegisterLocation::None());
   }
 
   ALWAYS_INLINE DexRegisterMap GetDexRegisterMapAtDepth(uint8_t depth,
                                                         StackMap stack_map,
-                                                        size_t num_dex_registers) const {
-    InlineInfo inline_info = GetInlineInfoAtDepth(stack_map, depth);
-    return DecodeDexRegisterMap(inline_info.GetDexRegisterMaskIndex(),
-                                inline_info.GetDexRegisterMapIndex(),
-                                num_dex_registers);
+                                                        size_t vregs ATTRIBUTE_UNUSED = 0) const {
+    if (stack_map.HasDexRegisterMap()) {
+      // The register counts are commutative and include all outer levels.
+      // This allows us to determine the range [first, last) in just two lookups.
+      // If we are at depth 0 (the first inlinee), the count from the main method is used.
+      uint32_t first = (depth == 0) ? number_of_dex_registers_
+          : GetInlineInfoAtDepth(stack_map, depth - 1).GetNumberOfDexRegisters();
+      uint32_t last = GetInlineInfoAtDepth(stack_map, depth).GetNumberOfDexRegisters();
+      DexRegisterMap map(last - first, DexRegisterLocation::Invalid());
+      DecodeDexRegisterMap(stack_map.Row(), first, &map);
+      return map;
+    }
+    return DexRegisterMap(0, DexRegisterLocation::None());
   }
 
   InlineInfo GetInlineInfo(size_t index) const {
@@ -421,8 +441,6 @@ class CodeInfo {
         if (other.GetDexPc() == dex_pc &&
             other.GetNativePcOffset(kRuntimeISA) ==
                 stack_map.GetNativePcOffset(kRuntimeISA)) {
-          DCHECK_EQ(other.GetDexRegisterMapIndex(),
-                    stack_map.GetDexRegisterMapIndex());
           if (i < e - 2) {
             // Make sure there are not three identical stack maps following each other.
             DCHECK_NE(
@@ -469,23 +487,10 @@ class CodeInfo {
             const MethodInfo& method_info) const;
 
  private:
-  ALWAYS_INLINE DexRegisterMap DecodeDexRegisterMap(uint32_t mask_index,
-                                                    uint32_t map_index,
-                                                    uint32_t num_dex_registers) const {
-    DexRegisterMap map(map_index == StackMap::kNoValue ? 0 : num_dex_registers);
-    if (mask_index != StackMap::kNoValue) {
-      BitMemoryRegion mask = dex_register_masks_.GetBitMemoryRegion(mask_index);
-      num_dex_registers = std::min<uint32_t>(num_dex_registers, mask.size_in_bits());
-      DexRegisterLocation* regs = map.data();
-      for (uint32_t r = 0; r < mask.size_in_bits(); r++) {
-        if (mask.LoadBit(r) /* is_live */) {
-          DCHECK_LT(r, map.size());
-          regs[r] = GetDexRegisterCatalogEntry(dex_register_maps_.Get(map_index++));
-        }
-      }
-    }
-    return map;
-  }
+  // Scan backward to determine dex register locations at given stack map.
+  void DecodeDexRegisterMap(uint32_t stack_map_index,
+                            uint32_t first_dex_register,
+                            /*out*/ DexRegisterMap* map) const;
 
   void Decode(const uint8_t* data) {
     size_t non_header_size = DecodeUnsignedLeb128(&data);
@@ -500,6 +505,7 @@ class CodeInfo {
     dex_register_masks_.Decode(region, &bit_offset);
     dex_register_maps_.Decode(region, &bit_offset);
     dex_register_catalog_.Decode(region, &bit_offset);
+    number_of_dex_registers_ = DecodeVarintBits(region, &bit_offset);
     CHECK_EQ(non_header_size, BitsToBytesRoundUp(bit_offset)) << "Invalid CodeInfo";
   }
 
@@ -512,6 +518,7 @@ class CodeInfo {
   BitTable<1> dex_register_masks_;
   BitTable<1> dex_register_maps_;
   BitTable<DexRegisterInfo::kCount> dex_register_catalog_;
+  uint32_t number_of_dex_registers_;  // Excludes any inlined methods.
 
   friend class OatDumper;
 };
