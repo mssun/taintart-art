@@ -787,7 +787,7 @@ void ThrowStackOverflowError(Thread* self) {
     //   Object stackState;
     //   StackTraceElement[] stackTrace;
     // Only Throwable has a non-empty constructor:
-    //   this.stackTrace = EmptyArray.STACK_TRACE_ELEMENT;
+    //   this.stackTrace = Throwable.UNASSIGNED_STACK;
     //   fillInStackTrace();
 
     // detailMessage.
@@ -822,8 +822,8 @@ void ThrowStackOverflowError(Thread* self) {
 
         // stackTrace.
         ScopedLocalRef<jobject> stack_trace_elem(env, env->GetStaticObjectField(
-            WellKnownClasses::libcore_util_EmptyArray,
-            WellKnownClasses::libcore_util_EmptyArray_STACK_TRACE_ELEMENT));
+            WellKnownClasses::java_lang_Throwable,
+            WellKnownClasses::java_lang_Throwable_UNASSIGNED_STACK));
         env->SetObjectField(exc.get(),
                             WellKnownClasses::java_lang_Throwable_stackTrace,
                             stack_trace_elem.get());
