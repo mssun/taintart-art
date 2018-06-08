@@ -37,6 +37,7 @@ class Throwable;
 class ArtField;
 class ArtMethod;
 template <typename T> class Handle;
+template <typename T> class MutableHandle;
 union JValue;
 class ShadowFrame;
 class Thread;
@@ -156,6 +157,25 @@ struct InstrumentationListener {
   virtual void WatchedFramePop(Thread* thread ATTRIBUTE_UNUSED,
                                const ShadowFrame& frame ATTRIBUTE_UNUSED)
       REQUIRES_SHARED(Locks::mutator_lock_) = 0;
+};
+
+class Instrumentation;
+// A helper to send instrumentation events while popping the stack in a safe way.
+class InstrumentationStackPopper {
+ public:
+  explicit InstrumentationStackPopper(Thread* self);
+  ~InstrumentationStackPopper() REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Increase the number of frames being popped to 'desired_pops' return true if the frames were
+  // popped without any exceptions, false otherwise. The exception that caused the pop is
+  // 'exception'.
+  bool PopFramesTo(uint32_t desired_pops, /*in-out*/MutableHandle<mirror::Throwable>& exception)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+ private:
+  Thread* self_;
+  Instrumentation* instrumentation_;
+  uint32_t frames_to_remove_;
 };
 
 // Instrumentation is a catch-all for when extra information is required from the runtime. The
@@ -498,9 +518,9 @@ class Instrumentation {
                                              uint64_t* gpr_result, uint64_t* fpr_result)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!deoptimized_methods_lock_);
 
-  // Pops an instrumentation frame from the current thread and generate an unwind event.
-  // Returns the return pc for the instrumentation frame that's popped.
-  uintptr_t PopMethodForUnwind(Thread* self, bool is_deoptimization) const
+  // Pops nframes instrumentation frames from the current thread. Returns the return pc for the last
+  // instrumentation frame that's popped.
+  uintptr_t PopFramesForDeoptimization(Thread* self, size_t nframes) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Call back for configure stubs.
@@ -717,6 +737,7 @@ class Instrumentation {
   bool alloc_entrypoints_instrumented_;
 
   friend class InstrumentationTest;  // For GetCurrentInstrumentationLevel and ConfigureStubs.
+  friend class InstrumentationStackPopper;  // For popping instrumentation frames.
 
   DISALLOW_COPY_AND_ASSIGN(Instrumentation);
 };

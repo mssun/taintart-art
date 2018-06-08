@@ -94,6 +94,56 @@ class InstallStubsClassVisitor : public ClassVisitor {
   Instrumentation* const instrumentation_;
 };
 
+InstrumentationStackPopper::InstrumentationStackPopper(Thread* self)
+      : self_(self),
+        instrumentation_(Runtime::Current()->GetInstrumentation()),
+        frames_to_remove_(0) {}
+
+InstrumentationStackPopper::~InstrumentationStackPopper() {
+  std::deque<instrumentation::InstrumentationStackFrame>* stack = self_->GetInstrumentationStack();
+  for (size_t i = 0; i < frames_to_remove_; i++) {
+    stack->pop_front();
+  }
+}
+
+bool InstrumentationStackPopper::PopFramesTo(uint32_t desired_pops,
+                                             MutableHandle<mirror::Throwable>& exception) {
+  std::deque<instrumentation::InstrumentationStackFrame>* stack = self_->GetInstrumentationStack();
+  DCHECK_LE(frames_to_remove_, desired_pops);
+  DCHECK_GE(stack->size(), desired_pops);
+  DCHECK(!self_->IsExceptionPending());
+  if (!instrumentation_->HasMethodUnwindListeners()) {
+    frames_to_remove_ = desired_pops;
+    return true;
+  }
+  if (kVerboseInstrumentation) {
+    LOG(INFO) << "Popping frames for exception " << exception->Dump();
+  }
+  // The instrumentation events expect the exception to be set.
+  self_->SetException(exception.Get());
+  bool new_exception_thrown = false;
+  for (; frames_to_remove_ < desired_pops && !new_exception_thrown; frames_to_remove_++) {
+    InstrumentationStackFrame frame = stack->at(frames_to_remove_);
+    ArtMethod* method = frame.method_;
+    // Notify listeners of method unwind.
+    // TODO: improve the dex_pc information here.
+    uint32_t dex_pc = dex::kDexNoIndex;
+    if (kVerboseInstrumentation) {
+      LOG(INFO) << "Popping for unwind " << method->PrettyMethod();
+    }
+    if (!method->IsRuntimeMethod() && !frame.interpreter_entry_) {
+      instrumentation_->MethodUnwindEvent(self_, frame.this_object_, method, dex_pc);
+      new_exception_thrown = self_->GetException() != exception.Get();
+    }
+  }
+  exception.Assign(self_->GetException());
+  self_->ClearException();
+  if (kVerboseInstrumentation && new_exception_thrown) {
+    LOG(INFO) << "Failed to pop " << (desired_pops - frames_to_remove_)
+              << " frames due to new exception";
+  }
+  return !new_exception_thrown;
+}
 
 Instrumentation::Instrumentation()
     : instrumentation_stubs_installed_(false),
@@ -1495,36 +1545,29 @@ TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
   }
 }
 
-uintptr_t Instrumentation::PopMethodForUnwind(Thread* self, bool is_deoptimization) const {
-  // Do the pop.
+uintptr_t Instrumentation::PopFramesForDeoptimization(Thread* self, size_t nframes) const {
   std::deque<instrumentation::InstrumentationStackFrame>* stack = self->GetInstrumentationStack();
-  CHECK_GT(stack->size(), 0U);
-  size_t idx = stack->size();
-  InstrumentationStackFrame instrumentation_frame = stack->front();
-
-  ArtMethod* method = instrumentation_frame.method_;
-  if (is_deoptimization) {
-    if (kVerboseInstrumentation) {
-      LOG(INFO) << "Popping for deoptimization " << ArtMethod::PrettyMethod(method);
-    }
-  } else {
-    if (kVerboseInstrumentation) {
-      LOG(INFO) << "Popping for unwind " << ArtMethod::PrettyMethod(method);
-    }
-
-    // Notify listeners of method unwind.
-    // TODO: improve the dex pc information here, requires knowledge of current PC as opposed to
-    //       return_pc.
-    uint32_t dex_pc = dex::kDexNoIndex;
-    if (!method->IsRuntimeMethod()) {
-      MethodUnwindEvent(self, instrumentation_frame.this_object_, method, dex_pc);
+  CHECK_GE(stack->size(), nframes);
+  if (nframes == 0) {
+    return 0u;
+  }
+  // Only need to send instrumentation events if it's not for deopt (do give the log messages if we
+  // have verbose-instrumentation anyway though).
+  if (kVerboseInstrumentation) {
+    for (size_t i = 0; i < nframes; i++) {
+      LOG(INFO) << "Popping for deoptimization " << stack->at(i).method_->PrettyMethod();
     }
   }
-  // TODO: bring back CheckStackDepth(self, instrumentation_frame, 2);
-  CHECK_EQ(stack->size(), idx);
-  DCHECK(instrumentation_frame.method_ == stack->front().method_);
+  // Now that we've sent all the instrumentation events we can actually modify the
+  // instrumentation-stack. We cannot do this earlier since MethodUnwindEvent can re-enter java and
+  // do other things that require the instrumentation stack to be in a consistent state with the
+  // actual stack.
+  for (size_t i = 0; i < nframes - 1; i++) {
+    stack->pop_front();
+  }
+  uintptr_t return_pc = stack->front().return_pc_;
   stack->pop_front();
-  return instrumentation_frame.return_pc_;
+  return return_pc;
 }
 
 std::string InstrumentationStackFrame::Dump() const {

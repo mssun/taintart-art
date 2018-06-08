@@ -60,18 +60,24 @@ QuickExceptionHandler::QuickExceptionHandler(Thread* self, bool is_deoptimizatio
 // Finds catch handler.
 class CatchBlockStackVisitor FINAL : public StackVisitor {
  public:
-  CatchBlockStackVisitor(Thread* self, Context* context, Handle<mirror::Throwable>* exception,
-                         QuickExceptionHandler* exception_handler)
+  CatchBlockStackVisitor(Thread* self,
+                         Context* context,
+                         Handle<mirror::Throwable>* exception,
+                         QuickExceptionHandler* exception_handler,
+                         uint32_t skip_frames)
       REQUIRES_SHARED(Locks::mutator_lock_)
       : StackVisitor(self, context, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
         exception_(exception),
-        exception_handler_(exception_handler) {
+        exception_handler_(exception_handler),
+        skip_frames_(skip_frames) {
   }
 
   bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* method = GetMethod();
     exception_handler_->SetHandlerFrameDepth(GetFrameDepth());
     if (method == nullptr) {
+      DCHECK_EQ(skip_frames_, 0u)
+          << "We tried to skip an upcall! We should have returned to the upcall to finish delivery";
       // This is the upcall, we remember the frame and last pc so that we may long jump to them.
       exception_handler_->SetHandlerQuickFramePc(GetCurrentQuickFramePc());
       exception_handler_->SetHandlerQuickFrame(GetCurrentQuickFrame());
@@ -89,6 +95,10 @@ class CatchBlockStackVisitor FINAL : public StackVisitor {
         DCHECK(nullptr == exception_handler_->GetHandlerMethod());
       }
       return false;  // End stack walk.
+    }
+    if (skip_frames_ != 0) {
+      skip_frames_--;
+      return true;
     }
     if (method->IsRuntimeMethod()) {
       // Ignore callee save method.
@@ -138,47 +148,114 @@ class CatchBlockStackVisitor FINAL : public StackVisitor {
   Handle<mirror::Throwable>* exception_;
   // The quick exception handler we're visiting for.
   QuickExceptionHandler* const exception_handler_;
+  // The number of frames to skip searching for catches in.
+  uint32_t skip_frames_;
 
   DISALLOW_COPY_AND_ASSIGN(CatchBlockStackVisitor);
 };
 
+// Counts instrumentation stack frame prior to catch handler or upcall.
+class InstrumentationStackVisitor : public StackVisitor {
+ public:
+  InstrumentationStackVisitor(Thread* self, size_t frame_depth)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      : StackVisitor(self, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
+        frame_depth_(frame_depth),
+        instrumentation_frames_to_pop_(0) {
+    CHECK_NE(frame_depth_, kInvalidFrameDepth);
+  }
+
+  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+    size_t current_frame_depth = GetFrameDepth();
+    if (current_frame_depth < frame_depth_) {
+      CHECK(GetMethod() != nullptr);
+      if (UNLIKELY(reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()) == GetReturnPc())) {
+        if (!IsInInlinedFrame()) {
+          // We do not count inlined frames, because we do not instrument them. The reason we
+          // include them in the stack walking is the check against `frame_depth_`, which is
+          // given to us by a visitor that visits inlined frames.
+          ++instrumentation_frames_to_pop_;
+        }
+      }
+      return true;
+    } else {
+      // We reached the frame of the catch handler or the upcall.
+      return false;
+    }
+  }
+
+  size_t GetInstrumentationFramesToPop() const {
+    return instrumentation_frames_to_pop_;
+  }
+
+ private:
+  const size_t frame_depth_;
+  size_t instrumentation_frames_to_pop_;
+
+  DISALLOW_COPY_AND_ASSIGN(InstrumentationStackVisitor);
+};
+
+// Finds the appropriate exception catch after calling all method exit instrumentation functions.
+// Note that this might change the exception being thrown.
 void QuickExceptionHandler::FindCatch(ObjPtr<mirror::Throwable> exception) {
   DCHECK(!is_deoptimization_);
+  instrumentation::InstrumentationStackPopper popper(self_);
+  // The number of total frames we have so far popped.
+  uint32_t already_popped = 0;
+  bool popped_to_top = true;
   StackHandleScope<1> hs(self_);
-  Handle<mirror::Throwable> exception_ref(hs.NewHandle(exception));
-  if (kDebugExceptionDelivery) {
-    ObjPtr<mirror::String> msg = exception_ref->GetDetailMessage();
-    std::string str_msg(msg != nullptr ? msg->ToModifiedUtf8() : "");
-    self_->DumpStack(LOG_STREAM(INFO) << "Delivering exception: " << exception_ref->PrettyTypeOf()
-                     << ": " << str_msg << "\n");
-  }
-
-  // Walk the stack to find catch handler.
-  CatchBlockStackVisitor visitor(self_, context_, &exception_ref, this);
-  visitor.WalkStack(true);
-
-  if (kDebugExceptionDelivery) {
-    if (*handler_quick_frame_ == nullptr) {
-      LOG(INFO) << "Handler is upcall";
+  MutableHandle<mirror::Throwable> exception_ref(hs.NewHandle(exception));
+  // Sending the instrumentation events (done by the InstrumentationStackPopper) can cause new
+  // exceptions to be thrown which will override the current exception. Therefore we need to perform
+  // the search for a catch in a loop until we have successfully popped all the way to a catch or
+  // the top of the stack.
+  do {
+    if (kDebugExceptionDelivery) {
+      ObjPtr<mirror::String> msg = exception_ref->GetDetailMessage();
+      std::string str_msg(msg != nullptr ? msg->ToModifiedUtf8() : "");
+      self_->DumpStack(LOG_STREAM(INFO) << "Delivering exception: " << exception_ref->PrettyTypeOf()
+                                        << ": " << str_msg << "\n");
     }
-    if (handler_method_ != nullptr) {
-      const DexFile* dex_file = handler_method_->GetDeclaringClass()->GetDexCache()->GetDexFile();
-      int line_number = annotations::GetLineNumFromPC(dex_file, handler_method_, handler_dex_pc_);
-      LOG(INFO) << "Handler: " << handler_method_->PrettyMethod() << " (line: "
-                << line_number << ")";
+
+    // Walk the stack to find catch handler.
+    CatchBlockStackVisitor visitor(self_, context_, &exception_ref, this, /*skip*/already_popped);
+    visitor.WalkStack(true);
+    uint32_t new_pop_count = handler_frame_depth_;
+    DCHECK_GE(new_pop_count, already_popped);
+    already_popped = new_pop_count;
+
+    // Figure out how many of those frames have instrumentation we need to remove (Should be the
+    // exact same as number of new_pop_count if there aren't inlined frames).
+    InstrumentationStackVisitor instrumentation_visitor(self_, handler_frame_depth_);
+    instrumentation_visitor.WalkStack(true);
+    size_t instrumentation_frames_to_pop = instrumentation_visitor.GetInstrumentationFramesToPop();
+
+    if (kDebugExceptionDelivery) {
+      if (*handler_quick_frame_ == nullptr) {
+        LOG(INFO) << "Handler is upcall";
+      }
+      if (handler_method_ != nullptr) {
+        const DexFile* dex_file = handler_method_->GetDeclaringClass()->GetDexCache()->GetDexFile();
+        int line_number = annotations::GetLineNumFromPC(dex_file, handler_method_, handler_dex_pc_);
+        LOG(INFO) << "Handler: " << handler_method_->PrettyMethod() << " (line: "
+                  << line_number << ")";
+      }
+      LOG(INFO) << "Will attempt to pop " << instrumentation_frames_to_pop
+                << " off of the instrumentation stack";
     }
-  }
-  // Exception was cleared as part of delivery.
-  DCHECK(!self_->IsExceptionPending());
+    // Exception was cleared as part of delivery.
+    DCHECK(!self_->IsExceptionPending());
+    // If the handler is in optimized code, we need to set the catch environment.
+    if (*handler_quick_frame_ != nullptr &&
+        handler_method_header_ != nullptr &&
+        handler_method_header_->IsOptimized()) {
+      SetCatchEnvironmentForOptimizedHandler(&visitor);
+    }
+    popped_to_top = popper.PopFramesTo(instrumentation_frames_to_pop, exception_ref);
+  } while (!popped_to_top);
   if (!clear_exception_) {
     // Put exception back in root set with clear throw location.
     self_->SetException(exception_ref.Get());
-  }
-  // If the handler is in optimized code, we need to set the catch environment.
-  if (*handler_quick_frame_ != nullptr &&
-      handler_method_header_ != nullptr &&
-      handler_method_header_->IsOptimized()) {
-    SetCatchEnvironmentForOptimizedHandler(&visitor);
   }
 }
 
@@ -561,48 +638,8 @@ void QuickExceptionHandler::DeoptimizePartialFragmentFixup(uintptr_t return_pc) 
   }
 }
 
-// Unwinds all instrumentation stack frame prior to catch handler or upcall.
-class InstrumentationStackVisitor : public StackVisitor {
- public:
-  InstrumentationStackVisitor(Thread* self, size_t frame_depth)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(self, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        frame_depth_(frame_depth),
-        instrumentation_frames_to_pop_(0) {
-    CHECK_NE(frame_depth_, kInvalidFrameDepth);
-  }
-
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
-    size_t current_frame_depth = GetFrameDepth();
-    if (current_frame_depth < frame_depth_) {
-      CHECK(GetMethod() != nullptr);
-      if (UNLIKELY(reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()) == GetReturnPc())) {
-        if (!IsInInlinedFrame()) {
-          // We do not count inlined frames, because we do not instrument them. The reason we
-          // include them in the stack walking is the check against `frame_depth_`, which is
-          // given to us by a visitor that visits inlined frames.
-          ++instrumentation_frames_to_pop_;
-        }
-      }
-      return true;
-    } else {
-      // We reached the frame of the catch handler or the upcall.
-      return false;
-    }
-  }
-
-  size_t GetInstrumentationFramesToPop() const {
-    return instrumentation_frames_to_pop_;
-  }
-
- private:
-  const size_t frame_depth_;
-  size_t instrumentation_frames_to_pop_;
-
-  DISALLOW_COPY_AND_ASSIGN(InstrumentationStackVisitor);
-};
-
 uintptr_t QuickExceptionHandler::UpdateInstrumentationStack() {
+  DCHECK(is_deoptimization_) << "Non-deoptimization handlers should use FindCatch";
   uintptr_t return_pc = 0;
   if (method_tracing_active_) {
     InstrumentationStackVisitor visitor(self_, handler_frame_depth_);
@@ -610,9 +647,7 @@ uintptr_t QuickExceptionHandler::UpdateInstrumentationStack() {
 
     size_t instrumentation_frames_to_pop = visitor.GetInstrumentationFramesToPop();
     instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
-    for (size_t i = 0; i < instrumentation_frames_to_pop; ++i) {
-      return_pc = instrumentation->PopMethodForUnwind(self_, is_deoptimization_);
-    }
+    return_pc = instrumentation->PopFramesForDeoptimization(self_, instrumentation_frames_to_pop);
   }
   return return_pc;
 }
