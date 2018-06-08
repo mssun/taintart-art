@@ -52,6 +52,7 @@ import json
 import multiprocessing
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1007,6 +1008,9 @@ def main():
     build_command += ' -C ' + env.ANDROID_BUILD_TOP
     build_command += ' ' + build_targets
     if subprocess.call(build_command.split()):
+      # Debugging for b/62653020
+      if env.DIST_DIR:
+        shutil.copyfile(env.SOONG_OUT_DIR + '/build.ninja', env.DIST_DIR + '/soong.ninja')
       sys.exit(1)
   if user_requested_tests:
     test_runner_thread = threading.Thread(target=run_tests, args=(user_requested_tests,))
