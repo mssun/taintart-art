@@ -612,7 +612,7 @@ static void dumpClassDef(const DexFile* pDexFile, int idx) {
           pClassDef.class_data_off_, pClassDef.class_data_off_);
 
   // Fields and methods.
-  ClassAccessor accessor(*pDexFile, pClassDef);
+  ClassAccessor accessor(*pDexFile, idx);
   fprintf(gOutFile, "static_fields_size  : %d\n", accessor.NumStaticFields());
   fprintf(gOutFile, "instance_fields_size: %d\n", accessor.NumInstanceFields());
   fprintf(gOutFile, "direct_methods_size : %d\n", accessor.NumDirectMethods());

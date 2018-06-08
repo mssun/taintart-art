@@ -1685,16 +1685,14 @@ static void CheckAndClearResolveException(Thread* self)
 
 bool CompilerDriver::RequiresConstructorBarrier(const DexFile& dex_file,
                                                 uint16_t class_def_idx) const {
-  ClassAccessor accessor(dex_file, dex_file.GetClassDef(class_def_idx));
-  bool has_is_final = false;
+  ClassAccessor accessor(dex_file, class_def_idx);
   // We require a constructor barrier if there are final instance fields.
-  accessor.VisitFields(/*static*/ VoidFunctor(),
-                       [&](const ClassAccessor::Field& field) {
+  for (const ClassAccessor::Field& field : accessor.GetInstanceFields()) {
     if (field.IsFinal()) {
-      has_is_final = true;
+      return true;
     }
-  });
-  return has_is_final;
+  }
+  return false;
 }
 
 class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
@@ -1744,7 +1742,7 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
     // fields are assigned within the lock held for class initialization.
     bool requires_constructor_barrier = false;
 
-    ClassAccessor accessor(dex_file, class_def);
+    ClassAccessor accessor(dex_file, class_def_index);
     // Optionally resolve fields and methods and figure out if we need a constructor barrier.
     auto method_visitor = [&](const ClassAccessor::Method& method)
         REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1926,13 +1924,12 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
     // Fetch the list of unverified classes.
     const std::set<dex::TypeIndex>& unverified_classes =
         verifier_deps->GetUnverifiedClasses(*dex_file);
-    uint32_t class_def_idx = 0u;
     for (ClassAccessor accessor : dex_file->GetClasses()) {
       if (unverified_classes.find(accessor.GetClassIdx()) == unverified_classes.end()) {
         if (compiler_only_verifies) {
           // Just update the compiled_classes_ map. The compiler doesn't need to resolve
           // the type.
-          ClassReference ref(dex_file, class_def_idx);
+          ClassReference ref(dex_file, accessor.GetClassDefIndex());
           const ClassStatus existing = ClassStatus::kNotReady;
           ClassStateTable::InsertResult result =
              compiled_classes_.Insert(ref, existing, ClassStatus::kVerified);
@@ -1959,7 +1956,6 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
                             class_loader,
                             soa.Self());
       }
-      ++class_def_idx;
     }
   }
   return true;
@@ -2700,7 +2696,7 @@ static void CompileDexFile(CompilerDriver* driver,
     jobject jclass_loader = context.GetClassLoader();
     ClassReference ref(&dex_file, class_def_index);
     const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-    ClassAccessor accessor(dex_file, class_def);
+    ClassAccessor accessor(dex_file, class_def_index);
     // Skip compiling classes with generic verifier failures since they will still fail at runtime
     if (context.GetCompiler()->GetVerificationResults()->IsClassRejected(ref)) {
       return;
