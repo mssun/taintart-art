@@ -1429,7 +1429,7 @@ class OatDumper {
         DCHECK(code_item_accessor.HasCodeItem());
         ScopedIndentation indent1(vios);
         MethodInfo method_info = oat_method.GetOatQuickMethodHeader()->GetOptimizedMethodInfo();
-        DumpCodeInfo(vios, code_info, oat_method, code_item_accessor, method_info);
+        DumpCodeInfo(vios, code_info, oat_method, method_info);
       }
     } else if (IsMethodGeneratedByDexToDexCompiler(oat_method, code_item_accessor)) {
       // We don't encode the size in the table, so just emit that we have quickened
@@ -1445,11 +1445,9 @@ class OatDumper {
   void DumpCodeInfo(VariableIndentationOutputStream* vios,
                     const CodeInfo& code_info,
                     const OatFile::OatMethod& oat_method,
-                    const CodeItemDataAccessor& code_item_accessor,
                     const MethodInfo& method_info) {
     code_info.Dump(vios,
                    oat_method.GetCodeOffset(),
-                   code_item_accessor.RegistersSize(),
                    options_.dump_code_info_stack_maps_,
                    instruction_set_,
                    method_info);
@@ -1779,7 +1777,6 @@ class OatDumper {
                          helper.GetCodeInfo(),
                          method_info,
                          oat_method.GetCodeOffset(),
-                         code_item_accessor.RegistersSize(),
                          instruction_set_);
           do {
             helper.Next();
