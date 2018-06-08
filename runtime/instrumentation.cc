@@ -362,7 +362,7 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
       }
       uint32_t dex_pc = visitor.dex_pcs_.back();
       visitor.dex_pcs_.pop_back();
-      if (!isi->interpreter_entry_) {
+      if (!isi->interpreter_entry_ && !isi->method_->IsRuntimeMethod()) {
         instrumentation->MethodEnterEvent(thread, (*isi).this_object_, (*isi).method_, dex_pc);
       }
     }
