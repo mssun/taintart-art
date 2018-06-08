@@ -425,7 +425,7 @@ bool ArtMethod::IsPolymorphicSignature() {
 static uint32_t GetOatMethodIndexFromMethodIndex(const DexFile& dex_file,
                                                  uint16_t class_def_idx,
                                                  uint32_t method_idx) {
-  ClassAccessor accessor(dex_file, dex_file.GetClassDef(class_def_idx));
+  ClassAccessor accessor(dex_file, class_def_idx);
   uint32_t class_def_method_index = 0u;
   for (const ClassAccessor::Method& method : accessor.GetMethods()) {
     if (method.GetIndex() == method_idx) {
