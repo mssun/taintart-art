@@ -1313,7 +1313,8 @@ bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
     // The only reason a HPhi can flow in a String.<init> is when there is an
     // irreducible loop, which will create HPhi for all dex registers at loop entry.
     DCHECK(arg_this->IsPhi());
-    DCHECK(graph_->HasIrreducibleLoops());
+    // TODO(b/109666561): Re-enable.
+    // DCHECK(graph_->HasIrreducibleLoops());
     // Don't bother compiling a method in that situation. While we could look at all
     // phis related to the HNewInstance, it's not worth the trouble.
     MaybeRecordStat(compilation_stats_,
