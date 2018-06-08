@@ -175,6 +175,9 @@ void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
     if ((forced_interpret_only_ || IsDeoptimized(method)) && !method->IsNative()) {
       new_quick_code = GetQuickToInterpreterBridge();
     } else if (is_class_initialized || !method->IsStatic() || method->IsConstructor()) {
+      // It would be great to search the JIT for its implementation here but we cannot due to the
+      // locks we hold. Instead just set to the interpreter bridge and that code will search the JIT
+      // when it gets called and replace the entrypoint then.
       if (NeedDebugVersionFor(method)) {
         new_quick_code = GetQuickToInterpreterBridge();
       } else {
@@ -192,12 +195,15 @@ void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
       // class, all its static methods code will be set to the instrumentation entry point.
       // For more details, see ClassLinker::FixupStaticTrampolines.
       if (is_class_initialized || !method->IsStatic() || method->IsConstructor()) {
-        if (NeedDebugVersionFor(method)) {
-          // Oat code should not be used. Don't install instrumentation stub and
-          // use interpreter for instrumentation.
-          new_quick_code = GetQuickToInterpreterBridge();
-        } else if (entry_exit_stubs_installed_) {
+        if (entry_exit_stubs_installed_) {
+          // This needs to be checked first since the instrumentation entrypoint will be able to
+          // find the actual JIT compiled code that corresponds to this method.
           new_quick_code = GetQuickInstrumentationEntryPoint();
+        } else if (NeedDebugVersionFor(method)) {
+          // It would be great to search the JIT for its implementation here but we cannot due to
+          // the locks we hold. Instead just set to the interpreter bridge and that code will search
+          // the JIT when it gets called and replace the entrypoint then.
+          new_quick_code = GetQuickToInterpreterBridge();
         } else {
           new_quick_code = class_linker->GetQuickOatCodeFor(method);
         }
@@ -801,6 +807,16 @@ void Instrumentation::UpdateMethodsCodeImpl(ArtMethod* method, const void* quick
                  // Proxy.<init> correctly in all cases.
                  method != jni::DecodeArtMethod(WellKnownClasses::java_lang_reflect_Proxy_init)) {
         new_quick_code = GetQuickInstrumentationEntryPoint();
+        if (!method->IsNative() && Runtime::Current()->GetJit() != nullptr) {
+          // Native methods use trampoline entrypoints during interpreter tracing.
+          DCHECK(!Runtime::Current()->GetJit()->GetCodeCache()->GetGarbageCollectCode());
+          ProfilingInfo* profiling_info = method->GetProfilingInfo(kRuntimePointerSize);
+          // Tracing will look at the saved entry point in the profiling info to know the actual
+          // entrypoint, so we store it here.
+          if (profiling_info != nullptr) {
+            profiling_info->SetSavedEntryPoint(quick_code);
+          }
+        }
       } else {
         new_quick_code = quick_code;
       }
@@ -995,12 +1011,63 @@ void Instrumentation::EnableMethodTracing(const char* key, bool needs_interprete
     level = InstrumentationLevel::kInstrumentWithInterpreter;
   } else {
     level = InstrumentationLevel::kInstrumentWithInstrumentationStubs;
+    if (Runtime::Current()->GetJit() != nullptr) {
+      // TODO b/110263880 It would be better if we didn't need to do this.
+      // Since we need to hold the method entrypoint across a suspend to ensure instrumentation
+      // hooks are called correctly we have to disable jit-gc to ensure that the entrypoint doesn't
+      // go away. Furthermore we need to leave this off permanently since one could get the same
+      // effect by causing this to be toggled on and off.
+      Runtime::Current()->GetJit()->GetCodeCache()->SetGarbageCollectCode(false);
+    }
   }
   ConfigureStubs(key, level);
 }
 
 void Instrumentation::DisableMethodTracing(const char* key) {
   ConfigureStubs(key, InstrumentationLevel::kInstrumentNothing);
+}
+
+const void* Instrumentation::GetCodeForInvoke(ArtMethod* method) const {
+  // This is called by instrumentation entry only and that should never be getting proxy methods.
+  DCHECK(!method->IsProxyMethod()) << method->PrettyMethod();
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  if (LIKELY(!instrumentation_stubs_installed_ && !interpreter_stubs_installed_)) {
+    // In general we just return whatever the method thinks its entrypoint is here. The only
+    // exception is if it still has the instrumentation entrypoint. That means we are racing another
+    // thread getting rid of instrumentation which is unexpected but possible. In that case we want
+    // to wait and try to get it from the oat file or jit.
+    const void* code = method->GetEntryPointFromQuickCompiledCodePtrSize(kRuntimePointerSize);
+    DCHECK(code != nullptr);
+    if (code != GetQuickInstrumentationEntryPoint()) {
+      return code;
+    } else if (method->IsNative()) {
+      return class_linker->GetQuickOatCodeFor(method);
+    }
+    // We don't know what it is. Fallthough to try to find the code from the JIT or Oat file.
+  } else if (method->IsNative()) {
+    // TODO We could have JIT compiled native entrypoints. It might be worth it to find these.
+    return class_linker->GetQuickOatCodeFor(method);
+  } else if (UNLIKELY(interpreter_stubs_installed_)) {
+    return GetQuickToInterpreterBridge();
+  }
+  // Since the method cannot be native due to ifs above we can always fall back to interpreter
+  // bridge.
+  const void* result = GetQuickToInterpreterBridge();
+  if (!NeedDebugVersionFor(method)) {
+    // If we don't need a debug version we should see what the oat file/class linker has to say.
+    result = class_linker->GetQuickOatCodeFor(method);
+  }
+  // If both those fail try the jit.
+  if (result == GetQuickToInterpreterBridge()) {
+    jit::Jit* jit = Runtime::Current()->GetJit();
+    if (jit != nullptr) {
+      const void* res = jit->GetCodeCache()->FindCompiledCodeForInstrumentation(method);
+      if (res != nullptr) {
+        result = res;
+      }
+    }
+  }
+  return result;
 }
 
 const void* Instrumentation::GetQuickCodeFor(ArtMethod* method, PointerSize pointer_size) const {

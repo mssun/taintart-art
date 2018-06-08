@@ -292,6 +292,10 @@ class Instrumentation {
   void UpdateMethodsCodeForJavaDebuggable(ArtMethod* method, const void* quick_code)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!deoptimized_methods_lock_);
 
+  // Return the code that we can execute for an invoke including from the JIT.
+  const void* GetCodeForInvoke(ArtMethod* method) const
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // Get the quick code for the given method. More efficient than asking the class linker as it
   // will short-cut to GetCode if instrumentation and static method resolution stubs aren't
   // installed.

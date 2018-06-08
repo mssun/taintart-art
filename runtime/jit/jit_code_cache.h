@@ -154,6 +154,10 @@ class JitCodeCache {
   // Return true if the code cache contains this pc.
   bool ContainsPc(const void* pc) const;
 
+  // Returns true if either the method's entrypoint is JIT compiled code or it is the
+  // instrumentation entrypoint and we can jump to jit code for this method. For testing use only.
+  bool WillExecuteJitCode(ArtMethod* method) REQUIRES(!lock_);
+
   // Return true if the code cache contains this method.
   bool ContainsMethod(ArtMethod* method) REQUIRES(!lock_);
 
@@ -268,6 +272,16 @@ class JitCodeCache {
   void SetGarbageCollectCode(bool value) {
     garbage_collect_code_ = value;
   }
+
+  bool GetGarbageCollectCode() const {
+    return garbage_collect_code_;
+  }
+
+  // If Jit-gc has been disabled (and instrumentation has been enabled) this will return the
+  // jit-compiled entrypoint for this method.  Otherwise it will return null.
+  const void* FindCompiledCodeForInstrumentation(ArtMethod* method)
+      REQUIRES(!lock_)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   // Take ownership of maps.
