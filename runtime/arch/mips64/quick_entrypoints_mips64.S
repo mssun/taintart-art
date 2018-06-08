@@ -3046,59 +3046,26 @@ art_quick_read_barrier_mark_introspection_end_of_entries:
     BRB_FIELD_EXIT_BREAK
 END art_quick_read_barrier_mark_introspection
 
+    /*
+     * Polymorphic method invocation.
+     * On entry:
+     *   a0 = unused
+     *   a1 = receiver
+     */
 .extern artInvokePolymorphic
 ENTRY art_quick_invoke_polymorphic
     SETUP_SAVE_REFS_AND_ARGS_FRAME
-    move   $a2, rSELF                          # Make $a2 an alias for the current Thread.
-    move   $a3, $sp                            # Make $a3 a pointer to the saved frame context.
-    daddiu $sp, $sp, -8                        # Reserve space for JValue result.
-    .cfi_adjust_cfa_offset 8
-    sd     $zero, 0($sp)                       # Initialize JValue result.
-    jal    artInvokePolymorphic                # artInvokePolymorphic(result, receiver, Thread*, context)
-    move   $a0, $sp                            # Make $a0 a pointer to the JValue result
-.macro MATCH_RETURN_TYPE c, handler
-    li     $t0, \c
-    beq    $v0, $t0, \handler
-.endm
-    MATCH_RETURN_TYPE 'V', .Lcleanup_and_return
-    MATCH_RETURN_TYPE 'L', .Lstore_ref_result
-    MATCH_RETURN_TYPE 'I', .Lstore_long_result
-    MATCH_RETURN_TYPE 'J', .Lstore_long_result
-    MATCH_RETURN_TYPE 'B', .Lstore_long_result
-    MATCH_RETURN_TYPE 'C', .Lstore_char_result
-    MATCH_RETURN_TYPE 'D', .Lstore_double_result
-    MATCH_RETURN_TYPE 'F', .Lstore_float_result
-    MATCH_RETURN_TYPE 'S', .Lstore_long_result
-    MATCH_RETURN_TYPE 'Z', .Lstore_boolean_result
-.purgem MATCH_RETURN_TYPE
-    nop
-    b .Lcleanup_and_return
-    nop
-.Lstore_boolean_result:
-    b      .Lcleanup_and_return
-    lbu    $v0, 0($sp)                         # Move byte from JValue result to return value register.
-.Lstore_char_result:
-    b      .Lcleanup_and_return
-    lhu    $v0, 0($sp)                         # Move char from JValue result to return value register.
-.Lstore_double_result:
-.Lstore_float_result:
-    b      .Lcleanup_and_return
-    l.d    $f0, 0($sp)                         # Move double/float from JValue result to return value register.
-.Lstore_ref_result:
-    b      .Lcleanup_and_return
-    lwu    $v0, 0($sp)                         # Move zero extended lower 32-bits to return value register.
-.Lstore_long_result:
-    ld     $v0, 0($sp)                         # Move long from JValue result to return value register.
-    // Fall-through to clean up and return.
-.Lcleanup_and_return:
-    daddiu $sp, $sp, 8                         # Remove space for JValue result.
-    .cfi_adjust_cfa_offset -8
-    ld     $t0, THREAD_EXCEPTION_OFFSET(rSELF) # Load Thread::Current()->exception_
-    RESTORE_SAVE_REFS_AND_ARGS_FRAME
-    bnez   $t0, 1f                             # Success if no exception is pending.
-    nop
-    jalr   $zero, $ra
-    nop
+    move    $a0, $a1               # Make $a0 the receiver
+    move    $a1, rSELF             # Make $a1 an alias for the current Thread.
+    jal     artInvokePolymorphic   # artInvokePolymorphic(receiver, Thread*, context)
+    move    $a2, $sp               # Make $a3 a pointer to the saved frame context.
+    ld      $t0, THREAD_EXCEPTION_OFFSET(rSELF) # load Thread::Current()->exception_
+    daddiu  $sp, $sp, REFS_AND_ARGS_MINUS_REFS_SIZE  # skip a0-a7 and f12-f19
+    RESTORE_SAVE_REFS_ONLY_FRAME
+    bne     $t0, $zero, 1f
+    dmtc1   $v0, $f0               # place return value to FP return value
+    jalr    $zero, $ra
+    dmtc1   $v1, $f1               # place return value to FP return value
 1:
     DELIVER_PENDING_EXCEPTION
 END art_quick_invoke_polymorphic
