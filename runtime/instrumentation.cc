@@ -926,7 +926,7 @@ void Instrumentation::Undeoptimize(ArtMethod* method) {
     }
 
     // If there is no deoptimized method left, we can restore the stack of each thread.
-    if (empty) {
+    if (empty && !entry_exit_stubs_installed_) {
       MutexLock mu(self, *Locks::thread_list_lock_);
       Runtime::Current()->GetThreadList()->ForEach(InstrumentationRestoreStack, this);
       instrumentation_stubs_installed_ = false;
