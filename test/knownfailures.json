@@ -991,5 +991,11 @@
         "variant": "jit",
         "bug": "b/77567088",
         "description": ["Test throws exception before or during OOME."]
+    },
+    {
+        "tests": ["021-string2"],
+        "variant": "jit & debuggable",
+        "bug": "b/109791792",
+        "description": ["Stack too big."]
     }
 ]
