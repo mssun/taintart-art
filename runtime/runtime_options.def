@@ -44,7 +44,7 @@ RUNTIME_OPTIONS_KEY (std::string,         Image)
 RUNTIME_OPTIONS_KEY (Unit,                CheckJni)
 RUNTIME_OPTIONS_KEY (Unit,                JniOptsForceCopy)
 RUNTIME_OPTIONS_KEY (std::string,         JdwpOptions, "")
-RUNTIME_OPTIONS_KEY (JdwpProvider,        JdwpProvider,                   JdwpProvider::kUnset)
+RUNTIME_OPTIONS_KEY (JdwpProvider,        JdwpProvider,                   JdwpProvider::kNone)
 RUNTIME_OPTIONS_KEY (MemoryKiB,           MemoryMaximumSize,              gc::Heap::kDefaultMaximumSize)  // -Xmx
 RUNTIME_OPTIONS_KEY (MemoryKiB,           MemoryInitialSize,              gc::Heap::kDefaultInitialSize)  // -Xms
 RUNTIME_OPTIONS_KEY (MemoryKiB,           HeapGrowthLimit)                // Default is 0 for unlimited

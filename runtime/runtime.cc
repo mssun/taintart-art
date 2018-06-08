@@ -1283,8 +1283,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   dump_gc_performance_on_shutdown_ = runtime_options.Exists(Opt::DumpGCPerformanceOnShutdown);
 
   jdwp_options_ = runtime_options.GetOrDefault(Opt::JdwpOptions);
-  jdwp_provider_ = CanonicalizeJdwpProvider(runtime_options.GetOrDefault(Opt::JdwpProvider),
-                                            IsJavaDebuggable());
+  jdwp_provider_ = runtime_options.GetOrDefault(Opt::JdwpProvider);
   switch (jdwp_provider_) {
     case JdwpProvider::kNone: {
       VLOG(jdwp) << "Disabling all JDWP support.";
@@ -1318,11 +1317,6 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
       constexpr const char* plugin_name = kIsDebugBuild ? "libadbconnectiond.so"
                                                         : "libadbconnection.so";
       plugins_.push_back(Plugin::Create(plugin_name));
-      break;
-    }
-    case JdwpProvider::kUnset: {
-      LOG(FATAL) << "Illegal jdwp provider " << jdwp_provider_ << " was not filtered out!";
-      break;
     }
   }
   callbacks_->AddThreadLifecycleCallback(Dbg::GetThreadLifecycleCallback());

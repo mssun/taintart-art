@@ -377,9 +377,6 @@ CHROOT_DEX_LOCATION="$CHROOT$DEX_LOCATION"
 
 if [ "$USE_JVM" = "n" ]; then
     FLAGS="${FLAGS} ${ANDROID_FLAGS}"
-    # we don't want to be trying to get adbconnections since the plugin might
-    # not have been built.
-    FLAGS="${FLAGS} -XjdwpProvider:none"
     for feature in ${EXPERIMENTAL}; do
         FLAGS="${FLAGS} -Xexperimental:${feature} -Xcompiler-option --runtime-arg -Xcompiler-option -Xexperimental:${feature}"
         COMPILE_FLAGS="${COMPILE_FLAGS} --runtime-arg -Xexperimental:${feature}"
