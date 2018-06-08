@@ -1109,7 +1109,6 @@ extern "C" const void* artInstrumentationMethodEntryFromCode(ArtMethod* method,
     result = GetQuickToInterpreterBridge();
   } else {
     result = instrumentation->GetQuickCodeFor(method, kRuntimePointerSize);
-    DCHECK(!Runtime::Current()->GetClassLinker()->IsQuickToInterpreterBridge(result));
   }
 
   bool interpreter_entry = (result == GetQuickToInterpreterBridge());
