@@ -516,7 +516,7 @@ void CodeGenerator::CreateCommonInvokeLocationSummary(
         locations->AddTemp(visitor->GetMethodLocation());
         break;
     }
-  } else {
+  } else if (!invoke->IsInvokePolymorphic()) {
     locations->AddTemp(visitor->GetMethodLocation());
   }
 }
@@ -579,7 +579,9 @@ void CodeGenerator::GenerateInvokeUnresolvedRuntimeCall(HInvokeUnresolved* invok
 }
 
 void CodeGenerator::GenerateInvokePolymorphicCall(HInvokePolymorphic* invoke) {
-  MoveConstant(invoke->GetLocations()->GetTemp(0), static_cast<int32_t>(invoke->GetType()));
+  // invoke-polymorphic does not use a temporary to convey any additional information (e.g. a
+  // method index) since it requires multiple info from the instruction (registers A, B, H). Not
+  // using the reservation has no effect on the registers used in the runtime call.
   QuickEntrypointEnum entrypoint = kQuickInvokePolymorphic;
   InvokeRuntime(entrypoint, invoke, invoke->GetDexPc(), nullptr);
 }
