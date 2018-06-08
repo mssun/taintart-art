@@ -15,6 +15,7 @@ H.chatter()
 Chatty.chatter()
 Chatty.chatter()
 String constructors done.
+testReturnValues done.
 testReferenceReturnValueConversions done.
 testPrimitiveReturnValueConversions done.
 Hi
