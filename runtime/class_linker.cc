@@ -2863,9 +2863,9 @@ void ClassLinker::FixupStaticTrampolines(ObjPtr<mirror::Class> klass) {
   }
 
   const DexFile& dex_file = klass->GetDexFile();
-  const DexFile::ClassDef* dex_class_def = klass->GetClassDef();
-  CHECK(dex_class_def != nullptr);
-  ClassAccessor accessor(dex_file, *dex_class_def);
+  const uint16_t class_def_idx = klass->GetDexClassDefIndex();
+  CHECK_NE(class_def_idx, DexFile::kDexNoIndex16);
+  ClassAccessor accessor(dex_file, class_def_idx);
   // There should always be class data if there were direct methods.
   CHECK(accessor.HasClassData()) << klass->PrettyDescriptor();
   bool has_oat_class;

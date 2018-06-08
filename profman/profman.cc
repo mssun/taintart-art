@@ -930,7 +930,9 @@ class ProfMan FINAL {
       dex_resolved_classes.first->AddClass(class_ref.TypeIndex());
       std::vector<ProfileMethodInfo> methods;
       if (method_str == kClassAllMethods) {
-        ClassAccessor accessor(*dex_file, *dex_file->FindClassDef(class_ref.TypeIndex()));
+        ClassAccessor accessor(
+            *dex_file,
+            dex_file->GetIndexForClassDef(*dex_file->FindClassDef(class_ref.TypeIndex())));
         for (const ClassAccessor::Method& method : accessor.GetMethods()) {
           if (method.GetCodeItemOffset() != 0) {
             // Add all of the methods that have code to the profile.

@@ -82,9 +82,8 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
     ASSERT_NE(0, cmp);
 
     // Unquicken the dex file.
-    for (uint32_t i = 0; i < updated_dex_file->NumClassDefs(); ++i) {
+    for (ClassAccessor accessor : updated_dex_file->GetClasses()) {
       // Unquicken each method.
-      ClassAccessor accessor(*updated_dex_file, updated_dex_file->GetClassDef(i));
       for (const ClassAccessor::Method& method : accessor.GetMethods()) {
         CompiledMethod* compiled_method = compiler_driver_->GetCompiledMethod(
             method.GetReference());
