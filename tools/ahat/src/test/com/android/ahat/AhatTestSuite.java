@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,28 +17,32 @@
 package com.android.ahat;
 
 import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
-public class Tests {
+@RunWith(Suite.class)
+@Suite.SuiteClasses({
+  DiffFieldsTest.class,
+  DiffTest.class,
+  DominatorsTest.class,
+  HtmlEscaperTest.class,
+  InstanceTest.class,
+  NativeAllocationTest.class,
+  ObjectHandlerTest.class,
+  OverviewHandlerTest.class,
+  PerformanceTest.class,
+  ProguardMapTest.class,
+  RootedHandlerTest.class,
+  QueryTest.class,
+  SiteHandlerTest.class,
+  SiteTest.class
+})
+
+public class AhatTestSuite {
   public static void main(String[] args) {
     if (args.length == 0) {
-      args = new String[]{
-        "com.android.ahat.DiffFieldsTest",
-        "com.android.ahat.DiffTest",
-        "com.android.ahat.DominatorsTest",
-        "com.android.ahat.HtmlEscaperTest",
-        "com.android.ahat.InstanceTest",
-        "com.android.ahat.NativeAllocationTest",
-        "com.android.ahat.ObjectHandlerTest",
-        "com.android.ahat.OverviewHandlerTest",
-        "com.android.ahat.PerformanceTest",
-        "com.android.ahat.ProguardMapTest",
-        "com.android.ahat.RootedHandlerTest",
-        "com.android.ahat.QueryTest",
-        "com.android.ahat.SiteHandlerTest",
-        "com.android.ahat.SiteTest",
-      };
+      args = new String[]{"com.android.ahat.AhatTestSuite"};
     }
     JUnitCore.main(args);
   }
 }
-

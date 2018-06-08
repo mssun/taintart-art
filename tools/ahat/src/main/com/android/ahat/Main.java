@@ -102,7 +102,7 @@ public class Main {
         i++;
         try {
           map.readFromFile(new File(args[i]));
-        } catch (IOException|ParseException ex) {
+        } catch (IOException | ParseException ex) {
           System.out.println("Unable to read proguard map: " + ex);
           System.out.println("The proguard map will not be used.");
         }
@@ -110,7 +110,7 @@ public class Main {
         i++;
         try {
           mapbase.readFromFile(new File(args[i]));
-        } catch (IOException|ParseException ex) {
+        } catch (IOException | ParseException ex) {
           System.out.println("Unable to read baseline proguard map: " + ex);
           System.out.println("The proguard map will not be used.");
         }
