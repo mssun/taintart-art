@@ -26,6 +26,7 @@
 #include "base/enums.h"
 #include "class_linker.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
+#include "entrypoints/runtime_asm_entrypoints.h"
 #include "hidden_api.h"
 #include "jni/jni_internal.h"
 #include "mirror/class.h"
@@ -98,6 +99,7 @@ jmethodID WellKnownClasses::java_lang_Long_valueOf;
 jmethodID WellKnownClasses::java_lang_ref_FinalizerReference_add;
 jmethodID WellKnownClasses::java_lang_ref_ReferenceQueue_add;
 jmethodID WellKnownClasses::java_lang_reflect_Parameter_init;
+jmethodID WellKnownClasses::java_lang_reflect_Proxy_init;
 jmethodID WellKnownClasses::java_lang_reflect_Proxy_invoke;
 jmethodID WellKnownClasses::java_lang_Runtime_nativeLoad;
 jmethodID WellKnownClasses::java_lang_Short_valueOf;
@@ -418,6 +420,14 @@ void WellKnownClasses::LateInit(JNIEnv* env) {
       CacheMethod(env, java_lang_Runtime.get(), true, "nativeLoad",
                   "(Ljava/lang/String;Ljava/lang/ClassLoader;)"
                       "Ljava/lang/String;");
+  java_lang_reflect_Proxy_init =
+    CacheMethod(env, java_lang_reflect_Proxy, false, "<init>",
+                "(Ljava/lang/reflect/InvocationHandler;)V");
+  // This invariant is important since otherwise we will have the entire proxy invoke system
+  // confused.
+  DCHECK_NE(
+      jni::DecodeArtMethod(java_lang_reflect_Proxy_init)->GetEntryPointFromQuickCompiledCode(),
+      GetQuickInstrumentationEntryPoint());
   java_lang_reflect_Proxy_invoke =
     CacheMethod(env, java_lang_reflect_Proxy, true, "invoke",
                 "(Ljava/lang/reflect/Proxy;Ljava/lang/reflect/Method;"
@@ -484,6 +494,7 @@ void WellKnownClasses::Clear() {
   java_lang_ref_FinalizerReference_add = nullptr;
   java_lang_ref_ReferenceQueue_add = nullptr;
   java_lang_reflect_Parameter_init = nullptr;
+  java_lang_reflect_Proxy_init = nullptr;
   java_lang_reflect_Proxy_invoke = nullptr;
   java_lang_Runtime_nativeLoad = nullptr;
   java_lang_Short_valueOf = nullptr;
