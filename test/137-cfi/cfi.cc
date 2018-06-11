@@ -114,8 +114,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
     jint,
     jboolean) {
 #if __linux__
-  // TODO: What to do on Valgrind?
-
   std::unique_ptr<Backtrace> bt(Backtrace::Create(BACKTRACE_CURRENT_PROCESS, GetTid()));
   if (!bt->Unwind(0, nullptr)) {
     printf("Cannot unwind in process.\n");
@@ -191,7 +189,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(
     jboolean,
     jint pid_int) {
 #if __linux__
-  // TODO: What to do on Valgrind?
   pid_t pid = static_cast<pid_t>(pid_int);
 
   // OK, this is painful. debuggerd uses ptrace to unwind other processes.

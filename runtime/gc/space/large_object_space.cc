@@ -45,8 +45,9 @@ class MemoryToolLargeObjectMapSpace FINAL : public LargeObjectMapSpace {
   }
 
   ~MemoryToolLargeObjectMapSpace() OVERRIDE {
-    // Keep valgrind happy if there is any large objects such as dex cache arrays which aren't
-    // freed since they are held live by the class linker.
+    // Historical note: We were deleting large objects to keep Valgrind happy if there were
+    // any large objects such as Dex cache arrays which aren't freed since they are held live
+    // by the class linker.
     MutexLock mu(Thread::Current(), lock_);
     for (auto& m : large_objects_) {
       delete m.second.mem_map;

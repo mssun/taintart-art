@@ -240,7 +240,7 @@ Runtime::Runtime()
       exit_(nullptr),
       abort_(nullptr),
       stats_enabled_(false),
-      is_running_on_memory_tool_(RUNNING_ON_MEMORY_TOOL),
+      is_running_on_memory_tool_(kRunningOnMemoryTool),
       instrumentation_(),
       main_thread_group_(nullptr),
       system_thread_group_(nullptr),
@@ -1362,8 +1362,8 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     case InstructionSet::kMips:
     case InstructionSet::kMips64:
       implicit_null_checks_ = true;
-      // Installing stack protection does not play well with valgrind.
-      implicit_so_checks_ = !(RUNNING_ON_MEMORY_TOOL && kMemoryToolIsValgrind);
+      // Historical note: Installing stack protection was not playing well with Valgrind.
+      implicit_so_checks_ = true;
       break;
     default:
       // Keep the defaults.
@@ -1378,8 +1378,8 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
       // These need to be in a specific order.  The null point check handler must be
       // after the suspend check and stack overflow check handlers.
       //
-      // Note: the instances attach themselves to the fault manager and are handled by it. The manager
-      //       will delete the instance on Shutdown().
+      // Note: the instances attach themselves to the fault manager and are handled by it. The
+      //       manager will delete the instance on Shutdown().
       if (implicit_suspend_checks_) {
         new SuspensionHandler(&fault_manager);
       }

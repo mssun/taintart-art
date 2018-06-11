@@ -36,8 +36,10 @@ TEST_F(ExecUtilsTest, ExecSuccess) {
     command.push_back("/usr/bin/id");
   }
   std::string error_msg;
-  if (!(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
-    // Running on valgrind fails due to some memory that leaks in thread alternate signal stacks.
+  if (!(kRunningOnMemoryTool && kMemoryToolDetectsLeaks)) {
+    // Running on Valgrind fails due to some memory that leaks in thread alternate signal stacks.
+    // TODO: Valgrind is no longer supported, but Address Sanitizer is:
+    // check whether the following code works with ASan.
     EXPECT_TRUE(Exec(command, &error_msg));
   }
   EXPECT_EQ(0U, error_msg.size()) << error_msg;
@@ -50,8 +52,10 @@ TEST_F(ExecUtilsTest, ExecError) {
   std::vector<std::string> command;
   command.push_back("bogus");
   std::string error_msg;
-  if (!(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
-    // Running on valgrind fails due to some memory that leaks in thread alternate signal stacks.
+  if (!(kRunningOnMemoryTool && kMemoryToolDetectsLeaks)) {
+    // Running on Valgrind fails due to some memory that leaks in thread alternate signal stacks.
+    // TODO: Valgrind is no longer supported, but Address Sanitizer is:
+    // check whether the following code works with ASan.
     EXPECT_FALSE(Exec(command, &error_msg));
     EXPECT_FALSE(error_msg.empty());
   }
@@ -72,8 +76,10 @@ TEST_F(ExecUtilsTest, EnvSnapshotAdditionsAreNotVisible) {
   }
   command.push_back(kModifiedVariable);
   std::string error_msg;
-  if (!(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
-    // Running on valgrind fails due to some memory that leaks in thread alternate signal stacks.
+  if (!(kRunningOnMemoryTool && kMemoryToolDetectsLeaks)) {
+    // Running on Valgrind fails due to some memory that leaks in thread alternate signal stacks.
+    // TODO: Valgrind is no longer supported, but Address Sanitizer is:
+    // check whether the following code works with ASan.
     EXPECT_FALSE(Exec(command, &error_msg));
     EXPECT_NE(0U, error_msg.size()) << error_msg;
   }
@@ -97,8 +103,10 @@ TEST_F(ExecUtilsTest, EnvSnapshotDeletionsAreNotVisible) {
   }
   command.push_back(kDeletedVariable);
   std::string error_msg;
-  if (!(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
-    // Running on valgrind fails due to some memory that leaks in thread alternate signal stacks.
+  if (!(kRunningOnMemoryTool && kMemoryToolDetectsLeaks)) {
+    // Running on Valgrind fails due to some memory that leaks in thread alternate signal stacks.
+    // TODO: Valgrind is no longer supported, but Address Sanitizer is:
+    // check whether the following code works with ASan.
     EXPECT_TRUE(Exec(command, &error_msg));
     EXPECT_EQ(0U, error_msg.size()) << error_msg;
   }

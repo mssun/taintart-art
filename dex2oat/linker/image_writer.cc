@@ -2145,7 +2145,8 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
         size_t size = ArtMethod::Size(target_ptr_size_);
         size_t alignment = ArtMethod::Alignment(target_ptr_size_);
         memcpy(dest, pair.first, LengthPrefixedArray<ArtMethod>::ComputeSize(0, size, alignment));
-        // Clear padding to avoid non-deterministic data in the image (and placate valgrind).
+        // Clear padding to avoid non-deterministic data in the image.
+        // Historical note: We also did that to placate Valgrind.
         reinterpret_cast<LengthPrefixedArray<ArtMethod>*>(dest)->ClearPadding(size, alignment);
         break;
       }

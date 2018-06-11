@@ -615,7 +615,7 @@ bool PatchOat::Patch(const std::string& image_location,
     }
   }
 
-  if (!kIsDebugBuild && !(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
+  if (!kIsDebugBuild && !(kRunningOnMemoryTool && kMemoryToolDetectsLeaks)) {
     // We want to just exit on non-debug builds, not bringing the runtime down
     // in an orderly fashion. So release the following fields.
     runtime.release();
@@ -695,7 +695,7 @@ bool PatchOat::Verify(const std::string& image_location,
     }
   }
 
-  if (!kIsDebugBuild && !(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
+  if (!kIsDebugBuild && !(kRunningOnMemoryTool && kMemoryToolDetectsLeaks)) {
     // We want to just exit on non-debug builds, not bringing the runtime down
     // in an orderly fashion. So release the following fields.
     runtime.release();

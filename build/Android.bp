@@ -127,8 +127,6 @@ art_global_defaults {
     },
 
     include_dirs: [
-        "external/valgrind/include",
-        "external/valgrind",
         "external/vixl/src",
     ],
 
