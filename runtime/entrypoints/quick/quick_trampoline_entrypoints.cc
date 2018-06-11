@@ -948,8 +948,36 @@ extern "C" uint64_t artQuickProxyInvokeHandler(
   jobject interface_method_jobj = soa.AddLocalReference<jobject>(interface_reflect_method);
 
   // All naked Object*s should now be in jobjects, so its safe to go into the main invoke code
-  // that performs allocations.
+  // that performs allocations or instrumentation events.
+  instrumentation::Instrumentation* instr = Runtime::Current()->GetInstrumentation();
+  if (instr->HasMethodEntryListeners()) {
+    instr->MethodEnterEvent(soa.Self(),
+                            soa.Decode<mirror::Object>(rcvr_jobj).Ptr(),
+                            proxy_method,
+                            0);
+    if (soa.Self()->IsExceptionPending()) {
+      instr->MethodUnwindEvent(self,
+                               soa.Decode<mirror::Object>(rcvr_jobj).Ptr(),
+                               proxy_method,
+                               0);
+      return 0;
+    }
+  }
   JValue result = InvokeProxyInvocationHandler(soa, shorty, rcvr_jobj, interface_method_jobj, args);
+  if (soa.Self()->IsExceptionPending()) {
+    if (instr->HasMethodUnwindListeners()) {
+      instr->MethodUnwindEvent(self,
+                               soa.Decode<mirror::Object>(rcvr_jobj).Ptr(),
+                               proxy_method,
+                               0);
+    }
+  } else if (instr->HasMethodExitListeners()) {
+    instr->MethodExitEvent(self,
+                           soa.Decode<mirror::Object>(rcvr_jobj).Ptr(),
+                           proxy_method,
+                           0,
+                           result);
+  }
   return result.GetJ();
 }
 

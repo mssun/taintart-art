@@ -504,8 +504,9 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
     if (!method->IsRuntimeMethod() &&
         event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMethodExit)) {
-      DCHECK_EQ(method->GetReturnTypePrimitive(), art::Primitive::kPrimNot)
-          << method->PrettyMethod();
+      DCHECK_EQ(
+          method->GetInterfaceMethodIfProxy(art::kRuntimePointerSize)->GetReturnTypePrimitive(),
+          art::Primitive::kPrimNot) << method->PrettyMethod();
       DCHECK(!self->IsExceptionPending());
       jvalue val;
       art::JNIEnvExt* jnienv = self->GetJniEnv();
@@ -530,8 +531,9 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
     if (!method->IsRuntimeMethod() &&
         event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMethodExit)) {
-      DCHECK_NE(method->GetReturnTypePrimitive(), art::Primitive::kPrimNot)
-          << method->PrettyMethod();
+      DCHECK_NE(
+          method->GetInterfaceMethodIfProxy(art::kRuntimePointerSize)->GetReturnTypePrimitive(),
+          art::Primitive::kPrimNot) << method->PrettyMethod();
       DCHECK(!self->IsExceptionPending());
       jvalue val;
       art::JNIEnvExt* jnienv = self->GetJniEnv();
