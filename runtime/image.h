@@ -211,8 +211,12 @@ class PACKED(4) ImageHeader {
     kOomeWhenThrowingOome,            // Pre-allocated OOME when throwing OOME.
     kOomeWhenHandlingStackOverflow,   // Pre-allocated OOME when handling StackOverflowError.
     kNoClassDefFoundError,            // Pre-allocated NoClassDefFoundError.
-    kClassLoader,                     // App image only.
+    kSpecialRoots,                    // Different for boot image and app image, see aliases below.
     kImageRootsMax,
+
+    // Aliases.
+    kAppImageClassLoader = kSpecialRoots,   // The class loader used to build the app image.
+    kBootImageLiveObjects = kSpecialRoots,  // Array of boot image objects that must be kept live.
   };
 
   enum ImageSections {
@@ -229,8 +233,10 @@ class PACKED(4) ImageHeader {
     kSectionCount,  // Number of elements in enum.
   };
 
-  static size_t NumberOfImageRoots(bool app_image) {
-    return app_image ? kImageRootsMax : kImageRootsMax - 1u;
+  static size_t NumberOfImageRoots(bool app_image ATTRIBUTE_UNUSED) {
+    // At the moment, boot image and app image have the same number of roots,
+    // though the meaning of the kSpecialRoots is different.
+    return kImageRootsMax;
   }
 
   ArtMethod* GetImageMethod(ImageMethod index) const;
