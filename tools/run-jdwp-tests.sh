@@ -251,6 +251,9 @@ else
     vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentName=${with_jdwp_path}"
   fi
   vm_args="$vm_args --vm-arg -Xcompiler-option --vm-arg --debuggable"
+  # we don't want to be trying to connect to adbconnection which might not have
+  # been built.
+  vm_args="${vm_args} --vm-arg -XjdwpProvider:none"
   # Make sure the debuggee doesn't clean up what the debugger has generated.
   art_debugee="$art_debugee --no-clean"
 fi
@@ -327,6 +330,10 @@ if [[ $mode != "ri" ]]; then
   if [[ "x$with_jdwp_path" == "x" ]]; then
     # Need to enable the internal jdwp implementation.
     art_debugee="${art_debugee} -XjdwpProvider:internal"
+  else
+    # need to disable the jdwpProvider since we give the agent explicitly on the
+    # cmdline.
+    art_debugee="${art_debugee} -XjdwpProvider:none"
   fi
 else
   toolchain_args="--toolchain javac --language CUR"
