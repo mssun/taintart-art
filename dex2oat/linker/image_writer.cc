@@ -1261,15 +1261,8 @@ mirror::String* ImageWriter::FindInternedString(mirror::String* string) {
   return nullptr;
 }
 
-
-ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
-  Runtime* runtime = Runtime::Current();
-  ClassLinker* class_linker = runtime->GetClassLinker();
-  Thread* self = Thread::Current();
-  StackHandleScope<3> hs(self);
-  Handle<Class> object_array_class(hs.NewHandle(
-      class_linker->FindSystemClass(self, "[Ljava/lang/Object;")));
-
+ObjPtr<mirror::ObjectArray<mirror::Object>> ImageWriter::CollectDexCaches(Thread* self,
+                                                                          size_t oat_index) const {
   std::unordered_set<const DexFile*> image_dex_files;
   for (auto& pair : dex_file_oat_index_map_) {
     const DexFile* image_dex_file = pair.first;
@@ -1284,6 +1277,7 @@ ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
   // ObjectArray, we lock the dex lock twice, first to get the number
   // of dex caches first and then lock it again to copy the dex
   // caches. We check that the number of dex caches does not change.
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   size_t dex_cache_count = 0;
   {
     ReaderMutexLock mu(self, *Locks::dex_lock_);
@@ -1300,8 +1294,8 @@ ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
       }
     }
   }
-  Handle<ObjectArray<Object>> dex_caches(
-      hs.NewHandle(ObjectArray<Object>::Alloc(self, object_array_class.Get(), dex_cache_count)));
+  ObjPtr<ObjectArray<Object>> dex_caches = ObjectArray<Object>::Alloc(
+      self, GetClassRoot<ObjectArray<Object>>(class_linker), dex_cache_count);
   CHECK(dex_caches != nullptr) << "Failed to allocate a dex cache array.";
   {
     ReaderMutexLock mu(self, *Locks::dex_lock_);
@@ -1335,11 +1329,62 @@ ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
       }
     }
   }
+  return dex_caches;
+}
+
+static ObjPtr<mirror::ObjectArray<mirror::Object>> LookupIntegerCache(Thread* self,
+                                                                      ClassLinker* class_linker)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::Class> integer_cache_class = class_linker->LookupClass(
+      self, "Ljava/lang/Integer$IntegerCache;", /* class_linker */ nullptr);
+  if (integer_cache_class == nullptr || !integer_cache_class->IsInitialized()) {
+    return nullptr;
+  }
+  ArtField* cache_field =
+      integer_cache_class->FindDeclaredStaticField("cache", "[Ljava/lang/Integer;");
+  CHECK(cache_field != nullptr);
+  ObjPtr<ObjectArray<mirror::Object>> integer_cache =
+      ObjPtr<ObjectArray<mirror::Object>>::DownCast(cache_field->GetObject(integer_cache_class));
+  CHECK(integer_cache != nullptr);
+  return integer_cache;
+}
+
+static ObjPtr<mirror::ObjectArray<mirror::Object>> CollectBootImageLiveObjects(
+    Thread* self,
+    ClassLinker* class_linker) REQUIRES_SHARED(Locks::mutator_lock_) {
+  // The objects used for the Integer.valueOf() intrinsic must remain live even if references
+  // to them are removed using reflection. Image roots are not accessible through reflection,
+  // so the array we construct here shall keep them alive.
+  StackHandleScope<1> hs(self);
+  Handle<ObjectArray<mirror::Object>> integer_cache =
+      hs.NewHandle(LookupIntegerCache(self, class_linker));
+  size_t live_objects_size =
+      (integer_cache != nullptr) ? (/* cache */ 1u + integer_cache->GetLength()) : 0u;
+  ObjPtr<mirror::ObjectArray<mirror::Object>> live_objects = ObjectArray<Object>::Alloc(
+      self, GetClassRoot<ObjectArray<Object>>(class_linker), live_objects_size);
+  int32_t index = 0;
+  if (integer_cache != nullptr) {
+    live_objects->Set(index++, integer_cache.Get());
+    for (int32_t i = 0, length = integer_cache->GetLength(); i != length; ++i) {
+      live_objects->Set(index++, integer_cache->Get(i));
+    }
+  }
+  CHECK_EQ(index, live_objects->GetLength());
+  return live_objects;
+}
+
+ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
+  Runtime* runtime = Runtime::Current();
+  ClassLinker* class_linker = runtime->GetClassLinker();
+  Thread* self = Thread::Current();
+  StackHandleScope<2> hs(self);
+
+  Handle<ObjectArray<Object>> dex_caches(hs.NewHandle(CollectDexCaches(self, oat_index)));
 
   // build an Object[] of the roots needed to restore the runtime
   int32_t image_roots_size = ImageHeader::NumberOfImageRoots(compile_app_image_);
-  auto image_roots(hs.NewHandle(
-      ObjectArray<Object>::Alloc(self, object_array_class.Get(), image_roots_size)));
+  Handle<ObjectArray<Object>> image_roots(hs.NewHandle(ObjectArray<Object>::Alloc(
+      self, GetClassRoot<ObjectArray<Object>>(class_linker), image_roots_size)));
   image_roots->Set<false>(ImageHeader::kDexCaches, dex_caches.Get());
   image_roots->Set<false>(ImageHeader::kClassRoots, class_linker->GetClassRoots());
   image_roots->Set<false>(ImageHeader::kOomeWhenThrowingException,
@@ -1350,10 +1395,16 @@ ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
                           runtime->GetPreAllocatedOutOfMemoryErrorWhenHandlingStackOverflow());
   image_roots->Set<false>(ImageHeader::kNoClassDefFoundError,
                           runtime->GetPreAllocatedNoClassDefFoundError());
-  // image_roots[ImageHeader::kClassLoader] will be set later for app image.
-  static_assert(ImageHeader::kClassLoader + 1u == ImageHeader::kImageRootsMax,
-                "Class loader should be the last image root.");
-  for (int32_t i = 0; i < ImageHeader::kImageRootsMax - 1; ++i) {
+  if (!compile_app_image_) {
+    ObjPtr<ObjectArray<Object>> boot_image_live_objects =
+        CollectBootImageLiveObjects(self, class_linker);
+    image_roots->Set<false>(ImageHeader::kBootImageLiveObjects, boot_image_live_objects);
+  }
+  for (int32_t i = 0, num = ImageHeader::NumberOfImageRoots(compile_app_image_); i != num; ++i) {
+    if (compile_app_image_ && i == ImageHeader::kAppImageClassLoader) {
+      // image_roots[ImageHeader::kAppImageClassLoader] will be set later for app image.
+      continue;
+    }
     CHECK(image_roots->Get(i) != nullptr);
   }
   return image_roots.Get();
@@ -1781,7 +1832,7 @@ void ImageWriter::CalculateNewObjectOffsets() {
     CHECK_EQ(class_loaders_.size(), 1u);
     CHECK_EQ(image_roots.size(), 1u);
     CHECK(*class_loaders_.begin() != nullptr);
-    image_roots[0]->Set<false>(ImageHeader::kClassLoader, *class_loaders_.begin());
+    image_roots[0]->Set<false>(ImageHeader::kAppImageClassLoader, *class_loaders_.begin());
   }
 
   // Verify that all objects have assigned image bin slots.
