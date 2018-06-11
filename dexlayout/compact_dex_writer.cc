@@ -59,8 +59,8 @@ uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(Stream* stream) {
       for (auto& method : *(invoke_type == InvokeType::kDirect
                                 ? class_data->DirectMethods()
                                 : class_data->VirtualMethods())) {
-        const dex_ir::MethodId* method_id = method->GetMethodId();
-        dex_ir::CodeItem* code_item = method->GetCodeItem();
+        const dex_ir::MethodId* method_id = method.GetMethodId();
+        dex_ir::CodeItem* code_item = method.GetCodeItem();
         if (code_item != nullptr && code_item->DebugInfo() != nullptr) {
           const uint32_t debug_info_offset = code_item->DebugInfo()->GetOffset();
           const uint32_t method_idx = method_id->GetIndex();
@@ -248,8 +248,8 @@ void CompactDexWriter::SortDebugInfosByMethodIndex() {
       for (auto& method : *(invoke_type == InvokeType::kDirect
                                 ? class_data->DirectMethods()
                                 : class_data->VirtualMethods())) {
-        const dex_ir::MethodId* method_id = method->GetMethodId();
-        dex_ir::CodeItem* code_item = method->GetCodeItem();
+        const dex_ir::MethodId* method_id = method.GetMethodId();
+        dex_ir::CodeItem* code_item = method.GetCodeItem();
         if (code_item != nullptr && code_item->DebugInfo() != nullptr) {
           const dex_ir::DebugInfoItem* debug_item = code_item->DebugInfo();
           method_idx_map.insert(std::make_pair(debug_item, method_id->GetIndex()));
@@ -350,8 +350,8 @@ bool CompactDexWriter::CanGenerateCompactDex(std::string* error_msg) {
       for (auto& method : *(invoke_type == InvokeType::kDirect
                                 ? class_data->DirectMethods()
                                 : class_data->VirtualMethods())) {
-        const uint32_t idx = method->GetMethodId()->GetIndex();
-        dex_ir::CodeItem* code_item = method->GetCodeItem();
+        const uint32_t idx = method.GetMethodId()->GetIndex();
+        dex_ir::CodeItem* code_item = method.GetCodeItem();
         dex_ir:: DebugInfoItem* debug_info_item = nullptr;
         if (code_item != nullptr) {
           debug_info_item = code_item->DebugInfo();

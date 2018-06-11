@@ -1459,8 +1459,8 @@ void DexLayout::DumpClass(int idx, char** last_package) {
     dex_ir::FieldItemVector* static_fields = class_data->StaticFields();
     if (static_fields != nullptr) {
       for (uint32_t i = 0; i < static_fields->size(); i++) {
-        DumpSField((*static_fields)[i]->GetFieldId()->GetIndex(),
-                   (*static_fields)[i]->GetAccessFlags(),
+        DumpSField((*static_fields)[i].GetFieldId()->GetIndex(),
+                   (*static_fields)[i].GetAccessFlags(),
                    i,
                    i < encoded_values_size ? (*encoded_values)[i].get() : nullptr);
       }  // for
@@ -1475,8 +1475,8 @@ void DexLayout::DumpClass(int idx, char** last_package) {
     dex_ir::FieldItemVector* instance_fields = class_data->InstanceFields();
     if (instance_fields != nullptr) {
       for (uint32_t i = 0; i < instance_fields->size(); i++) {
-        DumpIField((*instance_fields)[i]->GetFieldId()->GetIndex(),
-                   (*instance_fields)[i]->GetAccessFlags(),
+        DumpIField((*instance_fields)[i].GetFieldId()->GetIndex(),
+                   (*instance_fields)[i].GetAccessFlags(),
                    i);
       }  // for
     }
@@ -1490,9 +1490,9 @@ void DexLayout::DumpClass(int idx, char** last_package) {
     dex_ir::MethodItemVector* direct_methods = class_data->DirectMethods();
     if (direct_methods != nullptr) {
       for (uint32_t i = 0; i < direct_methods->size(); i++) {
-        DumpMethod((*direct_methods)[i]->GetMethodId()->GetIndex(),
-                   (*direct_methods)[i]->GetAccessFlags(),
-                   (*direct_methods)[i]->GetCodeItem(),
+        DumpMethod((*direct_methods)[i].GetMethodId()->GetIndex(),
+                   (*direct_methods)[i].GetAccessFlags(),
+                   (*direct_methods)[i].GetCodeItem(),
                  i);
       }  // for
     }
@@ -1506,9 +1506,9 @@ void DexLayout::DumpClass(int idx, char** last_package) {
     dex_ir::MethodItemVector* virtual_methods = class_data->VirtualMethods();
     if (virtual_methods != nullptr) {
       for (uint32_t i = 0; i < virtual_methods->size(); i++) {
-        DumpMethod((*virtual_methods)[i]->GetMethodId()->GetIndex(),
-                   (*virtual_methods)[i]->GetAccessFlags(),
-                   (*virtual_methods)[i]->GetCodeItem(),
+        DumpMethod((*virtual_methods)[i].GetMethodId()->GetIndex(),
+                   (*virtual_methods)[i].GetAccessFlags(),
+                   (*virtual_methods)[i].GetCodeItem(),
                    i);
       }  // for
     }
@@ -1636,14 +1636,14 @@ void DexLayout::LayoutStringData(const DexFile* dex_file) {
     }
     for (size_t i = 0; i < 2; ++i) {
       for (auto& method : *(i == 0 ? data->DirectMethods() : data->VirtualMethods())) {
-        const dex_ir::MethodId* method_id = method->GetMethodId();
-        dex_ir::CodeItem* code_item = method->GetCodeItem();
+        const dex_ir::MethodId* method_id = method.GetMethodId();
+        dex_ir::CodeItem* code_item = method.GetCodeItem();
         if (code_item == nullptr) {
           continue;
         }
         const bool is_clinit = is_profile_class &&
-            (method->GetAccessFlags() & kAccConstructor) != 0 &&
-            (method->GetAccessFlags() & kAccStatic) != 0;
+            (method.GetAccessFlags() & kAccConstructor) != 0 &&
+            (method.GetAccessFlags() & kAccStatic) != 0;
         const bool method_executed = is_clinit ||
             info_->GetMethodHotness(MethodReference(dex_file, method_id->GetIndex())).IsInProfile();
         if (!method_executed) {
@@ -1744,14 +1744,14 @@ void DexLayout::LayoutCodeItems(const DexFile* dex_file) {
       for (auto& method : *(invoke_type == InvokeType::kDirect
                                 ? class_data->DirectMethods()
                                 : class_data->VirtualMethods())) {
-        const dex_ir::MethodId *method_id = method->GetMethodId();
-        dex_ir::CodeItem *code_item = method->GetCodeItem();
+        const dex_ir::MethodId *method_id = method.GetMethodId();
+        dex_ir::CodeItem *code_item = method.GetCodeItem();
         if (code_item == nullptr) {
           continue;
         }
         // Separate executed methods (clinits and profiled methods) from unexecuted methods.
-        const bool is_clinit = (method->GetAccessFlags() & kAccConstructor) != 0 &&
-            (method->GetAccessFlags() & kAccStatic) != 0;
+        const bool is_clinit = (method.GetAccessFlags() & kAccConstructor) != 0 &&
+            (method.GetAccessFlags() & kAccStatic) != 0;
         const bool is_startup_clinit = is_profile_class && is_clinit;
         using Hotness = ProfileCompilationInfo::MethodHotness;
         Hotness hotness = info_->GetMethodHotness(MethodReference(dex_file, method_id->GetIndex()));

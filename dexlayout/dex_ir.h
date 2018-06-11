@@ -129,7 +129,11 @@ template<class T> class CollectionBase {
 template<class T> class CollectionVector : public CollectionBase<T> {
  public:
   using Vector = std::vector<std::unique_ptr<T>>;
-  CollectionVector() = default;
+  CollectionVector() { }
+  explicit CollectionVector(size_t size) {
+    // Preallocate so that assignment does not invalidate pointers into the vector.
+    collection_.reserve(size);
+  }
 
   uint32_t Size() const { return collection_.size(); }
   Vector& Collection() { return collection_; }
@@ -152,8 +156,11 @@ template<class T> class CollectionVector : public CollectionBase<T> {
  protected:
   Vector collection_;
 
-  void AddItem(T* object) {
+  template<class... Args>
+  T* CreateAndAddItem(Args&&... args) {
+    T* object = new T(std::forward<Args>(args)...);
     collection_.push_back(std::unique_ptr<T>(object));
+    return object;
   }
 
  private:
@@ -165,11 +172,20 @@ template<class T> class IndexedCollectionVector : public CollectionVector<T> {
  public:
   using Vector = std::vector<std::unique_ptr<T>>;
   IndexedCollectionVector() = default;
+  explicit IndexedCollectionVector(size_t size) : CollectionVector<T>(size) { }
 
  private:
-  void AddIndexedItem(T* object, uint32_t index) {
+  template <class... Args>
+  T* CreateAndAddIndexedItem(uint32_t index, Args&&... args) {
+    T* object = CollectionVector<T>::CreateAndAddItem(std::forward<Args>(args)...);
     object->SetIndex(index);
-    CollectionVector<T>::collection_.push_back(std::unique_ptr<T>(object));
+    return object;
+  }
+
+  T* GetElement(uint32_t index) {
+    DCHECK_LT(index, CollectionVector<T>::Size());
+    DCHECK_NE(CollectionVector<T>::collection_[index].get(), static_cast<T*>(nullptr));
+    return CollectionVector<T>::collection_[index].get();
   }
 
   friend class Collections;
@@ -193,6 +209,8 @@ template<class T> class CollectionMap : public CollectionBase<T> {
  private:
   std::map<uint32_t, T*> collection_;
 
+  // CollectionMaps do not own the objects they contain, therefore AddItem is supported
+  // rather than CreateAndAddItem.
   void AddItem(T* object, uint32_t offset) {
     auto it = collection_.emplace(offset, object);
     CHECK(it.second) << "CollectionMap already has an object with offset " << offset << " "
@@ -206,13 +224,25 @@ template<class T> class CollectionMap : public CollectionBase<T> {
 class Collections {
  public:
   Collections() = default;
+  Collections(uint32_t num_string_ids,
+              uint32_t num_type_ids,
+              uint32_t num_proto_ids,
+              uint32_t num_field_ids,
+              uint32_t num_method_ids,
+              uint32_t num_class_defs)
+      : string_ids_(num_string_ids),
+        type_ids_(num_type_ids),
+        proto_ids_(num_proto_ids),
+        field_ids_(num_field_ids),
+        method_ids_(num_method_ids),
+        class_defs_(num_class_defs) { }
 
-  CollectionVector<StringId>::Vector& StringIds() { return string_ids_.Collection(); }
-  CollectionVector<TypeId>::Vector& TypeIds() { return type_ids_.Collection(); }
-  CollectionVector<ProtoId>::Vector& ProtoIds() { return proto_ids_.Collection(); }
-  CollectionVector<FieldId>::Vector& FieldIds() { return field_ids_.Collection(); }
-  CollectionVector<MethodId>::Vector& MethodIds() { return method_ids_.Collection(); }
-  CollectionVector<ClassDef>::Vector& ClassDefs() { return class_defs_.Collection(); }
+  IndexedCollectionVector<StringId>::Vector& StringIds() { return string_ids_.Collection(); }
+  IndexedCollectionVector<TypeId>::Vector& TypeIds() { return type_ids_.Collection(); }
+  IndexedCollectionVector<ProtoId>::Vector& ProtoIds() { return proto_ids_.Collection(); }
+  IndexedCollectionVector<FieldId>::Vector& FieldIds() { return field_ids_.Collection(); }
+  IndexedCollectionVector<MethodId>::Vector& MethodIds() { return method_ids_.Collection(); }
+  IndexedCollectionVector<ClassDef>::Vector& ClassDefs() { return class_defs_.Collection(); }
   CollectionVector<CallSiteId>::Vector& CallSiteIds() { return call_site_ids_.Collection(); }
   CollectionVector<MethodHandleItem>::Vector& MethodHandleItems()
       { return method_handle_items_.Collection(); }
@@ -266,28 +296,22 @@ class Collections {
                                         uint32_t count);
 
   StringId* GetStringId(uint32_t index) {
-    CHECK_LT(index, StringIdsSize());
-    return StringIds()[index].get();
+    return string_ids_.GetElement(index);
   }
   TypeId* GetTypeId(uint32_t index) {
-    CHECK_LT(index, TypeIdsSize());
-    return TypeIds()[index].get();
+    return type_ids_.GetElement(index);
   }
   ProtoId* GetProtoId(uint32_t index) {
-    CHECK_LT(index, ProtoIdsSize());
-    return ProtoIds()[index].get();
+    return proto_ids_.GetElement(index);
   }
   FieldId* GetFieldId(uint32_t index) {
-    CHECK_LT(index, FieldIdsSize());
-    return FieldIds()[index].get();
+    return field_ids_.GetElement(index);
   }
   MethodId* GetMethodId(uint32_t index) {
-    CHECK_LT(index, MethodIdsSize());
-    return MethodIds()[index].get();
+    return method_ids_.GetElement(index);
   }
   ClassDef* GetClassDef(uint32_t index) {
-    CHECK_LT(index, ClassDefsSize());
-    return ClassDefs()[index].get();
+    return class_defs_.GetElement(index);
   }
   CallSiteId* GetCallSiteId(uint32_t index) {
     CHECK_LT(index, CallSiteIdsSize());
@@ -372,31 +396,35 @@ class Collections {
 
   // Sort the vectors buy map order (same order that was used in the input file).
   void SortVectorsByMapOrder();
+  // Empty the maps, which are only used for IR construction.
+  void ClearMaps();
 
-  template <typename Type>
-  void AddItem(CollectionMap<Type>& map,
-               CollectionVector<Type>& vector,
-               Type* item,
-               uint32_t offset) {
+  template <typename Type, class... Args>
+  Type* CreateAndAddItem(CollectionMap<Type>& map,
+                         CollectionVector<Type>& vector,
+                         uint32_t offset,
+                         Args&&... args) {
+    Type* item = vector.CreateAndAddItem(std::forward<Args>(args)...);
     DCHECK(!map.GetExistingObject(offset));
     DCHECK(!item->OffsetAssigned());
     if (eagerly_assign_offsets_) {
       item->SetOffset(offset);
     }
     map.AddItem(item, offset);
-    vector.AddItem(item);
+    return item;
   }
 
-  template <typename Type>
-  void AddIndexedItem(IndexedCollectionVector<Type>& vector,
-                      Type* item,
-                      uint32_t offset,
-                      uint32_t index) {
+  template <typename Type, class... Args>
+  Type* CreateAndAddIndexedItem(IndexedCollectionVector<Type>& vector,
+                                uint32_t offset,
+                                uint32_t index,
+                                Args&&... args) {
+    Type* item = vector.CreateAndAddIndexedItem(index, std::forward<Args>(args)...);
     DCHECK(!item->OffsetAssigned());
     if (eagerly_assign_offsets_) {
       item->SetOffset(offset);
     }
-    vector.AddIndexedItem(item, index);
+    return item;
   }
 
   void SetEagerlyAssignOffsets(bool eagerly_assign_offsets) {
@@ -425,7 +453,7 @@ class Collections {
 
   ParameterAnnotation* GenerateParameterAnnotation(const DexFile& dex_file, MethodId* method_id,
       const DexFile::AnnotationSetRefList* annotation_set_ref_list, uint32_t offset);
-  MethodItem* GenerateMethodItem(const DexFile& dex_file, ClassDataItemIterator& cdii);
+  MethodItem GenerateMethodItem(const DexFile& dex_file, ClassDataItemIterator& cdii);
 
   // Collection vectors own the IR data.
   IndexedCollectionVector<StringId> string_ids_;
@@ -433,6 +461,7 @@ class Collections {
   IndexedCollectionVector<ProtoId> proto_ids_;
   IndexedCollectionVector<FieldId> field_ids_;
   IndexedCollectionVector<MethodId> method_ids_;
+  IndexedCollectionVector<ClassDef> class_defs_;
   IndexedCollectionVector<CallSiteId> call_site_ids_;
   IndexedCollectionVector<MethodHandleItem> method_handle_items_;
   IndexedCollectionVector<StringData> string_datas_;
@@ -442,7 +471,6 @@ class Collections {
   IndexedCollectionVector<AnnotationSetItem> annotation_set_items_;
   IndexedCollectionVector<AnnotationSetRefList> annotation_set_ref_lists_;
   IndexedCollectionVector<AnnotationsDirectoryItem> annotations_directory_items_;
-  IndexedCollectionVector<ClassDef> class_defs_;
   // The order of the vectors controls the layout of the output file by index order, to change the
   // layout just sort the vector. Note that you may only change the order of the non indexed vectors
   // below. Indexed vectors are accessed by indices in other places, changing the sorting order will
@@ -484,6 +512,8 @@ class Item {
  public:
   Item() { }
   virtual ~Item() { }
+
+  Item(Item&&) = default;
 
   // Return the assigned offset.
   uint32_t GetOffset() const WARN_UNUSED {
@@ -536,18 +566,54 @@ class Header : public Item {
          uint32_t data_size,
          uint32_t data_offset,
          bool support_default_methods)
+      : Item(0, kHeaderItemSize), support_default_methods_(support_default_methods) {
+    ConstructorHelper(magic,
+                      checksum,
+                      signature,
+                      endian_tag,
+                      file_size,
+                      header_size,
+                      link_size,
+                      link_offset,
+                      data_size,
+                      data_offset);
+  }
+
+  Header(const uint8_t* magic,
+         uint32_t checksum,
+         const uint8_t* signature,
+         uint32_t endian_tag,
+         uint32_t file_size,
+         uint32_t header_size,
+         uint32_t link_size,
+         uint32_t link_offset,
+         uint32_t data_size,
+         uint32_t data_offset,
+         bool support_default_methods,
+         uint32_t num_string_ids,
+         uint32_t num_type_ids,
+         uint32_t num_proto_ids,
+         uint32_t num_field_ids,
+         uint32_t num_method_ids,
+         uint32_t num_class_defs)
       : Item(0, kHeaderItemSize),
-        checksum_(checksum),
-        endian_tag_(endian_tag),
-        file_size_(file_size),
-        header_size_(header_size),
-        link_size_(link_size),
-        link_offset_(link_offset),
-        data_size_(data_size),
-        data_offset_(data_offset),
-        support_default_methods_(support_default_methods) {
-    memcpy(magic_, magic, sizeof(magic_));
-    memcpy(signature_, signature, sizeof(signature_));
+        support_default_methods_(support_default_methods),
+        collections_(num_string_ids,
+                     num_type_ids,
+                     num_proto_ids,
+                     num_field_ids,
+                     num_method_ids,
+                     num_class_defs) {
+    ConstructorHelper(magic,
+                      checksum,
+                      signature,
+                      endian_tag,
+                      file_size,
+                      header_size,
+                      link_size,
+                      link_offset,
+                      data_size,
+                      data_offset);
   }
   ~Header() OVERRIDE { }
 
@@ -596,6 +662,27 @@ class Header : public Item {
   uint32_t data_offset_;
   const bool support_default_methods_;
 
+  void ConstructorHelper(const uint8_t* magic,
+                         uint32_t checksum,
+                         const uint8_t* signature,
+                         uint32_t endian_tag,
+                         uint32_t file_size,
+                         uint32_t header_size,
+                         uint32_t link_size,
+                         uint32_t link_offset,
+                         uint32_t data_size,
+                         uint32_t data_offset) {
+    checksum_ = checksum;
+    endian_tag_ = endian_tag;
+    file_size_ = file_size;
+    header_size_ = header_size;
+    link_size_ = link_size;
+    link_offset_ = link_offset;
+    data_size_ = data_size;
+    data_offset_ = data_offset;
+    memcpy(magic_, magic, sizeof(magic_));
+    memcpy(signature_, signature, sizeof(signature_));
+  }
   Collections collections_;
 
   DISALLOW_COPY_AND_ASSIGN(Header);
@@ -744,6 +831,8 @@ class FieldItem : public Item {
       : access_flags_(access_flags), field_id_(field_id) { }
   ~FieldItem() OVERRIDE { }
 
+  FieldItem(FieldItem&&) = default;
+
   uint32_t GetAccessFlags() const { return access_flags_; }
   const FieldId* GetFieldId() const { return field_id_; }
 
@@ -756,13 +845,15 @@ class FieldItem : public Item {
   DISALLOW_COPY_AND_ASSIGN(FieldItem);
 };
 
-using FieldItemVector = std::vector<std::unique_ptr<FieldItem>>;
+using FieldItemVector = std::vector<FieldItem>;
 
 class MethodItem : public Item {
  public:
   MethodItem(uint32_t access_flags, const MethodId* method_id, CodeItem* code)
       : access_flags_(access_flags), method_id_(method_id), code_(code) { }
   ~MethodItem() OVERRIDE { }
+
+  MethodItem(MethodItem&&) = default;
 
   uint32_t GetAccessFlags() const { return access_flags_; }
   const MethodId* GetMethodId() const { return method_id_; }
@@ -778,7 +869,7 @@ class MethodItem : public Item {
   DISALLOW_COPY_AND_ASSIGN(MethodItem);
 };
 
-using MethodItemVector = std::vector<std::unique_ptr<MethodItem>>;
+using MethodItemVector = std::vector<MethodItem>;
 
 class EncodedValue {
  public:
