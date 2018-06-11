@@ -157,7 +157,8 @@ inline CallSite* DexCache::GetResolvedCallSite(uint32_t call_site_idx) {
   return ref.load(std::memory_order_seq_cst).Read();
 }
 
-inline CallSite* DexCache::SetResolvedCallSite(uint32_t call_site_idx, CallSite* call_site) {
+inline ObjPtr<CallSite> DexCache::SetResolvedCallSite(uint32_t call_site_idx,
+                                                      ObjPtr<CallSite> call_site) {
   DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
   DCHECK_LT(call_site_idx, GetDexFile()->NumCallSiteIds());
 

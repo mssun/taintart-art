@@ -173,11 +173,16 @@ class HInstructionBuilder : public ValueObject {
 
   // Builds an invocation node for invoke-polymorphic and returns whether the
   // instruction is supported.
-  bool BuildInvokePolymorphic(const Instruction& instruction,
-                              uint32_t dex_pc,
+  bool BuildInvokePolymorphic(uint32_t dex_pc,
                               uint32_t method_idx,
                               dex::ProtoIndex proto_idx,
                               const InstructionOperands& operands);
+
+  // Builds an invocation node for invoke-custom and returns whether the
+  // instruction is supported.
+  bool BuildInvokeCustom(uint32_t dex_pc,
+                         uint32_t call_site_idx,
+                         const InstructionOperands& operands);
 
   // Builds a new array node and the instructions that fill it.
   HNewArray* BuildFilledNewArray(uint32_t dex_pc,
@@ -253,19 +258,19 @@ class HInstructionBuilder : public ValueObject {
 
   bool SetupInvokeArguments(HInvoke* invoke,
                             const InstructionOperands& operands,
-                            const char* descriptor,
+                            const char* shorty,
                             size_t start_index,
                             size_t* argument_index);
 
   bool HandleInvoke(HInvoke* invoke,
                     const InstructionOperands& operands,
-                    const char* descriptor,
-                    HClinitCheck* clinit_check,
-                    bool is_unresolved);
+                    const char* shorty,
+                    bool is_unresolved,
+                    HClinitCheck* clinit_check = nullptr);
 
   bool HandleStringInit(HInvoke* invoke,
                         const InstructionOperands& operands,
-                        const char* descriptor);
+                        const char* shorty);
   void HandleStringInitResult(HInvokeStaticOrDirect* invoke);
 
   HClinitCheck* ProcessClinitCheckForInvoke(

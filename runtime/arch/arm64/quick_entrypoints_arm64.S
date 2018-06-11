@@ -2855,6 +2855,19 @@ ENTRY art_quick_invoke_polymorphic
     RETURN_OR_DELIVER_PENDING_EXCEPTION
 END  art_quick_invoke_polymorphic
 
+.extern artInvokeCustom
+ENTRY art_quick_invoke_custom
+    SETUP_SAVE_REFS_AND_ARGS_FRAME    // Save callee saves in case allocation triggers GC.
+                                      // x0 := call_site_idx
+    mov     x1, xSELF                 // x1 := Thread::Current()
+    mov     x2, sp                    // x2 := SP
+    bl      artInvokeCustom           // artInvokeCustom(call_site_idx, thread, save_area)
+    RESTORE_SAVE_REFS_AND_ARGS_FRAME
+    REFRESH_MARKING_REGISTER
+    fmov    d0, x0                    // Copy result to double result register.
+    RETURN_OR_DELIVER_PENDING_EXCEPTION
+END  art_quick_invoke_custom
+
 // Wrap ExecuteSwitchImpl in assembly method which specifies DEX PC for unwinding.
 //  Argument 0: x0: The context pointer for ExecuteSwitchImpl.
 //  Argument 1: x1: Pointer to the templated ExecuteSwitchImpl to call.

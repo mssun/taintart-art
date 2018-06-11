@@ -542,9 +542,12 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   void GenerateInvokeStaticOrDirectRuntimeCall(
       HInvokeStaticOrDirect* invoke, Location temp, SlowPathCode* slow_path);
+
   void GenerateInvokeUnresolvedRuntimeCall(HInvokeUnresolved* invoke);
 
   void GenerateInvokePolymorphicCall(HInvokePolymorphic* invoke);
+
+  void GenerateInvokeCustomCall(HInvokeCustom* invoke);
 
   void CreateUnresolvedFieldLocationSummary(
       HInstruction* field_access,

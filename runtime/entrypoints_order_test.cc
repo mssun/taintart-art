@@ -287,8 +287,8 @@ class EntrypointsOrderTest : public CommonRuntimeTest {
                          pInvokeVirtualTrampolineWithAccessCheck, sizeof(void*));
     EXPECT_OFFSET_DIFFNP(QuickEntryPoints, pInvokeVirtualTrampolineWithAccessCheck,
                          pInvokePolymorphic, sizeof(void*));
-    EXPECT_OFFSET_DIFFNP(QuickEntryPoints, pInvokePolymorphic,
-                         pTestSuspend, sizeof(void*));
+    EXPECT_OFFSET_DIFFNP(QuickEntryPoints, pInvokePolymorphic, pInvokeCustom, sizeof(void*));
+    EXPECT_OFFSET_DIFFNP(QuickEntryPoints, pInvokeCustom, pTestSuspend, sizeof(void*));
     EXPECT_OFFSET_DIFFNP(QuickEntryPoints, pTestSuspend, pDeliverException, sizeof(void*));
 
     EXPECT_OFFSET_DIFFNP(QuickEntryPoints, pDeliverException, pThrowArrayBounds, sizeof(void*));
