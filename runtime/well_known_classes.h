@@ -86,6 +86,7 @@ struct WellKnownClasses {
   static jclass java_nio_DirectByteBuffer;
   static jclass libcore_reflect_AnnotationFactory;
   static jclass libcore_reflect_AnnotationMember;
+  static jclass libcore_util_EmptyArray;
   static jclass org_apache_harmony_dalvik_ddmc_Chunk;
   static jclass org_apache_harmony_dalvik_ddmc_DdmServer;
 
@@ -146,7 +147,6 @@ struct WellKnownClasses {
   static jfieldID java_lang_Throwable_stackTrace;
   static jfieldID java_lang_Throwable_stackState;
   static jfieldID java_lang_Throwable_suppressedExceptions;
-  static jfieldID java_lang_Throwable_UNASSIGNED_STACK;
   static jfieldID java_nio_ByteBuffer_address;
   static jfieldID java_nio_ByteBuffer_hb;
   static jfieldID java_nio_ByteBuffer_isReadOnly;
@@ -156,6 +156,7 @@ struct WellKnownClasses {
   static jfieldID java_nio_DirectByteBuffer_effectiveDirectAddress;
 
   static jfieldID java_util_Collections_EMPTY_LIST;
+  static jfieldID libcore_util_EmptyArray_STACK_TRACE_ELEMENT;
   static jfieldID org_apache_harmony_dalvik_ddmc_Chunk_data;
   static jfieldID org_apache_harmony_dalvik_ddmc_Chunk_length;
   static jfieldID org_apache_harmony_dalvik_ddmc_Chunk_offset;
