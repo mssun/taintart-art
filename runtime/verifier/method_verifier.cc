@@ -3053,10 +3053,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       // Step 2. Check the register arguments correspond to the expected arguments for the
       // method handle produced by step 1. The dex file verifier has checked ranges for
       // the first three arguments and CheckCallSite has checked the method handle type.
-      CallSiteArrayValueIterator it(*dex_file_, dex_file_->GetCallSiteId(call_site_idx));
-      it.Next();  // Skip to name.
-      it.Next();  // Skip to method type of the method handle
-      const dex::ProtoIndex proto_idx(it.GetJavaValue().c);
+      const dex::ProtoIndex proto_idx = dex_file_->GetProtoIndexForCallSite(call_site_idx);
       const DexFile::ProtoId& proto_id = dex_file_->GetProtoId(proto_idx);
       DexFileParameterIterator param_it(*dex_file_, proto_id);
       // Treat method as static as it has yet to be determined.
@@ -3072,8 +3069,6 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         work_line_->SetResultRegisterTypeWide(return_type, return_type.HighHalf(&reg_types_));
       }
       just_set_result = true;
-      // TODO: Add compiler support for invoke-custom (b/35337872).
-      Fail(VERIFY_ERROR_FORCE_INTERPRETER);
       break;
     }
     case Instruction::NEG_INT:
@@ -4007,24 +4002,41 @@ bool MethodVerifier::CheckCallSite(uint32_t call_site_idx) {
   CallSiteArrayValueIterator it(*dex_file_, dex_file_->GetCallSiteId(call_site_idx));
   // Check essential arguments are provided. The dex file verifier has verified indicies of the
   // main values (method handle, name, method_type).
-  if (it.Size() < 3) {
+  static const size_t kRequiredArguments = 3;
+  if (it.Size() < kRequiredArguments) {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site #" << call_site_idx
                                       << " has too few arguments: "
-                                      << it.Size() << " < 3";
+                                      << it.Size() << " < " << kRequiredArguments;
     return false;
   }
 
-  // Get and check the first argument: the method handle (index range
-  // checked by the dex file verifier).
-  uint32_t method_handle_idx = static_cast<uint32_t>(it.GetJavaValue().i);
-  if (method_handle_idx > dex_file_->NumMethodHandles()) {
-    Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site id #" << call_site_idx
-                                      << " method handle index invalid " << method_handle_idx
-                                      << " >= "  << dex_file_->NumMethodHandles();
-    return false;
+  std::pair<const EncodedArrayValueIterator::ValueType, size_t> type_and_max[kRequiredArguments] =
+      { { EncodedArrayValueIterator::ValueType::kMethodHandle, dex_file_->NumMethodHandles() },
+        { EncodedArrayValueIterator::ValueType::kString, dex_file_->NumStringIds() },
+        { EncodedArrayValueIterator::ValueType::kMethodType, dex_file_->NumProtoIds() }
+      };
+  uint32_t index[kRequiredArguments];
+
+  // Check arguments have expected types and are within permitted ranges.
+  for (size_t i = 0; i < kRequiredArguments; ++i) {
+    if (it.GetValueType() != type_and_max[i].first) {
+      Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site id #" << call_site_idx
+                                        << " argument " << i << " has wrong type "
+                                        << it.GetValueType() << "!=" << type_and_max[i].first;
+      return false;
+    }
+    index[i] = static_cast<uint32_t>(it.GetJavaValue().i);
+    if (index[i] >= type_and_max[i].second) {
+      Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site id #" << call_site_idx
+                                        << " argument " << i << " bad index "
+                                        << index[i] << " >= " << type_and_max[i].second;
+      return false;
+    }
+    it.Next();
   }
 
-  const DexFile::MethodHandleItem& mh = dex_file_->GetMethodHandle(method_handle_idx);
+  // Check method handle kind is valid.
+  const DexFile::MethodHandleItem& mh = dex_file_->GetMethodHandle(index[0]);
   if (mh.method_handle_type_ != static_cast<uint16_t>(DexFile::MethodHandleType::kInvokeStatic)) {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site #" << call_site_idx
                                       << " argument 0 method handle type is not InvokeStatic: "

@@ -2311,6 +2311,14 @@ void InstructionCodeGeneratorX86::VisitInvokePolymorphic(HInvokePolymorphic* inv
   codegen_->GenerateInvokePolymorphicCall(invoke);
 }
 
+void LocationsBuilderX86::VisitInvokeCustom(HInvokeCustom* invoke) {
+  HandleInvoke(invoke);
+}
+
+void InstructionCodeGeneratorX86::VisitInvokeCustom(HInvokeCustom* invoke) {
+  codegen_->GenerateInvokeCustomCall(invoke);
+}
+
 void LocationsBuilderX86::VisitNeg(HNeg* neg) {
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(neg, LocationSummary::kNoCall);

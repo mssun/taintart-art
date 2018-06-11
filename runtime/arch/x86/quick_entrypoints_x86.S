@@ -2455,6 +2455,28 @@ DEFINE_FUNCTION art_quick_invoke_polymorphic
     RETURN_OR_DELIVER_PENDING_EXCEPTION
 END_FUNCTION art_quick_invoke_polymorphic
 
+DEFINE_FUNCTION art_quick_invoke_custom
+    SETUP_SAVE_REFS_AND_ARGS_FRAME ebx, ebx        // Save frame.
+                                                   // EAX := call_site_index
+    mov %esp, %ecx                                 // Remember SP.
+    subl LITERAL(4), %esp                          // Alignment padding.
+    CFI_ADJUST_CFA_OFFSET(4)
+    push %ecx                                      // pass SP
+    CFI_ADJUST_CFA_OFFSET(4)
+    pushl %fs:THREAD_SELF_OFFSET                   // pass Thread::Current()
+    CFI_ADJUST_CFA_OFFSET(4)
+    push %eax                                      // pass call_site_index
+    CFI_ADJUST_CFA_OFFSET(4)
+    call SYMBOL(artInvokeCustom)                   // artInvokeCustom(call_site_index, Thread*, SP)
+    addl LITERAL(16), %esp                         // Pop arguments.
+    CFI_ADJUST_CFA_OFFSET(-16)
+    mov %eax, 4(%esp)                              // Result is in EAX:EDX. Copy to saved FP state.
+    mov %edx, 8(%esp)
+    mov %edx, 40(%esp)                             // Copy EDX to saved context
+    RESTORE_SAVE_REFS_AND_ARGS_FRAME
+    RETURN_OR_DELIVER_PENDING_EXCEPTION
+END_FUNCTION art_quick_invoke_custom
+
 // Wrap ExecuteSwitchImpl in assembly method which specifies DEX PC for unwinding.
 //  Argument 0: ESP+4: The context pointer for ExecuteSwitchImpl.
 //  Argument 1: ESP+8: Pointer to the templated ExecuteSwitchImpl to call.

@@ -460,9 +460,10 @@ static bool AlwaysThrows(CompilerDriver* const compiler_driver, ArtMethod* metho
 
 bool HInliner::TryInline(HInvoke* invoke_instruction) {
   if (invoke_instruction->IsInvokeUnresolved() ||
-      invoke_instruction->IsInvokePolymorphic()) {
-    return false;  // Don't bother to move further if we know the method is unresolved or an
-                   // invoke-polymorphic.
+      invoke_instruction->IsInvokePolymorphic() ||
+      invoke_instruction->IsInvokeCustom()) {
+    return false;  // Don't bother to move further if we know the method is unresolved or the
+                   // invocation is polymorphic (invoke-{polymorphic,custom}).
   }
 
   ScopedObjectAccess soa(Thread::Current());
