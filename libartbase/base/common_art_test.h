@@ -210,20 +210,8 @@ using CommonArtTestWithParam = CommonArtTestBase<testing::TestWithParam<Param>>;
   }
 
 #define TEST_DISABLED_FOR_MEMORY_TOOL() \
-  if (RUNNING_ON_MEMORY_TOOL > 0) { \
+  if (kRunningOnMemoryTool) { \
     printf("WARNING: TEST DISABLED FOR MEMORY TOOL\n"); \
-    return; \
-  }
-
-#define TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND() \
-  if (RUNNING_ON_MEMORY_TOOL > 0 && kMemoryToolIsValgrind) { \
-    printf("WARNING: TEST DISABLED FOR MEMORY TOOL VALGRIND\n"); \
-    return; \
-  }
-
-#define TEST_DISABLED_FOR_MEMORY_TOOL_ASAN() \
-  if (RUNNING_ON_MEMORY_TOOL > 0 && !kMemoryToolIsValgrind) { \
-    printf("WARNING: TEST DISABLED FOR MEMORY TOOL ASAN\n"); \
     return; \
   }
 
