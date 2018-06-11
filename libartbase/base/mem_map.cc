@@ -460,7 +460,7 @@ MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
       (expected_ptr == nullptr) ? nullptr : (expected_ptr - page_offset);
 
   size_t redzone_size = 0;
-  if (RUNNING_ON_MEMORY_TOOL && kMemoryToolAddsRedzones && expected_ptr == nullptr) {
+  if (kRunningOnMemoryTool && kMemoryToolAddsRedzones && expected_ptr == nullptr) {
     redzone_size = kPageSize;
     page_aligned_byte_count += redzone_size;
   }
@@ -649,9 +649,11 @@ void MemMap::MadviseDontNeedAndZero() {
 bool MemMap::Sync() {
   bool result;
   if (redzone_size_ != 0) {
-    // To avoid valgrind errors, temporarily lift the lower-end noaccess protection before passing
-    // it to msync() as it only accepts page-aligned base address, and exclude the higher-end
-    // noaccess protection from the msync range. b/27552451.
+    // To avoid errors when running on a memory tool, temporarily lift the lower-end noaccess
+    // protection before passing it to msync() as it only accepts page-aligned base address,
+    // and exclude the higher-end noaccess protection from the msync range. b/27552451.
+    // TODO: Valgrind is no longer supported, but Address Sanitizer is:
+    // check whether this special case is needed for ASan.
     uint8_t* base_begin = reinterpret_cast<uint8_t*>(base_begin_);
     MEMORY_TOOL_MAKE_DEFINED(base_begin, begin_ - base_begin);
     result = msync(BaseBegin(), End() - base_begin, MS_SYNC) == 0;

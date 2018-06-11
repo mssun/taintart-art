@@ -867,11 +867,6 @@ TEST_F(UnstartedRuntimeTest, Cos) {
 }
 
 TEST_F(UnstartedRuntimeTest, Pow) {
-  // Valgrind seems to get this wrong, actually. Disable for valgrind.
-  if (RUNNING_ON_MEMORY_TOOL != 0 && kMemoryToolIsValgrind) {
-    return;
-  }
-
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 

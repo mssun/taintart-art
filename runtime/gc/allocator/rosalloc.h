@@ -625,7 +625,7 @@ class RosAlloc {
 
   // If true, check that the returned memory is actually zero.
   static constexpr bool kCheckZeroMemory = kIsDebugBuild;
-  // Valgrind protects memory, so do not check memory when running under valgrind. In a normal
+  // Do not check memory when running under a memory tool. In a normal
   // build with kCheckZeroMemory the whole test should be optimized away.
   // TODO: Unprotect before checks.
   ALWAYS_INLINE bool ShouldCheckZeroMemory();
@@ -768,7 +768,7 @@ class RosAlloc {
   // greater than or equal to this value, release pages.
   const size_t page_release_size_threshold_;
 
-  // Whether this allocator is running under Valgrind.
+  // Whether this allocator is running on a memory tool.
   bool is_running_on_memory_tool_;
 
   // The base address of the memory region that's managed by this allocator.
