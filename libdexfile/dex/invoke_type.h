@@ -28,7 +28,8 @@ enum InvokeType : uint32_t {
   kSuper,        // <<super>>
   kInterface,    // <<interface>>
   kPolymorphic,  // <<polymorphic>>
-  kMaxInvokeType = kPolymorphic
+  kCustom,       // <<custom>>
+  kMaxInvokeType = kCustom
 };
 
 std::ostream& operator<<(std::ostream& os, const InvokeType& rhs);

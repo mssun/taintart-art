@@ -1380,6 +1380,7 @@ class HLoopInformationOutwardIterator : public ValueObject {
   M(InvokeStaticOrDirect, Invoke)                                       \
   M(InvokeVirtual, Invoke)                                              \
   M(InvokePolymorphic, Invoke)                                          \
+  M(InvokeCustom, Invoke)                                               \
   M(LessThan, Condition)                                                \
   M(LessThanOrEqual, Condition)                                         \
   M(LoadClass, Instruction)                                             \
@@ -4382,6 +4383,38 @@ class HInvokePolymorphic FINAL : public HInvoke {
   DEFAULT_COPY_CONSTRUCTOR(InvokePolymorphic);
 };
 
+class HInvokeCustom FINAL : public HInvoke {
+ public:
+  HInvokeCustom(ArenaAllocator* allocator,
+                uint32_t number_of_arguments,
+                uint32_t call_site_index,
+                DataType::Type return_type,
+                uint32_t dex_pc)
+      : HInvoke(kInvokeCustom,
+                allocator,
+                number_of_arguments,
+                /* number_of_other_inputs */ 0u,
+                return_type,
+                dex_pc,
+                /* dex_method_index */ dex::kDexNoIndex,
+                /* resolved_method */ nullptr,
+                kStatic),
+      call_site_index_(call_site_index) {
+  }
+
+  uint32_t GetCallSiteIndex() const { return call_site_index_; }
+
+  bool IsClonable() const OVERRIDE { return true; }
+
+  DECLARE_INSTRUCTION(InvokeCustom);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(InvokeCustom);
+
+ private:
+  uint32_t call_site_index_;
+};
+
 class HInvokeStaticOrDirect FINAL : public HInvoke {
  public:
   // Requirements of this method call regarding the class
@@ -6510,9 +6543,9 @@ inline void HLoadString::AddSpecialInput(HInstruction* special_input) {
 class HLoadMethodHandle FINAL : public HInstruction {
  public:
   HLoadMethodHandle(HCurrentMethod* current_method,
-                  uint16_t method_handle_idx,
-                  const DexFile& dex_file,
-                  uint32_t dex_pc)
+                    uint16_t method_handle_idx,
+                    const DexFile& dex_file,
+                    uint32_t dex_pc)
       : HInstruction(kLoadMethodHandle,
                      DataType::Type::kReference,
                      SideEffectsForArchRuntimeCalls(),

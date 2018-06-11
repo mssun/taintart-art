@@ -242,7 +242,15 @@ bool DoInvokePolymorphic(Thread* self,
                          ShadowFrame& shadow_frame,
                          const Instruction* inst,
                          uint16_t inst_data,
-                         JValue* result);
+                         JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
+bool DoInvokeCustom(Thread* self,
+                    ShadowFrame& shadow_frame,
+                    uint32_t call_site_idx,
+                    const InstructionOperands* operands,
+                    JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_);
 
 // Performs a custom invoke (invoke-custom/invoke-custom-range).
 template<bool is_range>
@@ -250,7 +258,19 @@ bool DoInvokeCustom(Thread* self,
                     ShadowFrame& shadow_frame,
                     const Instruction* inst,
                     uint16_t inst_data,
-                    JValue* result);
+                    JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  const uint32_t call_site_idx = is_range ? inst->VRegB_3rc() : inst->VRegB_35c();
+  if (is_range) {
+    RangeInstructionOperands operands(inst->VRegC_3rc(), inst->VRegA_3rc());
+    return DoInvokeCustom(self, shadow_frame, call_site_idx, &operands, result);
+  } else {
+    uint32_t args[Instruction::kMaxVarArgRegs];
+    inst->GetVarArgs(args, inst_data);
+    VarArgsInstructionOperands operands(args, inst->VRegA_35c());
+    return DoInvokeCustom(self, shadow_frame, call_site_idx, &operands, result);
+  }
+}
 
 // Handles invoke-virtual-quick and invoke-virtual-quick-range instructions.
 // Returns true on success, otherwise throws an exception and returns false.

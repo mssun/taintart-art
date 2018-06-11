@@ -449,11 +449,7 @@ void HInstructionBuilder::BuildIntrinsic(ArtMethod* method) {
       target_method,
       HInvokeStaticOrDirect::ClinitCheckRequirement::kNone);
   RangeInstructionOperands operands(graph_->GetNumberOfVRegs() - in_vregs, in_vregs);
-  HandleInvoke(invoke,
-               operands,
-               dex_file_->GetMethodShorty(method_idx),
-               /* clinit_check */ nullptr,
-               /* is_unresolved */ false);
+  HandleInvoke(invoke, operands, dex_file_->GetMethodShorty(method_idx), /* is_unresolved */ false);
 
   // Add the return instruction.
   if (return_type_ == DataType::Type::kVoid) {
@@ -916,11 +912,11 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                       uint32_t method_idx,
                                       const InstructionOperands& operands) {
   InvokeType invoke_type = GetInvokeTypeFromOpCode(instruction.Opcode());
-  const char* descriptor = dex_file_->GetMethodShorty(method_idx);
-  DataType::Type return_type = DataType::FromShorty(descriptor[0]);
+  const char* shorty = dex_file_->GetMethodShorty(method_idx);
+  DataType::Type return_type = DataType::FromShorty(shorty[0]);
 
   // Remove the return type from the 'proto'.
-  size_t number_of_arguments = strlen(descriptor) - 1;
+  size_t number_of_arguments = strlen(shorty) - 1;
   if (invoke_type != kStatic) {  // instance call
     // One extra argument for 'this'.
     number_of_arguments++;
@@ -937,11 +933,7 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                                          dex_pc,
                                                          method_idx,
                                                          invoke_type);
-    return HandleInvoke(invoke,
-                        operands,
-                        descriptor,
-                        nullptr /* clinit_check */,
-                        true /* is_unresolved */);
+    return HandleInvoke(invoke, operands, shorty, /* is_unresolved */ true);
   }
 
   // Replace calls to String.<init> with StringFactory.
@@ -968,7 +960,7 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
         invoke_type,
         target_method,
         HInvokeStaticOrDirect::ClinitCheckRequirement::kImplicit);
-    return HandleStringInit(invoke, operands, descriptor);
+    return HandleStringInit(invoke, operands, shorty);
   }
 
   // Potential class initialization check, in the case of a static method call.
@@ -1028,29 +1020,39 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                                resolved_method,
                                                ImTable::GetImtIndex(resolved_method));
   }
-
-  return HandleInvoke(invoke, operands, descriptor, clinit_check, false /* is_unresolved */);
+  return HandleInvoke(invoke, operands, shorty, /* is_unresolved */ false, clinit_check);
 }
 
-bool HInstructionBuilder::BuildInvokePolymorphic(const Instruction& instruction ATTRIBUTE_UNUSED,
-                                                 uint32_t dex_pc,
+bool HInstructionBuilder::BuildInvokePolymorphic(uint32_t dex_pc,
                                                  uint32_t method_idx,
                                                  dex::ProtoIndex proto_idx,
                                                  const InstructionOperands& operands) {
-  const char* descriptor = dex_file_->GetShorty(proto_idx);
-  DCHECK_EQ(1 + ArtMethod::NumArgRegisters(descriptor), operands.GetNumberOfOperands());
-  DataType::Type return_type = DataType::FromShorty(descriptor[0]);
-  size_t number_of_arguments = strlen(descriptor);
+  const char* shorty = dex_file_->GetShorty(proto_idx);
+  DCHECK_EQ(1 + ArtMethod::NumArgRegisters(shorty), operands.GetNumberOfOperands());
+  DataType::Type return_type = DataType::FromShorty(shorty[0]);
+  size_t number_of_arguments = strlen(shorty);
   HInvoke* invoke = new (allocator_) HInvokePolymorphic(allocator_,
                                                         number_of_arguments,
                                                         return_type,
                                                         dex_pc,
                                                         method_idx);
-  return HandleInvoke(invoke,
-                      operands,
-                      descriptor,
-                      nullptr /* clinit_check */,
-                      false /* is_unresolved */);
+  return HandleInvoke(invoke, operands, shorty, /* is_unresolved */ false);
+}
+
+
+bool HInstructionBuilder::BuildInvokeCustom(uint32_t dex_pc,
+                                            uint32_t call_site_idx,
+                                            const InstructionOperands& operands) {
+  dex::ProtoIndex proto_idx = dex_file_->GetProtoIndexForCallSite(call_site_idx);
+  const char* shorty = dex_file_->GetShorty(proto_idx);
+  DataType::Type return_type = DataType::FromShorty(shorty[0]);
+  size_t number_of_arguments = strlen(shorty) - 1;
+  HInvoke* invoke = new (allocator_) HInvokeCustom(allocator_,
+                                                   number_of_arguments,
+                                                   call_site_idx,
+                                                   return_type,
+                                                   dex_pc);
+  return HandleInvoke(invoke, operands, shorty, /* is_unresolved */ false);
 }
 
 HNewInstance* HInstructionBuilder::BuildNewInstance(dex::TypeIndex type_index, uint32_t dex_pc) {
@@ -1197,10 +1199,10 @@ HClinitCheck* HInstructionBuilder::ProcessClinitCheckForInvoke(
 
 bool HInstructionBuilder::SetupInvokeArguments(HInvoke* invoke,
                                                const InstructionOperands& operands,
-                                               const char* descriptor,
+                                               const char* shorty,
                                                size_t start_index,
                                                size_t* argument_index) {
-  uint32_t descriptor_index = 1;  // Skip the return type.
+  uint32_t shorty_index = 1;  // Skip the return type.
   const size_t number_of_operands = operands.GetNumberOfOperands();
   for (size_t i = start_index;
        // Make sure we don't go over the expected arguments or over the number of
@@ -1208,7 +1210,7 @@ bool HInstructionBuilder::SetupInvokeArguments(HInvoke* invoke,
        // it hasn't been properly checked.
        (i < number_of_operands) && (*argument_index < invoke->GetNumberOfArguments());
        i++, (*argument_index)++) {
-    DataType::Type type = DataType::FromShorty(descriptor[descriptor_index++]);
+    DataType::Type type = DataType::FromShorty(shorty[shorty_index++]);
     bool is_wide = (type == DataType::Type::kInt64) || (type == DataType::Type::kFloat64);
     if (is_wide && ((i + 1 == number_of_operands) ||
                     (operands.GetOperand(i) + 1 != operands.GetOperand(i + 1)))) {
@@ -1250,9 +1252,9 @@ bool HInstructionBuilder::SetupInvokeArguments(HInvoke* invoke,
 
 bool HInstructionBuilder::HandleInvoke(HInvoke* invoke,
                                        const InstructionOperands& operands,
-                                       const char* descriptor,
-                                       HClinitCheck* clinit_check,
-                                       bool is_unresolved) {
+                                       const char* shorty,
+                                       bool is_unresolved,
+                                       HClinitCheck* clinit_check) {
   DCHECK(!invoke->IsInvokeStaticOrDirect() || !invoke->AsInvokeStaticOrDirect()->IsStringInit());
 
   size_t start_index = 0;
@@ -1267,7 +1269,7 @@ bool HInstructionBuilder::HandleInvoke(HInvoke* invoke,
     argument_index = 1;
   }
 
-  if (!SetupInvokeArguments(invoke, operands, descriptor, start_index, &argument_index)) {
+  if (!SetupInvokeArguments(invoke, operands, shorty, start_index, &argument_index)) {
     return false;
   }
 
@@ -1288,13 +1290,13 @@ bool HInstructionBuilder::HandleInvoke(HInvoke* invoke,
 
 bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
                                            const InstructionOperands& operands,
-                                           const char* descriptor) {
+                                           const char* shorty) {
   DCHECK(invoke->IsInvokeStaticOrDirect());
   DCHECK(invoke->AsInvokeStaticOrDirect()->IsStringInit());
 
   size_t start_index = 1;
   size_t argument_index = 0;
-  if (!SetupInvokeArguments(invoke, operands, descriptor, start_index, &argument_index)) {
+  if (!SetupInvokeArguments(invoke, operands, shorty, start_index, &argument_index)) {
     return false;
   }
 
@@ -2145,14 +2147,28 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       uint32_t args[5];
       uint32_t number_of_vreg_arguments = instruction.GetVarArgs(args);
       VarArgsInstructionOperands operands(args, number_of_vreg_arguments);
-      return BuildInvokePolymorphic(instruction, dex_pc, method_idx, proto_idx, operands);
+      return BuildInvokePolymorphic(dex_pc, method_idx, proto_idx, operands);
     }
 
     case Instruction::INVOKE_POLYMORPHIC_RANGE: {
       uint16_t method_idx = instruction.VRegB_4rcc();
       dex::ProtoIndex proto_idx(instruction.VRegH_4rcc());
       RangeInstructionOperands operands(instruction.VRegC_4rcc(), instruction.VRegA_4rcc());
-      return BuildInvokePolymorphic(instruction, dex_pc, method_idx, proto_idx, operands);
+      return BuildInvokePolymorphic(dex_pc, method_idx, proto_idx, operands);
+    }
+
+    case Instruction::INVOKE_CUSTOM: {
+      uint16_t call_site_idx = instruction.VRegB_35c();
+      uint32_t args[5];
+      uint32_t number_of_vreg_arguments = instruction.GetVarArgs(args);
+      VarArgsInstructionOperands operands(args, number_of_vreg_arguments);
+      return BuildInvokeCustom(dex_pc, call_site_idx, operands);
+    }
+
+    case Instruction::INVOKE_CUSTOM_RANGE: {
+      uint16_t call_site_idx = instruction.VRegB_3rc();
+      RangeInstructionOperands operands(instruction.VRegC_3rc(), instruction.VRegA_3rc());
+      return BuildInvokeCustom(dex_pc, call_site_idx, operands);
     }
 
     case Instruction::NEG_INT: {
@@ -2934,7 +2950,21 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       break;
     }
 
-    default:
+    case Instruction::UNUSED_3E:
+    case Instruction::UNUSED_3F:
+    case Instruction::UNUSED_40:
+    case Instruction::UNUSED_41:
+    case Instruction::UNUSED_42:
+    case Instruction::UNUSED_43:
+    case Instruction::UNUSED_79:
+    case Instruction::UNUSED_7A:
+    case Instruction::UNUSED_F3:
+    case Instruction::UNUSED_F4:
+    case Instruction::UNUSED_F5:
+    case Instruction::UNUSED_F6:
+    case Instruction::UNUSED_F7:
+    case Instruction::UNUSED_F8:
+    case Instruction::UNUSED_F9: {
       VLOG(compiler) << "Did not compile "
                      << dex_file_->PrettyMethod(dex_compilation_unit_->GetDexMethodIndex())
                      << " because of unhandled instruction "
@@ -2942,6 +2972,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       MaybeRecordStat(compilation_stats_,
                       MethodCompilationStat::kNotCompiledUnhandledInstruction);
       return false;
+    }
   }
   return true;
 }  // NOLINT(readability/fn_size)
