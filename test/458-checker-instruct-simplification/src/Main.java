@@ -2458,6 +2458,77 @@ public class Main {
     return (byte)((int)(((long)(b & 0xff)) & 255L));
   }
 
+  /// CHECK-START: int Main.$noinline$emptyStringIndexOf(int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Empty:l\d+>>    LoadString
+  /// CHECK-DAG:      <<Equals:i\d+>>   InvokeVirtual [<<Empty>>,<<Arg>>] intrinsic:StringIndexOf
+  /// CHECK-DAG:                        Return [<<Equals>>]
+
+  /// CHECK-START: int Main.$noinline$emptyStringIndexOf(int) instruction_simplifier (after)
+  /// CHECK-NOT:                        InvokeVirtual
+
+  /// CHECK-START: int Main.$noinline$emptyStringIndexOf(int) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Minus1:i\d+>>   IntConstant -1
+  /// CHECK-DAG:                        Return [<<Minus1>>]
+  public static int $noinline$emptyStringIndexOf(int ch) {
+    return "".indexOf(ch);
+  }
+
+  /// CHECK-START: int Main.$noinline$emptyStringIndexOfAfter(int, int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg1:i\d+>>     ParameterValue
+  /// CHECK-DAG:      <<Arg2:i\d+>>     ParameterValue
+  /// CHECK-DAG:      <<Empty:l\d+>>    LoadString
+  /// CHECK-DAG:      <<Equals:i\d+>>   InvokeVirtual [<<Empty>>,<<Arg1>>,<<Arg2>>] intrinsic:StringIndexOfAfter
+  /// CHECK-DAG:                        Return [<<Equals>>]
+
+  /// CHECK-START: int Main.$noinline$emptyStringIndexOfAfter(int, int) instruction_simplifier (after)
+  /// CHECK-NOT:                        InvokeVirtual
+
+  /// CHECK-START: int Main.$noinline$emptyStringIndexOfAfter(int, int) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Minus1:i\d+>>   IntConstant -1
+  /// CHECK-DAG:                        Return [<<Minus1>>]
+  public static int $noinline$emptyStringIndexOfAfter(int ch, int fromIndex) {
+    return "".indexOf(ch, fromIndex);
+  }
+
+  /// CHECK-START: int Main.$noinline$singleCharStringIndexOf(int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Empty:l\d+>>    LoadString
+  /// CHECK-DAG:      <<Equals:i\d+>>   InvokeVirtual [<<Empty>>,<<Arg>>] intrinsic:StringIndexOf
+  /// CHECK-DAG:                        Return [<<Equals>>]
+
+  /// CHECK-START: int Main.$noinline$singleCharStringIndexOf(int) instruction_simplifier (after)
+  /// CHECK-NOT:                        InvokeVirtual
+
+  /// CHECK-START: int Main.$noinline$singleCharStringIndexOf(int) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<x:i\d+>>        IntConstant 120
+  /// CHECK-DAG:      <<Zero:i\d+>>     IntConstant 0
+  /// CHECK-DAG:      <<Minus1:i\d+>>   IntConstant -1
+  /// CHECK-DAG:      <<Eq:z\d+>>       Equal [<<Arg>>,<<x>>]
+  /// CHECK-DAG:      <<Select:i\d+>>   Select [<<Minus1>>,<<Zero>>,<<Eq>>]
+  /// CHECK-DAG:                        Return [<<Select>>]
+  public static int $noinline$singleCharStringIndexOf(int ch) {
+    return "x".indexOf(ch);
+  }
+
+  /// CHECK-START: int Main.$noinline$singleCharStringIndexOfAfter(int, int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg1:i\d+>>     ParameterValue
+  /// CHECK-DAG:      <<Arg2:i\d+>>     ParameterValue
+  /// CHECK-DAG:      <<Empty:l\d+>>    LoadString
+  /// CHECK-DAG:      <<Equals:i\d+>>   InvokeVirtual [<<Empty>>,<<Arg1>>,<<Arg2>>] intrinsic:StringIndexOfAfter
+  /// CHECK-DAG:                        Return [<<Equals>>]
+
+  /// CHECK-START: int Main.$noinline$singleCharStringIndexOfAfter(int, int) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg1:i\d+>>     ParameterValue
+  /// CHECK-DAG:      <<Arg2:i\d+>>     ParameterValue
+  /// CHECK-DAG:      <<Empty:l\d+>>    LoadString
+  /// CHECK-DAG:      <<Equals:i\d+>>   InvokeVirtual [<<Empty>>,<<Arg1>>,<<Arg2>>] intrinsic:StringIndexOfAfter
+  /// CHECK-DAG:                        Return [<<Equals>>]
+  public static int $noinline$singleCharStringIndexOfAfter(int ch, int fromIndex) {
+    return "x".indexOf(ch, fromIndex);  // Not simplified.
+  }
+
   public static void main(String[] args) throws Exception {
     Class smaliTests2 = Class.forName("SmaliTests2");
     Method $noinline$XorAllOnes = smaliTests2.getMethod("$noinline$XorAllOnes", int.class);
@@ -2709,6 +2780,19 @@ public class Main {
     assertIntEquals(1, (int)$noinline$bug68142795Boolean.invoke(null, true));
     assertIntEquals(0x7f, $noinline$bug68142795Elaborate((byte) 0x7f));
     assertIntEquals((byte) 0x80, $noinline$bug68142795Elaborate((byte) 0x80));
+
+    assertIntEquals(-1, $noinline$emptyStringIndexOf('a'));
+    assertIntEquals(-1, $noinline$emptyStringIndexOf('Z'));
+    assertIntEquals(-1, $noinline$emptyStringIndexOfAfter('a', 0));
+    assertIntEquals(-1, $noinline$emptyStringIndexOfAfter('Z', -1));
+
+    assertIntEquals(-1, $noinline$singleCharStringIndexOf('a'));
+    assertIntEquals(0, $noinline$singleCharStringIndexOf('x'));
+    assertIntEquals(-1, $noinline$singleCharStringIndexOf('Z'));
+    assertIntEquals(-1, $noinline$singleCharStringIndexOfAfter('a', 0));
+    assertIntEquals(0, $noinline$singleCharStringIndexOfAfter('x', -1));
+    assertIntEquals(-1, $noinline$singleCharStringIndexOfAfter('x', 1));
+    assertIntEquals(-1, $noinline$singleCharStringIndexOfAfter('Z', -1));
   }
 
   private static boolean $inline$true() { return true; }
