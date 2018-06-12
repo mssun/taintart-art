@@ -56,6 +56,12 @@ struct StressData {
   bool step_stress;
 };
 
+static void DeleteLocalRef(JNIEnv* env, jobject obj) {
+  if (obj != nullptr) {
+    env->DeleteLocalRef(obj);
+  }
+}
+
 static bool DoExtractClassFromData(jvmtiEnv* env,
                                    const std::string& descriptor,
                                    jint in_len,
@@ -130,8 +136,8 @@ class ScopedThreadInfo {
     if (free_name_) {
       jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(info_.name));
     }
-    env_->DeleteLocalRef(info_.thread_group);
-    env_->DeleteLocalRef(info_.context_class_loader);
+    DeleteLocalRef(env_, info_.thread_group);
+    DeleteLocalRef(env_, info_.context_class_loader);
   }
 
   const char* GetName() const {
@@ -227,7 +233,7 @@ class ScopedMethodInfo {
         first_line_(-1) {}
 
   ~ScopedMethodInfo() {
-    env_->DeleteLocalRef(declaring_class_);
+    DeleteLocalRef(env_, declaring_class_);
     jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(name_));
     jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(signature_));
     jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(generic_));
@@ -389,7 +395,7 @@ static std::string GetName(jvmtiEnv* jvmtienv, JNIEnv* jnienv, jobject obj) {
   char *cname, *cgen;
   if (jvmtienv->GetClassSignature(klass, &cname, &cgen) != JVMTI_ERROR_NONE) {
     LOG(ERROR) << "Unable to get class name!";
-    jnienv->DeleteLocalRef(klass);
+    DeleteLocalRef(jnienv, klass);
     return "<UNKNOWN>";
   }
   std::string name(cname);
@@ -407,7 +413,7 @@ static std::string GetName(jvmtiEnv* jvmtienv, JNIEnv* jnienv, jobject obj) {
   }
   jvmtienv->Deallocate(reinterpret_cast<unsigned char*>(cname));
   jvmtienv->Deallocate(reinterpret_cast<unsigned char*>(cgen));
-  jnienv->DeleteLocalRef(klass);
+  DeleteLocalRef(jnienv, klass);
   return name;
 }
 
@@ -468,7 +474,7 @@ void JNICALL FieldAccessHook(jvmtiEnv* jvmtienv,
             << "type \"" << obj_class_info.GetName() << "\" in method \"" << method_info
             << "\" at location 0x" << std::hex << location << ". Thread is \""
             << info.GetName() << "\".";
-  env->DeleteLocalRef(oklass);
+  DeleteLocalRef(env, oklass);
 }
 
 static std::string PrintJValue(jvmtiEnv* jvmtienv, JNIEnv* env, char type, jvalue new_value) {
@@ -486,7 +492,7 @@ static std::string PrintJValue(jvmtiEnv* jvmtienv, JNIEnv* env, char type, jvalu
         } else {
           oss << "of type \"" << nv_class_info.GetName() << "\"";
         }
-        env->DeleteLocalRef(nv_klass);
+        DeleteLocalRef(env, nv_klass);
       }
       break;
     }
@@ -539,7 +545,7 @@ void JNICALL FieldModificationHook(jvmtiEnv* jvmtienv,
             << "\" at location 0x" << std::hex << location << std::dec << ". New value is "
             << PrintJValue(jvmtienv, env, type, new_value) << ". Thread is \""
             << info.GetName() << "\".";
-  env->DeleteLocalRef(oklass);
+  DeleteLocalRef(env, oklass);
 }
 void JNICALL MethodExitHook(jvmtiEnv* jvmtienv,
                             JNIEnv* env,
@@ -714,7 +720,7 @@ static void JNICALL PerformFinalSetupVMInit(jvmtiEnv *jvmti_env,
   } else {
     // GetMethodID is spec'd to cause the class to be initialized.
     jni_env->GetMethodID(klass, "hashCode", "()I");
-    jni_env->DeleteLocalRef(klass);
+    DeleteLocalRef(jni_env, klass);
     data->vm_class_loader_initialized = true;
   }
 }
@@ -761,7 +767,7 @@ static bool WatchAllFields(JavaVM* vm, jvmtiEnv* jvmti) {
       return false;
     }
     jvmti->Deallocate(reinterpret_cast<unsigned char*>(fields));
-    jni->DeleteLocalRef(k);
+    DeleteLocalRef(jni, k);
   }
   jvmti->Deallocate(reinterpret_cast<unsigned char*>(klasses));
   return true;
