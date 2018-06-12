@@ -28,33 +28,16 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
     exit 1
   fi
 
-  echo -e "${green}Clean up /system in chroot${nc}"
-  # Remove all files under /system except the potential property_contexts file.
-  #
-  # The current ART Buildbot set-up runs the "setup device" step
-  # (performed by script tools/setup-buildbot-device.sh) before the
-  # "device cleanup" step (implemented by this script). As
-  # property_contexts file aliases are created during the former step,
-  # we need this exception to prevent the property_contexts file under
-  # /system in the chroot from being removed by the latter step.
-  #
-  # TODO: Reorder ART Buildbot steps so that "device cleanup" happens
-  # before "setup device" and remove this special case.
-  adb shell test -d "$ART_TEST_CHROOT/system" \
-    "&&" find "$ART_TEST_CHROOT/system" \
-      ! -path "$ART_TEST_CHROOT/system/etc/selinux/plat_property_contexts" \
-      ! -type d \
-      -exec rm -f \{\} +
+  if adb shell test -d "$ART_TEST_CHROOT"; then
+    echo -e "${green}Remove entire /system directory from chroot directory${nc}"
+    adb shell rm -rf "$ART_TEST_CHROOT/system"
 
-  echo -e "${green}Clean up some subdirs in /data in chroot${nc}"
-  adb shell rm -rf \
-    "$ART_TEST_CHROOT/data/local/tmp/*" \
-    "$ART_TEST_CHROOT/data/art-test" \
-    "$ART_TEST_CHROOT/data/nativetest" \
-    "$ART_TEST_CHROOT/data/nativetest64" \
-    "$ART_TEST_CHROOT/data/run-test" \
-    "$ART_TEST_CHROOT/data/dalvik-cache/*" \
-    "$ART_TEST_CHROOT/data/misc/trace/*"
+    echo -e "${green}Remove entire /data directory from chroot directory${nc}"
+    adb shell rm -rf "$ART_TEST_CHROOT/data"
+
+    echo -e "${green}Remove entire chroot directory${nc}"
+    adb shell rmdir "$ART_TEST_CHROOT" || adb shell ls -la "$ART_TEST_CHROOT"
+  fi
 else
   adb shell rm -rf \
     /data/local/tmp /data/art-test /data/nativetest /data/nativetest64 '/data/misc/trace/*'
