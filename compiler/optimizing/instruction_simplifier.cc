@@ -117,6 +117,7 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
   void SimplifyFP2Int(HInvoke* invoke);
   void SimplifyStringCharAt(HInvoke* invoke);
   void SimplifyStringIsEmptyOrLength(HInvoke* invoke);
+  void SimplifyStringIndexOf(HInvoke* invoke);
   void SimplifyNPEOnArgN(HInvoke* invoke, size_t);
   void SimplifyReturnThis(HInvoke* invoke);
   void SimplifyAllocationIntrinsic(HInvoke* invoke);
@@ -2417,6 +2418,43 @@ void InstructionSimplifierVisitor::SimplifyStringIsEmptyOrLength(HInvoke* invoke
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, replacement);
 }
 
+void InstructionSimplifierVisitor::SimplifyStringIndexOf(HInvoke* invoke) {
+  DCHECK(invoke->GetIntrinsic() == Intrinsics::kStringIndexOf ||
+         invoke->GetIntrinsic() == Intrinsics::kStringIndexOfAfter);
+  if (invoke->InputAt(0)->IsLoadString()) {
+    HLoadString* load_string = invoke->InputAt(0)->AsLoadString();
+    const DexFile& dex_file = load_string->GetDexFile();
+    uint32_t utf16_length;
+    const char* data =
+        dex_file.StringDataAndUtf16LengthByIdx(load_string->GetStringIndex(), &utf16_length);
+    if (utf16_length == 0) {
+      invoke->ReplaceWith(GetGraph()->GetIntConstant(-1));
+      invoke->GetBlock()->RemoveInstruction(invoke);
+      RecordSimplification();
+      return;
+    }
+    if (utf16_length == 1 && invoke->GetIntrinsic() == Intrinsics::kStringIndexOf) {
+      // Simplify to HSelect(HEquals(., load_string.charAt(0)), 0, -1).
+      // If the sought character is supplementary, this gives the correct result, i.e. -1.
+      uint32_t c = GetUtf16FromUtf8(&data);
+      DCHECK_EQ(GetTrailingUtf16Char(c), 0u);
+      DCHECK_EQ(GetLeadingUtf16Char(c), c);
+      uint32_t dex_pc = invoke->GetDexPc();
+      ArenaAllocator* allocator = GetGraph()->GetAllocator();
+      HEqual* equal =
+          new (allocator) HEqual(invoke->InputAt(1), GetGraph()->GetIntConstant(c), dex_pc);
+      invoke->GetBlock()->InsertInstructionBefore(equal, invoke);
+      HSelect* result = new (allocator) HSelect(equal,
+                                                GetGraph()->GetIntConstant(0),
+                                                GetGraph()->GetIntConstant(-1),
+                                                dex_pc);
+      invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, result);
+      RecordSimplification();
+      return;
+    }
+  }
+}
+
 // This method should only be used on intrinsics whose sole way of throwing an
 // exception is raising a NPE when the nth argument is null. If that argument
 // is provably non-null, we can clear the flag.
@@ -2553,6 +2591,10 @@ void InstructionSimplifierVisitor::VisitInvoke(HInvoke* instruction) {
     case Intrinsics::kStringIsEmpty:
     case Intrinsics::kStringLength:
       SimplifyStringIsEmptyOrLength(instruction);
+      break;
+    case Intrinsics::kStringIndexOf:
+    case Intrinsics::kStringIndexOfAfter:
+      SimplifyStringIndexOf(instruction);
       break;
     case Intrinsics::kStringStringIndexOf:
     case Intrinsics::kStringStringIndexOfAfter:
