@@ -21,6 +21,7 @@
 
 #include <android-base/file.h>
 
+#include "dexanalyze_bytecode.h"
 #include "dexanalyze_experiments.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file.h"
@@ -28,6 +29,7 @@
 #include "dex/dex_instruction-inl.h"
 
 namespace art {
+namespace dexanalyze {
 
 class DexAnalyze {
   static constexpr int kExitCodeUsageError = 1;
@@ -51,9 +53,12 @@ class DexAnalyze {
         << "    -count_indices (Count dex indices accessed from code items)\n"
         << "    -analyze-strings (Analyze string data)\n"
         << "    -analyze-debug-info (Analyze debug info)\n"
+        << "    -new-bytecode (Bytecode optimizations)\n"
         << "    -i (Ignore Dex checksum and verification failures)\n"
         << "    -a (Run all experiments)\n"
-        << "    -d (Dump on per DEX basis)\n";
+        << "    -n <int> (run experiment with 1 .. n as argument)\n"
+        << "    -d (Dump on per Dex basis)\n"
+        << "    -v (Verbose dumping)\n";
     return kExitCodeUsageError;
   }
 
@@ -65,14 +70,25 @@ class DexAnalyze {
         if (arg == "-i") {
           verify_checksum_ = false;
           run_dex_file_verifier_ = false;
+        } else if (arg == "-v") {
+          verbose_ = true;
         } else if (arg == "-a") {
           run_all_experiments_ = true;
+        } else if (arg == "-n") {
+          if (i + 1 >= argc) {
+            return Usage(argv);
+          }
+          std::istringstream iss(argv[i + 1]);
+          iss >> experiment_max_;
+          ++i;
         } else if (arg == "-count-indices") {
           exp_count_indices_ = true;
         } else if (arg == "-analyze-strings") {
           exp_analyze_strings_ = true;
         } else if (arg == "-analyze-debug-info") {
           exp_debug_info_ = true;
+        } else if (arg == "-new-bytecode") {
+          exp_bytecode_ = true;
         } else if (arg == "-d") {
           dump_per_input_dex_ = true;
         } else if (!arg.empty() && arg[0] == '-') {
@@ -88,6 +104,7 @@ class DexAnalyze {
       return 0;
     }
 
+    bool verbose_ = false;
     bool verify_checksum_ = true;
     bool run_dex_file_verifier_ = true;
     bool dump_per_input_dex_ = false;
@@ -95,7 +112,9 @@ class DexAnalyze {
     bool exp_code_metrics_ = false;
     bool exp_analyze_strings_ = false;
     bool exp_debug_info_ = false;
+    bool exp_bytecode_ = false;
     bool run_all_experiments_ = false;
+    uint64_t experiment_max_ = 1u;
     std::vector<std::string> filenames_;
   };
 
@@ -113,6 +132,22 @@ class DexAnalyze {
       }
       if (options->run_all_experiments_ || options->exp_debug_info_) {
         experiments_.emplace_back(new AnalyzeDebugInfo);
+      }
+      if (options->run_all_experiments_ || options->exp_bytecode_) {
+        for (size_t i = 0; i < options->experiment_max_; ++i) {
+          uint64_t exp_value = 0u;
+          if (i == 0) {
+            exp_value = std::numeric_limits<uint64_t>::max();
+          } else if (i == 1) {
+            exp_value = 0u;
+          } else {
+            exp_value = 1u << (i - 2);
+          }
+          experiments_.emplace_back(new NewRegisterInstructions(exp_value));
+        }
+      }
+      for (const std::unique_ptr<Experiment>& experiment : experiments_) {
+        experiment->dump_ = options->verbose_;
       }
     }
 
@@ -188,9 +223,10 @@ class DexAnalyze {
   }
 };
 
+}  // namespace dexanalyze
 }  // namespace art
 
 int main(int argc, char** argv) {
-  return art::DexAnalyze::Run(argc, argv);
+  return art::dexanalyze::DexAnalyze::Run(argc, argv);
 }
 
