@@ -52,6 +52,7 @@ import json
 import multiprocessing
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -116,6 +117,7 @@ build = False
 gdb = False
 gdb_arg = ''
 runtime_option = ''
+run_test_option = []
 stop_testrunner = False
 dex2oat_jobs = -1   # -1 corresponds to default threads for dex2oat
 run_all_configs = False
@@ -325,6 +327,8 @@ def run_tests(tests):
     options_all += ' --gdb'
     if gdb_arg:
       options_all += ' --gdb-arg ' + gdb_arg
+
+  options_all += ' '.join(run_test_option)
 
   if runtime_option:
     for opt in runtime_option:
@@ -905,6 +909,7 @@ def parse_option():
   global gdb
   global gdb_arg
   global runtime_option
+  global run_test_option
   global timeout
   global dex2oat_jobs
   global run_all_configs
@@ -934,6 +939,12 @@ def parse_option():
   global_group.set_defaults(build = env.ART_TEST_RUN_TEST_BUILD)
   global_group.add_argument('--gdb', action='store_true', dest='gdb')
   global_group.add_argument('--gdb-arg', dest='gdb_arg')
+  global_group.add_argument('--run-test-option', action='append', dest='run_test_option',
+                            default=[],
+                            help="""Pass an option, unaltered, to the run-test script.
+                            This should be enclosed in single-quotes to allow for spaces. The option
+                            will be split using shlex.split() prior to invoking run-test.
+                            Example \"--run-test-option='--with-agent libtifast.so=MethodExit'\"""")
   global_group.add_argument('--runtime-option', action='append', dest='runtime_option',
                             help="""Pass an option to the runtime. Runtime options
                             starting with a '-' must be separated by a '=', for
@@ -982,6 +993,8 @@ def parse_option():
     if options['gdb_arg']:
       gdb_arg = options['gdb_arg']
   runtime_option = options['runtime_option'];
+  run_test_option = sum(map(shlex.split, options['run_test_option']), [])
+
   timeout = options['timeout']
   if options['dex2oat_jobs']:
     dex2oat_jobs = options['dex2oat_jobs']
