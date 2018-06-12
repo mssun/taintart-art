@@ -16,6 +16,7 @@
 
 #include "dexanalyze_experiments.h"
 
+#include <algorithm>
 #include <stdint.h>
 #include <inttypes.h>
 #include <iostream>
@@ -289,15 +290,56 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   for (ClassAccessor accessor : dex_file.GetClasses()) {
     std::set<size_t> unique_method_ids;
     std::set<size_t> unique_string_ids;
+    // Types accessed and count.
+    std::map<size_t, size_t> types_accessed;
+
+    // Map from dex field index -> class field index.
+    std::map<uint32_t, uint32_t> field_index_map_;
+    size_t current_idx = 0u;
+    for (const ClassAccessor::Field& field : accessor.GetInstanceFields()) {
+      field_index_map_[field.GetIndex()] = current_idx++;
+    }
+
     for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-      dex_code_bytes_ += method.GetInstructions().InsnsSizeInBytes();
+      CodeItemDataAccessor code_item(dex_file, method.GetCodeItem());
+      dex_code_bytes_ += code_item.InsnsSizeInBytes();
       unique_code_items.insert(method.GetCodeItemOffset());
-      for (const DexInstructionPcPair& inst : method.GetInstructions()) {
+      for (const DexInstructionPcPair& inst : code_item) {
         switch (inst->Opcode()) {
           case Instruction::CONST_STRING: {
             const dex::StringIndex string_index(inst->VRegB_21c());
             unique_string_ids.insert(string_index.index_);
             ++num_string_ids_from_code_;
+            break;
+          }
+          case Instruction::IGET:
+          case Instruction::IGET_WIDE:
+          case Instruction::IGET_OBJECT:
+          case Instruction::IGET_BOOLEAN:
+          case Instruction::IGET_BYTE:
+          case Instruction::IGET_CHAR:
+          case Instruction::IGET_SHORT:
+          case Instruction::IPUT:
+          case Instruction::IPUT_WIDE:
+          case Instruction::IPUT_OBJECT:
+          case Instruction::IPUT_BOOLEAN:
+          case Instruction::IPUT_BYTE:
+          case Instruction::IPUT_CHAR:
+          case Instruction::IPUT_SHORT: {
+            const uint32_t receiver = inst->VRegB_22c();
+            const uint32_t dex_field_idx = inst->VRegC_22c();
+            const uint32_t first_arg_reg = code_item.RegistersSize() - code_item.InsSize();
+            ++field_receiver_[(receiver - first_arg_reg) & 0xF];
+            ++types_accessed[dex_file.GetFieldId(dex_field_idx).class_idx_.index_];
+            if (first_arg_reg == receiver) {
+              auto it = field_index_map_.find(dex_field_idx);
+              if (it != field_index_map_.end() && it->second < kMaxFieldIndex) {
+                ++field_index_[it->second];
+              } else {
+                ++field_index_other_;
+              }
+            }
+            ++field_output_[inst->VRegA_22c()];
             break;
           }
           case Instruction::CONST_STRING_JUMBO: {
@@ -310,6 +352,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_VIRTUAL:
           case Instruction::INVOKE_VIRTUAL_RANGE: {
             uint32_t method_idx = DexMethodIndex(inst.Inst());
+            ++types_accessed[dex_file.GetMethodId(method_idx).class_idx_.index_];
             if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_virtual_;
             }
@@ -320,6 +363,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_DIRECT:
           case Instruction::INVOKE_DIRECT_RANGE: {
             uint32_t method_idx = DexMethodIndex(inst.Inst());
+            ++types_accessed[dex_file.GetMethodId(method_idx).class_idx_.index_];
             if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_direct_;
             }
@@ -330,6 +374,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_STATIC:
           case Instruction::INVOKE_STATIC_RANGE: {
             uint32_t method_idx = DexMethodIndex(inst.Inst());
+            ++types_accessed[dex_file.GetMethodId(method_idx).class_idx_.index_];
             if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_static_;
             }
@@ -340,6 +385,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_INTERFACE:
           case Instruction::INVOKE_INTERFACE_RANGE: {
             uint32_t method_idx = DexMethodIndex(inst.Inst());
+            ++types_accessed[dex_file.GetMethodId(method_idx).class_idx_.index_];
             if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_interface_;
             }
@@ -350,6 +396,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::INVOKE_SUPER:
           case Instruction::INVOKE_SUPER_RANGE: {
             uint32_t method_idx = DexMethodIndex(inst.Inst());
+            ++types_accessed[dex_file.GetMethodId(method_idx).class_idx_.index_];
             if (dex_file.GetMethodId(method_idx).class_idx_ == accessor.GetClassIdx()) {
               ++same_class_super_;
             }
@@ -357,18 +404,69 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
             unique_method_ids.insert(method_idx);
             break;
           }
+          case Instruction::NEW_ARRAY: {
+            ++types_accessed[inst->VRegC_22c()];
+            break;
+          }
+          case Instruction::FILLED_NEW_ARRAY: {
+            ++types_accessed[inst->VRegB_35c()];
+            break;
+          }
+          case Instruction::FILLED_NEW_ARRAY_RANGE: {
+            ++types_accessed[inst->VRegB_3rc()];
+            break;
+          }
+          case Instruction::CONST_CLASS:
+          case Instruction::CHECK_CAST:
+          case Instruction::NEW_INSTANCE: {
+            ++types_accessed[inst->VRegB_21c()];
+            break;
+          }
+          case Instruction::INSTANCE_OF: {
+            ++types_accessed[inst->VRegB_21c()];
+            break;
+          }
           default:
             break;
         }
       }
     }
-    total_unique_method_idx_ += unique_method_ids.size();
+    // Count uses of top 16n.
+    std::vector<size_t> uses;
+    for (auto&& p : types_accessed) {
+      uses.push_back(p.second);
+    }
+    std::sort(uses.rbegin(), uses.rend());
+    for (size_t i = 0; i < uses.size(); ++i) {
+      if (i < 16) {
+        uses_top_types_ += uses[i];
+      }
+      uses_all_types_ += uses[i];
+    }
+    total_unique_types_ += types_accessed.size();
+    total_unique_method_ids_ += unique_method_ids.size();
     total_unique_string_ids_ += unique_string_ids.size();
   }
   total_unique_code_items_ += unique_code_items.size();
 }
 
 void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
+  const uint64_t fields_total = std::accumulate(field_receiver_, field_receiver_ + 16u, 0u);
+  for (size_t i = 0; i < 16; ++i) {
+    os << "receiver_reg=" << i << ": " << Percent(field_receiver_[i], fields_total) << "\n";
+  }
+  for (size_t i = 0; i < 16; ++i) {
+    os << "output_reg=" << i << ": " << Percent(field_output_[i], fields_total) << "\n";
+  }
+  const uint64_t fields_idx_total = std::accumulate(field_index_,
+                                                    field_index_ + kMaxFieldIndex,
+                                                    0u) + field_index_other_;
+  for (size_t i = 0; i < kMaxFieldIndex; ++i) {
+    os << "field_idx=" << i << ": " << Percent(field_index_[i], fields_idx_total) << "\n";
+  }
+  os << "field_idx=other: " << Percent(field_index_other_, fields_idx_total) << "\n";
+  os << "field_idx_savings=" << Percent((fields_idx_total - field_index_other_) * 2, total_size)
+     << "\n";
   os << "Num string ids: " << num_string_ids_ << "\n";
   os << "Num method ids: " << num_method_ids_ << "\n";
   os << "Num field ids: " << num_field_ids_ << "\n";
@@ -380,8 +478,10 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Interface same class: " << PercentDivide(same_class_interface_, total_interface_) << "\n";
   os << "Super same class: " << PercentDivide(same_class_super_, total_super_) << "\n";
   os << "Num strings accessed from code: " << num_string_ids_from_code_ << "\n";
-  os << "Unique(per class) method ids accessed from code: " << total_unique_method_idx_ << "\n";
-  os << "Unique(per class) string ids accessed from code: " << total_unique_string_ids_ << "\n";
+  os << "Avg unique methods accessed per class: "
+     << double(total_unique_method_ids_) / double(num_class_defs_) << "\n";
+  os << "Avg unique strings accessed per class: "
+     << double(total_unique_string_ids_) / double(num_class_defs_) << "\n";
   const size_t same_class_total =
       same_class_direct_ +
       same_class_virtual_ +
@@ -396,6 +496,9 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
       total_super_;
   os << "Same class invokes: " << PercentDivide(same_class_total, other_class_total) << "\n";
   os << "Invokes from code: " << (same_class_total + other_class_total) << "\n";
+  os << "Type uses on top types: " << PercentDivide(uses_top_types_, uses_all_types_) << "\n";
+  os << "Type uses 1b savings: " << PercentDivide(uses_top_types_, total_size) << "\n";
+  os << "Total unique types accessed per class " << total_unique_types_ << "\n";
   os << "Total Dex code bytes: " << Percent(dex_code_bytes_, total_size) << "\n";
   os << "Total unique code items: " << total_unique_code_items_ << "\n";
   os << "Total Dex size: " << total_size << "\n";
@@ -420,7 +523,7 @@ void CodeMetrics::ProcessDexFile(const DexFile& dex_file) {
           }
           case Instruction::MOVE_RESULT:
           case Instruction::MOVE_RESULT_OBJECT: {
-            if (space_for_out_arg) {
+            if (space_for_out_arg && inst->VRegA_11x() < 16) {
               move_result_savings_ += inst->SizeInCodeUnits() * 2;
             }
             break;
@@ -441,7 +544,7 @@ void CodeMetrics::Dump(std::ostream& os, uint64_t total_size) const {
   }
   os << "Move result savings: " << Percent(move_result_savings_, total_size) << "\n";
   os << "One byte invoke savings: " << Percent(total, total_size) << "\n";
-  const uint64_t low_arg_total = std::accumulate(arg_counts_, arg_counts_ + 3, 0u);
+  const uint64_t low_arg_total = std::accumulate(arg_counts_, arg_counts_ + 2, 0u);
   os << "Low arg savings: " << Percent(low_arg_total * 2, total_size) << "\n";
 }
 

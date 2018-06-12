@@ -17,6 +17,7 @@
 #ifndef ART_TOOLS_DEXANALYZE_DEXANALYZE_EXPERIMENTS_H_
 #define ART_TOOLS_DEXANALYZE_DEXANALYZE_EXPERIMENTS_H_
 
+#include <cstdint>
 #include <iosfwd>
 #include <memory>
 #include <set>
@@ -90,9 +91,15 @@ class CountDexIndices : public Experiment {
  private:
   // Total string ids loaded from dex code.
   size_t num_string_ids_from_code_ = 0;
-  size_t total_unique_method_idx_ = 0;
+  size_t total_unique_method_ids_ = 0;
   size_t total_unique_string_ids_ = 0;
   uint64_t total_unique_code_items_ = 0u;
+
+  static constexpr size_t kMaxFieldIndex = 32;
+  uint64_t field_index_[kMaxFieldIndex] = {};
+  uint64_t field_index_other_ = 0u;
+  uint64_t field_receiver_[16] = {};
+  uint64_t field_output_[16] = {};
 
   // Other dex ids.
   size_t dex_code_bytes_ = 0;
@@ -113,6 +120,11 @@ class CountDexIndices : public Experiment {
   size_t total_interface_ = 0;
   size_t same_class_super_ = 0;
   size_t total_super_ = 0;
+
+  // Type usage.
+  uint64_t uses_top_types_ = 0u;
+  uint64_t uses_all_types_ = 0u;
+  uint64_t total_unique_types_ = 0u;
 };
 
 // Measure various code metrics including args per invoke-virtual, fill/spill move patterns.
