@@ -295,4 +295,35 @@ public class DominatorsTest {
     assertEquals(p, d.dominator);
     assertEquals(p, e.dominator);
   }
+
+  @Test
+  public void twiceRevisit() {
+    //       /---->---\
+    //      /     /--> f -->-\
+    // --> a --> b -->--x---> c --> d
+    //            \----------->----/
+    // A regression test for a bug where we failed to ever revisit a node more
+    // than once. The node c is revisited a first time to bring its dominator
+    // up to b. c needs to be revisited again after the dominator for f is
+    // pulled up to a, and that revisit of c is necessary to ensure the
+    // dominator for d is pulled up to a.
+    Node a = new Node("a");
+    Node b = new Node("b");
+    Node x = new Node("x");
+    Node c = new Node("c");
+    Node d = new Node("d");
+    Node f = new Node("f");
+    a.depends = Arrays.asList(f, b);
+    b.depends = Arrays.asList(f, d, x);
+    x.depends = Arrays.asList(c);
+    c.depends = Arrays.asList(d);
+    f.depends = Arrays.asList(c);
+
+    a.computeDominators();
+    assertEquals(a, b.dominator);
+    assertEquals(b, x.dominator);
+    assertEquals(a, c.dominator);
+    assertEquals(a, d.dominator);
+    assertEquals(a, f.dominator);
+  }
 }

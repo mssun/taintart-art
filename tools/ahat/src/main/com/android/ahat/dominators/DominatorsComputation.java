@@ -17,9 +17,8 @@
 package com.android.ahat.dominators;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
-import java.util.List;
 import java.util.Queue;
 
 /**
@@ -106,42 +105,132 @@ public class DominatorsComputation {
     // dominator of B.
     public long id;
 
-    // Upper bound on the id of this node's dominator.
-    // The true immediate dominator of this node must have id <= domid.
-    // This upper bound is slowly tightened as part of the dominators
-    // computation.
-    public long domid;
+    // The largest id of all nodes reachable from this node.
+    // If foo.id > this.maxReachableId, then foo is not reachable from this
+    // node.
+    public long maxReachableId;
+
+    // The set of ids of nodes that have references to this node.
+    public IdSet inRefIds = new IdSet();
 
     // The current candidate dominator for this node.
-    // Invariant: (domid < domS.id) implies this node is on the queue of
-    // nodes to be revisited.
+    // The true immediate dominator of this node must have id <= domS.id.
     public NodeS domS;
 
-    // A node with a reference to this node that is one step closer to the
-    // root than this node.
-    // Invariant: srcS.id < this.id
-    public NodeS srcS;
+    // The previous candidate dominator for this node.
+    // Invariant:
+    // * There are no nodes xS reachable from this node on a path of nodes
+    //   with increasing ids (not counting xS.id) for which
+    //   this.id > xS.domS.id > this.oldDomS.id.
+    // This ensures that when all nodes xS satisfy xS.domS == xS.oldDomS, we
+    // have found the true immediate dominator of each node.
+    //
+    // Note: We only use this field to tell if this node is scheduled to be
+    // revisited. We could replace it with a boolean to save space, but it
+    // probably doesn't save that much space and it's easier to explain the
+    // algorithm if we can refer to this field.
+    public NodeS oldDomS;
 
-    // The largest id of the nodes we have seen so far on a path from the root
-    // to this node. Used to keep track of which nodes we have already seen
-    // and avoid processing them again.
-    public long seenid;
+    // The set of nodes that this node is the candidate immediate dominator
+    // of. More precisely, the set of nodes xS such that xS.domS == this.
+    public NodeSet dominated = new NodeSet();
 
-    // The set of nodes X reachable by 'this' on a path of nodes from the
-    // root with increasing ids (possibly excluding X) that this node does not
-    // dominate (this.id > X.domid).
-    // We can use a List instead of a Set for this because we guarentee based
-    // on seenid that we don't add the same node more than once to the list.
-    public List<NodeS> undom = new ArrayList<NodeS>();
+    // The set of nodes that this node is the old candidate immediate
+    // dominator of that need to be revisited. Specifically, the set of nodes
+    // xS such that:
+    //   xS.oldDomS == this && xS.oldDomS != xS.domS.
+    //
+    // The empty set is represented as null instead of an empty NodeSet to
+    // save memory.
+    // Invariant:
+    //   If revisit != null, this node is on the global list of nodes to be
+    //   revisited.
+    public NodeSet revisit = null;
   }
 
-  private static class Link {
-    public NodeS srcS;
-    public Node dst;
+  // A collection of node ids.
+  private static class IdSet {
+    private int size = 0;
+    private long[] ids = new long[4];
 
+    // Adds an id to the set.
+    public void add(long id) {
+      if (size == ids.length) {
+        ids = Arrays.copyOf(ids, size * 2);
+      }
+      ids[size++] = id;
+    }
+
+    // Returns the most recent id added to the set. Behavior is undefined if
+    // the set is empty.
+    public long last() {
+      assert size != 0;
+      return ids[size - 1];
+    }
+
+    // Returns true if the set contains an id in the range [low, high]
+    // inclusive, false otherwise.
+    public boolean hasIdInRange(long low, long high) {
+      for (int i = 0; i < size; ++i) {
+        if (low <= ids[i] && ids[i] <= high) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  // An unordered set of nodes data structure supporting efficient iteration
+  // over elements. The bulk of the time spent in the dominators algorithm is
+  // iterating over these sets. Using an array to store the set provides
+  // noticable performance improvements over ArrayList or a linked list.
+  private static class NodeSet {
+    public int size = 0;
+    public NodeS[] nodes = new NodeS[4];
+
+    public void add(NodeS nodeS) {
+      if (size == nodes.length) {
+        nodes = Arrays.copyOf(nodes, size * 2);
+      }
+      nodes[size++] = nodeS;
+    }
+
+    public void remove(NodeS nodeS) {
+      for (int i = 0; i < size; ++i) {
+        if (nodes[i] == nodeS) {
+          remove(i);
+          break;
+        }
+      }
+    }
+
+    public void remove(int index) {
+      nodes[index] = nodes[--size];
+      nodes[size] = null;
+    }
+  }
+
+  // A reference from a source node to a destination node to be processed
+  // during the initial depth-first traversal of nodes.
+  //
+  // Also used as a marker to indicate when the depth-first traversal has been
+  // completed for a node. In that case, srcS is the node depth-first
+  // traversal has been completed for, and dst will be set to null.
+  private static class Link {
+    public final NodeS srcS;
+    public final Node dst;
+
+    // Constructor for a reference from srcS to dst.
     public Link(NodeS srcS, Node dst) {
       this.srcS = srcS;
       this.dst = dst;
+    }
+
+    // Constructor for a marker indicating depth-first traversal has been
+    // completed for srcS.
+    public Link(NodeS srcS) {
+      this.srcS = srcS;
+      this.dst = null;
     }
   }
 
@@ -158,16 +247,10 @@ public class DominatorsComputation {
   public static void computeDominators(Node root) {
     long id = 0;
 
-    // List of all nodes seen. We keep track of this here to update all the
-    // dominators once we are done.
-    List<NodeS> nodes = new ArrayList<NodeS>();
-
-    // The set of nodes N such that N.domid < N.domS.id. These nodes need
-    // to be revisisted because their dominator is clearly wrong.
+    // The set of nodes xS such that xS.revisit != null.
     // Use a Queue instead of a Set because performance will be better. We
-    // avoid adding nodes already on the queue by checking whether it was
-    // already true that N.domid < N.domS.id, in which case the node is
-    // already on the queue.
+    // avoid adding nodes already on the queue by checking
+    // xS == null before adding the node to the queue.
     Queue<NodeS> revisit = new ArrayDeque<NodeS>();
 
     // Set up the root node specially.
@@ -176,107 +259,166 @@ public class DominatorsComputation {
     rootS.id = id++;
     root.setDominatorsComputationState(rootS);
 
-    // 1. Do a depth first search of the nodes, label them with ids and come
-    // up with intial candidate dominators for them.
     Deque<Link> dfs = new ArrayDeque<Link>();
+    dfs.push(new Link(rootS));
     for (Node child : root.getReferencesForDominators()) {
       dfs.push(new Link(rootS, child));
     }
 
+    // 1. Do a depth first search of the nodes, label them with ids and come
+    // up with initial candidate dominators for them.
     while (!dfs.isEmpty()) {
       Link link = dfs.pop();
-      NodeS dstS = (NodeS)link.dst.getDominatorsComputationState();
-      if (dstS == null) {
-        // This is the first time we have seen the node. The candidate
-        // dominator is link src.
-        dstS = new NodeS();
-        dstS.node = link.dst;
-        dstS.id = id++;
-        dstS.domid = link.srcS.id;
-        dstS.domS = link.srcS;
-        dstS.srcS = link.srcS;
-        dstS.seenid = dstS.domid;
-        nodes.add(dstS);
-        link.dst.setDominatorsComputationState(dstS);
 
-        for (Node child : link.dst.getReferencesForDominators()) {
-          dfs.push(new Link(dstS, child));
-        }
+      if (link.dst == null) {
+        // This is the marker link indicating we have now visited all
+        // nodes reachable from link.srcS.
+        link.srcS.maxReachableId = id - 1;
       } else {
-        // We have seen the node already. Update the state based on the new
-        // potential dominator.
-        NodeS srcS = link.srcS;
-        boolean revisiting = dstS.domid < dstS.domS.id;
+        NodeS dstS = (NodeS)link.dst.getDominatorsComputationState();
+        if (dstS == null) {
+          // We are seeing the destination node for the first time.
+          // The candidate dominator is the source node.
+          dstS = new NodeS();
+          link.dst.setDominatorsComputationState(dstS);
 
-        while (srcS.id > dstS.seenid) {
-          srcS.undom.add(dstS);
-          srcS = srcS.srcS;
-        }
-        dstS.seenid = link.srcS.id;
+          dstS.node = link.dst;
+          dstS.id = id++;
+          dstS.inRefIds.add(link.srcS.id);
+          dstS.domS = link.srcS;
+          dstS.domS.dominated.add(dstS);
+          dstS.oldDomS = link.srcS;
 
-        if (srcS.id < dstS.domid) {
-          // In this case, dstS.domid must be wrong, because we just found a
-          // path to dstS that does not go through dstS.domid:
-          // All nodes from root to srcS have id < domid, and all nodes from
-          // srcS to dstS had id > domid, so dstS.domid cannot be on this path
-          // from root to dstS.
-          dstS.domid = srcS.id;
-          if (!revisiting) {
-            revisit.add(dstS);
+          dfs.push(new Link(dstS));
+          for (Node child : link.dst.getReferencesForDominators()) {
+            dfs.push(new Link(dstS, child));
+          }
+        } else {
+          // We have seen the destination node before. Update the state based
+          // on the new potential dominator.
+          long seenid = dstS.inRefIds.last();
+          dstS.inRefIds.add(link.srcS.id);
+
+          // Go up the dominator chain until we reach a node we haven't already
+          // seen with a path to dstS.
+          NodeS xS = link.srcS;
+          while (xS.id > seenid) {
+            xS = xS.domS;
+          }
+
+          // The new dominator for dstS must have an id less than the node we
+          // just reached. Pull the dominator for dstS up its dominator
+          // chain until we find a suitable new dominator for dstS.
+          long domid = xS.id;
+          if (dstS.domS.id > domid) {
+            // Mark the node as needing to be revisited.
+            if (dstS.domS == dstS.oldDomS) {
+              if (dstS.oldDomS.revisit == null) {
+                dstS.oldDomS.revisit = new NodeSet();
+                revisit.add(dstS.oldDomS);
+              }
+              dstS.oldDomS.revisit.add(dstS);
+            }
+
+            // Update the node's candidate dominator.
+            dstS.domS.dominated.remove(dstS);
+            do {
+              dstS.domS = dstS.domS.domS;
+            } while (dstS.domS.id > domid);
+            dstS.domS.dominated.add(dstS);
           }
         }
       }
     }
 
-    // 2. Continue revisiting nodes until they all satisfy the requirement
-    // that domS.id <= domid.
+    // 2. Continue revisiting nodes until every node satisfies the requirement
+    // that domS.id == oldDomS.id.
+    while (!revisit.isEmpty()) {
+      NodeS oldDomS = revisit.poll();
+      assert oldDomS.revisit != null;
+
+      NodeSet nodes = oldDomS.revisit;
+      oldDomS.revisit = null;
+
+      // Search for pairs of nodes nodeS, xS for which
+      //    nodeS.id > xS.domS.id > nodeS.oldDomS.id
+      // and there is a path of nodes with increasing ids from nodeS to xS.
+      // In that case, xS.domS must be wrong, because there is a path to xS
+      // from the root that does not go through xS.domS:
+      // * There is a path from the root to nodeS.oldDomS that doesn't go
+      //   through xS.domS. Otherwise xS.domS would be a dominator of
+      //   nodeS.oldDomS, but it can't be because xS.domS.id > nodeS.oldDomS.id.
+      // * There is a path from nodeS.oldDomS to nodeS that doesn't go through
+      //   xS.domS, because xS.domS is not a dominator of nodeS.
+      // * There is a path from nodeS to xS that doesn't go through xS.domS,
+      //   because we have a path of increasing ids from nodeS to xS, none of
+      //   which can have an id smaller than nodeS as xS.domS does.
+      for (int i = 0; i < oldDomS.dominated.size; ++i) {
+        NodeS xS = oldDomS.dominated.nodes[i];
+        for (int j = 0; j < nodes.size; ++j) {
+          NodeS nodeS = nodes.nodes[j];
+          assert nodeS.oldDomS == oldDomS;
+          if (isReachableAscending(nodeS, xS)) {
+            // Update the dominator for xS.
+            if (xS.domS == xS.oldDomS) {
+              if (xS.oldDomS.revisit == null) {
+                xS.oldDomS.revisit = new NodeSet();
+                revisit.add(xS.oldDomS);
+              }
+              xS.oldDomS.revisit.add(xS);
+            }
+            oldDomS.dominated.remove(i--);
+            xS.domS = nodeS.domS;
+            xS.domS.dominated.add(xS);
+            break;
+          }
+        }
+      }
+
+      // We can now safely update oldDomS for each of the nodes nodeS while
+      // preserving the oldDomS invariant.
+      for (int i = 0; i < nodes.size; ++i) {
+        NodeS nodeS = nodes.nodes[i];
+        nodeS.oldDomS = oldDomS.oldDomS;
+        if (nodeS.oldDomS != nodeS.domS) {
+          if (nodeS.oldDomS.revisit == null) {
+            nodeS.oldDomS.revisit = new NodeSet();
+            revisit.add(nodeS.oldDomS);
+          }
+          nodeS.oldDomS.revisit.add(nodeS);
+        }
+      }
+    }
+
+    // 3. We have figured out the correct dominator for each node. Notify the
+    // user of the results by doing one last traversal of the nodes.
+    assert revisit.isEmpty();
+    revisit.add(rootS);
     while (!revisit.isEmpty()) {
       NodeS nodeS = revisit.poll();
-      NodeS domS = nodeS.domS;
-      assert nodeS.domid < domS.id;
-      while (domS.id > nodeS.domid) {
-        if (domS.domS.id < nodeS.domid) {
-          // In this case, nodeS.domid must be wrong, because there is a path
-          // from root to nodeS that does not go through nodeS.domid:
-          //  * We can go from root to domS without going through nodeS.domid,
-          //    because otherwise nodeS.domid would dominate domS, not
-          //    domS.domS.
-          //  * We can go from domS to nodeS without going through nodeS.domid
-          //    because we know nodeS is reachable from domS on a path of nodes
-          //    with increases ids, which cannot include nodeS.domid, which
-          //    has a smaller id than domS.
-          nodeS.domid = domS.domS.id;
-        }
-        domS.undom.add(nodeS);
-        domS = domS.srcS;
-      }
-      nodeS.domS = domS;
-      nodeS.domid = domS.id;
-
-      for (NodeS xS : nodeS.undom) {
-        if (domS.id < xS.domid) {
-          // In this case, xS.domid must be wrong, because there is a path
-          // from the root to xX that does not go through xS.domid:
-          //  * We can go from root to nodeS without going through xS.domid,
-          //    because otherwise xS.domid would dominate nodeS, not domS.
-          //  * We can go from nodeS to xS without going through xS.domid
-          //    because we know xS is reachable from nodeS on a path of nodes
-          //    with increasing ids, which cannot include xS.domid, which has
-          //    a smaller id than nodeS.
-          boolean revisiting = xS.domid < xS.domS.id;
-          xS.domid = domS.id;
-          if (!revisiting) {
-            revisit.add(xS);
-          }
-        }
-      }
-    }
-
-    // 3. Update the dominators of the nodes.
-    root.setDominatorsComputationState(null);
-    for (NodeS nodeS : nodes) {
-      nodeS.node.setDominator(nodeS.domS.node);
+      assert nodeS.domS == nodeS.oldDomS;
+      assert nodeS.revisit == null;
       nodeS.node.setDominatorsComputationState(null);
+      for (int i = 0; i < nodeS.dominated.size; ++i) {
+        NodeS xS = nodeS.dominated.nodes[i];
+        xS.node.setDominator(nodeS.node);
+        revisit.add(xS);
+      }
     }
+  }
+
+  // Returns true if there is a path from srcS to dstS of nodes with ascending
+  // ids (not including dstS.id).
+  private static boolean isReachableAscending(NodeS srcS, NodeS dstS) {
+    if (dstS.id < srcS.id) {
+      // The first time we saw dstS was before we saw srcS. See if srcS is on
+      // the source chain for any nodes with direct references to dstS.
+      return dstS.inRefIds.hasIdInRange(srcS.id, srcS.maxReachableId);
+    }
+
+    // Otherwise dstS is only reachable from srcS on a node with ascending ids
+    // if it was visited for the first time while performing the depth-first
+    // traversal of srcS.
+    return dstS.id <= srcS.maxReachableId;
   }
 }
