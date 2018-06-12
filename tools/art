@@ -22,6 +22,7 @@ DELETE_ANDROID_DATA="no"
 LAUNCH_WRAPPER=
 LIBART=libart.so
 JIT_PROFILE="no"
+ALLOW_DEFAULT_JDWP="no"
 VERBOSE="no"
 CLEAN_OAT_FILES="yes"
 EXTRA_OPTIONS=()
@@ -90,6 +91,8 @@ Supported OPTIONS include:
   --profile                Run with profiling, then run using profile data.
   --verbose                Run script verbosely.
   --no-clean               Don't cleanup oat directories.
+  --allow-default-jdwp     Don't automatically put in -XjdwpProvider:none.
+                           You probably do not want this.
 
 The ART_OPTIONS are passed directly to the Android Runtime.
 
@@ -306,6 +309,9 @@ while [[ "$1" = "-"* ]]; do
   --no-clean)
     CLEAN_OAT_FILES="no"
     ;;
+  --allow-default-jdwp)
+    ALLOW_DEFAULT_JDWP="yes"
+    ;;
   --*)
     echo "unknown option: $1" 1>&2
     usage
@@ -355,6 +361,10 @@ fi
 if [ "$PERF" != "" ]; then
   LAUNCH_WRAPPER="perf record -g -o $ANDROID_DATA/perf.data -e cycles:u $LAUNCH_WRAPPER"
   EXTRA_OPTIONS+=(-Xcompiler-option --generate-debug-info)
+fi
+
+if [ "$ALLOW_DEFAULT_JDWP" = "no" ]; then
+  EXTRA_OPTIONS+=(-XjdwpProvider:none)
 fi
 
 if [ "$JIT_PROFILE" = "yes" ]; then
