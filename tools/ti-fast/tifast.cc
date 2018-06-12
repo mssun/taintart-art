@@ -32,6 +32,10 @@ namespace tifast {
 
 namespace {
 
+// Special art ti-version number. We will use this as a fallback if we cannot get a regular JVMTI
+// env.
+static constexpr jint kArtTiVersion = JVMTI_VERSION_1_2 | 0x40000000;
+
 static void AddCapsForEvent(jvmtiEvent event, jvmtiCapabilities* caps) {
   switch (event) {
 #define DO_CASE(name, cap_name) \
@@ -135,6 +139,17 @@ static std::vector<jvmtiEvent> GetRequestedEventList(const std::string& args) {
   return res;
 }
 
+static jint SetupJvmtiEnv(JavaVM* vm, jvmtiEnv** jvmti) {
+  jint res = 0;
+  res = vm->GetEnv(reinterpret_cast<void**>(jvmti), JVMTI_VERSION_1_1);
+
+  if (res != JNI_OK || *jvmti == nullptr) {
+    LOG(ERROR) << "Unable to access JVMTI, error code " << res;
+    return vm->GetEnv(reinterpret_cast<void**>(jvmti), kArtTiVersion);
+  }
+  return res;
+}
+
 }  // namespace
 
 static jint AgentStart(JavaVM* vm,
@@ -142,14 +157,9 @@ static jint AgentStart(JavaVM* vm,
                        void* reserved ATTRIBUTE_UNUSED) {
   jvmtiEnv* jvmti = nullptr;
   jvmtiError error = JVMTI_ERROR_NONE;
-  {
-    jint res = 0;
-    res = vm->GetEnv(reinterpret_cast<void**>(&jvmti), JVMTI_VERSION_1_1);
-
-    if (res != JNI_OK || jvmti == nullptr) {
-      LOG(ERROR) << "Unable to access JVMTI, error code " << res;
-      return JNI_ERR;
-    }
+  if (SetupJvmtiEnv(vm, &jvmti) != JNI_OK) {
+    LOG(ERROR) << "Could not get JVMTI env or ArtTiEnv!";
+    return JNI_ERR;
   }
   std::string args(options);
   bool is_log = false;
