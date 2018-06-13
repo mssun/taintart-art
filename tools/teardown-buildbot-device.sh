@@ -25,62 +25,82 @@ adb root
 adb wait-for-device
 
 if [[ -n "$ART_TEST_CHROOT" ]]; then
-
-  # remove_filesystem_from_chroot DIR-IN-CHROOT FSTYPE REMOVE-DIR-IN-CHROOT
-  # -----------------------------------------------------------------------
-  # Unmount filesystem with type FSTYPE mounted in directory DIR-IN-CHROOT
-  # under the chroot directory.
-  # Remove DIR-IN-CHROOT under the chroot if REMOVE-DIR-IN-CHROOT is
-  # true.
-  remove_filesystem_from_chroot() {
-    local dir_in_chroot=$1
-    local fstype=$2
-    local remove_dir=$3
-    local dir="$ART_TEST_CHROOT/$dir_in_chroot"
-    adb shell test -d "$dir" \
-      && adb shell mount | grep -q "^$fstype on $dir type $fstype " \
-      && if adb shell umount "$dir"; then
-           $remove_dir && adb shell rmdir "$dir"
-         else
-           adb shell lsof "$dir"
-         fi
-  }
-
-  # Tear down the chroot dir.
-  echo -e "${green}Tear down the chroot dir in $ART_TEST_CHROOT${nc}"
-
   # Check that ART_TEST_CHROOT is correctly defined.
   [[ "x$ART_TEST_CHROOT" = x/* ]] || { echo "$ART_TEST_CHROOT is not an absolute path"; exit 1; }
 
-  # Remove /dev from chroot.
-  remove_filesystem_from_chroot dev tmpfs true
+  if adb shell test -d "$ART_TEST_CHROOT"; then
+    # Display users of the chroot dir.
 
-  # Remove /sys/kernel/debug from chroot.
-  # The /sys/kernel/debug directory under the chroot dir cannot be
-  # deleted, as it is part of the host device's /sys filesystem.
-  remove_filesystem_from_chroot sys/kernel/debug debugfs false
-  # Remove /sys from chroot.
-  remove_filesystem_from_chroot sys sysfs true
+    echo -e "${green}List open files under chroot dir $ART_TEST_CHROOT${nc}"
+    adb shell lsof | grep "$ART_TEST_CHROOT"
 
-  # Remove /proc from chroot.
-  remove_filesystem_from_chroot proc proc true
+    echo -e "${green}List processes running from binaries under chroot dir $ART_TEST_CHROOT${nc}"
+    for link in $(adb shell ls -d "/proc/*/root"); do
+      root=$(adb shell readlink "$link")
+      if [[ "x$root" = "x$ART_TEST_CHROOT" ]]; then
+        dir=$(dirname "$link")
+        pid=$(basename "$dir")
+        cmdline=$(adb shell cat "$dir"/cmdline | tr -d '\000')
+        echo "$cmdline (PID: $pid)"
+      fi
+    done
 
-  # Remove /etc from chroot.
-  adb shell rm -f "$ART_TEST_CHROOT/etc"
-  adb shell rm -rf "$ART_TEST_CHROOT/system/etc"
 
-  # Remove directories used for ART testing in chroot.
-  adb shell rm -rf "$ART_TEST_CHROOT/data/local/tmp"
-  adb shell rm -rf "$ART_TEST_CHROOT/data/dalvik-cache"
-  adb shell rm -rf "$ART_TEST_CHROOT/tmp"
+    # Tear down the chroot dir.
 
-  # Remove property_contexts file(s) from chroot.
-  property_context_files="/property_contexts \
-    /system/etc/selinux/plat_property_contexts \
-    /vendor/etc/selinux/nonplat_property_context \
-    /plat_property_contexts \
-    /nonplat_property_contexts"
-  for f in $property_context_files; do
-    adb shell rm -f "$ART_TEST_CHROOT$f"
-  done
+    echo -e "${green}Tear down the chroot set up in $ART_TEST_CHROOT${nc}"
+
+    # remove_filesystem_from_chroot DIR-IN-CHROOT FSTYPE REMOVE-DIR-IN-CHROOT
+    # -----------------------------------------------------------------------
+    # Unmount filesystem with type FSTYPE mounted in directory DIR-IN-CHROOT
+    # under the chroot directory.
+    # Remove DIR-IN-CHROOT under the chroot if REMOVE-DIR-IN-CHROOT is
+    # true.
+    remove_filesystem_from_chroot() {
+      local dir_in_chroot=$1
+      local fstype=$2
+      local remove_dir=$3
+      local dir="$ART_TEST_CHROOT/$dir_in_chroot"
+      adb shell test -d "$dir" \
+        && adb shell mount | grep -q "^$fstype on $dir type $fstype " \
+        && if adb shell umount "$dir"; then
+             $remove_dir && adb shell rmdir "$dir"
+           else
+             echo "Files still open in $dir:"
+             adb shell lsof | grep "$dir"
+           fi
+    }
+
+    # Remove /dev from chroot.
+    remove_filesystem_from_chroot dev tmpfs true
+
+    # Remove /sys/kernel/debug from chroot.
+    # The /sys/kernel/debug directory under the chroot dir cannot be
+    # deleted, as it is part of the host device's /sys filesystem.
+    remove_filesystem_from_chroot sys/kernel/debug debugfs false
+    # Remove /sys from chroot.
+    remove_filesystem_from_chroot sys sysfs true
+
+    # Remove /proc from chroot.
+    remove_filesystem_from_chroot proc proc true
+
+    # Remove /etc from chroot.
+    adb shell rm -f "$ART_TEST_CHROOT/etc"
+    adb shell rm -rf "$ART_TEST_CHROOT/system/etc"
+
+    # Remove directories used for ART testing in chroot.
+    adb shell rm -rf "$ART_TEST_CHROOT/data/local/tmp"
+    adb shell rm -rf "$ART_TEST_CHROOT/data/dalvik-cache"
+    adb shell rm -rf "$ART_TEST_CHROOT/tmp"
+
+    # Remove property_contexts file(s) from chroot.
+    property_context_files="/property_contexts \
+      /system/etc/selinux/plat_property_contexts \
+      /vendor/etc/selinux/nonplat_property_context \
+      /plat_property_contexts \
+      /nonplat_property_contexts"
+    for f in $property_context_files; do
+      adb shell rm -f "$ART_TEST_CHROOT$f"
+    done
+  fi
 fi
