@@ -279,22 +279,22 @@ void VisualizeDexLayout(dex_ir::Header* header,
       dumper->DumpAddressRange(class_data, class_index);
       if (class_data->StaticFields()) {
         for (auto& field_item : *class_data->StaticFields()) {
-          dumper->DumpFieldItem(field_item.get(), class_index);
+          dumper->DumpFieldItem(&field_item, class_index);
         }
       }
       if (class_data->InstanceFields()) {
         for (auto& field_item : *class_data->InstanceFields()) {
-          dumper->DumpFieldItem(field_item.get(), class_index);
+          dumper->DumpFieldItem(&field_item, class_index);
         }
       }
       if (class_data->DirectMethods()) {
         for (auto& method_item : *class_data->DirectMethods()) {
-          dumper->DumpMethodItem(method_item.get(), dex_file, class_index, profile_info);
+          dumper->DumpMethodItem(&method_item, dex_file, class_index, profile_info);
         }
       }
       if (class_data->VirtualMethods()) {
         for (auto& method_item : *class_data->VirtualMethods()) {
-          dumper->DumpMethodItem(method_item.get(), dex_file, class_index, profile_info);
+          dumper->DumpMethodItem(&method_item, dex_file, class_index, profile_info);
         }
       }
     }

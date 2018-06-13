@@ -769,8 +769,8 @@ bool VerifyFields(dex_ir::FieldItemVector* orig,
     return false;
   }
   for (size_t i = 0; i < orig->size(); ++i) {
-    dex_ir::FieldItem* orig_field = (*orig)[i].get();
-    dex_ir::FieldItem* output_field = (*output)[i].get();
+    dex_ir::FieldItem* orig_field = &(*orig)[i];
+    dex_ir::FieldItem* output_field = &(*output)[i];
     if (orig_field->GetFieldId()->GetIndex() != output_field->GetFieldId()->GetIndex()) {
       *error_msg = StringPrintf("Mismatched field index for class data at offset %x: %u vs %u.",
                                 orig_offset,
@@ -802,8 +802,8 @@ bool VerifyMethods(dex_ir::MethodItemVector* orig,
     return false;
   }
   for (size_t i = 0; i < orig->size(); ++i) {
-    dex_ir::MethodItem* orig_method = (*orig)[i].get();
-    dex_ir::MethodItem* output_method = (*output)[i].get();
+    dex_ir::MethodItem* orig_method = &(*orig)[i];
+    dex_ir::MethodItem* output_method = &(*output)[i];
     if (orig_method->GetMethodId()->GetIndex() != output_method->GetMethodId()->GetIndex()) {
       *error_msg = StringPrintf("Mismatched method index for class data at offset %x: %u vs %u.",
                                 orig_offset,
