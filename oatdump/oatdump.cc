@@ -546,28 +546,30 @@ class OatDumper {
         os << "\n";
       }
 
-      // Dump .bss entries.
-      DumpBssEntries(
-          os,
-          "ArtMethod",
-          oat_dex_file->GetMethodBssMapping(),
-          dex_file->NumMethodIds(),
-          static_cast<size_t>(GetInstructionSetPointerSize(instruction_set_)),
-          [=](uint32_t index) { return dex_file->PrettyMethod(index); });
-      DumpBssEntries(
-          os,
-          "Class",
-          oat_dex_file->GetTypeBssMapping(),
-          dex_file->NumTypeIds(),
-          sizeof(GcRoot<mirror::Class>),
-          [=](uint32_t index) { return dex_file->PrettyType(dex::TypeIndex(index)); });
-      DumpBssEntries(
-          os,
-          "String",
-          oat_dex_file->GetStringBssMapping(),
-          dex_file->NumStringIds(),
-          sizeof(GcRoot<mirror::Class>),
-          [=](uint32_t index) { return dex_file->StringDataByIdx(dex::StringIndex(index)); });
+      if (!options_.dump_header_only_) {
+        // Dump .bss entries.
+        DumpBssEntries(
+            os,
+            "ArtMethod",
+            oat_dex_file->GetMethodBssMapping(),
+            dex_file->NumMethodIds(),
+            static_cast<size_t>(GetInstructionSetPointerSize(instruction_set_)),
+            [=](uint32_t index) { return dex_file->PrettyMethod(index); });
+        DumpBssEntries(
+            os,
+            "Class",
+            oat_dex_file->GetTypeBssMapping(),
+            dex_file->NumTypeIds(),
+            sizeof(GcRoot<mirror::Class>),
+            [=](uint32_t index) { return dex_file->PrettyType(dex::TypeIndex(index)); });
+        DumpBssEntries(
+            os,
+            "String",
+            oat_dex_file->GetStringBssMapping(),
+            dex_file->NumStringIds(),
+            sizeof(GcRoot<mirror::Class>),
+            [=](uint32_t index) { return dex_file->StringDataByIdx(dex::StringIndex(index)); });
+      }
     }
 
     if (!options_.dump_header_only_) {
