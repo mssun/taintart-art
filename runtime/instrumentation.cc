@@ -154,8 +154,16 @@ void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
     return;
   }
   // Don't stub Proxy.<init>. Note that the Proxy class itself is not a proxy class.
-  if (method->IsConstructor() &&
-      method->GetDeclaringClass()->DescriptorEquals("Ljava/lang/reflect/Proxy;")) {
+  // TODO We should remove the need for this since it means we cannot always correctly detect calls
+  // to Proxy.<init>
+  // Annoyingly this can be called before we have actually initialized WellKnownClasses so therefore
+  // we also need to check this based on the declaring-class descriptor. The check is valid because
+  // Proxy only has a single constructor.
+  ArtMethod* well_known_proxy_init = jni::DecodeArtMethod(
+      WellKnownClasses::java_lang_reflect_Proxy_init);
+  if ((LIKELY(well_known_proxy_init != nullptr) && UNLIKELY(method == well_known_proxy_init)) ||
+      UNLIKELY(method->IsConstructor() &&
+               method->GetDeclaringClass()->DescriptorEquals("Ljava/lang/reflect/Proxy;"))) {
     return;
   }
   const void* new_quick_code;
@@ -354,7 +362,7 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
       }
       uint32_t dex_pc = visitor.dex_pcs_.back();
       visitor.dex_pcs_.pop_back();
-      if (!isi->interpreter_entry_) {
+      if (!isi->interpreter_entry_ && !isi->method_->IsRuntimeMethod()) {
         instrumentation->MethodEnterEvent(thread, (*isi).this_object_, (*isi).method_, dex_pc);
       }
     }
@@ -785,7 +793,13 @@ void Instrumentation::UpdateMethodsCodeImpl(ArtMethod* method, const void* quick
       if (class_linker->IsQuickResolutionStub(quick_code) ||
           class_linker->IsQuickToInterpreterBridge(quick_code)) {
         new_quick_code = quick_code;
-      } else if (entry_exit_stubs_installed_) {
+      } else if (entry_exit_stubs_installed_ &&
+                 // We need to make sure not to replace anything that InstallStubsForMethod
+                 // wouldn't. Specifically we cannot stub out Proxy.<init> since subtypes copy the
+                 // implementation directly and this will confuse the instrumentation trampolines.
+                 // TODO We should remove the need for this since it makes it impossible to profile
+                 // Proxy.<init> correctly in all cases.
+                 method != jni::DecodeArtMethod(WellKnownClasses::java_lang_reflect_Proxy_init)) {
         new_quick_code = GetQuickInstrumentationEntryPoint();
       } else {
         new_quick_code = quick_code;
@@ -912,7 +926,7 @@ void Instrumentation::Undeoptimize(ArtMethod* method) {
     }
 
     // If there is no deoptimized method left, we can restore the stack of each thread.
-    if (empty) {
+    if (empty && !entry_exit_stubs_installed_) {
       MutexLock mu(self, *Locks::thread_list_lock_);
       Runtime::Current()->GetThreadList()->ForEach(InstrumentationRestoreStack, this);
       instrumentation_stubs_installed_ = false;

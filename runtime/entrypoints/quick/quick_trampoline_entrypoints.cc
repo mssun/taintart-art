@@ -1101,11 +1101,14 @@ extern "C" const void* artInstrumentationMethodEntryFromCode(ArtMethod* method,
   // that part.
   ScopedQuickEntrypointChecks sqec(self, kIsDebugBuild, false);
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
+  DCHECK(!method->IsProxyMethod())
+      << "Proxy method " << method->PrettyMethod()
+      << " (declaring class: " << method->GetDeclaringClass()->PrettyClass() << ")"
+      << " should not hit instrumentation entrypoint.";
   if (instrumentation->IsDeoptimized(method)) {
     result = GetQuickToInterpreterBridge();
   } else {
     result = instrumentation->GetQuickCodeFor(method, kRuntimePointerSize);
-    DCHECK(!Runtime::Current()->GetClassLinker()->IsQuickToInterpreterBridge(result));
   }
 
   bool interpreter_entry = (result == GetQuickToInterpreterBridge());
