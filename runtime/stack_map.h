@@ -47,6 +47,7 @@ static constexpr size_t kMaxDexRegisterMapSearchDistance = 32;
 
 class ArtMethod;
 class CodeInfo;
+class Stats;
 
 std::ostream& operator<<(std::ostream& stream, const DexRegisterLocation& reg);
 
@@ -250,6 +251,18 @@ class InvokeInfo : public BitTable<3>::Accessor {
   uint32_t GetMethodIndex(MethodInfo method_info) const {
     return method_info.GetMethodIndex(GetMethodInfoIndex());
   }
+};
+
+class MaskInfo : public BitTable<1>::Accessor {
+ public:
+  BIT_TABLE_HEADER()
+  BIT_TABLE_COLUMN(0, Mask)
+};
+
+class DexRegisterMapInfo : public BitTable<1>::Accessor {
+ public:
+  BIT_TABLE_HEADER()
+  BIT_TABLE_COLUMN(0, CatalogueIndex)
 };
 
 class DexRegisterInfo : public BitTable<2>::Accessor {
@@ -480,6 +493,9 @@ class CodeInfo {
             InstructionSet instruction_set,
             const MethodInfo& method_info) const;
 
+  // Accumulate code info size statistics into the given Stats tree.
+  void AddSizeStats(/*out*/ Stats* parent) const;
+
  private:
   // Scan backward to determine dex register locations at given stack map.
   void DecodeDexRegisterMap(uint32_t stack_map_index,
@@ -506,15 +522,13 @@ class CodeInfo {
   size_t size_;
   BitTable<StackMap::kCount> stack_maps_;
   BitTable<RegisterMask::kCount> register_masks_;
-  BitTable<1> stack_masks_;
+  BitTable<MaskInfo::kCount> stack_masks_;
   BitTable<InvokeInfo::kCount> invoke_infos_;
   BitTable<InlineInfo::kCount> inline_infos_;
-  BitTable<1> dex_register_masks_;
-  BitTable<1> dex_register_maps_;
+  BitTable<MaskInfo::kCount> dex_register_masks_;
+  BitTable<DexRegisterMapInfo::kCount> dex_register_maps_;
   BitTable<DexRegisterInfo::kCount> dex_register_catalog_;
   uint32_t number_of_dex_registers_;  // Excludes any inlined methods.
-
-  friend class OatDumper;
 };
 
 #undef ELEMENT_BYTE_OFFSET_AFTER

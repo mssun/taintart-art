@@ -18,6 +18,7 @@
 #include <stdlib.h>
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <set>
@@ -37,6 +38,7 @@
 #include "base/indenter.h"
 #include "base/os.h"
 #include "base/safe_map.h"
+#include "base/stats.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker-inl.h"
@@ -639,7 +641,8 @@ class OatDumper {
     {
       os << "OAT FILE STATS:\n";
       VariableIndentationOutputStream vios(&os);
-      stats_.Dump(vios);
+      stats_.AddBytes(oat_file_.Size());
+      DumpStats(vios, "OatFile", stats_, stats_.Value());
     }
 
     os << std::flush;
@@ -737,156 +740,42 @@ class OatDumper {
     return vdex_file;
   }
 
-  struct Stats {
-    enum ByteKind {
-      kByteKindCode,
-      kByteKindQuickMethodHeader,
-      kByteKindCodeInfoLocationCatalog,
-      kByteKindCodeInfoDexRegisterMask,
-      kByteKindCodeInfoDexRegisterMap,
-      kByteKindCodeInfo,
-      kByteKindCodeInfoInvokeInfo,
-      kByteKindCodeInfoStackMasks,
-      kByteKindCodeInfoRegisterMasks,
-      kByteKindStackMapNativePc,
-      kByteKindStackMapDexPc,
-      kByteKindStackMapDexRegisterMap,
-      kByteKindStackMapInlineInfoIndex,
-      kByteKindStackMapRegisterMaskIndex,
-      kByteKindStackMapStackMaskIndex,
-      kByteKindInlineInfoMethodIndexIdx,
-      kByteKindInlineInfoDexPc,
-      kByteKindInlineInfoArtMethod,
-      kByteKindInlineInfoNumDexRegisters,
-      kByteKindInlineInfoIsLast,
-      kByteKindCount,
-      // Special ranges for std::accumulate convenience.
-      kByteKindStackMapFirst = kByteKindStackMapNativePc,
-      kByteKindStackMapLast = kByteKindStackMapStackMaskIndex,
-      kByteKindInlineInfoFirst = kByteKindInlineInfoMethodIndexIdx,
-      kByteKindInlineInfoLast = kByteKindInlineInfoIsLast,
-    };
-    int64_t bits[kByteKindCount] = {};
-    // Since code has deduplication, seen tracks already seen pointers to avoid double counting
-    // deduplicated code and tables.
-    std::unordered_set<const void*> seen;
+  bool AddStatsObject(const void* address) {
+    return seen_stats_objects_.insert(address).second;  // Inserted new entry.
+  }
 
-    // Returns true if it was newly added.
-    bool AddBitsIfUnique(ByteKind kind, int64_t count, const void* address) {
-      if (seen.insert(address).second == true) {
-        // True means the address was not already in the set.
-        AddBits(kind, count);
-        return true;
+  void DumpStats(VariableIndentationOutputStream& os,
+                 const std::string& name,
+                 const Stats& stats,
+                 double total) {
+    if (std::fabs(stats.Value()) > 0 || !stats.Children().empty()) {
+      double percent = 100.0 * stats.Value() / total;
+      os.Stream()
+          << std::setw(40 - os.GetIndentation()) << std::left << name << std::right << " "
+          << std::setw(8) << stats.Count() << " "
+          << std::setw(12) << std::fixed << std::setprecision(3) << stats.Value() / KB << "KB "
+          << std::setw(8) << std::fixed << std::setprecision(1) << percent << "%\n";
+
+      // Sort all children by largest value first, than by name.
+      std::map<std::pair<double, std::string>, const Stats&> sorted_children;
+      for (const auto& it : stats.Children()) {
+        sorted_children.emplace(std::make_pair(-it.second.Value(), it.first), it.second);
       }
-      return false;
-    }
 
-    void AddBits(ByteKind kind, int64_t count) {
-      bits[kind] += count;
-    }
-
-    void Dump(VariableIndentationOutputStream& os) {
-      const int64_t sum = std::accumulate(bits, bits + kByteKindCount, 0u);
-      os.Stream() << "Dumping cumulative use of " << sum / kBitsPerByte << " accounted bytes\n";
-      if (sum > 0) {
-        Dump(os, "Code                            ", bits[kByteKindCode], sum);
-        Dump(os, "QuickMethodHeader               ", bits[kByteKindQuickMethodHeader], sum);
-        Dump(os, "CodeInfo                        ", bits[kByteKindCodeInfo], sum);
-        Dump(os, "CodeInfoLocationCatalog         ", bits[kByteKindCodeInfoLocationCatalog], sum);
-        Dump(os, "CodeInfoDexRegisterMask         ", bits[kByteKindCodeInfoDexRegisterMask], sum);
-        Dump(os, "CodeInfoDexRegisterMap          ", bits[kByteKindCodeInfoDexRegisterMap], sum);
-        Dump(os, "CodeInfoStackMasks              ", bits[kByteKindCodeInfoStackMasks], sum);
-        Dump(os, "CodeInfoRegisterMasks           ", bits[kByteKindCodeInfoRegisterMasks], sum);
-        Dump(os, "CodeInfoInvokeInfo              ", bits[kByteKindCodeInfoInvokeInfo], sum);
-        // Stack map section.
-        const int64_t stack_map_bits = std::accumulate(bits + kByteKindStackMapFirst,
-                                                       bits + kByteKindStackMapLast + 1,
-                                                       0u);
-        Dump(os, "CodeInfoStackMap                ", stack_map_bits, sum);
-        {
-          ScopedIndentation indent1(&os);
-          Dump(os,
-               "StackMapNativePc              ",
-               bits[kByteKindStackMapNativePc],
-               stack_map_bits,
-               "stack map");
-          Dump(os,
-               "StackMapDexPc                 ",
-               bits[kByteKindStackMapDexPc],
-               stack_map_bits,
-               "stack map");
-          Dump(os,
-               "StackMapDexRegisterMap        ",
-               bits[kByteKindStackMapDexRegisterMap],
-               stack_map_bits,
-               "stack map");
-          Dump(os,
-               "StackMapInlineInfoIndex       ",
-               bits[kByteKindStackMapInlineInfoIndex],
-               stack_map_bits,
-               "stack map");
-          Dump(os,
-               "StackMapRegisterMaskIndex     ",
-               bits[kByteKindStackMapRegisterMaskIndex],
-               stack_map_bits,
-               "stack map");
-          Dump(os,
-               "StackMapStackMaskIndex        ",
-               bits[kByteKindStackMapStackMaskIndex],
-               stack_map_bits,
-               "stack map");
-        }
-        // Inline info section.
-        const int64_t inline_info_bits = std::accumulate(bits + kByteKindInlineInfoFirst,
-                                                         bits + kByteKindInlineInfoLast + 1,
-                                                         0u);
-        Dump(os, "CodeInfoInlineInfo              ", inline_info_bits, sum);
-        {
-          ScopedIndentation indent1(&os);
-          Dump(os,
-               "InlineInfoMethodIndexIdx      ",
-               bits[kByteKindInlineInfoMethodIndexIdx],
-               inline_info_bits,
-               "inline info");
-          Dump(os,
-               "InlineInfoDexPc               ",
-               bits[kByteKindStackMapDexPc],
-               inline_info_bits,
-               "inline info");
-          Dump(os,
-               "InlineInfoArtMethod           ",
-               bits[kByteKindInlineInfoArtMethod],
-               inline_info_bits,
-               "inline info");
-          Dump(os,
-               "InlineInfoNumDexRegisters     ",
-               bits[kByteKindInlineInfoNumDexRegisters],
-               inline_info_bits,
-               "inline info");
-          Dump(os,
-               "InlineInfoIsLast              ",
-               bits[kByteKindInlineInfoIsLast],
-               inline_info_bits,
-               "inline info");
-        }
+      // Add "other" row to represent any amount not account for by the children.
+      Stats other;
+      other.AddBytes(stats.Value() - stats.SumChildrenValues(), stats.Count());
+      if (std::fabs(other.Value()) > 0 && !stats.Children().empty()) {
+        sorted_children.emplace(std::make_pair(-other.Value(), "(other)"), other);
       }
-      os.Stream() << "\n" << std::flush;
-    }
 
-   private:
-    void Dump(VariableIndentationOutputStream& os,
-              const char* name,
-              int64_t size,
-              int64_t total,
-              const char* sum_of = "total") {
-      const double percent = (static_cast<double>(size) / static_cast<double>(total)) * 100;
-      os.Stream() << StringPrintf("%s = %8" PRId64 " (%2.0f%% of %s)\n",
-                                  name,
-                                  size / kBitsPerByte,
-                                  percent,
-                                  sum_of);
+      // Print the data.
+      ScopedIndentation indent1(&os);
+      for (const auto& it : sorted_children) {
+        DumpStats(os, it.first.second, it.second, total);
+      }
     }
-  };
+  }
 
  private:
   void AddAllOffsets() {
@@ -1266,9 +1155,9 @@ class OatDumper {
       vios->Stream() << "OatQuickMethodHeader ";
       uint32_t method_header_offset = oat_method.GetOatQuickMethodHeaderOffset();
       const OatQuickMethodHeader* method_header = oat_method.GetOatQuickMethodHeader();
-      stats_.AddBitsIfUnique(Stats::kByteKindQuickMethodHeader,
-                             sizeof(*method_header) * kBitsPerByte,
-                             method_header);
+      if (AddStatsObject(method_header)) {
+        stats_.Child("QuickMethodHeader")->AddBytes(sizeof(*method_header));
+      }
       if (options_.absolute_addresses_) {
         vios->Stream() << StringPrintf("%p ", method_header);
       }
@@ -1340,7 +1229,9 @@ class OatDumper {
         const void* code = oat_method.GetQuickCode();
         uint32_t aligned_code_begin = AlignCodeOffset(code_offset);
         uint64_t aligned_code_end = aligned_code_begin + code_size;
-        stats_.AddBitsIfUnique(Stats::kByteKindCode, code_size * kBitsPerByte, code);
+        if (AddStatsObject(code)) {
+          stats_.Child("Code")->AddBytes(code_size);
+        }
 
         if (options_.absolute_addresses_) {
           vios->Stream() << StringPrintf("%p ", code);
@@ -1690,78 +1581,15 @@ class OatDumper {
     } else if (!bad_input && IsMethodGeneratedByOptimizingCompiler(oat_method,
                                                                    code_item_accessor)) {
       // The optimizing compiler outputs its CodeInfo data in the vmap table.
+      const OatQuickMethodHeader* method_header = oat_method.GetOatQuickMethodHeader();
       StackMapsHelper helper(oat_method.GetVmapTable(), instruction_set_);
-      MethodInfo method_info(oat_method.GetOatQuickMethodHeader()->GetOptimizedMethodInfo());
-      {
-        const CodeInfo code_info = helper.GetCodeInfo();
-        const BitTable<StackMap::kCount>& stack_maps = code_info.stack_maps_;
-        const size_t num_stack_maps = stack_maps.NumRows();
-        if (stats_.AddBitsIfUnique(Stats::kByteKindCodeInfo,
-                                   code_info.size_ * kBitsPerByte,
-                                   oat_method.GetVmapTable())) {
-          // Stack maps
-          stats_.AddBits(
-              Stats::kByteKindStackMapNativePc,
-              stack_maps.NumColumnBits(StackMap::kPackedNativePc) * num_stack_maps);
-          stats_.AddBits(
-              Stats::kByteKindStackMapDexPc,
-              stack_maps.NumColumnBits(StackMap::kDexPc) * num_stack_maps);
-          stats_.AddBits(
-              Stats::kByteKindStackMapDexRegisterMap,
-              stack_maps.NumColumnBits(StackMap::kDexRegisterMapIndex) * num_stack_maps);
-          stats_.AddBits(
-              Stats::kByteKindStackMapInlineInfoIndex,
-              stack_maps.NumColumnBits(StackMap::kInlineInfoIndex) * num_stack_maps);
-          stats_.AddBits(
-              Stats::kByteKindStackMapRegisterMaskIndex,
-              stack_maps.NumColumnBits(StackMap::kRegisterMaskIndex) * num_stack_maps);
-          stats_.AddBits(
-              Stats::kByteKindStackMapStackMaskIndex,
-              stack_maps.NumColumnBits(StackMap::kStackMaskIndex) * num_stack_maps);
-
-          // Stack masks
-          stats_.AddBits(
-              Stats::kByteKindCodeInfoStackMasks,
-              code_info.stack_masks_.DataBitSize());
-
-          // Register masks
-          stats_.AddBits(
-              Stats::kByteKindCodeInfoRegisterMasks,
-              code_info.register_masks_.DataBitSize());
-
-          // Invoke infos
-          stats_.AddBits(
-              Stats::kByteKindCodeInfoInvokeInfo,
-              code_info.invoke_infos_.DataBitSize());
-
-          // Location catalog
-          stats_.AddBits(Stats::kByteKindCodeInfoLocationCatalog,
-                         code_info.dex_register_catalog_.DataBitSize());
-          stats_.AddBits(Stats::kByteKindCodeInfoDexRegisterMask,
-                         code_info.dex_register_masks_.DataBitSize());
-          stats_.AddBits(Stats::kByteKindCodeInfoDexRegisterMap,
-                         code_info.dex_register_maps_.DataBitSize());
-
-          // Inline infos.
-          const BitTable<InlineInfo::kCount>& inline_infos = code_info.inline_infos_;
-          const size_t num_inline_infos = inline_infos.NumRows();
-          if (num_inline_infos > 0u) {
-            stats_.AddBits(
-                Stats::kByteKindInlineInfoMethodIndexIdx,
-                inline_infos.NumColumnBits(InlineInfo::kMethodInfoIndex) * num_inline_infos);
-            stats_.AddBits(
-                Stats::kByteKindInlineInfoDexPc,
-                inline_infos.NumColumnBits(InlineInfo::kDexPc) * num_inline_infos);
-            stats_.AddBits(
-                Stats::kByteKindInlineInfoArtMethod,
-                inline_infos.NumColumnBits(InlineInfo::kArtMethodHi) * num_inline_infos +
-                inline_infos.NumColumnBits(InlineInfo::kArtMethodLo) * num_inline_infos);
-            stats_.AddBits(
-                Stats::kByteKindInlineInfoNumDexRegisters,
-                inline_infos.NumColumnBits(InlineInfo::kNumberOfDexRegisters) * num_inline_infos);
-            stats_.AddBits(Stats::kByteKindInlineInfoIsLast, num_inline_infos);
-          }
-        }
+      if (AddStatsObject(oat_method.GetVmapTable())) {
+        helper.GetCodeInfo().AddSizeStats(&stats_);
+      }
+      MethodInfo method_info(method_header->GetOptimizedMethodInfo());
+      if (AddStatsObject(method_header->GetOptimizedMethodInfoPtr())) {
+        size_t method_info_size = MethodInfo::ComputeSize(method_info.NumMethodIndices());
+        stats_.Child("MethodInfo")->AddBytes(method_info_size);
       }
       const uint8_t* quick_native_pc = reinterpret_cast<const uint8_t*>(quick_code);
       size_t offset = 0;
@@ -1894,6 +1722,7 @@ class OatDumper {
   std::set<uintptr_t> offsets_;
   Disassembler* disassembler_;
   Stats stats_;
+  std::unordered_set<const void*> seen_stats_objects_;
 };
 
 class ImageDumper {
