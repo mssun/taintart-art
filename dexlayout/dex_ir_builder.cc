@@ -43,7 +43,13 @@ Header* DexIrBuilder(const DexFile& dex_file,
                               disk_header.link_off_,
                               disk_header.data_size_,
                               disk_header.data_off_,
-                              dex_file.SupportsDefaultMethods());
+                              dex_file.SupportsDefaultMethods(),
+                              dex_file.NumStringIds(),
+                              dex_file.NumTypeIds(),
+                              dex_file.NumProtoIds(),
+                              dex_file.NumFieldIds(),
+                              dex_file.NumMethodIds(),
+                              dex_file.NumClassDefs());
   Collections& collections = header->GetCollections();
   collections.SetEagerlyAssignOffsets(eagerly_assign_offsets);
   // Walk the rest of the header fields.
@@ -94,6 +100,7 @@ Header* DexIrBuilder(const DexFile& dex_file,
 
   // Sort the vectors by the map order (same order as the file).
   collections.SortVectorsByMapOrder();
+  collections.ClearMaps();
 
   // Load the link data if it exists.
   collections.SetLinkData(std::vector<uint8_t>(
