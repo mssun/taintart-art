@@ -207,21 +207,21 @@ void DexWriter::WriteEncodedAnnotation(Stream* stream, dex_ir::EncodedAnnotation
 
 void DexWriter::WriteEncodedFields(Stream* stream, dex_ir::FieldItemVector* fields) {
   uint32_t prev_index = 0;
-  for (std::unique_ptr<dex_ir::FieldItem>& field : *fields) {
-    uint32_t index = field->GetFieldId()->GetIndex();
+  for (auto& field : *fields) {
+    uint32_t index = field.GetFieldId()->GetIndex();
     stream->WriteUleb128(index - prev_index);
-    stream->WriteUleb128(field->GetAccessFlags());
+    stream->WriteUleb128(field.GetAccessFlags());
     prev_index = index;
   }
 }
 
 void DexWriter::WriteEncodedMethods(Stream* stream, dex_ir::MethodItemVector* methods) {
   uint32_t prev_index = 0;
-  for (std::unique_ptr<dex_ir::MethodItem>& method : *methods) {
-    uint32_t index = method->GetMethodId()->GetIndex();
-    uint32_t code_off = method->GetCodeItem() == nullptr ? 0 : method->GetCodeItem()->GetOffset();
+  for (auto& method : *methods) {
+    uint32_t index = method.GetMethodId()->GetIndex();
+    uint32_t code_off = method.GetCodeItem() == nullptr ? 0 : method.GetCodeItem()->GetOffset();
     stream->WriteUleb128(index - prev_index);
-    stream->WriteUleb128(method->GetAccessFlags());
+    stream->WriteUleb128(method.GetAccessFlags());
     stream->WriteUleb128(code_off);
     prev_index = index;
   }
