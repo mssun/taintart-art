@@ -122,6 +122,10 @@ class VariableIndentationOutputStream {
     return indented_os_;
   }
 
+  size_t GetIndentation() const {
+    return indenter_.count_;
+  }
+
   void IncreaseIndentation(size_t adjustment) {
     indenter_.count_ += adjustment;
   }
