@@ -16,6 +16,8 @@
 
 package com.android.ahat.heapdump;
 
+import com.android.ahat.progress.NullProgress;
+import com.android.ahat.progress.Progress;
 import com.android.ahat.proguard.ProguardMap;
 import java.io.File;
 import java.io.IOException;
@@ -33,35 +35,95 @@ import java.util.Map;
 
 /**
  * Provides methods for parsing heap dumps.
+ * <p>
+ * The heap dump should be a heap dump in the J2SE HPROF format optionally
+ * with Android extensions and satisfying the following additional
+ * constraints:
+ * <ul>
+ * <li>
+ * Class serial numbers, stack frames, and stack traces individually satisfy
+ * the following:
+ * <ul>
+ *   <li> All elements are defined before they are referenced.
+ *   <li> Ids are densely packed in some range [a, b] where a is not necessarily 0.
+ *   <li> There are not more than 2^31 elements defined.
+ * </ul>
+ * <li> All classes are defined via a LOAD CLASS record before the first
+ * heap dump segment.
+ * <li> The ID size used in the heap dump is 4 bytes.
+ * </ul>
  */
 public class Parser {
   private static final int ID_SIZE = 4;
 
-  private Parser() {
+  private HprofBuffer hprof = null;
+  private ProguardMap map = new ProguardMap();
+  private Progress progress = new NullProgress();
+
+  /**
+   * Creates an hprof Parser that parses a heap dump from a byte buffer.
+   *
+   * @param hprof byte buffer to parse the heap dump from.
+   */
+  public Parser(ByteBuffer hprof) {
+    this.hprof = new HprofBuffer(hprof);
   }
 
   /**
-   * Parses a heap dump from a File.
-   * <p>
-   * The heap dump should be a heap dump in the J2SE HPROF format optionally
-   * with Android extensions and satisfying the following additional
-   * constraints:
-   * <ul>
-   * <li>
-   * Class serial numbers, stack frames, and stack traces individually satisfy
-   * the following:
-   * <ul>
-   *   <li> All elements are defined before they are referenced.
-   *   <li> Ids are densely packed in some range [a, b] where a is not necessarily 0.
-   *   <li> There are not more than 2^31 elements defined.
-   * </ul>
-   * <li> All classes are defined via a LOAD CLASS record before the first
-   * heap dump segment.
-   * <li> The ID size used in the heap dump is 4 bytes.
-   * </ul>
-   * <p>
-   * The given proguard map will be used to deobfuscate class names, field
-   * names, and stack traces in the heap dump.
+   * Creates an hprof Parser that parses a heap dump from a file.
+   *
+   * @param hprof file to parse the heap dump from.
+   * @throws IOException if the file cannot be accessed.
+   */
+  public Parser(File hprof) throws IOException {
+    this.hprof = new HprofBuffer(hprof);
+  }
+
+  /**
+   * Sets the proguard map to use for deobfuscating the heap.
+   *
+   * @param map proguard map to use to deobfuscate the heap.
+   * @return this Parser instance.
+   */
+  public Parser map(ProguardMap map) {
+    if (map == null) {
+      throw new NullPointerException("map == null");
+    }
+    this.map = map;
+    return this;
+  }
+
+  /**
+   * Sets the progress indicator to use when parsing the heap.
+   *
+   * @param progress progress indicator to use when parsing the heap.
+   * @return this Parser instance.
+   */
+  public Parser progress(Progress progress) {
+    if (progress == null) {
+      throw new NullPointerException("progress == null");
+    }
+    this.progress = progress;
+    return this;
+  }
+
+  /**
+   * Parse the heap dump.
+   *
+   * @throws IOException if the heap dump could not be read
+   * @throws HprofFormatException if the heap dump is not properly formatted
+   * @return the parsed heap dump
+   */
+  public AhatSnapshot parse() throws IOException, HprofFormatException {
+    try {
+      return parseInternal();
+    } catch (BufferUnderflowException e) {
+      throw new HprofFormatException("Unexpected end of file", e);
+    }
+  }
+
+  /**
+   * Parses a heap dump from a File with given proguard map.
    *
    * @param hprof the hprof file to parse
    * @param map the proguard map for deobfuscation
@@ -71,35 +133,11 @@ public class Parser {
    */
   public static AhatSnapshot parseHeapDump(File hprof, ProguardMap map)
     throws IOException, HprofFormatException {
-    try {
-      return parseHeapDump(new HprofBuffer(hprof), map);
-    } catch (BufferUnderflowException e) {
-      throw new HprofFormatException("Unexpected end of file", e);
-    }
+    return new Parser(hprof).map(map).parse();
   }
 
   /**
-   * Parses a heap dump from a byte buffer.
-   * <p>
-   * The heap dump should be a heap dump in the J2SE HPROF format optionally
-   * with Android extensions and satisfying the following additional
-   * constraints:
-   * <ul>
-   * <li>
-   * Class serial numbers, stack frames, and stack traces individually satisfy
-   * the following:
-   * <ul>
-   *   <li> All elements are defined before they are referenced.
-   *   <li> Ids are densely packed in some range [a, b] where a is not necessarily 0.
-   *   <li> There are not more than 2^31 elements defined.
-   * </ul>
-   * <li> All classes are defined via a LOAD CLASS record before the first
-   * heap dump segment.
-   * <li> The ID size used in the heap dump is 4 bytes.
-   * </ul>
-   * <p>
-   * The given proguard map will be used to deobfuscate class names, field
-   * names, and stack traces in the heap dump.
+   * Parses a heap dump from a byte buffer with given proguard map.
    *
    * @param hprof the bytes of the hprof file to parse
    * @param map the proguard map for deobfuscation
@@ -109,15 +147,10 @@ public class Parser {
    */
   public static AhatSnapshot parseHeapDump(ByteBuffer hprof, ProguardMap map)
     throws IOException, HprofFormatException {
-    try {
-      return parseHeapDump(new HprofBuffer(hprof), map);
-    } catch (BufferUnderflowException e) {
-      throw new HprofFormatException("Unexpected end of file", e);
-    }
+    return new Parser(hprof).map(map).parse();
   }
 
-  private static AhatSnapshot parseHeapDump(HprofBuffer hprof, ProguardMap map)
-    throws IOException, HprofFormatException, BufferUnderflowException {
+  private AhatSnapshot parseInternal() throws IOException, HprofFormatException {
     // Read, and mostly ignore, the hprof header info.
     {
       StringBuilder format = new StringBuilder();
@@ -154,7 +187,9 @@ public class Parser {
       ArrayList<AhatClassObj> classes = new ArrayList<AhatClassObj>();
       Instances<AhatClassObj> classById = null;
 
+      progress.start("Reading hprof", hprof.size());
       while (hprof.hasRemaining()) {
+        progress.update(hprof.tell());
         int tag = hprof.getU1();
         int time = hprof.getU4();
         int recordLength = hprof.getU4();
@@ -230,6 +265,7 @@ public class Parser {
             }
             int subtag;
             while (!isEndOfHeapDumpSegment(subtag = hprof.getU1())) {
+              progress.update(hprof.tell());
               switch (subtag) {
                 case 0x01: { // ROOT JNI GLOBAL
                   long objectId = hprof.getId();
@@ -524,6 +560,7 @@ public class Parser {
             break;
         }
       }
+      progress.done();
 
       instances.addAll(classes);
     }
@@ -542,9 +579,11 @@ public class Parser {
     // that we couldn't previously resolve.
     SuperRoot superRoot = new SuperRoot();
     {
+      progress.start("Resolving references", mInstances.size());
       Iterator<RootData> ri = roots.iterator();
       RootData root = ri.next();
       for (AhatInstance inst : mInstances) {
+        progress.advance();
         long id = inst.getId();
 
         // Skip past any roots that don't have associated instances.
@@ -613,11 +652,12 @@ public class Parser {
           ((AhatArrayInstance)inst).initialize(array);
         }
       }
+      progress.done();
     }
 
     hprof = null;
     roots = null;
-    return new AhatSnapshot(superRoot, mInstances, heaps.heaps, rootSite);
+    return new AhatSnapshot(superRoot, mInstances, heaps.heaps, rootSite, progress);
   }
 
   private static boolean isEndOfHeapDumpSegment(int subtag) {
@@ -864,6 +904,13 @@ public class Parser {
 
     public boolean hasRemaining() {
       return mBuffer.hasRemaining();
+    }
+
+    /**
+     * Returns the size of the file in bytes.
+     */
+    public int size() {
+      return mBuffer.capacity();
     }
 
     /**

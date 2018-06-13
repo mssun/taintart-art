@@ -17,6 +17,7 @@
 package com.android.ahat.heapdump;
 
 import com.android.ahat.dominators.DominatorsComputation;
+import com.android.ahat.progress.Progress;
 import java.util.List;
 
 /**
@@ -39,7 +40,8 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
   AhatSnapshot(SuperRoot root,
                Instances<AhatInstance> instances,
                List<AhatHeap> heaps,
-               Site rootSite) {
+               Site rootSite,
+               Progress progress) {
     mSuperRoot = root;
     mInstances = instances;
     mHeaps = heaps;
@@ -53,8 +55,8 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       }
     }
 
-    AhatInstance.computeReverseReferences(mSuperRoot);
-    DominatorsComputation.computeDominators(mSuperRoot);
+    AhatInstance.computeReverseReferences(mSuperRoot, progress, mInstances.size());
+    DominatorsComputation.computeDominators(mSuperRoot, progress, mInstances.size());
     AhatInstance.computeRetainedSize(mSuperRoot, mHeaps.size());
 
     for (AhatHeap heap : mHeaps) {

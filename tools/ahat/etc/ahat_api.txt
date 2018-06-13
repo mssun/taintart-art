@@ -10,6 +10,7 @@ package com.android.ahat.dominators {
 
   public class DominatorsComputation {
     method public static void computeDominators(com.android.ahat.dominators.DominatorsComputation.Node);
+    method public static void computeDominators(com.android.ahat.dominators.DominatorsComputation.Node, com.android.ahat.progress.Progress, long);
   }
 
   public static abstract interface DominatorsComputation.Node {
@@ -27,12 +28,10 @@ package com.android.ahat.heapdump {
     method public int getLength();
     method public com.android.ahat.heapdump.Value getValue(int);
     method public java.util.List<com.android.ahat.heapdump.Value> getValues();
-    method public java.lang.String toString();
   }
 
   public class AhatClassInstance extends com.android.ahat.heapdump.AhatInstance {
     method public java.lang.Iterable<com.android.ahat.heapdump.FieldValue> getInstanceFields();
-    method public java.lang.String toString();
   }
 
   public class AhatClassObj extends com.android.ahat.heapdump.AhatInstance {
@@ -42,7 +41,6 @@ package com.android.ahat.heapdump {
     method public java.lang.String getName();
     method public java.util.List<com.android.ahat.heapdump.FieldValue> getStaticFieldValues();
     method public com.android.ahat.heapdump.AhatClassObj getSuperClassObj();
-    method public java.lang.String toString();
   }
 
   public class AhatHeap implements com.android.ahat.heapdump.Diffable {
@@ -157,8 +155,13 @@ package com.android.ahat.heapdump {
   }
 
   public class Parser {
+    ctor public Parser(java.nio.ByteBuffer);
+    ctor public Parser(java.io.File) throws java.io.IOException;
+    method public com.android.ahat.heapdump.Parser map(com.android.ahat.proguard.ProguardMap);
+    method public com.android.ahat.heapdump.AhatSnapshot parse() throws com.android.ahat.heapdump.HprofFormatException, java.io.IOException;
     method public static com.android.ahat.heapdump.AhatSnapshot parseHeapDump(java.io.File, com.android.ahat.proguard.ProguardMap) throws com.android.ahat.heapdump.HprofFormatException, java.io.IOException;
     method public static com.android.ahat.heapdump.AhatSnapshot parseHeapDump(java.nio.ByteBuffer, com.android.ahat.proguard.ProguardMap) throws com.android.ahat.heapdump.HprofFormatException, java.io.IOException;
+    method public com.android.ahat.heapdump.Parser progress(com.android.ahat.progress.Progress);
   }
 
   public class PathElement implements com.android.ahat.heapdump.Diffable {
@@ -280,6 +283,26 @@ package com.android.ahat.heapdump {
     method public static com.android.ahat.heapdump.Value pack(int);
     method public static com.android.ahat.heapdump.Value pack(long);
     method public abstract java.lang.String toString();
+  }
+
+}
+
+package com.android.ahat.progress {
+
+  public class NullProgress implements com.android.ahat.progress.Progress {
+    ctor public NullProgress();
+    method public void advance(long);
+    method public void done();
+    method public void start(java.lang.String, long);
+    method public void update(long);
+  }
+
+  public abstract interface Progress {
+    method public default void advance();
+    method public abstract void advance(long);
+    method public abstract void done();
+    method public abstract void start(java.lang.String, long);
+    method public abstract void update(long);
   }
 
 }
