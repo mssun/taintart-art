@@ -120,6 +120,7 @@ class BitTable {
 
   ALWAYS_INLINE void Decode(BitMemoryRegion region, size_t* bit_offset) {
     // Decode row count and column sizes from the table header.
+    size_t initial_bit_offset = *bit_offset;
     num_rows_ = DecodeVarintBits(region, bit_offset);
     if (num_rows_ != 0) {
       column_offset_[0] = 0;
@@ -128,6 +129,7 @@ class BitTable {
         column_offset_[i + 1] = dchecked_integral_cast<uint16_t>(column_end);
       }
     }
+    header_bit_size_ = *bit_offset - initial_bit_offset;
 
     // Record the region which contains the table data and skip past it.
     table_data_ = region.Subregion(*bit_offset, num_rows_ * NumRowBits());
@@ -158,24 +160,26 @@ class BitTable {
     return column_offset_[column + 1] - column_offset_[column];
   }
 
-  size_t DataBitSize() const { return num_rows_ * column_offset_[kNumColumns]; }
+  size_t HeaderBitSize() const { return header_bit_size_; }
+  size_t BitSize() const { return header_bit_size_ + table_data_.size_in_bits(); }
 
  protected:
   BitMemoryRegion table_data_;
   size_t num_rows_ = 0;
 
   uint16_t column_offset_[kNumColumns + 1] = {};
+  uint16_t header_bit_size_ = 0;
 };
 
 // Template meta-programming helper.
 template<typename Accessor, size_t... Columns>
-static const char** GetBitTableColumnNamesImpl(std::index_sequence<Columns...>) {
+static const char* const* GetBitTableColumnNamesImpl(std::index_sequence<Columns...>) {
   static const char* names[] = { Accessor::template ColumnName<Columns, 0>::Value... };
   return names;
 }
 
 template<typename Accessor>
-static const char** GetBitTableColumnNames() {
+static const char* const* GetBitTableColumnNames() {
   return GetBitTableColumnNamesImpl<Accessor>(std::make_index_sequence<Accessor::kCount>());
 }
 
