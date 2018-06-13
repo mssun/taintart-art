@@ -83,14 +83,14 @@ TEST(StackMapTest, Test1) {
   ASSERT_TRUE(stack_map.HasDexRegisterMap());
   DexRegisterMap dex_register_map = code_info.GetDexRegisterMapOf(stack_map);
   ASSERT_EQ(number_of_dex_registers, dex_register_map.size());
-  ASSERT_TRUE(dex_register_map.IsDexRegisterLive(0));
-  ASSERT_TRUE(dex_register_map.IsDexRegisterLive(1));
+  ASSERT_TRUE(dex_register_map[0].IsLive());
+  ASSERT_TRUE(dex_register_map[1].IsLive());
   ASSERT_EQ(2u, dex_register_map.GetNumberOfLiveDexRegisters());
 
-  ASSERT_EQ(Kind::kInStack, dex_register_map.GetLocationKind(0));
-  ASSERT_EQ(Kind::kConstant, dex_register_map.GetLocationKind(1));
-  ASSERT_EQ(0, dex_register_map.GetStackOffsetInBytes(0));
-  ASSERT_EQ(-2, dex_register_map.GetConstant(1));
+  ASSERT_EQ(Kind::kInStack, dex_register_map[0].GetKind());
+  ASSERT_EQ(Kind::kConstant, dex_register_map[1].GetKind());
+  ASSERT_EQ(0, dex_register_map[0].GetStackOffsetInBytes());
+  ASSERT_EQ(-2, dex_register_map[1].GetConstant());
 
   DexRegisterLocation location0 = code_info.GetDexRegisterCatalogEntry(0);
   DexRegisterLocation location1 = code_info.GetDexRegisterCatalogEntry(1);
@@ -172,14 +172,14 @@ TEST(StackMapTest, Test2) {
     ASSERT_TRUE(stack_map.HasDexRegisterMap());
     DexRegisterMap dex_register_map = code_info.GetDexRegisterMapOf(stack_map);
     ASSERT_EQ(number_of_dex_registers, dex_register_map.size());
-    ASSERT_TRUE(dex_register_map.IsDexRegisterLive(0));
-    ASSERT_TRUE(dex_register_map.IsDexRegisterLive(1));
+    ASSERT_TRUE(dex_register_map[0].IsLive());
+    ASSERT_TRUE(dex_register_map[1].IsLive());
     ASSERT_EQ(2u, dex_register_map.GetNumberOfLiveDexRegisters());
 
-    ASSERT_EQ(Kind::kInStack, dex_register_map.GetLocationKind(0));
-    ASSERT_EQ(Kind::kConstant, dex_register_map.GetLocationKind(1));
-    ASSERT_EQ(0, dex_register_map.GetStackOffsetInBytes(0));
-    ASSERT_EQ(-2, dex_register_map.GetConstant(1));
+    ASSERT_EQ(Kind::kInStack, dex_register_map[0].GetKind());
+    ASSERT_EQ(Kind::kConstant, dex_register_map[1].GetKind());
+    ASSERT_EQ(0, dex_register_map[0].GetStackOffsetInBytes());
+    ASSERT_EQ(-2, dex_register_map[1].GetConstant());
 
     DexRegisterLocation location0 = code_info.GetDexRegisterCatalogEntry(0);
     DexRegisterLocation location1 = code_info.GetDexRegisterCatalogEntry(1);
@@ -212,14 +212,14 @@ TEST(StackMapTest, Test2) {
     ASSERT_TRUE(stack_map.HasDexRegisterMap());
     DexRegisterMap dex_register_map = code_info.GetDexRegisterMapOf(stack_map);
     ASSERT_EQ(number_of_dex_registers, dex_register_map.size());
-    ASSERT_TRUE(dex_register_map.IsDexRegisterLive(0));
-    ASSERT_TRUE(dex_register_map.IsDexRegisterLive(1));
+    ASSERT_TRUE(dex_register_map[0].IsLive());
+    ASSERT_TRUE(dex_register_map[1].IsLive());
     ASSERT_EQ(2u, dex_register_map.GetNumberOfLiveDexRegisters());
 
-    ASSERT_EQ(Kind::kInRegister, dex_register_map.GetLocationKind(0));
-    ASSERT_EQ(Kind::kInFpuRegister, dex_register_map.GetLocationKind(1));
-    ASSERT_EQ(18, dex_register_map.GetMachineRegister(0));
-    ASSERT_EQ(3, dex_register_map.GetMachineRegister(1));
+    ASSERT_EQ(Kind::kInRegister, dex_register_map[0].GetKind());
+    ASSERT_EQ(Kind::kInFpuRegister, dex_register_map[1].GetKind());
+    ASSERT_EQ(18, dex_register_map[0].GetMachineRegister());
+    ASSERT_EQ(3, dex_register_map[1].GetMachineRegister());
 
     DexRegisterLocation location0 = code_info.GetDexRegisterCatalogEntry(2);
     DexRegisterLocation location1 = code_info.GetDexRegisterCatalogEntry(3);
@@ -245,14 +245,14 @@ TEST(StackMapTest, Test2) {
     ASSERT_TRUE(stack_map.HasDexRegisterMap());
     DexRegisterMap dex_register_map = code_info.GetDexRegisterMapOf(stack_map);
     ASSERT_EQ(number_of_dex_registers, dex_register_map.size());
-    ASSERT_TRUE(dex_register_map.IsDexRegisterLive(0));
-    ASSERT_TRUE(dex_register_map.IsDexRegisterLive(1));
+    ASSERT_TRUE(dex_register_map[0].IsLive());
+    ASSERT_TRUE(dex_register_map[1].IsLive());
     ASSERT_EQ(2u, dex_register_map.GetNumberOfLiveDexRegisters());
 
-    ASSERT_EQ(Kind::kInRegister, dex_register_map.GetLocationKind(0));
-    ASSERT_EQ(Kind::kInRegisterHigh, dex_register_map.GetLocationKind(1));
-    ASSERT_EQ(6, dex_register_map.GetMachineRegister(0));
-    ASSERT_EQ(8, dex_register_map.GetMachineRegister(1));
+    ASSERT_EQ(Kind::kInRegister, dex_register_map[0].GetKind());
+    ASSERT_EQ(Kind::kInRegisterHigh, dex_register_map[1].GetKind());
+    ASSERT_EQ(6, dex_register_map[0].GetMachineRegister());
+    ASSERT_EQ(8, dex_register_map[1].GetMachineRegister());
 
     DexRegisterLocation location0 = code_info.GetDexRegisterCatalogEntry(4);
     DexRegisterLocation location1 = code_info.GetDexRegisterCatalogEntry(5);
@@ -278,14 +278,14 @@ TEST(StackMapTest, Test2) {
     ASSERT_TRUE(stack_map.HasDexRegisterMap());
     DexRegisterMap dex_register_map = code_info.GetDexRegisterMapOf(stack_map);
     ASSERT_EQ(number_of_dex_registers, dex_register_map.size());
-    ASSERT_TRUE(dex_register_map.IsDexRegisterLive(0));
-    ASSERT_TRUE(dex_register_map.IsDexRegisterLive(1));
+    ASSERT_TRUE(dex_register_map[0].IsLive());
+    ASSERT_TRUE(dex_register_map[1].IsLive());
     ASSERT_EQ(2u, dex_register_map.GetNumberOfLiveDexRegisters());
 
-    ASSERT_EQ(Kind::kInFpuRegister, dex_register_map.GetLocationKind(0));
-    ASSERT_EQ(Kind::kInFpuRegisterHigh, dex_register_map.GetLocationKind(1));
-    ASSERT_EQ(3, dex_register_map.GetMachineRegister(0));
-    ASSERT_EQ(1, dex_register_map.GetMachineRegister(1));
+    ASSERT_EQ(Kind::kInFpuRegister, dex_register_map[0].GetKind());
+    ASSERT_EQ(Kind::kInFpuRegisterHigh, dex_register_map[1].GetKind());
+    ASSERT_EQ(3, dex_register_map[0].GetMachineRegister());
+    ASSERT_EQ(1, dex_register_map[1].GetMachineRegister());
 
     DexRegisterLocation location0 = code_info.GetDexRegisterCatalogEntry(3);
     DexRegisterLocation location1 = code_info.GetDexRegisterCatalogEntry(6);
@@ -344,14 +344,14 @@ TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
     ASSERT_TRUE(stack_map.HasDexRegisterMap());
     DexRegisterMap map(code_info.GetDexRegisterMapOf(stack_map));
     ASSERT_EQ(number_of_dex_registers, map.size());
-    ASSERT_TRUE(map.IsDexRegisterLive(0));
-    ASSERT_TRUE(map.IsDexRegisterLive(1));
+    ASSERT_TRUE(map[0].IsLive());
+    ASSERT_TRUE(map[1].IsLive());
     ASSERT_EQ(2u, map.GetNumberOfLiveDexRegisters());
 
-    ASSERT_EQ(Kind::kInStack, map.GetLocationKind(0));
-    ASSERT_EQ(Kind::kConstant, map.GetLocationKind(1));
-    ASSERT_EQ(0, map.GetStackOffsetInBytes(0));
-    ASSERT_EQ(-2, map.GetConstant(1));
+    ASSERT_EQ(Kind::kInStack, map[0].GetKind());
+    ASSERT_EQ(Kind::kConstant, map[1].GetKind());
+    ASSERT_EQ(0, map[0].GetStackOffsetInBytes());
+    ASSERT_EQ(-2, map[1].GetConstant());
 
     DexRegisterLocation location0 = code_info.GetDexRegisterCatalogEntry(0);
     DexRegisterLocation location1 = code_info.GetDexRegisterCatalogEntry(1);
@@ -396,13 +396,13 @@ TEST(StackMapTest, TestNonLiveDexRegisters) {
   ASSERT_TRUE(stack_map.HasDexRegisterMap());
   DexRegisterMap dex_register_map = code_info.GetDexRegisterMapOf(stack_map);
   ASSERT_EQ(number_of_dex_registers, dex_register_map.size());
-  ASSERT_FALSE(dex_register_map.IsDexRegisterLive(0));
-  ASSERT_TRUE(dex_register_map.IsDexRegisterLive(1));
+  ASSERT_FALSE(dex_register_map[0].IsLive());
+  ASSERT_TRUE(dex_register_map[1].IsLive());
   ASSERT_EQ(1u, dex_register_map.GetNumberOfLiveDexRegisters());
 
-  ASSERT_EQ(Kind::kNone, dex_register_map.GetLocationKind(0));
-  ASSERT_EQ(Kind::kConstant, dex_register_map.GetLocationKind(1));
-  ASSERT_EQ(-2, dex_register_map.GetConstant(1));
+  ASSERT_EQ(Kind::kNone, dex_register_map[0].GetKind());
+  ASSERT_EQ(Kind::kConstant, dex_register_map[1].GetKind());
+  ASSERT_EQ(-2, dex_register_map[1].GetConstant());
 
   DexRegisterLocation location1 = code_info.GetDexRegisterCatalogEntry(0);
   ASSERT_EQ(Kind::kConstant, location1.GetKind());
@@ -446,22 +446,22 @@ TEST(StackMapTest, TestShareDexRegisterMap) {
   StackMap sm0 = ci.GetStackMapAt(0);
   DexRegisterMap dex_registers0 = ci.GetDexRegisterMapOf(sm0);
   ASSERT_EQ(number_of_dex_registers, dex_registers0.size());
-  ASSERT_EQ(0, dex_registers0.GetMachineRegister(0));
-  ASSERT_EQ(-2, dex_registers0.GetConstant(1));
+  ASSERT_EQ(0, dex_registers0[0].GetMachineRegister());
+  ASSERT_EQ(-2, dex_registers0[1].GetConstant());
 
   // Verify second stack map.
   StackMap sm1 = ci.GetStackMapAt(1);
   DexRegisterMap dex_registers1 = ci.GetDexRegisterMapOf(sm1);
   ASSERT_EQ(number_of_dex_registers, dex_registers1.size());
-  ASSERT_EQ(0, dex_registers1.GetMachineRegister(0));
-  ASSERT_EQ(-2, dex_registers1.GetConstant(1));
+  ASSERT_EQ(0, dex_registers1[0].GetMachineRegister());
+  ASSERT_EQ(-2, dex_registers1[1].GetConstant());
 
   // Verify third stack map.
   StackMap sm2 = ci.GetStackMapAt(2);
   DexRegisterMap dex_registers2 = ci.GetDexRegisterMapOf(sm2);
   ASSERT_EQ(number_of_dex_registers, dex_registers2.size());
-  ASSERT_EQ(2, dex_registers2.GetMachineRegister(0));
-  ASSERT_EQ(-2, dex_registers2.GetConstant(1));
+  ASSERT_EQ(2, dex_registers2[0].GetMachineRegister());
+  ASSERT_EQ(-2, dex_registers2[1].GetConstant());
 
   // Verify dex register mask offsets.
   ASSERT_FALSE(sm1.HasDexRegisterMaskIndex());  // No delta.
@@ -597,8 +597,8 @@ TEST(StackMapTest, InlineTest) {
 
     DexRegisterMap dex_registers0 = ci.GetDexRegisterMapOf(sm0);
     ASSERT_EQ(2u, dex_registers0.size());
-    ASSERT_EQ(0, dex_registers0.GetStackOffsetInBytes(0));
-    ASSERT_EQ(4, dex_registers0.GetConstant(1));
+    ASSERT_EQ(0, dex_registers0[0].GetStackOffsetInBytes());
+    ASSERT_EQ(4, dex_registers0[1].GetConstant());
 
     InlineInfo if0_0 = ci.GetInlineInfoAtDepth(sm0, 0);
     InlineInfo if0_1 = ci.GetInlineInfoAtDepth(sm0, 1);
@@ -610,13 +610,13 @@ TEST(StackMapTest, InlineTest) {
 
     DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(0, sm0);
     ASSERT_EQ(1u, dex_registers1.size());
-    ASSERT_EQ(8, dex_registers1.GetStackOffsetInBytes(0));
+    ASSERT_EQ(8, dex_registers1[0].GetStackOffsetInBytes());
 
     DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(1, sm0);
     ASSERT_EQ(3u, dex_registers2.size());
-    ASSERT_EQ(16, dex_registers2.GetStackOffsetInBytes(0));
-    ASSERT_EQ(20, dex_registers2.GetConstant(1));
-    ASSERT_EQ(15, dex_registers2.GetMachineRegister(2));
+    ASSERT_EQ(16, dex_registers2[0].GetStackOffsetInBytes());
+    ASSERT_EQ(20, dex_registers2[1].GetConstant());
+    ASSERT_EQ(15, dex_registers2[2].GetMachineRegister());
   }
 
   {
@@ -625,8 +625,8 @@ TEST(StackMapTest, InlineTest) {
 
     DexRegisterMap dex_registers0 = ci.GetDexRegisterMapOf(sm1);
     ASSERT_EQ(2u, dex_registers0.size());
-    ASSERT_EQ(56, dex_registers0.GetStackOffsetInBytes(0));
-    ASSERT_EQ(0, dex_registers0.GetConstant(1));
+    ASSERT_EQ(56, dex_registers0[0].GetStackOffsetInBytes());
+    ASSERT_EQ(0, dex_registers0[1].GetConstant());
 
     InlineInfo if1_0 = ci.GetInlineInfoAtDepth(sm1, 0);
     InlineInfo if1_1 = ci.GetInlineInfoAtDepth(sm1, 1);
@@ -641,13 +641,13 @@ TEST(StackMapTest, InlineTest) {
 
     DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(0, sm1);
     ASSERT_EQ(1u, dex_registers1.size());
-    ASSERT_EQ(12, dex_registers1.GetStackOffsetInBytes(0));
+    ASSERT_EQ(12, dex_registers1[0].GetStackOffsetInBytes());
 
     DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(1, sm1);
     ASSERT_EQ(3u, dex_registers2.size());
-    ASSERT_EQ(80, dex_registers2.GetStackOffsetInBytes(0));
-    ASSERT_EQ(10, dex_registers2.GetConstant(1));
-    ASSERT_EQ(5, dex_registers2.GetMachineRegister(2));
+    ASSERT_EQ(80, dex_registers2[0].GetStackOffsetInBytes());
+    ASSERT_EQ(10, dex_registers2[1].GetConstant());
+    ASSERT_EQ(5, dex_registers2[2].GetMachineRegister());
   }
 
   {
@@ -656,8 +656,8 @@ TEST(StackMapTest, InlineTest) {
 
     DexRegisterMap dex_registers0 = ci.GetDexRegisterMapOf(sm2);
     ASSERT_EQ(2u, dex_registers0.size());
-    ASSERT_FALSE(dex_registers0.IsDexRegisterLive(0));
-    ASSERT_EQ(4, dex_registers0.GetConstant(1));
+    ASSERT_FALSE(dex_registers0[0].IsLive());
+    ASSERT_EQ(4, dex_registers0[1].GetConstant());
     ASSERT_FALSE(sm2.HasInlineInfo());
   }
 
@@ -667,8 +667,8 @@ TEST(StackMapTest, InlineTest) {
 
     DexRegisterMap dex_registers0 = ci.GetDexRegisterMapOf(sm3);
     ASSERT_EQ(2u, dex_registers0.size());
-    ASSERT_EQ(56, dex_registers0.GetStackOffsetInBytes(0));
-    ASSERT_EQ(0, dex_registers0.GetConstant(1));
+    ASSERT_EQ(56, dex_registers0[0].GetStackOffsetInBytes());
+    ASSERT_EQ(0, dex_registers0[1].GetConstant());
 
     InlineInfo if2_0 = ci.GetInlineInfoAtDepth(sm3, 0);
     InlineInfo if2_1 = ci.GetInlineInfoAtDepth(sm3, 1);
@@ -683,12 +683,12 @@ TEST(StackMapTest, InlineTest) {
 
     DexRegisterMap dex_registers1 = ci.GetDexRegisterMapAtDepth(1, sm3);
     ASSERT_EQ(1u, dex_registers1.size());
-    ASSERT_EQ(2, dex_registers1.GetMachineRegister(0));
+    ASSERT_EQ(2, dex_registers1[0].GetMachineRegister());
 
     DexRegisterMap dex_registers2 = ci.GetDexRegisterMapAtDepth(2, sm3);
     ASSERT_EQ(2u, dex_registers2.size());
-    ASSERT_FALSE(dex_registers2.IsDexRegisterLive(0));
-    ASSERT_EQ(3, dex_registers2.GetMachineRegister(1));
+    ASSERT_FALSE(dex_registers2[0].IsLive());
+    ASSERT_EQ(3, dex_registers2[1].GetMachineRegister());
   }
 }
 

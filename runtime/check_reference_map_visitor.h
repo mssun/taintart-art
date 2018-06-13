@@ -75,7 +75,7 @@ class CheckReferenceMapVisitor : public StackVisitor {
     for (int i = 0; i < number_of_references; ++i) {
       int reg = registers[i];
       CHECK_LT(reg, accessor.RegistersSize());
-      DexRegisterLocation location = dex_register_map.GetDexRegisterLocation(reg);
+      DexRegisterLocation location = dex_register_map[reg];
       switch (location.GetKind()) {
         case DexRegisterLocation::Kind::kNone:
           // Not set, should not be a reference.
@@ -98,7 +98,7 @@ class CheckReferenceMapVisitor : public StackVisitor {
           CHECK_EQ(location.GetValue(), 0);
           break;
         default:
-          LOG(FATAL) << "Unexpected location kind " << location.GetInternalKind();
+          LOG(FATAL) << "Unexpected location kind " << location.GetKind();
       }
     }
   }

@@ -48,9 +48,6 @@ class DexRegisterLocation {
 
   Kind GetKind() const { return kind_; }
 
-  // TODO: Remove.
-  Kind GetInternalKind() const { return kind_; }
-
   int32_t GetValue() const { return value_; }
 
   bool operator==(DexRegisterLocation other) const {
@@ -59,6 +56,24 @@ class DexRegisterLocation {
 
   bool operator!=(DexRegisterLocation other) const {
     return !(*this == other);
+  }
+
+  int32_t GetStackOffsetInBytes() const {
+    DCHECK(kind_ == Kind::kInStack);
+    return value_;
+  }
+
+  int32_t GetConstant() const {
+    DCHECK(kind_ == Kind::kConstant);
+    return value_;
+  }
+
+  int32_t GetMachineRegister() const {
+    DCHECK(kind_ == Kind::kInRegister ||
+           kind_ == Kind::kInRegisterHigh ||
+           kind_ == Kind::kInFpuRegister ||
+           kind_ == Kind::kInFpuRegisterHigh);
+    return value_;
   }
 
  private:
@@ -70,9 +85,8 @@ class DexRegisterLocation {
   friend class DexRegisterMap;  // Allow creation of uninitialized array of locations.
 };
 
-static inline std::ostream& operator<<(std::ostream& stream, DexRegisterLocation::Kind kind) {
-  return stream << "Kind<" <<  static_cast<int32_t>(kind) << ">";
-}
+std::ostream& operator<<(std::ostream& stream, DexRegisterLocation::Kind kind);
+std::ostream& operator<<(std::ostream& stream, const DexRegisterLocation& reg);
 
 }  // namespace art
 
