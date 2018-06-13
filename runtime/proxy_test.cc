@@ -23,11 +23,24 @@
 #include "mirror/field-inl.h"
 #include "proxy_test.h"
 #include "scoped_thread_state_change-inl.h"
+#include "well_known_classes.h"
 
 namespace art {
 namespace proxy_test {
 
-class ProxyTest : public CommonRuntimeTest {};
+class ProxyTest : public CommonRuntimeTest {
+ protected:
+  void SetUp() OVERRIDE {
+    CommonRuntimeTest::SetUp();
+    // The creation of a Proxy class uses WellKnownClasses. These are not normally initialized by
+    // CommonRuntimeTest so we need to do that now.
+    WellKnownClasses::Clear();
+    WellKnownClasses::Init(art::Thread::Current()->GetJniEnv());
+    // Since we aren't actually calling any of the native functions we can just immediately call
+    // LateInit after calling Init.
+    WellKnownClasses::LateInit(art::Thread::Current()->GetJniEnv());
+  }
+};
 
 // Creates a proxy class and check ClassHelper works correctly.
 TEST_F(ProxyTest, ProxyClassHelper) {

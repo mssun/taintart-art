@@ -4440,8 +4440,8 @@ void ClassLinker::CreateProxyConstructor(Handle<mirror::Class> klass, ArtMethod*
 
   // Find the <init>(InvocationHandler)V method. The exact method offset varies depending
   // on which front-end compiler was used to build the libcore DEX files.
-  ArtMethod* proxy_constructor = proxy_class->FindConstructor(
-      "(Ljava/lang/reflect/InvocationHandler;)V", image_pointer_size_);
+  ArtMethod* proxy_constructor =
+      jni::DecodeArtMethod(WellKnownClasses::java_lang_reflect_Proxy_init);
   DCHECK(proxy_constructor != nullptr)
       << "Could not find <init> method in java.lang.reflect.Proxy";
 
