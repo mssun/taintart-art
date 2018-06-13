@@ -31,11 +31,12 @@ namespace art {
 constexpr static bool kVerifyStackMaps = kIsDebugBuild;
 
 uint32_t StackMapStream::GetStackMapNativePcOffset(size_t i) {
-  return StackMap::UnpackNativePc(stack_maps_[i].packed_native_pc, instruction_set_);
+  return StackMap::UnpackNativePc(stack_maps_[i][StackMap::kPackedNativePc], instruction_set_);
 }
 
 void StackMapStream::SetStackMapNativePcOffset(size_t i, uint32_t native_pc_offset) {
-  stack_maps_[i].packed_native_pc = StackMap::PackNativePc(native_pc_offset, instruction_set_);
+  stack_maps_[i][StackMap::kPackedNativePc] =
+      StackMap::PackNativePc(native_pc_offset, instruction_set_);
 }
 
 void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
@@ -55,20 +56,17 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
     DCHECK_EQ(num_dex_registers_, num_dex_registers) << "Inconsistent register count";
   }
 
-  current_stack_map_ = StackMapEntry {
-    .kind = static_cast<uint32_t>(kind),
-    .packed_native_pc = StackMap::PackNativePc(native_pc_offset, instruction_set_),
-    .dex_pc = dex_pc,
-    .register_mask_index = kNoValue,
-    .stack_mask_index = kNoValue,
-    .inline_info_index = kNoValue,
-    .dex_register_mask_index = kNoValue,
-    .dex_register_map_index = kNoValue,
-  };
+  current_stack_map_ = BitTableBuilder<StackMap::kCount>::Entry();
+  current_stack_map_[StackMap::kKind] = static_cast<uint32_t>(kind);
+  current_stack_map_[StackMap::kPackedNativePc] =
+      StackMap::PackNativePc(native_pc_offset, instruction_set_);
+  current_stack_map_[StackMap::kDexPc] = dex_pc;
   if (register_mask != 0) {
     uint32_t shift = LeastSignificantBit(register_mask);
-    RegisterMaskEntry entry = { register_mask >> shift, shift };
-    current_stack_map_.register_mask_index = register_masks_.Dedup(&entry);
+    BitTableBuilder<RegisterMask::kCount>::Entry entry;
+    entry[RegisterMask::kValue] = register_mask >> shift;
+    entry[RegisterMask::kShift] = shift;
+    current_stack_map_[StackMap::kRegisterMaskIndex] = register_masks_.Dedup(&entry);
   }
   // The compiler assumes the bit vector will be read during PrepareForFillIn(),
   // and it might modify the data before that. Therefore, just store the pointer.
@@ -114,8 +112,8 @@ void StackMapStream::EndStackMapEntry() {
 
   // Generate index into the InlineInfo table.
   if (!current_inline_infos_.empty()) {
-    current_inline_infos_.back().is_last = InlineInfo::kLast;
-    current_stack_map_.inline_info_index =
+    current_inline_infos_.back()[InlineInfo::kIsLast] = InlineInfo::kLast;
+    current_stack_map_[StackMap::kInlineInfoIndex] =
         inline_infos_.Dedup(current_inline_infos_.data(), current_inline_infos_.size());
   }
 
@@ -130,13 +128,13 @@ void StackMapStream::AddDexRegisterEntry(DexRegisterLocation::Kind kind, int32_t
 }
 
 void StackMapStream::AddInvoke(InvokeType invoke_type, uint32_t dex_method_index) {
-  uint32_t packed_native_pc = current_stack_map_.packed_native_pc;
+  uint32_t packed_native_pc = current_stack_map_[StackMap::kPackedNativePc];
   size_t invoke_info_index = invoke_infos_.size();
-  invoke_infos_.Add(InvokeInfoEntry {
-    .packed_native_pc = packed_native_pc,
-    .invoke_type = invoke_type,
-    .method_info_index = method_infos_.Dedup(&dex_method_index),
-  });
+  BitTableBuilder<InvokeInfo::kCount>::Entry entry;
+  entry[InvokeInfo::kPackedNativePc] = packed_native_pc;
+  entry[InvokeInfo::kInvokeType] = invoke_type;
+  entry[InvokeInfo::kMethodInfoIndex] = method_infos_.Dedup({dex_method_index});
+  invoke_infos_.Add(entry);
 
   if (kVerifyStackMaps) {
     dchecks_.emplace_back([=](const CodeInfo& code_info) {
@@ -144,7 +142,7 @@ void StackMapStream::AddInvoke(InvokeType invoke_type, uint32_t dex_method_index
       CHECK_EQ(invoke_info.GetNativePcOffset(instruction_set_),
                StackMap::UnpackNativePc(packed_native_pc, instruction_set_));
       CHECK_EQ(invoke_info.GetInvokeType(), invoke_type);
-      CHECK_EQ(method_infos_[invoke_info.GetMethodInfoIndex()], dex_method_index);
+      CHECK_EQ(method_infos_[invoke_info.GetMethodInfoIndex()][0], dex_method_index);
     });
   }
 }
@@ -159,24 +157,20 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
 
   expected_num_dex_registers_ += num_dex_registers;
 
-  InlineInfoEntry entry = {
-    .is_last = InlineInfo::kMore,
-    .dex_pc = dex_pc,
-    .method_info_index = kNoValue,
-    .art_method_hi = kNoValue,
-    .art_method_lo = kNoValue,
-    .num_dex_registers = static_cast<uint32_t>(expected_num_dex_registers_),
-  };
+  BitTableBuilder<InlineInfo::kCount>::Entry entry;
+  entry[InlineInfo::kIsLast] = InlineInfo::kMore;
+  entry[InlineInfo::kDexPc] = dex_pc;
+  entry[InlineInfo::kNumberOfDexRegisters] = static_cast<uint32_t>(expected_num_dex_registers_);
   if (EncodeArtMethodInInlineInfo(method)) {
-    entry.art_method_hi = High32Bits(reinterpret_cast<uintptr_t>(method));
-    entry.art_method_lo = Low32Bits(reinterpret_cast<uintptr_t>(method));
+    entry[InlineInfo::kArtMethodHi] = High32Bits(reinterpret_cast<uintptr_t>(method));
+    entry[InlineInfo::kArtMethodLo] = Low32Bits(reinterpret_cast<uintptr_t>(method));
   } else {
     if (dex_pc != static_cast<uint32_t>(-1) && kIsDebugBuild) {
       ScopedObjectAccess soa(Thread::Current());
       DCHECK(IsSameDexFile(*outer_dex_file, *method->GetDexFile()));
     }
     uint32_t dex_method_index = method->GetDexMethodIndexUnchecked();
-    entry.method_info_index = method_infos_.Dedup(&dex_method_index);
+    entry[InlineInfo::kMethodInfoIndex] = method_infos_.Dedup({dex_method_index});
   }
   current_inline_infos_.push_back(entry);
 
@@ -192,7 +186,7 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
       if (encode_art_method) {
         CHECK_EQ(inline_info.GetArtMethod(), method);
       } else {
-        CHECK_EQ(method_infos_[inline_info.GetMethodInfoIndex()],
+        CHECK_EQ(method_infos_[inline_info.GetMethodInfoIndex()][0],
                  method->GetDexMethodIndexUnchecked());
       }
     });
@@ -225,13 +219,13 @@ void StackMapStream::CreateDexRegisterMap() {
     // Distance is difference between this index and the index of last modification.
     uint32_t distance = stack_maps_.size() - dex_register_timestamp_[i];
     if (previous_dex_registers_[i] != reg || distance > kMaxDexRegisterMapSearchDistance) {
-      DexRegisterEntry entry = DexRegisterEntry{
-        .kind = static_cast<uint32_t>(reg.GetKind()),
-        .packed_value = DexRegisterInfo::PackValue(reg.GetKind(), reg.GetValue()),
-      };
+      BitTableBuilder<DexRegisterInfo::kCount>::Entry entry;
+      entry[DexRegisterInfo::kKind] = static_cast<uint32_t>(reg.GetKind());
+      entry[DexRegisterInfo::kPackedValue] =
+          DexRegisterInfo::PackValue(reg.GetKind(), reg.GetValue());
       uint32_t index = reg.IsLive() ? dex_register_catalog_.Dedup(&entry) : kNoValue;
       temp_dex_register_mask_.SetBit(i);
-      temp_dex_register_map_.push_back(index);
+      temp_dex_register_map_.push_back({index});
       previous_dex_registers_[i] = reg;
       dex_register_timestamp_[i] = stack_maps_.size();
     }
@@ -239,12 +233,12 @@ void StackMapStream::CreateDexRegisterMap() {
 
   // Set the mask and map for the current StackMap (which includes inlined registers).
   if (temp_dex_register_mask_.GetNumberOfBits() != 0) {
-    current_stack_map_.dex_register_mask_index =
+    current_stack_map_[StackMap::kDexRegisterMaskIndex] =
         dex_register_masks_.Dedup(temp_dex_register_mask_.GetRawStorage(),
                                   temp_dex_register_mask_.GetNumberOfBits());
   }
   if (!current_dex_registers_.empty()) {
-    current_stack_map_.dex_register_map_index =
+    current_stack_map_[StackMap::kDexRegisterMapIndex] =
         dex_register_maps_.Dedup(temp_dex_register_map_.data(),
                                  temp_dex_register_map_.size());
   }
@@ -275,7 +269,7 @@ void StackMapStream::FillInMethodInfo(MemoryRegion region) {
   {
     MethodInfo info(region.begin(), method_infos_.size());
     for (size_t i = 0; i < method_infos_.size(); ++i) {
-      info.SetMethodIndex(i, method_infos_[i]);
+      info.SetMethodIndex(i, method_infos_[i][0]);
     }
   }
   if (kVerifyStackMaps) {
@@ -284,23 +278,19 @@ void StackMapStream::FillInMethodInfo(MemoryRegion region) {
     const size_t count = info.NumMethodIndices();
     DCHECK_EQ(count, method_infos_.size());
     for (size_t i = 0; i < count; ++i) {
-      DCHECK_EQ(info.GetMethodIndex(i), method_infos_[i]);
+      DCHECK_EQ(info.GetMethodIndex(i), method_infos_[i][0]);
     }
   }
 }
 
 size_t StackMapStream::PrepareForFillIn() {
-  static_assert(sizeof(StackMapEntry) == StackMap::kCount * sizeof(uint32_t), "Layout");
-  static_assert(sizeof(InvokeInfoEntry) == InvokeInfo::kCount * sizeof(uint32_t), "Layout");
-  static_assert(sizeof(InlineInfoEntry) == InlineInfo::kCount * sizeof(uint32_t), "Layout");
-  static_assert(sizeof(DexRegisterEntry) == DexRegisterInfo::kCount * sizeof(uint32_t), "Layout");
   DCHECK_EQ(out_.size(), 0u);
 
   // Read the stack masks now. The compiler might have updated them.
   for (size_t i = 0; i < lazy_stack_masks_.size(); i++) {
     BitVector* stack_mask = lazy_stack_masks_[i];
     if (stack_mask != nullptr && stack_mask->GetNumberOfBits() != 0) {
-      stack_maps_[i].stack_mask_index =
+      stack_maps_[i][StackMap::kStackMaskIndex] =
         stack_masks_.Dedup(stack_mask->GetRawStorage(), stack_mask->GetNumberOfBits());
     }
   }
