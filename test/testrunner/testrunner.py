@@ -328,7 +328,7 @@ def run_tests(tests):
     if gdb_arg:
       options_all += ' --gdb-arg ' + gdb_arg
 
-  options_all += ' '.join(run_test_option)
+  options_all += ' ' + ' '.join(run_test_option)
 
   if runtime_option:
     for opt in runtime_option:
@@ -1010,11 +1010,11 @@ def main():
   if build:
     build_targets = ''
     if 'host' in _user_input_variants['target']:
-      build_targets += 'test-art-host-run-test-dependencies'
+      build_targets += 'test-art-host-run-test-dependencies '
     if 'target' in _user_input_variants['target']:
-      build_targets += 'test-art-target-run-test-dependencies'
+      build_targets += 'test-art-target-run-test-dependencies '
     if 'jvm' in _user_input_variants['target']:
-      build_targets += 'test-art-host-run-test-dependencies'
+      build_targets += 'test-art-host-run-test-dependencies '
     build_command = 'make'
     build_command += ' DX='
     build_command += ' -j'
