@@ -108,6 +108,7 @@ struct WellKnownClasses {
   static jmethodID java_lang_ref_FinalizerReference_add;
   static jmethodID java_lang_ref_ReferenceQueue_add;
   static jmethodID java_lang_reflect_Parameter_init;
+  static jmethodID java_lang_reflect_Proxy_init;
   static jmethodID java_lang_reflect_Proxy_invoke;
   static jmethodID java_lang_Runtime_nativeLoad;
   static jmethodID java_lang_Short_valueOf;
