@@ -37,6 +37,13 @@ public class Main {
   //
   /// CHECK-START: int Main.minI(int) instruction_simplifier (after)
   /// CHECK-NOT:              InvokeStaticOrDirect
+  //
+  /// CHECK-START-ARM64: int Main.minI(int) disassembly (after)
+  /// CHECK-NOT:              mov {{w\d+}}, #0x14
+  /// CHECK:                  cmp {{w\d+}}, #0x14
+  //  Check that the constant generation was handled by VIXL.
+  /// CHECK:                  mov w16, #0x14
+  /// CHECK:                  csel {{w\d+}}, {{w\d+}}, w16, lt
   public static int minI(int a) {
     return Math.min(a, 20);
   }
@@ -55,6 +62,13 @@ public class Main {
   //
   /// CHECK-START: long Main.minL(long) instruction_simplifier (after)
   /// CHECK-NOT:              InvokeStaticOrDirect
+  //
+  /// CHECK-START-ARM64: long Main.minL(long) disassembly (after)
+  /// CHECK-NOT:              mov {{x\d+}}, #0x14
+  /// CHECK:                  cmp {{x\d+}}, #0x14
+  //  Check that the constant generation was handled by VIXL.
+  /// CHECK:                  mov x16, #0x14
+  /// CHECK:                  csel {{x\d+}}, {{x\d+}}, x16, lt
   public static long minL(long a) {
     return Math.min(a, 20L);
   }
@@ -73,6 +87,13 @@ public class Main {
   //
   /// CHECK-START: int Main.maxI(int) instruction_simplifier (after)
   /// CHECK-NOT:              InvokeStaticOrDirect
+  //
+  /// CHECK-START-ARM64: int Main.maxI(int) disassembly (after)
+  /// CHECK-NOT:              mov {{w\d+}}, #0x14
+  /// CHECK:                  cmp {{w\d+}}, #0x14
+  //  Check that the constant generation was handled by VIXL.
+  /// CHECK:                  mov w16, #0x14
+  /// CHECK:                  csel {{w\d+}}, {{w\d+}}, w16, gt
   public static int maxI(int a) {
     return Math.max(a, 20);
   }
@@ -91,8 +112,163 @@ public class Main {
   //
   /// CHECK-START: long Main.maxL(long) instruction_simplifier (after)
   /// CHECK-NOT:              InvokeStaticOrDirect
+  //
+  /// CHECK-START-ARM64: long Main.maxL(long) disassembly (after)
+  /// CHECK-NOT:              mov {{x\d+}}, #0x14
+  /// CHECK:                  cmp {{x\d+}}, #0x14
+  //  Check that the constant generation was handled by VIXL.
+  /// CHECK:                  mov x16, #0x14
+  /// CHECK:                  csel {{x\d+}}, {{x\d+}}, x16, gt
   public static long maxL(long a) {
     return Math.max(a, 20L);
+  }
+
+  //
+  // Special Cases
+  //
+
+  /// CHECK-START-ARM64: int Main.minIntConstantZero(int) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{w\d+}}, #0x0
+  /// CHECK:            cmp {{w\d+}}, #0x0 (0)
+  /// CHECK:            csel {{w\d+}}, {{w\d+}}, wzr, lt
+  /// CHECK:            ret
+  public static int minIntConstantZero(int a) {
+    return Math.min(a, 0);
+  }
+
+  /// CHECK-START-ARM64: int Main.minIntConstantOne(int) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{w\d+}}, #0x1
+  /// CHECK:            cmp {{w\d+}}, #0x1 (1)
+  /// CHECK:            csinc {{w\d+}}, {{w\d+}}, wzr, lt
+  /// CHECK:            ret
+  public static int minIntConstantOne(int a) {
+    return Math.min(a, 1);
+  }
+
+  /// CHECK-START-ARM64: int Main.minIntConstantMinusOne(int) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{w\d+}}, #0xffffffff
+  /// CHECK:            cmn {{w\d+}}, #0x1 (1)
+  /// CHECK:            csinv {{w\d+}}, {{w\d+}}, wzr, lt
+  /// CHECK:            ret
+  public static int minIntConstantMinusOne(int a) {
+    return Math.min(a, -1);
+  }
+
+  /// CHECK-START-ARM64: long Main.minLongConstantZero(long) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{x\d+}}, #0x0
+  /// CHECK:            cmp {{x\d+}}, #0x0 (0)
+  /// CHECK:            csel {{x\d+}}, {{x\d+}}, xzr, lt
+  /// CHECK:            ret
+  public static long minLongConstantZero(long a) {
+    return Math.min(a, 0L);
+  }
+
+  /// CHECK-START-ARM64: long Main.minLongConstantOne(long) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{x\d+}}, #0x1
+  /// CHECK:            cmp {{x\d+}}, #0x1 (1)
+  /// CHECK:            csinc {{x\d+}}, {{x\d+}}, xzr, lt
+  /// CHECK:            ret
+  public static long minLongConstantOne(long a) {
+    return Math.min(a, 1L);
+  }
+
+  /// CHECK-START-ARM64: long Main.minLongConstantMinusOne(long) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{x\d+}}, #0xffffffffffffffff
+  /// CHECK:            cmn {{x\d+}}, #0x1 (1)
+  /// CHECK:            csinv {{x\d+}}, {{x\d+}}, xzr, lt
+  /// CHECK:            ret
+  public static long minLongConstantMinusOne(long a) {
+    return Math.min(a, -1L);
+  }
+
+  /// CHECK-START-ARM64: int Main.maxIntConstantZero(int) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{w\d+}}, #0x0
+  /// CHECK:            cmp {{w\d+}}, #0x0 (0)
+  /// CHECK:            csel {{w\d+}}, {{w\d+}}, wzr, gt
+  /// CHECK:            ret
+  public static int maxIntConstantZero(int a) {
+    return Math.max(a, 0);
+  }
+
+  /// CHECK-START-ARM64: int Main.maxIntConstantOne(int) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{w\d+}}, #0x1
+  /// CHECK:            cmp {{w\d+}}, #0x1 (1)
+  /// CHECK:            csinc {{w\d+}}, {{w\d+}}, wzr, gt
+  /// CHECK:            ret
+  public static int maxIntConstantOne(int a) {
+    return Math.max(a, 1);
+  }
+
+  /// CHECK-START-ARM64: int Main.maxIntConstantMinusOne(int) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{w\d+}}, #0xffffffff
+  /// CHECK:            cmn {{w\d+}}, #0x1 (1)
+  /// CHECK:            csinv {{w\d+}}, {{w\d+}}, wzr, gt
+  /// CHECK:            ret
+  public static int maxIntConstantMinusOne(int a) {
+    return Math.max(a, -1);
+  }
+
+  /// CHECK-START-ARM64: int Main.maxIntLargeConstant(int) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK:            mov {{w\d+}}, #0x2001
+  /// CHECK:            cmp {{w\d+}}, {{w\d+}}
+  //  Check that constant generation was not handled by VIXL.
+  /// CHECK-NOT:        mov {{w\d+}}, #0x2001
+  /// CHECK:            csel {{w\d+}}, {{w\d+}}, {{w\d+}}, gt
+  /// CHECK:            ret
+  public static int maxIntLargeConstant(int a) {
+    return Math.max(a, 8193);
+  }
+
+  /// CHECK-START-ARM64: long Main.maxLongConstantZero(long) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{x\d+}}, #0x0
+  /// CHECK:            cmp {{x\d+}}, #0x0 (0)
+  /// CHECK:            csel {{x\d+}}, {{x\d+}}, xzr, gt
+  /// CHECK:            ret
+  public static long maxLongConstantZero(long a) {
+    return Math.max(a, 0L);
+  }
+
+  /// CHECK-START-ARM64: long Main.maxLongConstantOne(long) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{x\d+}}, #0x1
+  /// CHECK:            cmp {{x\d+}}, #0x1 (1)
+  /// CHECK:            csinc {{x\d+}}, {{x\d+}}, xzr, gt
+  /// CHECK:            ret
+  public static long maxLongConstantOne(long a) {
+    return Math.max(a, 1L);
+  }
+
+  /// CHECK-START-ARM64: long Main.maxLongConstantMinusOne(long) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK-NOT:        mov {{x\d+}}, #0xffffffffffffffff
+  /// CHECK:            cmn {{x\d+}}, #0x1 (1)
+  /// CHECK:            csinv {{x\d+}}, {{x\d+}}, xzr, gt
+  /// CHECK:            ret
+  public static long maxLongConstantMinusOne(long a) {
+    return Math.max(a, -1L);
+  }
+
+  /// CHECK-START-ARM64: long Main.maxLongLargeConstant(long) disassembly (after)
+  /// CHECK-NOT:        InvokeStaticOrDirect
+  /// CHECK:            mov {{x\d+}}, #0x2001
+  /// CHECK:            cmp {{x\d+}}, {{x\d+}}
+  //  Check that constant generation was not handled by VIXL.
+  /// CHECK-NOT:        mov {{x\d+}}, #0x2001
+  /// CHECK:            csel {{x\d+}}, {{x\d+}}, {{x\d+}}, gt
+  /// CHECK:            ret
+  public static long maxLongLargeConstant(long a) {
+    return Math.max(a, 8193L);
   }
 
   //
@@ -538,12 +714,40 @@ public class Main {
     // Intrinsics.
     expectEquals(10, minI(10));
     expectEquals(20, minI(25));
+    expectEquals(-1, minIntConstantZero(-1));
+    expectEquals(0, minIntConstantZero(1));
+    expectEquals(0, minIntConstantOne(0));
+    expectEquals(1, minIntConstantOne(2));
+    expectEquals(-2, minIntConstantMinusOne(-2));
+    expectEquals(-1, minIntConstantMinusOne(0));
     expectEquals(10L, minL(10L));
     expectEquals(20L, minL(25L));
+    expectEquals(-1L, minLongConstantZero(-1L));
+    expectEquals(0L, minLongConstantZero(1L));
+    expectEquals(0L, minLongConstantOne(0L));
+    expectEquals(1L, minLongConstantOne(2L));
+    expectEquals(-2L, minLongConstantMinusOne(-2L));
+    expectEquals(-1L, minLongConstantMinusOne(0L));
     expectEquals(20, maxI(10));
     expectEquals(25, maxI(25));
+    expectEquals(0, maxIntConstantZero(-1));
+    expectEquals(1, maxIntConstantZero(1));
+    expectEquals(1, maxIntConstantOne(0));
+    expectEquals(2, maxIntConstantOne(2));
+    expectEquals(-1, maxIntConstantMinusOne(-2));
+    expectEquals(0, maxIntConstantMinusOne(0));
+    expectEquals(8193, maxIntLargeConstant(8192));
+    expectEquals(9000, maxIntLargeConstant(9000));
     expectEquals(20L, maxL(10L));
     expectEquals(25L, maxL(25L));
+    expectEquals(0L, maxLongConstantZero(-1L));
+    expectEquals(1L, maxLongConstantZero(1L));
+    expectEquals(1L, maxLongConstantOne(0L));
+    expectEquals(2L, maxLongConstantOne(2L));
+    expectEquals(-1L, maxLongConstantMinusOne(-2L));
+    expectEquals(0L, maxLongConstantMinusOne(0L));
+    expectEquals(8193L, maxLongLargeConstant(8192L));
+    expectEquals(9000L, maxLongLargeConstant(9000L));
     // Types.
     expectEquals(10, min1(10, 20));
     expectEquals(10, min2(10, 20));
