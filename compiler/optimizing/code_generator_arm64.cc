@@ -2459,6 +2459,9 @@ void InstructionCodeGeneratorARM64::HandleBinaryOp(HBinaryOperation* instr) {
           // all & reg_bits - 1.
           __ Ror(dst, lhs, RegisterFrom(instr->GetLocations()->InAt(1), type));
         }
+      } else if (instr->IsMin() || instr->IsMax()) {
+          __ Cmp(lhs, rhs);
+          __ Csel(dst, lhs, rhs, instr->IsMin() ? lt : gt);
       } else {
         DCHECK(instr->IsXor());
         __ Eor(dst, lhs, rhs);
@@ -2474,6 +2477,10 @@ void InstructionCodeGeneratorARM64::HandleBinaryOp(HBinaryOperation* instr) {
         __ Fadd(dst, lhs, rhs);
       } else if (instr->IsSub()) {
         __ Fsub(dst, lhs, rhs);
+      } else if (instr->IsMin()) {
+        __ Fmin(dst, lhs, rhs);
+      } else if (instr->IsMax()) {
+        __ Fmax(dst, lhs, rhs);
       } else {
         LOG(FATAL) << "Unexpected floating-point binary operation";
       }
@@ -5671,111 +5678,20 @@ void InstructionCodeGeneratorARM64::VisitRem(HRem* rem) {
   }
 }
 
-// TODO: integrate with HandleBinaryOp?
-static void CreateMinMaxLocations(ArenaAllocator* allocator, HBinaryOperation* minmax) {
-  LocationSummary* locations = new (allocator) LocationSummary(minmax);
-  switch (minmax->GetResultType()) {
-    case DataType::Type::kInt32:
-    case DataType::Type::kInt64:
-      locations->SetInAt(0, Location::RequiresRegister());
-      locations->SetInAt(1, Location::RequiresRegister());
-      locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
-      break;
-    case DataType::Type::kFloat32:
-    case DataType::Type::kFloat64:
-      locations->SetInAt(0, Location::RequiresFpuRegister());
-      locations->SetInAt(1, Location::RequiresFpuRegister());
-      locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type for HMinMax " << minmax->GetResultType();
-  }
-}
-
-void InstructionCodeGeneratorARM64::GenerateMinMaxInt(LocationSummary* locations,
-                                                      bool is_min,
-                                                      DataType::Type type) {
-  Location op1 = locations->InAt(0);
-  Location op2 = locations->InAt(1);
-  Location out = locations->Out();
-
-  Register op1_reg;
-  Register op2_reg;
-  Register out_reg;
-  if (type == DataType::Type::kInt64) {
-    op1_reg = XRegisterFrom(op1);
-    op2_reg = XRegisterFrom(op2);
-    out_reg = XRegisterFrom(out);
-  } else {
-    DCHECK_EQ(type, DataType::Type::kInt32);
-    op1_reg = WRegisterFrom(op1);
-    op2_reg = WRegisterFrom(op2);
-    out_reg = WRegisterFrom(out);
-  }
-
-  __ Cmp(op1_reg, op2_reg);
-  __ Csel(out_reg, op1_reg, op2_reg, is_min ? lt : gt);
-}
-
-void InstructionCodeGeneratorARM64::GenerateMinMaxFP(LocationSummary* locations,
-                                                     bool is_min,
-                                                     DataType::Type type) {
-  Location op1 = locations->InAt(0);
-  Location op2 = locations->InAt(1);
-  Location out = locations->Out();
-
-  FPRegister op1_reg;
-  FPRegister op2_reg;
-  FPRegister out_reg;
-  if (type == DataType::Type::kFloat64) {
-    op1_reg = DRegisterFrom(op1);
-    op2_reg = DRegisterFrom(op2);
-    out_reg = DRegisterFrom(out);
-  } else {
-    DCHECK_EQ(type, DataType::Type::kFloat32);
-    op1_reg = SRegisterFrom(op1);
-    op2_reg = SRegisterFrom(op2);
-    out_reg = SRegisterFrom(out);
-  }
-
-  if (is_min) {
-    __ Fmin(out_reg, op1_reg, op2_reg);
-  } else {
-    __ Fmax(out_reg, op1_reg, op2_reg);
-  }
-}
-
-// TODO: integrate with HandleBinaryOp?
-void InstructionCodeGeneratorARM64::GenerateMinMax(HBinaryOperation* minmax, bool is_min) {
-  DataType::Type type = minmax->GetResultType();
-  switch (type) {
-    case DataType::Type::kInt32:
-    case DataType::Type::kInt64:
-      GenerateMinMaxInt(minmax->GetLocations(), is_min, type);
-      break;
-    case DataType::Type::kFloat32:
-    case DataType::Type::kFloat64:
-      GenerateMinMaxFP(minmax->GetLocations(), is_min, type);
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type for HMinMax " << type;
-  }
-}
-
 void LocationsBuilderARM64::VisitMin(HMin* min) {
-  CreateMinMaxLocations(GetGraph()->GetAllocator(), min);
+  HandleBinaryOp(min);
 }
 
 void InstructionCodeGeneratorARM64::VisitMin(HMin* min) {
-  GenerateMinMax(min, /*is_min*/ true);
+  HandleBinaryOp(min);
 }
 
 void LocationsBuilderARM64::VisitMax(HMax* max) {
-  CreateMinMaxLocations(GetGraph()->GetAllocator(), max);
+  HandleBinaryOp(max);
 }
 
 void InstructionCodeGeneratorARM64::VisitMax(HMax* max) {
-  GenerateMinMax(max, /*is_min*/ false);
+  HandleBinaryOp(max);
 }
 
 void LocationsBuilderARM64::VisitAbs(HAbs* abs) {
