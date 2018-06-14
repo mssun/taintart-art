@@ -315,11 +315,9 @@ public class Main implements Runnable {
         Map<Operation, Double> frequencyMap = new HashMap<Operation, Double>();
         frequencyMap.put(new OOM(), 0.005);                   //   1/200
         frequencyMap.put(new SigQuit(), 0.095);               //  19/200
-        frequencyMap.put(new Alloc(), 0.225);                 //  45/200
+        frequencyMap.put(new Alloc(), 0.2);                   //  40/200
         frequencyMap.put(new LargeAlloc(), 0.05);             //  10/200
-        // TODO: NonMovingAlloc operations fail an assertion with the
-        // GSS collector (see b/72738921); disable them for now.
-        frequencyMap.put(new NonMovingAlloc(), 0.0);          //   0/200
+        frequencyMap.put(new NonMovingAlloc(), 0.025);        //   5/200
         frequencyMap.put(new StackTrace(), 0.1);              //  20/200
         frequencyMap.put(new Exit(), 0.225);                  //  45/200
         frequencyMap.put(new Sleep(), 0.125);                 //  25/200
@@ -379,6 +377,8 @@ public class Main implements Runnable {
             op = new Alloc();
         } else if (split[0].equals("-largealloc")) {
             op = new LargeAlloc();
+        } else if (split[0].equals("-nonmovingalloc")) {
+            op = new NonMovingAlloc();
         } else if (split[0].equals("-stacktrace")) {
             op = new StackTrace();
         } else if (split[0].equals("-exit")) {
