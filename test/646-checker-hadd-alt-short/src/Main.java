@@ -58,7 +58,7 @@ public class Main {
   /// CHECK-DAG: <<Get1:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<And1:i\d+>> And [<<Get1>>,<<UMAX>>]             loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<And2:i\d+>> And [<<Get2>>,<<UMAX>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<And2:i\d+>> And [<<UMAX>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Add:i\d+>>  Add [<<And1>>,<<And2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<UShr:i\d+>> UShr [<<Add>>,<<I1>>]               loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<UShr>>]           loop:<<Loop>>      outer_loop:none
@@ -82,7 +82,9 @@ public class Main {
   private static void halving_add_unsigned(short[] b1, short[] b2, short[] bo) {
     int min_length = Math.min(bo.length, Math.min(b1.length, b2.length));
     for (int i = 0; i < min_length; i++) {
-      bo[i] = (short) (((b1[i] & 0xffff) + (b2[i] & 0xffff)) >>> 1);
+      int v1 = b1[i] & 0xffff;
+      int v2 = b2[i] & 0xffff;
+      bo[i] = (short) ((v1 + v2) >>> 1);
     }
   }
 
@@ -116,7 +118,7 @@ public class Main {
   /// CHECK-DAG: <<Get1:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<And1:i\d+>> And [<<Get1>>,<<UMAX>>]             loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<And2:i\d+>> And [<<Get2>>,<<UMAX>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<And2:i\d+>> And [<<UMAX>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Add1:i\d+>> Add [<<And1>>,<<And2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Add2:i\d+>> Add [<<Add1>>,<<I1>>]               loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<UShr:i\d+>> UShr [<<Add2>>,<<I1>>]              loop:<<Loop>>      outer_loop:none
@@ -142,7 +144,9 @@ public class Main {
   private static void rounding_halving_add_unsigned(short[] b1, short[] b2, short[] bo) {
     int min_length = Math.min(bo.length, Math.min(b1.length, b2.length));
     for (int i = 0; i < min_length; i++) {
-      bo[i] = (short) (((b1[i] & 0xffff) + (b2[i] & 0xffff) + 1) >>> 1);
+      int v1 = b1[i] & 0xffff;
+      int v2 = b2[i] & 0xffff;
+      bo[i] = (short) ((v1 + v2 + 1) >>> 1);
     }
   }
 
