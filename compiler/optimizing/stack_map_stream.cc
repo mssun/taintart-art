@@ -43,7 +43,8 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
                                         uint32_t register_mask,
                                         BitVector* stack_mask,
                                         uint32_t num_dex_registers,
-                                        uint8_t inlining_depth) {
+                                        uint8_t inlining_depth,
+                                        StackMap::Kind kind) {
   DCHECK(!in_stack_map_) << "Mismatched Begin/End calls";
   in_stack_map_ = true;
   // num_dex_registers_ is the constant per-method number of registers.
@@ -55,6 +56,7 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
   }
 
   current_stack_map_ = StackMapEntry {
+    .kind = static_cast<uint32_t>(kind),
     .packed_native_pc = StackMap::PackNativePc(native_pc_offset, instruction_set_),
     .dex_pc = dex_pc,
     .register_mask_index = kNoValue,
@@ -81,8 +83,17 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
     // Create lambda method, which will be executed at the very end to verify data.
     // Parameters and local variables will be captured(stored) by the lambda "[=]".
     dchecks_.emplace_back([=](const CodeInfo& code_info) {
+      if (kind == StackMap::Kind::Default || kind == StackMap::Kind::OSR) {
+        StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset,
+                                                                    instruction_set_);
+        CHECK_EQ(stack_map.Row(), stack_map_index);
+      } else if (kind == StackMap::Kind::Catch) {
+        StackMap stack_map = code_info.GetCatchStackMapForDexPc(dex_pc);
+        CHECK_EQ(stack_map.Row(), stack_map_index);
+      }
       StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
       CHECK_EQ(stack_map.GetNativePcOffset(instruction_set_), native_pc_offset);
+      CHECK_EQ(stack_map.GetKind(), static_cast<uint32_t>(kind));
       CHECK_EQ(stack_map.GetDexPc(), dex_pc);
       CHECK_EQ(code_info.GetRegisterMaskOf(stack_map), register_mask);
       BitMemoryRegion seen_stack_mask = code_info.GetStackMaskOf(stack_map);

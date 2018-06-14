@@ -425,12 +425,12 @@ TEST(StackMapTest, TestShareDexRegisterMap) {
   stream.AddDexRegisterEntry(Kind::kConstant, -2);   // Large location.
   stream.EndStackMapEntry();
   // Second stack map, which should share the same dex register map.
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(0, 65 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
   stream.AddDexRegisterEntry(Kind::kInRegister, 0);  // Short location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);   // Large location.
   stream.EndStackMapEntry();
   // Third stack map (doesn't share the dex register map).
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(0, 66 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
   stream.AddDexRegisterEntry(Kind::kInRegister, 2);  // Short location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);   // Large location.
   stream.EndStackMapEntry();
@@ -528,7 +528,7 @@ TEST(StackMapTest, InlineTest) {
   sp_mask1.SetBit(4);
 
   // First stack map.
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask1, 2, 2);
+  stream.BeginStackMapEntry(0, 10 * kPcAlign, 0x3, &sp_mask1, 2, 2);
   stream.AddDexRegisterEntry(Kind::kInStack, 0);
   stream.AddDexRegisterEntry(Kind::kConstant, 4);
 
