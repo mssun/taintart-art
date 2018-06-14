@@ -290,11 +290,6 @@ void DumpNativeStack(std::ostream& os,
                      void* ucontext_ptr,
                      bool skip_frames) {
   // Historical note: This was disabled when running under Valgrind (b/18119146).
-  // TODO: Valgrind is no longer supported, but Address Sanitizer is:
-  // check whether this test works with ASan.
-  if (kRunningOnMemoryTool) {
-    return;
-  }
 
   BacktraceMap* map = existing_map;
   std::unique_ptr<BacktraceMap> tmp_map;

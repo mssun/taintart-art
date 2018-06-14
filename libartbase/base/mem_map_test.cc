@@ -471,9 +471,8 @@ TEST_F(MemMapTest, MapAnonymousExactAddr32bitHighAddr) {
   // cannot allocate in the 2GB-4GB region.
   TEST_DISABLED_FOR_MIPS();
 
-  // This test may not work under Valgrind.
-  // TODO: Valgrind is no longer supported, but Address Sanitizer is:
-  // check whether this test works with ASan.
+  // This test does not work under AddressSanitizer.
+  // Historical note: This test did not work under Valgrind either.
   TEST_DISABLED_FOR_MEMORY_TOOL();
 
   CommonInit();
