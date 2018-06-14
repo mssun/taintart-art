@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-// This file is just for running on the RI as the test is ART specific.
 public class Main {
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
+    Class main2 = Class.forName("Main2");
+    main2.getMethod("test").invoke(main2.newInstance());
     System.out.println("passed");
   }
 }
