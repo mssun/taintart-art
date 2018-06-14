@@ -323,7 +323,10 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   }
 
   // Record native to dex mapping for a suspend point.  Required by runtime.
-  void RecordPcInfo(HInstruction* instruction, uint32_t dex_pc, SlowPathCode* slow_path = nullptr);
+  void RecordPcInfo(HInstruction* instruction,
+                    uint32_t dex_pc,
+                    SlowPathCode* slow_path = nullptr,
+                    bool native_debug_info = false);
   // Check whether we have already recorded mapping at this PC.
   bool HasStackMapAtCurrentPc();
   // Record extra stack maps if we support native debugging.

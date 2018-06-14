@@ -27,10 +27,9 @@
 #include "dex_register_location.h"
 #include "method_info.h"
 #include "nodes.h"
+#include "stack_map.h"
 
 namespace art {
-
-class CodeInfo;
 
 /**
  * Collects and builds stack maps for a method. All the stack maps
@@ -66,7 +65,8 @@ class StackMapStream : public ValueObject {
                           uint32_t register_mask,
                           BitVector* sp_mask,
                           uint32_t num_dex_registers,
-                          uint8_t inlining_depth);
+                          uint8_t inlining_depth,
+                          StackMap::Kind kind = StackMap::Kind::Default);
   void EndStackMapEntry();
 
   void AddDexRegisterEntry(DexRegisterLocation::Kind kind, int32_t value);
@@ -99,6 +99,7 @@ class StackMapStream : public ValueObject {
 
   // The fields must be uint32_t and mirror the StackMap accessor in stack_map.h!
   struct StackMapEntry {
+    uint32_t kind;
     uint32_t packed_native_pc;
     uint32_t dex_pc;
     uint32_t register_mask_index;
