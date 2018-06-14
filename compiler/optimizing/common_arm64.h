@@ -234,6 +234,13 @@ inline vixl::aarch64::Operand OperandFromMemOperand(
   }
 }
 
+inline bool AddSubCanEncodeAsImmediate(int64_t value) {
+  // If `value` does not fit but `-value` does, VIXL will automatically use
+  // the 'opposite' instruction.
+  return vixl::aarch64::Assembler::IsImmAddSub(value)
+      || vixl::aarch64::Assembler::IsImmAddSub(-value);
+}
+
 inline bool Arm64CanEncodeConstantAsImmediate(HConstant* constant, HInstruction* instr) {
   int64_t value = CodeGenerator::GetInt64ValueOf(constant);
 
@@ -247,6 +254,20 @@ inline bool Arm64CanEncodeConstantAsImmediate(HConstant* constant, HInstruction*
       return vixl::aarch64::Assembler::IsImmFP64(constant->AsDoubleConstant()->GetValue());
     }
     return IsUint<8>(value);
+  }
+
+  // Code generation for Min/Max:
+  //    Cmp left_op, right_op
+  //    Csel dst, left_op, right_op, cond
+  if (instr->IsMin() || instr->IsMax()) {
+    if (constant->GetUses().HasExactlyOneElement()) {
+      // If value can be encoded as immediate for the Cmp, then let VIXL handle
+      // the constant generation for the Csel.
+      return AddSubCanEncodeAsImmediate(value);
+    }
+    // These values are encodable as immediates for Cmp and VIXL will use csinc and csinv
+    // with the zr register as right_op, hence no constant generation is required.
+    return constant->IsZeroBitPattern() || constant->IsOne() || constant->IsMinusOne();
   }
 
   // For single uses we let VIXL handle the constant generation since it will
@@ -275,10 +296,7 @@ inline bool Arm64CanEncodeConstantAsImmediate(HConstant* constant, HInstruction*
            instr->IsSub())
         << instr->DebugName();
     // Uses aliases of ADD/SUB instructions.
-    // If `value` does not fit but `-value` does, VIXL will automatically use
-    // the 'opposite' instruction.
-    return vixl::aarch64::Assembler::IsImmAddSub(value)
-        || vixl::aarch64::Assembler::IsImmAddSub(-value);
+    return AddSubCanEncodeAsImmediate(value);
   }
 }
 
