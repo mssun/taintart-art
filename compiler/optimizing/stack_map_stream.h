@@ -103,26 +103,26 @@ class StackMapStream : public ValueObject {
   void CreateDexRegisterMap();
 
   const InstructionSet instruction_set_;
-  BitTableBuilder<StackMap::kCount> stack_maps_;
-  BitTableBuilder<RegisterMask::kCount> register_masks_;
+  BitTableBuilder<StackMap> stack_maps_;
+  BitTableBuilder<RegisterMask> register_masks_;
   BitmapTableBuilder stack_masks_;
-  BitTableBuilder<InvokeInfo::kCount> invoke_infos_;
-  BitTableBuilder<InlineInfo::kCount> inline_infos_;
+  BitTableBuilder<InvokeInfo> invoke_infos_;
+  BitTableBuilder<InlineInfo> inline_infos_;
   BitmapTableBuilder dex_register_masks_;
-  BitTableBuilder<MaskInfo::kCount> dex_register_maps_;
-  BitTableBuilder<DexRegisterInfo::kCount> dex_register_catalog_;
+  BitTableBuilder<MaskInfo> dex_register_maps_;
+  BitTableBuilder<DexRegisterInfo> dex_register_catalog_;
   uint32_t num_dex_registers_ = 0;  // TODO: Make this const and get the value in constructor.
   ScopedArenaVector<uint8_t> out_;
 
-  BitTableBuilder<1> method_infos_;
+  BitTableBuilderBase<1> method_infos_;
 
   ScopedArenaVector<BitVector*> lazy_stack_masks_;
 
   // Variables which track the current state between Begin/End calls;
   bool in_stack_map_;
   bool in_inline_info_;
-  BitTableBuilder<StackMap::kCount>::Entry current_stack_map_;
-  ScopedArenaVector<BitTableBuilder<InlineInfo::kCount>::Entry> current_inline_infos_;
+  BitTableBuilder<StackMap>::Entry current_stack_map_;
+  ScopedArenaVector<BitTableBuilder<InlineInfo>::Entry> current_inline_infos_;
   ScopedArenaVector<DexRegisterLocation> current_dex_registers_;
   ScopedArenaVector<DexRegisterLocation> previous_dex_registers_;
   ScopedArenaVector<uint32_t> dex_register_timestamp_;  // Stack map index of last change.
@@ -131,7 +131,7 @@ class StackMapStream : public ValueObject {
   // Temporary variables used in CreateDexRegisterMap.
   // They are here so that we can reuse the reserved memory.
   ArenaBitVector temp_dex_register_mask_;
-  ScopedArenaVector<BitTableBuilder<DexRegisterMapInfo::kCount>::Entry> temp_dex_register_map_;
+  ScopedArenaVector<BitTableBuilder<DexRegisterMapInfo>::Entry> temp_dex_register_map_;
 
   // A set of lambda functions to be executed at the end to verify
   // the encoded data. It is generally only used in debug builds.

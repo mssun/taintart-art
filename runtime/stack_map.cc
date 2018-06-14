@@ -91,7 +91,7 @@ void CodeInfo::DecodeDexRegisterMap(uint32_t stack_map_index,
 
 template<typename Accessor>
 static void AddTableSizeStats(const char* table_name,
-                              const BitTable<Accessor::kCount>& table,
+                              const BitTable<Accessor>& table,
                               /*out*/ Stats* parent) {
   Stats* table_stats = parent->Child(table_name);
   table_stats->AddBits(table.BitSize());
@@ -135,7 +135,7 @@ void DexRegisterMap::Dump(VariableIndentationOutputStream* vios) const {
 template<typename Accessor>
 static void DumpTable(VariableIndentationOutputStream* vios,
                       const char* table_name,
-                      const BitTable<Accessor::kCount>& table,
+                      const BitTable<Accessor>& table,
                       bool verbose,
                       bool is_mask = false) {
   if (table.NumRows() != 0) {
