@@ -515,7 +515,7 @@ bool Jit::MaybeDoOnStackReplacement(Thread* thread,
     } else {
       DCHECK_EQ(vreg_map.size(), number_of_vregs);
       for (uint16_t vreg = 0; vreg < number_of_vregs; ++vreg) {
-        DexRegisterLocation::Kind location = vreg_map.GetLocationKind(vreg);
+        DexRegisterLocation::Kind location = vreg_map[vreg].GetKind();
         if (location == DexRegisterLocation::Kind::kNone) {
           // Dex register is dead or uninitialized.
           continue;
@@ -529,7 +529,7 @@ bool Jit::MaybeDoOnStackReplacement(Thread* thread,
         DCHECK_EQ(location, DexRegisterLocation::Kind::kInStack);
 
         int32_t vreg_value = shadow_frame->GetVReg(vreg);
-        int32_t slot_offset = vreg_map.GetStackOffsetInBytes(vreg);
+        int32_t slot_offset = vreg_map[vreg].GetStackOffsetInBytes();
         DCHECK_LT(slot_offset, static_cast<int32_t>(frame_size));
         DCHECK_GT(slot_offset, 0);
         (reinterpret_cast<int32_t*>(memory))[slot_offset / sizeof(int32_t)] = vreg_value;

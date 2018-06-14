@@ -123,10 +123,6 @@ void StackMapStream::EndStackMapEntry() {
   stack_maps_.Add(current_stack_map_);
 }
 
-void StackMapStream::AddDexRegisterEntry(DexRegisterLocation::Kind kind, int32_t value) {
-  current_dex_registers_.push_back(DexRegisterLocation(kind, value));
-}
-
 void StackMapStream::AddInvoke(InvokeType invoke_type, uint32_t dex_method_index) {
   uint32_t packed_native_pc = current_stack_map_[StackMap::kPackedNativePc];
   size_t invoke_info_index = invoke_infos_.size();
