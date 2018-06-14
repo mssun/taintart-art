@@ -47,6 +47,7 @@ libart_cc_defaults {
         "debug_print.cc",
         "debugger.cc",
         "dex/dex_file_annotations.cc",
+        "dex_register_location.cc",
         "dex_to_dex_decompiler.cc",
         "elf_file.cc",
         "exec_utils.cc",
