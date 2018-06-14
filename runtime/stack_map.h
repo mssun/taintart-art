@@ -157,16 +157,23 @@ class DexRegisterMap {
  * - Knowing the inlining information,
  * - Knowing the values of dex registers.
  */
-class StackMap : public BitTable<7>::Accessor {
+class StackMap : public BitTable<8>::Accessor {
  public:
+  enum Kind {
+    Default = -1,
+    Catch = 0,
+    OSR = 1,
+    Debug = 2,
+  };
   BIT_TABLE_HEADER()
-  BIT_TABLE_COLUMN(0, PackedNativePc)
-  BIT_TABLE_COLUMN(1, DexPc)
-  BIT_TABLE_COLUMN(2, RegisterMaskIndex)
-  BIT_TABLE_COLUMN(3, StackMaskIndex)
-  BIT_TABLE_COLUMN(4, InlineInfoIndex)
-  BIT_TABLE_COLUMN(5, DexRegisterMaskIndex)
-  BIT_TABLE_COLUMN(6, DexRegisterMapIndex)
+  BIT_TABLE_COLUMN(0, Kind)
+  BIT_TABLE_COLUMN(1, PackedNativePc)
+  BIT_TABLE_COLUMN(2, DexPc)
+  BIT_TABLE_COLUMN(3, RegisterMaskIndex)
+  BIT_TABLE_COLUMN(4, StackMaskIndex)
+  BIT_TABLE_COLUMN(5, InlineInfoIndex)
+  BIT_TABLE_COLUMN(6, DexRegisterMaskIndex)
+  BIT_TABLE_COLUMN(7, DexRegisterMapIndex)
 
   ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
     return UnpackNativePc(Get<kPackedNativePc>(), instruction_set);
@@ -415,19 +422,18 @@ class CodeInfo {
   StackMap GetStackMapForDexPc(uint32_t dex_pc) const {
     for (size_t i = 0, e = GetNumberOfStackMaps(); i < e; ++i) {
       StackMap stack_map = GetStackMapAt(i);
-      if (stack_map.GetDexPc() == dex_pc) {
+      if (stack_map.GetDexPc() == dex_pc && stack_map.GetKind() != StackMap::Kind::Debug) {
         return stack_map;
       }
     }
     return StackMap();
   }
 
-  // Searches the stack map list backwards because catch stack maps are stored
-  // at the end.
+  // Searches the stack map list backwards because catch stack maps are stored at the end.
   StackMap GetCatchStackMapForDexPc(uint32_t dex_pc) const {
     for (size_t i = GetNumberOfStackMaps(); i > 0; --i) {
       StackMap stack_map = GetStackMapAt(i - 1);
-      if (stack_map.GetDexPc() == dex_pc) {
+      if (stack_map.GetDexPc() == dex_pc && stack_map.GetKind() == StackMap::Kind::Catch) {
         return stack_map;
       }
     }
@@ -435,41 +441,26 @@ class CodeInfo {
   }
 
   StackMap GetOsrStackMapForDexPc(uint32_t dex_pc) const {
-    size_t e = GetNumberOfStackMaps();
-    if (e == 0) {
-      // There cannot be OSR stack map if there is no stack map.
-      return StackMap();
-    }
-    // Walk over all stack maps. If two consecutive stack maps are identical, then we
-    // have found a stack map suitable for OSR.
-    for (size_t i = 0; i < e - 1; ++i) {
+    for (size_t i = 0, e = GetNumberOfStackMaps(); i < e; ++i) {
       StackMap stack_map = GetStackMapAt(i);
-      if (stack_map.GetDexPc() == dex_pc) {
-        StackMap other = GetStackMapAt(i + 1);
-        if (other.GetDexPc() == dex_pc &&
-            other.GetNativePcOffset(kRuntimeISA) ==
-                stack_map.GetNativePcOffset(kRuntimeISA)) {
-          if (i < e - 2) {
-            // Make sure there are not three identical stack maps following each other.
-            DCHECK_NE(
-                stack_map.GetNativePcOffset(kRuntimeISA),
-                GetStackMapAt(i + 2).GetNativePcOffset(kRuntimeISA));
-          }
-          return stack_map;
-        }
+      if (stack_map.GetDexPc() == dex_pc && stack_map.GetKind() == StackMap::Kind::OSR) {
+        return stack_map;
       }
     }
     return StackMap();
   }
 
-  StackMap GetStackMapForNativePcOffset(uint32_t native_pc_offset) const {
+  StackMap GetStackMapForNativePcOffset(uint32_t pc, InstructionSet isa = kRuntimeISA) const {
     // TODO: Safepoint stack maps are sorted by native_pc_offset but catch stack
     //       maps are not. If we knew that the method does not have try/catch,
     //       we could do binary search.
     for (size_t i = 0, e = GetNumberOfStackMaps(); i < e; ++i) {
       StackMap stack_map = GetStackMapAt(i);
-      if (stack_map.GetNativePcOffset(kRuntimeISA) == native_pc_offset) {
-        return stack_map;
+      if (stack_map.GetNativePcOffset(isa) == pc) {
+        StackMap::Kind kind = static_cast<StackMap::Kind>(stack_map.GetKind());
+        if (kind == StackMap::Kind::Default || kind == StackMap::Kind::OSR) {
+          return stack_map;
+        }
       }
     }
     return StackMap();
