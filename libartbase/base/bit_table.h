@@ -18,6 +18,7 @@
 #define ART_LIBARTBASE_BASE_BIT_TABLE_H_
 
 #include <array>
+#include <initializer_list>
 #include <numeric>
 #include <string.h>
 #include <type_traits>
@@ -184,33 +185,54 @@ static const char* const* GetBitTableColumnNames() {
 }
 
 // Helper class for encoding BitTable. It can optionally de-duplicate the inputs.
-// Type 'T' must be POD type consisting of uint32_t fields (one for each column).
-template<typename T>
+template<uint32_t kNumColumns>
 class BitTableBuilder {
  public:
-  static_assert(std::is_pod<T>::value, "Type 'T' must be POD");
-  static constexpr size_t kNumColumns = sizeof(T) / sizeof(uint32_t);
+  class Entry {
+   public:
+    Entry() {
+      std::fill_n(data_, kNumColumns, BitTable<kNumColumns>::Accessor::kNoValue);
+    }
+
+    Entry(std::initializer_list<uint32_t> values) {
+      DCHECK_EQ(values.size(), kNumColumns);
+      std::copy(values.begin(), values.end(), data_);
+    }
+
+    uint32_t& operator[](size_t column) {
+      DCHECK_LT(column, kNumColumns);
+      return data_[column];
+    }
+
+    uint32_t operator[](size_t column) const {
+      DCHECK_LT(column, kNumColumns);
+      return data_[column];
+    }
+
+   private:
+    uint32_t data_[kNumColumns];
+  };
 
   explicit BitTableBuilder(ScopedArenaAllocator* allocator)
       : rows_(allocator->Adapter(kArenaAllocBitTableBuilder)),
         dedup_(8, allocator->Adapter(kArenaAllocBitTableBuilder)) {
   }
 
-  T& operator[](size_t row) { return rows_[row]; }
-  const T& operator[](size_t row) const { return rows_[row]; }
+  Entry& operator[](size_t row) { return rows_[row]; }
+  const Entry& operator[](size_t row) const { return rows_[row]; }
   size_t size() const { return rows_.size(); }
 
   // Append given value to the vector without de-duplication.
   // This will not add the element to the dedup map to avoid its associated costs.
-  void Add(T value) {
+  void Add(Entry value) {
     rows_.push_back(value);
   }
 
   // Append given list of values and return the index of the first value.
   // If the exact same set of values was already added, return the old index.
-  uint32_t Dedup(T* values, size_t count = 1) {
+  uint32_t Dedup(Entry* values, size_t count = 1) {
     FNVHash<MemoryRegion> hasher;
-    uint32_t hash = hasher(MemoryRegion(values, sizeof(T) * count));
+    uint32_t hash = hasher(MemoryRegion(values, sizeof(Entry) * count));
 
     // Check if we have already added identical set of values.
     auto range = dedup_.equal_range(hash);
@@ -220,8 +242,8 @@ class BitTableBuilder {
           std::equal(values,
                      values + count,
                      rows_.begin() + index,
-                     [](const T& lhs, const T& rhs) {
-                       return memcmp(&lhs, &rhs, sizeof(T)) == 0;
+                     [](const Entry& lhs, const Entry& rhs) {
+                       return memcmp(&lhs, &rhs, sizeof(Entry)) == 0;
                      })) {
         return index;
       }
@@ -234,11 +256,8 @@ class BitTableBuilder {
     return index;
   }
 
-  ALWAYS_INLINE uint32_t Get(uint32_t row, uint32_t column) const {
-    DCHECK_LT(row, size());
-    DCHECK_LT(column, kNumColumns);
-    const uint32_t* data = reinterpret_cast<const uint32_t*>(&rows_[row]);
-    return data[column];
+  uint32_t Dedup(Entry value) {
+    return Dedup(&value, /* count */ 1);
   }
 
   // Calculate the column bit widths based on the current data.
@@ -247,7 +266,7 @@ class BitTableBuilder {
     std::fill_n(max_column_value, kNumColumns, 0);
     for (uint32_t r = 0; r < size(); r++) {
       for (uint32_t c = 0; c < kNumColumns; c++) {
-        max_column_value[c] |= Get(r, c) - BitTable<kNumColumns>::kValueBias;
+        max_column_value[c] |= rows_[r][c] - BitTable<kNumColumns>::kValueBias;
       }
     }
     for (uint32_t c = 0; c < kNumColumns; c++) {
@@ -276,7 +295,7 @@ class BitTableBuilder {
       BitMemoryRegion region(MemoryRegion(out->data(), out->size()));
       for (uint32_t r = 0; r < size(); r++) {
         for (uint32_t c = 0; c < kNumColumns; c++) {
-          region.StoreBitsAndAdvance(bit_offset, Get(r, c) - bias, column_bits[c]);
+          region.StoreBitsAndAdvance(bit_offset, rows_[r][c] - bias, column_bits[c]);
         }
       }
     }
@@ -292,14 +311,14 @@ class BitTableBuilder {
       }
       for (uint32_t r = 0; r < size(); r++) {
         for (uint32_t c = 0; c < kNumColumns; c++) {
-          DCHECK_EQ(Get(r, c), table.Get(r, c)) << " (" << r << ", " << c << ")";
+          DCHECK_EQ(rows_[r][c], table.Get(r, c)) << " (" << r << ", " << c << ")";
         }
       }
     }
   }
 
  protected:
-  ScopedArenaDeque<T> rows_;
+  ScopedArenaDeque<Entry> rows_;
   ScopedArenaUnorderedMultimap<uint32_t, uint32_t> dedup_;  // Hash -> row index.
 };
 

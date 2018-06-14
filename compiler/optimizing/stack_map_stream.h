@@ -52,6 +52,7 @@ class StackMapStream : public ValueObject {
         lazy_stack_masks_(allocator->Adapter(kArenaAllocStackMapStream)),
         in_stack_map_(false),
         in_inline_info_(false),
+        current_stack_map_(),
         current_inline_infos_(allocator->Adapter(kArenaAllocStackMapStream)),
         current_dex_registers_(allocator->Adapter(kArenaAllocStackMapStream)),
         previous_dex_registers_(allocator->Adapter(kArenaAllocStackMapStream)),
@@ -97,70 +98,29 @@ class StackMapStream : public ValueObject {
  private:
   static constexpr uint32_t kNoValue = -1;
 
-  // The fields must be uint32_t and mirror the StackMap accessor in stack_map.h!
-  struct StackMapEntry {
-    uint32_t kind;
-    uint32_t packed_native_pc;
-    uint32_t dex_pc;
-    uint32_t register_mask_index;
-    uint32_t stack_mask_index;
-    uint32_t inline_info_index;
-    uint32_t dex_register_mask_index;
-    uint32_t dex_register_map_index;
-  };
-
-  // The fields must be uint32_t and mirror the InlineInfo accessor in stack_map.h!
-  struct InlineInfoEntry {
-    uint32_t is_last;
-    uint32_t dex_pc;
-    uint32_t method_info_index;
-    uint32_t art_method_hi;
-    uint32_t art_method_lo;
-    uint32_t num_dex_registers;
-  };
-
-  // The fields must be uint32_t and mirror the InvokeInfo accessor in stack_map.h!
-  struct InvokeInfoEntry {
-    uint32_t packed_native_pc;
-    uint32_t invoke_type;
-    uint32_t method_info_index;
-  };
-
-  // The fields must be uint32_t and mirror the DexRegisterInfo accessor in stack_map.h!
-  struct DexRegisterEntry {
-    uint32_t kind;
-    uint32_t packed_value;
-  };
-
-  // The fields must be uint32_t and mirror the RegisterMask accessor in stack_map.h!
-  struct RegisterMaskEntry {
-    uint32_t value;
-    uint32_t shift;
-  };
-
   void CreateDexRegisterMap();
 
   const InstructionSet instruction_set_;
-  BitTableBuilder<StackMapEntry> stack_maps_;
-  BitTableBuilder<RegisterMaskEntry> register_masks_;
+  BitTableBuilder<StackMap::kCount> stack_maps_;
+  BitTableBuilder<RegisterMask::kCount> register_masks_;
   BitmapTableBuilder stack_masks_;
-  BitTableBuilder<InvokeInfoEntry> invoke_infos_;
-  BitTableBuilder<InlineInfoEntry> inline_infos_;
+  BitTableBuilder<InvokeInfo::kCount> invoke_infos_;
+  BitTableBuilder<InlineInfo::kCount> inline_infos_;
   BitmapTableBuilder dex_register_masks_;
-  BitTableBuilder<uint32_t> dex_register_maps_;
-  BitTableBuilder<DexRegisterEntry> dex_register_catalog_;
+  BitTableBuilder<MaskInfo::kCount> dex_register_maps_;
+  BitTableBuilder<DexRegisterInfo::kCount> dex_register_catalog_;
   uint32_t num_dex_registers_ = 0;  // TODO: Make this const and get the value in constructor.
   ScopedArenaVector<uint8_t> out_;
 
-  BitTableBuilder<uint32_t> method_infos_;
+  BitTableBuilder<1> method_infos_;
 
   ScopedArenaVector<BitVector*> lazy_stack_masks_;
 
   // Variables which track the current state between Begin/End calls;
   bool in_stack_map_;
   bool in_inline_info_;
-  StackMapEntry current_stack_map_;
-  ScopedArenaVector<InlineInfoEntry> current_inline_infos_;
+  BitTableBuilder<StackMap::kCount>::Entry current_stack_map_;
+  ScopedArenaVector<BitTableBuilder<InlineInfo::kCount>::Entry> current_inline_infos_;
   ScopedArenaVector<DexRegisterLocation> current_dex_registers_;
   ScopedArenaVector<DexRegisterLocation> previous_dex_registers_;
   ScopedArenaVector<uint32_t> dex_register_timestamp_;  // Stack map index of last change.
@@ -169,7 +129,7 @@ class StackMapStream : public ValueObject {
   // Temporary variables used in CreateDexRegisterMap.
   // They are here so that we can reuse the reserved memory.
   ArenaBitVector temp_dex_register_mask_;
-  ScopedArenaVector<uint32_t> temp_dex_register_map_;
+  ScopedArenaVector<BitTableBuilder<DexRegisterMapInfo::kCount>::Entry> temp_dex_register_map_;
 
   // A set of lambda functions to be executed at the end to verify
   // the encoded data. It is generally only used in debug builds.
