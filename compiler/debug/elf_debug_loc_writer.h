@@ -149,9 +149,9 @@ static std::vector<VariableLocation> GetVariableLocations(
     DexRegisterMap dex_register_map = dex_register_maps[stack_map_index];
     DCHECK(!dex_register_map.empty());
     CodeItemDataAccessor accessor(*method_info->dex_file, method_info->code_item);
-    reg_lo = dex_register_map.GetDexRegisterLocation(vreg);
+    reg_lo = dex_register_map[vreg];
     if (is64bitValue) {
-      reg_hi = dex_register_map.GetDexRegisterLocation(vreg + 1);
+      reg_hi = dex_register_map[vreg + 1];
     }
 
     // Add location entry for this address range.

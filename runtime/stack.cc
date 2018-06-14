@@ -242,10 +242,10 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
     return false;
   }
   DCHECK_EQ(dex_register_map.size(), number_of_dex_registers);
-  DexRegisterLocation::Kind location_kind = dex_register_map.GetLocationKind(vreg);
+  DexRegisterLocation::Kind location_kind = dex_register_map[vreg].GetKind();
   switch (location_kind) {
     case DexRegisterLocation::Kind::kInStack: {
-      const int32_t offset = dex_register_map.GetStackOffsetInBytes(vreg);
+      const int32_t offset = dex_register_map[vreg].GetStackOffsetInBytes();
       const uint8_t* addr = reinterpret_cast<const uint8_t*>(cur_quick_frame_) + offset;
       *val = *reinterpret_cast<const uint32_t*>(addr);
       return true;
@@ -254,18 +254,16 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
     case DexRegisterLocation::Kind::kInRegisterHigh:
     case DexRegisterLocation::Kind::kInFpuRegister:
     case DexRegisterLocation::Kind::kInFpuRegisterHigh: {
-      uint32_t reg = dex_register_map.GetMachineRegister(vreg);
+      uint32_t reg = dex_register_map[vreg].GetMachineRegister();
       return GetRegisterIfAccessible(reg, kind, val);
     }
     case DexRegisterLocation::Kind::kConstant:
-      *val = dex_register_map.GetConstant(vreg);
+      *val = dex_register_map[vreg].GetConstant();
       return true;
     case DexRegisterLocation::Kind::kNone:
       return false;
     default:
-      LOG(FATAL)
-          << "Unexpected location kind "
-          << dex_register_map.GetLocationInternalKind(vreg);
+      LOG(FATAL) << "Unexpected location kind " << dex_register_map[vreg].GetKind();
       UNREACHABLE();
   }
 }

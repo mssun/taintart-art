@@ -245,7 +245,7 @@ void QuickExceptionHandler::SetCatchEnvironmentForOptimizedHandler(StackVisitor*
 
   // Copy values between them.
   for (uint16_t vreg = 0; vreg < number_of_vregs; ++vreg) {
-    DexRegisterLocation::Kind catch_location = catch_vreg_map.GetLocationKind(vreg);
+    DexRegisterLocation::Kind catch_location = catch_vreg_map[vreg].GetKind();
     if (catch_location == DexRegisterLocation::Kind::kNone) {
       continue;
     }
@@ -253,7 +253,7 @@ void QuickExceptionHandler::SetCatchEnvironmentForOptimizedHandler(StackVisitor*
 
     // Get vreg value from its current location.
     uint32_t vreg_value;
-    VRegKind vreg_kind = ToVRegKind(throw_vreg_map.GetLocationKind(vreg));
+    VRegKind vreg_kind = ToVRegKind(throw_vreg_map[vreg].GetKind());
     bool get_vreg_success = stack_visitor->GetVReg(stack_visitor->GetMethod(),
                                                    vreg,
                                                    vreg_kind,
@@ -264,7 +264,7 @@ void QuickExceptionHandler::SetCatchEnvironmentForOptimizedHandler(StackVisitor*
                             << "native_pc_offset=" << stack_visitor->GetNativePcOffset() << ")";
 
     // Copy value to the catch phi's stack slot.
-    int32_t slot_offset = catch_vreg_map.GetStackOffsetInBytes(vreg);
+    int32_t slot_offset = catch_vreg_map[vreg].GetStackOffsetInBytes();
     ArtMethod** frame_top = stack_visitor->GetCurrentQuickFrame();
     uint8_t* slot_address = reinterpret_cast<uint8_t*>(frame_top) + slot_offset;
     uint32_t* slot_ptr = reinterpret_cast<uint32_t*>(slot_address);
@@ -417,14 +417,14 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
         continue;
       }
 
-      DexRegisterLocation::Kind location = vreg_map.GetLocationKind(vreg);
+      DexRegisterLocation::Kind location = vreg_map[vreg].GetKind();
       static constexpr uint32_t kDeadValue = 0xEBADDE09;
       uint32_t value = kDeadValue;
       bool is_reference = false;
 
       switch (location) {
         case DexRegisterLocation::Kind::kInStack: {
-          const int32_t offset = vreg_map.GetStackOffsetInBytes(vreg);
+          const int32_t offset = vreg_map[vreg].GetStackOffsetInBytes();
           const uint8_t* addr = reinterpret_cast<const uint8_t*>(GetCurrentQuickFrame()) + offset;
           value = *reinterpret_cast<const uint32_t*>(addr);
           uint32_t bit = (offset >> 2);
@@ -437,7 +437,7 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
         case DexRegisterLocation::Kind::kInRegisterHigh:
         case DexRegisterLocation::Kind::kInFpuRegister:
         case DexRegisterLocation::Kind::kInFpuRegisterHigh: {
-          uint32_t reg = vreg_map.GetMachineRegister(vreg);
+          uint32_t reg = vreg_map[vreg].GetMachineRegister();
           bool result = GetRegisterIfAccessible(reg, ToVRegKind(location), &value);
           CHECK(result);
           if (location == DexRegisterLocation::Kind::kInRegister) {
@@ -448,7 +448,7 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
           break;
         }
         case DexRegisterLocation::Kind::kConstant: {
-          value = vreg_map.GetConstant(vreg);
+          value = vreg_map[vreg].GetConstant();
           if (value == 0) {
             // Make it a reference for extra safety.
             is_reference = true;
@@ -459,9 +459,7 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
           break;
         }
         default: {
-          LOG(FATAL)
-              << "Unexpected location kind "
-              << vreg_map.GetLocationInternalKind(vreg);
+          LOG(FATAL) << "Unexpected location kind " << vreg_map[vreg].GetKind();
           UNREACHABLE();
         }
       }

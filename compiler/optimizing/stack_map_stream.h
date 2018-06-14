@@ -70,7 +70,9 @@ class StackMapStream : public ValueObject {
                           StackMap::Kind kind = StackMap::Kind::Default);
   void EndStackMapEntry();
 
-  void AddDexRegisterEntry(DexRegisterLocation::Kind kind, int32_t value);
+  void AddDexRegisterEntry(DexRegisterLocation::Kind kind, int32_t value) {
+    current_dex_registers_.push_back(DexRegisterLocation(kind, value));
+  }
 
   void AddInvoke(InvokeType type, uint32_t dex_method_index);
 
