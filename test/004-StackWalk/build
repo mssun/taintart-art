@@ -21,6 +21,5 @@ set -e
 # (see b/19467889)
 mkdir classes
 ${JAVAC} -d classes `find src -name '*.java'`
-${DX} -JXmx256m --debug --dex --dump-to=classes.lst --output=classes.dex \
-  --dump-width=1000 ${DX_FLAGS} classes
+${DX} -JXmx256m --debug --dex --output=classes.dex ${DX_FLAGS} classes
 zip $TEST_NAME.jar classes.dex

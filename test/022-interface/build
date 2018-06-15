@@ -17,6 +17,6 @@
 # Stop if something fails.
 set -e
 
-${DX} --debug --dex --dump-to=classes.lst --output=classes.dex classes
+${DX} --debug --dex --output=classes.dex classes
 
 zip $TEST_NAME.jar classes.dex
