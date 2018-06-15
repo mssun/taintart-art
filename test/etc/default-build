@@ -307,7 +307,7 @@ function make_dex() {
   fi
 
   # Make dex file from desugared JAR.
-  ${dexer} -JXmx256m ${DX_VM_FLAGS} --debug --dex --dump-to=${name}.lst --output=${name}.dex --dump-width=1000 ${DX_FLAGS} "${dx_input}"
+  ${dexer} -JXmx256m ${DX_VM_FLAGS} --debug --dex --output=${name}.dex ${DX_FLAGS} "${dx_input}"
 }
 
 # Merge all the dex files in $1..$N into $1. Skip non-existing files, but at least 1 file must exist.
