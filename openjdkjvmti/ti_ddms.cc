@@ -60,7 +60,7 @@ jvmtiError DDMSUtil::HandleChunk(jvmtiEnv* env,
   *data_out = nullptr;
 
   art::Thread* self = art::Thread::Current();
-  art::ScopedThreadStateChange(self, art::ThreadState::kNative);
+  art::ScopedThreadStateChange stcs(self, art::ThreadState::kNative);
 
   art::ArrayRef<const jbyte> data_arr(data_in, length_in);
   std::vector<uint8_t> out_data;
