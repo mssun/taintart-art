@@ -2786,6 +2786,14 @@ void HInstruction::SetReferenceTypeInfo(ReferenceTypeInfo rti) {
   SetPackedFlag<kFlagReferenceTypeIsExact>(rti.IsExact());
 }
 
+bool HBoundType::InstructionDataEquals(const HInstruction* other) const {
+  const HBoundType* other_bt = other->AsBoundType();
+  ScopedObjectAccess soa(Thread::Current());
+  return GetUpperBound().IsEqual(other_bt->GetUpperBound()) &&
+         GetUpperCanBeNull() == other_bt->GetUpperCanBeNull() &&
+         CanBeNull() == other_bt->CanBeNull();
+}
+
 void HBoundType::SetUpperBound(const ReferenceTypeInfo& upper_bound, bool can_be_null) {
   if (kIsDebugBuild) {
     ScopedObjectAccess soa(Thread::Current());
