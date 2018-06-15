@@ -18,9 +18,9 @@ public class Main {
   public Main() {
   }
 
-  static int testLiveArgument(int arg) {
+  static int $noinline$testLiveArgument(int arg1, Integer arg2) {
     doStaticNativeCallLiveVreg();
-    return arg;
+    return arg1 + arg2.intValue();
   }
 
   static void moveArgToCalleeSave() {
@@ -31,7 +31,7 @@ public class Main {
     }
   }
 
-  static void $opt$noinline$testIntervalHole(int arg, boolean test) {
+  static void $noinline$testIntervalHole(int arg, boolean test) {
     // Move the argument to callee save to ensure it is in
     // a readable register.
     moveArgToCalleeSave();
@@ -53,16 +53,18 @@ public class Main {
 
   public static void main(String[] args) {
     System.loadLibrary(args[0]);
-    if (testLiveArgument(staticField3) != staticField3) {
-      throw new Error("Expected " + staticField3);
+    if ($noinline$testLiveArgument(staticField3, Integer.valueOf(1)) != staticField3 + 1) {
+      throw new Error("Expected " + staticField3 + 1);
     }
 
-    if (testLiveArgument(staticField3) != staticField3) {
-      throw new Error("Expected " + staticField3);
+    if ($noinline$testLiveArgument(staticField3,Integer.valueOf(1)) != staticField3 + 1) {
+      throw new Error("Expected " + staticField3 + 1);
     }
 
     testWrapperIntervalHole(1, true);
     testWrapperIntervalHole(1, false);
+
+    $noinline$testCodeSinking(1);
   }
 
   // Wrapper method to avoid inlining, which affects liveness
@@ -70,11 +72,24 @@ public class Main {
   static void testWrapperIntervalHole(int arg, boolean test) {
     try {
       Thread.sleep(0);
-      $opt$noinline$testIntervalHole(arg, test);
+      $noinline$testIntervalHole(arg, test);
     } catch (Exception e) {
       throw new Error(e);
     }
   }
+
+  // The value of dex register which originally holded "Object[] o = new Object[1];" will not be
+  // live at the call to doStaticNativeCallLiveVreg after code sinking optimizizaion.
+  static void $noinline$testCodeSinking(int x) {
+    Object[] o = new Object[1];
+    o[0] = o;
+    doStaticNativeCallLiveVreg();
+    if (doThrow) {
+      throw new Error(o.toString());
+    }
+  }
+
+  static boolean doThrow;
 
   static int staticField1;
   static int staticField2;

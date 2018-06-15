@@ -343,6 +343,37 @@ public class Main {
     }
   }
 
+  static native void doStaticNativeCallLiveVreg();
+
+  //  Test ensures that 'o' has been moved into the if despite the InvokeStaticOrDirect.
+  //
+  /// CHECK-START: void Main.testSinkingOverInvoke() code_sinking (before)
+  /// CHECK: <<Int1:i\d+>>        IntConstant 1
+  /// CHECK: <<Int0:i\d+>>        IntConstant 0
+  /// CHECK: <<LoadClass:l\d+>>   LoadClass class_name:java.lang.Object[]
+  /// CHECK-NOT:                  begin_block
+  /// CHECK:                      NewArray [<<LoadClass>>,<<Int1>>]
+  /// CHECK:                      If
+  /// CHECK:                      begin_block
+  /// CHECK:                      Throw
+
+  /// CHECK-START: void Main.testSinkingOverInvoke() code_sinking (after)
+  /// CHECK: <<Int1:i\d+>>        IntConstant 1
+  /// CHECK: <<Int0:i\d+>>        IntConstant 0
+  /// CHECK:                      If
+  /// CHECK:                      begin_block
+  /// CHECK: <<LoadClass:l\d+>>   LoadClass class_name:java.lang.Object[]
+  /// CHECK:                      NewArray [<<LoadClass>>,<<Int1>>]
+  /// CHECK:                      Throw
+  static void testSinkingOverInvoke() {
+    Object[] o = new Object[1];
+    o[0] = o;
+    doStaticNativeCallLiveVreg();
+    if (doThrow) {
+      throw new Error(o.toString());
+    }
+  }
+
   public String $opt$noinline$toString() {
     return "" + intField;
   }
