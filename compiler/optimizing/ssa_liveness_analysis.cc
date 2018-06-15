@@ -195,14 +195,19 @@ void SsaLivenessAnalysis::ComputeLiveRanges() {
         // SsaLivenessAnalysis.
         for (size_t i = 0, e = environment->Size(); i < e; ++i) {
           HInstruction* instruction = environment->GetInstructionAt(i);
+          if (instruction == nullptr) {
+            continue;
+          }
           bool should_be_live = ShouldBeLiveForEnvironment(current, instruction);
+          // If this environment use does not keep the instruction live, it does not
+          // affect the live range of that instruction.
           if (should_be_live) {
             CHECK(instruction->HasSsaIndex()) << instruction->DebugName();
             live_in->SetBit(instruction->GetSsaIndex());
-          }
-          if (instruction != nullptr) {
-            instruction->GetLiveInterval()->AddUse(
-                current, environment, i, /* actual_user */ nullptr, should_be_live);
+            instruction->GetLiveInterval()->AddUse(current,
+                                                   environment,
+                                                   i,
+                                                   /* actual_user */ nullptr);
           }
         }
       }

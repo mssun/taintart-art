@@ -134,12 +134,12 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
   static const char* const expected[] = {
       "ranges: { [2,21) }, uses: { 15 17 21 }, { 15 19 } is_fixed: 0, is_split: 0 is_low: 0 "
           "is_high: 0",
-      "ranges: { [4,21) }, uses: { 19 21 }, { 15 19 } is_fixed: 0, is_split: 0 is_low: 0 "
+      "ranges: { [4,21) }, uses: { 19 21 }, { } is_fixed: 0, is_split: 0 is_low: 0 "
           "is_high: 0",
-      "ranges: { [6,21) }, uses: { 21 }, { 15 19 } is_fixed: 0, is_split: 0 is_low: 0 "
+      "ranges: { [6,21) }, uses: { 21 }, { } is_fixed: 0, is_split: 0 is_low: 0 "
           "is_high: 0",
       // Environment uses do not keep the non-reference argument alive.
-      "ranges: { [8,10) }, uses: { }, { 15 19 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
+      "ranges: { [8,10) }, uses: { }, { } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
       // Environment uses keep the reference argument alive.
       "ranges: { [10,19) }, uses: { }, { 15 19 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
   };
@@ -207,11 +207,11 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
   static const char* const expected[] = {
       "ranges: { [2,23) }, uses: { 15 17 23 }, { 15 21 } is_fixed: 0, is_split: 0 is_low: 0 "
           "is_high: 0",
-      "ranges: { [4,23) }, uses: { 19 23 }, { 15 21 } is_fixed: 0, is_split: 0 is_low: 0 "
+      "ranges: { [4,23) }, uses: { 19 23 }, { 21 } is_fixed: 0, is_split: 0 is_low: 0 "
           "is_high: 0",
-      "ranges: { [6,23) }, uses: { 23 }, { 15 21 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
+      "ranges: { [6,23) }, uses: { 23 }, { 21 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
       // Environment use in HDeoptimize keeps even the non-reference argument alive.
-      "ranges: { [8,21) }, uses: { }, { 15 21 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
+      "ranges: { [8,21) }, uses: { }, { 21 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
       // Environment uses keep the reference argument alive.
       "ranges: { [10,21) }, uses: { }, { 15 21 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
   };
