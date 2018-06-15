@@ -59,8 +59,8 @@ public class Main {
   /// CHECK-START: int Main.sadCastedChar2Int(char[], char[]) instruction_simplifier (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<BC1:i\d+>>    BoundsCheck [<<Phi1>>,{{i\d+}}] loop:<<Loop>>     outer_loop:none
   /// CHECK-DAG: <<BC2:i\d+>>    BoundsCheck [<<Phi1>>,{{i\d+}}] loop:<<Loop>>     outer_loop:none
   /// CHECK-DAG: <<Get1:c\d+>>   ArrayGet [{{l\d+}},<<BC1>>]    loop:<<Loop>>      outer_loop:none
@@ -75,8 +75,8 @@ public class Main {
   /// CHECK-START: int Main.sadCastedChar2Int(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get1:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Sub:i\d+>>    Sub [<<Get1>>,<<Get2>>]        loop:<<Loop>>      outer_loop:none
@@ -106,8 +106,8 @@ public class Main {
   /// CHECK-START: int Main.sadCastedChar2IntAlt(char[], char[]) instruction_simplifier (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<BC1:i\d+>>    BoundsCheck [<<Phi1>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<BC2:i\d+>>    BoundsCheck [<<Phi1>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get1:c\d+>>   ArrayGet [{{l\d+}},<<BC1>>]    loop:<<Loop>>      outer_loop:none
@@ -123,13 +123,11 @@ public class Main {
   /// CHECK-START: int Main.sadCastedChar2IntAlt(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
-  // Note: Get1+Cnv1 not simplified yet due to env use of Get1 in NullCheck for s2[i].
-  /// CHECK-DAG: <<Get1:c\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Cnv1:s\d+>>   TypeConversion [<<Get1>>]      loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Sub:i\d+>>    Sub [<<Get2>>,<<Cnv1>>]        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Sub:i\d+>>    Sub [<<Get2>>,<<Get1>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Intrin:i\d+>> Abs [<<Sub>>]                  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
@@ -158,8 +156,8 @@ public class Main {
   /// CHECK-START: int Main.sadCastedChar2IntAlt2(char[], char[]) instruction_simplifier (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<BC1:\i\d+>>   BoundsCheck [<<Phi1>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<BC2:\i\d+>>   BoundsCheck [<<Phi1>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get1:c\d+>>   ArrayGet [{{l\d+}},<<BC1>>]    loop:<<Loop>>      outer_loop:none
@@ -175,13 +173,11 @@ public class Main {
   /// CHECK-START: int Main.sadCastedChar2IntAlt2(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
-  // Note: Get1+Cnv1 not simplified yet due to env use of Get1 in NullCheck for s2[i].
-  /// CHECK-DAG: <<Get1:c\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Cnv1:s\d+>>   TypeConversion [<<Get1>>]      loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Sub:i\d+>>    Sub [<<Cnv1>>,<<Get2>>]        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Sub:i\d+>>    Sub [<<Get1>>,<<Get2>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Intrin:i\d+>> Abs [<<Sub>>]                  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
