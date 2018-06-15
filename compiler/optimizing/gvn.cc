@@ -479,7 +479,10 @@ void GlobalValueNumberer::VisitBasicBlock(HBasicBlock* block) {
     HInstruction* next = current->GetNext();
     // Do not kill the set with the side effects of the instruction just now: if
     // the instruction is GVN'ed, we don't need to kill.
-    if (current->CanBeMoved()) {
+    //
+    // BoundType is a special case example of an instruction which shouldn't be moved but can be
+    // GVN'ed.
+    if (current->CanBeMoved() || current->IsBoundType()) {
       if (current->IsBinaryOperation() && current->AsBinaryOperation()->IsCommutative()) {
         // For commutative ops, (x op y) will be treated the same as (y op x)
         // after fixed ordering.
