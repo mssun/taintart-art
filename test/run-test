@@ -529,12 +529,27 @@ fi
 # Most interesting target architecture variables are Makefile variables, not environment variables.
 # Try to map the suffix64 flag and what we find in ${ANDROID_PRODUCT_OUT}/data/art-test to an architecture name.
 function guess_target_arch_name() {
-    grep32bit=`ls ${ANDROID_PRODUCT_OUT}/data/art-test | grep -E '^(arm|x86|mips)$'`
-    grep64bit=`ls ${ANDROID_PRODUCT_OUT}/data/art-test | grep -E '^(arm64|x86_64|mips64)$'`
-    if [ "x${suffix64}" = "x64" ]; then
-        target_arch_name=${grep64bit}
+    # Check whether this is a device with native bridge. Currently this is hardcoded
+    # to x86 + arm.
+    x86_arm=`ls ${ANDROID_PRODUCT_OUT}/data/art-test | sort | grep -E '^(arm|x86)$'`
+    # Collapse line-breaks into spaces
+    x86_arm=$(echo $x86_arm)
+    if [ "x$x86_arm" = "xarm x86" ] ; then
+        err_echo "Native-bridge configuration detected."
+        # We only support the main arch for tests.
+        if [ "x${suffix64}" = "x64" ]; then
+            target_arch_name=""
+        else
+            target_arch_name=x86
+        fi
     else
-        target_arch_name=${grep32bit}
+        grep32bit=`ls ${ANDROID_PRODUCT_OUT}/data/art-test | grep -E '^(arm|x86|mips)$'`
+        grep64bit=`ls ${ANDROID_PRODUCT_OUT}/data/art-test | grep -E '^(arm64|x86_64|mips64)$'`
+        if [ "x${suffix64}" = "x64" ]; then
+            target_arch_name=${grep64bit}
+        else
+            target_arch_name=${grep32bit}
+        fi
     fi
 }
 
