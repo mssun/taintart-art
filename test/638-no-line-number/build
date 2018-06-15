@@ -17,9 +17,6 @@
 # Stop if something fails.
 set -e
 
-mkdir classes
 # Only keep the source name, to make sure we do remove it in the stack trace
 # when there is no line number mapping.
-${JAVAC} -g:source -source 7 -target 7 -d classes `find src -name '*.java'`
-${DX} --dex --output=classes.dex classes
-zip $TEST_NAME.jar classes.dex
+JAVAC_ARGS="$JAVAC_ARGS -g:source" ./default-build "$@"

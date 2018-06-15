@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2017 The Android Open Source Project
+# Copyright 2018 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# See b/65168732
-export DX=$ANDROID_HOST_OUT/bin/dx
-
-./default-build "$@"
+# Use old API level to create DEX file with 035 version. Stricter
+# checking introduced with DEX file version 37 rejects class
+# otherwise (see DexFile::kClassDefinitionOrderEnforcedVersion).
+./default-build "$@" --api-level 13

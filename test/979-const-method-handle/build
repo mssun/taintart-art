@@ -17,34 +17,41 @@
 # make us exit on a failure
 set -e
 
-ASM_JAR="${ANDROID_BUILD_TOP}/prebuilts/misc/common/asm/asm-6.0.jar"
-INTERMEDIATE_CLASSES=classes-intermediate
-TRANSFORMER_CLASSES=classes-transformer
-CLASSES=classes
+export ASM_JAR="${ANDROID_BUILD_TOP}/prebuilts/misc/common/asm/asm-6.0.jar"
 
-# Create directories for classes
-for class_dir in "${INTERMEDIATE_CLASSES}" "${TRANSFORMER_CLASSES}" "${CLASSES}"; do
-  rm -rf "${class_dir}"
-  mkdir "${class_dir}"
-done
+export ORIGINAL_JAVAC="$JAVAC"
 
-# Build transformer
-${JAVAC:-javac} ${JAVAC_ARGS} -cp "${ASM_JAR}" -d ${TRANSFORMER_CLASSES} $(find util-src -name '*.java')
+function javac_wrapper {
+  set -e
 
-# Generate intermediate classes that will allow transform to be applied to test classes
-JAVAC_ARGS="${JAVAC_ARGS} -source 1.8 -target 1.8"
-${JAVAC:-javac} ${JAVAC_ARGS} -cp ${TRANSFORMER_CLASSES} -d ${INTERMEDIATE_CLASSES} $(find src -name '*.java')
+  # Add annotation src files to our compiler inputs.
+  local asrcs=util-src/annotations/*.java
 
-# Run transform
-for class in ${INTERMEDIATE_CLASSES}/*.class ; do
-  transformed_class=${CLASSES}/$(basename ${class})
-  ${JAVA:-java} -cp "${ASM_JAR}:${TRANSFORMER_CLASSES}" \
-      transformer.ConstantTransformer ${class} ${transformed_class}
-done
+  # Compile.
+  $ORIGINAL_JAVAC "$@" $asrcs
 
-# Create DEX
-DX_FLAGS="${DX_FLAGS} --min-sdk-version=28 --debug --dump-width=1000"
-${DX} -JXmx256m --dex ${DX_FLAGS} --output=classes.dex ${CLASSES} ${TRANSFORMER_CLASSES}
+  # Move original classes to intermediate location.
+  mv classes intermediate-classes
+  mkdir classes
 
-# Zip DEX to file name expected by test runner
-zip ${TEST_NAME:-classes-dex}.jar classes.dex
+  # Transform intermediate classes.
+  local transformer_args="-cp ${ASM_JAR}:$PWD/transformer.jar transformer.ConstantTransformer"
+  for class in intermediate-classes/*.class ; do
+    local transformed_class=classes/$(basename ${class})
+    ${JAVA:-java} ${transformer_args} ${class} ${transformed_class}
+  done
+}
+
+export -f javac_wrapper
+export JAVAC=javac_wrapper
+
+######################################################################
+
+# Build the transformer to apply to compiled classes.
+mkdir classes
+${ORIGINAL_JAVAC:-javac} ${JAVAC_ARGS} -cp "${ASM_JAR}" -d classes $(find util-src -name '*.java')
+jar -cf transformer.jar -C classes transformer/ -C classes annotations/
+rm -rf classes
+
+# Use API level 28 for DEX file support constant method handles.
+./default-build "$@" --api-level 28

@@ -69,7 +69,7 @@ import org.objectweb.asm.Type;
  *
  * <p>In the example above, this results in add() being replaced by invocations of magicAdd().
  */
-class IndyTransformer {
+public class IndyTransformer {
 
     static class BootstrapBuilder extends ClassVisitor {
 
@@ -164,10 +164,9 @@ class IndyTransformer {
     }
 
     private static void transform(Path inputClassPath, Path outputClassPath) throws Throwable {
+        URL url = inputClassPath.getParent().toUri().toURL();
         URLClassLoader classLoader =
-                new URLClassLoader(
-                        new URL[] {inputClassPath.toUri().toURL()},
-                        ClassLoader.getSystemClassLoader());
+                new URLClassLoader(new URL[] {url}, ClassLoader.getSystemClassLoader());
         String inputClassName = inputClassPath.getFileName().toString().replace(".class", "");
         Class<?> inputClass = classLoader.loadClass(inputClassName);
         Map<String, CalledByIndy> callsiteMap = new HashMap<>();
