@@ -21,11 +21,6 @@ ASM_JAR="${ANDROID_BUILD_TOP}/prebuilts/misc/common/asm/asm-6.0.jar"
 INTERMEDIATE_CLASSES=classes-intermediate
 CLASSES=classes
 
-DEXER="${DX:-dx}"
-if [ "${USE_D8=false}" = "true" ]; then
-  DEXER="${ANDROID_HOST_OUT}/bin/d8-compat-dx"
-fi
-
 # Create directory for intermediate classes
 rm -rf "${INTERMEDIATE_CLASSES}"
 mkdir "${INTERMEDIATE_CLASSES}"
@@ -46,7 +41,7 @@ done
 
 # Create DEX
 DX_FLAGS="${DX_FLAGS} --min-sdk-version=26 --debug --dump-width=1000"
-${DEXER} -JXmx256m --dex ${DX_FLAGS} --dump-to=${CLASSES}.lst --output=classes.dex ${CLASSES}
+${DX} -JXmx256m --dex ${DX_FLAGS} --output=classes.dex ${CLASSES}
 
 # Zip DEX to file name expected by test runner
 zip ${TEST_NAME:-classes-dex}.jar classes.dex

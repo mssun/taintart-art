@@ -22,11 +22,6 @@ INTERMEDIATE_CLASSES=classes-intermediate
 TRANSFORMER_CLASSES=classes-transformer
 CLASSES=classes
 
-DEXER="${DX:-dx}"
-if [ "${USE_D8=false}" = "true" ]; then
-  DEXER="${ANDROID_HOST_OUT}/bin/d8-compat-dx"
-fi
-
 # Create directories for classes
 for class_dir in "${INTERMEDIATE_CLASSES}" "${TRANSFORMER_CLASSES}" "${CLASSES}"; do
   rm -rf "${class_dir}"
@@ -49,7 +44,7 @@ done
 
 # Create DEX
 DX_FLAGS="${DX_FLAGS} --min-sdk-version=28 --debug --dump-width=1000"
-${DEXER} -JXmx256m --dex ${DX_FLAGS} --dump-to=${CLASSES}.lst --output=classes.dex ${CLASSES} ${TRANSFORMER_CLASSES}
+${DX} -JXmx256m --dex ${DX_FLAGS} --output=classes.dex ${CLASSES} ${TRANSFORMER_CLASSES}
 
 # Zip DEX to file name expected by test runner
 zip ${TEST_NAME:-classes-dex}.jar classes.dex

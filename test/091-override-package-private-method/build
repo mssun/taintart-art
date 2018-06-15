@@ -24,8 +24,8 @@ mkdir classes-ex
 mv classes/OverridePackagePrivateMethodSuper.class classes-ex
 
 if [ ${NEED_DEX} = "true" ]; then
-  ${DX} -JXmx256m --debug --dex --dump-to=classes.lst --output=classes.dex --dump-width=1000 classes
+  ${DX} -JXmx256m --debug --dex --output=classes.dex classes
   zip $TEST_NAME.jar classes.dex
-  ${DX} -JXmx256m --debug --dex --dump-to=classes-ex.lst --output=classes.dex --dump-width=1000 classes-ex
+  ${DX} -JXmx256m --debug --dex --output=classes.dex classes-ex
   zip ${TEST_NAME}-ex.jar classes.dex
 fi
