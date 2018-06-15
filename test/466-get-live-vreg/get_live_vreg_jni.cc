@@ -36,32 +36,46 @@ class TestVisitor : public StackVisitor {
     ArtMethod* m = GetMethod();
     std::string m_name(m->GetName());
 
-    if (m_name.compare("testLiveArgument") == 0) {
+    if (m_name.compare("$noinline$testLiveArgument") == 0) {
       found_method_ = true;
-      uint32_t value = 0;
-      CHECK(GetVReg(m, 0, kIntVReg, &value));
-      CHECK_EQ(value, 42u);
-    } else if (m_name.compare("$opt$noinline$testIntervalHole") == 0) {
+      CHECK_EQ(CodeItemDataAccessor(m->DexInstructionData()).RegistersSize(), 3u);
+      CheckOptimizedOutRegLiveness(m, 1, kIntVReg, true, 42);
+
+      uint32_t value;
+      CHECK(GetVReg(m, 2, kReferenceVReg, &value));
+    } else if (m_name.compare("$noinline$testIntervalHole") == 0) {
+      found_method_ = true;
       uint32_t number_of_dex_registers =
           CodeItemDataAccessor(m->DexInstructionData()).RegistersSize();
       uint32_t dex_register_of_first_parameter = number_of_dex_registers - 2;
+      CheckOptimizedOutRegLiveness(m, dex_register_of_first_parameter, kIntVReg, true, 1);
+    } else if (m_name.compare("$noinline$testCodeSinking") == 0) {
       found_method_ = true;
-      uint32_t value = 0;
-      if (GetCurrentQuickFrame() != nullptr &&
-          GetCurrentOatQuickMethodHeader()->IsOptimized() &&
-          !Runtime::Current()->IsJavaDebuggable()) {
-        CHECK_EQ(GetVReg(m, dex_register_of_first_parameter, kIntVReg, &value), false);
-      } else {
-        CHECK(GetVReg(m, dex_register_of_first_parameter, kIntVReg, &value));
-        CHECK_EQ(value, 1u);
-      }
+      CheckOptimizedOutRegLiveness(m, 0, kReferenceVReg);
     }
 
     return true;
   }
 
-  // Value returned to Java to ensure the methods testSimpleVReg and testPairVReg
-  // have been found and tested.
+  void CheckOptimizedOutRegLiveness(ArtMethod* m,
+                                    uint32_t dex_reg,
+                                    VRegKind vreg_kind,
+                                    bool check_val = false,
+                                    uint32_t expected = 0) REQUIRES_SHARED(Locks::mutator_lock_) {
+    uint32_t value = 0;
+    if (GetCurrentQuickFrame() != nullptr &&
+        GetCurrentOatQuickMethodHeader()->IsOptimized() &&
+        !Runtime::Current()->IsJavaDebuggable()) {
+      CHECK_EQ(GetVReg(m, dex_reg, vreg_kind, &value), false);
+    } else {
+      CHECK(GetVReg(m, dex_reg, vreg_kind, &value));
+      if (check_val) {
+        CHECK_EQ(value, expected);
+      }
+    }
+  }
+
+  // Value returned to Java to ensure the required methods have been found and tested.
   bool found_method_ = false;
 };
 
