@@ -20,7 +20,7 @@
 # there will be JITed frames on the callstack (it synchronously JITs on first use).
 ${RUN} "$@" -Xcompiler-option --generate-debug-info \
   --runtime-option -Xjitthreshold:0 \
-  --args --full-signatures --args --test-local --args --test-remote
+  --args --test-local --args --test-remote
 return_status1=$?
 
 # Test with minimal compressed debugging information.
