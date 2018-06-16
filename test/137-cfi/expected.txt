@@ -1,2 +1,7 @@
 JNI_OnLoad called
+Unwind in process: PASS
 JNI_OnLoad called
+Unwind other process: PASS
+JNI_OnLoad called
+JNI_OnLoad called
+Unwind other process: PASS
