@@ -15,8 +15,12 @@
  */
 
 public abstract class Base {
-  abstract public void runImpl();
-  public void runBase() {
-    runImpl();
+  public void runTest() throws Exception {
+    // Conditionally throw exception to prevent the compiler from inlining the code.
+    if (!this.getClass().getName().equals("Main")) {
+      throw new Exception("Who is calling?");
+    }
+    test();
   }
+  abstract public void test();
 }
