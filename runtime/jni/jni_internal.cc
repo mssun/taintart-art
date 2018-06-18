@@ -761,7 +761,7 @@ class JNI {
     return local_result;
   }
 
-  static jobject NewObjectA(JNIEnv* env, jclass java_class, jmethodID mid, jvalue* args) {
+  static jobject NewObjectA(JNIEnv* env, jclass java_class, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT(java_class);
     CHECK_NON_NULL_ARGUMENT(mid);
     ScopedObjectAccess soa(env);
@@ -824,7 +824,7 @@ class JNI {
     return soa.AddLocalReference<jobject>(result.GetL());
   }
 
-  static jobject CallObjectMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jobject CallObjectMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT(obj);
     CHECK_NON_NULL_ARGUMENT(mid);
     ScopedObjectAccess soa(env);
@@ -850,7 +850,7 @@ class JNI {
     return InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args).GetZ();
   }
 
-  static jboolean CallBooleanMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jboolean CallBooleanMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -875,7 +875,7 @@ class JNI {
     return InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args).GetB();
   }
 
-  static jbyte CallByteMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jbyte CallByteMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -900,7 +900,7 @@ class JNI {
     return InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args).GetC();
   }
 
-  static jchar CallCharMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jchar CallCharMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -925,7 +925,7 @@ class JNI {
     return InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args).GetD();
   }
 
-  static jdouble CallDoubleMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jdouble CallDoubleMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -950,7 +950,7 @@ class JNI {
     return InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args).GetF();
   }
 
-  static jfloat CallFloatMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jfloat CallFloatMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -975,7 +975,7 @@ class JNI {
     return InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args).GetI();
   }
 
-  static jint CallIntMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jint CallIntMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1000,7 +1000,7 @@ class JNI {
     return InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args).GetJ();
   }
 
-  static jlong CallLongMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jlong CallLongMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1025,7 +1025,7 @@ class JNI {
     return InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args).GetS();
   }
 
-  static jshort CallShortMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static jshort CallShortMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1049,7 +1049,7 @@ class JNI {
     InvokeVirtualOrInterfaceWithVarArgs(soa, obj, mid, args);
   }
 
-  static void CallVoidMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* args) {
+  static void CallVoidMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_VOID(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_VOID(mid);
     ScopedObjectAccess soa(env);
@@ -1078,7 +1078,7 @@ class JNI {
   }
 
   static jobject CallNonvirtualObjectMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                             jvalue* args) {
+                                             const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT(obj);
     CHECK_NON_NULL_ARGUMENT(mid);
     ScopedObjectAccess soa(env);
@@ -1107,7 +1107,7 @@ class JNI {
   }
 
   static jboolean CallNonvirtualBooleanMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                               jvalue* args) {
+                                               const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1134,7 +1134,7 @@ class JNI {
   }
 
   static jbyte CallNonvirtualByteMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                         jvalue* args) {
+                                         const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1161,7 +1161,7 @@ class JNI {
   }
 
   static jchar CallNonvirtualCharMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                         jvalue* args) {
+                                         const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1188,7 +1188,7 @@ class JNI {
   }
 
   static jshort CallNonvirtualShortMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                           jvalue* args) {
+                                           const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1215,7 +1215,7 @@ class JNI {
   }
 
   static jint CallNonvirtualIntMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                       jvalue* args) {
+                                       const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1242,7 +1242,7 @@ class JNI {
   }
 
   static jlong CallNonvirtualLongMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                         jvalue* args) {
+                                         const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1269,7 +1269,7 @@ class JNI {
   }
 
   static jfloat CallNonvirtualFloatMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                           jvalue* args) {
+                                           const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1296,7 +1296,7 @@ class JNI {
   }
 
   static jdouble CallNonvirtualDoubleMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                             jvalue* args) {
+                                             const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
@@ -1322,7 +1322,7 @@ class JNI {
   }
 
   static void CallNonvirtualVoidMethodA(JNIEnv* env, jobject obj, jclass, jmethodID mid,
-                                        jvalue* args) {
+                                        const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_VOID(obj);
     CHECK_NON_NULL_ARGUMENT_RETURN_VOID(mid);
     ScopedObjectAccess soa(env);
@@ -1562,7 +1562,7 @@ class JNI {
     return soa.AddLocalReference<jobject>(result.GetL());
   }
 
-  static jobject CallStaticObjectMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jobject CallStaticObjectMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT(mid);
     ScopedObjectAccess soa(env);
     JValue result(InvokeWithJValues(soa, nullptr, mid, args));
@@ -1585,7 +1585,7 @@ class JNI {
     return InvokeWithVarArgs(soa, nullptr, mid, args).GetZ();
   }
 
-  static jboolean CallStaticBooleanMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jboolean CallStaticBooleanMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
     return InvokeWithJValues(soa, nullptr, mid, args).GetZ();
@@ -1607,7 +1607,7 @@ class JNI {
     return InvokeWithVarArgs(soa, nullptr, mid, args).GetB();
   }
 
-  static jbyte CallStaticByteMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jbyte CallStaticByteMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
     return InvokeWithJValues(soa, nullptr, mid, args).GetB();
@@ -1629,7 +1629,7 @@ class JNI {
     return InvokeWithVarArgs(soa, nullptr, mid, args).GetC();
   }
 
-  static jchar CallStaticCharMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jchar CallStaticCharMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
     return InvokeWithJValues(soa, nullptr, mid, args).GetC();
@@ -1651,7 +1651,7 @@ class JNI {
     return InvokeWithVarArgs(soa, nullptr, mid, args).GetS();
   }
 
-  static jshort CallStaticShortMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jshort CallStaticShortMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
     return InvokeWithJValues(soa, nullptr, mid, args).GetS();
@@ -1673,7 +1673,7 @@ class JNI {
     return InvokeWithVarArgs(soa, nullptr, mid, args).GetI();
   }
 
-  static jint CallStaticIntMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jint CallStaticIntMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
     return InvokeWithJValues(soa, nullptr, mid, args).GetI();
@@ -1695,7 +1695,7 @@ class JNI {
     return InvokeWithVarArgs(soa, nullptr, mid, args).GetJ();
   }
 
-  static jlong CallStaticLongMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jlong CallStaticLongMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
     return InvokeWithJValues(soa, nullptr, mid, args).GetJ();
@@ -1717,7 +1717,7 @@ class JNI {
     return InvokeWithVarArgs(soa, nullptr, mid, args).GetF();
   }
 
-  static jfloat CallStaticFloatMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jfloat CallStaticFloatMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
     return InvokeWithJValues(soa, nullptr, mid, args).GetF();
@@ -1739,7 +1739,7 @@ class JNI {
     return InvokeWithVarArgs(soa, nullptr, mid, args).GetD();
   }
 
-  static jdouble CallStaticDoubleMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static jdouble CallStaticDoubleMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_ZERO(mid);
     ScopedObjectAccess soa(env);
     return InvokeWithJValues(soa, nullptr, mid, args).GetD();
@@ -1760,7 +1760,7 @@ class JNI {
     InvokeWithVarArgs(soa, nullptr, mid, args);
   }
 
-  static void CallStaticVoidMethodA(JNIEnv* env, jclass, jmethodID mid, jvalue* args) {
+  static void CallStaticVoidMethodA(JNIEnv* env, jclass, jmethodID mid, const jvalue* args) {
     CHECK_NON_NULL_ARGUMENT_RETURN_VOID(mid);
     ScopedObjectAccess soa(env);
     InvokeWithJValues(soa, nullptr, mid, args);
