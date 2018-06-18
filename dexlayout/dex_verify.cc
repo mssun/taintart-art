@@ -31,37 +31,41 @@ using android::base::StringPrintf;
 bool VerifyOutputDexFile(dex_ir::Header* orig_header,
                          dex_ir::Header* output_header,
                          std::string* error_msg) {
-  dex_ir::Collections& orig = orig_header->GetCollections();
-  dex_ir::Collections& output = output_header->GetCollections();
-
   // Compare all id sections. They have a defined order that can't be changed by dexlayout.
-  if (!VerifyIds(orig.StringIds(), output.StringIds(), "string ids", error_msg) ||
-      !VerifyIds(orig.TypeIds(), output.TypeIds(), "type ids", error_msg) ||
-      !VerifyIds(orig.ProtoIds(), output.ProtoIds(), "proto ids", error_msg) ||
-      !VerifyIds(orig.FieldIds(), output.FieldIds(), "field ids", error_msg) ||
-      !VerifyIds(orig.MethodIds(), output.MethodIds(), "method ids", error_msg)) {
+  if (!VerifyIds(orig_header->StringIds(), output_header->StringIds(), "string ids", error_msg) ||
+      !VerifyIds(orig_header->TypeIds(), output_header->TypeIds(), "type ids", error_msg) ||
+      !VerifyIds(orig_header->ProtoIds(), output_header->ProtoIds(), "proto ids", error_msg) ||
+      !VerifyIds(orig_header->FieldIds(), output_header->FieldIds(), "field ids", error_msg) ||
+      !VerifyIds(orig_header->MethodIds(), output_header->MethodIds(), "method ids", error_msg)) {
     return false;
   }
   // Compare class defs. The order may have been changed by dexlayout.
-  if (!VerifyClassDefs(orig.ClassDefs(), output.ClassDefs(), error_msg)) {
+  if (!VerifyClassDefs(orig_header->ClassDefs(), output_header->ClassDefs(), error_msg)) {
     return false;
   }
   return true;
 }
 
-template<class T> bool VerifyIds(std::vector<std::unique_ptr<T>>& orig,
-                                 std::vector<std::unique_ptr<T>>& output,
+template<class T> bool VerifyIds(dex_ir::CollectionVector<T>& orig,
+                                 dex_ir::CollectionVector<T>& output,
                                  const char* section_name,
                                  std::string* error_msg) {
-  if (orig.size() != output.size()) {
-    *error_msg = StringPrintf(
-        "Mismatched size for %s section: %zu vs %zu.", section_name, orig.size(), output.size());
-    return false;
-  }
-  for (size_t i = 0; i < orig.size(); ++i) {
-    if (!VerifyId(orig[i].get(), output[i].get(), error_msg)) {
+  auto orig_iter = orig.begin();
+  auto output_iter = output.begin();
+  for (; orig_iter != orig.end() && output_iter != output.end(); ++orig_iter, ++output_iter) {
+    if (!VerifyId(orig_iter->get(), output_iter->get(), error_msg)) {
       return false;
     }
+  }
+  if (orig_iter != orig.end() || output_iter != output.end()) {
+    const char* longer;
+    if (orig_iter == orig.end()) {
+      longer = "output";
+    } else {
+      longer = "original";
+    }
+    *error_msg = StringPrintf("Mismatch for %s section: %s is longer.", section_name, longer);
+    return false;
   }
   return true;
 }
@@ -181,29 +185,36 @@ struct ClassDefCompare {
 
 // The class defs may have a new order due to dexlayout. Use the class's class_idx to uniquely
 // identify them and sort them for comparison.
-bool VerifyClassDefs(std::vector<std::unique_ptr<dex_ir::ClassDef>>& orig,
-                     std::vector<std::unique_ptr<dex_ir::ClassDef>>& output,
+bool VerifyClassDefs(dex_ir::CollectionVector<dex_ir::ClassDef>& orig,
+                     dex_ir::CollectionVector<dex_ir::ClassDef>& output,
                      std::string* error_msg) {
-  if (orig.size() != output.size()) {
-    *error_msg = StringPrintf(
-        "Mismatched size for class defs section: %zu vs %zu.", orig.size(), output.size());
-    return false;
-  }
   // Store the class defs into sets sorted by the class's type index.
   std::set<dex_ir::ClassDef*, ClassDefCompare> orig_set;
   std::set<dex_ir::ClassDef*, ClassDefCompare> output_set;
-  for (size_t i = 0; i < orig.size(); ++i) {
-    orig_set.insert(orig[i].get());
-    output_set.insert(output[i].get());
+  auto orig_iter = orig.begin();
+  auto output_iter = output.begin();
+  for (; orig_iter != orig.end() && output_iter != output.end(); ++orig_iter, ++output_iter) {
+    orig_set.insert(orig_iter->get());
+    output_set.insert(output_iter->get());
   }
-  auto orig_iter = orig_set.begin();
-  auto output_iter = output_set.begin();
-  while (orig_iter != orig_set.end() && output_iter != output_set.end()) {
-    if (!VerifyClassDef(*orig_iter, *output_iter, error_msg)) {
+  if (orig_iter != orig.end() || output_iter != output.end()) {
+    const char* longer;
+    if (orig_iter == orig.end()) {
+      longer = "output";
+    } else {
+      longer = "original";
+    }
+    *error_msg = StringPrintf("Mismatch for class defs section: %s is longer.", longer);
+    return false;
+  }
+  auto orig_set_iter = orig_set.begin();
+  auto output_set_iter = output_set.begin();
+  while (orig_set_iter != orig_set.end() && output_set_iter != output_set.end()) {
+    if (!VerifyClassDef(*orig_set_iter, *output_set_iter, error_msg)) {
       return false;
     }
-    orig_iter++;
-    output_iter++;
+    orig_set_iter++;
+    output_set_iter++;
   }
   return true;
 }

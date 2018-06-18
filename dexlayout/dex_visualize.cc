@@ -252,9 +252,9 @@ void VisualizeDexLayout(dex_ir::Header* header,
     return;
   }
 
-  const uint32_t class_defs_size = header->GetCollections().ClassDefsSize();
+  const uint32_t class_defs_size = header->ClassDefs().Size();
   for (uint32_t class_index = 0; class_index < class_defs_size; class_index++) {
-    dex_ir::ClassDef* class_def = header->GetCollections().GetClassDef(class_index);
+    dex_ir::ClassDef* class_def = header->ClassDefs()[class_index];
     dex::TypeIndex type_idx(class_def->ClassType()->GetIndex());
     if (profile_info != nullptr && !profile_info->ContainsClass(*dex_file, type_idx)) {
       continue;

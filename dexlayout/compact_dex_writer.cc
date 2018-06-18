@@ -40,9 +40,8 @@ CompactDexWriter::Container::Container(bool dedupe_code_items)
 
 uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(Stream* stream) {
   const uint32_t start_offset = stream->Tell();
-  const dex_ir::Collections& collections = header_->GetCollections();
   // Debug offsets for method indexes. 0 means no debug info.
-  std::vector<uint32_t> debug_info_offsets(collections.MethodIdsSize(), 0u);
+  std::vector<uint32_t> debug_info_offsets(header_->MethodIds().Size(), 0u);
 
   static constexpr InvokeType invoke_types[] = {
     kDirect,
@@ -50,7 +49,7 @@ uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(Stream* stream) {
   };
 
   for (InvokeType invoke_type : invoke_types) {
-    for (const std::unique_ptr<dex_ir::ClassDef>& class_def : collections.ClassDefs()) {
+    for (auto& class_def : header_->ClassDefs()) {
       // Skip classes that are not defined in this dex file.
       dex_ir::ClassData* class_data = class_def->GetClassData();
       if (class_data == nullptr) {
@@ -232,14 +231,13 @@ uint32_t CompactDexWriter::Deduper::Dedupe(uint32_t data_start,
 }
 
 void CompactDexWriter::SortDebugInfosByMethodIndex() {
-  dex_ir::Collections& collections = header_->GetCollections();
   static constexpr InvokeType invoke_types[] = {
     kDirect,
     kVirtual
   };
   std::map<const dex_ir::DebugInfoItem*, uint32_t> method_idx_map;
   for (InvokeType invoke_type : invoke_types) {
-    for (std::unique_ptr<dex_ir::ClassDef>& class_def : collections.ClassDefs()) {
+    for (auto& class_def : header_->ClassDefs()) {
       // Skip classes that are not defined in this dex file.
       dex_ir::ClassData* class_data = class_def->GetClassData();
       if (class_data == nullptr) {
@@ -257,8 +255,8 @@ void CompactDexWriter::SortDebugInfosByMethodIndex() {
       }
     }
   }
-  std::sort(collections.DebugInfoItems().begin(),
-            collections.DebugInfoItems().end(),
+  std::sort(header_->DebugInfoItems().begin(),
+            header_->DebugInfoItems().end(),
             [&](const std::unique_ptr<dex_ir::DebugInfoItem>& a,
                 const std::unique_ptr<dex_ir::DebugInfoItem>& b) {
     auto it_a = method_idx_map.find(a.get());
@@ -282,20 +280,19 @@ void CompactDexWriter::WriteHeader(Stream* stream) {
   header.endian_tag_ = header_->EndianTag();
   header.link_size_ = header_->LinkSize();
   header.link_off_ = header_->LinkOffset();
-  const dex_ir::Collections& collections = header_->GetCollections();
-  header.map_off_ = collections.MapListOffset();
-  header.string_ids_size_ = collections.StringIdsSize();
-  header.string_ids_off_ = collections.StringIdsOffset();
-  header.type_ids_size_ = collections.TypeIdsSize();
-  header.type_ids_off_ = collections.TypeIdsOffset();
-  header.proto_ids_size_ = collections.ProtoIdsSize();
-  header.proto_ids_off_ = collections.ProtoIdsOffset();
-  header.field_ids_size_ = collections.FieldIdsSize();
-  header.field_ids_off_ = collections.FieldIdsOffset();
-  header.method_ids_size_ = collections.MethodIdsSize();
-  header.method_ids_off_ = collections.MethodIdsOffset();
-  header.class_defs_size_ = collections.ClassDefsSize();
-  header.class_defs_off_ = collections.ClassDefsOffset();
+  header.map_off_ = header_->MapListOffset();
+  header.string_ids_size_ = header_->StringIds().Size();
+  header.string_ids_off_ = header_->StringIds().GetOffset();
+  header.type_ids_size_ = header_->TypeIds().Size();
+  header.type_ids_off_ = header_->TypeIds().GetOffset();
+  header.proto_ids_size_ = header_->ProtoIds().Size();
+  header.proto_ids_off_ = header_->ProtoIds().GetOffset();
+  header.field_ids_size_ = header_->FieldIds().Size();
+  header.field_ids_off_ = header_->FieldIds().GetOffset();
+  header.method_ids_size_ = header_->MethodIds().Size();
+  header.method_ids_off_ = header_->MethodIds().GetOffset();
+  header.class_defs_size_ = header_->ClassDefs().Size();
+  header.class_defs_off_ = header_->ClassDefs().GetOffset();
   header.data_size_ = header_->DataSize();
   header.data_off_ = header_->DataOffset();
   header.owned_data_begin_ = owned_data_begin_;
@@ -332,16 +329,15 @@ void CompactDexWriter::WriteStringData(Stream* stream, dex_ir::StringData* strin
 }
 
 bool CompactDexWriter::CanGenerateCompactDex(std::string* error_msg) {
-  dex_ir::Collections& collections = header_->GetCollections();
   static constexpr InvokeType invoke_types[] = {
     kDirect,
     kVirtual
   };
-  std::vector<bool> saw_method_id(collections.MethodIdsSize(), false);
-  std::vector<dex_ir::CodeItem*> method_id_code_item(collections.MethodIdsSize(), nullptr);
-  std::vector<dex_ir::DebugInfoItem*> method_id_debug_info(collections.MethodIdsSize(), nullptr);
+  std::vector<bool> saw_method_id(header_->MethodIds().Size(), false);
+  std::vector<dex_ir::CodeItem*> method_id_code_item(header_->MethodIds().Size(), nullptr);
+  std::vector<dex_ir::DebugInfoItem*> method_id_debug_info(header_->MethodIds().Size(), nullptr);
   for (InvokeType invoke_type : invoke_types) {
-    for (std::unique_ptr<dex_ir::ClassDef>& class_def : collections.ClassDefs()) {
+    for (auto& class_def : header_->ClassDefs()) {
       // Skip classes that are not defined in this dex file.
       dex_ir::ClassData* class_data = class_def->GetClassData();
       if (class_data == nullptr) {
@@ -407,8 +403,6 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
   // Starting offset is right after the header.
   main_stream->Seek(GetHeaderSize());
 
-  dex_ir::Collections& collection = header_->GetCollections();
-
   // Based on: https://source.android.com/devices/tech/dalvik/dex-format
   // Since the offsets may not be calculated already, the writing must be done in the correct order.
   const uint32_t string_ids_offset = main_stream->Tell();
@@ -469,16 +463,16 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
   // Write the map list.
   if (compute_offsets_) {
     data_stream->AlignTo(SectionAlignment(DexFile::kDexTypeMapList));
-    collection.SetMapListOffset(data_stream->Tell());
+    header_->SetMapListOffset(data_stream->Tell());
   } else {
-    data_stream->Seek(collection.MapListOffset());
+    data_stream->Seek(header_->MapListOffset());
   }
 
   // Map items are included in the data section.
   GenerateAndWriteMapItems(data_stream);
 
   // Write link data if it exists.
-  const std::vector<uint8_t>& link_data = collection.LinkData();
+  const std::vector<uint8_t>& link_data = header_->LinkData();
   if (link_data.size() > 0) {
     CHECK_EQ(header_->LinkSize(), static_cast<uint32_t>(link_data.size()));
     if (compute_offsets_) {
