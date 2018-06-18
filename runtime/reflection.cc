@@ -138,7 +138,7 @@ class ArgArray {
   }
 
   void BuildArgArrayFromJValues(const ScopedObjectAccessAlreadyRunnable& soa,
-                                ObjPtr<mirror::Object> receiver, jvalue* args)
+                                ObjPtr<mirror::Object> receiver, const jvalue* args)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Set receiver if non-null (method is not static)
     if (receiver != nullptr) {
@@ -492,7 +492,7 @@ JValue InvokeWithVarArgs(const ScopedObjectAccessAlreadyRunnable& soa, jobject o
 }
 
 JValue InvokeWithJValues(const ScopedObjectAccessAlreadyRunnable& soa, jobject obj, jmethodID mid,
-                         jvalue* args) {
+                         const jvalue* args) {
   // We want to make sure that the stack is not within a small distance from the
   // protected region in case we are calling into a leaf function whose stack
   // check has been elided.
@@ -523,7 +523,7 @@ JValue InvokeWithJValues(const ScopedObjectAccessAlreadyRunnable& soa, jobject o
 }
 
 JValue InvokeVirtualOrInterfaceWithJValues(const ScopedObjectAccessAlreadyRunnable& soa,
-                                           jobject obj, jmethodID mid, jvalue* args) {
+                                           jobject obj, jmethodID mid, const jvalue* args) {
   // We want to make sure that the stack is not within a small distance from the
   // protected region in case we are calling into a leaf function whose stack
   // check has been elided.
