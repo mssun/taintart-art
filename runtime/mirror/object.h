@@ -159,6 +159,8 @@ class MANAGED LOCKABLE Object {
       REQUIRES_SHARED(Locks::mutator_lock_);
   bool CasLockWordWeakRelease(LockWord old_val, LockWord new_val)
       REQUIRES_SHARED(Locks::mutator_lock_);
+  bool CasLockWordStrongRelaxed(LockWord old_val, LockWord new_val)
+      REQUIRES_SHARED(Locks::mutator_lock_);
   uint32_t GetLockOwnerThreadId();
 
   // Try to enter the monitor, returns non null if we succeeded.
@@ -534,6 +536,14 @@ class MANAGED LOCKABLE Object {
   ALWAYS_INLINE bool CasFieldWeakRelaxed32(MemberOffset field_offset,
                                            int32_t old_value,
                                            int32_t new_value)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  template<bool kTransactionActive,
+           bool kCheckTransaction = true,
+           VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
+  ALWAYS_INLINE bool CasFieldStrongRelaxed32(MemberOffset field_offset,
+                                             int32_t old_value,
+                                             int32_t new_value)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<bool kTransactionActive,

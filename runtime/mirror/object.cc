@@ -197,7 +197,9 @@ int32_t Object::IdentityHashCode() {
         // loop iteration.
         LockWord hash_word = LockWord::FromHashCode(GenerateIdentityHashCode(), lw.GCState());
         DCHECK_EQ(hash_word.GetState(), LockWord::kHashCode);
-        if (current_this->CasLockWordWeakRelaxed(lw, hash_word)) {
+        // Use a strong CAS to prevent spurious failures since these can make the boot image
+        // non-deterministic.
+        if (current_this->CasLockWordStrongRelaxed(lw, hash_word)) {
           return hash_word.GetHashCode();
         }
         break;
