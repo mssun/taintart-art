@@ -2173,7 +2173,7 @@ class CheckJNI {
     return result;
   }
 
-  static jobject NewObjectA(JNIEnv* env, jclass c, jmethodID mid, jvalue* vargs) {
+  static jobject NewObjectA(JNIEnv* env, jclass c, jmethodID mid, const jvalue* vargs) {
     CHECK_ATTACHED_THREAD(__FUNCTION__, nullptr);
     ScopedObjectAccess soa(env);
     ScopedCheck sc(kFlag_Default, __FUNCTION__);
@@ -2268,16 +2268,16 @@ class CheckJNI {
   FIELD_ACCESSORS(jdouble, Double, Primitive::kPrimDouble, D, D)
 #undef FIELD_ACCESSORS
 
-  static void CallVoidMethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* vargs) {
+  static void CallVoidMethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* vargs) {
     CallMethodA(__FUNCTION__, env, obj, nullptr, mid, vargs, Primitive::kPrimVoid, kVirtual);
   }
 
   static void CallNonvirtualVoidMethodA(JNIEnv* env, jobject obj, jclass c, jmethodID mid,
-                                        jvalue* vargs) {
+                                        const jvalue* vargs) {
     CallMethodA(__FUNCTION__, env, obj, c, mid, vargs, Primitive::kPrimVoid, kDirect);
   }
 
-  static void CallStaticVoidMethodA(JNIEnv* env, jclass c, jmethodID mid, jvalue* vargs) {
+  static void CallStaticVoidMethodA(JNIEnv* env, jclass c, jmethodID mid, const jvalue* vargs) {
     CallMethodA(__FUNCTION__, env, nullptr, c, mid, vargs, Primitive::kPrimVoid, kStatic);
   }
 
@@ -2316,16 +2316,16 @@ class CheckJNI {
   }
 
 #define CALL(rtype, name, ptype, shorty) \
-  static rtype Call##name##MethodA(JNIEnv* env, jobject obj, jmethodID mid, jvalue* vargs) { \
+  static rtype Call##name##MethodA(JNIEnv* env, jobject obj, jmethodID mid, const jvalue* vargs) { \
     return CallMethodA(__FUNCTION__, env, obj, nullptr, mid, vargs, ptype, kVirtual).shorty; \
   } \
   \
   static rtype CallNonvirtual##name##MethodA(JNIEnv* env, jobject obj, jclass c, jmethodID mid, \
-                                             jvalue* vargs) { \
+                                             const jvalue* vargs) { \
     return CallMethodA(__FUNCTION__, env, obj, c, mid, vargs, ptype, kDirect).shorty; \
   } \
   \
-  static rtype CallStatic##name##MethodA(JNIEnv* env, jclass c, jmethodID mid, jvalue* vargs) { \
+  static rtype CallStatic##name##MethodA(JNIEnv* env, jclass c, jmethodID mid, const jvalue* vargs) { \
     return CallMethodA(__FUNCTION__, env, nullptr, c, mid, vargs, ptype, kStatic).shorty; \
   } \
   \
@@ -3070,7 +3070,7 @@ class CheckJNI {
   }
 
   static JniValueType CallMethodA(const char* function_name, JNIEnv* env, jobject obj, jclass c,
-                                  jmethodID mid, jvalue* vargs, Primitive::Type type,
+                                  jmethodID mid, const jvalue* vargs, Primitive::Type type,
                                   InvokeType invoke) {
     CHECK_ATTACHED_THREAD(function_name, JniValueType());
     ScopedObjectAccess soa(env);

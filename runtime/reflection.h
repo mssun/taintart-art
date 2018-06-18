@@ -69,13 +69,13 @@ JValue InvokeWithVarArgs(const ScopedObjectAccessAlreadyRunnable& soa,
 JValue InvokeWithJValues(const ScopedObjectAccessAlreadyRunnable& soa,
                          jobject obj,
                          jmethodID mid,
-                         jvalue* args)
+                         const jvalue* args)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 JValue InvokeVirtualOrInterfaceWithJValues(const ScopedObjectAccessAlreadyRunnable& soa,
                                            jobject obj,
                                            jmethodID mid,
-                                           jvalue* args)
+                                           const jvalue* args)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 JValue InvokeVirtualOrInterfaceWithVarArgs(const ScopedObjectAccessAlreadyRunnable& soa,
