@@ -1822,7 +1822,7 @@ void ConcurrentCopying::ReclaimPhase() {
 
 std::string ConcurrentCopying::DumpReferenceInfo(mirror::Object* ref,
                                                  const char* ref_name,
-                                                 std::string indent) {
+                                                 const char* indent) {
   std::ostringstream oss;
   oss << indent << heap_->GetVerification()->DumpObjectInfo(ref, ref_name) << '\n';
   if (ref != nullptr) {
@@ -1846,13 +1846,13 @@ std::string ConcurrentCopying::DumpHeapReference(mirror::Object* obj,
                                                  MemberOffset offset,
                                                  mirror::Object* ref) {
   std::ostringstream oss;
-  std::string indent = "  ";
-  oss << indent << "Invalid reference: ref=" << ref
+  constexpr const char* kIndent = "  ";
+  oss << kIndent << "Invalid reference: ref=" << ref
       << " referenced from: object=" << obj << " offset= " << offset << '\n';
   // Information about `obj`.
-  oss << DumpReferenceInfo(obj, "obj", indent) << '\n';
+  oss << DumpReferenceInfo(obj, "obj", kIndent) << '\n';
   // Information about `ref`.
-  oss << DumpReferenceInfo(ref, "ref", indent);
+  oss << DumpReferenceInfo(ref, "ref", kIndent);
   return oss.str();
 }
 
@@ -1928,10 +1928,10 @@ class RootPrinter {
 
 std::string ConcurrentCopying::DumpGcRoot(mirror::Object* ref) {
   std::ostringstream oss;
-  std::string indent = "  ";
-  oss << indent << "Invalid GC root: ref=" << ref << '\n';
+  constexpr const char* kIndent = "  ";
+  oss << kIndent << "Invalid GC root: ref=" << ref << '\n';
   // Information about `ref`.
-  oss << DumpReferenceInfo(ref, "ref", indent);
+  oss << DumpReferenceInfo(ref, "ref", kIndent);
   return oss.str();
 }
 
