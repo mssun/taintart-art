@@ -209,7 +209,7 @@ public abstract class Value {
   @Override
   public abstract String toString();
 
-  private Value getBaseline() {
+  Value getBaseline() {
     return this;
   }
 
@@ -396,7 +396,8 @@ public abstract class Value {
       return mInstance.toString();
     }
 
-    public Value getBaseline() {
+    @Override
+    Value getBaseline() {
       return InstanceValue.pack(mInstance.getBaseline());
     }
 

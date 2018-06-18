@@ -18,6 +18,7 @@ package com.android.ahat;
 
 import com.android.ahat.heapdump.AhatHeap;
 import com.android.ahat.heapdump.AhatInstance;
+import com.android.ahat.heapdump.Value;
 import java.io.IOException;
 import org.junit.Test;
 
@@ -51,6 +52,9 @@ public class DiffTest {
     assertEquals(b, a.getBaseline());
     assertEquals(a.getSite(), b.getSite().getBaseline());
     assertEquals(b.getSite(), a.getSite().getBaseline());
+
+    Value va = Value.pack(a);
+    assertEquals(b, Value.getBaseline(va).asAhatInstance());
   }
 
   @Test
