@@ -918,7 +918,7 @@ bool VerifyDebugInfo(dex_ir::DebugInfoItem* orig,
     *error_msg = "DebugInfo null/non-null mismatch.";
     return false;
   }
-  if (memcmp(orig_data, output_data, orig_size) != 0) {
+  if (orig_data != nullptr && memcmp(orig_data, output_data, orig_size) != 0) {
     *error_msg = "DebugInfo bytes mismatch.";
     return false;
   }
