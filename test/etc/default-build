@@ -119,12 +119,13 @@ DEV_MODE="no"
 # The key for default arguments if no experimental things are enabled.
 DEFAULT_EXPERIMENT="no-experiment"
 
-# Setup experimental flag mappings in a bash associative array.
-declare -A SMALI_EXPERIMENTAL_ARGS
-SMALI_EXPERIMENTAL_ARGS["default-methods"]="--api 24"
-SMALI_EXPERIMENTAL_ARGS["method-handles"]="--api 26"
-SMALI_EXPERIMENTAL_ARGS["var-handles"]="--api 26"
-SMALI_EXPERIMENTAL_ARGS["agents"]="--api 26"
+# Setup experimental API level mappings in a bash associative array.
+declare -A EXPERIMENTAL_API_LEVEL
+EXPERIMENTAL_API_LEVEL["default-methods"]="24"
+EXPERIMENTAL_API_LEVEL["parameter-annotations"]="25"
+EXPERIMENTAL_API_LEVEL["agents"]="26"
+EXPERIMENTAL_API_LEVEL["method-handles"]="26"
+EXPERIMENTAL_API_LEVEL["var-handles"]="28"
 
 declare -A JAVAC_EXPERIMENTAL_ARGS
 JAVAC_EXPERIMENTAL_ARGS["default-methods"]="-source 1.8 -target 1.8"
@@ -134,11 +135,6 @@ JAVAC_EXPERIMENTAL_ARGS["parameter-annotations"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["var-handles"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS[${DEFAULT_EXPERIMENT}]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["agents"]="-source 1.8 -target 1.8"
-
-declare -A DX_EXPERIMENTAL_ARGS
-DX_EXPERIMENTAL_ARGS["method-handles"]="--min-sdk-version=26"
-DX_EXPERIMENTAL_ARGS["parameter-annotations"]="--min-sdk-version=25"
-DX_EXPERIMENTAL_ARGS["var-handles"]="--min-sdk-version=28"
 
 while true; do
   if [ "x$1" = "x--dx-option" ]; then
@@ -216,14 +212,15 @@ if [[ $BUILD_MODE == jvm ]]; then
   HAS_SRC_ART=false
 fi
 
-# Be sure to get any default arguments if not doing any experiments.
-EXPERIMENTAL="${EXPERIMENTAL} ${DEFAULT_EXPERIMENT}"
-
 # Add args from the experimental mappings.
-for experiment in ${EXPERIMENTAL}; do
-  SMALI_ARGS="${SMALI_ARGS} ${SMALI_EXPERIMENTAL_ARGS[${experiment}]}"
+for experiment in ${EXPERIMENTAL} ${DEFAULT_EXPERIMENT}; do
   JAVAC_ARGS="${JAVAC_ARGS} ${JAVAC_EXPERIMENTAL_ARGS[${experiment}]}"
-  DX_FLAGS="${DX_FLAGS} ${DX_EXPERIMENTAL_ARGS[${experiment}]}"
+done
+
+for experiment in ${EXPERIMENTAL}; do
+  SMALI_ARGS="${SMALI_ARGS} --api ${EXPERIMENTAL_API_LEVEL[${experiment}]}"
+  DX_FLAGS="${DX_FLAGS} --min-sdk-version=${EXPERIMENTAL_API_LEVEL[${experiment}]}"
+  D8_FLAGS="--min-api ${EXPERIMENTAL_API_LEVEL[${experiment}]}"
 done
 
 #########################################
@@ -289,17 +286,21 @@ function make_dex() {
   local name="$1"
 
   local dx_input
-  if [[ "$USE_DESUGAR" == "true" ]]; then
-    # Make a jar first so desugar doesn't need every .class file individually.
-    jar cf "$name.before-desugar.jar" -C "$name" .
-
-    dx_input="${name}.desugar.jar"
-
-    # Make desugared JAR.
-    desugar --input "$name.before-desugar.jar" --output "$dx_input"
-  else
-    dx_input="${name}"
+  if [[ "$USE_DESUGAR" != "true" ]]; then
+    # Use d8 with --no-desugaring for the 3 tests that opt out of desugaring (b/110150973).
+    local d8_inputs=$(find classes -name '*.class' -type f)
+    ${D8} ${D8_FLAGS} --debug --no-desugaring --output ${name}.jar $d8_inputs && \
+      jar -xf ${name}.jar ${name}.dex && \
+      rm ${name}.jar
+    return $?
   fi
+
+  # Make a jar first so desugar doesn't need every .class file individually.
+  jar cf "$name.before-desugar.jar" -C "$name" .
+
+  # Make desugared JAR.
+  dx_input="${name}.desugar.jar"
+  desugar --input "$name.before-desugar.jar" --output "$dx_input"
 
   local dexer="${DX}"
   if [[ "${USE_D8}" != "false" ]]; then
@@ -307,7 +308,11 @@ function make_dex() {
   fi
 
   # Make dex file from desugared JAR.
-  ${dexer} -JXmx256m ${DX_VM_FLAGS} --debug --dex --output=${name}.dex ${DX_FLAGS} "${dx_input}"
+  local dexer_flags="${DX_FLAGS} --debug --dex"
+  if [ $DEV_MODE = "yes" ]; then
+    echo ${dexer} -JXmx256m ${DX_VM_FLAGS} $dexer_flags --output=${name}.dex "${dx_input}"
+  fi
+  ${dexer} -JXmx256m ${DX_VM_FLAGS} $dexer_flags --output=${name}.dex "${dx_input}"
 }
 
 # Merge all the dex files in $1..$N into $1. Skip non-existing files, but at least 1 file must exist.
@@ -432,8 +437,7 @@ if [[ "${HAS_JASMIN}" == true ]]; then
   # Compile Jasmin classes as if they were part of the classes.dex file.
   make_jasmin jasmin_classes $(find 'jasmin' -name '*.j')
   if [[ "${NEED_DEX}" == "true" ]]; then
-    # Disable desugar because it won't handle intentional linkage errors.
-    USE_DESUGAR=false make_dex jasmin_classes
+    make_dex jasmin_classes
     make_dexmerge classes.dex jasmin_classes.dex
   else
     # Move jasmin classes into classes directory so that they are picked up with -cp classes.
@@ -458,10 +462,7 @@ if [[ "$HAS_JASMIN_MULTIDEX" == true ]]; then
   make_jasmin jasmin_classes2 $(find 'jasmin-multidex' -name '*.j')
 
   if [[ "${NEED_DEX}" == "true" ]]; then
-    # Disable desugar because it won't handle intentional linkage errors.
-    USE_DESUGAR=false make_dex jasmin_classes2
-
-    # Merge jasmin_classes2.dex into classes2.dex
+    make_dex jasmin_classes2
     make_dexmerge classes2.dex jasmin_classes2.dex
   else
     # Move jasmin classes into classes2 directory so that they are picked up with -cp classes2.
