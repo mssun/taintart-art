@@ -34,17 +34,36 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
     echo -e "${green}List open files under chroot dir $ART_TEST_CHROOT${nc}"
     adb shell lsof | grep "$ART_TEST_CHROOT"
 
-    echo -e "${green}List processes running from binaries under chroot dir $ART_TEST_CHROOT${nc}"
-    for link in $(adb shell ls -d "/proc/*/root"); do
-      root=$(adb shell readlink "$link")
-      if [[ "x$root" = "x$ART_TEST_CHROOT" ]]; then
-        dir=$(dirname "$link")
-        pid=$(basename "$dir")
-        cmdline=$(adb shell cat "$dir"/cmdline | tr -d '\000')
-        echo "$cmdline (PID: $pid)"
-      fi
-    done
+    # for_all_chroot_process ACTION
+    # -----------------------------
+    # Execute ACTION on all processes running from binaries located
+    # under the chroot directory. ACTION is passed two arguments: the
+    # PID of the process, and a string containing the command line
+    # that started this process.
+    for_all_chroot_process() {
+      local action=$1
+      for link in $(adb shell ls -d "/proc/*/root"); do
+        local root=$(adb shell readlink "$link")
+        if [[ "x$root" = "x$ART_TEST_CHROOT" ]]; then
+          local dir=$(dirname "$link")
+          local pid=$(basename "$dir")
+          local cmdline=$(adb shell cat "$dir"/cmdline | tr '\000' ' ')
+          $action "$pid" "$cmdline"
+        fi
+      done
+    }
 
+    # display_process PID CMDLINE
+    # ---------------------------
+    # Display information about process with given PID, that was started with CMDLINE.
+    display_process() {
+      local pid=$1
+      local cmdline=$2
+      echo "$cmdline (PID: $pid)"
+    }
+
+    echo -e "${green}List processes running from binaries under chroot dir $ART_TEST_CHROOT${nc}"
+    for_all_chroot_process display_process
 
     # Tear down the chroot dir.
 
@@ -102,5 +121,22 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
     for f in $property_context_files; do
       adb shell rm -f "$ART_TEST_CHROOT$f"
     done
+
+
+    # Kill processes still running in the chroot.
+
+    # kill_process PID CMDLINE
+    # ------------------------
+    # Kill process with given PID, that was started with CMDLINE.
+    kill_process() {
+      local pid=$1
+      local cmdline=$2
+      echo "Killing $cmdline (PID: $pid)"
+      adb shell kill -9 "$pid"
+    }
+
+    echo -e "${green}Kill processes still running from binaries under" \
+      "chroot dir $ART_TEST_CHROOT (if any)${nc} "
+    for_all_chroot_process kill_process
   fi
 fi
