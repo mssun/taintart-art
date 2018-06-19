@@ -140,8 +140,11 @@ $(foreach target, $(TARGET_TYPES), \
         $(call core-image-dependencies,$(target),$(image),$(compiler),$(address_size)))))))
 
 test-art-host-run-test-dependencies : $(host_prereq_rules)
+.PHONY: test-art-host-run-test-dependencies
 test-art-target-run-test-dependencies : $(target_prereq_rules)
+.PHONY: test-art-target-run-test-dependencies
 test-art-run-test-dependencies : test-art-host-run-test-dependencies test-art-target-run-test-dependencies
+.PHONY: test-art-run-test-dependencies
 
 # Create a rule to build and run a test group of the following form:
 # test-art-{1: host target}-run-test
