@@ -1855,11 +1855,17 @@ void UnstartedRuntime::UnstartedJNIUnsafeCompareAndSwapInt(
   jint newValue = args[4];
   bool success;
   if (Runtime::Current()->IsActiveTransaction()) {
-    success = obj->CasFieldStrongSequentiallyConsistent32<true>(MemberOffset(offset),
-                                                                expectedValue, newValue);
+    success = obj->CasField32<true>(MemberOffset(offset),
+                                    expectedValue,
+                                    newValue,
+                                    CASMode::kStrong,
+                                    std::memory_order_seq_cst);
   } else {
-    success = obj->CasFieldStrongSequentiallyConsistent32<false>(MemberOffset(offset),
-                                                                 expectedValue, newValue);
+    success = obj->CasField32<false>(MemberOffset(offset),
+                                     expectedValue,
+                                     newValue,
+                                     CASMode::kStrong,
+                                     std::memory_order_seq_cst);
   }
   result->SetZ(success ? JNI_TRUE : JNI_FALSE);
 }

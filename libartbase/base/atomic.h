@@ -28,6 +28,11 @@
 
 namespace art {
 
+enum class CASMode {
+  kStrong,
+  kWeak,
+};
+
 template<typename T>
 class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
  public:
@@ -98,6 +103,15 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
   // same location.
   bool CompareAndSetWeakRelease(T expected_value, T desired_value) {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_release);
+  }
+
+  bool CompareAndSet(T expected_value,
+                     T desired_value,
+                     CASMode mode,
+                     std::memory_order memory_order) {
+    return mode == CASMode::kStrong
+        ? this->compare_exchange_strong(expected_value, desired_value, memory_order)
+        : this->compare_exchange_weak(expected_value, desired_value, memory_order);
   }
 
   // Returns the address of the current atomic variable. This is only used by futex() which is
