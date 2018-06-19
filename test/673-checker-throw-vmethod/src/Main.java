@@ -45,7 +45,7 @@ public class Main {
   /// CHECK-START: void Main.doit1(int[]) code_sinking (before)
   /// CHECK: begin_block
   /// CHECK:   <<Str:l\d+>> LoadString
-  /// CHECK:   <<Tst:z\d+>> NotEqual
+  /// CHECK:   <<Tst:z\d+>> Equal
   /// CHECK:                If [<<Tst>>]
   /// CHECK: end_block
   /// CHECK: begin_block
@@ -55,7 +55,7 @@ public class Main {
   //
   /// CHECK-START: void Main.doit1(int[]) code_sinking (after)
   /// CHECK: begin_block
-  /// CHECK:   <<Tst:z\d+>> NotEqual
+  /// CHECK:   <<Tst:z\d+>> Equal
   /// CHECK:                If [<<Tst>>]
   /// CHECK: end_block
   /// CHECK: begin_block
@@ -103,7 +103,7 @@ public class Main {
   /// CHECK-START: void Main.doit3(int[]) code_sinking (before)
   /// CHECK: begin_block
   /// CHECK:   <<Str:l\d+>> LoadString
-  /// CHECK:   <<Tst:z\d+>> NotEqual
+  /// CHECK:   <<Tst:z\d+>> Equal
   /// CHECK:                If [<<Tst>>]
   /// CHECK: end_block
   /// CHECK: begin_block
@@ -113,7 +113,7 @@ public class Main {
   //
   /// CHECK-START: void Main.doit3(int[]) code_sinking (after)
   /// CHECK: begin_block
-  /// CHECK:   <<Tst:z\d+>> NotEqual
+  /// CHECK:   <<Tst:z\d+>> Equal
   /// CHECK:                If [<<Tst>>]
   /// CHECK: end_block
   /// CHECK: begin_block
