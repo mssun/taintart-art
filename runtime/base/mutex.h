@@ -65,10 +65,14 @@ enum LockLevel : uint8_t {
   kAbortLock,
   kNativeDebugInterfaceLock,
   kSignalHandlingLock,
+  // A generic lock level for mutexs that should not allow any additional mutexes to be gained after
+  // acquiring it.
+  kGenericBottomLock,
   kJdwpAdbStateLock,
   kJdwpSocketLock,
   kRegionSpaceRegionLock,
   kMarkSweepMarkStackLock,
+  kJitCodeCacheLock,
   kRosAllocGlobalLock,
   kRosAllocBracketLock,
   kRosAllocBulkFreeLock,
@@ -94,7 +98,6 @@ enum LockLevel : uint8_t {
   kOatFileManagerLock,
   kTracingUniqueMethodsLock,
   kTracingStreamingLock,
-  kDeoptimizedMethodsLock,
   kClassLoaderClassesLock,
   kDefaultMutexLevel,
   kDexLock,
@@ -105,7 +108,6 @@ enum LockLevel : uint8_t {
   kMonitorPoolLock,
   kClassLinkerClassesLock,  // TODO rename.
   kDexToDexCompilerLock,
-  kJitCodeCacheLock,
   kCHALock,
   kSubtypeCheckLock,
   kBreakpointLock,
@@ -735,6 +737,12 @@ class Locks {
 
   // Guard accesses to the JNI function table override.
   static Mutex* jni_function_table_lock_ ACQUIRED_AFTER(jni_weak_globals_lock_);
+
+  // When declaring any Mutex add BOTTOM_MUTEX_ACQUIRED_AFTER to use annotalysis to check the code
+  // doesn't try to acquire a higher level Mutex. NB Due to the way the annotalysis works this
+  // actually only encodes the mutex being below jni_function_table_lock_ although having
+  // kGenericBottomLock level is lower than this.
+  #define BOTTOM_MUTEX_ACQUIRED_AFTER ACQUIRED_AFTER(art::Locks::jni_function_table_lock_)
 
   // Have an exclusive aborting thread.
   static Mutex* abort_lock_ ACQUIRED_AFTER(jni_function_table_lock_);

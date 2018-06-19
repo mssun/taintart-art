@@ -315,6 +315,11 @@ class JitCodeCache {
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Adds the given roots to the roots_data. Only a member for annotalysis.
+  void FillRootTable(uint8_t* roots_data, Handle<mirror::ObjectArray<mirror::Object>> roots)
+      REQUIRES(lock_)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   ProfilingInfo* AddProfilingInfoInternal(Thread* self,
                                           ArtMethod* method,
                                           const std::vector<uint32_t>& entries)
@@ -391,7 +396,7 @@ class JitCodeCache {
   class JniStubData;
 
   // Lock for guarding allocations, collections, and the method_code_map_.
-  Mutex lock_;
+  Mutex lock_ BOTTOM_MUTEX_ACQUIRED_AFTER;
   // Condition to wait on during collection.
   ConditionVariable lock_cond_ GUARDED_BY(lock_);
   // Whether there is a code cache collection in progress.

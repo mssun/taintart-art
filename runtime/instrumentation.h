@@ -720,7 +720,7 @@ class Instrumentation {
 
   // The set of methods being deoptimized (by the debugger) which must be executed with interpreter
   // only.
-  mutable ReaderWriterMutex deoptimized_methods_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
+  mutable ReaderWriterMutex deoptimized_methods_lock_ BOTTOM_MUTEX_ACQUIRED_AFTER;
   std::unordered_set<ArtMethod*> deoptimized_methods_ GUARDED_BY(deoptimized_methods_lock_);
   bool deoptimization_enabled_;
 

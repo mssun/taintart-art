@@ -507,21 +507,31 @@ static const uint8_t* FromStackMapToRoots(const uint8_t* stack_map_data) {
   return stack_map_data - ComputeRootTableSize(GetNumberOfRoots(stack_map_data));
 }
 
-static void FillRootTable(uint8_t* roots_data, Handle<mirror::ObjectArray<mirror::Object>> roots)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
+static void DCheckRootsAreValid(Handle<mirror::ObjectArray<mirror::Object>> roots)
+    REQUIRES(!Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (!kIsDebugBuild) {
+    return;
+  }
+  const uint32_t length = roots->GetLength();
+  // Put all roots in `roots_data`.
+  for (uint32_t i = 0; i < length; ++i) {
+    ObjPtr<mirror::Object> object = roots->Get(i);
+    // Ensure the string is strongly interned. b/32995596
+    if (object->IsString()) {
+      ObjPtr<mirror::String> str = ObjPtr<mirror::String>::DownCast(object);
+      ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+      CHECK(class_linker->GetInternTable()->LookupStrong(Thread::Current(), str) != nullptr);
+    }
+  }
+}
+
+void JitCodeCache::FillRootTable(uint8_t* roots_data,
+                                 Handle<mirror::ObjectArray<mirror::Object>> roots) {
   GcRoot<mirror::Object>* gc_roots = reinterpret_cast<GcRoot<mirror::Object>*>(roots_data);
   const uint32_t length = roots->GetLength();
   // Put all roots in `roots_data`.
   for (uint32_t i = 0; i < length; ++i) {
     ObjPtr<mirror::Object> object = roots->Get(i);
-    if (kIsDebugBuild) {
-      // Ensure the string is strongly interned. b/32995596
-      if (object->IsString()) {
-        ObjPtr<mirror::String> str = ObjPtr<mirror::String>::DownCast(object);
-        ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-        CHECK(class_linker->GetInternTable()->LookupStrong(Thread::Current(), str) != nullptr);
-      }
-    }
     gc_roots[i] = GcRoot<mirror::Object>(object);
   }
 }
@@ -851,6 +861,12 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
     for (ArtMethod* single_impl : cha_single_implementation_list) {
       Runtime::Current()->GetClassLinker()->GetClassHierarchyAnalysis()->AddDependency(
           single_impl, method, method_header);
+    }
+
+    if (!method->IsNative()) {
+      // We need to do this before grabbing the lock_ because it needs to be able to see the string
+      // InternTable. Native methods do not have roots.
+      DCheckRootsAreValid(roots);
     }
 
     // The following needs to be guarded by cha_lock_ also. Otherwise it's
