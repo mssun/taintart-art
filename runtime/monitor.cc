@@ -134,13 +134,15 @@ Monitor::Monitor(Thread* self, Thread* owner, mirror::Object* obj, int32_t hash_
 }
 
 int32_t Monitor::GetHashCode() {
-  while (!HasHashCode()) {
-    if (hash_code_.CompareAndSetWeakRelaxed(0, mirror::Object::GenerateIdentityHashCode())) {
-      break;
-    }
+  int32_t hc = hash_code_.load(std::memory_order_relaxed);
+  if (!HasHashCode()) {
+    // Use a strong CAS to prevent spurious failures since these can make the boot image
+    // non-deterministic.
+    hash_code_.CompareAndSetStrongRelaxed(0, mirror::Object::GenerateIdentityHashCode());
+    hc = hash_code_.load(std::memory_order_relaxed);
   }
   DCHECK(HasHashCode());
-  return hash_code_.load(std::memory_order_relaxed);
+  return hc;
 }
 
 bool Monitor::Install(Thread* self) {
