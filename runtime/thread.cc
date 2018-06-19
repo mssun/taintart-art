@@ -598,7 +598,7 @@ void Thread::InstallImplicitProtection() {
           1u;
 #endif
       volatile char space[kPageSize - (kAsanMultiplier * 256)];
-      char sink ATTRIBUTE_UNUSED = space[zero];
+      char sink ATTRIBUTE_UNUSED = space[zero];  // NOLINT
       if (reinterpret_cast<uintptr_t>(space) >= target + kPageSize) {
         Touch(target);
       }
