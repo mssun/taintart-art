@@ -86,9 +86,11 @@ struct MockClass {
   }
 
   template <bool kTransactionActive>
-  bool CasFieldWeakSequentiallyConsistent32(art::MemberOffset offset,
-                                            int32_t old_value,
-                                            int32_t new_value)
+  bool CasField32(art::MemberOffset offset,
+                  int32_t old_value,
+                  int32_t new_value,
+                  CASMode mode ATTRIBUTE_UNUSED,
+                  std::memory_order memory_order ATTRIBUTE_UNUSED)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     UNUSED(offset);
     if (old_value == GetField32Volatile(offset)) {

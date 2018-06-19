@@ -111,7 +111,7 @@ class MANAGED LOCKABLE Object {
 #endif
   ALWAYS_INLINE void SetReadBarrierState(uint32_t rb_state) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template<bool kCasRelease = false>
+  template<std::memory_order kMemoryOrder = std::memory_order_relaxed>
   ALWAYS_INLINE bool AtomicSetReadBarrierState(uint32_t expected_rb_state, uint32_t rb_state)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -151,15 +151,7 @@ class MANAGED LOCKABLE Object {
   LockWord GetLockWord(bool as_volatile) REQUIRES_SHARED(Locks::mutator_lock_);
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   void SetLockWord(LockWord new_val, bool as_volatile) REQUIRES_SHARED(Locks::mutator_lock_);
-  bool CasLockWordWeakSequentiallyConsistent(LockWord old_val, LockWord new_val)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  bool CasLockWordWeakRelaxed(LockWord old_val, LockWord new_val)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  bool CasLockWordWeakAcquire(LockWord old_val, LockWord new_val)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  bool CasLockWordWeakRelease(LockWord old_val, LockWord new_val)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  bool CasLockWordStrongRelaxed(LockWord old_val, LockWord new_val)
+  bool CasLockWord(LockWord old_val, LockWord new_val, CASMode mode, std::memory_order memory_order)
       REQUIRES_SHARED(Locks::mutator_lock_);
   uint32_t GetLockOwnerThreadId();
 
@@ -525,49 +517,11 @@ class MANAGED LOCKABLE Object {
   template<bool kTransactionActive,
            bool kCheckTransaction = true,
            VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  ALWAYS_INLINE bool CasFieldWeakSequentiallyConsistent32(MemberOffset field_offset,
-                                                          int32_t old_value,
-                                                          int32_t new_value)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  template<bool kTransactionActive,
-           bool kCheckTransaction = true,
-           VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  ALWAYS_INLINE bool CasFieldWeakRelaxed32(MemberOffset field_offset,
-                                           int32_t old_value,
-                                           int32_t new_value)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  template<bool kTransactionActive,
-           bool kCheckTransaction = true,
-           VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  ALWAYS_INLINE bool CasFieldStrongRelaxed32(MemberOffset field_offset,
-                                             int32_t old_value,
-                                             int32_t new_value)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  template<bool kTransactionActive,
-           bool kCheckTransaction = true,
-           VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  ALWAYS_INLINE bool CasFieldWeakAcquire32(MemberOffset field_offset,
-                                           int32_t old_value,
-                                           int32_t new_value)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  template<bool kTransactionActive,
-           bool kCheckTransaction = true,
-           VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  ALWAYS_INLINE bool CasFieldWeakRelease32(MemberOffset field_offset,
-                                           int32_t old_value,
-                                           int32_t new_value)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  template<bool kTransactionActive,
-           bool kCheckTransaction = true,
-           VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  ALWAYS_INLINE bool CasFieldStrongSequentiallyConsistent32(MemberOffset field_offset,
-                                                            int32_t old_value,
-                                                            int32_t new_value)
+  ALWAYS_INLINE bool CasField32(MemberOffset field_offset,
+                                int32_t old_value,
+                                int32_t new_value,
+                                CASMode mode,
+                                std::memory_order memory_order)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>

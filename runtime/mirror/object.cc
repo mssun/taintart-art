@@ -199,7 +199,7 @@ int32_t Object::IdentityHashCode() {
         DCHECK_EQ(hash_word.GetState(), LockWord::kHashCode);
         // Use a strong CAS to prevent spurious failures since these can make the boot image
         // non-deterministic.
-        if (current_this->CasLockWordStrongRelaxed(lw, hash_word)) {
+        if (current_this->CasLockWord(lw, hash_word, CASMode::kStrong, std::memory_order_relaxed)) {
           return hash_word.GetHashCode();
         }
         break;
