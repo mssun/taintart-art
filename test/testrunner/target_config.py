@@ -265,14 +265,8 @@ target_config = {
             'ART_USE_READ_BARRIER' : 'false'
         }
     },
-    'art-gtest-valgrind32': {
-      # Disabled: Valgrind is no longer supported.
-      # Historical note: This was already disabled, as x86 valgrind did not understand SSE4.x
-      # 'make' : 'valgrind-test-art-host32',
-        'env': {
-            'ART_USE_READ_BARRIER' : 'false'
-        }
-    },
+    # TODO: Remove this configuration, when the ART Buildbot is no
+    # longer using it for 'host-x86_64-valgrind'.
     'art-gtest-valgrind64': {
       # Disabled: Valgrind is no longer supported.
       # 'make' : 'valgrind-test-art-host64',
