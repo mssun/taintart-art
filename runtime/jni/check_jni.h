@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_CHECK_JNI_H_
-#define ART_RUNTIME_CHECK_JNI_H_
+#ifndef ART_RUNTIME_JNI_CHECK_JNI_H_
+#define ART_RUNTIME_JNI_CHECK_JNI_H_
 
 #include <jni.h>
 
@@ -26,4 +26,4 @@ const JNIInvokeInterface* GetCheckJniInvokeInterface();
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_CHECK_JNI_H_
+#endif  // ART_RUNTIME_JNI_CHECK_JNI_H_
