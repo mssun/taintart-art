@@ -293,10 +293,12 @@ target_config = {
             'ASAN_OPTIONS' : 'detect_leaks=0'
         }
     },
+    # TODO: Also exercise '--interp-ac' in 'art-asan', when b/109813469 is addressed.
     'art-asan': {
         'run-test' : ['--interpreter',
                       '--optimizing',
-                      '--jit'],
+                      '--jit',
+                      '--speed-profile'],
         'env': {
             'SANITIZE_HOST' : 'address',
             'ASAN_OPTIONS' : 'detect_leaks=0'
