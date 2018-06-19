@@ -39,7 +39,8 @@ inline LockWord Object::GetLockWord(bool as_volatile) {
 
 template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
 inline bool Object::CasFieldWeakRelaxed32(MemberOffset field_offset,
-                                          int32_t old_value, int32_t new_value) {
+                                          int32_t old_value,
+                                          int32_t new_value) {
   if (kCheckTransaction) {
     DCHECK_EQ(kTransactionActive, Runtime::Current()->IsActiveTransaction());
   }
@@ -55,10 +56,37 @@ inline bool Object::CasFieldWeakRelaxed32(MemberOffset field_offset,
   return atomic_addr->CompareAndSetWeakRelaxed(old_value, new_value);
 }
 
+template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
+inline bool Object::CasFieldStrongRelaxed32(MemberOffset field_offset,
+                                            int32_t old_value,
+                                            int32_t new_value) {
+  if (kCheckTransaction) {
+    DCHECK_EQ(kTransactionActive, Runtime::Current()->IsActiveTransaction());
+  }
+  if (kTransactionActive) {
+    Runtime::Current()->RecordWriteField32(this, field_offset, old_value, true);
+  }
+  if (kVerifyFlags & kVerifyThis) {
+    VerifyObject(this);
+  }
+  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
+  AtomicInteger* atomic_addr = reinterpret_cast<AtomicInteger*>(raw_addr);
+
+  return atomic_addr->CompareAndSetStrongRelaxed(old_value, new_value);
+}
+
 inline bool Object::CasLockWordWeakRelaxed(LockWord old_val, LockWord new_val) {
   // Force use of non-transactional mode and do not check.
-  return CasFieldWeakRelaxed32<false, false>(
-      OFFSET_OF_OBJECT_MEMBER(Object, monitor_), old_val.GetValue(), new_val.GetValue());
+  return CasFieldWeakRelaxed32<false, false>(OFFSET_OF_OBJECT_MEMBER(Object, monitor_),
+                                             old_val.GetValue(),
+                                             new_val.GetValue());
+}
+
+inline bool Object::CasLockWordStrongRelaxed(LockWord old_val, LockWord new_val) {
+  // Force use of non-transactional mode and do not check.
+  return CasFieldStrongRelaxed32<false, false>(OFFSET_OF_OBJECT_MEMBER(Object, monitor_),
+                                               old_val.GetValue(),
+                                               new_val.GetValue());
 }
 
 inline bool Object::CasLockWordWeakRelease(LockWord old_val, LockWord new_val) {
