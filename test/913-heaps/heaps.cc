@@ -168,6 +168,12 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
       if (reference_kind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL && class_tag == 0) {
         return 0;
       }
+      // Ignore HEAP_REFERENCE_OTHER roots because these are vm-internal roots and can vary
+      // depending on the configuration of the runtime (notably having trampoline tracing will add a
+      // lot of these).
+      if (reference_kind == JVMTI_HEAP_REFERENCE_OTHER) {
+        return 0;
+      }
       // Ignore classes (1000 <= tag < 3000) for thread objects. These can be held by the JIT.
       if (reference_kind == JVMTI_HEAP_REFERENCE_THREAD && class_tag == 0 &&
               (1000 <= *tag_ptr &&  *tag_ptr < 3000)) {
