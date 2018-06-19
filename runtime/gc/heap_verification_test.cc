@@ -83,6 +83,7 @@ TEST_F(VerificationTest, IsValidClassOrNotInHeap) {
 }
 
 TEST_F(VerificationTest, IsValidClassInHeap) {
+  TEST_DISABLED_FOR_MEMORY_TOOL();
   ScopedObjectAccess soa(Thread::Current());
   VariableSizedHandleScope hs(soa.Self());
   Handle<mirror::String> string(
@@ -105,6 +106,7 @@ TEST_F(VerificationTest, DumpInvalidObjectInfo) {
 }
 
 TEST_F(VerificationTest, DumpValidObjectInfo) {
+  TEST_DISABLED_FOR_MEMORY_TOOL();
   ScopedLogSeverity sls(LogSeverity::INFO);
   ScopedObjectAccess soa(Thread::Current());
   Runtime* const runtime = Runtime::Current();
@@ -124,6 +126,7 @@ TEST_F(VerificationTest, DumpValidObjectInfo) {
 }
 
 TEST_F(VerificationTest, LogHeapCorruption) {
+  TEST_DISABLED_FOR_MEMORY_TOOL();
   ScopedLogSeverity sls(LogSeverity::INFO);
   ScopedObjectAccess soa(Thread::Current());
   Runtime* const runtime = Runtime::Current();
@@ -144,6 +147,7 @@ TEST_F(VerificationTest, LogHeapCorruption) {
 }
 
 TEST_F(VerificationTest, FindPathFromRootSet) {
+  TEST_DISABLED_FOR_MEMORY_TOOL();
   ScopedLogSeverity sls(LogSeverity::INFO);
   ScopedObjectAccess soa(Thread::Current());
   Runtime* const runtime = Runtime::Current();
