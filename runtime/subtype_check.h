@@ -542,15 +542,17 @@ struct SubtypeCheck {
                                                    int32_t new_value)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (Runtime::Current() != nullptr && Runtime::Current()->IsActiveTransaction()) {
-      return klass->template
-          CasFieldWeakSequentiallyConsistent32</*kTransactionActive*/true>(offset,
-                                                                           old_value,
-                                                                           new_value);
+      return klass->template CasField32</*kTransactionActive*/true>(offset,
+                                                                    old_value,
+                                                                    new_value,
+                                                                    CASMode::kWeak,
+                                                                    std::memory_order_seq_cst);
     } else {
-      return klass->template
-          CasFieldWeakSequentiallyConsistent32</*kTransactionActive*/false>(offset,
-                                                                            old_value,
-                                                                            new_value);
+      return klass->template CasField32</*kTransactionActive*/false>(offset,
+                                                                     old_value,
+                                                                     new_value,
+                                                                     CASMode::kWeak,
+                                                                     std::memory_order_seq_cst);
     }
   }
 
