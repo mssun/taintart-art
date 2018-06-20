@@ -135,7 +135,7 @@ TEST(Instruction, PropertiesOf4rcc) {
 static void Build35c(uint16_t* out,
                      Instruction::Code code,
                      uint16_t method_idx,
-                     const std::vector<uint16_t>& args) {
+                     std::vector<uint16_t> args) {
   out[0] = 0;
   out[0] |= (args.size() << 12);
   out[0] |= static_cast<uint16_t>(code);
@@ -152,7 +152,7 @@ static void Build35c(uint16_t* out,
 
 static std::string DumpInst35c(Instruction::Code code,
                                uint16_t method_idx,
-                               const std::vector<uint16_t>& args) {
+                               std::vector<uint16_t> args) {
   uint16_t inst[6] = {};
   Build35c(inst, code, method_idx, args);
   return Instruction::At(inst)->DumpString(nullptr);

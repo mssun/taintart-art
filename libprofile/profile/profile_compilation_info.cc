@@ -1383,7 +1383,7 @@ bool ProfileCompilationInfo::RemapProfileIndex(
   // the current profile info.
   // Note that the number of elements should be very small, so this should not
   // be a performance issue.
-  for (const ProfileLineHeader& other_profile_line_header : profile_line_headers) {
+  for (const ProfileLineHeader other_profile_line_header : profile_line_headers) {
     if (!filter_fn(other_profile_line_header.dex_location, other_profile_line_header.checksum)) {
       continue;
     }
