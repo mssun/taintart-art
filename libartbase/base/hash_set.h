@@ -22,15 +22,93 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <string>
 #include <type_traits>
 #include <utility>
 
 #include <android-base/logging.h>
 
+#include "base/data_hash.h"
 #include "bit_utils.h"
 #include "macros.h"
 
 namespace art {
+
+template <class Elem, class HashSetType>
+class HashSetIterator : std::iterator<std::forward_iterator_tag, Elem> {
+ public:
+  HashSetIterator(const HashSetIterator&) = default;
+  HashSetIterator(HashSetIterator&&) = default;
+  HashSetIterator(HashSetType* hash_set, size_t index) : index_(index), hash_set_(hash_set) {}
+
+  // Conversion from iterator to const_iterator.
+  template <class OtherElem,
+            class OtherHashSetType,
+            typename = typename std::enable_if<
+                std::is_same<Elem, const OtherElem>::value &&
+                std::is_same<HashSetType, const OtherHashSetType>::value>::type>
+  HashSetIterator(const HashSetIterator<OtherElem, OtherHashSetType>& other)
+      : index_(other.index_), hash_set_(other.hash_set_) {}
+
+  HashSetIterator& operator=(const HashSetIterator&) = default;
+  HashSetIterator& operator=(HashSetIterator&&) = default;
+
+  bool operator==(const HashSetIterator& other) const {
+    return hash_set_ == other.hash_set_ && this->index_ == other.index_;
+  }
+
+  bool operator!=(const HashSetIterator& other) const {
+    return !(*this == other);
+  }
+
+  HashSetIterator operator++() {  // Value after modification.
+    this->index_ = hash_set_->NextNonEmptySlot(index_);
+    return *this;
+  }
+
+  HashSetIterator operator++(int) {
+    HashSetIterator temp = *this;
+    ++*this;
+    return temp;
+  }
+
+  Elem& operator*() const {
+    DCHECK(!hash_set_->IsFreeSlot(this->index_));
+    return hash_set_->ElementForIndex(this->index_);
+  }
+
+  Elem* operator->() const {
+    return &**this;
+  }
+
+ private:
+  size_t index_;
+  HashSetType* hash_set_;
+
+  template <class Elem1, class HashSetType1, class Elem2, class HashSetType2>
+  friend bool operator==(const HashSetIterator<Elem1, HashSetType1>& lhs,
+                         const HashSetIterator<Elem2, HashSetType2>& rhs);
+  template <class T, class EmptyFn, class HashFn, class Pred, class Alloc> friend class HashSet;
+  template <class OtherElem, class OtherHashSetType> friend class HashSetIterator;
+};
+
+template <class Elem1, class HashSetType1, class Elem2, class HashSetType2>
+bool operator==(const HashSetIterator<Elem1, HashSetType1>& lhs,
+                const HashSetIterator<Elem2, HashSetType2>& rhs) {
+  static_assert(
+      std::is_convertible<HashSetIterator<Elem1, HashSetType1>,
+                          HashSetIterator<Elem2, HashSetType2>>::value ||
+      std::is_convertible<HashSetIterator<Elem2, HashSetType2>,
+                          HashSetIterator<Elem1, HashSetType1>>::value, "Bad iterator types.");
+  DCHECK_EQ(lhs.hash_set_, rhs.hash_set_);
+  return lhs.index_ == rhs.index_;
+}
+
+template <class Elem1, class HashSetType1, class Elem2, class HashSetType2>
+bool operator!=(const HashSetIterator<Elem1, HashSetType1>& lhs,
+                const HashSetIterator<Elem2, HashSetType2>& rhs) {
+  return !(lhs == rhs);
+}
 
 // Returns true if an item is empty.
 template <class T>
@@ -55,70 +133,35 @@ class DefaultEmptyFn<T*> {
   }
 };
 
-// Low memory version of a hash set, uses less memory than std::unordered_set since elements aren't
-// boxed. Uses linear probing to resolve collisions.
+template <class T>
+using DefaultHashFn = typename std::conditional<std::is_same<T, std::string>::value,
+                                                DataHash,
+                                                std::hash<T>>::type;
+
+struct DefaultStringEquals {
+  // Allow comparison with anything that can be compared to std::string, for example StringPiece.
+  template <typename T>
+  bool operator()(const std::string& lhs, const T& rhs) const {
+    return lhs == rhs;
+  }
+};
+
+template <class T>
+using DefaultPred = typename std::conditional<std::is_same<T, std::string>::value,
+                                              DefaultStringEquals,
+                                              std::equal_to<T>>::type;
+
+// Low memory version of a hash set, uses less memory than std::unordered_multiset since elements
+// aren't boxed. Uses linear probing to resolve collisions.
 // EmptyFn needs to implement two functions MakeEmpty(T& item) and IsEmpty(const T& item).
 // TODO: We could get rid of this requirement by using a bitmap, though maybe this would be slower
 // and more complicated.
-template <class T, class EmptyFn = DefaultEmptyFn<T>, class HashFn = std::hash<T>,
-    class Pred = std::equal_to<T>, class Alloc = std::allocator<T>>
+template <class T,
+          class EmptyFn = DefaultEmptyFn<T>,
+          class HashFn = DefaultHashFn<T>,
+          class Pred = DefaultPred<T>,
+          class Alloc = std::allocator<T>>
 class HashSet {
-  template <class Elem, class HashSetType>
-  class BaseIterator : std::iterator<std::forward_iterator_tag, Elem> {
-   public:
-    BaseIterator(const BaseIterator&) = default;
-    BaseIterator(BaseIterator&&) = default;
-    BaseIterator(HashSetType* hash_set, size_t index) : index_(index), hash_set_(hash_set) {
-    }
-    BaseIterator& operator=(const BaseIterator&) = default;
-    BaseIterator& operator=(BaseIterator&&) = default;
-
-    bool operator==(const BaseIterator& other) const {
-      return hash_set_ == other.hash_set_ && this->index_ == other.index_;
-    }
-
-    bool operator!=(const BaseIterator& other) const {
-      return !(*this == other);
-    }
-
-    BaseIterator operator++() {  // Value after modification.
-      this->index_ = this->NextNonEmptySlot(this->index_, hash_set_);
-      return *this;
-    }
-
-    BaseIterator operator++(int) {
-      BaseIterator temp = *this;
-      this->index_ = this->NextNonEmptySlot(this->index_, hash_set_);
-      return temp;
-    }
-
-    Elem& operator*() const {
-      DCHECK(!hash_set_->IsFreeSlot(this->index_));
-      return hash_set_->ElementForIndex(this->index_);
-    }
-
-    Elem* operator->() const {
-      return &**this;
-    }
-
-    // TODO: Operator -- --(int)  (and use std::bidirectional_iterator_tag)
-
-   private:
-    size_t index_;
-    HashSetType* hash_set_;
-
-    size_t NextNonEmptySlot(size_t index, const HashSet* hash_set) const {
-      const size_t num_buckets = hash_set->NumBuckets();
-      DCHECK_LT(index, num_buckets);
-      do {
-        ++index;
-      } while (index < num_buckets && hash_set->IsFreeSlot(index));
-      return index;
-    }
-
-    friend class HashSet;
-  };
-
  public:
   using value_type = T;
   using allocator_type = Alloc;
@@ -126,8 +169,8 @@ class HashSet {
   using const_reference = const T&;
   using pointer = T*;
   using const_pointer = const T*;
-  using iterator = BaseIterator<T, HashSet>;
-  using const_iterator = BaseIterator<const T, const HashSet>;
+  using iterator = HashSetIterator<T, HashSet>;
+  using const_iterator = HashSetIterator<const T, const HashSet>;
   using size_type = size_t;
   using difference_type = ptrdiff_t;
 
@@ -136,7 +179,7 @@ class HashSet {
   static constexpr size_t kMinBuckets = 1000;
 
   // If we don't own the data, this will create a new array which owns the data.
-  void Clear() {
+  void clear() {
     DeallocateStorage();
     num_elements_ = 0;
     elements_until_expand_ = 0;
@@ -300,13 +343,12 @@ class HashSet {
     return const_iterator(this, NumBuckets());
   }
 
-  bool Empty() const {
-    return Size() == 0;
+  size_t size() const {
+    return num_elements_;
   }
 
-  // Return true if the hash set has ownership of the underlying data.
-  bool OwnsData() const {
-    return owns_data_;
+  bool empty() const {
+    return size() == 0;
   }
 
   // Erase algorithm:
@@ -317,7 +359,7 @@ class HashSet {
   // and set the empty slot to be the location we just moved from.
   // Relies on maintaining the invariant that there's no empty slots from the 'ideal' index of an
   // element to its actual location/index.
-  iterator Erase(iterator it) {
+  iterator erase(iterator it) {
     // empty_index is the index that will become empty.
     size_t empty_index = it.index_;
     DCHECK(!IsFreeSlot(empty_index));
@@ -368,12 +410,12 @@ class HashSet {
   // Set of Class* sorted by name, want to find a class with a name but can't allocate a dummy
   // object in the heap for performance solution.
   template <typename K>
-  iterator Find(const K& key) {
+  iterator find(const K& key) {
     return FindWithHash(key, hashfn_(key));
   }
 
   template <typename K>
-  const_iterator Find(const K& key) const {
+  const_iterator find(const K& key) const {
     return FindWithHash(key, hashfn_(key));
   }
 
@@ -387,14 +429,26 @@ class HashSet {
     return const_iterator(this, FindIndex(key, hash));
   }
 
+  // Insert an element with hint, allows duplicates.
+  // Note: The hint is not very useful for a HashSet<> unless there are many hash conflicts
+  // and in that case the use of HashSet<> itself should be reconsidered.
+  iterator insert(const_iterator hint ATTRIBUTE_UNUSED, const T& element) {
+    return insert(element);
+  }
+  iterator insert(const_iterator hint ATTRIBUTE_UNUSED, T&& element) {
+    return insert(std::move(element));
+  }
+
   // Insert an element, allows duplicates.
-  template <typename U, typename = typename std::enable_if<std::is_convertible<U, T>::value>::type>
-  void Insert(U&& element) {
-    InsertWithHash(std::forward<U>(element), hashfn_(element));
+  iterator insert(const T& element) {
+    return InsertWithHash(element, hashfn_(element));
+  }
+  iterator insert(T&& element) {
+    return InsertWithHash(std::move(element), hashfn_(element));
   }
 
   template <typename U, typename = typename std::enable_if<std::is_convertible<U, T>::value>::type>
-  void InsertWithHash(U&& element, size_t hash) {
+  iterator InsertWithHash(U&& element, size_t hash) {
     DCHECK_EQ(hash, hashfn_(element));
     if (num_elements_ >= elements_until_expand_) {
       Expand();
@@ -403,10 +457,7 @@ class HashSet {
     const size_t index = FirstAvailableSlot(IndexForHash(hash));
     data_[index] = std::forward<U>(element);
     ++num_elements_;
-  }
-
-  size_t Size() const {
-    return num_elements_;
+    return iterator(this, index);
   }
 
   void swap(HashSet& other) {
@@ -430,12 +481,12 @@ class HashSet {
   }
 
   void ShrinkToMaximumLoad() {
-    Resize(Size() / max_load_factor_);
+    Resize(size() / max_load_factor_);
   }
 
   // Reserve enough room to insert until Size() == num_elements without requiring to grow the hash
   // set. No-op if the hash set is already large enough to do this.
-  void Reserve(size_t num_elements) {
+  void reserve(size_t num_elements) {
     size_t num_buckets = num_elements / max_load_factor_;
     // Deal with rounding errors. Add one for rounding.
     while (static_cast<size_t>(num_buckets * max_load_factor_) <= num_elements + 1u) {
@@ -466,7 +517,7 @@ class HashSet {
 
   // Calculate the current load factor and return it.
   double CalculateLoadFactor() const {
-    return static_cast<double>(Size()) / static_cast<double>(NumBuckets());
+    return static_cast<double>(size()) / static_cast<double>(NumBuckets());
   }
 
   // Make sure that everything reinserts in the right spot. Returns the number of errors.
@@ -510,7 +561,7 @@ class HashSet {
     // maximum load factor.
     const double load_factor = CalculateLoadFactor();
     if (load_factor > max_load_factor_) {
-      Resize(Size() / ((min_load_factor_ + max_load_factor_) * 0.5));
+      Resize(size() / ((min_load_factor_ + max_load_factor_) * 0.5));
     }
   }
 
@@ -605,7 +656,7 @@ class HashSet {
 
   // Expand the set based on the load factors.
   void Expand() {
-    size_t min_index = static_cast<size_t>(Size() / min_load_factor_);
+    size_t min_index = static_cast<size_t>(size() / min_load_factor_);
     // Resize based on the minimum load factor.
     Resize(min_index);
   }
@@ -615,7 +666,7 @@ class HashSet {
     if (new_size < kMinBuckets) {
       new_size = kMinBuckets;
     }
-    DCHECK_GE(new_size, Size());
+    DCHECK_GE(new_size, size());
     T* const old_data = data_;
     size_t old_num_buckets = num_buckets_;
     // Reinsert all of the old elements.
@@ -649,6 +700,15 @@ class HashSet {
     return index;
   }
 
+  size_t NextNonEmptySlot(size_t index) const {
+    const size_t num_buckets = NumBuckets();
+    DCHECK_LT(index, num_buckets);
+    do {
+      ++index;
+    } while (index < num_buckets && IsFreeSlot(index));
+    return index;
+  }
+
   // Return new offset.
   template <typename Elem>
   static size_t WriteToBytes(uint8_t* ptr, size_t offset, Elem n) {
@@ -678,6 +738,9 @@ class HashSet {
   T* data_;  // Backing storage.
   double min_load_factor_;
   double max_load_factor_;
+
+  template <class Elem, class HashSetType>
+  friend class HashSetIterator;
 
   ART_FRIEND_TEST(InternTableTest, CrossHash);
 };

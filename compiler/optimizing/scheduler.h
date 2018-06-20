@@ -262,14 +262,14 @@ class SchedulingGraph : public ValueObject {
     std::unique_ptr<SchedulingNode> node(
         new (allocator_) SchedulingNode(instr, allocator_, is_scheduling_barrier));
     SchedulingNode* result = node.get();
-    nodes_map_.Insert(std::make_pair(instr, std::move(node)));
+    nodes_map_.insert(std::make_pair(instr, std::move(node)));
     contains_scheduling_barrier_ |= is_scheduling_barrier;
     AddDependencies(instr, is_scheduling_barrier);
     return result;
   }
 
   void Clear() {
-    nodes_map_.Clear();
+    nodes_map_.clear();
     contains_scheduling_barrier_ = false;
   }
 
@@ -278,7 +278,7 @@ class SchedulingGraph : public ValueObject {
   }
 
   SchedulingNode* GetNode(const HInstruction* instr) const {
-    auto it = nodes_map_.Find(instr);
+    auto it = nodes_map_.find(instr);
     if (it == nodes_map_.end()) {
       return nullptr;
     } else {
@@ -294,7 +294,7 @@ class SchedulingGraph : public ValueObject {
   bool HasImmediateOtherDependency(const HInstruction* node, const HInstruction* other) const;
 
   size_t Size() const {
-    return nodes_map_.Size();
+    return nodes_map_.size();
   }
 
   // Dump the scheduling graph, in dot file format, appending it to the file

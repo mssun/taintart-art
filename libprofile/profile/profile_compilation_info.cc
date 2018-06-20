@@ -57,7 +57,7 @@ const uint8_t ProfileCompilationInfo::kProfileVersion[] = { '0', '1', '0', '\0' 
 
 // The name of the profile entry in the dex metadata file.
 // DO NOT CHANGE THIS! (it's similar to classes.dex in the apk files).
-const char* ProfileCompilationInfo::kDexMetadataProfileEntry = "primary.prof";
+const char ProfileCompilationInfo::kDexMetadataProfileEntry[] = "primary.prof";
 
 static constexpr uint16_t kMaxDexFileKeyLength = PATH_MAX;
 
@@ -1181,8 +1181,8 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::OpenSource(
       // Allow archives without the profile entry. In this case, create an empty profile.
       // This gives more flexible when ure-using archives that may miss the entry.
       // (e.g. dex metadata files)
-      LOG(WARNING) << std::string("Could not find entry ") + kDexMetadataProfileEntry +
-            " in the zip archive. Creating an empty profile.";
+      LOG(WARNING) << "Could not find entry " << kDexMetadataProfileEntry
+          << " in the zip archive. Creating an empty profile.";
       source->reset(ProfileSource::Create(nullptr));
       return kProfileLoadSuccess;
     }
@@ -2021,9 +2021,9 @@ ProfileCompilationInfo::FindOrAddDexPc(InlineCacheMap* inline_cache, uint32_t de
   return &(inline_cache->FindOrAdd(dex_pc, DexPcData(&allocator_))->second);
 }
 
-std::unordered_set<std::string> ProfileCompilationInfo::GetClassDescriptors(
+HashSet<std::string> ProfileCompilationInfo::GetClassDescriptors(
     const std::vector<const DexFile*>& dex_files) {
-  std::unordered_set<std::string> ret;
+  HashSet<std::string> ret;
   for (const DexFile* dex_file : dex_files) {
     const DexFileData* data = FindDexData(dex_file);
     if (data != nullptr) {
@@ -2032,7 +2032,7 @@ std::unordered_set<std::string> ProfileCompilationInfo::GetClassDescriptors(
           // Something went bad. The profile is probably corrupted. Abort and return an emtpy set.
           LOG(WARNING) << "Corrupted profile: invalid type index "
               << type_idx.index_ << " in dex " << dex_file->GetLocation();
-          return std::unordered_set<std::string>();
+          return HashSet<std::string>();
         }
         const DexFile::TypeId& type_id = dex_file->GetTypeId(type_idx);
         ret.insert(dex_file->GetTypeDescriptor(type_id));

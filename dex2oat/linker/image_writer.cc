@@ -2869,7 +2869,7 @@ ImageWriter::ImageWriter(
     ImageHeader::StorageMode image_storage_mode,
     const std::vector<const char*>& oat_filenames,
     const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
-    const std::unordered_set<std::string>* dirty_image_objects)
+    const HashSet<std::string>* dirty_image_objects)
     : compiler_driver_(compiler_driver),
       global_image_begin_(reinterpret_cast<uint8_t*>(image_begin)),
       image_objects_offset_begin_(0),

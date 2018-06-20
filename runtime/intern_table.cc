@@ -366,7 +366,7 @@ bool InternTable::StringHashEquals::operator()(const GcRoot<mirror::String>& a,
 size_t InternTable::Table::AddTableFromMemory(const uint8_t* ptr) {
   size_t read_count = 0;
   UnorderedSet set(ptr, /*make copy*/false, &read_count);
-  if (set.Empty()) {
+  if (set.empty()) {
     // Avoid inserting empty sets.
     return read_count;
   }
@@ -392,7 +392,7 @@ size_t InternTable::Table::WriteToMemory(uint8_t* ptr) {
     table_to_write = &combined;
     for (UnorderedSet& table : tables_) {
       for (GcRoot<mirror::String>& string : table) {
-        combined.Insert(string);
+        combined.insert(string);
       }
     }
   } else {
@@ -403,9 +403,9 @@ size_t InternTable::Table::WriteToMemory(uint8_t* ptr) {
 
 void InternTable::Table::Remove(ObjPtr<mirror::String> s) {
   for (UnorderedSet& table : tables_) {
-    auto it = table.Find(GcRoot<mirror::String>(s));
+    auto it = table.find(GcRoot<mirror::String>(s));
     if (it != table.end()) {
-      table.Erase(it);
+      table.erase(it);
       return;
     }
   }
@@ -415,7 +415,7 @@ void InternTable::Table::Remove(ObjPtr<mirror::String> s) {
 ObjPtr<mirror::String> InternTable::Table::Find(ObjPtr<mirror::String> s) {
   Locks::intern_table_lock_->AssertHeld(Thread::Current());
   for (UnorderedSet& table : tables_) {
-    auto it = table.Find(GcRoot<mirror::String>(s));
+    auto it = table.find(GcRoot<mirror::String>(s));
     if (it != table.end()) {
       return it->Read();
     }
@@ -426,7 +426,7 @@ ObjPtr<mirror::String> InternTable::Table::Find(ObjPtr<mirror::String> s) {
 ObjPtr<mirror::String> InternTable::Table::Find(const Utf8String& string) {
   Locks::intern_table_lock_->AssertHeld(Thread::Current());
   for (UnorderedSet& table : tables_) {
-    auto it = table.Find(string);
+    auto it = table.find(string);
     if (it != table.end()) {
       return it->Read();
     }
@@ -442,7 +442,7 @@ void InternTable::Table::Insert(ObjPtr<mirror::String> s) {
   // Always insert the last table, the image tables are before and we avoid inserting into these
   // to prevent dirty pages.
   DCHECK(!tables_.empty());
-  tables_.back().Insert(GcRoot<mirror::String>(s));
+  tables_.back().insert(GcRoot<mirror::String>(s));
 }
 
 void InternTable::Table::VisitRoots(RootVisitor* visitor) {
@@ -467,7 +467,7 @@ void InternTable::Table::SweepWeaks(UnorderedSet* set, IsMarkedVisitor* visitor)
     mirror::Object* object = it->Read<kWithoutReadBarrier>();
     mirror::Object* new_object = visitor->IsMarked(object);
     if (new_object == nullptr) {
-      it = set->Erase(it);
+      it = set->erase(it);
     } else {
       *it = GcRoot<mirror::String>(new_object->AsString());
       ++it;
@@ -480,7 +480,7 @@ size_t InternTable::Table::Size() const {
                          tables_.end(),
                          0U,
                          [](size_t sum, const UnorderedSet& set) {
-                           return sum + set.Size();
+                           return sum + set.size();
                          });
 }
 
