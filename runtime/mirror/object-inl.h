@@ -899,8 +899,11 @@ inline ObjPtr<Object> Object::CompareAndExchangeFieldObject(MemberOffset field_o
     // Ensure caller has done read barrier on the reference field so it's in the to-space.
     ReadBarrier::AssertToSpaceInvariant(witness_value.Ptr());
   }
-  if (kTransactionActive && success) {
-    Runtime::Current()->RecordWriteFieldReference(this, field_offset, witness_value, true);
+  if (success) {
+    if (kTransactionActive) {
+      Runtime::Current()->RecordWriteFieldReference(this, field_offset, witness_value, true);
+    }
+    Runtime::Current()->GetHeap()->WriteBarrierField(this, field_offset, new_value);
   }
   if (kVerifyFlags & kVerifyReads) {
     VerifyObject(witness_value);
@@ -932,6 +935,7 @@ inline ObjPtr<Object> Object::ExchangeFieldObject(MemberOffset field_offset,
   if (kTransactionActive) {
     Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
   }
+  Runtime::Current()->GetHeap()->WriteBarrierField(this, field_offset, new_value);
   if (kVerifyFlags & kVerifyReads) {
     VerifyObject(old_value);
   }
