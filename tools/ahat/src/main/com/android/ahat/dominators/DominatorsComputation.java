@@ -16,6 +16,8 @@
 
 package com.android.ahat.dominators;
 
+import com.android.ahat.progress.NullProgress;
+import com.android.ahat.progress.Progress;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
@@ -146,6 +148,10 @@ public class DominatorsComputation {
     //   If revisit != null, this node is on the global list of nodes to be
     //   revisited.
     public NodeSet revisit = null;
+
+    // Distance from the root to this node. Used for purposes of tracking
+    // progress only.
+    public long depth;
   }
 
   // A collection of node ids.
@@ -245,6 +251,23 @@ public class DominatorsComputation {
    * @see Node
    */
   public static void computeDominators(Node root) {
+    computeDominators(root, new NullProgress(), 0);
+  }
+
+  /**
+   * Computes the immediate dominators of all nodes reachable from the <code>root</code> node.
+   * There must not be any incoming references to the <code>root</code> node.
+   * <p>
+   * The result of this function is to call the {@link Node#setDominator}
+   * function on every node reachable from the root node.
+   *
+   * @param root the root node of the dominators computation
+   * @param progress progress tracker.
+   * @param numNodes upper bound on the number of reachable nodes in the
+   *                 graph, for progress tracking purposes only.
+   * @see Node
+   */
+  public static void computeDominators(Node root, Progress progress, long numNodes) {
     long id = 0;
 
     // The set of nodes xS such that xS.revisit != null.
@@ -257,6 +280,7 @@ public class DominatorsComputation {
     NodeS rootS = new NodeS();
     rootS.node = root;
     rootS.id = id++;
+    rootS.depth = 0;
     root.setDominatorsComputationState(rootS);
 
     Deque<Link> dfs = new ArrayDeque<Link>();
@@ -265,8 +289,14 @@ public class DominatorsComputation {
       dfs.push(new Link(rootS, child));
     }
 
+    // workBound is an upper bound on the amount of work required in the
+    // second phase of dominators computation, used solely for the purposes of
+    // tracking progress.
+    long workBound = 0;
+
     // 1. Do a depth first search of the nodes, label them with ids and come
     // up with initial candidate dominators for them.
+    progress.start("Initializing dominators", numNodes);
     while (!dfs.isEmpty()) {
       Link link = dfs.pop();
 
@@ -274,6 +304,7 @@ public class DominatorsComputation {
         // This is the marker link indicating we have now visited all
         // nodes reachable from link.srcS.
         link.srcS.maxReachableId = id - 1;
+        progress.advance();
       } else {
         NodeS dstS = (NodeS)link.dst.getDominatorsComputationState();
         if (dstS == null) {
@@ -288,6 +319,7 @@ public class DominatorsComputation {
           dstS.domS = link.srcS;
           dstS.domS.dominated.add(dstS);
           dstS.oldDomS = link.srcS;
+          dstS.depth = link.srcS.depth + 1;
 
           dfs.push(new Link(dstS));
           for (Node child : link.dst.getReferencesForDominators()) {
@@ -296,6 +328,10 @@ public class DominatorsComputation {
         } else {
           // We have seen the destination node before. Update the state based
           // on the new potential dominator.
+          if (dstS.inRefIds.size == 1) {
+            workBound += dstS.oldDomS.depth;
+          }
+
           long seenid = dstS.inRefIds.last();
           dstS.inRefIds.add(link.srcS.id);
 
@@ -330,9 +366,11 @@ public class DominatorsComputation {
         }
       }
     }
+    progress.done();
 
     // 2. Continue revisiting nodes until every node satisfies the requirement
     // that domS.id == oldDomS.id.
+    progress.start("Resolving dominators", workBound);
     while (!revisit.isEmpty()) {
       NodeS oldDomS = revisit.poll();
       assert oldDomS.revisit != null;
@@ -388,7 +426,10 @@ public class DominatorsComputation {
           nodeS.oldDomS.revisit.add(nodeS);
         }
       }
+      progress.advance((oldDomS.depth - oldDomS.oldDomS.depth) * nodes.size);
     }
+    progress.done();
+
 
     // 3. We have figured out the correct dominator for each node. Notify the
     // user of the results by doing one last traversal of the nodes.

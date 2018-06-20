@@ -20,6 +20,7 @@ import com.android.ahat.heapdump.AhatSnapshot;
 import com.android.ahat.heapdump.Diff;
 import com.android.ahat.heapdump.HprofFormatException;
 import com.android.ahat.heapdump.Parser;
+import com.android.ahat.progress.Progress;
 import com.android.ahat.proguard.ProguardMap;
 import com.sun.net.httpserver.HttpServer;
 import java.io.File;
@@ -58,10 +59,10 @@ public class Main {
    * Prints an error message and exits the application on failure to load the
    * heap dump.
    */
-  private static AhatSnapshot loadHeapDump(File hprof, ProguardMap map) {
+  private static AhatSnapshot loadHeapDump(File hprof, ProguardMap map, Progress progress) {
     System.out.println("Processing '" + hprof + "' ...");
     try {
-      return Parser.parseHeapDump(hprof, map);
+      return new Parser(hprof).map(map).progress(progress).parse();
     } catch (IOException e) {
       System.err.println("Unable to load '" + hprof + "':");
       e.printStackTrace();
@@ -152,9 +153,9 @@ public class Main {
       System.exit(1);
     }
 
-    AhatSnapshot ahat = loadHeapDump(hprof, map);
+    AhatSnapshot ahat = loadHeapDump(hprof, map, new AsciiProgress());
     if (hprofbase != null) {
-      AhatSnapshot base = loadHeapDump(hprofbase, mapbase);
+      AhatSnapshot base = loadHeapDump(hprofbase, mapbase, new AsciiProgress());
 
       System.out.println("Diffing heap dumps ...");
       Diff.snapshots(ahat, base);
