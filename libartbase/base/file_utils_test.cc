@@ -69,12 +69,11 @@ TEST_F(FileUtilsTest, GetAndroidRootSafe) {
   EXPECT_EQ(android_root, android_root_env);
 
   // Set ANDROID_ROOT to something else (but the directory must exist). So use dirname.
-  char* root_dup = strdup(android_root_env.c_str());
-  char* dir = dirname(root_dup);
+  UniqueCPtr<char> root_dup(strdup(android_root_env.c_str()));
+  char* dir = dirname(root_dup.get());
   ASSERT_EQ(0, setenv("ANDROID_ROOT", dir, 1 /* overwrite */));
   std::string android_root2 = GetAndroidRootSafe(&error_msg);
   EXPECT_STREQ(dir, android_root2.c_str());
-  free(root_dup);
 
   // Set a bogus value for ANDROID_ROOT. This should be an error.
   ASSERT_EQ(0, setenv("ANDROID_ROOT", "/this/is/obviously/bogus", 1 /* overwrite */));

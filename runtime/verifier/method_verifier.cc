@@ -3839,6 +3839,8 @@ ArtMethod* MethodVerifier::ResolveMethodAndCheckAccess(
 template <class T>
 ArtMethod* MethodVerifier::VerifyInvocationArgsFromIterator(
     T* it, const Instruction* inst, MethodType method_type, bool is_range, ArtMethod* res_method) {
+  DCHECK_EQ(!is_range, inst->HasVarArgs());
+
   // We use vAA as our expected arg count, rather than res_method->insSize, because we need to
   // match the call to the signature. Also, we might be calling through an abstract method
   // definition (which doesn't have register count values).

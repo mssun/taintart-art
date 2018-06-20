@@ -43,6 +43,18 @@
 namespace art {
 namespace interpreter {
 
+// Deleter to be used with ShadowFrame::CreateDeoptimizedFrame objects.
+struct DeoptShadowFrameDelete {
+  // NOTE: Deleting a const object is valid but free() takes a non-const pointer.
+  void operator()(ShadowFrame* ptr) const {
+    if (ptr != nullptr) {
+      ShadowFrame::DeleteDeoptimizedFrame(ptr);
+    }
+  }
+};
+// Alias for std::unique_ptr<> that uses the above deleter.
+using UniqueDeoptShadowFramePtr = std::unique_ptr<ShadowFrame, DeoptShadowFrameDelete>;
+
 class UnstartedRuntimeTest : public CommonRuntimeTest {
  protected:
   // Re-expose all UnstartedRuntime implementations so we don't need to declare a million
@@ -78,6 +90,14 @@ class UnstartedRuntimeTest : public CommonRuntimeTest {
 #undef UNSTARTED_RUNTIME_DIRECT_LIST
 #undef UNSTARTED_RUNTIME_JNI_LIST
 #undef UNSTARTED_JNI
+
+  UniqueDeoptShadowFramePtr CreateShadowFrame(uint32_t num_vregs,
+                                              ShadowFrame* link,
+                                              ArtMethod* method,
+                                              uint32_t dex_pc) {
+    return UniqueDeoptShadowFramePtr(
+        ShadowFrame::CreateDeoptimizedFrame(num_vregs, link, method, dex_pc));
+  }
 
   // Helpers for ArrayCopy.
   //
@@ -213,17 +233,15 @@ TEST_F(UnstartedRuntimeTest, MemoryPeekByte) {
   const uint8_t* base_ptr = base_array;
 
   JValue result;
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   for (int32_t i = 0; i < kBaseLen; ++i) {
     tmp->SetVRegLong(0, static_cast<int64_t>(reinterpret_cast<intptr_t>(base_ptr + i)));
 
-    UnstartedMemoryPeekByte(self, tmp, &result, 0);
+    UnstartedMemoryPeekByte(self, tmp.get(), &result, 0);
 
     EXPECT_EQ(result.GetB(), static_cast<int8_t>(base_array[i]));
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, MemoryPeekShort) {
@@ -235,20 +253,18 @@ TEST_F(UnstartedRuntimeTest, MemoryPeekShort) {
   const uint8_t* base_ptr = base_array;
 
   JValue result;
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   int32_t adjusted_length = kBaseLen - sizeof(int16_t);
   for (int32_t i = 0; i < adjusted_length; ++i) {
     tmp->SetVRegLong(0, static_cast<int64_t>(reinterpret_cast<intptr_t>(base_ptr + i)));
 
-    UnstartedMemoryPeekShort(self, tmp, &result, 0);
+    UnstartedMemoryPeekShort(self, tmp.get(), &result, 0);
 
     typedef int16_t unaligned_short __attribute__ ((aligned (1)));
     const unaligned_short* short_ptr = reinterpret_cast<const unaligned_short*>(base_ptr + i);
     EXPECT_EQ(result.GetS(), *short_ptr);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, MemoryPeekInt) {
@@ -260,20 +276,18 @@ TEST_F(UnstartedRuntimeTest, MemoryPeekInt) {
   const uint8_t* base_ptr = base_array;
 
   JValue result;
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   int32_t adjusted_length = kBaseLen - sizeof(int32_t);
   for (int32_t i = 0; i < adjusted_length; ++i) {
     tmp->SetVRegLong(0, static_cast<int64_t>(reinterpret_cast<intptr_t>(base_ptr + i)));
 
-    UnstartedMemoryPeekInt(self, tmp, &result, 0);
+    UnstartedMemoryPeekInt(self, tmp.get(), &result, 0);
 
     typedef int32_t unaligned_int __attribute__ ((aligned (1)));
     const unaligned_int* int_ptr = reinterpret_cast<const unaligned_int*>(base_ptr + i);
     EXPECT_EQ(result.GetI(), *int_ptr);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, MemoryPeekLong) {
@@ -285,20 +299,18 @@ TEST_F(UnstartedRuntimeTest, MemoryPeekLong) {
   const uint8_t* base_ptr = base_array;
 
   JValue result;
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   int32_t adjusted_length = kBaseLen - sizeof(int64_t);
   for (int32_t i = 0; i < adjusted_length; ++i) {
     tmp->SetVRegLong(0, static_cast<int64_t>(reinterpret_cast<intptr_t>(base_ptr + i)));
 
-    UnstartedMemoryPeekLong(self, tmp, &result, 0);
+    UnstartedMemoryPeekLong(self, tmp.get(), &result, 0);
 
     typedef int64_t unaligned_long __attribute__ ((aligned (1)));
     const unaligned_long* long_ptr = reinterpret_cast<const unaligned_long*>(base_ptr + i);
     EXPECT_EQ(result.GetJ(), *long_ptr);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, StringGetCharsNoCheck) {
@@ -317,7 +329,7 @@ TEST_F(UnstartedRuntimeTest, StringGetCharsNoCheck) {
   uint16_t buf[kBaseLen];
 
   JValue result;
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   for (int32_t start_index = 0; start_index < kBaseLen; ++start_index) {
     for (int32_t count = 0; count <= kBaseLen; ++count) {
@@ -333,7 +345,7 @@ TEST_F(UnstartedRuntimeTest, StringGetCharsNoCheck) {
           // Copy the char_array into buf.
           memcpy(buf, h_char_array->GetData(), kBaseLen * sizeof(uint16_t));
 
-          UnstartedStringCharAt(self, tmp, &result, 0);
+          UnstartedStringCharAt(self, tmp.get(), &result, 0);
 
           uint16_t* data = h_char_array->GetData();
 
@@ -357,8 +369,6 @@ TEST_F(UnstartedRuntimeTest, StringGetCharsNoCheck) {
       }
     }
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, StringCharAt) {
@@ -371,18 +381,16 @@ TEST_F(UnstartedRuntimeTest, StringCharAt) {
   ObjPtr<mirror::String> test_string = mirror::String::AllocFromModifiedUtf8(self, base_string);
 
   JValue result;
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   for (int32_t i = 0; i < base_len; ++i) {
     tmp->SetVRegReference(0, test_string);
     tmp->SetVReg(1, i);
 
-    UnstartedStringCharAt(self, tmp, &result, 0);
+    UnstartedStringCharAt(self, tmp.get(), &result, 0);
 
     EXPECT_EQ(result.GetI(), base_string[i]);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, StringInit) {
@@ -398,7 +406,7 @@ TEST_F(UnstartedRuntimeTest, StringInit) {
   uint16_t inst_data[3] = { 0x2070, 0x0000, 0x0010 };
 
   JValue result;
-  ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, method, 0);
+  UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, method, 0);
   const char* base_string = "hello_world";
   StackHandleScope<2> hs(self);
   Handle<mirror::String> string_arg =
@@ -433,8 +441,6 @@ TEST_F(UnstartedRuntimeTest, StringInit) {
     }
     EXPECT_EQ(equal, true);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 }
 
 // Tests the exceptions that should be checked before modifying the destination.
@@ -443,7 +449,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTestExceptions) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
   JValue result;
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   // Note: all tests are not GC safe. Assume there's no GC running here with the few objects we
   //       allocate.
@@ -458,26 +464,24 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTestExceptions) {
   Handle<mirror::ObjectArray<mirror::Object>> array(
       hs_misc.NewHandle(CreateObjectArray(self, object_class.Get(), hs_data)));
 
-  RunArrayCopy(self, tmp, true, array.Get(), -1, array.Get(), 0, 0);
-  RunArrayCopy(self, tmp, true, array.Get(), 0, array.Get(), -1, 0);
-  RunArrayCopy(self, tmp, true, array.Get(), 0, array.Get(), 0, -1);
-  RunArrayCopy(self, tmp, true, array.Get(), 0, array.Get(), 0, 4);
-  RunArrayCopy(self, tmp, true, array.Get(), 0, array.Get(), 1, 3);
-  RunArrayCopy(self, tmp, true, array.Get(), 1, array.Get(), 0, 3);
+  RunArrayCopy(self, tmp.get(), true, array.Get(), -1, array.Get(), 0, 0);
+  RunArrayCopy(self, tmp.get(), true, array.Get(), 0, array.Get(), -1, 0);
+  RunArrayCopy(self, tmp.get(), true, array.Get(), 0, array.Get(), 0, -1);
+  RunArrayCopy(self, tmp.get(), true, array.Get(), 0, array.Get(), 0, 4);
+  RunArrayCopy(self, tmp.get(), true, array.Get(), 0, array.Get(), 1, 3);
+  RunArrayCopy(self, tmp.get(), true, array.Get(), 1, array.Get(), 0, 3);
 
   Handle<mirror::ObjectArray<mirror::Object>> class_as_array =
       hs_misc.NewHandle(reinterpret_cast<mirror::ObjectArray<mirror::Object>*>(object_class.Get()));
-  RunArrayCopy(self, tmp, true, class_as_array.Get(), 0, array.Get(), 0, 0);
-  RunArrayCopy(self, tmp, true, array.Get(), 0, class_as_array.Get(), 0, 0);
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
+  RunArrayCopy(self, tmp.get(), true, class_as_array.Get(), 0, array.Get(), 0, 0);
+  RunArrayCopy(self, tmp.get(), true, array.Get(), 0, class_as_array.Get(), 0, 0);
 }
 
 TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
   JValue result;
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   StackHandleScope<1> hs_object(self);
   Handle<mirror::Class> object_class(hs_object.NewHandle(GetClassRoot<mirror::Object>()));
@@ -501,7 +505,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
     hs_expected.NewHandle(hs_src.GetReference(1));
 
     RunArrayCopy(self,
-                 tmp,
+                 tmp.get(),
                  false,
                  object_class.Get(),
                  object_class.Get(),
@@ -532,7 +536,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
     hs_expected.NewHandle(hs_dst.GetReference(2));
 
     RunArrayCopy(self,
-                 tmp,
+                 tmp.get(),
                  false,
                  object_class.Get(),
                  GetClassRoot<mirror::String>(),
@@ -563,7 +567,7 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
     hs_expected.NewHandle(hs_dst.GetReference(2));
 
     RunArrayCopy(self,
-                 tmp,
+                 tmp.get(),
                  true,
                  object_class.Get(),
                  GetClassRoot<mirror::String>(),
@@ -574,15 +578,13 @@ TEST_F(UnstartedRuntimeTest, SystemArrayCopyObjectArrayTest) {
                  3,
                  hs_expected);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, IntegerParseIntTest) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   // Test string. Should be valid, and between minimal values of LONG_MIN and LONG_MAX (for all
   // suffixes).
@@ -616,13 +618,11 @@ TEST_F(UnstartedRuntimeTest, IntegerParseIntTest) {
     tmp->SetVRegReference(0, h_str.Get());
 
     JValue result;
-    UnstartedIntegerParseInt(self, tmp, &result, 0);
+    UnstartedIntegerParseInt(self, tmp.get(), &result, 0);
 
     ASSERT_FALSE(self->IsExceptionPending());
     EXPECT_EQ(result.GetI(), test_values[i]);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 // Right now the same as Integer.Parse
@@ -630,7 +630,7 @@ TEST_F(UnstartedRuntimeTest, LongParseLongTest) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   // Test string. Should be valid, and between minimal values of LONG_MIN and LONG_MAX (for all
   // suffixes).
@@ -664,20 +664,18 @@ TEST_F(UnstartedRuntimeTest, LongParseLongTest) {
     tmp->SetVRegReference(0, h_str.Get());
 
     JValue result;
-    UnstartedLongParseLong(self, tmp, &result, 0);
+    UnstartedLongParseLong(self, tmp.get(), &result, 0);
 
     ASSERT_FALSE(self->IsExceptionPending());
     EXPECT_EQ(result.GetJ(), test_values[i]);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, Ceil) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   constexpr double nan = std::numeric_limits<double>::quiet_NaN();
   constexpr double inf = std::numeric_limits<double>::infinity();
@@ -697,16 +695,14 @@ TEST_F(UnstartedRuntimeTest, Ceil) {
       {  ld2,  ld2 }
   };
 
-  TestCeilFloor(true /* ceil */, self, tmp, test_pairs, arraysize(test_pairs));
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
+  TestCeilFloor(true /* ceil */, self, tmp.get(), test_pairs, arraysize(test_pairs));
 }
 
 TEST_F(UnstartedRuntimeTest, Floor) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   constexpr double nan = std::numeric_limits<double>::quiet_NaN();
   constexpr double inf = std::numeric_limits<double>::infinity();
@@ -726,16 +722,14 @@ TEST_F(UnstartedRuntimeTest, Floor) {
       {  ld2,  ld2 }
   };
 
-  TestCeilFloor(false /* floor */, self, tmp, test_pairs, arraysize(test_pairs));
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
+  TestCeilFloor(false /* floor */, self, tmp.get(), test_pairs, arraysize(test_pairs));
 }
 
 TEST_F(UnstartedRuntimeTest, ToLowerUpper) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   std::locale c_locale("C");
 
@@ -749,7 +743,7 @@ TEST_F(UnstartedRuntimeTest, ToLowerUpper) {
     {
       JValue result;
       tmp->SetVReg(0, static_cast<int32_t>(i));
-      UnstartedCharacterToLowerCase(self, tmp, &result, 0);
+      UnstartedCharacterToLowerCase(self, tmp.get(), &result, 0);
       ASSERT_FALSE(self->IsExceptionPending());
       uint32_t lower_result = static_cast<uint32_t>(result.GetI());
       if (c_lower) {
@@ -766,7 +760,7 @@ TEST_F(UnstartedRuntimeTest, ToLowerUpper) {
     {
       JValue result2;
       tmp->SetVReg(0, static_cast<int32_t>(i));
-      UnstartedCharacterToUpperCase(self, tmp, &result2, 0);
+      UnstartedCharacterToUpperCase(self, tmp.get(), &result2, 0);
       ASSERT_FALSE(self->IsExceptionPending());
       uint32_t upper_result = static_cast<uint32_t>(result2.GetI());
       if (c_upper) {
@@ -789,7 +783,7 @@ TEST_F(UnstartedRuntimeTest, ToLowerUpper) {
       JValue result;
       tmp->SetVReg(0, static_cast<int32_t>(i));
       Runtime::Current()->EnterTransactionMode();
-      UnstartedCharacterToLowerCase(self, tmp, &result, 0);
+      UnstartedCharacterToLowerCase(self, tmp.get(), &result, 0);
       ASSERT_TRUE(Runtime::Current()->IsTransactionAborted());
       Runtime::Current()->ExitTransactionMode();
       ASSERT_TRUE(self->IsExceptionPending());
@@ -798,7 +792,7 @@ TEST_F(UnstartedRuntimeTest, ToLowerUpper) {
       JValue result;
       tmp->SetVReg(0, static_cast<int32_t>(i));
       Runtime::Current()->EnterTransactionMode();
-      UnstartedCharacterToUpperCase(self, tmp, &result, 0);
+      UnstartedCharacterToUpperCase(self, tmp.get(), &result, 0);
       ASSERT_TRUE(Runtime::Current()->IsTransactionAborted());
       Runtime::Current()->ExitTransactionMode();
       ASSERT_TRUE(self->IsExceptionPending());
@@ -809,7 +803,7 @@ TEST_F(UnstartedRuntimeTest, ToLowerUpper) {
       JValue result;
       tmp->SetVReg(0, static_cast<int32_t>(i));
       Runtime::Current()->EnterTransactionMode();
-      UnstartedCharacterToLowerCase(self, tmp, &result, 0);
+      UnstartedCharacterToLowerCase(self, tmp.get(), &result, 0);
       ASSERT_TRUE(Runtime::Current()->IsTransactionAborted());
       Runtime::Current()->ExitTransactionMode();
       ASSERT_TRUE(self->IsExceptionPending());
@@ -818,59 +812,53 @@ TEST_F(UnstartedRuntimeTest, ToLowerUpper) {
       JValue result;
       tmp->SetVReg(0, static_cast<int32_t>(i));
       Runtime::Current()->EnterTransactionMode();
-      UnstartedCharacterToUpperCase(self, tmp, &result, 0);
+      UnstartedCharacterToUpperCase(self, tmp.get(), &result, 0);
       ASSERT_TRUE(Runtime::Current()->IsTransactionAborted());
       Runtime::Current()->ExitTransactionMode();
       ASSERT_TRUE(self->IsExceptionPending());
     }
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, Sin) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   // Test an important value, PI/6. That's the one we see in practice.
   constexpr uint64_t lvalue = UINT64_C(0x3fe0c152382d7365);
   tmp->SetVRegLong(0, static_cast<int64_t>(lvalue));
 
   JValue result;
-  UnstartedMathSin(self, tmp, &result, 0);
+  UnstartedMathSin(self, tmp.get(), &result, 0);
 
   const uint64_t lresult = static_cast<uint64_t>(result.GetJ());
   EXPECT_EQ(UINT64_C(0x3fdfffffffffffff), lresult);
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, Cos) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   // Test an important value, PI/6. That's the one we see in practice.
   constexpr uint64_t lvalue = UINT64_C(0x3fe0c152382d7365);
   tmp->SetVRegLong(0, static_cast<int64_t>(lvalue));
 
   JValue result;
-  UnstartedMathCos(self, tmp, &result, 0);
+  UnstartedMathCos(self, tmp.get(), &result, 0);
 
   const uint64_t lresult = static_cast<uint64_t>(result.GetJ());
   EXPECT_EQ(UINT64_C(0x3febb67ae8584cab), lresult);
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, Pow) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
 
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   // Test an important pair.
   constexpr uint64_t lvalue1 = UINT64_C(0x4079000000000000);
@@ -880,12 +868,10 @@ TEST_F(UnstartedRuntimeTest, Pow) {
   tmp->SetVRegLong(2, static_cast<int64_t>(lvalue2));
 
   JValue result;
-  UnstartedMathPow(self, tmp, &result, 0);
+  UnstartedMathPow(self, tmp.get(), &result, 0);
 
   const uint64_t lresult = static_cast<uint64_t>(result.GetJ());
   EXPECT_EQ(UINT64_C(0x3f8c5c51326aa7ee), lresult);
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 TEST_F(UnstartedRuntimeTest, IsAnonymousClass) {
@@ -893,11 +879,11 @@ TEST_F(UnstartedRuntimeTest, IsAnonymousClass) {
   ScopedObjectAccess soa(self);
 
   JValue result;
-  ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   ObjPtr<mirror::Class> class_klass = GetClassRoot<mirror::Class>();
   shadow_frame->SetVRegReference(0, class_klass);
-  UnstartedClassIsAnonymousClass(self, shadow_frame, &result, 0);
+  UnstartedClassIsAnonymousClass(self, shadow_frame.get(), &result, 0);
   EXPECT_EQ(result.GetZ(), 0);
 
   jobject class_loader = LoadDex("Nested");
@@ -907,10 +893,8 @@ TEST_F(UnstartedRuntimeTest, IsAnonymousClass) {
   ObjPtr<mirror::Class> c = class_linker_->FindClass(soa.Self(), "LNested$1;", loader);
   ASSERT_TRUE(c != nullptr);
   shadow_frame->SetVRegReference(0, c);
-  UnstartedClassIsAnonymousClass(self, shadow_frame, &result, 0);
+  UnstartedClassIsAnonymousClass(self, shadow_frame.get(), &result, 0);
   EXPECT_EQ(result.GetZ(), 1);
-
-  ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 }
 
 TEST_F(UnstartedRuntimeTest, GetDeclaringClass) {
@@ -918,7 +902,7 @@ TEST_F(UnstartedRuntimeTest, GetDeclaringClass) {
   ScopedObjectAccess soa(self);
 
   JValue result;
-  ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   jobject class_loader = LoadDex("Nested");
   StackHandleScope<4> hs(self);
@@ -933,18 +917,16 @@ TEST_F(UnstartedRuntimeTest, GetDeclaringClass) {
       class_linker_->FindClass(soa.Self(), "LNested$1;", loader)));
 
   shadow_frame->SetVRegReference(0, nested_klass.Get());
-  UnstartedClassGetDeclaringClass(self, shadow_frame, &result, 0);
+  UnstartedClassGetDeclaringClass(self, shadow_frame.get(), &result, 0);
   EXPECT_EQ(result.GetL(), nullptr);
 
   shadow_frame->SetVRegReference(0, inner_klass.Get());
-  UnstartedClassGetDeclaringClass(self, shadow_frame, &result, 0);
+  UnstartedClassGetDeclaringClass(self, shadow_frame.get(), &result, 0);
   EXPECT_EQ(result.GetL(), nested_klass.Get());
 
   shadow_frame->SetVRegReference(0, anon_klass.Get());
-  UnstartedClassGetDeclaringClass(self, shadow_frame, &result, 0);
+  UnstartedClassGetDeclaringClass(self, shadow_frame.get(), &result, 0);
   EXPECT_EQ(result.GetL(), nullptr);
-
-  ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 }
 
 TEST_F(UnstartedRuntimeTest, ThreadLocalGet) {
@@ -952,7 +934,7 @@ TEST_F(UnstartedRuntimeTest, ThreadLocalGet) {
   ScopedObjectAccess soa(self);
 
   JValue result;
-  ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   StackHandleScope<1> hs(self);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
@@ -974,14 +956,14 @@ TEST_F(UnstartedRuntimeTest, ThreadLocalGet) {
     ASSERT_TRUE(caller_method != nullptr);
     ASSERT_TRUE(caller_method->IsDirect());
     ASSERT_TRUE(caller_method->GetDeclaringClass() == floating_decimal.Get());
-    ShadowFrame* caller_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, caller_method, 0);
-    shadow_frame->SetLink(caller_frame);
+    UniqueDeoptShadowFramePtr caller_frame = CreateShadowFrame(10, nullptr, caller_method, 0);
+    shadow_frame->SetLink(caller_frame.get());
 
-    UnstartedThreadLocalGet(self, shadow_frame, &result, 0);
+    UnstartedThreadLocalGet(self, shadow_frame.get(), &result, 0);
     EXPECT_TRUE(result.GetL() != nullptr);
     EXPECT_FALSE(self->IsExceptionPending());
 
-    ShadowFrame::DeleteDeoptimizedFrame(caller_frame);
+    shadow_frame->SetLink(nullptr);
   }
 
   // Negative test.
@@ -992,20 +974,18 @@ TEST_F(UnstartedRuntimeTest, ThreadLocalGet) {
     ObjPtr<mirror::Class> class_class = GetClassRoot<mirror::Class>();
     ArtMethod* caller_method =
         &*class_class->GetDeclaredMethods(class_linker->GetImagePointerSize()).begin();
-    ShadowFrame* caller_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, caller_method, 0);
-    shadow_frame->SetLink(caller_frame);
+    UniqueDeoptShadowFramePtr caller_frame = CreateShadowFrame(10, nullptr, caller_method, 0);
+    shadow_frame->SetLink(caller_frame.get());
 
     Runtime::Current()->EnterTransactionMode();
-    UnstartedThreadLocalGet(self, shadow_frame, &result, 0);
+    UnstartedThreadLocalGet(self, shadow_frame.get(), &result, 0);
     ASSERT_TRUE(Runtime::Current()->IsTransactionAborted());
     Runtime::Current()->ExitTransactionMode();
     ASSERT_TRUE(self->IsExceptionPending());
     self->ClearException();
 
-    ShadowFrame::DeleteDeoptimizedFrame(caller_frame);
+    shadow_frame->SetLink(nullptr);
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 }
 
 TEST_F(UnstartedRuntimeTest, FloatConversion) {
@@ -1032,7 +1012,8 @@ TEST_F(UnstartedRuntimeTest, FloatConversion) {
   uint16_t inst_data[3] = { 0x2070, 0x0000, 0x0010 };
 
   JValue result;
-  ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, method, 0);
+  UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, method, 0);
+
   shadow_frame->SetVRegDouble(0, 1.23);
   interpreter::DoCall<false, false>(method,
                                     self,
@@ -1045,8 +1026,6 @@ TEST_F(UnstartedRuntimeTest, FloatConversion) {
 
   std::string mod_utf = string_result->ToModifiedUtf8();
   EXPECT_EQ("1.23", mod_utf);
-
-  ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 }
 
 TEST_F(UnstartedRuntimeTest, ThreadCurrentThread) {
@@ -1054,7 +1033,7 @@ TEST_F(UnstartedRuntimeTest, ThreadCurrentThread) {
   ScopedObjectAccess soa(self);
 
   JValue result;
-  ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   StackHandleScope<1> hs(self);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
@@ -1069,14 +1048,12 @@ TEST_F(UnstartedRuntimeTest, ThreadCurrentThread) {
 
   {
     Runtime::Current()->EnterTransactionMode();
-    UnstartedThreadCurrentThread(self, shadow_frame, &result, 0);
+    UnstartedThreadCurrentThread(self, shadow_frame.get(), &result, 0);
     ASSERT_TRUE(Runtime::Current()->IsTransactionAborted());
     Runtime::Current()->ExitTransactionMode();
     ASSERT_TRUE(self->IsExceptionPending());
     self->ClearException();
   }
-
-  ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 }
 
 TEST_F(UnstartedRuntimeTest, LogManager) {
@@ -1133,7 +1110,7 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
     }
 
     JValue result;
-    ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+    UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, nullptr, 0);
 
     for (const char* name : kTestCases) {
       ObjPtr<mirror::String> name_string = mirror::String::AllocFromModifiedUtf8(self, name);
@@ -1144,7 +1121,7 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
       }
       CHECK(!self->IsExceptionPending());
 
-      runner(self, shadow_frame, name_string, &result);
+      runner(self, shadow_frame.get(), name_string, &result);
 
       if (should_succeed) {
         CHECK(!self->IsExceptionPending()) << name << " " << self->GetException()->Dump();
@@ -1161,8 +1138,6 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
         Runtime::Current()->ExitTransactionMode();
       }
     }
-
-    ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
   }
 
   mirror::ClassLoader* GetBootClassLoader() REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1189,7 +1164,7 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
       CHECK(boot_cp_init != nullptr);
 
       JValue result;
-      ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, boot_cp_init, 0);
+      UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, boot_cp_init, 0);
       shadow_frame->SetVRegReference(0, boot_cp.Get());
 
       // create instruction data for invoke-direct {v0} of method with fake index
@@ -1202,8 +1177,6 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
                                         inst_data[0],
                                         &result);
       CHECK(!self->IsExceptionPending());
-
-      ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
     }
 
     return boot_cp.Get();
@@ -1310,14 +1283,12 @@ TEST_F(UnstartedRuntimeTest, ClassGetSignatureAnnotation) {
   ASSERT_TRUE(class_linker->EnsureInitialized(self, list_class, true, true));
 
   JValue result;
-  ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   shadow_frame->SetVRegReference(0, list_class.Get());
-  UnstartedClassGetSignatureAnnotation(self, shadow_frame, &result, 0);
+  UnstartedClassGetSignatureAnnotation(self, shadow_frame.get(), &result, 0);
   ASSERT_TRUE(result.GetL() != nullptr);
   ASSERT_FALSE(self->IsExceptionPending());
-
-  ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 
   ASSERT_TRUE(result.GetL()->IsObjectArray());
   ObjPtr<mirror::ObjectArray<mirror::Object>> array =
@@ -1370,10 +1341,10 @@ TEST_F(UnstartedRuntimeTest, ConstructorNewInstance0) {
 
   // OK, we're ready now.
   JValue result;
-  ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr shadow_frame = CreateShadowFrame(10, nullptr, nullptr, 0);
   shadow_frame->SetVRegReference(0, cons.Get());
   shadow_frame->SetVRegReference(1, args.Get());
-  UnstartedConstructorNewInstance0(self, shadow_frame, &result, 0);
+  UnstartedConstructorNewInstance0(self, shadow_frame.get(), &result, 0);
 
   ASSERT_TRUE(result.GetL() != nullptr);
   ASSERT_FALSE(self->IsExceptionPending());
@@ -1386,29 +1357,25 @@ TEST_F(UnstartedRuntimeTest, ConstructorNewInstance0) {
   ObjPtr<mirror::String> result_msg =
       reinterpret_cast<mirror::Throwable*>(result.GetL())->GetDetailMessage();
   EXPECT_OBJ_PTR_EQ(input.Get(), result_msg);
-
-  ShadowFrame::DeleteDeoptimizedFrame(shadow_frame);
 }
 
 TEST_F(UnstartedRuntimeTest, IdentityHashCode) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
-  ShadowFrame* tmp = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, nullptr, 0);
+  UniqueDeoptShadowFramePtr tmp = CreateShadowFrame(10, nullptr, nullptr, 0);
 
   JValue result;
-  UnstartedSystemIdentityHashCode(self, tmp, &result, 0);
+  UnstartedSystemIdentityHashCode(self, tmp.get(), &result, 0);
 
   EXPECT_EQ(0, result.GetI());
   ASSERT_FALSE(self->IsExceptionPending());
 
   ObjPtr<mirror::String> str = mirror::String::AllocFromModifiedUtf8(self, "abd");
   tmp->SetVRegReference(0, str);
-  UnstartedSystemIdentityHashCode(self, tmp, &result, 0);
+  UnstartedSystemIdentityHashCode(self, tmp.get(), &result, 0);
   EXPECT_NE(0, result.GetI());
   EXPECT_EQ(str->IdentityHashCode(), result.GetI());
   ASSERT_FALSE(self->IsExceptionPending());
-
-  ShadowFrame::DeleteDeoptimizedFrame(tmp);
 }
 
 }  // namespace interpreter
