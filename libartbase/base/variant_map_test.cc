@@ -108,7 +108,7 @@ TEST(VariantMaps, RuleOfFive) {
   EXPECT_EQ(size_t(2), fmFilled.Size());
 
   // Test copy constructor
-  FruitMap fmEmptyCopy(fmEmpty);  // NOLINT
+  FruitMap fmEmptyCopy(fmEmpty);
   EXPECT_EQ(size_t(0), fmEmptyCopy.Size());
 
   // Test copy constructor

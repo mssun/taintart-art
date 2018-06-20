@@ -242,7 +242,7 @@ class ConcurrentCopying : public GarbageCollector {
       REQUIRES_SHARED(Locks::mutator_lock_);
   // Dump information about reference `ref` and return it as a string.
   // Use `ref_name` to name the reference in messages. Each message is prefixed with `indent`.
-  std::string DumpReferenceInfo(mirror::Object* ref, const char* ref_name, const char* indent = "")
+  std::string DumpReferenceInfo(mirror::Object* ref, const char* ref_name, std::string indent = "")
       REQUIRES_SHARED(Locks::mutator_lock_);
   // Dump information about heap reference `ref`, referenced from object `obj` at offset `offset`,
   // and return it as a string.

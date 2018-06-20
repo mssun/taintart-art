@@ -70,7 +70,7 @@ class SigchainTest : public ::testing::Test {
 };
 
 
-static void TestSignalBlocking(const std::function<void()>& fn) {
+static void TestSignalBlocking(std::function<void()> fn) {
   // Unblock SIGSEGV, make sure it stays unblocked.
   sigset64_t mask;
   sigemptyset64(&mask);
