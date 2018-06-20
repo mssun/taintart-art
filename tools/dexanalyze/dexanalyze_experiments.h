@@ -23,6 +23,8 @@
 #include <set>
 #include <vector>
 
+#include "base/macros.h"
+
 namespace art {
 
 class DexFile;
@@ -41,8 +43,8 @@ class Experiment {
 // Analyze string data and strings accessed from code.
 class AnalyzeStrings : public Experiment {
  public:
-  void ProcessDexFile(const DexFile& dex_file);
-  void Dump(std::ostream& os, uint64_t total_size) const;
+  void ProcessDexFile(const DexFile& dex_file) OVERRIDE;
+  void Dump(std::ostream& os, uint64_t total_size) const OVERRIDE;
 
  private:
   int64_t wide_string_bytes_ = 0u;
@@ -58,8 +60,8 @@ class AnalyzeStrings : public Experiment {
 // Analyze debug info sizes.
 class AnalyzeDebugInfo  : public Experiment {
  public:
-  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files);
-  void Dump(std::ostream& os, uint64_t total_size) const;
+  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) OVERRIDE;
+  void Dump(std::ostream& os, uint64_t total_size) const OVERRIDE;
 
  private:
   int64_t total_bytes_ = 0u;
@@ -84,7 +86,8 @@ class AnalyzeDebugInfo  : public Experiment {
 // Count numbers of dex indices.
 class CountDexIndices : public Experiment {
  public:
-  void ProcessDexFile(const DexFile& dex_file);
+  void ProcessDexFile(const DexFile& dex_file) OVERRIDE;
+  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) OVERRIDE;
 
   void Dump(std::ostream& os, uint64_t total_size) const;
 
@@ -100,6 +103,12 @@ class CountDexIndices : public Experiment {
   uint64_t field_index_other_ = 0u;
   uint64_t field_receiver_[16] = {};
   uint64_t field_output_[16] = {};
+
+  // Unique names.
+  uint64_t total_unique_method_names_ = 0u;
+  uint64_t total_unique_field_names_ = 0u;
+  uint64_t total_unique_type_names_ = 0u;
+  uint64_t total_unique_mf_names_ = 0u;
 
   // Other dex ids.
   size_t dex_code_bytes_ = 0;
@@ -130,9 +139,9 @@ class CountDexIndices : public Experiment {
 // Measure various code metrics including args per invoke-virtual, fill/spill move patterns.
 class CodeMetrics : public Experiment {
  public:
-  void ProcessDexFile(const DexFile& dex_file);
+  void ProcessDexFile(const DexFile& dex_file) OVERRIDE;
 
-  void Dump(std::ostream& os, uint64_t total_size) const;
+  void Dump(std::ostream& os, uint64_t total_size) const OVERRIDE;
 
  private:
   static constexpr size_t kMaxArgCount = 6;

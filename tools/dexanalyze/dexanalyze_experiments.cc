@@ -280,6 +280,33 @@ void AnalyzeStrings::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Prefix dictionary elements " << total_num_prefixes_ << "\n";
 }
 
+void CountDexIndices::ProcessDexFiles(
+    const std::vector<std::unique_ptr<const DexFile>>& dex_files) {
+  std::set<std::string> unique_field_names;
+  std::set<std::string> unique_method_names;
+  std::set<std::string> unique_type_names;
+  std::set<std::string> unique_mf_names;
+  for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    for (size_t i = 0; i < dex_file->NumTypeIds(); ++i) {
+      unique_type_names.insert(
+          dex_file->StringDataByIdx(dex_file->GetTypeId(dex::TypeIndex(i)).descriptor_idx_));
+    }
+    for (size_t i = 0; i < dex_file->NumFieldIds(); ++i) {
+      unique_field_names.insert(dex_file->StringDataByIdx(dex_file->GetFieldId(i).name_idx_));
+    }
+    for (size_t i = 0; i < dex_file->NumMethodIds(); ++i) {
+      unique_method_names.insert(dex_file->StringDataByIdx(dex_file->GetMethodId(i).name_idx_));
+    }
+    ProcessDexFile(*dex_file);
+  }
+  total_unique_method_names_ += unique_method_names.size();
+  total_unique_field_names_ += unique_field_names.size();
+  total_unique_type_names_ += unique_type_names.size();
+  unique_mf_names = unique_field_names;
+  unique_mf_names.insert(unique_method_names.begin(), unique_method_names.end());
+  total_unique_mf_names_ += unique_mf_names.size();
+}
+
 void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   num_string_ids_ += dex_file.NumStringIds();
   num_method_ids_ += dex_file.NumMethodIds();
@@ -287,6 +314,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
   num_type_ids_ += dex_file.NumTypeIds();
   num_class_defs_ += dex_file.NumClassDefs();
   std::set<size_t> unique_code_items;
+
   for (ClassAccessor accessor : dex_file.GetClasses()) {
     std::set<size_t> unique_method_ids;
     std::set<size_t> unique_string_ids;
@@ -494,6 +522,11 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
       total_static_ +
       total_interface_ +
       total_super_;
+  os << "Unique method names: " << Percent(total_unique_method_names_, num_field_ids_) << "\n";
+  os << "Unique field names: " << Percent(total_unique_field_names_, num_method_ids_) << "\n";
+  os << "Unique type names: " << Percent(total_unique_type_names_, num_type_ids_) << "\n";
+  os << "Unique method/field names: "
+     << Percent(total_unique_mf_names_, num_field_ids_ + num_method_ids_) << "\n";
   os << "Same class invokes: " << PercentDivide(same_class_total, other_class_total) << "\n";
   os << "Invokes from code: " << (same_class_total + other_class_total) << "\n";
   os << "Type uses on top types: " << PercentDivide(uses_top_types_, uses_all_types_) << "\n";
