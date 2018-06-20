@@ -35,8 +35,8 @@ public class Main {
 
   /// CHECK-START-ARM64: int Main.arrayAccess() scheduler (before)
   /// CHECK:    <<Const1:i\d+>>       IntConstant 1
-  /// CHECK:    <<i0:i\d+>>           Phi
   /// CHECK:    <<res0:i\d+>>         Phi
+  /// CHECK:    <<i0:i\d+>>           Phi
   /// CHECK:    <<Array:i\d+>>        IntermediateAddress
   /// CHECK:    <<ArrayGet1:i\d+>>    ArrayGet [<<Array>>,<<i0>>]
   /// CHECK:    <<res1:i\d+>>         Add [<<res0>>,<<ArrayGet1>>]
@@ -46,8 +46,8 @@ public class Main {
 
   /// CHECK-START-ARM64: int Main.arrayAccess() scheduler (after)
   /// CHECK:    <<Const1:i\d+>>       IntConstant 1
-  /// CHECK:    <<i0:i\d+>>           Phi
   /// CHECK:    <<res0:i\d+>>         Phi
+  /// CHECK:    <<i0:i\d+>>           Phi
   /// CHECK:    <<Array:i\d+>>        IntermediateAddress
   /// CHECK:    <<ArrayGet1:i\d+>>    ArrayGet [<<Array>>,<<i0>>]
   /// CHECK:    <<i1:i\d+>>           Add [<<i0>>,<<Const1>>]
