@@ -119,7 +119,7 @@ class DexRegisterMap {
  * - Knowing the inlining information,
  * - Knowing the values of dex registers.
  */
-class StackMap : public BitTable<8>::Accessor {
+class StackMap : public BitTableAccessor<8> {
  public:
   enum Kind {
     Default = -1,
@@ -138,7 +138,7 @@ class StackMap : public BitTable<8>::Accessor {
   BIT_TABLE_COLUMN(7, DexRegisterMapIndex)
 
   ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
-    return UnpackNativePc(Get<kPackedNativePc>(), instruction_set);
+    return UnpackNativePc(GetPackedNativePc(), instruction_set);
   }
 
   ALWAYS_INLINE bool HasInlineInfo() const {
@@ -172,7 +172,7 @@ class StackMap : public BitTable<8>::Accessor {
  * The row referenced from the StackMap holds information at depth 0.
  * Following rows hold information for further depths.
  */
-class InlineInfo : public BitTable<6>::Accessor {
+class InlineInfo : public BitTableAccessor<6> {
  public:
   BIT_TABLE_HEADER()
   BIT_TABLE_COLUMN(0, IsLast)  // Determines if there are further rows for further depths.
@@ -206,7 +206,7 @@ class InlineInfo : public BitTable<6>::Accessor {
             const MethodInfo& method_info) const;
 };
 
-class InvokeInfo : public BitTable<3>::Accessor {
+class InvokeInfo : public BitTableAccessor<3> {
  public:
   BIT_TABLE_HEADER()
   BIT_TABLE_COLUMN(0, PackedNativePc)
@@ -214,7 +214,7 @@ class InvokeInfo : public BitTable<3>::Accessor {
   BIT_TABLE_COLUMN(2, MethodInfoIndex)
 
   ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
-    return StackMap::UnpackNativePc(Get<kPackedNativePc>(), instruction_set);
+    return StackMap::UnpackNativePc(GetPackedNativePc(), instruction_set);
   }
 
   uint32_t GetMethodIndex(MethodInfo method_info) const {
@@ -222,19 +222,19 @@ class InvokeInfo : public BitTable<3>::Accessor {
   }
 };
 
-class MaskInfo : public BitTable<1>::Accessor {
+class MaskInfo : public BitTableAccessor<1> {
  public:
   BIT_TABLE_HEADER()
   BIT_TABLE_COLUMN(0, Mask)
 };
 
-class DexRegisterMapInfo : public BitTable<1>::Accessor {
+class DexRegisterMapInfo : public BitTableAccessor<1> {
  public:
   BIT_TABLE_HEADER()
   BIT_TABLE_COLUMN(0, CatalogueIndex)
 };
 
-class DexRegisterInfo : public BitTable<2>::Accessor {
+class DexRegisterInfo : public BitTableAccessor<2> {
  public:
   BIT_TABLE_HEADER()
   BIT_TABLE_COLUMN(0, Kind)
@@ -265,7 +265,7 @@ class DexRegisterInfo : public BitTable<2>::Accessor {
 
 // Register masks tend to have many trailing zero bits (caller-saves are usually not encoded),
 // therefore it is worth encoding the mask as value+shift.
-class RegisterMask : public BitTable<2>::Accessor {
+class RegisterMask : public BitTableAccessor<2> {
  public:
   BIT_TABLE_HEADER()
   BIT_TABLE_COLUMN(0, Value)
@@ -303,7 +303,7 @@ class CodeInfo {
   }
 
   ALWAYS_INLINE StackMap GetStackMapAt(size_t index) const {
-    return StackMap(&stack_maps_, index);
+    return stack_maps_.GetRow(index);
   }
 
   BitMemoryRegion GetStackMask(size_t index) const {
@@ -317,7 +317,7 @@ class CodeInfo {
 
   uint32_t GetRegisterMaskOf(const StackMap& stack_map) const {
     uint32_t index = stack_map.GetRegisterMaskIndex();
-    return (index == StackMap::kNoValue) ? 0 : RegisterMask(&register_masks_, index).GetMask();
+    return (index == StackMap::kNoValue) ? 0 : register_masks_.GetRow(index).GetMask();
   }
 
   uint32_t GetNumberOfLocationCatalogEntries() const {
@@ -327,7 +327,7 @@ class CodeInfo {
   ALWAYS_INLINE DexRegisterLocation GetDexRegisterCatalogEntry(size_t index) const {
     return (index == StackMap::kNoValue)
       ? DexRegisterLocation::None()
-      : DexRegisterInfo(&dex_register_catalog_, index).GetLocation();
+      : dex_register_catalog_.GetRow(index).GetLocation();
   }
 
   uint32_t GetNumberOfStackMaps() const {
@@ -335,7 +335,7 @@ class CodeInfo {
   }
 
   InvokeInfo GetInvokeInfo(size_t index) const {
-    return InvokeInfo(&invoke_infos_, index);
+    return invoke_infos_.GetRow(index);
   }
 
   ALWAYS_INLINE DexRegisterMap GetDexRegisterMapOf(StackMap stack_map) const {
@@ -363,7 +363,7 @@ class CodeInfo {
   }
 
   InlineInfo GetInlineInfo(size_t index) const {
-    return InlineInfo(&inline_infos_, index);
+    return inline_infos_.GetRow(index);
   }
 
   uint32_t GetInlineDepthOf(StackMap stack_map) const {
@@ -473,14 +473,14 @@ class CodeInfo {
   }
 
   size_t size_;
-  BitTable<StackMap::kCount> stack_maps_;
-  BitTable<RegisterMask::kCount> register_masks_;
-  BitTable<MaskInfo::kCount> stack_masks_;
-  BitTable<InvokeInfo::kCount> invoke_infos_;
-  BitTable<InlineInfo::kCount> inline_infos_;
-  BitTable<MaskInfo::kCount> dex_register_masks_;
-  BitTable<DexRegisterMapInfo::kCount> dex_register_maps_;
-  BitTable<DexRegisterInfo::kCount> dex_register_catalog_;
+  BitTable<StackMap> stack_maps_;
+  BitTable<RegisterMask> register_masks_;
+  BitTable<MaskInfo> stack_masks_;
+  BitTable<InvokeInfo> invoke_infos_;
+  BitTable<InlineInfo> inline_infos_;
+  BitTable<MaskInfo> dex_register_masks_;
+  BitTable<DexRegisterMapInfo> dex_register_maps_;
+  BitTable<DexRegisterInfo> dex_register_catalog_;
   uint32_t number_of_dex_registers_;  // Excludes any inlined methods.
 };
 

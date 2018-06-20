@@ -50,11 +50,11 @@ TEST(BitTableTest, TestEmptyTable) {
 
   std::vector<uint8_t> buffer;
   size_t encode_bit_offset = 0;
-  BitTableBuilder<1> builder(&allocator);
+  BitTableBuilderBase<1> builder(&allocator);
   builder.Encode(&buffer, &encode_bit_offset);
 
   size_t decode_bit_offset = 0;
-  BitTable<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
+  BitTableBase<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
   EXPECT_EQ(encode_bit_offset, decode_bit_offset);
   EXPECT_EQ(0u, table.NumRows());
 }
@@ -67,7 +67,7 @@ TEST(BitTableTest, TestSingleColumnTable) {
   constexpr uint32_t kNoValue = -1;
   std::vector<uint8_t> buffer;
   size_t encode_bit_offset = 0;
-  BitTableBuilder<1> builder(&allocator);
+  BitTableBuilderBase<1> builder(&allocator);
   builder.Add({42u});
   builder.Add({kNoValue});
   builder.Add({1000u});
@@ -75,7 +75,7 @@ TEST(BitTableTest, TestSingleColumnTable) {
   builder.Encode(&buffer, &encode_bit_offset);
 
   size_t decode_bit_offset = 0;
-  BitTable<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
+  BitTableBase<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
   EXPECT_EQ(encode_bit_offset, decode_bit_offset);
   EXPECT_EQ(4u, table.NumRows());
   EXPECT_EQ(42u, table.Get(0));
@@ -93,12 +93,12 @@ TEST(BitTableTest, TestUnalignedTable) {
   for (size_t start_bit_offset = 0; start_bit_offset <= 32; start_bit_offset++) {
     std::vector<uint8_t> buffer;
     size_t encode_bit_offset = start_bit_offset;
-    BitTableBuilder<1> builder(&allocator);
+    BitTableBuilderBase<1> builder(&allocator);
     builder.Add({42u});
     builder.Encode(&buffer, &encode_bit_offset);
 
     size_t decode_bit_offset = start_bit_offset;
-    BitTable<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
+    BitTableBase<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
     EXPECT_EQ(encode_bit_offset, decode_bit_offset) << " start_bit_offset=" << start_bit_offset;
     EXPECT_EQ(1u, table.NumRows());
     EXPECT_EQ(42u, table.Get(0));
@@ -113,13 +113,13 @@ TEST(BitTableTest, TestBigTable) {
   constexpr uint32_t kNoValue = -1;
   std::vector<uint8_t> buffer;
   size_t encode_bit_offset = 0;
-  BitTableBuilder<4> builder(&allocator);
+  BitTableBuilderBase<4> builder(&allocator);
   builder.Add({42u, kNoValue, 0u, static_cast<uint32_t>(-2)});
   builder.Add({62u, kNoValue, 63u, static_cast<uint32_t>(-3)});
   builder.Encode(&buffer, &encode_bit_offset);
 
   size_t decode_bit_offset = 0;
-  BitTable<4> table(buffer.data(), buffer.size(), &decode_bit_offset);
+  BitTableBase<4> table(buffer.data(), buffer.size(), &decode_bit_offset);
   EXPECT_EQ(encode_bit_offset, decode_bit_offset);
   EXPECT_EQ(2u, table.NumRows());
   EXPECT_EQ(42u, table.Get(0, 0));
@@ -141,9 +141,9 @@ TEST(BitTableTest, TestDedup) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
 
-  BitTableBuilder<2> builder(&allocator);
-  BitTableBuilder<2>::Entry value0{1, 2};
-  BitTableBuilder<2>::Entry value1{3, 4};
+  BitTableBuilderBase<2> builder(&allocator);
+  BitTableBuilderBase<2>::Entry value0{1, 2};
+  BitTableBuilderBase<2>::Entry value1{3, 4};
   EXPECT_EQ(0u, builder.Dedup(&value0));
   EXPECT_EQ(1u, builder.Dedup(&value1));
   EXPECT_EQ(0u, builder.Dedup(&value0));
@@ -169,7 +169,7 @@ TEST(BitTableTest, TestBitmapTable) {
   EXPECT_EQ(1 + static_cast<uint32_t>(POPCOUNT(value)), builder.size());
 
   size_t decode_bit_offset = 0;
-  BitTable<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
+  BitTableBase<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
   EXPECT_EQ(encode_bit_offset, decode_bit_offset);
   for (auto it : indicies) {
     uint64_t expected = it.first;
@@ -187,10 +187,10 @@ TEST(BitTableTest, TestCollisions) {
   ScopedArenaAllocator allocator(&arena_stack);
   FNVHash<MemoryRegion> hasher;
 
-  BitTableBuilder<2>::Entry value0{56948505, 0};
-  BitTableBuilder<2>::Entry value1{67108869, 0};
+  BitTableBuilderBase<2>::Entry value0{56948505, 0};
+  BitTableBuilderBase<2>::Entry value1{67108869, 0};
 
-  BitTableBuilder<2> builder(&allocator);
+  BitTableBuilderBase<2> builder(&allocator);
   EXPECT_EQ(hasher(MemoryRegion(&value0, sizeof(value0))),
             hasher(MemoryRegion(&value1, sizeof(value1))));
   EXPECT_EQ(0u, builder.Dedup(&value0));
