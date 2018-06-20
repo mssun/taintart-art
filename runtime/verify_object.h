@@ -63,6 +63,10 @@ static inline void VerifyObject(ObjPtr<mirror::Object> obj) NO_THREAD_SAFETY_ANA
   }
 }
 
+inline constexpr VerifyObjectFlags RemoveThisFlags(VerifyObjectFlags flags) {
+  return static_cast<VerifyObjectFlags>(flags & ~kVerifyThis);
+}
+
 // Check that c.getClass() == c.getClass().getClass().
 ALWAYS_INLINE bool VerifyClassClass(ObjPtr<mirror::Class> c) NO_THREAD_SAFETY_ANALYSIS;
 
