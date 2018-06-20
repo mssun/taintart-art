@@ -1768,7 +1768,7 @@ TEST_F(Dex2oatTest, CompactDexGenerationFailureMultiDex) {
     writer.Finish();
     ASSERT_EQ(apk_file.GetFile()->Flush(), 0);
   }
-  const std::string& dex_location = apk_file.GetFilename();
+  const std::string dex_location = apk_file.GetFilename();
   const std::string odex_location = GetOdexDir() + "/output.odex";
   GenerateOdexForTest(dex_location,
                       odex_location,
@@ -1974,7 +1974,7 @@ TEST_F(Dex2oatTest, QuickenedInput) {
         << "Failed to find candidate code item with only one code unit in last instruction.";
   });
 
-  const std::string& dex_location = temp_dex.GetFilename();
+  std::string dex_location = temp_dex.GetFilename();
   std::string odex_location = GetOdexDir() + "/quickened.odex";
   std::string vdex_location = GetOdexDir() + "/quickened.vdex";
   std::unique_ptr<File> vdex_output(OS::CreateEmptyFile(vdex_location.c_str()));
@@ -2049,7 +2049,7 @@ TEST_F(Dex2oatTest, CompactDexInvalidSource) {
     writer.Finish();
     ASSERT_EQ(invalid_dex.GetFile()->Flush(), 0);
   }
-  const std::string& dex_location = invalid_dex.GetFilename();
+  const std::string dex_location = invalid_dex.GetFilename();
   const std::string odex_location = GetOdexDir() + "/output.odex";
   std::string error_msg;
   int status = GenerateOdexForTestWithStatus(
