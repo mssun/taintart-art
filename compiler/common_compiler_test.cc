@@ -16,6 +16,8 @@
 
 #include "common_compiler_test.h"
 
+#include <type_traits>
+
 #include "arch/instruction_set_features.h"
 #include "art_field-inl.h"
 #include "art_method-inl.h"
@@ -79,6 +81,7 @@ void CommonCompilerTest::MakeExecutable(ArtMethod* method) {
     const size_t size = method_info.size() + vmap_table.size() + sizeof(method_header) + code_size;
     chunk->reserve(size + max_padding);
     chunk->resize(sizeof(method_header));
+    static_assert(std::is_trivially_copyable<OatQuickMethodHeader>::value, "Cannot use memcpy");
     memcpy(&(*chunk)[0], &method_header, sizeof(method_header));
     chunk->insert(chunk->begin(), vmap_table.begin(), vmap_table.end());
     chunk->insert(chunk->begin(), method_info.begin(), method_info.end());
