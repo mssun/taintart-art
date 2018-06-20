@@ -35,8 +35,6 @@ OatQuickMethodHeader::OatQuickMethodHeader(uint32_t vmap_table_offset,
       frame_info_(frame_size_in_bytes, core_spill_mask, fp_spill_mask),
       code_size_(code_size) {}
 
-OatQuickMethodHeader::~OatQuickMethodHeader() {}
-
 uint32_t OatQuickMethodHeader::ToDexPc(ArtMethod* method,
                                        const uintptr_t pc,
                                        bool abort_on_failure) const {
