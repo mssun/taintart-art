@@ -67,6 +67,10 @@ class Instances<T extends AhatInstance> implements Iterable<T> {
     return null;
   }
 
+  public int size() {
+    return mInstances.size();
+  }
+
   @Override
   public Iterator<T> iterator() {
     return mInstances.iterator();
