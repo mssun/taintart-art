@@ -114,7 +114,7 @@ extern "C" JNIEXPORT jlong JNICALL Java_art_Breakpoint_getStartLocation(JNIEnv* 
     return 0;
   }
   jlong start = 0;
-  jlong end = end;
+  jlong end;
   JvmtiErrorToException(env, jvmti_env, jvmti_env->GetMethodLocation(method, &start, &end));
   return start;
 }

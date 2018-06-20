@@ -16,6 +16,7 @@
 
 #include "dex_to_dex_decompiler.h"
 
+#include "base/casts.h"
 #include "class_linker.h"
 #include "common_compiler_test.h"
 #include "compiled_method-inl.h"
@@ -26,6 +27,7 @@
 #include "driver/compiler_options.h"
 #include "handle_scope-inl.h"
 #include "mirror/class_loader.h"
+#include "quick_compiler_callbacks.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
@@ -43,7 +45,7 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
     compiler_options_->SetCompilerFilter(CompilerFilter::kQuicken);
     // Create the main VerifierDeps, here instead of in the compiler since we want to aggregate
     // the results for all the dex files, not just the results for the current dex file.
-    Runtime::Current()->GetCompilerCallbacks()->SetVerifierDeps(
+    down_cast<QuickCompilerCallbacks*>(Runtime::Current()->GetCompilerCallbacks())->SetVerifierDeps(
         new verifier::VerifierDeps(GetDexFiles(class_loader)));
     compiler_driver_->SetDexFilesForOatFile(GetDexFiles(class_loader));
     compiler_driver_->CompileAll(class_loader, GetDexFiles(class_loader), &timings);

@@ -335,7 +335,7 @@ class ImgObjectVisitor : public ObjectVisitor {
   using ComputeDirtyFunc = std::function<void(mirror::Object* object,
                                               const uint8_t* begin_image_ptr,
                                               const std::set<size_t>& dirty_pages)>;
-  ImgObjectVisitor(ComputeDirtyFunc dirty_func,
+  ImgObjectVisitor(const ComputeDirtyFunc& dirty_func,
                    const uint8_t* begin_image_ptr,
                    const std::set<size_t>& dirty_pages) :
     dirty_func_(dirty_func),
@@ -356,7 +356,7 @@ class ImgObjectVisitor : public ObjectVisitor {
   }
 
  private:
-  ComputeDirtyFunc dirty_func_;
+  const ComputeDirtyFunc& dirty_func_;
   const uint8_t* begin_image_ptr_;
   const std::set<size_t>& dirty_pages_;
 };
@@ -646,7 +646,7 @@ class ImgArtMethodVisitor : public ArtMethodVisitor {
   using ComputeDirtyFunc = std::function<void(ArtMethod*,
                                               const uint8_t*,
                                               const std::set<size_t>&)>;
-  ImgArtMethodVisitor(ComputeDirtyFunc dirty_func,
+  ImgArtMethodVisitor(const ComputeDirtyFunc& dirty_func,
                       const uint8_t* begin_image_ptr,
                       const std::set<size_t>& dirty_pages) :
     dirty_func_(dirty_func),
@@ -658,7 +658,7 @@ class ImgArtMethodVisitor : public ArtMethodVisitor {
   }
 
  private:
-  ComputeDirtyFunc dirty_func_;
+  const ComputeDirtyFunc& dirty_func_;
   const uint8_t* begin_image_ptr_;
   const std::set<size_t>& dirty_pages_;
 };
