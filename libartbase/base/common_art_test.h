@@ -222,4 +222,10 @@ using CommonArtTestWithParam = CommonArtTestBase<testing::TestWithParam<Param>>;
   }
 }  // namespace art
 
+#define TEST_DISABLED_FOR_MEMORY_TOOL_WITH_HEAP_POISONING() \
+  if (kRunningOnMemoryTool && kPoisonHeapReferences) { \
+    printf("WARNING: TEST DISABLED FOR MEMORY TOOL WITH HEAP POISONING\n"); \
+    return; \
+  }
+
 #endif  // ART_LIBARTBASE_BASE_COMMON_ART_TEST_H_
