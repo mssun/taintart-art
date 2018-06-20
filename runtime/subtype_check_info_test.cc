@@ -121,11 +121,11 @@ struct SubtypeCheckInfoTest : public ::testing::Test {
     return SubtypeCheckInfo::MakeUnchecked(bs, overflow, depth);
   }
 
-  static bool HasNext(SubtypeCheckInfo io) {
+  static bool HasNext(const SubtypeCheckInfo& io) {
     return io.HasNext();
   }
 
-  static BitString GetPathToRoot(SubtypeCheckInfo io) {
+  static BitString GetPathToRoot(const SubtypeCheckInfo& io) {
     return io.GetPathToRoot();
   }
 
