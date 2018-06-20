@@ -654,15 +654,13 @@ void EnsureStateChangedTestRecursive(
     MockClass* klass,
     size_t cur_depth,
     size_t total_depth,
-    const std::vector<std::pair<SubtypeCheckInfo::State, SubtypeCheckInfo::State>>& transitions) {
+    std::vector<std::pair<SubtypeCheckInfo::State, SubtypeCheckInfo::State>> transitions) {
   MockScopedLockSubtypeCheck lock_a;
   MockScopedLockMutator lock_b;
   using SCTree = MockSubtypeCheck;
 
   ASSERT_EQ(cur_depth, klass->Depth());
-  ApplyTransition(SCTree::Lookup(klass),
-                  transitions[cur_depth].first,
-                  transitions[cur_depth].second);
+  ApplyTransition(SCTree::Lookup(klass), transitions[cur_depth].first, transitions[cur_depth].second);
 
   if (total_depth == cur_depth + 1) {
     return;
@@ -678,7 +676,7 @@ void EnsureStateChangedTestRecursive(
 void EnsureStateChangedTest(
     MockClass* root,
     size_t depth,
-    const std::vector<std::pair<SubtypeCheckInfo::State, SubtypeCheckInfo::State>>& transitions) {
+    std::vector<std::pair<SubtypeCheckInfo::State, SubtypeCheckInfo::State>> transitions) {
   ASSERT_EQ(depth, transitions.size());
 
   EnsureStateChangedTestRecursive(root, /*cur_depth*/0u, depth, transitions);

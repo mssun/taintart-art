@@ -245,7 +245,7 @@ enum class StartType {
 
 static jint CallNextAgent(StartType start,
                           ProxyJavaVM* vm,
-                          const std::string& options,
+                          std::string options,
                           void* reserved) {
   // TODO It might be good to set it up so that the library is unloaded even if no jvmtiEnv's are
   // created but this isn't expected to be common so we will just not bother.
