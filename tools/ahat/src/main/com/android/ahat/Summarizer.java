@@ -16,6 +16,7 @@
 
 package com.android.ahat;
 
+import com.android.ahat.heapdump.AhatClassObj;
 import com.android.ahat.heapdump.AhatInstance;
 import com.android.ahat.heapdump.Site;
 import com.android.ahat.heapdump.Value;
@@ -100,10 +101,16 @@ class Summarizer {
 
     // Annotate bitmaps with a thumbnail.
     AhatInstance bitmap = inst.getAssociatedBitmapInstance();
-    String thumbnail = "";
     if (bitmap != null) {
       URI uri = DocString.formattedUri("bitmap?id=0x%x", bitmap.getId());
       formatted.appendThumbnail(uri, "bitmap image");
+    }
+
+    // Annotate $classOverhead arrays
+    AhatClassObj cls = inst.getAssociatedClassForOverhead();
+    if (cls != null) {
+      formatted.append(" overhead for ");
+      formatted.append(summarize(cls));
     }
     return formatted;
   }

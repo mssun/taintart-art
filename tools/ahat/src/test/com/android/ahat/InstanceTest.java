@@ -481,4 +481,19 @@ public class InstanceTest {
     assertEquals("java.lang.String", str.getClassName());
     assertNull(str.asString());
   }
+
+  @Test
+  public void classOverhead() throws IOException {
+    TestDump dump = TestDump.getTestDump("O.hprof", null, null);
+    AhatSnapshot snapshot = dump.getAhatSnapshot();
+
+    // class libore.io.IoTracker has byte[124]@12c028d1 as its class overhead.
+    AhatInstance overhead = snapshot.findInstance(0x12c028d1);
+    AhatClassObj cls = overhead.getAssociatedClassForOverhead();
+    assertEquals(0x12c028d0, cls.getId());
+    assertEquals("libcore.io.IoTracker", cls.getName());
+
+    // Other kinds of objects should not have associated classes for overhead.
+    assertNull(cls.getAssociatedClassForOverhead());
+  }
 }
