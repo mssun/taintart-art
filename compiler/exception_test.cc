@@ -15,6 +15,7 @@
  */
 
 #include <memory>
+#include <type_traits>
 
 #include "base/arena_allocator.h"
 #include "base/callee_save_type.h"
@@ -92,6 +93,7 @@ class ExceptionTest : public CommonRuntimeTest {
     MemoryRegion stack_maps_region(&fake_header_code_and_maps_[0], stack_maps_size);
     stack_maps.FillInCodeInfo(stack_maps_region);
     OatQuickMethodHeader method_header(code_offset, 0u, 4 * sizeof(void*), 0u, 0u, code_size);
+    static_assert(std::is_trivially_copyable<OatQuickMethodHeader>::value, "Cannot use memcpy");
     memcpy(&fake_header_code_and_maps_[code_offset - header_size], &method_header, header_size);
     std::copy(fake_code_.begin(),
               fake_code_.end(),
