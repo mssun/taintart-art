@@ -389,14 +389,13 @@ class MANAGED LOCKABLE Object {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  HeapReference<Object>* GetFieldObjectReferenceAddr(MemberOffset field_offset);
+  HeapReference<Object>* GetFieldObjectReferenceAddr(MemberOffset field_offset)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>
   ALWAYS_INLINE uint8_t GetFieldBoolean(MemberOffset field_offset)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (kVerifyFlags & kVerifyThis) {
-      VerifyObject(this);
-    }
+    Verify<kVerifyFlags>();
     return GetField<uint8_t, kIsVolatile>(field_offset);
   }
 
@@ -483,9 +482,7 @@ class MANAGED LOCKABLE Object {
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>
   ALWAYS_INLINE int32_t GetField32(MemberOffset field_offset)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (kVerifyFlags & kVerifyThis) {
-      VerifyObject(this);
-    }
+    Verify<kVerifyFlags>();
     return GetField<int32_t, kIsVolatile>(field_offset);
   }
 
@@ -527,9 +524,7 @@ class MANAGED LOCKABLE Object {
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>
   ALWAYS_INLINE int64_t GetField64(MemberOffset field_offset)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (kVerifyFlags & kVerifyThis) {
-      VerifyObject(this);
-    }
+    Verify<kVerifyFlags>();
     return GetField<int64_t, kIsVolatile>(field_offset);
   }
 
@@ -699,8 +694,7 @@ class MANAGED LOCKABLE Object {
   template<class T, VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>
   T GetFieldPtr64(MemberOffset field_offset)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldPtrWithSize<T, kVerifyFlags, kIsVolatile>(field_offset,
-                                                             PointerSize::k64);
+    return GetFieldPtrWithSize<T, kVerifyFlags, kIsVolatile>(field_offset, PointerSize::k64);
   }
 
   template<class T, VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>
@@ -773,6 +767,39 @@ class MANAGED LOCKABLE Object {
       CheckFieldAssignmentImpl(field_offset, new_value);
     }
   }
+
+  template<VerifyObjectFlags kVerifyFlags>
+  ALWAYS_INLINE void Verify() {
+    if (kVerifyFlags & kVerifyThis) {
+      VerifyObject(this);
+    }
+  }
+
+  // Not ObjPtr since the values may be unaligned for logic in verification.cc.
+  template<VerifyObjectFlags kVerifyFlags, typename Reference>
+  ALWAYS_INLINE static void VerifyRead(Reference value) {
+    if (kVerifyFlags & kVerifyReads) {
+      VerifyObject(value);
+    }
+  }
+
+  template<VerifyObjectFlags kVerifyFlags>
+  ALWAYS_INLINE static void VerifyWrite(ObjPtr<mirror::Object> value) {
+    if (kVerifyFlags & kVerifyWrites) {
+      VerifyObject(value);
+    }
+  }
+
+  template<VerifyObjectFlags kVerifyFlags>
+  ALWAYS_INLINE void VerifyCAS(ObjPtr<mirror::Object> new_value, ObjPtr<mirror::Object> old_value) {
+    Verify<kVerifyFlags>();
+    VerifyRead<kVerifyFlags>(old_value);
+    VerifyWrite<kVerifyFlags>(new_value);
+  }
+
+  // Verify transaction is active (if required).
+  template<bool kTransactionActive, bool kCheckTransaction>
+  ALWAYS_INLINE void VerifyTransaction();
 
   // A utility function that copies an object in a read barrier and write barrier-aware way.
   // This is internally used by Clone() and Class::CopyOf(). If the object is finalizable,
