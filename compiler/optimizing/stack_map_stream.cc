@@ -56,14 +56,14 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
     DCHECK_EQ(num_dex_registers_, num_dex_registers) << "Inconsistent register count";
   }
 
-  current_stack_map_ = BitTableBuilder<StackMap::kCount>::Entry();
+  current_stack_map_ = BitTableBuilder<StackMap>::Entry();
   current_stack_map_[StackMap::kKind] = static_cast<uint32_t>(kind);
   current_stack_map_[StackMap::kPackedNativePc] =
       StackMap::PackNativePc(native_pc_offset, instruction_set_);
   current_stack_map_[StackMap::kDexPc] = dex_pc;
   if (register_mask != 0) {
     uint32_t shift = LeastSignificantBit(register_mask);
-    BitTableBuilder<RegisterMask::kCount>::Entry entry;
+    BitTableBuilder<RegisterMask>::Entry entry;
     entry[RegisterMask::kValue] = register_mask >> shift;
     entry[RegisterMask::kShift] = shift;
     current_stack_map_[StackMap::kRegisterMaskIndex] = register_masks_.Dedup(&entry);
@@ -126,7 +126,7 @@ void StackMapStream::EndStackMapEntry() {
 void StackMapStream::AddInvoke(InvokeType invoke_type, uint32_t dex_method_index) {
   uint32_t packed_native_pc = current_stack_map_[StackMap::kPackedNativePc];
   size_t invoke_info_index = invoke_infos_.size();
-  BitTableBuilder<InvokeInfo::kCount>::Entry entry;
+  BitTableBuilder<InvokeInfo>::Entry entry;
   entry[InvokeInfo::kPackedNativePc] = packed_native_pc;
   entry[InvokeInfo::kInvokeType] = invoke_type;
   entry[InvokeInfo::kMethodInfoIndex] = method_infos_.Dedup({dex_method_index});
@@ -153,7 +153,7 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
 
   expected_num_dex_registers_ += num_dex_registers;
 
-  BitTableBuilder<InlineInfo::kCount>::Entry entry;
+  BitTableBuilder<InlineInfo>::Entry entry;
   entry[InlineInfo::kIsLast] = InlineInfo::kMore;
   entry[InlineInfo::kDexPc] = dex_pc;
   entry[InlineInfo::kNumberOfDexRegisters] = static_cast<uint32_t>(expected_num_dex_registers_);
@@ -215,7 +215,7 @@ void StackMapStream::CreateDexRegisterMap() {
     // Distance is difference between this index and the index of last modification.
     uint32_t distance = stack_maps_.size() - dex_register_timestamp_[i];
     if (previous_dex_registers_[i] != reg || distance > kMaxDexRegisterMapSearchDistance) {
-      BitTableBuilder<DexRegisterInfo::kCount>::Entry entry;
+      BitTableBuilder<DexRegisterInfo>::Entry entry;
       entry[DexRegisterInfo::kKind] = static_cast<uint32_t>(reg.GetKind());
       entry[DexRegisterInfo::kPackedValue] =
           DexRegisterInfo::PackValue(reg.GetKind(), reg.GetValue());
