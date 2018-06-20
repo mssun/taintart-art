@@ -283,10 +283,7 @@ ArtField* Object::FindFieldByOffset(MemberOffset offset) {
 }
 
 std::string Object::PrettyTypeOf(ObjPtr<mirror::Object> obj) {
-  if (obj == nullptr) {
-    return "null";
-  }
-  return obj->PrettyTypeOf();
+  return (obj == nullptr) ? "null" : obj->PrettyTypeOf();
 }
 
 std::string Object::PrettyTypeOf() {
