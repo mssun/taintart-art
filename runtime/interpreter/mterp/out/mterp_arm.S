@@ -4475,6 +4475,7 @@ constvalop_long_to_double:
     mla     r2, r0, r3, ip              @ r2<- YxX + (ZxW)
     mov     r0, rINST, lsr #8           @ r0<- AA
     add     r2, r2, lr                  @ r2<- lr + low(ZxW + (YxX))
+    CLEAR_SHADOW_PAIR r0, lr, ip        @ Zero out the shadow regs
     VREG_INDEX_TO_ADDR r0, r0           @ r0<- &fp[AA]
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     GET_INST_OPCODE ip                  @ extract opcode from rINST
