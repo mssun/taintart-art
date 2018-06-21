@@ -48,6 +48,7 @@
 #include "runtime.h"
 #include "thread-inl.h"
 #include "thread_list.h"
+#include "write_barrier-inl.h"
 
 using ::art::mirror::Object;
 
@@ -531,7 +532,7 @@ mirror::Object* SemiSpace::MarkNonForwardedObject(mirror::Object* obj) {
       // Dirty the card at the destionation as it may contain
       // references (including the class pointer) to the bump pointer
       // space.
-      GetHeap()->WriteBarrierEveryFieldOf(forward_address);
+      WriteBarrier::ForEveryFieldWrite(forward_address);
       // Handle the bitmaps marking.
       accounting::ContinuousSpaceBitmap* live_bitmap = promo_dest_space_->GetLiveBitmap();
       DCHECK(live_bitmap != nullptr);

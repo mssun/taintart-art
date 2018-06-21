@@ -466,23 +466,6 @@ class Heap {
   // Record the bytes freed by thread-local buffer revoke.
   void RecordFreeRevoke();
 
-  // Must be called if a field of an Object in the heap changes, and before any GC safe-point.
-  // The call is not needed if null is stored in the field.
-  ALWAYS_INLINE void WriteBarrierField(ObjPtr<mirror::Object> dst,
-                                       MemberOffset offset,
-                                       ObjPtr<mirror::Object> new_value)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // Write barrier for array operations that update many field positions
-  ALWAYS_INLINE void WriteBarrierArray(ObjPtr<mirror::Object> dst,
-                                       int start_offset,
-                                       // TODO: element_count or byte_count?
-                                       size_t length)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  ALWAYS_INLINE void WriteBarrierEveryFieldOf(ObjPtr<mirror::Object> obj)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   accounting::CardTable* GetCardTable() const {
     return card_table_.get();
   }
