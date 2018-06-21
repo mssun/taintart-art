@@ -333,6 +333,26 @@ public class AhatArrayInstance extends AhatInstance {
     return null;
   }
 
+  @Override public AhatClassObj getAssociatedClassForOverhead() {
+    if (mByteArray != null) {
+      List<AhatInstance> refs = getHardReverseReferences();
+      if (refs.size() == 1) {
+        AhatClassObj ref = refs.get(0).asClassObj();
+        if (ref != null) {
+          for (FieldValue field : ref.getStaticFieldValues()) {
+            if (field.name.equals("$classOverhead")) {
+              if (field.value.asAhatInstance() == this) {
+                return ref;
+              }
+              return null;
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   @Override public String toString() {
     String className = getClassName();
     if (className.endsWith("[]")) {

@@ -58,6 +58,7 @@ package com.android.ahat.heapdump {
     method public java.lang.String asString(int);
     method public java.lang.String asString();
     method public com.android.ahat.heapdump.AhatInstance getAssociatedBitmapInstance();
+    method public com.android.ahat.heapdump.AhatClassObj getAssociatedClassForOverhead();
     method public com.android.ahat.heapdump.AhatInstance getBaseline();
     method public java.lang.String getClassName();
     method public com.android.ahat.heapdump.AhatClassObj getClassObj();
