@@ -255,7 +255,6 @@ public class Main {
   /// CHECK: StaticFieldGet
   /// CHECK: InstanceFieldGet
   /// CHECK: StaticFieldSet
-  /// CHECK: InstanceFieldGet
 
   /// CHECK-START: int Main.test10(TestClass) load_store_elimination (after)
   /// CHECK: StaticFieldGet
