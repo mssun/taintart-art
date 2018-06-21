@@ -338,7 +338,7 @@ class ImgObjectVisitor : public ObjectVisitor {
   ImgObjectVisitor(ComputeDirtyFunc dirty_func,
                    const uint8_t* begin_image_ptr,
                    const std::set<size_t>& dirty_pages) :
-    dirty_func_(dirty_func),
+    dirty_func_(std::move(dirty_func)),
     begin_image_ptr_(begin_image_ptr),
     dirty_pages_(dirty_pages) { }
 
@@ -356,7 +356,7 @@ class ImgObjectVisitor : public ObjectVisitor {
   }
 
  private:
-  ComputeDirtyFunc dirty_func_;
+  const ComputeDirtyFunc dirty_func_;
   const uint8_t* begin_image_ptr_;
   const std::set<size_t>& dirty_pages_;
 };
@@ -649,7 +649,7 @@ class ImgArtMethodVisitor : public ArtMethodVisitor {
   ImgArtMethodVisitor(ComputeDirtyFunc dirty_func,
                       const uint8_t* begin_image_ptr,
                       const std::set<size_t>& dirty_pages) :
-    dirty_func_(dirty_func),
+    dirty_func_(std::move(dirty_func)),
     begin_image_ptr_(begin_image_ptr),
     dirty_pages_(dirty_pages) { }
   virtual ~ImgArtMethodVisitor() OVERRIDE { }
@@ -658,7 +658,7 @@ class ImgArtMethodVisitor : public ArtMethodVisitor {
   }
 
  private:
-  ComputeDirtyFunc dirty_func_;
+  const ComputeDirtyFunc dirty_func_;
   const uint8_t* begin_image_ptr_;
   const std::set<size_t>& dirty_pages_;
 };

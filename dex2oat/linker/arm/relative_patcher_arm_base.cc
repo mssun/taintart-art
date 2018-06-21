@@ -251,7 +251,7 @@ std::vector<debug::MethodDebugInfo> ArmBaseRelativePatcher::GenerateThunkDebugIn
       continue;
     }
     // Get the base name to use for the first occurrence of the thunk.
-    std::string base_name = data.GetDebugName();
+    const std::string& base_name = data.GetDebugName();
     for (size_t i = start, num = data.NumberOfThunks(); i != num; ++i) {
       debug::MethodDebugInfo info = {};
       if (i == 0u) {
