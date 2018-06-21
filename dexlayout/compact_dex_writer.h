@@ -22,7 +22,7 @@
 #include <memory>  // For unique_ptr
 #include <unordered_map>
 
-#include "base/utils.h"
+#include "base/data_hash.h"
 #include "dex_writer.h"
 
 namespace art {

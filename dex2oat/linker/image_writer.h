@@ -31,6 +31,7 @@
 #include "base/bit_utils.h"
 #include "base/dchecked_vector.h"
 #include "base/enums.h"
+#include "base/hash_set.h"
 #include "base/length_prefixed_array.h"
 #include "base/macros.h"
 #include "base/mem_map.h"
@@ -80,7 +81,7 @@ class ImageWriter FINAL {
               ImageHeader::StorageMode image_storage_mode,
               const std::vector<const char*>& oat_filenames,
               const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
-              const std::unordered_set<std::string>* dirty_image_objects);
+              const HashSet<std::string>* dirty_image_objects);
 
   bool PrepareImageAddressSpace(TimingLogger* timings);
 
@@ -644,7 +645,7 @@ class ImageWriter FINAL {
   const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map_;
 
   // Set of objects known to be dirty in the image. Can be nullptr if there are none.
-  const std::unordered_set<std::string>* dirty_image_objects_;
+  const HashSet<std::string>* dirty_image_objects_;
 
   class ComputeLazyFieldsForClassesVisitor;
   class FixupClassVisitor;

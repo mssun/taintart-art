@@ -1183,7 +1183,7 @@ static bool CheckInputOutputCanOverlap(InterferenceNode* in_node, InterferenceNo
 void ColoringIteration::BuildInterferenceGraph(
     const ScopedArenaVector<LiveInterval*>& intervals,
     const ScopedArenaVector<InterferenceNode*>& physical_nodes) {
-  DCHECK(interval_node_map_.Empty() && prunable_nodes_.empty());
+  DCHECK(interval_node_map_.empty() && prunable_nodes_.empty());
   // Build the interference graph efficiently by ordering range endpoints
   // by position and doing a linear sweep to find interferences. (That is, we
   // jump from endpoint to endpoint, maintaining a set of intervals live at each
@@ -1208,7 +1208,7 @@ void ColoringIteration::BuildInterferenceGraph(
       if (range != nullptr) {
         InterferenceNode* node =
             new (allocator_) InterferenceNode(sibling, register_allocator_->liveness_);
-        interval_node_map_.Insert(std::make_pair(sibling, node));
+        interval_node_map_.insert(std::make_pair(sibling, node));
 
         if (sibling->HasRegister()) {
           // Fixed nodes should alias the canonical node for the corresponding register.
@@ -1303,7 +1303,7 @@ void ColoringIteration::FindCoalesceOpportunities() {
     // Coalesce siblings.
     LiveInterval* next_sibling = interval->GetNextSibling();
     if (next_sibling != nullptr && interval->GetEnd() == next_sibling->GetStart()) {
-      auto it = interval_node_map_.Find(next_sibling);
+      auto it = interval_node_map_.find(next_sibling);
       if (it != interval_node_map_.end()) {
         InterferenceNode* sibling_node = it->second;
         CreateCoalesceOpportunity(node,
@@ -1318,7 +1318,7 @@ void ColoringIteration::FindCoalesceOpportunities() {
     if (parent->HasRegister()
         && parent->GetNextSibling() == interval
         && parent->GetEnd() == interval->GetStart()) {
-      auto it = interval_node_map_.Find(parent);
+      auto it = interval_node_map_.find(parent);
       if (it != interval_node_map_.end()) {
         InterferenceNode* parent_node = it->second;
         CreateCoalesceOpportunity(node,
@@ -1341,7 +1341,7 @@ void ColoringIteration::FindCoalesceOpportunities() {
         size_t position = predecessor->GetLifetimeEnd() - 1;
         LiveInterval* existing = interval->GetParent()->GetSiblingAt(position);
         if (existing != nullptr) {
-          auto it = interval_node_map_.Find(existing);
+          auto it = interval_node_map_.find(existing);
           if (it != interval_node_map_.end()) {
             InterferenceNode* existing_node = it->second;
             CreateCoalesceOpportunity(node,
@@ -1364,7 +1364,7 @@ void ColoringIteration::FindCoalesceOpportunities() {
         size_t position = predecessors[i]->GetLifetimeEnd() - 1;
         LiveInterval* input_interval = inputs[i]->GetLiveInterval()->GetSiblingAt(position);
 
-        auto it = interval_node_map_.Find(input_interval);
+        auto it = interval_node_map_.find(input_interval);
         if (it != interval_node_map_.end()) {
           InterferenceNode* input_node = it->second;
           CreateCoalesceOpportunity(node, input_node, CoalesceKind::kPhi, position);
@@ -1380,7 +1380,7 @@ void ColoringIteration::FindCoalesceOpportunities() {
             = defined_by->InputAt(0)->GetLiveInterval()->GetSiblingAt(interval->GetStart() - 1);
         // TODO: Could we consider lifetime holes here?
         if (input_interval->GetEnd() == interval->GetStart()) {
-          auto it = interval_node_map_.Find(input_interval);
+          auto it = interval_node_map_.find(input_interval);
           if (it != interval_node_map_.end()) {
             InterferenceNode* input_node = it->second;
             CreateCoalesceOpportunity(node,
@@ -1407,7 +1407,7 @@ void ColoringIteration::FindCoalesceOpportunities() {
           LiveInterval* input_interval = inputs[i]->GetLiveInterval()->GetSiblingAt(def_point);
           if (input_interval != nullptr &&
               input_interval->HasHighInterval() == interval->HasHighInterval()) {
-            auto it = interval_node_map_.Find(input_interval);
+            auto it = interval_node_map_.find(input_interval);
             if (it != interval_node_map_.end()) {
               InterferenceNode* input_node = it->second;
               CreateCoalesceOpportunity(node,

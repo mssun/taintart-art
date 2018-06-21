@@ -18,9 +18,9 @@
 #define ART_COMPILER_COMMON_COMPILER_TEST_H_
 
 #include <list>
-#include <unordered_set>
 #include <vector>
 
+#include "base/hash_set.h"
 #include "common_runtime_test.h"
 #include "compiler.h"
 #include "oat_file.h"
@@ -63,9 +63,8 @@ class CommonCompilerTest : public CommonRuntimeTest {
 
   InstructionSet GetInstructionSet() const;
 
-  // Get the set of image classes given to the compiler-driver in SetUp. Note: the compiler
-  // driver assumes ownership of the set, so the test should properly release the set.
-  virtual std::unordered_set<std::string>* GetImageClasses();
+  // Get the set of image classes given to the compiler-driver in SetUp.
+  virtual std::unique_ptr<HashSet<std::string>> GetImageClasses();
 
   virtual ProfileCompilationInfo* GetProfileCompilationInfo();
 

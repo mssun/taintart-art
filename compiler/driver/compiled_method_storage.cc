@@ -21,6 +21,7 @@
 
 #include <android-base/logging.h>
 
+#include "base/data_hash.h"
 #include "base/utils.h"
 #include "compiled_method.h"
 #include "linker/linker_patch.h"
@@ -80,65 +81,7 @@ class CompiledMethodStorage::DedupeHashFunc {
 
  public:
   size_t operator()(const ArrayRef<ContentType>& array) const {
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(array.data());
-    // TODO: More reasonable assertion.
-    // static_assert(IsPowerOfTwo(sizeof(ContentType)),
-    //    "ContentType is not power of two, don't know whether array layout is as assumed");
-    uint32_t len = sizeof(ContentType) * array.size();
-    if (kUseMurmur3Hash) {
-      static constexpr uint32_t c1 = 0xcc9e2d51;
-      static constexpr uint32_t c2 = 0x1b873593;
-      static constexpr uint32_t r1 = 15;
-      static constexpr uint32_t r2 = 13;
-      static constexpr uint32_t m = 5;
-      static constexpr uint32_t n = 0xe6546b64;
-
-      uint32_t hash = 0;
-
-      const int nblocks = len / 4;
-      typedef __attribute__((__aligned__(1))) uint32_t unaligned_uint32_t;
-      const unaligned_uint32_t *blocks = reinterpret_cast<const uint32_t*>(data);
-      int i;
-      for (i = 0; i < nblocks; i++) {
-        uint32_t k = blocks[i];
-        k *= c1;
-        k = (k << r1) | (k >> (32 - r1));
-        k *= c2;
-
-        hash ^= k;
-        hash = ((hash << r2) | (hash >> (32 - r2))) * m + n;
-      }
-
-      const uint8_t *tail = reinterpret_cast<const uint8_t*>(data + nblocks * 4);
-      uint32_t k1 = 0;
-
-      switch (len & 3) {
-        case 3:
-          k1 ^= tail[2] << 16;
-          FALLTHROUGH_INTENDED;
-        case 2:
-          k1 ^= tail[1] << 8;
-          FALLTHROUGH_INTENDED;
-        case 1:
-          k1 ^= tail[0];
-
-          k1 *= c1;
-          k1 = (k1 << r1) | (k1 >> (32 - r1));
-          k1 *= c2;
-          hash ^= k1;
-      }
-
-      hash ^= len;
-      hash ^= (hash >> 16);
-      hash *= 0x85ebca6b;
-      hash ^= (hash >> 13);
-      hash *= 0xc2b2ae35;
-      hash ^= (hash >> 16);
-
-      return hash;
-    } else {
-      return HashBytes(data, len);
-    }
+    return DataHash()(array);
   }
 };
 

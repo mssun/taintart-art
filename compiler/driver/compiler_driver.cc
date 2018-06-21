@@ -264,7 +264,7 @@ CompilerDriver::CompilerDriver(
     Compiler::Kind compiler_kind,
     InstructionSet instruction_set,
     const InstructionSetFeatures* instruction_set_features,
-    std::unordered_set<std::string>* image_classes,
+    std::unique_ptr<HashSet<std::string>>&& image_classes,
     size_t thread_count,
     int swap_fd,
     const ProfileCompilationInfo* profile_compilation_info)
@@ -277,7 +277,7 @@ CompilerDriver::CompilerDriver(
       instruction_set_features_(instruction_set_features),
       requires_constructor_barrier_lock_("constructor barrier lock"),
       non_relative_linker_patch_count_(0u),
-      image_classes_(image_classes),
+      image_classes_(std::move(image_classes)),
       number_of_soft_verifier_failures_(0),
       had_hard_verifier_failure_(false),
       parallel_thread_count_(thread_count),
@@ -991,7 +991,7 @@ void CompilerDriver::PreCompile(jobject class_loader,
 bool CompilerDriver::IsImageClass(const char* descriptor) const {
   if (image_classes_ != nullptr) {
     // If we have a set of image classes, use those.
-    return image_classes_->find(descriptor) != image_classes_->end();
+    return image_classes_->find(StringPiece(descriptor)) != image_classes_->end();
   }
   // No set of image classes, assume we include all the classes.
   // NOTE: Currently only reachable from InitImageMethodVisitor for the app image case.
@@ -1002,7 +1002,7 @@ bool CompilerDriver::IsClassToCompile(const char* descriptor) const {
   if (classes_to_compile_ == nullptr) {
     return true;
   }
-  return classes_to_compile_->find(descriptor) != classes_to_compile_->end();
+  return classes_to_compile_->find(StringPiece(descriptor)) != classes_to_compile_->end();
 }
 
 bool CompilerDriver::ShouldCompileBasedOnProfile(const MethodReference& method_ref) const {
@@ -1091,7 +1091,7 @@ class ResolveCatchBlockExceptionsClassVisitor : public ClassVisitor {
 
 class RecordImageClassesVisitor : public ClassVisitor {
  public:
-  explicit RecordImageClassesVisitor(std::unordered_set<std::string>* image_classes)
+  explicit RecordImageClassesVisitor(HashSet<std::string>* image_classes)
       : image_classes_(image_classes) {}
 
   bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1101,7 +1101,7 @@ class RecordImageClassesVisitor : public ClassVisitor {
   }
 
  private:
-  std::unordered_set<std::string>* const image_classes_;
+  HashSet<std::string>* const image_classes_;
 };
 
 // Make a list of descriptors for classes to include in the image
@@ -1124,7 +1124,7 @@ void CompilerDriver::LoadImageClasses(TimingLogger* timings) {
         hs.NewHandle(class_linker->FindSystemClass(self, descriptor.c_str())));
     if (klass == nullptr) {
       VLOG(compiler) << "Failed to find class " << descriptor;
-      image_classes_->erase(it++);
+      it = image_classes_->erase(it);
       self->ClearException();
     } else {
       ++it;
@@ -1177,12 +1177,12 @@ void CompilerDriver::LoadImageClasses(TimingLogger* timings) {
   RecordImageClassesVisitor visitor(image_classes_.get());
   class_linker->VisitClasses(&visitor);
 
-  CHECK_NE(image_classes_->size(), 0U);
+  CHECK(!image_classes_->empty());
 }
 
 static void MaybeAddToImageClasses(Thread* self,
                                    ObjPtr<mirror::Class> klass,
-                                   std::unordered_set<std::string>* image_classes)
+                                   HashSet<std::string>* image_classes)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK_EQ(self, Thread::Current());
   StackHandleScope<1> hs(self);
@@ -1190,11 +1190,10 @@ static void MaybeAddToImageClasses(Thread* self,
   const PointerSize pointer_size = Runtime::Current()->GetClassLinker()->GetImagePointerSize();
   while (!klass->IsObjectClass()) {
     const char* descriptor = klass->GetDescriptor(&temp);
-    std::pair<std::unordered_set<std::string>::iterator, bool> result =
-        image_classes->insert(descriptor);
-    if (!result.second) {  // Previously inserted.
-      break;
+    if (image_classes->find(StringPiece(descriptor)) != image_classes->end()) {
+      break;  // Previously inserted.
     }
+    image_classes->insert(descriptor);
     VLOG(compiler) << "Adding " << descriptor << " to image classes";
     for (size_t i = 0, num_interfaces = klass->NumDirectInterfaces(); i != num_interfaces; ++i) {
       ObjPtr<mirror::Class> interface = mirror::Class::GetDirectInterface(self, klass, i);
@@ -1216,7 +1215,7 @@ static void MaybeAddToImageClasses(Thread* self,
 class ClinitImageUpdate {
  public:
   static ClinitImageUpdate* Create(VariableSizedHandleScope& hs,
-                                   std::unordered_set<std::string>* image_class_descriptors,
+                                   HashSet<std::string>* image_class_descriptors,
                                    Thread* self,
                                    ClassLinker* linker) {
     std::unique_ptr<ClinitImageUpdate> res(new ClinitImageUpdate(hs,
@@ -1273,7 +1272,7 @@ class ClinitImageUpdate {
 
     bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
       std::string temp;
-      const char* name = klass->GetDescriptor(&temp);
+      StringPiece name(klass->GetDescriptor(&temp));
       if (data_->image_class_descriptors_->find(name) != data_->image_class_descriptors_->end()) {
         data_->image_classes_.push_back(hs_.NewHandle(klass));
       } else {
@@ -1292,7 +1291,7 @@ class ClinitImageUpdate {
   };
 
   ClinitImageUpdate(VariableSizedHandleScope& hs,
-                    std::unordered_set<std::string>* image_class_descriptors,
+                    HashSet<std::string>* image_class_descriptors,
                     Thread* self,
                     ClassLinker* linker) REQUIRES_SHARED(Locks::mutator_lock_)
       : hs_(hs),
@@ -1339,7 +1338,7 @@ class ClinitImageUpdate {
   VariableSizedHandleScope& hs_;
   mutable std::vector<Handle<mirror::Class>> to_insert_;
   mutable std::unordered_set<mirror::Object*> marked_objects_;
-  std::unordered_set<std::string>* const image_class_descriptors_;
+  HashSet<std::string>* const image_class_descriptors_;
   std::vector<Handle<mirror::Class>> image_classes_;
   Thread* const self_;
   const char* old_cause_;

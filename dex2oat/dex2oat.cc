@@ -27,7 +27,6 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
-#include <unordered_set>
 #include <vector>
 
 #if defined(__linux__) && defined(__arm__)
@@ -954,9 +953,9 @@ class Dex2Oat FINAL {
     compiler_options_->force_determinism_ = force_determinism_;
 
     if (passes_to_run_filename_ != nullptr) {
-      passes_to_run_.reset(ReadCommentedInputFromFile<std::vector<std::string>>(
+      passes_to_run_ = ReadCommentedInputFromFile<std::vector<std::string>>(
           passes_to_run_filename_,
-          nullptr));         // No post-processing.
+          nullptr);         // No post-processing.
       if (passes_to_run_.get() == nullptr) {
         Usage("Failed to read list of passes to run.");
       }
@@ -1493,13 +1492,12 @@ class Dex2Oat FINAL {
     // If we don't have a profile, treat it as an empty set of classes. b/77340429
     if (image_classes_ == nullptr) {
       // May be non-null when --image-classes is passed in, in that case avoid clearing the list.
-      image_classes_.reset(new std::unordered_set<std::string>());
+      image_classes_.reset(new HashSet<std::string>());
     }
     if (profile_compilation_info_ != nullptr) {
       // Filter out class path classes since we don't want to include these in the image.
       image_classes_.reset(
-          new std::unordered_set<std::string>(
-              profile_compilation_info_->GetClassDescriptors(dex_files_)));
+          new HashSet<std::string>(profile_compilation_info_->GetClassDescriptors(dex_files_)));
       VLOG(compiler) << "Loaded " << image_classes_->size()
                      << " image class descriptors from profile";
       if (VLOG_IS_ON(compiler)) {
@@ -1850,7 +1848,7 @@ class Dex2Oat FINAL {
                                      compiler_kind_,
                                      instruction_set_,
                                      instruction_set_features_.get(),
-                                     image_classes_.release(),
+                                     std::move(image_classes_),
                                      thread_count_,
                                      swap_fd_,
                                      profile_compilation_info_.get()));
@@ -2390,20 +2388,20 @@ class Dex2Oat FINAL {
         return false;
       }
     } else if (IsBootImage()) {
-      image_classes_.reset(new std::unordered_set<std::string>);
+      image_classes_.reset(new HashSet<std::string>);
     }
     return true;
   }
 
-  static std::unique_ptr<std::unordered_set<std::string>> ReadClasses(const char* zip_filename,
-                                                                      const char* classes_filename,
-                                                                      const char* tag) {
-    std::unique_ptr<std::unordered_set<std::string>> classes;
+  static std::unique_ptr<HashSet<std::string>> ReadClasses(const char* zip_filename,
+                                                           const char* classes_filename,
+                                                           const char* tag) {
+    std::unique_ptr<HashSet<std::string>> classes;
     std::string error_msg;
     if (zip_filename != nullptr) {
-      classes.reset(ReadImageClassesFromZip(zip_filename, classes_filename, &error_msg));
+      classes = ReadImageClassesFromZip(zip_filename, classes_filename, &error_msg);
     } else {
-      classes.reset(ReadImageClassesFromFile(classes_filename));
+      classes = ReadImageClassesFromFile(classes_filename);
     }
     if (classes == nullptr) {
       LOG(ERROR) << "Failed to create list of " << tag << " classes from '"
@@ -2414,9 +2412,9 @@ class Dex2Oat FINAL {
 
   bool PrepareDirtyObjects() {
     if (dirty_image_objects_filename_ != nullptr) {
-      dirty_image_objects_.reset(ReadCommentedInputFromFile<std::unordered_set<std::string>>(
+      dirty_image_objects_ = ReadCommentedInputFromFile<HashSet<std::string>>(
           dirty_image_objects_filename_,
-          nullptr));
+          nullptr);
       if (dirty_image_objects_ == nullptr) {
         LOG(ERROR) << "Failed to create list of dirty objects from '"
             << dirty_image_objects_filename_ << "'";
@@ -2678,29 +2676,28 @@ class Dex2Oat FINAL {
   }
 
   // Reads the class names (java.lang.Object) and returns a set of descriptors (Ljava/lang/Object;)
-  static std::unordered_set<std::string>* ReadImageClassesFromFile(
+  static std::unique_ptr<HashSet<std::string>> ReadImageClassesFromFile(
       const char* image_classes_filename) {
     std::function<std::string(const char*)> process = DotToDescriptor;
-    return ReadCommentedInputFromFile<std::unordered_set<std::string>>(image_classes_filename,
-                                                                       &process);
+    return ReadCommentedInputFromFile<HashSet<std::string>>(image_classes_filename, &process);
   }
 
   // Reads the class names (java.lang.Object) and returns a set of descriptors (Ljava/lang/Object;)
-  static std::unordered_set<std::string>* ReadImageClassesFromZip(
+  static std::unique_ptr<HashSet<std::string>> ReadImageClassesFromZip(
         const char* zip_filename,
         const char* image_classes_filename,
         std::string* error_msg) {
     std::function<std::string(const char*)> process = DotToDescriptor;
-    return ReadCommentedInputFromZip<std::unordered_set<std::string>>(zip_filename,
-                                                                      image_classes_filename,
-                                                                      &process,
-                                                                      error_msg);
+    return ReadCommentedInputFromZip<HashSet<std::string>>(zip_filename,
+                                                           image_classes_filename,
+                                                           &process,
+                                                           error_msg);
   }
 
   // Read lines from the given file, dropping comments and empty lines. Post-process each line with
   // the given function.
   template <typename T>
-  static T* ReadCommentedInputFromFile(
+  static std::unique_ptr<T> ReadCommentedInputFromFile(
       const char* input_filename, std::function<std::string(const char*)>* process) {
     std::unique_ptr<std::ifstream> input_file(new std::ifstream(input_filename, std::ifstream::in));
     if (input_file.get() == nullptr) {
@@ -2710,13 +2707,13 @@ class Dex2Oat FINAL {
     std::unique_ptr<T> result(
         ReadCommentedInputStream<T>(*input_file, process));
     input_file->close();
-    return result.release();
+    return result;
   }
 
   // Read lines from the given file from the given zip file, dropping comments and empty lines.
   // Post-process each line with the given function.
   template <typename T>
-  static T* ReadCommentedInputFromZip(
+  static std::unique_ptr<T> ReadCommentedInputFromZip(
       const char* zip_filename,
       const char* input_filename,
       std::function<std::string(const char*)>* process,
@@ -2748,7 +2745,7 @@ class Dex2Oat FINAL {
   // Read lines from the given stream, dropping comments and empty lines. Post-process each line
   // with the given function.
   template <typename T>
-  static T* ReadCommentedInputStream(
+  static std::unique_ptr<T> ReadCommentedInputStream(
       std::istream& in_stream,
       std::function<std::string(const char*)>* process) {
     std::unique_ptr<T> output(new T());
@@ -2765,7 +2762,7 @@ class Dex2Oat FINAL {
         output->insert(output->end(), dot);
       }
     }
-    return output.release();
+    return output;
   }
 
   void LogCompletionTime() {
@@ -2854,10 +2851,8 @@ class Dex2Oat FINAL {
   ImageHeader::StorageMode image_storage_mode_;
   const char* passes_to_run_filename_;
   const char* dirty_image_objects_filename_;
-  std::unique_ptr<std::unordered_set<std::string>> image_classes_;
-  std::unique_ptr<std::unordered_set<std::string>> compiled_classes_;
-  std::unique_ptr<std::unordered_set<std::string>> compiled_methods_;
-  std::unique_ptr<std::unordered_set<std::string>> dirty_image_objects_;
+  std::unique_ptr<HashSet<std::string>> image_classes_;
+  std::unique_ptr<HashSet<std::string>> dirty_image_objects_;
   std::unique_ptr<std::vector<std::string>> passes_to_run_;
   bool multi_image_;
   bool is_host_;
