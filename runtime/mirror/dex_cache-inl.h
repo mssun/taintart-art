@@ -34,6 +34,7 @@
 #include "mirror/method_type.h"
 #include "obj_ptr.h"
 #include "runtime.h"
+#include "write_barrier-inl.h"
 
 #include <atomic>
 
@@ -76,7 +77,7 @@ inline void DexCache::SetResolvedString(dex::StringIndex string_idx, ObjPtr<Stri
     runtime->RecordResolveString(this, string_idx);
   }
   // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
-  runtime->GetHeap()->WriteBarrierEveryFieldOf(this);
+  WriteBarrier::ForEveryFieldWrite(this);
 }
 
 inline void DexCache::ClearString(dex::StringIndex string_idx) {
@@ -113,7 +114,7 @@ inline void DexCache::SetResolvedType(dex::TypeIndex type_idx, ObjPtr<Class> res
   GetResolvedTypes()[TypeSlotIndex(type_idx)].store(
       TypeDexCachePair(resolved, type_idx.index_), std::memory_order_release);
   // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
-  Runtime::Current()->GetHeap()->WriteBarrierEveryFieldOf(this);
+  WriteBarrier::ForEveryFieldWrite(this);
 }
 
 inline void DexCache::ClearResolvedType(dex::TypeIndex type_idx) {
@@ -145,7 +146,7 @@ inline void DexCache::SetResolvedMethodType(dex::ProtoIndex proto_idx, MethodTyp
   GetResolvedMethodTypes()[MethodTypeSlotIndex(proto_idx)].store(
       MethodTypeDexCachePair(resolved, proto_idx.index_), std::memory_order_relaxed);
   // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
-  Runtime::Current()->GetHeap()->WriteBarrierEveryFieldOf(this);
+  WriteBarrier::ForEveryFieldWrite(this);
 }
 
 inline CallSite* DexCache::GetResolvedCallSite(uint32_t call_site_idx) {
@@ -171,7 +172,7 @@ inline ObjPtr<CallSite> DexCache::SetResolvedCallSite(uint32_t call_site_idx,
       reinterpret_cast<Atomic<GcRoot<mirror::CallSite>>&>(target);
   if (ref.CompareAndSetStrongSequentiallyConsistent(null_call_site, candidate)) {
     // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
-    Runtime::Current()->GetHeap()->WriteBarrierEveryFieldOf(this);
+    WriteBarrier::ForEveryFieldWrite(this);
     return call_site;
   } else {
     return target.Read();

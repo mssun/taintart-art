@@ -37,6 +37,7 @@
 #include "runtime.h"
 #include "thread-inl.h"
 #include "verify_object.h"
+#include "write_barrier-inl.h"
 
 namespace art {
 namespace gc {
@@ -151,7 +152,7 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
       // enabled. We don't need this for kAllocatorTypeRosAlloc/DlMalloc
       // cases because we don't directly allocate into the main alloc
       // space (besides promotions) under the SS/GSS collector.
-      WriteBarrierField(obj, mirror::Object::ClassOffset(), klass);
+      WriteBarrier::ForFieldWrite(obj, mirror::Object::ClassOffset(), klass);
     }
     pre_fence_visitor(obj, usable_size);
     QuasiAtomic::ThreadFenceForConstructor();
@@ -416,22 +417,6 @@ inline void Heap::CheckConcurrentGC(Thread* self,
   if (UNLIKELY(new_num_bytes_allocated >= concurrent_start_bytes_)) {
     RequestConcurrentGCAndSaveObject(self, false, obj);
   }
-}
-
-inline void Heap::WriteBarrierField(ObjPtr<mirror::Object> dst,
-                                    MemberOffset offset ATTRIBUTE_UNUSED,
-                                    ObjPtr<mirror::Object> new_value ATTRIBUTE_UNUSED) {
-  card_table_->MarkCard(dst.Ptr());
-}
-
-inline void Heap::WriteBarrierArray(ObjPtr<mirror::Object> dst,
-                                    int start_offset ATTRIBUTE_UNUSED,
-                                    size_t length ATTRIBUTE_UNUSED) {
-  card_table_->MarkCard(dst.Ptr());
-}
-
-inline void Heap::WriteBarrierEveryFieldOf(ObjPtr<mirror::Object> obj) {
-  card_table_->MarkCard(obj.Ptr());
 }
 
 }  // namespace gc
