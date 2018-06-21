@@ -3343,61 +3343,25 @@ FOR_EACH_CONDITION_INSTRUCTION(DEFINE_CONDITION_VISITORS)
 #undef DEFINE_CONDITION_VISITORS
 #undef FOR_EACH_CONDITION_INSTRUCTION
 
-void InstructionCodeGeneratorARM64::DivRemOneOrMinusOne(HBinaryOperation* instruction) {
-  DCHECK(instruction->IsDiv() || instruction->IsRem());
-
-  LocationSummary* locations = instruction->GetLocations();
-  Location second = locations->InAt(1);
-  DCHECK(second.IsConstant());
-
-  Register out = OutputRegister(instruction);
-  Register dividend = InputRegisterAt(instruction, 0);
-  int64_t imm = Int64FromConstant(second.GetConstant());
-  DCHECK(imm == 1 || imm == -1);
-
-  if (instruction->IsRem()) {
-    __ Mov(out, 0);
-  } else {
-    if (imm == 1) {
-      __ Mov(out, dividend);
-    } else {
-      __ Neg(out, dividend);
-    }
-  }
-}
-
-void InstructionCodeGeneratorARM64::DivRemByPowerOfTwo(HBinaryOperation* instruction) {
-  DCHECK(instruction->IsDiv() || instruction->IsRem());
-
-  LocationSummary* locations = instruction->GetLocations();
-  Location second = locations->InAt(1);
-  DCHECK(second.IsConstant());
-
-  Register out = OutputRegister(instruction);
-  Register dividend = InputRegisterAt(instruction, 0);
-  int64_t imm = Int64FromConstant(second.GetConstant());
+void InstructionCodeGeneratorARM64::GenerateIntDivForPower2Denom(HDiv* instruction) {
+  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
   uint64_t abs_imm = static_cast<uint64_t>(AbsOrMin(imm));
+  DCHECK(IsPowerOfTwo(abs_imm)) << abs_imm;
+
+  Register out = OutputRegister(instruction);
+  Register dividend = InputRegisterAt(instruction, 0);
   int ctz_imm = CTZ(abs_imm);
 
   UseScratchRegisterScope temps(GetVIXLAssembler());
   Register temp = temps.AcquireSameSizeAs(out);
 
-  if (instruction->IsDiv()) {
-    __ Add(temp, dividend, abs_imm - 1);
-    __ Cmp(dividend, 0);
-    __ Csel(out, temp, dividend, lt);
-    if (imm > 0) {
-      __ Asr(out, out, ctz_imm);
-    } else {
-      __ Neg(out, Operand(out, ASR, ctz_imm));
-    }
+  __ Add(temp, dividend, abs_imm - 1);
+  __ Cmp(dividend, 0);
+  __ Csel(out, temp, dividend, lt);
+  if (imm > 0) {
+    __ Asr(out, out, ctz_imm);
   } else {
-    int bits = instruction->GetResultType() == DataType::Type::kInt32 ? 32 : 64;
-    __ Asr(temp, dividend, bits - 1);
-    __ Lsr(temp, temp, bits - ctz_imm);
-    __ Add(out, dividend, temp);
-    __ And(out, out, abs_imm - 1);
-    __ Sub(out, out, temp);
+    __ Neg(out, Operand(out, ASR, ctz_imm));
   }
 }
 
@@ -3453,39 +3417,34 @@ void InstructionCodeGeneratorARM64::GenerateDivRemWithAnyConstant(HBinaryOperati
   }
 }
 
-void InstructionCodeGeneratorARM64::GenerateDivRemIntegral(HBinaryOperation* instruction) {
-  DCHECK(instruction->IsDiv() || instruction->IsRem());
-  DataType::Type type = instruction->GetResultType();
-  DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64);
+void InstructionCodeGeneratorARM64::GenerateIntDivForConstDenom(HDiv *instruction) {
+  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
 
-  LocationSummary* locations = instruction->GetLocations();
-  Register out = OutputRegister(instruction);
-  Location second = locations->InAt(1);
+  if (imm == 0) {
+    // Do not generate anything. DivZeroCheck would prevent any code to be executed.
+    return;
+  }
 
-  if (second.IsConstant()) {
-    int64_t imm = Int64FromConstant(second.GetConstant());
-
-    if (imm == 0) {
-      // Do not generate anything. DivZeroCheck would prevent any code to be executed.
-    } else if (imm == 1 || imm == -1) {
-      DivRemOneOrMinusOne(instruction);
-    } else if (IsPowerOfTwo(AbsOrMin(imm))) {
-      DivRemByPowerOfTwo(instruction);
-    } else {
-      DCHECK(imm <= -2 || imm >= 2);
-      GenerateDivRemWithAnyConstant(instruction);
-    }
+  if (IsPowerOfTwo(AbsOrMin(imm))) {
+    GenerateIntDivForPower2Denom(instruction);
   } else {
+    // Cases imm == -1 or imm == 1 are handled by InstructionSimplifier.
+    DCHECK(imm < -2 || imm > 2) << imm;
+    GenerateDivRemWithAnyConstant(instruction);
+  }
+}
+
+void InstructionCodeGeneratorARM64::GenerateIntDiv(HDiv *instruction) {
+  DCHECK(DataType::IsIntOrLongType(instruction->GetResultType()))
+       << instruction->GetResultType();
+
+  if (instruction->GetLocations()->InAt(1).IsConstant()) {
+    GenerateIntDivForConstDenom(instruction);
+  } else {
+    Register out = OutputRegister(instruction);
     Register dividend = InputRegisterAt(instruction, 0);
     Register divisor = InputRegisterAt(instruction, 1);
-    if (instruction->IsDiv()) {
-      __ Sdiv(out, dividend, divisor);
-    } else {
-      UseScratchRegisterScope temps(GetVIXLAssembler());
-      Register temp = temps.AcquireSameSizeAs(out);
-      __ Sdiv(temp, dividend, divisor);
-      __ Msub(out, temp, divisor, dividend);
-    }
+    __ Sdiv(out, dividend, divisor);
   }
 }
 
@@ -3517,7 +3476,7 @@ void InstructionCodeGeneratorARM64::VisitDiv(HDiv* div) {
   switch (type) {
     case DataType::Type::kInt32:
     case DataType::Type::kInt64:
-      GenerateDivRemIntegral(div);
+      GenerateIntDiv(div);
       break;
 
     case DataType::Type::kFloat32:
@@ -5649,13 +5608,78 @@ void LocationsBuilderARM64::VisitRem(HRem* rem) {
   }
 }
 
+void InstructionCodeGeneratorARM64::GenerateIntRemForPower2Denom(HRem *instruction) {
+  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
+  uint64_t abs_imm = static_cast<uint64_t>(AbsOrMin(imm));
+  DCHECK(IsPowerOfTwo(abs_imm)) << abs_imm;
+
+  Register out = OutputRegister(instruction);
+  Register dividend = InputRegisterAt(instruction, 0);
+  int ctz_imm = CTZ(abs_imm);
+
+  UseScratchRegisterScope temps(GetVIXLAssembler());
+  Register temp = temps.AcquireSameSizeAs(out);
+
+  int bits = (instruction->GetResultType() == DataType::Type::kInt32) ? 32 : 64;
+  __ Asr(temp, dividend, bits - 1);
+  __ Lsr(temp, temp, bits - ctz_imm);
+  __ Add(out, dividend, temp);
+  __ And(out, out, abs_imm - 1);
+  __ Sub(out, out, temp);
+}
+
+void InstructionCodeGeneratorARM64::GenerateIntRemForOneOrMinusOneDenom(HRem *instruction) {
+  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
+  DCHECK(imm == 1 || imm == -1) << imm;
+
+  Register out = OutputRegister(instruction);
+  __ Mov(out, 0);
+}
+
+void InstructionCodeGeneratorARM64::GenerateIntRemForConstDenom(HRem *instruction) {
+  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
+
+  if (imm == 0) {
+    // Do not generate anything.
+    // DivZeroCheck would prevent any code to be executed.
+    return;
+  }
+
+  if (imm == 1 || imm == -1) {
+    // TODO: These cases need to be optimized in InstructionSimplifier
+    GenerateIntRemForOneOrMinusOneDenom(instruction);
+  } else if (IsPowerOfTwo(AbsOrMin(imm))) {
+    GenerateIntRemForPower2Denom(instruction);
+  } else {
+    DCHECK(imm < -2 || imm > 2) << imm;
+    GenerateDivRemWithAnyConstant(instruction);
+  }
+}
+
+void InstructionCodeGeneratorARM64::GenerateIntRem(HRem* instruction) {
+  DCHECK(DataType::IsIntOrLongType(instruction->GetResultType()))
+         << instruction->GetResultType();
+
+  if (instruction->GetLocations()->InAt(1).IsConstant()) {
+    GenerateIntRemForConstDenom(instruction);
+  } else {
+    Register out = OutputRegister(instruction);
+    Register dividend = InputRegisterAt(instruction, 0);
+    Register divisor = InputRegisterAt(instruction, 1);
+    UseScratchRegisterScope temps(GetVIXLAssembler());
+    Register temp = temps.AcquireSameSizeAs(out);
+    __ Sdiv(temp, dividend, divisor);
+    __ Msub(out, temp, divisor, dividend);
+  }
+}
+
 void InstructionCodeGeneratorARM64::VisitRem(HRem* rem) {
   DataType::Type type = rem->GetResultType();
 
   switch (type) {
     case DataType::Type::kInt32:
     case DataType::Type::kInt64: {
-      GenerateDivRemIntegral(rem);
+      GenerateIntRem(rem);
       break;
     }
 
