@@ -468,7 +468,7 @@ class DexLayoutTest : public CommonRuntimeTest {
     }
 
     std::vector<std::string> test_files = { dex_file, profile_file, output_dex, second_output_dex };
-    for (auto test_file : test_files) {
+    for (const std::string& test_file : test_files) {
       if (!UnlinkFile(test_file)) {
         return false;
       }
@@ -501,7 +501,7 @@ class DexLayoutTest : public CommonRuntimeTest {
     }
 
     std::vector<std::string> dex_files = { input_dex, output_dex };
-    for (auto dex_file : dex_files) {
+    for (const std::string& dex_file : dex_files) {
       if (!UnlinkFile(dex_file)) {
         return false;
       }

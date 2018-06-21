@@ -389,7 +389,7 @@ class ProfMan FINAL {
   }
 
   bool OpenApkFilesFromLocations(
-      std::function<void(std::unique_ptr<const DexFile>&&)> process_fn) {
+      const std::function<void(std::unique_ptr<const DexFile>&&)>& process_fn) {
     bool use_apk_fd_list = !apks_fd_.empty();
     if (use_apk_fd_list) {
       // Get the APKs from the collection of FDs.
