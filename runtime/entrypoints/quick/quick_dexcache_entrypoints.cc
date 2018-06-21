@@ -64,7 +64,7 @@ static void StoreObjectInBss(ArtMethod* outer_method,
           << oat_file->GetLocation();
     }
     if (class_loader != nullptr) {
-      runtime->GetHeap()->WriteBarrierEveryFieldOf(class_loader);
+      WriteBarrier::ForEveryFieldWrite(class_loader);
     } else {
       runtime->GetClassLinker()->WriteBarrierForBootOatFileBssRoots(oat_file);
     }

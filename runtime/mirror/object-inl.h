@@ -39,6 +39,7 @@
 #include "runtime.h"
 #include "string.h"
 #include "throwable.h"
+#include "write_barrier-inl.h"
 
 namespace art {
 namespace mirror {
@@ -635,7 +636,7 @@ inline void Object::SetFieldObject(MemberOffset field_offset, ObjPtr<Object> new
   SetFieldObjectWithoutWriteBarrier<kTransactionActive, kCheckTransaction, kVerifyFlags,
       kIsVolatile>(field_offset, new_value);
   if (new_value != nullptr) {
-    Runtime::Current()->GetHeap()->WriteBarrierField(this, field_offset, new_value);
+    WriteBarrier::ForFieldWrite<WriteBarrier::kWithoutNullCheck>(this, field_offset, new_value);
     // TODO: Check field assignment could theoretically cause thread suspension, TODO: fix this.
     CheckFieldAssignment(field_offset, new_value);
   }
@@ -670,7 +671,7 @@ inline bool Object::CasFieldWeakSequentiallyConsistentObject(MemberOffset field_
   bool success = CasFieldWeakSequentiallyConsistentObjectWithoutWriteBarrier<
       kTransactionActive, kCheckTransaction, kVerifyFlags>(field_offset, old_value, new_value);
   if (success) {
-    Runtime::Current()->GetHeap()->WriteBarrierField(this, field_offset, new_value);
+    WriteBarrier::ForFieldWrite(this, field_offset, new_value);
   }
   return success;
 }
@@ -701,7 +702,7 @@ inline bool Object::CasFieldStrongSequentiallyConsistentObject(MemberOffset fiel
   bool success = CasFieldStrongSequentiallyConsistentObjectWithoutWriteBarrier<
       kTransactionActive, kCheckTransaction, kVerifyFlags>(field_offset, old_value, new_value);
   if (success) {
-    Runtime::Current()->GetHeap()->WriteBarrierField(this, field_offset, new_value);
+    WriteBarrier::ForFieldWrite(this, field_offset, new_value);
   }
   return success;
 }
@@ -783,7 +784,7 @@ inline ObjPtr<Object> Object::CompareAndExchangeFieldObject(MemberOffset field_o
     if (kTransactionActive) {
       Runtime::Current()->RecordWriteFieldReference(this, field_offset, witness_value, true);
     }
-    Runtime::Current()->GetHeap()->WriteBarrierField(this, field_offset, new_value);
+    WriteBarrier::ForFieldWrite(this, field_offset, new_value);
   }
   VerifyRead<kVerifyFlags>(witness_value);
   return witness_value;
@@ -807,7 +808,7 @@ inline ObjPtr<Object> Object::ExchangeFieldObject(MemberOffset field_offset,
   if (kTransactionActive) {
     Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
   }
-  Runtime::Current()->GetHeap()->WriteBarrierField(this, field_offset, new_value);
+  WriteBarrier::ForFieldWrite(this, field_offset, new_value);
   VerifyRead<kVerifyFlags>(old_value);
   return old_value;
 }
