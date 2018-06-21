@@ -42,6 +42,7 @@ namespace art {
 class BitVector;
 class CompiledMethod;
 class CompilerDriver;
+class CompilerOptions;
 class DexContainer;
 class ProfileCompilationInfo;
 class TimingLogger;
@@ -180,17 +181,13 @@ class OatWriter {
                             CopyOption copy_dex_files,
                             /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
                             /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files);
+  // Initialize the writer with the given parameters.
+  void Initialize(const CompilerDriver* compiler_driver,
+                  ImageWriter* image_writer,
+                  const std::vector<const DexFile*>& dex_files);
   bool WriteQuickeningInfo(OutputStream* vdex_out);
   bool WriteVerifierDeps(OutputStream* vdex_out, verifier::VerifierDeps* verifier_deps);
   bool WriteChecksumsAndVdexHeader(OutputStream* vdex_out);
-  // Initialize the writer with the given parameters.
-  void Initialize(const CompilerDriver* compiler,
-                  ImageWriter* image_writer,
-                  const std::vector<const DexFile*>& dex_files) {
-    compiler_driver_ = compiler;
-    image_writer_ = image_writer;
-    dex_files_ = &dex_files;
-  }
 
   // Prepare layout of remaining data.
   void PrepareLayout(MultiOatRelativePatcher* relative_patcher);
@@ -261,6 +258,11 @@ class OatWriter {
 
   const CompilerDriver* GetCompilerDriver() const {
     return compiler_driver_;
+  }
+
+  const CompilerOptions& GetCompilerOptions() const {
+    DCHECK(compiler_options_ != nullptr);
+    return *compiler_options_;
   }
 
  private:
@@ -388,6 +390,7 @@ class OatWriter {
   dchecked_vector<debug::MethodDebugInfo> method_info_;
 
   const CompilerDriver* compiler_driver_;
+  const CompilerOptions* compiler_options_;
   ImageWriter* image_writer_;
   const bool compiling_boot_image_;
   // Whether the dex files being compiled are going to be extracted to the vdex.

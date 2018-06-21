@@ -426,9 +426,6 @@ inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode) {
     image_file_sizes.push_back(file->GetLength());
   }
 
-  ASSERT_TRUE(compiler_driver_->GetImageClasses() != nullptr);
-  HashSet<std::string> image_classes(*compiler_driver_->GetImageClasses());
-
   // Need to delete the compiler since it has worker threads which are attached to runtime.
   compiler_driver_.reset();
 
@@ -469,6 +466,7 @@ inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode) {
 
   // We loaded the runtime with an explicit image, so it must exist.
   ASSERT_EQ(heap->GetBootImageSpaces().size(), image_file_sizes.size());
+  const HashSet<std::string>& image_classes = compiler_options_->GetImageClasses();
   for (size_t i = 0; i < helper.dex_file_locations.size(); ++i) {
     std::unique_ptr<const DexFile> dex(
         LoadExpectSingleDexFile(helper.dex_file_locations[i].c_str()));

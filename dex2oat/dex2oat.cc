@@ -642,7 +642,6 @@ class Dex2Oat FINAL {
       driver_(nullptr),
       opened_dex_files_maps_(),
       opened_dex_files_(),
-      no_inline_from_dex_files_(),
       avoid_storing_invocation_(false),
       swap_fd_(kInvalidFd),
       app_image_fd_(kInvalidFd),
@@ -1489,22 +1488,21 @@ class Dex2Oat FINAL {
     if (!IsImage()) {
       return;
     }
-    // If we don't have a profile, treat it as an empty set of classes. b/77340429
-    if (image_classes_ == nullptr) {
-      // May be non-null when --image-classes is passed in, in that case avoid clearing the list.
-      image_classes_.reset(new HashSet<std::string>());
-    }
     if (profile_compilation_info_ != nullptr) {
+      // TODO: The following comment looks outdated or misplaced.
       // Filter out class path classes since we don't want to include these in the image.
-      image_classes_.reset(
-          new HashSet<std::string>(profile_compilation_info_->GetClassDescriptors(dex_files_)));
-      VLOG(compiler) << "Loaded " << image_classes_->size()
+      HashSet<std::string> image_classes =
+          profile_compilation_info_->GetClassDescriptors(dex_files_);
+      VLOG(compiler) << "Loaded " << image_classes.size()
                      << " image class descriptors from profile";
       if (VLOG_IS_ON(compiler)) {
-        for (const std::string& s : *image_classes_) {
+        for (const std::string& s : image_classes) {
           LOG(INFO) << "Image class " << s;
         }
       }
+      // Note: If we have a profile, classes previously loaded for the --image-classes
+      // option are overwritten here.
+      compiler_options_->image_classes_.swap(image_classes);
     }
   }
 
@@ -1810,6 +1808,7 @@ class Dex2Oat FINAL {
         class_path_files = class_loader_context_->FlattenOpenedDexFiles();
       }
 
+      std::vector<const DexFile*> no_inline_from_dex_files;
       std::vector<const std::vector<const DexFile*>*> dex_file_vectors = {
           &class_linker->GetBootClassPath(),
           &class_path_files,
@@ -1832,14 +1831,14 @@ class Dex2Oat FINAL {
 
             if (android::base::StartsWith(dex_location, filter.c_str())) {
               VLOG(compiler) << "Disabling inlining from " << dex_file->GetLocation();
-              no_inline_from_dex_files_.push_back(dex_file);
+              no_inline_from_dex_files.push_back(dex_file);
               break;
             }
           }
         }
       }
-      if (!no_inline_from_dex_files_.empty()) {
-        compiler_options_->no_inline_from_ = &no_inline_from_dex_files_;
+      if (!no_inline_from_dex_files.empty()) {
+        compiler_options_->no_inline_from_.swap(no_inline_from_dex_files);
       }
     }
 
@@ -1848,7 +1847,7 @@ class Dex2Oat FINAL {
                                      compiler_kind_,
                                      instruction_set_,
                                      instruction_set_features_.get(),
-                                     std::move(image_classes_),
+                                     &compiler_options_->image_classes_,
                                      thread_count_,
                                      swap_fd_,
                                      profile_compilation_info_.get()));
@@ -2381,14 +2380,14 @@ class Dex2Oat FINAL {
 
   bool PrepareImageClasses() {
     // If --image-classes was specified, calculate the full list of classes to include in the image.
+    DCHECK(compiler_options_->image_classes_.empty());
     if (image_classes_filename_ != nullptr) {
-      image_classes_ =
+      std::unique_ptr<HashSet<std::string>> image_classes =
           ReadClasses(image_classes_zip_filename_, image_classes_filename_, "image");
-      if (image_classes_ == nullptr) {
+      if (image_classes == nullptr) {
         return false;
       }
-    } else if (IsBootImage()) {
-      image_classes_.reset(new HashSet<std::string>);
+      compiler_options_->image_classes_.swap(*image_classes);
     }
     return true;
   }
@@ -2704,8 +2703,7 @@ class Dex2Oat FINAL {
       LOG(ERROR) << "Failed to open input file " << input_filename;
       return nullptr;
     }
-    std::unique_ptr<T> result(
-        ReadCommentedInputStream<T>(*input_file, process));
+    std::unique_ptr<T> result = ReadCommentedInputStream<T>(*input_file, process);
     input_file->close();
     return result;
   }
@@ -2851,7 +2849,6 @@ class Dex2Oat FINAL {
   ImageHeader::StorageMode image_storage_mode_;
   const char* passes_to_run_filename_;
   const char* dirty_image_objects_filename_;
-  std::unique_ptr<HashSet<std::string>> image_classes_;
   std::unique_ptr<HashSet<std::string>> dirty_image_objects_;
   std::unique_ptr<std::vector<std::string>> passes_to_run_;
   bool multi_image_;
@@ -2871,9 +2868,6 @@ class Dex2Oat FINAL {
 
   std::vector<std::unique_ptr<MemMap>> opened_dex_files_maps_;
   std::vector<std::unique_ptr<const DexFile>> opened_dex_files_;
-
-  // Note that this might contain pointers owned by class_loader_context_.
-  std::vector<const DexFile*> no_inline_from_dex_files_;
 
   bool avoid_storing_invocation_;
   std::string swap_file_name_;
