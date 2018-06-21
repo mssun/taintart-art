@@ -121,16 +121,15 @@ Object* Object::CopyObject(ObjPtr<mirror::Object> dest,
     CopyReferenceFieldsWithReadBarrierVisitor visitor(dest);
     src->VisitReferences(visitor, visitor);
   }
-  gc::Heap* heap = Runtime::Current()->GetHeap();
   // Perform write barriers on copied object references.
   ObjPtr<Class> c = src->GetClass();
   if (c->IsArrayClass()) {
     if (!c->GetComponentType()->IsPrimitive()) {
       ObjectArray<Object>* array = dest->AsObjectArray<Object>();
-      heap->WriteBarrierArray(dest, 0, array->GetLength());
+      WriteBarrier::ForArrayWrite(dest, 0, array->GetLength());
     }
   } else {
-    heap->WriteBarrierEveryFieldOf(dest);
+    WriteBarrier::ForEveryFieldWrite(dest);
   }
   return dest.Ptr();
 }
