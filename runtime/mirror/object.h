@@ -106,9 +106,6 @@ class MANAGED LOCKABLE Object {
   // Get the read barrier state with a load-acquire.
   ALWAYS_INLINE uint32_t GetReadBarrierStateAcquire() REQUIRES_SHARED(Locks::mutator_lock_);
 
-#ifndef USE_BAKER_OR_BROOKS_READ_BARRIER
-  NO_RETURN
-#endif
   ALWAYS_INLINE void SetReadBarrierState(uint32_t rb_state) REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<std::memory_order kMemoryOrder = std::memory_order_relaxed>
