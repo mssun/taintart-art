@@ -26,6 +26,23 @@
 
 namespace art {
 
+void CodeInfo::Decode(const uint8_t* data) {
+  size_t non_header_size = DecodeUnsignedLeb128(&data);
+  size_ = UnsignedLeb128Size(non_header_size) + non_header_size;
+  MemoryRegion region(const_cast<uint8_t*>(data), non_header_size);
+  BitMemoryReader reader(BitMemoryRegion(region), /* bit_offset */ 0);
+  stack_maps_.Decode(reader);
+  register_masks_.Decode(reader);
+  stack_masks_.Decode(reader);
+  invoke_infos_.Decode(reader);
+  inline_infos_.Decode(reader);
+  dex_register_masks_.Decode(reader);
+  dex_register_maps_.Decode(reader);
+  dex_register_catalog_.Decode(reader);
+  number_of_dex_registers_ = DecodeVarintBits(reader);
+  CHECK_EQ(non_header_size, BitsToBytesRoundUp(reader.GetBitOffset())) << "Invalid CodeInfo";
+}
+
 BitTable<StackMap>::const_iterator CodeInfo::BinarySearchNativePc(uint32_t packed_pc) const {
   return std::partition_point(
       stack_maps_.begin(),
