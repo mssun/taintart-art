@@ -322,7 +322,13 @@ class InstructionCodeGeneratorARM64 : public InstructionCodeGenerator {
   void DivRemOneOrMinusOne(HBinaryOperation* instruction);
   void DivRemByPowerOfTwo(HBinaryOperation* instruction);
   void GenerateDivRemWithAnyConstant(HBinaryOperation* instruction);
-  void GenerateDivRemIntegral(HBinaryOperation* instruction);
+  void GenerateIntDiv(HDiv* instruction);
+  void GenerateIntDivForConstDenom(HDiv *instruction);
+  void GenerateIntDivForPower2Denom(HDiv *instruction);
+  void GenerateIntRem(HRem* instruction);
+  void GenerateIntRemForConstDenom(HRem *instruction);
+  void GenerateIntRemForOneOrMinusOneDenom(HRem *instruction);
+  void GenerateIntRemForPower2Denom(HRem *instruction);
   void HandleGoto(HInstruction* got, HBasicBlock* successor);
 
   vixl::aarch64::MemOperand VecAddress(
