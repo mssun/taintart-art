@@ -1242,12 +1242,12 @@ void AppImageClassLoadersAndDexCachesHelper::Update(
           ObjPtr<mirror::Class> klass = types[j].load(std::memory_order_relaxed).object.Read();
           if (space->HasAddress(klass.Ptr())) {
             DCHECK(!klass->IsErroneous()) << klass->GetStatus();
-            auto it = new_class_set->Find(ClassTable::TableSlot(klass));
+            auto it = new_class_set->find(ClassTable::TableSlot(klass));
             DCHECK(it != new_class_set->end());
             DCHECK_EQ(it->Read(), klass);
             ObjPtr<mirror::Class> super_class = klass->GetSuperClass();
             if (super_class != nullptr && !heap->ObjectIsInBootImageSpace(super_class)) {
-              auto it2 = new_class_set->Find(ClassTable::TableSlot(super_class));
+              auto it2 = new_class_set->find(ClassTable::TableSlot(super_class));
               DCHECK(it2 != new_class_set->end());
               DCHECK_EQ(it2->Read(), super_class);
             }

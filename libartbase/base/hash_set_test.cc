@@ -24,6 +24,8 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+
+#include "base/stringpiece.h"
 #include "hash_map.h"
 
 namespace art {
@@ -66,16 +68,16 @@ class HashSetTest : public testing::Test {
 TEST_F(HashSetTest, TestSmoke) {
   HashSet<std::string, IsEmptyFnString> hash_set;
   const std::string test_string = "hello world 1234";
-  ASSERT_TRUE(hash_set.Empty());
-  ASSERT_EQ(hash_set.Size(), 0U);
-  hash_set.Insert(test_string);
-  auto it = hash_set.Find(test_string);
+  ASSERT_TRUE(hash_set.empty());
+  ASSERT_EQ(hash_set.size(), 0U);
+  hash_set.insert(test_string);
+  auto it = hash_set.find(test_string);
   ASSERT_EQ(*it, test_string);
-  auto after_it = hash_set.Erase(it);
+  auto after_it = hash_set.erase(it);
   ASSERT_TRUE(after_it == hash_set.end());
-  ASSERT_TRUE(hash_set.Empty());
-  ASSERT_EQ(hash_set.Size(), 0U);
-  it = hash_set.Find(test_string);
+  ASSERT_TRUE(hash_set.empty());
+  ASSERT_EQ(hash_set.size(), 0U);
+  it = hash_set.find(test_string);
   ASSERT_TRUE(it == hash_set.end());
 }
 
@@ -86,26 +88,26 @@ TEST_F(HashSetTest, TestInsertAndErase) {
   for (size_t i = 0; i < count; ++i) {
     // Insert a bunch of elements and make sure we can find them.
     strings.push_back(RandomString(10));
-    hash_set.Insert(strings[i]);
-    auto it = hash_set.Find(strings[i]);
+    hash_set.insert(strings[i]);
+    auto it = hash_set.find(strings[i]);
     ASSERT_TRUE(it != hash_set.end());
     ASSERT_EQ(*it, strings[i]);
   }
-  ASSERT_EQ(strings.size(), hash_set.Size());
+  ASSERT_EQ(strings.size(), hash_set.size());
   // Try to erase the odd strings.
   for (size_t i = 1; i < count; i += 2) {
-    auto it = hash_set.Find(strings[i]);
+    auto it = hash_set.find(strings[i]);
     ASSERT_TRUE(it != hash_set.end());
     ASSERT_EQ(*it, strings[i]);
-    hash_set.Erase(it);
+    hash_set.erase(it);
   }
   // Test removed.
   for (size_t i = 1; i < count; i += 2) {
-    auto it = hash_set.Find(strings[i]);
+    auto it = hash_set.find(strings[i]);
     ASSERT_TRUE(it == hash_set.end());
   }
   for (size_t i = 0; i < count; i += 2) {
-    auto it = hash_set.Find(strings[i]);
+    auto it = hash_set.find(strings[i]);
     ASSERT_TRUE(it != hash_set.end());
     ASSERT_EQ(*it, strings[i]);
   }
@@ -119,7 +121,7 @@ TEST_F(HashSetTest, TestIterator) {
   for (size_t i = 0; i < count; ++i) {
     // Insert a bunch of elements and make sure we can find them.
     strings.push_back(RandomString(10));
-    hash_set.Insert(strings[i]);
+    hash_set.insert(strings[i]);
   }
   // Make sure we visit each string exactly once.
   std::map<std::string, size_t> found_count;
@@ -133,7 +135,7 @@ TEST_F(HashSetTest, TestIterator) {
   // Remove all the elements with iterator erase.
   for (auto it = hash_set.begin(); it != hash_set.end();) {
     ++found_count[*it];
-    it = hash_set.Erase(it);
+    it = hash_set.erase(it);
     ASSERT_EQ(hash_set.Verify(), 0U);
   }
   for (size_t i = 0; i < count; ++i) {
@@ -147,14 +149,14 @@ TEST_F(HashSetTest, TestSwap) {
   static constexpr size_t count = 1000;
   for (size_t i = 0; i < count; ++i) {
     strings.push_back(RandomString(10));
-    hash_seta.Insert(strings[i]);
+    hash_seta.insert(strings[i]);
   }
   std::swap(hash_seta, hash_setb);
-  hash_seta.Insert("TEST");
-  hash_setb.Insert("TEST2");
+  hash_seta.insert("TEST");
+  hash_setb.insert("TEST2");
   for (size_t i = 0; i < count; ++i) {
     strings.push_back(RandomString(10));
-    hash_seta.Insert(strings[i]);
+    hash_seta.insert(strings[i]);
   }
 }
 
@@ -163,7 +165,7 @@ TEST_F(HashSetTest, TestShrink) {
   std::vector<std::string> strings = {"a", "b", "c", "d", "e", "f", "g"};
   for (size_t i = 0; i < strings.size(); ++i) {
     // Insert some strings into the beginning of our hash set to establish an initial size
-    hash_set.Insert(strings[i]);
+    hash_set.insert(strings[i]);
   }
 
   hash_set.ShrinkToMaximumLoad();
@@ -174,12 +176,12 @@ TEST_F(HashSetTest, TestShrink) {
   static constexpr size_t count = 1000;
   for (size_t i = 0; i < count; ++i) {
     random_strings.push_back(RandomString(10));
-    hash_set.Insert(random_strings[i]);
+    hash_set.insert(random_strings[i]);
   }
 
   // Erase all the extra strings which guarantees that our load factor will be really bad.
   for (size_t i = 0; i < count; ++i) {
-    hash_set.Erase(hash_set.Find(random_strings[i]));
+    hash_set.erase(hash_set.find(random_strings[i]));
   }
 
   const double bad_load = hash_set.CalculateLoadFactor();
@@ -191,7 +193,7 @@ TEST_F(HashSetTest, TestShrink) {
 
   // Make sure all the initial elements we had are still there
   for (const std::string& initial_string : strings) {
-    EXPECT_NE(hash_set.end(), hash_set.Find(initial_string))
+    EXPECT_NE(hash_set.end(), hash_set.find(initial_string))
         << "expected to find " << initial_string;
   }
 }
@@ -201,7 +203,7 @@ TEST_F(HashSetTest, TestLoadFactor) {
   static constexpr size_t kStringCount = 1000;
   static constexpr double kEpsilon = 0.01;
   for (size_t i = 0; i < kStringCount; ++i) {
-    hash_set.Insert(RandomString(i % 10 + 1));
+    hash_set.insert(RandomString(i % 10 + 1));
   }
   // Check that changing the load factor resizes the table to be within the target range.
   EXPECT_GE(hash_set.CalculateLoadFactor() + kEpsilon, hash_set.GetMinLoadFactor());
@@ -228,29 +230,29 @@ TEST_F(HashSetTest, TestStress) {
   SetSeed(seed);
   LOG(INFO) << "Starting stress test with seed " << seed;
   for (size_t i = 0; i < operations; ++i) {
-    ASSERT_EQ(hash_set.Size(), std_set.size());
+    ASSERT_EQ(hash_set.size(), std_set.size());
     size_t delta = std::abs(static_cast<ssize_t>(target_size) -
-                            static_cast<ssize_t>(hash_set.Size()));
+                            static_cast<ssize_t>(hash_set.size()));
     size_t n = PRand();
     if (n % target_size == 0) {
-      hash_set.Clear();
+      hash_set.clear();
       std_set.clear();
-      ASSERT_TRUE(hash_set.Empty());
+      ASSERT_TRUE(hash_set.empty());
       ASSERT_TRUE(std_set.empty());
     } else  if (n % target_size < delta) {
       // Skew towards adding elements until we are at the desired size.
       const std::string& s = strings[PRand() % string_count];
-      hash_set.Insert(s);
+      hash_set.insert(s);
       std_set.insert(s);
-      ASSERT_EQ(*hash_set.Find(s), *std_set.find(s));
+      ASSERT_EQ(*hash_set.find(s), *std_set.find(s));
     } else {
       const std::string& s = strings[PRand() % string_count];
-      auto it1 = hash_set.Find(s);
+      auto it1 = hash_set.find(s);
       auto it2 = std_set.find(s);
       ASSERT_EQ(it1 == hash_set.end(), it2 == std_set.end());
       if (it1 != hash_set.end()) {
         ASSERT_EQ(*it1, *it2);
-        hash_set.Erase(it1);
+        hash_set.erase(it1);
         std_set.erase(it2);
       }
     }
@@ -268,13 +270,13 @@ struct IsEmptyStringPair {
 
 TEST_F(HashSetTest, TestHashMap) {
   HashMap<std::string, int, IsEmptyStringPair> hash_map;
-  hash_map.Insert(std::make_pair(std::string("abcd"), 123));
-  hash_map.Insert(std::make_pair(std::string("abcd"), 124));
-  hash_map.Insert(std::make_pair(std::string("bags"), 444));
-  auto it = hash_map.Find(std::string("abcd"));
+  hash_map.insert(std::make_pair(std::string("abcd"), 123));
+  hash_map.insert(std::make_pair(std::string("abcd"), 124));
+  hash_map.insert(std::make_pair(std::string("bags"), 444));
+  auto it = hash_map.find(std::string("abcd"));
   ASSERT_EQ(it->second, 123);
-  hash_map.Erase(it);
-  it = hash_map.Find(std::string("abcd"));
+  hash_map.erase(it);
+  it = hash_map.find(std::string("abcd"));
   ASSERT_EQ(it->second, 124);
 }
 
@@ -325,33 +327,50 @@ struct VectorIntHashEquals {
 
 TEST_F(HashSetTest, TestLookupByAlternateKeyType) {
   HashSet<std::vector<int>, IsEmptyFnVectorInt, VectorIntHashEquals, VectorIntHashEquals> hash_set;
-  hash_set.Insert(std::vector<int>({1, 2, 3, 4}));
-  hash_set.Insert(std::vector<int>({4, 2}));
-  ASSERT_EQ(hash_set.end(), hash_set.Find(std::vector<int>({1, 1, 1, 1})));
-  ASSERT_NE(hash_set.end(), hash_set.Find(std::vector<int>({1, 2, 3, 4})));
-  ASSERT_EQ(hash_set.end(), hash_set.Find(std::forward_list<int>({1, 1, 1, 1})));
-  ASSERT_NE(hash_set.end(), hash_set.Find(std::forward_list<int>({1, 2, 3, 4})));
+  hash_set.insert(std::vector<int>({1, 2, 3, 4}));
+  hash_set.insert(std::vector<int>({4, 2}));
+  ASSERT_EQ(hash_set.end(), hash_set.find(std::vector<int>({1, 1, 1, 1})));
+  ASSERT_NE(hash_set.end(), hash_set.find(std::vector<int>({1, 2, 3, 4})));
+  ASSERT_EQ(hash_set.end(), hash_set.find(std::forward_list<int>({1, 1, 1, 1})));
+  ASSERT_NE(hash_set.end(), hash_set.find(std::forward_list<int>({1, 2, 3, 4})));
 }
 
 TEST_F(HashSetTest, TestReserve) {
   HashSet<std::string, IsEmptyFnString> hash_set;
   std::vector<size_t> sizes = {1, 10, 25, 55, 128, 1024, 4096};
   for (size_t size : sizes) {
-    hash_set.Reserve(size);
+    hash_set.reserve(size);
     const size_t buckets_before = hash_set.NumBuckets();
     // Check that we expanded enough.
     CHECK_GE(hash_set.ElementsUntilExpand(), size);
     // Try inserting elements until we are at our reserve size and ensure the hash set did not
     // expand.
-    while (hash_set.Size() < size) {
-      hash_set.Insert(std::to_string(hash_set.Size()));
+    while (hash_set.size() < size) {
+      hash_set.insert(std::to_string(hash_set.size()));
     }
     CHECK_EQ(hash_set.NumBuckets(), buckets_before);
   }
   // Check the behaviour for shrinking, it does not necessarily resize down.
   constexpr size_t size = 100;
-  hash_set.Reserve(size);
+  hash_set.reserve(size);
   CHECK_GE(hash_set.ElementsUntilExpand(), size);
+}
+
+TEST_F(HashSetTest, IteratorConversion) {
+  const char* test_string = "dummy";
+  HashSet<std::string> hash_set;
+  HashSet<std::string>::iterator it = hash_set.insert(test_string);
+  HashSet<std::string>::const_iterator cit = it;
+  ASSERT_TRUE(it == cit);
+  ASSERT_EQ(*it, *cit);
+}
+
+TEST_F(HashSetTest, StringSearchyStringPiece) {
+  const char* test_string = "dummy";
+  HashSet<std::string> hash_set;
+  HashSet<std::string>::iterator insert_pos = hash_set.insert(test_string);
+  HashSet<std::string>::iterator it = hash_set.find(StringPiece(test_string));
+  ASSERT_TRUE(it == insert_pos);
 }
 
 }  // namespace art

@@ -708,8 +708,8 @@ TEST_F(SuperblockClonerTest, FastCaseCheck) {
   orig_bb_set.SetBit(preheader->GetBlockId());
 
   // Adjust incoming edges.
-  remap_incoming.Clear();
-  remap_incoming.Insert(HEdge(preheader->GetSinglePredecessor(), preheader));
+  remap_incoming.clear();
+  remap_incoming.insert(HEdge(preheader->GetSinglePredecessor(), preheader));
 
   HBasicBlockMap bb_map(std::less<HBasicBlock*>(), arena->Adapter(kArenaAllocSuperblockCloner));
   HInstructionMap hir_map(std::less<HInstruction*>(), arena->Adapter(kArenaAllocSuperblockCloner));

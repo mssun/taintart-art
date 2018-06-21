@@ -72,12 +72,12 @@ static bool ArePhiInputsTheSame(const HPhi* phi) {
 
 // Returns whether two Edge sets are equal (ArenaHashSet doesn't have "Equal" method).
 static bool EdgeHashSetsEqual(const HEdgeSet* set1, const HEdgeSet* set2) {
-  if (set1->Size() != set2->Size()) {
+  if (set1->size() != set2->size()) {
     return false;
   }
 
   for (auto e : *set1) {
-    if (set2->Find(e) == set2->end()) {
+    if (set2->find(e) == set2->end()) {
       return false;
     }
   }
@@ -472,8 +472,8 @@ void SuperblockCloner::RemapEdgesSuccessors() {
         continue;
       }
 
-      auto orig_redir = remap_orig_internal_->Find(HEdge(orig_block_id, orig_succ_id));
-      auto copy_redir = remap_copy_internal_->Find(HEdge(orig_block_id, orig_succ_id));
+      auto orig_redir = remap_orig_internal_->find(HEdge(orig_block_id, orig_succ_id));
+      auto copy_redir = remap_copy_internal_->find(HEdge(orig_block_id, orig_succ_id));
 
       // Due to construction all successors of copied block were set to original.
       if (copy_redir != remap_copy_internal_->end()) {
@@ -864,9 +864,9 @@ bool SuperblockCloner::IsFastCase() const {
                           EdgeHashSetsEqual(&remap_copy_internal, remap_copy_internal_) &&
                           EdgeHashSetsEqual(&remap_incoming, remap_incoming_);
 
-  remap_orig_internal.Clear();
-  remap_copy_internal.Clear();
-  remap_incoming.Clear();
+  remap_orig_internal.clear();
+  remap_copy_internal.clear();
+  remap_incoming.clear();
 
   // Check whether remapping info corresponds to loop peeling.
   CollectRemappingInfoForPeelUnroll(/* to_unroll*/ false,
@@ -1022,16 +1022,16 @@ void CollectRemappingInfoForPeelUnroll(bool to_unroll,
   for (HBasicBlock* back_edge_block : loop_info->GetBackEdges()) {
     HEdge e = HEdge(back_edge_block, loop_header);
     if (to_unroll) {
-      remap_orig_internal->Insert(e);
-      remap_copy_internal->Insert(e);
+      remap_orig_internal->insert(e);
+      remap_copy_internal->insert(e);
     } else {
-      remap_copy_internal->Insert(e);
+      remap_copy_internal->insert(e);
     }
   }
 
   // Set up remap_incoming edges set.
   if (!to_unroll) {
-    remap_incoming->Insert(HEdge(loop_info->GetPreHeader(), loop_header));
+    remap_incoming->insert(HEdge(loop_info->GetPreHeader(), loop_header));
   }
 }
 

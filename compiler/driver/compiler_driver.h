@@ -20,7 +20,6 @@
 #include <atomic>
 #include <set>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 #include "android-base/strings.h"
@@ -28,6 +27,7 @@
 #include "arch/instruction_set.h"
 #include "base/array_ref.h"
 #include "base/bit_utils.h"
+#include "base/hash_set.h"
 #include "base/mutex.h"
 #include "base/os.h"
 #include "base/quasi_atomic.h"
@@ -99,7 +99,7 @@ class CompilerDriver {
                  Compiler::Kind compiler_kind,
                  InstructionSet instruction_set,
                  const InstructionSetFeatures* instruction_set_features,
-                 std::unordered_set<std::string>* image_classes,
+                 std::unique_ptr<HashSet<std::string>>&& image_classes,
                  size_t thread_count,
                  int swap_fd,
                  const ProfileCompilationInfo* profile_compilation_info);
@@ -144,7 +144,7 @@ class CompilerDriver {
     return compiler_.get();
   }
 
-  const std::unordered_set<std::string>* GetImageClasses() const {
+  const HashSet<std::string>* GetImageClasses() const {
     return image_classes_.get();
   }
 
@@ -493,12 +493,12 @@ class CompilerDriver {
 
   // If image_ is true, specifies the classes that will be included in the image.
   // Note if image_classes_ is null, all classes are included in the image.
-  std::unique_ptr<std::unordered_set<std::string>> image_classes_;
+  std::unique_ptr<HashSet<std::string>> image_classes_;
 
   // Specifies the classes that will be compiled. Note that if classes_to_compile_ is null,
   // all classes are eligible for compilation (duplication filters etc. will still apply).
   // This option may be restricted to the boot image, depending on a flag in the implementation.
-  std::unique_ptr<std::unordered_set<std::string>> classes_to_compile_;
+  std::unique_ptr<HashSet<std::string>> classes_to_compile_;
 
   std::atomic<uint32_t> number_of_soft_verifier_failures_;
 
