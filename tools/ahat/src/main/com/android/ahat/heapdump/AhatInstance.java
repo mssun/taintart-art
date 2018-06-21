@@ -453,6 +453,18 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
+   * Returns the class object that this object represents the overhead for.
+   * ART adds a fake byte[] $classOverhead static field to classes to show the
+   * overheads associated with the class. If this is one such byte[] instance,
+   * returns the class it is associated with. Otherwise null is returned.
+   *
+   * @return the class instance that this is the overhead for
+   */
+  public AhatClassObj getAssociatedClassForOverhead() {
+    return null;
+  }
+
+  /**
    * Returns the (bounded-length) string associated with this instance.
    * Applies to instances of java.lang.String, char[], and in some cases
    * byte[]. Returns null if this object cannot be interpreted as a string.
