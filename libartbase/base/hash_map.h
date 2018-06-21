@@ -48,9 +48,12 @@ class HashMapWrapper {
   Fn fn_;
 };
 
-template <class Key, class Value, class EmptyFn,
-    class HashFn = std::hash<Key>, class Pred = std::equal_to<Key>,
-    class Alloc = std::allocator<std::pair<Key, Value>>>
+template <class Key,
+          class Value,
+          class EmptyFn,
+          class HashFn = DefaultHashFn<Key>,
+          class Pred = DefaultPred<Key>,
+          class Alloc = std::allocator<std::pair<Key, Value>>>
 class HashMap : public HashSet<std::pair<Key, Value>,
                                EmptyFn,
                                HashMapWrapper<HashFn>,

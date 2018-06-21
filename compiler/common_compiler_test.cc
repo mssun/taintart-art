@@ -136,9 +136,9 @@ void CommonCompilerTest::MakeExecutable(ObjPtr<mirror::ClassLoader> class_loader
 
 // Get the set of image classes given to the compiler-driver in SetUp. Note: the compiler
 // driver assumes ownership of the set, so the test should properly release the set.
-std::unordered_set<std::string>* CommonCompilerTest::GetImageClasses() {
+std::unique_ptr<HashSet<std::string>> CommonCompilerTest::GetImageClasses() {
   // Empty set: by default no classes are retained in the image.
-  return new std::unordered_set<std::string>();
+  return std::make_unique<HashSet<std::string>>();
 }
 
 // Get ProfileCompilationInfo that should be passed to the driver.
