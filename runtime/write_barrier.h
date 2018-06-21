@@ -34,22 +34,22 @@ class WriteBarrier {
     kWithNullCheck,
   };
 
-  // Must be called if a field of an Object in the heap changes, and before any GC safe-point.
-  // The call is not needed if null is stored in the field.
+  // Must be called if a reference field of an Object in the heap changes, and before any GC
+  // safe-point. The call is not needed if null is stored in the field.
   template <NullCheck kNullCheck = kWithNullCheck>
   ALWAYS_INLINE static void ForFieldWrite(ObjPtr<mirror::Object> dst,
                                           MemberOffset offset ATTRIBUTE_UNUSED,
                                           ObjPtr<mirror::Object> new_value ATTRIBUTE_UNUSED)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Must be called if a field of an Object in the heap changes, and before any GC safe-point.
-  // The call is not needed if null is stored in the field.
+  // Must be called if a reference field of an ObjectArray in the heap changes, and before any GC
+  // safe-point. The call is not needed if null is stored in the field.
   ALWAYS_INLINE static void ForArrayWrite(ObjPtr<mirror::Object> dst,
                                           int start_offset ATTRIBUTE_UNUSED,
                                           size_t length ATTRIBUTE_UNUSED)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Write barrier for every field in an object.
+  // Write barrier for every reference field in an object.
   ALWAYS_INLINE static void ForEveryFieldWrite(ObjPtr<mirror::Object> obj)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
