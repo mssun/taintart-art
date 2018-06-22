@@ -532,13 +532,6 @@
         "bug": "b/33650497"
     },
     {
-        "tests": "640-checker-integer-valueof",
-        "description": [
-            "The java.lang.Integer.valueOf intrinsic is not supported in PIC mode."
-        ],
-        "variant": "optimizing & pictest | speed-profile & pictest"
-    },
-    {
         "tests": "202-thread-oome",
         "description": "ASAN aborts when large thread stacks are requested.",
         "variant": "host",

@@ -26,6 +26,7 @@
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "gc/accounting/card_table.h"
+#include "gc/space/image_space.h"
 #include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_mips.h"
@@ -1737,6 +1738,22 @@ void CodeGeneratorMIPS::EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchInfo
   }
   // A following instruction will add the sign-extended low half of the 32-bit
   // offset to `out` (e.g. lw, jialc, addiu).
+}
+
+void CodeGeneratorMIPS::LoadBootImageAddress(Register reg, uint32_t boot_image_offset) {
+  DCHECK(!GetCompilerOptions().IsBootImage());
+  if (GetCompilerOptions().GetCompilePic()) {
+    DCHECK(Runtime::Current()->IsAotCompiler());
+    PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_offset);
+    PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_offset, info_high);
+    EmitPcRelativeAddressPlaceholderHigh(info_high, reg, /* base */ ZERO);
+    __ Lw(reg, reg, /* placeholder */ 0x5678, &info_low->label);
+  } else {
+    gc::Heap* heap = Runtime::Current()->GetHeap();
+    DCHECK(!heap->GetBootImageSpaces().empty());
+    const uint8_t* address = heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset;
+    __ LoadConst32(reg, dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(address)));
+  }
 }
 
 CodeGeneratorMIPS::JitPatchInfo* CodeGeneratorMIPS::NewJitRootStringPatch(

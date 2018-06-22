@@ -645,6 +645,8 @@ class CodeGeneratorMIPS : public CodeGenerator {
                                             Register out,
                                             Register base);
 
+  void LoadBootImageAddress(Register reg, uint32_t boot_image_offset);
+
   // The JitPatchInfo is used for JIT string and class loads.
   struct JitPatchInfo {
     JitPatchInfo(const DexFile& dex_file, uint64_t idx)

@@ -615,6 +615,8 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
                                             GpuRegister out,
                                             PcRelativePatchInfo* info_low = nullptr);
 
+  void LoadBootImageAddress(GpuRegister reg, uint32_t boot_image_offset);
+
   void PatchJitRootUse(uint8_t* code,
                        const uint8_t* roots_data,
                        const Literal* literal,

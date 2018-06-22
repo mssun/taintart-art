@@ -52,7 +52,6 @@
 #include "handle_scope-inl.h"
 #include "image.h"
 #include "imt_conflict_table.h"
-#include "subtype_check.h"
 #include "jni/jni_internal.h"
 #include "linear_alloc.h"
 #include "lock_word.h"
@@ -71,8 +70,10 @@
 #include "oat.h"
 #include "oat_file.h"
 #include "oat_file_manager.h"
+#include "optimizing/intrinsic_objects.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
+#include "subtype_check.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
 #include "well_known_classes.h"
 
@@ -1332,47 +1333,6 @@ ObjPtr<mirror::ObjectArray<mirror::Object>> ImageWriter::CollectDexCaches(Thread
   return dex_caches;
 }
 
-static ObjPtr<mirror::ObjectArray<mirror::Object>> LookupIntegerCache(Thread* self,
-                                                                      ClassLinker* class_linker)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjPtr<mirror::Class> integer_cache_class = class_linker->LookupClass(
-      self, "Ljava/lang/Integer$IntegerCache;", /* class_linker */ nullptr);
-  if (integer_cache_class == nullptr || !integer_cache_class->IsInitialized()) {
-    return nullptr;
-  }
-  ArtField* cache_field =
-      integer_cache_class->FindDeclaredStaticField("cache", "[Ljava/lang/Integer;");
-  CHECK(cache_field != nullptr);
-  ObjPtr<ObjectArray<mirror::Object>> integer_cache =
-      ObjPtr<ObjectArray<mirror::Object>>::DownCast(cache_field->GetObject(integer_cache_class));
-  CHECK(integer_cache != nullptr);
-  return integer_cache;
-}
-
-static ObjPtr<mirror::ObjectArray<mirror::Object>> CollectBootImageLiveObjects(
-    Thread* self,
-    ClassLinker* class_linker) REQUIRES_SHARED(Locks::mutator_lock_) {
-  // The objects used for the Integer.valueOf() intrinsic must remain live even if references
-  // to them are removed using reflection. Image roots are not accessible through reflection,
-  // so the array we construct here shall keep them alive.
-  StackHandleScope<1> hs(self);
-  Handle<ObjectArray<mirror::Object>> integer_cache =
-      hs.NewHandle(LookupIntegerCache(self, class_linker));
-  size_t live_objects_size =
-      (integer_cache != nullptr) ? (/* cache */ 1u + integer_cache->GetLength()) : 0u;
-  ObjPtr<mirror::ObjectArray<mirror::Object>> live_objects = ObjectArray<Object>::Alloc(
-      self, GetClassRoot<ObjectArray<Object>>(class_linker), live_objects_size);
-  int32_t index = 0;
-  if (integer_cache != nullptr) {
-    live_objects->Set(index++, integer_cache.Get());
-    for (int32_t i = 0, length = integer_cache->GetLength(); i != length; ++i) {
-      live_objects->Set(index++, integer_cache->Get(i));
-    }
-  }
-  CHECK_EQ(index, live_objects->GetLength());
-  return live_objects;
-}
-
 ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
   Runtime* runtime = Runtime::Current();
   ClassLinker* class_linker = runtime->GetClassLinker();
@@ -1397,7 +1357,7 @@ ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
                           runtime->GetPreAllocatedNoClassDefFoundError());
   if (!compile_app_image_) {
     ObjPtr<ObjectArray<Object>> boot_image_live_objects =
-        CollectBootImageLiveObjects(self, class_linker);
+        IntrinsicObjects::AllocateBootImageLiveObjects(self, class_linker);
     image_roots->Set<false>(ImageHeader::kBootImageLiveObjects, boot_image_live_objects);
   }
   for (int32_t i = 0, num = ImageHeader::NumberOfImageRoots(compile_app_image_); i != num; ++i) {
