@@ -74,7 +74,9 @@ static constexpr bool kIsPGOInstrumentation = false;
 // ART_TARGET - Defined for target builds of ART.
 // ART_TARGET_LINUX - Defined for target Linux builds of ART.
 // ART_TARGET_ANDROID - Defined for target Android builds of ART.
-// Note: Either ART_TARGET_LINUX or ART_TARGET_ANDROID need to be set when ART_TARGET is set.
+// ART_TARGET_FUCHSIA - Defined for Fuchsia builds of ART.
+// Note: Either ART_TARGET_LINUX, ART_TARGET_ANDROID or ART_TARGET_FUCHSIA
+//       need to be set when ART_TARGET is set.
 // Note: When ART_TARGET_LINUX is defined mem_map.h will not be using Ashmem for memory mappings
 // (usually only available on Android kernels).
 #if defined(ART_TARGET)
@@ -82,10 +84,16 @@ static constexpr bool kIsPGOInstrumentation = false;
 static constexpr bool kIsTargetBuild = true;
 # if defined(ART_TARGET_LINUX)
 static constexpr bool kIsTargetLinux = true;
+static constexpr bool kIsTargetFuchsia = false;
 # elif defined(ART_TARGET_ANDROID)
 static constexpr bool kIsTargetLinux = false;
+static constexpr bool kIsTargetFuchsia = false;
+# elif defined(ART_TARGET_FUCHSIA)
+static constexpr bool kIsTargetLinux = false;
+static constexpr bool kIsTargetFuchsia = true;
 # else
-# error "Either ART_TARGET_LINUX or ART_TARGET_ANDROID needs to be defined for target builds."
+# error "Either ART_TARGET_LINUX, ART_TARGET_ANDROID or ART_TARGET_FUCHSIA " \
+        "needs to be defined for target builds."
 # endif
 #else
 static constexpr bool kIsTargetBuild = false;
@@ -93,8 +101,11 @@ static constexpr bool kIsTargetBuild = false;
 # error "ART_TARGET_LINUX defined for host build."
 # elif defined(ART_TARGET_ANDROID)
 # error "ART_TARGET_ANDROID defined for host build."
+# elif defined(ART_TARGET_FUCHSIA)
+# error "ART_TARGET_FUCHSIA defined for host build."
 # else
 static constexpr bool kIsTargetLinux = false;
+static constexpr bool kIsTargetFuchsia = false;
 # endif
 #endif
 

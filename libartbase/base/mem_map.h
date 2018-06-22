@@ -29,10 +29,11 @@
 
 namespace art {
 
-#if defined(__LP64__) && (defined(__aarch64__) || defined(__mips__) || defined(__APPLE__))
+#if defined(__LP64__) && !defined(__Fuchsia__) && \
+    (defined(__aarch64__) || defined(__mips__) || defined(__APPLE__))
 #define USE_ART_LOW_4G_ALLOCATOR 1
 #else
-#if defined(__LP64__) && !defined(__x86_64__)
+#if defined(__LP64__) && !defined(__Fuchsia__) && !defined(__x86_64__)
 #error "Unrecognized 64-bit architecture."
 #endif
 #define USE_ART_LOW_4G_ALLOCATOR 0
@@ -264,6 +265,12 @@ class MemMap {
                                              off_t offset)
       REQUIRES(!MemMap::mem_maps_lock_);
 
+  // member function to access real_munmap
+  static bool CheckMapRequest(uint8_t* expected_ptr,
+                              void* actual_ptr,
+                              size_t byte_count,
+                              std::string* error_msg);
+
   const std::string name_;
   uint8_t* begin_;  // Start of data. May be changed by AlignBy.
   size_t size_;  // Length of data.
@@ -284,7 +291,18 @@ class MemMap {
 
 #if USE_ART_LOW_4G_ALLOCATOR
   static uintptr_t next_mem_pos_;   // Next memory location to check for low_4g extent.
+
+  static void* TryMemMapLow4GB(void* ptr,
+                               size_t page_aligned_byte_count,
+                               int prot,
+                               int flags,
+                               int fd,
+                               off_t offset);
 #endif
+
+  static void TargetMMapInit();
+  static void* TargetMMap(void* start, size_t len, int prot, int flags, int fd, off_t fd_off);
+  static int TargetMUnmap(void* start, size_t len);
 
   static std::mutex* mem_maps_lock_;
 

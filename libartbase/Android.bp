@@ -31,6 +31,8 @@ cc_defaults {
         "base/malloc_arena_pool.cc",
         "base/memory_region.cc",
         "base/mem_map.cc",
+        // "base/mem_map_fuchsia.cc", put in target when fuchsia supported by soong
+        "base/mem_map_unix.cc",
         "base/os_linux.cc",
         "base/runtime_debug.cc",
         "base/safe_copy.cc",
