@@ -1521,12 +1521,12 @@ TEST_F(ClassLinkerTest, RegisterDexFileName) {
   dex_cache->SetLocation(location.Get());
   const DexFile* old_dex_file = dex_cache->GetDexFile();
 
-  std::unique_ptr<DexFile> dex_file(new StandardDexFile(old_dex_file->Begin(),
-                                                        old_dex_file->Size(),
-                                                        location->ToModifiedUtf8(),
-                                                        0u,
-                                                        nullptr,
-                                                        nullptr));
+  std::unique_ptr<DexFile> dex_file(
+      new StandardDexFile(std::make_unique<NonOwningDexFileContainer>(old_dex_file->Begin(),
+                                                                      old_dex_file->Size()),
+                          location->ToModifiedUtf8(),
+                          0u,
+                          nullptr));
   {
     WriterMutexLock mu(soa.Self(), *Locks::dex_lock_);
     // Check that inserting with a UTF16 name works.
