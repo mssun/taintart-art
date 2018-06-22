@@ -61,6 +61,16 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
   current_stack_map_[StackMap::kPackedNativePc] =
       StackMap::PackNativePc(native_pc_offset, instruction_set_);
   current_stack_map_[StackMap::kDexPc] = dex_pc;
+  if (stack_maps_.size() > 0) {
+    // Check that non-catch stack maps are sorted by pc.
+    // Catch stack maps are at the end and may be unordered.
+    if (stack_maps_.back()[StackMap::kKind] == StackMap::Kind::Catch) {
+      DCHECK(current_stack_map_[StackMap::kKind] == StackMap::Kind::Catch);
+    } else if (current_stack_map_[StackMap::kKind] != StackMap::Kind::Catch) {
+      DCHECK_LE(stack_maps_.back()[StackMap::kPackedNativePc],
+                current_stack_map_[StackMap::kPackedNativePc]);
+    }
+  }
   if (register_mask != 0) {
     uint32_t shift = LeastSignificantBit(register_mask);
     BitTableBuilder<RegisterMask>::Entry entry;
