@@ -26,6 +26,27 @@
 
 namespace art {
 
+BitTable<StackMap>::const_iterator CodeInfo::BinarySearchNativePc(uint32_t packed_pc) const {
+  return std::partition_point(
+      stack_maps_.begin(),
+      stack_maps_.end(),
+      [packed_pc](const StackMap& sm) {
+        return sm.GetPackedNativePc() < packed_pc && sm.GetKind() != StackMap::Kind::Catch;
+      });
+}
+
+StackMap CodeInfo::GetStackMapForNativePcOffset(uint32_t pc, InstructionSet isa) const {
+  auto it = BinarySearchNativePc(StackMap::PackNativePc(pc, isa));
+  // Start at the lower bound and iterate over all stack maps with the given native pc.
+  for (; it != stack_maps_.end() && (*it).GetNativePcOffset(isa) == pc; ++it) {
+    StackMap::Kind kind = static_cast<StackMap::Kind>((*it).GetKind());
+    if (kind == StackMap::Kind::Default || kind == StackMap::Kind::OSR) {
+      return *it;
+    }
+  }
+  return StackMap();
+}
+
 // Scan backward to determine dex register locations at given stack map.
 // All registers for a stack map are combined - inlined registers are just appended,
 // therefore 'first_dex_register' allows us to select a sub-range to decode.
