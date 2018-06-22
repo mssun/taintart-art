@@ -114,13 +114,17 @@ ClassExt* Class::EnsureExtDataPresent(Thread* self) {
     bool set;
     // Set the ext_data_ field using CAS semantics.
     if (Runtime::Current()->IsActiveTransaction()) {
-      set = h_this->CasFieldStrongSequentiallyConsistentObject<true>(ext_offset,
-                                                                     ObjPtr<ClassExt>(nullptr),
-                                                                     new_ext.Get());
+      set = h_this->CasFieldObject<true>(ext_offset,
+                                         nullptr,
+                                         new_ext.Get(),
+                                         CASMode::kStrong,
+                                         std::memory_order_seq_cst);
     } else {
-      set = h_this->CasFieldStrongSequentiallyConsistentObject<false>(ext_offset,
-                                                                      ObjPtr<ClassExt>(nullptr),
-                                                                      new_ext.Get());
+      set = h_this->CasFieldObject<false>(ext_offset,
+                                          nullptr,
+                                          new_ext.Get(),
+                                          CASMode::kStrong,
+                                          std::memory_order_seq_cst);
     }
     ObjPtr<ClassExt> ret(set ? new_ext.Get() : h_this->GetExtData());
     DCHECK(!set || h_this->GetExtData() == new_ext.Get());
