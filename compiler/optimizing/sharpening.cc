@@ -191,14 +191,14 @@ HLoadClass::LoadKind HSharpening::ComputeLoadClassKind(
         desired_load_kind = HLoadClass::LoadKind::kBootImageLinkTimePcRelative;
       } else {
         // Not a boot image class.
-        DCHECK(ContainsElement(compiler_driver->GetDexFilesForOatFile(), &dex_file));
+        DCHECK(ContainsElement(compiler_options.GetDexFilesForOatFile(), &dex_file));
         desired_load_kind = HLoadClass::LoadKind::kBssEntry;
       }
     } else {
       is_in_boot_image = (klass != nullptr) &&
           runtime->GetHeap()->ObjectIsInBootImageSpace(klass.Get());
       if (runtime->UseJitCompilation()) {
-        DCHECK(!codegen->GetCompilerOptions().GetCompilePic());
+        DCHECK(!compiler_options.GetCompilePic());
         if (is_in_boot_image) {
           // TODO: Use direct pointers for all non-moving spaces, not just boot image. Bug: 29530787
           desired_load_kind = HLoadClass::LoadKind::kBootImageAddress;
@@ -331,14 +331,15 @@ void HSharpening::ProcessLoadString(
         : hs.NewHandle(class_linker->FindDexCache(soa.Self(), dex_file));
     ObjPtr<mirror::String> string = nullptr;
 
-    if (codegen->GetCompilerOptions().IsBootImage()) {
+    const CompilerOptions& compiler_options = codegen->GetCompilerOptions();
+    if (compiler_options.IsBootImage()) {
       // Compiling boot image. Resolve the string and allocate it if needed, to ensure
       // the string will be added to the boot image.
       DCHECK(!runtime->UseJitCompilation());
       string = class_linker->ResolveString(string_index, dex_cache);
       CHECK(string != nullptr);
       if (compiler_driver->GetSupportBootImageFixup()) {
-        DCHECK(ContainsElement(compiler_driver->GetDexFilesForOatFile(), &dex_file));
+        DCHECK(ContainsElement(compiler_options.GetDexFilesForOatFile(), &dex_file));
         desired_load_kind = HLoadString::LoadKind::kBootImageLinkTimePcRelative;
       } else {
         // compiler_driver_test. Do not sharpen.

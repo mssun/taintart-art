@@ -126,7 +126,7 @@ void HInliner::UpdateInliningBudget() {
 }
 
 bool HInliner::Run() {
-  if (compiler_driver_->GetCompilerOptions().GetInlineMaxCodeUnits() == 0) {
+  if (codegen_->GetCompilerOptions().GetInlineMaxCodeUnits() == 0) {
     // Inlining effectively disabled.
     return false;
   } else if (graph_->IsDebuggable()) {
@@ -731,7 +731,7 @@ HInliner::InlineCacheType HInliner::ExtractClassesFromOfflineProfile(
         offline_profile.dex_references.size());
   for (size_t i = 0; i < offline_profile.dex_references.size(); i++) {
     bool found = false;
-    for (const DexFile* dex_file : compiler_driver_->GetDexFilesForOatFile()) {
+    for (const DexFile* dex_file : codegen_->GetCompilerOptions().GetDexFilesForOatFile()) {
       if (offline_profile.dex_references[i].MatchesDex(dex_file)) {
         dex_profile_index_to_dex_cache[i] =
             caller_compilation_unit_.GetClassLinker()->FindDexCache(self, *dex_file);
@@ -1418,6 +1418,22 @@ size_t HInliner::CountRecursiveCallsOf(ArtMethod* method) const {
   return count;
 }
 
+static inline bool MayInline(const CompilerOptions& compiler_options,
+                             const DexFile& inlined_from,
+                             const DexFile& inlined_into) {
+  if (kIsTargetBuild) {
+    return true;
+  }
+
+  // We're not allowed to inline across dex files if we're the no-inline-from dex file.
+  if (!IsSameDexFile(inlined_from, inlined_into) &&
+      ContainsElement(compiler_options.GetNoInlineFromDexFile(), &inlined_from)) {
+    return false;
+  }
+
+  return true;
+}
+
 bool HInliner::TryBuildAndInline(HInvoke* invoke_instruction,
                                  ArtMethod* method,
                                  ReferenceTypeInfo receiver_type,
@@ -1439,8 +1455,9 @@ bool HInliner::TryBuildAndInline(HInvoke* invoke_instruction,
 
   // Check whether we're allowed to inline. The outermost compilation unit is the relevant
   // dex file here (though the transitivity of an inline chain would allow checking the calller).
-  if (!compiler_driver_->MayInline(method->GetDexFile(),
-                                   outer_compilation_unit_.GetDexFile())) {
+  if (!MayInline(codegen_->GetCompilerOptions(),
+                 *method->GetDexFile(),
+                 *outer_compilation_unit_.GetDexFile())) {
     if (TryPatternSubstitution(invoke_instruction, method, return_replacement)) {
       LOG_SUCCESS() << "Successfully replaced pattern of invoke "
                     << method->PrettyMethod();
@@ -1465,7 +1482,7 @@ bool HInliner::TryBuildAndInline(HInvoke* invoke_instruction,
     return false;
   }
 
-  size_t inline_max_code_units = compiler_driver_->GetCompilerOptions().GetInlineMaxCodeUnits();
+  size_t inline_max_code_units = codegen_->GetCompilerOptions().GetInlineMaxCodeUnits();
   if (accessor.InsnsSizeInCodeUnits() > inline_max_code_units) {
     LOG_FAIL(stats_, MethodCompilationStat::kNotInlinedCodeItem)
         << "Method " << method->PrettyMethod()
