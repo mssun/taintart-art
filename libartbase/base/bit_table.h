@@ -134,14 +134,14 @@ class BitTableAccessor {
   static constexpr uint32_t kNumColumns = NumColumns;
   static constexpr uint32_t kNoValue = BitTableBase<kNumColumns>::kNoValue;
 
-  BitTableAccessor() {}
   BitTableAccessor(const BitTableBase<kNumColumns>* table, uint32_t row)
       : table_(table), row_(row) {
+    DCHECK(table_ != nullptr);
   }
 
   ALWAYS_INLINE uint32_t Row() const { return row_; }
 
-  ALWAYS_INLINE bool IsValid() const { return table_ != nullptr && row_ < table_->NumRows(); }
+  ALWAYS_INLINE bool IsValid() const { return row_ < table_->NumRows(); }
 
   ALWAYS_INLINE bool Equals(const BitTableAccessor& other) {
     return this->table_ == other.table_ && this->row_ == other.row_;
@@ -222,6 +222,10 @@ class BitTable : public BitTableBase<Accessor::kNumColumns> {
 
   ALWAYS_INLINE Accessor GetRow(uint32_t row) const {
     return Accessor(this, row);
+  }
+
+  ALWAYS_INLINE Accessor GetInvalidRow() const {
+    return Accessor(this, static_cast<uint32_t>(-1));
   }
 };
 
