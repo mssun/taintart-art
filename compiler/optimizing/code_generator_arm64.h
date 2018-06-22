@@ -636,6 +636,8 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                 vixl::aarch64::Register out,
                                 vixl::aarch64::Register base);
 
+  void LoadBootImageAddress(vixl::aarch64::Register reg, uint32_t boot_image_offset);
+
   void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
   bool NeedsThunkCode(const linker::LinkerPatch& patch) const OVERRIDE;
   void EmitThunkCode(const linker::LinkerPatch& patch,

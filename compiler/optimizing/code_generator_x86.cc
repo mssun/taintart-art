@@ -23,6 +23,7 @@
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "gc/accounting/card_table.h"
+#include "gc/space/image_space.h"
 #include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_x86.h"
@@ -2188,7 +2189,9 @@ void LocationsBuilderX86::VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invok
 
   IntrinsicLocationsBuilderX86 intrinsic(codegen_);
   if (intrinsic.TryDispatch(invoke)) {
-    if (invoke->GetLocations()->CanCall() && invoke->HasPcRelativeMethodLoadKind()) {
+    if (invoke->GetLocations()->CanCall() &&
+        invoke->HasPcRelativeMethodLoadKind() &&
+        invoke->GetLocations()->InAt(invoke->GetSpecialInputIndex()).IsInvalid()) {
       invoke->GetLocations()->SetInAt(invoke->GetSpecialInputIndex(), Location::Any());
     }
     return;
@@ -4967,6 +4970,28 @@ Label* CodeGeneratorX86::NewStringBssEntryPatch(HLoadString* load_string) {
   string_bss_entry_patches_.emplace_back(
       method_address, &load_string->GetDexFile(), load_string->GetStringIndex().index_);
   return &string_bss_entry_patches_.back().label;
+}
+
+void CodeGeneratorX86::LoadBootImageAddress(Register reg,
+                                            uint32_t boot_image_offset,
+                                            HInvokeStaticOrDirect* invoke) {
+  DCHECK(!GetCompilerOptions().IsBootImage());
+  if (GetCompilerOptions().GetCompilePic()) {
+    DCHECK(Runtime::Current()->IsAotCompiler());
+    DCHECK_EQ(invoke->InputCount(), invoke->GetNumberOfArguments() + 1u);
+    HX86ComputeBaseMethodAddress* method_address =
+        invoke->InputAt(invoke->GetSpecialInputIndex())->AsX86ComputeBaseMethodAddress();
+    DCHECK(method_address != nullptr);
+    Register method_address_reg =
+        invoke->GetLocations()->InAt(invoke->GetSpecialInputIndex()).AsRegister<Register>();
+    __ movl(reg, Address(method_address_reg, CodeGeneratorX86::kDummy32BitOffset));
+    RecordBootImageRelRoPatch(method_address, boot_image_offset);
+  } else {
+    gc::Heap* heap = Runtime::Current()->GetHeap();
+    DCHECK(!heap->GetBootImageSpaces().empty());
+    const uint8_t* address = heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset;
+    __ movl(reg, Immediate(dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(address))));
+  }
 }
 
 // The label points to the end of the "movl" or another instruction but the literal offset

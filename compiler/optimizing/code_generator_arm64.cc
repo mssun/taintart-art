@@ -27,6 +27,7 @@
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "gc/accounting/card_table.h"
+#include "gc/space/image_space.h"
 #include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_arm64.h"
@@ -4785,6 +4786,25 @@ void CodeGeneratorARM64::EmitLdrOffsetPlaceholder(vixl::aarch64::Label* fixup_la
   SingleEmissionCheckScope guard(GetVIXLAssembler());
   __ Bind(fixup_label);
   __ ldr(out, MemOperand(base, /* offset placeholder */ 0));
+}
+
+void CodeGeneratorARM64::LoadBootImageAddress(vixl::aarch64::Register reg,
+                                              uint32_t boot_image_offset) {
+  DCHECK(!GetCompilerOptions().IsBootImage());
+  if (GetCompilerOptions().GetCompilePic()) {
+    DCHECK(Runtime::Current()->IsAotCompiler());
+    // Add ADRP with its PC-relative .data.bimg.rel.ro patch.
+    vixl::aarch64::Label* adrp_label = NewBootImageRelRoPatch(boot_image_offset);
+    EmitAdrpPlaceholder(adrp_label, reg.X());
+    // Add LDR with its PC-relative .data.bimg.rel.ro patch.
+    vixl::aarch64::Label* ldr_label = NewBootImageRelRoPatch(boot_image_offset, adrp_label);
+    EmitLdrOffsetPlaceholder(ldr_label, reg.W(), reg.X());
+  } else {
+    gc::Heap* heap = Runtime::Current()->GetHeap();
+    DCHECK(!heap->GetBootImageSpaces().empty());
+    const uint8_t* address = heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset;
+    __ Ldr(reg.W(), DeduplicateBootImageAddressLiteral(reinterpret_cast<uintptr_t>(address)));
+  }
 }
 
 template <linker::LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
