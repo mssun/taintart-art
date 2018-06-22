@@ -31,13 +31,12 @@ TEST(BitTableTest, TestVarint) {
     uint32_t values[] = { 0, 1, 11, 12, 15, 16, 255, 256, ~1u, ~0u };
     for (uint32_t value : values) {
       std::vector<uint8_t> buffer;
-      size_t encode_bit_offset = start_bit_offset;
-      EncodeVarintBits(&buffer, &encode_bit_offset, value);
+      BitMemoryWriter<std::vector<uint8_t>> writer(&buffer, start_bit_offset);
+      EncodeVarintBits(writer, value);
 
-      size_t decode_bit_offset = start_bit_offset;
-      BitMemoryRegion region(MemoryRegion(buffer.data(), buffer.size()));
-      uint32_t result = DecodeVarintBits(region, &decode_bit_offset);
-      EXPECT_EQ(encode_bit_offset, decode_bit_offset);
+      BitMemoryReader reader(writer.GetWrittenRegion(), start_bit_offset);
+      uint32_t result = DecodeVarintBits(reader);
+      EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
       EXPECT_EQ(value, result);
     }
   }
@@ -49,13 +48,13 @@ TEST(BitTableTest, TestEmptyTable) {
   ScopedArenaAllocator allocator(&arena_stack);
 
   std::vector<uint8_t> buffer;
-  size_t encode_bit_offset = 0;
+  BitMemoryWriter<std::vector<uint8_t>> writer(&buffer);
   BitTableBuilderBase<1> builder(&allocator);
-  builder.Encode(&buffer, &encode_bit_offset);
+  builder.Encode(writer);
 
-  size_t decode_bit_offset = 0;
-  BitTableBase<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
-  EXPECT_EQ(encode_bit_offset, decode_bit_offset);
+  BitMemoryReader reader(writer.GetWrittenRegion());
+  BitTableBase<1> table(reader);
+  EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
   EXPECT_EQ(0u, table.NumRows());
 }
 
@@ -66,17 +65,17 @@ TEST(BitTableTest, TestSingleColumnTable) {
 
   constexpr uint32_t kNoValue = -1;
   std::vector<uint8_t> buffer;
-  size_t encode_bit_offset = 0;
+  BitMemoryWriter<std::vector<uint8_t>> writer(&buffer);
   BitTableBuilderBase<1> builder(&allocator);
   builder.Add({42u});
   builder.Add({kNoValue});
   builder.Add({1000u});
   builder.Add({kNoValue});
-  builder.Encode(&buffer, &encode_bit_offset);
+  builder.Encode(writer);
 
-  size_t decode_bit_offset = 0;
-  BitTableBase<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
-  EXPECT_EQ(encode_bit_offset, decode_bit_offset);
+  BitMemoryReader reader(writer.GetWrittenRegion());
+  BitTableBase<1> table(reader);
+  EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
   EXPECT_EQ(4u, table.NumRows());
   EXPECT_EQ(42u, table.Get(0));
   EXPECT_EQ(kNoValue, table.Get(1));
@@ -92,14 +91,14 @@ TEST(BitTableTest, TestUnalignedTable) {
 
   for (size_t start_bit_offset = 0; start_bit_offset <= 32; start_bit_offset++) {
     std::vector<uint8_t> buffer;
-    size_t encode_bit_offset = start_bit_offset;
+    BitMemoryWriter<std::vector<uint8_t>> writer(&buffer, start_bit_offset);
     BitTableBuilderBase<1> builder(&allocator);
     builder.Add({42u});
-    builder.Encode(&buffer, &encode_bit_offset);
+    builder.Encode(writer);
 
-    size_t decode_bit_offset = start_bit_offset;
-    BitTableBase<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
-    EXPECT_EQ(encode_bit_offset, decode_bit_offset) << " start_bit_offset=" << start_bit_offset;
+    BitMemoryReader reader(writer.GetWrittenRegion(), start_bit_offset);
+    BitTableBase<1> table(reader);
+    EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
     EXPECT_EQ(1u, table.NumRows());
     EXPECT_EQ(42u, table.Get(0));
   }
@@ -112,15 +111,15 @@ TEST(BitTableTest, TestBigTable) {
 
   constexpr uint32_t kNoValue = -1;
   std::vector<uint8_t> buffer;
-  size_t encode_bit_offset = 0;
+  BitMemoryWriter<std::vector<uint8_t>> writer(&buffer);
   BitTableBuilderBase<4> builder(&allocator);
   builder.Add({42u, kNoValue, 0u, static_cast<uint32_t>(-2)});
   builder.Add({62u, kNoValue, 63u, static_cast<uint32_t>(-3)});
-  builder.Encode(&buffer, &encode_bit_offset);
+  builder.Encode(writer);
 
-  size_t decode_bit_offset = 0;
-  BitTableBase<4> table(buffer.data(), buffer.size(), &decode_bit_offset);
-  EXPECT_EQ(encode_bit_offset, decode_bit_offset);
+  BitMemoryReader reader(writer.GetWrittenRegion());
+  BitTableBase<4> table(reader);
+  EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
   EXPECT_EQ(2u, table.NumRows());
   EXPECT_EQ(42u, table.Get(0, 0));
   EXPECT_EQ(kNoValue, table.Get(0, 1));
@@ -157,7 +156,7 @@ TEST(BitTableTest, TestBitmapTable) {
   ScopedArenaAllocator allocator(&arena_stack);
 
   std::vector<uint8_t> buffer;
-  size_t encode_bit_offset = 0;
+  BitMemoryWriter<std::vector<uint8_t>> writer(&buffer);
   const uint64_t value = 0xDEADBEEF0BADF00Dull;
   BitmapTableBuilder builder(&allocator);
   std::multimap<uint64_t, size_t> indicies;  // bitmap -> row.
@@ -165,12 +164,12 @@ TEST(BitTableTest, TestBitmapTable) {
     uint64_t bitmap = value & MaxInt<uint64_t>(bit_length);
     indicies.emplace(bitmap, builder.Dedup(&bitmap, MinimumBitsToStore(bitmap)));
   }
-  builder.Encode(&buffer, &encode_bit_offset);
+  builder.Encode(writer);
   EXPECT_EQ(1 + static_cast<uint32_t>(POPCOUNT(value)), builder.size());
 
-  size_t decode_bit_offset = 0;
-  BitTableBase<1> table(buffer.data(), buffer.size(), &decode_bit_offset);
-  EXPECT_EQ(encode_bit_offset, decode_bit_offset);
+  BitMemoryReader reader(writer.GetWrittenRegion());
+  BitTableBase<1> table(reader);
+  EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
   for (auto it : indicies) {
     uint64_t expected = it.first;
     BitMemoryRegion actual = table.GetBitMemoryRegion(it.second);

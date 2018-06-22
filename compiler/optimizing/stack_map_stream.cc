@@ -301,16 +301,16 @@ size_t StackMapStream::PrepareForFillIn() {
     }
   }
 
-  size_t bit_offset = 0;
-  stack_maps_.Encode(&out_, &bit_offset);
-  register_masks_.Encode(&out_, &bit_offset);
-  stack_masks_.Encode(&out_, &bit_offset);
-  invoke_infos_.Encode(&out_, &bit_offset);
-  inline_infos_.Encode(&out_, &bit_offset);
-  dex_register_masks_.Encode(&out_, &bit_offset);
-  dex_register_maps_.Encode(&out_, &bit_offset);
-  dex_register_catalog_.Encode(&out_, &bit_offset);
-  EncodeVarintBits(&out_, &bit_offset, num_dex_registers_);
+  BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&out_);
+  stack_maps_.Encode(out);
+  register_masks_.Encode(out);
+  stack_masks_.Encode(out);
+  invoke_infos_.Encode(out);
+  inline_infos_.Encode(out);
+  dex_register_masks_.Encode(out);
+  dex_register_maps_.Encode(out);
+  dex_register_catalog_.Encode(out);
+  EncodeVarintBits(out, num_dex_registers_);
 
   return UnsignedLeb128Size(out_.size()) +  out_.size();
 }
