@@ -2851,57 +2851,76 @@ void IntrinsicCodeGeneratorX86::VisitSystemArrayCopy(HInvoke* invoke) {
 }
 
 void IntrinsicLocationsBuilderX86::VisitIntegerValueOf(HInvoke* invoke) {
+  DCHECK(invoke->IsInvokeStaticOrDirect());
   InvokeRuntimeCallingConvention calling_convention;
   IntrinsicVisitor::ComputeIntegerValueOfLocations(
       invoke,
       codegen_,
       Location::RegisterLocation(EAX),
       Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
+
+  LocationSummary* locations = invoke->GetLocations();
+  if (locations != nullptr) {
+    HInvokeStaticOrDirect* invoke_static_or_direct = invoke->AsInvokeStaticOrDirect();
+    if (invoke_static_or_direct->HasSpecialInput() &&
+        invoke->InputAt(invoke_static_or_direct->GetSpecialInputIndex())
+            ->IsX86ComputeBaseMethodAddress()) {
+      locations->SetInAt(invoke_static_or_direct->GetSpecialInputIndex(),
+                         Location::RequiresRegister());
+    }
+  }
 }
 
 void IntrinsicCodeGeneratorX86::VisitIntegerValueOf(HInvoke* invoke) {
-  IntrinsicVisitor::IntegerValueOfInfo info = IntrinsicVisitor::ComputeIntegerValueOfInfo();
+  DCHECK(invoke->IsInvokeStaticOrDirect());
+  IntrinsicVisitor::IntegerValueOfInfo info = IntrinsicVisitor::ComputeIntegerValueOfInfo(invoke);
   LocationSummary* locations = invoke->GetLocations();
   X86Assembler* assembler = GetAssembler();
 
   Register out = locations->Out().AsRegister<Register>();
   InvokeRuntimeCallingConvention calling_convention;
+  Register argument = calling_convention.GetRegisterAt(0);
   if (invoke->InputAt(0)->IsConstant()) {
     int32_t value = invoke->InputAt(0)->AsIntConstant()->GetValue();
-    if (value >= info.low && value <= info.high) {
+    if (info.value_boot_image_offset != 0u) {
       // Just embed the j.l.Integer in the code.
-      ScopedObjectAccess soa(Thread::Current());
-      mirror::Object* boxed = info.cache->Get(value + (-info.low));
-      DCHECK(boxed != nullptr && Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(boxed));
-      uint32_t address = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(boxed));
-      __ movl(out, Immediate(address));
+      codegen_->LoadBootImageAddress(
+          out, info.value_boot_image_offset, invoke->AsInvokeStaticOrDirect());
     } else {
+      DCHECK(locations->CanCall());
       // Allocate and initialize a new j.l.Integer.
       // TODO: If we JIT, we could allocate the j.l.Integer now, and store it in the
       // JIT object table.
-      uint32_t address = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(info.integer));
-      __ movl(calling_convention.GetRegisterAt(0), Immediate(address));
+      codegen_->LoadBootImageAddress(
+          argument, info.integer_boot_image_offset, invoke->AsInvokeStaticOrDirect());
       codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
       CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
       __ movl(Address(out, info.value_offset), Immediate(value));
     }
   } else {
+    DCHECK(locations->CanCall());
     Register in = locations->InAt(0).AsRegister<Register>();
     // Check bounds of our cache.
     __ leal(out, Address(in, -info.low));
-    __ cmpl(out, Immediate(info.high - info.low + 1));
+    __ cmpl(out, Immediate(info.length));
     NearLabel allocate, done;
     __ j(kAboveEqual, &allocate);
     // If the value is within the bounds, load the j.l.Integer directly from the array.
-    uint32_t data_offset = mirror::Array::DataOffset(kHeapReferenceSize).Uint32Value();
-    uint32_t address = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(info.cache));
-    __ movl(out, Address(out, TIMES_4, data_offset + address));
+    constexpr size_t kElementSize = sizeof(mirror::HeapReference<mirror::Object>);
+    uint32_t mid_array_boot_image_offset =
+        info.array_data_boot_image_offset - info.low * kElementSize;
+    codegen_->LoadBootImageAddress(
+        out, mid_array_boot_image_offset, invoke->AsInvokeStaticOrDirect());
+    DCHECK_NE(out, in);
+    static_assert((1u << TIMES_4) == sizeof(mirror::HeapReference<mirror::Object>),
+                  "Check heap reference size.");
+    __ movl(out, Address(out, in, TIMES_4, 0));
     __ MaybeUnpoisonHeapReference(out);
     __ jmp(&done);
     __ Bind(&allocate);
     // Otherwise allocate and initialize a new j.l.Integer.
-    address = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(info.integer));
-    __ movl(calling_convention.GetRegisterAt(0), Immediate(address));
+    codegen_->LoadBootImageAddress(
+        argument, info.integer_boot_image_offset, invoke->AsInvokeStaticOrDirect());
     codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
     CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
     __ movl(Address(out, info.value_offset), in);

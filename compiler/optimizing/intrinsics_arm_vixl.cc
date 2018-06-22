@@ -2940,7 +2940,7 @@ void IntrinsicLocationsBuilderARMVIXL::VisitIntegerValueOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARMVIXL::VisitIntegerValueOf(HInvoke* invoke) {
-  IntrinsicVisitor::IntegerValueOfInfo info = IntrinsicVisitor::ComputeIntegerValueOfInfo();
+  IntrinsicVisitor::IntegerValueOfInfo info = IntrinsicVisitor::ComputeIntegerValueOfInfo(invoke);
   LocationSummary* locations = invoke->GetLocations();
   ArmVIXLAssembler* const assembler = GetAssembler();
 
@@ -2951,20 +2951,15 @@ void IntrinsicCodeGeneratorARMVIXL::VisitIntegerValueOf(HInvoke* invoke) {
   vixl32::Register argument = calling_convention.GetRegisterAt(0);
   if (invoke->InputAt(0)->IsConstant()) {
     int32_t value = invoke->InputAt(0)->AsIntConstant()->GetValue();
-    if (value >= info.low && value <= info.high) {
+    if (info.value_boot_image_offset != 0u) {
       // Just embed the j.l.Integer in the code.
-      ScopedObjectAccess soa(Thread::Current());
-      mirror::Object* boxed = info.cache->Get(value + (-info.low));
-      DCHECK(boxed != nullptr && Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(boxed));
-      uint32_t address = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(boxed));
-      __ Ldr(out, codegen_->DeduplicateBootImageAddressLiteral(address));
+      codegen_->LoadBootImageAddress(out, info.value_boot_image_offset);
     } else {
+      DCHECK(locations->CanCall());
       // Allocate and initialize a new j.l.Integer.
       // TODO: If we JIT, we could allocate the j.l.Integer now, and store it in the
       // JIT object table.
-      uint32_t address =
-          dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(info.integer));
-      __ Ldr(argument, codegen_->DeduplicateBootImageAddressLiteral(address));
+      codegen_->LoadBootImageAddress(argument, info.integer_boot_image_offset);
       codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
       CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
       __ Mov(temp, value);
@@ -2974,23 +2969,21 @@ void IntrinsicCodeGeneratorARMVIXL::VisitIntegerValueOf(HInvoke* invoke) {
       codegen_->GenerateMemoryBarrier(MemBarrierKind::kStoreStore);
     }
   } else {
+    DCHECK(locations->CanCall());
     vixl32::Register in = RegisterFrom(locations->InAt(0));
     // Check bounds of our cache.
     __ Add(out, in, -info.low);
-    __ Cmp(out, info.high - info.low + 1);
+    __ Cmp(out, info.length);
     vixl32::Label allocate, done;
     __ B(hs, &allocate, /* is_far_target */ false);
     // If the value is within the bounds, load the j.l.Integer directly from the array.
-    uint32_t data_offset = mirror::Array::DataOffset(kHeapReferenceSize).Uint32Value();
-    uint32_t address = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(info.cache));
-    __ Ldr(temp, codegen_->DeduplicateBootImageAddressLiteral(data_offset + address));
+    codegen_->LoadBootImageAddress(temp, info.array_data_boot_image_offset);
     codegen_->LoadFromShiftedRegOffset(DataType::Type::kReference, locations->Out(), temp, out);
     assembler->MaybeUnpoisonHeapReference(out);
     __ B(&done);
     __ Bind(&allocate);
     // Otherwise allocate and initialize a new j.l.Integer.
-    address = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(info.integer));
-    __ Ldr(argument, codegen_->DeduplicateBootImageAddressLiteral(address));
+    codegen_->LoadBootImageAddress(argument, info.integer_boot_image_offset);
     codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
     CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
     assembler->StoreToOffset(kStoreWord, in, out, info.value_offset);

@@ -126,33 +126,32 @@ class IntrinsicVisitor : public ValueObject {
                                              Location return_location,
                                              Location first_argument_location);
 
-  // Temporary data structure for holding Integer.valueOf useful data. We only
-  // use it if the mirror::Class* are in the boot image, so it is fine to keep raw
-  // mirror::Class pointers in this structure.
+  // Temporary data structure for holding Integer.valueOf data for generating code.
+  // We only use it if the boot image contains the IntegerCache objects.
   struct IntegerValueOfInfo {
-    IntegerValueOfInfo()
-        : integer_cache(nullptr),
-          integer(nullptr),
-          cache(nullptr),
-          low(0),
-          high(0),
-          value_offset(0) {}
+    IntegerValueOfInfo();
 
-    // The java.lang.IntegerCache class.
-    mirror::Class* integer_cache;
-    // The java.lang.Integer class.
-    mirror::Class* integer;
-    // Value of java.lang.IntegerCache#cache.
-    mirror::ObjectArray<mirror::Object>* cache;
-    // Value of java.lang.IntegerCache#low.
+    // Boot image offset of java.lang.Integer for allocating an instance.
+    uint32_t integer_boot_image_offset;
+    // Offset of the Integer.value field for initializing a newly allocated instance.
+    uint32_t value_offset;
+    // The low value in the cache.
     int32_t low;
-    // Value of java.lang.IntegerCache#high.
-    int32_t high;
-    // The offset of java.lang.Integer.value.
-    int32_t value_offset;
+    // The length of the cache array.
+    uint32_t length;
+
+    union {
+      // Boot image offset of the target Integer object for constant input in the cache range.
+      // If the input is out of range, this is set to 0u and the code must allocate a new Integer.
+      uint32_t value_boot_image_offset;
+
+      // Boot image offset of the cache array data used for non-constant input in the cache range.
+      // If the input is out of range, the code must allocate a new Integer.
+      uint32_t array_data_boot_image_offset;
+    };
   };
 
-  static IntegerValueOfInfo ComputeIntegerValueOfInfo();
+  static IntegerValueOfInfo ComputeIntegerValueOfInfo(HInvoke* invoke);
 
  protected:
   IntrinsicVisitor() {}

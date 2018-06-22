@@ -429,7 +429,7 @@ class CodeGeneratorX86_64 : public CodeGenerator {
                               dex::TypeIndex type_index,
                               Handle<mirror::Class> handle);
 
-  void MoveFromReturnRegister(Location trg, DataType::Type type) OVERRIDE;
+  void LoadBootImageAddress(CpuRegister reg, uint32_t boot_image_offset);
 
   void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
 
@@ -565,6 +565,8 @@ class CodeGeneratorX86_64 : public CodeGenerator {
 
   // Store a 64 bit value into a DoubleStackSlot in the most efficient manner.
   void Store64BitValueToStack(Location dest, int64_t value);
+
+  void MoveFromReturnRegister(Location trg, DataType::Type type) OVERRIDE;
 
   // Assign a 64 bit constant to an address.
   void MoveInt64ToAddress(const Address& addr_low,

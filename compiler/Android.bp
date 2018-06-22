@@ -63,6 +63,7 @@ art_cc_defaults {
         "optimizing/inliner.cc",
         "optimizing/instruction_builder.cc",
         "optimizing/instruction_simplifier.cc",
+        "optimizing/intrinsic_objects.cc",
         "optimizing/intrinsics.cc",
         "optimizing/licm.cc",
         "optimizing/linear_order.cc",
