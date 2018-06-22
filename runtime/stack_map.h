@@ -445,22 +445,7 @@ class CodeInfo {
                             uint32_t first_dex_register,
                             /*out*/ DexRegisterMap* map) const;
 
-  void Decode(const uint8_t* data) {
-    size_t non_header_size = DecodeUnsignedLeb128(&data);
-    BitMemoryRegion region(MemoryRegion(const_cast<uint8_t*>(data), non_header_size));
-    size_t bit_offset = 0;
-    size_ = UnsignedLeb128Size(non_header_size) + non_header_size;
-    stack_maps_.Decode(region, &bit_offset);
-    register_masks_.Decode(region, &bit_offset);
-    stack_masks_.Decode(region, &bit_offset);
-    invoke_infos_.Decode(region, &bit_offset);
-    inline_infos_.Decode(region, &bit_offset);
-    dex_register_masks_.Decode(region, &bit_offset);
-    dex_register_maps_.Decode(region, &bit_offset);
-    dex_register_catalog_.Decode(region, &bit_offset);
-    number_of_dex_registers_ = DecodeVarintBits(region, &bit_offset);
-    CHECK_EQ(non_header_size, BitsToBytesRoundUp(bit_offset)) << "Invalid CodeInfo";
-  }
+  void Decode(const uint8_t* data);
 
   size_t size_;
   BitTable<StackMap> stack_maps_;
