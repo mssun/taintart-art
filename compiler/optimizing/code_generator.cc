@@ -393,6 +393,11 @@ void CodeGenerator::Compile(CodeAllocator* allocator) {
   HGraphVisitor* instruction_visitor = GetInstructionVisitor();
   DCHECK_EQ(current_block_index_, 0u);
 
+  GetStackMapStream()->BeginMethod(HasEmptyFrame() ? 0 : frame_size_,
+                                   core_spill_mask_,
+                                   fpu_spill_mask_,
+                                   GetGraph()->GetNumberOfVRegs());
+
   size_t frame_start = GetAssembler()->CodeSize();
   GenerateFrameEntry();
   DCHECK_EQ(GetAssembler()->cfi().GetCurrentCFAOffset(), static_cast<int>(frame_size_));
@@ -435,6 +440,8 @@ void CodeGenerator::Compile(CodeAllocator* allocator) {
 
   // Finalize instructions in assember;
   Finalize(allocator);
+
+  GetStackMapStream()->EndMethod();
 }
 
 void CodeGenerator::Finalize(CodeAllocator* allocator) {
@@ -1087,7 +1094,7 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
   if (instruction == nullptr) {
     // For stack overflow checks and native-debug-info entries without dex register
     // mapping (i.e. start of basic block or start of slow path).
-    stack_map_stream->BeginStackMapEntry(dex_pc, native_pc, 0, 0, 0, 0);
+    stack_map_stream->BeginStackMapEntry(dex_pc, native_pc);
     stack_map_stream->EndStackMapEntry();
     return;
   }
@@ -1135,8 +1142,6 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
                                        native_pc,
                                        register_mask,
                                        locations->GetStackMask(),
-                                       outer_environment_size,
-                                       inlining_depth,
                                        kind);
   EmitEnvironment(environment, slow_path);
   // Record invoke info, the common case for the trampoline is super and static invokes. Only
@@ -1204,15 +1209,12 @@ void CodeGenerator::RecordCatchBlockInfo() {
 
     uint32_t dex_pc = block->GetDexPc();
     uint32_t num_vregs = graph_->GetNumberOfVRegs();
-    uint32_t inlining_depth = 0;  // Inlining of catch blocks is not supported at the moment.
     uint32_t native_pc = GetAddressOf(block);
 
     stack_map_stream->BeginStackMapEntry(dex_pc,
                                          native_pc,
                                          /* register_mask */ 0,
                                          /* stack_mask */ nullptr,
-                                         num_vregs,
-                                         inlining_depth,
                                          StackMap::Kind::Catch);
 
     HInstruction* current_phi = block->GetFirstPhi();
