@@ -70,12 +70,7 @@ void CommonCompilerTest::MakeExecutable(ArtMethod* method) {
     const uint32_t method_info_offset = method_info.empty() ? 0u
         : vmap_table_offset + method_info.size();
 
-    OatQuickMethodHeader method_header(vmap_table_offset,
-                                       method_info_offset,
-                                       compiled_method->GetFrameSizeInBytes(),
-                                       compiled_method->GetCoreSpillMask(),
-                                       compiled_method->GetFpSpillMask(),
-                                       code_size);
+    OatQuickMethodHeader method_header(vmap_table_offset, method_info_offset, code_size);
 
     header_code_and_maps_chunks_.push_back(std::vector<uint8_t>());
     std::vector<uint8_t>* chunk = &header_code_and_maps_chunks_.back();

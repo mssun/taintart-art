@@ -619,9 +619,6 @@ CompiledMethod* DexToDexCompiler::CompileMethod(
       driver_,
       instruction_set,
       ArrayRef<const uint8_t>(),                   // no code
-      0,
-      0,
-      0,
       ArrayRef<const uint8_t>(),                   // method_info
       ArrayRef<const uint8_t>(quicken_data),       // vmap_table
       ArrayRef<const uint8_t>(),                   // cfi data
