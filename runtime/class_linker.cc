@@ -805,7 +805,7 @@ void ClassLinker::FinishInit(Thread* self) {
   // Note: we hard code the field indexes here rather than using FindInstanceField
   // as the types of the field can't be resolved prior to the runtime being
   // fully initialized
-  StackHandleScope<2> hs(self);
+  StackHandleScope<3> hs(self);
   Handle<mirror::Class> java_lang_ref_Reference =
       hs.NewHandle(GetClassRoot<mirror::Reference>(this));
   Handle<mirror::Class> java_lang_ref_FinalizerReference =
@@ -846,6 +846,20 @@ void ClassLinker::FinishInit(Thread* self) {
   // disable the slow paths in FindClass and CreatePrimitiveClass now
   // that Object, Class, and Object[] are setup
   init_done_ = true;
+
+  // Under sanitization, the small carve-out to handle stack overflow might not be enough to
+  // initialize the StackOverflowError class (as it might require running the verifier). Instead,
+  // ensure that the class will be initialized.
+  if (kMemoryToolIsAvailable && !Runtime::Current()->IsAotCompiler()) {
+    verifier::MethodVerifier::Init();  // Need to prepare the verifier.
+
+    ObjPtr<mirror::Class> soe_klass = FindSystemClass(self, "Ljava/lang/StackOverflowError;");
+    if (soe_klass == nullptr || !EnsureInitialized(self, hs.NewHandle(soe_klass), true, true)) {
+      // Strange, but don't crash.
+      LOG(WARNING) << "Could not prepare StackOverflowError.";
+      self->ClearException();
+    }
+  }
 
   VLOG(startup) << "ClassLinker::FinishInit exiting";
 }
