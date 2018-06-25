@@ -28,6 +28,7 @@
 #include "dex/compact_dex_level.h"
 #include "driver/compiler_options_map.h"
 #include "image.h"
+#include "linker/oat_writer.h"
 
 namespace art {
 
