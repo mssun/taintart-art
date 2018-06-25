@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/globals.h"
+#include "base/hash_set.h"
 #include "base/macros.h"
 #include "base/utils.h"
 #include "compiler_filter.h"
@@ -230,9 +231,15 @@ class CompilerOptions FINAL {
     return abort_on_soft_verifier_failure_;
   }
 
-  const std::vector<const DexFile*>* GetNoInlineFromDexFile() const {
+  const std::vector<const DexFile*>& GetNoInlineFromDexFile() const {
     return no_inline_from_;
   }
+
+  const HashSet<std::string>& GetImageClasses() const {
+    return image_classes_;
+  }
+
+  bool IsImageClass(const char* descriptor) const;
 
   bool ParseCompilerOptions(const std::vector<std::string>& options,
                             bool ignore_unrecognized,
@@ -301,10 +308,14 @@ class CompilerOptions FINAL {
   size_t num_dex_methods_threshold_;
   size_t inline_max_code_units_;
 
-  // Dex files from which we should not inline code.
+  // Dex files from which we should not inline code. Does not own the dex files.
   // This is usually a very short list (i.e. a single dex file), so we
   // prefer vector<> over a lookup-oriented container, such as set<>.
-  const std::vector<const DexFile*>* no_inline_from_;
+  std::vector<const DexFile*> no_inline_from_;
+
+  // Image classes, specifies the classes that will be included in the image if creating an image.
+  // Must not be empty for real boot image, only for tests pretending to compile boot image.
+  HashSet<std::string> image_classes_;
 
   bool boot_image_;
   bool core_image_;

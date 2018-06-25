@@ -99,7 +99,7 @@ class CompilerDriver {
                  Compiler::Kind compiler_kind,
                  InstructionSet instruction_set,
                  const InstructionSetFeatures* instruction_set_features,
-                 std::unique_ptr<HashSet<std::string>>&& image_classes,
+                 HashSet<std::string>* image_classes,
                  size_t thread_count,
                  int swap_fd,
                  const ProfileCompilationInfo* profile_compilation_info);
@@ -122,9 +122,18 @@ class CompilerDriver {
                   TimingLogger* timings)
       REQUIRES(!Locks::mutator_lock_);
 
-  // Compile a single Method.
-  void CompileOne(Thread* self, ArtMethod* method, TimingLogger* timings)
-      REQUIRES_SHARED(Locks::mutator_lock_);
+  // Compile a single Method. (For testing only.)
+  void CompileOne(Thread* self,
+                  jobject class_loader,
+                  const DexFile& dex_file,
+                  uint16_t class_def_idx,
+                  uint32_t method_idx,
+                  uint32_t access_flags,
+                  InvokeType invoke_type,
+                  const DexFile::CodeItem* code_item,
+                  Handle<mirror::DexCache> dex_cache,
+                  Handle<mirror::ClassLoader> h_class_loader)
+      REQUIRES(!Locks::mutator_lock_);
 
   VerificationResults* GetVerificationResults() const;
 
@@ -142,10 +151,6 @@ class CompilerDriver {
 
   Compiler* GetCompiler() const {
     return compiler_.get();
-  }
-
-  const HashSet<std::string>* GetImageClasses() const {
-    return image_classes_.get();
   }
 
   // Generate the trampolines that are invoked by unresolved direct methods.
@@ -307,9 +312,6 @@ class CompilerDriver {
   bool DedupeEnabled() const {
     return compiled_method_storage_.DedupeEnabled();
   }
-
-  // Checks if class specified by type_idx is one of the image_classes_
-  bool IsImageClass(const char* descriptor) const;
 
   // Checks whether the provided class should be compiled, i.e., is in classes_to_compile_.
   bool IsClassToCompile(const char* descriptor) const;
@@ -491,9 +493,11 @@ class CompilerDriver {
   // in the .oat_patches ELF section if requested in the compiler options.
   Atomic<size_t> non_relative_linker_patch_count_;
 
-  // If image_ is true, specifies the classes that will be included in the image.
-  // Note if image_classes_ is null, all classes are included in the image.
-  std::unique_ptr<HashSet<std::string>> image_classes_;
+  // Image classes to be updated by PreCompile().
+  // TODO: Remove this member which is a non-const pointer to the CompilerOptions' data.
+  //       Pass this explicitly to the PreCompile() which should be called directly from
+  //       Dex2Oat rather than implicitly by CompileAll().
+  HashSet<std::string>* image_classes_;
 
   // Specifies the classes that will be compiled. Note that if classes_to_compile_ is null,
   // all classes are eligible for compilation (duplication filters etc. will still apply).
@@ -505,8 +509,8 @@ class CompilerDriver {
   bool had_hard_verifier_failure_;
 
   // A thread pool that can (potentially) run tasks in parallel.
-  std::unique_ptr<ThreadPool> parallel_thread_pool_;
   size_t parallel_thread_count_;
+  std::unique_ptr<ThreadPool> parallel_thread_pool_;
 
   // A thread pool that guarantees running single-threaded on the main thread.
   std::unique_ptr<ThreadPool> single_thread_pool_;
@@ -534,6 +538,7 @@ class CompilerDriver {
   // Compiler for dex to dex (quickening).
   optimizer::DexToDexCompiler dex_to_dex_compiler_;
 
+  friend class CommonCompilerTest;
   friend class CompileClassVisitor;
   friend class DexToDexDecompilerTest;
   friend class verifier::VerifierDepsTest;

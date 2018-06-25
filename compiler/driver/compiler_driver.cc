@@ -67,7 +67,6 @@
 #include "mirror/object-refvisitor-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/throwable.h"
-#include "nativehelper/ScopedLocalRef.h"
 #include "object_lock.h"
 #include "profile/profile_compilation_info.h"
 #include "runtime.h"
@@ -264,7 +263,7 @@ CompilerDriver::CompilerDriver(
     Compiler::Kind compiler_kind,
     InstructionSet instruction_set,
     const InstructionSetFeatures* instruction_set_features,
-    std::unique_ptr<HashSet<std::string>>&& image_classes,
+    HashSet<std::string>* image_classes,
     size_t thread_count,
     int swap_fd,
     const ProfileCompilationInfo* profile_compilation_info)
@@ -293,7 +292,7 @@ CompilerDriver::CompilerDriver(
   compiler_->Init();
 
   if (GetCompilerOptions().IsBootImage()) {
-    CHECK(image_classes_.get() != nullptr) << "Expected image classes for boot image";
+    CHECK(image_classes_ != nullptr) << "Expected image classes for boot image";
   }
 
   compiled_method_storage_.SetDedupeEnabled(compiler_options_->DeduplicateCode());
@@ -351,12 +350,6 @@ void CompilerDriver::CompileAll(jobject class_loader,
 
   InitializeThreadPools();
 
-  VLOG(compiler) << "Before precompile " << GetMemoryUsageString(false);
-  // Precompile:
-  // 1) Load image classes
-  // 2) Resolve all classes
-  // 3) Attempt to verify all classes
-  // 4) Attempt to initialize image classes, and trivially initialized classes
   PreCompile(class_loader, dex_files, timings);
   if (GetCompilerOptions().IsBootImage()) {
     // We don't need to setup the intrinsics for non boot image compilation, as
@@ -673,46 +666,24 @@ static void CompileMethodQuick(
                        quick_fn);
 }
 
-void CompilerDriver::CompileOne(Thread* self, ArtMethod* method, TimingLogger* timings) {
-  DCHECK(!Runtime::Current()->IsStarted());
-  jobject jclass_loader;
-  const DexFile* dex_file;
-  uint16_t class_def_idx;
-  uint32_t method_idx = method->GetDexMethodIndex();
-  uint32_t access_flags = method->GetAccessFlags();
-  InvokeType invoke_type = method->GetInvokeType();
-  StackHandleScope<2> hs(self);
-  Handle<mirror::DexCache> dex_cache(hs.NewHandle(method->GetDexCache()));
-  Handle<mirror::ClassLoader> class_loader(
-      hs.NewHandle(method->GetDeclaringClass()->GetClassLoader()));
-  {
-    ScopedObjectAccessUnchecked soa(self);
-    ScopedLocalRef<jobject> local_class_loader(
-        soa.Env(), soa.AddLocalReference<jobject>(class_loader.Get()));
-    jclass_loader = soa.Env()->NewGlobalRef(local_class_loader.get());
-    // Find the dex_file
-    dex_file = method->GetDexFile();
-    class_def_idx = method->GetClassDefIndex();
-  }
-  const DexFile::CodeItem* code_item = dex_file->GetCodeItem(method->GetCodeItemOffset());
-
-  // Go to native so that we don't block GC during compilation.
-  ScopedThreadSuspension sts(self, kNative);
-
-  std::vector<const DexFile*> dex_files;
-  dex_files.push_back(dex_file);
-
-  InitializeThreadPools();
-
-  PreCompile(jclass_loader, dex_files, timings);
-
+// Compile a single Method. (For testing only.)
+void CompilerDriver::CompileOne(Thread* self,
+                                jobject class_loader,
+                                const DexFile& dex_file,
+                                uint16_t class_def_idx,
+                                uint32_t method_idx,
+                                uint32_t access_flags,
+                                InvokeType invoke_type,
+                                const DexFile::CodeItem* code_item,
+                                Handle<mirror::DexCache> dex_cache,
+                                Handle<mirror::ClassLoader> h_class_loader) {
   // Can we run DEX-to-DEX compiler on this class ?
   optimizer::DexToDexCompiler::CompilationLevel dex_to_dex_compilation_level =
       GetDexToDexCompilationLevel(self,
                                   *this,
-                                  jclass_loader,
-                                  *dex_file,
-                                  dex_file->GetClassDef(class_def_idx));
+                                  class_loader,
+                                  dex_file,
+                                  dex_file.GetClassDef(class_def_idx));
 
   CompileMethodQuick(self,
                      this,
@@ -721,8 +692,8 @@ void CompilerDriver::CompileOne(Thread* self, ArtMethod* method, TimingLogger* t
                      invoke_type,
                      class_def_idx,
                      method_idx,
-                     class_loader,
-                     *dex_file,
+                     h_class_loader,
+                     dex_file,
                      dex_to_dex_compilation_level,
                      true,
                      dex_cache);
@@ -737,17 +708,13 @@ void CompilerDriver::CompileOne(Thread* self, ArtMethod* method, TimingLogger* t
                          invoke_type,
                          class_def_idx,
                          method_idx,
-                         class_loader,
-                         *dex_file,
+                         h_class_loader,
+                         dex_file,
                          dex_to_dex_compilation_level,
                          true,
                          dex_cache);
     dex_to_dex_compiler_.ClearState();
   }
-
-  FreeThreadPools();
-
-  self->GetJniEnv()->DeleteGlobalRef(jclass_loader);
 }
 
 void CompilerDriver::Resolve(jobject class_loader,
@@ -838,7 +805,7 @@ static void InitializeTypeCheckBitstrings(CompilerDriver* driver,
         // primitive) classes. We may reconsider this in future if it's deemed to be beneficial.
         // And we cannot use it for classes outside the boot image as we do not know the runtime
         // value of their bitstring when compiling (it may not even get assigned at runtime).
-        if (descriptor[0] == 'L' && driver->IsImageClass(descriptor)) {
+        if (descriptor[0] == 'L' && driver->GetCompilerOptions().IsImageClass(descriptor)) {
           ObjPtr<mirror::Class> klass =
               class_linker->LookupResolvedType(type_index,
                                                dex_cache.Get(),
@@ -918,6 +885,16 @@ void CompilerDriver::PreCompile(jobject class_loader,
                                 const std::vector<const DexFile*>& dex_files,
                                 TimingLogger* timings) {
   CheckThreadPools();
+  VLOG(compiler) << "Before precompile " << GetMemoryUsageString(false);
+
+  // Precompile:
+  // 1) Load image classes.
+  // 2) Resolve all classes.
+  // 3) For deterministic boot image, resolve strings for const-string instructions.
+  // 4) Attempt to verify all classes.
+  // 5) Attempt to initialize image classes, and trivially initialized classes.
+  // 6) Update the set of image classes.
+  // 7) For deterministic boot image, initialize bitstrings for type checking.
 
   LoadImageClasses(timings);
   VLOG(compiler) << "LoadImageClasses: " << GetMemoryUsageString(false);
@@ -986,16 +963,6 @@ void CompilerDriver::PreCompile(jobject class_loader,
     // Note: This is done after UpdateImageClasses() at it relies on the image classes to be final.
     InitializeTypeCheckBitstrings(this, dex_files, timings);
   }
-}
-
-bool CompilerDriver::IsImageClass(const char* descriptor) const {
-  if (image_classes_ != nullptr) {
-    // If we have a set of image classes, use those.
-    return image_classes_->find(StringPiece(descriptor)) != image_classes_->end();
-  }
-  // No set of image classes, assume we include all the classes.
-  // NOTE: Currently only reachable from InitImageMethodVisitor for the app image case.
-  return !GetCompilerOptions().IsBootImage();
 }
 
 bool CompilerDriver::IsClassToCompile(const char* descriptor) const {
@@ -1116,7 +1083,7 @@ void CompilerDriver::LoadImageClasses(TimingLogger* timings) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  CHECK(image_classes_.get() != nullptr);
+  CHECK(image_classes_ != nullptr);
   for (auto it = image_classes_->begin(), end = image_classes_->end(); it != end;) {
     const std::string& descriptor(*it);
     StackHandleScope<1> hs(self);
@@ -1174,7 +1141,7 @@ void CompilerDriver::LoadImageClasses(TimingLogger* timings) {
   // We walk the roots looking for classes so that we'll pick up the
   // above classes plus any classes them depend on such super
   // classes, interfaces, and the required ClassLinker roots.
-  RecordImageClassesVisitor visitor(image_classes_.get());
+  RecordImageClassesVisitor visitor(image_classes_);
   class_linker->VisitClasses(&visitor);
 
   CHECK(!image_classes_->empty());
@@ -1358,7 +1325,7 @@ void CompilerDriver::UpdateImageClasses(TimingLogger* timings) {
     VariableSizedHandleScope hs(Thread::Current());
     std::string error_msg;
     std::unique_ptr<ClinitImageUpdate> update(ClinitImageUpdate::Create(hs,
-                                                                        image_classes_.get(),
+                                                                        image_classes_,
                                                                         Thread::Current(),
                                                                         runtime->GetClassLinker()));
 
@@ -1382,7 +1349,7 @@ bool CompilerDriver::CanAssumeClassIsLoaded(mirror::Class* klass) {
   }
   std::string temp;
   const char* descriptor = klass->GetDescriptor(&temp);
-  return IsImageClass(descriptor);
+  return GetCompilerOptions().IsImageClass(descriptor);
 }
 
 bool CompilerDriver::CanAccessTypeWithoutChecks(ObjPtr<mirror::Class> referrer_class,
@@ -2292,7 +2259,7 @@ class InitializeClassVisitor : public CompilationVisitor {
             (is_app_image || is_boot_image) &&
             is_superclass_initialized &&
             !too_many_encoded_fields &&
-            manager_->GetCompiler()->IsImageClass(descriptor)) {
+            manager_->GetCompiler()->GetCompilerOptions().IsImageClass(descriptor)) {
           bool can_init_static_fields = false;
           if (is_boot_image) {
             // We need to initialize static fields, we only do this for image classes that aren't
@@ -2982,8 +2949,7 @@ bool CompilerDriver::MayInlineInternal(const DexFile* inlined_from,
                                        const DexFile* inlined_into) const {
   // We're not allowed to inline across dex files if we're the no-inline-from dex file.
   if (inlined_from != inlined_into &&
-      compiler_options_->GetNoInlineFromDexFile() != nullptr &&
-      ContainsElement(*compiler_options_->GetNoInlineFromDexFile(), inlined_from)) {
+      ContainsElement(compiler_options_->GetNoInlineFromDexFile(), inlined_from)) {
     return false;
   }
 
