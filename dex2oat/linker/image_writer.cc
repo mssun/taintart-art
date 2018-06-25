@@ -38,6 +38,7 @@
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_types.h"
 #include "driver/compiler_driver.h"
+#include "driver/compiler_options.h"
 #include "elf_file.h"
 #include "elf_utils.h"
 #include "gc/accounting/card_table-inl.h"
@@ -851,7 +852,8 @@ bool ImageWriter::PruneAppImageClassInternal(
   std::string temp;
   // Prune if not an image class, this handles any broken sets of image classes such as having a
   // class in the set but not it's superclass.
-  result = result || !compiler_driver_.IsImageClass(klass->GetDescriptor(&temp));
+  result = result ||
+           !compiler_driver_.GetCompilerOptions().IsImageClass(klass->GetDescriptor(&temp));
   bool my_early_exit = false;  // Only for ourselves, ignore caller.
   // Remove classes that failed to verify since we don't want to have java.lang.VerifyError in the
   // app image.
@@ -941,7 +943,7 @@ bool ImageWriter::KeepClass(ObjPtr<mirror::Class> klass) {
     return true;
   }
   std::string temp;
-  if (!compiler_driver_.IsImageClass(klass->GetDescriptor(&temp))) {
+  if (!compiler_driver_.GetCompilerOptions().IsImageClass(klass->GetDescriptor(&temp))) {
     return false;
   }
   if (compile_app_image_) {
@@ -1212,27 +1214,22 @@ void ImageWriter::PruneNonImageClasses() {
 }
 
 void ImageWriter::CheckNonImageClassesRemoved() {
-  if (compiler_driver_.GetImageClasses() != nullptr) {
-    auto visitor = [&](Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
-      if (obj->IsClass() && !IsInBootImage(obj)) {
-        Class* klass = obj->AsClass();
-        if (!KeepClass(klass)) {
-          DumpImageClasses();
-          std::string temp;
-          CHECK(KeepClass(klass))
-              << Runtime::Current()->GetHeap()->GetVerification()->FirstPathFromRootSet(klass);
-        }
+  auto visitor = [&](Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
+    if (obj->IsClass() && !IsInBootImage(obj)) {
+      Class* klass = obj->AsClass();
+      if (!KeepClass(klass)) {
+        DumpImageClasses();
+        CHECK(KeepClass(klass))
+            << Runtime::Current()->GetHeap()->GetVerification()->FirstPathFromRootSet(klass);
       }
-    };
-    gc::Heap* heap = Runtime::Current()->GetHeap();
-    heap->VisitObjects(visitor);
-  }
+    }
+  };
+  gc::Heap* heap = Runtime::Current()->GetHeap();
+  heap->VisitObjects(visitor);
 }
 
 void ImageWriter::DumpImageClasses() {
-  auto image_classes = compiler_driver_.GetImageClasses();
-  CHECK(image_classes != nullptr);
-  for (const std::string& image_class : *image_classes) {
+  for (const std::string& image_class : compiler_driver_.GetCompilerOptions().GetImageClasses()) {
     LOG(INFO) << " " << image_class;
   }
 }

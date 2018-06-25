@@ -37,7 +37,8 @@ CompilerOptions::CompilerOptions()
       tiny_method_threshold_(kDefaultTinyMethodThreshold),
       num_dex_methods_threshold_(kDefaultNumDexMethodsThreshold),
       inline_max_code_units_(kUnsetInlineMaxCodeUnits),
-      no_inline_from_(nullptr),
+      no_inline_from_(),
+      image_classes_(),
       boot_image_(false),
       core_image_(false),
       app_image_(false),
@@ -67,8 +68,8 @@ CompilerOptions::CompilerOptions()
 }
 
 CompilerOptions::~CompilerOptions() {
-  // The destructor looks empty but it destroys a PassManagerOptions object. We keep it here
-  // because we don't want to include the PassManagerOptions definition from the header file.
+  // Everything done by member destructors.
+  // The definitions of classes forward-declared in the header have now been #included.
 }
 
 namespace {
@@ -128,5 +129,12 @@ bool CompilerOptions::ParseCompilerOptions(const std::vector<std::string>& optio
 }
 
 #pragma GCC diagnostic pop
+
+bool CompilerOptions::IsImageClass(const char* descriptor) const {
+  // Historical note: We used to hold the set indirectly and there was a distinction between an
+  // empty set and a null, null meaning to include all classes. However, the distiction has been
+  // removed; if we don't have a profile, we treat it as an empty set of classes. b/77340429
+  return image_classes_.find(StringPiece(descriptor)) != image_classes_.end();
+}
 
 }  // namespace art
