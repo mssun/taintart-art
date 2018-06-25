@@ -1021,15 +1021,17 @@ bool FieldAccessor<ObjPtr<Object>>::Dispatch(VarHandle::AccessMode access_mode,
       ObjPtr<Object> desired_value = ValueGetter<ObjPtr<Object>>::Get(getter);
       bool cas_result;
       if (Runtime::Current()->IsActiveTransaction()) {
-        cas_result = obj->CasFieldStrongSequentiallyConsistentObject<kTransactionActive>(
-            field_offset,
-            expected_value,
-            desired_value);
+        cas_result = obj->CasFieldObject<kTransactionActive>(field_offset,
+                                                             expected_value,
+                                                             desired_value,
+                                                             CASMode::kStrong,
+                                                             std::memory_order_seq_cst);
       } else {
-        cas_result = obj->CasFieldStrongSequentiallyConsistentObject<kTransactionInactive>(
-            field_offset,
-            expected_value,
-            desired_value);
+        cas_result = obj->CasFieldObject<kTransactionInactive>(field_offset,
+                                                               expected_value,
+                                                               desired_value,
+                                                               CASMode::kStrong,
+                                                               std::memory_order_seq_cst);
       }
       StoreResult(cas_result, result);
       break;
@@ -1043,15 +1045,18 @@ bool FieldAccessor<ObjPtr<Object>>::Dispatch(VarHandle::AccessMode access_mode,
       ObjPtr<Object> desired_value = ValueGetter<ObjPtr<Object>>::Get(getter);
       bool cas_result;
       if (Runtime::Current()->IsActiveTransaction()) {
-        cas_result = obj->CasFieldWeakSequentiallyConsistentObject<kTransactionActive>(
-            field_offset,
-            expected_value,
-            desired_value);
+        cas_result = obj->CasFieldObject<kTransactionActive>(field_offset,
+                                                             expected_value,
+                                                             desired_value,
+                                                             CASMode::kWeak,
+                                                             std::memory_order_seq_cst);
       } else {
-        cas_result = obj->CasFieldWeakSequentiallyConsistentObject<kTransactionInactive>(
+        cas_result = obj->CasFieldObject<kTransactionInactive>(
             field_offset,
             expected_value,
-            desired_value);
+            desired_value,
+            CASMode::kWeak,
+            std::memory_order_seq_cst);
       }
       StoreResult(cas_result, result);
       break;
@@ -1064,15 +1069,13 @@ bool FieldAccessor<ObjPtr<Object>>::Dispatch(VarHandle::AccessMode access_mode,
       ObjPtr<Object> desired_value = ValueGetter<ObjPtr<Object>>::Get(getter);
       ObjPtr<Object> witness_value;
       if (Runtime::Current()->IsActiveTransaction()) {
-        witness_value = obj->CompareAndExchangeFieldObject<kTransactionActive>(
-            field_offset,
-            expected_value,
-            desired_value);
+        witness_value = obj->CompareAndExchangeFieldObject<kTransactionActive>(field_offset,
+                                                                               expected_value,
+                                                                               desired_value);
       } else {
-        witness_value = obj->CompareAndExchangeFieldObject<kTransactionInactive>(
-            field_offset,
-            expected_value,
-            desired_value);
+        witness_value = obj->CompareAndExchangeFieldObject<kTransactionInactive>(field_offset,
+                                                                                 expected_value,
+                                                                                 desired_value);
       }
       StoreResult(witness_value, result);
       break;
