@@ -64,8 +64,11 @@ inline MirrorType* ReadBarrier::Barrier(
         // If kAlwaysUpdateField is true, update the field atomically. This may fail if mutator
         // updates before us, but it's OK.
         if (kAlwaysUpdateField && ref != old_ref) {
-          obj->CasFieldStrongReleaseObjectWithoutWriteBarrier<false, false>(
-              offset, old_ref, ref);
+          obj->CasFieldObjectWithoutWriteBarrier<false, false>(offset,
+                                                               old_ref,
+                                                               ref,
+                                                               CASMode::kStrong,
+                                                               std::memory_order_release);
         }
       }
       AssertToSpaceInvariant(obj, offset, ref);
@@ -82,8 +85,11 @@ inline MirrorType* ReadBarrier::Barrier(
         ref = reinterpret_cast<MirrorType*>(Mark(old_ref));
         // Update the field atomically. This may fail if mutator updates before us, but it's ok.
         if (ref != old_ref) {
-          obj->CasFieldStrongReleaseObjectWithoutWriteBarrier<false, false>(
-              offset, old_ref, ref);
+          obj->CasFieldObjectWithoutWriteBarrier<false, false>(offset,
+                                                               old_ref,
+                                                               ref,
+                                                               CASMode::kStrong,
+                                                               std::memory_order_release);
         }
       }
       AssertToSpaceInvariant(obj, offset, ref);

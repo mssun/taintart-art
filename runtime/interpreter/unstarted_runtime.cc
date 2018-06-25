@@ -1485,13 +1485,17 @@ void UnstartedRuntime::UnstartedUnsafeCompareAndSwapObject(
   bool success;
   // Check whether we're in a transaction, call accordingly.
   if (Runtime::Current()->IsActiveTransaction()) {
-    success = obj->CasFieldStrongSequentiallyConsistentObject<true>(MemberOffset(offset),
-                                                                    expected_value,
-                                                                    newValue);
+    success = obj->CasFieldObject<true>(MemberOffset(offset),
+                                        expected_value,
+                                        newValue,
+                                        CASMode::kStrong,
+                                        std::memory_order_seq_cst);
   } else {
-    success = obj->CasFieldStrongSequentiallyConsistentObject<false>(MemberOffset(offset),
-                                                                     expected_value,
-                                                                     newValue);
+    success = obj->CasFieldObject<false>(MemberOffset(offset),
+                                         expected_value,
+                                         newValue,
+                                         CASMode::kStrong,
+                                         std::memory_order_seq_cst);
   }
   result->SetZ(success ? 1 : 0);
 }
