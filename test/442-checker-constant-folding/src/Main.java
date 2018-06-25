@@ -1150,6 +1150,41 @@ public class Main {
     return arg % 1;
   }
 
+  /// CHECK-START: int Main.RemN1(int) constant_folding (before)
+  /// CHECK-DAG:     <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:     <<ConstN1:i\d+>>  IntConstant -1
+  /// CHECK-DAG:     <<Rem:i\d+>>      Rem [<<Arg>>,<<ConstN1>>]
+  /// CHECK-DAG:                       Return [<<Rem>>]
+
+  /// CHECK-START: int Main.RemN1(int) constant_folding (after)
+  /// CHECK-DAG:     <<Const0:i\d+>>   IntConstant 0
+  /// CHECK-DAG:                       Return [<<Const0>>]
+
+  /// CHECK-START: int Main.RemN1(int) constant_folding (after)
+  /// CHECK-NOT:                       Rem
+
+  public static int RemN1(int arg) {
+    return arg % -1;
+  }
+
+  /// CHECK-START: long Main.Rem1(long) constant_folding (before)
+  /// CHECK-DAG:     <<Arg:j\d+>>           ParameterValue
+  /// CHECK-DAG:     <<Const1:j\d+>>        LongConstant 1
+  /// CHECK-DAG:     <<DivZeroCheck:j\d+>>  DivZeroCheck [<<Const1>>]
+  /// CHECK-DAG:     <<Rem:j\d+>>           Rem [<<Arg>>,<<DivZeroCheck>>]
+  /// CHECK-DAG:                            Return [<<Rem>>]
+
+  /// CHECK-START: long Main.Rem1(long) constant_folding (after)
+  /// CHECK-DAG:     <<Const0:j\d+>>        LongConstant 0
+  /// CHECK-DAG:                            Return [<<Const0>>]
+
+  /// CHECK-START: long Main.Rem1(long) constant_folding (after)
+  /// CHECK-NOT:                            Rem
+
+  public static long Rem1(long arg) {
+    return arg % 1;
+  }
+
   /// CHECK-START: long Main.RemN1(long) constant_folding (before)
   /// CHECK-DAG:     <<Arg:j\d+>>           ParameterValue
   /// CHECK-DAG:     <<ConstN1:j\d+>>       LongConstant -1
@@ -1597,7 +1632,26 @@ public class Main {
     assertIntEquals(-1, OrAllOnes(arbitrary));
     assertLongEquals(0, Rem0(arbitrary));
     assertIntEquals(0, Rem1(arbitrary));
+    assertIntEquals(0, Rem1(0));
+    assertIntEquals(0, Rem1(-1));
+    assertIntEquals(0, Rem1(Integer.MAX_VALUE));
+    assertIntEquals(0, Rem1(Integer.MIN_VALUE));
+    assertIntEquals(0, RemN1(arbitrary));
+    assertIntEquals(0, RemN1(0));
+    assertIntEquals(0, RemN1(-1));
+    assertIntEquals(0, RemN1(Integer.MAX_VALUE));
+    assertIntEquals(0, RemN1(Integer.MIN_VALUE));
+    assertIntEquals(0, RemN1(arbitrary));
+    assertLongEquals(0, Rem1((long)arbitrary));
+    assertLongEquals(0, Rem1(0L));
+    assertLongEquals(0, Rem1(-1L));
+    assertLongEquals(0, Rem1(Long.MAX_VALUE));
+    assertLongEquals(0, Rem1(Long.MIN_VALUE));
     assertLongEquals(0, RemN1(arbitrary));
+    assertLongEquals(0, RemN1(0L));
+    assertLongEquals(0, RemN1(-1L));
+    assertLongEquals(0, RemN1(Long.MAX_VALUE));
+    assertLongEquals(0, RemN1(Long.MIN_VALUE));
     assertIntEquals(0, Shl0(arbitrary));
     assertLongEquals(0, ShlLong0WithInt(arbitrary));
     assertLongEquals(0, Shr0(arbitrary));
