@@ -188,8 +188,6 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   // Compiles the graph to executable instructions.
   void Compile(CodeAllocator* allocator);
   static std::unique_ptr<CodeGenerator> Create(HGraph* graph,
-                                               InstructionSet instruction_set,
-                                               const InstructionSetFeatures& isa_features,
                                                const CompilerOptions& compiler_options,
                                                OptimizingCompilerStats* stats = nullptr);
   virtual ~CodeGenerator();

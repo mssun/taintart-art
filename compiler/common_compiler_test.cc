@@ -153,11 +153,7 @@ void CommonCompilerTest::SetUp() {
   {
     ScopedObjectAccess soa(Thread::Current());
 
-    const InstructionSet instruction_set = kRuntimeISA;
-    // Take the default set of instruction features from the build.
-    instruction_set_features_ = InstructionSetFeatures::FromCppDefines();
-
-    runtime_->SetInstructionSet(instruction_set);
+    runtime_->SetInstructionSet(instruction_set_);
     for (uint32_t i = 0; i < static_cast<uint32_t>(CalleeSaveType::kLastCalleeSaveType); ++i) {
       CalleeSaveType type = CalleeSaveType(i);
       if (!runtime_->HasCalleeSaveMethod(type)) {
@@ -165,23 +161,48 @@ void CommonCompilerTest::SetUp() {
       }
     }
 
-    CreateCompilerDriver(compiler_kind_, instruction_set);
+    CreateCompilerDriver();
   }
 }
 
-void CommonCompilerTest::CreateCompilerDriver(Compiler::Kind kind,
-                                              InstructionSet isa,
-                                              size_t number_of_threads) {
+void CommonCompilerTest::ApplyInstructionSet() {
+  // Copy local instruction_set_ and instruction_set_features_ to *compiler_options_;
+  CHECK(instruction_set_features_ != nullptr);
+  if (instruction_set_ == InstructionSet::kThumb2) {
+    CHECK_EQ(InstructionSet::kArm, instruction_set_features_->GetInstructionSet());
+  } else {
+    CHECK_EQ(instruction_set_, instruction_set_features_->GetInstructionSet());
+  }
+  compiler_options_->instruction_set_ = instruction_set_;
+  compiler_options_->instruction_set_features_ =
+      InstructionSetFeatures::FromBitmap(instruction_set_, instruction_set_features_->AsBitmap());
+  CHECK(compiler_options_->instruction_set_features_->Equals(instruction_set_features_.get()));
+}
+
+void CommonCompilerTest::OverrideInstructionSetFeatures(InstructionSet instruction_set,
+                                                        const std::string& variant) {
+  instruction_set_ = instruction_set;
+  std::string error_msg;
+  instruction_set_features_ =
+      InstructionSetFeatures::FromVariant(instruction_set, variant, &error_msg);
+  CHECK(instruction_set_features_ != nullptr) << error_msg;
+
+  if (compiler_options_ != nullptr) {
+    ApplyInstructionSet();
+  }
+}
+
+void CommonCompilerTest::CreateCompilerDriver() {
+  ApplyInstructionSet();
+
   compiler_options_->boot_image_ = true;
   compiler_options_->SetCompilerFilter(GetCompilerFilter());
   compiler_options_->image_classes_.swap(*GetImageClasses());
   compiler_driver_.reset(new CompilerDriver(compiler_options_.get(),
                                             verification_results_.get(),
-                                            kind,
-                                            isa,
-                                            instruction_set_features_.get(),
+                                            compiler_kind_,
                                             &compiler_options_->image_classes_,
-                                            number_of_threads,
+                                            number_of_threads_,
                                             /* swap_fd */ -1,
                                             GetProfileCompilationInfo()));
   // We typically don't generate an image in unit tests, disable this optimization by default.
@@ -205,11 +226,6 @@ Compiler::Kind CommonCompilerTest::GetCompilerKind() const {
 
 void CommonCompilerTest::SetCompilerKind(Compiler::Kind compiler_kind) {
   compiler_kind_ = compiler_kind;
-}
-
-InstructionSet CommonCompilerTest::GetInstructionSet() const {
-  DCHECK(compiler_driver_.get() != nullptr);
-  return compiler_driver_->GetInstructionSet();
 }
 
 void CommonCompilerTest::TearDown() {
@@ -337,6 +353,10 @@ void CommonCompilerTest::SetDexFilesForOatFile(const std::vector<const DexFile*>
   compiler_options_->dex_files_for_oat_file_ = dex_files;
   compiler_driver_->compiled_classes_.AddDexFiles(dex_files);
   compiler_driver_->dex_to_dex_compiler_.SetDexFiles(dex_files);
+}
+
+void CommonCompilerTest::ClearBootImageOption() {
+  compiler_options_->boot_image_ = false;
 }
 
 }  // namespace art

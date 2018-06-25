@@ -296,7 +296,6 @@ class JumpTableRIPFixup;
 class CodeGeneratorX86_64 : public CodeGenerator {
  public:
   CodeGeneratorX86_64(HGraph* graph,
-                  const X86_64InstructionSetFeatures& isa_features,
                   const CompilerOptions& compiler_options,
                   OptimizingCompilerStats* stats = nullptr);
   virtual ~CodeGeneratorX86_64() {}
@@ -370,6 +369,8 @@ class CodeGeneratorX86_64 : public CodeGenerator {
     return InstructionSet::kX86_64;
   }
 
+  const X86_64InstructionSetFeatures& GetInstructionSetFeatures() const;
+
   // Emit a write barrier.
   void MarkGCCard(CpuRegister temp,
                   CpuRegister card,
@@ -439,10 +440,6 @@ class CodeGeneratorX86_64 : public CodeGenerator {
                        uint64_t index_in_table) const;
 
   void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) OVERRIDE;
-
-  const X86_64InstructionSetFeatures& GetInstructionSetFeatures() const {
-    return isa_features_;
-  }
 
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference field load when Baker's read barriers are used.
@@ -606,7 +603,6 @@ class CodeGeneratorX86_64 : public CodeGenerator {
   InstructionCodeGeneratorX86_64 instruction_visitor_;
   ParallelMoveResolverX86_64 move_resolver_;
   X86_64Assembler assembler_;
-  const X86_64InstructionSetFeatures& isa_features_;
 
   // Offset to the start of the constant area in the assembled code.
   // Used for fixups to the constant area.

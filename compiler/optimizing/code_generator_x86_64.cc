@@ -1185,6 +1185,10 @@ void CodeGeneratorX86_64::DumpFloatingPointRegister(std::ostream& stream, int re
   stream << FloatRegister(reg);
 }
 
+const X86_64InstructionSetFeatures& CodeGeneratorX86_64::GetInstructionSetFeatures() const {
+  return *GetCompilerOptions().GetInstructionSetFeatures()->AsX86_64InstructionSetFeatures();
+}
+
 size_t CodeGeneratorX86_64::SaveCoreRegister(size_t stack_index, uint32_t reg_id) {
   __ movq(Address(CpuRegister(RSP), stack_index), CpuRegister(reg_id));
   return kX86_64WordSize;
@@ -1239,7 +1243,6 @@ static constexpr int kNumberOfCpuRegisterPairs = 0;
 // Use a fake return address register to mimic Quick.
 static constexpr Register kFakeReturnRegister = Register(kLastCpuRegister + 1);
 CodeGeneratorX86_64::CodeGeneratorX86_64(HGraph* graph,
-                                         const X86_64InstructionSetFeatures& isa_features,
                                          const CompilerOptions& compiler_options,
                                          OptimizingCompilerStats* stats)
       : CodeGenerator(graph,
@@ -1258,7 +1261,6 @@ CodeGeneratorX86_64::CodeGeneratorX86_64(HGraph* graph,
         instruction_visitor_(graph, this),
         move_resolver_(graph->GetAllocator(), this),
         assembler_(graph->GetAllocator()),
-        isa_features_(isa_features),
         constant_area_start_(0),
         boot_image_method_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         method_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),

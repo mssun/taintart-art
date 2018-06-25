@@ -352,7 +352,6 @@ class InstructionCodeGeneratorMIPS64 : public InstructionCodeGenerator {
 class CodeGeneratorMIPS64 : public CodeGenerator {
  public:
   CodeGeneratorMIPS64(HGraph* graph,
-                      const Mips64InstructionSetFeatures& isa_features,
                       const CompilerOptions& compiler_options,
                       OptimizingCompilerStats* stats = nullptr);
   virtual ~CodeGeneratorMIPS64() {}
@@ -484,9 +483,7 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
 
   InstructionSet GetInstructionSet() const OVERRIDE { return InstructionSet::kMips64; }
 
-  const Mips64InstructionSetFeatures& GetInstructionSetFeatures() const {
-    return isa_features_;
-  }
+  const Mips64InstructionSetFeatures& GetInstructionSetFeatures() const;
 
   Mips64Label* GetLabelOf(HBasicBlock* block) const {
     return CommonGetLabelOf<Mips64Label>(block_labels_, block);
@@ -657,7 +654,6 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
   InstructionCodeGeneratorMIPS64 instruction_visitor_;
   ParallelMoveResolverMIPS64 move_resolver_;
   Mips64Assembler assembler_;
-  const Mips64InstructionSetFeatures& isa_features_;
 
   // Deduplication map for 32-bit literals, used for non-patchable boot image addresses.
   Uint32ToLiteralMap uint32_literals_;

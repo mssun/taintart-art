@@ -610,7 +610,6 @@ class Dex2Oat FINAL {
  public:
   explicit Dex2Oat(TimingLogger* timings) :
       compiler_kind_(Compiler::kOptimizing),
-      instruction_set_(kRuntimeISA == InstructionSet::kArm ? InstructionSet::kThumb2 : kRuntimeISA),
       // Take the default set of instruction features from the build.
       image_file_location_oat_checksum_(0),
       image_file_location_oat_data_begin_(0),
@@ -700,25 +699,26 @@ class Dex2Oat FINAL {
   }
 
   void ParseInstructionSetVariant(const std::string& option, ParserOptions* parser_options) {
-    instruction_set_features_ = InstructionSetFeatures::FromVariant(
-        instruction_set_, option, &parser_options->error_msg);
-    if (instruction_set_features_.get() == nullptr) {
+    compiler_options_->instruction_set_features_ = InstructionSetFeatures::FromVariant(
+        compiler_options_->instruction_set_, option, &parser_options->error_msg);
+    if (compiler_options_->instruction_set_features_ == nullptr) {
       Usage("%s", parser_options->error_msg.c_str());
     }
   }
 
   void ParseInstructionSetFeatures(const std::string& option, ParserOptions* parser_options) {
-    if (instruction_set_features_ == nullptr) {
-      instruction_set_features_ = InstructionSetFeatures::FromVariant(
-          instruction_set_, "default", &parser_options->error_msg);
-      if (instruction_set_features_.get() == nullptr) {
+    if (compiler_options_->instruction_set_features_ == nullptr) {
+      compiler_options_->instruction_set_features_ = InstructionSetFeatures::FromVariant(
+          compiler_options_->instruction_set_, "default", &parser_options->error_msg);
+      if (compiler_options_->instruction_set_features_ == nullptr) {
         Usage("Problem initializing default instruction set features variant: %s",
               parser_options->error_msg.c_str());
       }
     }
-    instruction_set_features_ =
-        instruction_set_features_->AddFeaturesFromString(option, &parser_options->error_msg);
-    if (instruction_set_features_ == nullptr) {
+    compiler_options_->instruction_set_features_ =
+        compiler_options_->instruction_set_features_->AddFeaturesFromString(
+            option, &parser_options->error_msg);
+    if (compiler_options_->instruction_set_features_ == nullptr) {
       Usage("Error parsing '%s': %s", option.c_str(), parser_options->error_msg.c_str());
     }
   }
@@ -870,23 +870,23 @@ class Dex2Oat FINAL {
 
     // If no instruction set feature was given, use the default one for the target
     // instruction set.
-    if (instruction_set_features_.get() == nullptr) {
-      instruction_set_features_ = InstructionSetFeatures::FromVariant(
-         instruction_set_, "default", &parser_options->error_msg);
-      if (instruction_set_features_.get() == nullptr) {
+    if (compiler_options_->instruction_set_features_.get() == nullptr) {
+      compiler_options_->instruction_set_features_ = InstructionSetFeatures::FromVariant(
+          compiler_options_->instruction_set_, "default", &parser_options->error_msg);
+      if (compiler_options_->instruction_set_features_ == nullptr) {
         Usage("Problem initializing default instruction set features variant: %s",
               parser_options->error_msg.c_str());
       }
     }
 
-    if (instruction_set_ == kRuntimeISA) {
+    if (compiler_options_->instruction_set_ == kRuntimeISA) {
       std::unique_ptr<const InstructionSetFeatures> runtime_features(
           InstructionSetFeatures::FromCppDefines());
-      if (!instruction_set_features_->Equals(runtime_features.get())) {
+      if (!compiler_options_->GetInstructionSetFeatures()->Equals(runtime_features.get())) {
         LOG(WARNING) << "Mismatch between dex2oat instruction set features ("
-            << *instruction_set_features_ << ") and those of dex2oat executable ("
-            << *runtime_features <<") for the command line:\n"
-            << CommandLine();
+            << *compiler_options_->GetInstructionSetFeatures()
+            << ") and those of dex2oat executable (" << *runtime_features
+            << ") for the command line:\n" << CommandLine();
       }
     }
 
@@ -896,7 +896,7 @@ class Dex2Oat FINAL {
 
     // Checks are all explicit until we know the architecture.
     // Set the compilation target's implicit checks options.
-    switch (instruction_set_) {
+    switch (compiler_options_->GetInstructionSet()) {
       case InstructionSet::kArm:
       case InstructionSet::kThumb2:
       case InstructionSet::kArm64:
@@ -1215,10 +1215,10 @@ class Dex2Oat FINAL {
     AssignIfExists(args, M::Backend, &compiler_kind_);
     parser_options->requested_specific_compiler = args.Exists(M::Backend);
 
-    AssignIfExists(args, M::TargetInstructionSet, &instruction_set_);
+    AssignIfExists(args, M::TargetInstructionSet, &compiler_options_->instruction_set_);
     // arm actually means thumb2.
-    if (instruction_set_ == InstructionSet::kArm) {
-      instruction_set_ = InstructionSet::kThumb2;
+    if (compiler_options_->instruction_set_ == InstructionSet::kArm) {
+      compiler_options_->instruction_set_ = InstructionSet::kThumb2;
     }
 
     AssignTrueIfExists(args, M::Host, &is_host_);
@@ -1628,8 +1628,6 @@ class Dex2Oat FINAL {
         if (!oat_writers_[i]->WriteAndOpenDexFiles(
             vdex_files_[i].get(),
             rodata_.back(),
-            instruction_set_,
-            instruction_set_features_.get(),
             key_value_store_.get(),
             verify,
             update_input_vdex_,
@@ -1847,8 +1845,6 @@ class Dex2Oat FINAL {
     driver_.reset(new CompilerDriver(compiler_options_.get(),
                                      verification_results_.get(),
                                      compiler_kind_,
-                                     instruction_set_,
-                                     instruction_set_features_.get(),
                                      &compiler_options_->image_classes_,
                                      thread_count_,
                                      swap_fd_,
@@ -2021,7 +2017,7 @@ class Dex2Oat FINAL {
         VLOG(compiler) << "App image base=" << reinterpret_cast<void*>(image_base_);
       }
 
-      image_writer_.reset(new linker::ImageWriter(*driver_,
+      image_writer_.reset(new linker::ImageWriter(*compiler_options_,
                                                   image_base_,
                                                   compiler_options_->GetCompilePic(),
                                                   IsAppImage(),
@@ -2076,8 +2072,8 @@ class Dex2Oat FINAL {
 
     {
       TimingLogger::ScopedTiming t2("dex2oat Write ELF", timings_);
-      linker::MultiOatRelativePatcher patcher(instruction_set_,
-                                              instruction_set_features_.get(),
+      linker::MultiOatRelativePatcher patcher(compiler_options_->GetInstructionSet(),
+                                              compiler_options_->GetInstructionSetFeatures(),
                                               driver_->GetCompiledMethodStorage());
       for (size_t i = 0, size = oat_files_.size(); i != size; ++i) {
         std::unique_ptr<linker::ElfWriter>& elf_writer = elf_writers_[i];
@@ -2486,17 +2482,14 @@ class Dex2Oat FINAL {
     elf_writers_.reserve(oat_files_.size());
     oat_writers_.reserve(oat_files_.size());
     for (const std::unique_ptr<File>& oat_file : oat_files_) {
-      elf_writers_.emplace_back(linker::CreateElfWriterQuick(instruction_set_,
-                                                             instruction_set_features_.get(),
-                                                             compiler_options_.get(),
-                                                             oat_file.get()));
+      elf_writers_.emplace_back(linker::CreateElfWriterQuick(*compiler_options_, oat_file.get()));
       elf_writers_.back()->Start();
       bool do_oat_writer_layout = DoDexLayoutOptimizations() || DoOatLayoutOptimizations();
       if (profile_compilation_info_ != nullptr && profile_compilation_info_->IsEmpty()) {
         do_oat_writer_layout = false;
       }
       oat_writers_.emplace_back(new linker::OatWriter(
-          IsBootImage(),
+          *compiler_options_,
           timings_,
           do_oat_writer_layout ? profile_compilation_info_.get() : nullptr,
           compact_dex_level_));
@@ -2544,7 +2537,8 @@ class Dex2Oat FINAL {
 
     raw_options.push_back(std::make_pair("compilercallbacks", callbacks));
     raw_options.push_back(
-        std::make_pair("imageinstructionset", GetInstructionSetString(instruction_set_)));
+        std::make_pair("imageinstructionset",
+                       GetInstructionSetString(compiler_options_->GetInstructionSet())));
 
     // Only allow no boot image for the runtime if we're compiling one. When we compile an app,
     // we don't want fallback mode, it will abort as we do not push a boot classpath (it might
@@ -2607,7 +2601,7 @@ class Dex2Oat FINAL {
     SetThreadName(kIsDebugBuild ? "dex2oatd" : "dex2oat");
 
     runtime_.reset(Runtime::Current());
-    runtime_->SetInstructionSet(instruction_set_);
+    runtime_->SetInstructionSet(compiler_options_->GetInstructionSet());
     for (uint32_t i = 0; i < static_cast<uint32_t>(CalleeSaveType::kLastCalleeSaveType); ++i) {
       CalleeSaveType type = CalleeSaveType(i);
       if (!runtime_->HasCalleeSaveMethod(type)) {
@@ -2801,9 +2795,6 @@ class Dex2Oat FINAL {
 
   std::unique_ptr<CompilerOptions> compiler_options_;
   Compiler::Kind compiler_kind_;
-
-  InstructionSet instruction_set_;
-  std::unique_ptr<const InstructionSetFeatures> instruction_set_features_;
 
   uint32_t image_file_location_oat_checksum_;
   uintptr_t image_file_location_oat_data_begin_;

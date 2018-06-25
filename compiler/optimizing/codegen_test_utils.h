@@ -17,17 +17,11 @@
 #ifndef ART_COMPILER_OPTIMIZING_CODEGEN_TEST_UTILS_H_
 #define ART_COMPILER_OPTIMIZING_CODEGEN_TEST_UTILS_H_
 
-#include "arch/arm/instruction_set_features_arm.h"
 #include "arch/arm/registers_arm.h"
-#include "arch/arm64/instruction_set_features_arm64.h"
 #include "arch/instruction_set.h"
-#include "arch/mips/instruction_set_features_mips.h"
 #include "arch/mips/registers_mips.h"
-#include "arch/mips64/instruction_set_features_mips64.h"
 #include "arch/mips64/registers_mips64.h"
-#include "arch/x86/instruction_set_features_x86.h"
 #include "arch/x86/registers_x86.h"
-#include "arch/x86_64/instruction_set_features_x86_64.h"
 #include "code_simulator.h"
 #include "code_simulator_container.h"
 #include "common_compiler_test.h"
@@ -101,10 +95,8 @@ class CodegenTargetConfig {
 // to just overwrite the code generator.
 class TestCodeGeneratorARMVIXL : public arm::CodeGeneratorARMVIXL {
  public:
-  TestCodeGeneratorARMVIXL(HGraph* graph,
-                           const ArmInstructionSetFeatures& isa_features,
-                           const CompilerOptions& compiler_options)
-      : arm::CodeGeneratorARMVIXL(graph, isa_features, compiler_options) {
+  TestCodeGeneratorARMVIXL(HGraph* graph, const CompilerOptions& compiler_options)
+      : arm::CodeGeneratorARMVIXL(graph, compiler_options) {
     AddAllocatedRegister(Location::RegisterLocation(arm::R6));
     AddAllocatedRegister(Location::RegisterLocation(arm::R7));
   }
@@ -145,10 +137,8 @@ class TestCodeGeneratorARMVIXL : public arm::CodeGeneratorARMVIXL {
 //   function.
 class TestCodeGeneratorARM64 : public arm64::CodeGeneratorARM64 {
  public:
-  TestCodeGeneratorARM64(HGraph* graph,
-                         const Arm64InstructionSetFeatures& isa_features,
-                         const CompilerOptions& compiler_options)
-      : arm64::CodeGeneratorARM64(graph, isa_features, compiler_options) {}
+  TestCodeGeneratorARM64(HGraph* graph, const CompilerOptions& compiler_options)
+      : arm64::CodeGeneratorARM64(graph, compiler_options) {}
 
   void MaybeGenerateMarkingRegisterCheck(int codem ATTRIBUTE_UNUSED,
                                          Location temp_loc ATTRIBUTE_UNUSED) OVERRIDE {
@@ -165,10 +155,8 @@ class TestCodeGeneratorARM64 : public arm64::CodeGeneratorARM64 {
 #ifdef ART_ENABLE_CODEGEN_x86
 class TestCodeGeneratorX86 : public x86::CodeGeneratorX86 {
  public:
-  TestCodeGeneratorX86(HGraph* graph,
-                       const X86InstructionSetFeatures& isa_features,
-                       const CompilerOptions& compiler_options)
-      : x86::CodeGeneratorX86(graph, isa_features, compiler_options) {
+  TestCodeGeneratorX86(HGraph* graph, const CompilerOptions& compiler_options)
+      : x86::CodeGeneratorX86(graph, compiler_options) {
     // Save edi, we need it for getting enough registers for long multiplication.
     AddAllocatedRegister(Location::RegisterLocation(x86::EDI));
   }
@@ -324,11 +312,11 @@ static void RunCode(CodeGenerator* codegen,
 
 template <typename Expected>
 static void RunCode(CodegenTargetConfig target_config,
+                    const CompilerOptions& compiler_options,
                     HGraph* graph,
                     std::function<void(HGraph*)> hook_before_codegen,
                     bool has_result,
                     Expected expected) {
-  CompilerOptions compiler_options;
   std::unique_ptr<CodeGenerator> codegen(target_config.CreateCodeGenerator(graph,
                                                                            compiler_options));
   RunCode(codegen.get(), graph, hook_before_codegen, has_result, expected);
@@ -336,55 +324,37 @@ static void RunCode(CodegenTargetConfig target_config,
 
 #ifdef ART_ENABLE_CODEGEN_arm
 CodeGenerator* create_codegen_arm_vixl32(HGraph* graph, const CompilerOptions& compiler_options) {
-  std::unique_ptr<const ArmInstructionSetFeatures> features_arm(
-      ArmInstructionSetFeatures::FromCppDefines());
-  return new (graph->GetAllocator())
-      TestCodeGeneratorARMVIXL(graph, *features_arm.get(), compiler_options);
+  return new (graph->GetAllocator()) TestCodeGeneratorARMVIXL(graph, compiler_options);
 }
 #endif
 
 #ifdef ART_ENABLE_CODEGEN_arm64
 CodeGenerator* create_codegen_arm64(HGraph* graph, const CompilerOptions& compiler_options) {
-  std::unique_ptr<const Arm64InstructionSetFeatures> features_arm64(
-      Arm64InstructionSetFeatures::FromCppDefines());
-  return new (graph->GetAllocator())
-      TestCodeGeneratorARM64(graph, *features_arm64.get(), compiler_options);
+  return new (graph->GetAllocator()) TestCodeGeneratorARM64(graph, compiler_options);
 }
 #endif
 
 #ifdef ART_ENABLE_CODEGEN_x86
 CodeGenerator* create_codegen_x86(HGraph* graph, const CompilerOptions& compiler_options) {
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  return new (graph->GetAllocator()) TestCodeGeneratorX86(
-      graph, *features_x86.get(), compiler_options);
+  return new (graph->GetAllocator()) TestCodeGeneratorX86(graph, compiler_options);
 }
 #endif
 
 #ifdef ART_ENABLE_CODEGEN_x86_64
 CodeGenerator* create_codegen_x86_64(HGraph* graph, const CompilerOptions& compiler_options) {
-  std::unique_ptr<const X86_64InstructionSetFeatures> features_x86_64(
-     X86_64InstructionSetFeatures::FromCppDefines());
-  return new (graph->GetAllocator())
-      x86_64::CodeGeneratorX86_64(graph, *features_x86_64.get(), compiler_options);
+  return new (graph->GetAllocator()) x86_64::CodeGeneratorX86_64(graph, compiler_options);
 }
 #endif
 
 #ifdef ART_ENABLE_CODEGEN_mips
 CodeGenerator* create_codegen_mips(HGraph* graph, const CompilerOptions& compiler_options) {
-  std::unique_ptr<const MipsInstructionSetFeatures> features_mips(
-      MipsInstructionSetFeatures::FromCppDefines());
-  return new (graph->GetAllocator())
-      mips::CodeGeneratorMIPS(graph, *features_mips.get(), compiler_options);
+  return new (graph->GetAllocator()) mips::CodeGeneratorMIPS(graph, compiler_options);
 }
 #endif
 
 #ifdef ART_ENABLE_CODEGEN_mips64
 CodeGenerator* create_codegen_mips64(HGraph* graph, const CompilerOptions& compiler_options) {
-  std::unique_ptr<const Mips64InstructionSetFeatures> features_mips64(
-      Mips64InstructionSetFeatures::FromCppDefines());
-  return new (graph->GetAllocator())
-      mips64::CodeGeneratorMIPS64(graph, *features_mips64.get(), compiler_options);
+  return new (graph->GetAllocator()) mips64::CodeGeneratorMIPS64(graph, compiler_options);
 }
 #endif
 

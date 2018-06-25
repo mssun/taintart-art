@@ -399,7 +399,6 @@ class ParallelMoveResolverARM64 : public ParallelMoveResolverNoSwap {
 class CodeGeneratorARM64 : public CodeGenerator {
  public:
   CodeGeneratorARM64(HGraph* graph,
-                     const Arm64InstructionSetFeatures& isa_features,
                      const CompilerOptions& compiler_options,
                      OptimizingCompilerStats* stats = nullptr);
   virtual ~CodeGeneratorARM64() {}
@@ -472,9 +471,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
     return InstructionSet::kArm64;
   }
 
-  const Arm64InstructionSetFeatures& GetInstructionSetFeatures() const {
-    return isa_features_;
-  }
+  const Arm64InstructionSetFeatures& GetInstructionSetFeatures() const;
 
   void Initialize() OVERRIDE {
     block_labels_.resize(GetGraph()->GetBlocks().size());
@@ -890,7 +887,6 @@ class CodeGeneratorARM64 : public CodeGenerator {
   InstructionCodeGeneratorARM64 instruction_visitor_;
   ParallelMoveResolverARM64 move_resolver_;
   Arm64Assembler assembler_;
-  const Arm64InstructionSetFeatures& isa_features_;
 
   // Deduplication map for 32-bit literals, used for non-patchable boot image addresses.
   Uint32ToLiteralMap uint32_literals_;

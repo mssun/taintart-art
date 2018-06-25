@@ -261,8 +261,6 @@ CompilerDriver::CompilerDriver(
     const CompilerOptions* compiler_options,
     VerificationResults* verification_results,
     Compiler::Kind compiler_kind,
-    InstructionSet instruction_set,
-    const InstructionSetFeatures* instruction_set_features,
     HashSet<std::string>* image_classes,
     size_t thread_count,
     int swap_fd,
@@ -271,9 +269,6 @@ CompilerDriver::CompilerDriver(
       verification_results_(verification_results),
       compiler_(Compiler::Create(this, compiler_kind)),
       compiler_kind_(compiler_kind),
-      instruction_set_(
-          instruction_set == InstructionSet::kArm ? InstructionSet::kThumb2 : instruction_set),
-      instruction_set_features_(instruction_set_features),
       requires_constructor_barrier_lock_("constructor barrier lock"),
       non_relative_linker_patch_count_(0u),
       image_classes_(std::move(image_classes)),
@@ -309,13 +304,15 @@ CompilerDriver::~CompilerDriver() {
 }
 
 
-#define CREATE_TRAMPOLINE(type, abi, offset) \
-    if (Is64BitInstructionSet(instruction_set_)) { \
-      return CreateTrampoline64(instruction_set_, abi, \
-                                type ## _ENTRYPOINT_OFFSET(PointerSize::k64, offset)); \
-    } else { \
-      return CreateTrampoline32(instruction_set_, abi, \
-                                type ## _ENTRYPOINT_OFFSET(PointerSize::k32, offset)); \
+#define CREATE_TRAMPOLINE(type, abi, offset)                                            \
+    if (Is64BitInstructionSet(GetCompilerOptions().GetInstructionSet())) {              \
+      return CreateTrampoline64(GetCompilerOptions().GetInstructionSet(),               \
+                                abi,                                                    \
+                                type ## _ENTRYPOINT_OFFSET(PointerSize::k64, offset));  \
+    } else {                                                                            \
+      return CreateTrampoline32(GetCompilerOptions().GetInstructionSet(),               \
+                                abi,                                                    \
+                                type ## _ENTRYPOINT_OFFSET(PointerSize::k32, offset));  \
     }
 
 std::unique_ptr<const std::vector<uint8_t>> CompilerDriver::CreateJniDlsymLookup() const {
@@ -601,7 +598,7 @@ static void CompileMethodQuick(
     if ((access_flags & kAccNative) != 0) {
       // Are we extracting only and have support for generic JNI down calls?
       if (!driver->GetCompilerOptions().IsJniCompilationEnabled() &&
-          InstructionSetHasGenericJniStub(driver->GetInstructionSet())) {
+          InstructionSetHasGenericJniStub(driver->GetCompilerOptions().GetInstructionSet())) {
         // Leaving this empty will trigger the generic JNI version
       } else {
         // Query any JNI optimization annotations such as @FastNative or @CriticalNative.
@@ -2146,8 +2143,9 @@ class SetVerifiedClassVisitor : public CompilationVisitor {
           mirror::Class::SetStatus(klass, ClassStatus::kVerified, soa.Self());
           // Mark methods as pre-verified. If we don't do this, the interpreter will run with
           // access checks.
-          klass->SetSkipAccessChecksFlagOnAllMethods(
-              GetInstructionSetPointerSize(manager_->GetCompiler()->GetInstructionSet()));
+          InstructionSet instruction_set =
+              manager_->GetCompiler()->GetCompilerOptions().GetInstructionSet();
+          klass->SetSkipAccessChecksFlagOnAllMethods(GetInstructionSetPointerSize(instruction_set));
           klass->SetVerificationAttempted();
         }
         // Record the final class status if necessary.

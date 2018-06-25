@@ -1374,7 +1374,6 @@ Location InvokeDexCallingConventionVisitorARM64::GetMethodLocation() const {
 }
 
 CodeGeneratorARM64::CodeGeneratorARM64(HGraph* graph,
-                                       const Arm64InstructionSetFeatures& isa_features,
                                        const CompilerOptions& compiler_options,
                                        OptimizingCompilerStats* stats)
     : CodeGenerator(graph,
@@ -1391,7 +1390,6 @@ CodeGeneratorARM64::CodeGeneratorARM64(HGraph* graph,
       instruction_visitor_(graph, this),
       move_resolver_(graph->GetAllocator(), this),
       assembler_(graph->GetAllocator()),
-      isa_features_(isa_features),
       uint32_literals_(std::less<uint32_t>(),
                        graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       uint64_literals_(std::less<uint64_t>(),
@@ -1727,6 +1725,10 @@ void CodeGeneratorARM64::DumpCoreRegister(std::ostream& stream, int reg) const {
 
 void CodeGeneratorARM64::DumpFloatingPointRegister(std::ostream& stream, int reg) const {
   stream << DRegister(reg);
+}
+
+const Arm64InstructionSetFeatures& CodeGeneratorARM64::GetInstructionSetFeatures() const {
+  return *GetCompilerOptions().GetInstructionSetFeatures()->AsArm64InstructionSetFeatures();
 }
 
 void CodeGeneratorARM64::MoveConstant(CPURegister destination, HConstant* constant) {
