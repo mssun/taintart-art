@@ -240,7 +240,10 @@ public class AhatArrayInstance extends AhatInstance {
             if (value != null) {
               assert value.isAhatInstance();
               String field = "[" + Integer.toString(index) + "]";
-              return new Reference(AhatArrayInstance.this, field, value.asAhatInstance(), true);
+              return new Reference(AhatArrayInstance.this,
+                                   field,
+                                   value.asAhatInstance(),
+                                   Reachability.STRONG);
             }
             return null;
           }
@@ -324,7 +327,7 @@ public class AhatArrayInstance extends AhatInstance {
 
   @Override public AhatInstance getAssociatedBitmapInstance() {
     if (mByteArray != null) {
-      List<AhatInstance> refs = getHardReverseReferences();
+      List<AhatInstance> refs = getReverseReferences();
       if (refs.size() == 1) {
         AhatInstance ref = refs.get(0);
         return ref.getAssociatedBitmapInstance();

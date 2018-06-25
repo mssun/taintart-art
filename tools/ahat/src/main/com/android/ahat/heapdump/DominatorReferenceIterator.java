@@ -37,7 +37,7 @@ class DominatorReferenceIterator implements Iterator<AhatInstance>,
   public boolean hasNext() {
     while (mNext == null && mIter.hasNext()) {
       Reference ref = mIter.next();
-      if (ref.strong) {
+      if (ref.reachability == Reachability.STRONG) {
         mNext = ref.ref;
       }
     }

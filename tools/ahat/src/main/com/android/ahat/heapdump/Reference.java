@@ -20,19 +20,18 @@ package com.android.ahat.heapdump;
  * Reference represents a reference from 'src' to 'ref' through 'field'.
  * Field is a string description for human consumption. This is typically
  * either "." followed by the field name or an array subscript such as "[4]".
- * 'strong' is true if this is a strong reference, false if it is a
- * weak/soft/other reference.
+ * reachability describes whether the reference is strong/soft/weak/etc.
  */
 class Reference {
   public final AhatInstance src;
   public final String field;
   public final AhatInstance ref;
-  public final boolean strong;
+  public final Reachability reachability;
 
-  public Reference(AhatInstance src, String field, AhatInstance ref, boolean strong) {
+  public Reference(AhatInstance src, String field, AhatInstance ref, Reachability reachability) {
     this.src = src;
     this.field = field;
     this.ref = ref;
-    this.strong = strong;
+    this.reachability = reachability;
   }
 }

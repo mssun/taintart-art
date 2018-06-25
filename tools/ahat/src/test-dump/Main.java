@@ -49,6 +49,8 @@ public class Main {
       stuff.basicStringRef = new Object[]{stuff.basicString};
     }
 
+    stuff.shouldNotGc();
+
     // Take a heap dump that will include that instance of DumpedStuff.
     System.err.println("Dumping hprof data to " + file);
     VMDebug.dumpHprofData(file);
