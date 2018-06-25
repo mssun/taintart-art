@@ -2153,10 +2153,12 @@ inline void ConcurrentCopying::Process(mirror::Object* obj, MemberOffset offset)
       break;
     }
     // Use release CAS to make sure threads reading the reference see contents of copied objects.
-  } while (!obj->CasFieldWeakReleaseObjectWithoutWriteBarrier<false, false, kVerifyNone>(
+  } while (!obj->CasFieldObjectWithoutWriteBarrier<false, false, kVerifyNone>(
       offset,
       expected_ref,
-      new_ref));
+      new_ref,
+      CASMode::kWeak,
+      std::memory_order_release));
 }
 
 // Process some roots.

@@ -665,102 +665,38 @@ inline HeapReference<Object>* Object::GetFieldObjectReferenceAddr(MemberOffset f
 }
 
 template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
-inline bool Object::CasFieldWeakSequentiallyConsistentObject(MemberOffset field_offset,
-                                                             ObjPtr<Object> old_value,
-                                                             ObjPtr<Object> new_value) {
-  bool success = CasFieldWeakSequentiallyConsistentObjectWithoutWriteBarrier<
-      kTransactionActive, kCheckTransaction, kVerifyFlags>(field_offset, old_value, new_value);
+inline bool Object::CasFieldObjectWithoutWriteBarrier(MemberOffset field_offset,
+                                                      ObjPtr<Object> old_value,
+                                                      ObjPtr<Object> new_value,
+                                                      CASMode mode,
+                                                      std::memory_order memory_order) {
+  VerifyTransaction<kTransactionActive, kCheckTransaction>();
+  VerifyCAS<kVerifyFlags>(new_value, old_value);
+  if (kTransactionActive) {
+    Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
+  }
+  uint32_t old_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(old_value));
+  uint32_t new_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(new_value));
+  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
+  Atomic<uint32_t>* atomic_addr = reinterpret_cast<Atomic<uint32_t>*>(raw_addr);
+  return atomic_addr->CompareAndSet(old_ref, new_ref, mode, memory_order);
+}
+
+template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
+inline bool Object::CasFieldObject(MemberOffset field_offset,
+                                   ObjPtr<Object> old_value,
+                                   ObjPtr<Object> new_value,
+                                   CASMode mode,
+                                   std::memory_order memory_order) {
+  bool success = CasFieldObjectWithoutWriteBarrier<
+      kTransactionActive, kCheckTransaction, kVerifyFlags>(field_offset,
+                                                           old_value,
+                                                           new_value,
+                                                           mode,
+                                                           memory_order);
   if (success) {
     WriteBarrier::ForFieldWrite(this, field_offset, new_value);
   }
-  return success;
-}
-
-template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
-inline bool Object::CasFieldWeakSequentiallyConsistentObjectWithoutWriteBarrier(
-    MemberOffset field_offset,
-    ObjPtr<Object> old_value,
-    ObjPtr<Object> new_value) {
-  VerifyTransaction<kTransactionActive, kCheckTransaction>();
-  VerifyCAS<kVerifyFlags>(new_value, old_value);
-  if (kTransactionActive) {
-    Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
-  }
-  uint32_t old_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(old_value));
-  uint32_t new_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(new_value));
-  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
-  Atomic<uint32_t>* atomic_addr = reinterpret_cast<Atomic<uint32_t>*>(raw_addr);
-
-  bool success = atomic_addr->CompareAndSetWeakSequentiallyConsistent(old_ref, new_ref);
-  return success;
-}
-
-template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
-inline bool Object::CasFieldStrongSequentiallyConsistentObject(MemberOffset field_offset,
-                                                               ObjPtr<Object> old_value,
-                                                               ObjPtr<Object> new_value) {
-  bool success = CasFieldStrongSequentiallyConsistentObjectWithoutWriteBarrier<
-      kTransactionActive, kCheckTransaction, kVerifyFlags>(field_offset, old_value, new_value);
-  if (success) {
-    WriteBarrier::ForFieldWrite(this, field_offset, new_value);
-  }
-  return success;
-}
-
-template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
-inline bool Object::CasFieldStrongSequentiallyConsistentObjectWithoutWriteBarrier(
-    MemberOffset field_offset,
-    ObjPtr<Object> old_value,
-    ObjPtr<Object> new_value) {
-  VerifyTransaction<kTransactionActive, kCheckTransaction>();
-  VerifyCAS<kVerifyFlags>(new_value, old_value);
-  if (kTransactionActive) {
-    Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
-  }
-  uint32_t old_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(old_value));
-  uint32_t new_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(new_value));
-  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
-  Atomic<uint32_t>* atomic_addr = reinterpret_cast<Atomic<uint32_t>*>(raw_addr);
-
-  bool success = atomic_addr->CompareAndSetStrongSequentiallyConsistent(old_ref, new_ref);
-  return success;
-}
-
-template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
-inline bool Object::CasFieldWeakRelaxedObjectWithoutWriteBarrier(
-    MemberOffset field_offset,
-    ObjPtr<Object> old_value,
-    ObjPtr<Object> new_value) {
-  VerifyTransaction<kTransactionActive, kCheckTransaction>();
-  VerifyCAS<kVerifyFlags>(new_value, old_value);
-  if (kTransactionActive) {
-    Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
-  }
-  uint32_t old_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(old_value));
-  uint32_t new_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(new_value));
-  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
-  Atomic<uint32_t>* atomic_addr = reinterpret_cast<Atomic<uint32_t>*>(raw_addr);
-
-  bool success = atomic_addr->CompareAndSetWeakRelaxed(old_ref, new_ref);
-  return success;
-}
-
-template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
-inline bool Object::CasFieldWeakReleaseObjectWithoutWriteBarrier(
-    MemberOffset field_offset,
-    ObjPtr<Object> old_value,
-    ObjPtr<Object> new_value) {
-  VerifyTransaction<kTransactionActive, kCheckTransaction>();
-  VerifyCAS<kVerifyFlags>(new_value, old_value);
-  if (kTransactionActive) {
-    Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
-  }
-  uint32_t old_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(old_value));
-  uint32_t new_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(new_value));
-  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
-  Atomic<uint32_t>* atomic_addr = reinterpret_cast<Atomic<uint32_t>*>(raw_addr);
-
-  bool success = atomic_addr->CompareAndSetWeakRelease(old_ref, new_ref);
   return success;
 }
 

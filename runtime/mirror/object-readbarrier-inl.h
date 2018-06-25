@@ -193,64 +193,6 @@ inline bool Object::AtomicSetMarkBit(uint32_t expected_mark_bit, uint32_t mark_b
   return true;
 }
 
-template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
-inline bool Object::CasFieldStrongRelaxedObjectWithoutWriteBarrier(
-    MemberOffset field_offset,
-    ObjPtr<Object> old_value,
-    ObjPtr<Object> new_value) {
-  if (kCheckTransaction) {
-    DCHECK_EQ(kTransactionActive, Runtime::Current()->IsActiveTransaction());
-  }
-  if (kVerifyFlags & kVerifyThis) {
-    VerifyObject(this);
-  }
-  if (kVerifyFlags & kVerifyWrites) {
-    VerifyObject(new_value);
-  }
-  if (kVerifyFlags & kVerifyReads) {
-    VerifyObject(old_value);
-  }
-  if (kTransactionActive) {
-    Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
-  }
-  uint32_t old_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(old_value));
-  uint32_t new_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(new_value));
-  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
-  Atomic<uint32_t>* atomic_addr = reinterpret_cast<Atomic<uint32_t>*>(raw_addr);
-
-  bool success = atomic_addr->CompareAndSetStrongRelaxed(old_ref, new_ref);
-  return success;
-}
-
-template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
-inline bool Object::CasFieldStrongReleaseObjectWithoutWriteBarrier(
-    MemberOffset field_offset,
-    ObjPtr<Object> old_value,
-    ObjPtr<Object> new_value) {
-  if (kCheckTransaction) {
-    DCHECK_EQ(kTransactionActive, Runtime::Current()->IsActiveTransaction());
-  }
-  if (kVerifyFlags & kVerifyThis) {
-    VerifyObject(this);
-  }
-  if (kVerifyFlags & kVerifyWrites) {
-    VerifyObject(new_value);
-  }
-  if (kVerifyFlags & kVerifyReads) {
-    VerifyObject(old_value);
-  }
-  if (kTransactionActive) {
-    Runtime::Current()->RecordWriteFieldReference(this, field_offset, old_value, true);
-  }
-  uint32_t old_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(old_value));
-  uint32_t new_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(new_value));
-  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
-  Atomic<uint32_t>* atomic_addr = reinterpret_cast<Atomic<uint32_t>*>(raw_addr);
-
-  bool success = atomic_addr->CompareAndSetStrongRelease(old_ref, new_ref);
-  return success;
-}
-
 }  // namespace mirror
 }  // namespace art
 
