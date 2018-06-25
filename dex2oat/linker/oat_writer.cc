@@ -366,6 +366,7 @@ OatWriter::OatWriter(bool compiling_boot_image,
     zipped_dex_files_(),
     zipped_dex_file_locations_(),
     compiler_driver_(nullptr),
+    compiler_options_(nullptr),
     image_writer_(nullptr),
     compiling_boot_image_(compiling_boot_image),
     extract_dex_files_into_vdex_(true),
@@ -642,8 +643,7 @@ dchecked_vector<std::string> OatWriter::GetSourceLocations() const {
 }
 
 bool OatWriter::MayHaveCompiledMethods() const {
-  return CompilerFilter::IsAnyCompilationEnabled(
-      GetCompilerDriver()->GetCompilerOptions().GetCompilerFilter());
+  return GetCompilerOptions().IsAnyCompilationEnabled();
 }
 
 bool OatWriter::WriteAndOpenDexFiles(
@@ -701,6 +701,16 @@ bool OatWriter::WriteAndOpenDexFiles(
   *opened_dex_files = std::move(dex_files);
   write_state_ = WriteState::kPrepareLayout;
   return true;
+}
+
+// Initialize the writer with the given parameters.
+void OatWriter::Initialize(const CompilerDriver* compiler_driver,
+                           ImageWriter* image_writer,
+                           const std::vector<const DexFile*>& dex_files) {
+  compiler_driver_ = compiler_driver;
+  compiler_options_ = &compiler_driver->GetCompilerOptions();
+  image_writer_ = image_writer;
+  dex_files_ = &dex_files;
 }
 
 void OatWriter::PrepareLayout(MultiOatRelativePatcher* relative_patcher) {
@@ -1157,7 +1167,7 @@ class OatWriter::LayoutCodeMethodVisitor : public OatDexMethodVisitor {
       size_t debug_info_idx = OrderedMethodData::kDebugInfoIdxInvalid;
 
       {
-        const CompilerOptions& compiler_options = writer_->compiler_driver_->GetCompilerOptions();
+        const CompilerOptions& compiler_options = writer_->GetCompilerOptions();
         ArrayRef<const uint8_t> quick_code = compiled_method->GetQuickCode();
         uint32_t code_size = quick_code.size() * sizeof(uint8_t);
 
@@ -1238,7 +1248,7 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
                                        OrderedMethodList ordered_methods)
       : LayoutReserveOffsetCodeMethodVisitor(writer,
                                              offset,
-                                             writer->GetCompilerDriver()->GetCompilerOptions(),
+                                             writer->GetCompilerOptions(),
                                              std::move(ordered_methods)) {
   }
 
@@ -1651,7 +1661,7 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
     const DexFile::TypeId& type_id =
         dex_file_->GetTypeId(dex_file_->GetClassDef(class_def_index_).class_idx_);
     const char* class_descriptor = dex_file_->GetTypeDescriptor(type_id);
-    return writer_->GetCompilerDriver()->IsImageClass(class_descriptor);
+    return writer_->GetCompilerOptions().IsImageClass(class_descriptor);
   }
 
   // Check whether specified dex file is in the compiled oat file.
@@ -1717,7 +1727,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     // Ordered method visiting is only for compiled methods.
     DCHECK(writer_->MayHaveCompiledMethods());
 
-    if (writer_->GetCompilerDriver()->GetCompilerOptions().IsAotCompilationEnabled()) {
+    if (writer_->GetCompilerOptions().IsAotCompilationEnabled()) {
       // Only need to set the dex cache if we have compilation. Other modes might have unloaded it.
       if (dex_cache_ == nullptr || dex_cache_->GetDexFile() != dex_file) {
         dex_cache_ = class_linker_->FindDexCache(Thread::Current(), *dex_file);
@@ -2388,9 +2398,9 @@ size_t OatWriter::InitOatCode(size_t offset) {
   // TODO: Remove unused trampoline offsets from the OatHeader (requires oat version change).
   oat_header_->SetInterpreterToInterpreterBridgeOffset(0);
   oat_header_->SetInterpreterToCompiledCodeBridgeOffset(0);
-  if (compiler_driver_->GetCompilerOptions().IsBootImage()) {
+  if (GetCompilerOptions().IsBootImage()) {
     InstructionSet instruction_set = compiler_driver_->GetInstructionSet();
-    const bool generate_debug_info = compiler_driver_->GetCompilerOptions().GenerateAnyDebugInfo();
+    const bool generate_debug_info = GetCompilerOptions().GenerateAnyDebugInfo();
     size_t adjusted_offset = offset;
 
     #define DO_TRAMPOLINE(field, fn_name)                                   \
@@ -2428,7 +2438,7 @@ size_t OatWriter::InitOatCode(size_t offset) {
 }
 
 size_t OatWriter::InitOatCodeDexFiles(size_t offset) {
-  if (!compiler_driver_->GetCompilerOptions().IsAnyCompilationEnabled()) {
+  if (!GetCompilerOptions().IsAnyCompilationEnabled()) {
     if (kOatWriterDebugOatCodeLayout) {
       LOG(INFO) << "InitOatCodeDexFiles: OatWriter("
                 << this << "), "
@@ -2741,7 +2751,7 @@ bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
   }
 
   size_t current_offset = start_offset;
-  if (compiler_driver_->GetCompilerOptions().IsQuickeningCompilationEnabled()) {
+  if (GetCompilerOptions().IsQuickeningCompilationEnabled()) {
     std::vector<uint32_t> dex_files_indices;
     WriteQuickeningInfoMethodVisitor write_quicken_info_visitor(this, vdex_out);
     if (!write_quicken_info_visitor.VisitDexMethods(*dex_files_)) {
@@ -3019,7 +3029,7 @@ bool OatWriter::WriteHeader(OutputStream* out,
 
   oat_header_->SetImageFileLocationOatChecksum(image_file_location_oat_checksum);
   oat_header_->SetImageFileLocationOatDataBegin(image_file_location_oat_begin);
-  if (compiler_driver_->GetCompilerOptions().IsBootImage()) {
+  if (GetCompilerOptions().IsBootImage()) {
     CHECK_EQ(image_patch_delta, 0);
     CHECK_EQ(oat_header_->GetImagePatchDelta(), 0);
   } else {
@@ -3283,7 +3293,7 @@ size_t OatWriter::WriteOatDexFiles(OutputStream* out, size_t file_offset, size_t
 }
 
 size_t OatWriter::WriteCode(OutputStream* out, size_t file_offset, size_t relative_offset) {
-  if (compiler_driver_->GetCompilerOptions().IsBootImage()) {
+  if (GetCompilerOptions().IsBootImage()) {
     InstructionSet instruction_set = compiler_driver_->GetInstructionSet();
 
     #define DO_TRAMPOLINE(field) \
@@ -3314,7 +3324,7 @@ size_t OatWriter::WriteCode(OutputStream* out, size_t file_offset, size_t relati
 size_t OatWriter::WriteCodeDexFiles(OutputStream* out,
                                     size_t file_offset,
                                     size_t relative_offset) {
-  if (!compiler_driver_->GetCompilerOptions().IsAnyCompilationEnabled()) {
+  if (!GetCompilerOptions().IsAnyCompilationEnabled()) {
     // As with InitOatCodeDexFiles, also skip the writer if
     // compilation was disabled.
     if (kOatWriterDebugOatCodeLayout) {

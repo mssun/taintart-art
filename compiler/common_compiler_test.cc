@@ -31,6 +31,7 @@
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
+#include "jni/java_vm_ext.h"
 #include "interpreter/interpreter.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
@@ -134,8 +135,7 @@ void CommonCompilerTest::MakeExecutable(ObjPtr<mirror::ClassLoader> class_loader
   }
 }
 
-// Get the set of image classes given to the compiler-driver in SetUp. Note: the compiler
-// driver assumes ownership of the set, so the test should properly release the set.
+// Get the set of image classes given to the compiler options in SetUp.
 std::unique_ptr<HashSet<std::string>> CommonCompilerTest::GetImageClasses() {
   // Empty set: by default no classes are retained in the image.
   return std::make_unique<HashSet<std::string>>();
@@ -173,12 +173,13 @@ void CommonCompilerTest::CreateCompilerDriver(Compiler::Kind kind,
                                               size_t number_of_threads) {
   compiler_options_->boot_image_ = true;
   compiler_options_->SetCompilerFilter(GetCompilerFilter());
+  compiler_options_->image_classes_.swap(*GetImageClasses());
   compiler_driver_.reset(new CompilerDriver(compiler_options_.get(),
                                             verification_results_.get(),
                                             kind,
                                             isa,
                                             instruction_set_features_.get(),
-                                            GetImageClasses(),
+                                            &compiler_options_->image_classes_,
                                             number_of_threads,
                                             /* swap_fd */ -1,
                                             GetProfileCompilationInfo()));
@@ -235,9 +236,49 @@ void CommonCompilerTest::CompileClass(mirror::ClassLoader* class_loader, const c
 
 void CommonCompilerTest::CompileMethod(ArtMethod* method) {
   CHECK(method != nullptr);
-  TimingLogger timings("CommonTest::CompileMethod", false, false);
+  TimingLogger timings("CommonCompilerTest::CompileMethod", false, false);
   TimingLogger::ScopedTiming t(__FUNCTION__, &timings);
-  compiler_driver_->CompileOne(Thread::Current(), method, &timings);
+  {
+    Thread* self = Thread::Current();
+    jobject class_loader = self->GetJniEnv()->GetVm()->AddGlobalRef(self, method->GetClassLoader());
+
+    DCHECK(!Runtime::Current()->IsStarted());
+    const DexFile* dex_file = method->GetDexFile();
+    uint16_t class_def_idx = method->GetClassDefIndex();
+    uint32_t method_idx = method->GetDexMethodIndex();
+    uint32_t access_flags = method->GetAccessFlags();
+    InvokeType invoke_type = method->GetInvokeType();
+    StackHandleScope<2> hs(self);
+    Handle<mirror::DexCache> dex_cache(hs.NewHandle(method->GetDexCache()));
+    Handle<mirror::ClassLoader> h_class_loader = hs.NewHandle(
+        self->DecodeJObject(class_loader)->AsClassLoader());
+    const DexFile::CodeItem* code_item = dex_file->GetCodeItem(method->GetCodeItemOffset());
+
+    std::vector<const DexFile*> dex_files;
+    dex_files.push_back(dex_file);
+
+    // Go to native so that we don't block GC during compilation.
+    ScopedThreadSuspension sts(self, kNative);
+
+    compiler_driver_->InitializeThreadPools();
+
+    compiler_driver_->PreCompile(class_loader, dex_files, &timings);
+
+    compiler_driver_->CompileOne(self,
+                                 class_loader,
+                                 *dex_file,
+                                 class_def_idx,
+                                 method_idx,
+                                 access_flags,
+                                 invoke_type,
+                                 code_item,
+                                 dex_cache,
+                                 h_class_loader);
+
+    compiler_driver_->FreeThreadPools();
+
+    self->GetJniEnv()->DeleteGlobalRef(class_loader);
+  }
   TimingLogger::ScopedTiming t2("MakeExecutable", &timings);
   MakeExecutable(method);
 }

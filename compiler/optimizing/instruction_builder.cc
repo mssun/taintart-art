@@ -1879,7 +1879,7 @@ void HInstructionBuilder::BuildTypeCheck(const Instruction& instruction,
   Handle<mirror::Class> klass = ResolveClass(soa, type_index);
   bool needs_access_check = LoadClassNeedsAccessCheck(klass);
   TypeCheckKind check_kind = HSharpening::ComputeTypeCheckKind(
-      klass.Get(), code_generator_, compiler_driver_, needs_access_check);
+      klass.Get(), code_generator_, needs_access_check);
 
   HInstruction* class_or_null = nullptr;
   HIntConstant* bitstring_path_to_root = nullptr;
