@@ -41,7 +41,7 @@ else
 fi
 checker="${progdir}/../tools/checker/checker.py"
 export JAVA="java"
-export JAVAC="javac -g -Xlint:-options"
+export JAVAC="javac -g -Xlint:-options -source 1.8 -target 1.8"
 export RUN="${progdir}/etc/run-test-jar"
 export DEX_LOCATION=/data/run-test/${test_dir}
 export NEED_DEX="true"
@@ -56,10 +56,10 @@ fi
 
 # If dx was not set by the environment variable, assume it is in the path.
 if [ -z "$DX" ]; then
-  export DX="dx"
+  export DX="d8-compat-dx"
 fi
 
-export DXMERGER="$D8"
+export DEXMERGER="$D8"
 
 # If jasmin was not set by the environment variable, assume it is in the path.
 if [ -z "$JASMIN" ]; then
@@ -673,13 +673,6 @@ if [ "$usage" = "no" ]; then
     # Shift to get rid of the test name argument. The rest of the arguments
     # will get passed to the test run.
     shift
-fi
-
-# For building with javac and dx always use Java 7. The dx compiler
-# only support byte codes from Java 7 or earlier (class file major
-# version 51 or lower).
-if [ "$NEED_DEX" = "true" ]; then
-  export JAVAC="${JAVAC} -source 1.7 -target 1.7"
 fi
 
 if [ "$usage" = "yes" ]; then

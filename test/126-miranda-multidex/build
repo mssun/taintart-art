@@ -17,21 +17,30 @@
 # Stop if something fails.
 set -e
 
-# All except MirandaInterface
-mkdir classes
-${JAVAC} -d classes `find src -name '*.java'`
-rm classes/MirandaInterface.class
+export ORIGINAL_JAVAC="$JAVAC"
 
-# Only MirandaInterface
-mkdir classes2
-${JAVAC} -d classes2 `find src -name '*.java'`
-rm classes2/Main.class classes2/MirandaAbstract.class classes2/MirandaClass*.class classes2/MirandaInterface2*.class
+# Wrapper function for javac which invokes the compiler and applies
+# additional setup steps for the test.
+function javac_wrapper {
+  set -e # Stop on error - the caller script may not have this set.
 
-if [ ${NEED_DEX} = "true" ]; then
-  # All except Main
-  ${DX} -JXmx256m --debug --dex --output=classes.dex classes
+  if [[ "$*" != *"classes2"* ]]; then
+    # First invocation: compile src/ files.
+    $ORIGINAL_JAVAC "$@"
+  else
+    # Second invocation: move MirandaInterface.class for placement in
+    # a secondary dex file. There are no other source files for the
+    # secondary DEX so no compilation required.
+    mv classes/MirandaInterface.class classes2
+  fi
+  return $?
+}
 
-  # Only Main
-  ${DX} -JXmx256m --debug --dex --output=classes2.dex classes2
-  zip $TEST_NAME.jar classes.dex classes2.dex
-fi
+export -f javac_wrapper
+export JAVAC=javac_wrapper
+
+######################################################################
+
+# Signal to default-build that this is a multidex test.
+mkdir src-multidex
+./default-build "$@"
