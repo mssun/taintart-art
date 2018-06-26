@@ -27,7 +27,6 @@
 #include "base/os.h"
 #include "base/mem_map.h"
 #include "base/safe_map.h"
-#include "compiler.h"
 #include "debug/debug_info.h"
 #include "dex/compact_dex_level.h"
 #include "dex/method_reference.h"
@@ -63,6 +62,12 @@ namespace linker {
 class ImageWriter;
 class MultiOatRelativePatcher;
 class OutputStream;
+
+enum class CopyOption {
+  kNever,
+  kAlways,
+  kOnlyIfCompressed
+};
 
 // OatHeader         variable length with count of D OatDexFiles
 //

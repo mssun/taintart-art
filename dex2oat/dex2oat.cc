@@ -2900,7 +2900,7 @@ class Dex2Oat FINAL {
 
   // By default, copy the dex to the vdex file only if dex files are
   // compressed in APK.
-  CopyOption copy_dex_files_ = CopyOption::kOnlyIfCompressed;
+  linker::CopyOption copy_dex_files_ = linker::CopyOption::kOnlyIfCompressed;
 
   // The reason for invoking the compiler.
   std::string compilation_reason_;
