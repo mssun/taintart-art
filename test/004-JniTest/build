@@ -23,16 +23,18 @@
 # This enables the test to compile with vanilla RI javac and work on either ART or RI.
 #
 
+# Stop on failure.
+set -e
+
 export ORIGINAL_JAVAC="$JAVAC"
 
-# Delete CriticalNative.java, FastNative.java annotations after building the .class files.
+# Wrapper function for javac which invokes the compiler and applies
+# additional setup steps for the test.
 function javac_wrapper {
+  set -e # Stop on error - the caller script may not have this set.
   $ORIGINAL_JAVAC "$@"
-  local stat=$?
-
-  [[ -d classes ]] && (find classes/dalvik -name '*.class' | xargs rm -rf)
-
-  return $stat
+  # Delete CriticalNative.java, FastNative.java annotations after building the .class files.
+  find classes/dalvik -name '*.class' -exec rm {} \;
 }
 
 export -f javac_wrapper
@@ -40,28 +42,6 @@ export JAVAC=javac_wrapper
 
 ######################################################################
 
-# Use the original dx with no extra magic or pessimizing flags.
-# This ensures that any default optimizations that dx do would not break JNI.
-
-export ORIGINAL_DX="$DX"
-
-# Filter out --debug flag from dx.
-function dx_wrapper {
-  local args=("$@")
-  local args_filtered=()
-  for i in "${args[@]}"; do
-    case "$i" in
-      --debug)
-        ;;
-      *)
-        args_filtered+=("$i")
-        ;;
-    esac
-  done
-  "$ORIGINAL_DX" "${args_filtered[@]}"
-}
-
-export -f dx_wrapper
-export DX=dx_wrapper
-
+# Use release mode to check optimizations do not break JNI.
+export D8_FLAGS=--release
 ./default-build "$@"

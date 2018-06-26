@@ -17,8 +17,4 @@
 # Make us exit on a failure
 set -e
 
-# Always use D8 as DX does not support propagating parameter name and
-# access_flag information.
-export USE_D8=true
-
 ./default-build "$@" --experimental parameter-annotations

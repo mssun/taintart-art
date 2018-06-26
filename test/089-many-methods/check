@@ -14,7 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Strip build error debug messages, as they are environment-specific.
-sed -e '/^Failed to build/d' -e '/^Non-canonical tmpdir/d' -e '/^Args:/d' -e '/^Max filename/d' -e '/^Max pathlength/d' "$2" > "$2.tmp"
-
+grep Error "$2" > "$2.tmp"
 diff --strip-trailing-cr -q "$1" "$2.tmp" >/dev/null
