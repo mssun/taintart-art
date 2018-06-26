@@ -115,10 +115,9 @@ const char* image_roots_descriptions_[] = {
 };
 
 // Map is so that we don't allocate multiple dex files for the same OatDexFile.
-static std::map<const OatFile::OatDexFile*,
-                std::unique_ptr<const DexFile>> opened_dex_files;
+static std::map<const OatDexFile*, std::unique_ptr<const DexFile>> opened_dex_files;
 
-const DexFile* OpenDexFile(const OatFile::OatDexFile* oat_dex_file, std::string* error_msg) {
+const DexFile* OpenDexFile(const OatDexFile* oat_dex_file, std::string* error_msg) {
   DCHECK(oat_dex_file != nullptr);
   auto it = opened_dex_files.find(oat_dex_file);
   if (it != opened_dex_files.end()) {
@@ -240,15 +239,15 @@ class OatSymbolizer FINAL {
   }
 
   void Walk() {
-    std::vector<const OatFile::OatDexFile*> oat_dex_files = oat_file_->GetOatDexFiles();
+    std::vector<const OatDexFile*> oat_dex_files = oat_file_->GetOatDexFiles();
     for (size_t i = 0; i < oat_dex_files.size(); i++) {
-      const OatFile::OatDexFile* oat_dex_file = oat_dex_files[i];
+      const OatDexFile* oat_dex_file = oat_dex_files[i];
       CHECK(oat_dex_file != nullptr);
       WalkOatDexFile(oat_dex_file);
     }
   }
 
-  void WalkOatDexFile(const OatFile::OatDexFile* oat_dex_file) {
+  void WalkOatDexFile(const OatDexFile* oat_dex_file) {
     std::string error_msg;
     const DexFile* const dex_file = OpenDexFile(oat_dex_file, &error_msg);
     if (dex_file == nullptr) {
@@ -529,7 +528,7 @@ class OatDumper {
 
     // Dumping the dex file overview is compact enough to do even if header only.
     for (size_t i = 0; i < oat_dex_files_.size(); i++) {
-      const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
+      const OatDexFile* oat_dex_file = oat_dex_files_[i];
       CHECK(oat_dex_file != nullptr);
       std::string error_msg;
       const DexFile* const dex_file = OpenDexFile(oat_dex_file, &error_msg);
@@ -598,7 +597,7 @@ class OatDumper {
            << "\n";
       }
       for (size_t i = 0; i < oat_dex_files_.size(); i++) {
-        const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
+        const OatDexFile* oat_dex_file = oat_dex_files_[i];
         CHECK(oat_dex_file != nullptr);
         if (!DumpOatDexFile(os, *oat_dex_file)) {
           success = false;
@@ -630,7 +629,7 @@ class OatDumper {
 
       size_t i = 0;
       for (const auto& vdex_dex_file : vdex_dex_files) {
-        const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
+        const OatDexFile* oat_dex_file = oat_dex_files_[i];
         CHECK(oat_dex_file != nullptr);
         CHECK(vdex_dex_file != nullptr);
         if (!ExportDexFile(os, *oat_dex_file, vdex_dex_file.get())) {
@@ -670,7 +669,7 @@ class OatDumper {
 
   const void* GetQuickOatCode(ArtMethod* m) REQUIRES_SHARED(Locks::mutator_lock_) {
     for (size_t i = 0; i < oat_dex_files_.size(); i++) {
-      const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
+      const OatDexFile* oat_dex_file = oat_dex_files_[i];
       CHECK(oat_dex_file != nullptr);
       std::string error_msg;
       const DexFile* const dex_file = OpenDexFile(oat_dex_file, &error_msg);
@@ -786,7 +785,7 @@ class OatDumper {
     // region, so if we keep a sorted sequence of the start of each region, we can infer the length
     // of a piece of code by using upper_bound to find the start of the next region.
     for (size_t i = 0; i < oat_dex_files_.size(); i++) {
-      const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
+      const OatDexFile* oat_dex_file = oat_dex_files_[i];
       CHECK(oat_dex_file != nullptr);
       std::string error_msg;
       const DexFile* const dex_file = OpenDexFile(oat_dex_file, &error_msg);
@@ -825,7 +824,7 @@ class OatDumper {
     offsets_.insert(oat_method.GetVmapTableOffset());
   }
 
-  bool DumpOatDexFile(std::ostream& os, const OatFile::OatDexFile& oat_dex_file) {
+  bool DumpOatDexFile(std::ostream& os, const OatDexFile& oat_dex_file) {
     bool success = true;
     bool stop_analysis = false;
     os << "OatDexFile:\n";
@@ -906,9 +905,7 @@ class OatDumper {
   // Dex resource is extracted from the oat_dex_file and its checksum is repaired since it's not
   // unquickened. Otherwise the dex_file has been fully unquickened and is expected to verify the
   // original checksum.
-  bool ExportDexFile(std::ostream& os,
-                     const OatFile::OatDexFile& oat_dex_file,
-                     const DexFile* dex_file) {
+  bool ExportDexFile(std::ostream& os, const OatDexFile& oat_dex_file, const DexFile* dex_file) {
     std::string error_msg;
     std::string dex_file_location = oat_dex_file.GetDexFileLocation();
     size_t fsize = oat_dex_file.FileSize();
@@ -1717,7 +1714,7 @@ class OatDumper {
   }
 
   const OatFile& oat_file_;
-  const std::vector<const OatFile::OatDexFile*> oat_dex_files_;
+  const std::vector<const OatDexFile*> oat_dex_files_;
   const OatDumperOptions& options_;
   uint32_t resolved_addr2instr_;
   const InstructionSet instruction_set_;
@@ -1856,7 +1853,7 @@ class ImageDumper {
 
     oat_dumper_.reset(new OatDumper(*oat_file, *oat_dumper_options_));
 
-    for (const OatFile::OatDexFile* oat_dex_file : oat_file->GetOatDexFiles()) {
+    for (const OatDexFile* oat_dex_file : oat_file->GetOatDexFiles()) {
       CHECK(oat_dex_file != nullptr);
       stats_.oat_dex_file_sizes.push_back(std::make_pair(oat_dex_file->GetDexFileLocation(),
                                                          oat_dex_file->FileSize()));
@@ -2782,7 +2779,7 @@ static jobject InstallOatFile(Runtime* runtime,
   OatFile* oat_file_ptr = oat_file.get();
   ClassLinker* class_linker = runtime->GetClassLinker();
   runtime->GetOatFileManager().RegisterOatFile(std::move(oat_file));
-  for (const OatFile::OatDexFile* odf : oat_file_ptr->GetOatDexFiles()) {
+  for (const OatDexFile* odf : oat_file_ptr->GetOatDexFiles()) {
     std::string error_msg;
     const DexFile* const dex_file = OpenDexFile(odf, &error_msg);
     CHECK(dex_file != nullptr) << error_msg;

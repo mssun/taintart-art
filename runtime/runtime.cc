@@ -1020,7 +1020,7 @@ static bool OpenDexFilesFromImage(const std::string& image_location,
       return false;
     }
 
-    for (const OatFile::OatDexFile* oat_dex_file : oat_file->GetOatDexFiles()) {
+    for (const OatDexFile* oat_dex_file : oat_file->GetOatDexFiles()) {
       if (oat_dex_file == nullptr) {
         *failures += 1;
         continue;

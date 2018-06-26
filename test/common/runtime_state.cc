@@ -60,7 +60,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasOatFile(JNIEnv* env, jclass c
 
   ObjPtr<mirror::Class> klass = soa.Decode<mirror::Class>(cls);
   const DexFile& dex_file = klass->GetDexFile();
-  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+  const OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   return (oat_dex_file != nullptr) ? JNI_TRUE : JNI_FALSE;
 }
 
@@ -100,7 +100,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_compiledWithOptimizing(JNIEnv* e
 
   ObjPtr<mirror::Class> klass = soa.Decode<mirror::Class>(cls);
   const DexFile& dex_file = klass->GetDexFile();
-  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+  const OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   if (oat_dex_file == nullptr) {
     // Could be JIT, which also uses optimizing, but conservatively say no.
     return JNI_FALSE;

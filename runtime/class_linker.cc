@@ -1338,7 +1338,7 @@ static std::unique_ptr<const DexFile> OpenOatDexFile(const OatFile* oat_file,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(error_msg != nullptr);
   std::unique_ptr<const DexFile> dex_file;
-  const OatFile::OatDexFile* oat_dex_file = oat_file->GetOatDexFile(location, nullptr, error_msg);
+  const OatDexFile* oat_dex_file = oat_file->GetOatDexFile(location, nullptr, error_msg);
   if (oat_dex_file == nullptr) {
     return std::unique_ptr<const DexFile>();
   }
@@ -4181,7 +4181,7 @@ bool ClassLinker::VerifyClassUsingOatFile(const DexFile& dex_file,
     }
   }
 
-  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+  const OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   // In case we run without an image there won't be a backing oat file.
   if (oat_dex_file == nullptr || oat_dex_file->GetOatFile() == nullptr) {
     return false;
