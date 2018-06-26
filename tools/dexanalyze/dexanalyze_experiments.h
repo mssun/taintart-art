@@ -98,11 +98,25 @@ class CountDexIndices : public Experiment {
   size_t total_unique_string_ids_ = 0;
   uint64_t total_unique_code_items_ = 0u;
 
-  static constexpr size_t kMaxFieldIndex = 32;
-  uint64_t field_index_[kMaxFieldIndex] = {};
-  uint64_t field_index_other_ = 0u;
-  uint64_t field_receiver_[16] = {};
-  uint64_t field_output_[16] = {};
+  struct FieldAccessStats {
+    static constexpr size_t kMaxFieldIndex = 32;
+    uint64_t field_index_[kMaxFieldIndex] = {};
+    uint64_t field_index_other_ = 0u;
+    uint64_t inout_[16] = {};  // Input for IPUT/SPUT, output for IGET/SGET.
+    static constexpr size_t kShortBytecodeFieldIndexOutCutOff = 16u;
+    static constexpr size_t kShortBytecodeInOutCutOff = 16u;
+    uint64_t short_bytecode_ = 0u;
+  };
+  struct InstanceFieldAccessStats : FieldAccessStats {
+    uint64_t receiver_[16] = {};
+  };
+  struct StaticFieldAccessStats : FieldAccessStats {
+    uint64_t inout_other_ = 0u;  // Input for SPUT, output for SGET.
+  };
+  InstanceFieldAccessStats iget_stats_;
+  InstanceFieldAccessStats iput_stats_;
+  StaticFieldAccessStats sget_stats_;
+  StaticFieldAccessStats sput_stats_;
 
   // Unique names.
   uint64_t total_unique_method_names_ = 0u;
