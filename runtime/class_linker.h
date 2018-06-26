@@ -405,7 +405,7 @@ class ClassLinker {
 
   // Initializes classes that have instances in the image but that have
   // <clinit> methods so they could not be initialized by the compiler.
-  void RunRootClinits(Thread* self)
+  void RunRootClinits()
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
