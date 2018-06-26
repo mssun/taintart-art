@@ -222,10 +222,10 @@ static Parser CreateArgumentParser() {
       .Define("--force-determinism")
           .IntoKey(M::ForceDeterminism)
       .Define("--copy-dex-files=_")
-          .WithType<CopyOption>()
-          .WithValueMap({{"true", CopyOption::kOnlyIfCompressed},
-                         {"false", CopyOption::kNever},
-                         {"always", CopyOption::kAlways}})
+          .WithType<linker::CopyOption>()
+          .WithValueMap({{"true", linker::CopyOption::kOnlyIfCompressed},
+                         {"false", linker::CopyOption::kNever},
+                         {"always", linker::CopyOption::kAlways}})
           .IntoKey(M::CopyDexFiles)
       .Define("--classpath-dir=_")
           .WithType<std::string>()
