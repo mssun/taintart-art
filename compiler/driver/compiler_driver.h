@@ -106,16 +106,8 @@ class CompilerDriver {
 
   ~CompilerDriver();
 
-  // Set dex files associated with the oat file being compiled.
-  void SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files);
-
   // Set dex files classpath.
   void SetClasspathDexFiles(const std::vector<const DexFile*>& dex_files);
-
-  // Get dex files associated with the the oat file being compiled.
-  ArrayRef<const DexFile* const> GetDexFilesForOatFile() const {
-    return ArrayRef<const DexFile* const>(dex_files_for_oat_file_);
-  }
 
   void CompileAll(jobject class_loader,
                   const std::vector<const DexFile*>& dex_files,
@@ -354,13 +346,6 @@ class CompilerDriver {
   bool CanAssumeClassIsLoaded(mirror::Class* klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  bool MayInline(const DexFile* inlined_from, const DexFile* inlined_into) const {
-    if (!kIsTargetBuild) {
-      return MayInlineInternal(inlined_from, inlined_into);
-    }
-    return true;
-  }
-
   const ProfileCompilationInfo* GetProfileCompilationInfo() const {
     return profile_compilation_info_;
   }
@@ -454,8 +439,6 @@ class CompilerDriver {
                const std::vector<const DexFile*>& dex_files,
                TimingLogger* timings);
 
-  bool MayInlineInternal(const DexFile* inlined_from, const DexFile* inlined_into) const;
-
   void InitializeThreadPools();
   void FreeThreadPools();
   void CheckThreadPools();
@@ -524,9 +507,6 @@ class CompilerDriver {
   void* compiler_context_;
 
   bool support_boot_image_fixup_;
-
-  // List of dex files associates with the oat file.
-  std::vector<const DexFile*> dex_files_for_oat_file_;
 
   CompiledMethodStorage compiled_method_storage_;
 

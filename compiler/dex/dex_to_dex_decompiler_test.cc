@@ -47,7 +47,7 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
     // the results for all the dex files, not just the results for the current dex file.
     down_cast<QuickCompilerCallbacks*>(Runtime::Current()->GetCompilerCallbacks())->SetVerifierDeps(
         new verifier::VerifierDeps(GetDexFiles(class_loader)));
-    compiler_driver_->SetDexFilesForOatFile(GetDexFiles(class_loader));
+    SetDexFilesForOatFile(GetDexFiles(class_loader));
     compiler_driver_->CompileAll(class_loader, GetDexFiles(class_loader), &timings);
   }
 

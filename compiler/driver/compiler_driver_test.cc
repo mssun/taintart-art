@@ -46,7 +46,7 @@ class CompilerDriverTest : public CommonCompilerTest {
     TimingLogger timings("CompilerDriverTest::CompileAll", false, false);
     TimingLogger::ScopedTiming t(__FUNCTION__, &timings);
     dex_files_ = GetDexFiles(class_loader);
-    compiler_driver_->SetDexFilesForOatFile(dex_files_);;
+    SetDexFilesForOatFile(dex_files_);
     compiler_driver_->CompileAll(class_loader, dex_files_, &timings);
     t.NewTiming("MakeAllExecutable");
     MakeAllExecutable(class_loader);
@@ -331,7 +331,7 @@ TEST_F(CompilerDriverVerifyTest, RetryVerifcationStatusCheckVerified) {
     ASSERT_GT(dex_files.size(), 0u);
     dex_file = dex_files.front();
   }
-  compiler_driver_->SetDexFilesForOatFile(dex_files);
+  SetDexFilesForOatFile(dex_files);
   callbacks_->SetDoesClassUnloading(true, compiler_driver_.get());
   ClassReference ref(dex_file, 0u);
   // Test that the status is read from the compiler driver as expected.

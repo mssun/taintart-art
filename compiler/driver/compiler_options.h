@@ -235,6 +235,10 @@ class CompilerOptions FINAL {
     return no_inline_from_;
   }
 
+  const std::vector<const DexFile*>& GetDexFilesForOatFile() const {
+    return dex_files_for_oat_file_;
+  }
+
   const HashSet<std::string>& GetImageClasses() const {
     return image_classes_;
   }
@@ -312,6 +316,9 @@ class CompilerOptions FINAL {
   // This is usually a very short list (i.e. a single dex file), so we
   // prefer vector<> over a lookup-oriented container, such as set<>.
   std::vector<const DexFile*> no_inline_from_;
+
+  // List of dex files associated with the oat file, empty for JIT.
+  std::vector<const DexFile*> dex_files_for_oat_file_;
 
   // Image classes, specifies the classes that will be included in the image if creating an image.
   // Must not be empty for real boot image, only for tests pretending to compile boot image.

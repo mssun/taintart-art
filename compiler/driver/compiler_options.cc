@@ -38,6 +38,7 @@ CompilerOptions::CompilerOptions()
       num_dex_methods_threshold_(kDefaultNumDexMethodsThreshold),
       inline_max_code_units_(kUnsetInlineMaxCodeUnits),
       no_inline_from_(),
+      dex_files_for_oat_file_(),
       image_classes_(),
       boot_image_(false),
       core_image_(false),
