@@ -409,7 +409,7 @@ TEST_F(OatTest, WriteRead) {
   jobject class_loader = nullptr;
   if (kCompile) {
     TimingLogger timings2("OatTest::WriteRead", false, false);
-    compiler_driver_->SetDexFilesForOatFile(class_linker->GetBootClassPath());
+    SetDexFilesForOatFile(class_linker->GetBootClassPath());
     compiler_driver_->CompileAll(class_loader, class_linker->GetBootClassPath(), &timings2);
   }
 
@@ -547,7 +547,7 @@ TEST_F(OatTest, EmptyTextSection) {
     ScopedObjectAccess soa(Thread::Current());
     class_linker->RegisterDexFile(*dex_file, soa.Decode<mirror::ClassLoader>(class_loader));
   }
-  compiler_driver_->SetDexFilesForOatFile(dex_files);
+  SetDexFilesForOatFile(dex_files);
   compiler_driver_->CompileAll(class_loader, dex_files, &timings);
 
   ScratchFile tmp_base, tmp_oat(tmp_base, ".oat"), tmp_vdex(tmp_base, ".vdex");

@@ -442,7 +442,7 @@ void ImageWriter::PrepareDexCacheArraySlots() {
   // Prepare dex cache array starts based on the ordering specified in the CompilerDriver.
   // Set the slot size early to avoid DCHECK() failures in IsImageBinSlotAssigned()
   // when AssignImageBinSlot() assigns their indexes out or order.
-  for (const DexFile* dex_file : compiler_driver_.GetDexFilesForOatFile()) {
+  for (const DexFile* dex_file : compiler_driver_.GetCompilerOptions().GetDexFilesForOatFile()) {
     auto it = dex_file_oat_index_map_.find(dex_file);
     DCHECK(it != dex_file_oat_index_map_.end()) << dex_file->GetLocation();
     ImageInfo& image_info = GetImageInfo(it->second);
@@ -1738,7 +1738,7 @@ void ImageWriter::CalculateNewObjectOffsets() {
   WorkStack work_stack;
 
   // Special case interned strings to put them in the image they are likely to be resolved from.
-  for (const DexFile* dex_file : compiler_driver_.GetDexFilesForOatFile()) {
+  for (const DexFile* dex_file : compiler_driver_.GetCompilerOptions().GetDexFilesForOatFile()) {
     auto it = dex_file_oat_index_map_.find(dex_file);
     DCHECK(it != dex_file_oat_index_map_.end()) << dex_file->GetLocation();
     const size_t oat_index = it->second;
