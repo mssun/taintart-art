@@ -338,14 +338,10 @@ libart_cc_defaults {
                 "thread_android.cc",
             ],
             shared_libs: [
-                // For android::FileMap used by libziparchive.
-                "libutils",
                 "libtombstoned_client",
             ],
             static_libs: [
-                // ZipArchive support, the order matters here to get all symbols.
-                "libziparchive",
-                "libz",
+                "libz",  // For adler32.
             ],
         },
         android_arm: {
@@ -367,8 +363,7 @@ libart_cc_defaults {
                 "thread_linux.cc",
             ],
             shared_libs: [
-                "libziparchive",
-                "libz",
+                "libz",  // For adler32.
             ],
         },
     },
@@ -600,7 +595,6 @@ art_cc_test {
     ],
     shared_libs: [
         "libbacktrace",
-        "libziparchive",
     ],
     header_libs: [
         "art_cmdlineparser_headers", // For parsed_options_test.
