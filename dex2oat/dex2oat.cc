@@ -696,7 +696,7 @@ class Dex2Oat FINAL {
   }
 
   bool VerifyProfileData() {
-    return profile_compilation_info_->VerifyProfileData(dex_files_);
+    return profile_compilation_info_->VerifyProfileData(compiler_options_->dex_files_for_oat_file_);
   }
 
   void ParseInstructionSetVariant(const std::string& option, ParserOptions* parser_options) {
@@ -1491,8 +1491,8 @@ class Dex2Oat FINAL {
     if (profile_compilation_info_ != nullptr) {
       // TODO: The following comment looks outdated or misplaced.
       // Filter out class path classes since we don't want to include these in the image.
-      HashSet<std::string> image_classes =
-          profile_compilation_info_->GetClassDescriptors(dex_files_);
+      HashSet<std::string> image_classes = profile_compilation_info_->GetClassDescriptors(
+          compiler_options_->dex_files_for_oat_file_);
       VLOG(compiler) << "Loaded " << image_classes.size()
                      << " image class descriptors from profile";
       if (VLOG_IS_ON(compiler)) {
@@ -1653,10 +1653,11 @@ class Dex2Oat FINAL {
       }
     }
 
-    dex_files_ = MakeNonOwningPointerVector(opened_dex_files_);
+    compiler_options_->dex_files_for_oat_file_ = MakeNonOwningPointerVector(opened_dex_files_);
+    const std::vector<const DexFile*>& dex_files = compiler_options_->dex_files_for_oat_file_;
 
     // If we need to downgrade the compiler-filter for size reasons.
-    if (!IsBootImage() && IsVeryLarge(dex_files_)) {
+    if (!IsBootImage() && IsVeryLarge(dex_files)) {
       // Disable app image to make sure dex2oat unloading is enabled.
       compiler_options_->DisableAppImage();
 
@@ -1689,7 +1690,7 @@ class Dex2Oat FINAL {
     CHECK(driver_ == nullptr);
     // If we use a swap file, ensure we are above the threshold to make it necessary.
     if (swap_fd_ != -1) {
-      if (!UseSwap(IsBootImage(), dex_files_)) {
+      if (!UseSwap(IsBootImage(), dex_files)) {
         close(swap_fd_);
         swap_fd_ = -1;
         VLOG(compiler) << "Decided to run without swap.";
@@ -1732,7 +1733,7 @@ class Dex2Oat FINAL {
     // Verification results are only required for modes that have any compilation. Avoid
     // adding the dex files if possible to prevent allocating large arrays.
     if (verification_results_ != nullptr) {
-      for (const auto& dex_file : dex_files_) {
+      for (const auto& dex_file : dex_files) {
         // Pre-register dex files so that we can access verification results without locks during
         // compilation and verification.
         verification_results_->AddDexFile(dex_file);
@@ -1750,7 +1751,7 @@ class Dex2Oat FINAL {
   // Doesn't return the class loader since it's not meant to be used for image compilation.
   void CompileDexFilesIndividually() {
     CHECK(!IsImage()) << "Not supported with image";
-    for (const DexFile* dex_file : dex_files_) {
+    for (const DexFile* dex_file : compiler_options_->dex_files_for_oat_file_) {
       std::vector<const DexFile*> dex_files(1u, dex_file);
       VLOG(compiler) << "Compiling " << dex_file->GetLocation();
       jobject class_loader = CompileDexFiles(dex_files);
@@ -1781,7 +1782,7 @@ class Dex2Oat FINAL {
     // mode (to reduce RAM used by the compiler).
     return !IsImage() &&
         !update_input_vdex_ &&
-        dex_files_.size() > 1 &&
+        compiler_options_->dex_files_for_oat_file_.size() > 1 &&
         !CompilerFilter::IsAotCompilationEnabled(compiler_options_->GetCompilerFilter());
   }
 
@@ -1808,11 +1809,12 @@ class Dex2Oat FINAL {
         class_path_files = class_loader_context_->FlattenOpenedDexFiles();
       }
 
+      const std::vector<const DexFile*>& dex_files = compiler_options_->dex_files_for_oat_file_;
       std::vector<const DexFile*> no_inline_from_dex_files;
-      std::vector<const std::vector<const DexFile*>*> dex_file_vectors = {
+      const std::vector<const DexFile*>* dex_file_vectors[] = {
           &class_linker->GetBootClassPath(),
           &class_path_files,
-          &dex_files_
+          &dex_files
       };
       for (const std::vector<const DexFile*>* dex_file_vector : dex_file_vectors) {
         for (const DexFile* dex_file : *dex_file_vector) {
@@ -1851,7 +1853,6 @@ class Dex2Oat FINAL {
                                      thread_count_,
                                      swap_fd_,
                                      profile_compilation_info_.get()));
-    driver_->SetDexFilesForOatFile(dex_files_);
     if (!IsBootImage()) {
       driver_->SetClasspathDexFiles(class_loader_context_->FlattenOpenedDexFiles());
     }
@@ -1867,9 +1868,10 @@ class Dex2Oat FINAL {
     }
 
     // Setup vdex for compilation.
+    const std::vector<const DexFile*>& dex_files = compiler_options_->dex_files_for_oat_file_;
     if (!DoEagerUnquickeningOfVdex() && input_vdex_file_ != nullptr) {
       callbacks_->SetVerifierDeps(
-          new verifier::VerifierDeps(dex_files_, input_vdex_file_->GetVerifierDepsData()));
+          new verifier::VerifierDeps(dex_files, input_vdex_file_->GetVerifierDepsData()));
 
       // TODO: we unquicken unconditionally, as we don't know
       // if the boot image has changed. How exactly we'll know is under
@@ -1879,11 +1881,11 @@ class Dex2Oat FINAL {
       // We do not decompile a RETURN_VOID_NO_BARRIER into a RETURN_VOID, as the quickening
       // optimization does not depend on the boot image (the optimization relies on not
       // having final fields in a class, which does not change for an app).
-      input_vdex_file_->Unquicken(dex_files_, /* decompile_return_instruction */ false);
+      input_vdex_file_->Unquicken(dex_files, /* decompile_return_instruction */ false);
     } else {
       // Create the main VerifierDeps, here instead of in the compiler since we want to aggregate
       // the results for all the dex files, not just the results for the current dex file.
-      callbacks_->SetVerifierDeps(new verifier::VerifierDeps(dex_files_));
+      callbacks_->SetVerifierDeps(new verifier::VerifierDeps(dex_files));
     }
     // Invoke the compilation.
     if (compile_individually) {
@@ -1891,7 +1893,7 @@ class Dex2Oat FINAL {
       // Return a null classloader since we already freed released it.
       return nullptr;
     }
-    return CompileDexFiles(dex_files_);
+    return CompileDexFiles(dex_files);
   }
 
   // Create the class loader, use it to compile, and return.
@@ -1900,7 +1902,8 @@ class Dex2Oat FINAL {
 
     jobject class_loader = nullptr;
     if (!IsBootImage()) {
-      class_loader = class_loader_context_->CreateClassLoader(dex_files_);
+      class_loader =
+          class_loader_context_->CreateClassLoader(compiler_options_->dex_files_for_oat_file_);
       callbacks_->SetDexFiles(&dex_files);
     }
 
@@ -2370,7 +2373,7 @@ class Dex2Oat FINAL {
     return dex_files_size >= min_dex_file_cumulative_size_for_swap_;
   }
 
-  bool IsVeryLarge(std::vector<const DexFile*>& dex_files) {
+  bool IsVeryLarge(const std::vector<const DexFile*>& dex_files) {
     size_t dex_files_size = 0;
     for (const auto* dex_file : dex_files) {
       dex_files_size += dex_file->GetHeader().file_size_;
@@ -2501,8 +2504,9 @@ class Dex2Oat FINAL {
   }
 
   void SaveDexInput() {
-    for (size_t i = 0; i < dex_files_.size(); ++i) {
-      const DexFile* dex_file = dex_files_[i];
+    const std::vector<const DexFile*>& dex_files = compiler_options_->dex_files_for_oat_file_;
+    for (size_t i = 0, size = dex_files.size(); i != size; ++i) {
+      const DexFile* dex_file = dex_files[i];
       std::string tmp_file_name(StringPrintf("/data/local/tmp/dex2oat.%d.%zd.dex",
                                              getpid(), i));
       std::unique_ptr<File> tmp_file(OS::CreateEmptyFile(tmp_file_name.c_str()));
@@ -2854,8 +2858,6 @@ class Dex2Oat FINAL {
   bool multi_image_;
   bool is_host_;
   std::string android_root_;
-  // Dex files we are compiling, does not include the class path dex files.
-  std::vector<const DexFile*> dex_files_;
   std::string no_inline_from_string_;
   CompactDexLevel compact_dex_level_ = kDefaultCompactDexLevel;
 

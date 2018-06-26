@@ -33,6 +33,7 @@ class ClassLoader;
 class CompilerDriver;
 class CompilerOptions;
 class CumulativeLogger;
+class DexFile;
 class ProfileCompilationInfo;
 class VerificationResults;
 
@@ -92,6 +93,8 @@ class CommonCompilerTest : public CommonRuntimeTest {
   void ReserveImageSpace();
 
   void UnreserveImageSpace();
+
+  void SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files);
 
   Compiler::Kind compiler_kind_ = Compiler::kOptimizing;
   std::unique_ptr<CompilerOptions> compiler_options_;

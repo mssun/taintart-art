@@ -40,6 +40,7 @@
 #include "oat_quick_method_header.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
+#include "utils/atomic_dex_ref_map-inl.h"
 
 namespace art {
 
@@ -330,6 +331,12 @@ void CommonCompilerTest::ReserveImageSpace() {
 
 void CommonCompilerTest::UnreserveImageSpace() {
   image_reservation_.reset();
+}
+
+void CommonCompilerTest::SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files) {
+  compiler_options_->dex_files_for_oat_file_ = dex_files;
+  compiler_driver_->compiled_classes_.AddDexFiles(dex_files);
+  compiler_driver_->dex_to_dex_compiler_.SetDexFiles(dex_files);
 }
 
 }  // namespace art

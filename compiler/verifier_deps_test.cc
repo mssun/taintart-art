@@ -129,7 +129,7 @@ class VerifierDepsTest : public CommonCompilerTest {
     for (const DexFile* dex_file : dex_files_) {
       compiler_driver_->GetVerificationResults()->AddDexFile(dex_file);
     }
-    compiler_driver_->SetDexFilesForOatFile(dex_files_);
+    SetDexFilesForOatFile(dex_files_);
   }
 
   void LoadDexFile(ScopedObjectAccess& soa) REQUIRES_SHARED(Locks::mutator_lock_) {
