@@ -525,8 +525,6 @@ class SCOPED_CAPABILITY MutexLock {
   Mutex& mu_;
   DISALLOW_COPY_AND_ASSIGN(MutexLock);
 };
-// Catch bug where variable name is omitted. "MutexLock (lock);" instead of "MutexLock mu(lock)".
-#define MutexLock(x) static_assert(0, "MutexLock declaration missing variable name")
 
 // Scoped locker/unlocker for a ReaderWriterMutex that acquires read access to mu upon
 // construction and releases it upon destruction.
@@ -560,9 +558,6 @@ class SCOPED_CAPABILITY WriterMutexLock {
   ReaderWriterMutex& mu_;
   DISALLOW_COPY_AND_ASSIGN(WriterMutexLock);
 };
-// Catch bug where variable name is omitted. "WriterMutexLock (lock);" instead of
-// "WriterMutexLock mu(lock)".
-#define WriterMutexLock(x) static_assert(0, "WriterMutexLock declaration missing variable name")
 
 // For StartNoThreadSuspension and EndNoThreadSuspension.
 class CAPABILITY("role") Role {
