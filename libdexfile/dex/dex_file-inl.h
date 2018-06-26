@@ -17,12 +17,14 @@
 #ifndef ART_LIBDEXFILE_DEX_DEX_FILE_INL_H_
 #define ART_LIBDEXFILE_DEX_DEX_FILE_INL_H_
 
+#include "dex_file.h"
+
 #include "base/casts.h"
 #include "base/leb128.h"
 #include "base/stringpiece.h"
 #include "class_iterator.h"
 #include "compact_dex_file.h"
-#include "dex_file.h"
+#include "dex_instruction_iterator.h"
 #include "invoke_type.h"
 #include "standard_dex_file.h"
 
