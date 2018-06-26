@@ -2045,15 +2045,15 @@ void Thread::FinishStartup() {
 
   // Finish attaching the main thread.
   ScopedObjectAccess soa(Thread::Current());
-  Thread::Current()->CreatePeer("main", false, runtime->GetMainThreadGroup());
-  Thread::Current()->AssertNoPendingException();
+  soa.Self()->CreatePeer("main", false, runtime->GetMainThreadGroup());
+  soa.Self()->AssertNoPendingException();
 
-  Runtime::Current()->GetClassLinker()->RunRootClinits();
+  runtime->RunRootClinits(soa.Self());
 
   // The thread counts as started from now on. We need to add it to the ThreadGroup. For regular
   // threads, this is done in Thread.start() on the Java side.
-  Thread::Current()->NotifyThreadGroup(soa, runtime->GetMainThreadGroup());
-  Thread::Current()->AssertNoPendingException();
+  soa.Self()->NotifyThreadGroup(soa, runtime->GetMainThreadGroup());
+  soa.Self()->AssertNoPendingException();
 }
 
 void Thread::Shutdown() {
