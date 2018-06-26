@@ -1579,7 +1579,7 @@ void Thread::FullSuspendCheck() {
   VLOG(threads) << this << " self-suspending";
   // Make thread appear suspended to other threads, release mutator_lock_.
   // Transition to suspended and back to runnable, re-acquire share on mutator_lock_.
-  ScopedThreadSuspension(this, kSuspended);
+  ScopedThreadSuspension(this, kSuspended);  // NOLINT
   VLOG(threads) << this << " self-reviving";
 }
 
