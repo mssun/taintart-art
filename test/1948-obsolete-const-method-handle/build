@@ -20,6 +20,4 @@ set -e
 mkdir classes
 ./util-src/build-classes $PWD/classes
 
-${DX} --dex --min-sdk-version=28 --output=classes.dex classes
-
-zip $TEST_NAME.jar classes.dex
+./default-build --api-level 28 "$@"

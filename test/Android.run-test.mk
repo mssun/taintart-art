@@ -19,13 +19,11 @@ include art/build/Android.common_test.mk
 
 # Dependencies for actually running a run-test.
 TEST_ART_RUN_TEST_DEPENDENCIES := \
-  $(HOST_OUT_EXECUTABLES)/dx \
   $(HOST_OUT_EXECUTABLES)/d8 \
   $(HOST_OUT_EXECUTABLES)/d8-compat-dx \
   $(HOST_OUT_EXECUTABLES)/hiddenapi \
   $(HOST_OUT_EXECUTABLES)/jasmin \
-  $(HOST_OUT_EXECUTABLES)/smali \
-  $(HOST_OUT_JAVA_LIBRARIES)/desugar.jar
+  $(HOST_OUT_EXECUTABLES)/smali
 
 # We need dex2oat and dalvikvm on the target as well as the core images (all images as we sync
 # only once).
@@ -97,7 +95,7 @@ endif
 # Host executables.
 host_prereq_rules := $(ART_TEST_HOST_RUN_TEST_DEPENDENCIES)
 
-# Required for dx, jasmin, smali.
+# Required for jasmin and smali.
 host_prereq_rules += $(TEST_ART_RUN_TEST_DEPENDENCIES)
 
 # Sync test files to the target, depends upon all things that must be pushed
