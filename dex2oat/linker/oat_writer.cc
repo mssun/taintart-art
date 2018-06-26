@@ -1797,6 +1797,14 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
         for (const LinkerPatch& patch : compiled_method->GetPatches()) {
           uint32_t literal_offset = patch.LiteralOffset();
           switch (patch.GetType()) {
+            case LinkerPatch::Type::kIntrinsicReference: {
+              uint32_t target_offset = GetTargetIntrinsicReferenceOffset(patch);
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
             case LinkerPatch::Type::kDataBimgRelRo: {
               uint32_t target_offset =
                   writer_->data_bimg_rel_ro_start_ +
@@ -1992,6 +2000,17 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     DCHECK(writer_->GetCompilerOptions().IsBootImage() ||
            Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(string));
     return string;
+  }
+
+  uint32_t GetTargetIntrinsicReferenceOffset(const LinkerPatch& patch)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK(writer_->GetCompilerOptions().IsBootImage());
+    const void* address =
+        writer_->image_writer_->GetIntrinsicReferenceAddress(patch.IntrinsicData());
+    size_t oat_index = writer_->image_writer_->GetOatIndexForDexFile(dex_file_);
+    uintptr_t oat_data_begin = writer_->image_writer_->GetOatDataBegin(oat_index);
+    // TODO: Clean up offset types. The target offset must be treated as signed.
+    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(address) - oat_data_begin);
   }
 
   uint32_t GetTargetMethodOffset(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {

@@ -560,6 +560,13 @@ class CodeGeneratorARM64 : public CodeGenerator {
     UNIMPLEMENTED(FATAL);
   }
 
+  // Add a new boot image intrinsic patch for an instruction and return the label
+  // to be bound before the instruction. The instruction will be either the
+  // ADRP (pass `adrp_label = null`) or the ADD (pass `adrp_label` pointing
+  // to the associated ADRP patch label).
+  vixl::aarch64::Label* NewBootImageIntrinsicPatch(uint32_t intrinsic_data,
+                                                   vixl::aarch64::Label* adrp_label = nullptr);
+
   // Add a new boot image relocation patch for an instruction and return the label
   // to be bound before the instruction. The instruction will be either the
   // ADRP (pass `adrp_label = null`) or the LDR (pass `adrp_label` pointing
@@ -633,7 +640,8 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                 vixl::aarch64::Register out,
                                 vixl::aarch64::Register base);
 
-  void LoadBootImageAddress(vixl::aarch64::Register reg, uint32_t boot_image_offset);
+  void LoadBootImageAddress(vixl::aarch64::Register reg, uint32_t boot_image_reference);
+  void AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invoke, uint32_t boot_image_offset);
 
   void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
   bool NeedsThunkCode(const linker::LinkerPatch& patch) const OVERRIDE;
@@ -911,6 +919,8 @@ class CodeGeneratorARM64 : public CodeGenerator {
   ArenaDeque<PcRelativePatchInfo> boot_image_string_patches_;
   // PC-relative String patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> string_bss_entry_patches_;
+  // PC-relative patch info for IntrinsicObjects.
+  ArenaDeque<PcRelativePatchInfo> boot_image_intrinsic_patches_;
   // Baker read barrier patch info.
   ArenaDeque<BakerReadBarrierPatchInfo> baker_read_barrier_patches_;
 

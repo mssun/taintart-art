@@ -1067,6 +1067,11 @@ void CodeGeneratorX86_64::GenerateVirtualCall(
   RecordPcInfo(invoke, invoke->GetDexPc(), slow_path);
 }
 
+void CodeGeneratorX86_64::RecordBootImageIntrinsicPatch(uint32_t intrinsic_data) {
+  boot_image_intrinsic_patches_.emplace_back(/* target_dex_file */ nullptr, intrinsic_data);
+  __ Bind(&boot_image_intrinsic_patches_.back().label);
+}
+
 void CodeGeneratorX86_64::RecordBootImageRelRoPatch(uint32_t boot_image_offset) {
   boot_image_method_patches_.emplace_back(/* target_dex_file */ nullptr, boot_image_offset);
   __ Bind(&boot_image_method_patches_.back().label);
@@ -1108,18 +1113,41 @@ Label* CodeGeneratorX86_64::NewStringBssEntryPatch(HLoadString* load_string) {
   return &string_bss_entry_patches_.back().label;
 }
 
-void CodeGeneratorX86_64::LoadBootImageAddress(CpuRegister reg, uint32_t boot_image_offset) {
-  DCHECK(!GetCompilerOptions().IsBootImage());
-  if (GetCompilerOptions().GetCompilePic()) {
+void CodeGeneratorX86_64::LoadBootImageAddress(CpuRegister reg, uint32_t boot_image_reference) {
+  if (GetCompilerOptions().IsBootImage()) {
+    __ leal(reg, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
+    RecordBootImageIntrinsicPatch(boot_image_reference);
+  } else if (GetCompilerOptions().GetCompilePic()) {
     DCHECK(Runtime::Current()->IsAotCompiler());
     __ movl(reg, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
-    RecordBootImageRelRoPatch(boot_image_offset);
+    RecordBootImageRelRoPatch(boot_image_reference);
   } else {
     gc::Heap* heap = Runtime::Current()->GetHeap();
     DCHECK(!heap->GetBootImageSpaces().empty());
-    const uint8_t* address = heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset;
+    const uint8_t* address = heap->GetBootImageSpaces()[0]->Begin() + boot_image_reference;
     __ movl(reg, Immediate(dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(address))));
   }
+}
+
+void CodeGeneratorX86_64::AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invoke,
+                                                       uint32_t boot_image_offset) {
+  DCHECK(invoke->IsStatic());
+  InvokeRuntimeCallingConvention calling_convention;
+  CpuRegister argument = CpuRegister(calling_convention.GetRegisterAt(0));
+  if (GetCompilerOptions().IsBootImage()) {
+    DCHECK_EQ(boot_image_offset, IntrinsicVisitor::IntegerValueOfInfo::kInvalidReference);
+    // Load the class the same way as for HLoadClass::LoadKind::kBootImageLinkTimePcRelative.
+    __ leal(argument,
+            Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
+    MethodReference target_method = invoke->GetTargetMethod();
+    dex::TypeIndex type_idx = target_method.dex_file->GetMethodId(target_method.index).class_idx_;
+    boot_image_type_patches_.emplace_back(target_method.dex_file, type_idx.index_);
+    __ Bind(&boot_image_type_patches_.back().label);
+  } else {
+    LoadBootImageAddress(argument, boot_image_offset);
+  }
+  InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
+  CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
 }
 
 // The label points to the end of the "movl" or another instruction but the literal offset
@@ -1137,12 +1165,13 @@ inline void CodeGeneratorX86_64::EmitPcRelativeLinkerPatches(
   }
 }
 
-linker::LinkerPatch DataBimgRelRoPatchAdapter(size_t literal_offset,
-                                              const DexFile* target_dex_file,
-                                              uint32_t pc_insn_offset,
-                                              uint32_t boot_image_offset) {
-  DCHECK(target_dex_file == nullptr);  // Unused for DataBimgRelRoPatch(), should be null.
-  return linker::LinkerPatch::DataBimgRelRoPatch(literal_offset, pc_insn_offset, boot_image_offset);
+template <linker::LinkerPatch (*Factory)(size_t, uint32_t, uint32_t)>
+linker::LinkerPatch NoDexFileAdapter(size_t literal_offset,
+                                     const DexFile* target_dex_file,
+                                     uint32_t pc_insn_offset,
+                                     uint32_t boot_image_offset) {
+  DCHECK(target_dex_file == nullptr);  // Unused for these patches, should be null.
+  return Factory(literal_offset, pc_insn_offset, boot_image_offset);
 }
 
 void CodeGeneratorX86_64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
@@ -1153,7 +1182,8 @@ void CodeGeneratorX86_64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* li
       boot_image_type_patches_.size() +
       type_bss_entry_patches_.size() +
       boot_image_string_patches_.size() +
-      string_bss_entry_patches_.size();
+      string_bss_entry_patches_.size() +
+      boot_image_intrinsic_patches_.size();
   linker_patches->reserve(size);
   if (GetCompilerOptions().IsBootImage()) {
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeMethodPatch>(
@@ -1162,11 +1192,14 @@ void CodeGeneratorX86_64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* li
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
         boot_image_string_patches_, linker_patches);
+    EmitPcRelativeLinkerPatches<NoDexFileAdapter<linker::LinkerPatch::IntrinsicReferencePatch>>(
+        boot_image_intrinsic_patches_, linker_patches);
   } else {
-    EmitPcRelativeLinkerPatches<DataBimgRelRoPatchAdapter>(
+    EmitPcRelativeLinkerPatches<NoDexFileAdapter<linker::LinkerPatch::DataBimgRelRoPatch>>(
         boot_image_method_patches_, linker_patches);
     DCHECK(boot_image_type_patches_.empty());
     DCHECK(boot_image_string_patches_.empty());
+    DCHECK(boot_image_intrinsic_patches_.empty());
   }
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::MethodBssEntryPatch>(
       method_bss_entry_patches_, linker_patches);
@@ -1268,6 +1301,7 @@ CodeGeneratorX86_64::CodeGeneratorX86_64(HGraph* graph,
         type_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         boot_image_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         string_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+        boot_image_intrinsic_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         jit_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         jit_class_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         fixups_to_jump_tables_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)) {

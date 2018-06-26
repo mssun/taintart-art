@@ -2601,28 +2601,27 @@ void IntrinsicLocationsBuilderMIPS::VisitIntegerValueOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitIntegerValueOf(HInvoke* invoke) {
-  IntrinsicVisitor::IntegerValueOfInfo info = IntrinsicVisitor::ComputeIntegerValueOfInfo(invoke);
+  IntrinsicVisitor::IntegerValueOfInfo info =
+      IntrinsicVisitor::ComputeIntegerValueOfInfo(invoke, codegen_->GetCompilerOptions());
   LocationSummary* locations = invoke->GetLocations();
   MipsAssembler* assembler = GetAssembler();
   InstructionCodeGeneratorMIPS* icodegen =
       down_cast<InstructionCodeGeneratorMIPS*>(codegen_->GetInstructionVisitor());
 
   Register out = locations->Out().AsRegister<Register>();
-  InvokeRuntimeCallingConvention calling_convention;
-  Register argument = calling_convention.GetRegisterAt(0);
   if (invoke->InputAt(0)->IsConstant()) {
     int32_t value = invoke->InputAt(0)->AsIntConstant()->GetValue();
-    if (info.value_boot_image_offset != 0u) {
+    if (static_cast<uint32_t>(value - info.low) < info.length) {
       // Just embed the j.l.Integer in the code.
-      codegen_->LoadBootImageAddress(out, info.value_boot_image_offset);
+      DCHECK_NE(info.value_boot_image_reference, IntegerValueOfInfo::kInvalidReference);
+      codegen_->LoadBootImageAddress(out, info.value_boot_image_reference);
     } else {
       DCHECK(locations->CanCall());
       // Allocate and initialize a new j.l.Integer.
       // TODO: If we JIT, we could allocate the j.l.Integer now, and store it in the
       // JIT object table.
-      codegen_->LoadBootImageAddress(argument, info.integer_boot_image_offset);
-      codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
-      CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
+      codegen_->AllocateInstanceForIntrinsic(invoke->AsInvokeStaticOrDirect(),
+                                             info.integer_boot_image_offset);
       __ StoreConstToOffset(kStoreWord, value, out, info.value_offset, TMP);
       // `value` is a final field :-( Ideally, we'd merge this memory barrier with the allocation
       // one.
@@ -2645,7 +2644,7 @@ void IntrinsicCodeGeneratorMIPS::VisitIntegerValueOf(HInvoke* invoke) {
     __ Beqz(AT, &allocate);
 
     // If the value is within the bounds, load the j.l.Integer directly from the array.
-    codegen_->LoadBootImageAddress(TMP, info.array_data_boot_image_offset);
+    codegen_->LoadBootImageAddress(TMP, info.array_data_boot_image_reference);
     __ ShiftAndAdd(out, out, TMP, TIMES_4);
     __ Lw(out, out, 0);
     __ MaybeUnpoisonHeapReference(out);
@@ -2653,9 +2652,8 @@ void IntrinsicCodeGeneratorMIPS::VisitIntegerValueOf(HInvoke* invoke) {
 
     __ Bind(&allocate);
     // Otherwise allocate and initialize a new j.l.Integer.
-    codegen_->LoadBootImageAddress(argument, info.integer_boot_image_offset);
-    codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
-    CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
+    codegen_->AllocateInstanceForIntrinsic(invoke->AsInvokeStaticOrDirect(),
+                                           info.integer_boot_image_offset);
     __ StoreToOffset(kStoreWord, in, out, info.value_offset);
     // `value` is a final field :-( Ideally, we'd merge this memory barrier with the allocation
     // one.
