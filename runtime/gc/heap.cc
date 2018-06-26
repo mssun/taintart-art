@@ -37,7 +37,6 @@
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "common_throws.h"
-#include "cutils/sched_policy.h"
 #include "debugger.h"
 #include "dex/dex_file-inl.h"
 #include "entrypoints/quick/quick_alloc_entrypoints.h"

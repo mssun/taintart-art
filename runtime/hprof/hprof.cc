@@ -24,7 +24,6 @@
 
 #include "hprof.h"
 
-#include <cutils/open_memstream.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
