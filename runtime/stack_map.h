@@ -289,13 +289,13 @@ class CodeInfo {
   }
 
   explicit CodeInfo(MemoryRegion region) : CodeInfo(region.begin()) {
-    DCHECK_EQ(size_, region.size());
+    DCHECK_EQ(Size(), region.size());
   }
 
   explicit CodeInfo(const OatQuickMethodHeader* header);
 
   size_t Size() const {
-    return size_;
+    return BitsToBytesRoundUp(size_in_bits_);
   }
 
   bool HasInlineInfo() const {
@@ -436,7 +436,6 @@ class CodeInfo {
   void AddSizeStats(/*out*/ Stats* parent) const;
 
   ALWAYS_INLINE static QuickMethodFrameInfo DecodeFrameInfo(const uint8_t* data) {
-    DecodeUnsignedLeb128(&data);
     return QuickMethodFrameInfo(
         DecodeUnsignedLeb128(&data),
         DecodeUnsignedLeb128(&data),
@@ -455,7 +454,6 @@ class CodeInfo {
 
   void Decode(const uint8_t* data);
 
-  size_t size_;
   uint32_t frame_size_in_bytes_;
   uint32_t core_spill_mask_;
   uint32_t fp_spill_mask_;
@@ -468,6 +466,7 @@ class CodeInfo {
   BitTable<MaskInfo> dex_register_masks_;
   BitTable<DexRegisterMapInfo> dex_register_maps_;
   BitTable<DexRegisterInfo> dex_register_catalog_;
+  uint32_t size_in_bits_;
 };
 
 #undef ELEMENT_BYTE_OFFSET_AFTER

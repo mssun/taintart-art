@@ -34,7 +34,7 @@ TEST(BitTableTest, TestVarint) {
       BitMemoryWriter<std::vector<uint8_t>> writer(&buffer, start_bit_offset);
       EncodeVarintBits(writer, value);
 
-      BitMemoryReader reader(writer.GetWrittenRegion(), start_bit_offset);
+      BitMemoryReader reader(buffer.data(), start_bit_offset);
       uint32_t result = DecodeVarintBits(reader);
       EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
       EXPECT_EQ(value, result);
@@ -52,7 +52,7 @@ TEST(BitTableTest, TestEmptyTable) {
   BitTableBuilderBase<1> builder(&allocator);
   builder.Encode(writer);
 
-  BitMemoryReader reader(writer.GetWrittenRegion());
+  BitMemoryReader reader(buffer.data());
   BitTableBase<1> table(reader);
   EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
   EXPECT_EQ(0u, table.NumRows());
@@ -73,7 +73,7 @@ TEST(BitTableTest, TestSingleColumnTable) {
   builder.Add({kNoValue});
   builder.Encode(writer);
 
-  BitMemoryReader reader(writer.GetWrittenRegion());
+  BitMemoryReader reader(buffer.data());
   BitTableBase<1> table(reader);
   EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
   EXPECT_EQ(4u, table.NumRows());
@@ -96,7 +96,7 @@ TEST(BitTableTest, TestUnalignedTable) {
     builder.Add({42u});
     builder.Encode(writer);
 
-    BitMemoryReader reader(writer.GetWrittenRegion(), start_bit_offset);
+    BitMemoryReader reader(buffer.data(), start_bit_offset);
     BitTableBase<1> table(reader);
     EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
     EXPECT_EQ(1u, table.NumRows());
@@ -117,7 +117,7 @@ TEST(BitTableTest, TestBigTable) {
   builder.Add({62u, kNoValue, 63u, static_cast<uint32_t>(-3)});
   builder.Encode(writer);
 
-  BitMemoryReader reader(writer.GetWrittenRegion());
+  BitMemoryReader reader(buffer.data());
   BitTableBase<4> table(reader);
   EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
   EXPECT_EQ(2u, table.NumRows());
@@ -167,7 +167,7 @@ TEST(BitTableTest, TestBitmapTable) {
   builder.Encode(writer);
   EXPECT_EQ(1 + static_cast<uint32_t>(POPCOUNT(value)), builder.size());
 
-  BitMemoryReader reader(writer.GetWrittenRegion());
+  BitMemoryReader reader(buffer.data());
   BitTableBase<1> table(reader);
   EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
   for (auto it : indicies) {
