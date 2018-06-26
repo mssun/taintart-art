@@ -290,10 +290,6 @@ inline ReaderMutexLock::~ReaderMutexLock() {
   mu_.SharedUnlock(self_);
 }
 
-// Catch bug where variable name is omitted. "ReaderMutexLock (lock);" instead of
-// "ReaderMutexLock mu(lock)".
-#define ReaderMutexLock(x) static_assert(0, "ReaderMutexLock declaration missing variable name")
-
 }  // namespace art
 
 #endif  // ART_RUNTIME_BASE_MUTEX_INL_H_
