@@ -212,8 +212,6 @@ class Runtime {
     return finished_starting_;
   }
 
-  void RunRootClinits(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
-
   static Runtime* Current() {
     return instance_;
   }
