@@ -77,13 +77,10 @@ class ExceptionTest : public CommonRuntimeTest {
     ArenaStack arena_stack(&pool);
     ScopedArenaAllocator allocator(&arena_stack);
     StackMapStream stack_maps(&allocator, kRuntimeISA);
-    stack_maps.BeginStackMapEntry(kDexPc,
-                                  native_pc_offset,
-                                  /* register_mask */ 0u,
-                                  /* sp_mask */ nullptr,
-                                  /* num_dex_registers */ 0u,
-                                  /* inlining_depth */ 0u);
+    stack_maps.BeginMethod(4 * sizeof(void*), 0u, 0u, 0u);
+    stack_maps.BeginStackMapEntry(kDexPc, native_pc_offset);
     stack_maps.EndStackMapEntry();
+    stack_maps.EndMethod();
     const size_t stack_maps_size = stack_maps.PrepareForFillIn();
     const size_t header_size = sizeof(OatQuickMethodHeader);
     const size_t code_alignment = GetInstructionSetAlignment(kRuntimeISA);
