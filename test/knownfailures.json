@@ -454,6 +454,14 @@
     },
     {
         "tests": [
+            "638-no-line-number"
+        ],
+        "description": ["Tests that fail on redefine stress due to branch instruction selection"],
+        "bug": "b/110869946",
+        "variant": "redefine-stress"
+    },
+    {
+        "tests": [
             "097-duplicate-method",
             "138-duplicate-classes-check2",
             "159-app-image-fields",
