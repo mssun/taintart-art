@@ -42,7 +42,6 @@ class StackMapStream : public ValueObject {
         stack_maps_(allocator),
         register_masks_(allocator),
         stack_masks_(allocator),
-        invoke_infos_(allocator),
         inline_infos_(allocator),
         dex_register_masks_(allocator),
         dex_register_maps_(allocator),
@@ -75,8 +74,6 @@ class StackMapStream : public ValueObject {
   void AddDexRegisterEntry(DexRegisterLocation::Kind kind, int32_t value) {
     current_dex_registers_.push_back(DexRegisterLocation(kind, value));
   }
-
-  void AddInvoke(InvokeType type, uint32_t dex_method_index);
 
   void BeginInlineInfoEntry(ArtMethod* method,
                             uint32_t dex_pc,
@@ -112,7 +109,6 @@ class StackMapStream : public ValueObject {
   BitTableBuilder<StackMap> stack_maps_;
   BitTableBuilder<RegisterMask> register_masks_;
   BitmapTableBuilder stack_masks_;
-  BitTableBuilder<InvokeInfo> invoke_infos_;
   BitTableBuilder<InlineInfo> inline_infos_;
   BitmapTableBuilder dex_register_masks_;
   BitTableBuilder<MaskInfo> dex_register_maps_;
