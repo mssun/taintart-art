@@ -321,15 +321,73 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
     // Types accessed and count.
     std::map<size_t, size_t> types_accessed;
 
-    // Map from dex field index -> class field index.
-    std::map<uint32_t, uint32_t> field_index_map_;
+    // Maps from dex field index -> class field index (static or instance).
+    std::map<uint32_t, uint32_t> static_field_index_map_;
     size_t current_idx = 0u;
-    for (const ClassAccessor::Field& field : accessor.GetInstanceFields()) {
-      field_index_map_[field.GetIndex()] = current_idx++;
+    for (const ClassAccessor::Field& field : accessor.GetStaticFields()) {
+      static_field_index_map_[field.GetIndex()] = current_idx++;
     }
+    std::map<uint32_t, uint32_t> instance_field_index_map_;
+    current_idx = 0u;
+    for (const ClassAccessor::Field& field : accessor.GetInstanceFields()) {
+      instance_field_index_map_[field.GetIndex()] = current_idx++;
+    }
+    auto ProcessInstanceField = [&](const Instruction& inst,
+                                    uint32_t first_arg_reg,
+                                    const std::map<uint32_t, uint32_t>& index_map,
+                                    /*inout*/ InstanceFieldAccessStats* stats) {
+      const uint32_t dex_field_idx = inst.VRegC_22c();
+      ++types_accessed[dex_file.GetFieldId(dex_field_idx).class_idx_.index_];
+      uint32_t input = inst.VRegA_22c();
+      ++stats->inout_[input];
+      const uint32_t receiver = inst.VRegB_22c();
+      // FIXME: This is weird if receiver < first_arg_reg.
+      ++stats->receiver_[(receiver - first_arg_reg) & 0xF];
+      if (first_arg_reg == receiver) {
+        auto it = index_map.find(dex_field_idx);
+        if (it != index_map.end() && it->second < FieldAccessStats::kMaxFieldIndex) {
+          ++stats->field_index_[it->second];
+        } else {
+          ++stats->field_index_other_;
+        }
+        if (it != index_map.end() &&
+            it->second < FieldAccessStats::kShortBytecodeFieldIndexOutCutOff &&
+            input < FieldAccessStats::kShortBytecodeInOutCutOff) {
+          ++stats->short_bytecode_;
+        }
+      }
+    };
+    auto ProcessStaticField = [&](const Instruction& inst,
+                                  const std::map<uint32_t, uint32_t>& index_map,
+                                  /*inout*/ StaticFieldAccessStats* stats) {
+      const uint32_t dex_field_idx = inst.VRegB_21c();
+      ++types_accessed[dex_file.GetFieldId(dex_field_idx).class_idx_.index_];
+      uint8_t output = inst.VRegA_21c();
+      if (output < 16u) {
+        ++stats->inout_[output];
+      } else {
+        ++stats->inout_other_;
+      }
+      auto it = index_map.find(dex_field_idx);
+      if (it != index_map.end() && it->second < FieldAccessStats::kMaxFieldIndex) {
+        ++stats->field_index_[it->second];
+      } else {
+        ++stats->field_index_other_;
+      }
+      if (it != index_map.end() &&
+          it->second < FieldAccessStats::kShortBytecodeFieldIndexOutCutOff &&
+          output < FieldAccessStats::kShortBytecodeInOutCutOff) {
+        ++stats->short_bytecode_;
+      }
+    };
 
     for (const ClassAccessor::Method& method : accessor.GetMethods()) {
       CodeItemDataAccessor code_item(dex_file, method.GetCodeItem());
+      const uint32_t first_arg_reg =
+          ((method.GetAccessFlags() & kAccStatic) == 0)
+          ? code_item.RegistersSize() - code_item.InsSize()
+          : static_cast<uint32_t>(-1);
+
       dex_code_bytes_ += code_item.InsnsSizeInBytes();
       unique_code_items.insert(method.GetCodeItemOffset());
       for (const DexInstructionPcPair& inst : code_item) {
@@ -346,7 +404,11 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::IGET_BOOLEAN:
           case Instruction::IGET_BYTE:
           case Instruction::IGET_CHAR:
-          case Instruction::IGET_SHORT:
+          case Instruction::IGET_SHORT: {
+            ProcessInstanceField(
+                inst.Inst(), first_arg_reg, instance_field_index_map_, &iget_stats_);
+            break;
+          }
           case Instruction::IPUT:
           case Instruction::IPUT_WIDE:
           case Instruction::IPUT_OBJECT:
@@ -354,20 +416,28 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
           case Instruction::IPUT_BYTE:
           case Instruction::IPUT_CHAR:
           case Instruction::IPUT_SHORT: {
-            const uint32_t receiver = inst->VRegB_22c();
-            const uint32_t dex_field_idx = inst->VRegC_22c();
-            const uint32_t first_arg_reg = code_item.RegistersSize() - code_item.InsSize();
-            ++field_receiver_[(receiver - first_arg_reg) & 0xF];
-            ++types_accessed[dex_file.GetFieldId(dex_field_idx).class_idx_.index_];
-            if (first_arg_reg == receiver) {
-              auto it = field_index_map_.find(dex_field_idx);
-              if (it != field_index_map_.end() && it->second < kMaxFieldIndex) {
-                ++field_index_[it->second];
-              } else {
-                ++field_index_other_;
-              }
-            }
-            ++field_output_[inst->VRegA_22c()];
+            ProcessInstanceField(
+                inst.Inst(), first_arg_reg, instance_field_index_map_, &iput_stats_);
+            break;
+          }
+          case Instruction::SGET:
+          case Instruction::SGET_WIDE:
+          case Instruction::SGET_OBJECT:
+          case Instruction::SGET_BOOLEAN:
+          case Instruction::SGET_BYTE:
+          case Instruction::SGET_CHAR:
+          case Instruction::SGET_SHORT: {
+            ProcessStaticField(inst.Inst(), static_field_index_map_, &sget_stats_);
+            break;
+          }
+          case Instruction::SPUT:
+          case Instruction::SPUT_WIDE:
+          case Instruction::SPUT_OBJECT:
+          case Instruction::SPUT_BOOLEAN:
+          case Instruction::SPUT_BYTE:
+          case Instruction::SPUT_CHAR:
+          case Instruction::SPUT_SHORT: {
+            ProcessStaticField(inst.Inst(), static_field_index_map_, &sput_stats_);
             break;
           }
           case Instruction::CONST_STRING_JUMBO: {
@@ -479,22 +549,55 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
 }
 
 void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
-  const uint64_t fields_total = std::accumulate(field_receiver_, field_receiver_ + 16u, 0u);
-  for (size_t i = 0; i < 16; ++i) {
-    os << "receiver_reg=" << i << ": " << Percent(field_receiver_[i], fields_total) << "\n";
-  }
-  for (size_t i = 0; i < 16; ++i) {
-    os << "output_reg=" << i << ": " << Percent(field_output_[i], fields_total) << "\n";
-  }
-  const uint64_t fields_idx_total = std::accumulate(field_index_,
-                                                    field_index_ + kMaxFieldIndex,
-                                                    0u) + field_index_other_;
-  for (size_t i = 0; i < kMaxFieldIndex; ++i) {
-    os << "field_idx=" << i << ": " << Percent(field_index_[i], fields_idx_total) << "\n";
-  }
-  os << "field_idx=other: " << Percent(field_index_other_, fields_idx_total) << "\n";
-  os << "field_idx_savings=" << Percent((fields_idx_total - field_index_other_) * 2, total_size)
-     << "\n";
+  auto DumpInstanceFieldStats = [&](const char* tag, const InstanceFieldAccessStats& stats) {
+    const uint64_t fields_total = std::accumulate(stats.inout_, stats.inout_ + 16u, 0u);
+    os << tag << "\n";
+    for (size_t i = 0; i < 16; ++i) {
+      os << "  receiver_reg=" << i << ": " << Percent(stats.receiver_[i], fields_total) << "\n";
+    }
+    DCHECK(tag[1] == 'G' || tag[1] == 'P');
+    const char* inout_tag = (tag[1] == 'G') ? "output_reg" : "input_reg";
+    for (size_t i = 0; i < 16; ++i) {
+      os << "  " << inout_tag << "=" << i << ": " << Percent(stats.inout_[i], fields_total) << "\n";
+    }
+    const uint64_t fields_idx_total = std::accumulate(
+        stats.field_index_,
+        stats.field_index_ + FieldAccessStats::kMaxFieldIndex,
+        stats.field_index_other_);
+    for (size_t i = 0; i < FieldAccessStats::kMaxFieldIndex; ++i) {
+      os << "  field_idx=" << i << ": " << Percent(stats.field_index_[i], fields_idx_total) << "\n";
+    }
+    os << "  field_idx=other: " << Percent(stats.field_index_other_, fields_idx_total) << "\n";
+    os << "  short_bytecode: " << Percent(stats.short_bytecode_, fields_total) << "\n";
+    os << "  short_bytecode_savings=" << Percent(stats.short_bytecode_ * 2, total_size) << "\n";
+  };
+  DumpInstanceFieldStats("IGET", iget_stats_);
+  DumpInstanceFieldStats("IPUT", iput_stats_);
+
+  auto DumpStaticFieldStats = [&](const char* tag, const StaticFieldAccessStats& stats) {
+    const uint64_t fields_total =
+        std::accumulate(stats.inout_, stats.inout_ + 16u, stats.inout_other_);
+    os << tag << "\n";
+    DCHECK(tag[1] == 'G' || tag[1] == 'P');
+    const char* inout_tag = (tag[1] == 'G') ? "output_reg" : "input_reg";
+    for (size_t i = 0; i < 16; ++i) {
+      os << "  " << inout_tag << "=" << i << ": " << Percent(stats.inout_[i], fields_total) << "\n";
+    }
+    os << "  " << inout_tag << "=other: " << Percent(stats.inout_other_, fields_total) << "\n";
+    const uint64_t fields_idx_total = std::accumulate(
+        stats.field_index_,
+        stats.field_index_ + FieldAccessStats::kMaxFieldIndex,
+        stats.field_index_other_);
+    for (size_t i = 0; i < FieldAccessStats::kMaxFieldIndex; ++i) {
+      os << "  field_idx=" << i << ": " << Percent(stats.field_index_[i], fields_idx_total) << "\n";
+    }
+    os << "  field_idx=other: " << Percent(stats.field_index_other_, fields_idx_total) << "\n";
+    os << "  short_bytecode: " << Percent(stats.short_bytecode_, fields_total) << "\n";
+    os << "  short_bytecode_savings=" << Percent(stats.short_bytecode_ * 2, total_size) << "\n";
+  };
+  DumpStaticFieldStats("SGET", sget_stats_);
+  DumpStaticFieldStats("SPUT", sput_stats_);
+
   os << "Num string ids: " << num_string_ids_ << "\n";
   os << "Num method ids: " << num_method_ids_ << "\n";
   os << "Num field ids: " << num_field_ids_ << "\n";
