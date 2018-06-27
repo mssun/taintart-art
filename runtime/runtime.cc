@@ -713,6 +713,23 @@ std::string Runtime::GetCompilerExecutable() const {
   return compiler_executable;
 }
 
+void Runtime::RunRootClinits(Thread* self) {
+  class_linker_->RunRootClinits(self);
+
+  GcRoot<mirror::Throwable>* exceptions[] = {
+      &pre_allocated_OutOfMemoryError_when_throwing_exception_,
+      // &pre_allocated_OutOfMemoryError_when_throwing_oome_,             // Same class as above.
+      // &pre_allocated_OutOfMemoryError_when_handling_stack_overflow_,   // Same class as above.
+      &pre_allocated_NoClassDefFoundError_,
+  };
+  for (GcRoot<mirror::Throwable>* exception : exceptions) {
+    StackHandleScope<1> hs(self);
+    Handle<mirror::Class> klass = hs.NewHandle<mirror::Class>(exception->Read()->GetClass());
+    class_linker_->EnsureInitialized(self, klass, true, true);
+    self->AssertNoPendingException();
+  }
+}
+
 bool Runtime::Start() {
   VLOG(startup) << "Runtime::Start entering";
 
@@ -742,8 +759,10 @@ bool Runtime::Start() {
     auto field_class(hs.NewHandle<mirror::Class>(GetClassRoot<mirror::Field>(class_roots)));
 
     class_linker_->EnsureInitialized(soa.Self(), class_class, true, true);
+    self->AssertNoPendingException();
     // Field class is needed for register_java_net_InetAddress in libcore, b/28153851.
     class_linker_->EnsureInitialized(soa.Self(), field_class, true, true);
+    self->AssertNoPendingException();
   }
 
   // InitNativeMethods needs to be after started_ so that the classes
@@ -1090,15 +1109,30 @@ void Runtime::SetSentinel(mirror::Object* sentinel) {
   sentinel_ = GcRoot<mirror::Object>(sentinel);
 }
 
-static inline void InitPreAllocatedException(Thread* self,
-                                             GcRoot<mirror::Throwable>* exception,
-                                             const char* exception_class_descriptor,
-                                             const char* msg)
+static inline void CreatePreAllocatedException(Thread* self,
+                                               Runtime* runtime,
+                                               GcRoot<mirror::Throwable>* exception,
+                                               const char* exception_class_descriptor,
+                                               const char* msg)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK_EQ(self, Thread::Current());
-  self->ThrowNewException(exception_class_descriptor, msg);
-  *exception = GcRoot<mirror::Throwable>(self->GetException());
-  self->ClearException();
+  ClassLinker* class_linker = runtime->GetClassLinker();
+  // Allocate an object without initializing the class to allow non-trivial Throwable.<clinit>().
+  ObjPtr<mirror::Class> klass = class_linker->FindSystemClass(self, exception_class_descriptor);
+  CHECK(klass != nullptr);
+  gc::AllocatorType allocator_type = runtime->GetHeap()->GetCurrentAllocator();
+  ObjPtr<mirror::Throwable> exception_object = ObjPtr<mirror::Throwable>::DownCast(
+      klass->Alloc</* kIsInstrumented */ true>(self, allocator_type));
+  CHECK(exception_object != nullptr);
+  *exception = GcRoot<mirror::Throwable>(exception_object);
+  // Initialize the "detailMessage" field.
+  ObjPtr<mirror::String> message = mirror::String::AllocFromModifiedUtf8(self, msg);
+  CHECK(message != nullptr);
+  ObjPtr<mirror::Class> throwable = GetClassRoot<mirror::Throwable>(class_linker);
+  ArtField* detailMessageField =
+      throwable->FindDeclaredInstanceField("detailMessage", "Ljava/lang/String;");
+  CHECK(detailMessageField != nullptr);
+  detailMessageField->SetObject</* kTransactionActive */ false>(exception->Read(), message);
 }
 
 bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
@@ -1543,32 +1577,36 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   } else {
     // Pre-allocate an OutOfMemoryError for the case when we fail to
     // allocate the exception to be thrown.
-    InitPreAllocatedException(self,
-                              &pre_allocated_OutOfMemoryError_when_throwing_exception_,
-                              "Ljava/lang/OutOfMemoryError;",
-                              "OutOfMemoryError thrown while trying to throw an exception; "
-                              "no stack trace available");
+    CreatePreAllocatedException(self,
+                                this,
+                                &pre_allocated_OutOfMemoryError_when_throwing_exception_,
+                                "Ljava/lang/OutOfMemoryError;",
+                                "OutOfMemoryError thrown while trying to throw an exception; "
+                                    "no stack trace available");
     // Pre-allocate an OutOfMemoryError for the double-OOME case.
-    InitPreAllocatedException(self,
-                              &pre_allocated_OutOfMemoryError_when_throwing_oome_,
-                              "Ljava/lang/OutOfMemoryError;",
-                              "OutOfMemoryError thrown while trying to throw OutOfMemoryError; "
-                              "no stack trace available");
+    CreatePreAllocatedException(self,
+                                this,
+                                &pre_allocated_OutOfMemoryError_when_throwing_oome_,
+                                "Ljava/lang/OutOfMemoryError;",
+                                "OutOfMemoryError thrown while trying to throw OutOfMemoryError; "
+                                    "no stack trace available");
     // Pre-allocate an OutOfMemoryError for the case when we fail to
     // allocate while handling a stack overflow.
-    InitPreAllocatedException(self,
-                              &pre_allocated_OutOfMemoryError_when_handling_stack_overflow_,
-                              "Ljava/lang/OutOfMemoryError;",
-                              "OutOfMemoryError thrown while trying to handle a stack overflow; "
-                              "no stack trace available");
+    CreatePreAllocatedException(self,
+                                this,
+                                &pre_allocated_OutOfMemoryError_when_handling_stack_overflow_,
+                                "Ljava/lang/OutOfMemoryError;",
+                                "OutOfMemoryError thrown while trying to handle a stack overflow; "
+                                    "no stack trace available");
 
     // Pre-allocate a NoClassDefFoundError for the common case of failing to find a system class
     // ahead of checking the application's class loader.
-    InitPreAllocatedException(self,
-                              &pre_allocated_NoClassDefFoundError_,
-                              "Ljava/lang/NoClassDefFoundError;",
-                              "Class not found using the boot class loader; "
-                              "no stack trace available");
+    CreatePreAllocatedException(self,
+                                this,
+                                &pre_allocated_NoClassDefFoundError_,
+                                "Ljava/lang/NoClassDefFoundError;",
+                                "Class not found using the boot class loader; "
+                                    "no stack trace available");
   }
 
   // Runtime initialization is largely done now.
