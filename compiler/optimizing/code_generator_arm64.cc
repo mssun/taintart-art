@@ -3351,14 +3351,19 @@ void InstructionCodeGeneratorARM64::GenerateIntDivForPower2Denom(HDiv* instructi
 
   Register out = OutputRegister(instruction);
   Register dividend = InputRegisterAt(instruction, 0);
+
+  if (abs_imm == 2) {
+    int bits = DataType::Size(instruction->GetResultType()) * kBitsPerByte;
+    __ Add(out, dividend, Operand(dividend, LSR, bits - 1));
+  } else {
+    UseScratchRegisterScope temps(GetVIXLAssembler());
+    Register temp = temps.AcquireSameSizeAs(out);
+    __ Add(temp, dividend, abs_imm - 1);
+    __ Cmp(dividend, 0);
+    __ Csel(out, temp, dividend, lt);
+  }
+
   int ctz_imm = CTZ(abs_imm);
-
-  UseScratchRegisterScope temps(GetVIXLAssembler());
-  Register temp = temps.AcquireSameSizeAs(out);
-
-  __ Add(temp, dividend, abs_imm - 1);
-  __ Cmp(dividend, 0);
-  __ Csel(out, temp, dividend, lt);
   if (imm > 0) {
     __ Asr(out, out, ctz_imm);
   } else {
@@ -5635,17 +5640,20 @@ void InstructionCodeGeneratorARM64::GenerateIntRemForPower2Denom(HRem *instructi
 
   Register out = OutputRegister(instruction);
   Register dividend = InputRegisterAt(instruction, 0);
-  int ctz_imm = CTZ(abs_imm);
 
-  UseScratchRegisterScope temps(GetVIXLAssembler());
-  Register temp = temps.AcquireSameSizeAs(out);
+  if (abs_imm == 2) {
+    __ Cmp(dividend, 0);
+    __ And(out, dividend, 1);
+    __ Csneg(out, out, out, ge);
+  } else {
+    UseScratchRegisterScope temps(GetVIXLAssembler());
+    Register temp = temps.AcquireSameSizeAs(out);
 
-  int bits = (instruction->GetResultType() == DataType::Type::kInt32) ? 32 : 64;
-  __ Asr(temp, dividend, bits - 1);
-  __ Lsr(temp, temp, bits - ctz_imm);
-  __ Add(out, dividend, temp);
-  __ And(out, out, abs_imm - 1);
-  __ Sub(out, out, temp);
+    __ Negs(temp, dividend);
+    __ And(out, dividend, abs_imm - 1);
+    __ And(temp, temp, abs_imm - 1);
+    __ Csneg(out, out, temp, mi);
+  }
 }
 
 void InstructionCodeGeneratorARM64::GenerateIntRemForOneOrMinusOneDenom(HRem *instruction) {
