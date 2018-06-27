@@ -57,6 +57,15 @@ class BitMemoryRegion FINAL : public ValueObject {
     return result;
   }
 
+  // Increase the size of the region and return the newly added range (starting at the old end).
+  ALWAYS_INLINE BitMemoryRegion Extend(size_t bit_length) {
+    BitMemoryRegion result = *this;
+    result.bit_start_ += result.bit_size_;
+    result.bit_size_ = bit_length;
+    bit_size_ += bit_length;
+    return result;
+  }
+
   // Load a single bit in the region. The bit at offset 0 is the least
   // significant bit in the first byte.
   ATTRIBUTE_NO_SANITIZE_ADDRESS  // We might touch extra bytes due to the alignment.
@@ -167,26 +176,26 @@ class BitMemoryRegion FINAL : public ValueObject {
 
 class BitMemoryReader {
  public:
-  explicit BitMemoryReader(BitMemoryRegion region, size_t bit_offset = 0)
-      : region_(region), bit_offset_(bit_offset) { }
+  explicit BitMemoryReader(const uint8_t* data, size_t bit_offset = 0) {
+    MemoryRegion region(const_cast<uint8_t*>(data), BitsToBytesRoundUp(bit_offset));
+    finished_region_ = BitMemoryRegion(region, 0, bit_offset);
+    DCHECK_EQ(GetBitOffset(), bit_offset);
+  }
 
-  size_t GetBitOffset() const { return bit_offset_; }
+  size_t GetBitOffset() const { return finished_region_.size_in_bits(); }
 
   ALWAYS_INLINE BitMemoryRegion Skip(size_t bit_length) {
-    BitMemoryRegion result = region_.Subregion(bit_offset_, bit_length);
-    bit_offset_ += bit_length;
-    return result;
+    return finished_region_.Extend(bit_length);
   }
 
   ALWAYS_INLINE uint32_t ReadBits(size_t bit_length) {
-    uint32_t result = region_.LoadBits(bit_offset_, bit_length);
-    bit_offset_ += bit_length;
-    return result;
+    return finished_region_.Extend(bit_length).LoadBits(0, bit_length);
   }
 
  private:
-  BitMemoryRegion region_;
-  size_t bit_offset_;
+  // Represents all of the bits which were read so far. There is no upper bound.
+  // Therefore, by definition, the "cursor" is always at the end of the region.
+  BitMemoryRegion finished_region_;
 
   DISALLOW_COPY_AND_ASSIGN(BitMemoryReader);
 };
@@ -195,7 +204,11 @@ template<typename Vector>
 class BitMemoryWriter {
  public:
   explicit BitMemoryWriter(Vector* out, size_t bit_offset = 0)
-      : out_(out), bit_offset_(bit_offset) { }
+      : out_(out), bit_offset_(bit_offset) {
+    DCHECK_EQ(GetBitOffset(), bit_offset);
+  }
+
+  const uint8_t* data() const { return out_->data(); }
 
   size_t GetBitOffset() const { return bit_offset_; }
 
@@ -208,10 +221,6 @@ class BitMemoryWriter {
 
   ALWAYS_INLINE void WriteBits(uint32_t value, size_t bit_length) {
     Allocate(bit_length).StoreBits(0, value, bit_length);
-  }
-
-  BitMemoryRegion GetWrittenRegion() const {
-    return BitMemoryRegion(MemoryRegion(out_->data(), out_->size()), 0, bit_offset_);
   }
 
  private:
