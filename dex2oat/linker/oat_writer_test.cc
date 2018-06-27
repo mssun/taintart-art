@@ -425,8 +425,8 @@ TEST_F(OatTest, WriteRead) {
   ASSERT_TRUE(java_lang_dex_file_ != nullptr);
   const DexFile& dex_file = *java_lang_dex_file_;
   uint32_t dex_file_checksum = dex_file.GetLocationChecksum();
-  const OatFile::OatDexFile* oat_dex_file = oat_file->GetOatDexFile(dex_file.GetLocation().c_str(),
-                                                                    &dex_file_checksum);
+  const OatDexFile* oat_dex_file = oat_file->GetOatDexFile(dex_file.GetLocation().c_str(),
+                                                           &dex_file_checksum);
   ASSERT_TRUE(oat_dex_file != nullptr);
   CHECK_EQ(dex_file.GetLocationChecksum(), oat_dex_file->GetDexFileLocationChecksum());
   ScopedObjectAccess soa(Thread::Current());

@@ -1875,7 +1875,7 @@ std::string ImageSpace::GetMultiImageBootClassPath(
 
 bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg) {
   const ArtDexFileLoader dex_file_loader;
-  for (const OatFile::OatDexFile* oat_dex_file : oat_file.GetOatDexFiles()) {
+  for (const OatDexFile* oat_dex_file : oat_file.GetOatDexFiles()) {
     const std::string& dex_file_location = oat_dex_file->GetDexFileLocation();
 
     // Skip multidex locations - These will be checked when we visit their
@@ -1909,9 +1909,9 @@ bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg
       std::string multi_dex_location = DexFileLoader::GetMultiDexLocation(
           i,
           dex_file_location.c_str());
-      const OatFile::OatDexFile* multi_dex = oat_file.GetOatDexFile(multi_dex_location.c_str(),
-                                                                    nullptr,
-                                                                    error_msg);
+      const OatDexFile* multi_dex = oat_file.GetOatDexFile(multi_dex_location.c_str(),
+                                                           nullptr,
+                                                           error_msg);
       if (multi_dex == nullptr) {
         *error_msg = StringPrintf("ValidateOatFile oat file '%s' is missing entry '%s'",
                                   oat_file.GetLocation().c_str(),

@@ -28,7 +28,7 @@ namespace art {
 
 class NoPatchoatTest {
  public:
-  static const OatFile::OatDexFile* getOatDexFile(jclass cls) {
+  static const OatDexFile* getOatDexFile(jclass cls) {
     ScopedObjectAccess soa(Thread::Current());
     ObjPtr<mirror::Class> klass = soa.Decode<mirror::Class>(cls);
     const DexFile& dex_file = klass->GetDexFile();
@@ -42,13 +42,13 @@ class NoPatchoatTest {
   }
 
   static bool hasExecutableOat(jclass cls) {
-    const OatFile::OatDexFile* oat_dex_file = getOatDexFile(cls);
+    const OatDexFile* oat_dex_file = getOatDexFile(cls);
 
     return oat_dex_file != nullptr && oat_dex_file->GetOatFile()->IsExecutable();
   }
 
   static bool needsRelocation(jclass cls) {
-    const OatFile::OatDexFile* oat_dex_file = getOatDexFile(cls);
+    const OatDexFile* oat_dex_file = getOatDexFile(cls);
 
     if (oat_dex_file == nullptr) {
       return false;
