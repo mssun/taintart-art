@@ -69,7 +69,7 @@ using helpers::InputCPURegisterOrZeroRegAt;
 using helpers::InputFPRegisterAt;
 using helpers::InputOperandAt;
 using helpers::InputRegisterAt;
-using helpers::Int64ConstantFrom;
+using helpers::Int64FromLocation;
 using helpers::IsConstantZeroBitPattern;
 using helpers::LocationFrom;
 using helpers::OperandFromMemOperand;
@@ -2704,7 +2704,7 @@ void LocationsBuilderARM64::VisitIntermediateAddressIndex(HIntermediateAddressIn
 void InstructionCodeGeneratorARM64::VisitIntermediateAddressIndex(
     HIntermediateAddressIndex* instruction) {
   Register index_reg = InputRegisterAt(instruction, 0);
-  uint32_t shift = Int64ConstantFrom(instruction->GetLocations()->InAt(2));
+  uint32_t shift = Int64FromLocation(instruction->GetLocations()->InAt(2));
   uint32_t offset = instruction->GetOffset()->AsIntConstant()->GetValue();
 
   if (shift == 0) {
@@ -2834,7 +2834,7 @@ void InstructionCodeGeneratorARM64::VisitArrayGet(HArrayGet* instruction) {
     DCHECK(!instruction->CanDoImplicitNullCheckOn(instruction->InputAt(0)));
     if (index.IsConstant()) {
       // Array load with a constant index can be treated as a field load.
-      offset += Int64ConstantFrom(index) << DataType::SizeShift(type);
+      offset += Int64FromLocation(index) << DataType::SizeShift(type);
       Location maybe_temp =
           (locations->GetTempCount() != 0) ? locations->GetTemp(0) : Location::NoLocation();
       codegen_->GenerateFieldLoadWithBakerReadBarrier(instruction,
@@ -2879,14 +2879,14 @@ void InstructionCodeGeneratorARM64::VisitArrayGet(HArrayGet* instruction) {
                       "Expecting 0=compressed, 1=uncompressed");
         __ Tbnz(length.W(), 0, &uncompressed_load);
         __ Ldrb(Register(OutputCPURegister(instruction)),
-                HeapOperand(obj, offset + Int64ConstantFrom(index)));
+                HeapOperand(obj, offset + Int64FromLocation(index)));
         __ B(&done);
         __ Bind(&uncompressed_load);
         __ Ldrh(Register(OutputCPURegister(instruction)),
-                HeapOperand(obj, offset + (Int64ConstantFrom(index) << 1)));
+                HeapOperand(obj, offset + (Int64FromLocation(index) << 1)));
         __ Bind(&done);
       } else {
-        offset += Int64ConstantFrom(index) << DataType::SizeShift(type);
+        offset += Int64FromLocation(index) << DataType::SizeShift(type);
         source = HeapOperand(obj, offset);
       }
     } else {
@@ -2999,7 +2999,7 @@ void InstructionCodeGeneratorARM64::VisitArraySet(HArraySet* instruction) {
   if (!needs_write_barrier) {
     DCHECK(!may_need_runtime_call_for_type_check);
     if (index.IsConstant()) {
-      offset += Int64ConstantFrom(index) << DataType::SizeShift(value_type);
+      offset += Int64FromLocation(index) << DataType::SizeShift(value_type);
       destination = HeapOperand(array, offset);
     } else {
       UseScratchRegisterScope temps(masm);
@@ -3037,7 +3037,7 @@ void InstructionCodeGeneratorARM64::VisitArraySet(HArraySet* instruction) {
       UseScratchRegisterScope temps(masm);
       Register temp = temps.AcquireSameSizeAs(array);
       if (index.IsConstant()) {
-        offset += Int64ConstantFrom(index) << DataType::SizeShift(value_type);
+        offset += Int64FromLocation(index) << DataType::SizeShift(value_type);
         destination = HeapOperand(array, offset);
       } else {
         destination = HeapOperand(temp,
@@ -3347,7 +3347,7 @@ FOR_EACH_CONDITION_INSTRUCTION(DEFINE_CONDITION_VISITORS)
 #undef FOR_EACH_CONDITION_INSTRUCTION
 
 void InstructionCodeGeneratorARM64::GenerateIntDivForPower2Denom(HDiv* instruction) {
-  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
+  int64_t imm = Int64FromLocation(instruction->GetLocations()->InAt(1));
   uint64_t abs_imm = static_cast<uint64_t>(AbsOrMin(imm));
   DCHECK(IsPowerOfTwo(abs_imm)) << abs_imm;
 
@@ -3426,7 +3426,7 @@ void InstructionCodeGeneratorARM64::GenerateDivRemWithAnyConstant(HBinaryOperati
 }
 
 void InstructionCodeGeneratorARM64::GenerateIntDivForConstDenom(HDiv *instruction) {
-  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
+  int64_t imm = Int64FromLocation(instruction->GetLocations()->InAt(1));
 
   if (imm == 0) {
     // Do not generate anything. DivZeroCheck would prevent any code to be executed.
@@ -3516,7 +3516,7 @@ void InstructionCodeGeneratorARM64::VisitDivZeroCheck(HDivZeroCheck* instruction
   }
 
   if (value.IsConstant()) {
-    int64_t divisor = Int64ConstantFrom(value);
+    int64_t divisor = Int64FromLocation(value);
     if (divisor == 0) {
       __ B(slow_path->GetEntryLabel());
     } else {
@@ -5636,7 +5636,7 @@ void LocationsBuilderARM64::VisitRem(HRem* rem) {
 }
 
 void InstructionCodeGeneratorARM64::GenerateIntRemForPower2Denom(HRem *instruction) {
-  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
+  int64_t imm = Int64FromLocation(instruction->GetLocations()->InAt(1));
   uint64_t abs_imm = static_cast<uint64_t>(AbsOrMin(imm));
   DCHECK(IsPowerOfTwo(abs_imm)) << abs_imm;
 
@@ -5659,7 +5659,7 @@ void InstructionCodeGeneratorARM64::GenerateIntRemForPower2Denom(HRem *instructi
 }
 
 void InstructionCodeGeneratorARM64::GenerateIntRemForOneOrMinusOneDenom(HRem *instruction) {
-  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
+  int64_t imm = Int64FromLocation(instruction->GetLocations()->InAt(1));
   DCHECK(imm == 1 || imm == -1) << imm;
 
   Register out = OutputRegister(instruction);
@@ -5667,7 +5667,7 @@ void InstructionCodeGeneratorARM64::GenerateIntRemForOneOrMinusOneDenom(HRem *in
 }
 
 void InstructionCodeGeneratorARM64::GenerateIntRemForConstDenom(HRem *instruction) {
-  int64_t imm = Int64ConstantFrom(instruction->GetLocations()->InAt(1));
+  int64_t imm = Int64FromLocation(instruction->GetLocations()->InAt(1));
 
   if (imm == 0) {
     // Do not generate anything.
@@ -6666,7 +6666,7 @@ void CodeGeneratorARM64::GenerateRawReferenceLoad(HInstruction* instruction,
       // ArrayGet and UnsafeGetObject and UnsafeCASObject intrinsics cases.
       // /* HeapReference<mirror::Object> */ ref = *(obj + offset + (index << scale_factor))
       if (index.IsConstant()) {
-        uint32_t computed_offset = offset + (Int64ConstantFrom(index) << scale_factor);
+        uint32_t computed_offset = offset + (Int64FromLocation(index) << scale_factor);
         EmissionCheckScope guard(GetVIXLAssembler(), kMaxMacroInstructionSizeInBytes);
         Load(type, ref_reg, HeapOperand(obj, computed_offset));
         if (needs_null_check) {
