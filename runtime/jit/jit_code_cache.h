@@ -17,16 +17,19 @@
 #ifndef ART_RUNTIME_JIT_JIT_CODE_CACHE_H_
 #define ART_RUNTIME_JIT_JIT_CODE_CACHE_H_
 
-#include "instrumentation.h"
+#include <iosfwd>
+#include <memory>
+#include <set>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 #include "base/arena_containers.h"
 #include "base/atomic.h"
-#include "base/histogram-inl.h"
+#include "base/histogram.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/safe_map.h"
-#include "dex/method_reference.h"
-#include "gc_root.h"
 
 namespace art {
 
@@ -36,6 +39,7 @@ class LinearAlloc;
 class InlineCache;
 class IsMarkedVisitor;
 class JitJniStubTestHelper;
+class MemMap;
 class OatQuickMethodHeader;
 struct ProfileMethodInfo;
 class ProfilingInfo;
