@@ -332,6 +332,26 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
     for (const ClassAccessor::Field& field : accessor.GetInstanceFields()) {
       instance_field_index_map_[field.GetIndex()] = current_idx++;
     }
+    auto ProcessFieldIndex = [&](uint32_t dex_field_idx,
+                                 uint32_t inout,
+                                 const std::map<uint32_t, uint32_t>& index_map,
+                                 /*inout*/ FieldAccessStats* stats) {
+      auto it = index_map.find(dex_field_idx);
+      if (it != index_map.end()) {
+        if (it->second < FieldAccessStats::kMaxFieldIndex) {
+          ++stats->field_index_[it->second];
+        } else {
+          ++stats->field_index_other_;
+        }
+      } else {
+        ++stats->field_index_other_class_;
+      }
+      if (it != index_map.end() &&
+          it->second < FieldAccessStats::kShortBytecodeFieldIndexOutCutOff &&
+          inout < FieldAccessStats::kShortBytecodeInOutCutOff) {
+        ++stats->short_bytecode_;
+      }
+    };
     auto ProcessInstanceField = [&](const Instruction& inst,
                                     uint32_t first_arg_reg,
                                     const std::map<uint32_t, uint32_t>& index_map,
@@ -344,17 +364,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
       // FIXME: This is weird if receiver < first_arg_reg.
       ++stats->receiver_[(receiver - first_arg_reg) & 0xF];
       if (first_arg_reg == receiver) {
-        auto it = index_map.find(dex_field_idx);
-        if (it != index_map.end() && it->second < FieldAccessStats::kMaxFieldIndex) {
-          ++stats->field_index_[it->second];
-        } else {
-          ++stats->field_index_other_;
-        }
-        if (it != index_map.end() &&
-            it->second < FieldAccessStats::kShortBytecodeFieldIndexOutCutOff &&
-            input < FieldAccessStats::kShortBytecodeInOutCutOff) {
-          ++stats->short_bytecode_;
-        }
+        ProcessFieldIndex(dex_field_idx, input, index_map, stats);
       }
     };
     auto ProcessStaticField = [&](const Instruction& inst,
@@ -368,17 +378,7 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
       } else {
         ++stats->inout_other_;
       }
-      auto it = index_map.find(dex_field_idx);
-      if (it != index_map.end() && it->second < FieldAccessStats::kMaxFieldIndex) {
-        ++stats->field_index_[it->second];
-      } else {
-        ++stats->field_index_other_;
-      }
-      if (it != index_map.end() &&
-          it->second < FieldAccessStats::kShortBytecodeFieldIndexOutCutOff &&
-          output < FieldAccessStats::kShortBytecodeInOutCutOff) {
-        ++stats->short_bytecode_;
-      }
+      ProcessFieldIndex(dex_field_idx, output, index_map, stats);
     };
 
     for (const ClassAccessor::Method& method : accessor.GetMethods()) {
@@ -549,6 +549,18 @@ void CountDexIndices::ProcessDexFile(const DexFile& dex_file) {
 }
 
 void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
+  auto DumpFieldIndexes = [&](const FieldAccessStats& stats) {
+    const uint64_t fields_idx_total = std::accumulate(
+        stats.field_index_,
+        stats.field_index_ + FieldAccessStats::kMaxFieldIndex,
+        stats.field_index_other_ + stats.field_index_other_class_);
+    for (size_t i = 0; i < FieldAccessStats::kMaxFieldIndex; ++i) {
+      os << "  field_idx=" << i << ": " << Percent(stats.field_index_[i], fields_idx_total) << "\n";
+    }
+    os << "  field_idx=other: " << Percent(stats.field_index_other_, fields_idx_total) << "\n";
+    os << "  field_idx=other_class: " << Percent(stats.field_index_other_class_, fields_idx_total)
+       << "\n";
+  };
   auto DumpInstanceFieldStats = [&](const char* tag, const InstanceFieldAccessStats& stats) {
     const uint64_t fields_total = std::accumulate(stats.inout_, stats.inout_ + 16u, 0u);
     os << tag << "\n";
@@ -560,14 +572,7 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
     for (size_t i = 0; i < 16; ++i) {
       os << "  " << inout_tag << "=" << i << ": " << Percent(stats.inout_[i], fields_total) << "\n";
     }
-    const uint64_t fields_idx_total = std::accumulate(
-        stats.field_index_,
-        stats.field_index_ + FieldAccessStats::kMaxFieldIndex,
-        stats.field_index_other_);
-    for (size_t i = 0; i < FieldAccessStats::kMaxFieldIndex; ++i) {
-      os << "  field_idx=" << i << ": " << Percent(stats.field_index_[i], fields_idx_total) << "\n";
-    }
-    os << "  field_idx=other: " << Percent(stats.field_index_other_, fields_idx_total) << "\n";
+    DumpFieldIndexes(stats);
     os << "  short_bytecode: " << Percent(stats.short_bytecode_, fields_total) << "\n";
     os << "  short_bytecode_savings=" << Percent(stats.short_bytecode_ * 2, total_size) << "\n";
   };
@@ -584,14 +589,7 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
       os << "  " << inout_tag << "=" << i << ": " << Percent(stats.inout_[i], fields_total) << "\n";
     }
     os << "  " << inout_tag << "=other: " << Percent(stats.inout_other_, fields_total) << "\n";
-    const uint64_t fields_idx_total = std::accumulate(
-        stats.field_index_,
-        stats.field_index_ + FieldAccessStats::kMaxFieldIndex,
-        stats.field_index_other_);
-    for (size_t i = 0; i < FieldAccessStats::kMaxFieldIndex; ++i) {
-      os << "  field_idx=" << i << ": " << Percent(stats.field_index_[i], fields_idx_total) << "\n";
-    }
-    os << "  field_idx=other: " << Percent(stats.field_index_other_, fields_idx_total) << "\n";
+    DumpFieldIndexes(stats);
     os << "  short_bytecode: " << Percent(stats.short_bytecode_, fields_total) << "\n";
     os << "  short_bytecode_savings=" << Percent(stats.short_bytecode_ * 2, total_size) << "\n";
   };
