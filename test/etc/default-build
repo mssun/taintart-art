@@ -321,7 +321,7 @@ function make_dexmerge() {
 }
 
 function make_hiddenapi() {
-  local args=()
+  local args=( "encode" )
   while [[ $# -gt 0 ]]; do
     args+=("--dex=$1")
     shift
