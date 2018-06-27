@@ -16,8 +16,6 @@
 
 #include <functional>
 
-#include "arch/x86/instruction_set_features_x86.h"
-#include "code_generator_x86.h"
 #include "constant_folding.h"
 #include "dead_code_elimination.h"
 #include "driver/compiler_options.h"
@@ -60,9 +58,6 @@ class ConstantFoldingTest : public OptimizingUnitTest {
     std::string actual_before = printer_before.str();
     EXPECT_EQ(expected_before, actual_before);
 
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegenX86(graph_, *features_x86.get(), CompilerOptions());
     HConstantFolding(graph_, "constant_folding").Run();
     GraphChecker graph_checker_cf(graph_);
     graph_checker_cf.Run();

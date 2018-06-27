@@ -1783,7 +1783,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
       graph_->GetArenaStack(),
       callee_dex_file,
       method_index,
-      compiler_driver_->GetInstructionSet(),
+      codegen_->GetCompilerOptions().GetInstructionSet(),
       invoke_type,
       graph_->IsDebuggable(),
       /* osr */ false,
@@ -1820,8 +1820,8 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
     return false;
   }
 
-  if (!RegisterAllocator::CanAllocateRegistersFor(*callee_graph,
-                                                  compiler_driver_->GetInstructionSet())) {
+  if (!RegisterAllocator::CanAllocateRegistersFor(
+          *callee_graph, codegen_->GetCompilerOptions().GetInstructionSet())) {
     LOG_FAIL(stats_, MethodCompilationStat::kNotInlinedRegisterAllocator)
         << "Method " << callee_dex_file.PrettyMethod(method_index)
         << " cannot be inlined because of the register allocator";

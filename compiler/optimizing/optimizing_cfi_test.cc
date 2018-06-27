@@ -47,25 +47,20 @@ class OptimizingCFITest : public CFITest, public OptimizingUnitTestHelper {
   static constexpr bool kGenerateExpected = false;
 
   OptimizingCFITest()
-      : pool_and_allocator_(),
-        opts_(),
-        isa_features_(),
-        graph_(nullptr),
+      : graph_(nullptr),
         code_gen_(),
         blocks_(GetAllocator()->Adapter()) {}
 
-  ArenaAllocator* GetAllocator() { return pool_and_allocator_.GetAllocator(); }
-
   void SetUpFrame(InstructionSet isa) {
+    OverrideInstructionSetFeatures(isa, "default");
+
     // Ensure that slow-debug is off, so that there is no unexpected read-barrier check emitted.
     SetRuntimeDebugFlagsEnabled(false);
 
     // Setup simple context.
-    std::string error;
-    isa_features_ = InstructionSetFeatures::FromVariant(isa, "default", &error);
     graph_ = CreateGraph();
     // Generate simple frame with some spills.
-    code_gen_ = CodeGenerator::Create(graph_, isa, *isa_features_, opts_);
+    code_gen_ = CodeGenerator::Create(graph_, *compiler_options_);
     code_gen_->GetAssembler()->cfi().SetEnabled(true);
     code_gen_->InitializeCodeGenerationData();
     const int frame_size = 64;
@@ -148,9 +143,6 @@ class OptimizingCFITest : public CFITest, public OptimizingUnitTestHelper {
     DISALLOW_COPY_AND_ASSIGN(InternalCodeAllocator);
   };
 
-  ArenaPoolAndAllocator pool_and_allocator_;
-  CompilerOptions opts_;
-  std::unique_ptr<const InstructionSetFeatures> isa_features_;
   HGraph* graph_;
   std::unique_ptr<CodeGenerator> code_gen_;
   ArenaVector<HBasicBlock*> blocks_;

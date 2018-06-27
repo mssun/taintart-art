@@ -884,53 +884,45 @@ void CodeGenerator::AllocateLocations(HInstruction* instruction) {
 }
 
 std::unique_ptr<CodeGenerator> CodeGenerator::Create(HGraph* graph,
-                                                     InstructionSet instruction_set,
-                                                     const InstructionSetFeatures& isa_features,
                                                      const CompilerOptions& compiler_options,
                                                      OptimizingCompilerStats* stats) {
   ArenaAllocator* allocator = graph->GetAllocator();
-  switch (instruction_set) {
+  switch (compiler_options.GetInstructionSet()) {
 #ifdef ART_ENABLE_CODEGEN_arm
     case InstructionSet::kArm:
     case InstructionSet::kThumb2: {
       return std::unique_ptr<CodeGenerator>(
-          new (allocator) arm::CodeGeneratorARMVIXL(
-              graph, *isa_features.AsArmInstructionSetFeatures(), compiler_options, stats));
+          new (allocator) arm::CodeGeneratorARMVIXL(graph, compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
     case InstructionSet::kArm64: {
       return std::unique_ptr<CodeGenerator>(
-          new (allocator) arm64::CodeGeneratorARM64(
-              graph, *isa_features.AsArm64InstructionSetFeatures(), compiler_options, stats));
+          new (allocator) arm64::CodeGeneratorARM64(graph, compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
     case InstructionSet::kMips: {
       return std::unique_ptr<CodeGenerator>(
-          new (allocator) mips::CodeGeneratorMIPS(
-              graph, *isa_features.AsMipsInstructionSetFeatures(), compiler_options, stats));
+          new (allocator) mips::CodeGeneratorMIPS(graph, compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
     case InstructionSet::kMips64: {
       return std::unique_ptr<CodeGenerator>(
-          new (allocator) mips64::CodeGeneratorMIPS64(
-              graph, *isa_features.AsMips64InstructionSetFeatures(), compiler_options, stats));
+          new (allocator) mips64::CodeGeneratorMIPS64(graph, compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
     case InstructionSet::kX86: {
       return std::unique_ptr<CodeGenerator>(
-          new (allocator) x86::CodeGeneratorX86(
-              graph, *isa_features.AsX86InstructionSetFeatures(), compiler_options, stats));
+          new (allocator) x86::CodeGeneratorX86(graph, compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
     case InstructionSet::kX86_64: {
       return std::unique_ptr<CodeGenerator>(
-          new (allocator) x86_64::CodeGeneratorX86_64(
-              graph, *isa_features.AsX86_64InstructionSetFeatures(), compiler_options, stats));
+          new (allocator) x86_64::CodeGeneratorX86_64(graph, compiler_options, stats));
     }
 #endif
     default:

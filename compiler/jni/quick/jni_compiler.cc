@@ -34,7 +34,6 @@
 #include "class_linker.h"
 #include "debug/dwarf/debug_frame_opcode_writer.h"
 #include "dex/dex_file-inl.h"
-#include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "jni/jni_env_ext.h"
@@ -115,7 +114,7 @@ static ThreadOffset<kPointerSize> GetJniEntrypointThreadOffset(JniEntrypoint whi
 //   convention.
 //
 template <PointerSize kPointerSize>
-static JniCompiledMethod ArtJniCompileMethodInternal(CompilerDriver* driver,
+static JniCompiledMethod ArtJniCompileMethodInternal(const CompilerOptions& compiler_options,
                                                      uint32_t access_flags,
                                                      uint32_t method_idx,
                                                      const DexFile& dex_file) {
@@ -124,8 +123,9 @@ static JniCompiledMethod ArtJniCompileMethodInternal(CompilerDriver* driver,
   const bool is_static = (access_flags & kAccStatic) != 0;
   const bool is_synchronized = (access_flags & kAccSynchronized) != 0;
   const char* shorty = dex_file.GetMethodShorty(dex_file.GetMethodId(method_idx));
-  InstructionSet instruction_set = driver->GetInstructionSet();
-  const InstructionSetFeatures* instruction_set_features = driver->GetInstructionSetFeatures();
+  InstructionSet instruction_set = compiler_options.GetInstructionSet();
+  const InstructionSetFeatures* instruction_set_features =
+      compiler_options.GetInstructionSetFeatures();
 
   // i.e. if the method was annotated with @FastNative
   const bool is_fast_native = (access_flags & kAccFastNative) != 0u;
@@ -216,7 +216,6 @@ static JniCompiledMethod ArtJniCompileMethodInternal(CompilerDriver* driver,
   // Assembler that holds generated instructions
   std::unique_ptr<JNIMacroAssembler<kPointerSize>> jni_asm =
       GetMacroAssembler<kPointerSize>(&allocator, instruction_set, instruction_set_features);
-  const CompilerOptions& compiler_options = driver->GetCompilerOptions();
   jni_asm->cfi().SetEnabled(compiler_options.GenerateAnyDebugInfo());
   jni_asm->SetEmitRunTimeChecksInDebugMode(compiler_options.EmitRunTimeChecksInDebugMode());
 
@@ -771,16 +770,16 @@ static void SetNativeParameter(JNIMacroAssembler<kPointerSize>* jni_asm,
   }
 }
 
-JniCompiledMethod ArtQuickJniCompileMethod(CompilerDriver* compiler,
+JniCompiledMethod ArtQuickJniCompileMethod(const CompilerOptions& compiler_options,
                                            uint32_t access_flags,
                                            uint32_t method_idx,
                                            const DexFile& dex_file) {
-  if (Is64BitInstructionSet(compiler->GetInstructionSet())) {
+  if (Is64BitInstructionSet(compiler_options.GetInstructionSet())) {
     return ArtJniCompileMethodInternal<PointerSize::k64>(
-        compiler, access_flags, method_idx, dex_file);
+        compiler_options, access_flags, method_idx, dex_file);
   } else {
     return ArtJniCompileMethodInternal<PointerSize::k32>(
-        compiler, access_flags, method_idx, dex_file);
+        compiler_options, access_flags, method_idx, dex_file);
   }
 }
 

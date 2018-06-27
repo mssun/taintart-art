@@ -27,7 +27,7 @@
 
 namespace art {
 
-class CompilerDriver;
+class CompilerOptions;
 class ArchNoOptsLoopHelper;
 
 /**
@@ -38,7 +38,7 @@ class ArchNoOptsLoopHelper;
 class HLoopOptimization : public HOptimization {
  public:
   HLoopOptimization(HGraph* graph,
-                    CompilerDriver* compiler_driver,
+                    const CompilerOptions* compiler_options,
                     HInductionVarAnalysis* induction_analysis,
                     OptimizingCompilerStats* stats,
                     const char* name = kLoopOptimizationPassName);
@@ -243,8 +243,8 @@ class HLoopOptimization : public HOptimization {
   void RemoveDeadInstructions(const HInstructionList& list);
   bool CanRemoveCycle();  // Whether the current 'iset_' is removable.
 
-  // Compiler driver (to query ISA features).
-  const CompilerDriver* compiler_driver_;
+  // Compiler options (to query ISA features).
+  const CompilerOptions* compiler_options_;
 
   // Range information based on prior induction variable analysis.
   InductionVarRange induction_range_;

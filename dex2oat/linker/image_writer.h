@@ -39,7 +39,6 @@
 #include "base/safe_map.h"
 #include "base/utils.h"
 #include "class_table.h"
-#include "driver/compiler_driver.h"
 #include "image.h"
 #include "intern_table.h"
 #include "lock_word.h"
@@ -63,6 +62,7 @@ class ClassLoader;
 }  // namespace mirror
 
 class ClassLoaderVisitor;
+class CompilerOptions;
 class ImTable;
 class ImtConflictTable;
 class TimingLogger;
@@ -74,7 +74,7 @@ namespace linker {
 // Write a Space built during compilation for use during execution.
 class ImageWriter FINAL {
  public:
-  ImageWriter(const CompilerDriver& compiler_driver,
+  ImageWriter(const CompilerOptions& compiler_options,
               uintptr_t image_begin,
               bool compile_pic,
               bool compile_app_image,
@@ -511,9 +511,8 @@ class ImageWriter FINAL {
   // classes since we do not want any boot class loader classes in the image. This means that
   // we also cannot have any classes which refer to these boot class loader non image classes.
   // PruneAppImageClass also prunes if klass depends on a non-image class according to the compiler
-  // driver.
-  bool PruneAppImageClass(ObjPtr<mirror::Class> klass)
-      REQUIRES_SHARED(Locks::mutator_lock_);
+  // options.
+  bool PruneAppImageClass(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // early_exit is true if we had a cyclic dependency anywhere down the chain.
   bool PruneAppImageClassInternal(ObjPtr<mirror::Class> klass,
@@ -575,7 +574,7 @@ class ImageWriter FINAL {
 
   void CopyAndFixupPointer(void** target, void* value);
 
-  const CompilerDriver& compiler_driver_;
+  const CompilerOptions& compiler_options_;
 
   // Beginning target image address for the first image.
   uint8_t* global_image_begin_;

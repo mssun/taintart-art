@@ -997,7 +997,6 @@ class ReadBarrierForRootSlowPathMIPS : public SlowPathCodeMIPS {
 };
 
 CodeGeneratorMIPS::CodeGeneratorMIPS(HGraph* graph,
-                                     const MipsInstructionSetFeatures& isa_features,
                                      const CompilerOptions& compiler_options,
                                      OptimizingCompilerStats* stats)
     : CodeGenerator(graph,
@@ -1014,8 +1013,8 @@ CodeGeneratorMIPS::CodeGeneratorMIPS(HGraph* graph,
       location_builder_(graph, this),
       instruction_visitor_(graph, this),
       move_resolver_(graph->GetAllocator(), this),
-      assembler_(graph->GetAllocator(), &isa_features),
-      isa_features_(isa_features),
+      assembler_(graph->GetAllocator(),
+                 compiler_options.GetInstructionSetFeatures()->AsMipsInstructionSetFeatures()),
       uint32_literals_(std::less<uint32_t>(),
                        graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       boot_image_method_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
@@ -1910,6 +1909,10 @@ void CodeGeneratorMIPS::DumpCoreRegister(std::ostream& stream, int reg) const {
 
 void CodeGeneratorMIPS::DumpFloatingPointRegister(std::ostream& stream, int reg) const {
   stream << FRegister(reg);
+}
+
+const MipsInstructionSetFeatures& CodeGeneratorMIPS::GetInstructionSetFeatures() const {
+  return *GetCompilerOptions().GetInstructionSetFeatures()->AsMipsInstructionSetFeatures();
 }
 
 constexpr size_t kMipsDirectEntrypointRuntimeOffset = 16;

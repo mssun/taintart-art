@@ -30,9 +30,7 @@ class InstructionSetFeatures;
 
 namespace linker {
 
-std::unique_ptr<ElfWriter> CreateElfWriterQuick(InstructionSet instruction_set,
-                                                const InstructionSetFeatures* features,
-                                                const CompilerOptions* compiler_options,
+std::unique_ptr<ElfWriter> CreateElfWriterQuick(const CompilerOptions& compiler_options,
                                                 File* elf_file);
 
 }  // namespace linker

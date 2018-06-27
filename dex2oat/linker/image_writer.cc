@@ -37,7 +37,6 @@
 #include "compiled_method.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_types.h"
-#include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "elf_file.h"
 #include "elf_utils.h"
@@ -137,7 +136,7 @@ static void ClearDexFileCookies() REQUIRES_SHARED(Locks::mutator_lock_) {
 }
 
 bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
-  target_ptr_size_ = InstructionSetPointerSize(compiler_driver_.GetInstructionSet());
+  target_ptr_size_ = InstructionSetPointerSize(compiler_options_.GetInstructionSet());
   gc::Heap* const heap = Runtime::Current()->GetHeap();
   {
     ScopedObjectAccess soa(Thread::Current());
@@ -439,10 +438,10 @@ void ImageWriter::SetImageBinSlot(mirror::Object* object, BinSlot bin_slot) {
 }
 
 void ImageWriter::PrepareDexCacheArraySlots() {
-  // Prepare dex cache array starts based on the ordering specified in the CompilerDriver.
+  // Prepare dex cache array starts based on the ordering specified in the CompilerOptions.
   // Set the slot size early to avoid DCHECK() failures in IsImageBinSlotAssigned()
   // when AssignImageBinSlot() assigns their indexes out or order.
-  for (const DexFile* dex_file : compiler_driver_.GetCompilerOptions().GetDexFilesForOatFile()) {
+  for (const DexFile* dex_file : compiler_options_.GetDexFilesForOatFile()) {
     auto it = dex_file_oat_index_map_.find(dex_file);
     DCHECK(it != dex_file_oat_index_map_.end()) << dex_file->GetLocation();
     ImageInfo& image_info = GetImageInfo(it->second);
@@ -852,8 +851,7 @@ bool ImageWriter::PruneAppImageClassInternal(
   std::string temp;
   // Prune if not an image class, this handles any broken sets of image classes such as having a
   // class in the set but not it's superclass.
-  result = result ||
-           !compiler_driver_.GetCompilerOptions().IsImageClass(klass->GetDescriptor(&temp));
+  result = result || !compiler_options_.IsImageClass(klass->GetDescriptor(&temp));
   bool my_early_exit = false;  // Only for ourselves, ignore caller.
   // Remove classes that failed to verify since we don't want to have java.lang.VerifyError in the
   // app image.
@@ -943,7 +941,7 @@ bool ImageWriter::KeepClass(ObjPtr<mirror::Class> klass) {
     return true;
   }
   std::string temp;
-  if (!compiler_driver_.GetCompilerOptions().IsImageClass(klass->GetDescriptor(&temp))) {
+  if (!compiler_options_.IsImageClass(klass->GetDescriptor(&temp))) {
     return false;
   }
   if (compile_app_image_) {
@@ -1229,7 +1227,7 @@ void ImageWriter::CheckNonImageClassesRemoved() {
 }
 
 void ImageWriter::DumpImageClasses() {
-  for (const std::string& image_class : compiler_driver_.GetCompilerOptions().GetImageClasses()) {
+  for (const std::string& image_class : compiler_options_.GetImageClasses()) {
     LOG(INFO) << " " << image_class;
   }
 }
@@ -1738,7 +1736,7 @@ void ImageWriter::CalculateNewObjectOffsets() {
   WorkStack work_stack;
 
   // Special case interned strings to put them in the image they are likely to be resolved from.
-  for (const DexFile* dex_file : compiler_driver_.GetCompilerOptions().GetDexFilesForOatFile()) {
+  for (const DexFile* dex_file : compiler_options_.GetDexFilesForOatFile()) {
     auto it = dex_file_oat_index_map_.find(dex_file);
     DCHECK(it != dex_file_oat_index_map_.end()) << dex_file->GetLocation();
     const size_t oat_index = it->second;
@@ -2819,7 +2817,7 @@ void ImageWriter::UpdateOatFileHeader(size_t oat_index, const OatHeader& oat_hea
 }
 
 ImageWriter::ImageWriter(
-    const CompilerDriver& compiler_driver,
+    const CompilerOptions& compiler_options,
     uintptr_t image_begin,
     bool compile_pic,
     bool compile_app_image,
@@ -2827,12 +2825,12 @@ ImageWriter::ImageWriter(
     const std::vector<const char*>& oat_filenames,
     const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
     const HashSet<std::string>* dirty_image_objects)
-    : compiler_driver_(compiler_driver),
+    : compiler_options_(compiler_options),
       global_image_begin_(reinterpret_cast<uint8_t*>(image_begin)),
       image_objects_offset_begin_(0),
       compile_pic_(compile_pic),
       compile_app_image_(compile_app_image),
-      target_ptr_size_(InstructionSetPointerSize(compiler_driver_.GetInstructionSet())),
+      target_ptr_size_(InstructionSetPointerSize(compiler_options.GetInstructionSet())),
       image_infos_(oat_filenames.size()),
       dirty_methods_(0u),
       clean_methods_(0u),

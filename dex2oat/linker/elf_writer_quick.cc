@@ -96,9 +96,7 @@ class DebugInfoTask : public Task {
 template <typename ElfTypes>
 class ElfWriterQuick FINAL : public ElfWriter {
  public:
-  ElfWriterQuick(InstructionSet instruction_set,
-                 const InstructionSetFeatures* features,
-                 const CompilerOptions* compiler_options,
+  ElfWriterQuick(const CompilerOptions& compiler_options,
                  File* elf_file);
   ~ElfWriterQuick();
 
@@ -129,8 +127,7 @@ class ElfWriterQuick FINAL : public ElfWriter {
                                std::vector<uint8_t>* buffer);
 
  private:
-  const InstructionSetFeatures* instruction_set_features_;
-  const CompilerOptions* const compiler_options_;
+  const CompilerOptions& compiler_options_;
   File* const elf_file_;
   size_t rodata_size_;
   size_t text_size_;
@@ -147,30 +144,18 @@ class ElfWriterQuick FINAL : public ElfWriter {
   DISALLOW_IMPLICIT_CONSTRUCTORS(ElfWriterQuick);
 };
 
-std::unique_ptr<ElfWriter> CreateElfWriterQuick(InstructionSet instruction_set,
-                                                const InstructionSetFeatures* features,
-                                                const CompilerOptions* compiler_options,
+std::unique_ptr<ElfWriter> CreateElfWriterQuick(const CompilerOptions& compiler_options,
                                                 File* elf_file) {
-  if (Is64BitInstructionSet(instruction_set)) {
-    return std::make_unique<ElfWriterQuick<ElfTypes64>>(instruction_set,
-                                                        features,
-                                                        compiler_options,
-                                                        elf_file);
+  if (Is64BitInstructionSet(compiler_options.GetInstructionSet())) {
+    return std::make_unique<ElfWriterQuick<ElfTypes64>>(compiler_options, elf_file);
   } else {
-    return std::make_unique<ElfWriterQuick<ElfTypes32>>(instruction_set,
-                                                        features,
-                                                        compiler_options,
-                                                        elf_file);
+    return std::make_unique<ElfWriterQuick<ElfTypes32>>(compiler_options, elf_file);
   }
 }
 
 template <typename ElfTypes>
-ElfWriterQuick<ElfTypes>::ElfWriterQuick(InstructionSet instruction_set,
-                                         const InstructionSetFeatures* features,
-                                         const CompilerOptions* compiler_options,
-                                         File* elf_file)
+ElfWriterQuick<ElfTypes>::ElfWriterQuick(const CompilerOptions& compiler_options, File* elf_file)
     : ElfWriter(),
-      instruction_set_features_(features),
       compiler_options_(compiler_options),
       elf_file_(elf_file),
       rodata_size_(0u),
@@ -180,7 +165,9 @@ ElfWriterQuick<ElfTypes>::ElfWriterQuick(InstructionSet instruction_set,
       dex_section_size_(0u),
       output_stream_(
           std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(elf_file))),
-      builder_(new ElfBuilder<ElfTypes>(instruction_set, features, output_stream_.get())) {}
+      builder_(new ElfBuilder<ElfTypes>(compiler_options_.GetInstructionSet(),
+                                        compiler_options_.GetInstructionSetFeatures(),
+                                        output_stream_.get())) {}
 
 template <typename ElfTypes>
 ElfWriterQuick<ElfTypes>::~ElfWriterQuick() {}
@@ -188,7 +175,7 @@ ElfWriterQuick<ElfTypes>::~ElfWriterQuick() {}
 template <typename ElfTypes>
 void ElfWriterQuick<ElfTypes>::Start() {
   builder_->Start();
-  if (compiler_options_->GetGenerateBuildId()) {
+  if (compiler_options_.GetGenerateBuildId()) {
     builder_->GetBuildId()->AllocateVirtualMemory(builder_->GetBuildId()->GetSize());
     builder_->WriteBuildIdSection();
   }
@@ -272,12 +259,12 @@ void ElfWriterQuick<ElfTypes>::WriteDynamicSection() {
 
 template <typename ElfTypes>
 void ElfWriterQuick<ElfTypes>::PrepareDebugInfo(const debug::DebugInfo& debug_info) {
-  if (!debug_info.Empty() && compiler_options_->GetGenerateMiniDebugInfo()) {
+  if (!debug_info.Empty() && compiler_options_.GetGenerateMiniDebugInfo()) {
     // Prepare the mini-debug-info in background while we do other I/O.
     Thread* self = Thread::Current();
     debug_info_task_ = std::unique_ptr<DebugInfoTask>(
         new DebugInfoTask(builder_->GetIsa(),
-                          instruction_set_features_,
+                          compiler_options_.GetInstructionSetFeatures(),
                           builder_->GetText()->GetAddress(),
                           text_size_,
                           builder_->GetDex()->Exists() ? builder_->GetDex()->GetAddress() : 0,
@@ -293,11 +280,11 @@ void ElfWriterQuick<ElfTypes>::PrepareDebugInfo(const debug::DebugInfo& debug_in
 template <typename ElfTypes>
 void ElfWriterQuick<ElfTypes>::WriteDebugInfo(const debug::DebugInfo& debug_info) {
   if (!debug_info.Empty()) {
-    if (compiler_options_->GetGenerateDebugInfo()) {
+    if (compiler_options_.GetGenerateDebugInfo()) {
       // Generate all the debug information we can.
       debug::WriteDebugInfo(builder_.get(), debug_info, kCFIFormat, true /* write_oat_patches */);
     }
-    if (compiler_options_->GetGenerateMiniDebugInfo()) {
+    if (compiler_options_.GetGenerateMiniDebugInfo()) {
       // Wait for the mini-debug-info generation to finish and write it to disk.
       Thread* self = Thread::Current();
       DCHECK(debug_info_thread_pool_ != nullptr);
@@ -310,7 +297,7 @@ void ElfWriterQuick<ElfTypes>::WriteDebugInfo(const debug::DebugInfo& debug_info
 template <typename ElfTypes>
 bool ElfWriterQuick<ElfTypes>::End() {
   builder_->End();
-  if (compiler_options_->GetGenerateBuildId()) {
+  if (compiler_options_.GetGenerateBuildId()) {
     uint8_t build_id[ElfBuilder<ElfTypes>::kBuildIdLen];
     ComputeFileBuildId(&build_id);
     builder_->WriteBuildId(build_id);

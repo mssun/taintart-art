@@ -16,8 +16,6 @@
 
 #include "dead_code_elimination.h"
 
-#include "arch/x86/instruction_set_features_x86.h"
-#include "code_generator_x86.h"
 #include "driver/compiler_options.h"
 #include "graph_checker.h"
 #include "optimizing_unit_test.h"
@@ -45,9 +43,6 @@ void DeadCodeEliminationTest::TestCode(const std::vector<uint16_t>& data,
   std::string actual_before = printer_before.str();
   ASSERT_EQ(actual_before, expected_before);
 
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegenX86(graph, *features_x86.get(), CompilerOptions());
   HDeadCodeElimination(graph, nullptr /* stats */, "dead_code_elimination").Run();
   GraphChecker graph_checker(graph);
   graph_checker.Run();
