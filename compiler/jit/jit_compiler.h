@@ -18,17 +18,18 @@
 #define ART_COMPILER_JIT_JIT_COMPILER_H_
 
 #include "base/mutex.h"
-#include "compiled_method.h"
-#include "driver/compiler_driver.h"
-#include "driver/compiler_options.h"
-#include "jit_logger.h"
 
 namespace art {
 
 class ArtMethod;
-class InstructionSetFeatures;
+class CompiledMethod;
+class CompilerDriver;
+class CompilerOptions;
+class Thread;
 
 namespace jit {
+
+class JitLogger;
 
 class JitCompiler {
  public:
@@ -39,8 +40,8 @@ class JitCompiler {
   bool CompileMethod(Thread* self, ArtMethod* method, bool osr)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  CompilerOptions* GetCompilerOptions() const {
-    return compiler_options_.get();
+  const CompilerOptions& GetCompilerOptions() const {
+    return *compiler_options_.get();
   }
   CompilerDriver* GetCompilerDriver() const {
     return compiler_driver_.get();
@@ -49,7 +50,6 @@ class JitCompiler {
  private:
   std::unique_ptr<CompilerOptions> compiler_options_;
   std::unique_ptr<CompilerDriver> compiler_driver_;
-  std::unique_ptr<const InstructionSetFeatures> instruction_set_features_;
   std::unique_ptr<JitLogger> jit_logger_;
 
   JitCompiler();

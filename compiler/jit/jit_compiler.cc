@@ -33,6 +33,7 @@
 #include "jit/debugger_interface.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
+#include "jit/jit_logger.h"
 #include "oat_file-inl.h"
 #include "oat_quick_method_header.h"
 #include "object_lock.h"
@@ -50,7 +51,7 @@ extern "C" void* jit_load(bool* generate_debug_info) {
   VLOG(jit) << "loading jit compiler";
   auto* const jit_compiler = JitCompiler::Create();
   CHECK(jit_compiler != nullptr);
-  *generate_debug_info = jit_compiler->GetCompilerOptions()->GetGenerateDebugInfo();
+  *generate_debug_info = jit_compiler->GetCompilerOptions().GetGenerateDebugInfo();
   VLOG(jit) << "Done loading jit compiler";
   return jit_compiler;
 }
@@ -72,10 +73,11 @@ extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t cou
     REQUIRES_SHARED(Locks::mutator_lock_) {
   auto* jit_compiler = reinterpret_cast<JitCompiler*>(handle);
   DCHECK(jit_compiler != nullptr);
-  if (jit_compiler->GetCompilerOptions()->GetGenerateDebugInfo()) {
+  const CompilerOptions& compiler_options = jit_compiler->GetCompilerOptions();
+  if (compiler_options.GetGenerateDebugInfo()) {
     const ArrayRef<mirror::Class*> types_array(types, count);
     std::vector<uint8_t> elf_file = debug::WriteDebugElfFileForClasses(
-        kRuntimeISA, jit_compiler->GetCompilerDriver()->GetInstructionSetFeatures(), types_array);
+        kRuntimeISA, compiler_options.GetInstructionSetFeatures(), types_array);
     MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
     // We never free debug info for types, so we don't need to provide a handle
     // (which would have been otherwise used as identifier to remove it later).
@@ -103,44 +105,50 @@ JitCompiler::JitCompiler() {
   // Set debuggability based on the runtime value.
   compiler_options_->SetDebuggable(Runtime::Current()->IsJavaDebuggable());
 
-  const InstructionSet instruction_set = kRuntimeISA;
+  const InstructionSet instruction_set = compiler_options_->GetInstructionSet();
+  if (kRuntimeISA == InstructionSet::kArm) {
+    DCHECK_EQ(instruction_set, InstructionSet::kThumb2);
+  } else {
+    DCHECK_EQ(instruction_set, kRuntimeISA);
+  }
+  std::unique_ptr<const InstructionSetFeatures> instruction_set_features;
   for (const StringPiece option : Runtime::Current()->GetCompilerOptions()) {
     VLOG(compiler) << "JIT compiler option " << option;
     std::string error_msg;
     if (option.starts_with("--instruction-set-variant=")) {
       StringPiece str = option.substr(strlen("--instruction-set-variant=")).data();
       VLOG(compiler) << "JIT instruction set variant " << str;
-      instruction_set_features_ = InstructionSetFeatures::FromVariant(
+      instruction_set_features = InstructionSetFeatures::FromVariant(
           instruction_set, str.as_string(), &error_msg);
-      if (instruction_set_features_ == nullptr) {
+      if (instruction_set_features == nullptr) {
         LOG(WARNING) << "Error parsing " << option << " message=" << error_msg;
       }
     } else if (option.starts_with("--instruction-set-features=")) {
       StringPiece str = option.substr(strlen("--instruction-set-features=")).data();
       VLOG(compiler) << "JIT instruction set features " << str;
-      if (instruction_set_features_ == nullptr) {
-        instruction_set_features_ = InstructionSetFeatures::FromVariant(
+      if (instruction_set_features == nullptr) {
+        instruction_set_features = InstructionSetFeatures::FromVariant(
             instruction_set, "default", &error_msg);
-        if (instruction_set_features_ == nullptr) {
+        if (instruction_set_features == nullptr) {
           LOG(WARNING) << "Error parsing " << option << " message=" << error_msg;
         }
       }
-      instruction_set_features_ =
-          instruction_set_features_->AddFeaturesFromString(str.as_string(), &error_msg);
-      if (instruction_set_features_ == nullptr) {
+      instruction_set_features =
+          instruction_set_features->AddFeaturesFromString(str.as_string(), &error_msg);
+      if (instruction_set_features == nullptr) {
         LOG(WARNING) << "Error parsing " << option << " message=" << error_msg;
       }
     }
   }
-  if (instruction_set_features_ == nullptr) {
-    instruction_set_features_ = InstructionSetFeatures::FromCppDefines();
+  if (instruction_set_features == nullptr) {
+    instruction_set_features = InstructionSetFeatures::FromCppDefines();
   }
+  compiler_options_->instruction_set_features_ = std::move(instruction_set_features);
+
   compiler_driver_.reset(new CompilerDriver(
       compiler_options_.get(),
       /* verification_results */ nullptr,
       Compiler::kOptimizing,
-      instruction_set,
-      instruction_set_features_.get(),
       /* image_classes */ nullptr,
       /* thread_count */ 1,
       /* swap_fd */ -1,

@@ -940,7 +940,6 @@ class ReadBarrierForRootSlowPathMIPS64 : public SlowPathCodeMIPS64 {
 };
 
 CodeGeneratorMIPS64::CodeGeneratorMIPS64(HGraph* graph,
-                                         const Mips64InstructionSetFeatures& isa_features,
                                          const CompilerOptions& compiler_options,
                                          OptimizingCompilerStats* stats)
     : CodeGenerator(graph,
@@ -957,8 +956,8 @@ CodeGeneratorMIPS64::CodeGeneratorMIPS64(HGraph* graph,
       location_builder_(graph, this),
       instruction_visitor_(graph, this),
       move_resolver_(graph->GetAllocator(), this),
-      assembler_(graph->GetAllocator(), &isa_features),
-      isa_features_(isa_features),
+      assembler_(graph->GetAllocator(),
+                 compiler_options.GetInstructionSetFeatures()->AsMips64InstructionSetFeatures()),
       uint32_literals_(std::less<uint32_t>(),
                        graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       uint64_literals_(std::less<uint64_t>(),
@@ -1770,6 +1769,10 @@ void CodeGeneratorMIPS64::DumpCoreRegister(std::ostream& stream, int reg) const 
 
 void CodeGeneratorMIPS64::DumpFloatingPointRegister(std::ostream& stream, int reg) const {
   stream << FpuRegister(reg);
+}
+
+const Mips64InstructionSetFeatures& CodeGeneratorMIPS64::GetInstructionSetFeatures() const {
+  return *GetCompilerOptions().GetInstructionSetFeatures()->AsMips64InstructionSetFeatures();
 }
 
 void CodeGeneratorMIPS64::InvokeRuntime(QuickEntrypointEnum entrypoint,

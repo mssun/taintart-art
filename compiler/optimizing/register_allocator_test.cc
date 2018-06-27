@@ -40,6 +40,12 @@ using Strategy = RegisterAllocator::Strategy;
 
 class RegisterAllocatorTest : public OptimizingUnitTest {
  protected:
+  void SetUp() OVERRIDE {
+    // This test is using the x86 ISA.
+    OverrideInstructionSetFeatures(InstructionSet::kX86, "default");
+    OptimizingUnitTest::SetUp();
+  }
+
   // These functions need to access private variables of LocationSummary, so we declare it
   // as a member of RegisterAllocatorTest, which we make a friend class.
   void SameAsFirstInputHint(Strategy strategy);
@@ -81,9 +87,7 @@ TEST_F(RegisterAllocatorTest, test_name##_GraphColor) {\
 
 bool RegisterAllocatorTest::Check(const std::vector<uint16_t>& data, Strategy strategy) {
   HGraph* graph = CreateCFG(data);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+  x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
   SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
   std::unique_ptr<RegisterAllocator> register_allocator =
@@ -98,9 +102,7 @@ bool RegisterAllocatorTest::Check(const std::vector<uint16_t>& data, Strategy st
  */
 TEST_F(RegisterAllocatorTest, ValidateIntervals) {
   HGraph* graph = CreateGraph();
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+  x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
   ScopedArenaVector<LiveInterval*> intervals(GetScopedAllocator()->Adapter());
 
   // Test with two intervals of the same range.
@@ -324,9 +326,7 @@ void RegisterAllocatorTest::Loop3(Strategy strategy) {
     Instruction::GOTO | 0xF900);
 
   HGraph* graph = CreateCFG(data);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+  x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
   SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
   std::unique_ptr<RegisterAllocator> register_allocator =
@@ -359,9 +359,7 @@ TEST_F(RegisterAllocatorTest, FirstRegisterUse) {
     Instruction::RETURN_VOID);
 
   HGraph* graph = CreateCFG(data);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+  x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
   SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
 
@@ -412,9 +410,7 @@ void RegisterAllocatorTest::DeadPhi(Strategy strategy) {
 
   HGraph* graph = CreateCFG(data);
   SsaDeadPhiElimination(graph).Run();
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+  x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
   SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
   std::unique_ptr<RegisterAllocator> register_allocator =
@@ -438,9 +434,7 @@ TEST_F(RegisterAllocatorTest, FreeUntil) {
 
   HGraph* graph = CreateCFG(data);
   SsaDeadPhiElimination(graph).Run();
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+  x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
   SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
   RegisterAllocatorLinearScan register_allocator(GetScopedAllocator(), &codegen, liveness);
@@ -566,9 +560,7 @@ void RegisterAllocatorTest::PhiHint(Strategy strategy) {
 
   {
     HGraph* graph = BuildIfElseWithPhi(&phi, &input1, &input2);
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+    x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
     SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
@@ -584,9 +576,7 @@ void RegisterAllocatorTest::PhiHint(Strategy strategy) {
 
   {
     HGraph* graph = BuildIfElseWithPhi(&phi, &input1, &input2);
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+    x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
     SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
@@ -604,9 +594,7 @@ void RegisterAllocatorTest::PhiHint(Strategy strategy) {
 
   {
     HGraph* graph = BuildIfElseWithPhi(&phi, &input1, &input2);
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+    x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
     SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
@@ -624,9 +612,7 @@ void RegisterAllocatorTest::PhiHint(Strategy strategy) {
 
   {
     HGraph* graph = BuildIfElseWithPhi(&phi, &input1, &input2);
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+    x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
     SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
@@ -689,9 +675,7 @@ void RegisterAllocatorTest::ExpectedInRegisterHint(Strategy strategy) {
 
   {
     HGraph* graph = BuildFieldReturn(&field, &ret);
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+    x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
     SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
@@ -705,9 +689,7 @@ void RegisterAllocatorTest::ExpectedInRegisterHint(Strategy strategy) {
 
   {
     HGraph* graph = BuildFieldReturn(&field, &ret);
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+    x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
     SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
@@ -761,9 +743,7 @@ void RegisterAllocatorTest::SameAsFirstInputHint(Strategy strategy) {
 
   {
     HGraph* graph = BuildTwoSubs(&first_sub, &second_sub);
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+    x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
     SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
@@ -778,9 +758,7 @@ void RegisterAllocatorTest::SameAsFirstInputHint(Strategy strategy) {
 
   {
     HGraph* graph = BuildTwoSubs(&first_sub, &second_sub);
-    std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-        X86InstructionSetFeatures::FromCppDefines());
-    x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+    x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
     SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
@@ -834,9 +812,7 @@ HGraph* RegisterAllocatorTest::BuildDiv(HInstruction** div) {
 void RegisterAllocatorTest::ExpectedExactInRegisterAndSameOutputHint(Strategy strategy) {
   HInstruction *div;
   HGraph* graph = BuildDiv(&div);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+  x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
   SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
 
@@ -934,9 +910,7 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
       new (GetAllocator()) LocationSummary(fourth->GetDefinedBy(), LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
 
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
+  x86::CodeGeneratorX86 codegen(graph, *compiler_options_);
   SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   // Populate the instructions in the liveness object, to please the register allocator.
   for (size_t i = 0; i < 32; ++i) {

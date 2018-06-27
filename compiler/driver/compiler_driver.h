@@ -97,8 +97,6 @@ class CompilerDriver {
   CompilerDriver(const CompilerOptions* compiler_options,
                  VerificationResults* verification_results,
                  Compiler::Kind compiler_kind,
-                 InstructionSet instruction_set,
-                 const InstructionSetFeatures* instruction_set_features,
                  HashSet<std::string>* image_classes,
                  size_t thread_count,
                  int swap_fd,
@@ -128,14 +126,6 @@ class CompilerDriver {
       REQUIRES(!Locks::mutator_lock_);
 
   VerificationResults* GetVerificationResults() const;
-
-  InstructionSet GetInstructionSet() const {
-    return instruction_set_;
-  }
-
-  const InstructionSetFeatures* GetInstructionSetFeatures() const {
-    return instruction_set_features_;
-  }
 
   const CompilerOptions& GetCompilerOptions() const {
     return *compiler_options_;
@@ -450,9 +440,6 @@ class CompilerDriver {
 
   std::unique_ptr<Compiler> compiler_;
   Compiler::Kind compiler_kind_;
-
-  const InstructionSet instruction_set_;
-  const InstructionSetFeatures* const instruction_set_features_;
 
   // All class references that require constructor barriers. If the class reference is not in the
   // set then the result has not yet been computed.

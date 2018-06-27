@@ -25,7 +25,7 @@
 namespace art {
 
 class ArtMethod;
-class CompilerDriver;
+class CompilerOptions;
 class DexFile;
 
 class JniCompiledMethod {
@@ -62,7 +62,7 @@ class JniCompiledMethod {
   std::vector<uint8_t> cfi_;
 };
 
-JniCompiledMethod ArtQuickJniCompileMethod(CompilerDriver* compiler,
+JniCompiledMethod ArtQuickJniCompileMethod(const CompilerOptions& compiler_options,
                                            uint32_t access_flags,
                                            uint32_t method_idx,
                                            const DexFile& dex_file);

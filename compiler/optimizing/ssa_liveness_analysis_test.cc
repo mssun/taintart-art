@@ -28,18 +28,11 @@
 namespace art {
 
 class SsaLivenessAnalysisTest : public OptimizingUnitTest {
- public:
-  SsaLivenessAnalysisTest()
-      : graph_(CreateGraph()),
-        compiler_options_(),
-        instruction_set_(kRuntimeISA) {
-    std::string error_msg;
-    instruction_set_features_ =
-        InstructionSetFeatures::FromVariant(instruction_set_, "default", &error_msg);
-    codegen_ = CodeGenerator::Create(graph_,
-                                     instruction_set_,
-                                     *instruction_set_features_,
-                                     compiler_options_);
+ protected:
+  void SetUp() OVERRIDE {
+    OptimizingUnitTest::SetUp();
+    graph_ = CreateGraph();
+    codegen_ = CodeGenerator::Create(graph_, *compiler_options_);
     CHECK(codegen_ != nullptr) << instruction_set_ << " is not a supported target architecture.";
     // Create entry block.
     entry_ = new (GetAllocator()) HBasicBlock(graph_);
@@ -57,9 +50,6 @@ class SsaLivenessAnalysisTest : public OptimizingUnitTest {
   }
 
   HGraph* graph_;
-  CompilerOptions compiler_options_;
-  InstructionSet instruction_set_;
-  std::unique_ptr<const InstructionSetFeatures> instruction_set_features_;
   std::unique_ptr<CodeGenerator> codegen_;
   HBasicBlock* entry_;
 };

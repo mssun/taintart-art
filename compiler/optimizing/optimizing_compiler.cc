@@ -287,7 +287,7 @@ class OptimizingCompiler FINAL : public Compiler {
   uintptr_t GetEntryPointOf(ArtMethod* method) const OVERRIDE
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return reinterpret_cast<uintptr_t>(method->GetEntryPointFromQuickCompiledCodePtrSize(
-        InstructionSetPointerSize(GetCompilerDriver()->GetInstructionSet())));
+        InstructionSetPointerSize(GetCompilerDriver()->GetCompilerOptions().GetInstructionSet())));
   }
 
   void Init() OVERRIDE;
@@ -460,7 +460,7 @@ bool OptimizingCompiler::RunArchOptimizations(HGraph* graph,
                                               const DexCompilationUnit& dex_compilation_unit,
                                               PassObserver* pass_observer,
                                               VariableSizedHandleScope* handles) const {
-  switch (GetCompilerDriver()->GetInstructionSet()) {
+  switch (codegen->GetCompilerOptions().GetInstructionSet()) {
 #if defined(ART_ENABLE_CODEGEN_arm)
     case InstructionSet::kThumb2:
     case InstructionSet::kArm: {
@@ -758,7 +758,8 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
                                               VariableSizedHandleScope* handles) const {
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kAttemptBytecodeCompilation);
   CompilerDriver* compiler_driver = GetCompilerDriver();
-  InstructionSet instruction_set = compiler_driver->GetInstructionSet();
+  const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
+  InstructionSet instruction_set = compiler_options.GetInstructionSet();
   const DexFile& dex_file = *dex_compilation_unit.GetDexFile();
   uint32_t method_idx = dex_compilation_unit.GetDexMethodIndex();
   const DexFile::CodeItem* code_item = dex_compilation_unit.GetCodeItem();
@@ -782,7 +783,6 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
   // Implementation of the space filter: do not compile a code item whose size in
   // code units is bigger than 128.
   static constexpr size_t kSpaceFilterOptimizingThreshold = 128;
-  const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
   if ((compiler_options.GetCompilerFilter() == CompilerFilter::kSpace)
       && (CodeItemInstructionAccessor(dex_file, code_item).InsnsSizeInCodeUnits() >
           kSpaceFilterOptimizingThreshold)) {
@@ -796,7 +796,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
       arena_stack,
       dex_file,
       method_idx,
-      compiler_driver->GetInstructionSet(),
+      compiler_options.GetInstructionSet(),
       kInvalidInvokeType,
       compiler_driver->GetCompilerOptions().GetDebuggable(),
       osr);
@@ -813,9 +813,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
 
   std::unique_ptr<CodeGenerator> codegen(
       CodeGenerator::Create(graph,
-                            instruction_set,
-                            *compiler_driver->GetInstructionSetFeatures(),
-                            compiler_driver->GetCompilerOptions(),
+                            compiler_options,
                             compilation_stats_.get()));
   if (codegen.get() == nullptr) {
     MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kNotCompiledNoCodegen);
@@ -903,7 +901,8 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
     VariableSizedHandleScope* handles) const {
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kAttemptIntrinsicCompilation);
   CompilerDriver* compiler_driver = GetCompilerDriver();
-  InstructionSet instruction_set = compiler_driver->GetInstructionSet();
+  const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
+  InstructionSet instruction_set = compiler_options.GetInstructionSet();
   const DexFile& dex_file = *dex_compilation_unit.GetDexFile();
   uint32_t method_idx = dex_compilation_unit.GetDexMethodIndex();
 
@@ -921,7 +920,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
       arena_stack,
       dex_file,
       method_idx,
-      compiler_driver->GetInstructionSet(),
+      compiler_driver->GetCompilerOptions().GetInstructionSet(),
       kInvalidInvokeType,
       compiler_driver->GetCompilerOptions().GetDebuggable(),
       /* osr */ false);
@@ -932,15 +931,12 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
 
   std::unique_ptr<CodeGenerator> codegen(
       CodeGenerator::Create(graph,
-                            instruction_set,
-                            *compiler_driver->GetInstructionSetFeatures(),
-                            compiler_driver->GetCompilerOptions(),
+                            compiler_options,
                             compilation_stats_.get()));
   if (codegen.get() == nullptr) {
     return nullptr;
   }
-  codegen->GetAssembler()->cfi().SetEnabled(
-      compiler_driver->GetCompilerOptions().GenerateAnyDebugInfo());
+  codegen->GetAssembler()->cfi().SetEnabled(compiler_options.GenerateAnyDebugInfo());
 
   PassObserver pass_observer(graph,
                              codegen.get(),
@@ -1095,7 +1091,7 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
 
   if (kIsDebugBuild &&
       IsCompilingWithCoreImage() &&
-      IsInstructionSetSupported(compiler_driver->GetInstructionSet())) {
+      IsInstructionSetSupported(compiler_driver->GetCompilerOptions().GetInstructionSet())) {
     // For testing purposes, we put a special marker on method names
     // that should be compiled with this compiler (when the
     // instruction set is supported). This makes sure we're not
@@ -1112,7 +1108,8 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
                                                uint32_t method_idx,
                                                const DexFile& dex_file,
                                                Handle<mirror::DexCache> dex_cache) const {
-  if (GetCompilerDriver()->GetCompilerOptions().IsBootImage()) {
+  const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
+  if (compiler_options.IsBootImage()) {
     ScopedObjectAccess soa(Thread::Current());
     Runtime* runtime = Runtime::Current();
     ArtMethod* method = runtime->GetClassLinker()->LookupResolvedMethod(
@@ -1154,7 +1151,7 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
   }
 
   JniCompiledMethod jni_compiled_method = ArtQuickJniCompileMethod(
-      GetCompilerDriver(), access_flags, method_idx, dex_file);
+      compiler_options, access_flags, method_idx, dex_file);
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiledNativeStub);
   return CompiledMethod::SwapAllocCompiledMethod(
       GetCompilerDriver(),
@@ -1218,8 +1215,9 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   ArenaAllocator allocator(runtime->GetJitArenaPool());
 
   if (UNLIKELY(method->IsNative())) {
+    const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
     JniCompiledMethod jni_compiled_method = ArtQuickJniCompileMethod(
-        GetCompilerDriver(), access_flags, method_idx, *dex_file);
+        compiler_options, access_flags, method_idx, *dex_file);
     ScopedNullHandle<mirror::ObjectArray<mirror::Object>> roots;
     ArenaSet<ArtMethod*, std::less<ArtMethod*>> cha_single_implementation_list(
         allocator.Adapter(kArenaAllocCHA));
@@ -1243,7 +1241,6 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       return false;
     }
 
-    const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
     if (compiler_options.GenerateAnyDebugInfo()) {
       const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
       const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
@@ -1420,8 +1417,8 @@ void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method, debug::MethodDe
 
   // Create entry for the single method that we just compiled.
   std::vector<uint8_t> elf_file = debug::MakeElfFileForJIT(
-      GetCompilerDriver()->GetInstructionSet(),
-      GetCompilerDriver()->GetInstructionSetFeatures(),
+      compiler_options.GetInstructionSet(),
+      compiler_options.GetInstructionSetFeatures(),
       mini_debug_info,
       ArrayRef<const debug::MethodDebugInfo>(&info, 1));
   MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);

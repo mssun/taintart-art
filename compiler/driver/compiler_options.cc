@@ -20,6 +20,8 @@
 
 #include "android-base/stringprintf.h"
 
+#include "arch/instruction_set.h"
+#include "arch/instruction_set_features.h"
 #include "base/runtime_debug.h"
 #include "base/variant_map.h"
 #include "cmdline_parser.h"
@@ -37,13 +39,14 @@ CompilerOptions::CompilerOptions()
       tiny_method_threshold_(kDefaultTinyMethodThreshold),
       num_dex_methods_threshold_(kDefaultNumDexMethodsThreshold),
       inline_max_code_units_(kUnsetInlineMaxCodeUnits),
+      instruction_set_(kRuntimeISA == InstructionSet::kArm ? InstructionSet::kThumb2 : kRuntimeISA),
+      instruction_set_features_(nullptr),
       no_inline_from_(),
       dex_files_for_oat_file_(),
       image_classes_(),
       boot_image_(false),
       core_image_(false),
       app_image_(false),
-      top_k_profile_threshold_(kDefaultTopKProfileThreshold),
       debuggable_(false),
       generate_debug_info_(kDefaultGenerateDebugInfo),
       generate_mini_debug_info_(kDefaultGenerateMiniDebugInfo),
@@ -55,6 +58,7 @@ CompilerOptions::CompilerOptions()
       dump_timings_(false),
       dump_pass_timings_(false),
       dump_stats_(false),
+      top_k_profile_threshold_(kDefaultTopKProfileThreshold),
       verbose_methods_(),
       abort_on_hard_verifier_failure_(false),
       abort_on_soft_verifier_failure_(false),

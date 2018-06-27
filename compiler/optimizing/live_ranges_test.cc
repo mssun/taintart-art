@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-#include "arch/x86/instruction_set_features_x86.h"
 #include "base/arena_allocator.h"
 #include "builder.h"
 #include "code_generator.h"
-#include "code_generator_x86.h"
 #include "dex/dex_file.h"
 #include "dex/dex_instruction.h"
 #include "driver/compiler_options.h"
@@ -63,10 +61,8 @@ TEST_F(LiveRangesTest, CFG1) {
 
   HGraph* graph = BuildGraph(data);
 
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
+  std::unique_ptr<CodeGenerator> codegen = CodeGenerator::Create(graph, *compiler_options_);
+  SsaLivenessAnalysis liveness(graph, codegen.get(), GetScopedAllocator());
   liveness.Analyze();
 
   LiveInterval* interval = liveness.GetInstructionFromSsaIndex(0)->GetLiveInterval();
@@ -109,10 +105,8 @@ TEST_F(LiveRangesTest, CFG2) {
     Instruction::RETURN | 0 << 8);
 
   HGraph* graph = BuildGraph(data);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
+  std::unique_ptr<CodeGenerator> codegen = CodeGenerator::Create(graph, *compiler_options_);
+  SsaLivenessAnalysis liveness(graph, codegen.get(), GetScopedAllocator());
   liveness.Analyze();
 
   LiveInterval* interval = liveness.GetInstructionFromSsaIndex(0)->GetLiveInterval();
@@ -158,10 +152,8 @@ TEST_F(LiveRangesTest, CFG3) {
     Instruction::RETURN | 0 << 8);
 
   HGraph* graph = BuildGraph(data);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
+  std::unique_ptr<CodeGenerator> codegen = CodeGenerator::Create(graph, *compiler_options_);
+  SsaLivenessAnalysis liveness(graph, codegen.get(), GetScopedAllocator());
   liveness.Analyze();
 
   // Test for the 4 constant.
@@ -235,10 +227,8 @@ TEST_F(LiveRangesTest, Loop1) {
 
   HGraph* graph = BuildGraph(data);
   RemoveSuspendChecks(graph);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
+  std::unique_ptr<CodeGenerator> codegen = CodeGenerator::Create(graph, *compiler_options_);
+  SsaLivenessAnalysis liveness(graph, codegen.get(), GetScopedAllocator());
   liveness.Analyze();
 
   // Test for the 0 constant.
@@ -312,10 +302,8 @@ TEST_F(LiveRangesTest, Loop2) {
     Instruction::RETURN | 0 << 8);
 
   HGraph* graph = BuildGraph(data);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
+  std::unique_ptr<CodeGenerator> codegen = CodeGenerator::Create(graph, *compiler_options_);
+  SsaLivenessAnalysis liveness(graph, codegen.get(), GetScopedAllocator());
   liveness.Analyze();
 
   // Test for the 0 constant.
@@ -388,10 +376,8 @@ TEST_F(LiveRangesTest, CFG4) {
     Instruction::RETURN);
 
   HGraph* graph = BuildGraph(data);
-  std::unique_ptr<const X86InstructionSetFeatures> features_x86(
-      X86InstructionSetFeatures::FromCppDefines());
-  x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
+  std::unique_ptr<CodeGenerator> codegen = CodeGenerator::Create(graph, *compiler_options_);
+  SsaLivenessAnalysis liveness(graph, codegen.get(), GetScopedAllocator());
   liveness.Analyze();
 
   // Test for the 0 constant.

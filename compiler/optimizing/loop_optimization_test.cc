@@ -29,7 +29,8 @@ class LoopOptimizationTest : public OptimizingUnitTest {
   LoopOptimizationTest()
       : graph_(CreateGraph()),
         iva_(new (GetAllocator()) HInductionVarAnalysis(graph_)),
-        loop_opt_(new (GetAllocator()) HLoopOptimization(graph_, nullptr, iva_, nullptr)) {
+        loop_opt_(new (GetAllocator()) HLoopOptimization(
+            graph_, /* compiler_options */ nullptr, iva_, /* stats */ nullptr)) {
     BuildGraph();
   }
 

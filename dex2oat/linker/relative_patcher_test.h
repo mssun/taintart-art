@@ -22,6 +22,7 @@
 #include "base/array_ref.h"
 #include "base/globals.h"
 #include "base/macros.h"
+#include "common_compiler_test.h"
 #include "compiled_method-inl.h"
 #include "dex/verification_results.h"
 #include "dex/method_reference.h"
@@ -38,36 +39,37 @@ namespace art {
 namespace linker {
 
 // Base class providing infrastructure for architecture-specific tests.
-class RelativePatcherTest : public testing::Test {
+class RelativePatcherTest : public CommonCompilerTest {
  protected:
   RelativePatcherTest(InstructionSet instruction_set, const std::string& variant)
-      : compiler_options_(),
-        verification_results_(&compiler_options_),
-        driver_(&compiler_options_,
-                &verification_results_,
-                Compiler::kQuick,
-                instruction_set,
-                /* instruction_set_features*/ nullptr,
-                /* image_classes */ nullptr,
-                /* thread_count */ 1u,
-                /* swap_fd */ -1,
-                /* profile_compilation_info */ nullptr),
-        error_msg_(),
-        instruction_set_(instruction_set),
-        features_(InstructionSetFeatures::FromVariant(instruction_set, variant, &error_msg_)),
+      : variant_(variant),
         method_offset_map_(),
-        patcher_(RelativePatcher::Create(instruction_set,
-                                         features_.get(),
-                                         &thunk_provider_,
-                                         &method_offset_map_)),
+        patcher_(nullptr),
         bss_begin_(0u),
         compiled_method_refs_(),
         compiled_methods_(),
         patched_code_(),
         output_(),
         out_("test output stream", &output_) {
-    CHECK(error_msg_.empty()) << instruction_set << "/" << variant;
+    // Override CommonCompilerTest's defaults.
+    instruction_set_ = instruction_set;
+    number_of_threads_ = 1u;
     patched_code_.reserve(16 * KB);
+  }
+
+  void SetUp() OVERRIDE {
+    OverrideInstructionSetFeatures(instruction_set_, variant_);
+    CommonCompilerTest::SetUp();
+
+    patcher_ = RelativePatcher::Create(compiler_options_->GetInstructionSet(),
+                                       compiler_options_->GetInstructionSetFeatures(),
+                                       &thunk_provider_,
+                                       &method_offset_map_);
+  }
+
+  void TearDown() OVERRIDE {
+    patcher_.reset();
+    CommonCompilerTest::TearDown();
   }
 
   MethodReference MethodRef(uint32_t method_idx) {
@@ -81,7 +83,7 @@ class RelativePatcherTest : public testing::Test {
       const ArrayRef<const LinkerPatch>& patches = ArrayRef<const LinkerPatch>()) {
     compiled_method_refs_.push_back(method_ref);
     compiled_methods_.emplace_back(new CompiledMethod(
-        &driver_,
+        compiler_driver_.get(),
         instruction_set_,
         code,
         /* frame_size_in_bytes */ 0u,
@@ -333,12 +335,7 @@ class RelativePatcherTest : public testing::Test {
   static const uint32_t kTrampolineSize = 4u;
   static const uint32_t kTrampolineOffset = 0u;
 
-  CompilerOptions compiler_options_;
-  VerificationResults verification_results_;
-  CompilerDriver driver_;  // Needed for constructing CompiledMethod.
-  std::string error_msg_;
-  InstructionSet instruction_set_;
-  std::unique_ptr<const InstructionSetFeatures> features_;
+  std::string variant_;
   ThunkProvider thunk_provider_;
   MethodOffsetMap method_offset_map_;
   std::unique_ptr<RelativePatcher> patcher_;

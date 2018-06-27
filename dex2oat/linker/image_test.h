@@ -35,6 +35,7 @@
 #include "compiler_callbacks.h"
 #include "debug/method_debug_info.h"
 #include "dex/quick_compiler_callbacks.h"
+#include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "gc/space/image_space.h"
 #include "image_writer.h"
@@ -211,7 +212,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
     ++image_idx;
   }
   // TODO: compile_pic should be a test argument.
-  std::unique_ptr<ImageWriter> writer(new ImageWriter(*driver,
+  std::unique_ptr<ImageWriter> writer(new ImageWriter(*compiler_options_,
                                                       kRequestedImageBase,
                                                       /*compile_pic*/false,
                                                       /*compile_app_image*/false,
@@ -242,12 +243,9 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
       std::vector<std::unique_ptr<ElfWriter>> elf_writers;
       std::vector<std::unique_ptr<OatWriter>> oat_writers;
       for (ScratchFile& oat_file : out_helper.oat_files) {
-        elf_writers.emplace_back(CreateElfWriterQuick(driver->GetInstructionSet(),
-                                                      driver->GetInstructionSetFeatures(),
-                                                      &driver->GetCompilerOptions(),
-                                                      oat_file.GetFile()));
+        elf_writers.emplace_back(CreateElfWriterQuick(*compiler_options_, oat_file.GetFile()));
         elf_writers.back()->Start();
-        oat_writers.emplace_back(new OatWriter(/*compiling_boot_image*/true,
+        oat_writers.emplace_back(new OatWriter(*compiler_options_,
                                                &timings,
                                                /*profile_compilation_info*/nullptr,
                                                CompactDexLevel::kCompactDexLevelNone));
@@ -272,8 +270,6 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
         bool dex_files_ok = oat_writers[i]->WriteAndOpenDexFiles(
             out_helper.vdex_files[i].GetFile(),
             rodata.back(),
-            driver->GetInstructionSet(),
-            driver->GetInstructionSetFeatures(),
             &key_value_store,
             /* verify */ false,           // Dex files may be dex-to-dex-ed, don't verify.
             /* update_input_vdex */ false,
@@ -299,8 +295,8 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
 
       DCHECK_EQ(out_helper.vdex_files.size(), out_helper.oat_files.size());
       for (size_t i = 0, size = out_helper.oat_files.size(); i != size; ++i) {
-        MultiOatRelativePatcher patcher(driver->GetInstructionSet(),
-                                        driver->GetInstructionSetFeatures(),
+        MultiOatRelativePatcher patcher(compiler_options_->GetInstructionSet(),
+                                        compiler_options_->GetInstructionSetFeatures(),
                                         driver->GetCompiledMethodStorage());
         OatWriter* const oat_writer = oat_writers[i].get();
         ElfWriter* const elf_writer = elf_writers[i].get();
@@ -381,7 +377,8 @@ inline void ImageTest::Compile(ImageHeader::StorageMode storage_mode,
   for (const std::string& image_class : image_classes) {
     image_classes_.insert(image_class);
   }
-  CreateCompilerDriver(Compiler::kOptimizing, kRuntimeISA, kIsTargetBuild ? 2U : 16U);
+  number_of_threads_ = kIsTargetBuild ? 2U : 16U;
+  CreateCompilerDriver();
   // Set inline filter values.
   compiler_options_->SetInlineMaxCodeUnits(CompilerOptions::kDefaultInlineMaxCodeUnits);
   image_classes_.clear();

@@ -31,6 +31,7 @@
 #include "dex/dex_instruction-inl.h"
 #include "dex_to_dex_decompiler.h"
 #include "driver/compiler_driver.h"
+#include "driver/compiler_options.h"
 #include "driver/dex_compilation_unit.h"
 #include "mirror/dex_cache.h"
 #include "quicken_info.h"
@@ -609,7 +610,7 @@ CompiledMethod* DexToDexCompiler::CompileMethod(
   }
 
   // Create a `CompiledMethod`, with the quickened information in the vmap table.
-  InstructionSet instruction_set = driver_->GetInstructionSet();
+  InstructionSet instruction_set = driver_->GetCompilerOptions().GetInstructionSet();
   if (instruction_set == InstructionSet::kThumb2) {
     // Don't use the thumb2 instruction set to avoid the one off code delta.
     instruction_set = InstructionSet::kArm;
