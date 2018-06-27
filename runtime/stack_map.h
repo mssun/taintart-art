@@ -19,6 +19,7 @@
 
 #include <limits>
 
+#include "arch/instruction_set.h"
 #include "base/bit_memory_region.h"
 #include "base/bit_table.h"
 #include "base/bit_utils.h"
@@ -28,10 +29,11 @@
 #include "dex/dex_file_types.h"
 #include "dex_register_location.h"
 #include "method_info.h"
-#include "oat_quick_method_header.h"
+#include "quick/quick_method_frame_info.h"
 
 namespace art {
 
+class OatQuickMethodHeader;
 class VariableIndentationOutputStream;
 
 // Size of a frame slot, in bytes.  This constant is a signed value,
@@ -290,9 +292,7 @@ class CodeInfo {
     DCHECK_EQ(size_, region.size());
   }
 
-  explicit CodeInfo(const OatQuickMethodHeader* header)
-    : CodeInfo(header->GetOptimizedCodeInfoPtr()) {
-  }
+  explicit CodeInfo(const OatQuickMethodHeader* header);
 
   size_t Size() const {
     return size_;
@@ -435,6 +435,14 @@ class CodeInfo {
   // Accumulate code info size statistics into the given Stats tree.
   void AddSizeStats(/*out*/ Stats* parent) const;
 
+  ALWAYS_INLINE static QuickMethodFrameInfo DecodeFrameInfo(const uint8_t* data) {
+    DecodeUnsignedLeb128(&data);
+    return QuickMethodFrameInfo(
+        DecodeUnsignedLeb128(&data),
+        DecodeUnsignedLeb128(&data),
+        DecodeUnsignedLeb128(&data));
+  }
+
  private:
   // Returns lower bound (fist stack map which has pc greater or equal than the desired one).
   // It ignores catch stack maps at the end (it is the same as if they had maximum pc value).
@@ -448,6 +456,10 @@ class CodeInfo {
   void Decode(const uint8_t* data);
 
   size_t size_;
+  uint32_t frame_size_in_bytes_;
+  uint32_t core_spill_mask_;
+  uint32_t fp_spill_mask_;
+  uint32_t number_of_dex_registers_;
   BitTable<StackMap> stack_maps_;
   BitTable<RegisterMask> register_masks_;
   BitTable<MaskInfo> stack_masks_;
@@ -456,7 +468,6 @@ class CodeInfo {
   BitTable<MaskInfo> dex_register_masks_;
   BitTable<DexRegisterMapInfo> dex_register_maps_;
   BitTable<DexRegisterInfo> dex_register_catalog_;
-  uint32_t number_of_dex_registers_;  // Excludes any inlined methods.
 };
 
 #undef ELEMENT_BYTE_OFFSET_AFTER

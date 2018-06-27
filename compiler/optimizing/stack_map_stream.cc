@@ -39,22 +39,33 @@ void StackMapStream::SetStackMapNativePcOffset(size_t i, uint32_t native_pc_offs
       StackMap::PackNativePc(native_pc_offset, instruction_set_);
 }
 
+void StackMapStream::BeginMethod(size_t frame_size_in_bytes,
+                                 size_t core_spill_mask,
+                                 size_t fp_spill_mask,
+                                 uint32_t num_dex_registers) {
+  DCHECK(!in_method_) << "Mismatched Begin/End calls";
+  in_method_ = true;
+  DCHECK_EQ(frame_size_in_bytes_, 0u) << "BeginMethod was already called";
+
+  frame_size_in_bytes_ = frame_size_in_bytes;
+  core_spill_mask_ = core_spill_mask;
+  fp_spill_mask_ = fp_spill_mask;
+  num_dex_registers_ = num_dex_registers;
+}
+
+void StackMapStream::EndMethod() {
+  DCHECK(in_method_) << "Mismatched Begin/End calls";
+  in_method_ = false;
+}
+
 void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
                                         uint32_t native_pc_offset,
                                         uint32_t register_mask,
                                         BitVector* stack_mask,
-                                        uint32_t num_dex_registers,
-                                        uint8_t inlining_depth,
                                         StackMap::Kind kind) {
+  DCHECK(in_method_) << "Call BeginMethod first";
   DCHECK(!in_stack_map_) << "Mismatched Begin/End calls";
   in_stack_map_ = true;
-  // num_dex_registers_ is the constant per-method number of registers.
-  // However we initially don't know what the value is, so lazily initialize it.
-  if (num_dex_registers_ == 0) {
-    num_dex_registers_ = num_dex_registers;
-  } else if (num_dex_registers > 0) {
-    DCHECK_EQ(num_dex_registers_, num_dex_registers) << "Inconsistent register count";
-  }
 
   current_stack_map_ = BitTableBuilder<StackMap>::Entry();
   current_stack_map_[StackMap::kKind] = static_cast<uint32_t>(kind);
@@ -84,7 +95,7 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
   lazy_stack_masks_.push_back(stack_mask);
   current_inline_infos_.clear();
   current_dex_registers_.clear();
-  expected_num_dex_registers_ = num_dex_registers;
+  expected_num_dex_registers_ = num_dex_registers_;
 
   if (kVerifyStackMaps) {
     size_t stack_map_index = stack_maps_.size();
@@ -109,8 +120,6 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
       for (size_t b = 0; b < seen_stack_mask.size_in_bits(); b++) {
         CHECK_EQ(seen_stack_mask.LoadBit(b), stack_mask != nullptr && stack_mask->IsBitSet(b));
       }
-      CHECK_EQ(stack_map.HasInlineInfo(), (inlining_depth != 0));
-      CHECK_EQ(code_info.GetInlineDepthOf(stack_map), inlining_depth);
     });
   }
 }
@@ -118,9 +127,9 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
 void StackMapStream::EndStackMapEntry() {
   DCHECK(in_stack_map_) << "Mismatched Begin/End calls";
   in_stack_map_ = false;
-  DCHECK_EQ(expected_num_dex_registers_, current_dex_registers_.size());
 
   // Generate index into the InlineInfo table.
+  size_t inlining_depth = current_inline_infos_.size();
   if (!current_inline_infos_.empty()) {
     current_inline_infos_.back()[InlineInfo::kIsLast] = InlineInfo::kLast;
     current_stack_map_[StackMap::kInlineInfoIndex] =
@@ -128,9 +137,23 @@ void StackMapStream::EndStackMapEntry() {
   }
 
   // Generate delta-compressed dex register map.
-  CreateDexRegisterMap();
+  size_t num_dex_registers = current_dex_registers_.size();
+  if (!current_dex_registers_.empty()) {
+    DCHECK_EQ(expected_num_dex_registers_, current_dex_registers_.size());
+    CreateDexRegisterMap();
+  }
 
   stack_maps_.Add(current_stack_map_);
+
+  if (kVerifyStackMaps) {
+    size_t stack_map_index = stack_maps_.size() - 1;
+    dchecks_.emplace_back([=](const CodeInfo& code_info) {
+      StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
+      CHECK_EQ(stack_map.HasDexRegisterMap(), (num_dex_registers != 0));
+      CHECK_EQ(stack_map.HasInlineInfo(), (inlining_depth != 0));
+      CHECK_EQ(code_info.GetInlineDepthOf(stack_map), inlining_depth);
+    });
+  }
 }
 
 void StackMapStream::AddInvoke(InvokeType invoke_type, uint32_t dex_method_index) {
@@ -157,6 +180,7 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
                                           uint32_t dex_pc,
                                           uint32_t num_dex_registers,
                                           const DexFile* outer_dex_file) {
+  DCHECK(in_stack_map_) << "Call BeginStackMapEntry first";
   DCHECK(!in_inline_info_) << "Mismatched Begin/End calls";
   in_inline_info_ = true;
   DCHECK_EQ(expected_num_dex_registers_, current_dex_registers_.size());
@@ -301,7 +325,11 @@ size_t StackMapStream::PrepareForFillIn() {
     }
   }
 
-  BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&out_);
+  EncodeUnsignedLeb128(&out_, frame_size_in_bytes_);
+  EncodeUnsignedLeb128(&out_, core_spill_mask_);
+  EncodeUnsignedLeb128(&out_, fp_spill_mask_);
+  EncodeUnsignedLeb128(&out_, num_dex_registers_);
+  BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&out_, out_.size() * kBitsPerByte);
   stack_maps_.Encode(out);
   register_masks_.Encode(out);
   stack_masks_.Encode(out);
@@ -310,7 +338,6 @@ size_t StackMapStream::PrepareForFillIn() {
   dex_register_masks_.Encode(out);
   dex_register_maps_.Encode(out);
   dex_register_catalog_.Encode(out);
-  EncodeVarintBits(out, num_dex_registers_);
 
   return UnsignedLeb128Size(out_.size()) +  out_.size();
 }

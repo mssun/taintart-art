@@ -50,8 +50,6 @@ class StackMapStream : public ValueObject {
         out_(allocator->Adapter(kArenaAllocStackMapStream)),
         method_infos_(allocator),
         lazy_stack_masks_(allocator->Adapter(kArenaAllocStackMapStream)),
-        in_stack_map_(false),
-        in_inline_info_(false),
         current_stack_map_(),
         current_inline_infos_(allocator->Adapter(kArenaAllocStackMapStream)),
         current_dex_registers_(allocator->Adapter(kArenaAllocStackMapStream)),
@@ -61,12 +59,16 @@ class StackMapStream : public ValueObject {
         temp_dex_register_map_(allocator->Adapter(kArenaAllocStackMapStream)) {
   }
 
+  void BeginMethod(size_t frame_size_in_bytes,
+                   size_t core_spill_mask,
+                   size_t fp_spill_mask,
+                   uint32_t num_dex_registers);
+  void EndMethod();
+
   void BeginStackMapEntry(uint32_t dex_pc,
                           uint32_t native_pc_offset,
-                          uint32_t register_mask,
-                          BitVector* sp_mask,
-                          uint32_t num_dex_registers,
-                          uint8_t inlining_depth,
+                          uint32_t register_mask = 0,
+                          BitVector* sp_mask = nullptr,
                           StackMap::Kind kind = StackMap::Kind::Default);
   void EndStackMapEntry();
 
@@ -103,6 +105,10 @@ class StackMapStream : public ValueObject {
   void CreateDexRegisterMap();
 
   const InstructionSet instruction_set_;
+  uint32_t frame_size_in_bytes_ = 0;
+  uint32_t core_spill_mask_ = 0;
+  uint32_t fp_spill_mask_ = 0;
+  uint32_t num_dex_registers_ = 0;
   BitTableBuilder<StackMap> stack_maps_;
   BitTableBuilder<RegisterMask> register_masks_;
   BitmapTableBuilder stack_masks_;
@@ -111,7 +117,6 @@ class StackMapStream : public ValueObject {
   BitmapTableBuilder dex_register_masks_;
   BitTableBuilder<MaskInfo> dex_register_maps_;
   BitTableBuilder<DexRegisterInfo> dex_register_catalog_;
-  uint32_t num_dex_registers_ = 0;  // TODO: Make this const and get the value in constructor.
   ScopedArenaVector<uint8_t> out_;
 
   BitTableBuilderBase<1> method_infos_;
@@ -119,8 +124,9 @@ class StackMapStream : public ValueObject {
   ScopedArenaVector<BitVector*> lazy_stack_masks_;
 
   // Variables which track the current state between Begin/End calls;
-  bool in_stack_map_;
-  bool in_inline_info_;
+  bool in_method_ = false;
+  bool in_stack_map_ = false;
+  bool in_inline_info_ = false;
   BitTableBuilder<StackMap>::Entry current_stack_map_;
   ScopedArenaVector<BitTableBuilder<InlineInfo>::Entry> current_inline_infos_;
   ScopedArenaVector<DexRegisterLocation> current_dex_registers_;
