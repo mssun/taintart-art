@@ -1,0 +1,2 @@
+Test the optimization of integer division and remainder instructions when
+the denominator is power of 2 on arm64.
