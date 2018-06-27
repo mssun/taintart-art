@@ -113,9 +113,7 @@ class LoopAnalysis : public ValueObject {
         instruction->IsUnresolvedStaticFieldGet() ||
         instruction->IsUnresolvedStaticFieldSet() ||
         // TODO: Support loops with intrinsified invokes.
-        instruction->IsInvoke() ||
-        // TODO: Support loops with ClinitChecks.
-        instruction->IsClinitCheck());
+        instruction->IsInvoke());
   }
 };
 
