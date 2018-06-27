@@ -104,10 +104,7 @@ public class AhatClassInstance extends AhatInstance {
 
   @Override
   Iterable<Reference> getReferences() {
-    if (isInstanceOfClass("java.lang.ref.Reference")) {
-      return new WeakReferentReferenceIterator();
-    }
-    return new StrongReferenceIterator();
+    return new ReferenceIterator();
   }
 
   /**
@@ -352,59 +349,48 @@ public class AhatClassInstance extends AhatInstance {
   }
 
   /**
-   * A Reference iterator that iterates over the fields of this instance
-   * assuming all field references are strong references.
+   * Returns the reachability type associated with this instance.
+   * For example, returns Reachability.WEAK for an instance of
+   * java.lang.ref.WeakReference.
    */
-  private class StrongReferenceIterator implements Iterable<Reference>,
-                                                   Iterator<Reference> {
-    private Iterator<FieldValue> mIter = getInstanceFields().iterator();
-    private Reference mNext = null;
-
-    @Override
-    public boolean hasNext() {
-      while (mNext == null && mIter.hasNext()) {
-        FieldValue field = mIter.next();
-        if (field.value != null && field.value.isAhatInstance()) {
-          AhatInstance ref = field.value.asAhatInstance();
-          mNext = new Reference(AhatClassInstance.this, "." + field.name, ref, true);
-        }
+  private Reachability getJavaLangRefType() {
+    AhatClassObj cls = getClassObj();
+    while (cls != null) {
+      switch (cls.getName()) {
+        case "java.lang.ref.PhantomReference": return Reachability.PHANTOM;
+        case "java.lang.ref.WeakReference": return Reachability.WEAK;
+        case "java.lang.ref.FinalizerReference": return Reachability.FINALIZER;
+        case "java.lang.ref.SoftReference": return Reachability.SOFT;
       }
-      return mNext != null;
+      cls = cls.getSuperClassObj();
     }
-
-    @Override
-    public Reference next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-      Reference next = mNext;
-      mNext = null;
-      return next;
-    }
-
-    @Override
-    public Iterator<Reference> iterator() {
-      return this;
-    }
+    return Reachability.STRONG;
   }
 
   /**
-   * A Reference iterator that iterates over the fields of a subclass of
-   * java.lang.ref.Reference, where the 'referent' field is considered weak.
+   * A Reference iterator that iterates over the fields of this instance.
    */
-  private class WeakReferentReferenceIterator implements Iterable<Reference>,
-                                                         Iterator<Reference> {
-    private Iterator<FieldValue> mIter = getInstanceFields().iterator();
+  private class ReferenceIterator implements Iterable<Reference>,
+                                             Iterator<Reference> {
+    private final Iterator<FieldValue> mIter = getInstanceFields().iterator();
     private Reference mNext = null;
+
+    // If we are iterating over a subclass of java.lang.ref.Reference, the
+    // 'referent' field doesn't have strong reachability. mJavaLangRefType
+    // describes what type of java.lang.ref.Reference subinstance this is.
+    private final Reachability mJavaLangRefType = getJavaLangRefType();
 
     @Override
     public boolean hasNext() {
       while (mNext == null && mIter.hasNext()) {
         FieldValue field = mIter.next();
         if (field.value != null && field.value.isAhatInstance()) {
-          boolean strong = !field.name.equals("referent");
+          Reachability reachability = Reachability.STRONG;
+          if (mJavaLangRefType != Reachability.STRONG && "referent".equals(field.name)) {
+            reachability = mJavaLangRefType;
+          }
           AhatInstance ref = field.value.asAhatInstance();
-          mNext = new Reference(AhatClassInstance.this, "." + field.name, ref, strong);
+          mNext = new Reference(AhatClassInstance.this, "." + field.name, ref, reachability);
         }
       }
       return mNext != null;

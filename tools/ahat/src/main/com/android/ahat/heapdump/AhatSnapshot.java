@@ -55,7 +55,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       }
     }
 
-    AhatInstance.computeReverseReferences(mSuperRoot, progress, mInstances.size());
+    AhatInstance.computeReachability(mSuperRoot, progress, mInstances.size());
     DominatorsComputation.computeDominators(mSuperRoot, progress, mInstances.size());
     AhatInstance.computeRetainedSize(mSuperRoot, mHeaps.size());
 
