@@ -958,6 +958,10 @@ void CodeGeneratorX86::DumpFloatingPointRegister(std::ostream& stream, int reg) 
   stream << XmmRegister(reg);
 }
 
+const X86InstructionSetFeatures& CodeGeneratorX86::GetInstructionSetFeatures() const {
+  return *GetCompilerOptions().GetInstructionSetFeatures()->AsX86InstructionSetFeatures();
+}
+
 size_t CodeGeneratorX86::SaveCoreRegister(size_t stack_index, uint32_t reg_id) {
   __ movl(Address(ESP, stack_index), static_cast<Register>(reg_id));
   return kX86WordSize;
@@ -1009,7 +1013,6 @@ void CodeGeneratorX86::GenerateInvokeRuntime(int32_t entry_point_offset) {
 }
 
 CodeGeneratorX86::CodeGeneratorX86(HGraph* graph,
-                                   const X86InstructionSetFeatures& isa_features,
                                    const CompilerOptions& compiler_options,
                                    OptimizingCompilerStats* stats)
     : CodeGenerator(graph,
@@ -1027,7 +1030,6 @@ CodeGeneratorX86::CodeGeneratorX86(HGraph* graph,
       instruction_visitor_(graph, this),
       move_resolver_(graph->GetAllocator(), this),
       assembler_(graph->GetAllocator()),
-      isa_features_(isa_features),
       boot_image_method_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       method_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       boot_image_type_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),

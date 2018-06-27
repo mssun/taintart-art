@@ -1502,6 +1502,10 @@ void CodeGeneratorARMVIXL::DumpFloatingPointRegister(std::ostream& stream, int r
   stream << vixl32::SRegister(reg);
 }
 
+const ArmInstructionSetFeatures& CodeGeneratorARMVIXL::GetInstructionSetFeatures() const {
+  return *GetCompilerOptions().GetInstructionSetFeatures()->AsArmInstructionSetFeatures();
+}
+
 static uint32_t ComputeSRegisterListMask(const SRegisterList& regs) {
   uint32_t mask = 0;
   for (uint32_t i = regs.GetFirstSRegister().GetCode();
@@ -2319,7 +2323,6 @@ vixl32::Label* CodeGeneratorARMVIXL::GetFinalLabel(HInstruction* instruction,
 }
 
 CodeGeneratorARMVIXL::CodeGeneratorARMVIXL(HGraph* graph,
-                                           const ArmInstructionSetFeatures& isa_features,
                                            const CompilerOptions& compiler_options,
                                            OptimizingCompilerStats* stats)
     : CodeGenerator(graph,
@@ -2336,7 +2339,6 @@ CodeGeneratorARMVIXL::CodeGeneratorARMVIXL(HGraph* graph,
       instruction_visitor_(graph, this),
       move_resolver_(graph->GetAllocator(), this),
       assembler_(graph->GetAllocator()),
-      isa_features_(isa_features),
       uint32_literals_(std::less<uint32_t>(),
                        graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       boot_image_method_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),

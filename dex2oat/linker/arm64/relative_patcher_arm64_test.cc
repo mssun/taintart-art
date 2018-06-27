@@ -176,10 +176,7 @@ class Arm64RelativePatcherTest : public RelativePatcherTest {
     OptimizingUnitTestHelper helper;
     HGraph* graph = helper.CreateGraph();
     std::string error_msg;
-    Arm64FeaturesUniquePtr features =
-        Arm64InstructionSetFeatures::FromVariant("default", &error_msg);
-    CompilerOptions options;
-    arm64::CodeGeneratorARM64 codegen(graph, *features, options);
+    arm64::CodeGeneratorARM64 codegen(graph, *compiler_options_);
     ArenaVector<uint8_t> code(helper.GetAllocator()->Adapter());
     codegen.EmitThunkCode(patch, &code, debug_name);
     return std::vector<uint8_t>(code.begin(), code.end());

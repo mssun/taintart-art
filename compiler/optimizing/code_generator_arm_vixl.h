@@ -428,7 +428,6 @@ class InstructionCodeGeneratorARMVIXL : public InstructionCodeGenerator {
 class CodeGeneratorARMVIXL : public CodeGenerator {
  public:
   CodeGeneratorARMVIXL(HGraph* graph,
-                       const ArmInstructionSetFeatures& isa_features,
                        const CompilerOptions& compiler_options,
                        OptimizingCompilerStats* stats = nullptr);
   virtual ~CodeGeneratorARMVIXL() {}
@@ -475,6 +474,9 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
 
   ParallelMoveResolver* GetMoveResolver() OVERRIDE { return &move_resolver_; }
   InstructionSet GetInstructionSet() const OVERRIDE { return InstructionSet::kThumb2; }
+
+  const ArmInstructionSetFeatures& GetInstructionSetFeatures() const;
+
   // Helper method to move a 32-bit value between two locations.
   void Move32(Location destination, Location source);
 
@@ -522,8 +524,6 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   }
 
   void Finalize(CodeAllocator* allocator) OVERRIDE;
-
-  const ArmInstructionSetFeatures& GetInstructionSetFeatures() const { return isa_features_; }
 
   bool NeedsTwoRegisters(DataType::Type type) const OVERRIDE {
     return type == DataType::Type::kFloat64 || type == DataType::Type::kInt64;
@@ -888,7 +888,6 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   ParallelMoveResolverARMVIXL move_resolver_;
 
   ArmVIXLAssembler assembler_;
-  const ArmInstructionSetFeatures& isa_features_;
 
   // Deduplication map for 32-bit literals, used for non-patchable boot image addresses.
   Uint32ToLiteralMap uint32_literals_;

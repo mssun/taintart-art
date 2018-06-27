@@ -86,33 +86,17 @@ class OatTest : public CommonCompilerTest {
     }
   }
 
-  void SetupCompiler(Compiler::Kind compiler_kind,
-                     InstructionSet insn_set,
-                     const std::vector<std::string>& compiler_options,
-                     /*out*/std::string* error_msg) {
-    ASSERT_TRUE(error_msg != nullptr);
-    insn_features_ = InstructionSetFeatures::FromVariant(insn_set, "default", error_msg);
-    ASSERT_TRUE(insn_features_ != nullptr) << *error_msg;
-    compiler_options_.reset(new CompilerOptions);
+  void SetupCompiler(const std::vector<std::string>& compiler_options) {
+    std::string error_msg;
     if (!compiler_options_->ParseCompilerOptions(compiler_options,
                                                  false /* ignore_unrecognized */,
-                                                 error_msg)) {
-      LOG(FATAL) << *error_msg;
+                                                 &error_msg)) {
+      LOG(FATAL) << error_msg;
       UNREACHABLE();
     }
-    verification_results_.reset(new VerificationResults(compiler_options_.get()));
     callbacks_.reset(new QuickCompilerCallbacks(CompilerCallbacks::CallbackMode::kCompileApp));
     callbacks_->SetVerificationResults(verification_results_.get());
     Runtime::Current()->SetCompilerCallbacks(callbacks_.get());
-    compiler_driver_.reset(new CompilerDriver(compiler_options_.get(),
-                                              verification_results_.get(),
-                                              compiler_kind,
-                                              insn_set,
-                                              insn_features_.get(),
-                                              /* image_classes */ nullptr,
-                                              /* thread_count */ 2,
-                                              /* swap_fd */ -1,
-                                              /* profile_compilation_info */ nullptr));
   }
 
   bool WriteElf(File* vdex_file,
@@ -121,7 +105,8 @@ class OatTest : public CommonCompilerTest {
                 SafeMap<std::string, std::string>& key_value_store,
                 bool verify) {
     TimingLogger timings("WriteElf", false, false);
-    OatWriter oat_writer(/*compiling_boot_image*/false,
+    ClearBootImageOption();
+    OatWriter oat_writer(*compiler_options_,
                          &timings,
                          /*profile_compilation_info*/nullptr,
                          CompactDexLevel::kCompactDexLevelNone);
@@ -145,7 +130,8 @@ class OatTest : public CommonCompilerTest {
                 bool verify,
                 ProfileCompilationInfo* profile_compilation_info) {
     TimingLogger timings("WriteElf", false, false);
-    OatWriter oat_writer(/*compiling_boot_image*/false,
+    ClearBootImageOption();
+    OatWriter oat_writer(*compiler_options_,
                          &timings,
                          profile_compilation_info,
                          CompactDexLevel::kCompactDexLevelNone);
@@ -164,7 +150,8 @@ class OatTest : public CommonCompilerTest {
                 SafeMap<std::string, std::string>& key_value_store,
                 bool verify) {
     TimingLogger timings("WriteElf", false, false);
-    OatWriter oat_writer(/*compiling_boot_image*/false,
+    ClearBootImageOption();
+    OatWriter oat_writer(*compiler_options_,
                          &timings,
                          /*profile_compilation_info*/nullptr,
                          CompactDexLevel::kCompactDexLevelNone);
@@ -180,9 +167,7 @@ class OatTest : public CommonCompilerTest {
                   SafeMap<std::string, std::string>& key_value_store,
                   bool verify) {
     std::unique_ptr<ElfWriter> elf_writer = CreateElfWriterQuick(
-        compiler_driver_->GetInstructionSet(),
-        compiler_driver_->GetInstructionSetFeatures(),
-        &compiler_driver_->GetCompilerOptions(),
+        compiler_driver_->GetCompilerOptions(),
         oat_file);
     elf_writer->Start();
     OutputStream* oat_rodata = elf_writer->StartRoData();
@@ -191,8 +176,6 @@ class OatTest : public CommonCompilerTest {
     if (!oat_writer.WriteAndOpenDexFiles(
         vdex_file,
         oat_rodata,
-        compiler_driver_->GetInstructionSet(),
-        compiler_driver_->GetInstructionSetFeatures(),
         &key_value_store,
         verify,
         /* update_input_vdex */ false,
@@ -210,8 +193,8 @@ class OatTest : public CommonCompilerTest {
       ScopedObjectAccess soa(Thread::Current());
       class_linker->RegisterDexFile(*dex_file, nullptr);
     }
-    MultiOatRelativePatcher patcher(compiler_driver_->GetInstructionSet(),
-                                    instruction_set_features_.get(),
+    MultiOatRelativePatcher patcher(compiler_options_->GetInstructionSet(),
+                                    compiler_options_->GetInstructionSetFeatures(),
                                     compiler_driver_->GetCompiledMethodStorage());
     oat_writer.Initialize(compiler_driver_.get(), nullptr, dex_files);
     oat_writer.PrepareLayout(&patcher);
@@ -278,7 +261,6 @@ class OatTest : public CommonCompilerTest {
   void TestZipFileInput(bool verify);
   void TestZipFileInputWithEmptyDex();
 
-  std::unique_ptr<const InstructionSetFeatures> insn_features_;
   std::unique_ptr<QuickCompilerCallbacks> callbacks_;
 
   std::vector<std::unique_ptr<MemMap>> opened_dex_files_maps_;
@@ -400,11 +382,8 @@ TEST_F(OatTest, WriteRead) {
   TimingLogger timings("OatTest::WriteRead", false, false);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
 
-  // TODO: make selectable.
-  Compiler::Kind compiler_kind = Compiler::kQuick;
-  InstructionSet insn_set = kIsTargetBuild ? InstructionSet::kThumb2 : InstructionSet::kX86;
   std::string error_msg;
-  SetupCompiler(compiler_kind, insn_set, std::vector<std::string>(), /*out*/ &error_msg);
+  SetupCompiler(std::vector<std::string>());
 
   jobject class_loader = nullptr;
   if (kCompile) {
@@ -524,14 +503,9 @@ TEST_F(OatTest, OatHeaderIsValid) {
 TEST_F(OatTest, EmptyTextSection) {
   TimingLogger timings("OatTest::EmptyTextSection", false, false);
 
-  // TODO: make selectable.
-  Compiler::Kind compiler_kind = Compiler::kQuick;
-  InstructionSet insn_set = kRuntimeISA;
-  if (insn_set == InstructionSet::kArm) insn_set = InstructionSet::kThumb2;
-  std::string error_msg;
   std::vector<std::string> compiler_options;
   compiler_options.push_back("--compiler-filter=extract");
-  SetupCompiler(compiler_kind, insn_set, compiler_options, /*out*/ &error_msg);
+  SetupCompiler(compiler_options);
 
   jobject class_loader;
   {
@@ -560,6 +534,7 @@ TEST_F(OatTest, EmptyTextSection) {
                           /* verify */ false);
   ASSERT_TRUE(success);
 
+  std::string error_msg;
   std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
                                                   tmp_oat.GetFilename(),
                                                   tmp_oat.GetFilename(),

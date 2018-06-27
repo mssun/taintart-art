@@ -28,11 +28,12 @@ namespace art {
 class EmitSwapMipsTest : public OptimizingUnitTest {
  public:
   void SetUp() OVERRIDE {
+    instruction_set_ = InstructionSet::kMips;
+    instruction_set_features_ = MipsInstructionSetFeatures::FromCppDefines();
+    OptimizingUnitTest::SetUp();
     graph_ = CreateGraph();
-    isa_features_ = MipsInstructionSetFeatures::FromCppDefines();
-    codegen_ = new (graph_->GetAllocator()) mips::CodeGeneratorMIPS(graph_,
-                                                                    *isa_features_.get(),
-                                                                    CompilerOptions());
+    codegen_.reset(
+        new (graph_->GetAllocator()) mips::CodeGeneratorMIPS(graph_, *compiler_options_));
     moves_ = new (GetAllocator()) HParallelMove(GetAllocator());
     test_helper_.reset(
         new AssemblerTestInfrastructure(GetArchitectureString(),
@@ -47,8 +48,10 @@ class EmitSwapMipsTest : public OptimizingUnitTest {
 
   void TearDown() OVERRIDE {
     test_helper_.reset();
-    isa_features_.reset();
+    codegen_.reset();
+    graph_ = nullptr;
     ResetPoolAndAllocator();
+    OptimizingUnitTest::TearDown();
   }
 
   // Get the typically used name for this architecture.
@@ -106,10 +109,9 @@ class EmitSwapMipsTest : public OptimizingUnitTest {
  protected:
   HGraph* graph_;
   HParallelMove* moves_;
-  mips::CodeGeneratorMIPS* codegen_;
+  std::unique_ptr<mips::CodeGeneratorMIPS> codegen_;
   mips::MipsAssembler* assembler_;
   std::unique_ptr<AssemblerTestInfrastructure> test_helper_;
-  std::unique_ptr<const MipsInstructionSetFeatures> isa_features_;
 };
 
 TEST_F(EmitSwapMipsTest, TwoRegisters) {

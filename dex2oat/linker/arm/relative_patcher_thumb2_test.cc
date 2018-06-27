@@ -197,10 +197,7 @@ class Thumb2RelativePatcherTest : public RelativePatcherTest {
     OptimizingUnitTestHelper helper;
     HGraph* graph = helper.CreateGraph();
     std::string error_msg;
-    ArmFeaturesUniquePtr features =
-        ArmInstructionSetFeatures::FromVariant("default", &error_msg);
-    CompilerOptions options;
-    arm::CodeGeneratorARMVIXL codegen(graph, *features, options);
+    arm::CodeGeneratorARMVIXL codegen(graph, *compiler_options_);
     ArenaVector<uint8_t> code(helper.GetAllocator()->Adapter());
     codegen.EmitThunkCode(patch, &code, debug_name);
     return std::vector<uint8_t>(code.begin(), code.end());

@@ -17,6 +17,7 @@
 #ifndef ART_COMPILER_DRIVER_COMPILER_OPTIONS_H_
 #define ART_COMPILER_DRIVER_COMPILER_OPTIONS_H_
 
+#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -30,11 +31,17 @@
 
 namespace art {
 
+namespace jit {
+class JitCompiler;
+}  // namespace jit
+
 namespace verifier {
 class VerifierDepsTest;
 }  // namespace verifier
 
 class DexFile;
+enum class InstructionSet;
+class InstructionSetFeatures;
 
 class CompilerOptions FINAL {
  public:
@@ -231,6 +238,15 @@ class CompilerOptions FINAL {
     return abort_on_soft_verifier_failure_;
   }
 
+  InstructionSet GetInstructionSet() const {
+    return instruction_set_;
+  }
+
+  const InstructionSetFeatures* GetInstructionSetFeatures() const {
+    return instruction_set_features_.get();
+  }
+
+
   const std::vector<const DexFile*>& GetNoInlineFromDexFile() const {
     return no_inline_from_;
   }
@@ -312,6 +328,9 @@ class CompilerOptions FINAL {
   size_t num_dex_methods_threshold_;
   size_t inline_max_code_units_;
 
+  InstructionSet instruction_set_;
+  std::unique_ptr<const InstructionSetFeatures> instruction_set_features_;
+
   // Dex files from which we should not inline code. Does not own the dex files.
   // This is usually a very short list (i.e. a single dex file), so we
   // prefer vector<> over a lookup-oriented container, such as set<>.
@@ -327,8 +346,6 @@ class CompilerOptions FINAL {
   bool boot_image_;
   bool core_image_;
   bool app_image_;
-  // When using a profile file only the top K% of the profiled samples will be compiled.
-  double top_k_profile_threshold_;
   bool debuggable_;
   bool generate_debug_info_;
   bool generate_mini_debug_info_;
@@ -340,6 +357,9 @@ class CompilerOptions FINAL {
   bool dump_timings_;
   bool dump_pass_timings_;
   bool dump_stats_;
+
+  // When using a profile file only the top K% of the profiled samples will be compiled.
+  double top_k_profile_threshold_;
 
   // Vector of methods to have verbose output enabled for.
   std::vector<std::string> verbose_methods_;
@@ -380,6 +400,7 @@ class CompilerOptions FINAL {
   friend class Dex2Oat;
   friend class DexToDexDecompilerTest;
   friend class CommonCompilerTest;
+  friend class jit::JitCompiler;
   friend class verifier::VerifierDepsTest;
 
   template <class Base>
