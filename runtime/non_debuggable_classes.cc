@@ -16,6 +16,7 @@
 
 #include "non_debuggable_classes.h"
 
+#include "jni/jni_env_ext.h"
 #include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "nativehelper/scoped_local_ref.h"

@@ -556,12 +556,7 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ObjPtr<mirror::ObjectArray<mirror::Class>> GetClassRoots() REQUIRES_SHARED(Locks::mutator_lock_) {
-    ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
-        class_roots_.Read<kReadBarrierOption>();
-    DCHECK(class_roots != nullptr);
-    return class_roots;
-  }
+  ObjPtr<mirror::ObjectArray<mirror::Class>> GetClassRoots() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Move the class table to the pre-zygote table to reduce memory usage. This works by ensuring
   // that no more classes are ever added to the pre zygote table which makes it that the pages

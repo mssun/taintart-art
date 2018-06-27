@@ -18,6 +18,7 @@
 
 #include <android-base/logging.h>
 
+#include "base/mutex-inl.h"
 #include "base/stl_util.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc_root-inl.h"

@@ -23,7 +23,6 @@
 #include "base/macros.h"
 #include "base/safe_map.h"
 #include "compiler_filter.h"
-#include "dex/dex_file.h"
 
 namespace art {
 

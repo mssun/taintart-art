@@ -27,12 +27,12 @@
 #include "base/enums.h"
 #include "class_linker.h"
 #include "dex/dex_file.h"
-#include "gc/heap-inl.h"
 #include "gc_root-inl.h"
 #include "mirror/call_site.h"
 #include "mirror/class.h"
 #include "mirror/method_type.h"
 #include "obj_ptr.h"
+#include "object-inl.h"
 #include "runtime.h"
 #include "write_barrier-inl.h"
 
@@ -40,6 +40,27 @@
 
 namespace art {
 namespace mirror {
+
+template <typename T>
+inline DexCachePair<T>::DexCachePair(ObjPtr<T> object, uint32_t index)
+    : object(object), index(index) {}
+
+template <typename T>
+inline void DexCachePair<T>::Initialize(std::atomic<DexCachePair<T>>* dex_cache) {
+  DexCachePair<T> first_elem;
+  first_elem.object = GcRoot<T>(nullptr);
+  first_elem.index = InvalidIndexForSlot(0);
+  dex_cache[0].store(first_elem, std::memory_order_relaxed);
+}
+
+template <typename T>
+inline T* DexCachePair<T>::GetObjectForIndex(uint32_t idx) {
+  if (idx != index) {
+    return nullptr;
+  }
+  DCHECK(!object.IsNull());
+  return object.Read();
+}
 
 template <typename T>
 inline void NativeDexCachePair<T>::Initialize(std::atomic<NativeDexCachePair<T>>* dex_cache,

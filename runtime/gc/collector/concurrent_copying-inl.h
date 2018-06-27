@@ -22,7 +22,7 @@
 #include "gc/accounting/atomic_stack.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/heap.h"
-#include "gc/space/region_space.h"
+#include "gc/space/region_space-inl.h"
 #include "gc/verification.h"
 #include "lock_word.h"
 #include "mirror/class.h"
