@@ -70,8 +70,6 @@ class OatFile {
   // Special classpath that skips shared library check.
   static constexpr const char* kSpecialSharedLibrary = "&";
 
-  typedef art::OatDexFile OatDexFile;
-
   // Opens an oat file contained within the given elf file. This is always opened as
   // non-executable at the moment.
   static OatFile* OpenWithElfFile(int zip_fd,
