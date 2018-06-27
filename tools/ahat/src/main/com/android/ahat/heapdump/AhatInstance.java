@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Queue;
 
@@ -48,11 +49,11 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   // Field initialized via addRegisterednativeSize.
   private long mRegisteredNativeSize = 0;
 
-  // Fields initialized in computeReverseReferences().
+  // Fields initialized in computeReachability().
+  private Reachability mReachability = Reachability.UNREACHABLE;
   private AhatInstance mNextInstanceToGcRoot;
   private String mNextInstanceToGcRootField;
-  private ArrayList<AhatInstance> mHardReverseReferences;
-  private ArrayList<AhatInstance> mSoftReverseReferences;
+  private ArrayList<AhatInstance> mReverseReferences;
 
   // Fields initialized in DominatorsComputation.computeDominators().
   // mDominated - the list of instances immediately dominated by this instance.
@@ -157,6 +158,15 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
+   * Returns the reachability of the instance.
+   *
+   * @return the reachability of the instance.
+   */
+  public Reachability getReachability() {
+    return mReachability;
+  }
+
+  /**
    * Returns true if this object is strongly reachable. An object is strongly
    * reachable if there exists a path of (strong) references from some root
    * object to this object.
@@ -164,7 +174,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * @return true if the object is strongly reachable
    */
   public boolean isStronglyReachable() {
-    return mImmediateDominator != null;
+    return mReachability == Reachability.STRONG;
   }
 
   /**
@@ -178,10 +188,13 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Unlike a strongly reachable object, a weakly reachable object is allowed
    * to be garbage collected.
    *
+   * @deprecated Use {@link #getReachability()} instead, which can distinguish
+   *             among soft, weak, phantom, and other kinds of references.
+   *
    * @return true if the object is weakly reachable
    */
-  public boolean isWeaklyReachable() {
-    return !isStronglyReachable() && mNextInstanceToGcRoot != null;
+  @Deprecated public boolean isWeaklyReachable() {
+    return !isStronglyReachable() && !isUnreachable();
   }
 
   /**
@@ -193,7 +206,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * @return true if the object is completely unreachable
    */
   public boolean isUnreachable() {
-    return !isStronglyReachable() && !isWeaklyReachable();
+    return mReachability == Reachability.UNREACHABLE;
   }
 
   /**
@@ -215,7 +228,6 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Returns true if this instance is a GC root.
    *
    * @return true if this instance is a GC root.
-   * @see getRootTypes
    */
   public boolean isRoot() {
     return mRootTypes != 0;
@@ -374,28 +386,50 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns a list of objects with (strong) references to this object.
+   * Returns a list of objects with any kind of reference to this object.
    *
    * @return the objects referencing this object
    */
-  public List<AhatInstance> getHardReverseReferences() {
-    if (mHardReverseReferences != null) {
-      return mHardReverseReferences;
+  public List<AhatInstance> getReverseReferences() {
+    if (mReverseReferences != null) {
+      return mReverseReferences;
     }
     return Collections.emptyList();
+  }
+
+  /**
+   * Returns a list of objects with (strong) references to this object.
+   *
+   * @deprecated Use {@link #getReverseReferences()} instead.
+   *
+   * @return the objects referencing this object
+   */
+  @Deprecated public List<AhatInstance> getHardReverseReferences() {
+    List<AhatInstance> refs = new ArrayList<AhatInstance>();
+    for (AhatInstance ref : getReverseReferences()) {
+      if (ref.getReachability() == Reachability.STRONG && ref.getReferent() != this) {
+        refs.add(ref);
+      }
+    }
+    return refs;
   }
 
   /**
    * Returns a list of objects with soft/weak/phantom/finalizer references to
    * this object.
    *
+   * @deprecated Use {@link #getReverseReferences()} instead.
+   *
    * @return the objects weakly referencing this object
    */
-  public List<AhatInstance> getSoftReverseReferences() {
-    if (mSoftReverseReferences != null) {
-      return mSoftReverseReferences;
+  @Deprecated public List<AhatInstance> getSoftReverseReferences() {
+    List<AhatInstance> refs = new ArrayList<AhatInstance>();
+    for (AhatInstance ref : getReverseReferences()) {
+      if (ref.getReachability() != Reachability.STRONG || ref.getReferent() == this) {
+        refs.add(ref);
+      }
     }
-    return Collections.emptyList();
+    return refs;
   }
 
   /**
@@ -610,82 +644,60 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Initialize the reverse reference fields of this instance and all other
-   * instances reachable from it. Initializes the following fields:
+   * Determine the reachability of the all instances reachable from the given
+   * root instance. Initializes the following fields:
+   *   mReachability
    *   mNextInstanceToGcRoot
    *   mNextInstanceToGcRootField
-   *   mHardReverseReferences
-   *   mSoftReverseReferences
+   *   mReverseReferences
    *
    * @param progress used to track progress of the traversal.
    * @param numInsts upper bound on the total number of instances reachable
    *                 from the root, solely used for the purposes of tracking
    *                 progress.
    */
-  static void computeReverseReferences(SuperRoot root, Progress progress, long numInsts) {
+  static void computeReachability(SuperRoot root, Progress progress, long numInsts) {
     // Start by doing a breadth first search through strong references.
-    // Then continue the breadth first search through weak references.
-    progress.start("Reversing references", numInsts);
-    Queue<Reference> strong = new ArrayDeque<Reference>();
-    Queue<Reference> weak = new ArrayDeque<Reference>();
+    // Then continue the breadth first through each weaker kind of reference.
+    progress.start("Computing reachability", numInsts);
+    EnumMap<Reachability, Queue<Reference>> queues = new EnumMap<>(Reachability.class);
+    for (Reachability reachability : Reachability.values()) {
+      queues.put(reachability, new ArrayDeque<Reference>());
+    }
 
     for (Reference ref : root.getReferences()) {
-      strong.add(ref);
+      queues.get(Reachability.STRONG).add(ref);
     }
 
-    while (!strong.isEmpty()) {
-      Reference ref = strong.poll();
-      assert ref.strong;
+    for (Reachability reachability : Reachability.values()) {
+      Queue<Reference> queue = queues.get(reachability);
+      while (!queue.isEmpty()) {
+        Reference ref = queue.poll();
+        if (ref.ref.mReachability == Reachability.UNREACHABLE) {
+          // This is the first time we have seen ref.ref.
+          progress.advance();
+          ref.ref.mReachability = reachability;
+          ref.ref.mNextInstanceToGcRoot = ref.src;
+          ref.ref.mNextInstanceToGcRootField = ref.field;
+          ref.ref.mReverseReferences = new ArrayList<AhatInstance>();
 
-      if (ref.ref.mNextInstanceToGcRoot == null) {
-        // This is the first time we have seen ref.ref.
-        progress.advance();
-        ref.ref.mNextInstanceToGcRoot = ref.src;
-        ref.ref.mNextInstanceToGcRootField = ref.field;
-        ref.ref.mHardReverseReferences = new ArrayList<AhatInstance>();
-
-        for (Reference childRef : ref.ref.getReferences()) {
-          if (childRef.strong) {
-            strong.add(childRef);
-          } else {
-            weak.add(childRef);
+          for (Reference childRef : ref.ref.getReferences()) {
+            if (childRef.reachability.ordinal() <= reachability.ordinal()) {
+              queue.add(childRef);
+            } else {
+              queues.get(childRef.reachability).add(childRef);
+            }
           }
         }
-      }
 
-      // Note: We specifically exclude 'root' from the reverse references
-      // because it is a fake SuperRoot instance not present in the original
-      // heap dump.
-      if (ref.src != root) {
-        ref.ref.mHardReverseReferences.add(ref.src);
-      }
-    }
-
-    while (!weak.isEmpty()) {
-      Reference ref = weak.poll();
-
-      if (ref.ref.mNextInstanceToGcRoot == null) {
-        // This is the first time we have seen ref.ref.
-        progress.advance();
-        ref.ref.mNextInstanceToGcRoot = ref.src;
-        ref.ref.mNextInstanceToGcRootField = ref.field;
-        ref.ref.mHardReverseReferences = new ArrayList<AhatInstance>();
-
-        for (Reference childRef : ref.ref.getReferences()) {
-          weak.add(childRef);
+        // Note: We specifically exclude 'root' from the reverse references
+        // because it is a fake SuperRoot instance not present in the original
+        // heap dump.
+        if (ref.src != root) {
+          ref.ref.mReverseReferences.add(ref.src);
         }
       }
-
-      if (ref.strong) {
-        ref.ref.mHardReverseReferences.add(ref.src);
-      } else {
-        if (ref.ref.mSoftReverseReferences == null) {
-          ref.ref.mSoftReverseReferences = new ArrayList<AhatInstance>();
-        }
-        ref.ref.mSoftReverseReferences.add(ref.src);
-      }
     }
-
     progress.done();
   }
 

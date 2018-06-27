@@ -18,6 +18,7 @@ package com.android.ahat;
 
 import com.android.ahat.heapdump.AhatClassObj;
 import com.android.ahat.heapdump.AhatInstance;
+import com.android.ahat.heapdump.Reachability;
 import com.android.ahat.heapdump.Site;
 import com.android.ahat.heapdump.Value;
 import java.net.URI;
@@ -51,11 +52,10 @@ class Summarizer {
       formatted.append(DocString.removed("del "));
     }
 
-    // Annotate unreachable objects as such.
-    if (inst.isWeaklyReachable()) {
-      formatted.append("weak ");
-    } else if (inst.isUnreachable()) {
-      formatted.append("unreachable ");
+    // Annotate non-strongly reachable objects as such.
+    Reachability reachability = inst.getReachability();
+    if (reachability != Reachability.STRONG) {
+      formatted.append(reachability.toString() + " ");
     }
 
     // Annotate roots as roots.

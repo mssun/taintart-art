@@ -66,19 +66,21 @@ package com.android.ahat.heapdump {
     method public java.util.List<com.android.ahat.heapdump.AhatInstance> getDominated();
     method public java.lang.Object getDominatorsComputationState();
     method public com.android.ahat.heapdump.Value getField(java.lang.String);
-    method public java.util.List<com.android.ahat.heapdump.AhatInstance> getHardReverseReferences();
+    method public deprecated java.util.List<com.android.ahat.heapdump.AhatInstance> getHardReverseReferences();
     method public com.android.ahat.heapdump.AhatHeap getHeap();
     method public long getId();
     method public com.android.ahat.heapdump.AhatInstance getImmediateDominator();
     method public java.util.List<com.android.ahat.heapdump.PathElement> getPathFromGcRoot();
+    method public com.android.ahat.heapdump.Reachability getReachability();
     method public com.android.ahat.heapdump.AhatInstance getRefField(java.lang.String);
     method public java.lang.Iterable<? extends com.android.ahat.dominators.DominatorsComputation.Node> getReferencesForDominators();
     method public com.android.ahat.heapdump.AhatInstance getReferent();
     method public com.android.ahat.heapdump.Size getRetainedSize(com.android.ahat.heapdump.AhatHeap);
+    method public java.util.List<com.android.ahat.heapdump.AhatInstance> getReverseReferences();
     method public java.util.Collection<com.android.ahat.heapdump.RootType> getRootTypes();
     method public com.android.ahat.heapdump.Site getSite();
     method public com.android.ahat.heapdump.Size getSize();
-    method public java.util.List<com.android.ahat.heapdump.AhatInstance> getSoftReverseReferences();
+    method public deprecated java.util.List<com.android.ahat.heapdump.AhatInstance> getSoftReverseReferences();
     method public com.android.ahat.heapdump.Size getTotalRetainedSize();
     method public boolean isArrayInstance();
     method public boolean isClassInstance();
@@ -87,7 +89,7 @@ package com.android.ahat.heapdump {
     method public boolean isRoot();
     method public boolean isStronglyReachable();
     method public boolean isUnreachable();
-    method public boolean isWeaklyReachable();
+    method public deprecated boolean isWeaklyReachable();
     method public void setDominator(com.android.ahat.dominators.DominatorsComputation.Node);
     method public void setDominatorsComputationState(java.lang.Object);
     method public abstract java.lang.String toString();
@@ -172,6 +174,17 @@ package com.android.ahat.heapdump {
     field public final java.lang.String field;
     field public final com.android.ahat.heapdump.AhatInstance instance;
     field public boolean isDominator;
+  }
+
+  public final class Reachability extends java.lang.Enum {
+    method public static com.android.ahat.heapdump.Reachability valueOf(java.lang.String);
+    method public static final com.android.ahat.heapdump.Reachability[] values();
+    enum_constant public static final com.android.ahat.heapdump.Reachability FINALIZER;
+    enum_constant public static final com.android.ahat.heapdump.Reachability PHANTOM;
+    enum_constant public static final com.android.ahat.heapdump.Reachability SOFT;
+    enum_constant public static final com.android.ahat.heapdump.Reachability STRONG;
+    enum_constant public static final com.android.ahat.heapdump.Reachability UNREACHABLE;
+    enum_constant public static final com.android.ahat.heapdump.Reachability WEAK;
   }
 
   public final class RootType extends java.lang.Enum {

@@ -131,7 +131,10 @@ public class AhatClassObj extends AhatInstance {
         FieldValue field = mStaticFieldValues[index];
         Value value = field.value;
         if (value != null && value.isAhatInstance()) {
-          return new Reference(AhatClassObj.this, "." + field.name, value.asAhatInstance(), true);
+          return new Reference(AhatClassObj.this,
+                               "." + field.name,
+                               value.asAhatInstance(),
+                               Reachability.STRONG);
         }
         return null;
       }
