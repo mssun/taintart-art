@@ -102,10 +102,14 @@ class CountDexIndices : public Experiment {
     static constexpr size_t kMaxFieldIndex = 32;
     uint64_t field_index_[kMaxFieldIndex] = {};
     uint64_t field_index_other_ = 0u;
-    uint64_t inout_[16] = {};  // Input for IPUT/SPUT, output for IGET/SGET.
+    uint64_t field_index_other_class_ = 0u;  // Includes superclass fields referenced with
+                                             // type index pointing to this class.
+
     static constexpr size_t kShortBytecodeFieldIndexOutCutOff = 16u;
     static constexpr size_t kShortBytecodeInOutCutOff = 16u;
     uint64_t short_bytecode_ = 0u;
+
+    uint64_t inout_[16] = {};  // Input for IPUT/SPUT, output for IGET/SGET.
   };
   struct InstanceFieldAccessStats : FieldAccessStats {
     uint64_t receiver_[16] = {};
