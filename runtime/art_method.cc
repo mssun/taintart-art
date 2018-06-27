@@ -550,7 +550,7 @@ bool ArtMethod::EqualParameters(Handle<mirror::ObjectArray<mirror::Class>> param
 
 ArrayRef<const uint8_t> ArtMethod::GetQuickenedInfo() {
   const DexFile& dex_file = GetDeclaringClass()->GetDexFile();
-  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+  const OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   if (oat_dex_file == nullptr || (oat_dex_file->GetOatFile() == nullptr)) {
     return ArrayRef<const uint8_t>();
   }

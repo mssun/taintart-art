@@ -1598,9 +1598,9 @@ ArrayRef<GcRoot<mirror::Object>> OatFile::GetBssGcRoots() const {
   }
 }
 
-const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
-                                                  const uint32_t* dex_location_checksum,
-                                                  std::string* error_msg) const {
+const OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
+                                         const uint32_t* dex_location_checksum,
+                                         std::string* error_msg) const {
   // NOTE: We assume here that the canonical location for a given dex_location never
   // changes. If it does (i.e. some symlink used by the filename changes) we may return
   // an incorrect OatDexFile. As long as we have a checksum to check, we shall return
@@ -1609,7 +1609,7 @@ const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
   // TODO: Additional analysis of usage patterns to see if this can be simplified
   // without any performance loss, for example by not doing the first lock-free lookup.
 
-  const OatFile::OatDexFile* oat_dex_file = nullptr;
+  const OatDexFile* oat_dex_file = nullptr;
   StringPiece key(dex_location);
   // Try to find the key cheaply in the oat_dex_files_ map which holds dex locations
   // directly mentioned in the oat file and doesn't require locking.
@@ -1667,17 +1667,17 @@ const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
   return oat_dex_file;
 }
 
-OatFile::OatDexFile::OatDexFile(const OatFile* oat_file,
-                                const std::string& dex_file_location,
-                                const std::string& canonical_dex_file_location,
-                                uint32_t dex_file_location_checksum,
-                                const uint8_t* dex_file_pointer,
-                                const uint8_t* lookup_table_data,
-                                const IndexBssMapping* method_bss_mapping_data,
-                                const IndexBssMapping* type_bss_mapping_data,
-                                const IndexBssMapping* string_bss_mapping_data,
-                                const uint32_t* oat_class_offsets_pointer,
-                                const DexLayoutSections* dex_layout_sections)
+OatDexFile::OatDexFile(const OatFile* oat_file,
+                       const std::string& dex_file_location,
+                       const std::string& canonical_dex_file_location,
+                       uint32_t dex_file_location_checksum,
+                       const uint8_t* dex_file_pointer,
+                       const uint8_t* lookup_table_data,
+                       const IndexBssMapping* method_bss_mapping_data,
+                       const IndexBssMapping* type_bss_mapping_data,
+                       const IndexBssMapping* string_bss_mapping_data,
+                       const uint32_t* oat_class_offsets_pointer,
+                       const DexLayoutSections* dex_layout_sections)
     : oat_file_(oat_file),
       dex_file_location_(dex_file_location),
       canonical_dex_file_location_(canonical_dex_file_location),
@@ -1708,16 +1708,15 @@ OatFile::OatDexFile::OatDexFile(const OatFile* oat_file,
   }
 }
 
-OatFile::OatDexFile::OatDexFile(TypeLookupTable&& lookup_table)
-    : lookup_table_(std::move(lookup_table)) {}
+OatDexFile::OatDexFile(TypeLookupTable&& lookup_table) : lookup_table_(std::move(lookup_table)) {}
 
-OatFile::OatDexFile::~OatDexFile() {}
+OatDexFile::~OatDexFile() {}
 
-size_t OatFile::OatDexFile::FileSize() const {
+size_t OatDexFile::FileSize() const {
   return reinterpret_cast<const DexFile::Header*>(dex_file_pointer_)->file_size_;
 }
 
-std::unique_ptr<const DexFile> OatFile::OatDexFile::OpenDexFile(std::string* error_msg) const {
+std::unique_ptr<const DexFile> OatDexFile::OpenDexFile(std::string* error_msg) const {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   static constexpr bool kVerify = false;
   static constexpr bool kVerifyChecksum = false;
@@ -1732,11 +1731,11 @@ std::unique_ptr<const DexFile> OatFile::OatDexFile::OpenDexFile(std::string* err
                               error_msg);
 }
 
-uint32_t OatFile::OatDexFile::GetOatClassOffset(uint16_t class_def_index) const {
+uint32_t OatDexFile::GetOatClassOffset(uint16_t class_def_index) const {
   return oat_class_offsets_pointer_[class_def_index];
 }
 
-OatFile::OatClass OatFile::OatDexFile::GetOatClass(uint16_t class_def_index) const {
+OatFile::OatClass OatDexFile::GetOatClass(uint16_t class_def_index) const {
   uint32_t oat_class_offset = GetOatClassOffset(class_def_index);
 
   const uint8_t* oat_class_pointer = oat_file_->Begin() + oat_class_offset;
@@ -1778,10 +1777,10 @@ OatFile::OatClass OatFile::OatDexFile::GetOatClass(uint16_t class_def_index) con
                            reinterpret_cast<const OatMethodOffsets*>(methods_pointer));
 }
 
-const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_file,
-                                                           const char* descriptor,
-                                                           size_t hash) {
-  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+const DexFile::ClassDef* OatDexFile::FindClassDef(const DexFile& dex_file,
+                                                  const char* descriptor,
+                                                  size_t hash) {
+  const OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   DCHECK_EQ(ComputeModifiedUtf8Hash(descriptor), hash);
   bool used_lookup_table = false;
   const DexFile::ClassDef* lookup_table_classdef = nullptr;
@@ -1829,7 +1828,7 @@ void OatDexFile::MadviseDexFile(const DexFile& dex_file, MadviseState state) {
                                                       dex_file.Begin() + dex_file.Size(),
                                                       MADV_RANDOM);
   }
-  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+  const OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   if (oat_dex_file != nullptr) {
     // Should always be there.
     const DexLayoutSections* const sections = oat_dex_file->GetDexLayoutSections();
@@ -1947,7 +1946,7 @@ OatFile::OatClass OatFile::FindOatClass(const DexFile& dex_file,
                                         uint16_t class_def_idx,
                                         bool* found) {
   DCHECK_NE(class_def_idx, DexFile::kDexNoIndex16);
-  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+  const OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   if (oat_dex_file == nullptr || oat_dex_file->GetOatFile() == nullptr) {
     *found = false;
     return OatFile::OatClass::Invalid();
@@ -1956,7 +1955,7 @@ OatFile::OatClass OatFile::FindOatClass(const DexFile& dex_file,
   return oat_dex_file->GetOatClass(class_def_idx);
 }
 
-void OatFile::OatDexFile::AssertAotCompiler() {
+void OatDexFile::AssertAotCompiler() {
   CHECK(Runtime::Current()->IsAotCompiler());
 }
 
