@@ -29,7 +29,7 @@ using helpers::Arm64CanEncodeConstantAsImmediate;
 using helpers::DRegisterFrom;
 using helpers::HeapOperand;
 using helpers::InputRegisterAt;
-using helpers::Int64ConstantFrom;
+using helpers::Int64FromLocation;
 using helpers::OutputRegister;
 using helpers::VRegisterFrom;
 using helpers::WRegisterFrom;
@@ -78,7 +78,7 @@ void InstructionCodeGeneratorARM64::VisitVecReplicateScalar(HVecReplicateScalar*
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       if (src_loc.IsConstant()) {
-        __ Movi(dst.V16B(), Int64ConstantFrom(src_loc));
+        __ Movi(dst.V16B(), Int64FromLocation(src_loc));
       } else {
         __ Dup(dst.V16B(), InputRegisterAt(instruction, 0));
       }
@@ -87,7 +87,7 @@ void InstructionCodeGeneratorARM64::VisitVecReplicateScalar(HVecReplicateScalar*
     case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       if (src_loc.IsConstant()) {
-        __ Movi(dst.V8H(), Int64ConstantFrom(src_loc));
+        __ Movi(dst.V8H(), Int64FromLocation(src_loc));
       } else {
         __ Dup(dst.V8H(), InputRegisterAt(instruction, 0));
       }
@@ -95,7 +95,7 @@ void InstructionCodeGeneratorARM64::VisitVecReplicateScalar(HVecReplicateScalar*
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       if (src_loc.IsConstant()) {
-        __ Movi(dst.V4S(), Int64ConstantFrom(src_loc));
+        __ Movi(dst.V4S(), Int64FromLocation(src_loc));
       } else {
         __ Dup(dst.V4S(), InputRegisterAt(instruction, 0));
       }
@@ -103,7 +103,7 @@ void InstructionCodeGeneratorARM64::VisitVecReplicateScalar(HVecReplicateScalar*
     case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       if (src_loc.IsConstant()) {
-        __ Movi(dst.V2D(), Int64ConstantFrom(src_loc));
+        __ Movi(dst.V2D(), Int64FromLocation(src_loc));
       } else {
         __ Dup(dst.V2D(), XRegisterFrom(src_loc));
       }
@@ -1333,7 +1333,7 @@ MemOperand InstructionCodeGeneratorARM64::VecAddress(
   DCHECK(!instruction->InputAt(0)->IsIntermediateAddress());
 
   if (index.IsConstant()) {
-    offset += Int64ConstantFrom(index) << shift;
+    offset += Int64FromLocation(index) << shift;
     return HeapOperand(base, offset);
   } else {
     *scratch = temps_scope->AcquireSameSizeAs(base);
