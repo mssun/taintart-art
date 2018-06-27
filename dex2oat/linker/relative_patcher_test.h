@@ -68,6 +68,7 @@ class RelativePatcherTest : public CommonCompilerTest {
   }
 
   void TearDown() OVERRIDE {
+    compiled_methods_.clear();
     patcher_.reset();
     CommonCompilerTest::TearDown();
   }
