@@ -5155,6 +5155,7 @@ class HDivZeroCheck FINAL : public HExpression<1> {
     SetRawInputAt(0, value);
   }
 
+  bool IsClonable() const OVERRIDE { return true; }
   bool CanBeMoved() const OVERRIDE { return true; }
 
   bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
@@ -5606,6 +5607,7 @@ class HTypeConversion FINAL : public HExpression<1> {
   DataType::Type GetInputType() const { return GetInput()->GetType(); }
   DataType::Type GetResultType() const { return GetType(); }
 
+  bool IsClonable() const OVERRIDE { return true; }
   bool CanBeMoved() const OVERRIDE { return true; }
   bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
     return true;
@@ -6641,8 +6643,7 @@ class HClinitCheck FINAL : public HExpression<1> {
             dex_pc) {
     SetRawInputAt(0, constant);
   }
-
-  bool IsClonable() const OVERRIDE { return true; }
+  // TODO: Make ClinitCheck clonable.
   bool CanBeMoved() const OVERRIDE { return true; }
   bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
     return true;
@@ -7112,6 +7113,8 @@ class HInstanceOf FINAL : public HTypeCheckInstruction {
                               bitstring_mask,
                               SideEffectsForArchRuntimeCalls(check_kind)) {}
 
+  bool IsClonable() const OVERRIDE { return true; }
+
   bool NeedsEnvironment() const OVERRIDE {
     return CanCallRuntime(GetTypeCheckKind());
   }
@@ -7201,6 +7204,7 @@ class HCheckCast FINAL : public HTypeCheckInstruction {
                               bitstring_mask,
                               SideEffects::CanTriggerGC()) {}
 
+  bool IsClonable() const OVERRIDE { return true; }
   bool NeedsEnvironment() const OVERRIDE {
     // Instruction may throw a CheckCastError.
     return true;

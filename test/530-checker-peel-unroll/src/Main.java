@@ -53,8 +53,14 @@ public class Main {
   }
 
   private static final void initIntArray(int[] a) {
-    for (int i = 0; i < LENGTH; i++) {
+    for (int i = 0; i < a.length; i++) {
       a[i] = i % 4;
+    }
+  }
+
+  private static final void initDoubleArray(double[] a) {
+    for (int i = 0; i < a.length; i++) {
+      a[i] = (double)(i % 4);
     }
   }
 
@@ -684,6 +690,96 @@ public class Main {
     return s + t;
   }
 
+  /// CHECK-START: void Main.unrollingInstanceOf(int[], java.lang.Object[]) loop_optimization (before)
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG:                   Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                   InstanceOf                                loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   InstanceOf
+
+  /// CHECK-START: void Main.unrollingInstanceOf(int[], java.lang.Object[]) loop_optimization (after)
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG:                   Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                   InstanceOf                                loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   InstanceOf                                loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   InstanceOf
+  public void unrollingInstanceOf(int[] a, Object[] obj_array) {
+    for (int i = 0; i < LENGTH_B; i++) {
+      if (obj_array[i] instanceof Integer) {
+        a[i] += 1;
+      }
+    }
+  }
+
+  /// CHECK-START: void Main.unrollingDivZeroCheck(int[], int) loop_optimization (before)
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG:                   Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                   DivZeroCheck                              loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   DivZeroCheck
+
+  /// CHECK-START: void Main.unrollingDivZeroCheck(int[], int) loop_optimization (after)
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG:                   Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                   DivZeroCheck                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   DivZeroCheck                              loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   DivZeroCheck
+  public void unrollingDivZeroCheck(int[] a, int r) {
+    for (int i = 0; i < LENGTH_B; i++) {
+      a[i] += a[i] / r;
+    }
+  }
+
+  /// CHECK-START: void Main.unrollingTypeConversion(int[], double[]) loop_optimization (before)
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG:                   Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                   TypeConversion                            loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   TypeConversion
+
+  /// CHECK-START: void Main.unrollingTypeConversion(int[], double[]) loop_optimization (after)
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG:                   Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                   TypeConversion                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   TypeConversion                            loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   TypeConversion
+  public void unrollingTypeConversion(int[] a, double[] b) {
+    for (int i = 0; i < LENGTH_B; i++) {
+      a[i] = (int) b[i];
+    }
+  }
+
+  interface Itf {
+  }
+
+  class SubMain extends Main implements Itf {
+  }
+
+  /// CHECK-START: void Main.unrollingCheckCast(int[], java.lang.Object) loop_optimization (before)
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG:                   Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                   CheckCast                                 loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   CheckCast
+
+  /// CHECK-START: void Main.unrollingCheckCast(int[], java.lang.Object) loop_optimization (after)
+  /// CHECK-DAG: <<Const0:i\d+>>   IntConstant 0                             loop:none
+  /// CHECK-DAG:                   Phi [<<Const0>>,{{i\d+}}]                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG:                   CheckCast                                 loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                   CheckCast                                 loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                   CheckCast
+  public void unrollingCheckCast(int[] a, Object o) {
+    for (int i = 0; i < LENGTH_B; i++) {
+      if (((SubMain)o) == o) {
+        a[i] = i;
+      }
+    }
+  }
+
   /// CHECK-START: void Main.noUnrollingOddTripCount(int[]) loop_optimization (before)
   /// CHECK-DAG: <<Array:l\d+>>   ParameterValue                            loop:none
   /// CHECK-DAG: <<Const1:i\d+>>  IntConstant 1                             loop:none
@@ -985,8 +1081,16 @@ public class Main {
     initMatrix(mB);
     initMatrix(mC);
 
-    int expected = 174291419;
+    int expected = 174291515;
     int found = 0;
+
+    double[] doubleArray = new double[LENGTH_B];
+    initDoubleArray(doubleArray);
+
+    unrollingInstanceOf(a, new Integer[LENGTH_B]);
+    unrollingDivZeroCheck(a, 15);
+    unrollingTypeConversion(a, doubleArray);
+    unrollingCheckCast(a, new SubMain());
 
     unrollingWhile(a);
     unrollingLoadStoreElimination(a);
