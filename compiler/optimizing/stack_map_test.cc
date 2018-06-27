@@ -52,14 +52,16 @@ TEST(StackMapTest, Test1) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 2);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
   size_t number_of_dex_registers = 2;
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask);
   stream.AddDexRegisterEntry(Kind::kInStack, 0);         // Short location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);       // Short location.
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   size_t size = stream.PrepareForFillIn();
   void* memory = allocator.Alloc(size, kArenaAllocMisc);
   MemoryRegion region(memory, size);
@@ -107,6 +109,7 @@ TEST(StackMapTest, Test2) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 2);
   ArtMethod art_method;
 
   ArenaBitVector sp_mask1(&allocator, 0, true);
@@ -114,7 +117,7 @@ TEST(StackMapTest, Test2) {
   sp_mask1.SetBit(4);
   size_t number_of_dex_registers = 2;
   size_t number_of_dex_registers_in_inline_info = 0;
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask1, number_of_dex_registers, 2);
+  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask1);
   stream.AddDexRegisterEntry(Kind::kInStack, 0);         // Short location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);       // Large location.
   stream.BeginInlineInfoEntry(&art_method, 3, number_of_dex_registers_in_inline_info);
@@ -126,7 +129,7 @@ TEST(StackMapTest, Test2) {
   ArenaBitVector sp_mask2(&allocator, 0, true);
   sp_mask2.SetBit(3);
   sp_mask2.SetBit(8);
-  stream.BeginStackMapEntry(1, 128 * kPcAlign, 0xFF, &sp_mask2, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(1, 128 * kPcAlign, 0xFF, &sp_mask2);
   stream.AddDexRegisterEntry(Kind::kInRegister, 18);     // Short location.
   stream.AddDexRegisterEntry(Kind::kInFpuRegister, 3);   // Short location.
   stream.EndStackMapEntry();
@@ -134,7 +137,7 @@ TEST(StackMapTest, Test2) {
   ArenaBitVector sp_mask3(&allocator, 0, true);
   sp_mask3.SetBit(1);
   sp_mask3.SetBit(5);
-  stream.BeginStackMapEntry(2, 192 * kPcAlign, 0xAB, &sp_mask3, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(2, 192 * kPcAlign, 0xAB, &sp_mask3);
   stream.AddDexRegisterEntry(Kind::kInRegister, 6);       // Short location.
   stream.AddDexRegisterEntry(Kind::kInRegisterHigh, 8);   // Short location.
   stream.EndStackMapEntry();
@@ -142,11 +145,12 @@ TEST(StackMapTest, Test2) {
   ArenaBitVector sp_mask4(&allocator, 0, true);
   sp_mask4.SetBit(6);
   sp_mask4.SetBit(7);
-  stream.BeginStackMapEntry(3, 256 * kPcAlign, 0xCD, &sp_mask4, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(3, 256 * kPcAlign, 0xCD, &sp_mask4);
   stream.AddDexRegisterEntry(Kind::kInFpuRegister, 3);      // Short location, same in stack map 2.
   stream.AddDexRegisterEntry(Kind::kInFpuRegisterHigh, 1);  // Short location.
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   size_t size = stream.PrepareForFillIn();
   void* memory = allocator.Alloc(size, kArenaAllocMisc);
   MemoryRegion region(memory, size);
@@ -303,6 +307,7 @@ TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 2);
   ArtMethod art_method;
 
   ArenaBitVector sp_mask1(&allocator, 0, true);
@@ -310,7 +315,7 @@ TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
   sp_mask1.SetBit(4);
   const size_t number_of_dex_registers = 2;
   const size_t number_of_dex_registers_in_inline_info = 2;
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask1, number_of_dex_registers, 1);
+  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask1);
   stream.AddDexRegisterEntry(Kind::kInStack, 0);         // Short location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);       // Large location.
   stream.BeginInlineInfoEntry(&art_method, 3, number_of_dex_registers_in_inline_info);
@@ -319,6 +324,7 @@ TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
   stream.EndInlineInfoEntry();
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   size_t size = stream.PrepareForFillIn();
   void* memory = allocator.Alloc(size, kArenaAllocMisc);
   MemoryRegion region(memory, size);
@@ -367,14 +373,16 @@ TEST(StackMapTest, TestNonLiveDexRegisters) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 2);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
   uint32_t number_of_dex_registers = 2;
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask);
   stream.AddDexRegisterEntry(Kind::kNone, 0);            // No location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);       // Large location.
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   size_t size = stream.PrepareForFillIn();
   void* memory = allocator.Alloc(size, kArenaAllocMisc);
   MemoryRegion region(memory, size);
@@ -416,25 +424,27 @@ TEST(StackMapTest, TestShareDexRegisterMap) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 2);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
   uint32_t number_of_dex_registers = 2;
   // First stack map.
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask);
   stream.AddDexRegisterEntry(Kind::kInRegister, 0);  // Short location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);   // Large location.
   stream.EndStackMapEntry();
   // Second stack map, which should share the same dex register map.
-  stream.BeginStackMapEntry(0, 65 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(0, 65 * kPcAlign, 0x3, &sp_mask);
   stream.AddDexRegisterEntry(Kind::kInRegister, 0);  // Short location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);   // Large location.
   stream.EndStackMapEntry();
   // Third stack map (doesn't share the dex register map).
-  stream.BeginStackMapEntry(0, 66 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(0, 66 * kPcAlign, 0x3, &sp_mask);
   stream.AddDexRegisterEntry(Kind::kInRegister, 2);  // Short location.
   stream.AddDexRegisterEntry(Kind::kConstant, -2);   // Large location.
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   size_t size = stream.PrepareForFillIn();
   void* memory = allocator.Alloc(size, kArenaAllocMisc);
   MemoryRegion region(memory, size);
@@ -473,17 +483,19 @@ TEST(StackMapTest, TestNoDexRegisterMap) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 1);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
   uint32_t number_of_dex_registers = 0;
-  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(0, 64 * kPcAlign, 0x3, &sp_mask);
   stream.EndStackMapEntry();
 
   number_of_dex_registers = 1;
-  stream.BeginStackMapEntry(1, 68 * kPcAlign, 0x4, &sp_mask, number_of_dex_registers, 0);
+  stream.BeginStackMapEntry(1, 68 * kPcAlign, 0x4, &sp_mask);
   stream.AddDexRegisterEntry(Kind::kNone, 0);
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   size_t size = stream.PrepareForFillIn();
   void* memory = allocator.Alloc(size, kArenaAllocMisc);
   MemoryRegion region(memory, size);
@@ -521,6 +533,7 @@ TEST(StackMapTest, InlineTest) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 2);
   ArtMethod art_method;
 
   ArenaBitVector sp_mask1(&allocator, 0, true);
@@ -528,7 +541,7 @@ TEST(StackMapTest, InlineTest) {
   sp_mask1.SetBit(4);
 
   // First stack map.
-  stream.BeginStackMapEntry(0, 10 * kPcAlign, 0x3, &sp_mask1, 2, 2);
+  stream.BeginStackMapEntry(0, 10 * kPcAlign, 0x3, &sp_mask1);
   stream.AddDexRegisterEntry(Kind::kInStack, 0);
   stream.AddDexRegisterEntry(Kind::kConstant, 4);
 
@@ -544,7 +557,7 @@ TEST(StackMapTest, InlineTest) {
   stream.EndStackMapEntry();
 
   // Second stack map.
-  stream.BeginStackMapEntry(2, 22 * kPcAlign, 0x3, &sp_mask1, 2, 3);
+  stream.BeginStackMapEntry(2, 22 * kPcAlign, 0x3, &sp_mask1);
   stream.AddDexRegisterEntry(Kind::kInStack, 56);
   stream.AddDexRegisterEntry(Kind::kConstant, 0);
 
@@ -562,13 +575,13 @@ TEST(StackMapTest, InlineTest) {
   stream.EndStackMapEntry();
 
   // Third stack map.
-  stream.BeginStackMapEntry(4, 56 * kPcAlign, 0x3, &sp_mask1, 2, 0);
+  stream.BeginStackMapEntry(4, 56 * kPcAlign, 0x3, &sp_mask1);
   stream.AddDexRegisterEntry(Kind::kNone, 0);
   stream.AddDexRegisterEntry(Kind::kConstant, 4);
   stream.EndStackMapEntry();
 
   // Fourth stack map.
-  stream.BeginStackMapEntry(6, 78 * kPcAlign, 0x3, &sp_mask1, 2, 3);
+  stream.BeginStackMapEntry(6, 78 * kPcAlign, 0x3, &sp_mask1);
   stream.AddDexRegisterEntry(Kind::kInStack, 56);
   stream.AddDexRegisterEntry(Kind::kConstant, 0);
 
@@ -584,6 +597,7 @@ TEST(StackMapTest, InlineTest) {
 
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   size_t size = stream.PrepareForFillIn();
   void* memory = allocator.Alloc(size, kArenaAllocMisc);
   MemoryRegion region(memory, size);
@@ -725,15 +739,17 @@ TEST(StackMapTest, TestDeduplicateStackMask) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 0);
 
   ArenaBitVector sp_mask(&allocator, 0, true);
   sp_mask.SetBit(1);
   sp_mask.SetBit(4);
-  stream.BeginStackMapEntry(0, 4 * kPcAlign, 0x3, &sp_mask, 0, 0);
+  stream.BeginStackMapEntry(0, 4 * kPcAlign, 0x3, &sp_mask);
   stream.EndStackMapEntry();
-  stream.BeginStackMapEntry(0, 8 * kPcAlign, 0x3, &sp_mask, 0, 0);
+  stream.BeginStackMapEntry(0, 8 * kPcAlign, 0x3, &sp_mask);
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   size_t size = stream.PrepareForFillIn();
   void* memory = allocator.Alloc(size, kArenaAllocMisc);
   MemoryRegion region(memory, size);
@@ -753,19 +769,21 @@ TEST(StackMapTest, TestInvokeInfo) {
   ArenaStack arena_stack(&pool);
   ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 0);
 
   ArenaBitVector sp_mask(&allocator, 0, true);
   sp_mask.SetBit(1);
-  stream.BeginStackMapEntry(0, 4 * kPcAlign, 0x3, &sp_mask, 0, 0);
+  stream.BeginStackMapEntry(0, 4 * kPcAlign, 0x3, &sp_mask);
   stream.AddInvoke(kSuper, 1);
   stream.EndStackMapEntry();
-  stream.BeginStackMapEntry(0, 8 * kPcAlign, 0x3, &sp_mask, 0, 0);
+  stream.BeginStackMapEntry(0, 8 * kPcAlign, 0x3, &sp_mask);
   stream.AddInvoke(kStatic, 3);
   stream.EndStackMapEntry();
-  stream.BeginStackMapEntry(0, 16 * kPcAlign, 0x3, &sp_mask, 0, 0);
+  stream.BeginStackMapEntry(0, 16 * kPcAlign, 0x3, &sp_mask);
   stream.AddInvoke(kDirect, 65535);
   stream.EndStackMapEntry();
 
+  stream.EndMethod();
   const size_t code_info_size = stream.PrepareForFillIn();
   MemoryRegion code_info_region(allocator.Alloc(code_info_size, kArenaAllocMisc), code_info_size);
   stream.FillInCodeInfo(code_info_region);
