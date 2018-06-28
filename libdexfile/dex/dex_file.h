@@ -56,9 +56,46 @@ class DexFileContainer {
   virtual bool IsReadOnly() = 0;
   virtual bool EnableWrite() = 0;
   virtual bool DisableWrite() = 0;
+  virtual const uint8_t* Begin() = 0;
+  virtual size_t Size() = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DexFileContainer);
+};
+
+class EmptyDexFileContainer FINAL : public DexFileContainer {
+ public:
+  EmptyDexFileContainer() { }
+  ~EmptyDexFileContainer() { }
+
+  int GetPermissions() OVERRIDE { return 0; }
+  bool IsReadOnly() OVERRIDE { return true; }
+  bool EnableWrite() OVERRIDE { return false; }
+  bool DisableWrite() OVERRIDE { return false; }
+  const uint8_t* Begin() OVERRIDE { return nullptr; }
+  size_t Size() OVERRIDE { return 0U; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(EmptyDexFileContainer);
+};
+
+class NonOwningDexFileContainer FINAL : public DexFileContainer {
+ public:
+  NonOwningDexFileContainer(const uint8_t* begin, size_t size) : begin_(begin), size_(size) { }
+  ~NonOwningDexFileContainer() { }
+
+  int GetPermissions() OVERRIDE { return 0; }
+  bool IsReadOnly() OVERRIDE { return true; }
+  bool EnableWrite() OVERRIDE { return false; }
+  bool DisableWrite() OVERRIDE { return false; }
+  const uint8_t* Begin() OVERRIDE { return begin_; }
+  size_t Size() OVERRIDE { return size_; }
+
+ private:
+  const uint8_t* begin_;
+  size_t size_;
+
+  DISALLOW_COPY_AND_ASSIGN(NonOwningDexFileContainer);
 };
 
 // Dex file is the API that exposes native dex files (ordinary dex files) and CompactDex.
@@ -754,7 +791,7 @@ class DexFile {
     // Check that the offset is in bounds.
     // Note that although the specification says that 0 should be used if there
     // is no debug information, some applications incorrectly use 0xFFFFFFFF.
-    return (debug_info_off == 0 || debug_info_off >= data_size_)
+    return (debug_info_off == 0 || debug_info_off >= DataSize())
         ? nullptr
         : DataBegin() + debug_info_off;
   }
@@ -929,19 +966,19 @@ class DexFile {
   bool DisableWrite() const;
 
   const uint8_t* Begin() const {
-    return begin_;
+    return main_section_->Begin();
   }
 
   size_t Size() const {
-    return size_;
+    return main_section_->Size();
   }
 
   const uint8_t* DataBegin() const {
-    return data_begin_;
+    return data_section_->Begin();
   }
 
   size_t DataSize() const {
-    return data_size_;
+    return data_section_->Size();
   }
 
   template <typename T>
@@ -1009,7 +1046,7 @@ class DexFile {
   }
 
   DexFileContainer* GetContainer() const {
-    return container_.get();
+    return main_section_.get();
   }
 
   // Changes the dex class data pointed to by data_ptr it to not have any hiddenapi flags.
@@ -1021,14 +1058,25 @@ class DexFile {
   // First Dex format version supporting default methods.
   static const uint32_t kDefaultMethodsVersion = 37;
 
-  DexFile(const uint8_t* base,
-          size_t size,
-          const uint8_t* data_begin,
-          size_t data_size,
+  // For the two constructors, some notation needs explanation.
+  // Dex files consist of two sections:
+  // 1) "main" -- contains the header and fixed-sized objects (ids, etc.)
+  // 2) "data" -- contains variable-sized objects such as strings, class_data_items, etc.
+  // For StandardDexFile, both sections are addressed through one pointer.
+  // For CompactDexFile multiple dex files share one data section, but each has its
+  // own main section, and hence we need two pointers.
+
+  DexFile(std::unique_ptr<DexFileContainer> main_section,
           const std::string& location,
           uint32_t location_checksum,
           const OatDexFile* oat_dex_file,
-          std::unique_ptr<DexFileContainer> container,
+          bool is_compact_dex);
+
+  DexFile(std::unique_ptr<DexFileContainer> main_section,
+          std::unique_ptr<DexFileContainer> data_section,
+          const std::string& location,
+          uint32_t location_checksum,
+          const OatDexFile* oat_dex_file,
           bool is_compact_dex);
 
   // Top-level initializer that calls other Init methods.
@@ -1040,17 +1088,11 @@ class DexFile {
   // Initialize section info for sections only found in map. Returns true on success.
   void InitializeSectionsFromMapList();
 
-  // The base address of the memory mapping.
-  const uint8_t* const begin_;
+  // The container for the header and fixed portions.
+  std::unique_ptr<DexFileContainer> main_section_;
 
-  // The size of the underlying memory allocation in bytes.
-  const size_t size_;
-
-  // The base address of the data section (same as Begin() for standard dex).
-  const uint8_t* const data_begin_;
-
-  // The size of the data section.
-  const size_t data_size_;
+  // The container for the data section
+  std::unique_ptr<DexFileContainer> data_section_;
 
   // Typically the dex file name when available, alternatively some identifying string.
   //
@@ -1097,9 +1139,6 @@ class DexFile {
   // pointer to the OatDexFile it was loaded from. Otherwise oat_dex_file_ is
   // null.
   mutable const OatDexFile* oat_dex_file_;
-
-  // Manages the underlying memory allocation.
-  std::unique_ptr<DexFileContainer> container_;
 
   // If the dex file is a compact dex file. If false then the dex file is a standard dex file.
   const bool is_compact_dex_;

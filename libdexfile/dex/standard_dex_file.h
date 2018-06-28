@@ -88,20 +88,14 @@ class StandardDexFile : public DexFile {
   }
 
  private:
-  StandardDexFile(const uint8_t* base,
-                  size_t size,
+  StandardDexFile(std::unique_ptr<DexFileContainer> container,
                   const std::string& location,
                   uint32_t location_checksum,
-                  const OatDexFile* oat_dex_file,
-                  std::unique_ptr<DexFileContainer> container)
-      : DexFile(base,
-                size,
-                /*data_begin*/ base,
-                /*data_size*/ size,
+                  const OatDexFile* oat_dex_file)
+      : DexFile(std::move(container),
                 location,
                 location_checksum,
                 oat_dex_file,
-                std::move(container),
                 /*is_compact_dex*/ false) {}
 
   friend class DexFileLoader;

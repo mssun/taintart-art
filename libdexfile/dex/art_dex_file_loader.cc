@@ -71,6 +71,14 @@ class MemMapContainer : public DexFileContainer {
     }
   }
 
+  const uint8_t* Begin() OVERRIDE {
+    return mem_map_->Begin();
+  }
+
+  size_t Size() OVERRIDE {
+    return mem_map_->Size();
+  }
+
  private:
   std::unique_ptr<MemMap> mem_map_;
   DISALLOW_COPY_AND_ASSIGN(MemMapContainer);
@@ -164,17 +172,14 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::Open(const uint8_t* base,
                                                       bool verify_checksum,
                                                       std::string* error_msg) const {
   ScopedTrace trace(std::string("Open dex file from RAM ") + location);
-  return OpenCommon(base,
-                    size,
-                    /*data_base*/ nullptr,
-                    /*data_size*/ 0u,
+  return OpenCommon(std::make_unique<NonOwningDexFileContainer>(base, size),
+                    std::make_unique<EmptyDexFileContainer>(),
                     location,
                     location_checksum,
                     oat_dex_file,
                     verify,
                     verify_checksum,
                     error_msg,
-                    /*container*/ nullptr,
                     /*verify_result*/ nullptr);
 }
 
@@ -194,18 +199,16 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::Open(const std::string& locatio
     return nullptr;
   }
 
-  std::unique_ptr<DexFile> dex_file = OpenCommon(map->Begin(),
-                                                 map->Size(),
-                                                 /*data_base*/ nullptr,
-                                                 /*data_size*/ 0u,
-                                                 location,
-                                                 location_checksum,
-                                                 kNoOatDexFile,
-                                                 verify,
-                                                 verify_checksum,
-                                                 error_msg,
-                                                 std::make_unique<MemMapContainer>(std::move(map)),
-                                                 /*verify_result*/ nullptr);
+  std::unique_ptr<DexFile> dex_file =
+      OpenCommon(std::make_unique<MemMapContainer>(std::move(map)),
+                 std::make_unique<EmptyDexFileContainer>(),
+                 location,
+                 location_checksum,
+                 kNoOatDexFile,
+                 verify,
+                 verify_checksum,
+                 error_msg,
+                 /*verify_result*/ nullptr);
   // Opening CompactDex is only supported from vdex files.
   if (dex_file != nullptr && dex_file->IsCompactDexFile()) {
     *error_msg = StringPrintf("Opening CompactDex file '%s' is only supported from vdex files",
@@ -323,18 +326,16 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenFile(int fd,
 
   const DexFile::Header* dex_header = reinterpret_cast<const DexFile::Header*>(map->Begin());
 
-  std::unique_ptr<DexFile> dex_file = OpenCommon(map->Begin(),
-                                                 map->Size(),
-                                                 /*data_base*/ nullptr,
-                                                 /*data_size*/ 0u,
-                                                 location,
-                                                 dex_header->checksum_,
-                                                 kNoOatDexFile,
-                                                 verify,
-                                                 verify_checksum,
-                                                 error_msg,
-                                                 std::make_unique<MemMapContainer>(std::move(map)),
-                                                 /*verify_result*/ nullptr);
+  std::unique_ptr<DexFile> dex_file =
+      OpenCommon(std::make_unique<MemMapContainer>(std::move(map)),
+                 std::make_unique<EmptyDexFileContainer>(),
+                 location,
+                 dex_header->checksum_,
+                 kNoOatDexFile,
+                 verify,
+                 verify_checksum,
+                 error_msg,
+                 /*verify_result*/ nullptr);
 
   // Opening CompactDex is only supported from vdex files.
   if (dex_file != nullptr && dex_file->IsCompactDexFile()) {
@@ -398,18 +399,16 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenOneDexFileFromZip(
     return nullptr;
   }
   VerifyResult verify_result;
-  std::unique_ptr<DexFile> dex_file = OpenCommon(map->Begin(),
-                                                 map->Size(),
-                                                 /*data_base*/ nullptr,
-                                                 /*data_size*/ 0u,
-                                                 location,
-                                                 zip_entry->GetCrc32(),
-                                                 kNoOatDexFile,
-                                                 verify,
-                                                 verify_checksum,
-                                                 error_msg,
-                                                 std::make_unique<MemMapContainer>(std::move(map)),
-                                                 &verify_result);
+  std::unique_ptr<DexFile> dex_file =
+      OpenCommon(std::make_unique<MemMapContainer>(std::move(map)),
+                 std::make_unique<EmptyDexFileContainer>(),
+                 location,
+                 zip_entry->GetCrc32(),
+                 kNoOatDexFile,
+                 verify,
+                 verify_checksum,
+                 error_msg,
+                 &verify_result);
   if (dex_file != nullptr && dex_file->IsCompactDexFile()) {
     *error_msg = StringPrintf("Opening CompactDex file '%s' is only supported from vdex files",
                               location.c_str());
@@ -506,29 +505,24 @@ bool ArtDexFileLoader::OpenAllDexFilesFromZip(
   }
 }
 
-std::unique_ptr<DexFile> ArtDexFileLoader::OpenCommon(const uint8_t* base,
-                                                      size_t size,
-                                                      const uint8_t* data_base,
-                                                      size_t data_size,
-                                                      const std::string& location,
-                                                      uint32_t location_checksum,
-                                                      const OatDexFile* oat_dex_file,
-                                                      bool verify,
-                                                      bool verify_checksum,
-                                                      std::string* error_msg,
-                                                      std::unique_ptr<DexFileContainer> container,
-                                                      VerifyResult* verify_result) {
-  std::unique_ptr<DexFile> dex_file = DexFileLoader::OpenCommon(base,
-                                                                size,
-                                                                data_base,
-                                                                data_size,
+std::unique_ptr<DexFile> ArtDexFileLoader::OpenCommon(
+    std::unique_ptr<DexFileContainer> main_section,
+    std::unique_ptr<DexFileContainer> data_section,
+    const std::string& location,
+    uint32_t location_checksum,
+    const OatDexFile* oat_dex_file,
+    bool verify,
+    bool verify_checksum,
+    std::string* error_msg,
+    VerifyResult* verify_result) {
+  std::unique_ptr<DexFile> dex_file = DexFileLoader::OpenCommon(std::move(main_section),
+                                                                std::move(data_section),
                                                                 location,
                                                                 location_checksum,
                                                                 oat_dex_file,
                                                                 verify,
                                                                 verify_checksum,
                                                                 error_msg,
-                                                                std::move(container),
                                                                 verify_result);
 
   // Check if this dex file is located in the framework directory.

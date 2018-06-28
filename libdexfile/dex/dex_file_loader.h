@@ -161,17 +161,17 @@ class DexFileLoader {
     kVerifyFailed
   };
 
-  static std::unique_ptr<DexFile> OpenCommon(const uint8_t* base,
-                                             size_t size,
-                                             const uint8_t* data_base,
-                                             size_t data_size,
+  // main_section points to the header and fixed-sized objects (ids, etc.)
+  // If not empty (Begin != nullptr) data_section points to the dex file's variable-sized
+  // objects such as strings, class_data_items, etc.
+  static std::unique_ptr<DexFile> OpenCommon(std::unique_ptr<DexFileContainer> main_section,
+                                             std::unique_ptr<DexFileContainer> data_section,
                                              const std::string& location,
                                              uint32_t location_checksum,
                                              const OatDexFile* oat_dex_file,
                                              bool verify,
                                              bool verify_checksum,
                                              std::string* error_msg,
-                                             std::unique_ptr<DexFileContainer> container,
                                              VerifyResult* verify_result);
 
  private:
