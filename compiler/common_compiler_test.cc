@@ -196,6 +196,7 @@ void CommonCompilerTest::CreateCompilerDriver() {
   ApplyInstructionSet();
 
   compiler_options_->boot_image_ = true;
+  compiler_options_->compile_pic_ = false;  // Non-PIC boot image is a test configuration.
   compiler_options_->SetCompilerFilter(GetCompilerFilter());
   compiler_options_->image_classes_.swap(*GetImageClasses());
   compiler_driver_.reset(new CompilerDriver(compiler_options_.get(),
@@ -205,8 +206,6 @@ void CommonCompilerTest::CreateCompilerDriver() {
                                             number_of_threads_,
                                             /* swap_fd */ -1,
                                             GetProfileCompilationInfo()));
-  // We typically don't generate an image in unit tests, disable this optimization by default.
-  compiler_driver_->SetSupportBootImageFixup(false);
 }
 
 void CommonCompilerTest::SetUpRuntimeOptions(RuntimeOptions* options) {

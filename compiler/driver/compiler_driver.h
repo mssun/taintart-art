@@ -267,14 +267,6 @@ class CompilerDriver {
   const VerifiedMethod* GetVerifiedMethod(const DexFile* dex_file, uint32_t method_idx) const;
   bool IsSafeCast(const DexCompilationUnit* mUnit, uint32_t dex_pc);
 
-  bool GetSupportBootImageFixup() const {
-    return support_boot_image_fixup_;
-  }
-
-  void SetSupportBootImageFixup(bool support_boot_image_fixup) {
-    support_boot_image_fixup_ = support_boot_image_fixup;
-  }
-
   void SetCompilerContext(void* compiler_context) {
     compiler_context_ = compiler_context;
   }
@@ -492,8 +484,6 @@ class CompilerDriver {
   typedef MutexLock* (*CompilerMutexLockFn)(CompilerDriver& driver);
 
   void* compiler_context_;
-
-  bool support_boot_image_fixup_;
 
   CompiledMethodStorage compiled_method_storage_;
 

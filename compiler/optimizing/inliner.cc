@@ -949,7 +949,7 @@ HInstruction* HInliner::AddTypeGuard(HInstruction* receiver,
                                                                    invoke_instruction->GetDexPc(),
                                                                    /* needs_access_check */ false);
   HLoadClass::LoadKind kind = HSharpening::ComputeLoadClassKind(
-      load_class, codegen_, compiler_driver_, caller_compilation_unit_);
+      load_class, codegen_, caller_compilation_unit_);
   DCHECK(kind != HLoadClass::LoadKind::kInvalid)
       << "We should always be able to reference a class for inline caches";
   // Load kind must be set before inserting the instruction into the graph.
@@ -2022,8 +2022,8 @@ void HInliner::RunOptimizations(HGraph* callee_graph,
   // optimization that could lead to a HDeoptimize. The following optimizations do not.
   HDeadCodeElimination dce(callee_graph, inline_stats_, "dead_code_elimination$inliner");
   HConstantFolding fold(callee_graph, "constant_folding$inliner");
-  HSharpening sharpening(callee_graph, codegen_, compiler_driver_);
-  InstructionSimplifier simplify(callee_graph, codegen_, compiler_driver_, inline_stats_);
+  HSharpening sharpening(callee_graph, codegen_);
+  InstructionSimplifier simplify(callee_graph, codegen_, inline_stats_);
   IntrinsicsRecognizer intrinsics(callee_graph, inline_stats_);
 
   HOptimization* optimizations[] = {
