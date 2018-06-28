@@ -76,19 +76,19 @@ void ReferenceQueue::DisableReadBarrierForReference(ObjPtr<mirror::Reference> re
   Heap* heap = Runtime::Current()->GetHeap();
   if (kUseBakerOrBrooksReadBarrier && heap->CurrentCollectorType() == kCollectorTypeCC &&
       heap->ConcurrentCopyingCollector()->IsActive()) {
-    // Change the gray ptr we left in ConcurrentCopying::ProcessMarkStackRef() to white.
+    // Change the gray ptr we left in ConcurrentCopying::ProcessMarkStackRef() to non-gray.
     // We check IsActive() above because we don't want to do this when the zygote compaction
     // collector (SemiSpace) is running.
     CHECK(ref != nullptr);
     collector::ConcurrentCopying* concurrent_copying = heap->ConcurrentCopyingCollector();
     uint32_t rb_state = ref->GetReadBarrierState();
     if (rb_state == ReadBarrier::GrayState()) {
-      ref->AtomicSetReadBarrierState(ReadBarrier::GrayState(), ReadBarrier::WhiteState());
-      CHECK_EQ(ref->GetReadBarrierState(), ReadBarrier::WhiteState());
+      ref->AtomicSetReadBarrierState(ReadBarrier::GrayState(), ReadBarrier::NonGrayState());
+      CHECK_EQ(ref->GetReadBarrierState(), ReadBarrier::NonGrayState());
     } else {
-      // In ConcurrentCopying::ProcessMarkStackRef() we may leave a white reference in the queue and
-      // find it here, which is OK.
-      CHECK_EQ(rb_state, ReadBarrier::WhiteState()) << "ref=" << ref << " rb_state=" << rb_state;
+      // In ConcurrentCopying::ProcessMarkStackRef() we may leave a non-gray reference in the queue
+      // and find it here, which is OK.
+      CHECK_EQ(rb_state, ReadBarrier::NonGrayState()) << "ref=" << ref << " rb_state=" << rb_state;
       ObjPtr<mirror::Object> referent = ref->GetReferent<kWithoutReadBarrier>();
       // The referent could be null if it's cleared by a mutator (Reference.clear()).
       if (referent != nullptr) {

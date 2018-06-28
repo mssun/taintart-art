@@ -255,13 +255,13 @@ inline mirror::Object* ReadBarrier::Mark(mirror::Object* obj) {
 }
 
 inline bool ReadBarrier::IsGray(mirror::Object* obj, uintptr_t* fake_address_dependency) {
-  return obj->GetReadBarrierState(fake_address_dependency) == gray_state_;
+  return obj->GetReadBarrierState(fake_address_dependency) == kGrayState;
 }
 
 inline bool ReadBarrier::IsGray(mirror::Object* obj) {
   // Use a load-acquire to load the read barrier bit to avoid reordering with the subsequent load.
   // GetReadBarrierStateAcquire() has load-acquire semantics.
-  return obj->GetReadBarrierStateAcquire() == gray_state_;
+  return obj->GetReadBarrierStateAcquire() == kGrayState;
 }
 
 }  // namespace art
