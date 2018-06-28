@@ -284,14 +284,11 @@ class CompactDexFile : public DexFile {
   virtual uint32_t CalculateChecksum() const OVERRIDE;
 
  private:
-  CompactDexFile(const uint8_t* base,
-                 size_t size,
-                 const uint8_t* data_begin,
-                 size_t data_size,
+  CompactDexFile(std::unique_ptr<DexFileContainer> main_section,
+                 std::unique_ptr<DexFileContainer> data_section,
                  const std::string& location,
                  uint32_t location_checksum,
-                 const OatDexFile* oat_dex_file,
-                 std::unique_ptr<DexFileContainer> container);
+                 const OatDexFile* oat_dex_file);
 
   CompactOffsetTable::Accessor debug_info_offsets_;
 
