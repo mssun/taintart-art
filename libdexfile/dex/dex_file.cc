@@ -99,6 +99,11 @@ DexFile::DexFile(std::unique_ptr<DexFileContainer> main_section,
                  const OatDexFile* oat_dex_file,
                  bool is_compact_dex)
     : main_section_(std::move(main_section)),
+      main_begin_(main_section_->Begin()),
+      main_size_(main_section_->Size()),
+      data_section_(std::move(data_section)),
+      data_begin_(data_section_->Begin()),
+      data_size_(data_section_->Size()),
       location_(location),
       location_checksum_(location_checksum),
       header_(reinterpret_cast<const Header*>(main_section_->Begin())),
@@ -126,8 +131,6 @@ DexFile::DexFile(std::unique_ptr<DexFileContainer> main_section,
   // Must be 4-byte aligned to avoid undefined behavior when accessing
   // any of the sections via a pointer.
   CHECK_ALIGNED(main_section_->Begin(), alignof(Header));
-
-  data_section_ = std::move(data_section);
 
   InitializeSectionsFromMapList();
 }
@@ -138,6 +141,12 @@ DexFile::DexFile(std::unique_ptr<DexFileContainer> main_section,
                  const OatDexFile* oat_dex_file,
                  bool is_compact_dex)
     : main_section_(std::move(main_section)),
+      main_begin_(main_section_->Begin()),
+      main_size_(main_section_->Size()),
+      data_section_(std::make_unique<NonOwningDexFileContainer>(main_section_->Begin(),
+                                                                main_section_->Size())),
+      data_begin_(data_section_->Begin()),
+      data_size_(data_section_->Size()),
       location_(location),
       location_checksum_(location_checksum),
       header_(reinterpret_cast<const Header*>(main_section_->Begin())),
@@ -165,9 +174,6 @@ DexFile::DexFile(std::unique_ptr<DexFileContainer> main_section,
   // Must be 4-byte aligned to avoid undefined behavior when accessing
   // any of the sections via a pointer.
   CHECK_ALIGNED(main_section_->Begin(), alignof(Header));
-
-  data_section_ = std::make_unique<NonOwningDexFileContainer>(main_section_->Begin(),
-                                                              main_section_->Size());
 
   InitializeSectionsFromMapList();
 }
