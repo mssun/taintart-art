@@ -129,10 +129,10 @@ class IntrinsicVisitor : public ValueObject {
   // Temporary data structure for holding Integer.valueOf data for generating code.
   // We only use it if the boot image contains the IntegerCache objects.
   struct IntegerValueOfInfo {
+    static constexpr uint32_t kInvalidReference = static_cast<uint32_t>(-1);
+
     IntegerValueOfInfo();
 
-    // Boot image offset of java.lang.Integer for allocating an instance.
-    uint32_t integer_boot_image_offset;
     // Offset of the Integer.value field for initializing a newly allocated instance.
     uint32_t value_offset;
     // The low value in the cache.
@@ -140,18 +140,27 @@ class IntrinsicVisitor : public ValueObject {
     // The length of the cache array.
     uint32_t length;
 
-    union {
-      // Boot image offset of the target Integer object for constant input in the cache range.
-      // If the input is out of range, this is set to 0u and the code must allocate a new Integer.
-      uint32_t value_boot_image_offset;
+    // Boot image offset of java.lang.Integer for allocating an instance.
+    uint32_t integer_boot_image_offset;  // Set to kInvalidReference when compiling the boot image.
 
-      // Boot image offset of the cache array data used for non-constant input in the cache range.
+    // This union contains references to the boot image. For app AOT or JIT compilation,
+    // these are the boot image offsets of the target. For boot image compilation, the
+    // location shall be known only at link time, so we encode a symbolic reference using
+    // IntrinsicObjects::EncodePatch().
+    union {
+      // The target value for a constant input in the cache range. If the constant input
+      // is out of range (use `low` and `length` to check), this value is bogus (set to
+      // kInvalidReference) and the code must allocate a new Integer.
+      uint32_t value_boot_image_reference;
+
+      // The cache array data used for a non-constant input in the cache range.
       // If the input is out of range, the code must allocate a new Integer.
-      uint32_t array_data_boot_image_offset;
+      uint32_t array_data_boot_image_reference;
     };
   };
 
-  static IntegerValueOfInfo ComputeIntegerValueOfInfo(HInvoke* invoke);
+  static IntegerValueOfInfo ComputeIntegerValueOfInfo(
+      HInvoke* invoke, const CompilerOptions& compiler_options);
 
  protected:
   IntrinsicVisitor() {}
