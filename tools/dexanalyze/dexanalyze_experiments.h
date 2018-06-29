@@ -24,10 +24,23 @@
 #include <vector>
 
 #include "base/macros.h"
+#include "dex/dex_instruction.h"
 
 namespace art {
 
 class DexFile;
+
+namespace dexanalyze {
+
+bool IsRange(Instruction::Code code);
+
+uint16_t NumberOfArgs(const Instruction& inst);
+
+uint16_t DexMethodIndex(const Instruction& inst);
+
+std::string PercentDivide(uint64_t value, uint64_t max);
+
+size_t PrefixLen(const std::string& a, const std::string& b);
 
 std::string Percent(uint64_t value, uint64_t max);
 
@@ -38,6 +51,8 @@ class Experiment {
   virtual void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files);
   virtual void ProcessDexFile(const DexFile&) {}
   virtual void Dump(std::ostream& os, uint64_t total_size) const = 0;
+
+  bool dump_ = false;
 };
 
 // Analyze string data and strings accessed from code.
@@ -167,6 +182,7 @@ class CodeMetrics : public Experiment {
   uint64_t move_result_savings_ = 0u;
 };
 
+}  // namespace dexanalyze
 }  // namespace art
 
 #endif  // ART_TOOLS_DEXANALYZE_DEXANALYZE_EXPERIMENTS_H_

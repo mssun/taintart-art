@@ -32,8 +32,9 @@
 #include "dex/utf-inl.h"
 
 namespace art {
+namespace dexanalyze {
 
-static inline bool IsRange(Instruction::Code code) {
+bool IsRange(Instruction::Code code) {
   return code == Instruction::INVOKE_VIRTUAL_RANGE ||
       code == Instruction::INVOKE_DIRECT_RANGE ||
       code == Instruction::INVOKE_SUPER_RANGE ||
@@ -41,11 +42,11 @@ static inline bool IsRange(Instruction::Code code) {
       code == Instruction::INVOKE_INTERFACE_RANGE;
 }
 
-static inline uint16_t NumberOfArgs(const Instruction& inst) {
+uint16_t NumberOfArgs(const Instruction& inst) {
   return IsRange(inst.Opcode()) ? inst.VRegA_3rc() : inst.VRegA_35c();
 }
 
-static inline uint16_t DexMethodIndex(const Instruction& inst) {
+uint16_t DexMethodIndex(const Instruction& inst) {
   return IsRange(inst.Opcode()) ? inst.VRegB_3rc() : inst.VRegB_35c();
 }
 
@@ -70,7 +71,7 @@ std::string PercentDivide(uint64_t value, uint64_t max) {
       static_cast<double>(value * 100) / static_cast<double>(max));
 }
 
-static size_t PrefixLen(const std::string& a, const std::string& b) {
+size_t PrefixLen(const std::string& a, const std::string& b) {
   size_t len = 0;
   for (; len < a.length() && len < b.length() && a[len] == b[len]; ++len) {}
   return len;
@@ -608,9 +609,17 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Super same class: " << PercentDivide(same_class_super_, total_super_) << "\n";
   os << "Num strings accessed from code: " << num_string_ids_from_code_ << "\n";
   os << "Avg unique methods accessed per class: "
-     << double(total_unique_method_ids_) / double(num_class_defs_) << "\n";
+     << static_cast<double>(total_unique_method_ids_) / static_cast<double>(num_class_defs_) << "\n";
   os << "Avg unique strings accessed per class: "
-     << double(total_unique_string_ids_) / double(num_class_defs_) << "\n";
+     << static_cast<double>(total_unique_string_ids_) / static_cast<double>(num_class_defs_) << "\n";
+  os << "Avg unique types accessed per class " <<
+        static_cast<double>(total_unique_types_) / static_cast<double>(num_class_defs_) << "\n";
+  os << "Total unique methods accessed per class: "
+     << Percent(total_unique_method_ids_, total_size) << "\n";
+  os << "Total unique strings accessed per class: "
+     << Percent(total_unique_string_ids_, total_size) << "\n";
+  os << "Total unique types accessed per class: "
+     << Percent(total_unique_types_, total_size) << "\n";
   const size_t same_class_total =
       same_class_direct_ +
       same_class_virtual_ +
@@ -632,7 +641,6 @@ void CountDexIndices::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Invokes from code: " << (same_class_total + other_class_total) << "\n";
   os << "Type uses on top types: " << PercentDivide(uses_top_types_, uses_all_types_) << "\n";
   os << "Type uses 1b savings: " << PercentDivide(uses_top_types_, total_size) << "\n";
-  os << "Total unique types accessed per class " << total_unique_types_ << "\n";
   os << "Total Dex code bytes: " << Percent(dex_code_bytes_, total_size) << "\n";
   os << "Total unique code items: " << total_unique_code_items_ << "\n";
   os << "Total Dex size: " << total_size << "\n";
@@ -682,4 +690,5 @@ void CodeMetrics::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Low arg savings: " << Percent(low_arg_total * 2, total_size) << "\n";
 }
 
+}  // namespace dexanalyze
 }  // namespace art

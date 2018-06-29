@@ -20,6 +20,7 @@ cc_defaults {
     host_supported: true,
     srcs: [
         "dexanalyze.cc",
+        "dexanalyze_bytecode.cc",
         "dexanalyze_experiments.cc",
     ],
     target: {
