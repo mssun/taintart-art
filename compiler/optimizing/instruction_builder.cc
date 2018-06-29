@@ -1777,7 +1777,6 @@ void HInstructionBuilder::BuildLoadString(dex::StringIndex string_index, uint32_
       new (allocator_) HLoadString(graph_->GetCurrentMethod(), string_index, *dex_file_, dex_pc);
   HSharpening::ProcessLoadString(load_string,
                                  code_generator_,
-                                 compiler_driver_,
                                  *dex_compilation_unit_,
                                  handles_);
   AppendInstruction(load_string);
@@ -1819,7 +1818,6 @@ HLoadClass* HInstructionBuilder::BuildLoadClass(dex::TypeIndex type_index,
 
   HLoadClass::LoadKind load_kind = HSharpening::ComputeLoadClassKind(load_class,
                                                                      code_generator_,
-                                                                     compiler_driver_,
                                                                      *dex_compilation_unit_);
 
   if (load_kind == HLoadClass::LoadKind::kInvalid) {
