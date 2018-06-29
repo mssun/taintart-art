@@ -66,15 +66,18 @@ class HiddenApiTest : public CommonRuntimeTest {
     std::vector<std::string> argv_str;
     argv_str.push_back(GetHiddenApiCmd());
     argv_str.insert(argv_str.end(), extra_args.begin(), extra_args.end());
+    argv_str.push_back("encode");
     argv_str.push_back("--dex=" + out_dex->GetFilename());
     argv_str.push_back("--light-greylist=" + light_greylist.GetFilename());
     argv_str.push_back("--dark-greylist=" + dark_greylist.GetFilename());
     argv_str.push_back("--blacklist=" + blacklist.GetFilename());
     int return_code = ExecAndReturnCode(argv_str, &error);
-    if (return_code != 0) {
-      LOG(FATAL) << "HiddenApi binary exited with unexpected return code " << return_code;
+    if (return_code == 0) {
+      return OpenDex(*out_dex);
+    } else {
+      LOG(ERROR) << "HiddenApi binary exited with unexpected return code " << return_code;
+      return nullptr;
     }
-    return OpenDex(*out_dex);
   }
 
   std::unique_ptr<const DexFile> OpenDex(const ScratchFile& file) {
@@ -226,6 +229,7 @@ TEST_F(HiddenApiTest, InstanceFieldNoMatch) {
   OpenStream(dark_greylist) << "LMain;->ifield:LBadType2;" << std::endl;
   OpenStream(blacklist) << "LMain;->ifield:LBadType3;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kWhitelist, GetIFieldHiddenFlags(*dex_file));
 }
 
@@ -235,6 +239,7 @@ TEST_F(HiddenApiTest, InstanceFieldLightGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->ifield:LBadType2;" << std::endl;
   OpenStream(blacklist) << "LMain;->ifield:LBadType3;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kLightGreylist, GetIFieldHiddenFlags(*dex_file));
 }
 
@@ -244,6 +249,7 @@ TEST_F(HiddenApiTest, InstanceFieldDarkGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->ifield:I" << std::endl;
   OpenStream(blacklist) << "LMain;->ifield:LBadType3;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetIFieldHiddenFlags(*dex_file));
 }
 
@@ -253,6 +259,7 @@ TEST_F(HiddenApiTest, InstanceFieldBlacklistMatch) {
   OpenStream(dark_greylist) << "LMain;->ifield:LBadType2;" << std::endl;
   OpenStream(blacklist) << "LMain;->ifield:I" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetIFieldHiddenFlags(*dex_file));
 }
 
@@ -262,7 +269,7 @@ TEST_F(HiddenApiTest, InstanceFieldTwoListsMatch1) {
   OpenStream(dark_greylist) << "LMain;->ifield:I" << std::endl;
   OpenStream(blacklist) << "LMain;->ifield:I" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetIFieldHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, InstanceFieldTwoListsMatch2) {
@@ -271,7 +278,7 @@ TEST_F(HiddenApiTest, InstanceFieldTwoListsMatch2) {
   OpenStream(dark_greylist) << "LMain;->ifield:LBadType2;" << std::endl;
   OpenStream(blacklist) << "LMain;->ifield:I" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetIFieldHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, InstanceFieldTwoListsMatch3) {
@@ -280,7 +287,7 @@ TEST_F(HiddenApiTest, InstanceFieldTwoListsMatch3) {
   OpenStream(dark_greylist) << "LMain;->ifield:I" << std::endl;
   OpenStream(blacklist) << "LMain;->ifield:LBadType3;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetIFieldHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticFieldNoMatch) {
@@ -289,6 +296,7 @@ TEST_F(HiddenApiTest, StaticFieldNoMatch) {
   OpenStream(dark_greylist) << "LMain;->sfield:LBadType2;" << std::endl;
   OpenStream(blacklist) << "LMain;->sfield:LBadType3;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kWhitelist, GetSFieldHiddenFlags(*dex_file));
 }
 
@@ -298,6 +306,7 @@ TEST_F(HiddenApiTest, StaticFieldLightGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->sfield:LBadType2;" << std::endl;
   OpenStream(blacklist) << "LMain;->sfield:LBadType3;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kLightGreylist, GetSFieldHiddenFlags(*dex_file));
 }
 
@@ -307,6 +316,7 @@ TEST_F(HiddenApiTest, StaticFieldDarkGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->sfield:Ljava/lang/Object;" << std::endl;
   OpenStream(blacklist) << "LMain;->sfield:LBadType3;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetSFieldHiddenFlags(*dex_file));
 }
 
@@ -316,6 +326,7 @@ TEST_F(HiddenApiTest, StaticFieldBlacklistMatch) {
   OpenStream(dark_greylist) << "LMain;->sfield:LBadType2;" << std::endl;
   OpenStream(blacklist) << "LMain;->sfield:Ljava/lang/Object;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSFieldHiddenFlags(*dex_file));
 }
 
@@ -325,7 +336,7 @@ TEST_F(HiddenApiTest, StaticFieldTwoListsMatch1) {
   OpenStream(dark_greylist) << "LMain;->sfield:Ljava/lang/Object;" << std::endl;
   OpenStream(blacklist) << "LMain;->sfield:Ljava/lang/Object;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSFieldHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticFieldTwoListsMatch2) {
@@ -334,7 +345,7 @@ TEST_F(HiddenApiTest, StaticFieldTwoListsMatch2) {
   OpenStream(dark_greylist) << "LMain;->sfield:LBadType2;" << std::endl;
   OpenStream(blacklist) << "LMain;->sfield:Ljava/lang/Object;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSFieldHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticFieldTwoListsMatch3) {
@@ -343,7 +354,7 @@ TEST_F(HiddenApiTest, StaticFieldTwoListsMatch3) {
   OpenStream(dark_greylist) << "LMain;->sfield:Ljava/lang/Object;" << std::endl;
   OpenStream(blacklist) << "LMain;->sfield:LBadType3;" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetSFieldHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, InstanceMethodNoMatch) {
@@ -352,6 +363,7 @@ TEST_F(HiddenApiTest, InstanceMethodNoMatch) {
   OpenStream(dark_greylist) << "LMain;->imethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->imethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kWhitelist, GetIMethodHiddenFlags(*dex_file));
 }
 
@@ -361,6 +373,7 @@ TEST_F(HiddenApiTest, InstanceMethodLightGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->imethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->imethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kLightGreylist, GetIMethodHiddenFlags(*dex_file));
 }
 
@@ -370,6 +383,7 @@ TEST_F(HiddenApiTest, InstanceMethodDarkGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->imethod(J)V" << std::endl;
   OpenStream(blacklist) << "LMain;->imethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetIMethodHiddenFlags(*dex_file));
 }
 
@@ -379,6 +393,7 @@ TEST_F(HiddenApiTest, InstanceMethodBlacklistMatch) {
   OpenStream(dark_greylist) << "LMain;->imethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->imethod(J)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetIMethodHiddenFlags(*dex_file));
 }
 
@@ -388,7 +403,7 @@ TEST_F(HiddenApiTest, InstanceMethodTwoListsMatch1) {
   OpenStream(dark_greylist) << "LMain;->imethod(J)V" << std::endl;
   OpenStream(blacklist) << "LMain;->imethod(J)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetIMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, InstanceMethodTwoListsMatch2) {
@@ -397,7 +412,7 @@ TEST_F(HiddenApiTest, InstanceMethodTwoListsMatch2) {
   OpenStream(dark_greylist) << "LMain;->imethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->imethod(J)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetIMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, InstanceMethodTwoListsMatch3) {
@@ -406,7 +421,7 @@ TEST_F(HiddenApiTest, InstanceMethodTwoListsMatch3) {
   OpenStream(dark_greylist) << "LMain;->imethod(J)V" << std::endl;
   OpenStream(blacklist) << "LMain;->imethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetIMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticMethodNoMatch) {
@@ -415,6 +430,7 @@ TEST_F(HiddenApiTest, StaticMethodNoMatch) {
   OpenStream(dark_greylist) << "LMain;->smethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->smethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kWhitelist, GetSMethodHiddenFlags(*dex_file));
 }
 
@@ -424,6 +440,7 @@ TEST_F(HiddenApiTest, StaticMethodLightGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->smethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->smethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kLightGreylist, GetSMethodHiddenFlags(*dex_file));
 }
 
@@ -433,6 +450,7 @@ TEST_F(HiddenApiTest, StaticMethodDarkGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->smethod(Ljava/lang/Object;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->smethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetSMethodHiddenFlags(*dex_file));
 }
 
@@ -442,6 +460,7 @@ TEST_F(HiddenApiTest, StaticMethodBlacklistMatch) {
   OpenStream(dark_greylist) << "LMain;->smethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->smethod(Ljava/lang/Object;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSMethodHiddenFlags(*dex_file));
 }
 
@@ -451,7 +470,7 @@ TEST_F(HiddenApiTest, StaticMethodTwoListsMatch1) {
   OpenStream(dark_greylist) << "LMain;->smethod(Ljava/lang/Object;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->smethod(Ljava/lang/Object;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticMethodTwoListsMatch2) {
@@ -460,7 +479,7 @@ TEST_F(HiddenApiTest, StaticMethodTwoListsMatch2) {
   OpenStream(dark_greylist) << "LMain;->smethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->smethod(Ljava/lang/Object;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticMethodTwoListsMatch3) {
@@ -469,7 +488,7 @@ TEST_F(HiddenApiTest, StaticMethodTwoListsMatch3) {
   OpenStream(dark_greylist) << "LMain;->smethod(Ljava/lang/Object;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->smethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetSMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, InstanceNativeMethodNoMatch) {
@@ -478,6 +497,7 @@ TEST_F(HiddenApiTest, InstanceNativeMethodNoMatch) {
   OpenStream(dark_greylist) << "LMain;->inmethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->inmethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kWhitelist, GetINMethodHiddenFlags(*dex_file));
 }
 
@@ -487,6 +507,7 @@ TEST_F(HiddenApiTest, InstanceNativeMethodLightGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->inmethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->inmethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kLightGreylist, GetINMethodHiddenFlags(*dex_file));
 }
 
@@ -496,6 +517,7 @@ TEST_F(HiddenApiTest, InstanceNativeMethodDarkGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->inmethod(C)V" << std::endl;
   OpenStream(blacklist) << "LMain;->inmethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetINMethodHiddenFlags(*dex_file));
 }
 
@@ -505,6 +527,7 @@ TEST_F(HiddenApiTest, InstanceNativeMethodBlacklistMatch) {
   OpenStream(dark_greylist) << "LMain;->inmethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->inmethod(C)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetINMethodHiddenFlags(*dex_file));
 }
 
@@ -514,7 +537,7 @@ TEST_F(HiddenApiTest, InstanceNativeMethodTwoListsMatch1) {
   OpenStream(dark_greylist) << "LMain;->inmethod(C)V" << std::endl;
   OpenStream(blacklist) << "LMain;->inmethod(C)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetINMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, InstanceNativeMethodTwoListsMatch2) {
@@ -523,7 +546,7 @@ TEST_F(HiddenApiTest, InstanceNativeMethodTwoListsMatch2) {
   OpenStream(dark_greylist) << "LMain;->inmethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->inmethod(C)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetINMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, InstanceNativeMethodTwoListsMatch3) {
@@ -532,7 +555,7 @@ TEST_F(HiddenApiTest, InstanceNativeMethodTwoListsMatch3) {
   OpenStream(dark_greylist) << "LMain;->inmethod(C)V" << std::endl;
   OpenStream(blacklist) << "LMain;->inmethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetINMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticNativeMethodNoMatch) {
@@ -541,6 +564,7 @@ TEST_F(HiddenApiTest, StaticNativeMethodNoMatch) {
   OpenStream(dark_greylist) << "LMain;->snmethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->snmethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kWhitelist, GetSNMethodHiddenFlags(*dex_file));
 }
 
@@ -550,6 +574,7 @@ TEST_F(HiddenApiTest, StaticNativeMethodLightGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->snmethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->snmethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kLightGreylist, GetSNMethodHiddenFlags(*dex_file));
 }
 
@@ -559,6 +584,7 @@ TEST_F(HiddenApiTest, StaticNativeMethodDarkGreylistMatch) {
   OpenStream(dark_greylist) << "LMain;->snmethod(Ljava/lang/Integer;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->snmethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetSNMethodHiddenFlags(*dex_file));
 }
 
@@ -568,6 +594,7 @@ TEST_F(HiddenApiTest, StaticNativeMethodBlacklistMatch) {
   OpenStream(dark_greylist) << "LMain;->snmethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->snmethod(Ljava/lang/Integer;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
+  ASSERT_NE(dex_file.get(), nullptr);
   ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSNMethodHiddenFlags(*dex_file));
 }
 
@@ -577,7 +604,7 @@ TEST_F(HiddenApiTest, StaticNativeMethodTwoListsMatch1) {
   OpenStream(dark_greylist) << "LMain;->snmethod(Ljava/lang/Integer;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->snmethod(Ljava/lang/Integer;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSNMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticNativeMethodTwoListsMatch2) {
@@ -586,7 +613,7 @@ TEST_F(HiddenApiTest, StaticNativeMethodTwoListsMatch2) {
   OpenStream(dark_greylist) << "LMain;->snmethod(LBadType2;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->snmethod(Ljava/lang/Integer;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kBlacklist, GetSNMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 TEST_F(HiddenApiTest, StaticNativeMethodTwoListsMatch3) {
@@ -595,7 +622,7 @@ TEST_F(HiddenApiTest, StaticNativeMethodTwoListsMatch3) {
   OpenStream(dark_greylist) << "LMain;->snmethod(Ljava/lang/Integer;)V" << std::endl;
   OpenStream(blacklist) << "LMain;->snmethod(LBadType3;)V" << std::endl;
   auto dex_file = RunHiddenApi(light_greylist, dark_greylist, blacklist, {}, &dex);
-  ASSERT_EQ(HiddenApiAccessFlags::kDarkGreylist, GetSNMethodHiddenFlags(*dex_file));
+  ASSERT_EQ(dex_file.get(), nullptr);
 }
 
 }  // namespace art
