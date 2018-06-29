@@ -40,18 +40,30 @@ class LinkerPatch {
   // which is ridiculous given we have only a handful of values here. If we
   // choose to squeeze the Type into fewer than 8 bits, we'll have to declare
   // patch_type_ as an uintN_t and do explicit static_cast<>s.
+  //
+  // Note: Actual patching is instruction_set-dependent.
   enum class Type : uint8_t {
-    kDataBimgRelRo,           // NOTE: Actual patching is instruction_set-dependent.
-    kMethodRelative,          // NOTE: Actual patching is instruction_set-dependent.
-    kMethodBssEntry,          // NOTE: Actual patching is instruction_set-dependent.
-    kCall,
-    kCallRelative,            // NOTE: Actual patching is instruction_set-dependent.
-    kTypeRelative,            // NOTE: Actual patching is instruction_set-dependent.
-    kTypeBssEntry,            // NOTE: Actual patching is instruction_set-dependent.
-    kStringRelative,          // NOTE: Actual patching is instruction_set-dependent.
-    kStringBssEntry,          // NOTE: Actual patching is instruction_set-dependent.
-    kBakerReadBarrierBranch,  // NOTE: Actual patching is instruction_set-dependent.
+    kIntrinsicReference,      // Boot image reference for an intrinsic, see IntrinsicObjects.
+    kDataBimgRelRo,
+    kMethodRelative,
+    kMethodBssEntry,
+    kCall,                    // TODO: Remove. (Deprecated, non-PIC.)
+    kCallRelative,
+    kTypeRelative,
+    kTypeBssEntry,
+    kStringRelative,
+    kStringBssEntry,
+    kBakerReadBarrierBranch,
   };
+
+  static LinkerPatch IntrinsicReferencePatch(size_t literal_offset,
+                                             uint32_t pc_insn_offset,
+                                             uint32_t intrinsic_data) {
+    LinkerPatch patch(literal_offset, Type::kIntrinsicReference, /* target_dex_file */ nullptr);
+    patch.intrinsic_data_ = intrinsic_data;
+    patch.pc_insn_offset_ = pc_insn_offset;
+    return patch;
+  }
 
   static LinkerPatch DataBimgRelRoPatch(size_t literal_offset,
                                         uint32_t pc_insn_offset,
@@ -160,6 +172,7 @@ class LinkerPatch {
 
   bool IsPcRelative() const {
     switch (GetType()) {
+      case Type::kIntrinsicReference:
       case Type::kDataBimgRelRo:
       case Type::kMethodRelative:
       case Type::kMethodBssEntry:
@@ -173,6 +186,11 @@ class LinkerPatch {
       default:
         return false;
     }
+  }
+
+  uint32_t IntrinsicData() const {
+    DCHECK(patch_type_ == Type::kIntrinsicReference);
+    return intrinsic_data_;
   }
 
   uint32_t BootImageOffset() const {
@@ -213,7 +231,8 @@ class LinkerPatch {
   }
 
   uint32_t PcInsnOffset() const {
-    DCHECK(patch_type_ == Type::kDataBimgRelRo ||
+    DCHECK(patch_type_ == Type::kIntrinsicReference ||
+           patch_type_ == Type::kDataBimgRelRo ||
            patch_type_ == Type::kMethodRelative ||
            patch_type_ == Type::kMethodBssEntry ||
            patch_type_ == Type::kTypeRelative ||
@@ -255,10 +274,12 @@ class LinkerPatch {
     uint32_t method_idx_;         // Method index for Call/Method patches.
     uint32_t type_idx_;           // Type index for Type patches.
     uint32_t string_idx_;         // String index for String patches.
+    uint32_t intrinsic_data_;     // Data for IntrinsicObjects.
     uint32_t baker_custom_value1_;
     static_assert(sizeof(method_idx_) == sizeof(cmp1_), "needed by relational operators");
     static_assert(sizeof(type_idx_) == sizeof(cmp1_), "needed by relational operators");
     static_assert(sizeof(string_idx_) == sizeof(cmp1_), "needed by relational operators");
+    static_assert(sizeof(intrinsic_data_) == sizeof(cmp1_), "needed by relational operators");
     static_assert(sizeof(baker_custom_value1_) == sizeof(cmp1_), "needed by relational operators");
   };
   union {

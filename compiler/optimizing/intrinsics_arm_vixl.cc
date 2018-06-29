@@ -2940,28 +2940,27 @@ void IntrinsicLocationsBuilderARMVIXL::VisitIntegerValueOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARMVIXL::VisitIntegerValueOf(HInvoke* invoke) {
-  IntrinsicVisitor::IntegerValueOfInfo info = IntrinsicVisitor::ComputeIntegerValueOfInfo(invoke);
+  IntrinsicVisitor::IntegerValueOfInfo info =
+      IntrinsicVisitor::ComputeIntegerValueOfInfo(invoke, codegen_->GetCompilerOptions());
   LocationSummary* locations = invoke->GetLocations();
   ArmVIXLAssembler* const assembler = GetAssembler();
 
   vixl32::Register out = RegisterFrom(locations->Out());
   UseScratchRegisterScope temps(assembler->GetVIXLAssembler());
   vixl32::Register temp = temps.Acquire();
-  InvokeRuntimeCallingConventionARMVIXL calling_convention;
-  vixl32::Register argument = calling_convention.GetRegisterAt(0);
   if (invoke->InputAt(0)->IsConstant()) {
     int32_t value = invoke->InputAt(0)->AsIntConstant()->GetValue();
-    if (info.value_boot_image_offset != 0u) {
+    if (static_cast<uint32_t>(value - info.low) < info.length) {
       // Just embed the j.l.Integer in the code.
-      codegen_->LoadBootImageAddress(out, info.value_boot_image_offset);
+      DCHECK_NE(info.value_boot_image_reference, IntegerValueOfInfo::kInvalidReference);
+      codegen_->LoadBootImageAddress(out, info.value_boot_image_reference);
     } else {
       DCHECK(locations->CanCall());
       // Allocate and initialize a new j.l.Integer.
       // TODO: If we JIT, we could allocate the j.l.Integer now, and store it in the
       // JIT object table.
-      codegen_->LoadBootImageAddress(argument, info.integer_boot_image_offset);
-      codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
-      CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
+      codegen_->AllocateInstanceForIntrinsic(invoke->AsInvokeStaticOrDirect(),
+                                             info.integer_boot_image_offset);
       __ Mov(temp, value);
       assembler->StoreToOffset(kStoreWord, temp, out, info.value_offset);
       // `value` is a final field :-( Ideally, we'd merge this memory barrier with the allocation
@@ -2977,15 +2976,14 @@ void IntrinsicCodeGeneratorARMVIXL::VisitIntegerValueOf(HInvoke* invoke) {
     vixl32::Label allocate, done;
     __ B(hs, &allocate, /* is_far_target */ false);
     // If the value is within the bounds, load the j.l.Integer directly from the array.
-    codegen_->LoadBootImageAddress(temp, info.array_data_boot_image_offset);
+    codegen_->LoadBootImageAddress(temp, info.array_data_boot_image_reference);
     codegen_->LoadFromShiftedRegOffset(DataType::Type::kReference, locations->Out(), temp, out);
     assembler->MaybeUnpoisonHeapReference(out);
     __ B(&done);
     __ Bind(&allocate);
     // Otherwise allocate and initialize a new j.l.Integer.
-    codegen_->LoadBootImageAddress(argument, info.integer_boot_image_offset);
-    codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
-    CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
+    codegen_->AllocateInstanceForIntrinsic(invoke->AsInvokeStaticOrDirect(),
+                                           info.integer_boot_image_offset);
     assembler->StoreToOffset(kStoreWord, in, out, info.value_offset);
     // `value` is a final field :-( Ideally, we'd merge this memory barrier with the allocation
     // one.

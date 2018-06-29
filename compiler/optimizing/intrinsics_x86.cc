@@ -2873,28 +2873,27 @@ void IntrinsicLocationsBuilderX86::VisitIntegerValueOf(HInvoke* invoke) {
 
 void IntrinsicCodeGeneratorX86::VisitIntegerValueOf(HInvoke* invoke) {
   DCHECK(invoke->IsInvokeStaticOrDirect());
-  IntrinsicVisitor::IntegerValueOfInfo info = IntrinsicVisitor::ComputeIntegerValueOfInfo(invoke);
+  IntrinsicVisitor::IntegerValueOfInfo info =
+      IntrinsicVisitor::ComputeIntegerValueOfInfo(invoke, codegen_->GetCompilerOptions());
   LocationSummary* locations = invoke->GetLocations();
   X86Assembler* assembler = GetAssembler();
 
   Register out = locations->Out().AsRegister<Register>();
   InvokeRuntimeCallingConvention calling_convention;
-  Register argument = calling_convention.GetRegisterAt(0);
   if (invoke->InputAt(0)->IsConstant()) {
     int32_t value = invoke->InputAt(0)->AsIntConstant()->GetValue();
-    if (info.value_boot_image_offset != 0u) {
+    if (static_cast<uint32_t>(value - info.low) < info.length) {
       // Just embed the j.l.Integer in the code.
+      DCHECK_NE(info.value_boot_image_reference, IntegerValueOfInfo::kInvalidReference);
       codegen_->LoadBootImageAddress(
-          out, info.value_boot_image_offset, invoke->AsInvokeStaticOrDirect());
+          out, info.value_boot_image_reference, invoke->AsInvokeStaticOrDirect());
     } else {
       DCHECK(locations->CanCall());
       // Allocate and initialize a new j.l.Integer.
       // TODO: If we JIT, we could allocate the j.l.Integer now, and store it in the
       // JIT object table.
-      codegen_->LoadBootImageAddress(
-          argument, info.integer_boot_image_offset, invoke->AsInvokeStaticOrDirect());
-      codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
-      CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
+      codegen_->AllocateInstanceForIntrinsic(invoke->AsInvokeStaticOrDirect(),
+                                             info.integer_boot_image_offset);
       __ movl(Address(out, info.value_offset), Immediate(value));
     }
   } else {
@@ -2907,22 +2906,34 @@ void IntrinsicCodeGeneratorX86::VisitIntegerValueOf(HInvoke* invoke) {
     __ j(kAboveEqual, &allocate);
     // If the value is within the bounds, load the j.l.Integer directly from the array.
     constexpr size_t kElementSize = sizeof(mirror::HeapReference<mirror::Object>);
-    uint32_t mid_array_boot_image_offset =
-        info.array_data_boot_image_offset - info.low * kElementSize;
-    codegen_->LoadBootImageAddress(
-        out, mid_array_boot_image_offset, invoke->AsInvokeStaticOrDirect());
-    DCHECK_NE(out, in);
     static_assert((1u << TIMES_4) == sizeof(mirror::HeapReference<mirror::Object>),
                   "Check heap reference size.");
-    __ movl(out, Address(out, in, TIMES_4, 0));
+    if (codegen_->GetCompilerOptions().IsBootImage()) {
+      DCHECK_EQ(invoke->InputCount(), invoke->GetNumberOfArguments() + 1u);
+      size_t method_address_index = invoke->AsInvokeStaticOrDirect()->GetSpecialInputIndex();
+      HX86ComputeBaseMethodAddress* method_address =
+          invoke->InputAt(method_address_index)->AsX86ComputeBaseMethodAddress();
+      DCHECK(method_address != nullptr);
+      Register method_address_reg =
+          invoke->GetLocations()->InAt(method_address_index).AsRegister<Register>();
+      __ movl(out, Address(method_address_reg, out, TIMES_4, CodeGeneratorX86::kDummy32BitOffset));
+      codegen_->RecordBootImageIntrinsicPatch(method_address, info.array_data_boot_image_reference);
+    } else {
+      // Note: We're about to clobber the index in `out`, so we need to use `in` and
+      // adjust the offset accordingly.
+      uint32_t mid_array_boot_image_offset =
+              info.array_data_boot_image_reference - info.low * kElementSize;
+      codegen_->LoadBootImageAddress(
+          out, mid_array_boot_image_offset, invoke->AsInvokeStaticOrDirect());
+      DCHECK_NE(out, in);
+      __ movl(out, Address(out, in, TIMES_4, 0));
+    }
     __ MaybeUnpoisonHeapReference(out);
     __ jmp(&done);
     __ Bind(&allocate);
     // Otherwise allocate and initialize a new j.l.Integer.
-    codegen_->LoadBootImageAddress(
-        argument, info.integer_boot_image_offset, invoke->AsInvokeStaticOrDirect());
-    codegen_->InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
-    CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
+    codegen_->AllocateInstanceForIntrinsic(invoke->AsInvokeStaticOrDirect(),
+                                           info.integer_boot_image_offset);
     __ movl(Address(out, info.value_offset), in);
     __ Bind(&done);
   }

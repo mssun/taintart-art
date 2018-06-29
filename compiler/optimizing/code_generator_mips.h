@@ -618,6 +618,8 @@ class CodeGeneratorMIPS : public CodeGenerator {
     DISALLOW_COPY_AND_ASSIGN(PcRelativePatchInfo);
   };
 
+  PcRelativePatchInfo* NewBootImageIntrinsicPatch(uint32_t intrinsic_data,
+                                                  const PcRelativePatchInfo* info_high = nullptr);
   PcRelativePatchInfo* NewBootImageRelRoPatch(uint32_t boot_image_offset,
                                               const PcRelativePatchInfo* info_high = nullptr);
   PcRelativePatchInfo* NewBootImageMethodPatch(MethodReference target_method,
@@ -642,7 +644,8 @@ class CodeGeneratorMIPS : public CodeGenerator {
                                             Register out,
                                             Register base);
 
-  void LoadBootImageAddress(Register reg, uint32_t boot_image_offset);
+  void LoadBootImageAddress(Register reg, uint32_t boot_image_reference);
+  void AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invoke, uint32_t boot_image_offset);
 
   // The JitPatchInfo is used for JIT string and class loads.
   struct JitPatchInfo {
@@ -708,6 +711,8 @@ class CodeGeneratorMIPS : public CodeGenerator {
   ArenaDeque<PcRelativePatchInfo> boot_image_string_patches_;
   // PC-relative String patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> string_bss_entry_patches_;
+  // PC-relative patch info for IntrinsicObjects.
+  ArenaDeque<PcRelativePatchInfo> boot_image_intrinsic_patches_;
 
   // Patches for string root accesses in JIT compiled code.
   ArenaDeque<JitPatchInfo> jit_string_patches_;

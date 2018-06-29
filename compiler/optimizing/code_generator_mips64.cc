@@ -968,6 +968,7 @@ CodeGeneratorMIPS64::CodeGeneratorMIPS64(HGraph* graph,
       type_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       boot_image_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       string_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      boot_image_intrinsic_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       jit_string_patches_(StringReferenceValueComparator(),
                           graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       jit_class_patches_(TypeReferenceValueComparator(),
@@ -1508,12 +1509,13 @@ inline void CodeGeneratorMIPS64::EmitPcRelativeLinkerPatches(
   }
 }
 
-linker::LinkerPatch DataBimgRelRoPatchAdapter(size_t literal_offset,
-                                              const DexFile* target_dex_file,
-                                              uint32_t pc_insn_offset,
-                                              uint32_t boot_image_offset) {
-  DCHECK(target_dex_file == nullptr);  // Unused for DataBimgRelRoPatch(), should be null.
-  return linker::LinkerPatch::DataBimgRelRoPatch(literal_offset, pc_insn_offset, boot_image_offset);
+template <linker::LinkerPatch (*Factory)(size_t, uint32_t, uint32_t)>
+linker::LinkerPatch NoDexFileAdapter(size_t literal_offset,
+                                     const DexFile* target_dex_file,
+                                     uint32_t pc_insn_offset,
+                                     uint32_t boot_image_offset) {
+  DCHECK(target_dex_file == nullptr);  // Unused for these patches, should be null.
+  return Factory(literal_offset, pc_insn_offset, boot_image_offset);
 }
 
 void CodeGeneratorMIPS64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
@@ -1524,7 +1526,8 @@ void CodeGeneratorMIPS64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* li
       boot_image_type_patches_.size() +
       type_bss_entry_patches_.size() +
       boot_image_string_patches_.size() +
-      string_bss_entry_patches_.size();
+      string_bss_entry_patches_.size() +
+      boot_image_intrinsic_patches_.size();
   linker_patches->reserve(size);
   if (GetCompilerOptions().IsBootImage()) {
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeMethodPatch>(
@@ -1533,11 +1536,14 @@ void CodeGeneratorMIPS64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* li
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
         boot_image_string_patches_, linker_patches);
+    EmitPcRelativeLinkerPatches<NoDexFileAdapter<linker::LinkerPatch::IntrinsicReferencePatch>>(
+        boot_image_intrinsic_patches_, linker_patches);
   } else {
-    EmitPcRelativeLinkerPatches<DataBimgRelRoPatchAdapter>(
+    EmitPcRelativeLinkerPatches<NoDexFileAdapter<linker::LinkerPatch::DataBimgRelRoPatch>>(
         boot_image_method_patches_, linker_patches);
     DCHECK(boot_image_type_patches_.empty());
     DCHECK(boot_image_string_patches_.empty());
+    DCHECK(boot_image_intrinsic_patches_.empty());
   }
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::MethodBssEntryPatch>(
       method_bss_entry_patches_, linker_patches);
@@ -1546,6 +1552,13 @@ void CodeGeneratorMIPS64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* li
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringBssEntryPatch>(
       string_bss_entry_patches_, linker_patches);
   DCHECK_EQ(size, linker_patches->size());
+}
+
+CodeGeneratorMIPS64::PcRelativePatchInfo* CodeGeneratorMIPS64::NewBootImageIntrinsicPatch(
+    uint32_t intrinsic_data,
+    const PcRelativePatchInfo* info_high) {
+  return NewPcRelativePatch(
+      /* dex_file */ nullptr, intrinsic_data, info_high, &boot_image_intrinsic_patches_);
 }
 
 CodeGeneratorMIPS64::PcRelativePatchInfo* CodeGeneratorMIPS64::NewBootImageRelRoPatch(
@@ -1638,12 +1651,16 @@ void CodeGeneratorMIPS64::EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchIn
   }
 }
 
-void CodeGeneratorMIPS64::LoadBootImageAddress(GpuRegister reg, uint32_t boot_image_offset) {
-  DCHECK(!GetCompilerOptions().IsBootImage());
-  if (GetCompilerOptions().GetCompilePic()) {
+void CodeGeneratorMIPS64::LoadBootImageAddress(GpuRegister reg, uint32_t boot_image_reference) {
+  if (GetCompilerOptions().IsBootImage()) {
+    PcRelativePatchInfo* info_high = NewBootImageIntrinsicPatch(boot_image_reference);
+    PcRelativePatchInfo* info_low = NewBootImageIntrinsicPatch(boot_image_reference, info_high);
+    EmitPcRelativeAddressPlaceholderHigh(info_high, AT, info_low);
+    __ Daddiu(reg, AT, /* placeholder */ 0x5678);
+  } else if (GetCompilerOptions().GetCompilePic()) {
     DCHECK(Runtime::Current()->IsAotCompiler());
-    PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_offset);
-    PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_offset, info_high);
+    PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_reference);
+    PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_reference, info_high);
     EmitPcRelativeAddressPlaceholderHigh(info_high, AT, info_low);
     // Note: Boot image is in the low 4GiB and the entry is 32-bit, so emit a 32-bit load.
     __ Lwu(reg, AT, /* placeholder */ 0x5678);
@@ -1651,9 +1668,31 @@ void CodeGeneratorMIPS64::LoadBootImageAddress(GpuRegister reg, uint32_t boot_im
     gc::Heap* heap = Runtime::Current()->GetHeap();
     DCHECK(!heap->GetBootImageSpaces().empty());
     uintptr_t address =
-        reinterpret_cast<uintptr_t>(heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset);
+        reinterpret_cast<uintptr_t>(heap->GetBootImageSpaces()[0]->Begin() + boot_image_reference);
     __ LoadLiteral(reg, kLoadDoubleword, DeduplicateBootImageAddressLiteral(address));
   }
+}
+
+void CodeGeneratorMIPS64::AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invoke,
+                                                       uint32_t boot_image_offset) {
+  DCHECK(invoke->IsStatic());
+  InvokeRuntimeCallingConvention calling_convention;
+  GpuRegister argument = calling_convention.GetRegisterAt(0);
+  if (GetCompilerOptions().IsBootImage()) {
+    DCHECK_EQ(boot_image_offset, IntrinsicVisitor::IntegerValueOfInfo::kInvalidReference);
+    // Load the class the same way as for HLoadClass::LoadKind::kBootImageLinkTimePcRelative.
+    MethodReference target_method = invoke->GetTargetMethod();
+    dex::TypeIndex type_idx = target_method.dex_file->GetMethodId(target_method.index).class_idx_;
+    PcRelativePatchInfo* info_high = NewBootImageTypePatch(*target_method.dex_file, type_idx);
+    PcRelativePatchInfo* info_low =
+        NewBootImageTypePatch(*target_method.dex_file, type_idx, info_high);
+    EmitPcRelativeAddressPlaceholderHigh(info_high, AT, info_low);
+    __ Daddiu(argument, AT, /* placeholder */ 0x5678);
+  } else {
+    LoadBootImageAddress(argument, boot_image_offset);
+  }
+  InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
+  CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
 }
 
 Literal* CodeGeneratorMIPS64::DeduplicateJitStringLiteral(const DexFile& dex_file,

@@ -1328,7 +1328,9 @@ ObjPtr<mirror::ObjectArray<mirror::Object>> ImageWriter::CollectDexCaches(Thread
   return dex_caches;
 }
 
-ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
+ObjPtr<ObjectArray<Object>> ImageWriter::CreateImageRoots(
+    size_t oat_index,
+    Handle<mirror::ObjectArray<mirror::Object>> boot_image_live_objects) const {
   Runtime* runtime = Runtime::Current();
   ClassLinker* class_linker = runtime->GetClassLinker();
   Thread* self = Thread::Current();
@@ -1351,9 +1353,10 @@ ObjectArray<Object>* ImageWriter::CreateImageRoots(size_t oat_index) const {
   image_roots->Set<false>(ImageHeader::kNoClassDefFoundError,
                           runtime->GetPreAllocatedNoClassDefFoundError());
   if (!compile_app_image_) {
-    ObjPtr<ObjectArray<Object>> boot_image_live_objects =
-        IntrinsicObjects::AllocateBootImageLiveObjects(self, class_linker);
-    image_roots->Set<false>(ImageHeader::kBootImageLiveObjects, boot_image_live_objects);
+    DCHECK(boot_image_live_objects != nullptr);
+    image_roots->Set<false>(ImageHeader::kBootImageLiveObjects, boot_image_live_objects.Get());
+  } else {
+    DCHECK(boot_image_live_objects == nullptr);
   }
   for (int32_t i = 0, num = ImageHeader::NumberOfImageRoots(compile_app_image_); i != num; ++i) {
     if (compile_app_image_ && i == ImageHeader::kAppImageClassLoader) {
@@ -1682,13 +1685,17 @@ void ImageWriter::ProcessWorkStack(WorkStack* work_stack) {
 
 void ImageWriter::CalculateNewObjectOffsets() {
   Thread* const self = Thread::Current();
+  Runtime* const runtime = Runtime::Current();
   VariableSizedHandleScope handles(self);
+  MutableHandle<ObjectArray<Object>> boot_image_live_objects = handles.NewHandle(
+      compile_app_image_
+          ? nullptr
+          : IntrinsicObjects::AllocateBootImageLiveObjects(self, runtime->GetClassLinker()));
   std::vector<Handle<ObjectArray<Object>>> image_roots;
   for (size_t i = 0, size = oat_filenames_.size(); i != size; ++i) {
-    image_roots.push_back(handles.NewHandle(CreateImageRoots(i)));
+    image_roots.push_back(handles.NewHandle(CreateImageRoots(i, boot_image_live_objects)));
   }
 
-  Runtime* const runtime = Runtime::Current();
   gc::Heap* const heap = runtime->GetHeap();
 
   // Leave space for the header, but do not write it yet, we need to
@@ -1730,6 +1737,9 @@ void ImageWriter::CalculateNewObjectOffsets() {
     };
     heap->VisitObjects(deflate_monitor);
   }
+
+  // From this point on, there shall be no GC anymore and no objects shall be allocated.
+  // We can now assign a BitSlot to each object and store it in its lockword.
 
   // Work list of <object, oat_index> for objects. Everything on the stack must already be
   // assigned a bin slot.
@@ -1887,6 +1897,9 @@ void ImageWriter::CalculateNewObjectOffsets() {
     ImageInfo& image_info = GetImageInfo(relocation.oat_index);
     relocation.offset += image_info.GetBinSlotOffset(bin_type);
   }
+
+  // Remember the boot image live objects as raw pointer. No GC can happen anymore.
+  boot_image_live_objects_ = boot_image_live_objects.Get();
 }
 
 size_t ImageWriter::ImageInfo::CreateImageSections(ImageSection* out_sections) const {
@@ -2012,6 +2025,28 @@ ArtMethod* ImageWriter::GetImageMethodAddress(ArtMethod* method) {
   CHECK_GE(it->second.offset, image_info.image_end_) << "ArtMethods should be after Objects";
   return reinterpret_cast<ArtMethod*>(image_info.image_begin_ + it->second.offset);
 }
+
+const void* ImageWriter::GetIntrinsicReferenceAddress(uint32_t intrinsic_data) {
+  DCHECK(!compile_app_image_);
+  switch (IntrinsicObjects::DecodePatchType(intrinsic_data)) {
+    case IntrinsicObjects::PatchType::kIntegerValueOfArray: {
+      const uint8_t* base_address =
+          reinterpret_cast<const uint8_t*>(GetImageAddress(boot_image_live_objects_));
+      MemberOffset data_offset =
+          IntrinsicObjects::GetIntegerValueOfArrayDataOffset(boot_image_live_objects_);
+      return base_address + data_offset.Uint32Value();
+    }
+    case IntrinsicObjects::PatchType::kIntegerValueOfObject: {
+      uint32_t index = IntrinsicObjects::DecodePatchIndex(intrinsic_data);
+      ObjPtr<mirror::Object> value =
+          IntrinsicObjects::GetIntegerValueOfObject(boot_image_live_objects_, index);
+      return GetImageAddress(value.Ptr());
+    }
+  }
+  LOG(FATAL) << "UNREACHABLE";
+  UNREACHABLE();
+}
+
 
 class ImageWriter::FixupRootVisitor : public RootVisitor {
  public:
@@ -2834,6 +2869,7 @@ ImageWriter::ImageWriter(
       image_infos_(oat_filenames.size()),
       dirty_methods_(0u),
       clean_methods_(0u),
+      boot_image_live_objects_(nullptr),
       image_storage_mode_(image_storage_mode),
       oat_filenames_(oat_filenames),
       dex_file_oat_index_map_(dex_file_oat_index_map),

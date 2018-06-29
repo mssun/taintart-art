@@ -419,6 +419,8 @@ class CodeGeneratorX86 : public CodeGenerator {
   void GenerateVirtualCall(
       HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
 
+  void RecordBootImageIntrinsicPatch(HX86ComputeBaseMethodAddress* method_address,
+                                     uint32_t intrinsic_data);
   void RecordBootImageRelRoPatch(HX86ComputeBaseMethodAddress* method_address,
                                  uint32_t boot_image_offset);
   void RecordBootImageMethodPatch(HInvokeStaticOrDirect* invoke);
@@ -429,8 +431,9 @@ class CodeGeneratorX86 : public CodeGenerator {
   Label* NewStringBssEntryPatch(HLoadString* load_string);
 
   void LoadBootImageAddress(Register reg,
-                            uint32_t boot_image_offset,
+                            uint32_t boot_image_reference,
                             HInvokeStaticOrDirect* invoke);
+  void AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invoke, uint32_t boot_image_offset);
 
   Label* NewJitRootStringPatch(const DexFile& dex_file,
                                dex::StringIndex string_index,
@@ -651,6 +654,8 @@ class CodeGeneratorX86 : public CodeGenerator {
   ArenaDeque<X86PcRelativePatchInfo> boot_image_string_patches_;
   // PC-relative String patch info for kBssEntry.
   ArenaDeque<X86PcRelativePatchInfo> string_bss_entry_patches_;
+  // PC-relative patch info for IntrinsicObjects.
+  ArenaDeque<X86PcRelativePatchInfo> boot_image_intrinsic_patches_;
 
   // Patches for string root accesses in JIT compiled code.
   ArenaDeque<PatchInfo<Label>> jit_string_patches_;
