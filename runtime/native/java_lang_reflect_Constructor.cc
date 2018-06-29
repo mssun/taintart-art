@@ -60,6 +60,7 @@ static jobjectArray Constructor_getExceptionTypes(JNIEnv* env, jobject javaMetho
 static jobject Constructor_newInstance0(JNIEnv* env, jobject javaMethod, jobjectArray javaArgs) {
   ScopedFastNativeObjectAccess soa(env);
   ObjPtr<mirror::Constructor> m = soa.Decode<mirror::Constructor>(javaMethod);
+  ArtMethod* constructor_art_method = m->GetArtMethod();
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::Class> c(hs.NewHandle(m->GetDeclaringClass()));
   if (UNLIKELY(c->IsAbstract())) {
@@ -100,18 +101,20 @@ static jobject Constructor_newInstance0(JNIEnv* env, jobject javaMethod, jobject
   }
 
   // String constructor is replaced by a StringFactory method in InvokeMethod.
-  if (c->IsStringClass()) {
+  if (UNLIKELY(c->IsStringClass())) {
     return InvokeMethod(soa, javaMethod, nullptr, javaArgs, 2);
   }
 
   ObjPtr<mirror::Object> receiver =
       movable ? c->AllocObject(soa.Self()) : c->AllocNonMovableObject(soa.Self());
-  if (receiver == nullptr) {
+  if (UNLIKELY(receiver == nullptr)) {
+    DCHECK(soa.Self()->IsExceptionPending());
     return nullptr;
   }
   jobject javaReceiver = soa.AddLocalReference<jobject>(receiver);
-  InvokeMethod(soa, javaMethod, javaReceiver, javaArgs, 2);
-  // Constructors are ()V methods, so we shouldn't touch the result of InvokeMethod.
+
+  InvokeConstructor(soa, constructor_art_method, receiver, javaArgs);
+
   return javaReceiver;
 }
 
