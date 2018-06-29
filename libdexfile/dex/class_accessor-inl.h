@@ -110,6 +110,10 @@ inline CodeItemInstructionAccessor ClassAccessor::Method::GetInstructions() cons
   return CodeItemInstructionAccessor(dex_file_, dex_file_.GetCodeItem(GetCodeItemOffset()));
 }
 
+inline CodeItemDataAccessor ClassAccessor::Method::GetInstructionsAndData() const {
+  return CodeItemDataAccessor(dex_file_, dex_file_.GetCodeItem(GetCodeItemOffset()));
+}
+
 inline const char* ClassAccessor::GetDescriptor() const {
   return dex_file_.StringByTypeIdx(GetClassIdx());
 }
