@@ -2612,16 +2612,8 @@ mirror::Object* ConcurrentCopying::MarkNonMoving(Thread* const self,
   bool is_los = mark_bitmap == nullptr;
   if (!is_los && mark_bitmap->Test(ref)) {
     // Already marked.
-    if (kUseBakerReadBarrier) {
-      DCHECK(ref->GetReadBarrierState() == ReadBarrier::GrayState() ||
-             ref->GetReadBarrierState() == ReadBarrier::WhiteState());
-    }
   } else if (is_los && los_bitmap->Test(ref)) {
     // Already marked in LOS.
-    if (kUseBakerReadBarrier) {
-      DCHECK(ref->GetReadBarrierState() == ReadBarrier::GrayState() ||
-             ref->GetReadBarrierState() == ReadBarrier::WhiteState());
-    }
   } else {
     // Not marked.
     if (IsOnAllocStack(ref)) {
