@@ -78,6 +78,7 @@ class ClassAccessor {
     }
 
     CodeItemInstructionAccessor GetInstructions() const;
+    CodeItemDataAccessor GetInstructionsAndData() const;
 
     const DexFile::CodeItem* GetCodeItem() const;
 
