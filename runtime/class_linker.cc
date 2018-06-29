@@ -864,8 +864,7 @@ void ClassLinker::FinishInit(Thread* self) {
   VLOG(startup) << "ClassLinker::FinishInit exiting";
 }
 
-void ClassLinker::RunRootClinits() {
-  Thread* self = Thread::Current();
+void ClassLinker::RunRootClinits(Thread* self) {
   for (size_t i = 0; i < static_cast<size_t>(ClassRoot::kMax); ++i) {
     ObjPtr<mirror::Class> c = GetClassRoot(ClassRoot(i), this);
     if (!c->IsArrayClass() && !c->IsPrimitive()) {
@@ -873,6 +872,8 @@ void ClassLinker::RunRootClinits() {
       Handle<mirror::Class> h_class(hs.NewHandle(c));
       EnsureInitialized(self, h_class, true, true);
       self->AssertNoPendingException();
+    } else {
+      DCHECK(c->IsInitialized());
     }
   }
 }

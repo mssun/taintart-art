@@ -182,7 +182,7 @@ void CommonRuntimeTestImpl::FinalizeSetup() {
 
   {
     ScopedObjectAccess soa(Thread::Current());
-    class_linker_->RunRootClinits();
+    runtime_->RunRootClinits(soa.Self());
   }
 
   // We're back in native, take the opportunity to initialize well known classes.

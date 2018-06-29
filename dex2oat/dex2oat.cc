@@ -2613,11 +2613,11 @@ class Dex2Oat FINAL {
     // set up.
     interpreter::UnstartedRuntime::Initialize();
 
-    runtime_->GetClassLinker()->RunRootClinits();
+    Thread* self = Thread::Current();
+    runtime_->RunRootClinits(self);
 
     // Runtime::Create acquired the mutator_lock_ that is normally given away when we
     // Runtime::Start, give it away now so that we don't starve GC.
-    Thread* self = Thread::Current();
     self->TransitionFromRunnableToSuspended(kNative);
 
     return true;
