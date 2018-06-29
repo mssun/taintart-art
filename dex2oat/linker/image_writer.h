@@ -63,6 +63,7 @@ class ClassLoader;
 
 class ClassLoaderVisitor;
 class CompilerOptions;
+template<class T> class Handle;
 class ImTable;
 class ImtConflictTable;
 class TimingLogger;
@@ -112,6 +113,8 @@ class ImageWriter FINAL {
   }
 
   ArtMethod* GetImageMethodAddress(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
+  const void* GetIntrinsicReferenceAddress(uint32_t intrinsic_data)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   size_t GetOatFileOffset(size_t oat_index) const {
     return GetImageInfo(oat_index).oat_offset_;
@@ -453,7 +456,9 @@ class ImageWriter FINAL {
       REQUIRES_SHARED(Locks::mutator_lock_);
   ObjPtr<mirror::ObjectArray<mirror::Object>> CollectDexCaches(Thread* self, size_t oat_index) const
       REQUIRES_SHARED(Locks::mutator_lock_);
-  mirror::ObjectArray<mirror::Object>* CreateImageRoots(size_t oat_index) const
+  ObjPtr<mirror::ObjectArray<mirror::Object>> CreateImageRoots(
+      size_t oat_index,
+      Handle<mirror::ObjectArray<mirror::Object>> boot_image_live_objects) const
       REQUIRES_SHARED(Locks::mutator_lock_);
   void CalculateObjectBinSlots(mirror::Object* obj)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -633,6 +638,9 @@ class ImageWriter FINAL {
   // dex2oat loads the dex files to be compiled into a single class loader. For the boot image,
   // null is a valid entry.
   std::unordered_set<mirror::ClassLoader*> class_loaders_;
+
+  // Boot image live objects, null for app image.
+  mirror::ObjectArray<mirror::Object>* boot_image_live_objects_;
 
   // Which mode the image is stored as, see image.h
   const ImageHeader::StorageMode image_storage_mode_;

@@ -1400,6 +1400,7 @@ CodeGeneratorARM64::CodeGeneratorARM64(HGraph* graph,
       type_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       boot_image_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       string_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      boot_image_intrinsic_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       baker_read_barrier_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       jit_string_patches_(StringReferenceValueComparator(),
                           graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
@@ -4678,6 +4679,13 @@ void InstructionCodeGeneratorARM64::VisitInvokeCustom(HInvokeCustom* invoke) {
   codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
 }
 
+vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageIntrinsicPatch(
+    uint32_t intrinsic_data,
+    vixl::aarch64::Label* adrp_label) {
+  return NewPcRelativePatch(
+      /* dex_file */ nullptr, intrinsic_data, adrp_label, &boot_image_intrinsic_patches_);
+}
+
 vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageRelRoPatch(
     uint32_t boot_image_offset,
     vixl::aarch64::Label* adrp_label) {
@@ -4796,22 +4804,52 @@ void CodeGeneratorARM64::EmitLdrOffsetPlaceholder(vixl::aarch64::Label* fixup_la
 }
 
 void CodeGeneratorARM64::LoadBootImageAddress(vixl::aarch64::Register reg,
-                                              uint32_t boot_image_offset) {
-  DCHECK(!GetCompilerOptions().IsBootImage());
-  if (GetCompilerOptions().GetCompilePic()) {
+                                              uint32_t boot_image_reference) {
+  if (GetCompilerOptions().IsBootImage()) {
+    // Add ADRP with its PC-relative type patch.
+    vixl::aarch64::Label* adrp_label = NewBootImageIntrinsicPatch(boot_image_reference);
+    EmitAdrpPlaceholder(adrp_label, reg.X());
+    // Add ADD with its PC-relative type patch.
+    vixl::aarch64::Label* add_label = NewBootImageIntrinsicPatch(boot_image_reference, adrp_label);
+    EmitAddPlaceholder(add_label, reg.X(), reg.X());
+  } else if (GetCompilerOptions().GetCompilePic()) {
     DCHECK(Runtime::Current()->IsAotCompiler());
     // Add ADRP with its PC-relative .data.bimg.rel.ro patch.
-    vixl::aarch64::Label* adrp_label = NewBootImageRelRoPatch(boot_image_offset);
+    vixl::aarch64::Label* adrp_label = NewBootImageRelRoPatch(boot_image_reference);
     EmitAdrpPlaceholder(adrp_label, reg.X());
     // Add LDR with its PC-relative .data.bimg.rel.ro patch.
-    vixl::aarch64::Label* ldr_label = NewBootImageRelRoPatch(boot_image_offset, adrp_label);
+    vixl::aarch64::Label* ldr_label = NewBootImageRelRoPatch(boot_image_reference, adrp_label);
     EmitLdrOffsetPlaceholder(ldr_label, reg.W(), reg.X());
   } else {
     gc::Heap* heap = Runtime::Current()->GetHeap();
     DCHECK(!heap->GetBootImageSpaces().empty());
-    const uint8_t* address = heap->GetBootImageSpaces()[0]->Begin() + boot_image_offset;
+    const uint8_t* address = heap->GetBootImageSpaces()[0]->Begin() + boot_image_reference;
     __ Ldr(reg.W(), DeduplicateBootImageAddressLiteral(reinterpret_cast<uintptr_t>(address)));
   }
+}
+
+void CodeGeneratorARM64::AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invoke,
+                                                      uint32_t boot_image_offset) {
+  DCHECK(invoke->IsStatic());
+  InvokeRuntimeCallingConvention calling_convention;
+  Register argument = calling_convention.GetRegisterAt(0);
+  if (GetCompilerOptions().IsBootImage()) {
+    DCHECK_EQ(boot_image_offset, IntrinsicVisitor::IntegerValueOfInfo::kInvalidReference);
+    // Load the class the same way as for HLoadClass::LoadKind::kBootImageLinkTimePcRelative.
+    MethodReference target_method = invoke->GetTargetMethod();
+    dex::TypeIndex type_idx = target_method.dex_file->GetMethodId(target_method.index).class_idx_;
+    // Add ADRP with its PC-relative type patch.
+    vixl::aarch64::Label* adrp_label = NewBootImageTypePatch(*target_method.dex_file, type_idx);
+    EmitAdrpPlaceholder(adrp_label, argument.X());
+    // Add ADD with its PC-relative type patch.
+    vixl::aarch64::Label* add_label =
+        NewBootImageTypePatch(*target_method.dex_file, type_idx, adrp_label);
+    EmitAddPlaceholder(add_label, argument.X(), argument.X());
+  } else {
+    LoadBootImageAddress(argument, boot_image_offset);
+  }
+  InvokeRuntime(kQuickAllocObjectInitialized, invoke, invoke->GetDexPc());
+  CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
 }
 
 template <linker::LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
@@ -4826,12 +4864,13 @@ inline void CodeGeneratorARM64::EmitPcRelativeLinkerPatches(
   }
 }
 
-linker::LinkerPatch DataBimgRelRoPatchAdapter(size_t literal_offset,
-                                              const DexFile* target_dex_file,
-                                              uint32_t pc_insn_offset,
-                                              uint32_t boot_image_offset) {
-  DCHECK(target_dex_file == nullptr);  // Unused for DataBimgRelRoPatch(), should be null.
-  return linker::LinkerPatch::DataBimgRelRoPatch(literal_offset, pc_insn_offset, boot_image_offset);
+template <linker::LinkerPatch (*Factory)(size_t, uint32_t, uint32_t)>
+linker::LinkerPatch NoDexFileAdapter(size_t literal_offset,
+                                     const DexFile* target_dex_file,
+                                     uint32_t pc_insn_offset,
+                                     uint32_t boot_image_offset) {
+  DCHECK(target_dex_file == nullptr);  // Unused for these patches, should be null.
+  return Factory(literal_offset, pc_insn_offset, boot_image_offset);
 }
 
 void CodeGeneratorARM64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
@@ -4843,6 +4882,7 @@ void CodeGeneratorARM64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* lin
       type_bss_entry_patches_.size() +
       boot_image_string_patches_.size() +
       string_bss_entry_patches_.size() +
+      boot_image_intrinsic_patches_.size() +
       baker_read_barrier_patches_.size();
   linker_patches->reserve(size);
   if (GetCompilerOptions().IsBootImage()) {
@@ -4852,11 +4892,14 @@ void CodeGeneratorARM64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* lin
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
         boot_image_string_patches_, linker_patches);
+    EmitPcRelativeLinkerPatches<NoDexFileAdapter<linker::LinkerPatch::IntrinsicReferencePatch>>(
+        boot_image_intrinsic_patches_, linker_patches);
   } else {
-    EmitPcRelativeLinkerPatches<DataBimgRelRoPatchAdapter>(
+    EmitPcRelativeLinkerPatches<NoDexFileAdapter<linker::LinkerPatch::DataBimgRelRoPatch>>(
         boot_image_method_patches_, linker_patches);
     DCHECK(boot_image_type_patches_.empty());
     DCHECK(boot_image_string_patches_.empty());
+    DCHECK(boot_image_intrinsic_patches_.empty());
   }
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::MethodBssEntryPatch>(
       method_bss_entry_patches_, linker_patches);

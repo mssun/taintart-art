@@ -588,6 +588,8 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
     DISALLOW_COPY_AND_ASSIGN(PcRelativePatchInfo);
   };
 
+  PcRelativePatchInfo* NewBootImageIntrinsicPatch(uint32_t intrinsic_data,
+                                                  const PcRelativePatchInfo* info_high = nullptr);
   PcRelativePatchInfo* NewBootImageRelRoPatch(uint32_t boot_image_offset,
                                               const PcRelativePatchInfo* info_high = nullptr);
   PcRelativePatchInfo* NewBootImageMethodPatch(MethodReference target_method,
@@ -612,7 +614,8 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
                                             GpuRegister out,
                                             PcRelativePatchInfo* info_low = nullptr);
 
-  void LoadBootImageAddress(GpuRegister reg, uint32_t boot_image_offset);
+  void LoadBootImageAddress(GpuRegister reg, uint32_t boot_image_reference);
+  void AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invoke, uint32_t boot_image_offset);
 
   void PatchJitRootUse(uint8_t* code,
                        const uint8_t* roots_data,
@@ -673,6 +676,8 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
   ArenaDeque<PcRelativePatchInfo> boot_image_string_patches_;
   // PC-relative type patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> string_bss_entry_patches_;
+  // PC-relative patch info for IntrinsicObjects.
+  ArenaDeque<PcRelativePatchInfo> boot_image_intrinsic_patches_;
 
   // Patches for string root accesses in JIT compiled code.
   StringToLiteralMap jit_string_patches_;

@@ -17,6 +17,8 @@
 #ifndef ART_COMPILER_OPTIMIZING_INTRINSIC_OBJECTS_H_
 #define ART_COMPILER_OPTIMIZING_INTRINSIC_OBJECTS_H_
 
+#include "base/bit_field.h"
+#include "base/bit_utils.h"
 #include "base/mutex.h"
 
 namespace art {
@@ -33,6 +35,26 @@ template <class T> class ObjectArray;
 
 class IntrinsicObjects {
  public:
+  enum class PatchType {
+    kIntegerValueOfObject,
+    kIntegerValueOfArray,
+
+    kLast = kIntegerValueOfArray
+  };
+
+  static uint32_t EncodePatch(PatchType patch_type, uint32_t index = 0u) {
+    DCHECK(patch_type == PatchType::kIntegerValueOfObject || index == 0u);
+    return PatchTypeField::Encode(static_cast<uint32_t>(patch_type)) | IndexField::Encode(index);
+  }
+
+  static PatchType DecodePatchType(uint32_t intrinsic_data) {
+    return static_cast<PatchType>(PatchTypeField::Decode(intrinsic_data));
+  }
+
+  static uint32_t DecodePatchIndex(uint32_t intrinsic_data) {
+    return IndexField::Decode(intrinsic_data);
+  }
+
   static ObjPtr<mirror::ObjectArray<mirror::Object>> AllocateBootImageLiveObjects(
       Thread* self,
       ClassLinker* class_linker) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -47,6 +69,13 @@ class IntrinsicObjects {
   static MemberOffset GetIntegerValueOfArrayDataOffset(
       ObjPtr<mirror::ObjectArray<mirror::Object>> boot_image_live_objects)
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+ private:
+  static constexpr size_t kPatchTypeBits =
+      MinimumBitsToStore(static_cast<uint32_t>(PatchType::kLast));
+  static constexpr size_t kIndexBits = BitSizeOf<uint32_t>() - kPatchTypeBits;
+  using PatchTypeField = BitField<uint32_t, 0u, kPatchTypeBits>;
+  using IndexField = BitField<uint32_t, kPatchTypeBits, kIndexBits>;
 };
 
 }  // namespace art
