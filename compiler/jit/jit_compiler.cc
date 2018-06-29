@@ -155,7 +155,6 @@ JitCompiler::JitCompiler() {
       /* profile_compilation_info */ nullptr));
   // Disable dedupe so we can remove compiled methods.
   compiler_driver_->SetDedupeEnabled(false);
-  compiler_driver_->SetSupportBootImageFixup(false);
 
   size_t thread_count = compiler_driver_->GetThreadCount();
   if (compiler_options_->GetGenerateDebugInfo()) {

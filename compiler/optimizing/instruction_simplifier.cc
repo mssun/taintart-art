@@ -36,11 +36,9 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
  public:
   InstructionSimplifierVisitor(HGraph* graph,
                                CodeGenerator* codegen,
-                               CompilerDriver* compiler_driver,
                                OptimizingCompilerStats* stats)
       : HGraphDelegateVisitor(graph),
         codegen_(codegen),
-        compiler_driver_(compiler_driver),
         stats_(stats) {}
 
   bool Run();
@@ -127,7 +125,6 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
   void SimplifyAbs(HInvoke* invoke, DataType::Type type);
 
   CodeGenerator* codegen_;
-  CompilerDriver* compiler_driver_;
   OptimizingCompilerStats* stats_;
   bool simplification_occurred_ = false;
   int simplifications_at_current_position_ = 0;
@@ -144,7 +141,7 @@ bool InstructionSimplifier::Run() {
     visitor.VisitReversePostOrder();
   }
 
-  InstructionSimplifierVisitor visitor(graph_, codegen_, compiler_driver_, stats_);
+  InstructionSimplifierVisitor visitor(graph_, codegen_, stats_);
   return visitor.Run();
 }
 
@@ -2309,7 +2306,7 @@ void InstructionSimplifierVisitor::SimplifySystemArrayCopy(HInvoke* instruction)
       // the invoke, as we would need to look it up in the current dex file, and it
       // is unlikely that it exists. The most usual situation for such typed
       // arraycopy methods is a direct pointer to the boot image.
-      HSharpening::SharpenInvokeStaticOrDirect(invoke, codegen_, compiler_driver_);
+      HSharpening::SharpenInvokeStaticOrDirect(invoke, codegen_);
     }
   }
 }

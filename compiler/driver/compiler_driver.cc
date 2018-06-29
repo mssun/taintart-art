@@ -277,7 +277,6 @@ CompilerDriver::CompilerDriver(
       parallel_thread_count_(thread_count),
       stats_(new AOTCompilationStats),
       compiler_context_(nullptr),
-      support_boot_image_fixup_(true),
       compiled_method_storage_(swap_fd),
       profile_compilation_info_(profile_compilation_info),
       max_arena_alloc_(0),
