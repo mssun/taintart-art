@@ -23,7 +23,6 @@
 namespace art {
 
 class CodeGenerator;
-class CompilerDriver;
 class DexCompilationUnit;
 
 // Optimization that tries to improve the way we dispatch methods and access types,
@@ -34,25 +33,20 @@ class HSharpening : public HOptimization {
  public:
   HSharpening(HGraph* graph,
               CodeGenerator* codegen,
-              CompilerDriver* compiler_driver,
               const char* name = kSharpeningPassName)
       : HOptimization(graph, name),
-        codegen_(codegen),
-        compiler_driver_(compiler_driver) { }
+        codegen_(codegen) { }
 
   bool Run() OVERRIDE;
 
   static constexpr const char* kSharpeningPassName = "sharpening";
 
   // Used by Sharpening and InstructionSimplifier.
-  static void SharpenInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke,
-                                          CodeGenerator* codegen,
-                                          CompilerDriver* compiler_driver);
+  static void SharpenInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke, CodeGenerator* codegen);
 
   // Used by the builder and the inliner.
   static HLoadClass::LoadKind ComputeLoadClassKind(HLoadClass* load_class,
                                                    CodeGenerator* codegen,
-                                                   CompilerDriver* compiler_driver,
                                                    const DexCompilationUnit& dex_compilation_unit)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -65,13 +59,11 @@ class HSharpening : public HOptimization {
   // Used by the builder.
   static void ProcessLoadString(HLoadString* load_string,
                                 CodeGenerator* codegen,
-                                CompilerDriver* compiler_driver,
                                 const DexCompilationUnit& dex_compilation_unit,
                                 VariableSizedHandleScope* handles);
 
  private:
   CodeGenerator* codegen_;
-  CompilerDriver* compiler_driver_;
 };
 
 }  // namespace art

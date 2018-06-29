@@ -265,13 +265,13 @@ ArenaVector<HOptimization*> ConstructOptimizations(
         break;
       }
       case OptimizationPass::kSharpening:
-        opt = new (allocator) HSharpening(graph, codegen, driver, pass_name);
+        opt = new (allocator) HSharpening(graph, codegen, pass_name);
         break;
       case OptimizationPass::kSelectGenerator:
         opt = new (allocator) HSelectGenerator(graph, handles, stats, pass_name);
         break;
       case OptimizationPass::kInstructionSimplifier:
-        opt = new (allocator) InstructionSimplifier(graph, codegen, driver, stats, pass_name);
+        opt = new (allocator) InstructionSimplifier(graph, codegen, stats, pass_name);
         break;
       case OptimizationPass::kIntrinsicsRecognizer:
         opt = new (allocator) IntrinsicsRecognizer(graph, stats, pass_name);
