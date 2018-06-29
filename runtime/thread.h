@@ -817,13 +817,17 @@ class Thread {
   }
 
   uint8_t* GetStackEndForInterpreter(bool implicit_overflow_check) const {
-    if (implicit_overflow_check) {
-      // The interpreter needs the extra overflow bytes that stack_end does
-      // not include.
-      return tlsPtr_.stack_end + GetStackOverflowReservedBytes(kRuntimeISA);
-    } else {
-      return tlsPtr_.stack_end;
+    uint8_t* end = tlsPtr_.stack_end + (implicit_overflow_check
+                                            ? GetStackOverflowReservedBytes(kRuntimeISA)
+                                            : 0);
+    if (kIsDebugBuild) {
+      // In a debuggable build, but especially under ASAN, the access-checks interpreter has a
+      // potentially humongous stack size. We don't want to take too much of the stack regularly,
+      // so do not increase the regular reserved size (for compiled code etc) and only report the
+      // virtually smaller stack to the interpreter here.
+      end += GetStackOverflowReservedBytes(kRuntimeISA);
     }
+    return end;
   }
 
   uint8_t* GetStackEnd() const {
