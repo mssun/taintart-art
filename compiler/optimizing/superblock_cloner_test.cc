@@ -30,38 +30,8 @@ using HEdgeSet = SuperblockCloner::HEdgeSet;
 
 // This class provides methods and helpers for testing various cloning and copying routines:
 // individual instruction cloning and cloning of the more coarse-grain structures.
-class SuperblockClonerTest : public OptimizingUnitTest {
+class SuperblockClonerTest : public ImprovedOptimizingUnitTest {
  public:
-  SuperblockClonerTest() : graph_(CreateGraph()),
-                           entry_block_(nullptr),
-                           return_block_(nullptr),
-                           exit_block_(nullptr),
-                           parameter_(nullptr) {}
-
-  void InitGraph() {
-    entry_block_ = new (GetAllocator()) HBasicBlock(graph_);
-    graph_->AddBlock(entry_block_);
-    graph_->SetEntryBlock(entry_block_);
-
-    return_block_ = new (GetAllocator()) HBasicBlock(graph_);
-    graph_->AddBlock(return_block_);
-
-    exit_block_ = new (GetAllocator()) HBasicBlock(graph_);
-    graph_->AddBlock(exit_block_);
-    graph_->SetExitBlock(exit_block_);
-
-    entry_block_->AddSuccessor(return_block_);
-    return_block_->AddSuccessor(exit_block_);
-
-    parameter_ = new (GetAllocator()) HParameterValue(graph_->GetDexFile(),
-                                                      dex::TypeIndex(0),
-                                                      0,
-                                                      DataType::Type::kInt32);
-    entry_block_->AddInstruction(parameter_);
-    return_block_->AddInstruction(new (GetAllocator()) HReturnVoid());
-    exit_block_->AddInstruction(new (GetAllocator()) HExit());
-  }
-
   void CreateBasicLoopControlFlow(HBasicBlock* position,
                                   HBasicBlock* successor,
                                   /* out */ HBasicBlock** header_p,
@@ -137,40 +107,6 @@ class SuperblockClonerTest : public OptimizingUnitTest {
     null_check->CopyEnvironmentFrom(env);
     bounds_check->CopyEnvironmentFrom(env);
   }
-
-  HEnvironment* ManuallyBuildEnvFor(HInstruction* instruction,
-                                    ArenaVector<HInstruction*>* current_locals) {
-    HEnvironment* environment = new (GetAllocator()) HEnvironment(
-        (GetAllocator()),
-        current_locals->size(),
-        graph_->GetArtMethod(),
-        instruction->GetDexPc(),
-        instruction);
-
-    environment->CopyFrom(ArrayRef<HInstruction* const>(*current_locals));
-    instruction->SetRawEnvironment(environment);
-    return environment;
-  }
-
-  bool CheckGraph() {
-    GraphChecker checker(graph_);
-    checker.Run();
-    if (!checker.IsValid()) {
-      for (const std::string& error : checker.GetErrors()) {
-        std::cout << error << std::endl;
-      }
-      return false;
-    }
-    return true;
-  }
-
-  HGraph* graph_;
-
-  HBasicBlock* entry_block_;
-  HBasicBlock* return_block_;
-  HBasicBlock* exit_block_;
-
-  HInstruction* parameter_;
 };
 
 TEST_F(SuperblockClonerTest, IndividualInstrCloner) {
