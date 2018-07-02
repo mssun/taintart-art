@@ -45,7 +45,9 @@ static bool IsSimpleBlock(HBasicBlock* block) {
     HInstruction* instruction = it.Current();
     if (instruction->IsControlFlow()) {
       return instruction->IsGoto() || instruction->IsReturn();
-    } else if (instruction->CanBeMoved() && !instruction->HasSideEffects()) {
+    } else if (instruction->CanBeMoved() &&
+               !instruction->HasSideEffects() &&
+               !instruction->CanThrow()) {
       if (instruction->IsSelect() &&
           instruction->AsSelect()->GetCondition()->GetBlock() == block) {
         // Count one HCondition and HSelect in the same block as a single instruction.
@@ -119,10 +121,14 @@ bool HSelectGenerator::Run() {
     // TODO(dbrazdil): This puts an instruction between If and its condition.
     //                 Implement moving of conditions to first users if possible.
     while (!true_block->IsSingleGoto() && !true_block->IsSingleReturn()) {
-      true_block->GetFirstInstruction()->MoveBefore(if_instruction);
+      HInstruction* instr = true_block->GetFirstInstruction();
+      DCHECK(!instr->CanThrow());
+      instr->MoveBefore(if_instruction);
     }
     while (!false_block->IsSingleGoto() && !false_block->IsSingleReturn()) {
-      false_block->GetFirstInstruction()->MoveBefore(if_instruction);
+      HInstruction* instr = false_block->GetFirstInstruction();
+      DCHECK(!instr->CanThrow());
+      instr->MoveBefore(if_instruction);
     }
     DCHECK(true_block->IsSingleGoto() || true_block->IsSingleReturn());
     DCHECK(false_block->IsSingleGoto() || false_block->IsSingleReturn());

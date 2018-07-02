@@ -29,6 +29,7 @@
 #include "dex/dex_instruction.h"
 #include "dex/standard_dex_file.h"
 #include "driver/dex_compilation_unit.h"
+#include "graph_checker.h"
 #include "handle_scope-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache.h"
@@ -184,6 +185,77 @@ class OptimizingUnitTestHelper {
 };
 
 class OptimizingUnitTest : public CommonCompilerTest, public OptimizingUnitTestHelper {};
+
+// OptimizingUnitTest with some handy functions to ease the graph creation.
+class ImprovedOptimizingUnitTest : public OptimizingUnitTest {
+ public:
+  ImprovedOptimizingUnitTest() : graph_(CreateGraph()),
+                                 entry_block_(nullptr),
+                                 return_block_(nullptr),
+                                 exit_block_(nullptr),
+                                 parameter_(nullptr) {}
+
+  virtual ~ImprovedOptimizingUnitTest() {}
+
+  void InitGraph() {
+    entry_block_ = new (GetAllocator()) HBasicBlock(graph_);
+    graph_->AddBlock(entry_block_);
+    graph_->SetEntryBlock(entry_block_);
+
+    return_block_ = new (GetAllocator()) HBasicBlock(graph_);
+    graph_->AddBlock(return_block_);
+
+    exit_block_ = new (GetAllocator()) HBasicBlock(graph_);
+    graph_->AddBlock(exit_block_);
+    graph_->SetExitBlock(exit_block_);
+
+    entry_block_->AddSuccessor(return_block_);
+    return_block_->AddSuccessor(exit_block_);
+
+    parameter_ = new (GetAllocator()) HParameterValue(graph_->GetDexFile(),
+                                                      dex::TypeIndex(0),
+                                                      0,
+                                                      DataType::Type::kInt32);
+    entry_block_->AddInstruction(parameter_);
+    return_block_->AddInstruction(new (GetAllocator()) HReturnVoid());
+    exit_block_->AddInstruction(new (GetAllocator()) HExit());
+  }
+
+  bool CheckGraph() {
+    GraphChecker checker(graph_);
+    checker.Run();
+    if (!checker.IsValid()) {
+      for (const std::string& error : checker.GetErrors()) {
+        std::cout << error << std::endl;
+      }
+      return false;
+    }
+    return true;
+  }
+
+  HEnvironment* ManuallyBuildEnvFor(HInstruction* instruction,
+                                    ArenaVector<HInstruction*>* current_locals) {
+    HEnvironment* environment = new (GetAllocator()) HEnvironment(
+        (GetAllocator()),
+        current_locals->size(),
+        graph_->GetArtMethod(),
+        instruction->GetDexPc(),
+        instruction);
+
+    environment->CopyFrom(ArrayRef<HInstruction* const>(*current_locals));
+    instruction->SetRawEnvironment(environment);
+    return environment;
+  }
+
+ protected:
+  HGraph* graph_;
+
+  HBasicBlock* entry_block_;
+  HBasicBlock* return_block_;
+  HBasicBlock* exit_block_;
+
+  HInstruction* parameter_;
+};
 
 // Naive string diff data type.
 typedef std::list<std::pair<std::string, std::string>> diff_t;
