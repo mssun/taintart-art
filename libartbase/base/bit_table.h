@@ -26,6 +26,7 @@
 
 #include "base/bit_memory_region.h"
 #include "base/casts.h"
+#include "base/iteration_range.h"
 #include "base/memory_region.h"
 #include "base/scoped_arena_containers.h"
 #include "base/stl_util.h"
@@ -207,9 +208,18 @@ class BitTable : public BitTableBase<Accessor::kNumColumns> {
     bool operator>=(const_iterator i) const { DCHECK(table_ == i.table_); return row_ >= i.row_; }
     bool operator<(const_iterator i) const { DCHECK(table_ == i.table_); return row_ < i.row_; }
     bool operator>(const_iterator i) const { DCHECK(table_ == i.table_); return row_ > i.row_; }
-    Accessor operator*() { return Accessor(table_, row_); }
-    Accessor operator->() { return Accessor(table_, row_); }
-    Accessor operator[](size_t index) { return Accessor(table_, row_ + index); }
+    Accessor operator*() {
+      DCHECK_LT(row_, table_->NumRows());
+      return Accessor(table_, row_);
+    }
+    Accessor operator->() {
+      DCHECK_LT(row_, table_->NumRows());
+      return Accessor(table_, row_);
+    }
+    Accessor operator[](size_t index) {
+      DCHECK_LT(row_ + index, table_->NumRows());
+      return Accessor(table_, row_ + index);
+    }
    private:
     const BitTable* table_ = nullptr;
     uint32_t row_ = 0;
@@ -235,6 +245,34 @@ typename BitTable<Accessor>::const_iterator operator+(
     typename BitTable<Accessor>::const_iterator a) {
   return a + n;
 }
+
+template<typename Accessor>
+class BitTableRange : public IterationRange<typename BitTable<Accessor>::const_iterator> {
+ public:
+  typedef typename BitTable<Accessor>::const_iterator const_iterator;
+
+  using IterationRange<const_iterator>::IterationRange;
+  BitTableRange() : IterationRange<const_iterator>(const_iterator(), const_iterator()) { }
+
+  bool empty() const { return this->begin() == this->end(); }
+  size_t size() const { return this->end() - this->begin(); }
+
+  Accessor operator[](size_t index) const {
+    const_iterator it = this->begin() + index;
+    DCHECK(it < this->end());
+    return *it;
+  }
+
+  Accessor back() const {
+    DCHECK(!empty());
+    return *(this->end() - 1);
+  }
+
+  void pop_back() {
+    DCHECK(!empty());
+    --this->last_;
+  }
+};
 
 // Helper class for encoding BitTable. It can optionally de-duplicate the inputs.
 template<uint32_t kNumColumns>

@@ -101,9 +101,7 @@ class ElfDebugLineWriter {
         // Use stack maps to create mapping table from pc to dex.
         const CodeInfo code_info(mi->code_info);
         pc2dex_map.reserve(code_info.GetNumberOfStackMaps());
-        for (uint32_t s = 0; s < code_info.GetNumberOfStackMaps(); s++) {
-          StackMap stack_map = code_info.GetStackMapAt(s);
-          DCHECK(stack_map.IsValid());
+        for (StackMap stack_map : code_info.GetStackMaps()) {
           const uint32_t pc = stack_map.GetNativePcOffset(isa);
           const int32_t dex = stack_map.GetDexPc();
           pc2dex_map.push_back({pc, dex});

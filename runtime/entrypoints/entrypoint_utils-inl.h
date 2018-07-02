@@ -46,38 +46,38 @@ namespace art {
 
 inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
                                     const MethodInfo& method_info,
-                                    const CodeInfo& code_info,
-                                    const StackMap& stack_map,
-                                    uint8_t inlining_depth)
+                                    const BitTableRange<InlineInfo>& inline_infos)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(!outer_method->IsObsolete());
-  InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, inlining_depth);
 
   // This method is being used by artQuickResolutionTrampoline, before it sets up
   // the passed parameters in a GC friendly way. Therefore we must never be
   // suspended while executing it.
   ScopedAssertNoThreadSuspension sants(__FUNCTION__);
 
-  if (inline_info.EncodesArtMethod()) {
-    return inline_info.GetArtMethod();
-  }
+  {
+    InlineInfo inline_info = inline_infos.back();
 
-  uint32_t method_index = inline_info.GetMethodIndex(method_info);
-  if (inline_info.GetDexPc() == static_cast<uint32_t>(-1)) {
-    // "charAt" special case. It is the only non-leaf method we inline across dex files.
-    ArtMethod* inlined_method = jni::DecodeArtMethod(WellKnownClasses::java_lang_String_charAt);
-    DCHECK_EQ(inlined_method->GetDexMethodIndex(), method_index);
-    return inlined_method;
+    if (inline_info.EncodesArtMethod()) {
+      return inline_info.GetArtMethod();
+    }
+
+    uint32_t method_index = inline_info.GetMethodIndex(method_info);
+    if (inline_info.GetDexPc() == static_cast<uint32_t>(-1)) {
+      // "charAt" special case. It is the only non-leaf method we inline across dex files.
+      ArtMethod* inlined_method = jni::DecodeArtMethod(WellKnownClasses::java_lang_String_charAt);
+      DCHECK_EQ(inlined_method->GetDexMethodIndex(), method_index);
+      return inlined_method;
+    }
   }
 
   // Find which method did the call in the inlining hierarchy.
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   ArtMethod* method = outer_method;
-  for (uint32_t depth = 0, end = inlining_depth + 1u; depth != end; ++depth) {
-    inline_info = code_info.GetInlineInfoAtDepth(stack_map, depth);
+  for (InlineInfo inline_info : inline_infos) {
     DCHECK(!inline_info.EncodesArtMethod());
     DCHECK_NE(inline_info.GetDexPc(), static_cast<uint32_t>(-1));
-    method_index = inline_info.GetMethodIndex(method_info);
+    uint32_t method_index = inline_info.GetMethodIndex(method_info);
     ArtMethod* inlined_method = class_linker->LookupResolvedMethod(method_index,
                                                                    method->GetDexCache(),
                                                                    method->GetClassLoader());
