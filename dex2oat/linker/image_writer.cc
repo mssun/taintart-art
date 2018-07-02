@@ -2217,12 +2217,7 @@ void ImageWriter::CopyAndFixupObjects() {
     CopyAndFixupObject(obj);
   };
   Runtime::Current()->GetHeap()->VisitObjects(visitor);
-  // Fix up the object previously had hash codes.
-  for (const auto& hash_pair : saved_hashcode_map_) {
-    Object* obj = hash_pair.first;
-    DCHECK_EQ(obj->GetLockWord<kVerifyNone>(false).ReadBarrierState(), 0U);
-    obj->SetLockWord<kVerifyNone>(LockWord::FromHashCode(hash_pair.second, 0U), false);
-  }
+  // We no longer need the hashcode map, values have already been copied to target objects.
   saved_hashcode_map_.clear();
 }
 
