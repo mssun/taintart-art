@@ -35,6 +35,7 @@ static constexpr const char* x86_known_variants[] = {
     "atom",
     "sandybridge",
     "silvermont",
+    "kabylake"
 };
 
 static constexpr const char* x86_variants_with_ssse3[] = {
@@ -46,16 +47,27 @@ static constexpr const char* x86_variants_with_ssse3[] = {
 static constexpr const char* x86_variants_with_sse4_1[] = {
     "sandybridge",
     "silvermont",
+    "kabylake"
 };
 
 static constexpr const char* x86_variants_with_sse4_2[] = {
     "sandybridge",
     "silvermont",
+    "kabylake"
 };
 
 static constexpr const char* x86_variants_with_popcnt[] = {
     "sandybridge",
     "silvermont",
+    "kabylake"
+};
+
+static constexpr const char* x86_variants_with_avx[] = {
+    "kabylake",
+};
+
+static constexpr const char* x86_variants_with_avx2[] = {
+    "kabylake",
 };
 
 X86FeaturesUniquePtr X86InstructionSetFeatures::Create(bool x86_64,
@@ -93,9 +105,12 @@ X86FeaturesUniquePtr X86InstructionSetFeatures::FromVariant(
   bool has_SSE4_2 = FindVariantInArray(x86_variants_with_sse4_2,
                                        arraysize(x86_variants_with_sse4_2),
                                        variant);
-  bool has_AVX = false;
-  bool has_AVX2 = false;
-
+  bool has_AVX = FindVariantInArray(x86_variants_with_avx,
+                                    arraysize(x86_variants_with_avx),
+                                    variant);
+  bool has_AVX2 = FindVariantInArray(x86_variants_with_avx2,
+                                    arraysize(x86_variants_with_avx2),
+                                    variant);
   bool has_POPCNT = FindVariantInArray(x86_variants_with_popcnt,
                                        arraysize(x86_variants_with_popcnt),
                                        variant);

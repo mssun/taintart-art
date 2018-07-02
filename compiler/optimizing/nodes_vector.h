@@ -958,6 +958,10 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
     SetRawInputAt(2, mul_right);
   }
 
+  static constexpr int kInputAccumulatorIndex = 0;
+  static constexpr int kInputMulLeftIndex = 1;
+  static constexpr int kInputMulRightIndex = 2;
+
   bool CanBeMoved() const OVERRIDE { return true; }
 
   bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
