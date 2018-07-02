@@ -18,6 +18,7 @@ package com.android.ahat;
 
 import com.android.ahat.heapdump.AhatInstance;
 import com.android.ahat.heapdump.AhatSnapshot;
+import com.android.ahat.heapdump.Reachability;
 import com.android.ahat.heapdump.Site;
 import java.io.IOException;
 import org.junit.Test;
@@ -81,5 +82,54 @@ public class SiteTest {
     assertEquals("allocateObjectAtOverriddenSite", sOverriddenSite.getMethodName());
     assertEquals(41, sOverriddenSite.getLineNumber());
     assertSame(sOverriddenSite, snapshot.getSite(sOverriddenSite.getId()));
+  }
+
+  @Test
+  public void objectsInfos() throws IOException {
+    // Verify that objectsInfos only include counts for --retained instances.
+    // We do this by counting the number of 'Reference' instances allocated at
+    // the Site where reachabilityReferenceChain is allocated in DumpedStuff:
+    //
+    // reachabilityReferenceChain = new Reference(
+    //     new SoftReference(
+    //     new Reference(
+    //     new WeakReference(
+    //     new SoftReference(
+    //     new PhantomReference(new Object(), referenceQueue))))));
+    //
+    // The first instance of 'Reference' is strongly reachable, the second is
+    // softly reachable. So if --retained is 'strong', we should see just the
+    // one reference, but if --retained is 'soft', we should see both of them.
+
+    TestDump dumpStrong = TestDump.getTestDump("test-dump.hprof",
+                                               "test-dump-base.hprof",
+                                               "test-dump.map",
+                                               Reachability.STRONG);
+
+    AhatInstance refStrong = dumpStrong.getDumpedAhatInstance("reachabilityReferenceChain");
+    Site siteStrong = refStrong.getSite();
+    long numReferenceStrong = 0;
+    for (Site.ObjectsInfo info : siteStrong.getObjectsInfos()) {
+      if (info.heap == refStrong.getHeap() && info.classObj == refStrong.getClassObj()) {
+        numReferenceStrong = info.numInstances;
+        break;
+      }
+    }
+    assertEquals(1, numReferenceStrong);
+
+    TestDump dumpSoft = TestDump.getTestDump("test-dump.hprof",
+                                             "test-dump-base.hprof",
+                                             "test-dump.map",
+                                             Reachability.SOFT);
+    AhatInstance refSoft = dumpSoft.getDumpedAhatInstance("reachabilityReferenceChain");
+    Site siteSoft = refSoft.getSite();
+    long numReferenceSoft = 0;
+    for (Site.ObjectsInfo info : siteSoft.getObjectsInfos()) {
+      if (info.heap == refSoft.getHeap() && info.classObj == refSoft.getClassObj()) {
+        numReferenceSoft = info.numInstances;
+        break;
+      }
+    }
+    assertEquals(2, numReferenceSoft);
   }
 }

@@ -679,7 +679,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance> {
           ref.ref.mReverseReferences = new ArrayList<AhatInstance>();
 
           for (Reference childRef : ref.ref.getReferences()) {
-            if (childRef.reachability.ordinal() <= reachability.ordinal()) {
+            if (childRef.reachability.notWeakerThan(reachability)) {
               queue.add(childRef);
             } else {
               queues.get(childRef.reachability).add(childRef);
@@ -737,8 +737,8 @@ public abstract class AhatInstance implements Diffable<AhatInstance> {
     }
   }
 
-  Iterable<AhatInstance> getReferencesForDominators() {
-    return new DominatorReferenceIterator(getReferences());
+  Iterable<AhatInstance> getReferencesForDominators(Reachability retained) {
+    return new DominatorReferenceIterator(retained, getReferences());
   }
 
   void setDominator(AhatInstance dominator) {

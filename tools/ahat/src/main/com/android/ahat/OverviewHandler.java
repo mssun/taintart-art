@@ -18,6 +18,7 @@ package com.android.ahat;
 
 import com.android.ahat.heapdump.AhatHeap;
 import com.android.ahat.heapdump.AhatSnapshot;
+import com.android.ahat.heapdump.Reachability;
 import com.android.ahat.heapdump.Size;
 import java.io.File;
 import java.io.IOException;
@@ -27,11 +28,13 @@ class OverviewHandler implements AhatHandler {
   private AhatSnapshot mSnapshot;
   private File mHprof;
   private File mBaseHprof;
+  private Reachability mRetained;
 
-  public OverviewHandler(AhatSnapshot snapshot, File hprof, File basehprof) {
+  public OverviewHandler(AhatSnapshot snapshot, File hprof, File basehprof, Reachability retained) {
     mSnapshot = snapshot;
     mHprof = hprof;
     mBaseHprof = basehprof;
+    mRetained = retained;
   }
 
   @Override
@@ -43,6 +46,9 @@ class OverviewHandler implements AhatHandler {
     doc.description(
         DocString.text("ahat version"),
         DocString.format("ahat-%s", OverviewHandler.class.getPackage().getImplementationVersion()));
+    doc.description(
+        DocString.text("--retained"),
+        DocString.text(mRetained.toString()));
     doc.description(DocString.text("hprof file"), DocString.text(mHprof.toString()));
     if (mBaseHprof != null) {
       doc.description(DocString.text("baseline hprof file"), DocString.text(mBaseHprof.toString()));
