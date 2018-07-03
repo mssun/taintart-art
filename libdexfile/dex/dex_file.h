@@ -966,19 +966,19 @@ class DexFile {
   bool DisableWrite() const;
 
   const uint8_t* Begin() const {
-    return main_begin_;
+    return main_section_->Begin();
   }
 
   size_t Size() const {
-    return main_size_;
+    return main_section_->Size();
   }
 
   const uint8_t* DataBegin() const {
-    return data_begin_;
+    return data_section_->Begin();
   }
 
   size_t DataSize() const {
-    return data_size_;
+    return data_section_->Size();
   }
 
   template <typename T>
@@ -1089,14 +1089,10 @@ class DexFile {
   void InitializeSectionsFromMapList();
 
   // The container for the header and fixed portions.
-  const std::unique_ptr<DexFileContainer> main_section_;
-  const uint8_t* const main_begin_;
-  const size_t main_size_;
+  std::unique_ptr<DexFileContainer> main_section_;
 
-  // The container for the data section.
-  const std::unique_ptr<DexFileContainer> data_section_;
-  const uint8_t* const data_begin_;
-  const size_t data_size_;
+  // The container for the data section
+  std::unique_ptr<DexFileContainer> data_section_;
 
   // Typically the dex file name when available, alternatively some identifying string.
   //
