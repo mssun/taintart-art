@@ -252,7 +252,7 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
 
         if (m->IsRuntimeMethod()) {
           const InstrumentationStackFrame& frame =
-              instrumentation_stack_->at(instrumentation_stack_depth_);
+              (*instrumentation_stack_)[instrumentation_stack_depth_];
           if (frame.interpreter_entry_) {
             // This instrumentation frame is for an interpreter bridge and is
             // pushed when executing the instrumented interpreter bridge. So method
@@ -271,7 +271,7 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
         reached_existing_instrumentation_frames_ = true;
 
         const InstrumentationStackFrame& frame =
-            instrumentation_stack_->at(instrumentation_stack_depth_);
+            (*instrumentation_stack_)[instrumentation_stack_depth_];
         CHECK_EQ(m, frame.method_) << "Expected " << ArtMethod::PrettyMethod(m)
                                    << ", Found " << ArtMethod::PrettyMethod(frame.method_);
         return_pc = frame.return_pc_;

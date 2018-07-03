@@ -90,7 +90,9 @@ class PageCount {
     map_[type]++;
   }
   size_t Get(uint16_t type) const {
-    return map_.at(type);
+    auto it = map_.find(type);
+    DCHECK(it != map_.end());
+    return it->second;
   }
  private:
   std::map<uint16_t, size_t> map_;

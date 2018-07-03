@@ -686,7 +686,7 @@ bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* e
           return false;
         }
       }
-      dex_file_pointer = uncompressed_dex_files_.get()->at(i)->Begin();
+      dex_file_pointer = (*uncompressed_dex_files_)[i]->Begin();
     } else {
       // Do not support mixed-mode oat files.
       if (uncompressed_dex_files_ != nullptr) {

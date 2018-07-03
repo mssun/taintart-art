@@ -120,11 +120,10 @@ void ArmVIXLJNIMacroAssembler::BuildFrame(size_t frame_size,
 
   // Write out entry spills.
   int32_t offset = frame_size + kFramePointerSize;
-  for (size_t i = 0; i < entry_spills.size(); ++i) {
-    ArmManagedRegister reg = entry_spills.at(i).AsArm();
+  for (const ManagedRegisterSpill& spill : entry_spills) {
+    ArmManagedRegister reg = spill.AsArm();
     if (reg.IsNoRegister()) {
       // only increment stack offset.
-      ManagedRegisterSpill spill = entry_spills.at(i);
       offset += spill.getSize();
     } else if (reg.IsCoreRegister()) {
       asm_.StoreToOffset(kStoreWord, AsVIXLRegister(reg), sp, offset);

@@ -305,7 +305,7 @@ static uint32_t FindNextByteAfterSection(dex_ir::Header* header,
                                          const std::vector<dex_ir::DexFileSection>& sorted_sections,
                                          size_t section_index) {
   for (size_t i = section_index + 1; i < sorted_sections.size(); ++i) {
-    const dex_ir::DexFileSection& section = sorted_sections.at(i);
+    const dex_ir::DexFileSection& section = sorted_sections[i];
     if (section.size != 0) {
       return section.offset;
     }

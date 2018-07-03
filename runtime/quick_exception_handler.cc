@@ -472,7 +472,7 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
   }
 
   static VRegKind GetVRegKind(uint16_t reg, const std::vector<int32_t>& kinds) {
-    return static_cast<VRegKind>(kinds.at(reg * 2));
+    return static_cast<VRegKind>(kinds[reg * 2]);
   }
 
   QuickExceptionHandler* const exception_handler_;
