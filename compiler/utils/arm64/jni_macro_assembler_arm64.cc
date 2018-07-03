@@ -719,11 +719,10 @@ void Arm64JNIMacroAssembler::BuildFrame(size_t frame_size,
 
   // Write out entry spills
   int32_t offset = frame_size + static_cast<size_t>(kArm64PointerSize);
-  for (size_t i = 0; i < entry_spills.size(); ++i) {
-    Arm64ManagedRegister reg = entry_spills.at(i).AsArm64();
+  for (const ManagedRegisterSpill& spill : entry_spills) {
+    Arm64ManagedRegister reg = spill.AsArm64();
     if (reg.IsNoRegister()) {
       // only increment stack offset.
-      ManagedRegisterSpill spill = entry_spills.at(i);
       offset += spill.getSize();
     } else if (reg.IsXRegister()) {
       StoreToOffset(reg.AsXRegister(), SP, offset);

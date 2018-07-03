@@ -67,8 +67,7 @@ void X86JNIMacroAssembler::BuildFrame(size_t frame_size,
   cfi().AdjustCFAOffset(kFramePointerSize);
   DCHECK_EQ(static_cast<size_t>(cfi().GetCurrentCFAOffset()), frame_size);
 
-  for (size_t i = 0; i < entry_spills.size(); ++i) {
-    ManagedRegisterSpill spill = entry_spills.at(i);
+  for (const ManagedRegisterSpill& spill : entry_spills) {
     if (spill.AsX86().IsCpuRegister()) {
       int offset = frame_size + spill.getSpillOffset();
       __ movl(Address(ESP, offset), spill.AsX86().AsCpuRegister());

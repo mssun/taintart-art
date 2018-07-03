@@ -101,11 +101,11 @@ class ManagedRegisterSpill : public ManagedRegister {
   ManagedRegisterSpill(const ManagedRegister& other, int32_t size)
       : ManagedRegister(other), size_(size), spill_offset_(-1) { }
 
-  int32_t getSpillOffset() {
+  int32_t getSpillOffset() const {
     return spill_offset_;
   }
 
-  int32_t getSize() {
+  int32_t getSize() const {
     return size_;
   }
 

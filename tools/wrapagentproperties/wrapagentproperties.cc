@@ -139,9 +139,10 @@ struct ExtraJvmtiInterface : public jvmtiInterface_1_ {
   static jvmtiError WrapGetSystemProperty(jvmtiEnv* env, const char* prop, char** out) {
     ExtraJvmtiInterface* funcs = reinterpret_cast<ExtraJvmtiInterface*>(
         const_cast<jvmtiInterface_1_*>(env->functions));
-    if (funcs->proxy_vm->map->find(prop) != funcs->proxy_vm->map->end()) {
+    auto it = funcs->proxy_vm->map->find(prop);
+    if (it != funcs->proxy_vm->map->end()) {
+      const std::string& val = it->second;
       std::string str_prop(prop);
-      const std::string& val = funcs->proxy_vm->map->at(str_prop);
       jvmtiError res = env->Allocate(val.size() + 1, reinterpret_cast<unsigned char**>(out));
       if (res != JVMTI_ERROR_NONE) {
         return res;
@@ -198,8 +199,9 @@ struct ExtraJvmtiInterface : public jvmtiInterface_1_ {
     if (res != JVMTI_ERROR_NONE) {
       return res;
     }
-    if (funcs->proxy_vm->map->find(prop) != funcs->proxy_vm->map->end()) {
-      funcs->proxy_vm->map->at(prop) = val;
+    auto it = funcs->proxy_vm->map->find(prop);
+    if (it != funcs->proxy_vm->map->end()) {
+      it->second = val;
     }
     return JVMTI_ERROR_NONE;
   }
