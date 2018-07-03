@@ -539,7 +539,7 @@ bool PatchOat::Patch(const std::string& image_location,
 
     space_to_memmap_map.emplace(space, std::move(image));
     PatchOat p = PatchOat(isa,
-                          space_to_memmap_map.at(space).get(),
+                          space_to_memmap_map[space].get(),
                           space->GetLiveBitmap(),
                           space->GetMemMap(),
                           delta,

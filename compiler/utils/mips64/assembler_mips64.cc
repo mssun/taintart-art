@@ -3633,9 +3633,8 @@ void Mips64Assembler::BuildFrame(size_t frame_size,
 
   // Write out entry spills.
   int32_t offset = frame_size + kFramePointerSize;
-  for (size_t i = 0; i < entry_spills.size(); ++i) {
-    Mips64ManagedRegister reg = entry_spills[i].AsMips64();
-    ManagedRegisterSpill spill = entry_spills.at(i);
+  for (const ManagedRegisterSpill& spill : entry_spills) {
+    Mips64ManagedRegister reg = spill.AsMips64();
     int32_t size = spill.getSize();
     if (reg.IsNoRegister()) {
       // only increment stack offset.

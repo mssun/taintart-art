@@ -120,7 +120,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
           os << inst_str.substr(cur_start, next_escape - cur_start);
           // Escape all necessary characters.
           while (next_escape < inst_str.size()) {
-            char c = inst_str.at(next_escape);
+            char c = inst_str[next_escape];
             if (c == '"' || c == '{' || c == '}' || c == '<' || c == '>') {
               os << '\\' << c;
             } else {
