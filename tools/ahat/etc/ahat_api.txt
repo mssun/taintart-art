@@ -8,7 +8,20 @@ package com.android.ahat {
 
 package com.android.ahat.dominators {
 
-  public class DominatorsComputation {
+  public class Dominators<Node> {
+    ctor public Dominators(com.android.ahat.dominators.Dominators.Graph);
+    method public void computeDominators(Node);
+    method public com.android.ahat.dominators.Dominators progress(com.android.ahat.progress.Progress, long);
+  }
+
+  public static abstract interface Dominators.Graph<Node> {
+    method public abstract java.lang.Object getDominatorsComputationState(Node);
+    method public abstract java.lang.Iterable<? extends Node> getReferencesForDominators(Node);
+    method public abstract void setDominator(Node, Node);
+    method public abstract void setDominatorsComputationState(Node, java.lang.Object);
+  }
+
+  public deprecated class DominatorsComputation {
     method public static void computeDominators(com.android.ahat.dominators.DominatorsComputation.Node);
     method public static void computeDominators(com.android.ahat.dominators.DominatorsComputation.Node, com.android.ahat.progress.Progress, long);
   }
