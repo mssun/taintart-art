@@ -4801,10 +4801,9 @@ void MipsAssembler::BuildFrame(size_t frame_size,
 
   // Write out entry spills.
   int32_t offset = frame_size + kFramePointerSize;
-  for (size_t i = 0; i < entry_spills.size(); ++i) {
-    MipsManagedRegister reg = entry_spills.at(i).AsMips();
+  for (const ManagedRegisterSpill& spill : entry_spills) {
+    MipsManagedRegister reg = spill.AsMips();
     if (reg.IsNoRegister()) {
-      ManagedRegisterSpill spill = entry_spills.at(i);
       offset += spill.getSize();
     } else if (reg.IsCoreRegister()) {
       StoreToOffset(kStoreWord, reg.AsCoreRegister(), SP, offset);

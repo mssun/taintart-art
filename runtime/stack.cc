@@ -856,7 +856,7 @@ void StackVisitor::WalkStack(bool include_transitions) {
           if (reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()) == return_pc) {
             CHECK_LT(instrumentation_stack_depth, thread_->GetInstrumentationStack()->size());
             const instrumentation::InstrumentationStackFrame& instrumentation_frame =
-                thread_->GetInstrumentationStack()->at(instrumentation_stack_depth);
+                (*thread_->GetInstrumentationStack())[instrumentation_stack_depth];
             instrumentation_stack_depth++;
             if (GetMethod() ==
                 Runtime::Current()->GetCalleeSaveMethod(CalleeSaveType::kSaveAllCalleeSaves)) {

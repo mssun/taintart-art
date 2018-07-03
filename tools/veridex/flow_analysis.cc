@@ -739,14 +739,15 @@ RegisterValue FlowAnalysisSubstitutor::AnalyzeInvoke(const Instruction& instruct
   MethodReference method(&resolver_->GetDexFile(), id);
   // TODO: doesn't work for multidex
   // TODO: doesn't work for overriding (but maybe should be done at a higher level);
-  if (accesses_.find(method) == accesses_.end()) {
+  auto method_accesses_it = accesses_.find(method);
+  if (method_accesses_it == accesses_.end()) {
     return GetReturnType(id);
   }
   uint32_t args[5];
   if (!is_range) {
     instruction.GetVarArgs(args);
   }
-  for (const ReflectAccessInfo& info : accesses_.at(method)) {
+  for (const ReflectAccessInfo& info : method_accesses_it->second) {
     if (info.cls.IsParameter() || info.name.IsParameter()) {
       RegisterValue cls = info.cls.IsParameter()
           ? GetRegister(GetParameterAt(instruction, is_range, args, info.cls.GetParameterIndex()))
