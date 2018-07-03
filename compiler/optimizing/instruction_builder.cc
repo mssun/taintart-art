@@ -1308,29 +1308,25 @@ bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
   HInstruction* arg_this = LoadLocal(orig_this_reg, DataType::Type::kReference);
 
   // Replacing the NewInstance might render it redundant. Keep a list of these
-  // to be visited once it is clear whether it is has remaining uses.
+  // to be visited once it is clear whether it has remaining uses.
   if (arg_this->IsNewInstance()) {
     ssa_builder_->AddUninitializedString(arg_this->AsNewInstance());
-  } else {
-    // The only reason a HPhi can flow in a String.<init> is when there is an
-    // irreducible loop, which will create HPhi for all dex registers at loop entry.
-    DCHECK(arg_this->IsPhi());
-    // TODO(b/109666561): Re-enable.
-    // DCHECK(graph_->HasIrreducibleLoops());
-    // Don't bother compiling a method in that situation. While we could look at all
-    // phis related to the HNewInstance, it's not worth the trouble.
-    MaybeRecordStat(compilation_stats_,
-                    MethodCompilationStat::kNotCompiledIrreducibleAndStringInit);
-    return false;
-  }
-
-  // Walk over all vregs and replace any occurrence of `arg_this` with `invoke`.
-  for (size_t vreg = 0, e = current_locals_->size(); vreg < e; ++vreg) {
-    if ((*current_locals_)[vreg] == arg_this) {
-      (*current_locals_)[vreg] = invoke;
+    // Walk over all vregs and replace any occurrence of `arg_this` with `invoke`.
+    for (size_t vreg = 0, e = current_locals_->size(); vreg < e; ++vreg) {
+      if ((*current_locals_)[vreg] == arg_this) {
+        (*current_locals_)[vreg] = invoke;
+      }
     }
+  } else {
+    DCHECK(arg_this->IsPhi());
+    // We can get a phi as input of a String.<init> if there is a loop between the
+    // allocation and the String.<init> call. As we don't know which other phis might alias
+    // with `arg_this`, we keep a record of these phis and will analyze their inputs and
+    // uses once the inputs and users are populated (in ssa_builder.cc).
+    // Note: we only do this for phis, as it is a somewhat more expensive operation than
+    // what we're doing above when the input is the `HNewInstance`.
+    ssa_builder_->AddUninitializedStringPhi(arg_this->AsPhi(), invoke);
   }
-
   return true;
 }
 

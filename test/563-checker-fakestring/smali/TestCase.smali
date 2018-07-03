@@ -142,8 +142,7 @@
    # Irreducible loop
    if-eqz p1, :loop_entry
    :loop_header
-   const v1, 0x1
-   xor-int p1, p1, v1
+   xor-int/lit8 p1, p1, 0x1
    :loop_entry
    if-eqz p1, :string_init
    goto :loop_header
@@ -166,8 +165,7 @@
    :loop_header
    if-eqz p1, :string_init
    :loop_entry
-   const v1, 0x1
-   xor-int p1, p1, v1
+   xor-int/lit8 p1, p1, 0x1
    goto :loop_header
 
    :string_init
@@ -187,8 +185,7 @@
    # Irreducible loop
    if-eqz p1, :loop_entry
    :loop_header
-   const v1, 0x1
-   xor-int p1, p1, v1
+   xor-int/lit8 p1, p1, 0x1
    :loop_entry
    if-eqz p1, :string_init
    goto :loop_header
@@ -197,5 +194,114 @@
    const-string v1, "UTF8"
    invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
    return-object v2
+
+.end method
+
+# Test with a loop between allocation and String.<init>.
+.method public static loopAndStringInit([BZ)Ljava/lang/String;
+   .registers 5
+
+   new-instance v0, Ljava/lang/String;
+
+   # Loop
+   :loop_header
+   if-eqz p1, :loop_exit
+   xor-int/lit8 p1, p1, 0x1
+   goto :loop_header
+
+   :loop_exit
+   const-string v1, "UTF8"
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   return-object v0
+
+.end method
+
+# Test with a loop and aliases between allocation and String.<init>.
+.method public static loopAndStringInitAlias([BZ)Ljava/lang/String;
+   .registers 5
+
+   new-instance v0, Ljava/lang/String;
+   move-object v2, v0
+
+   # Loop
+   :loop_header
+   if-eqz p1, :loop_exit
+   xor-int/lit8 p1, p1, 0x1
+   goto :loop_header
+
+   :loop_exit
+   const-string v1, "UTF8"
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   return-object v2
+
+.end method
+
+# Test deoptimization after String initialization of a phi.
+## CHECK-START: int TestCase.deoptimizeNewInstanceAfterLoop(int[], byte[], int) register (after)
+## CHECK:         <<Invoke:l\d+>> InvokeStaticOrDirect method_name:java.lang.String.<init>
+## CHECK:                         Deoptimize env:[[<<Invoke>>,{{.*]]}}
+
+.method public static deoptimizeNewInstanceAfterLoop([I[BI)I
+   .registers 8
+
+   const v2, 0x0
+   const v1, 0x1
+
+   new-instance v0, Ljava/lang/String; # HNewInstance(String)
+   move-object v4, v0
+   # Loop
+   :loop_header
+   if-eqz p2, :loop_exit
+   xor-int/lit8 p2, p2, 0x1
+   goto :loop_header
+
+   :loop_exit
+   const-string v3, "UTF8"
+   invoke-direct {v0, p1, v3}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+
+   # Deoptimize here if the array is too short.
+   aget v1, p0, v1              # v1 = int_array[0x1]
+   add-int/2addr v2, v1         # v2 = 0x0 + v1
+
+   # Check that we're being executed by the interpreter.
+   invoke-static {}, LMain;->assertIsInterpreted()V
+
+   # Check that the environments contain the right string.
+   invoke-static {p1, v0}, LMain;->assertEqual([BLjava/lang/String;)V
+   invoke-static {p1, v4}, LMain;->assertEqual([BLjava/lang/String;)V
+
+   # This ArrayGet will throw ArrayIndexOutOfBoundsException.
+   const v1, 0x4
+   aget v1, p0, v1
+   add-int/2addr v2, v1
+
+   return v2
+
+.end method
+
+# Test with a loop between allocation and String.<init> and a null check.
+## CHECK-START: java.lang.String TestCase.loopAndStringInitAndTest(byte[], boolean) builder (after)
+## CHECK-DAG:     <<Null:l\d+>>   NullConstant
+## CHECK-DAG:     <<String:l\d+>> NewInstance
+## CHECK-DAG:     <<Cond:z\d+>>   NotEqual [<<String>>,<<Null>>]
+
+## CHECK-START: java.lang.String TestCase.loopAndStringInitAndTest(byte[], boolean) register (after)
+## CHECK-DAG:     <<String:l\d+>> NewInstance
+.method public static loopAndStringInitAndTest([BZ)Ljava/lang/String;
+   .registers 5
+
+   new-instance v0, Ljava/lang/String;
+
+   # Loop
+   :loop_header
+   # Use the new-instance in the only way it can be used.
+   if-nez v0, :loop_exit
+   xor-int/lit8 p1, p1, 0x1
+   goto :loop_header
+
+   :loop_exit
+   const-string v1, "UTF8"
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   return-object v0
 
 .end method
