@@ -73,101 +73,61 @@ uint32_t DexFile::ChecksumMemoryRange(const uint8_t* begin, size_t size) {
 }
 
 int DexFile::GetPermissions() const {
-  CHECK(main_section_ != nullptr);
-  return main_section_->GetPermissions();
+  CHECK(container_.get() != nullptr);
+  return container_->GetPermissions();
 }
 
 bool DexFile::IsReadOnly() const {
-  CHECK(main_section_ != nullptr);
-  return main_section_->IsReadOnly();
+  CHECK(container_.get() != nullptr);
+  return container_->IsReadOnly();
 }
 
 bool DexFile::EnableWrite() const {
-  CHECK(main_section_ != nullptr);
-  return main_section_->EnableWrite();
+  CHECK(container_.get() != nullptr);
+  return container_->EnableWrite();
 }
 
 bool DexFile::DisableWrite() const {
-  CHECK(main_section_ != nullptr);
-  return main_section_->DisableWrite();
+  CHECK(container_.get() != nullptr);
+  return container_->DisableWrite();
 }
 
-DexFile::DexFile(std::unique_ptr<DexFileContainer> main_section,
-                 std::unique_ptr<DexFileContainer> data_section,
+DexFile::DexFile(const uint8_t* base,
+                 size_t size,
+                 const uint8_t* data_begin,
+                 size_t data_size,
                  const std::string& location,
                  uint32_t location_checksum,
                  const OatDexFile* oat_dex_file,
+                 std::unique_ptr<DexFileContainer> container,
                  bool is_compact_dex)
-    : main_section_(std::move(main_section)),
+    : begin_(base),
+      size_(size),
+      data_begin_(data_begin),
+      data_size_(data_size),
       location_(location),
       location_checksum_(location_checksum),
-      header_(reinterpret_cast<const Header*>(main_section_->Begin())),
-      string_ids_(reinterpret_cast<const StringId*>(main_section_->Begin() +
-                                                    header_->string_ids_off_)),
-      type_ids_(reinterpret_cast<const TypeId*>(main_section_->Begin() + header_->type_ids_off_)),
-      field_ids_(reinterpret_cast<const FieldId*>(main_section_->Begin() +
-                                                  header_->field_ids_off_)),
-      method_ids_(reinterpret_cast<const MethodId*>(main_section_->Begin() +
-                                                    header_->method_ids_off_)),
-      proto_ids_(reinterpret_cast<const ProtoId*>(main_section_->Begin() +
-                                                  header_->proto_ids_off_)),
-      class_defs_(reinterpret_cast<const ClassDef*>(main_section_->Begin() +
-                                                    header_->class_defs_off_)),
+      header_(reinterpret_cast<const Header*>(base)),
+      string_ids_(reinterpret_cast<const StringId*>(base + header_->string_ids_off_)),
+      type_ids_(reinterpret_cast<const TypeId*>(base + header_->type_ids_off_)),
+      field_ids_(reinterpret_cast<const FieldId*>(base + header_->field_ids_off_)),
+      method_ids_(reinterpret_cast<const MethodId*>(base + header_->method_ids_off_)),
+      proto_ids_(reinterpret_cast<const ProtoId*>(base + header_->proto_ids_off_)),
+      class_defs_(reinterpret_cast<const ClassDef*>(base + header_->class_defs_off_)),
       method_handles_(nullptr),
       num_method_handles_(0),
       call_site_ids_(nullptr),
       num_call_site_ids_(0),
       oat_dex_file_(oat_dex_file),
+      container_(std::move(container)),
       is_compact_dex_(is_compact_dex),
       is_platform_dex_(false) {
-  CHECK(main_section_->Begin() != nullptr) << GetLocation();
-  CHECK_GT(main_section_->Size(), 0U) << GetLocation();
+  CHECK(begin_ != nullptr) << GetLocation();
+  CHECK_GT(size_, 0U) << GetLocation();
   // Check base (=header) alignment.
   // Must be 4-byte aligned to avoid undefined behavior when accessing
   // any of the sections via a pointer.
-  CHECK_ALIGNED(main_section_->Begin(), alignof(Header));
-
-  data_section_ = std::move(data_section);
-
-  InitializeSectionsFromMapList();
-}
-
-DexFile::DexFile(std::unique_ptr<DexFileContainer> main_section,
-                 const std::string& location,
-                 uint32_t location_checksum,
-                 const OatDexFile* oat_dex_file,
-                 bool is_compact_dex)
-    : main_section_(std::move(main_section)),
-      location_(location),
-      location_checksum_(location_checksum),
-      header_(reinterpret_cast<const Header*>(main_section_->Begin())),
-      string_ids_(reinterpret_cast<const StringId*>(main_section_->Begin() +
-                                                    header_->string_ids_off_)),
-      type_ids_(reinterpret_cast<const TypeId*>(main_section_->Begin() + header_->type_ids_off_)),
-      field_ids_(reinterpret_cast<const FieldId*>(main_section_->Begin() +
-                                                  header_->field_ids_off_)),
-      method_ids_(reinterpret_cast<const MethodId*>(main_section_->Begin() +
-                                                    header_->method_ids_off_)),
-      proto_ids_(reinterpret_cast<const ProtoId*>(main_section_->Begin() +
-                                                  header_->proto_ids_off_)),
-      class_defs_(reinterpret_cast<const ClassDef*>(main_section_->Begin() +
-                                                    header_->class_defs_off_)),
-      method_handles_(nullptr),
-      num_method_handles_(0),
-      call_site_ids_(nullptr),
-      num_call_site_ids_(0),
-      oat_dex_file_(oat_dex_file),
-      is_compact_dex_(is_compact_dex),
-      is_platform_dex_(false) {
-  CHECK(main_section_->Begin() != nullptr) << GetLocation();
-  CHECK_GT(main_section_->Size(), 0U) << GetLocation();
-  // Check base (=header) alignment.
-  // Must be 4-byte aligned to avoid undefined behavior when accessing
-  // any of the sections via a pointer.
-  CHECK_ALIGNED(main_section_->Begin(), alignof(Header));
-
-  data_section_ = std::make_unique<NonOwningDexFileContainer>(main_section_->Begin(),
-                                                              main_section_->Size());
+  CHECK_ALIGNED(begin_, alignof(Header));
 
   InitializeSectionsFromMapList();
 }
