@@ -251,24 +251,6 @@ public class Main {
     return obj2.i;
   }
 
-  /// CHECK-START: int Main.test10(TestClass) load_store_elimination (before)
-  /// CHECK: StaticFieldGet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: StaticFieldSet
-
-  /// CHECK-START: int Main.test10(TestClass) load_store_elimination (after)
-  /// CHECK: StaticFieldGet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: StaticFieldSet
-  /// CHECK-NOT: NullCheck
-  /// CHECK-NOT: InstanceFieldGet
-
-  // Static fields shouldn't alias with instance fields.
-  static int test10(TestClass obj) {
-    TestClass.si += obj.i;
-    return obj.i;
-  }
-
   /// CHECK-START: int Main.test11(TestClass) load_store_elimination (before)
   /// CHECK: InstanceFieldSet
   /// CHECK: InstanceFieldGet
@@ -1176,6 +1158,7 @@ public class Main {
     Class main2 = Class.forName("Main2");
     Method test4 = main2.getMethod("test4", TestClass.class, boolean.class);
     Method test5 = main2.getMethod("test5", TestClass.class, boolean.class);
+    Method test10 = main2.getMethod("test10", TestClass.class);
     Method test23 = main2.getMethod("test23", boolean.class);
     Method test24 = main2.getMethod("test24");
 
@@ -1198,7 +1181,7 @@ public class Main {
     obj2 = new TestClass();
     obj1.next = obj2;
     assertIntEquals(test9(new TestClass()), 1);
-    assertIntEquals(test10(new TestClass(3, 4)), 3);
+    assertIntEquals((int)test10.invoke(null, new TestClass(3, 4)), 3);
     assertIntEquals(TestClass.si, 3);
     assertIntEquals(test11(new TestClass()), 10);
     assertIntEquals(test12(new TestClass(), new TestClass()), 10);

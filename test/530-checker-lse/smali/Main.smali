@@ -124,6 +124,38 @@
     goto :goto_5
 .end method
 
+## CHECK-START: int Main2.test10(TestClass) load_store_elimination (before)
+## CHECK: StaticFieldGet
+## CHECK: InstanceFieldGet
+## CHECK: StaticFieldSet
+## CHECK: InstanceFieldGet
+
+## CHECK-START: int Main2.test10(TestClass) load_store_elimination (after)
+## CHECK: StaticFieldGet
+## CHECK: InstanceFieldGet
+## CHECK: StaticFieldSet
+## CHECK-NOT: NullCheck
+## CHECK-NOT: InstanceFieldGet
+
+# Original java source:
+#
+#  // Static fields shouldn't alias with instance fields.
+#  static int test10(TestClass obj) {
+#    TestClass.si += obj.i;
+#    return obj.i;
+#  }
+
+.method public static test10(LTestClass;)I
+    .registers 3
+    .param p0, "obj"    # LTestClass;
+    sget                v0, LTestClass;->si:I
+    iget                v1, p0, LTestClass;->i:I
+    add-int/2addr       v0, v1
+    sput                v0, LTestClass;->si:I
+    iget                p0, p0, LTestClass;->i:I
+    return              p0
+.end method
+
 ## CHECK-START: int Main2.test23(boolean) load_store_elimination (before)
 ## CHECK: NewInstance
 ## CHECK: InstanceFieldSet
