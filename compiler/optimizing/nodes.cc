@@ -1305,6 +1305,19 @@ void HInstruction::ReplaceUsesDominatedBy(HInstruction* dominator, HInstruction*
   }
 }
 
+void HInstruction::ReplaceEnvUsesDominatedBy(HInstruction* dominator, HInstruction* replacement) {
+  const HUseList<HEnvironment*>& uses = GetEnvUses();
+  for (auto it = uses.begin(), end = uses.end(); it != end; /* ++it below */) {
+    HEnvironment* user = it->GetUser();
+    size_t index = it->GetIndex();
+    // Increment `it` now because `*it` may disappear thanks to user->ReplaceInput().
+    ++it;
+    if (dominator->StrictlyDominates(user->GetHolder())) {
+      user->ReplaceInput(replacement, index);
+    }
+  }
+}
+
 void HInstruction::ReplaceInput(HInstruction* replacement, size_t index) {
   HUserRecord<HInstruction*> input_use = InputRecordAt(index);
   if (input_use.GetInstruction() == replacement) {
