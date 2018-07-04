@@ -848,23 +848,23 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
         case kAnalysisSkipped: {
           MaybeRecordStat(compilation_stats_.get(),
                           MethodCompilationStat::kNotCompiledSkipped);
-        }
           break;
+        }
         case kAnalysisInvalidBytecode: {
           MaybeRecordStat(compilation_stats_.get(),
                           MethodCompilationStat::kNotCompiledInvalidBytecode);
-        }
           break;
+        }
         case kAnalysisFailThrowCatchLoop: {
           MaybeRecordStat(compilation_stats_.get(),
                           MethodCompilationStat::kNotCompiledThrowCatchLoop);
-        }
           break;
+        }
         case kAnalysisFailAmbiguousArrayOp: {
           MaybeRecordStat(compilation_stats_.get(),
                           MethodCompilationStat::kNotCompiledAmbiguousArrayOp);
-        }
           break;
+        }
         case kAnalysisSuccess:
           UNREACHABLE();
       }

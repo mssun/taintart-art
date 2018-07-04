@@ -440,6 +440,62 @@ static bool HasAliasInEnvironments(HInstruction* instruction) {
   return false;
 }
 
+void SsaBuilder::ReplaceUninitializedStringPhis() {
+  ScopedArenaHashSet<HInstruction*> seen_instructions(
+      local_allocator_->Adapter(kArenaAllocGraphBuilder));
+  ScopedArenaVector<HInstruction*> worklist(local_allocator_->Adapter(kArenaAllocGraphBuilder));
+
+  // Iterate over all inputs and uses of the phi, recursively, until all related instructions
+  // have been visited.
+  for (const auto& pair : uninitialized_string_phis_) {
+    HPhi* string_phi = pair.first;
+    HInvoke* invoke = pair.second;
+    worklist.push_back(string_phi);
+    HNewInstance* found_instance = nullptr;
+    do {
+      HInstruction* current = worklist.back();
+      worklist.pop_back();
+      if (seen_instructions.find(current) != seen_instructions.end()) {
+        continue;
+      }
+      seen_instructions.insert(current);
+      if (current->IsNewInstance()) {
+        // If it is the first time we see the allocation, replace its uses. We don't register
+        // it through `RemoveRedundantUninitializedStrings`, as that method makes assumption about
+        // aliasing and environment uses that don't hold when the string escapes to phis.
+        // Note that this also means we will keep the (useless) allocation.
+        if (found_instance == nullptr) {
+          found_instance = current->AsNewInstance();
+        } else {
+          DCHECK(found_instance == current);
+        }
+      } else if (current->IsPhi()) {
+        // Push all inputs to the worklist. Those should be Phis or NewInstance.
+        for (HInstruction* input : current->GetInputs()) {
+          DCHECK(input->IsPhi() || input->IsNewInstance()) << input->DebugName();
+          worklist.push_back(input);
+        }
+      } else {
+        // The verifier prevents any other DEX uses of the uninitialized string.
+        DCHECK(current->IsEqual() || current->IsNotEqual());
+        continue;
+      }
+      current->ReplaceUsesDominatedBy(invoke, invoke);
+      current->ReplaceEnvUsesDominatedBy(invoke, invoke);
+      // Push all users to the worklist. Now that we have replaced
+      // the uses dominated by the invokes, the remaining users should only
+      // be Phi, or Equal/NotEqual.
+      for (const HUseListNode<HInstruction*>& use : current->GetUses()) {
+        HInstruction* user = use.GetUser();
+        DCHECK(user->IsPhi() || user->IsEqual() || user->IsNotEqual()) << user->DebugName();
+        worklist.push_back(user);
+      }
+    } while (!worklist.empty());
+    seen_instructions.clear();
+    DCHECK(found_instance != nullptr);
+  }
+}
+
 void SsaBuilder::RemoveRedundantUninitializedStrings() {
   if (graph_->IsDebuggable()) {
     // Do not perform the optimization for consistency with the interpreter
@@ -488,27 +544,32 @@ void SsaBuilder::RemoveRedundantUninitializedStrings() {
 GraphAnalysisResult SsaBuilder::BuildSsa() {
   DCHECK(!graph_->IsInSsaForm());
 
-  // 1) Propagate types of phis. At this point, phis are typed void in the general
+  // Replace Phis that feed in a String.<init>, as well as their aliases, with
+  // the actual String allocation invocation. We do this first, as the phis stored in
+  // the data structure might get removed from the graph in later stages during `BuildSsa`.
+  ReplaceUninitializedStringPhis();
+
+  // Propagate types of phis. At this point, phis are typed void in the general
   // case, or float/double/reference if we created an equivalent phi. So we need
   // to propagate the types across phis to give them a correct type. If a type
   // conflict is detected in this stage, the phi is marked dead.
   RunPrimitiveTypePropagation();
 
-  // 2) Now that the correct primitive types have been assigned, we can get rid
+  // Now that the correct primitive types have been assigned, we can get rid
   // of redundant phis. Note that we cannot do this phase before type propagation,
   // otherwise we could get rid of phi equivalents, whose presence is a requirement
   // for the type propagation phase. Note that this is to satisfy statement (a)
   // of the SsaBuilder (see ssa_builder.h).
   SsaRedundantPhiElimination(graph_).Run();
 
-  // 3) Fix the type for null constants which are part of an equality comparison.
+  // Fix the type for null constants which are part of an equality comparison.
   // We need to do this after redundant phi elimination, to ensure the only cases
   // that we can see are reference comparison against 0. The redundant phi
   // elimination ensures we do not see a phi taking two 0 constants in a HEqual
   // or HNotEqual.
   FixNullConstantType();
 
-  // 4) Compute type of reference type instructions. The pass assumes that
+  // Compute type of reference type instructions. The pass assumes that
   // NullConstant has been fixed up.
   ReferenceTypePropagation(graph_,
                            class_loader_,
@@ -516,7 +577,7 @@ GraphAnalysisResult SsaBuilder::BuildSsa() {
                            handles_,
                            /* is_first_run */ true).Run();
 
-  // 5) HInstructionBuilder duplicated ArrayGet instructions with ambiguous type
+  // HInstructionBuilder duplicated ArrayGet instructions with ambiguous type
   // (int/float or long/double) and marked ArraySets with ambiguous input type.
   // Now that RTP computed the type of the array input, the ambiguity can be
   // resolved and the correct equivalents kept.
@@ -524,13 +585,13 @@ GraphAnalysisResult SsaBuilder::BuildSsa() {
     return kAnalysisFailAmbiguousArrayOp;
   }
 
-  // 6) Mark dead phis. This will mark phis which are not used by instructions
+  // Mark dead phis. This will mark phis which are not used by instructions
   // or other live phis. If compiling as debuggable code, phis will also be kept
   // live if they have an environment use.
   SsaDeadPhiElimination dead_phi_elimimation(graph_);
   dead_phi_elimimation.MarkDeadPhis();
 
-  // 7) Make sure environments use the right phi equivalent: a phi marked dead
+  // Make sure environments use the right phi equivalent: a phi marked dead
   // can have a phi equivalent that is not dead. In that case we have to replace
   // it with the live equivalent because deoptimization and try/catch rely on
   // environments containing values of all live vregs at that point. Note that
@@ -539,14 +600,14 @@ GraphAnalysisResult SsaBuilder::BuildSsa() {
   // environments to just reference one.
   FixEnvironmentPhis();
 
-  // 8) Now that the right phis are used for the environments, we can eliminate
+  // Now that the right phis are used for the environments, we can eliminate
   // phis we do not need. Regardless of the debuggable status, this phase is
   /// necessary for statement (b) of the SsaBuilder (see ssa_builder.h), as well
   // as for the code generation, which does not deal with phis of conflicting
   // input types.
   dead_phi_elimimation.EliminateDeadPhis();
 
-  // 9) HInstructionBuidler replaced uses of NewInstances of String with the
+  // HInstructionBuidler replaced uses of NewInstances of String with the
   // results of their corresponding StringFactory calls. Unless the String
   // objects are used before they are initialized, they can be replaced with
   // NullConstant. Note that this optimization is valid only if unsimplified
