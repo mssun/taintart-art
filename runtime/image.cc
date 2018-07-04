@@ -135,11 +135,6 @@ ArtMethod* ImageHeader::GetImageMethod(ImageMethod index) const {
   return reinterpret_cast<ArtMethod*>(image_methods_[index]);
 }
 
-void ImageHeader::SetImageMethod(ImageMethod index, ArtMethod* method) {
-  CHECK_LT(static_cast<size_t>(index), kImageMethodsCount);
-  image_methods_[index] = reinterpret_cast<uint64_t>(method);
-}
-
 std::ostream& operator<<(std::ostream& os, const ImageSection& section) {
   return os << "size=" << section.Size() << " range=" << section.Offset() << "-" << section.End();
 }
