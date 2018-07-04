@@ -50,7 +50,6 @@ enum class MethodCompilationStat {
   kNotCompiledThrowCatchLoop,
   kNotCompiledAmbiguousArrayOp,
   kNotCompiledHugeMethod,
-  kNotCompiledIrreducibleAndStringInit,
   kNotCompiledLargeMethodNoBranches,
   kNotCompiledMalformedOpcode,
   kNotCompiledNoCodegen,
