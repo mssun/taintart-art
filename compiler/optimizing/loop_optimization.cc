@@ -744,100 +744,102 @@ bool HLoopOptimization::TryOptimizeInnerLoopFinite(LoopNode* node) {
 }
 
 bool HLoopOptimization::OptimizeInnerLoop(LoopNode* node) {
-  return TryOptimizeInnerLoopFinite(node) ||
-         TryPeelingForLoopInvariantExitsElimination(node) ||
-         TryUnrollingForBranchPenaltyReduction(node);
+  return TryOptimizeInnerLoopFinite(node) || TryPeelingAndUnrolling(node);
 }
 
 
 
 //
-// Loop unrolling: generic part methods.
+// Scalar loop peeling and unrolling: generic part methods.
 //
 
-bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopNode* node) {
-  // Don't run peeling/unrolling if compiler_options_ is nullptr (i.e., running under tests)
-  // as InstructionSet is needed.
-  if (compiler_options_ == nullptr) {
+bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopAnalysisInfo* analysis_info,
+                                                              bool generate_code) {
+  if (analysis_info->GetNumberOfExits() > 1) {
     return false;
   }
 
-  HLoopInformation* loop_info = node->loop_info;
-  int64_t trip_count = 0;
-  // Only unroll loops with a known tripcount.
-  if (!induction_range_.HasKnownTripCount(loop_info, &trip_count)) {
+  uint32_t unrolling_factor = arch_loop_helper_->GetScalarUnrollingFactor(analysis_info);
+  if (unrolling_factor == LoopAnalysisInfo::kNoUnrollingFactor) {
     return false;
   }
 
-  uint32_t unrolling_factor = arch_loop_helper_->GetScalarUnrollingFactor(loop_info, trip_count);
-  if (unrolling_factor == kNoUnrollingFactor) {
-    return false;
+  if (generate_code) {
+    // TODO: support other unrolling factors.
+    DCHECK_EQ(unrolling_factor, 2u);
+
+    // Perform unrolling.
+    HLoopInformation* loop_info = analysis_info->GetLoopInfo();
+    PeelUnrollSimpleHelper helper(loop_info);
+    helper.DoUnrolling();
+
+    // Remove the redundant loop check after unrolling.
+    HIf* copy_hif =
+        helper.GetBasicBlockMap()->Get(loop_info->GetHeader())->GetLastInstruction()->AsIf();
+    int32_t constant = loop_info->Contains(*copy_hif->IfTrueSuccessor()) ? 1 : 0;
+    copy_hif->ReplaceInput(graph_->GetIntConstant(constant), 0u);
   }
-
-  LoopAnalysisInfo loop_analysis_info(loop_info);
-  LoopAnalysis::CalculateLoopBasicProperties(loop_info, &loop_analysis_info);
-
-  // Check "IsLoopClonable" last as it can be time-consuming.
-  if (loop_analysis_info.HasInstructionsPreventingScalarUnrolling() ||
-      arch_loop_helper_->IsLoopNonBeneficialForScalarOpts(&loop_analysis_info) ||
-      (loop_analysis_info.GetNumberOfExits() > 1) ||
-      !PeelUnrollHelper::IsLoopClonable(loop_info)) {
-    return false;
-  }
-
-  // TODO: support other unrolling factors.
-  DCHECK_EQ(unrolling_factor, 2u);
-
-  // Perform unrolling.
-  PeelUnrollSimpleHelper helper(loop_info);
-  helper.DoUnrolling();
-
-  // Remove the redundant loop check after unrolling.
-  HIf* copy_hif =
-      helper.GetBasicBlockMap()->Get(loop_info->GetHeader())->GetLastInstruction()->AsIf();
-  int32_t constant = loop_info->Contains(*copy_hif->IfTrueSuccessor()) ? 1 : 0;
-  copy_hif->ReplaceInput(graph_->GetIntConstant(constant), 0u);
-
   return true;
 }
 
-bool HLoopOptimization::TryPeelingForLoopInvariantExitsElimination(LoopNode* node) {
-  // Don't run peeling/unrolling if compiler_options_ is nullptr (i.e., running under tests)
-  // as InstructionSet is needed.
-  if (compiler_options_ == nullptr) {
-    return false;
-  }
-
-  HLoopInformation* loop_info = node->loop_info;
-  // Check 'IsLoopClonable' the last as it might be time-consuming.
+bool HLoopOptimization::TryPeelingForLoopInvariantExitsElimination(LoopAnalysisInfo* analysis_info,
+                                                                   bool generate_code) {
+  HLoopInformation* loop_info = analysis_info->GetLoopInfo();
   if (!arch_loop_helper_->IsLoopPeelingEnabled()) {
     return false;
   }
 
-  LoopAnalysisInfo loop_analysis_info(loop_info);
-  LoopAnalysis::CalculateLoopBasicProperties(loop_info, &loop_analysis_info);
-
-  // Check "IsLoopClonable" last as it can be time-consuming.
-  if (loop_analysis_info.HasInstructionsPreventingScalarPeeling() ||
-      arch_loop_helper_->IsLoopNonBeneficialForScalarOpts(&loop_analysis_info) ||
-      !LoopAnalysis::HasLoopAtLeastOneInvariantExit(loop_info) ||
-      !PeelUnrollHelper::IsLoopClonable(loop_info)) {
+  if (analysis_info->GetNumberOfInvariantExits() == 0) {
     return false;
   }
 
-  // Perform peeling.
-  PeelUnrollSimpleHelper helper(loop_info);
-  helper.DoPeeling();
+  if (generate_code) {
+    // Perform peeling.
+    PeelUnrollSimpleHelper helper(loop_info);
+    helper.DoPeeling();
 
-  const SuperblockCloner::HInstructionMap* hir_map = helper.GetInstructionMap();
-  for (auto entry : *hir_map) {
-    HInstruction* copy = entry.second;
-    if (copy->IsIf()) {
-      TryToEvaluateIfCondition(copy->AsIf(), graph_);
+    // Statically evaluate loop check after peeling for loop invariant condition.
+    const SuperblockCloner::HInstructionMap* hir_map = helper.GetInstructionMap();
+    for (auto entry : *hir_map) {
+      HInstruction* copy = entry.second;
+      if (copy->IsIf()) {
+        TryToEvaluateIfCondition(copy->AsIf(), graph_);
+      }
     }
   }
 
   return true;
+}
+
+bool HLoopOptimization::TryPeelingAndUnrolling(LoopNode* node) {
+  // Don't run peeling/unrolling if compiler_options_ is nullptr (i.e., running under tests)
+  // as InstructionSet is needed.
+  if (compiler_options_ == nullptr) {
+    return false;
+  }
+
+  HLoopInformation* loop_info = node->loop_info;
+  int64_t trip_count = LoopAnalysis::GetLoopTripCount(loop_info, &induction_range_);
+  LoopAnalysisInfo analysis_info(loop_info);
+  LoopAnalysis::CalculateLoopBasicProperties(loop_info, &analysis_info, trip_count);
+
+  if (analysis_info.HasInstructionsPreventingScalarOpts() ||
+      arch_loop_helper_->IsLoopNonBeneficialForScalarOpts(&analysis_info)) {
+    return false;
+  }
+
+  if (!TryPeelingForLoopInvariantExitsElimination(&analysis_info, /*generate_code*/ false) &&
+      !TryUnrollingForBranchPenaltyReduction(&analysis_info, /*generate_code*/ false)) {
+    return false;
+  }
+
+  // Run 'IsLoopClonable' the last as it might be time-consuming.
+  if (!PeelUnrollHelper::IsLoopClonable(loop_info)) {
+    return false;
+  }
+
+  return TryPeelingForLoopInvariantExitsElimination(&analysis_info) ||
+         TryUnrollingForBranchPenaltyReduction(&analysis_info);
 }
 
 //
@@ -1076,7 +1078,7 @@ void HLoopOptimization::Vectorize(LoopNode* node,
                     vector_index_,
                     ptc,
                     graph_->GetConstant(induc_type, 1),
-                    kNoUnrollingFactor);
+                    LoopAnalysisInfo::kNoUnrollingFactor);
   }
 
   // Generate vector loop, possibly further unrolled:
@@ -1103,7 +1105,7 @@ void HLoopOptimization::Vectorize(LoopNode* node,
                     vector_index_,
                     stc,
                     graph_->GetConstant(induc_type, 1),
-                    kNoUnrollingFactor);
+                    LoopAnalysisInfo::kNoUnrollingFactor);
   }
 
   // Link reductions to their final uses.
