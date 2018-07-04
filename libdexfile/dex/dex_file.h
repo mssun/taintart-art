@@ -1200,6 +1200,9 @@ class ClassDataItemIterator {
   bool IsAtMethod() const {
     return pos_ >= EndOfInstanceFieldsPos();
   }
+  bool IsAtVirtualMethod() const {
+    return pos_ >= EndOfDirectMethodsPos();
+  }
   bool HasNextStaticField() const {
     return pos_ < EndOfStaticFieldsPos();
   }
