@@ -61,7 +61,6 @@
 #include "ssa_builder.h"
 #include "ssa_liveness_analysis.h"
 #include "ssa_phi_elimination.h"
-#include "stack_map_stream.h"
 #include "utils/assembler.h"
 #include "verifier/verifier_compiler_binding.h"
 
@@ -1107,35 +1106,14 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
   return compiled_method;
 }
 
-static void CreateJniStackMap(ArenaStack* arena_stack,
-                              const JniCompiledMethod& jni_compiled_method,
-                              /* out */ ArenaVector<uint8_t>* stack_map,
-                              /* out */ ArenaVector<uint8_t>* method_info) {
-  ScopedArenaAllocator allocator(arena_stack);
-  StackMapStream stack_map_stream(&allocator, jni_compiled_method.GetInstructionSet());
-  stack_map_stream.BeginMethod(
-      jni_compiled_method.GetFrameSize(),
-      jni_compiled_method.GetCoreSpillMask(),
-      jni_compiled_method.GetFpSpillMask(),
-      /* num_dex_registers */ 0);
-  stack_map_stream.EndMethod();
-  stack_map->resize(stack_map_stream.PrepareForFillIn());
-  method_info->resize(stack_map_stream.ComputeMethodInfoSize());
-  stack_map_stream.FillInCodeInfo(MemoryRegion(stack_map->data(), stack_map->size()));
-  stack_map_stream.FillInMethodInfo(MemoryRegion(method_info->data(), method_info->size()));
-}
-
 CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
                                                uint32_t method_idx,
                                                const DexFile& dex_file,
                                                Handle<mirror::DexCache> dex_cache) const {
-  Runtime* runtime = Runtime::Current();
-  ArenaAllocator allocator(runtime->GetArenaPool());
-  ArenaStack arena_stack(runtime->GetArenaPool());
-
   const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
   if (compiler_options.IsBootImage()) {
     ScopedObjectAccess soa(Thread::Current());
+    Runtime* runtime = Runtime::Current();
     ArtMethod* method = runtime->GetClassLinker()->LookupResolvedMethod(
         method_idx, dex_cache.Get(), /* class_loader */ nullptr);
     if (method != nullptr && UNLIKELY(method->IsIntrinsic())) {
@@ -1150,6 +1128,8 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
           access_flags,
           /* verified_method */ nullptr,
           dex_cache);
+      ArenaAllocator allocator(runtime->GetArenaPool());
+      ArenaStack arena_stack(runtime->GetArenaPool());
       CodeVectorAllocator code_allocator(&allocator);
       VariableSizedHandleScope handles(soa.Self());
       // Go to native so that we don't block GC during compilation.
@@ -1175,10 +1155,6 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
   JniCompiledMethod jni_compiled_method = ArtQuickJniCompileMethod(
       compiler_options, access_flags, method_idx, dex_file);
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiledNativeStub);
-
-  ArenaVector<uint8_t> stack_map(allocator.Adapter(kArenaAllocStackMaps));
-  ArenaVector<uint8_t> method_info(allocator.Adapter(kArenaAllocStackMaps));
-  CreateJniStackMap(&arena_stack, jni_compiled_method, &stack_map, &method_info);
   return CompiledMethod::SwapAllocCompiledMethod(
       GetCompilerDriver(),
       jni_compiled_method.GetInstructionSet(),
@@ -1186,8 +1162,8 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
       jni_compiled_method.GetFrameSize(),
       jni_compiled_method.GetCoreSpillMask(),
       jni_compiled_method.GetFpSpillMask(),
-      ArrayRef<const uint8_t>(method_info),
-      ArrayRef<const uint8_t>(stack_map),
+      /* method_info */ ArrayRef<const uint8_t>(),
+      /* vmap_table */ ArrayRef<const uint8_t>(),
       jni_compiled_method.GetCfi(),
       /* patches */ ArrayRef<const linker::LinkerPatch>());
 }
@@ -1247,42 +1223,18 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     ScopedNullHandle<mirror::ObjectArray<mirror::Object>> roots;
     ArenaSet<ArtMethod*, std::less<ArtMethod*>> cha_single_implementation_list(
         allocator.Adapter(kArenaAllocCHA));
-    ArenaVector<uint8_t> stack_map(allocator.Adapter(kArenaAllocStackMaps));
-    ArenaVector<uint8_t> method_info(allocator.Adapter(kArenaAllocStackMaps));
-    ArenaStack arena_stack(runtime->GetJitArenaPool());
-    // StackMapStream is large and it does not fit into this frame, so we need helper method.
-    // TODO: Try to avoid the extra memory copy that results from this.
-    CreateJniStackMap(&arena_stack, jni_compiled_method, &stack_map, &method_info);
-    uint8_t* stack_map_data = nullptr;
-    uint8_t* method_info_data = nullptr;
-    uint8_t* roots_data = nullptr;
-    uint32_t data_size = code_cache->ReserveData(self,
-                                                 stack_map.size(),
-                                                 method_info.size(),
-                                                 /* number_of_roots */ 0,
-                                                 method,
-                                                 &stack_map_data,
-                                                 &method_info_data,
-                                                 &roots_data);
-    if (stack_map_data == nullptr || roots_data == nullptr) {
-      MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kJitOutOfMemoryForCommit);
-      return false;
-    }
-    memcpy(stack_map_data, stack_map.data(), stack_map.size());
-    memcpy(method_info_data, method_info.data(), method_info.size());
-
     const void* code = code_cache->CommitCode(
         self,
         method,
-        stack_map_data,
-        method_info_data,
-        roots_data,
+        /* stack_map_data */ nullptr,
+        /* method_info_data */ nullptr,
+        /* roots_data */ nullptr,
         jni_compiled_method.GetFrameSize(),
         jni_compiled_method.GetCoreSpillMask(),
         jni_compiled_method.GetFpSpillMask(),
         jni_compiled_method.GetCode().data(),
         jni_compiled_method.GetCode().size(),
-        data_size,
+        /* data_size */ 0u,
         osr,
         roots,
         /* has_should_deoptimize_flag */ false,
