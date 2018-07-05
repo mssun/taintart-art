@@ -1,4 +1,3 @@
-JNI_OnLoad called
 PackedSwitch
 PackedSwitch key INT_MAX
 PackedSwitch key overflow
@@ -72,5 +71,4 @@ b/29778499 (1)
 b/29778499 (2)
 b/30458218
 b/31313170
-ConstClassAliasing
 Done!
