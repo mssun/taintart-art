@@ -345,10 +345,9 @@ class QuickArgumentVisitor {
       CodeInfo code_info(current_code);
       StackMap stack_map = code_info.GetStackMapForNativePcOffset(outer_pc_offset);
       DCHECK(stack_map.IsValid());
-      uint32_t depth = code_info.GetInlineDepthOf(stack_map);
-      if (depth != 0) {
-        InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, depth - 1);
-        return inline_info.GetDexPc();
+      BitTableRange<InlineInfo> inline_infos = code_info.GetInlineInfosOf(stack_map);
+      if (!inline_infos.empty()) {
+        return inline_infos.back().GetDexPc();
       } else {
         return stack_map.GetDexPc();
       }
@@ -1236,37 +1235,35 @@ static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutato
   LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(outer_method, dex_pc);
 
   ArtMethod* caller = outer_method;
-  uint32_t depth = code_info.GetInlineDepthOf(stack_map);
-  if (depth != 0) {
-    for (size_t d = 0; d < depth; ++d) {
-      InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, d);
-      const char* tag = "";
-      dex_pc = inline_info.GetDexPc();
-      if (inline_info.EncodesArtMethod()) {
-        tag = "encoded ";
-        caller = inline_info.GetArtMethod();
+  BitTableRange<InlineInfo> inline_infos = code_info.GetInlineInfosOf(stack_map);
+  for (InlineInfo inline_info : inline_infos) {
+    const char* tag = "";
+    dex_pc = inline_info.GetDexPc();
+    if (inline_info.EncodesArtMethod()) {
+      tag = "encoded ";
+      caller = inline_info.GetArtMethod();
+    } else {
+      uint32_t method_index = inline_info.GetMethodIndex(method_info);
+      if (dex_pc == static_cast<uint32_t>(-1)) {
+        tag = "special ";
+        CHECK(inline_info.Equals(inline_infos.back()));
+        caller = jni::DecodeArtMethod(WellKnownClasses::java_lang_String_charAt);
+        CHECK_EQ(caller->GetDexMethodIndex(), method_index);
       } else {
-        uint32_t method_index = inline_info.GetMethodIndex(method_info);
-        if (dex_pc == static_cast<uint32_t>(-1)) {
-          tag = "special ";
-          CHECK_EQ(d + 1u, depth);
-          caller = jni::DecodeArtMethod(WellKnownClasses::java_lang_String_charAt);
-          CHECK_EQ(caller->GetDexMethodIndex(), method_index);
-        } else {
-          ObjPtr<mirror::DexCache> dex_cache = caller->GetDexCache();
-          ObjPtr<mirror::ClassLoader> class_loader = caller->GetClassLoader();
-          caller = class_linker->LookupResolvedMethod(method_index, dex_cache, class_loader);
-          CHECK(caller != nullptr);
-        }
+        ObjPtr<mirror::DexCache> dex_cache = caller->GetDexCache();
+        ObjPtr<mirror::ClassLoader> class_loader = caller->GetClassLoader();
+        caller = class_linker->LookupResolvedMethod(method_index, dex_cache, class_loader);
+        CHECK(caller != nullptr);
       }
-      LOG(FATAL_WITHOUT_ABORT) << "Inlined method #" << d << ": " << tag << caller->PrettyMethod()
-          << " dex pc: " << dex_pc
-          << " dex file: " << caller->GetDexFile()->GetLocation()
-          << " class table: "
-          << class_linker->ClassTableForClassLoader(caller->GetClassLoader());
-      DumpB74410240ClassData(caller->GetDeclaringClass());
-      LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(caller, dex_pc);
     }
+    LOG(FATAL_WITHOUT_ABORT) << "InlineInfo #" << inline_info.Row()
+        << ": " << tag << caller->PrettyMethod()
+        << " dex pc: " << dex_pc
+        << " dex file: " << caller->GetDexFile()->GetLocation()
+        << " class table: "
+        << class_linker->ClassTableForClassLoader(caller->GetClassLoader());
+    DumpB74410240ClassData(caller->GetDeclaringClass());
+    LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(caller, dex_pc);
   }
 }
 

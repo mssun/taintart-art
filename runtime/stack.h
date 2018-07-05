@@ -23,6 +23,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "quick/quick_method_frame_info.h"
+#include "stack_map.h"
 
 namespace art {
 
@@ -219,11 +220,11 @@ class StackVisitor {
   void SetReturnPc(uintptr_t new_ret_pc) REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool IsInInlinedFrame() const {
-    return current_inlining_depth_ != 0;
+    return !current_inline_frames_.empty();
   }
 
-  size_t GetCurrentInliningDepth() const {
-    return current_inlining_depth_;
+  InlineInfo GetCurrentInlinedFrame() const {
+    return current_inline_frames_.back();
   }
 
   uintptr_t GetCurrentQuickFramePc() const {
@@ -309,9 +310,9 @@ class StackVisitor {
   size_t num_frames_;
   // Depth of the frame we're currently at.
   size_t cur_depth_;
-  // Current inlining depth of the method we are currently at.
-  // 0 if there is no inlined frame.
-  size_t current_inlining_depth_;
+  // Current inlined frames of the method we are currently at.
+  // We keep poping frames from the end as we visit the frames.
+  BitTableRange<InlineInfo> current_inline_frames_;
 
  protected:
   Context* const context_;

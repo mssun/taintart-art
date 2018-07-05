@@ -68,7 +68,6 @@ StackVisitor::StackVisitor(Thread* thread,
       cur_oat_quick_method_header_(nullptr),
       num_frames_(num_frames),
       cur_depth_(0),
-      current_inlining_depth_(0),
       context_(context),
       check_suspended_(check_suspended) {
   if (check_suspended_) {
@@ -76,32 +75,15 @@ StackVisitor::StackVisitor(Thread* thread,
   }
 }
 
-static StackMap GetCurrentStackMap(CodeInfo& code_info,
-                                   const OatQuickMethodHeader* method_header,
-                                   uintptr_t cur_quick_frame_pc)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  uint32_t native_pc_offset = method_header->NativeQuickPcOffset(cur_quick_frame_pc);
-  StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
-  DCHECK(stack_map.IsValid());
-  return stack_map;
-}
-
 ArtMethod* StackVisitor::GetMethod() const {
   if (cur_shadow_frame_ != nullptr) {
     return cur_shadow_frame_->GetMethod();
   } else if (cur_quick_frame_ != nullptr) {
     if (IsInInlinedFrame()) {
-      size_t depth_in_stack_map = current_inlining_depth_ - 1;
       const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
-      CodeInfo code_info(method_header);
-      StackMap stack_map = GetCurrentStackMap(code_info, method_header, cur_quick_frame_pc_);
       MethodInfo method_info = method_header->GetOptimizedMethodInfo();
       DCHECK(walk_kind_ != StackWalkKind::kSkipInlinedFrames);
-      return GetResolvedMethod(*GetCurrentQuickFrame(),
-                               method_info,
-                               code_info,
-                               stack_map,
-                               depth_in_stack_map);
+      return GetResolvedMethod(*GetCurrentQuickFrame(), method_info, current_inline_frames_);
     } else {
       return *cur_quick_frame_;
     }
@@ -114,11 +96,7 @@ uint32_t StackVisitor::GetDexPc(bool abort_on_failure) const {
     return cur_shadow_frame_->GetDexPC();
   } else if (cur_quick_frame_ != nullptr) {
     if (IsInInlinedFrame()) {
-      const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
-      CodeInfo code_info(method_header);
-      size_t depth_in_stack_map = current_inlining_depth_ - 1;
-      StackMap stack_map = GetCurrentStackMap(code_info, method_header, cur_quick_frame_pc_);
-      return code_info.GetInlineInfoAtDepth(stack_map, depth_in_stack_map).GetDexPc();
+      return current_inline_frames_.back().GetDexPc();
     } else if (cur_oat_quick_method_header_ == nullptr) {
       return dex::kDexNoIndex;
     } else {
@@ -233,10 +211,9 @@ bool StackVisitor::GetVRegFromOptimizedCode(ArtMethod* m, uint16_t vreg, VRegKin
   uint32_t native_pc_offset = method_header->NativeQuickPcOffset(cur_quick_frame_pc_);
   StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
   DCHECK(stack_map.IsValid());
-  size_t depth_in_stack_map = current_inlining_depth_ - 1;
 
   DexRegisterMap dex_register_map = IsInInlinedFrame()
-      ? code_info.GetDexRegisterMapAtDepth(depth_in_stack_map, stack_map)
+      ? code_info.GetInlineDexRegisterMapOf(stack_map, current_inline_frames_.back())
       : code_info.GetDexRegisterMapOf(stack_map);
   if (dex_register_map.empty()) {
     return false;
@@ -820,10 +797,10 @@ void StackVisitor::WalkStack(bool include_transitions) {
               cur_oat_quick_method_header_->NativeQuickPcOffset(cur_quick_frame_pc_);
           StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
           if (stack_map.IsValid() && stack_map.HasInlineInfo()) {
-            DCHECK_EQ(current_inlining_depth_, 0u);
-            for (current_inlining_depth_ = code_info.GetInlineDepthOf(stack_map);
-                 current_inlining_depth_ != 0;
-                 --current_inlining_depth_) {
+            DCHECK_EQ(current_inline_frames_.size(), 0u);
+            for (current_inline_frames_ = code_info.GetInlineInfosOf(stack_map);
+                 !current_inline_frames_.empty();
+                 current_inline_frames_.pop_back()) {
               bool should_continue = VisitFrame();
               if (UNLIKELY(!should_continue)) {
                 return;
