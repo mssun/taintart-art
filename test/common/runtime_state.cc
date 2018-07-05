@@ -132,13 +132,9 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_compiledWithOptimizing(JNIEnv* e
     constexpr const char* kInterpretOnly = "interpret-only";
     constexpr const char* kVerifyNone = "verify-none";
     constexpr const char* kVerifyAtRuntime = "verify-at-runtime";
-    constexpr const char* kQuicken = "quicken";
-    constexpr const char* kExtract = "extract";
     if (strncmp(filter, kInterpretOnly, strlen(kInterpretOnly)) == 0 ||
         strncmp(filter, kVerifyNone, strlen(kVerifyNone)) == 0 ||
-        strncmp(filter, kVerifyAtRuntime, strlen(kVerifyAtRuntime)) == 0 ||
-        strncmp(filter, kExtract, strlen(kExtract)) == 0 ||
-        strncmp(filter, kQuicken, strlen(kQuicken)) == 0) {
+        strncmp(filter, kVerifyAtRuntime, strlen(kVerifyAtRuntime)) == 0) {
       return JNI_FALSE;
     }
   }
