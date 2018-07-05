@@ -298,8 +298,8 @@ class CodeInfo {
     return BitsToBytesRoundUp(size_in_bits_);
   }
 
-  bool HasInlineInfo() const {
-    return inline_infos_.NumRows() > 0;
+  ALWAYS_INLINE const BitTable<StackMap>& GetStackMaps() const {
+    return stack_maps_;
   }
 
   ALWAYS_INLINE StackMap GetStackMapAt(size_t index) const {
@@ -330,6 +330,10 @@ class CodeInfo {
       : dex_register_catalog_.GetRow(index).GetLocation();
   }
 
+  bool HasInlineInfo() const {
+    return inline_infos_.NumRows() > 0;
+  }
+
   uint32_t GetNumberOfStackMaps() const {
     return stack_maps_.NumRows();
   }
@@ -347,14 +351,18 @@ class CodeInfo {
     return DexRegisterMap(0, DexRegisterLocation::None());
   }
 
-  ALWAYS_INLINE DexRegisterMap GetDexRegisterMapAtDepth(uint8_t depth, StackMap stack_map) const {
+  ALWAYS_INLINE DexRegisterMap GetInlineDexRegisterMapOf(StackMap stack_map,
+                                                         InlineInfo inline_info) const {
     if (stack_map.HasDexRegisterMap()) {
+      DCHECK(stack_map.HasInlineInfoIndex());
+      uint32_t depth = inline_info.Row() - stack_map.GetInlineInfoIndex();
       // The register counts are commutative and include all outer levels.
       // This allows us to determine the range [first, last) in just two lookups.
       // If we are at depth 0 (the first inlinee), the count from the main method is used.
-      uint32_t first = (depth == 0) ? number_of_dex_registers_
-          : GetInlineInfoAtDepth(stack_map, depth - 1).GetNumberOfDexRegisters();
-      uint32_t last = GetInlineInfoAtDepth(stack_map, depth).GetNumberOfDexRegisters();
+      uint32_t first = (depth == 0)
+          ? number_of_dex_registers_
+          : inline_infos_.GetRow(inline_info.Row() - 1).GetNumberOfDexRegisters();
+      uint32_t last = inline_info.GetNumberOfDexRegisters();
       DexRegisterMap map(last - first, DexRegisterLocation::Invalid());
       DecodeDexRegisterMap(stack_map.Row(), first, &map);
       return map;
@@ -362,28 +370,20 @@ class CodeInfo {
     return DexRegisterMap(0, DexRegisterLocation::None());
   }
 
-  InlineInfo GetInlineInfo(size_t index) const {
-    return inline_infos_.GetRow(index);
-  }
-
-  uint32_t GetInlineDepthOf(StackMap stack_map) const {
-    uint32_t depth = 0;
+  BitTableRange<InlineInfo> GetInlineInfosOf(StackMap stack_map) const {
     uint32_t index = stack_map.GetInlineInfoIndex();
     if (index != StackMap::kNoValue) {
-      while (GetInlineInfo(index + depth++).GetIsLast() == InlineInfo::kMore) { }
+      auto begin = inline_infos_.begin() + index;
+      auto end = begin;
+      while ((*end++).GetIsLast() == InlineInfo::kMore) { }
+      return BitTableRange<InlineInfo>(begin, end);
+    } else {
+      return BitTableRange<InlineInfo>();
     }
-    return depth;
-  }
-
-  InlineInfo GetInlineInfoAtDepth(StackMap stack_map, uint32_t depth) const {
-    DCHECK(stack_map.HasInlineInfo());
-    DCHECK_LT(depth, GetInlineDepthOf(stack_map));
-    return GetInlineInfo(stack_map.GetInlineInfoIndex() + depth);
   }
 
   StackMap GetStackMapForDexPc(uint32_t dex_pc) const {
-    for (size_t i = 0, e = GetNumberOfStackMaps(); i < e; ++i) {
-      StackMap stack_map = GetStackMapAt(i);
+    for (StackMap stack_map : stack_maps_) {
       if (stack_map.GetDexPc() == dex_pc && stack_map.GetKind() != StackMap::Kind::Debug) {
         return stack_map;
       }
@@ -403,8 +403,7 @@ class CodeInfo {
   }
 
   StackMap GetOsrStackMapForDexPc(uint32_t dex_pc) const {
-    for (size_t i = 0, e = GetNumberOfStackMaps(); i < e; ++i) {
-      StackMap stack_map = GetStackMapAt(i);
+    for (StackMap stack_map : stack_maps_) {
       if (stack_map.GetDexPc() == dex_pc && stack_map.GetKind() == StackMap::Kind::OSR) {
         return stack_map;
       }
@@ -415,8 +414,7 @@ class CodeInfo {
   StackMap GetStackMapForNativePcOffset(uint32_t pc, InstructionSet isa = kRuntimeISA) const;
 
   InvokeInfo GetInvokeInfoForNativePcOffset(uint32_t native_pc_offset) {
-    for (size_t index = 0; index < invoke_infos_.NumRows(); index++) {
-      InvokeInfo item = GetInvokeInfo(index);
+    for (InvokeInfo item : invoke_infos_) {
       if (item.GetNativePcOffset(kRuntimeISA) == native_pc_offset) {
         return item;
       }

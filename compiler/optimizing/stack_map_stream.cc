@@ -151,7 +151,7 @@ void StackMapStream::EndStackMapEntry() {
       StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
       CHECK_EQ(stack_map.HasDexRegisterMap(), (num_dex_registers != 0));
       CHECK_EQ(stack_map.HasInlineInfo(), (inlining_depth != 0));
-      CHECK_EQ(code_info.GetInlineDepthOf(stack_map), inlining_depth);
+      CHECK_EQ(code_info.GetInlineInfosOf(stack_map).size(), inlining_depth);
     });
   }
 }
@@ -209,7 +209,7 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
     size_t depth = current_inline_infos_.size() - 1;
     dchecks_.emplace_back([=](const CodeInfo& code_info) {
       StackMap stack_map = code_info.GetStackMapAt(stack_map_index);
-      InlineInfo inline_info = code_info.GetInlineInfoAtDepth(stack_map, depth);
+      InlineInfo inline_info = code_info.GetInlineInfosOf(stack_map)[depth];
       CHECK_EQ(inline_info.GetDexPc(), dex_pc);
       bool encode_art_method = EncodeArtMethodInInlineInfo(method);
       CHECK_EQ(inline_info.EncodesArtMethod(), encode_art_method);
@@ -275,7 +275,6 @@ void StackMapStream::CreateDexRegisterMap() {
 
   if (kVerifyStackMaps) {
     size_t stack_map_index = stack_maps_.size();
-    uint32_t depth = current_inline_infos_.size();
     // We need to make copy of the current registers for later (when the check is run).
     auto expected_dex_registers = std::make_shared<dchecked_vector<DexRegisterLocation>>(
         current_dex_registers_.begin(), current_dex_registers_.end());
@@ -285,8 +284,9 @@ void StackMapStream::CreateDexRegisterMap() {
       for (DexRegisterLocation reg : code_info.GetDexRegisterMapOf(stack_map)) {
         CHECK_EQ((*expected_dex_registers)[expected_reg++], reg);
       }
-      for (uint32_t d = 0; d < depth; d++) {
-        for (DexRegisterLocation reg : code_info.GetDexRegisterMapAtDepth(d, stack_map)) {
+      for (InlineInfo inline_info : code_info.GetInlineInfosOf(stack_map)) {
+        DexRegisterMap map = code_info.GetInlineDexRegisterMapOf(stack_map, inline_info);
+        for (DexRegisterLocation reg : map) {
           CHECK_EQ((*expected_dex_registers)[expected_reg++], reg);
         }
       }

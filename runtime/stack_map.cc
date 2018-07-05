@@ -232,8 +232,7 @@ void CodeInfo::Dump(VariableIndentationOutputStream* vios,
 
   // Display stack maps along with (live) Dex register maps.
   if (verbose) {
-    for (size_t i = 0; i < GetNumberOfStackMaps(); ++i) {
-      StackMap stack_map = GetStackMapAt(i);
+    for (StackMap stack_map : stack_maps_) {
       stack_map.Dump(vios, *this, method_info, code_offset, instruction_set);
     }
   }
@@ -259,9 +258,7 @@ void StackMap::Dump(VariableIndentationOutputStream* vios,
   }
   vios->Stream() << ")\n";
   code_info.GetDexRegisterMapOf(*this).Dump(vios);
-  uint32_t depth = code_info.GetInlineDepthOf(*this);
-  for (size_t d = 0; d < depth; d++) {
-    InlineInfo inline_info = code_info.GetInlineInfoAtDepth(*this, d);
+  for (InlineInfo inline_info : code_info.GetInlineInfosOf(*this)) {
     inline_info.Dump(vios, code_info, *this, method_info);
   }
 }
@@ -285,7 +282,7 @@ void InlineInfo::Dump(VariableIndentationOutputStream* vios,
         << ", method_index=" << GetMethodIndex(method_info);
   }
   vios->Stream() << ")\n";
-  code_info.GetDexRegisterMapAtDepth(depth, stack_map).Dump(vios);
+  code_info.GetInlineDexRegisterMapOf(stack_map, *this).Dump(vios);
 }
 
 }  // namespace art

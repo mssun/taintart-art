@@ -39,9 +39,9 @@ class IterationRange {
   iterator cbegin() const { return first_; }
   iterator cend() const { return last_; }
 
- private:
-  const iterator first_;
-  const iterator last_;
+ protected:
+  iterator first_;
+  iterator last_;
 };
 
 template <typename Iter>
