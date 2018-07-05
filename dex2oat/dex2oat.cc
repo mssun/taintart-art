@@ -290,7 +290,7 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("      Default: default");
   UsageError("");
   UsageError("  --compile-pic: Force indirect use of code, methods, and classes");
-  UsageError("      Default: disabled");
+  UsageError("      Default: disabled for apps (ignored for boot image which is always PIC)");
   UsageError("");
   UsageError("  --compiler-backend=(Quick|Optimizing): select compiler backend");
   UsageError("      set.");
@@ -725,6 +725,9 @@ class Dex2Oat FINAL {
 
   void ProcessOptions(ParserOptions* parser_options) {
     compiler_options_->boot_image_ = !image_filenames_.empty();
+    if (compiler_options_->boot_image_) {
+      compiler_options_->compile_pic_ = true;
+    }
     compiler_options_->app_image_ = app_image_fd_ != -1 || !app_image_file_name_.empty();
 
     if (IsBootImage() && image_filenames_.size() == 1) {
