@@ -22,7 +22,6 @@
 #include "base/utils.h"
 #include "method_info.h"
 #include "quick/quick_method_frame_info.h"
-#include "stack_map.h"
 
 namespace art {
 
@@ -63,9 +62,9 @@ class PACKED(4) OatQuickMethodHeader {
     return GetCodeSize() != 0 && vmap_table_offset_ != 0;
   }
 
-  const uint8_t* GetOptimizedCodeInfoPtr() const {
+  const void* GetOptimizedCodeInfoPtr() const {
     DCHECK(IsOptimized());
-    return code_ - vmap_table_offset_;
+    return reinterpret_cast<const void*>(code_ - vmap_table_offset_);
   }
 
   uint8_t* GetOptimizedCodeInfoPtr() {
@@ -159,12 +158,7 @@ class PACKED(4) OatQuickMethodHeader {
   }
 
   QuickMethodFrameInfo GetFrameInfo() const {
-    DCHECK(IsOptimized());
-    QuickMethodFrameInfo frame_info = CodeInfo::DecodeFrameInfo(GetOptimizedCodeInfoPtr());
-    DCHECK_EQ(frame_info.FrameSizeInBytes(), frame_info_.FrameSizeInBytes());
-    DCHECK_EQ(frame_info.CoreSpillMask(), frame_info_.CoreSpillMask());
-    DCHECK_EQ(frame_info.FpSpillMask(), frame_info_.FpSpillMask());
-    return frame_info;
+    return frame_info_;
   }
 
   uintptr_t ToNativeQuickPc(ArtMethod* method,
