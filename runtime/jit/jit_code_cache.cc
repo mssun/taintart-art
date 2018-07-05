@@ -734,6 +734,7 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
                                           bool has_should_deoptimize_flag,
                                           const ArenaSet<ArtMethod*>&
                                               cha_single_implementation_list) {
+  DCHECK_NE(stack_map != nullptr, method->IsNative());
   DCHECK(!method->IsNative() || !osr);
   size_t alignment = GetInstructionSetAlignment(kRuntimeISA);
   // Ensure the header ends up at expected instruction alignment.
@@ -815,6 +816,8 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
     // but below we still make the compiled code valid for the method.
     MutexLock mu(self, lock_);
     if (UNLIKELY(method->IsNative())) {
+      DCHECK(stack_map == nullptr);
+      DCHECK(roots_data == nullptr);
       auto it = jni_stubs_map_.find(JniStubKey(method));
       DCHECK(it != jni_stubs_map_.end())
           << "Entry inserted in NotifyCompilationOf() should be alive.";
