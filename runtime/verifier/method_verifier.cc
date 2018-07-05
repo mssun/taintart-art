@@ -2254,45 +2254,6 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
             }
             break;
 
-          // Catch a case of register aliasing when two registers are linked to the same
-          // java.lang.Class object via two consequent const-class instructions immediately
-          // preceding monitor-enter called on one of those registers.
-          case Instruction::CONST_CLASS: {
-            // Get the second previous instruction.
-            if (prev_idx == 0 || GetInstructionFlags(prev_idx).IsBranchTarget()) {
-              break;
-            }
-            prev_idx--;
-            while (0 != prev_idx && !GetInstructionFlags(prev_idx).IsOpcode()) {
-              prev_idx--;
-            }
-            const Instruction& prev2_inst = code_item_accessor_.InstructionAt(prev_idx);
-
-            // Match the pattern "const-class; const-class; monitor-enter;"
-            if (prev2_inst.Opcode() != Instruction::CONST_CLASS) {
-              break;
-            }
-
-            // Ensure both const-classes are called for the same type_idx.
-            if (prev_inst.VRegB_21c() != prev2_inst.VRegB_21c()) {
-              break;
-            }
-
-            // Update the lock status for the aliased register.
-            if (prev_inst.VRegA() == inst->VRegA_11x()) {
-              work_line_->CopyRegister1(this,
-                                        prev2_inst.VRegA(),
-                                        inst->VRegA_11x(),
-                                        kTypeCategoryRef);
-            } else if (prev2_inst.VRegA() == inst->VRegA_11x()) {
-              work_line_->CopyRegister1(this,
-                                        prev_inst.VRegA(),
-                                        inst->VRegA_11x(),
-                                        kTypeCategoryRef);
-            }
-            break;
-          }
-
           default:  // Other instruction types ignored.
             break;
         }
