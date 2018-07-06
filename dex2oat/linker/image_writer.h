@@ -369,6 +369,12 @@ class ImageWriter FINAL {
 
     // Class table associated with this image for serialization.
     std::unique_ptr<ClassTable> class_table_;
+
+    // Relocations of references/pointers. For boot image, it contains one bit
+    // for each location that can be relocated. For app image, it contains twice
+    // that many bits, first half contains relocations within this image and the
+    // second half contains relocations for references to the boot image.
+    std::vector<uint8_t> relocation_bitmap_;
   };
 
   // We use the lock word to store the offset of the object in the image.

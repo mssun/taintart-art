@@ -31,11 +31,13 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/bit_memory_region.h"
 #include "base/dumpable.h"
 #include "base/file_utils.h"
 #include "base/leb128.h"
 #include "base/logging.h"  // For InitLogging.
 #include "base/mutex.h"
+#include "base/memory_region.h"
 #include "base/memory_tool.h"
 #include "base/os.h"
 #include "base/scoped_flock.h"
@@ -187,10 +189,6 @@ bool PatchOat::GeneratePatch(
             "Original and relocated image sizes differ: %zu vs %zu", original_size, relocated_size);
     return false;
   }
-  if ((original_size % 4) != 0) {
-    *error_msg = StringPrintf("Image size not multiple of 4: %zu", original_size);
-    return false;
-  }
   if (original_size > UINT32_MAX) {
     *error_msg = StringPrintf("Image too large: %zu" , original_size);
     return false;
@@ -206,20 +204,58 @@ bool PatchOat::GeneratePatch(
     return false;
   }
 
+  const ImageHeader* image_header = reinterpret_cast<const ImageHeader*>(original.Begin());
+  if (image_header->GetStorageMode() != ImageHeader::kStorageModeUncompressed) {
+    *error_msg = "Unexpected compressed image.";
+    return false;
+  }
+  if (image_header->IsAppImage()) {
+    *error_msg = "Unexpected app image.";
+    return false;
+  }
+  if (image_header->GetPointerSize() != PointerSize::k32 &&
+      image_header->GetPointerSize() != PointerSize::k64) {
+    *error_msg = "Unexpected pointer size.";
+    return false;
+  }
+  static_assert(sizeof(GcRoot<mirror::Object>) == sizeof(mirror::HeapReference<mirror::Object>),
+                "Expecting heap GC roots and references to have the same size.");
+  DCHECK_LE(sizeof(GcRoot<mirror::Object>), static_cast<size_t>(image_header->GetPointerSize()));
+
+  const size_t image_bitmap_offset = RoundUp(sizeof(ImageHeader) + image_header->GetDataSize(),
+                                             kPageSize);
+  const size_t end_of_bitmap = image_bitmap_offset + image_header->GetImageBitmapSection().Size();
+  const ImageSection& relocation_section = image_header->GetImageRelocationsSection();
+  MemoryRegion relocations_data(original.Begin() + end_of_bitmap, relocation_section.Size());
+  size_t image_end = image_header->GetClassTableSection().End();
+  if (!IsAligned<sizeof(GcRoot<mirror::Object>)>(image_end)) {
+    *error_msg = StringPrintf("Unaligned image end: %zu", image_end);
+    return false;
+  }
+  size_t num_indexes = image_end / sizeof(GcRoot<mirror::Object>);
+  if (relocation_section.Size() != BitsToBytesRoundUp(num_indexes)) {
+    *error_msg = StringPrintf("Unexpected size of relocation section: %zu expected: %zu",
+                              static_cast<size_t>(relocation_section.Size()),
+                              BitsToBytesRoundUp(num_indexes));
+    return false;
+  }
+  BitMemoryRegion relocation_bitmap(relocations_data, /* bit_offset */ 0u, num_indexes);
+
   // Output the SHA-256 digest of the original
   output->resize(SHA256_DIGEST_LENGTH);
   const uint8_t* original_bytes = original.Begin();
   SHA256(original_bytes, original_size, output->data());
 
-  // Output the list of offsets at which the original and patched images differ
-  size_t last_diff_offset = 0;
+  // Check the list of offsets at which the original and patched images differ.
   size_t diff_offset_count = 0;
   const uint8_t* relocated_bytes = relocated.Begin();
-  for (size_t offset = 0; offset < original_size; offset += 4) {
+  for (size_t index = 0; index != num_indexes; ++index) {
+    size_t offset = index * sizeof(GcRoot<mirror::Object>);
     uint32_t original_value = *reinterpret_cast<const uint32_t*>(original_bytes + offset);
     uint32_t relocated_value = *reinterpret_cast<const uint32_t*>(relocated_bytes + offset);
     off_t diff = relocated_value - original_value;
     if (diff == 0) {
+      CHECK(!relocation_bitmap.LoadBit(index));
       continue;
     } else if (diff != expected_diff) {
       *error_msg =
@@ -230,13 +266,11 @@ bool PatchOat::GeneratePatch(
               (intmax_t) diff);
       return false;
     }
-
-    uint32_t offset_diff = offset - last_diff_offset;
-    last_diff_offset = offset;
+    CHECK(relocation_bitmap.LoadBit(index));
     diff_offset_count++;
-
-    EncodeUnsignedLeb128(output, offset_diff);
   }
+  size_t tail_bytes = original_size - image_end;
+  CHECK_EQ(memcmp(original_bytes + image_end, relocated_bytes + image_end, tail_bytes), 0);
 
   if (diff_offset_count == 0) {
     *error_msg = "Original and patched images are identical";
@@ -290,6 +324,14 @@ static bool CheckImageIdenticalToOriginalExceptForRelocation(
                               rel_filename.c_str());
     return false;
   }
+  if (rel_size != SHA256_DIGEST_LENGTH) {
+    *error_msg = StringPrintf("Unexpected size of image relocation file %s: %" PRId64
+                                  ", expected %zu",
+                              rel_filename.c_str(),
+                              rel_size,
+                              static_cast<size_t>(SHA256_DIGEST_LENGTH));
+    return false;
+  }
   std::unique_ptr<uint8_t[]> rel(new uint8_t[rel_size]);
   if (!rel_file->ReadFully(rel.get(), rel_size)) {
     *error_msg = StringPrintf("Failed to read image relocation file %s", rel_filename.c_str());
@@ -309,10 +351,10 @@ static bool CheckImageIdenticalToOriginalExceptForRelocation(
                               relocated_filename.c_str());
     return false;
   }
-  if ((image_size % 4) != 0) {
+  if (static_cast<uint64_t>(image_size) < sizeof(ImageHeader)) {
     *error_msg =
         StringPrintf(
-            "Relocated image file %s size not multiple of 4: %" PRId64,
+            "Relocated image file %s too small: %" PRId64,
                 relocated_filename.c_str(), image_size);
     return false;
   }
@@ -329,16 +371,39 @@ static bool CheckImageIdenticalToOriginalExceptForRelocation(
     return false;
   }
 
-  const uint8_t* original_image_digest = rel.get();
-  if (rel_size < SHA256_DIGEST_LENGTH) {
-    *error_msg = StringPrintf("Malformed image relocation file %s: too short",
-                              rel_filename.c_str());
+  const ImageHeader& image_header = *reinterpret_cast<const ImageHeader*>(image.get());
+  if (image_header.GetStorageMode() != ImageHeader::kStorageModeUncompressed) {
+    *error_msg = StringPrintf("Unsuported compressed image file %s",
+                              relocated_filename.c_str());
+    return false;
+  }
+  size_t image_end = image_header.GetClassTableSection().End();
+  if (image_end > static_cast<uint64_t>(image_size) || !IsAligned<4u>(image_end)) {
+    *error_msg = StringPrintf("Heap size too big or unaligned in image file %s: %zu",
+                              relocated_filename.c_str(),
+                              image_end);
+    return false;
+  }
+  size_t number_of_relocation_locations = image_end / 4u;
+  const ImageSection& relocation_section = image_header.GetImageRelocationsSection();
+  if (relocation_section.Size() != BitsToBytesRoundUp(number_of_relocation_locations)) {
+    *error_msg = StringPrintf("Unexpected size of relocation section in image file %s: %zu"
+                                  " expected: %zu",
+                              relocated_filename.c_str(),
+                              static_cast<size_t>(relocation_section.Size()),
+                              BitsToBytesRoundUp(number_of_relocation_locations));
+    return false;
+  }
+  if (relocation_section.End() != image_size) {
+    *error_msg = StringPrintf("Relocation section does not end at file end in image file %s: %zu"
+                                  " expected: %" PRId64,
+                              relocated_filename.c_str(),
+                              static_cast<size_t>(relocation_section.End()),
+                              image_size);
     return false;
   }
 
-  const ImageHeader& image_header = *reinterpret_cast<const ImageHeader*>(image.get());
   off_t expected_diff = image_header.GetPatchDelta();
-
   if (expected_diff == 0) {
     *error_msg = StringPrintf("Unsuported patch delta of zero in %s",
                               relocated_filename.c_str());
@@ -347,35 +412,14 @@ static bool CheckImageIdenticalToOriginalExceptForRelocation(
 
   // Relocated image is expected to differ from the original due to relocation.
   // Unrelocate the image in memory to compensate.
-  uint8_t* image_start = image.get();
-  const uint8_t* rel_end = &rel[rel_size];
-  const uint8_t* rel_ptr = &rel[SHA256_DIGEST_LENGTH];
-  // The remaining .rel file consists of offsets at which relocation should've occurred.
-  // For each offset, we "unrelocate" the image by subtracting the expected relocation
-  // diff value (as specified in the image header).
-  //
-  // Each offset is encoded as a delta/diff relative to the previous offset. With the
-  // very first offset being encoded relative to offset 0.
-  // Deltas are encoded using little-endian 7 bits per byte encoding, with all bytes except
-  // the last one having the highest bit set.
-  uint32_t offset = 0;
-  while (rel_ptr != rel_end) {
-    uint32_t offset_delta = 0;
-    if (DecodeUnsignedLeb128Checked(&rel_ptr, rel_end, &offset_delta)) {
-      offset += offset_delta;
-      if (static_cast<int64_t>(offset) + static_cast<int64_t>(sizeof(uint32_t)) > image_size) {
-        *error_msg = StringPrintf("Relocation out of bounds in %s", relocated_filename.c_str());
-        return false;
-      }
-      uint32_t *image_value = reinterpret_cast<uint32_t*>(image_start + offset);
+  MemoryRegion relocations(image.get() + relocation_section.Offset(), relocation_section.Size());
+  BitMemoryRegion relocation_bitmask(relocations,
+                                     /* bit_offset */ 0u,
+                                     number_of_relocation_locations);
+  for (size_t index = 0; index != number_of_relocation_locations; ++index) {
+    if (relocation_bitmask.LoadBit(index)) {
+      uint32_t* image_value = reinterpret_cast<uint32_t*>(image.get() + index * 4u);
       *image_value -= expected_diff;
-    } else {
-      *error_msg =
-          StringPrintf(
-              "Malformed image relocation file %s: "
-              "last byte has it's most significant bit set",
-              rel_filename.c_str());
-      return false;
     }
   }
 
@@ -384,7 +428,7 @@ static bool CheckImageIdenticalToOriginalExceptForRelocation(
   // digest from relocation file.
   uint8_t image_digest[SHA256_DIGEST_LENGTH];
   SHA256(image.get(), image_size, image_digest);
-  if (memcmp(image_digest, original_image_digest, SHA256_DIGEST_LENGTH) != 0) {
+  if (memcmp(image_digest, rel.get(), SHA256_DIGEST_LENGTH) != 0) {
     *error_msg =
         StringPrintf(
             "Relocated image %s does not match the original %s after unrelocation",
