@@ -40,15 +40,15 @@ uint32_t OatQuickMethodHeader::ToDexPc(ArtMethod* method,
                                        bool abort_on_failure) const {
   const void* entry_point = GetEntryPoint();
   uint32_t sought_offset = pc - reinterpret_cast<uintptr_t>(entry_point);
-  if (IsOptimized()) {
+  if (method->IsNative()) {
+    return dex::kDexNoIndex;
+  } else {
+    DCHECK(IsOptimized());
     CodeInfo code_info(this);
     StackMap stack_map = code_info.GetStackMapForNativePcOffset(sought_offset);
     if (stack_map.IsValid()) {
       return stack_map.GetDexPc();
     }
-  } else {
-    DCHECK(method->IsNative());
-    return dex::kDexNoIndex;
   }
   if (abort_on_failure) {
     ScopedObjectAccess soa(Thread::Current());
