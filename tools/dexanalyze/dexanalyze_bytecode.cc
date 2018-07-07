@@ -383,7 +383,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
       case Instruction::INSTANCE_OF: {
         uint32_t type_idx = inst->VRegC_22c();
         uint32_t in_reg = inst->VRegB_22c();
-        uint32_t out_reg = inst->VRegB_22c();
+        uint32_t out_reg = inst->VRegA_22c();
         if (count_types_) {
           ++current_type.types_.FindOrAdd(type_idx)->second;
         } else {
