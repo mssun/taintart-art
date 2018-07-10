@@ -18,20 +18,25 @@ package art;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
+import java.lang.reflect.Executable;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.function.IntUnaryOperator;
 import java.util.function.Function;
+import java.util.function.IntUnaryOperator;
 
 public class Test988 {
 
     // Methods with non-deterministic output that should not be printed.
     static Set<Method> NON_DETERMINISTIC_OUTPUT_METHODS = new HashSet<>();
     static Set<Method> NON_DETERMINISTIC_OUTPUT_TYPE_METHODS = new HashSet<>();
+    static List<Class<?>> NON_DETERMINISTIC_TYPE_NAMES = new ArrayList<>();
 
     static {
       try {
@@ -42,6 +47,10 @@ public class Test988 {
         NON_DETERMINISTIC_OUTPUT_METHODS.add(Thread.class.getDeclaredMethod("currentThread"));
         NON_DETERMINISTIC_OUTPUT_TYPE_METHODS.add(Thread.class.getDeclaredMethod("currentThread"));
       } catch (Exception e) {}
+      try {
+        NON_DETERMINISTIC_TYPE_NAMES.add(
+            Proxy.getProxyClass(Test988.class.getClassLoader(), new Class[] { Runnable.class }));
+      } catch (Exception e) {}
     }
 
     static interface Printable {
@@ -49,9 +58,9 @@ public class Test988 {
     }
 
     static final class MethodEntry implements Printable {
-        private Object m;
+        private Executable m;
         private int cnt;
-        public MethodEntry(Object m, int cnt) {
+        public MethodEntry(Executable m, int cnt) {
             this.m = m;
             this.cnt = cnt;
         }
@@ -124,18 +133,26 @@ public class Test988 {
       }
     }
 
-    static String methodToString(Object m) {
+    static String methodToString(Executable m) {
       // Make the output more similar between ART and RI,
       // by removing the 'native' specifier from methods.
-      String methodStr = m.toString();
+      String methodStr;
+      if (NON_DETERMINISTIC_TYPE_NAMES.contains(m.getDeclaringClass())) {
+        methodStr = m.toString().replace(m.getDeclaringClass().getName(),
+            "<non-deterministic-type " +
+            NON_DETERMINISTIC_TYPE_NAMES.indexOf(m.getDeclaringClass()) +
+            ">");
+      } else {
+        methodStr = m.toString();
+      }
       return methodStr.replaceFirst(" native", "");
     }
 
     static final class MethodReturn implements Printable {
-        private Object m;
+        private Executable m;
         private Object val;
         private int cnt;
-        public MethodReturn(Object m, Object val, int cnt) {
+        public MethodReturn(Executable m, Object val, int cnt) {
             this.m = m;
             this.val = val;
             this.cnt = cnt;
@@ -155,6 +172,9 @@ public class Test988 {
             String klass_print;
             if (klass == null) {
               klass_print =  "null";
+            } else if (NON_DETERMINISTIC_TYPE_NAMES.contains(klass)) {
+              klass_print = "<non-deterministic-class " +
+                  NON_DETERMINISTIC_TYPE_NAMES.indexOf(klass) + ">";
             } else if (NON_DETERMINISTIC_OUTPUT_TYPE_METHODS.contains(m)) {
               klass_print = "<non-deterministic>";
             } else {
@@ -166,9 +186,9 @@ public class Test988 {
     }
 
     static final class MethodThrownThrough implements Printable {
-        private Object m;
+        private Executable m;
         private int cnt;
-        public MethodThrownThrough(Object m, int cnt) {
+        public MethodThrownThrough(Executable m, int cnt) {
             this.m = m;
             this.cnt = cnt;
         }
@@ -262,10 +282,16 @@ public class Test988 {
         }
     }
 
+    static final class TestRunnableInvokeHandler implements InvocationHandler {
+      public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
+        return null;
+      }
+    }
+
     static final int METHOD_TRACING_IGNORE_DEPTH = 2;
     static boolean sMethodTracingIgnore = false;
 
-    public static void notifyMethodEntry(Object m) {
+    public static void notifyMethodEntry(Executable m) {
         // Called by native code when a method is entered. This method is ignored by the native
         // entry and exit hooks.
         cnt++;
@@ -275,7 +301,7 @@ public class Test988 {
         results.add(new MethodEntry(m, cnt - 1));
     }
 
-    public static void notifyMethodExit(Object m, boolean exception, Object result) {
+    public static void notifyMethodExit(Executable m, boolean exception, Object result) {
         cnt--;
 
         if (cnt > METHOD_TRACING_IGNORE_DEPTH && sMethodTracingIgnore) {
@@ -293,16 +319,24 @@ public class Test988 {
         // call this here so it is linked. It doesn't actually do anything here.
         loadAllClasses();
         Trace.disableTracing(Thread.currentThread());
+        // Call this prior to starting tracing since its implementation is so deep into reflection
+        // that it will be changing all the time and difficult to keep up with.
+        Runnable runnable = (Runnable)Proxy.newProxyInstance(
+                    Test988.class.getClassLoader(),
+                    new Class[]{ Runnable.class },
+                    new TestRunnableInvokeHandler());
         Trace.enableMethodTracing(
             Test988.class,
-            Test988.class.getDeclaredMethod("notifyMethodEntry", Object.class),
+            Test988.class.getDeclaredMethod("notifyMethodEntry", Executable.class),
             Test988.class.getDeclaredMethod(
-                "notifyMethodExit", Object.class, Boolean.TYPE, Object.class),
+                "notifyMethodExit", Executable.class, Boolean.TYPE, Object.class),
             Thread.currentThread());
         doFibTest(30, new IterOp());
         doFibTest(5, new RecurOp());
         doFibTest(-19, new IterOp());
         doFibTest(-19, new RecurOp());
+
+        runnable.run();
 
         sMethodTracingIgnore = true;
         IntrinsicsTest.doTest();
@@ -325,6 +359,11 @@ public class Test988 {
       RecurOp.class.toString();
       IterOp.class.toString();
       StringBuilder.class.toString();
+      Runnable.class.toString();
+      TestRunnableInvokeHandler.class.toString();
+      Proxy.class.toString();
+      Proxy.getProxyClass(
+          Test988.class.getClassLoader(), new Class[] { Runnable.class }).toString();
       IntrinsicsTest.initialize();  // ensure <clinit> is executed prior to tracing.
     }
 

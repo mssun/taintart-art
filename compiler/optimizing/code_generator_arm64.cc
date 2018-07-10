@@ -5493,36 +5493,13 @@ void LocationsBuilderARM64::VisitNewInstance(HNewInstance* instruction) {
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
       instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
-  if (instruction->IsStringAlloc()) {
-    locations->AddTemp(LocationFrom(kArtMethodRegister));
-  } else {
-    locations->SetInAt(0, LocationFrom(calling_convention.GetRegisterAt(0)));
-  }
+  locations->SetInAt(0, LocationFrom(calling_convention.GetRegisterAt(0)));
   locations->SetOut(calling_convention.GetReturnLocation(DataType::Type::kReference));
 }
 
 void InstructionCodeGeneratorARM64::VisitNewInstance(HNewInstance* instruction) {
-  // Note: if heap poisoning is enabled, the entry point takes cares
-  // of poisoning the reference.
-  if (instruction->IsStringAlloc()) {
-    // String is allocated through StringFactory. Call NewEmptyString entry point.
-    Location temp = instruction->GetLocations()->GetTemp(0);
-    MemberOffset code_offset = ArtMethod::EntryPointFromQuickCompiledCodeOffset(kArm64PointerSize);
-    __ Ldr(XRegisterFrom(temp), MemOperand(tr, QUICK_ENTRY_POINT(pNewEmptyString)));
-    __ Ldr(lr, MemOperand(XRegisterFrom(temp), code_offset.Int32Value()));
-
-    {
-      // Ensure the pc position is recorded immediately after the `blr` instruction.
-      ExactAssemblyScope eas(GetVIXLAssembler(),
-                             kInstructionSize,
-                             CodeBufferCheckScope::kExactSize);
-      __ blr(lr);
-      codegen_->RecordPcInfo(instruction, instruction->GetDexPc());
-    }
-  } else {
-    codegen_->InvokeRuntime(instruction->GetEntrypoint(), instruction, instruction->GetDexPc());
-    CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
-  }
+  codegen_->InvokeRuntime(instruction->GetEntrypoint(), instruction, instruction->GetDexPc());
+  CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
   codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
 }
 

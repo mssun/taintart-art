@@ -5479,34 +5479,14 @@ void InstructionCodeGeneratorARMVIXL::VisitUShr(HUShr* ushr) {
 void LocationsBuilderARMVIXL::VisitNewInstance(HNewInstance* instruction) {
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
       instruction, LocationSummary::kCallOnMainOnly);
-  if (instruction->IsStringAlloc()) {
-    locations->AddTemp(LocationFrom(kMethodRegister));
-  } else {
-    InvokeRuntimeCallingConventionARMVIXL calling_convention;
-    locations->SetInAt(0, LocationFrom(calling_convention.GetRegisterAt(0)));
-  }
+  InvokeRuntimeCallingConventionARMVIXL calling_convention;
+  locations->SetInAt(0, LocationFrom(calling_convention.GetRegisterAt(0)));
   locations->SetOut(LocationFrom(r0));
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitNewInstance(HNewInstance* instruction) {
-  // Note: if heap poisoning is enabled, the entry point takes cares
-  // of poisoning the reference.
-  if (instruction->IsStringAlloc()) {
-    // String is allocated through StringFactory. Call NewEmptyString entry point.
-    vixl32::Register temp = RegisterFrom(instruction->GetLocations()->GetTemp(0));
-    MemberOffset code_offset = ArtMethod::EntryPointFromQuickCompiledCodeOffset(kArmPointerSize);
-    GetAssembler()->LoadFromOffset(kLoadWord, temp, tr, QUICK_ENTRY_POINT(pNewEmptyString));
-    GetAssembler()->LoadFromOffset(kLoadWord, lr, temp, code_offset.Int32Value());
-    // blx in T32 has only 16bit encoding that's why a stricter check for the scope is used.
-    ExactAssemblyScope aas(GetVIXLAssembler(),
-                           vixl32::k16BitT32InstructionSizeInBytes,
-                           CodeBufferCheckScope::kExactSize);
-    __ blx(lr);
-    codegen_->RecordPcInfo(instruction, instruction->GetDexPc());
-  } else {
-    codegen_->InvokeRuntime(instruction->GetEntrypoint(), instruction, instruction->GetDexPc());
-    CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
-  }
+  codegen_->InvokeRuntime(instruction->GetEntrypoint(), instruction, instruction->GetDexPc());
+  CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
   codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 11);
 }
 

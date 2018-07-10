@@ -145,10 +145,10 @@ fibonacci(5)=5
 ......=> private static java.lang.Object java.lang.Throwable.nativeFillInStackTrace()
 ......<= private static java.lang.Object java.lang.Throwable.nativeFillInStackTrace() -> <class [Ljava.lang.Object;: <non-deterministic>>
 .....<= public synchronized java.lang.Throwable java.lang.Throwable.fillInStackTrace() -> <class java.lang.Error: java.lang.Error: Bad argument: -19 < 0
-	art.Test988.iter_fibonacci(Test988.java:235)
-	art.Test988$IterOp.applyAsInt(Test988.java:230)
-	art.Test988.doFibTest(Test988.java:339)
-	art.Test988.run(Test988.java:304)
+	art.Test988.iter_fibonacci(Test988.java:255)
+	art.Test988$IterOp.applyAsInt(Test988.java:250)
+	art.Test988.doFibTest(Test988.java:378)
+	art.Test988.run(Test988.java:336)
 	<additional hidden frames>
 >
 ....<= public java.lang.Throwable(java.lang.String) -> <null: null>
@@ -165,10 +165,10 @@ fibonacci(5)=5
 ...<= private void java.util.ArrayList.ensureExplicitCapacity(int) -> <null: null>
 ..<= private void java.util.ArrayList.ensureCapacityInternal(int) -> <null: null>
 fibonacci(-19) -> java.lang.Error: Bad argument: -19 < 0
-	art.Test988.iter_fibonacci(Test988.java:235)
-	art.Test988$IterOp.applyAsInt(Test988.java:230)
-	art.Test988.doFibTest(Test988.java:339)
-	art.Test988.run(Test988.java:304)
+	art.Test988.iter_fibonacci(Test988.java:255)
+	art.Test988$IterOp.applyAsInt(Test988.java:250)
+	art.Test988.doFibTest(Test988.java:378)
+	art.Test988.run(Test988.java:336)
 	<additional hidden frames>
 
 .<= public boolean java.util.ArrayList.add(java.lang.Object) -> <class java.lang.Boolean: true>
@@ -248,10 +248,10 @@ fibonacci(-19) -> java.lang.Error: Bad argument: -19 < 0
 ......=> private static java.lang.Object java.lang.Throwable.nativeFillInStackTrace()
 ......<= private static java.lang.Object java.lang.Throwable.nativeFillInStackTrace() -> <class [Ljava.lang.Object;: <non-deterministic>>
 .....<= public synchronized java.lang.Throwable java.lang.Throwable.fillInStackTrace() -> <class java.lang.Error: java.lang.Error: Bad argument: -19 < 0
-	art.Test988.fibonacci(Test988.java:257)
-	art.Test988$RecurOp.applyAsInt(Test988.java:252)
-	art.Test988.doFibTest(Test988.java:339)
-	art.Test988.run(Test988.java:305)
+	art.Test988.fibonacci(Test988.java:277)
+	art.Test988$RecurOp.applyAsInt(Test988.java:272)
+	art.Test988.doFibTest(Test988.java:378)
+	art.Test988.run(Test988.java:337)
 	<additional hidden frames>
 >
 ....<= public java.lang.Throwable(java.lang.String) -> <null: null>
@@ -268,14 +268,20 @@ fibonacci(-19) -> java.lang.Error: Bad argument: -19 < 0
 ...<= private void java.util.ArrayList.ensureExplicitCapacity(int) -> <null: null>
 ..<= private void java.util.ArrayList.ensureCapacityInternal(int) -> <null: null>
 fibonacci(-19) -> java.lang.Error: Bad argument: -19 < 0
-	art.Test988.fibonacci(Test988.java:257)
-	art.Test988$RecurOp.applyAsInt(Test988.java:252)
-	art.Test988.doFibTest(Test988.java:339)
-	art.Test988.run(Test988.java:305)
+	art.Test988.fibonacci(Test988.java:277)
+	art.Test988$RecurOp.applyAsInt(Test988.java:272)
+	art.Test988.doFibTest(Test988.java:378)
+	art.Test988.run(Test988.java:337)
 	<additional hidden frames>
 
 .<= public boolean java.util.ArrayList.add(java.lang.Object) -> <class java.lang.Boolean: true>
 <= public static void art.Test988.doFibTest(int,java.util.function.IntUnaryOperator) -> <null: null>
+=> public final void <non-deterministic-type 0>.run()
+.=> private static java.lang.Object java.lang.reflect.Proxy.invoke(java.lang.reflect.Proxy,java.lang.reflect.Method,java.lang.Object[]) throws java.lang.Throwable
+..=> public java.lang.Object art.Test988$TestRunnableInvokeHandler.invoke(java.lang.Object,java.lang.reflect.Method,java.lang.Object[]) throws java.lang.Throwable
+..<= public java.lang.Object art.Test988$TestRunnableInvokeHandler.invoke(java.lang.Object,java.lang.reflect.Method,java.lang.Object[]) throws java.lang.Throwable -> <null: null>
+.<= private static java.lang.Object java.lang.reflect.Proxy.invoke(java.lang.reflect.Proxy,java.lang.reflect.Method,java.lang.Object[]) throws java.lang.Throwable -> <null: null>
+<= public final void <non-deterministic-type 0>.run() -> <null: null>
 => static void art.Test988$IntrinsicsTest.doTest()
 .=> static void art.Test988Intrinsics.test()
 ..=> public static long java.lang.Double.doubleToRawLongBits(double)
