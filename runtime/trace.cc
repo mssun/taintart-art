@@ -433,12 +433,7 @@ void Trace::Start(std::unique_ptr<File>&& trace_file_in,
                                                    instrumentation::Instrumentation::kMethodExited |
                                                    instrumentation::Instrumentation::kMethodUnwind);
         // TODO: In full-PIC mode, we don't need to fully deopt.
-        // TODO: We can only use trampoline entrypoints if we are java-debuggable since in that case
-        // we know that inlining and other problematic optimizations are disabled. We might just
-        // want to use the trampolines anyway since it is faster. It makes the story with disabling
-        // jit-gc more complex though.
-        runtime->GetInstrumentation()->EnableMethodTracing(
-            kTracerInstrumentationKey, /*needs_interpreter*/!runtime->IsJavaDebuggable());
+        runtime->GetInstrumentation()->EnableMethodTracing(kTracerInstrumentationKey);
       }
     }
   }
