@@ -5,7 +5,8 @@
  */
     .extern MterpCheckBefore
     ldr    rIBASE, [rSELF, #THREAD_CURRENT_IBASE_OFFSET]            @ refresh IBASE.
-    adrl   lr, artMterpAsmInstructionStart + (${opnum} * 128)       @ Addr of primary handler.
+    adr    lr, .L_ALT_${opcode}
+    sub    lr, lr, #(.L_ALT_${opcode} - .L_${opcode})               @ Addr of primary handler.
     mov    r0, rSELF
     add    r1, rFP, #OFF_FP_SHADOWFRAME
     mov    r2, rPC

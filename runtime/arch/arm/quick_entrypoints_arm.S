@@ -2517,7 +2517,6 @@ art_quick_read_barrier_mark_introspection_gc_roots\label_suffix:
 
 .macro BRBMI_FIELD_SLOW_PATH ldr_offset, label_suffix
     .balign 16
-.Lmark_introspection_unmarked\label_suffix:
     // Note: Generates exactly 16 bytes of code.
     BRBMI_UNMARKED_FORWARDING_ADDRESS_CHECK \label_suffix
     BRBMI_LOAD_AND_EXTRACT_RETURN_REG \ldr_offset, \label_suffix
