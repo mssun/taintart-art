@@ -243,7 +243,6 @@ libart_cc_defaults {
 
     arch: {
         arm: {
-            clang_asflags: ["-no-integrated-as"],
             srcs: [
                 "interpreter/mterp/mterp.cc",
                 "interpreter/mterp/out/mterp_arm.S",

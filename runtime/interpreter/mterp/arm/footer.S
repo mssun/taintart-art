@@ -148,7 +148,7 @@ MterpCommonTakenBranch:
 #endif
     cmp     rPROFILE, #JIT_CHECK_OSR
     beq     .L_osr_check
-    subgts  rPROFILE, #1
+    subsgt  rPROFILE, #1
     beq     .L_add_batch                @ counted down to zero - report
 .L_resume_backward_branch:
     ldr     lr, [rSELF, #THREAD_FLAGS_OFFSET]
