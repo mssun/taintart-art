@@ -193,22 +193,6 @@
         "bug": "http://b/34369284"
     },
     {
-        "tests": ["018-stack-overflow",
-                  "107-int-math2",
-                  "667-jit-jni-stub"],
-        "description": ["We run for long enough for jit to compile some of the methods ",
-                        "which means it takes so long to finish the test that it will ",
-                        "timeout. The timeout is due to having to walk the stack ",
-                        "when entering and exiting methods due to the way the instrumentation ",
-                        "trampoline is implemented."],
-        "variant": "debuggable & jit & trace | debuggable & jit & stream"
-    },
-    {
-        "tests": "1935-get-set-current-frame-jit",
-        "description": ["Test expects that OSR works but tracing turns this feature off."],
-        "variant": "trace | stream"
-    },
-    {
         "tests": "1940-ddms-ext",
         "description": ["Test expects to be able to start tracing but we cannot",
                         "do that if tracing is already ongoing."],
@@ -217,7 +201,7 @@
     {
         "tests": "137-cfi",
         "description": ["This test unrolls and expects managed frames, but",
-                        "tracing means we run the interpreter or trampolines."],
+                        "tracing means we run the interpreter."],
         "variant": "trace | stream"
     },
     {
