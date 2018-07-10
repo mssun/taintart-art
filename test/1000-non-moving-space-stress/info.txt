@@ -1,0 +1,5 @@
+Regression test for a bug that used to trigger GC crashes during a
+sticky-bit CC (young-generation) collection involving an unreachable
+newly allocated object in the non-moving space with a dangling
+reference to an object cleared or moved from a newly allocated region
+of the region space.
