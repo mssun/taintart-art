@@ -176,7 +176,9 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasJitCompiledEntrypoint(JNIEnv*
   CHECK(chars.c_str() != nullptr);
   ArtMethod* method = soa.Decode<mirror::Class>(cls)->FindDeclaredDirectMethodByName(
         chars.c_str(), kRuntimePointerSize);
-  return jit->GetCodeCache()->ContainsPc(method->GetEntryPointFromQuickCompiledCode());
+  ScopedAssertNoThreadSuspension sants(__FUNCTION__);
+  return jit->GetCodeCache()->ContainsPc(
+      Runtime::Current()->GetInstrumentation()->GetCodeForInvoke(method));
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasJitCompiledCode(JNIEnv* env,
@@ -226,8 +228,7 @@ extern "C" JNIEXPORT void JNICALL Java_Main_ensureJitCompiled(JNIEnv* env,
   // Note: this will apply to all JIT compilations.
   code_cache->SetGarbageCollectCode(false);
   while (true) {
-    const void* pc = method->GetEntryPointFromQuickCompiledCode();
-    if (code_cache->ContainsPc(pc)) {
+    if (code_cache->WillExecuteJitCode(method)) {
       break;
     } else {
       // Sleep to yield to the compiler thread.

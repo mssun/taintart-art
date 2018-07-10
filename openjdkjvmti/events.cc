@@ -504,8 +504,9 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
     if (!method->IsRuntimeMethod() &&
         event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMethodExit)) {
-      DCHECK_EQ(method->GetReturnTypePrimitive(), art::Primitive::kPrimNot)
-          << method->PrettyMethod();
+      DCHECK_EQ(
+          method->GetInterfaceMethodIfProxy(art::kRuntimePointerSize)->GetReturnTypePrimitive(),
+          art::Primitive::kPrimNot) << method->PrettyMethod();
       DCHECK(!self->IsExceptionPending());
       jvalue val;
       art::JNIEnvExt* jnienv = self->GetJniEnv();
@@ -530,8 +531,9 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
     if (!method->IsRuntimeMethod() &&
         event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMethodExit)) {
-      DCHECK_NE(method->GetReturnTypePrimitive(), art::Primitive::kPrimNot)
-          << method->PrettyMethod();
+      DCHECK_NE(
+          method->GetInterfaceMethodIfProxy(art::kRuntimePointerSize)->GetReturnTypePrimitive(),
+          art::Primitive::kPrimNot) << method->PrettyMethod();
       DCHECK(!self->IsExceptionPending());
       jvalue val;
       art::JNIEnvExt* jnienv = self->GetJniEnv();
@@ -886,16 +888,29 @@ static bool EventNeedsFullDeopt(ArtJvmtiEvent event) {
     case ArtJvmtiEvent::kBreakpoint:
     case ArtJvmtiEvent::kException:
       return false;
-    // TODO We should support more of these or at least do something to make them discriminate by
-    // thread.
+    default:
+      return true;
+  }
+}
+
+static FullDeoptRequirement GetFullDeoptRequirement(ArtJvmtiEvent event) {
+  switch (event) {
+    // TODO We should support more of these as Limited or at least do something to make them
+    // discriminate by thread.
     case ArtJvmtiEvent::kMethodEntry:
-    case ArtJvmtiEvent::kExceptionCatch:
     case ArtJvmtiEvent::kMethodExit:
+      // We only need MethodEntered and MethodExited for these so we can use Stubs. We will need to
+      // disable intrinsics.
+      // TODO Offer a version of this without disabling intrinsics.
+      return FullDeoptRequirement::kStubs;
+    case ArtJvmtiEvent::kExceptionCatch:
     case ArtJvmtiEvent::kFieldModification:
     case ArtJvmtiEvent::kFieldAccess:
     case ArtJvmtiEvent::kSingleStep:
+    // NB If we ever make this runnable using stubs or some other method we will need to be careful
+    // that it doesn't require disabling intrinsics.
     case ArtJvmtiEvent::kFramePop:
-      return true;
+      return FullDeoptRequirement::kInterpreter;
     default:
       LOG(FATAL) << "Unexpected event type!";
       UNREACHABLE();
@@ -905,19 +920,18 @@ static bool EventNeedsFullDeopt(ArtJvmtiEvent event) {
 void EventHandler::SetupTraceListener(JvmtiMethodTraceListener* listener,
                                       ArtJvmtiEvent event,
                                       bool enable) {
-  bool needs_full_deopt = EventNeedsFullDeopt(event);
   // Make sure we can deopt.
   {
     art::ScopedObjectAccess soa(art::Thread::Current());
     DeoptManager* deopt_manager = DeoptManager::Get();
     if (enable) {
       deopt_manager->AddDeoptimizationRequester();
-      if (needs_full_deopt) {
-        deopt_manager->AddDeoptimizeAllMethods();
+      if (EventNeedsFullDeopt(event)) {
+        deopt_manager->AddDeoptimizeAllMethods(GetFullDeoptRequirement(event));
       }
     } else {
-      if (needs_full_deopt) {
-        deopt_manager->RemoveDeoptimizeAllMethods();
+      if (EventNeedsFullDeopt(event)) {
+        deopt_manager->RemoveDeoptimizeAllMethods(GetFullDeoptRequirement(event));
       }
       deopt_manager->RemoveDeoptimizationRequester();
     }

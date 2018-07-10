@@ -3160,6 +3160,7 @@ void Thread::DumpThreadOffset(std::ostream& os, uint32_t offset) {
   QUICK_ENTRY_POINT_INFO(pAllocObjectResolved)
   QUICK_ENTRY_POINT_INFO(pAllocObjectInitialized)
   QUICK_ENTRY_POINT_INFO(pAllocObjectWithChecks)
+  QUICK_ENTRY_POINT_INFO(pAllocStringObject)
   QUICK_ENTRY_POINT_INFO(pAllocStringFromBytes)
   QUICK_ENTRY_POINT_INFO(pAllocStringFromChars)
   QUICK_ENTRY_POINT_INFO(pAllocStringFromString)
@@ -3368,7 +3369,6 @@ void Thread::QuickDeliverException() {
   ClearException();
   QuickExceptionHandler exception_handler(this, false);
   exception_handler.FindCatch(exception);
-  exception_handler.UpdateInstrumentationStack();
   if (exception_handler.GetClearException()) {
     // Exception was cleared as part of delivery.
     DCHECK(!IsExceptionPending());
