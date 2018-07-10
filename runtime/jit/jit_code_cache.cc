@@ -378,7 +378,9 @@ void JitCodeCache::ClearAllCompiledDexCode() {
 }
 
 const void* JitCodeCache::FindCompiledCodeForInstrumentation(ArtMethod* method) {
-  if (LIKELY(!GetGarbageCollectCode())) {
+  // If jit-gc is still on we use the SavedEntryPoint field for doing that and so cannot use it to
+  // find the instrumentation entrypoint.
+  if (LIKELY(GetGarbageCollectCode())) {
     return nullptr;
   }
   ProfilingInfo* info = method->GetProfilingInfo(kRuntimePointerSize);
