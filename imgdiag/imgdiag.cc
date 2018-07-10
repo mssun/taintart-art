@@ -176,8 +176,11 @@ static T* FixUpRemotePointer(T* remote_ptr,
 
   uintptr_t remote = reinterpret_cast<uintptr_t>(remote_ptr);
 
-  CHECK_LE(boot_map.start, remote);
-  CHECK_GT(boot_map.end, remote);
+  // In the case the remote pointer is out of range, it probably belongs to another image.
+  // Just return null for this case.
+  if (remote < boot_map.start || remote >= boot_map.end) {
+    return nullptr;
+  }
 
   off_t boot_offset = remote - boot_map.start;
 
