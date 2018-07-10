@@ -70,7 +70,6 @@ art_cc_defaults {
     },
     generated_sources: ["art_dex2oat_operator_srcs"],
     shared_libs: [
-        "libprofile",
         "libbase",
         "liblz4",
         "liblzma",
@@ -107,6 +106,7 @@ art_cc_static_library {
         "libart-compiler",
         "libart-dexlayout",
         "libart",
+        "libprofile",
     ],
 }
 
@@ -120,6 +120,7 @@ art_cc_static_library {
         "libartd-compiler",
         "libartd-dexlayout",
         "libartd",
+        "libprofiled",
     ],
 }
 
@@ -250,8 +251,8 @@ art_cc_binary {
     ],
 }
 
-art_cc_binary {
-    name: "dex2oats",
+cc_defaults {
+    name: "dex2oats-defaults",
     device_supported: false,
     static_executable: true,
     defaults: ["dex2oat-defaults"],
@@ -268,6 +269,12 @@ art_cc_binary {
         // Try to get rid of it.
         "-z muldefs",
     ],
+    static_libs: art_static_dependencies,
+}
+
+art_cc_binary {
+    name: "dex2oats",
+    defaults: ["dex2oats-defaults"],
     static_libs: [
         "libart-dex2oat",
         "libart-compiler",
@@ -278,35 +285,22 @@ art_cc_binary {
         "libprofile",
         "libvixl-arm",
         "libvixl-arm64",
-    ] + art_static_dependencies,
+    ],
 }
 
 art_cc_binary {
     name: "dex2oatds",
-    device_supported: false,
-    static_executable: true,
     defaults: [
         "art_debug_defaults",
-        "dex2oat-defaults",
+        "dex2oats-defaults",
     ],
     target: {
-        darwin: {
-            enabled: false,
-        },
         linux_glibc_x86_64: {
             use_clang_lld: true,
         },
     },
     // b/79417743, oatdump 32-bit tests failed with clang lld
     use_clang_lld: false,
-    ldflags: [
-        // We need this because GC stress mode makes use of
-        // _Unwind_GetIP and _Unwind_Backtrace and the symbols are also
-        // defined in libgcc_eh.a(unwind-dw2.o)
-        // TODO: Having this is not ideal as it might obscure errors.
-        // Try to get rid of it.
-        "-z muldefs",
-    ],
     static_libs: [
         "libartd-dex2oat",
         "libartd-compiler",
@@ -317,7 +311,7 @@ art_cc_binary {
         "libdexfiled",
         "libvixld-arm",
         "libvixld-arm64",
-    ] + art_static_dependencies,
+    ],
 }
 
 art_cc_test {
