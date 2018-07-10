@@ -1075,6 +1075,10 @@ HNewInstance* HInstructionBuilder::BuildNewInstance(dex::TypeIndex type_index, u
   if (load_class->NeedsAccessCheck() || klass->IsFinalizable() || !klass->IsInstantiable()) {
     entrypoint = kQuickAllocObjectWithChecks;
   }
+  // We will always be able to resolve the string class since it is in the BCP.
+  if (!klass.IsNull() && klass->IsStringClass()) {
+    entrypoint = kQuickAllocStringObject;
+  }
 
   // Consider classes we haven't resolved as potentially finalizable.
   bool finalizable = (klass == nullptr) || klass->IsFinalizable();

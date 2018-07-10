@@ -735,8 +735,11 @@ void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
 
   ProfilingInfo* profiling_info = method->GetProfilingInfo(kRuntimePointerSize);
   // Update the entrypoint if the ProfilingInfo has one. The interpreter will call it
-  // instead of interpreting the method.
-  if ((profiling_info != nullptr) && (profiling_info->GetSavedEntryPoint() != nullptr)) {
+  // instead of interpreting the method. We don't update it for instrumentation as the entrypoint
+  // must remain the instrumentation entrypoint.
+  if ((profiling_info != nullptr) &&
+      (profiling_info->GetSavedEntryPoint() != nullptr) &&
+      (method->GetEntryPointFromQuickCompiledCode() != GetQuickInstrumentationEntryPoint())) {
     Runtime::Current()->GetInstrumentation()->UpdateMethodsCode(
         method, profiling_info->GetSavedEntryPoint());
   } else {
@@ -765,13 +768,20 @@ void Jit::WaitForCompilationToFinish(Thread* self) {
 void Jit::Stop() {
   Thread* self = Thread::Current();
   // TODO(ngeoffray): change API to not require calling WaitForCompilationToFinish twice.
+  // During shutdown and startup the thread-pool can be null.
+  if (GetThreadPool() == nullptr) {
+    return;
+  }
   WaitForCompilationToFinish(self);
   GetThreadPool()->StopWorkers(self);
   WaitForCompilationToFinish(self);
 }
 
 void Jit::Start() {
-  GetThreadPool()->StartWorkers(Thread::Current());
+  // During shutdown and startup the thread-pool can be null.
+  if (GetThreadPool() != nullptr) {
+    GetThreadPool()->StartWorkers(Thread::Current());
+  }
 }
 
 ScopedJitSuspend::ScopedJitSuspend() {

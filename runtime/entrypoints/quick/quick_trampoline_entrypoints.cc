@@ -38,6 +38,7 @@
 #include "interpreter/interpreter_common.h"
 #include "interpreter/shadow_frame-inl.h"
 #include "jit/jit.h"
+#include "jit/jit_code_cache.h"
 #include "linear_alloc.h"
 #include "method_handles.h"
 #include "mirror/class-inl.h"
@@ -947,8 +948,36 @@ extern "C" uint64_t artQuickProxyInvokeHandler(
   jobject interface_method_jobj = soa.AddLocalReference<jobject>(interface_reflect_method);
 
   // All naked Object*s should now be in jobjects, so its safe to go into the main invoke code
-  // that performs allocations.
+  // that performs allocations or instrumentation events.
+  instrumentation::Instrumentation* instr = Runtime::Current()->GetInstrumentation();
+  if (instr->HasMethodEntryListeners()) {
+    instr->MethodEnterEvent(soa.Self(),
+                            soa.Decode<mirror::Object>(rcvr_jobj).Ptr(),
+                            proxy_method,
+                            0);
+    if (soa.Self()->IsExceptionPending()) {
+      instr->MethodUnwindEvent(self,
+                               soa.Decode<mirror::Object>(rcvr_jobj).Ptr(),
+                               proxy_method,
+                               0);
+      return 0;
+    }
+  }
   JValue result = InvokeProxyInvocationHandler(soa, shorty, rcvr_jobj, interface_method_jobj, args);
+  if (soa.Self()->IsExceptionPending()) {
+    if (instr->HasMethodUnwindListeners()) {
+      instr->MethodUnwindEvent(self,
+                               soa.Decode<mirror::Object>(rcvr_jobj).Ptr(),
+                               proxy_method,
+                               0);
+    }
+  } else if (instr->HasMethodExitListeners()) {
+    instr->MethodExitEvent(self,
+                           soa.Decode<mirror::Object>(rcvr_jobj).Ptr(),
+                           proxy_method,
+                           0,
+                           result);
+  }
   return result.GetJ();
 }
 
@@ -1107,7 +1136,20 @@ extern "C" const void* artInstrumentationMethodEntryFromCode(ArtMethod* method,
   if (instrumentation->IsDeoptimized(method)) {
     result = GetQuickToInterpreterBridge();
   } else {
-    result = instrumentation->GetQuickCodeFor(method, kRuntimePointerSize);
+    // This will get the entry point either from the oat file, the JIT or the appropriate bridge
+    // method if none of those can be found.
+    result = instrumentation->GetCodeForInvoke(method);
+    jit::Jit* jit = Runtime::Current()->GetJit();
+    DCHECK_NE(result, GetQuickInstrumentationEntryPoint()) << method->PrettyMethod();
+    DCHECK(jit == nullptr ||
+           // Native methods come through here in Interpreter entrypoints. We might not have
+           // disabled jit-gc but that is fine since we won't return jit-code for native methods.
+           method->IsNative() ||
+           !jit->GetCodeCache()->GetGarbageCollectCode());
+    DCHECK(!method->IsNative() ||
+           jit == nullptr ||
+           !jit->GetCodeCache()->ContainsPc(result))
+        << method->PrettyMethod() << " code will jump to possibly cleaned up jit code!";
   }
 
   bool interpreter_entry = (result == GetQuickToInterpreterBridge());

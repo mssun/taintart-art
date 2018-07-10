@@ -4343,29 +4343,14 @@ void LocationsBuilderX86_64::VisitNewInstance(HNewInstance* instruction) {
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
       instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
-  if (instruction->IsStringAlloc()) {
-    locations->AddTemp(Location::RegisterLocation(kMethodRegisterArgument));
-  } else {
-    locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
-  }
+  locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
   locations->SetOut(Location::RegisterLocation(RAX));
 }
 
 void InstructionCodeGeneratorX86_64::VisitNewInstance(HNewInstance* instruction) {
-  // Note: if heap poisoning is enabled, the entry point takes cares
-  // of poisoning the reference.
-  if (instruction->IsStringAlloc()) {
-    // String is allocated through StringFactory. Call NewEmptyString entry point.
-    CpuRegister temp = instruction->GetLocations()->GetTemp(0).AsRegister<CpuRegister>();
-    MemberOffset code_offset = ArtMethod::EntryPointFromQuickCompiledCodeOffset(kX86_64PointerSize);
-    __ gs()->movq(temp, Address::Absolute(QUICK_ENTRY_POINT(pNewEmptyString), /* no_rip */ true));
-    __ call(Address(temp, code_offset.SizeValue()));
-    codegen_->RecordPcInfo(instruction, instruction->GetDexPc());
-  } else {
-    codegen_->InvokeRuntime(instruction->GetEntrypoint(), instruction, instruction->GetDexPc());
-    CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
-    DCHECK(!codegen_->IsLeafMethod());
-  }
+  codegen_->InvokeRuntime(instruction->GetEntrypoint(), instruction, instruction->GetDexPc());
+  CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
+  DCHECK(!codegen_->IsLeafMethod());
 }
 
 void LocationsBuilderX86_64::VisitNewArray(HNewArray* instruction) {

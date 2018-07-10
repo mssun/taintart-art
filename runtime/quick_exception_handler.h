@@ -47,7 +47,8 @@ class QuickExceptionHandler {
     UNREACHABLE();
   }
 
-  // Find the catch handler for the given exception.
+  // Find the catch handler for the given exception and call all required Instrumentation methods.
+  // Note this might result in the exception being caught being different from 'exception'.
   void FindCatch(ObjPtr<mirror::Throwable> exception) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Deoptimize the stack to the upcall/some code that's not deoptimizeable. For

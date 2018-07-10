@@ -154,6 +154,10 @@ class JitCodeCache {
   // Return true if the code cache contains this pc.
   bool ContainsPc(const void* pc) const;
 
+  // Returns true if either the method's entrypoint is JIT compiled code or it is the
+  // instrumentation entrypoint and we can jump to jit code for this method. For testing use only.
+  bool WillExecuteJitCode(ArtMethod* method) REQUIRES(!lock_);
+
   // Return true if the code cache contains this method.
   bool ContainsMethod(ArtMethod* method) REQUIRES(!lock_);
 
@@ -210,6 +214,8 @@ class JitCodeCache {
   void RemoveMethodsIn(Thread* self, const LinearAlloc& alloc)
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  void ClearAllCompiledDexCode() REQUIRES(!lock_, Locks::mutator_lock_);
 
   void CopyInlineCacheInto(const InlineCache& ic, Handle<mirror::ObjectArray<mirror::Class>> array)
       REQUIRES(!lock_)
@@ -269,6 +275,16 @@ class JitCodeCache {
     garbage_collect_code_ = value;
   }
 
+  bool GetGarbageCollectCode() const {
+    return garbage_collect_code_;
+  }
+
+  // If Jit-gc has been disabled (and instrumentation has been enabled) this will return the
+  // jit-compiled entrypoint for this method.  Otherwise it will return null.
+  const void* FindCompiledCodeForInstrumentation(ArtMethod* method)
+      REQUIRES(!lock_)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
  private:
   // Take ownership of maps.
   JitCodeCache(MemMap* code_map,
@@ -297,6 +313,11 @@ class JitCodeCache {
                               bool has_should_deoptimize_flag,
                               const ArenaSet<ArtMethod*>& cha_single_implementation_list)
       REQUIRES(!lock_)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Adds the given roots to the roots_data. Only a member for annotalysis.
+  void FillRootTable(uint8_t* roots_data, Handle<mirror::ObjectArray<mirror::Object>> roots)
+      REQUIRES(lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   ProfilingInfo* AddProfilingInfoInternal(Thread* self,
@@ -375,7 +396,7 @@ class JitCodeCache {
   class JniStubData;
 
   // Lock for guarding allocations, collections, and the method_code_map_.
-  Mutex lock_;
+  Mutex lock_ BOTTOM_MUTEX_ACQUIRED_AFTER;
   // Condition to wait on during collection.
   ConditionVariable lock_cond_ GUARDED_BY(lock_);
   // Whether there is a code cache collection in progress.
