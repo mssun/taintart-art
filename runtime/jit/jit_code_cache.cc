@@ -362,21 +362,6 @@ const void* JitCodeCache::GetJniStubCode(ArtMethod* method) {
   return nullptr;
 }
 
-void JitCodeCache::ClearAllCompiledDexCode() {
-  MutexLock mu(Thread::Current(), lock_);
-  // Get rid of OSR code waiting to be put on a thread.
-  osr_code_map_.clear();
-
-  // We don't clear out or even touch method_code_map_ since that is what we use to go the other
-  // way, move from code currently-running to the method it's from. Getting rid of it would break
-  // the jit-gc, stack-walking and signal handling. Since we never look through it to go the other
-  // way (from method -> code) everything is fine.
-
-  for (ProfilingInfo* p : profiling_infos_) {
-    p->SetSavedEntryPoint(nullptr);
-  }
-}
-
 const void* JitCodeCache::FindCompiledCodeForInstrumentation(ArtMethod* method) {
   // If jit-gc is still on we use the SavedEntryPoint field for doing that and so cannot use it to
   // find the instrumentation entrypoint.
