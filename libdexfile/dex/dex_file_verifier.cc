@@ -3056,7 +3056,7 @@ void DexFileVerifier::FindStringRangesForMethodNames() {
     return reinterpret_cast<const char*>(str_data_ptr);
   };
   auto compare = [&get_string](const DexFile::StringId& lhs, const char* rhs) {
-    return strcmp(get_string(lhs), rhs) < 0;
+    return CompareModifiedUtf8ToModifiedUtf8AsUtf16CodePointValues(get_string(lhs), rhs) < 0;
   };
 
   // '=' follows '<'
