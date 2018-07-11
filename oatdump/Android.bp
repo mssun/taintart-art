@@ -62,8 +62,8 @@ art_cc_binary {
     ],
 }
 
-art_cc_binary {
-    name: "oatdumps",
+cc_defaults {
+    name: "oatdumps-defaults",
     device_supported: false,
     static_executable: true,
     defaults: ["oatdump-defaults"],
@@ -80,6 +80,12 @@ art_cc_binary {
         // Try to get rid of it.
         "-z muldefs",
     ],
+    static_libs: art_static_dependencies,
+}
+
+art_cc_binary {
+    name: "oatdumps",
+    defaults: ["oatdumps-defaults"],
     static_libs: [
         "libart",
         "libdexfile",
@@ -89,33 +95,20 @@ art_cc_binary {
         "libart-disassembler",
         "libvixl-arm",
         "libvixl-arm64",
-    ] + art_static_dependencies,
+    ],
 }
 
 art_cc_binary {
     name: "oatdumpds",
-    device_supported: false,
-    static_executable: true,
     defaults: [
         "art_debug_defaults",
-        "oatdump-defaults",
+        "oatdumps-defaults",
     ],
     target: {
-        darwin: {
-            enabled: false,
-        },
         linux_glibc_x86_64: {
             use_clang_lld: true,
         },
     },
-    ldflags: [
-        // We need this because GC stress mode makes use of
-        // _Unwind_GetIP and _Unwind_Backtrace and the symbols are also
-        // defined in libgcc_eh.a(unwind-dw2.o)
-        // TODO: Having this is not ideal as it might obscure errors.
-        // Try to get rid of it.
-        "-z muldefs",
-    ],
     static_libs: [
         "libartd",
         "libdexfiled",
@@ -125,7 +118,7 @@ art_cc_binary {
         "libartd-disassembler",
         "libvixld-arm",
         "libvixld-arm64",
-    ] + art_static_dependencies,
+    ],
 }
 
 art_cc_test {
