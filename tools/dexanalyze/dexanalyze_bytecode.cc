@@ -67,13 +67,12 @@ void NewRegisterInstructions::ProcessDexFiles(
     std::map<size_t, TypeLinkage> types;
     std::set<const void*> visited;
     for (ClassAccessor accessor : dex_file->GetClasses()) {
-      InstructionBuilder inst_builder(types,
-                                      /*count_types*/ true,
-                                      /*dump*/ false,
-                                      experiments_,
-                                      instruction_freq_);
       for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-        inst_builder.Process(*dex_file, method.GetInstructionsAndData(), accessor.GetClassIdx());
+        ProcessCodeItem(*dex_file,
+                        method.GetInstructionsAndData(),
+                        accessor.GetClassIdx(),
+                        /*count_types*/ true,
+                        types);
       }
     }
     // Reorder to get an index for each map instead of a count.
@@ -85,11 +84,6 @@ void NewRegisterInstructions::ProcessDexFiles(
     }
     // Visit classes and convert code items.
     for (ClassAccessor accessor : dex_file->GetClasses()) {
-      InstructionBuilder inst_builder(types,
-                                      /*count_types*/ false,
-                                      dump_,
-                                      experiments_,
-                                      instruction_freq_);
       for (const ClassAccessor::Method& method : accessor.GetMethods()) {
         if (method.GetCodeItem() == nullptr || !visited.insert(method.GetCodeItem()).second) {
           continue;
@@ -99,8 +93,13 @@ void NewRegisterInstructions::ProcessDexFiles(
                     << "Processing " << dex_file->PrettyMethod(method.GetIndex(), true);
         }
         CodeItemDataAccessor data = method.GetInstructionsAndData();
-        inst_builder.Process(*dex_file, data, accessor.GetClassIdx());
-        std::vector<uint8_t> buffer = std::move(inst_builder.buffer_);
+        ProcessCodeItem(*dex_file,
+                        data,
+                        accessor.GetClassIdx(),
+                        /*count_types*/ false,
+                        types);
+        std::vector<uint8_t> buffer = std::move(buffer_);
+        buffer_.clear();
         const size_t buffer_size = buffer.size();
         dex_code_bytes_ += data.InsnsSizeInBytes();
         output_size_ += buffer_size;
@@ -114,8 +113,6 @@ void NewRegisterInstructions::ProcessDexFiles(
           deduped_size_ += buffer_size;
         }
       }
-      missing_field_idx_count_ += inst_builder.missing_field_idx_count_;
-      missing_method_idx_count_ += inst_builder.missing_method_idx_count_;
     }
   }
 }
@@ -153,25 +150,16 @@ void NewRegisterInstructions::Dump(std::ostream& os, uint64_t total_size) const 
      << Percent(top_instructions_savings, total_size) << "\n";
 }
 
-InstructionBuilder::InstructionBuilder(std::map<size_t, TypeLinkage>& types,
-                                       bool count_types,
-                                       bool dump,
-                                       uint64_t experiments,
-                                       std::map<std::vector<uint8_t>, size_t>& instruction_freq)
-    : types_(types),
-      count_types_(count_types),
-      dump_(dump),
-      experiments_(experiments),
-      instruction_freq_(instruction_freq) {}
-
-void InstructionBuilder::Process(const DexFile& dex_file,
-                                 const CodeItemDataAccessor& code_item,
-                                 dex::TypeIndex current_class_type) {
-  TypeLinkage& current_type = types_[current_class_type.index_];
+void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
+                                              const CodeItemDataAccessor& code_item,
+                                              dex::TypeIndex current_class_type,
+                                              bool count_types,
+                                              std::map<size_t, TypeLinkage>& types) {
+  TypeLinkage& current_type = types[current_class_type.index_];
   bool skip_next = false;
   size_t last_start = 0u;
   for (auto inst = code_item.begin(); ; ++inst) {
-    if (!count_types_ && last_start != buffer_.size()) {
+    if (!count_types && last_start != buffer_.size()) {
       // Register the instruction blob.
       ++instruction_freq_[std::vector<uint8_t>(buffer_.begin() + last_start, buffer_.end())];
       last_start = buffer_.size();
@@ -223,21 +211,21 @@ void InstructionBuilder::Process(const DexFile& dex_file,
         if (Enabled(kExperimentInstanceFieldSelf) &&
             first_arg_reg == receiver &&
             holder_type == current_class_type) {
-          if (count_types_) {
+          if (count_types) {
             ++current_type.fields_.FindOrAdd(dex_field_idx)->second;
           } else {
-            uint32_t field_idx = types_[holder_type.index_].fields_.Get(dex_field_idx);
+            uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
             ExtendPrefix(&out_reg, &field_idx);
             CHECK(InstNibbles(new_opcode, {out_reg, field_idx}));
             continue;
           }
         } else if (Enabled(kExperimentInstanceField)) {
-          if (count_types_) {
+          if (count_types) {
             ++current_type.types_.FindOrAdd(holder_type.index_)->second;
-            ++types_[holder_type.index_].fields_.FindOrAdd(dex_field_idx)->second;
+            ++types[holder_type.index_].fields_.FindOrAdd(dex_field_idx)->second;
           } else {
             uint32_t type_idx = current_type.types_.Get(holder_type.index_);
-            uint32_t field_idx = types_[holder_type.index_].fields_.Get(dex_field_idx);
+            uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
             ExtendPrefix(&type_idx, &field_idx);
             CHECK(InstNibbles(new_opcode, {out_reg, receiver, type_idx, field_idx}));
             continue;
@@ -252,7 +240,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
         uint32_t out_reg = is_jumbo ? inst->VRegA_31c() : inst->VRegA_21c();
         if (Enabled(kExperimentString)) {
           new_opcode = Instruction::CONST_STRING;
-          if (count_types_) {
+          if (count_types) {
             ++current_type.strings_.FindOrAdd(str_idx)->second;
           } else {
             uint32_t idx = current_type.strings_.Get(str_idx);
@@ -283,22 +271,22 @@ void InstructionBuilder::Process(const DexFile& dex_file,
         dex::TypeIndex holder_type = dex_file.GetFieldId(dex_field_idx).class_idx_;
         if (Enabled(kExperimentStaticField)) {
           if (holder_type == current_class_type) {
-            if (count_types_) {
-              ++types_[holder_type.index_].fields_.FindOrAdd(dex_field_idx)->second;
+            if (count_types) {
+              ++types[holder_type.index_].fields_.FindOrAdd(dex_field_idx)->second;
             } else {
-              uint32_t field_idx = types_[holder_type.index_].fields_.Get(dex_field_idx);
+              uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
               ExtendPrefix(&out_reg, &field_idx);
               if (InstNibbles(new_opcode, {out_reg, field_idx})) {
                 continue;
               }
             }
           } else {
-            if (count_types_) {
-              ++types_[current_class_type.index_].types_.FindOrAdd(holder_type.index_)->second;
-              ++types_[holder_type.index_].fields_.FindOrAdd(dex_field_idx)->second;
+            if (count_types) {
+              ++types[current_class_type.index_].types_.FindOrAdd(holder_type.index_)->second;
+              ++types[holder_type.index_].fields_.FindOrAdd(dex_field_idx)->second;
             } else {
               uint32_t type_idx = current_type.types_.Get(holder_type.index_);
-              uint32_t field_idx = types_[holder_type.index_].fields_.Get(dex_field_idx);
+              uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
               ExtendPrefix(&type_idx, &field_idx);
               if (InstNibbles(new_opcode, {out_reg >> 4, out_reg & 0xF, type_idx, field_idx})) {
                 continue;
@@ -318,9 +306,9 @@ void InstructionBuilder::Process(const DexFile& dex_file,
         const DexFile::MethodId& method = dex_file.GetMethodId(method_idx);
         const dex::TypeIndex receiver_type = method.class_idx_;
         if (Enabled(kExperimentInvoke)) {
-          if (count_types_) {
+          if (count_types) {
             ++current_type.types_.FindOrAdd(receiver_type.index_)->second;
-            ++types_[receiver_type.index_].methods_.FindOrAdd(method_idx)->second;
+            ++types[receiver_type.index_].methods_.FindOrAdd(method_idx)->second;
           } else {
             uint32_t args[6] = {};
             uint32_t arg_count = inst->GetVarArgs(args);
@@ -340,7 +328,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
 
             bool result = false;
             uint32_t type_idx = current_type.types_.Get(receiver_type.index_);
-            uint32_t local_idx = types_[receiver_type.index_].methods_.Get(method_idx);
+            uint32_t local_idx = types[receiver_type.index_].methods_.Get(method_idx);
             ExtendPrefix(&type_idx, &local_idx);
             ExtendPrefix(&dest_reg, &local_idx);
             if (arg_count == 0) {
@@ -373,7 +361,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
       case Instruction::IF_NEZ: {
         uint32_t reg = inst->VRegA_21t();
         int16_t offset = inst->VRegB_21t();
-        if (!count_types_ &&
+        if (!count_types &&
             Enabled(kExperimentSmallIf) &&
             InstNibbles(opcode, {reg, static_cast<uint16_t>(offset)})) {
           continue;
@@ -384,7 +372,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
         uint32_t type_idx = inst->VRegC_22c();
         uint32_t in_reg = inst->VRegB_22c();
         uint32_t out_reg = inst->VRegA_22c();
-        if (count_types_) {
+        if (count_types) {
           ++current_type.types_.FindOrAdd(type_idx)->second;
         } else {
           uint32_t local_type = current_type.types_.Get(type_idx);
@@ -398,7 +386,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
         uint32_t len_reg = inst->VRegB_22c();
         uint32_t type_idx = inst->VRegC_22c();
         uint32_t out_reg = inst->VRegA_22c();
-        if (count_types_) {
+        if (count_types) {
           ++current_type.types_.FindOrAdd(type_idx)->second;
         } else {
           uint32_t local_type = current_type.types_.Get(type_idx);
@@ -414,7 +402,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
         uint32_t type_idx = inst->VRegB_21c();
         uint32_t out_reg = inst->VRegA_21c();
         if (Enabled(kExperimentLocalType)) {
-          if (count_types_) {
+          if (count_types) {
             ++current_type.types_.FindOrAdd(type_idx)->second;
           } else {
             bool next_is_init = false;
@@ -445,7 +433,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
       case Instruction::RETURN_OBJECT:
       case Instruction::RETURN_WIDE:
       case Instruction::RETURN_VOID: {
-        if (!count_types_ && Enabled(kExperimentReturn)) {
+        if (!count_types && Enabled(kExperimentReturn)) {
           if (opcode == Instruction::RETURN_VOID || inst->VRegA_11x() == 0) {
             if (InstNibbles(opcode, {})) {
               continue;
@@ -457,7 +445,7 @@ void InstructionBuilder::Process(const DexFile& dex_file,
       default:
         break;
     }
-    if (!count_types_) {
+    if (!count_types) {
       Add(new_opcode, inst.Inst());
     }
   }
@@ -468,13 +456,13 @@ void InstructionBuilder::Process(const DexFile& dex_file,
   }
 }
 
-void InstructionBuilder::Add(Instruction::Code opcode, const Instruction& inst) {
+void NewRegisterInstructions::Add(Instruction::Code opcode, const Instruction& inst) {
   const uint8_t* start = reinterpret_cast<const uint8_t*>(&inst);
   buffer_.push_back(opcode);
   buffer_.insert(buffer_.end(), start + 1, start + 2 * inst.SizeInCodeUnits());
 }
 
-void InstructionBuilder::ExtendPrefix(uint32_t* value1, uint32_t* value2) {
+void NewRegisterInstructions::ExtendPrefix(uint32_t* value1, uint32_t* value2) {
   if (*value1 < 16 && *value2 < 16) {
     return;
   }
@@ -504,7 +492,7 @@ void InstructionBuilder::ExtendPrefix(uint32_t* value1, uint32_t* value2) {
   *value2 &= 0XF;
 }
 
-bool InstructionBuilder::InstNibblesAndIndex(uint8_t opcode,
+bool NewRegisterInstructions::InstNibblesAndIndex(uint8_t opcode,
                                              uint16_t idx,
                                              const std::vector<uint32_t>& args) {
   if (!InstNibbles(opcode, args)) {
@@ -515,7 +503,7 @@ bool InstructionBuilder::InstNibblesAndIndex(uint8_t opcode,
   return true;
 }
 
-bool InstructionBuilder::InstNibbles(uint8_t opcode, const std::vector<uint32_t>& args) {
+bool NewRegisterInstructions::InstNibbles(uint8_t opcode, const std::vector<uint32_t>& args) {
   if (dump_) {
     std::cout << " ==> " << Instruction::Name(static_cast<Instruction::Code>(opcode)) << " ";
     for (int v : args) {
