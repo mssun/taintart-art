@@ -176,6 +176,21 @@ TEST_F(DexFileVerifierTest, MethodId) {
       "Bad index for method flags verification");
 }
 
+TEST_F(DexFileVerifierTest, InitCachingWithUnicode) {
+  static const char kInitWithUnicode[] =
+      "ZGV4CjAzNQDhN60rgMnSK13MoRscTuD+NZe7f6rIkHAAAgAAcAAAAHhWNBIAAAAAAAAAAGwBAAAJ"
+      "AAAAcAAAAAMAAACUAAAAAQAAAKAAAAAAAAAAAAAAAAIAAACsAAAAAQAAALwAAAAkAQAA3AAAANwA"
+      "AADgAAAA5gAAAO4AAAD1AAAAAQEAABUBAAAgAQAAIwEAAAQAAAAFAAAABwAAAAcAAAACAAAAAAAA"
+      "AAAAAAACAAAAAQAAAAIAAAAAAAAAAAAAAAEAAAAAAAAABgAAAAAAAABgAQAAAAAAAAHAgAACwIDA"
+      "gAAGPGluaXQ+AAVIZWxsbwAKTFRlc3RTeW5jOwASTGphdmEvbGFuZy9PYmplY3Q7AAlNYWluLmph"
+      "dmEAAVYABVdvcmxkAAAAAAAAAAYABw4AAAAACgABAAEAAAAwAQAADAAAAHAQAQAJABoBAwAaAggA"
+      "GgMAABoEAQAOAAAAAQAAgIAEuAIAAAwAAAAAAAAAAQAAAAAAAAABAAAACQAAAHAAAAACAAAAAwAA"
+      "AJQAAAADAAAAAQAAAKAAAAAFAAAAAgAAAKwAAAAGAAAAAQAAALwAAAACIAAACQAAANwAAAADEAAA"
+      "AQAAACwBAAADIAAAAQAAADABAAABIAAAAQAAADgBAAAAIAAAAQAAAGABAAAAEAAAAQAAAGwBAAA=";
+  // Just ensure it verifies w/o modification.
+  VerifyModification(kInitWithUnicode, "init_with_unicode", [](DexFile*) {}, nullptr);
+}
+
 // Method flags test class generated from the following smali code. The declared-synchronized
 // flags are there to enforce a 3-byte uLEB128 encoding so we don't have to relayout
 // the code, but we need to remove them before doing tests.
