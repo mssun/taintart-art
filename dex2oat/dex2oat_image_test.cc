@@ -186,48 +186,15 @@ class Dex2oatImageTest : public CommonRuntimeTest {
     return RunDex2Oat(argv, error_msg);
   }
 
-  int RunDex2Oat(const std::vector<std::string>& args, std::string* error_msg) {
-    int link[2];
-
-    if (pipe(link) == -1) {
+  bool RunDex2Oat(const std::vector<std::string>& args, std::string* error_msg) {
+    // We only want fatal logging for the error message.
+    auto post_fork_fn = []() { return setenv("ANDROID_LOG_TAGS", "*:f", 1) == 0; };
+    ForkAndExecResult res = ForkAndExec(args, post_fork_fn, error_msg);
+    if (res.stage != ForkAndExecResult::kFinished) {
+      *error_msg = strerror(errno);
       return false;
     }
-
-    pid_t pid = fork();
-    if (pid == -1) {
-      return false;
-    }
-
-    if (pid == 0) {
-      // We need dex2oat to actually log things.
-      setenv("ANDROID_LOG_TAGS", "*:f", 1);
-      dup2(link[1], STDERR_FILENO);
-      close(link[0]);
-      close(link[1]);
-      std::vector<const char*> c_args;
-      for (const std::string& str : args) {
-        c_args.push_back(str.c_str());
-      }
-      c_args.push_back(nullptr);
-      execv(c_args[0], const_cast<char* const*>(c_args.data()));
-      exit(1);
-      UNREACHABLE();
-    } else {
-      close(link[1]);
-      char buffer[128];
-      memset(buffer, 0, 128);
-      ssize_t bytes_read = 0;
-
-      while (TEMP_FAILURE_RETRY(bytes_read = read(link[0], buffer, 128)) > 0) {
-        *error_msg += std::string(buffer, bytes_read);
-      }
-      close(link[0]);
-      int status = -1;
-      if (waitpid(pid, &status, 0) != -1) {
-        return (status == 0);
-      }
-      return false;
-    }
+    return res.StandardSuccess();
   }
 };
 

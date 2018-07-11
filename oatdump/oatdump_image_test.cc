@@ -19,25 +19,34 @@
 namespace art {
 
 // Disable tests on arm and mips as they are taking too long to run. b/27824283.
-#if !defined(__arm__) && !defined(__mips__)
+#define TEST_DISABLED_FOR_ARM_AND_MIPS() \
+    TEST_DISABLED_FOR_ARM(); \
+    TEST_DISABLED_FOR_ARM64(); \
+    TEST_DISABLED_FOR_MIPS(); \
+    TEST_DISABLED_FOR_MIPS64(); \
+
 TEST_F(OatDumpTest, TestImage) {
+  TEST_DISABLED_FOR_ARM_AND_MIPS();
   std::string error_msg;
-  ASSERT_TRUE(Exec(kDynamic, kModeArt, {}, kListAndCode, &error_msg)) << error_msg;
+  ASSERT_TRUE(Exec(kDynamic, kModeArt, {}, kListAndCode));
 }
 TEST_F(OatDumpTest, TestImageStatic) {
+  TEST_DISABLED_FOR_ARM_AND_MIPS();
   TEST_DISABLED_FOR_NON_STATIC_HOST_BUILDS();
   std::string error_msg;
-  ASSERT_TRUE(Exec(kStatic, kModeArt, {}, kListAndCode, &error_msg)) << error_msg;
+  ASSERT_TRUE(Exec(kStatic, kModeArt, {}, kListAndCode));
 }
 
 TEST_F(OatDumpTest, TestOatImage) {
+  TEST_DISABLED_FOR_ARM_AND_MIPS();
   std::string error_msg;
-  ASSERT_TRUE(Exec(kDynamic, kModeOat, {}, kListAndCode, &error_msg)) << error_msg;
+  ASSERT_TRUE(Exec(kDynamic, kModeOat, {}, kListAndCode));
 }
 TEST_F(OatDumpTest, TestOatImageStatic) {
+  TEST_DISABLED_FOR_ARM_AND_MIPS();
   TEST_DISABLED_FOR_NON_STATIC_HOST_BUILDS();
   std::string error_msg;
-  ASSERT_TRUE(Exec(kStatic, kModeOat, {}, kListAndCode, &error_msg)) << error_msg;
+  ASSERT_TRUE(Exec(kStatic, kModeOat, {}, kListAndCode));
 }
-#endif
+
 }  // namespace art
