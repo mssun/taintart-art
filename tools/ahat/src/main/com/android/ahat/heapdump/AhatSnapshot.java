@@ -47,15 +47,19 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
     mHeaps = heaps;
     mRootSite = rootSite;
 
-    // Update registered native allocation size.
-    for (AhatInstance cleaner : mInstances) {
-      AhatInstance.RegisteredNativeAllocation nra = cleaner.asRegisteredNativeAllocation();
+    AhatInstance.computeReachability(mSuperRoot, progress, mInstances.size());
+
+    for (AhatInstance inst : mInstances) {
+      // Add this instance to its site.
+      inst.getSite().addInstance(inst);
+
+      // Update registered native allocation size.
+      AhatInstance.RegisteredNativeAllocation nra = inst.asRegisteredNativeAllocation();
       if (nra != null) {
         nra.referent.addRegisteredNativeSize(nra.size);
       }
     }
 
-    AhatInstance.computeReachability(mSuperRoot, progress, mInstances.size());
     DominatorsComputation.computeDominators(mSuperRoot, progress, mInstances.size());
     AhatInstance.computeRetainedSize(mSuperRoot, mHeaps.size());
 
