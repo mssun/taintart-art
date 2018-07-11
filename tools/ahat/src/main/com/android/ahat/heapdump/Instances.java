@@ -19,6 +19,7 @@ package com.android.ahat.heapdump;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * A collection of instances that can be searched for by id.
@@ -42,6 +43,25 @@ class Instances<T extends AhatInstance> implements Iterable<T> {
         return Long.compare(a.getId(), b.getId());
       }
     });
+
+    // Ensure there is a one-to-one mapping between ids and instances by
+    // removing instances that have the same id as a previous instance. The
+    // heap dump really ought not to include multiple instances with the same
+    // id, but this happens on some older versions of ART and in some versions
+    // of the RI.
+    Predicate<T> isDuplicate = new Predicate<T>() {
+      private long previous = -1;
+
+      @Override
+      public boolean test(T x) {
+        if (x.getId() == previous) {
+          return true;
+        }
+        previous = x.getId();
+        return false;
+      }
+    };
+    mInstances.removeIf(isDuplicate);
   }
 
   /**
