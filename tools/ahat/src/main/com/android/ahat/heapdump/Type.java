@@ -23,7 +23,7 @@ public enum Type {
   /**
    * Type used for any Java object.
    */
-  OBJECT("Object", 4),
+  OBJECT("Object", 0),    // size is 0 to indicate it depends on the size of references
 
   /**
    * The primitive boolean type.
@@ -73,7 +73,16 @@ public enum Type {
   /**
    * The number of bytes taken up by values of this type in the Java heap.
    */
-  final int size;
+  private final int size;
+
+  /**
+   * Get the number of bytes taken up by values of this type in the Java heap.
+   *
+   * @param refSize the size of object references as specified in the heap dump
+   */
+  int size(int refSize) {
+    return size == 0 ? refSize : size;
+  }
 
   Type(String name, int size) {
     this.name = name;

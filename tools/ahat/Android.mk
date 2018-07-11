@@ -129,6 +129,26 @@ $(AHAT_TEST_DUMP_BASE_HPROF): $(AHAT_TEST_DUMP_JAR) $(AHAT_TEST_DUMP_DEPENDENCIE
 	ANDROID_DATA=$(PRIVATE_AHAT_TEST_ANDROID_DATA) \
 	  $(PRIVATE_AHAT_TEST_ART) -d --64 -cp $(PRIVATE_AHAT_TEST_DUMP_JAR) Main $@ --base
 
+# --- ahat-ri-test-dump.jar -------
+include $(CLEAR_VARS)
+LOCAL_MODULE := ahat-ri-test-dump
+LOCAL_MODULE_TAGS := tests
+LOCAL_SRC_FILES := $(call all-java-files-under, src/ri-test-dump)
+LOCAL_IS_HOST_MODULE := true
+include $(BUILD_HOST_JAVA_LIBRARY)
+
+# Determine the location of the ri-test-dump.jar and ri-test-dump.hprof.
+# These use variables set implicitly by the include of BUILD_JAVA_LIBRARY
+# above.
+AHAT_RI_TEST_DUMP_JAR := $(LOCAL_BUILT_MODULE)
+AHAT_RI_TEST_DUMP_HPROF := $(intermediates.COMMON)/ri-test-dump.hprof
+
+# Run ahat-ri-test-dump.jar to generate ri-test-dump.hprof
+$(AHAT_RI_TEST_DUMP_HPROF): PRIVATE_AHAT_RI_TEST_DUMP_JAR := $(AHAT_RI_TEST_DUMP_JAR)
+$(AHAT_RI_TEST_DUMP_HPROF): $(AHAT_RI_TEST_DUMP_JAR)
+	rm -rf $@
+	java -cp $(PRIVATE_AHAT_RI_TEST_DUMP_JAR) Main $@
+
 # --- ahat-tests.jar --------------
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(call all-java-files-under, src/test)
@@ -137,6 +157,7 @@ LOCAL_JAVA_RESOURCE_FILES := \
   $(AHAT_TEST_DUMP_HPROF) \
   $(AHAT_TEST_DUMP_BASE_HPROF) \
   $(AHAT_TEST_DUMP_PROGUARD_MAP) \
+  $(AHAT_RI_TEST_DUMP_HPROF) \
   $(LOCAL_PATH)/etc/L.hprof \
   $(LOCAL_PATH)/etc/O.hprof \
   $(LOCAL_PATH)/etc/RI.hprof

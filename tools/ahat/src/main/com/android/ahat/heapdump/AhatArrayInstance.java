@@ -39,9 +39,11 @@ public class AhatArrayInstance extends AhatInstance {
   private List<Value> mValues;
   private byte[] mByteArray;    // null if not a byte array.
   private char[] mCharArray;    // null if not a char array.
+  private final int mRefSize;
 
-  AhatArrayInstance(long id) {
+  AhatArrayInstance(long id, int refSize) {
     super(id);
+    mRefSize = refSize;
   }
 
   /**
@@ -188,7 +190,7 @@ public class AhatArrayInstance extends AhatInstance {
       return 0;
     }
 
-    return Value.getType(mValues.get(0)).size * getLength();
+    return Value.getType(mValues.get(0)).size(mRefSize) * getLength();
   }
 
   /**
