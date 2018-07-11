@@ -34,6 +34,7 @@ import org.junit.runners.Suite;
   ProguardMapTest.class,
   RootedHandlerTest.class,
   QueryTest.class,
+  RiTest.class,
   SiteHandlerTest.class,
   SiteTest.class
 })
