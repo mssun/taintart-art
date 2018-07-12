@@ -1,0 +1,18 @@
+Bad.foo()
+Bad.instanceValue = 33
+Caught NoClassDefFoundError.
+BadSuper.foo()
+BadSuper.superInstanceValue = 1
+Caught NoClassDefFoundError.
+BadSub.bar()
+BadSub.subInstanceValue = 11
+BadSub.subStaticValue = 4242
+BadSuper.superInstanceValue = 111
+Caught NoClassDefFoundError.
+BadSub.bar()
+BadSub.subInstanceValue = -1
+BadSub.subStaticValue = 4242
+BadSuper.superInstanceValue = -2
+Caught NoClassDefFoundError.
+BadSub.allocSuper(.)
+Caught NoClassDefFoundError.
