@@ -368,7 +368,6 @@ cc_library_static {
     ],
     sdk_version: "current",
     stl: "c++_static",
-    cpp_std: "c++14",
     include_dirs: [
         // This is needed to resolve the base/ header file in libdexfile. Unfortunately there are
         // many problems with how we export headers that are making doing this the 'right' way
