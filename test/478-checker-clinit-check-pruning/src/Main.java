@@ -185,21 +185,20 @@ public class Main {
   }
 
   /*
-   * Ensure an inlined call to a static method whose declaring class
-   * is a super class of the caller's class does not require an
-   * explicit clinit check.
+   * We used to remove clinit check for calls to static methods in a superclass. However, this
+   * is not a valid optimization when instances of erroneous classes can escape. b/62478025
    */
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit5.invokeStaticInlined() builder (after)
   /// CHECK-DAG:                           InvokeStaticOrDirect
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit5.invokeStaticInlined() builder (after)
-  /// CHECK-NOT:                           LoadClass
-  /// CHECK-NOT:                           ClinitCheck
+  /// CHECK:                               LoadClass
+  /// CHECK:                               ClinitCheck
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit5.invokeStaticInlined() inliner (after)
-  /// CHECK-NOT:                           LoadClass
-  /// CHECK-NOT:                           ClinitCheck
+  /// CHECK:                               LoadClass
+  /// CHECK:                               ClinitCheck
   /// CHECK-NOT:                           InvokeStaticOrDirect
 
   static class ClassWithClinit5 {
@@ -218,24 +217,21 @@ public class Main {
   }
 
   /*
-   * Ensure an non-inlined call to a static method whose declaring
-   * class is a super class of the caller's class does not require an
-   * explicit clinit check.
+   * We used to remove clinit check for calls to static methods in a superclass. However, this
+   * is not a valid optimization when instances of erroneous classes can escape. b/62478025
    */
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit6.invokeStaticNotInlined() builder (after)
   /// CHECK-DAG:                           InvokeStaticOrDirect
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit6.invokeStaticNotInlined() builder (after)
-  /// CHECK-NOT:                           LoadClass
-  /// CHECK-NOT:                           ClinitCheck
+  /// CHECK:                               LoadClass
+  /// CHECK:                               ClinitCheck
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit6.invokeStaticNotInlined() inliner (after)
+  /// CHECK-DAG:                           LoadClass
+  /// CHECK-DAG:                           ClinitCheck
   /// CHECK-DAG:                           InvokeStaticOrDirect
-
-  /// CHECK-START: void Main$SubClassOfClassWithClinit6.invokeStaticNotInlined() inliner (after)
-  /// CHECK-NOT:                           LoadClass
-  /// CHECK-NOT:                           ClinitCheck
 
   static class ClassWithClinit6 {
     static boolean doThrow = false;

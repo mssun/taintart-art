@@ -409,6 +409,7 @@ public class Main {
   /// CHECK-DAG:        StaticFieldSet
   /// CHECK-DAG:        StaticFieldSet
   public void accessFields() {
+    static_variable = 0;  // Force ClinitCheck outside the loop. b/62478025
     my_obj = new ExampleObj(1, 2);
     for (int i = 0; i < 10; i++) {
       my_obj.n1++;

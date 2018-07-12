@@ -197,18 +197,6 @@ class CompilerDriver {
                                   uint16_t class_def_index)
       REQUIRES(!requires_constructor_barrier_lock_);
 
-  // Are runtime access checks necessary in the compiled code?
-  bool CanAccessTypeWithoutChecks(ObjPtr<mirror::Class> referrer_class,
-                                  ObjPtr<mirror::Class> resolved_class)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // Are runtime access and instantiable checks necessary in the code?
-  // out_is_finalizable is set to whether the type is finalizable.
-  bool CanAccessInstantiableTypeWithoutChecks(ObjPtr<mirror::Class> referrer_class,
-                                              ObjPtr<mirror::Class> resolved_class,
-                                              bool* out_is_finalizable)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   // Resolve compiling method's class. Returns null on failure.
   ObjPtr<mirror::Class> ResolveCompilingMethodsClass(const ScopedObjectAccess& soa,
                                                      Handle<mirror::DexCache> dex_cache,
@@ -323,10 +311,6 @@ class CompilerDriver {
   CompiledMethodStorage* GetCompiledMethodStorage() {
     return &compiled_method_storage_;
   }
-
-  // Can we assume that the klass is loaded?
-  bool CanAssumeClassIsLoaded(mirror::Class* klass)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
   const ProfileCompilationInfo* GetProfileCompilationInfo() const {
     return profile_compilation_info_;
