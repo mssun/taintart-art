@@ -655,7 +655,7 @@ class HiddenApi FINAL {
                 if (it->second) {
                   return false;  // has been marked before
                 } else {
-                  boot_members.insert(it, std::make_pair(entry, true));
+                  it->second = true;
                   return true;  // marked for the first time
                 }
               });
