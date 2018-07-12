@@ -98,11 +98,6 @@ class HInstructionBuilder : public ValueObject {
 
   void InitializeParameters();
 
-  // Returns whether the current method needs access check for the type.
-  // Output parameter finalizable is set to whether the type is finalizable.
-  bool NeedsAccessCheck(dex::TypeIndex type_index, /*out*/bool* finalizable) const
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   template<typename T>
   void Unop_12x(const Instruction& instruction, DataType::Type type, uint32_t dex_pc);
 
@@ -287,8 +282,7 @@ class HInstructionBuilder : public ValueObject {
   void BuildConstructorFenceForAllocation(HInstruction* allocation);
 
   // Return whether the compiler can assume `cls` is initialized.
-  bool IsInitialized(Handle<mirror::Class> cls) const
-      REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsInitialized(Handle<mirror::Class> cls) const REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Try to resolve a method using the class linker. Return null if a method could
   // not be resolved.

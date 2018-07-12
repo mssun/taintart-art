@@ -1147,32 +1147,48 @@ void HInstructionBuilder::BuildConstructorFenceForAllocation(HInstruction* alloc
       MethodCompilationStat::kConstructorFenceGeneratedNew);
 }
 
-static bool IsSubClass(ObjPtr<mirror::Class> to_test, ObjPtr<mirror::Class> super_class)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  return to_test != nullptr && !to_test->IsInterface() && to_test->IsSubClass(super_class);
-}
-
 bool HInstructionBuilder::IsInitialized(Handle<mirror::Class> cls) const {
   if (cls == nullptr) {
     return false;
   }
 
-  // `CanAssumeClassIsLoaded` will return true if we're JITting, or will
-  // check whether the class is in an image for the AOT compilation.
-  if (cls->IsInitialized() &&
-      compiler_driver_->CanAssumeClassIsLoaded(cls.Get())) {
+  // Check if the class will be initialized at runtime.
+  if (cls->IsInitialized()) {
+    Runtime* runtime = Runtime::Current();
+    if (!runtime->IsAotCompiler()) {
+      DCHECK(runtime->UseJitCompilation());
+      // For JIT, the class cannot revert to an uninitialized state.
+      return true;
+    }
+    // Assume loaded only if klass is in the boot image. App classes cannot be assumed
+    // loaded because we don't even know what class loader will be used to load them.
+    const CompilerOptions& compiler_options = compiler_driver_->GetCompilerOptions();
+    if (compiler_options.IsBootImage()) {
+      std::string temp;
+      const char* descriptor = cls->GetDescriptor(&temp);
+      if (compiler_options.IsImageClass(descriptor)) {
+        return true;
+      }
+    } else {
+      if (runtime->GetHeap()->FindSpaceFromObject(cls.Get(), false)->IsImageSpace()) {
+        return true;
+      }
+    }
+  }
+
+  // We can avoid the class initialization check for `cls` only in static methods in the
+  // very same class. Instance methods of the same class can run on an escaped instance
+  // of an erroneous class. Even a superclass may need to be checked as the subclass
+  // can be completely initialized while the superclass is initializing and the subclass
+  // remains initialized when the superclass initializer throws afterwards. b/62478025
+  // Note: The HClinitCheck+HInvokeStaticOrDirect merging can still apply.
+  if ((dex_compilation_unit_->GetAccessFlags() & kAccStatic) != 0u &&
+      GetOutermostCompilingClass() == cls.Get()) {
     return true;
   }
 
-  if (IsSubClass(GetOutermostCompilingClass(), cls.Get())) {
-    return true;
-  }
-
-  // TODO: We should walk over the inlined methods, but we don't pass
-  //       that information to the builder.
-  if (IsSubClass(GetCompilingClass(), cls.Get())) {
-    return true;
-  }
+  // Note: We could walk over the inlined methods to avoid allocating excessive
+  // `HClinitCheck`s in inlined static methods but they shall be eliminated by GVN.
 
   return false;
 }
@@ -1924,11 +1940,6 @@ void HInstructionBuilder::BuildTypeCheck(const Instruction& instruction,
     AppendInstruction(new (allocator_) HBoundType(object, dex_pc));
     UpdateLocal(reference, current_block_->GetLastInstruction());
   }
-}
-
-bool HInstructionBuilder::NeedsAccessCheck(dex::TypeIndex type_index, bool* finalizable) const {
-  return !compiler_driver_->CanAccessInstantiableTypeWithoutChecks(
-      LookupReferrerClass(), LookupResolvedType(type_index, *dex_compilation_unit_), finalizable);
 }
 
 bool HInstructionBuilder::CanDecodeQuickenedInfo() const {
