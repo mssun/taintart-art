@@ -22,6 +22,8 @@
 namespace art {
 
 // The various reasons that we might be suspending a thread.
+// TODO Once kForDebugger is removed by removing the old debugger we should make the kForUserCode
+//      just a basic count for bookkeeping instead of linking it as directly with internal suspends.
 enum class SuspendReason {
   // Suspending for internal reasons (e.g. GC, stack trace, etc.).
   // TODO Split this into more descriptive sections.

@@ -818,6 +818,37 @@ jvmtiError ThreadUtil::RunAgentThread(jvmtiEnv* jvmti_env,
   return ERR(NONE);
 }
 
+class ScopedSuspendByPeer {
+ public:
+  explicit ScopedSuspendByPeer(jthread jtarget)
+      : thread_list_(art::Runtime::Current()->GetThreadList()),
+        timeout_(false),
+        target_(thread_list_->SuspendThreadByPeer(jtarget,
+                                                  /* suspend_thread */ true,
+                                                  art::SuspendReason::kInternal,
+                                                  &timeout_)) { }
+  ~ScopedSuspendByPeer() {
+    if (target_ != nullptr) {
+      if (!thread_list_->Resume(target_, art::SuspendReason::kInternal)) {
+        LOG(ERROR) << "Failed to resume " << target_ << "!";
+      }
+    }
+  }
+
+  art::Thread* GetTargetThread() const {
+    return target_;
+  }
+
+  bool TimedOut() const {
+    return timeout_;
+  }
+
+ private:
+  art::ThreadList* thread_list_;
+  bool timeout_;
+  art::Thread* target_;
+};
+
 jvmtiError ThreadUtil::SuspendOther(art::Thread* self,
                                     jthread target_jthread) {
   // Loop since we need to bail out and try again if we would end up getting suspended while holding
@@ -845,29 +876,27 @@ jvmtiError ThreadUtil::SuspendOther(art::Thread* self,
       if (!GetAliveNativeThread(target_jthread, soa, &target, &err)) {
         return err;
       }
-      art::ThreadState state = target->GetState();
-      if (state == art::ThreadState::kStarting || target->IsStillStarting()) {
-        return ERR(THREAD_NOT_ALIVE);
-      } else {
-        art::MutexLock thread_suspend_count_mu(self, *art::Locks::thread_suspend_count_lock_);
-        if (target->GetUserCodeSuspendCount() != 0) {
-          return ERR(THREAD_SUSPENDED);
-        }
-      }
     }
-    bool timeout = true;
-    art::Thread* ret_target = art::Runtime::Current()->GetThreadList()->SuspendThreadByPeer(
-        target_jthread,
-        /* request_suspension */ true,
-        art::SuspendReason::kForUserCode,
-        &timeout);
-    if (ret_target == nullptr && !timeout) {
+    // Get the actual thread in a suspended state so we can change the user-code suspend count.
+    ScopedSuspendByPeer ssbp(target_jthread);
+    if (ssbp.GetTargetThread() == nullptr && !ssbp.TimedOut()) {
       // TODO It would be good to get more information about why exactly the thread failed to
       // suspend.
       return ERR(INTERNAL);
-    } else if (!timeout) {
-      // we didn't time out and got a result.
-      return OK;
+    } else if (!ssbp.TimedOut()) {
+      art::ThreadState state = ssbp.GetTargetThread()->GetState();
+      if (state == art::ThreadState::kStarting || ssbp.GetTargetThread()->IsStillStarting()) {
+        return ERR(THREAD_NOT_ALIVE);
+      }
+      // we didn't time out and got a result. Suspend the thread by usercode and return. It's
+      // already suspended internal so we don't need to do anything but increment the count.
+      art::MutexLock thread_suspend_count_mu(self, *art::Locks::thread_suspend_count_lock_);
+      if (ssbp.GetTargetThread()->GetUserCodeSuspendCount() != 0) {
+        return ERR(THREAD_SUSPENDED);
+      }
+      bool res = ssbp.GetTargetThread()->ModifySuspendCount(
+          self, +1, nullptr, art::SuspendReason::kForUserCode);
+      return res ? OK : ERR(INTERNAL);
     }
     // We timed out. Just go around and try again.
   } while (true);
@@ -876,6 +905,17 @@ jvmtiError ThreadUtil::SuspendOther(art::Thread* self,
 
 jvmtiError ThreadUtil::SuspendSelf(art::Thread* self) {
   CHECK(self == art::Thread::Current());
+  if (!self->CanBeSuspendedByUserCode()) {
+    // TODO This is really undesirable. As far as I can tell this is can only come about because of
+    // class-loads in the jit-threads (through either VMObjectAlloc or the ClassLoad/ClassPrepare
+    // events that we send). It's unlikely that anyone would be suspending themselves there since
+    // it's almost guaranteed to cause a deadlock but it is technically allowed. Ideally we'd want
+    // to put a CHECK here (or in the event-dispatch code) that we are only in this situation when
+    // sending the GC callbacks but the jit causing events means we cannot do this.
+    LOG(WARNING) << "Attempt to self-suspend on a thread without suspension enabled. Thread is "
+                 << *self;
+    return ERR(INTERNAL);
+  }
   {
     art::MutexLock mu(self, *art::Locks::user_code_suspension_lock_);
     art::MutexLock thread_list_mu(self, *art::Locks::thread_suspend_count_lock_);
@@ -923,7 +963,6 @@ jvmtiError ThreadUtil::ResumeThread(jvmtiEnv* env ATTRIBUTE_UNUSED,
     return ERR(NULL_POINTER);
   }
   art::Thread* self = art::Thread::Current();
-  art::Thread* target;
   // Retry until we know we won't get suspended by user code while resuming something.
   do {
     SuspendCheck(self);
@@ -934,36 +973,37 @@ jvmtiError ThreadUtil::ResumeThread(jvmtiEnv* env ATTRIBUTE_UNUSED,
       continue;
     }
     // From now on we know we cannot get suspended by user-code.
-    {
-      // NB This does a SuspendCheck (during thread state change) so we need to make sure we don't
-      // have the 'suspend_lock' locked here.
-      art::ScopedObjectAccess soa(self);
-      art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
-      jvmtiError err = ERR(INTERNAL);
-      if (!GetAliveNativeThread(thread, soa, &target, &err)) {
-        return err;
-      } else if (target == self) {
-        // We would have paused until we aren't suspended anymore due to the ScopedObjectAccess so
-        // we can just return THREAD_NOT_SUSPENDED. Unfortunately we cannot do any real DCHECKs
-        // about current state since it's all concurrent.
-        return ERR(THREAD_NOT_SUSPENDED);
-      }
-      // The JVMTI spec requires us to return THREAD_NOT_SUSPENDED if it is alive but we really
-      // cannot tell why resume failed.
-      {
-        art::MutexLock thread_suspend_count_mu(self, *art::Locks::thread_suspend_count_lock_);
-        if (target->GetUserCodeSuspendCount() == 0) {
-          return ERR(THREAD_NOT_SUSPENDED);
-        }
-      }
+    // NB This does a SuspendCheck (during thread state change) so we need to make sure we don't
+    // have the 'suspend_lock' locked here.
+    art::ScopedObjectAccess soa(self);
+    if (thread == nullptr) {
+      // The thread is the current thread.
+      return ERR(THREAD_NOT_SUSPENDED);
+    } else if (!soa.Env()->IsInstanceOf(thread, art::WellKnownClasses::java_lang_Thread)) {
+      // Not a thread object.
+      return ERR(INVALID_THREAD);
+    } else if (self->GetPeer() == soa.Decode<art::mirror::Object>(thread)) {
+      // The thread is the current thread.
+      return ERR(THREAD_NOT_SUSPENDED);
     }
-    // It is okay that we don't have a thread_list_lock here since we know that the thread cannot
-    // die since it is currently held suspended by a SuspendReason::kForUserCode suspend.
-    DCHECK(target != self);
-    if (!art::Runtime::Current()->GetThreadList()->Resume(target,
-                                                          art::SuspendReason::kForUserCode)) {
+    ScopedSuspendByPeer ssbp(thread);
+    if (ssbp.TimedOut()) {
+      // Unknown error. Couldn't suspend thread!
+      return ERR(INTERNAL);
+    } else if (ssbp.GetTargetThread() == nullptr) {
+      // Thread must not be alive.
+      return ERR(THREAD_NOT_ALIVE);
+    }
+    // We didn't time out and got a result. Check the thread is suspended by usercode, unsuspend it
+    // and return. It's already suspended internal so we don't need to do anything but decrement the
+    // count.
+    art::MutexLock thread_list_mu(self, *art::Locks::thread_suspend_count_lock_);
+    if (ssbp.GetTargetThread()->GetUserCodeSuspendCount() == 0) {
+      return ERR(THREAD_NOT_SUSPENDED);
+    } else if (!ssbp.GetTargetThread()->ModifySuspendCount(
+        self, -1, nullptr, art::SuspendReason::kForUserCode)) {
       // TODO Give a better error.
-      // This is most likely THREAD_NOT_SUSPENDED but we cannot really be sure.
+      // This should not really be possible and is probably some race.
       return ERR(INTERNAL);
     } else {
       return OK;
