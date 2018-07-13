@@ -161,7 +161,6 @@ art_cc_defaults {
                 "utils/x86/assembler_x86.cc",
                 "utils/x86/jni_macro_assembler_x86.cc",
                 "utils/x86/managed_register_x86.cc",
-                "optimizing/instruction_simplifier_x86.cc",
             ],
         },
         x86_64: {
