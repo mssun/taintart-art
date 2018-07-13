@@ -67,8 +67,6 @@ class X86InstructionSetFeatures : public InstructionSetFeatures {
 
   bool HasPopCnt() const { return has_POPCNT_; }
 
-  bool HasAVX2() const { return has_AVX2_; }
-
  protected:
   // Parse a string of the form "ssse3" adding these to a new InstructionSetFeatures.
   virtual std::unique_ptr<const InstructionSetFeatures>
