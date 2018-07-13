@@ -82,7 +82,6 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   void initialize(AhatHeap heap, Site site, AhatClassObj classObj) {
     mHeap = heap;
     mSite = site;
-    site.addInstance(this);
     mClassObj = classObj;
   }
 
