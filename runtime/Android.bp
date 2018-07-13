@@ -31,7 +31,6 @@ libart_cc_defaults {
         "aot_class_linker.cc",
         "art_field.cc",
         "art_method.cc",
-        "backtrace_helper.cc",
         "barrier.cc",
         "base/mem_map_arena_pool.cc",
         "base/mutex.cc",
