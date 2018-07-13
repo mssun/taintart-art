@@ -531,8 +531,7 @@ bool OptimizingCompiler::RunArchOptimizations(HGraph* graph,
         OptDef(OptimizationPass::kSideEffectsAnalysis),
         OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
         OptDef(OptimizationPass::kPcRelativeFixupsX86),
-        OptDef(OptimizationPass::kX86MemoryOperandGeneration),
-        OptDef(OptimizationPass::kInstructionSimplifierX86)
+        OptDef(OptimizationPass::kX86MemoryOperandGeneration)
       };
       return RunOptimizations(graph,
                               codegen,
@@ -547,8 +546,7 @@ bool OptimizingCompiler::RunArchOptimizations(HGraph* graph,
       OptimizationDef x86_64_optimizations[] = {
         OptDef(OptimizationPass::kSideEffectsAnalysis),
         OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
-        OptDef(OptimizationPass::kX86MemoryOperandGeneration),
-        OptDef(OptimizationPass::kInstructionSimplifierX86)
+        OptDef(OptimizationPass::kX86MemoryOperandGeneration)
       };
       return RunOptimizations(graph,
                               codegen,
