@@ -63,10 +63,6 @@ static bool IsInBootImage(ArtMethod* method) {
   return false;
 }
 
-static bool AOTCanEmbedMethod(ArtMethod* method, const CompilerOptions& options) {
-  return IsInBootImage(method) && !options.GetCompilePic();
-}
-
 static bool BootImageAOTCanEmbedMethod(ArtMethod* method, const CompilerOptions& compiler_options) {
   DCHECK(compiler_options.IsBootImage());
   ScopedObjectAccess soa(Thread::Current());
@@ -120,11 +116,10 @@ void HSharpening::SharpenInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke,
       method_load_kind = HInvokeStaticOrDirect::MethodLoadKind::kBssEntry;
     }
     code_ptr_location = HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod;
-  } else if (Runtime::Current()->UseJitCompilation() ||
-             AOTCanEmbedMethod(callee, compiler_options)) {
+  } else if (Runtime::Current()->UseJitCompilation()) {
     // JIT or on-device AOT compilation referencing a boot image method.
     // Use the method address directly.
-    method_load_kind = HInvokeStaticOrDirect::MethodLoadKind::kDirectAddress;
+    method_load_kind = HInvokeStaticOrDirect::MethodLoadKind::kJitDirectAddress;
     method_load_data = reinterpret_cast<uintptr_t>(callee);
     code_ptr_location = HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod;
   } else if (IsInBootImage(callee)) {
@@ -199,8 +194,7 @@ HLoadClass::LoadKind HSharpening::ComputeLoadClassKind(
       if (runtime->UseJitCompilation()) {
         DCHECK(!compiler_options.GetCompilePic());
         if (is_in_boot_image) {
-          // TODO: Use direct pointers for all non-moving spaces, not just boot image. Bug: 29530787
-          desired_load_kind = HLoadClass::LoadKind::kBootImageAddress;
+          desired_load_kind = HLoadClass::LoadKind::kJitBootImageAddress;
         } else if (klass != nullptr) {
           desired_load_kind = HLoadClass::LoadKind::kJitTableAddress;
         } else {
@@ -212,11 +206,7 @@ HLoadClass::LoadKind HSharpening::ComputeLoadClassKind(
         }
       } else if (is_in_boot_image) {
         // AOT app compilation, boot image class.
-        if (codegen->GetCompilerOptions().GetCompilePic()) {
-          desired_load_kind = HLoadClass::LoadKind::kBootImageRelRo;
-        } else {
-          desired_load_kind = HLoadClass::LoadKind::kBootImageAddress;
-        }
+        desired_load_kind = HLoadClass::LoadKind::kBootImageRelRo;
       } else {
         // Not JIT and the klass is not in boot image.
         desired_load_kind = HLoadClass::LoadKind::kBssEntry;
@@ -348,7 +338,7 @@ void HSharpening::ProcessLoadString(
       string = class_linker->LookupString(string_index, dex_cache.Get());
       if (string != nullptr) {
         if (runtime->GetHeap()->ObjectIsInBootImageSpace(string)) {
-          desired_load_kind = HLoadString::LoadKind::kBootImageAddress;
+          desired_load_kind = HLoadString::LoadKind::kJitBootImageAddress;
         } else {
           desired_load_kind = HLoadString::LoadKind::kJitTableAddress;
         }
@@ -359,11 +349,7 @@ void HSharpening::ProcessLoadString(
       // AOT app compilation. Try to lookup the string without allocating if not found.
       string = class_linker->LookupString(string_index, dex_cache.Get());
       if (string != nullptr && runtime->GetHeap()->ObjectIsInBootImageSpace(string)) {
-        if (codegen->GetCompilerOptions().GetCompilePic()) {
-          desired_load_kind = HLoadString::LoadKind::kBootImageRelRo;
-        } else {
-          desired_load_kind = HLoadString::LoadKind::kBootImageAddress;
-        }
+        desired_load_kind = HLoadString::LoadKind::kBootImageRelRo;
       } else {
         desired_load_kind = HLoadString::LoadKind::kBssEntry;
       }

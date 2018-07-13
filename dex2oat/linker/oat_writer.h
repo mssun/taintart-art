@@ -533,9 +533,6 @@ class OatWriter {
   // The helper for processing relative patches is external so that we can patch across oat files.
   MultiOatRelativePatcher* relative_patcher_;
 
-  // The locations of absolute patches relative to the start of the executable section.
-  dchecked_vector<uintptr_t> absolute_patch_locations_;
-
   // Profile info used to generate new layout of files.
   ProfileCompilationInfo* profile_compilation_info_;
 

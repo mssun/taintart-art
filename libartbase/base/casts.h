@@ -165,6 +165,29 @@ inline Dest reinterpret_cast64(Source* ptr) {
   return static_cast<Dest>(reinterpret_cast<uintptr_t>(ptr));
 }
 
+// A version of reinterpret_cast<>() between pointers and int32_t/uint32_t that enforces
+// zero-extension and checks that the values are converted without loss of precision.
+
+template <typename Dest, typename Source>
+inline Dest reinterpret_cast32(Source source) {
+  // This is the overload for casting from int32_t/uint32_t to a pointer.
+  static_assert(std::is_same<Source, int32_t>::value || std::is_same<Source, uint32_t>::value,
+                "Source must be int32_t or uint32_t.");
+  static_assert(std::is_pointer<Dest>::value, "Dest must be a pointer.");
+  // Check that we don't lose any non-0 bits here.
+  static_assert(sizeof(uintptr_t) >= sizeof(Source), "Expecting at least 32-bit pointers.");
+  return reinterpret_cast<Dest>(static_cast<uintptr_t>(static_cast<uint32_t>(source)));
+}
+
+template <typename Dest, typename Source>
+inline Dest reinterpret_cast32(Source* ptr) {
+  // This is the overload for casting from a pointer to int32_t/uint32_t.
+  static_assert(std::is_same<Dest, int32_t>::value || std::is_same<Dest, uint32_t>::value,
+                "Dest must be int32_t or uint32_t.");
+  static_assert(sizeof(uintptr_t) >= sizeof(Dest), "Expecting at least 32-bit pointers.");
+  return static_cast<Dest>(dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr)));
+}
+
 }  // namespace art
 
 #endif  // ART_LIBARTBASE_BASE_CASTS_H_
