@@ -931,6 +931,9 @@ class HVecSetScalars FINAL : public HVecOperation {
 
 // Multiplies every component in the two vectors, adds the result vector to the accumulator vector,
 // viz. [ a1, .. , an ] + [ x1, .. , xn ] * [ y1, .. , yn ] = [ a1 + x1 * y1, .. , an + xn * yn ].
+// For floating point types, Java rounding behavior must be preserved; the products are rounded to
+// the proper precision before being added. "Fused" multiply-add operations available on several
+// architectures are not usable since they would violate Java language rules.
 class HVecMultiplyAccumulate FINAL : public HVecOperation {
  public:
   HVecMultiplyAccumulate(ArenaAllocator* allocator,
@@ -953,6 +956,9 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
     DCHECK(HasConsistentPackedTypes(accumulator, packed_type));
     DCHECK(HasConsistentPackedTypes(mul_left, packed_type));
     DCHECK(HasConsistentPackedTypes(mul_right, packed_type));
+    // Remove the following if we add an architecture that supports floating point multiply-add
+    // with Java-compatible rounding.
+    DCHECK(DataType::IsIntegralType(packed_type));
     SetRawInputAt(0, accumulator);
     SetRawInputAt(1, mul_left);
     SetRawInputAt(2, mul_right);
