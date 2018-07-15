@@ -92,7 +92,7 @@ class ExceptionTest : public CommonRuntimeTest {
 
     MemoryRegion stack_maps_region(&fake_header_code_and_maps_[0], stack_maps_size);
     stack_maps.FillInCodeInfo(stack_maps_region);
-    OatQuickMethodHeader method_header(code_ptr - stack_maps_region.begin(), 0u, code_size);
+    OatQuickMethodHeader method_header(code_ptr - stack_maps_region.begin(), code_size);
     static_assert(std::is_trivially_copyable<OatQuickMethodHeader>::value, "Cannot use memcpy");
     memcpy(code_ptr - header_size, &method_header, header_size);
     memcpy(code_ptr, fake_code_.data(), fake_code_.size());

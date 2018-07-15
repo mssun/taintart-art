@@ -202,12 +202,11 @@ static inline ArtMethod* DoGetCalleeSaveMethodCaller(ArtMethod* outer_method,
       DCHECK(current_code->IsOptimized());
       uintptr_t native_pc_offset = current_code->NativeQuickPcOffset(caller_pc);
       CodeInfo code_info(current_code, CodeInfo::DecodeFlags::InlineInfoOnly);
-      MethodInfo method_info = current_code->GetOptimizedMethodInfo();
       StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
       DCHECK(stack_map.IsValid());
       BitTableRange<InlineInfo> inline_infos = code_info.GetInlineInfosOf(stack_map);
       if (!inline_infos.empty()) {
-        caller = GetResolvedMethod(outer_method, method_info, inline_infos);
+        caller = GetResolvedMethod(outer_method, code_info, inline_infos);
       }
     }
     if (kIsDebugBuild && do_caller_check) {

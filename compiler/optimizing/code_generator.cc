@@ -963,13 +963,10 @@ CodeGenerator::CodeGenerator(HGraph* graph,
 
 CodeGenerator::~CodeGenerator() {}
 
-void CodeGenerator::ComputeStackMapAndMethodInfoSize(size_t* stack_map_size,
-                                                     size_t* method_info_size) {
+void CodeGenerator::ComputeStackMapSize(size_t* stack_map_size) {
   DCHECK(stack_map_size != nullptr);
-  DCHECK(method_info_size != nullptr);
   StackMapStream* stack_map_stream = GetStackMapStream();
   *stack_map_size = stack_map_stream->PrepareForFillIn();
-  *method_info_size = stack_map_stream->ComputeMethodInfoSize();
 }
 
 size_t CodeGenerator::GetNumberOfJitRoots() const {
@@ -1039,11 +1036,9 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
 }
 
 void CodeGenerator::BuildStackMaps(MemoryRegion stack_map_region,
-                                   MemoryRegion method_info_region,
                                    const DexFile::CodeItem* code_item_for_osr_check) {
   StackMapStream* stack_map_stream = GetStackMapStream();
   stack_map_stream->FillInCodeInfo(stack_map_region);
-  stack_map_stream->FillInMethodInfo(method_info_region);
   if (kIsDebugBuild && code_item_for_osr_check != nullptr) {
     CheckLoopEntriesCanBeUsedForOsr(*graph_, CodeInfo(stack_map_region), *code_item_for_osr_check);
   }

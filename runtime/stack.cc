@@ -81,9 +81,9 @@ ArtMethod* StackVisitor::GetMethod() const {
   } else if (cur_quick_frame_ != nullptr) {
     if (IsInInlinedFrame()) {
       const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
-      MethodInfo method_info = method_header->GetOptimizedMethodInfo();
+      CodeInfo code_info(method_header);
       DCHECK(walk_kind_ != StackWalkKind::kSkipInlinedFrames);
-      return GetResolvedMethod(*GetCurrentQuickFrame(), method_info, current_inline_frames_);
+      return GetResolvedMethod(*GetCurrentQuickFrame(), code_info, current_inline_frames_);
     } else {
       return *cur_quick_frame_;
     }

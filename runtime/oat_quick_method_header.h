@@ -20,7 +20,6 @@
 #include "arch/instruction_set.h"
 #include "base/macros.h"
 #include "base/utils.h"
-#include "method_info.h"
 #include "quick/quick_method_frame_info.h"
 #include "stack_map.h"
 
@@ -33,10 +32,8 @@ class PACKED(4) OatQuickMethodHeader {
  public:
   OatQuickMethodHeader() = default;
   OatQuickMethodHeader(uint32_t vmap_table_offset,
-                       uint32_t method_info_offset,
                        uint32_t code_size)
       : vmap_table_offset_(vmap_table_offset),
-        method_info_offset_(method_info_offset),
         code_size_(code_size) {
   }
 
@@ -74,20 +71,6 @@ class PACKED(4) OatQuickMethodHeader {
     return code_ - vmap_table_offset_;
   }
 
-  const void* GetOptimizedMethodInfoPtr() const {
-    DCHECK(IsOptimized());
-    return reinterpret_cast<const void*>(code_ - method_info_offset_);
-  }
-
-  uint8_t* GetOptimizedMethodInfoPtr() {
-    DCHECK(IsOptimized());
-    return code_ - method_info_offset_;
-  }
-
-  MethodInfo GetOptimizedMethodInfo() const {
-    return MethodInfo(reinterpret_cast<const uint8_t*>(GetOptimizedMethodInfoPtr()));
-  }
-
   const uint8_t* GetCode() const {
     return code_;
   }
@@ -110,18 +93,6 @@ class PACKED(4) OatQuickMethodHeader {
 
   const uint32_t* GetVmapTableOffsetAddr() const {
     return &vmap_table_offset_;
-  }
-
-  uint32_t GetMethodInfoOffset() const {
-    return method_info_offset_;
-  }
-
-  void SetMethodInfoOffset(uint32_t offset) {
-    method_info_offset_ = offset;
-  }
-
-  const uint32_t* GetMethodInfoOffsetAddr() const {
-    return &method_info_offset_;
   }
 
   const uint8_t* GetVmapTable() const {
@@ -186,11 +157,6 @@ class PACKED(4) OatQuickMethodHeader {
 
   // The offset in bytes from the start of the vmap table to the end of the header.
   uint32_t vmap_table_offset_ = 0u;
-  // The offset in bytes from the start of the method info to the end of the header.
-  // The method info offset is not in the CodeInfo since CodeInfo has good dedupe properties that
-  // would be lost from doing so. The method info memory region contains method indices since they
-  // are hard to dedupe.
-  uint32_t method_info_offset_ = 0u;
   // The code size in bytes. The highest bit is used to signify if the compiled
   // code with the method header has should_deoptimize flag.
   uint32_t code_size_ = 0u;

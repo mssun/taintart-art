@@ -112,7 +112,6 @@ class CompiledMethod FINAL : public CompiledCode {
   CompiledMethod(CompilerDriver* driver,
                  InstructionSet instruction_set,
                  const ArrayRef<const uint8_t>& quick_code,
-                 const ArrayRef<const uint8_t>& method_info,
                  const ArrayRef<const uint8_t>& vmap_table,
                  const ArrayRef<const uint8_t>& cfi_info,
                  const ArrayRef<const linker::LinkerPatch>& patches);
@@ -123,7 +122,6 @@ class CompiledMethod FINAL : public CompiledCode {
       CompilerDriver* driver,
       InstructionSet instruction_set,
       const ArrayRef<const uint8_t>& quick_code,
-      const ArrayRef<const uint8_t>& method_info,
       const ArrayRef<const uint8_t>& vmap_table,
       const ArrayRef<const uint8_t>& cfi_info,
       const ArrayRef<const linker::LinkerPatch>& patches);
@@ -142,8 +140,6 @@ class CompiledMethod FINAL : public CompiledCode {
     SetPackedField<IsIntrinsicField>(/* value */ true);
   }
 
-  ArrayRef<const uint8_t> GetMethodInfo() const;
-
   ArrayRef<const uint8_t> GetVmapTable() const;
 
   ArrayRef<const uint8_t> GetCFIInfo() const;
@@ -159,8 +155,6 @@ class CompiledMethod FINAL : public CompiledCode {
 
   using IsIntrinsicField = BitField<bool, kIsIntrinsicLsb, kIsIntrinsicSize>;
 
-  // For quick code, method specific information that is not very dedupe friendly (method indices).
-  const LengthPrefixedArray<uint8_t>* const method_info_;
   // For quick code, holds code infos which contain stack maps, inline information, and etc.
   const LengthPrefixedArray<uint8_t>* const vmap_table_;
   // For quick code, a FDE entry for the debug_frame section.

@@ -45,7 +45,7 @@
 namespace art {
 
 inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
-                                    const MethodInfo& method_info,
+                                    const CodeInfo& code_info,
                                     const BitTableRange<InlineInfo>& inline_infos)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(!outer_method->IsObsolete());
@@ -62,7 +62,7 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
       return inline_info.GetArtMethod();
     }
 
-    uint32_t method_index = inline_info.GetMethodIndex(method_info);
+    uint32_t method_index = code_info.GetMethodIndexOf(inline_info);
     if (inline_info.GetDexPc() == static_cast<uint32_t>(-1)) {
       // "charAt" special case. It is the only non-leaf method we inline across dex files.
       ArtMethod* inlined_method = jni::DecodeArtMethod(WellKnownClasses::java_lang_String_charAt);
@@ -77,7 +77,7 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
   for (InlineInfo inline_info : inline_infos) {
     DCHECK(!inline_info.EncodesArtMethod());
     DCHECK_NE(inline_info.GetDexPc(), static_cast<uint32_t>(-1));
-    uint32_t method_index = inline_info.GetMethodIndex(method_info);
+    uint32_t method_index = code_info.GetMethodIndexOf(inline_info);
     ArtMethod* inlined_method = class_linker->LookupResolvedMethod(method_index,
                                                                    method->GetDexCache(),
                                                                    method->GetClassLoader());
