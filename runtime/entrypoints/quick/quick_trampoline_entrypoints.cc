@@ -357,30 +357,6 @@ class QuickArgumentVisitor {
     }
   }
 
-  static bool GetInvokeType(ArtMethod** sp, InvokeType* invoke_type, uint32_t* dex_method_index)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK((*sp)->IsCalleeSaveMethod());
-    constexpr size_t callee_frame_size =
-        RuntimeCalleeSaveFrame::GetFrameSize(CalleeSaveType::kSaveRefsAndArgs);
-    ArtMethod** caller_sp = reinterpret_cast<ArtMethod**>(
-        reinterpret_cast<uintptr_t>(sp) + callee_frame_size);
-    uintptr_t outer_pc = QuickArgumentVisitor::GetCallingPc(sp);
-    const OatQuickMethodHeader* current_code = (*caller_sp)->GetOatQuickMethodHeader(outer_pc);
-    if (!current_code->IsOptimized()) {
-      return false;
-    }
-    uintptr_t outer_pc_offset = current_code->NativeQuickPcOffset(outer_pc);
-    CodeInfo code_info(current_code);
-    MethodInfo method_info = current_code->GetOptimizedMethodInfo();
-    InvokeInfo invoke(code_info.GetInvokeInfoForNativePcOffset(outer_pc_offset));
-    if (invoke.IsValid()) {
-      *invoke_type = static_cast<InvokeType>(invoke.GetInvokeType());
-      *dex_method_index = invoke.GetMethodIndex(method_info);
-      return true;
-    }
-    return false;
-  }
-
   // For the given quick ref and args quick frame, return the caller's PC.
   static uintptr_t GetCallingPc(ArtMethod** sp) REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK((*sp)->IsCalleeSaveMethod());
@@ -1333,14 +1309,7 @@ extern "C" const void* artQuickResolutionTrampoline(
     caller = QuickArgumentVisitor::GetCallingMethod(sp);
     called_method.dex_file = caller->GetDexFile();
 
-    InvokeType stack_map_invoke_type;
-    uint32_t stack_map_dex_method_idx;
-    const bool found_stack_map = QuickArgumentVisitor::GetInvokeType(sp,
-                                                                     &stack_map_invoke_type,
-                                                                     &stack_map_dex_method_idx);
-    // For debug builds, we make sure both of the paths are consistent by also looking at the dex
-    // code.
-    if (!found_stack_map || kIsDebugBuild) {
+    {
       uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
       CodeItemInstructionAccessor accessor(caller->DexInstructions());
       CHECK_LT(dex_pc, accessor.InsnsSizeInCodeUnits());
@@ -1394,23 +1363,8 @@ extern "C" const void* artQuickResolutionTrampoline(
           UNREACHABLE();
       }
       called_method.index = (is_range) ? instr.VRegB_3rc() : instr.VRegB_35c();
-      // Check that the invoke matches what we expected, note that this path only happens for debug
-      // builds.
-      if (found_stack_map) {
-        DCHECK_EQ(stack_map_invoke_type, invoke_type);
-        if (invoke_type != kSuper) {
-          // Super may be sharpened.
-          DCHECK_EQ(stack_map_dex_method_idx, called_method.index)
-              << called_method.dex_file->PrettyMethod(stack_map_dex_method_idx) << " "
-              << called_method.PrettyMethod();
-        }
-      } else {
-        VLOG(dex) << "Accessed dex file for invoke " << invoke_type << " "
-                  << called_method.index;
-      }
-    } else {
-      invoke_type = stack_map_invoke_type;
-      called_method.index = stack_map_dex_method_idx;
+      VLOG(dex) << "Accessed dex file for invoke " << invoke_type << " "
+                << called_method.index;
     }
   } else {
     invoke_type = kStatic;

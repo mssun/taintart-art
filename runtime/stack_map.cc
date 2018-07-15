@@ -41,7 +41,6 @@ void CodeInfo::Decode(const uint8_t* data) {
   stack_maps_.Decode(reader);
   register_masks_.Decode(reader);
   stack_masks_.Decode(reader);
-  invoke_infos_.Decode(reader);
   inline_infos_.Decode(reader);
   dex_register_masks_.Decode(reader);
   dex_register_maps_.Decode(reader);
@@ -155,7 +154,6 @@ void CodeInfo::AddSizeStats(/*out*/ Stats* parent) const {
   AddTableSizeStats<StackMap>("StackMaps", stack_maps_, stats);
   AddTableSizeStats<RegisterMask>("RegisterMasks", register_masks_, stats);
   AddTableSizeStats<MaskInfo>("StackMasks", stack_masks_, stats);
-  AddTableSizeStats<InvokeInfo>("InvokeInfos", invoke_infos_, stats);
   AddTableSizeStats<InlineInfo>("InlineInfos", inline_infos_, stats);
   AddTableSizeStats<MaskInfo>("DexRegisterMasks", dex_register_masks_, stats);
   AddTableSizeStats<DexRegisterMapInfo>("DexRegisterMaps", dex_register_maps_, stats);
@@ -224,7 +222,6 @@ void CodeInfo::Dump(VariableIndentationOutputStream* vios,
   DumpTable<StackMap>(vios, "StackMaps", stack_maps_, verbose);
   DumpTable<RegisterMask>(vios, "RegisterMasks", register_masks_, verbose);
   DumpTable<MaskInfo>(vios, "StackMasks", stack_masks_, verbose, true /* is_mask */);
-  DumpTable<InvokeInfo>(vios, "InvokeInfos", invoke_infos_, verbose);
   DumpTable<InlineInfo>(vios, "InlineInfos", inline_infos_, verbose);
   DumpTable<MaskInfo>(vios, "DexRegisterMasks", dex_register_masks_, verbose, true /* is_mask */);
   DumpTable<DexRegisterMapInfo>(vios, "DexRegisterMaps", dex_register_maps_, verbose);
