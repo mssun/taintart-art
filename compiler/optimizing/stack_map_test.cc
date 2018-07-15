@@ -758,4 +758,48 @@ TEST(StackMapTest, TestDeduplicateStackMask) {
             stack_map2.GetStackMaskIndex());
 }
 
+TEST(StackMapTest, TestDedupeBitTables) {
+  MallocArenaPool pool;
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
+  StackMapStream stream(&allocator, kRuntimeISA);
+  stream.BeginMethod(32, 0, 0, 2);
+
+  stream.BeginStackMapEntry(0, 64 * kPcAlign);
+  stream.AddDexRegisterEntry(Kind::kInStack, 0);
+  stream.AddDexRegisterEntry(Kind::kConstant, -2);
+  stream.EndStackMapEntry();
+
+  stream.EndMethod();
+  std::vector<uint8_t> memory(stream.PrepareForFillIn());
+  MemoryRegion region(memory.data(), memory.size());
+  stream.FillInCodeInfo(region);
+
+  std::vector<uint8_t> out;
+  CodeInfo::DedupeMap dedupe_map;
+  size_t deduped1 = CodeInfo::Dedupe(&out, memory.data(), &dedupe_map);
+  size_t deduped2 = CodeInfo::Dedupe(&out, memory.data(), &dedupe_map);
+
+  for (size_t deduped : { deduped1, deduped2 }) {
+    CodeInfo code_info(out.data() + deduped);
+    ASSERT_EQ(1u, code_info.GetNumberOfStackMaps());
+
+    StackMap stack_map = code_info.GetStackMapAt(0);
+    ASSERT_TRUE(stack_map.Equals(code_info.GetStackMapForDexPc(0)));
+    ASSERT_TRUE(stack_map.Equals(code_info.GetStackMapForNativePcOffset(64 * kPcAlign)));
+    ASSERT_EQ(0u, stack_map.GetDexPc());
+    ASSERT_EQ(64u * kPcAlign, stack_map.GetNativePcOffset(kRuntimeISA));
+
+    ASSERT_TRUE(stack_map.HasDexRegisterMap());
+    DexRegisterMap dex_register_map = code_info.GetDexRegisterMapOf(stack_map);
+
+    ASSERT_EQ(Kind::kInStack, dex_register_map[0].GetKind());
+    ASSERT_EQ(Kind::kConstant, dex_register_map[1].GetKind());
+    ASSERT_EQ(0, dex_register_map[0].GetStackOffsetInBytes());
+    ASSERT_EQ(-2, dex_register_map[1].GetConstant());
+  }
+
+  ASSERT_GT(memory.size() * 2, out.size());
+}
+
 }  // namespace art

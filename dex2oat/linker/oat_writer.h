@@ -384,6 +384,8 @@ class OatWriter {
 
   dchecked_vector<debug::MethodDebugInfo> method_info_;
 
+  std::vector<uint8_t> code_info_data_;
+
   const CompilerDriver* compiler_driver_;
   const CompilerOptions& compiler_options_;
   ImageWriter* image_writer_;
