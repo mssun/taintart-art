@@ -156,26 +156,6 @@ void StackMapStream::EndStackMapEntry() {
   }
 }
 
-void StackMapStream::AddInvoke(InvokeType invoke_type, uint32_t dex_method_index) {
-  uint32_t packed_native_pc = current_stack_map_[StackMap::kPackedNativePc];
-  size_t invoke_info_index = invoke_infos_.size();
-  BitTableBuilder<InvokeInfo>::Entry entry;
-  entry[InvokeInfo::kPackedNativePc] = packed_native_pc;
-  entry[InvokeInfo::kInvokeType] = invoke_type;
-  entry[InvokeInfo::kMethodInfoIndex] = method_infos_.Dedup({dex_method_index});
-  invoke_infos_.Add(entry);
-
-  if (kVerifyStackMaps) {
-    dchecks_.emplace_back([=](const CodeInfo& code_info) {
-      InvokeInfo invoke_info = code_info.GetInvokeInfo(invoke_info_index);
-      CHECK_EQ(invoke_info.GetNativePcOffset(instruction_set_),
-               StackMap::UnpackNativePc(packed_native_pc, instruction_set_));
-      CHECK_EQ(invoke_info.GetInvokeType(), invoke_type);
-      CHECK_EQ(method_infos_[invoke_info.GetMethodInfoIndex()][0], dex_method_index);
-    });
-  }
-}
-
 void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
                                           uint32_t dex_pc,
                                           uint32_t num_dex_registers,
@@ -333,7 +313,6 @@ size_t StackMapStream::PrepareForFillIn() {
   stack_maps_.Encode(out);
   register_masks_.Encode(out);
   stack_masks_.Encode(out);
-  invoke_infos_.Encode(out);
   inline_infos_.Encode(out);
   dex_register_masks_.Encode(out);
   dex_register_maps_.Encode(out);

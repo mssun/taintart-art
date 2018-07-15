@@ -208,22 +208,6 @@ class InlineInfo : public BitTableAccessor<6> {
             const MethodInfo& method_info) const;
 };
 
-class InvokeInfo : public BitTableAccessor<3> {
- public:
-  BIT_TABLE_HEADER()
-  BIT_TABLE_COLUMN(0, PackedNativePc)
-  BIT_TABLE_COLUMN(1, InvokeType)
-  BIT_TABLE_COLUMN(2, MethodInfoIndex)
-
-  ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
-    return StackMap::UnpackNativePc(GetPackedNativePc(), instruction_set);
-  }
-
-  uint32_t GetMethodIndex(MethodInfo method_info) const {
-    return method_info.GetMethodIndex(GetMethodInfoIndex());
-  }
-};
-
 class MaskInfo : public BitTableAccessor<1> {
  public:
   BIT_TABLE_HEADER()
@@ -338,10 +322,6 @@ class CodeInfo {
     return stack_maps_.NumRows();
   }
 
-  InvokeInfo GetInvokeInfo(size_t index) const {
-    return invoke_infos_.GetRow(index);
-  }
-
   ALWAYS_INLINE DexRegisterMap GetDexRegisterMapOf(StackMap stack_map) const {
     if (stack_map.HasDexRegisterMap()) {
       DexRegisterMap map(number_of_dex_registers_, DexRegisterLocation::Invalid());
@@ -413,15 +393,6 @@ class CodeInfo {
 
   StackMap GetStackMapForNativePcOffset(uint32_t pc, InstructionSet isa = kRuntimeISA) const;
 
-  InvokeInfo GetInvokeInfoForNativePcOffset(uint32_t native_pc_offset) {
-    for (InvokeInfo item : invoke_infos_) {
-      if (item.GetNativePcOffset(kRuntimeISA) == native_pc_offset) {
-        return item;
-      }
-    }
-    return invoke_infos_.GetInvalidRow();
-  }
-
   // Dump this CodeInfo object on `vios`.
   // `code_offset` is the (absolute) native PC of the compiled method.
   void Dump(VariableIndentationOutputStream* vios,
@@ -459,7 +430,6 @@ class CodeInfo {
   BitTable<StackMap> stack_maps_;
   BitTable<RegisterMask> register_masks_;
   BitTable<MaskInfo> stack_masks_;
-  BitTable<InvokeInfo> invoke_infos_;
   BitTable<InlineInfo> inline_infos_;
   BitTable<MaskInfo> dex_register_masks_;
   BitTable<DexRegisterMapInfo> dex_register_maps_;
