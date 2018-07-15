@@ -70,9 +70,6 @@
 
 namespace art {
 
-// If true, we record the static and direct invokes in the invoke infos.
-static constexpr bool kEnableDexLayoutOptimizations = false;
-
 // Return whether a location is consistent with a type.
 static bool CheckType(DataType::Type type, Location location) {
   if (location.IsFpuRegister()
@@ -1136,15 +1133,6 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
                                        locations->GetStackMask(),
                                        kind);
   EmitEnvironment(environment, slow_path);
-  // Record invoke info, the common case for the trampoline is super and static invokes. Only
-  // record these to reduce oat file size.
-  if (kEnableDexLayoutOptimizations) {
-    if (instruction->IsInvokeStaticOrDirect()) {
-      HInvoke* const invoke = instruction->AsInvokeStaticOrDirect();
-      DCHECK(environment != nullptr);
-      stack_map_stream->AddInvoke(invoke->GetInvokeType(), invoke->GetDexMethodIndex());
-    }
-  }
   stack_map_stream->EndStackMapEntry();
 
   if (osr) {
