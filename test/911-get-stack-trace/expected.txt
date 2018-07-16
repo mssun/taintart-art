@@ -79,7 +79,7 @@ From top
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -99,7 +99,7 @@ From top
 ---------
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -120,13 +120,13 @@ From top
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
 ---------
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -153,7 +153,7 @@ From bottom
 ###########################
 From top
 ---------
- printOrWait (IILart/ControlData;)V 43 54
+ printOrWait (IILart/ControlData;)V 45 54
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -188,7 +188,7 @@ From top
  foo (IIILart/ControlData;)I 0 21
  run ()V 4 61
 ---------
- printOrWait (IILart/ControlData;)V 43 54
+ printOrWait (IILart/ControlData;)V 45 54
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -274,7 +274,7 @@ AllTraces Thread 0
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -284,7 +284,7 @@ AllTraces Thread 1
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -294,7 +294,7 @@ AllTraces Thread 2
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -304,7 +304,7 @@ AllTraces Thread 3
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -314,7 +314,7 @@ AllTraces Thread 4
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -324,7 +324,7 @@ AllTraces Thread 5
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -334,7 +334,7 @@ AllTraces Thread 6
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -344,7 +344,7 @@ AllTraces Thread 7
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -354,7 +354,7 @@ AllTraces Thread 8
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -364,7 +364,7 @@ AllTraces Thread 9
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -399,7 +399,7 @@ AllTraces Thread 0
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -422,7 +422,7 @@ AllTraces Thread 1
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -445,7 +445,7 @@ AllTraces Thread 2
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -468,7 +468,7 @@ AllTraces Thread 3
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -491,7 +491,7 @@ AllTraces Thread 4
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -514,7 +514,7 @@ AllTraces Thread 5
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -537,7 +537,7 @@ AllTraces Thread 6
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -560,7 +560,7 @@ AllTraces Thread 7
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -583,7 +583,7 @@ AllTraces Thread 8
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -606,7 +606,7 @@ AllTraces Thread 9
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -683,7 +683,7 @@ ThreadListTraces Thread 0
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -693,7 +693,7 @@ ThreadListTraces Thread 2
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -703,7 +703,7 @@ ThreadListTraces Thread 4
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -713,7 +713,7 @@ ThreadListTraces Thread 6
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -723,7 +723,7 @@ ThreadListTraces Thread 8
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -740,7 +740,7 @@ ThreadListTraces Thread 0
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -763,7 +763,7 @@ ThreadListTraces Thread 2
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -786,7 +786,7 @@ ThreadListTraces Thread 4
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -809,7 +809,7 @@ ThreadListTraces Thread 6
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -832,7 +832,7 @@ ThreadListTraces Thread 8
  wait (JI)V -1 -2
  wait (J)V 1 442
  wait ()V 2 568
- printOrWait (IILart/ControlData;)V 22 47
+ printOrWait (IILart/ControlData;)V 24 47
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
@@ -870,7 +870,7 @@ JVMTI_ERROR_ILLEGAL_ARGUMENT
 [public final native void java.lang.Object.wait(long,int) throws java.lang.InterruptedException, ffffffff]
 [public final void java.lang.Object.wait(long) throws java.lang.InterruptedException, 1]
 [public final void java.lang.Object.wait() throws java.lang.InterruptedException, 2]
-[private static void art.Recurse.printOrWait(int,int,art.ControlData), 16]
+[private static void art.Recurse.printOrWait(int,int,art.ControlData), 18]
 [private static java.lang.Object art.Recurse.baz(int,int,int,art.ControlData), 2]
 [private static long art.Recurse.bar(int,int,int,art.ControlData), 0]
 [public static int art.Recurse.foo(int,int,int,art.ControlData), 0]
@@ -894,7 +894,7 @@ JVMTI_ERROR_NO_MORE_FRAMES
 ###########################
 17
 JVMTI_ERROR_ILLEGAL_ARGUMENT
-[private static void art.Recurse.printOrWait(int,int,art.ControlData), 2b]
+[private static void art.Recurse.printOrWait(int,int,art.ControlData), 2d]
 [private static java.lang.Object art.Recurse.baz(int,int,int,art.ControlData), 2]
 [private static long art.Recurse.bar(int,int,int,art.ControlData), 0]
 [public static int art.Recurse.foo(int,int,int,art.ControlData), 0]
