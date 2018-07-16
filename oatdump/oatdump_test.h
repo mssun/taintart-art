@@ -213,12 +213,21 @@ class OatDumpTest : public CommonRuntimeTest {
     size_t line_len = 0;
     size_t total = 0;
     bool ignore_next_line = false;
+    std::vector<char> error_buf;  // Buffer for debug output on error. Limited to 1M.
     auto line_buf_fn = [&](char* buf, size_t len) {
       total += len;
 
       if (len == 0 && line_len > 0 && !ignore_next_line) {
         // Everything done, handle leftovers.
         line_handle_fn(line, line_len);
+      }
+
+      if (len > 0) {
+        size_t pos = error_buf.size();
+        if (pos < MB) {
+          error_buf.resize(pos + len);
+          memcpy(error_buf.data() + pos, buf, len);
+        }
       }
 
       while (len > 0) {
@@ -228,16 +237,19 @@ class OatDumpTest : public CommonRuntimeTest {
         buf += copy;
         len -= copy;
 
-        // Skip spaces. Declare a lambda for reuse (incurs a potential extra memmove).
-        auto trim_space = [&]() {
+        // Skip spaces up to len, return count of removed spaces. Declare a lambda for reuse.
+        auto trim_space = [&line](size_t len) {
           size_t spaces = 0;
-          for (; spaces < line_len && isspace(line[spaces]); ++spaces) {}
+          for (; spaces < len && isspace(line[spaces]); ++spaces) {}
           if (spaces > 0) {
-            line_len -= spaces;
-            memmove(&line[0], &line[spaces], line_len);
+            memmove(&line[0], &line[spaces], len - spaces);
           }
+          return spaces;
         };
-        trim_space();  // This is really only necessary if there wasn't any content in line before.
+        // There can only be spaces if we freshly started a line.
+        if (line_len == 0) {
+          copy -= trim_space(copy);
+        }
 
         // Scan for newline characters.
         size_t index = line_len;
@@ -251,7 +263,7 @@ class OatDumpTest : public CommonRuntimeTest {
             // Move the rest to the front, but trim leading spaces.
             line_len -= index + 1;
             memmove(&line[0], &line[index + 1], line_len);
-            trim_space();
+            line_len -= trim_space(line_len);
             index = 0;
             ignore_next_line = false;
           } else {
@@ -299,11 +311,12 @@ class OatDumpTest : public CommonRuntimeTest {
       }
     }
     if (!result) {
-      oss << "Processed bytes " << total;
+      oss << "Processed bytes " << total << ":" << std::endl;
+      error_buf.push_back(0);  // Make data a C string.
     }
 
     return result ? ::testing::AssertionSuccess()
-                  : (::testing::AssertionFailure() << oss.str());
+                  : (::testing::AssertionFailure() << oss.str() << error_buf.data());
   }
 
   std::string tmp_dir_;
