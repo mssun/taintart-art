@@ -24,6 +24,7 @@
 #include "nativehelper/scoped_local_ref.h"
 
 #include "android-base/stringprintf.h"
+#include "android-base/unique_fd.h"
 #include <unicode/uvernum.h>
 
 #include "art_field-inl.h"
@@ -421,6 +422,85 @@ std::string CommonArtTestImpl::CreateClassPathWithChecksums(
         std::to_string(dex_files[i]->GetLocationChecksum());
   }
   return classpath;
+}
+
+CommonArtTestImpl::ForkAndExecResult CommonArtTestImpl::ForkAndExec(
+    const std::vector<std::string>& argv,
+    const PostForkFn& post_fork,
+    const OutputHandlerFn& handler) {
+  ForkAndExecResult result;
+  result.status_code = 0;
+  result.stage = ForkAndExecResult::kLink;
+
+  std::vector<const char*> c_args;
+  for (const std::string& str : argv) {
+    c_args.push_back(str.c_str());
+  }
+  c_args.push_back(nullptr);
+
+  android::base::unique_fd link[2];
+  {
+    int link_fd[2];
+
+    if (pipe(link_fd) == -1) {
+      return result;
+    }
+    link[0].reset(link_fd[0]);
+    link[1].reset(link_fd[1]);
+  }
+
+  result.stage = ForkAndExecResult::kFork;
+
+  pid_t pid = fork();
+  if (pid == -1) {
+    return result;
+  }
+
+  if (pid == 0) {
+    if (!post_fork()) {
+      LOG(ERROR) << "Failed post-fork function";
+      exit(1);
+      UNREACHABLE();
+    }
+
+    // Redirect stdout and stderr.
+    dup2(link[1].get(), STDOUT_FILENO);
+    dup2(link[1].get(), STDERR_FILENO);
+
+    link[0].reset();
+    link[1].reset();
+
+    execv(c_args[0], const_cast<char* const*>(c_args.data()));
+    exit(1);
+    UNREACHABLE();
+  }
+
+  result.stage = ForkAndExecResult::kWaitpid;
+  link[1].reset();
+
+  char buffer[128] = { 0 };
+  ssize_t bytes_read = 0;
+  while (TEMP_FAILURE_RETRY(bytes_read = read(link[0].get(), buffer, 128)) > 0) {
+    handler(buffer, bytes_read);
+  }
+  handler(buffer, 0u);  // End with a virtual write of zero length to simplify clients.
+
+  link[0].reset();
+
+  if (waitpid(pid, &result.status_code, 0) == -1) {
+    return result;
+  }
+
+  result.stage = ForkAndExecResult::kFinished;
+  return result;
+}
+
+CommonArtTestImpl::ForkAndExecResult CommonArtTestImpl::ForkAndExec(
+    const std::vector<std::string>& argv, const PostForkFn& post_fork, std::string* output) {
+  auto string_collect_fn = [output](char* buf, size_t len) {
+    *output += std::string(buf, len);
+  };
+  return ForkAndExec(argv, post_fork, string_collect_fn);
 }
 
 }  // namespace art
