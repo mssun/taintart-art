@@ -63,7 +63,7 @@ package com.android.ahat.heapdump {
     method public boolean isPlaceHolder();
   }
 
-  public abstract class AhatInstance implements com.android.ahat.heapdump.Diffable com.android.ahat.dominators.DominatorsComputation.Node {
+  public abstract class AhatInstance implements com.android.ahat.heapdump.Diffable {
     method public com.android.ahat.heapdump.AhatArrayInstance asArrayInstance();
     method public java.awt.image.BufferedImage asBitmap();
     method public com.android.ahat.heapdump.AhatClassInstance asClassInstance();
@@ -77,7 +77,6 @@ package com.android.ahat.heapdump {
     method public com.android.ahat.heapdump.AhatClassObj getClassObj();
     method public java.lang.String getDexCacheLocation(int);
     method public java.util.List<com.android.ahat.heapdump.AhatInstance> getDominated();
-    method public java.lang.Object getDominatorsComputationState();
     method public com.android.ahat.heapdump.Value getField(java.lang.String);
     method public deprecated java.util.List<com.android.ahat.heapdump.AhatInstance> getHardReverseReferences();
     method public com.android.ahat.heapdump.AhatHeap getHeap();
@@ -86,7 +85,6 @@ package com.android.ahat.heapdump {
     method public java.util.List<com.android.ahat.heapdump.PathElement> getPathFromGcRoot();
     method public com.android.ahat.heapdump.Reachability getReachability();
     method public com.android.ahat.heapdump.AhatInstance getRefField(java.lang.String);
-    method public java.lang.Iterable<? extends com.android.ahat.dominators.DominatorsComputation.Node> getReferencesForDominators();
     method public com.android.ahat.heapdump.AhatInstance getReferent();
     method public com.android.ahat.heapdump.Size getRetainedSize(com.android.ahat.heapdump.AhatHeap);
     method public java.util.List<com.android.ahat.heapdump.AhatInstance> getReverseReferences();
@@ -103,8 +101,6 @@ package com.android.ahat.heapdump {
     method public boolean isStronglyReachable();
     method public boolean isUnreachable();
     method public deprecated boolean isWeaklyReachable();
-    method public void setDominator(com.android.ahat.dominators.DominatorsComputation.Node);
-    method public void setDominatorsComputationState(java.lang.Object);
     method public abstract java.lang.String toString();
   }
 
