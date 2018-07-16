@@ -19,7 +19,10 @@
 
 #include <gtest/gtest.h>
 
+#include <functional>
 #include <string>
+
+#include <sys/wait.h>
 
 #include <android-base/logging.h>
 
@@ -124,6 +127,29 @@ class CommonArtTestImpl {
     }
     return true;
   }
+
+  struct ForkAndExecResult {
+    enum Stage {
+      kLink,
+      kFork,
+      kWaitpid,
+      kFinished,
+    };
+    Stage stage;
+    int status_code;
+
+    bool StandardSuccess() {
+      return stage == kFinished && WIFEXITED(status_code) && WEXITSTATUS(status_code) == 0;
+    }
+  };
+  using OutputHandlerFn = std::function<void(char*, size_t)>;
+  using PostForkFn = std::function<bool()>;
+  static ForkAndExecResult ForkAndExec(const std::vector<std::string>& argv,
+                                       const PostForkFn& post_fork,
+                                       const OutputHandlerFn& handler);
+  static ForkAndExecResult ForkAndExec(const std::vector<std::string>& argv,
+                                       const PostForkFn& post_fork,
+                                       std::string* output);
 
  protected:
   static bool IsHost() {

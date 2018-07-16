@@ -111,9 +111,8 @@ class OatDumpTest : public CommonRuntimeTest {
     return tmp_dir_ + "/" + GetAppBaseName() + ".odex";
   }
 
-  bool GenerateAppOdexFile(Flavor flavor,
-                           const std::vector<std::string>& args,
-                           /*out*/ std::string* error_msg) {
+  ::testing::AssertionResult GenerateAppOdexFile(Flavor flavor,
+                                                 const std::vector<std::string>& args) {
     std::string dex2oat_path = GetExecutableFilePath(flavor, "dex2oat");
     std::vector<std::string> exec_argv = {
         dex2oat_path,
@@ -131,18 +130,32 @@ class OatDumpTest : public CommonRuntimeTest {
     };
     exec_argv.insert(exec_argv.end(), args.begin(), args.end());
 
-    return ForkAndExecAndWait(exec_argv, error_msg);
+    auto post_fork_fn = []() {
+      setpgid(0, 0);  // Change process groups, so we don't get reaped by ProcessManager.
+                      // Ignore setpgid errors.
+      return setenv("ANDROID_LOG_TAGS", "*:e", 1) == 0;  // We're only interested in errors and
+                                                         // fatal logs.
+    };
+
+    std::string error_msg;
+    ForkAndExecResult res = ForkAndExec(exec_argv, post_fork_fn, &error_msg);
+    if (res.stage != ForkAndExecResult::kFinished) {
+      return ::testing::AssertionFailure() << strerror(errno);
+    }
+    return res.StandardSuccess() ? ::testing::AssertionSuccess()
+                                 : (::testing::AssertionFailure() << error_msg);
   }
 
   // Run the test with custom arguments.
-  bool Exec(Flavor flavor,
-            Mode mode,
-            const std::vector<std::string>& args,
-            Display display,
-            /*out*/ std::string* error_msg) {
+  ::testing::AssertionResult Exec(Flavor flavor,
+                                  Mode mode,
+                                  const std::vector<std::string>& args,
+                                  Display display) {
     std::string file_path = GetExecutableFilePath(flavor, "oatdump");
 
-    EXPECT_TRUE(OS::FileExists(file_path.c_str())) << file_path << " should be a valid file path";
+    if (!OS::FileExists(file_path.c_str())) {
+      return ::testing::AssertionFailure() << file_path << " should be a valid file path";
+    }
 
     // ScratchFile scratch;
     std::vector<std::string> exec_argv = { file_path };
@@ -179,129 +192,118 @@ class OatDumpTest : public CommonRuntimeTest {
     }
     exec_argv.insert(exec_argv.end(), args.begin(), args.end());
 
-    pid_t pid;
-    int pipe_fd;
-    bool result = ForkAndExec(exec_argv, &pid, &pipe_fd, error_msg);
-    if (result) {
-      static const size_t kLineMax = 256;
-      char line[kLineMax] = {};
-      size_t line_len = 0;
-      size_t total = 0;
-      std::vector<bool> found(expected_prefixes.size(), false);
-      while (true) {
-        while (true) {
+    std::vector<bool> found(expected_prefixes.size(), false);
+    auto line_handle_fn = [&found, &expected_prefixes](const char* line, size_t line_len) {
+      if (line_len == 0) {
+        return;
+      }
+      // Check contents.
+      for (size_t i = 0; i < expected_prefixes.size(); ++i) {
+        const std::string& expected = expected_prefixes[i];
+        if (!found[i] &&
+            line_len >= expected.length() &&
+            memcmp(line, expected.c_str(), expected.length()) == 0) {
+          found[i] = true;
+        }
+      }
+    };
+
+    static constexpr size_t kLineMax = 256;
+    char line[kLineMax] = {};
+    size_t line_len = 0;
+    size_t total = 0;
+    bool ignore_next_line = false;
+    auto line_buf_fn = [&](char* buf, size_t len) {
+      total += len;
+
+      if (len == 0 && line_len > 0 && !ignore_next_line) {
+        // Everything done, handle leftovers.
+        line_handle_fn(line, line_len);
+      }
+
+      while (len > 0) {
+        // Copy buf into the free tail of the line buffer, and move input buffer along.
+        size_t copy = std::min(kLineMax - line_len, len);
+        memcpy(&line[line_len], buf, copy);
+        buf += copy;
+        len -= copy;
+
+        // Skip spaces. Declare a lambda for reuse (incurs a potential extra memmove).
+        auto trim_space = [&]() {
           size_t spaces = 0;
-          // Trim spaces at the start of the line.
           for (; spaces < line_len && isspace(line[spaces]); ++spaces) {}
           if (spaces > 0) {
             line_len -= spaces;
             memmove(&line[0], &line[spaces], line_len);
           }
-          ssize_t bytes_read =
-              TEMP_FAILURE_RETRY(read(pipe_fd, &line[line_len], kLineMax - line_len));
-          if (bytes_read <= 0) {
-            break;
+        };
+        trim_space();  // This is really only necessary if there wasn't any content in line before.
+
+        // Scan for newline characters.
+        size_t index = line_len;
+        line_len += copy;
+        while (index < line_len) {
+          if (line[index] == '\n') {
+            // Handle line.
+            if (!ignore_next_line) {
+              line_handle_fn(line, index);
+            }
+            // Move the rest to the front, but trim leading spaces.
+            line_len -= index + 1;
+            memmove(&line[0], &line[index + 1], line_len);
+            trim_space();
+            index = 0;
+            ignore_next_line = false;
+          } else {
+            index++;
           }
-          line_len += bytes_read;
-          total += bytes_read;
         }
-        if (line_len == 0) {
-          break;
-        }
-        // Check contents.
-        for (size_t i = 0; i < expected_prefixes.size(); ++i) {
-          const std::string& expected = expected_prefixes[i];
-          if (!found[i] &&
-              line_len >= expected.length() &&
-              memcmp(line, expected.c_str(), expected.length()) == 0) {
-            found[i] = true;
+
+        // Handle a full line without newline characters. Ignore the "next" line, as it is the
+        // tail end of this.
+        if (line_len == kLineMax) {
+          if (!ignore_next_line) {
+            line_handle_fn(line, kLineMax);
           }
-        }
-        // Skip to next line.
-        size_t next_line = 0;
-        for (; next_line + 1 < line_len && line[next_line] != '\n'; ++next_line) {}
-        line_len -= next_line + 1;
-        memmove(&line[0], &line[next_line + 1], line_len);
-      }
-      if (mode == kModeSymbolize) {
-        EXPECT_EQ(total, 0u);
-      } else {
-        EXPECT_GT(total, 0u);
-      }
-      LOG(INFO) << "Processed bytes " << total;
-      close(pipe_fd);
-      int status = 0;
-      if (waitpid(pid, &status, 0) != -1) {
-        result = (status == 0);
-      }
-
-      for (size_t i = 0; i < expected_prefixes.size(); ++i) {
-        if (!found[i]) {
-          LOG(ERROR) << "Did not find prefix " << expected_prefixes[i];
-          result = false;
+          line_len = 0;
+          ignore_next_line = true;
         }
       }
+    };
+
+    auto post_fork_fn = []() {
+      setpgid(0, 0);  // Change process groups, so we don't get reaped by ProcessManager.
+      return true;    // Ignore setpgid failures.
+    };
+
+    ForkAndExecResult res = ForkAndExec(exec_argv, post_fork_fn, line_buf_fn);
+    if (res.stage != ForkAndExecResult::kFinished) {
+      return ::testing::AssertionFailure() << strerror(errno);
+    }
+    if (!res.StandardSuccess()) {
+      return ::testing::AssertionFailure() << "Did not terminate successfully: " << res.status_code;
     }
 
-    return result;
-  }
-
-  bool ForkAndExec(const std::vector<std::string>& exec_argv,
-                   /*out*/ pid_t* pid,
-                   /*out*/ int* pipe_fd,
-                   /*out*/ std::string* error_msg) {
-    int link[2];
-    if (pipe(link) == -1) {
-      *error_msg = strerror(errno);
-      return false;
-    }
-
-    *pid = fork();
-    if (*pid == -1) {
-      *error_msg = strerror(errno);
-      close(link[0]);
-      close(link[1]);
-      return false;
-    }
-
-    if (*pid == 0) {
-      dup2(link[1], STDOUT_FILENO);
-      close(link[0]);
-      close(link[1]);
-      // change process groups, so we don't get reaped by ProcessManager
-      setpgid(0, 0);
-      // Use execv here rather than art::Exec to avoid blocking on waitpid here.
-      std::vector<char*> argv;
-      for (size_t i = 0; i < exec_argv.size(); ++i) {
-        argv.push_back(const_cast<char*>(exec_argv[i].c_str()));
-      }
-      argv.push_back(nullptr);
-      UNUSED(execv(argv[0], &argv[0]));
-      const std::string command_line(android::base::Join(exec_argv, ' '));
-      PLOG(ERROR) << "Failed to execv(" << command_line << ")";
-      // _exit to avoid atexit handlers in child.
-      _exit(1);
-      UNREACHABLE();
+    if (mode == kModeSymbolize) {
+      EXPECT_EQ(total, 0u);
     } else {
-      close(link[1]);
-      *pipe_fd = link[0];
-      return true;
+      EXPECT_GT(total, 0u);
     }
-  }
 
-  bool ForkAndExecAndWait(const std::vector<std::string>& exec_argv,
-                          /*out*/ std::string* error_msg) {
-    pid_t pid;
-    int pipe_fd;
-    bool result = ForkAndExec(exec_argv, &pid, &pipe_fd, error_msg);
-    if (result) {
-      close(pipe_fd);
-      int status = 0;
-      if (waitpid(pid, &status, 0) != -1) {
-        result = (status == 0);
+    bool result = true;
+    std::ostringstream oss;
+    for (size_t i = 0; i < expected_prefixes.size(); ++i) {
+      if (!found[i]) {
+        oss << "Did not find prefix " << expected_prefixes[i] << std::endl;
+        result = false;
       }
     }
-    return result;
+    if (!result) {
+      oss << "Processed bytes " << total;
+    }
+
+    return result ? ::testing::AssertionSuccess()
+                  : (::testing::AssertionFailure() << oss.str());
   }
 
   std::string tmp_dir_;
