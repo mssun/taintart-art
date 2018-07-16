@@ -16,7 +16,6 @@
 
 package com.android.ahat.heapdump;
 
-import com.android.ahat.dominators.DominatorsComputation;
 import com.android.ahat.progress.Progress;
 import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
@@ -33,8 +32,7 @@ import java.util.Queue;
  * kinds of Java instances, including normal Java objects, class objects, and
  * arrays.
  */
-public abstract class AhatInstance implements Diffable<AhatInstance>,
-                                              DominatorsComputation.Node {
+public abstract class AhatInstance implements Diffable<AhatInstance> {
   // The id of this instance from the heap dump.
   private final long mId;
 
@@ -739,24 +737,12 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     }
   }
 
-  @Override
-  public void setDominatorsComputationState(Object state) {
-    setTemporaryUserData(state);
-  }
-
-  @Override
-  public Object getDominatorsComputationState() {
-    return getTemporaryUserData();
-  }
-
-  @Override
-  public Iterable<? extends DominatorsComputation.Node> getReferencesForDominators() {
+  Iterable<AhatInstance> getReferencesForDominators() {
     return new DominatorReferenceIterator(getReferences());
   }
 
-  @Override
-  public void setDominator(DominatorsComputation.Node dominator) {
-    mImmediateDominator = (AhatInstance)dominator;
+  void setDominator(AhatInstance dominator) {
+    mImmediateDominator = dominator;
     mImmediateDominator.mDominated.add(this);
   }
 }
