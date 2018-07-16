@@ -89,6 +89,34 @@ public class RemTest {
     expectDivisionByZero(5L);
     expectDivisionByZero(Long.MAX_VALUE);
     expectDivisionByZero(Long.MIN_VALUE);
+
+    expectEquals(0, $noinline$RemLoaded1(0));
+    expectEquals(0, $noinline$RemLoaded1(1));
+    expectEquals(0, $noinline$RemLoaded1(-1));
+    expectEquals(0, $noinline$RemLoaded1(12345));
+    expectEquals(0, $noinline$RemLoaded1(Integer.MAX_VALUE));
+    expectEquals(0, $noinline$RemLoaded1(Integer.MIN_VALUE));
+
+    expectEquals(0, $noinline$RemLoadedN1(0));
+    expectEquals(0, $noinline$RemLoadedN1(1));
+    expectEquals(0, $noinline$RemLoadedN1(-1));
+    expectEquals(0, $noinline$RemLoadedN1(12345));
+    expectEquals(0, $noinline$RemLoadedN1(Integer.MAX_VALUE));
+    expectEquals(0, $noinline$RemLoadedN1(Integer.MIN_VALUE));
+
+    expectEquals(0L, $noinline$RemLoaded1(0L));
+    expectEquals(0L, $noinline$RemLoaded1(1L));
+    expectEquals(0L, $noinline$RemLoaded1(-1L));
+    expectEquals(0L, $noinline$RemLoaded1(12345L));
+    expectEquals(0L, $noinline$RemLoaded1(Long.MAX_VALUE));
+    expectEquals(0L, $noinline$RemLoaded1(Long.MIN_VALUE));
+
+    expectEquals(0L, $noinline$RemLoadedN1(0L));
+    expectEquals(0L, $noinline$RemLoadedN1(1L));
+    expectEquals(0L, $noinline$RemLoadedN1(-1L));
+    expectEquals(0L, $noinline$RemLoadedN1(12345L));
+    expectEquals(0L, $noinline$RemLoadedN1(Long.MAX_VALUE));
+    expectEquals(0L, $noinline$RemLoadedN1(Long.MIN_VALUE));
   }
 
   static int $opt$Rem(int a, int b) {
@@ -97,6 +125,26 @@ public class RemTest {
 
   static int $opt$RemZero(int a) {
     return a % 0;
+  }
+
+  static int $noinline$RemLoaded1(int a) {
+    int[] v = {25, 1};
+    return a % v[1];
+  }
+
+  static int $noinline$RemLoadedN1(int a) {
+    int [] v = {25, -1};
+    return a % v[1];
+  }
+
+  static long $noinline$RemLoaded1(long a) {
+    long[] v = {25, 1};
+    return a % v[1];
+  }
+
+  static long $noinline$RemLoadedN1(long a) {
+    long [] v = {25, -1};
+    return a % v[1];
   }
 
   // Modulo by literals != 0 should not generate checks.
