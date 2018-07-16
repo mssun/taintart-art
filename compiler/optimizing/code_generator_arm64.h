@@ -327,7 +327,6 @@ class InstructionCodeGeneratorARM64 : public InstructionCodeGenerator {
   void GenerateIntDivForPower2Denom(HDiv *instruction);
   void GenerateIntRem(HRem* instruction);
   void GenerateIntRemForConstDenom(HRem *instruction);
-  void GenerateIntRemForOneOrMinusOneDenom(HRem *instruction);
   void GenerateIntRemForPower2Denom(HRem *instruction);
   void HandleGoto(HInstruction* got, HBasicBlock* successor);
 

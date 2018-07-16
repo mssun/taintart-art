@@ -5678,14 +5678,6 @@ void InstructionCodeGeneratorARM64::GenerateIntRemForPower2Denom(HRem *instructi
   }
 }
 
-void InstructionCodeGeneratorARM64::GenerateIntRemForOneOrMinusOneDenom(HRem *instruction) {
-  int64_t imm = Int64FromLocation(instruction->GetLocations()->InAt(1));
-  DCHECK(imm == 1 || imm == -1) << imm;
-
-  Register out = OutputRegister(instruction);
-  __ Mov(out, 0);
-}
-
 void InstructionCodeGeneratorARM64::GenerateIntRemForConstDenom(HRem *instruction) {
   int64_t imm = Int64FromLocation(instruction->GetLocations()->InAt(1));
 
@@ -5695,10 +5687,12 @@ void InstructionCodeGeneratorARM64::GenerateIntRemForConstDenom(HRem *instructio
     return;
   }
 
-  if (imm == 1 || imm == -1) {
-    // TODO: These cases need to be optimized in InstructionSimplifier
-    GenerateIntRemForOneOrMinusOneDenom(instruction);
-  } else if (IsPowerOfTwo(AbsOrMin(imm))) {
+  if (IsPowerOfTwo(AbsOrMin(imm))) {
+    // Cases imm == -1 or imm == 1 are handled in constant folding by
+    // InstructionWithAbsorbingInputSimplifier.
+    // If the cases have survided till code generation they are handled in
+    // GenerateIntRemForPower2Denom becauses -1 and 1 are the power of 2 (2^0).
+    // The correct code is generated for them, just more instructions.
     GenerateIntRemForPower2Denom(instruction);
   } else {
     DCHECK(imm < -2 || imm > 2) << imm;
