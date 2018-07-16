@@ -155,6 +155,12 @@ class HLoopOptimization : public HOptimization {
   bool TryPeelingForLoopInvariantExitsElimination(LoopAnalysisInfo* analysis_info,
                                                   bool generate_code = true);
 
+  // Tries to perform whole loop unrolling for a small loop with a small trip count to eliminate
+  // the loop check overhead and to have more opportunities for inter-iteration optimizations.
+  // Returns whether transformation happened. 'generate_code' determines whether the optimization
+  // should be actually applied.
+  bool TryFullUnrolling(LoopAnalysisInfo* analysis_info, bool generate_code = true);
+
   // Tries to apply scalar loop peeling and unrolling.
   bool TryPeelingAndUnrolling(LoopNode* node);
 
