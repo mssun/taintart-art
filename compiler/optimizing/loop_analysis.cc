@@ -84,6 +84,8 @@ class ArchDefaultLoopHelper : public ArchNoOptsLoopHelper {
   static constexpr uint32_t kScalarHeuristicMaxBodySizeInstr = 17;
   // Loop's maximum basic block count. Loops with higher count will not be peeled/unrolled.
   static constexpr uint32_t kScalarHeuristicMaxBodySizeBlocks = 6;
+  // Maximum number of instructions to be created as a result of full unrolling.
+  static constexpr uint32_t kScalarHeuristicFullyUnrolledMaxInstrThreshold = 35;
 
   bool IsLoopNonBeneficialForScalarOpts(LoopAnalysisInfo* analysis_info) const OVERRIDE {
     return analysis_info->HasLongTypeInstructions() ||
@@ -107,6 +109,14 @@ class ArchDefaultLoopHelper : public ArchNoOptsLoopHelper {
   }
 
   bool IsLoopPeelingEnabled() const OVERRIDE { return true; }
+
+  bool IsFullUnrollingBeneficial(LoopAnalysisInfo* analysis_info) const OVERRIDE {
+    int64_t trip_count = analysis_info->GetTripCount();
+    // We assume that trip count is known.
+    DCHECK_NE(trip_count, LoopAnalysisInfo::kUnknownTripCount);
+    size_t instr_num = analysis_info->GetNumberOfInstructions();
+    return (trip_count * instr_num < kScalarHeuristicFullyUnrolledMaxInstrThreshold);
+  }
 
  protected:
   bool IsLoopTooBig(LoopAnalysisInfo* loop_analysis_info,
