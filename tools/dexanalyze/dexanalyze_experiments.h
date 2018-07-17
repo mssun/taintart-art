@@ -32,6 +32,12 @@ class DexFile;
 
 namespace dexanalyze {
 
+enum class VerboseLevel : size_t {
+  kQuiet,
+  kNormal,
+  kEverything,
+};
+
 bool IsRange(Instruction::Code code);
 
 uint16_t NumberOfArgs(const Instruction& inst);
@@ -52,7 +58,7 @@ class Experiment {
   virtual void ProcessDexFile(const DexFile&) {}
   virtual void Dump(std::ostream& os, uint64_t total_size) const = 0;
 
-  bool dump_ = false;
+  VerboseLevel verbose_level_ = VerboseLevel::kNormal;
 };
 
 // Analyze string data and strings accessed from code.
