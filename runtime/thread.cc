@@ -1228,6 +1228,34 @@ static void UnsafeLogFatalForSuspendCount(Thread* self, Thread* thread) NO_THREA
   LOG(FATAL) << ss.str();
 }
 
+void Thread::SetCanBeSuspendedByUserCode(bool can_be_suspended_by_user_code) {
+  CHECK_EQ(this, Thread::Current()) << "This function may only be called on the current thread. "
+                                    << *Thread::Current() << " tried to modify the suspendability "
+                                    << "of " << *this;
+  // NB This checks the new value! This ensures that we can only set can_be_suspended_by_user_code
+  // to false if !CanCallIntoJava().
+  DCHECK(!CanCallIntoJava() || can_be_suspended_by_user_code)
+      << "Threads able to call into java may not be marked as unsuspendable!";
+  if (can_be_suspended_by_user_code == CanBeSuspendedByUserCode()) {
+    // Don't need to do anything if nothing is changing.
+    return;
+  }
+  art::MutexLock mu(this, *Locks::user_code_suspension_lock_);
+  art::MutexLock thread_list_mu(this, *Locks::thread_suspend_count_lock_);
+
+  // We want to add the user-code suspend count if we are newly allowing user-code suspends and
+  // remove them if we are disabling them.
+  int adj = can_be_suspended_by_user_code ? GetUserCodeSuspendCount() : -GetUserCodeSuspendCount();
+  // Adjust the global suspend count appropriately. Use kInternal to not change the ForUserCode
+  // count.
+  if (adj != 0) {
+    bool suspend = ModifySuspendCountInternal(this, adj, nullptr, SuspendReason::kInternal);
+    CHECK(suspend) << this << " was unable to modify it's own suspend count!";
+  }
+  // Mark thread as accepting user-code suspensions.
+  can_be_suspended_by_user_code_ = can_be_suspended_by_user_code;
+}
+
 bool Thread::ModifySuspendCountInternal(Thread* self,
                                         int delta,
                                         AtomicInteger* suspend_barrier,
@@ -1248,6 +1276,17 @@ bool Thread::ModifySuspendCountInternal(Thread* self,
     if (UNLIKELY(delta + tls32_.user_code_suspend_count < 0)) {
       LOG(ERROR) << "attempting to modify suspend count in an illegal way.";
       return false;
+    }
+    DCHECK(this == self || this->IsSuspended())
+        << "Only self kForUserCode suspension on an unsuspended thread is allowed: " << this;
+    if (UNLIKELY(!CanBeSuspendedByUserCode())) {
+      VLOG(threads) << this << " is being requested to suspend for user code but that is disabled "
+                    << "the thread will not actually go to sleep.";
+      // Having the user_code_suspend_count still be around is useful but we don't need to actually
+      // do anything since we aren't going to 'really' suspend. Just adjust the
+      // user_code_suspend_count and return.
+      tls32_.user_code_suspend_count += delta;
+      return true;
     }
   }
   if (UNLIKELY(delta < 0 && tls32_.suspend_count <= 0)) {
@@ -2109,7 +2148,8 @@ void Thread::NotifyThreadGroup(ScopedObjectAccessAlreadyRunnable& soa, jobject t
 Thread::Thread(bool daemon)
     : tls32_(daemon),
       wait_monitor_(nullptr),
-      can_call_into_java_(true) {
+      can_call_into_java_(true),
+      can_be_suspended_by_user_code_(true) {
   wait_mutex_ = new Mutex("a thread wait mutex");
   wait_cond_ = new ConditionVariable("a thread wait condition variable", *wait_mutex_);
   tlsPtr_.instrumentation_stack = new std::deque<instrumentation::InstrumentationStackFrame>;

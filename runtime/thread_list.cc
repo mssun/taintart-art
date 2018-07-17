@@ -902,6 +902,8 @@ Thread* ThreadList::SuspendThreadByPeer(jobject peer,
                                         bool request_suspension,
                                         SuspendReason reason,
                                         bool* timed_out) {
+  CHECK_NE(reason, SuspendReason::kForUserCode) << "Cannot suspend for user-code by peer. Must be "
+                                                << "done directly on the thread.";
   const uint64_t start_time = NanoTime();
   useconds_t sleep_us = kThreadSuspendInitialSleepUs;
   *timed_out = false;
