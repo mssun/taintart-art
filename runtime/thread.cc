@@ -42,6 +42,7 @@
 #include "base/file_utils.h"
 #include "base/memory_tool.h"
 #include "base/mutex.h"
+#include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/timing_logger.h"
 #include "base/to_str.h"
@@ -391,6 +392,22 @@ ShadowFrame* Thread::FindOrCreateDebuggerShadowFrame(size_t frame_id,
   }
   tlsPtr_.frame_id_to_shadow_frame = record;
   return shadow_frame;
+}
+
+TLSData* Thread::GetCustomTLS(const char* key) {
+  MutexLock mu(Thread::Current(), *Locks::custom_tls_lock_);
+  auto it = custom_tls_.find(key);
+  return (it != custom_tls_.end()) ? it->second.get() : nullptr;
+}
+
+void Thread::SetCustomTLS(const char* key, TLSData* data) {
+  // We will swap the old data (which might be nullptr) with this and then delete it outside of the
+  // custom_tls_lock_.
+  std::unique_ptr<TLSData> old_data(data);
+  {
+    MutexLock mu(Thread::Current(), *Locks::custom_tls_lock_);
+    custom_tls_.GetOrCreate(key, []() { return std::unique_ptr<TLSData>(); }).swap(old_data);
+  }
 }
 
 void Thread::RemoveDebuggerShadowFrameMapping(size_t frame_id) {
@@ -2092,7 +2109,6 @@ void Thread::NotifyThreadGroup(ScopedObjectAccessAlreadyRunnable& soa, jobject t
 Thread::Thread(bool daemon)
     : tls32_(daemon),
       wait_monitor_(nullptr),
-      custom_tls_(nullptr),
       can_call_into_java_(true) {
   wait_mutex_ = new Mutex("a thread wait mutex");
   wait_cond_ = new ConditionVariable("a thread wait condition variable", *wait_mutex_);
