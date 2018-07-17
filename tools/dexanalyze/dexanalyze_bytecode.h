@@ -17,6 +17,7 @@
 #ifndef ART_TOOLS_DEXANALYZE_DEXANALYZE_BYTECODE_H_
 #define ART_TOOLS_DEXANALYZE_DEXANALYZE_BYTECODE_H_
 
+#include <array>
 #include <vector>
 #include <map>
 
@@ -75,9 +76,8 @@ class NewRegisterInstructions : public Experiment {
   uint64_t output_size_ = 0u;
   uint64_t deduped_size_ = 0u;
   uint64_t dex_code_bytes_ = 0u;
-  uint64_t missing_field_idx_count_ = 0u;
-  uint64_t missing_method_idx_count_ = 0u;
   uint64_t experiments_ = std::numeric_limits<uint64_t>::max();
+  std::array<size_t, 256> move_result_reg_;
   std::map<std::vector<uint8_t>, size_t> instruction_freq_;
   // Output instruction buffer.
   std::vector<uint8_t> buffer_;

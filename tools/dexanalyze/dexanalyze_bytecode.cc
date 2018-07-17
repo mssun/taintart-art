@@ -88,7 +88,7 @@ void NewRegisterInstructions::ProcessDexFiles(
         if (method.GetCodeItem() == nullptr || !visited.insert(method.GetCodeItem()).second) {
           continue;
         }
-        if (dump_) {
+        if (verbose_level_ >= VerboseLevel::kEverything) {
           std::cout << std::endl
                     << "Processing " << dex_file->PrettyMethod(method.GetIndex(), true);
         }
@@ -122,8 +122,6 @@ void NewRegisterInstructions::Dump(std::ostream& os, uint64_t total_size) const 
   os << "Total Dex code bytes: " << Percent(dex_code_bytes_, total_size) << "\n";
   os << "Total output code bytes: " << Percent(output_size_, total_size) << "\n";
   os << "Total deduped code bytes: " << Percent(deduped_size_, total_size) << "\n";
-  os << "Missing field idx count: " << missing_field_idx_count_ << "\n";
-  os << "Missing method idx count: " << missing_method_idx_count_ << "\n";
   std::vector<std::pair<size_t, std::vector<uint8_t>>> pairs;
   for (auto&& pair : instruction_freq_) {
     if (pair.second > 0 && !pair.first.empty()) {
@@ -133,17 +131,26 @@ void NewRegisterInstructions::Dump(std::ostream& os, uint64_t total_size) const 
     }
   }
   std::sort(pairs.rbegin(), pairs.rend());
-  os << "Top instruction bytecode sizes and hex dump" << "\n";
+  static constexpr size_t kMaxMacros = 128;
   uint64_t top_instructions_savings = 0u;
-  for (size_t i = 0; i < 128 && i < pairs.size(); ++i) {
+  for (size_t i = 0; i < kMaxMacros && i < pairs.size(); ++i) {
     top_instructions_savings += pairs[i].first;
-    if (dump_ || (true)) {
+  }
+  if (verbose_level_ >= VerboseLevel::kNormal) {
+    os << "Top " << kMaxMacros << " instruction bytecode sizes and hex dump" << "\n";
+    for (size_t i = 0; i < kMaxMacros && i < pairs.size(); ++i) {
       auto bytes = pairs[i].second;
       // Remove opcode bytes.
       bytes.erase(bytes.begin());
       os << Percent(pairs[i].first, total_size) << " "
          << Instruction::Name(static_cast<Instruction::Code>(pairs[i].second[0]))
          << "(" << bytes << ")\n";
+    }
+    os << "Move result register distribution" << "\n";
+    const size_t move_result_total =
+        std::accumulate(move_result_reg_.begin(), move_result_reg_.end(), 0u);
+    for (size_t i = 0; i < move_result_reg_.size(); ++i) {
+      os << i << ": " << Percent(move_result_reg_[i], move_result_total) << "\n";
     }
   }
   os << "Top instructions 1b macro savings "
@@ -167,7 +174,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
     if (inst == code_item.end()) {
       break;
     }
-    if (dump_) {
+    if (verbose_level_ >= VerboseLevel::kEverything) {
       std::cout << std::endl;
       std::cout << inst->DumpString(nullptr);
       if (skip_next) {
@@ -323,6 +330,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
                   next->Opcode() == Instruction::MOVE_RESULT_OBJECT;
               if (next_move_result) {
                 dest_reg = next->VRegA_11x();
+                ++move_result_reg_[dest_reg];
               }
             }
 
@@ -406,9 +414,9 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
             ++current_type.types_.FindOrAdd(type_idx)->second;
           } else {
             bool next_is_init = false;
-            if (opcode == Instruction::NEW_INSTANCE && inst != code_item.end()) {
+            if (opcode == Instruction::NEW_INSTANCE) {
               auto next = std::next(inst);
-              if (next->Opcode() == Instruction::INVOKE_DIRECT) {
+              if (next != code_item.end() && next->Opcode() == Instruction::INVOKE_DIRECT) {
                 uint32_t args[6] = {};
                 uint32_t arg_count = next->GetVarArgs(args);
                 uint32_t method_idx = DexMethodIndex(next.Inst());
@@ -449,7 +457,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
       Add(new_opcode, inst.Inst());
     }
   }
-  if (dump_) {
+  if (verbose_level_ >= VerboseLevel::kEverything) {
     std::cout << std::endl
               << "Bytecode size " << code_item.InsnsSizeInBytes() << " -> " << buffer_.size();
     std::cout << std::endl;
@@ -504,7 +512,7 @@ bool NewRegisterInstructions::InstNibblesAndIndex(uint8_t opcode,
 }
 
 bool NewRegisterInstructions::InstNibbles(uint8_t opcode, const std::vector<uint32_t>& args) {
-  if (dump_) {
+  if (verbose_level_ >= VerboseLevel::kEverything) {
     std::cout << " ==> " << Instruction::Name(static_cast<Instruction::Code>(opcode)) << " ";
     for (int v : args) {
       std::cout << v << ", ";
@@ -512,7 +520,7 @@ bool NewRegisterInstructions::InstNibbles(uint8_t opcode, const std::vector<uint
   }
   for (int v : args) {
     if (v >= 16) {
-      if (dump_) {
+      if (verbose_level_ >= VerboseLevel::kEverything) {
         std::cout << "(OUT_OF_RANGE)";
       }
       return false;
