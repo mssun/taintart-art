@@ -58,7 +58,7 @@ class DexAnalyze {
         << "    -a (Run all experiments)\n"
         << "    -n <int> (run experiment with 1 .. n as argument)\n"
         << "    -d (Dump on per Dex basis)\n"
-        << "    -v (Verbose dumping)\n";
+        << "    -v (quiet(0) to everything(2))\n";
     return kExitCodeUsageError;
   }
 
@@ -71,7 +71,17 @@ class DexAnalyze {
           verify_checksum_ = false;
           run_dex_file_verifier_ = false;
         } else if (arg == "-v") {
-          verbose_ = true;
+          if (i + 1 >= argc) {
+            return Usage(argv);
+          }
+          std::istringstream iss(argv[i + 1]);
+          size_t verbose_level = 0u;
+          iss >> verbose_level;
+          if (verbose_level > static_cast<size_t>(VerboseLevel::kEverything)) {
+            return Usage(argv);
+          }
+          ++i;
+          verbose_level_ = static_cast<VerboseLevel>(verbose_level);
         } else if (arg == "-a") {
           run_all_experiments_ = true;
         } else if (arg == "-n") {
@@ -104,7 +114,7 @@ class DexAnalyze {
       return 0;
     }
 
-    bool verbose_ = false;
+    VerboseLevel verbose_level_ = VerboseLevel::kNormal;
     bool verify_checksum_ = true;
     bool run_dex_file_verifier_ = true;
     bool dump_per_input_dex_ = false;
@@ -147,7 +157,7 @@ class DexAnalyze {
         }
       }
       for (const std::unique_ptr<Experiment>& experiment : experiments_) {
-        experiment->dump_ = options->verbose_;
+        experiment->verbose_level_ = options->verbose_level_;
       }
     }
 
