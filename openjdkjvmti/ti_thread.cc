@@ -60,6 +60,8 @@
 
 namespace openjdkjvmti {
 
+static const char* kJvmtiTlsKey = "JvmtiTlsKey";
+
 art::ArtField* ThreadUtil::context_class_loader_ = nullptr;
 
 struct ThreadCallback : public art::ThreadLifecycleCallback {
@@ -624,14 +626,15 @@ jvmtiError ThreadUtil::GetAllThreads(jvmtiEnv* env,
 // The struct that we store in the art::Thread::custom_tls_ that maps the jvmtiEnvs to the data
 // stored with that thread. This is needed since different jvmtiEnvs are not supposed to share TLS
 // data but we only have a single slot in Thread objects to store data.
-struct JvmtiGlobalTLSData {
+struct JvmtiGlobalTLSData : public art::TLSData {
   std::unordered_map<jvmtiEnv*, const void*> data GUARDED_BY(art::Locks::thread_list_lock_);
 };
 
 static void RemoveTLSData(art::Thread* target, void* ctx) REQUIRES(art::Locks::thread_list_lock_) {
   jvmtiEnv* env = reinterpret_cast<jvmtiEnv*>(ctx);
   art::Locks::thread_list_lock_->AssertHeld(art::Thread::Current());
-  JvmtiGlobalTLSData* global_tls = reinterpret_cast<JvmtiGlobalTLSData*>(target->GetCustomTLS());
+  JvmtiGlobalTLSData* global_tls =
+      reinterpret_cast<JvmtiGlobalTLSData*>(target->GetCustomTLS(kJvmtiTlsKey));
   if (global_tls != nullptr) {
     global_tls->data.erase(env);
   }
@@ -654,10 +657,12 @@ jvmtiError ThreadUtil::SetThreadLocalStorage(jvmtiEnv* env, jthread thread, cons
     return err;
   }
 
-  JvmtiGlobalTLSData* global_tls = reinterpret_cast<JvmtiGlobalTLSData*>(target->GetCustomTLS());
+  JvmtiGlobalTLSData* global_tls =
+      reinterpret_cast<JvmtiGlobalTLSData*>(target->GetCustomTLS(kJvmtiTlsKey));
   if (global_tls == nullptr) {
-    target->SetCustomTLS(new JvmtiGlobalTLSData);
-    global_tls = reinterpret_cast<JvmtiGlobalTLSData*>(target->GetCustomTLS());
+    // Synchronized using thread_list_lock_ to prevent racing sets.
+    target->SetCustomTLS(kJvmtiTlsKey, new JvmtiGlobalTLSData);
+    global_tls = reinterpret_cast<JvmtiGlobalTLSData*>(target->GetCustomTLS(kJvmtiTlsKey));
   }
 
   global_tls->data[env] = data;
@@ -681,7 +686,8 @@ jvmtiError ThreadUtil::GetThreadLocalStorage(jvmtiEnv* env,
     return err;
   }
 
-  JvmtiGlobalTLSData* global_tls = reinterpret_cast<JvmtiGlobalTLSData*>(target->GetCustomTLS());
+  JvmtiGlobalTLSData* global_tls =
+      reinterpret_cast<JvmtiGlobalTLSData*>(target->GetCustomTLS(kJvmtiTlsKey));
   if (global_tls == nullptr) {
     *data_ptr = nullptr;
     return OK;
