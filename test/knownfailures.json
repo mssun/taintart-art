@@ -1010,6 +1010,24 @@
         "description": ["Test throws exception before or during OOME."]
     },
     {
+        "tests": ["151-OpenFileLimit"],
+        "variant": "gcstress",
+        "bug": "b/111544552",
+        "description" : ["Gcstress requires the ability to open at least one file which means this test fails when it runs out."]
+    },
+    {
+        "tests": ["530-checker-lse2"],
+        "variant": "gcstress",
+        "bug": "b/111543628",
+        "description" : ["Test seems to timeout when run with gcstress due to slower unwinding by libbacktrace"]
+    },
+    {
+        "tests": ["712-varhandle-invocations", "624-checker-stringops"],
+        "variant": "optimizing & gcstress | speed-profile & gcstress",
+        "bug": "b/111545159",
+        "description": ["These tests seem to expose some error with our gc when run in these configurations"]
+    },
+    {
         "tests": ["021-string2"],
         "variant": "jit & debuggable",
         "bug": "b/109791792",
