@@ -225,8 +225,7 @@ class OatDumpTest : public CommonRuntimeTest {
       if (len > 0) {
         size_t pos = error_buf.size();
         if (pos < MB) {
-          error_buf.resize(pos + len);
-          memcpy(error_buf.data() + pos, buf, len);
+          error_buf.insert(error_buf.end(), buf, buf + len);
         }
       }
 
