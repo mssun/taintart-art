@@ -142,12 +142,12 @@ void ClassHierarchyAnalysis::ResetSingleImplementationInHierarchy(ObjPtr<mirror:
 
       ArtMethod* super_method = super_it->
           GetVTableEntry<kDefaultVerifyFlags, kWithoutReadBarrier>(vtbl_index, pointer_size);
-      if (super_method->IsAbstract<kWithoutReadBarrier>() &&
+      if (super_method->IsAbstract() &&
           super_method->HasSingleImplementation<kWithoutReadBarrier>() &&
-          super_method->GetSingleImplementation<kWithoutReadBarrier>(pointer_size) == method) {
+          super_method->GetSingleImplementation(pointer_size) == method) {
         // Do like there was no single implementation defined previously
         // for this method of the superclass.
-        super_method->SetSingleImplementation<kWithoutReadBarrier>(nullptr, pointer_size);
+        super_method->SetSingleImplementation(nullptr, pointer_size);
       } else {
         // No related SingleImplementations could possibly be found any further.
         DCHECK(!super_method->HasSingleImplementation<kWithoutReadBarrier>());
@@ -168,11 +168,10 @@ void ClassHierarchyAnalysis::ResetSingleImplementationInHierarchy(ObjPtr<mirror:
          ++j) {
       ArtMethod* method = interface->GetVirtualMethod(j, pointer_size);
       if (method->HasSingleImplementation<kWithoutReadBarrier>() &&
-          alloc->ContainsUnsafe(
-              method->GetSingleImplementation<kWithoutReadBarrier>(pointer_size)) &&
-          !method->IsDefault<kWithoutReadBarrier>()) {
+          alloc->ContainsUnsafe(method->GetSingleImplementation(pointer_size)) &&
+          !method->IsDefault()) {
         // Do like there was no single implementation defined previously for this method.
-        method->SetSingleImplementation<kWithoutReadBarrier>(nullptr, pointer_size);
+        method->SetSingleImplementation(nullptr, pointer_size);
       }
     }
   }
