@@ -274,13 +274,15 @@ public class Parser {
             break;
           }
 
+          case 0x0C:   // HEAP DUMP
           case 0x1C: { // HEAP DUMP SEGMENT
+            int endOfRecord = hprof.tell() + recordLength;
             if (classById == null) {
               classById = new Instances<AhatClassObj>(classes);
             }
-            int subtag;
-            while (!isEndOfHeapDumpSegment(subtag = hprof.getU1())) {
+            while (hprof.tell() < endOfRecord) {
               progress.update(hprof.tell());
+              int subtag = hprof.getU1();
               switch (subtag) {
                 case 0x01: { // ROOT JNI GLOBAL
                   long objectId = hprof.getId();
@@ -561,10 +563,6 @@ public class Parser {
                       String.format("Unsupported heap dump sub tag 0x%02x", subtag));
               }
             }
-
-            // Reset the file pointer back because we read the first byte into
-            // the next record.
-            hprof.skip(-1);
             break;
           }
 
@@ -673,10 +671,6 @@ public class Parser {
     hprof = null;
     roots = null;
     return new AhatSnapshot(superRoot, mInstances, heaps.heaps, rootSite, progress, retained);
-  }
-
-  private static boolean isEndOfHeapDumpSegment(int subtag) {
-    return subtag == 0x1C || subtag == 0x2C;
   }
 
   private static class RootData {
