@@ -16,7 +16,6 @@
 
 #include "malloc_arena_pool.h"
 
-#include <sys/mman.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -25,6 +24,7 @@
 
 #include <android-base/logging.h>
 #include "arena_allocator-inl.h"
+#include "mman.h"
 
 namespace art {
 

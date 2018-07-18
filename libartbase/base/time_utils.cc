@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+#include "time_utils.h"
+
 #include <inttypes.h>
+#include <stdio.h>
+
 #include <limits>
 #include <sstream>
-
-#include "time_utils.h"
 
 #include "android-base/stringprintf.h"
 
@@ -29,6 +31,20 @@
 #endif
 
 namespace art {
+
+namespace {
+
+#if !defined(__linux__)
+int GetTimeOfDay(struct timeval* tv, struct timezone* tz) {
+#ifdef _WIN32
+  return mingw_gettimeofday(tv, tz);
+#else
+  return gettimeofday(tv, tz);
+#endif
+}
+#endif
+
+}  // namespace
 
 using android::base::StringPrintf;
 
@@ -117,7 +133,12 @@ std::string FormatDuration(uint64_t nano_duration, TimeUnit time_unit,
 std::string GetIsoDate() {
   time_t now = time(nullptr);
   tm tmbuf;
+#ifdef _WIN32
+  localtime_s(&tmbuf, &now);
+  tm* ptm = &tmbuf;
+#else
   tm* ptm = localtime_r(&now, &tmbuf);
+#endif
   return StringPrintf("%04d-%02d-%02d %02d:%02d:%02d",
       ptm->tm_year + 1900, ptm->tm_mon+1, ptm->tm_mday,
       ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
@@ -130,7 +151,7 @@ uint64_t MilliTime() {
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000) + now.tv_nsec / UINT64_C(1000000);
 #else
   timeval now;
-  gettimeofday(&now, nullptr);
+  GetTimeOfDay(&now, nullptr);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000) + now.tv_usec / UINT64_C(1000);
 #endif
 }
@@ -142,7 +163,7 @@ uint64_t MicroTime() {
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000) + now.tv_nsec / UINT64_C(1000);
 #else
   timeval now;
-  gettimeofday(&now, nullptr);
+  GetTimeOfDay(&now, nullptr);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000) + now.tv_usec;
 #endif
 }
@@ -154,7 +175,7 @@ uint64_t NanoTime() {
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000000) + now.tv_nsec;
 #else
   timeval now;
-  gettimeofday(&now, nullptr);
+  GetTimeOfDay(&now, nullptr);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000000) + now.tv_usec * UINT64_C(1000);
 #endif
 }
@@ -195,12 +216,12 @@ void NanoSleep(uint64_t ns) {
 
 void InitTimeSpec(bool absolute, int clock, int64_t ms, int32_t ns, timespec* ts) {
   if (absolute) {
-#if !defined(__APPLE__)
+#if defined(__linux__)
     clock_gettime(clock, ts);
 #else
     UNUSED(clock);
     timeval tv;
-    gettimeofday(&tv, nullptr);
+    GetTimeOfDay(&tv, nullptr);
     ts->tv_sec = tv.tv_sec;
     ts->tv_nsec = tv.tv_usec * 1000;
 #endif

@@ -18,8 +18,10 @@
 
 #include <errno.h>
 
+#if !defined(_WIN32)
 #include <sys/syscall.h>
 #include <unistd.h>
+#endif
 #include "macros.h"
 
 #if defined(__BIONIC__)

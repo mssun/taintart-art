@@ -16,8 +16,10 @@
 
 #include "socket_peer_is_trusted.h"
 
+#if !defined(_WIN32)
 #include <pwd.h>
 #include <sys/socket.h>
+#endif
 
 #include <android-base/logging.h>
 
