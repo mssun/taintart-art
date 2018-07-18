@@ -18,6 +18,7 @@ package com.android.ahat;
 
 import com.android.ahat.heapdump.AhatHeap;
 import com.android.ahat.heapdump.AhatInstance;
+import com.android.ahat.heapdump.Reachability;
 import com.android.ahat.heapdump.Value;
 import java.io.IOException;
 import org.junit.Test;
@@ -79,7 +80,7 @@ public class DiffTest {
 
   @Test
   public void diffClassRemoved() throws IOException {
-    TestDump dump = TestDump.getTestDump("O.hprof", "L.hprof", null);
+    TestDump dump = TestDump.getTestDump("O.hprof", "L.hprof", null, Reachability.STRONG);
     AhatHandler handler = new ObjectsHandler(dump.getAhatSnapshot());
     TestHandler.testNoCrash(handler, "http://localhost:7100/objects?class=java.lang.Class");
   }

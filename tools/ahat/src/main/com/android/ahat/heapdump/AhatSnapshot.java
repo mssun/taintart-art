@@ -41,7 +41,8 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
                Instances<AhatInstance> instances,
                List<AhatHeap> heaps,
                Site rootSite,
-               Progress progress) {
+               Progress progress,
+               Reachability retained) {
     mSuperRoot = root;
     mInstances = instances;
     mHeaps = heaps;
@@ -58,6 +59,10 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       if (nra != null) {
         nra.referent.addRegisteredNativeSize(nra.size);
       }
+
+      if (retained == Reachability.UNREACHABLE && inst.isUnreachable()) {
+        mSuperRoot.addRoot(inst);
+      }
     }
 
     Dominators.Graph<AhatInstance> graph = new Dominators.Graph<AhatInstance>() {
@@ -72,8 +77,8 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       }
 
       @Override
-      public Iterable<? extends AhatInstance> getReferencesForDominators(AhatInstance node) {
-        return node.getReferencesForDominators();
+      public Iterable<AhatInstance> getReferencesForDominators(AhatInstance node) {
+        return node.getReferencesForDominators(retained);
       }
 
       @Override
@@ -89,7 +94,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       heap.addToSize(mSuperRoot.getRetainedSize(heap));
     }
 
-    mRootSite.prepareForUse(0, mHeaps.size());
+    mRootSite.prepareForUse(0, mHeaps.size(), retained);
   }
 
   /**
