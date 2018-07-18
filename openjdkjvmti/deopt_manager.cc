@@ -40,7 +40,9 @@
 #include "dex/dex_file_annotations.h"
 #include "dex/modifiers.h"
 #include "events-inl.h"
+#include "intrinsics_list.h"
 #include "jit/jit.h"
+#include "jit/jit_code_cache.h"
 #include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/object_array-inl.h"
@@ -84,11 +86,13 @@ DeoptManager::DeoptManager()
     deoptimization_condition_("JVMTI_DeoptimizationCondition", deoptimization_status_lock_),
     performing_deoptimization_(false),
     global_deopt_count_(0),
+    global_interpreter_deopt_count_(0),
     deopter_count_(0),
     breakpoint_status_lock_("JVMTI_BreakpointStatusLock",
                             static_cast<art::LockLevel>(art::LockLevel::kAbortLock + 1)),
     inspection_callback_(this),
-    set_local_variable_called_(false) { }
+    set_local_variable_called_(false),
+    already_disabled_intrinsics_(false) { }
 
 void DeoptManager::Setup() {
   art::ScopedThreadStateChange stsc(art::Thread::Current(),
@@ -159,18 +163,18 @@ bool DeoptManager::MethodHasBreakpointsLocked(art::ArtMethod* method) {
   return elem != breakpoint_status_.end() && elem->second != 0;
 }
 
-void DeoptManager::RemoveDeoptimizeAllMethods() {
+void DeoptManager::RemoveDeoptimizeAllMethods(FullDeoptRequirement req) {
   art::Thread* self = art::Thread::Current();
   art::ScopedThreadSuspension sts(self, art::kSuspended);
   deoptimization_status_lock_.ExclusiveLock(self);
-  RemoveDeoptimizeAllMethodsLocked(self);
+  RemoveDeoptimizeAllMethodsLocked(self, req);
 }
 
-void DeoptManager::AddDeoptimizeAllMethods() {
+void DeoptManager::AddDeoptimizeAllMethods(FullDeoptRequirement req) {
   art::Thread* self = art::Thread::Current();
   art::ScopedThreadSuspension sts(self, art::kSuspended);
   deoptimization_status_lock_.ExclusiveLock(self);
-  AddDeoptimizeAllMethodsLocked(self);
+  AddDeoptimizeAllMethodsLocked(self, req);
 }
 
 void DeoptManager::AddMethodBreakpoint(art::ArtMethod* method) {
@@ -207,7 +211,7 @@ void DeoptManager::AddMethodBreakpoint(art::ArtMethod* method) {
     deoptimization_status_lock_.ExclusiveUnlock(self);
     return;
   } else if (is_default) {
-    AddDeoptimizeAllMethodsLocked(self);
+    AddDeoptimizeAllMethodsLocked(self, FullDeoptRequirement::kInterpreter);
   } else {
     PerformLimitedDeoptimization(self, method);
   }
@@ -244,7 +248,7 @@ void DeoptManager::RemoveMethodBreakpoint(art::ArtMethod* method) {
     return;
   } else if (is_last_breakpoint) {
     if (UNLIKELY(is_default)) {
-      RemoveDeoptimizeAllMethodsLocked(self);
+      RemoveDeoptimizeAllMethodsLocked(self, FullDeoptRequirement::kInterpreter);
     } else {
       PerformLimitedUndeoptimization(self, method);
     }
@@ -272,13 +276,25 @@ class ScopedDeoptimizationContext : public art::ValueObject {
       RELEASE(deopt->deoptimization_status_lock_)
       ACQUIRE(art::Locks::mutator_lock_)
       ACQUIRE(art::Roles::uninterruptible_)
-      : self_(self), deopt_(deopt), uninterruptible_cause_(nullptr) {
+      : self_(self),
+        deopt_(deopt),
+        uninterruptible_cause_(nullptr),
+        jit_(art::Runtime::Current()->GetJit()) {
     deopt_->WaitForDeoptimizationToFinishLocked(self_);
     DCHECK(!deopt->performing_deoptimization_)
         << "Already performing deoptimization on another thread!";
     // Use performing_deoptimization_ to keep track of the lock.
     deopt_->performing_deoptimization_ = true;
     deopt_->deoptimization_status_lock_.Unlock(self_);
+    // Stop the jit. We might need to disable all intrinsics which needs the jit disabled and this
+    // is the only place we can do that. Since this isn't expected to be entered too often it should
+    // be fine to always stop it.
+    // TODO Due to the fact the jit can cause ClassLoad & ClassPrepare events to be triggered on
+    // array-classes (see b/111394423) this can cause deadlocks if we are holding JVMTI raw
+    // monitors and try to gain them in a jit thread.
+    if (jit_ != nullptr) {
+      jit_->Stop();
+    }
     art::Runtime::Current()->GetThreadList()->SuspendAll("JMVTI Deoptimizing methods",
                                                          /*long_suspend*/ false);
     uninterruptible_cause_ = self_->StartAssertNoThreadSuspension("JVMTI deoptimizing methods");
@@ -291,6 +307,10 @@ class ScopedDeoptimizationContext : public art::ValueObject {
     self_->EndAssertNoThreadSuspension(uninterruptible_cause_);
     // Release the mutator lock.
     art::Runtime::Current()->GetThreadList()->ResumeAll();
+    // Let the jit start again.
+    if (jit_ != nullptr) {
+      jit_->Start();
+    }
     // Let other threads know it's fine to proceed.
     art::MutexLock lk(self_, deopt_->deoptimization_status_lock_);
     deopt_->performing_deoptimization_ = false;
@@ -301,22 +321,44 @@ class ScopedDeoptimizationContext : public art::ValueObject {
   art::Thread* self_;
   DeoptManager* deopt_;
   const char* uninterruptible_cause_;
+  art::jit::Jit* jit_;
 };
 
-void DeoptManager::AddDeoptimizeAllMethodsLocked(art::Thread* self) {
+void DeoptManager::AddDeoptimizeAllMethodsLocked(art::Thread* self, FullDeoptRequirement req) {
+  DCHECK_GE(global_deopt_count_, global_interpreter_deopt_count_);
   global_deopt_count_++;
+  if (req == FullDeoptRequirement::kInterpreter) {
+    global_interpreter_deopt_count_++;
+  }
   if (global_deopt_count_ == 1) {
-    PerformGlobalDeoptimization(self);
+    PerformGlobalDeoptimization(self,
+                                /*needs_interpreter*/ global_interpreter_deopt_count_ > 0,
+                                /*disable_intrinsics*/ global_interpreter_deopt_count_ == 0);
+  } else if (req == FullDeoptRequirement::kInterpreter && global_interpreter_deopt_count_ == 1) {
+    // First kInterpreter request.
+    PerformGlobalDeoptimization(self,
+                                /*needs_interpreter*/true,
+                                /*disable_intrinsics*/false);
   } else {
     WaitForDeoptimizationToFinish(self);
   }
 }
 
-void DeoptManager::RemoveDeoptimizeAllMethodsLocked(art::Thread* self) {
+void DeoptManager::RemoveDeoptimizeAllMethodsLocked(art::Thread* self, FullDeoptRequirement req) {
   DCHECK_GT(global_deopt_count_, 0u) << "Request to remove non-existent global deoptimization!";
+  DCHECK_GE(global_deopt_count_, global_interpreter_deopt_count_);
   global_deopt_count_--;
+  if (req == FullDeoptRequirement::kInterpreter) {
+    global_interpreter_deopt_count_--;
+  }
   if (global_deopt_count_ == 0) {
-    PerformGlobalUndeoptimization(self);
+    PerformGlobalUndeoptimization(self,
+                                  /*still_needs_stubs*/ false,
+                                  /*disable_intrinsics*/ false);
+  } else if (req == FullDeoptRequirement::kInterpreter && global_interpreter_deopt_count_ == 0) {
+    PerformGlobalUndeoptimization(self,
+                                  /*still_needs_stubs*/ global_deopt_count_ > 0,
+                                  /*disable_intrinsics*/ global_deopt_count_ > 0);
   } else {
     WaitForDeoptimizationToFinish(self);
   }
@@ -332,18 +374,85 @@ void DeoptManager::PerformLimitedUndeoptimization(art::Thread* self, art::ArtMet
   art::Runtime::Current()->GetInstrumentation()->Undeoptimize(method);
 }
 
-void DeoptManager::PerformGlobalDeoptimization(art::Thread* self) {
+void DeoptManager::PerformGlobalDeoptimization(art::Thread* self,
+                                               bool needs_interpreter,
+                                               bool disable_intrinsics) {
   ScopedDeoptimizationContext sdc(self, this);
-  art::Runtime::Current()->GetInstrumentation()->DeoptimizeEverything(
-      kDeoptManagerInstrumentationKey);
+  art::Runtime::Current()->GetInstrumentation()->EnableMethodTracing(
+      kDeoptManagerInstrumentationKey, needs_interpreter);
+  MaybeDisableIntrinsics(disable_intrinsics);
 }
 
-void DeoptManager::PerformGlobalUndeoptimization(art::Thread* self) {
+void DeoptManager::PerformGlobalUndeoptimization(art::Thread* self,
+                                                 bool still_needs_stubs,
+                                                 bool disable_intrinsics) {
   ScopedDeoptimizationContext sdc(self, this);
-  art::Runtime::Current()->GetInstrumentation()->UndeoptimizeEverything(
-      kDeoptManagerInstrumentationKey);
+  if (still_needs_stubs) {
+    art::Runtime::Current()->GetInstrumentation()->EnableMethodTracing(
+        kDeoptManagerInstrumentationKey, /*needs_interpreter*/false);
+    MaybeDisableIntrinsics(disable_intrinsics);
+  } else {
+    art::Runtime::Current()->GetInstrumentation()->DisableMethodTracing(
+        kDeoptManagerInstrumentationKey);
+    // We shouldn't care about intrinsics if we don't need tracing anymore.
+    DCHECK(!disable_intrinsics);
+  }
 }
 
+static void DisableSingleIntrinsic(const char* class_name,
+                                   const char* method_name,
+                                   const char* signature)
+    REQUIRES(art::Locks::mutator_lock_, art::Roles::uninterruptible_) {
+  // Since these intrinsics are all loaded during runtime startup this cannot fail and will not
+  // suspend.
+  art::Thread* self = art::Thread::Current();
+  art::ClassLinker* class_linker = art::Runtime::Current()->GetClassLinker();
+  art::ObjPtr<art::mirror::Class> cls = class_linker->FindSystemClass(self, class_name);
+
+  if (cls == nullptr) {
+    LOG(FATAL) << "Could not find class of intrinsic "
+               << class_name << "->" << method_name << signature;
+  }
+
+  art::ArtMethod* method = cls->FindClassMethod(method_name, signature, art::kRuntimePointerSize);
+  if (method == nullptr || method->GetDeclaringClass() != cls) {
+    LOG(FATAL) << "Could not find method of intrinsic "
+               << class_name << "->" << method_name << signature;
+  }
+
+  if (LIKELY(method->IsIntrinsic())) {
+    method->SetNotIntrinsic();
+  } else {
+    LOG(WARNING) << method->PrettyMethod() << " was already marked as non-intrinsic!";
+  }
+}
+
+void DeoptManager::MaybeDisableIntrinsics(bool do_disable) {
+  if (!do_disable || already_disabled_intrinsics_) {
+    // Don't toggle intrinsics on and off. It will lead to too much purging of the jit and would
+    // require us to keep around the intrinsics status of all methods.
+    return;
+  }
+  already_disabled_intrinsics_ = true;
+  // First just mark all intrinsic methods as no longer intrinsics.
+#define DISABLE_INTRINSIC(_1, _2, _3, _4, _5, decl_class_name, meth_name, meth_desc) \
+    DisableSingleIntrinsic(decl_class_name, meth_name, meth_desc);
+  INTRINSICS_LIST(DISABLE_INTRINSIC);
+#undef DISABLE_INTRINSIC
+  // Next tell the jit to throw away all of its code (since there might be intrinsic code in them.
+  // TODO it would be nice to be more selective.
+  art::jit::Jit* jit = art::Runtime::Current()->GetJit();
+  if (jit != nullptr) {
+    jit->GetCodeCache()->ClearAllCompiledDexCode();
+  }
+  art::MutexLock mu(art::Thread::Current(), *art::Locks::thread_list_lock_);
+  // Now make all threads go to interpreter.
+  art::Runtime::Current()->GetThreadList()->ForEach(
+      [](art::Thread* thr, void* ctx) REQUIRES(art::Locks::mutator_lock_) {
+        reinterpret_cast<DeoptManager*>(ctx)->DeoptimizeThread(thr);
+      },
+      this);
+}
 
 void DeoptManager::RemoveDeoptimizationRequester() {
   art::Thread* self = art::Thread::Current();
