@@ -569,9 +569,10 @@ void DoAllocateObsoleteMethodsCallback(art::Thread* t, void* vdata) NO_THREAD_SA
 // This creates any ArtMethod* structures needed for obsolete methods and ensures that the stack is
 // updated so they will be run.
 // TODO Rewrite so we can do this only once regardless of how many redefinitions there are.
-void Redefiner::ClassRedefinition::FindAndAllocateObsoleteMethods(art::mirror::Class* art_klass) {
+void Redefiner::ClassRedefinition::FindAndAllocateObsoleteMethods(
+    art::ObjPtr<art::mirror::Class> art_klass) {
   art::ScopedAssertNoThreadSuspension ns("No thread suspension during thread stack walking");
-  art::mirror::ClassExt* ext = art_klass->GetExtData();
+  art::ObjPtr<art::mirror::ClassExt> ext = art_klass->GetExtData();
   CHECK(ext->GetObsoleteMethods() != nullptr);
   art::ClassLinker* linker = driver_->runtime_->GetClassLinker();
   // This holds pointers to the obsolete methods map fields which are updated as needed.
@@ -873,73 +874,76 @@ class RedefinitionDataHolder {
     return arr_.IsNull();
   }
 
-  art::mirror::ClassLoader* GetSourceClassLoader(jint klass_index) const
+  art::ObjPtr<art::mirror::ClassLoader> GetSourceClassLoader(jint klass_index) const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    return art::down_cast<art::mirror::ClassLoader*>(GetSlot(klass_index, kSlotSourceClassLoader));
+    return art::ObjPtr<art::mirror::ClassLoader>::DownCast(
+        GetSlot(klass_index, kSlotSourceClassLoader));
   }
-  art::mirror::Object* GetJavaDexFile(jint klass_index) const
+  art::ObjPtr<art::mirror::Object> GetJavaDexFile(jint klass_index) const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return GetSlot(klass_index, kSlotJavaDexFile);
   }
-  art::mirror::LongArray* GetNewDexFileCookie(jint klass_index) const
+  art::ObjPtr<art::mirror::LongArray> GetNewDexFileCookie(jint klass_index) const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    return art::down_cast<art::mirror::LongArray*>(GetSlot(klass_index, kSlotNewDexFileCookie));
+    return art::ObjPtr<art::mirror::LongArray>::DownCast(
+        GetSlot(klass_index, kSlotNewDexFileCookie));
   }
-  art::mirror::DexCache* GetNewDexCache(jint klass_index) const
+  art::ObjPtr<art::mirror::DexCache> GetNewDexCache(jint klass_index) const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    return art::down_cast<art::mirror::DexCache*>(GetSlot(klass_index, kSlotNewDexCache));
+    return art::ObjPtr<art::mirror::DexCache>::DownCast(GetSlot(klass_index, kSlotNewDexCache));
   }
-  art::mirror::Class* GetMirrorClass(jint klass_index) const
+  art::ObjPtr<art::mirror::Class> GetMirrorClass(jint klass_index) const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    return art::down_cast<art::mirror::Class*>(GetSlot(klass_index, kSlotMirrorClass));
-  }
-
-  art::mirror::Object* GetOriginalDexFile(jint klass_index) const
-      REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    return art::down_cast<art::mirror::Object*>(GetSlot(klass_index, kSlotOrigDexFile));
+    return art::ObjPtr<art::mirror::Class>::DownCast(GetSlot(klass_index, kSlotMirrorClass));
   }
 
-  art::mirror::PointerArray* GetOldObsoleteMethods(jint klass_index) const
+  art::ObjPtr<art::mirror::Object> GetOriginalDexFile(jint klass_index) const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    return art::down_cast<art::mirror::PointerArray*>(
+    return art::ObjPtr<art::mirror::Object>::DownCast(GetSlot(klass_index, kSlotOrigDexFile));
+  }
+
+  art::ObjPtr<art::mirror::PointerArray> GetOldObsoleteMethods(jint klass_index) const
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    return art::ObjPtr<art::mirror::PointerArray>::DownCast(
         GetSlot(klass_index, kSlotOldObsoleteMethods));
   }
 
-  art::mirror::ObjectArray<art::mirror::DexCache>* GetOldDexCaches(jint klass_index) const
-      REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    return art::down_cast<art::mirror::ObjectArray<art::mirror::DexCache>*>(
+  art::ObjPtr<art::mirror::ObjectArray<art::mirror::DexCache>> GetOldDexCaches(
+      jint klass_index) const REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    return art::ObjPtr<art::mirror::ObjectArray<art::mirror::DexCache>>::DownCast(
         GetSlot(klass_index, kSlotOldDexCaches));
   }
 
-  void SetSourceClassLoader(jint klass_index, art::mirror::ClassLoader* loader)
+  void SetSourceClassLoader(jint klass_index, art::ObjPtr<art::mirror::ClassLoader> loader)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     SetSlot(klass_index, kSlotSourceClassLoader, loader);
   }
-  void SetJavaDexFile(jint klass_index, art::mirror::Object* dexfile)
+  void SetJavaDexFile(jint klass_index, art::ObjPtr<art::mirror::Object> dexfile)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     SetSlot(klass_index, kSlotJavaDexFile, dexfile);
   }
-  void SetNewDexFileCookie(jint klass_index, art::mirror::LongArray* cookie)
+  void SetNewDexFileCookie(jint klass_index, art::ObjPtr<art::mirror::LongArray> cookie)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     SetSlot(klass_index, kSlotNewDexFileCookie, cookie);
   }
-  void SetNewDexCache(jint klass_index, art::mirror::DexCache* cache)
+  void SetNewDexCache(jint klass_index, art::ObjPtr<art::mirror::DexCache> cache)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     SetSlot(klass_index, kSlotNewDexCache, cache);
   }
-  void SetMirrorClass(jint klass_index, art::mirror::Class* klass)
+  void SetMirrorClass(jint klass_index, art::ObjPtr<art::mirror::Class> klass)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     SetSlot(klass_index, kSlotMirrorClass, klass);
   }
-  void SetOriginalDexFile(jint klass_index, art::mirror::Object* bytes)
+  void SetOriginalDexFile(jint klass_index, art::ObjPtr<art::mirror::Object> bytes)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     SetSlot(klass_index, kSlotOrigDexFile, bytes);
   }
-  void SetOldObsoleteMethods(jint klass_index, art::mirror::PointerArray* methods)
+  void SetOldObsoleteMethods(jint klass_index, art::ObjPtr<art::mirror::PointerArray> methods)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     SetSlot(klass_index, kSlotOldObsoleteMethods, methods);
   }
-  void SetOldDexCaches(jint klass_index, art::mirror::ObjectArray<art::mirror::DexCache>* caches)
+  void SetOldDexCaches(jint klass_index,
+                       art::ObjPtr<art::mirror::ObjectArray<art::mirror::DexCache>> caches)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     SetSlot(klass_index, kSlotOldDexCaches, caches);
   }
@@ -970,8 +974,8 @@ class RedefinitionDataHolder {
   mutable art::Handle<art::mirror::ObjectArray<art::mirror::Object>> arr_;
   std::vector<Redefiner::ClassRedefinition>* redefinitions_;
 
-  art::mirror::Object* GetSlot(jint klass_index,
-                               DataSlot slot) const REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  art::ObjPtr<art::mirror::Object> GetSlot(jint klass_index, DataSlot slot) const
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
     DCHECK_LT(klass_index, Length());
     return arr_->Get((kNumSlots * klass_index) + slot);
   }
@@ -1036,31 +1040,35 @@ class RedefinitionDataIter {
     return holder_;
   }
 
-  art::mirror::ClassLoader* GetSourceClassLoader() const
+  art::ObjPtr<art::mirror::ClassLoader> GetSourceClassLoader() const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return holder_.GetSourceClassLoader(idx_);
   }
-  art::mirror::Object* GetJavaDexFile() const REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  art::ObjPtr<art::mirror::Object> GetJavaDexFile() const
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return holder_.GetJavaDexFile(idx_);
   }
-  art::mirror::LongArray* GetNewDexFileCookie() const REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  art::ObjPtr<art::mirror::LongArray> GetNewDexFileCookie() const
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return holder_.GetNewDexFileCookie(idx_);
   }
-  art::mirror::DexCache* GetNewDexCache() const REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  art::ObjPtr<art::mirror::DexCache> GetNewDexCache() const
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return holder_.GetNewDexCache(idx_);
   }
-  art::mirror::Class* GetMirrorClass() const REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  art::ObjPtr<art::mirror::Class> GetMirrorClass() const
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return holder_.GetMirrorClass(idx_);
   }
-  art::mirror::Object* GetOriginalDexFile() const
+  art::ObjPtr<art::mirror::Object> GetOriginalDexFile() const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return holder_.GetOriginalDexFile(idx_);
   }
-  art::mirror::PointerArray* GetOldObsoleteMethods() const
+  art::ObjPtr<art::mirror::PointerArray> GetOldObsoleteMethods() const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return holder_.GetOldObsoleteMethods(idx_);
   }
-  art::mirror::ObjectArray<art::mirror::DexCache>* GetOldDexCaches() const
+  art::ObjPtr<art::mirror::ObjectArray<art::mirror::DexCache>> GetOldDexCaches() const
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     return holder_.GetOldDexCaches(idx_);
   }
@@ -1073,28 +1081,31 @@ class RedefinitionDataIter {
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     holder_.SetSourceClassLoader(idx_, loader);
   }
-  void SetJavaDexFile(art::mirror::Object* dexfile) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void SetJavaDexFile(art::ObjPtr<art::mirror::Object> dexfile)
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
     holder_.SetJavaDexFile(idx_, dexfile);
   }
-  void SetNewDexFileCookie(art::mirror::LongArray* cookie)
+  void SetNewDexFileCookie(art::ObjPtr<art::mirror::LongArray> cookie)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     holder_.SetNewDexFileCookie(idx_, cookie);
   }
-  void SetNewDexCache(art::mirror::DexCache* cache) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void SetNewDexCache(art::ObjPtr<art::mirror::DexCache> cache)
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
     holder_.SetNewDexCache(idx_, cache);
   }
-  void SetMirrorClass(art::mirror::Class* klass) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void SetMirrorClass(art::ObjPtr<art::mirror::Class> klass)
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
     holder_.SetMirrorClass(idx_, klass);
   }
-  void SetOriginalDexFile(art::mirror::Object* bytes)
+  void SetOriginalDexFile(art::ObjPtr<art::mirror::Object> bytes)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     holder_.SetOriginalDexFile(idx_, bytes);
   }
-  void SetOldObsoleteMethods(art::mirror::PointerArray* methods)
+  void SetOldObsoleteMethods(art::ObjPtr<art::mirror::PointerArray> methods)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     holder_.SetOldObsoleteMethods(idx_, methods);
   }
-  void SetOldDexCaches(art::mirror::ObjectArray<art::mirror::DexCache>* caches)
+  void SetOldDexCaches(art::ObjPtr<art::mirror::ObjectArray<art::mirror::DexCache>> caches)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
     holder_.SetOldDexCaches(idx_, caches);
   }
@@ -1378,7 +1389,7 @@ jvmtiError Redefiner::Run() {
     if (data.GetSourceClassLoader() != nullptr) {
       ClassLoaderHelper::UpdateJavaDexFile(data.GetJavaDexFile(), data.GetNewDexFileCookie());
     }
-    art::mirror::Class* klass = data.GetMirrorClass();
+    art::ObjPtr<art::mirror::Class> klass = data.GetMirrorClass();
     // TODO Rewrite so we don't do a stack walk for each and every class.
     redef.FindAndAllocateObsoleteMethods(klass);
     redef.UpdateClass(klass, data.GetNewDexCache(), data.GetOriginalDexFile());
@@ -1492,10 +1503,10 @@ void Redefiner::ClassRedefinition::UpdateClass(
 // obsolete methods).
 void Redefiner::ClassRedefinition::RestoreObsoleteMethodMapsIfUnneeded(
     const RedefinitionDataIter* cur_data) {
-  art::mirror::Class* klass = GetMirrorClass();
-  art::mirror::ClassExt* ext = klass->GetExtData();
-  art::mirror::PointerArray* methods = ext->GetObsoleteMethods();
-  art::mirror::PointerArray* old_methods = cur_data->GetOldObsoleteMethods();
+  art::ObjPtr<art::mirror::Class> klass = GetMirrorClass();
+  art::ObjPtr<art::mirror::ClassExt> ext = klass->GetExtData();
+  art::ObjPtr<art::mirror::PointerArray> methods = ext->GetObsoleteMethods();
+  art::ObjPtr<art::mirror::PointerArray> old_methods = cur_data->GetOldObsoleteMethods();
   int32_t old_length = old_methods == nullptr ? 0 : old_methods->GetLength();
   int32_t expected_length =
       old_length + klass->NumDirectMethods() + klass->NumDeclaredVirtualMethods();

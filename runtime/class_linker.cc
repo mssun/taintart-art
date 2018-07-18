@@ -7150,7 +7150,7 @@ ObjPtr<mirror::PointerArray> ClassLinker::LinkInterfaceMethodsHelper::UpdateVtab
       vtable->SetElementPtrSize(i, translated_method, pointer_size);
     }
   }
-  klass_->SetVTable(vtable.Ptr());
+  klass_->SetVTable(vtable);
   return vtable;
 }
 
@@ -8760,7 +8760,7 @@ void ClassLinker::VisitClassLoaders(ClassLoaderVisitor* visitor) const {
     ObjPtr<mirror::ClassLoader> class_loader = ObjPtr<mirror::ClassLoader>::DownCast(
         self->DecodeJObject(data.weak_root));
     if (class_loader != nullptr) {
-      visitor->Visit(class_loader.Ptr());
+      visitor->Visit(class_loader);
     }
   }
 }

@@ -49,14 +49,14 @@
 namespace art {
 
 template <ReadBarrierOption kReadBarrierOption>
-inline mirror::Class* ArtMethod::GetDeclaringClassUnchecked() {
+inline ObjPtr<mirror::Class> ArtMethod::GetDeclaringClassUnchecked() {
   GcRootSource gc_root_source(this);
   return declaring_class_.Read<kReadBarrierOption>(&gc_root_source);
 }
 
 template <ReadBarrierOption kReadBarrierOption>
-inline mirror::Class* ArtMethod::GetDeclaringClass() {
-  mirror::Class* result = GetDeclaringClassUnchecked<kReadBarrierOption>();
+inline ObjPtr<mirror::Class> ArtMethod::GetDeclaringClass() {
+  ObjPtr<mirror::Class> result = GetDeclaringClassUnchecked<kReadBarrierOption>();
   if (kIsDebugBuild) {
     if (!IsRuntimeMethod()) {
       CHECK(result != nullptr) << this;
@@ -77,8 +77,8 @@ inline void ArtMethod::SetDeclaringClass(ObjPtr<mirror::Class> new_declaring_cla
   declaring_class_ = GcRoot<mirror::Class>(new_declaring_class);
 }
 
-inline bool ArtMethod::CASDeclaringClass(mirror::Class* expected_class,
-                                         mirror::Class* desired_class) {
+inline bool ArtMethod::CASDeclaringClass(ObjPtr<mirror::Class> expected_class,
+                                         ObjPtr<mirror::Class> desired_class) {
   GcRoot<mirror::Class> expected_root(expected_class);
   GcRoot<mirror::Class> desired_root(desired_class);
   auto atomic_root_class = reinterpret_cast<Atomic<GcRoot<mirror::Class>>*>(&declaring_class_);
@@ -127,14 +127,14 @@ inline bool ArtMethod::CheckIncompatibleClassChange(InvokeType type) {
     case kVirtual: {
       // We have an error if we are direct or a non-copied (i.e. not part of a real class) interface
       // method.
-      mirror::Class* methods_class = GetDeclaringClass();
+      ObjPtr<mirror::Class> methods_class = GetDeclaringClass();
       return IsDirect() || (methods_class->IsInterface() && !IsCopied());
     }
     case kSuper:
       // Constructors and static methods are called with invoke-direct.
       return IsConstructor() || IsStatic();
     case kInterface: {
-      mirror::Class* methods_class = GetDeclaringClass();
+      ObjPtr<mirror::Class> methods_class = GetDeclaringClass();
       return IsDirect() || !(methods_class->IsInterface() || methods_class->IsObjectClass());
     }
     default:
@@ -509,7 +509,7 @@ template<ReadBarrierOption kReadBarrierOption, typename RootVisitorType>
 void ArtMethod::VisitRoots(RootVisitorType& visitor, PointerSize pointer_size) {
   if (LIKELY(!declaring_class_.IsNull())) {
     visitor.VisitRoot(declaring_class_.AddressWithoutBarrier());
-    mirror::Class* klass = declaring_class_.Read<kReadBarrierOption>();
+    ObjPtr<mirror::Class> klass = declaring_class_.Read<kReadBarrierOption>();
     if (UNLIKELY(klass->IsProxyClass())) {
       // For normal methods, dex cache shortcuts will be visited through the declaring class.
       // However, for proxies we need to keep the interface method alive, so we visit its roots.
@@ -522,8 +522,8 @@ void ArtMethod::VisitRoots(RootVisitorType& visitor, PointerSize pointer_size) {
 
 template <typename Visitor>
 inline void ArtMethod::UpdateObjectsForImageRelocation(const Visitor& visitor) {
-  mirror::Class* old_class = GetDeclaringClassUnchecked<kWithoutReadBarrier>();
-  mirror::Class* new_class = visitor(old_class);
+  ObjPtr<mirror::Class> old_class = GetDeclaringClassUnchecked<kWithoutReadBarrier>();
+  ObjPtr<mirror::Class> new_class = visitor(old_class.Ptr());
   if (old_class != new_class) {
     SetDeclaringClass(new_class);
   }

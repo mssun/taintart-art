@@ -87,10 +87,10 @@ class ArtMethod FINAL {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ALWAYS_INLINE mirror::Class* GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<mirror::Class> GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ALWAYS_INLINE mirror::Class* GetDeclaringClassUnchecked()
+  ALWAYS_INLINE ObjPtr<mirror::Class> GetDeclaringClassUnchecked()
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   mirror::CompressedReference<mirror::Object>* GetDeclaringClassAddressWithoutBarrier() {
@@ -100,7 +100,7 @@ class ArtMethod FINAL {
   void SetDeclaringClass(ObjPtr<mirror::Class> new_declaring_class)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  bool CASDeclaringClass(mirror::Class* expected_class, mirror::Class* desired_class)
+  bool CASDeclaringClass(ObjPtr<mirror::Class> expected_class, ObjPtr<mirror::Class> desired_class)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   static MemberOffset DeclaringClassOffset() {
@@ -395,10 +395,10 @@ class ArtMethod FINAL {
     dex_method_index_ = new_idx;
   }
 
-  // Lookup the Class* from the type index into this method's dex cache.
+  // Lookup the Class from the type index into this method's dex cache.
   ObjPtr<mirror::Class> LookupResolvedClassFromTypeIndex(dex::TypeIndex type_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  // Resolve the Class* from the type index into this method's dex cache.
+  // Resolve the Class from the type index into this method's dex cache.
   ObjPtr<mirror::Class> ResolveClassFromTypeIndex(dex::TypeIndex type_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 

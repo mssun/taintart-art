@@ -1570,7 +1570,9 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
         // Find origin method. Declaring class and dex_method_idx
         // in the copied method should be the same as in the origin
         // method.
-        mirror::Class* declaring_class = method.GetDeclaringClass();
+        // FIXME: Cannot use ObjPtr<> for declaring class because origin->IsDirect()
+        // invalidates ObjPtr<> cookie for kCheckDeclaringClassState == true.
+        mirror::Class* declaring_class = method.GetDeclaringClass().Ptr();
         ArtMethod* origin = declaring_class->FindClassMethod(
             declaring_class->GetDexCache(),
             method.GetDexMethodIndex(),

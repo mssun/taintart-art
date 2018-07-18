@@ -70,7 +70,7 @@ static mirror::Class* SafeGetDeclaringClass(ArtMethod* method)
   CHECK_NE(-1, rc);
 
   if (kVerifySafeImpls) {
-    mirror::Class* actual_class = method->GetDeclaringClassUnchecked<kWithoutReadBarrier>();
+    ObjPtr<mirror::Class> actual_class = method->GetDeclaringClassUnchecked<kWithoutReadBarrier>();
     CHECK_EQ(actual_class, cls.AsMirrorPtr());
   }
 

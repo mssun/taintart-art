@@ -597,7 +597,7 @@ static void AssertPcIsWithinQuickCode(ArtMethod* method, uintptr_t pc)
 void StackVisitor::SanityCheckFrame() const {
   if (kIsDebugBuild) {
     ArtMethod* method = GetMethod();
-    mirror::Class* declaring_class = method->GetDeclaringClass();
+    ObjPtr<mirror::Class> declaring_class = method->GetDeclaringClass();
     // Runtime methods have null declaring class.
     if (!method->IsRuntimeMethod()) {
       CHECK(declaring_class != nullptr);
@@ -613,7 +613,7 @@ void StackVisitor::SanityCheckFrame() const {
       // We get the canonical method as copied methods may have their declaring
       // class from another class loader.
       ArtMethod* canonical = method->GetCanonicalMethod();
-      mirror::Class* klass = canonical->GetDeclaringClass();
+      ObjPtr<mirror::Class> klass = canonical->GetDeclaringClass();
       LinearAlloc* const class_linear_alloc = (klass != nullptr)
           ? runtime->GetClassLinker()->GetAllocatorForClassLoader(klass->GetClassLoader())
           : linear_alloc;
