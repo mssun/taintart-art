@@ -56,6 +56,7 @@ public class Parser {
   private HprofBuffer hprof = null;
   private ProguardMap map = new ProguardMap();
   private Progress progress = new NullProgress();
+  private Reachability retained = Reachability.SOFT;
 
   /**
    * Creates an hprof Parser that parses a heap dump from a byte buffer.
@@ -101,6 +102,17 @@ public class Parser {
       throw new NullPointerException("progress == null");
     }
     this.progress = progress;
+    return this;
+  }
+
+  /**
+   * Specify the weakest reachability of instances to treat as retained.
+   *
+   * @param retained the weakest reachability of instances to treat as retained.
+   * @return this Parser instance.
+   */
+  public Parser retained(Reachability retained) {
+    this.retained = retained;
     return this;
   }
 
@@ -660,7 +672,7 @@ public class Parser {
 
     hprof = null;
     roots = null;
-    return new AhatSnapshot(superRoot, mInstances, heaps.heaps, rootSite, progress);
+    return new AhatSnapshot(superRoot, mInstances, heaps.heaps, rootSite, progress, retained);
   }
 
   private static boolean isEndOfHeapDumpSegment(int subtag) {
