@@ -16,6 +16,8 @@
 
 package com.android.ahat;
 
+import com.android.ahat.heapdump.Reachability;
+
 import java.io.IOException;
 import org.junit.Test;
 
@@ -23,7 +25,7 @@ public class RiTest {
   @Test
   public void loadRi() throws IOException {
     // Verify we can load a heap dump generated from the RI.
-    TestDump.getTestDump("ri-test-dump.hprof", null, null);
+    TestDump.getTestDump("ri-test-dump.hprof", null, null, Reachability.STRONG);
   }
 }
 

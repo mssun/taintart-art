@@ -17,6 +17,7 @@
 package com.android.ahat;
 
 import com.android.ahat.heapdump.AhatSnapshot;
+import com.android.ahat.heapdump.Reachability;
 import java.io.File;
 import java.io.IOException;
 import org.junit.Test;
@@ -28,7 +29,8 @@ public class OverviewHandlerTest {
     AhatSnapshot snapshot = TestDump.getTestDump().getAhatSnapshot();
     AhatHandler handler = new OverviewHandler(snapshot,
         new File("my.hprof.file"),
-        new File("my.base.hprof.file"));
+        new File("my.base.hprof.file"),
+        Reachability.SOFT);
     TestHandler.testNoCrash(handler, "http://localhost:7100");
   }
 }

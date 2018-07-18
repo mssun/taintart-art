@@ -20,6 +20,7 @@ import com.android.ahat.heapdump.AhatSnapshot;
 import com.android.ahat.heapdump.Diff;
 import com.android.ahat.heapdump.HprofFormatException;
 import com.android.ahat.heapdump.Parser;
+import com.android.ahat.heapdump.Reachability;
 import com.android.ahat.progress.Progress;
 import com.android.ahat.proguard.ProguardMap;
 import com.sun.net.httpserver.HttpServer;
@@ -51,6 +52,9 @@ public class Main {
     out.println("     Diff the heap dump against the given baseline heap dump FILE.");
     out.println("  --baseline-proguard-map FILE");
     out.println("     Use the proguard map FILE to deobfuscate the baseline heap dump.");
+    out.println("  --retained [strong | soft | finalizer | weak | phantom | unreachable]");
+    out.println("     The weakest reachability of instances to treat as retained.");
+    out.println("     Defaults to soft");
     out.println("");
   }
 
@@ -59,10 +63,11 @@ public class Main {
    * Prints an error message and exits the application on failure to load the
    * heap dump.
    */
-  private static AhatSnapshot loadHeapDump(File hprof, ProguardMap map, Progress progress) {
+  private static AhatSnapshot loadHeapDump(File hprof,
+      ProguardMap map, Progress progress, Reachability retained) {
     System.out.println("Processing '" + hprof + "' ...");
     try {
-      return new Parser(hprof).map(map).progress(progress).parse();
+      return new Parser(hprof).map(map).progress(progress).retained(retained).parse();
     } catch (IOException e) {
       System.err.println("Unable to load '" + hprof + "':");
       e.printStackTrace();
@@ -95,6 +100,7 @@ public class Main {
     File hprofbase = null;
     ProguardMap map = new ProguardMap();
     ProguardMap mapbase = new ProguardMap();
+    Reachability retained = Reachability.SOFT;
     for (int i = 0; i < args.length; i++) {
       if ("-p".equals(args[i]) && i + 1 < args.length) {
         i++;
@@ -123,6 +129,20 @@ public class Main {
           return;
         }
         hprofbase = new File(args[i]);
+      } else if ("--retained".equals(args[i]) && i + 1 < args.length) {
+        i++;
+        switch (args[i]) {
+          case "strong": retained = Reachability.STRONG; break;
+          case "soft": retained = Reachability.SOFT; break;
+          case "finalizer": retained = Reachability.FINALIZER; break;
+          case "weak": retained = Reachability.WEAK; break;
+          case "phantom": retained = Reachability.PHANTOM; break;
+          case "unreachable": retained = Reachability.UNREACHABLE; break;
+          default:
+            System.err.println("Invalid retained reference type: " + args[i]);
+            help(System.err);
+            return;
+        }
       } else {
         if (hprof != null) {
           System.err.println("multiple input files.");
@@ -153,15 +173,16 @@ public class Main {
       System.exit(1);
     }
 
-    AhatSnapshot ahat = loadHeapDump(hprof, map, new AsciiProgress());
+    AhatSnapshot ahat = loadHeapDump(hprof, map, new AsciiProgress(), retained);
     if (hprofbase != null) {
-      AhatSnapshot base = loadHeapDump(hprofbase, mapbase, new AsciiProgress());
+      AhatSnapshot base = loadHeapDump(hprofbase, mapbase, new AsciiProgress(), retained);
 
       System.out.println("Diffing heap dumps ...");
       Diff.snapshots(ahat, base);
     }
 
-    server.createContext("/", new AhatHttpHandler(new OverviewHandler(ahat, hprof, hprofbase)));
+    server.createContext("/",
+        new AhatHttpHandler(new OverviewHandler(ahat, hprof, hprofbase, retained)));
     server.createContext("/rooted", new AhatHttpHandler(new RootedHandler(ahat)));
     server.createContext("/object", new AhatHttpHandler(new ObjectHandler(ahat)));
     server.createContext("/objects", new AhatHttpHandler(new ObjectsHandler(ahat)));

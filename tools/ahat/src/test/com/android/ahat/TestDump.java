@@ -23,6 +23,7 @@ import com.android.ahat.heapdump.Diff;
 import com.android.ahat.heapdump.FieldValue;
 import com.android.ahat.heapdump.HprofFormatException;
 import com.android.ahat.heapdump.Parser;
+import com.android.ahat.heapdump.Reachability;
 import com.android.ahat.heapdump.Site;
 import com.android.ahat.heapdump.Value;
 import com.android.ahat.proguard.ProguardMap;
@@ -54,6 +55,7 @@ public class TestDump {
   private String mHprofResource;
   private String mHprofBaseResource;
   private String mMapResource;
+  private Reachability mRetained;
 
   // If the test dump fails to load the first time, it will likely fail every
   // other test we try. Rather than having to wait a potentially very long
@@ -94,10 +96,14 @@ public class TestDump {
    * The map resource may be null to indicate no proguard map will be used.
    *
    */
-  private TestDump(String hprofResource, String hprofBaseResource, String mapResource) {
+  private TestDump(String hprofResource,
+                   String hprofBaseResource,
+                   String mapResource,
+                   Reachability retained) {
     mHprofResource = hprofResource;
     mHprofBaseResource = hprofBaseResource;
     mMapResource = mapResource;
+    mRetained = retained;
   }
 
   /**
@@ -119,7 +125,7 @@ public class TestDump {
 
     try {
       ByteBuffer hprof = dataBufferFromResource(mHprofResource);
-      mSnapshot = Parser.parseHeapDump(hprof, map);
+      mSnapshot = new Parser(hprof).map(map).retained(mRetained).parse();
       mMain = findClass(mSnapshot, "Main");
       assert(mMain != null);
     } catch (HprofFormatException e) {
@@ -129,7 +135,7 @@ public class TestDump {
     if (mHprofBaseResource != null) {
       try {
         ByteBuffer hprofBase = dataBufferFromResource(mHprofBaseResource);
-        mBaseline = Parser.parseHeapDump(hprofBase, map);
+        mBaseline = new Parser(hprofBase).map(map).retained(mRetained).parse();
         mBaselineMain = findClass(mBaseline, "Main");
         assert(mBaselineMain != null);
       } catch (HprofFormatException e) {
@@ -238,7 +244,10 @@ public class TestDump {
    * when possible.
    */
   public static synchronized TestDump getTestDump() throws IOException {
-    return getTestDump("test-dump.hprof", "test-dump-base.hprof", "test-dump.map");
+    return getTestDump("test-dump.hprof",
+                       "test-dump-base.hprof",
+                       "test-dump.map",
+                       Reachability.STRONG);
   }
 
   /**
@@ -246,17 +255,22 @@ public class TestDump {
    * @param hprof - The string resouce name of the hprof file.
    * @param base - The string resouce name of the baseline hprof, may be null.
    * @param map - The string resouce name of the proguard map, may be null.
+   * @param retained the weakest reachability of instances to treat as retained.
    * An IOException is thrown if there is an error reading the test dump hprof
    * file.
    * To improve performance, this returns a cached instance of the TestDump
    * when possible.
    */
-  public static synchronized TestDump getTestDump(String hprof, String base, String map)
+  public static synchronized TestDump getTestDump(String hprof,
+                                                  String base,
+                                                  String map,
+                                                  Reachability retained)
     throws IOException {
     for (TestDump loaded : mCachedTestDumps) {
       if (Objects.equals(loaded.mHprofResource, hprof)
           && Objects.equals(loaded.mHprofBaseResource, base)
-          && Objects.equals(loaded.mMapResource, map)) {
+          && Objects.equals(loaded.mMapResource, map)
+          && Objects.equals(loaded.mRetained, retained)) {
         if (loaded.mTestDumpFailed) {
           throw new IOException("Test dump failed before, assuming it will again");
         }
@@ -264,7 +278,7 @@ public class TestDump {
       }
     }
 
-    TestDump dump = new TestDump(hprof, base, map);
+    TestDump dump = new TestDump(hprof, base, map, retained);
     mCachedTestDumps.add(dump);
     dump.load();
     return dump;

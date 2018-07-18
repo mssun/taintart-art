@@ -21,14 +21,16 @@ import java.util.NoSuchElementException;
 
 /**
  * Reference iterator used for the dominators computation.
- * This visits only strong references.
+ * This visits only retained references.
  */
 class DominatorReferenceIterator implements Iterator<AhatInstance>,
                                             Iterable<AhatInstance> {
+  private final Reachability mRetained;
   private Iterator<Reference> mIter;
   private AhatInstance mNext;
 
-  public DominatorReferenceIterator(Iterable<Reference> iter) {
+  public DominatorReferenceIterator(Reachability retained, Iterable<Reference> iter) {
+    mRetained = retained;
     mIter = iter.iterator();
     mNext = null;
   }
@@ -37,7 +39,7 @@ class DominatorReferenceIterator implements Iterator<AhatInstance>,
   public boolean hasNext() {
     while (mNext == null && mIter.hasNext()) {
       Reference ref = mIter.next();
-      if (ref.reachability == Reachability.STRONG) {
+      if (ref.reachability.notWeakerThan(mRetained)) {
         mNext = ref.ref;
       }
     }

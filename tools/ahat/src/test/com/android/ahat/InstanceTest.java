@@ -333,6 +333,28 @@ public class InstanceTest {
   }
 
   @Test
+  public void retainedSizeByRetained() throws IOException {
+    // The test dump program should never be under enough GC pressure for the
+    // soft reference to be cleared. The referent should be included in
+    // retained size if --retained is soft, but not if --retained is strong.
+    TestDump dumpStrong = TestDump.getTestDump("test-dump.hprof",
+                                               "test-dump-base.hprof",
+                                               "test-dump.map",
+                                               Reachability.STRONG);
+    AhatInstance refStrong = dumpStrong.getDumpedAhatInstance("aSoftReference");
+    long sizeStrong = refStrong.getTotalRetainedSize().getSize();
+
+    TestDump dumpSoft = TestDump.getTestDump("test-dump.hprof",
+                                             "test-dump-base.hprof",
+                                             "test-dump.map",
+                                             Reachability.SOFT);
+    AhatInstance refSoft = dumpSoft.getDumpedAhatInstance("aSoftReference");
+    long sizeSoft = refSoft.getTotalRetainedSize().getSize();
+
+    assertTrue(sizeStrong < sizeSoft);
+  }
+
+  @Test
   public void objectNotABitmap() throws IOException {
     TestDump dump = TestDump.getTestDump();
     AhatInstance obj = dump.getDumpedAhatInstance("anObject");
@@ -456,7 +478,7 @@ public class InstanceTest {
     // On Android L, image strings were backed by a single big char array.
     // Verify we show just the relative part of the string, not the entire
     // char array.
-    TestDump dump = TestDump.getTestDump("L.hprof", null, null);
+    TestDump dump = TestDump.getTestDump("L.hprof", null, null, Reachability.STRONG);
     AhatSnapshot snapshot = dump.getAhatSnapshot();
 
     // java.lang.String@0x6fe17050 is an image string "char" backed by a
@@ -467,7 +489,7 @@ public class InstanceTest {
 
   @Test
   public void nonDefaultHeapRoot() throws IOException {
-    TestDump dump = TestDump.getTestDump("O.hprof", null, null);
+    TestDump dump = TestDump.getTestDump("O.hprof", null, null, Reachability.STRONG);
     AhatSnapshot snapshot = dump.getAhatSnapshot();
 
     // java.util.HashMap@6004fdb8 is marked as a VM INTERNAL root.
@@ -480,7 +502,7 @@ public class InstanceTest {
 
   @Test
   public void threadRoot() throws IOException {
-    TestDump dump = TestDump.getTestDump("O.hprof", null, null);
+    TestDump dump = TestDump.getTestDump("O.hprof", null, null, Reachability.STRONG);
     AhatSnapshot snapshot = dump.getAhatSnapshot();
 
     // java.lang.Thread@12c03470 is marked as a thread root.
@@ -503,7 +525,7 @@ public class InstanceTest {
 
   @Test
   public void nullValueString() throws IOException {
-    TestDump dump = TestDump.getTestDump("RI.hprof", null, null);
+    TestDump dump = TestDump.getTestDump("RI.hprof", null, null, Reachability.STRONG);
     AhatSnapshot snapshot = dump.getAhatSnapshot();
 
     // java.lang.String@500001a8 has a null 'value' field, which should not
@@ -515,7 +537,7 @@ public class InstanceTest {
 
   @Test
   public void classOverhead() throws IOException {
-    TestDump dump = TestDump.getTestDump("O.hprof", null, null);
+    TestDump dump = TestDump.getTestDump("O.hprof", null, null, Reachability.STRONG);
     AhatSnapshot snapshot = dump.getAhatSnapshot();
 
     // class libore.io.IoTracker has byte[124]@12c028d1 as its class overhead.

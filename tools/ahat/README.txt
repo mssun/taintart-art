@@ -13,6 +13,9 @@ Usage:
        Diff the heap dump against the given baseline heap dump FILE.
     --baseline-proguard-map FILE
        Use the proguard map FILE to deobfuscate the baseline heap dump.
+    --retained [strong | soft | finalizer | weak | phantom | unreachable]
+       The weakest reachability of instances to treat as retained.
+       Defaults to soft
 
 TODO:
  * Add a user guide.
@@ -33,10 +36,6 @@ TODO:
 
  * [low priority] by site allocations won't line up if the stack has been
    truncated. Is there any way to manually line them up in that case?
-
- * [low priority] Have a switch to choose whether unreachable objects are
-   ignored or not?  Is there any interest in what's unreachable, or is it only
-   reachable objects that people care about?
 
 Things to Test:
  * That we can open a hprof without an 'app' heap and show a tabulation of

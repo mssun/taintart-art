@@ -174,6 +174,7 @@ package com.android.ahat.heapdump {
     method public static com.android.ahat.heapdump.AhatSnapshot parseHeapDump(java.io.File, com.android.ahat.proguard.ProguardMap) throws com.android.ahat.heapdump.HprofFormatException, java.io.IOException;
     method public static com.android.ahat.heapdump.AhatSnapshot parseHeapDump(java.nio.ByteBuffer, com.android.ahat.proguard.ProguardMap) throws com.android.ahat.heapdump.HprofFormatException, java.io.IOException;
     method public com.android.ahat.heapdump.Parser progress(com.android.ahat.progress.Progress);
+    method public com.android.ahat.heapdump.Parser retained(com.android.ahat.heapdump.Reachability);
   }
 
   public class PathElement implements com.android.ahat.heapdump.Diffable {
@@ -186,6 +187,7 @@ package com.android.ahat.heapdump {
   }
 
   public final class Reachability extends java.lang.Enum {
+    method public boolean notWeakerThan(com.android.ahat.heapdump.Reachability);
     method public static com.android.ahat.heapdump.Reachability valueOf(java.lang.String);
     method public static final com.android.ahat.heapdump.Reachability[] values();
     enum_constant public static final com.android.ahat.heapdump.Reachability FINALIZER;
