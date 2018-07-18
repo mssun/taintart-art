@@ -1016,7 +1016,7 @@
         "description" : ["Gcstress requires the ability to open at least one file which means this test fails when it runs out."]
     },
     {
-        "tests": ["530-checker-lse2"],
+        "tests": ["530-checker-lse2", "141-class-unload"],
         "variant": "gcstress",
         "bug": "b/111543628",
         "description" : ["Test seems to timeout when run with gcstress due to slower unwinding by libbacktrace"]
