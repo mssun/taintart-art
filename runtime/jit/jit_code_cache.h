@@ -215,8 +215,6 @@ class JitCodeCache {
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void ClearAllCompiledDexCode() REQUIRES(!lock_, Locks::mutator_lock_);
-
   void CopyInlineCacheInto(const InlineCache& ic, Handle<mirror::ObjectArray<mirror::Class>> array)
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
