@@ -255,7 +255,6 @@ CompilerDriver::CompilerDriver(
       compiler_(Compiler::Create(this, compiler_kind)),
       compiler_kind_(compiler_kind),
       requires_constructor_barrier_lock_("constructor barrier lock"),
-      non_relative_linker_patch_count_(0u),
       image_classes_(std::move(image_classes)),
       number_of_soft_verifier_failures_(0),
       had_hard_verifier_failure_(false),
@@ -463,18 +462,7 @@ static void CompileMethodHarness(
   }
 
   if (compiled_method != nullptr) {
-    // Count non-relative linker patches.
-    size_t non_relative_linker_patch_count = 0u;
-    for (const linker::LinkerPatch& patch : compiled_method->GetPatches()) {
-      if (!patch.IsPcRelative()) {
-        ++non_relative_linker_patch_count;
-      }
-    }
-    bool compile_pic = driver->GetCompilerOptions().GetCompilePic();  // Off by default
-    // When compiling with PIC, there should be zero non-relative linker patches
-    CHECK(!compile_pic || non_relative_linker_patch_count == 0u);
-
-    driver->AddCompiledMethod(method_ref, compiled_method, non_relative_linker_patch_count);
+    driver->AddCompiledMethod(method_ref, compiled_method);
   }
 
   if (self->IsExceptionPending()) {
@@ -2697,15 +2685,12 @@ void CompilerDriver::Compile(jobject class_loader,
 }
 
 void CompilerDriver::AddCompiledMethod(const MethodReference& method_ref,
-                                       CompiledMethod* const compiled_method,
-                                       size_t non_relative_linker_patch_count) {
+                                       CompiledMethod* const compiled_method) {
   DCHECK(GetCompiledMethod(method_ref) == nullptr) << method_ref.PrettyMethod();
   MethodTable::InsertResult result = compiled_methods_.Insert(method_ref,
                                                               /*expected*/ nullptr,
                                                               compiled_method);
   CHECK(result == MethodTable::kInsertResultSuccess);
-  non_relative_linker_patch_count_.fetch_add(non_relative_linker_patch_count,
-                                             std::memory_order_relaxed);
   DCHECK(GetCompiledMethod(method_ref) != nullptr) << method_ref.PrettyMethod();
 }
 
@@ -2813,10 +2798,6 @@ bool CompilerDriver::IsMethodVerifiedWithoutFailures(uint32_t method_idx,
     self->ClearException();
   }
   return is_system_class;
-}
-
-size_t CompilerDriver::GetNonRelativeLinkerPatchCount() const {
-  return non_relative_linker_patch_count_.load(std::memory_order_relaxed);
 }
 
 void CompilerDriver::SetRequiresConstructorBarrier(Thread* self,

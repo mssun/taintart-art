@@ -148,9 +148,7 @@ class CompilerDriver {
   CompiledMethod* GetCompiledMethod(MethodReference ref) const;
   size_t GetNonRelativeLinkerPatchCount() const;
   // Add a compiled method.
-  void AddCompiledMethod(const MethodReference& method_ref,
-                         CompiledMethod* const compiled_method,
-                         size_t non_relative_linker_patch_count);
+  void AddCompiledMethod(const MethodReference& method_ref, CompiledMethod* const compiled_method);
   CompiledMethod* RemoveCompiledMethod(const MethodReference& method_ref);
 
   void SetRequiresConstructorBarrier(Thread* self,
@@ -434,10 +432,6 @@ class CompilerDriver {
  private:
   // All method references that this compiler has compiled.
   MethodTable compiled_methods_;
-
-  // Number of non-relative patches in all compiled methods. These patches need space
-  // in the .oat_patches ELF section if requested in the compiler options.
-  Atomic<size_t> non_relative_linker_patch_count_;
 
   // Image classes to be updated by PreCompile().
   // TODO: Remove this member which is a non-const pointer to the CompilerOptions' data.

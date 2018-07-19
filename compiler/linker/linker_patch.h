@@ -47,7 +47,6 @@ class LinkerPatch {
     kDataBimgRelRo,
     kMethodRelative,
     kMethodBssEntry,
-    kCall,                    // TODO: Remove. (Deprecated, non-PIC.)
     kCallRelative,
     kTypeRelative,
     kTypeBssEntry,
@@ -91,14 +90,6 @@ class LinkerPatch {
     LinkerPatch patch(literal_offset, Type::kMethodBssEntry, target_dex_file);
     patch.method_idx_ = target_method_idx;
     patch.pc_insn_offset_ = pc_insn_offset;
-    return patch;
-  }
-
-  static LinkerPatch CodePatch(size_t literal_offset,
-                               const DexFile* target_dex_file,
-                               uint32_t target_method_idx) {
-    LinkerPatch patch(literal_offset, Type::kCall, target_dex_file);
-    patch.method_idx_ = target_method_idx;
     return patch;
   }
 
@@ -170,24 +161,6 @@ class LinkerPatch {
     return patch_type_;
   }
 
-  bool IsPcRelative() const {
-    switch (GetType()) {
-      case Type::kIntrinsicReference:
-      case Type::kDataBimgRelRo:
-      case Type::kMethodRelative:
-      case Type::kMethodBssEntry:
-      case Type::kCallRelative:
-      case Type::kTypeRelative:
-      case Type::kTypeBssEntry:
-      case Type::kStringRelative:
-      case Type::kStringBssEntry:
-      case Type::kBakerReadBarrierBranch:
-        return true;
-      default:
-        return false;
-    }
-  }
-
   uint32_t IntrinsicData() const {
     DCHECK(patch_type_ == Type::kIntrinsicReference);
     return intrinsic_data_;
@@ -201,7 +174,6 @@ class LinkerPatch {
   MethodReference TargetMethod() const {
     DCHECK(patch_type_ == Type::kMethodRelative ||
            patch_type_ == Type::kMethodBssEntry ||
-           patch_type_ == Type::kCall ||
            patch_type_ == Type::kCallRelative);
     return MethodReference(target_dex_file_, method_idx_);
   }
