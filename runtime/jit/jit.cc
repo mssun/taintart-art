@@ -768,20 +768,13 @@ void Jit::WaitForCompilationToFinish(Thread* self) {
 void Jit::Stop() {
   Thread* self = Thread::Current();
   // TODO(ngeoffray): change API to not require calling WaitForCompilationToFinish twice.
-  // During shutdown and startup the thread-pool can be null.
-  if (GetThreadPool() == nullptr) {
-    return;
-  }
   WaitForCompilationToFinish(self);
   GetThreadPool()->StopWorkers(self);
   WaitForCompilationToFinish(self);
 }
 
 void Jit::Start() {
-  // During shutdown and startup the thread-pool can be null.
-  if (GetThreadPool() != nullptr) {
-    GetThreadPool()->StartWorkers(Thread::Current());
-  }
+  GetThreadPool()->StartWorkers(Thread::Current());
 }
 
 ScopedJitSuspend::ScopedJitSuspend() {
