@@ -24,7 +24,6 @@
 namespace art {
 
 using android::base::StringAppendF;
-using android::base::StringPrintf;
 
 void AppendPrettyDescriptor(const char* descriptor, std::string* result) {
   // Count the number of '['s to get the dimensionality.

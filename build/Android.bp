@@ -23,12 +23,14 @@ art_clang_tidy_errors = [
     "performance-for-range-copy",
     "performance-unnecessary-copy-initialization",
     "performance-unnecessary-value-param",
+    "misc-unused-using-decls",
 ]
 // Should be: strings.Join(art_clang_tidy_errors, ",").
 art_clang_tidy_errors_str = "bugprone-unused-raii"
         + ",performance-for-range-copy"
         + ",performance-unnecessary-copy-initialization"
         + ",performance-unnecessary-value-param"
+        + ",misc-unused-using-decls"
 
 art_clang_tidy_disabled = [
     "-google-default-arguments",
