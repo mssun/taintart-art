@@ -2930,12 +2930,12 @@ std::ostream& operator<<(std::ostream& os, HInvokeStaticOrDirect::MethodLoadKind
       return os << "Recursive";
     case HInvokeStaticOrDirect::MethodLoadKind::kBootImageLinkTimePcRelative:
       return os << "BootImageLinkTimePcRelative";
-    case HInvokeStaticOrDirect::MethodLoadKind::kDirectAddress:
-      return os << "DirectAddress";
     case HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo:
       return os << "BootImageRelRo";
     case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry:
       return os << "BssEntry";
+    case HInvokeStaticOrDirect::MethodLoadKind::kJitDirectAddress:
+      return os << "JitDirectAddress";
     case HInvokeStaticOrDirect::MethodLoadKind::kRuntimeCall:
       return os << "RuntimeCall";
     default:
@@ -2967,8 +2967,8 @@ bool HLoadClass::InstructionDataEquals(const HInstruction* other) const {
     return false;
   }
   switch (GetLoadKind()) {
-    case LoadKind::kBootImageAddress:
     case LoadKind::kBootImageRelRo:
+    case LoadKind::kJitBootImageAddress:
     case LoadKind::kJitTableAddress: {
       ScopedObjectAccess soa(Thread::Current());
       return GetClass().Get() == other_load_class->GetClass().Get();
@@ -2985,12 +2985,12 @@ std::ostream& operator<<(std::ostream& os, HLoadClass::LoadKind rhs) {
       return os << "ReferrersClass";
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
       return os << "BootImageLinkTimePcRelative";
-    case HLoadClass::LoadKind::kBootImageAddress:
-      return os << "BootImageAddress";
     case HLoadClass::LoadKind::kBootImageRelRo:
       return os << "BootImageRelRo";
     case HLoadClass::LoadKind::kBssEntry:
       return os << "BssEntry";
+    case HLoadClass::LoadKind::kJitBootImageAddress:
+      return os << "JitBootImageAddress";
     case HLoadClass::LoadKind::kJitTableAddress:
       return os << "JitTableAddress";
     case HLoadClass::LoadKind::kRuntimeCall:
@@ -3010,8 +3010,8 @@ bool HLoadString::InstructionDataEquals(const HInstruction* other) const {
     return false;
   }
   switch (GetLoadKind()) {
-    case LoadKind::kBootImageAddress:
     case LoadKind::kBootImageRelRo:
+    case LoadKind::kJitBootImageAddress:
     case LoadKind::kJitTableAddress: {
       ScopedObjectAccess soa(Thread::Current());
       return GetString().Get() == other_load_string->GetString().Get();
@@ -3025,12 +3025,12 @@ std::ostream& operator<<(std::ostream& os, HLoadString::LoadKind rhs) {
   switch (rhs) {
     case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
       return os << "BootImageLinkTimePcRelative";
-    case HLoadString::LoadKind::kBootImageAddress:
-      return os << "BootImageAddress";
     case HLoadString::LoadKind::kBootImageRelRo:
       return os << "BootImageRelRo";
     case HLoadString::LoadKind::kBssEntry:
       return os << "BssEntry";
+    case HLoadString::LoadKind::kJitBootImageAddress:
+      return os << "JitBootImageAddress";
     case HLoadString::LoadKind::kJitTableAddress:
       return os << "JitTableAddress";
     case HLoadString::LoadKind::kRuntimeCall:

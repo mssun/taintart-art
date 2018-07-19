@@ -25,10 +25,14 @@ TEST(LinkerPatch, LinkerPatchOperators) {
   const DexFile* dex_file1 = reinterpret_cast<const DexFile*>(1);
   const DexFile* dex_file2 = reinterpret_cast<const DexFile*>(2);
   LinkerPatch patches[] = {
+      LinkerPatch::IntrinsicReferencePatch(16u, 3000u, 1000u),
+      LinkerPatch::IntrinsicReferencePatch(16u, 3001u, 1000u),
+      LinkerPatch::IntrinsicReferencePatch(16u, 3000u, 1001u),
+      LinkerPatch::IntrinsicReferencePatch(16u, 3001u, 1001u),
       LinkerPatch::RelativeMethodPatch(16u, dex_file1, 3000u, 1000u),
       LinkerPatch::RelativeMethodPatch(16u, dex_file1, 3001u, 1000u),
       LinkerPatch::RelativeMethodPatch(16u, dex_file1, 3000u, 1001u),
-      LinkerPatch::RelativeMethodPatch(16u, dex_file1, 3001u, 1001u),  // Index 3.
+      LinkerPatch::RelativeMethodPatch(16u, dex_file1, 3001u, 1001u),  // Index 7.
       LinkerPatch::RelativeMethodPatch(16u, dex_file2, 3000u, 1000u),
       LinkerPatch::RelativeMethodPatch(16u, dex_file2, 3001u, 1000u),
       LinkerPatch::RelativeMethodPatch(16u, dex_file2, 3000u, 1001u),
@@ -41,10 +45,6 @@ TEST(LinkerPatch, LinkerPatchOperators) {
       LinkerPatch::MethodBssEntryPatch(16u, dex_file2, 3001u, 1000u),
       LinkerPatch::MethodBssEntryPatch(16u, dex_file2, 3000u, 1001u),
       LinkerPatch::MethodBssEntryPatch(16u, dex_file2, 3001u, 1001u),
-      LinkerPatch::CodePatch(16u, dex_file1, 1000u),
-      LinkerPatch::CodePatch(16u, dex_file1, 1001u),
-      LinkerPatch::CodePatch(16u, dex_file2, 1000u),
-      LinkerPatch::CodePatch(16u, dex_file2, 1001u),
       LinkerPatch::RelativeCodePatch(16u, dex_file1, 1000u),
       LinkerPatch::RelativeCodePatch(16u, dex_file1, 1001u),
       LinkerPatch::RelativeCodePatch(16u, dex_file2, 1000u),
@@ -86,6 +86,10 @@ TEST(LinkerPatch, LinkerPatchOperators) {
       LinkerPatch::BakerReadBarrierBranchPatch(16u, 1u, 0u),
       LinkerPatch::BakerReadBarrierBranchPatch(16u, 1u, 1u),
 
+      LinkerPatch::IntrinsicReferencePatch(32u, 3000u, 1000u),
+      LinkerPatch::IntrinsicReferencePatch(32u, 3001u, 1000u),
+      LinkerPatch::IntrinsicReferencePatch(32u, 3000u, 1001u),
+      LinkerPatch::IntrinsicReferencePatch(32u, 3001u, 1001u),
       LinkerPatch::RelativeMethodPatch(32u, dex_file1, 3000u, 1000u),
       LinkerPatch::RelativeMethodPatch(32u, dex_file1, 3001u, 1000u),
       LinkerPatch::RelativeMethodPatch(32u, dex_file1, 3000u, 1001u),
@@ -102,10 +106,6 @@ TEST(LinkerPatch, LinkerPatchOperators) {
       LinkerPatch::MethodBssEntryPatch(32u, dex_file2, 3001u, 1000u),
       LinkerPatch::MethodBssEntryPatch(32u, dex_file2, 3000u, 1001u),
       LinkerPatch::MethodBssEntryPatch(32u, dex_file2, 3001u, 1001u),
-      LinkerPatch::CodePatch(32u, dex_file1, 1000u),
-      LinkerPatch::CodePatch(32u, dex_file1, 1001u),
-      LinkerPatch::CodePatch(32u, dex_file2, 1000u),
-      LinkerPatch::CodePatch(32u, dex_file2, 1001u),
       LinkerPatch::RelativeCodePatch(32u, dex_file1, 1000u),
       LinkerPatch::RelativeCodePatch(32u, dex_file1, 1001u),
       LinkerPatch::RelativeCodePatch(32u, dex_file2, 1000u),
@@ -147,20 +147,20 @@ TEST(LinkerPatch, LinkerPatchOperators) {
       LinkerPatch::BakerReadBarrierBranchPatch(32u, 1u, 0u),
       LinkerPatch::BakerReadBarrierBranchPatch(32u, 1u, 1u),
 
-      LinkerPatch::RelativeMethodPatch(16u, dex_file1, 3001u, 1001u),  // Same as patch at index 3.
+      LinkerPatch::RelativeMethodPatch(16u, dex_file1, 3001u, 1001u),  // Same as patch at index 7.
   };
   constexpr size_t last_index = arraysize(patches) - 1u;
 
   for (size_t i = 0; i != arraysize(patches); ++i) {
     for (size_t j = 0; j != arraysize(patches); ++j) {
-      bool expected = (i != last_index ? i : 3u) == (j != last_index ? j : 3u);
+      bool expected = (i != last_index ? i : 7u) == (j != last_index ? j : 7u);
       EXPECT_EQ(expected, patches[i] == patches[j]) << i << " " << j;
     }
   }
 
   for (size_t i = 0; i != arraysize(patches); ++i) {
     for (size_t j = 0; j != arraysize(patches); ++j) {
-      bool expected = (i != last_index ? i : 3u) < (j != last_index ? j : 3u);
+      bool expected = (i != last_index ? i : 7u) < (j != last_index ? j : 7u);
       EXPECT_EQ(expected, patches[i] < patches[j]) << i << " " << j;
     }
   }

@@ -74,9 +74,9 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     HLoadClass::LoadKind load_kind = load_class->GetLoadKind();
     switch (load_kind) {
       case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
-      case HLoadClass::LoadKind::kBootImageAddress:
       case HLoadClass::LoadKind::kBootImageRelRo:
       case HLoadClass::LoadKind::kBssEntry:
+      case HLoadClass::LoadKind::kJitBootImageAddress:
         // Add a base register for PC-relative literals on R2.
         InitializePCRelativeBasePointer();
         load_class->AddSpecialInput(base_);
@@ -90,9 +90,9 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     HLoadString::LoadKind load_kind = load_string->GetLoadKind();
     switch (load_kind) {
       case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
-      case HLoadString::LoadKind::kBootImageAddress:
       case HLoadString::LoadKind::kBootImageRelRo:
       case HLoadString::LoadKind::kBssEntry:
+      case HLoadString::LoadKind::kJitBootImageAddress:
         // Add a base register for PC-relative literals on R2.
         InitializePCRelativeBasePointer();
         load_string->AddSpecialInput(base_);

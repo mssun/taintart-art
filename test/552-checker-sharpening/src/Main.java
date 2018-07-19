@@ -140,8 +140,7 @@ public class Main {
   }
 
   /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$getBootImageString() builder (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageRelRo}}
+  /// CHECK:                LoadString load_kind:BootImageRelRo
 
   public static String $noinline$getBootImageString() {
     // Prevent inlining to avoid the string comparison being optimized away.
@@ -168,8 +167,7 @@ public class Main {
   }
 
   /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.Class Main.$noinline$getStringClass() builder (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageRelRo}} class_name:java.lang.String
+  /// CHECK:                LoadClass load_kind:BootImageRelRo class_name:java.lang.String
 
   public static Class<?> $noinline$getStringClass() {
     // Prevent inlining to avoid the string comparison being optimized away.
@@ -199,8 +197,7 @@ public class Main {
   /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
 
   /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexString(int) sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:{{BootImageRelRo|DirectAddress}}
+  /// CHECK:                InvokeStaticOrDirect method_load_kind:BootImageRelRo
   public static String $noinline$toHexString(int value) {
     return Integer.toString(value, 16);
   }
