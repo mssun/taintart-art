@@ -161,6 +161,11 @@ art_global_defaults {
         // void foo() { CHECK(kIsFooEnabled); /* do foo... */ }
         // not being marked noreturn if kIsFooEnabled is false.
         "-extra-arg=-Wno-missing-noreturn",
+        // Because tidy doesn't like our flow checks for compile-time configuration and thinks that
+        // the following code is dead (it is, but not for all configurations), disable unreachable
+        // code detection in Clang for tidy builds. It is still on for regular build steps, so we
+        // will still get the "real" errors.
+        "-extra-arg=-Wno-unreachable-code",
         // Use art_clang_tidy_errors for build errors.
         "-warnings-as-errors=" + art_clang_tidy_errors_str,
     ],
