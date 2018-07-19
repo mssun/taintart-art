@@ -64,11 +64,11 @@ TEST(CompiledMethodStorage, Deduplicate) {
       ArrayRef<const uint8_t>(raw_cfi_info2),
   };
   const linker::LinkerPatch raw_patches1[] = {
-      linker::LinkerPatch::CodePatch(0u, nullptr, 1u),
+      linker::LinkerPatch::IntrinsicReferencePatch(0u, 0u, 0u),
       linker::LinkerPatch::RelativeMethodPatch(4u, nullptr, 0u, 1u),
   };
   const linker::LinkerPatch raw_patches2[] = {
-      linker::LinkerPatch::CodePatch(0u, nullptr, 1u),
+      linker::LinkerPatch::IntrinsicReferencePatch(0u, 0u, 0u),
       linker::LinkerPatch::RelativeMethodPatch(4u, nullptr, 0u, 2u),
   };
   ArrayRef<const linker::LinkerPatch> patches[] = {

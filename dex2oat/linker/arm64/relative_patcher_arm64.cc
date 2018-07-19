@@ -57,7 +57,6 @@ constexpr uint32_t kAdrpThunkSize = 8u;
 
 inline bool IsAdrpPatch(const LinkerPatch& patch) {
   switch (patch.GetType()) {
-    case LinkerPatch::Type::kCall:
     case LinkerPatch::Type::kCallRelative:
     case LinkerPatch::Type::kBakerReadBarrierBranch:
       return false;

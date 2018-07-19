@@ -442,7 +442,6 @@ OatWriter::OatWriter(const CompilerOptions& compiler_options,
     size_type_bss_mappings_(0u),
     size_string_bss_mappings_(0u),
     relative_patcher_(nullptr),
-    absolute_patch_locations_(),
     profile_compilation_info_(info),
     compact_dex_level_(compact_dex_level) {
   // If we have a profile, always use at least the default compact dex level. The reason behind
@@ -1344,15 +1343,6 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
       // Update offsets. (Checksum is updated when writing.)
       offset_ += sizeof(*method_header);  // Method header is prepended before code.
       offset_ += code_size;
-      // Record absolute patch locations.
-      if (!compiled_method->GetPatches().empty()) {
-        uintptr_t base_loc = offset_ - code_size - writer_->oat_header_->GetExecutableOffset();
-        for (const LinkerPatch& patch : compiled_method->GetPatches()) {
-          if (!patch.IsPcRelative()) {
-            writer_->absolute_patch_locations_.push_back(base_loc + patch.LiteralOffset());
-          }
-        }
-      }
     }
 
     // Exclude quickened dex methods (code_size == 0) since they have no native code.
@@ -1406,10 +1396,7 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
         executable_offset_(writer->oat_header_->GetExecutableOffset()),
         debuggable_(compiler_options.GetDebuggable()),
         native_debuggable_(compiler_options.GetNativeDebuggable()),
-        generate_debug_info_(compiler_options.GenerateAnyDebugInfo()) {
-    writer->absolute_patch_locations_.reserve(
-        writer->GetCompilerDriver()->GetNonRelativeLinkerPatchCount());
-  }
+        generate_debug_info_(compiler_options.GenerateAnyDebugInfo()) {}
 
   struct CodeOffsetsKeyComparator {
     bool operator()(const CompiledMethod* lhs, const CompiledMethod* rhs) const {
@@ -1868,11 +1855,6 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
                                                                    target_offset);
               break;
             }
-            case LinkerPatch::Type::kCall: {
-              uint32_t target_offset = GetTargetOffset(patch);
-              PatchCodeAddress(&patched_code_, literal_offset, target_offset);
-              break;
-            }
             case LinkerPatch::Type::kMethodRelative: {
               uint32_t target_offset = GetTargetMethodOffset(GetTargetMethod(patch));
               writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
@@ -2044,26 +2026,6 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     }
     // Note: We only patch targeting Objects in image which is in the low 4gb.
     uint32_t address = PointerToLowMemUInt32(object);
-    DCHECK_LE(offset + 4, code->size());
-    uint8_t* data = &(*code)[offset];
-    data[0] = address & 0xffu;
-    data[1] = (address >> 8) & 0xffu;
-    data[2] = (address >> 16) & 0xffu;
-    data[3] = (address >> 24) & 0xffu;
-  }
-
-  void PatchCodeAddress(std::vector<uint8_t>* code, uint32_t offset, uint32_t target_offset)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    uint32_t address = target_offset;
-    if (writer_->GetCompilerOptions().IsBootImage()) {
-      size_t oat_index = writer_->image_writer_->GetOatIndexForDexCache(dex_cache_);
-      // TODO: Clean up offset types.
-      // The target_offset must be treated as signed for cross-oat patching.
-      const void* target = reinterpret_cast<const void*>(
-          writer_->image_writer_->GetOatDataBegin(oat_index) +
-          static_cast<int32_t>(target_offset));
-      address = PointerToLowMemUInt32(target);
-    }
     DCHECK_LE(offset + 4, code->size());
     uint8_t* data = &(*code)[offset];
     data[0] = address & 0xffu;
