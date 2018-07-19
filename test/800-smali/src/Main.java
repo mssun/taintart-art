@@ -27,13 +27,21 @@ public class Main {
 
     private static class TestCase {
         public TestCase(String testName, String testClass, String testMethodName, Object[] values,
-                        Throwable expectedException, Object expectedReturn) {
+                        Throwable expectedException, Object expectedReturn,
+                        boolean checkCompiled) {
             this.testName = testName;
             this.testClass = testClass;
             this.testMethodName = testMethodName;
             this.values = values;
             this.expectedException = expectedException;
             this.expectedReturn = expectedReturn;
+            this.checkCompiled = checkCompiled;
+        }
+
+        public TestCase(String testName, String testClass, String testMethodName, Object[] values,
+                        Throwable expectedException, Object expectedReturn) {
+            this(testName, testClass, testMethodName, values, expectedException,
+                 expectedReturn, false);
         }
 
         String testName;
@@ -42,6 +50,7 @@ public class Main {
         Object[] values;
         Throwable expectedException;
         Object expectedReturn;
+        boolean checkCompiled;
     }
 
     private List<TestCase> testCases;
@@ -182,6 +191,8 @@ public class Main {
                 new IncompatibleClassChangeError(), null));
         testCases.add(new TestCase("b/30458218", "B30458218", "run", null, null, null));
         testCases.add(new TestCase("b/31313170", "B31313170", "run", null, null, 0));
+        testCases.add(new TestCase("ConstClassAliasing", "ConstClassAliasing", "run", null, null,
+                null, true));
     }
 
     public void runTests() {
@@ -235,6 +246,10 @@ public class Main {
                     errorReturn = new IllegalStateException("Expected return " +
                                                             tc.expectedReturn +
                                                             ", but got " + retValue);
+                } else if (tc.checkCompiled && compiledWithOptimizing() && !isAotVerified(c)) {
+                    errorReturn = new IllegalStateException("Expected method " + method.getName() +
+                            " of class " + c.getName() +
+                            " be verified in compile-time in test " + tc.testName);
                 } else {
                     // Expected result, do nothing.
                 }
@@ -260,10 +275,15 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
+        System.loadLibrary(args[0]);
+
         Main main = new Main();
 
         main.runTests();
 
         System.out.println("Done!");
     }
+
+    private native static boolean isAotVerified(Class<?> cls);
+    private native static boolean compiledWithOptimizing();
 }
