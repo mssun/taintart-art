@@ -51,11 +51,6 @@ class Class;
 
 namespace openjdkjvmti {
 
-enum class FullDeoptRequirement {
-  kStubs,
-  kInterpreter,
-};
-
 class DeoptManager;
 
 struct JvmtiMethodInspectionCallback : public art::MethodInspectionCallback {
@@ -99,11 +94,11 @@ class DeoptManager {
       REQUIRES(!deoptimization_status_lock_, !art::Roles::uninterruptible_)
       REQUIRES_SHARED(art::Locks::mutator_lock_);
 
-  void AddDeoptimizeAllMethods(FullDeoptRequirement requirement)
+  void AddDeoptimizeAllMethods()
       REQUIRES(!deoptimization_status_lock_, !art::Roles::uninterruptible_)
       REQUIRES_SHARED(art::Locks::mutator_lock_);
 
-  void RemoveDeoptimizeAllMethods(FullDeoptRequirement requirement)
+  void RemoveDeoptimizeAllMethods()
       REQUIRES(!deoptimization_status_lock_, !art::Roles::uninterruptible_)
       REQUIRES_SHARED(art::Locks::mutator_lock_);
 
@@ -137,23 +132,19 @@ class DeoptManager {
   void WaitForDeoptimizationToFinishLocked(art::Thread* self)
       REQUIRES(deoptimization_status_lock_, !art::Locks::mutator_lock_);
 
-  void AddDeoptimizeAllMethodsLocked(art::Thread* self, FullDeoptRequirement req)
+  void AddDeoptimizeAllMethodsLocked(art::Thread* self)
       RELEASE(deoptimization_status_lock_)
       REQUIRES(!art::Roles::uninterruptible_, !art::Locks::mutator_lock_);
 
-  void RemoveDeoptimizeAllMethodsLocked(art::Thread* self, FullDeoptRequirement req)
+  void RemoveDeoptimizeAllMethodsLocked(art::Thread* self)
       RELEASE(deoptimization_status_lock_)
       REQUIRES(!art::Roles::uninterruptible_, !art::Locks::mutator_lock_);
 
-  void PerformGlobalDeoptimization(art::Thread* self,
-                                   bool needs_interpreter,
-                                   bool disable_intrinsics)
+  void PerformGlobalDeoptimization(art::Thread* self)
       RELEASE(deoptimization_status_lock_)
       REQUIRES(!art::Roles::uninterruptible_, !art::Locks::mutator_lock_);
 
-  void PerformGlobalUndeoptimization(art::Thread* self,
-                                     bool still_needs_stubs,
-                                     bool disable_intrinsics)
+  void PerformGlobalUndeoptimization(art::Thread* self)
       RELEASE(deoptimization_status_lock_)
       REQUIRES(!art::Roles::uninterruptible_, !art::Locks::mutator_lock_);
 
@@ -165,24 +156,14 @@ class DeoptManager {
       RELEASE(deoptimization_status_lock_)
       REQUIRES(!art::Roles::uninterruptible_, !art::Locks::mutator_lock_);
 
-  // Disables intrinsics and purges the jit code cache if needed.
-  void MaybeDisableIntrinsics(bool do_disable)
-      REQUIRES(art::Locks::mutator_lock_,
-               !deoptimization_status_lock_,
-               art::Roles::uninterruptible_);
-
   static constexpr const char* kDeoptManagerInstrumentationKey = "JVMTI_DeoptManager";
 
   art::Mutex deoptimization_status_lock_ ACQUIRED_BEFORE(art::Locks::classlinker_classes_lock_);
   art::ConditionVariable deoptimization_condition_ GUARDED_BY(deoptimization_status_lock_);
   bool performing_deoptimization_ GUARDED_BY(deoptimization_status_lock_);
 
-  // Number of times we have gotten requests to deopt everything both requiring and not requiring
-  // interpreter.
+  // Number of times we have gotten requests to deopt everything.
   uint32_t global_deopt_count_ GUARDED_BY(deoptimization_status_lock_);
-
-  // Number of deopt-everything requests that require interpreter.
-  uint32_t global_interpreter_deopt_count_ GUARDED_BY(deoptimization_status_lock_);
 
   // Number of users of deoptimization there currently are.
   uint32_t deopter_count_ GUARDED_BY(deoptimization_status_lock_);
@@ -200,10 +181,6 @@ class DeoptManager {
   // Set to true if anything calls SetLocalVariables on any thread since we need to be careful about
   // OSR after this.
   std::atomic<bool> set_local_variable_called_;
-
-  // If we have already disabled intrinsics. Since doing this throws out all JIT code we really will
-  // only ever do it once and never undo it.
-  bool already_disabled_intrinsics_ GUARDED_BY(art::Locks::mutator_lock_);
 
   // Helper for setting up/tearing-down for deoptimization.
   friend class ScopedDeoptimizationContext;
