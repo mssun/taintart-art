@@ -501,7 +501,7 @@ class JNI {
     CHECK_NON_NULL_ARGUMENT(mid);
     ScopedObjectAccess soa(env);
     ArtMethod* m = jni::DecodeArtMethod(mid);
-    mirror::Executable* method;
+    ObjPtr<mirror::Executable> method;
     DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
     DCHECK(!Runtime::Current()->IsActiveTransaction());
     if (m->IsConstructor()) {

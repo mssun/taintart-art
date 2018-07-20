@@ -544,8 +544,8 @@ static jobjectArray Class_getDeclaredConstructorsInternal(
     if (MethodMatchesConstructor(&m, public_only, enforce_hidden_api)) {
       DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
       DCHECK(!Runtime::Current()->IsActiveTransaction());
-      auto* constructor = mirror::Constructor::CreateFromArtMethod<kRuntimePointerSize, false>(
-          soa.Self(), &m);
+      ObjPtr<mirror::Constructor> constructor =
+          mirror::Constructor::CreateFromArtMethod<kRuntimePointerSize, false>(soa.Self(), &m);
       if (UNLIKELY(constructor == nullptr)) {
         soa.Self()->AssertPendingOOMException();
         return nullptr;
@@ -605,7 +605,7 @@ static jobjectArray Class_getDeclaredMethodsUnchecked(JNIEnv* env, jobject javaT
         IsDiscoverable(public_only, enforce_hidden_api, &m)) {
       DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
       DCHECK(!Runtime::Current()->IsActiveTransaction());
-      auto* method =
+      ObjPtr<mirror::Method> method =
           mirror::Method::CreateFromArtMethod<kRuntimePointerSize, false>(soa.Self(), &m);
       if (method == nullptr) {
         soa.Self()->AssertPendingException();
@@ -838,7 +838,7 @@ static jobject Class_newInstance(JNIEnv* env, jobject javaThis) {
     return nullptr;
   }
   // Verify that we can access the constructor.
-  auto* declaring_class = constructor->GetDeclaringClass();
+  ObjPtr<mirror::Class> declaring_class = constructor->GetDeclaringClass();
   if (!constructor->IsPublic()) {
     if (caller == nullptr) {
       caller.Assign(GetCallingClass(soa.Self(), 1));

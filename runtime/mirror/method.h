@@ -20,6 +20,9 @@
 #include "executable.h"
 
 namespace art {
+
+template<class MirrorType> class ObjPtr;
+
 namespace mirror {
 
 class Class;
@@ -28,7 +31,7 @@ class Class;
 class MANAGED Method : public Executable {
  public:
   template <PointerSize kPointerSize, bool kTransactionActive>
-  static Method* CreateFromArtMethod(Thread* self, ArtMethod* method)
+  static ObjPtr<Method> CreateFromArtMethod(Thread* self, ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
  private:
@@ -39,7 +42,7 @@ class MANAGED Method : public Executable {
 class MANAGED Constructor: public Executable {
  public:
   template <PointerSize kPointerSize, bool kTransactionActive>
-  static Constructor* CreateFromArtMethod(Thread* self, ArtMethod* method)
+  static ObjPtr<Constructor> CreateFromArtMethod(Thread* self, ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
  private:

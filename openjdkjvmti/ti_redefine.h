@@ -136,7 +136,7 @@ class Redefiner {
         /*out*/RedefinitionDataIter* cur_data)
           REQUIRES_SHARED(art::Locks::mutator_lock_);
 
-    void FindAndAllocateObsoleteMethods(art::mirror::Class* art_klass)
+    void FindAndAllocateObsoleteMethods(art::ObjPtr<art::mirror::Class> art_klass)
         REQUIRES(art::Locks::mutator_lock_);
 
     // Checks that the dex file contains only the single expected class and that the top-level class
