@@ -1884,6 +1884,7 @@ int processFile(const char* fileName) {
     return -1;
   }
   const DexFileLoader dex_file_loader;
+  DexFileLoaderErrorCode error_code;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
   if (!dex_file_loader.OpenAll(reinterpret_cast<const uint8_t*>(content.data()),
@@ -1891,6 +1892,7 @@ int processFile(const char* fileName) {
                                fileName,
                                kVerify,
                                kVerifyChecksum,
+                               &error_code,
                                &error_msg,
                                &dex_files)) {
     // Display returned error message to user. Note that this error behavior

@@ -31,6 +31,15 @@ class OatDexFile;
 
 class DexZipArchive;
 
+enum class DexFileLoaderErrorCode {
+  kNoError,
+  kEntryNotFound,
+  kExtractToMemoryError,
+  kDexFileError,
+  kMakeReadOnlyError,
+  kVerifyError
+};
+
 // Class that is used to open dex files and deal with corresponding multidex and location logic.
 class DexFileLoader {
  public:
@@ -142,19 +151,11 @@ class DexFileLoader {
                        const std::string& location,
                        bool verify,
                        bool verify_checksum,
+                       DexFileLoaderErrorCode* error_code,
                        std::string* error_msg,
                        std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
 
  protected:
-  enum class ZipOpenErrorCode {
-    kNoError,
-    kEntryNotFound,
-    kExtractToMemoryError,
-    kDexFileError,
-    kMakeReadOnlyError,
-    kVerifyError
-  };
-
   enum class VerifyResult {  // private
     kVerifyNotAttempted,
     kVerifySucceeded,
@@ -180,6 +181,7 @@ class DexFileLoader {
                               const std::string& location,
                               bool verify,
                               bool verify_checksum,
+                              DexFileLoaderErrorCode* error_code,
                               std::string* error_msg,
                               std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
 
@@ -190,8 +192,8 @@ class DexFileLoader {
                                                        const std::string& location,
                                                        bool verify,
                                                        bool verify_checksum,
-                                                       std::string* error_msg,
-                                                       ZipOpenErrorCode* error_code) const;
+                                                       DexFileLoaderErrorCode* error_code,
+                                                       std::string* error_msg) const;
 };
 
 }  // namespace art
