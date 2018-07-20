@@ -59,8 +59,6 @@ extern "C" void art_quick_invoke_stub(ArtMethod*, uint32_t*, uint32_t, Thread*, 
 extern "C" void art_quick_invoke_static_stub(ArtMethod*, uint32_t*, uint32_t, Thread*, JValue*,
                                              const char*);
 
-DEFINE_RUNTIME_DEBUG_FLAG(ArtMethod, kCheckDeclaringClassState);
-
 // Enforce that we he have the right index for runtime methods.
 static_assert(ArtMethod::kRuntimeMethodDexMethodIndex == dex::kDexNoIndex,
               "Wrong runtime-method dex method index");
@@ -90,18 +88,13 @@ ArtMethod* ArtMethod::GetNonObsoleteMethod() {
   }
 }
 
-template <ReadBarrierOption kReadBarrierOption>
 ArtMethod* ArtMethod::GetSingleImplementation(PointerSize pointer_size) {
-  if (!IsAbstract<kReadBarrierOption>()) {
+  if (!IsAbstract()) {
     // A non-abstract's single implementation is itself.
     return this;
   }
   return reinterpret_cast<ArtMethod*>(GetDataPtrSize(pointer_size));
 }
-template ArtMethod* ArtMethod::GetSingleImplementation<ReadBarrierOption::kWithReadBarrier>(
-    PointerSize pointer_size);
-template ArtMethod* ArtMethod::GetSingleImplementation<ReadBarrierOption::kWithoutReadBarrier>(
-    PointerSize pointer_size);
 
 ArtMethod* ArtMethod::FromReflectedMethod(const ScopedObjectAccessAlreadyRunnable& soa,
                                           jobject jlr_method) {
@@ -800,26 +793,5 @@ ALWAYS_INLINE static inline void DoGetAccessFlagsHelper(ArtMethod* method)
         method->GetDeclaringClass<kReadBarrierOption>()->IsIdxLoaded() ||
         method->GetDeclaringClass<kReadBarrierOption>()->IsErroneous());
 }
-
-template <ReadBarrierOption kReadBarrierOption> void ArtMethod::GetAccessFlagsDCheck() {
-  if (kCheckDeclaringClassState) {
-    Thread* self = Thread::Current();
-    if (!Locks::mutator_lock_->IsSharedHeld(self)) {
-      if (self->IsThreadSuspensionAllowable()) {
-        ScopedObjectAccess soa(self);
-        CHECK(IsRuntimeMethod() ||
-              GetDeclaringClass<kReadBarrierOption>()->IsIdxLoaded() ||
-              GetDeclaringClass<kReadBarrierOption>()->IsErroneous());
-      }
-    } else {
-      // We cannot use SOA in this case. We might be holding the lock, but may not be in the
-      // runnable state (e.g., during GC).
-      Locks::mutator_lock_->AssertSharedHeld(self);
-      DoGetAccessFlagsHelper<kReadBarrierOption>(this);
-    }
-  }
-}
-template void ArtMethod::GetAccessFlagsDCheck<ReadBarrierOption::kWithReadBarrier>();
-template void ArtMethod::GetAccessFlagsDCheck<ReadBarrierOption::kWithoutReadBarrier>();
 
 }  // namespace art

@@ -49,23 +49,17 @@
 namespace art {
 
 template <ReadBarrierOption kReadBarrierOption>
-inline mirror::Class* ArtMethod::GetDeclaringClassUnchecked() {
+inline ObjPtr<mirror::Class> ArtMethod::GetDeclaringClassUnchecked() {
   GcRootSource gc_root_source(this);
   return declaring_class_.Read<kReadBarrierOption>(&gc_root_source);
 }
 
 template <ReadBarrierOption kReadBarrierOption>
-inline mirror::Class* ArtMethod::GetDeclaringClass() {
-  mirror::Class* result = GetDeclaringClassUnchecked<kReadBarrierOption>();
+inline ObjPtr<mirror::Class> ArtMethod::GetDeclaringClass() {
+  ObjPtr<mirror::Class> result = GetDeclaringClassUnchecked<kReadBarrierOption>();
   if (kIsDebugBuild) {
     if (!IsRuntimeMethod()) {
       CHECK(result != nullptr) << this;
-      if (kCheckDeclaringClassState) {
-        if (!(result->IsIdxLoaded() || result->IsErroneous())) {
-          LOG(FATAL_WITHOUT_ABORT) << "Class status: " << result->GetStatus();
-          LOG(FATAL) << result->PrettyClass();
-        }
-      }
     } else {
       CHECK(result == nullptr) << this;
     }
@@ -77,8 +71,8 @@ inline void ArtMethod::SetDeclaringClass(ObjPtr<mirror::Class> new_declaring_cla
   declaring_class_ = GcRoot<mirror::Class>(new_declaring_class);
 }
 
-inline bool ArtMethod::CASDeclaringClass(mirror::Class* expected_class,
-                                         mirror::Class* desired_class) {
+inline bool ArtMethod::CASDeclaringClass(ObjPtr<mirror::Class> expected_class,
+                                         ObjPtr<mirror::Class> desired_class) {
   GcRoot<mirror::Class> expected_root(expected_class);
   GcRoot<mirror::Class> desired_root(desired_class);
   auto atomic_root_class = reinterpret_cast<Atomic<GcRoot<mirror::Class>>*>(&declaring_class_);
@@ -92,16 +86,6 @@ inline uint16_t ArtMethod::GetMethodIndex() {
 
 inline uint16_t ArtMethod::GetMethodIndexDuringLinking() {
   return method_index_;
-}
-
-template <ReadBarrierOption kReadBarrierOption>
-inline uint32_t ArtMethod::GetDexMethodIndex() {
-  if (kCheckDeclaringClassState) {
-    CHECK(IsRuntimeMethod() ||
-          GetDeclaringClass<kReadBarrierOption>()->IsIdxLoaded() ||
-          GetDeclaringClass<kReadBarrierOption>()->IsErroneous());
-  }
-  return GetDexMethodIndexUnchecked();
 }
 
 inline ObjPtr<mirror::Class> ArtMethod::LookupResolvedClassFromTypeIndex(dex::TypeIndex type_idx) {
@@ -127,14 +111,14 @@ inline bool ArtMethod::CheckIncompatibleClassChange(InvokeType type) {
     case kVirtual: {
       // We have an error if we are direct or a non-copied (i.e. not part of a real class) interface
       // method.
-      mirror::Class* methods_class = GetDeclaringClass();
+      ObjPtr<mirror::Class> methods_class = GetDeclaringClass();
       return IsDirect() || (methods_class->IsInterface() && !IsCopied());
     }
     case kSuper:
       // Constructors and static methods are called with invoke-direct.
       return IsConstructor() || IsStatic();
     case kInterface: {
-      mirror::Class* methods_class = GetDeclaringClass();
+      ObjPtr<mirror::Class> methods_class = GetDeclaringClass();
       return IsDirect() || !(methods_class->IsInterface() || methods_class->IsObjectClass());
     }
     default:
@@ -196,14 +180,7 @@ inline const char* ArtMethod::GetShorty() {
 inline const char* ArtMethod::GetShorty(uint32_t* out_length) {
   DCHECK(!IsProxyMethod());
   const DexFile* dex_file = GetDexFile();
-  // Don't do a read barrier in the DCHECK() inside GetDexMethodIndex() as GetShorty()
-  // can be called when the declaring class is about to be unloaded and cannot be added
-  // to the mark stack (subsequent GC assertion would fail).
-  // It is safe to avoid the read barrier as the ArtMethod is constructed with a declaring
-  // Class already satisfying the DCHECK() inside GetDexMethodIndex(), so even if that copy
-  // of declaring class becomes a from-space object, it shall satisfy the DCHECK().
-  return dex_file->GetMethodShorty(dex_file->GetMethodId(GetDexMethodIndex<kWithoutReadBarrier>()),
-                                   out_length);
+  return dex_file->GetMethodShorty(dex_file->GetMethodId(GetDexMethodIndex()), out_length);
 }
 
 inline const Signature ArtMethod::GetSignature() {
@@ -329,7 +306,7 @@ inline mirror::ClassLoader* ArtMethod::GetClassLoader() {
 
 template <ReadBarrierOption kReadBarrierOption>
 inline mirror::DexCache* ArtMethod::GetDexCache() {
-  if (LIKELY(!IsObsolete<kReadBarrierOption>())) {
+  if (LIKELY(!IsObsolete())) {
     ObjPtr<mirror::Class> klass = GetDeclaringClass<kReadBarrierOption>();
     return klass->GetDexCache<kDefaultVerifyFlags, kReadBarrierOption>();
   } else {
@@ -382,12 +359,12 @@ inline ObjPtr<mirror::Class> ArtMethod::ResolveReturnType() {
 
 template <ReadBarrierOption kReadBarrierOption>
 inline bool ArtMethod::HasSingleImplementation() {
-  if (IsFinal<kReadBarrierOption>() || GetDeclaringClass<kReadBarrierOption>()->IsFinal()) {
+  if (IsFinal() || GetDeclaringClass<kReadBarrierOption>()->IsFinal()) {
     // We don't set kAccSingleImplementation for these cases since intrinsic
     // can use the flag also.
     return true;
   }
-  return (GetAccessFlags<kReadBarrierOption>() & kAccSingleImplementation) != 0;
+  return (GetAccessFlags() & kAccSingleImplementation) != 0;
 }
 
 inline HiddenApiAccessFlags::ApiList ArtMethod::GetHiddenApiAccessFlags()
@@ -509,7 +486,7 @@ template<ReadBarrierOption kReadBarrierOption, typename RootVisitorType>
 void ArtMethod::VisitRoots(RootVisitorType& visitor, PointerSize pointer_size) {
   if (LIKELY(!declaring_class_.IsNull())) {
     visitor.VisitRoot(declaring_class_.AddressWithoutBarrier());
-    mirror::Class* klass = declaring_class_.Read<kReadBarrierOption>();
+    ObjPtr<mirror::Class> klass = declaring_class_.Read<kReadBarrierOption>();
     if (UNLIKELY(klass->IsProxyClass())) {
       // For normal methods, dex cache shortcuts will be visited through the declaring class.
       // However, for proxies we need to keep the interface method alive, so we visit its roots.
@@ -522,16 +499,16 @@ void ArtMethod::VisitRoots(RootVisitorType& visitor, PointerSize pointer_size) {
 
 template <typename Visitor>
 inline void ArtMethod::UpdateObjectsForImageRelocation(const Visitor& visitor) {
-  mirror::Class* old_class = GetDeclaringClassUnchecked<kWithoutReadBarrier>();
-  mirror::Class* new_class = visitor(old_class);
+  ObjPtr<mirror::Class> old_class = GetDeclaringClassUnchecked<kWithoutReadBarrier>();
+  ObjPtr<mirror::Class> new_class = visitor(old_class.Ptr());
   if (old_class != new_class) {
     SetDeclaringClass(new_class);
   }
 }
 
-template <ReadBarrierOption kReadBarrierOption, typename Visitor>
+template <typename Visitor>
 inline void ArtMethod::UpdateEntrypoints(const Visitor& visitor, PointerSize pointer_size) {
-  if (IsNative<kReadBarrierOption>()) {
+  if (IsNative()) {
     const void* old_native_code = GetEntryPointFromJniPtrSize(pointer_size);
     const void* new_native_code = visitor(old_native_code);
     if (old_native_code != new_native_code) {

@@ -167,14 +167,15 @@ static std::vector<std::pair<V, K>> SortByValueDesc(
 // Fixup a remote pointer that we read from a foreign boot.art to point to our own memory.
 // Returned pointer will point to inside of remote_contents.
 template <typename T>
-static T* FixUpRemotePointer(T* remote_ptr,
-                             std::vector<uint8_t>& remote_contents,
-                             const backtrace_map_t& boot_map) {
+static ObjPtr<T> FixUpRemotePointer(ObjPtr<T> remote_ptr,
+                                    std::vector<uint8_t>& remote_contents,
+                                    const backtrace_map_t& boot_map)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   if (remote_ptr == nullptr) {
     return nullptr;
   }
 
-  uintptr_t remote = reinterpret_cast<uintptr_t>(remote_ptr);
+  uintptr_t remote = reinterpret_cast<uintptr_t>(remote_ptr.Ptr());
 
   // In the case the remote pointer is out of range, it probably belongs to another image.
   // Just return null for this case.
@@ -188,14 +189,15 @@ static T* FixUpRemotePointer(T* remote_ptr,
 }
 
 template <typename T>
-static T* RemoteContentsPointerToLocal(T* remote_ptr,
-                                       std::vector<uint8_t>& remote_contents,
-                                       const ImageHeader& image_header) {
+static ObjPtr<T> RemoteContentsPointerToLocal(ObjPtr<T> remote_ptr,
+                                              std::vector<uint8_t>& remote_contents,
+                                              const ImageHeader& image_header)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   if (remote_ptr == nullptr) {
     return nullptr;
   }
 
-  uint8_t* remote = reinterpret_cast<uint8_t*>(remote_ptr);
+  uint8_t* remote = reinterpret_cast<uint8_t*>(remote_ptr.Ptr());
   ptrdiff_t boot_offset = remote - &remote_contents[0];
 
   const uint8_t* local_ptr = reinterpret_cast<const uint8_t*>(&image_header) + boot_offset;
@@ -534,9 +536,10 @@ class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object
         os_ << "      field contents:\n";
         for (mirror::Object* object : class_data.dirty_objects) {
           // remote class object
-          auto remote_klass = reinterpret_cast<mirror::Class*>(object);
+          ObjPtr<mirror::Class> remote_klass =
+              ObjPtr<mirror::Class>::DownCast<mirror::Object>(object);
           // local class object
-          auto local_klass =
+          ObjPtr<mirror::Class> local_klass =
               RemoteContentsPointerToLocal(remote_klass,
                                            *RegionCommon<mirror::Object>::remote_contents_,
                                            RegionCommon<mirror::Object>::image_header_);
@@ -797,12 +800,12 @@ class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
       // remote method
       auto art_method = reinterpret_cast<ArtMethod*>(method);
       // remote class
-      mirror::Class* remote_declaring_class =
+      ObjPtr<mirror::Class> remote_declaring_class =
         FixUpRemotePointer(art_method->GetDeclaringClass(),
                            *RegionCommon<ArtMethod>::remote_contents_,
                            RegionCommon<ArtMethod>::boot_map_);
       // local class
-      mirror::Class* declaring_class =
+      ObjPtr<mirror::Class> declaring_class =
         RemoteContentsPointerToLocal(remote_declaring_class,
                                      *RegionCommon<ArtMethod>::remote_contents_,
                                      RegionCommon<ArtMethod>::image_header_);
@@ -815,7 +818,7 @@ class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
     os_ << "      field contents:\n";
     for (ArtMethod* method : false_dirty_entries_) {
       // local class
-      mirror::Class* declaring_class = method->GetDeclaringClass();
+      ObjPtr<mirror::Class> declaring_class = method->GetDeclaringClass();
       DumpOneArtMethod(method, declaring_class, nullptr);
     }
   }
@@ -905,8 +908,8 @@ class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
   }
 
   void DumpOneArtMethod(ArtMethod* art_method,
-                        mirror::Class* declaring_class,
-                        mirror::Class* remote_declaring_class)
+                        ObjPtr<mirror::Class> declaring_class,
+                        ObjPtr<mirror::Class> remote_declaring_class)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     PointerSize pointer_size = InstructionSetPointerSize(Runtime::Current()->GetInstructionSet());
     os_ << "        " << reinterpret_cast<const void*>(art_method) << " ";

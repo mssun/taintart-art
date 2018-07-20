@@ -384,7 +384,7 @@ jvmtiError MethodUtil::GetMethodDeclaringClass(jvmtiEnv* env ATTRIBUTE_UNUSED,
   // Note: No GetInterfaceMethodIfProxy, we want to actual class.
 
   art::ScopedObjectAccess soa(art::Thread::Current());
-  art::mirror::Class* klass = art_method->GetDeclaringClass();
+  art::ObjPtr<art::mirror::Class> klass = art_method->GetDeclaringClass();
   *declaring_class_ptr = soa.AddLocalReference<jclass>(klass);
 
   return ERR(NONE);

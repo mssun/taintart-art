@@ -513,7 +513,7 @@ void ImageWriter::AddMethodPointerArray(mirror::PointerArray* arr) {
     for (size_t i = 0, len = arr->GetLength(); i < len; i++) {
       ArtMethod* method = arr->GetElementPtrSize<ArtMethod*>(i, target_ptr_size_);
       if (method != nullptr && !method->IsRuntimeMethod()) {
-        mirror::Class* klass = method->GetDeclaringClass();
+        ObjPtr<mirror::Class> klass = method->GetDeclaringClass();
         CHECK(klass == nullptr || KeepClass(klass))
             << Class::PrettyClass(klass) << " should be a kept class";
       }
@@ -655,7 +655,7 @@ bool ImageWriter::WillMethodBeDirty(ArtMethod* m) const {
   if (m->IsNative()) {
     return true;
   }
-  mirror::Class* declaring_class = m->GetDeclaringClass();
+  ObjPtr<mirror::Class> declaring_class = m->GetDeclaringClass();
   // Initialized is highly unlikely to dirty since there's no entry points to mutate.
   return declaring_class == nullptr || declaring_class->GetStatus() != ClassStatus::kInitialized;
 }
@@ -2689,7 +2689,7 @@ const uint8_t* ImageWriter::GetQuickCode(ArtMethod* method,
       method->GetEntryPointFromQuickCompiledCodePtrSize(target_ptr_size_);
   const uint8_t* quick_code;
 
-  if (UNLIKELY(IsInBootImage(method->GetDeclaringClass()))) {
+  if (UNLIKELY(IsInBootImage(method->GetDeclaringClass().Ptr()))) {
     DCHECK(method->IsCopied());
     // If the code is not in the oat file corresponding to this image (e.g. default methods)
     quick_code = reinterpret_cast<const uint8_t*>(quick_oat_entry_point);

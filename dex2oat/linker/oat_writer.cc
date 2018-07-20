@@ -1557,7 +1557,7 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
         // Find origin method. Declaring class and dex_method_idx
         // in the copied method should be the same as in the origin
         // method.
-        mirror::Class* declaring_class = method.GetDeclaringClass();
+        ObjPtr<mirror::Class> declaring_class = method.GetDeclaringClass();
         ArtMethod* origin = declaring_class->FindClassMethod(
             declaring_class->GetDexCache(),
             method.GetDexMethodIndex(),

@@ -718,7 +718,7 @@ class Hprof : public SingleRootVisitor {
           source_file = "";
         }
         __ AddStringId(LookupStringId(source_file));
-        auto class_result = classes_.find(method->GetDeclaringClass());
+        auto class_result = classes_.find(method->GetDeclaringClass().Ptr());
         CHECK(class_result != classes_.end());
         __ AddU4(class_result->second);
         __ AddU4(frame->ComputeLineNumber());
