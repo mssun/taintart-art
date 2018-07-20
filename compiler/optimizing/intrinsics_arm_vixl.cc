@@ -41,19 +41,15 @@ using helpers::HighRegisterFrom;
 using helpers::InputDRegisterAt;
 using helpers::InputRegisterAt;
 using helpers::InputSRegisterAt;
-using helpers::InputVRegisterAt;
 using helpers::Int32ConstantFrom;
 using helpers::LocationFrom;
 using helpers::LowRegisterFrom;
 using helpers::LowSRegisterFrom;
 using helpers::HighSRegisterFrom;
 using helpers::OutputDRegister;
-using helpers::OutputSRegister;
 using helpers::OutputRegister;
-using helpers::OutputVRegister;
 using helpers::RegisterFrom;
 using helpers::SRegisterFrom;
-using helpers::DRegisterFromS;
 
 using namespace vixl::aarch32;  // NOLINT(build/namespaces)
 

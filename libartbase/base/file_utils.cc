@@ -60,7 +60,6 @@
 
 namespace art {
 
-using android::base::StringAppendF;
 using android::base::StringPrintf;
 
 static constexpr const char* kClassesDex = "classes.dex";

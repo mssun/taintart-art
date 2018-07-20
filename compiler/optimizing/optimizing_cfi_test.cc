@@ -34,8 +34,6 @@
 
 namespace vixl32 = vixl::aarch32;
 
-using vixl32::r0;
-
 namespace art {
 
 // Run the tests only on host.
@@ -194,6 +192,7 @@ TEST_ISA(kMips64)
 
 #ifdef ART_ENABLE_CODEGEN_arm
 TEST_F(OptimizingCFITest, kThumb2Adjust) {
+  using vixl32::r0;
   std::vector<uint8_t> expected_asm(
       expected_asm_kThumb2_adjust,
       expected_asm_kThumb2_adjust + arraysize(expected_asm_kThumb2_adjust));

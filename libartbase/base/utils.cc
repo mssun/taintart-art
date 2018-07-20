@@ -45,7 +45,6 @@
 namespace art {
 
 using android::base::ReadFileToString;
-using android::base::StringAppendF;
 using android::base::StringPrintf;
 
 pid_t GetTid() {
