@@ -195,6 +195,7 @@ class DexAnalyze {
       return result;
     }
 
+    DexFileLoaderErrorCode error_code;
     std::string error_msg;
     Analysis cumulative(&options);
     for (const std::string& filename : options.filenames_) {
@@ -211,6 +212,7 @@ class DexAnalyze {
                                    filename.c_str(),
                                    options.run_dex_file_verifier_,
                                    options.verify_checksum_,
+                                   &error_code,
                                    &error_msg,
                                    &dex_files)) {
         LOG(ERROR) << "OpenAll failed for " + filename << " with " << error_msg << std::endl;

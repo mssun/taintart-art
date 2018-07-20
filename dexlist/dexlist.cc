@@ -180,6 +180,7 @@ static int processFile(const char* fileName) {
     return -1;
   }
   std::vector<std::unique_ptr<const DexFile>> dex_files;
+  DexFileLoaderErrorCode error_code;
   std::string error_msg;
   const DexFileLoader dex_file_loader;
   if (!dex_file_loader.OpenAll(reinterpret_cast<const uint8_t*>(content.data()),
@@ -187,6 +188,7 @@ static int processFile(const char* fileName) {
                                fileName,
                                /*verify*/ true,
                                kVerifyChecksum,
+                               &error_code,
                                &error_msg,
                                &dex_files)) {
     LOG(ERROR) << error_msg;
