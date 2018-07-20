@@ -119,7 +119,7 @@ class ArtDexFileLoader : public DexFileLoader {
                                                        bool verify,
                                                        bool verify_checksum,
                                                        std::string* error_msg,
-                                                       ZipOpenErrorCode* error_code) const;
+                                                       DexFileLoaderErrorCode* error_code) const;
 
   static std::unique_ptr<DexFile> OpenCommon(const uint8_t* base,
                                              size_t size,

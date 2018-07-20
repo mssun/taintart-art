@@ -269,6 +269,7 @@ class Veridex {
     }
 
     const DexFileLoader dex_file_loader;
+    DexFileLoaderErrorCode error_code;
     static constexpr bool kVerifyChecksum = true;
     static constexpr bool kRunDexFileVerifier = true;
     if (!dex_file_loader.OpenAll(reinterpret_cast<const uint8_t*>(content.data()),
@@ -276,8 +277,13 @@ class Veridex {
                                  filename.c_str(),
                                  kRunDexFileVerifier,
                                  kVerifyChecksum,
+                                 &error_code,
                                  error_msg,
                                  dex_files)) {
+      if (error_code == DexFileLoaderErrorCode::kEntryNotFound) {
+        LOG(INFO) << "No .dex found, skipping analysis.";
+        return true;
+      }
       return false;
     }
 
