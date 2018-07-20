@@ -20,32 +20,33 @@
 #include "class_root.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
+#include "obj_ptr-inl.h"
 
 namespace art {
 namespace mirror {
 
 template <PointerSize kPointerSize, bool kTransactionActive>
-Method* Method::CreateFromArtMethod(Thread* self, ArtMethod* method) {
+ObjPtr<Method> Method::CreateFromArtMethod(Thread* self, ArtMethod* method) {
   DCHECK(!method->IsConstructor()) << method->PrettyMethod();
   ObjPtr<Method> ret = ObjPtr<Method>::DownCast(GetClassRoot<Method>()->AllocObject(self));
   if (LIKELY(ret != nullptr)) {
     ObjPtr<Executable>(ret)->
         CreateFromArtMethod<kPointerSize, kTransactionActive>(method);
   }
-  return ret.Ptr();
+  return ret;
 }
 
-template Method* Method::CreateFromArtMethod<PointerSize::k32, false>(Thread* self,
-                                                                      ArtMethod* method);
-template Method* Method::CreateFromArtMethod<PointerSize::k32, true>(Thread* self,
-                                                                     ArtMethod* method);
-template Method* Method::CreateFromArtMethod<PointerSize::k64, false>(Thread* self,
-                                                                      ArtMethod* method);
-template Method* Method::CreateFromArtMethod<PointerSize::k64, true>(Thread* self,
-                                                                     ArtMethod* method);
+template ObjPtr<Method> Method::CreateFromArtMethod<PointerSize::k32, false>(
+    Thread* self, ArtMethod* method);
+template ObjPtr<Method> Method::CreateFromArtMethod<PointerSize::k32, true>(
+    Thread* self, ArtMethod* method);
+template ObjPtr<Method> Method::CreateFromArtMethod<PointerSize::k64, false>(
+    Thread* self, ArtMethod* method);
+template ObjPtr<Method> Method::CreateFromArtMethod<PointerSize::k64, true>(
+    Thread* self, ArtMethod* method);
 
 template <PointerSize kPointerSize, bool kTransactionActive>
-Constructor* Constructor::CreateFromArtMethod(Thread* self, ArtMethod* method) {
+ObjPtr<Constructor> Constructor::CreateFromArtMethod(Thread* self, ArtMethod* method) {
   DCHECK(method->IsConstructor()) << method->PrettyMethod();
   ObjPtr<Constructor> ret =
       ObjPtr<Constructor>::DownCast(GetClassRoot<Constructor>()->AllocObject(self));
@@ -53,16 +54,16 @@ Constructor* Constructor::CreateFromArtMethod(Thread* self, ArtMethod* method) {
     ObjPtr<Executable>(ret)->
         CreateFromArtMethod<kPointerSize, kTransactionActive>(method);
   }
-  return ret.Ptr();
+  return ret;
 }
 
-template Constructor* Constructor::CreateFromArtMethod<PointerSize::k32, false>(
+template ObjPtr<Constructor> Constructor::CreateFromArtMethod<PointerSize::k32, false>(
     Thread* self, ArtMethod* method);
-template Constructor* Constructor::CreateFromArtMethod<PointerSize::k32, true>(
+template ObjPtr<Constructor> Constructor::CreateFromArtMethod<PointerSize::k32, true>(
     Thread* self, ArtMethod* method);
-template Constructor* Constructor::CreateFromArtMethod<PointerSize::k64, false>(
+template ObjPtr<Constructor> Constructor::CreateFromArtMethod<PointerSize::k64, false>(
     Thread* self, ArtMethod* method);
-template Constructor* Constructor::CreateFromArtMethod<PointerSize::k64, true>(
+template ObjPtr<Constructor> Constructor::CreateFromArtMethod<PointerSize::k64, true>(
     Thread* self, ArtMethod* method);
 
 }  // namespace mirror

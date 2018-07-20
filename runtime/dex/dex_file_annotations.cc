@@ -728,7 +728,7 @@ ObjPtr<mirror::Object> CreateAnnotationMember(const ClassData& klass,
   ObjPtr<mirror::Class> annotation_member_class =
       WellKnownClasses::ToClass(WellKnownClasses::libcore_reflect_AnnotationMember);
   Handle<mirror::Object> new_member(hs.NewHandle(annotation_member_class->AllocObject(self)));
-  mirror::Method* method_obj_ptr;
+  ObjPtr<mirror::Method> method_obj_ptr;
   DCHECK(!Runtime::Current()->IsActiveTransaction());
   if (pointer_size == PointerSize::k64) {
     method_obj_ptr = mirror::Method::CreateFromArtMethod<PointerSize::k64, false>(

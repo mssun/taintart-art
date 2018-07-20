@@ -744,11 +744,7 @@ void JitCodeCache::CopyInlineCacheInto(const InlineCache& ic,
 
 static void ClearMethodCounter(ArtMethod* method, bool was_warm) {
   if (was_warm) {
-    // Don't do any read barrier, as the declaring class of `method` may
-    // be in the process of being GC'ed (reading the declaring class is done
-    // when DCHECKing the declaring class is resolved, which we know it is
-    // at this point).
-    method->SetPreviouslyWarm<kWithoutReadBarrier>();
+    method->SetPreviouslyWarm();
   }
   // We reset the counter to 1 so that the profile knows that the method was executed at least once.
   // This is required for layout purposes.

@@ -157,7 +157,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
   std::string failure_message;
   const DexFile& dex_file = klass->GetDexFile();
   const DexFile::ClassDef* class_def = klass->GetClassDef();
-  mirror::Class* super = klass->GetSuperClass();
+  ObjPtr<mirror::Class> super = klass->GetSuperClass();
   std::string temp;
   if (super == nullptr && strcmp("Ljava/lang/Object;", klass->GetDescriptor(&temp)) != 0) {
     early_failure = true;
@@ -2994,7 +2994,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       bool is_range =  (inst->Opcode() == Instruction::INVOKE_INTERFACE_RANGE);
       ArtMethod* abs_method = VerifyInvocationArgs(inst, METHOD_INTERFACE, is_range);
       if (abs_method != nullptr) {
-        mirror::Class* called_interface = abs_method->GetDeclaringClass();
+        ObjPtr<mirror::Class> called_interface = abs_method->GetDeclaringClass();
         if (!called_interface->IsInterface() && !called_interface->IsObjectClass()) {
           Fail(VERIFY_ERROR_CLASS_CHANGE) << "expected interface class in invoke-interface '"
               << abs_method->PrettyMethod() << "'";
@@ -3325,7 +3325,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
     // Special instructions.
     case Instruction::RETURN_VOID_NO_BARRIER:
       if (IsConstructor() && !IsStatic()) {
-        auto& declaring_class = GetDeclaringClass();
+        const RegType& declaring_class = GetDeclaringClass();
         if (declaring_class.IsUnresolvedReference()) {
           // We must iterate over the fields, even if we cannot use mirror classes to do so. Do it
           // manually over the underlying dex file.
@@ -3931,7 +3931,7 @@ ArtMethod* MethodVerifier::VerifyInvocationArgsFromIterator(
       // class. It would be wrong to use this for the type check (interface type checks are
       // postponed to runtime).
       if (res_method != nullptr && !res_method->IsMiranda()) {
-        mirror::Class* klass = res_method->GetDeclaringClass();
+        ObjPtr<mirror::Class> klass = res_method->GetDeclaringClass();
         std::string temp;
         res_method_class = &FromClass(klass->GetDescriptor(&temp), klass,
                                       klass->CannotBeAssignedFromOtherTypes());
@@ -4193,7 +4193,7 @@ ArtMethod* MethodVerifier::VerifyInvocationArgs(
 }
 
 bool MethodVerifier::CheckSignaturePolymorphicMethod(ArtMethod* method) {
-  mirror::Class* klass = method->GetDeclaringClass();
+  ObjPtr<mirror::Class> klass = method->GetDeclaringClass();
   const char* method_name = method->GetName();
 
   const char* expected_return_descriptor;

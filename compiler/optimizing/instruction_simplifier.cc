@@ -2268,7 +2268,7 @@ void InstructionSimplifierVisitor::SimplifySystemArrayCopy(HInvoke* instruction)
       ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
       PointerSize image_size = class_linker->GetImagePointerSize();
       HInvokeStaticOrDirect* invoke = instruction->AsInvokeStaticOrDirect();
-      mirror::Class* system = invoke->GetResolvedMethod()->GetDeclaringClass();
+      ObjPtr<mirror::Class> system = invoke->GetResolvedMethod()->GetDeclaringClass();
       ArtMethod* method = nullptr;
       switch (source_component_type) {
         case DataType::Type::kBool:

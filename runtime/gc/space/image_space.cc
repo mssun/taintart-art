@@ -1163,7 +1163,7 @@ class ImageSpaceLoader {
         if (fixup_heap_objects_) {
           method->UpdateObjectsForImageRelocation(ForwardObjectAdapter(this));
         }
-        method->UpdateEntrypoints<kWithoutReadBarrier>(ForwardCodeAdapter(this), pointer_size_);
+        method->UpdateEntrypoints(ForwardCodeAdapter(this), pointer_size_);
       }
     }
 
