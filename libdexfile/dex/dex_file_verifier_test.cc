@@ -102,11 +102,13 @@ static std::unique_ptr<const DexFile> OpenDexFileBase64(const char* base64,
   // read dex
   std::vector<std::unique_ptr<const DexFile>> tmp;
   const DexFileLoader dex_file_loader;
+  DexFileLoaderErrorCode error_code;
   bool success = dex_file_loader.OpenAll(dex_bytes.get(),
                                          length,
                                          location,
                                          /* verify */ true,
                                          /* verify_checksum */ true,
+                                         &error_code,
                                          error_msg,
                                          &tmp);
   CHECK(success) << *error_msg;

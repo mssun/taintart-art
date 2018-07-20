@@ -269,6 +269,7 @@ bool DexFileLoader::OpenAll(
     const std::string& location,
     bool verify,
     bool verify_checksum,
+    DexFileLoaderErrorCode* error_code,
     std::string* error_msg,
     std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
   DCHECK(dex_files != nullptr) << "DexFile::Open: out-param is nullptr";
@@ -283,6 +284,7 @@ bool DexFileLoader::OpenAll(
                                   location,
                                   verify,
                                   verify_checksum,
+                                  error_code,
                                   error_msg,
                                   dex_files);
   }
@@ -387,17 +389,17 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
     const std::string& location,
     bool verify,
     bool verify_checksum,
-    std::string* error_msg,
-    ZipOpenErrorCode* error_code) const {
+    DexFileLoaderErrorCode* error_code,
+    std::string* error_msg) const {
   CHECK(!location.empty());
   std::unique_ptr<DexZipEntry> zip_entry(zip_archive.Find(entry_name, error_msg));
   if (zip_entry == nullptr) {
-    *error_code = ZipOpenErrorCode::kEntryNotFound;
+    *error_code = DexFileLoaderErrorCode::kEntryNotFound;
     return nullptr;
   }
   if (zip_entry->GetUncompressedLength() == 0) {
     *error_msg = StringPrintf("Dex file '%s' has zero length", location.c_str());
-    *error_code = ZipOpenErrorCode::kDexFileError;
+    *error_code = DexFileLoaderErrorCode::kDexFileError;
     return nullptr;
   }
 
@@ -405,7 +407,7 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
   if (map.size() == 0) {
     *error_msg = StringPrintf("Failed to extract '%s' from '%s': %s", entry_name, location.c_str(),
                               error_msg->c_str());
-    *error_code = ZipOpenErrorCode::kExtractToMemoryError;
+    *error_code = DexFileLoaderErrorCode::kExtractToMemoryError;
     return nullptr;
   }
   VerifyResult verify_result;
@@ -422,19 +424,15 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
       error_msg,
       std::make_unique<VectorContainer>(std::move(map)),
       &verify_result);
-  if (dex_file == nullptr) {
+  if (verify_result != VerifyResult::kVerifySucceeded) {
     if (verify_result == VerifyResult::kVerifyNotAttempted) {
-      *error_code = ZipOpenErrorCode::kDexFileError;
+      *error_code = DexFileLoaderErrorCode::kDexFileError;
     } else {
-      *error_code = ZipOpenErrorCode::kVerifyError;
+      *error_code = DexFileLoaderErrorCode::kVerifyError;
     }
     return nullptr;
   }
-  if (verify_result != VerifyResult::kVerifySucceeded) {
-    *error_code = ZipOpenErrorCode::kVerifyError;
-    return nullptr;
-  }
-  *error_code = ZipOpenErrorCode::kNoError;
+  *error_code = DexFileLoaderErrorCode::kNoError;
   return dex_file;
 }
 
@@ -449,18 +447,18 @@ bool DexFileLoader::OpenAllDexFilesFromZip(
     const std::string& location,
     bool verify,
     bool verify_checksum,
+    DexFileLoaderErrorCode* error_code,
     std::string* error_msg,
     std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
   DCHECK(dex_files != nullptr) << "DexFile::OpenFromZip: out-param is nullptr";
-  ZipOpenErrorCode error_code;
   std::unique_ptr<const DexFile> dex_file(OpenOneDexFileFromZip(zip_archive,
                                                                 kClassesDex,
                                                                 location,
                                                                 verify,
                                                                 verify_checksum,
-                                                                error_msg,
-                                                                &error_code));
-  if (dex_file.get() == nullptr) {
+                                                                error_code,
+                                                                error_msg));
+  if (*error_code != DexFileLoaderErrorCode::kNoError) {
     return false;
   } else {
     // Had at least classes.dex.
@@ -479,10 +477,10 @@ bool DexFileLoader::OpenAllDexFilesFromZip(
                                                                          fake_location,
                                                                          verify,
                                                                          verify_checksum,
-                                                                         error_msg,
-                                                                         &error_code));
+                                                                         error_code,
+                                                                         error_msg));
       if (next_dex_file.get() == nullptr) {
-        if (error_code != ZipOpenErrorCode::kEntryNotFound) {
+        if (*error_code != DexFileLoaderErrorCode::kEntryNotFound) {
           LOG(WARNING) << "Zip open failed: " << *error_msg;
         }
         break;

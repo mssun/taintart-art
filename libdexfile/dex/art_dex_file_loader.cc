@@ -352,17 +352,17 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenOneDexFileFromZip(
     bool verify,
     bool verify_checksum,
     std::string* error_msg,
-    ZipOpenErrorCode* error_code) const {
+    DexFileLoaderErrorCode* error_code) const {
   ScopedTrace trace("Dex file open from Zip Archive " + std::string(location));
   CHECK(!location.empty());
   std::unique_ptr<ZipEntry> zip_entry(zip_archive.Find(entry_name, error_msg));
   if (zip_entry == nullptr) {
-    *error_code = ZipOpenErrorCode::kEntryNotFound;
+    *error_code = DexFileLoaderErrorCode::kEntryNotFound;
     return nullptr;
   }
   if (zip_entry->GetUncompressedLength() == 0) {
     *error_msg = StringPrintf("Dex file '%s' has zero length", location.c_str());
-    *error_code = ZipOpenErrorCode::kDexFileError;
+    *error_code = DexFileLoaderErrorCode::kDexFileError;
     return nullptr;
   }
 
@@ -394,7 +394,7 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenOneDexFileFromZip(
   if (map == nullptr) {
     *error_msg = StringPrintf("Failed to extract '%s' from '%s': %s", entry_name, location.c_str(),
                               error_msg->c_str());
-    *error_code = ZipOpenErrorCode::kExtractToMemoryError;
+    *error_code = DexFileLoaderErrorCode::kExtractToMemoryError;
     return nullptr;
   }
   VerifyResult verify_result;
@@ -417,23 +417,23 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenOneDexFileFromZip(
   }
   if (dex_file == nullptr) {
     if (verify_result == VerifyResult::kVerifyNotAttempted) {
-      *error_code = ZipOpenErrorCode::kDexFileError;
+      *error_code = DexFileLoaderErrorCode::kDexFileError;
     } else {
-      *error_code = ZipOpenErrorCode::kVerifyError;
+      *error_code = DexFileLoaderErrorCode::kVerifyError;
     }
     return nullptr;
   }
   if (!dex_file->DisableWrite()) {
     *error_msg = StringPrintf("Failed to make dex file '%s' read only", location.c_str());
-    *error_code = ZipOpenErrorCode::kMakeReadOnlyError;
+    *error_code = DexFileLoaderErrorCode::kMakeReadOnlyError;
     return nullptr;
   }
   CHECK(dex_file->IsReadOnly()) << location;
   if (verify_result != VerifyResult::kVerifySucceeded) {
-    *error_code = ZipOpenErrorCode::kVerifyError;
+    *error_code = DexFileLoaderErrorCode::kVerifyError;
     return nullptr;
   }
-  *error_code = ZipOpenErrorCode::kNoError;
+  *error_code = DexFileLoaderErrorCode::kNoError;
   return dex_file;
 }
 
@@ -452,7 +452,7 @@ bool ArtDexFileLoader::OpenAllDexFilesFromZip(
     std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
   ScopedTrace trace("Dex file open from Zip " + std::string(location));
   DCHECK(dex_files != nullptr) << "DexFile::OpenFromZip: out-param is nullptr";
-  ZipOpenErrorCode error_code;
+  DexFileLoaderErrorCode error_code;
   std::unique_ptr<const DexFile> dex_file(OpenOneDexFileFromZip(zip_archive,
                                                                 kClassesDex,
                                                                 location,
@@ -482,7 +482,7 @@ bool ArtDexFileLoader::OpenAllDexFilesFromZip(
                                                                          error_msg,
                                                                          &error_code));
       if (next_dex_file.get() == nullptr) {
-        if (error_code != ZipOpenErrorCode::kEntryNotFound) {
+        if (error_code != DexFileLoaderErrorCode::kEntryNotFound) {
           LOG(WARNING) << "Zip open failed: " << *error_msg;
         }
         break;
