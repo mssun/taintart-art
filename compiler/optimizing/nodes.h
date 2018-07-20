@@ -6284,6 +6284,13 @@ class HLoadClass FINAL : public HInstruction {
   bool IsInBootImage() const { return GetPackedFlag<kFlagIsInBootImage>(); }
   bool MustGenerateClinitCheck() const { return GetPackedFlag<kFlagGenerateClInitCheck>(); }
 
+  bool MustResolveTypeOnSlowPath() const {
+    // Check that this instruction has a slow path.
+    DCHECK(GetLoadKind() != LoadKind::kRuntimeCall);  // kRuntimeCall calls on main path.
+    DCHECK(GetLoadKind() == LoadKind::kBssEntry || MustGenerateClinitCheck());
+    return GetLoadKind() == LoadKind::kBssEntry;
+  }
+
   void MarkInBootImage() {
     SetPackedFlag<kFlagIsInBootImage>(true);
   }

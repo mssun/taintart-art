@@ -255,36 +255,42 @@ class LoadStringSlowPathX86 : public SlowPathCode {
 
 class LoadClassSlowPathX86 : public SlowPathCode {
  public:
-  LoadClassSlowPathX86(HLoadClass* cls,
-                       HInstruction* at,
-                       uint32_t dex_pc,
-                       bool do_clinit)
-      : SlowPathCode(at), cls_(cls), dex_pc_(dex_pc), do_clinit_(do_clinit) {
+  LoadClassSlowPathX86(HLoadClass* cls, HInstruction* at)
+      : SlowPathCode(at), cls_(cls) {
     DCHECK(at->IsLoadClass() || at->IsClinitCheck());
+    DCHECK_EQ(instruction_->IsLoadClass(), cls_ == instruction_);
   }
 
   void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
     LocationSummary* locations = instruction_->GetLocations();
+    Location out = locations->Out();
+    const uint32_t dex_pc = instruction_->GetDexPc();
+    bool must_resolve_type = instruction_->IsLoadClass() && cls_->MustResolveTypeOnSlowPath();
+    bool must_do_clinit = instruction_->IsClinitCheck() || cls_->MustGenerateClinitCheck();
+
     CodeGeneratorX86* x86_codegen = down_cast<CodeGeneratorX86*>(codegen);
     __ Bind(GetEntryLabel());
     SaveLiveRegisters(codegen, locations);
 
     InvokeRuntimeCallingConvention calling_convention;
-    dex::TypeIndex type_index = cls_->GetTypeIndex();
-    __ movl(calling_convention.GetRegisterAt(0), Immediate(type_index.index_));
-    x86_codegen->InvokeRuntime(do_clinit_ ? kQuickInitializeStaticStorage
-                                          : kQuickInitializeType,
-                               instruction_,
-                               dex_pc_,
-                               this);
-    if (do_clinit_) {
-      CheckEntrypointTypes<kQuickInitializeStaticStorage, void*, uint32_t>();
-    } else {
+    if (must_resolve_type) {
+      DCHECK(IsSameDexFile(cls_->GetDexFile(), x86_codegen->GetGraph()->GetDexFile()));
+      dex::TypeIndex type_index = cls_->GetTypeIndex();
+      __ movl(calling_convention.GetRegisterAt(0), Immediate(type_index.index_));
+      x86_codegen->InvokeRuntime(kQuickInitializeType, instruction_, dex_pc, this);
       CheckEntrypointTypes<kQuickInitializeType, void*, uint32_t>();
+      // If we also must_do_clinit, the resolved type is now in the correct register.
+    } else {
+      DCHECK(must_do_clinit);
+      Location source = instruction_->IsLoadClass() ? out : locations->InAt(0);
+      x86_codegen->Move32(Location::RegisterLocation(calling_convention.GetRegisterAt(0)), source);
+    }
+    if (must_do_clinit) {
+      x86_codegen->InvokeRuntime(kQuickInitializeStaticStorage, instruction_, dex_pc, this);
+      CheckEntrypointTypes<kQuickInitializeStaticStorage, void*, mirror::Class*>();
     }
 
     // Move the class to the desired location.
-    Location out = locations->Out();
     if (out.IsValid()) {
       DCHECK(out.IsRegister() && !locations->GetLiveRegisters()->ContainsCoreRegister(out.reg()));
       x86_codegen->Move32(out, Location::RegisterLocation(EAX));
@@ -298,12 +304,6 @@ class LoadClassSlowPathX86 : public SlowPathCode {
  private:
   // The class this slow path will load.
   HLoadClass* const cls_;
-
-  // The dex PC of `at_`.
-  const uint32_t dex_pc_;
-
-  // Whether to initialize the class.
-  const bool do_clinit_;
 
   DISALLOW_COPY_AND_ASSIGN(LoadClassSlowPathX86);
 };
@@ -6588,8 +6588,7 @@ void InstructionCodeGeneratorX86::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAFE
 
   if (generate_null_check || cls->MustGenerateClinitCheck()) {
     DCHECK(cls->CanCallRuntime());
-    SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) LoadClassSlowPathX86(
-        cls, cls, cls->GetDexPc(), cls->MustGenerateClinitCheck());
+    SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) LoadClassSlowPathX86(cls, cls);
     codegen_->AddSlowPath(slow_path);
 
     if (generate_null_check) {
@@ -6636,8 +6635,8 @@ void LocationsBuilderX86::VisitClinitCheck(HClinitCheck* check) {
 
 void InstructionCodeGeneratorX86::VisitClinitCheck(HClinitCheck* check) {
   // We assume the class to not be null.
-  SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) LoadClassSlowPathX86(
-      check->GetLoadClass(), check, check->GetDexPc(), true);
+  SlowPathCode* slow_path =
+      new (codegen_->GetScopedAllocator()) LoadClassSlowPathX86(check->GetLoadClass(), check);
   codegen_->AddSlowPath(slow_path);
   GenerateClassInitializationCheck(slow_path,
                                    check->GetLocations()->InAt(0).AsRegister<Register>());
