@@ -542,7 +542,7 @@ class MANAGED LOCKABLE Object {
   void SetFieldPtr64(MemberOffset field_offset, T new_value)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     SetFieldPtrWithSize<kTransactionActive, kCheckTransaction, kVerifyFlags>(
-        field_offset, new_value, 8u);
+        field_offset, new_value, PointerSize::k64);
   }
 
   template<bool kTransactionActive,
@@ -554,10 +554,8 @@ class MANAGED LOCKABLE Object {
                                          PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (pointer_size == PointerSize::k32) {
-      uintptr_t ptr  = reinterpret_cast<uintptr_t>(new_value);
-      DCHECK_EQ(static_cast<uint32_t>(ptr), ptr);  // Check that we dont lose any non 0 bits.
       SetField32<kTransactionActive, kCheckTransaction, kVerifyFlags>(
-          field_offset, static_cast<int32_t>(static_cast<uint32_t>(ptr)));
+          field_offset, reinterpret_cast32<int32_t>(new_value));
     } else {
       SetField64<kTransactionActive, kCheckTransaction, kVerifyFlags>(
           field_offset, reinterpret_cast64<int64_t>(new_value));
@@ -658,8 +656,8 @@ class MANAGED LOCKABLE Object {
   ALWAYS_INLINE T GetFieldPtrWithSize(MemberOffset field_offset, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (pointer_size == PointerSize::k32) {
-      uint64_t address = static_cast<uint32_t>(GetField32<kVerifyFlags, kIsVolatile>(field_offset));
-      return reinterpret_cast<T>(static_cast<uintptr_t>(address));
+      int32_t v = GetField32<kVerifyFlags, kIsVolatile>(field_offset);
+      return reinterpret_cast32<T>(v);
     } else {
       int64_t v = GetField64<kVerifyFlags, kIsVolatile>(field_offset);
       return reinterpret_cast64<T>(v);
