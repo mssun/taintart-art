@@ -27,9 +27,10 @@
 
 namespace art {
 
+#ifdef ART_TARGET_ANDROID
+
 using android::base::StringPrintf;
 
-#ifdef ART_TARGET_ANDROID
 #if defined(__aarch64__)
 TEST(InstructionSetFeaturesTest, DISABLED_FeaturesFromSystemPropertyVariant) {
   LOG(WARNING) << "Test disabled due to no CPP define for A53 erratum 835769";
