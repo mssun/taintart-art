@@ -257,7 +257,7 @@ NativeDexCachePair<T> DexCache::GetNativePairPtrSize(std::atomic<NativeDexCacheP
   } else {
     auto* array = reinterpret_cast<std::atomic<ConversionPair32>*>(pair_array);
     ConversionPair32 value = array[idx].load(std::memory_order_relaxed);
-    return NativeDexCachePair<T>(reinterpret_cast<T*>(value.first), value.second);
+    return NativeDexCachePair<T>(reinterpret_cast32<T*>(value.first), value.second);
   }
 }
 
@@ -272,9 +272,8 @@ void DexCache::SetNativePairPtrSize(std::atomic<NativeDexCachePair<T>>* pair_arr
     AtomicStoreRelease16B(&array[idx], v);
   } else {
     auto* array = reinterpret_cast<std::atomic<ConversionPair32>*>(pair_array);
-    ConversionPair32 v(
-        dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(pair.object)),
-        dchecked_integral_cast<uint32_t>(pair.index));
+    ConversionPair32 v(reinterpret_cast32<uint32_t>(pair.object),
+                       dchecked_integral_cast<uint32_t>(pair.index));
     array[idx].store(v, std::memory_order_release);
   }
 }
