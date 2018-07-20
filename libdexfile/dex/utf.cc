@@ -26,7 +26,6 @@
 namespace art {
 
 using android::base::StringAppendF;
-using android::base::StringPrintf;
 
 // This is used only from debugger and test code.
 size_t CountModifiedUtf8Chars(const char* utf8) {

@@ -26,9 +26,6 @@
 
 using namespace vixl::aarch32;  // NOLINT(build/namespaces)
 
-using vixl::ExactAssemblyScope;
-using vixl::CodeBufferCheckScope;
-
 namespace art {
 namespace arm {
 
