@@ -331,11 +331,11 @@ inline void Class::SetEmbeddedVTableLength(int32_t len) {
 }
 
 inline ImTable* Class::GetImt(PointerSize pointer_size) {
-  return GetFieldPtrWithSize<ImTable*>(MemberOffset(ImtPtrOffset(pointer_size)), pointer_size);
+  return GetFieldPtrWithSize<ImTable*>(ImtPtrOffset(pointer_size), pointer_size);
 }
 
 inline void Class::SetImt(ImTable* imt, PointerSize pointer_size) {
-  return SetFieldPtrWithSize<false>(MemberOffset(ImtPtrOffset(pointer_size)), imt, pointer_size);
+  return SetFieldPtrWithSize<false>(ImtPtrOffset(pointer_size), imt, pointer_size);
 }
 
 inline MemberOffset Class::EmbeddedVTableEntryOffset(uint32_t i, PointerSize pointer_size) {
@@ -1070,20 +1070,26 @@ template <VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption, 
 inline void Class::FixupNativePointers(Class* dest,
                                        PointerSize pointer_size,
                                        const Visitor& visitor) {
+  auto dest_address_fn = [dest](MemberOffset offset) {
+    return reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(dest) + offset.Uint32Value());
+  };
   // Update the field arrays.
   LengthPrefixedArray<ArtField>* const sfields = GetSFieldsPtr();
-  LengthPrefixedArray<ArtField>* const new_sfields = visitor(sfields);
+  void** sfields_dest_address = dest_address_fn(OFFSET_OF_OBJECT_MEMBER(Class, sfields_));
+  LengthPrefixedArray<ArtField>* const new_sfields = visitor(sfields, sfields_dest_address);
   if (sfields != new_sfields) {
     dest->SetSFieldsPtrUnchecked(new_sfields);
   }
   LengthPrefixedArray<ArtField>* const ifields = GetIFieldsPtr();
-  LengthPrefixedArray<ArtField>* const new_ifields = visitor(ifields);
+  void** ifields_dest_address = dest_address_fn(OFFSET_OF_OBJECT_MEMBER(Class, ifields_));
+  LengthPrefixedArray<ArtField>* const new_ifields = visitor(ifields, ifields_dest_address);
   if (ifields != new_ifields) {
     dest->SetIFieldsPtrUnchecked(new_ifields);
   }
   // Update method array.
   LengthPrefixedArray<ArtMethod>* methods = GetMethodsPtr();
-  LengthPrefixedArray<ArtMethod>* new_methods = visitor(methods);
+  void** methods_dest_address = dest_address_fn(OFFSET_OF_OBJECT_MEMBER(Class, methods_));
+  LengthPrefixedArray<ArtMethod>* new_methods = visitor(methods, methods_dest_address);
   if (methods != new_methods) {
     dest->SetMethodsPtrInternal(new_methods);
   }
@@ -1091,16 +1097,18 @@ inline void Class::FixupNativePointers(Class* dest,
   if (!IsTemp() && ShouldHaveEmbeddedVTable<kVerifyNone, kReadBarrierOption>()) {
     for (int32_t i = 0, count = GetEmbeddedVTableLength(); i < count; ++i) {
       ArtMethod* method = GetEmbeddedVTableEntry(i, pointer_size);
-      void** dest_addr = reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(dest) +
-          EmbeddedVTableEntryOffset(i, pointer_size).Uint32Value());
-      ArtMethod* new_method = visitor(method, dest_addr);
+      void** method_dest_addr = dest_address_fn(EmbeddedVTableEntryOffset(i, pointer_size));
+      ArtMethod* new_method = visitor(method, method_dest_addr);
       if (method != new_method) {
         dest->SetEmbeddedVTableEntryUnchecked(i, new_method, pointer_size);
       }
     }
   }
   if (!IsTemp() && ShouldHaveImt<kVerifyNone, kReadBarrierOption>()) {
-    dest->SetImt(visitor(GetImt(pointer_size)), pointer_size);
+    ImTable* imt = GetImt(pointer_size);
+    void** imt_dest_addr = dest_address_fn(ImtPtrOffset(pointer_size));
+    ImTable* new_imt = visitor(imt, imt_dest_addr);
+    dest->SetImt(new_imt, pointer_size);
   }
 }
 
