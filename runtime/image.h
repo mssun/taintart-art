@@ -240,7 +240,6 @@ class PACKED(4) ImageHeader {
   }
 
   ArtMethod* GetImageMethod(ImageMethod index) const;
-  void SetImageMethod(ImageMethod index, ArtMethod* method);
 
   const ImageSection& GetImageSection(ImageSections index) const {
     DCHECK_LT(static_cast<size_t>(index), kSectionCount);
