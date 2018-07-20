@@ -563,7 +563,7 @@ void ReferenceTypePropagation::RTPVisitor::SetClassAsTypeInfo(HInstruction* inst
       ArtMethod* method = cl->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
           dex_method_index, dex_cache, loader, /* referrer */ nullptr, kDirect);
       DCHECK(method != nullptr);
-      mirror::Class* declaring_class = method->GetDeclaringClass();
+      ObjPtr<mirror::Class> declaring_class = method->GetDeclaringClass();
       DCHECK(declaring_class != nullptr);
       DCHECK(declaring_class->IsStringClass())
           << "Expected String class: " << declaring_class->PrettyDescriptor();
@@ -572,7 +572,7 @@ void ReferenceTypePropagation::RTPVisitor::SetClassAsTypeInfo(HInstruction* inst
     }
     instr->SetReferenceTypeInfo(
         ReferenceTypeInfo::Create(handle_cache_->GetStringClassHandle(), /* is_exact */ true));
-  } else if (IsAdmissible(klass.Ptr())) {
+  } else if (IsAdmissible(klass)) {
     ReferenceTypeInfo::TypeHandle handle = handle_cache_->NewHandle(klass);
     is_exact = is_exact || handle->CannotBeAssignedFromOtherTypes();
     instr->SetReferenceTypeInfo(ReferenceTypeInfo::Create(handle, is_exact));

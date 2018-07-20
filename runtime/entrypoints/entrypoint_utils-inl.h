@@ -255,7 +255,7 @@ inline mirror::Class* CheckArrayAlloc(dex::TypeIndex type_idx,
     CHECK(klass->IsArrayClass()) << klass->PrettyClass();
   }
   if (kAccessCheck) {
-    mirror::Class* referrer = method->GetDeclaringClass();
+    ObjPtr<mirror::Class> referrer = method->GetDeclaringClass();
     if (UNLIKELY(!referrer->CanAccess(klass))) {
       ThrowIllegalAccessErrorClass(referrer, klass);
       *slow_path = true;
@@ -366,7 +366,7 @@ inline ArtField* FindFieldFromCode(uint32_t field_idx,
       ThrowIncompatibleClassChangeErrorField(resolved_field, is_static, referrer);
       return nullptr;
     }
-    mirror::Class* referring_class = referrer->GetDeclaringClass();
+    ObjPtr<mirror::Class> referring_class = referrer->GetDeclaringClass();
     if (UNLIKELY(!referring_class->CheckResolvedFieldAccess(fields_class,
                                                             resolved_field,
                                                             referrer->GetDexCache(),
@@ -721,7 +721,7 @@ inline ObjPtr<mirror::Class> ResolveVerifyAndClinit(dex::TypeIndex type_idx,
     return nullptr;  // Failure - Indicate to caller to deliver exception
   }
   // Perform access check if necessary.
-  mirror::Class* referring_class = referrer->GetDeclaringClass();
+  ObjPtr<mirror::Class> referring_class = referrer->GetDeclaringClass();
   if (verify_access && UNLIKELY(!referring_class->CanAccess(klass))) {
     ThrowIllegalAccessErrorClass(referring_class, klass);
     return nullptr;  // Failure - Indicate to caller to deliver exception

@@ -1484,7 +1484,7 @@ void Dbg::SetJdwpLocation(JDWP::JdwpLocation* location, ArtMethod* m, uint32_t d
   if (m == nullptr) {
     memset(location, 0, sizeof(*location));
   } else {
-    mirror::Class* c = m->GetDeclaringClass();
+    ObjPtr<mirror::Class> c = m->GetDeclaringClass();
     location->type_tag = GetTypeTag(c);
     location->class_id = gRegistry->AddRefType(c);
     // The RI Seems to return 0 for all obsolete methods. For compatibility we shall do the same.

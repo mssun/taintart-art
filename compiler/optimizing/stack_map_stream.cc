@@ -179,7 +179,7 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
       ScopedObjectAccess soa(Thread::Current());
       DCHECK(IsSameDexFile(*outer_dex_file, *method->GetDexFile()));
     }
-    uint32_t dex_method_index = method->GetDexMethodIndexUnchecked();
+    uint32_t dex_method_index = method->GetDexMethodIndex();
     entry[InlineInfo::kMethodInfoIndex] = method_infos_.Dedup({dex_method_index});
   }
   current_inline_infos_.push_back(entry);
@@ -196,8 +196,7 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
       if (encode_art_method) {
         CHECK_EQ(inline_info.GetArtMethod(), method);
       } else {
-        CHECK_EQ(method_infos_[inline_info.GetMethodInfoIndex()][0],
-                 method->GetDexMethodIndexUnchecked());
+        CHECK_EQ(method_infos_[inline_info.GetMethodInfoIndex()][0], method->GetDexMethodIndex());
       }
     });
   }

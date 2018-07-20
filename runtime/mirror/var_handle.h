@@ -197,11 +197,6 @@ class MANAGED FieldVarHandle : public VarHandle {
 
   ArtField* GetField() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
-  static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
   static MemberOffset ArtFieldOffset() {
     return MemberOffset(OFFSETOF_MEMBER(FieldVarHandle, art_field_));

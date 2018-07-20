@@ -23,7 +23,7 @@ public class Main {
             String aaaDerivedName = "AAA.Derived";
             System.out.println("Eating all memory.");
             // Resolve VMClassLoader before eating all the memory since we can not fail
-            // initializtaion of boot classpath classes.
+            // initialization of boot classpath classes.
             Class.forName("java.lang.VMClassLoader");
             Object memory = eatAllMemory();
 
