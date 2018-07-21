@@ -68,6 +68,7 @@ test="org.apache.harmony.jpda.tests.share.AllTests"
 mode="target"
 # Use JIT compiling by default.
 use_jit=true
+instant_jit=false
 variant_cmdline_parameter="--variant=X32"
 dump_command="/bin/true"
 # Timeout of JDWP test in ms.
@@ -128,6 +129,11 @@ while true; do
     shift
   elif [[ $1 == -Ximage:* ]]; then
     image="$1"
+    shift
+  elif [[ "$1" == "--instant-jit" ]]; then
+    instant_jit=true
+    # Remove the --instant-jit from the arguments.
+    args=${args/$1}
     shift
   elif [[ "$1" == "--no-jit" ]]; then
     use_jit=false
@@ -308,6 +314,10 @@ fi
 if $use_jit; then
   vm_args="$vm_args --vm-arg -Xcompiler-option --vm-arg --compiler-filter=quicken"
   debuggee_args="$debuggee_args -Xcompiler-option --compiler-filter=quicken"
+fi
+
+if $instant_jit; then
+  debuggee_args="$debuggee_args -Xjitthreshold:0"
 fi
 
 if [[ $mode != "ri" ]]; then
