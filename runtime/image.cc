@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '6', '2', '\0' };  // Boot image live objects.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '6', '3', '\0' };  // Image relocations.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
