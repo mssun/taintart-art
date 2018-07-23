@@ -52,7 +52,17 @@ Reported Issues:
  * Request to be able to sort tables by size.
 
 Release History:
- 1.6 Pending
+ 1.7 Pending
+
+ 1.6 July 24, 2018
+   Distinguish between soft/weak/phantom/etc references.
+   Annotate $classOverhead byte[] arrays with their class.
+   Show progress of heap dump processing.
+   Add --retained command line option to ahat.
+   Support heap dumps generated with HotSpotDiagnosticMXBean.
+   Updated public APIs for dominators computation, reachability and parser.
+   AhatInstance no longer implements DominatorsComputation.Node
+   Bug fixes.
 
  1.5 December 05, 2017
    Distinguish between weakly reachable and unreachable instances.
