@@ -27,6 +27,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/bit_memory_region.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "base/globals.h"
@@ -85,6 +86,68 @@ using ::art::mirror::String;
 
 namespace art {
 namespace linker {
+
+static inline size_t RelocationIndex(size_t relocation_offset, PointerSize target_ptr_size) {
+  static_assert(sizeof(GcRoot<mirror::Object>) == sizeof(mirror::HeapReference<mirror::Object>),
+                "Expecting heap GC roots and references to have the same size.");
+  DCHECK_LE(sizeof(GcRoot<mirror::Object>), static_cast<size_t>(target_ptr_size));
+  DCHECK_ALIGNED(relocation_offset, sizeof(GcRoot<mirror::Object>));
+  return relocation_offset / sizeof(GcRoot<mirror::Object>);
+}
+
+static ArrayRef<const uint8_t> MaybeCompressData(ArrayRef<const uint8_t> source,
+                                                 ImageHeader::StorageMode image_storage_mode,
+                                                 /*out*/ std::vector<uint8_t>* storage) {
+  const uint64_t compress_start_time = NanoTime();
+
+  switch (image_storage_mode) {
+    case ImageHeader::kStorageModeLZ4: {
+      storage->resize(LZ4_compressBound(source.size()));
+      size_t data_size = LZ4_compress_default(
+          reinterpret_cast<char*>(const_cast<uint8_t*>(source.data())),
+          reinterpret_cast<char*>(storage->data()),
+          source.size(),
+          storage->size());
+      storage->resize(data_size);
+      break;
+    }
+    case ImageHeader::kStorageModeLZ4HC: {
+      // Bound is same as non HC.
+      storage->resize(LZ4_compressBound(source.size()));
+      size_t data_size = LZ4_compress_HC(
+          reinterpret_cast<const char*>(const_cast<uint8_t*>(source.data())),
+          reinterpret_cast<char*>(storage->data()),
+          source.size(),
+          storage->size(),
+          LZ4HC_CLEVEL_MAX);
+      storage->resize(data_size);
+      break;
+    }
+    case ImageHeader::kStorageModeUncompressed: {
+      return source;
+    }
+    default: {
+      LOG(FATAL) << "Unsupported";
+      UNREACHABLE();
+    }
+  }
+
+  DCHECK(image_storage_mode == ImageHeader::kStorageModeLZ4 ||
+         image_storage_mode == ImageHeader::kStorageModeLZ4HC);
+  VLOG(compiler) << "Compressed from " << source.size() << " to " << storage->size() << " in "
+                 << PrettyDuration(NanoTime() - compress_start_time);
+  if (kIsDebugBuild) {
+    std::vector<uint8_t> decompressed(source.size());
+    const size_t decompressed_size = LZ4_decompress_safe(
+        reinterpret_cast<char*>(storage->data()),
+        reinterpret_cast<char*>(decompressed.data()),
+        storage->size(),
+        decompressed.size());
+    CHECK_EQ(decompressed_size, decompressed.size());
+    CHECK_EQ(memcmp(source.data(), decompressed.data(), source.size()), 0) << image_storage_mode;
+  }
+  return ArrayRef<const uint8_t>(*storage);
+}
 
 // Separate objects into multiple bins to optimize dirty memory use.
 static constexpr bool kBinObjects = true;
@@ -239,69 +302,18 @@ bool ImageWriter::Write(int image_fd,
       return EXIT_FAILURE;
     }
 
-    std::unique_ptr<char[]> compressed_data;
     // Image data size excludes the bitmap and the header.
     ImageHeader* const image_header = reinterpret_cast<ImageHeader*>(image_info.image_->Begin());
-    const size_t image_data_size = image_header->GetImageSize() - sizeof(ImageHeader);
-    char* image_data = reinterpret_cast<char*>(image_info.image_->Begin()) + sizeof(ImageHeader);
-    size_t data_size;
-    const char* image_data_to_write;
-    const uint64_t compress_start_time = NanoTime();
+    ArrayRef<const uint8_t> raw_image_data(image_info.image_->Begin() + sizeof(ImageHeader),
+                                           image_header->GetImageSize() - sizeof(ImageHeader));
 
     CHECK_EQ(image_header->storage_mode_, image_storage_mode_);
-    switch (image_storage_mode_) {
-      case ImageHeader::kStorageModeLZ4: {
-        const size_t compressed_max_size = LZ4_compressBound(image_data_size);
-        compressed_data.reset(new char[compressed_max_size]);
-        data_size = LZ4_compress_default(
-            reinterpret_cast<char*>(image_info.image_->Begin()) + sizeof(ImageHeader),
-            &compressed_data[0],
-            image_data_size,
-            compressed_max_size);
-        break;
-      }
-      case ImageHeader::kStorageModeLZ4HC: {
-        // Bound is same as non HC.
-        const size_t compressed_max_size = LZ4_compressBound(image_data_size);
-        compressed_data.reset(new char[compressed_max_size]);
-        data_size = LZ4_compress_HC(
-            reinterpret_cast<char*>(image_info.image_->Begin()) + sizeof(ImageHeader),
-            &compressed_data[0],
-            image_data_size,
-            compressed_max_size,
-            LZ4HC_CLEVEL_MAX);
-        break;
-      }
-      case ImageHeader::kStorageModeUncompressed: {
-        data_size = image_data_size;
-        image_data_to_write = image_data;
-        break;
-      }
-      default: {
-        LOG(FATAL) << "Unsupported";
-        UNREACHABLE();
-      }
-    }
-
-    if (compressed_data != nullptr) {
-      image_data_to_write = &compressed_data[0];
-      VLOG(compiler) << "Compressed from " << image_data_size << " to " << data_size << " in "
-                     << PrettyDuration(NanoTime() - compress_start_time);
-      if (kIsDebugBuild) {
-        std::unique_ptr<uint8_t[]> temp(new uint8_t[image_data_size]);
-        const size_t decompressed_size = LZ4_decompress_safe(
-            reinterpret_cast<char*>(&compressed_data[0]),
-            reinterpret_cast<char*>(&temp[0]),
-            data_size,
-            image_data_size);
-        CHECK_EQ(decompressed_size, image_data_size);
-        CHECK_EQ(memcmp(image_data, &temp[0], image_data_size), 0) << image_storage_mode_;
-      }
-    }
+    std::vector<uint8_t> compressed_data;
+    ArrayRef<const uint8_t> image_data =
+        MaybeCompressData(raw_image_data, image_storage_mode_, &compressed_data);
 
     // Write out the image + fields + methods.
-    const bool is_compressed = compressed_data != nullptr;
-    if (!image_file->PwriteFully(image_data_to_write, data_size, sizeof(ImageHeader))) {
+    if (!image_file->PwriteFully(image_data.data(), image_data.size(), sizeof(ImageHeader))) {
       PLOG(ERROR) << "Failed to write image file data " << image_filename;
       image_file->Erase();
       return false;
@@ -311,14 +323,30 @@ bool ImageWriter::Write(int image_fd,
     // convenience.
     const ImageSection& bitmap_section = image_header->GetImageBitmapSection();
     // Align up since data size may be unaligned if the image is compressed.
-    size_t bitmap_position_in_file = RoundUp(sizeof(ImageHeader) + data_size, kPageSize);
-    if (!is_compressed) {
+    size_t bitmap_position_in_file = RoundUp(sizeof(ImageHeader) + image_data.size(), kPageSize);
+    if (image_storage_mode_ == ImageHeader::kDefaultStorageMode) {
       CHECK_EQ(bitmap_position_in_file, bitmap_section.Offset());
     }
-    if (!image_file->PwriteFully(reinterpret_cast<char*>(image_info.image_bitmap_->Begin()),
+    if (!image_file->PwriteFully(image_info.image_bitmap_->Begin(),
                                  bitmap_section.Size(),
                                  bitmap_position_in_file)) {
-      PLOG(ERROR) << "Failed to write image file " << image_filename;
+      PLOG(ERROR) << "Failed to write image file bitmap " << image_filename;
+      image_file->Erase();
+      return false;
+    }
+
+    // Write out relocations.
+    size_t relocations_position_in_file = bitmap_position_in_file + bitmap_section.Size();
+    ArrayRef<const uint8_t> relocations = MaybeCompressData(
+        ArrayRef<const uint8_t>(image_info.relocation_bitmap_),
+        image_storage_mode_,
+        &compressed_data);
+    image_header->sections_[ImageHeader::kSectionImageRelocations] =
+        ImageSection(bitmap_section.Offset() + bitmap_section.Size(), relocations.size());
+    if (!image_file->PwriteFully(relocations.data(),
+                                 relocations.size(),
+                                 relocations_position_in_file)) {
+      PLOG(ERROR) << "Failed to write image file relocations " << image_filename;
       image_file->Erase();
       return false;
     }
@@ -333,7 +361,7 @@ bool ImageWriter::Write(int image_fd,
     // Write header last in case the compiler gets killed in the middle of image writing.
     // We do not want to have a corrupted image with a valid header.
     // The header is uncompressed since it contains whether the image is compressed or not.
-    image_header->data_size_ = data_size;
+    image_header->data_size_ = image_data.size();
     if (!image_file->PwriteFully(reinterpret_cast<char*>(image_info.image_->Begin()),
                                  sizeof(ImageHeader),
                                  0)) {
@@ -342,7 +370,7 @@ bool ImageWriter::Write(int image_fd,
       return false;
     }
 
-    CHECK_EQ(bitmap_position_in_file + bitmap_section.Size(),
+    CHECK_EQ(relocations_position_in_file + relocations.size(),
              static_cast<size_t>(image_file->GetLength()));
     if (image_file->FlushCloseOrErase() != 0) {
       PLOG(ERROR) << "Failed to flush and close image file " << image_filename;
@@ -1969,6 +1997,8 @@ void ImageWriter::CreateHeader(size_t oat_index) {
   const size_t bitmap_bytes = image_info.image_bitmap_->Size();
   auto* bitmap_section = &sections[ImageHeader::kSectionImageBitmap];
   *bitmap_section = ImageSection(RoundUp(image_end, kPageSize), RoundUp(bitmap_bytes, kPageSize));
+  // The relocations section shall be finished later as we do not know its actual size yet.
+
   if (VLOG_IS_ON(compiler)) {
     LOG(INFO) << "Creating header for " << oat_filenames_[oat_index];
     size_t idx = 0;
@@ -2014,6 +2044,13 @@ void ImageWriter::CreateHeader(size_t oat_index) {
       /*is_pic*/compile_app_image_,
       image_storage_mode_,
       /*data_size*/0u);
+
+  // Resize relocation bitmap for recording reference/pointer relocations.
+  size_t number_of_relocation_locations = RelocationIndex(image_end, target_ptr_size_);
+  DCHECK(image_info.relocation_bitmap_.empty());
+  image_info.relocation_bitmap_.resize(
+      BitsToBytesRoundUp(number_of_relocation_locations * (compile_app_image_ ? 2u : 1u)));
+  // Record header relocations.
   RecordImageRelocation(&header->image_begin_, oat_index);
   RecordImageRelocation(&header->oat_file_begin_, oat_index);
   RecordImageRelocation(&header->oat_data_begin_, oat_index);
@@ -2966,13 +3003,34 @@ ImageWriter::ImageInfo::ImageInfo()
 
 template <bool kCheckNotNull /* = true */>
 void ImageWriter::RecordImageRelocation(const void* dest,
-                                        size_t oat_index ATTRIBUTE_UNUSED,
-                                        bool app_to_boot_image ATTRIBUTE_UNUSED /* = false */) {
+                                        size_t oat_index,
+                                        bool app_to_boot_image /* = false */) {
   // Check that we're not recording a relocation for null.
   if (kCheckNotNull) {
     DCHECK(reinterpret_cast<const uint32_t*>(dest)[0] != 0u);
   }
-  // TODO: Record the relocation.
+  // Calculate the offset within the image.
+  ImageInfo* image_info = &image_infos_[oat_index];
+  DCHECK(image_info->image_->HasAddress(dest))
+      << "MemMap range " << static_cast<const void*>(image_info->image_->Begin())
+      << "-" << static_cast<const void*>(image_info->image_->End())
+      << " does not contain " << dest;
+  size_t offset = reinterpret_cast<const uint8_t*>(dest) - image_info->image_->Begin();
+  ImageHeader* const image_header = reinterpret_cast<ImageHeader*>(image_info->image_->Begin());
+  size_t image_end = image_header->GetClassTableSection().End();
+  DCHECK_LT(offset, image_end);
+  // Calculate the location index.
+  size_t size = RelocationIndex(image_end, target_ptr_size_);
+  size_t index = RelocationIndex(offset, target_ptr_size_);
+  if (app_to_boot_image) {
+    index += size;
+  }
+  // Mark the location in the bitmap.
+  DCHECK(compile_app_image_ || !app_to_boot_image);
+  MemoryRegion region(image_info->relocation_bitmap_.data(), image_info->relocation_bitmap_.size());
+  BitMemoryRegion bit_region(region, /* bit_offset */ 0u, compile_app_image_ ? 2u * size : size);
+  DCHECK(!bit_region.LoadBit(index));
+  bit_region.StoreBit(index, /* value*/ true);
 }
 
 template <typename DestType>

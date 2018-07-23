@@ -230,6 +230,7 @@ class PACKED(4) ImageHeader {
     kSectionInternedStrings,
     kSectionClassTable,
     kSectionImageBitmap,
+    kSectionImageRelocations,
     kSectionCount,  // Number of elements in enum.
   };
 
@@ -284,6 +285,10 @@ class PACKED(4) ImageHeader {
 
   const ImageSection& GetImageBitmapSection() const {
     return GetImageSection(kSectionImageBitmap);
+  }
+
+  const ImageSection& GetImageRelocationsSection() const {
+    return GetImageSection(kSectionImageRelocations);
   }
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
