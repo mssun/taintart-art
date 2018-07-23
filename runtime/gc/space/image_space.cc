@@ -618,10 +618,21 @@ class ImageSpaceLoader {
     const size_t image_bitmap_offset = RoundUp(sizeof(ImageHeader) + image_header->GetDataSize(),
                                                kPageSize);
     const size_t end_of_bitmap = image_bitmap_offset + bitmap_section.Size();
-    if (end_of_bitmap != image_file_size) {
+    const ImageSection& relocations_section = image_header->GetImageRelocationsSection();
+    if (relocations_section.Offset() != bitmap_section.Offset() + bitmap_section.Size()) {
       *error_msg = StringPrintf(
-          "Image file size does not equal end of bitmap: size=%" PRIu64 " vs. %zu.", image_file_size,
-          end_of_bitmap);
+          "Relocations do not start immediately after bitmap: %u vs. %u + %u.",
+          relocations_section.Offset(),
+          bitmap_section.Offset(),
+          bitmap_section.Size());
+      return nullptr;
+    }
+    const size_t end_of_relocations = end_of_bitmap + relocations_section.Size();
+    if (end_of_relocations != image_file_size) {
+      *error_msg = StringPrintf(
+          "Image file size does not equal end of relocations: size=%" PRIu64 " vs. %zu.",
+          image_file_size,
+          end_of_relocations);
       return nullptr;
     }
 

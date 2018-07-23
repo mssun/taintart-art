@@ -1928,6 +1928,7 @@ class ImageDumper {
     const auto& intern_section = image_header_.GetInternedStringsSection();
     const auto& class_table_section = image_header_.GetClassTableSection();
     const auto& bitmap_section = image_header_.GetImageBitmapSection();
+    const auto& relocations_section = image_header_.GetImageRelocationsSection();
 
     stats_.header_bytes = header_bytes;
 
@@ -1967,7 +1968,11 @@ class ImageDumper {
     CHECK_ALIGNED(bitmap_section.Offset(), kPageSize);
     stats_.alignment_bytes += RoundUp(bitmap_offset, kPageSize) - bitmap_offset;
 
+    // There should be no space between the bitmap and relocations.
+    CHECK_EQ(bitmap_section.Offset() + bitmap_section.Size(), relocations_section.Offset());
+
     stats_.bitmap_bytes += bitmap_section.Size();
+    stats_.relocations_bytes += relocations_section.Size();
     stats_.art_field_bytes += field_section.Size();
     stats_.art_method_bytes += method_section.Size();
     stats_.dex_cache_arrays_bytes += dex_cache_arrays_section.Size();
@@ -2400,6 +2405,7 @@ class ImageDumper {
     size_t interned_strings_bytes;
     size_t class_table_bytes;
     size_t bitmap_bytes;
+    size_t relocations_bytes;
     size_t alignment_bytes;
 
     size_t managed_code_bytes;
@@ -2429,6 +2435,7 @@ class ImageDumper {
           interned_strings_bytes(0),
           class_table_bytes(0),
           bitmap_bytes(0),
+          relocations_bytes(0),
           alignment_bytes(0),
           managed_code_bytes(0),
           managed_code_bytes_ignoring_deduplication(0),
@@ -2592,6 +2599,7 @@ class ImageDumper {
                                   "interned_string_bytes  =  %8zd (%2.0f%% of art file bytes)\n"
                                   "class_table_bytes      =  %8zd (%2.0f%% of art file bytes)\n"
                                   "bitmap_bytes           =  %8zd (%2.0f%% of art file bytes)\n"
+                                  "relocations_bytes      =  %8zd (%2.0f%% of art file bytes)\n"
                                   "alignment_bytes        =  %8zd (%2.0f%% of art file bytes)\n\n",
                                   header_bytes, PercentOfFileBytes(header_bytes),
                                   object_bytes, PercentOfFileBytes(object_bytes),
@@ -2603,12 +2611,13 @@ class ImageDumper {
                                   PercentOfFileBytes(interned_strings_bytes),
                                   class_table_bytes, PercentOfFileBytes(class_table_bytes),
                                   bitmap_bytes, PercentOfFileBytes(bitmap_bytes),
+                                  relocations_bytes, PercentOfFileBytes(relocations_bytes),
                                   alignment_bytes, PercentOfFileBytes(alignment_bytes))
             << std::flush;
         CHECK_EQ(file_bytes,
                  header_bytes + object_bytes + art_field_bytes + art_method_bytes +
                  dex_cache_arrays_bytes + interned_strings_bytes + class_table_bytes +
-                 bitmap_bytes + alignment_bytes);
+                 bitmap_bytes + relocations_bytes + alignment_bytes);
       }
 
       os << "object_bytes breakdown:\n";
