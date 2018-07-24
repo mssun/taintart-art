@@ -1,9 +1,13 @@
 Main$ClassWithClinit1's static initializer
 Main$ClassWithClinit2's static initializer
-Main$ClassWithClinit3's static initializer
-Main$ClassWithClinit4's static initializer
+Main$ClassWithClinit3Static's static initializer
+Main$ClassWithClinit3Instance's static initializer
+Main$ClassWithClinit4Static's static initializer
+Main$ClassWithClinit4Instance's static initializer
 Main$ClassWithClinit5's static initializer
+Main$SubClassOfClassWithoutClinit5's static initializer
 Main$ClassWithClinit6's static initializer
+Main$SubClassOfClassWithoutClinit6's static initializer
 Main$ClassWithClinit7's static initializer
 Main$ClassWithClinit8's static initializer
 Main$ClassWithClinit9's static initializer

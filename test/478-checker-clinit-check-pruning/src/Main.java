@@ -16,8 +16,6 @@
 
 public class Main {
 
-  static boolean doThrow = false;
-
   /*
    * Ensure an inlined static invoke explicitly triggers the
    * initialization check of the called method's declaring class, and
@@ -100,43 +98,40 @@ public class Main {
       System.out.println("Main$ClassWithClinit2's static initializer");
     }
 
-    static boolean doThrow = false;
+    static boolean staticField = false;
 
     static void $noinline$staticMethod() {
-      // Try defeating inlining.
-      if (doThrow) { throw new Error(); }
     }
   }
 
   /*
-   * Ensure an inlined call to a static method whose declaring class
-   * is statically known to have been initialized does not require an
-   * explicit clinit check.
+   * Ensure an inlined call from a static method to a static method
+   * of the same class does not require an explicit clinit check
+   * (already initialized or initializing in the same thread).
    */
 
-  /// CHECK-START: void Main$ClassWithClinit3.invokeStaticInlined() builder (after)
+  /// CHECK-START: void Main$ClassWithClinit3Static.invokeStaticInlined() builder (after)
   /// CHECK-DAG:                           InvokeStaticOrDirect
 
-  /// CHECK-START: void Main$ClassWithClinit3.invokeStaticInlined() builder (after)
+  /// CHECK-START: void Main$ClassWithClinit3Static.invokeStaticInlined() builder (after)
   /// CHECK-NOT:                           LoadClass
   /// CHECK-NOT:                           ClinitCheck
 
-  /// CHECK-START: void Main$ClassWithClinit3.invokeStaticInlined() inliner (after)
+  /// CHECK-START: void Main$ClassWithClinit3Static.invokeStaticInlined() inliner (after)
   /// CHECK-NOT:                           LoadClass
   /// CHECK-NOT:                           ClinitCheck
   /// CHECK-NOT:                           InvokeStaticOrDirect
 
-  static class ClassWithClinit3 {
+  static class ClassWithClinit3Static {
     static void invokeStaticInlined() {
-      // The invocation of invokeStaticInlined triggers the
-      // initialization of ClassWithClinit3, meaning that the
-      // hereinbelow call to $opt$inline$StaticMethod does not need a
-      // clinit check.
+      // The invocation of invokeStaticInlined happens only after a clinit check
+      // of ClassWithClinit3Static, meaning that the hereinbelow call to
+      // $opt$inline$StaticMethod does not need another clinit check.
       $opt$inline$StaticMethod();
     }
 
     static {
-      System.out.println("Main$ClassWithClinit3's static initializer");
+      System.out.println("Main$ClassWithClinit3Static's static initializer");
     }
 
     static void $opt$inline$StaticMethod() {
@@ -144,61 +139,120 @@ public class Main {
   }
 
   /*
-   * Ensure an non-inlined call to a static method whose declaring
-   * class is statically known to have been initialized does not
-   * require an explicit clinit check.
+   * Ensure an inlined call from an instance method to a static method
+   * of the same class actually requires an explicit clinit check when
+   * the class has a non-trivial initialization as we could be executing
+   * the instance method on an escaped object of an erroneous class. b/62478025
    */
 
-  /// CHECK-START: void Main$ClassWithClinit4.invokeStaticNotInlined() builder (after)
+  /// CHECK-START: void Main$ClassWithClinit3Instance.invokeStaticInlined() builder (after)
+  /// CHECK-DAG:                           LoadClass
+  /// CHECK-DAG:                           ClinitCheck
   /// CHECK-DAG:                           InvokeStaticOrDirect
 
-  /// CHECK-START: void Main$ClassWithClinit4.invokeStaticNotInlined() builder (after)
+  /// CHECK-START: void Main$ClassWithClinit3Instance.invokeStaticInlined() inliner (after)
+  /// CHECK-DAG:                           LoadClass
+  /// CHECK-DAG:                           ClinitCheck
+
+  /// CHECK-START: void Main$ClassWithClinit3Instance.invokeStaticInlined() inliner (after)
+  /// CHECK-NOT:                           InvokeStaticOrDirect
+
+  static class ClassWithClinit3Instance {
+    void invokeStaticInlined() {
+      // ClinitCheck required.
+      $opt$inline$StaticMethod();
+    }
+
+    static {
+      System.out.println("Main$ClassWithClinit3Instance's static initializer");
+    }
+
+    static void $opt$inline$StaticMethod() {
+    }
+  }
+
+  /*
+   * Ensure a non-inlined call from a static method to a static method
+   * of the same class does not require an explicit clinit check
+   * (already initialized or initializing in the same thread).
+   */
+
+  /// CHECK-START: void Main$ClassWithClinit4Static.invokeStaticNotInlined() builder (after)
+  /// CHECK-DAG:                           InvokeStaticOrDirect
+
+  /// CHECK-START: void Main$ClassWithClinit4Static.invokeStaticNotInlined() builder (after)
   /// CHECK-NOT:                           LoadClass
   /// CHECK-NOT:                           ClinitCheck
 
-  /// CHECK-START: void Main$ClassWithClinit4.invokeStaticNotInlined() inliner (after)
+  /// CHECK-START: void Main$ClassWithClinit4Static.invokeStaticNotInlined() inliner (after)
   /// CHECK-DAG:                           InvokeStaticOrDirect
 
-  /// CHECK-START: void Main$ClassWithClinit4.invokeStaticNotInlined() inliner (after)
+  /// CHECK-START: void Main$ClassWithClinit4Static.invokeStaticNotInlined() inliner (after)
   /// CHECK-NOT:                           LoadClass
   /// CHECK-NOT:                           ClinitCheck
 
-  static class ClassWithClinit4 {
+  static class ClassWithClinit4Static {
     static void invokeStaticNotInlined() {
       // The invocation of invokeStaticNotInlined triggers the
-      // initialization of ClassWithClinit4, meaning that the
+      // initialization of ClassWithClinit4Static, meaning that the
       // call to staticMethod below does not need a clinit
       // check.
       $noinline$staticMethod();
     }
 
     static {
-      System.out.println("Main$ClassWithClinit4's static initializer");
+      System.out.println("Main$ClassWithClinit4Static's static initializer");
     }
 
-    static boolean doThrow = false;
+    static void $noinline$staticMethod() {
+    }
+  }
+
+  /*
+   * Ensure a non-inlined call from an instance method to a static method
+   * of the same class actually requires an explicit clinit check when
+   * the class has a non-trivial initialization as we could be executing
+   * the instance method on an escaped object of an erroneous class. b/62478025
+   */
+
+  /// CHECK-START: void Main$ClassWithClinit4Instance.invokeStaticNotInlined() builder (after)
+  /// CHECK-DAG:                           LoadClass
+  /// CHECK-DAG:                           ClinitCheck
+  /// CHECK-DAG:                           InvokeStaticOrDirect
+
+  /// CHECK-START: void Main$ClassWithClinit4Instance.invokeStaticNotInlined() inliner (after)
+  /// CHECK-DAG:                           LoadClass
+  /// CHECK-DAG:                           ClinitCheck
+  /// CHECK-DAG:                           InvokeStaticOrDirect
+
+  static class ClassWithClinit4Instance {
+    void invokeStaticNotInlined() {
+      // ClinitCheck required.
+      $noinline$staticMethod();
+    }
+
+    static {
+      System.out.println("Main$ClassWithClinit4Instance's static initializer");
+    }
 
     static void $noinline$staticMethod() {
-        // Try defeating inlining.
-      if (doThrow) { throw new Error(); }
     }
   }
 
   /*
    * We used to remove clinit check for calls to static methods in a superclass. However, this
-   * is not a valid optimization when instances of erroneous classes can escape. b/62478025
+   * is not a valid optimization when instances of erroneous classes can escape, therefore
+   * we avoid this optimization for classes with non-trivial initialization. b/62478025
    */
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit5.invokeStaticInlined() builder (after)
+  /// CHECK-DAG:                           LoadClass
+  /// CHECK-DAG:                           ClinitCheck
   /// CHECK-DAG:                           InvokeStaticOrDirect
 
-  /// CHECK-START: void Main$SubClassOfClassWithClinit5.invokeStaticInlined() builder (after)
-  /// CHECK:                               LoadClass
-  /// CHECK:                               ClinitCheck
-
   /// CHECK-START: void Main$SubClassOfClassWithClinit5.invokeStaticInlined() inliner (after)
-  /// CHECK:                               LoadClass
-  /// CHECK:                               ClinitCheck
+  /// CHECK-DAG:                           LoadClass
+  /// CHECK-DAG:                           ClinitCheck
   /// CHECK-NOT:                           InvokeStaticOrDirect
 
   static class ClassWithClinit5 {
@@ -217,16 +271,50 @@ public class Main {
   }
 
   /*
+   * Ensure an inlined call to a static method whose declaring class is a super class
+   * of the caller's class does not require an explicit clinit check if the declaring
+   * class has a trivial initialization. b/62478025
+   */
+
+  /// CHECK-START: void Main$SubClassOfClassWithoutClinit5.invokeStaticInlined() builder (after)
+  /// CHECK-DAG:                           InvokeStaticOrDirect
+
+  /// CHECK-START: void Main$SubClassOfClassWithoutClinit5.invokeStaticInlined() builder (after)
+  /// CHECK-NOT:                           LoadClass
+  /// CHECK-NOT:                           ClinitCheck
+
+  /// CHECK-START: void Main$SubClassOfClassWithoutClinit5.invokeStaticInlined() inliner (after)
+  /// CHECK-NOT:                           LoadClass
+  /// CHECK-NOT:                           ClinitCheck
+  /// CHECK-NOT:                           InvokeStaticOrDirect
+
+  static class ClassWithoutClinit5 {  // Mimicks ClassWithClinit5 but without the <clinit>.
+    static void $opt$inline$StaticMethod() {
+    }
+  }
+
+  static class SubClassOfClassWithoutClinit5 extends ClassWithoutClinit5 {
+    static {
+      System.out.println("Main$SubClassOfClassWithoutClinit5's static initializer");
+    }
+
+    static void invokeStaticInlined() {
+      ClassWithoutClinit5.$opt$inline$StaticMethod();
+    }
+  }
+
+  /*
    * We used to remove clinit check for calls to static methods in a superclass. However, this
-   * is not a valid optimization when instances of erroneous classes can escape. b/62478025
+   * is not a valid optimization when instances of erroneous classes can escape, therefore
+   * we avoid this optimization for classes with non-trivial initialization. b/62478025
    */
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit6.invokeStaticNotInlined() builder (after)
   /// CHECK-DAG:                           InvokeStaticOrDirect
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit6.invokeStaticNotInlined() builder (after)
-  /// CHECK:                               LoadClass
-  /// CHECK:                               ClinitCheck
+  /// CHECK-DAG:                           LoadClass
+  /// CHECK-DAG:                           ClinitCheck
 
   /// CHECK-START: void Main$SubClassOfClassWithClinit6.invokeStaticNotInlined() inliner (after)
   /// CHECK-DAG:                           LoadClass
@@ -234,11 +322,7 @@ public class Main {
   /// CHECK-DAG:                           InvokeStaticOrDirect
 
   static class ClassWithClinit6 {
-    static boolean doThrow = false;
-
     static void $noinline$staticMethod() {
-        // Try defeating inlining.
-      if (doThrow) { throw new Error(); }
     }
 
     static {
@@ -252,6 +336,40 @@ public class Main {
     }
   }
 
+  /*
+   * Ensure a non-inlined call to a static method whose declaring class is a super class
+   * of the caller's class does not require an explicit clinit check if the declaring
+   * class has a trivial initialization. b/62478025
+   */
+
+  /// CHECK-START: void Main$SubClassOfClassWithoutClinit6.invokeStaticNotInlined() builder (after)
+  /// CHECK-DAG:                           InvokeStaticOrDirect
+
+  /// CHECK-START: void Main$SubClassOfClassWithoutClinit6.invokeStaticNotInlined() builder (after)
+  /// CHECK-NOT:                           LoadClass
+  /// CHECK-NOT:                           ClinitCheck
+
+  /// CHECK-START: void Main$SubClassOfClassWithoutClinit6.invokeStaticNotInlined() inliner (after)
+  /// CHECK-DAG:                           InvokeStaticOrDirect
+
+  /// CHECK-START: void Main$SubClassOfClassWithoutClinit6.invokeStaticNotInlined() inliner (after)
+  /// CHECK-NOT:                           LoadClass
+  /// CHECK-NOT:                           ClinitCheck
+
+  static class ClassWithoutClinit6 {  // Mimicks ClassWithClinit6 but without the <clinit>.
+    static void $noinline$staticMethod() {
+    }
+  }
+
+  static class SubClassOfClassWithoutClinit6 extends ClassWithoutClinit6 {
+    static {
+      System.out.println("Main$SubClassOfClassWithoutClinit6's static initializer");
+    }
+
+    static void invokeStaticNotInlined() {
+      ClassWithoutClinit6.$noinline$staticMethod();
+    }
+  }
 
   /*
    * Verify that if we have a static call immediately after the load class
@@ -269,7 +387,7 @@ public class Main {
 
   static void noClinitBecauseOfInvokeStatic() {
     ClassWithClinit2.$noinline$staticMethod();
-    ClassWithClinit2.doThrow = false;
+    ClassWithClinit2.staticField = false;
   }
 
   /*
@@ -286,7 +404,7 @@ public class Main {
   /// CHECK-START: void Main.clinitBecauseOfFieldAccess() liveness (before)
   /// CHECK-NOT:                           ClinitCheck
   static void clinitBecauseOfFieldAccess() {
-    ClassWithClinit2.doThrow = false;
+    ClassWithClinit2.staticField = false;
     ClassWithClinit2.$noinline$staticMethod();
   }
 
@@ -317,8 +435,6 @@ public class Main {
 
     static void $noinline$someStaticMethod(Iterable<?> it) {
       it.iterator();
-      // We're not inlining throw at the moment.
-      if (doThrow) { throw new Error(""); }
     }
   }
 
@@ -349,8 +465,6 @@ public class Main {
 
     static void $noinline$someStaticMethod(Iterable<?> it) {
       it.iterator();
-      // We're not inlining throw at the moment.
-      if (doThrow) { throw new Error(""); }
     }
   }
 
@@ -378,8 +492,6 @@ public class Main {
 
     static void $noinline$someStaticMethod(Iterable<?> it) {
       it.iterator();
-      // We're not inlining throw at the moment.
-      if (doThrow) { throw new Error(""); }
     }
   }
 
@@ -511,14 +623,11 @@ public class Main {
 
     public static void $noinline$getIterator(Iterable<?> it) {
       it.iterator();
-      // We're not inlining throw at the moment.
-      if (doThrow) { throw new Error(""); }
     }
   }
 
   // TODO: Write checker statements.
   static Object $noinline$testInliningAndNewInstance(Iterable<?> it) {
-    if (doThrow) { throw new Error(); }
     ClassWithClinit13.$inline$forwardToGetIterator(it);
     return new ClassWithClinit13();
   }
@@ -531,10 +640,14 @@ public class Main {
   public static void main(String[] args) {
     invokeStaticInlined();
     invokeStaticNotInlined();
-    ClassWithClinit3.invokeStaticInlined();
-    ClassWithClinit4.invokeStaticNotInlined();
+    ClassWithClinit3Static.invokeStaticInlined();
+    new ClassWithClinit3Instance().invokeStaticInlined();
+    ClassWithClinit4Static.invokeStaticNotInlined();
+    new ClassWithClinit4Instance().invokeStaticNotInlined();
     SubClassOfClassWithClinit5.invokeStaticInlined();
+    SubClassOfClassWithoutClinit5.invokeStaticInlined();
     SubClassOfClassWithClinit6.invokeStaticNotInlined();
+    SubClassOfClassWithoutClinit6.invokeStaticNotInlined();
     Iterable it = new Iterable() { public java.util.Iterator iterator() { return null; } };
     constClassAndInvokeStatic(it);
     sgetAndInvokeStatic(it);
