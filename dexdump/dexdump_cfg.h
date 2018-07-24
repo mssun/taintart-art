@@ -20,11 +20,11 @@
 #include <inttypes.h>
 #include <ostream>
 
+#include "dex/class_accessor.h"
+
 namespace art {
 
-class DexFile;
-
-void DumpMethodCFG(const DexFile* dex_file, uint32_t dex_method_idx, std::ostream& os);
+void DumpMethodCFG(const ClassAccessor::Method& method, std::ostream& os);
 
 }  // namespace art
 

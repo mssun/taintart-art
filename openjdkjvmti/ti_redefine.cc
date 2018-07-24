@@ -45,6 +45,7 @@
 #include "class_root.h"
 #include "debugger.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_types.h"
@@ -620,11 +621,9 @@ bool Redefiner::ClassRedefinition::CheckSameMethods() {
   art::Handle<art::mirror::Class> h_klass(hs.NewHandle(GetMirrorClass()));
   DCHECK_EQ(dex_file_->NumClassDefs(), 1u);
 
-  art::ClassDataItemIterator new_iter(*dex_file_,
-                                      dex_file_->GetClassData(dex_file_->GetClassDef(0)));
-
   // Make sure we have the same number of methods.
-  uint32_t num_new_method = new_iter.NumVirtualMethods() + new_iter.NumDirectMethods();
+  art::ClassAccessor accessor(*dex_file_, dex_file_->GetClassDef(0));
+  uint32_t num_new_method = accessor.NumMethods();
   uint32_t num_old_method = h_klass->GetDeclaredMethodsSlice(art::kRuntimePointerSize).size();
   if (num_new_method != num_old_method) {
     bool bigger = num_new_method > num_old_method;
@@ -636,13 +635,12 @@ bool Redefiner::ClassRedefinition::CheckSameMethods() {
   }
 
   // Skip all of the fields. We should have already checked this.
-  new_iter.SkipAllFields();
   // Check each of the methods. NB we don't need to specifically check for removals since the 2 dex
   // files have the same number of methods, which means there must be an equal amount of additions
-  // and removals.
-  for (; new_iter.HasNextMethod(); new_iter.Next()) {
+  // and removals. We should have already checked the fields.
+  for (const art::ClassAccessor::Method& method : accessor.GetMethods()) {
     // Get the data on the method we are searching for
-    const art::DexFile::MethodId& new_method_id = dex_file_->GetMethodId(new_iter.GetMemberIndex());
+    const art::DexFile::MethodId& new_method_id = dex_file_->GetMethodId(method.GetIndex());
     const char* new_method_name = dex_file_->GetMethodName(new_method_id);
     art::Signature new_method_signature = dex_file_->GetMethodSignature(new_method_id);
     art::ArtMethod* old_method = FindMethod(h_klass, new_method_name, new_method_signature);
@@ -659,7 +657,7 @@ bool Redefiner::ClassRedefinition::CheckSameMethods() {
     // Since direct methods have different flags than virtual ones (specifically direct methods must
     // have kAccPrivate or kAccStatic or kAccConstructor flags) we can tell if a method changes from
     // virtual to direct.
-    uint32_t new_flags = new_iter.GetMethodAccessFlags();
+    uint32_t new_flags = method.GetAccessFlags();
     if (new_flags != (old_method->GetAccessFlags() & art::kAccValidMethodFlags)) {
       RecordFailure(ERR(UNSUPPORTED_REDEFINITION_METHOD_MODIFIERS_CHANGED),
                     StringPrintf("method '%s' (sig: %s) had different access flags",
@@ -675,20 +673,21 @@ bool Redefiner::ClassRedefinition::CheckSameFields() {
   art::StackHandleScope<1> hs(driver_->self_);
   art::Handle<art::mirror::Class> h_klass(hs.NewHandle(GetMirrorClass()));
   DCHECK_EQ(dex_file_->NumClassDefs(), 1u);
-  art::ClassDataItemIterator new_iter(*dex_file_,
-                                      dex_file_->GetClassData(dex_file_->GetClassDef(0)));
+  art::ClassAccessor new_accessor(*dex_file_, dex_file_->GetClassDef(0));
+
   const art::DexFile& old_dex_file = h_klass->GetDexFile();
-  art::ClassDataItemIterator old_iter(old_dex_file,
-                                      old_dex_file.GetClassData(*h_klass->GetClassDef()));
+  art::ClassAccessor old_accessor(old_dex_file, *h_klass->GetClassDef());
   // Instance and static fields can be differentiated by their flags so no need to check them
   // separately.
-  while (new_iter.HasNextInstanceField() || new_iter.HasNextStaticField()) {
+  auto old_fields = old_accessor.GetFields();
+  auto old_iter = old_fields.begin();
+  for (const art::ClassAccessor::Field& new_field : new_accessor.GetFields()) {
     // Get the data on the method we are searching for
-    const art::DexFile::FieldId& new_field_id = dex_file_->GetFieldId(new_iter.GetMemberIndex());
+    const art::DexFile::FieldId& new_field_id = dex_file_->GetFieldId(new_field.GetIndex());
     const char* new_field_name = dex_file_->GetFieldName(new_field_id);
     const char* new_field_type = dex_file_->GetFieldTypeDescriptor(new_field_id);
 
-    if (!(old_iter.HasNextInstanceField() || old_iter.HasNextStaticField())) {
+    if (old_iter == old_fields.end()) {
       // We are missing the old version of this method!
       RecordFailure(ERR(UNSUPPORTED_REDEFINITION_SCHEMA_CHANGED),
                     StringPrintf("Unknown field '%s' (type: %s) added!",
@@ -697,7 +696,7 @@ bool Redefiner::ClassRedefinition::CheckSameFields() {
       return false;
     }
 
-    const art::DexFile::FieldId& old_field_id = old_dex_file.GetFieldId(old_iter.GetMemberIndex());
+    const art::DexFile::FieldId& old_field_id = old_dex_file.GetFieldId(old_iter->GetIndex());
     const char* old_field_name = old_dex_file.GetFieldName(old_field_id);
     const char* old_field_type = old_dex_file.GetFieldTypeDescriptor(old_field_id);
 
@@ -715,7 +714,7 @@ bool Redefiner::ClassRedefinition::CheckSameFields() {
 
     // Since static fields have different flags than instance ones (specifically static fields must
     // have the kAccStatic flag) we can tell if a field changes from static to instance.
-    if (new_iter.GetFieldAccessFlags() != old_iter.GetFieldAccessFlags()) {
+    if (new_field.GetAccessFlags() != old_iter->GetAccessFlags()) {
       RecordFailure(ERR(UNSUPPORTED_REDEFINITION_SCHEMA_CHANGED),
                     StringPrintf("Field '%s' (sig: %s) had different access flags",
                                   new_field_name,
@@ -723,16 +722,15 @@ bool Redefiner::ClassRedefinition::CheckSameFields() {
       return false;
     }
 
-    new_iter.Next();
-    old_iter.Next();
+    ++old_iter;
   }
-  if (old_iter.HasNextInstanceField() || old_iter.HasNextStaticField()) {
+  if (old_iter != old_fields.end()) {
     RecordFailure(ERR(UNSUPPORTED_REDEFINITION_SCHEMA_CHANGED),
                   StringPrintf("field '%s' (sig: %s) is missing!",
                                 old_dex_file.GetFieldName(old_dex_file.GetFieldId(
-                                    old_iter.GetMemberIndex())),
+                                    old_iter->GetIndex())),
                                 old_dex_file.GetFieldTypeDescriptor(old_dex_file.GetFieldId(
-                                    old_iter.GetMemberIndex()))));
+                                    old_iter->GetIndex()))));
     return false;
   }
   return true;
