@@ -867,28 +867,28 @@ class OatDumper {
 
     VariableIndentationOutputStream vios(&os);
     ScopedIndentation indent1(&vios);
-    for (size_t class_def_index = 0;
-         class_def_index < dex_file->NumClassDefs();
-         class_def_index++) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
-      const char* descriptor = dex_file->GetClassDescriptor(class_def);
-
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
       // TODO: Support regex
+      const char* descriptor = accessor.GetDescriptor();
       if (DescriptorToDot(descriptor).find(options_.class_filter_) == std::string::npos) {
         continue;
       }
 
+      const uint16_t class_def_index = accessor.GetClassDefIndex();
       uint32_t oat_class_offset = oat_dex_file.GetOatClassOffset(class_def_index);
       const OatFile::OatClass oat_class = oat_dex_file.GetOatClass(class_def_index);
       os << StringPrintf("%zd: %s (offset=0x%08x) (type_idx=%d)",
-                         class_def_index, descriptor, oat_class_offset, class_def.class_idx_.index_)
+                         static_cast<ssize_t>(class_def_index),
+                         descriptor,
+                         oat_class_offset,
+                         accessor.GetClassIdx().index_)
          << " (" << oat_class.GetStatus() << ")"
          << " (" << oat_class.GetType() << ")\n";
       // TODO: include bitmap here if type is kOatClassSomeCompiled?
       if (options_.list_classes_) {
         continue;
       }
-      if (!DumpOatClass(&vios, oat_class, *dex_file, class_def, &stop_analysis)) {
+      if (!DumpOatClass(&vios, oat_class, *dex_file, accessor, &stop_analysis)) {
         success = false;
       }
       if (stop_analysis) {
@@ -1023,22 +1023,23 @@ class OatDumper {
   }
 
   bool DumpOatClass(VariableIndentationOutputStream* vios,
-                    const OatFile::OatClass& oat_class, const DexFile& dex_file,
-                    const DexFile::ClassDef& class_def, bool* stop_analysis) {
+                    const OatFile::OatClass& oat_class,
+                    const DexFile& dex_file,
+                    const ClassAccessor& class_accessor,
+                    bool* stop_analysis) {
     bool success = true;
     bool addr_found = false;
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
-    if (class_data == nullptr) {  // empty class such as a marker interface?
-      vios->Stream() << std::flush;
-      return success;
-    }
-    ClassDataItemIterator it(dex_file, class_data);
-    it.SkipAllFields();
     uint32_t class_method_index = 0;
-    while (it.HasNextMethod()) {
-      if (!DumpOatMethod(vios, class_def, class_method_index, oat_class, dex_file,
-                         it.GetMemberIndex(), it.GetMethodCodeItem(),
-                         it.GetRawMemberAccessFlags(), &addr_found)) {
+    for (const ClassAccessor::Method& method : class_accessor.GetMethods()) {
+      if (!DumpOatMethod(vios,
+                         dex_file.GetClassDef(class_accessor.GetClassDefIndex()),
+                         class_method_index,
+                         oat_class,
+                         dex_file,
+                         method.GetIndex(),
+                         method.GetCodeItem(),
+                         method.GetRawAccessFlags(),
+                         &addr_found)) {
         success = false;
       }
       if (addr_found) {
@@ -1046,9 +1047,7 @@ class OatDumper {
         return success;
       }
       class_method_index++;
-      it.Next();
     }
-    DCHECK(!it.HasNext());
     vios->Stream() << std::flush;
     return success;
   }

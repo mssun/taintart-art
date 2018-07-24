@@ -40,6 +40,10 @@ class ClassAccessor {
       return index_;
     }
 
+    uint32_t GetRawAccessFlags() const {
+      return access_flags_;
+    }
+
     uint32_t GetAccessFlags() const {
       return HiddenApiAccessFlags::RemoveFromDex(access_flags_);
     }
