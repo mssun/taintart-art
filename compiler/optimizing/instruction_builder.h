@@ -219,7 +219,8 @@ class HInstructionBuilder : public ValueObject {
   // Builds a `HLoadClass` loading the given `type_index`.
   HLoadClass* BuildLoadClass(dex::TypeIndex type_index, uint32_t dex_pc);
 
-  HLoadClass* BuildLoadClass(dex::TypeIndex type_index,
+  HLoadClass* BuildLoadClass(ScopedObjectAccess& soa,
+                             dex::TypeIndex type_index,
                              const DexFile& dex_file,
                              Handle<mirror::Class> klass,
                              uint32_t dex_pc,
@@ -229,7 +230,7 @@ class HInstructionBuilder : public ValueObject {
   Handle<mirror::Class> ResolveClass(ScopedObjectAccess& soa, dex::TypeIndex type_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  bool LoadClassNeedsAccessCheck(Handle<mirror::Class> klass)
+  bool LoadClassNeedsAccessCheck(ScopedObjectAccess& soa, Handle<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Builds a `HLoadMethodHandle` loading the given `method_handle_index`.
@@ -239,10 +240,12 @@ class HInstructionBuilder : public ValueObject {
   void BuildLoadMethodType(dex::ProtoIndex proto_index, uint32_t dex_pc);
 
   // Returns the outer-most compiling method's class.
-  ObjPtr<mirror::Class> GetOutermostCompilingClass() const;
+  ObjPtr<mirror::Class> ResolveOutermostCompilingClass(ScopedObjectAccess& soa) const
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns the class whose method is being compiled.
-  ObjPtr<mirror::Class> GetCompilingClass() const;
+  ObjPtr<mirror::Class> ResolveCompilingClass(ScopedObjectAccess& soa) const
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns whether `type_index` points to the outer-most compiling method's class.
   bool IsOutermostCompilingClass(dex::TypeIndex type_index) const;
@@ -269,6 +272,7 @@ class HInstructionBuilder : public ValueObject {
   void HandleStringInitResult(HInvokeStaticOrDirect* invoke);
 
   HClinitCheck* ProcessClinitCheckForInvoke(
+      ScopedObjectAccess& soa,
       uint32_t dex_pc,
       ArtMethod* method,
       HInvokeStaticOrDirect::ClinitCheckRequirement* clinit_check_requirement)
@@ -282,7 +286,8 @@ class HInstructionBuilder : public ValueObject {
   void BuildConstructorFenceForAllocation(HInstruction* allocation);
 
   // Return whether the compiler can assume `cls` is initialized.
-  bool IsInitialized(Handle<mirror::Class> cls) const REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsInitialized(ScopedObjectAccess& soa, Handle<mirror::Class> cls) const
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Try to resolve a method using the class linker. Return null if a method could
   // not be resolved.
