@@ -33,4 +33,5 @@ LOCAL_SRC_FILES := dexfuzz
 include $(BUILD_PREBUILT)
 
 # --- dexfuzz script with core image dependencies ----------------
+.PHONY: fuzzer
 fuzzer: $(LOCAL_BUILT_MODULE) $(HOST_CORE_IMG_OUTS)
