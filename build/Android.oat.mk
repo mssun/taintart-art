@@ -135,6 +135,7 @@ $(eval $(call create-core-oat-host-rule-combination,optimizing,true))
 $(eval $(call create-core-oat-host-rule-combination,interpreter,true))
 $(eval $(call create-core-oat-host-rule-combination,interp-ac,true))
 
+.PHONY: test-art-host-dex2oat-host
 test-art-host-dex2oat-host: $(HOST_CORE_IMG_OUTS)
 
 # $(1): compiler - optimizing, interpreter or interp-ac (interpreter-access-checks).
