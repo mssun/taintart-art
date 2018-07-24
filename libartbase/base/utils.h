@@ -239,7 +239,6 @@ template <typename Func, typename... Args>
 static inline void CheckedCall(const Func& function, const char* what, Args... args) {
   int rc = function(args...);
   if (UNLIKELY(rc != 0)) {
-    errno = rc;
     PLOG(FATAL) << "Checked call failed for " << what;
   }
 }
