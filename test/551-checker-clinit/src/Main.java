@@ -19,6 +19,16 @@ public class Main {
   public static void main(String[] args) {}
   public static int foo = 42;
 
+  // Primitive array initialization is trivial for purposes of the ClinitCheck. It cannot
+  // leak instances of erroneous classes or initialize subclasses of erroneous classes.
+  public static int[] array1 = new int[] { 1, 2, 3 };
+  public static int[] array2;
+  static {
+    int[] a = new int[4];
+    a[0] = 42;
+    array2 = a;
+  }
+
   /// CHECK-START: void Main.inlinedMethod() builder (after)
   /// CHECK:                        ClinitCheck
 
@@ -33,15 +43,17 @@ public class Main {
 
 class Sub extends Main {
   /// CHECK-START: void Sub.invokeSuperClass() builder (after)
-  /// CHECK:                        ClinitCheck
+  /// CHECK-NOT:                    ClinitCheck
   public void invokeSuperClass() {
-    int a = Main.foo;  // Class initialization check must be preserved. b/62478025
+    // No Class initialization check as Main.<clinit> is trivial. b/62478025
+    int a = Main.foo;
   }
 
   /// CHECK-START: void Sub.invokeItself() builder (after)
-  /// CHECK:                        ClinitCheck
+  /// CHECK-NOT:                    ClinitCheck
   public void invokeItself() {
-    int a = foo;  // Class initialization check must be preserved. b/62478025
+    // No Class initialization check as Sub.<clinit> and Main.<clinit> are trivial. b/62478025
+    int a = foo;
   }
 
   /// CHECK-START: void Sub.invokeSubClass() builder (after)
