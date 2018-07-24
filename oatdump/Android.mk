@@ -72,6 +72,7 @@ dump-oat-boot-$(TARGET_ARCH): $(DEFAULT_DEX_PREOPT_BUILT_IMAGE_FILENAME) $(OATDU
 endif
 
 ifdef TARGET_2ND_ARCH
+.PHONY: dump-oat-boot-$(TARGET_2ND_ARCH)
 dump-oat-boot-$(TARGET_2ND_ARCH): $(2ND_DEFAULT_DEX_PREOPT_BUILT_IMAGE_FILENAME) $(OATDUMP)
 	$(OATDUMP) $(addprefix --image=,$(2ND_DEFAULT_DEX_PREOPT_BUILT_IMAGE_LOCATION)) \
 	  --output=$(ART_DUMP_OAT_PATH)/boot.$(TARGET_2ND_ARCH).oatdump.txt --instruction-set=$(TARGET_2ND_ARCH)
