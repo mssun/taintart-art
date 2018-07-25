@@ -24,6 +24,7 @@
 
 #include "dex/code_item_accessors-inl.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_instruction.h"
@@ -51,23 +52,15 @@ void VerifyClassData(jint class_data_len, const unsigned char* class_data) {
                                                           /*verify_checksum*/ true,
                                                           &error));
   CHECK(dex.get() != nullptr) << "Failed to verify dex: " << error;
-  for (uint32_t i = 0; i < dex->NumClassDefs(); i++) {
-    const DexFile::ClassDef& def = dex->GetClassDef(i);
-    const uint8_t* data_item = dex->GetClassData(def);
-    if (data_item == nullptr) {
-      continue;
-    }
-    for (ClassDataItemIterator it(*dex, data_item); it.HasNext(); it.Next()) {
-      if (!it.IsAtMethod() || it.GetMethodCodeItem() == nullptr) {
-        continue;
-      }
-      for (const DexInstructionPcPair& pair :
-          art::CodeItemInstructionAccessor(*dex, it.GetMethodCodeItem())) {
+
+  for (ClassAccessor accessor : dex->GetClasses()) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+      for (const DexInstructionPcPair& pair : method.GetInstructions()) {
         const Instruction& inst = pair.Inst();
         int forbidden_flags = (Instruction::kVerifyError | Instruction::kVerifyRuntimeOnly);
         if (inst.Opcode() == Instruction::RETURN_VOID_NO_BARRIER ||
             (inst.GetVerifyExtraFlags() & forbidden_flags) != 0) {
-          LOG(FATAL) << "Unexpected instruction found in " << dex->PrettyMethod(it.GetMemberIndex())
+          LOG(FATAL) << "Unexpected instruction found in " << dex->PrettyMethod(method.GetIndex())
                      << " [Dex PC: 0x" << std::hex << pair.DexPc() << std::dec << "] : "
                      << inst.DumpString(dex.get()) << std::endl;
         }

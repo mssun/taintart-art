@@ -25,6 +25,7 @@
 #include <set>
 #include <sstream>
 
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
@@ -32,15 +33,12 @@
 
 namespace art {
 
-static void dumpMethodCFGImpl(const DexFile* dex_file,
-                              uint32_t dex_method_idx,
-                              const DexFile::CodeItem* code_item,
-                              std::ostream& os) {
+void DumpMethodCFG(const ClassAccessor::Method& method, std::ostream& os) {
+  const DexFile* dex_file = &method.GetDexFile();
   os << "digraph {\n";
-  os << "  # /* " << dex_file->PrettyMethod(dex_method_idx, true) << " */\n";
+  os << "  # /* " << dex_file->PrettyMethod(method.GetIndex(), true) << " */\n";
 
-  CodeItemDataAccessor accessor(*dex_file, code_item);
-
+  CodeItemDataAccessor accessor(method.GetInstructionsAndData());
   std::set<uint32_t> dex_pc_is_branch_target;
   {
     // Go and populate.
@@ -353,42 +351,5 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
   os << "}\n";
 }
 
-void DumpMethodCFG(const DexFile* dex_file, uint32_t dex_method_idx, std::ostream& os) {
-  // This is painful, we need to find the code item. That means finding the class, and then
-  // iterating the table.
-  if (dex_method_idx >= dex_file->NumMethodIds()) {
-    os << "Could not find method-idx.";
-    return;
-  }
-  const DexFile::MethodId& method_id = dex_file->GetMethodId(dex_method_idx);
-
-  const DexFile::ClassDef* class_def = dex_file->FindClassDef(method_id.class_idx_);
-  if (class_def == nullptr) {
-    os << "Could not find class-def.";
-    return;
-  }
-
-  const uint8_t* class_data = dex_file->GetClassData(*class_def);
-  if (class_data == nullptr) {
-    os << "No class data.";
-    return;
-  }
-
-  ClassDataItemIterator it(*dex_file, class_data);
-  it.SkipAllFields();
-
-  // Find method, and dump it.
-  while (it.HasNextMethod()) {
-    uint32_t method_idx = it.GetMemberIndex();
-    if (method_idx == dex_method_idx) {
-      dumpMethodCFGImpl(dex_file, dex_method_idx, it.GetMethodCodeItem(), os);
-      return;
-    }
-    it.Next();
-  }
-
-  // Otherwise complain.
-  os << "Something went wrong, didn't find the method in the class data.";
-}
 
 }  // namespace art

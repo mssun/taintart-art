@@ -34,7 +34,8 @@ class ClassAccessor {
  private:
   class BaseItem {
    public:
-    explicit BaseItem(const uint8_t* ptr_pos) : ptr_pos_(ptr_pos) {}
+    explicit BaseItem(const DexFile& dex_file,
+                      const uint8_t* ptr_pos) : dex_file_(dex_file), ptr_pos_(ptr_pos) {}
 
     uint32_t GetIndex() const {
       return index_;
@@ -56,8 +57,13 @@ class ClassAccessor {
       return (GetAccessFlags() & kAccFinal) != 0;
     }
 
+    const DexFile& GetDexFile() const {
+      return dex_file_;
+    }
+
    protected:
     // Internal data pointer for reading.
+    const DexFile& dex_file_;
     const uint8_t* ptr_pos_ = nullptr;
     uint32_t index_ = 0u;
     uint32_t access_flags_ = 0u;
@@ -97,9 +103,7 @@ class ClassAccessor {
     explicit Method(const DexFile& dex_file,
                     const uint8_t* ptr_pos,
                     bool is_static_or_direct = true)
-        : BaseItem(ptr_pos),
-          dex_file_(dex_file),
-          is_static_or_direct_(is_static_or_direct) {}
+        : BaseItem(dex_file, ptr_pos), is_static_or_direct_(is_static_or_direct) {}
 
     void Read();
 
@@ -125,7 +129,6 @@ class ClassAccessor {
       index_ = 0u;
     }
 
-    const DexFile& dex_file_;
     bool is_static_or_direct_ = true;
     uint32_t code_off_ = 0u;
 
@@ -136,11 +139,7 @@ class ClassAccessor {
   class Field : public BaseItem {
    public:
     explicit Field(const DexFile& dex_file,
-                   const uint8_t* ptr_pos) : BaseItem(ptr_pos), dex_file_(dex_file) {}
-
-    const DexFile& GetDexFile() const {
-      return dex_file_;
-    }
+                   const uint8_t* ptr_pos) : BaseItem(dex_file, ptr_pos) {}
 
     bool IsStatic() const {
      return is_static_;
@@ -158,7 +157,6 @@ class ClassAccessor {
       is_static_ = false;
     }
 
-    const DexFile& dex_file_;
     bool is_static_ = true;
     friend class ClassAccessor;
   };
