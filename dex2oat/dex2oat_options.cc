@@ -98,6 +98,8 @@ static void AddGeneratedArtifactMappings(Builder& builder) {
       .Define("--oat-symbols=_")
           .WithType<std::vector<std::string>>().AppendValues()
           .IntoKey(M::OatSymbols)
+      .Define("--strip")
+          .IntoKey(M::Strip)
       .Define("--oat-fd=_")
           .WithType<int>()
           .IntoKey(M::OatFd)

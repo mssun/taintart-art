@@ -77,6 +77,7 @@ class ElfWriter {
   virtual void EndDataBimgRelRo(OutputStream* data_bimg_rel_ro) = 0;
   virtual void WriteDynamicSection() = 0;
   virtual void WriteDebugInfo(const debug::DebugInfo& debug_info) = 0;
+  virtual bool StripDebugInfo() = 0;
   virtual bool End() = 0;
 
   // Get the ELF writer's stream. This stream can be used for writing data directly
