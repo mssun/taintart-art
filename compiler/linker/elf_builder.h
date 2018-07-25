@@ -308,9 +308,14 @@ class ElfBuilder FINAL {
                   /* link */ nullptr,
                   /* info */ 0,
                   align,
-                  /* entsize */ 0),
-          current_offset_(0),
-          last_offset_(0) {
+                  /* entsize */ 0) {
+      Reset();
+    }
+
+    void Reset() {
+      current_offset_ = 0;
+      last_name_ = "";
+      last_offset_ = 0;
     }
 
     Elf_Word Write(const std::string& name) {
@@ -550,6 +555,7 @@ class ElfBuilder FINAL {
         build_id_(this, ".note.gnu.build-id", SHT_NOTE, SHF_ALLOC, nullptr, 0, 4, 0),
         current_section_(nullptr),
         started_(false),
+        finished_(false),
         write_program_headers_(false),
         loaded_size_(0u),
         virtual_address_(0) {
@@ -627,8 +633,10 @@ class ElfBuilder FINAL {
     write_program_headers_ = write_program_headers;
   }
 
-  void End() {
+  off_t End() {
     DCHECK(started_);
+    DCHECK(!finished_);
+    finished_ = true;
 
     // Note: loaded_size_ == 0 for tests that don't write .rodata, .text, .bss,
     // .dynstr, dynsym, .hash and .dynamic. These tests should not read loaded_size_.
@@ -662,6 +670,7 @@ class ElfBuilder FINAL {
     Elf_Off section_headers_offset;
     section_headers_offset = AlignFileOffset(sizeof(Elf_Off));
     stream_.WriteFully(shdrs.data(), shdrs.size() * sizeof(shdrs[0]));
+    off_t file_size = stream_.Seek(0, kSeekCurrent);
 
     // Flush everything else before writing the program headers. This should prevent
     // the OS from reordering writes, so that we don't end up with valid headers
@@ -687,6 +696,39 @@ class ElfBuilder FINAL {
     stream_.WriteFully(&elf_header, sizeof(elf_header));
     stream_.WriteFully(phdrs.data(), phdrs.size() * sizeof(phdrs[0]));
     stream_.Flush();
+
+    return file_size;
+  }
+
+  // This has the same effect as running the "strip" command line tool.
+  // It removes all debugging sections (but it keeps mini-debug-info).
+  // It returns the ELF file size (as the caller needs to truncate it).
+  off_t Strip() {
+    DCHECK(finished_);
+    finished_ = false;
+    Elf_Off end = 0;
+    std::vector<Section*> non_debug_sections;
+    for (Section* section : sections_) {
+      if (section == &shstrtab_ ||  // Section names will be recreated.
+          section == &symtab_ ||
+          section == &strtab_ ||
+          section->name_.find(".debug_") == 0) {
+        section->header_.sh_offset = 0;
+        section->header_.sh_size = 0;
+        section->section_index_ = 0;
+      } else {
+        if (section->header_.sh_type != SHT_NOBITS) {
+          DCHECK_LE(section->header_.sh_offset, end + kPageSize) << "Large gap between sections";
+          end = std::max<off_t>(end, section->header_.sh_offset + section->header_.sh_size);
+        }
+        non_debug_sections.push_back(section);
+      }
+    }
+    shstrtab_.Reset();
+    // Write the non-debug section headers, program headers, and ELF header again.
+    sections_ = std::move(non_debug_sections);
+    stream_.Seek(end, kSeekSet);
+    return End();
   }
 
   // The running program does not have access to section headers
@@ -861,6 +903,7 @@ class ElfBuilder FINAL {
   void WriteBuildId(uint8_t build_id[kBuildIdLen]) {
     stream_.Seek(build_id_.GetDigestStart(), kSeekSet);
     stream_.WriteFully(build_id, kBuildIdLen);
+    stream_.Flush();
   }
 
   // Returns true if all writes and seeks on the output stream succeeded.
@@ -1060,6 +1103,7 @@ class ElfBuilder FINAL {
   Section* current_section_;  // The section which is currently being written.
 
   bool started_;
+  bool finished_;
   bool write_program_headers_;
 
   // The size of the memory taken by the ELF file when loaded.
