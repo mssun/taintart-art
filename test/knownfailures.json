@@ -355,14 +355,6 @@
         "env_vars": {"ART_READ_BARRIER_TYPE": "TABLELOOKUP"}
     },
     {
-        "tests": ["476-clinit-inline-static-invoke",
-                  "496-checker-inlining-class-loader",
-                  "508-referrer-method",
-                  "637-checker-throw-inline"],
-        "bug": "http://b/36365552",
-        "variant": "no-image & jit"
-    },
-    {
         "tests": ["530-checker-lse",
                   "530-checker-lse2",
                   "030-bad-finalizer",
