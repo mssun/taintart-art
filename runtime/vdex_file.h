@@ -281,8 +281,8 @@ class VdexFile {
 
   // In-place unquicken the given `dex_files` based on `quickening_info`.
   // `decompile_return_instruction` controls if RETURN_VOID_BARRIER instructions are
-  // decompiled to RETURN_VOID instructions using the slower ClassDataItemIterator
-  // instead of the faster QuickeningInfoIterator.
+  // decompiled to RETURN_VOID instructions using the slower ClassAccessor instead of the faster
+  // QuickeningInfoIterator.
   // Always unquickens using the vdex dex files as the source for quicken tables.
   void Unquicken(const std::vector<const DexFile*>& target_dex_files,
                  bool decompile_return_instruction) const;
