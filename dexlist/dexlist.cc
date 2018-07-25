@@ -30,6 +30,7 @@
 #include <android-base/file.h>
 #include <android-base/logging.h>
 
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
@@ -142,27 +143,21 @@ static void dumpMethod(const DexFile* pDexFile,
  * Runs through all direct and virtual methods in the class.
  */
 void dumpClass(const DexFile* pDexFile, u4 idx) {
-  const DexFile::ClassDef& pClassDef = pDexFile->GetClassDef(idx);
+  const DexFile::ClassDef& class_def = pDexFile->GetClassDef(idx);
 
-  const char* fileName;
-  if (!pClassDef.source_file_idx_.IsValid()) {
-    fileName = nullptr;
-  } else {
-    fileName = pDexFile->StringDataByIdx(pClassDef.source_file_idx_);
+  const char* fileName = nullptr;
+  if (class_def.source_file_idx_.IsValid()) {
+    fileName = pDexFile->StringDataByIdx(class_def.source_file_idx_);
   }
 
-  const u1* pEncodedData = pDexFile->GetClassData(pClassDef);
-  if (pEncodedData != nullptr) {
-    ClassDataItemIterator pClassData(*pDexFile, pEncodedData);
-    pClassData.SkipAllFields();
-    // Direct and virtual methods.
-    for (; pClassData.HasNextMethod(); pClassData.Next()) {
-      dumpMethod(pDexFile, fileName,
-                 pClassData.GetMemberIndex(),
-                 pClassData.GetRawMemberAccessFlags(),
-                 pClassData.GetMethodCodeItem(),
-                 pClassData.GetMethodCodeItemOffset());
-    }
+  ClassAccessor accessor(*pDexFile, class_def);
+  for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+    dumpMethod(pDexFile,
+               fileName,
+               method.GetIndex(),
+               method.GetRawAccessFlags(),
+               method.GetCodeItem(),
+               method.GetCodeItemOffset());
   }
 }
 
