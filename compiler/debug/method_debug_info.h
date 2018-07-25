@@ -41,7 +41,7 @@ struct MethodDebugInfo {
   uint64_t code_address;
   uint32_t code_size;
   uint32_t frame_size_in_bytes;
-  const void* code_info;
+  const uint8_t* code_info;
   ArrayRef<const uint8_t> cfi;
 };
 

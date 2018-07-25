@@ -27,11 +27,11 @@
 
 namespace art {
 
-CodeInfo::CodeInfo(const OatQuickMethodHeader* header)
-  : CodeInfo(header->GetOptimizedCodeInfoPtr()) {
+CodeInfo::CodeInfo(const OatQuickMethodHeader* header, DecodeFlags flags)
+  : CodeInfo(header->GetOptimizedCodeInfoPtr(), flags) {
 }
 
-void CodeInfo::Decode(const uint8_t* data) {
+void CodeInfo::Decode(const uint8_t* data, DecodeFlags flags) {
   const uint8_t* begin = data;
   frame_size_in_bytes_ = DecodeUnsignedLeb128(&data);
   core_spill_mask_ = DecodeUnsignedLeb128(&data);
@@ -39,9 +39,12 @@ void CodeInfo::Decode(const uint8_t* data) {
   number_of_dex_registers_ = DecodeUnsignedLeb128(&data);
   BitMemoryReader reader(data, /* bit_offset */ 0);
   stack_maps_.Decode(reader);
+  inline_infos_.Decode(reader);
+  if (flags & DecodeFlags::InlineInfoOnly) {
+    return;
+  }
   register_masks_.Decode(reader);
   stack_masks_.Decode(reader);
-  inline_infos_.Decode(reader);
   dex_register_masks_.Decode(reader);
   dex_register_maps_.Decode(reader);
   dex_register_catalog_.Decode(reader);
