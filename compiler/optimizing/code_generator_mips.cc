@@ -160,6 +160,14 @@ Location InvokeRuntimeCallingConvention::GetReturnLocation(DataType::Type type) 
   return MipsReturnLocation(type);
 }
 
+static RegisterSet OneRegInReferenceOutSaveEverythingCallerSaves() {
+  InvokeRuntimeCallingConvention calling_convention;
+  RegisterSet caller_saves = RegisterSet::Empty();
+  caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
+  // The reference is returned in the same register. This differs from the standard return location.
+  return caller_saves;
+}
+
 // NOLINT on __ macro to suppress wrong warning/fix (misc-macro-parentheses) from clang-tidy.
 #define __ down_cast<CodeGeneratorMIPS*>(codegen)->GetAssembler()->  // NOLINT
 #define QUICK_ENTRY_POINT(x) QUICK_ENTRYPOINT_OFFSET(kMipsPointerSize, x).Int32Value()
@@ -3594,6 +3602,8 @@ void LocationsBuilderMIPS::VisitClinitCheck(HClinitCheck* check) {
   if (check->HasUses()) {
     locations->SetOut(Location::SameAsFirstInput());
   }
+  // Rely on the type initialization to save everything we need.
+  locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
 }
 
 void InstructionCodeGeneratorMIPS::VisitClinitCheck(HClinitCheck* check) {
@@ -8134,10 +8144,7 @@ void LocationsBuilderMIPS::VisitLoadClass(HLoadClass* cls) {
   if (load_kind == HLoadClass::LoadKind::kBssEntry) {
     if (!kUseReadBarrier || kUseBakerReadBarrier) {
       // Rely on the type resolution or initialization and marking to save everything we need.
-      RegisterSet caller_saves = RegisterSet::Empty();
-      InvokeRuntimeCallingConvention calling_convention;
-      caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
-      locations->SetCustomSlowPathCallerSaves(caller_saves);
+      locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
     } else {
       // For non-Baker read barriers we have a temp-clobbering call.
     }
@@ -8368,10 +8375,7 @@ void LocationsBuilderMIPS::VisitLoadString(HLoadString* load) {
     if (load_kind == HLoadString::LoadKind::kBssEntry) {
       if (!kUseReadBarrier || kUseBakerReadBarrier) {
         // Rely on the pResolveString and marking to save everything we need.
-        RegisterSet caller_saves = RegisterSet::Empty();
-        InvokeRuntimeCallingConvention calling_convention;
-        caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
-        locations->SetCustomSlowPathCallerSaves(caller_saves);
+        locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
       } else {
         // For non-Baker read barriers we have a temp-clobbering call.
       }

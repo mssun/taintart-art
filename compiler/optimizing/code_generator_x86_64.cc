@@ -56,6 +56,13 @@ static constexpr FloatRegister kFpuCalleeSaves[] = { XMM12, XMM13, XMM14, XMM15 
 
 static constexpr int kC2ConditionMask = 0x400;
 
+static RegisterSet OneRegInReferenceOutSaveEverythingCallerSaves() {
+  // Custom calling convention: RAX serves as both input and output.
+  RegisterSet caller_saves = RegisterSet::Empty();
+  caller_saves.Add(Location::RegisterLocation(RAX));
+  return caller_saves;
+}
+
 // NOLINT on __ macro to suppress wrong warning/fix (misc-macro-parentheses) from clang-tidy.
 #define __ down_cast<X86_64Assembler*>(codegen->GetAssembler())->  // NOLINT
 #define QUICK_ENTRY_POINT(x) QUICK_ENTRYPOINT_OFFSET(kX86_64PointerSize, x).Int32Value()
@@ -5832,10 +5839,7 @@ void LocationsBuilderX86_64::VisitLoadClass(HLoadClass* cls) {
   if (load_kind == HLoadClass::LoadKind::kBssEntry) {
     if (!kUseReadBarrier || kUseBakerReadBarrier) {
       // Rely on the type resolution and/or initialization to save everything.
-      // Custom calling convention: RAX serves as both input and output.
-      RegisterSet caller_saves = RegisterSet::Empty();
-      caller_saves.Add(Location::RegisterLocation(RAX));
-      locations->SetCustomSlowPathCallerSaves(caller_saves);
+      locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
     } else {
       // For non-Baker read barrier we have a temp-clobbering call.
     }
@@ -5950,6 +5954,8 @@ void LocationsBuilderX86_64::VisitClinitCheck(HClinitCheck* check) {
   if (check->HasUses()) {
     locations->SetOut(Location::SameAsFirstInput());
   }
+  // Rely on the type initialization to save everything we need.
+  locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
 }
 
 void LocationsBuilderX86_64::VisitLoadMethodHandle(HLoadMethodHandle* load) {
@@ -6009,10 +6015,7 @@ void LocationsBuilderX86_64::VisitLoadString(HLoadString* load) {
     if (load->GetLoadKind() == HLoadString::LoadKind::kBssEntry) {
       if (!kUseReadBarrier || kUseBakerReadBarrier) {
         // Rely on the pResolveString to save everything.
-        // Custom calling convention: RAX serves as both input and output.
-        RegisterSet caller_saves = RegisterSet::Empty();
-        caller_saves.Add(Location::RegisterLocation(RAX));
-        locations->SetCustomSlowPathCallerSaves(caller_saves);
+        locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
       } else {
         // For non-Baker read barrier we have a temp-clobbering call.
       }
