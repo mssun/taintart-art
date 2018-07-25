@@ -117,6 +117,7 @@ class ElfWriterQuick FINAL : public ElfWriter {
   void EndDataBimgRelRo(OutputStream* data_bimg_rel_ro) OVERRIDE;
   void WriteDynamicSection() OVERRIDE;
   void WriteDebugInfo(const debug::DebugInfo& debug_info) OVERRIDE;
+  bool StripDebugInfo() OVERRIDE;
   bool End() OVERRIDE;
 
   virtual OutputStream* GetStream() OVERRIDE;
@@ -280,10 +281,6 @@ void ElfWriterQuick<ElfTypes>::PrepareDebugInfo(const debug::DebugInfo& debug_in
 template <typename ElfTypes>
 void ElfWriterQuick<ElfTypes>::WriteDebugInfo(const debug::DebugInfo& debug_info) {
   if (!debug_info.Empty()) {
-    if (compiler_options_.GetGenerateDebugInfo()) {
-      // Generate all the debug information we can.
-      debug::WriteDebugInfo(builder_.get(), debug_info, kCFIFormat, true /* write_oat_patches */);
-    }
     if (compiler_options_.GetGenerateMiniDebugInfo()) {
       // Wait for the mini-debug-info generation to finish and write it to disk.
       Thread* self = Thread::Current();
@@ -291,7 +288,18 @@ void ElfWriterQuick<ElfTypes>::WriteDebugInfo(const debug::DebugInfo& debug_info
       debug_info_thread_pool_->Wait(self, true, false);
       builder_->WriteSection(".gnu_debugdata", debug_info_task_->GetResult());
     }
+    // The Strip method expects debug info to be last (mini-debug-info is not stripped).
+    if (compiler_options_.GetGenerateDebugInfo()) {
+      // Generate all the debug information we can.
+      debug::WriteDebugInfo(builder_.get(), debug_info, kCFIFormat, true /* write_oat_patches */);
+    }
   }
+}
+
+template <typename ElfTypes>
+bool ElfWriterQuick<ElfTypes>::StripDebugInfo() {
+  off_t file_size = builder_->Strip();
+  return elf_file_->SetLength(file_size) == 0;
 }
 
 template <typename ElfTypes>

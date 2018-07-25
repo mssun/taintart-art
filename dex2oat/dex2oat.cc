@@ -253,7 +253,14 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("      to the file descriptor specified by --oat-fd.");
   UsageError("      Example: --oat-location=/data/dalvik-cache/system@app@Calculator.apk.oat");
   UsageError("");
-  UsageError("  --oat-symbols=<file.oat>: specifies an oat output destination with full symbols.");
+  UsageError("  --oat-symbols=<file.oat>: specifies a destination where the oat file is copied.");
+  UsageError("      This is equivalent to file copy as build post-processing step.");
+  UsageError("      It is intended to be used with --strip and it happens before it.");
+  UsageError("      Example: --oat-symbols=/symbols/system/framework/boot.oat");
+  UsageError("");
+  UsageError("  --strip: remove all debugging sections at the end (but keep mini-debug-info).");
+  UsageError("      This is equivalent to the \"strip\" command as build post-processing step.");
+  UsageError("      It is intended to be used with --oat-symbols and it happens after it.");
   UsageError("      Example: --oat-symbols=/symbols/system/framework/boot.oat");
   UsageError("");
   UsageError("  --image=<file.art>: specifies an output image filename.");
@@ -1180,6 +1187,7 @@ class Dex2Oat FINAL {
     AssignIfExists(args, M::DexLocations, &dex_locations_);
     AssignIfExists(args, M::OatFiles, &oat_filenames_);
     AssignIfExists(args, M::OatSymbols, &parser_options->oat_symbols);
+    AssignTrueIfExists(args, M::Strip, &strip_);
     AssignIfExists(args, M::ImageFilenames, &image_filenames_);
     AssignIfExists(args, M::ZipFd, &zip_fd_);
     AssignIfExists(args, M::ZipLocation, &zip_location_);
@@ -2175,7 +2183,7 @@ class Dex2Oat FINAL {
         VLOG(compiler) << "Oat file written successfully: " << oat_filenames_[i];
 
         oat_writer.reset();
-        elf_writer.reset();
+        // We may still need the ELF writer later for stripping.
       }
     }
 
@@ -2194,21 +2202,16 @@ class Dex2Oat FINAL {
     return true;
   }
 
-  // Create a copy from stripped to unstripped.
-  bool CopyStrippedToUnstripped() {
+  // Copy the full oat files to symbols directory and then strip the originals.
+  bool CopyOatFilesToSymbolsDirectoryAndStrip() {
     for (size_t i = 0; i < oat_unstripped_.size(); ++i) {
       // If we don't want to strip in place, copy from stripped location to unstripped location.
       // We need to strip after image creation because FixupElf needs to use .strtab.
       if (strcmp(oat_unstripped_[i], oat_filenames_[i]) != 0) {
-        // If the oat file is still open, flush it.
-        if (oat_files_[i].get() != nullptr && oat_files_[i]->IsOpened()) {
-          if (!FlushCloseOutputFile(&oat_files_[i])) {
-            return false;
-          }
-        }
+        DCHECK(oat_files_[i].get() != nullptr && oat_files_[i]->IsOpened());
 
         TimingLogger::ScopedTiming t("dex2oat OatFile copy", timings_);
-        std::unique_ptr<File> in(OS::OpenFileForReading(oat_filenames_[i]));
+        std::unique_ptr<File>& in = oat_files_[i];
         std::unique_ptr<File> out(OS::CreateEmptyFile(oat_unstripped_[i]));
         int64_t in_length = in->GetLength();
         if (in_length < 0) {
@@ -2224,6 +2227,14 @@ class Dex2Oat FINAL {
           return false;
         }
         VLOG(compiler) << "Oat file copied successfully (unstripped): " << oat_unstripped_[i];
+
+        if (strip_) {
+          TimingLogger::ScopedTiming t2("dex2oat OatFile strip", timings_);
+          if (!elf_writers_[i]->StripDebugInfo()) {
+            PLOG(ERROR) << "Failed strip oat file: " << in->GetPath();
+            return false;
+          }
+        }
       }
     }
     return true;
@@ -2239,11 +2250,10 @@ class Dex2Oat FINAL {
     return true;
   }
 
-  bool FlushCloseOutputFile(std::unique_ptr<File>* file) {
-    if (file->get() != nullptr) {
-      std::unique_ptr<File> tmp(file->release());
-      if (tmp->FlushCloseOrErase() != 0) {
-        PLOG(ERROR) << "Failed to flush and close output file: " << tmp->GetPath();
+  bool FlushCloseOutputFile(File* file) {
+    if (file != nullptr) {
+      if (file->FlushCloseOrErase() != 0) {
+        PLOG(ERROR) << "Failed to flush and close output file: " << file->GetPath();
         return false;
       }
     }
@@ -2266,7 +2276,7 @@ class Dex2Oat FINAL {
     bool result = true;
     for (auto& files : { &vdex_files_, &oat_files_ }) {
       for (size_t i = 0; i < files->size(); ++i) {
-        result &= FlushCloseOutputFile(&(*files)[i]);
+        result &= FlushCloseOutputFile((*files)[i].get());
       }
     }
     return result;
@@ -2825,6 +2835,7 @@ class Dex2Oat FINAL {
   std::string oat_location_;
   std::vector<const char*> oat_filenames_;
   std::vector<const char*> oat_unstripped_;
+  bool strip_;
   int oat_fd_;
   int input_vdex_fd_;
   int output_vdex_fd_;
@@ -2947,15 +2958,9 @@ static dex2oat::ReturnCode CompileImage(Dex2Oat& dex2oat) {
     return dex2oat::ReturnCode::kOther;
   }
 
-  // Flush boot.oat. We always expect the output file by name, and it will be re-opened from the
-  // unstripped name. Do not close the file if we are compiling the image with an oat fd since the
-  // image writer will require this fd to generate the image.
-  if (dex2oat.ShouldKeepOatFileOpen()) {
-    if (!dex2oat.FlushOutputFiles()) {
-      dex2oat.EraseOutputFiles();
-      return dex2oat::ReturnCode::kOther;
-    }
-  } else if (!dex2oat.FlushCloseOutputFiles()) {
+  // Flush boot.oat.  Keep it open as we might still modify it later (strip it).
+  if (!dex2oat.FlushOutputFiles()) {
+    dex2oat.EraseOutputFiles();
     return dex2oat::ReturnCode::kOther;
   }
 
@@ -2974,7 +2979,7 @@ static dex2oat::ReturnCode CompileImage(Dex2Oat& dex2oat) {
   }
 
   // Copy stripped to unstripped location, if necessary.
-  if (!dex2oat.CopyStrippedToUnstripped()) {
+  if (!dex2oat.CopyOatFilesToSymbolsDirectoryAndStrip()) {
     return dex2oat::ReturnCode::kOther;
   }
 
@@ -3012,7 +3017,7 @@ static dex2oat::ReturnCode CompileApp(Dex2Oat& dex2oat) {
 
   // Copy stripped to unstripped location, if necessary. This will implicitly flush & close the
   // stripped versions. If this is given, we expect to be able to open writable files by name.
-  if (!dex2oat.CopyStrippedToUnstripped()) {
+  if (!dex2oat.CopyOatFilesToSymbolsDirectoryAndStrip()) {
     return dex2oat::ReturnCode::kOther;
   }
 
