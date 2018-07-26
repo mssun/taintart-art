@@ -343,7 +343,7 @@ class QuickArgumentVisitor {
     uintptr_t outer_pc_offset = current_code->NativeQuickPcOffset(outer_pc);
 
     if (current_code->IsOptimized()) {
-      CodeInfo code_info(current_code);
+      CodeInfo code_info(current_code, CodeInfo::DecodeFlags::InlineInfoOnly);
       StackMap stack_map = code_info.GetStackMapForNativePcOffset(outer_pc_offset);
       DCHECK(stack_map.IsValid());
       BitTableRange<InlineInfo> inline_infos = code_info.GetInlineInfosOf(stack_map);

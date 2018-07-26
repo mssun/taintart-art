@@ -93,6 +93,7 @@ class BitTableBase {
   }
 
   ALWAYS_INLINE uint32_t Get(uint32_t row, uint32_t column = 0) const {
+    DCHECK_NE(header_bit_size_, 0u) << "Table has not been loaded";
     DCHECK_LT(row, num_rows_);
     DCHECK_LT(column, kNumColumns);
     size_t offset = row * NumRowBits() + column_offset_[column];
@@ -100,6 +101,7 @@ class BitTableBase {
   }
 
   ALWAYS_INLINE BitMemoryRegion GetBitMemoryRegion(uint32_t row, uint32_t column = 0) const {
+    DCHECK_NE(header_bit_size_, 0u) << "Table has not been loaded";
     DCHECK_LT(row, num_rows_);
     DCHECK_LT(column, kNumColumns);
     size_t offset = row * NumRowBits() + column_offset_[column];
