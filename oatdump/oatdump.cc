@@ -1310,7 +1310,7 @@ class OatDumper {
                     const CodeItemDataAccessor& code_item_accessor) {
     if (IsMethodGeneratedByOptimizingCompiler(oat_method, code_item_accessor)) {
       // The optimizing compiler outputs its CodeInfo data in the vmap table.
-      const void* raw_code_info = oat_method.GetVmapTable();
+      const uint8_t* raw_code_info = oat_method.GetVmapTable();
       if (raw_code_info != nullptr) {
         CodeInfo code_info(raw_code_info);
         DCHECK(code_item_accessor.HasCodeItem());
