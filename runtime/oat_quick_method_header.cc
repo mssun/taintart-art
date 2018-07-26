@@ -44,7 +44,7 @@ uint32_t OatQuickMethodHeader::ToDexPc(ArtMethod* method,
     return dex::kDexNoIndex;
   } else {
     DCHECK(IsOptimized());
-    CodeInfo code_info(this);
+    CodeInfo code_info(this, CodeInfo::DecodeFlags::InlineInfoOnly);
     StackMap stack_map = code_info.GetStackMapForNativePcOffset(sought_offset);
     if (stack_map.IsValid()) {
       return stack_map.GetDexPc();
@@ -69,7 +69,7 @@ uintptr_t OatQuickMethodHeader::ToNativeQuickPc(ArtMethod* method,
   DCHECK(!method->IsNative());
   DCHECK(IsOptimized());
   // Search for the dex-to-pc mapping in stack maps.
-  CodeInfo code_info(this);
+  CodeInfo code_info(this, CodeInfo::DecodeFlags::InlineInfoOnly);
 
   // All stack maps are stored in the same CodeItem section, safepoint stack
   // maps first, then catch stack maps. We use `is_for_catch_handler` to select

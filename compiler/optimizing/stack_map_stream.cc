@@ -310,9 +310,9 @@ size_t StackMapStream::PrepareForFillIn() {
   EncodeUnsignedLeb128(&out_, num_dex_registers_);
   BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&out_, out_.size() * kBitsPerByte);
   stack_maps_.Encode(out);
+  inline_infos_.Encode(out);
   register_masks_.Encode(out);
   stack_masks_.Encode(out);
-  inline_infos_.Encode(out);
   dex_register_masks_.Encode(out);
   dex_register_maps_.Encode(out);
   dex_register_catalog_.Encode(out);
