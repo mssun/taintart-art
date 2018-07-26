@@ -289,6 +289,7 @@ art_cc_defaults {
         "1943-suspend-raw-monitor-wait/native_suspend_monitor.cc",
         "1946-list-descriptors/descriptors.cc",
         "1950-unprepared-transform/unprepared_transform.cc",
+        "1951-monitor-enter-no-suspend/raw_monitor.cc",
     ],
     // Use NDK-compatible headers for ctstiagent.
     header_libs: [
