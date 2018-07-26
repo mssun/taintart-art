@@ -795,7 +795,7 @@ void StackVisitor::WalkStack(bool include_transitions) {
             // JNI methods cannot have any inlined frames.
             && !method->IsNative()) {
           DCHECK_NE(cur_quick_frame_pc_, 0u);
-          CodeInfo code_info(cur_oat_quick_method_header_);
+          CodeInfo code_info(cur_oat_quick_method_header_, CodeInfo::DecodeFlags::InlineInfoOnly);
           uint32_t native_pc_offset =
               cur_oat_quick_method_header_->NativeQuickPcOffset(cur_quick_frame_pc_);
           StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
