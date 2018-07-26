@@ -34,7 +34,7 @@ namespace art {
  * Collects and builds stack maps for a method. All the stack maps
  * for a method are placed in a CodeInfo object.
  */
-class StackMapStream : public ValueObject {
+class StackMapStream : public DeletableArenaObject<kArenaAllocStackMapStream> {
  public:
   explicit StackMapStream(ScopedArenaAllocator* allocator, InstructionSet instruction_set)
       : instruction_set_(instruction_set),
@@ -53,6 +53,7 @@ class StackMapStream : public ValueObject {
         current_dex_registers_(allocator->Adapter(kArenaAllocStackMapStream)),
         previous_dex_registers_(allocator->Adapter(kArenaAllocStackMapStream)),
         dex_register_timestamp_(allocator->Adapter(kArenaAllocStackMapStream)),
+        expected_num_dex_registers_(0u),
         temp_dex_register_mask_(allocator, 32, true, kArenaAllocStackMapStream),
         temp_dex_register_map_(allocator->Adapter(kArenaAllocStackMapStream)) {
   }
