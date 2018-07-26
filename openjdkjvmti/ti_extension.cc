@@ -39,6 +39,7 @@
 #include "ti_class.h"
 #include "ti_ddms.h"
 #include "ti_heap.h"
+#include "ti_monitor.h"
 #include "thread-inl.h"
 
 namespace openjdkjvmti {
@@ -248,6 +249,25 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
         ERR(ILLEGAL_ARGUMENT),
         ERR(OUT_OF_MEMORY),
         ERR(NOT_IMPLEMENTED),
+      });
+  if (error != ERR(NONE)) {
+    return error;
+  }
+
+  // Raw monitors no suspend
+  error = add_extension(
+      reinterpret_cast<jvmtiExtensionFunction>(MonitorUtil::RawMonitorEnterNoSuspend),
+      "com.android.art.concurrent.raw_monitor_enter_no_suspend",
+      "Normally entering a monitor will not return until both the monitor is locked and the"
+      " current thread is not suspended. This method will return once the monitor is locked"
+      " even if the thread is suspended. Note that using rawMonitorWait will wait until the"
+      " thread is not suspended again on wakeup and so should be avoided.",
+      {
+          { "raw_monitor", JVMTI_KIND_IN_PTR, JVMTI_TYPE_CVOID, false },
+      },
+      {
+        ERR(NULL_POINTER),
+        ERR(INVALID_MONITOR),
       });
   if (error != ERR(NONE)) {
     return error;
