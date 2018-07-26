@@ -16,10 +16,53 @@
 
 package art;
 
+import java.lang.ref.PhantomReference;
+import java.lang.ref.ReferenceQueue;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Test905 {
+  // Taken from jdwp tests.
+  public static class MarkerObj {
+    public static int cnt = 0;
+    public void finalize() { cnt++; }
+  }
+  public static class GcMarker {
+    private final ReferenceQueue mQueue;
+    private final ArrayList<PhantomReference> mList;
+    public GcMarker() {
+      mQueue = new ReferenceQueue();
+      mList = new ArrayList<PhantomReference>(3);
+    }
+    public void add(Object referent) {
+      mList.add(new PhantomReference(referent, mQueue));
+    }
+    public void waitForGc() {
+      waitForGc(mList.size());
+    }
+    public void waitForGc(int numberOfExpectedFinalizations) {
+      if (numberOfExpectedFinalizations > mList.size()) {
+        throw new IllegalArgumentException("wait condition will never be met");
+      }
+      // Request finalization of objects, and subsequent reference enqueueing.
+      // Repeat until reference queue reaches expected size.
+      do {
+          System.runFinalization();
+          Runtime.getRuntime().gc();
+          try { Thread.sleep(10); } catch (Exception e) {}
+      } while (isLive(numberOfExpectedFinalizations));
+    }
+    private boolean isLive(int numberOfExpectedFinalizations) {
+      int numberFinalized = 0;
+      for (int i = 0, n = mList.size(); i < n; i++) {
+        if (mList.get(i).isEnqueued()) {
+          numberFinalized++;
+        }
+      }
+      return numberFinalized < numberOfExpectedFinalizations;
+    }
+  }
+
   public static void run() throws Exception {
     doTest();
   }
@@ -44,7 +87,7 @@ public class Test905 {
     allocate(l, 1);
     l.clear();
 
-    Runtime.getRuntime().gc();
+    gcAndWait();
 
     getAndPrintTags();
     System.out.println("---");
@@ -56,12 +99,12 @@ public class Test905 {
     }
     l.clear();
 
-    Runtime.getRuntime().gc();
+    gcAndWait();
 
     getAndPrintTags();
     System.out.println("---");
 
-    Runtime.getRuntime().gc();
+    gcAndWait();
 
     getAndPrintTags();
     System.out.println("---");
@@ -80,7 +123,7 @@ public class Test905 {
     for (int i = 1; i <= 100000; ++i) {
       stressAllocate(i);
     }
-    Runtime.getRuntime().gc();
+    gcAndWait();
     long[] freedTags1 = getCollectedTags(0);
     long[] freedTags2 = getCollectedTags(1);
     System.out.println("Free counts " + freedTags1.length + " " + freedTags2.length);
@@ -101,6 +144,17 @@ public class Test905 {
     long[] freedTags = getCollectedTags(0);
     Arrays.sort(freedTags);
     System.out.println(Arrays.toString(freedTags));
+  }
+
+  private static GcMarker getMarker() {
+    GcMarker m = new GcMarker();
+    m.add(new MarkerObj());
+    return m;
+  }
+
+  private static void gcAndWait() {
+    GcMarker marker = getMarker();
+    marker.waitForGc();
   }
 
   private static native void setupObjectFreeCallback();

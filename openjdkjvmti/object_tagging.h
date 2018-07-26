@@ -48,7 +48,18 @@ class EventHandler;
 class ObjectTagTable final : public JvmtiWeakTable<jlong> {
  public:
   ObjectTagTable(EventHandler* event_handler, ArtJvmTiEnv* env)
-      : event_handler_(event_handler), jvmti_env_(env) {}
+      : lock_("Object tag table lock", art::LockLevel::kGenericBottomLock),
+        event_handler_(event_handler),
+        jvmti_env_(env) {}
+
+  // Denotes that weak-refs are visible on all threads. Used by semi-space.
+  void Allow() override
+      REQUIRES_SHARED(art::Locks::mutator_lock_)
+      REQUIRES(!allow_disallow_lock_);
+  // Used by cms and the checkpoint system.
+  void Broadcast(bool broadcast_for_checkpoint) override
+      REQUIRES_SHARED(art::Locks::mutator_lock_)
+      REQUIRES(!allow_disallow_lock_);
 
   bool Set(art::mirror::Object* obj, jlong tag) override
       REQUIRES_SHARED(art::Locks::mutator_lock_)
@@ -77,6 +88,16 @@ class ObjectTagTable final : public JvmtiWeakTable<jlong> {
   void HandleNullSweep(jlong tag) override;
 
  private:
+  void SendDelayedFreeEvents()
+      REQUIRES_SHARED(art::Locks::mutator_lock_)
+      REQUIRES(!allow_disallow_lock_);
+
+  void SendSingleFreeEvent(jlong tag)
+      REQUIRES_SHARED(art::Locks::mutator_lock_)
+      REQUIRES(!allow_disallow_lock_, !lock_);
+
+  art::Mutex lock_ BOTTOM_MUTEX_ACQUIRED_AFTER;
+  std::vector<jlong> null_tags_ GUARDED_BY(lock_);
   EventHandler* event_handler_;
   ArtJvmTiEnv* jvmti_env_;
 };
