@@ -1,0 +1,1 @@
+Tests the jvmti-extension to lock a monitor without regards to suspension.

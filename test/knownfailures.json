@@ -968,7 +968,8 @@
                   "677-fsi2",
                   "678-quickening",
                   "679-locks",
-                  "999-redefine-hiddenapi"],
+                  "999-redefine-hiddenapi",
+                  "1951-monitor-enter-no-suspend"],
         "variant": "jvm",
         "description": ["Doesn't run on RI."]
     },
