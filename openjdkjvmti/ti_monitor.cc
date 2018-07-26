@@ -75,14 +75,16 @@ class JvmtiMonitor {
     return true;
   }
 
-  void MonitorEnter(art::Thread* self) NO_THREAD_SAFETY_ANALYSIS {
+  void MonitorEnter(art::Thread* self, bool suspend) NO_THREAD_SAFETY_ANALYSIS {
     // Perform a suspend-check. The spec doesn't require this but real-world agents depend on this
     // behavior. We do this by performing a suspend-check then retrying if the thread is suspended
     // before or after locking the internal mutex.
     do {
-      ThreadUtil::SuspendCheck(self);
-      if (ThreadUtil::WouldSuspendForUserCode(self)) {
-        continue;
+      if (suspend) {
+        ThreadUtil::SuspendCheck(self);
+        if (ThreadUtil::WouldSuspendForUserCode(self)) {
+          continue;
+        }
       }
 
       // Check for recursive enter.
@@ -100,7 +102,7 @@ class JvmtiMonitor {
         // Lock with sleep. We will need to check for suspension after this to make sure that agents
         // won't deadlock.
         mutex_.lock();
-        if (!ThreadUtil::WouldSuspendForUserCode(self)) {
+        if (!suspend || !ThreadUtil::WouldSuspendForUserCode(self)) {
           break;
         } else {
           // We got suspended in the middle of waiting for the mutex. We should release the mutex
@@ -187,7 +189,8 @@ class JvmtiMonitor {
     }
 
     // Reaquire the mutex/monitor, also go to sleep if we were suspended.
-    MonitorEnter(self);
+    // TODO Give an extension to wait without suspension as well.
+    MonitorEnter(self, /*suspend*/ true);
     CHECK(owner_.load(std::memory_order_relaxed) == self);
     DCHECK_EQ(1u, count_);
     // Reset the count.
@@ -249,6 +252,19 @@ jvmtiError MonitorUtil::DestroyRawMonitor(jvmtiEnv* env ATTRIBUTE_UNUSED, jrawMo
   return ERR(NONE);
 }
 
+jvmtiError MonitorUtil::RawMonitorEnterNoSuspend(jvmtiEnv* env ATTRIBUTE_UNUSED, jrawMonitorID id) {
+  if (id == nullptr) {
+    return ERR(INVALID_MONITOR);
+  }
+
+  JvmtiMonitor* monitor = DecodeMonitor(id);
+  art::Thread* self = art::Thread::Current();
+
+  monitor->MonitorEnter(self, /*suspend*/false);
+
+  return ERR(NONE);
+}
+
 jvmtiError MonitorUtil::RawMonitorEnter(jvmtiEnv* env ATTRIBUTE_UNUSED, jrawMonitorID id) {
   if (id == nullptr) {
     return ERR(INVALID_MONITOR);
@@ -257,7 +273,7 @@ jvmtiError MonitorUtil::RawMonitorEnter(jvmtiEnv* env ATTRIBUTE_UNUSED, jrawMoni
   JvmtiMonitor* monitor = DecodeMonitor(id);
   art::Thread* self = art::Thread::Current();
 
-  monitor->MonitorEnter(self);
+  monitor->MonitorEnter(self, /*suspend*/true);
 
   return ERR(NONE);
 }

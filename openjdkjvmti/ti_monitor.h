@@ -43,6 +43,8 @@ class MonitorUtil {
 
   static jvmtiError DestroyRawMonitor(jvmtiEnv* env, jrawMonitorID monitor);
 
+  static jvmtiError RawMonitorEnterNoSuspend(jvmtiEnv* env, jrawMonitorID monitor);
+
   static jvmtiError RawMonitorEnter(jvmtiEnv* env, jrawMonitorID monitor);
 
   static jvmtiError RawMonitorExit(jvmtiEnv* env, jrawMonitorID monitor);
