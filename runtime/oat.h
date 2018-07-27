@@ -32,8 +32,8 @@ class InstructionSetFeatures;
 class PACKED(4) OatHeader {
  public:
   static constexpr uint8_t kOatMagic[] = { 'o', 'a', 't', '\n' };
-  // Last oat version changed reason: Move InlineInfo bit table.
-  static constexpr uint8_t kOatVersion[] = { '1', '5', '5', '\0' };
+  // Last oat version changed reason: Remove frame info from OatQuickMethodHeader.
+  static constexpr uint8_t kOatVersion[] = { '1', '5', '6', '\0' };
 
   static constexpr const char* kImageLocationKey = "image-location";
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
