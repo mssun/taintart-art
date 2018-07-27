@@ -84,18 +84,18 @@ class ExceptionTest : public CommonRuntimeTest {
     const size_t stack_maps_size = stack_maps.PrepareForFillIn();
     const size_t header_size = sizeof(OatQuickMethodHeader);
     const size_t code_alignment = GetInstructionSetAlignment(kRuntimeISA);
-    const size_t code_offset = RoundUp(stack_maps_size + header_size, code_alignment);
 
-    fake_header_code_and_maps_.resize(code_offset + fake_code_.size());
+    fake_header_code_and_maps_.resize(stack_maps_size + header_size + code_size + code_alignment);
+    // NB: The start of the vector might not have been allocated the desired alignment.
+    uint8_t* code_ptr =
+      AlignUp(&fake_header_code_and_maps_[stack_maps_size + header_size], code_alignment);
+
     MemoryRegion stack_maps_region(&fake_header_code_and_maps_[0], stack_maps_size);
     stack_maps.FillInCodeInfo(stack_maps_region);
-    OatQuickMethodHeader method_header(code_offset, 0u, code_size);
+    OatQuickMethodHeader method_header(code_ptr - stack_maps_region.begin(), 0u, code_size);
     static_assert(std::is_trivially_copyable<OatQuickMethodHeader>::value, "Cannot use memcpy");
-    memcpy(&fake_header_code_and_maps_[code_offset - header_size], &method_header, header_size);
-    std::copy(fake_code_.begin(),
-              fake_code_.end(),
-              fake_header_code_and_maps_.begin() + code_offset);
-    const void* code_ptr = fake_header_code_and_maps_.data() + code_offset;
+    memcpy(code_ptr - header_size, &method_header, header_size);
+    memcpy(code_ptr, fake_code_.data(), fake_code_.size());
 
     if (kRuntimeISA == InstructionSet::kArm) {
       // Check that the Thumb2 adjustment will be a NOP, see EntryPointToCodePointer().
