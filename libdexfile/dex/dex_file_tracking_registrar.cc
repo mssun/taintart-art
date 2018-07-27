@@ -30,6 +30,7 @@
 #endif
 #include "base/memory_tool.h"
 
+#include "class_accessor-inl.h"
 #include "code_item_accessors-inl.h"
 #include "dex_file-inl.h"
 
@@ -155,89 +156,61 @@ void DexFileTrackingRegistrar::SetDexFileRegistration(bool should_poison) {
 }
 
 void DexFileTrackingRegistrar::SetAllCodeItemRegistration(bool should_poison) {
-  for (size_t classdef_ctr = 0; classdef_ctr < dex_file_->NumClassDefs(); ++classdef_ctr) {
-    const DexFile::ClassDef& cd = dex_file_->GetClassDef(classdef_ctr);
-    const uint8_t* class_data = dex_file_->GetClassData(cd);
-    if (class_data != nullptr) {
-      ClassDataItemIterator cdit(*dex_file_, class_data);
-      cdit.SkipAllFields();
-      while (cdit.HasNextMethod()) {
-        const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
-        if (code_item != nullptr) {
-          const void* code_item_begin = reinterpret_cast<const void*>(code_item);
-          size_t code_item_size = dex_file_->GetCodeItemSize(*code_item);
-          range_values_.push_back(std::make_tuple(code_item_begin, code_item_size, should_poison));
-        }
-        cdit.Next();
+  for (ClassAccessor accessor : dex_file_->GetClasses()) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      if (code_item != nullptr) {
+        const void* code_item_begin = reinterpret_cast<const void*>(code_item);
+        size_t code_item_size = dex_file_->GetCodeItemSize(*code_item);
+        range_values_.push_back(std::make_tuple(code_item_begin, code_item_size, should_poison));
       }
     }
   }
 }
 
 void DexFileTrackingRegistrar::SetAllCodeItemStartRegistration(bool should_poison) {
-  for (size_t classdef_ctr = 0; classdef_ctr < dex_file_->NumClassDefs(); ++classdef_ctr) {
-    const DexFile::ClassDef& cd = dex_file_->GetClassDef(classdef_ctr);
-    const uint8_t* class_data = dex_file_->GetClassData(cd);
-    if (class_data != nullptr) {
-      ClassDataItemIterator cdit(*dex_file_, class_data);
-      cdit.SkipAllFields();
-      while (cdit.HasNextMethod()) {
-        const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
-        if (code_item != nullptr) {
-          const void* code_item_begin = reinterpret_cast<const void*>(code_item);
-          size_t code_item_start = reinterpret_cast<size_t>(code_item);
-          CodeItemInstructionAccessor accessor(*dex_file_, code_item);
-          size_t code_item_start_end = reinterpret_cast<size_t>(accessor.Insns());
-          size_t code_item_start_size = code_item_start_end - code_item_start;
-          range_values_.push_back(std::make_tuple(code_item_begin,
-                                                  code_item_start_size,
-                                                  should_poison));
-        }
-        cdit.Next();
+  for (ClassAccessor class_accessor : dex_file_->GetClasses()) {
+    for (const ClassAccessor::Method& method : class_accessor.GetMethods()) {
+      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      if (code_item != nullptr) {
+        const void* code_item_begin = reinterpret_cast<const void*>(code_item);
+        size_t code_item_start = reinterpret_cast<size_t>(code_item);
+        CodeItemInstructionAccessor accessor(*dex_file_, code_item);
+        size_t code_item_start_end = reinterpret_cast<size_t>(accessor.Insns());
+        size_t code_item_start_size = code_item_start_end - code_item_start;
+        range_values_.push_back(std::make_tuple(code_item_begin,
+                                                code_item_start_size,
+                                                should_poison));
       }
     }
   }
 }
 
 void DexFileTrackingRegistrar::SetAllInsnsRegistration(bool should_poison) {
-  for (size_t classdef_ctr = 0; classdef_ctr < dex_file_->NumClassDefs(); ++classdef_ctr) {
-    const DexFile::ClassDef& cd = dex_file_->GetClassDef(classdef_ctr);
-    const uint8_t* class_data = dex_file_->GetClassData(cd);
-    if (class_data != nullptr) {
-      ClassDataItemIterator cdit(*dex_file_, class_data);
-      cdit.SkipAllFields();
-      while (cdit.HasNextMethod()) {
-        const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
-        if (code_item != nullptr) {
-          CodeItemInstructionAccessor accessor(*dex_file_, code_item);
-          const void* insns_begin = reinterpret_cast<const void*>(accessor.Insns());
-          // Member insns_size_in_code_units_ is in 2-byte units
-          size_t insns_size = accessor.InsnsSizeInCodeUnits() * 2;
-          range_values_.push_back(std::make_tuple(insns_begin, insns_size, should_poison));
-        }
-        cdit.Next();
+  for (ClassAccessor class_accessor : dex_file_->GetClasses()) {
+    for (const ClassAccessor::Method& method : class_accessor.GetMethods()) {
+      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      if (code_item != nullptr) {
+        CodeItemInstructionAccessor accessor(*dex_file_, code_item);
+        const void* insns_begin = reinterpret_cast<const void*>(accessor.Insns());
+        // Member insns_size_in_code_units_ is in 2-byte units
+        size_t insns_size = accessor.InsnsSizeInCodeUnits() * 2;
+        range_values_.push_back(std::make_tuple(insns_begin, insns_size, should_poison));
       }
     }
   }
 }
 
 void DexFileTrackingRegistrar::SetCodeItemRegistration(const char* class_name, bool should_poison) {
-  for (size_t classdef_ctr = 0; classdef_ctr < dex_file_->NumClassDefs(); ++classdef_ctr) {
-    const DexFile::ClassDef& cd = dex_file_->GetClassDef(classdef_ctr);
-    const uint8_t* class_data = dex_file_->GetClassData(cd);
-    if (class_data != nullptr) {
-      ClassDataItemIterator cdit(*dex_file_, class_data);
-      cdit.SkipAllFields();
-      while (cdit.HasNextMethod()) {
-        const DexFile::MethodId& methodid_item = dex_file_->GetMethodId(cdit.GetMemberIndex());
-        const char * methodid_name = dex_file_->GetMethodName(methodid_item);
-        const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
-        if (code_item != nullptr && strcmp(methodid_name, class_name) == 0) {
-          const void* code_item_begin = reinterpret_cast<const void*>(code_item);
-          size_t code_item_size = dex_file_->GetCodeItemSize(*code_item);
-          range_values_.push_back(std::make_tuple(code_item_begin, code_item_size, should_poison));
-        }
-        cdit.Next();
+  for (ClassAccessor accessor : dex_file_->GetClasses()) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+      const DexFile::MethodId& methodid_item = dex_file_->GetMethodId(method.GetIndex());
+      const char * methodid_name = dex_file_->GetMethodName(methodid_item);
+      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      if (code_item != nullptr && strcmp(methodid_name, class_name) == 0) {
+        const void* code_item_begin = reinterpret_cast<const void*>(code_item);
+        size_t code_item_size = dex_file_->GetCodeItemSize(*code_item);
+        range_values_.push_back(std::make_tuple(code_item_begin, code_item_size, should_poison));
       }
     }
   }
