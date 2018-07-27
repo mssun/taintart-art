@@ -28,6 +28,7 @@
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/base64_test_util.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file.h"
@@ -124,16 +125,15 @@ TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
   const DexFile::ClassDef& class_def = raw->GetClassDef(0);
   ASSERT_STREQ("LGetMethodSignature;", raw->GetClassDescriptor(class_def));
 
-  const uint8_t* class_data = raw->GetClassData(class_def);
-  ASSERT_TRUE(class_data != nullptr);
-  ClassDataItemIterator it(*raw, class_data);
-
-  EXPECT_EQ(1u, it.NumDirectMethods());
+  ClassAccessor accessor(*raw, class_def);
+  ASSERT_TRUE(accessor.HasClassData());
+  auto methods = accessor.GetMethods();
+  auto cur_method = methods.begin();
 
   // Check the signature for the static initializer.
   {
-    ASSERT_EQ(1U, it.NumDirectMethods());
-    const DexFile::MethodId& method_id = raw->GetMethodId(it.GetMemberIndex());
+    ASSERT_EQ(1U, accessor.NumDirectMethods());
+    const DexFile::MethodId& method_id = raw->GetMethodId(cur_method->GetIndex());
     const char* name = raw->StringDataByIdx(method_id.name_idx_);
     ASSERT_STREQ("<init>", name);
     std::string signature(raw->GetMethodSignature(method_id).ToString());
@@ -203,10 +203,11 @@ TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
           "java.lang.Object[][] GetMethodSignature.mB()"
       },
   };
-  ASSERT_EQ(arraysize(results), it.NumVirtualMethods());
+  ASSERT_EQ(arraysize(results), accessor.NumVirtualMethods());
   for (const Result& r : results) {
-    it.Next();
-    const DexFile::MethodId& method_id = raw->GetMethodId(it.GetMemberIndex());
+    ++cur_method;
+    ASSERT_TRUE(cur_method != methods.end());
+    const DexFile::MethodId& method_id = raw->GetMethodId(cur_method->GetIndex());
 
     const char* name = raw->StringDataByIdx(method_id.name_idx_);
     ASSERT_STREQ(r.name, name);
@@ -215,8 +216,10 @@ TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
     ASSERT_EQ(r.signature, signature);
 
     std::string plain_method = std::string("GetMethodSignature.") + r.name;
-    ASSERT_EQ(plain_method, raw->PrettyMethod(it.GetMemberIndex(), /* with_signature */ false));
-    ASSERT_EQ(r.pretty_method, raw->PrettyMethod(it.GetMemberIndex(), /* with_signature */ true));
+    ASSERT_EQ(plain_method,
+              raw->PrettyMethod(cur_method->GetIndex(), /* with_signature */ false));
+    ASSERT_EQ(r.pretty_method,
+              raw->PrettyMethod(cur_method->GetIndex(), /* with_signature */ true));
   }
 }
 
