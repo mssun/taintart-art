@@ -84,7 +84,7 @@ TEST(CompiledMethodStorage, Deduplicate) {
         for (auto&& f : cfi_info) {
           for (auto&& p : patches) {
             compiled_methods.push_back(CompiledMethod::SwapAllocCompiledMethod(
-                &driver, InstructionSet::kNone, c, 0u, 0u, 0u, s, v, f, p));
+                &driver, InstructionSet::kNone, c, s, v, f, p));
           }
         }
       }

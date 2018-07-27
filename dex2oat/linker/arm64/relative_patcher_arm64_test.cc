@@ -726,15 +726,24 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherJustTooFarAfter) {
       ArrayRef<const LinkerPatch>(),
       bl_offset_in_method1 + just_over_max_positive_disp);
   ASSERT_EQ(expected_last_method_idx, last_method_idx);
+  uint32_t method_after_thunk_idx = last_method_idx;
+  if (sizeof(OatQuickMethodHeader) < kArm64Alignment) {
+    // The thunk needs to start on a kArm64Alignment-aligned address before the address where the
+    // last method would have been if there was no thunk. If the size of the OatQuickMethodHeader
+    // is at least kArm64Alignment, the thunk start shall fit between the previous filler method
+    // and that address. Otherwise, it shall be inserted before that filler method.
+    method_after_thunk_idx -= 1u;
+  }
 
   uint32_t method1_offset = GetMethodOffset(1u);
-  uint32_t last_method_offset = GetMethodOffset(last_method_idx);
-  ASSERT_TRUE(IsAligned<kArm64Alignment>(last_method_offset));
-  uint32_t last_method_header_offset = last_method_offset - sizeof(OatQuickMethodHeader);
+  uint32_t method_after_thunk_offset = GetMethodOffset(method_after_thunk_idx);
+  ASSERT_TRUE(IsAligned<kArm64Alignment>(method_after_thunk_offset));
+  uint32_t method_after_thunk_header_offset =
+      method_after_thunk_offset - sizeof(OatQuickMethodHeader);
   uint32_t thunk_size = MethodCallThunkSize();
-  uint32_t thunk_offset = RoundDown(last_method_header_offset - thunk_size, kArm64Alignment);
+  uint32_t thunk_offset = RoundDown(method_after_thunk_header_offset - thunk_size, kArm64Alignment);
   DCHECK_EQ(thunk_offset + thunk_size + CodeAlignmentSize(thunk_offset + thunk_size),
-            last_method_header_offset);
+            method_after_thunk_header_offset);
   uint32_t diff = thunk_offset - (method1_offset + bl_offset_in_method1);
   CHECK_ALIGNED(diff, 4u);
   ASSERT_LT(diff, 128 * MB);
