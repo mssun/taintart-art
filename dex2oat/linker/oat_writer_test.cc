@@ -72,9 +72,6 @@ class OatTest : public CommonCompilerTest {
     } else {
       const void* quick_oat_code = oat_method.GetQuickCode();
       EXPECT_TRUE(quick_oat_code != nullptr) << method->PrettyMethod();
-      EXPECT_EQ(oat_method.GetFrameSizeInBytes(), compiled_method->GetFrameSizeInBytes());
-      EXPECT_EQ(oat_method.GetCoreSpillMask(), compiled_method->GetCoreSpillMask());
-      EXPECT_EQ(oat_method.GetFpSpillMask(), compiled_method->GetFpSpillMask());
       uintptr_t oat_code_aligned = RoundDown(reinterpret_cast<uintptr_t>(quick_oat_code), 2);
       quick_oat_code = reinterpret_cast<const void*>(oat_code_aligned);
       ArrayRef<const uint8_t> quick_code = compiled_method->GetQuickCode();
@@ -475,7 +472,7 @@ TEST_F(OatTest, OatHeaderSizeCheck) {
   // it is time to update OatHeader::kOatVersion
   EXPECT_EQ(76U, sizeof(OatHeader));
   EXPECT_EQ(4U, sizeof(OatMethodOffsets));
-  EXPECT_EQ(24U, sizeof(OatQuickMethodHeader));
+  EXPECT_EQ(12U, sizeof(OatQuickMethodHeader));
   EXPECT_EQ(166 * static_cast<size_t>(GetInstructionSetPointerSize(kRuntimeISA)),
             sizeof(QuickEntryPoints));
 }

@@ -1329,15 +1329,7 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
       method_info_offset += code_offset;
       DCHECK_LT(method_info_offset, code_offset);
     }
-    uint32_t frame_size_in_bytes = compiled_method->GetFrameSizeInBytes();
-    uint32_t core_spill_mask = compiled_method->GetCoreSpillMask();
-    uint32_t fp_spill_mask = compiled_method->GetFpSpillMask();
-    *method_header = OatQuickMethodHeader(vmap_table_offset,
-                                          method_info_offset,
-                                          frame_size_in_bytes,
-                                          core_spill_mask,
-                                          fp_spill_mask,
-                                          code_size);
+    *method_header = OatQuickMethodHeader(vmap_table_offset, method_info_offset, code_size);
 
     if (!deduped) {
       // Update offsets. (Checksum is updated when writing.)
@@ -1348,8 +1340,9 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
     // Exclude quickened dex methods (code_size == 0) since they have no native code.
     if (generate_debug_info_ && code_size != 0) {
       DCHECK(has_debug_info);
+      const uint8_t* code_info = compiled_method->GetVmapTable().data();
+      DCHECK(code_info != nullptr);
 
-      bool has_code_info = method_header->IsOptimized();
       // Record debug information for this function if we are doing that.
       debug::MethodDebugInfo& info = writer_->method_info_[debug_info_idx];
       DCHECK(info.custom_name.empty());
@@ -1366,8 +1359,8 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
       info.is_code_address_text_relative = true;
       info.code_address = code_offset - executable_offset_;
       info.code_size = code_size;
-      info.frame_size_in_bytes = compiled_method->GetFrameSizeInBytes();
-      info.code_info = has_code_info ? compiled_method->GetVmapTable().data() : nullptr;
+      info.frame_size_in_bytes = CodeInfo::DecodeFrameInfo(code_info).FrameSizeInBytes();
+      info.code_info = code_info;
       info.cfi = compiled_method->GetCFIInfo();
     } else {
       DCHECK(!has_debug_info);
