@@ -26,6 +26,7 @@ art_cc_defaults {
     srcs: [
         "compiled_method.cc",
         "debug/elf_debug_writer.cc",
+        "debug/xz_utils.cc",
         "dex/dex_to_dex_compiler.cc",
         "dex/inline_method_analyser.cc",
         "dex/verified_method.cc",
