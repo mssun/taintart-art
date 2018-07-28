@@ -26,9 +26,9 @@
 #include "debug/elf_debug_info_writer.h"
 #include "debug/elf_debug_line_writer.h"
 #include "debug/elf_debug_loc_writer.h"
-#include "debug/elf_gnu_debugdata_writer.h"
 #include "debug/elf_symtab_writer.h"
 #include "debug/method_debug_info.h"
+#include "debug/xz_utils.h"
 #include "linker/elf_builder.h"
 #include "linker/vector_output_stream.h"
 #include "oat.h"
@@ -103,6 +103,39 @@ void WriteDebugInfo(linker::ElfBuilder<ElfTypes>* builder,
     }
     info_writer.End(write_oat_patches);
   }
+}
+
+template <typename ElfTypes>
+static std::vector<uint8_t> MakeMiniDebugInfoInternal(
+    InstructionSet isa,
+    const InstructionSetFeatures* features,
+    typename ElfTypes::Addr text_section_address,
+    size_t text_section_size,
+    typename ElfTypes::Addr dex_section_address,
+    size_t dex_section_size,
+    const DebugInfo& debug_info) {
+  std::vector<uint8_t> buffer;
+  buffer.reserve(KB);
+  linker::VectorOutputStream out("Mini-debug-info ELF file", &buffer);
+  std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
+      new linker::ElfBuilder<ElfTypes>(isa, features, &out));
+  builder->Start(false /* write_program_headers */);
+  // Mirror ELF sections as NOBITS since the added symbols will reference them.
+  builder->GetText()->AllocateVirtualMemory(text_section_address, text_section_size);
+  if (dex_section_size != 0) {
+    builder->GetDex()->AllocateVirtualMemory(dex_section_address, dex_section_size);
+  }
+  WriteDebugSymbols(builder.get(), true /* mini-debug-info */, debug_info);
+  WriteCFISection(builder.get(),
+                  debug_info.compiled_methods,
+                  dwarf::DW_DEBUG_FRAME_FORMAT,
+                  false /* write_oat_paches */);
+  builder->End();
+  CHECK(builder->Good());
+  std::vector<uint8_t> compressed_buffer;
+  compressed_buffer.reserve(buffer.size() / 4);
+  XzCompress(ArrayRef<uint8_t>(buffer), &compressed_buffer);
+  return compressed_buffer;
 }
 
 std::vector<uint8_t> MakeMiniDebugInfo(
