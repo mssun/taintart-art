@@ -553,7 +553,7 @@ void Mutex::ExclusiveUnlock(Thread* self) {
         done = state_.CompareAndSetWeakSequentiallyConsistent(cur_state, 0 /* new state */);
         if (LIKELY(done)) {  // Spurious fail?
           // Wake a contender.
-          if (UNLIKELY(num_contenders_.load(std::memory_order_relaxed) > 0)) {
+          if (UNLIKELY(num_contenders_.load(std::memory_order_seq_cst) > 0)) {
             futex(state_.Address(), FUTEX_WAKE, 1, nullptr, nullptr, 0);
           }
         }
@@ -690,8 +690,8 @@ void ReaderWriterMutex::ExclusiveUnlock(Thread* self) {
       done = state_.CompareAndSetWeakSequentiallyConsistent(-1 /* cur_state*/, 0 /* new state */);
       if (LIKELY(done)) {  // Weak CAS may fail spuriously.
         // Wake any waiters.
-        if (UNLIKELY(num_pending_readers_.load(std::memory_order_relaxed) > 0 ||
-                     num_pending_writers_.load(std::memory_order_relaxed) > 0)) {
+        if (UNLIKELY(num_pending_readers_.load(std::memory_order_seq_cst) > 0 ||
+                     num_pending_writers_.load(std::memory_order_seq_cst) > 0)) {
           futex(state_.Address(), FUTEX_WAKE, -1, nullptr, nullptr, 0);
         }
       }
