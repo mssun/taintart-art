@@ -193,8 +193,8 @@ inline void ReaderWriterMutex::SharedUnlock(Thread* self) {
       // a status bit into the state on contention.
       done = state_.CompareAndSetWeakSequentiallyConsistent(cur_state, cur_state - 1);
       if (done && (cur_state - 1) == 0) {  // Weak CAS may fail spuriously.
-        if (num_pending_writers_.load(std::memory_order_relaxed) > 0 ||
-            num_pending_readers_.load(std::memory_order_relaxed) > 0) {
+        if (num_pending_writers_.load(std::memory_order_seq_cst) > 0 ||
+            num_pending_readers_.load(std::memory_order_seq_cst) > 0) {
           // Wake any exclusive waiters as there are now no readers.
           futex(state_.Address(), FUTEX_WAKE, -1, nullptr, nullptr, 0);
         }
