@@ -23,6 +23,7 @@ import javax.management.MBeanServer;
  * Program used to create an RI heap dump for test purposes.
  */
 public class Main {
+  public static DumpedStuff stuff;
 
   public static void main(String[] args) throws IOException {
     if (args.length < 1) {
@@ -30,6 +31,8 @@ public class Main {
       return;
     }
     String file = args[0];
+
+    stuff = new DumpedStuff();
 
     // Take a heap dump of this process.
     MBeanServer server = ManagementFactory.getPlatformMBeanServer();
