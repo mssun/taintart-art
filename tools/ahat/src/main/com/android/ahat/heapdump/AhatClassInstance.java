@@ -360,6 +360,7 @@ public class AhatClassInstance extends AhatInstance {
         case "java.lang.ref.PhantomReference": return Reachability.PHANTOM;
         case "java.lang.ref.WeakReference": return Reachability.WEAK;
         case "java.lang.ref.FinalizerReference": return Reachability.FINALIZER;
+        case "java.lang.ref.Finalizer": return Reachability.FINALIZER;
         case "java.lang.ref.SoftReference": return Reachability.SOFT;
       }
       cls = cls.getSuperClassObj();
