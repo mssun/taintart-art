@@ -38,10 +38,6 @@ inline ArrayRef<const T> CompiledCode::GetArray(const LengthPrefixedArray<T>* ar
   return ArrayRef<const T>(&array->At(0), array->size());
 }
 
-inline ArrayRef<const uint8_t> CompiledMethod::GetMethodInfo() const {
-  return GetArray(method_info_);
-}
-
 inline ArrayRef<const uint8_t> CompiledMethod::GetVmapTable() const {
   return GetArray(vmap_table_);
 }

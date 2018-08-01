@@ -136,7 +136,6 @@ class JitCodeCache {
   uint8_t* CommitCode(Thread* self,
                       ArtMethod* method,
                       uint8_t* stack_map,
-                      uint8_t* method_info,
                       uint8_t* roots_data,
                       const uint8_t* code,
                       size_t code_size,
@@ -166,11 +165,9 @@ class JitCodeCache {
   // Return the number of bytes allocated.
   size_t ReserveData(Thread* self,
                      size_t stack_map_size,
-                     size_t method_info_size,
                      size_t number_of_roots,
                      ArtMethod* method,
                      uint8_t** stack_map_data,
-                     uint8_t** method_info_data,
                      uint8_t** roots_data)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!lock_);
@@ -295,7 +292,6 @@ class JitCodeCache {
   uint8_t* CommitCodeInternal(Thread* self,
                               ArtMethod* method,
                               uint8_t* stack_map,
-                              uint8_t* method_info,
                               uint8_t* roots_data,
                               const uint8_t* code,
                               size_t code_size,

@@ -148,8 +148,6 @@ CompiledMethodStorage::CompiledMethodStorage(int swap_fd)
     : swap_space_(swap_fd == -1 ? nullptr : new SwapSpace(swap_fd, 10 * MB)),
       dedupe_enabled_(true),
       dedupe_code_("dedupe code", LengthPrefixedArrayAlloc<uint8_t>(swap_space_.get())),
-      dedupe_method_info_("dedupe method info",
-                          LengthPrefixedArrayAlloc<uint8_t>(swap_space_.get())),
       dedupe_vmap_table_("dedupe vmap table",
                          LengthPrefixedArrayAlloc<uint8_t>(swap_space_.get())),
       dedupe_cfi_info_("dedupe cfi info", LengthPrefixedArrayAlloc<uint8_t>(swap_space_.get())),
@@ -183,15 +181,6 @@ const LengthPrefixedArray<uint8_t>* CompiledMethodStorage::DeduplicateCode(
 
 void CompiledMethodStorage::ReleaseCode(const LengthPrefixedArray<uint8_t>* code) {
   ReleaseArrayIfNotDeduplicated(code);
-}
-
-const LengthPrefixedArray<uint8_t>* CompiledMethodStorage::DeduplicateMethodInfo(
-    const ArrayRef<const uint8_t>& src_map) {
-  return AllocateOrDeduplicateArray(src_map, &dedupe_method_info_);
-}
-
-void CompiledMethodStorage::ReleaseMethodInfo(const LengthPrefixedArray<uint8_t>* method_info) {
-  ReleaseArrayIfNotDeduplicated(method_info);
 }
 
 const LengthPrefixedArray<uint8_t>* CompiledMethodStorage::DeduplicateVMapTable(

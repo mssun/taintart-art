@@ -54,10 +54,6 @@ class CompiledMethodStorage {
   const LengthPrefixedArray<uint8_t>* DeduplicateCode(const ArrayRef<const uint8_t>& code);
   void ReleaseCode(const LengthPrefixedArray<uint8_t>* code);
 
-  const LengthPrefixedArray<uint8_t>* DeduplicateMethodInfo(
-      const ArrayRef<const uint8_t>& method_info);
-  void ReleaseMethodInfo(const LengthPrefixedArray<uint8_t>* method_info);
-
   const LengthPrefixedArray<uint8_t>* DeduplicateVMapTable(const ArrayRef<const uint8_t>& table);
   void ReleaseVMapTable(const LengthPrefixedArray<uint8_t>* table);
 
@@ -120,7 +116,6 @@ class CompiledMethodStorage {
   bool dedupe_enabled_;
 
   ArrayDedupeSet<uint8_t> dedupe_code_;
-  ArrayDedupeSet<uint8_t> dedupe_method_info_;
   ArrayDedupeSet<uint8_t> dedupe_vmap_table_;
   ArrayDedupeSet<uint8_t> dedupe_cfi_info_;
   ArrayDedupeSet<linker::LinkerPatch> dedupe_linker_patches_;

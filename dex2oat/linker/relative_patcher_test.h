@@ -87,7 +87,6 @@ class RelativePatcherTest : public CommonCompilerTest {
         compiler_driver_.get(),
         instruction_set_,
         code,
-        /* method_info */ ArrayRef<const uint8_t>(),
         /* vmap_table */ ArrayRef<const uint8_t>(),
         /* cfi_info */ ArrayRef<const uint8_t>(),
         patches));
