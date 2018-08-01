@@ -96,11 +96,6 @@ enum class CopyOption {
 // ...
 // VmapTable
 //
-// MethodInfo        one variable sized blob with MethodInfo.
-// MethodInfo        MethodInfos are deduplicated.
-// ...
-// MethodInfo
-//
 // OatDexFile[0]     one variable sized OatDexFile with offsets to Dex and OatClasses
 // OatDexFile[1]
 // ...
@@ -284,11 +279,9 @@ class OatWriter {
   class OrderedMethodVisitor;
   class InitCodeMethodVisitor;
   class InitMapMethodVisitor;
-  class InitMethodInfoVisitor;
   class InitImageMethodVisitor;
   class WriteCodeMethodVisitor;
   class WriteMapMethodVisitor;
-  class WriteMethodInfoVisitor;
   class WriteQuickeningInfoMethodVisitor;
   class WriteQuickeningInfoOffsetsMethodVisitor;
 
