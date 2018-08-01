@@ -1031,19 +1031,5 @@
         "variant": "jit & debuggable",
         "bug": "b/109791792",
         "description": ["Stack too big."]
-    },
-    {
-        "tests": ["1934-jvmti-signal-thread"],
-        "env_vars": {"SANITIZE_HOST": "address"},
-        "variant": "interp-ac",
-        "bug": "b/111837501",
-        "description": ["Unexpected exception thrown"]
-    },
-    {
-        "tests": ["1917-get-stack-frame"],
-        "env_vars": {"SANITIZE_HOST": "address"},
-        "variant": "interp-ac",
-        "bug": "b/112071036",
-        "description": ["Unexpected exception thrown"]
     }
 ]
