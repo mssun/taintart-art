@@ -71,10 +71,14 @@ public class Test1934 {
     ensureInitialized(java.util.concurrent.locks.LockSupport.class);
   }
 
+  public static Thread createThread(Runnable r, String name) {
+    return new Thread(Thread.currentThread().getThreadGroup(), r, name, /* 10 mb */ 10 * 1000000);
+  }
+
   public static void testStopBeforeStart() throws Exception {
     final Throwable[] out_err = new Throwable[] { null, };
     final Object tst = new Object();
-    Thread target = new Thread(() -> { while (true) { } }, "waiting thread!");
+    Thread target = createThread(() -> { while (true) { } }, "waiting thread!");
     target.setUncaughtExceptionHandler((t, e) -> { out_err[0] = e; });
     System.out.println("stopping other thread before starting");
     try {
@@ -93,7 +97,7 @@ public class Test1934 {
   public static void testInterruptBeforeStart() throws Exception {
     final Throwable[] out_err = new Throwable[] { null, };
     final Object tst = new Object();
-    Thread target = new Thread(() -> { while (true) { } }, "waiting thread!");
+    Thread target = createThread(() -> { while (true) { } }, "waiting thread!");
     target.setUncaughtExceptionHandler((t, e) -> { out_err[0] = e; });
     System.out.println("interrupting other thread before starting");
     try {
@@ -113,7 +117,7 @@ public class Test1934 {
     final Throwable[] out_err = new Throwable[] { null, };
     final Object tst = new Object();
     final Semaphore sem = new Semaphore(0);
-    Thread target = new Thread(() -> {
+    Thread target = createThread(() -> {
       sem.release();
       while (true) {
         try {
@@ -140,7 +144,7 @@ public class Test1934 {
     final Throwable[] out_err = new Throwable[] { null, };
     final Object tst = new Object();
     final Semaphore sem = new Semaphore(0);
-    Thread target = new Thread(() -> {
+    Thread target = createThread(() -> {
       sem.release();
       while (true) {
         try {
@@ -172,7 +176,7 @@ public class Test1934 {
     final Throwable[] out_err = new Throwable[] { null, };
     final long native_monitor_id = allocNativeMonitor();
     final Semaphore sem = new Semaphore(0);
-    Thread target = new Thread(() -> {
+    Thread target = createThread(() -> {
       sem.release();
       nativeWaitForOtherThread(native_monitor_id);
       // We need to make sure we do something that can get the exception to be actually noticed.
@@ -214,7 +218,7 @@ public class Test1934 {
   public static void testStopRecur() throws Exception {
     final Throwable[] out_err = new Throwable[] { null, };
     final Semaphore sem = new Semaphore(0);
-    Thread target = new Thread(() -> {
+    Thread target = createThread(() -> {
       sem.release();
       while (true) {
         doRecurCnt(null, 50);
@@ -235,7 +239,7 @@ public class Test1934 {
   public static void testInterruptRecur() throws Exception {
     final Throwable[] out_err = new Throwable[] { null, };
     final Semaphore sem = new Semaphore(0);
-    Thread target = new Thread(() -> {
+    Thread target = createThread(() -> {
       sem.release();
       while (true) {
         doRecurCnt(() -> {
@@ -258,7 +262,7 @@ public class Test1934 {
   public static void testStopSpinning() throws Exception {
     final Throwable[] out_err = new Throwable[] { null, };
     final Semaphore sem = new Semaphore(0);
-    Thread target = new Thread(() -> { sem.release(); while (true) {} }, "Spinning thread!");
+    Thread target = createThread(() -> { sem.release(); while (true) {} }, "Spinning thread!");
     target.setUncaughtExceptionHandler((t, e) -> { out_err[0] = e; });
     target.start();
     sem.acquire();
@@ -273,7 +277,7 @@ public class Test1934 {
 
   public static void testInterruptSpinning() throws Exception {
     final Semaphore sem = new Semaphore(0);
-    Thread target = new Thread(() -> {
+    Thread target = createThread(() -> {
       sem.release();
       while (!Thread.currentThread().isInterrupted()) { }
     }, "Spinning thread!");
