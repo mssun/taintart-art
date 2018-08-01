@@ -32,9 +32,16 @@ inline ClassAccessor::ClassAccessor(const DexFile& dex_file, const DexFile::Clas
     : ClassAccessor(dex_file, dex_file.GetIndexForClassDef(class_def)) {}
 
 inline ClassAccessor::ClassAccessor(const DexFile& dex_file, uint32_t class_def_index)
+    : ClassAccessor(dex_file,
+                    dex_file.GetClassData(dex_file.GetClassDef(class_def_index)),
+                    class_def_index) {}
+
+inline ClassAccessor::ClassAccessor(const DexFile& dex_file,
+                                    const uint8_t* class_data,
+                                    uint32_t class_def_index)
     : dex_file_(dex_file),
       class_def_index_(class_def_index),
-      ptr_pos_(dex_file.GetClassData(dex_file.GetClassDef(class_def_index))),
+      ptr_pos_(class_data),
       num_static_fields_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
       num_instance_fields_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),
       num_direct_methods_(ptr_pos_ != nullptr ? DecodeUnsignedLeb128(&ptr_pos_) : 0u),

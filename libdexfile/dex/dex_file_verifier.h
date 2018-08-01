@@ -22,6 +22,7 @@
 
 #include "base/hash_map.h"
 #include "base/safe_map.h"
+#include "class_accessor.h"
 #include "dex_file.h"
 #include "dex_file_types.h"
 
@@ -90,8 +91,8 @@ class DexFileVerifier {
                                 uint32_t class_access_flags,
                                 dex::TypeIndex class_type_index,
                                 uint32_t code_offset,
-                                ClassDataItemIterator* direct_it,
-                                bool expect_direct);
+                                ClassAccessor::Method* direct_method,
+                                size_t* remaining_directs);
   ALWAYS_INLINE
   bool CheckOrder(const char* type_descr, uint32_t curr_index, uint32_t prev_index);
   bool CheckStaticFieldTypes(const DexFile::ClassDef* class_def);
@@ -105,15 +106,17 @@ class DexFileVerifier {
   // Check all fields of the given type from the given iterator. Load the class data from the first
   // field, if necessary (and return it), or use the given values.
   template <bool kStatic>
-  bool CheckIntraClassDataItemFields(ClassDataItemIterator* it,
+  bool CheckIntraClassDataItemFields(size_t count,
+                                     ClassAccessor::Field* field,
                                      bool* have_class,
                                      dex::TypeIndex* class_type_index,
                                      const DexFile::ClassDef** class_def);
   // Check all methods of the given type from the given iterator. Load the class data from the first
   // method, if necessary (and return it), or use the given values.
-  template <bool kDirect>
-  bool CheckIntraClassDataItemMethods(ClassDataItemIterator* it,
-                                      ClassDataItemIterator* direct_it,
+  bool CheckIntraClassDataItemMethods(ClassAccessor::Method* method,
+                                      size_t num_methods,
+                                      ClassAccessor::Method* direct_method,
+                                      size_t num_directs,
                                       bool* have_class,
                                       dex::TypeIndex* class_type_index,
                                       const DexFile::ClassDef** class_def);
