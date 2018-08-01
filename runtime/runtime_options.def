@@ -152,5 +152,6 @@ RUNTIME_OPTIONS_KEY (unsigned int,        GlobalRefAllocStackTraceLimit,  0)  //
 RUNTIME_OPTIONS_KEY (Unit,                UseStderrLogger)
 
 RUNTIME_OPTIONS_KEY (Unit,                OnlyUseSystemOatFiles)
+RUNTIME_OPTIONS_KEY (unsigned int,        VerifierLoggingThreshold,       100)
 
 #undef RUNTIME_OPTIONS_KEY
