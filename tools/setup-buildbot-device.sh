@@ -83,8 +83,17 @@ adb shell uptime
 echo -e "${green}Battery info${nc}"
 adb shell dumpsys battery
 
-echo -e "${green}Setting adb buffer size to 32MB${nc}"
-adb logcat -G 32M
+# Fugu only handles buffer size up to 16MB.
+product_name=$(adb shell getprop ro.build.product)
+
+if [ "x$product_name" = xfugu ]; then
+  buffer_size=16MB
+else
+  buffer_size=32MB
+fi
+
+echo -e "${green}Setting adb buffer size to ${buffer_size}${nc}"
+adb logcat -G ${buffer_size}
 adb logcat -g
 
 echo -e "${green}Removing adb spam filter${nc}"
