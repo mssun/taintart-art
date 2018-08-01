@@ -80,6 +80,7 @@ class DexFile {
 
   // The value of an invalid index.
   static const uint16_t kDexNoIndex16 = 0xFFFF;
+  static const uint32_t kDexNoIndex32 = 0xFFFFFFFF;
 
   // Raw header_item.
   struct Header {

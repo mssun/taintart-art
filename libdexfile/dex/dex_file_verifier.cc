@@ -23,6 +23,7 @@
 #include "android-base/stringprintf.h"
 
 #include "base/leb128.h"
+#include "class_accessor-inl.h"
 #include "code_item_accessors-inl.h"
 #include "descriptors_names.h"
 #include "dex_file-inl.h"
@@ -614,9 +615,8 @@ bool DexFileVerifier::CheckClassDataItemMethod(uint32_t idx,
                                                uint32_t class_access_flags,
                                                dex::TypeIndex class_type_index,
                                                uint32_t code_offset,
-                                               ClassDataItemIterator* direct_it,
-                                               bool expect_direct) {
-  DCHECK_EQ(expect_direct, direct_it == nullptr);
+                                               ClassAccessor::Method* direct_method,
+                                               size_t* remaining_directs) {
   // Check for overflow.
   if (!CheckIndex(idx, header_->method_ids_size_, "class_data_item method_idx")) {
     return false;
@@ -634,12 +634,14 @@ bool DexFileVerifier::CheckClassDataItemMethod(uint32_t idx,
     return false;
   }
 
-  // Check that it's not defined as both direct and virtual.
-  if (!expect_direct) {
+  // For virtual methods, we cross reference the method index to make sure it doesn't match any
+  // direct methods.
+  const bool expect_direct = direct_method == nullptr;
+  if (!expect_direct && *remaining_directs > 0) {
     // The direct methods are already known to be in ascending index order. So just keep up
     // with the current index.
-    for (; direct_it->HasNextDirectMethod(); direct_it->Next()) {
-      uint32_t direct_idx = direct_it->GetMemberIndex();
+    while (true) {
+      const uint32_t direct_idx = direct_method->GetIndex();
       if (direct_idx > idx) {
         break;
       }
@@ -647,6 +649,11 @@ bool DexFileVerifier::CheckClassDataItemMethod(uint32_t idx,
         ErrorStringPrintf("Found virtual method with same index as direct method: %d", idx);
         return false;
       }
+      --*remaining_directs;
+      if (*remaining_directs == 0u) {
+        break;
+      }
+      direct_method->Read();
     }
   }
 
@@ -960,11 +967,14 @@ bool DexFileVerifier::CheckStaticFieldTypes(const DexFile::ClassDef* class_def) 
     return true;
   }
 
-  ClassDataItemIterator field_it(*dex_file_, ptr_);
+  ClassAccessor accessor(*dex_file_, ptr_);
   EncodedStaticFieldValueIterator array_it(*dex_file_, *class_def);
 
-  for (; field_it.HasNextStaticField() && array_it.HasNext(); field_it.Next(), array_it.Next()) {
-    uint32_t index = field_it.GetMemberIndex();
+  for (const ClassAccessor::Field& field : accessor.GetStaticFields()) {
+    if (!array_it.HasNext()) {
+      break;
+    }
+    uint32_t index = field.GetIndex();
     const DexFile::TypeId& type_id = dex_file_->GetTypeId(dex_file_->GetFieldId(index).type_idx_);
     const char* field_type_name =
         dex_file_->GetStringData(dex_file_->GetStringId(type_id.descriptor_idx_));
@@ -1041,6 +1051,7 @@ bool DexFileVerifier::CheckStaticFieldTypes(const DexFile::ClassDef* class_def) 
         ErrorStringPrintf("unexpected static field initial value type: %x", array_type);
         return false;
     }
+    array_it.Next();
   }
 
   if (array_it.HasNext()) {
@@ -1051,87 +1062,103 @@ bool DexFileVerifier::CheckStaticFieldTypes(const DexFile::ClassDef* class_def) 
 }
 
 template <bool kStatic>
-bool DexFileVerifier::CheckIntraClassDataItemFields(ClassDataItemIterator* it,
+bool DexFileVerifier::CheckIntraClassDataItemFields(size_t count,
+                                                    ClassAccessor::Field* field,
                                                     bool* have_class,
                                                     dex::TypeIndex* class_type_index,
                                                     const DexFile::ClassDef** class_def) {
-  DCHECK(it != nullptr);
+  DCHECK(field != nullptr);
   constexpr const char* kTypeDescr = kStatic ? "static field" : "instance field";
 
-  // These calls use the raw access flags to check whether the whole dex field is valid.
+  if (count == 0u) {
+    return true;
+  }
+  field->Read();
 
-  if (!*have_class && (kStatic ? it->HasNextStaticField() : it->HasNextInstanceField())) {
-    *have_class = FindClassIndexAndDef(it->GetMemberIndex(), true, class_type_index, class_def);
+  if (!*have_class) {
+    *have_class = FindClassIndexAndDef(field->GetIndex(), true, class_type_index, class_def);
     if (!*have_class) {
       // Should have really found one.
       ErrorStringPrintf("could not find declaring class for %s index %" PRIu32,
                         kTypeDescr,
-                        it->GetMemberIndex());
+                        field->GetIndex());
       return false;
     }
   }
-  DCHECK(*class_def != nullptr ||
-         !(kStatic ? it->HasNextStaticField() : it->HasNextInstanceField()));
+  DCHECK(*class_def != nullptr);
 
   uint32_t prev_index = 0;
-  for (; kStatic ? it->HasNextStaticField() : it->HasNextInstanceField(); it->Next()) {
-    uint32_t curr_index = it->GetMemberIndex();
+  for (size_t i = 0; ;) {
+    uint32_t curr_index = field->GetIndex();
+    // These calls use the raw access flags to check whether the whole dex field is valid.
     if (!CheckOrder(kTypeDescr, curr_index, prev_index)) {
       return false;
     }
     if (!CheckClassDataItemField(curr_index,
-                                 it->GetRawMemberAccessFlags(),
+                                 field->GetRawAccessFlags(),
                                  (*class_def)->access_flags_,
                                  *class_type_index,
                                  kStatic)) {
       return false;
     }
-
+    ++i;
+    if (i >= count) {
+      break;
+    }
+    field->Read();
     prev_index = curr_index;
   }
 
   return true;
 }
 
-template <bool kDirect>
-bool DexFileVerifier::CheckIntraClassDataItemMethods(
-    ClassDataItemIterator* it,
-    ClassDataItemIterator* direct_it,
-    bool* have_class,
-    dex::TypeIndex* class_type_index,
-    const DexFile::ClassDef** class_def) {
-  DCHECK(it != nullptr);
-  constexpr const char* kTypeDescr = kDirect ? "direct method" : "virtual method";
+bool DexFileVerifier::CheckIntraClassDataItemMethods(ClassAccessor::Method* method,
+                                                     size_t num_methods,
+                                                     ClassAccessor::Method* direct_method,
+                                                     size_t num_directs,
+                                                     bool* have_class,
+                                                     dex::TypeIndex* class_type_index,
+                                                     const DexFile::ClassDef** class_def) {
+  DCHECK(method != nullptr);
+  const char* kTypeDescr = method->IsStaticOrDirect() ? "direct method" : "virtual method";
 
-  if (!*have_class && (kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod())) {
-    *have_class = FindClassIndexAndDef(it->GetMemberIndex(), false, class_type_index, class_def);
+  if (num_methods == 0u) {
+    return true;
+  }
+  method->Read();
+
+  if (!*have_class) {
+    *have_class = FindClassIndexAndDef(method->GetIndex(), false, class_type_index, class_def);
     if (!*have_class) {
       // Should have really found one.
       ErrorStringPrintf("could not find declaring class for %s index %" PRIu32,
                         kTypeDescr,
-                        it->GetMemberIndex());
+                        method->GetIndex());
       return false;
     }
   }
-  DCHECK(*class_def != nullptr ||
-         !(kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod()));
+  DCHECK(*class_def != nullptr);
 
   uint32_t prev_index = 0;
-  for (; kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod(); it->Next()) {
-    uint32_t curr_index = it->GetMemberIndex();
+  for (size_t i = 0; ;) {
+    uint32_t curr_index = method->GetIndex();
     if (!CheckOrder(kTypeDescr, curr_index, prev_index)) {
       return false;
     }
     if (!CheckClassDataItemMethod(curr_index,
-                                  it->GetRawMemberAccessFlags(),
+                                  method->GetRawAccessFlags(),
                                   (*class_def)->access_flags_,
                                   *class_type_index,
-                                  it->GetMethodCodeItemOffset(),
-                                  direct_it,
-                                  kDirect)) {
+                                  method->GetCodeItemOffset(),
+                                  direct_method,
+                                  &num_directs)) {
       return false;
     }
-
+    ++i;
+    if (i >= num_methods) {
+      break;
+    }
+    method->Read();
     prev_index = curr_index;
   }
 
@@ -1139,7 +1166,7 @@ bool DexFileVerifier::CheckIntraClassDataItemMethods(
 }
 
 bool DexFileVerifier::CheckIntraClassDataItem() {
-  ClassDataItemIterator it(*dex_file_, ptr_);
+  ClassAccessor accessor(*dex_file_, ptr_);
 
   // This code is complicated by the fact that we don't directly know which class this belongs to.
   // So we need to explicitly search with the first item we find (either field or method), and then,
@@ -1148,14 +1175,18 @@ bool DexFileVerifier::CheckIntraClassDataItem() {
   dex::TypeIndex class_type_index;
   const DexFile::ClassDef* class_def = nullptr;
 
+  ClassAccessor::Field field(*dex_file_, accessor.ptr_pos_);
   // Check fields.
-  if (!CheckIntraClassDataItemFields<true>(&it,
+  if (!CheckIntraClassDataItemFields<true>(accessor.NumStaticFields(),
+                                           &field,
                                            &have_class,
                                            &class_type_index,
                                            &class_def)) {
     return false;
   }
-  if (!CheckIntraClassDataItemFields<false>(&it,
+  field.NextSection();
+  if (!CheckIntraClassDataItemFields<false>(accessor.NumInstanceFields(),
+                                            &field,
                                             &have_class,
                                             &class_type_index,
                                             &class_def)) {
@@ -1163,31 +1194,37 @@ bool DexFileVerifier::CheckIntraClassDataItem() {
   }
 
   // Check methods.
-  ClassDataItemIterator direct_it = it;
-
-  if (!CheckIntraClassDataItemMethods<true>(&it,
-                                            nullptr /* direct_it */,
-                                            &have_class,
-                                            &class_type_index,
-                                            &class_def)) {
+  ClassAccessor::Method method(*dex_file_, field.ptr_pos_);
+  if (!CheckIntraClassDataItemMethods(&method,
+                                      accessor.NumDirectMethods(),
+                                      nullptr /* direct_it */,
+                                      0u,
+                                      &have_class,
+                                      &class_type_index,
+                                      &class_def)) {
     return false;
   }
-  if (!CheckIntraClassDataItemMethods<false>(&it,
-                                             &direct_it,
-                                             &have_class,
-                                             &class_type_index,
-                                             &class_def)) {
+  ClassAccessor::Method direct_methods(*dex_file_, field.ptr_pos_);
+  method.NextSection();
+  if (accessor.NumDirectMethods() != 0u) {
+    direct_methods.Read();
+  }
+  if (!CheckIntraClassDataItemMethods(&method,
+                                      accessor.NumVirtualMethods(),
+                                      &direct_methods,
+                                      accessor.NumDirectMethods(),
+                                      &have_class,
+                                      &class_type_index,
+                                      &class_def)) {
     return false;
   }
-
-  const uint8_t* end_ptr = it.EndDataPointer();
 
   // Check static field types against initial static values in encoded array.
   if (!CheckStaticFieldTypes(class_def)) {
     return false;
   }
 
-  ptr_ = end_ptr;
+  ptr_ = method.ptr_pos_;
   return true;
 }
 
@@ -1965,17 +2002,21 @@ bool DexFileVerifier::CheckOffsetToTypeMap(size_t offset, uint16_t type) {
 }
 
 dex::TypeIndex DexFileVerifier::FindFirstClassDataDefiner(const uint8_t* ptr, bool* success) {
-  ClassDataItemIterator it(*dex_file_, ptr);
+  ClassAccessor accessor(*dex_file_, ptr);
   *success = true;
 
-  if (it.HasNextStaticField() || it.HasNextInstanceField()) {
-    LOAD_FIELD(field, it.GetMemberIndex(), "first_class_data_definer field_id",
+  if (accessor.NumFields() != 0) {
+    ClassAccessor::Field read_field(*dex_file_, accessor.ptr_pos_);
+    read_field.Read();
+    LOAD_FIELD(field, read_field.GetIndex(), "first_class_data_definer field_id",
                *success = false; return dex::TypeIndex(DexFile::kDexNoIndex16))
     return field->class_idx_;
   }
 
-  if (it.HasNextMethod()) {
-    LOAD_METHOD(method, it.GetMemberIndex(), "first_class_data_definer method_id",
+  if (accessor.NumMethods() != 0) {
+    ClassAccessor::Method read_method(*dex_file_, accessor.ptr_pos_);
+    read_method.Read();
+    LOAD_METHOD(method, read_method.GetIndex(), "first_class_data_definer method_id",
                 *success = false; return dex::TypeIndex(DexFile::kDexNoIndex16))
     return method->class_idx_;
   }
@@ -2556,33 +2597,35 @@ bool DexFileVerifier::CheckInterAnnotationSetItem() {
 }
 
 bool DexFileVerifier::CheckInterClassDataItem() {
-  ClassDataItemIterator it(*dex_file_, ptr_);
+  ClassAccessor accessor(*dex_file_, ptr_);
   bool success;
   dex::TypeIndex defining_class = FindFirstClassDataDefiner(ptr_, &success);
   if (!success) {
     return false;
   }
 
-  for (; it.HasNextStaticField() || it.HasNextInstanceField(); it.Next()) {
-    LOAD_FIELD(field, it.GetMemberIndex(), "inter_class_data_item field_id", return false)
+  for (const ClassAccessor::Field& read_field : accessor.GetFields()) {
+    LOAD_FIELD(field, read_field.GetIndex(), "inter_class_data_item field_id", return false)
     if (UNLIKELY(field->class_idx_ != defining_class)) {
       ErrorStringPrintf("Mismatched defining class for class_data_item field");
       return false;
     }
   }
-  for (; it.HasNextMethod(); it.Next()) {
-    uint32_t code_off = it.GetMethodCodeItemOffset();
+  auto methods = accessor.GetMethods();
+  auto it = methods.begin();
+  for (; it != methods.end(); ++it) {
+    uint32_t code_off = it->GetCodeItemOffset();
     if (code_off != 0 && !CheckOffsetToTypeMap(code_off, DexFile::kDexTypeCodeItem)) {
       return false;
     }
-    LOAD_METHOD(method, it.GetMemberIndex(), "inter_class_data_item method_id", return false)
+    LOAD_METHOD(method, it->GetIndex(), "inter_class_data_item method_id", return false)
     if (UNLIKELY(method->class_idx_ != defining_class)) {
       ErrorStringPrintf("Mismatched defining class for class_data_item method");
       return false;
     }
   }
 
-  ptr_ = it.EndDataPointer();
+  ptr_ = it.GetDataPointer();
   return true;
 }
 
