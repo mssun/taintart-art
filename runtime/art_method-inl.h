@@ -374,12 +374,50 @@ inline HiddenApiAccessFlags::ApiList ArtMethod::GetHiddenApiAccessFlags()
       case Intrinsics::kSystemArrayCopyChar:
       case Intrinsics::kStringGetCharsNoCheck:
       case Intrinsics::kReferenceGetReferent:
+      case Intrinsics::kMemoryPeekByte:
+      case Intrinsics::kMemoryPokeByte:
+      case Intrinsics::kUnsafeCASInt:
+      case Intrinsics::kUnsafeCASLong:
+      case Intrinsics::kUnsafeCASObject:
+      case Intrinsics::kUnsafeGet:
+      case Intrinsics::kUnsafeGetAndAddInt:
+      case Intrinsics::kUnsafeGetAndAddLong:
+      case Intrinsics::kUnsafeGetAndSetInt:
+      case Intrinsics::kUnsafeGetAndSetLong:
+      case Intrinsics::kUnsafeGetAndSetObject:
+      case Intrinsics::kUnsafeGetLong:
+      case Intrinsics::kUnsafeGetLongVolatile:
+      case Intrinsics::kUnsafeGetObject:
+      case Intrinsics::kUnsafeGetObjectVolatile:
+      case Intrinsics::kUnsafeGetVolatile:
+      case Intrinsics::kUnsafePut:
+      case Intrinsics::kUnsafePutLong:
+      case Intrinsics::kUnsafePutLongOrdered:
+      case Intrinsics::kUnsafePutLongVolatile:
+      case Intrinsics::kUnsafePutObject:
+      case Intrinsics::kUnsafePutObjectOrdered:
+      case Intrinsics::kUnsafePutObjectVolatile:
+      case Intrinsics::kUnsafePutOrdered:
+      case Intrinsics::kUnsafePutVolatile:
+      case Intrinsics::kUnsafeLoadFence:
+      case Intrinsics::kUnsafeStoreFence:
+      case Intrinsics::kUnsafeFullFence:
         // These intrinsics are on the light greylist and will fail a DCHECK in
         // SetIntrinsic() if their flags change on the respective dex methods.
         // Note that the DCHECK currently won't fail if the dex methods are
         // whitelisted, e.g. in the core image (b/77733081). As a result, we
         // might print warnings but we won't change the semantics.
         return HiddenApiAccessFlags::kLightGreylist;
+      case Intrinsics::kStringNewStringFromBytes:
+      case Intrinsics::kStringNewStringFromChars:
+      case Intrinsics::kStringNewStringFromString:
+      case Intrinsics::kMemoryPeekIntNative:
+      case Intrinsics::kMemoryPeekLongNative:
+      case Intrinsics::kMemoryPeekShortNative:
+      case Intrinsics::kMemoryPokeIntNative:
+      case Intrinsics::kMemoryPokeLongNative:
+      case Intrinsics::kMemoryPokeShortNative:
+        return HiddenApiAccessFlags::kDarkGreylist;
       case Intrinsics::kVarHandleFullFence:
       case Intrinsics::kVarHandleAcquireFence:
       case Intrinsics::kVarHandleReleaseFence:
@@ -475,7 +513,7 @@ inline void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     // (b) only VarHandle intrinsics are blacklisted at the moment and they
     // should not be used outside tests with disabled API checks.
     if (hidden_api_flags != HiddenApiAccessFlags::kWhitelist) {
-      DCHECK_EQ(hidden_api_flags, GetHiddenApiAccessFlags());
+      DCHECK_EQ(hidden_api_flags, GetHiddenApiAccessFlags()) << PrettyMethod();
     }
   } else {
     SetAccessFlags(new_value);
