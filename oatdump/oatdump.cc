@@ -1315,8 +1315,7 @@ class OatDumper {
         CodeInfo code_info(raw_code_info);
         DCHECK(code_item_accessor.HasCodeItem());
         ScopedIndentation indent1(vios);
-        MethodInfo method_info = oat_method.GetOatQuickMethodHeader()->GetOptimizedMethodInfo();
-        DumpCodeInfo(vios, code_info, oat_method, method_info);
+        DumpCodeInfo(vios, code_info, oat_method);
       }
     } else if (IsMethodGeneratedByDexToDexCompiler(oat_method, code_item_accessor)) {
       // We don't encode the size in the table, so just emit that we have quickened
@@ -1331,13 +1330,11 @@ class OatDumper {
   // Display a CodeInfo object emitted by the optimizing compiler.
   void DumpCodeInfo(VariableIndentationOutputStream* vios,
                     const CodeInfo& code_info,
-                    const OatFile::OatMethod& oat_method,
-                    const MethodInfo& method_info) {
+                    const OatFile::OatMethod& oat_method) {
     code_info.Dump(vios,
                    oat_method.GetCodeOffset(),
                    options_.dump_code_info_stack_maps_,
-                   instruction_set_,
-                   method_info);
+                   instruction_set_);
   }
 
   static int GetOutVROffset(uint16_t out_num, InstructionSet isa) {
@@ -1579,15 +1576,9 @@ class OatDumper {
     } else if (!bad_input && IsMethodGeneratedByOptimizingCompiler(oat_method,
                                                                    code_item_accessor)) {
       // The optimizing compiler outputs its CodeInfo data in the vmap table.
-      const OatQuickMethodHeader* method_header = oat_method.GetOatQuickMethodHeader();
       StackMapsHelper helper(oat_method.GetVmapTable(), instruction_set_);
       if (AddStatsObject(oat_method.GetVmapTable())) {
         helper.GetCodeInfo().AddSizeStats(&stats_);
-      }
-      MethodInfo method_info(method_header->GetOptimizedMethodInfo());
-      if (AddStatsObject(method_header->GetOptimizedMethodInfoPtr())) {
-        size_t method_info_size = MethodInfo::ComputeSize(method_info.NumMethodIndices());
-        stats_.Child("MethodInfo")->AddBytes(method_info_size);
       }
       const uint8_t* quick_native_pc = reinterpret_cast<const uint8_t*>(quick_code);
       size_t offset = 0;
@@ -1599,7 +1590,6 @@ class OatDumper {
           DCHECK(stack_map.IsValid());
           stack_map.Dump(vios,
                          helper.GetCodeInfo(),
-                         method_info,
                          oat_method.GetCodeOffset(),
                          instruction_set_);
           do {

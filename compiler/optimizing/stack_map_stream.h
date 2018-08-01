@@ -25,7 +25,6 @@
 #include "base/scoped_arena_containers.h"
 #include "base/value_object.h"
 #include "dex_register_location.h"
-#include "method_info.h"
 #include "nodes.h"
 #include "stack_map.h"
 
@@ -40,14 +39,14 @@ class StackMapStream : public ValueObject {
   explicit StackMapStream(ScopedArenaAllocator* allocator, InstructionSet instruction_set)
       : instruction_set_(instruction_set),
         stack_maps_(allocator),
+        inline_infos_(allocator),
+        method_infos_(allocator),
         register_masks_(allocator),
         stack_masks_(allocator),
-        inline_infos_(allocator),
         dex_register_masks_(allocator),
         dex_register_maps_(allocator),
         dex_register_catalog_(allocator),
         out_(allocator->Adapter(kArenaAllocStackMapStream)),
-        method_infos_(allocator),
         lazy_stack_masks_(allocator->Adapter(kArenaAllocStackMapStream)),
         current_stack_map_(),
         current_inline_infos_(allocator->Adapter(kArenaAllocStackMapStream)),
@@ -92,9 +91,6 @@ class StackMapStream : public ValueObject {
   // Returns the size (in bytes) needed to store this stream.
   size_t PrepareForFillIn();
   void FillInCodeInfo(MemoryRegion region);
-  void FillInMethodInfo(MemoryRegion region);
-
-  size_t ComputeMethodInfoSize() const;
 
  private:
   static constexpr uint32_t kNoValue = -1;
@@ -107,15 +103,14 @@ class StackMapStream : public ValueObject {
   uint32_t fp_spill_mask_ = 0;
   uint32_t num_dex_registers_ = 0;
   BitTableBuilder<StackMap> stack_maps_;
+  BitTableBuilder<InlineInfo> inline_infos_;
+  BitTableBuilder<MethodInfo> method_infos_;
   BitTableBuilder<RegisterMask> register_masks_;
   BitmapTableBuilder stack_masks_;
-  BitTableBuilder<InlineInfo> inline_infos_;
   BitmapTableBuilder dex_register_masks_;
   BitTableBuilder<MaskInfo> dex_register_maps_;
   BitTableBuilder<DexRegisterInfo> dex_register_catalog_;
   ScopedArenaVector<uint8_t> out_;
-
-  BitTableBuilderBase<1> method_infos_;
 
   ScopedArenaVector<BitVector*> lazy_stack_masks_;
 
