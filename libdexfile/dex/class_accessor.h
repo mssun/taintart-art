@@ -133,6 +133,7 @@ class ClassAccessor {
     uint32_t code_off_ = 0u;
 
     friend class ClassAccessor;
+    friend class DexFileVerifier;
   };
 
   // A decoded version of the field of a class_data_item.
@@ -159,6 +160,7 @@ class ClassAccessor {
 
     bool is_static_ = true;
     friend class ClassAccessor;
+    friend class DexFileVerifier;
   };
 
   template <typename DataType>
@@ -225,6 +227,10 @@ class ClassAccessor {
       return !(*this < rhs);
     }
 
+    const uint8_t* GetDataPointer() const {
+      return data_.ptr_pos_;
+    }
+
    private:
     // Read data at current position.
     void ReadData() {
@@ -244,14 +250,20 @@ class ClassAccessor {
     const uint32_t partition_pos_;
     // At iterator_end_, the iterator is no longer valid.
     const uint32_t iterator_end_;
+
+    friend class DexFileVerifier;
   };
 
   // Not explicit specifically for range-based loops.
   ALWAYS_INLINE ClassAccessor(const ClassIteratorData& data);
 
-  ClassAccessor(const DexFile& dex_file, const DexFile::ClassDef& class_def);
+  ALWAYS_INLINE ClassAccessor(const DexFile& dex_file, const DexFile::ClassDef& class_def);
 
-  ClassAccessor(const DexFile& dex_file, uint32_t class_def_index);
+  ALWAYS_INLINE ClassAccessor(const DexFile& dex_file, uint32_t class_def_index);
+
+  ClassAccessor(const DexFile& dex_file,
+                const uint8_t* class_data,
+                uint32_t class_def_index = DexFile::kDexNoIndex32);
 
   // Return the code item for a method.
   const DexFile::CodeItem* GetCodeItem(const Method& method) const;
@@ -354,6 +366,8 @@ class ClassAccessor {
   const uint32_t num_instance_fields_ = 0u;
   const uint32_t num_direct_methods_ = 0u;
   const uint32_t num_virtual_methods_ = 0u;
+
+  friend class DexFileVerifier;
 };
 
 }  // namespace art
