@@ -1236,7 +1236,6 @@ static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutato
   CHECK(current_code->IsOptimized());
   uintptr_t native_pc_offset = current_code->NativeQuickPcOffset(caller_pc);
   CodeInfo code_info(current_code);
-  MethodInfo method_info = current_code->GetOptimizedMethodInfo();
   StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
   CHECK(stack_map.IsValid());
   uint32_t dex_pc = stack_map.GetDexPc();
@@ -1261,7 +1260,7 @@ static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutato
       tag = "encoded ";
       caller = inline_info.GetArtMethod();
     } else {
-      uint32_t method_index = inline_info.GetMethodIndex(method_info);
+      uint32_t method_index = code_info.GetMethodIndexOf(inline_info);
       if (dex_pc == static_cast<uint32_t>(-1)) {
         tag = "special ";
         CHECK(inline_info.Equals(inline_infos.back()));
