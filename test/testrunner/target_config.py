@@ -287,9 +287,9 @@ target_config = {
             'ASAN_OPTIONS' : 'detect_leaks=0'
         }
     },
-    # TODO: Also exercise '--interp-ac' in 'art-asan', when b/109813469 is addressed.
     'art-asan': {
         'run-test' : ['--interpreter',
+                      '--interp-ac',
                       '--optimizing',
                       '--jit',
                       '--speed-profile'],
