@@ -134,13 +134,20 @@ public class Test1917 {
 
     System.out.println("Recurring 5 times on another thread");
     Thread thr = new Thread(
-        new RecurCount(5, new StackTraceGenerator(makePrintStackFramesConsumer())));
+        Thread.currentThread().getThreadGroup(),
+        new RecurCount(5, new StackTraceGenerator(makePrintStackFramesConsumer())),
+        "Recurring Thread 1",
+        10*1000000 /* 10 mb*/);
     thr.start();
     thr.join();
 
     System.out.println("Recurring 5 times on another thread. Stack trace from main thread!");
     ThreadPauser pause = new ThreadPauser();
-    Thread thr2 = new Thread(new RecurCount(5, pause));
+    Thread thr2 = new Thread(
+        Thread.currentThread().getThreadGroup(),
+        new RecurCount(5, pause),
+        "Recurring Thread 2",
+        10*1000000 /* 10 mb*/);
     thr2.start();
     pause.waitForOtherThreadToPause();
     new StackTraceGenerator(thr2, makePrintStackFramesConsumer()).run();
