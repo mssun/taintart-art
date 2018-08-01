@@ -1031,5 +1031,10 @@
         "variant": "jit & debuggable",
         "bug": "b/109791792",
         "description": ["Stack too big."]
+    },
+    {
+        "tests": ["566-polymorphic-inlining"],
+        "variant": "jit & debuggable",
+        "description": ["We do not inline with debuggable."]
     }
 ]
