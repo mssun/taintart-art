@@ -9,5 +9,37 @@
   result: EXEC_FAILED,
   modes: [device],
   names: ["libcore.javax.crypto.CipherBasicsTest#testGcmEncryption"]
+},
+{
+  description: "Timeouts.",
+  result: EXEC_FAILED,
+  names: ["libcore.java.lang.ref.ReferenceQueueTest#testRemoveWithDelayedResultAndNoTimeout"]
+},
+{
+  description: "Timeouts.",
+  result: EXEC_FAILED,
+  modes: [host],
+  names: ["libcore.java.lang.ref.ReferenceQueueTest#testRemoveWithDelayedResultAndTimeout",
+          "org.apache.harmony.luni.tests.internal.net.www.protocol.http.HttpURLConnectionTest#testGetOutputStream",
+          "org.apache.harmony.luni.tests.internal.net.www.protocol.http.HttpURLConnectionTest#testProxyAuthorization"]
+},
+{
+  description: "Timeouts.",
+  result: EXEC_FAILED,
+  modes: [device],
+  names: ["libcore.java.lang.StringTest#testFastPathString_wellFormedUtf8Sequence",
+          "org.apache.harmony.tests.java.lang.ref.ReferenceQueueTest#test_remove",
+          "org.apache.harmony.tests.java.util.TimerTest#testOverdueTaskExecutesImmediately",
+          "org.apache.harmony.tests.java.util.WeakHashMapTest#test_keySet_hasNext"]
+},
+{
+  description: "GC crash",
+  result: EXEC_FAILED,
+  bug: 111545159,
+  names: ["org.apache.harmony.tests.java.util.AbstractSequentialListTest#test_addAllILjava_util_Collection",
+          "org.apache.harmony.tests.java.util.HashtableTest#test_putLjava_lang_ObjectLjava_lang_Object",
+          "org.apache.harmony.tests.java.util.VectorTest#test_addAllILjava_util_Collection",
+          "org.apache.harmony.tests.java.util.VectorTest#test_addAllLjava_util_Collection",
+          "org.apache.harmony.tests.java.io.BufferedWriterTest#test_write_LStringII_Exception"]
 }
 ]
