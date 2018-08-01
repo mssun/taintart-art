@@ -292,6 +292,12 @@ void StackMapStream::FillInMethodInfo(MemoryRegion region) {
   }
 }
 
+template<typename Writer, typename Builder>
+ALWAYS_INLINE static void EncodeTable(Writer& out, const Builder& bit_table) {
+  out.WriteBit(false);  // Is not deduped.
+  bit_table.Encode(out);
+}
+
 size_t StackMapStream::PrepareForFillIn() {
   DCHECK_EQ(out_.size(), 0u);
 
@@ -309,13 +315,13 @@ size_t StackMapStream::PrepareForFillIn() {
   EncodeUnsignedLeb128(&out_, fp_spill_mask_);
   EncodeUnsignedLeb128(&out_, num_dex_registers_);
   BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&out_, out_.size() * kBitsPerByte);
-  stack_maps_.Encode(out);
-  inline_infos_.Encode(out);
-  register_masks_.Encode(out);
-  stack_masks_.Encode(out);
-  dex_register_masks_.Encode(out);
-  dex_register_maps_.Encode(out);
-  dex_register_catalog_.Encode(out);
+  EncodeTable(out, stack_maps_);
+  EncodeTable(out, inline_infos_);
+  EncodeTable(out, register_masks_);
+  EncodeTable(out, stack_masks_);
+  EncodeTable(out, dex_register_masks_);
+  EncodeTable(out, dex_register_maps_);
+  EncodeTable(out, dex_register_catalog_);
 
   return out_.size();
 }

@@ -418,6 +418,16 @@ class CodeInfo {
         DecodeUnsignedLeb128(&data));
   }
 
+  typedef std::map<BitMemoryRegion, uint32_t, BitMemoryRegion::Less> DedupeMap;
+
+  // Copy CodeInfo data while de-duplicating the internal bit tables.
+  // The 'out' vector must be reused between Dedupe calls (it does not have to be empty).
+  // The 'dedupe_map' stores the bit offsets of bit tables within the 'out' vector.
+  // It returns the byte offset of the copied CodeInfo within the 'out' vector.
+  static size_t Dedupe(std::vector<uint8_t>* out,
+                       const uint8_t* in,
+                       /*inout*/ DedupeMap* dedupe_map);
+
  private:
   // Returns lower bound (fist stack map which has pc greater or equal than the desired one).
   // It ignores catch stack maps at the end (it is the same as if they had maximum pc value).
