@@ -61,6 +61,10 @@ class ClassAccessor {
       return dex_file_;
     }
 
+    const uint8_t* GetDataPointer() const {
+      return ptr_pos_;
+    }
+
    protected:
     // Internal data pointer for reading.
     const DexFile& dex_file_;
