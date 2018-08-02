@@ -187,7 +187,7 @@ JNIEXPORT int jio_fprintf(FILE* fp, const char* fmt, ...) {
 }
 
 JNIEXPORT int jio_vfprintf(FILE* fp, const char* fmt, va_list args) {
-    assert(fp != NULL);
+    assert(fp != nullptr);
     return vfprintf(fp, fmt, args);
 }
 
@@ -203,7 +203,7 @@ JNIEXPORT void* JVM_FindLibraryEntry(void* handle, const char* name) {
 JNIEXPORT jlong JVM_CurrentTimeMillis(JNIEnv* env ATTRIBUTE_UNUSED,
                                       jclass clazz ATTRIBUTE_UNUSED) {
     struct timeval tv;
-    gettimeofday(&tv, (struct timezone *) NULL);
+    gettimeofday(&tv, (struct timezone *) nullptr);
     jlong when = tv.tv_sec * 1000LL + tv.tv_usec / 1000;
     return when;
 }
@@ -319,8 +319,8 @@ JNIEXPORT jstring JVM_NativeLoad(JNIEnv* env,
                                  jstring javaFilename,
                                  jobject javaLoader) {
   ScopedUtfChars filename(env, javaFilename);
-  if (filename.c_str() == NULL) {
-    return NULL;
+  if (filename.c_str() == nullptr) {
+    return nullptr;
   }
 
   std::string error_msg;
@@ -348,7 +348,7 @@ JNIEXPORT void JVM_SetThreadPriority(JNIEnv* env, jobject jthread, jint prio) {
   art::ScopedObjectAccess soa(env);
   art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
   art::Thread* thread = art::Thread::FromManagedThread(soa, jthread);
-  if (thread != NULL) {
+  if (thread != nullptr) {
     thread->SetNativePriority(prio);
   }
 }
@@ -421,7 +421,7 @@ JNIEXPORT void JVM_SetNativeThreadName(JNIEnv* env, jobject jthread, jstring jav
                                               art::SuspendReason::kInternal,
                                               &timed_out);
   }
-  if (thread != NULL) {
+  if (thread != nullptr) {
     {
       art::ScopedObjectAccess soa(env);
       thread->SetThreadName(name.c_str());

@@ -90,7 +90,7 @@ template <typename TArg>
 struct CmdlineParserArgumentInfo {
   // This version will only be used if TArg is arithmetic and thus has the <= operators.
   template <typename T = TArg>  // Necessary to get SFINAE to kick in.
-  bool CheckRange(const TArg& value, typename EnableIfNumeric<T>::type* = 0) {
+  bool CheckRange(const TArg& value, typename EnableIfNumeric<T>::type* = nullptr) {
     if (has_range_) {
       return min_ <= value && value <= max_;
     }
@@ -99,7 +99,7 @@ struct CmdlineParserArgumentInfo {
 
   // This version will be used at other times when TArg is not arithmetic.
   template <typename T = TArg>
-  bool CheckRange(const TArg&, typename DisableIfNumeric<T>::type* = 0) {
+  bool CheckRange(const TArg&, typename DisableIfNumeric<T>::type* = nullptr) {
     assert(!has_range_);
     return true;
   }

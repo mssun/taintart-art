@@ -83,7 +83,7 @@ jvmtiError TimerUtil::GetTime(jvmtiEnv* env ATTRIBUTE_UNUSED, jlong* nanos_ptr) 
   // No CLOCK_MONOTONIC support on older Mac OS.
   struct timeval t;
   t.tv_sec = t.tv_usec = 0;
-  gettimeofday(&t, NULL);
+  gettimeofday(&t, nullptr);
   *nanos_ptr = static_cast<jlong>(t.tv_sec)*1000000000LL + static_cast<jlong>(t.tv_usec)*1000LL;
 #endif
 
