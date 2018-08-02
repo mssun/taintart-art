@@ -333,6 +333,9 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
           .IntoKey(M::UseStderrLogger)
       .Define("-Xonly-use-system-oat-files")
           .IntoKey(M::OnlyUseSystemOatFiles)
+      .Define("-Xverifier-logging-threshold=_")
+          .WithType<unsigned int>()
+          .IntoKey(M::VerifierLoggingThreshold)
       .Ignore({
           "-ea", "-da", "-enableassertions", "-disableassertions", "--runtime-arg", "-esa",
           "-dsa", "-enablesystemassertions", "-disablesystemassertions", "-Xrs", "-Xint:_",
