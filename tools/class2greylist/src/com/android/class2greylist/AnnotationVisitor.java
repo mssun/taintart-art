@@ -81,14 +81,19 @@ public class AnnotationVisitor extends EmptyVisitor {
         mStatus.debug("Visit member %s : %s", member.getName(), member.getSignature());
         for (AnnotationEntry a : member.getAnnotationEntries()) {
             if (mAnnotationType.equals(a.getAnnotationType())) {
-                mStatus.debug("Method has annotation %s", mAnnotationType);
+                mStatus.debug("Member has annotation %s", mAnnotationType);
+                boolean bridge = (member.getAccessFlags() & Const.ACC_BRIDGE) != 0;
+                if (bridge) {
+                    mStatus.debug("Member is a bridge", mAnnotationType);
+                }
                 String signature = String.format(Locale.US, signatureFormatString,
                         getClassDescriptor(definingClass), member.getName(), member.getSignature());
                 for (ElementValuePair property : a.getElementValuePairs()) {
                     switch (property.getNameString()) {
                         case EXPECTED_SIGNATURE:
                             String expected = property.getValue().stringifyValue();
-                            if (!signature.equals(expected)) {
+                            // Don't enforce for bridge methods; they're generated so won't match.
+                            if (!bridge && !signature.equals(expected)) {
                                 error(definingClass, member,
                                         "Expected signature does not match generated:\n"
                                                 + "Expected:  %s\n"
