@@ -589,9 +589,9 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   PcRelativePatchInfo* NewStringBssEntryPatch(const DexFile& dex_file,
                                               dex::StringIndex string_index);
 
-  // Add a new baker read barrier patch and return the label to be bound
-  // before the BNE instruction.
-  vixl::aarch32::Label* NewBakerReadBarrierPatch(uint32_t custom_data);
+  // Emit the BNE instruction for baker read barrier and record
+  // the associated patch for AOT or slow path for JIT.
+  void EmitBakerReadBarrierBne(uint32_t custom_data);
 
   VIXLUInt32Literal* DeduplicateBootImageAddressLiteral(uint32_t address);
   VIXLUInt32Literal* DeduplicateJitStringLiteral(const DexFile& dex_file,
@@ -915,6 +915,19 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   StringToLiteralMap jit_string_patches_;
   // Patches for class literals in JIT compiled code.
   TypeToLiteralMap jit_class_patches_;
+
+  // Baker read barrier slow paths, mapping custom data (uint32_t) to label.
+  // Wrap the label to work around vixl::aarch32::Label being non-copyable
+  // and non-moveable and as such unusable in ArenaSafeMap<>.
+  struct LabelWrapper {
+    LabelWrapper(const LabelWrapper& src)
+        : label() {
+      DCHECK(!src.label.IsReferenced() && !src.label.IsBound());
+    }
+    LabelWrapper() = default;
+    vixl::aarch32::Label label;
+  };
+  ArenaSafeMap<uint32_t, LabelWrapper> jit_baker_read_barrier_slow_paths_;
 
   friend class linker::Thumb2RelativePatcherTest;
   DISALLOW_COPY_AND_ASSIGN(CodeGeneratorARMVIXL);
