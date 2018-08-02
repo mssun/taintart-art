@@ -116,9 +116,6 @@ bool CompilerOptions::ParseRegisterAllocationStrategy(const std::string& option,
   return true;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wframe-larger-than="
-
 bool CompilerOptions::ParseCompilerOptions(const std::vector<std::string>& options,
                                            bool ignore_unrecognized,
                                            std::string* error_msg) {
@@ -132,8 +129,6 @@ bool CompilerOptions::ParseCompilerOptions(const std::vector<std::string>& optio
   SimpleParseArgumentMap args = parser.ReleaseArgumentsMap();
   return ReadCompilerOptions(args, this, error_msg);
 }
-
-#pragma GCC diagnostic pop
 
 bool CompilerOptions::IsImageClass(const char* descriptor) const {
   // Historical note: We used to hold the set indirectly and there was a distinction between an

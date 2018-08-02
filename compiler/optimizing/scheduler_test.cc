@@ -146,7 +146,9 @@ class SchedulerTest : public OptimizingUnitTest {
     environment->SetRawEnvAt(1, mul);
     mul->AddEnvUseAt(div_check->GetEnvironment(), 1);
 
-    SchedulingGraph scheduling_graph(scheduler, GetScopedAllocator());
+    SchedulingGraph scheduling_graph(scheduler,
+                                     GetScopedAllocator(),
+                                     /* heap_location_collector */ nullptr);
     // Instructions must be inserted in reverse order into the scheduling graph.
     for (HInstruction* instr : ReverseRange(block_instructions)) {
       scheduling_graph.AddNode(instr);
@@ -276,11 +278,10 @@ class SchedulerTest : public OptimizingUnitTest {
       entry->AddInstruction(instr);
     }
 
-    SchedulingGraph scheduling_graph(scheduler, GetScopedAllocator());
     HeapLocationCollector heap_location_collector(graph_);
     heap_location_collector.VisitBasicBlock(entry);
     heap_location_collector.BuildAliasingMatrix();
-    scheduling_graph.SetHeapLocationCollector(heap_location_collector);
+    SchedulingGraph scheduling_graph(scheduler, GetScopedAllocator(), &heap_location_collector);
 
     for (HInstruction* instr : ReverseRange(block_instructions)) {
       // Build scheduling graph with memory access aliasing information
@@ -354,13 +355,13 @@ class SchedulerTest : public OptimizingUnitTest {
 #if defined(ART_ENABLE_CODEGEN_arm64)
 TEST_F(SchedulerTest, DependencyGraphAndSchedulerARM64) {
   CriticalPathSchedulingNodeSelector critical_path_selector;
-  arm64::HSchedulerARM64 scheduler(GetScopedAllocator(), &critical_path_selector);
+  arm64::HSchedulerARM64 scheduler(&critical_path_selector);
   TestBuildDependencyGraphAndSchedule(&scheduler);
 }
 
 TEST_F(SchedulerTest, ArrayAccessAliasingARM64) {
   CriticalPathSchedulingNodeSelector critical_path_selector;
-  arm64::HSchedulerARM64 scheduler(GetScopedAllocator(), &critical_path_selector);
+  arm64::HSchedulerARM64 scheduler(&critical_path_selector);
   TestDependencyGraphOnAliasingArrayAccesses(&scheduler);
 }
 #endif
@@ -369,14 +370,14 @@ TEST_F(SchedulerTest, ArrayAccessAliasingARM64) {
 TEST_F(SchedulerTest, DependencyGraphAndSchedulerARM) {
   CriticalPathSchedulingNodeSelector critical_path_selector;
   arm::SchedulingLatencyVisitorARM arm_latency_visitor(/*CodeGenerator*/ nullptr);
-  arm::HSchedulerARM scheduler(GetScopedAllocator(), &critical_path_selector, &arm_latency_visitor);
+  arm::HSchedulerARM scheduler(&critical_path_selector, &arm_latency_visitor);
   TestBuildDependencyGraphAndSchedule(&scheduler);
 }
 
 TEST_F(SchedulerTest, ArrayAccessAliasingARM) {
   CriticalPathSchedulingNodeSelector critical_path_selector;
   arm::SchedulingLatencyVisitorARM arm_latency_visitor(/*CodeGenerator*/ nullptr);
-  arm::HSchedulerARM scheduler(GetScopedAllocator(), &critical_path_selector, &arm_latency_visitor);
+  arm::HSchedulerARM scheduler(&critical_path_selector, &arm_latency_visitor);
   TestDependencyGraphOnAliasingArrayAccesses(&scheduler);
 }
 #endif
