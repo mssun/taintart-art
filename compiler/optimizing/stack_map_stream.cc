@@ -45,9 +45,10 @@ void StackMapStream::BeginMethod(size_t frame_size_in_bytes,
                                  uint32_t num_dex_registers) {
   DCHECK(!in_method_) << "Mismatched Begin/End calls";
   in_method_ = true;
-  DCHECK_EQ(frame_size_in_bytes_, 0u) << "BeginMethod was already called";
+  DCHECK_EQ(packed_frame_size_, 0u) << "BeginMethod was already called";
 
-  frame_size_in_bytes_ = frame_size_in_bytes;
+  DCHECK_ALIGNED(frame_size_in_bytes, kStackAlignment);
+  packed_frame_size_ = frame_size_in_bytes / kStackAlignment;
   core_spill_mask_ = core_spill_mask;
   fp_spill_mask_ = fp_spill_mask;
   num_dex_registers_ = num_dex_registers;
@@ -292,11 +293,11 @@ size_t StackMapStream::PrepareForFillIn() {
     }
   }
 
-  EncodeUnsignedLeb128(&out_, frame_size_in_bytes_);
-  EncodeUnsignedLeb128(&out_, core_spill_mask_);
-  EncodeUnsignedLeb128(&out_, fp_spill_mask_);
-  EncodeUnsignedLeb128(&out_, num_dex_registers_);
-  BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&out_, out_.size() * kBitsPerByte);
+  BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&out_);
+  EncodeVarintBits(out, packed_frame_size_);
+  EncodeVarintBits(out, core_spill_mask_);
+  EncodeVarintBits(out, fp_spill_mask_);
+  EncodeVarintBits(out, num_dex_registers_);
   EncodeTable(out, stack_maps_);
   EncodeTable(out, inline_infos_);
   EncodeTable(out, method_infos_);

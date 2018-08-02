@@ -50,12 +50,11 @@ ALWAYS_INLINE static void DecodeTable(BitTable<Accessor>& table,
 }
 
 void CodeInfo::Decode(const uint8_t* data, DecodeFlags flags) {
-  const uint8_t* begin = data;
-  frame_size_in_bytes_ = DecodeUnsignedLeb128(&data);
-  core_spill_mask_ = DecodeUnsignedLeb128(&data);
-  fp_spill_mask_ = DecodeUnsignedLeb128(&data);
-  number_of_dex_registers_ = DecodeUnsignedLeb128(&data);
-  BitMemoryReader reader(data, /* bit_offset */ 0);
+  BitMemoryReader reader(data);
+  packed_frame_size_ = DecodeVarintBits(reader);
+  core_spill_mask_ = DecodeVarintBits(reader);
+  fp_spill_mask_ = DecodeVarintBits(reader);
+  number_of_dex_registers_ = DecodeVarintBits(reader);
   DecodeTable(stack_maps_, reader, data);
   DecodeTable(inline_infos_, reader, data);
   DecodeTable(method_infos_, reader, data);
@@ -67,7 +66,7 @@ void CodeInfo::Decode(const uint8_t* data, DecodeFlags flags) {
   DecodeTable(dex_register_masks_, reader, data);
   DecodeTable(dex_register_maps_, reader, data);
   DecodeTable(dex_register_catalog_, reader, data);
-  size_in_bits_ = (data - begin) * kBitsPerByte + reader.GetBitOffset();
+  size_in_bits_ = reader.GetBitOffset();
 }
 
 template<typename Accessor>
@@ -91,13 +90,12 @@ ALWAYS_INLINE static void DedupeTable(BitMemoryWriter<std::vector<uint8_t>>& wri
 size_t CodeInfo::Dedupe(std::vector<uint8_t>* out, const uint8_t* in, DedupeMap* dedupe_map) {
   // Remember the current offset in the output buffer so that we can return it later.
   const size_t result = out->size();
-  // Copy the header which encodes QuickMethodFrameInfo.
-  EncodeUnsignedLeb128(out, DecodeUnsignedLeb128(&in));
-  EncodeUnsignedLeb128(out, DecodeUnsignedLeb128(&in));
-  EncodeUnsignedLeb128(out, DecodeUnsignedLeb128(&in));
-  EncodeUnsignedLeb128(out, DecodeUnsignedLeb128(&in));
-  BitMemoryReader reader(in, /* bit_offset */ 0);
+  BitMemoryReader reader(in);
   BitMemoryWriter<std::vector<uint8_t>> writer(out, /* bit_offset */ out->size() * kBitsPerByte);
+  EncodeVarintBits(writer, DecodeVarintBits(reader));  // packed_frame_size_.
+  EncodeVarintBits(writer, DecodeVarintBits(reader));  // core_spill_mask_.
+  EncodeVarintBits(writer, DecodeVarintBits(reader));  // fp_spill_mask_.
+  EncodeVarintBits(writer, DecodeVarintBits(reader));  // number_of_dex_registers_.
   DedupeTable<StackMap>(writer, reader, dedupe_map);
   DedupeTable<InlineInfo>(writer, reader, dedupe_map);
   DedupeTable<MethodInfo>(writer, reader, dedupe_map);
