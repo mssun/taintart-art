@@ -779,6 +779,10 @@ class Runtime {
 
   static constexpr int32_t kUnsetSdkVersion = 0u;
 
+  uint32_t GetVerifierLoggingThresholdMs() const {
+    return verifier_logging_threshold_ms_;
+  }
+
  private:
   static void InitPlatformSignalHandlers();
 
@@ -1087,6 +1091,8 @@ class Runtime {
       static_cast<uint32_t>(DeoptimizationKind::kLast) + 1];
 
   std::unique_ptr<MemMap> protected_fault_page_;
+
+  uint32_t verifier_logging_threshold_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(Runtime);
 };

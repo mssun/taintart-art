@@ -273,7 +273,8 @@ Runtime::Runtime()
       pruned_dalvik_cache_(false),
       // Initially assume we perceive jank in case the process state is never updated.
       process_state_(kProcessStateJankPerceptible),
-      zygote_no_threads_(false) {
+      zygote_no_threads_(false),
+      verifier_logging_threshold_ms_(100) {
   static_assert(Runtime::kCalleeSaveSize ==
                     static_cast<uint32_t>(CalleeSaveType::kLastCalleeSaveType), "Unexpected size");
 
@@ -1437,6 +1438,8 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
       }
     }
   }
+
+  verifier_logging_threshold_ms_ = runtime_options.GetOrDefault(Opt::VerifierLoggingThreshold);
 
   std::string error_msg;
   java_vm_ = JavaVMExt::Create(this, runtime_options, &error_msg);
