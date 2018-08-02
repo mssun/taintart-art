@@ -21,6 +21,7 @@
 
 #include "dex_ir_builder.h"
 
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file_exception_helpers.h"
 #include "dexlayout.h"
@@ -162,7 +163,7 @@ class BuilderMaps {
                                    const DexFile::CodeItem* disk_code_item,
                                    uint32_t offset,
                                    uint32_t dex_method_index);
-  ClassData* CreateClassData(const DexFile& dex_file, const uint8_t* encoded_data, uint32_t offset);
+  ClassData* CreateClassData(const DexFile& dex_file, const DexFile::ClassDef& class_def);
 
   void AddAnnotationsFromMapListSection(const DexFile& dex_file,
                                         uint32_t start_offset,
@@ -197,7 +198,7 @@ class BuilderMaps {
                         uint8_t length,
                         EncodedValue* item);
 
-  MethodItem GenerateMethodItem(const DexFile& dex_file, ClassDataItemIterator& cdii);
+  MethodItem GenerateMethodItem(const DexFile& dex_file, const ClassAccessor::Method& method);
 
   ParameterAnnotation* GenerateParameterAnnotation(
       const DexFile& dex_file,
@@ -488,8 +489,7 @@ void BuilderMaps::CreateClassDef(const DexFile& dex_file, uint32_t i) {
   const uint8_t* static_data = dex_file.GetEncodedStaticFieldValuesArray(disk_class_def);
   EncodedArrayItem* static_values =
       CreateEncodedArrayItem(dex_file, static_data, disk_class_def.static_values_off_);
-  ClassData* class_data = CreateClassData(
-      dex_file, dex_file.GetClassData(disk_class_def), disk_class_def.class_data_off_);
+  ClassData* class_data = CreateClassData(dex_file, disk_class_def);
   CreateAndAddIndexedItem(header_->ClassDefs(),
                           header_->ClassDefs().GetOffset() + i * ClassDef::ItemSize(),
                           i,
@@ -894,36 +894,43 @@ CodeItem* BuilderMaps::DedupeOrCreateCodeItem(const DexFile& dex_file,
   return code_item;
 }
 
-ClassData* BuilderMaps::CreateClassData(
-    const DexFile& dex_file, const uint8_t* encoded_data, uint32_t offset) {
+ClassData* BuilderMaps::CreateClassData(const DexFile& dex_file,
+                                        const DexFile::ClassDef& class_def) {
   // Read the fields and methods defined by the class, resolving the circular reference from those
   // to classes by setting class at the same time.
+  const uint32_t offset = class_def.class_data_off_;
   ClassData* class_data = class_datas_map_.GetExistingObject(offset);
-  if (class_data == nullptr && encoded_data != nullptr) {
-    ClassDataItemIterator cdii(dex_file, encoded_data);
+  if (class_data == nullptr && offset != 0u) {
+    ClassAccessor accessor(dex_file, class_def);
     // Static fields.
     FieldItemVector* static_fields = new FieldItemVector();
-    for (; cdii.HasNextStaticField(); cdii.Next()) {
-      FieldId* field_item = header_->FieldIds()[cdii.GetMemberIndex()];
-      uint32_t access_flags = cdii.GetRawMemberAccessFlags();
+    for (const ClassAccessor::Field& field : accessor.GetStaticFields()) {
+      FieldId* field_item = header_->FieldIds()[field.GetIndex()];
+      uint32_t access_flags = field.GetRawAccessFlags();
       static_fields->emplace_back(access_flags, field_item);
     }
-    // Instance fields.
     FieldItemVector* instance_fields = new FieldItemVector();
-    for (; cdii.HasNextInstanceField(); cdii.Next()) {
-      FieldId* field_item = header_->FieldIds()[cdii.GetMemberIndex()];
-      uint32_t access_flags = cdii.GetRawMemberAccessFlags();
+    for (const ClassAccessor::Field& field : accessor.GetInstanceFields()) {
+      FieldId* field_item = header_->FieldIds()[field.GetIndex()];
+      uint32_t access_flags = field.GetRawAccessFlags();
       instance_fields->emplace_back(access_flags, field_item);
     }
     // Direct methods.
     MethodItemVector* direct_methods = new MethodItemVector();
-    for (; cdii.HasNextDirectMethod(); cdii.Next()) {
-      direct_methods->push_back(GenerateMethodItem(dex_file, cdii));
+    auto direct_methods_it = accessor.GetDirectMethods();
+    for (auto it = direct_methods_it.begin(); it != direct_methods_it.end(); ++it) {
+      direct_methods->push_back(GenerateMethodItem(dex_file, *it));
     }
     // Virtual methods.
     MethodItemVector* virtual_methods = new MethodItemVector();
-    for (; cdii.HasNextVirtualMethod(); cdii.Next()) {
-      virtual_methods->push_back(GenerateMethodItem(dex_file, cdii));
+    auto virtual_methods_it = accessor.GetVirtualMethods();
+    const uint8_t* last_data_ptr;
+    for (auto it = virtual_methods_it.begin(); ; ++it) {
+      if (it == virtual_methods_it.end()) {
+        last_data_ptr = it->GetDataPointer();
+        break;
+      }
+      virtual_methods->push_back(GenerateMethodItem(dex_file, *it));
     }
     class_data = class_datas_map_.CreateAndAddItem(header_->ClassDatas(),
                                                    eagerly_assign_offsets_,
@@ -932,7 +939,7 @@ ClassData* BuilderMaps::CreateClassData(
                                                    instance_fields,
                                                    direct_methods,
                                                    virtual_methods);
-    class_data->SetSize(cdii.EndDataPointer() - encoded_data);
+    class_data->SetSize(last_data_ptr - dex_file.GetClassData(class_def));
   }
   return class_data;
 }
@@ -1168,16 +1175,17 @@ void BuilderMaps::ReadEncodedValue(const DexFile& dex_file,
   }
 }
 
-MethodItem BuilderMaps::GenerateMethodItem(const DexFile& dex_file, ClassDataItemIterator& cdii) {
-  MethodId* method_id = header_->MethodIds()[cdii.GetMemberIndex()];
-  uint32_t access_flags = cdii.GetRawMemberAccessFlags();
-  const DexFile::CodeItem* disk_code_item = cdii.GetMethodCodeItem();
+MethodItem BuilderMaps::GenerateMethodItem(const DexFile& dex_file,
+                                           const ClassAccessor::Method& method) {
+  MethodId* method_id = header_->MethodIds()[method.GetIndex()];
+  uint32_t access_flags = method.GetRawAccessFlags();
+  const DexFile::CodeItem* disk_code_item = method.GetCodeItem();
   // Temporary hack to prevent incorrectly deduping code items if they have the same offset since
   // they may have different debug info streams.
   CodeItem* code_item = DedupeOrCreateCodeItem(dex_file,
                                                disk_code_item,
-                                               cdii.GetMethodCodeItemOffset(),
-                                               cdii.GetMemberIndex());
+                                               method.GetCodeItemOffset(),
+                                               method.GetIndex());
   return MethodItem(access_flags, method_id, code_item);
 }
 
