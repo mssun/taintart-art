@@ -26,6 +26,7 @@
 #include "compiled_method-inl.h"
 #include "compiler.h"
 #include "debug/method_debug_info.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file_loader.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "dex/test_dex_file_builder.h"
@@ -428,22 +429,15 @@ TEST_F(OatTest, WriteRead) {
   CHECK_EQ(dex_file.GetLocationChecksum(), oat_dex_file->GetDexFileLocationChecksum());
   ScopedObjectAccess soa(Thread::Current());
   auto pointer_size = class_linker->GetImagePointerSize();
-  for (size_t i = 0; i < dex_file.NumClassDefs(); i++) {
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(i);
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
+  for (ClassAccessor accessor : dex_file.GetClasses()) {
+    size_t num_virtual_methods = accessor.NumVirtualMethods();
 
-    size_t num_virtual_methods = 0;
-    if (class_data != nullptr) {
-      ClassDataItemIterator it(dex_file, class_data);
-      num_virtual_methods = it.NumVirtualMethods();
-    }
-
-    const char* descriptor = dex_file.GetClassDescriptor(class_def);
+    const char* descriptor = accessor.GetDescriptor();
     ObjPtr<mirror::Class> klass = class_linker->FindClass(soa.Self(),
                                                           descriptor,
                                                           ScopedNullHandle<mirror::ClassLoader>());
 
-    const OatFile::OatClass oat_class = oat_dex_file->GetOatClass(i);
+    const OatFile::OatClass oat_class = oat_dex_file->GetOatClass(accessor.GetClassDefIndex());
     CHECK_EQ(ClassStatus::kNotReady, oat_class.GetStatus()) << descriptor;
     CHECK_EQ(kCompile ? OatClassType::kOatClassAllCompiled : OatClassType::kOatClassNoneCompiled,
              oat_class.GetType()) << descriptor;
