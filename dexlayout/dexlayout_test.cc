@@ -26,6 +26,7 @@
 #include "common_runtime_test.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/base64_test_util.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
@@ -682,16 +683,9 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
   MutateDexFile(temp_dex.GetFile(), GetTestDexFileName("ManyMethods"), [] (DexFile* dex) {
     bool mutated_successfully = false;
     // Change the dex instructions to make an opcode that spans past the end of the code item.
-    for (size_t i = 0; i < dex->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& def = dex->GetClassDef(i);
-      const uint8_t* data = dex->GetClassData(def);
-      if (data == nullptr) {
-        continue;
-      }
-      ClassDataItemIterator it(*dex, data);
-      it.SkipAllFields();
-      while (it.HasNextMethod()) {
-        DexFile::CodeItem* item = const_cast<DexFile::CodeItem*>(it.GetMethodCodeItem());
+    for (ClassAccessor accessor : dex->GetClasses()) {
+      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+        DexFile::CodeItem* item = const_cast<DexFile::CodeItem*>(method.GetCodeItem());
         if (item != nullptr) {
           CodeItemInstructionAccessor instructions(*dex, item);
           if (instructions.begin() != instructions.end()) {
@@ -714,7 +708,6 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
             }
           }
         }
-        it.Next();
       }
     }
     CHECK(mutated_successfully)
