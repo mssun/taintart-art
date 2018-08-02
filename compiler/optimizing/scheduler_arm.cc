@@ -679,7 +679,7 @@ void SchedulingLatencyVisitorARM::VisitArrayGet(HArrayGet* instruction) {
           } else {
             last_visited_internal_latency_ += kArmIntegerOpLatency;
           }
-          last_visited_internal_latency_ = kArmMemoryLoadLatency;
+          last_visited_latency_ = kArmMemoryLoadLatency;
         }
       }
       break;
