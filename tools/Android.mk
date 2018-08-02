@@ -32,3 +32,5 @@ LOCAL_MODULE := art-script
 LOCAL_SRC_FILES := art
 LOCAL_MODULE_STEM := art
 include $(BUILD_PREBUILT)
+
+include $(LOCAL_PATH)/class2greylist/test/Android.mk
