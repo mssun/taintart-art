@@ -619,9 +619,9 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                                dex::StringIndex string_index,
                                                vixl::aarch64::Label* adrp_label = nullptr);
 
-  // Emit the CBNZ instruction for baker read barrier and record
-  // the associated patch for AOT or slow path for JIT.
-  void EmitBakerReadBarrierCbnz(uint32_t custom_data);
+  // Add a new baker read barrier patch and return the label to be bound
+  // before the CBNZ instruction.
+  vixl::aarch64::Label* NewBakerReadBarrierPatch(uint32_t custom_data);
 
   vixl::aarch64::Literal<uint32_t>* DeduplicateBootImageAddressLiteral(uint64_t address);
   vixl::aarch64::Literal<uint32_t>* DeduplicateJitStringLiteral(const DexFile& dex_file,
@@ -927,19 +927,6 @@ class CodeGeneratorARM64 : public CodeGenerator {
   StringToLiteralMap jit_string_patches_;
   // Patches for class literals in JIT compiled code.
   TypeToLiteralMap jit_class_patches_;
-
-  // Baker read barrier slow paths, mapping custom data (uint32_t) to label.
-  // Wrap the label to work around vixl::aarch64::Label being non-copyable
-  // and non-moveable and as such unusable in ArenaSafeMap<>.
-  struct LabelWrapper {
-    LabelWrapper(const LabelWrapper& src)
-        : label() {
-      DCHECK(!src.label.IsLinked() && !src.label.IsBound());
-    }
-    LabelWrapper() = default;
-    vixl::aarch64::Label label;
-  };
-  ArenaSafeMap<uint32_t, LabelWrapper> jit_baker_read_barrier_slow_paths_;
 
   friend class linker::Arm64RelativePatcherTest;
   DISALLOW_COPY_AND_ASSIGN(CodeGeneratorARM64);
