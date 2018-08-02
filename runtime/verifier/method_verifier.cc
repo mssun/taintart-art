@@ -439,7 +439,7 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
   }
   if (kTimeVerifyMethod) {
     uint64_t duration_ns = NanoTime() - start_ns;
-    if (duration_ns > MsToNs(100)) {
+    if (duration_ns > MsToNs(Runtime::Current()->GetVerifierLoggingThresholdMs())) {
       LOG(WARNING) << "Verification of " << dex_file->PrettyMethod(method_idx)
                    << " took " << PrettyDuration(duration_ns)
                    << (IsLargeMethod(verifier.CodeItem()) ? " (large method)" : "");
