@@ -251,12 +251,14 @@ class SchedulingNode : public DeletableArenaObject<kArenaAllocScheduler> {
  */
 class SchedulingGraph : public ValueObject {
  public:
-  SchedulingGraph(const HScheduler* scheduler, ScopedArenaAllocator* allocator)
+  SchedulingGraph(const HScheduler* scheduler,
+                  ScopedArenaAllocator* allocator,
+                  const HeapLocationCollector* heap_location_collector)
       : scheduler_(scheduler),
         allocator_(allocator),
         contains_scheduling_barrier_(false),
         nodes_map_(allocator_->Adapter(kArenaAllocScheduler)),
-        heap_location_collector_(nullptr) {}
+        heap_location_collector_(heap_location_collector) {}
 
   SchedulingNode* AddNode(HInstruction* instr, bool is_scheduling_barrier = false) {
     std::unique_ptr<SchedulingNode> node(
@@ -266,15 +268,6 @@ class SchedulingGraph : public ValueObject {
     contains_scheduling_barrier_ |= is_scheduling_barrier;
     AddDependencies(instr, is_scheduling_barrier);
     return result;
-  }
-
-  void Clear() {
-    nodes_map_.clear();
-    contains_scheduling_barrier_ = false;
-  }
-
-  void SetHeapLocationCollector(const HeapLocationCollector& heap_location_collector) {
-    heap_location_collector_ = &heap_location_collector;
   }
 
   SchedulingNode* GetNode(const HInstruction* instr) const {
@@ -329,7 +322,7 @@ class SchedulingGraph : public ValueObject {
 
   ScopedArenaHashMap<const HInstruction*, std::unique_ptr<SchedulingNode>> nodes_map_;
 
-  const HeapLocationCollector* heap_location_collector_;
+  const HeapLocationCollector* const heap_location_collector_;
 };
 
 /*
@@ -377,6 +370,7 @@ class SchedulingLatencyVisitor : public HGraphDelegateVisitor {
 
 class SchedulingNodeSelector : public ArenaObject<kArenaAllocScheduler> {
  public:
+  virtual void Reset() {}
   virtual SchedulingNode* PopHighestPriorityNode(ScopedArenaVector<SchedulingNode*>* nodes,
                                                  const SchedulingGraph& graph) = 0;
   virtual ~SchedulingNodeSelector() {}
@@ -418,6 +412,7 @@ class CriticalPathSchedulingNodeSelector : public SchedulingNodeSelector {
  public:
   CriticalPathSchedulingNodeSelector() : prev_select_(nullptr) {}
 
+  void Reset() OVERRIDE { prev_select_ = nullptr; }
   SchedulingNode* PopHighestPriorityNode(ScopedArenaVector<SchedulingNode*>* nodes,
                                          const SchedulingGraph& graph) OVERRIDE;
 
@@ -434,16 +429,11 @@ class CriticalPathSchedulingNodeSelector : public SchedulingNodeSelector {
 
 class HScheduler {
  public:
-  HScheduler(ScopedArenaAllocator* allocator,
-             SchedulingLatencyVisitor* latency_visitor,
-             SchedulingNodeSelector* selector)
-      : allocator_(allocator),
-        latency_visitor_(latency_visitor),
+  HScheduler(SchedulingLatencyVisitor* latency_visitor, SchedulingNodeSelector* selector)
+      : latency_visitor_(latency_visitor),
         selector_(selector),
         only_optimize_loop_blocks_(true),
-        scheduling_graph_(this, allocator),
-        cursor_(nullptr),
-        candidates_(allocator_->Adapter(kArenaAllocScheduler)) {}
+        cursor_(nullptr) {}
   virtual ~HScheduler() {}
 
   void Schedule(HGraph* graph);
@@ -454,8 +444,9 @@ class HScheduler {
   virtual bool IsSchedulingBarrier(const HInstruction* instruction) const;
 
  protected:
-  void Schedule(HBasicBlock* block);
-  void Schedule(SchedulingNode* scheduling_node);
+  void Schedule(HBasicBlock* block, const HeapLocationCollector* heap_location_collector);
+  void Schedule(SchedulingNode* scheduling_node,
+                /*inout*/ ScopedArenaVector<SchedulingNode*>* candidates);
   void Schedule(HInstruction* instruction);
 
   // Any instruction returning `false` via this method will prevent its
@@ -476,19 +467,12 @@ class HScheduler {
     node->SetInternalLatency(latency_visitor_->GetLastVisitedInternalLatency());
   }
 
-  ScopedArenaAllocator* const allocator_;
   SchedulingLatencyVisitor* const latency_visitor_;
   SchedulingNodeSelector* const selector_;
   bool only_optimize_loop_blocks_;
 
-  // We instantiate the members below as part of this class to avoid
-  // instantiating them locally for every chunk scheduled.
-  SchedulingGraph scheduling_graph_;
   // A pointer indicating where the next instruction to be scheduled will be inserted.
   HInstruction* cursor_;
-  // The list of candidates for scheduling. A node becomes a candidate when all
-  // its predecessors have been scheduled.
-  ScopedArenaVector<SchedulingNode*> candidates_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HScheduler);

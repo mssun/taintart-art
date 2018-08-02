@@ -1101,15 +1101,18 @@ static void CreateJniStackMap(ArenaStack* arena_stack,
                               const JniCompiledMethod& jni_compiled_method,
                               /* out */ ArenaVector<uint8_t>* stack_map) {
   ScopedArenaAllocator allocator(arena_stack);
-  StackMapStream stack_map_stream(&allocator, jni_compiled_method.GetInstructionSet());
-  stack_map_stream.BeginMethod(
+  // StackMapStream is quite large, so allocate it using the ScopedArenaAllocator
+  // to stay clear of the frame size limit.
+  std::unique_ptr<StackMapStream> stack_map_stream(
+      new (&allocator) StackMapStream(&allocator, jni_compiled_method.GetInstructionSet()));
+  stack_map_stream->BeginMethod(
       jni_compiled_method.GetFrameSize(),
       jni_compiled_method.GetCoreSpillMask(),
       jni_compiled_method.GetFpSpillMask(),
       /* num_dex_registers */ 0);
-  stack_map_stream.EndMethod();
-  stack_map->resize(stack_map_stream.PrepareForFillIn());
-  stack_map_stream.FillInCodeInfo(MemoryRegion(stack_map->data(), stack_map->size()));
+  stack_map_stream->EndMethod();
+  stack_map->resize(stack_map_stream->PrepareForFillIn());
+  stack_map_stream->FillInCodeInfo(MemoryRegion(stack_map->data(), stack_map->size()));
 }
 
 CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
