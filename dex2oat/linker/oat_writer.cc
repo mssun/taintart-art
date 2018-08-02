@@ -38,6 +38,7 @@
 #include "compiled_method-inl.h"
 #include "debug/method_debug_info.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_types.h"
@@ -791,7 +792,7 @@ class OatWriter::DexMethodVisitor {
     return true;
   }
 
-  virtual bool VisitMethod(size_t class_def_method_index, const ClassDataItemIterator& it) = 0;
+  virtual bool VisitMethod(size_t class_def_method_index, const ClassAccessor::Method& method) = 0;
 
   virtual bool EndClass() {
     if (kIsDebugBuild) {
@@ -861,10 +862,10 @@ class OatWriter::InitBssLayoutMethodVisitor : public DexMethodVisitor {
       : DexMethodVisitor(writer, /* offset */ 0u) {}
 
   bool VisitMethod(size_t class_def_method_index ATTRIBUTE_UNUSED,
-                   const ClassDataItemIterator& it) OVERRIDE {
+                   const ClassAccessor::Method& method) OVERRIDE {
     // Look for patches with .bss references and prepare maps with placeholders for their offsets.
     CompiledMethod* compiled_method = writer_->compiler_driver_->GetCompiledMethod(
-        MethodReference(dex_file_, it.GetMemberIndex()));
+        MethodReference(dex_file_, method.GetIndex()));
     if (HasCompiledCode(compiled_method)) {
       for (const LinkerPatch& patch : compiled_method->GetPatches()) {
         if (patch.GetType() == LinkerPatch::Type::kDataBimgRelRo) {
@@ -943,12 +944,12 @@ class OatWriter::InitOatClassesMethodVisitor : public DexMethodVisitor {
   }
 
   bool VisitMethod(size_t class_def_method_index ATTRIBUTE_UNUSED,
-                   const ClassDataItemIterator& it) OVERRIDE {
+                   const ClassAccessor::Method& method) OVERRIDE {
     // Fill in the compiled_methods_ array for methods that have a
     // CompiledMethod. We track the number of non-null entries in
     // compiled_methods_with_code_ since we only want to allocate
     // OatMethodOffsets for the compiled methods.
-    uint32_t method_idx = it.GetMemberIndex();
+    uint32_t method_idx = method.GetIndex();
     CompiledMethod* compiled_method =
         writer_->compiler_driver_->GetCompiledMethod(MethodReference(dex_file_, method_idx));
     compiled_methods_.push_back(compiled_method);
@@ -1150,7 +1151,7 @@ class OatWriter::LayoutCodeMethodVisitor : public OatDexMethodVisitor {
   }
 
   bool VisitMethod(size_t class_def_method_index,
-                   const ClassDataItemIterator& it)
+                   const ClassAccessor::Method& method)
       OVERRIDE
       REQUIRES_SHARED(Locks::mutator_lock_)  {
     Locks::mutator_lock_->AssertSharedHeld(Thread::Current());
@@ -1182,7 +1183,7 @@ class OatWriter::LayoutCodeMethodVisitor : public OatDexMethodVisitor {
         }
       }
 
-      MethodReference method_ref(dex_file_, it.GetMemberIndex());
+      MethodReference method_ref(dex_file_, method.GetIndex());
 
       // Lookup method hotness from profile, if available.
       // Otherwise assume a default of none-hotness.
@@ -1199,8 +1200,8 @@ class OatWriter::LayoutCodeMethodVisitor : public OatDexMethodVisitor {
           method_ref,
           method_offsets_index_,
           class_def_index_,
-          it.GetMethodAccessFlags(),
-          it.GetMethodCodeItem(),
+          method.GetAccessFlags(),
+          method.GetCodeItem(),
           debug_info_idx
       };
       ordered_methods_.push_back(method_data);
@@ -1442,7 +1443,8 @@ class OatWriter::InitMapMethodVisitor : public OatDexMethodVisitor {
   InitMapMethodVisitor(OatWriter* writer, size_t offset)
       : OatDexMethodVisitor(writer, offset) {}
 
-  bool VisitMethod(size_t class_def_method_index, const ClassDataItemIterator& it ATTRIBUTE_UNUSED)
+  bool VisitMethod(size_t class_def_method_index,
+                   const ClassAccessor::Method& method ATTRIBUTE_UNUSED)
       OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
     OatClass* oat_class = &writer_->oat_classes_[oat_class_index_];
     CompiledMethod* compiled_method = oat_class->GetCompiledMethod(class_def_method_index);
@@ -1543,7 +1545,7 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
     return true;
   }
 
-  bool VisitMethod(size_t class_def_method_index, const ClassDataItemIterator& it) OVERRIDE
+  bool VisitMethod(size_t class_def_method_index, const ClassAccessor::Method& method) OVERRIDE
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Skip methods that are not in the image.
     if (!IsImageClass()) {
@@ -1562,22 +1564,22 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
 
     Thread* self = Thread::Current();
     ObjPtr<mirror::DexCache> dex_cache = class_linker_->FindDexCache(self, *dex_file_);
-    ArtMethod* method;
+    ArtMethod* resolved_method;
     if (writer_->GetCompilerOptions().IsBootImage()) {
-      const InvokeType invoke_type = it.GetMethodInvokeType(
-          dex_file_->GetClassDef(class_def_index_));
+      const InvokeType invoke_type = method.GetInvokeType(
+          dex_file_->GetClassDef(class_def_index_).access_flags_);
       // Unchecked as we hold mutator_lock_ on entry.
       ScopedObjectAccessUnchecked soa(self);
       StackHandleScope<1> hs(self);
-      method = class_linker_->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-          it.GetMemberIndex(),
+      resolved_method = class_linker_->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
+          method.GetIndex(),
           hs.NewHandle(dex_cache),
           ScopedNullHandle<mirror::ClassLoader>(),
           /* referrer */ nullptr,
           invoke_type);
-      if (method == nullptr) {
+      if (resolved_method == nullptr) {
         LOG(FATAL_WITHOUT_ABORT) << "Unexpected failure to resolve a method: "
-            << dex_file_->PrettyMethod(it.GetMemberIndex(), true);
+            << dex_file_->PrettyMethod(method.GetIndex(), true);
         self->AssertPendingException();
         mirror::Throwable* exc = self->GetException();
         std::string dump = exc->Dump();
@@ -1588,12 +1590,14 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
       // Should already have been resolved by the compiler.
       // It may not be resolved if the class failed to verify, in this case, don't set the
       // entrypoint. This is not fatal since we shall use a resolution method.
-      method = class_linker_->LookupResolvedMethod(it.GetMemberIndex(), dex_cache, class_loader_);
+      resolved_method = class_linker_->LookupResolvedMethod(method.GetIndex(),
+                                                            dex_cache,
+                                                            class_loader_);
     }
-    if (method != nullptr &&
+    if (resolved_method != nullptr &&
         compiled_method != nullptr &&
         compiled_method->GetQuickCode().size() != 0) {
-      method->SetEntryPointFromQuickCompiledCodePtrSize(
+      resolved_method->SetEntryPointFromQuickCompiledCodePtrSize(
           reinterpret_cast<void*>(offsets.code_offset_), pointer_size_);
     }
 
@@ -2001,26 +2005,17 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
 // Visit all methods from all classes in all dex files with the specified visitor.
 bool OatWriter::VisitDexMethods(DexMethodVisitor* visitor) {
   for (const DexFile* dex_file : *dex_files_) {
-    const size_t class_def_count = dex_file->NumClassDefs();
-    for (size_t class_def_index = 0; class_def_index != class_def_count; ++class_def_index) {
-      if (UNLIKELY(!visitor->StartClass(dex_file, class_def_index))) {
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
+      if (UNLIKELY(!visitor->StartClass(dex_file, accessor.GetClassDefIndex()))) {
         return false;
       }
       if (MayHaveCompiledMethods()) {
-        const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
-        const uint8_t* class_data = dex_file->GetClassData(class_def);
-        if (class_data != nullptr) {  // ie not an empty class, such as a marker interface
-          ClassDataItemIterator it(*dex_file, class_data);
-          it.SkipAllFields();
-          size_t class_def_method_index = 0u;
-          while (it.HasNextMethod()) {
-            if (!visitor->VisitMethod(class_def_method_index, it)) {
-              return false;
-            }
-            ++class_def_method_index;
-            it.Next();
+        size_t class_def_method_index = 0u;
+        for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+          if (!visitor->VisitMethod(class_def_method_index, method)) {
+            return false;
           }
-          DCHECK(!it.HasNext());
+          ++class_def_method_index;
         }
       }
       if (UNLIKELY(!visitor->EndClass())) {
