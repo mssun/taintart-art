@@ -548,6 +548,18 @@
         "bug": "b/33650497"
     },
     {
+        "tests": "1946-list-descriptors",
+        "description": "ASAN+interp-ac/switch interpreter means this is too slow to finish in the timeout",
+        "variant": "target & interp-ac",
+        "env_vars": {"SANITIZE_TARGET": "address"}
+    },
+    {
+        "tests": "1946-list-descriptors",
+        "description": "ASAN+interp-ac/switch interpreter means this is too slow to finish in the timeout",
+        "variant": "host & interp-ac",
+        "env_vars": {"SANITIZE_HOST": "address"}
+    },
+    {
         "tests": "202-thread-oome",
         "description": "ASAN aborts when large thread stacks are requested.",
         "variant": "host",
