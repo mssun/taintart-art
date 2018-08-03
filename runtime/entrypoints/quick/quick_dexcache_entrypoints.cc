@@ -95,7 +95,7 @@ static inline void StoreTypeInBss(ArtMethod* outer_method,
 static inline void StoreStringInBss(ArtMethod* outer_method,
                                     dex::StringIndex string_idx,
                                     ObjPtr<mirror::String> resolved_string)
-    REQUIRES_SHARED(Locks::mutator_lock_) __attribute__((optnone)) {
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   const DexFile* dex_file = outer_method->GetDexFile();
   DCHECK(dex_file != nullptr);
   const OatDexFile* oat_dex_file = dex_file->GetOatDexFile();
@@ -129,24 +129,22 @@ static ALWAYS_INLINE bool CanReferenceBss(ArtMethod* outer_method, ArtMethod* ca
   return outer_method->GetDexFile() == caller->GetDexFile();
 }
 
-extern "C" mirror::Class* artInitializeStaticStorageFromCode(uint32_t type_idx, Thread* self)
+extern "C" mirror::Class* artInitializeStaticStorageFromCode(mirror::Class* klass, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // Called to ensure static storage base is initialized for direct static field reads and writes.
   // A class may be accessing another class' fields when it doesn't have access, as access has been
   // given by inheritance.
   ScopedQuickEntrypointChecks sqec(self);
-  auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(
-      self, CalleeSaveType::kSaveEverythingForClinit);
-  ArtMethod* caller = caller_and_outer.caller;
-  ObjPtr<mirror::Class> result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
-                                                        caller,
-                                                        self,
-                                                        /* can_run_clinit */ true,
-                                                        /* verify_access */ false);
-  if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
-    StoreTypeInBss(caller_and_outer.outer_method, dex::TypeIndex(type_idx), result);
+  DCHECK(klass != nullptr);
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  StackHandleScope<1> hs(self);
+  Handle<mirror::Class> h_klass = hs.NewHandle(klass);
+  bool success = class_linker->EnsureInitialized(
+      self, h_klass, /* can_init_fields */ true, /* can_init_parents */ true);
+  if (UNLIKELY(!success)) {
+    return nullptr;
   }
-  return result.Ptr();
+  return h_klass.Get();
 }
 
 extern "C" mirror::Class* artInitializeTypeFromCode(uint32_t type_idx, Thread* self)

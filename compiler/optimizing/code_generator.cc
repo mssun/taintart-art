@@ -737,14 +737,12 @@ void CodeGenerator::CreateLoadClassRuntimeCallLocationSummary(HLoadClass* cls,
 
 void CodeGenerator::GenerateLoadClassRuntimeCall(HLoadClass* cls) {
   DCHECK_EQ(cls->GetLoadKind(), HLoadClass::LoadKind::kRuntimeCall);
+  DCHECK(!cls->MustGenerateClinitCheck());
   LocationSummary* locations = cls->GetLocations();
   MoveConstant(locations->GetTemp(0), cls->GetTypeIndex().index_);
   if (cls->NeedsAccessCheck()) {
     CheckEntrypointTypes<kQuickInitializeTypeAndVerifyAccess, void*, uint32_t>();
     InvokeRuntime(kQuickInitializeTypeAndVerifyAccess, cls, cls->GetDexPc());
-  } else if (cls->MustGenerateClinitCheck()) {
-    CheckEntrypointTypes<kQuickInitializeStaticStorage, void*, uint32_t>();
-    InvokeRuntime(kQuickInitializeStaticStorage, cls, cls->GetDexPc());
   } else {
     CheckEntrypointTypes<kQuickInitializeType, void*, uint32_t>();
     InvokeRuntime(kQuickInitializeType, cls, cls->GetDexPc());
