@@ -301,10 +301,10 @@ ScopedArenaVector<uint8_t> StackMapStream::Encode() {
   EncodeVarintBits(out, fp_spill_mask_);
   EncodeVarintBits(out, num_dex_registers_);
   EncodeTable(out, stack_maps_);
-  EncodeTable(out, inline_infos_);
-  EncodeTable(out, method_infos_);
   EncodeTable(out, register_masks_);
   EncodeTable(out, stack_masks_);
+  EncodeTable(out, inline_infos_);
+  EncodeTable(out, method_infos_);
   EncodeTable(out, dex_register_masks_);
   EncodeTable(out, dex_register_maps_);
   EncodeTable(out, dex_register_catalog_);
