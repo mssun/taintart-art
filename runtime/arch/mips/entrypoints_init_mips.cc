@@ -192,7 +192,7 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   qpoints->pCheckInstanceOf = art_quick_check_instance_of;
   static_assert(!IsDirectEntrypoint(kQuickCheckInstanceOf), "Non-direct C stub marked direct.");
 
-  // DexCache
+  // Resolution and initialization
   qpoints->pInitializeStaticStorage = art_quick_initialize_static_storage;
   static_assert(!IsDirectEntrypoint(kQuickInitializeStaticStorage),
                 "Non-direct C stub marked direct.");
