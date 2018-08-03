@@ -271,9 +271,11 @@ class CodeInfo {
  public:
   enum DecodeFlags {
     Default = 0,
+    // Limits the decoding only to the data needed by GC.
+    GcMasksOnly = 1,
     // Limits the decoding only to the main stack map table and inline info table.
     // This is sufficient for many use cases and makes the header decoding faster.
-    InlineInfoOnly = 1,
+    InlineInfoOnly = 2,
   };
 
   explicit CodeInfo(const uint8_t* data, DecodeFlags flags = DecodeFlags::Default) {
@@ -446,10 +448,10 @@ class CodeInfo {
   uint32_t fp_spill_mask_;
   uint32_t number_of_dex_registers_;
   BitTable<StackMap> stack_maps_;
-  BitTable<InlineInfo> inline_infos_;
-  BitTable<MethodInfo> method_infos_;
   BitTable<RegisterMask> register_masks_;
   BitTable<MaskInfo> stack_masks_;
+  BitTable<InlineInfo> inline_infos_;
+  BitTable<MethodInfo> method_infos_;
   BitTable<MaskInfo> dex_register_masks_;
   BitTable<DexRegisterMapInfo> dex_register_maps_;
   BitTable<DexRegisterInfo> dex_register_catalog_;
