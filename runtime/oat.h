@@ -32,8 +32,8 @@ class InstructionSetFeatures;
 class PACKED(4) OatHeader {
  public:
   static constexpr uint8_t kOatMagic[] = { 'o', 'a', 't', '\n' };
-  // Last oat version changed reason: Pass Class reference to clinit entrypoint.
-  static constexpr uint8_t kOatVersion[] = { '1', '6', '0', '\0' };
+  // Last oat version changed reason: Add stack map fast path for GC.
+  static constexpr uint8_t kOatVersion[] = { '1', '6', '1', '\0' };
 
   static constexpr const char* kImageLocationKey = "image-location";
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
