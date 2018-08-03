@@ -1033,15 +1033,15 @@
     },
     {
         "tests": ["712-varhandle-invocations"],
-        "variant": "interpreter & gcstress",
+        "variant": "gcstress",
         "bug": "b/111630237",
         "description": ["Test timing out under gcstress possibly due to slower unwinding by libbacktrace"]
     },
     {
-        "tests": ["712-varhandle-invocations", "624-checker-stringops"],
+        "tests": ["624-checker-stringops"],
         "variant": "optimizing & gcstress | speed-profile & gcstress",
         "bug": "b/111545159",
-        "description": ["These tests seem to expose some error with our gc when run in these configurations"]
+        "description": ["Seem to expose some error with our gc when run in these configurations"]
     },
     {
         "tests": ["021-string2"],
