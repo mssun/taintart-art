@@ -98,6 +98,7 @@ include $(art_path)/build/Android.common_test.mk
 include $(art_path)/build/Android.gtest.mk
 include $(art_path)/test/Android.run-test.mk
 
+# Make sure /system is writable on the device.
 TEST_ART_ADB_ROOT_AND_REMOUNT := \
     (adb root && \
      adb wait-for-device remount && \
@@ -122,8 +123,10 @@ test-art-target-sync: $(TEST_ART_TARGET_SYNC_DEPS)
 	$(TEST_ART_ADB_ROOT_AND_REMOUNT)
 	adb sync system && adb sync data
 else
+# TEST_ART_ADB_ROOT_AND_REMOUNT is not needed here, as we are only
+# pushing things to the chroot dir, which is expected to be under
+# /data on the device.
 test-art-target-sync: $(TEST_ART_TARGET_SYNC_DEPS)
-	$(TEST_ART_ADB_ROOT_AND_REMOUNT)
 	adb wait-for-device
 	adb push $(PRODUCT_OUT)/system $(ART_TEST_CHROOT)/
 	adb push $(PRODUCT_OUT)/data $(ART_TEST_CHROOT)/
