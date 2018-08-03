@@ -71,7 +71,7 @@ class TransformIterator {
     return *this;
   }
 
-  TransformIterator& operator++(int) {
+  TransformIterator operator++(int) {
     TransformIterator tmp(*this);
     ++*this;
     return tmp;
@@ -86,7 +86,7 @@ class TransformIterator {
     return *this;
   }
 
-  TransformIterator& operator--(int) {
+  TransformIterator operator--(int) {
     TransformIterator tmp(*this);
     --*this;
     return tmp;
