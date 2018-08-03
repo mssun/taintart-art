@@ -33,7 +33,7 @@ static void DefaultInitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qp
   // Alloc
   ResetQuickAllocEntryPoints(qpoints, /* is_marking */ true);
 
-  // DexCache
+  // Resolution and initialization
   qpoints->pInitializeStaticStorage = art_quick_initialize_static_storage;
   qpoints->pInitializeTypeAndVerifyAccess = art_quick_initialize_type_and_verify_access;
   qpoints->pInitializeType = art_quick_initialize_type;

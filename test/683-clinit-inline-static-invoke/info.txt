@@ -1,0 +1,3 @@
+Regression test for a bug where the class initialization check for an inlined
+call to a static method used a type index from the wrong dex file because the
+current dex file does not have a TypeId for it. This was likely to crash.

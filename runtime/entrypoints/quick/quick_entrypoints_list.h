@@ -38,7 +38,7 @@
   V(InstanceofNonTrivial, size_t, mirror::Object*, mirror::Class*) \
   V(CheckInstanceOf, void, mirror::Object*, mirror::Class*) \
 \
-  V(InitializeStaticStorage, void*, uint32_t) \
+  V(InitializeStaticStorage, void*, mirror::Class*) \
   V(InitializeTypeAndVerifyAccess, void*, uint32_t) \
   V(InitializeType, void*, uint32_t) \
   V(ResolveMethodHandle, void*, uint32_t) \

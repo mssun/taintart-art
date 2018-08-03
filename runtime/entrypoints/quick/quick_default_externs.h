@@ -33,8 +33,8 @@ class ArtMethod;
 // Cast entrypoints.
 extern "C" void art_quick_check_instance_of(art::mirror::Object*, art::mirror::Class*);
 
-// DexCache entrypoints.
-extern "C" void* art_quick_initialize_static_storage(uint32_t);
+// Resolution and initialization entrypoints.
+extern "C" void* art_quick_initialize_static_storage(art::mirror::Class*);
 extern "C" void* art_quick_initialize_type(uint32_t);
 extern "C" void* art_quick_initialize_type_and_verify_access(uint32_t);
 extern "C" void* art_quick_resolve_method_handle(uint32_t);
