@@ -961,12 +961,6 @@ CodeGenerator::CodeGenerator(HGraph* graph,
 
 CodeGenerator::~CodeGenerator() {}
 
-void CodeGenerator::ComputeStackMapSize(size_t* stack_map_size) {
-  DCHECK(stack_map_size != nullptr);
-  StackMapStream* stack_map_stream = GetStackMapStream();
-  *stack_map_size = stack_map_stream->PrepareForFillIn();
-}
-
 size_t CodeGenerator::GetNumberOfJitRoots() const {
   DCHECK(code_generation_data_ != nullptr);
   return code_generation_data_->GetNumberOfJitRoots();
@@ -1033,13 +1027,12 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
   }
 }
 
-void CodeGenerator::BuildStackMaps(MemoryRegion stack_map_region,
-                                   const DexFile::CodeItem* code_item_for_osr_check) {
-  StackMapStream* stack_map_stream = GetStackMapStream();
-  stack_map_stream->FillInCodeInfo(stack_map_region);
-  if (kIsDebugBuild && code_item_for_osr_check != nullptr) {
-    CheckLoopEntriesCanBeUsedForOsr(*graph_, CodeInfo(stack_map_region), *code_item_for_osr_check);
+ScopedArenaVector<uint8_t> CodeGenerator::BuildStackMaps(const DexFile::CodeItem* code_item) {
+  ScopedArenaVector<uint8_t> stack_map = GetStackMapStream()->Encode();
+  if (kIsDebugBuild && code_item != nullptr) {
+    CheckLoopEntriesCanBeUsedForOsr(*graph_, CodeInfo(stack_map.data()), *code_item);
   }
+  return stack_map;
 }
 
 void CodeGenerator::RecordPcInfo(HInstruction* instruction,

@@ -350,9 +350,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   void AddSlowPath(SlowPathCode* slow_path);
 
-  void BuildStackMaps(MemoryRegion stack_map_region,
-                      const DexFile::CodeItem* code_item_for_osr_check);
-  void ComputeStackMapSize(size_t* stack_map_size);
+  ScopedArenaVector<uint8_t> BuildStackMaps(const DexFile::CodeItem* code_item_for_osr_check);
   size_t GetNumberOfJitRoots() const;
 
   // Fills the `literals` array with literals collected during code generation.
