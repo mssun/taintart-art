@@ -741,11 +741,11 @@ void CodeGenerator::GenerateLoadClassRuntimeCall(HLoadClass* cls) {
   LocationSummary* locations = cls->GetLocations();
   MoveConstant(locations->GetTemp(0), cls->GetTypeIndex().index_);
   if (cls->NeedsAccessCheck()) {
-    CheckEntrypointTypes<kQuickInitializeTypeAndVerifyAccess, void*, uint32_t>();
-    InvokeRuntime(kQuickInitializeTypeAndVerifyAccess, cls, cls->GetDexPc());
+    CheckEntrypointTypes<kQuickResolveTypeAndVerifyAccess, void*, uint32_t>();
+    InvokeRuntime(kQuickResolveTypeAndVerifyAccess, cls, cls->GetDexPc());
   } else {
-    CheckEntrypointTypes<kQuickInitializeType, void*, uint32_t>();
-    InvokeRuntime(kQuickInitializeType, cls, cls->GetDexPc());
+    CheckEntrypointTypes<kQuickResolveType, void*, uint32_t>();
+    InvokeRuntime(kQuickResolveType, cls, cls->GetDexPc());
   }
 }
 
