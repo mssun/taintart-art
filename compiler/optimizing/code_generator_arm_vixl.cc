@@ -150,6 +150,15 @@ class EmitAdrCode {
   int32_t adr_location_;
 };
 
+static RegisterSet OneRegInReferenceOutSaveEverythingCallerSaves() {
+  InvokeRuntimeCallingConventionARMVIXL calling_convention;
+  RegisterSet caller_saves = RegisterSet::Empty();
+  caller_saves.Add(LocationFrom(calling_convention.GetRegisterAt(0)));
+  // TODO: Add GetReturnLocation() to the calling convention so that we can DCHECK()
+  // that the the kPrimNot result register is the same as the first argument register.
+  return caller_saves;
+}
+
 // SaveLiveRegisters and RestoreLiveRegisters from SlowPathCodeARM operate on sets of S registers,
 // for each live D registers they treat two corresponding S registers as live ones.
 //
@@ -7416,12 +7425,7 @@ void LocationsBuilderARMVIXL::VisitLoadClass(HLoadClass* cls) {
   if (load_kind == HLoadClass::LoadKind::kBssEntry) {
     if (!kUseReadBarrier || kUseBakerReadBarrier) {
       // Rely on the type resolution or initialization and marking to save everything we need.
-      RegisterSet caller_saves = RegisterSet::Empty();
-      InvokeRuntimeCallingConventionARMVIXL calling_convention;
-      caller_saves.Add(LocationFrom(calling_convention.GetRegisterAt(0)));
-      // TODO: Add GetReturnLocation() to the calling convention so that we can DCHECK()
-      // that the the kPrimNot result register is the same as the first argument register.
-      locations->SetCustomSlowPathCallerSaves(caller_saves);
+      locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
     } else {
       // For non-Baker read barrier we have a temp-clobbering call.
     }
@@ -7549,6 +7553,8 @@ void LocationsBuilderARMVIXL::VisitClinitCheck(HClinitCheck* check) {
   if (check->HasUses()) {
     locations->SetOut(Location::SameAsFirstInput());
   }
+  // Rely on the type initialization to save everything we need.
+  locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitClinitCheck(HClinitCheck* check) {
@@ -7668,12 +7674,7 @@ void LocationsBuilderARMVIXL::VisitLoadString(HLoadString* load) {
     if (load_kind == HLoadString::LoadKind::kBssEntry) {
       if (!kUseReadBarrier || kUseBakerReadBarrier) {
         // Rely on the pResolveString and marking to save everything we need, including temps.
-        RegisterSet caller_saves = RegisterSet::Empty();
-        InvokeRuntimeCallingConventionARMVIXL calling_convention;
-        caller_saves.Add(LocationFrom(calling_convention.GetRegisterAt(0)));
-        // TODO: Add GetReturnLocation() to the calling convention so that we can DCHECK()
-        // that the the kPrimNot result register is the same as the first argument register.
-        locations->SetCustomSlowPathCallerSaves(caller_saves);
+        locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
       } else {
         // For non-Baker read barrier we have a temp-clobbering call.
       }
