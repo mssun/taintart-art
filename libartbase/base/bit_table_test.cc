@@ -26,22 +26,6 @@
 
 namespace art {
 
-TEST(BitTableTest, TestVarint) {
-  for (size_t start_bit_offset = 0; start_bit_offset <= 32; start_bit_offset++) {
-    uint32_t values[] = { 0, 1, 11, 12, 15, 16, 255, 256, ~1u, ~0u };
-    for (uint32_t value : values) {
-      std::vector<uint8_t> buffer;
-      BitMemoryWriter<std::vector<uint8_t>> writer(&buffer, start_bit_offset);
-      EncodeVarintBits(writer, value);
-
-      BitMemoryReader reader(buffer.data(), start_bit_offset);
-      uint32_t result = DecodeVarintBits(reader);
-      EXPECT_EQ(writer.NumberOfWrittenBits(), reader.NumberOfReadBits());
-      EXPECT_EQ(value, result);
-    }
-  }
-}
-
 TEST(BitTableTest, TestEmptyTable) {
   MallocArenaPool pool;
   ArenaStack arena_stack(&pool);
