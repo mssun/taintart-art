@@ -196,11 +196,11 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   qpoints->pInitializeStaticStorage = art_quick_initialize_static_storage;
   static_assert(!IsDirectEntrypoint(kQuickInitializeStaticStorage),
                 "Non-direct C stub marked direct.");
-  qpoints->pInitializeTypeAndVerifyAccess = art_quick_initialize_type_and_verify_access;
-  static_assert(!IsDirectEntrypoint(kQuickInitializeTypeAndVerifyAccess),
+  qpoints->pResolveTypeAndVerifyAccess = art_quick_resolve_type_and_verify_access;
+  static_assert(!IsDirectEntrypoint(kQuickResolveTypeAndVerifyAccess),
                 "Non-direct C stub marked direct.");
-  qpoints->pInitializeType = art_quick_initialize_type;
-  static_assert(!IsDirectEntrypoint(kQuickInitializeType), "Non-direct C stub marked direct.");
+  qpoints->pResolveType = art_quick_resolve_type;
+  static_assert(!IsDirectEntrypoint(kQuickResolveType), "Non-direct C stub marked direct.");
   qpoints->pResolveString = art_quick_resolve_string;
   static_assert(!IsDirectEntrypoint(kQuickResolveString), "Non-direct C stub marked direct.");
   qpoints->pResolveMethodHandle = art_quick_resolve_method_handle;

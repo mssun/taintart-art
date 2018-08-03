@@ -35,8 +35,8 @@ static void DefaultInitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qp
 
   // Resolution and initialization
   qpoints->pInitializeStaticStorage = art_quick_initialize_static_storage;
-  qpoints->pInitializeTypeAndVerifyAccess = art_quick_initialize_type_and_verify_access;
-  qpoints->pInitializeType = art_quick_initialize_type;
+  qpoints->pResolveTypeAndVerifyAccess = art_quick_resolve_type_and_verify_access;
+  qpoints->pResolveType = art_quick_resolve_type;
   qpoints->pResolveMethodHandle = art_quick_resolve_method_handle;
   qpoints->pResolveMethodType = art_quick_resolve_method_type;
   qpoints->pResolveString = art_quick_resolve_string;

@@ -252,8 +252,8 @@ class LoadClassSlowPathMIPS : public SlowPathCodeMIPS {
       DCHECK(IsSameDexFile(cls_->GetDexFile(), mips_codegen->GetGraph()->GetDexFile()));
       dex::TypeIndex type_index = cls_->GetTypeIndex();
       __ LoadConst32(calling_convention.GetRegisterAt(0), type_index.index_);
-      mips_codegen->InvokeRuntime(kQuickInitializeType, instruction_, dex_pc, this);
-      CheckEntrypointTypes<kQuickInitializeType, void*, uint32_t>();
+      mips_codegen->InvokeRuntime(kQuickResolveType, instruction_, dex_pc, this);
+      CheckEntrypointTypes<kQuickResolveType, void*, uint32_t>();
       // If we also must_do_clinit, the resolved type is now in the correct register.
     } else {
       DCHECK(must_do_clinit);
