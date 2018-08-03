@@ -56,13 +56,16 @@ void CodeInfo::Decode(const uint8_t* data, DecodeFlags flags) {
   fp_spill_mask_ = DecodeVarintBits(reader);
   number_of_dex_registers_ = DecodeVarintBits(reader);
   DecodeTable(stack_maps_, reader, data);
+  DecodeTable(register_masks_, reader, data);
+  DecodeTable(stack_masks_, reader, data);
+  if (flags & DecodeFlags::GcMasksOnly) {
+    return;
+  }
   DecodeTable(inline_infos_, reader, data);
   DecodeTable(method_infos_, reader, data);
   if (flags & DecodeFlags::InlineInfoOnly) {
     return;
   }
-  DecodeTable(register_masks_, reader, data);
-  DecodeTable(stack_masks_, reader, data);
   DecodeTable(dex_register_masks_, reader, data);
   DecodeTable(dex_register_maps_, reader, data);
   DecodeTable(dex_register_catalog_, reader, data);
@@ -97,10 +100,10 @@ size_t CodeInfo::Dedupe(std::vector<uint8_t>* out, const uint8_t* in, DedupeMap*
   EncodeVarintBits(writer, DecodeVarintBits(reader));  // fp_spill_mask_.
   EncodeVarintBits(writer, DecodeVarintBits(reader));  // number_of_dex_registers_.
   DedupeTable<StackMap>(writer, reader, dedupe_map);
-  DedupeTable<InlineInfo>(writer, reader, dedupe_map);
-  DedupeTable<MethodInfo>(writer, reader, dedupe_map);
   DedupeTable<RegisterMask>(writer, reader, dedupe_map);
   DedupeTable<MaskInfo>(writer, reader, dedupe_map);
+  DedupeTable<InlineInfo>(writer, reader, dedupe_map);
+  DedupeTable<MethodInfo>(writer, reader, dedupe_map);
   DedupeTable<MaskInfo>(writer, reader, dedupe_map);
   DedupeTable<DexRegisterMapInfo>(writer, reader, dedupe_map);
   DedupeTable<DexRegisterInfo>(writer, reader, dedupe_map);
@@ -211,10 +214,10 @@ void CodeInfo::AddSizeStats(/*out*/ Stats* parent) const {
   Stats* stats = parent->Child("CodeInfo");
   stats->AddBytes(Size());
   AddTableSizeStats<StackMap>("StackMaps", stack_maps_, stats);
-  AddTableSizeStats<InlineInfo>("InlineInfos", inline_infos_, stats);
-  AddTableSizeStats<MethodInfo>("MethodInfo", method_infos_, stats);
   AddTableSizeStats<RegisterMask>("RegisterMasks", register_masks_, stats);
   AddTableSizeStats<MaskInfo>("StackMasks", stack_masks_, stats);
+  AddTableSizeStats<InlineInfo>("InlineInfos", inline_infos_, stats);
+  AddTableSizeStats<MethodInfo>("MethodInfo", method_infos_, stats);
   AddTableSizeStats<MaskInfo>("DexRegisterMasks", dex_register_masks_, stats);
   AddTableSizeStats<DexRegisterMapInfo>("DexRegisterMaps", dex_register_maps_, stats);
   AddTableSizeStats<DexRegisterInfo>("DexRegisterCatalog", dex_register_catalog_, stats);
@@ -276,10 +279,10 @@ void CodeInfo::Dump(VariableIndentationOutputStream* vios,
   vios->Stream() << "CodeInfo\n";
   ScopedIndentation indent1(vios);
   DumpTable<StackMap>(vios, "StackMaps", stack_maps_, verbose);
-  DumpTable<InlineInfo>(vios, "InlineInfos", inline_infos_, verbose);
-  DumpTable<MethodInfo>(vios, "MethodInfo", method_infos_, verbose);
   DumpTable<RegisterMask>(vios, "RegisterMasks", register_masks_, verbose);
   DumpTable<MaskInfo>(vios, "StackMasks", stack_masks_, verbose, true /* is_mask */);
+  DumpTable<InlineInfo>(vios, "InlineInfos", inline_infos_, verbose);
+  DumpTable<MethodInfo>(vios, "MethodInfo", method_infos_, verbose);
   DumpTable<MaskInfo>(vios, "DexRegisterMasks", dex_register_masks_, verbose, true /* is_mask */);
   DumpTable<DexRegisterMapInfo>(vios, "DexRegisterMaps", dex_register_maps_, verbose);
   DumpTable<DexRegisterInfo>(vios, "DexRegisterCatalog", dex_register_catalog_, verbose);
