@@ -280,10 +280,6 @@ class CodeInfo {
     Decode(reinterpret_cast<const uint8_t*>(data), flags);
   }
 
-  explicit CodeInfo(MemoryRegion region) : CodeInfo(region.begin()) {
-    DCHECK_EQ(Size(), region.size());
-  }
-
   explicit CodeInfo(const OatQuickMethodHeader* header, DecodeFlags flags = DecodeFlags::Default);
 
   size_t Size() const {
