@@ -55,6 +55,15 @@ static constexpr int kFakeReturnRegister = Register(8);
 static constexpr int64_t kDoubleNaN = INT64_C(0x7FF8000000000000);
 static constexpr int32_t kFloatNaN = INT32_C(0x7FC00000);
 
+static RegisterSet OneRegInReferenceOutSaveEverythingCallerSaves() {
+  InvokeRuntimeCallingConvention calling_convention;
+  RegisterSet caller_saves = RegisterSet::Empty();
+  caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
+  // TODO: Add GetReturnLocation() to the calling convention so that we can DCHECK()
+  // that the the kPrimNot result register is the same as the first argument register.
+  return caller_saves;
+}
+
 // NOLINT on __ macro to suppress wrong warning/fix (misc-macro-parentheses) from clang-tidy.
 #define __ down_cast<X86Assembler*>(codegen->GetAssembler())->  // NOLINT
 #define QUICK_ENTRY_POINT(x) QUICK_ENTRYPOINT_OFFSET(kX86PointerSize, x).Int32Value()
@@ -6489,10 +6498,7 @@ void LocationsBuilderX86::VisitLoadClass(HLoadClass* cls) {
   if (load_kind == HLoadClass::LoadKind::kBssEntry) {
     if (!kUseReadBarrier || kUseBakerReadBarrier) {
       // Rely on the type resolution and/or initialization to save everything.
-      RegisterSet caller_saves = RegisterSet::Empty();
-      InvokeRuntimeCallingConvention calling_convention;
-      caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
-      locations->SetCustomSlowPathCallerSaves(caller_saves);
+      locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
     } else {
       // For non-Baker read barrier we have a temp-clobbering call.
     }
@@ -6631,6 +6637,8 @@ void LocationsBuilderX86::VisitClinitCheck(HClinitCheck* check) {
   if (check->HasUses()) {
     locations->SetOut(Location::SameAsFirstInput());
   }
+  // Rely on the type initialization to save everything we need.
+  locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
 }
 
 void InstructionCodeGeneratorX86::VisitClinitCheck(HClinitCheck* check) {
@@ -6710,10 +6718,7 @@ void LocationsBuilderX86::VisitLoadString(HLoadString* load) {
     if (load_kind == HLoadString::LoadKind::kBssEntry) {
       if (!kUseReadBarrier || kUseBakerReadBarrier) {
         // Rely on the pResolveString to save everything.
-        RegisterSet caller_saves = RegisterSet::Empty();
-        InvokeRuntimeCallingConvention calling_convention;
-        caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
-        locations->SetCustomSlowPathCallerSaves(caller_saves);
+        locations->SetCustomSlowPathCallerSaves(OneRegInReferenceOutSaveEverythingCallerSaves());
       } else {
         // For non-Baker read barrier we have a temp-clobbering call.
       }
