@@ -57,6 +57,15 @@ void StackMapStream::BeginMethod(size_t frame_size_in_bytes,
 void StackMapStream::EndMethod() {
   DCHECK(in_method_) << "Mismatched Begin/End calls";
   in_method_ = false;
+
+  // Read the stack masks now. The compiler might have updated them.
+  for (size_t i = 0; i < lazy_stack_masks_.size(); i++) {
+    BitVector* stack_mask = lazy_stack_masks_[i];
+    if (stack_mask != nullptr && stack_mask->GetNumberOfBits() != 0) {
+      stack_maps_[i][StackMap::kStackMaskIndex] =
+          stack_masks_.Dedup(stack_mask->GetRawStorage(), stack_mask->GetNumberOfBits());
+    }
+  }
 }
 
 void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
@@ -281,19 +290,12 @@ ALWAYS_INLINE static void EncodeTable(Writer& out, const Builder& bit_table) {
   bit_table.Encode(out);
 }
 
-size_t StackMapStream::PrepareForFillIn() {
-  DCHECK_EQ(out_.size(), 0u);
+ScopedArenaVector<uint8_t> StackMapStream::Encode() {
+  DCHECK(in_stack_map_ == false) << "Mismatched Begin/End calls";
+  DCHECK(in_inline_info_ == false) << "Mismatched Begin/End calls";
 
-  // Read the stack masks now. The compiler might have updated them.
-  for (size_t i = 0; i < lazy_stack_masks_.size(); i++) {
-    BitVector* stack_mask = lazy_stack_masks_[i];
-    if (stack_mask != nullptr && stack_mask->GetNumberOfBits() != 0) {
-      stack_maps_[i][StackMap::kStackMaskIndex] =
-        stack_masks_.Dedup(stack_mask->GetRawStorage(), stack_mask->GetNumberOfBits());
-    }
-  }
-
-  BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&out_);
+  ScopedArenaVector<uint8_t> buffer(allocator_->Adapter(kArenaAllocStackMapStream));
+  BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&buffer);
   EncodeVarintBits(out, packed_frame_size_);
   EncodeVarintBits(out, core_spill_mask_);
   EncodeVarintBits(out, fp_spill_mask_);
@@ -307,20 +309,9 @@ size_t StackMapStream::PrepareForFillIn() {
   EncodeTable(out, dex_register_maps_);
   EncodeTable(out, dex_register_catalog_);
 
-  return out_.size();
-}
-
-void StackMapStream::FillInCodeInfo(MemoryRegion region) {
-  DCHECK(in_stack_map_ == false) << "Mismatched Begin/End calls";
-  DCHECK(in_inline_info_ == false) << "Mismatched Begin/End calls";
-  DCHECK_NE(0u, out_.size()) << "PrepareForFillIn not called before FillIn";
-  DCHECK_EQ(region.size(), out_.size());
-
-  region.CopyFromVector(0, out_);
-
   // Verify that we can load the CodeInfo and check some essentials.
-  CodeInfo code_info(region);
-  CHECK_EQ(code_info.Size(), out_.size());
+  CodeInfo code_info(buffer.data());
+  CHECK_EQ(code_info.Size(), buffer.size());
   CHECK_EQ(code_info.GetNumberOfStackMaps(), stack_maps_.size());
 
   // Verify all written data (usually only in debug builds).
@@ -329,6 +320,8 @@ void StackMapStream::FillInCodeInfo(MemoryRegion region) {
       dcheck(code_info);
     }
   }
+
+  return buffer;
 }
 
 }  // namespace art

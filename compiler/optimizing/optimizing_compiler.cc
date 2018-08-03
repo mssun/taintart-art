@@ -711,15 +711,7 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
                                          CodeGenerator* codegen,
                                          const DexFile::CodeItem* code_item_for_osr_check) const {
   ArenaVector<linker::LinkerPatch> linker_patches = EmitAndSortLinkerPatches(codegen);
-  ArenaVector<uint8_t> stack_map(allocator->Adapter(kArenaAllocStackMaps));
-  ArenaVector<uint8_t> method_info(allocator->Adapter(kArenaAllocStackMaps));
-  size_t stack_map_size = 0;
-  size_t method_info_size = 0;
-  codegen->ComputeStackMapSize(&stack_map_size);
-  stack_map.resize(stack_map_size);
-  method_info.resize(method_info_size);
-  codegen->BuildStackMaps(MemoryRegion(stack_map.data(), stack_map.size()),
-                          code_item_for_osr_check);
+  ScopedArenaVector<uint8_t> stack_map = codegen->BuildStackMaps(code_item_for_osr_check);
 
   CompiledMethod* compiled_method = CompiledMethod::SwapAllocCompiledMethod(
       GetCompilerDriver(),
@@ -1097,22 +1089,19 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
   return compiled_method;
 }
 
-static void CreateJniStackMap(ArenaStack* arena_stack,
-                              const JniCompiledMethod& jni_compiled_method,
-                              /* out */ ArenaVector<uint8_t>* stack_map) {
-  ScopedArenaAllocator allocator(arena_stack);
+static ScopedArenaVector<uint8_t> CreateJniStackMap(ScopedArenaAllocator* allocator,
+                                                    const JniCompiledMethod& jni_compiled_method) {
   // StackMapStream is quite large, so allocate it using the ScopedArenaAllocator
   // to stay clear of the frame size limit.
   std::unique_ptr<StackMapStream> stack_map_stream(
-      new (&allocator) StackMapStream(&allocator, jni_compiled_method.GetInstructionSet()));
+      new (allocator) StackMapStream(allocator, jni_compiled_method.GetInstructionSet()));
   stack_map_stream->BeginMethod(
       jni_compiled_method.GetFrameSize(),
       jni_compiled_method.GetCoreSpillMask(),
       jni_compiled_method.GetFpSpillMask(),
       /* num_dex_registers */ 0);
   stack_map_stream->EndMethod();
-  stack_map->resize(stack_map_stream->PrepareForFillIn());
-  stack_map_stream->FillInCodeInfo(MemoryRegion(stack_map->data(), stack_map->size()));
+  return stack_map_stream->Encode();
 }
 
 CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
@@ -1166,8 +1155,9 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
       compiler_options, access_flags, method_idx, dex_file);
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiledNativeStub);
 
-  ArenaVector<uint8_t> stack_map(allocator.Adapter(kArenaAllocStackMaps));
-  CreateJniStackMap(&arena_stack, jni_compiled_method, &stack_map);
+  ScopedArenaAllocator stack_map_allocator(&arena_stack);  // Will hold the stack map.
+  ScopedArenaVector<uint8_t> stack_map = CreateJniStackMap(&stack_map_allocator,
+                                                           jni_compiled_method);
   return CompiledMethod::SwapAllocCompiledMethod(
       GetCompilerDriver(),
       jni_compiled_method.GetInstructionSet(),
@@ -1232,11 +1222,11 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     ScopedNullHandle<mirror::ObjectArray<mirror::Object>> roots;
     ArenaSet<ArtMethod*, std::less<ArtMethod*>> cha_single_implementation_list(
         allocator.Adapter(kArenaAllocCHA));
-    ArenaVector<uint8_t> stack_map(allocator.Adapter(kArenaAllocStackMaps));
     ArenaStack arena_stack(runtime->GetJitArenaPool());
     // StackMapStream is large and it does not fit into this frame, so we need helper method.
-    // TODO: Try to avoid the extra memory copy that results from this.
-    CreateJniStackMap(&arena_stack, jni_compiled_method, &stack_map);
+    ScopedArenaAllocator stack_map_allocator(&arena_stack);  // Will hold the stack map.
+    ScopedArenaVector<uint8_t> stack_map = CreateJniStackMap(&stack_map_allocator,
+                                                             jni_compiled_method);
     uint8_t* stack_map_data = nullptr;
     uint8_t* roots_data = nullptr;
     uint32_t data_size = code_cache->ReserveData(self,
@@ -1329,8 +1319,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     }
   }
 
-  size_t stack_map_size = 0;
-  codegen->ComputeStackMapSize(&stack_map_size);
+  ScopedArenaVector<uint8_t> stack_map = codegen->BuildStackMaps(code_item);
   size_t number_of_roots = codegen->GetNumberOfJitRoots();
   // We allocate an object array to ensure the JIT roots that we will collect in EmitJitRoots
   // will be visible by the GC between EmitLiterals and CommitCode. Once CommitCode is
@@ -1348,7 +1337,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   uint8_t* stack_map_data = nullptr;
   uint8_t* roots_data = nullptr;
   uint32_t data_size = code_cache->ReserveData(self,
-                                               stack_map_size,
+                                               stack_map.size(),
                                                number_of_roots,
                                                method,
                                                &stack_map_data,
@@ -1357,7 +1346,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kJitOutOfMemoryForCommit);
     return false;
   }
-  codegen->BuildStackMaps(MemoryRegion(stack_map_data, stack_map_size), code_item);
+  memcpy(stack_map_data, stack_map.data(), stack_map.size());
   codegen->EmitJitRoots(code_allocator.GetData(), roots, roots_data);
 
   const void* code = code_cache->CommitCode(
@@ -1398,7 +1387,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     info.code_address = code_address;
     info.code_size = code_allocator.GetMemory().size();
     info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
-    info.code_info = stack_map_size == 0 ? nullptr : stack_map_data;
+    info.code_info = stack_map.size() == 0 ? nullptr : stack_map_data;
     info.cfi = ArrayRef<const uint8_t>(*codegen->GetAssembler()->cfi().data());
     GenerateJitDebugInfo(method, info);
   }
