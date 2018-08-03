@@ -147,7 +147,7 @@ extern "C" mirror::Class* artInitializeStaticStorageFromCode(mirror::Class* klas
   return h_klass.Get();
 }
 
-extern "C" mirror::Class* artInitializeTypeFromCode(uint32_t type_idx, Thread* self)
+extern "C" mirror::Class* artResolveTypeFromCode(uint32_t type_idx, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // Called when the .bss slot was empty or for main-path runtime call.
   ScopedQuickEntrypointChecks sqec(self);
@@ -165,7 +165,7 @@ extern "C" mirror::Class* artInitializeTypeFromCode(uint32_t type_idx, Thread* s
   return result.Ptr();
 }
 
-extern "C" mirror::Class* artInitializeTypeAndVerifyAccessFromCode(uint32_t type_idx, Thread* self)
+extern "C" mirror::Class* artResolveTypeAndVerifyAccessFromCode(uint32_t type_idx, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // Called when caller isn't guaranteed to have access to a type.
   ScopedQuickEntrypointChecks sqec(self);

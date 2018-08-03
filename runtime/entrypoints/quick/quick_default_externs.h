@@ -35,8 +35,8 @@ extern "C" void art_quick_check_instance_of(art::mirror::Object*, art::mirror::C
 
 // Resolution and initialization entrypoints.
 extern "C" void* art_quick_initialize_static_storage(art::mirror::Class*);
-extern "C" void* art_quick_initialize_type(uint32_t);
-extern "C" void* art_quick_initialize_type_and_verify_access(uint32_t);
+extern "C" void* art_quick_resolve_type(uint32_t);
+extern "C" void* art_quick_resolve_type_and_verify_access(uint32_t);
 extern "C" void* art_quick_resolve_method_handle(uint32_t);
 extern "C" void* art_quick_resolve_method_type(uint32_t);
 extern "C" void* art_quick_resolve_string(uint32_t);
