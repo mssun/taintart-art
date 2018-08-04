@@ -30,7 +30,9 @@
   names: ["libcore.java.lang.StringTest#testFastPathString_wellFormedUtf8Sequence",
           "org.apache.harmony.tests.java.lang.ref.ReferenceQueueTest#test_remove",
           "org.apache.harmony.tests.java.util.TimerTest#testOverdueTaskExecutesImmediately",
-          "org.apache.harmony.tests.java.util.WeakHashMapTest#test_keySet_hasNext"]
+          "org.apache.harmony.tests.java.util.WeakHashMapTest#test_keySet_hasNext",
+          "libcore.java.text.DecimalFormatTest#testCurrencySymbolSpacing",
+          "libcore.java.text.SimpleDateFormatTest#testLocales"]
 },
 {
   description: "GC crash",
