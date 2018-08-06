@@ -113,7 +113,6 @@ public class Main {
       result = (String) m.invoke(null, new Object[] { testData, false });
       assertEqual(testString, result);
     }
-
     {
       Method m = c.getMethod(
           "deoptimizeNewInstanceAfterLoop", int[].class, byte[].class, int.class);
@@ -126,6 +125,13 @@ public class Main {
           throw ex.getCause();
         }
       }
+    }
+    {
+      Method m = c.getMethod("loopAndStringInitAndPhi", byte[].class, boolean.class);
+      String result = (String) m.invoke(null, new Object[] { testData, true });
+      assertEqual(testString, result);
+      result = (String) m.invoke(null, new Object[] { testData, false });
+      assertEqual(testString, result);
     }
   }
 

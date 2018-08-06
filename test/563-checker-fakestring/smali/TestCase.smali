@@ -305,3 +305,35 @@
    return-object v0
 
 .end method
+
+## CHECK-START: java.lang.String TestCase.loopAndStringInitAndPhi(byte[], boolean) register (after)
+## CHECK:                        NewInstance
+## CHECK-NOT:                    NewInstance
+## CHECK-DAG:   <<Invoke1:l\d+>> InvokeStaticOrDirect method_name:java.lang.String.<init>
+## CHECK-DAG:   <<Invoke2:l\d+>> InvokeStaticOrDirect method_name:java.lang.String.<init>
+## CHECK-DAG:   <<Phi:l\d+>>     Phi [<<Invoke2>>,<<Invoke1>>]
+## CHECK-DAG:                    Return [<<Phi>>]
+.method public static loopAndStringInitAndPhi([BZ)Ljava/lang/String;
+   .registers 4
+
+   if-nez p1, :allocate_other
+   new-instance v0, Ljava/lang/String;
+
+   # Loop
+   :loop_header
+   if-eqz p1, :loop_exit
+   goto :loop_header
+
+   :loop_exit
+   const-string v1, "UTF8"
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   goto : exit
+
+   :allocate_other
+   const-string v1, "UTF8"
+   new-instance v0, Ljava/lang/String;
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   :exit
+   return-object v0
+
+.end method
