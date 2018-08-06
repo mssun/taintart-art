@@ -247,14 +247,14 @@ inline mirror::Object* RegionSpace::AllocLarge(size_t num_bytes,
                                                /* out */ size_t* bytes_tl_bulk_allocated) {
   DCHECK_ALIGNED(num_bytes, kAlignment);
   DCHECK_GT(num_bytes, kRegionSize);
-  size_t num_regs = RoundUp(num_bytes, kRegionSize) / kRegionSize;
-  DCHECK_GT(num_regs, 0U);
-  DCHECK_LT((num_regs - 1) * kRegionSize, num_bytes);
-  DCHECK_LE(num_bytes, num_regs * kRegionSize);
+  size_t num_regs_in_large_region = RoundUp(num_bytes, kRegionSize) / kRegionSize;
+  DCHECK_GT(num_regs_in_large_region, 0U);
+  DCHECK_LT((num_regs_in_large_region - 1) * kRegionSize, num_bytes);
+  DCHECK_LE(num_bytes, num_regs_in_large_region * kRegionSize);
   MutexLock mu(Thread::Current(), region_lock_);
   if (!kForEvac) {
     // Retain sufficient free regions for full evacuation.
-    if ((num_non_free_regions_ + num_regs) * 2 > num_regions_) {
+    if ((num_non_free_regions_ + num_regs_in_large_region) * 2 > num_regions_) {
       return nullptr;
     }
   }
@@ -265,7 +265,7 @@ inline mirror::Object* RegionSpace::AllocLarge(size_t num_bytes,
     size_t next_region1 = -1;
     mirror::Object* region1 = AllocLargeInRange<kForEvac>(cyclic_alloc_region_index_,
                                                           num_regions_,
-                                                          num_regs,
+                                                          num_regs_in_large_region,
                                                           bytes_allocated,
                                                           usable_size,
                                                           bytes_tl_bulk_allocated,
@@ -280,16 +280,16 @@ inline mirror::Object* RegionSpace::AllocLarge(size_t num_bytes,
     }
 
     // If the previous attempt failed, try to find a range of free regions within
-    // [0, cyclic_alloc_region_index_ + num_regions_ - 1).
+    // [0, min(cyclic_alloc_region_index_ + num_regs_in_large_region - 1, num_regions_)).
     size_t next_region2 = -1;
-    mirror::Object* region2 =
-        AllocLargeInRange<kForEvac>(0,
-                                    cyclic_alloc_region_index_ + num_regions_ - 1,
-                                    num_regs,
-                                    bytes_allocated,
-                                    usable_size,
-                                    bytes_tl_bulk_allocated,
-                                    &next_region2);
+    mirror::Object* region2 = AllocLargeInRange<kForEvac>(
+            0,
+            std::min(cyclic_alloc_region_index_ + num_regs_in_large_region - 1, num_regions_),
+            num_regs_in_large_region,
+            bytes_allocated,
+            usable_size,
+            bytes_tl_bulk_allocated,
+            &next_region2);
     if (region2 != nullptr) {
       DCHECK_LT(0u, next_region2);
       DCHECK_LE(next_region2, num_regions_);
@@ -302,7 +302,7 @@ inline mirror::Object* RegionSpace::AllocLarge(size_t num_bytes,
     // Try to find a range of free regions within [0, num_regions_).
     mirror::Object* region = AllocLargeInRange<kForEvac>(0,
                                                          num_regions_,
-                                                         num_regs,
+                                                         num_regs_in_large_region,
                                                          bytes_allocated,
                                                          usable_size,
                                                          bytes_tl_bulk_allocated);
@@ -316,17 +316,21 @@ inline mirror::Object* RegionSpace::AllocLarge(size_t num_bytes,
 template<bool kForEvac>
 inline mirror::Object* RegionSpace::AllocLargeInRange(size_t begin,
                                                       size_t end,
-                                                      size_t num_regs,
+                                                      size_t num_regs_in_large_region,
                                                       /* out */ size_t* bytes_allocated,
                                                       /* out */ size_t* usable_size,
                                                       /* out */ size_t* bytes_tl_bulk_allocated,
                                                       /* out */ size_t* next_region) {
+  DCHECK_LE(0u, begin);
+  DCHECK_LT(begin, end);
+  DCHECK_LE(end, num_regions_);
   size_t left = begin;
-  while (left + num_regs - 1 < end) {
+  while (left + num_regs_in_large_region - 1 < end) {
     bool found = true;
     size_t right = left;
-    DCHECK_LT(right, left + num_regs) << "The inner loop should iterate at least once";
-    while (right < left + num_regs) {
+    DCHECK_LT(right, left + num_regs_in_large_region)
+        << "The inner loop should iterate at least once";
+    while (right < left + num_regs_in_large_region) {
       if (regions_[right].IsFree()) {
         ++right;
         // Ensure `right` is not going beyond the past-the-end index of the region space.
@@ -338,7 +342,7 @@ inline mirror::Object* RegionSpace::AllocLargeInRange(size_t begin,
     }
     if (found) {
       // `right` points to the one region past the last free region.
-      DCHECK_EQ(left + num_regs, right);
+      DCHECK_EQ(left + num_regs_in_large_region, right);
       Region* first_reg = &regions_[left];
       DCHECK(first_reg->IsFree());
       first_reg->UnfreeLarge(this, time_);
@@ -347,7 +351,7 @@ inline mirror::Object* RegionSpace::AllocLargeInRange(size_t begin,
       } else {
         ++num_non_free_regions_;
       }
-      size_t allocated = num_regs * kRegionSize;
+      size_t allocated = num_regs_in_large_region * kRegionSize;
       // We make 'top' all usable bytes, as the caller of this
       // allocation may use all of 'usable_size' (see mirror::Array::Alloc).
       first_reg->SetTop(first_reg->Begin() + allocated);
