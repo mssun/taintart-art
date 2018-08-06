@@ -564,6 +564,14 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
     StartAttributeStream("kind") << instruction->GetOpKind();
   }
 
+  void VisitVecDotProd(HVecDotProd* instruction) override {
+    VisitVecOperation(instruction);
+    DataType::Type arg_type = instruction->InputAt(1)->AsVecOperation()->GetPackedType();
+    StartAttributeStream("type") << (instruction->IsZeroExtending() ?
+                                    DataType::ToUnsigned(arg_type) :
+                                    DataType::ToSigned(arg_type));
+  }
+
 #if defined(ART_ENABLE_CODEGEN_arm) || defined(ART_ENABLE_CODEGEN_arm64)
   void VisitMultiplyAccumulate(HMultiplyAccumulate* instruction) override {
     StartAttributeStream("kind") << instruction->GetOpKind();
