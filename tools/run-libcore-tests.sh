@@ -156,7 +156,11 @@ fi
 # Increase the timeout, as vogar cannot set individual test
 # timeout when being asked to run packages, and some tests go above
 # the default timeout.
-vogar_args="$vogar_args --timeout 480"
+if $gcstress && $debug && $device_mode; then
+  vogar_args="$vogar_args --timeout 960"
+else
+  vogar_args="$vogar_args --timeout 480"
+fi
 
 # set the toolchain to use.
 vogar_args="$vogar_args --toolchain d8 --language CUR"
