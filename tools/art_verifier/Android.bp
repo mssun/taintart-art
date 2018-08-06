@@ -36,6 +36,9 @@ art_cc_defaults {
                 "libtombstoned_client_static",
             ],
         },
+        darwin: {
+            enabled: false,
+        },
     },
 }
 
