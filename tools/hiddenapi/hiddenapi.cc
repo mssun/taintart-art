@@ -75,7 +75,9 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("");
   UsageError("  Command \"list\": dump lists of public and private API");
   UsageError("    --boot-dex=<filename>: dex file which belongs to boot class path");
-  UsageError("    --stub-dex=<filename>: dex/apk file which belongs to SDK API stubs");
+  UsageError("    --stub-classpath=<filenames>: colon-separated list of dex/apk files");
+  UsageError("        which form API stubs of boot class path. Multiple classpaths can");
+  UsageError("        be specified");
   UsageError("");
   UsageError("    --out-public=<filename>: output file for a list of all public APIs");
   UsageError("    --out-private=<filename>: output file for a list of all private APIs");
@@ -121,7 +123,7 @@ class DexClass {
     return list;
   }
 
-  inline bool IsVisible() const { return HasAccessFlags(kAccPublic); }
+  inline bool IsPublic() const { return HasAccessFlags(kAccPublic); }
 
   inline bool Equals(const DexClass& other) const {
     bool equals = GetDescriptor() == other.GetDescriptor();
@@ -178,11 +180,10 @@ class DexMember {
 
   inline bool IsMethod() const { return it_.IsAtMethod(); }
   inline bool IsVirtualMethod() const { return it_.IsAtVirtualMethod(); }
+  inline bool IsConstructor() const { return IsMethod() && HasAccessFlags(kAccConstructor); }
 
-  // Returns true if the member is public/protected and is in a public class.
-  inline bool IsVisible() const {
-    return GetDeclaringClass().IsVisible() &&
-           (HasAccessFlags(kAccPublic) || HasAccessFlags(kAccProtected));
+  inline bool IsPublicOrProtected() const {
+    return HasAccessFlags(kAccPublic) || HasAccessFlags(kAccProtected);
   }
 
   // Constructs a string with a unique signature of this class member.
@@ -344,6 +345,24 @@ class HierarchyClass FINAL {
     return ForEachResolvableMember_Impl(other, fn) != ResolutionResult::kNotFound;
   }
 
+  // Returns true if this class contains at least one member matching `other`.
+  bool HasMatchingMember(const DexMember& other) {
+    return ForEachMatchingMember(
+        other, [](const DexMember&) { return true; }) != ResolutionResult::kNotFound;
+  }
+
+  // Recursively iterates over all subclasses of this class and invokes `fn`
+  // on each one. If `fn` returns false for a particular subclass, exploring its
+  // subclasses is skipped.
+  template<typename Fn>
+  void ForEachSubClass(Fn fn) {
+    for (HierarchyClass* subclass : extended_by_) {
+      if (fn(subclass)) {
+        subclass->ForEachSubClass(fn);
+      }
+    }
+  }
+
  private:
   // Result of resolution which takes into account whether the member was found
   // for the first time or not. This is just a performance optimization to prevent
@@ -438,7 +457,7 @@ class HierarchyClass FINAL {
 
 class Hierarchy FINAL {
  public:
-  explicit Hierarchy(ClassPath& class_path) : class_path_(class_path) {
+  explicit Hierarchy(ClassPath& classpath) : classpath_(classpath) {
     BuildClassHierarchy();
   }
 
@@ -454,6 +473,48 @@ class Hierarchy FINAL {
     return (klass != nullptr) && klass->ForEachResolvableMember(other, fn);
   }
 
+  // Returns true if `member`, which belongs to this classpath, is visible to
+  // code in child class loaders.
+  bool IsMemberVisible(const DexMember& member) {
+    if (!member.IsPublicOrProtected()) {
+      // Member is private or package-private. Cannot be visible.
+      return false;
+    } else if (member.GetDeclaringClass().IsPublic()) {
+      // Member is public or protected, and class is public. It must be visible.
+      return true;
+    } else if (member.IsConstructor()) {
+      // Member is public or protected constructor and class is not public.
+      // Must be hidden because it cannot be implicitly exposed by a subclass.
+      return false;
+    } else {
+      // Member is public or protected method, but class is not public. Check if
+      // it is exposed through a public subclass.
+      // Example code (`foo` exposed by ClassB):
+      //   class ClassA { public void foo() { ... } }
+      //   public class ClassB extends ClassA {}
+      HierarchyClass* klass = FindClass(member.GetDeclaringClass().GetDescriptor());
+      CHECK(klass != nullptr);
+      bool visible = false;
+      klass->ForEachSubClass([&visible, &member](HierarchyClass* subclass) {
+        if (subclass->HasMatchingMember(member)) {
+          // There is a member which matches `member` in `subclass`, either
+          // a virtual method overriding `member` or a field overshadowing
+          // `member`. In either case, `member` remains hidden.
+          CHECK(member.IsVirtualMethod() || !member.IsMethod());
+          return false;  // do not explore deeper
+        } else if (subclass->GetOneDexClass().IsPublic()) {
+          // `subclass` inherits and exposes `member`.
+          visible = true;
+          return false;  // do not explore deeper
+        } else {
+          // `subclass` inherits `member` but does not expose it.
+          return true;   // explore deeper
+        }
+      });
+      return visible;
+    }
+  }
+
  private:
   HierarchyClass* FindClass(const std::string& descriptor) {
     auto it = classes_.find(descriptor);
@@ -467,7 +528,7 @@ class Hierarchy FINAL {
   void BuildClassHierarchy() {
     // Create one HierarchyClass entry in `classes_` per class descriptor
     // and add all DexClass objects with the same descriptor to that entry.
-    class_path_.ForEachDexClass([this](DexClass& klass) {
+    classpath_.ForEachDexClass([this](DexClass& klass) {
       classes_[klass.GetDescriptor()].AddDexClass(klass);
     });
 
@@ -494,7 +555,7 @@ class Hierarchy FINAL {
     }
   }
 
-  ClassPath& class_path_;
+  ClassPath& classpath_;
   std::map<std::string, HierarchyClass> classes_;
 };
 
@@ -547,8 +608,9 @@ class HiddenApi FINAL {
           const StringPiece option(argv[i]);
           if (option.starts_with("--boot-dex=")) {
             boot_dex_paths_.push_back(option.substr(strlen("--boot-dex=")).ToString());
-          } else if (option.starts_with("--stub-dex=")) {
-            stub_dex_paths_.push_back(option.substr(strlen("--stub-dex=")).ToString());
+          } else if (option.starts_with("--stub-classpath=")) {
+            stub_classpaths_.push_back(android::base::Split(
+                option.substr(strlen("--stub-classpath=")).ToString(), ":"));
           } else if (option.starts_with("--out-public=")) {
             out_public_path_ = option.substr(strlen("--out-public=")).ToString();
           } else if (option.starts_with("--out-private=")) {
@@ -578,10 +640,10 @@ class HiddenApi FINAL {
     OpenApiFile(blacklist_path_, api_list, HiddenApiAccessFlags::kBlacklist);
 
     // Open all dex files.
-    ClassPath boot_class_path(boot_dex_paths_, /* open_writable */ true);
+    ClassPath boot_classpath(boot_dex_paths_, /* open_writable */ true);
 
     // Set access flags of all members.
-    boot_class_path.ForEachDexMember([&api_list](DexMember& boot_member) {
+    boot_classpath.ForEachDexMember([&api_list](DexMember& boot_member) {
       auto it = api_list.find(boot_member.GetApiEntry());
       if (it == api_list.end()) {
         boot_member.SetHidden(HiddenApiAccessFlags::kWhitelist);
@@ -590,7 +652,7 @@ class HiddenApi FINAL {
       }
     });
 
-    boot_class_path.UpdateDexChecksums();
+    boot_classpath.UpdateDexChecksums();
   }
 
   void OpenApiFile(const std::string& path,
@@ -614,7 +676,7 @@ class HiddenApi FINAL {
   void ListApi() {
     if (boot_dex_paths_.empty()) {
       Usage("No boot DEX files specified");
-    } else if (stub_dex_paths_.empty()) {
+    } else if (stub_classpaths_.empty()) {
       Usage("No stub DEX files specified");
     } else if (out_public_path_.empty()) {
       Usage("No public API output path specified");
@@ -630,39 +692,42 @@ class HiddenApi FINAL {
     std::set<std::string> unresolved;
 
     // Open all dex files.
-    ClassPath stub_class_path(stub_dex_paths_, /* open_writable */ false);
-    ClassPath boot_class_path(boot_dex_paths_, /* open_writable */ false);
-    Hierarchy boot_hierarchy(boot_class_path);
+    ClassPath boot_classpath(boot_dex_paths_, /* open_writable */ false);
+    Hierarchy boot_hierarchy(boot_classpath);
 
     // Mark all boot dex members private.
-    boot_class_path.ForEachDexMember([&boot_members](DexMember& boot_member) {
+    boot_classpath.ForEachDexMember([&boot_members](DexMember& boot_member) {
       boot_members[boot_member.GetApiEntry()] = false;
     });
 
     // Resolve each SDK dex member against the framework and mark it white.
-    stub_class_path.ForEachDexMember(
-        [&boot_hierarchy, &boot_members, &unresolved](DexMember& stub_member) {
-          if (!stub_member.IsVisible()) {
-            // Typically fake constructors and inner-class `this` fields.
-            return;
-          }
-          bool resolved = boot_hierarchy.ForEachResolvableMember(
-              stub_member,
-              [&boot_members](DexMember& boot_member) {
-                std::string entry = boot_member.GetApiEntry();
-                auto it = boot_members.find(entry);
-                CHECK(it != boot_members.end());
-                if (it->second) {
-                  return false;  // has been marked before
-                } else {
-                  it->second = true;
-                  return true;  // marked for the first time
-                }
-              });
-          if (!resolved) {
-            unresolved.insert(stub_member.GetApiEntry());
-          }
-        });
+    for (const std::vector<std::string>& stub_classpath_dex : stub_classpaths_) {
+      ClassPath stub_classpath(stub_classpath_dex, /* open_writable */ false);
+      Hierarchy stub_hierarchy(stub_classpath);
+      stub_classpath.ForEachDexMember(
+          [&stub_hierarchy, &boot_hierarchy, &boot_members, &unresolved](DexMember& stub_member) {
+            if (!stub_hierarchy.IsMemberVisible(stub_member)) {
+              // Typically fake constructors and inner-class `this` fields.
+              return;
+            }
+            bool resolved = boot_hierarchy.ForEachResolvableMember(
+                stub_member,
+                [&boot_members](DexMember& boot_member) {
+                  std::string entry = boot_member.GetApiEntry();
+                  auto it = boot_members.find(entry);
+                  CHECK(it != boot_members.end());
+                  if (it->second) {
+                    return false;  // has been marked before
+                  } else {
+                    it->second = true;
+                    return true;  // marked for the first time
+                  }
+                });
+            if (!resolved) {
+              unresolved.insert(stub_member.GetApiEntry());
+            }
+          });
+    }
 
     // Print errors.
     for (const std::string& str : unresolved) {
@@ -685,7 +750,10 @@ class HiddenApi FINAL {
 
   // Paths to DEX files which should be processed.
   std::vector<std::string> boot_dex_paths_;
-  std::vector<std::string> stub_dex_paths_;
+
+  // Set of public API stub classpaths. Each classpath is formed by a list
+  // of DEX/APK files in the order they appear on the classpath.
+  std::vector<std::vector<std::string>> stub_classpaths_;
 
   // Paths to text files which contain the lists of API members.
   std::string light_greylist_path_;
