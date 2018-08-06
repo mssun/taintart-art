@@ -1301,6 +1301,15 @@ void HInstruction::ReplaceUsesDominatedBy(HInstruction* dominator, HInstruction*
     ++it;
     if (dominator->StrictlyDominates(user)) {
       user->ReplaceInput(replacement, index);
+    } else if (user->IsPhi() && !user->AsPhi()->IsCatchPhi()) {
+      // If the input flows from a block dominated by `dominator`, we can replace it.
+      // We do not perform this for catch phis as we don't have control flow support
+      // for their inputs.
+      const ArenaVector<HBasicBlock*>& predecessors = user->GetBlock()->GetPredecessors();
+      HBasicBlock* predecessor = predecessors[index];
+      if (dominator->GetBlock()->Dominates(predecessor)) {
+        user->ReplaceInput(replacement, index);
+      }
     }
   }
 }
