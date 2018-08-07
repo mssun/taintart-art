@@ -797,9 +797,10 @@ class CodeGeneratorARM64 : public CodeGenerator {
   // Encoding of thunk type and data for link-time generated thunks for Baker read barriers.
 
   enum class BakerReadBarrierKind : uint8_t {
-    kField,   // Field get or array get with constant offset (i.e. constant index).
-    kArray,   // Array get with index in register.
-    kGcRoot,  // GC root load.
+    kField,     // Field get or array get with constant offset (i.e. constant index).
+    kAcquire,   // Volatile field get.
+    kArray,     // Array get with index in register.
+    kGcRoot,    // GC root load.
     kLast = kGcRoot
   };
 
@@ -828,6 +829,15 @@ class CodeGeneratorARM64 : public CodeGenerator {
     CheckValidReg(base_reg);
     CheckValidReg(holder_reg);
     return BakerReadBarrierKindField::Encode(BakerReadBarrierKind::kField) |
+           BakerReadBarrierFirstRegField::Encode(base_reg) |
+           BakerReadBarrierSecondRegField::Encode(holder_reg);
+  }
+
+  static inline uint32_t EncodeBakerReadBarrierAcquireData(uint32_t base_reg, uint32_t holder_reg) {
+    CheckValidReg(base_reg);
+    CheckValidReg(holder_reg);
+    DCHECK_NE(base_reg, holder_reg);
+    return BakerReadBarrierKindField::Encode(BakerReadBarrierKind::kAcquire) |
            BakerReadBarrierFirstRegField::Encode(base_reg) |
            BakerReadBarrierSecondRegField::Encode(holder_reg);
   }
