@@ -1302,7 +1302,7 @@ class JFuzz {
 int32_t main(int32_t argc, char** argv) {
   // Time-based seed.
   struct timeval tp;
-  gettimeofday(&tp, NULL);
+  gettimeofday(&tp, nullptr);
 
   // Defaults.
   uint32_t seed = (tp.tv_sec * 1000000 + tp.tv_usec);

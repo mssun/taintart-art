@@ -1590,7 +1590,7 @@ void Hprof::VisitRoot(mirror::Object* obj, const RootInfo& info) {
   if (obj == nullptr) {
     return;
   }
-  MarkRootObject(obj, 0, xlate[info.GetType()], info.GetThreadId());
+  MarkRootObject(obj, nullptr, xlate[info.GetType()], info.GetThreadId());
 }
 
 // If "direct_to_ddms" is true, the other arguments are ignored, and data is

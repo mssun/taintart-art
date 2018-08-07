@@ -85,7 +85,7 @@ struct HasUnderscoreField {
   static constexpr FalseT Test(...);
 
  public:
-  static constexpr bool value = decltype(Test<T>(0))::value;
+  static constexpr bool value = decltype(Test<T>(nullptr))::value;
 };
 
 // Infer the type of the member of &T::M.

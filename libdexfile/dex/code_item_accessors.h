@@ -80,7 +80,7 @@ class CodeItemInstructionAccessor {
   uint32_t insns_size_in_code_units_ = 0;
 
   // Pointer to the instructions, null if there is no code item.
-  const uint16_t* insns_ = 0;
+  const uint16_t* insns_ = nullptr;
 };
 
 // Abstracts accesses to code item fields other than debug info for CompactDexFile and

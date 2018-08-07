@@ -233,13 +233,13 @@ static jobject DexFile_createCookieWithDirectBuffer(JNIEnv* env,
   if (base_address == nullptr) {
     ScopedObjectAccess soa(env);
     ThrowWrappedIOException("dexFileBuffer not direct");
-    return 0;
+    return nullptr;
   }
 
   std::unique_ptr<MemMap> dex_mem_map(AllocateDexMemoryMap(env, start, end));
   if (dex_mem_map == nullptr) {
     DCHECK(Thread::Current()->IsExceptionPending());
-    return 0;
+    return nullptr;
   }
 
   size_t length = static_cast<size_t>(end - start);
@@ -255,7 +255,7 @@ static jobject DexFile_createCookieWithArray(JNIEnv* env,
   std::unique_ptr<MemMap> dex_mem_map(AllocateDexMemoryMap(env, start, end));
   if (dex_mem_map == nullptr) {
     DCHECK(Thread::Current()->IsExceptionPending());
-    return 0;
+    return nullptr;
   }
 
   auto destination = reinterpret_cast<jbyte*>(dex_mem_map.get()->Begin());
@@ -273,7 +273,7 @@ static jobject DexFile_openDexFileNative(JNIEnv* env,
                                          jobjectArray dex_elements) {
   ScopedUtfChars sourceName(env, javaSourceName);
   if (sourceName.c_str() == nullptr) {
-    return 0;
+    return nullptr;
   }
 
   Runtime* const runtime = Runtime::Current();

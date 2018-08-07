@@ -121,7 +121,7 @@ static jobject Constructor_newInstance0(JNIEnv* env, jobject javaMethod, jobject
 static jobject Constructor_newInstanceFromSerialization(JNIEnv* env, jclass unused ATTRIBUTE_UNUSED,
                                                         jclass ctorClass, jclass allocClass) {
     jmethodID ctor = env->GetMethodID(ctorClass, "<init>", "()V");
-    DCHECK(ctor != NULL);
+    DCHECK(ctor != nullptr);
     return env->NewObject(allocClass, ctor);
 }
 

@@ -550,7 +550,7 @@ class OatDexFile FINAL {
   const IndexBssMapping* const method_bss_mapping_ = nullptr;
   const IndexBssMapping* const type_bss_mapping_ = nullptr;
   const IndexBssMapping* const string_bss_mapping_ = nullptr;
-  const uint32_t* const oat_class_offsets_pointer_ = 0u;
+  const uint32_t* const oat_class_offsets_pointer_ = nullptr;
   TypeLookupTable lookup_table_;
   const DexLayoutSections* const dex_layout_sections_ = nullptr;
 
