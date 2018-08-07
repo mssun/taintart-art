@@ -608,17 +608,17 @@ void JitCodeCache::FreeCodeAndData(const void* code_ptr) {
 
 void JitCodeCache::FreeAllMethodHeaders(
     const std::unordered_set<OatQuickMethodHeader*>& method_headers) {
-  {
-    MutexLock mu(Thread::Current(), *Locks::cha_lock_);
-    Runtime::Current()->GetClassLinker()->GetClassHierarchyAnalysis()
-        ->RemoveDependentsWithMethodHeaders(method_headers);
-  }
-
   // We need to remove entries in method_headers from CHA dependencies
   // first since once we do FreeCode() below, the memory can be reused
   // so it's possible for the same method_header to start representing
   // different compile code.
   MutexLock mu(Thread::Current(), lock_);
+  {
+    MutexLock mu2(Thread::Current(), *Locks::cha_lock_);
+    Runtime::Current()->GetClassLinker()->GetClassHierarchyAnalysis()
+        ->RemoveDependentsWithMethodHeaders(method_headers);
+  }
+
   ScopedCodeCacheWrite scc(this);
   for (const OatQuickMethodHeader* method_header : method_headers) {
     FreeCodeAndData(method_header->GetCode());
@@ -742,6 +742,20 @@ static void ClearMethodCounter(ArtMethod* method, bool was_warm) {
   method->SetCounter(std::min(jit_warmup_threshold - 1, 1));
 }
 
+bool JitCodeCache::WaitForPotentialCollectionToCompleteRunnable(Thread* self) {
+  bool waited = false;
+  while (collection_in_progress_) {
+    lock_.Unlock(self);
+    {
+      ScopedThreadSuspension sts(self, kSuspended);
+      MutexLock mu(self, lock_);
+      waited = WaitForPotentialCollectionToComplete(self);
+    }
+    lock_.Lock(self);
+  }
+  return waited;
+}
+
 uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
                                           ArtMethod* method,
                                           uint8_t* stack_map,
@@ -755,6 +769,13 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
                                           const ArenaSet<ArtMethod*>&
                                               cha_single_implementation_list) {
   DCHECK(!method->IsNative() || !osr);
+
+  if (!method->IsNative()) {
+    // We need to do this before grabbing the lock_ because it needs to be able to see the string
+    // InternTable. Native methods do not have roots.
+    DCheckRootsAreValid(roots);
+  }
+
   size_t alignment = GetInstructionSetAlignment(kRuntimeISA);
   // Ensure the header ends up at expected instruction alignment.
   size_t header_size = RoundUp(sizeof(OatQuickMethodHeader), alignment);
@@ -763,44 +784,45 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
   OatQuickMethodHeader* method_header = nullptr;
   uint8_t* code_ptr = nullptr;
   uint8_t* memory = nullptr;
+  // We need to transition in and out of kSuspended so we suspend, gain the lock, wait, unsuspend
+  // and lose lock, gain lock again, make sure another hasn't happened, then continue.
+  MutexLock mu(self, lock_);
+  WaitForPotentialCollectionToCompleteRunnable(self);
   {
-    ScopedThreadSuspension sts(self, kSuspended);
-    MutexLock mu(self, lock_);
-    WaitForPotentialCollectionToComplete(self);
-    {
-      ScopedCodeCacheWrite scc(this);
-      memory = AllocateCode(total_size);
-      if (memory == nullptr) {
-        return nullptr;
-      }
-      code_ptr = memory + header_size;
+    ScopedCodeCacheWrite scc(this);
+    memory = AllocateCode(total_size);
+    if (memory == nullptr) {
+      return nullptr;
+    }
+    code_ptr = memory + header_size;
 
-      std::copy(code, code + code_size, code_ptr);
-      method_header = OatQuickMethodHeader::FromCodePointer(code_ptr);
-      new (method_header) OatQuickMethodHeader(
-          (stack_map != nullptr) ? code_ptr - stack_map : 0u,
-          code_size);
-      // Flush caches before we remove write permission because some ARMv8 Qualcomm kernels may
-      // trigger a segfault if a page fault occurs when requesting a cache maintenance operation.
-      // This is a kernel bug that we need to work around until affected devices (e.g. Nexus 5X and
-      // 6P) stop being supported or their kernels are fixed.
-      //
-      // For reference, this behavior is caused by this commit:
-      // https://android.googlesource.com/kernel/msm/+/3fbe6bc28a6b9939d0650f2f17eb5216c719950c
-      FlushInstructionCache(reinterpret_cast<char*>(code_ptr),
-                            reinterpret_cast<char*>(code_ptr + code_size));
-      DCHECK(!Runtime::Current()->IsAotCompiler());
-      if (has_should_deoptimize_flag) {
-        method_header->SetHasShouldDeoptimizeFlag();
-      }
+    std::copy(code, code + code_size, code_ptr);
+    method_header = OatQuickMethodHeader::FromCodePointer(code_ptr);
+    new (method_header) OatQuickMethodHeader(
+        (stack_map != nullptr) ? code_ptr - stack_map : 0u,
+        code_size);
+    // Flush caches before we remove write permission because some ARMv8 Qualcomm kernels may
+    // trigger a segfault if a page fault occurs when requesting a cache maintenance operation.
+    // This is a kernel bug that we need to work around until affected devices (e.g. Nexus 5X and
+    // 6P) stop being supported or their kernels are fixed.
+    //
+    // For reference, this behavior is caused by this commit:
+    // https://android.googlesource.com/kernel/msm/+/3fbe6bc28a6b9939d0650f2f17eb5216c719950c
+    FlushInstructionCache(reinterpret_cast<char*>(code_ptr),
+                          reinterpret_cast<char*>(code_ptr + code_size));
+    DCHECK(!Runtime::Current()->IsAotCompiler());
+    if (has_should_deoptimize_flag) {
+      method_header->SetHasShouldDeoptimizeFlag();
     }
 
     number_of_compilations_++;
   }
   // We need to update the entry point in the runnable state for the instrumentation.
   {
-    // Need cha_lock_ for checking all single-implementation flags and register
-    // dependencies.
+    // The following needs to be guarded by cha_lock_ also. Otherwise it's possible that the
+    // compiled code is considered invalidated by some class linking, but below we still make the
+    // compiled code valid for the method.  Need cha_lock_ for checking all single-implementation
+    // flags and register dependencies.
     MutexLock cha_mu(self, *Locks::cha_lock_);
     bool single_impl_still_valid = true;
     for (ArtMethod* single_impl : cha_single_implementation_list) {
@@ -826,16 +848,6 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
           single_impl, method, method_header);
     }
 
-    if (!method->IsNative()) {
-      // We need to do this before grabbing the lock_ because it needs to be able to see the string
-      // InternTable. Native methods do not have roots.
-      DCheckRootsAreValid(roots);
-    }
-
-    // The following needs to be guarded by cha_lock_ also. Otherwise it's
-    // possible that the compiled code is considered invalidated by some class linking,
-    // but below we still make the compiled code valid for the method.
-    MutexLock mu(self, lock_);
     if (UNLIKELY(method->IsNative())) {
       auto it = jni_stubs_map_.find(JniStubKey(method));
       DCHECK(it != jni_stubs_map_.end())
@@ -866,11 +878,6 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
         Runtime::Current()->GetInstrumentation()->UpdateMethodsCode(
             method, method_header->GetEntryPoint());
       }
-    }
-    if (collection_in_progress_) {
-      // We need to update the live bitmap if there is a GC to ensure it sees this new
-      // code.
-      GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(code_ptr));
     }
     VLOG(jit)
         << "JIT added (osr=" << std::boolalpha << osr << std::noboolalpha << ") "
