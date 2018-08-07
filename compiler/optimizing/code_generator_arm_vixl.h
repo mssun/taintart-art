@@ -632,8 +632,7 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                                              bool needs_null_check);
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference array load when Baker's read barriers are used.
-  void GenerateArrayLoadWithBakerReadBarrier(HInstruction* instruction,
-                                             Location ref,
+  void GenerateArrayLoadWithBakerReadBarrier(Location ref,
                                              vixl::aarch32::Register obj,
                                              uint32_t data_offset,
                                              Location index,
