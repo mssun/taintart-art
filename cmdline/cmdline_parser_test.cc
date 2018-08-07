@@ -59,7 +59,7 @@ namespace art {
   template <typename T>
   bool UsuallyEquals(const T& expected, const T& actual,
                      typename std::enable_if<
-                         detail::SupportsEqualityOperator<T>::value>::type* = 0) {
+                         detail::SupportsEqualityOperator<T>::value>::type* = nullptr) {
     return expected == actual;
   }
 
@@ -73,8 +73,8 @@ namespace art {
   template <typename T, typename ... Ignore>
   bool UsuallyEquals(const T& expected, const T& actual,
                      const Ignore& ... more ATTRIBUTE_UNUSED,
-                     typename std::enable_if<std::is_pod<T>::value>::type* = 0,
-                     typename std::enable_if<!detail::SupportsEqualityOperator<T>::value>::type* = 0
+                     typename std::enable_if<std::is_pod<T>::value>::type* = nullptr,
+                     typename std::enable_if<!detail::SupportsEqualityOperator<T>::value>::type* = nullptr
                      ) {
     return memcmp(std::addressof(expected), std::addressof(actual), sizeof(T)) == 0;
   }
