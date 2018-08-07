@@ -371,7 +371,8 @@ void ConcurrentCopying::InitializePhase() {
   }
   BindBitmaps();
   if (kVerboseMode) {
-    LOG(INFO) << "force_evacuate_all=" << force_evacuate_all_;
+    LOG(INFO) << "young_gen=" << std::boolalpha << young_gen_ << std::noboolalpha;
+    LOG(INFO) << "force_evacuate_all=" << std::boolalpha << force_evacuate_all_ << std::noboolalpha;
     LOG(INFO) << "Largest immune region: " << immune_spaces_.GetLargestImmuneRegion().Begin()
               << "-" << immune_spaces_.GetLargestImmuneRegion().End();
     for (space::ContinuousSpace* space : immune_spaces_.GetSpaces()) {
@@ -872,6 +873,9 @@ void ConcurrentCopying::MarkingPhase() {
     gc_grays_immune_objects_ = false;
   }
   if (kEnableGenerationalConcurrentCopyingCollection && young_gen_) {
+    if (kVerboseMode) {
+      LOG(INFO) << "GC ScanCardsForSpace";
+    }
     TimingLogger::ScopedTiming split2("ScanCardsForSpace", GetTimings());
     WriterMutexLock rmu(Thread::Current(), *Locks::heap_bitmap_lock_);
     CHECK_EQ(done_scanning_.load(std::memory_order_relaxed), false);
@@ -909,6 +913,9 @@ void ConcurrentCopying::MarkingPhase() {
     }
     // Done scanning unevac space.
     done_scanning_.store(true, std::memory_order_seq_cst);
+    if (kVerboseMode) {
+      LOG(INFO) << "GC end of ScanCardsForSpace";
+    }
   }
   {
     // For a sticky-bit collection, this phase needs to be after the card scanning since the
@@ -2120,15 +2127,27 @@ void ConcurrentCopying::AssertToSpaceInvariant(mirror::Object* obj,
         LOG(FATAL_WITHOUT_ABORT) << DumpHeapReference(obj, offset, ref);
         if (obj != nullptr) {
           LogFromSpaceRefHolder(obj, offset);
-          LOG(ERROR) << "UNEVAC " << region_space_->IsInUnevacFromSpace(obj) << " "
-                     << obj << " " << obj->GetMarkBit();
+          LOG(FATAL_WITHOUT_ABORT) << "UNEVAC " << region_space_->IsInUnevacFromSpace(obj) << " "
+                                   << obj << " " << obj->GetMarkBit();
           if (region_space_->HasAddress(obj)) {
-            region_space_->DumpRegionForObject(LOG_STREAM(ERROR), obj);
+            region_space_->DumpRegionForObject(LOG_STREAM(FATAL_WITHOUT_ABORT), obj);
           }
-          LOG(ERROR) << "CARD " << static_cast<size_t>(
+          LOG(FATAL_WITHOUT_ABORT) << "CARD " << static_cast<size_t>(
               *Runtime::Current()->GetHeap()->GetCardTable()->CardFromAddr(
                   reinterpret_cast<uint8_t*>(obj)));
-          LOG(ERROR) << "BITMAP " << region_space_bitmap_->Test(obj);
+          if (region_space_->HasAddress(obj)) {
+            LOG(FATAL_WITHOUT_ABORT) << "BITMAP " << region_space_bitmap_->Test(obj);
+          } else {
+            accounting::ContinuousSpaceBitmap* mark_bitmap =
+                heap_mark_bitmap_->GetContinuousSpaceBitmap(obj);
+            if (mark_bitmap != nullptr) {
+              LOG(FATAL_WITHOUT_ABORT) << "BITMAP " << mark_bitmap->Test(obj);
+            } else {
+              accounting::LargeObjectBitmap* los_bitmap =
+                  heap_mark_bitmap_->GetLargeObjectBitmap(obj);
+              LOG(FATAL_WITHOUT_ABORT) << "BITMAP " << los_bitmap->Test(obj);
+            }
+          }
         }
         ref->GetLockWord(false).Dump(LOG_STREAM(FATAL_WITHOUT_ABORT));
         LOG(FATAL_WITHOUT_ABORT) << "Non-free regions:";
