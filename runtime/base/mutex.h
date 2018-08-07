@@ -72,6 +72,7 @@ enum LockLevel : uint8_t {
   kJdwpSocketLock,
   kRegionSpaceRegionLock,
   kMarkSweepMarkStackLock,
+  kCHALock,
   kJitCodeCacheLock,
   kRosAllocGlobalLock,
   kRosAllocBracketLock,
@@ -109,7 +110,6 @@ enum LockLevel : uint8_t {
   kMonitorPoolLock,
   kClassLinkerClassesLock,  // TODO rename.
   kDexToDexCompilerLock,
-  kCHALock,
   kSubtypeCheckLock,
   kBreakpointLock,
   kMonitorLock,
@@ -661,14 +661,11 @@ class Locks {
   // TODO: improve name, perhaps instrumentation_update_lock_.
   static Mutex* deoptimization_lock_ ACQUIRED_AFTER(alloc_tracker_lock_);
 
-  // Guards Class Hierarchy Analysis (CHA).
-  static Mutex* cha_lock_ ACQUIRED_AFTER(deoptimization_lock_);
-
   // Guard the update of the SubtypeCheck data stores in each Class::status_ field.
   // This lock is used in SubtypeCheck methods which are the interface for
   // any SubtypeCheck-mutating methods.
   // In Class::IsSubClass, the lock is not required since it does not update the SubtypeCheck data.
-  static Mutex* subtype_check_lock_ ACQUIRED_AFTER(cha_lock_);
+  static Mutex* subtype_check_lock_ ACQUIRED_AFTER(deoptimization_lock_);
 
   // The thread_list_lock_ guards ThreadList::list_. It is also commonly held to stop threads
   // attaching and detaching.
@@ -745,11 +742,14 @@ class Locks {
   // GetThreadLocalStorage.
   static Mutex* custom_tls_lock_ ACQUIRED_AFTER(jni_function_table_lock_);
 
+  // Guards Class Hierarchy Analysis (CHA).
+  static Mutex* cha_lock_ ACQUIRED_AFTER(custom_tls_lock_);
+
   // When declaring any Mutex add BOTTOM_MUTEX_ACQUIRED_AFTER to use annotalysis to check the code
   // doesn't try to acquire a higher level Mutex. NB Due to the way the annotalysis works this
   // actually only encodes the mutex being below jni_function_table_lock_ although having
   // kGenericBottomLock level is lower than this.
-  #define BOTTOM_MUTEX_ACQUIRED_AFTER ACQUIRED_AFTER(art::Locks::custom_tls_lock_)
+  #define BOTTOM_MUTEX_ACQUIRED_AFTER ACQUIRED_AFTER(art::Locks::cha_lock_)
 
   // Have an exclusive aborting thread.
   static Mutex* abort_lock_ ACQUIRED_AFTER(custom_tls_lock_);
