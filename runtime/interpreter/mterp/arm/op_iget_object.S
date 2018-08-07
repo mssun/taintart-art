@@ -1,1 +1,1 @@
-%include "arm/op_iget.S" { "is_object":"1", "helper":"artGetObjInstanceFromCode" }
+%include "arm/op_iget.S" { "is_object":"1", "helper":"artGetObjInstanceFromMterp" }

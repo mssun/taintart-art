@@ -1,1 +1,1 @@
-%include "arm/op_iget.S" { "helper":"artGetByteInstanceFromCode" }
+%include "arm/op_iget.S" { "helper":"artGetByteInstanceFromMterp" }

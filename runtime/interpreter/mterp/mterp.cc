@@ -681,6 +681,60 @@ extern "C" size_t MterpSuspendCheck(Thread* self)
   return MterpShouldSwitchInterpreters();
 }
 
+// Helper function to do a null check after trying to resolve the field. Not for statics since obj
+// does not exist there. There is a suspend check, object is a double pointer to update the value
+// in the caller in case it moves.
+template<FindFieldType type, bool kAccessCheck>
+ALWAYS_INLINE static inline ArtField* FindInstanceField(uint32_t field_idx,
+                                                        ArtMethod* referrer,
+                                                        Thread* self,
+                                                        size_t size,
+                                                        mirror::Object** obj)
+    REQUIRES(!Roles::uninterruptible_)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  StackHandleScope<1> hs(self);
+  HandleWrapper<mirror::Object> h(hs.NewHandleWrapper(obj));
+  ArtField* field = FindFieldFromCode<type, kAccessCheck>(field_idx, referrer, self, size);
+  if (LIKELY(field != nullptr) && UNLIKELY(h == nullptr)) {
+    ThrowNullPointerExceptionForFieldAccess(field, /*is_read*/true);
+    return nullptr;
+  }
+  return field;
+}
+
+#define ART_GET_FIELD_FROM_MTERP(Kind, PrimitiveType, RetType, SetType,                           \
+                                 PrimitiveOrObject, IsObject, Ptr)                                \
+extern "C" RetType artGet ## Kind ## InstanceFromMterp(uint32_t field_idx,                        \
+                                                       mirror::Object* obj,                       \
+                                                       ArtMethod* referrer,                       \
+                                                       Thread* self)                              \
+      REQUIRES_SHARED(Locks::mutator_lock_) {                                                     \
+    constexpr FindFieldType kType = Instance ## PrimitiveOrObject ## Read;                        \
+    constexpr size_t kSize = sizeof(PrimitiveType);                                               \
+    mirror::DexCache* dex_cache = referrer->GetDexCache();                                        \
+    ArtField* field = dex_cache->GetResolvedField(field_idx, kRuntimePointerSize);                \
+    if (LIKELY(field != nullptr && obj != nullptr)) {                                             \
+      return field->Get ## Kind (obj)Ptr;  /* NOLINT */                                           \
+    }                                                                                             \
+    field = FindInstanceField<kType, true>(field_idx, referrer, self, kSize, &obj);               \
+    if (LIKELY(field != nullptr)) {                                                               \
+      return field->Get ## Kind (obj)Ptr;  /* NOLINT */                                           \
+    }                                                                                             \
+    /* Will throw exception by checking with Thread::Current. */                                  \
+    return 0;                                                                                     \
+}                                                                                                 \
+
+ART_GET_FIELD_FROM_MTERP(Byte, int8_t, ssize_t, uint32_t, Primitive, false, )
+ART_GET_FIELD_FROM_MTERP(Boolean, int8_t, size_t, uint32_t, Primitive, false, )
+ART_GET_FIELD_FROM_MTERP(Short, int16_t, ssize_t, uint16_t, Primitive, false, )
+ART_GET_FIELD_FROM_MTERP(Char, int16_t, size_t, uint16_t, Primitive, false, )
+ART_GET_FIELD_FROM_MTERP(32, int32_t, size_t, uint32_t, Primitive, false, )
+ART_GET_FIELD_FROM_MTERP(64, int64_t, uint64_t, uint64_t, Primitive, false, )
+ART_GET_FIELD_FROM_MTERP(Obj, mirror::HeapReference<mirror::Object>, mirror::Object*,
+                         mirror::Object*, Object, true, .Ptr())
+
+#undef ART_GET_FIELD_FROM_MTERP
+
 extern "C" ssize_t artSet8InstanceFromMterp(uint32_t field_idx,
                                             mirror::Object* obj,
                                             uint8_t new_value,

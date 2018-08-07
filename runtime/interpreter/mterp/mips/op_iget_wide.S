@@ -10,7 +10,7 @@
     GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
     lw    a2, OFF_FP_METHOD(rFP)           # a2 <- referrer
     move  a3, rSELF                        # a3 <- self
-    JAL(artGet64InstanceFromCode)
+    JAL(artGet64InstanceFromMterp)
     lw   a3, THREAD_EXCEPTION_OFFSET(rSELF)
     GET_OPA4(a2)                           # a2<- A+
     PREFETCH_INST(2)                       # load rINST
