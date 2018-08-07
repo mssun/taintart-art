@@ -1159,7 +1159,7 @@ void JdwpState::PostException(const EventLocation* pThrowLoc, mirror::Throwable*
   }
   basket.className = Dbg::GetClassName(basket.locationClass.Get());
   basket.exceptionClass.Assign(exception_object->GetClass());
-  basket.caught = (pCatchLoc->method != 0);
+  basket.caught = (pCatchLoc->method != nullptr);
   basket.thisPtr.Assign(thisPtr);
 
   /* don't try to post an exception caused by the debugger */

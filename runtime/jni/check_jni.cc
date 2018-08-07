@@ -1462,7 +1462,7 @@ class ScopedCheck {
         break;
       }
     }
-    return 0;
+    return nullptr;
   }
 
   void AbortF(const char* fmt, ...) __attribute__((__format__(__printf__, 2, 3))) {
