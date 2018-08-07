@@ -1038,12 +1038,6 @@
         "description": ["Test timing out under gcstress possibly due to slower unwinding by libbacktrace"]
     },
     {
-        "tests": ["624-checker-stringops"],
-        "variant": "optimizing & gcstress | speed-profile & gcstress",
-        "bug": "b/111545159",
-        "description": ["Seem to expose some error with our gc when run in these configurations"]
-    },
-    {
         "tests": ["021-string2"],
         "variant": "jit & debuggable",
         "bug": "b/109791792",

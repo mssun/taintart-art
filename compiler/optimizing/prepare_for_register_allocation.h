@@ -21,6 +21,7 @@
 
 namespace art {
 
+class CompilerOptions;
 class OptimizingCompilerStats;
 
 /**
@@ -30,9 +31,11 @@ class OptimizingCompilerStats;
  */
 class PrepareForRegisterAllocation : public HGraphDelegateVisitor {
  public:
-  explicit PrepareForRegisterAllocation(HGraph* graph,
-                                        OptimizingCompilerStats* stats = nullptr)
-      : HGraphDelegateVisitor(graph, stats) {}
+  PrepareForRegisterAllocation(HGraph* graph,
+                               const CompilerOptions& compiler_options,
+                               OptimizingCompilerStats* stats = nullptr)
+      : HGraphDelegateVisitor(graph, stats),
+        compiler_options_(compiler_options) {}
 
   void Run();
 
@@ -55,6 +58,8 @@ class PrepareForRegisterAllocation : public HGraphDelegateVisitor {
 
   bool CanMoveClinitCheck(HInstruction* input, HInstruction* user) const;
   bool CanEmitConditionAt(HCondition* condition, HInstruction* user) const;
+
+  const CompilerOptions& compiler_options_;
 
   DISALLOW_COPY_AND_ASSIGN(PrepareForRegisterAllocation);
 };

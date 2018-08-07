@@ -47,7 +47,7 @@ static void DumpBitVector(BitVector* vector,
 void LivenessTest::TestCode(const std::vector<uint16_t>& data, const char* expected) {
   HGraph* graph = CreateCFG(data);
   // `Inline` conditions into ifs.
-  PrepareForRegisterAllocation(graph).Run();
+  PrepareForRegisterAllocation(graph, *compiler_options_).Run();
   std::unique_ptr<CodeGenerator> codegen = CodeGenerator::Create(graph, *compiler_options_);
   SsaLivenessAnalysis liveness(graph, codegen.get(), GetScopedAllocator());
   liveness.Analyze();
