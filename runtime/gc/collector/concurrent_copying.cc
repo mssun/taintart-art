@@ -53,9 +53,9 @@ static constexpr size_t kDefaultGcMarkStackSize = 2 * MB;
 // If kFilterModUnionCards then we attempt to filter cards that don't need to be dirty in the mod
 // union table. Disabled since it does not seem to help the pause much.
 static constexpr bool kFilterModUnionCards = kIsDebugBuild;
-// If kDisallowReadBarrierDuringScan is true then the GC aborts if there are any that occur during
-// ConcurrentCopying::Scan. May be used to diagnose possibly unnecessary read barriers.
-// Only enabled for kIsDebugBuild to avoid performance hit.
+// If kDisallowReadBarrierDuringScan is true then the GC aborts if there are any read barrier that
+// occur during ConcurrentCopying::Scan in GC thread. May be used to diagnose possibly unnecessary
+// read barriers. Only enabled for kIsDebugBuild to avoid performance hit.
 static constexpr bool kDisallowReadBarrierDuringScan = kIsDebugBuild;
 // Slow path mark stack size, increase this if the stack is getting full and it is causing
 // performance problems.
