@@ -17,6 +17,7 @@
 #include "flow_analysis.h"
 
 #include "dex/bytecode_utils.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex/dex_file-inl.h"
@@ -26,6 +27,13 @@
 
 namespace art {
 
+VeriFlowAnalysis::VeriFlowAnalysis(VeridexResolver* resolver,
+                                   const ClassAccessor::Method& method)
+    : resolver_(resolver),
+      method_id_(method.GetIndex()),
+      code_item_accessor_(method.GetInstructionsAndData()),
+      dex_registers_(code_item_accessor_.InsnsSizeInCodeUnits()),
+      instruction_infos_(code_item_accessor_.InsnsSizeInCodeUnits()) {}
 
 void VeriFlowAnalysis::SetAsBranchTarget(uint32_t dex_pc) {
   if (dex_registers_[dex_pc] == nullptr) {

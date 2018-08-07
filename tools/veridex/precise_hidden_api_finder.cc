@@ -16,6 +16,7 @@
 
 #include "precise_hidden_api_finder.h"
 
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex/dex_file.h"
@@ -31,25 +32,13 @@ namespace art {
 
 void PreciseHiddenApiFinder::RunInternal(
     const std::vector<std::unique_ptr<VeridexResolver>>& resolvers,
-    const std::function<void(VeridexResolver*, const ClassDataItemIterator&)>& action) {
+    const std::function<void(VeridexResolver*, const ClassAccessor::Method&)>& action) {
   for (const std::unique_ptr<VeridexResolver>& resolver : resolvers) {
-    const DexFile& dex_file = resolver->GetDexFile();
-    size_t class_def_count = dex_file.NumClassDefs();
-    for (size_t class_def_index = 0; class_def_index < class_def_count; ++class_def_index) {
-      const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-      const uint8_t* class_data = dex_file.GetClassData(class_def);
-      if (class_data == nullptr) {
-        // Empty class.
-        continue;
-      }
-      ClassDataItemIterator it(dex_file, class_data);
-      it.SkipAllFields();
-      for (; it.HasNextMethod(); it.Next()) {
-        const DexFile::CodeItem* code_item = it.GetMethodCodeItem();
-        if (code_item == nullptr) {
-          continue;
+    for (ClassAccessor accessor : resolver->GetDexFile().GetClasses()) {
+      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+        if (method.GetCodeItem() != nullptr) {
+          action(resolver.get(), method);
         }
-        action(resolver.get(), it);
       }
     }
   }
@@ -68,10 +57,10 @@ void PreciseHiddenApiFinder::AddUsesAt(const std::vector<ReflectAccessInfo>& acc
 
 void PreciseHiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolver>>& resolvers) {
   // Collect reflection uses.
-  RunInternal(resolvers, [this] (VeridexResolver* resolver, const ClassDataItemIterator& it) {
-    FlowAnalysisCollector collector(resolver, it);
+  RunInternal(resolvers, [this] (VeridexResolver* resolver, const ClassAccessor::Method& method) {
+    FlowAnalysisCollector collector(resolver, method);
     collector.Run();
-    AddUsesAt(collector.GetUses(), MethodReference(&resolver->GetDexFile(), it.GetMemberIndex()));
+    AddUsesAt(collector.GetUses(), method.GetReference());
   });
 
   // For non-final reflection uses, do a limited fixed point calculation over the code to try
@@ -84,11 +73,11 @@ void PreciseHiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolv
     std::map<MethodReference, std::vector<ReflectAccessInfo>> current_uses
         = std::move(abstract_uses_);
     RunInternal(resolvers,
-                [this, current_uses] (VeridexResolver* resolver, const ClassDataItemIterator& it) {
-      FlowAnalysisSubstitutor substitutor(resolver, it, current_uses);
+                [this, current_uses] (VeridexResolver* resolver,
+                                      const ClassAccessor::Method& method) {
+      FlowAnalysisSubstitutor substitutor(resolver, method, current_uses);
       substitutor.Run();
-      AddUsesAt(substitutor.GetUses(),
-                MethodReference(&resolver->GetDexFile(), it.GetMemberIndex()));
+      AddUsesAt(substitutor.GetUses(), method.GetReference());
     });
   }
 }
