@@ -484,7 +484,7 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
                                                       first_dest_reg,
                                                       new_shadow_frame)) {
           DCHECK(self->IsExceptionPending());
-          result->SetL(0);
+          result->SetL(nullptr);
           return false;
         }
       } else {
@@ -500,7 +500,7 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
                                                     operands,
                                                     new_shadow_frame)) {
           DCHECK(self->IsExceptionPending());
-          result->SetL(0);
+          result->SetL(nullptr);
           return false;
         }
       }

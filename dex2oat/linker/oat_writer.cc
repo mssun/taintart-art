@@ -1908,7 +1908,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
       DCHECK(target != nullptr);
       const void* oat_code_offset =
           target->GetEntryPointFromQuickCompiledCodePtrSize(pointer_size_);
-      if (oat_code_offset != 0) {
+      if (oat_code_offset != nullptr) {
         DCHECK(!writer_->GetCompilerOptions().IsBootImage());
         DCHECK(!Runtime::Current()->GetClassLinker()->IsQuickResolutionStub(oat_code_offset));
         DCHECK(!Runtime::Current()->GetClassLinker()->IsQuickToInterpreterBridge(oat_code_offset));

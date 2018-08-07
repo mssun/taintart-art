@@ -41,8 +41,8 @@ void MemMap::TargetMMapInit() {
                               ZX_INFO_VMAR,
                               &vmarinfo,
                               sizeof(vmarinfo),
-                              NULL,
-                              NULL), ZX_OK) << "could not find info from root vmar";
+                              nullptr,
+                              nullptr), ZX_OK) << "could not find info from root vmar";
 
   uintptr_t lower_mem_start = FUCHSIA_LOWER_MEM_START - vmarinfo.base;
   fuchsia_lowmem_size = FUCHSIA_LOWER_MEM_SIZE;
@@ -97,8 +97,8 @@ void* MemMap::TargetMMap(void* start, size_t len, int prot, int flags, int fd, o
                                 ZX_INFO_VMAR,
                                 &vmarinfo,
                                 sizeof(vmarinfo),
-                                NULL,
-                                NULL);
+                                nullptr,
+                                nullptr);
     if (status < 0 || reinterpret_cast<uintptr_t>(start) < vmarinfo.base) {
       errno = EINVAL;
       return MAP_FAILED;

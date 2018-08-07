@@ -1969,7 +1969,7 @@ void UnstartedRuntime::Invoke(Thread* self, const CodeItemDataAccessor& accessor
   const auto& iter = invoke_handlers_.find(name);
   if (iter != invoke_handlers_.end()) {
     // Clear out the result in case it's not zeroed out.
-    result->SetL(0);
+    result->SetL(nullptr);
 
     // Push the shadow frame. This is so the failing method can be seen in abort dumps.
     self->PushShadowFrame(shadow_frame);
@@ -1990,7 +1990,7 @@ void UnstartedRuntime::Jni(Thread* self, ArtMethod* method, mirror::Object* rece
   const auto& iter = jni_handlers_.find(name);
   if (iter != jni_handlers_.end()) {
     // Clear out the result in case it's not zeroed out.
-    result->SetL(0);
+    result->SetL(nullptr);
     (*iter->second)(self, method, receiver, args, result);
   } else if (Runtime::Current()->IsActiveTransaction()) {
     AbortTransactionF(self, "Attempt to invoke native method in non-started runtime: %s",

@@ -388,7 +388,7 @@ static jobjectArray VMDebug_getInstancesOfClasses(JNIEnv* env,
 // as PSS, private/shared dirty/shared data are available via
 // /proc/<pid>/smaps.
 static void VMDebug_getHeapSpaceStats(JNIEnv* env, jclass, jlongArray data) {
-  jlong* arr = reinterpret_cast<jlong*>(env->GetPrimitiveArrayCritical(data, 0));
+  jlong* arr = reinterpret_cast<jlong*>(env->GetPrimitiveArrayCritical(data, nullptr));
   if (arr == nullptr || env->GetArrayLength(data) < 9) {
     return;
   }

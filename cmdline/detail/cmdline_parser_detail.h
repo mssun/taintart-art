@@ -90,7 +90,7 @@ struct SupportsEqualityOperator :  // NOLINT [whitespace/labels] [4]
 template <typename T>
 std::string ToStringAny(const T& value,
                         typename std::enable_if<
-                            SupportsInsertionOperator<T>::value>::type* = 0) {
+                            SupportsInsertionOperator<T>::value>::type* = nullptr) {
   std::stringstream stream;
   stream << value;
   return stream.str();
@@ -99,7 +99,7 @@ std::string ToStringAny(const T& value,
 template <typename T>
 std::string ToStringAny(const std::vector<T> value,
                         typename std::enable_if<
-                            SupportsInsertionOperator<T>::value>::type* = 0) {
+                            SupportsInsertionOperator<T>::value>::type* = nullptr) {
   std::stringstream stream;
   stream << "vector{";
 
@@ -118,7 +118,7 @@ std::string ToStringAny(const std::vector<T> value,
 template <typename T>
 std::string ToStringAny(const T&,
                         typename std::enable_if<
-                            !SupportsInsertionOperator<T>::value>::type* = 0
+                            !SupportsInsertionOperator<T>::value>::type* = nullptr
 ) {
   return std::string("(unknown type [no operator<< implemented] for )");
 }
