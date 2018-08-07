@@ -350,6 +350,10 @@ class ClassAccessor {
     return class_def_index_;
   }
 
+  const DexFile::ClassDef& GetClassDef() const {
+    return dex_file_.GetClassDef(GetClassDefIndex());
+  }
+
  protected:
   // Template visitor to reduce copy paste for visiting elements.
   // No thread safety analysis since the visitor may require capabilities.

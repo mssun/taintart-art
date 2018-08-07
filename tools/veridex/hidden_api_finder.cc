@@ -16,6 +16,7 @@
 
 #include "hidden_api_finder.h"
 
+#include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex/dex_file.h"
@@ -62,23 +63,9 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
   }
   // Note: we collect strings constants only referenced in code items as the string table
   // contains other kind of strings (eg types).
-  size_t class_def_count = dex_file.NumClassDefs();
-  for (size_t class_def_index = 0; class_def_index < class_def_count; ++class_def_index) {
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
-    if (class_data == nullptr) {
-      // Empty class.
-      continue;
-    }
-    ClassDataItemIterator it(dex_file, class_data);
-    it.SkipAllFields();
-    for (; it.HasNextMethod(); it.Next()) {
-      const DexFile::CodeItem* code_item = it.GetMethodCodeItem();
-      if (code_item == nullptr) {
-        continue;
-      }
-      CodeItemDataAccessor code_item_accessor(dex_file, code_item);
-      for (const DexInstructionPcPair& inst : code_item_accessor) {
+  for (ClassAccessor accessor : dex_file.GetClasses()) {
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+      for (const DexInstructionPcPair& inst : method.GetInstructions()) {
         switch (inst->Opcode()) {
           case Instruction::CONST_STRING: {
             dex::StringIndex string_index(inst->VRegB_21c());
@@ -103,8 +90,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
                 // We only keep track of the location for strings, as these will be the
                 // field/method names the user is interested in.
                 strings_.insert(name);
-                reflection_locations_[name].push_back(
-                    MethodReference(&dex_file, it.GetMemberIndex()));
+                reflection_locations_[name].push_back(method.GetReference());
               }
             }
             break;
@@ -114,8 +100,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
           case Instruction::INVOKE_STATIC:
           case Instruction::INVOKE_SUPER:
           case Instruction::INVOKE_VIRTUAL: {
-            CheckMethod(
-                inst->VRegB_35c(), resolver, MethodReference(&dex_file, it.GetMemberIndex()));
+            CheckMethod(inst->VRegB_35c(), resolver, method.GetReference());
             break;
           }
 
@@ -124,8 +109,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
           case Instruction::INVOKE_STATIC_RANGE:
           case Instruction::INVOKE_SUPER_RANGE:
           case Instruction::INVOKE_VIRTUAL_RANGE: {
-            CheckMethod(
-                inst->VRegB_3rc(), resolver, MethodReference(&dex_file, it.GetMemberIndex()));
+            CheckMethod(inst->VRegB_3rc(), resolver, method.GetReference());
             break;
           }
 
@@ -136,8 +120,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
           case Instruction::IGET_BYTE:
           case Instruction::IGET_CHAR:
           case Instruction::IGET_SHORT: {
-            CheckField(
-                inst->VRegC_22c(), resolver, MethodReference(&dex_file, it.GetMemberIndex()));
+            CheckField(inst->VRegC_22c(), resolver, method.GetReference());
             break;
           }
 
@@ -148,8 +131,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
           case Instruction::IPUT_BYTE:
           case Instruction::IPUT_CHAR:
           case Instruction::IPUT_SHORT: {
-            CheckField(
-                inst->VRegC_22c(), resolver, MethodReference(&dex_file, it.GetMemberIndex()));
+            CheckField(inst->VRegC_22c(), resolver, method.GetReference());
             break;
           }
 
@@ -160,8 +142,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
           case Instruction::SGET_BYTE:
           case Instruction::SGET_CHAR:
           case Instruction::SGET_SHORT: {
-            CheckField(
-                inst->VRegB_21c(), resolver, MethodReference(&dex_file, it.GetMemberIndex()));
+            CheckField(inst->VRegB_21c(), resolver, method.GetReference());
             break;
           }
 
@@ -172,8 +153,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
           case Instruction::SPUT_BYTE:
           case Instruction::SPUT_CHAR:
           case Instruction::SPUT_SHORT: {
-            CheckField(
-                inst->VRegB_21c(), resolver, MethodReference(&dex_file, it.GetMemberIndex()));
+            CheckField(inst->VRegB_21c(), resolver, method.GetReference());
             break;
           }
 
