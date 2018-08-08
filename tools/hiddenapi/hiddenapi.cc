@@ -26,6 +26,7 @@
 #include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/hidden_api_access_flags.h"
 
@@ -91,32 +92,23 @@ static bool Contains(const std::vector<E>& vec, const E& elem) {
   return std::find(vec.begin(), vec.end(), elem) != vec.end();
 }
 
-class DexClass {
+class DexClass : public ClassAccessor {
  public:
-  DexClass(const DexFile& dex_file, uint32_t idx)
-      : dex_file_(dex_file), class_def_(dex_file.GetClassDef(idx)) {}
+  explicit DexClass(const ClassAccessor& accessor) : ClassAccessor(accessor) {}
 
-  const DexFile& GetDexFile() const { return dex_file_; }
-  const uint8_t* GetData() const { return dex_file_.GetClassData(class_def_); }
+  const uint8_t* GetData() const { return dex_file_.GetClassData(GetClassDef()); }
 
-  const dex::TypeIndex GetClassIndex() const { return class_def_.class_idx_; }
-  const dex::TypeIndex GetSuperclassIndex() const { return class_def_.superclass_idx_; }
+  const dex::TypeIndex GetSuperclassIndex() const { return GetClassDef().superclass_idx_; }
 
   bool HasSuperclass() const { return dex_file_.IsTypeIndexValid(GetSuperclassIndex()); }
 
-  std::string GetDescriptor() const { return dex_file_.GetClassDescriptor(class_def_); }
-
   std::string GetSuperclassDescriptor() const {
-    if (HasSuperclass()) {
-      return dex_file_.StringByTypeIdx(GetSuperclassIndex());
-    } else {
-      return "";
-    }
+    return HasSuperclass() ? dex_file_.StringByTypeIdx(GetSuperclassIndex()) : "";
   }
 
   std::set<std::string> GetInterfaceDescriptors() const {
     std::set<std::string> list;
-    const DexFile::TypeList* ifaces = dex_file_.GetInterfacesList(class_def_);
+    const DexFile::TypeList* ifaces = dex_file_.GetInterfacesList(GetClassDef());
     for (uint32_t i = 0; ifaces != nullptr && i < ifaces->Size(); ++i) {
       list.insert(dex_file_.StringByTypeIdx(ifaces->GetTypeItem(i).type_idx_));
     }
@@ -126,7 +118,7 @@ class DexClass {
   inline bool IsPublic() const { return HasAccessFlags(kAccPublic); }
 
   inline bool Equals(const DexClass& other) const {
-    bool equals = GetDescriptor() == other.GetDescriptor();
+    bool equals = strcmp(GetDescriptor(), other.GetDescriptor()) == 0;
     if (equals) {
       // TODO(dbrazdil): Check that methods/fields match as well once b/111116543 is fixed.
       CHECK_EQ(GetAccessFlags(), other.GetAccessFlags());
@@ -137,39 +129,40 @@ class DexClass {
   }
 
  private:
-  uint32_t GetAccessFlags() const { return class_def_.access_flags_; }
+  uint32_t GetAccessFlags() const { return GetClassDef().access_flags_; }
   bool HasAccessFlags(uint32_t mask) const { return (GetAccessFlags() & mask) == mask; }
-
-  const DexFile& dex_file_;
-  const DexFile::ClassDef& class_def_;
 };
 
 class DexMember {
  public:
-  DexMember(const DexClass& klass, const ClassDataItemIterator& it)
-      : klass_(klass), it_(it) {
-    DCHECK_EQ(IsMethod() ? GetMethodId().class_idx_ : GetFieldId().class_idx_,
-              klass_.GetClassIndex());
+  DexMember(const DexClass& klass, const ClassAccessor::Field& item)
+      : klass_(klass), item_(item), is_method_(false) {
+    DCHECK_EQ(GetFieldId().class_idx_, klass.GetClassIdx());
+  }
+
+  DexMember(const DexClass& klass, const ClassAccessor::Method& item)
+      : klass_(klass), item_(item), is_method_(true) {
+    DCHECK_EQ(GetMethodId().class_idx_, klass.GetClassIdx());
   }
 
   inline const DexClass& GetDeclaringClass() const { return klass_; }
 
   // Sets hidden bits in access flags and writes them back into the DEX in memory.
-  // Note that this will not update the cached data of ClassDataItemIterator
+  // Note that this will not update the cached data of the class accessor
   // until it iterates over this item again and therefore will fail a CHECK if
   // it is called multiple times on the same DexMember.
-  void SetHidden(HiddenApiAccessFlags::ApiList value) {
-    const uint32_t old_flags = it_.GetRawMemberAccessFlags();
+  void SetHidden(HiddenApiAccessFlags::ApiList value) const {
+    const uint32_t old_flags = item_.GetRawAccessFlags();
     const uint32_t new_flags = HiddenApiAccessFlags::EncodeForDex(old_flags, value);
     CHECK_EQ(UnsignedLeb128Size(new_flags), UnsignedLeb128Size(old_flags));
 
     // Locate the LEB128-encoded access flags in class data.
     // `ptr` initially points to the next ClassData item. We iterate backwards
     // until we hit the terminating byte of the previous Leb128 value.
-    const uint8_t* ptr = it_.DataPointer();
+    const uint8_t* ptr = item_.GetDataPointer();
     if (IsMethod()) {
       ptr = ReverseSearchUnsignedLeb128(ptr);
-      DCHECK_EQ(DecodeUnsignedLeb128WithoutMovingCursor(ptr), it_.GetMethodCodeItemOffset());
+      DCHECK_EQ(DecodeUnsignedLeb128WithoutMovingCursor(ptr), GetMethod().GetCodeItemOffset());
     }
     ptr = ReverseSearchUnsignedLeb128(ptr);
     DCHECK_EQ(DecodeUnsignedLeb128WithoutMovingCursor(ptr), old_flags);
@@ -178,8 +171,8 @@ class DexMember {
     UpdateUnsignedLeb128(const_cast<uint8_t*>(ptr), new_flags);
   }
 
-  inline bool IsMethod() const { return it_.IsAtMethod(); }
-  inline bool IsVirtualMethod() const { return it_.IsAtVirtualMethod(); }
+  inline bool IsMethod() const { return is_method_; }
+  inline bool IsVirtualMethod() const { return IsMethod() && !GetMethod().IsStaticOrDirect(); }
   inline bool IsConstructor() const { return IsMethod() && HasAccessFlags(kAccConstructor); }
 
   inline bool IsPublicOrProtected() const {
@@ -189,11 +182,12 @@ class DexMember {
   // Constructs a string with a unique signature of this class member.
   std::string GetApiEntry() const {
     std::stringstream ss;
-    ss << klass_.GetDescriptor() << "->" << GetName() << (IsMethod() ? "" : ":") << GetSignature();
+    ss << klass_.GetDescriptor() << "->" << GetName() << (IsMethod() ? "" : ":")
+       << GetSignature();
     return ss.str();
   }
 
-  inline bool operator==(const DexMember& other) {
+  inline bool operator==(const DexMember& other) const {
     // These need to match if they should resolve to one another.
     bool equals = IsMethod() == other.IsMethod() &&
                   GetName() == other.GetName() &&
@@ -208,31 +202,37 @@ class DexMember {
   }
 
  private:
-  inline uint32_t GetAccessFlags() const { return it_.GetMemberAccessFlags(); }
+  inline uint32_t GetAccessFlags() const { return item_.GetAccessFlags(); }
   inline uint32_t HasAccessFlags(uint32_t mask) const { return (GetAccessFlags() & mask) == mask; }
 
   inline std::string GetName() const {
-    return IsMethod() ? klass_.GetDexFile().GetMethodName(GetMethodId())
-                      : klass_.GetDexFile().GetFieldName(GetFieldId());
+    return IsMethod() ? item_.GetDexFile().GetMethodName(GetMethodId())
+                      : item_.GetDexFile().GetFieldName(GetFieldId());
   }
 
   inline std::string GetSignature() const {
-    return IsMethod() ? klass_.GetDexFile().GetMethodSignature(GetMethodId()).ToString()
-                      : klass_.GetDexFile().GetFieldTypeDescriptor(GetFieldId());
+    return IsMethod() ? item_.GetDexFile().GetMethodSignature(GetMethodId()).ToString()
+                      : item_.GetDexFile().GetFieldTypeDescriptor(GetFieldId());
+  }
+
+  inline const ClassAccessor::Method& GetMethod() const {
+    DCHECK(IsMethod());
+    return down_cast<const ClassAccessor::Method&>(item_);
   }
 
   inline const DexFile::MethodId& GetMethodId() const {
     DCHECK(IsMethod());
-    return klass_.GetDexFile().GetMethodId(it_.GetMemberIndex());
+    return item_.GetDexFile().GetMethodId(item_.GetIndex());
   }
 
   inline const DexFile::FieldId& GetFieldId() const {
     DCHECK(!IsMethod());
-    return klass_.GetDexFile().GetFieldId(it_.GetMemberIndex());
+    return item_.GetDexFile().GetFieldId(item_.GetIndex());
   }
 
   const DexClass& klass_;
-  const ClassDataItemIterator& it_;
+  const ClassAccessor::BaseItem& item_;
+  const bool is_method_;
 };
 
 class ClassPath FINAL {
@@ -244,22 +244,20 @@ class ClassPath FINAL {
   template<typename Fn>
   void ForEachDexClass(Fn fn) {
     for (auto& dex_file : dex_files_) {
-      for (uint32_t class_idx = 0; class_idx < dex_file->NumClassDefs(); ++class_idx) {
-        DexClass klass(*dex_file, class_idx);
-        fn(klass);
+      for (ClassAccessor accessor : dex_file->GetClasses()) {
+        fn(DexClass(accessor));
       }
     }
   }
 
   template<typename Fn>
   void ForEachDexMember(Fn fn) {
-    ForEachDexClass([&fn](DexClass& klass) {
-      const uint8_t* klass_data = klass.GetData();
-      if (klass_data != nullptr) {
-        for (ClassDataItemIterator it(klass.GetDexFile(), klass_data); it.HasNext(); it.Next()) {
-          DexMember member(klass, it);
-          fn(member);
-        }
+    ForEachDexClass([&fn](const DexClass& klass) {
+      for (const ClassAccessor::Field& field : klass.GetFields()) {
+        fn(DexMember(klass, field));
+      }
+      for (const ClassAccessor::Method& method : klass.GetMethods()) {
+        fn(DexMember(klass, method));
       }
     });
   }
@@ -416,16 +414,18 @@ class HierarchyClass FINAL {
   template<typename Fn>
   ResolutionResult ForEachMatchingMember(const DexMember& other, Fn fn) {
     ResolutionResult found = ResolutionResult::kNotFound;
+    auto compare_member = [&](const DexMember& member) {
+      if (member == other) {
+        found = Accumulate(found, fn(member) ? ResolutionResult::kFoundNew
+                                             : ResolutionResult::kFoundOld);
+      }
+    };
     for (const DexClass& dex_class : dex_classes_) {
-      const uint8_t* data = dex_class.GetData();
-      if (data != nullptr) {
-        for (ClassDataItemIterator it(dex_class.GetDexFile(), data); it.HasNext(); it.Next()) {
-          DexMember member(dex_class, it);
-          if (member == other) {
-            found = Accumulate(found, fn(member) ? ResolutionResult::kFoundNew
-                                                 : ResolutionResult::kFoundOld);
-          }
-        }
+      for (const ClassAccessor::Field& field : dex_class.GetFields()) {
+        compare_member(DexMember(dex_class, field));
+      }
+      for (const ClassAccessor::Method& method : dex_class.GetMethods()) {
+        compare_member(DexMember(dex_class, method));
       }
     }
     return found;
@@ -528,7 +528,7 @@ class Hierarchy FINAL {
   void BuildClassHierarchy() {
     // Create one HierarchyClass entry in `classes_` per class descriptor
     // and add all DexClass objects with the same descriptor to that entry.
-    classpath_.ForEachDexClass([this](DexClass& klass) {
+    classpath_.ForEachDexClass([this](const DexClass& klass) {
       classes_[klass.GetDescriptor()].AddDexClass(klass);
     });
 
@@ -643,13 +643,9 @@ class HiddenApi FINAL {
     ClassPath boot_classpath(boot_dex_paths_, /* open_writable */ true);
 
     // Set access flags of all members.
-    boot_classpath.ForEachDexMember([&api_list](DexMember& boot_member) {
+    boot_classpath.ForEachDexMember([&api_list](const DexMember& boot_member) {
       auto it = api_list.find(boot_member.GetApiEntry());
-      if (it == api_list.end()) {
-        boot_member.SetHidden(HiddenApiAccessFlags::kWhitelist);
-      } else {
-        boot_member.SetHidden(it->second);
-      }
+      boot_member.SetHidden(it == api_list.end() ? HiddenApiAccessFlags::kWhitelist : it->second);
     });
 
     boot_classpath.UpdateDexChecksums();
@@ -696,7 +692,7 @@ class HiddenApi FINAL {
     Hierarchy boot_hierarchy(boot_classpath);
 
     // Mark all boot dex members private.
-    boot_classpath.ForEachDexMember([&boot_members](DexMember& boot_member) {
+    boot_classpath.ForEachDexMember([&boot_members](const DexMember& boot_member) {
       boot_members[boot_member.GetApiEntry()] = false;
     });
 
@@ -705,14 +701,15 @@ class HiddenApi FINAL {
       ClassPath stub_classpath(stub_classpath_dex, /* open_writable */ false);
       Hierarchy stub_hierarchy(stub_classpath);
       stub_classpath.ForEachDexMember(
-          [&stub_hierarchy, &boot_hierarchy, &boot_members, &unresolved](DexMember& stub_member) {
+          [&stub_hierarchy, &boot_hierarchy, &boot_members, &unresolved](
+              const DexMember& stub_member) {
             if (!stub_hierarchy.IsMemberVisible(stub_member)) {
               // Typically fake constructors and inner-class `this` fields.
               return;
             }
             bool resolved = boot_hierarchy.ForEachResolvableMember(
                 stub_member,
-                [&boot_members](DexMember& boot_member) {
+                [&boot_members](const DexMember& boot_member) {
                   std::string entry = boot_member.GetApiEntry();
                   auto it = boot_members.find(entry);
                   CHECK(it != boot_members.end());
