@@ -214,5 +214,15 @@
   description: "java.io.IOException: Error writing ASN.1 encoding",
   result: EXEC_FAILED,
   names: ["libcore.javax.crypto.spec.AlgorithmParametersTestGCM#testEncoding"]
+},
+{
+  description: "Tests fail because mockito can not read android.os.Build$VERSION",
+  result: EXEC_FAILED,
+  bug: 111704422,
+  names: ["libcore.java.lang.ThreadTest#testUncaughtExceptionPreHandler_calledBeforeDefaultHandler",
+          "libcore.java.lang.ThreadTest#testUncaughtExceptionPreHandler_noDefaultHandler",
+          "libcore.javax.crypto.CipherInputStreamTest#testCloseTwice",
+          "libcore.libcore.io.BlockGuardOsTest#test_android_getaddrinfo_networkPolicy",
+          "libcore.libcore.io.BlockGuardOsTest#test_checkNewMethodsInPosix"]
 }
 ]
