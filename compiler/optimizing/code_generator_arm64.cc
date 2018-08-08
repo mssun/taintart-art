@@ -1417,13 +1417,20 @@ void CodeGeneratorARM64::Finalize(CodeAllocator* allocator) {
       BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
       // Check that the next instruction matches the expected LDR.
       switch (kind) {
-        case BakerReadBarrierKind::kField: {
+        case BakerReadBarrierKind::kField:
+        case BakerReadBarrierKind::kAcquire: {
           DCHECK_GE(code.size() - literal_offset, 8u);
           uint32_t next_insn = GetInsn(literal_offset + 4u);
-          // LDR (immediate) with correct base_reg.
           CheckValidReg(next_insn & 0x1fu);  // Check destination register.
           const uint32_t base_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
-          CHECK_EQ(next_insn & 0xffc003e0u, 0xb9400000u | (base_reg << 5));
+          if (kind == BakerReadBarrierKind::kField) {
+            // LDR (immediate) with correct base_reg.
+            CHECK_EQ(next_insn & 0xffc003e0u, 0xb9400000u | (base_reg << 5));
+          } else {
+            DCHECK(kind == BakerReadBarrierKind::kAcquire);
+            // LDAR with correct base_reg.
+            CHECK_EQ(next_insn & 0xffffffe0u, 0x88dffc00u | (base_reg << 5));
+          }
           break;
         }
         case BakerReadBarrierKind::kArray: {
@@ -2275,17 +2282,12 @@ void LocationsBuilderARM64::HandleFieldGet(HInstruction* instruction,
                                                            : LocationSummary::kNoCall);
   if (object_field_get_with_read_barrier && kUseBakerReadBarrier) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
-    if (!field_info.IsVolatile()) {
-      // We need a temporary register for the read barrier load in
-      // CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier()
-      // only if the offset is too big.
-      if (field_info.GetFieldOffset().Uint32Value() >= kReferenceLoadMinFarOffset) {
-        locations->AddTemp(FixedTempLocation());
-      }
-    } else {
-      // Volatile fields need a temporary register for the read barrier marking slow
-      // path in CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier().
-      locations->AddTemp(Location::RequiresRegister());
+    // We need a temporary register for the read barrier load in
+    // CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier()
+    // only if the field is volatile or the offset is too big.
+    if (field_info.IsVolatile() ||
+        field_info.GetFieldOffset().Uint32Value() >= kReferenceLoadMinFarOffset) {
+      locations->AddTemp(FixedTempLocation());
     }
   }
   locations->SetInAt(0, Location::RequiresRegister());
@@ -6294,81 +6296,76 @@ void CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier(HInstruction* ins
   DCHECK(kEmitCompilerReadBarrier);
   DCHECK(kUseBakerReadBarrier);
 
-  if (!use_load_acquire) {
-    // Query `art::Thread::Current()->GetIsGcMarking()` (stored in the
-    // Marking Register) to decide whether we need to enter the slow
-    // path to mark the reference. Then, in the slow path, check the
-    // gray bit in the lock word of the reference's holder (`obj`) to
-    // decide whether to mark `ref` or not.
-    //
-    // We use shared thunks for the slow path; shared within the method
-    // for JIT, across methods for AOT. That thunk checks the holder
-    // and jumps to the entrypoint if needed. If the holder is not gray,
-    // it creates a fake dependency and returns to the LDR instruction.
-    //
-    //     lr = &gray_return_address;
-    //     if (mr) {  // Thread::Current()->GetIsGcMarking()
-    //       goto field_thunk<holder_reg, base_reg>(lr)
-    //     }
-    //   not_gray_return_address:
-    //     // Original reference load. If the offset is too large to fit
-    //     // into LDR, we use an adjusted base register here.
-    //     HeapReference<mirror::Object> reference = *(obj+offset);
-    //   gray_return_address:
+  // Query `art::Thread::Current()->GetIsGcMarking()` (stored in the
+  // Marking Register) to decide whether we need to enter the slow
+  // path to mark the reference. Then, in the slow path, check the
+  // gray bit in the lock word of the reference's holder (`obj`) to
+  // decide whether to mark `ref` or not.
+  //
+  // We use shared thunks for the slow path; shared within the method
+  // for JIT, across methods for AOT. That thunk checks the holder
+  // and jumps to the entrypoint if needed. If the holder is not gray,
+  // it creates a fake dependency and returns to the LDR instruction.
+  //
+  //     lr = &gray_return_address;
+  //     if (mr) {  // Thread::Current()->GetIsGcMarking()
+  //       goto field_thunk<holder_reg, base_reg, use_load_acquire>(lr)
+  //     }
+  //   not_gray_return_address:
+  //     // Original reference load. If the offset is too large to fit
+  //     // into LDR, we use an adjusted base register here.
+  //     HeapReference<mirror::Object> reference = *(obj+offset);
+  //   gray_return_address:
 
-    DCHECK_ALIGNED(offset, sizeof(mirror::HeapReference<mirror::Object>));
-    Register base = obj;
-    if (offset >= kReferenceLoadMinFarOffset) {
-      DCHECK(maybe_temp.IsRegister());
-      base = WRegisterFrom(maybe_temp);
-      static_assert(IsPowerOfTwo(kReferenceLoadMinFarOffset), "Expecting a power of 2.");
-      __ Add(base, obj, Operand(offset & ~(kReferenceLoadMinFarOffset - 1u)));
-      offset &= (kReferenceLoadMinFarOffset - 1u);
-    }
-    UseScratchRegisterScope temps(GetVIXLAssembler());
-    DCHECK(temps.IsAvailable(ip0));
-    DCHECK(temps.IsAvailable(ip1));
-    temps.Exclude(ip0, ip1);
-    uint32_t custom_data = EncodeBakerReadBarrierFieldData(base.GetCode(), obj.GetCode());
-
-    {
-      ExactAssemblyScope guard(GetVIXLAssembler(),
-                               (kPoisonHeapReferences ? 4u : 3u) * vixl::aarch64::kInstructionSize);
-      vixl::aarch64::Label return_address;
-      __ adr(lr, &return_address);
-      EmitBakerReadBarrierCbnz(custom_data);
-      static_assert(BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET == (kPoisonHeapReferences ? -8 : -4),
-                    "Field LDR must be 1 instruction (4B) before the return address label; "
-                    " 2 instructions (8B) for heap poisoning.");
-      Register ref_reg = RegisterFrom(ref, DataType::Type::kReference);
-      __ ldr(ref_reg, MemOperand(base.X(), offset));
-      if (needs_null_check) {
-        MaybeRecordImplicitNullCheck(instruction);
-      }
-      // Unpoison the reference explicitly if needed. MaybeUnpoisonHeapReference() uses
-      // macro instructions disallowed in ExactAssemblyScope.
-      if (kPoisonHeapReferences) {
-        __ neg(ref_reg, Operand(ref_reg));
-      }
-      __ bind(&return_address);
-    }
-    MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__, /* temp_loc */ LocationFrom(ip1));
-    return;
+  DCHECK_ALIGNED(offset, sizeof(mirror::HeapReference<mirror::Object>));
+  Register base = obj;
+  if (use_load_acquire) {
+    DCHECK(maybe_temp.IsRegister());
+    base = WRegisterFrom(maybe_temp);
+    __ Add(base, obj, offset);
+    offset = 0u;
+  } else if (offset >= kReferenceLoadMinFarOffset) {
+    DCHECK(maybe_temp.IsRegister());
+    base = WRegisterFrom(maybe_temp);
+    static_assert(IsPowerOfTwo(kReferenceLoadMinFarOffset), "Expecting a power of 2.");
+    __ Add(base, obj, Operand(offset & ~(kReferenceLoadMinFarOffset - 1u)));
+    offset &= (kReferenceLoadMinFarOffset - 1u);
   }
+  UseScratchRegisterScope temps(GetVIXLAssembler());
+  DCHECK(temps.IsAvailable(ip0));
+  DCHECK(temps.IsAvailable(ip1));
+  temps.Exclude(ip0, ip1);
+  uint32_t custom_data = use_load_acquire
+      ? EncodeBakerReadBarrierAcquireData(base.GetCode(), obj.GetCode())
+      : EncodeBakerReadBarrierFieldData(base.GetCode(), obj.GetCode());
 
-  // /* HeapReference<Object> */ ref = *(obj + offset)
-  Register temp = WRegisterFrom(maybe_temp);
-  Location no_index = Location::NoLocation();
-  size_t no_scale_factor = 0u;
-  GenerateReferenceLoadWithBakerReadBarrier(instruction,
-                                            ref,
-                                            obj,
-                                            offset,
-                                            no_index,
-                                            no_scale_factor,
-                                            temp,
-                                            needs_null_check,
-                                            use_load_acquire);
+  {
+    ExactAssemblyScope guard(GetVIXLAssembler(),
+                             (kPoisonHeapReferences ? 4u : 3u) * vixl::aarch64::kInstructionSize);
+    vixl::aarch64::Label return_address;
+    __ adr(lr, &return_address);
+    EmitBakerReadBarrierCbnz(custom_data);
+    static_assert(BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET == (kPoisonHeapReferences ? -8 : -4),
+                  "Field LDR must be 1 instruction (4B) before the return address label; "
+                  " 2 instructions (8B) for heap poisoning.");
+    Register ref_reg = RegisterFrom(ref, DataType::Type::kReference);
+    if (use_load_acquire) {
+      DCHECK_EQ(offset, 0u);
+      __ ldar(ref_reg, MemOperand(base.X()));
+    } else {
+      __ ldr(ref_reg, MemOperand(base.X(), offset));
+    }
+    if (needs_null_check) {
+      MaybeRecordImplicitNullCheck(instruction);
+    }
+    // Unpoison the reference explicitly if needed. MaybeUnpoisonHeapReference() uses
+    // macro instructions disallowed in ExactAssemblyScope.
+    if (kPoisonHeapReferences) {
+      __ neg(ref_reg, Operand(ref_reg));
+    }
+    __ bind(&return_address);
+  }
+  MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__, /* temp_loc */ LocationFrom(ip1));
 }
 
 void CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier(Location ref,
@@ -6806,7 +6803,8 @@ void CodeGeneratorARM64::CompileBakerReadBarrierThunk(Arm64Assembler& assembler,
                                                       /*out*/ std::string* debug_name) {
   BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
   switch (kind) {
-    case BakerReadBarrierKind::kField: {
+    case BakerReadBarrierKind::kField:
+    case BakerReadBarrierKind::kAcquire: {
       auto base_reg =
           Register::GetXRegFromCode(BakerReadBarrierFirstRegField::Decode(encoded_data));
       CheckValidReg(base_reg.GetCode());
@@ -6832,11 +6830,18 @@ void CodeGeneratorARM64::CompileBakerReadBarrierThunk(Arm64Assembler& assembler,
       MemOperand lock_word(holder_reg, mirror::Object::MonitorOffset().Int32Value());
       EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path, throw_npe);
       __ Bind(&slow_path);
-      MemOperand ldr_address(lr, BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET);
-      __ Ldr(ip0.W(), ldr_address);         // Load the LDR (immediate) unsigned offset.
-      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
-      __ Ubfx(ip0.W(), ip0.W(), 10, 12);    // Extract the offset.
-      __ Ldr(ip0.W(), MemOperand(base_reg, ip0, LSL, 2));   // Load the reference.
+      if (kind == BakerReadBarrierKind::kField) {
+        MemOperand ldr_address(lr, BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET);
+        __ Ldr(ip0.W(), ldr_address);         // Load the LDR (immediate) unsigned offset.
+        LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
+        __ Ubfx(ip0.W(), ip0.W(), 10, 12);    // Extract the offset.
+        __ Ldr(ip0.W(), MemOperand(base_reg, ip0, LSL, 2));   // Load the reference.
+      } else {
+        DCHECK(kind == BakerReadBarrierKind::kAcquire);
+        DCHECK(!base_reg.Is(holder_reg));
+        LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
+        __ Ldar(ip0.W(), MemOperand(base_reg));
+      }
       // Do not unpoison. With heap poisoning enabled, the entrypoint expects a poisoned reference.
       __ Br(ip1);                           // Jump to the entrypoint.
       break;
@@ -6915,6 +6920,10 @@ void CodeGeneratorARM64::CompileBakerReadBarrierThunk(Arm64Assembler& assembler,
     switch (kind) {
       case BakerReadBarrierKind::kField:
         oss << "Field_r" << BakerReadBarrierFirstRegField::Decode(encoded_data)
+            << "_r" << BakerReadBarrierSecondRegField::Decode(encoded_data);
+        break;
+      case BakerReadBarrierKind::kAcquire:
+        oss << "Acquire_r" << BakerReadBarrierFirstRegField::Decode(encoded_data)
             << "_r" << BakerReadBarrierSecondRegField::Decode(encoded_data);
         break;
       case BakerReadBarrierKind::kArray:
