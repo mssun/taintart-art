@@ -1142,6 +1142,10 @@ void Locks::Init() {
     DCHECK(subtype_check_lock_ == nullptr);
     subtype_check_lock_ = new Mutex("SubtypeCheck lock", current_lock_level);
 
+    UPDATE_CURRENT_LOCK_LEVEL(kCHALock);
+    DCHECK(cha_lock_ == nullptr);
+    cha_lock_ = new Mutex("CHA lock", current_lock_level);
+
     UPDATE_CURRENT_LOCK_LEVEL(kClassLinkerClassesLock);
     DCHECK(classlinker_classes_lock_ == nullptr);
     classlinker_classes_lock_ = new ReaderWriterMutex("ClassLinker classes lock",
@@ -1221,10 +1225,6 @@ void Locks::Init() {
     UPDATE_CURRENT_LOCK_LEVEL(kCustomTlsLock);
     DCHECK(custom_tls_lock_ == nullptr);
     custom_tls_lock_ = new Mutex("Thread::custom_tls_ lock", current_lock_level);
-
-    UPDATE_CURRENT_LOCK_LEVEL(kCHALock);
-    DCHECK(cha_lock_ == nullptr);
-    cha_lock_ = new Mutex("CHA lock", current_lock_level);
 
     UPDATE_CURRENT_LOCK_LEVEL(kNativeDebugInterfaceLock);
     DCHECK(native_debug_interface_lock_ == nullptr);
