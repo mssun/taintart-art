@@ -926,8 +926,6 @@ class ClassDef : public IndexedItem {
   ClassData* GetClassData() { return class_data_; }
   EncodedArrayItem* StaticValues() { return static_values_; }
 
-  MethodItem* GenerateMethodItem(Header& header, ClassDataItemIterator& cdii);
-
   void Accept(AbstractDispatcher* dispatch) { dispatch->Dispatch(this); }
 
  private:

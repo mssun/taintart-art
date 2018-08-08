@@ -48,7 +48,7 @@ class PreciseHiddenApiFinder {
   // Run over all methods of all dex files, and call `action` on each.
   void RunInternal(
       const std::vector<std::unique_ptr<VeridexResolver>>& resolvers,
-      const std::function<void(VeridexResolver*, const ClassDataItemIterator&)>& action);
+      const std::function<void(VeridexResolver*, const ClassAccessor::Method&)>& action);
 
   // Add uses found in method `ref`.
   void AddUsesAt(const std::vector<ReflectAccessInfo>& accesses, MethodReference ref);

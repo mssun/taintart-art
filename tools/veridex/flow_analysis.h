@@ -17,6 +17,7 @@
 #ifndef ART_TOOLS_VERIDEX_FLOW_ANALYSIS_H_
 #define ART_TOOLS_VERIDEX_FLOW_ANALYSIS_H_
 
+#include "dex/class_accessor.h"
 #include "dex/code_item_accessors.h"
 #include "dex/dex_file_reference.h"
 #include "dex/method_reference.h"
@@ -108,12 +109,7 @@ struct InstructionInfo {
 
 class VeriFlowAnalysis {
  public:
-  VeriFlowAnalysis(VeridexResolver* resolver, const ClassDataItemIterator& it)
-      : resolver_(resolver),
-        method_id_(it.GetMemberIndex()),
-        code_item_accessor_(resolver->GetDexFile(), it.GetMethodCodeItem()),
-        dex_registers_(code_item_accessor_.InsnsSizeInCodeUnits()),
-        instruction_infos_(code_item_accessor_.InsnsSizeInCodeUnits()) {}
+  VeriFlowAnalysis(VeridexResolver* resolver, const ClassAccessor::Method& method);
 
   void Run();
 
@@ -189,8 +185,8 @@ struct ReflectAccessInfo {
 // Collects all reflection uses.
 class FlowAnalysisCollector : public VeriFlowAnalysis {
  public:
-  FlowAnalysisCollector(VeridexResolver* resolver, const ClassDataItemIterator& it)
-      : VeriFlowAnalysis(resolver, it) {}
+  FlowAnalysisCollector(VeridexResolver* resolver, const ClassAccessor::Method& method)
+      : VeriFlowAnalysis(resolver, method) {}
 
   const std::vector<ReflectAccessInfo>& GetUses() const {
     return uses_;
@@ -208,9 +204,9 @@ class FlowAnalysisCollector : public VeriFlowAnalysis {
 class FlowAnalysisSubstitutor : public VeriFlowAnalysis {
  public:
   FlowAnalysisSubstitutor(VeridexResolver* resolver,
-                          const ClassDataItemIterator& it,
+                          const ClassAccessor::Method& method,
                           const std::map<MethodReference, std::vector<ReflectAccessInfo>>& accesses)
-      : VeriFlowAnalysis(resolver, it), accesses_(accesses) {}
+      : VeriFlowAnalysis(resolver, method), accesses_(accesses) {}
 
   const std::vector<ReflectAccessInfo>& GetUses() const {
     return uses_;
