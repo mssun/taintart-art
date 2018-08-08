@@ -20,6 +20,7 @@
 #include "base/zip_archive.h"
 #include "common_runtime_test.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/class_accessor-inl.h"
 #include "dex/dex_file-inl.h"
 #include "exec_utils.h"
 
@@ -114,40 +115,27 @@ class HiddenApiTest : public CommonRuntimeTest {
   }
 
   const DexFile::ClassDef& FindClass(const char* desc, const DexFile& dex_file) {
-    for (uint32_t i = 0; i < dex_file.NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = dex_file.GetClassDef(i);
-      if (strcmp(desc, dex_file.GetClassDescriptor(class_def)) == 0) {
-        return class_def;
-      }
-    }
-    LOG(FATAL) << "Could not find class " << desc;
-    UNREACHABLE();
+    const DexFile::TypeId* type_id = dex_file.FindTypeId(desc);
+    CHECK(type_id != nullptr) << "Could not find class " << desc;
+    const DexFile::ClassDef* found = dex_file.FindClassDef(dex_file.GetIndexForTypeId(*type_id));
+    CHECK(found != nullptr) << "Could not find class " << desc;
+    return *found;
   }
 
   HiddenApiAccessFlags::ApiList GetFieldHiddenFlags(const char* name,
                                                     uint32_t expected_visibility,
                                                     const DexFile::ClassDef& class_def,
                                                     const DexFile& dex_file) {
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
-    if (class_data == nullptr) {
-      LOG(FATAL) << "Class " << dex_file.GetClassDescriptor(class_def) << " has no data";
-      UNREACHABLE();
-    }
+    ClassAccessor accessor(dex_file, class_def);
+    CHECK(accessor.HasClassData()) << "Class " << accessor.GetDescriptor() << " has no data";
 
-    for (ClassDataItemIterator it(dex_file, class_data); it.HasNext(); it.Next()) {
-      if (it.IsAtMethod()) {
-        break;
-      }
-      const DexFile::FieldId& fid = dex_file.GetFieldId(it.GetMemberIndex());
+    for (const ClassAccessor::Field& field : accessor.GetFields()) {
+      const DexFile::FieldId& fid = dex_file.GetFieldId(field.GetIndex());
       if (strcmp(name, dex_file.GetFieldName(fid)) == 0) {
-        uint32_t actual_visibility = it.GetFieldAccessFlags() & kAccVisibilityFlags;
-        if (actual_visibility != expected_visibility) {
-          LOG(FATAL) << "Field " << name << " in class " << dex_file.GetClassDescriptor(class_def)
-                     << " does not have the expected visibility flags (" << expected_visibility
-                     << " != " << actual_visibility << ")";
-          UNREACHABLE();
-        }
-        return it.DecodeHiddenAccessFlags();
+        const uint32_t actual_visibility = field.GetAccessFlags() & kAccVisibilityFlags;
+        CHECK_EQ(actual_visibility, expected_visibility)
+            << "Field " << name << " in class " << accessor.GetDescriptor();
+        return field.DecodeHiddenAccessFlags();
       }
     }
 
@@ -161,31 +149,18 @@ class HiddenApiTest : public CommonRuntimeTest {
                                                      bool expected_native,
                                                      const DexFile::ClassDef& class_def,
                                                      const DexFile& dex_file) {
-    const uint8_t* class_data = dex_file.GetClassData(class_def);
-    if (class_data == nullptr) {
-      LOG(FATAL) << "Class " << dex_file.GetClassDescriptor(class_def) << " has no data";
-      UNREACHABLE();
-    }
+    ClassAccessor accessor(dex_file, class_def);
+    CHECK(accessor.HasClassData()) << "Class " << accessor.GetDescriptor() << " has no data";
 
-    for (ClassDataItemIterator it(dex_file, class_data); it.HasNext(); it.Next()) {
-      if (!it.IsAtMethod()) {
-        continue;
-      }
-      const DexFile::MethodId& mid = dex_file.GetMethodId(it.GetMemberIndex());
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+      const DexFile::MethodId& mid = dex_file.GetMethodId(method.GetIndex());
       if (strcmp(name, dex_file.GetMethodName(mid)) == 0) {
-        if (expected_native != it.MemberIsNative()) {
-          LOG(FATAL) << "Expected native=" << expected_native << " for method " << name
-                     << " in class " << dex_file.GetClassDescriptor(class_def);
-          UNREACHABLE();
-        }
-        uint32_t actual_visibility = it.GetMethodAccessFlags() & kAccVisibilityFlags;
-        if (actual_visibility != expected_visibility) {
-          LOG(FATAL) << "Method " << name << " in class " << dex_file.GetClassDescriptor(class_def)
-                     << " does not have the expected visibility flags (" << expected_visibility
-                     << " != " << actual_visibility << ")";
-          UNREACHABLE();
-        }
-        return it.DecodeHiddenAccessFlags();
+        CHECK_EQ(expected_native, method.MemberIsNative())
+            << "Method " << name << " in class " << accessor.GetDescriptor();
+        const uint32_t actual_visibility = method.GetAccessFlags() & kAccVisibilityFlags;
+        CHECK_EQ(actual_visibility, expected_visibility)
+            << "Method " << name << " in class " << accessor.GetDescriptor();
+        return method.DecodeHiddenAccessFlags();
       }
     }
 
