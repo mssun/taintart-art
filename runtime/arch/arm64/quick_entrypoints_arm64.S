@@ -2785,6 +2785,8 @@ READ_BARRIER_MARK_REG art_quick_read_barrier_mark_reg29, w29, x29
      * the root register to IP0 and jumps to the customized entrypoint,
      * art_quick_read_barrier_mark_introspection_gc_roots. The thunk also
      * performs all the fast-path checks, so we need just the slow path.
+     * The UnsafeCASObject intrinsic is also using the GC root entrypoint with
+     * MOV instead of LDR, the destination register is in the same bits.
      *
      * The code structure is
      *   art_quick_read_barrier_mark_introspection:
