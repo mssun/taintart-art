@@ -602,6 +602,11 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
                                     /* out */ size_t* bytes_tl_bulk_allocated,
                                     /* out */ size_t* next_region = nullptr) REQUIRES(region_lock_);
 
+  // Check that the value of `r->LiveBytes()` matches the number of
+  // (allocated) bytes used by live objects according to the live bits
+  // in the region space bitmap range corresponding to region `r`.
+  void CheckLiveBytesAgainstRegionBitmap(Region* r);
+
   // Poison memory areas used by dead objects within unevacuated
   // region `r`. This is meant to detect dangling references to dead
   // objects earlier in debug mode.
