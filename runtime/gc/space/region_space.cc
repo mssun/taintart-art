@@ -16,6 +16,7 @@
 
 #include "bump_pointer_space-inl.h"
 #include "bump_pointer_space.h"
+#include "base/dumpable.h"
 #include "gc/accounting/read_barrier_table.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
@@ -465,7 +466,8 @@ void RegionSpace::PoisonDeadObjectsInUnevacuatedRegion(Region* r) {
   // The live byte count of `r` should be different from -1, as this
   // region should neither be a newly allocated region nor an
   // evacuated region.
-  DCHECK_NE(r->LiveBytes(), static_cast<size_t>(-1));
+  DCHECK_NE(r->LiveBytes(), static_cast<size_t>(-1))
+      << "Unexpected live bytes count of -1 in " << Dumpable<Region>(*r);
 
   // Past-the-end address of the previously visited (live) object (or
   // the beginning of the region, if `maybe_poison` has not run yet).
