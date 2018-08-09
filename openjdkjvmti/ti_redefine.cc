@@ -368,17 +368,6 @@ jvmtiError Redefiner::RedefineClasses(ArtJvmTiEnv* env,
     if (res != OK) {
       return res;
     }
-    // We make a copy of the class_bytes to pass into the retransformation.
-    // This makes cleanup easier (since we unambiguously own the bytes) and also is useful since we
-    // will need to keep the original bytes around unaltered for subsequent RetransformClasses calls
-    // to get the passed in bytes.
-    unsigned char* class_bytes_copy = nullptr;
-    res = env->Allocate(definitions[i].class_byte_count, &class_bytes_copy);
-    if (res != OK) {
-      return res;
-    }
-    memcpy(class_bytes_copy, definitions[i].class_bytes, definitions[i].class_byte_count);
-
     ArtClassDefinition def;
     res = def.Init(self, definitions[i]);
     if (res != OK) {
