@@ -30,7 +30,7 @@ namespace space {
 // value of the region size, evaculate the region.
 static constexpr uint kEvacuateLivePercentThreshold = 75U;
 
-// Whether we protect the cleared regions.
+// Whether we protect the unused and cleared regions.
 // Only protect for target builds to prevent flaky test failures (b/63131961).
 static constexpr bool kProtectClearedRegions = kIsTargetBuild;
 
@@ -132,6 +132,8 @@ RegionSpace::RegionSpace(const std::string& name, MemMap* mem_map)
   DCHECK(full_region_.IsAllocated());
   size_t ignored;
   DCHECK(full_region_.Alloc(kAlignment, &ignored, nullptr, &ignored) == nullptr);
+  // Protect the whole region space from the start.
+  Protect();
 }
 
 size_t RegionSpace::FromSpaceSize() {
@@ -550,6 +552,12 @@ void RegionSpace::Clear() {
   DCHECK_EQ(num_non_free_regions_, 0u);
   current_region_ = &full_region_;
   evac_region_ = &full_region_;
+}
+
+void RegionSpace::Protect() {
+  if (kProtectClearedRegions) {
+    CheckedCall(mprotect, __FUNCTION__, Begin(), Size(), PROT_NONE);
+  }
 }
 
 void RegionSpace::Unprotect() {
