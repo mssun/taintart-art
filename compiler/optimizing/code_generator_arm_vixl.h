@@ -624,6 +624,14 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                                ReadBarrierOption read_barrier_option);
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference field load when Baker's read barriers are used.
+  // Overload suitable for Unsafe.getObject/-Volatile() intrinsic.
+  void GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
+                                             Location ref,
+                                             vixl::aarch32::Register obj,
+                                             const vixl::aarch32::MemOperand& src,
+                                             bool needs_null_check);
+  // Fast path implementation of ReadBarrier::Barrier for a heap
+  // reference field load when Baker's read barriers are used.
   void GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
                                              Location ref,
                                              vixl::aarch32::Register obj,
@@ -638,20 +646,6 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                                              Location index,
                                              Location temp,
                                              bool needs_null_check);
-  // Factored implementation, used by GenerateFieldLoadWithBakerReadBarrier,
-  // GenerateArrayLoadWithBakerReadBarrier and some intrinsics.
-  //
-  // Load the object reference located at the address
-  // `obj + offset + (index << scale_factor)`, held by object `obj`, into
-  // `ref`, and mark it if needed.
-  void GenerateReferenceLoadWithBakerReadBarrier(HInstruction* instruction,
-                                                 Location ref,
-                                                 vixl::aarch32::Register obj,
-                                                 uint32_t offset,
-                                                 Location index,
-                                                 ScaleFactor scale_factor,
-                                                 Location temp,
-                                                 bool needs_null_check);
 
   // Generate code checking whether the the reference field at the
   // address `obj + field_offset`, held by object `obj`, needs to be
