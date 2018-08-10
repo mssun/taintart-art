@@ -296,10 +296,10 @@ ScopedArenaVector<uint8_t> StackMapStream::Encode() {
 
   ScopedArenaVector<uint8_t> buffer(allocator_->Adapter(kArenaAllocStackMapStream));
   BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&buffer);
-  EncodeVarintBits(out, packed_frame_size_);
-  EncodeVarintBits(out, core_spill_mask_);
-  EncodeVarintBits(out, fp_spill_mask_);
-  EncodeVarintBits(out, num_dex_registers_);
+  out.WriteVarint(packed_frame_size_);
+  out.WriteVarint(core_spill_mask_);
+  out.WriteVarint(fp_spill_mask_);
+  out.WriteVarint(num_dex_registers_);
   EncodeTable(out, stack_maps_);
   EncodeTable(out, register_masks_);
   EncodeTable(out, stack_masks_);
