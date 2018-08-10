@@ -1871,17 +1871,20 @@ void ConcurrentCopying::AssertToSpaceInvariant(mirror::Object* obj,
       } else if (type == RegionType::kRegionTypeUnevacFromSpace) {
         if (!IsMarkedInUnevacFromSpace(ref)) {
           LOG(FATAL_WITHOUT_ABORT) << "Found unmarked reference in unevac from-space:";
+          // Remove memory protection from the region space and log debugging information.
+          region_space_->Unprotect();
           LOG(FATAL_WITHOUT_ABORT) << DumpHeapReference(obj, offset, ref);
         }
         CHECK(IsMarkedInUnevacFromSpace(ref)) << ref;
      } else {
         // Not OK: either a from-space ref or a reference in an unused region.
-        // Do extra logging.
         if (type == RegionType::kRegionTypeFromSpace) {
           LOG(FATAL_WITHOUT_ABORT) << "Found from-space reference:";
         } else {
           LOG(FATAL_WITHOUT_ABORT) << "Found reference in region with type " << type << ":";
         }
+        // Remove memory protection from the region space and log debugging information.
+        region_space_->Unprotect();
         LOG(FATAL_WITHOUT_ABORT) << DumpHeapReference(obj, offset, ref);
         if (obj != nullptr) {
           LogFromSpaceRefHolder(obj, offset);
@@ -1949,17 +1952,20 @@ void ConcurrentCopying::AssertToSpaceInvariant(GcRootSource* gc_root_source,
       } else if (type == RegionType::kRegionTypeUnevacFromSpace) {
         if (!IsMarkedInUnevacFromSpace(ref)) {
           LOG(FATAL_WITHOUT_ABORT) << "Found unmarked reference in unevac from-space:";
+          // Remove memory protection from the region space and log debugging information.
+          region_space_->Unprotect();
           LOG(FATAL_WITHOUT_ABORT) << DumpGcRoot(ref);
         }
         CHECK(IsMarkedInUnevacFromSpace(ref)) << ref;
       } else {
         // Not OK: either a from-space ref or a reference in an unused region.
-        // Do extra logging.
         if (type == RegionType::kRegionTypeFromSpace) {
           LOG(FATAL_WITHOUT_ABORT) << "Found from-space reference:";
         } else {
           LOG(FATAL_WITHOUT_ABORT) << "Found reference in region with type " << type << ":";
         }
+        // Remove memory protection from the region space and log debugging information.
+        region_space_->Unprotect();
         LOG(FATAL_WITHOUT_ABORT) << DumpGcRoot(ref);
         if (gc_root_source == nullptr) {
           // No info.
@@ -2359,6 +2365,8 @@ mirror::Object* ConcurrentCopying::Copy(Thread* const self,
   // from a previous GC that is either inside or outside the allocated region.
   mirror::Class* klass = from_ref->GetClass<kVerifyNone, kWithoutReadBarrier>();
   if (UNLIKELY(klass == nullptr)) {
+    // Remove memory protection from the region space and log debugging information.
+    region_space_->Unprotect();
     heap_->GetVerification()->LogHeapCorruption(holder, offset, from_ref, /* fatal */ true);
   }
   // There must not be a read barrier to avoid nested RB that might violate the to-space invariant.
@@ -2638,8 +2646,11 @@ mirror::Object* ConcurrentCopying::MarkNonMoving(Thread* const self,
         }
       }
       if (is_los && !IsAligned<kPageSize>(ref)) {
-        // Ref is a large object that is not aligned, it must be heap corruption. Dump data before
-        // AtomicSetReadBarrierState since it will fault if the address is not valid.
+        // Ref is a large object that is not aligned, it must be heap
+        // corruption. Remove memory protection and dump data before
+        // AtomicSetReadBarrierState since it will fault if the address is not
+        // valid.
+        region_space_->Unprotect();
         heap_->GetVerification()->LogHeapCorruption(holder, offset, ref, /* fatal */ true);
       }
       // Not marked or on the allocation stack. Try to mark it.

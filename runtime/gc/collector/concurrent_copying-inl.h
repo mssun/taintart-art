@@ -149,7 +149,9 @@ inline mirror::Object* ConcurrentCopying::Mark(Thread* const self,
       case space::RegionSpace::RegionType::kRegionTypeUnevacFromSpace:
         return MarkUnevacFromSpaceRegion(self, from_ref, region_space_bitmap_);
       default:
-        // The reference is in an unused region.
+        // The reference is in an unused region. Remove memory protection from
+        // the region space and log debugging information.
+        region_space_->Unprotect();
         LOG(FATAL_WITHOUT_ABORT) << DumpHeapReference(holder, offset, from_ref);
         region_space_->DumpNonFreeRegions(LOG_STREAM(FATAL_WITHOUT_ABORT));
         heap_->GetVerification()->LogHeapCorruption(holder, offset, from_ref, /* fatal */ true);
