@@ -750,9 +750,9 @@ TEST(StackMapTest, TestDedupeBitTables) {
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   std::vector<uint8_t> out;
-  CodeInfo::DedupeMap dedupe_map;
-  size_t deduped1 = CodeInfo::Dedupe(&out, memory.data(), &dedupe_map);
-  size_t deduped2 = CodeInfo::Dedupe(&out, memory.data(), &dedupe_map);
+  CodeInfo::Deduper deduper(&out);
+  size_t deduped1 = deduper.Dedupe(memory.data());
+  size_t deduped2 = deduper.Dedupe(memory.data());
 
   for (size_t deduped : { deduped1, deduped2 }) {
     CodeInfo code_info(out.data() + deduped);
