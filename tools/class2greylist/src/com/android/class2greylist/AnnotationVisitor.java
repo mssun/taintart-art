@@ -16,6 +16,8 @@
 
 package com.android.class2greylist;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.apache.bcel.Const;
 import org.apache.bcel.classfile.AnnotationEntry;
 import org.apache.bcel.classfile.DescendingVisitor;
@@ -27,6 +29,8 @@ import org.apache.bcel.classfile.JavaClass;
 import org.apache.bcel.classfile.Method;
 
 import java.util.Locale;
+import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Visits a JavaClass instance and pulls out all members annotated with a
@@ -44,13 +48,46 @@ public class AnnotationVisitor extends EmptyVisitor {
 
     private final JavaClass mClass;
     private final String mAnnotationType;
+    private final Predicate<Member> mMemberFilter;
     private final Status mStatus;
     private final DescendingVisitor mDescendingVisitor;
 
-    public AnnotationVisitor(JavaClass clazz, String annotation, Status d) {
+    /**
+     * Represents a member of a class file (a field or method).
+     */
+    @VisibleForTesting
+    public static class Member {
+
+        /**
+         * Signature of this member.
+         */
+        public final String signature;
+        /**
+         * Indicates if this is a synthetic bridge method.
+         */
+        public final boolean bridge;
+
+        public Member(String signature, boolean bridge) {
+            this.signature = signature;
+            this.bridge = bridge;
+        }
+    }
+
+    public AnnotationVisitor(
+            JavaClass clazz, String annotation, Set<String> publicApis, Status status) {
+        this(clazz,
+                annotation,
+                member -> !(member.bridge && publicApis.contains(member.signature)),
+                status);
+    }
+
+    @VisibleForTesting
+    public AnnotationVisitor(
+            JavaClass clazz, String annotation, Predicate<Member> memberFilter, Status status) {
         mClass = clazz;
         mAnnotationType = annotation;
-        mStatus = d;
+        mMemberFilter = memberFilter;
+        mStatus = status;
         mDescendingVisitor = new DescendingVisitor(clazz, this);
     }
 
@@ -102,7 +139,9 @@ public class AnnotationVisitor extends EmptyVisitor {
                             break;
                     }
                 }
-                mStatus.greylistEntry(signature);
+                if (mMemberFilter.test(new Member(signature, bridge))) {
+                    mStatus.greylistEntry(signature);
+                }
             }
         }
     }
