@@ -3605,7 +3605,7 @@ class ReferenceMapVisitor : public StackVisitor {
           reinterpret_cast<uintptr_t>(cur_quick_frame));
       uintptr_t native_pc_offset = method_header->NativeQuickPcOffset(GetCurrentQuickFramePc());
       CodeInfo code_info(method_header, kPrecise
-          ? CodeInfo::DecodeFlags::Default  // We will need dex register maps.
+          ? CodeInfo::DecodeFlags::AllTables  // We will need dex register maps.
           : CodeInfo::DecodeFlags::GcMasksOnly);
       StackMap map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
       DCHECK(map.IsValid());
