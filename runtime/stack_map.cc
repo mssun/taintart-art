@@ -36,7 +36,7 @@ ALWAYS_INLINE static void DecodeTable(BitTable<Accessor>& table,
                                       BitMemoryReader& reader,
                                       const uint8_t* reader_data) {
   if (reader.ReadBit() /* is_deduped */) {
-    ssize_t bit_offset = reader.NumberOfReadBits() - DecodeVarintBits(reader);
+    ssize_t bit_offset = reader.NumberOfReadBits() - reader.ReadVarint();
     BitMemoryReader reader2(reader_data, bit_offset);  // The offset is negative.
     table.Decode(reader2);
   } else {
@@ -46,10 +46,10 @@ ALWAYS_INLINE static void DecodeTable(BitTable<Accessor>& table,
 
 void CodeInfo::Decode(const uint8_t* data, DecodeFlags flags) {
   BitMemoryReader reader(data);
-  packed_frame_size_ = DecodeVarintBits(reader);
-  core_spill_mask_ = DecodeVarintBits(reader);
-  fp_spill_mask_ = DecodeVarintBits(reader);
-  number_of_dex_registers_ = DecodeVarintBits(reader);
+  packed_frame_size_ = reader.ReadVarint();
+  core_spill_mask_ = reader.ReadVarint();
+  fp_spill_mask_ = reader.ReadVarint();
+  number_of_dex_registers_ = reader.ReadVarint();
   DecodeTable(stack_maps_, reader, data);
   DecodeTable(register_masks_, reader, data);
   DecodeTable(stack_masks_, reader, data);
@@ -82,7 +82,7 @@ ALWAYS_INLINE void CodeInfo::Deduper::DedupeTable(BitMemoryReader& reader) {
   } else {
     writer_.WriteBit(true);  // Is deduped.
     size_t bit_offset = writer_.NumberOfWrittenBits();
-    EncodeVarintBits(writer_, bit_offset - it.first->second);
+    writer_.WriteVarint(bit_offset - it.first->second);
   }
 }
 
@@ -90,10 +90,10 @@ size_t CodeInfo::Deduper::Dedupe(const uint8_t* code_info) {
   writer_.ByteAlign();
   size_t deduped_offset = writer_.NumberOfWrittenBits() / kBitsPerByte;
   BitMemoryReader reader(code_info);
-  EncodeVarintBits(writer_, DecodeVarintBits(reader));  // packed_frame_size_.
-  EncodeVarintBits(writer_, DecodeVarintBits(reader));  // core_spill_mask_.
-  EncodeVarintBits(writer_, DecodeVarintBits(reader));  // fp_spill_mask_.
-  EncodeVarintBits(writer_, DecodeVarintBits(reader));  // number_of_dex_registers_.
+  writer_.WriteVarint(reader.ReadVarint());  // packed_frame_size_.
+  writer_.WriteVarint(reader.ReadVarint());  // core_spill_mask_.
+  writer_.WriteVarint(reader.ReadVarint());  // fp_spill_mask_.
+  writer_.WriteVarint(reader.ReadVarint());  // number_of_dex_registers_.
   DedupeTable<StackMap>(reader);
   DedupeTable<RegisterMask>(reader);
   DedupeTable<MaskInfo>(reader);

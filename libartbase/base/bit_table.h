@@ -33,34 +33,6 @@
 
 namespace art {
 
-constexpr uint32_t kVarintHeaderBits = 4;
-constexpr uint32_t kVarintSmallValue = 11;  // Maximum value which is stored as-is.
-
-// Load variable-length bit-packed integer from `data` starting at `bit_offset`.
-// The first four bits determine the variable length of the encoded integer:
-//   Values 0..11 represent the result as-is, with no further following bits.
-//   Values 12..15 mean the result is in the next 8/16/24/32-bits respectively.
-ALWAYS_INLINE static inline uint32_t DecodeVarintBits(BitMemoryReader& reader) {
-  uint32_t x = reader.ReadBits(kVarintHeaderBits);
-  if (x > kVarintSmallValue) {
-    x = reader.ReadBits((x - kVarintSmallValue) * kBitsPerByte);
-  }
-  return x;
-}
-
-// Store variable-length bit-packed integer from `data` starting at `bit_offset`.
-template<typename Vector>
-ALWAYS_INLINE static inline void EncodeVarintBits(BitMemoryWriter<Vector>& out, uint32_t value) {
-  if (value <= kVarintSmallValue) {
-    out.WriteBits(value, kVarintHeaderBits);
-  } else {
-    uint32_t num_bits = RoundUp(MinimumBitsToStore(value), kBitsPerByte);
-    uint32_t header = kVarintSmallValue + num_bits / kBitsPerByte;
-    out.WriteBits(header, kVarintHeaderBits);
-    out.WriteBits(value, num_bits);
-  }
-}
-
 // Generic purpose table of uint32_t values, which are tightly packed at bit level.
 // It has its own header with the number of rows and the bit-widths of all columns.
 // The values are accessible by (row, column).  The value -1 is stored efficiently.
@@ -78,11 +50,11 @@ class BitTableBase {
   ALWAYS_INLINE void Decode(BitMemoryReader& reader) {
     // Decode row count and column sizes from the table header.
     size_t initial_bit_offset = reader.NumberOfReadBits();
-    num_rows_ = DecodeVarintBits(reader);
+    num_rows_ = reader.ReadVarint();
     if (num_rows_ != 0) {
       column_offset_[0] = 0;
       for (uint32_t i = 0; i < kNumColumns; i++) {
-        size_t column_end = column_offset_[i] + DecodeVarintBits(reader);
+        size_t column_end = column_offset_[i] + reader.ReadVarint();
         column_offset_[i + 1] = dchecked_integral_cast<uint16_t>(column_end);
       }
     }
@@ -386,11 +358,11 @@ class BitTableBuilderBase {
 
     std::array<uint32_t, kNumColumns> column_bits;
     Measure(&column_bits);
-    EncodeVarintBits(out, size());
+    out.WriteVarint(size());
     if (size() != 0) {
       // Write table header.
       for (uint32_t c = 0; c < kNumColumns; c++) {
-        EncodeVarintBits(out, column_bits[c]);
+        out.WriteVarint(column_bits[c]);
       }
 
       // Write table data.
@@ -475,9 +447,9 @@ class BitmapTableBuilder {
   void Encode(BitMemoryWriter<Vector>& out) const {
     size_t initial_bit_offset = out.NumberOfWrittenBits();
 
-    EncodeVarintBits(out, size());
+    out.WriteVarint(size());
     if (size() != 0) {
-      EncodeVarintBits(out, max_num_bits_);
+      out.WriteVarint(max_num_bits_);
 
       // Write table data.
       for (MemoryRegion row : rows_) {
