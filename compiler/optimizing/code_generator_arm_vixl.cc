@@ -786,160 +786,9 @@ class ReadBarrierMarkSlowPathBaseARMVIXL : public SlowPathCodeARMVIXL {
 // Slow path loading `obj`'s lock word, loading a reference from
 // object `*(obj + offset + (index << scale_factor))` into `ref`, and
 // marking `ref` if `obj` is gray according to the lock word (Baker
-// read barrier). The field `obj.field` in the object `obj` holding
-// this reference does not get updated by this slow path after marking
-// (see LoadReferenceWithBakerReadBarrierAndUpdateFieldSlowPathARMVIXL
-// below for that).
-//
-// This means that after the execution of this slow path, `ref` will
-// always be up-to-date, but `obj.field` may not; i.e., after the
-// flip, `ref` will be a to-space reference, but `obj.field` will
-// probably still be a from-space reference (unless it gets updated by
-// another thread, or if another thread installed another object
-// reference (different from `ref`) in `obj.field`).
-//
-// Argument `entrypoint` must be a register location holding the read
-// barrier marking runtime entry point to be invoked or an empty
-// location; in the latter case, the read barrier marking runtime
-// entry point will be loaded by the slow path code itself.
-class LoadReferenceWithBakerReadBarrierSlowPathARMVIXL : public ReadBarrierMarkSlowPathBaseARMVIXL {
- public:
-  LoadReferenceWithBakerReadBarrierSlowPathARMVIXL(HInstruction* instruction,
-                                                   Location ref,
-                                                   vixl32::Register obj,
-                                                   uint32_t offset,
-                                                   Location index,
-                                                   ScaleFactor scale_factor,
-                                                   bool needs_null_check,
-                                                   vixl32::Register temp,
-                                                   Location entrypoint = Location::NoLocation())
-      : ReadBarrierMarkSlowPathBaseARMVIXL(instruction, ref, entrypoint),
-        obj_(obj),
-        offset_(offset),
-        index_(index),
-        scale_factor_(scale_factor),
-        needs_null_check_(needs_null_check),
-        temp_(temp) {
-    DCHECK(kEmitCompilerReadBarrier);
-    DCHECK(kUseBakerReadBarrier);
-  }
-
-  const char* GetDescription() const OVERRIDE {
-    return "LoadReferenceWithBakerReadBarrierSlowPathARMVIXL";
-  }
-
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
-    LocationSummary* locations = instruction_->GetLocations();
-    vixl32::Register ref_reg = RegisterFrom(ref_);
-    DCHECK(locations->CanCall());
-    DCHECK(!locations->GetLiveRegisters()->ContainsCoreRegister(ref_reg.GetCode())) << ref_reg;
-    DCHECK(instruction_->IsInstanceFieldGet() ||
-           instruction_->IsStaticFieldGet() ||
-           instruction_->IsArrayGet() ||
-           instruction_->IsArraySet() ||
-           instruction_->IsInstanceOf() ||
-           instruction_->IsCheckCast() ||
-           (instruction_->IsInvokeVirtual() && instruction_->GetLocations()->Intrinsified()) ||
-           (instruction_->IsInvokeStaticOrDirect() && instruction_->GetLocations()->Intrinsified()))
-        << "Unexpected instruction in read barrier marking slow path: "
-        << instruction_->DebugName();
-    // The read barrier instrumentation of object ArrayGet
-    // instructions does not support the HIntermediateAddress
-    // instruction.
-    DCHECK(!(instruction_->IsArrayGet() &&
-             instruction_->AsArrayGet()->GetArray()->IsIntermediateAddress()));
-
-    // Temporary register `temp_`, used to store the lock word, must
-    // not be IP, as we may use it to emit the reference load (in the
-    // call to GenerateRawReferenceLoad below), and we need the lock
-    // word to still be in `temp_` after the reference load.
-    DCHECK(!temp_.Is(ip));
-
-    __ Bind(GetEntryLabel());
-
-    // When using MaybeGenerateReadBarrierSlow, the read barrier call is
-    // inserted after the original load. However, in fast path based
-    // Baker's read barriers, we need to perform the load of
-    // mirror::Object::monitor_ *before* the original reference load.
-    // This load-load ordering is required by the read barrier.
-    // The slow path (for Baker's algorithm) should look like:
-    //
-    //   uint32_t rb_state = Lockword(obj->monitor_).ReadBarrierState();
-    //   lfence;  // Load fence or artificial data dependency to prevent load-load reordering
-    //   HeapReference<mirror::Object> ref = *src;  // Original reference load.
-    //   bool is_gray = (rb_state == ReadBarrier::GrayState());
-    //   if (is_gray) {
-    //     ref = entrypoint(ref);  // ref = ReadBarrier::Mark(ref);  // Runtime entry point call.
-    //   }
-    //
-    // Note: the original implementation in ReadBarrier::Barrier is
-    // slightly more complex as it performs additional checks that we do
-    // not do here for performance reasons.
-
-    CodeGeneratorARMVIXL* arm_codegen = down_cast<CodeGeneratorARMVIXL*>(codegen);
-
-    // /* int32_t */ monitor = obj->monitor_
-    uint32_t monitor_offset = mirror::Object::MonitorOffset().Int32Value();
-    arm_codegen->GetAssembler()->LoadFromOffset(kLoadWord, temp_, obj_, monitor_offset);
-    if (needs_null_check_) {
-      codegen->MaybeRecordImplicitNullCheck(instruction_);
-    }
-    // /* LockWord */ lock_word = LockWord(monitor)
-    static_assert(sizeof(LockWord) == sizeof(int32_t),
-                  "art::LockWord and int32_t have different sizes.");
-
-    // Introduce a dependency on the lock_word including the rb_state,
-    // which shall prevent load-load reordering without using
-    // a memory barrier (which would be more expensive).
-    // `obj` is unchanged by this operation, but its value now depends
-    // on `temp`.
-    __ Add(obj_, obj_, Operand(temp_, ShiftType::LSR, 32));
-
-    // The actual reference load.
-    // A possible implicit null check has already been handled above.
-    arm_codegen->GenerateRawReferenceLoad(
-        instruction_, ref_, obj_, offset_, index_, scale_factor_, /* needs_null_check */ false);
-
-    // Mark the object `ref` when `obj` is gray.
-    //
-    //   if (rb_state == ReadBarrier::GrayState())
-    //     ref = ReadBarrier::Mark(ref);
-    //
-    // Given the numeric representation, it's enough to check the low bit of the
-    // rb_state. We do that by shifting the bit out of the lock word with LSRS
-    // which can be a 16-bit instruction unlike the TST immediate.
-    static_assert(ReadBarrier::WhiteState() == 0, "Expecting white to have value 0");
-    static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
-    __ Lsrs(temp_, temp_, LockWord::kReadBarrierStateShift + 1);
-    __ B(cc, GetExitLabel());  // Carry flag is the last bit shifted out by LSRS.
-    GenerateReadBarrierMarkRuntimeCall(codegen);
-
-    __ B(GetExitLabel());
-  }
-
- private:
-  // The register containing the object holding the marked object reference field.
-  vixl32::Register obj_;
-  // The offset, index and scale factor to access the reference in `obj_`.
-  uint32_t offset_;
-  Location index_;
-  ScaleFactor scale_factor_;
-  // Is a null check required?
-  bool needs_null_check_;
-  // A temporary register used to hold the lock word of `obj_`.
-  vixl32::Register temp_;
-
-  DISALLOW_COPY_AND_ASSIGN(LoadReferenceWithBakerReadBarrierSlowPathARMVIXL);
-};
-
-// Slow path loading `obj`'s lock word, loading a reference from
-// object `*(obj + offset + (index << scale_factor))` into `ref`, and
-// marking `ref` if `obj` is gray according to the lock word (Baker
 // read barrier). If needed, this slow path also atomically updates
 // the field `obj.field` in the object `obj` holding this reference
-// after marking (contrary to
-// LoadReferenceWithBakerReadBarrierSlowPathARMVIXL above, which never
-// tries to update `obj.field`).
+// after marking.
 //
 // This means that after the execution of this slow path, both `ref`
 // and `obj.field` will be up-to-date; i.e., after the flip, both will
@@ -1006,7 +855,7 @@ class LoadReferenceWithBakerReadBarrierAndUpdateFieldSlowPathARMVIXL
 
     __ Bind(GetEntryLabel());
 
-    // The implementation is similar to LoadReferenceWithBakerReadBarrierSlowPathARMVIXL's:
+    // The implementation is:
     //
     //   uint32_t rb_state = Lockword(obj->monitor_).ReadBarrierState();
     //   lfence;  // Load fence or artificial data dependency to prevent load-load reordering
@@ -8796,8 +8645,7 @@ void CodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
 void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
                                                                  Location ref,
                                                                  vixl32::Register obj,
-                                                                 uint32_t offset,
-                                                                 Location temp,
+                                                                 const vixl32::MemOperand& src,
                                                                  bool needs_null_check) {
   DCHECK(kEmitCompilerReadBarrier);
   DCHECK(kUseBakerReadBarrier);
@@ -8823,23 +8671,15 @@ void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* i
   //     HeapReference<mirror::Object> reference = *(obj+offset);
   //   gray_return_address:
 
-  DCHECK_ALIGNED(offset, sizeof(mirror::HeapReference<mirror::Object>));
+  DCHECK(src.GetAddrMode() == vixl32::Offset);
+  DCHECK_ALIGNED(src.GetOffsetImmediate(), sizeof(mirror::HeapReference<mirror::Object>));
   vixl32::Register ref_reg = RegisterFrom(ref, DataType::Type::kReference);
-  bool narrow = CanEmitNarrowLdr(ref_reg, obj, offset);
-  vixl32::Register base = obj;
-  if (offset >= kReferenceLoadMinFarOffset) {
-    base = RegisterFrom(temp);
-    static_assert(IsPowerOfTwo(kReferenceLoadMinFarOffset), "Expecting a power of 2.");
-    __ Add(base, obj, Operand(offset & ~(kReferenceLoadMinFarOffset - 1u)));
-    offset &= (kReferenceLoadMinFarOffset - 1u);
-    // Use narrow LDR only for small offsets. Generating narrow encoding LDR for the large
-    // offsets with `(offset & (kReferenceLoadMinFarOffset - 1u)) < 32u` would most likely
-    // increase the overall code size when taking the generated thunks into account.
-    DCHECK(!narrow);
-  }
+  bool narrow = CanEmitNarrowLdr(ref_reg, src.GetBaseRegister(), src.GetOffsetImmediate());
+
   UseScratchRegisterScope temps(GetVIXLAssembler());
   temps.Exclude(ip);
-  uint32_t custom_data = EncodeBakerReadBarrierFieldData(base.GetCode(), obj.GetCode(), narrow);
+  uint32_t custom_data =
+      EncodeBakerReadBarrierFieldData(src.GetBaseRegister().GetCode(), obj.GetCode(), narrow);
 
   {
     vixl::EmissionCheckScope guard(
@@ -8850,7 +8690,7 @@ void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* i
     __ cmp(mr, Operand(0));
     EmitBakerReadBarrierBne(custom_data);
     ptrdiff_t old_offset = GetVIXLAssembler()->GetBuffer()->GetCursorOffset();
-    __ ldr(EncodingSize(narrow ? Narrow : Wide), ref_reg, MemOperand(base, offset));
+    __ ldr(EncodingSize(narrow ? Narrow : Wide), ref_reg, src);
     if (needs_null_check) {
       MaybeRecordImplicitNullCheck(instruction);
     }
@@ -8869,6 +8709,24 @@ void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* i
                      : BAKER_MARK_INTROSPECTION_FIELD_LDR_WIDE_OFFSET);
   }
   MaybeGenerateMarkingRegisterCheck(/* code */ 20, /* temp_loc */ LocationFrom(ip));
+}
+
+void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
+                                                                 Location ref,
+                                                                 vixl32::Register obj,
+                                                                 uint32_t offset,
+                                                                 Location temp,
+                                                                 bool needs_null_check) {
+  DCHECK_ALIGNED(offset, sizeof(mirror::HeapReference<mirror::Object>));
+  vixl32::Register base = obj;
+  if (offset >= kReferenceLoadMinFarOffset) {
+    base = RegisterFrom(temp);
+    static_assert(IsPowerOfTwo(kReferenceLoadMinFarOffset), "Expecting a power of 2.");
+    __ Add(base, obj, Operand(offset & ~(kReferenceLoadMinFarOffset - 1u)));
+    offset &= (kReferenceLoadMinFarOffset - 1u);
+  }
+  GenerateFieldLoadWithBakerReadBarrier(
+      instruction, ref, obj, MemOperand(base, offset), needs_null_check);
 }
 
 void CodeGeneratorARMVIXL::GenerateArrayLoadWithBakerReadBarrier(Location ref,
@@ -8936,53 +8794,6 @@ void CodeGeneratorARMVIXL::GenerateArrayLoadWithBakerReadBarrier(Location ref,
               BAKER_MARK_INTROSPECTION_ARRAY_LDR_OFFSET);
   }
   MaybeGenerateMarkingRegisterCheck(/* code */ 21, /* temp_loc */ LocationFrom(ip));
-}
-
-void CodeGeneratorARMVIXL::GenerateReferenceLoadWithBakerReadBarrier(HInstruction* instruction,
-                                                                     Location ref,
-                                                                     vixl32::Register obj,
-                                                                     uint32_t offset,
-                                                                     Location index,
-                                                                     ScaleFactor scale_factor,
-                                                                     Location temp,
-                                                                     bool needs_null_check) {
-  DCHECK(kEmitCompilerReadBarrier);
-  DCHECK(kUseBakerReadBarrier);
-
-  // Query `art::Thread::Current()->GetIsGcMarking()` (stored in the
-  // Marking Register) to decide whether we need to enter the slow
-  // path to mark the reference. Then, in the slow path, check the
-  // gray bit in the lock word of the reference's holder (`obj`) to
-  // decide whether to mark `ref` or not.
-  //
-  //   if (mr) {  // Thread::Current()->GetIsGcMarking()
-  //     // Slow path.
-  //     uint32_t rb_state = Lockword(obj->monitor_).ReadBarrierState();
-  //     lfence;  // Load fence or artificial data dependency to prevent load-load reordering
-  //     HeapReference<mirror::Object> ref = *src;  // Original reference load.
-  //     bool is_gray = (rb_state == ReadBarrier::GrayState());
-  //     if (is_gray) {
-  //       entrypoint = Thread::Current()->pReadBarrierMarkReg ## root.reg()
-  //       ref = entrypoint(ref);  // ref = ReadBarrier::Mark(ref);  // Runtime entry point call.
-  //     }
-  //   } else {
-  //     HeapReference<mirror::Object> ref = *src;  // Original reference load.
-  //   }
-
-  vixl32::Register temp_reg = RegisterFrom(temp);
-
-  // Slow path marking the object `ref` when the GC is marking. The
-  // entrypoint will be loaded by the slow path code.
-  SlowPathCodeARMVIXL* slow_path =
-      new (GetScopedAllocator()) LoadReferenceWithBakerReadBarrierSlowPathARMVIXL(
-          instruction, ref, obj, offset, index, scale_factor, needs_null_check, temp_reg);
-  AddSlowPath(slow_path);
-
-  __ CompareAndBranchIfNonZero(mr, slow_path->GetEntryLabel());
-  // Fast path: the GC is not marking: just load the reference.
-  GenerateRawReferenceLoad(instruction, ref, obj, offset, index, scale_factor, needs_null_check);
-  __ Bind(slow_path->GetExitLabel());
-  MaybeGenerateMarkingRegisterCheck(/* code */ 22);
 }
 
 void CodeGeneratorARMVIXL::UpdateReferenceFieldWithBakerReadBarrier(HInstruction* instruction,
