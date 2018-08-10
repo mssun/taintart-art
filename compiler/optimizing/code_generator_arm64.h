@@ -92,6 +92,16 @@ const vixl::aarch64::CPURegList runtime_reserved_core_registers =
         ((kEmitCompilerReadBarrier && kUseBakerReadBarrier) ? mr : vixl::aarch64::NoCPUReg),
         vixl::aarch64::lr);
 
+// Some instructions have special requirements for a temporary, for example
+// LoadClass/kBssEntry and LoadString/kBssEntry for Baker read barrier require
+// temp that's not an R0 (to avoid an extra move) and Baker read barrier field
+// loads with large offsets need a fixed register to limit the number of link-time
+// thunks we generate. For these and similar cases, we want to reserve a specific
+// register that's neither callee-save nor an argument register. We choose x15.
+inline Location FixedTempLocation() {
+  return Location::RegisterLocation(vixl::aarch64::x15.GetCode());
+}
+
 // Callee-save registers AAPCS64, without x19 (Thread Register) (nor
 // x20 (Marking Register) when emitting Baker read barriers).
 const vixl::aarch64::CPURegList callee_saved_core_registers(
@@ -663,6 +673,15 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                ReadBarrierOption read_barrier_option);
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference field load when Baker's read barriers are used.
+  // Overload suitable for Unsafe.getObject/-Volatile() intrinsic.
+  void GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
+                                             Location ref,
+                                             vixl::aarch64::Register obj,
+                                             const vixl::aarch64::MemOperand& src,
+                                             bool needs_null_check,
+                                             bool use_load_acquire);
+  // Fast path implementation of ReadBarrier::Barrier for a heap
+  // reference field load when Baker's read barriers are used.
   void GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
                                              Location ref,
                                              vixl::aarch64::Register obj,
@@ -678,21 +697,6 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                              Location index,
                                              vixl::aarch64::Register temp,
                                              bool needs_null_check);
-  // Factored implementation, used by GenerateFieldLoadWithBakerReadBarrier,
-  // GenerateArrayLoadWithBakerReadBarrier and some intrinsics.
-  //
-  // Load the object reference located at the address
-  // `obj + offset + (index << scale_factor)`, held by object `obj`, into
-  // `ref`, and mark it if needed.
-  void GenerateReferenceLoadWithBakerReadBarrier(HInstruction* instruction,
-                                                 Location ref,
-                                                 vixl::aarch64::Register obj,
-                                                 uint32_t offset,
-                                                 Location index,
-                                                 size_t scale_factor,
-                                                 vixl::aarch64::Register temp,
-                                                 bool needs_null_check,
-                                                 bool use_load_acquire);
 
   // Generate code checking whether the the reference field at the
   // address `obj + field_offset`, held by object `obj`, needs to be
