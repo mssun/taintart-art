@@ -1578,7 +1578,7 @@ class OatDumper {
       // The optimizing compiler outputs its CodeInfo data in the vmap table.
       StackMapsHelper helper(oat_method.GetVmapTable(), instruction_set_);
       if (AddStatsObject(oat_method.GetVmapTable())) {
-        helper.GetCodeInfo().AddSizeStats(&stats_);
+        helper.GetCodeInfo().CollectSizeStats(oat_method.GetVmapTable(), &stats_);
       }
       const uint8_t* quick_native_pc = reinterpret_cast<const uint8_t*>(quick_code);
       size_t offset = 0;
