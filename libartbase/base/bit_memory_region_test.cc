@@ -33,6 +33,24 @@ static void CheckBits(uint8_t* data,
   }
 }
 
+TEST(BitMemoryRegion, TestVarint) {
+  for (size_t start_bit_offset = 0; start_bit_offset <= 32; start_bit_offset++) {
+    uint32_t values[] = { 0, 1, 11, 12, 15, 16, 255, 256, 1u << 16, 1u << 24, ~1u, ~0u };
+    for (uint32_t value : values) {
+      std::vector<uint8_t> buffer;
+      BitMemoryWriter<std::vector<uint8_t>> writer(&buffer, start_bit_offset);
+      writer.WriteVarint(value);
+
+      BitMemoryReader reader(buffer.data(), start_bit_offset);
+      uint32_t result = reader.ReadVarint();
+      uint32_t upper_bound = RoundUp(MinimumBitsToStore(value), kBitsPerByte) + kVarintHeaderBits;
+      EXPECT_EQ(writer.NumberOfWrittenBits(), reader.NumberOfReadBits());
+      EXPECT_EQ(value, result);
+      EXPECT_GE(upper_bound, writer.NumberOfWrittenBits());
+    }
+  }
+}
+
 TEST(BitMemoryRegion, TestBit) {
   uint8_t data[sizeof(uint32_t) * 2];
   for (size_t bit_offset = 0; bit_offset < 2 * sizeof(uint32_t) * kBitsPerByte; ++bit_offset) {
