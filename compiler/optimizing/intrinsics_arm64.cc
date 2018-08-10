@@ -745,15 +745,15 @@ static void GenUnsafeGet(HInvoke* invoke,
   if (type == DataType::Type::kReference && kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
     // UnsafeGetObject/UnsafeGetObjectVolatile with Baker's read barrier case.
     Register temp = WRegisterFrom(locations->GetTemp(0));
-    codegen->GenerateReferenceLoadWithBakerReadBarrier(invoke,
-                                                       trg_loc,
-                                                       base,
-                                                       /* offset */ 0u,
-                                                       /* index */ offset_loc,
-                                                       /* scale_factor */ 0u,
-                                                       temp,
-                                                       /* needs_null_check */ false,
-                                                       is_volatile);
+    MacroAssembler* masm = codegen->GetVIXLAssembler();
+    // Piggy-back on the field load path using introspection for the Baker read barrier.
+    __ Add(temp, base, offset.W());  // Offset should not exceed 32 bits.
+    codegen->GenerateFieldLoadWithBakerReadBarrier(invoke,
+                                                   trg_loc,
+                                                   base,
+                                                   MemOperand(temp.X()),
+                                                   /* needs_null_check */ false,
+                                                   is_volatile);
   } else {
     // Other cases.
     MemOperand mem_op(base.X(), offset);
@@ -782,9 +782,9 @@ static void CreateIntIntIntToIntLocations(ArenaAllocator* allocator, HInvoke* in
                                       kIntrinsified);
   if (can_call && kUseBakerReadBarrier) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
-    // We need a temporary register for the read barrier marking slow
-    // path in CodeGeneratorARM64::GenerateReferenceLoadWithBakerReadBarrier.
-    locations->AddTemp(Location::RequiresRegister());
+    // We need a temporary register for the read barrier load in order to use
+    // CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier().
+    locations->AddTemp(FixedTempLocation());
   }
   locations->SetInAt(0, Location::NoLocation());        // Unused receiver.
   locations->SetInAt(1, Location::RequiresRegister());
