@@ -16,6 +16,9 @@
 
 package com.android.class2greylist;
 
+import com.google.common.collect.Sets;
+import com.google.common.io.Files;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -23,9 +26,12 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.cli.PatternOptionBuilder;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * Build time tool for extracting a list of members from jar files that have the @UsedByApps
@@ -37,6 +43,11 @@ public class Class2Greylist {
 
     public static void main(String[] args) {
         Options options = new Options();
+        options.addOption(OptionBuilder
+                .withLongOpt("public-api-list")
+                .hasArgs(1)
+                .withDescription("Public API list file. Used to de-dupe bridge methods.")
+                .create("p"));
         options.addOption(OptionBuilder
                 .withLongOpt("debug")
                 .hasArgs(0)
@@ -61,6 +72,7 @@ public class Class2Greylist {
         if (cmd.hasOption('h')) {
             help(options);
         }
+        String publicApiFilename = cmd.getOptionValue('p', null);
 
         String[] jarFiles = cmd.getArgs();
         if (jarFiles.length == 0) {
@@ -70,12 +82,26 @@ public class Class2Greylist {
 
         Status status = new Status(cmd.hasOption('d'));
 
+        Set<String> publicApis;
+        if (publicApiFilename != null) {
+            try {
+                publicApis = Sets.newHashSet(
+                        Files.readLines(new File(publicApiFilename), Charset.forName("UTF-8")));
+            } catch (IOException e) {
+                status.error(e);
+                System.exit(1);
+                return;
+            }
+        } else {
+            publicApis = Collections.emptySet();
+        }
+
         for (String jarFile : jarFiles) {
             status.debug("Processing jar file %s", jarFile);
             try {
                 JarReader reader = new JarReader(status, jarFile);
-                reader.stream().forEach(clazz -> new AnnotationVisitor(
-                        clazz, ANNOTATION_TYPE, status).visit());
+                reader.stream().forEach(clazz -> new AnnotationVisitor(clazz, ANNOTATION_TYPE,
+                        publicApis, status).visit());
                 reader.close();
             } catch (IOException e) {
                 status.error(e);
