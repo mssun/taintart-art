@@ -53,6 +53,11 @@ class BitMemoryRegion FINAL : public ValueObject {
 
   ALWAYS_INLINE bool IsValid() const { return data_ != nullptr; }
 
+  const uint8_t* data() const {
+    DCHECK_ALIGNED(bit_start_, kBitsPerByte);
+    return reinterpret_cast<const uint8_t*>(data_) + bit_start_ / kBitsPerByte;
+  }
+
   size_t size_in_bits() const {
     return bit_size_;
   }
@@ -214,6 +219,8 @@ class BitMemoryReader {
   explicit BitMemoryReader(const uint8_t* data, ssize_t bit_offset = 0)
       : finished_region_(const_cast<uint8_t*>(data), bit_offset, /* bit_length */ 0) {
   }
+
+  const uint8_t* data() const { return finished_region_.data(); }
 
   BitMemoryRegion GetReadRegion() const { return finished_region_; }
 
