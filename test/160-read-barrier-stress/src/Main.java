@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+import java.lang.reflect.Field;
+import sun.misc.Unsafe;
+
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         // Initialize local variables for comparison.
         Object f0000 = manyFields.testField0000;
         Object f1024 = manyFields.testField1024;
@@ -44,6 +47,16 @@ public class Main {
             testString2 = "testString2";
             testString3 = "testString3";
         }
+        // Initialize Unsafe.
+        Unsafe unsafe = getUnsafe();
+        long f0000Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField0000"));
+        long f1024Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField1024"));
+        long f4444Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField4444"));
+        long f4999Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField4999"));
 
         // Continually check reads from `manyFields` and `largeArray` while allocating
         // over 64MiB memory (with heap size limited to 16MiB), ensuring we run GC and
@@ -74,7 +87,17 @@ public class Main {
               assertSameObject(testString2, "testString2");
               assertSameObject(testString3, "testString3");
             }
-            // TODO: Stress GC roots (const-string/const-class, kBssEntry/kReferrersClass).
+            // TODO: Stress GC roots (const-class, kBssEntry/kReferrersClass).
+            // Test Unsafe.getObject().
+            assertSameObject(f0000, unsafe.getObject(mf, f0000Offset));
+            assertSameObject(f1024, unsafe.getObject(mf, f1024Offset));
+            assertSameObject(f4444, unsafe.getObject(mf, f4444Offset));
+            assertSameObject(f4999, unsafe.getObject(mf, f4999Offset));
+            // Test Unsafe.compareAndSwapObject().
+            assertEqual(false, unsafe.compareAndSwapObject(mf, f4444Offset, f1024, f4444));
+            assertEqual(true, unsafe.compareAndSwapObject(mf, f1024Offset, f1024, f4444));
+            assertEqual(true, unsafe.compareAndSwapObject(mf, f1024Offset, f4444, f1024));
+            assertEqual(false, unsafe.compareAndSwapObject(mf, f1024Offset, f4444, f1024));
         }
     }
 
@@ -82,6 +105,19 @@ public class Main {
         if (lhs != rhs) {
             throw new Error("Different objects: " + lhs + " and " + rhs);
         }
+    }
+
+    public static void assertEqual(boolean expected, boolean actual) {
+      if (expected != actual) {
+        throw new Error("Expected " + expected +", got " + actual);
+      }
+    }
+
+    public static Unsafe getUnsafe() throws Exception {
+      Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+      Field f = unsafeClass.getDeclaredField("theUnsafe");
+      f.setAccessible(true);
+      return (Unsafe) f.get(null);
     }
 
     public static void allocateAtLeast1KiB() {

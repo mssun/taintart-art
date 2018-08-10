@@ -638,8 +638,11 @@ static void GenUnsafeGet(HInvoke* invoke,
       if (kEmitCompilerReadBarrier) {
         if (kUseBakerReadBarrier) {
           Location temp = locations->GetTemp(0);
-          codegen->GenerateReferenceLoadWithBakerReadBarrier(
-              invoke, trg_loc, base, 0U, offset_loc, TIMES_1, temp, /* needs_null_check */ false);
+          // Piggy-back on the field load path using introspection for the Baker read barrier.
+          __ Add(RegisterFrom(temp), base, Operand(offset));
+          MemOperand src(RegisterFrom(temp), 0);
+          codegen->GenerateFieldLoadWithBakerReadBarrier(
+              invoke, trg_loc, base, src, /* needs_null_check */ false);
           if (is_volatile) {
             __ Dmb(vixl32::ISH);
           }
