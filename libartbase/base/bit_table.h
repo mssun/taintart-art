@@ -49,7 +49,6 @@ class BitTableBase {
 
   ALWAYS_INLINE void Decode(BitMemoryReader& reader) {
     // Decode row count and column sizes from the table header.
-    size_t initial_bit_offset = reader.NumberOfReadBits();
     num_rows_ = reader.ReadVarint();
     if (num_rows_ != 0) {
       column_offset_[0] = 0;
@@ -58,14 +57,13 @@ class BitTableBase {
         column_offset_[i + 1] = dchecked_integral_cast<uint16_t>(column_end);
       }
     }
-    header_bit_size_ = reader.NumberOfReadBits() - initial_bit_offset;
 
     // Record the region which contains the table data and skip past it.
     table_data_ = reader.ReadRegion(num_rows_ * NumRowBits());
   }
 
   ALWAYS_INLINE uint32_t Get(uint32_t row, uint32_t column = 0) const {
-    DCHECK_NE(header_bit_size_, 0u) << "Table has not been loaded";
+    DCHECK(table_data_.IsValid()) << "Table has not been loaded";
     DCHECK_LT(row, num_rows_);
     DCHECK_LT(column, kNumColumns);
     size_t offset = row * NumRowBits() + column_offset_[column];
@@ -73,7 +71,7 @@ class BitTableBase {
   }
 
   ALWAYS_INLINE BitMemoryRegion GetBitMemoryRegion(uint32_t row, uint32_t column = 0) const {
-    DCHECK_NE(header_bit_size_, 0u) << "Table has not been loaded";
+    DCHECK(table_data_.IsValid()) << "Table has not been loaded";
     DCHECK_LT(row, num_rows_);
     DCHECK_LT(column, kNumColumns);
     size_t offset = row * NumRowBits() + column_offset_[column];
@@ -90,9 +88,7 @@ class BitTableBase {
     return column_offset_[column + 1] - column_offset_[column];
   }
 
-  size_t HeaderBitSize() const { return header_bit_size_; }
-
-  size_t BitSize() const { return header_bit_size_ + table_data_.size_in_bits(); }
+  size_t DataBitSize() const { return table_data_.size_in_bits(); }
 
   bool Equals(const BitTableBase& other) const {
     return num_rows_ == other.num_rows_ &&
@@ -103,9 +99,9 @@ class BitTableBase {
  protected:
   BitMemoryRegion table_data_;
   size_t num_rows_ = 0;
-
   uint16_t column_offset_[kNumColumns + 1] = {};
-  uint16_t header_bit_size_ = 0;
+
+  DISALLOW_COPY_AND_ASSIGN(BitTableBase);
 };
 
 // Helper class which can be used to create BitTable accessors with named getters.
@@ -129,9 +125,10 @@ class BitTableAccessor {
   }
 
 // Helper macro to create constructors and per-table utilities in derived class.
-#define BIT_TABLE_HEADER()                                                           \
+#define BIT_TABLE_HEADER(NAME)                                                       \
   using BitTableAccessor<kNumColumns>::BitTableAccessor; /* inherit constructors */  \
   template<int COLUMN, int UNUSED /*needed to compile*/> struct ColumnName;          \
+  static constexpr const char* kTableName = #NAME;                                   \
 
 // Helper macro to create named column accessors in derived class.
 #define BIT_TABLE_COLUMN(COLUMN, NAME)                                               \
@@ -152,12 +149,6 @@ template<typename Accessor, size_t... Columns>
 static const char* const* GetBitTableColumnNamesImpl(std::index_sequence<Columns...>) {
   static const char* names[] = { Accessor::template ColumnName<Columns, 0>::Value... };
   return names;
-}
-
-// Returns the names of all columns in the given accessor.
-template<typename Accessor>
-static const char* const* GetBitTableColumnNames() {
-  return GetBitTableColumnNamesImpl<Accessor>(std::make_index_sequence<Accessor::kNumColumns>());
 }
 
 // Wrapper which makes it easier to use named accessors for the individual rows.
@@ -216,6 +207,14 @@ class BitTable : public BitTableBase<Accessor::kNumColumns> {
 
   ALWAYS_INLINE Accessor GetInvalidRow() const {
     return Accessor(this, static_cast<uint32_t>(-1));
+  }
+
+  const char* GetName() const {
+    return Accessor::kTableName;
+  }
+
+  const char* const* GetColumnNames() const {
+    return GetBitTableColumnNamesImpl<Accessor>(std::make_index_sequence<Accessor::kNumColumns>());
   }
 };
 

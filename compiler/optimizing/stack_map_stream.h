@@ -109,7 +109,7 @@ class StackMapStream : public DeletableArenaObject<kArenaAllocStackMapStream> {
   BitTableBuilder<RegisterMask> register_masks_;
   BitmapTableBuilder stack_masks_;
   BitmapTableBuilder dex_register_masks_;
-  BitTableBuilder<MaskInfo> dex_register_maps_;
+  BitTableBuilder<DexRegisterMapInfo> dex_register_maps_;
   BitTableBuilder<DexRegisterInfo> dex_register_catalog_;
 
   ScopedArenaVector<BitVector*> lazy_stack_masks_;
