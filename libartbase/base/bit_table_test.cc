@@ -36,7 +36,7 @@ TEST(BitTableTest, TestVarint) {
 
       BitMemoryReader reader(buffer.data(), start_bit_offset);
       uint32_t result = DecodeVarintBits(reader);
-      EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
+      EXPECT_EQ(writer.NumberOfWrittenBits(), reader.NumberOfReadBits());
       EXPECT_EQ(value, result);
     }
   }
@@ -54,7 +54,7 @@ TEST(BitTableTest, TestEmptyTable) {
 
   BitMemoryReader reader(buffer.data());
   BitTableBase<1> table(reader);
-  EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
+  EXPECT_EQ(writer.NumberOfWrittenBits(), reader.NumberOfReadBits());
   EXPECT_EQ(0u, table.NumRows());
 }
 
@@ -75,7 +75,7 @@ TEST(BitTableTest, TestSingleColumnTable) {
 
   BitMemoryReader reader(buffer.data());
   BitTableBase<1> table(reader);
-  EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
+  EXPECT_EQ(writer.NumberOfWrittenBits(), reader.NumberOfReadBits());
   EXPECT_EQ(4u, table.NumRows());
   EXPECT_EQ(42u, table.Get(0));
   EXPECT_EQ(kNoValue, table.Get(1));
@@ -98,7 +98,7 @@ TEST(BitTableTest, TestUnalignedTable) {
 
     BitMemoryReader reader(buffer.data(), start_bit_offset);
     BitTableBase<1> table(reader);
-    EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
+    EXPECT_EQ(writer.NumberOfWrittenBits(), reader.NumberOfReadBits());
     EXPECT_EQ(1u, table.NumRows());
     EXPECT_EQ(42u, table.Get(0));
   }
@@ -119,7 +119,7 @@ TEST(BitTableTest, TestBigTable) {
 
   BitMemoryReader reader(buffer.data());
   BitTableBase<4> table(reader);
-  EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
+  EXPECT_EQ(writer.NumberOfWrittenBits(), reader.NumberOfReadBits());
   EXPECT_EQ(2u, table.NumRows());
   EXPECT_EQ(42u, table.Get(0, 0));
   EXPECT_EQ(kNoValue, table.Get(0, 1));
@@ -169,7 +169,7 @@ TEST(BitTableTest, TestBitmapTable) {
 
   BitMemoryReader reader(buffer.data());
   BitTableBase<1> table(reader);
-  EXPECT_EQ(writer.GetBitOffset(), reader.GetBitOffset());
+  EXPECT_EQ(writer.NumberOfWrittenBits(), reader.NumberOfReadBits());
   for (auto it : indicies) {
     uint64_t expected = it.first;
     BitMemoryRegion actual = table.GetBitMemoryRegion(it.second);

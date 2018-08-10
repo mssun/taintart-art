@@ -34,15 +34,10 @@ CodeInfo::CodeInfo(const OatQuickMethodHeader* header, DecodeFlags flags)
 template<typename Accessor>
 ALWAYS_INLINE static void DecodeTable(BitTable<Accessor>& table,
                                       BitMemoryReader& reader,
-                                      const uint8_t* data) {
-  bool is_deduped = reader.ReadBit();
-  if (is_deduped) {
-    // 'data' points to the start of the reader's data.
-    uint32_t current_bit_offset = reader.GetBitOffset();
-    uint32_t bit_offset_backwards = DecodeVarintBits(reader) - current_bit_offset;
-    uint32_t byte_offset_backwards = BitsToBytesRoundUp(bit_offset_backwards);
-    BitMemoryReader reader2(data - byte_offset_backwards,
-                            byte_offset_backwards * kBitsPerByte - bit_offset_backwards);
+                                      const uint8_t* reader_data) {
+  if (reader.ReadBit() /* is_deduped */) {
+    ssize_t bit_offset = reader.NumberOfReadBits() - DecodeVarintBits(reader);
+    BitMemoryReader reader2(reader_data, bit_offset);  // The offset is negative.
     table.Decode(reader2);
   } else {
     table.Decode(reader);
@@ -69,45 +64,63 @@ void CodeInfo::Decode(const uint8_t* data, DecodeFlags flags) {
   DecodeTable(dex_register_masks_, reader, data);
   DecodeTable(dex_register_maps_, reader, data);
   DecodeTable(dex_register_catalog_, reader, data);
-  size_in_bits_ = reader.GetBitOffset();
+  size_in_bits_ = reader.NumberOfReadBits();
 }
 
 template<typename Accessor>
-ALWAYS_INLINE static void DedupeTable(BitMemoryWriter<std::vector<uint8_t>>& writer,
-                                      BitMemoryReader& reader,
-                                      CodeInfo::DedupeMap* dedupe_map) {
+ALWAYS_INLINE void CodeInfo::Deduper::DedupeTable(BitMemoryReader& reader) {
   bool is_deduped = reader.ReadBit();
   DCHECK(!is_deduped);
+  size_t bit_table_start = reader.NumberOfReadBits();
   BitTable<Accessor> bit_table(reader);
-  BitMemoryRegion region = reader.Tail(bit_table.BitSize());
-  auto it = dedupe_map->insert(std::make_pair(region, writer.GetBitOffset() + 1 /* dedupe bit */));
+  BitMemoryRegion region = reader.GetReadRegion().Subregion(bit_table_start);
+  auto it = dedupe_map_.insert(std::make_pair(region, /* placeholder */ 0));
   if (it.second /* new bit table */ || region.size_in_bits() < 32) {
-    writer.WriteBit(false);  // Is not deduped.
-    writer.WriteRegion(region);
+    writer_.WriteBit(false);  // Is not deduped.
+    it.first->second = writer_.NumberOfWrittenBits();
+    writer_.WriteRegion(region);
   } else {
-    writer.WriteBit(true);  // Is deduped.
-    EncodeVarintBits(writer, writer.GetBitOffset() - it.first->second);
+    writer_.WriteBit(true);  // Is deduped.
+    size_t bit_offset = writer_.NumberOfWrittenBits();
+    EncodeVarintBits(writer_, bit_offset - it.first->second);
   }
 }
 
-size_t CodeInfo::Dedupe(std::vector<uint8_t>* out, const uint8_t* in, DedupeMap* dedupe_map) {
-  // Remember the current offset in the output buffer so that we can return it later.
-  const size_t result = out->size();
-  BitMemoryReader reader(in);
-  BitMemoryWriter<std::vector<uint8_t>> writer(out, /* bit_offset */ out->size() * kBitsPerByte);
-  EncodeVarintBits(writer, DecodeVarintBits(reader));  // packed_frame_size_.
-  EncodeVarintBits(writer, DecodeVarintBits(reader));  // core_spill_mask_.
-  EncodeVarintBits(writer, DecodeVarintBits(reader));  // fp_spill_mask_.
-  EncodeVarintBits(writer, DecodeVarintBits(reader));  // number_of_dex_registers_.
-  DedupeTable<StackMap>(writer, reader, dedupe_map);
-  DedupeTable<RegisterMask>(writer, reader, dedupe_map);
-  DedupeTable<MaskInfo>(writer, reader, dedupe_map);
-  DedupeTable<InlineInfo>(writer, reader, dedupe_map);
-  DedupeTable<MethodInfo>(writer, reader, dedupe_map);
-  DedupeTable<MaskInfo>(writer, reader, dedupe_map);
-  DedupeTable<DexRegisterMapInfo>(writer, reader, dedupe_map);
-  DedupeTable<DexRegisterInfo>(writer, reader, dedupe_map);
-  return result;
+size_t CodeInfo::Deduper::Dedupe(const uint8_t* code_info) {
+  writer_.ByteAlign();
+  size_t deduped_offset = writer_.NumberOfWrittenBits() / kBitsPerByte;
+  BitMemoryReader reader(code_info);
+  EncodeVarintBits(writer_, DecodeVarintBits(reader));  // packed_frame_size_.
+  EncodeVarintBits(writer_, DecodeVarintBits(reader));  // core_spill_mask_.
+  EncodeVarintBits(writer_, DecodeVarintBits(reader));  // fp_spill_mask_.
+  EncodeVarintBits(writer_, DecodeVarintBits(reader));  // number_of_dex_registers_.
+  DedupeTable<StackMap>(reader);
+  DedupeTable<RegisterMask>(reader);
+  DedupeTable<MaskInfo>(reader);
+  DedupeTable<InlineInfo>(reader);
+  DedupeTable<MethodInfo>(reader);
+  DedupeTable<MaskInfo>(reader);
+  DedupeTable<DexRegisterMapInfo>(reader);
+  DedupeTable<DexRegisterInfo>(reader);
+
+  if (kIsDebugBuild) {
+    CodeInfo old_code_info(code_info);
+    CodeInfo new_code_info(writer_.data() + deduped_offset);
+    DCHECK_EQ(old_code_info.packed_frame_size_, new_code_info.packed_frame_size_);
+    DCHECK_EQ(old_code_info.core_spill_mask_, new_code_info.core_spill_mask_);
+    DCHECK_EQ(old_code_info.fp_spill_mask_, new_code_info.fp_spill_mask_);
+    DCHECK_EQ(old_code_info.number_of_dex_registers_, new_code_info.number_of_dex_registers_);
+    DCHECK(old_code_info.stack_maps_.Equals(new_code_info.stack_maps_));
+    DCHECK(old_code_info.register_masks_.Equals(new_code_info.register_masks_));
+    DCHECK(old_code_info.stack_masks_.Equals(new_code_info.stack_masks_));
+    DCHECK(old_code_info.inline_infos_.Equals(new_code_info.inline_infos_));
+    DCHECK(old_code_info.method_infos_.Equals(new_code_info.method_infos_));
+    DCHECK(old_code_info.dex_register_masks_.Equals(new_code_info.dex_register_masks_));
+    DCHECK(old_code_info.dex_register_maps_.Equals(new_code_info.dex_register_maps_));
+    DCHECK(old_code_info.dex_register_catalog_.Equals(new_code_info.dex_register_catalog_));
+  }
+
+  return deduped_offset;
 }
 
 BitTable<StackMap>::const_iterator CodeInfo::BinarySearchNativePc(uint32_t packed_pc) const {
