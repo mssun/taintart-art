@@ -359,7 +359,7 @@ if [ "$ANDROID_DATA" = "/data" ] || [ "$ANDROID_DATA" = "" ]; then
 fi
 
 if [ "$PERF" != "" ]; then
-  LAUNCH_WRAPPER="perf record -g -o $ANDROID_DATA/perf.data -e cycles:u $LAUNCH_WRAPPER"
+  LAUNCH_WRAPPER="perf record -g --call-graph dwarf -F 10000 -o $ANDROID_DATA/perf.data -e cycles:u $LAUNCH_WRAPPER"
   EXTRA_OPTIONS+=(-Xcompiler-option --generate-debug-info)
 fi
 
