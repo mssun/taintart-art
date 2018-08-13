@@ -495,7 +495,7 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
     case Instruction::DIV_INT_LIT8:
     case Instruction::REM_INT_LIT8:
     case Instruction::SHL_INT_LIT8:
-    case Instruction::SHR_INT_LIT8: {
+    case Instruction::SHR_INT_LIT8:
     case Instruction::USHR_INT_LIT8: {
       UpdateRegister(instruction.VRegA(), VeriClass::integer_);
       break;
@@ -537,7 +537,7 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
     case Instruction::CMPG_FLOAT:
     case Instruction::CMPG_DOUBLE:
     case Instruction::CMPL_FLOAT:
-    case Instruction::CMPL_DOUBLE:
+    case Instruction::CMPL_DOUBLE: {
       UpdateRegister(instruction.VRegA(), VeriClass::integer_);
       break;
     }
