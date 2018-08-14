@@ -56,7 +56,7 @@ class CardTable {
   static CardTable* Create(const uint8_t* heap_begin, size_t heap_capacity);
   ~CardTable();
 
-  // Set the card associated with the given address to GC_CARD_DIRTY.
+  // Set the card associated with the given address to `kCardDirty`.
   ALWAYS_INLINE void MarkCard(const void *addr) {
     *CardFromAddr(addr) = kCardDirty;
   }
@@ -84,8 +84,8 @@ class CardTable {
     }
   }
 
-  // Returns a value that when added to a heap address >> GC_CARD_SHIFT will address the appropriate
-  // card table byte. For convenience this value is cached in every Thread
+  // Returns a value that when added to a heap address >> `kCardShift` will address the appropriate
+  // card table byte. For convenience this value is cached in every Thread.
   uint8_t* GetBiasedBegin() const {
     return biased_begin_;
   }
@@ -148,7 +148,7 @@ class CardTable {
   // Value used to compute card table addresses from object addresses, see GetBiasedBegin
   uint8_t* const biased_begin_;
   // Card table doesn't begin at the beginning of the mem_map_, instead it is displaced by offset
-  // to allow the byte value of biased_begin_ to equal GC_CARD_DIRTY
+  // to allow the byte value of `biased_begin_` to equal `kCardDirty`.
   const size_t offset_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CardTable);
