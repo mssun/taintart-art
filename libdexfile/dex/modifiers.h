@@ -42,9 +42,8 @@ static constexpr uint32_t kAccEnum =         0x4000;  // class, field, ic (1.5)
 
 static constexpr uint32_t kAccJavaFlagsMask = 0xffff;  // bits set from Java sources (low 16)
 
-// The following flags are used to insert hidden API access flags into boot
-// class path dex files. They are decoded by DexFile::ClassDataItemIterator and
-// removed from the access flags before used by the runtime.
+// The following flags are used to insert hidden API access flags into boot class path dex files.
+// They are decoded by ClassAccessor and removed from the access flags before used by the runtime.
 static constexpr uint32_t kAccDexHiddenBit =          0x00000020;  // field, method (not native)
 static constexpr uint32_t kAccDexHiddenBitNative =    0x00000200;  // method (native)
 
