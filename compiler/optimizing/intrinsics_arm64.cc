@@ -984,106 +984,155 @@ static void CreateIntIntIntIntIntToInt(ArenaAllocator* allocator,
                                           ? LocationSummary::kCallOnSlowPath
                                           : LocationSummary::kNoCall,
                                       kIntrinsified);
+  if (can_call) {
+    locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
+  }
   locations->SetInAt(0, Location::NoLocation());        // Unused receiver.
   locations->SetInAt(1, Location::RequiresRegister());
   locations->SetInAt(2, Location::RequiresRegister());
   locations->SetInAt(3, Location::RequiresRegister());
   locations->SetInAt(4, Location::RequiresRegister());
 
-  // If heap poisoning is enabled, we don't want the unpoisoning
-  // operations to potentially clobber the output. Likewise when
-  // emitting a (Baker) read barrier, which may call.
-  Location::OutputOverlap overlaps =
-      ((kPoisonHeapReferences && type == DataType::Type::kReference) || can_call)
-      ? Location::kOutputOverlap
-      : Location::kNoOutputOverlap;
-  locations->SetOut(Location::RequiresRegister(), overlaps);
+  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
   if (type == DataType::Type::kReference && kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
-    // Temporary register for (Baker) read barrier.
+    // We need two non-scratch temporary registers for (Baker) read barrier.
+    locations->AddTemp(Location::RequiresRegister());
     locations->AddTemp(Location::RequiresRegister());
   }
 }
 
+class BakerReadBarrierCasSlowPathARM64 : public SlowPathCodeARM64 {
+ public:
+  explicit BakerReadBarrierCasSlowPathARM64(HInvoke* invoke)
+      : SlowPathCodeARM64(invoke) {}
+
+  const char* GetDescription() const OVERRIDE { return "BakerReadBarrierCasSlowPathARM64"; }
+
+  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+    CodeGeneratorARM64* arm64_codegen = down_cast<CodeGeneratorARM64*>(codegen);
+    Arm64Assembler* assembler = arm64_codegen->GetAssembler();
+    MacroAssembler* masm = assembler->GetVIXLAssembler();
+    __ Bind(GetEntryLabel());
+
+    // Get the locations.
+    LocationSummary* locations = instruction_->GetLocations();
+    Register base = WRegisterFrom(locations->InAt(1));              // Object pointer.
+    Register offset = XRegisterFrom(locations->InAt(2));            // Long offset.
+    Register expected = WRegisterFrom(locations->InAt(3));          // Expected.
+    Register value = WRegisterFrom(locations->InAt(4));             // Value.
+
+    Register old_value = WRegisterFrom(locations->GetTemp(0));      // The old value from main path.
+    Register marked = WRegisterFrom(locations->GetTemp(1));         // The marked old value.
+
+    // Mark the `old_value` from the main path and compare with `expected`. This clobbers the
+    // `tmp_ptr` scratch register but we do not want to allocate another non-scratch temporary.
+    arm64_codegen->GenerateUnsafeCasOldValueMovWithBakerReadBarrier(marked, old_value);
+    __ Cmp(marked, expected);
+    __ B(GetExitLabel(), ne);  // If taken, Z=false indicates failure.
+
+    // The `old_value` we have read did not match `expected` (which is always a to-space reference)
+    // but after the read barrier in GenerateUnsafeCasOldValueMovWithBakerReadBarrier() the marked
+    // to-space value matched, so the `old_value` must be a from-space reference to the same
+    // object. Do the same CAS loop as the main path but check for both `expected` and the unmarked
+    // old value representing the to-space and from-space references for the same object.
+
+    UseScratchRegisterScope temps(masm);
+    Register tmp_ptr = temps.AcquireX();
+    Register tmp = temps.AcquireSameSizeAs(value);
+
+    // Recalculate the `tmp_ptr` clobbered above.
+    __ Add(tmp_ptr, base.X(), Operand(offset));
+
+    // do {
+    //   tmp_value = [tmp_ptr];
+    // } while ((tmp_value == expected || tmp == old_value) && failure([tmp_ptr] <- r_new_value));
+    // result = (tmp_value == expected || tmp == old_value);
+
+    vixl::aarch64::Label loop_head;
+    __ Bind(&loop_head);
+    __ Ldaxr(tmp, MemOperand(tmp_ptr));
+    assembler->MaybeUnpoisonHeapReference(tmp);
+    __ Cmp(tmp, expected);
+    __ Ccmp(tmp, old_value, ZFlag, ne);
+    __ B(GetExitLabel(), ne);  // If taken, Z=false indicates failure.
+    assembler->MaybePoisonHeapReference(value);
+    __ Stlxr(tmp.W(), value, MemOperand(tmp_ptr));
+    assembler->MaybeUnpoisonHeapReference(value);
+    __ Cbnz(tmp.W(), &loop_head);
+
+    // Z=true from the above CMP+CCMP indicates success.
+    __ B(GetExitLabel());
+  }
+};
+
 static void GenCas(HInvoke* invoke, DataType::Type type, CodeGeneratorARM64* codegen) {
-  MacroAssembler* masm = codegen->GetVIXLAssembler();
+  Arm64Assembler* assembler = codegen->GetAssembler();
+  MacroAssembler* masm = assembler->GetVIXLAssembler();
   LocationSummary* locations = invoke->GetLocations();
 
-  Location out_loc = locations->Out();
-  Register out = WRegisterFrom(out_loc);                           // Boolean result.
-
-  Register base = WRegisterFrom(locations->InAt(1));               // Object pointer.
-  Location offset_loc = locations->InAt(2);
-  Register offset = XRegisterFrom(offset_loc);                     // Long offset.
-  Register expected = RegisterFrom(locations->InAt(3), type);      // Expected.
-  Register value = RegisterFrom(locations->InAt(4), type);         // Value.
+  Register out = WRegisterFrom(locations->Out());                 // Boolean result.
+  Register base = WRegisterFrom(locations->InAt(1));              // Object pointer.
+  Register offset = XRegisterFrom(locations->InAt(2));            // Long offset.
+  Register expected = RegisterFrom(locations->InAt(3), type);     // Expected.
+  Register value = RegisterFrom(locations->InAt(4), type);        // Value.
 
   // This needs to be before the temp registers, as MarkGCCard also uses VIXL temps.
   if (type == DataType::Type::kReference) {
     // Mark card for object assuming new value is stored.
     bool value_can_be_null = true;  // TODO: Worth finding out this information?
     codegen->MarkGCCard(base, value, value_can_be_null);
-
-    // The only read barrier implementation supporting the
-    // UnsafeCASObject intrinsic is the Baker-style read barriers.
-    DCHECK(!kEmitCompilerReadBarrier || kUseBakerReadBarrier);
-
-    if (kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
-      Register temp = WRegisterFrom(locations->GetTemp(0));
-      // Need to make sure the reference stored in the field is a to-space
-      // one before attempting the CAS or the CAS could fail incorrectly.
-      codegen->UpdateReferenceFieldWithBakerReadBarrier(
-          invoke,
-          out_loc,  // Unused, used only as a "temporary" within the read barrier.
-          base,
-          /* field_offset */ offset_loc,
-          temp,
-          /* needs_null_check */ false,
-          /* use_load_acquire */ false);
-    }
   }
 
   UseScratchRegisterScope temps(masm);
   Register tmp_ptr = temps.AcquireX();                             // Pointer to actual memory.
-  Register tmp_value = temps.AcquireSameSizeAs(value);             // Value in memory.
+  Register old_value;                                              // Value in memory.
 
-  Register tmp_32 = tmp_value.W();
+  vixl::aarch64::Label exit_loop_label;
+  vixl::aarch64::Label* exit_loop = &exit_loop_label;
+  vixl::aarch64::Label* failure = &exit_loop_label;
+
+  if (kEmitCompilerReadBarrier && type == DataType::Type::kReference) {
+    // The only read barrier implementation supporting the
+    // UnsafeCASObject intrinsic is the Baker-style read barriers.
+    DCHECK(kUseBakerReadBarrier);
+
+    BakerReadBarrierCasSlowPathARM64* slow_path =
+        new (codegen->GetScopedAllocator()) BakerReadBarrierCasSlowPathARM64(invoke);
+    codegen->AddSlowPath(slow_path);
+    exit_loop = slow_path->GetExitLabel();
+    failure = slow_path->GetEntryLabel();
+    // We need to store the `old_value` in a non-scratch register to make sure
+    // the Baker read barrier in the slow path does not clobber it.
+    old_value = WRegisterFrom(locations->GetTemp(0));
+  } else {
+    old_value = temps.AcquireSameSizeAs(value);
+  }
 
   __ Add(tmp_ptr, base.X(), Operand(offset));
 
-  if (kPoisonHeapReferences && type == DataType::Type::kReference) {
-    codegen->GetAssembler()->PoisonHeapReference(expected);
-    if (value.Is(expected)) {
-      // Do not poison `value`, as it is the same register as
-      // `expected`, which has just been poisoned.
-    } else {
-      codegen->GetAssembler()->PoisonHeapReference(value);
-    }
-  }
-
   // do {
-  //   tmp_value = [tmp_ptr] - expected;
-  // } while (tmp_value == 0 && failure([tmp_ptr] <- r_new_value));
-  // result = tmp_value != 0;
+  //   tmp_value = [tmp_ptr];
+  // } while (tmp_value == expected && failure([tmp_ptr] <- r_new_value));
+  // result = tmp_value == expected;
 
-  vixl::aarch64::Label loop_head, exit_loop;
+  vixl::aarch64::Label loop_head;
   __ Bind(&loop_head);
-  __ Ldaxr(tmp_value, MemOperand(tmp_ptr));
-  __ Cmp(tmp_value, expected);
-  __ B(&exit_loop, ne);
-  __ Stlxr(tmp_32, value, MemOperand(tmp_ptr));
-  __ Cbnz(tmp_32, &loop_head);
-  __ Bind(&exit_loop);
-  __ Cset(out, eq);
-
-  if (kPoisonHeapReferences && type == DataType::Type::kReference) {
-    codegen->GetAssembler()->UnpoisonHeapReference(expected);
-    if (value.Is(expected)) {
-      // Do not unpoison `value`, as it is the same register as
-      // `expected`, which has just been unpoisoned.
-    } else {
-      codegen->GetAssembler()->UnpoisonHeapReference(value);
-    }
+  __ Ldaxr(old_value, MemOperand(tmp_ptr));
+  if (type == DataType::Type::kReference) {
+    assembler->MaybeUnpoisonHeapReference(old_value);
   }
+  __ Cmp(old_value, expected);
+  __ B(failure, ne);
+  if (type == DataType::Type::kReference) {
+    assembler->MaybePoisonHeapReference(value);
+  }
+  __ Stlxr(old_value.W(), value, MemOperand(tmp_ptr));  // Reuse `old_value` for STLXR result.
+  if (type == DataType::Type::kReference) {
+    assembler->MaybeUnpoisonHeapReference(value);
+  }
+  __ Cbnz(old_value.W(), &loop_head);
+  __ Bind(exit_loop);
+  __ Cset(out, eq);
 }
 
 void IntrinsicLocationsBuilderARM64::VisitUnsafeCASInt(HInvoke* invoke) {
