@@ -1868,12 +1868,27 @@ void CodeGeneratorMIPS::MarkGCCard(Register object,
   if (value_can_be_null) {
     __ Beqz(value, &done);
   }
+  // Load the address of the card table into `card`.
   __ LoadFromOffset(kLoadWord,
                     card,
                     TR,
                     Thread::CardTableOffset<kMipsPointerSize>().Int32Value());
+  // Calculate the address of the card corresponding to `object`.
   __ Srl(temp, object, gc::accounting::CardTable::kCardShift);
   __ Addu(temp, card, temp);
+  // Write the `art::gc::accounting::CardTable::kCardDirty` value into the
+  // `object`'s card.
+  //
+  // Register `card` contains the address of the card table. Note that the card
+  // table's base is biased during its creation so that it always starts at an
+  // address whose least-significant byte is equal to `kCardDirty` (see
+  // art::gc::accounting::CardTable::Create). Therefore the SB instruction
+  // below writes the `kCardDirty` (byte) value into the `object`'s card
+  // (located at `card + object >> kCardShift`).
+  //
+  // This dual use of the value in register `card` (1. to calculate the location
+  // of the card to mark; and 2. to load the `kCardDirty` value) saves a load
+  // (no need to explicitly load `kCardDirty` as an immediate value).
   __ Sb(card, temp, 0);
   if (value_can_be_null) {
     __ Bind(&done);
