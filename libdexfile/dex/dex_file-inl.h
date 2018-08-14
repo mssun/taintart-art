@@ -204,26 +204,6 @@ inline bool Signature::operator==(const Signature& rhs) const {
   return true;
 }
 
-inline
-InvokeType ClassDataItemIterator::GetMethodInvokeType(const DexFile::ClassDef& class_def) const {
-  if (HasNextDirectMethod()) {
-    if ((GetRawMemberAccessFlags() & kAccStatic) != 0) {
-      return kStatic;
-    } else {
-      return kDirect;
-    }
-  } else {
-    DCHECK_EQ(GetRawMemberAccessFlags() & kAccStatic, 0U);
-    if ((class_def.access_flags_ & kAccInterface) != 0) {
-      return kInterface;
-    } else if ((GetRawMemberAccessFlags() & kAccConstructor) != 0) {
-      return kSuper;
-    } else {
-      return kVirtual;
-    }
-  }
-}
-
 template<typename NewLocalCallback, typename IndexToStringData, typename TypeIndexToStringData>
 bool DexFile::DecodeDebugLocalInfo(const uint8_t* stream,
                                    const std::string& location,
@@ -516,18 +496,6 @@ inline const uint8_t* DexFile::GetCatchHandlerData(const DexInstructionIterator&
   const uint8_t* handler_data =
       reinterpret_cast<const uint8_t*>(GetTryItems(code_item_end, tries_size));
   return handler_data + offset;
-}
-
-template <typename Visitor>
-inline void DexFile::ClassDef::VisitMethods(const DexFile* dex_file, const Visitor& visitor) const {
-  const uint8_t* class_data = dex_file->GetClassData(*this);
-  if (class_data != nullptr) {
-    ClassDataItemIterator it(*dex_file, class_data);
-    it.SkipAllFields();
-    for (; it.HasNext(); it.Next()) {
-      visitor(it);
-    }
-  }
 }
 
 inline IterationRange<ClassIterator> DexFile::GetClasses() const {

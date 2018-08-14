@@ -31,6 +31,7 @@
 #include "base/enums.h"
 #include "base/leb128.h"
 #include "base/stl_util.h"
+#include "class_accessor-inl.h"
 #include "descriptors_names.h"
 #include "dex_file-inl.h"
 #include "standard_dex_file.h"
@@ -219,21 +220,12 @@ const DexFile::ClassDef* DexFile::FindClassDef(dex::TypeIndex type_idx) const {
 
 uint32_t DexFile::FindCodeItemOffset(const DexFile::ClassDef& class_def,
                                      uint32_t method_idx) const {
-  const uint8_t* class_data = GetClassData(class_def);
-  CHECK(class_data != nullptr);
-  ClassDataItemIterator it(*this, class_data);
-  it.SkipAllFields();
-  while (it.HasNextDirectMethod()) {
-    if (it.GetMemberIndex() == method_idx) {
-      return it.GetMethodCodeItemOffset();
+  ClassAccessor accessor(*this, class_def);
+  CHECK(accessor.HasClassData());
+  for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+    if (method.GetIndex() == method_idx) {
+      return method.GetCodeItemOffset();
     }
-    it.Next();
-  }
-  while (it.HasNextVirtualMethod()) {
-    if (it.GetMemberIndex() == method_idx) {
-      return it.GetMethodCodeItemOffset();
-    }
-    it.Next();
   }
   LOG(FATAL) << "Unable to find method " << method_idx;
   UNREACHABLE();
@@ -682,31 +674,6 @@ bool Signature::operator==(const StringPiece& rhs) const {
 
 std::ostream& operator<<(std::ostream& os, const Signature& sig) {
   return os << sig.ToString();
-}
-
-// Decodes the header section from the class data bytes.
-void ClassDataItemIterator::ReadClassDataHeader() {
-  CHECK(ptr_pos_ != nullptr);
-  header_.static_fields_size_ = DecodeUnsignedLeb128(&ptr_pos_);
-  header_.instance_fields_size_ = DecodeUnsignedLeb128(&ptr_pos_);
-  header_.direct_methods_size_ = DecodeUnsignedLeb128(&ptr_pos_);
-  header_.virtual_methods_size_ = DecodeUnsignedLeb128(&ptr_pos_);
-}
-
-void ClassDataItemIterator::ReadClassDataField() {
-  field_.field_idx_delta_ = DecodeUnsignedLeb128(&ptr_pos_);
-  field_.access_flags_ = DecodeUnsignedLeb128(&ptr_pos_);
-  // The user of the iterator is responsible for checking if there
-  // are unordered or duplicate indexes.
-}
-
-void ClassDataItemIterator::ReadClassDataMethod() {
-  method_.method_idx_delta_ = DecodeUnsignedLeb128(&ptr_pos_);
-  method_.access_flags_ = DecodeUnsignedLeb128(&ptr_pos_);
-  method_.code_off_ = DecodeUnsignedLeb128(&ptr_pos_);
-  if (last_idx_ != 0 && method_.method_idx_delta_ == 0) {
-    LOG(WARNING) << "Duplicate method in " << dex_file_.GetLocation();
-  }
 }
 
 EncodedArrayValueIterator::EncodedArrayValueIterator(const DexFile& dex_file,
