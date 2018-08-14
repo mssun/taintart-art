@@ -671,6 +671,9 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                uint32_t offset,
                                vixl::aarch64::Label* fixup_label,
                                ReadBarrierOption read_barrier_option);
+  // Generate MOV for the `old_value` in UnsafeCASObject and mark it with Baker read barrier.
+  void GenerateUnsafeCasOldValueMovWithBakerReadBarrier(vixl::aarch64::Register marked,
+                                                        vixl::aarch64::Register old_value);
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference field load when Baker's read barriers are used.
   // Overload suitable for Unsafe.getObject/-Volatile() intrinsic.
@@ -697,36 +700,6 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                              Location index,
                                              vixl::aarch64::Register temp,
                                              bool needs_null_check);
-
-  // Generate code checking whether the the reference field at the
-  // address `obj + field_offset`, held by object `obj`, needs to be
-  // marked, and if so, marking it and updating the field within `obj`
-  // with the marked value.
-  //
-  // This routine is used for the implementation of the
-  // UnsafeCASObject intrinsic with Baker read barriers.
-  //
-  // This method has a structure similar to
-  // GenerateReferenceLoadWithBakerReadBarrier, but note that argument
-  // `ref` is only as a temporary here, and thus its value should not
-  // be used afterwards.
-  void UpdateReferenceFieldWithBakerReadBarrier(HInstruction* instruction,
-                                                Location ref,
-                                                vixl::aarch64::Register obj,
-                                                Location field_offset,
-                                                vixl::aarch64::Register temp,
-                                                bool needs_null_check,
-                                                bool use_load_acquire);
-
-  // Generate a heap reference load (with no read barrier).
-  void GenerateRawReferenceLoad(HInstruction* instruction,
-                                Location ref,
-                                vixl::aarch64::Register obj,
-                                uint32_t offset,
-                                Location index,
-                                size_t scale_factor,
-                                bool needs_null_check,
-                                bool use_load_acquire);
 
   // Emit code checking the status of the Marking Register, and
   // aborting the program if MR does not match the value stored in the
