@@ -42,15 +42,14 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
     # that started this process.
     for_all_chroot_process() {
       local action=$1
-      for link in $(adb shell ls -d "/proc/*/root"); do
-        local root=$(adb shell readlink "$link")
-        if [[ "x$root" = "x$ART_TEST_CHROOT" ]]; then
-          local dir=$(dirname "$link")
-          local pid=$(basename "$dir")
-          local cmdline=$(adb shell cat "$dir"/cmdline | tr '\000' ' ')
-          $action "$pid" "$cmdline"
-        fi
-      done
+      adb shell ls -ld "/proc/*/root" \
+        | sed -n -e "s,^.* \\(/proc/.*/root\\) -> $ART_TEST_CHROOT\$,\\1,p" \
+        | while read link; do
+            local dir=$(dirname "$link")
+            local pid=$(basename "$dir")
+            local cmdline=$(adb shell cat "$dir"/cmdline | tr '\000' ' ')
+            $action "$pid" "$cmdline"
+          done
     }
 
     # display_process PID CMDLINE
