@@ -40,6 +40,8 @@
 #include "dex/dex_file_annotations.h"
 #include "dex/modifiers.h"
 #include "events-inl.h"
+#include "gc/heap.h"
+#include "gc/scoped_gc_critical_section.h"
 #include "jit/jit.h"
 #include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
@@ -266,29 +268,35 @@ void DeoptManager::WaitForDeoptimizationToFinish(art::Thread* self) {
   deoptimization_status_lock_.ExclusiveUnlock(self);
 }
 
+// Users should make sure that only gc-critical-section safe code is used while a
+// ScopedDeoptimizationContext exists.
 class ScopedDeoptimizationContext : public art::ValueObject {
  public:
   ScopedDeoptimizationContext(art::Thread* self, DeoptManager* deopt)
       RELEASE(deopt->deoptimization_status_lock_)
       ACQUIRE(art::Locks::mutator_lock_)
       ACQUIRE(art::Roles::uninterruptible_)
-      : self_(self), deopt_(deopt), uninterruptible_cause_(nullptr) {
+      : self_(self),
+        deopt_(deopt),
+        critical_section_(self_, "JVMTI Deoptimizing methods"),
+        uninterruptible_cause_(nullptr) {
     deopt_->WaitForDeoptimizationToFinishLocked(self_);
     DCHECK(!deopt->performing_deoptimization_)
         << "Already performing deoptimization on another thread!";
     // Use performing_deoptimization_ to keep track of the lock.
     deopt_->performing_deoptimization_ = true;
     deopt_->deoptimization_status_lock_.Unlock(self_);
+    uninterruptible_cause_ = critical_section_.Enter(art::gc::kGcCauseInstrumentation,
+                                                     art::gc::kCollectorTypeCriticalSection);
     art::Runtime::Current()->GetThreadList()->SuspendAll("JMVTI Deoptimizing methods",
                                                          /*long_suspend*/ false);
-    uninterruptible_cause_ = self_->StartAssertNoThreadSuspension("JVMTI deoptimizing methods");
   }
 
   ~ScopedDeoptimizationContext()
       RELEASE(art::Locks::mutator_lock_)
       RELEASE(art::Roles::uninterruptible_) {
     // Can be suspended again.
-    self_->EndAssertNoThreadSuspension(uninterruptible_cause_);
+    critical_section_.Exit(uninterruptible_cause_);
     // Release the mutator lock.
     art::Runtime::Current()->GetThreadList()->ResumeAll();
     // Let other threads know it's fine to proceed.
@@ -300,6 +308,7 @@ class ScopedDeoptimizationContext : public art::ValueObject {
  private:
   art::Thread* self_;
   DeoptManager* deopt_;
+  art::gc::GCCriticalSection critical_section_;
   const char* uninterruptible_cause_;
 };
 

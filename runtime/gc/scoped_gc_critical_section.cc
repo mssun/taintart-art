@@ -24,20 +24,38 @@
 namespace art {
 namespace gc {
 
+const char* GCCriticalSection::Enter(GcCause cause, CollectorType type) {
+  Runtime::Current()->GetHeap()->StartGC(self_, cause, type);
+  if (self_ != nullptr) {
+    return self_->StartAssertNoThreadSuspension(section_name_);
+  } else {
+    // Workaround to avoid having to mark the whole function as NO_THREAD_SAFETY_ANALYSIS.
+    auto kludge = []() ACQUIRE(Roles::uninterruptible_) NO_THREAD_SAFETY_ANALYSIS {};
+    kludge();
+    return nullptr;
+  }
+}
+
+void GCCriticalSection::Exit(const char* old_cause) {
+  if (self_ != nullptr) {
+    self_->EndAssertNoThreadSuspension(old_cause);
+  } else {
+    // Workaround to avoid having to mark the whole function as NO_THREAD_SAFETY_ANALYSIS.
+    auto kludge = []() RELEASE(Roles::uninterruptible_) NO_THREAD_SAFETY_ANALYSIS {};
+    kludge();
+  }
+  Runtime::Current()->GetHeap()->FinishGC(self_, collector::kGcTypeNone);
+}
+
 ScopedGCCriticalSection::ScopedGCCriticalSection(Thread* self,
                                                  GcCause cause,
                                                  CollectorType collector_type)
-    : self_(self) {
-  Runtime::Current()->GetHeap()->StartGC(self, cause, collector_type);
-  if (self != nullptr) {
-    old_cause_ = self->StartAssertNoThreadSuspension("ScopedGCCriticalSection");
-  }
+    : critical_section_(self, "ScopedGCCriticalSection") {
+  old_no_suspend_reason_ = critical_section_.Enter(cause, collector_type);
 }
+
 ScopedGCCriticalSection::~ScopedGCCriticalSection() {
-  if (self_ != nullptr) {
-    self_->EndAssertNoThreadSuspension(old_cause_);
-  }
-  Runtime::Current()->GetHeap()->FinishGC(self_, collector::kGcTypeNone);
+  critical_section_.Exit(old_no_suspend_reason_);
 }
 
 }  // namespace gc
