@@ -1070,7 +1070,7 @@ public class Main {
   /// CHECK-DAG:     <<Phi1:i\d+>>     Phi [<<Const0>>,<<Const1>>]
   /// CHECK-DAG:     <<Cond:z\d+>>     Equal [<<Phi1>>,<<Const2>>]
   /// CHECK-DAG:                       If [<<Cond>>]
-  /// CHECK-DAG:     <<Phi2:i\d+>>     Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:     <<Phi2:i\d+>>     Phi [<<Const0>>,<<Const1>>]
   /// CHECK-DAG:                       Return [<<Phi2>>]
 
   /// CHECK-START: boolean Main.$noinline$EqualBoolVsIntConst(boolean) dead_code_elimination$after_inlining (after)
@@ -1096,7 +1096,7 @@ public class Main {
   /// CHECK-DAG:     <<Phi1:i\d+>>     Phi [<<Const0>>,<<Const1>>]
   /// CHECK-DAG:     <<Cond:z\d+>>     NotEqual [<<Phi1>>,<<Const2>>]
   /// CHECK-DAG:                       If [<<Cond>>]
-  /// CHECK-DAG:     <<Phi2:i\d+>>     Phi [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:     <<Phi2:i\d+>>     Phi [<<Const0>>,<<Const1>>]
   /// CHECK-DAG:                       Return [<<Phi2>>]
 
   /// CHECK-START: boolean Main.$noinline$NotEqualBoolVsIntConst(boolean) dead_code_elimination$after_inlining (after)
