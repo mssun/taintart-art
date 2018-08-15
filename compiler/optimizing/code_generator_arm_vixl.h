@@ -622,6 +622,11 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                                vixl::aarch32::Register obj,
                                uint32_t offset,
                                ReadBarrierOption read_barrier_option);
+  // Generate ADD for UnsafeCASObject to reconstruct the old value from
+  // `old_value - expected` and mark it with Baker read barrier.
+  void GenerateUnsafeCasOldValueAddWithBakerReadBarrier(vixl::aarch32::Register old_value,
+                                                        vixl::aarch32::Register adjusted_old_value,
+                                                        vixl::aarch32::Register expected);
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference field load when Baker's read barriers are used.
   // Overload suitable for Unsafe.getObject/-Volatile() intrinsic.
@@ -646,35 +651,6 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                                              Location index,
                                              Location temp,
                                              bool needs_null_check);
-
-  // Generate code checking whether the the reference field at the
-  // address `obj + field_offset`, held by object `obj`, needs to be
-  // marked, and if so, marking it and updating the field within `obj`
-  // with the marked value.
-  //
-  // This routine is used for the implementation of the
-  // UnsafeCASObject intrinsic with Baker read barriers.
-  //
-  // This method has a structure similar to
-  // GenerateReferenceLoadWithBakerReadBarrier, but note that argument
-  // `ref` is only as a temporary here, and thus its value should not
-  // be used afterwards.
-  void UpdateReferenceFieldWithBakerReadBarrier(HInstruction* instruction,
-                                                Location ref,
-                                                vixl::aarch32::Register obj,
-                                                Location field_offset,
-                                                Location temp,
-                                                bool needs_null_check,
-                                                vixl::aarch32::Register temp2);
-
-  // Generate a heap reference load (with no read barrier).
-  void GenerateRawReferenceLoad(HInstruction* instruction,
-                                Location ref,
-                                vixl::aarch32::Register obj,
-                                uint32_t offset,
-                                Location index,
-                                ScaleFactor scale_factor,
-                                bool needs_null_check);
 
   // Emit code checking the status of the Marking Register, and
   // aborting the program if MR does not match the value stored in the
@@ -772,10 +748,11 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   // Encoding of thunk type and data for link-time generated thunks for Baker read barriers.
 
   enum class BakerReadBarrierKind : uint8_t {
-    kField,   // Field get or array get with constant offset (i.e. constant index).
-    kArray,   // Array get with index in register.
-    kGcRoot,  // GC root load.
-    kLast = kGcRoot
+    kField,       // Field get or array get with constant offset (i.e. constant index).
+    kArray,       // Array get with index in register.
+    kGcRoot,      // GC root load.
+    kUnsafeCas,   // UnsafeCASObject intrinsic.
+    kLast = kUnsafeCas
   };
 
   enum class BakerReadBarrierWidth : uint8_t {
@@ -840,6 +817,14 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
            BakerReadBarrierFirstRegField::Encode(root_reg) |
            BakerReadBarrierSecondRegField::Encode(kBakerReadBarrierInvalidEncodedReg) |
            BakerReadBarrierWidthField::Encode(width);
+  }
+
+  static uint32_t EncodeBakerReadBarrierUnsafeCasData(uint32_t root_reg) {
+    CheckValidReg(root_reg);
+    return BakerReadBarrierKindField::Encode(BakerReadBarrierKind::kUnsafeCas) |
+           BakerReadBarrierFirstRegField::Encode(root_reg) |
+           BakerReadBarrierSecondRegField::Encode(kBakerReadBarrierInvalidEncodedReg) |
+           BakerReadBarrierWidthField::Encode(BakerReadBarrierWidth::kWide);
   }
 
   void CompileBakerReadBarrierThunk(ArmVIXLAssembler& assembler,
