@@ -119,7 +119,9 @@ public class AnnotationVisitor extends EmptyVisitor {
         for (AnnotationEntry a : member.getAnnotationEntries()) {
             if (mAnnotationType.equals(a.getAnnotationType())) {
                 mStatus.debug("Member has annotation %s", mAnnotationType);
-                boolean bridge = (member.getAccessFlags() & Const.ACC_BRIDGE) != 0;
+                // For fields, the same access flag means volatile, so only check for methods.
+                boolean bridge = (member instanceof Method)
+                        && (member.getAccessFlags() & Const.ACC_BRIDGE) != 0;
                 if (bridge) {
                     mStatus.debug("Member is a bridge", mAnnotationType);
                 }

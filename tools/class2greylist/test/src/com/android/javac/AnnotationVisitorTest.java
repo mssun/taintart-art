@@ -361,4 +361,40 @@ public class AnnotationVisitorTest {
         verify(mStatus, times(1)).greylistEntry(greylist.capture());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;->method(Ljava/lang/String;)V");
     }
+
+    @Test
+    public void testVolatileField() throws IOException {
+        mJavac.addSource("a.b.Class", Joiner.on('\n').join(
+                "package a.b;",
+                "import annotation.Anno;",
+                "public class Class {",
+                "  @Anno(expectedSignature=\"La/b/Class;->field:I\")",
+                "  public volatile int field;",
+                "}"));
+        assertThat(mJavac.compile()).isTrue();
+
+        new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), ANNOTATION,
+                member -> !member.bridge, // exclude bridge methods
+                mStatus).visit();
+        assertNoErrors();
+        ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
+        verify(mStatus, times(1)).greylistEntry(greylist.capture());
+        assertThat(greylist.getValue()).isEqualTo("La/b/Class;->field:I");
+    }
+
+    @Test
+    public void testVolatileFieldWrongSignature() throws IOException {
+        mJavac.addSource("a.b.Class", Joiner.on('\n').join(
+                "package a.b;",
+                "import annotation.Anno;",
+                "public class Class {",
+                "  @Anno(expectedSignature=\"La/b/Class;->wrong:I\")",
+                "  public volatile int field;",
+                "}"));
+        assertThat(mJavac.compile()).isTrue();
+
+        new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), ANNOTATION,
+                x -> true, mStatus).visit();
+        verify(mStatus, times(1)).error(any(String.class));
+    }
 }
