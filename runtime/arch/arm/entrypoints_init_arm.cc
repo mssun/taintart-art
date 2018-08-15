@@ -59,6 +59,7 @@ extern "C" mirror::Object* art_quick_read_barrier_mark_introspection_arrays(mirr
 extern "C" mirror::Object* art_quick_read_barrier_mark_introspection_gc_roots_wide(mirror::Object*);
 extern "C" mirror::Object* art_quick_read_barrier_mark_introspection_gc_roots_narrow(
     mirror::Object*);
+extern "C" mirror::Object* art_quick_read_barrier_mark_introspection_unsafe_cas(mirror::Object*);
 
 // Used by soft float.
 // Single-precision FP arithmetics.
@@ -113,6 +114,10 @@ void UpdateReadBarrierEntrypoints(QuickEntryPoints* qpoints, bool is_active) {
         reinterpret_cast<intptr_t>(art_quick_read_barrier_mark_introspection_gc_roots_narrow) -
         reinterpret_cast<intptr_t>(art_quick_read_barrier_mark_introspection);
     DCHECK_EQ(BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_NARROW_ENTRYPOINT_OFFSET, gc_roots_narrow_diff);
+    intptr_t unsafe_cas_diff =
+        reinterpret_cast<intptr_t>(art_quick_read_barrier_mark_introspection_unsafe_cas) -
+        reinterpret_cast<intptr_t>(art_quick_read_barrier_mark_introspection);
+    DCHECK_EQ(BAKER_MARK_INTROSPECTION_UNSAFE_CAS_ENTRYPOINT_OFFSET, unsafe_cas_diff);
     // The register 12, i.e. IP, is reserved, so there is no art_quick_read_barrier_mark_reg12.
     // We're using the entry to hold a pointer to the introspection entrypoint instead.
     qpoints->pReadBarrierMarkReg12 =

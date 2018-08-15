@@ -2575,6 +2575,12 @@ art_quick_read_barrier_mark_introspection_gc_roots\label_suffix:
      * The thunk also performs all the fast-path checks, so we need just the
      * slow path.
      *
+     * The UnsafeCASObject intrinsic is similar to the GC roots wide approach
+     * but using ADD (register, T3) instead of the LDR (immediate, T3), so the
+     * destination register is in bits 8-11 rather than 12-15. Therefore it has
+     * its own entrypoint, art_quick_read_barrier_mark_introspection_unsafe_cas
+     * at the offset BAKER_MARK_INTROSPECTION_UNSAFE_CAS_ENTRYPOINT_OFFSET.
+     *
      * The code structure is
      *   art_quick_read_barrier_mark_introspection:                   // @0x00
      *     Up to 32 bytes code for main entrypoint fast-path code for fields
@@ -2610,6 +2616,9 @@ art_quick_read_barrier_mark_introspection_gc_roots\label_suffix:
      *     return switch.
      *   art_quick_read_barrier_mark_introspection_arrays:            // @0x100
      *     Exactly 128 bytes for array load switch cases (16x2 instructions).
+     *   art_quick_read_barrier_mark_introspection_unsafe_cas:        // @0x180
+     *     UnsafeCASObject intrinsic entrypoint for ADD (register) encoding T3
+     *     (6 bytes). Loads the return register and jumps to the runtime call.
      */
 #if defined(USE_READ_BARRIER) && defined(USE_BAKER_READ_BARRIER)
     .balign 512
@@ -2669,7 +2678,6 @@ art_quick_read_barrier_mark_introspection_narrow:
     BRBMI_RUNTIME_CALL
     b       .Lmark_introspection_return_switch
 
-
     .balign 256
     .thumb_func
     .type art_quick_read_barrier_mark_introspection_arrays, #function
@@ -2677,6 +2685,19 @@ art_quick_read_barrier_mark_introspection_narrow:
     .global art_quick_read_barrier_mark_introspection_arrays
 art_quick_read_barrier_mark_introspection_arrays:
     BRBMI_FOR_REGISTERS BRBMI_ARRAY_LOAD, BRBMI_BKPT_FILL_8B
+
+    .balign 8
+    .thumb_func
+    .type art_quick_read_barrier_mark_introspection_unsafe_cas, #function
+    .hidden art_quick_read_barrier_mark_introspection_unsafe_cas
+    .global art_quick_read_barrier_mark_introspection_unsafe_cas
+art_quick_read_barrier_mark_introspection_unsafe_cas:
+    // Load the byte of the ADD instruction that contains Rd. Adjust for the thumb state in LR.
+    // The ADD (register, T3) is |11101011000|S|Rn|(0)imm3|Rd|imm2|type|Rm| and we're using
+    // no shift (type=0, imm2=0, imm3=0), so the byte we read here, i.e. |(0)imm3|Rd|,
+    // contains only the register number, the top 4 bits are 0.
+    ldrb    rMR, [lr, #(-1 + BAKER_MARK_INTROSPECTION_UNSAFE_CAS_ADD_OFFSET + 3)]
+    b .Lmark_introspection_runtime_call
 END art_quick_read_barrier_mark_introspection
 #else  // defined(USE_READ_BARRIER) && defined(USE_BAKER_READ_BARRIER)
 ENTRY art_quick_read_barrier_mark_introspection
