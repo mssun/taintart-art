@@ -19,21 +19,112 @@ import sun.misc.Unsafe;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+        testFieldReads();
+        testArrayReadsWithConstIndex();
+        testArrayReadsWithNonConstIndex();
+        testGcRoots();
+        testUnsafeGet();
+        testUnsafeCas();
+        testUnsafeCasRegression();
+    }
+
+    public static void testFieldReads() {
         // Initialize local variables for comparison.
         Object f0000 = manyFields.testField0000;
         Object f1024 = manyFields.testField1024;
         Object f4444 = manyFields.testField4444;
         Object f4999 = manyFields.testField4999;
+
+        // Continually check reads from `manyFields` while allocating
+        // over 64MiB memory (with heap size limited to 16MiB), ensuring we run GC and
+        // stress the read barrier implementation if concurrent collector is enabled.
+        for (int i = 0; i != 64 * 1024; ++i) {
+            allocateAtLeast1KiB();
+            ManyFields mf = manyFields;  // Load the volatile `manyFields` once on each iteration.
+            // Test reference field access.
+            assertSameObject(f0000, mf.testField0000);
+            assertDifferentObject(f0000, mf.testField0001);
+            assertSameObject(f1024, mf.testField1024);
+            assertSameObject(f4444, mf.testField4444);
+            assertDifferentObject(f4999, mf.testField4998);
+            assertSameObject(f4999, mf.testField4999);
+        }
+    }
+
+    public static void testArrayReadsWithConstIndex() {
+        // Initialize local variables for comparison.
+        Object f0000 = new Integer(0);
+        Object f1024 = new Integer(1024);
+        Object f4444 = new Integer(4444);
+        Object f4999 = new Integer(4999);
         // Initialize largeArray for comparison.
         largeArray[0] = f0000;
+        Object tmp = new Integer(1);
+        largeArray[1] = tmp;
         largeArray[1024] = f1024;
         largeArray[4444] = f4444;
+        tmp = new Integer(4998);
+        largeArray[4998] = tmp;
         largeArray[4999] = f4999;
+        tmp = null;  // Do not keep a reference to objects in largeArray[1] or largeArray[4998].
+
+        // Continually check reads from `largeArray` with constant indexes while allocating
+        // over 64MiB memory (with heap size limited to 16MiB), ensuring we run GC and
+        // stress the read barrier implementation if concurrent collector is enabled.
+        for (int i = 0; i != 64 * 1024; ++i) {
+            allocateAtLeast1KiB();
+            Object[] la = largeArray;    // Load the volatile `largeArray` once on each iteration.
+            // Test array access with constant index.
+            assertSameObject(f0000, la[0]);
+            assertDifferentObject(f0000, la[1]);
+            assertSameObject(f1024, la[1024]);
+            assertSameObject(f4444, la[4444]);
+            assertDifferentObject(f4999, la[4998]);
+            assertSameObject(f4999, la[4999]);
+        }
+    }
+
+    public static void testArrayReadsWithNonConstIndex() {
+        // Initialize local variables for comparison.
+        Object f0000 = new Integer(0);
+        Object f1024 = new Integer(1024);
+        Object f4444 = new Integer(4444);
+        Object f4999 = new Integer(4999);
+        // Initialize largeArray for comparison.
+        largeArray[0] = f0000;
+        Object tmp = new Integer(1);
+        largeArray[1] = tmp;
+        largeArray[1024] = f1024;
+        largeArray[4444] = f4444;
+        tmp = new Integer(4998);
+        largeArray[4998] = tmp;
+        largeArray[4999] = f4999;
+        tmp = null;  // Do not keep a reference to objects in largeArray[1] or largeArray[4998].
         // Read indexes, they cannot be considered constant because the variables are volatile.
         int i0 = index0;
+        int i1 = index1;
         int i1024 = index1024;
         int i4444 = index4444;
+        int i4998 = index4998;
         int i4999 = index4999;
+
+        // Continually check reads from `largeArray` with non-constant indexes while allocating
+        // over 64MiB memory (with heap size limited to 16MiB), ensuring we run GC and
+        // stress the read barrier implementation if concurrent collector is enabled.
+        for (int i = 0; i != 64 * 1024; ++i) {
+            allocateAtLeast1KiB();
+            Object[] la = largeArray;    // Load the volatile `largeArray` once on each iteration.
+            // Test array access with non-constant index.
+            assertSameObject(f0000, la[i0]);
+            assertDifferentObject(f0000, la[i1]);
+            assertSameObject(f1024, la[i1024]);
+            assertSameObject(f4444, la[i4444]);
+            assertDifferentObject(f4999, la[i4998]);
+            assertSameObject(f4999, la[i4999]);
+        }
+    }
+
+    public static void testGcRoots() {
         // Initialize strings, hide this under a condition based on a volatile field.
         String testString0 = null;
         String testString1 = null;
@@ -47,39 +138,12 @@ public class Main {
             testString2 = "testString2";
             testString3 = "testString3";
         }
-        // Initialize Unsafe.
-        Unsafe unsafe = getUnsafe();
-        long f0000Offset =
-            unsafe.objectFieldOffset(ManyFields.class.getField("testField0000"));
-        long f1024Offset =
-            unsafe.objectFieldOffset(ManyFields.class.getField("testField1024"));
-        long f4444Offset =
-            unsafe.objectFieldOffset(ManyFields.class.getField("testField4444"));
-        long f4999Offset =
-            unsafe.objectFieldOffset(ManyFields.class.getField("testField4999"));
 
         // Continually check reads from `manyFields` and `largeArray` while allocating
         // over 64MiB memory (with heap size limited to 16MiB), ensuring we run GC and
         // stress the read barrier implementation if concurrent collector is enabled.
         for (int i = 0; i != 64 * 1024; ++i) {
             allocateAtLeast1KiB();
-            ManyFields mf = manyFields;  // Load the volatile `manyFields` once on each iteration.
-            Object[] la = largeArray;    // Load the volatile `largeArray` once on each iteration.
-            // Test reference field access.
-            assertSameObject(f0000, mf.testField0000);
-            assertSameObject(f1024, mf.testField1024);
-            assertSameObject(f4444, mf.testField4444);
-            assertSameObject(f4999, mf.testField4999);
-            // Test array access with constant index.
-            assertSameObject(f0000, la[0]);
-            assertSameObject(f1024, la[1024]);
-            assertSameObject(f4444, la[4444]);
-            assertSameObject(f4999, la[4999]);
-            // Test array access with non-constant index.
-            assertSameObject(f0000, la[i0]);
-            assertSameObject(f1024, la[i1024]);
-            assertSameObject(f4444, la[i4444]);
-            assertSameObject(f4999, la[i4999]);
             // Test GC roots.
             if (index0 != 12345678) {
               assertSameObject(testString0, "testString0");
@@ -88,24 +152,129 @@ public class Main {
               assertSameObject(testString3, "testString3");
             }
             // TODO: Stress GC roots (const-class, kBssEntry/kReferrersClass).
+        }
+    }
+
+    public static void testUnsafeGet() throws Exception {
+        // Initialize local variables for comparison.
+        Object f0000 = manyFields.testField0000;
+        Object f1024 = manyFields.testField1024;
+        Object f4444 = manyFields.testField4444;
+        Object f4999 = manyFields.testField4999;
+        // Initialize Unsafe.
+        Unsafe unsafe = getUnsafe();
+        long f0000Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField0000"));
+        long f0001Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField0001"));
+        long f1024Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField1024"));
+        long f4444Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField4444"));
+        long f4998Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField4998"));
+        long f4999Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField4999"));
+
+        // Continually check unsafe.GetObject() while allocating
+        // over 64MiB memory (with heap size limited to 16MiB), ensuring we run GC and
+        // stress the read barrier implementation if concurrent collector is enabled.
+        for (int i = 0; i != 64 * 1024; ++i) {
+            allocateAtLeast1KiB();
+            ManyFields mf = manyFields;  // Load the volatile `manyFields` once on each iteration.
             // Test Unsafe.getObject().
             assertSameObject(f0000, unsafe.getObject(mf, f0000Offset));
+            assertDifferentObject(f0000, unsafe.getObject(mf, f0001Offset));
             assertSameObject(f1024, unsafe.getObject(mf, f1024Offset));
             assertSameObject(f4444, unsafe.getObject(mf, f4444Offset));
+            assertDifferentObject(f4999, unsafe.getObject(mf, f4998Offset));
             assertSameObject(f4999, unsafe.getObject(mf, f4999Offset));
+        }
+    }
+
+    public static void testUnsafeCas() throws Exception {
+        // Initialize local variables for comparison.
+        Object f0000 = manyFields.testField0000;
+        Object f1024 = manyFields.testField1024;
+        Object f4444 = manyFields.testField4444;
+        Object f4999 = manyFields.testField4999;
+        // Initialize Unsafe.
+        Unsafe unsafe = getUnsafe();
+        long f0000Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField0000"));
+        long f0001Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField0001"));
+        long f1024Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField1024"));
+        long f4444Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField4444"));
+        long f4998Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField4998"));
+        long f4999Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField4999"));
+
+        // Continually check Unsafe.compareAndSwapObject() while allocating
+        // over 64MiB memory (with heap size limited to 16MiB), ensuring we run GC and
+        // stress the read barrier implementation if concurrent collector is enabled.
+        for (int i = 0; i != 64 * 1024; ++i) {
+            allocateAtLeast1KiB();
+            ManyFields mf = manyFields;  // Load the volatile `manyFields` once on each iteration.
             // Test Unsafe.compareAndSwapObject().
-            assertEqual(false, unsafe.compareAndSwapObject(mf, f4444Offset, f1024, f4444));
+            assertEqual(false, unsafe.compareAndSwapObject(mf, f0000Offset, f1024, f4444));
+            assertEqual(false, unsafe.compareAndSwapObject(mf, f0001Offset, f1024, f4444));
             assertEqual(true, unsafe.compareAndSwapObject(mf, f1024Offset, f1024, f4444));
             assertEqual(true, unsafe.compareAndSwapObject(mf, f1024Offset, f4444, f1024));
             assertEqual(false, unsafe.compareAndSwapObject(mf, f1024Offset, f4444, f1024));
+            assertEqual(false, unsafe.compareAndSwapObject(mf, f4444Offset, f1024, f4444));
+            assertEqual(false, unsafe.compareAndSwapObject(mf, f4998Offset, f1024, f4444));
+            assertEqual(false, unsafe.compareAndSwapObject(mf, f4999Offset, f1024, f4444));
+        }
+    }
+
+    public static void testUnsafeCasRegression() throws Exception {
+        // Initialize local variables for comparison.
+        Object f0000 = manyFields.testField0000;
+        // Initialize Unsafe.
+        Unsafe unsafe = getUnsafe();
+        long f0001Offset =
+            unsafe.objectFieldOffset(ManyFields.class.getField("testField0001"));
+
+        // Continually check Unsafe.compareAndSwapObject() while allocating
+        // over 64MiB memory (with heap size limited to 16MiB), ensuring we run GC and
+        // stress the read barrier implementation if concurrent collector is enabled.
+        for (int i = 0; i != 64 * 1024; ++i) {
+            allocateAtLeast1KiB();
+            ManyFields mf = manyFields;  // Load the volatile `manyFields` once on each iteration.
+
+            // With https://android-review.googlesource.com/729224 , the intrinsic could
+            // erroneously clobber r0 on ARM for Baker read barriers because the introspection
+            // entrypoint would read the destination register from bits 12-15 of the instruction
+            // ADD (register, T3) with no shift, assuming to see LDR (immediate, T3), getting
+            // the output register number as 0 instead of the actual destination in bits 8-11.
+            // As a regression test, call a $noinline$ method which returns the result in r0,
+            // do the UnsafeCasObject and check the result of the $noinline$ call (register
+            // allocator should leave the result in r0, clobbered by the broken intrinsic).
+            int x = $noinline$foo();
+            unsafe.compareAndSwapObject(mf, f0001Offset, f0000, null);  // Ignore the result.
+            if (x != 42) {
+              throw new Error();
+            }
+        }
+    }
+
+    public static int $noinline$foo() { return 42; }
+
+    public static void assertDifferentObject(Object lhs, Object rhs) {
+        if (lhs == rhs) {
+            throw new Error("Same objects: " + lhs + " and " + rhs);
         }
     }
 
     public static void assertSameObject(Object lhs, Object rhs) {
-        if (lhs != rhs) {
-            throw new Error("Different objects: " + lhs + " and " + rhs);
-        }
-    }
+      if (lhs != rhs) {
+          throw new Error("Different objects: " + lhs + " and " + rhs);
+      }
+  }
 
     public static void assertEqual(boolean expected, boolean actual) {
       if (expected != actual) {
@@ -133,8 +302,10 @@ public class Main {
     public static volatile ManyFields manyFields = new ManyFields();
     public static volatile Object[] largeArray = new Object[5000];
     public static volatile int index0 = 0;
+    public static volatile int index1 = 1;
     public static volatile int index1024 = 1024;
     public static volatile int index4444 = 4444;
+    public static volatile int index4998 = 4998;
     public static volatile int index4999 = 4999;
 
     // We shall retain some allocated memory and release old allocations
