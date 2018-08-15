@@ -367,7 +367,7 @@ void ConcurrentCopying::InitializePhase() {
     }
   }
   if (kEnableGenerationalConcurrentCopyingCollection) {
-    done_scanning_.store(false, std::memory_order_relaxed);
+    done_scanning_.store(false, std::memory_order_release);
   }
   BindBitmaps();
   if (kVerboseMode) {
@@ -878,7 +878,7 @@ void ConcurrentCopying::MarkingPhase() {
     }
     TimingLogger::ScopedTiming split2("ScanCardsForSpace", GetTimings());
     WriterMutexLock rmu(Thread::Current(), *Locks::heap_bitmap_lock_);
-    CHECK_EQ(done_scanning_.load(std::memory_order_relaxed), false);
+    CHECK(!done_scanning_.load(std::memory_order_relaxed));
     if (kIsDebugBuild) {
       // Leave some time for mutators to race ahead to try and find races between the GC card
       // scanning and mutators reading references.
@@ -912,7 +912,7 @@ void ConcurrentCopying::MarkingPhase() {
           accounting::CardTable::kCardDirty - 1);
     }
     // Done scanning unevac space.
-    done_scanning_.store(true, std::memory_order_seq_cst);
+    done_scanning_.store(true, std::memory_order_release);
     if (kVerboseMode) {
       LOG(INFO) << "GC end of ScanCardsForSpace";
     }
@@ -2893,7 +2893,7 @@ mirror::Object* ConcurrentCopying::MarkNonMoving(Thread* const self,
     // The sticky-bit CC collector is only compatible with Baker-style read barriers.
     DCHECK(kUseBakerReadBarrier);
     // Not done scanning, use AtomicSetReadBarrierPointer.
-    if (!done_scanning_) {
+    if (!done_scanning_.load(std::memory_order_acquire)) {
       // Since the mark bitmap is still filled in from last GC, we can not use that or else the
       // mutator may see references to the from space. Instead, use the Baker pointer itself as
       // the mark bit.
