@@ -64,7 +64,6 @@ class NewRegisterInstructions : public Experiment {
                        bool count_types,
                        std::map<size_t, TypeLinkage>& types);
   void Add(Instruction::Code opcode, const Instruction& inst);
-  bool InstNibblesAndIndex(uint8_t opcode, uint16_t idx, const std::vector<uint32_t>& args);
   bool InstNibbles(uint8_t opcode, const std::vector<uint32_t>& args);
   void ExtendPrefix(uint32_t* value1, uint32_t* value2);
   bool Enabled(BytecodeExperiment experiment) const {
