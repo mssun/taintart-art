@@ -37,6 +37,9 @@
 // The offset from art_quick_read_barrier_mark_introspection to the array switch cases,
 // i.e. art_quick_read_barrier_mark_introspection_arrays.
 #define BAKER_MARK_INTROSPECTION_ARRAY_SWITCH_OFFSET 0x100
+// The offset from art_quick_read_barrier_mark_introspection to the entrypoint for the
+// UnsafeCASObject intrinsic, i.e. art_quick_read_barrier_mark_introspection_unsafe_cas.
+#define BAKER_MARK_INTROSPECTION_UNSAFE_CAS_ENTRYPOINT_OFFSET 0x180
 
 // The offset of the reference load LDR from the return address in LR for field loads.
 #ifdef USE_HEAP_POISONING
@@ -55,5 +58,7 @@
 // The offset of the reference load LDR from the return address in LR for GC root loads.
 #define BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_WIDE_OFFSET -8
 #define BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_NARROW_OFFSET -6
+// The offset of the ADD from the return address in LR for UnsafeCASObject intrinsic.
+#define BAKER_MARK_INTROSPECTION_UNSAFE_CAS_ADD_OFFSET -8
 
 #endif  // ART_RUNTIME_ARCH_ARM_ASM_SUPPORT_ARM_H_
