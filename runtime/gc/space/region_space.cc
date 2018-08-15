@@ -552,6 +552,12 @@ void RegionSpace::Clear() {
   evac_region_ = &full_region_;
 }
 
+void RegionSpace::Unprotect() {
+  if (kProtectClearedRegions) {
+    CheckedCall(mprotect, __FUNCTION__, Begin(), Size(), PROT_READ | PROT_WRITE);
+  }
+}
+
 void RegionSpace::ClampGrowthLimit(size_t new_capacity) {
   MutexLock mu(Thread::Current(), region_lock_);
   CHECK_LE(new_capacity, NonGrowthLimitCapacity());

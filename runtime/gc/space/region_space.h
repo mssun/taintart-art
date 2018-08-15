@@ -108,6 +108,12 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
   void Clear() OVERRIDE REQUIRES(!region_lock_);
 
+  // Remove memory protection from the whole region space, i.e. make memory
+  // pages backing the region area readable and writable. This method is useful
+  // to avoid page protection faults when dumping information about an invalid
+  // reference.
+  void Unprotect();
+
   // Change the non growth limit capacity to new capacity by shrinking or expanding the map.
   // Currently, only shrinking is supported.
   // Unlike implementations of this function in other spaces, we need to pass
