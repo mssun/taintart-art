@@ -119,7 +119,7 @@ inline void Object::SetReadBarrierState(uint32_t rb_state) {
 inline void Object::AssertReadBarrierState() const {
   CHECK(kUseBakerReadBarrier);
   Object* obj = const_cast<Object*>(this);
-  DCHECK_EQ(obj->GetReadBarrierState(), ReadBarrier::WhiteState())
+  DCHECK_EQ(obj->GetReadBarrierState(), ReadBarrier::NonGrayState())
       << "Bad Baker pointer: obj=" << obj << " rb_state" << obj->GetReadBarrierState();
 }
 

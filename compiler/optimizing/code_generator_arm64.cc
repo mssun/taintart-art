@@ -6162,7 +6162,7 @@ static void EmitGrayCheckAndFastPath(arm64::Arm64Assembler& assembler,
   // Load the lock word containing the rb_state.
   __ Ldr(ip0.W(), lock_word);
   // Given the numeric representation, it's enough to check the low bit of the rb_state.
-  static_assert(ReadBarrier::WhiteState() == 0, "Expecting white to have value 0");
+  static_assert(ReadBarrier::NonGrayState() == 0, "Expecting non-gray to have value 0");
   static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
   __ Tbnz(ip0.W(), LockWord::kReadBarrierStateShift, slow_path);
   static_assert(

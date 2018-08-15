@@ -117,7 +117,7 @@ class MANAGED LOCKABLE Object {
   ALWAYS_INLINE bool AtomicSetMarkBit(uint32_t expected_mark_bit, uint32_t mark_bit)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Assert that the read barrier state is in the default (white) state.
+  // Assert that the read barrier state is in the default (white, i.e. non-gray) state.
   ALWAYS_INLINE void AssertReadBarrierState() const REQUIRES_SHARED(Locks::mutator_lock_);
 
   // The verifier treats all interfaces as java.lang.Object and relies on runtime checks in

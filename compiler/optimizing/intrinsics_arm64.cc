@@ -2739,7 +2739,7 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
         codegen_->AddSlowPath(read_barrier_slow_path);
 
         // Given the numeric representation, it's enough to check the low bit of the rb_state.
-        static_assert(ReadBarrier::WhiteState() == 0, "Expecting white to have value 0");
+        static_assert(ReadBarrier::NonGrayState() == 0, "Expecting non-gray to have value 0");
         static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
         __ Tbnz(tmp, LockWord::kReadBarrierStateShift, read_barrier_slow_path->GetEntryLabel());
 

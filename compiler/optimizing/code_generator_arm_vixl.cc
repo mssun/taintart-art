@@ -899,7 +899,7 @@ class LoadReferenceWithBakerReadBarrierAndUpdateFieldSlowPathARMVIXL
     // Given the numeric representation, it's enough to check the low bit of the
     // rb_state. We do that by shifting the bit out of the lock word with LSRS
     // which can be a 16-bit instruction unlike the TST immediate.
-    static_assert(ReadBarrier::WhiteState() == 0, "Expecting white to have value 0");
+    static_assert(ReadBarrier::NonGrayState() == 0, "Expecting non-gray to have value 0");
     static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
     __ Lsrs(temp1_, temp1_, LockWord::kReadBarrierStateShift + 1);
     __ B(cc, GetExitLabel());  // Carry flag is the last bit shifted out by LSRS.
@@ -9661,7 +9661,7 @@ static void EmitGrayCheckAndFastPath(ArmVIXLAssembler& assembler,
   // Load the lock word containing the rb_state.
   __ Ldr(ip, lock_word);
   // Given the numeric representation, it's enough to check the low bit of the rb_state.
-  static_assert(ReadBarrier::WhiteState() == 0, "Expecting white to have value 0");
+  static_assert(ReadBarrier::NonGrayState() == 0, "Expecting non-gray to have value 0");
   static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
   __ Tst(ip, Operand(LockWord::kReadBarrierStateMaskShifted));
   __ B(ne, slow_path, /* is_far_target */ false);
