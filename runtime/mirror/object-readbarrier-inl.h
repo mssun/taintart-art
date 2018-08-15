@@ -168,10 +168,11 @@ inline bool Object::AtomicSetReadBarrierState(uint32_t expected_rb_state, uint32
     expected_lw.SetReadBarrierState(expected_rb_state);
     new_lw = lw;
     new_lw.SetReadBarrierState(rb_state);
-    // ConcurrentCopying::ProcessMarkStackRef uses this with kCasRelease == true.
-    // If kCasRelease == true, use a CAS release so that when GC updates all the fields of
-    // an object and then changes the object from gray to black, the field updates (stores) will be
-    // visible (won't be reordered after this CAS.)
+    // ConcurrentCopying::ProcessMarkStackRef uses this with
+    // `kMemoryOrder` == `std::memory_order_release`.
+    // If `kMemoryOrder` == `std::memory_order_release`, use a CAS release so that when GC updates
+    // all the fields of an object and then changes the object from gray to black (non-gray), the
+    // field updates (stores) will be visible (won't be reordered after this CAS.)
   } while (!CasLockWord(expected_lw, new_lw, CASMode::kWeak, kMemoryOrder));
   return true;
 }

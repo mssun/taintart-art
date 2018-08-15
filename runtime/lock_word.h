@@ -210,7 +210,7 @@ class LockWord {
 
   void SetReadBarrierState(uint32_t rb_state) {
     DCHECK_EQ(rb_state & ~kReadBarrierStateMask, 0U);
-    DCHECK(rb_state == ReadBarrier::WhiteState() ||
+    DCHECK(rb_state == ReadBarrier::NonGrayState() ||
            rb_state == ReadBarrier::GrayState()) << rb_state;
     DCHECK_NE(static_cast<uint32_t>(GetState()), static_cast<uint32_t>(kForwardingAddress));
     // Clear and or the bits.
@@ -288,7 +288,7 @@ class LockWord {
       if (!kUseReadBarrier) {
         DCHECK_EQ(rb_state, 0U);
       } else {
-        DCHECK(rb_state == ReadBarrier::WhiteState() ||
+        DCHECK(rb_state == ReadBarrier::NonGrayState() ||
                rb_state == ReadBarrier::GrayState()) << rb_state;
       }
     }
