@@ -681,57 +681,80 @@ extern "C" size_t MterpSuspendCheck(Thread* self)
   return MterpShouldSwitchInterpreters();
 }
 
-// Helper function to do a null check after trying to resolve the field. Not for statics since obj
-// does not exist there. There is a suspend check, object is a double pointer to update the value
-// in the caller in case it moves.
-template<FindFieldType type, bool kAccessCheck>
-ALWAYS_INLINE static inline ArtField* FindInstanceField(uint32_t field_idx,
-                                                        ArtMethod* referrer,
-                                                        Thread* self,
-                                                        size_t size,
-                                                        mirror::Object** obj)
-    REQUIRES(!Roles::uninterruptible_)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
+template<typename PrimType, typename RetType, typename Getter, FindFieldType kType>
+NO_INLINE RetType artGetInstanceFromMterp(uint32_t field_idx,
+                                          mirror::Object* obj,
+                                          ArtMethod* referrer,
+                                          Thread* self)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
-  HandleWrapper<mirror::Object> h(hs.NewHandleWrapper(obj));
-  ArtField* field = FindFieldFromCode<type, kAccessCheck>(field_idx, referrer, self, size);
-  if (LIKELY(field != nullptr) && UNLIKELY(h == nullptr)) {
-    ThrowNullPointerExceptionForFieldAccess(field, /*is_read*/true);
-    return nullptr;
+  HandleWrapper<mirror::Object> h(hs.NewHandleWrapper(&obj));  // GC might move the object.
+  ArtField* field = FindFieldFromCode<kType, /* access_checks */ false>(
+      field_idx, referrer, self, sizeof(PrimType));
+  if (UNLIKELY(field == nullptr)) {
+    return 0;  // Will throw exception by checking with Thread::Current.
   }
-  return field;
+  if (UNLIKELY(h == nullptr)) {
+    ThrowNullPointerExceptionForFieldAccess(field, /*is_read*/ true);
+    return 0;  // Will throw exception by checking with Thread::Current.
+  }
+  return Getter::Get(obj, field);
 }
 
-#define ART_GET_FIELD_FROM_MTERP(Kind, PrimitiveType, RetType, SetType,                           \
-                                 PrimitiveOrObject, IsObject, Ptr)                                \
+template<typename PrimType, typename RetType, typename Getter>
+ALWAYS_INLINE RetType artGetInstanceFromMterpFast(uint32_t field_idx,
+                                                  mirror::Object* obj,
+                                                  ArtMethod* referrer,
+                                                  Thread* self)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+  constexpr bool kIsObject = std::is_same<RetType, mirror::Object*>::value;
+  constexpr FindFieldType kType = kIsObject ? InstanceObjectRead : InstancePrimitiveRead;
+
+  // This effectively inlines the fast path from ArtMethod::GetDexCache.
+  // It avoids non-inlined call which in turn allows elimination of the prologue and epilogue.
+  if (LIKELY(!referrer->IsObsolete())) {
+    // Avoid read barriers, since we need only the pointer to the native (non-movable)
+    // DexCache field array which we can get even through from-space objects.
+    ObjPtr<mirror::Class> klass = referrer->GetDeclaringClass<kWithoutReadBarrier>();
+    mirror::DexCache* dex_cache = klass->GetDexCache<kDefaultVerifyFlags, kWithoutReadBarrier>();
+    // Try to find the desired field in DexCache.
+    ArtField* field = dex_cache->GetResolvedField(field_idx, kRuntimePointerSize);
+    if (LIKELY(field != nullptr & obj != nullptr)) {
+      if (kIsDebugBuild) {
+        // Compare the fast path and slow path.
+        StackHandleScope<1> hs(self);
+        HandleWrapper<mirror::Object> h(hs.NewHandleWrapper(&obj));  // GC might move the object.
+        DCHECK_EQ(field, (FindFieldFromCode<kType, /* access_checks */ false>(
+            field_idx, referrer, self, sizeof(PrimType))));
+      }
+      return Getter::Get(obj, field);
+    }
+  }
+  // Slow path. Last and with identical arguments so that it becomes single instruction tail call.
+  return artGetInstanceFromMterp<PrimType, RetType, Getter, kType>(field_idx, obj, referrer, self);
+}
+
+#define ART_GET_FIELD_FROM_MTERP(Kind, PrimType, RetType, Ptr)                                    \
 extern "C" RetType artGet ## Kind ## InstanceFromMterp(uint32_t field_idx,                        \
                                                        mirror::Object* obj,                       \
                                                        ArtMethod* referrer,                       \
                                                        Thread* self)                              \
       REQUIRES_SHARED(Locks::mutator_lock_) {                                                     \
-    constexpr FindFieldType kType = Instance ## PrimitiveOrObject ## Read;                        \
-    constexpr size_t kSize = sizeof(PrimitiveType);                                               \
-    mirror::DexCache* dex_cache = referrer->GetDexCache();                                        \
-    ArtField* field = dex_cache->GetResolvedField(field_idx, kRuntimePointerSize);                \
-    if (LIKELY(field != nullptr && obj != nullptr)) {                                             \
-      return field->Get ## Kind (obj)Ptr;  /* NOLINT */                                           \
+  struct Getter { /* Specialize the field load depending on the field type */                     \
+    static RetType Get(mirror::Object* o, ArtField* f) REQUIRES_SHARED(Locks::mutator_lock_) {    \
+      return f->Get##Kind(o)Ptr;                                                                  \
     }                                                                                             \
-    field = FindInstanceField<kType, true>(field_idx, referrer, self, kSize, &obj);               \
-    if (LIKELY(field != nullptr)) {                                                               \
-      return field->Get ## Kind (obj)Ptr;  /* NOLINT */                                           \
-    }                                                                                             \
-    /* Will throw exception by checking with Thread::Current. */                                  \
-    return 0;                                                                                     \
+  };                                                                                              \
+  return artGetInstanceFromMterpFast<PrimType, RetType, Getter>(field_idx, obj, referrer, self);  \
 }                                                                                                 \
 
-ART_GET_FIELD_FROM_MTERP(Byte, int8_t, ssize_t, uint32_t, Primitive, false, )
-ART_GET_FIELD_FROM_MTERP(Boolean, int8_t, size_t, uint32_t, Primitive, false, )
-ART_GET_FIELD_FROM_MTERP(Short, int16_t, ssize_t, uint16_t, Primitive, false, )
-ART_GET_FIELD_FROM_MTERP(Char, int16_t, size_t, uint16_t, Primitive, false, )
-ART_GET_FIELD_FROM_MTERP(32, int32_t, size_t, uint32_t, Primitive, false, )
-ART_GET_FIELD_FROM_MTERP(64, int64_t, uint64_t, uint64_t, Primitive, false, )
-ART_GET_FIELD_FROM_MTERP(Obj, mirror::HeapReference<mirror::Object>, mirror::Object*,
-                         mirror::Object*, Object, true, .Ptr())
+ART_GET_FIELD_FROM_MTERP(Byte, int8_t, ssize_t, )
+ART_GET_FIELD_FROM_MTERP(Boolean, uint8_t, size_t, )
+ART_GET_FIELD_FROM_MTERP(Short, int16_t, ssize_t, )
+ART_GET_FIELD_FROM_MTERP(Char, uint16_t, size_t, )
+ART_GET_FIELD_FROM_MTERP(32, uint32_t, size_t, )
+ART_GET_FIELD_FROM_MTERP(64, uint64_t, uint64_t, )
+ART_GET_FIELD_FROM_MTERP(Obj, mirror::HeapReference<mirror::Object>, mirror::Object*, .Ptr())
 
 #undef ART_GET_FIELD_FROM_MTERP
 
