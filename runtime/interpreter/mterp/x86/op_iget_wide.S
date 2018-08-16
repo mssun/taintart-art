@@ -14,7 +14,7 @@
     movl    %eax, OUT_ARG2(%esp)            # referrer
     mov     rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(artGet64InstanceFromCode)
+    call    SYMBOL(artGet64InstanceFromMterp)
     mov     rSELF, %ecx
     cmpl    $$0, THREAD_EXCEPTION_OFFSET(%ecx)
     jnz     MterpException                  # bail out

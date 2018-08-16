@@ -1,1 +1,1 @@
-%include "x86_64/op_iget.S" { "helper":"artGetBooleanInstanceFromCode" }
+%include "x86_64/op_iget.S" { "helper":"artGetBooleanInstanceFromMterp" }

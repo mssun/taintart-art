@@ -2132,7 +2132,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     movl    %eax, OUT_ARG2(%esp)            # referrer
     mov     rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(artGet32InstanceFromCode)
+    call    SYMBOL(artGet32InstanceFromMterp)
     movl    rSELF, %ecx
     RESTORE_IBASE_FROM_SELF %ecx
     cmpl    $0, THREAD_EXCEPTION_OFFSET(%ecx)
@@ -2165,7 +2165,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     movl    %eax, OUT_ARG2(%esp)            # referrer
     mov     rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(artGet64InstanceFromCode)
+    call    SYMBOL(artGet64InstanceFromMterp)
     mov     rSELF, %ecx
     cmpl    $0, THREAD_EXCEPTION_OFFSET(%ecx)
     jnz     MterpException                  # bail out
@@ -2196,7 +2196,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     movl    %eax, OUT_ARG2(%esp)            # referrer
     mov     rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(artGetObjInstanceFromCode)
+    call    SYMBOL(artGetObjInstanceFromMterp)
     movl    rSELF, %ecx
     RESTORE_IBASE_FROM_SELF %ecx
     cmpl    $0, THREAD_EXCEPTION_OFFSET(%ecx)
@@ -2231,7 +2231,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     movl    %eax, OUT_ARG2(%esp)            # referrer
     mov     rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(artGetBooleanInstanceFromCode)
+    call    SYMBOL(artGetBooleanInstanceFromMterp)
     movl    rSELF, %ecx
     RESTORE_IBASE_FROM_SELF %ecx
     cmpl    $0, THREAD_EXCEPTION_OFFSET(%ecx)
@@ -2266,7 +2266,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     movl    %eax, OUT_ARG2(%esp)            # referrer
     mov     rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(artGetByteInstanceFromCode)
+    call    SYMBOL(artGetByteInstanceFromMterp)
     movl    rSELF, %ecx
     RESTORE_IBASE_FROM_SELF %ecx
     cmpl    $0, THREAD_EXCEPTION_OFFSET(%ecx)
@@ -2301,7 +2301,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     movl    %eax, OUT_ARG2(%esp)            # referrer
     mov     rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(artGetCharInstanceFromCode)
+    call    SYMBOL(artGetCharInstanceFromMterp)
     movl    rSELF, %ecx
     RESTORE_IBASE_FROM_SELF %ecx
     cmpl    $0, THREAD_EXCEPTION_OFFSET(%ecx)
@@ -2336,7 +2336,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     movl    %eax, OUT_ARG2(%esp)            # referrer
     mov     rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(artGetShortInstanceFromCode)
+    call    SYMBOL(artGetShortInstanceFromMterp)
     movl    rSELF, %ecx
     RESTORE_IBASE_FROM_SELF %ecx
     cmpl    $0, THREAD_EXCEPTION_OFFSET(%ecx)

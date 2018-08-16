@@ -1,1 +1,1 @@
-%include "arm/op_iget.S" { "helper":"artGetShortInstanceFromCode" }
+%include "arm/op_iget.S" { "helper":"artGetShortInstanceFromMterp" }

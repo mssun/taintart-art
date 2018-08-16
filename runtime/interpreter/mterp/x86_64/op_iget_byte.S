@@ -1,1 +1,1 @@
-%include "x86_64/op_iget.S" { "helper":"artGetByteInstanceFromCode" }
+%include "x86_64/op_iget.S" { "helper":"artGetByteInstanceFromMterp" }
