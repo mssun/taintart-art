@@ -108,6 +108,11 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
   void Clear() OVERRIDE REQUIRES(!region_lock_);
 
+  // Remove read and write memory protection from the whole region space,
+  // i.e. make memory pages backing the region area not readable and not
+  // writable.
+  void Protect();
+
   // Remove memory protection from the whole region space, i.e. make memory
   // pages backing the region area readable and writable. This method is useful
   // to avoid page protection faults when dumping information about an invalid
