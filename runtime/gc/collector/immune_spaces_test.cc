@@ -40,22 +40,22 @@ class DummyOatFile : public OatFile {
 
 class DummyImageSpace : public space::ImageSpace {
  public:
-  DummyImageSpace(MemMap* map,
+  DummyImageSpace(MemMap&& map,
                   accounting::ContinuousSpaceBitmap* live_bitmap,
                   std::unique_ptr<DummyOatFile>&& oat_file,
-                  std::unique_ptr<MemMap>&& oat_map)
+                  MemMap&& oat_map)
       : ImageSpace("DummyImageSpace",
                    /*image_location*/"",
-                   map,
+                   std::move(map),
                    live_bitmap,
-                   map->End()),
+                   map.End()),
         oat_map_(std::move(oat_map)) {
     oat_file_ = std::move(oat_file);
     oat_file_non_owned_ = oat_file_.get();
   }
 
  private:
-  std::unique_ptr<MemMap> oat_map_;
+  MemMap oat_map_;
 };
 
 class ImmuneSpacesTest : public CommonRuntimeTest {
@@ -83,39 +83,39 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
                                     uint8_t* oat_begin,
                                     size_t oat_size) {
     std::string error_str;
-    std::unique_ptr<MemMap> map(MemMap::MapAnonymous("DummyImageSpace",
-                                                     image_begin,
-                                                     image_size,
-                                                     PROT_READ | PROT_WRITE,
-                                                     /*low_4gb*/true,
-                                                     /*reuse*/false,
-                                                     &error_str));
-    if (map == nullptr) {
+    MemMap map = MemMap::MapAnonymous("DummyImageSpace",
+                                      image_begin,
+                                      image_size,
+                                      PROT_READ | PROT_WRITE,
+                                      /*low_4gb*/true,
+                                      /*reuse*/false,
+                                      &error_str);
+    if (!map.IsValid()) {
       LOG(ERROR) << error_str;
       return nullptr;
     }
     CHECK(!live_bitmaps_.empty());
     std::unique_ptr<accounting::ContinuousSpaceBitmap> live_bitmap(std::move(live_bitmaps_.back()));
     live_bitmaps_.pop_back();
-    std::unique_ptr<MemMap> oat_map(MemMap::MapAnonymous("OatMap",
-                                                         oat_begin,
-                                                         oat_size,
-                                                         PROT_READ | PROT_WRITE,
-                                                         /*low_4gb*/true,
-                                                         /*reuse*/false,
-                                                         &error_str));
-    if (oat_map == nullptr) {
+    MemMap oat_map = MemMap::MapAnonymous("OatMap",
+                                          oat_begin,
+                                          oat_size,
+                                          PROT_READ | PROT_WRITE,
+                                          /*low_4gb*/true,
+                                          /*reuse*/false,
+                                          &error_str);
+    if (!oat_map.IsValid()) {
       LOG(ERROR) << error_str;
       return nullptr;
     }
-    std::unique_ptr<DummyOatFile> oat_file(new DummyOatFile(oat_map->Begin(), oat_map->End()));
+    std::unique_ptr<DummyOatFile> oat_file(new DummyOatFile(oat_map.Begin(), oat_map.End()));
     // Create image header.
     ImageSection sections[ImageHeader::kSectionCount];
-    new (map->Begin()) ImageHeader(
-        /*image_begin*/PointerToLowMemUInt32(map->Begin()),
-        /*image_size*/map->Size(),
+    new (map.Begin()) ImageHeader(
+        /*image_begin*/PointerToLowMemUInt32(map.Begin()),
+        /*image_size*/map.Size(),
         sections,
-        /*image_roots*/PointerToLowMemUInt32(map->Begin()) + 1,
+        /*image_roots*/PointerToLowMemUInt32(map.Begin()) + 1,
         /*oat_checksum*/0u,
         // The oat file data in the header is always right after the image space.
         /*oat_file_begin*/PointerToLowMemUInt32(oat_begin),
@@ -131,7 +131,7 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
         /*is_pic*/false,
         ImageHeader::kStorageModeUncompressed,
         /*storage_size*/0u);
-    return new DummyImageSpace(map.release(),
+    return new DummyImageSpace(std::move(map),
                                live_bitmap.release(),
                                std::move(oat_file),
                                std::move(oat_map));
@@ -141,18 +141,18 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
   // returned address.
   static uint8_t* GetContinuousMemoryRegion(size_t size) {
     std::string error_str;
-    std::unique_ptr<MemMap> map(MemMap::MapAnonymous("reserve",
-                                                     nullptr,
-                                                     size,
-                                                     PROT_READ | PROT_WRITE,
-                                                     /*low_4gb*/true,
-                                                     /*reuse*/false,
-                                                     &error_str));
-    if (map == nullptr) {
+    MemMap map = MemMap::MapAnonymous("reserve",
+                                      /* addr */ nullptr,
+                                      size,
+                                      PROT_READ | PROT_WRITE,
+                                      /*low_4gb*/ true,
+                                      /*reuse*/ false,
+                                      &error_str);
+    if (!map.IsValid()) {
       LOG(ERROR) << "Failed to allocate memory region " << error_str;
       return nullptr;
     }
-    return map->Begin();
+    return map.Begin();
   }
 
  private:

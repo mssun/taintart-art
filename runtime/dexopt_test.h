@@ -91,7 +91,7 @@ class DexoptTest : public Dex2oatEnvironmentTest {
   // before the image is loaded.
   void UnreserveImageSpace();
 
-  std::vector<std::unique_ptr<MemMap>> image_reservation_;
+  std::vector<MemMap> image_reservation_;
 };
 
 }  // namespace art

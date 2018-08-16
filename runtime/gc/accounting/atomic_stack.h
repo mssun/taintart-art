@@ -72,12 +72,12 @@ class AtomicStack {
   ~AtomicStack() {}
 
   void Reset() {
-    DCHECK(mem_map_.get() != nullptr);
+    DCHECK(mem_map_.IsValid());
     DCHECK(begin_ != nullptr);
     front_index_.store(0, std::memory_order_relaxed);
     back_index_.store(0, std::memory_order_relaxed);
     debug_is_sorted_ = true;
-    mem_map_->MadviseDontNeedAndZero();
+    mem_map_.MadviseDontNeedAndZero();
   }
 
   // Beware: Mixing atomic pushes and atomic pops will cause ABA problem.
@@ -252,10 +252,15 @@ class AtomicStack {
   // Size in number of elements.
   void Init() {
     std::string error_msg;
-    mem_map_.reset(MemMap::MapAnonymous(name_.c_str(), nullptr, capacity_ * sizeof(begin_[0]),
-                                        PROT_READ | PROT_WRITE, false, false, &error_msg));
-    CHECK(mem_map_.get() != nullptr) << "couldn't allocate mark stack.\n" << error_msg;
-    uint8_t* addr = mem_map_->Begin();
+    mem_map_ = MemMap::MapAnonymous(name_.c_str(),
+                                    /* addr */ nullptr,
+                                    capacity_ * sizeof(begin_[0]),
+                                    PROT_READ | PROT_WRITE,
+                                    /* low_4gb */ false,
+                                    /* reuse */ false,
+                                    &error_msg);
+    CHECK(mem_map_.IsValid()) << "couldn't allocate mark stack.\n" << error_msg;
+    uint8_t* addr = mem_map_.Begin();
     CHECK(addr != nullptr);
     debug_is_sorted_ = true;
     begin_ = reinterpret_cast<StackReference<T>*>(addr);
@@ -265,7 +270,7 @@ class AtomicStack {
   // Name of the mark stack.
   std::string name_;
   // Memory mapping of the atomic stack.
-  std::unique_ptr<MemMap> mem_map_;
+  MemMap mem_map_;
   // Back index (index after the last element pushed).
   AtomicInteger back_index_;
   // Front index, used for implementing PopFront.

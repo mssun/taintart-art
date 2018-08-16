@@ -249,14 +249,17 @@ void DexoptTest::ReserveImageSpace() {
 void DexoptTest::ReserveImageSpaceChunk(uintptr_t start, uintptr_t end) {
   if (start < end) {
     std::string error_msg;
-    image_reservation_.push_back(std::unique_ptr<MemMap>(
-        MemMap::MapAnonymous("image reservation",
-            reinterpret_cast<uint8_t*>(start), end - start,
-            PROT_NONE, false, false, &error_msg)));
-    ASSERT_TRUE(image_reservation_.back().get() != nullptr) << error_msg;
+    image_reservation_.push_back(MemMap::MapAnonymous("image reservation",
+                                                      reinterpret_cast<uint8_t*>(start),
+                                                      end - start,
+                                                      PROT_NONE,
+                                                      /* low_4gb*/ false,
+                                                      /* reuse */ false,
+                                                      &error_msg));
+    ASSERT_TRUE(image_reservation_.back().IsValid()) << error_msg;
     LOG(INFO) << "Reserved space for image " <<
-      reinterpret_cast<void*>(image_reservation_.back()->Begin()) << "-" <<
-      reinterpret_cast<void*>(image_reservation_.back()->End());
+      reinterpret_cast<void*>(image_reservation_.back().Begin()) << "-" <<
+      reinterpret_cast<void*>(image_reservation_.back().End());
   }
 }
 

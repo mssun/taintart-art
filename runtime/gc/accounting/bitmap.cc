@@ -27,47 +27,51 @@ namespace art {
 namespace gc {
 namespace accounting {
 
-Bitmap* Bitmap::CreateFromMemMap(MemMap* mem_map, size_t num_bits) {
-  CHECK(mem_map != nullptr);
-  return new Bitmap(mem_map, num_bits);
+Bitmap* Bitmap::CreateFromMemMap(MemMap&& mem_map, size_t num_bits) {
+  CHECK(mem_map.IsValid());
+  return new Bitmap(std::move(mem_map), num_bits);
 }
 
-Bitmap::Bitmap(MemMap* mem_map, size_t bitmap_size)
-    : mem_map_(mem_map), bitmap_begin_(reinterpret_cast<uintptr_t*>(mem_map->Begin())),
+Bitmap::Bitmap(MemMap&& mem_map, size_t bitmap_size)
+    : mem_map_(std::move(mem_map)),
+      bitmap_begin_(reinterpret_cast<uintptr_t*>(mem_map_.Begin())),
       bitmap_size_(bitmap_size) {
   CHECK(bitmap_begin_ != nullptr);
   CHECK_NE(bitmap_size, 0U);
 }
 
 Bitmap::~Bitmap() {
-  // Destroys MemMap via std::unique_ptr<>.
+  // Destroys member MemMap.
 }
 
-MemMap* Bitmap::AllocateMemMap(const std::string& name, size_t num_bits) {
+MemMap Bitmap::AllocateMemMap(const std::string& name, size_t num_bits) {
   const size_t bitmap_size = RoundUp(
       RoundUp(num_bits, kBitsPerBitmapWord) / kBitsPerBitmapWord * sizeof(uintptr_t), kPageSize);
   std::string error_msg;
-  std::unique_ptr<MemMap> mem_map(MemMap::MapAnonymous(name.c_str(), nullptr, bitmap_size,
-                                                       PROT_READ | PROT_WRITE, false, false,
-                                                       &error_msg));
-  if (UNLIKELY(mem_map.get() == nullptr)) {
+  MemMap mem_map = MemMap::MapAnonymous(name.c_str(),
+                                        /* addr */ nullptr,
+                                        bitmap_size,
+                                        PROT_READ | PROT_WRITE,
+                                        /* low_4gb */ false,
+                                        /* reuse */ false,
+                                        &error_msg);
+  if (UNLIKELY(!mem_map.IsValid())) {
     LOG(ERROR) << "Failed to allocate bitmap " << name << ": " << error_msg;
-    return nullptr;
   }
-  return mem_map.release();
+  return mem_map;
 }
 
 Bitmap* Bitmap::Create(const std::string& name, size_t num_bits) {
-  auto* const mem_map = AllocateMemMap(name, num_bits);
-  if (mem_map == nullptr) {
+  MemMap mem_map = AllocateMemMap(name, num_bits);
+  if (UNLIKELY(!mem_map.IsValid())) {
     return nullptr;
   }
-  return CreateFromMemMap(mem_map, num_bits);
+  return CreateFromMemMap(std::move(mem_map), num_bits);
 }
 
 void Bitmap::Clear() {
   if (bitmap_begin_ != nullptr) {
-    mem_map_->MadviseDontNeedAndZero();
+    mem_map_.MadviseDontNeedAndZero();
   }
 }
 
@@ -83,14 +87,15 @@ MemoryRangeBitmap<kAlignment>* MemoryRangeBitmap<kAlignment>::Create(
   CHECK_ALIGNED(cover_begin, kAlignment);
   CHECK_ALIGNED(cover_end, kAlignment);
   const size_t num_bits = (cover_end - cover_begin) / kAlignment;
-  auto* const mem_map = Bitmap::AllocateMemMap(name, num_bits);
-  return CreateFromMemMap(mem_map, cover_begin, num_bits);
+  MemMap mem_map = Bitmap::AllocateMemMap(name, num_bits);
+  CHECK(mem_map.IsValid());
+  return CreateFromMemMap(std::move(mem_map), cover_begin, num_bits);
 }
 
 template<size_t kAlignment>
 MemoryRangeBitmap<kAlignment>* MemoryRangeBitmap<kAlignment>::CreateFromMemMap(
-    MemMap* mem_map, uintptr_t begin, size_t num_bits) {
-  return new MemoryRangeBitmap(mem_map, begin, num_bits);
+    MemMap&& mem_map, uintptr_t begin, size_t num_bits) {
+  return new MemoryRangeBitmap(std::move(mem_map), begin, num_bits);
 }
 
 template class MemoryRangeBitmap<CardTable::kCardSize>;

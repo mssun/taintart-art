@@ -28,23 +28,31 @@ BumpPointerSpace* BumpPointerSpace::Create(const std::string& name, size_t capac
                                            uint8_t* requested_begin) {
   capacity = RoundUp(capacity, kPageSize);
   std::string error_msg;
-  std::unique_ptr<MemMap> mem_map(MemMap::MapAnonymous(name.c_str(), requested_begin, capacity,
-                                                       PROT_READ | PROT_WRITE, true, false,
-                                                       &error_msg));
-  if (mem_map.get() == nullptr) {
+  MemMap mem_map = MemMap::MapAnonymous(name.c_str(),
+                                        requested_begin,
+                                        capacity,
+                                        PROT_READ | PROT_WRITE,
+                                        /* low_4gb */ true,
+                                        /* reuse */ false,
+                                        &error_msg);
+  if (!mem_map.IsValid()) {
     LOG(ERROR) << "Failed to allocate pages for alloc space (" << name << ") of size "
         << PrettySize(capacity) << " with message " << error_msg;
     return nullptr;
   }
-  return new BumpPointerSpace(name, mem_map.release());
+  return new BumpPointerSpace(name, std::move(mem_map));
 }
 
-BumpPointerSpace* BumpPointerSpace::CreateFromMemMap(const std::string& name, MemMap* mem_map) {
-  return new BumpPointerSpace(name, mem_map);
+BumpPointerSpace* BumpPointerSpace::CreateFromMemMap(const std::string& name, MemMap&& mem_map) {
+  return new BumpPointerSpace(name, std::move(mem_map));
 }
 
 BumpPointerSpace::BumpPointerSpace(const std::string& name, uint8_t* begin, uint8_t* limit)
-    : ContinuousMemMapAllocSpace(name, nullptr, begin, begin, limit,
+    : ContinuousMemMapAllocSpace(name,
+                                 MemMap::Invalid(),
+                                 begin,
+                                 begin,
+                                 limit,
                                  kGcRetentionPolicyAlwaysCollect),
       growth_end_(limit),
       objects_allocated_(0), bytes_allocated_(0),
@@ -53,10 +61,14 @@ BumpPointerSpace::BumpPointerSpace(const std::string& name, uint8_t* begin, uint
       num_blocks_(0) {
 }
 
-BumpPointerSpace::BumpPointerSpace(const std::string& name, MemMap* mem_map)
-    : ContinuousMemMapAllocSpace(name, mem_map, mem_map->Begin(), mem_map->Begin(), mem_map->End(),
+BumpPointerSpace::BumpPointerSpace(const std::string& name, MemMap&& mem_map)
+    : ContinuousMemMapAllocSpace(name,
+                                 std::move(mem_map),
+                                 mem_map.Begin(),
+                                 mem_map.Begin(),
+                                 mem_map.End(),
                                  kGcRetentionPolicyAlwaysCollect),
-      growth_end_(mem_map->End()),
+      growth_end_(mem_map_.End()),
       objects_allocated_(0), bytes_allocated_(0),
       block_lock_("Block lock", kBumpPointerSpaceBlockLock),
       main_block_size_(0),

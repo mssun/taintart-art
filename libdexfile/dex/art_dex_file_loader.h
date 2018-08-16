@@ -66,7 +66,7 @@ class ArtDexFileLoader : public DexFileLoader {
   // Opens .dex file that has been memory-mapped by the caller.
   std::unique_ptr<const DexFile> Open(const std::string& location,
                                       uint32_t location_checkum,
-                                      std::unique_ptr<MemMap> mem_map,
+                                      MemMap&& mem_map,
                                       bool verify,
                                       bool verify_checksum,
                                       std::string* error_msg) const;

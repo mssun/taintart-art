@@ -53,8 +53,8 @@ class ThreadPoolWorker {
   static const size_t kDefaultStackSize = 1 * MB;
 
   size_t GetStackSize() const {
-    DCHECK(stack_.get() != nullptr);
-    return stack_->Size();
+    DCHECK(stack_.IsValid());
+    return stack_.Size();
   }
 
   virtual ~ThreadPoolWorker();
@@ -71,7 +71,7 @@ class ThreadPoolWorker {
 
   ThreadPool* const thread_pool_;
   const std::string name_;
-  std::unique_ptr<MemMap> stack_;
+  MemMap stack_;
   pthread_t pthread_;
   Thread* thread_;
 

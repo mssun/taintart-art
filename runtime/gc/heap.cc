@@ -358,8 +358,8 @@ Heap::Heap(size_t initial_size,
   if (foreground_collector_type_ == kCollectorTypeGSS) {
     separate_non_moving_space = false;
   }
-  std::unique_ptr<MemMap> main_mem_map_1;
-  std::unique_ptr<MemMap> main_mem_map_2;
+  MemMap main_mem_map_1;
+  MemMap main_mem_map_2;
 
   // Gross hack to make dex2oat deterministic.
   if (foreground_collector_type_ == kCollectorTypeMS &&
@@ -374,7 +374,7 @@ Heap::Heap(size_t initial_size,
     request_begin += non_moving_space_capacity;
   }
   std::string error_str;
-  std::unique_ptr<MemMap> non_moving_space_mem_map;
+  MemMap non_moving_space_mem_map;
   if (separate_non_moving_space) {
     ScopedTrace trace2("Create separate non moving space");
     // If we are the zygote, the non moving space becomes the zygote space when we run
@@ -383,11 +383,9 @@ Heap::Heap(size_t initial_size,
     const char* space_name = is_zygote ? kZygoteSpaceName : kNonMovingSpaceName;
     // Reserve the non moving mem map before the other two since it needs to be at a specific
     // address.
-    non_moving_space_mem_map.reset(MapAnonymousPreferredAddress(space_name,
-                                                                requested_alloc_space_begin,
-                                                                non_moving_space_capacity,
-                                                                &error_str));
-    CHECK(non_moving_space_mem_map != nullptr) << error_str;
+    non_moving_space_mem_map = MapAnonymousPreferredAddress(
+        space_name, requested_alloc_space_begin, non_moving_space_capacity, &error_str);
+    CHECK(non_moving_space_mem_map.IsValid()) << error_str;
     // Try to reserve virtual memory at a lower address if we have a separate non moving space.
     request_begin = kPreferredAllocSpaceBegin + non_moving_space_capacity;
   }
@@ -395,27 +393,29 @@ Heap::Heap(size_t initial_size,
   if (foreground_collector_type_ != kCollectorTypeCC) {
     ScopedTrace trace2("Create main mem map");
     if (separate_non_moving_space || !is_zygote) {
-      main_mem_map_1.reset(MapAnonymousPreferredAddress(kMemMapSpaceName[0],
-                                                        request_begin,
-                                                        capacity_,
-                                                        &error_str));
+      main_mem_map_1 = MapAnonymousPreferredAddress(
+          kMemMapSpaceName[0], request_begin, capacity_, &error_str);
     } else {
       // If no separate non-moving space and we are the zygote, the main space must come right
       // after the image space to avoid a gap. This is required since we want the zygote space to
       // be adjacent to the image space.
-      main_mem_map_1.reset(MemMap::MapAnonymous(kMemMapSpaceName[0], request_begin, capacity_,
-                                                PROT_READ | PROT_WRITE, true, false,
-                                                &error_str));
+      main_mem_map_1 = MemMap::MapAnonymous(kMemMapSpaceName[0],
+                                            request_begin,
+                                            capacity_,
+                                            PROT_READ | PROT_WRITE,
+                                            /* low_4gb */ true,
+                                            /* reuse */ false,
+                                            &error_str);
     }
-    CHECK(main_mem_map_1.get() != nullptr) << error_str;
+    CHECK(main_mem_map_1.IsValid()) << error_str;
   }
   if (support_homogeneous_space_compaction ||
       background_collector_type_ == kCollectorTypeSS ||
       foreground_collector_type_ == kCollectorTypeSS) {
     ScopedTrace trace2("Create main mem map 2");
-    main_mem_map_2.reset(MapAnonymousPreferredAddress(kMemMapSpaceName[1], main_mem_map_1->End(),
-                                                      capacity_, &error_str));
-    CHECK(main_mem_map_2.get() != nullptr) << error_str;
+    main_mem_map_2 = MapAnonymousPreferredAddress(
+        kMemMapSpaceName[1], main_mem_map_1.End(), capacity_, &error_str);
+    CHECK(main_mem_map_2.IsValid()) << error_str;
   }
 
   // Create the non moving space first so that bitmaps don't take up the address range.
@@ -423,10 +423,14 @@ Heap::Heap(size_t initial_size,
     ScopedTrace trace2("Add non moving space");
     // Non moving space is always dlmalloc since we currently don't have support for multiple
     // active rosalloc spaces.
-    const size_t size = non_moving_space_mem_map->Size();
-    non_moving_space_ = space::DlMallocSpace::CreateFromMemMap(
-        non_moving_space_mem_map.release(), "zygote / non moving space", kDefaultStartingSize,
-        initial_size, size, size, false);
+    const size_t size = non_moving_space_mem_map.Size();
+    non_moving_space_ = space::DlMallocSpace::CreateFromMemMap(std::move(non_moving_space_mem_map),
+                                                               "zygote / non moving space",
+                                                               kDefaultStartingSize,
+                                                               initial_size,
+                                                               size,
+                                                               size,
+                                                               /* can_move_objects */ false);
     non_moving_space_->SetFootprintLimit(non_moving_space_->Capacity());
     CHECK(non_moving_space_ != nullptr) << "Failed creating non moving space "
         << requested_alloc_space_begin;
@@ -436,11 +440,10 @@ Heap::Heap(size_t initial_size,
   if (foreground_collector_type_ == kCollectorTypeCC) {
     CHECK(separate_non_moving_space);
     // Reserve twice the capacity, to allow evacuating every region for explicit GCs.
-    MemMap* region_space_mem_map = space::RegionSpace::CreateMemMap(kRegionSpaceName,
-                                                                    capacity_ * 2,
-                                                                    request_begin);
-    CHECK(region_space_mem_map != nullptr) << "No region space mem map";
-    region_space_ = space::RegionSpace::Create(kRegionSpaceName, region_space_mem_map);
+    MemMap region_space_mem_map =
+        space::RegionSpace::CreateMemMap(kRegionSpaceName, capacity_ * 2, request_begin);
+    CHECK(region_space_mem_map.IsValid()) << "No region space mem map";
+    region_space_ = space::RegionSpace::Create(kRegionSpaceName, std::move(region_space_mem_map));
     AddSpace(region_space_);
   } else if (IsMovingGc(foreground_collector_type_) &&
       foreground_collector_type_ != kCollectorTypeGSS) {
@@ -448,16 +451,16 @@ Heap::Heap(size_t initial_size,
     // We only to create the bump pointer if the foreground collector is a compacting GC.
     // TODO: Place bump-pointer spaces somewhere to minimize size of card table.
     bump_pointer_space_ = space::BumpPointerSpace::CreateFromMemMap("Bump pointer space 1",
-                                                                    main_mem_map_1.release());
+                                                                    std::move(main_mem_map_1));
     CHECK(bump_pointer_space_ != nullptr) << "Failed to create bump pointer space";
     AddSpace(bump_pointer_space_);
     temp_space_ = space::BumpPointerSpace::CreateFromMemMap("Bump pointer space 2",
-                                                            main_mem_map_2.release());
+                                                            std::move(main_mem_map_2));
     CHECK(temp_space_ != nullptr) << "Failed to create bump pointer space";
     AddSpace(temp_space_);
     CHECK(separate_non_moving_space);
   } else {
-    CreateMainMallocSpace(main_mem_map_1.release(), initial_size, growth_limit_, capacity_);
+    CreateMainMallocSpace(std::move(main_mem_map_1), initial_size, growth_limit_, capacity_);
     CHECK(main_space_ != nullptr);
     AddSpace(main_space_);
     if (!separate_non_moving_space) {
@@ -467,19 +470,23 @@ Heap::Heap(size_t initial_size,
     if (foreground_collector_type_ == kCollectorTypeGSS) {
       CHECK_EQ(foreground_collector_type_, background_collector_type_);
       // Create bump pointer spaces instead of a backup space.
-      main_mem_map_2.release();
-      bump_pointer_space_ = space::BumpPointerSpace::Create("Bump pointer space 1",
-                                                            kGSSBumpPointerSpaceCapacity, nullptr);
+      main_mem_map_2.Reset();
+      bump_pointer_space_ = space::BumpPointerSpace::Create(
+          "Bump pointer space 1", kGSSBumpPointerSpaceCapacity, /* requested_begin */ nullptr);
       CHECK(bump_pointer_space_ != nullptr);
       AddSpace(bump_pointer_space_);
-      temp_space_ = space::BumpPointerSpace::Create("Bump pointer space 2",
-                                                    kGSSBumpPointerSpaceCapacity, nullptr);
+      temp_space_ = space::BumpPointerSpace::Create(
+          "Bump pointer space 2", kGSSBumpPointerSpaceCapacity, /* requested_begin */ nullptr);
       CHECK(temp_space_ != nullptr);
       AddSpace(temp_space_);
-    } else if (main_mem_map_2.get() != nullptr) {
+    } else if (main_mem_map_2.IsValid()) {
       const char* name = kUseRosAlloc ? kRosAllocSpaceName[1] : kDlMallocSpaceName[1];
-      main_space_backup_.reset(CreateMallocSpaceFromMemMap(main_mem_map_2.release(), initial_size,
-                                                           growth_limit_, capacity_, name, true));
+      main_space_backup_.reset(CreateMallocSpaceFromMemMap(std::move(main_mem_map_2),
+                                                           initial_size,
+                                                           growth_limit_,
+                                                           capacity_,
+                                                           name,
+                                                           /* can_move_objects */ true));
       CHECK(main_space_backup_.get() != nullptr);
       // Add the space so its accounted for in the heap_begin and heap_end.
       AddSpace(main_space_backup_.get());
@@ -613,7 +620,7 @@ Heap::Heap(size_t initial_size,
         first_space = space;
       }
     }
-    bool no_gap = MemMap::CheckNoGaps(first_space->GetMemMap(), non_moving_space_->GetMemMap());
+    bool no_gap = MemMap::CheckNoGaps(*first_space->GetMemMap(), *non_moving_space_->GetMemMap());
     if (!no_gap) {
       PrintFileToLog("/proc/self/maps", LogSeverity::ERROR);
       MemMap::DumpMaps(LOG_STREAM(ERROR), true);
@@ -632,14 +639,19 @@ Heap::Heap(size_t initial_size,
   }
 }
 
-MemMap* Heap::MapAnonymousPreferredAddress(const char* name,
-                                           uint8_t* request_begin,
-                                           size_t capacity,
-                                           std::string* out_error_str) {
+MemMap Heap::MapAnonymousPreferredAddress(const char* name,
+                                          uint8_t* request_begin,
+                                          size_t capacity,
+                                          std::string* out_error_str) {
   while (true) {
-    MemMap* map = MemMap::MapAnonymous(name, request_begin, capacity,
-                                       PROT_READ | PROT_WRITE, true, false, out_error_str);
-    if (map != nullptr || request_begin == nullptr) {
+    MemMap map = MemMap::MapAnonymous(name,
+                                      request_begin,
+                                      capacity,
+                                      PROT_READ | PROT_WRITE,
+                                      /* low_4gb*/ true,
+                                      /* reuse */ false,
+                                      out_error_str);
+    if (map.IsValid() || request_begin == nullptr) {
       return map;
     }
     // Retry a  second time with no specified request begin.
@@ -651,7 +663,7 @@ bool Heap::MayUseCollector(CollectorType type) const {
   return foreground_collector_type_ == type || background_collector_type_ == type;
 }
 
-space::MallocSpace* Heap::CreateMallocSpaceFromMemMap(MemMap* mem_map,
+space::MallocSpace* Heap::CreateMallocSpaceFromMemMap(MemMap&& mem_map,
                                                       size_t initial_size,
                                                       size_t growth_limit,
                                                       size_t capacity,
@@ -660,12 +672,21 @@ space::MallocSpace* Heap::CreateMallocSpaceFromMemMap(MemMap* mem_map,
   space::MallocSpace* malloc_space = nullptr;
   if (kUseRosAlloc) {
     // Create rosalloc space.
-    malloc_space = space::RosAllocSpace::CreateFromMemMap(mem_map, name, kDefaultStartingSize,
-                                                          initial_size, growth_limit, capacity,
-                                                          low_memory_mode_, can_move_objects);
+    malloc_space = space::RosAllocSpace::CreateFromMemMap(std::move(mem_map),
+                                                          name,
+                                                          kDefaultStartingSize,
+                                                          initial_size,
+                                                          growth_limit,
+                                                          capacity,
+                                                          low_memory_mode_,
+                                                          can_move_objects);
   } else {
-    malloc_space = space::DlMallocSpace::CreateFromMemMap(mem_map, name, kDefaultStartingSize,
-                                                          initial_size, growth_limit, capacity,
+    malloc_space = space::DlMallocSpace::CreateFromMemMap(std::move(mem_map),
+                                                          name,
+                                                          kDefaultStartingSize,
+                                                          initial_size,
+                                                          growth_limit,
+                                                          capacity,
                                                           can_move_objects);
   }
   if (collector::SemiSpace::kUseRememberedSet) {
@@ -679,7 +700,9 @@ space::MallocSpace* Heap::CreateMallocSpaceFromMemMap(MemMap* mem_map,
   return malloc_space;
 }
 
-void Heap::CreateMainMallocSpace(MemMap* mem_map, size_t initial_size, size_t growth_limit,
+void Heap::CreateMainMallocSpace(MemMap&& mem_map,
+                                 size_t initial_size,
+                                 size_t growth_limit,
                                  size_t capacity) {
   // Is background compaction is enabled?
   bool can_move_objects = IsMovingGc(background_collector_type_) !=
@@ -698,7 +721,10 @@ void Heap::CreateMainMallocSpace(MemMap* mem_map, size_t initial_size, size_t gr
     RemoveRememberedSet(main_space_);
   }
   const char* name = kUseRosAlloc ? kRosAllocSpaceName[0] : kDlMallocSpaceName[0];
-  main_space_ = CreateMallocSpaceFromMemMap(mem_map, initial_size, growth_limit, capacity, name,
+  main_space_ = CreateMallocSpaceFromMemMap(std::move(mem_map),
+                                            initial_size,
+                                            growth_limit,
+                                            capacity, name,
                                             can_move_objects);
   SetSpaceAsDefault(main_space_);
   VLOG(heap) << "Created main space " << main_space_;
@@ -2012,17 +2038,17 @@ void Heap::TransitionCollector(CollectorType collector_type) {
         if (!IsMovingGc(collector_type_)) {
           // Create the bump pointer space from the backup space.
           CHECK(main_space_backup_ != nullptr);
-          std::unique_ptr<MemMap> mem_map(main_space_backup_->ReleaseMemMap());
+          MemMap mem_map = main_space_backup_->ReleaseMemMap();
           // We are transitioning from non moving GC -> moving GC, since we copied from the bump
           // pointer space last transition it will be protected.
-          CHECK(mem_map != nullptr);
-          mem_map->Protect(PROT_READ | PROT_WRITE);
+          CHECK(mem_map.IsValid());
+          mem_map.Protect(PROT_READ | PROT_WRITE);
           bump_pointer_space_ = space::BumpPointerSpace::CreateFromMemMap("Bump pointer space",
-                                                                          mem_map.release());
+                                                                          std::move(mem_map));
           AddSpace(bump_pointer_space_);
           collector = Compact(bump_pointer_space_, main_space_, kGcCauseCollectorTransition);
           // Use the now empty main space mem map for the bump pointer temp space.
-          mem_map.reset(main_space_->ReleaseMemMap());
+          mem_map = main_space_->ReleaseMemMap();
           // Unset the pointers just in case.
           if (dlmalloc_space_ == main_space_) {
             dlmalloc_space_ = nullptr;
@@ -2038,7 +2064,7 @@ void Heap::TransitionCollector(CollectorType collector_type) {
           RemoveRememberedSet(main_space_backup_.get());
           main_space_backup_.reset(nullptr);  // Deletes the space.
           temp_space_ = space::BumpPointerSpace::CreateFromMemMap("Bump pointer space 2",
-                                                                  mem_map.release());
+                                                                  std::move(mem_map));
           AddSpace(temp_space_);
         }
         break;
@@ -2048,37 +2074,35 @@ void Heap::TransitionCollector(CollectorType collector_type) {
       case kCollectorTypeCMS: {
         if (IsMovingGc(collector_type_)) {
           CHECK(temp_space_ != nullptr);
-          std::unique_ptr<MemMap> mem_map(temp_space_->ReleaseMemMap());
+          MemMap mem_map = temp_space_->ReleaseMemMap();
           RemoveSpace(temp_space_);
           temp_space_ = nullptr;
-          mem_map->Protect(PROT_READ | PROT_WRITE);
-          CreateMainMallocSpace(mem_map.get(),
+          mem_map.Protect(PROT_READ | PROT_WRITE);
+          CreateMainMallocSpace(std::move(mem_map),
                                 kDefaultInitialSize,
-                                std::min(mem_map->Size(), growth_limit_),
-                                mem_map->Size());
-          mem_map.release();
+                                std::min(mem_map.Size(), growth_limit_),
+                                mem_map.Size());
           // Compact to the main space from the bump pointer space, don't need to swap semispaces.
           AddSpace(main_space_);
           collector = Compact(main_space_, bump_pointer_space_, kGcCauseCollectorTransition);
-          mem_map.reset(bump_pointer_space_->ReleaseMemMap());
+          mem_map = bump_pointer_space_->ReleaseMemMap();
           RemoveSpace(bump_pointer_space_);
           bump_pointer_space_ = nullptr;
           const char* name = kUseRosAlloc ? kRosAllocSpaceName[1] : kDlMallocSpaceName[1];
           // Temporarily unprotect the backup mem map so rosalloc can write the debug magic number.
           if (kIsDebugBuild && kUseRosAlloc) {
-            mem_map->Protect(PROT_READ | PROT_WRITE);
+            mem_map.Protect(PROT_READ | PROT_WRITE);
           }
           main_space_backup_.reset(CreateMallocSpaceFromMemMap(
-              mem_map.get(),
+              std::move(mem_map),
               kDefaultInitialSize,
-              std::min(mem_map->Size(), growth_limit_),
-              mem_map->Size(),
+              std::min(mem_map.Size(), growth_limit_),
+              mem_map.Size(),
               name,
               true));
           if (kIsDebugBuild && kUseRosAlloc) {
-            mem_map->Protect(PROT_NONE);
+            main_space_backup_->GetMemMap()->Protect(PROT_NONE);
           }
-          mem_map.release();
         }
         break;
       }
@@ -2323,11 +2347,13 @@ void Heap::PreZygoteFork() {
     if (reset_main_space) {
       main_space_->GetMemMap()->Protect(PROT_READ | PROT_WRITE);
       madvise(main_space_->Begin(), main_space_->Capacity(), MADV_DONTNEED);
-      MemMap* mem_map = main_space_->ReleaseMemMap();
+      MemMap mem_map = main_space_->ReleaseMemMap();
       RemoveSpace(main_space_);
       space::Space* old_main_space = main_space_;
-      CreateMainMallocSpace(mem_map, kDefaultInitialSize, std::min(mem_map->Size(), growth_limit_),
-                            mem_map->Size());
+      CreateMainMallocSpace(std::move(mem_map),
+                            kDefaultInitialSize,
+                            std::min(mem_map.Size(), growth_limit_),
+                            mem_map.Size());
       delete old_main_space;
       AddSpace(main_space_);
     } else {

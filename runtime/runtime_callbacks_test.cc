@@ -190,19 +190,19 @@ TEST_F(ThreadLifecycleCallbackRuntimeCallbacksTest, ThreadLifecycleCallbackJava)
 
 TEST_F(ThreadLifecycleCallbackRuntimeCallbacksTest, ThreadLifecycleCallbackAttach) {
   std::string error_msg;
-  std::unique_ptr<MemMap> stack(MemMap::MapAnonymous("ThreadLifecycleCallback Thread",
-                                                     nullptr,
-                                                     128 * kPageSize,  // Just some small stack.
-                                                     PROT_READ | PROT_WRITE,
-                                                     false,
-                                                     false,
-                                                     &error_msg));
-  ASSERT_FALSE(stack == nullptr) << error_msg;
+  MemMap stack = MemMap::MapAnonymous("ThreadLifecycleCallback Thread",
+                                      /* addr */ nullptr,
+                                      128 * kPageSize,  // Just some small stack.
+                                      PROT_READ | PROT_WRITE,
+                                      false,
+                                      false,
+                                      &error_msg);
+  ASSERT_TRUE(stack.IsValid()) << error_msg;
 
   const char* reason = "ThreadLifecycleCallback test thread";
   pthread_attr_t attr;
   CHECK_PTHREAD_CALL(pthread_attr_init, (&attr), reason);
-  CHECK_PTHREAD_CALL(pthread_attr_setstack, (&attr, stack->Begin(), stack->Size()), reason);
+  CHECK_PTHREAD_CALL(pthread_attr_setstack, (&attr, stack.Begin(), stack.Size()), reason);
   pthread_t pthread;
   CHECK_PTHREAD_CALL(pthread_create,
                      (&pthread,

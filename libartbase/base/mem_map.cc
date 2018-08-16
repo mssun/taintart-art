@@ -61,6 +61,21 @@ using Maps = AllocationTrackingMultiMap<void*, MemMap*, kAllocatorTagMaps>;
 // All the non-empty MemMaps. Use a multimap as we do a reserve-and-divide (eg ElfMap::Load()).
 static Maps* gMaps GUARDED_BY(MemMap::GetMemMapsLock()) = nullptr;
 
+// Retrieve iterator to a `gMaps` entry that is known to exist.
+Maps::iterator GetGMapsEntry(const MemMap& map) REQUIRES(MemMap::GetMemMapsLock()) {
+  DCHECK(map.IsValid());
+  DCHECK(gMaps != nullptr);
+  for (auto it = gMaps->lower_bound(map.BaseBegin()), end = gMaps->end();
+       it != end && it->first == map.BaseBegin();
+       ++it) {
+    if (it->second == &map) {
+      return it;
+    }
+  }
+  LOG(FATAL) << "MemMap not found";
+  UNREACHABLE();
+}
+
 std::ostream& operator<<(std::ostream& os, const Maps& mem_maps) {
   os << "MemMap:" << std::endl;
   for (auto it = mem_maps.begin(); it != mem_maps.end(); ++it) {
@@ -231,20 +246,21 @@ void* MemMap::TryMemMapLow4GB(void* ptr,
 }
 #endif
 
-MemMap* MemMap::MapAnonymous(const char* name,
-                             uint8_t* expected_ptr,
-                             size_t byte_count,
-                             int prot,
-                             bool low_4gb,
-                             bool reuse,
-                             std::string* error_msg,
-                             bool use_ashmem) {
+MemMap MemMap::MapAnonymous(const char* name,
+                            uint8_t* addr,
+                            size_t byte_count,
+                            int prot,
+                            bool low_4gb,
+                            bool reuse,
+                            std::string* error_msg,
+                            bool use_ashmem) {
 #ifndef __LP64__
   UNUSED(low_4gb);
 #endif
   use_ashmem = use_ashmem && !kIsTargetLinux && !kIsTargetFuchsia;
   if (byte_count == 0) {
-    return new MemMap(name, nullptr, 0, nullptr, 0, prot, false);
+    *error_msg = "Empty MemMap requested.";
+    return Invalid();
   }
   size_t page_aligned_byte_count = RoundUp(byte_count, kPageSize);
 
@@ -252,9 +268,9 @@ MemMap* MemMap::MapAnonymous(const char* name,
   if (reuse) {
     // reuse means it is okay that it overlaps an existing page mapping.
     // Only use this if you actually made the page reservation yourself.
-    CHECK(expected_ptr != nullptr);
+    CHECK(addr != nullptr);
 
-    DCHECK(ContainedWithinExistingMap(expected_ptr, byte_count, error_msg)) << *error_msg;
+    DCHECK(ContainedWithinExistingMap(addr, byte_count, error_msg)) << *error_msg;
     flags |= MAP_FIXED;
   }
 
@@ -296,7 +312,7 @@ MemMap* MemMap::MapAnonymous(const char* name,
   // We need to store and potentially set an error number for pretty printing of errors
   int saved_errno = 0;
 
-  void* actual = MapInternal(expected_ptr,
+  void* actual = MapInternal(addr,
                              page_aligned_byte_count,
                              prot,
                              flags,
@@ -313,28 +329,33 @@ MemMap* MemMap::MapAnonymous(const char* name,
 
       *error_msg = StringPrintf("Failed anonymous mmap(%p, %zd, 0x%x, 0x%x, %d, 0): %s. "
                                     "See process maps in the log.",
-                                expected_ptr,
+                                addr,
                                 page_aligned_byte_count,
                                 prot,
                                 flags,
                                 fd.get(),
                                 strerror(saved_errno));
     }
-    return nullptr;
+    return Invalid();
   }
-  if (!CheckMapRequest(expected_ptr, actual, page_aligned_byte_count, error_msg)) {
-    return nullptr;
+  if (!CheckMapRequest(addr, actual, page_aligned_byte_count, error_msg)) {
+    return Invalid();
   }
-  return new MemMap(name, reinterpret_cast<uint8_t*>(actual), byte_count, actual,
-                    page_aligned_byte_count, prot, reuse);
+  return MemMap(name,
+                reinterpret_cast<uint8_t*>(actual),
+                byte_count,
+                actual,
+                page_aligned_byte_count,
+                prot,
+                reuse);
 }
 
-MemMap* MemMap::MapDummy(const char* name, uint8_t* addr, size_t byte_count) {
+MemMap MemMap::MapDummy(const char* name, uint8_t* addr, size_t byte_count) {
   if (byte_count == 0) {
-    return new MemMap(name, nullptr, 0, nullptr, 0, 0, false);
+    return Invalid();
   }
   const size_t page_aligned_byte_count = RoundUp(byte_count, kPageSize);
-  return new MemMap(name, addr, byte_count, addr, page_aligned_byte_count, 0, true /* reuse */);
+  return MemMap(name, addr, byte_count, addr, page_aligned_byte_count, 0, true /* reuse */);
 }
 
 template<typename A, typename B>
@@ -342,19 +363,18 @@ static ptrdiff_t PointerDiff(A* a, B* b) {
   return static_cast<ptrdiff_t>(reinterpret_cast<intptr_t>(a) - reinterpret_cast<intptr_t>(b));
 }
 
-bool MemMap::ReplaceWith(MemMap** source_ptr, /*out*/std::string* error) {
+bool MemMap::ReplaceWith(MemMap* source, /*out*/std::string* error) {
 #if !HAVE_MREMAP_SYSCALL
   UNUSED(source_ptr);
   *error = "Cannot perform atomic replace because we are missing the required mremap syscall";
   return false;
 #else  // !HAVE_MREMAP_SYSCALL
-  CHECK(source_ptr != nullptr);
-  CHECK(*source_ptr != nullptr);
+  CHECK(source != nullptr);
+  CHECK(source->IsValid());
   if (!MemMap::kCanReplaceMapping) {
     *error = "Unable to perform atomic replace due to runtime environment!";
     return false;
   }
-  MemMap* source = *source_ptr;
   // neither can be reuse.
   if (source->reuse_ || reuse_) {
     *error = "One or both mappings is not a real mmap!";
@@ -406,12 +426,9 @@ bool MemMap::ReplaceWith(MemMap** source_ptr, /*out*/std::string* error) {
   // them later.
   size_t new_base_size = std::max(source->base_size_, base_size_);
 
-  // Delete the old source, don't unmap it though (set reuse) since it is already gone.
-  *source_ptr = nullptr;
+  // Invalidate *source, don't unmap it though since it is already gone.
   size_t source_size = source->size_;
-  source->already_unmapped_ = true;
-  delete source;
-  source = nullptr;
+  source->Invalidate();
 
   size_ = source_size;
   base_size_ = new_base_size;
@@ -422,16 +439,16 @@ bool MemMap::ReplaceWith(MemMap** source_ptr, /*out*/std::string* error) {
 #endif  // !HAVE_MREMAP_SYSCALL
 }
 
-MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
-                                 size_t byte_count,
-                                 int prot,
-                                 int flags,
-                                 int fd,
-                                 off_t start,
-                                 bool low_4gb,
-                                 bool reuse,
-                                 const char* filename,
-                                 std::string* error_msg) {
+MemMap MemMap::MapFileAtAddress(uint8_t* expected_ptr,
+                                size_t byte_count,
+                                int prot,
+                                int flags,
+                                int fd,
+                                off_t start,
+                                bool low_4gb,
+                                bool reuse,
+                                const char* filename,
+                                std::string* error_msg) {
   CHECK_NE(0, prot);
   CHECK_NE(0, flags & (MAP_SHARED | MAP_PRIVATE));
 
@@ -452,7 +469,7 @@ MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
   }
 
   if (byte_count == 0) {
-    return new MemMap(filename, nullptr, 0, nullptr, 0, prot, false);
+    return Invalid();
   }
   // Adjust 'offset' to be page-aligned as required by mmap.
   int page_offset = start % kPageSize;
@@ -491,10 +508,10 @@ MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
                                 static_cast<int64_t>(page_aligned_offset), filename,
                                 strerror(saved_errno));
     }
-    return nullptr;
+    return Invalid();
   }
   if (!CheckMapRequest(expected_ptr, actual, page_aligned_byte_count, error_msg)) {
-    return nullptr;
+    return Invalid();
   }
   if (redzone_size != 0) {
     const uint8_t *real_start = actual + page_offset;
@@ -506,14 +523,27 @@ MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
     page_aligned_byte_count -= redzone_size;
   }
 
-  return new MemMap(filename, actual + page_offset, byte_count, actual, page_aligned_byte_count,
-                    prot, reuse, redzone_size);
+  return MemMap(filename,
+                actual + page_offset,
+                byte_count,
+                actual,
+                page_aligned_byte_count,
+                prot,
+                reuse,
+                redzone_size);
+}
+
+MemMap::MemMap(MemMap&& other)
+    : MemMap() {
+  swap(other);
 }
 
 MemMap::~MemMap() {
-  if (base_begin_ == nullptr && base_size_ == 0) {
-    return;
-  }
+  Reset();
+}
+
+void MemMap::DoReset() {
+  DCHECK(IsValid());
 
   // Unlike Valgrind, AddressSanitizer requires that all manually poisoned memory is unpoisoned
   // before it is returned to the system.
@@ -533,19 +563,56 @@ MemMap::~MemMap() {
     }
   }
 
+  Invalidate();
+}
+
+void MemMap::Invalidate() {
+  DCHECK(IsValid());
+
   // Remove it from gMaps.
   std::lock_guard<std::mutex> mu(*mem_maps_lock_);
-  bool found = false;
-  DCHECK(gMaps != nullptr);
-  for (auto it = gMaps->lower_bound(base_begin_), end = gMaps->end();
-       it != end && it->first == base_begin_; ++it) {
-    if (it->second == this) {
-      found = true;
-      gMaps->erase(it);
-      break;
+  auto it = GetGMapsEntry(*this);
+  gMaps->erase(it);
+
+  // Mark it as invalid.
+  base_size_ = 0u;
+  DCHECK(!IsValid());
+}
+
+void MemMap::swap(MemMap& other) {
+  if (IsValid() || other.IsValid()) {
+    std::lock_guard<std::mutex> mu(*mem_maps_lock_);
+    DCHECK(gMaps != nullptr);
+    auto this_it = IsValid() ? GetGMapsEntry(*this) : gMaps->end();
+    auto other_it = other.IsValid() ? GetGMapsEntry(other) : gMaps->end();
+    if (IsValid()) {
+      DCHECK(this_it != gMaps->end());
+      DCHECK_EQ(this_it->second, this);
+      this_it->second = &other;
     }
+    if (other.IsValid()) {
+      DCHECK(other_it != gMaps->end());
+      DCHECK_EQ(other_it->second, &other);
+      other_it->second = this;
+    }
+    // Swap members with the `mem_maps_lock_` held so that `base_begin_` matches
+    // with the `gMaps` key when other threads try to use `gMaps`.
+    SwapMembers(other);
+  } else {
+    SwapMembers(other);
   }
-  CHECK(found) << "MemMap not found";
+}
+
+void MemMap::SwapMembers(MemMap& other) {
+  name_.swap(other.name_);
+  std::swap(begin_, other.begin_);
+  std::swap(size_, other.size_);
+  std::swap(base_begin_, other.base_begin_);
+  std::swap(base_size_, other.base_size_);
+  std::swap(prot_, other.prot_);
+  std::swap(reuse_, other.reuse_);
+  std::swap(already_unmapped_, other.already_unmapped_);
+  std::swap(redzone_size_, other.redzone_size_);
 }
 
 MemMap::MemMap(const std::string& name, uint8_t* begin, size_t size, void* base_begin,
@@ -568,8 +635,11 @@ MemMap::MemMap(const std::string& name, uint8_t* begin, size_t size, void* base_
   }
 }
 
-MemMap* MemMap::RemapAtEnd(uint8_t* new_end, const char* tail_name, int tail_prot,
-                           std::string* error_msg, bool use_ashmem) {
+MemMap MemMap::RemapAtEnd(uint8_t* new_end,
+                          const char* tail_name,
+                          int tail_prot,
+                          std::string* error_msg,
+                          bool use_ashmem) {
   use_ashmem = use_ashmem && !kIsTargetLinux && !kIsTargetFuchsia;
   DCHECK_GE(new_end, Begin());
   DCHECK_LE(new_end, End());
@@ -583,11 +653,11 @@ MemMap* MemMap::RemapAtEnd(uint8_t* new_end, const char* tail_name, int tail_pro
   uint8_t* new_base_end = new_end;
   DCHECK_LE(new_base_end, old_base_end);
   if (new_base_end == old_base_end) {
-    return new MemMap(tail_name, nullptr, 0, nullptr, 0, tail_prot, false);
+    return Invalid();
   }
-  size_ = new_end - reinterpret_cast<uint8_t*>(begin_);
-  base_size_ = new_base_end - reinterpret_cast<uint8_t*>(base_begin_);
-  DCHECK_LE(begin_ + size_, reinterpret_cast<uint8_t*>(base_begin_) + base_size_);
+  size_t new_size = new_end - reinterpret_cast<uint8_t*>(begin_);
+  size_t new_base_size = new_base_end - reinterpret_cast<uint8_t*>(base_begin_);
+  DCHECK_LE(begin_ + new_size, reinterpret_cast<uint8_t*>(base_begin_) + new_base_size);
   size_t tail_size = old_end - new_end;
   uint8_t* tail_base_begin = new_base_end;
   size_t tail_base_size = old_base_end - new_base_end;
@@ -595,7 +665,7 @@ MemMap* MemMap::RemapAtEnd(uint8_t* new_end, const char* tail_name, int tail_pro
   DCHECK_ALIGNED(tail_base_size, kPageSize);
 
   unique_fd fd;
-  int flags = MAP_PRIVATE | MAP_ANONYMOUS;
+  int flags = MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS;
   if (use_ashmem) {
     // android_os_Debug.cpp read_mapinfo assumes all ashmem regions associated with the VM are
     // prefixed "dalvik-".
@@ -606,23 +676,14 @@ MemMap* MemMap::RemapAtEnd(uint8_t* new_end, const char* tail_name, int tail_pro
     if (fd.get() == -1) {
       *error_msg = StringPrintf("ashmem_create_region failed for '%s': %s",
                                 tail_name, strerror(errno));
-      return nullptr;
+      return Invalid();
     }
   }
 
   MEMORY_TOOL_MAKE_UNDEFINED(tail_base_begin, tail_base_size);
-  // Unmap/map the tail region.
-  int result = TargetMUnmap(tail_base_begin, tail_base_size);
-  if (result == -1) {
-    PrintFileToLog("/proc/self/maps", LogSeverity::WARNING);
-    *error_msg = StringPrintf("munmap(%p, %zd) failed for '%s'. See process maps in the log.",
-                              tail_base_begin, tail_base_size, name_.c_str());
-    return nullptr;
-  }
-  // Don't cause memory allocation between the munmap and the mmap
-  // calls. Otherwise, libc (or something else) might take this memory
-  // region. Note this isn't perfect as there's no way to prevent
-  // other threads to try to take this memory region here.
+  // Note: Do not explicitly unmap the tail region, mmap() with MAP_FIXED automatically
+  // removes old mappings for the overlapping region. This makes the operation atomic
+  // and prevents other threads from racing to allocate memory in the requested region.
   uint8_t* actual = reinterpret_cast<uint8_t*>(TargetMMap(tail_base_begin,
                                                           tail_base_size,
                                                           tail_prot,
@@ -634,9 +695,18 @@ MemMap* MemMap::RemapAtEnd(uint8_t* new_end, const char* tail_name, int tail_pro
     *error_msg = StringPrintf("anonymous mmap(%p, %zd, 0x%x, 0x%x, %d, 0) failed. See process "
                               "maps in the log.", tail_base_begin, tail_base_size, tail_prot, flags,
                               fd.get());
-    return nullptr;
+    return Invalid();
   }
-  return new MemMap(tail_name, actual, tail_size, actual, tail_base_size, tail_prot, false);
+  // Update *this.
+  if (new_base_size == 0u) {
+    std::lock_guard<std::mutex> mu(*mem_maps_lock_);
+    auto it = GetGMapsEntry(*this);
+    gMaps->erase(it);
+  }
+  size_ = new_size;
+  base_size_ = new_base_size;
+  // Return the new mapping.
+  return MemMap(tail_name, actual, tail_size, actual, tail_base_size, tail_prot, false);
 }
 
 void MemMap::MadviseDontNeedAndZero() {
@@ -675,15 +745,15 @@ bool MemMap::Protect(int prot) {
   return false;
 }
 
-bool MemMap::CheckNoGaps(MemMap* begin_map, MemMap* end_map) {
+bool MemMap::CheckNoGaps(MemMap& begin_map, MemMap& end_map) {
   std::lock_guard<std::mutex> mu(*mem_maps_lock_);
-  CHECK(begin_map != nullptr);
-  CHECK(end_map != nullptr);
+  CHECK(begin_map.IsValid());
+  CHECK(end_map.IsValid());
   CHECK(HasMemMap(begin_map));
   CHECK(HasMemMap(end_map));
-  CHECK_LE(begin_map->BaseBegin(), end_map->BaseBegin());
-  MemMap* map = begin_map;
-  while (map->BaseBegin() != end_map->BaseBegin()) {
+  CHECK_LE(begin_map.BaseBegin(), end_map.BaseBegin());
+  MemMap* map = &begin_map;
+  while (map->BaseBegin() != end_map.BaseBegin()) {
     MemMap* next_map = GetLargestMemMapAt(map->BaseEnd());
     if (next_map == nullptr) {
       // Found a gap.
@@ -758,11 +828,11 @@ void MemMap::DumpMapsLocked(std::ostream& os, bool terse) {
   }
 }
 
-bool MemMap::HasMemMap(MemMap* map) {
-  void* base_begin = map->BaseBegin();
+bool MemMap::HasMemMap(MemMap& map) {
+  void* base_begin = map.BaseBegin();
   for (auto it = gMaps->lower_bound(base_begin), end = gMaps->end();
        it != end && it->first == base_begin; ++it) {
-    if (it->second == map) {
+    if (it->second == &map) {
       return true;
     }
   }
@@ -1049,6 +1119,7 @@ void MemMap::AlignBy(size_t size) {
   CHECK_EQ(size_, base_size_) << "Unsupported";
   CHECK_GT(size, static_cast<size_t>(kPageSize));
   CHECK_ALIGNED(size, kPageSize);
+  CHECK(!reuse_);
   if (IsAlignedParam(reinterpret_cast<uintptr_t>(base_begin_), size) &&
       IsAlignedParam(base_size_, size)) {
     // Already aligned.
@@ -1079,17 +1150,17 @@ void MemMap::AlignBy(size_t size) {
         << " aligned_base_end=" << reinterpret_cast<void*>(aligned_base_end);
   }
   std::lock_guard<std::mutex> mu(*mem_maps_lock_);
+  if (base_begin < aligned_base_begin) {
+    auto it = GetGMapsEntry(*this);
+    // TODO: When C++17 becomes available, use std::map<>::extract(), modify, insert.
+    gMaps->erase(it);
+    gMaps->insert(std::make_pair(aligned_base_begin, this));
+  }
   base_begin_ = aligned_base_begin;
   base_size_ = aligned_base_size;
   begin_ = aligned_base_begin;
   size_ = aligned_base_size;
   DCHECK(gMaps != nullptr);
-  if (base_begin < aligned_base_begin) {
-    auto it = gMaps->find(base_begin);
-    CHECK(it != gMaps->end()) << "MemMap not found";
-    gMaps->erase(it);
-    gMaps->insert(std::make_pair(base_begin_, this));
-  }
 }
 
 }  // namespace art

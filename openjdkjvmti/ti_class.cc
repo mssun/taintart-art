@@ -91,10 +91,8 @@ static std::unique_ptr<const art::DexFile> MakeSingleDexFile(art::Thread* self,
   // Make the mmap
   std::string error_msg;
   art::ArrayRef<const unsigned char> final_data(final_dex_data, final_len);
-  std::unique_ptr<art::MemMap> map(Redefiner::MoveDataToMemMap(orig_location,
-                                                               final_data,
-                                                               &error_msg));
-  if (map.get() == nullptr) {
+  art::MemMap map = Redefiner::MoveDataToMemMap(orig_location, final_data, &error_msg);
+  if (!map.IsValid()) {
     LOG(WARNING) << "Unable to allocate mmap for redefined dex file! Error was: " << error_msg;
     self->ThrowOutOfMemoryError(StringPrintf(
         "Unable to allocate dex file for transformation of %s", descriptor).c_str());
@@ -102,15 +100,15 @@ static std::unique_ptr<const art::DexFile> MakeSingleDexFile(art::Thread* self,
   }
 
   // Make a dex-file
-  if (map->Size() < sizeof(art::DexFile::Header)) {
+  if (map.Size() < sizeof(art::DexFile::Header)) {
     LOG(WARNING) << "Could not read dex file header because dex_data was too short";
     art::ThrowClassFormatError(nullptr,
                                "Unable to read transformed dex file of %s",
                                descriptor);
     return nullptr;
   }
-  uint32_t checksum = reinterpret_cast<const art::DexFile::Header*>(map->Begin())->checksum_;
-  std::string map_name = map->GetName();
+  uint32_t checksum = reinterpret_cast<const art::DexFile::Header*>(map.Begin())->checksum_;
+  std::string map_name = map.GetName();
   const art::ArtDexFileLoader dex_file_loader;
   std::unique_ptr<const art::DexFile> dex_file(dex_file_loader.Open(map_name,
                                                                     checksum,

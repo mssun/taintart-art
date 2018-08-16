@@ -283,7 +283,6 @@ bool ElfFileImpl<ElfTypes>::Setup(File* file,
 
 template <typename ElfTypes>
 ElfFileImpl<ElfTypes>::~ElfFileImpl() {
-  STLDeleteElements(&segments_);
   delete symtab_symbol_table_;
   delete dynsym_symbol_table_;
 }
@@ -418,17 +417,17 @@ template <typename ElfTypes>
 }
 
 template <typename ElfTypes>
-bool ElfFileImpl<ElfTypes>::SetMap(File* file, MemMap* map, std::string* error_msg) {
-  if (map == nullptr) {
+bool ElfFileImpl<ElfTypes>::SetMap(File* file, MemMap&& map, std::string* error_msg) {
+  if (!map.IsValid()) {
     // MemMap::Open should have already set an error.
     DCHECK(!error_msg->empty());
     return false;
   }
-  map_.reset(map);
-  CHECK(map_.get() != nullptr) << file->GetPath();
-  CHECK(map_->Begin() != nullptr) << file->GetPath();
+  map_ = std::move(map);
+  CHECK(map_.IsValid()) << file->GetPath();
+  CHECK(map_.Begin() != nullptr) << file->GetPath();
 
-  header_ = reinterpret_cast<Elf_Ehdr*>(map_->Begin());
+  header_ = reinterpret_cast<Elf_Ehdr*>(map_.Begin());
   if ((ELFMAG0 != header_->e_ident[EI_MAG0])
       || (ELFMAG1 != header_->e_ident[EI_MAG1])
       || (ELFMAG2 != header_->e_ident[EI_MAG2])
@@ -1164,14 +1163,14 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
         DCHECK(!error_msg->empty());
         return false;
       }
-      std::unique_ptr<MemMap> reserve(MemMap::MapAnonymous(reservation_name.c_str(),
-                                                           reserve_base_override,
-                                                           loaded_size,
-                                                           PROT_NONE,
-                                                           low_4gb,
-                                                           false,
-                                                           error_msg));
-      if (reserve.get() == nullptr) {
+      MemMap reserve = MemMap::MapAnonymous(reservation_name.c_str(),
+                                            reserve_base_override,
+                                            loaded_size,
+                                            PROT_NONE,
+                                            low_4gb,
+                                            /* reuse */ false,
+                                            error_msg);
+      if (!reserve.IsValid()) {
         *error_msg = StringPrintf("Failed to allocate %s: %s",
                                   reservation_name.c_str(), error_msg->c_str());
         return false;
@@ -1179,14 +1178,14 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
       reserved = true;
 
       // Base address is the difference of actual mapped location and the p_vaddr
-      base_address_ = reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(reserve->Begin())
+      base_address_ = reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(reserve.Begin())
                        - reinterpret_cast<uintptr_t>(reserve_base));
       // By adding the p_vaddr of a section/symbol to base_address_ we will always get the
       // dynamic memory address of where that object is actually mapped
       //
       // TODO: base_address_ needs to be calculated in ::Open, otherwise
       // FindDynamicSymbolAddress returns the wrong values until Load is called.
-      segments_.push_back(reserve.release());
+      segments_.push_back(std::move(reserve));
     }
     // empty segment, nothing to map
     if (program_header->p_memsz == 0) {
@@ -1234,7 +1233,7 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
       return false;
     }
     if (program_header->p_filesz != 0u) {
-      std::unique_ptr<MemMap> segment(
+      MemMap segment =
           MemMap::MapFileAtAddress(p_vaddr,
                                    program_header->p_filesz,
                                    prot,
@@ -1244,40 +1243,42 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
                                    /*low4_gb*/false,
                                    /*reuse*/true,  // implies MAP_FIXED
                                    file->GetPath().c_str(),
-                                   error_msg));
-      if (segment.get() == nullptr) {
+                                   error_msg);
+      if (!segment.IsValid()) {
         *error_msg = StringPrintf("Failed to map ELF file segment %d from %s: %s",
                                   i, file->GetPath().c_str(), error_msg->c_str());
         return false;
       }
-      if (segment->Begin() != p_vaddr) {
+      if (segment.Begin() != p_vaddr) {
         *error_msg = StringPrintf("Failed to map ELF file segment %d from %s at expected address %p, "
                                   "instead mapped to %p",
-                                  i, file->GetPath().c_str(), p_vaddr, segment->Begin());
+                                  i, file->GetPath().c_str(), p_vaddr, segment.Begin());
         return false;
       }
-      segments_.push_back(segment.release());
+      segments_.push_back(std::move(segment));
     }
     if (program_header->p_filesz < program_header->p_memsz) {
       std::string name = StringPrintf("Zero-initialized segment %" PRIu64 " of ELF file %s",
                                       static_cast<uint64_t>(i), file->GetPath().c_str());
-      std::unique_ptr<MemMap> segment(
-          MemMap::MapAnonymous(name.c_str(),
-                               p_vaddr + program_header->p_filesz,
-                               program_header->p_memsz - program_header->p_filesz,
-                               prot, false, true /* reuse */, error_msg));
-      if (segment == nullptr) {
+      MemMap segment = MemMap::MapAnonymous(name.c_str(),
+                                            p_vaddr + program_header->p_filesz,
+                                            program_header->p_memsz - program_header->p_filesz,
+                                            prot,
+                                            /* low_4gb */ false,
+                                            /* reuse */ true,
+                                            error_msg);
+      if (!segment.IsValid()) {
         *error_msg = StringPrintf("Failed to map zero-initialized ELF file segment %d from %s: %s",
                                   i, file->GetPath().c_str(), error_msg->c_str());
         return false;
       }
-      if (segment->Begin() != p_vaddr) {
+      if (segment.Begin() != p_vaddr) {
         *error_msg = StringPrintf("Failed to map zero-initialized ELF file segment %d from %s "
                                   "at expected address %p, instead mapped to %p",
-                                  i, file->GetPath().c_str(), p_vaddr, segment->Begin());
+                                  i, file->GetPath().c_str(), p_vaddr, segment.Begin());
         return false;
       }
-      segments_.push_back(segment.release());
+      segments_.push_back(std::move(segment));
     }
   }
 
@@ -1343,9 +1344,8 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
 
 template <typename ElfTypes>
 bool ElfFileImpl<ElfTypes>::ValidPointer(const uint8_t* start) const {
-  for (size_t i = 0; i < segments_.size(); ++i) {
-    const MemMap* segment = segments_[i];
-    if (segment->Begin() <= start && start < segment->End()) {
+  for (const MemMap& segment : segments_) {
+    if (segment.Begin() <= start && start < segment.End()) {
       return true;
     }
   }
@@ -1712,18 +1712,18 @@ ElfFile* ElfFile::Open(File* file,
                               file->GetPath().c_str());
     return nullptr;
   }
-  std::unique_ptr<MemMap> map(MemMap::MapFile(EI_NIDENT,
-                                              PROT_READ,
-                                              MAP_PRIVATE,
-                                              file->Fd(),
-                                              0,
-                                              low_4gb,
-                                              file->GetPath().c_str(),
-                                              error_msg));
-  if (map == nullptr || map->Size() != EI_NIDENT) {
+  MemMap map = MemMap::MapFile(EI_NIDENT,
+                               PROT_READ,
+                               MAP_PRIVATE,
+                               file->Fd(),
+                               0,
+                               low_4gb,
+                               file->GetPath().c_str(),
+                               error_msg);
+  if (!map.IsValid() || map.Size() != EI_NIDENT) {
     return nullptr;
   }
-  uint8_t* header = map->Begin();
+  uint8_t* header = map.Begin();
   if (header[EI_CLASS] == ELFCLASS64) {
     ElfFileImpl64* elf_file_impl = ElfFileImpl64::Open(file,
                                                        writable,
@@ -1763,18 +1763,18 @@ ElfFile* ElfFile::Open(File* file, int mmap_prot, int mmap_flags, std::string* e
                               file->GetPath().c_str());
     return nullptr;
   }
-  std::unique_ptr<MemMap> map(MemMap::MapFile(EI_NIDENT,
-                                              PROT_READ,
-                                              MAP_PRIVATE,
-                                              file->Fd(),
-                                              0,
-                                              low_4gb,
-                                              file->GetPath().c_str(),
-                                              error_msg));
-  if (map == nullptr || map->Size() != EI_NIDENT) {
+  MemMap map = MemMap::MapFile(EI_NIDENT,
+                               PROT_READ,
+                               MAP_PRIVATE,
+                               file->Fd(),
+                               /* start */ 0,
+                               low_4gb,
+                               file->GetPath().c_str(),
+                               error_msg);
+  if (!map.IsValid() || map.Size() != EI_NIDENT) {
     return nullptr;
   }
-  uint8_t* header = map->Begin();
+  uint8_t* header = map.Begin();
   if (header[EI_CLASS] == ELFCLASS64) {
     ElfFileImpl64* elf_file_impl = ElfFileImpl64::Open(file,
                                                        mmap_prot,
