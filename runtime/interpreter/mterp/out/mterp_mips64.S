@@ -2246,14 +2246,14 @@ artMterpAsmInstructionStart = .L_op_nop
      *
      * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
      */
-    .extern artGet32InstanceFromCode
+    .extern artGet32InstanceFromMterp
     EXPORT_PC
     lhu      a0, 2(rPC)                 # a0 <- field ref CCCC
     srl      a1, rINST, 12              # a1 <- B
     GET_VREG_U a1, a1                   # a1 <- fp[B], the object pointer
     ld       a2, OFF_FP_METHOD(rFP)     # a2 <- referrer
     move     a3, rSELF                  # a3 <- self
-    jal      artGet32InstanceFromCode
+    jal      artGet32InstanceFromMterp
     ld       a3, THREAD_EXCEPTION_OFFSET(rSELF)
     ext      a2, rINST, 8, 4            # a2 <- A
     PREFETCH_INST 2
@@ -2276,14 +2276,14 @@ artMterpAsmInstructionStart = .L_op_nop
      *
      * for: iget-wide
      */
-    .extern artGet64InstanceFromCode
+    .extern artGet64InstanceFromMterp
     EXPORT_PC
     lhu      a0, 2(rPC)                 # a0 <- field ref CCCC
     srl      a1, rINST, 12              # a1 <- B
     GET_VREG_U a1, a1                   # a1 <- fp[B], the object pointer
     ld       a2, OFF_FP_METHOD(rFP)     # a2 <- referrer
     move     a3, rSELF                  # a3 <- self
-    jal      artGet64InstanceFromCode
+    jal      artGet64InstanceFromMterp
     ld       a3, THREAD_EXCEPTION_OFFSET(rSELF)
     ext      a2, rINST, 8, 4            # a2 <- A
     PREFETCH_INST 2
@@ -2303,14 +2303,14 @@ artMterpAsmInstructionStart = .L_op_nop
      *
      * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
      */
-    .extern artGetObjInstanceFromCode
+    .extern artGetObjInstanceFromMterp
     EXPORT_PC
     lhu      a0, 2(rPC)                 # a0 <- field ref CCCC
     srl      a1, rINST, 12              # a1 <- B
     GET_VREG_U a1, a1                   # a1 <- fp[B], the object pointer
     ld       a2, OFF_FP_METHOD(rFP)     # a2 <- referrer
     move     a3, rSELF                  # a3 <- self
-    jal      artGetObjInstanceFromCode
+    jal      artGetObjInstanceFromMterp
     ld       a3, THREAD_EXCEPTION_OFFSET(rSELF)
     ext      a2, rINST, 8, 4            # a2 <- A
     PREFETCH_INST 2
@@ -2335,14 +2335,14 @@ artMterpAsmInstructionStart = .L_op_nop
      *
      * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
      */
-    .extern artGetBooleanInstanceFromCode
+    .extern artGetBooleanInstanceFromMterp
     EXPORT_PC
     lhu      a0, 2(rPC)                 # a0 <- field ref CCCC
     srl      a1, rINST, 12              # a1 <- B
     GET_VREG_U a1, a1                   # a1 <- fp[B], the object pointer
     ld       a2, OFF_FP_METHOD(rFP)     # a2 <- referrer
     move     a3, rSELF                  # a3 <- self
-    jal      artGetBooleanInstanceFromCode
+    jal      artGetBooleanInstanceFromMterp
     ld       a3, THREAD_EXCEPTION_OFFSET(rSELF)
     ext      a2, rINST, 8, 4            # a2 <- A
     PREFETCH_INST 2
@@ -2367,14 +2367,14 @@ artMterpAsmInstructionStart = .L_op_nop
      *
      * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
      */
-    .extern artGetByteInstanceFromCode
+    .extern artGetByteInstanceFromMterp
     EXPORT_PC
     lhu      a0, 2(rPC)                 # a0 <- field ref CCCC
     srl      a1, rINST, 12              # a1 <- B
     GET_VREG_U a1, a1                   # a1 <- fp[B], the object pointer
     ld       a2, OFF_FP_METHOD(rFP)     # a2 <- referrer
     move     a3, rSELF                  # a3 <- self
-    jal      artGetByteInstanceFromCode
+    jal      artGetByteInstanceFromMterp
     ld       a3, THREAD_EXCEPTION_OFFSET(rSELF)
     ext      a2, rINST, 8, 4            # a2 <- A
     PREFETCH_INST 2
@@ -2399,14 +2399,14 @@ artMterpAsmInstructionStart = .L_op_nop
      *
      * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
      */
-    .extern artGetCharInstanceFromCode
+    .extern artGetCharInstanceFromMterp
     EXPORT_PC
     lhu      a0, 2(rPC)                 # a0 <- field ref CCCC
     srl      a1, rINST, 12              # a1 <- B
     GET_VREG_U a1, a1                   # a1 <- fp[B], the object pointer
     ld       a2, OFF_FP_METHOD(rFP)     # a2 <- referrer
     move     a3, rSELF                  # a3 <- self
-    jal      artGetCharInstanceFromCode
+    jal      artGetCharInstanceFromMterp
     ld       a3, THREAD_EXCEPTION_OFFSET(rSELF)
     ext      a2, rINST, 8, 4            # a2 <- A
     PREFETCH_INST 2
@@ -2431,14 +2431,14 @@ artMterpAsmInstructionStart = .L_op_nop
      *
      * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
      */
-    .extern artGetShortInstanceFromCode
+    .extern artGetShortInstanceFromMterp
     EXPORT_PC
     lhu      a0, 2(rPC)                 # a0 <- field ref CCCC
     srl      a1, rINST, 12              # a1 <- B
     GET_VREG_U a1, a1                   # a1 <- fp[B], the object pointer
     ld       a2, OFF_FP_METHOD(rFP)     # a2 <- referrer
     move     a3, rSELF                  # a3 <- self
-    jal      artGetShortInstanceFromCode
+    jal      artGetShortInstanceFromMterp
     ld       a3, THREAD_EXCEPTION_OFFSET(rSELF)
     ext      a2, rINST, 8, 4            # a2 <- A
     PREFETCH_INST 2

@@ -1,1 +1,1 @@
-%include "mips64/op_iget.S" { "is_object":"1", "helper":"artGetObjInstanceFromCode" }
+%include "mips64/op_iget.S" { "is_object":"1", "helper":"artGetObjInstanceFromMterp" }

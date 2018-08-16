@@ -9,7 +9,7 @@
     GET_VREG r1, r1                        @ r1<- fp[B], the object pointer
     ldr      r2, [rFP, #OFF_FP_METHOD]     @ r2<- referrer
     mov      r3, rSELF                     @ r3<- self
-    bl       artGet64InstanceFromCode
+    bl       artGet64InstanceFromMterp
     ldr      r3, [rSELF, #THREAD_EXCEPTION_OFFSET]
     ubfx     r2, rINST, #8, #4             @ r2<- A
     PREFETCH_INST 2
