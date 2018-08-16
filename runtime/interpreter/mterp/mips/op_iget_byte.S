@@ -1,1 +1,1 @@
-%include "mips/op_iget.S" { "helper":"artGetByteInstanceFromCode" }
+%include "mips/op_iget.S" { "helper":"artGetByteInstanceFromMterp" }
