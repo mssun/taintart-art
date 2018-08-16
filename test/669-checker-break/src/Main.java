@@ -232,8 +232,8 @@ public class Main {
   /// CHECK-DAG: <<Zero:i\d+>> IntConstant 0                  loop:none
   /// CHECK-DAG: <<One:i\d+>>  IntConstant 1                  loop:none
   /// CHECK-DAG: <<Nil:l\d+>>  NullCheck [<<Par>>]                 loop:none
-  /// CHECK-DAG: <<Phi:i\d+>>  Phi [<<Zero>>,<<AddI:i\d+>>]   loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Red:i\d+>>  Phi [<<Zero>>,<<RedI:i\d+>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:i\d+>>  Phi [<<Zero>>,<<RedI:i\d+>>]   loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi [<<Zero>>,<<AddI:i\d+>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Bnd:i\d+>>  BoundsCheck [<<Phi>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get:i\d+>>  ArrayGet [<<Nil>>,<<Bnd>>]     loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<RedI>>      Add [<<Red>>,<<Get>>]          loop:<<Loop>>      outer_loop:none
@@ -248,8 +248,8 @@ public class Main {
   /// CHECK-DAG: <<Zero:i\d+>> IntConstant 0                      loop:none
   /// CHECK-DAG: <<One:i\d+>>  IntConstant 1                      loop:none
   /// CHECK-DAG: <<Nil:l\d+>>  NullCheck [<<Par>>]                loop:none
-  /// CHECK-DAG: <<Phi:i\d+>>  Phi [<<Zero>>,<<AddI:i\d+>>]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Red:i\d+>>  Phi [<<Zero>>,<<RedI:i\d+>>]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:i\d+>>  Phi [<<Zero>>,<<RedI:i\d+>>]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi [<<Zero>>,<<AddI:i\d+>>]       loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<LE:z\d+>>   LessThanOrEqual [<<Phi>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               If [<<LE>>]                        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Bnd:i\d+>>  BoundsCheck [<<Phi>>,{{i\d+}}]     loop:<<Loop>>      outer_loop:none
