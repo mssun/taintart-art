@@ -318,12 +318,14 @@ Heap::Heap(size_t initial_size,
   }
 
   // Load image space(s).
+  std::vector<std::unique_ptr<space::ImageSpace>> boot_image_spaces;
   if (space::ImageSpace::LoadBootImage(image_file_name,
                                        image_instruction_set,
-                                       &boot_image_spaces_,
+                                       &boot_image_spaces,
                                        &requested_alloc_space_begin)) {
-    for (auto space : boot_image_spaces_) {
-      AddSpace(space);
+    for (std::unique_ptr<space::ImageSpace>& space : boot_image_spaces) {
+      boot_image_spaces_.push_back(space.get());
+      AddSpace(space.release());
     }
   }
 
