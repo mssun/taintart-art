@@ -164,13 +164,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
                                               std::map<size_t, TypeLinkage>& types) {
   TypeLinkage& current_type = types[current_class_type.index_];
   bool skip_next = false;
-  size_t last_start = 0u;
   for (auto inst = code_item.begin(); ; ++inst) {
-    if (!count_types && last_start != buffer_.size()) {
-      // Register the instruction blob.
-      ++instruction_freq_[std::vector<uint8_t>(buffer_.begin() + last_start, buffer_.end())];
-      last_start = buffer_.size();
-    }
     if (inst == code_item.end()) {
       break;
     }
@@ -334,31 +328,31 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
               }
             }
 
-            bool result = false;
             uint32_t type_idx = current_type.types_.Get(receiver_type.index_);
             uint32_t local_idx = types[receiver_type.index_].methods_.Get(method_idx);
-            ExtendPrefix(&type_idx, &local_idx);
-            ExtendPrefix(&dest_reg, &local_idx);
-            if (arg_count == 0) {
-              result = InstNibbles(opcode, {dest_reg, type_idx, local_idx});
-            } else if (arg_count == 1) {
-              result = InstNibbles(opcode, {dest_reg, type_idx, local_idx, args[0]});
-            } else if (arg_count == 2) {
-              result = InstNibbles(opcode, {dest_reg, type_idx, local_idx, args[0],
-                                            args[1]});
-            } else if (arg_count == 3) {
-              result = InstNibbles(opcode, {dest_reg, type_idx, local_idx, args[0],
-                                            args[1], args[2]});
-            } else if (arg_count == 4) {
-              result = InstNibbles(opcode, {dest_reg, type_idx, local_idx, args[0],
-                                            args[1], args[2], args[3]});
-            } else if (arg_count == 5) {
-              result = InstNibbles(opcode, {dest_reg, type_idx, local_idx, args[0],
-                                            args[1], args[2], args[3], args[4]});
-            }
 
-            if (result) {
+            // If true, we always put the return value in r0.
+            static constexpr bool kMoveToDestReg = true;
+
+            std::vector<uint32_t> new_args;
+            if (kMoveToDestReg && arg_count % 2 == 1) {
+              // Use the extra nibble to sneak in part of the type index.
+              new_args.push_back(local_idx >> 4);
+              local_idx ^= local_idx & 0xF0;
+            }
+            ExtendPrefix(&type_idx, &local_idx);
+            new_args.push_back(type_idx);
+            new_args.push_back(local_idx);
+            if (!kMoveToDestReg) {
+              ExtendPrefix(&dest_reg, &local_idx);
+              new_args.push_back(dest_reg);
+            }
+            new_args.insert(new_args.end(), args, args + arg_count);
+            if (InstNibbles(opcode, new_args)) {
               skip_next = next_move_result;
+              if (kMoveToDestReg && dest_reg != 0u) {
+                CHECK(InstNibbles(Instruction::MOVE, {dest_reg >> 4, dest_reg & 0xF}));
+              }
               continue;
             }
           }
@@ -466,8 +460,11 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
 
 void NewRegisterInstructions::Add(Instruction::Code opcode, const Instruction& inst) {
   const uint8_t* start = reinterpret_cast<const uint8_t*>(&inst);
+  const size_t buffer_start = buffer_.size();
   buffer_.push_back(opcode);
   buffer_.insert(buffer_.end(), start + 1, start + 2 * inst.SizeInCodeUnits());
+  // Register the instruction blob.
+  ++instruction_freq_[std::vector<uint8_t>(buffer_.begin() + buffer_start, buffer_.end())];
 }
 
 void NewRegisterInstructions::ExtendPrefix(uint32_t* value1, uint32_t* value2) {
@@ -500,17 +497,6 @@ void NewRegisterInstructions::ExtendPrefix(uint32_t* value1, uint32_t* value2) {
   *value2 &= 0XF;
 }
 
-bool NewRegisterInstructions::InstNibblesAndIndex(uint8_t opcode,
-                                             uint16_t idx,
-                                             const std::vector<uint32_t>& args) {
-  if (!InstNibbles(opcode, args)) {
-    return false;
-  }
-  buffer_.push_back(static_cast<uint8_t>(idx >> 8));
-  buffer_.push_back(static_cast<uint8_t>(idx));
-  return true;
-}
-
 bool NewRegisterInstructions::InstNibbles(uint8_t opcode, const std::vector<uint32_t>& args) {
   if (verbose_level_ >= VerboseLevel::kEverything) {
     std::cout << " ==> " << Instruction::Name(static_cast<Instruction::Code>(opcode)) << " ";
@@ -526,6 +512,7 @@ bool NewRegisterInstructions::InstNibbles(uint8_t opcode, const std::vector<uint
       return false;
     }
   }
+  const size_t buffer_start = buffer_.size();
   buffer_.push_back(opcode);
   for (size_t i = 0; i < args.size(); i += 2) {
     buffer_.push_back(args[i] << 4);
@@ -536,6 +523,8 @@ bool NewRegisterInstructions::InstNibbles(uint8_t opcode, const std::vector<uint
   while (buffer_.size() % alignment_ != 0) {
     buffer_.push_back(0);
   }
+  // Register the instruction blob.
+  ++instruction_freq_[std::vector<uint8_t>(buffer_.begin() + buffer_start, buffer_.end())];
   return true;
 }
 
