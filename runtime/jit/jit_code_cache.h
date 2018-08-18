@@ -314,6 +314,12 @@ class JitCodeCache {
       REQUIRES(lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // If a collection is in progress, wait for it to finish. Must be called with the mutator lock.
+  // The non-mutator lock version should be used if possible. This method will release then
+  // re-acquire the mutator lock.
+  void WaitForPotentialCollectionToCompleteRunnable(Thread* self)
+      REQUIRES(lock_, !Roles::uninterruptible_) REQUIRES_SHARED(Locks::mutator_lock_);
+
   // If a collection is in progress, wait for it to finish. Return
   // whether the thread actually waited.
   bool WaitForPotentialCollectionToComplete(Thread* self)
