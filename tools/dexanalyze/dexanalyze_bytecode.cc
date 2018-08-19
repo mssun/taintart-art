@@ -50,6 +50,53 @@ static inline SafeMap<T, U> SortByOrder(const SafeMap<T, U>& usage, Order order)
   return ret;
 }
 
+template <typename A, typename B>
+std::ostream& operator <<(std::ostream& os, const std::pair<A, B>& pair) {
+  return os << "{" << pair.first << ", " << pair.second << "}";
+}
+
+template <typename T, typename... Args, template <typename...> class ArrayType>
+SafeMap<size_t, T> MakeUsageMap(const ArrayType<T, Args...>& array) {
+  SafeMap<size_t, T> ret;
+  for (size_t i = 0; i < array.size(); ++i) {
+    if (array[i] > 0) {
+      ret.Put(i, array[i]);
+    }
+  }
+  return ret;
+}
+
+template <typename T, typename U, typename... Args, template <typename...> class Map>
+void PrintMostUsed(std::ostream& os,
+                   const Map<T, U, Args...>& usage,
+                   size_t max_count,
+                   std::function<void(std::ostream& os, T)> printer =
+                       [](std::ostream& os, T v) {
+    os << v;
+  }) {
+  std::vector<std::pair<U, T>> sorted;
+  uint64_t total = 0u;
+  for (const auto& pair : usage) {
+    sorted.emplace_back(pair.second, pair.first);
+    total += pair.second;
+  }
+  std::sort(sorted.rbegin(), sorted.rend());
+  uint64_t other = 0u;
+  for (auto&& pair : sorted) {
+    if (max_count > 0) {
+      os << Percent(pair.first, total) << " : ";
+      printer(os, pair.second);
+      os << "\n";
+      --max_count;
+    } else {
+      other += pair.first;
+    }
+  }
+  if (other != 0u) {
+    os << "other: " << Percent(other, total) << "\n";
+  }
+}
+
 static inline std::ostream& operator<<(std::ostream& os, const std::vector<uint8_t>& bytes) {
   os << std::hex;
   for (const uint8_t& c : bytes) {
@@ -125,32 +172,42 @@ void NewRegisterInstructions::Dump(std::ostream& os, uint64_t total_size) const 
   std::vector<std::pair<size_t, std::vector<uint8_t>>> pairs;
   for (auto&& pair : instruction_freq_) {
     if (pair.second > 0 && !pair.first.empty()) {
-      // Savings exclude one byte per occurrence and one occurence from having the macro
+      // Savings exclude one byte per occurrence and one occurrence from having the macro
       // dictionary.
       pairs.emplace_back((pair.second - 1) * (pair.first.size() - 1), pair.first);
     }
   }
   std::sort(pairs.rbegin(), pairs.rend());
   static constexpr size_t kMaxMacros = 128;
+  static constexpr size_t kMaxPrintedMacros = 32;
   uint64_t top_instructions_savings = 0u;
   for (size_t i = 0; i < kMaxMacros && i < pairs.size(); ++i) {
     top_instructions_savings += pairs[i].first;
   }
   if (verbose_level_ >= VerboseLevel::kNormal) {
+    os << "Move result register distribution" << "\n";
+    PrintMostUsed(os, MakeUsageMap(move_result_reg_), 16);
+    os << "First arg register usage\n";
+    std::function<void(std::ostream& os, size_t)> printer = [&](std::ostream& os, size_t idx) {
+      os << Instruction::Name(static_cast<Instruction::Code>(idx));
+    };
+    PrintMostUsed(os, MakeUsageMap(first_arg_reg_count_), 16, printer);
+    os << "Most used field linkage pairs\n";
+    PrintMostUsed(os, field_linkage_counts_, 32);
+    os << "Current extended " << extended_field_ << "\n";
+    os << "Most used method linkage pairs\n";
+    PrintMostUsed(os, method_linkage_counts_, 32);
+    os << "Current extended " << extended_method_ << "\n";
     os << "Top " << kMaxMacros << " instruction bytecode sizes and hex dump" << "\n";
     for (size_t i = 0; i < kMaxMacros && i < pairs.size(); ++i) {
       auto bytes = pairs[i].second;
       // Remove opcode bytes.
       bytes.erase(bytes.begin());
-      os << Percent(pairs[i].first, total_size) << " "
-         << Instruction::Name(static_cast<Instruction::Code>(pairs[i].second[0]))
-         << "(" << bytes << ")\n";
-    }
-    os << "Move result register distribution" << "\n";
-    const size_t move_result_total =
-        std::accumulate(move_result_reg_.begin(), move_result_reg_.end(), 0u);
-    for (size_t i = 0; i < move_result_reg_.size(); ++i) {
-      os << i << ": " << Percent(move_result_reg_[i], move_result_total) << "\n";
+      if (i < kMaxPrintedMacros) {
+        os << Percent(pairs[i].first, total_size) << " "
+           << Instruction::Name(static_cast<Instruction::Code>(pairs[i].second[0]))
+           << "(" << bytes << ")\n";
+      }
     }
   }
   os << "Top instructions 1b macro savings "
@@ -164,10 +221,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
                                               std::map<size_t, TypeLinkage>& types) {
   TypeLinkage& current_type = types[current_class_type.index_];
   bool skip_next = false;
-  for (auto inst = code_item.begin(); ; ++inst) {
-    if (inst == code_item.end()) {
-      break;
-    }
+  for (auto inst = code_item.begin(); inst != code_item.end(); ++inst) {
     if (verbose_level_ >= VerboseLevel::kEverything) {
       std::cout << std::endl;
       std::cout << inst->DumpString(nullptr);
@@ -182,6 +236,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
     bool is_iget = false;
     const Instruction::Code opcode = inst->Opcode();
     Instruction::Code new_opcode = opcode;
+    ++opcode_count_[opcode];
     switch (opcode) {
       case Instruction::IGET:
       case Instruction::IGET_WIDE:
@@ -209,18 +264,18 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
         uint32_t receiver = inst->VRegB_22c();
         uint32_t first_arg_reg = code_item.RegistersSize() - code_item.InsSize();
         uint32_t out_reg = inst->VRegA_22c();
-        if (Enabled(kExperimentInstanceFieldSelf) &&
-            first_arg_reg == receiver &&
-            holder_type == current_class_type) {
-          if (count_types) {
-            ++current_type.fields_.FindOrAdd(dex_field_idx)->second;
-          } else {
-            uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
-            ExtendPrefix(&out_reg, &field_idx);
-            CHECK(InstNibbles(new_opcode, {out_reg, field_idx}));
-            continue;
-          }
-        } else if (Enabled(kExperimentInstanceField)) {
+          if (Enabled(kExperimentInstanceFieldSelf) &&
+              first_arg_reg == receiver &&
+              holder_type == current_class_type) {
+            if (count_types) {
+              ++current_type.fields_.FindOrAdd(dex_field_idx)->second;
+            } else {
+              uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
+              ExtendPrefix(&out_reg, &field_idx);
+              CHECK(InstNibbles(new_opcode, {out_reg, field_idx}));
+              continue;
+            }
+          } else if (Enabled(kExperimentInstanceField)) {
           if (count_types) {
             ++current_type.types_.FindOrAdd(holder_type.index_)->second;
             ++types[holder_type.index_].fields_.FindOrAdd(dex_field_idx)->second;
@@ -288,7 +343,8 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
             } else {
               uint32_t type_idx = current_type.types_.Get(holder_type.index_);
               uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
-              ExtendPrefix(&type_idx, &field_idx);
+              ++field_linkage_counts_[std::make_pair(type_idx, field_idx)];
+              extended_field_ += ExtendPrefix(&type_idx, &field_idx) ? 1u : 0u;
               if (InstNibbles(new_opcode, {out_reg >> 4, out_reg & 0xF, type_idx, field_idx})) {
                 continue;
               }
@@ -313,6 +369,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
           } else {
             uint32_t args[6] = {};
             uint32_t arg_count = inst->GetVarArgs(args);
+            const uint32_t first_arg_reg = code_item.RegistersSize() - code_item.InsSize();
 
             bool next_move_result = false;
             uint32_t dest_reg = 0;
@@ -330,6 +387,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
 
             uint32_t type_idx = current_type.types_.Get(receiver_type.index_);
             uint32_t local_idx = types[receiver_type.index_].methods_.Get(method_idx);
+            ++method_linkage_counts_[std::make_pair(type_idx, local_idx)];
 
             // If true, we always put the return value in r0.
             static constexpr bool kMoveToDestReg = true;
@@ -338,14 +396,20 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
             if (kMoveToDestReg && arg_count % 2 == 1) {
               // Use the extra nibble to sneak in part of the type index.
               new_args.push_back(local_idx >> 4);
-              local_idx ^= local_idx & 0xF0;
+              local_idx &= ~0xF0;
             }
-            ExtendPrefix(&type_idx, &local_idx);
+            extended_method_ += ExtendPrefix(&type_idx, &local_idx) ? 1u : 0u;
             new_args.push_back(type_idx);
             new_args.push_back(local_idx);
             if (!kMoveToDestReg) {
               ExtendPrefix(&dest_reg, &local_idx);
               new_args.push_back(dest_reg);
+            }
+            for (size_t i = 0; i < arg_count; ++i) {
+              if (args[i] == first_arg_reg) {
+                ++first_arg_reg_count_[opcode];
+                break;
+              }
             }
             new_args.insert(new_args.end(), args, args + arg_count);
             if (InstNibbles(opcode, new_args)) {
@@ -467,18 +531,18 @@ void NewRegisterInstructions::Add(Instruction::Code opcode, const Instruction& i
   ++instruction_freq_[std::vector<uint8_t>(buffer_.begin() + buffer_start, buffer_.end())];
 }
 
-void NewRegisterInstructions::ExtendPrefix(uint32_t* value1, uint32_t* value2) {
+bool NewRegisterInstructions::ExtendPrefix(uint32_t* value1, uint32_t* value2) {
   if (*value1 < 16 && *value2 < 16) {
-    return;
+    return false;
   }
   if ((*value1 >> 4) == 1 && *value2 < 16) {
     InstNibbles(0xE5, {});
     *value1 ^= 1u << 4;
-    return;
+    return true;
   } else if ((*value2 >> 4) == 1 && *value1 < 16) {
     InstNibbles(0xE6, {});
     *value2 ^= 1u << 4;
-    return;
+    return true;
   }
   if (*value1 < 256 && *value2 < 256) {
     // Extend each value by 4 bits.
@@ -495,6 +559,7 @@ void NewRegisterInstructions::ExtendPrefix(uint32_t* value1, uint32_t* value2) {
   }
   *value1 &= 0xF;
   *value2 &= 0XF;
+  return true;
 }
 
 bool NewRegisterInstructions::InstNibbles(uint8_t opcode, const std::vector<uint32_t>& args) {
