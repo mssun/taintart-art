@@ -763,7 +763,7 @@ extern "C" ssize_t artSet8InstanceFromMterp(uint32_t field_idx,
                                             uint8_t new_value,
                                             ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  ArtField* field = FindFieldFast(field_idx, referrer, InstancePrimitiveWrite, sizeof(int8_t));
+  ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr && obj != nullptr)) {
     Primitive::Type type = field->GetTypeAsPrimitiveType();
     if (type == Primitive::kPrimBoolean) {
@@ -782,8 +782,7 @@ extern "C" ssize_t artSet16InstanceFromMterp(uint32_t field_idx,
                                              uint16_t new_value,
                                              ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  ArtField* field = FindFieldFast(field_idx, referrer, InstancePrimitiveWrite,
-                                          sizeof(int16_t));
+  ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr && obj != nullptr)) {
     Primitive::Type type = field->GetTypeAsPrimitiveType();
     if (type == Primitive::kPrimChar) {
@@ -802,8 +801,7 @@ extern "C" ssize_t artSet32InstanceFromMterp(uint32_t field_idx,
                                              uint32_t new_value,
                                              ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  ArtField* field = FindFieldFast(field_idx, referrer, InstancePrimitiveWrite,
-                                          sizeof(int32_t));
+  ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr && obj != nullptr)) {
     field->Set32<false>(obj, new_value);
     return 0;  // success
@@ -816,8 +814,7 @@ extern "C" ssize_t artSet64InstanceFromMterp(uint32_t field_idx,
                                              uint64_t* new_value,
                                              ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  ArtField* field = FindFieldFast(field_idx, referrer, InstancePrimitiveWrite,
-                                          sizeof(int64_t));
+  ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr  && obj != nullptr)) {
     field->Set64<false>(obj, *new_value);
     return 0;  // success
@@ -830,8 +827,7 @@ extern "C" ssize_t artSetObjInstanceFromMterp(uint32_t field_idx,
                                               mirror::Object* new_value,
                                               ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  ArtField* field = FindFieldFast(field_idx, referrer, InstanceObjectWrite,
-                                          sizeof(mirror::HeapReference<mirror::Object>));
+  ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr && obj != nullptr)) {
     field->SetObj<false>(obj, new_value);
     return 0;  // success
