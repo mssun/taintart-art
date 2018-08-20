@@ -282,6 +282,13 @@ public class Test988 {
         }
     }
 
+    static final class NativeOp implements IntUnaryOperator {
+      public int applyAsInt(int x) {
+        return nativeFibonacci(x);
+      }
+    }
+    static native int nativeFibonacci(int n);
+
     static final class TestRunnableInvokeHandler implements InvocationHandler {
       public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
         return null;
@@ -333,8 +340,10 @@ public class Test988 {
             Thread.currentThread());
         doFibTest(30, new IterOp());
         doFibTest(5, new RecurOp());
+        doFibTest(5, new NativeOp());
         doFibTest(-19, new IterOp());
         doFibTest(-19, new RecurOp());
+        doFibTest(-19, new NativeOp());
 
         runnable.run();
 
@@ -358,6 +367,7 @@ public class Test988 {
       ArrayList.class.toString();
       RecurOp.class.toString();
       IterOp.class.toString();
+      NativeOp.class.toString();
       StringBuilder.class.toString();
       Runnable.class.toString();
       TestRunnableInvokeHandler.class.toString();
