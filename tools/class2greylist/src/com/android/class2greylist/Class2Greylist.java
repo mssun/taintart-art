@@ -17,6 +17,8 @@
 package com.android.class2greylist;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 
@@ -44,12 +46,18 @@ import java.util.Set;
  */
 public class Class2Greylist {
 
-    private static final String ANNOTATION_TYPE = "Landroid/annotation/UnsupportedAppUsage;";
+    private static final String GREYLIST_ANNOTATION = "Landroid/annotation/UnsupportedAppUsage;";
+    private static final Set<String> WHITELIST_ANNOTATIONS = ImmutableSet.of();
 
     private final Status mStatus;
     private final String mPublicApiListFile;
     private final String[] mPerSdkOutputFiles;
+    private final String mWhitelistFile;
     private final String[] mJarFiles;
+    private final GreylistConsumer mOutput;
+    private final Set<Integer> mAllowedSdkVersions;
+    private final Set<String> mPublicApis;
+
 
     public static void main(String[] args) {
         Options options = new Options();
@@ -67,6 +75,11 @@ public class Class2Greylist {
                         "given, members with a matching maxTargetSdk are written to the file; if " +
                         "no integer is given, members with no maxTargetSdk are written.")
                 .create("g"));
+        options.addOption(OptionBuilder
+                .withLongOpt("write-whitelist")
+                .hasArgs(1)
+                .withDescription("Specify file to write whitelist to.")
+                .create('w'));
         options.addOption(OptionBuilder
                 .withLongOpt("debug")
                 .hasArgs(0)
@@ -100,9 +113,13 @@ public class Class2Greylist {
         }
 
         Status status = new Status(cmd.hasOption('d'));
-        Class2Greylist c2gl = new Class2Greylist(
-                status, cmd.getOptionValue('p', null), cmd.getOptionValues('g'), jarFiles);
         try {
+            Class2Greylist c2gl = new Class2Greylist(
+                    status,
+                    cmd.getOptionValue('p', null),
+                    cmd.getOptionValues('g'),
+                    cmd.getOptionValue('w', null),
+                    jarFiles);
             c2gl.main();
         } catch (IOException e) {
             status.error(e);
@@ -118,52 +135,58 @@ public class Class2Greylist {
 
     @VisibleForTesting
     Class2Greylist(Status status, String publicApiListFile, String[] perSdkLevelOutputFiles,
-            String[] jarFiles) {
+            String whitelistOutputFile, String[] jarFiles) throws IOException {
         mStatus = status;
         mPublicApiListFile = publicApiListFile;
         mPerSdkOutputFiles = perSdkLevelOutputFiles;
+        mWhitelistFile = whitelistOutputFile;
         mJarFiles = jarFiles;
-    }
-
-    private void main() throws IOException {
-        GreylistConsumer output;
-        Set<Integer> allowedSdkVersions;
         if (mPerSdkOutputFiles != null) {
-            Map<Integer, String> outputFiles = readGreylistMap(mPerSdkOutputFiles);
-            output = new FileWritingGreylistConsumer(mStatus, outputFiles);
-            allowedSdkVersions = outputFiles.keySet();
+            Map<Integer, String> outputFiles = readGreylistMap(mStatus, mPerSdkOutputFiles);
+            mOutput = new FileWritingGreylistConsumer(mStatus, outputFiles, mWhitelistFile);
+            mAllowedSdkVersions = outputFiles.keySet();
         } else {
             // TODO remove this once per-SDK greylist support integrated into the build.
             // Right now, mPerSdkOutputFiles is always null as the build never passes the
             // corresponding command lind flags. Once the build is updated, can remove this.
-            output = new SystemOutGreylistConsumer();
-            allowedSdkVersions = new HashSet<>(Arrays.asList(null, 26, 28));
+            mOutput = new SystemOutGreylistConsumer();
+            mAllowedSdkVersions = new HashSet<>(Arrays.asList(null, 26, 28));
         }
 
-        Set<String> publicApis;
         if (mPublicApiListFile != null) {
-            publicApis = Sets.newHashSet(
+            mPublicApis = Sets.newHashSet(
                     Files.readLines(new File(mPublicApiListFile), Charset.forName("UTF-8")));
         } else {
-            publicApis = Collections.emptySet();
+            mPublicApis = Collections.emptySet();
         }
+    }
 
+    private Map<String, AnnotationHandler> createAnnotationHandlers() {
+        return ImmutableMap.<String, AnnotationHandler>builder()
+                .put(GreylistAnnotationHandler.ANNOTATION_NAME,
+                        new GreylistAnnotationHandler(
+                                mStatus, mOutput, mPublicApis, mAllowedSdkVersions))
+                .build();
+    }
+
+    private void main() throws IOException {
+        Map<String, AnnotationHandler> handlers = createAnnotationHandlers();
         for (String jarFile : mJarFiles) {
             mStatus.debug("Processing jar file %s", jarFile);
             try {
                 JarReader reader = new JarReader(mStatus, jarFile);
-                reader.stream().forEach(clazz -> new AnnotationVisitor(clazz, ANNOTATION_TYPE,
-                        publicApis, allowedSdkVersions, output, mStatus).visit());
+                reader.stream().forEach(clazz -> new AnnotationVisitor(clazz, mStatus, handlers)
+                        .visit());
                 reader.close();
             } catch (IOException e) {
                 mStatus.error(e);
             }
         }
-        output.close();
+        mOutput.close();
     }
 
     @VisibleForTesting
-    Map<Integer, String> readGreylistMap(String[] argValues) {
+    static Map<Integer, String> readGreylistMap(Status status, String[] argValues) {
         Map<Integer, String> map = new HashMap<>();
         for (String sdkFile : argValues) {
             Integer maxTargetSdk = null;
@@ -173,12 +196,12 @@ public class Class2Greylist {
                 try {
                     maxTargetSdk = Integer.valueOf(sdkFile.substring(0, colonPos));
                 } catch (NumberFormatException nfe) {
-                    mStatus.error("Not a valid integer: %s from argument value '%s'",
+                    status.error("Not a valid integer: %s from argument value '%s'",
                             sdkFile.substring(0, colonPos), sdkFile);
                 }
                 filename = sdkFile.substring(colonPos + 1);
                 if (filename.length() == 0) {
-                    mStatus.error("Not a valid file name: %s from argument value '%s'",
+                    status.error("Not a valid file name: %s from argument value '%s'",
                             filename, sdkFile);
                 }
             } else {
@@ -186,7 +209,7 @@ public class Class2Greylist {
                 filename = sdkFile;
             }
             if (map.containsKey(maxTargetSdk)) {
-                mStatus.error("Multiple output files for maxTargetSdk %s", maxTargetSdk);
+                status.error("Multiple output files for maxTargetSdk %s", maxTargetSdk);
             } else {
                 map.put(maxTargetSdk, filename);
             }
