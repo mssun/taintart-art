@@ -50,8 +50,8 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   // Create a region space mem map with the requested sizes. The requested base address is not
   // guaranteed to be granted, if it is required, the caller should call Begin on the returned
   // space to confirm the request was granted.
-  static MemMap* CreateMemMap(const std::string& name, size_t capacity, uint8_t* requested_begin);
-  static RegionSpace* Create(const std::string& name, MemMap* mem_map);
+  static MemMap CreateMemMap(const std::string& name, size_t capacity, uint8_t* requested_begin);
+  static RegionSpace* Create(const std::string& name, MemMap&& mem_map);
 
   // Allocate `num_bytes`, returns null if the space is full.
   mirror::Object* Alloc(Thread* self,
@@ -301,7 +301,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   }
 
  private:
-  RegionSpace(const std::string& name, MemMap* mem_map);
+  RegionSpace(const std::string& name, MemMap&& mem_map);
 
   template<bool kToSpaceOnly, typename Visitor>
   ALWAYS_INLINE void WalkInternal(Visitor&& visitor) NO_THREAD_SAFETY_ANALYSIS;

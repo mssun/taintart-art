@@ -669,9 +669,7 @@ class Dex2Oat FINAL {
       for (std::unique_ptr<const DexFile>& dex_file : opened_dex_files_) {
         dex_file.release();
       }
-      for (std::unique_ptr<MemMap>& map : opened_dex_files_maps_) {
-        map.release();
-      }
+      new std::vector<MemMap>(std::move(opened_dex_files_maps_));  // Leak MemMaps.
       for (std::unique_ptr<File>& vdex_file : vdex_files_) {
         vdex_file.release();
       }
@@ -1449,14 +1447,14 @@ class Dex2Oat FINAL {
         LOG(INFO) << "No " << VdexFile::kVdexNameInDmFile << " file in DexMetadata archive. "
                   << "Not doing fast verification.";
       } else {
-        std::unique_ptr<MemMap> input_file(zip_entry->MapDirectlyOrExtract(
+        MemMap input_file = zip_entry->MapDirectlyOrExtract(
             VdexFile::kVdexNameInDmFile,
             kDexMetadata,
-            &error_msg));
-        if (input_file == nullptr) {
+            &error_msg);
+        if (!input_file.IsValid()) {
           LOG(WARNING) << "Could not open vdex file in DexMetadata archive: " << error_msg;
         } else {
-          input_vdex_file_ = std::make_unique<VdexFile>(input_file.release());
+          input_vdex_file_ = std::make_unique<VdexFile>(std::move(input_file));
         }
       }
     }
@@ -1631,7 +1629,7 @@ class Dex2Oat FINAL {
       for (size_t i = 0, size = oat_writers_.size(); i != size; ++i) {
         rodata_.push_back(elf_writers_[i]->StartRoData());
         // Unzip or copy dex files straight to the oat file.
-        std::vector<std::unique_ptr<MemMap>> opened_dex_files_map;
+        std::vector<MemMap> opened_dex_files_map;
         std::vector<std::unique_ptr<const DexFile>> opened_dex_files;
         // No need to verify the dex file when we have a vdex file, which means it was already
         // verified.
@@ -1651,7 +1649,7 @@ class Dex2Oat FINAL {
         if (opened_dex_files_map.empty()) {
           DCHECK(opened_dex_files.empty());
         } else {
-          for (std::unique_ptr<MemMap>& map : opened_dex_files_map) {
+          for (MemMap& map : opened_dex_files_map) {
             opened_dex_files_maps_.push_back(std::move(map));
           }
           for (std::unique_ptr<const DexFile>& dex_file : opened_dex_files) {
@@ -1732,8 +1730,8 @@ class Dex2Oat FINAL {
     }
 
     // Ensure opened dex files are writable for dex-to-dex transformations.
-    for (const std::unique_ptr<MemMap>& map : opened_dex_files_maps_) {
-      if (!map->Protect(PROT_READ | PROT_WRITE)) {
+    for (MemMap& map : opened_dex_files_maps_) {
+      if (!map.Protect(PROT_READ | PROT_WRITE)) {
         PLOG(ERROR) << "Failed to make .dex files writeable.";
         return dex2oat::ReturnCode::kOther;
       }
@@ -2002,9 +2000,9 @@ class Dex2Oat FINAL {
     TimingLogger::ScopedTiming t("dex2oat Oat", timings_);
 
     // Sync the data to the file, in case we did dex2dex transformations.
-    for (const std::unique_ptr<MemMap>& map : opened_dex_files_maps_) {
-      if (!map->Sync()) {
-        PLOG(ERROR) << "Failed to Sync() dex2dex output. Map: " << map->GetName();
+    for (MemMap& map : opened_dex_files_maps_) {
+      if (!map.Sync()) {
+        PLOG(ERROR) << "Failed to Sync() dex2dex output. Map: " << map.GetName();
         return false;
       }
     }
@@ -2737,16 +2735,13 @@ class Dex2Oat FINAL {
                                 zip_filename, error_msg->c_str());
       return nullptr;
     }
-    std::unique_ptr<MemMap> input_file(zip_entry->ExtractToMemMap(zip_filename,
-                                                                  input_filename,
-                                                                  error_msg));
-    if (input_file.get() == nullptr) {
+    MemMap input_file = zip_entry->ExtractToMemMap(zip_filename, input_filename, error_msg);
+    if (!input_file.IsValid()) {
       *error_msg = StringPrintf("Failed to extract '%s' from '%s': %s", input_filename,
                                 zip_filename, error_msg->c_str());
       return nullptr;
     }
-    const std::string input_string(reinterpret_cast<char*>(input_file->Begin()),
-                                   input_file->Size());
+    const std::string input_string(reinterpret_cast<char*>(input_file.Begin()), input_file.Size());
     std::istringstream input_stream(input_string);
     return ReadCommentedInputStream<T>(input_stream, process);
   }
@@ -2873,7 +2868,7 @@ class Dex2Oat FINAL {
   std::unique_ptr<linker::ImageWriter> image_writer_;
   std::unique_ptr<CompilerDriver> driver_;
 
-  std::vector<std::unique_ptr<MemMap>> opened_dex_files_maps_;
+  std::vector<MemMap> opened_dex_files_maps_;
   std::vector<std::unique_ptr<const DexFile>> opened_dex_files_;
 
   bool avoid_storing_invocation_;

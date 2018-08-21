@@ -43,21 +43,22 @@ class ZipEntry {
   bool ExtractToFile(File& file, std::string* error_msg);
   // Extract this entry to anonymous memory (R/W).
   // Returns null on failure and sets error_msg.
-  MemMap* ExtractToMemMap(const char* zip_filename, const char* entry_filename,
-                          std::string* error_msg);
+  MemMap ExtractToMemMap(const char* zip_filename,
+                         const char* entry_filename,
+                         std::string* error_msg);
   // Create a file-backed private (clean, R/W) memory mapping to this entry.
   // 'zip_filename' is used for diagnostics only,
   //   the original file that the ZipArchive was open with is used
   //   for the mapping.
   //
   // Will only succeed if the entry is stored uncompressed.
-  // Returns null on failure and sets error_msg.
-  MemMap* MapDirectlyFromFile(const char* zip_filename, /*out*/std::string* error_msg);
+  // Returns invalid MemMap on failure and sets error_msg.
+  MemMap MapDirectlyFromFile(const char* zip_filename, /*out*/std::string* error_msg);
   virtual ~ZipEntry();
 
-  MemMap* MapDirectlyOrExtract(const char* zip_filename,
-                               const char* entry_filename,
-                               std::string* error_msg);
+  MemMap MapDirectlyOrExtract(const char* zip_filename,
+                              const char* entry_filename,
+                              std::string* error_msg);
 
   uint32_t GetUncompressedLength();
   uint32_t GetCrc32();

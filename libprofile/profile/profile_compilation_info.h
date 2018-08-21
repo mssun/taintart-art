@@ -637,14 +637,14 @@ class ProfileCompilationInfo {
      */
     static ProfileSource* Create(int32_t fd) {
       DCHECK_GT(fd, -1);
-      return new ProfileSource(fd, /*map*/ nullptr);
+      return new ProfileSource(fd, MemMap::Invalid());
     }
 
     /**
      * Create a profile source backed by a memory map. The map can be null in
      * which case it will the treated as an empty source.
      */
-    static ProfileSource* Create(std::unique_ptr<MemMap>&& mem_map) {
+    static ProfileSource* Create(MemMap&& mem_map) {
       return new ProfileSource(/*fd*/ -1, std::move(mem_map));
     }
 
@@ -664,13 +664,13 @@ class ProfileCompilationInfo {
     bool HasConsumedAllData() const;
 
    private:
-    ProfileSource(int32_t fd, std::unique_ptr<MemMap>&& mem_map)
+    ProfileSource(int32_t fd, MemMap&& mem_map)
         : fd_(fd), mem_map_(std::move(mem_map)), mem_map_cur_(0) {}
 
     bool IsMemMap() const { return fd_ == -1; }
 
     int32_t fd_;  // The fd is not owned by this class.
-    std::unique_ptr<MemMap> mem_map_;
+    MemMap mem_map_;
     size_t mem_map_cur_;  // Current position in the map to read from.
   };
 

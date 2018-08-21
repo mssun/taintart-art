@@ -56,8 +56,8 @@ class ArtClassDefinition {
         loader_(nullptr),
         name_(),
         protection_domain_(nullptr),
-        dex_data_mmap_(nullptr),
-        temp_mmap_(nullptr),
+        dex_data_mmap_(),
+        temp_mmap_(),
         dex_data_memory_(),
         initial_dex_file_unquickened_(nullptr),
         dex_data_(),
@@ -100,9 +100,9 @@ class ArtClassDefinition {
   }
 
   bool ContainsAddress(uintptr_t ptr) const {
-    return dex_data_mmap_ != nullptr &&
-        reinterpret_cast<uintptr_t>(dex_data_mmap_->Begin()) <= ptr &&
-        reinterpret_cast<uintptr_t>(dex_data_mmap_->End()) > ptr;
+    return dex_data_mmap_.IsValid() &&
+        reinterpret_cast<uintptr_t>(dex_data_mmap_.Begin()) <= ptr &&
+        reinterpret_cast<uintptr_t>(dex_data_mmap_.End()) > ptr;
   }
 
   bool IsModified() const REQUIRES_SHARED(art::Locks::mutator_lock_);
@@ -128,9 +128,9 @@ class ArtClassDefinition {
 
   bool IsLazyDefinition() const {
     DCHECK(IsInitialized());
-    return dex_data_mmap_ != nullptr &&
-        dex_data_.data() == dex_data_mmap_->Begin() &&
-        dex_data_mmap_->GetProtect() == PROT_NONE;
+    return dex_data_mmap_.IsValid() &&
+        dex_data_.data() == dex_data_mmap_.Begin() &&
+        dex_data_mmap_.GetProtect() == PROT_NONE;
   }
 
   jobject GetProtectionDomain() const {
@@ -159,9 +159,9 @@ class ArtClassDefinition {
 
   // Mmap that will be filled with the original-dex-file lazily if it needs to be de-quickened or
   // de-compact-dex'd
-  mutable std::unique_ptr<art::MemMap> dex_data_mmap_;
+  mutable art::MemMap dex_data_mmap_;
   // This is a temporary mmap we will use to be able to fill the dex file data atomically.
-  mutable std::unique_ptr<art::MemMap> temp_mmap_;
+  mutable art::MemMap temp_mmap_;
 
   // A unique_ptr to the current dex_data if it needs to be cleaned up.
   std::vector<unsigned char> dex_data_memory_;

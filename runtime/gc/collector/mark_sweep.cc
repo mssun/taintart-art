@@ -103,12 +103,16 @@ MarkSweep::MarkSweep(Heap* heap, bool is_concurrent, const std::string& name_pre
       is_concurrent_(is_concurrent),
       live_stack_freeze_size_(0) {
   std::string error_msg;
-  MemMap* mem_map = MemMap::MapAnonymous(
-      "mark sweep sweep array free buffer", nullptr,
+  sweep_array_free_buffer_mem_map_ = MemMap::MapAnonymous(
+      "mark sweep sweep array free buffer",
+      /* addr */ nullptr,
       RoundUp(kSweepArrayChunkFreeSize * sizeof(mirror::Object*), kPageSize),
-      PROT_READ | PROT_WRITE, false, false, &error_msg);
-  CHECK(mem_map != nullptr) << "Couldn't allocate sweep array free buffer: " << error_msg;
-  sweep_array_free_buffer_mem_map_.reset(mem_map);
+      PROT_READ | PROT_WRITE,
+      /* low_4gb */ false,
+      /* reuse */ false,
+      &error_msg);
+  CHECK(sweep_array_free_buffer_mem_map_.IsValid())
+      << "Couldn't allocate sweep array free buffer: " << error_msg;
 }
 
 void MarkSweep::InitializePhase() {
@@ -1207,7 +1211,7 @@ void MarkSweep::SweepArray(accounting::ObjectStack* allocations, bool swap_bitma
   TimingLogger::ScopedTiming t(__FUNCTION__, GetTimings());
   Thread* self = Thread::Current();
   mirror::Object** chunk_free_buffer = reinterpret_cast<mirror::Object**>(
-      sweep_array_free_buffer_mem_map_->BaseBegin());
+      sweep_array_free_buffer_mem_map_.BaseBegin());
   size_t chunk_free_pos = 0;
   ObjectBytePair freed;
   ObjectBytePair freed_los;
@@ -1300,7 +1304,7 @@ void MarkSweep::SweepArray(accounting::ObjectStack* allocations, bool swap_bitma
     t2.NewTiming("ResetStack");
     allocations->Reset();
   }
-  sweep_array_free_buffer_mem_map_->MadviseDontNeedAndZero();
+  sweep_array_free_buffer_mem_map_.MadviseDontNeedAndZero();
 }
 
 void MarkSweep::Sweep(bool swap_bitmaps) {

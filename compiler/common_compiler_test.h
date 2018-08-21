@@ -115,7 +115,7 @@ class CommonCompilerTest : public CommonRuntimeTest {
   std::unique_ptr<CompilerDriver> compiler_driver_;
 
  private:
-  std::unique_ptr<MemMap> image_reservation_;
+  MemMap image_reservation_;
 
   // Chunks must not move their storage after being created - use the node-based std::list.
   std::list<std::vector<uint8_t>> header_code_and_maps_chunks_;

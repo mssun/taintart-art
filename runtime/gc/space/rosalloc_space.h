@@ -41,10 +41,14 @@ class RosAllocSpace : public MallocSpace {
   static RosAllocSpace* Create(const std::string& name, size_t initial_size, size_t growth_limit,
                                size_t capacity, uint8_t* requested_begin, bool low_memory_mode,
                                bool can_move_objects);
-  static RosAllocSpace* CreateFromMemMap(MemMap* mem_map, const std::string& name,
-                                         size_t starting_size, size_t initial_size,
-                                         size_t growth_limit, size_t capacity,
-                                         bool low_memory_mode, bool can_move_objects);
+  static RosAllocSpace* CreateFromMemMap(MemMap&& mem_map,
+                                         const std::string& name,
+                                         size_t starting_size,
+                                         size_t initial_size,
+                                         size_t growth_limit,
+                                         size_t capacity,
+                                         bool low_memory_mode,
+                                         bool can_move_objects);
 
   mirror::Object* AllocWithGrowth(Thread* self, size_t num_bytes, size_t* bytes_allocated,
                                   size_t* usable_size, size_t* bytes_tl_bulk_allocated)
@@ -111,8 +115,13 @@ class RosAllocSpace : public MallocSpace {
 
   void Clear() OVERRIDE;
 
-  MallocSpace* CreateInstance(MemMap* mem_map, const std::string& name, void* allocator,
-                              uint8_t* begin, uint8_t* end, uint8_t* limit, size_t growth_limit,
+  MallocSpace* CreateInstance(MemMap&& mem_map,
+                              const std::string& name,
+                              void* allocator,
+                              uint8_t* begin,
+                              uint8_t* end,
+                              uint8_t* limit,
+                              size_t growth_limit,
                               bool can_move_objects) OVERRIDE;
 
   uint64_t GetBytesAllocated() OVERRIDE;
@@ -147,9 +156,16 @@ class RosAllocSpace : public MallocSpace {
   void DumpStats(std::ostream& os);
 
  protected:
-  RosAllocSpace(MemMap* mem_map, size_t initial_size, const std::string& name,
-                allocator::RosAlloc* rosalloc, uint8_t* begin, uint8_t* end, uint8_t* limit,
-                size_t growth_limit, bool can_move_objects, size_t starting_size,
+  RosAllocSpace(MemMap&& mem_map,
+                size_t initial_size,
+                const std::string& name,
+                allocator::RosAlloc* rosalloc,
+                uint8_t* begin,
+                uint8_t* end,
+                uint8_t* limit,
+                size_t growth_limit,
+                bool can_move_objects,
+                size_t starting_size,
                 bool low_memory_mode);
 
  private:

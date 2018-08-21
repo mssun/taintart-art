@@ -654,7 +654,7 @@ bool OatWriter::WriteAndOpenDexFiles(
     bool verify,
     bool update_input_vdex,
     CopyOption copy_dex_files,
-    /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
+    /*out*/ std::vector<MemMap>* opened_dex_files_map,
     /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files) {
   CHECK(write_state_ == WriteState::kAddingDexFileSources);
 
@@ -663,7 +663,7 @@ bool OatWriter::WriteAndOpenDexFiles(
      return false;
   }
 
-  std::vector<std::unique_ptr<MemMap>> dex_files_map;
+  std::vector<MemMap> dex_files_map;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
 
   // Initialize VDEX and OAT headers.
@@ -3424,12 +3424,12 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   const ArtDexFileLoader dex_file_loader;
   if (oat_dex_file->source_.IsZipEntry()) {
     ZipEntry* zip_entry = oat_dex_file->source_.GetZipEntry();
-    std::unique_ptr<MemMap> mem_map;
+    MemMap mem_map;
     {
       TimingLogger::ScopedTiming extract("Unzip", timings_);
-      mem_map.reset(zip_entry->ExtractToMemMap(location.c_str(), "classes.dex", &error_msg));
+      mem_map = zip_entry->ExtractToMemMap(location.c_str(), "classes.dex", &error_msg);
     }
-    if (mem_map == nullptr) {
+    if (!mem_map.IsValid()) {
       LOG(ERROR) << "Failed to extract dex file to mem map for layout: " << error_msg;
       return false;
     }
@@ -3684,7 +3684,7 @@ bool OatWriter::WriteDexFile(OutputStream* out,
 bool OatWriter::OpenDexFiles(
     File* file,
     bool verify,
-    /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
+    /*out*/ std::vector<MemMap>* opened_dex_files_map,
     /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files) {
   TimingLogger::ScopedTiming split("OpenDexFiles", timings_);
 
@@ -3695,16 +3695,16 @@ bool OatWriter::OpenDexFiles(
 
   if (!extract_dex_files_into_vdex_) {
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    std::vector<std::unique_ptr<MemMap>> maps;
+    std::vector<MemMap> maps;
     for (OatDexFile& oat_dex_file : oat_dex_files_) {
       std::string error_msg;
-      MemMap* map = oat_dex_file.source_.GetZipEntry()->MapDirectlyOrExtract(
-          oat_dex_file.dex_file_location_data_, "zipped dex", &error_msg);
-      if (map == nullptr) {
+      maps.emplace_back(oat_dex_file.source_.GetZipEntry()->MapDirectlyOrExtract(
+          oat_dex_file.dex_file_location_data_, "zipped dex", &error_msg));
+      MemMap* map = &maps.back();
+      if (!map->IsValid()) {
         LOG(ERROR) << error_msg;
         return false;
       }
-      maps.emplace_back(map);
       // Now, open the dex file.
       const ArtDexFileLoader dex_file_loader;
       dex_files.emplace_back(dex_file_loader.Open(map->Begin(),
@@ -3735,7 +3735,7 @@ bool OatWriter::OpenDexFiles(
   size_t length = vdex_size_ - map_offset;
 
   std::string error_msg;
-  std::unique_ptr<MemMap> dex_files_map(MemMap::MapFile(
+  MemMap dex_files_map = MemMap::MapFile(
       length,
       PROT_READ | PROT_WRITE,
       MAP_SHARED,
@@ -3743,8 +3743,8 @@ bool OatWriter::OpenDexFiles(
       map_offset,
       /* low_4gb */ false,
       file->GetPath().c_str(),
-      &error_msg));
-  if (dex_files_map == nullptr) {
+      &error_msg);
+  if (!dex_files_map.IsValid()) {
     LOG(ERROR) << "Failed to mmap() dex files from oat file. File: " << file->GetPath()
                << " error: " << error_msg;
     return false;
@@ -3753,7 +3753,7 @@ bool OatWriter::OpenDexFiles(
   std::vector<std::unique_ptr<const DexFile>> dex_files;
   for (OatDexFile& oat_dex_file : oat_dex_files_) {
     const uint8_t* raw_dex_file =
-        dex_files_map->Begin() + oat_dex_file.dex_file_offset_ - map_offset;
+        dex_files_map.Begin() + oat_dex_file.dex_file_offset_ - map_offset;
 
     if (kIsDebugBuild) {
       // Sanity check our input files.

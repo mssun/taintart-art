@@ -91,11 +91,15 @@ RosAlloc::RosAlloc(void* base, size_t capacity, size_t max_capacity,
   size_t num_of_pages = footprint_ / kPageSize;
   size_t max_num_of_pages = max_capacity_ / kPageSize;
   std::string error_msg;
-  page_map_mem_map_.reset(MemMap::MapAnonymous("rosalloc page map", nullptr,
-                                               RoundUp(max_num_of_pages, kPageSize),
-                                               PROT_READ | PROT_WRITE, false, false, &error_msg));
-  CHECK(page_map_mem_map_.get() != nullptr) << "Couldn't allocate the page map : " << error_msg;
-  page_map_ = page_map_mem_map_->Begin();
+  page_map_mem_map_ = MemMap::MapAnonymous("rosalloc page map",
+                                           /* addr */ nullptr,
+                                           RoundUp(max_num_of_pages, kPageSize),
+                                           PROT_READ | PROT_WRITE,
+                                           /* low_4gb */ false,
+                                           /* reuse */ false,
+                                           &error_msg);
+  CHECK(page_map_mem_map_.IsValid()) << "Couldn't allocate the page map : " << error_msg;
+  page_map_ = page_map_mem_map_.Begin();
   page_map_size_ = num_of_pages;
   max_page_map_size_ = max_num_of_pages;
   free_page_run_size_map_.resize(num_of_pages);
@@ -1364,8 +1368,8 @@ bool RosAlloc::Trim() {
     // Zero out the tail of the page map.
     uint8_t* zero_begin = const_cast<uint8_t*>(page_map_) + new_num_of_pages;
     uint8_t* madvise_begin = AlignUp(zero_begin, kPageSize);
-    DCHECK_LE(madvise_begin, page_map_mem_map_->End());
-    size_t madvise_size = page_map_mem_map_->End() - madvise_begin;
+    DCHECK_LE(madvise_begin, page_map_mem_map_.End());
+    size_t madvise_size = page_map_mem_map_.End() - madvise_begin;
     if (madvise_size > 0) {
       DCHECK_ALIGNED(madvise_begin, kPageSize);
       DCHECK_EQ(RoundUp(madvise_size, kPageSize), madvise_size);

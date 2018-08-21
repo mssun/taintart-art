@@ -205,15 +205,16 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
   // We could do PC-relative addressing to avoid this problem, but that
   // would require reserving code and data area before submitting, which
   // means more windows for the code memory to be RWX.
-  std::unique_ptr<MemMap> data_map(MemMap::MapAnonymous(
-      "data-code-cache", nullptr,
+  MemMap data_map = MemMap::MapAnonymous(
+      "data-code-cache",
+      /* addr */ nullptr,
       max_capacity,
       kProtData,
       /* low_4gb */ true,
       /* reuse */ false,
       &error_str,
-      use_ashmem));
-  if (data_map == nullptr) {
+      use_ashmem);
+  if (!data_map.IsValid()) {
     std::ostringstream oss;
     oss << "Failed to create read write cache: " << error_str << " size=" << max_capacity;
     *error_msg = oss.str();
@@ -229,26 +230,23 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
   size_t data_size = max_capacity / 2;
   size_t code_size = max_capacity - data_size;
   DCHECK_EQ(code_size + data_size, max_capacity);
-  uint8_t* divider = data_map->Begin() + data_size;
+  uint8_t* divider = data_map.Begin() + data_size;
 
-  MemMap* code_map = data_map->RemapAtEnd(
-      divider,
-      "jit-code-cache",
-      memmap_flags_prot_code | PROT_WRITE,
-      &error_str, use_ashmem);
-  if (code_map == nullptr) {
+  MemMap code_map = data_map.RemapAtEnd(
+      divider, "jit-code-cache", memmap_flags_prot_code | PROT_WRITE, &error_str, use_ashmem);
+  if (!code_map.IsValid()) {
     std::ostringstream oss;
     oss << "Failed to create read write execute cache: " << error_str << " size=" << max_capacity;
     *error_msg = oss.str();
     return nullptr;
   }
-  DCHECK_EQ(code_map->Begin(), divider);
+  DCHECK_EQ(code_map.Begin(), divider);
   data_size = initial_capacity / 2;
   code_size = initial_capacity - data_size;
   DCHECK_EQ(code_size + data_size, initial_capacity);
   return new JitCodeCache(
-      code_map,
-      data_map.release(),
+      std::move(code_map),
+      std::move(data_map),
       code_size,
       data_size,
       max_capacity,
@@ -256,8 +254,8 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
       memmap_flags_prot_code);
 }
 
-JitCodeCache::JitCodeCache(MemMap* code_map,
-                           MemMap* data_map,
+JitCodeCache::JitCodeCache(MemMap&& code_map,
+                           MemMap&& data_map,
                            size_t initial_code_capacity,
                            size_t initial_data_capacity,
                            size_t max_capacity,
@@ -266,8 +264,8 @@ JitCodeCache::JitCodeCache(MemMap* code_map,
     : lock_("Jit code cache", kJitCodeCacheLock),
       lock_cond_("Jit code cache condition variable", lock_),
       collection_in_progress_(false),
-      code_map_(code_map),
-      data_map_(data_map),
+      code_map_(std::move(code_map)),
+      data_map_(std::move(data_map)),
       max_capacity_(max_capacity),
       current_capacity_(initial_code_capacity + initial_data_capacity),
       code_end_(initial_code_capacity),
@@ -287,8 +285,8 @@ JitCodeCache::JitCodeCache(MemMap* code_map,
       memmap_flags_prot_code_(memmap_flags_prot_code) {
 
   DCHECK_GE(max_capacity, initial_code_capacity + initial_data_capacity);
-  code_mspace_ = create_mspace_with_base(code_map_->Begin(), code_end_, false /*locked*/);
-  data_mspace_ = create_mspace_with_base(data_map_->Begin(), data_end_, false /*locked*/);
+  code_mspace_ = create_mspace_with_base(code_map_.Begin(), code_end_, false /*locked*/);
+  data_mspace_ = create_mspace_with_base(data_map_.Begin(), data_end_, false /*locked*/);
 
   if (code_mspace_ == nullptr || data_mspace_ == nullptr) {
     PLOG(FATAL) << "create_mspace_with_base failed";
@@ -298,13 +296,13 @@ JitCodeCache::JitCodeCache(MemMap* code_map,
 
   CheckedCall(mprotect,
               "mprotect jit code cache",
-              code_map_->Begin(),
-              code_map_->Size(),
+              code_map_.Begin(),
+              code_map_.Size(),
               memmap_flags_prot_code_);
   CheckedCall(mprotect,
               "mprotect jit data cache",
-              data_map_->Begin(),
-              data_map_->Size(),
+              data_map_.Begin(),
+              data_map_.Size(),
               kProtData);
 
   VLOG(jit) << "Created jit code cache: initial data size="
@@ -316,7 +314,7 @@ JitCodeCache::JitCodeCache(MemMap* code_map,
 JitCodeCache::~JitCodeCache() {}
 
 bool JitCodeCache::ContainsPc(const void* ptr) const {
-  return code_map_->Begin() <= ptr && ptr < code_map_->End();
+  return code_map_.Begin() <= ptr && ptr < code_map_.End();
 }
 
 bool JitCodeCache::WillExecuteJitCode(ArtMethod* method) {
@@ -387,8 +385,8 @@ class ScopedCodeCacheWrite : ScopedTrace {
     CheckedCall(
         mprotect,
         "make code writable",
-        code_cache_->code_map_->Begin(),
-        code_cache_->code_map_->Size(),
+        code_cache_->code_map_.Begin(),
+        code_cache_->code_map_.Size(),
         code_cache_->memmap_flags_prot_code_ | PROT_WRITE);
   }
 
@@ -397,8 +395,8 @@ class ScopedCodeCacheWrite : ScopedTrace {
     CheckedCall(
         mprotect,
         "make code protected",
-        code_cache_->code_map_->Begin(),
-        code_cache_->code_map_->Size(),
+        code_cache_->code_map_.Begin(),
+        code_cache_->code_map_.Size(),
         code_cache_->memmap_flags_prot_code_);
   }
 
@@ -1237,8 +1235,8 @@ void JitCodeCache::GarbageCollectCache(Thread* self) {
       number_of_collections_++;
       live_bitmap_.reset(CodeCacheBitmap::Create(
           "code-cache-bitmap",
-          reinterpret_cast<uintptr_t>(code_map_->Begin()),
-          reinterpret_cast<uintptr_t>(code_map_->Begin() + current_capacity_ / 2)));
+          reinterpret_cast<uintptr_t>(code_map_.Begin()),
+          reinterpret_cast<uintptr_t>(code_map_.Begin() + current_capacity_ / 2)));
       collection_in_progress_ = true;
     }
   }
@@ -1610,12 +1608,12 @@ void* JitCodeCache::MoreCore(const void* mspace, intptr_t increment) NO_THREAD_S
   if (code_mspace_ == mspace) {
     size_t result = code_end_;
     code_end_ += increment;
-    return reinterpret_cast<void*>(result + code_map_->Begin());
+    return reinterpret_cast<void*>(result + code_map_.Begin());
   } else {
     DCHECK_EQ(data_mspace_, mspace);
     size_t result = data_end_;
     data_end_ += increment;
-    return reinterpret_cast<void*>(result + data_map_->Begin());
+    return reinterpret_cast<void*>(result + data_map_.Begin());
   }
 }
 

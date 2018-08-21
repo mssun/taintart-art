@@ -252,7 +252,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
       }
 
       std::vector<OutputStream*> rodata;
-      std::vector<std::unique_ptr<MemMap>> opened_dex_files_maps;
+      std::vector<MemMap> opened_dex_files_maps;
       std::vector<std::unique_ptr<const DexFile>> opened_dex_files;
       // Now that we have finalized key_value_store_, start writing the oat file.
       for (size_t i = 0, size = oat_writers.size(); i != size; ++i) {
@@ -265,7 +265,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
                                             dex_file->GetLocation().c_str(),
                                             dex_file->GetLocationChecksum());
 
-        std::vector<std::unique_ptr<MemMap>> cur_opened_dex_files_maps;
+        std::vector<MemMap> cur_opened_dex_files_maps;
         std::vector<std::unique_ptr<const DexFile>> cur_opened_dex_files;
         bool dex_files_ok = oat_writers[i]->WriteAndOpenDexFiles(
             out_helper.vdex_files[i].GetFile(),
@@ -279,7 +279,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
         ASSERT_TRUE(dex_files_ok);
 
         if (!cur_opened_dex_files_maps.empty()) {
-          for (std::unique_ptr<MemMap>& cur_map : cur_opened_dex_files_maps) {
+          for (MemMap& cur_map : cur_opened_dex_files_maps) {
             opened_dex_files_maps.push_back(std::move(cur_map));
           }
           for (std::unique_ptr<const DexFile>& cur_dex_file : cur_opened_dex_files) {

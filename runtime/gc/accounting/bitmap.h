@@ -24,11 +24,10 @@
 #include <vector>
 
 #include "base/globals.h"
+#include "base/mem_map.h"
 #include "base/mutex.h"
 
 namespace art {
-
-class MemMap;
 
 namespace gc {
 namespace accounting {
@@ -42,7 +41,7 @@ class Bitmap {
   // Initialize a space bitmap using the provided mem_map as the live bits. Takes ownership of the
   // mem map. The address range covered starts at heap_begin and is of size equal to heap_capacity.
   // Objects are kAlignement-aligned.
-  static Bitmap* CreateFromMemMap(MemMap* mem_map, size_t num_bits);
+  static Bitmap* CreateFromMemMap(MemMap&& mem_map, size_t num_bits);
 
   // offset is the difference from base to a index.
   static ALWAYS_INLINE constexpr size_t BitIndexToWordIndex(uintptr_t offset) {
@@ -101,17 +100,17 @@ class Bitmap {
  protected:
   static constexpr size_t kBitsPerBitmapWord = sizeof(uintptr_t) * kBitsPerByte;
 
-  Bitmap(MemMap* mem_map, size_t bitmap_size);
+  Bitmap(MemMap&& mem_map, size_t bitmap_size);
   ~Bitmap();
 
   // Allocate the mem-map for a bitmap based on how many bits are required.
-  static MemMap* AllocateMemMap(const std::string& name, size_t num_bits);
+  static MemMap AllocateMemMap(const std::string& name, size_t num_bits);
 
   template<bool kSetBit>
   ALWAYS_INLINE bool ModifyBit(uintptr_t bit_index);
 
   // Backing storage for bitmap.
-  std::unique_ptr<MemMap> mem_map_;
+  MemMap mem_map_;
 
   // This bitmap itself, word sized for efficiency in scanning.
   uintptr_t* const bitmap_begin_;
@@ -127,10 +126,10 @@ class Bitmap {
 template<size_t kAlignment>
 class MemoryRangeBitmap : public Bitmap {
  public:
-  static MemoryRangeBitmap* Create(const std::string& name, uintptr_t cover_begin,
-                                   uintptr_t cover_end);
-  static MemoryRangeBitmap* CreateFromMemMap(MemMap* mem_map, uintptr_t cover_begin,
-                                             size_t num_bits);
+  static MemoryRangeBitmap* Create(
+      const std::string& name, uintptr_t cover_begin, uintptr_t cover_end);
+  static MemoryRangeBitmap* CreateFromMemMap(
+      MemMap&& mem_map, uintptr_t cover_begin, size_t num_bits);
 
   // Beginning of the memory range that the bitmap covers.
   ALWAYS_INLINE uintptr_t CoverBegin() const {
@@ -177,9 +176,10 @@ class MemoryRangeBitmap : public Bitmap {
   }
 
  private:
-  MemoryRangeBitmap(MemMap* mem_map, uintptr_t begin, size_t num_bits)
-     : Bitmap(mem_map, num_bits), cover_begin_(begin), cover_end_(begin + kAlignment * num_bits) {
-  }
+  MemoryRangeBitmap(MemMap&& mem_map, uintptr_t begin, size_t num_bits)
+      : Bitmap(std::move(mem_map), num_bits),
+        cover_begin_(begin),
+        cover_end_(begin + kAlignment * num_bits) {}
 
   uintptr_t const cover_begin_;
   uintptr_t const cover_end_;

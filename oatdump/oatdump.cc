@@ -708,7 +708,7 @@ class OatDumper {
       return nullptr;
     }
 
-    std::unique_ptr<MemMap> mmap(MemMap::MapFile(
+    MemMap mmap = MemMap::MapFile(
         file->GetLength(),
         PROT_READ | PROT_WRITE,
         MAP_PRIVATE,
@@ -716,13 +716,13 @@ class OatDumper {
         /* start offset */ 0,
         /* low_4gb */ false,
         vdex_filename.c_str(),
-        error_msg));
-    if (mmap == nullptr) {
+        error_msg);
+    if (!mmap.IsValid()) {
       *error_msg = "Failed to mmap file " + vdex_filename + ": " + *error_msg;
       return nullptr;
     }
 
-    std::unique_ptr<VdexFile> vdex_file(new VdexFile(mmap.release()));
+    std::unique_ptr<VdexFile> vdex_file(new VdexFile(std::move(mmap)));
     if (!vdex_file->IsValid()) {
       *error_msg = "Vdex file is not valid";
       return nullptr;

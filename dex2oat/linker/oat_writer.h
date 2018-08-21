@@ -177,7 +177,7 @@ class OatWriter {
                             bool verify,
                             bool update_input_vdex,
                             CopyOption copy_dex_files,
-                            /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
+                            /*out*/ std::vector<MemMap>* opened_dex_files_map,
                             /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files);
   // Initialize the writer with the given parameters.
   void Initialize(const CompilerDriver* compiler_driver,
@@ -315,7 +315,7 @@ class OatWriter {
                     bool update_input_vdex);
   bool OpenDexFiles(File* file,
                     bool verify,
-                    /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
+                    /*out*/ std::vector<MemMap>* opened_dex_files_map,
                     /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files);
 
   size_t InitOatHeader(uint32_t num_dex_files, SafeMap<std::string, std::string>* key_value_store);

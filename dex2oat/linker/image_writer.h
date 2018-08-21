@@ -307,7 +307,7 @@ class ImageWriter FINAL {
     // Calculate the sum total of the bin slot sizes in [0, up_to). Defaults to all bins.
     size_t GetBinSizeSum(Bin up_to) const;
 
-    std::unique_ptr<MemMap> image_;  // Memory mapped for generating the image.
+    MemMap image_;  // Memory mapped for generating the image.
 
     // Target begin of this image. Notes: It is not valid to write here, this is the address
     // of the target image, not necessarily where image_ is mapped. The address is only valid
@@ -408,7 +408,7 @@ class ImageWriter FINAL {
     size_t offset = GetImageOffset(object);
     size_t oat_index = GetOatIndex(object);
     const ImageInfo& image_info = GetImageInfo(oat_index);
-    uint8_t* dst = image_info.image_->Begin() + offset;
+    uint8_t* dst = image_info.image_.Begin() + offset;
     return reinterpret_cast<mirror::Object*>(dst);
   }
 

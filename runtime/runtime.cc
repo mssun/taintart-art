@@ -425,7 +425,7 @@ Runtime::~Runtime() {
   low_4gb_arena_pool_.reset();
   arena_pool_.reset();
   jit_arena_pool_.reset();
-  protected_fault_page_.reset();
+  protected_fault_page_.Reset();
   MemMap::Shutdown();
 
   // TODO: acquire a static mutex on Runtime to avoid racing.
@@ -1162,18 +1162,18 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   {
     constexpr uintptr_t kSentinelAddr =
         RoundDown(static_cast<uintptr_t>(Context::kBadGprBase), kPageSize);
-    protected_fault_page_.reset(MemMap::MapAnonymous("Sentinel fault page",
-                                                     reinterpret_cast<uint8_t*>(kSentinelAddr),
-                                                     kPageSize,
-                                                     PROT_NONE,
-                                                     /* low_4g */ true,
-                                                     /* reuse */ false,
-                                                     /* error_msg */ nullptr));
-    if (protected_fault_page_ == nullptr) {
+    protected_fault_page_ = MemMap::MapAnonymous("Sentinel fault page",
+                                                 reinterpret_cast<uint8_t*>(kSentinelAddr),
+                                                 kPageSize,
+                                                 PROT_NONE,
+                                                 /* low_4g */ true,
+                                                 /* reuse */ false,
+                                                 /* error_msg */ nullptr);
+    if (!protected_fault_page_.IsValid()) {
       LOG(WARNING) << "Could not reserve sentinel fault page";
-    } else if (reinterpret_cast<uintptr_t>(protected_fault_page_->Begin()) != kSentinelAddr) {
+    } else if (reinterpret_cast<uintptr_t>(protected_fault_page_.Begin()) != kSentinelAddr) {
       LOG(WARNING) << "Could not reserve sentinel fault page at the right address.";
-      protected_fault_page_.reset();
+      protected_fault_page_.Reset();
     }
   }
 

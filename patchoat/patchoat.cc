@@ -538,7 +538,7 @@ bool PatchOat::Patch(const std::string& image_location,
   ScopedObjectAccess soa(Thread::Current());
 
   std::vector<gc::space::ImageSpace*> spaces = Runtime::Current()->GetHeap()->GetBootImageSpaces();
-  std::map<gc::space::ImageSpace*, std::unique_ptr<MemMap>> space_to_memmap_map;
+  std::map<gc::space::ImageSpace*, MemMap> space_to_memmap_map;
 
   for (size_t i = 0; i < spaces.size(); ++i) {
     t.NewTiming("Image Patching setup");
@@ -567,15 +567,15 @@ bool PatchOat::Patch(const std::string& image_location,
 
     // Create the map where we will write the image patches to.
     std::string error_msg;
-    std::unique_ptr<MemMap> image(MemMap::MapFile(image_len,
-                                                  PROT_READ | PROT_WRITE,
-                                                  MAP_PRIVATE,
-                                                  input_image->Fd(),
-                                                  0,
-                                                  /*low_4gb*/false,
-                                                  input_image->GetPath().c_str(),
-                                                  &error_msg));
-    if (image.get() == nullptr) {
+    MemMap image = MemMap::MapFile(image_len,
+                                   PROT_READ | PROT_WRITE,
+                                   MAP_PRIVATE,
+                                   input_image->Fd(),
+                                   0,
+                                   /*low_4gb*/false,
+                                   input_image->GetPath().c_str(),
+                                   &error_msg);
+    if (!image.IsValid()) {
       LOG(ERROR) << "Unable to map image file " << input_image->GetPath() << " : " << error_msg;
       return false;
     }
@@ -583,7 +583,7 @@ bool PatchOat::Patch(const std::string& image_location,
 
     space_to_memmap_map.emplace(space, std::move(image));
     PatchOat p = PatchOat(isa,
-                          space_to_memmap_map[space].get(),
+                          &space_to_memmap_map[space],
                           space->GetLiveBitmap(),
                           space->GetMemMap(),
                           delta,
@@ -636,22 +636,22 @@ bool PatchOat::Patch(const std::string& image_location,
         LOG(ERROR) << "Error while getting input image size";
         return false;
       }
-      std::unique_ptr<MemMap> original(MemMap::MapFile(input_image_size,
-                                                       PROT_READ,
-                                                       MAP_PRIVATE,
-                                                       input_image->Fd(),
-                                                       0,
-                                                       /*low_4gb*/false,
-                                                       input_image->GetPath().c_str(),
-                                                       &error_msg));
-      if (original.get() == nullptr) {
+      MemMap original = MemMap::MapFile(input_image_size,
+                                        PROT_READ,
+                                        MAP_PRIVATE,
+                                        input_image->Fd(),
+                                        0,
+                                        /*low_4gb*/false,
+                                        input_image->GetPath().c_str(),
+                                        &error_msg);
+      if (!original.IsValid()) {
         LOG(ERROR) << "Unable to map image file " << input_image->GetPath() << " : " << error_msg;
         return false;
       }
 
       const MemMap* relocated = p.image_;
 
-      if (!WriteRelFile(*original, *relocated, image_relocation_filename, &error_msg)) {
+      if (!WriteRelFile(original, *relocated, image_relocation_filename, &error_msg)) {
         LOG(ERROR) << "Failed to create image relocation file " << image_relocation_filename
             << ": " << error_msg;
         return false;
