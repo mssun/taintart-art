@@ -2697,10 +2697,6 @@ mirror::Object* ConcurrentCopying::IsMarked(mirror::Object* from_ref) {
     // At this point, `from_ref` should not be in the region space
     // (i.e. within an "unused" region).
     DCHECK(!region_space_->HasAddress(from_ref)) << from_ref;
-    if (kEnableGenerationalConcurrentCopyingCollection && young_gen_) {
-      // Only sweeps the from space.
-      return from_ref;
-    }
     // from_ref is in a non-moving space.
     if (immune_spaces_.ContainsObject(from_ref)) {
       // An immune object is alive.
