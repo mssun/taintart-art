@@ -166,6 +166,10 @@ public class Class2Greylist {
                 .put(GreylistAnnotationHandler.ANNOTATION_NAME,
                         new GreylistAnnotationHandler(
                                 mStatus, mOutput, mPublicApis, mAllowedSdkVersions))
+                .put(CovariantReturnTypeHandler.ANNOTATION_NAME,
+                        new CovariantReturnTypeHandler(mOutput, mPublicApis))
+                .put(CovariantReturnTypeMultiHandler.ANNOTATION_NAME,
+                        new CovariantReturnTypeMultiHandler(mOutput, mPublicApis))
                 .build();
     }
 
