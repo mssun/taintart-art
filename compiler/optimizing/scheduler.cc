@@ -280,6 +280,23 @@ bool SchedulingGraph::HasSideEffectDependency(HInstruction* node,
   return false;
 }
 
+// Check if the specified instruction is a better candidate which more likely will
+// have other instructions depending on it.
+static bool IsBetterCandidateWithMoreLikelyDependencies(HInstruction* new_candidate,
+                                                        HInstruction* old_candidate) {
+  if (!new_candidate->GetSideEffects().Includes(old_candidate->GetSideEffects())) {
+    // Weaker side effects.
+    return false;
+  }
+  if (old_candidate->GetSideEffects().Includes(new_candidate->GetSideEffects())) {
+    // Same side effects, check if `new_candidate` has stronger `CanThrow()`.
+    return new_candidate->CanThrow() && !old_candidate->CanThrow();
+  } else {
+    // Stronger side effects, check if `new_candidate` has at least as strong `CanThrow()`.
+    return new_candidate->CanThrow() || !old_candidate->CanThrow();
+  }
+}
+
 void SchedulingGraph::AddDependencies(HInstruction* instruction, bool is_scheduling_barrier) {
   SchedulingNode* instruction_node = GetNode(instruction);
 
@@ -331,6 +348,7 @@ void SchedulingGraph::AddDependencies(HInstruction* instruction, bool is_schedul
 
   // Side effect dependencies.
   if (!instruction->GetSideEffects().DoesNothing() || instruction->CanThrow()) {
+    HInstruction* dep_chain_candidate = nullptr;
     for (HInstruction* other = instruction->GetNext(); other != nullptr; other = other->GetNext()) {
       SchedulingNode* other_node = GetNode(other);
       if (other_node->IsSchedulingBarrier()) {
@@ -340,7 +358,18 @@ void SchedulingGraph::AddDependencies(HInstruction* instruction, bool is_schedul
         break;
       }
       if (HasSideEffectDependency(other, instruction)) {
-        AddOtherDependency(other_node, instruction_node);
+        if (dep_chain_candidate != nullptr &&
+            HasSideEffectDependency(other, dep_chain_candidate)) {
+          // Skip an explicit dependency to reduce memory usage, rely on the transitive dependency.
+        } else {
+          AddOtherDependency(other_node, instruction_node);
+        }
+        // Check if `other` is a better candidate which more likely will have other instructions
+        // depending on it.
+        if (dep_chain_candidate == nullptr ||
+            IsBetterCandidateWithMoreLikelyDependencies(other, dep_chain_candidate)) {
+          dep_chain_candidate = other;
+        }
       }
     }
   }
