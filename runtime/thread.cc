@@ -25,6 +25,12 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 
+#if __has_feature(hwaddress_sanitizer)
+#include <sanitizer/hwasan_interface.h>
+#else
+#define __hwasan_tag_pointer(p, t) (p)
+#endif
+
 #include <algorithm>
 #include <bitset>
 #include <cerrno>
@@ -623,7 +629,9 @@ void Thread::InstallImplicitProtection() {
 #endif
       volatile char space[kPageSize - (kAsanMultiplier * 256)];
       char sink ATTRIBUTE_UNUSED = space[zero];  // NOLINT
-      if (reinterpret_cast<uintptr_t>(space) >= target + kPageSize) {
+      // Remove tag from the pointer. Nop in non-hwasan builds.
+      uintptr_t addr = reinterpret_cast<uintptr_t>(__hwasan_tag_pointer(space, 0));
+      if (addr >= target + kPageSize) {
         Touch(target);
       }
       zero *= 2;  // Try to avoid tail recursion.
