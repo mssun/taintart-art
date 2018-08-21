@@ -32,12 +32,12 @@
 #include "dex_cache.h"
 #include "gc/heap-inl.h"
 #include "iftable.h"
-#include "subtype_check.h"
 #include "object-inl.h"
 #include "object_array.h"
 #include "read_barrier-inl.h"
 #include "runtime.h"
 #include "string.h"
+#include "subtype_check.h"
 
 namespace art {
 namespace mirror {
