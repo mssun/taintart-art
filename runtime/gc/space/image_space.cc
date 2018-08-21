@@ -62,12 +62,12 @@ Atomic<uint32_t> ImageSpace::bitmap_index_(0);
 
 ImageSpace::ImageSpace(const std::string& image_filename,
                        const char* image_location,
-                       MemMap* mem_map,
+                       MemMap&& mem_map,
                        accounting::ContinuousSpaceBitmap* live_bitmap,
                        uint8_t* end)
     : MemMapSpace(image_filename,
-                  mem_map,
-                  mem_map->Begin(),
+                  std::move(mem_map),
+                  mem_map.Begin(),
                   end,
                   end,
                   kGcRetentionPolicyNeverCollect),
@@ -610,53 +610,53 @@ class ImageSpace::Loader {
       return nullptr;
     }
 
-    std::unique_ptr<MemMap> map;
+    MemMap map;
 
     // GetImageBegin is the preferred address to map the image. If we manage to map the
     // image at the image begin, the amount of fixup work required is minimized.
     // If it is pic we will retry with error_msg for the failure case. Pass a null error_msg to
     // avoid reading proc maps for a mapping failure and slowing everything down.
-    map.reset(LoadImageFile(image_filename,
-                            image_location,
-                            *image_header,
-                            image_header->GetImageBegin(),
-                            file->Fd(),
-                            logger,
-                            image_header->IsPic() ? nullptr : error_msg));
+    map = LoadImageFile(image_filename,
+                        image_location,
+                        *image_header,
+                        image_header->GetImageBegin(),
+                        file->Fd(),
+                        logger,
+                        image_header->IsPic() ? nullptr : error_msg);
     // If the header specifies PIC mode, we can also map at a random low_4gb address since we can
     // relocate in-place.
-    if (map == nullptr && image_header->IsPic()) {
-      map.reset(LoadImageFile(image_filename,
-                              image_location,
-                              *image_header,
-                              /* address */ nullptr,
-                              file->Fd(),
-                              logger,
-                              error_msg));
+    if (!map.IsValid() && image_header->IsPic()) {
+      map = LoadImageFile(image_filename,
+                          image_location,
+                          *image_header,
+                          /* address */ nullptr,
+                          file->Fd(),
+                          logger,
+                          error_msg);
     }
     // Were we able to load something and continue?
-    if (map == nullptr) {
+    if (!map.IsValid()) {
       DCHECK(!error_msg->empty());
       return nullptr;
     }
-    DCHECK_EQ(0, memcmp(image_header, map->Begin(), sizeof(ImageHeader)));
+    DCHECK_EQ(0, memcmp(image_header, map.Begin(), sizeof(ImageHeader)));
 
-    std::unique_ptr<MemMap> image_bitmap_map(MemMap::MapFileAtAddress(nullptr,
-                                                                      bitmap_section.Size(),
-                                                                      PROT_READ, MAP_PRIVATE,
-                                                                      file->Fd(),
-                                                                      image_bitmap_offset,
-                                                                      /*low_4gb*/false,
-                                                                      /*reuse*/false,
-                                                                      image_filename,
-                                                                      error_msg));
-    if (image_bitmap_map == nullptr) {
+    MemMap image_bitmap_map = MemMap::MapFileAtAddress(nullptr,
+                                                       bitmap_section.Size(),
+                                                       PROT_READ, MAP_PRIVATE,
+                                                       file->Fd(),
+                                                       image_bitmap_offset,
+                                                       /*low_4gb*/false,
+                                                       /*reuse*/false,
+                                                       image_filename,
+                                                       error_msg);
+    if (!image_bitmap_map.IsValid()) {
       *error_msg = StringPrintf("Failed to map image bitmap: %s", error_msg->c_str());
       return nullptr;
     }
     // Loaded the map, use the image header from the file now in case we patch it with
     // RelocateInPlace.
-    image_header = reinterpret_cast<ImageHeader*>(map->Begin());
+    image_header = reinterpret_cast<ImageHeader*>(map.Begin());
     const uint32_t bitmap_index = ImageSpace::bitmap_index_.fetch_add(1, std::memory_order_seq_cst);
     std::string bitmap_name(StringPrintf("imagespace %s live-bitmap %u",
                                          image_filename,
@@ -664,15 +664,15 @@ class ImageSpace::Loader {
     // Bitmap only needs to cover until the end of the mirror objects section.
     const ImageSection& image_objects = image_header->GetObjectsSection();
     // We only want the mirror object, not the ArtFields and ArtMethods.
-    uint8_t* const image_end = map->Begin() + image_objects.End();
+    uint8_t* const image_end = map.Begin() + image_objects.End();
     std::unique_ptr<accounting::ContinuousSpaceBitmap> bitmap;
     {
       TimingLogger::ScopedTiming timing("CreateImageBitmap", &logger);
       bitmap.reset(
           accounting::ContinuousSpaceBitmap::CreateFromMemMap(
               bitmap_name,
-              image_bitmap_map.release(),
-              reinterpret_cast<uint8_t*>(map->Begin()),
+              std::move(image_bitmap_map),
+              reinterpret_cast<uint8_t*>(map.Begin()),
               // Make sure the bitmap is aligned to card size instead of just bitmap word size.
               RoundUp(image_objects.End(), gc::accounting::CardTable::kCardSize)));
       if (bitmap == nullptr) {
@@ -683,7 +683,7 @@ class ImageSpace::Loader {
     {
       TimingLogger::ScopedTiming timing("RelocateImage", &logger);
       if (!RelocateInPlace(*image_header,
-                           map->Begin(),
+                           map.Begin(),
                            bitmap.get(),
                            oat_file,
                            error_msg)) {
@@ -693,7 +693,7 @@ class ImageSpace::Loader {
     // We only want the mirror object, not the ArtFields and ArtMethods.
     std::unique_ptr<ImageSpace> space(new ImageSpace(image_filename,
                                                      image_location,
-                                                     map.release(),
+                                                     std::move(map),
                                                      bitmap.release(),
                                                      image_end));
 
@@ -781,13 +781,13 @@ class ImageSpace::Loader {
   }
 
  private:
-  static MemMap* LoadImageFile(const char* image_filename,
-                               const char* image_location,
-                               const ImageHeader& image_header,
-                               uint8_t* address,
-                               int fd,
-                               TimingLogger& logger,
-                               std::string* error_msg) {
+  static MemMap LoadImageFile(const char* image_filename,
+                              const char* image_location,
+                              const ImageHeader& image_header,
+                              uint8_t* address,
+                              int fd,
+                              TimingLogger& logger,
+                              std::string* error_msg) {
     TimingLogger::ScopedTiming timing("MapImageFile", &logger);
     const ImageHeader::StorageMode storage_mode = image_header.GetStorageMode();
     if (storage_mode == ImageHeader::kStorageModeUncompressed) {
@@ -809,45 +809,45 @@ class ImageSpace::Loader {
         *error_msg = StringPrintf("Invalid storage mode in image header %d",
                                   static_cast<int>(storage_mode));
       }
-      return nullptr;
+      return MemMap::Invalid();
     }
 
     // Reserve output and decompress into it.
-    std::unique_ptr<MemMap> map(MemMap::MapAnonymous(image_location,
-                                                     address,
-                                                     image_header.GetImageSize(),
-                                                     PROT_READ | PROT_WRITE,
-                                                     /*low_4gb*/true,
-                                                     /*reuse*/false,
-                                                     error_msg));
-    if (map != nullptr) {
+    MemMap map = MemMap::MapAnonymous(image_location,
+                                      address,
+                                      image_header.GetImageSize(),
+                                      PROT_READ | PROT_WRITE,
+                                      /*low_4gb*/ true,
+                                      /*reuse*/ false,
+                                      error_msg);
+    if (map.IsValid()) {
       const size_t stored_size = image_header.GetDataSize();
       const size_t decompress_offset = sizeof(ImageHeader);  // Skip the header.
-      std::unique_ptr<MemMap> temp_map(MemMap::MapFile(sizeof(ImageHeader) + stored_size,
-                                                       PROT_READ,
-                                                       MAP_PRIVATE,
-                                                       fd,
-                                                       /*offset*/0,
-                                                       /*low_4gb*/false,
-                                                       image_filename,
-                                                       error_msg));
-      if (temp_map == nullptr) {
+      MemMap temp_map = MemMap::MapFile(sizeof(ImageHeader) + stored_size,
+                                        PROT_READ,
+                                        MAP_PRIVATE,
+                                        fd,
+                                        /*offset*/0,
+                                        /*low_4gb*/false,
+                                        image_filename,
+                                        error_msg);
+      if (!temp_map.IsValid()) {
         DCHECK(error_msg == nullptr || !error_msg->empty());
-        return nullptr;
+        return MemMap::Invalid();
       }
-      memcpy(map->Begin(), &image_header, sizeof(ImageHeader));
+      memcpy(map.Begin(), &image_header, sizeof(ImageHeader));
       const uint64_t start = NanoTime();
       // LZ4HC and LZ4 have same internal format, both use LZ4_decompress.
       TimingLogger::ScopedTiming timing2("LZ4 decompress image", &logger);
       const size_t decompressed_size = LZ4_decompress_safe(
-          reinterpret_cast<char*>(temp_map->Begin()) + sizeof(ImageHeader),
-          reinterpret_cast<char*>(map->Begin()) + decompress_offset,
+          reinterpret_cast<char*>(temp_map.Begin()) + sizeof(ImageHeader),
+          reinterpret_cast<char*>(map.Begin()) + decompress_offset,
           stored_size,
-          map->Size() - decompress_offset);
+          map.Size() - decompress_offset);
       const uint64_t time = NanoTime() - start;
       // Add one 1 ns to prevent possible divide by 0.
       VLOG(image) << "Decompressing image took " << PrettyDuration(time) << " ("
-                  << PrettySize(static_cast<uint64_t>(map->Size()) * MsToNs(1000) / (time + 1))
+                  << PrettySize(static_cast<uint64_t>(map.Size()) * MsToNs(1000) / (time + 1))
                   << "/s)";
       if (decompressed_size + sizeof(ImageHeader) != image_header.GetImageSize()) {
         if (error_msg != nullptr) {
@@ -856,11 +856,11 @@ class ImageSpace::Loader {
               decompressed_size + sizeof(ImageHeader),
               image_header.GetImageSize());
         }
-        return nullptr;
+        return MemMap::Invalid();
       }
     }
 
-    return map.release();
+    return map;
   }
 
   class FixupVisitor : public ValueObject {

@@ -28,6 +28,7 @@
 #include "base/atomic.h"
 #include "base/histogram.h"
 #include "base/macros.h"
+#include "base/mem_map.h"
 #include "base/mutex.h"
 #include "base/safe_map.h"
 
@@ -39,7 +40,6 @@ class LinearAlloc;
 class InlineCache;
 class IsMarkedVisitor;
 class JitJniStubTestHelper;
-class MemMap;
 class OatQuickMethodHeader;
 struct ProfileMethodInfo;
 class ProfilingInfo;
@@ -279,8 +279,8 @@ class JitCodeCache {
 
  private:
   // Take ownership of maps.
-  JitCodeCache(MemMap* code_map,
-               MemMap* data_map,
+  JitCodeCache(MemMap&& code_map,
+               MemMap&& data_map,
                size_t initial_code_capacity,
                size_t initial_data_capacity,
                size_t max_capacity,
@@ -396,9 +396,9 @@ class JitCodeCache {
   // Whether there is a code cache collection in progress.
   bool collection_in_progress_ GUARDED_BY(lock_);
   // Mem map which holds code.
-  std::unique_ptr<MemMap> code_map_;
+  MemMap code_map_;
   // Mem map which holds data (stack maps and profiling info).
-  std::unique_ptr<MemMap> data_map_;
+  MemMap data_map_;
   // The opaque mspace for allocating code.
   void* code_mspace_ GUARDED_BY(lock_);
   // The opaque mspace for allocating data.

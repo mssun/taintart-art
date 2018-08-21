@@ -956,7 +956,7 @@ class DlOpenOatFile FINAL : public OatFileBase {
   void* dlopen_handle_;  // TODO: Unique_ptr with custom deleter.
 
   // Dummy memory map objects corresponding to the regions mapped by dlopen.
-  std::vector<std::unique_ptr<MemMap>> dlopen_mmaps_;
+  std::vector<MemMap> dlopen_mmaps_;
 
   // The number of shared objects the linker told us about before loading. Used to
   // (optimistically) optimize the PreSetup stage (see comment there).
@@ -1122,8 +1122,8 @@ void DlOpenOatFile::PreSetup(const std::string& elf_filename) {
             uint8_t* vaddr = reinterpret_cast<uint8_t*>(info->dlpi_addr +
                 info->dlpi_phdr[i].p_vaddr);
             size_t memsz = info->dlpi_phdr[i].p_memsz;
-            MemMap* mmap = MemMap::MapDummy(info->dlpi_name, vaddr, memsz);
-            context->dlopen_mmaps_->push_back(std::unique_ptr<MemMap>(mmap));
+            MemMap mmap = MemMap::MapDummy(info->dlpi_name, vaddr, memsz);
+            context->dlopen_mmaps_->push_back(std::move(mmap));
           }
         }
         return 1;  // Stop iteration and return 1 from dl_iterate_phdr.
@@ -1131,7 +1131,7 @@ void DlOpenOatFile::PreSetup(const std::string& elf_filename) {
       return 0;  // Continue iteration and return 0 from dl_iterate_phdr when finished.
     }
     const uint8_t* const begin_;
-    std::vector<std::unique_ptr<MemMap>>* const dlopen_mmaps_;
+    std::vector<MemMap>* const dlopen_mmaps_;
     const size_t shared_objects_before;
     size_t shared_objects_seen;
   };

@@ -30,7 +30,8 @@ namespace space {
 class ZygoteSpace FINAL : public ContinuousMemMapAllocSpace {
  public:
   // Returns the remaining storage in the out_map field.
-  static ZygoteSpace* Create(const std::string& name, MemMap* mem_map,
+  static ZygoteSpace* Create(const std::string& name,
+                             MemMap&& mem_map,
                              accounting::ContinuousSpaceBitmap* live_bitmap,
                              accounting::ContinuousSpaceBitmap* mark_bitmap)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -85,7 +86,7 @@ class ZygoteSpace FINAL : public ContinuousMemMapAllocSpace {
   }
 
  private:
-  ZygoteSpace(const std::string& name, MemMap* mem_map, size_t objects_allocated);
+  ZygoteSpace(const std::string& name, MemMap&& mem_map, size_t objects_allocated);
   static void SweepCallback(size_t num_ptrs, mirror::Object** ptrs, void* arg);
 
   AtomicInteger objects_allocated_;

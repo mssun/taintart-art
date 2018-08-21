@@ -1183,7 +1183,7 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::OpenSource(
       // (e.g. dex metadata files)
       LOG(WARNING) << "Could not find entry " << kDexMetadataProfileEntry
           << " in the zip archive. Creating an empty profile.";
-      source->reset(ProfileSource::Create(nullptr));
+      source->reset(ProfileSource::Create(MemMap::Invalid()));
       return kProfileLoadSuccess;
     }
     if (zip_entry->GetUncompressedLength() == 0) {
@@ -1192,11 +1192,9 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::OpenSource(
     }
 
     // TODO(calin) pass along file names to assist with debugging.
-    std::unique_ptr<MemMap> map(zip_entry->MapDirectlyOrExtract(kDexMetadataProfileEntry,
-                                                                "profile file",
-                                                                error));
+    MemMap map = zip_entry->MapDirectlyOrExtract(kDexMetadataProfileEntry, "profile file", error);
 
-    if (map != nullptr) {
+    if (map.IsValid()) {
       source->reset(ProfileSource::Create(std::move(map)));
       return kProfileLoadSuccess;
     } else {
@@ -1211,11 +1209,11 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ProfileSource:
     const std::string& debug_stage,
     std::string* error) {
   if (IsMemMap()) {
-    if (mem_map_cur_ + byte_count > mem_map_->Size()) {
+    if (mem_map_cur_ + byte_count > mem_map_.Size()) {
       return kProfileLoadBadData;
     }
     for (size_t i = 0; i < byte_count; i++) {
-      buffer[i] = *(mem_map_->Begin() + mem_map_cur_);
+      buffer[i] = *(mem_map_.Begin() + mem_map_cur_);
       mem_map_cur_++;
     }
   } else {
@@ -1237,13 +1235,13 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ProfileSource:
 
 bool ProfileCompilationInfo::ProfileSource::HasConsumedAllData() const {
   return IsMemMap()
-      ? (mem_map_ == nullptr || mem_map_cur_ == mem_map_->Size())
+      ? (!mem_map_.IsValid() || mem_map_cur_ == mem_map_.Size())
       : (testEOF(fd_) == 0);
 }
 
 bool ProfileCompilationInfo::ProfileSource::HasEmptyContent() const {
   if (IsMemMap()) {
-    return mem_map_ == nullptr || mem_map_->Size() == 0;
+    return !mem_map_.IsValid() || mem_map_.Size() == 0;
   } else {
     struct stat stat_buffer;
     if (fstat(fd_, &stat_buffer) != 0) {

@@ -49,21 +49,22 @@ size_t SpaceBitmap<kAlignment>::ComputeHeapSize(uint64_t bitmap_bytes) {
 
 template<size_t kAlignment>
 SpaceBitmap<kAlignment>* SpaceBitmap<kAlignment>::CreateFromMemMap(
-    const std::string& name, MemMap* mem_map, uint8_t* heap_begin, size_t heap_capacity) {
-  CHECK(mem_map != nullptr);
-  uintptr_t* bitmap_begin = reinterpret_cast<uintptr_t*>(mem_map->Begin());
+    const std::string& name, MemMap&& mem_map, uint8_t* heap_begin, size_t heap_capacity) {
+  CHECK(mem_map.IsValid());
+  uintptr_t* bitmap_begin = reinterpret_cast<uintptr_t*>(mem_map.Begin());
   const size_t bitmap_size = ComputeBitmapSize(heap_capacity);
-  return new SpaceBitmap(name, mem_map, bitmap_begin, bitmap_size, heap_begin, heap_capacity);
+  return new SpaceBitmap(
+      name, std::move(mem_map), bitmap_begin, bitmap_size, heap_begin, heap_capacity);
 }
 
 template<size_t kAlignment>
 SpaceBitmap<kAlignment>::SpaceBitmap(const std::string& name,
-                                     MemMap* mem_map,
+                                     MemMap&& mem_map,
                                      uintptr_t* bitmap_begin,
                                      size_t bitmap_size,
                                      const void* heap_begin,
                                      size_t heap_capacity)
-    : mem_map_(mem_map),
+    : mem_map_(std::move(mem_map)),
       bitmap_begin_(reinterpret_cast<Atomic<uintptr_t>*>(bitmap_begin)),
       bitmap_size_(bitmap_size),
       heap_begin_(reinterpret_cast<uintptr_t>(heap_begin)),
@@ -83,14 +84,18 @@ SpaceBitmap<kAlignment>* SpaceBitmap<kAlignment>::Create(
   // (we represent one word as an `intptr_t`).
   const size_t bitmap_size = ComputeBitmapSize(heap_capacity);
   std::string error_msg;
-  std::unique_ptr<MemMap> mem_map(MemMap::MapAnonymous(name.c_str(), nullptr, bitmap_size,
-                                                       PROT_READ | PROT_WRITE, false, false,
-                                                       &error_msg));
-  if (UNLIKELY(mem_map.get() == nullptr)) {
+  MemMap mem_map = MemMap::MapAnonymous(name.c_str(),
+                                        /* addr */ nullptr,
+                                        bitmap_size,
+                                        PROT_READ | PROT_WRITE,
+                                        /* low_4gb */ false,
+                                        /* reuse */ false,
+                                        &error_msg);
+  if (UNLIKELY(!mem_map.IsValid())) {
     LOG(ERROR) << "Failed to allocate bitmap " << name << ": " << error_msg;
     return nullptr;
   }
-  return CreateFromMemMap(name, mem_map.release(), heap_begin, heap_capacity);
+  return CreateFromMemMap(name, std::move(mem_map), heap_begin, heap_capacity);
 }
 
 template<size_t kAlignment>
@@ -114,7 +119,7 @@ std::string SpaceBitmap<kAlignment>::Dump() const {
 template<size_t kAlignment>
 void SpaceBitmap<kAlignment>::Clear() {
   if (bitmap_begin_ != nullptr) {
-    mem_map_->MadviseDontNeedAndZero();
+    mem_map_.MadviseDontNeedAndZero();
   }
 }
 

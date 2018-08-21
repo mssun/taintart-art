@@ -377,30 +377,30 @@ class MemMapSpace : public ContinuousSpace {
   }
 
   MemMap* GetMemMap() {
-    return mem_map_.get();
+    return &mem_map_;
   }
 
   const MemMap* GetMemMap() const {
-    return mem_map_.get();
+    return &mem_map_;
   }
 
-  MemMap* ReleaseMemMap() {
-    return mem_map_.release();
+  MemMap ReleaseMemMap() {
+    return std::move(mem_map_);
   }
 
  protected:
   MemMapSpace(const std::string& name,
-              MemMap* mem_map,
+              MemMap&& mem_map,
               uint8_t* begin,
               uint8_t* end,
               uint8_t* limit,
               GcRetentionPolicy gc_retention_policy)
       : ContinuousSpace(name, gc_retention_policy, begin, end, limit),
-        mem_map_(mem_map) {
+        mem_map_(std::move(mem_map)) {
   }
 
   // Underlying storage of the space
-  std::unique_ptr<MemMap> mem_map_;
+  MemMap mem_map_;
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(MemMapSpace);
@@ -451,9 +451,13 @@ class ContinuousMemMapAllocSpace : public MemMapSpace, public AllocSpace {
   std::unique_ptr<accounting::ContinuousSpaceBitmap> mark_bitmap_;
   std::unique_ptr<accounting::ContinuousSpaceBitmap> temp_bitmap_;
 
-  ContinuousMemMapAllocSpace(const std::string& name, MemMap* mem_map, uint8_t* begin,
-                             uint8_t* end, uint8_t* limit, GcRetentionPolicy gc_retention_policy)
-      : MemMapSpace(name, mem_map, begin, end, limit, gc_retention_policy) {
+  ContinuousMemMapAllocSpace(const std::string& name,
+                             MemMap&& mem_map,
+                             uint8_t* begin,
+                             uint8_t* end,
+                             uint8_t* limit,
+                             GcRetentionPolicy gc_retention_policy)
+      : MemMapSpace(name, std::move(mem_map), begin, end, limit, gc_retention_policy) {
   }
 
  private:

@@ -221,7 +221,7 @@ void CommonCompilerTest::TearDown() {
   callbacks_.reset();
   verification_results_.reset();
   compiler_options_.reset();
-  image_reservation_.reset();
+  image_reservation_.Reset();
 
   CommonRuntimeTest::TearDown();
 }
@@ -323,18 +323,18 @@ void CommonCompilerTest::ReserveImageSpace() {
   // accidentally end up colliding with the fixed memory address when we need to load the image.
   std::string error_msg;
   MemMap::Init();
-  image_reservation_.reset(MemMap::MapAnonymous("image reservation",
-                                                reinterpret_cast<uint8_t*>(ART_BASE_ADDRESS),
-                                                (size_t)120 * 1024 * 1024,  // 120MB
-                                                PROT_NONE,
-                                                false /* no need for 4gb flag with fixed mmap*/,
-                                                false /* not reusing existing reservation */,
-                                                &error_msg));
-  CHECK(image_reservation_.get() != nullptr) << error_msg;
+  image_reservation_ = MemMap::MapAnonymous("image reservation",
+                                            reinterpret_cast<uint8_t*>(ART_BASE_ADDRESS),
+                                            (size_t)120 * 1024 * 1024,  // 120MB
+                                            PROT_NONE,
+                                            false /* no need for 4gb flag with fixed mmap */,
+                                            false /* not reusing existing reservation */,
+                                            &error_msg);
+  CHECK(image_reservation_.IsValid()) << error_msg;
 }
 
 void CommonCompilerTest::UnreserveImageSpace() {
-  image_reservation_.reset();
+  image_reservation_.Reset();
 }
 
 void CommonCompilerTest::SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files) {

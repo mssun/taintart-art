@@ -33,19 +33,19 @@ class HeapTest : public CommonRuntimeTest {
     MemMap::Init();
     std::string error_msg;
     // Reserve the preferred address to force the heap to use another one for testing.
-    reserved_.reset(MemMap::MapAnonymous("ReserveMap",
-                                         gc::Heap::kPreferredAllocSpaceBegin,
-                                         16 * KB,
-                                         PROT_READ,
-                                         /*low_4gb*/ true,
-                                         /*reuse*/ false,
-                                         &error_msg));
-    ASSERT_TRUE(reserved_ != nullptr) << error_msg;
+    reserved_ = MemMap::MapAnonymous("ReserveMap",
+                                     gc::Heap::kPreferredAllocSpaceBegin,
+                                     16 * KB,
+                                     PROT_READ,
+                                     /*low_4gb*/ true,
+                                     /*reuse*/ false,
+                                     &error_msg);
+    ASSERT_TRUE(reserved_.IsValid()) << error_msg;
     CommonRuntimeTest::SetUp();
   }
 
  private:
-  std::unique_ptr<MemMap> reserved_;
+  MemMap reserved_;
 };
 
 TEST_F(HeapTest, ClearGrowthLimit) {

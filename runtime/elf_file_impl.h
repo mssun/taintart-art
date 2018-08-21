@@ -62,15 +62,15 @@ class ElfFileImpl {
   }
 
   uint8_t* Begin() const {
-    return map_->Begin();
+    return map_.Begin();
   }
 
   uint8_t* End() const {
-    return map_->End();
+    return map_.End();
   }
 
   size_t Size() const {
-    return map_->Size();
+    return map_.Size();
   }
 
   Elf_Ehdr& GetHeader() const;
@@ -135,7 +135,7 @@ class ElfFileImpl {
 
   bool Setup(File* file, int prot, int flags, bool low_4gb, std::string* error_msg);
 
-  bool SetMap(File* file, MemMap* map, std::string* error_msg);
+  bool SetMap(File* file, MemMap&& map, std::string* error_msg);
 
   uint8_t* GetProgramHeadersStart() const;
   uint8_t* GetSectionHeadersStart() const;
@@ -193,9 +193,9 @@ class ElfFileImpl {
 
   // ELF header mapping. If program_header_only_ is false, will
   // actually point to the entire elf file.
-  std::unique_ptr<MemMap> map_;
+  MemMap map_;
   Elf_Ehdr* header_;
-  std::vector<MemMap*> segments_;
+  std::vector<MemMap> segments_;
 
   // Pointer to start of first PT_LOAD program segment after Load()
   // when program_header_only_ is true.

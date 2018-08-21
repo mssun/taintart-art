@@ -153,7 +153,7 @@ class VdexFile {
   typedef uint32_t VdexChecksum;
   using QuickeningTableOffsetType = uint32_t;
 
-  explicit VdexFile(MemMap* mmap) : mmap_(mmap) {}
+  explicit VdexFile(MemMap&& mmap) : mmap_(std::move(mmap)) {}
 
   // Returns nullptr if the vdex file cannot be opened or is not valid.
   // The mmap_* parameters can be left empty (nullptr/0/false) to allocate at random address.
@@ -215,9 +215,9 @@ class VdexFile {
                          error_msg);
   }
 
-  const uint8_t* Begin() const { return mmap_->Begin(); }
-  const uint8_t* End() const { return mmap_->End(); }
-  size_t Size() const { return mmap_->Size(); }
+  const uint8_t* Begin() const { return mmap_.Begin(); }
+  const uint8_t* End() const { return mmap_.End(); }
+  size_t Size() const { return mmap_.Size(); }
 
   const VerifierDepsHeader& GetVerifierDepsHeader() const {
     return *reinterpret_cast<const VerifierDepsHeader*>(Begin());
@@ -260,7 +260,7 @@ class VdexFile {
   }
 
   bool IsValid() const {
-    return mmap_->Size() >= sizeof(VerifierDepsHeader) && GetVerifierDepsHeader().IsValid();
+    return mmap_.Size() >= sizeof(VerifierDepsHeader) && GetVerifierDepsHeader().IsValid();
   }
 
   // This method is for iterating over the dex files in the vdex. If `cursor` is null,
@@ -328,7 +328,7 @@ class VdexFile {
     return DexBegin() + GetDexSectionHeader().GetDexSize();
   }
 
-  std::unique_ptr<MemMap> mmap_;
+  MemMap mmap_;
 
   DISALLOW_COPY_AND_ASSIGN(VdexFile);
 };

@@ -835,8 +835,10 @@ class Heap {
   void FinishGC(Thread* self, collector::GcType gc_type) REQUIRES(!*gc_complete_lock_);
 
   // Create a mem map with a preferred base address.
-  static MemMap* MapAnonymousPreferredAddress(const char* name, uint8_t* request_begin,
-                                              size_t capacity, std::string* out_error_str);
+  static MemMap MapAnonymousPreferredAddress(const char* name,
+                                             uint8_t* request_begin,
+                                             size_t capacity,
+                                             std::string* out_error_str);
 
   bool SupportHSpaceCompaction() const {
     // Returns true if we can do hspace compaction
@@ -979,13 +981,13 @@ class Heap {
   collector::GarbageCollector* FindCollectorByGcType(collector::GcType gc_type);
 
   // Create the main free list malloc space, either a RosAlloc space or DlMalloc space.
-  void CreateMainMallocSpace(MemMap* mem_map,
+  void CreateMainMallocSpace(MemMap&& mem_map,
                              size_t initial_size,
                              size_t growth_limit,
                              size_t capacity);
 
   // Create a malloc space based on a mem map. Does not set the space as default.
-  space::MallocSpace* CreateMallocSpaceFromMemMap(MemMap* mem_map,
+  space::MallocSpace* CreateMallocSpaceFromMemMap(MemMap&& mem_map,
                                                   size_t initial_size,
                                                   size_t growth_limit,
                                                   size_t capacity,

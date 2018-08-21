@@ -33,7 +33,7 @@ class TestFaultHandler FINAL : public FaultHandler {
  public:
   explicit TestFaultHandler(FaultManager* manager)
       : FaultHandler(manager),
-        map_error_(""),
+        map_error_(),
         target_map_(MemMap::MapAnonymous("test-305-mmap",
                                          /* addr */ nullptr,
                                          /* byte_count */ kPageSize,
@@ -43,7 +43,7 @@ class TestFaultHandler FINAL : public FaultHandler {
                                          /* error_msg */ &map_error_,
                                          /* use_ashmem */ false)),
         was_hit_(false) {
-    CHECK(target_map_ != nullptr) << "Unable to create segfault target address " << map_error_;
+    CHECK(target_map_.IsValid()) << "Unable to create segfault target address " << map_error_;
     manager_->AddHandler(this, /*in_generated_code*/false);
   }
 
@@ -59,16 +59,16 @@ class TestFaultHandler FINAL : public FaultHandler {
     was_hit_ = true;
 
     LOG(INFO) << "SEGV Caught. mprotecting map.";
-    CHECK(target_map_->Protect(PROT_READ | PROT_WRITE)) << "Failed to mprotect R/W";
+    CHECK(target_map_.Protect(PROT_READ | PROT_WRITE)) << "Failed to mprotect R/W";
     LOG(INFO) << "Setting value to be read.";
     *GetTargetPointer() = kDataValue;
     LOG(INFO) << "Changing prot to be read-only.";
-    CHECK(target_map_->Protect(PROT_READ)) << "Failed to mprotect R-only";
+    CHECK(target_map_.Protect(PROT_READ)) << "Failed to mprotect R-only";
     return true;
   }
 
   void CauseSegfault() {
-    CHECK_EQ(target_map_->GetProtect(), PROT_NONE);
+    CHECK_EQ(target_map_.GetProtect(), PROT_NONE);
 
     // This will segfault. The handler should deal with it though and we will get a value out of it.
     uint32_t data = *GetTargetPointer();
@@ -78,19 +78,19 @@ class TestFaultHandler FINAL : public FaultHandler {
 
     CHECK(was_hit_);
     CHECK_EQ(data, kDataValue) << "Unexpected read value from mmap";
-    CHECK_EQ(target_map_->GetProtect(), PROT_READ);
+    CHECK_EQ(target_map_.GetProtect(), PROT_READ);
     LOG(INFO) << "Success!";
   }
 
  private:
   uint32_t* GetTargetPointer() {
-    return reinterpret_cast<uint32_t*>(target_map_->Begin() + 8);
+    return reinterpret_cast<uint32_t*>(target_map_.Begin() + 8);
   }
 
   static constexpr uint32_t kDataValue = 0xDEADBEEF;
 
   std::string map_error_;
-  std::unique_ptr<MemMap> target_map_;
+  MemMap target_map_;
   bool was_hit_;
 };
 

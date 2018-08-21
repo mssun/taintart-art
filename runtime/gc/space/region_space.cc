@@ -45,60 +45,65 @@ static constexpr uint32_t kPoisonDeadObject = 0xBADDB01D;  // "BADDROID"
 // Whether we check a region's live bytes count against the region bitmap.
 static constexpr bool kCheckLiveBytesAgainstRegionBitmap = kIsDebugBuild;
 
-MemMap* RegionSpace::CreateMemMap(const std::string& name, size_t capacity,
-                                  uint8_t* requested_begin) {
+MemMap RegionSpace::CreateMemMap(const std::string& name,
+                                 size_t capacity,
+                                 uint8_t* requested_begin) {
   CHECK_ALIGNED(capacity, kRegionSize);
   std::string error_msg;
   // Ask for the capacity of an additional kRegionSize so that we can align the map by kRegionSize
   // even if we get unaligned base address. This is necessary for the ReadBarrierTable to work.
-  std::unique_ptr<MemMap> mem_map;
+  MemMap mem_map;
   while (true) {
-    mem_map.reset(MemMap::MapAnonymous(name.c_str(),
-                                       requested_begin,
-                                       capacity + kRegionSize,
-                                       PROT_READ | PROT_WRITE,
-                                       true,
-                                       false,
-                                       &error_msg));
-    if (mem_map.get() != nullptr || requested_begin == nullptr) {
+    mem_map = MemMap::MapAnonymous(name.c_str(),
+                                   requested_begin,
+                                   capacity + kRegionSize,
+                                   PROT_READ | PROT_WRITE,
+                                   /* low_4gb */ true,
+                                   /* reuse */ false,
+                                   &error_msg);
+    if (mem_map.IsValid() || requested_begin == nullptr) {
       break;
     }
     // Retry with no specified request begin.
     requested_begin = nullptr;
   }
-  if (mem_map.get() == nullptr) {
+  if (!mem_map.IsValid()) {
     LOG(ERROR) << "Failed to allocate pages for alloc space (" << name << ") of size "
         << PrettySize(capacity) << " with message " << error_msg;
     MemMap::DumpMaps(LOG_STREAM(ERROR));
-    return nullptr;
+    return MemMap::Invalid();
   }
-  CHECK_EQ(mem_map->Size(), capacity + kRegionSize);
-  CHECK_EQ(mem_map->Begin(), mem_map->BaseBegin());
-  CHECK_EQ(mem_map->Size(), mem_map->BaseSize());
-  if (IsAlignedParam(mem_map->Begin(), kRegionSize)) {
+  CHECK_EQ(mem_map.Size(), capacity + kRegionSize);
+  CHECK_EQ(mem_map.Begin(), mem_map.BaseBegin());
+  CHECK_EQ(mem_map.Size(), mem_map.BaseSize());
+  if (IsAlignedParam(mem_map.Begin(), kRegionSize)) {
     // Got an aligned map. Since we requested a map that's kRegionSize larger. Shrink by
     // kRegionSize at the end.
-    mem_map->SetSize(capacity);
+    mem_map.SetSize(capacity);
   } else {
     // Got an unaligned map. Align the both ends.
-    mem_map->AlignBy(kRegionSize);
+    mem_map.AlignBy(kRegionSize);
   }
-  CHECK_ALIGNED(mem_map->Begin(), kRegionSize);
-  CHECK_ALIGNED(mem_map->End(), kRegionSize);
-  CHECK_EQ(mem_map->Size(), capacity);
-  return mem_map.release();
+  CHECK_ALIGNED(mem_map.Begin(), kRegionSize);
+  CHECK_ALIGNED(mem_map.End(), kRegionSize);
+  CHECK_EQ(mem_map.Size(), capacity);
+  return mem_map;
 }
 
-RegionSpace* RegionSpace::Create(const std::string& name, MemMap* mem_map) {
-  return new RegionSpace(name, mem_map);
+RegionSpace* RegionSpace::Create(const std::string& name, MemMap&& mem_map) {
+  return new RegionSpace(name, std::move(mem_map));
 }
 
-RegionSpace::RegionSpace(const std::string& name, MemMap* mem_map)
-    : ContinuousMemMapAllocSpace(name, mem_map, mem_map->Begin(), mem_map->End(), mem_map->End(),
+RegionSpace::RegionSpace(const std::string& name, MemMap&& mem_map)
+    : ContinuousMemMapAllocSpace(name,
+                                 std::move(mem_map),
+                                 mem_map.Begin(),
+                                 mem_map.End(),
+                                 mem_map.End(),
                                  kGcRetentionPolicyAlwaysCollect),
       region_lock_("Region lock", kRegionSpaceRegionLock),
       time_(1U),
-      num_regions_(mem_map->Size() / kRegionSize),
+      num_regions_(mem_map_.Size() / kRegionSize),
       num_non_free_regions_(0U),
       num_evac_regions_(0U),
       max_peak_num_non_free_regions_(0U),
@@ -106,11 +111,11 @@ RegionSpace::RegionSpace(const std::string& name, MemMap* mem_map)
       current_region_(&full_region_),
       evac_region_(nullptr),
       cyclic_alloc_region_index_(0U) {
-  CHECK_ALIGNED(mem_map->Size(), kRegionSize);
-  CHECK_ALIGNED(mem_map->Begin(), kRegionSize);
+  CHECK_ALIGNED(mem_map_.Size(), kRegionSize);
+  CHECK_ALIGNED(mem_map_.Begin(), kRegionSize);
   DCHECK_GT(num_regions_, 0U);
   regions_.reset(new Region[num_regions_]);
-  uint8_t* region_addr = mem_map->Begin();
+  uint8_t* region_addr = mem_map_.Begin();
   for (size_t i = 0; i < num_regions_; ++i, region_addr += kRegionSize) {
     regions_[i].Init(i, region_addr, region_addr + kRegionSize);
   }

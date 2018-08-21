@@ -68,31 +68,34 @@ bool ZipEntry::ExtractToFile(File& file, std::string* error_msg) {
   return true;
 }
 
-MemMap* ZipEntry::ExtractToMemMap(const char* zip_filename, const char* entry_filename,
-                                  std::string* error_msg) {
+MemMap ZipEntry::ExtractToMemMap(const char* zip_filename,
+                                 const char* entry_filename,
+                                 std::string* error_msg) {
   std::string name(entry_filename);
   name += " extracted in memory from ";
   name += zip_filename;
-  std::unique_ptr<MemMap> map(MemMap::MapAnonymous(name.c_str(),
-                                                   nullptr, GetUncompressedLength(),
-                                                   PROT_READ | PROT_WRITE, false, false,
-                                                   error_msg));
-  if (map.get() == nullptr) {
+  MemMap map = MemMap::MapAnonymous(name.c_str(),
+                                    /* addr */ nullptr,
+                                    GetUncompressedLength(),
+                                    PROT_READ | PROT_WRITE,
+                                    /* low_4gb */ false,
+                                    /* reuse */ false,
+                                    error_msg);
+  if (!map.IsValid()) {
     DCHECK(!error_msg->empty());
-    return nullptr;
+    return MemMap::Invalid();
   }
 
-  const int32_t error = ExtractToMemory(handle_, zip_entry_,
-                                        map->Begin(), map->Size());
+  const int32_t error = ExtractToMemory(handle_, zip_entry_, map.Begin(), map.Size());
   if (error) {
     *error_msg = std::string(ErrorCodeString(error));
-    return nullptr;
+    return MemMap::Invalid();
   }
 
-  return map.release();
+  return map;
 }
 
-MemMap* ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* error_msg) {
+MemMap ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* error_msg) {
   const int zip_fd = GetFileDescriptor(handle_);
   const char* entry_filename = entry_name_.c_str();
 
@@ -109,7 +112,7 @@ MemMap* ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* err
     *error_msg = StringPrintf("Cannot map '%s' (in zip '%s') directly because it is compressed.",
                               entry_filename,
                               zip_filename);
-    return nullptr;
+    return MemMap::Invalid();
   } else if (zip_entry_->uncompressed_length != zip_entry_->compressed_length) {
     *error_msg = StringPrintf("Cannot map '%s' (in zip '%s') directly because "
                               "entry has bad size (%u != %u).",
@@ -117,7 +120,7 @@ MemMap* ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* err
                               zip_filename,
                               zip_entry_->uncompressed_length,
                               zip_entry_->compressed_length);
-    return nullptr;
+    return MemMap::Invalid();
   }
 
   std::string name(entry_filename);
@@ -130,7 +133,7 @@ MemMap* ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* err
     LOG(INFO) << "zip_archive: " << "make mmap of " << name << " @ offset = " << offset;
   }
 
-  std::unique_ptr<MemMap> map(
+  MemMap map =
       MemMap::MapFileAtAddress(nullptr,  // Expected pointer address
                                GetUncompressedLength(),  // Byte count
                                PROT_READ | PROT_WRITE,
@@ -140,9 +143,9 @@ MemMap* ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* err
                                false,  // Don't restrict allocation to lower4GB
                                false,  // Doesn't overlap existing map (reuse=false)
                                name.c_str(),
-                               /*out*/error_msg));
+                               /*out*/error_msg);
 
-  if (map == nullptr) {
+  if (!map.IsValid()) {
     DCHECK(!error_msg->empty());
   }
 
@@ -169,12 +172,12 @@ MemMap* ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* err
     LOG(INFO) << "---------------------------";
 
     // Dump map contents.
-    if (map != nullptr) {
+    if (map.IsValid()) {
       tmp = "";
 
       count = kMaxDumpChars;
 
-      uint8_t* begin = map->Begin();
+      uint8_t* begin = map.Begin();
       for (i = 0; i < count; ++i) {
         tmp += StringPrintf("%3d ", (unsigned int)begin[i]);
       }
@@ -185,19 +188,20 @@ MemMap* ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* err
     }
   }
 
-  return map.release();
+  return map;
 }
 
-MemMap* ZipEntry::MapDirectlyOrExtract(const char* zip_filename,
-                                       const char* entry_filename,
-                                       std::string* error_msg) {
+MemMap ZipEntry::MapDirectlyOrExtract(const char* zip_filename,
+                                      const char* entry_filename,
+                                      std::string* error_msg) {
   if (IsUncompressed() && GetFileDescriptor(handle_) >= 0) {
-    MemMap* ret = MapDirectlyFromFile(zip_filename, error_msg);
-    if (ret != nullptr) {
+    std::string local_error_msg;
+    MemMap ret = MapDirectlyFromFile(zip_filename, &local_error_msg);
+    if (ret.IsValid()) {
       return ret;
     }
+    // Fall back to extraction for the failure case.
   }
-  // Fall back to extraction for the failure case.
   return ExtractToMemMap(zip_filename, entry_filename, error_msg);
 }
 

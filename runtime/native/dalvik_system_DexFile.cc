@@ -163,33 +163,34 @@ class NullableScopedUtfChars {
   void operator=(const NullableScopedUtfChars&);
 };
 
-static std::unique_ptr<MemMap> AllocateDexMemoryMap(JNIEnv* env, jint start, jint end) {
+static MemMap AllocateDexMemoryMap(JNIEnv* env, jint start, jint end) {
   if (end <= start) {
     ScopedObjectAccess soa(env);
     ThrowWrappedIOException("Bad range");
-    return nullptr;
+    return MemMap::Invalid();
   }
 
   std::string error_message;
   size_t length = static_cast<size_t>(end - start);
-  std::unique_ptr<MemMap> dex_mem_map(MemMap::MapAnonymous("DEX data",
-                                                           nullptr,
-                                                           length,
-                                                           PROT_READ | PROT_WRITE,
-                                                           /* low_4gb */ false,
-                                                           /* reuse */ false,
-                                                           &error_message));
-  if (dex_mem_map == nullptr) {
+  MemMap dex_mem_map = MemMap::MapAnonymous("DEX data",
+                                            /* addr */ nullptr,
+                                            length,
+                                            PROT_READ | PROT_WRITE,
+                                            /* low_4gb */ false,
+                                            /* reuse */ false,
+                                            &error_message);
+  if (!dex_mem_map.IsValid()) {
     ScopedObjectAccess soa(env);
     ThrowWrappedIOException("%s", error_message.c_str());
+    return MemMap::Invalid();
   }
   return dex_mem_map;
 }
 
-static const DexFile* CreateDexFile(JNIEnv* env, std::unique_ptr<MemMap> dex_mem_map) {
+static const DexFile* CreateDexFile(JNIEnv* env, MemMap&& dex_mem_map) {
   std::string location = StringPrintf("Anonymous-DexFile@%p-%p",
-                                      dex_mem_map->Begin(),
-                                      dex_mem_map->End());
+                                      dex_mem_map.Begin(),
+                                      dex_mem_map.End());
   std::string error_message;
   const ArtDexFileLoader dex_file_loader;
   std::unique_ptr<const DexFile> dex_file(dex_file_loader.Open(location,
@@ -213,7 +214,7 @@ static const DexFile* CreateDexFile(JNIEnv* env, std::unique_ptr<MemMap> dex_mem
   return dex_file.release();
 }
 
-static jobject CreateSingleDexFileCookie(JNIEnv* env, std::unique_ptr<MemMap> data) {
+static jobject CreateSingleDexFileCookie(JNIEnv* env, MemMap&& data) {
   std::unique_ptr<const DexFile> dex_file(CreateDexFile(env, std::move(data)));
   if (dex_file.get() == nullptr) {
     DCHECK(env->ExceptionCheck());
@@ -236,14 +237,14 @@ static jobject DexFile_createCookieWithDirectBuffer(JNIEnv* env,
     return nullptr;
   }
 
-  std::unique_ptr<MemMap> dex_mem_map(AllocateDexMemoryMap(env, start, end));
-  if (dex_mem_map == nullptr) {
+  MemMap dex_mem_map = AllocateDexMemoryMap(env, start, end);
+  if (!dex_mem_map.IsValid()) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
   }
 
   size_t length = static_cast<size_t>(end - start);
-  memcpy(dex_mem_map->Begin(), base_address, length);
+  memcpy(dex_mem_map.Begin(), base_address, length);
   return CreateSingleDexFileCookie(env, std::move(dex_mem_map));
 }
 
@@ -252,13 +253,13 @@ static jobject DexFile_createCookieWithArray(JNIEnv* env,
                                              jbyteArray buffer,
                                              jint start,
                                              jint end) {
-  std::unique_ptr<MemMap> dex_mem_map(AllocateDexMemoryMap(env, start, end));
-  if (dex_mem_map == nullptr) {
+  MemMap dex_mem_map = AllocateDexMemoryMap(env, start, end);
+  if (!dex_mem_map.IsValid()) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
   }
 
-  auto destination = reinterpret_cast<jbyte*>(dex_mem_map.get()->Begin());
+  auto destination = reinterpret_cast<jbyte*>(dex_mem_map.Begin());
   env->GetByteArrayRegion(buffer, start, end - start, destination);
   return CreateSingleDexFileCookie(env, std::move(dex_mem_map));
 }

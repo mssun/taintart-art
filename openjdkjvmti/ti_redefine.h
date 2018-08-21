@@ -78,9 +78,9 @@ class Redefiner {
 
   static jvmtiError IsModifiableClass(jvmtiEnv* env, jclass klass, jboolean* is_redefinable);
 
-  static std::unique_ptr<art::MemMap> MoveDataToMemMap(const std::string& original_location,
-                                                       art::ArrayRef<const unsigned char> data,
-                                                       std::string* error_msg);
+  static art::MemMap MoveDataToMemMap(const std::string& original_location,
+                                      art::ArrayRef<const unsigned char> data,
+                                      std::string* error_msg);
 
   // Helper for checking if redefinition/retransformation is allowed.
   static jvmtiError GetClassRedefinitionError(jclass klass, /*out*/std::string* error_msg)
