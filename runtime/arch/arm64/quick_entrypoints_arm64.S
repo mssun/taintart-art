@@ -1091,56 +1091,59 @@ SAVE_SIZE=14*8   // x3, x4, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, FP
 END art_quick_osr_stub
 
     /*
-     * On entry x0 is uintptr_t* gprs_ and x1 is uint64_t* fprs_
+     * On entry x0 is uintptr_t* gprs_ and x1 is uint64_t* fprs_.
+     * Both must reside on the stack, between current SP and target SP.
+     * IP0 and IP1 shall be clobbered rather than retrieved from gprs_.
      */
 
 ENTRY art_quick_do_long_jump
     // Load FPRs
-    ldp d0, d1, [x1], #16
-    ldp d2, d3, [x1], #16
-    ldp d4, d5, [x1], #16
-    ldp d6, d7, [x1], #16
-    ldp d8, d9, [x1], #16
-    ldp d10, d11, [x1], #16
-    ldp d12, d13, [x1], #16
-    ldp d14, d15, [x1], #16
-    ldp d16, d17, [x1], #16
-    ldp d18, d19, [x1], #16
-    ldp d20, d21, [x1], #16
-    ldp d22, d23, [x1], #16
-    ldp d24, d25, [x1], #16
-    ldp d26, d27, [x1], #16
-    ldp d28, d29, [x1], #16
-    ldp d30, d31, [x1]
+    ldp d0, d1, [x1, #0]
+    ldp d2, d3, [x1, #16]
+    ldp d4, d5, [x1, #32]
+    ldp d6, d7, [x1, #48]
+    ldp d8, d9, [x1, #64]
+    ldp d10, d11, [x1, #80]
+    ldp d12, d13, [x1, #96]
+    ldp d14, d15, [x1, #112]
+    ldp d16, d17, [x1, #128]
+    ldp d18, d19, [x1, #144]
+    ldp d20, d21, [x1, #160]
+    ldp d22, d23, [x1, #176]
+    ldp d24, d25, [x1, #192]
+    ldp d26, d27, [x1, #208]
+    ldp d28, d29, [x1, #224]
+    ldp d30, d31, [x1, #240]
 
-    // Load GPRs
-    // TODO: lots of those are smashed, could optimize.
-    add x0, x0, #30*8
-    ldp x30, x1, [x0], #-16          // LR & SP
-    ldp x28, x29, [x0], #-16
-    ldp x26, x27, [x0], #-16
-    ldp x24, x25, [x0], #-16
-    ldp x22, x23, [x0], #-16
-    ldp x20, x21, [x0], #-16
-    ldp x18, x19, [x0], #-16         // X18 & xSELF
-    ldp x16, x17, [x0], #-16
-    ldp x14, x15, [x0], #-16
-    ldp x12, x13, [x0], #-16
-    ldp x10, x11, [x0], #-16
-    ldp x8, x9, [x0], #-16
-    ldp x6, x7, [x0], #-16
-    ldp x4, x5, [x0], #-16
-    ldp x2, x3, [x0], #-16
-    mov sp, x1
+    // Load GPRs. Delay loading x0, x1 because x0 is used as gprs_.
+    ldp x2, x3, [x0, #16]
+    ldp x4, x5, [x0, #32]
+    ldp x6, x7, [x0, #48]
+    ldp x8, x9, [x0, #64]
+    ldp x10, x11, [x0, #80]
+    ldp x12, x13, [x0, #96]
+    ldp x14, x15, [x0, #112]
+    // Do not load IP0 (x16) and IP1 (x17), these shall be clobbered below.
+    ldp x18, x19, [x0, #144]      // X18 and xSELF.
+    ldp x20, x21, [x0, #160]      // For Baker RB, wMR (w20) is reloaded below.
+    ldp x22, x23, [x0, #176]
+    ldp x24, x25, [x0, #192]
+    ldp x26, x27, [x0, #208]
+    ldp x28, x29, [x0, #224]
+    ldp x30, xIP0, [x0, #240]     // LR and SP, load SP to IP0.
+
+    // Load PC to IP1, it's at the end (after the space for the unused XZR).
+    ldr xIP1, [x0, #33*8]
+
+    // Load x0, x1.
+    ldp x0, x1, [x0, #0]
+
+    // Set SP. Do not access fprs_ and gprs_ from now, they are below SP.
+    mov sp, xIP0
 
     REFRESH_MARKING_REGISTER
 
-    // Need to load PC, it's at the end (after the space for the unused XZR). Use x1.
-    ldr x1, [x0, #33*8]
-    // And the value of x0.
-    ldr x0, [x0]
-
-    br  x1
+    br  xIP1
 END art_quick_do_long_jump
 
     /*

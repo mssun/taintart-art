@@ -656,18 +656,21 @@ ENTRY art_quick_osr_stub
 END art_quick_osr_stub
 
     /*
-     * On entry r0 is uint32_t* gprs_ and r1 is uint32_t* fprs_
+     * On entry r0 is uint32_t* gprs_ and r1 is uint32_t* fprs_.
+     * Both must reside on the stack, between current SP and target SP.
+     * The r12 (IP) shall be clobbered rather than retrieved from gprs_.
      */
 ARM_ENTRY art_quick_do_long_jump
-    vldm r1, {s0-s31}     @ load all fprs from argument fprs_
-    ldr  r2, [r0, #60]    @ r2 = r15 (PC from gprs_ 60=4*15)
-    ldr  r14, [r0, #56]   @ (LR from gprs_ 56=4*14)
-    add  r0, r0, #12      @ increment r0 to skip gprs_[0..2] 12=4*3
-    ldm  r0, {r3-r13}     @ load remaining gprs from argument gprs_
+    vldm r1, {s0-s31}     @ Load all fprs from argument fprs_.
+    mov  sp, r0           @ Make SP point to gprs_.
+                          @ Do not access fprs_ from now, they may be below SP.
+    ldm  sp, {r0-r11}     @ load r0-r11 from gprs_.
+    ldr  r12, [sp, #60]   @ Load the value of PC (r15) from gprs_ (60 = 4 * 15) into IP (r12).
+    ldr  lr, [sp, #56]    @ Load LR from gprs_, 56 = 4 * 14.
+    ldr  sp, [sp, #52]    @ Load SP from gprs_ 52 = 4 * 13.
+                          @ Do not access gprs_ from now, they are below SP.
     REFRESH_MARKING_REGISTER
-    ldr  r0, [r0, #-12]   @ load r0 value
-    mov  r1, #0           @ clear result register r1
-    bx   r2               @ do long jump
+    bx   r12              @ Do long jump.
 END art_quick_do_long_jump
 
     /*
