@@ -38,41 +38,73 @@ namespace space {
 
 static constexpr bool kPrefetchDuringDlMallocFreeList = true;
 
-DlMallocSpace::DlMallocSpace(MemMap* mem_map, size_t initial_size, const std::string& name,
-                             void* mspace, uint8_t* begin, uint8_t* end, uint8_t* limit,
-                             size_t growth_limit, bool can_move_objects, size_t starting_size)
-    : MallocSpace(name, mem_map, begin, end, limit, growth_limit, true, can_move_objects,
+DlMallocSpace::DlMallocSpace(MemMap&& mem_map,
+                             size_t initial_size,
+                             const std::string& name,
+                             void* mspace,
+                             uint8_t* begin,
+                             uint8_t* end,
+                             uint8_t* limit,
+                             size_t growth_limit,
+                             bool can_move_objects,
+                             size_t starting_size)
+    : MallocSpace(name,
+                  std::move(mem_map),
+                  begin,
+                  end,
+                  limit,
+                  growth_limit,
+                  /* create_bitmaps */ true,
+                  can_move_objects,
                   starting_size, initial_size),
       mspace_(mspace) {
   CHECK(mspace != nullptr);
 }
 
-DlMallocSpace* DlMallocSpace::CreateFromMemMap(MemMap* mem_map, const std::string& name,
-                                               size_t starting_size, size_t initial_size,
-                                               size_t growth_limit, size_t capacity,
+DlMallocSpace* DlMallocSpace::CreateFromMemMap(MemMap&& mem_map,
+                                               const std::string& name,
+                                               size_t starting_size,
+                                               size_t initial_size,
+                                               size_t growth_limit,
+                                               size_t capacity,
                                                bool can_move_objects) {
-  DCHECK(mem_map != nullptr);
-  void* mspace = CreateMspace(mem_map->Begin(), starting_size, initial_size);
+  DCHECK(mem_map.IsValid());
+  void* mspace = CreateMspace(mem_map.Begin(), starting_size, initial_size);
   if (mspace == nullptr) {
     LOG(ERROR) << "Failed to initialize mspace for alloc space (" << name << ")";
     return nullptr;
   }
 
   // Protect memory beyond the starting size. morecore will add r/w permissions when necessory
-  uint8_t* end = mem_map->Begin() + starting_size;
+  uint8_t* end = mem_map.Begin() + starting_size;
   if (capacity - starting_size > 0) {
     CheckedCall(mprotect, name.c_str(), end, capacity - starting_size, PROT_NONE);
   }
 
   // Everything is set so record in immutable structure and leave
-  uint8_t* begin = mem_map->Begin();
+  uint8_t* begin = mem_map.Begin();
   if (Runtime::Current()->IsRunningOnMemoryTool()) {
     return new MemoryToolMallocSpace<DlMallocSpace, kDefaultMemoryToolRedZoneBytes, true, false>(
-        mem_map, initial_size, name, mspace, begin, end, begin + capacity, growth_limit,
-        can_move_objects, starting_size);
+        std::move(mem_map),
+        initial_size,
+        name,
+        mspace,
+        begin,
+        end,
+        begin + capacity, growth_limit,
+        can_move_objects,
+        starting_size);
   } else {
-    return new DlMallocSpace(mem_map, initial_size, name, mspace, begin, end, begin + capacity,
-                             growth_limit, can_move_objects, starting_size);
+    return new DlMallocSpace(std::move(mem_map),
+                             initial_size,
+                             name,
+                             mspace,
+                             begin,
+                             end,
+                             begin + capacity,
+                             growth_limit,
+                             can_move_objects,
+                             starting_size);
   }
 }
 
@@ -94,15 +126,20 @@ DlMallocSpace* DlMallocSpace::Create(const std::string& name, size_t initial_siz
   // will ask for this memory from sys_alloc which will fail as the footprint (this value plus the
   // size of the large allocation) will be greater than the footprint limit.
   size_t starting_size = kPageSize;
-  MemMap* mem_map = CreateMemMap(name, starting_size, &initial_size, &growth_limit, &capacity,
-                                 requested_begin);
-  if (mem_map == nullptr) {
+  MemMap mem_map =
+      CreateMemMap(name, starting_size, &initial_size, &growth_limit, &capacity, requested_begin);
+  if (!mem_map.IsValid()) {
     LOG(ERROR) << "Failed to create mem map for alloc space (" << name << ") of size "
                << PrettySize(capacity);
     return nullptr;
   }
-  DlMallocSpace* space = CreateFromMemMap(mem_map, name, starting_size, initial_size,
-                                          growth_limit, capacity, can_move_objects);
+  DlMallocSpace* space = CreateFromMemMap(std::move(mem_map),
+                                          name,
+                                          starting_size,
+                                          initial_size,
+                                          growth_limit,
+                                          capacity,
+                                          can_move_objects);
   // We start out with only the initial size possibly containing objects.
   if (VLOG_IS_ON(heap) || VLOG_IS_ON(startup)) {
     LOG(INFO) << "DlMallocSpace::Create exiting (" << PrettyDuration(NanoTime() - start_time)
@@ -152,17 +189,37 @@ mirror::Object* DlMallocSpace::AllocWithGrowth(Thread* self, size_t num_bytes,
   return result;
 }
 
-MallocSpace* DlMallocSpace::CreateInstance(MemMap* mem_map, const std::string& name,
-                                           void* allocator, uint8_t* begin, uint8_t* end,
-                                           uint8_t* limit, size_t growth_limit,
+MallocSpace* DlMallocSpace::CreateInstance(MemMap&& mem_map,
+                                           const std::string& name,
+                                           void* allocator,
+                                           uint8_t* begin,
+                                           uint8_t* end,
+                                           uint8_t* limit,
+                                           size_t growth_limit,
                                            bool can_move_objects) {
   if (Runtime::Current()->IsRunningOnMemoryTool()) {
     return new MemoryToolMallocSpace<DlMallocSpace, kDefaultMemoryToolRedZoneBytes, true, false>(
-        mem_map, initial_size_, name, allocator, begin, end, limit, growth_limit,
-        can_move_objects, starting_size_);
+        std::move(mem_map),
+        initial_size_,
+        name,
+        allocator,
+        begin,
+        end,
+        limit,
+        growth_limit,
+        can_move_objects,
+        starting_size_);
   } else {
-    return new DlMallocSpace(mem_map, initial_size_, name, allocator, begin, end, limit,
-                             growth_limit, can_move_objects, starting_size_);
+    return new DlMallocSpace(std::move(mem_map),
+                             initial_size_,
+                             name,
+                             allocator,
+                             begin,
+                             end,
+                             limit,
+                             growth_limit,
+                             can_move_objects,
+                             starting_size_);
   }
 }
 
@@ -283,7 +340,7 @@ void DlMallocSpace::Clear() {
   live_bitmap_->Clear();
   mark_bitmap_->Clear();
   SetEnd(Begin() + starting_size_);
-  mspace_ = CreateMspace(mem_map_->Begin(), starting_size_, initial_size_);
+  mspace_ = CreateMspace(mem_map_.Begin(), starting_size_, initial_size_);
   SetFootprintLimit(footprint_limit);
 }
 

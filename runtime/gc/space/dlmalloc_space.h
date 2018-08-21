@@ -34,9 +34,12 @@ namespace space {
 class DlMallocSpace : public MallocSpace {
  public:
   // Create a DlMallocSpace from an existing mem_map.
-  static DlMallocSpace* CreateFromMemMap(MemMap* mem_map, const std::string& name,
-                                         size_t starting_size, size_t initial_size,
-                                         size_t growth_limit, size_t capacity,
+  static DlMallocSpace* CreateFromMemMap(MemMap&& mem_map,
+                                         const std::string& name,
+                                         size_t starting_size,
+                                         size_t initial_size,
+                                         size_t growth_limit,
+                                         size_t capacity,
                                          bool can_move_objects);
 
   // Create a DlMallocSpace with the requested sizes. The requested
@@ -118,9 +121,14 @@ class DlMallocSpace : public MallocSpace {
   // allocations fail we GC before increasing the footprint limit and allowing the mspace to grow.
   void SetFootprintLimit(size_t limit) OVERRIDE;
 
-  MallocSpace* CreateInstance(MemMap* mem_map, const std::string& name, void* allocator,
-                              uint8_t* begin, uint8_t* end, uint8_t* limit, size_t growth_limit,
-                              bool can_move_objects);
+  MallocSpace* CreateInstance(MemMap&& mem_map,
+                              const std::string& name,
+                              void* allocator,
+                              uint8_t* begin,
+                              uint8_t* end,
+                              uint8_t* limit,
+                              size_t growth_limit,
+                              bool can_move_objects) OVERRIDE;
 
   uint64_t GetBytesAllocated() OVERRIDE;
   uint64_t GetObjectsAllocated() OVERRIDE;
@@ -139,9 +147,16 @@ class DlMallocSpace : public MallocSpace {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  protected:
-  DlMallocSpace(MemMap* mem_map, size_t initial_size, const std::string& name, void* mspace,
-                uint8_t* begin, uint8_t* end, uint8_t* limit, size_t growth_limit,
-                bool can_move_objects, size_t starting_size);
+  DlMallocSpace(MemMap&& mem_map,
+                size_t initial_size,
+                const std::string& name,
+                void* mspace,
+                uint8_t* begin,
+                uint8_t* end,
+                uint8_t* limit,
+                size_t growth_limit,
+                bool can_move_objects,
+                size_t starting_size);
 
  private:
   mirror::Object* AllocWithoutGrowthLocked(Thread* self, size_t num_bytes, size_t* bytes_allocated,

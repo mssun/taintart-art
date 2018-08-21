@@ -182,7 +182,7 @@ class ImageSpace : public MemMapSpace {
 
   ImageSpace(const std::string& name,
              const char* image_location,
-             MemMap* mem_map,
+             MemMap&& mem_map,
              accounting::ContinuousSpaceBitmap* live_bitmap,
              uint8_t* end);
 

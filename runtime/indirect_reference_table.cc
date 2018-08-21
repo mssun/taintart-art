@@ -78,14 +78,19 @@ IndirectReferenceTable::IndirectReferenceTable(size_t max_count,
   CHECK_LE(max_count, kMaxTableSizeInBytes / sizeof(IrtEntry));
 
   const size_t table_bytes = max_count * sizeof(IrtEntry);
-  table_mem_map_.reset(MemMap::MapAnonymous("indirect ref table", nullptr, table_bytes,
-                                            PROT_READ | PROT_WRITE, false, false, error_msg));
-  if (table_mem_map_.get() == nullptr && error_msg->empty()) {
+  table_mem_map_ = MemMap::MapAnonymous("indirect ref table",
+                                        /* addr */ nullptr,
+                                        table_bytes,
+                                        PROT_READ | PROT_WRITE,
+                                        /* low_4gb */ false,
+                                        /* reuse */ false,
+                                        error_msg);
+  if (!table_mem_map_.IsValid() && error_msg->empty()) {
     *error_msg = "Unable to map memory for indirect ref table";
   }
 
-  if (table_mem_map_.get() != nullptr) {
-    table_ = reinterpret_cast<IrtEntry*>(table_mem_map_->Begin());
+  if (table_mem_map_.IsValid()) {
+    table_ = reinterpret_cast<IrtEntry*>(table_mem_map_.Begin());
   } else {
     table_ = nullptr;
   }
@@ -125,7 +130,7 @@ void IndirectReferenceTable::ConstexprChecks() {
 }
 
 bool IndirectReferenceTable::IsValid() const {
-  return table_mem_map_.get() != nullptr;
+  return table_mem_map_.IsValid();
 }
 
 // Holes:
@@ -217,20 +222,20 @@ bool IndirectReferenceTable::Resize(size_t new_size, std::string* error_msg) {
   // Note: the above check also ensures that there is no overflow below.
 
   const size_t table_bytes = new_size * sizeof(IrtEntry);
-  std::unique_ptr<MemMap> new_map(MemMap::MapAnonymous("indirect ref table",
-                                                       nullptr,
-                                                       table_bytes,
-                                                       PROT_READ | PROT_WRITE,
-                                                       false,
-                                                       false,
-                                                       error_msg));
-  if (new_map == nullptr) {
+  MemMap new_map = MemMap::MapAnonymous("indirect ref table",
+                                        /* addr */ nullptr,
+                                        table_bytes,
+                                        PROT_READ | PROT_WRITE,
+                                        /* is_low_4gb */ false,
+                                        /* reuse */ false,
+                                        error_msg);
+  if (!new_map.IsValid()) {
     return false;
   }
 
-  memcpy(new_map->Begin(), table_mem_map_->Begin(), table_mem_map_->Size());
+  memcpy(new_map.Begin(), table_mem_map_.Begin(), table_mem_map_.Size());
   table_mem_map_ = std::move(new_map);
-  table_ = reinterpret_cast<IrtEntry*>(table_mem_map_->Begin());
+  table_ = reinterpret_cast<IrtEntry*>(table_mem_map_.Begin());
   max_entries_ = new_size;
 
   return true;
@@ -444,7 +449,7 @@ void IndirectReferenceTable::Trim() {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   const size_t top_index = Capacity();
   auto* release_start = AlignUp(reinterpret_cast<uint8_t*>(&table_[top_index]), kPageSize);
-  uint8_t* release_end = table_mem_map_->End();
+  uint8_t* release_end = table_mem_map_.End();
   madvise(release_start, release_end - release_start, MADV_DONTNEED);
 }
 

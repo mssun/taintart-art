@@ -267,8 +267,8 @@ MemoryToolMallocSpace<S,
                       kMemoryToolRedZoneBytes,
                       kAdjustForRedzoneInAllocSize,
                       kUseObjSizeForUsable>::MemoryToolMallocSpace(
-                          MemMap* mem_map, size_t initial_size, Params... params)
-                          : S(mem_map, initial_size, params...) {
+                          MemMap&& mem_map, size_t initial_size, Params... params)
+                          : S(std::move(mem_map), initial_size, params...) {
   // Don't want to change the memory tool states of the mem map here as the allocator is already
   // initialized at this point and that may interfere with what the allocator does internally. Note
   // that the tail beyond the initial size is mprotected.

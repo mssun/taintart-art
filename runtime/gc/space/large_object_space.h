@@ -148,7 +148,7 @@ class LargeObjectMapSpace : public LargeObjectSpace {
 
  protected:
   struct LargeObject {
-    MemMap* mem_map;
+    MemMap mem_map;
     bool is_zygote;
   };
   explicit LargeObjectMapSpace(const std::string& name);
@@ -182,7 +182,7 @@ class FreeListSpace FINAL : public LargeObjectSpace {
   std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const OVERRIDE REQUIRES(!lock_);
 
  protected:
-  FreeListSpace(const std::string& name, MemMap* mem_map, uint8_t* begin, uint8_t* end);
+  FreeListSpace(const std::string& name, MemMap&& mem_map, uint8_t* begin, uint8_t* end);
   size_t GetSlotIndexForAddress(uintptr_t address) const {
     DCHECK(Contains(reinterpret_cast<mirror::Object*>(address)));
     return (address - reinterpret_cast<uintptr_t>(Begin())) / kAlignment;
@@ -210,9 +210,9 @@ class FreeListSpace FINAL : public LargeObjectSpace {
 
   // There is not footer for any allocations at the end of the space, so we keep track of how much
   // free space there is at the end manually.
-  std::unique_ptr<MemMap> mem_map_;
+  MemMap mem_map_;
   // Side table for allocation info, one per page.
-  std::unique_ptr<MemMap> allocation_info_map_;
+  MemMap allocation_info_map_;
   AllocationInfo* allocation_info_;
 
   mutable Mutex lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;

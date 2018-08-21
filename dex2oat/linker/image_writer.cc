@@ -303,8 +303,8 @@ bool ImageWriter::Write(int image_fd,
     }
 
     // Image data size excludes the bitmap and the header.
-    ImageHeader* const image_header = reinterpret_cast<ImageHeader*>(image_info.image_->Begin());
-    ArrayRef<const uint8_t> raw_image_data(image_info.image_->Begin() + sizeof(ImageHeader),
+    ImageHeader* const image_header = reinterpret_cast<ImageHeader*>(image_info.image_.Begin());
+    ArrayRef<const uint8_t> raw_image_data(image_info.image_.Begin() + sizeof(ImageHeader),
                                            image_header->GetImageSize() - sizeof(ImageHeader));
 
     CHECK_EQ(image_header->storage_mode_, image_storage_mode_);
@@ -362,7 +362,7 @@ bool ImageWriter::Write(int image_fd,
     // We do not want to have a corrupted image with a valid header.
     // The header is uncompressed since it contains whether the image is compressed or not.
     image_header->data_size_ = image_data.size();
-    if (!image_file->PwriteFully(reinterpret_cast<char*>(image_info.image_->Begin()),
+    if (!image_file->PwriteFully(reinterpret_cast<char*>(image_info.image_.Begin()),
                                  sizeof(ImageHeader),
                                  0)) {
       PLOG(ERROR) << "Failed to write image file header " << image_filename;
@@ -730,14 +730,14 @@ bool ImageWriter::AllocMemory() {
         image_info.CreateImageSections(unused_sections), kPageSize);
 
     std::string error_msg;
-    image_info.image_.reset(MemMap::MapAnonymous("image writer image",
-                                                 nullptr,
-                                                 length,
-                                                 PROT_READ | PROT_WRITE,
-                                                 false,
-                                                 false,
-                                                 &error_msg));
-    if (UNLIKELY(image_info.image_.get() == nullptr)) {
+    image_info.image_ = MemMap::MapAnonymous("image writer image",
+                                             /* addr */ nullptr,
+                                             length,
+                                             PROT_READ | PROT_WRITE,
+                                             /* low_4gb */ false,
+                                             /* reuse */ false,
+                                             &error_msg);
+    if (UNLIKELY(!image_info.image_.IsValid())) {
       LOG(ERROR) << "Failed to allocate memory for image file generation: " << error_msg;
       return false;
     }
@@ -745,7 +745,7 @@ bool ImageWriter::AllocMemory() {
     // Create the image bitmap, only needs to cover mirror object section which is up to image_end_.
     CHECK_LE(image_info.image_end_, length);
     image_info.image_bitmap_.reset(gc::accounting::ContinuousSpaceBitmap::Create(
-        "image bitmap", image_info.image_->Begin(), RoundUp(image_info.image_end_, kPageSize)));
+        "image bitmap", image_info.image_.Begin(), RoundUp(image_info.image_end_, kPageSize)));
     if (image_info.image_bitmap_.get() == nullptr) {
       LOG(ERROR) << "Failed to allocate memory for image bitmap";
       return false;
@@ -2025,7 +2025,7 @@ void ImageWriter::CreateHeader(size_t oat_index) {
 
   // Create the header, leave 0 for data size since we will fill this in as we are writing the
   // image.
-  ImageHeader* header = new (image_info.image_->Begin()) ImageHeader(
+  ImageHeader* header = new (image_info.image_.Begin()) ImageHeader(
       PointerToLowMemUInt32(image_info.image_begin_),
       image_end,
       sections,
@@ -2163,8 +2163,8 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
     if (relocation.oat_index != oat_index) {
       continue;
     }
-    auto* dest = image_info.image_->Begin() + relocation.offset;
-    DCHECK_GE(dest, image_info.image_->Begin() + image_info.image_end_);
+    auto* dest = image_info.image_.Begin() + relocation.offset;
+    DCHECK_GE(dest, image_info.image_.Begin() + image_info.image_end_);
     DCHECK(!IsInBootImage(pair.first));
     switch (relocation.type) {
       case NativeObjectRelocationType::kArtField: {
@@ -2219,7 +2219,7 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
     }
   }
   // Fixup the image method roots.
-  auto* image_header = reinterpret_cast<ImageHeader*>(image_info.image_->Begin());
+  auto* image_header = reinterpret_cast<ImageHeader*>(image_info.image_.Begin());
   for (size_t i = 0; i < ImageHeader::kImageMethodsCount; ++i) {
     ArtMethod* method = image_methods_[i];
     CHECK(method != nullptr);
@@ -2235,7 +2235,7 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
     const ImageSection& intern_table_section = image_header->GetInternedStringsSection();
     InternTable* const intern_table = image_info.intern_table_.get();
     uint8_t* const intern_table_memory_ptr =
-        image_info.image_->Begin() + intern_table_section.Offset();
+        image_info.image_.Begin() + intern_table_section.Offset();
     const size_t intern_table_bytes = intern_table->WriteToMemory(intern_table_memory_ptr);
     CHECK_EQ(intern_table_bytes, image_info.intern_table_bytes_);
     // Fixup the pointers in the newly written intern table to contain image addresses.
@@ -2260,7 +2260,7 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
   if (image_info.class_table_bytes_ > 0u) {
     const ImageSection& class_table_section = image_header->GetClassTableSection();
     uint8_t* const class_table_memory_ptr =
-        image_info.image_->Begin() + class_table_section.Offset();
+        image_info.image_.Begin() + class_table_section.Offset();
     Thread* self = Thread::Current();
     ReaderMutexLock mu(self, *Locks::classlinker_classes_lock_);
 
@@ -2342,14 +2342,14 @@ void ImageWriter::CopyAndFixupObject(Object* obj) {
   size_t offset = GetImageOffset(obj);
   size_t oat_index = GetOatIndex(obj);
   ImageInfo& image_info = GetImageInfo(oat_index);
-  auto* dst = reinterpret_cast<Object*>(image_info.image_->Begin() + offset);
+  auto* dst = reinterpret_cast<Object*>(image_info.image_.Begin() + offset);
   DCHECK_LT(offset, image_info.image_end_);
   const auto* src = reinterpret_cast<const uint8_t*>(obj);
 
   image_info.image_bitmap_->Set(dst);  // Mark the obj as live.
 
   const size_t n = obj->SizeOf();
-  DCHECK_LE(offset + n, image_info.image_->Size());
+  DCHECK_LE(offset + n, image_info.image_.Size());
   memcpy(dst, src, n);
 
   // Write in a hash code of objects which have inflated monitors or a hash code in their monitor
@@ -2456,7 +2456,7 @@ template <typename T>
 T* ImageWriter::NativeCopyLocation(T* obj) {
   const NativeObjectRelocation relocation = GetNativeRelocation(obj);
   const ImageInfo& image_info = GetImageInfo(relocation.oat_index);
-  return reinterpret_cast<T*>(image_info.image_->Begin() + relocation.offset);
+  return reinterpret_cast<T*>(image_info.image_.Begin() + relocation.offset);
 }
 
 class ImageWriter::NativeLocationVisitor {
@@ -3011,12 +3011,12 @@ void ImageWriter::RecordImageRelocation(const void* dest,
   }
   // Calculate the offset within the image.
   ImageInfo* image_info = &image_infos_[oat_index];
-  DCHECK(image_info->image_->HasAddress(dest))
-      << "MemMap range " << static_cast<const void*>(image_info->image_->Begin())
-      << "-" << static_cast<const void*>(image_info->image_->End())
+  DCHECK(image_info->image_.HasAddress(dest))
+      << "MemMap range " << static_cast<const void*>(image_info->image_.Begin())
+      << "-" << static_cast<const void*>(image_info->image_.End())
       << " does not contain " << dest;
-  size_t offset = reinterpret_cast<const uint8_t*>(dest) - image_info->image_->Begin();
-  ImageHeader* const image_header = reinterpret_cast<ImageHeader*>(image_info->image_->Begin());
+  size_t offset = reinterpret_cast<const uint8_t*>(dest) - image_info->image_.Begin();
+  ImageHeader* const image_header = reinterpret_cast<ImageHeader*>(image_info->image_.Begin());
   size_t image_end = image_header->GetClassTableSection().End();
   DCHECK_LT(offset, image_end);
   // Calculate the location index.

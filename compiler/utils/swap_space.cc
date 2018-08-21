@@ -141,6 +141,7 @@ void* SwapSpace::Alloc(size_t size) {
           it->size -= size;
         } else {
           // Changing in place would break the std::set<> ordering, we need to remove and insert.
+          // TODO: When C++17 becomes available, use std::map<>::extract(), modify, insert.
           free_by_size_.erase(it);
           free_by_size_.insert(new_value);
         }

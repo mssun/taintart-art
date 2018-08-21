@@ -300,24 +300,23 @@ jvmtiError Redefiner::GetClassRedefinitionError(art::Handle<art::mirror::Class> 
 }
 
 // Moves dex data to an anonymous, read-only mmap'd region.
-std::unique_ptr<art::MemMap> Redefiner::MoveDataToMemMap(const std::string& original_location,
-                                                         art::ArrayRef<const unsigned char> data,
-                                                         std::string* error_msg) {
-  std::unique_ptr<art::MemMap> map(art::MemMap::MapAnonymous(
+art::MemMap Redefiner::MoveDataToMemMap(const std::string& original_location,
+                                        art::ArrayRef<const unsigned char> data,
+                                        std::string* error_msg) {
+  art::MemMap map = art::MemMap::MapAnonymous(
       StringPrintf("%s-transformed", original_location.c_str()).c_str(),
-      nullptr,
+      /* addr */ nullptr,
       data.size(),
       PROT_READ|PROT_WRITE,
-      /*low_4gb*/false,
-      /*reuse*/false,
-      error_msg));
-  if (map == nullptr) {
-    return map;
+      /*low_4gb*/ false,
+      /*reuse*/ false,
+      error_msg);
+  if (LIKELY(map.IsValid())) {
+    memcpy(map.Begin(), data.data(), data.size());
+    // Make the dex files mmap read only. This matches how other DexFiles are mmaped and prevents
+    // programs from corrupting it.
+    map.Protect(PROT_READ);
   }
-  memcpy(map->Begin(), data.data(), data.size());
-  // Make the dex files mmap read only. This matches how other DexFiles are mmaped and prevents
-  // programs from corrupting it.
-  map->Protect(PROT_READ);
   return map;
 }
 
@@ -429,23 +428,22 @@ jvmtiError Redefiner::AddRedefinition(ArtJvmTiEnv* env, const ArtClassDefinition
   }
   JvmtiUniquePtr<char> generic_unique_ptr(MakeJvmtiUniquePtr(env, generic_ptr_unused));
   JvmtiUniquePtr<char> signature_unique_ptr(MakeJvmtiUniquePtr(env, signature_ptr));
-  std::unique_ptr<art::MemMap> map(MoveDataToMemMap(original_dex_location,
-                                                    def.GetDexData(),
-                                                    error_msg_));
+  art::MemMap map = MoveDataToMemMap(original_dex_location, def.GetDexData(), error_msg_);
   std::ostringstream os;
-  if (map.get() == nullptr) {
+  if (!map.IsValid()) {
     os << "Failed to create anonymous mmap for modified dex file of class " << def.GetName()
        << "in dex file " << original_dex_location << " because: " << *error_msg_;
     *error_msg_ = os.str();
     return ERR(OUT_OF_MEMORY);
   }
-  if (map->Size() < sizeof(art::DexFile::Header)) {
+  if (map.Size() < sizeof(art::DexFile::Header)) {
     *error_msg_ = "Could not read dex file header because dex_data was too short";
     return ERR(INVALID_CLASS_FORMAT);
   }
-  uint32_t checksum = reinterpret_cast<const art::DexFile::Header*>(map->Begin())->checksum_;
+  std::string name = map.GetName();
+  uint32_t checksum = reinterpret_cast<const art::DexFile::Header*>(map.Begin())->checksum_;
   const art::ArtDexFileLoader dex_file_loader;
-  std::unique_ptr<const art::DexFile> dex_file(dex_file_loader.Open(map->GetName(),
+  std::unique_ptr<const art::DexFile> dex_file(dex_file_loader.Open(name,
                                                                     checksum,
                                                                     std::move(map),
                                                                     /*verify*/true,

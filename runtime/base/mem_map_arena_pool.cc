@@ -38,22 +38,34 @@ class MemMapArena FINAL : public Arena {
   void Release() OVERRIDE;
 
  private:
-  std::unique_ptr<MemMap> map_;
+  static MemMap Allocate(size_t size, bool low_4gb, const char* name);
+
+  MemMap map_;
 };
 
-MemMapArena::MemMapArena(size_t size, bool low_4gb, const char* name) {
+MemMapArena::MemMapArena(size_t size, bool low_4gb, const char* name)
+    : map_(Allocate(size, low_4gb, name)) {
+  memory_ = map_.Begin();
+  static_assert(ArenaAllocator::kArenaAlignment <= kPageSize,
+                "Arena should not need stronger alignment than kPageSize.");
+  DCHECK_ALIGNED(memory_, ArenaAllocator::kArenaAlignment);
+  size_ = map_.Size();
+}
+
+MemMap MemMapArena::Allocate(size_t size, bool low_4gb, const char* name) {
   // Round up to a full page as that's the smallest unit of allocation for mmap()
   // and we want to be able to use all memory that we actually allocate.
   size = RoundUp(size, kPageSize);
   std::string error_msg;
-  map_.reset(MemMap::MapAnonymous(
-      name, nullptr, size, PROT_READ | PROT_WRITE, low_4gb, false, &error_msg));
-  CHECK(map_.get() != nullptr) << error_msg;
-  memory_ = map_->Begin();
-  static_assert(ArenaAllocator::kArenaAlignment <= kPageSize,
-                "Arena should not need stronger alignment than kPageSize.");
-  DCHECK_ALIGNED(memory_, ArenaAllocator::kArenaAlignment);
-  size_ = map_->Size();
+  MemMap map = MemMap::MapAnonymous(name,
+                                    /* addr */ nullptr,
+                                    size,
+                                    PROT_READ | PROT_WRITE,
+                                    low_4gb,
+                                    /* reuse */ false,
+                                    &error_msg);
+  CHECK(map.IsValid()) << error_msg;
+  return map;
 }
 
 MemMapArena::~MemMapArena() {
@@ -62,7 +74,7 @@ MemMapArena::~MemMapArena() {
 
 void MemMapArena::Release() {
   if (bytes_allocated_ > 0) {
-    map_->MadviseDontNeedAndZero();
+    map_.MadviseDontNeedAndZero();
     bytes_allocated_ = 0;
   }
 }

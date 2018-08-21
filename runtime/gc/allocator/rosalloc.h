@@ -31,12 +31,11 @@
 #include "base/allocator.h"
 #include "base/bit_utils.h"
 #include "base/globals.h"
+#include "base/mem_map.h"
 #include "base/mutex.h"
 #include "thread.h"
 
 namespace art {
-
-class MemMap;
 
 namespace gc {
 namespace allocator {
@@ -746,7 +745,7 @@ class RosAlloc {
   volatile uint8_t* page_map_;  // No GUARDED_BY(lock_) for kReadPageMapEntryWithoutLockInBulkFree.
   size_t page_map_size_;
   size_t max_page_map_size_;
-  std::unique_ptr<MemMap> page_map_mem_map_;
+  MemMap page_map_mem_map_;
 
   // The table that indicates the size of free page runs. These sizes
   // are stored here to avoid storing in the free page header and

@@ -74,7 +74,7 @@ class PatchOat {
   // All pointers are only borrowed.
   PatchOat(InstructionSet isa, MemMap* image,
            gc::accounting::ContinuousSpaceBitmap* bitmap, MemMap* heap, off_t delta,
-           std::map<gc::space::ImageSpace*, std::unique_ptr<MemMap>>* map, TimingLogger* timings)
+           std::map<gc::space::ImageSpace*, MemMap>* map, TimingLogger* timings)
       : image_(image), bitmap_(bitmap), heap_(heap),
         delta_(delta), isa_(isa), space_map_(map), timings_(timings) {}
 
@@ -139,7 +139,7 @@ class PatchOat {
       if (image_space->Contains(obj)) {
         uintptr_t heap_off = reinterpret_cast<uintptr_t>(obj) -
                              reinterpret_cast<uintptr_t>(image_space->GetMemMap()->Begin());
-        return reinterpret_cast<T*>(space_map_->find(image_space)->second->Begin() + heap_off);
+        return reinterpret_cast<T*>(space_map_->find(image_space)->second.Begin() + heap_off);
       }
     }
     LOG(FATAL) << "Did not find object in boot image space " << obj;
@@ -195,7 +195,7 @@ class PatchOat {
   // Active instruction set, used to know the entrypoint size.
   const InstructionSet isa_;
 
-  const std::map<gc::space::ImageSpace*, std::unique_ptr<MemMap>>* space_map_;
+  const std::map<gc::space::ImageSpace*, MemMap>* space_map_;
 
   TimingLogger* timings_;
 

@@ -213,8 +213,8 @@ inline void CardTable::ModifyCardsAtomic(uint8_t* scan_begin,
 inline void* CardTable::AddrFromCard(const uint8_t *card_addr) const {
   DCHECK(IsValidCard(card_addr))
     << " card_addr: " << reinterpret_cast<const void*>(card_addr)
-    << " begin: " << reinterpret_cast<void*>(mem_map_->Begin() + offset_)
-    << " end: " << reinterpret_cast<void*>(mem_map_->End());
+    << " begin: " << reinterpret_cast<void*>(mem_map_.Begin() + offset_)
+    << " end: " << reinterpret_cast<void*>(mem_map_.End());
   uintptr_t offset = card_addr - biased_begin_;
   return reinterpret_cast<void*>(offset << kCardShift);
 }
@@ -228,16 +228,16 @@ inline uint8_t* CardTable::CardFromAddr(const void *addr) const {
 }
 
 inline bool CardTable::IsValidCard(const uint8_t* card_addr) const {
-  uint8_t* begin = mem_map_->Begin() + offset_;
-  uint8_t* end = mem_map_->End();
+  uint8_t* begin = mem_map_.Begin() + offset_;
+  uint8_t* end = mem_map_.End();
   return card_addr >= begin && card_addr < end;
 }
 
 inline void CardTable::CheckCardValid(uint8_t* card) const {
   DCHECK(IsValidCard(card))
       << " card_addr: " << reinterpret_cast<const void*>(card)
-      << " begin: " << reinterpret_cast<void*>(mem_map_->Begin() + offset_)
-      << " end: " << reinterpret_cast<void*>(mem_map_->End());
+      << " begin: " << reinterpret_cast<void*>(mem_map_.Begin() + offset_)
+      << " end: " << reinterpret_cast<void*>(mem_map_.End());
 }
 
 }  // namespace accounting

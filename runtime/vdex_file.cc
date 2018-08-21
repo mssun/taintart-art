@@ -144,7 +144,7 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
     mmap_reuse = false;
   }
   CHECK(!mmap_reuse || mmap_addr != nullptr);
-  std::unique_ptr<MemMap> mmap(MemMap::MapFileAtAddress(
+  MemMap mmap = MemMap::MapFileAtAddress(
       mmap_addr,
       vdex_length,
       (writable || unquicken) ? PROT_READ | PROT_WRITE : PROT_READ,
@@ -154,13 +154,13 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
       low_4gb,
       mmap_reuse,
       vdex_filename.c_str(),
-      error_msg));
-  if (mmap == nullptr) {
+      error_msg);
+  if (!mmap.IsValid()) {
     *error_msg = "Failed to mmap file " + vdex_filename + " : " + *error_msg;
     return nullptr;
   }
 
-  std::unique_ptr<VdexFile> vdex(new VdexFile(mmap.release()));
+  std::unique_ptr<VdexFile> vdex(new VdexFile(std::move(mmap)));
   if (!vdex->IsValid()) {
     *error_msg = "Vdex file is not valid";
     return nullptr;
@@ -175,7 +175,7 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
                     /* decompile_return_instruction */ false);
     // Update the quickening info size to pretend there isn't any.
     size_t offset = vdex->GetDexSectionHeaderOffset();
-    reinterpret_cast<DexSectionHeader*>(vdex->mmap_->Begin() + offset)->quickening_info_size_ = 0;
+    reinterpret_cast<DexSectionHeader*>(vdex->mmap_.Begin() + offset)->quickening_info_size_ = 0;
   }
 
   *error_msg = "Success";

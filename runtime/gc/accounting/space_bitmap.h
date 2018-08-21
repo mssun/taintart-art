@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "base/globals.h"
+#include "base/mem_map.h"
 #include "base/mutex.h"
 
 namespace art {
@@ -32,7 +33,6 @@ namespace mirror {
 class Class;
 class Object;
 }  // namespace mirror
-class MemMap;
 
 namespace gc {
 namespace accounting {
@@ -50,8 +50,10 @@ class SpaceBitmap {
   // Initialize a space bitmap using the provided mem_map as the live bits. Takes ownership of the
   // mem map. The address range covered starts at heap_begin and is of size equal to heap_capacity.
   // Objects are kAlignement-aligned.
-  static SpaceBitmap* CreateFromMemMap(const std::string& name, MemMap* mem_map,
-                                       uint8_t* heap_begin, size_t heap_capacity);
+  static SpaceBitmap* CreateFromMemMap(const std::string& name,
+                                       MemMap&& mem_map,
+                                       uint8_t* heap_begin,
+                                       size_t heap_capacity);
 
   ~SpaceBitmap();
 
@@ -215,7 +217,7 @@ class SpaceBitmap {
   // TODO: heap_end_ is initialized so that the heap bitmap is empty, this doesn't require the -1,
   // however, we document that this is expected on heap_end_
   SpaceBitmap(const std::string& name,
-              MemMap* mem_map,
+              MemMap&& mem_map,
               uintptr_t* bitmap_begin,
               size_t bitmap_size,
               const void* heap_begin,
@@ -227,7 +229,7 @@ class SpaceBitmap {
   bool Modify(const mirror::Object* obj);
 
   // Backing storage for bitmap.
-  std::unique_ptr<MemMap> mem_map_;
+  MemMap mem_map_;
 
   // This bitmap itself, word sized for efficiency in scanning.
   Atomic<uintptr_t>* const bitmap_begin_;

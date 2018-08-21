@@ -27,6 +27,7 @@
 
 #include "base/bit_utils.h"
 #include "base/macros.h"
+#include "base/mem_map.h"
 #include "base/mutex.h"
 #include "gc_root.h"
 #include "obj_ptr.h"
@@ -40,8 +41,6 @@ class RootInfo;
 namespace mirror {
 class Object;
 }  // namespace mirror
-
-class MemMap;
 
 // Maintain a table of indirect references.  Used for local/global JNI references.
 //
@@ -398,7 +397,7 @@ class IndirectReferenceTable {
   IRTSegmentState segment_state_;
 
   // Mem map where we store the indirect refs.
-  std::unique_ptr<MemMap> table_mem_map_;
+  MemMap table_mem_map_;
   // bottom of the stack. Do not directly access the object references
   // in this as they are roots. Use Get() that has a read barrier.
   IrtEntry* table_;
