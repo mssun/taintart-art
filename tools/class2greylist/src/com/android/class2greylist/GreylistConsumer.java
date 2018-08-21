@@ -9,5 +9,12 @@ public interface GreylistConsumer {
      */
     void greylistEntry(String signature, Integer maxTargetSdk);
 
+    /**
+     * Handle a new whitelist entry.
+     *
+     * @param signature Signature of the member.
+     */
+    void whitelistEntry(String signature);
+
     void close();
 }

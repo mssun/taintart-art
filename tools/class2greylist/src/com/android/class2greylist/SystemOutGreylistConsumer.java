@@ -7,6 +7,12 @@ public class SystemOutGreylistConsumer implements GreylistConsumer {
     }
 
     @Override
+    public void whitelistEntry(String signature) {
+        // Ignore. This class is only used when no grey/white lists are
+        // specified, so we have nowhere to write whitelist entries.
+    }
+
+    @Override
     public void close() {
     }
 }
