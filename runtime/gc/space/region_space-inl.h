@@ -407,7 +407,7 @@ inline void RegionSpace::FreeLarge(mirror::Object* large_obj, size_t bytes_alloc
       --num_non_free_regions_;
     }
   }
-  if (end_addr < Limit()) {
+  if (kIsDebugBuild && end_addr < Limit()) {
     // If we aren't at the end of the space, check that the next region is not a large tail.
     Region* following_reg = RefToRegionLocked(reinterpret_cast<mirror::Object*>(end_addr));
     DCHECK(!following_reg->IsLargeTail());
