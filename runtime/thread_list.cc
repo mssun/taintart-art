@@ -1476,6 +1476,9 @@ void ThreadList::Unregister(Thread* self) {
         list_.remove(self);
         break;
       }
+      // In the case where we are not suspended yet, sleep to leave other threads time to execute.
+      // This is important if there are realtime threads. b/111277984
+      usleep(1);
     }
     // We failed to remove the thread due to a suspend request, loop and try again.
   }
