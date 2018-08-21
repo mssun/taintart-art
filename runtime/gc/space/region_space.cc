@@ -215,6 +215,41 @@ inline bool RegionSpace::Region::ShouldBeEvacuated(EvacMode evac_mode) {
   return result;
 }
 
+void RegionSpace::ZeroLiveBytesForLargeObject(mirror::Object* obj) {
+  // This method is only used when Generational CC collection is enabled.
+  DCHECK(kEnableGenerationalConcurrentCopyingCollection);
+
+  // This code uses a logic similar to the one used in RegionSpace::FreeLarge
+  // to traverse the regions supporting `obj`.
+  // TODO: Refactor.
+  DCHECK(IsLargeObject(obj));
+  DCHECK_ALIGNED(obj, kRegionSize);
+  size_t obj_size = obj->SizeOf<kDefaultVerifyFlags>();
+  DCHECK_GT(obj_size, space::RegionSpace::kRegionSize);
+  // Size of the memory area allocated for `obj`.
+  size_t obj_alloc_size = RoundUp(obj_size, space::RegionSpace::kRegionSize);
+  uint8_t* begin_addr = reinterpret_cast<uint8_t*>(obj);
+  uint8_t* end_addr = begin_addr + obj_alloc_size;
+  DCHECK_ALIGNED(end_addr, kRegionSize);
+
+  // Zero the live bytes of the large region and large tail regions containing the object.
+  MutexLock mu(Thread::Current(), region_lock_);
+  for (uint8_t* addr = begin_addr; addr < end_addr; addr += kRegionSize) {
+    Region* region = RefToRegionLocked(reinterpret_cast<mirror::Object*>(addr));
+    if (addr == begin_addr) {
+      DCHECK(region->IsLarge());
+    } else {
+      DCHECK(region->IsLargeTail());
+    }
+    region->ZeroLiveBytes();
+  }
+  if (kIsDebugBuild && end_addr < Limit()) {
+    // If we aren't at the end of the space, check that the next region is not a large tail.
+    Region* following_region = RefToRegionLocked(reinterpret_cast<mirror::Object*>(end_addr));
+    DCHECK(!following_region->IsLargeTail());
+  }
+}
+
 // Determine which regions to evacuate and mark them as
 // from-space. Mark the rest as unevacuated from-space.
 void RegionSpace::SetFromSpace(accounting::ReadBarrierTable* rb_table,
@@ -377,16 +412,7 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
         while (i + regions_to_clear_bitmap < num_regions_) {
           Region* const cur = &regions_[i + regions_to_clear_bitmap];
           if (!cur->AllAllocatedBytesAreLive()) {
-#if 0
-            // FIXME: These tests fail the following assertion with Sticky-Bit (Generational) CC:
-            //
-            //   004-ThreadStress
-            //   061-out-of-memory
-            //   080-oom-throw
-            //   134-reg-promotion
-            //   617-clinit-oome
             DCHECK(!cur->IsLargeTail());
-#endif
             break;
           }
           CHECK(cur->IsInUnevacFromSpace());
