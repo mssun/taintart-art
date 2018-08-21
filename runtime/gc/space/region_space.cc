@@ -189,7 +189,40 @@ inline bool RegionSpace::Region::ShouldBeEvacuated(EvacMode evac_mode) {
   }
   bool result = false;
   if (is_newly_allocated_) {
-    result = true;
+    // Invariant: newly allocated regions have an undefined live bytes count.
+    DCHECK_EQ(live_bytes_, static_cast<size_t>(-1));
+    if (IsAllocated()) {
+      // We always evacuate newly-allocated non-large regions as we
+      // believe they contain many dead objects (a very simple form of
+      // the generational hypothesis, even before the Sticky-Bit CC
+      // approach).
+      //
+      // TODO: Verify that assertion by collecting statistics on the
+      // number/proportion of live objects in newly allocated regions
+      // in RegionSpace::ClearFromSpace.
+      //
+      // Note that a side effect of evacuating a newly-allocated
+      // non-large region is that the "newly allocated" status will
+      // later be removed, as its live objects will be copied to an
+      // evacuation region, which won't be marked as "newly
+      // allocated" (see RegionSpace::AllocateRegion).
+      result = true;
+    } else {
+      DCHECK(IsLarge());
+      // We never want to evacuate a large region (and the associated
+      // tail regions), except if:
+      // - we are forced to do so (see the `kEvacModeForceAll` case
+      //   above); or
+      // - we know that the (sole) object contained in this region is
+      //   dead (see the corresponding logic below, in the
+      //   `kEvacModeLivePercentNewlyAllocated` case).
+      // For a newly allocated region (i.e. allocated since the
+      // previous GC started), we don't have any liveness information
+      // (the live bytes count is -1 -- also note this region has been
+      // a to-space one between the time of its allocation and now),
+      // so we prefer not to evacuate it.
+      result = false;
+    }
   } else if (evac_mode == kEvacModeLivePercentNewlyAllocated) {
     bool is_live_percent_valid = (live_bytes_ != static_cast<size_t>(-1));
     if (is_live_percent_valid) {
@@ -315,6 +348,8 @@ void RegionSpace::SetFromSpace(accounting::ReadBarrierTable* rb_table,
         rb_table->Clear(r->Begin(), r->End());
       }
     }
+    // Invariant: There should be no newly-allocated region in the from-space.
+    DCHECK(!r->is_newly_allocated_);
   }
   DCHECK_EQ(num_expected_large_tails, 0U);
   current_region_ = &full_region_;
