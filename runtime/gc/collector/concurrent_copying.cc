@@ -627,8 +627,6 @@ class ConcurrentCopying::VerifyNoMissingCardMarkVisitor {
 
   void CheckReference(mirror::Object* ref, int32_t offset = -1) const
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    // FIXME: This assertion is failing in 004-ThreadStress most of
-    // the time with Sticky-Bit (Generational) CC.
     CHECK(ref == nullptr || !cc_->region_space_->IsInNewlyAllocatedRegion(ref))
         << holder_->PrettyTypeOf() << "(" << holder_.Ptr() << ") references object "
         << ref->PrettyTypeOf() << "(" << ref << ") in newly allocated region at offset=" << offset;
@@ -1618,7 +1616,9 @@ inline void ConcurrentCopying::ProcessMarkStackRef(mirror::Object* to_ref) {
   }
   space::RegionSpace::RegionType rtype = region_space_->GetRegionType(to_ref);
   bool add_to_live_bytes = false;
-  DCHECK(!region_space_->IsInNewlyAllocatedRegion(to_ref));
+  // Invariant: There should be no object from a newly-allocated
+  // region (either large or non-large) on the mark stack.
+  DCHECK(!region_space_->IsInNewlyAllocatedRegion(to_ref)) << to_ref;
   if (rtype == space::RegionSpace::RegionType::kRegionTypeUnevacFromSpace) {
     // Mark the bitmap only in the GC thread here so that we don't need a CAS.
     if (!kUseBakerReadBarrier ||
