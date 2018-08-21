@@ -66,8 +66,12 @@ func globalFlags(ctx android.BaseContext) ([]string, []string) {
 			"-DART_READ_BARRIER_TYPE_IS_"+barrierType+"=1")
 	}
 
-  cdexLevel := envDefault(ctx, "ART_DEFAULT_COMPACT_DEX_LEVEL", "fast")
-  cflags = append(cflags, "-DART_DEFAULT_COMPACT_DEX_LEVEL="+cdexLevel)
+	if envTrue(ctx, "ART_USE_GENERATIONAL_CC") {
+		cflags = append(cflags, "-DART_USE_GENERATIONAL_CC=1")
+	}
+
+	cdexLevel := envDefault(ctx, "ART_DEFAULT_COMPACT_DEX_LEVEL", "fast")
+	cflags = append(cflags, "-DART_DEFAULT_COMPACT_DEX_LEVEL="+cdexLevel)
 
 	// We need larger stack overflow guards for ASAN, as the compiled code will have
 	// larger frame sizes. For simplicity, just use global not-target-specific cflags.
@@ -312,19 +316,19 @@ func libartDefaultsFactory() android.Module {
 		codegen(ctx, c, true)
 
 		type props struct {
-		  Target struct {
-		    Android struct {
-		      Shared_libs []string
-		    }
-		  }
+			Target struct {
+				Android struct {
+					Shared_libs []string
+				}
+			}
 		}
 
 		p := &props{}
 		// TODO: express this in .bp instead b/79671158
 		if !envTrue(ctx, "ART_TARGET_LINUX") {
-		  p.Target.Android.Shared_libs = []string {
-		    "libmetricslogger",
-		  }
+			p.Target.Android.Shared_libs = []string{
+				"libmetricslogger",
+			}
 		}
 		ctx.AppendProperties(p)
 	})
