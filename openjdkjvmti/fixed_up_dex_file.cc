@@ -79,11 +79,8 @@ static void DoDexUnquicken(const art::DexFile& new_dex_file,
   const art::VdexFile* vdex = GetVdex(original_dex_file);
   if (vdex != nullptr) {
     vdex->UnquickenDexFile(new_dex_file, original_dex_file, /* decompile_return_instruction */true);
-  } else {
-    // The dex file isn't quickened since it is being used directly. We might still have hiddenapis
-    // so we need to get rid of those.
-    UnhideApis(new_dex_file);
   }
+  UnhideApis(new_dex_file);
 }
 
 static void DCheckVerifyDexFile(const art::DexFile& dex) {
