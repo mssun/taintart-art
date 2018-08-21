@@ -150,6 +150,37 @@ TEST_F(ImageSpaceNoRelocateNoDex2oatNoPatchoatTest, Test) {
   EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
 }
 
+class NoAccessAndroidDataTest : public ImageSpaceLoadingTest<false, true, false, true> {
+ protected:
+  void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE {
+    const char* android_data = getenv("ANDROID_DATA");
+    CHECK(android_data != nullptr);
+    old_android_data_ = android_data;
+    bad_android_data_ = old_android_data_ + "/no-android-data";
+    int result = setenv("ANDROID_DATA", bad_android_data_.c_str(), /* replace */ 1);
+    CHECK_EQ(result, 0) << strerror(errno);
+    result = mkdir(bad_android_data_.c_str(), /* no access */ 0);
+    CHECK_EQ(result, 0) << strerror(errno);
+    ImageSpaceLoadingTest<false, true, false, true>::SetUpRuntimeOptions(options);
+  }
+
+  void TearDown() OVERRIDE {
+    int result = rmdir(bad_android_data_.c_str());
+    CHECK_EQ(result, 0) << strerror(errno);
+    result = setenv("ANDROID_DATA", old_android_data_.c_str(), /* replace */ 1);
+    CHECK_EQ(result, 0) << strerror(errno);
+    ImageSpaceLoadingTest<false, true, false, true>::TearDown();
+  }
+
+ private:
+  std::string old_android_data_;
+  std::string bad_android_data_;
+};
+
+TEST_F(NoAccessAndroidDataTest, Test) {
+  EXPECT_TRUE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
+}
+
 }  // namespace space
 }  // namespace gc
 }  // namespace art
