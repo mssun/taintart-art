@@ -171,7 +171,9 @@ class SchedulerTest : public OptimizingUnitTest {
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(array_set1, array_get1));
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(array_set2, array_get2));
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(array_get2, array_set1));
-    ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(array_set2, array_set1));
+    // Unnecessary dependency is not stored, we rely on transitive dependencies.
+    // The array_set2 -> array_get2 -> array_set1 dependencies are tested above.
+    ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(array_set2, array_set1));
 
     // Env dependency.
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(div_check, mul));
@@ -308,7 +310,9 @@ class SchedulerTest : public OptimizingUnitTest {
     loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_i);
     loc2 = heap_location_collector.GetArrayHeapLocation(arr_set_j);
     ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
-    ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_i));
+    // Unnecessary dependency is not stored, we rely on transitive dependencies.
+    // The arr_set_j -> arr_set_sub0 -> arr_set_add0 -> arr_set_i dependencies are tested below.
+    ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_i));
 
     // Test side effect dependency based on LSA analysis: array[i] and array[i+0]
     loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_i);
@@ -320,7 +324,10 @@ class SchedulerTest : public OptimizingUnitTest {
     loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_i);
     loc2 = heap_location_collector.GetArrayHeapLocation(arr_set_sub0);
     ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
-    ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_sub0, arr_set_i));
+    // Unnecessary dependency is not stored, we rely on transitive dependencies.
+    ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_sub0, arr_set_i));
+    // Instead, we rely on arr_set_sub0 -> arr_set_add0 -> arr_set_i, the latter is tested above.
+    ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_sub0, arr_set_add0));
 
     // Test side effect dependency based on LSA analysis: array[i] and array[i+1]
     loc1 = heap_location_collector.GetArrayHeapLocation(arr_set_i);
@@ -335,11 +342,12 @@ class SchedulerTest : public OptimizingUnitTest {
     ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_sub1, arr_set_add1));
 
     // Test side effect dependency based on LSA analysis: array[j] and all others array accesses
-    ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_i));
-    ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_add0));
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_sub0));
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_add1));
     ASSERT_TRUE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_sub1));
+    // Unnecessary dependencies are not stored, we rely on transitive dependencies.
+    ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_i));
+    ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_j, arr_set_add0));
 
     // Test that ArraySet and FieldSet should not have side effect dependency
     ASSERT_FALSE(scheduling_graph.HasImmediateOtherDependency(arr_set_i, set_field10));
