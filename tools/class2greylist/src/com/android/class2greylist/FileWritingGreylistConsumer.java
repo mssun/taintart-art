@@ -11,21 +11,29 @@ public class FileWritingGreylistConsumer implements GreylistConsumer {
 
     private final Status mStatus;
     private final Map<Integer, PrintStream> mSdkToPrintStreamMap;
+    private final PrintStream mWhitelistStream;
+
+    private static PrintStream openFile(String filename) throws FileNotFoundException {
+        if (filename == null) {
+            return null;
+        }
+        return new PrintStream(new FileOutputStream(new File(filename)));
+    }
 
     private static Map<Integer, PrintStream> openFiles(
             Map<Integer, String> filenames) throws FileNotFoundException {
         Map<Integer, PrintStream> streams = new HashMap<>();
         for (Map.Entry<Integer, String> entry : filenames.entrySet()) {
-            streams.put(entry.getKey(),
-                    new PrintStream(new FileOutputStream(new File(entry.getValue()))));
+            streams.put(entry.getKey(), openFile(entry.getValue()));
         }
         return streams;
     }
 
-    public FileWritingGreylistConsumer(Status status, Map<Integer, String> sdkToFilenameMap)
-            throws FileNotFoundException {
+    public FileWritingGreylistConsumer(Status status, Map<Integer, String> sdkToFilenameMap,
+            String whitelistFile) throws FileNotFoundException {
         mStatus = status;
         mSdkToPrintStreamMap = openFiles(sdkToFilenameMap);
+        mWhitelistStream = openFile(whitelistFile);
     }
 
     @Override
@@ -40,9 +48,19 @@ public class FileWritingGreylistConsumer implements GreylistConsumer {
     }
 
     @Override
+    public void whitelistEntry(String signature) {
+        if (mWhitelistStream != null) {
+            mWhitelistStream.println(signature);
+        }
+    }
+
+    @Override
     public void close() {
         for (PrintStream p : mSdkToPrintStreamMap.values()) {
             p.close();
+        }
+        if (mWhitelistStream != null) {
+            mWhitelistStream.close();
         }
     }
 }
