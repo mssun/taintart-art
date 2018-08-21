@@ -1454,7 +1454,6 @@ class ImageSpace::BootImageLoader {
         has_system_(false),
         has_cache_(false),
         is_global_cache_(true),
-        dalvik_cache_exists_(false),
         dalvik_cache_(),
         cache_filename_() {
   }
@@ -1463,30 +1462,33 @@ class ImageSpace::BootImageLoader {
 
   void FindImageFiles() {
     std::string system_filename;
+    bool dalvik_cache_exists = false;
     bool found_image = FindImageFilenameImpl(image_location_.c_str(),
                                              image_isa_,
                                              &has_system_,
                                              &system_filename,
-                                             &dalvik_cache_exists_,
+                                             &dalvik_cache_exists,
                                              &dalvik_cache_,
                                              &is_global_cache_,
                                              &has_cache_,
                                              &cache_filename_);
-    DCHECK(!dalvik_cache_exists_ || !dalvik_cache_.empty());
+    DCHECK_EQ(dalvik_cache_exists, !dalvik_cache_.empty());
     DCHECK_EQ(found_image, has_system_ || has_cache_);
   }
 
   bool HasSystem() const { return has_system_; }
   bool HasCache() const { return has_cache_; }
 
-  bool DalvikCacheExists() const { return dalvik_cache_exists_; }
+  bool DalvikCacheExists() const { return !dalvik_cache_.empty(); }
   bool IsGlobalCache() const { return is_global_cache_; }
 
   const std::string& GetDalvikCache() const {
+    DCHECK(DalvikCacheExists());
     return dalvik_cache_;
   }
 
   const std::string& GetCacheFilename() const {
+    DCHECK(DalvikCacheExists());
     return cache_filename_;
   }
 
@@ -1615,7 +1617,6 @@ class ImageSpace::BootImageLoader {
   bool has_system_;
   bool has_cache_;
   bool is_global_cache_;
-  bool dalvik_cache_exists_;
   std::string dalvik_cache_;
   std::string cache_filename_;
 };
@@ -1768,7 +1769,7 @@ bool ImageSpace::LoadBootImage(
 
   // Step 3: We do not have an existing image in /system,
   //         so generate an image into the dalvik cache.
-  if (!loader.HasSystem() && loader.DalvikCacheExists()) {
+  if (!loader.HasSystem()) {
     std::string local_error_msg;
     if (!dex2oat_enabled) {
       local_error_msg = "Image compilation disabled.";
