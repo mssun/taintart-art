@@ -2199,9 +2199,6 @@ void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* o
         (is_los && los_bitmap->Test(ref))) {
       // OK.
     } else {
-      /* FIXME: We've seen this assertion fail in 004-ThreadStress from
-         time to time with Sticky-Bit (Generational) CC (it seems the
-         reference was in the non-moving space range at every occurrence). */
       // If `ref` is on the allocation stack, then it may not be
       // marked live, but considered marked/alive (but not
       // necessarily on the live stack).
@@ -2562,9 +2559,8 @@ mirror::Object* ConcurrentCopying::Copy(Thread* const self,
       accounting::ContinuousSpaceBitmap* mark_bitmap =
           heap_mark_bitmap_->GetContinuousSpaceBitmap(to_ref);
       CHECK(mark_bitmap != nullptr);
-      if (!kEnableGenerationalConcurrentCopyingCollection) {
-        CHECK(!mark_bitmap->AtomicTestAndSet(to_ref));
-      }
+      bool previously_marked_in_bitmap = mark_bitmap->AtomicTestAndSet(to_ref);
+      CHECK(!previously_marked_in_bitmap);
     }
   }
   DCHECK(to_ref != nullptr);
