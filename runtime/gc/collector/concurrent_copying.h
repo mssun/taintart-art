@@ -360,6 +360,8 @@ class ConcurrentCopying : public GarbageCollector {
 
   // Generational "sticky", only trace through dirty objects in region space.
   const bool young_gen_;
+  // If true, the GC thread is done scanning marked objects on dirty and aged
+  // card (see ConcurrentCopying::MarkingPhase).
   Atomic<bool> done_scanning_;
 
   // The skipped blocks are memory blocks/chucks that were copies of
