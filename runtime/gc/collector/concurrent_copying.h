@@ -222,7 +222,13 @@ class ConcurrentCopying : public GarbageCollector {
       REQUIRES_SHARED(Locks::mutator_lock_);
   void SweepSystemWeaks(Thread* self)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Locks::heap_bitmap_lock_);
+  // Sweep unmarked objects to complete the garbage collection. Full GCs sweep
+  // all allocation spaces (except the region space). Sticky-bit GCs just sweep
+  // a subset of the heap.
   void Sweep(bool swap_bitmaps)
+      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::heap_bitmap_lock_, !mark_stack_lock_);
+  // Sweep only pointers within an array.
+  void SweepArray(accounting::ObjectStack* allocation_stack_, bool swap_bitmaps)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::heap_bitmap_lock_, !mark_stack_lock_);
   void SweepLargeObjects(bool swap_bitmaps)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::heap_bitmap_lock_);
@@ -389,6 +395,11 @@ class ConcurrentCopying : public GarbageCollector {
   // be filled in before flipping thread roots so that FillDummyObject can run. Not
   // ObjPtr since the GC may transition to suspended and runnable between phases.
   mirror::Class* java_lang_Object_;
+
+  // Sweep array free buffer, used to sweep the spaces based on an array more
+  // efficiently, by recording dead objects to be freed in batches (see
+  // ConcurrentCopying::SweepArray).
+  MemMap sweep_array_free_buffer_mem_map_;
 
   class ActivateReadBarrierEntrypointsCallback;
   class ActivateReadBarrierEntrypointsCheckpoint;
