@@ -2890,10 +2890,12 @@ mirror::Object* ConcurrentCopying::MarkNonMoving(Thread* const self,
       heap_mark_bitmap_->GetLargeObjectBitmap(ref);
   bool is_los = mark_bitmap == nullptr;
   if (kEnableGenerationalConcurrentCopyingCollection && young_gen_) {
+    // The sticky-bit CC collector is only compatible with Baker-style read barriers.
+    DCHECK(kUseBakerReadBarrier);
     // Not done scanning, use AtomicSetReadBarrierPointer.
     if (!done_scanning_) {
       // Since the mark bitmap is still filled in from last GC, we can not use that or else the
-      // mutator may see references to the from space. Instead, use the baker pointer itself as
+      // mutator may see references to the from space. Instead, use the Baker pointer itself as
       // the mark bit.
       if (ref->AtomicSetReadBarrierState(ReadBarrier::NonGrayState(), ReadBarrier::GrayState())) {
         // TODO: We don't actually need to scan this object later, we just need to clear the gray
