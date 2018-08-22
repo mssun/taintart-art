@@ -351,6 +351,9 @@ class MarkSweep : public GarbageCollector {
   // Verification.
   size_t live_stack_freeze_size_;
 
+  // Sweep array free buffer, used to sweep the spaces based on an array more
+  // efficiently, by recording dead objects to be freed in batches (see
+  // MarkSweep::SweepArray).
   MemMap sweep_array_free_buffer_mem_map_;
 
  private:

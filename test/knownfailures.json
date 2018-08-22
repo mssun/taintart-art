@@ -986,6 +986,7 @@
                   "678-quickening",
                   "679-locks",
                   "999-redefine-hiddenapi",
+                  "1000-non-moving-space-stress",
                   "1951-monitor-enter-no-suspend"],
         "variant": "jvm",
         "description": ["Doesn't run on RI."]
