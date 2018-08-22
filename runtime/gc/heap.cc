@@ -3492,8 +3492,8 @@ void Heap::GrowForUtilization(collector::GarbageCollector* collector_ran,
   uint64_t target_size;
   collector::GcType gc_type = collector_ran->GetGcType();
   // Use the multiplier to grow more for foreground.
-  const double multiplier =
-      HeapGrowthMultiplier() + (kEnableGenerationalConcurrentCopyingCollection ? 3.0 : 0.0);
+  const double multiplier = HeapGrowthMultiplier();  // Use the multiplier to grow more for
+  // foreground.
   const uint64_t adjusted_min_free = static_cast<uint64_t>(min_free_ * multiplier);
   const uint64_t adjusted_max_free = static_cast<uint64_t>(max_free_ * multiplier);
   if (gc_type != collector::kGcTypeSticky) {
