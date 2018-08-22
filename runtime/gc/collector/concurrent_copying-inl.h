@@ -38,7 +38,7 @@ inline mirror::Object* ConcurrentCopying::MarkUnevacFromSpaceRegion(
     accounting::ContinuousSpaceBitmap* bitmap) {
   if (kEnableGenerationalConcurrentCopyingCollection
       && young_gen_
-      && !done_scanning_.load(std::memory_order_relaxed)) {
+      && !done_scanning_.load(std::memory_order_acquire)) {
     // Everything in the unevac space should be marked for generational CC except for large objects.
     DCHECK(region_space_bitmap_->Test(ref) || region_space_->IsLargeObject(ref)) << ref << " "
         << ref->GetClass<kVerifyNone, kWithoutReadBarrier>()->PrettyClass();
@@ -244,7 +244,7 @@ inline bool ConcurrentCopying::IsMarkedInUnevacFromSpace(mirror::Object* from_re
   DCHECK(region_space_->IsInUnevacFromSpace(from_ref));
   if (kEnableGenerationalConcurrentCopyingCollection
       && young_gen_
-      && !done_scanning_.load(std::memory_order_relaxed)) {
+      && !done_scanning_.load(std::memory_order_acquire)) {
     return from_ref->GetReadBarrierStateAcquire() == ReadBarrier::GrayState();
   }
   if (kUseBakerReadBarrier && from_ref->GetReadBarrierStateAcquire() == ReadBarrier::GrayState()) {
