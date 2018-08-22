@@ -265,15 +265,6 @@ target_config = {
             'ART_USE_READ_BARRIER' : 'false'
         }
     },
-    # TODO: Remove this configuration, when the ART Buildbot is no
-    # longer using it for 'host-x86_64-valgrind'.
-    'art-gtest-valgrind64': {
-      # Disabled: Valgrind is no longer supported.
-      # 'make' : 'valgrind-test-art-host64',
-        'env': {
-            'ART_USE_READ_BARRIER' : 'false'
-        }
-    },
 
    # ASAN (host) configurations.
 
