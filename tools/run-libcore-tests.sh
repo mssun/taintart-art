@@ -157,7 +157,7 @@ fi
 # timeout when being asked to run packages, and some tests go above
 # the default timeout.
 if $gcstress && $debug && $device_mode; then
-  vogar_args="$vogar_args --timeout 960"
+  vogar_args="$vogar_args --timeout 1440"
 else
   vogar_args="$vogar_args --timeout 480"
 fi
@@ -195,4 +195,7 @@ esac
 # Run the tests using vogar.
 echo "Running tests for the following test packages:"
 echo ${working_packages[@]} | tr " " "\n"
-vogar $vogar_args $expectations $(cparg $DEPS) ${working_packages[@]}
+
+cmd="vogar $vogar_args $expectations $(cparg $DEPS) ${working_packages[@]}"
+echo "Running $cmd"
+eval $cmd
