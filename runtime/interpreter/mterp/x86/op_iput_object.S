@@ -6,7 +6,7 @@
     movl    rINST, OUT_ARG2(%esp)
     movl    rSELF, %eax
     movl    %eax, OUT_ARG3(%esp)
-    call    SYMBOL(MterpIputObject)
+    call    SYMBOL(MterpIPutObj)
     testb   %al, %al
     jz      MterpException
     RESTORE_IBASE

@@ -1,1 +1,1 @@
-%include "x86/op_iget.S" { "helper":"artGetShortInstanceFromMterp" }
+%include "x86/op_iget.S" { "helper":"MterpIGetI16" }

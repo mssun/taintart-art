@@ -1,1 +1,1 @@
-%include "mips64/op_iget.S" { "helper":"artGetByteInstanceFromMterp" }
+%include "mips64/op_iget.S" { "helper":"MterpIGetI8" }

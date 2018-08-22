@@ -1,1 +1,1 @@
-%include "x86_64/op_sput.S" {"helper":"MterpSetByteStatic"}
+%include "x86_64/op_sput.S" {"helper":"MterpSPutI8"}

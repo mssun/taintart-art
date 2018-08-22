@@ -1,4 +1,4 @@
-%default { "helper":"MterpSet32Static"}
+%default { "helper":"MterpSPutU32"}
     /*
      * General SPUT handler.
      *

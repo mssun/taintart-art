@@ -4,12 +4,12 @@
      */
     /* sget-wide vAA, field@BBBB */
 
-    .extern MterpGet64Static
+    .extern MterpSGetU64
     EXPORT_PC
     FETCH r0, 1                         @ r0<- field ref BBBB
     ldr   r1, [rFP, #OFF_FP_METHOD]
     mov   r2, rSELF
-    bl    MterpGet64Static
+    bl    MterpSGetU64
     ldr   r3, [rSELF, #THREAD_EXCEPTION_OFFSET]
     mov   r9, rINST, lsr #8             @ r9<- AA
     VREG_INDEX_TO_ADDR lr, r9           @ r9<- &fp[AA]

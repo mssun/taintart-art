@@ -1,1 +1,1 @@
-%include "mips/op_iput.S" { "handler":"artSet8InstanceFromMterp" }
+%include "mips/op_iput.S" { "helper":"MterpIPutU8" }
