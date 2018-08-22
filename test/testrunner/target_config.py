@@ -265,6 +265,13 @@ target_config = {
             'ART_USE_READ_BARRIER' : 'false'
         }
     },
+    'art-generational-cc': {
+        'make' : 'test-art-host-gtest',
+        'run-test' : [],
+        'env' : {
+            'ART_USE_GENERATIONAL_CC' : 'true'
+        }
+    },
 
    # ASAN (host) configurations.
 
