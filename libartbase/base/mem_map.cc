@@ -365,7 +365,7 @@ static ptrdiff_t PointerDiff(A* a, B* b) {
 
 bool MemMap::ReplaceWith(MemMap* source, /*out*/std::string* error) {
 #if !HAVE_MREMAP_SYSCALL
-  UNUSED(source_ptr);
+  UNUSED(source);
   *error = "Cannot perform atomic replace because we are missing the required mremap syscall";
   return false;
 #else  // !HAVE_MREMAP_SYSCALL
