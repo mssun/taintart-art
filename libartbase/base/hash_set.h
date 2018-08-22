@@ -359,6 +359,9 @@ class HashSet {
   // and set the empty slot to be the location we just moved from.
   // Relies on maintaining the invariant that there's no empty slots from the 'ideal' index of an
   // element to its actual location/index.
+  // Note that since erase shuffles back elements, it may result in the same element being visited
+  // twice during HashSet iteration. This happens when an element already visited during iteration
+  // gets shuffled to the end of the bucket array.
   iterator erase(iterator it) {
     // empty_index is the index that will become empty.
     size_t empty_index = it.index_;
