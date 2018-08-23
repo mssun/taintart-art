@@ -1825,11 +1825,11 @@ class ImageDumper {
       oat_file = OatFile::Open(/* zip_fd */ -1,
                                oat_location,
                                oat_location,
-                               nullptr,
-                               nullptr,
-                               false,
-                               /*low_4gb*/false,
-                               nullptr,
+                               /* requested_base */ nullptr,
+                               /* executable */ false,
+                               /* low_4gb */ false,
+                               /* abs_dex_location */ nullptr,
+                               /* reservation */ nullptr,
                                &error_msg);
     }
     if (oat_file == nullptr) {
@@ -2723,11 +2723,11 @@ static int DumpImages(Runtime* runtime, OatDumperOptions* options, std::ostream*
     std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
                                                     options->app_oat_,
                                                     options->app_oat_,
-                                                    nullptr,
-                                                    nullptr,
-                                                    false,
-                                                    /*low_4gb*/true,
-                                                    nullptr,
+                                                    /* requested_base */ nullptr,
+                                                    /* executable */ false,
+                                                    /* low_4gb */ true,
+                                                    /* abs_dex_location */ nullptr,
+                                                    /* reservation */ nullptr,
                                                     &error_msg));
     if (oat_file == nullptr) {
       LOG(ERROR) << "Failed to open oat file " << options->app_oat_ << " with error " << error_msg;
@@ -2847,11 +2847,11 @@ static int DumpOat(Runtime* runtime,
   std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
                                                   oat_filename,
                                                   oat_filename,
-                                                  nullptr,
-                                                  nullptr,
-                                                  false,
-                                                  /*low_4gb*/false,
+                                                  /* requested_base */ nullptr,
+                                                  /* executable */ false,
+                                                  /* low_4gb */ false,
                                                   dex_filename,
+                                                  /* reservation */ nullptr,
                                                   &error_msg));
   if (oat_file == nullptr) {
     LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;
@@ -2873,11 +2873,11 @@ static int SymbolizeOat(const char* oat_filename,
   std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
                                                   oat_filename,
                                                   oat_filename,
-                                                  nullptr,
-                                                  nullptr,
-                                                  false,
-                                                  /*low_4gb*/false,
+                                                  /* requested_base */ nullptr,
+                                                  /* executable */ false,
+                                                  /* low_4gb */ false,
                                                   dex_filename,
+                                                  /* reservation */ nullptr,
                                                   &error_msg));
   if (oat_file == nullptr) {
     LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;
@@ -2921,11 +2921,11 @@ class IMTDumper {
       std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
                                                       oat_filename,
                                                       oat_filename,
-                                                      nullptr,
-                                                      nullptr,
-                                                      false,
+                                                      /* requested_base */ nullptr,
+                                                      /* executable */ false,
                                                       /*low_4gb*/false,
                                                       dex_filename,
+                                                      /* reservation */ nullptr,
                                                       &error_msg));
       if (oat_file == nullptr) {
         LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;

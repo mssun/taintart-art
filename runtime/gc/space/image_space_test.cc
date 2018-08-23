@@ -46,11 +46,11 @@ TEST_F(DexoptTest, ValidateOatFile) {
   std::unique_ptr<OatFile> oat(OatFile::Open(/* zip_fd */ -1,
                                              oat_location.c_str(),
                                              oat_location.c_str(),
-                                             nullptr,
-                                             nullptr,
-                                             false,
-                                             /*low_4gb*/false,
-                                             nullptr,
+                                             /* requested_base */ nullptr,
+                                             /* executable */ false,
+                                             /* low_4gb */ false,
+                                             /* abs_dex_location */ nullptr,
+                                             /* reservation */ nullptr,
                                              &error_msg));
   ASSERT_TRUE(oat != nullptr) << error_msg;
 
