@@ -905,13 +905,8 @@ void ConcurrentCopying::MarkingPhase() {
       // during a minor (young-generation) collection:
       // - In the case where we run with a boot image, these classes are part of the image space,
       //   which is an immune space.
-      // - In the case where we run without a boot image, these classes are allocated in the region
-      //   space (main space), but they are not expected to move during a minor collection (this
-      //   would only happen if those classes were allocated between a major and a minor
-      //   collections, which is unlikely -- we don't expect any GC to happen before these
-      //   fundamental classes are initialized). Note that these classes could move during a major
-      //   collection though, but this is fine: in that case, the whole heap is traced and the card
-      //   table logic below is not used.
+      // - In the case where we run without a boot image, these classes are allocated in the
+      //   non-moving space (see art::ClassLinker::InitWithoutImage).
       Runtime::Current()->GetHeap()->GetCardTable()->Scan<false>(
           space->GetMarkBitmap(),
           space->Begin(),
