@@ -165,18 +165,19 @@ CLASS_ROOT_LIST(SPECIALIZE_CLASS_ROOT_SELECTOR)
 template <class MirrorType, ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
 inline ObjPtr<mirror::Class> GetClassRoot(ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return GetClassRoot<kWithReadBarrier>(detail::ClassRootSelector<MirrorType>::value, class_roots);
+  return GetClassRoot<kReadBarrierOption>(detail::ClassRootSelector<MirrorType>::value,
+                                          class_roots);
 }
 
 template <class MirrorType, ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
 inline ObjPtr<mirror::Class> GetClassRoot(ClassLinker* linker)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return GetClassRoot<kWithReadBarrier>(detail::ClassRootSelector<MirrorType>::value, linker);
+  return GetClassRoot<kReadBarrierOption>(detail::ClassRootSelector<MirrorType>::value, linker);
 }
 
 template <class MirrorType, ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
 inline ObjPtr<mirror::Class> GetClassRoot() REQUIRES_SHARED(Locks::mutator_lock_) {
-  return GetClassRoot<kWithReadBarrier>(detail::ClassRootSelector<MirrorType>::value);
+  return GetClassRoot<kReadBarrierOption>(detail::ClassRootSelector<MirrorType>::value);
 }
 
 }  // namespace art
