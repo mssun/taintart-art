@@ -1,5 +1,5 @@
     /* iput-wide vA, vB, field@CCCC */
-    .extern artSet64InstanceFromMterp
+    .extern MterpIPutU64
     EXPORT_PC
     movzwl  2(rPC), %eax                    # eax <- 0000CCCC
     movl    %eax, OUT_ARG0(%esp)            # field ref CCCC
@@ -12,7 +12,7 @@
     movl    %eax, OUT_ARG2(%esp)            # &fp[A]
     movl    OFF_FP_METHOD(rFP), %eax
     movl    %eax, OUT_ARG3(%esp)            # referrer
-    call    SYMBOL(artSet64InstanceFromMterp)
+    call    SYMBOL(MterpIPutU64)
     testb   %al, %al
     jnz     MterpPossibleException
     RESTORE_IBASE

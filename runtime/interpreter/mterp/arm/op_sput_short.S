@@ -1,1 +1,1 @@
-%include "arm/op_sput.S" {"helper":"MterpSetShortStatic"}
+%include "arm/op_sput.S" {"helper":"MterpSPutI16"}

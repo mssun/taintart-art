@@ -3,7 +3,7 @@
  *
  */
     /* sput-wide vAA, field@BBBB */
-    .extern MterpSet64Static
+    .extern MterpSPutU64
     EXPORT_PC
     movzwl  2(rPC), %eax
     movl    %eax, OUT_ARG0(%esp)            # field ref BBBB
@@ -13,7 +13,7 @@
     movl    %eax, OUT_ARG2(%esp)            # referrer
     movl    rSELF, %ecx
     movl    %ecx, OUT_ARG3(%esp)            # self
-    call    SYMBOL(MterpSet64Static)
+    call    SYMBOL(MterpSPutU64)
     testb   %al, %al
     jnz     MterpException
     RESTORE_IBASE

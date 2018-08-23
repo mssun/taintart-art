@@ -1,1 +1,1 @@
-%include "mips/op_sget.S" {"helper":"MterpGetCharStatic"}
+%include "mips/op_sget.S" {"helper":"MterpSGetU16"}

@@ -1,1 +1,1 @@
-%include "x86_64/op_sget.S" {"helper":"MterpGetByteStatic"}
+%include "x86_64/op_sget.S" {"helper":"MterpSGetI8"}

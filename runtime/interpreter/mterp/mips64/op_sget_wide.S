@@ -3,12 +3,12 @@
      *
      */
     /* sget-wide vAA, field//BBBB */
-    .extern MterpGet64Static
+    .extern MterpSGetU64
     EXPORT_PC
     lhu     a0, 2(rPC)                  # a0 <- field ref BBBB
     ld      a1, OFF_FP_METHOD(rFP)
     move    a2, rSELF
-    jal     MterpGet64Static
+    jal     MterpSGetU64
     ld      a3, THREAD_EXCEPTION_OFFSET(rSELF)
     srl     a4, rINST, 8                # a4 <- AA
     bnez    a3, MterpException          # bail out

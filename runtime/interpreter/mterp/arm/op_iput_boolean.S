@@ -1,1 +1,1 @@
-%include "arm/op_iput.S" { "handler":"artSet8InstanceFromMterp" }
+%include "arm/op_iput.S" { "helper":"MterpIPutU8" }

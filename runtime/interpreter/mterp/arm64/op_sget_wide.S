@@ -4,12 +4,12 @@
      */
     /* sget-wide vAA, field//BBBB */
 
-    .extern MterpGet64StaticFromCode
+    .extern MterpSGetU64
     EXPORT_PC
     FETCH w0, 1                         // w0<- field ref BBBB
     ldr   x1, [xFP, #OFF_FP_METHOD]
     mov   x2, xSELF
-    bl    MterpGet64Static
+    bl    MterpSGetU64
     ldr   x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
     lsr   w4, wINST, #8                 // w4<- AA
     cbnz  x3, MterpException            // bail out

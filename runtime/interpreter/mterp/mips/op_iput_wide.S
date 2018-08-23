@@ -1,5 +1,5 @@
     /* iput-wide vA, vB, field@CCCC */
-    .extern artSet64InstanceFromMterp
+    .extern MterpIPutU64
     EXPORT_PC()
     FETCH(a0, 1)                           # a0 <- field ref CCCC
     GET_OPB(a1)                            # a1 <- B
@@ -8,7 +8,7 @@
     EAS2(a2, rFP, a2)                      # a2 <- &fp[A]
     lw    a3, OFF_FP_METHOD(rFP)           # a3 <- referrer
     PREFETCH_INST(2)                       # load rINST
-    JAL(artSet64InstanceFromMterp)
+    JAL(MterpIPutU64)
     bnez  v0, MterpPossibleException       # bail out
     ADVANCE(2)                             # advance rPC
     GET_INST_OPCODE(t0)                    # extract opcode from rINST

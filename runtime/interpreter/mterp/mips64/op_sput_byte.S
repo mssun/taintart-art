@@ -1,1 +1,1 @@
-%include "mips64/op_sput.S" {"helper":"MterpSetByteStatic"}
+%include "mips64/op_sput.S" {"helper":"MterpSPutI8"}

@@ -1,1 +1,1 @@
-%include "mips64/op_iput.S" { "helper":"artSet16InstanceFromMterp" }
+%include "mips64/op_iput.S" { "helper":"MterpIPutI16" }

@@ -4,7 +4,7 @@
     REFRESH_INST ${opnum}
     movq    rINSTq, OUT_ARG2
     movq    rSELF, OUT_ARG3
-    call    SYMBOL(MterpSputObject)
+    call    SYMBOL(MterpSPutObj)
     testb   %al, %al
     jz      MterpException
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 2

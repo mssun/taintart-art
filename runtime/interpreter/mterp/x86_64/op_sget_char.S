@@ -1,1 +1,1 @@
-%include "x86_64/op_sget.S" {"helper":"MterpGetCharStatic"}
+%include "x86_64/op_sget.S" {"helper":"MterpSGetU16"}
