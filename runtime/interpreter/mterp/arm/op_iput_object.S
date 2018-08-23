@@ -3,7 +3,7 @@
     mov     r1, rPC
     mov     r2, rINST
     mov     r3, rSELF
-    bl      MterpIputObject
+    bl      MterpIPutObj
     cmp     r0, #0
     beq     MterpException
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST

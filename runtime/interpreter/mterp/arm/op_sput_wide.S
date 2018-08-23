@@ -3,7 +3,7 @@
      *
      */
     /* sput-wide vAA, field@BBBB */
-    .extern MterpSet64Static
+    .extern MterpSPutU64
     EXPORT_PC
     FETCH   r0, 1                       @ r0<- field ref BBBB
     mov     r1, rINST, lsr #8           @ r1<- AA
@@ -11,7 +11,7 @@
     ldr     r2, [rFP, #OFF_FP_METHOD]
     mov     r3, rSELF
     PREFETCH_INST 2                     @ Get next inst, but don't advance rPC
-    bl      MterpSet64Static
+    bl      MterpSPutU64
     cmp     r0, #0                      @ 0 on success, -1 on failure
     bne     MterpException
     ADVANCE 2                           @ Past exception point - now advance rPC

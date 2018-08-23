@@ -490,7 +490,7 @@ extern "C" size_t MterpNewInstance(ShadowFrame* shadow_frame, Thread* self, uint
   return true;
 }
 
-extern "C" size_t MterpSputObject(ShadowFrame* shadow_frame, uint16_t* dex_pc_ptr,
+extern "C" size_t MterpSPutObj(ShadowFrame* shadow_frame, uint16_t* dex_pc_ptr,
                                 uint32_t inst_data, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const Instruction* inst = Instruction::At(dex_pc_ptr);
@@ -498,7 +498,7 @@ extern "C" size_t MterpSputObject(ShadowFrame* shadow_frame, uint16_t* dex_pc_pt
       (self, *shadow_frame, inst, inst_data);
 }
 
-extern "C" size_t MterpIputObject(ShadowFrame* shadow_frame,
+extern "C" size_t MterpIPutObj(ShadowFrame* shadow_frame,
                                   uint16_t* dex_pc_ptr,
                                   uint32_t inst_data,
                                   Thread* self)
@@ -734,11 +734,11 @@ ALWAYS_INLINE RetType artGetInstanceFromMterpFast(uint32_t field_idx,
   return artGetInstanceFromMterp<PrimType, RetType, Getter, kType>(field_idx, obj, referrer, self);
 }
 
-#define ART_GET_FIELD_FROM_MTERP(Kind, PrimType, RetType, Ptr)                                    \
-extern "C" RetType artGet ## Kind ## InstanceFromMterp(uint32_t field_idx,                        \
-                                                       mirror::Object* obj,                       \
-                                                       ArtMethod* referrer,                       \
-                                                       Thread* self)                              \
+#define ART_GET_FIELD_FROM_MTERP(Suffix, Kind, PrimType, RetType, Ptr)                            \
+extern "C" RetType MterpIGet ## Suffix(uint32_t field_idx,                                        \
+                                       mirror::Object* obj,                                       \
+                                       ArtMethod* referrer,                                       \
+                                       Thread* self)                                              \
       REQUIRES_SHARED(Locks::mutator_lock_) {                                                     \
   struct Getter { /* Specialize the field load depending on the field type */                     \
     static RetType Get(mirror::Object* o, ArtField* f) REQUIRES_SHARED(Locks::mutator_lock_) {    \
@@ -748,58 +748,72 @@ extern "C" RetType artGet ## Kind ## InstanceFromMterp(uint32_t field_idx,      
   return artGetInstanceFromMterpFast<PrimType, RetType, Getter>(field_idx, obj, referrer, self);  \
 }                                                                                                 \
 
-ART_GET_FIELD_FROM_MTERP(Byte, int8_t, ssize_t, )
-ART_GET_FIELD_FROM_MTERP(Boolean, uint8_t, size_t, )
-ART_GET_FIELD_FROM_MTERP(Short, int16_t, ssize_t, )
-ART_GET_FIELD_FROM_MTERP(Char, uint16_t, size_t, )
-ART_GET_FIELD_FROM_MTERP(32, uint32_t, size_t, )
-ART_GET_FIELD_FROM_MTERP(64, uint64_t, uint64_t, )
-ART_GET_FIELD_FROM_MTERP(Obj, mirror::HeapReference<mirror::Object>, mirror::Object*, .Ptr())
+ART_GET_FIELD_FROM_MTERP(I8, Byte, int8_t, ssize_t, )
+ART_GET_FIELD_FROM_MTERP(U8, Boolean, uint8_t, size_t, )
+ART_GET_FIELD_FROM_MTERP(I16, Short, int16_t, ssize_t, )
+ART_GET_FIELD_FROM_MTERP(U16, Char, uint16_t, size_t, )
+ART_GET_FIELD_FROM_MTERP(U32, 32, uint32_t, size_t, )
+ART_GET_FIELD_FROM_MTERP(U64, 64, uint64_t, uint64_t, )
+ART_GET_FIELD_FROM_MTERP(Obj, Obj, mirror::HeapReference<mirror::Object>, mirror::Object*, .Ptr())
 
 #undef ART_GET_FIELD_FROM_MTERP
 
-extern "C" ssize_t artSet8InstanceFromMterp(uint32_t field_idx,
-                                            mirror::Object* obj,
-                                            uint8_t new_value,
-                                            ArtMethod* referrer)
+extern "C" ssize_t MterpIPutU8(uint32_t field_idx,
+                               mirror::Object* obj,
+                               uint8_t new_value,
+                               ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr && obj != nullptr)) {
-    Primitive::Type type = field->GetTypeAsPrimitiveType();
-    if (type == Primitive::kPrimBoolean) {
-      field->SetBoolean<false>(obj, new_value);
-    } else {
-      DCHECK_EQ(Primitive::kPrimByte, type);
-      field->SetByte<false>(obj, new_value);
-    }
+    field->SetBoolean<false>(obj, new_value);
     return 0;  // success
   }
   return -1;  // failure
 }
 
-extern "C" ssize_t artSet16InstanceFromMterp(uint32_t field_idx,
-                                             mirror::Object* obj,
-                                             uint16_t new_value,
-                                             ArtMethod* referrer)
+extern "C" ssize_t MterpIPutI8(uint32_t field_idx,
+                               mirror::Object* obj,
+                               uint8_t new_value,
+                               ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr && obj != nullptr)) {
-    Primitive::Type type = field->GetTypeAsPrimitiveType();
-    if (type == Primitive::kPrimChar) {
-      field->SetChar<false>(obj, new_value);
-    } else {
-      DCHECK_EQ(Primitive::kPrimShort, type);
-      field->SetShort<false>(obj, new_value);
-    }
+    field->SetByte<false>(obj, new_value);
     return 0;  // success
   }
   return -1;  // failure
 }
 
-extern "C" ssize_t artSet32InstanceFromMterp(uint32_t field_idx,
-                                             mirror::Object* obj,
-                                             uint32_t new_value,
-                                             ArtMethod* referrer)
+extern "C" ssize_t MterpIPutU16(uint32_t field_idx,
+                                mirror::Object* obj,
+                                uint16_t new_value,
+                                ArtMethod* referrer)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
+  if (LIKELY(field != nullptr && obj != nullptr)) {
+    field->SetChar<false>(obj, new_value);
+    return 0;  // success
+  }
+  return -1;  // failure
+}
+
+extern "C" ssize_t MterpIPutI16(uint32_t field_idx,
+                                mirror::Object* obj,
+                                uint16_t new_value,
+                                ArtMethod* referrer)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
+  if (LIKELY(field != nullptr && obj != nullptr)) {
+    field->SetShort<false>(obj, new_value);
+    return 0;  // success
+  }
+  return -1;  // failure
+}
+
+extern "C" ssize_t MterpIPutU32(uint32_t field_idx,
+                                mirror::Object* obj,
+                                uint32_t new_value,
+                                ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr && obj != nullptr)) {
@@ -809,10 +823,10 @@ extern "C" ssize_t artSet32InstanceFromMterp(uint32_t field_idx,
   return -1;  // failure
 }
 
-extern "C" ssize_t artSet64InstanceFromMterp(uint32_t field_idx,
-                                             mirror::Object* obj,
-                                             uint64_t* new_value,
-                                             ArtMethod* referrer)
+extern "C" ssize_t MterpIPutU64(uint32_t field_idx,
+                                mirror::Object* obj,
+                                uint64_t* new_value,
+                                ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ArtField* field = referrer->GetDexCache()->GetResolvedField(field_idx, kRuntimePointerSize);
   if (LIKELY(field != nullptr  && obj != nullptr)) {
@@ -854,9 +868,9 @@ ALWAYS_INLINE return_type MterpGetStatic(uint32_t field_idx,
   return res;
 }
 
-extern "C" int32_t MterpGetBooleanStatic(uint32_t field_idx,
-                                         ArtMethod* referrer,
-                                         Thread* self)
+extern "C" int32_t MterpSGetU8(uint32_t field_idx,
+                               ArtMethod* referrer,
+                               Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpGetStatic<uint8_t, Primitive::kPrimBoolean>(field_idx,
                                                           referrer,
@@ -864,9 +878,9 @@ extern "C" int32_t MterpGetBooleanStatic(uint32_t field_idx,
                                                           &ArtField::GetBoolean);
 }
 
-extern "C" int32_t MterpGetByteStatic(uint32_t field_idx,
-                                      ArtMethod* referrer,
-                                      Thread* self)
+extern "C" int32_t MterpSGetI8(uint32_t field_idx,
+                               ArtMethod* referrer,
+                               Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpGetStatic<int8_t, Primitive::kPrimByte>(field_idx,
                                                       referrer,
@@ -874,9 +888,9 @@ extern "C" int32_t MterpGetByteStatic(uint32_t field_idx,
                                                       &ArtField::GetByte);
 }
 
-extern "C" uint32_t MterpGetCharStatic(uint32_t field_idx,
-                                       ArtMethod* referrer,
-                                       Thread* self)
+extern "C" uint32_t MterpSGetU16(uint32_t field_idx,
+                                 ArtMethod* referrer,
+                                 Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpGetStatic<uint16_t, Primitive::kPrimChar>(field_idx,
                                                         referrer,
@@ -884,9 +898,9 @@ extern "C" uint32_t MterpGetCharStatic(uint32_t field_idx,
                                                         &ArtField::GetChar);
 }
 
-extern "C" int32_t MterpGetShortStatic(uint32_t field_idx,
-                                       ArtMethod* referrer,
-                                       Thread* self)
+extern "C" int32_t MterpSGetI16(uint32_t field_idx,
+                                ArtMethod* referrer,
+                                Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpGetStatic<int16_t, Primitive::kPrimShort>(field_idx,
                                                         referrer,
@@ -894,9 +908,9 @@ extern "C" int32_t MterpGetShortStatic(uint32_t field_idx,
                                                         &ArtField::GetShort);
 }
 
-extern "C" mirror::Object* MterpGetObjStatic(uint32_t field_idx,
-                                             ArtMethod* referrer,
-                                             Thread* self)
+extern "C" mirror::Object* MterpSGetObj(uint32_t field_idx,
+                                        ArtMethod* referrer,
+                                        Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpGetStatic<ObjPtr<mirror::Object>, Primitive::kPrimNot>(field_idx,
                                                                      referrer,
@@ -904,9 +918,9 @@ extern "C" mirror::Object* MterpGetObjStatic(uint32_t field_idx,
                                                                      &ArtField::GetObject).Ptr();
 }
 
-extern "C" int32_t MterpGet32Static(uint32_t field_idx,
-                                    ArtMethod* referrer,
-                                    Thread* self)
+extern "C" int32_t MterpSGetU32(uint32_t field_idx,
+                                ArtMethod* referrer,
+                                Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpGetStatic<int32_t, Primitive::kPrimInt>(field_idx,
                                                       referrer,
@@ -914,7 +928,7 @@ extern "C" int32_t MterpGet32Static(uint32_t field_idx,
                                                       &ArtField::GetInt);
 }
 
-extern "C" int64_t MterpGet64Static(uint32_t field_idx, ArtMethod* referrer, Thread* self)
+extern "C" int64_t MterpSGetU64(uint32_t field_idx, ArtMethod* referrer, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpGetStatic<int64_t, Primitive::kPrimLong>(field_idx,
                                                        referrer,
@@ -942,10 +956,10 @@ int MterpSetStatic(uint32_t field_idx,
   return res;
 }
 
-extern "C" int MterpSetBooleanStatic(uint32_t field_idx,
-                                     uint8_t new_value,
-                                     ArtMethod* referrer,
-                                     Thread* self)
+extern "C" int MterpSPutU8(uint32_t field_idx,
+                           uint8_t new_value,
+                           ArtMethod* referrer,
+                           Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpSetStatic<uint8_t, Primitive::kPrimBoolean>(field_idx,
                                                           new_value,
@@ -954,10 +968,10 @@ extern "C" int MterpSetBooleanStatic(uint32_t field_idx,
                                                           &ArtField::SetBoolean<false>);
 }
 
-extern "C" int MterpSetByteStatic(uint32_t field_idx,
-                                  int8_t new_value,
-                                  ArtMethod* referrer,
-                                  Thread* self)
+extern "C" int MterpSPutI8(uint32_t field_idx,
+                           int8_t new_value,
+                           ArtMethod* referrer,
+                           Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpSetStatic<int8_t, Primitive::kPrimByte>(field_idx,
                                                       new_value,
@@ -966,10 +980,10 @@ extern "C" int MterpSetByteStatic(uint32_t field_idx,
                                                       &ArtField::SetByte<false>);
 }
 
-extern "C" int MterpSetCharStatic(uint32_t field_idx,
-                                  uint16_t new_value,
-                                  ArtMethod* referrer,
-                                  Thread* self)
+extern "C" int MterpSPutU16(uint32_t field_idx,
+                            uint16_t new_value,
+                            ArtMethod* referrer,
+                            Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpSetStatic<uint16_t, Primitive::kPrimChar>(field_idx,
                                                         new_value,
@@ -978,10 +992,10 @@ extern "C" int MterpSetCharStatic(uint32_t field_idx,
                                                         &ArtField::SetChar<false>);
 }
 
-extern "C" int MterpSetShortStatic(uint32_t field_idx,
-                                   int16_t new_value,
-                                   ArtMethod* referrer,
-                                   Thread* self)
+extern "C" int MterpSPutI16(uint32_t field_idx,
+                            int16_t new_value,
+                            ArtMethod* referrer,
+                            Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpSetStatic<int16_t, Primitive::kPrimShort>(field_idx,
                                                         new_value,
@@ -990,10 +1004,10 @@ extern "C" int MterpSetShortStatic(uint32_t field_idx,
                                                         &ArtField::SetShort<false>);
 }
 
-extern "C" int MterpSet32Static(uint32_t field_idx,
-                                int32_t new_value,
-                                ArtMethod* referrer,
-                                Thread* self)
+extern "C" int MterpSPutU32(uint32_t field_idx,
+                            int32_t new_value,
+                            ArtMethod* referrer,
+                            Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpSetStatic<int32_t, Primitive::kPrimInt>(field_idx,
                                                       new_value,
@@ -1002,10 +1016,10 @@ extern "C" int MterpSet32Static(uint32_t field_idx,
                                                       &ArtField::SetInt<false>);
 }
 
-extern "C" int MterpSet64Static(uint32_t field_idx,
-                                int64_t* new_value,
-                                ArtMethod* referrer,
-                                Thread* self)
+extern "C" int MterpSPutU64(uint32_t field_idx,
+                            int64_t* new_value,
+                            ArtMethod* referrer,
+                            Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return MterpSetStatic<int64_t, Primitive::kPrimLong>(field_idx,
                                                        *new_value,

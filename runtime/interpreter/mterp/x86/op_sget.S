@@ -1,4 +1,4 @@
-%default { "is_object":"0", "helper":"MterpGet32Static" }
+%default { "is_object":"0", "helper":"MterpSGetU32" }
 /*
  * General SGET handler wrapper.
  *

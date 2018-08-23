@@ -1,1 +1,1 @@
-%include "arm/op_sget.S" {"helper":"MterpGetShortStatic"}
+%include "arm/op_sget.S" {"helper":"MterpSGetI16"}

@@ -1,11 +1,11 @@
-%default { "handler":"artSet32InstanceFromMterp" }
+%default { "helper":"MterpIPutU32" }
 /*
  * General 32-bit instance field put.
  *
  * for: iput, iput-object, iput-boolean, iput-byte, iput-char, iput-short
  */
     /* op vA, vB, field@CCCC */
-    .extern $handler
+    .extern $helper
     EXPORT_PC
     movzwl  2(rPC), %eax                    # eax<- 0000CCCC
     movl    %eax, OUT_ARG0(%esp)            # field ref CCCC
@@ -18,7 +18,7 @@
     movl    %eax, OUT_ARG2(%esp)            # fp[A]
     movl    OFF_FP_METHOD(rFP), %eax
     movl    %eax, OUT_ARG3(%esp)            # referrer
-    call    SYMBOL($handler)
+    call    SYMBOL($helper)
     testb   %al, %al
     jnz     MterpPossibleException
     RESTORE_IBASE

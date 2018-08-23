@@ -1,1 +1,1 @@
-%include "x86/op_sput.S" {"helper":"MterpSetShortStatic"}
+%include "x86/op_sput.S" {"helper":"MterpSPutI16"}

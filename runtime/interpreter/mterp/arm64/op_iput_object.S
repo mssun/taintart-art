@@ -3,7 +3,7 @@
     mov     x1, xPC
     mov     w2, wINST
     mov     x3, xSELF
-    bl      MterpIputObject
+    bl      MterpIPutObj
     cbz     w0, MterpException
     FETCH_ADVANCE_INST 2                // advance rPC, load rINST
     GET_INST_OPCODE ip                  // extract opcode from rINST

@@ -1,4 +1,4 @@
-%default { "extend":"", "is_object":"0", "helper":"artGet32InstanceFromMterp"}
+%default { "extend":"", "is_object":"0", "helper":"MterpIGetU32"}
     /*
      * General instance field get.
      *
