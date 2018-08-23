@@ -1,1 +1,1 @@
-%include "mips/op_iget.S" { "helper":"artGetShortInstanceFromMterp" }
+%include "mips/op_iget.S" { "helper":"MterpIGetI16" }

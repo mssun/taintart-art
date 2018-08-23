@@ -1,5 +1,5 @@
     /* iput-wide vA, vB, field//CCCC */
-    .extern artSet64InstanceFromMterp
+    .extern MterpIPutU64
     EXPORT_PC
     FETCH    w0, 1                      // w0<- field ref CCCC
     lsr      w1, wINST, #12             // w1<- B
@@ -8,7 +8,7 @@
     VREG_INDEX_TO_ADDR x2, x2           // w2<- &fp[A]
     ldr      x3, [xFP, #OFF_FP_METHOD]  // w3<- referrer
     PREFETCH_INST 2
-    bl       artSet64InstanceFromMterp
+    bl       MterpIPutU64
     cbnz     w0, MterpPossibleException
     ADVANCE  2                          // advance rPC
     GET_INST_OPCODE ip                  // extract opcode from wINST

@@ -1,1 +1,1 @@
-%include "mips/op_iget.S" { "helper":"artGetBooleanInstanceFromMterp" }
+%include "mips/op_iget.S" { "helper":"MterpIGetU8" }

@@ -1,11 +1,11 @@
-%default { "is_object":"0", "handler":"artSet32InstanceFromMterp" }
+%default { "is_object":"0", "helper":"MterpIPutU32" }
     /*
      * General 32-bit instance field put.
      *
      * for: iput, iput-object, iput-boolean, iput-byte, iput-char, iput-short
      */
     /* op vA, vB, field//CCCC */
-    .extern $handler
+    .extern $helper
     EXPORT_PC
     FETCH    w0, 1                      // w0<- field ref CCCC
     lsr      w1, wINST, #12             // w1<- B
@@ -14,7 +14,7 @@
     GET_VREG w2, w2                     // w2<- fp[A]
     ldr      x3, [xFP, #OFF_FP_METHOD]  // w3<- referrer
     PREFETCH_INST 2
-    bl       $handler
+    bl       $helper
     cbnz     w0, MterpPossibleException
     ADVANCE  2                          // advance rPC
     GET_INST_OPCODE ip                  // extract opcode from rINST

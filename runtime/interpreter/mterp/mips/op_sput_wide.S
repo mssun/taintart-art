@@ -2,7 +2,7 @@
      * 64-bit SPUT handler.
      */
     /* sput-wide vAA, field@BBBB */
-    .extern MterpSet64Static
+    .extern MterpSPutU64
     EXPORT_PC()
     FETCH(a0, 1)                           # a0 <- field ref CCCC
     GET_OPA(a1)                            # a1 <- AA
@@ -10,7 +10,7 @@
     lw    a2, OFF_FP_METHOD(rFP)           # a2 <- method
     move  a3, rSELF                        # a3 <- self
     PREFETCH_INST(2)                       # load rINST
-    JAL(MterpSet64Static)
+    JAL(MterpSPutU64)
     bnez  v0, MterpException               # bail out
     ADVANCE(2)                             # advance rPC
     GET_INST_OPCODE(t0)                    # extract opcode from rINST
