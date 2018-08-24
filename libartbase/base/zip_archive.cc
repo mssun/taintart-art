@@ -79,7 +79,6 @@ MemMap ZipEntry::ExtractToMemMap(const char* zip_filename,
                                     GetUncompressedLength(),
                                     PROT_READ | PROT_WRITE,
                                     /* low_4gb */ false,
-                                    /* reuse */ false,
                                     error_msg);
   if (!map.IsValid()) {
     DCHECK(!error_msg->empty());

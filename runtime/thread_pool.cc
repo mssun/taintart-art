@@ -51,7 +51,6 @@ ThreadPoolWorker::ThreadPoolWorker(ThreadPool* thread_pool, const std::string& n
                                 stack_size,
                                 PROT_READ | PROT_WRITE,
                                 /* low_4gb */ false,
-                                /* reuse */ false,
                                 &error_msg);
   CHECK(stack_.IsValid()) << error_msg;
   CHECK_ALIGNED(stack_.Begin(), kPageSize);

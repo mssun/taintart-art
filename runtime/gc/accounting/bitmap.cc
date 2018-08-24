@@ -53,7 +53,6 @@ MemMap Bitmap::AllocateMemMap(const std::string& name, size_t num_bits) {
                                         bitmap_size,
                                         PROT_READ | PROT_WRITE,
                                         /* low_4gb */ false,
-                                        /* reuse */ false,
                                         &error_msg);
   if (UNLIKELY(!mem_map.IsValid())) {
     LOG(ERROR) << "Failed to allocate bitmap " << name << ": " << error_msg;

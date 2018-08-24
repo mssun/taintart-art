@@ -328,7 +328,6 @@ void CommonCompilerTest::ReserveImageSpace() {
                                             (size_t)120 * 1024 * 1024,  // 120MB
                                             PROT_NONE,
                                             false /* no need for 4gb flag with fixed mmap */,
-                                            false /* not reusing existing reservation */,
                                             &error_msg);
   CHECK(image_reservation_.IsValid()) << error_msg;
 }

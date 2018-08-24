@@ -139,7 +139,6 @@ ConcurrentCopying::ConcurrentCopying(Heap* heap,
         RoundUp(kSweepArrayChunkFreeSize * sizeof(mirror::Object*), kPageSize),
         PROT_READ | PROT_WRITE,
         /* low_4gb */ false,
-        /* reuse */ false,
         &error_msg);
     CHECK(sweep_array_free_buffer_mem_map_.IsValid())
         << "Couldn't allocate sweep array free buffer: " << error_msg;
