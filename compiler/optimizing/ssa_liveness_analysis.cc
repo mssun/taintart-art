@@ -103,9 +103,9 @@ void SsaLivenessAnalysis::ComputeLiveness() {
   ComputeLiveInAndLiveOutSets();
 }
 
-static void RecursivelyProcessInputs(HInstruction* current,
-                                     HInstruction* actual_user,
-                                     BitVector* live_in) {
+void SsaLivenessAnalysis::RecursivelyProcessInputs(HInstruction* current,
+                                                   HInstruction* actual_user,
+                                                   BitVector* live_in) {
   HInputsRef inputs = current->GetInputs();
   for (size_t i = 0; i < inputs.size(); ++i) {
     HInstruction* input = inputs[i];
@@ -131,7 +131,36 @@ static void RecursivelyProcessInputs(HInstruction* current,
       // Check that the inlined input is not a phi. Recursing on loop phis could
       // lead to an infinite loop.
       DCHECK(!input->IsPhi());
+      DCHECK(!input->HasEnvironment());
       RecursivelyProcessInputs(input, actual_user, live_in);
+    }
+  }
+}
+
+void SsaLivenessAnalysis::ProcessEnvironment(HInstruction* current,
+                                             HInstruction* actual_user,
+                                             BitVector* live_in) {
+  for (HEnvironment* environment = current->GetEnvironment();
+       environment != nullptr;
+       environment = environment->GetParent()) {
+    // Handle environment uses. See statements (b) and (c) of the
+    // SsaLivenessAnalysis.
+    for (size_t i = 0, e = environment->Size(); i < e; ++i) {
+      HInstruction* instruction = environment->GetInstructionAt(i);
+      if (instruction == nullptr) {
+        continue;
+      }
+      bool should_be_live = ShouldBeLiveForEnvironment(current, instruction);
+      // If this environment use does not keep the instruction live, it does not
+      // affect the live range of that instruction.
+      if (should_be_live) {
+        CHECK(instruction->HasSsaIndex()) << instruction->DebugName();
+        live_in->SetBit(instruction->GetSsaIndex());
+        instruction->GetLiveInterval()->AddUse(current,
+                                               environment,
+                                               i,
+                                               actual_user);
+      }
     }
   }
 }
@@ -186,32 +215,6 @@ void SsaLivenessAnalysis::ComputeLiveRanges() {
         current->GetLiveInterval()->SetFrom(current->GetLifetimePosition());
       }
 
-      // Process the environment first, because we know their uses come after
-      // or at the same liveness position of inputs.
-      for (HEnvironment* environment = current->GetEnvironment();
-           environment != nullptr;
-           environment = environment->GetParent()) {
-        // Handle environment uses. See statements (b) and (c) of the
-        // SsaLivenessAnalysis.
-        for (size_t i = 0, e = environment->Size(); i < e; ++i) {
-          HInstruction* instruction = environment->GetInstructionAt(i);
-          if (instruction == nullptr) {
-            continue;
-          }
-          bool should_be_live = ShouldBeLiveForEnvironment(current, instruction);
-          // If this environment use does not keep the instruction live, it does not
-          // affect the live range of that instruction.
-          if (should_be_live) {
-            CHECK(instruction->HasSsaIndex()) << instruction->DebugName();
-            live_in->SetBit(instruction->GetSsaIndex());
-            instruction->GetLiveInterval()->AddUse(current,
-                                                   environment,
-                                                   i,
-                                                   /* actual_user */ nullptr);
-          }
-        }
-      }
-
       // Process inputs of instructions.
       if (current->IsEmittedAtUseSite()) {
         if (kIsDebugBuild) {
@@ -224,6 +227,16 @@ void SsaLivenessAnalysis::ComputeLiveRanges() {
           DCHECK(!current->HasEnvironmentUses());
         }
       } else {
+        // Process the environment first, because we know their uses come after
+        // or at the same liveness position of inputs.
+        ProcessEnvironment(current, current, live_in);
+
+        // Special case implicit null checks. We want their environment uses to be
+        // emitted at the instruction doing the actual null check.
+        HNullCheck* check = current->GetImplicitNullCheck();
+        if (check != nullptr) {
+          ProcessEnvironment(check, current, live_in);
+        }
         RecursivelyProcessInputs(current, current, live_in);
       }
     }

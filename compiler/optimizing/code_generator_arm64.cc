@@ -5065,7 +5065,7 @@ void CodeGeneratorARM64::GenerateImplicitNullCheck(HNullCheck* instruction) {
     return;
   }
   {
-    // Ensure that between load and MaybeRecordImplicitNullCheck there are no pools emitted.
+    // Ensure that between load and RecordPcInfo there are no pools emitted.
     EmissionCheckScope guard(GetVIXLAssembler(), kMaxMacroInstructionSizeInBytes);
     Location obj = instruction->GetLocations()->InAt(0);
     __ Ldr(wzr, HeapOperandFrom(obj, Offset(0)));
