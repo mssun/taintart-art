@@ -54,7 +54,11 @@ struct TypeLinkage {
 
 class NewRegisterInstructions : public Experiment {
  public:
-  explicit NewRegisterInstructions(uint64_t experiments) : experiments_(experiments) {}
+  explicit NewRegisterInstructions(uint64_t experiments)
+      : experiments_(experiments),
+        move_result_reg_(256),
+        first_arg_reg_count_(256),
+        opcode_count_(256) {}
   void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files);
   void Dump(std::ostream& os, uint64_t total_size) const;
 
@@ -65,7 +69,7 @@ class NewRegisterInstructions : public Experiment {
                        std::map<size_t, TypeLinkage>& types);
   void Add(Instruction::Code opcode, const Instruction& inst);
   bool InstNibbles(uint8_t opcode, const std::vector<uint32_t>& args);
-  void ExtendPrefix(uint32_t* value1, uint32_t* value2);
+  bool ExtendPrefix(uint32_t* value1, uint32_t* value2);
   bool Enabled(BytecodeExperiment experiment) const {
     return experiments_ & (1u << static_cast<uint64_t>(experiment));
   }
@@ -76,7 +80,13 @@ class NewRegisterInstructions : public Experiment {
   uint64_t deduped_size_ = 0u;
   uint64_t dex_code_bytes_ = 0u;
   uint64_t experiments_ = std::numeric_limits<uint64_t>::max();
-  std::array<size_t, 256> move_result_reg_;
+  uint64_t extended_field_ = 0u;
+  uint64_t extended_method_ = 0u;
+  std::vector<size_t> move_result_reg_;
+  std::vector<size_t> first_arg_reg_count_;
+  std::vector<size_t> opcode_count_;
+  std::map<std::pair<uint32_t, uint32_t>, size_t> method_linkage_counts_;
+  std::map<std::pair<uint32_t, uint32_t>, size_t> field_linkage_counts_;
   std::map<std::vector<uint8_t>, size_t> instruction_freq_;
   // Output instruction buffer.
   std::vector<uint8_t> buffer_;
