@@ -1252,6 +1252,13 @@ class SsaLivenessAnalysis : public ValueObject {
   // Update the live_out set of the block and returns whether it has changed.
   bool UpdateLiveOut(const HBasicBlock& block);
 
+  static void ProcessEnvironment(HInstruction* instruction,
+                                 HInstruction* actual_user,
+                                 BitVector* live_in);
+  static void RecursivelyProcessInputs(HInstruction* instruction,
+                                       HInstruction* actual_user,
+                                       BitVector* live_in);
+
   // Returns whether `instruction` in an HEnvironment held by `env_holder`
   // should be kept live by the HEnvironment.
   static bool ShouldBeLiveForEnvironment(HInstruction* env_holder, HInstruction* instruction) {

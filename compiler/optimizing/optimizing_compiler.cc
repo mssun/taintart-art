@@ -570,7 +570,7 @@ static void AllocateRegisters(HGraph* graph,
   {
     PassScope scope(PrepareForRegisterAllocation::kPrepareForRegisterAllocationPassName,
                     pass_observer);
-    PrepareForRegisterAllocation(graph, stats).Run();
+    PrepareForRegisterAllocation(graph, codegen->GetCompilerOptions(), stats).Run();
   }
   // Use local allocator shared by SSA liveness analysis and register allocator.
   // (Register allocator creates new objects in the liveness data.)

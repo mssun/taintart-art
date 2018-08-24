@@ -38,7 +38,7 @@ HGraph* LiveRangesTest::BuildGraph(const std::vector<uint16_t>& data) {
   // on how instructions are ordered.
   RemoveSuspendChecks(graph);
   // `Inline` conditions into ifs.
-  PrepareForRegisterAllocation(graph).Run();
+  PrepareForRegisterAllocation(graph, *compiler_options_).Run();
   return graph;
 }
 
