@@ -36,7 +36,7 @@ namespace {
 class VectorContainer : public DexFileContainer {
  public:
   explicit VectorContainer(std::vector<uint8_t>&& vector) : vector_(std::move(vector)) { }
-  virtual ~VectorContainer() override { }
+  ~VectorContainer() override { }
 
   int GetPermissions() override {
     return 0;

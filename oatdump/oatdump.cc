@@ -1980,7 +1980,7 @@ class ImageDumper {
    public:
     explicit DumpArtMethodVisitor(ImageDumper* image_dumper) : image_dumper_(image_dumper) {}
 
-    virtual void Visit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_) {
+    void Visit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_) {
       std::ostream& indent_os = image_dumper_->vios_.Stream();
       indent_os << method << " " << " ArtMethod: " << ArtMethod::PrettyMethod(method) << "\n";
       image_dumper_->DumpMethod(method, indent_os);
@@ -3350,8 +3350,7 @@ struct OatdumpArgs : public CmdlineArgs {
  protected:
   using Base = CmdlineArgs;
 
-  virtual ParseStatus ParseCustom(const StringPiece& option,
-                                  std::string* error_msg) override {
+  ParseStatus ParseCustom(const StringPiece& option, std::string* error_msg) override {
     {
       ParseStatus base_parse = Base::ParseCustom(option, error_msg);
       if (base_parse != kParseUnknownArgument) {
@@ -3408,7 +3407,7 @@ struct OatdumpArgs : public CmdlineArgs {
     return kParseOk;
   }
 
-  virtual ParseStatus ParseChecks(std::string* error_msg) override {
+  ParseStatus ParseChecks(std::string* error_msg) override {
     // Infer boot image location from the image location if possible.
     if (boot_image_location_ == nullptr) {
       boot_image_location_ = image_location_;
@@ -3536,7 +3535,7 @@ struct OatdumpArgs : public CmdlineArgs {
 };
 
 struct OatdumpMain : public CmdlineMain<OatdumpArgs> {
-  virtual bool NeedsRuntime() override {
+  bool NeedsRuntime() override {
     CHECK(args_ != nullptr);
 
     // If we are only doing the oat file, disable absolute_addresses. Keep them for image dumping.
@@ -3563,7 +3562,7 @@ struct OatdumpMain : public CmdlineMain<OatdumpArgs> {
           !args_->symbolize_;
   }
 
-  virtual bool ExecuteWithoutRuntime() override {
+  bool ExecuteWithoutRuntime() override {
     CHECK(args_ != nullptr);
     CHECK(args_->oat_filename_ != nullptr);
 

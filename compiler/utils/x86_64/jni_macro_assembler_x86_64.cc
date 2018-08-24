@@ -577,7 +577,7 @@ void X86_64JNIMacroAssembler::GetCurrentThread(FrameOffset offset, ManagedRegist
 class X86_64ExceptionSlowPath final : public SlowPath {
  public:
   explicit X86_64ExceptionSlowPath(size_t stack_adjust) : stack_adjust_(stack_adjust) {}
-  virtual void Emit(Assembler *sp_asm) override;
+  void Emit(Assembler *sp_asm) override;
  private:
   const size_t stack_adjust_;
 };

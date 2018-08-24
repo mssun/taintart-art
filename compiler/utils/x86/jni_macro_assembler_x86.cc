@@ -28,7 +28,7 @@ namespace x86 {
 class X86ExceptionSlowPath final : public SlowPath {
  public:
   explicit X86ExceptionSlowPath(size_t stack_adjust) : stack_adjust_(stack_adjust) {}
-  virtual void Emit(Assembler *sp_asm) override;
+  void Emit(Assembler *sp_asm) override;
  private:
   const size_t stack_adjust_;
 };

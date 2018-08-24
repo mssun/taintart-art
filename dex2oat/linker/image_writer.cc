@@ -1022,7 +1022,7 @@ class ImageWriter::PruneClassLoaderClassesVisitor : public ClassLoaderVisitor {
   explicit PruneClassLoaderClassesVisitor(ImageWriter* image_writer)
       : image_writer_(image_writer), removed_class_count_(0) {}
 
-  virtual void Visit(ObjPtr<mirror::ClassLoader> class_loader) override
+  void Visit(ObjPtr<mirror::ClassLoader> class_loader) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     PruneClassesVisitor classes_visitor(image_writer_, class_loader);
     ClassTable* class_table =

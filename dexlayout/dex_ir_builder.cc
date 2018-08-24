@@ -92,7 +92,7 @@ static uint32_t GetDebugInfoStreamSize(const uint8_t* debug_info_stream) {
 template<class T> class CollectionMap : public CollectionBase {
  public:
   CollectionMap() = default;
-  virtual ~CollectionMap() override { }
+  ~CollectionMap() override { }
 
   template <class... Args>
   T* CreateAndAddItem(CollectionVector<T>& vector,

@@ -33,8 +33,7 @@ class StickyMarkSweep final : public PartialMarkSweep {
   StickyMarkSweep(Heap* heap, bool is_concurrent, const std::string& name_prefix = "");
   ~StickyMarkSweep() {}
 
-  virtual void MarkConcurrentRoots(VisitRootFlags flags)
-      override
+  void MarkConcurrentRoots(VisitRootFlags flags) override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);

@@ -252,14 +252,14 @@ class ClassLoadCallbackRuntimeCallbacksTest : public RuntimeCallbacksTest {
   }
 
   struct Callback : public ClassLoadCallback {
-    virtual void ClassPreDefine(const char* descriptor,
-                                Handle<mirror::Class> klass ATTRIBUTE_UNUSED,
-                                Handle<mirror::ClassLoader> class_loader ATTRIBUTE_UNUSED,
-                                const DexFile& initial_dex_file,
-                                const DexFile::ClassDef& initial_class_def ATTRIBUTE_UNUSED,
-                                /*out*/DexFile const** final_dex_file ATTRIBUTE_UNUSED,
-                                /*out*/DexFile::ClassDef const** final_class_def ATTRIBUTE_UNUSED)
-        override REQUIRES_SHARED(Locks::mutator_lock_) {
+    void ClassPreDefine(const char* descriptor,
+                        Handle<mirror::Class> klass ATTRIBUTE_UNUSED,
+                        Handle<mirror::ClassLoader> class_loader ATTRIBUTE_UNUSED,
+                        const DexFile& initial_dex_file,
+                        const DexFile::ClassDef& initial_class_def ATTRIBUTE_UNUSED,
+                        /*out*/DexFile const** final_dex_file ATTRIBUTE_UNUSED,
+                        /*out*/DexFile::ClassDef const** final_class_def ATTRIBUTE_UNUSED) override
+        REQUIRES_SHARED(Locks::mutator_lock_) {
       const std::string& location = initial_dex_file.GetLocation();
       std::string event =
           std::string("PreDefine:") + descriptor + " <" +

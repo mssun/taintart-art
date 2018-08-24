@@ -120,7 +120,7 @@ class ElfWriterQuick final : public ElfWriter {
   bool StripDebugInfo() override;
   bool End() override;
 
-  virtual OutputStream* GetStream() override;
+  OutputStream* GetStream() override;
 
   size_t GetLoadedSize() override;
 

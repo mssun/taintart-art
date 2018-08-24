@@ -40,7 +40,7 @@ namespace {
 class MemMapContainer : public DexFileContainer {
  public:
   explicit MemMapContainer(MemMap&& mem_map) : mem_map_(std::move(mem_map)) { }
-  virtual ~MemMapContainer() override { }
+  ~MemMapContainer() override { }
 
   int GetPermissions() override {
     if (!mem_map_.IsValid()) {

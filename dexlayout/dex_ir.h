@@ -233,7 +233,7 @@ template<class T> class CollectionVector : public CollectionBase {
     // Preallocate so that assignment does not invalidate pointers into the vector.
     collection_.reserve(size);
   }
-  virtual ~CollectionVector() override { }
+  ~CollectionVector() override { }
 
   template<class... Args>
   T* CreateAndAddItem(Args&&... args) {
@@ -242,7 +242,7 @@ template<class T> class CollectionVector : public CollectionBase {
     return object;
   }
 
-  virtual uint32_t Size() const override { return collection_.size(); }
+  uint32_t Size() const override { return collection_.size(); }
 
   Iterator<ElementType> begin() const { return Iterator<ElementType>(collection_, 0U, Size()); }
   Iterator<ElementType> end() const { return Iterator<ElementType>(collection_, Size(), Size()); }

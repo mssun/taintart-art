@@ -1327,7 +1327,7 @@ class TrimIndirectReferenceTableClosure : public Closure {
  public:
   explicit TrimIndirectReferenceTableClosure(Barrier* barrier) : barrier_(barrier) {
   }
-  virtual void Run(Thread* thread) override NO_THREAD_SAFETY_ANALYSIS {
+  void Run(Thread* thread) override NO_THREAD_SAFETY_ANALYSIS {
     thread->GetJniEnv()->TrimLocals();
     // If thread is a running mutator, then act on behalf of the trim thread.
     // See the code in ThreadList::RunCheckpoint.
@@ -2826,7 +2826,7 @@ class VerifyReferenceVisitor : public SingleRootVisitor {
         root->AsMirrorPtr(), RootInfo(kRootVMInternal));
   }
 
-  virtual void VisitRoot(mirror::Object* root, const RootInfo& root_info) override
+  void VisitRoot(mirror::Object* root, const RootInfo& root_info) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (root == nullptr) {
       LOG(ERROR) << "Root is null with info " << root_info.GetType();
@@ -3259,10 +3259,10 @@ void Heap::ProcessCards(TimingLogger* timings,
 }
 
 struct IdentityMarkHeapReferenceVisitor : public MarkObjectVisitor {
-  virtual mirror::Object* MarkObject(mirror::Object* obj) override {
+  mirror::Object* MarkObject(mirror::Object* obj) override {
     return obj;
   }
-  virtual void MarkHeapReference(mirror::HeapReference<mirror::Object>*, bool) override {
+  void MarkHeapReference(mirror::HeapReference<mirror::Object>*, bool) override {
   }
 };
 
@@ -3633,7 +3633,7 @@ class Heap::ConcurrentGCTask : public HeapTask {
  public:
   ConcurrentGCTask(uint64_t target_time, GcCause cause, bool force_full)
       : HeapTask(target_time), cause_(cause), force_full_(force_full) {}
-  virtual void Run(Thread* self) override {
+  void Run(Thread* self) override {
     gc::Heap* heap = Runtime::Current()->GetHeap();
     heap->ConcurrentGC(self, cause_, force_full_);
     heap->ClearConcurrentGCRequest();
@@ -3691,7 +3691,7 @@ class Heap::CollectorTransitionTask : public HeapTask {
  public:
   explicit CollectorTransitionTask(uint64_t target_time) : HeapTask(target_time) {}
 
-  virtual void Run(Thread* self) override {
+  void Run(Thread* self) override {
     gc::Heap* heap = Runtime::Current()->GetHeap();
     heap->DoPendingCollectorTransition();
     heap->ClearPendingCollectorTransition(self);
@@ -3733,7 +3733,7 @@ void Heap::RequestCollectorTransition(CollectorType desired_collector_type, uint
 class Heap::HeapTrimTask : public HeapTask {
  public:
   explicit HeapTrimTask(uint64_t delta_time) : HeapTask(NanoTime() + delta_time) { }
-  virtual void Run(Thread* self) override {
+  void Run(Thread* self) override {
     gc::Heap* heap = Runtime::Current()->GetHeap();
     heap->Trim(self);
     heap->ClearPendingTrim(self);

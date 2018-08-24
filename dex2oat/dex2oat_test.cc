@@ -55,7 +55,7 @@ using android::base::StringPrintf;
 
 class Dex2oatTest : public Dex2oatEnvironmentTest {
  public:
-  virtual void TearDown() override {
+  void TearDown() override {
     Dex2oatEnvironmentTest::TearDown();
 
     output_ = "";

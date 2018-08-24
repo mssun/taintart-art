@@ -50,27 +50,30 @@ class DlMallocSpace : public MallocSpace {
                                size_t capacity, uint8_t* requested_begin, bool can_move_objects);
 
   // Virtual to allow MemoryToolMallocSpace to intercept.
-  virtual mirror::Object* AllocWithGrowth(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                                          size_t* usable_size,
-                                          size_t* bytes_tl_bulk_allocated)
-      override REQUIRES(!lock_);
+  mirror::Object* AllocWithGrowth(Thread* self,
+                                  size_t num_bytes,
+                                  size_t* bytes_allocated,
+                                  size_t* usable_size,
+                                  size_t* bytes_tl_bulk_allocated) override REQUIRES(!lock_);
   // Virtual to allow MemoryToolMallocSpace to intercept.
-  virtual mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                                size_t* usable_size, size_t* bytes_tl_bulk_allocated)
-      override REQUIRES(!lock_) {
+  mirror::Object* Alloc(Thread* self,
+                        size_t num_bytes,
+                        size_t* bytes_allocated,
+                        size_t* usable_size,
+                        size_t* bytes_tl_bulk_allocated) override REQUIRES(!lock_) {
     return AllocNonvirtual(self, num_bytes, bytes_allocated, usable_size,
                            bytes_tl_bulk_allocated);
   }
   // Virtual to allow MemoryToolMallocSpace to intercept.
-  virtual size_t AllocationSize(mirror::Object* obj, size_t* usable_size) override {
+  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) override {
     return AllocationSizeNonvirtual(obj, usable_size);
   }
   // Virtual to allow MemoryToolMallocSpace to intercept.
-  virtual size_t Free(Thread* self, mirror::Object* ptr) override
+  size_t Free(Thread* self, mirror::Object* ptr) override
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
   // Virtual to allow MemoryToolMallocSpace to intercept.
-  virtual size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) override
+  size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) override
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -133,7 +136,7 @@ class DlMallocSpace : public MallocSpace {
   uint64_t GetBytesAllocated() override;
   uint64_t GetObjectsAllocated() override;
 
-  virtual void Clear() override;
+  void Clear() override;
 
   bool IsDlMallocSpace() const override {
     return true;

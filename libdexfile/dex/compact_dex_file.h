@@ -253,15 +253,15 @@ class CompactDexFile : public DexFile {
 
   // Returns true if the byte string points to the magic value.
   static bool IsMagicValid(const uint8_t* magic);
-  virtual bool IsMagicValid() const override;
+  bool IsMagicValid() const override;
 
   // Returns true if the byte string after the magic is the correct value.
   static bool IsVersionValid(const uint8_t* magic);
-  virtual bool IsVersionValid() const override;
+  bool IsVersionValid() const override;
 
   // TODO This is completely a guess. We really need to do better. b/72402467
   // We ask for 64 megabytes which should be big enough for any realistic dex file.
-  virtual size_t GetDequickenedSize() const override {
+  size_t GetDequickenedSize() const override {
     return 64 * MB;
   }
 
@@ -269,7 +269,7 @@ class CompactDexFile : public DexFile {
     return down_cast<const Header&>(DexFile::GetHeader());
   }
 
-  virtual bool SupportsDefaultMethods() const override;
+  bool SupportsDefaultMethods() const override;
 
   uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const override;
 
@@ -281,7 +281,7 @@ class CompactDexFile : public DexFile {
                                     size_t base_size,
                                     const uint8_t* data_begin,
                                     size_t data_size);
-  virtual uint32_t CalculateChecksum() const override;
+  uint32_t CalculateChecksum() const override;
 
  private:
   CompactDexFile(const uint8_t* base,

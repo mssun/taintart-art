@@ -34,7 +34,7 @@ class DexCacheTest : public CommonRuntimeTest {};
 
 class DexCacheMethodHandlesTest : public DexCacheTest {
  protected:
-  virtual void SetUpRuntimeOptions(RuntimeOptions* options) override {
+  void SetUpRuntimeOptions(RuntimeOptions* options) override {
     CommonRuntimeTest::SetUpRuntimeOptions(options);
   }
 };

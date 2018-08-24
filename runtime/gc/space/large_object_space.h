@@ -76,7 +76,7 @@ class LargeObjectSpace : public DiscontinuousSpace, public AllocSpace {
     return this;
   }
   collector::ObjectBytePair Sweep(bool swap_bitmaps);
-  virtual bool CanMoveObjects() const override {
+  bool CanMoveObjects() const override {
     return false;
   }
   // Current address at which the space begins, which may vary as the space is filled.

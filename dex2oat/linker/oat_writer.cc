@@ -1248,7 +1248,7 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
                                              std::move(ordered_methods)) {
   }
 
-  virtual bool VisitComplete() override {
+  bool VisitComplete() override {
     offset_ = writer_->relative_patcher_->ReserveSpaceEnd(offset_);
     if (generate_debug_info_) {
       std::vector<debug::MethodDebugInfo> thunk_infos =
@@ -1260,8 +1260,7 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
     return true;
   }
 
-  virtual bool VisitMethod(const OrderedMethodData& method_data)
-      override
+  bool VisitMethod(const OrderedMethodData& method_data) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     OatClass* oat_class = method_data.oat_class;
     CompiledMethod* compiled_method = method_data.compiled_method;
@@ -1652,7 +1651,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     }
   }
 
-  virtual bool VisitStart() override {
+  bool VisitStart() override {
     return true;
   }
 
@@ -1681,7 +1680,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     return true;
   }
 
-  virtual bool VisitMethod(const OrderedMethodData& method_data) override
+  bool VisitMethod(const OrderedMethodData& method_data) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     const MethodReference& method_ref = method_data.method_reference;
     UpdateDexFileAndDexCache(method_ref.dex_file);

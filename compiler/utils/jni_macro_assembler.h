@@ -299,7 +299,7 @@ class JNIMacroLabelCommon : public JNIMacroLabel {
   JNIMacroLabelCommon() : JNIMacroLabel(kIsa) {
   }
 
-  virtual ~JNIMacroLabelCommon() override {}
+  ~JNIMacroLabelCommon() override {}
 
  private:
   PlatformLabel label_;

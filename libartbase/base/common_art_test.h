@@ -209,11 +209,11 @@ class CommonArtTestBase : public TestType, public CommonArtTestImpl {
   virtual ~CommonArtTestBase() {}
 
  protected:
-  virtual void SetUp() override {
+  void SetUp() override {
     CommonArtTestImpl::SetUp();
   }
 
-  virtual void TearDown() override {
+  void TearDown() override {
     CommonArtTestImpl::TearDown();
   }
 };

@@ -1109,8 +1109,7 @@ class MarkSweep::VerifySystemWeakVisitor : public IsMarkedVisitor {
  public:
   explicit VerifySystemWeakVisitor(MarkSweep* mark_sweep) : mark_sweep_(mark_sweep) {}
 
-  virtual mirror::Object* IsMarked(mirror::Object* obj)
-      override
+  mirror::Object* IsMarked(mirror::Object* obj) override
       REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_) {
     mark_sweep_->VerifyIsLive(obj);
     return obj;
@@ -1161,7 +1160,7 @@ class MarkSweep::CheckpointMarkThreadRoots : public Closure, public RootVisitor 
     }
   }
 
-  virtual void Run(Thread* thread) override NO_THREAD_SAFETY_ANALYSIS {
+  void Run(Thread* thread) override NO_THREAD_SAFETY_ANALYSIS {
     ScopedTrace trace("Marking thread roots");
     // Note: self is not necessarily equal to thread since thread may be suspended.
     Thread* const self = Thread::Current();

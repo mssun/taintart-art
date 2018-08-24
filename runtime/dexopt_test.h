@@ -26,11 +26,11 @@ namespace art {
 
 class DexoptTest : public Dex2oatEnvironmentTest {
  public:
-  virtual void SetUp() override;
+  void SetUp() override;
 
   virtual void PreRuntimeCreate();
 
-  virtual void PostRuntimeCreate() override;
+  void PostRuntimeCreate() override;
 
   // Generate an oat file for the purposes of test.
   // The oat file will be generated for dex_location in the given oat_location

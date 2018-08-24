@@ -53,7 +53,7 @@ class X86InstructionSetFeatures : public InstructionSetFeatures {
 
   bool HasAtLeast(const InstructionSetFeatures* other) const override;
 
-  virtual InstructionSet GetInstructionSet() const override {
+  InstructionSet GetInstructionSet() const override {
     return InstructionSet::kX86;
   }
 
@@ -69,7 +69,7 @@ class X86InstructionSetFeatures : public InstructionSetFeatures {
 
  protected:
   // Parse a string of the form "ssse3" adding these to a new InstructionSetFeatures.
-  virtual std::unique_ptr<const InstructionSetFeatures>
+  std::unique_ptr<const InstructionSetFeatures>
       AddFeaturesFromSplitString(const std::vector<std::string>& features,
                                  std::string* error_msg) const override {
     return AddFeaturesFromSplitString(features, false, error_msg);

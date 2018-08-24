@@ -1574,7 +1574,7 @@ class MonitorDeflateVisitor : public IsMarkedVisitor {
  public:
   MonitorDeflateVisitor() : self_(Thread::Current()), deflate_count_(0) {}
 
-  virtual mirror::Object* IsMarked(mirror::Object* object) override
+  mirror::Object* IsMarked(mirror::Object* object) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (Monitor::Deflate(self_, object)) {
       DCHECK_NE(object->GetLockWord(true).GetState(), LockWord::kFatLocked);

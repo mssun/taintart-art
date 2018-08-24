@@ -352,7 +352,7 @@ class DiscontinuousSpace : public Space {
     return mark_bitmap_.get();
   }
 
-  virtual bool IsDiscontinuousSpace() const override {
+  bool IsDiscontinuousSpace() const override {
     return true;
   }
 

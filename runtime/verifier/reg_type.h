@@ -699,7 +699,7 @@ class DoubleLoType final : public Cat2Type {
 class DoubleHiType final : public Cat2Type {
  public:
   std::string Dump() const override REQUIRES_SHARED(Locks::mutator_lock_);
-  virtual bool IsDoubleHi() const override { return true; }
+  bool IsDoubleHi() const override { return true; }
   static const DoubleHiType* CreateInstance(ObjPtr<mirror::Class> klass,
                                             const StringPiece& descriptor,
                                             uint16_t cache_id)
@@ -772,7 +772,7 @@ class ConstantType : public RegType {
            ConstantValue() >= std::numeric_limits<int16_t>::min() &&
            ConstantValue() <= std::numeric_limits<int16_t>::max();
   }
-  virtual bool IsConstantTypes() const override { return true; }
+  bool IsConstantTypes() const override { return true; }
 
   AssignmentType GetAssignmentTypeImpl() const override {
     return AssignmentType::kNotAssignable;
@@ -993,7 +993,7 @@ class UninitializedThisReferenceType final : public UninitializedType {
     CheckConstructorInvariants(this);
   }
 
-  virtual bool IsUninitializedThisReference() const override { return true; }
+  bool IsUninitializedThisReference() const override { return true; }
 
   bool HasClassVirtual() const override { return true; }
 

@@ -971,7 +971,7 @@ class ResolveCatchBlockExceptionsClassVisitor : public ClassVisitor {
  public:
   ResolveCatchBlockExceptionsClassVisitor() : classes_() {}
 
-  virtual bool operator()(ObjPtr<mirror::Class> c) override REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> c) override REQUIRES_SHARED(Locks::mutator_lock_) {
     classes_.push_back(c);
     return true;
   }
@@ -1888,7 +1888,7 @@ class VerifyClassVisitor : public CompilationVisitor {
   VerifyClassVisitor(const ParallelCompilationManager* manager, verifier::HardFailLogMode log_level)
      : manager_(manager), log_level_(log_level) {}
 
-  virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) override {
+  void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) override {
     ScopedTrace trace(__FUNCTION__);
     ScopedObjectAccess soa(Thread::Current());
     const DexFile& dex_file = *manager_->GetDexFile();
@@ -2020,7 +2020,7 @@ class SetVerifiedClassVisitor : public CompilationVisitor {
  public:
   explicit SetVerifiedClassVisitor(const ParallelCompilationManager* manager) : manager_(manager) {}
 
-  virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) override {
+  void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) override {
     ScopedTrace trace(__FUNCTION__);
     ScopedObjectAccess soa(Thread::Current());
     const DexFile& dex_file = *manager_->GetDexFile();
@@ -2470,7 +2470,7 @@ class InitializeArrayClassesAndCreateConflictTablesVisitor : public ClassVisitor
   explicit InitializeArrayClassesAndCreateConflictTablesVisitor(VariableSizedHandleScope& hs)
       : hs_(hs) {}
 
-  virtual bool operator()(ObjPtr<mirror::Class> klass) override
+  bool operator()(ObjPtr<mirror::Class> klass) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(klass)) {
       return true;

@@ -92,8 +92,7 @@ struct MethodVerifierArgs : public CmdlineArgs {
  protected:
   using Base = CmdlineArgs;
 
-  virtual ParseStatus ParseCustom(const StringPiece& option,
-                                  std::string* error_msg) override {
+  ParseStatus ParseCustom(const StringPiece& option, std::string* error_msg) override {
     {
       ParseStatus base_parse = Base::ParseCustom(option, error_msg);
       if (base_parse != kParseUnknownArgument) {
@@ -119,7 +118,7 @@ struct MethodVerifierArgs : public CmdlineArgs {
     return kParseOk;
   }
 
-  virtual ParseStatus ParseChecks(std::string* error_msg) override {
+  ParseStatus ParseChecks(std::string* error_msg) override {
     // Perform the parent checks.
     ParseStatus parent_checks = Base::ParseChecks(error_msg);
     if (parent_checks != kParseOk) {

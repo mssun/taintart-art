@@ -34,7 +34,7 @@ class JavaVmExtTest : public CommonRuntimeTest {
   }
 
 
-  virtual void TearDown() override {
+  void TearDown() override {
     CommonRuntimeTest::TearDown();
   }
 

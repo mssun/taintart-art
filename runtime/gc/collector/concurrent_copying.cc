@@ -393,7 +393,7 @@ class ConcurrentCopying::ThreadFlipVisitor : public Closure, public RootVisitor 
       : concurrent_copying_(concurrent_copying), use_tlab_(use_tlab) {
   }
 
-  virtual void Run(Thread* thread) override REQUIRES_SHARED(Locks::mutator_lock_) {
+  void Run(Thread* thread) override REQUIRES_SHARED(Locks::mutator_lock_) {
     // Note: self is not necessarily equal to thread since thread may be suspended.
     Thread* self = Thread::Current();
     CHECK(thread == self || thread->IsSuspended() || thread->GetState() == kWaitingPerformingGc)
@@ -467,7 +467,7 @@ class ConcurrentCopying::FlipCallback : public Closure {
       : concurrent_copying_(concurrent_copying) {
   }
 
-  virtual void Run(Thread* thread) override REQUIRES(Locks::mutator_lock_) {
+  void Run(Thread* thread) override REQUIRES(Locks::mutator_lock_) {
     ConcurrentCopying* cc = concurrent_copying_;
     TimingLogger::ScopedTiming split("(Paused)FlipCallback", cc->GetTimings());
     // Note: self is not necessarily equal to thread since thread may be suspended.
@@ -1457,7 +1457,7 @@ class ConcurrentCopying::RevokeThreadLocalMarkStackCheckpoint : public Closure {
         disable_weak_ref_access_(disable_weak_ref_access) {
   }
 
-  virtual void Run(Thread* thread) override NO_THREAD_SAFETY_ANALYSIS {
+  void Run(Thread* thread) override NO_THREAD_SAFETY_ANALYSIS {
     // Note: self is not necessarily equal to thread since thread may be suspended.
     Thread* self = Thread::Current();
     CHECK(thread == self || thread->IsSuspended() || thread->GetState() == kWaitingPerformingGc)

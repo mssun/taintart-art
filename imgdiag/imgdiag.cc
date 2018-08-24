@@ -347,9 +347,9 @@ class ImgObjectVisitor : public ObjectVisitor {
     begin_image_ptr_(begin_image_ptr),
     dirty_pages_(dirty_pages) { }
 
-  virtual ~ImgObjectVisitor() override { }
+  ~ImgObjectVisitor() override { }
 
-  virtual void Visit(mirror::Object* object) override REQUIRES_SHARED(Locks::mutator_lock_) {
+  void Visit(mirror::Object* object) override REQUIRES_SHARED(Locks::mutator_lock_) {
     // Sanity check that we are reading a real mirror::Object
     CHECK(object->GetClass() != nullptr) << "Image object at address "
                                          << object
@@ -658,8 +658,8 @@ class ImgArtMethodVisitor : public ArtMethodVisitor {
     dirty_func_(std::move(dirty_func)),
     begin_image_ptr_(begin_image_ptr),
     dirty_pages_(dirty_pages) { }
-  virtual ~ImgArtMethodVisitor() override { }
-  virtual void Visit(ArtMethod* method) override {
+  ~ImgArtMethodVisitor() override { }
+  void Visit(ArtMethod* method) override {
     dirty_func_(method, begin_image_ptr_, dirty_pages_);
   }
 
@@ -1671,8 +1671,7 @@ struct ImgDiagArgs : public CmdlineArgs {
  protected:
   using Base = CmdlineArgs;
 
-  virtual ParseStatus ParseCustom(const StringPiece& option,
-                                  std::string* error_msg) override {
+  ParseStatus ParseCustom(const StringPiece& option, std::string* error_msg) override {
     {
       ParseStatus base_parse = Base::ParseCustom(option, error_msg);
       if (base_parse != kParseUnknownArgument) {
@@ -1703,7 +1702,7 @@ struct ImgDiagArgs : public CmdlineArgs {
     return kParseOk;
   }
 
-  virtual ParseStatus ParseChecks(std::string* error_msg) override {
+  ParseStatus ParseChecks(std::string* error_msg) override {
     // Perform the parent checks.
     ParseStatus parent_checks = Base::ParseChecks(error_msg);
     if (parent_checks != kParseOk) {

@@ -165,7 +165,7 @@ class X86_64JNIMacroAssembler final : public JNIMacroAssemblerFwd<X86_64Assemble
                               bool null_allowed) override;
 
   // src holds a handle scope entry (Object**) load this into dst
-  virtual void LoadReferenceFromHandleScope(ManagedRegister dst, ManagedRegister src) override;
+  void LoadReferenceFromHandleScope(ManagedRegister dst, ManagedRegister src) override;
 
   // Heap::VerifyObject on src. In some cases (such as a reference to this) we
   // know that src may not be null.
