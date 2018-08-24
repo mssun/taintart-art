@@ -177,7 +177,6 @@ static MemMap AllocateDexMemoryMap(JNIEnv* env, jint start, jint end) {
                                             length,
                                             PROT_READ | PROT_WRITE,
                                             /* low_4gb */ false,
-                                            /* reuse */ false,
                                             &error_message);
   if (!dex_mem_map.IsValid()) {
     ScopedObjectAccess soa(env);

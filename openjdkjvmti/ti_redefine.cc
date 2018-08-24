@@ -309,7 +309,6 @@ art::MemMap Redefiner::MoveDataToMemMap(const std::string& original_location,
       data.size(),
       PROT_READ|PROT_WRITE,
       /*low_4gb*/ false,
-      /*reuse*/ false,
       error_msg);
   if (LIKELY(map.IsValid())) {
     memcpy(map.Begin(), data.data(), data.size());

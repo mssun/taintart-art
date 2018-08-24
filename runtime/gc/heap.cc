@@ -409,7 +409,6 @@ Heap::Heap(size_t initial_size,
                                             capacity_,
                                             PROT_READ | PROT_WRITE,
                                             /* low_4gb */ true,
-                                            /* reuse */ false,
                                             &error_str);
     }
     CHECK(main_mem_map_1.IsValid()) << error_str;
@@ -669,7 +668,6 @@ MemMap Heap::MapAnonymousPreferredAddress(const char* name,
                                       capacity,
                                       PROT_READ | PROT_WRITE,
                                       /* low_4gb*/ true,
-                                      /* reuse */ false,
                                       out_error_str);
     if (map.IsValid() || request_begin == nullptr) {
       return map;

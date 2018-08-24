@@ -88,7 +88,6 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
                                       image_size,
                                       PROT_READ | PROT_WRITE,
                                       /*low_4gb*/true,
-                                      /*reuse*/false,
                                       &error_str);
     if (!map.IsValid()) {
       LOG(ERROR) << error_str;
@@ -102,7 +101,6 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
                                           oat_size,
                                           PROT_READ | PROT_WRITE,
                                           /*low_4gb*/true,
-                                          /*reuse*/false,
                                           &error_str);
     if (!oat_map.IsValid()) {
       LOG(ERROR) << error_str;
@@ -146,7 +144,6 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
                                       size,
                                       PROT_READ | PROT_WRITE,
                                       /*low_4gb*/ true,
-                                      /*reuse*/ false,
                                       &error_str);
     if (!map.IsValid()) {
       LOG(ERROR) << "Failed to allocate memory region " << error_str;

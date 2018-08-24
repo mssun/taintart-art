@@ -140,7 +140,6 @@ mirror::Object* LargeObjectMapSpace::Alloc(Thread* self, size_t num_bytes,
                                         num_bytes,
                                         PROT_READ | PROT_WRITE,
                                         /* low_4gb */ true,
-                                        /* reuse */ false,
                                         &error_msg);
   if (UNLIKELY(!mem_map.IsValid())) {
     LOG(WARNING) << "Large object allocation failed: " << error_msg;
@@ -354,7 +353,6 @@ FreeListSpace* FreeListSpace::Create(const std::string& name, uint8_t* requested
                                         size,
                                         PROT_READ | PROT_WRITE,
                                         /* low_4gb */ true,
-                                        /* reuse */ false,
                                         &error_msg);
   CHECK(mem_map.IsValid()) << "Failed to allocate large object space mem map: " << error_msg;
   return new FreeListSpace(name, std::move(mem_map), mem_map.Begin(), mem_map.End());
@@ -378,7 +376,6 @@ FreeListSpace::FreeListSpace(const std::string& name,
                            alloc_info_size,
                            PROT_READ | PROT_WRITE,
                            /* low_4gb */ false,
-                           /* reuse */ false,
                            &error_msg);
   CHECK(allocation_info_map_.IsValid()) << "Failed to allocate allocation info map" << error_msg;
   allocation_info_ = reinterpret_cast<AllocationInfo*>(allocation_info_map_.Begin());

@@ -33,7 +33,6 @@ BumpPointerSpace* BumpPointerSpace::Create(const std::string& name, size_t capac
                                         capacity,
                                         PROT_READ | PROT_WRITE,
                                         /* low_4gb */ true,
-                                        /* reuse */ false,
                                         &error_msg);
   if (!mem_map.IsValid()) {
     LOG(ERROR) << "Failed to allocate pages for alloc space (" << name << ") of size "

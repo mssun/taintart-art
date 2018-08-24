@@ -69,7 +69,6 @@ CardTable* CardTable::Create(const uint8_t* heap_begin, size_t heap_capacity) {
                                         capacity + 256,
                                         PROT_READ | PROT_WRITE,
                                         /* low_4gb */ false,
-                                        /* reuse */ false,
                                         &error_msg);
   CHECK(mem_map.IsValid()) << "couldn't allocate card table: " << error_msg;
   // All zeros is the correct initial value; all clean. Anonymous mmaps are initialized to zero, we

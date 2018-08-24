@@ -194,8 +194,7 @@ TEST_F(ThreadLifecycleCallbackRuntimeCallbacksTest, ThreadLifecycleCallbackAttac
                                       /* addr */ nullptr,
                                       128 * kPageSize,  // Just some small stack.
                                       PROT_READ | PROT_WRITE,
-                                      false,
-                                      false,
+                                      /* low_4gb */ false,
                                       &error_msg);
   ASSERT_TRUE(stack.IsValid()) << error_msg;
 

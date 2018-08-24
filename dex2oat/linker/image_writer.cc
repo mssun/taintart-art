@@ -735,7 +735,6 @@ bool ImageWriter::AllocMemory() {
                                              length,
                                              PROT_READ | PROT_WRITE,
                                              /* low_4gb */ false,
-                                             /* reuse */ false,
                                              &error_msg);
     if (UNLIKELY(!image_info.image_.IsValid())) {
       LOG(ERROR) << "Failed to allocate memory for image file generation: " << error_msg;
