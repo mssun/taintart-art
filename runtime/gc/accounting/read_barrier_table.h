@@ -44,7 +44,6 @@ class ReadBarrierTable {
                                     capacity,
                                     PROT_READ | PROT_WRITE,
                                     /* low_4gb */ false,
-                                    /* reuse */ false,
                                     &error_msg);
     CHECK(mem_map_.IsValid() && mem_map_.Begin() != nullptr)
         << "couldn't allocate read barrier table: " << error_msg;

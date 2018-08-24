@@ -818,7 +818,6 @@ class ImageSpace::Loader {
                                       image_header.GetImageSize(),
                                       PROT_READ | PROT_WRITE,
                                       /*low_4gb*/ true,
-                                      /*reuse*/ false,
                                       error_msg);
     if (map.IsValid()) {
       const size_t stored_size = image_header.GetDataSize();

@@ -257,7 +257,6 @@ class AtomicStack {
                                     capacity_ * sizeof(begin_[0]),
                                     PROT_READ | PROT_WRITE,
                                     /* low_4gb */ false,
-                                    /* reuse */ false,
                                     &error_msg);
     CHECK(mem_map_.IsValid()) << "couldn't allocate mark stack.\n" << error_msg;
     uint8_t* addr = mem_map_.Begin();

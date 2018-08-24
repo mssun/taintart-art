@@ -62,7 +62,6 @@ MemMap MemMapArena::Allocate(size_t size, bool low_4gb, const char* name) {
                                     size,
                                     PROT_READ | PROT_WRITE,
                                     low_4gb,
-                                    /* reuse */ false,
                                     &error_msg);
   CHECK(map.IsValid()) << error_msg;
   return map;

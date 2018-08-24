@@ -1167,7 +1167,6 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
                                                  kPageSize,
                                                  PROT_NONE,
                                                  /* low_4g */ true,
-                                                 /* reuse */ false,
                                                  /* error_msg */ nullptr);
     if (!protected_fault_page_.IsValid()) {
       LOG(WARNING) << "Could not reserve sentinel fault page";

@@ -131,6 +131,14 @@ class MemMap {
                              bool reuse,
                              std::string* error_msg,
                              bool use_ashmem = true);
+  static MemMap MapAnonymous(const char* name,
+                             uint8_t* addr,
+                             size_t byte_count,
+                             int prot,
+                             bool low_4gb,
+                             std::string* error_msg) {
+    return MapAnonymous(name, addr, byte_count, prot, low_4gb, /* reuse */ false, error_msg);
+  }
 
   // Create placeholder for a region allocated by direct call to mmap.
   // This is useful when we do not have control over the code calling mmap,
