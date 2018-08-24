@@ -92,6 +92,7 @@ unspecified registers or condition codes.
 #if defined(__APPLE__)
     #define MACRO_LITERAL(value) $$(value)
     #define FUNCTION_TYPE(name)
+    #define OBJECT_TYPE(name)
     #define SIZE(start,end)
     // Mac OS' symbols have an _ prefix.
     #define SYMBOL(name) _ ## name
@@ -99,6 +100,7 @@ unspecified registers or condition codes.
 #else
     #define MACRO_LITERAL(value) $$value
     #define FUNCTION_TYPE(name) .type name, @function
+    #define OBJECT_TYPE(name) .type name, @object
     #define SIZE(start,end) .size start, .-end
     #define SYMBOL(name) name
     #define ASM_HIDDEN .hidden

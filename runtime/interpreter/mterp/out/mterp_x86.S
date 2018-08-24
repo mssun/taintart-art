@@ -103,6 +103,7 @@ unspecified registers or condition codes.
 #if defined(__APPLE__)
     #define MACRO_LITERAL(value) $(value)
     #define FUNCTION_TYPE(name)
+    #define OBJECT_TYPE(name)
     #define SIZE(start,end)
     // Mac OS' symbols have an _ prefix.
     #define SYMBOL(name) _ ## name
@@ -110,6 +111,7 @@ unspecified registers or condition codes.
 #else
     #define MACRO_LITERAL(value) $value
     #define FUNCTION_TYPE(name) .type name, @function
+    #define OBJECT_TYPE(name) .type name, @object
     #define SIZE(start,end) .size start, .-end
     #define SYMBOL(name) name
     #define ASM_HIDDEN .hidden
@@ -407,6 +409,8 @@ SYMBOL(ExecuteMterpImpl):
 
 /* File: x86/instruction_start.S */
 
+    OBJECT_TYPE(artMterpAsmInstructionStart)
+    ASM_HIDDEN SYMBOL(artMterpAsmInstructionStart)
     .global SYMBOL(artMterpAsmInstructionStart)
 SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .text
@@ -6473,6 +6477,8 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .balign 128
 /* File: x86/instruction_end.S */
 
+    OBJECT_TYPE(artMterpAsmInstructionEnd)
+    ASM_HIDDEN SYMBOL(artMterpAsmInstructionEnd)
     .global SYMBOL(artMterpAsmInstructionEnd)
 SYMBOL(artMterpAsmInstructionEnd):
 
@@ -6484,6 +6490,8 @@ SYMBOL(artMterpAsmInstructionEnd):
  */
 /* File: x86/instruction_start_sister.S */
 
+    OBJECT_TYPE(artMterpAsmSisterStart)
+    ASM_HIDDEN SYMBOL(artMterpAsmSisterStart)
     .global SYMBOL(artMterpAsmSisterStart)
     .text
     .balign 4
@@ -6491,11 +6499,15 @@ SYMBOL(artMterpAsmSisterStart):
 
 /* File: x86/instruction_end_sister.S */
 
+    OBJECT_TYPE(artMterpAsmSisterEnd)
+    ASM_HIDDEN SYMBOL(artMterpAsmSisterEnd)
     .global SYMBOL(artMterpAsmSisterEnd)
 SYMBOL(artMterpAsmSisterEnd):
 
 /* File: x86/instruction_start_alt.S */
 
+    OBJECT_TYPE(artMterpAsmAltInstructionStart)
+    ASM_HIDDEN SYMBOL(artMterpAsmAltInstructionStart)
     .global SYMBOL(artMterpAsmAltInstructionStart)
     .text
 SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
@@ -12647,6 +12659,8 @@ SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
     .balign 128
 /* File: x86/instruction_end_alt.S */
 
+    OBJECT_TYPE(artMterpAsmAltInstructionEnd)
+    ASM_HIDDEN SYMBOL(artMterpAsmAltInstructionEnd)
     .global SYMBOL(artMterpAsmAltInstructionEnd)
 SYMBOL(artMterpAsmAltInstructionEnd):
 
