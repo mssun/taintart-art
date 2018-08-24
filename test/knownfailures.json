@@ -246,7 +246,7 @@
                   "613-inlining-dex-cache",
                   "626-set-resolved-string",
                   "638-checker-inline-cache-intrinsic"],
-        "variant": "trace  | stream",
+        "variant": "trace | stream",
         "description": ["These tests expect JIT compilation, which is",
                         "suppressed when tracing."]
     },
@@ -255,6 +255,11 @@
         "variant": "interp-ac | interpreter | trace | stream",
         "description": ["This test expects JIT compilation, which is",
                         "suppressed when tracing."]
+    },
+    {
+        "tests": "638-checker-inline-cache-intrinsic",
+        "variant": "interpreter | interp-ac",
+        "description": ["Test expects JIT compilation"]
     },
     {
         "tests": "597-deopt-invoke-stub",

@@ -14,4 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Set threshold to 100 to math the iterations done in the test.
+# Pass --verbose-methods to only generate the CFG of these methods.
 exec ${RUN} --jit --runtime-option -Xjitthreshold:100 -Xcompiler-option --verbose-methods=inlineMonomorphic,knownReceiverType,stringEquals $@
