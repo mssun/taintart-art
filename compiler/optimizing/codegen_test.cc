@@ -453,7 +453,7 @@ TEST_F(CodegenTest, NonMaterializedCondition) {
 
     ASSERT_FALSE(equal->IsEmittedAtUseSite());
     graph->BuildDominatorTree();
-    PrepareForRegisterAllocation(graph).Run();
+    PrepareForRegisterAllocation(graph, *compiler_options_).Run();
     ASSERT_TRUE(equal->IsEmittedAtUseSite());
 
     auto hook_before_codegen = [](HGraph* graph_in) {

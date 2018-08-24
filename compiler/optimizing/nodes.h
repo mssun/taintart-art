@@ -2079,6 +2079,19 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
     return false;
   }
 
+  // If this instruction will do an implicit null check, return the `HNullCheck` associated
+  // with it. Otherwise return null.
+  HNullCheck* GetImplicitNullCheck() const {
+    // Find the first previous instruction which is not a move.
+    HInstruction* first_prev_not_move = GetPreviousDisregardingMoves();
+    if (first_prev_not_move != nullptr &&
+        first_prev_not_move->IsNullCheck() &&
+        first_prev_not_move->IsEmittedAtUseSite()) {
+      return first_prev_not_move->AsNullCheck();
+    }
+    return nullptr;
+  }
+
   virtual bool IsActualObject() const {
     return GetType() == DataType::Type::kReference;
   }
@@ -4713,7 +4726,7 @@ class HInvokeVirtual FINAL : public HInvoke {
 
   bool CanDoImplicitNullCheckOn(HInstruction* obj) const OVERRIDE {
     // TODO: Add implicit null checks in intrinsics.
-    return (obj == InputAt(0)) && !GetLocations()->Intrinsified();
+    return (obj == InputAt(0)) && !IsIntrinsic();
   }
 
   uint32_t GetVTableIndex() const { return vtable_index_; }
@@ -4753,7 +4766,7 @@ class HInvokeInterface FINAL : public HInvoke {
 
   bool CanDoImplicitNullCheckOn(HInstruction* obj) const OVERRIDE {
     // TODO: Add implicit null checks in intrinsics.
-    return (obj == InputAt(0)) && !GetLocations()->Intrinsified();
+    return (obj == InputAt(0)) && !IsIntrinsic();
   }
 
   bool NeedsDexCacheOfDeclaringClass() const OVERRIDE {

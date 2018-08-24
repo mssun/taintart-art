@@ -288,7 +288,7 @@ static void RunCodeNoCheck(CodeGenerator* codegen,
   {
     ScopedArenaAllocator local_allocator(graph->GetArenaStack());
     SsaLivenessAnalysis liveness(graph, codegen, &local_allocator);
-    PrepareForRegisterAllocation(graph).Run();
+    PrepareForRegisterAllocation(graph, codegen->GetCompilerOptions()).Run();
     liveness.Analyze();
     std::unique_ptr<RegisterAllocator> register_allocator =
         RegisterAllocator::Create(&local_allocator, codegen, liveness);
