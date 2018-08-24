@@ -36,15 +36,21 @@ class AnalyzeStrings : public Experiment {
   void Dump(std::ostream& os, uint64_t total_size) const override;
 
  private:
+  void ProcessStrings(const std::vector<std::string>& strings, size_t iterations);
+
   int64_t wide_string_bytes_ = 0u;
   int64_t ascii_string_bytes_ = 0u;
   int64_t string_data_bytes_ = 0u;
+  int64_t total_shared_prefix_bytes_ = 0u;
   int64_t total_prefix_savings_ = 0u;
   int64_t total_prefix_dict_ = 0u;
   int64_t total_prefix_table_ = 0u;
   int64_t total_prefix_index_cost_ = 0u;
   int64_t total_num_prefixes_ = 0u;
   int64_t optimization_savings_ = 0u;
+  int64_t strings_used_prefixed_ = 0u;
+  int64_t short_strings_ = 0u;
+  int64_t long_strings_ = 0u;
   std::unordered_map<std::string, size_t> prefixes_;
 };
 

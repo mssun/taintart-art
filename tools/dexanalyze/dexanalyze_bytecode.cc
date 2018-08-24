@@ -264,18 +264,18 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
         uint32_t receiver = inst->VRegB_22c();
         uint32_t first_arg_reg = code_item.RegistersSize() - code_item.InsSize();
         uint32_t out_reg = inst->VRegA_22c();
-          if (Enabled(kExperimentInstanceFieldSelf) &&
-              first_arg_reg == receiver &&
-              holder_type == current_class_type) {
-            if (count_types) {
-              ++current_type.fields_.FindOrAdd(dex_field_idx)->second;
-            } else {
-              uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
-              ExtendPrefix(&out_reg, &field_idx);
-              CHECK(InstNibbles(new_opcode, {out_reg, field_idx}));
-              continue;
-            }
-          } else if (Enabled(kExperimentInstanceField)) {
+        if (Enabled(kExperimentInstanceFieldSelf) &&
+            first_arg_reg == receiver &&
+            holder_type == current_class_type) {
+          if (count_types) {
+            ++current_type.fields_.FindOrAdd(dex_field_idx)->second;
+          } else {
+            uint32_t field_idx = types[holder_type.index_].fields_.Get(dex_field_idx);
+            ExtendPrefix(&out_reg, &field_idx);
+            CHECK(InstNibbles(new_opcode, {out_reg, field_idx}));
+            continue;
+          }
+        } else if (Enabled(kExperimentInstanceField)) {
           if (count_types) {
             ++current_type.types_.FindOrAdd(holder_type.index_)->second;
             ++types[holder_type.index_].fields_.FindOrAdd(dex_field_idx)->second;
