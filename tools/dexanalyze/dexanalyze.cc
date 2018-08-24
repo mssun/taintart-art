@@ -23,6 +23,7 @@
 
 #include "dexanalyze_bytecode.h"
 #include "dexanalyze_experiments.h"
+#include "dexanalyze_strings.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
