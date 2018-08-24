@@ -2152,7 +2152,7 @@ void ConcurrentCopying::AssertToSpaceInvariant(mirror::Object* obj,
         LOG(FATAL_WITHOUT_ABORT) << "Non-free regions:";
         region_space_->DumpNonFreeRegions(LOG_STREAM(FATAL_WITHOUT_ABORT));
         PrintFileToLog("/proc/self/maps", LogSeverity::FATAL_WITHOUT_ABORT);
-        MemMap::DumpMaps(LOG_STREAM(FATAL_WITHOUT_ABORT), true);
+        MemMap::DumpMaps(LOG_STREAM(FATAL_WITHOUT_ABORT), /* terse */ true);
         LOG(FATAL) << "Invalid reference " << ref
                    << " referenced from object " << obj << " at offset " << offset;
       }
@@ -2245,7 +2245,7 @@ void ConcurrentCopying::AssertToSpaceInvariant(GcRootSource* gc_root_source,
         LOG(FATAL_WITHOUT_ABORT) << "Non-free regions:";
         region_space_->DumpNonFreeRegions(LOG_STREAM(FATAL_WITHOUT_ABORT));
         PrintFileToLog("/proc/self/maps", LogSeverity::FATAL_WITHOUT_ABORT);
-        MemMap::DumpMaps(LOG_STREAM(FATAL_WITHOUT_ABORT), true);
+        MemMap::DumpMaps(LOG_STREAM(FATAL_WITHOUT_ABORT), /* terse */ true);
         LOG(FATAL) << "Invalid reference " << ref;
       }
     } else {

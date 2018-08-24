@@ -446,7 +446,7 @@ class MarkSweep::MarkObjectSlowPath {
                      !large_object_space->Contains(obj)))) {
       // Lowest priority logging first:
       PrintFileToLog("/proc/self/maps", LogSeverity::FATAL_WITHOUT_ABORT);
-      MemMap::DumpMaps(LOG_STREAM(FATAL_WITHOUT_ABORT), true);
+      MemMap::DumpMaps(LOG_STREAM(FATAL_WITHOUT_ABORT), /* terse */ true);
       // Buffer the output in the string stream since it is more important than the stack traces
       // and we want it to have log priority. The stack traces are printed from Runtime::Abort
       // which is called from LOG(FATAL) but before the abort message.
