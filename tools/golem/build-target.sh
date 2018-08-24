@@ -367,7 +367,7 @@ if [[ "$make_tarball" == "make_tarball" ]]; then
     dirs_rooted+=("$root_dir/$tar_dir")
   done
 
-  execute tar -czf "${tarball}" "${dirs_rooted[@]}" --exclude .git --exclude .gitignore
+  execute tar -czf "${tarball}" --exclude ".git" --exclude ".gitignore" "${dirs_rooted[@]}"
   tar_result=$?
   if [[ $tar_result -ne 0 ]]; then
     [[ -f $tarball ]] && rm $tarball
