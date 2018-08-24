@@ -181,7 +181,7 @@
  final="true"
  visibility="public"
 >
-<parameter name="arg0" type="android.content.SharedPreferences.Editor">
+<parameter name="arg0" type="android.content.SharedPreferences$Editor">
 </parameter>
 </method>
 <method name="a"

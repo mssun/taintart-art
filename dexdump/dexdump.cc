@@ -123,8 +123,7 @@ static const char* primitiveTypeLabel(char typeChar) {
 /*
  * Converts a type descriptor to human-readable "dotted" form.  For
  * example, "Ljava/lang/String;" becomes "java.lang.String", and
- * "[I" becomes "int[]".  Also converts '$' to '.', which means this
- * form can't be converted back to a descriptor.
+ * "[I" becomes "int[]".
  */
 static std::unique_ptr<char[]> descriptorToDot(const char* str) {
   int targetLen = strlen(str);
@@ -157,7 +156,7 @@ static std::unique_ptr<char[]> descriptorToDot(const char* str) {
   int i = 0;
   for (; i < targetLen; i++) {
     const char ch = str[offset + i];
-    newStr[i] = (ch == '/' || ch == '$') ? '.' : ch;
+    newStr[i] = (ch == '/') ? '.' : ch;
   }  // for
 
   // Add the appropriate number of brackets for arrays.
@@ -171,10 +170,9 @@ static std::unique_ptr<char[]> descriptorToDot(const char* str) {
 }
 
 /*
- * Converts the class name portion of a type descriptor to human-readable
- * "dotted" form. For example, "Ljava/lang/String;" becomes "String".
+ * Retrieves the class name portion of a type descriptor.
  */
-static std::unique_ptr<char[]> descriptorClassToDot(const char* str) {
+static std::unique_ptr<char[]> descriptorClassToName(const char* str) {
   // Reduce to just the class name prefix.
   const char* lastSlash = strrchr(str, '/');
   if (lastSlash == nullptr) {
@@ -187,8 +185,7 @@ static std::unique_ptr<char[]> descriptorClassToDot(const char* str) {
   const int targetLen = strlen(lastSlash);
   std::unique_ptr<char[]> newStr(new char[targetLen]);
   for (int i = 0; i < targetLen - 1; i++) {
-    const char ch = lastSlash[i];
-    newStr[i] = ch == '$' ? '.' : ch;
+    newStr[i] = lastSlash[i];
   }  // for
   newStr[targetLen - 1] = '\0';
   return newStr;
@@ -1250,7 +1247,7 @@ static void dumpMethod(const ClassAccessor::Method& method, int i) {
 
     // Method name and prototype.
     if (constructor) {
-      std::unique_ptr<char[]> dot(descriptorClassToDot(backDescriptor));
+      std::unique_ptr<char[]> dot(descriptorClassToName(backDescriptor));
       fprintf(gOutFile, "<constructor name=\"%s\"\n", dot.get());
       dot = descriptorToDot(backDescriptor);
       fprintf(gOutFile, " type=\"%s\"\n", dot.get());
@@ -1469,7 +1466,7 @@ static void dumpClass(const DexFile* pDexFile, int idx, char** pLastPackage) {
     }
     fprintf(gOutFile, "  Interfaces        -\n");
   } else {
-    std::unique_ptr<char[]> dot(descriptorClassToDot(classDescriptor));
+    std::unique_ptr<char[]> dot(descriptorClassToName(classDescriptor));
     fprintf(gOutFile, "<class name=\"%s\"\n", dot.get());
     if (superclassDescriptor != nullptr) {
       dot = descriptorToDot(superclassDescriptor);
