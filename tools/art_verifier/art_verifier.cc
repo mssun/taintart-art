@@ -112,6 +112,9 @@ struct MethodVerifierArgs : public CmdlineArgs {
     } else if (option.starts_with("--repetitions=")) {
       char* end;
       repetitions_ = strtoul(option.substr(strlen("--repetitions=")).data(), &end, 10);
+    } else if (option.starts_with("--api-level=")) {
+      char* end;
+      api_level_ = strtoul(option.substr(strlen("--api-level=")).data(), &end, 10);
     } else {
       return kParseUnknownArgument;
     }
@@ -147,6 +150,7 @@ struct MethodVerifierArgs : public CmdlineArgs {
         "  --verbose: use verbose verifier mode.\n"
         "  --verbose-debug: use verbose verifier debug mode.\n"
         "  --repetitions=<count>: repeat the verification count times.\n"
+        "  --api-level=<level>: use API level for verification.\n"
         "\n";
 
     usage += Base::GetUsage();
@@ -163,6 +167,8 @@ struct MethodVerifierArgs : public CmdlineArgs {
   bool method_verifier_verbose_debug_ = false;
 
   size_t repetitions_ = 0u;
+
+  uint32_t api_level_ = 0u;
 };
 
 struct MethodVerifierMain : public CmdlineMain<MethodVerifierArgs> {
@@ -242,6 +248,7 @@ struct MethodVerifierMain : public CmdlineMain<MethodVerifierArgs> {
                                                   runtime->GetCompilerCallbacks(),
                                                   true,
                                                   verifier::HardFailLogMode::kLogWarning,
+                                                  args_->api_level_,
                                                   &error_msg);
           if (args_->repetitions_ == 0) {
             LOG(INFO) << descriptor << ": " << res << " " << error_msg;

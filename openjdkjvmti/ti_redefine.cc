@@ -1122,6 +1122,7 @@ bool Redefiner::ClassRedefinition::CheckVerification(const RedefinitionDataIter&
                                                  true, /*allow_soft_failures*/
                                                  /*log_level*/
                                                  art::verifier::HardFailLogMode::kLogWarning,
+                                                 art::Runtime::Current()->GetTargetSdkVersion(),
                                                  &error);
   switch (failure) {
     case art::verifier::FailureKind::kNoFailure:
