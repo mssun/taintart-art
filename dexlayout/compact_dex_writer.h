@@ -112,15 +112,15 @@ class CompactDexWriter : public DexWriter {
  public:
   class Container : public DexContainer {
    public:
-    Section* GetMainSection() OVERRIDE {
+    Section* GetMainSection() override {
       return &main_section_;
     }
 
-    Section* GetDataSection() OVERRIDE {
+    Section* GetDataSection() override {
       return &data_section_;
     }
 
-    bool IsCompactDexContainer() const OVERRIDE {
+    bool IsCompactDexContainer() const override {
       return true;
     }
 
@@ -139,21 +139,21 @@ class CompactDexWriter : public DexWriter {
   // Return true if we can generate compact dex for the IR.
   bool CanGenerateCompactDex(std::string* error_msg);
 
-  bool Write(DexContainer* output, std::string* error_msg) OVERRIDE;
+  bool Write(DexContainer* output, std::string* error_msg) override;
 
-  std::unique_ptr<DexContainer> CreateDexContainer() const OVERRIDE;
+  std::unique_ptr<DexContainer> CreateDexContainer() const override;
 
-  void WriteHeader(Stream* stream) OVERRIDE;
+  void WriteHeader(Stream* stream) override;
 
-  size_t GetHeaderSize() const OVERRIDE;
+  size_t GetHeaderSize() const override;
 
   uint32_t WriteDebugInfoOffsetTable(Stream* stream);
 
-  void WriteCodeItem(Stream* stream, dex_ir::CodeItem* code_item, bool reserve_only) OVERRIDE;
+  void WriteCodeItem(Stream* stream, dex_ir::CodeItem* code_item, bool reserve_only) override;
 
-  void WriteStringData(Stream* stream, dex_ir::StringData* string_data) OVERRIDE;
+  void WriteStringData(Stream* stream, dex_ir::StringData* string_data) override;
 
-  void WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_info) OVERRIDE;
+  void WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_info) override;
 
   void SortDebugInfosByMethodIndex();
 

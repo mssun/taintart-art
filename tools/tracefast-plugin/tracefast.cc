@@ -38,7 +38,7 @@ static constexpr const char* kTracerInstrumentationKey = "tracefast_TRAMPOLINE";
 static constexpr bool kNeedsInterpreter = false;
 #endif  // TRACEFAST_INITERPRETER
 
-class Tracer FINAL : public art::instrumentation::InstrumentationListener {
+class Tracer final : public art::instrumentation::InstrumentationListener {
  public:
   Tracer() {}
 
@@ -46,40 +46,40 @@ class Tracer FINAL : public art::instrumentation::InstrumentationListener {
                      art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
                      art::ArtMethod* method ATTRIBUTE_UNUSED,
                      uint32_t dex_pc ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void MethodExited(art::Thread* thread ATTRIBUTE_UNUSED,
                     art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
                     art::ArtMethod* method ATTRIBUTE_UNUSED,
                     uint32_t dex_pc ATTRIBUTE_UNUSED,
                     art::Handle<art::mirror::Object> return_value ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void MethodExited(art::Thread* thread ATTRIBUTE_UNUSED,
                     art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
                     art::ArtMethod* method ATTRIBUTE_UNUSED,
                     uint32_t dex_pc ATTRIBUTE_UNUSED,
                     const art::JValue& return_value ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void MethodUnwind(art::Thread* thread ATTRIBUTE_UNUSED,
                     art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
                     art::ArtMethod* method ATTRIBUTE_UNUSED,
                     uint32_t dex_pc ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void DexPcMoved(art::Thread* thread ATTRIBUTE_UNUSED,
                   art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
                   art::ArtMethod* method ATTRIBUTE_UNUSED,
                   uint32_t new_dex_pc ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void FieldRead(art::Thread* thread ATTRIBUTE_UNUSED,
                  art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
                  art::ArtMethod* method ATTRIBUTE_UNUSED,
                  uint32_t dex_pc ATTRIBUTE_UNUSED,
                  art::ArtField* field ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void FieldWritten(art::Thread* thread ATTRIBUTE_UNUSED,
                     art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
@@ -87,7 +87,7 @@ class Tracer FINAL : public art::instrumentation::InstrumentationListener {
                     uint32_t dex_pc ATTRIBUTE_UNUSED,
                     art::ArtField* field ATTRIBUTE_UNUSED,
                     art::Handle<art::mirror::Object> field_value ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void FieldWritten(art::Thread* thread ATTRIBUTE_UNUSED,
                     art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
@@ -95,32 +95,32 @@ class Tracer FINAL : public art::instrumentation::InstrumentationListener {
                     uint32_t dex_pc ATTRIBUTE_UNUSED,
                     art::ArtField* field ATTRIBUTE_UNUSED,
                     const art::JValue& field_value ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void ExceptionThrown(art::Thread* thread ATTRIBUTE_UNUSED,
                        art::Handle<art::mirror::Throwable> exception_object ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void ExceptionHandled(art::Thread* self ATTRIBUTE_UNUSED,
                         art::Handle<art::mirror::Throwable> throwable ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void Branch(art::Thread* thread ATTRIBUTE_UNUSED,
               art::ArtMethod* method ATTRIBUTE_UNUSED,
               uint32_t dex_pc ATTRIBUTE_UNUSED,
               int32_t dex_pc_offset ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void InvokeVirtualOrInterface(art::Thread* thread ATTRIBUTE_UNUSED,
                                 art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
                                 art::ArtMethod* caller ATTRIBUTE_UNUSED,
                                 uint32_t dex_pc ATTRIBUTE_UNUSED,
                                 art::ArtMethod* callee ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
   void WatchedFramePop(art::Thread* thread ATTRIBUTE_UNUSED,
                        const art::ShadowFrame& frame ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) { }
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Tracer);
@@ -149,7 +149,7 @@ class TraceFastPhaseCB : public art::RuntimePhaseCallback {
   TraceFastPhaseCB() {}
 
   void NextRuntimePhase(art::RuntimePhaseCallback::RuntimePhase phase)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     if (phase == art::RuntimePhaseCallback::RuntimePhase::kInit) {
       art::ScopedThreadSuspension sts(art::Thread::Current(),
                                       art::ThreadState::kWaitingForMethodTracingStart);

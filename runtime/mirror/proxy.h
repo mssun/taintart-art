@@ -26,7 +26,7 @@ struct ProxyOffsets;
 namespace mirror {
 
 // C++ mirror of java.lang.reflect.Proxy.
-class MANAGED Proxy FINAL : public Object {
+class MANAGED Proxy final : public Object {
  private:
   HeapReference<Object> h_;
 

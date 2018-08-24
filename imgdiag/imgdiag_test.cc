@@ -57,7 +57,7 @@ class ImgDiagTest : public CommonRuntimeTest {
     boot_image_location_ = image_spaces[0]->GetImageLocation();
   }
 
-  virtual void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE {
+  virtual void SetUpRuntimeOptions(RuntimeOptions* options) override {
     // Needs to live until CommonRuntimeTest::SetUp finishes, since we pass it a cstring.
     runtime_args_image_ = android::base::StringPrintf("-Ximage:%s", GetCoreArtLocation().c_str());
     options->push_back(std::make_pair(runtime_args_image_, nullptr));

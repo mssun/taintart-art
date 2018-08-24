@@ -186,7 +186,7 @@ TEST_F(CompilerDriverTest, AbstractMethodErrorStub) {
 
 class CompilerDriverProfileTest : public CompilerDriverTest {
  protected:
-  ProfileCompilationInfo* GetProfileCompilationInfo() OVERRIDE {
+  ProfileCompilationInfo* GetProfileCompilationInfo() override {
     ScopedObjectAccess soa(Thread::Current());
     std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("ProfileTestMultiDex");
 
@@ -200,7 +200,7 @@ class CompilerDriverProfileTest : public CompilerDriverTest {
     return &profile_info_;
   }
 
-  CompilerFilter::Filter GetCompilerFilter() const OVERRIDE {
+  CompilerFilter::Filter GetCompilerFilter() const override {
     // Use a profile based filter.
     return CompilerFilter::kSpeedProfile;
   }
@@ -278,7 +278,7 @@ TEST_F(CompilerDriverProfileTest, ProfileGuidedCompilation) {
 // which will be used for OatClass.
 class CompilerDriverVerifyTest : public CompilerDriverTest {
  protected:
-  CompilerFilter::Filter GetCompilerFilter() const OVERRIDE {
+  CompilerFilter::Filter GetCompilerFilter() const override {
     return CompilerFilter::kVerify;
   }
 

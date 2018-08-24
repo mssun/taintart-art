@@ -29,7 +29,7 @@ class ArmVIXLAssembler;
 
 namespace linker {
 
-class Thumb2RelativePatcher FINAL : public ArmBaseRelativePatcher {
+class Thumb2RelativePatcher final : public ArmBaseRelativePatcher {
  public:
   explicit Thumb2RelativePatcher(RelativePatcherThunkProvider* thunk_provider,
                                  RelativePatcherTargetProvider* target_provider);
@@ -37,18 +37,18 @@ class Thumb2RelativePatcher FINAL : public ArmBaseRelativePatcher {
   void PatchCall(std::vector<uint8_t>* code,
                  uint32_t literal_offset,
                  uint32_t patch_offset,
-                 uint32_t target_offset) OVERRIDE;
+                 uint32_t target_offset) override;
   void PatchPcRelativeReference(std::vector<uint8_t>* code,
                                 const LinkerPatch& patch,
                                 uint32_t patch_offset,
-                                uint32_t target_offset) OVERRIDE;
+                                uint32_t target_offset) override;
   void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code,
                                    const LinkerPatch& patch,
-                                   uint32_t patch_offset) OVERRIDE;
+                                   uint32_t patch_offset) override;
 
  protected:
-  uint32_t MaxPositiveDisplacement(const ThunkKey& key) OVERRIDE;
-  uint32_t MaxNegativeDisplacement(const ThunkKey& key) OVERRIDE;
+  uint32_t MaxPositiveDisplacement(const ThunkKey& key) override;
+  uint32_t MaxNegativeDisplacement(const ThunkKey& key) override;
 
  private:
   void SetInsn32(std::vector<uint8_t>* code, uint32_t offset, uint32_t value);

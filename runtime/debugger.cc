@@ -138,7 +138,7 @@ static std::ostream& operator<<(std::ostream& os, const Breakpoint& rhs)
   return os;
 }
 
-class DebugInstrumentationListener FINAL : public instrumentation::InstrumentationListener {
+class DebugInstrumentationListener final : public instrumentation::InstrumentationListener {
  public:
   DebugInstrumentationListener() {}
   virtual ~DebugInstrumentationListener() {}
@@ -147,7 +147,7 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
                      Handle<mirror::Object> this_object,
                      ArtMethod* method,
                      uint32_t dex_pc)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (method->IsNative()) {
       // TODO: post location events is a suspension point and native method entry stubs aren't.
       return;
@@ -176,7 +176,7 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
                     ArtMethod* method,
                     uint32_t dex_pc,
                     const JValue& return_value)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (method->IsNative()) {
       // TODO: post location events is a suspension point and native method entry stubs aren't.
       return;
@@ -195,7 +195,7 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
                     Handle<mirror::Object> this_object ATTRIBUTE_UNUSED,
                     ArtMethod* method,
                     uint32_t dex_pc)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     // We're not recorded to listen to this kind of event, so complain.
     LOG(ERROR) << "Unexpected method unwind event in debugger " << ArtMethod::PrettyMethod(method)
                << " " << dex_pc;
@@ -205,7 +205,7 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
                   Handle<mirror::Object> this_object,
                   ArtMethod* method,
                   uint32_t new_dex_pc)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (IsListeningToMethodExit() && IsReturn(method, new_dex_pc)) {
       // We also listen to kMethodExited instrumentation event and the current instruction is a
       // RETURN so we know the MethodExited method is going to be called right after us. Like in
@@ -229,7 +229,7 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
                  ArtMethod* method,
                  uint32_t dex_pc,
                  ArtField* field)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     Dbg::PostFieldAccessEvent(method, dex_pc, this_object.Get(), field);
   }
 
@@ -239,19 +239,19 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
                     uint32_t dex_pc,
                     ArtField* field,
                     const JValue& field_value)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     Dbg::PostFieldModificationEvent(method, dex_pc, this_object.Get(), field, &field_value);
   }
 
   void ExceptionThrown(Thread* thread ATTRIBUTE_UNUSED,
                        Handle<mirror::Throwable> exception_object)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     Dbg::PostException(exception_object.Get());
   }
 
   // We only care about branches in the Jit.
   void Branch(Thread* /*thread*/, ArtMethod* method, uint32_t dex_pc, int32_t dex_pc_offset)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     LOG(ERROR) << "Unexpected branch event in debugger " << ArtMethod::PrettyMethod(method)
                << " " << dex_pc << ", " << dex_pc_offset;
   }
@@ -262,20 +262,20 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
                                 ArtMethod* method,
                                 uint32_t dex_pc,
                                 ArtMethod* target ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     LOG(ERROR) << "Unexpected invoke event in debugger " << ArtMethod::PrettyMethod(method)
                << " " << dex_pc;
   }
 
   // TODO Might be worth it to post ExceptionCatch event.
   void ExceptionHandled(Thread* thread ATTRIBUTE_UNUSED,
-                        Handle<mirror::Throwable> throwable ATTRIBUTE_UNUSED) OVERRIDE {
+                        Handle<mirror::Throwable> throwable ATTRIBUTE_UNUSED) override {
     LOG(ERROR) << "Unexpected exception handled event in debugger";
   }
 
   // TODO Might be worth it to implement this.
   void WatchedFramePop(Thread* thread ATTRIBUTE_UNUSED,
-                       const ShadowFrame& frame ATTRIBUTE_UNUSED) OVERRIDE {
+                       const ShadowFrame& frame ATTRIBUTE_UNUSED) override {
     LOG(ERROR) << "Unexpected WatchedFramePop event in debugger";
   }
 
@@ -1087,7 +1087,7 @@ class ClassListCreator : public ClassVisitor {
  public:
   explicit ClassListCreator(std::vector<JDWP::RefTypeId>* classes) : classes_(classes) {}
 
-  bool operator()(ObjPtr<mirror::Class> c) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> c) override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (!c->IsPrimitive()) {
       classes_->push_back(Dbg::GetObjectRegistry()->AddRefType(c));
     }
@@ -2450,7 +2450,7 @@ JDWP::JdwpError Dbg::GetThreadFrames(JDWP::ObjectId thread_id, size_t start_fram
       expandBufAdd4BE(buf_, frame_count_);
     }
 
-    bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
       if (GetMethod()->IsRuntimeMethod()) {
         return true;  // The debugger can't do anything useful with a frame that has no Method*.
       }
@@ -2608,7 +2608,7 @@ JDWP::JdwpError Dbg::GetThisObject(JDWP::ObjectId thread_id, JDWP::FrameId frame
 }
 
 // Walks the stack until we find the frame with the given FrameId.
-class FindFrameVisitor FINAL : public StackVisitor {
+class FindFrameVisitor final : public StackVisitor {
  public:
   FindFrameVisitor(Thread* thread, Context* context, JDWP::FrameId frame_id)
       REQUIRES_SHARED(Locks::mutator_lock_)
@@ -3040,7 +3040,7 @@ class CatchLocationFinder : public StackVisitor {
       throw_dex_pc_(dex::kDexNoIndex) {
   }
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* method = GetMethod();
     DCHECK(method != nullptr);
     if (method->IsRuntimeMethod()) {
@@ -3693,7 +3693,7 @@ class NeedsDeoptimizationVisitor : public StackVisitor {
     : StackVisitor(self, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
       needs_deoptimization_(false) {}
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     // The visitor is meant to be used when handling exception from compiled code only.
     CHECK(!IsShadowFrame()) << "We only expect to visit compiled frame: "
                             << ArtMethod::PrettyMethod(GetMethod());

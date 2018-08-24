@@ -43,7 +43,7 @@ class HLoopOptimization : public HOptimization {
                     OptimizingCompilerStats* stats,
                     const char* name = kLoopOptimizationPassName);
 
-  bool Run() OVERRIDE;
+  bool Run() override;
 
   static constexpr const char* kLoopOptimizationPassName = "loop_optimization";
 

@@ -36,11 +36,11 @@ class CodeSimulatorArm64 : public CodeSimulator {
   static CodeSimulatorArm64* CreateCodeSimulatorArm64();
   virtual ~CodeSimulatorArm64();
 
-  void RunFrom(intptr_t code_buffer) OVERRIDE;
+  void RunFrom(intptr_t code_buffer) override;
 
-  bool GetCReturnBool() const OVERRIDE;
-  int32_t GetCReturnInt32() const OVERRIDE;
-  int64_t GetCReturnInt64() const OVERRIDE;
+  bool GetCReturnBool() const override;
+  int32_t GetCReturnInt32() const override;
+  int64_t GetCReturnInt64() const override;
 
  private:
   CodeSimulatorArm64();

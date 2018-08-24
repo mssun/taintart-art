@@ -56,7 +56,7 @@ struct PhaseUtil::PhaseCallback : public art::RuntimePhaseCallback {
     return soa.AddLocalReference<jthread>(soa.Self()->GetPeer());
   }
 
-  void NextRuntimePhase(RuntimePhase phase) REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
+  void NextRuntimePhase(RuntimePhase phase) REQUIRES_SHARED(art::Locks::mutator_lock_) override {
     art::Thread* self = art::Thread::Current();
     switch (phase) {
       case RuntimePhase::kInitialAgents:

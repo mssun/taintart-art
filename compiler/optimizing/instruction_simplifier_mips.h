@@ -35,7 +35,7 @@ class InstructionSimplifierMips : public HOptimization {
 
   static constexpr const char* kInstructionSimplifierMipsPassName = "instruction_simplifier_mips";
 
-  bool Run() OVERRIDE;
+  bool Run() override;
 
  private:
   CodeGeneratorMIPS* codegen_;

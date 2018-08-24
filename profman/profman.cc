@@ -185,7 +185,7 @@ NO_RETURN static void Abort(const char* msg) {
 
 // TODO(calin): This class has grown too much from its initial design. Split the functionality
 // into smaller, more contained pieces.
-class ProfMan FINAL {
+class ProfMan final {
  public:
   ProfMan() :
       reference_profile_file_fd_(kInvalidFd),

@@ -103,16 +103,16 @@ class ChecksumUpdatingOutputStream : public OutputStream {
   ChecksumUpdatingOutputStream(OutputStream* out, OatHeader* oat_header)
       : OutputStream(out->GetLocation()), out_(out), oat_header_(oat_header) { }
 
-  bool WriteFully(const void* buffer, size_t byte_count) OVERRIDE {
+  bool WriteFully(const void* buffer, size_t byte_count) override {
     oat_header_->UpdateChecksum(buffer, byte_count);
     return out_->WriteFully(buffer, byte_count);
   }
 
-  off_t Seek(off_t offset, Whence whence) OVERRIDE {
+  off_t Seek(off_t offset, Whence whence) override {
     return out_->Seek(offset, whence);
   }
 
-  bool Flush() OVERRIDE {
+  bool Flush() override {
     return out_->Flush();
   }
 
@@ -826,7 +826,7 @@ class OatWriter::OatDexMethodVisitor : public DexMethodVisitor {
         oat_class_index_(0u),
         method_offsets_index_(0u) {}
 
-  bool StartClass(const DexFile* dex_file, size_t class_def_index) OVERRIDE {
+  bool StartClass(const DexFile* dex_file, size_t class_def_index) override {
     DexMethodVisitor::StartClass(dex_file, class_def_index);
     if (kIsDebugBuild && writer_->MayHaveCompiledMethods()) {
       // There are no oat classes if there aren't any compiled methods.
@@ -836,7 +836,7 @@ class OatWriter::OatDexMethodVisitor : public DexMethodVisitor {
     return true;
   }
 
-  bool EndClass() OVERRIDE {
+  bool EndClass() override {
     ++oat_class_index_;
     return DexMethodVisitor::EndClass();
   }
@@ -862,7 +862,7 @@ class OatWriter::InitBssLayoutMethodVisitor : public DexMethodVisitor {
       : DexMethodVisitor(writer, /* offset */ 0u) {}
 
   bool VisitMethod(size_t class_def_method_index ATTRIBUTE_UNUSED,
-                   const ClassAccessor::Method& method) OVERRIDE {
+                   const ClassAccessor::Method& method) override {
     // Look for patches with .bss references and prepare maps with placeholders for their offsets.
     CompiledMethod* compiled_method = writer_->compiler_driver_->GetCompiledMethod(
         MethodReference(dex_file_, method.GetIndex()));
@@ -936,7 +936,7 @@ class OatWriter::InitOatClassesMethodVisitor : public DexMethodVisitor {
     DCHECK(num_classes == 0u || IsAligned<4u>(offset));
   }
 
-  bool StartClass(const DexFile* dex_file, size_t class_def_index) OVERRIDE {
+  bool StartClass(const DexFile* dex_file, size_t class_def_index) override {
     DexMethodVisitor::StartClass(dex_file, class_def_index);
     compiled_methods_.clear();
     compiled_methods_with_code_ = 0u;
@@ -944,7 +944,7 @@ class OatWriter::InitOatClassesMethodVisitor : public DexMethodVisitor {
   }
 
   bool VisitMethod(size_t class_def_method_index ATTRIBUTE_UNUSED,
-                   const ClassAccessor::Method& method) OVERRIDE {
+                   const ClassAccessor::Method& method) override {
     // Fill in the compiled_methods_ array for methods that have a
     // CompiledMethod. We track the number of non-null entries in
     // compiled_methods_with_code_ since we only want to allocate
@@ -959,7 +959,7 @@ class OatWriter::InitOatClassesMethodVisitor : public DexMethodVisitor {
     return true;
   }
 
-  bool EndClass() OVERRIDE {
+  bool EndClass() override {
     ClassReference class_ref(dex_file_, class_def_index_);
     ClassStatus status;
     bool found = writer_->compiler_driver_->GetCompiledClass(class_ref, &status);
@@ -1145,14 +1145,14 @@ class OatWriter::LayoutCodeMethodVisitor : public OatDexMethodVisitor {
       : OatDexMethodVisitor(writer, offset) {
   }
 
-  bool EndClass() OVERRIDE {
+  bool EndClass() override {
     OatDexMethodVisitor::EndClass();
     return true;
   }
 
   bool VisitMethod(size_t class_def_method_index,
                    const ClassAccessor::Method& method)
-      OVERRIDE
+      override
       REQUIRES_SHARED(Locks::mutator_lock_)  {
     Locks::mutator_lock_->AssertSharedHeld(Thread::Current());
 
@@ -1248,7 +1248,7 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
                                              std::move(ordered_methods)) {
   }
 
-  virtual bool VisitComplete() OVERRIDE {
+  virtual bool VisitComplete() override {
     offset_ = writer_->relative_patcher_->ReserveSpaceEnd(offset_);
     if (generate_debug_info_) {
       std::vector<debug::MethodDebugInfo> thunk_infos =
@@ -1261,7 +1261,7 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
   }
 
   virtual bool VisitMethod(const OrderedMethodData& method_data)
-      OVERRIDE
+      override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     OatClass* oat_class = method_data.oat_class;
     CompiledMethod* compiled_method = method_data.compiled_method;
@@ -1445,7 +1445,7 @@ class OatWriter::InitMapMethodVisitor : public OatDexMethodVisitor {
 
   bool VisitMethod(size_t class_def_method_index,
                    const ClassAccessor::Method& method ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     OatClass* oat_class = &writer_->oat_classes_[oat_class_index_];
     CompiledMethod* compiled_method = oat_class->GetCompiledMethod(class_def_method_index);
 
@@ -1495,7 +1495,7 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
   // in the same oat file. If the origin and the copied methods are
   // in different oat files don't touch the copied method.
   // References to other oat files are not supported yet.
-  bool StartClass(const DexFile* dex_file, size_t class_def_index) OVERRIDE
+  bool StartClass(const DexFile* dex_file, size_t class_def_index) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     OatDexMethodVisitor::StartClass(dex_file, class_def_index);
     // Skip classes that are not in the image.
@@ -1533,7 +1533,7 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
     return true;
   }
 
-  bool VisitMethod(size_t class_def_method_index, const ClassAccessor::Method& method) OVERRIDE
+  bool VisitMethod(size_t class_def_method_index, const ClassAccessor::Method& method) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Skip methods that are not in the image.
     if (!IsImageClass()) {
@@ -1652,7 +1652,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     }
   }
 
-  virtual bool VisitStart() OVERRIDE {
+  virtual bool VisitStart() override {
     return true;
   }
 
@@ -1681,7 +1681,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     return true;
   }
 
-  virtual bool VisitMethod(const OrderedMethodData& method_data) OVERRIDE
+  virtual bool VisitMethod(const OrderedMethodData& method_data) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     const MethodReference& method_ref = method_data.method_reference;
     UpdateDexFileAndDexCache(method_ref.dex_file);

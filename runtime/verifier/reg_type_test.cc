@@ -1042,7 +1042,7 @@ TEST_F(RegTypeTest, ConstPrecision) {
 
 class RegTypeOOMTest : public RegTypeTest {
  protected:
-  void SetUpRuntimeOptions(RuntimeOptions *options) OVERRIDE {
+  void SetUpRuntimeOptions(RuntimeOptions *options) override {
     SetUpRuntimeOptionsForFillHeap(options);
 
     // We must not appear to be a compiler, or we'll abort on the host.

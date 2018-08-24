@@ -388,10 +388,10 @@ class MonotonicValueRange : public ValueRange {
     return induction_variable_->GetBlock();
   }
 
-  MonotonicValueRange* AsMonotonicValueRange() OVERRIDE { return this; }
+  MonotonicValueRange* AsMonotonicValueRange() override { return this; }
 
   // If it's certain that this value range fits in other_range.
-  bool FitsIn(ValueRange* other_range) const OVERRIDE {
+  bool FitsIn(ValueRange* other_range) const override {
     if (other_range == nullptr) {
       return true;
     }
@@ -402,7 +402,7 @@ class MonotonicValueRange : public ValueRange {
   // Try to narrow this MonotonicValueRange given another range.
   // Ideally it will return a normal ValueRange. But due to
   // possible overflow/underflow, that may not be possible.
-  ValueRange* Narrow(ValueRange* range) OVERRIDE {
+  ValueRange* Narrow(ValueRange* range) override {
     if (range == nullptr) {
       return this;
     }
@@ -530,7 +530,7 @@ class BCEVisitor : public HGraphVisitor {
         induction_range_(induction_analysis),
         next_(nullptr) {}
 
-  void VisitBasicBlock(HBasicBlock* block) OVERRIDE {
+  void VisitBasicBlock(HBasicBlock* block) override {
     DCHECK(!IsAddedBlock(block));
     first_index_bounds_check_map_.clear();
     // Visit phis and instructions using a safe iterator. The iteration protects
@@ -820,7 +820,7 @@ class BCEVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitBoundsCheck(HBoundsCheck* bounds_check) OVERRIDE {
+  void VisitBoundsCheck(HBoundsCheck* bounds_check) override {
     HBasicBlock* block = bounds_check->GetBlock();
     HInstruction* index = bounds_check->InputAt(0);
     HInstruction* array_length = bounds_check->InputAt(1);
@@ -945,7 +945,7 @@ class BCEVisitor : public HGraphVisitor {
     return true;
   }
 
-  void VisitPhi(HPhi* phi) OVERRIDE {
+  void VisitPhi(HPhi* phi) override {
     if (phi->IsLoopHeaderPhi()
         && (phi->GetType() == DataType::Type::kInt32)
         && HasSameInputAtBackEdges(phi)) {
@@ -992,14 +992,14 @@ class BCEVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitIf(HIf* instruction) OVERRIDE {
+  void VisitIf(HIf* instruction) override {
     if (instruction->InputAt(0)->IsCondition()) {
       HCondition* cond = instruction->InputAt(0)->AsCondition();
       HandleIf(instruction, cond->GetLeft(), cond->GetRight(), cond->GetCondition());
     }
   }
 
-  void VisitAdd(HAdd* add) OVERRIDE {
+  void VisitAdd(HAdd* add) override {
     HInstruction* right = add->GetRight();
     if (right->IsIntConstant()) {
       ValueRange* left_range = LookupValueRange(add->GetLeft(), add->GetBlock());
@@ -1013,7 +1013,7 @@ class BCEVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitSub(HSub* sub) OVERRIDE {
+  void VisitSub(HSub* sub) override {
     HInstruction* left = sub->GetLeft();
     HInstruction* right = sub->GetRight();
     if (right->IsIntConstant()) {
@@ -1115,19 +1115,19 @@ class BCEVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitDiv(HDiv* div) OVERRIDE {
+  void VisitDiv(HDiv* div) override {
     FindAndHandlePartialArrayLength(div);
   }
 
-  void VisitShr(HShr* shr) OVERRIDE {
+  void VisitShr(HShr* shr) override {
     FindAndHandlePartialArrayLength(shr);
   }
 
-  void VisitUShr(HUShr* ushr) OVERRIDE {
+  void VisitUShr(HUShr* ushr) override {
     FindAndHandlePartialArrayLength(ushr);
   }
 
-  void VisitAnd(HAnd* instruction) OVERRIDE {
+  void VisitAnd(HAnd* instruction) override {
     if (instruction->GetRight()->IsIntConstant()) {
       int32_t constant = instruction->GetRight()->AsIntConstant()->GetValue();
       if (constant > 0) {
@@ -1142,7 +1142,7 @@ class BCEVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitRem(HRem* instruction) OVERRIDE {
+  void VisitRem(HRem* instruction) override {
     HInstruction* left = instruction->GetLeft();
     HInstruction* right = instruction->GetRight();
 
@@ -1202,7 +1202,7 @@ class BCEVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitNewArray(HNewArray* new_array) OVERRIDE {
+  void VisitNewArray(HNewArray* new_array) override {
     HInstruction* len = new_array->GetLength();
     if (!len->IsIntConstant()) {
       HInstruction *left;
@@ -1240,7 +1240,7 @@ class BCEVisitor : public HGraphVisitor {
     * has occurred (see AddCompareWithDeoptimization()), since in those cases it would be
     * unsafe to hoist array references across their deoptimization instruction inside a loop.
     */
-  void VisitArrayGet(HArrayGet* array_get) OVERRIDE {
+  void VisitArrayGet(HArrayGet* array_get) override {
     if (!has_dom_based_dynamic_bce_ && array_get->IsInLoop()) {
       HLoopInformation* loop = array_get->GetBlock()->GetLoopInformation();
       if (loop->IsDefinedOutOfTheLoop(array_get->InputAt(0)) &&

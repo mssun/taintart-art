@@ -41,7 +41,7 @@ enum class LargeObjectSpaceType {
 // Abstraction implemented by all large object spaces.
 class LargeObjectSpace : public DiscontinuousSpace, public AllocSpace {
  public:
-  SpaceType GetType() const OVERRIDE {
+  SpaceType GetType() const override {
     return kSpaceTypeLargeObjectSpace;
   }
   void SwapBitmaps();
@@ -49,10 +49,10 @@ class LargeObjectSpace : public DiscontinuousSpace, public AllocSpace {
   virtual void Walk(DlMallocSpace::WalkCallback, void* arg) = 0;
   virtual ~LargeObjectSpace() {}
 
-  uint64_t GetBytesAllocated() OVERRIDE {
+  uint64_t GetBytesAllocated() override {
     return num_bytes_allocated_;
   }
-  uint64_t GetObjectsAllocated() OVERRIDE {
+  uint64_t GetObjectsAllocated() override {
     return num_objects_allocated_;
   }
   uint64_t GetTotalBytesAllocated() const {
@@ -61,22 +61,22 @@ class LargeObjectSpace : public DiscontinuousSpace, public AllocSpace {
   uint64_t GetTotalObjectsAllocated() const {
     return total_objects_allocated_;
   }
-  size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) OVERRIDE;
+  size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) override;
   // LargeObjectSpaces don't have thread local state.
-  size_t RevokeThreadLocalBuffers(art::Thread*) OVERRIDE {
+  size_t RevokeThreadLocalBuffers(art::Thread*) override {
     return 0U;
   }
-  size_t RevokeAllThreadLocalBuffers() OVERRIDE {
+  size_t RevokeAllThreadLocalBuffers() override {
     return 0U;
   }
-  bool IsAllocSpace() const OVERRIDE {
+  bool IsAllocSpace() const override {
     return true;
   }
-  AllocSpace* AsAllocSpace() OVERRIDE {
+  AllocSpace* AsAllocSpace() override {
     return this;
   }
   collector::ObjectBytePair Sweep(bool swap_bitmaps);
-  virtual bool CanMoveObjects() const OVERRIDE {
+  virtual bool CanMoveObjects() const override {
     return false;
   }
   // Current address at which the space begins, which may vary as the space is filled.
@@ -96,7 +96,7 @@ class LargeObjectSpace : public DiscontinuousSpace, public AllocSpace {
     const uint8_t* byte_obj = reinterpret_cast<const uint8_t*>(obj);
     return Begin() <= byte_obj && byte_obj < End();
   }
-  void LogFragmentationAllocFailure(std::ostream& os, size_t failed_alloc_bytes) OVERRIDE
+  void LogFragmentationAllocFailure(std::ostream& os, size_t failed_alloc_bytes) override
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Return true if the large object is a zygote large object. Potentially slow.
@@ -140,11 +140,11 @@ class LargeObjectMapSpace : public LargeObjectSpace {
                         size_t* usable_size, size_t* bytes_tl_bulk_allocated)
       REQUIRES(!lock_);
   size_t Free(Thread* self, mirror::Object* ptr) REQUIRES(!lock_);
-  void Walk(DlMallocSpace::WalkCallback, void* arg) OVERRIDE REQUIRES(!lock_);
+  void Walk(DlMallocSpace::WalkCallback, void* arg) override REQUIRES(!lock_);
   // TODO: disabling thread safety analysis as this may be called when we already hold lock_.
   bool Contains(const mirror::Object* obj) const NO_THREAD_SAFETY_ANALYSIS;
 
-  std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const OVERRIDE REQUIRES(!lock_);
+  std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const override REQUIRES(!lock_);
 
  protected:
   struct LargeObject {
@@ -154,8 +154,8 @@ class LargeObjectMapSpace : public LargeObjectSpace {
   explicit LargeObjectMapSpace(const std::string& name);
   virtual ~LargeObjectMapSpace() {}
 
-  bool IsZygoteLargeObject(Thread* self, mirror::Object* obj) const OVERRIDE REQUIRES(!lock_);
-  void SetAllLargeObjectsAsZygoteObjects(Thread* self) OVERRIDE REQUIRES(!lock_);
+  bool IsZygoteLargeObject(Thread* self, mirror::Object* obj) const override REQUIRES(!lock_);
+  void SetAllLargeObjectsAsZygoteObjects(Thread* self) override REQUIRES(!lock_);
 
   // Used to ensure mutual exclusion when the allocation spaces data structures are being modified.
   mutable Mutex lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
@@ -164,22 +164,22 @@ class LargeObjectMapSpace : public LargeObjectSpace {
 };
 
 // A continuous large object space with a free-list to handle holes.
-class FreeListSpace FINAL : public LargeObjectSpace {
+class FreeListSpace final : public LargeObjectSpace {
  public:
   static constexpr size_t kAlignment = kPageSize;
 
   virtual ~FreeListSpace();
   static FreeListSpace* Create(const std::string& name, uint8_t* requested_begin, size_t capacity);
-  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) OVERRIDE
+  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) override
       REQUIRES(lock_);
   mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
                         size_t* usable_size, size_t* bytes_tl_bulk_allocated)
-      OVERRIDE REQUIRES(!lock_);
-  size_t Free(Thread* self, mirror::Object* obj) OVERRIDE REQUIRES(!lock_);
-  void Walk(DlMallocSpace::WalkCallback callback, void* arg) OVERRIDE REQUIRES(!lock_);
+      override REQUIRES(!lock_);
+  size_t Free(Thread* self, mirror::Object* obj) override REQUIRES(!lock_);
+  void Walk(DlMallocSpace::WalkCallback callback, void* arg) override REQUIRES(!lock_);
   void Dump(std::ostream& os) const REQUIRES(!lock_);
 
-  std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const OVERRIDE REQUIRES(!lock_);
+  std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const override REQUIRES(!lock_);
 
  protected:
   FreeListSpace(const std::string& name, MemMap&& mem_map, uint8_t* begin, uint8_t* end);
@@ -198,8 +198,8 @@ class FreeListSpace FINAL : public LargeObjectSpace {
   }
   // Removes header from the free blocks set by finding the corresponding iterator and erasing it.
   void RemoveFreePrev(AllocationInfo* info) REQUIRES(lock_);
-  bool IsZygoteLargeObject(Thread* self, mirror::Object* obj) const OVERRIDE;
-  void SetAllLargeObjectsAsZygoteObjects(Thread* self) OVERRIDE REQUIRES(!lock_);
+  bool IsZygoteLargeObject(Thread* self, mirror::Object* obj) const override;
+  void SetAllLargeObjectsAsZygoteObjects(Thread* self) override REQUIRES(!lock_);
 
   class SortByPrevFree {
    public:

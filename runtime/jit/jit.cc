@@ -399,7 +399,7 @@ void Jit::NewTypeLoadedIfUsingJit(mirror::Class* type) {
 
 void Jit::DumpTypeInfoForLoadedTypes(ClassLinker* linker) {
   struct CollectClasses : public ClassVisitor {
-    bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
       classes_.push_back(klass.Ptr());
       return true;
     }
@@ -576,7 +576,7 @@ void Jit::AddMemoryUsage(ArtMethod* method, size_t bytes) {
   memory_use_.AddValue(bytes);
 }
 
-class JitCompileTask FINAL : public Task {
+class JitCompileTask final : public Task {
  public:
   enum TaskKind {
     kAllocateProfile,
@@ -596,7 +596,7 @@ class JitCompileTask FINAL : public Task {
     soa.Vm()->DeleteGlobalRef(soa.Self(), klass_);
   }
 
-  void Run(Thread* self) OVERRIDE {
+  void Run(Thread* self) override {
     ScopedObjectAccess soa(self);
     if (kind_ == kCompile) {
       Runtime::Current()->GetJit()->CompileMethod(method_, self, /* osr */ false);
@@ -611,7 +611,7 @@ class JitCompileTask FINAL : public Task {
     ProfileSaver::NotifyJitActivity();
   }
 
-  void Finalize() OVERRIDE {
+  void Finalize() override {
     delete this;
   }
 

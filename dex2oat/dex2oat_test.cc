@@ -55,7 +55,7 @@ using android::base::StringPrintf;
 
 class Dex2oatTest : public Dex2oatEnvironmentTest {
  public:
-  virtual void TearDown() OVERRIDE {
+  virtual void TearDown() override {
     Dex2oatEnvironmentTest::TearDown();
 
     output_ = "";
@@ -349,7 +349,7 @@ TEST_F(Dex2oatSwapTest, DoUseSwapSingleSmall) {
 
 class Dex2oatSwapUseTest : public Dex2oatSwapTest {
  protected:
-  void CheckHostResult(bool expect_use) OVERRIDE {
+  void CheckHostResult(bool expect_use) override {
     if (!kIsTargetBuild) {
       if (expect_use) {
         EXPECT_NE(output_.find("Large app, accepted running with swap."), std::string::npos)
@@ -361,7 +361,7 @@ class Dex2oatSwapUseTest : public Dex2oatSwapTest {
     }
   }
 
-  std::string GetTestDexFileName() OVERRIDE {
+  std::string GetTestDexFileName() override {
     // Use Statics as it has a handful of functions.
     return CommonRuntimeTest::GetTestDexFileName("Statics");
   }
@@ -474,7 +474,7 @@ TEST_F(Dex2oatSwapUseTest, CheckSwapUsage) {
 class Dex2oatVeryLargeTest : public Dex2oatTest {
  protected:
   void CheckFilter(CompilerFilter::Filter input ATTRIBUTE_UNUSED,
-                   CompilerFilter::Filter result ATTRIBUTE_UNUSED) OVERRIDE {
+                   CompilerFilter::Filter result ATTRIBUTE_UNUSED) override {
     // Ignore, we'll do our own checks.
   }
 
@@ -627,7 +627,7 @@ TEST_F(Dex2oatVeryLargeTest, SpeedProfileNoProfile) {
 class Dex2oatLayoutTest : public Dex2oatTest {
  protected:
   void CheckFilter(CompilerFilter::Filter input ATTRIBUTE_UNUSED,
-                   CompilerFilter::Filter result ATTRIBUTE_UNUSED) OVERRIDE {
+                   CompilerFilter::Filter result ATTRIBUTE_UNUSED) override {
     // Ignore, we'll do our own checks.
   }
 

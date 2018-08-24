@@ -74,7 +74,7 @@ static constexpr const char* kPassNameSeparator = "$";
 /**
  * Used by the code generator, to allocate the code in a vector.
  */
-class CodeVectorAllocator FINAL : public CodeAllocator {
+class CodeVectorAllocator final : public CodeAllocator {
  public:
   explicit CodeVectorAllocator(ArenaAllocator* allocator)
       : memory_(allocator->Adapter(kArenaAllocCodeBuffer)) {}
@@ -84,7 +84,7 @@ class CodeVectorAllocator FINAL : public CodeAllocator {
     return &memory_[0];
   }
 
-  ArrayRef<const uint8_t> GetMemory() const OVERRIDE { return ArrayRef<const uint8_t>(memory_); }
+  ArrayRef<const uint8_t> GetMemory() const override { return ArrayRef<const uint8_t>(memory_); }
   uint8_t* GetData() { return memory_.data(); }
 
  private:
@@ -264,12 +264,12 @@ class PassScope : public ValueObject {
   PassObserver* const pass_observer_;
 };
 
-class OptimizingCompiler FINAL : public Compiler {
+class OptimizingCompiler final : public Compiler {
  public:
   explicit OptimizingCompiler(CompilerDriver* driver);
-  ~OptimizingCompiler() OVERRIDE;
+  ~OptimizingCompiler() override;
 
-  bool CanCompileMethod(uint32_t method_idx, const DexFile& dex_file) const OVERRIDE;
+  bool CanCompileMethod(uint32_t method_idx, const DexFile& dex_file) const override;
 
   CompiledMethod* Compile(const DexFile::CodeItem* code_item,
                           uint32_t access_flags,
@@ -278,29 +278,29 @@ class OptimizingCompiler FINAL : public Compiler {
                           uint32_t method_idx,
                           Handle<mirror::ClassLoader> class_loader,
                           const DexFile& dex_file,
-                          Handle<mirror::DexCache> dex_cache) const OVERRIDE;
+                          Handle<mirror::DexCache> dex_cache) const override;
 
   CompiledMethod* JniCompile(uint32_t access_flags,
                              uint32_t method_idx,
                              const DexFile& dex_file,
-                             Handle<mirror::DexCache> dex_cache) const OVERRIDE;
+                             Handle<mirror::DexCache> dex_cache) const override;
 
-  uintptr_t GetEntryPointOf(ArtMethod* method) const OVERRIDE
+  uintptr_t GetEntryPointOf(ArtMethod* method) const override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return reinterpret_cast<uintptr_t>(method->GetEntryPointFromQuickCompiledCodePtrSize(
         InstructionSetPointerSize(GetCompilerDriver()->GetCompilerOptions().GetInstructionSet())));
   }
 
-  void Init() OVERRIDE;
+  void Init() override;
 
-  void UnInit() const OVERRIDE;
+  void UnInit() const override;
 
   bool JitCompile(Thread* self,
                   jit::JitCodeCache* code_cache,
                   ArtMethod* method,
                   bool osr,
                   jit::JitLogger* jit_logger)
-      OVERRIDE
+      override
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:

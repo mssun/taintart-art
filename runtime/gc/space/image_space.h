@@ -86,11 +86,11 @@ class ImageSpace : public MemMapSpace {
     return image_location_;
   }
 
-  accounting::ContinuousSpaceBitmap* GetLiveBitmap() const OVERRIDE {
+  accounting::ContinuousSpaceBitmap* GetLiveBitmap() const override {
     return live_bitmap_.get();
   }
 
-  accounting::ContinuousSpaceBitmap* GetMarkBitmap() const OVERRIDE {
+  accounting::ContinuousSpaceBitmap* GetMarkBitmap() const override {
     // ImageSpaces have the same bitmap for both live and marked. This helps reduce the number of
     // special cases to test against.
     return live_bitmap_.get();
@@ -102,7 +102,7 @@ class ImageSpace : public MemMapSpace {
   void Sweep(bool /* swap_bitmaps */, size_t* /* freed_objects */, size_t* /* freed_bytes */) {
   }
 
-  bool CanMoveObjects() const OVERRIDE {
+  bool CanMoveObjects() const override {
     return false;
   }
 

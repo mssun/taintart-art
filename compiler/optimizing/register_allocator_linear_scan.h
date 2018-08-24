@@ -42,11 +42,11 @@ class RegisterAllocatorLinearScan : public RegisterAllocator {
   RegisterAllocatorLinearScan(ScopedArenaAllocator* allocator,
                               CodeGenerator* codegen,
                               const SsaLivenessAnalysis& analysis);
-  ~RegisterAllocatorLinearScan() OVERRIDE;
+  ~RegisterAllocatorLinearScan() override;
 
-  void AllocateRegisters() OVERRIDE;
+  void AllocateRegisters() override;
 
-  bool Validate(bool log_fatal_on_failure) OVERRIDE {
+  bool Validate(bool log_fatal_on_failure) override {
     processing_core_registers_ = true;
     if (!ValidateInternal(log_fatal_on_failure)) {
       return false;

@@ -578,7 +578,7 @@ class MarkSweep::VerifyRootMarkedVisitor : public SingleRootVisitor {
  public:
   explicit VerifyRootMarkedVisitor(MarkSweep* collector) : collector_(collector) { }
 
-  void VisitRoot(mirror::Object* root, const RootInfo& info) OVERRIDE
+  void VisitRoot(mirror::Object* root, const RootInfo& info) override
       REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_) {
     CHECK(collector_->IsMarked(root) != nullptr) << info.ToString();
   }
@@ -607,7 +607,7 @@ class MarkSweep::VerifyRootVisitor : public SingleRootVisitor {
  public:
   explicit VerifyRootVisitor(std::ostream& os) : os_(os) {}
 
-  void VisitRoot(mirror::Object* root, const RootInfo& info) OVERRIDE
+  void VisitRoot(mirror::Object* root, const RootInfo& info) override
       REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_) {
     // See if the root is on any space bitmap.
     auto* heap = Runtime::Current()->GetHeap();
@@ -1110,7 +1110,7 @@ class MarkSweep::VerifySystemWeakVisitor : public IsMarkedVisitor {
   explicit VerifySystemWeakVisitor(MarkSweep* mark_sweep) : mark_sweep_(mark_sweep) {}
 
   virtual mirror::Object* IsMarked(mirror::Object* obj)
-      OVERRIDE
+      override
       REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_) {
     mark_sweep_->VerifyIsLive(obj);
     return obj;
@@ -1144,7 +1144,7 @@ class MarkSweep::CheckpointMarkThreadRoots : public Closure, public RootVisitor 
   }
 
   void VisitRoots(mirror::Object*** roots, size_t count, const RootInfo& info ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_)
+      override REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(Locks::heap_bitmap_lock_) {
     for (size_t i = 0; i < count; ++i) {
       mark_sweep_->MarkObjectNonNullParallel(*roots[i]);
@@ -1154,14 +1154,14 @@ class MarkSweep::CheckpointMarkThreadRoots : public Closure, public RootVisitor 
   void VisitRoots(mirror::CompressedReference<mirror::Object>** roots,
                   size_t count,
                   const RootInfo& info ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_)
+      override REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(Locks::heap_bitmap_lock_) {
     for (size_t i = 0; i < count; ++i) {
       mark_sweep_->MarkObjectNonNullParallel(roots[i]->AsMirrorPtr());
     }
   }
 
-  virtual void Run(Thread* thread) OVERRIDE NO_THREAD_SAFETY_ANALYSIS {
+  virtual void Run(Thread* thread) override NO_THREAD_SAFETY_ANALYSIS {
     ScopedTrace trace("Marking thread roots");
     // Note: self is not necessarily equal to thread since thread may be suspended.
     Thread* const self = Thread::Current();

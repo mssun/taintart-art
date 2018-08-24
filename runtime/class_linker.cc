@@ -884,7 +884,7 @@ class SetInterpreterEntrypointArtMethodVisitor : public ArtMethodVisitor {
   explicit SetInterpreterEntrypointArtMethodVisitor(PointerSize image_pointer_size)
     : image_pointer_size_(image_pointer_size) {}
 
-  void Visit(ArtMethod* method) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  void Visit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (kIsDebugBuild && !method->IsRuntimeMethod()) {
       CHECK(method->GetDeclaringClass() != nullptr);
     }
@@ -1390,7 +1390,7 @@ bool ClassLinker::OpenImageDexFiles(gc::space::ImageSpace* space,
 
 // Helper class for ArtMethod checks when adding an image. Keeps all required functionality
 // together and caches some intermediate results.
-class ImageSanityChecks FINAL {
+class ImageSanityChecks final {
  public:
   static void CheckObjects(gc::Heap* heap, ClassLinker* class_linker)
       REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1951,7 +1951,7 @@ class VisitClassLoaderClassesVisitor : public ClassLoaderVisitor {
         done_(false) {}
 
   void Visit(ObjPtr<mirror::ClassLoader> class_loader)
-      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) OVERRIDE {
+      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) override {
     ClassTable* const class_table = class_loader->GetClassTable();
     if (!done_ && class_table != nullptr) {
       DefiningClassLoaderFilterVisitor visitor(class_loader, visitor_);
@@ -1972,7 +1972,7 @@ class VisitClassLoaderClassesVisitor : public ClassLoaderVisitor {
                                      ClassVisitor* visitor)
         : defining_class_loader_(defining_class_loader), visitor_(visitor) { }
 
-    bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
       if (klass->GetClassLoader() != defining_class_loader_) {
         return true;
       }
@@ -2009,7 +2009,7 @@ void ClassLinker::VisitClasses(ClassVisitor* visitor) {
 
 class GetClassesInToVector : public ClassVisitor {
  public:
-  bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE {
+  bool operator()(ObjPtr<mirror::Class> klass) override {
     classes_.push_back(klass);
     return true;
   }
@@ -2021,7 +2021,7 @@ class GetClassInToObjectArray : public ClassVisitor {
   explicit GetClassInToObjectArray(mirror::ObjectArray<mirror::Class>* arr)
       : arr_(arr), index_(0) {}
 
-  bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
     ++index_;
     if (index_ <= arr_->GetLength()) {
       arr_->Set(index_ - 1, klass);
@@ -3845,7 +3845,7 @@ class MoveClassTableToPreZygoteVisitor : public ClassLoaderVisitor {
 
   void Visit(ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES(Locks::classlinker_classes_lock_)
-      REQUIRES_SHARED(Locks::mutator_lock_) OVERRIDE {
+      REQUIRES_SHARED(Locks::mutator_lock_) override {
     ClassTable* const class_table = class_loader->GetClassTable();
     if (class_table != nullptr) {
       class_table->FreezeSnapshot();
@@ -3871,7 +3871,7 @@ class LookupClassesVisitor : public ClassLoaderVisitor {
        result_(result) {}
 
   void Visit(ObjPtr<mirror::ClassLoader> class_loader)
-      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) OVERRIDE {
+      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) override {
     ClassTable* const class_table = class_loader->GetClassTable();
     ObjPtr<mirror::Class> klass = class_table->Lookup(descriptor_, hash_);
     // Add `klass` only if `class_loader` is its defining (not just initiating) class loader.
@@ -5563,7 +5563,7 @@ bool ClassLinker::LinkMethods(Thread* self,
 // Comparator for name and signature of a method, used in finding overriding methods. Implementation
 // avoids the use of handles, if it didn't then rather than compare dex files we could compare dex
 // caches in the implementation below.
-class MethodNameAndSignatureComparator FINAL : public ValueObject {
+class MethodNameAndSignatureComparator final : public ValueObject {
  public:
   explicit MethodNameAndSignatureComparator(ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_) :
@@ -8555,7 +8555,7 @@ class CountClassesVisitor : public ClassLoaderVisitor {
   CountClassesVisitor() : num_zygote_classes(0), num_non_zygote_classes(0) {}
 
   void Visit(ObjPtr<mirror::ClassLoader> class_loader)
-      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) OVERRIDE {
+      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) override {
     ClassTable* const class_table = class_loader->GetClassTable();
     if (class_table != nullptr) {
       num_zygote_classes += class_table->NumZygoteClasses(class_loader);
@@ -8825,7 +8825,7 @@ class GetResolvedClassesVisitor : public ClassVisitor {
         extra_stats_(),
         last_extra_stats_(extra_stats_.end()) { }
 
-  bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (!klass->IsProxyClass() &&
         !klass->IsArrayClass() &&
         klass->IsResolved() &&
@@ -8913,7 +8913,7 @@ class ClassLinker::FindVirtualMethodHolderVisitor : public ClassVisitor {
       : method_(method),
         pointer_size_(pointer_size) {}
 
-  bool operator()(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_) OVERRIDE {
+  bool operator()(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_) override {
     if (klass->GetVirtualMethodsSliceUnchecked(pointer_size_).Contains(method_)) {
       holder_ = klass;
     }

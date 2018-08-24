@@ -24,13 +24,13 @@ namespace x86 {
 
 enum RegFile { GPR, MMX, SSE };
 
-class DisassemblerX86 FINAL : public Disassembler {
+class DisassemblerX86 final : public Disassembler {
  public:
   DisassemblerX86(DisassemblerOptions* options, bool supports_rex)
       : Disassembler(options), supports_rex_(supports_rex) {}
 
-  size_t Dump(std::ostream& os, const uint8_t* begin) OVERRIDE;
-  void Dump(std::ostream& os, const uint8_t* begin, const uint8_t* end) OVERRIDE;
+  size_t Dump(std::ostream& os, const uint8_t* begin) override;
+  void Dump(std::ostream& os, const uint8_t* begin, const uint8_t* end) override;
 
  private:
   size_t DumpNops(std::ostream& os, const uint8_t* instr);

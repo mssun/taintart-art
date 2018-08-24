@@ -28,7 +28,7 @@ struct TestClosure : public Closure {
   bool second_run;
   bool second_run_interleaved;
 
-  void Run(Thread* self) OVERRIDE {
+  void Run(Thread* self) override {
     CHECK_EQ(self, Thread::Current()) << "Not running on target thread!";
     if (!first_run_start) {
       CHECK(!second_run);
@@ -62,7 +62,7 @@ extern "C" JNIEXPORT void JNICALL Java_Main_checkCheckpointsRun(JNIEnv*, jclass)
 }
 
 struct SetupClosure : public Closure {
-  void Run(Thread* self) OVERRIDE {
+  void Run(Thread* self) override {
     CHECK_EQ(self, Thread::Current()) << "Not running on target thread!";
     ScopedObjectAccess soa(self);
     MutexLock tscl_mu(self, *Locks::thread_suspend_count_lock_);

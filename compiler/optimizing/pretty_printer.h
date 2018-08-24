@@ -33,7 +33,7 @@ class HPrettyPrinter : public HGraphVisitor {
     PrintString(": ");
   }
 
-  void VisitInstruction(HInstruction* instruction) OVERRIDE {
+  void VisitInstruction(HInstruction* instruction) override {
     PrintPreInstruction(instruction);
     PrintString(instruction->DebugName());
     PrintPostInstruction(instruction);
@@ -70,7 +70,7 @@ class HPrettyPrinter : public HGraphVisitor {
     PrintNewLine();
   }
 
-  void VisitBasicBlock(HBasicBlock* block) OVERRIDE {
+  void VisitBasicBlock(HBasicBlock* block) override {
     PrintString("BasicBlock ");
     PrintInt(block->GetBlockId());
     const ArenaVector<HBasicBlock*>& predecessors = block->GetPredecessors();
@@ -108,15 +108,15 @@ class StringPrettyPrinter : public HPrettyPrinter {
   explicit StringPrettyPrinter(HGraph* graph)
       : HPrettyPrinter(graph), str_(""), current_block_(nullptr) { }
 
-  void PrintInt(int value) OVERRIDE {
+  void PrintInt(int value) override {
     str_ += android::base::StringPrintf("%d", value);
   }
 
-  void PrintString(const char* value) OVERRIDE {
+  void PrintString(const char* value) override {
     str_ += value;
   }
 
-  void PrintNewLine() OVERRIDE {
+  void PrintNewLine() override {
     str_ += '\n';
   }
 
@@ -124,12 +124,12 @@ class StringPrettyPrinter : public HPrettyPrinter {
 
   std::string str() const { return str_; }
 
-  void VisitBasicBlock(HBasicBlock* block) OVERRIDE {
+  void VisitBasicBlock(HBasicBlock* block) override {
     current_block_ = block;
     HPrettyPrinter::VisitBasicBlock(block);
   }
 
-  void VisitGoto(HGoto* gota) OVERRIDE {
+  void VisitGoto(HGoto* gota) override {
     PrintString("  ");
     PrintInt(gota->GetId());
     PrintString(": Goto ");

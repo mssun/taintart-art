@@ -332,7 +332,7 @@ class PreloadDexCachesStringsVisitor : public SingleRootVisitor {
   explicit PreloadDexCachesStringsVisitor(StringTable* table) : table_(table) { }
 
   void VisitRoot(mirror::Object* root, const RootInfo& info ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     ObjPtr<mirror::String> string = root->AsString();
     table_->operator[](string->ToModifiedUtf8()) = string;
   }

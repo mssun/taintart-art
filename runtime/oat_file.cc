@@ -889,7 +889,7 @@ bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* e
 // OatFile via dlopen //
 ////////////////////////
 
-class DlOpenOatFile FINAL : public OatFileBase {
+class DlOpenOatFile final : public OatFileBase {
  public:
   DlOpenOatFile(const std::string& filename, bool executable)
       : OatFileBase(filename, executable),
@@ -911,7 +911,7 @@ class DlOpenOatFile FINAL : public OatFileBase {
 
  protected:
   const uint8_t* FindDynamicSymbolAddress(const std::string& symbol_name,
-                                          std::string* error_msg) const OVERRIDE {
+                                          std::string* error_msg) const override {
     const uint8_t* ptr =
         reinterpret_cast<const uint8_t*>(dlsym(dlopen_handle_, symbol_name.c_str()));
     if (ptr == nullptr) {
@@ -920,21 +920,21 @@ class DlOpenOatFile FINAL : public OatFileBase {
     return ptr;
   }
 
-  void PreLoad() OVERRIDE;
+  void PreLoad() override;
 
   bool Load(const std::string& elf_filename,
             uint8_t* oat_file_begin,
             bool writable,
             bool executable,
             bool low_4gb,
-            std::string* error_msg) OVERRIDE;
+            std::string* error_msg) override;
 
   bool Load(int, uint8_t*, bool, bool, bool, std::string*) {
     return false;
   }
 
   // Ask the linker where it mmaped the file and notify our mmap wrapper of the regions.
-  void PreSetup(const std::string& elf_filename) OVERRIDE;
+  void PreSetup(const std::string& elf_filename) override;
 
  private:
   bool Dlopen(const std::string& elf_filename,
@@ -1156,7 +1156,7 @@ void DlOpenOatFile::PreSetup(const std::string& elf_filename) {
 // OatFile via our own ElfFile implementation //
 ////////////////////////////////////////////////
 
-class ElfOatFile FINAL : public OatFileBase {
+class ElfOatFile final : public OatFileBase {
  public:
   ElfOatFile(const std::string& filename, bool executable) : OatFileBase(filename, executable) {}
 
@@ -1179,7 +1179,7 @@ class ElfOatFile FINAL : public OatFileBase {
 
  protected:
   const uint8_t* FindDynamicSymbolAddress(const std::string& symbol_name,
-                                          std::string* error_msg) const OVERRIDE {
+                                          std::string* error_msg) const override {
     const uint8_t* ptr = elf_file_->FindDynamicSymbolAddress(symbol_name);
     if (ptr == nullptr) {
       *error_msg = "(Internal implementation could not find symbol)";
@@ -1187,7 +1187,7 @@ class ElfOatFile FINAL : public OatFileBase {
     return ptr;
   }
 
-  void PreLoad() OVERRIDE {
+  void PreLoad() override {
   }
 
   bool Load(const std::string& elf_filename,
@@ -1195,16 +1195,16 @@ class ElfOatFile FINAL : public OatFileBase {
             bool writable,
             bool executable,
             bool low_4gb,
-            std::string* error_msg) OVERRIDE;
+            std::string* error_msg) override;
 
   bool Load(int oat_fd,
             uint8_t* oat_file_begin,  // Override where the file is loaded to if not null
             bool writable,
             bool executable,
             bool low_4gb,
-            std::string* error_msg) OVERRIDE;
+            std::string* error_msg) override;
 
-  void PreSetup(const std::string& elf_filename ATTRIBUTE_UNUSED) OVERRIDE {
+  void PreSetup(const std::string& elf_filename ATTRIBUTE_UNUSED) override {
   }
 
  private:

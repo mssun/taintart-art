@@ -23,17 +23,17 @@
 
 namespace art {
 
-class MallocArenaPool FINAL : public ArenaPool {
+class MallocArenaPool final : public ArenaPool {
  public:
   MallocArenaPool();
   ~MallocArenaPool();
-  Arena* AllocArena(size_t size) OVERRIDE;
-  void FreeArenaChain(Arena* first) OVERRIDE;
-  size_t GetBytesAllocated() const OVERRIDE;
-  void ReclaimMemory() OVERRIDE;
-  void LockReclaimMemory() OVERRIDE;
+  Arena* AllocArena(size_t size) override;
+  void FreeArenaChain(Arena* first) override;
+  size_t GetBytesAllocated() const override;
+  void ReclaimMemory() override;
+  void LockReclaimMemory() override;
   // Is a nop for malloc pools.
-  void TrimMaps() OVERRIDE;
+  void TrimMaps() override;
 
  private:
   Arena* free_arenas_;

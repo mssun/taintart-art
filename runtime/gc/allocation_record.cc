@@ -196,7 +196,7 @@ class AllocRecordStackVisitor : public StackVisitor {
 
   // TODO: Enable annotalysis. We know lock is held in constructor, but abstraction confuses
   // annotalysis.
-  bool VisitFrame() OVERRIDE NO_THREAD_SAFETY_ANALYSIS {
+  bool VisitFrame() override NO_THREAD_SAFETY_ANALYSIS {
     if (trace_->GetDepth() >= max_depth_) {
       return false;
     }

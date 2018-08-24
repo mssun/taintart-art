@@ -44,9 +44,9 @@ class CHAGuardVisitor : HGraphVisitor {
     GetGraph()->SetNumberOfCHAGuards(0);
   }
 
-  void VisitShouldDeoptimizeFlag(HShouldDeoptimizeFlag* flag) OVERRIDE;
+  void VisitShouldDeoptimizeFlag(HShouldDeoptimizeFlag* flag) override;
 
-  void VisitBasicBlock(HBasicBlock* block) OVERRIDE;
+  void VisitBasicBlock(HBasicBlock* block) override;
 
  private:
   void RemoveGuard(HShouldDeoptimizeFlag* flag);

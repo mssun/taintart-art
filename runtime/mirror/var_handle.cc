@@ -353,7 +353,7 @@ inline void StoreResult(ObjPtr<Object> value, JValue* result)
 //
 
 template <typename T>
-class JValueByteSwapper FINAL {
+class JValueByteSwapper final {
  public:
   static void ByteSwap(JValue* value);
   static void MaybeByteSwap(bool byte_swap, JValue* value) {
@@ -392,7 +392,7 @@ class AtomicGetAccessor : public Object::Accessor<T> {
  public:
   explicit AtomicGetAccessor(JValue* result) : result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     StoreResult(atom->load(MO), result_);
   }
@@ -406,7 +406,7 @@ class AtomicSetAccessor : public Object::Accessor<T> {
  public:
   explicit AtomicSetAccessor(T new_value) : new_value_(new_value) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     atom->store(new_value_, MO);
   }
@@ -431,7 +431,7 @@ class AtomicStrongCompareAndSetAccessor : public Object::Accessor<T> {
   AtomicStrongCompareAndSetAccessor(T expected_value, T desired_value, JValue* result)
       : expected_value_(expected_value), desired_value_(desired_value), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     bool success = atom->compare_exchange_strong(expected_value_, desired_value_, MOS, MOF);
     StoreResult(success ? JNI_TRUE : JNI_FALSE, result_);
@@ -453,7 +453,7 @@ class AtomicStrongCompareAndExchangeAccessor : public Object::Accessor<T> {
   AtomicStrongCompareAndExchangeAccessor(T expected_value, T desired_value, JValue* result)
       : expected_value_(expected_value), desired_value_(desired_value), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     atom->compare_exchange_strong(expected_value_, desired_value_, MOS, MOF);
     StoreResult(expected_value_, result_);
@@ -475,7 +475,7 @@ class AtomicWeakCompareAndSetAccessor : public Object::Accessor<T> {
   AtomicWeakCompareAndSetAccessor(T expected_value, T desired_value, JValue* result)
       : expected_value_(expected_value), desired_value_(desired_value), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     bool success = atom->compare_exchange_weak(expected_value_, desired_value_, MOS, MOF);
     StoreResult(success ? JNI_TRUE : JNI_FALSE, result_);
@@ -496,7 +496,7 @@ class AtomicGetAndSetAccessor : public Object::Accessor<T> {
  public:
   AtomicGetAndSetAccessor(T new_value, JValue* result) : new_value_(new_value), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     T old_value = atom->exchange(new_value_, MO);
     StoreResult(old_value, result_);
@@ -540,7 +540,7 @@ class AtomicGetAndAddAccessor : public Object::Accessor<T> {
  public:
   AtomicGetAndAddAccessor(T addend, JValue* result) : addend_(addend), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     constexpr bool kIsFloatingPoint = std::is_floating_point<T>::value;
     T old_value = AtomicGetAndAddOperator<T, kIsFloatingPoint, MO>::Apply(addr, addend_);
     StoreResult(old_value, result_);
@@ -562,7 +562,7 @@ class AtomicGetAndAddWithByteSwapAccessor : public Object::Accessor<T> {
  public:
   AtomicGetAndAddWithByteSwapAccessor(T value, JValue* result) : value_(value), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* const atom = reinterpret_cast<std::atomic<T>*>(addr);
     T current_value = atom->load(std::memory_order_relaxed);
     T sum;
@@ -591,7 +591,7 @@ class AtomicGetAndBitwiseOrAccessor : public Object::Accessor<T> {
  public:
   AtomicGetAndBitwiseOrAccessor(T value, JValue* result) : value_(value), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     T old_value = atom->fetch_or(value_, MO);
     StoreResult(old_value, result_);
@@ -610,7 +610,7 @@ class AtomicGetAndBitwiseAndAccessor : public Object::Accessor<T> {
  public:
   AtomicGetAndBitwiseAndAccessor(T value, JValue* result) : value_(value), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     T old_value = atom->fetch_and(value_, MO);
     StoreResult(old_value, result_);
@@ -630,7 +630,7 @@ class AtomicGetAndBitwiseXorAccessor : public Object::Accessor<T> {
  public:
   AtomicGetAndBitwiseXorAccessor(T value, JValue* result) : value_(value), result_(result) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     std::atomic<T>* atom = reinterpret_cast<std::atomic<T>*>(addr);
     T old_value = atom->fetch_xor(value_, MO);
     StoreResult(old_value, result_);
@@ -679,7 +679,7 @@ class TypeAdaptorAccessor : public Object::Accessor<T> {
   explicit TypeAdaptorAccessor(Object::Accessor<U>* inner_accessor)
       : inner_accessor_(inner_accessor) {}
 
-  void Access(T* addr) OVERRIDE {
+  void Access(T* addr) override {
     static_assert(sizeof(T) == sizeof(U), "bad conversion");
     inner_accessor_->Access(reinterpret_cast<U*>(addr));
   }

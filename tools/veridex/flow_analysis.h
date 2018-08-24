@@ -192,8 +192,8 @@ class FlowAnalysisCollector : public VeriFlowAnalysis {
     return uses_;
   }
 
-  RegisterValue AnalyzeInvoke(const Instruction& instruction, bool is_range) OVERRIDE;
-  void AnalyzeFieldSet(const Instruction& instruction) OVERRIDE;
+  RegisterValue AnalyzeInvoke(const Instruction& instruction, bool is_range) override;
+  void AnalyzeFieldSet(const Instruction& instruction) override;
 
  private:
   // List of reflection uses found, concrete and abstract.
@@ -212,8 +212,8 @@ class FlowAnalysisSubstitutor : public VeriFlowAnalysis {
     return uses_;
   }
 
-  RegisterValue AnalyzeInvoke(const Instruction& instruction, bool is_range) OVERRIDE;
-  void AnalyzeFieldSet(const Instruction& instruction) OVERRIDE;
+  RegisterValue AnalyzeInvoke(const Instruction& instruction, bool is_range) override;
+  void AnalyzeFieldSet(const Instruction& instruction) override;
 
  private:
   // List of reflection uses found, concrete and abstract.

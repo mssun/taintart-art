@@ -26,17 +26,17 @@
 namespace art {
 namespace linker {
 
-class BufferedOutputStream FINAL : public OutputStream {
+class BufferedOutputStream final : public OutputStream {
  public:
   explicit BufferedOutputStream(std::unique_ptr<OutputStream> out);
 
-  ~BufferedOutputStream() OVERRIDE;
+  ~BufferedOutputStream() override;
 
-  bool WriteFully(const void* buffer, size_t byte_count) OVERRIDE;
+  bool WriteFully(const void* buffer, size_t byte_count) override;
 
-  off_t Seek(off_t offset, Whence whence) OVERRIDE;
+  off_t Seek(off_t offset, Whence whence) override;
 
-  bool Flush() OVERRIDE;
+  bool Flush() override;
 
  private:
   static const size_t kBufferSize = 8 * KB;

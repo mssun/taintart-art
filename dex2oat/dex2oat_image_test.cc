@@ -52,7 +52,7 @@ std::ostream& operator<<(std::ostream& os, const ImageSizes& sizes) {
 
 class Dex2oatImageTest : public CommonRuntimeTest {
  public:
-  virtual void TearDown() OVERRIDE {}
+  virtual void TearDown() override {}
 
  protected:
   // Visitors take method and type references

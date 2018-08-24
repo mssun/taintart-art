@@ -755,7 +755,7 @@ bool ImageWriter::AllocMemory() {
 
 class ImageWriter::ComputeLazyFieldsForClassesVisitor : public ClassVisitor {
  public:
-  bool operator()(ObjPtr<Class> c) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<Class> c) override REQUIRES_SHARED(Locks::mutator_lock_) {
     StackHandleScope<1> hs(Thread::Current());
     mirror::Class::ComputeName(hs.NewHandle(c));
     return true;
@@ -987,7 +987,7 @@ class ImageWriter::PruneClassesVisitor : public ClassVisitor {
         classes_to_prune_(),
         defined_class_count_(0u) { }
 
-  bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (!image_writer_->KeepClass(klass.Ptr())) {
       classes_to_prune_.insert(klass.Ptr());
       if (klass->GetClassLoader() == class_loader_) {
@@ -1022,7 +1022,7 @@ class ImageWriter::PruneClassLoaderClassesVisitor : public ClassLoaderVisitor {
   explicit PruneClassLoaderClassesVisitor(ImageWriter* image_writer)
       : image_writer_(image_writer), removed_class_count_(0) {}
 
-  virtual void Visit(ObjPtr<mirror::ClassLoader> class_loader) OVERRIDE
+  virtual void Visit(ObjPtr<mirror::ClassLoader> class_loader) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     PruneClassesVisitor classes_visitor(image_writer_, class_loader);
     ClassTable* class_table =
@@ -1677,7 +1677,7 @@ class ImageWriter::GetRootsVisitor : public RootVisitor  {
 
   void VisitRoots(mirror::Object*** roots,
                   size_t count,
-                  const RootInfo& info ATTRIBUTE_UNUSED) OVERRIDE
+                  const RootInfo& info ATTRIBUTE_UNUSED) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     for (size_t i = 0; i < count; ++i) {
       roots_->push_back(*roots[i]);
@@ -1686,7 +1686,7 @@ class ImageWriter::GetRootsVisitor : public RootVisitor  {
 
   void VisitRoots(mirror::CompressedReference<mirror::Object>** roots,
                   size_t count,
-                  const RootInfo& info ATTRIBUTE_UNUSED) OVERRIDE
+                  const RootInfo& info ATTRIBUTE_UNUSED) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     for (size_t i = 0; i < count; ++i) {
       roots_->push_back(roots[i]->AsMirrorPtr());
@@ -2104,14 +2104,14 @@ class ImageWriter::FixupRootVisitor : public RootVisitor {
   void VisitRoots(mirror::Object*** roots ATTRIBUTE_UNUSED,
                   size_t count ATTRIBUTE_UNUSED,
                   const RootInfo& info ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     LOG(FATAL) << "Unsupported";
   }
 
   void VisitRoots(mirror::CompressedReference<mirror::Object>** roots,
                   size_t count,
                   const RootInfo& info ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     for (size_t i = 0; i < count; ++i) {
       // Copy the reference. Since we do not have the address for recording the relocation,
       // it needs to be recorded explicitly by the user of FixupRootVisitor.
@@ -2401,7 +2401,7 @@ class ImageWriter::FixupVisitor {
   size_t oat_index_;
 };
 
-class ImageWriter::FixupClassVisitor FINAL : public FixupVisitor {
+class ImageWriter::FixupClassVisitor final : public FixupVisitor {
  public:
   FixupClassVisitor(ImageWriter* image_writer, Object* copy, size_t oat_index)
       : FixupVisitor(image_writer, copy, oat_index) {}

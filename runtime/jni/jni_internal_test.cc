@@ -84,7 +84,7 @@ class JniInternalTest : public CommonCompilerTest {
     }
   }
 
-  virtual void TearDown() OVERRIDE {
+  virtual void TearDown() override {
     CleanUpJniEnv();
     CommonCompilerTest::TearDown();
   }

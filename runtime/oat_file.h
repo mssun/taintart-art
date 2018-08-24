@@ -146,7 +146,7 @@ class OatFile {
 
   const OatHeader& GetOatHeader() const;
 
-  class OatMethod FINAL {
+  class OatMethod final {
    public:
     void LinkMethod(ArtMethod* method) const;
 
@@ -201,7 +201,7 @@ class OatFile {
     friend class OatClass;
   };
 
-  class OatClass FINAL {
+  class OatClass final {
    public:
     ClassStatus GetStatus() const {
       return status_;
@@ -444,7 +444,7 @@ class OatFile {
 // support forward declarations of inner classes, and we want to
 // forward-declare OatDexFile so that we can store an opaque pointer to an
 // OatDexFile in DexFile.
-class OatDexFile FINAL {
+class OatDexFile final {
  public:
   // Opens the DexFile referred to by this OatDexFile from within the containing OatFile.
   std::unique_ptr<const DexFile> OpenDexFile(std::string* error_msg) const;

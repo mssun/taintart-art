@@ -233,7 +233,7 @@ template<class T> class CollectionVector : public CollectionBase {
     // Preallocate so that assignment does not invalidate pointers into the vector.
     collection_.reserve(size);
   }
-  virtual ~CollectionVector() OVERRIDE { }
+  virtual ~CollectionVector() override { }
 
   template<class... Args>
   T* CreateAndAddItem(Args&&... args) {
@@ -242,7 +242,7 @@ template<class T> class CollectionVector : public CollectionBase {
     return object;
   }
 
-  virtual uint32_t Size() const OVERRIDE { return collection_.size(); }
+  virtual uint32_t Size() const override { return collection_.size(); }
 
   Iterator<ElementType> begin() const { return Iterator<ElementType>(collection_, 0U, Size()); }
   Iterator<ElementType> end() const { return Iterator<ElementType>(collection_, Size(), Size()); }
@@ -406,7 +406,7 @@ class Header : public Item {
                       data_size,
                       data_offset);
   }
-  ~Header() OVERRIDE { }
+  ~Header() override { }
 
   static size_t ItemSize() { return kHeaderItemSize; }
 
@@ -590,7 +590,7 @@ class StringId : public IndexedItem {
   explicit StringId(StringData* string_data) : string_data_(string_data) {
     size_ = kStringIdItemSize;
   }
-  ~StringId() OVERRIDE { }
+  ~StringId() override { }
 
   static size_t ItemSize() { return kStringIdItemSize; }
 
@@ -608,7 +608,7 @@ class StringId : public IndexedItem {
 class TypeId : public IndexedItem {
  public:
   explicit TypeId(StringId* string_id) : string_id_(string_id) { size_ = kTypeIdItemSize; }
-  ~TypeId() OVERRIDE { }
+  ~TypeId() override { }
 
   static size_t ItemSize() { return kTypeIdItemSize; }
 
@@ -629,7 +629,7 @@ class TypeList : public Item {
   explicit TypeList(TypeIdVector* type_list) : type_list_(type_list) {
     size_ = sizeof(uint32_t) + (type_list->size() * sizeof(uint16_t));
   }
-  ~TypeList() OVERRIDE { }
+  ~TypeList() override { }
 
   const TypeIdVector* GetTypeList() const { return type_list_.get(); }
 
@@ -644,7 +644,7 @@ class ProtoId : public IndexedItem {
   ProtoId(const StringId* shorty, const TypeId* return_type, TypeList* parameters)
       : shorty_(shorty), return_type_(return_type), parameters_(parameters)
       { size_ = kProtoIdItemSize; }
-  ~ProtoId() OVERRIDE { }
+  ~ProtoId() override { }
 
   static size_t ItemSize() { return kProtoIdItemSize; }
 
@@ -666,7 +666,7 @@ class FieldId : public IndexedItem {
  public:
   FieldId(const TypeId* klass, const TypeId* type, const StringId* name)
       : class_(klass), type_(type), name_(name) { size_ = kFieldIdItemSize; }
-  ~FieldId() OVERRIDE { }
+  ~FieldId() override { }
 
   static size_t ItemSize() { return kFieldIdItemSize; }
 
@@ -688,7 +688,7 @@ class MethodId : public IndexedItem {
  public:
   MethodId(const TypeId* klass, const ProtoId* proto, const StringId* name)
       : class_(klass), proto_(proto), name_(name) { size_ = kMethodIdItemSize; }
-  ~MethodId() OVERRIDE { }
+  ~MethodId() override { }
 
   static size_t ItemSize() { return kMethodIdItemSize; }
 
@@ -710,7 +710,7 @@ class FieldItem : public Item {
  public:
   FieldItem(uint32_t access_flags, const FieldId* field_id)
       : access_flags_(access_flags), field_id_(field_id) { }
-  ~FieldItem() OVERRIDE { }
+  ~FieldItem() override { }
 
   FieldItem(FieldItem&&) = default;
 
@@ -732,7 +732,7 @@ class MethodItem : public Item {
  public:
   MethodItem(uint32_t access_flags, const MethodId* method_id, CodeItem* code)
       : access_flags_(access_flags), method_id_(method_id), code_(code) { }
-  ~MethodItem() OVERRIDE { }
+  ~MethodItem() override { }
 
   MethodItem(MethodItem&&) = default;
 
@@ -876,7 +876,7 @@ class ClassData : public Item {
         direct_methods_(direct_methods),
         virtual_methods_(virtual_methods) { }
 
-  ~ClassData() OVERRIDE = default;
+  ~ClassData() override = default;
   FieldItemVector* StaticFields() { return static_fields_.get(); }
   FieldItemVector* InstanceFields() { return instance_fields_.get(); }
   MethodItemVector* DirectMethods() { return direct_methods_.get(); }
@@ -912,7 +912,7 @@ class ClassDef : public IndexedItem {
         class_data_(class_data),
         static_values_(static_values) { size_ = kClassDefItemSize; }
 
-  ~ClassDef() OVERRIDE { }
+  ~ClassDef() override { }
 
   static size_t ItemSize() { return kClassDefItemSize; }
 
@@ -980,7 +980,7 @@ class TryItem : public Item {
  public:
   TryItem(uint32_t start_addr, uint16_t insn_count, const CatchHandler* handlers)
       : start_addr_(start_addr), insn_count_(insn_count), handlers_(handlers) { }
-  ~TryItem() OVERRIDE { }
+  ~TryItem() override { }
 
   uint32_t StartAddr() const { return start_addr_; }
   uint16_t InsnCount() const { return insn_count_; }
@@ -1042,7 +1042,7 @@ class CodeItem : public Item {
         tries_(tries),
         handlers_(handlers) { }
 
-  ~CodeItem() OVERRIDE { }
+  ~CodeItem() override { }
 
   uint16_t RegistersSize() const { return registers_size_; }
   uint16_t InsSize() const { return ins_size_; }
@@ -1115,7 +1115,7 @@ class AnnotationSetItem : public Item {
   explicit AnnotationSetItem(std::vector<AnnotationItem*>* items) : items_(items) {
     size_ = sizeof(uint32_t) + items->size() * sizeof(uint32_t);
   }
-  ~AnnotationSetItem() OVERRIDE { }
+  ~AnnotationSetItem() override { }
 
   std::vector<AnnotationItem*>* GetItems() { return items_.get(); }
 
@@ -1132,7 +1132,7 @@ class AnnotationSetRefList : public Item {
   explicit AnnotationSetRefList(std::vector<AnnotationSetItem*>* items) : items_(items) {
     size_ = sizeof(uint32_t) + items->size() * sizeof(uint32_t);
   }
-  ~AnnotationSetRefList() OVERRIDE { }
+  ~AnnotationSetRefList() override { }
 
   std::vector<AnnotationSetItem*>* GetItems() { return items_.get(); }
 
@@ -1227,7 +1227,7 @@ class CallSiteId : public IndexedItem {
   explicit CallSiteId(EncodedArrayItem* call_site_item) : call_site_item_(call_site_item) {
     size_ = kCallSiteIdItemSize;
   }
-  ~CallSiteId() OVERRIDE { }
+  ~CallSiteId() override { }
 
   static size_t ItemSize() { return kCallSiteIdItemSize; }
 
@@ -1248,7 +1248,7 @@ class MethodHandleItem : public IndexedItem {
         field_or_method_id_(field_or_method_id) {
     size_ = kMethodHandleItemSize;
   }
-  ~MethodHandleItem() OVERRIDE { }
+  ~MethodHandleItem() override { }
 
   static size_t ItemSize() { return kMethodHandleItemSize; }
 

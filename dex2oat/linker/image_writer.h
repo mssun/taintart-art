@@ -73,7 +73,7 @@ static constexpr int kInvalidFd = -1;
 namespace linker {
 
 // Write a Space built during compilation for use during execution.
-class ImageWriter FINAL {
+class ImageWriter final {
  public:
   ImageWriter(const CompilerOptions& compiler_options,
               uintptr_t image_begin,

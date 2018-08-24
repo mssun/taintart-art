@@ -971,7 +971,7 @@ class ResolveCatchBlockExceptionsClassVisitor : public ClassVisitor {
  public:
   ResolveCatchBlockExceptionsClassVisitor() : classes_() {}
 
-  virtual bool operator()(ObjPtr<mirror::Class> c) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  virtual bool operator()(ObjPtr<mirror::Class> c) override REQUIRES_SHARED(Locks::mutator_lock_) {
     classes_.push_back(c);
     return true;
   }
@@ -1034,7 +1034,7 @@ class RecordImageClassesVisitor : public ClassVisitor {
   explicit RecordImageClassesVisitor(HashSet<std::string>* image_classes)
       : image_classes_(image_classes) {}
 
-  bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
     std::string temp;
     image_classes_->insert(klass->GetDescriptor(&temp));
     return true;
@@ -1210,7 +1210,7 @@ class ClinitImageUpdate {
         : data_(data),
           hs_(hs) {}
 
-    bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
       std::string temp;
       StringPiece name(klass->GetDescriptor(&temp));
       if (data_->image_class_descriptors_->find(name) != data_->image_class_descriptors_->end()) {
@@ -1475,7 +1475,7 @@ class ParallelCompilationManager {
           end_(end),
           fn_(fn) {}
 
-    void Run(Thread* self) OVERRIDE {
+    void Run(Thread* self) override {
       while (true) {
         const size_t index = manager_->NextIndex();
         if (UNLIKELY(index >= end_)) {
@@ -1486,7 +1486,7 @@ class ParallelCompilationManager {
       }
     }
 
-    void Finalize() OVERRIDE {
+    void Finalize() override {
       delete this;
     }
 
@@ -1568,7 +1568,7 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
   explicit ResolveClassFieldsAndMethodsVisitor(const ParallelCompilationManager* manager)
       : manager_(manager) {}
 
-  void Visit(size_t class_def_index) OVERRIDE REQUIRES(!Locks::mutator_lock_) {
+  void Visit(size_t class_def_index) override REQUIRES(!Locks::mutator_lock_) {
     ScopedTrace trace(__FUNCTION__);
     Thread* const self = Thread::Current();
     jobject jclass_loader = manager_->GetClassLoader();
@@ -1667,7 +1667,7 @@ class ResolveTypeVisitor : public CompilationVisitor {
  public:
   explicit ResolveTypeVisitor(const ParallelCompilationManager* manager) : manager_(manager) {
   }
-  void Visit(size_t type_idx) OVERRIDE REQUIRES(!Locks::mutator_lock_) {
+  void Visit(size_t type_idx) override REQUIRES(!Locks::mutator_lock_) {
   // Class derived values are more complicated, they require the linker and loader.
     ScopedObjectAccess soa(Thread::Current());
     ClassLinker* class_linker = manager_->GetClassLinker();
@@ -1888,7 +1888,7 @@ class VerifyClassVisitor : public CompilationVisitor {
   VerifyClassVisitor(const ParallelCompilationManager* manager, verifier::HardFailLogMode log_level)
      : manager_(manager), log_level_(log_level) {}
 
-  virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) OVERRIDE {
+  virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) override {
     ScopedTrace trace(__FUNCTION__);
     ScopedObjectAccess soa(Thread::Current());
     const DexFile& dex_file = *manager_->GetDexFile();
@@ -2020,7 +2020,7 @@ class SetVerifiedClassVisitor : public CompilationVisitor {
  public:
   explicit SetVerifiedClassVisitor(const ParallelCompilationManager* manager) : manager_(manager) {}
 
-  virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) OVERRIDE {
+  virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) override {
     ScopedTrace trace(__FUNCTION__);
     ScopedObjectAccess soa(Thread::Current());
     const DexFile& dex_file = *manager_->GetDexFile();
@@ -2085,7 +2085,7 @@ class InitializeClassVisitor : public CompilationVisitor {
  public:
   explicit InitializeClassVisitor(const ParallelCompilationManager* manager) : manager_(manager) {}
 
-  void Visit(size_t class_def_index) OVERRIDE {
+  void Visit(size_t class_def_index) override {
     ScopedTrace trace(__FUNCTION__);
     jobject jclass_loader = manager_->GetClassLoader();
     const DexFile& dex_file = *manager_->GetDexFile();
@@ -2470,7 +2470,7 @@ class InitializeArrayClassesAndCreateConflictTablesVisitor : public ClassVisitor
   explicit InitializeArrayClassesAndCreateConflictTablesVisitor(VariableSizedHandleScope& hs)
       : hs_(hs) {}
 
-  virtual bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE
+  virtual bool operator()(ObjPtr<mirror::Class> klass) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(klass)) {
       return true;

@@ -26,13 +26,13 @@
 namespace art {
 namespace linker {
 
-class VectorOutputStream FINAL : public OutputStream {
+class VectorOutputStream final : public OutputStream {
  public:
   VectorOutputStream(const std::string& location, std::vector<uint8_t>* vector);
 
-  ~VectorOutputStream() OVERRIDE {}
+  ~VectorOutputStream() override {}
 
-  bool WriteFully(const void* buffer, size_t byte_count) OVERRIDE {
+  bool WriteFully(const void* buffer, size_t byte_count) override {
     if (static_cast<size_t>(offset_) == vector_->size()) {
       const uint8_t* start = reinterpret_cast<const uint8_t*>(buffer);
       vector_->insert(vector_->end(), &start[0], &start[byte_count]);
@@ -46,9 +46,9 @@ class VectorOutputStream FINAL : public OutputStream {
     return true;
   }
 
-  off_t Seek(off_t offset, Whence whence) OVERRIDE;
+  off_t Seek(off_t offset, Whence whence) override;
 
-  bool Flush() OVERRIDE {
+  bool Flush() override {
     return true;
   }
 

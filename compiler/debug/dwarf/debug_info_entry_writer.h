@@ -42,7 +42,7 @@ namespace dwarf {
  *   EndTag();
  */
 template <typename Vector = std::vector<uint8_t>>
-class DebugInfoEntryWriter FINAL : private Writer<Vector> {
+class DebugInfoEntryWriter final : private Writer<Vector> {
   static_assert(std::is_same<typename Vector::value_type, uint8_t>::value, "Invalid value type");
 
  public:

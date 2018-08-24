@@ -101,7 +101,7 @@ class TestCodeGeneratorARMVIXL : public arm::CodeGeneratorARMVIXL {
     AddAllocatedRegister(Location::RegisterLocation(arm::R7));
   }
 
-  void SetupBlockedRegisters() const OVERRIDE {
+  void SetupBlockedRegisters() const override {
     arm::CodeGeneratorARMVIXL::SetupBlockedRegisters();
     blocked_core_registers_[arm::R4] = true;
     blocked_core_registers_[arm::R6] = false;
@@ -109,7 +109,7 @@ class TestCodeGeneratorARMVIXL : public arm::CodeGeneratorARMVIXL {
   }
 
   void MaybeGenerateMarkingRegisterCheck(int code ATTRIBUTE_UNUSED,
-                                         Location temp_loc ATTRIBUTE_UNUSED) OVERRIDE {
+                                         Location temp_loc ATTRIBUTE_UNUSED) override {
     // When turned on, the marking register checks in
     // CodeGeneratorARMVIXL::MaybeGenerateMarkingRegisterCheck expects the
     // Thread Register and the Marking Register to be set to
@@ -141,7 +141,7 @@ class TestCodeGeneratorARM64 : public arm64::CodeGeneratorARM64 {
       : arm64::CodeGeneratorARM64(graph, compiler_options) {}
 
   void MaybeGenerateMarkingRegisterCheck(int codem ATTRIBUTE_UNUSED,
-                                         Location temp_loc ATTRIBUTE_UNUSED) OVERRIDE {
+                                         Location temp_loc ATTRIBUTE_UNUSED) override {
     // When turned on, the marking register checks in
     // CodeGeneratorARM64::MaybeGenerateMarkingRegisterCheck expect the
     // Thread Register and the Marking Register to be set to
@@ -161,7 +161,7 @@ class TestCodeGeneratorX86 : public x86::CodeGeneratorX86 {
     AddAllocatedRegister(Location::RegisterLocation(x86::EDI));
   }
 
-  void SetupBlockedRegisters() const OVERRIDE {
+  void SetupBlockedRegisters() const override {
     x86::CodeGeneratorX86::SetupBlockedRegisters();
     // ebx is a callee-save register in C, but caller-save for ART.
     blocked_core_registers_[x86::EBX] = true;
@@ -183,7 +183,7 @@ class InternalCodeAllocator : public CodeAllocator {
   }
 
   size_t GetSize() const { return size_; }
-  ArrayRef<const uint8_t> GetMemory() const OVERRIDE {
+  ArrayRef<const uint8_t> GetMemory() const override {
     return ArrayRef<const uint8_t>(memory_.get(), size_);
   }
 

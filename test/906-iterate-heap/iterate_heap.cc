@@ -87,7 +87,7 @@ extern "C" JNIEXPORT jint JNICALL Java_art_Test906_iterateThroughHeapCount(
     jint Handle(jlong class_tag ATTRIBUTE_UNUSED,
                 jlong size ATTRIBUTE_UNUSED,
                 jlong* tag_ptr ATTRIBUTE_UNUSED,
-                jint length ATTRIBUTE_UNUSED) OVERRIDE {
+                jint length ATTRIBUTE_UNUSED) override {
       counter++;
       if (counter == stop_after) {
         return JVMTI_VISIT_ABORT;
@@ -120,7 +120,7 @@ extern "C" JNIEXPORT jint JNICALL Java_art_Test906_iterateThroughHeapData(
     jintArray lengths) {
   class DataIterationConfig : public IterationConfig {
    public:
-    jint Handle(jlong class_tag, jlong size, jlong* tag_ptr, jint length) OVERRIDE {
+    jint Handle(jlong class_tag, jlong size, jlong* tag_ptr, jint length) override {
       class_tags_.push_back(class_tag);
       sizes_.push_back(size);
       tags_.push_back(*tag_ptr);
@@ -164,7 +164,7 @@ extern "C" JNIEXPORT void JNICALL Java_art_Test906_iterateThroughHeapAdd(
     jint Handle(jlong class_tag ATTRIBUTE_UNUSED,
                 jlong size ATTRIBUTE_UNUSED,
                 jlong* tag_ptr,
-                jint length ATTRIBUTE_UNUSED) OVERRIDE {
+                jint length ATTRIBUTE_UNUSED) override {
       jlong current_tag = *tag_ptr;
       if (current_tag != 0) {
         *tag_ptr = current_tag + 10;

@@ -184,7 +184,7 @@ bool Monitor::Install(Thread* self) {
     if (locking_method_ != nullptr && UNLIKELY(locking_method_->IsProxyMethod())) {
       // Grab another frame. Proxy methods are not helpful for lock profiling. This should be rare
       // enough that it's OK to walk the stack twice.
-      struct NextMethodVisitor FINAL : public StackVisitor {
+      struct NextMethodVisitor final : public StackVisitor {
         explicit NextMethodVisitor(Thread* thread) REQUIRES_SHARED(Locks::mutator_lock_)
             : StackVisitor(thread,
                            nullptr,
@@ -193,7 +193,7 @@ bool Monitor::Install(Thread* self) {
               count_(0),
               method_(nullptr),
               dex_pc_(0) {}
-        bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+        bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
           ArtMethod* m = GetMethod();
           if (m->IsRuntimeMethod()) {
             // Continue if this is a runtime method.
@@ -271,7 +271,7 @@ void Monitor::SetObject(mirror::Object* object) {
 
 // Note: Adapted from CurrentMethodVisitor in thread.cc. We must not resolve here.
 
-struct NthCallerWithDexPcVisitor FINAL : public StackVisitor {
+struct NthCallerWithDexPcVisitor final : public StackVisitor {
   explicit NthCallerWithDexPcVisitor(Thread* thread, size_t frame)
       REQUIRES_SHARED(Locks::mutator_lock_)
       : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
@@ -279,7 +279,7 @@ struct NthCallerWithDexPcVisitor FINAL : public StackVisitor {
         dex_pc_(0),
         current_frame_number_(0),
         wanted_frame_number_(frame) {}
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* m = GetMethod();
     if (m == nullptr || m->IsRuntimeMethod()) {
       // Runtime method, upcall, or resolution issue. Skip.
@@ -514,7 +514,7 @@ void Monitor::Lock(Thread* self) {
                 if (should_dump_stacks) {
                   // Very long contention. Dump stacks.
                   struct CollectStackTrace : public Closure {
-                    void Run(art::Thread* thread) OVERRIDE
+                    void Run(art::Thread* thread) override
                         REQUIRES_SHARED(art::Locks::mutator_lock_) {
                       thread->DumpJavaStack(oss);
                     }
@@ -1574,7 +1574,7 @@ class MonitorDeflateVisitor : public IsMarkedVisitor {
  public:
   MonitorDeflateVisitor() : self_(Thread::Current()), deflate_count_(0) {}
 
-  virtual mirror::Object* IsMarked(mirror::Object* object) OVERRIDE
+  virtual mirror::Object* IsMarked(mirror::Object* object) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (Monitor::Deflate(self_, object)) {
       DCHECK_NE(object->GetLockWord(true).GetState(), LockWord::kFatLocked);

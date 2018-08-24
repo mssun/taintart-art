@@ -221,12 +221,12 @@ struct jni_remove_extra_parameters : public remove_extra_parameters_helper<T, fn
 
 class JniCompilerTest : public CommonCompilerTest {
  protected:
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     CommonCompilerTest::SetUp();
     check_generic_jni_ = false;
   }
 
-  void TearDown() OVERRIDE {
+  void TearDown() override {
     android::ResetNativeLoader();
     CommonCompilerTest::TearDown();
   }

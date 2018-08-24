@@ -73,17 +73,17 @@ class StandardDexFile : public DexFile {
 
   // Returns true if the byte string points to the magic value.
   static bool IsMagicValid(const uint8_t* magic);
-  virtual bool IsMagicValid() const OVERRIDE;
+  virtual bool IsMagicValid() const override;
 
   // Returns true if the byte string after the magic is the correct value.
   static bool IsVersionValid(const uint8_t* magic);
-  virtual bool IsVersionValid() const OVERRIDE;
+  virtual bool IsVersionValid() const override;
 
-  virtual bool SupportsDefaultMethods() const OVERRIDE;
+  virtual bool SupportsDefaultMethods() const override;
 
-  uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const OVERRIDE;
+  uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const override;
 
-  virtual size_t GetDequickenedSize() const OVERRIDE {
+  virtual size_t GetDequickenedSize() const override {
     return Size();
   }
 

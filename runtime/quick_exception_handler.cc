@@ -58,7 +58,7 @@ QuickExceptionHandler::QuickExceptionHandler(Thread* self, bool is_deoptimizatio
       full_fragment_done_(false) {}
 
 // Finds catch handler.
-class CatchBlockStackVisitor FINAL : public StackVisitor {
+class CatchBlockStackVisitor final : public StackVisitor {
  public:
   CatchBlockStackVisitor(Thread* self,
                          Context* context,
@@ -72,7 +72,7 @@ class CatchBlockStackVisitor FINAL : public StackVisitor {
         skip_frames_(skip_frames) {
   }
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* method = GetMethod();
     exception_handler_->SetHandlerFrameDepth(GetFrameDepth());
     if (method == nullptr) {
@@ -350,7 +350,7 @@ void QuickExceptionHandler::SetCatchEnvironmentForOptimizedHandler(StackVisitor*
 }
 
 // Prepares deoptimization.
-class DeoptimizeStackVisitor FINAL : public StackVisitor {
+class DeoptimizeStackVisitor final : public StackVisitor {
  public:
   DeoptimizeStackVisitor(Thread* self,
                          Context* context,
@@ -399,7 +399,7 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
     }
   }
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     exception_handler_->SetHandlerFrameDepth(GetFrameDepth());
     ArtMethod* method = GetMethod();
     if (method == nullptr || single_frame_done_) {
@@ -667,14 +667,14 @@ void QuickExceptionHandler::DoLongJump(bool smash_caller_saves) {
 }
 
 // Prints out methods with their type of frame.
-class DumpFramesWithTypeStackVisitor FINAL : public StackVisitor {
+class DumpFramesWithTypeStackVisitor final : public StackVisitor {
  public:
   explicit DumpFramesWithTypeStackVisitor(Thread* self, bool show_details = false)
       REQUIRES_SHARED(Locks::mutator_lock_)
       : StackVisitor(self, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
         show_details_(show_details) {}
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* method = GetMethod();
     if (show_details_) {
       LOG(INFO) << "|> pc   = " << std::hex << GetCurrentQuickFramePc();

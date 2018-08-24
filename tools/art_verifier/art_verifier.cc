@@ -93,7 +93,7 @@ struct MethodVerifierArgs : public CmdlineArgs {
   using Base = CmdlineArgs;
 
   virtual ParseStatus ParseCustom(const StringPiece& option,
-                                  std::string* error_msg) OVERRIDE {
+                                  std::string* error_msg) override {
     {
       ParseStatus base_parse = Base::ParseCustom(option, error_msg);
       if (base_parse != kParseUnknownArgument) {
@@ -119,7 +119,7 @@ struct MethodVerifierArgs : public CmdlineArgs {
     return kParseOk;
   }
 
-  virtual ParseStatus ParseChecks(std::string* error_msg) OVERRIDE {
+  virtual ParseStatus ParseChecks(std::string* error_msg) override {
     // Perform the parent checks.
     ParseStatus parent_checks = Base::ParseChecks(error_msg);
     if (parent_checks != kParseOk) {
@@ -166,16 +166,16 @@ struct MethodVerifierArgs : public CmdlineArgs {
 };
 
 struct MethodVerifierMain : public CmdlineMain<MethodVerifierArgs> {
-  bool NeedsRuntime() OVERRIDE {
+  bool NeedsRuntime() override {
     return true;
   }
 
-  bool ExecuteWithoutRuntime() OVERRIDE {
+  bool ExecuteWithoutRuntime() override {
     LOG(FATAL) << "Unreachable";
     UNREACHABLE();
   }
 
-  bool ExecuteWithRuntime(Runtime* runtime) OVERRIDE {
+  bool ExecuteWithRuntime(Runtime* runtime) override {
     CHECK(args_ != nullptr);
 
     const size_t dex_reps = args_->dex_file_verifier_

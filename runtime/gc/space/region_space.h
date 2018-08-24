@@ -39,7 +39,7 @@ namespace space {
 static constexpr bool kCyclicRegionAllocation = true;
 
 // A space that consists of equal-sized regions.
-class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
+class RegionSpace final : public ContinuousMemMapAllocSpace {
  public:
   typedef void(*WalkCallback)(void *start, void *end, size_t num_bytes, void* callback_arg);
 
@@ -49,7 +49,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     kEvacModeForceAll,
   };
 
-  SpaceType GetType() const OVERRIDE {
+  SpaceType GetType() const override {
     return kSpaceTypeRegionSpace;
   }
 
@@ -65,14 +65,14 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
                         /* out */ size_t* bytes_allocated,
                         /* out */ size_t* usable_size,
                         /* out */ size_t* bytes_tl_bulk_allocated)
-      OVERRIDE REQUIRES(!region_lock_);
+      override REQUIRES(!region_lock_);
   // Thread-unsafe allocation for when mutators are suspended, used by the semispace collector.
   mirror::Object* AllocThreadUnsafe(Thread* self,
                                     size_t num_bytes,
                                     /* out */ size_t* bytes_allocated,
                                     /* out */ size_t* usable_size,
                                     /* out */ size_t* bytes_tl_bulk_allocated)
-      OVERRIDE REQUIRES(Locks::mutator_lock_) REQUIRES(!region_lock_);
+      override REQUIRES(Locks::mutator_lock_) REQUIRES(!region_lock_);
   // The main allocation routine.
   template<bool kForEvac>
   ALWAYS_INLINE mirror::Object* AllocNonvirtual(size_t num_bytes,
@@ -90,29 +90,29 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   void FreeLarge(mirror::Object* large_obj, size_t bytes_allocated) REQUIRES(!region_lock_);
 
   // Return the storage space required by obj.
-  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) OVERRIDE
+  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) override
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!region_lock_) {
     return AllocationSizeNonvirtual(obj, usable_size);
   }
   size_t AllocationSizeNonvirtual(mirror::Object* obj, size_t* usable_size)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!region_lock_);
 
-  size_t Free(Thread*, mirror::Object*) OVERRIDE {
+  size_t Free(Thread*, mirror::Object*) override {
     UNIMPLEMENTED(FATAL);
     return 0;
   }
-  size_t FreeList(Thread*, size_t, mirror::Object**) OVERRIDE {
+  size_t FreeList(Thread*, size_t, mirror::Object**) override {
     UNIMPLEMENTED(FATAL);
     return 0;
   }
-  accounting::ContinuousSpaceBitmap* GetLiveBitmap() const OVERRIDE {
+  accounting::ContinuousSpaceBitmap* GetLiveBitmap() const override {
     return mark_bitmap_.get();
   }
-  accounting::ContinuousSpaceBitmap* GetMarkBitmap() const OVERRIDE {
+  accounting::ContinuousSpaceBitmap* GetMarkBitmap() const override {
     return mark_bitmap_.get();
   }
 
-  void Clear() OVERRIDE REQUIRES(!region_lock_);
+  void Clear() override REQUIRES(!region_lock_);
 
   // Remove read and write memory protection from the whole region space,
   // i.e. make memory pages backing the region area not readable and not
@@ -188,7 +188,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     return num_regions_;
   }
 
-  bool CanMoveObjects() const OVERRIDE {
+  bool CanMoveObjects() const override {
     return true;
   }
 
@@ -197,7 +197,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     return byte_obj >= Begin() && byte_obj < Limit();
   }
 
-  RegionSpace* AsRegionSpace() OVERRIDE {
+  RegionSpace* AsRegionSpace() override {
     return this;
   }
 
@@ -212,10 +212,10 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     WalkInternal<true /* kToSpaceOnly */>(visitor);
   }
 
-  accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() OVERRIDE {
+  accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() override {
     return nullptr;
   }
-  void LogFragmentationAllocFailure(std::ostream& os, size_t failed_alloc_bytes) OVERRIDE
+  void LogFragmentationAllocFailure(std::ostream& os, size_t failed_alloc_bytes) override
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!region_lock_);
 
   // Object alignment within the space.

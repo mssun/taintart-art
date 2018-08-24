@@ -26,7 +26,7 @@ class CompilerDriver;
 class DexFile;
 class VerificationResults;
 
-class QuickCompilerCallbacks FINAL : public CompilerCallbacks {
+class QuickCompilerCallbacks final : public CompilerCallbacks {
  public:
   explicit QuickCompilerCallbacks(CompilerCallbacks::CallbackMode mode)
       : CompilerCallbacks(mode), dex_files_(nullptr) {}
@@ -34,20 +34,20 @@ class QuickCompilerCallbacks FINAL : public CompilerCallbacks {
   ~QuickCompilerCallbacks() { }
 
   void MethodVerified(verifier::MethodVerifier* verifier)
-      REQUIRES_SHARED(Locks::mutator_lock_) OVERRIDE;
+      REQUIRES_SHARED(Locks::mutator_lock_) override;
 
-  void ClassRejected(ClassReference ref) OVERRIDE;
+  void ClassRejected(ClassReference ref) override;
 
   // We are running in an environment where we can call patchoat safely so we should.
-  bool IsRelocationPossible() OVERRIDE {
+  bool IsRelocationPossible() override {
     return true;
   }
 
-  verifier::VerifierDeps* GetVerifierDeps() const OVERRIDE {
+  verifier::VerifierDeps* GetVerifierDeps() const override {
     return verifier_deps_.get();
   }
 
-  void SetVerifierDeps(verifier::VerifierDeps* deps) OVERRIDE {
+  void SetVerifierDeps(verifier::VerifierDeps* deps) override {
     verifier_deps_.reset(deps);
   }
 
@@ -55,18 +55,18 @@ class QuickCompilerCallbacks FINAL : public CompilerCallbacks {
     verification_results_ = verification_results;
   }
 
-  ClassStatus GetPreviousClassState(ClassReference ref) OVERRIDE;
+  ClassStatus GetPreviousClassState(ClassReference ref) override;
 
   void SetDoesClassUnloading(bool does_class_unloading, CompilerDriver* compiler_driver)
-      OVERRIDE {
+      override {
     does_class_unloading_ = does_class_unloading;
     compiler_driver_ = compiler_driver;
     DCHECK(!does_class_unloading || compiler_driver_ != nullptr);
   }
 
-  void UpdateClassState(ClassReference ref, ClassStatus state) OVERRIDE;
+  void UpdateClassState(ClassReference ref, ClassStatus state) override;
 
-  bool CanUseOatStatusForVerification(mirror::Class* klass) OVERRIDE
+  bool CanUseOatStatusForVerification(mirror::Class* klass) override
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void SetDexFiles(const std::vector<const DexFile*>* dex_files) {

@@ -94,35 +94,35 @@ class DebugInfoTask : public Task {
 };
 
 template <typename ElfTypes>
-class ElfWriterQuick FINAL : public ElfWriter {
+class ElfWriterQuick final : public ElfWriter {
  public:
   ElfWriterQuick(const CompilerOptions& compiler_options,
                  File* elf_file);
   ~ElfWriterQuick();
 
-  void Start() OVERRIDE;
+  void Start() override;
   void PrepareDynamicSection(size_t rodata_size,
                              size_t text_size,
                              size_t data_bimg_rel_ro_size,
                              size_t bss_size,
                              size_t bss_methods_offset,
                              size_t bss_roots_offset,
-                             size_t dex_section_size) OVERRIDE;
-  void PrepareDebugInfo(const debug::DebugInfo& debug_info) OVERRIDE;
-  OutputStream* StartRoData() OVERRIDE;
-  void EndRoData(OutputStream* rodata) OVERRIDE;
-  OutputStream* StartText() OVERRIDE;
-  void EndText(OutputStream* text) OVERRIDE;
-  OutputStream* StartDataBimgRelRo() OVERRIDE;
-  void EndDataBimgRelRo(OutputStream* data_bimg_rel_ro) OVERRIDE;
-  void WriteDynamicSection() OVERRIDE;
-  void WriteDebugInfo(const debug::DebugInfo& debug_info) OVERRIDE;
-  bool StripDebugInfo() OVERRIDE;
-  bool End() OVERRIDE;
+                             size_t dex_section_size) override;
+  void PrepareDebugInfo(const debug::DebugInfo& debug_info) override;
+  OutputStream* StartRoData() override;
+  void EndRoData(OutputStream* rodata) override;
+  OutputStream* StartText() override;
+  void EndText(OutputStream* text) override;
+  OutputStream* StartDataBimgRelRo() override;
+  void EndDataBimgRelRo(OutputStream* data_bimg_rel_ro) override;
+  void WriteDynamicSection() override;
+  void WriteDebugInfo(const debug::DebugInfo& debug_info) override;
+  bool StripDebugInfo() override;
+  bool End() override;
 
-  virtual OutputStream* GetStream() OVERRIDE;
+  virtual OutputStream* GetStream() override;
 
-  size_t GetLoadedSize() OVERRIDE;
+  size_t GetLoadedSize() override;
 
   static void EncodeOatPatches(const std::vector<uintptr_t>& locations,
                                std::vector<uint8_t>* buffer);

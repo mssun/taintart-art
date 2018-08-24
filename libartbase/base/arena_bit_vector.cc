@@ -50,7 +50,7 @@ using ArenaBitVectorAllocatorKind =
     ArenaBitVectorAllocatorKindImpl<kArenaAllocatorCountAllocations>;
 
 template <typename ArenaAlloc>
-class ArenaBitVectorAllocator FINAL : public Allocator, private ArenaBitVectorAllocatorKind {
+class ArenaBitVectorAllocator final : public Allocator, private ArenaBitVectorAllocatorKind {
  public:
   static ArenaBitVectorAllocator* Create(ArenaAlloc* allocator, ArenaAllocKind kind) {
     void* storage = allocator->template Alloc<ArenaBitVectorAllocator>(kind);

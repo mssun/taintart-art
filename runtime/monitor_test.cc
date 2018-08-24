@@ -34,7 +34,7 @@ namespace art {
 
 class MonitorTest : public CommonRuntimeTest {
  protected:
-  void SetUpRuntimeOptions(RuntimeOptions *options) OVERRIDE {
+  void SetUpRuntimeOptions(RuntimeOptions *options) override {
     // Use a smaller heap
     SetUpRuntimeOptionsForFillHeap(options);
 

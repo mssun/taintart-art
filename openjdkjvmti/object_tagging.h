@@ -45,15 +45,15 @@ namespace openjdkjvmti {
 struct ArtJvmTiEnv;
 class EventHandler;
 
-class ObjectTagTable FINAL : public JvmtiWeakTable<jlong> {
+class ObjectTagTable final : public JvmtiWeakTable<jlong> {
  public:
   ObjectTagTable(EventHandler* event_handler, ArtJvmTiEnv* env)
       : event_handler_(event_handler), jvmti_env_(env) {}
 
-  bool Set(art::mirror::Object* obj, jlong tag) OVERRIDE
+  bool Set(art::mirror::Object* obj, jlong tag) override
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_);
-  bool SetLocked(art::mirror::Object* obj, jlong tag) OVERRIDE
+  bool SetLocked(art::mirror::Object* obj, jlong tag) override
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_);
 
@@ -73,8 +73,8 @@ class ObjectTagTable FINAL : public JvmtiWeakTable<jlong> {
   }
 
  protected:
-  bool DoesHandleNullOnSweep() OVERRIDE;
-  void HandleNullSweep(jlong tag) OVERRIDE;
+  bool DoesHandleNullOnSweep() override;
+  void HandleNullSweep(jlong tag) override;
 
  private:
   EventHandler* event_handler_;

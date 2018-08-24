@@ -27,7 +27,7 @@ namespace art {
 namespace {
 
 // Visit a proxy method Quick frame at a given depth.
-class GetProxyQuickFrameVisitor FINAL : public StackVisitor {
+class GetProxyQuickFrameVisitor final : public StackVisitor {
  public:
   GetProxyQuickFrameVisitor(art::Thread* target, art::Context* ctx, size_t frame_depth)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
@@ -36,7 +36,7 @@ class GetProxyQuickFrameVisitor FINAL : public StackVisitor {
         frame_depth_(frame_depth),
         quick_frame_(nullptr) {}
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (GetMethod()->IsRuntimeMethod()) {
       return true;
     }

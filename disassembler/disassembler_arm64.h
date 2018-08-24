@@ -29,7 +29,7 @@
 namespace art {
 namespace arm64 {
 
-class CustomDisassembler FINAL : public vixl::aarch64::Disassembler {
+class CustomDisassembler final : public vixl::aarch64::Disassembler {
  public:
   explicit CustomDisassembler(DisassemblerOptions* options)
       : vixl::aarch64::Disassembler(),
@@ -45,13 +45,13 @@ class CustomDisassembler FINAL : public vixl::aarch64::Disassembler {
 
   // Use register aliases in the disassembly.
   void AppendRegisterNameToOutput(const vixl::aarch64::Instruction* instr,
-                                  const vixl::aarch64::CPURegister& reg) OVERRIDE;
+                                  const vixl::aarch64::CPURegister& reg) override;
 
   // Improve the disassembly of literal load instructions.
-  void VisitLoadLiteral(const vixl::aarch64::Instruction* instr) OVERRIDE;
+  void VisitLoadLiteral(const vixl::aarch64::Instruction* instr) override;
 
   // Improve the disassembly of thread offset.
-  void VisitLoadStoreUnsignedOffset(const vixl::aarch64::Instruction* instr) OVERRIDE;
+  void VisitLoadStoreUnsignedOffset(const vixl::aarch64::Instruction* instr) override;
 
  private:
   // Indicate if the disassembler should read data loaded from literal pools.
@@ -69,15 +69,15 @@ class CustomDisassembler FINAL : public vixl::aarch64::Disassembler {
   DisassemblerOptions* options_;
 };
 
-class DisassemblerArm64 FINAL : public Disassembler {
+class DisassemblerArm64 final : public Disassembler {
  public:
   explicit DisassemblerArm64(DisassemblerOptions* options) :
       Disassembler(options), disasm(options) {
     decoder.AppendVisitor(&disasm);
   }
 
-  size_t Dump(std::ostream& os, const uint8_t* begin) OVERRIDE;
-  void Dump(std::ostream& os, const uint8_t* begin, const uint8_t* end) OVERRIDE;
+  size_t Dump(std::ostream& os, const uint8_t* begin) override;
+  void Dump(std::ostream& os, const uint8_t* begin, const uint8_t* end) override;
 
  private:
   vixl::aarch64::Decoder decoder;

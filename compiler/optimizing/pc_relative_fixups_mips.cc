@@ -58,7 +58,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     DCHECK(base_ != nullptr);
   }
 
-  void VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke) OVERRIDE {
+  void VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke) override {
     // If this is an invoke with PC-relative load kind,
     // we need to add the base as the special input.
     if (invoke->HasPcRelativeMethodLoadKind() &&
@@ -70,7 +70,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitLoadClass(HLoadClass* load_class) OVERRIDE {
+  void VisitLoadClass(HLoadClass* load_class) override {
     HLoadClass::LoadKind load_kind = load_class->GetLoadKind();
     switch (load_kind) {
       case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
@@ -86,7 +86,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitLoadString(HLoadString* load_string) OVERRIDE {
+  void VisitLoadString(HLoadString* load_string) override {
     HLoadString::LoadKind load_kind = load_string->GetLoadKind();
     switch (load_kind) {
       case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
@@ -102,7 +102,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitPackedSwitch(HPackedSwitch* switch_insn) OVERRIDE {
+  void VisitPackedSwitch(HPackedSwitch* switch_insn) override {
     if (switch_insn->GetNumEntries() <=
         InstructionCodeGeneratorMIPS::kPackedSwitchJumpTableThreshold) {
       return;

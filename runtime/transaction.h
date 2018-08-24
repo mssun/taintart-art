@@ -39,7 +39,7 @@ class String;
 }  // namespace mirror
 class InternTable;
 
-class Transaction FINAL {
+class Transaction final {
  public:
   static constexpr const char* kAbortExceptionDescriptor = "dalvik.system.TransactionAbortError";
   static constexpr const char* kAbortExceptionSignature = "Ldalvik/system/TransactionAbortError;";

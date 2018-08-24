@@ -34,7 +34,7 @@ namespace art {
 // Memory regions are useful for accessing memory with bounds check in
 // debug mode. They can be safely passed by value and do not assume ownership
 // of the region.
-class MemoryRegion FINAL : public ValueObject {
+class MemoryRegion final : public ValueObject {
  public:
   struct ContentEquals {
     constexpr bool operator()(const MemoryRegion& lhs, const MemoryRegion& rhs) const {

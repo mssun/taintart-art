@@ -42,7 +42,7 @@ extern "C" JNIEXPORT void JNICALL Java_Main_testVisitLocks(JNIEnv*, jclass) {
         : StackVisitor(thread, context, StackWalkKind::kIncludeInlinedFrames) {
     }
 
-    bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
       ArtMethod* m = GetMethod();
 
       // Ignore runtime methods.
