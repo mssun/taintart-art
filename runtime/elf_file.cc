@@ -1168,7 +1168,6 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
                                             loaded_size,
                                             PROT_NONE,
                                             low_4gb,
-                                            /* reuse */ false,
                                             error_msg);
       if (!reserve.IsValid()) {
         *error_msg = StringPrintf("Failed to allocate %s: %s",

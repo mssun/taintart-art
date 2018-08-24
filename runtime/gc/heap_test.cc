@@ -38,7 +38,6 @@ class HeapTest : public CommonRuntimeTest {
                                      16 * KB,
                                      PROT_READ,
                                      /*low_4gb*/ true,
-                                     /*reuse*/ false,
                                      &error_msg);
     ASSERT_TRUE(reserved_.IsValid()) << error_msg;
     CommonRuntimeTest::SetUp();
