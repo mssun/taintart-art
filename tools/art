@@ -229,11 +229,14 @@ function extract_dex2oat_flags() {
         shift
         ;;
       -Ximage:*)
-        DEX2OAT_BOOTIMAGE=$1
+        DEX2OAT_BOOT_IMAGE=$1
         # Remove '-Ximage:' from the argument.
         DEX2OAT_BOOT_IMAGE=${DEX2OAT_BOOT_IMAGE##-Ximage:}
         ;;
       -cp)
+        # Reset any previously parsed classpath, just like dalvikvm
+        # only supports one -cp argument.
+        DEX2OAT_CLASSPATH=()
         # TODO: support -classpath and CLASSPATH
         local oifs=$IFS
         IFS=':'
