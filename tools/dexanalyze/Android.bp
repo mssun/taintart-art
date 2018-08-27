@@ -22,6 +22,7 @@ cc_defaults {
         "dexanalyze.cc",
         "dexanalyze_bytecode.cc",
         "dexanalyze_experiments.cc",
+        "dexanalyze_strings.cc",
     ],
     target: {
         android: {
