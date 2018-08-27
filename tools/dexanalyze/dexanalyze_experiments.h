@@ -62,25 +62,6 @@ class Experiment {
   VerboseLevel verbose_level_ = VerboseLevel::kNormal;
 };
 
-// Analyze string data and strings accessed from code.
-class AnalyzeStrings : public Experiment {
- public:
-  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) OVERRIDE;
-  void Dump(std::ostream& os, uint64_t total_size) const OVERRIDE;
-
- private:
-  int64_t wide_string_bytes_ = 0u;
-  int64_t ascii_string_bytes_ = 0u;
-  int64_t string_data_bytes_ = 0u;
-  int64_t total_prefix_savings_ = 0u;
-  int64_t total_prefix_dict_ = 0u;
-  int64_t total_prefix_table_ = 0u;
-  int64_t total_prefix_index_cost_ = 0u;
-  int64_t total_num_prefixes_ = 0u;
-  int64_t optimization_savings_ = 0u;
-  std::unordered_map<std::string, size_t> prefixes_;
-};
-
 // Analyze debug info sizes.
 class AnalyzeDebugInfo  : public Experiment {
  public:
