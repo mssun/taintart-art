@@ -35,7 +35,7 @@ static constexpr size_t kMaxMethodIds = 65535;
 
 class ProfileCompilationInfoTest : public CommonArtTest {
  public:
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     CommonArtTest::SetUp();
     allocator_.reset(new ArenaAllocator(&pool_));
   }

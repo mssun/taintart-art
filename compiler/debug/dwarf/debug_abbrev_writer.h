@@ -37,7 +37,7 @@ namespace dwarf {
 // determines all the attributes and their format.
 // It is possible to think of them as type definitions.
 template <typename Vector = std::vector<uint8_t>>
-class DebugAbbrevWriter FINAL : private Writer<Vector> {
+class DebugAbbrevWriter final : private Writer<Vector> {
   static_assert(std::is_same<typename Vector::value_type, uint8_t>::value, "Invalid value type");
 
  public:

@@ -37,7 +37,7 @@ class Indenter : public std::streambuf {
         count_(count) {}
 
  private:
-  std::streamsize xsputn(const char* s, std::streamsize n) OVERRIDE {
+  std::streamsize xsputn(const char* s, std::streamsize n) override {
     std::streamsize result = n;  // Aborts on failure.
     const char* eol = static_cast<const char*>(memchr(s, '\n', n));
     while (eol != nullptr) {
@@ -54,7 +54,7 @@ class Indenter : public std::streambuf {
     return result;
   }
 
-  int_type overflow(int_type c) OVERRIDE {
+  int_type overflow(int_type c) override {
     if (UNLIKELY(c == std::char_traits<char>::eof())) {
       out_sbuf_->pubsync();
       return c;

@@ -94,26 +94,26 @@ class ReferenceTypePropagation::RTPVisitor : public HGraphDelegateVisitor {
     worklist_.reserve(kDefaultWorklistSize);
   }
 
-  void VisitDeoptimize(HDeoptimize* deopt) OVERRIDE;
-  void VisitNewInstance(HNewInstance* new_instance) OVERRIDE;
-  void VisitLoadClass(HLoadClass* load_class) OVERRIDE;
-  void VisitInstanceOf(HInstanceOf* load_class) OVERRIDE;
-  void VisitClinitCheck(HClinitCheck* clinit_check) OVERRIDE;
-  void VisitLoadMethodHandle(HLoadMethodHandle* instr) OVERRIDE;
-  void VisitLoadMethodType(HLoadMethodType* instr) OVERRIDE;
-  void VisitLoadString(HLoadString* instr) OVERRIDE;
-  void VisitLoadException(HLoadException* instr) OVERRIDE;
-  void VisitNewArray(HNewArray* instr) OVERRIDE;
-  void VisitParameterValue(HParameterValue* instr) OVERRIDE;
-  void VisitInstanceFieldGet(HInstanceFieldGet* instr) OVERRIDE;
-  void VisitStaticFieldGet(HStaticFieldGet* instr) OVERRIDE;
-  void VisitUnresolvedInstanceFieldGet(HUnresolvedInstanceFieldGet* instr) OVERRIDE;
-  void VisitUnresolvedStaticFieldGet(HUnresolvedStaticFieldGet* instr) OVERRIDE;
-  void VisitInvoke(HInvoke* instr) OVERRIDE;
-  void VisitArrayGet(HArrayGet* instr) OVERRIDE;
-  void VisitCheckCast(HCheckCast* instr) OVERRIDE;
-  void VisitBoundType(HBoundType* instr) OVERRIDE;
-  void VisitNullCheck(HNullCheck* instr) OVERRIDE;
+  void VisitDeoptimize(HDeoptimize* deopt) override;
+  void VisitNewInstance(HNewInstance* new_instance) override;
+  void VisitLoadClass(HLoadClass* load_class) override;
+  void VisitInstanceOf(HInstanceOf* load_class) override;
+  void VisitClinitCheck(HClinitCheck* clinit_check) override;
+  void VisitLoadMethodHandle(HLoadMethodHandle* instr) override;
+  void VisitLoadMethodType(HLoadMethodType* instr) override;
+  void VisitLoadString(HLoadString* instr) override;
+  void VisitLoadException(HLoadException* instr) override;
+  void VisitNewArray(HNewArray* instr) override;
+  void VisitParameterValue(HParameterValue* instr) override;
+  void VisitInstanceFieldGet(HInstanceFieldGet* instr) override;
+  void VisitStaticFieldGet(HStaticFieldGet* instr) override;
+  void VisitUnresolvedInstanceFieldGet(HUnresolvedInstanceFieldGet* instr) override;
+  void VisitUnresolvedStaticFieldGet(HUnresolvedStaticFieldGet* instr) override;
+  void VisitInvoke(HInvoke* instr) override;
+  void VisitArrayGet(HArrayGet* instr) override;
+  void VisitCheckCast(HCheckCast* instr) override;
+  void VisitBoundType(HBoundType* instr) override;
+  void VisitNullCheck(HNullCheck* instr) override;
   void VisitPhi(HPhi* phi);
 
   void VisitBasicBlock(HBasicBlock* block);

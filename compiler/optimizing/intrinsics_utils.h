@@ -47,7 +47,7 @@ class IntrinsicSlowPath : public SlowPathCode {
     return calling_convention_visitor.GetMethodLocation();
   }
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     Assembler* assembler = codegen->GetAssembler();
     assembler->Bind(GetEntryLabel());
 
@@ -73,7 +73,7 @@ class IntrinsicSlowPath : public SlowPathCode {
     assembler->Jump(GetExitLabel());
   }
 
-  const char* GetDescription() const OVERRIDE { return "IntrinsicSlowPath"; }
+  const char* GetDescription() const override { return "IntrinsicSlowPath"; }
 
  private:
   // The instruction where this slow path is happening.

@@ -158,7 +158,7 @@ class ObsoleteMethodStackVisitor : public art::StackVisitor {
           obsoleted_methods_(obsoleted_methods),
           obsolete_maps_(obsolete_maps) { }
 
-  ~ObsoleteMethodStackVisitor() OVERRIDE {}
+  ~ObsoleteMethodStackVisitor() override {}
 
  public:
   // Returns true if we successfully installed obsolete methods on this thread, filling
@@ -177,7 +177,7 @@ class ObsoleteMethodStackVisitor : public art::StackVisitor {
     visitor.WalkStack();
   }
 
-  bool VisitFrame() OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES(art::Locks::mutator_lock_) {
     art::ScopedAssertNoThreadSuspension snts("Fixing up the stack for obsolete methods.");
     art::ArtMethod* old_method = GetMethod();
     if (obsoleted_methods_.find(old_method) != obsoleted_methods_.end()) {

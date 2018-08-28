@@ -25,7 +25,7 @@ class ArmInstructionSetFeatures;
 using ArmFeaturesUniquePtr = std::unique_ptr<const ArmInstructionSetFeatures>;
 
 // Instruction set features relevant to the ARM architecture.
-class ArmInstructionSetFeatures FINAL : public InstructionSetFeatures {
+class ArmInstructionSetFeatures final : public InstructionSetFeatures {
  public:
   // Process a CPU variant string like "krait" or "cortex-a15" and create InstructionSetFeatures.
   static ArmFeaturesUniquePtr FromVariant(const std::string& variant, std::string* error_msg);
@@ -47,18 +47,18 @@ class ArmInstructionSetFeatures FINAL : public InstructionSetFeatures {
   // InstructionSetFeatures. This works around kernel bugs in AT_HWCAP and /proc/cpuinfo.
   static ArmFeaturesUniquePtr FromAssembly();
 
-  bool Equals(const InstructionSetFeatures* other) const OVERRIDE;
+  bool Equals(const InstructionSetFeatures* other) const override;
 
-  bool HasAtLeast(const InstructionSetFeatures* other) const OVERRIDE;
+  bool HasAtLeast(const InstructionSetFeatures* other) const override;
 
-  InstructionSet GetInstructionSet() const OVERRIDE {
+  InstructionSet GetInstructionSet() const override {
     return InstructionSet::kArm;
   }
 
-  uint32_t AsBitmap() const OVERRIDE;
+  uint32_t AsBitmap() const override;
 
   // Return a string of the form "div,lpae" or "none".
-  std::string GetFeatureString() const OVERRIDE;
+  std::string GetFeatureString() const override;
 
   // Is the divide instruction feature enabled?
   bool HasDivideInstruction() const {
@@ -82,7 +82,7 @@ class ArmInstructionSetFeatures FINAL : public InstructionSetFeatures {
   // Parse a vector of the form "div", "lpae" adding these to a new ArmInstructionSetFeatures.
   std::unique_ptr<const InstructionSetFeatures>
       AddFeaturesFromSplitString(const std::vector<std::string>& features,
-                                 std::string* error_msg) const OVERRIDE;
+                                 std::string* error_msg) const override;
 
  private:
   ArmInstructionSetFeatures(bool has_div,

@@ -58,7 +58,7 @@ class JNIMacroAssemblerTest : public testing::Test {
  protected:
   JNIMacroAssemblerTest() {}
 
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     allocator_.reset(new ArenaAllocator(&pool_));
     assembler_.reset(CreateAssembler(allocator_.get()));
     test_helper_.reset(
@@ -74,7 +74,7 @@ class JNIMacroAssemblerTest : public testing::Test {
     SetUpHelpers();
   }
 
-  void TearDown() OVERRIDE {
+  void TearDown() override {
     test_helper_.reset();  // Clean up the helper.
     assembler_.reset();
     allocator_.reset();

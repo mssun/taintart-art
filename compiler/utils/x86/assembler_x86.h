@@ -306,7 +306,7 @@ class ConstantArea {
   ArenaVector<int32_t> buffer_;
 };
 
-class X86Assembler FINAL : public Assembler {
+class X86Assembler final : public Assembler {
  public:
   explicit X86Assembler(ArenaAllocator* allocator)
       : Assembler(allocator), constant_area_(allocator) {}
@@ -758,8 +758,8 @@ class X86Assembler FINAL : public Assembler {
   //
   int PreferredLoopAlignment() { return 16; }
   void Align(int alignment, int offset);
-  void Bind(Label* label) OVERRIDE;
-  void Jump(Label* label) OVERRIDE {
+  void Bind(Label* label) override;
+  void Jump(Label* label) override {
     jmp(label);
   }
   void Bind(NearLabel* label);

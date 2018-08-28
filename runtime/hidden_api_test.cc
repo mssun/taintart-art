@@ -27,7 +27,7 @@ using hiddenapi::GetActionFromAccessFlags;
 
 class HiddenApiTest : public CommonRuntimeTest {
  protected:
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     // Do the normal setup.
     CommonRuntimeTest::SetUp();
     self_ = Thread::Current();

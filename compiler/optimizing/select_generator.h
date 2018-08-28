@@ -68,7 +68,7 @@ class HSelectGenerator : public HOptimization {
                    OptimizingCompilerStats* stats,
                    const char* name = kSelectGeneratorPassName);
 
-  bool Run() OVERRIDE;
+  bool Run() override;
 
   static constexpr const char* kSelectGeneratorPassName = "select_generator";
 

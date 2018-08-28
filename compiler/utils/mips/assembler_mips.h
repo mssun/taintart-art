@@ -263,7 +263,7 @@ class MipsExceptionSlowPath {
   DISALLOW_COPY_AND_ASSIGN(MipsExceptionSlowPath);
 };
 
-class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSize::k32> {
+class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSize::k32> {
  public:
   using JNIBase = JNIMacroAssembler<PointerSize::k32>;
 
@@ -285,8 +285,8 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
     cfi().DelayEmittingAdvancePCs();
   }
 
-  size_t CodeSize() const OVERRIDE { return Assembler::CodeSize(); }
-  size_t CodePosition() OVERRIDE;
+  size_t CodeSize() const override { return Assembler::CodeSize(); }
+  size_t CodePosition() override;
   DebugFrameOpCodeWriterForAssembler& cfi() { return Assembler::cfi(); }
 
   virtual ~MipsAssembler() {
@@ -1143,10 +1143,10 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
     }
   }
 
-  void Bind(Label* label) OVERRIDE {
+  void Bind(Label* label) override {
     Bind(down_cast<MipsLabel*>(label));
   }
-  void Jump(Label* label ATTRIBUTE_UNUSED) OVERRIDE {
+  void Jump(Label* label ATTRIBUTE_UNUSED) override {
     UNIMPLEMENTED(FATAL) << "Do not use Jump for MIPS";
   }
 
@@ -1155,25 +1155,25 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
   using JNIBase::Jump;
 
   // Create a new label that can be used with Jump/Bind calls.
-  std::unique_ptr<JNIMacroLabel> CreateLabel() OVERRIDE {
+  std::unique_ptr<JNIMacroLabel> CreateLabel() override {
     LOG(FATAL) << "Not implemented on MIPS32";
     UNREACHABLE();
   }
   // Emit an unconditional jump to the label.
-  void Jump(JNIMacroLabel* label ATTRIBUTE_UNUSED) OVERRIDE {
+  void Jump(JNIMacroLabel* label ATTRIBUTE_UNUSED) override {
     LOG(FATAL) << "Not implemented on MIPS32";
     UNREACHABLE();
   }
   // Emit a conditional jump to the label by applying a unary condition test to the register.
   void Jump(JNIMacroLabel* label ATTRIBUTE_UNUSED,
             JNIMacroUnaryCondition cond ATTRIBUTE_UNUSED,
-            ManagedRegister test ATTRIBUTE_UNUSED) OVERRIDE {
+            ManagedRegister test ATTRIBUTE_UNUSED) override {
     LOG(FATAL) << "Not implemented on MIPS32";
     UNREACHABLE();
   }
 
   // Code at this offset will serve as the target for the Jump call.
-  void Bind(JNIMacroLabel* label ATTRIBUTE_UNUSED) OVERRIDE {
+  void Bind(JNIMacroLabel* label ATTRIBUTE_UNUSED) override {
     LOG(FATAL) << "Not implemented on MIPS32";
     UNREACHABLE();
   }
@@ -1232,108 +1232,108 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
   void BuildFrame(size_t frame_size,
                   ManagedRegister method_reg,
                   ArrayRef<const ManagedRegister> callee_save_regs,
-                  const ManagedRegisterEntrySpills& entry_spills) OVERRIDE;
+                  const ManagedRegisterEntrySpills& entry_spills) override;
 
   // Emit code that will remove an activation from the stack.
   void RemoveFrame(size_t frame_size,
                    ArrayRef<const ManagedRegister> callee_save_regs,
-                   bool may_suspend) OVERRIDE;
+                   bool may_suspend) override;
 
-  void IncreaseFrameSize(size_t adjust) OVERRIDE;
-  void DecreaseFrameSize(size_t adjust) OVERRIDE;
+  void IncreaseFrameSize(size_t adjust) override;
+  void DecreaseFrameSize(size_t adjust) override;
 
   // Store routines.
-  void Store(FrameOffset offs, ManagedRegister msrc, size_t size) OVERRIDE;
-  void StoreRef(FrameOffset dest, ManagedRegister msrc) OVERRIDE;
-  void StoreRawPtr(FrameOffset dest, ManagedRegister msrc) OVERRIDE;
+  void Store(FrameOffset offs, ManagedRegister msrc, size_t size) override;
+  void StoreRef(FrameOffset dest, ManagedRegister msrc) override;
+  void StoreRawPtr(FrameOffset dest, ManagedRegister msrc) override;
 
-  void StoreImmediateToFrame(FrameOffset dest, uint32_t imm, ManagedRegister mscratch) OVERRIDE;
+  void StoreImmediateToFrame(FrameOffset dest, uint32_t imm, ManagedRegister mscratch) override;
 
   void StoreStackOffsetToThread(ThreadOffset32 thr_offs,
                                 FrameOffset fr_offs,
-                                ManagedRegister mscratch) OVERRIDE;
+                                ManagedRegister mscratch) override;
 
-  void StoreStackPointerToThread(ThreadOffset32 thr_offs) OVERRIDE;
+  void StoreStackPointerToThread(ThreadOffset32 thr_offs) override;
 
   void StoreSpanning(FrameOffset dest,
                      ManagedRegister msrc,
                      FrameOffset in_off,
-                     ManagedRegister mscratch) OVERRIDE;
+                     ManagedRegister mscratch) override;
 
   // Load routines.
-  void Load(ManagedRegister mdest, FrameOffset src, size_t size) OVERRIDE;
+  void Load(ManagedRegister mdest, FrameOffset src, size_t size) override;
 
-  void LoadFromThread(ManagedRegister mdest, ThreadOffset32 src, size_t size) OVERRIDE;
+  void LoadFromThread(ManagedRegister mdest, ThreadOffset32 src, size_t size) override;
 
-  void LoadRef(ManagedRegister dest, FrameOffset src) OVERRIDE;
+  void LoadRef(ManagedRegister dest, FrameOffset src) override;
 
   void LoadRef(ManagedRegister mdest,
                ManagedRegister base,
                MemberOffset offs,
-               bool unpoison_reference) OVERRIDE;
+               bool unpoison_reference) override;
 
-  void LoadRawPtr(ManagedRegister mdest, ManagedRegister base, Offset offs) OVERRIDE;
+  void LoadRawPtr(ManagedRegister mdest, ManagedRegister base, Offset offs) override;
 
-  void LoadRawPtrFromThread(ManagedRegister mdest, ThreadOffset32 offs) OVERRIDE;
+  void LoadRawPtrFromThread(ManagedRegister mdest, ThreadOffset32 offs) override;
 
   // Copying routines.
-  void Move(ManagedRegister mdest, ManagedRegister msrc, size_t size) OVERRIDE;
+  void Move(ManagedRegister mdest, ManagedRegister msrc, size_t size) override;
 
   void CopyRawPtrFromThread(FrameOffset fr_offs,
                             ThreadOffset32 thr_offs,
-                            ManagedRegister mscratch) OVERRIDE;
+                            ManagedRegister mscratch) override;
 
   void CopyRawPtrToThread(ThreadOffset32 thr_offs,
                           FrameOffset fr_offs,
-                          ManagedRegister mscratch) OVERRIDE;
+                          ManagedRegister mscratch) override;
 
-  void CopyRef(FrameOffset dest, FrameOffset src, ManagedRegister mscratch) OVERRIDE;
+  void CopyRef(FrameOffset dest, FrameOffset src, ManagedRegister mscratch) override;
 
-  void Copy(FrameOffset dest, FrameOffset src, ManagedRegister mscratch, size_t size) OVERRIDE;
+  void Copy(FrameOffset dest, FrameOffset src, ManagedRegister mscratch, size_t size) override;
 
   void Copy(FrameOffset dest,
             ManagedRegister src_base,
             Offset src_offset,
             ManagedRegister mscratch,
-            size_t size) OVERRIDE;
+            size_t size) override;
 
   void Copy(ManagedRegister dest_base,
             Offset dest_offset,
             FrameOffset src,
             ManagedRegister mscratch,
-            size_t size) OVERRIDE;
+            size_t size) override;
 
   void Copy(FrameOffset dest,
             FrameOffset src_base,
             Offset src_offset,
             ManagedRegister mscratch,
-            size_t size) OVERRIDE;
+            size_t size) override;
 
   void Copy(ManagedRegister dest,
             Offset dest_offset,
             ManagedRegister src,
             Offset src_offset,
             ManagedRegister mscratch,
-            size_t size) OVERRIDE;
+            size_t size) override;
 
   void Copy(FrameOffset dest,
             Offset dest_offset,
             FrameOffset src,
             Offset src_offset,
             ManagedRegister mscratch,
-            size_t size) OVERRIDE;
+            size_t size) override;
 
-  void MemoryBarrier(ManagedRegister) OVERRIDE;
+  void MemoryBarrier(ManagedRegister) override;
 
   // Sign extension.
-  void SignExtend(ManagedRegister mreg, size_t size) OVERRIDE;
+  void SignExtend(ManagedRegister mreg, size_t size) override;
 
   // Zero extension.
-  void ZeroExtend(ManagedRegister mreg, size_t size) OVERRIDE;
+  void ZeroExtend(ManagedRegister mreg, size_t size) override;
 
   // Exploit fast access in managed code to Thread::Current().
-  void GetCurrentThread(ManagedRegister tr) OVERRIDE;
-  void GetCurrentThread(FrameOffset dest_offset, ManagedRegister mscratch) OVERRIDE;
+  void GetCurrentThread(ManagedRegister tr) override;
+  void GetCurrentThread(FrameOffset dest_offset, ManagedRegister mscratch) override;
 
   // Set up out_reg to hold a Object** into the handle scope, or to be null if the
   // value is null and null_allowed. in_reg holds a possibly stale reference
@@ -1342,34 +1342,34 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
   void CreateHandleScopeEntry(ManagedRegister out_reg,
                               FrameOffset handlescope_offset,
                               ManagedRegister in_reg,
-                              bool null_allowed) OVERRIDE;
+                              bool null_allowed) override;
 
   // Set up out_off to hold a Object** into the handle scope, or to be null if the
   // value is null and null_allowed.
   void CreateHandleScopeEntry(FrameOffset out_off,
                               FrameOffset handlescope_offset,
                               ManagedRegister mscratch,
-                              bool null_allowed) OVERRIDE;
+                              bool null_allowed) override;
 
   // src holds a handle scope entry (Object**) load this into dst.
-  void LoadReferenceFromHandleScope(ManagedRegister dst, ManagedRegister src) OVERRIDE;
+  void LoadReferenceFromHandleScope(ManagedRegister dst, ManagedRegister src) override;
 
   // Heap::VerifyObject on src. In some cases (such as a reference to this) we
   // know that src may not be null.
-  void VerifyObject(ManagedRegister src, bool could_be_null) OVERRIDE;
-  void VerifyObject(FrameOffset src, bool could_be_null) OVERRIDE;
+  void VerifyObject(ManagedRegister src, bool could_be_null) override;
+  void VerifyObject(FrameOffset src, bool could_be_null) override;
 
   // Call to address held at [base+offset].
-  void Call(ManagedRegister base, Offset offset, ManagedRegister mscratch) OVERRIDE;
-  void Call(FrameOffset base, Offset offset, ManagedRegister mscratch) OVERRIDE;
-  void CallFromThread(ThreadOffset32 offset, ManagedRegister mscratch) OVERRIDE;
+  void Call(ManagedRegister base, Offset offset, ManagedRegister mscratch) override;
+  void Call(FrameOffset base, Offset offset, ManagedRegister mscratch) override;
+  void CallFromThread(ThreadOffset32 offset, ManagedRegister mscratch) override;
 
   // Generate code to check if Thread::Current()->exception_ is non-null
   // and branch to a ExceptionSlowPath if it is.
-  void ExceptionPoll(ManagedRegister mscratch, size_t stack_adjust) OVERRIDE;
+  void ExceptionPoll(ManagedRegister mscratch, size_t stack_adjust) override;
 
   // Emit slow paths queued during assembly and promote short branches to long if needed.
-  void FinalizeCode() OVERRIDE;
+  void FinalizeCode() override;
 
   // Emit branches and finalize all instructions.
   void FinalizeInstructions(const MemoryRegion& region);

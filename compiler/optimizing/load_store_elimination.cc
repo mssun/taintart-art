@@ -107,7 +107,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
         singleton_new_instances_(allocator_.Adapter(kArenaAllocLSE)) {
   }
 
-  void VisitBasicBlock(HBasicBlock* block) OVERRIDE {
+  void VisitBasicBlock(HBasicBlock* block) override {
     // Populate the heap_values array for this block.
     // TODO: try to reuse the heap_values array from one predecessor if possible.
     if (block->IsLoopHeader()) {
@@ -656,13 +656,13 @@ class LSEVisitor : public HGraphDelegateVisitor {
     }
   }
 
-  void VisitInstanceFieldGet(HInstanceFieldGet* instruction) OVERRIDE {
+  void VisitInstanceFieldGet(HInstanceFieldGet* instruction) override {
     HInstruction* object = instruction->InputAt(0);
     const FieldInfo& field = instruction->GetFieldInfo();
     VisitGetLocation(instruction, heap_location_collector_.GetFieldHeapLocation(object, &field));
   }
 
-  void VisitInstanceFieldSet(HInstanceFieldSet* instruction) OVERRIDE {
+  void VisitInstanceFieldSet(HInstanceFieldSet* instruction) override {
     HInstruction* object = instruction->InputAt(0);
     const FieldInfo& field = instruction->GetFieldInfo();
     HInstruction* value = instruction->InputAt(1);
@@ -670,24 +670,24 @@ class LSEVisitor : public HGraphDelegateVisitor {
     VisitSetLocation(instruction, idx, value);
   }
 
-  void VisitStaticFieldGet(HStaticFieldGet* instruction) OVERRIDE {
+  void VisitStaticFieldGet(HStaticFieldGet* instruction) override {
     HInstruction* cls = instruction->InputAt(0);
     const FieldInfo& field = instruction->GetFieldInfo();
     VisitGetLocation(instruction, heap_location_collector_.GetFieldHeapLocation(cls, &field));
   }
 
-  void VisitStaticFieldSet(HStaticFieldSet* instruction) OVERRIDE {
+  void VisitStaticFieldSet(HStaticFieldSet* instruction) override {
     HInstruction* cls = instruction->InputAt(0);
     const FieldInfo& field = instruction->GetFieldInfo();
     size_t idx = heap_location_collector_.GetFieldHeapLocation(cls, &field);
     VisitSetLocation(instruction, idx, instruction->InputAt(1));
   }
 
-  void VisitArrayGet(HArrayGet* instruction) OVERRIDE {
+  void VisitArrayGet(HArrayGet* instruction) override {
     VisitGetLocation(instruction, heap_location_collector_.GetArrayHeapLocation(instruction));
   }
 
-  void VisitArraySet(HArraySet* instruction) OVERRIDE {
+  void VisitArraySet(HArraySet* instruction) override {
     size_t idx = heap_location_collector_.GetArrayHeapLocation(instruction);
     VisitSetLocation(instruction, idx, instruction->InputAt(2));
   }
@@ -743,15 +743,15 @@ class LSEVisitor : public HGraphDelegateVisitor {
     }
   }
 
-  void VisitReturn(HReturn* instruction) OVERRIDE {
+  void VisitReturn(HReturn* instruction) override {
     HandleExit(instruction->GetBlock());
   }
 
-  void VisitReturnVoid(HReturnVoid* return_void) OVERRIDE {
+  void VisitReturnVoid(HReturnVoid* return_void) override {
     HandleExit(return_void->GetBlock());
   }
 
-  void VisitThrow(HThrow* throw_instruction) OVERRIDE {
+  void VisitThrow(HThrow* throw_instruction) override {
     HandleExit(throw_instruction->GetBlock());
   }
 
@@ -777,35 +777,35 @@ class LSEVisitor : public HGraphDelegateVisitor {
     }
   }
 
-  void VisitInvoke(HInvoke* invoke) OVERRIDE {
+  void VisitInvoke(HInvoke* invoke) override {
     HandleInvoke(invoke);
   }
 
-  void VisitClinitCheck(HClinitCheck* clinit) OVERRIDE {
+  void VisitClinitCheck(HClinitCheck* clinit) override {
     HandleInvoke(clinit);
   }
 
-  void VisitUnresolvedInstanceFieldGet(HUnresolvedInstanceFieldGet* instruction) OVERRIDE {
+  void VisitUnresolvedInstanceFieldGet(HUnresolvedInstanceFieldGet* instruction) override {
     // Conservatively treat it as an invocation.
     HandleInvoke(instruction);
   }
 
-  void VisitUnresolvedInstanceFieldSet(HUnresolvedInstanceFieldSet* instruction) OVERRIDE {
+  void VisitUnresolvedInstanceFieldSet(HUnresolvedInstanceFieldSet* instruction) override {
     // Conservatively treat it as an invocation.
     HandleInvoke(instruction);
   }
 
-  void VisitUnresolvedStaticFieldGet(HUnresolvedStaticFieldGet* instruction) OVERRIDE {
+  void VisitUnresolvedStaticFieldGet(HUnresolvedStaticFieldGet* instruction) override {
     // Conservatively treat it as an invocation.
     HandleInvoke(instruction);
   }
 
-  void VisitUnresolvedStaticFieldSet(HUnresolvedStaticFieldSet* instruction) OVERRIDE {
+  void VisitUnresolvedStaticFieldSet(HUnresolvedStaticFieldSet* instruction) override {
     // Conservatively treat it as an invocation.
     HandleInvoke(instruction);
   }
 
-  void VisitNewInstance(HNewInstance* new_instance) OVERRIDE {
+  void VisitNewInstance(HNewInstance* new_instance) override {
     ReferenceInfo* ref_info = heap_location_collector_.FindReferenceInfoOf(new_instance);
     if (ref_info == nullptr) {
       // new_instance isn't used for field accesses. No need to process it.
@@ -829,7 +829,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
     }
   }
 
-  void VisitNewArray(HNewArray* new_array) OVERRIDE {
+  void VisitNewArray(HNewArray* new_array) override {
     ReferenceInfo* ref_info = heap_location_collector_.FindReferenceInfoOf(new_array);
     if (ref_info == nullptr) {
       // new_array isn't used for array accesses. No need to process it.

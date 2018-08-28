@@ -44,7 +44,7 @@ static void Copy(const std::string& src, const std::string& dst) {
 }
 
 class ArtDexFileLoaderTest : public CommonArtTest {
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     CommonArtTest::SetUp();
     // Open a jar file from the boot classpath for use in basic tests of dex accessors.
     std::vector<std::string> lib_core_dex_file_names = GetLibCoreDexFileNames();

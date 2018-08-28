@@ -492,12 +492,12 @@ class HeapLocationCollector : public HGraphVisitor {
                             HeapLocation::kDeclaringClassDefIndexForArrays);
   }
 
-  void VisitInstanceFieldGet(HInstanceFieldGet* instruction) OVERRIDE {
+  void VisitInstanceFieldGet(HInstanceFieldGet* instruction) override {
     VisitFieldAccess(instruction->InputAt(0), instruction->GetFieldInfo());
     CreateReferenceInfoForReferenceType(instruction);
   }
 
-  void VisitInstanceFieldSet(HInstanceFieldSet* instruction) OVERRIDE {
+  void VisitInstanceFieldSet(HInstanceFieldSet* instruction) override {
     HeapLocation* location = VisitFieldAccess(instruction->InputAt(0), instruction->GetFieldInfo());
     has_heap_stores_ = true;
     if (location->GetReferenceInfo()->IsSingleton()) {
@@ -523,12 +523,12 @@ class HeapLocationCollector : public HGraphVisitor {
     }
   }
 
-  void VisitStaticFieldGet(HStaticFieldGet* instruction) OVERRIDE {
+  void VisitStaticFieldGet(HStaticFieldGet* instruction) override {
     VisitFieldAccess(instruction->InputAt(0), instruction->GetFieldInfo());
     CreateReferenceInfoForReferenceType(instruction);
   }
 
-  void VisitStaticFieldSet(HStaticFieldSet* instruction) OVERRIDE {
+  void VisitStaticFieldSet(HStaticFieldSet* instruction) override {
     VisitFieldAccess(instruction->InputAt(0), instruction->GetFieldInfo());
     has_heap_stores_ = true;
   }
@@ -536,7 +536,7 @@ class HeapLocationCollector : public HGraphVisitor {
   // We intentionally don't collect HUnresolvedInstanceField/HUnresolvedStaticField accesses
   // since we cannot accurately track the fields.
 
-  void VisitArrayGet(HArrayGet* instruction) OVERRIDE {
+  void VisitArrayGet(HArrayGet* instruction) override {
     HInstruction* array = instruction->InputAt(0);
     HInstruction* index = instruction->InputAt(1);
     DataType::Type type = instruction->GetType();
@@ -544,7 +544,7 @@ class HeapLocationCollector : public HGraphVisitor {
     CreateReferenceInfoForReferenceType(instruction);
   }
 
-  void VisitArraySet(HArraySet* instruction) OVERRIDE {
+  void VisitArraySet(HArraySet* instruction) override {
     HInstruction* array = instruction->InputAt(0);
     HInstruction* index = instruction->InputAt(1);
     DataType::Type type = instruction->GetComponentType();
@@ -552,7 +552,7 @@ class HeapLocationCollector : public HGraphVisitor {
     has_heap_stores_ = true;
   }
 
-  void VisitVecLoad(HVecLoad* instruction) OVERRIDE {
+  void VisitVecLoad(HVecLoad* instruction) override {
     HInstruction* array = instruction->InputAt(0);
     HInstruction* index = instruction->InputAt(1);
     DataType::Type type = instruction->GetPackedType();
@@ -560,7 +560,7 @@ class HeapLocationCollector : public HGraphVisitor {
     CreateReferenceInfoForReferenceType(instruction);
   }
 
-  void VisitVecStore(HVecStore* instruction) OVERRIDE {
+  void VisitVecStore(HVecStore* instruction) override {
     HInstruction* array = instruction->InputAt(0);
     HInstruction* index = instruction->InputAt(1);
     DataType::Type type = instruction->GetPackedType();
@@ -568,7 +568,7 @@ class HeapLocationCollector : public HGraphVisitor {
     has_heap_stores_ = true;
   }
 
-  void VisitInstruction(HInstruction* instruction) OVERRIDE {
+  void VisitInstruction(HInstruction* instruction) override {
     // Any new-instance or new-array cannot alias with references that
     // pre-exist the new-instance/new-array. We append entries into
     // ref_info_array_ which keeps track of the order of creation
@@ -580,7 +580,7 @@ class HeapLocationCollector : public HGraphVisitor {
     CreateReferenceInfoForReferenceType(instruction);
   }
 
-  void VisitMonitorOperation(HMonitorOperation* monitor ATTRIBUTE_UNUSED) OVERRIDE {
+  void VisitMonitorOperation(HMonitorOperation* monitor ATTRIBUTE_UNUSED) override {
     has_monitor_operations_ = true;
   }
 
@@ -605,7 +605,7 @@ class LoadStoreAnalysis : public HOptimization {
     return heap_location_collector_;
   }
 
-  bool Run() OVERRIDE;
+  bool Run() override;
 
   static constexpr const char* kLoadStoreAnalysisPassName = "load_store_analysis";
 

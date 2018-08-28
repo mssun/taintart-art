@@ -27,7 +27,7 @@ namespace art {
 namespace linker {
 
 // OutputStream wrapper that delays reporting an error until Flush().
-class ErrorDelayingOutputStream FINAL : public OutputStream {
+class ErrorDelayingOutputStream final : public OutputStream {
  public:
   explicit ErrorDelayingOutputStream(OutputStream* output)
       : OutputStream(output->GetLocation()),
@@ -37,7 +37,7 @@ class ErrorDelayingOutputStream FINAL : public OutputStream {
 
   // This function always succeeds to simplify code.
   // Use Good() to check the actual status of the output stream.
-  bool WriteFully(const void* buffer, size_t byte_count) OVERRIDE {
+  bool WriteFully(const void* buffer, size_t byte_count) override {
     if (output_good_) {
       if (!output_->WriteFully(buffer, byte_count)) {
         PLOG(ERROR) << "Failed to write " << byte_count
@@ -51,7 +51,7 @@ class ErrorDelayingOutputStream FINAL : public OutputStream {
 
   // This function always succeeds to simplify code.
   // Use Good() to check the actual status of the output stream.
-  off_t Seek(off_t offset, Whence whence) OVERRIDE {
+  off_t Seek(off_t offset, Whence whence) override {
     // We keep shadow copy of the offset so that we return
     // the expected value even if the output stream failed.
     off_t new_offset;
@@ -81,7 +81,7 @@ class ErrorDelayingOutputStream FINAL : public OutputStream {
 
   // Flush the output and return whether all operations have succeeded.
   // Do nothing if we already have a pending error.
-  bool Flush() OVERRIDE {
+  bool Flush() override {
     if (output_good_) {
       output_good_ = output_->Flush();
     }

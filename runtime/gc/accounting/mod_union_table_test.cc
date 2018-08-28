@@ -97,13 +97,13 @@ class ModUnionTableTest : public CommonRuntimeTest {
 class CollectVisitedVisitor : public MarkObjectVisitor {
  public:
   explicit CollectVisitedVisitor(std::set<mirror::Object*>* out) : out_(out) {}
-  virtual void MarkHeapReference(mirror::HeapReference<mirror::Object>* ref,
-                                 bool do_atomic_update ATTRIBUTE_UNUSED) OVERRIDE
+  void MarkHeapReference(mirror::HeapReference<mirror::Object>* ref,
+                         bool do_atomic_update ATTRIBUTE_UNUSED) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(ref != nullptr);
     MarkObject(ref->AsMirrorPtr());
   }
-  virtual mirror::Object* MarkObject(mirror::Object* obj) OVERRIDE
+  mirror::Object* MarkObject(mirror::Object* obj) override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(obj != nullptr);
     out_->insert(obj);
@@ -122,7 +122,7 @@ class ModUnionTableRefCacheToSpace : public ModUnionTableReferenceCache {
       space::ContinuousSpace* target_space)
       : ModUnionTableReferenceCache(name, heap, space), target_space_(target_space) {}
 
-  bool ShouldAddReference(const mirror::Object* ref) const OVERRIDE {
+  bool ShouldAddReference(const mirror::Object* ref) const override {
     return target_space_->HasAddress(ref);
   }
 

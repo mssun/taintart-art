@@ -32,8 +32,8 @@ namespace dexanalyze {
 // Analyze string data and strings accessed from code.
 class AnalyzeStrings : public Experiment {
  public:
-  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) OVERRIDE;
-  void Dump(std::ostream& os, uint64_t total_size) const OVERRIDE;
+  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) override;
+  void Dump(std::ostream& os, uint64_t total_size) const override;
 
  private:
   int64_t wide_string_bytes_ = 0u;

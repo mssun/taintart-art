@@ -2638,7 +2638,7 @@ class UpdateEntryPointsClassVisitor : public ClassVisitor {
   explicit UpdateEntryPointsClassVisitor(instrumentation::Instrumentation* instrumentation)
       : instrumentation_(instrumentation) {}
 
-  bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES(Locks::mutator_lock_) {
     auto pointer_size = Runtime::Current()->GetClassLinker()->GetImagePointerSize();
     for (auto& m : klass->GetMethods(pointer_size)) {
       const void* code = m.GetEntryPointFromQuickCompiledCode();

@@ -25,7 +25,7 @@
 namespace art {
 namespace verifier {
 
-class InstructionFlags FINAL {
+class InstructionFlags final {
  public:
   InstructionFlags() : flags_(0) {}
 

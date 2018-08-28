@@ -28,7 +28,7 @@
 
 namespace art {
 
-class MallocArena FINAL : public Arena {
+class MallocArena final : public Arena {
  public:
   explicit MallocArena(size_t size = arena_allocator::kArenaDefaultSize);
   virtual ~MallocArena();

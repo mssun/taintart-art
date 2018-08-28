@@ -37,7 +37,7 @@ class HSharpening : public HOptimization {
       : HOptimization(graph, name),
         codegen_(codegen) { }
 
-  bool Run() OVERRIDE;
+  bool Run() override;
 
   static constexpr const char* kSharpeningPassName = "sharpening";
 

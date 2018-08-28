@@ -26,14 +26,14 @@
 namespace art {
 namespace arm {
 
-class DisassemblerArm FINAL : public Disassembler {
+class DisassemblerArm final : public Disassembler {
   class CustomDisassembler;
 
  public:
   explicit DisassemblerArm(DisassemblerOptions* options);
 
-  size_t Dump(std::ostream& os, const uint8_t* begin) OVERRIDE;
-  void Dump(std::ostream& os, const uint8_t* begin, const uint8_t* end) OVERRIDE;
+  size_t Dump(std::ostream& os, const uint8_t* begin) override;
+  void Dump(std::ostream& os, const uint8_t* begin, const uint8_t* end) override;
 
  private:
   uintptr_t GetPc(uintptr_t instr_ptr) const {

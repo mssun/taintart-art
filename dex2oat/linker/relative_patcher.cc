@@ -45,35 +45,35 @@ std::unique_ptr<RelativePatcher> RelativePatcher::Create(
     const InstructionSetFeatures* features,
     RelativePatcherThunkProvider* thunk_provider,
     RelativePatcherTargetProvider* target_provider) {
-  class RelativePatcherNone FINAL : public RelativePatcher {
+  class RelativePatcherNone final : public RelativePatcher {
    public:
     RelativePatcherNone() { }
 
     uint32_t ReserveSpace(uint32_t offset,
                           const CompiledMethod* compiled_method ATTRIBUTE_UNUSED,
-                          MethodReference method_ref ATTRIBUTE_UNUSED) OVERRIDE {
+                          MethodReference method_ref ATTRIBUTE_UNUSED) override {
       return offset;  // No space reserved; no patches expected.
     }
 
-    uint32_t ReserveSpaceEnd(uint32_t offset) OVERRIDE {
+    uint32_t ReserveSpaceEnd(uint32_t offset) override {
       return offset;  // No space reserved; no patches expected.
     }
 
-    uint32_t WriteThunks(OutputStream* out ATTRIBUTE_UNUSED, uint32_t offset) OVERRIDE {
+    uint32_t WriteThunks(OutputStream* out ATTRIBUTE_UNUSED, uint32_t offset) override {
       return offset;  // No thunks added; no patches expected.
     }
 
     void PatchCall(std::vector<uint8_t>* code ATTRIBUTE_UNUSED,
                    uint32_t literal_offset ATTRIBUTE_UNUSED,
                    uint32_t patch_offset ATTRIBUTE_UNUSED,
-                   uint32_t target_offset ATTRIBUTE_UNUSED) OVERRIDE {
+                   uint32_t target_offset ATTRIBUTE_UNUSED) override {
       LOG(FATAL) << "Unexpected relative call patch.";
     }
 
     void PatchPcRelativeReference(std::vector<uint8_t>* code ATTRIBUTE_UNUSED,
                                   const LinkerPatch& patch ATTRIBUTE_UNUSED,
                                   uint32_t patch_offset ATTRIBUTE_UNUSED,
-                                  uint32_t target_offset ATTRIBUTE_UNUSED) OVERRIDE {
+                                  uint32_t target_offset ATTRIBUTE_UNUSED) override {
       LOG(FATAL) << "Unexpected relative dex cache array patch.";
     }
 
@@ -84,7 +84,7 @@ std::unique_ptr<RelativePatcher> RelativePatcher::Create(
     }
 
     std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(
-        uint32_t executable_offset ATTRIBUTE_UNUSED) OVERRIDE {
+        uint32_t executable_offset ATTRIBUTE_UNUSED) override {
       return std::vector<debug::MethodDebugInfo>();  // No thunks added.
     }
 

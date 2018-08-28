@@ -1088,14 +1088,14 @@ size_t JitCodeCache::ReserveData(Thread* self,
   }
 }
 
-class MarkCodeVisitor FINAL : public StackVisitor {
+class MarkCodeVisitor final : public StackVisitor {
  public:
   MarkCodeVisitor(Thread* thread_in, JitCodeCache* code_cache_in)
       : StackVisitor(thread_in, nullptr, StackVisitor::StackWalkKind::kSkipInlinedFrames),
         code_cache_(code_cache_in),
         bitmap_(code_cache_->GetLiveBitmap()) {}
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
     if (method_header == nullptr) {
       return true;
@@ -1113,12 +1113,12 @@ class MarkCodeVisitor FINAL : public StackVisitor {
   CodeCacheBitmap* const bitmap_;
 };
 
-class MarkCodeClosure FINAL : public Closure {
+class MarkCodeClosure final : public Closure {
  public:
   MarkCodeClosure(JitCodeCache* code_cache, Barrier* barrier)
       : code_cache_(code_cache), barrier_(barrier) {}
 
-  void Run(Thread* thread) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  void Run(Thread* thread) override REQUIRES_SHARED(Locks::mutator_lock_) {
     ScopedTrace trace(__PRETTY_FUNCTION__);
     DCHECK(thread == Thread::Current() || thread->IsSuspended());
     MarkCodeVisitor visitor(thread, code_cache_);

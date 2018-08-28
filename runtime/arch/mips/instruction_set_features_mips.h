@@ -28,7 +28,7 @@ class MipsInstructionSetFeatures;
 using MipsFeaturesUniquePtr = std::unique_ptr<const MipsInstructionSetFeatures>;
 
 // Instruction set features relevant to the MIPS architecture.
-class MipsInstructionSetFeatures FINAL : public InstructionSetFeatures {
+class MipsInstructionSetFeatures final : public InstructionSetFeatures {
  public:
   // Process a CPU variant string like "r4000" and create InstructionSetFeatures.
   static MipsFeaturesUniquePtr FromVariant(const std::string& variant, std::string* error_msg);
@@ -50,15 +50,15 @@ class MipsInstructionSetFeatures FINAL : public InstructionSetFeatures {
   // InstructionSetFeatures. This works around kernel bugs in AT_HWCAP and /proc/cpuinfo.
   static MipsFeaturesUniquePtr FromAssembly();
 
-  bool Equals(const InstructionSetFeatures* other) const OVERRIDE;
+  bool Equals(const InstructionSetFeatures* other) const override;
 
-  InstructionSet GetInstructionSet() const OVERRIDE {
+  InstructionSet GetInstructionSet() const override {
     return InstructionSet::kMips;
   }
 
-  uint32_t AsBitmap() const OVERRIDE;
+  uint32_t AsBitmap() const override;
 
-  std::string GetFeatureString() const OVERRIDE;
+  std::string GetFeatureString() const override;
 
   // Is this an ISA revision greater than 2 opening up new opcodes.
   bool IsMipsIsaRevGreaterThanEqual2() const {
@@ -87,7 +87,7 @@ class MipsInstructionSetFeatures FINAL : public InstructionSetFeatures {
   // Parse a vector of the form "fpu32", "mips2" adding these to a new MipsInstructionSetFeatures.
   std::unique_ptr<const InstructionSetFeatures>
       AddFeaturesFromSplitString(const std::vector<std::string>& features,
-                                 std::string* error_msg) const OVERRIDE;
+                                 std::string* error_msg) const override;
 
  private:
   MipsInstructionSetFeatures(bool fpu_32bit, bool mips_isa_gte2, bool r6, bool msa)

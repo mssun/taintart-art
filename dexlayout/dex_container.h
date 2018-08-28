@@ -57,19 +57,19 @@ class DexContainer {
    public:
     virtual ~VectorSection() {}
 
-    uint8_t* Begin() OVERRIDE {
+    uint8_t* Begin() override {
       return &data_[0];
     }
 
-    size_t Size() const OVERRIDE {
+    size_t Size() const override {
       return data_.size();
     }
 
-    void Resize(size_t size) OVERRIDE {
+    void Resize(size_t size) override {
       data_.resize(size, 0u);
     }
 
-    void Clear() OVERRIDE {
+    void Clear() override {
       data_.clear();
     }
 

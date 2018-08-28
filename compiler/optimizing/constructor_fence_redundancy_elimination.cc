@@ -34,7 +34,7 @@ class CFREVisitor : public HGraphVisitor {
         candidate_fence_targets_(scoped_allocator_.Adapter(kArenaAllocCFRE)),
         stats_(stats) {}
 
-  void VisitBasicBlock(HBasicBlock* block) OVERRIDE {
+  void VisitBasicBlock(HBasicBlock* block) override {
     // Visit all instructions in block.
     HGraphVisitor::VisitBasicBlock(block);
 
@@ -43,7 +43,7 @@ class CFREVisitor : public HGraphVisitor {
     MergeCandidateFences();
   }
 
-  void VisitConstructorFence(HConstructorFence* constructor_fence) OVERRIDE {
+  void VisitConstructorFence(HConstructorFence* constructor_fence) override {
     candidate_fences_.push_back(constructor_fence);
 
     for (size_t input_idx = 0; input_idx < constructor_fence->InputCount(); ++input_idx) {
@@ -51,29 +51,29 @@ class CFREVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitBoundType(HBoundType* bound_type) OVERRIDE {
+  void VisitBoundType(HBoundType* bound_type) override {
     VisitAlias(bound_type);
   }
 
-  void VisitNullCheck(HNullCheck* null_check) OVERRIDE {
+  void VisitNullCheck(HNullCheck* null_check) override {
     VisitAlias(null_check);
   }
 
-  void VisitSelect(HSelect* select) OVERRIDE {
+  void VisitSelect(HSelect* select) override {
     VisitAlias(select);
   }
 
-  void VisitInstanceFieldSet(HInstanceFieldSet* instruction) OVERRIDE {
+  void VisitInstanceFieldSet(HInstanceFieldSet* instruction) override {
     HInstruction* value = instruction->InputAt(1);
     VisitSetLocation(instruction, value);
   }
 
-  void VisitStaticFieldSet(HStaticFieldSet* instruction) OVERRIDE {
+  void VisitStaticFieldSet(HStaticFieldSet* instruction) override {
     HInstruction* value = instruction->InputAt(1);
     VisitSetLocation(instruction, value);
   }
 
-  void VisitArraySet(HArraySet* instruction) OVERRIDE {
+  void VisitArraySet(HArraySet* instruction) override {
     HInstruction* value = instruction->InputAt(2);
     VisitSetLocation(instruction, value);
   }
@@ -83,46 +83,46 @@ class CFREVisitor : public HGraphVisitor {
     MergeCandidateFences();
   }
 
-  void VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke) OVERRIDE {
+  void VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke) override {
     HandleInvoke(invoke);
   }
 
-  void VisitInvokeVirtual(HInvokeVirtual* invoke) OVERRIDE {
+  void VisitInvokeVirtual(HInvokeVirtual* invoke) override {
     HandleInvoke(invoke);
   }
 
-  void VisitInvokeInterface(HInvokeInterface* invoke) OVERRIDE {
+  void VisitInvokeInterface(HInvokeInterface* invoke) override {
     HandleInvoke(invoke);
   }
 
-  void VisitInvokeUnresolved(HInvokeUnresolved* invoke) OVERRIDE {
+  void VisitInvokeUnresolved(HInvokeUnresolved* invoke) override {
     HandleInvoke(invoke);
   }
 
-  void VisitInvokePolymorphic(HInvokePolymorphic* invoke) OVERRIDE {
+  void VisitInvokePolymorphic(HInvokePolymorphic* invoke) override {
     HandleInvoke(invoke);
   }
 
-  void VisitClinitCheck(HClinitCheck* clinit) OVERRIDE {
+  void VisitClinitCheck(HClinitCheck* clinit) override {
     HandleInvoke(clinit);
   }
 
-  void VisitUnresolvedInstanceFieldGet(HUnresolvedInstanceFieldGet* instruction) OVERRIDE {
+  void VisitUnresolvedInstanceFieldGet(HUnresolvedInstanceFieldGet* instruction) override {
     // Conservatively treat it as an invocation.
     HandleInvoke(instruction);
   }
 
-  void VisitUnresolvedInstanceFieldSet(HUnresolvedInstanceFieldSet* instruction) OVERRIDE {
+  void VisitUnresolvedInstanceFieldSet(HUnresolvedInstanceFieldSet* instruction) override {
     // Conservatively treat it as an invocation.
     HandleInvoke(instruction);
   }
 
-  void VisitUnresolvedStaticFieldGet(HUnresolvedStaticFieldGet* instruction) OVERRIDE {
+  void VisitUnresolvedStaticFieldGet(HUnresolvedStaticFieldGet* instruction) override {
     // Conservatively treat it as an invocation.
     HandleInvoke(instruction);
   }
 
-  void VisitUnresolvedStaticFieldSet(HUnresolvedStaticFieldSet* instruction) OVERRIDE {
+  void VisitUnresolvedStaticFieldSet(HUnresolvedStaticFieldSet* instruction) override {
     // Conservatively treat it as an invocation.
     HandleInvoke(instruction);
   }

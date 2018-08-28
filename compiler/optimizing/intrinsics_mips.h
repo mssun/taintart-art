@@ -30,14 +30,14 @@ namespace mips {
 class CodeGeneratorMIPS;
 class MipsAssembler;
 
-class IntrinsicLocationsBuilderMIPS FINAL : public IntrinsicVisitor {
+class IntrinsicLocationsBuilderMIPS final : public IntrinsicVisitor {
  public:
   explicit IntrinsicLocationsBuilderMIPS(CodeGeneratorMIPS* codegen);
 
   // Define visitor methods.
 
 #define OPTIMIZING_INTRINSICS(Name, IsStatic, NeedsEnvironmentOrCache, SideEffects, Exceptions, ...) \
-  void Visit ## Name(HInvoke* invoke) OVERRIDE;
+  void Visit ## Name(HInvoke* invoke) override;
 #include "intrinsics_list.h"
   INTRINSICS_LIST(OPTIMIZING_INTRINSICS)
 #undef INTRINSICS_LIST
@@ -55,14 +55,14 @@ class IntrinsicLocationsBuilderMIPS FINAL : public IntrinsicVisitor {
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderMIPS);
 };
 
-class IntrinsicCodeGeneratorMIPS FINAL : public IntrinsicVisitor {
+class IntrinsicCodeGeneratorMIPS final : public IntrinsicVisitor {
  public:
   explicit IntrinsicCodeGeneratorMIPS(CodeGeneratorMIPS* codegen) : codegen_(codegen) {}
 
   // Define visitor methods.
 
 #define OPTIMIZING_INTRINSICS(Name, IsStatic, NeedsEnvironmentOrCache, SideEffects, Exceptions, ...) \
-  void Visit ## Name(HInvoke* invoke) OVERRIDE;
+  void Visit ## Name(HInvoke* invoke) override;
 #include "intrinsics_list.h"
   INTRINSICS_LIST(OPTIMIZING_INTRINSICS)
 #undef INTRINSICS_LIST

@@ -259,19 +259,19 @@ inline JNIMacroLabel::~JNIMacroLabel() {
 template <typename T, PointerSize kPointerSize>
 class JNIMacroAssemblerFwd : public JNIMacroAssembler<kPointerSize> {
  public:
-  void FinalizeCode() OVERRIDE {
+  void FinalizeCode() override {
     asm_.FinalizeCode();
   }
 
-  size_t CodeSize() const OVERRIDE {
+  size_t CodeSize() const override {
     return asm_.CodeSize();
   }
 
-  void FinalizeInstructions(const MemoryRegion& region) OVERRIDE {
+  void FinalizeInstructions(const MemoryRegion& region) override {
     asm_.FinalizeInstructions(region);
   }
 
-  DebugFrameOpCodeWriterForAssembler& cfi() OVERRIDE {
+  DebugFrameOpCodeWriterForAssembler& cfi() override {
     return asm_.cfi();
   }
 
@@ -299,7 +299,7 @@ class JNIMacroLabelCommon : public JNIMacroLabel {
   JNIMacroLabelCommon() : JNIMacroLabel(kIsa) {
   }
 
-  virtual ~JNIMacroLabelCommon() OVERRIDE {}
+  ~JNIMacroLabelCommon() override {}
 
  private:
   PlatformLabel label_;

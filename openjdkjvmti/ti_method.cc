@@ -66,7 +66,7 @@ struct TiMethodCallback : public art::MethodCallback {
   void RegisterNativeMethod(art::ArtMethod* method,
                             const void* cur_method,
                             /*out*/void** new_method)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     if (event_handler->IsEventEnabledAnywhere(ArtJvmtiEvent::kNativeMethodBind)) {
       art::Thread* thread = art::Thread::Current();
       art::JNIEnvExt* jnienv = thread->GetJniEnv();
@@ -550,7 +550,7 @@ class CommonLocalVariableClosure : public art::Closure {
   CommonLocalVariableClosure(jint depth, jint slot)
       : result_(ERR(INTERNAL)), depth_(depth), slot_(slot) {}
 
-  void Run(art::Thread* self) OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+  void Run(art::Thread* self) override REQUIRES(art::Locks::mutator_lock_) {
     art::Locks::mutator_lock_->AssertSharedHeld(art::Thread::Current());
     art::ScopedAssertNoThreadSuspension sants("CommonLocalVariableClosure::Run");
     std::unique_ptr<art::Context> context(art::Context::Create());
@@ -702,7 +702,7 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
   jvmtiError GetTypeError(art::ArtMethod* method ATTRIBUTE_UNUSED,
                           art::Primitive::Type slot_type,
                           const std::string& descriptor ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (slot_type) {
       case art::Primitive::kPrimByte:
       case art::Primitive::kPrimChar:
@@ -722,7 +722,7 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
   }
 
   jvmtiError Execute(art::ArtMethod* method, art::StackVisitor& visitor)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (type_) {
       case art::Primitive::kPrimNot: {
         uint32_t ptr_val;
@@ -816,7 +816,7 @@ class SetLocalVariableClosure : public CommonLocalVariableClosure {
   jvmtiError GetTypeError(art::ArtMethod* method,
                           art::Primitive::Type slot_type,
                           const std::string& descriptor)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (slot_type) {
       case art::Primitive::kPrimNot: {
         if (type_ != art::Primitive::kPrimNot) {
@@ -852,7 +852,7 @@ class SetLocalVariableClosure : public CommonLocalVariableClosure {
   }
 
   jvmtiError Execute(art::ArtMethod* method, art::StackVisitor& visitor)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (type_) {
       case art::Primitive::kPrimNot: {
         uint32_t ptr_val;
@@ -941,7 +941,7 @@ class GetLocalInstanceClosure : public art::Closure {
         depth_(depth),
         val_(nullptr) {}
 
-  void Run(art::Thread* self) OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+  void Run(art::Thread* self) override REQUIRES(art::Locks::mutator_lock_) {
     art::ScopedAssertNoThreadSuspension sants("GetLocalInstanceClosure::Run");
     art::Locks::mutator_lock_->AssertSharedHeld(art::Thread::Current());
     std::unique_ptr<art::Context> context(art::Context::Create());

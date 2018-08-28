@@ -23,7 +23,7 @@
 namespace art {
 namespace mirror {
 
-class MANAGED IfTable FINAL : public ObjectArray<Object> {
+class MANAGED IfTable final : public ObjectArray<Object> {
  public:
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>

@@ -27,24 +27,24 @@ constexpr size_t kFramePointerSize = 4;
 static_assert(kFramePointerSize == static_cast<size_t>(PointerSize::k32),
               "Invalid frame pointer size");
 
-class MipsManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCallingConvention {
+class MipsManagedRuntimeCallingConvention final : public ManagedRuntimeCallingConvention {
  public:
   MipsManagedRuntimeCallingConvention(bool is_static, bool is_synchronized, const char* shorty)
       : ManagedRuntimeCallingConvention(is_static,
                                         is_synchronized,
                                         shorty,
                                         PointerSize::k32) {}
-  ~MipsManagedRuntimeCallingConvention() OVERRIDE {}
+  ~MipsManagedRuntimeCallingConvention() override {}
   // Calling convention
-  ManagedRegister ReturnRegister() OVERRIDE;
-  ManagedRegister InterproceduralScratchRegister() OVERRIDE;
+  ManagedRegister ReturnRegister() override;
+  ManagedRegister InterproceduralScratchRegister() override;
   // Managed runtime calling convention
-  ManagedRegister MethodRegister() OVERRIDE;
-  bool IsCurrentParamInRegister() OVERRIDE;
-  bool IsCurrentParamOnStack() OVERRIDE;
-  ManagedRegister CurrentParamRegister() OVERRIDE;
-  FrameOffset CurrentParamStackOffset() OVERRIDE;
-  const ManagedRegisterEntrySpills& EntrySpills() OVERRIDE;
+  ManagedRegister MethodRegister() override;
+  bool IsCurrentParamInRegister() override;
+  bool IsCurrentParamOnStack() override;
+  ManagedRegister CurrentParamRegister() override;
+  FrameOffset CurrentParamStackOffset() override;
+  const ManagedRegisterEntrySpills& EntrySpills() override;
 
  private:
   ManagedRegisterEntrySpills entry_spills_;
@@ -52,37 +52,37 @@ class MipsManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCallingCo
   DISALLOW_COPY_AND_ASSIGN(MipsManagedRuntimeCallingConvention);
 };
 
-class MipsJniCallingConvention FINAL : public JniCallingConvention {
+class MipsJniCallingConvention final : public JniCallingConvention {
  public:
   MipsJniCallingConvention(bool is_static,
                            bool is_synchronized,
                            bool is_critical_native,
                            const char* shorty);
-  ~MipsJniCallingConvention() OVERRIDE {}
+  ~MipsJniCallingConvention() override {}
   // Calling convention
-  ManagedRegister ReturnRegister() OVERRIDE;
-  ManagedRegister IntReturnRegister() OVERRIDE;
-  ManagedRegister InterproceduralScratchRegister() OVERRIDE;
+  ManagedRegister ReturnRegister() override;
+  ManagedRegister IntReturnRegister() override;
+  ManagedRegister InterproceduralScratchRegister() override;
   // JNI calling convention
-  void Next() OVERRIDE;  // Override default behavior for o32.
-  size_t FrameSize() OVERRIDE;
-  size_t OutArgSize() OVERRIDE;
-  ArrayRef<const ManagedRegister> CalleeSaveRegisters() const OVERRIDE;
-  ManagedRegister ReturnScratchRegister() const OVERRIDE;
-  uint32_t CoreSpillMask() const OVERRIDE;
-  uint32_t FpSpillMask() const OVERRIDE;
-  bool IsCurrentParamInRegister() OVERRIDE;
-  bool IsCurrentParamOnStack() OVERRIDE;
-  ManagedRegister CurrentParamRegister() OVERRIDE;
-  FrameOffset CurrentParamStackOffset() OVERRIDE;
+  void Next() override;  // Override default behavior for o32.
+  size_t FrameSize() override;
+  size_t OutArgSize() override;
+  ArrayRef<const ManagedRegister> CalleeSaveRegisters() const override;
+  ManagedRegister ReturnScratchRegister() const override;
+  uint32_t CoreSpillMask() const override;
+  uint32_t FpSpillMask() const override;
+  bool IsCurrentParamInRegister() override;
+  bool IsCurrentParamOnStack() override;
+  ManagedRegister CurrentParamRegister() override;
+  FrameOffset CurrentParamStackOffset() override;
 
   // Mips does not need to extend small return types.
-  bool RequiresSmallResultTypeExtension() const OVERRIDE {
+  bool RequiresSmallResultTypeExtension() const override {
     return false;
   }
 
  protected:
-  size_t NumberOfOutgoingStackArgs() OVERRIDE;
+  size_t NumberOfOutgoingStackArgs() override;
 
  private:
   // Padding to ensure longs and doubles are not split in o32.

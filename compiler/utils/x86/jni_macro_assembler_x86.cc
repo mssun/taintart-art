@@ -25,10 +25,10 @@ namespace art {
 namespace x86 {
 
 // Slowpath entered when Thread::Current()->_exception is non-null
-class X86ExceptionSlowPath FINAL : public SlowPath {
+class X86ExceptionSlowPath final : public SlowPath {
  public:
   explicit X86ExceptionSlowPath(size_t stack_adjust) : stack_adjust_(stack_adjust) {}
-  virtual void Emit(Assembler *sp_asm) OVERRIDE;
+  void Emit(Assembler *sp_asm) override;
  private:
   const size_t stack_adjust_;
 };

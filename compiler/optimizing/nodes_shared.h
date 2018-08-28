@@ -24,7 +24,7 @@
 
 namespace art {
 
-class HMultiplyAccumulate FINAL : public HExpression<3> {
+class HMultiplyAccumulate final : public HExpression<3> {
  public:
   HMultiplyAccumulate(DataType::Type type,
                       InstructionKind op,
@@ -39,14 +39,14 @@ class HMultiplyAccumulate FINAL : public HExpression<3> {
     SetRawInputAt(kInputMulRightIndex, mul_right);
   }
 
-  bool IsClonable() const OVERRIDE { return true; }
+  bool IsClonable() const override { return true; }
 
   static constexpr int kInputAccumulatorIndex = 0;
   static constexpr int kInputMulLeftIndex = 1;
   static constexpr int kInputMulRightIndex = 2;
 
-  bool CanBeMoved() const OVERRIDE { return true; }
-  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+  bool CanBeMoved() const override { return true; }
+  bool InstructionDataEquals(const HInstruction* other) const override {
     return op_kind_ == other->AsMultiplyAccumulate()->op_kind_;
   }
 
@@ -62,7 +62,7 @@ class HMultiplyAccumulate FINAL : public HExpression<3> {
   const InstructionKind op_kind_;
 };
 
-class HBitwiseNegatedRight FINAL : public HBinaryOperation {
+class HBitwiseNegatedRight final : public HBinaryOperation {
  public:
   HBitwiseNegatedRight(DataType::Type result_type,
                        InstructionKind op,
@@ -97,21 +97,21 @@ class HBitwiseNegatedRight FINAL : public HBinaryOperation {
     }
   }
 
-  HConstant* Evaluate(HIntConstant* x, HIntConstant* y) const OVERRIDE {
+  HConstant* Evaluate(HIntConstant* x, HIntConstant* y) const override {
     return GetBlock()->GetGraph()->GetIntConstant(
         Compute(x->GetValue(), y->GetValue()), GetDexPc());
   }
-  HConstant* Evaluate(HLongConstant* x, HLongConstant* y) const OVERRIDE {
+  HConstant* Evaluate(HLongConstant* x, HLongConstant* y) const override {
     return GetBlock()->GetGraph()->GetLongConstant(
         Compute(x->GetValue(), y->GetValue()), GetDexPc());
   }
   HConstant* Evaluate(HFloatConstant* x ATTRIBUTE_UNUSED,
-                      HFloatConstant* y ATTRIBUTE_UNUSED) const OVERRIDE {
+                      HFloatConstant* y ATTRIBUTE_UNUSED) const override {
     LOG(FATAL) << DebugName() << " is not defined for float values";
     UNREACHABLE();
   }
   HConstant* Evaluate(HDoubleConstant* x ATTRIBUTE_UNUSED,
-                      HDoubleConstant* y ATTRIBUTE_UNUSED) const OVERRIDE {
+                      HDoubleConstant* y ATTRIBUTE_UNUSED) const override {
     LOG(FATAL) << DebugName() << " is not defined for double values";
     UNREACHABLE();
   }
@@ -145,7 +145,7 @@ class HBitwiseNegatedRight FINAL : public HBinaryOperation {
 //
 // Note: as the instruction doesn't involve base array address into computations it has no side
 // effects (in comparison of HIntermediateAddress).
-class HIntermediateAddressIndex FINAL : public HExpression<3> {
+class HIntermediateAddressIndex final : public HExpression<3> {
  public:
   HIntermediateAddressIndex(
       HInstruction* index, HInstruction* offset, HInstruction* shift, uint32_t dex_pc)
@@ -158,12 +158,12 @@ class HIntermediateAddressIndex FINAL : public HExpression<3> {
     SetRawInputAt(2, shift);
   }
 
-  bool IsClonable() const OVERRIDE { return true; }
-  bool CanBeMoved() const OVERRIDE { return true; }
-  bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
+  bool IsClonable() const override { return true; }
+  bool CanBeMoved() const override { return true; }
+  bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const override {
     return true;
   }
-  bool IsActualObject() const OVERRIDE { return false; }
+  bool IsActualObject() const override { return false; }
 
   HInstruction* GetIndex() const { return InputAt(0); }
   HInstruction* GetOffset() const { return InputAt(1); }
@@ -175,7 +175,7 @@ class HIntermediateAddressIndex FINAL : public HExpression<3> {
   DEFAULT_COPY_CONSTRUCTOR(IntermediateAddressIndex);
 };
 
-class HDataProcWithShifterOp FINAL : public HExpression<2> {
+class HDataProcWithShifterOp final : public HExpression<2> {
  public:
   enum OpKind {
     kLSL,   // Logical shift left.
@@ -212,9 +212,9 @@ class HDataProcWithShifterOp FINAL : public HExpression<2> {
     SetRawInputAt(1, right);
   }
 
-  bool IsClonable() const OVERRIDE { return true; }
-  bool CanBeMoved() const OVERRIDE { return true; }
-  bool InstructionDataEquals(const HInstruction* other_instr) const OVERRIDE {
+  bool IsClonable() const override { return true; }
+  bool CanBeMoved() const override { return true; }
+  bool InstructionDataEquals(const HInstruction* other_instr) const override {
     const HDataProcWithShifterOp* other = other_instr->AsDataProcWithShifterOp();
     return instr_kind_ == other->instr_kind_ &&
         op_kind_ == other->op_kind_ &&

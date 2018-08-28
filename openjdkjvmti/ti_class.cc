@@ -163,7 +163,7 @@ struct ClassCallback : public art::ClassLoadCallback {
                       const art::DexFile::ClassDef& initial_class_def ATTRIBUTE_UNUSED,
                       /*out*/art::DexFile const** final_dex_file,
                       /*out*/art::DexFile::ClassDef const** final_class_def)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     bool is_enabled =
         event_handler->IsEventEnabledAnywhere(ArtJvmtiEvent::kClassFileLoadHookRetransformable) ||
         event_handler->IsEventEnabledAnywhere(ArtJvmtiEvent::kClassFileLoadHookNonRetransformable);
@@ -381,7 +381,7 @@ struct ClassCallback : public art::ClassLoadCallback {
     void VisitRoots(art::mirror::Object*** roots,
                     size_t count,
                     const art::RootInfo& info ATTRIBUTE_UNUSED)
-        OVERRIDE {
+        override {
       for (size_t i = 0; i != count; ++i) {
         if (*roots[i] == input_) {
           *roots[i] = output_;
@@ -392,7 +392,7 @@ struct ClassCallback : public art::ClassLoadCallback {
     void VisitRoots(art::mirror::CompressedReference<art::mirror::Object>** roots,
                     size_t count,
                     const art::RootInfo& info ATTRIBUTE_UNUSED)
-        OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+        override REQUIRES_SHARED(art::Locks::mutator_lock_) {
       for (size_t i = 0; i != count; ++i) {
         if (roots[i]->AsMirrorPtr() == input_) {
           roots[i]->Assign(output_);
@@ -418,7 +418,7 @@ struct ClassCallback : public art::ClassLoadCallback {
       WeakGlobalUpdate(art::mirror::Class* root_input, art::mirror::Class* root_output)
           : input_(root_input), output_(root_output) {}
 
-      art::mirror::Object* IsMarked(art::mirror::Object* obj) OVERRIDE {
+      art::mirror::Object* IsMarked(art::mirror::Object* obj) override {
         if (obj == input_) {
           return output_;
         }

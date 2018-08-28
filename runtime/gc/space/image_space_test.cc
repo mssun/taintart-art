@@ -113,7 +113,7 @@ TEST_F(DexoptTest, ValidateOatFile) {
 template <bool kImage, bool kRelocate, bool kPatchoat, bool kImageDex2oat>
 class ImageSpaceLoadingTest : public CommonRuntimeTest {
  protected:
-  void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE {
+  void SetUpRuntimeOptions(RuntimeOptions* options) override {
     if (kImage) {
       options->emplace_back(android::base::StringPrintf("-Ximage:%s", GetCoreArtLocation().c_str()),
                             nullptr);
@@ -152,7 +152,7 @@ TEST_F(ImageSpaceNoRelocateNoDex2oatNoPatchoatTest, Test) {
 
 class NoAccessAndroidDataTest : public ImageSpaceLoadingTest<false, true, false, true> {
  protected:
-  void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE {
+  void SetUpRuntimeOptions(RuntimeOptions* options) override {
     const char* android_data = getenv("ANDROID_DATA");
     CHECK(android_data != nullptr);
     old_android_data_ = android_data;
@@ -172,7 +172,7 @@ class NoAccessAndroidDataTest : public ImageSpaceLoadingTest<false, true, false,
     ImageSpaceLoadingTest<false, true, false, true>::SetUpRuntimeOptions(options);
   }
 
-  void TearDown() OVERRIDE {
+  void TearDown() override {
     int result = unlink(bad_dalvik_cache_.c_str());
     CHECK_EQ(result, 0) << strerror(errno);
     result = rmdir(bad_android_data_.c_str());

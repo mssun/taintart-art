@@ -22,17 +22,17 @@
 namespace art {
 namespace linker {
 
-class X86RelativePatcher FINAL : public X86BaseRelativePatcher {
+class X86RelativePatcher final : public X86BaseRelativePatcher {
  public:
   X86RelativePatcher() { }
 
   void PatchPcRelativeReference(std::vector<uint8_t>* code,
                                 const LinkerPatch& patch,
                                 uint32_t patch_offset,
-                                uint32_t target_offset) OVERRIDE;
+                                uint32_t target_offset) override;
   void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code,
                                    const LinkerPatch& patch,
-                                   uint32_t patch_offset) OVERRIDE;
+                                   uint32_t patch_offset) override;
 };
 
 }  // namespace linker

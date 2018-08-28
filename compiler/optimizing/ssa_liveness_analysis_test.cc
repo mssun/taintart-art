@@ -29,7 +29,7 @@ namespace art {
 
 class SsaLivenessAnalysisTest : public OptimizingUnitTest {
  protected:
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     OptimizingUnitTest::SetUp();
     graph_ = CreateGraph();
     codegen_ = CodeGenerator::Create(graph_, *compiler_options_);

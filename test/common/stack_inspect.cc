@@ -77,7 +77,7 @@ struct MethodIsInterpretedVisitor : public StackVisitor {
         prev_was_runtime_(true),
         require_deoptable_(require_deoptable) {}
 
-  virtual bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (goal_ == GetMethod()) {
       method_is_interpreted_ = (require_deoptable_ && prev_was_runtime_) || IsShadowFrame();
       method_found_ = true;

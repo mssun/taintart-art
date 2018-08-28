@@ -303,7 +303,7 @@ class EndianOutputBuffered : public EndianOutput {
   }
   virtual ~EndianOutputBuffered() {}
 
-  void UpdateU4(size_t offset, uint32_t new_value) OVERRIDE {
+  void UpdateU4(size_t offset, uint32_t new_value) override {
     DCHECK_LE(offset, length_ - 4);
     buffer_[offset + 0] = static_cast<uint8_t>((new_value >> 24) & 0xFF);
     buffer_[offset + 1] = static_cast<uint8_t>((new_value >> 16) & 0xFF);
@@ -312,12 +312,12 @@ class EndianOutputBuffered : public EndianOutput {
   }
 
  protected:
-  void HandleU1List(const uint8_t* values, size_t count) OVERRIDE {
+  void HandleU1List(const uint8_t* values, size_t count) override {
     DCHECK_EQ(length_, buffer_.size());
     buffer_.insert(buffer_.end(), values, values + count);
   }
 
-  void HandleU1AsU2List(const uint8_t* values, size_t count) OVERRIDE {
+  void HandleU1AsU2List(const uint8_t* values, size_t count) override {
     DCHECK_EQ(length_, buffer_.size());
     // All 8-bits are grouped in 2 to make 16-bit block like Java Char
     if (count & 1) {
@@ -330,7 +330,7 @@ class EndianOutputBuffered : public EndianOutput {
     }
   }
 
-  void HandleU2List(const uint16_t* values, size_t count) OVERRIDE {
+  void HandleU2List(const uint16_t* values, size_t count) override {
     DCHECK_EQ(length_, buffer_.size());
     for (size_t i = 0; i < count; ++i) {
       uint16_t value = *values;
@@ -340,7 +340,7 @@ class EndianOutputBuffered : public EndianOutput {
     }
   }
 
-  void HandleU4List(const uint32_t* values, size_t count) OVERRIDE {
+  void HandleU4List(const uint32_t* values, size_t count) override {
     DCHECK_EQ(length_, buffer_.size());
     for (size_t i = 0; i < count; ++i) {
       uint32_t value = *values;
@@ -352,7 +352,7 @@ class EndianOutputBuffered : public EndianOutput {
     }
   }
 
-  void HandleU8List(const uint64_t* values, size_t count) OVERRIDE {
+  void HandleU8List(const uint64_t* values, size_t count) override {
     DCHECK_EQ(length_, buffer_.size());
     for (size_t i = 0; i < count; ++i) {
       uint64_t value = *values;
@@ -368,7 +368,7 @@ class EndianOutputBuffered : public EndianOutput {
     }
   }
 
-  void HandleEndRecord() OVERRIDE {
+  void HandleEndRecord() override {
     DCHECK_EQ(buffer_.size(), length_);
     if (kIsDebugBuild && started_) {
       uint32_t stored_length =
@@ -388,7 +388,7 @@ class EndianOutputBuffered : public EndianOutput {
   std::vector<uint8_t> buffer_;
 };
 
-class FileEndianOutput FINAL : public EndianOutputBuffered {
+class FileEndianOutput final : public EndianOutputBuffered {
  public:
   FileEndianOutput(File* fp, size_t reserved_size)
       : EndianOutputBuffered(reserved_size), fp_(fp), errors_(false) {
@@ -402,7 +402,7 @@ class FileEndianOutput FINAL : public EndianOutputBuffered {
   }
 
  protected:
-  void HandleFlush(const uint8_t* buffer, size_t length) OVERRIDE {
+  void HandleFlush(const uint8_t* buffer, size_t length) override {
     if (!errors_) {
       errors_ = !fp_->WriteFully(buffer, length);
     }
@@ -413,14 +413,14 @@ class FileEndianOutput FINAL : public EndianOutputBuffered {
   bool errors_;
 };
 
-class VectorEndianOuputput FINAL : public EndianOutputBuffered {
+class VectorEndianOuputput final : public EndianOutputBuffered {
  public:
   VectorEndianOuputput(std::vector<uint8_t>& data, size_t reserved_size)
       : EndianOutputBuffered(reserved_size), full_data_(data) {}
   ~VectorEndianOuputput() {}
 
  protected:
-  void HandleFlush(const uint8_t* buf, size_t length) OVERRIDE {
+  void HandleFlush(const uint8_t* buf, size_t length) override {
     size_t old_size = full_data_.size();
     full_data_.resize(old_size + length);
     memcpy(full_data_.data() + old_size, buf, length);
@@ -604,7 +604,7 @@ class Hprof : public SingleRootVisitor {
   }
 
   void VisitRoot(mirror::Object* obj, const RootInfo& root_info)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+      override REQUIRES_SHARED(Locks::mutator_lock_);
   void MarkRootObject(const mirror::Object* obj, jobject jni_obj, HprofHeapTag heap_tag,
                       uint32_t thread_serial);
 

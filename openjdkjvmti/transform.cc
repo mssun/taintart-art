@@ -68,7 +68,7 @@
 namespace openjdkjvmti {
 
 // A FaultHandler that will deal with initializing ClassDefinitions when they are actually needed.
-class TransformationFaultHandler FINAL : public art::FaultHandler {
+class TransformationFaultHandler final : public art::FaultHandler {
  public:
   explicit TransformationFaultHandler(art::FaultManager* manager)
       : art::FaultHandler(manager),
@@ -84,7 +84,7 @@ class TransformationFaultHandler FINAL : public art::FaultHandler {
     uninitialized_class_definitions_.clear();
   }
 
-  bool Action(int sig, siginfo_t* siginfo, void* context ATTRIBUTE_UNUSED) OVERRIDE {
+  bool Action(int sig, siginfo_t* siginfo, void* context ATTRIBUTE_UNUSED) override {
     DCHECK_EQ(sig, SIGSEGV);
     art::Thread* self = art::Thread::Current();
     if (UNLIKELY(uninitialized_class_definitions_lock_.IsExclusiveHeld(self))) {

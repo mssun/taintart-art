@@ -57,9 +57,9 @@ class CommonCompilerTest : public CommonRuntimeTest {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  protected:
-  void SetUp() OVERRIDE;
+  void SetUp() override;
 
-  void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE;
+  void SetUpRuntimeOptions(RuntimeOptions* options) override;
 
   Compiler::Kind GetCompilerKind() const;
   void SetCompilerKind(Compiler::Kind compiler_kind);
@@ -73,7 +73,7 @@ class CommonCompilerTest : public CommonRuntimeTest {
     return CompilerFilter::kDefaultCompilerFilter;
   }
 
-  void TearDown() OVERRIDE;
+  void TearDown() override;
 
   void CompileClass(mirror::ClassLoader* class_loader, const char* class_name)
       REQUIRES_SHARED(Locks::mutator_lock_);

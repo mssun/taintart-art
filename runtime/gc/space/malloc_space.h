@@ -133,7 +133,7 @@ class MallocSpace : public ContinuousMemMapAllocSpace {
   // Returns the class of a recently freed object.
   mirror::Class* FindRecentFreedObject(const mirror::Object* obj);
 
-  bool CanMoveObjects() const OVERRIDE {
+  bool CanMoveObjects() const override {
     return can_move_objects_;
   }
 

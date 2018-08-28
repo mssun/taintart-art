@@ -57,7 +57,7 @@ class MarkSweep : public GarbageCollector {
 
   ~MarkSweep() {}
 
-  virtual void RunPhases() OVERRIDE REQUIRES(!mark_stack_lock_);
+  void RunPhases() override REQUIRES(!mark_stack_lock_);
   void InitializePhase();
   void MarkingPhase() REQUIRES(!mark_stack_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
   void PausePhase() REQUIRES(Locks::mutator_lock_) REQUIRES(!mark_stack_lock_);
@@ -72,11 +72,11 @@ class MarkSweep : public GarbageCollector {
     return is_concurrent_;
   }
 
-  virtual GcType GetGcType() const OVERRIDE {
+  GcType GetGcType() const override {
     return kGcTypeFull;
   }
 
-  virtual CollectorType GetCollectorType() const OVERRIDE {
+  CollectorType GetCollectorType() const override {
     return is_concurrent_ ? kCollectorTypeCMS : kCollectorTypeMS;
   }
 
@@ -187,25 +187,25 @@ class MarkSweep : public GarbageCollector {
   void VerifyIsLive(const mirror::Object* obj)
       REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_);
 
-  virtual bool IsNullOrMarkedHeapReference(mirror::HeapReference<mirror::Object>* ref,
-                                           bool do_atomic_update) OVERRIDE
+  bool IsNullOrMarkedHeapReference(mirror::HeapReference<mirror::Object>* ref,
+                                   bool do_atomic_update) override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  virtual void VisitRoots(mirror::Object*** roots, size_t count, const RootInfo& info) OVERRIDE
+  void VisitRoots(mirror::Object*** roots, size_t count, const RootInfo& info) override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  virtual void VisitRoots(mirror::CompressedReference<mirror::Object>** roots,
-                          size_t count,
-                          const RootInfo& info) OVERRIDE
+  void VisitRoots(mirror::CompressedReference<mirror::Object>** roots,
+                  size_t count,
+                  const RootInfo& info) override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Marks an object.
-  virtual mirror::Object* MarkObject(mirror::Object* obj) OVERRIDE
+  mirror::Object* MarkObject(mirror::Object* obj) override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -215,8 +215,8 @@ class MarkSweep : public GarbageCollector {
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  virtual void MarkHeapReference(mirror::HeapReference<mirror::Object>* ref,
-                                 bool do_atomic_update) OVERRIDE
+  void MarkHeapReference(mirror::HeapReference<mirror::Object>* ref,
+                         bool do_atomic_update) override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -231,7 +231,7 @@ class MarkSweep : public GarbageCollector {
 
  protected:
   // Returns object if the object is marked in the heap bitmap, otherwise null.
-  virtual mirror::Object* IsMarked(mirror::Object* object) OVERRIDE
+  mirror::Object* IsMarked(mirror::Object* object) override
       REQUIRES_SHARED(Locks::heap_bitmap_lock_, Locks::mutator_lock_);
 
   void MarkObjectNonNull(mirror::Object* obj,
@@ -278,8 +278,7 @@ class MarkSweep : public GarbageCollector {
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  virtual void ProcessMarkStack()
-      OVERRIDE
+  void ProcessMarkStack() override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
