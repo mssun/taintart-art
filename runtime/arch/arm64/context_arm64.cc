@@ -23,6 +23,12 @@
 #include "quick/quick_method_frame_info.h"
 #include "thread-current-inl.h"
 
+#if __has_feature(hwaddress_sanitizer)
+#include <sanitizer/hwasan_interface.h>
+#else
+#define __hwasan_handle_longjmp(sp)
+#endif
+
 namespace art {
 namespace arm64 {
 
@@ -139,6 +145,8 @@ void Arm64Context::DoLongJump() {
   }
   // Ensure the Thread Register contains the address of the current thread.
   DCHECK_EQ(reinterpret_cast<uintptr_t>(Thread::Current()), gprs[TR]);
+  // Tell HWASan about the new stack top.
+  __hwasan_handle_longjmp(reinterpret_cast<void*>(gprs[SP]));
   // The Marking Register will be updated by art_quick_do_long_jump.
   art_quick_do_long_jump(gprs, fprs);
 }
