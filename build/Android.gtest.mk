@@ -447,7 +447,8 @@ define define-art-gtest-rule-target
     $$($(3)TARGET_OUT_SHARED_LIBRARIES)/libjavacore.so \
     $$($(3)TARGET_OUT_SHARED_LIBRARIES)/libopenjdkd.so \
     $$(TARGET_OUT_JAVA_LIBRARIES)/core-libart-testdex.jar \
-    $$(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar
+    $$(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar \
+    $$(TARGET_OUT_JAVA_LIBRARIES)/core-simple-testdex.jar
 
 $$(gtest_rule): PRIVATE_TARGET_EXE := $$(gtest_target_exe)
 $$(gtest_rule): PRIVATE_MAYBE_CHROOT_COMMAND := $$(maybe_chroot_command)
