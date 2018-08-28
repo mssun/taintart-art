@@ -1081,6 +1081,12 @@
         "description": ["Stack too big."]
     },
     {
+      "tests": ["1952-bad-jit-suspend"],
+      "variant": "jit | jvm",
+      "description": ["This test demonstrates a possible deadlock between the jit and JVMTI"],
+      "bug": "b/112074977 & b/70838465"
+    },
+    {
         "tests": ["566-polymorphic-inlining"],
         "variant": "jit & debuggable",
         "description": ["We do not inline with debuggable."]
