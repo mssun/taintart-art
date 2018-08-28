@@ -15,4 +15,8 @@
 # limitations under the License.
 
 # Ensure this test is not subject to code collection.
-exec ${RUN} "$@" --runtime-option -Xjitinitialsize:32M
+# We also need at least a few invocations of the method Main.$noinline$doCall
+# to ensure the inline cache sees the two types being passed to the method. Pass
+# a large number in case there's some weights on some invocation kinds (eg
+# compiler to interpreter transitions).
+exec ${RUN} "$@" --runtime-option -Xjitinitialsize:32M --runtime-option -Xjitthreshold:1000
