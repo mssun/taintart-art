@@ -549,6 +549,7 @@ if [ "$HAVE_IMAGE" = "n" ]; then
     fi
     bpath="${framework}/core-libart${bpath_suffix}.jar"
     bpath="${bpath}:${framework}/core-oj${bpath_suffix}.jar"
+    bpath="${bpath}:${framework}/core-simple${bpath_suffix}.jar"
     bpath="${bpath}:${framework}/conscrypt${bpath_suffix}.jar"
     bpath="${bpath}:${framework}/okhttp${bpath_suffix}.jar"
     bpath="${bpath}:${framework}/bouncycastle${bpath_suffix}.jar"
