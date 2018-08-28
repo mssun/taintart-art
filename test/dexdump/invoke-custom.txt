@@ -58,7 +58,7 @@ Class #0            -
       ins           : 2
       outs          : 2
       insns size    : 4 16-bit code units
-001b18:                                        |[001b18] TestBadBootstrapArguments.TestersConstantCallSite.<init>:(Ljava/lang/invoke/MethodHandle;)V
+001b18:                                        |[001b18] TestBadBootstrapArguments$TestersConstantCallSite.<init>:(Ljava/lang/invoke/MethodHandle;)V
 001b28: 7020 d200 1000                         |0000: invoke-direct {v0, v1}, Ljava/lang/invoke/ConstantCallSite;.<init>:(Ljava/lang/invoke/MethodHandle;)V // method@00d2
 001b2e: 0e00                                   |0003: return-void
       catches       : (none)
@@ -537,7 +537,7 @@ Class #2            -
       ins           : 2
       outs          : 1
       insns size    : 4 16-bit code units
-002abc:                                        |[002abc] TestInvocationKinds.Widget.<init>:(I)V
+002abc:                                        |[002abc] TestInvocationKinds$Widget.<init>:(I)V
 002acc: 7010 bf00 0000                         |0000: invoke-direct {v0}, Ljava/lang/Object;.<init>:()V // method@00bf
 002ad2: 0e00                                   |0003: return-void
       catches       : (none)
@@ -586,7 +586,7 @@ Class #3            -
       ins           : 1
       outs          : 1
       insns size    : 4 16-bit code units
-002ee8:                                        |[002ee8] TestInvokeCustomWithConcurrentThreads.1.<init>:()V
+002ee8:                                        |[002ee8] TestInvokeCustomWithConcurrentThreads$1.<init>:()V
 002ef8: 7010 cf00 0000                         |0000: invoke-direct {v0}, Ljava/lang/ThreadLocal;.<init>:()V // method@00cf
 002efe: 0e00                                   |0003: return-void
       catches       : (none)
@@ -605,7 +605,7 @@ Class #3            -
       ins           : 1
       outs          : 1
       insns size    : 13 16-bit code units
-002ea0:                                        |[002ea0] TestInvokeCustomWithConcurrentThreads.1.initialValue:()Ljava/lang/Integer;
+002ea0:                                        |[002ea0] TestInvokeCustomWithConcurrentThreads$1.initialValue:()Ljava/lang/Integer;
 002eb0: 7100 6500 0000                         |0000: invoke-static {}, LTestInvokeCustomWithConcurrentThreads;.access$000:()Ljava/util/concurrent/atomic/AtomicInteger; // method@0065
 002eb6: 0c00                                   |0003: move-result-object v0
 002eb8: 6e10 f100 0000                         |0004: invoke-virtual {v0}, Ljava/util/concurrent/atomic/AtomicInteger;.getAndIncrement:()I // method@00f1
@@ -628,7 +628,7 @@ Class #3            -
       ins           : 1
       outs          : 1
       insns size    : 5 16-bit code units
-002ecc:                                        |[002ecc] TestInvokeCustomWithConcurrentThreads.1.initialValue:()Ljava/lang/Object;
+002ecc:                                        |[002ecc] TestInvokeCustomWithConcurrentThreads$1.initialValue:()Ljava/lang/Object;
 002edc: 6e10 6100 0100                         |0000: invoke-virtual {v1}, LTestInvokeCustomWithConcurrentThreads$1;.initialValue:()Ljava/lang/Integer; // method@0061
 002ee2: 0c00                                   |0003: move-result-object v0
 002ee4: 1100                                   |0004: return-object v0

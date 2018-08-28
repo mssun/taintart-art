@@ -176,7 +176,7 @@ Class #3            -
       ins           : 1
       outs          : 1
       insns size    : 4 16-bit code units
-0009a8:                                        |[0009a8] com.google.android.test.R.attr.<init>:()V
+0009a8:                                        |[0009a8] com.google.android.test.R$attr.<init>:()V
 0009b8: 7010 1900 0000                         |0000: invoke-direct {v0}, Ljava/lang/Object;.<init>:()V // method@0019
 0009be: 0e00                                   |0003: return-void
       catches       : (none)
@@ -228,7 +228,7 @@ Class #4            -
       ins           : 1
       outs          : 1
       insns size    : 4 16-bit code units
-0009c0:                                        |[0009c0] com.google.android.test.R.drawable.<init>:()V
+0009c0:                                        |[0009c0] com.google.android.test.R$drawable.<init>:()V
 0009d0: 7010 1900 0000                         |0000: invoke-direct {v0}, Ljava/lang/Object;.<init>:()V // method@0019
 0009d6: 0e00                                   |0003: return-void
       catches       : (none)
