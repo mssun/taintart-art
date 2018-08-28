@@ -41,8 +41,6 @@ namespace Test913Heaps {
 
 using android::base::StringPrintf;
 
-#define FINAL final
-#define OVERRIDE override
 #define UNREACHABLE  __builtin_unreachable
 
 extern "C" JNIEXPORT void JNICALL Java_art_Test913_forceGarbageCollection(
@@ -144,7 +142,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
     jint stop_after,
     jint follow_set,
     jobject jniRef) {
-  class PrintIterationConfig FINAL : public IterationConfig {
+  class PrintIterationConfig final : public IterationConfig {
    public:
     PrintIterationConfig(jint _stop_after, jint _follow_set)
         : counter_(0),
@@ -160,7 +158,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
                 jlong* tag_ptr,
                 jlong* referrer_tag_ptr,
                 jint length,
-                void* user_data ATTRIBUTE_UNUSED) OVERRIDE {
+                void* user_data ATTRIBUTE_UNUSED) override {
       jlong tag = *tag_ptr;
 
       // Ignore any jni-global roots with untagged classes. These can be from the environment,
@@ -303,7 +301,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
       }
 
      protected:
-      std::string PrintArrowType() const OVERRIDE {
+      std::string PrintArrowType() const override {
         char* name = nullptr;
         if (info_.jni_local.method != nullptr) {
           jvmti_env->GetMethodName(info_.jni_local.method, &name, nullptr, nullptr);
@@ -349,7 +347,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
       }
 
      protected:
-      std::string PrintArrowType() const OVERRIDE {
+      std::string PrintArrowType() const override {
         char* name = nullptr;
         if (info_.stack_local.method != nullptr) {
           jvmti_env->GetMethodName(info_.stack_local.method, &name, nullptr, nullptr);
@@ -391,7 +389,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
           : Elem(referrer, referree, size, length), string_(string) {}
 
      protected:
-      std::string PrintArrowType() const OVERRIDE {
+      std::string PrintArrowType() const override {
         return string_;
       }
 

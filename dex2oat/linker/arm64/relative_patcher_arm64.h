@@ -28,7 +28,7 @@ class Arm64Assembler;
 
 namespace linker {
 
-class Arm64RelativePatcher FINAL : public ArmBaseRelativePatcher {
+class Arm64RelativePatcher final : public ArmBaseRelativePatcher {
  public:
   Arm64RelativePatcher(RelativePatcherThunkProvider* thunk_provider,
                        RelativePatcherTargetProvider* target_provider,
@@ -36,24 +36,24 @@ class Arm64RelativePatcher FINAL : public ArmBaseRelativePatcher {
 
   uint32_t ReserveSpace(uint32_t offset,
                         const CompiledMethod* compiled_method,
-                        MethodReference method_ref) OVERRIDE;
-  uint32_t ReserveSpaceEnd(uint32_t offset) OVERRIDE;
-  uint32_t WriteThunks(OutputStream* out, uint32_t offset) OVERRIDE;
+                        MethodReference method_ref) override;
+  uint32_t ReserveSpaceEnd(uint32_t offset) override;
+  uint32_t WriteThunks(OutputStream* out, uint32_t offset) override;
   void PatchCall(std::vector<uint8_t>* code,
                  uint32_t literal_offset,
                  uint32_t patch_offset,
-                 uint32_t target_offset) OVERRIDE;
+                 uint32_t target_offset) override;
   void PatchPcRelativeReference(std::vector<uint8_t>* code,
                                 const LinkerPatch& patch,
                                 uint32_t patch_offset,
-                                uint32_t target_offset) OVERRIDE;
+                                uint32_t target_offset) override;
   void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code,
                                    const LinkerPatch& patch,
-                                   uint32_t patch_offset) OVERRIDE;
+                                   uint32_t patch_offset) override;
 
  protected:
-  uint32_t MaxPositiveDisplacement(const ThunkKey& key) OVERRIDE;
-  uint32_t MaxNegativeDisplacement(const ThunkKey& key) OVERRIDE;
+  uint32_t MaxPositiveDisplacement(const ThunkKey& key) override;
+  uint32_t MaxNegativeDisplacement(const ThunkKey& key) override;
 
  private:
   static uint32_t PatchAdrp(uint32_t adrp, uint32_t disp);

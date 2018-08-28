@@ -40,7 +40,7 @@ using Strategy = RegisterAllocator::Strategy;
 
 class RegisterAllocatorTest : public OptimizingUnitTest {
  protected:
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     // This test is using the x86 ISA.
     OverrideInstructionSetFeatures(InstructionSet::kX86, "default");
     OptimizingUnitTest::SetUp();

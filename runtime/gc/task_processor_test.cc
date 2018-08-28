@@ -33,7 +33,7 @@ class RecursiveTask : public HeapTask {
      : HeapTask(NanoTime() + MsToNs(10)), task_processor_(task_processor), counter_(counter),
        max_recursion_(max_recursion) {
   }
-  virtual void Run(Thread* self) OVERRIDE {
+  void Run(Thread* self) override {
     if (max_recursion_ > 0) {
       task_processor_->AddTask(self,
                                new RecursiveTask(task_processor_, counter_, max_recursion_ - 1));
@@ -52,7 +52,7 @@ class WorkUntilDoneTask : public SelfDeletingTask {
   WorkUntilDoneTask(TaskProcessor* task_processor, Atomic<bool>* done_running)
       : task_processor_(task_processor), done_running_(done_running) {
   }
-  virtual void Run(Thread* self) OVERRIDE {
+  void Run(Thread* self) override {
     task_processor_->RunAllTasks(self);
     done_running_->store(true, std::memory_order_seq_cst);
   }
@@ -105,7 +105,7 @@ class TestOrderTask : public HeapTask {
   TestOrderTask(uint64_t expected_time, size_t expected_counter, size_t* counter)
      : HeapTask(expected_time), expected_counter_(expected_counter), counter_(counter) {
   }
-  virtual void Run(Thread* thread ATTRIBUTE_UNUSED) OVERRIDE {
+  void Run(Thread* thread ATTRIBUTE_UNUSED) override {
     ASSERT_EQ(*counter_, expected_counter_);
     ++*counter_;
   }

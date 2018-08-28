@@ -51,7 +51,7 @@ class ArtDexFileLoader : public DexFileLoader {
                             std::vector<uint32_t>* checksums,
                             std::string* error_msg,
                             int zip_fd = -1,
-                            bool* only_contains_uncompressed_dex = nullptr) const OVERRIDE;
+                            bool* only_contains_uncompressed_dex = nullptr) const override;
 
   // Opens .dex file, backed by existing memory
   std::unique_ptr<const DexFile> Open(const uint8_t* base,
@@ -61,7 +61,7 @@ class ArtDexFileLoader : public DexFileLoader {
                                       const OatDexFile* oat_dex_file,
                                       bool verify,
                                       bool verify_checksum,
-                                      std::string* error_msg) const OVERRIDE;
+                                      std::string* error_msg) const override;
 
   // Opens .dex file that has been memory-mapped by the caller.
   std::unique_ptr<const DexFile> Open(const std::string& location,

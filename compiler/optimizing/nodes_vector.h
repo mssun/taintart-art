@@ -117,12 +117,12 @@ class HVecOperation : public HVariableInputSizeInstruction {
   // Note: For newly introduced vector instructions HScheduler${ARCH}::IsSchedulingBarrier must be
   // altered to return true if the instruction might reside outside the SIMD loop body since SIMD
   // registers are not kept alive across vector loop boundaries (yet).
-  bool CanBeMoved() const OVERRIDE { return false; }
+  bool CanBeMoved() const override { return false; }
 
   // Tests if all data of a vector node (vector length and packed type) is equal.
   // Each concrete implementation that adds more fields should test equality of
   // those fields in its own method *and* call all super methods.
-  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+  bool InstructionDataEquals(const HInstruction* other) const override {
     DCHECK(other->IsVecOperation());
     const HVecOperation* o = other->AsVecOperation();
     return GetVectorLength() == o->GetVectorLength() && GetPackedType() == o->GetPackedType();
@@ -280,7 +280,7 @@ class HVecMemoryOperation : public HVecOperation {
   HInstruction* GetArray() const { return InputAt(0); }
   HInstruction* GetIndex() const { return InputAt(1); }
 
-  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+  bool InstructionDataEquals(const HInstruction* other) const override {
     DCHECK(other->IsVecMemoryOperation());
     const HVecMemoryOperation* o = other->AsVecMemoryOperation();
     return HVecOperation::InstructionDataEquals(o) && GetAlignment() == o->GetAlignment();
@@ -315,7 +315,7 @@ inline static bool HasConsistentPackedTypes(HInstruction* input, DataType::Type 
 
 // Replicates the given scalar into a vector,
 // viz. replicate(x) = [ x, .. , x ].
-class HVecReplicateScalar FINAL : public HVecUnaryOperation {
+class HVecReplicateScalar final : public HVecUnaryOperation {
  public:
   HVecReplicateScalar(ArenaAllocator* allocator,
                       HInstruction* scalar,
@@ -329,7 +329,7 @@ class HVecReplicateScalar FINAL : public HVecUnaryOperation {
 
   // A replicate needs to stay in place, since SIMD registers are not
   // kept alive across vector loop boundaries (yet).
-  bool CanBeMoved() const OVERRIDE { return false; }
+  bool CanBeMoved() const override { return false; }
 
   DECLARE_INSTRUCTION(VecReplicateScalar);
 
@@ -341,7 +341,7 @@ class HVecReplicateScalar FINAL : public HVecUnaryOperation {
 // viz. extract[ x1, .. , xn ] = x_i.
 //
 // TODO: for now only i == 1 case supported.
-class HVecExtractScalar FINAL : public HVecUnaryOperation {
+class HVecExtractScalar final : public HVecUnaryOperation {
  public:
   HVecExtractScalar(ArenaAllocator* allocator,
                     HInstruction* input,
@@ -361,7 +361,7 @@ class HVecExtractScalar FINAL : public HVecUnaryOperation {
 
   // An extract needs to stay in place, since SIMD registers are not
   // kept alive across vector loop boundaries (yet).
-  bool CanBeMoved() const OVERRIDE { return false; }
+  bool CanBeMoved() const override { return false; }
 
   DECLARE_INSTRUCTION(VecExtractScalar);
 
@@ -372,7 +372,7 @@ class HVecExtractScalar FINAL : public HVecUnaryOperation {
 // Reduces the given vector into the first element as sum/min/max,
 // viz. sum-reduce[ x1, .. , xn ] = [ y, ---- ], where y = sum xi
 // and the "-" denotes "don't care" (implementation dependent).
-class HVecReduce FINAL : public HVecUnaryOperation {
+class HVecReduce final : public HVecUnaryOperation {
  public:
   enum ReductionKind {
     kSum = 1,
@@ -393,9 +393,9 @@ class HVecReduce FINAL : public HVecUnaryOperation {
 
   ReductionKind GetKind() const { return kind_; }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
-  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+  bool InstructionDataEquals(const HInstruction* other) const override {
     DCHECK(other->IsVecReduce());
     const HVecReduce* o = other->AsVecReduce();
     return HVecOperation::InstructionDataEquals(o) && GetKind() == o->GetKind();
@@ -412,7 +412,7 @@ class HVecReduce FINAL : public HVecUnaryOperation {
 
 // Converts every component in the vector,
 // viz. cnv[ x1, .. , xn ]  = [ cnv(x1), .. , cnv(xn) ].
-class HVecCnv FINAL : public HVecUnaryOperation {
+class HVecCnv final : public HVecUnaryOperation {
  public:
   HVecCnv(ArenaAllocator* allocator,
           HInstruction* input,
@@ -427,7 +427,7 @@ class HVecCnv FINAL : public HVecUnaryOperation {
   DataType::Type GetInputType() const { return InputAt(0)->AsVecOperation()->GetPackedType(); }
   DataType::Type GetResultType() const { return GetPackedType(); }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecCnv);
 
@@ -437,7 +437,7 @@ class HVecCnv FINAL : public HVecUnaryOperation {
 
 // Negates every component in the vector,
 // viz. neg[ x1, .. , xn ]  = [ -x1, .. , -xn ].
-class HVecNeg FINAL : public HVecUnaryOperation {
+class HVecNeg final : public HVecUnaryOperation {
  public:
   HVecNeg(ArenaAllocator* allocator,
           HInstruction* input,
@@ -448,7 +448,7 @@ class HVecNeg FINAL : public HVecUnaryOperation {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecNeg);
 
@@ -459,7 +459,7 @@ class HVecNeg FINAL : public HVecUnaryOperation {
 // Takes absolute value of every component in the vector,
 // viz. abs[ x1, .. , xn ]  = [ |x1|, .. , |xn| ]
 // for signed operand x.
-class HVecAbs FINAL : public HVecUnaryOperation {
+class HVecAbs final : public HVecUnaryOperation {
  public:
   HVecAbs(ArenaAllocator* allocator,
           HInstruction* input,
@@ -470,7 +470,7 @@ class HVecAbs FINAL : public HVecUnaryOperation {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecAbs);
 
@@ -481,7 +481,7 @@ class HVecAbs FINAL : public HVecUnaryOperation {
 // Bitwise- or boolean-nots every component in the vector,
 // viz. not[ x1, .. , xn ]  = [ ~x1, .. , ~xn ], or
 //      not[ x1, .. , xn ]  = [ !x1, .. , !xn ] for boolean.
-class HVecNot FINAL : public HVecUnaryOperation {
+class HVecNot final : public HVecUnaryOperation {
  public:
   HVecNot(ArenaAllocator* allocator,
           HInstruction* input,
@@ -492,7 +492,7 @@ class HVecNot FINAL : public HVecUnaryOperation {
     DCHECK(input->IsVecOperation());
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecNot);
 
@@ -506,7 +506,7 @@ class HVecNot FINAL : public HVecUnaryOperation {
 
 // Adds every component in the two vectors,
 // viz. [ x1, .. , xn ] + [ y1, .. , yn ] = [ x1 + y1, .. , xn + yn ].
-class HVecAdd FINAL : public HVecBinaryOperation {
+class HVecAdd final : public HVecBinaryOperation {
  public:
   HVecAdd(ArenaAllocator* allocator,
           HInstruction* left,
@@ -519,7 +519,7 @@ class HVecAdd FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecAdd);
 
@@ -530,7 +530,7 @@ class HVecAdd FINAL : public HVecBinaryOperation {
 // Adds every component in the two vectors using saturation arithmetic,
 // viz. [ x1, .. , xn ] + [ y1, .. , yn ] = [ x1 +_sat y1, .. , xn +_sat yn ]
 // for either both signed or both unsigned operands x, y (reflected in packed_type).
-class HVecSaturationAdd FINAL : public HVecBinaryOperation {
+class HVecSaturationAdd final : public HVecBinaryOperation {
  public:
   HVecSaturationAdd(ArenaAllocator* allocator,
                     HInstruction* left,
@@ -544,7 +544,7 @@ class HVecSaturationAdd FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecSaturationAdd);
 
@@ -556,7 +556,7 @@ class HVecSaturationAdd FINAL : public HVecBinaryOperation {
 // rounded   [ x1, .. , xn ] hradd [ y1, .. , yn ] = [ (x1 + y1 + 1) >> 1, .. , (xn + yn + 1) >> 1 ]
 // truncated [ x1, .. , xn ] hadd  [ y1, .. , yn ] = [ (x1 + y1)     >> 1, .. , (xn + yn )    >> 1 ]
 // for either both signed or both unsigned operands x, y (reflected in packed_type).
-class HVecHalvingAdd FINAL : public HVecBinaryOperation {
+class HVecHalvingAdd final : public HVecBinaryOperation {
  public:
   HVecHalvingAdd(ArenaAllocator* allocator,
                  HInstruction* left,
@@ -574,9 +574,9 @@ class HVecHalvingAdd FINAL : public HVecBinaryOperation {
 
   bool IsRounded() const { return GetPackedFlag<kFieldHAddIsRounded>(); }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
-  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+  bool InstructionDataEquals(const HInstruction* other) const override {
     DCHECK(other->IsVecHalvingAdd());
     const HVecHalvingAdd* o = other->AsVecHalvingAdd();
     return HVecOperation::InstructionDataEquals(o) && IsRounded() == o->IsRounded();
@@ -596,7 +596,7 @@ class HVecHalvingAdd FINAL : public HVecBinaryOperation {
 
 // Subtracts every component in the two vectors,
 // viz. [ x1, .. , xn ] - [ y1, .. , yn ] = [ x1 - y1, .. , xn - yn ].
-class HVecSub FINAL : public HVecBinaryOperation {
+class HVecSub final : public HVecBinaryOperation {
  public:
   HVecSub(ArenaAllocator* allocator,
           HInstruction* left,
@@ -609,7 +609,7 @@ class HVecSub FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecSub);
 
@@ -620,7 +620,7 @@ class HVecSub FINAL : public HVecBinaryOperation {
 // Subtracts every component in the two vectors using saturation arithmetic,
 // viz. [ x1, .. , xn ] + [ y1, .. , yn ] = [ x1 -_sat y1, .. , xn -_sat yn ]
 // for either both signed or both unsigned operands x, y (reflected in packed_type).
-class HVecSaturationSub FINAL : public HVecBinaryOperation {
+class HVecSaturationSub final : public HVecBinaryOperation {
  public:
   HVecSaturationSub(ArenaAllocator* allocator,
                     HInstruction* left,
@@ -634,7 +634,7 @@ class HVecSaturationSub FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecSaturationSub);
 
@@ -644,7 +644,7 @@ class HVecSaturationSub FINAL : public HVecBinaryOperation {
 
 // Multiplies every component in the two vectors,
 // viz. [ x1, .. , xn ] * [ y1, .. , yn ] = [ x1 * y1, .. , xn * yn ].
-class HVecMul FINAL : public HVecBinaryOperation {
+class HVecMul final : public HVecBinaryOperation {
  public:
   HVecMul(ArenaAllocator* allocator,
           HInstruction* left,
@@ -657,7 +657,7 @@ class HVecMul FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecMul);
 
@@ -667,7 +667,7 @@ class HVecMul FINAL : public HVecBinaryOperation {
 
 // Divides every component in the two vectors,
 // viz. [ x1, .. , xn ] / [ y1, .. , yn ] = [ x1 / y1, .. , xn / yn ].
-class HVecDiv FINAL : public HVecBinaryOperation {
+class HVecDiv final : public HVecBinaryOperation {
  public:
   HVecDiv(ArenaAllocator* allocator,
           HInstruction* left,
@@ -680,7 +680,7 @@ class HVecDiv FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecDiv);
 
@@ -691,7 +691,7 @@ class HVecDiv FINAL : public HVecBinaryOperation {
 // Takes minimum of every component in the two vectors,
 // viz. MIN( [ x1, .. , xn ] , [ y1, .. , yn ]) = [ min(x1, y1), .. , min(xn, yn) ]
 // for either both signed or both unsigned operands x, y (reflected in packed_type).
-class HVecMin FINAL : public HVecBinaryOperation {
+class HVecMin final : public HVecBinaryOperation {
  public:
   HVecMin(ArenaAllocator* allocator,
           HInstruction* left,
@@ -704,7 +704,7 @@ class HVecMin FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecMin);
 
@@ -715,7 +715,7 @@ class HVecMin FINAL : public HVecBinaryOperation {
 // Takes maximum of every component in the two vectors,
 // viz. MAX( [ x1, .. , xn ] , [ y1, .. , yn ]) = [ max(x1, y1), .. , max(xn, yn) ]
 // for either both signed or both unsigned operands x, y (reflected in packed_type).
-class HVecMax FINAL : public HVecBinaryOperation {
+class HVecMax final : public HVecBinaryOperation {
  public:
   HVecMax(ArenaAllocator* allocator,
           HInstruction* left,
@@ -728,7 +728,7 @@ class HVecMax FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecMax);
 
@@ -738,7 +738,7 @@ class HVecMax FINAL : public HVecBinaryOperation {
 
 // Bitwise-ands every component in the two vectors,
 // viz. [ x1, .. , xn ] & [ y1, .. , yn ] = [ x1 & y1, .. , xn & yn ].
-class HVecAnd FINAL : public HVecBinaryOperation {
+class HVecAnd final : public HVecBinaryOperation {
  public:
   HVecAnd(ArenaAllocator* allocator,
           HInstruction* left,
@@ -750,7 +750,7 @@ class HVecAnd FINAL : public HVecBinaryOperation {
     DCHECK(left->IsVecOperation() && right->IsVecOperation());
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecAnd);
 
@@ -760,7 +760,7 @@ class HVecAnd FINAL : public HVecBinaryOperation {
 
 // Bitwise-and-nots every component in the two vectors,
 // viz. [ x1, .. , xn ] and-not [ y1, .. , yn ] = [ ~x1 & y1, .. , ~xn & yn ].
-class HVecAndNot FINAL : public HVecBinaryOperation {
+class HVecAndNot final : public HVecBinaryOperation {
  public:
   HVecAndNot(ArenaAllocator* allocator,
              HInstruction* left,
@@ -773,7 +773,7 @@ class HVecAndNot FINAL : public HVecBinaryOperation {
     DCHECK(left->IsVecOperation() && right->IsVecOperation());
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecAndNot);
 
@@ -783,7 +783,7 @@ class HVecAndNot FINAL : public HVecBinaryOperation {
 
 // Bitwise-ors every component in the two vectors,
 // viz. [ x1, .. , xn ] | [ y1, .. , yn ] = [ x1 | y1, .. , xn | yn ].
-class HVecOr FINAL : public HVecBinaryOperation {
+class HVecOr final : public HVecBinaryOperation {
  public:
   HVecOr(ArenaAllocator* allocator,
          HInstruction* left,
@@ -795,7 +795,7 @@ class HVecOr FINAL : public HVecBinaryOperation {
     DCHECK(left->IsVecOperation() && right->IsVecOperation());
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecOr);
 
@@ -805,7 +805,7 @@ class HVecOr FINAL : public HVecBinaryOperation {
 
 // Bitwise-xors every component in the two vectors,
 // viz. [ x1, .. , xn ] ^ [ y1, .. , yn ] = [ x1 ^ y1, .. , xn ^ yn ].
-class HVecXor FINAL : public HVecBinaryOperation {
+class HVecXor final : public HVecBinaryOperation {
  public:
   HVecXor(ArenaAllocator* allocator,
           HInstruction* left,
@@ -817,7 +817,7 @@ class HVecXor FINAL : public HVecBinaryOperation {
     DCHECK(left->IsVecOperation() && right->IsVecOperation());
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecXor);
 
@@ -827,7 +827,7 @@ class HVecXor FINAL : public HVecBinaryOperation {
 
 // Logically shifts every component in the vector left by the given distance,
 // viz. [ x1, .. , xn ] << d = [ x1 << d, .. , xn << d ].
-class HVecShl FINAL : public HVecBinaryOperation {
+class HVecShl final : public HVecBinaryOperation {
  public:
   HVecShl(ArenaAllocator* allocator,
           HInstruction* left,
@@ -839,7 +839,7 @@ class HVecShl FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecShl);
 
@@ -849,7 +849,7 @@ class HVecShl FINAL : public HVecBinaryOperation {
 
 // Arithmetically shifts every component in the vector right by the given distance,
 // viz. [ x1, .. , xn ] >> d = [ x1 >> d, .. , xn >> d ].
-class HVecShr FINAL : public HVecBinaryOperation {
+class HVecShr final : public HVecBinaryOperation {
  public:
   HVecShr(ArenaAllocator* allocator,
           HInstruction* left,
@@ -861,7 +861,7 @@ class HVecShr FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecShr);
 
@@ -871,7 +871,7 @@ class HVecShr FINAL : public HVecBinaryOperation {
 
 // Logically shifts every component in the vector right by the given distance,
 // viz. [ x1, .. , xn ] >>> d = [ x1 >>> d, .. , xn >>> d ].
-class HVecUShr FINAL : public HVecBinaryOperation {
+class HVecUShr final : public HVecBinaryOperation {
  public:
   HVecUShr(ArenaAllocator* allocator,
            HInstruction* left,
@@ -883,7 +883,7 @@ class HVecUShr FINAL : public HVecBinaryOperation {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(VecUShr);
 
@@ -898,7 +898,7 @@ class HVecUShr FINAL : public HVecBinaryOperation {
 // Assigns the given scalar elements to a vector,
 // viz. set( array(x1, .. , xn) ) = [ x1, .. ,            xn ] if n == m,
 //      set( array(x1, .. , xm) ) = [ x1, .. , xm, 0, .. , 0 ] if m <  n.
-class HVecSetScalars FINAL : public HVecOperation {
+class HVecSetScalars final : public HVecOperation {
  public:
   HVecSetScalars(ArenaAllocator* allocator,
                  HInstruction* scalars[],
@@ -921,7 +921,7 @@ class HVecSetScalars FINAL : public HVecOperation {
 
   // Setting scalars needs to stay in place, since SIMD registers are not
   // kept alive across vector loop boundaries (yet).
-  bool CanBeMoved() const OVERRIDE { return false; }
+  bool CanBeMoved() const override { return false; }
 
   DECLARE_INSTRUCTION(VecSetScalars);
 
@@ -934,7 +934,7 @@ class HVecSetScalars FINAL : public HVecOperation {
 // For floating point types, Java rounding behavior must be preserved; the products are rounded to
 // the proper precision before being added. "Fused" multiply-add operations available on several
 // architectures are not usable since they would violate Java language rules.
-class HVecMultiplyAccumulate FINAL : public HVecOperation {
+class HVecMultiplyAccumulate final : public HVecOperation {
  public:
   HVecMultiplyAccumulate(ArenaAllocator* allocator,
                          InstructionKind op,
@@ -964,9 +964,9 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
     SetRawInputAt(2, mul_right);
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
-  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+  bool InstructionDataEquals(const HInstruction* other) const override {
     DCHECK(other->IsVecMultiplyAccumulate());
     const HVecMultiplyAccumulate* o = other->AsVecMultiplyAccumulate();
     return HVecOperation::InstructionDataEquals(o) && GetOpKind() == o->GetOpKind();
@@ -989,7 +989,7 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
 // viz. SAD([ a1, .. , am ], [ x1, .. , xn ], [ y1, .. , yn ]) =
 //          [ a1 + sum abs(xi-yi), .. , am + sum abs(xj-yj) ],
 //      for m <= n, non-overlapping sums, and signed operands x, y.
-class HVecSADAccumulate FINAL : public HVecOperation {
+class HVecSADAccumulate final : public HVecOperation {
  public:
   HVecSADAccumulate(ArenaAllocator* allocator,
                     HInstruction* accumulator,
@@ -1023,7 +1023,7 @@ class HVecSADAccumulate FINAL : public HVecOperation {
 
 // Loads a vector from memory, viz. load(mem, 1)
 // yield the vector [ mem(1), .. , mem(n) ].
-class HVecLoad FINAL : public HVecMemoryOperation {
+class HVecLoad final : public HVecMemoryOperation {
  public:
   HVecLoad(ArenaAllocator* allocator,
            HInstruction* base,
@@ -1047,9 +1047,9 @@ class HVecLoad FINAL : public HVecMemoryOperation {
 
   bool IsStringCharAt() const { return GetPackedFlag<kFieldIsStringCharAt>(); }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
-  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+  bool InstructionDataEquals(const HInstruction* other) const override {
     DCHECK(other->IsVecLoad());
     const HVecLoad* o = other->AsVecLoad();
     return HVecMemoryOperation::InstructionDataEquals(o) && IsStringCharAt() == o->IsStringCharAt();
@@ -1069,7 +1069,7 @@ class HVecLoad FINAL : public HVecMemoryOperation {
 
 // Stores a vector to memory, viz. store(m, 1, [x1, .. , xn] )
 // sets mem(1) = x1, .. , mem(n) = xn.
-class HVecStore FINAL : public HVecMemoryOperation {
+class HVecStore final : public HVecMemoryOperation {
  public:
   HVecStore(ArenaAllocator* allocator,
             HInstruction* base,
@@ -1093,7 +1093,7 @@ class HVecStore FINAL : public HVecMemoryOperation {
   }
 
   // A store needs to stay in place.
-  bool CanBeMoved() const OVERRIDE { return false; }
+  bool CanBeMoved() const override { return false; }
 
   DECLARE_INSTRUCTION(VecStore);
 

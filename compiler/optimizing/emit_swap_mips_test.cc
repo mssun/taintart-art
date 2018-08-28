@@ -27,7 +27,7 @@ namespace art {
 
 class EmitSwapMipsTest : public OptimizingUnitTest {
  public:
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     instruction_set_ = InstructionSet::kMips;
     instruction_set_features_ = MipsInstructionSetFeatures::FromCppDefines();
     OptimizingUnitTest::SetUp();
@@ -46,7 +46,7 @@ class EmitSwapMipsTest : public OptimizingUnitTest {
                                         GetAssemblyHeader()));
   }
 
-  void TearDown() OVERRIDE {
+  void TearDown() override {
     test_helper_.reset();
     codegen_.reset();
     graph_ = nullptr;

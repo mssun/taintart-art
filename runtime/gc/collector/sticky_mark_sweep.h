@@ -24,17 +24,16 @@ namespace art {
 namespace gc {
 namespace collector {
 
-class StickyMarkSweep FINAL : public PartialMarkSweep {
+class StickyMarkSweep final : public PartialMarkSweep {
  public:
-  GcType GetGcType() const OVERRIDE {
+  GcType GetGcType() const override {
     return kGcTypeSticky;
   }
 
   StickyMarkSweep(Heap* heap, bool is_concurrent, const std::string& name_prefix = "");
   ~StickyMarkSweep() {}
 
-  virtual void MarkConcurrentRoots(VisitRootFlags flags)
-      OVERRIDE
+  void MarkConcurrentRoots(VisitRootFlags flags) override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES(!mark_stack_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -42,15 +41,15 @@ class StickyMarkSweep FINAL : public PartialMarkSweep {
  protected:
   // Bind the live bits to the mark bits of bitmaps for all spaces, all spaces other than the
   // alloc space will be marked as immune.
-  void BindBitmaps() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+  void BindBitmaps() override REQUIRES_SHARED(Locks::mutator_lock_);
 
   void MarkReachableObjects()
-      OVERRIDE
+      override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void Sweep(bool swap_bitmaps)
-      OVERRIDE
+      override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 

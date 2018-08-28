@@ -50,7 +50,7 @@ namespace impl {
 // pending exceptions since they can cause new ones to be thrown. In accordance with the JVMTI
 // specification we allow exceptions originating from events to overwrite the current exception,
 // including exceptions originating from earlier events.
-class ScopedEventDispatchEnvironment FINAL : public art::ValueObject {
+class ScopedEventDispatchEnvironment final : public art::ValueObject {
  public:
   ScopedEventDispatchEnvironment() : env_(nullptr), throw_(nullptr, nullptr) {
     DCHECK_EQ(art::Thread::Current()->GetState(), art::ThreadState::kNative);

@@ -259,7 +259,7 @@ class PACKED(4) FixedSizeHandleScope : public HandleScope {
 
 // Scoped handle storage of a fixed size that is stack allocated.
 template<size_t kNumReferences>
-class PACKED(4) StackHandleScope FINAL : public FixedSizeHandleScope<kNumReferences> {
+class PACKED(4) StackHandleScope final : public FixedSizeHandleScope<kNumReferences> {
  public:
   explicit ALWAYS_INLINE StackHandleScope(Thread* self, mirror::Object* fill_value = nullptr);
   ALWAYS_INLINE ~StackHandleScope();

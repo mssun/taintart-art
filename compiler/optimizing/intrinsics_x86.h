@@ -30,14 +30,14 @@ namespace x86 {
 class CodeGeneratorX86;
 class X86Assembler;
 
-class IntrinsicLocationsBuilderX86 FINAL : public IntrinsicVisitor {
+class IntrinsicLocationsBuilderX86 final : public IntrinsicVisitor {
  public:
   explicit IntrinsicLocationsBuilderX86(CodeGeneratorX86* codegen);
 
   // Define visitor methods.
 
 #define OPTIMIZING_INTRINSICS(Name, IsStatic, NeedsEnvironmentOrCache, SideEffects, Exceptions, ...) \
-  void Visit ## Name(HInvoke* invoke) OVERRIDE;
+  void Visit ## Name(HInvoke* invoke) override;
 #include "intrinsics_list.h"
   INTRINSICS_LIST(OPTIMIZING_INTRINSICS)
 #undef INTRINSICS_LIST
@@ -55,14 +55,14 @@ class IntrinsicLocationsBuilderX86 FINAL : public IntrinsicVisitor {
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderX86);
 };
 
-class IntrinsicCodeGeneratorX86 FINAL : public IntrinsicVisitor {
+class IntrinsicCodeGeneratorX86 final : public IntrinsicVisitor {
  public:
   explicit IntrinsicCodeGeneratorX86(CodeGeneratorX86* codegen) : codegen_(codegen) {}
 
   // Define visitor methods.
 
 #define OPTIMIZING_INTRINSICS(Name, IsStatic, NeedsEnvironmentOrCache, SideEffects, Exceptions, ...) \
-  void Visit ## Name(HInvoke* invoke) OVERRIDE;
+  void Visit ## Name(HInvoke* invoke) override;
 #include "intrinsics_list.h"
   INTRINSICS_LIST(OPTIMIZING_INTRINSICS)
 #undef INTRINSICS_LIST

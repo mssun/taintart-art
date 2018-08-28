@@ -54,20 +54,20 @@ class StackVisitor;
 class Thread;
 
 struct DebuggerActiveMethodInspectionCallback : public MethodInspectionCallback {
-  bool IsMethodBeingInspected(ArtMethod* method) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
-  bool IsMethodSafeToJit(ArtMethod* method) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
-  bool MethodNeedsDebugVersion(ArtMethod* method) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsMethodBeingInspected(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsMethodSafeToJit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_);
+  bool MethodNeedsDebugVersion(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_);
 };
 
 struct DebuggerDdmCallback : public DdmCallback {
   void DdmPublishChunk(uint32_t type, const ArrayRef<const uint8_t>& data)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+      override REQUIRES_SHARED(Locks::mutator_lock_);
 };
 
 struct InternalDebuggerControlCallback : public DebuggerControlCallback {
-  void StartDebugger() OVERRIDE;
-  void StopDebugger() OVERRIDE;
-  bool IsDebuggerConfigured() OVERRIDE;
+  void StartDebugger() override;
+  void StopDebugger() override;
+  bool IsDebuggerConfigured() override;
 };
 
 /*
@@ -831,15 +831,15 @@ class Dbg {
 
   class DbgThreadLifecycleCallback : public ThreadLifecycleCallback {
    public:
-    void ThreadStart(Thread* self) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
-    void ThreadDeath(Thread* self) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+    void ThreadStart(Thread* self) override REQUIRES_SHARED(Locks::mutator_lock_);
+    void ThreadDeath(Thread* self) override REQUIRES_SHARED(Locks::mutator_lock_);
   };
 
   class DbgClassLoadCallback : public ClassLoadCallback {
    public:
-    void ClassLoad(Handle<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+    void ClassLoad(Handle<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_);
     void ClassPrepare(Handle<mirror::Class> temp_klass,
-                      Handle<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+                      Handle<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_);
   };
 
   static DbgThreadLifecycleCallback thread_lifecycle_callback_;

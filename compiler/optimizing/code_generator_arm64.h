@@ -125,8 +125,8 @@ class SlowPathCodeARM64 : public SlowPathCode {
   vixl::aarch64::Label* GetEntryLabel() { return &entry_label_; }
   vixl::aarch64::Label* GetExitLabel() { return &exit_label_; }
 
-  void SaveLiveRegisters(CodeGenerator* codegen, LocationSummary* locations) OVERRIDE;
-  void RestoreLiveRegisters(CodeGenerator* codegen, LocationSummary* locations) OVERRIDE;
+  void SaveLiveRegisters(CodeGenerator* codegen, LocationSummary* locations) override;
+  void RestoreLiveRegisters(CodeGenerator* codegen, LocationSummary* locations) override;
 
  private:
   vixl::aarch64::Label entry_label_;
@@ -216,11 +216,11 @@ class InvokeDexCallingConventionVisitorARM64 : public InvokeDexCallingConvention
   InvokeDexCallingConventionVisitorARM64() {}
   virtual ~InvokeDexCallingConventionVisitorARM64() {}
 
-  Location GetNextLocation(DataType::Type type) OVERRIDE;
-  Location GetReturnLocation(DataType::Type return_type) const OVERRIDE {
+  Location GetNextLocation(DataType::Type type) override;
+  Location GetReturnLocation(DataType::Type return_type) const override {
     return calling_convention.GetReturnLocation(return_type);
   }
-  Location GetMethodLocation() const OVERRIDE;
+  Location GetMethodLocation() const override;
 
  private:
   InvokeDexCallingConvention calling_convention;
@@ -232,22 +232,22 @@ class FieldAccessCallingConventionARM64 : public FieldAccessCallingConvention {
  public:
   FieldAccessCallingConventionARM64() {}
 
-  Location GetObjectLocation() const OVERRIDE {
+  Location GetObjectLocation() const override {
     return helpers::LocationFrom(vixl::aarch64::x1);
   }
-  Location GetFieldIndexLocation() const OVERRIDE {
+  Location GetFieldIndexLocation() const override {
     return helpers::LocationFrom(vixl::aarch64::x0);
   }
-  Location GetReturnLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetReturnLocation(DataType::Type type ATTRIBUTE_UNUSED) const override {
     return helpers::LocationFrom(vixl::aarch64::x0);
   }
   Location GetSetValueLocation(DataType::Type type ATTRIBUTE_UNUSED,
-                               bool is_instance) const OVERRIDE {
+                               bool is_instance) const override {
     return is_instance
         ? helpers::LocationFrom(vixl::aarch64::x2)
         : helpers::LocationFrom(vixl::aarch64::x1);
   }
-  Location GetFpuLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetFpuLocation(DataType::Type type ATTRIBUTE_UNUSED) const override {
     return helpers::LocationFrom(vixl::aarch64::d0);
   }
 
@@ -260,7 +260,7 @@ class InstructionCodeGeneratorARM64 : public InstructionCodeGenerator {
   InstructionCodeGeneratorARM64(HGraph* graph, CodeGeneratorARM64* codegen);
 
 #define DECLARE_VISIT_INSTRUCTION(name, super) \
-  void Visit##name(H##name* instr) OVERRIDE;
+  void Visit##name(H##name* instr) override;
 
   FOR_EACH_CONCRETE_INSTRUCTION_COMMON(DECLARE_VISIT_INSTRUCTION)
   FOR_EACH_CONCRETE_INSTRUCTION_ARM64(DECLARE_VISIT_INSTRUCTION)
@@ -268,7 +268,7 @@ class InstructionCodeGeneratorARM64 : public InstructionCodeGenerator {
 
 #undef DECLARE_VISIT_INSTRUCTION
 
-  void VisitInstruction(HInstruction* instruction) OVERRIDE {
+  void VisitInstruction(HInstruction* instruction) override {
     LOG(FATAL) << "Unreachable instruction " << instruction->DebugName()
                << " (id " << instruction->GetId() << ")";
   }
@@ -360,7 +360,7 @@ class LocationsBuilderARM64 : public HGraphVisitor {
       : HGraphVisitor(graph), codegen_(codegen) {}
 
 #define DECLARE_VISIT_INSTRUCTION(name, super) \
-  void Visit##name(H##name* instr) OVERRIDE;
+  void Visit##name(H##name* instr) override;
 
   FOR_EACH_CONCRETE_INSTRUCTION_COMMON(DECLARE_VISIT_INSTRUCTION)
   FOR_EACH_CONCRETE_INSTRUCTION_ARM64(DECLARE_VISIT_INSTRUCTION)
@@ -368,7 +368,7 @@ class LocationsBuilderARM64 : public HGraphVisitor {
 
 #undef DECLARE_VISIT_INSTRUCTION
 
-  void VisitInstruction(HInstruction* instruction) OVERRIDE {
+  void VisitInstruction(HInstruction* instruction) override {
     LOG(FATAL) << "Unreachable instruction " << instruction->DebugName()
                << " (id " << instruction->GetId() << ")";
   }
@@ -393,11 +393,11 @@ class ParallelMoveResolverARM64 : public ParallelMoveResolverNoSwap {
       : ParallelMoveResolverNoSwap(allocator), codegen_(codegen), vixl_temps_() {}
 
  protected:
-  void PrepareForEmitNativeCode() OVERRIDE;
-  void FinishEmitNativeCode() OVERRIDE;
-  Location AllocateScratchLocationFor(Location::Kind kind) OVERRIDE;
-  void FreeScratchLocation(Location loc) OVERRIDE;
-  void EmitMove(size_t index) OVERRIDE;
+  void PrepareForEmitNativeCode() override;
+  void FinishEmitNativeCode() override;
+  Location AllocateScratchLocationFor(Location::Kind kind) override;
+  void FreeScratchLocation(Location loc) override;
+  void EmitMove(size_t index) override;
 
  private:
   Arm64Assembler* GetAssembler() const;
@@ -418,39 +418,39 @@ class CodeGeneratorARM64 : public CodeGenerator {
                      OptimizingCompilerStats* stats = nullptr);
   virtual ~CodeGeneratorARM64() {}
 
-  void GenerateFrameEntry() OVERRIDE;
-  void GenerateFrameExit() OVERRIDE;
+  void GenerateFrameEntry() override;
+  void GenerateFrameExit() override;
 
   vixl::aarch64::CPURegList GetFramePreservedCoreRegisters() const;
   vixl::aarch64::CPURegList GetFramePreservedFPRegisters() const;
 
-  void Bind(HBasicBlock* block) OVERRIDE;
+  void Bind(HBasicBlock* block) override;
 
   vixl::aarch64::Label* GetLabelOf(HBasicBlock* block) {
     block = FirstNonEmptyBlock(block);
     return &(block_labels_[block->GetBlockId()]);
   }
 
-  size_t GetWordSize() const OVERRIDE {
+  size_t GetWordSize() const override {
     return kArm64WordSize;
   }
 
-  size_t GetFloatingPointSpillSlotSize() const OVERRIDE {
+  size_t GetFloatingPointSpillSlotSize() const override {
     return GetGraph()->HasSIMD()
         ? 2 * kArm64WordSize   // 16 bytes == 2 arm64 words for each spill
         : 1 * kArm64WordSize;  //  8 bytes == 1 arm64 words for each spill
   }
 
-  uintptr_t GetAddressOf(HBasicBlock* block) OVERRIDE {
+  uintptr_t GetAddressOf(HBasicBlock* block) override {
     vixl::aarch64::Label* block_entry_label = GetLabelOf(block);
     DCHECK(block_entry_label->IsBound());
     return block_entry_label->GetLocation();
   }
 
-  HGraphVisitor* GetLocationBuilder() OVERRIDE { return &location_builder_; }
-  HGraphVisitor* GetInstructionVisitor() OVERRIDE { return &instruction_visitor_; }
-  Arm64Assembler* GetAssembler() OVERRIDE { return &assembler_; }
-  const Arm64Assembler& GetAssembler() const OVERRIDE { return assembler_; }
+  HGraphVisitor* GetLocationBuilder() override { return &location_builder_; }
+  HGraphVisitor* GetInstructionVisitor() override { return &instruction_visitor_; }
+  Arm64Assembler* GetAssembler() override { return &assembler_; }
+  const Arm64Assembler& GetAssembler() const override { return assembler_; }
   vixl::aarch64::MacroAssembler* GetVIXLAssembler() { return GetAssembler()->GetVIXLAssembler(); }
 
   // Emit a write barrier.
@@ -462,12 +462,12 @@ class CodeGeneratorARM64 : public CodeGenerator {
 
   // Register allocation.
 
-  void SetupBlockedRegisters() const OVERRIDE;
+  void SetupBlockedRegisters() const override;
 
-  size_t SaveCoreRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
-  size_t RestoreCoreRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
-  size_t SaveFloatingPointRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
-  size_t RestoreFloatingPointRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
+  size_t SaveCoreRegister(size_t stack_index, uint32_t reg_id) override;
+  size_t RestoreCoreRegister(size_t stack_index, uint32_t reg_id) override;
+  size_t SaveFloatingPointRegister(size_t stack_index, uint32_t reg_id) override;
+  size_t RestoreFloatingPointRegister(size_t stack_index, uint32_t reg_id) override;
 
   // The number of registers that can be allocated. The register allocator may
   // decide to reserve and not use a few of them.
@@ -479,35 +479,35 @@ class CodeGeneratorARM64 : public CodeGenerator {
   static const int kNumberOfAllocatableFPRegisters = vixl::aarch64::kNumberOfFPRegisters;
   static constexpr int kNumberOfAllocatableRegisterPairs = 0;
 
-  void DumpCoreRegister(std::ostream& stream, int reg) const OVERRIDE;
-  void DumpFloatingPointRegister(std::ostream& stream, int reg) const OVERRIDE;
+  void DumpCoreRegister(std::ostream& stream, int reg) const override;
+  void DumpFloatingPointRegister(std::ostream& stream, int reg) const override;
 
-  InstructionSet GetInstructionSet() const OVERRIDE {
+  InstructionSet GetInstructionSet() const override {
     return InstructionSet::kArm64;
   }
 
   const Arm64InstructionSetFeatures& GetInstructionSetFeatures() const;
 
-  void Initialize() OVERRIDE {
+  void Initialize() override {
     block_labels_.resize(GetGraph()->GetBlocks().size());
   }
 
   // We want to use the STP and LDP instructions to spill and restore registers for slow paths.
   // These instructions can only encode offsets that are multiples of the register size accessed.
-  uint32_t GetPreferredSlotsAlignment() const OVERRIDE { return vixl::aarch64::kXRegSizeInBytes; }
+  uint32_t GetPreferredSlotsAlignment() const override { return vixl::aarch64::kXRegSizeInBytes; }
 
   JumpTableARM64* CreateJumpTable(HPackedSwitch* switch_instr) {
     jump_tables_.emplace_back(new (GetGraph()->GetAllocator()) JumpTableARM64(switch_instr));
     return jump_tables_.back().get();
   }
 
-  void Finalize(CodeAllocator* allocator) OVERRIDE;
+  void Finalize(CodeAllocator* allocator) override;
 
   // Code generation helpers.
   void MoveConstant(vixl::aarch64::CPURegister destination, HConstant* constant);
-  void MoveConstant(Location destination, int32_t value) OVERRIDE;
-  void MoveLocation(Location dst, Location src, DataType::Type dst_type) OVERRIDE;
-  void AddLocationAsTemp(Location location, LocationSummary* locations) OVERRIDE;
+  void MoveConstant(Location destination, int32_t value) override;
+  void MoveLocation(Location dst, Location src, DataType::Type dst_type) override;
+  void AddLocationAsTemp(Location location, LocationSummary* locations) override;
 
   void Load(DataType::Type type,
             vixl::aarch64::CPURegister dst,
@@ -529,7 +529,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
   void InvokeRuntime(QuickEntrypointEnum entrypoint,
                      HInstruction* instruction,
                      uint32_t dex_pc,
-                     SlowPathCode* slow_path = nullptr) OVERRIDE;
+                     SlowPathCode* slow_path = nullptr) override;
 
   // Generate code to invoke a runtime entry point, but do not record
   // PC-related information in a stack map.
@@ -537,35 +537,35 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                            HInstruction* instruction,
                                            SlowPathCode* slow_path);
 
-  ParallelMoveResolverARM64* GetMoveResolver() OVERRIDE { return &move_resolver_; }
+  ParallelMoveResolverARM64* GetMoveResolver() override { return &move_resolver_; }
 
-  bool NeedsTwoRegisters(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  bool NeedsTwoRegisters(DataType::Type type ATTRIBUTE_UNUSED) const override {
     return false;
   }
 
   // Check if the desired_string_load_kind is supported. If it is, return it,
   // otherwise return a fall-back kind that should be used instead.
   HLoadString::LoadKind GetSupportedLoadStringKind(
-      HLoadString::LoadKind desired_string_load_kind) OVERRIDE;
+      HLoadString::LoadKind desired_string_load_kind) override;
 
   // Check if the desired_class_load_kind is supported. If it is, return it,
   // otherwise return a fall-back kind that should be used instead.
   HLoadClass::LoadKind GetSupportedLoadClassKind(
-      HLoadClass::LoadKind desired_class_load_kind) OVERRIDE;
+      HLoadClass::LoadKind desired_class_load_kind) override;
 
   // Check if the desired_dispatch_info is supported. If it is, return it,
   // otherwise return a fall-back info that should be used instead.
   HInvokeStaticOrDirect::DispatchInfo GetSupportedInvokeStaticOrDirectDispatch(
       const HInvokeStaticOrDirect::DispatchInfo& desired_dispatch_info,
-      HInvokeStaticOrDirect* invoke) OVERRIDE;
+      HInvokeStaticOrDirect* invoke) override;
 
   void GenerateStaticOrDirectCall(
-      HInvokeStaticOrDirect* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
+      HInvokeStaticOrDirect* invoke, Location temp, SlowPathCode* slow_path = nullptr) override;
   void GenerateVirtualCall(
-      HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
+      HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) override;
 
   void MoveFromReturnRegister(Location trg ATTRIBUTE_UNUSED,
-                              DataType::Type type ATTRIBUTE_UNUSED) OVERRIDE {
+                              DataType::Type type ATTRIBUTE_UNUSED) override {
     UNIMPLEMENTED(FATAL);
   }
 
@@ -652,13 +652,13 @@ class CodeGeneratorARM64 : public CodeGenerator {
   void LoadBootImageAddress(vixl::aarch64::Register reg, uint32_t boot_image_reference);
   void AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invoke, uint32_t boot_image_offset);
 
-  void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
-  bool NeedsThunkCode(const linker::LinkerPatch& patch) const OVERRIDE;
+  void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) override;
+  bool NeedsThunkCode(const linker::LinkerPatch& patch) const override;
   void EmitThunkCode(const linker::LinkerPatch& patch,
                      /*out*/ ArenaVector<uint8_t>* code,
-                     /*out*/ std::string* debug_name) OVERRIDE;
+                     /*out*/ std::string* debug_name) override;
 
-  void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) OVERRIDE;
+  void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) override;
 
   // Generate a GC root reference load:
   //
@@ -765,10 +765,10 @@ class CodeGeneratorARM64 : public CodeGenerator {
   // artReadBarrierForRootSlow.
   void GenerateReadBarrierForRootSlow(HInstruction* instruction, Location out, Location root);
 
-  void GenerateNop() OVERRIDE;
+  void GenerateNop() override;
 
-  void GenerateImplicitNullCheck(HNullCheck* instruction) OVERRIDE;
-  void GenerateExplicitNullCheck(HNullCheck* instruction) OVERRIDE;
+  void GenerateImplicitNullCheck(HNullCheck* instruction) override;
+  void GenerateExplicitNullCheck(HNullCheck* instruction) override;
 
  private:
   // Encoding of thunk type and data for link-time generated thunks for Baker read barriers.

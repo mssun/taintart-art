@@ -33,7 +33,7 @@ class ModUnionTableToZygoteAllocspace : public ModUnionTableReferenceCache {
                                            space::ContinuousSpace* space)
       : ModUnionTableReferenceCache(name, heap, space) {}
 
-  bool ShouldAddReference(const mirror::Object* ref) const OVERRIDE ALWAYS_INLINE {
+  bool ShouldAddReference(const mirror::Object* ref) const override ALWAYS_INLINE {
     return !space_->HasAddress(ref);
   }
 };

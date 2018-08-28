@@ -37,7 +37,7 @@ namespace arm64 {
 
 class CodeGeneratorARM64;
 
-class IntrinsicLocationsBuilderARM64 FINAL : public IntrinsicVisitor {
+class IntrinsicLocationsBuilderARM64 final : public IntrinsicVisitor {
  public:
   explicit IntrinsicLocationsBuilderARM64(ArenaAllocator* allocator, CodeGeneratorARM64* codegen)
       : allocator_(allocator), codegen_(codegen) {}
@@ -45,7 +45,7 @@ class IntrinsicLocationsBuilderARM64 FINAL : public IntrinsicVisitor {
   // Define visitor methods.
 
 #define OPTIMIZING_INTRINSICS(Name, IsStatic, NeedsEnvironmentOrCache, SideEffects, Exceptions, ...) \
-  void Visit ## Name(HInvoke* invoke) OVERRIDE;
+  void Visit ## Name(HInvoke* invoke) override;
 #include "intrinsics_list.h"
   INTRINSICS_LIST(OPTIMIZING_INTRINSICS)
 #undef INTRINSICS_LIST
@@ -63,14 +63,14 @@ class IntrinsicLocationsBuilderARM64 FINAL : public IntrinsicVisitor {
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderARM64);
 };
 
-class IntrinsicCodeGeneratorARM64 FINAL : public IntrinsicVisitor {
+class IntrinsicCodeGeneratorARM64 final : public IntrinsicVisitor {
  public:
   explicit IntrinsicCodeGeneratorARM64(CodeGeneratorARM64* codegen) : codegen_(codegen) {}
 
   // Define visitor methods.
 
 #define OPTIMIZING_INTRINSICS(Name, IsStatic, NeedsEnvironmentOrCache, SideEffects, Exceptions, ...) \
-  void Visit ## Name(HInvoke* invoke) OVERRIDE;
+  void Visit ## Name(HInvoke* invoke) override;
 #include "intrinsics_list.h"
   INTRINSICS_LIST(OPTIMIZING_INTRINSICS)
 #undef INTRINSICS_LIST

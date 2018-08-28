@@ -760,7 +760,7 @@ jvmtiError HeapUtil::IterateThroughHeap(jvmtiEnv* env,
                               user_data);
 }
 
-class FollowReferencesHelper FINAL {
+class FollowReferencesHelper final {
  public:
   FollowReferencesHelper(HeapUtil* h,
                          jvmtiEnv* jvmti_env,
@@ -828,7 +828,7 @@ class FollowReferencesHelper FINAL {
   }
 
  private:
-  class CollectAndReportRootsVisitor FINAL : public art::RootVisitor {
+  class CollectAndReportRootsVisitor final : public art::RootVisitor {
    public:
     CollectAndReportRootsVisitor(FollowReferencesHelper* helper,
                                  ObjectTagTable* tag_table,
@@ -841,7 +841,7 @@ class FollowReferencesHelper FINAL {
           stop_reports_(false) {}
 
     void VisitRoots(art::mirror::Object*** roots, size_t count, const art::RootInfo& info)
-        OVERRIDE
+        override
         REQUIRES_SHARED(art::Locks::mutator_lock_)
         REQUIRES(!*helper_->tag_table_->GetAllowDisallowLock()) {
       for (size_t i = 0; i != count; ++i) {
@@ -852,7 +852,7 @@ class FollowReferencesHelper FINAL {
     void VisitRoots(art::mirror::CompressedReference<art::mirror::Object>** roots,
                     size_t count,
                     const art::RootInfo& info)
-        OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_)
+        override REQUIRES_SHARED(art::Locks::mutator_lock_)
         REQUIRES(!*helper_->tag_table_->GetAllowDisallowLock()) {
       for (size_t i = 0; i != count; ++i) {
         AddRoot(roots[i]->AsMirrorPtr(), info);
@@ -1347,7 +1347,7 @@ jvmtiError HeapUtil::GetLoadedClasses(jvmtiEnv* env,
     explicit ReportClassVisitor(art::Thread* self) : self_(self) {}
 
     bool operator()(art::ObjPtr<art::mirror::Class> klass)
-        OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+        override REQUIRES_SHARED(art::Locks::mutator_lock_) {
       if (klass->IsLoaded() || klass->IsErroneous()) {
         classes_.push_back(self_->GetJniEnv()->AddLocalReference<jclass>(klass));
       }

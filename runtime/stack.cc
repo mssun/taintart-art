@@ -461,7 +461,7 @@ size_t StackVisitor::ComputeNumFrames(Thread* thread, StackWalkKind walk_kind) {
     NumFramesVisitor(Thread* thread_in, StackWalkKind walk_kind_in)
         : StackVisitor(thread_in, nullptr, walk_kind_in), frames(0) {}
 
-    bool VisitFrame() OVERRIDE {
+    bool VisitFrame() override {
       frames++;
       return true;
     }
@@ -487,7 +487,7 @@ bool StackVisitor::GetNextMethodAndDexPc(ArtMethod** next_method, uint32_t* next
           next_dex_pc_(0) {
     }
 
-    bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
       if (found_frame_) {
         ArtMethod* method = GetMethod();
         if (method != nullptr && !method->IsRuntimeMethod()) {
@@ -520,7 +520,7 @@ void StackVisitor::DescribeStack(Thread* thread) {
     explicit DescribeStackVisitor(Thread* thread_in)
         : StackVisitor(thread_in, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames) {}
 
-    bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
       LOG(INFO) << "Frame Id=" << GetFrameId() << " " << DescribeLocation();
       return true;
     }

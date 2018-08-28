@@ -255,7 +255,7 @@ class GetClassLoadersVisitor : public ClassLoaderVisitor {
         class_loaders_(class_loaders) {}
 
   void Visit(ObjPtr<mirror::ClassLoader> class_loader)
-      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) OVERRIDE {
+      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) override {
     class_loaders_->push_back(hs_->NewHandle(class_loader));
   }
 

@@ -82,7 +82,7 @@ class ReadBarrierSystemArrayCopySlowPathX86 : public SlowPathCode {
     DCHECK(kUseBakerReadBarrier);
   }
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     CodeGeneratorX86* x86_codegen = down_cast<CodeGeneratorX86*>(codegen);
     LocationSummary* locations = instruction_->GetLocations();
     DCHECK(locations->CanCall());
@@ -160,7 +160,7 @@ class ReadBarrierSystemArrayCopySlowPathX86 : public SlowPathCode {
     __ jmp(GetExitLabel());
   }
 
-  const char* GetDescription() const OVERRIDE { return "ReadBarrierSystemArrayCopySlowPathX86"; }
+  const char* GetDescription() const override { return "ReadBarrierSystemArrayCopySlowPathX86"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ReadBarrierSystemArrayCopySlowPathX86);

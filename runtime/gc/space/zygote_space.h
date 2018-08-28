@@ -27,7 +27,7 @@ namespace gc {
 namespace space {
 
 // A zygote space is a space which you cannot allocate into or free from.
-class ZygoteSpace FINAL : public ContinuousMemMapAllocSpace {
+class ZygoteSpace final : public ContinuousMemMapAllocSpace {
  public:
   // Returns the remaining storage in the out_map field.
   static ZygoteSpace* Create(const std::string& name,
@@ -38,28 +38,28 @@ class ZygoteSpace FINAL : public ContinuousMemMapAllocSpace {
 
   void Dump(std::ostream& os) const;
 
-  SpaceType GetType() const OVERRIDE {
+  SpaceType GetType() const override {
     return kSpaceTypeZygoteSpace;
   }
 
-  ZygoteSpace* AsZygoteSpace() OVERRIDE {
+  ZygoteSpace* AsZygoteSpace() override {
     return this;
   }
 
   mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                        size_t* usable_size, size_t* bytes_tl_bulk_allocated) OVERRIDE;
+                        size_t* usable_size, size_t* bytes_tl_bulk_allocated) override;
 
-  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) OVERRIDE;
+  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) override;
 
-  size_t Free(Thread* self, mirror::Object* ptr) OVERRIDE;
+  size_t Free(Thread* self, mirror::Object* ptr) override;
 
-  size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) OVERRIDE;
+  size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) override;
 
   // ZygoteSpaces don't have thread local state.
-  size_t RevokeThreadLocalBuffers(art::Thread*) OVERRIDE {
+  size_t RevokeThreadLocalBuffers(art::Thread*) override {
     return 0U;
   }
-  size_t RevokeAllThreadLocalBuffers() OVERRIDE {
+  size_t RevokeAllThreadLocalBuffers() override {
     return 0U;
   }
 
@@ -71,13 +71,13 @@ class ZygoteSpace FINAL : public ContinuousMemMapAllocSpace {
     return objects_allocated_.load(std::memory_order_seq_cst);
   }
 
-  void Clear() OVERRIDE;
+  void Clear() override;
 
-  bool CanMoveObjects() const OVERRIDE {
+  bool CanMoveObjects() const override {
     return false;
   }
 
-  void LogFragmentationAllocFailure(std::ostream& os, size_t failed_alloc_bytes) OVERRIDE
+  void LogFragmentationAllocFailure(std::ostream& os, size_t failed_alloc_bytes) override
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  protected:

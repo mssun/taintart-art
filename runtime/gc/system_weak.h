@@ -45,7 +45,7 @@ class SystemWeakHolder : public AbstractSystemWeakHolder {
   }
   virtual ~SystemWeakHolder() {}
 
-  void Allow() OVERRIDE
+  void Allow() override
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_) {
     CHECK(!kUseReadBarrier);
@@ -54,7 +54,7 @@ class SystemWeakHolder : public AbstractSystemWeakHolder {
     new_weak_condition_.Broadcast(Thread::Current());
   }
 
-  void Disallow() OVERRIDE
+  void Disallow() override
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_) {
     CHECK(!kUseReadBarrier);
@@ -62,7 +62,7 @@ class SystemWeakHolder : public AbstractSystemWeakHolder {
     allow_new_system_weak_ = false;
   }
 
-  void Broadcast(bool broadcast_for_checkpoint ATTRIBUTE_UNUSED) OVERRIDE
+  void Broadcast(bool broadcast_for_checkpoint ATTRIBUTE_UNUSED) override
       REQUIRES(!allow_disallow_lock_) {
     MutexLock mu(Thread::Current(), allow_disallow_lock_);
     new_weak_condition_.Broadcast(Thread::Current());

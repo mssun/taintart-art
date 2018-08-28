@@ -352,7 +352,7 @@ class DiscontinuousSpace : public Space {
     return mark_bitmap_.get();
   }
 
-  virtual bool IsDiscontinuousSpace() const OVERRIDE {
+  bool IsDiscontinuousSpace() const override {
     return true;
   }
 
@@ -409,14 +409,14 @@ class MemMapSpace : public ContinuousSpace {
 // Used by the heap compaction interface to enable copying from one type of alloc space to another.
 class ContinuousMemMapAllocSpace : public MemMapSpace, public AllocSpace {
  public:
-  bool IsAllocSpace() const OVERRIDE {
+  bool IsAllocSpace() const override {
     return true;
   }
-  AllocSpace* AsAllocSpace() OVERRIDE {
+  AllocSpace* AsAllocSpace() override {
     return this;
   }
 
-  bool IsContinuousMemMapAllocSpace() const OVERRIDE {
+  bool IsContinuousMemMapAllocSpace() const override {
     return true;
   }
   ContinuousMemMapAllocSpace* AsContinuousMemMapAllocSpace() {
@@ -435,11 +435,11 @@ class ContinuousMemMapAllocSpace : public MemMapSpace, public AllocSpace {
   // Clear the space back to an empty space.
   virtual void Clear() = 0;
 
-  accounting::ContinuousSpaceBitmap* GetLiveBitmap() const OVERRIDE {
+  accounting::ContinuousSpaceBitmap* GetLiveBitmap() const override {
     return live_bitmap_.get();
   }
 
-  accounting::ContinuousSpaceBitmap* GetMarkBitmap() const OVERRIDE {
+  accounting::ContinuousSpaceBitmap* GetMarkBitmap() const override {
     return mark_bitmap_.get();
   }
 

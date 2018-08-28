@@ -613,7 +613,7 @@ class WatchDog {
   bool shutting_down_;
 };
 
-class Dex2Oat FINAL {
+class Dex2Oat final {
  public:
   explicit Dex2Oat(TimingLogger* timings) :
       compiler_kind_(Compiler::kOptimizing),

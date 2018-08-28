@@ -198,7 +198,7 @@ class Verification::CollectRootVisitor : public SingleRootVisitor {
   CollectRootVisitor(ObjectSet* visited, WorkQueue* work) : visited_(visited), work_(work) {}
 
   void VisitRoot(mirror::Object* obj, const RootInfo& info)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (obj != nullptr && visited_->insert(obj).second) {
       std::ostringstream oss;
       oss << info.ToString() << " = " << obj << "(" << obj->PrettyTypeOf() << ")";

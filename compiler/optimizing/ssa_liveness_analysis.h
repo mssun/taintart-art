@@ -60,7 +60,7 @@ class BlockInfo : public ArenaObject<kArenaAllocSsaLiveness> {
  * A live range contains the start and end of a range where an instruction or a temporary
  * is live.
  */
-class LiveRange FINAL : public ArenaObject<kArenaAllocSsaLiveness> {
+class LiveRange final : public ArenaObject<kArenaAllocSsaLiveness> {
  public:
   LiveRange(size_t start, size_t end, LiveRange* next) : start_(start), end_(end), next_(next) {
     DCHECK_LT(start, end);

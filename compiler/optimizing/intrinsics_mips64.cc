@@ -97,7 +97,7 @@ class IntrinsicSlowPathMIPS64 : public SlowPathCodeMIPS64 {
   explicit IntrinsicSlowPathMIPS64(HInvoke* invoke)
      : SlowPathCodeMIPS64(invoke), invoke_(invoke) { }
 
-  void EmitNativeCode(CodeGenerator* codegen_in) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen_in) override {
     CodeGeneratorMIPS64* codegen = down_cast<CodeGeneratorMIPS64*>(codegen_in);
 
     __ Bind(GetEntryLabel());
@@ -126,7 +126,7 @@ class IntrinsicSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     __ Bc(GetExitLabel());
   }
 
-  const char* GetDescription() const OVERRIDE { return "IntrinsicSlowPathMIPS64"; }
+  const char* GetDescription() const override { return "IntrinsicSlowPathMIPS64"; }
 
  private:
   // The instruction where this slow path is happening.

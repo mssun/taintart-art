@@ -35,7 +35,7 @@ namespace linker {
 // any number of oat files. It provides storage for method code offsets
 // and wraps RelativePatcher calls, adjusting relative offsets according
 // to the value set by SetAdjustment().
-class MultiOatRelativePatcher FINAL {
+class MultiOatRelativePatcher final {
  public:
   using const_iterator = SafeMap<MethodReference, uint32_t>::const_iterator;
 
@@ -139,7 +139,7 @@ class MultiOatRelativePatcher FINAL {
 
     void GetThunkCode(const LinkerPatch& patch,
                       /*out*/ ArrayRef<const uint8_t>* code,
-                      /*out*/ std::string* debug_name) OVERRIDE;
+                      /*out*/ std::string* debug_name) override;
 
    private:
     CompiledMethodStorage* storage_;
@@ -149,7 +149,7 @@ class MultiOatRelativePatcher FINAL {
   // Wrap the map in a class implementing RelativePatcherTargetProvider.
   class MethodOffsetMap : public RelativePatcherTargetProvider {
    public:
-    std::pair<bool, uint32_t> FindMethodOffset(MethodReference ref) OVERRIDE;
+    std::pair<bool, uint32_t> FindMethodOffset(MethodReference ref) override;
     SafeMap<MethodReference, uint32_t> map;
   };
 

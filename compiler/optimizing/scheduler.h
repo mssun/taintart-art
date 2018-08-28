@@ -339,7 +339,7 @@ class SchedulingLatencyVisitor : public HGraphDelegateVisitor {
         last_visited_latency_(0),
         last_visited_internal_latency_(0) {}
 
-  void VisitInstruction(HInstruction* instruction) OVERRIDE {
+  void VisitInstruction(HInstruction* instruction) override {
     LOG(FATAL) << "Error visiting " << instruction->DebugName() << ". "
         "Architecture-specific scheduling latency visitors must handle all instructions"
         " (potentially by overriding the generic `VisitInstruction()`.";
@@ -392,7 +392,7 @@ class RandomSchedulingNodeSelector : public SchedulingNodeSelector {
   }
 
   SchedulingNode* PopHighestPriorityNode(ScopedArenaVector<SchedulingNode*>* nodes,
-                                         const SchedulingGraph& graph) OVERRIDE {
+                                         const SchedulingGraph& graph) override {
     UNUSED(graph);
     DCHECK(!nodes->empty());
     size_t select = rand_r(&seed_) % nodes->size();
@@ -412,9 +412,9 @@ class CriticalPathSchedulingNodeSelector : public SchedulingNodeSelector {
  public:
   CriticalPathSchedulingNodeSelector() : prev_select_(nullptr) {}
 
-  void Reset() OVERRIDE { prev_select_ = nullptr; }
+  void Reset() override { prev_select_ = nullptr; }
   SchedulingNode* PopHighestPriorityNode(ScopedArenaVector<SchedulingNode*>* nodes,
-                                         const SchedulingGraph& graph) OVERRIDE;
+                                         const SchedulingGraph& graph) override;
 
  protected:
   SchedulingNode* GetHigherPrioritySchedulingNode(SchedulingNode* candidate,
@@ -492,7 +492,7 @@ class HInstructionScheduling : public HOptimization {
         codegen_(cg),
         instruction_set_(instruction_set) {}
 
-  bool Run() OVERRIDE {
+  bool Run() override {
     return Run(/*only_optimize_loop_blocks*/ true, /*schedule_randomly*/ false);
   }
 

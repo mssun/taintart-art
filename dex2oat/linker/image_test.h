@@ -83,7 +83,7 @@ class ImageTest : public CommonCompilerTest {
                const std::string& extra_dex = "",
                const std::initializer_list<std::string>& image_classes = {});
 
-  void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE {
+  void SetUpRuntimeOptions(RuntimeOptions* options) override {
     CommonCompilerTest::SetUpRuntimeOptions(options);
     QuickCompilerCallbacks* new_callbacks =
         new QuickCompilerCallbacks(CompilerCallbacks::CallbackMode::kCompileBootImage);
@@ -92,7 +92,7 @@ class ImageTest : public CommonCompilerTest {
     options->push_back(std::make_pair("compilercallbacks", callbacks_.get()));
   }
 
-  std::unique_ptr<HashSet<std::string>> GetImageClasses() OVERRIDE {
+  std::unique_ptr<HashSet<std::string>> GetImageClasses() override {
     return std::make_unique<HashSet<std::string>>(image_classes_);
   }
 

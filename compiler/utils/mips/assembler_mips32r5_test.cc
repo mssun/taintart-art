@@ -61,15 +61,15 @@ class AssemblerMIPS32r5Test : public AssemblerTest<mips::MipsAssembler,
 
  protected:
   // Get the typically used name for this architecture, e.g., aarch64, x86-64, ...
-  std::string GetArchitectureString() OVERRIDE {
+  std::string GetArchitectureString() override {
     return "mips";
   }
 
-  std::string GetAssemblerParameters() OVERRIDE {
+  std::string GetAssemblerParameters() override {
     return " --no-warn -32 -march=mips32r5 -mmsa";
   }
 
-  void Pad(std::vector<uint8_t>& data) OVERRIDE {
+  void Pad(std::vector<uint8_t>& data) override {
     // The GNU linker unconditionally pads the code segment with NOPs to a size that is a multiple
     // of 16 and there doesn't appear to be a way to suppress this padding. Our assembler doesn't
     // pad, so, in order for two assembler outputs to match, we need to match the padding as well.
@@ -78,15 +78,15 @@ class AssemblerMIPS32r5Test : public AssemblerTest<mips::MipsAssembler,
     data.insert(data.end(), pad_size, 0);
   }
 
-  std::string GetDisassembleParameters() OVERRIDE {
+  std::string GetDisassembleParameters() override {
     return " -D -bbinary -mmips:isa32r5";
   }
 
-  mips::MipsAssembler* CreateAssembler(ArenaAllocator* allocator) OVERRIDE {
+  mips::MipsAssembler* CreateAssembler(ArenaAllocator* allocator) override {
     return new (allocator) mips::MipsAssembler(allocator, instruction_set_features_.get());
   }
 
-  void SetUpHelpers() OVERRIDE {
+  void SetUpHelpers() override {
     if (registers_.size() == 0) {
       registers_.push_back(new mips::Register(mips::ZERO));
       registers_.push_back(new mips::Register(mips::AT));
@@ -222,7 +222,7 @@ class AssemblerMIPS32r5Test : public AssemblerTest<mips::MipsAssembler,
     }
   }
 
-  void TearDown() OVERRIDE {
+  void TearDown() override {
     AssemblerTest::TearDown();
     STLDeleteElements(&registers_);
     STLDeleteElements(&fp_registers_);
@@ -234,23 +234,23 @@ class AssemblerMIPS32r5Test : public AssemblerTest<mips::MipsAssembler,
     UNREACHABLE();
   }
 
-  std::vector<mips::Register*> GetRegisters() OVERRIDE {
+  std::vector<mips::Register*> GetRegisters() override {
     return registers_;
   }
 
-  std::vector<mips::FRegister*> GetFPRegisters() OVERRIDE {
+  std::vector<mips::FRegister*> GetFPRegisters() override {
     return fp_registers_;
   }
 
-  std::vector<mips::VectorRegister*> GetVectorRegisters() OVERRIDE {
+  std::vector<mips::VectorRegister*> GetVectorRegisters() override {
     return vec_registers_;
   }
 
-  uint32_t CreateImmediate(int64_t imm_value) OVERRIDE {
+  uint32_t CreateImmediate(int64_t imm_value) override {
     return imm_value;
   }
 
-  std::string GetSecondaryRegisterName(const mips::Register& reg) OVERRIDE {
+  std::string GetSecondaryRegisterName(const mips::Register& reg) override {
     CHECK(secondary_register_names_.find(reg) != secondary_register_names_.end());
     return secondary_register_names_[reg];
   }

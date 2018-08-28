@@ -31,7 +31,7 @@ namespace dwarf {
 //  * Keep track of current state and convert absolute values to deltas.
 //  * Divide by header-defined factors as appropriate.
 template<typename Vector = std::vector<uint8_t>>
-class DebugLineOpCodeWriter FINAL : private Writer<Vector> {
+class DebugLineOpCodeWriter final : private Writer<Vector> {
   static_assert(std::is_same<typename Vector::value_type, uint8_t>::value, "Invalid value type");
 
  public:

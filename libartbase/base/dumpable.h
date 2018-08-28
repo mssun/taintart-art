@@ -29,7 +29,7 @@ namespace art {
 //   os << Dumpable<MyType>(my_type_instance);
 //
 template<typename T>
-class Dumpable FINAL {
+class Dumpable final {
  public:
   explicit Dumpable(const T& value) : value_(value) {
   }

@@ -24,17 +24,17 @@
 namespace art {
 namespace linker {
 
-class FileOutputStream FINAL : public OutputStream {
+class FileOutputStream final : public OutputStream {
  public:
   explicit FileOutputStream(File* file);
 
-  ~FileOutputStream() OVERRIDE {}
+  ~FileOutputStream() override {}
 
-  bool WriteFully(const void* buffer, size_t byte_count) OVERRIDE;
+  bool WriteFully(const void* buffer, size_t byte_count) override;
 
-  off_t Seek(off_t offset, Whence whence) OVERRIDE;
+  off_t Seek(off_t offset, Whence whence) override;
 
-  bool Flush() OVERRIDE;
+  bool Flush() override;
 
  private:
   File* const file_;

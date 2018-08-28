@@ -25,7 +25,7 @@
 
 namespace art {
 
-class CompilerFilter FINAL {
+class CompilerFilter final {
  public:
   // Note: Order here matters. Later filter choices are considered "as good
   // as" earlier filter choices.

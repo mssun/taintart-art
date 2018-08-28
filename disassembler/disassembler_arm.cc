@@ -39,15 +39,15 @@ using vixl::aarch32::pc;
 
 static const vixl::aarch32::Register tr(TR);
 
-class DisassemblerArm::CustomDisassembler FINAL : public PrintDisassembler {
-  class CustomDisassemblerStream FINAL : public DisassemblerStream {
+class DisassemblerArm::CustomDisassembler final : public PrintDisassembler {
+  class CustomDisassemblerStream final : public DisassemblerStream {
    public:
     CustomDisassemblerStream(std::ostream& os,
                              const CustomDisassembler* disasm,
                              const DisassemblerOptions* options)
         : DisassemblerStream(os), disasm_(disasm), options_(options) {}
 
-    DisassemblerStream& operator<<(const PrintLabel& label) OVERRIDE {
+    DisassemblerStream& operator<<(const PrintLabel& label) override {
       const LocationType type = label.GetLocationType();
 
       switch (type) {
@@ -73,7 +73,7 @@ class DisassemblerArm::CustomDisassembler FINAL : public PrintDisassembler {
       }
     }
 
-    DisassemblerStream& operator<<(vixl::aarch32::Register reg) OVERRIDE {
+    DisassemblerStream& operator<<(vixl::aarch32::Register reg) override {
       if (reg.Is(tr)) {
         os() << "tr";
         return *this;
@@ -82,7 +82,7 @@ class DisassemblerArm::CustomDisassembler FINAL : public PrintDisassembler {
       }
     }
 
-    DisassemblerStream& operator<<(const MemOperand& operand) OVERRIDE {
+    DisassemblerStream& operator<<(const MemOperand& operand) override {
       // VIXL must use a PrintLabel object whenever the base register is PC;
       // the following check verifies this invariant, and guards against bugs.
       DCHECK(!operand.GetBaseRegister().Is(pc));
@@ -96,7 +96,7 @@ class DisassemblerArm::CustomDisassembler FINAL : public PrintDisassembler {
       return *this;
     }
 
-    DisassemblerStream& operator<<(const vixl::aarch32::AlignedMemOperand& operand) OVERRIDE {
+    DisassemblerStream& operator<<(const vixl::aarch32::AlignedMemOperand& operand) override {
       // VIXL must use a PrintLabel object whenever the base register is PC;
       // the following check verifies this invariant, and guards against bugs.
       DCHECK(!operand.GetBaseRegister().Is(pc));
@@ -116,7 +116,7 @@ class DisassemblerArm::CustomDisassembler FINAL : public PrintDisassembler {
         disassembler_stream_(os, this, options),
         is_t32_(true) {}
 
-  void PrintCodeAddress(uint32_t prog_ctr) OVERRIDE {
+  void PrintCodeAddress(uint32_t prog_ctr) override {
     os() << "0x" << std::hex << std::setw(8) << std::setfill('0') << prog_ctr << ": ";
   }
 

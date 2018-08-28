@@ -44,30 +44,30 @@ class GraphChecker : public HGraphDelegateVisitor {
   // and return value pass along the observed graph sizes.
   size_t Run(bool pass_change = true, size_t last_size = 0);
 
-  void VisitBasicBlock(HBasicBlock* block) OVERRIDE;
+  void VisitBasicBlock(HBasicBlock* block) override;
 
-  void VisitInstruction(HInstruction* instruction) OVERRIDE;
-  void VisitPhi(HPhi* phi) OVERRIDE;
+  void VisitInstruction(HInstruction* instruction) override;
+  void VisitPhi(HPhi* phi) override;
 
-  void VisitBinaryOperation(HBinaryOperation* op) OVERRIDE;
-  void VisitBooleanNot(HBooleanNot* instruction) OVERRIDE;
-  void VisitBoundType(HBoundType* instruction) OVERRIDE;
-  void VisitBoundsCheck(HBoundsCheck* check) OVERRIDE;
-  void VisitCheckCast(HCheckCast* check) OVERRIDE;
-  void VisitCondition(HCondition* op) OVERRIDE;
-  void VisitConstant(HConstant* instruction) OVERRIDE;
-  void VisitDeoptimize(HDeoptimize* instruction) OVERRIDE;
-  void VisitIf(HIf* instruction) OVERRIDE;
-  void VisitInstanceOf(HInstanceOf* check) OVERRIDE;
-  void VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke) OVERRIDE;
-  void VisitLoadException(HLoadException* load) OVERRIDE;
-  void VisitNeg(HNeg* instruction) OVERRIDE;
-  void VisitPackedSwitch(HPackedSwitch* instruction) OVERRIDE;
-  void VisitReturn(HReturn* ret) OVERRIDE;
-  void VisitReturnVoid(HReturnVoid* ret) OVERRIDE;
-  void VisitSelect(HSelect* instruction) OVERRIDE;
-  void VisitTryBoundary(HTryBoundary* try_boundary) OVERRIDE;
-  void VisitTypeConversion(HTypeConversion* instruction) OVERRIDE;
+  void VisitBinaryOperation(HBinaryOperation* op) override;
+  void VisitBooleanNot(HBooleanNot* instruction) override;
+  void VisitBoundType(HBoundType* instruction) override;
+  void VisitBoundsCheck(HBoundsCheck* check) override;
+  void VisitCheckCast(HCheckCast* check) override;
+  void VisitCondition(HCondition* op) override;
+  void VisitConstant(HConstant* instruction) override;
+  void VisitDeoptimize(HDeoptimize* instruction) override;
+  void VisitIf(HIf* instruction) override;
+  void VisitInstanceOf(HInstanceOf* check) override;
+  void VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke) override;
+  void VisitLoadException(HLoadException* load) override;
+  void VisitNeg(HNeg* instruction) override;
+  void VisitPackedSwitch(HPackedSwitch* instruction) override;
+  void VisitReturn(HReturn* ret) override;
+  void VisitReturnVoid(HReturnVoid* ret) override;
+  void VisitSelect(HSelect* instruction) override;
+  void VisitTryBoundary(HTryBoundary* try_boundary) override;
+  void VisitTypeConversion(HTypeConversion* instruction) override;
 
   void CheckTypeCheckBitstringInput(HTypeCheckInstruction* check,
                                     size_t input_pos,

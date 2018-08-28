@@ -181,7 +181,7 @@ void ClassHierarchyAnalysis::ResetSingleImplementationInHierarchy(ObjPtr<mirror:
 // headers, sets the should_deoptimize flag on stack to 1.
 // TODO: also set the register value to 1 when should_deoptimize is allocated in
 // a register.
-class CHAStackVisitor FINAL  : public StackVisitor {
+class CHAStackVisitor final  : public StackVisitor {
  public:
   CHAStackVisitor(Thread* thread_in,
                   Context* context,
@@ -190,7 +190,7 @@ class CHAStackVisitor FINAL  : public StackVisitor {
         method_headers_(method_headers) {
   }
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* method = GetMethod();
     // Avoid types of methods that do not have an oat quick method header.
     if (method == nullptr ||
@@ -245,13 +245,13 @@ class CHAStackVisitor FINAL  : public StackVisitor {
   DISALLOW_COPY_AND_ASSIGN(CHAStackVisitor);
 };
 
-class CHACheckpoint FINAL : public Closure {
+class CHACheckpoint final : public Closure {
  public:
   explicit CHACheckpoint(const std::unordered_set<OatQuickMethodHeader*>& method_headers)
       : barrier_(0),
         method_headers_(method_headers) {}
 
-  void Run(Thread* thread) OVERRIDE {
+  void Run(Thread* thread) override {
     // Note thread and self may not be equal if thread was already suspended at
     // the point of the request.
     Thread* self = Thread::Current();

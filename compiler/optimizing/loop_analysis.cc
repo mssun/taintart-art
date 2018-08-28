@@ -87,14 +87,14 @@ class ArchDefaultLoopHelper : public ArchNoOptsLoopHelper {
   // Maximum number of instructions to be created as a result of full unrolling.
   static constexpr uint32_t kScalarHeuristicFullyUnrolledMaxInstrThreshold = 35;
 
-  bool IsLoopNonBeneficialForScalarOpts(LoopAnalysisInfo* analysis_info) const OVERRIDE {
+  bool IsLoopNonBeneficialForScalarOpts(LoopAnalysisInfo* analysis_info) const override {
     return analysis_info->HasLongTypeInstructions() ||
            IsLoopTooBig(analysis_info,
                         kScalarHeuristicMaxBodySizeInstr,
                         kScalarHeuristicMaxBodySizeBlocks);
   }
 
-  uint32_t GetScalarUnrollingFactor(const LoopAnalysisInfo* analysis_info) const OVERRIDE {
+  uint32_t GetScalarUnrollingFactor(const LoopAnalysisInfo* analysis_info) const override {
     int64_t trip_count = analysis_info->GetTripCount();
     // Unroll only loops with known trip count.
     if (trip_count == LoopAnalysisInfo::kUnknownTripCount) {
@@ -108,9 +108,9 @@ class ArchDefaultLoopHelper : public ArchNoOptsLoopHelper {
     return desired_unrolling_factor;
   }
 
-  bool IsLoopPeelingEnabled() const OVERRIDE { return true; }
+  bool IsLoopPeelingEnabled() const override { return true; }
 
-  bool IsFullUnrollingBeneficial(LoopAnalysisInfo* analysis_info) const OVERRIDE {
+  bool IsFullUnrollingBeneficial(LoopAnalysisInfo* analysis_info) const override {
     int64_t trip_count = analysis_info->GetTripCount();
     // We assume that trip count is known.
     DCHECK_NE(trip_count, LoopAnalysisInfo::kUnknownTripCount);
@@ -144,7 +144,7 @@ class Arm64LoopHelper : public ArchDefaultLoopHelper {
   // Loop's maximum basic block count. Loops with higher count will not be peeled/unrolled.
   static constexpr uint32_t kArm64ScalarHeuristicMaxBodySizeBlocks = 8;
 
-  bool IsLoopNonBeneficialForScalarOpts(LoopAnalysisInfo* loop_analysis_info) const OVERRIDE {
+  bool IsLoopNonBeneficialForScalarOpts(LoopAnalysisInfo* loop_analysis_info) const override {
     return IsLoopTooBig(loop_analysis_info,
                         kArm64ScalarHeuristicMaxBodySizeInstr,
                         kArm64ScalarHeuristicMaxBodySizeBlocks);
@@ -153,7 +153,7 @@ class Arm64LoopHelper : public ArchDefaultLoopHelper {
   uint32_t GetSIMDUnrollingFactor(HBasicBlock* block,
                                   int64_t trip_count,
                                   uint32_t max_peel,
-                                  uint32_t vector_length) const OVERRIDE {
+                                  uint32_t vector_length) const override {
     // Don't unroll with insufficient iterations.
     // TODO: Unroll loops with unknown trip count.
     DCHECK_NE(vector_length, 0u);

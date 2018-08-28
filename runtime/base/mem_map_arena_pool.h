@@ -21,17 +21,17 @@
 
 namespace art {
 
-class MemMapArenaPool FINAL : public ArenaPool {
+class MemMapArenaPool final : public ArenaPool {
  public:
   explicit MemMapArenaPool(bool low_4gb = false, const char* name = "LinearAlloc");
   virtual ~MemMapArenaPool();
-  Arena* AllocArena(size_t size) OVERRIDE;
-  void FreeArenaChain(Arena* first) OVERRIDE;
-  size_t GetBytesAllocated() const OVERRIDE;
-  void ReclaimMemory() OVERRIDE;
-  void LockReclaimMemory() OVERRIDE;
+  Arena* AllocArena(size_t size) override;
+  void FreeArenaChain(Arena* first) override;
+  size_t GetBytesAllocated() const override;
+  void ReclaimMemory() override;
+  void LockReclaimMemory() override;
   // Trim the maps in arenas by madvising, used by JIT to reduce memory usage.
-  void TrimMaps() OVERRIDE;
+  void TrimMaps() override;
 
  private:
   const bool low_4gb_;

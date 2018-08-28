@@ -167,19 +167,19 @@ class DummySpace : public space::ContinuousSpace {
                         end,
                         /*limit*/end) {}
 
-  space::SpaceType GetType() const OVERRIDE {
+  space::SpaceType GetType() const override {
     return space::kSpaceTypeMallocSpace;
   }
 
-  bool CanMoveObjects() const OVERRIDE {
+  bool CanMoveObjects() const override {
     return false;
   }
 
-  accounting::ContinuousSpaceBitmap* GetLiveBitmap() const OVERRIDE {
+  accounting::ContinuousSpaceBitmap* GetLiveBitmap() const override {
     return nullptr;
   }
 
-  accounting::ContinuousSpaceBitmap* GetMarkBitmap() const OVERRIDE {
+  accounting::ContinuousSpaceBitmap* GetMarkBitmap() const override {
     return nullptr;
   }
 };

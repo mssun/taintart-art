@@ -30,7 +30,7 @@ namespace proxy_test {
 
 class ProxyTest : public CommonRuntimeTest {
  protected:
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     CommonRuntimeTest::SetUp();
     // The creation of a Proxy class uses WellKnownClasses. These are not normally initialized by
     // CommonRuntimeTest so we need to do that now.

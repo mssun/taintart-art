@@ -26,13 +26,13 @@ class HConstantFoldingVisitor : public HGraphDelegateVisitor {
       : HGraphDelegateVisitor(graph) {}
 
  private:
-  void VisitBasicBlock(HBasicBlock* block) OVERRIDE;
+  void VisitBasicBlock(HBasicBlock* block) override;
 
-  void VisitUnaryOperation(HUnaryOperation* inst) OVERRIDE;
-  void VisitBinaryOperation(HBinaryOperation* inst) OVERRIDE;
+  void VisitUnaryOperation(HUnaryOperation* inst) override;
+  void VisitBinaryOperation(HBinaryOperation* inst) override;
 
-  void VisitTypeConversion(HTypeConversion* inst) OVERRIDE;
-  void VisitDivZeroCheck(HDivZeroCheck* inst) OVERRIDE;
+  void VisitTypeConversion(HTypeConversion* inst) override;
+  void VisitDivZeroCheck(HDivZeroCheck* inst) override;
 
   DISALLOW_COPY_AND_ASSIGN(HConstantFoldingVisitor);
 };
@@ -47,24 +47,24 @@ class InstructionWithAbsorbingInputSimplifier : public HGraphVisitor {
  private:
   void VisitShift(HBinaryOperation* shift);
 
-  void VisitEqual(HEqual* instruction) OVERRIDE;
-  void VisitNotEqual(HNotEqual* instruction) OVERRIDE;
+  void VisitEqual(HEqual* instruction) override;
+  void VisitNotEqual(HNotEqual* instruction) override;
 
-  void VisitAbove(HAbove* instruction) OVERRIDE;
-  void VisitAboveOrEqual(HAboveOrEqual* instruction) OVERRIDE;
-  void VisitBelow(HBelow* instruction) OVERRIDE;
-  void VisitBelowOrEqual(HBelowOrEqual* instruction) OVERRIDE;
+  void VisitAbove(HAbove* instruction) override;
+  void VisitAboveOrEqual(HAboveOrEqual* instruction) override;
+  void VisitBelow(HBelow* instruction) override;
+  void VisitBelowOrEqual(HBelowOrEqual* instruction) override;
 
-  void VisitAnd(HAnd* instruction) OVERRIDE;
-  void VisitCompare(HCompare* instruction) OVERRIDE;
-  void VisitMul(HMul* instruction) OVERRIDE;
-  void VisitOr(HOr* instruction) OVERRIDE;
-  void VisitRem(HRem* instruction) OVERRIDE;
-  void VisitShl(HShl* instruction) OVERRIDE;
-  void VisitShr(HShr* instruction) OVERRIDE;
-  void VisitSub(HSub* instruction) OVERRIDE;
-  void VisitUShr(HUShr* instruction) OVERRIDE;
-  void VisitXor(HXor* instruction) OVERRIDE;
+  void VisitAnd(HAnd* instruction) override;
+  void VisitCompare(HCompare* instruction) override;
+  void VisitMul(HMul* instruction) override;
+  void VisitOr(HOr* instruction) override;
+  void VisitRem(HRem* instruction) override;
+  void VisitShl(HShl* instruction) override;
+  void VisitShr(HShr* instruction) override;
+  void VisitSub(HSub* instruction) override;
+  void VisitUShr(HUShr* instruction) override;
+  void VisitXor(HXor* instruction) override;
 };
 
 

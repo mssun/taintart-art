@@ -31,7 +31,7 @@ class MemoryOperandVisitor : public HGraphVisitor {
         do_implicit_null_checks_(do_implicit_null_checks) {}
 
  private:
-  void VisitBoundsCheck(HBoundsCheck* check) OVERRIDE {
+  void VisitBoundsCheck(HBoundsCheck* check) override {
     // Replace the length by the array itself, so that we can do compares to memory.
     HArrayLength* array_len = check->InputAt(1)->AsArrayLength();
 

@@ -207,7 +207,7 @@ static void VMDebug_printLoadedClasses(JNIEnv* env, jclass, jint flags) {
    public:
     explicit DumpClassVisitor(int dump_flags) : flags_(dump_flags) {}
 
-    bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
       klass->DumpClass(LOG_STREAM(ERROR), flags_);
       return true;
     }

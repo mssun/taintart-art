@@ -25,24 +25,24 @@ namespace arm {
 
 constexpr size_t kFramePointerSize = static_cast<size_t>(PointerSize::k32);
 
-class ArmManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCallingConvention {
+class ArmManagedRuntimeCallingConvention final : public ManagedRuntimeCallingConvention {
  public:
   ArmManagedRuntimeCallingConvention(bool is_static, bool is_synchronized, const char* shorty)
       : ManagedRuntimeCallingConvention(is_static,
                                         is_synchronized,
                                         shorty,
                                         PointerSize::k32) {}
-  ~ArmManagedRuntimeCallingConvention() OVERRIDE {}
+  ~ArmManagedRuntimeCallingConvention() override {}
   // Calling convention
-  ManagedRegister ReturnRegister() OVERRIDE;
-  ManagedRegister InterproceduralScratchRegister() OVERRIDE;
+  ManagedRegister ReturnRegister() override;
+  ManagedRegister InterproceduralScratchRegister() override;
   // Managed runtime calling convention
-  ManagedRegister MethodRegister() OVERRIDE;
-  bool IsCurrentParamInRegister() OVERRIDE;
-  bool IsCurrentParamOnStack() OVERRIDE;
-  ManagedRegister CurrentParamRegister() OVERRIDE;
-  FrameOffset CurrentParamStackOffset() OVERRIDE;
-  const ManagedRegisterEntrySpills& EntrySpills() OVERRIDE;
+  ManagedRegister MethodRegister() override;
+  bool IsCurrentParamInRegister() override;
+  bool IsCurrentParamOnStack() override;
+  ManagedRegister CurrentParamRegister() override;
+  FrameOffset CurrentParamStackOffset() override;
+  const ManagedRegisterEntrySpills& EntrySpills() override;
 
  private:
   ManagedRegisterEntrySpills entry_spills_;
@@ -50,37 +50,37 @@ class ArmManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCallingCon
   DISALLOW_COPY_AND_ASSIGN(ArmManagedRuntimeCallingConvention);
 };
 
-class ArmJniCallingConvention FINAL : public JniCallingConvention {
+class ArmJniCallingConvention final : public JniCallingConvention {
  public:
   ArmJniCallingConvention(bool is_static,
                           bool is_synchronized,
                           bool is_critical_native,
                           const char* shorty);
-  ~ArmJniCallingConvention() OVERRIDE {}
+  ~ArmJniCallingConvention() override {}
   // Calling convention
-  ManagedRegister ReturnRegister() OVERRIDE;
-  ManagedRegister IntReturnRegister() OVERRIDE;
-  ManagedRegister InterproceduralScratchRegister() OVERRIDE;
+  ManagedRegister ReturnRegister() override;
+  ManagedRegister IntReturnRegister() override;
+  ManagedRegister InterproceduralScratchRegister() override;
   // JNI calling convention
-  void Next() OVERRIDE;  // Override default behavior for AAPCS
-  size_t FrameSize() OVERRIDE;
-  size_t OutArgSize() OVERRIDE;
-  ArrayRef<const ManagedRegister> CalleeSaveRegisters() const OVERRIDE;
-  ManagedRegister ReturnScratchRegister() const OVERRIDE;
-  uint32_t CoreSpillMask() const OVERRIDE;
-  uint32_t FpSpillMask() const OVERRIDE;
-  bool IsCurrentParamInRegister() OVERRIDE;
-  bool IsCurrentParamOnStack() OVERRIDE;
-  ManagedRegister CurrentParamRegister() OVERRIDE;
-  FrameOffset CurrentParamStackOffset() OVERRIDE;
+  void Next() override;  // Override default behavior for AAPCS
+  size_t FrameSize() override;
+  size_t OutArgSize() override;
+  ArrayRef<const ManagedRegister> CalleeSaveRegisters() const override;
+  ManagedRegister ReturnScratchRegister() const override;
+  uint32_t CoreSpillMask() const override;
+  uint32_t FpSpillMask() const override;
+  bool IsCurrentParamInRegister() override;
+  bool IsCurrentParamOnStack() override;
+  ManagedRegister CurrentParamRegister() override;
+  FrameOffset CurrentParamStackOffset() override;
 
   // AAPCS mandates return values are extended.
-  bool RequiresSmallResultTypeExtension() const OVERRIDE {
+  bool RequiresSmallResultTypeExtension() const override {
     return false;
   }
 
  protected:
-  size_t NumberOfOutgoingStackArgs() OVERRIDE;
+  size_t NumberOfOutgoingStackArgs() override;
 
  private:
   // Padding to ensure longs and doubles are not split in AAPCS

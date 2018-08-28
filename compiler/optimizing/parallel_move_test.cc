@@ -56,7 +56,7 @@ class TestParallelMoveResolverWithSwap : public ParallelMoveResolverWithSwap {
   explicit TestParallelMoveResolverWithSwap(ArenaAllocator* allocator)
       : ParallelMoveResolverWithSwap(allocator) {}
 
-  void EmitMove(size_t index) OVERRIDE {
+  void EmitMove(size_t index) override {
     MoveOperands* move = moves_[index];
     if (!message_.str().empty()) {
       message_ << " ";
@@ -68,7 +68,7 @@ class TestParallelMoveResolverWithSwap : public ParallelMoveResolverWithSwap {
     message_ << ")";
   }
 
-  void EmitSwap(size_t index) OVERRIDE {
+  void EmitSwap(size_t index) override {
     MoveOperands* move = moves_[index];
     if (!message_.str().empty()) {
       message_ << " ";
@@ -80,8 +80,8 @@ class TestParallelMoveResolverWithSwap : public ParallelMoveResolverWithSwap {
     message_ << ")";
   }
 
-  void SpillScratch(int reg ATTRIBUTE_UNUSED) OVERRIDE {}
-  void RestoreScratch(int reg ATTRIBUTE_UNUSED) OVERRIDE {}
+  void SpillScratch(int reg ATTRIBUTE_UNUSED) override {}
+  void RestoreScratch(int reg ATTRIBUTE_UNUSED) override {}
 
   std::string GetMessage() const {
     return  message_.str();
@@ -99,13 +99,13 @@ class TestParallelMoveResolverNoSwap : public ParallelMoveResolverNoSwap {
   explicit TestParallelMoveResolverNoSwap(ArenaAllocator* allocator)
       : ParallelMoveResolverNoSwap(allocator), scratch_index_(kScratchRegisterStartIndexForTest) {}
 
-  void PrepareForEmitNativeCode() OVERRIDE {
+  void PrepareForEmitNativeCode() override {
     scratch_index_ = kScratchRegisterStartIndexForTest;
   }
 
-  void FinishEmitNativeCode() OVERRIDE {}
+  void FinishEmitNativeCode() override {}
 
-  Location AllocateScratchLocationFor(Location::Kind kind) OVERRIDE {
+  Location AllocateScratchLocationFor(Location::Kind kind) override {
     if (kind == Location::kStackSlot || kind == Location::kFpuRegister ||
         kind == Location::kRegister) {
       kind = Location::kRegister;
@@ -125,9 +125,9 @@ class TestParallelMoveResolverNoSwap : public ParallelMoveResolverNoSwap {
     return scratch;
   }
 
-  void FreeScratchLocation(Location loc ATTRIBUTE_UNUSED) OVERRIDE {}
+  void FreeScratchLocation(Location loc ATTRIBUTE_UNUSED) override {}
 
-  void EmitMove(size_t index) OVERRIDE {
+  void EmitMove(size_t index) override {
     MoveOperands* move = moves_[index];
     if (!message_.str().empty()) {
       message_ << " ";

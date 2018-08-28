@@ -27,24 +27,24 @@ constexpr size_t kFramePointerSize = 8;
 static_assert(kFramePointerSize == static_cast<size_t>(PointerSize::k64),
               "Invalid frame pointer size");
 
-class Mips64ManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCallingConvention {
+class Mips64ManagedRuntimeCallingConvention final : public ManagedRuntimeCallingConvention {
  public:
   Mips64ManagedRuntimeCallingConvention(bool is_static, bool is_synchronized, const char* shorty)
       : ManagedRuntimeCallingConvention(is_static,
                                         is_synchronized,
                                         shorty,
                                         PointerSize::k64) {}
-  ~Mips64ManagedRuntimeCallingConvention() OVERRIDE {}
+  ~Mips64ManagedRuntimeCallingConvention() override {}
   // Calling convention
-  ManagedRegister ReturnRegister() OVERRIDE;
-  ManagedRegister InterproceduralScratchRegister() OVERRIDE;
+  ManagedRegister ReturnRegister() override;
+  ManagedRegister InterproceduralScratchRegister() override;
   // Managed runtime calling convention
-  ManagedRegister MethodRegister() OVERRIDE;
-  bool IsCurrentParamInRegister() OVERRIDE;
-  bool IsCurrentParamOnStack() OVERRIDE;
-  ManagedRegister CurrentParamRegister() OVERRIDE;
-  FrameOffset CurrentParamStackOffset() OVERRIDE;
-  const ManagedRegisterEntrySpills& EntrySpills() OVERRIDE;
+  ManagedRegister MethodRegister() override;
+  bool IsCurrentParamInRegister() override;
+  bool IsCurrentParamOnStack() override;
+  ManagedRegister CurrentParamRegister() override;
+  FrameOffset CurrentParamStackOffset() override;
+  const ManagedRegisterEntrySpills& EntrySpills() override;
 
  private:
   ManagedRegisterEntrySpills entry_spills_;
@@ -52,36 +52,36 @@ class Mips64ManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCalling
   DISALLOW_COPY_AND_ASSIGN(Mips64ManagedRuntimeCallingConvention);
 };
 
-class Mips64JniCallingConvention FINAL : public JniCallingConvention {
+class Mips64JniCallingConvention final : public JniCallingConvention {
  public:
   Mips64JniCallingConvention(bool is_static,
                              bool is_synchronized,
                              bool is_critical_native,
                              const char* shorty);
-  ~Mips64JniCallingConvention() OVERRIDE {}
+  ~Mips64JniCallingConvention() override {}
   // Calling convention
-  ManagedRegister ReturnRegister() OVERRIDE;
-  ManagedRegister IntReturnRegister() OVERRIDE;
-  ManagedRegister InterproceduralScratchRegister() OVERRIDE;
+  ManagedRegister ReturnRegister() override;
+  ManagedRegister IntReturnRegister() override;
+  ManagedRegister InterproceduralScratchRegister() override;
   // JNI calling convention
-  size_t FrameSize() OVERRIDE;
-  size_t OutArgSize() OVERRIDE;
-  ArrayRef<const ManagedRegister> CalleeSaveRegisters() const OVERRIDE;
-  ManagedRegister ReturnScratchRegister() const OVERRIDE;
-  uint32_t CoreSpillMask() const OVERRIDE;
-  uint32_t FpSpillMask() const OVERRIDE;
-  bool IsCurrentParamInRegister() OVERRIDE;
-  bool IsCurrentParamOnStack() OVERRIDE;
-  ManagedRegister CurrentParamRegister() OVERRIDE;
-  FrameOffset CurrentParamStackOffset() OVERRIDE;
+  size_t FrameSize() override;
+  size_t OutArgSize() override;
+  ArrayRef<const ManagedRegister> CalleeSaveRegisters() const override;
+  ManagedRegister ReturnScratchRegister() const override;
+  uint32_t CoreSpillMask() const override;
+  uint32_t FpSpillMask() const override;
+  bool IsCurrentParamInRegister() override;
+  bool IsCurrentParamOnStack() override;
+  ManagedRegister CurrentParamRegister() override;
+  FrameOffset CurrentParamStackOffset() override;
 
   // Mips64 does not need to extend small return types.
-  bool RequiresSmallResultTypeExtension() const OVERRIDE {
+  bool RequiresSmallResultTypeExtension() const override {
     return false;
   }
 
  protected:
-  size_t NumberOfOutgoingStackArgs() OVERRIDE;
+  size_t NumberOfOutgoingStackArgs() override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Mips64JniCallingConvention);

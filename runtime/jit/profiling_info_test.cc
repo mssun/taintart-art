@@ -40,7 +40,7 @@ static constexpr size_t kMaxMethodIds = 65535;
 
 class ProfileCompilationInfoTest : public CommonRuntimeTest {
  public:
-  void PostRuntimeCreate() OVERRIDE {
+  void PostRuntimeCreate() override {
     allocator_.reset(new ArenaAllocator(Runtime::Current()->GetArenaPool()));
   }
 

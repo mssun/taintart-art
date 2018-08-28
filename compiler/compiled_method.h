@@ -104,7 +104,7 @@ class CompiledCode {
   uint32_t packed_fields_;
 };
 
-class CompiledMethod FINAL : public CompiledCode {
+class CompiledMethod final : public CompiledCode {
  public:
   // Constructs a CompiledMethod.
   // Note: Consider using the static allocation methods below that will allocate the CompiledMethod
