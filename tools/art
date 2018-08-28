@@ -381,7 +381,6 @@ done
 PROG_DIR="$(cd "${PROG_NAME%/*}" ; pwd -P)"
 ANDROID_ROOT=$PROG_DIR/..
 ART_BINARY_PATH=$ANDROID_ROOT/bin/$ART_BINARY
-ISA=$($ART_BINARY_PATH -showversion | (read art version number isa && echo $isa))
 
 if [ ! -x "$ART_BINARY_PATH" ]; then
   cat 1>&2 <<EOF
@@ -410,6 +409,7 @@ LIBDIR="$(find_libdir $ART_BINARY_PATH)"
 LD_LIBRARY_PATH=$ANDROID_ROOT/$LIBDIR
 DEFAULT_IMAGE_LOCATION="$(detect_boot_image_location)"
 DEX2OAT_BOOT_IMAGE="$DEFAULT_IMAGE_LOCATION"
+ISA=$(LD_LIBRARY_PATH=$LD_LIBRARY_PATH $ART_BINARY_PATH -showversion | (read art version number isa && echo $isa))
 
 # Extract the dex2oat flags from the list of arguments.
 # -Xcompiler-options arguments are stored in DEX2OAT_FLAGS array
