@@ -132,7 +132,7 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   exit(kErrorInvalidArguments);
 }
 
-class DexoptAnalyzer FINAL {
+class DexoptAnalyzer final {
  public:
   DexoptAnalyzer() :
       assume_profile_changed_(false),

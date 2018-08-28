@@ -329,8 +329,8 @@ class ModUnionCheckReferences {
 
 class EmptyMarkObjectVisitor : public MarkObjectVisitor {
  public:
-  mirror::Object* MarkObject(mirror::Object* obj) OVERRIDE {return obj;}
-  void MarkHeapReference(mirror::HeapReference<mirror::Object>*, bool) OVERRIDE {}
+  mirror::Object* MarkObject(mirror::Object* obj) override {return obj;}
+  void MarkHeapReference(mirror::HeapReference<mirror::Object>*, bool) override {}
 };
 
 void ModUnionTable::FilterCards() {

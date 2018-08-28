@@ -35,7 +35,7 @@ class FindPointerAllocatorVisitor : public AllocatorVisitor {
   explicit FindPointerAllocatorVisitor(void* ptr) : is_found(false), ptr_(ptr) {}
 
   bool Visit(LinearAlloc* alloc)
-      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) OVERRIDE {
+      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) override {
     is_found = alloc->Contains(ptr_);
     return !is_found;
   }

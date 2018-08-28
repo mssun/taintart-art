@@ -29,28 +29,28 @@ template <typename BaseMallocSpaceType,
           size_t kMemoryToolRedZoneBytes,
           bool kAdjustForRedzoneInAllocSize,
           bool kUseObjSizeForUsable>
-class MemoryToolMallocSpace FINAL : public BaseMallocSpaceType {
+class MemoryToolMallocSpace final : public BaseMallocSpaceType {
  public:
   mirror::Object* AllocWithGrowth(Thread* self, size_t num_bytes, size_t* bytes_allocated,
                                   size_t* usable_size, size_t* bytes_tl_bulk_allocated)
-      OVERRIDE;
+      override;
   mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                        size_t* usable_size, size_t* bytes_tl_bulk_allocated) OVERRIDE;
+                        size_t* usable_size, size_t* bytes_tl_bulk_allocated) override;
   mirror::Object* AllocThreadUnsafe(Thread* self, size_t num_bytes, size_t* bytes_allocated,
                                     size_t* usable_size, size_t* bytes_tl_bulk_allocated)
-      OVERRIDE REQUIRES(Locks::mutator_lock_);
+      override REQUIRES(Locks::mutator_lock_);
 
-  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) OVERRIDE;
+  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) override;
 
-  size_t Free(Thread* self, mirror::Object* ptr) OVERRIDE
+  size_t Free(Thread* self, mirror::Object* ptr) override
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) OVERRIDE
+  size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) override
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void RegisterRecentFree(mirror::Object* ptr ATTRIBUTE_UNUSED) OVERRIDE {}
+  void RegisterRecentFree(mirror::Object* ptr ATTRIBUTE_UNUSED) override {}
 
-  size_t MaxBytesBulkAllocatedFor(size_t num_bytes) OVERRIDE;
+  size_t MaxBytesBulkAllocatedFor(size_t num_bytes) override;
 
   template <typename... Params>
   MemoryToolMallocSpace(MemMap&& mem_map, size_t initial_size, Params... params);

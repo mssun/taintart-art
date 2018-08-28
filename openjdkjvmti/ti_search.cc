@@ -186,7 +186,7 @@ static void Update() REQUIRES_SHARED(art::Locks::mutator_lock_) {
 }
 
 struct SearchCallback : public art::RuntimePhaseCallback {
-  void NextRuntimePhase(RuntimePhase phase) OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void NextRuntimePhase(RuntimePhase phase) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     if (phase == RuntimePhase::kStart) {
       // It's time to update the system properties.
       Update();

@@ -85,7 +85,7 @@ class InstallStubsClassVisitor : public ClassVisitor {
   explicit InstallStubsClassVisitor(Instrumentation* instrumentation)
       : instrumentation_(instrumentation) {}
 
-  bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE REQUIRES(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES(Locks::mutator_lock_) {
     instrumentation_->InstallStubsForClass(klass.Ptr());
     return true;  // we visit all classes.
   }
@@ -264,7 +264,7 @@ void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
 // existing instrumentation frames.
 static void InstrumentationInstallStack(Thread* thread, void* arg)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  struct InstallStackVisitor FINAL : public StackVisitor {
+  struct InstallStackVisitor final : public StackVisitor {
     InstallStackVisitor(Thread* thread_in, Context* context, uintptr_t instrumentation_exit_pc)
         : StackVisitor(thread_in, context, kInstrumentationStackWalk),
           instrumentation_stack_(thread_in->GetInstrumentationStack()),
@@ -273,7 +273,7 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
           last_return_pc_(0) {
     }
 
-    bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
       ArtMethod* m = GetMethod();
       if (m == nullptr) {
         if (kVerboseInstrumentation) {
@@ -429,7 +429,7 @@ static void InstrumentationRestoreStack(Thread* thread, void* arg)
     REQUIRES(Locks::mutator_lock_) {
   Locks::mutator_lock_->AssertExclusiveHeld(Thread::Current());
 
-  struct RestoreStackVisitor FINAL : public StackVisitor {
+  struct RestoreStackVisitor final : public StackVisitor {
     RestoreStackVisitor(Thread* thread_in, uintptr_t instrumentation_exit_pc,
                         Instrumentation* instrumentation)
         : StackVisitor(thread_in, nullptr, kInstrumentationStackWalk),
@@ -439,7 +439,7 @@ static void InstrumentationRestoreStack(Thread* thread, void* arg)
           instrumentation_stack_(thread_in->GetInstrumentationStack()),
           frames_removed_(0) {}
 
-    bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
       if (instrumentation_stack_->size() == 0) {
         return false;  // Stop.
       }

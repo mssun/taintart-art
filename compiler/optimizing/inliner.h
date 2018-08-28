@@ -60,7 +60,7 @@ class HInliner : public HOptimization {
         handles_(handles),
         inline_stats_(nullptr) {}
 
-  bool Run() OVERRIDE;
+  bool Run() override;
 
   static constexpr const char* kInlinerPassName = "inliner";
 

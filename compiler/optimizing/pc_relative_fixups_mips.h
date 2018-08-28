@@ -34,7 +34,7 @@ class PcRelativeFixups : public HOptimization {
 
   static constexpr const char* kPcRelativeFixupsMipsPassName = "pc_relative_fixups_mips";
 
-  bool Run() OVERRIDE;
+  bool Run() override;
 
  private:
   CodeGenerator* codegen_;

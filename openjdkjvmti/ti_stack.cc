@@ -128,7 +128,7 @@ struct GetStackTraceVectorClosure : public art::Closure {
         start_result(0),
         stop_result(0) {}
 
-  void Run(art::Thread* self) OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void Run(art::Thread* self) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     auto frames_fn = [&](jvmtiFrameInfo info) {
       frames.push_back(info);
     };
@@ -195,7 +195,7 @@ struct GetStackTraceDirectClosure : public art::Closure {
     DCHECK_GE(start_input, 0u);
   }
 
-  void Run(art::Thread* self) OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void Run(art::Thread* self) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     auto frames_fn = [&](jvmtiFrameInfo info) {
       frame_buffer[index] = info;
       ++index;
@@ -287,7 +287,7 @@ struct GetAllStackTracesVectorClosure : public art::Closure {
   GetAllStackTracesVectorClosure(size_t stop, Data* data_)
       : barrier(0), stop_input(stop), data(data_) {}
 
-  void Run(art::Thread* thread) OVERRIDE
+  void Run(art::Thread* thread) override
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!data->mutex) {
     art::Thread* self = art::Thread::Current();
@@ -678,7 +678,7 @@ struct GetFrameCountClosure : public art::Closure {
  public:
   GetFrameCountClosure() : count(0) {}
 
-  void Run(art::Thread* self) OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void Run(art::Thread* self) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     GetFrameCountVisitor visitor(self);
     visitor.WalkStack(false);
 
@@ -759,7 +759,7 @@ struct GetLocationClosure : public art::Closure {
  public:
   explicit GetLocationClosure(size_t n_in) : n(n_in), method(nullptr), dex_pc(0) {}
 
-  void Run(art::Thread* self) OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void Run(art::Thread* self) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     GetLocationVisitor visitor(self, n);
     visitor.WalkStack(false);
 
@@ -842,7 +842,7 @@ struct MonitorVisitor : public art::StackVisitor, public art::SingleRootVisitor 
     delete context_;
   }
 
-  bool VisitFrame() OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     art::Locks::mutator_lock_->AssertSharedHeld(art::Thread::Current());
     if (!GetMethod()->IsRuntimeMethod()) {
       art::Monitor::VisitLocks(this, AppendOwnedMonitors, this);
@@ -867,7 +867,7 @@ struct MonitorVisitor : public art::StackVisitor, public art::SingleRootVisitor 
   }
 
   void VisitRoot(art::mirror::Object* obj, const art::RootInfo& info ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     for (const art::Handle<art::mirror::Object>& m : monitors) {
       if (m.Get() == obj) {
         return;
@@ -889,7 +889,7 @@ struct MonitorInfoClosure : public art::Closure {
   explicit MonitorInfoClosure(Fn handle_results)
       : err_(OK), handle_results_(handle_results) {}
 
-  void Run(art::Thread* target) OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  void Run(art::Thread* target) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     art::Locks::mutator_lock_->AssertSharedHeld(art::Thread::Current());
     // Find the monitors on the stack.
     MonitorVisitor visitor(target);

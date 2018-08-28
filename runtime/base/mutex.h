@@ -297,7 +297,7 @@ class LOCKABLE Mutex : public BaseMutex {
   // For negative capabilities in clang annotations.
   const Mutex& operator!() const { return *this; }
 
-  void WakeupToRespondToEmptyCheckpoint() OVERRIDE;
+  void WakeupToRespondToEmptyCheckpoint() override;
 
  private:
 #if ART_USE_FUTEXES
@@ -418,7 +418,7 @@ class SHARED_LOCKABLE ReaderWriterMutex : public BaseMutex {
   // For negative capabilities in clang annotations.
   const ReaderWriterMutex& operator!() const { return *this; }
 
-  void WakeupToRespondToEmptyCheckpoint() OVERRIDE;
+  void WakeupToRespondToEmptyCheckpoint() override;
 
  private:
 #if ART_USE_FUTEXES

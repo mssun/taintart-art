@@ -43,7 +43,7 @@ class DexFile;
 enum class InstructionSet;
 class InstructionSetFeatures;
 
-class CompilerOptions FINAL {
+class CompilerOptions final {
  public:
   // Guide heuristics to determine whether to compile method if profile data not available.
   static const size_t kDefaultHugeMethodThreshold = 10000;

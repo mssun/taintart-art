@@ -120,9 +120,9 @@ static void DoCollectNonDebuggableCallback(Thread* thread, void* data)
         : StackVisitor(t, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
           class_set_(class_set) {}
 
-    ~NonDebuggableStacksVisitor() OVERRIDE {}
+    ~NonDebuggableStacksVisitor() override {}
 
-    bool VisitFrame() OVERRIDE REQUIRES(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES(Locks::mutator_lock_) {
       if (GetMethod()->IsRuntimeMethod()) {
         return true;
       }

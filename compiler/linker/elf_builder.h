@@ -75,7 +75,7 @@ namespace linker {
 // The debug sections are written last for easier stripping.
 //
 template <typename ElfTypes>
-class ElfBuilder FINAL {
+class ElfBuilder final {
  public:
   static constexpr size_t kMaxProgramHeaders = 16;
   // SHA-1 digest.  Not using SHA_DIGEST_LENGTH from openssl/sha.h to avoid
@@ -173,21 +173,21 @@ class ElfBuilder FINAL {
 
     // This function always succeeds to simplify code.
     // Use builder's Good() to check the actual status.
-    bool WriteFully(const void* buffer, size_t byte_count) OVERRIDE {
+    bool WriteFully(const void* buffer, size_t byte_count) override {
       CHECK(owner_->current_section_ == this);
       return owner_->stream_.WriteFully(buffer, byte_count);
     }
 
     // This function always succeeds to simplify code.
     // Use builder's Good() to check the actual status.
-    off_t Seek(off_t offset, Whence whence) OVERRIDE {
+    off_t Seek(off_t offset, Whence whence) override {
       // Forward the seek as-is and trust the caller to use it reasonably.
       return owner_->stream_.Seek(offset, whence);
     }
 
     // This function flushes the output and returns whether it succeeded.
     // If there was a previous failure, this does nothing and returns false, i.e. failed.
-    bool Flush() OVERRIDE {
+    bool Flush() override {
       return owner_->stream_.Flush();
     }
 
@@ -271,7 +271,7 @@ class ElfBuilder FINAL {
   };
 
   // Writer of .dynstr section.
-  class CachedStringSection FINAL : public CachedSection {
+  class CachedStringSection final : public CachedSection {
    public:
     CachedStringSection(ElfBuilder<ElfTypes>* owner,
                         const std::string& name,
@@ -295,7 +295,7 @@ class ElfBuilder FINAL {
   };
 
   // Writer of .strtab and .shstrtab sections.
-  class StringSection FINAL : public Section {
+  class StringSection final : public Section {
    public:
     StringSection(ElfBuilder<ElfTypes>* owner,
                   const std::string& name,
@@ -338,7 +338,7 @@ class ElfBuilder FINAL {
   };
 
   // Writer of .dynsym and .symtab sections.
-  class SymbolSection FINAL : public Section {
+  class SymbolSection final : public Section {
    public:
     SymbolSection(ElfBuilder<ElfTypes>* owner,
                   const std::string& name,
@@ -410,7 +410,7 @@ class ElfBuilder FINAL {
     std::vector<Elf_Sym> syms_;  // Buffered/cached content of the whole section.
   };
 
-  class AbiflagsSection FINAL : public Section {
+  class AbiflagsSection final : public Section {
    public:
     // Section with Mips abiflag info.
     static constexpr uint8_t MIPS_AFL_REG_NONE =         0;  // no registers
@@ -480,7 +480,7 @@ class ElfBuilder FINAL {
     } abiflags_;
   };
 
-  class BuildIdSection FINAL : public Section {
+  class BuildIdSection final : public Section {
    public:
     BuildIdSection(ElfBuilder<ElfTypes>* owner,
                    const std::string& name,

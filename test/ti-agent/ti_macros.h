@@ -19,8 +19,6 @@
 
 #include "android-base/macros.h"
 
-#define FINAL final
-#define OVERRIDE override
 #define UNREACHABLE  __builtin_unreachable
 
 #endif  // ART_TEST_TI_AGENT_TI_MACROS_H_

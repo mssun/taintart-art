@@ -235,7 +235,7 @@ class DexMember {
   const bool is_method_;
 };
 
-class ClassPath FINAL {
+class ClassPath final {
  public:
   ClassPath(const std::vector<std::string>& dex_paths, bool open_writable) {
     OpenDexFiles(dex_paths, open_writable);
@@ -316,7 +316,7 @@ class ClassPath FINAL {
   std::vector<std::unique_ptr<const DexFile>> dex_files_;
 };
 
-class HierarchyClass FINAL {
+class HierarchyClass final {
  public:
   HierarchyClass() {}
 
@@ -455,7 +455,7 @@ class HierarchyClass FINAL {
   std::vector<HierarchyClass*> extended_by_;
 };
 
-class Hierarchy FINAL {
+class Hierarchy final {
  public:
   explicit Hierarchy(ClassPath& classpath) : classpath_(classpath) {
     BuildClassHierarchy();
@@ -559,7 +559,7 @@ class Hierarchy FINAL {
   std::map<std::string, HierarchyClass> classes_;
 };
 
-class HiddenApi FINAL {
+class HiddenApi final {
  public:
   HiddenApi() {}
 

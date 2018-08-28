@@ -442,7 +442,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
 
   class TestRootVisitor : public SingleRootVisitor {
    public:
-    void VisitRoot(mirror::Object* root, const RootInfo& info ATTRIBUTE_UNUSED) OVERRIDE {
+    void VisitRoot(mirror::Object* root, const RootInfo& info ATTRIBUTE_UNUSED) override {
       EXPECT_TRUE(root != nullptr);
     }
   };
@@ -450,7 +450,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
 
 class ClassLinkerMethodHandlesTest : public ClassLinkerTest {
  protected:
-  virtual void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE {
+  void SetUpRuntimeOptions(RuntimeOptions* options) override {
     CommonRuntimeTest::SetUpRuntimeOptions(options);
   }
 };

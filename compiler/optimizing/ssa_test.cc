@@ -38,15 +38,15 @@ class SsaPrettyPrinter : public HPrettyPrinter {
  public:
   explicit SsaPrettyPrinter(HGraph* graph) : HPrettyPrinter(graph), str_("") {}
 
-  void PrintInt(int value) OVERRIDE {
+  void PrintInt(int value) override {
     str_ += android::base::StringPrintf("%d", value);
   }
 
-  void PrintString(const char* value) OVERRIDE {
+  void PrintString(const char* value) override {
     str_ += value;
   }
 
-  void PrintNewLine() OVERRIDE {
+  void PrintNewLine() override {
     str_ += '\n';
   }
 
@@ -54,7 +54,7 @@ class SsaPrettyPrinter : public HPrettyPrinter {
 
   std::string str() const { return str_; }
 
-  void VisitIntConstant(HIntConstant* constant) OVERRIDE {
+  void VisitIntConstant(HIntConstant* constant) override {
     PrintPreInstruction(constant);
     str_ += constant->DebugName();
     str_ += " ";

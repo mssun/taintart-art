@@ -36,7 +36,7 @@
 namespace art {
 namespace instrumentation {
 
-class TestInstrumentationListener FINAL : public instrumentation::InstrumentationListener {
+class TestInstrumentationListener final : public instrumentation::InstrumentationListener {
  public:
   TestInstrumentationListener()
     : received_method_enter_event(false),
@@ -59,7 +59,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                      Handle<mirror::Object> this_object ATTRIBUTE_UNUSED,
                      ArtMethod* method ATTRIBUTE_UNUSED,
                      uint32_t dex_pc ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_method_enter_event = true;
   }
 
@@ -68,7 +68,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                     ArtMethod* method ATTRIBUTE_UNUSED,
                     uint32_t dex_pc ATTRIBUTE_UNUSED,
                     Handle<mirror::Object> return_value ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_method_exit_object_event = true;
   }
 
@@ -77,7 +77,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                     ArtMethod* method ATTRIBUTE_UNUSED,
                     uint32_t dex_pc ATTRIBUTE_UNUSED,
                     const JValue& return_value ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_method_exit_event = true;
   }
 
@@ -85,7 +85,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                     Handle<mirror::Object> this_object ATTRIBUTE_UNUSED,
                     ArtMethod* method ATTRIBUTE_UNUSED,
                     uint32_t dex_pc ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_method_unwind_event = true;
   }
 
@@ -93,7 +93,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                   Handle<mirror::Object> this_object ATTRIBUTE_UNUSED,
                   ArtMethod* method ATTRIBUTE_UNUSED,
                   uint32_t new_dex_pc ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_dex_pc_moved_event = true;
   }
 
@@ -102,7 +102,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                  ArtMethod* method ATTRIBUTE_UNUSED,
                  uint32_t dex_pc ATTRIBUTE_UNUSED,
                  ArtField* field ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_field_read_event = true;
   }
 
@@ -112,7 +112,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                     uint32_t dex_pc ATTRIBUTE_UNUSED,
                     ArtField* field ATTRIBUTE_UNUSED,
                     Handle<mirror::Object> field_value ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_field_written_object_event = true;
   }
 
@@ -122,19 +122,19 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                     uint32_t dex_pc ATTRIBUTE_UNUSED,
                     ArtField* field ATTRIBUTE_UNUSED,
                     const JValue& field_value ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_field_written_event = true;
   }
 
   void ExceptionThrown(Thread* thread ATTRIBUTE_UNUSED,
                        Handle<mirror::Throwable> exception_object ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_exception_thrown_event = true;
   }
 
   void ExceptionHandled(Thread* self ATTRIBUTE_UNUSED,
                         Handle<mirror::Throwable> throwable ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_exception_handled_event = true;
   }
 
@@ -142,7 +142,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
               ArtMethod* method ATTRIBUTE_UNUSED,
               uint32_t dex_pc ATTRIBUTE_UNUSED,
               int32_t dex_pc_offset ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_branch_event = true;
   }
 
@@ -151,12 +151,12 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
                                 ArtMethod* caller ATTRIBUTE_UNUSED,
                                 uint32_t dex_pc ATTRIBUTE_UNUSED,
                                 ArtMethod* callee ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_invoke_virtual_or_interface_event = true;
   }
 
   void WatchedFramePop(Thread* thread ATTRIBUTE_UNUSED, const ShadowFrame& frame ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+      override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_watched_frame_pop  = true;
   }
 

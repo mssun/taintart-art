@@ -79,9 +79,9 @@ class InvokeDexCallingConventionVisitorMIPS64 : public InvokeDexCallingConventio
   InvokeDexCallingConventionVisitorMIPS64() {}
   virtual ~InvokeDexCallingConventionVisitorMIPS64() {}
 
-  Location GetNextLocation(DataType::Type type) OVERRIDE;
-  Location GetReturnLocation(DataType::Type type) const OVERRIDE;
-  Location GetMethodLocation() const OVERRIDE;
+  Location GetNextLocation(DataType::Type type) override;
+  Location GetReturnLocation(DataType::Type type) const override;
+  Location GetMethodLocation() const override;
 
  private:
   InvokeDexCallingConvention calling_convention;
@@ -108,22 +108,22 @@ class FieldAccessCallingConventionMIPS64 : public FieldAccessCallingConvention {
  public:
   FieldAccessCallingConventionMIPS64() {}
 
-  Location GetObjectLocation() const OVERRIDE {
+  Location GetObjectLocation() const override {
     return Location::RegisterLocation(A1);
   }
-  Location GetFieldIndexLocation() const OVERRIDE {
+  Location GetFieldIndexLocation() const override {
     return Location::RegisterLocation(A0);
   }
-  Location GetReturnLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetReturnLocation(DataType::Type type ATTRIBUTE_UNUSED) const override {
     return Location::RegisterLocation(V0);
   }
   Location GetSetValueLocation(DataType::Type type ATTRIBUTE_UNUSED,
-                               bool is_instance) const OVERRIDE {
+                               bool is_instance) const override {
     return is_instance
         ? Location::RegisterLocation(A2)
         : Location::RegisterLocation(A1);
   }
-  Location GetFpuLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetFpuLocation(DataType::Type type ATTRIBUTE_UNUSED) const override {
     return Location::FpuRegisterLocation(F0);
   }
 
@@ -136,10 +136,10 @@ class ParallelMoveResolverMIPS64 : public ParallelMoveResolverWithSwap {
   ParallelMoveResolverMIPS64(ArenaAllocator* allocator, CodeGeneratorMIPS64* codegen)
       : ParallelMoveResolverWithSwap(allocator), codegen_(codegen) {}
 
-  void EmitMove(size_t index) OVERRIDE;
-  void EmitSwap(size_t index) OVERRIDE;
-  void SpillScratch(int reg) OVERRIDE;
-  void RestoreScratch(int reg) OVERRIDE;
+  void EmitMove(size_t index) override;
+  void EmitSwap(size_t index) override;
+  void SpillScratch(int reg) override;
+  void RestoreScratch(int reg) override;
 
   void Exchange(int index1, int index2, bool double_slot);
   void ExchangeQuadSlots(int index1, int index2);
@@ -173,14 +173,14 @@ class LocationsBuilderMIPS64 : public HGraphVisitor {
       : HGraphVisitor(graph), codegen_(codegen) {}
 
 #define DECLARE_VISIT_INSTRUCTION(name, super)     \
-  void Visit##name(H##name* instr) OVERRIDE;
+  void Visit##name(H##name* instr) override;
 
   FOR_EACH_CONCRETE_INSTRUCTION_COMMON(DECLARE_VISIT_INSTRUCTION)
   FOR_EACH_CONCRETE_INSTRUCTION_MIPS64(DECLARE_VISIT_INSTRUCTION)
 
 #undef DECLARE_VISIT_INSTRUCTION
 
-  void VisitInstruction(HInstruction* instruction) OVERRIDE {
+  void VisitInstruction(HInstruction* instruction) override {
     LOG(FATAL) << "Unreachable instruction " << instruction->DebugName()
                << " (id " << instruction->GetId() << ")";
   }
@@ -207,14 +207,14 @@ class InstructionCodeGeneratorMIPS64 : public InstructionCodeGenerator {
   InstructionCodeGeneratorMIPS64(HGraph* graph, CodeGeneratorMIPS64* codegen);
 
 #define DECLARE_VISIT_INSTRUCTION(name, super)     \
-  void Visit##name(H##name* instr) OVERRIDE;
+  void Visit##name(H##name* instr) override;
 
   FOR_EACH_CONCRETE_INSTRUCTION_COMMON(DECLARE_VISIT_INSTRUCTION)
   FOR_EACH_CONCRETE_INSTRUCTION_MIPS64(DECLARE_VISIT_INSTRUCTION)
 
 #undef DECLARE_VISIT_INSTRUCTION
 
-  void VisitInstruction(HInstruction* instruction) OVERRIDE {
+  void VisitInstruction(HInstruction* instruction) override {
     LOG(FATAL) << "Unreachable instruction " << instruction->DebugName()
                << " (id " << instruction->GetId() << ")";
   }
@@ -356,31 +356,31 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
                       OptimizingCompilerStats* stats = nullptr);
   virtual ~CodeGeneratorMIPS64() {}
 
-  void GenerateFrameEntry() OVERRIDE;
-  void GenerateFrameExit() OVERRIDE;
+  void GenerateFrameEntry() override;
+  void GenerateFrameExit() override;
 
-  void Bind(HBasicBlock* block) OVERRIDE;
+  void Bind(HBasicBlock* block) override;
 
-  size_t GetWordSize() const OVERRIDE { return kMips64DoublewordSize; }
+  size_t GetWordSize() const override { return kMips64DoublewordSize; }
 
-  size_t GetFloatingPointSpillSlotSize() const OVERRIDE {
+  size_t GetFloatingPointSpillSlotSize() const override {
     return GetGraph()->HasSIMD()
         ? 2 * kMips64DoublewordSize   // 16 bytes for each spill.
         : 1 * kMips64DoublewordSize;  //  8 bytes for each spill.
   }
 
-  uintptr_t GetAddressOf(HBasicBlock* block) OVERRIDE {
+  uintptr_t GetAddressOf(HBasicBlock* block) override {
     return assembler_.GetLabelLocation(GetLabelOf(block));
   }
 
-  HGraphVisitor* GetLocationBuilder() OVERRIDE { return &location_builder_; }
-  HGraphVisitor* GetInstructionVisitor() OVERRIDE { return &instruction_visitor_; }
-  Mips64Assembler* GetAssembler() OVERRIDE { return &assembler_; }
-  const Mips64Assembler& GetAssembler() const OVERRIDE { return assembler_; }
+  HGraphVisitor* GetLocationBuilder() override { return &location_builder_; }
+  HGraphVisitor* GetInstructionVisitor() override { return &instruction_visitor_; }
+  Mips64Assembler* GetAssembler() override { return &assembler_; }
+  const Mips64Assembler& GetAssembler() const override { return assembler_; }
 
   // Emit linker patches.
-  void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
-  void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) OVERRIDE;
+  void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) override;
+  void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) override;
 
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference field load when Baker's read barriers are used.
@@ -471,17 +471,17 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
 
   // Register allocation.
 
-  void SetupBlockedRegisters() const OVERRIDE;
+  void SetupBlockedRegisters() const override;
 
-  size_t SaveCoreRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
-  size_t RestoreCoreRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
-  size_t SaveFloatingPointRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
-  size_t RestoreFloatingPointRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
+  size_t SaveCoreRegister(size_t stack_index, uint32_t reg_id) override;
+  size_t RestoreCoreRegister(size_t stack_index, uint32_t reg_id) override;
+  size_t SaveFloatingPointRegister(size_t stack_index, uint32_t reg_id) override;
+  size_t RestoreFloatingPointRegister(size_t stack_index, uint32_t reg_id) override;
 
-  void DumpCoreRegister(std::ostream& stream, int reg) const OVERRIDE;
-  void DumpFloatingPointRegister(std::ostream& stream, int reg) const OVERRIDE;
+  void DumpCoreRegister(std::ostream& stream, int reg) const override;
+  void DumpFloatingPointRegister(std::ostream& stream, int reg) const override;
 
-  InstructionSet GetInstructionSet() const OVERRIDE { return InstructionSet::kMips64; }
+  InstructionSet GetInstructionSet() const override { return InstructionSet::kMips64; }
 
   const Mips64InstructionSetFeatures& GetInstructionSetFeatures() const;
 
@@ -489,22 +489,22 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
     return CommonGetLabelOf<Mips64Label>(block_labels_, block);
   }
 
-  void Initialize() OVERRIDE {
+  void Initialize() override {
     block_labels_ = CommonInitializeLabels<Mips64Label>();
   }
 
   // We prefer aligned loads and stores (less code), so spill and restore registers in slow paths
   // at aligned locations.
-  uint32_t GetPreferredSlotsAlignment() const OVERRIDE { return kMips64DoublewordSize; }
+  uint32_t GetPreferredSlotsAlignment() const override { return kMips64DoublewordSize; }
 
-  void Finalize(CodeAllocator* allocator) OVERRIDE;
+  void Finalize(CodeAllocator* allocator) override;
 
   // Code generation helpers.
-  void MoveLocation(Location dst, Location src, DataType::Type dst_type) OVERRIDE;
+  void MoveLocation(Location dst, Location src, DataType::Type dst_type) override;
 
-  void MoveConstant(Location destination, int32_t value) OVERRIDE;
+  void MoveConstant(Location destination, int32_t value) override;
 
-  void AddLocationAsTemp(Location location, LocationSummary* locations) OVERRIDE;
+  void AddLocationAsTemp(Location location, LocationSummary* locations) override;
 
 
   void SwapLocations(Location loc1, Location loc2, DataType::Type type);
@@ -513,7 +513,7 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
   void InvokeRuntime(QuickEntrypointEnum entrypoint,
                      HInstruction* instruction,
                      uint32_t dex_pc,
-                     SlowPathCode* slow_path = nullptr) OVERRIDE;
+                     SlowPathCode* slow_path = nullptr) override;
 
   // Generate code to invoke a runtime entry point, but do not record
   // PC-related information in a stack map.
@@ -523,39 +523,39 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
 
   void GenerateInvokeRuntime(int32_t entry_point_offset);
 
-  ParallelMoveResolver* GetMoveResolver() OVERRIDE { return &move_resolver_; }
+  ParallelMoveResolver* GetMoveResolver() override { return &move_resolver_; }
 
-  bool NeedsTwoRegisters(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE { return false; }
+  bool NeedsTwoRegisters(DataType::Type type ATTRIBUTE_UNUSED) const override { return false; }
 
   // Check if the desired_string_load_kind is supported. If it is, return it,
   // otherwise return a fall-back kind that should be used instead.
   HLoadString::LoadKind GetSupportedLoadStringKind(
-      HLoadString::LoadKind desired_string_load_kind) OVERRIDE;
+      HLoadString::LoadKind desired_string_load_kind) override;
 
   // Check if the desired_class_load_kind is supported. If it is, return it,
   // otherwise return a fall-back kind that should be used instead.
   HLoadClass::LoadKind GetSupportedLoadClassKind(
-      HLoadClass::LoadKind desired_class_load_kind) OVERRIDE;
+      HLoadClass::LoadKind desired_class_load_kind) override;
 
   // Check if the desired_dispatch_info is supported. If it is, return it,
   // otherwise return a fall-back info that should be used instead.
   HInvokeStaticOrDirect::DispatchInfo GetSupportedInvokeStaticOrDirectDispatch(
       const HInvokeStaticOrDirect::DispatchInfo& desired_dispatch_info,
-      HInvokeStaticOrDirect* invoke) OVERRIDE;
+      HInvokeStaticOrDirect* invoke) override;
 
   void GenerateStaticOrDirectCall(
-      HInvokeStaticOrDirect* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
+      HInvokeStaticOrDirect* invoke, Location temp, SlowPathCode* slow_path = nullptr) override;
   void GenerateVirtualCall(
-      HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
+      HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) override;
 
   void MoveFromReturnRegister(Location trg ATTRIBUTE_UNUSED,
-                              DataType::Type type ATTRIBUTE_UNUSED) OVERRIDE {
+                              DataType::Type type ATTRIBUTE_UNUSED) override {
     UNIMPLEMENTED(FATAL) << "Not implemented on MIPS64";
   }
 
-  void GenerateNop() OVERRIDE;
-  void GenerateImplicitNullCheck(HNullCheck* instruction) OVERRIDE;
-  void GenerateExplicitNullCheck(HNullCheck* instruction) OVERRIDE;
+  void GenerateNop() override;
+  void GenerateImplicitNullCheck(HNullCheck* instruction) override;
+  void GenerateExplicitNullCheck(HNullCheck* instruction) override;
 
   // The PcRelativePatchInfo is used for PC-relative addressing of methods/strings/types,
   // whether through .data.bimg.rel.ro, .bss, or directly in the boot image.

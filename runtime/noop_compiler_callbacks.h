@@ -21,22 +21,22 @@
 
 namespace art {
 
-class NoopCompilerCallbacks FINAL : public CompilerCallbacks {
+class NoopCompilerCallbacks final : public CompilerCallbacks {
  public:
   NoopCompilerCallbacks() : CompilerCallbacks(CompilerCallbacks::CallbackMode::kCompileApp) {}
   ~NoopCompilerCallbacks() {}
 
-  void MethodVerified(verifier::MethodVerifier* verifier ATTRIBUTE_UNUSED) OVERRIDE {
+  void MethodVerified(verifier::MethodVerifier* verifier ATTRIBUTE_UNUSED) override {
   }
 
-  void ClassRejected(ClassReference ref ATTRIBUTE_UNUSED) OVERRIDE {}
+  void ClassRejected(ClassReference ref ATTRIBUTE_UNUSED) override {}
 
   // This is only used by compilers which need to be able to run without relocation even when it
   // would normally be enabled. For example the patchoat executable, and dex2oat --image, both need
   // to disable the relocation since both deal with writing out the images directly.
-  bool IsRelocationPossible() OVERRIDE { return false; }
+  bool IsRelocationPossible() override { return false; }
 
-  verifier::VerifierDeps* GetVerifierDeps() const OVERRIDE { return nullptr; }
+  verifier::VerifierDeps* GetVerifierDeps() const override { return nullptr; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NoopCompilerCallbacks);

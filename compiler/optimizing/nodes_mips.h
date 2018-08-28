@@ -30,7 +30,7 @@ class HMipsComputeBaseMethodAddress : public HExpression<0> {
                     kNoDexPc) {
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(MipsComputeBaseMethodAddress);
 
@@ -39,7 +39,7 @@ class HMipsComputeBaseMethodAddress : public HExpression<0> {
 };
 
 // Mips version of HPackedSwitch that holds a pointer to the base method address.
-class HMipsPackedSwitch FINAL : public HExpression<2> {
+class HMipsPackedSwitch final : public HExpression<2> {
  public:
   HMipsPackedSwitch(int32_t start_value,
                     int32_t num_entries,
@@ -53,7 +53,7 @@ class HMipsPackedSwitch FINAL : public HExpression<2> {
     SetRawInputAt(1, method_base);
   }
 
-  bool IsControlFlow() const OVERRIDE { return true; }
+  bool IsControlFlow() const override { return true; }
 
   int32_t GetStartValue() const { return start_value_; }
 
@@ -91,7 +91,7 @@ class HMipsPackedSwitch FINAL : public HExpression<2> {
 //
 // Note: as the instruction doesn't involve base array address into computations it has no side
 // effects.
-class HIntermediateArrayAddressIndex FINAL : public HExpression<2> {
+class HIntermediateArrayAddressIndex final : public HExpression<2> {
  public:
   HIntermediateArrayAddressIndex(HInstruction* index, HInstruction* shift, uint32_t dex_pc)
       : HExpression(kIntermediateArrayAddressIndex,
@@ -102,11 +102,11 @@ class HIntermediateArrayAddressIndex FINAL : public HExpression<2> {
     SetRawInputAt(1, shift);
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
-  bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
+  bool CanBeMoved() const override { return true; }
+  bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const override {
     return true;
   }
-  bool IsActualObject() const OVERRIDE { return false; }
+  bool IsActualObject() const override { return false; }
 
   HInstruction* GetIndex() const { return InputAt(0); }
   HInstruction* GetShift() const { return InputAt(1); }

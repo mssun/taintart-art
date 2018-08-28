@@ -25,7 +25,7 @@ class X86_64InstructionSetFeatures;
 using X86_64FeaturesUniquePtr = std::unique_ptr<const X86_64InstructionSetFeatures>;
 
 // Instruction set features relevant to the X86_64 architecture.
-class X86_64InstructionSetFeatures FINAL : public X86InstructionSetFeatures {
+class X86_64InstructionSetFeatures final : public X86InstructionSetFeatures {
  public:
   // Process a CPU variant string like "atom" or "nehalem" and create InstructionSetFeatures.
   static X86_64FeaturesUniquePtr FromVariant(const std::string& variant, std::string* error_msg) {
@@ -59,7 +59,7 @@ class X86_64InstructionSetFeatures FINAL : public X86InstructionSetFeatures {
     return Convert(X86InstructionSetFeatures::FromAssembly(true));
   }
 
-  InstructionSet GetInstructionSet() const OVERRIDE {
+  InstructionSet GetInstructionSet() const override {
     return InstructionSet::kX86_64;
   }
 
@@ -69,7 +69,7 @@ class X86_64InstructionSetFeatures FINAL : public X86InstructionSetFeatures {
   // Parse a string of the form "ssse3" adding these to a new InstructionSetFeatures.
   std::unique_ptr<const InstructionSetFeatures>
       AddFeaturesFromSplitString(const std::vector<std::string>& features,
-                                 std::string* error_msg) const OVERRIDE {
+                                 std::string* error_msg) const override {
     return X86InstructionSetFeatures::AddFeaturesFromSplitString(features, true, error_msg);
   }
 

@@ -46,12 +46,12 @@ struct AdbConnectionDebuggerController : public art::DebuggerControlCallback {
       : connection_(connection) {}
 
   // Begin running the debugger.
-  void StartDebugger() OVERRIDE;
+  void StartDebugger() override;
 
   // The debugger should begin shutting down since the runtime is ending.
-  void StopDebugger() OVERRIDE;
+  void StopDebugger() override;
 
-  bool IsDebuggerConfigured() OVERRIDE;
+  bool IsDebuggerConfigured() override;
 
  private:
   AdbConnectionState* connection_;

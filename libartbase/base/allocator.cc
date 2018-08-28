@@ -25,7 +25,7 @@
 
 namespace art {
 
-class MallocAllocator FINAL : public Allocator {
+class MallocAllocator final : public Allocator {
  public:
   MallocAllocator() {}
   ~MallocAllocator() {}
@@ -44,7 +44,7 @@ class MallocAllocator FINAL : public Allocator {
 
 MallocAllocator g_malloc_allocator;
 
-class NoopAllocator FINAL : public Allocator {
+class NoopAllocator final : public Allocator {
  public:
   NoopAllocator() {}
   ~NoopAllocator() {}

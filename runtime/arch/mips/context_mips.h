@@ -33,53 +33,53 @@ class MipsContext : public Context {
   }
   virtual ~MipsContext() {}
 
-  void Reset() OVERRIDE;
+  void Reset() override;
 
-  void FillCalleeSaves(uint8_t* frame, const QuickMethodFrameInfo& fr) OVERRIDE;
+  void FillCalleeSaves(uint8_t* frame, const QuickMethodFrameInfo& fr) override;
 
-  void SetSP(uintptr_t new_sp) OVERRIDE {
+  void SetSP(uintptr_t new_sp) override {
     SetGPR(SP, new_sp);
   }
 
-  void SetPC(uintptr_t new_pc) OVERRIDE {
+  void SetPC(uintptr_t new_pc) override {
     SetGPR(T9, new_pc);
   }
 
-  bool IsAccessibleGPR(uint32_t reg) OVERRIDE {
+  bool IsAccessibleGPR(uint32_t reg) override {
     CHECK_LT(reg, static_cast<uint32_t>(kNumberOfCoreRegisters));
     return gprs_[reg] != nullptr;
   }
 
-  uintptr_t* GetGPRAddress(uint32_t reg) OVERRIDE {
+  uintptr_t* GetGPRAddress(uint32_t reg) override {
     DCHECK_LT(reg, static_cast<uint32_t>(kNumberOfCoreRegisters));
     return gprs_[reg];
   }
 
-  uintptr_t GetGPR(uint32_t reg) OVERRIDE {
+  uintptr_t GetGPR(uint32_t reg) override {
     CHECK_LT(reg, static_cast<uint32_t>(kNumberOfCoreRegisters));
     DCHECK(IsAccessibleGPR(reg));
     return *gprs_[reg];
   }
 
-  void SetGPR(uint32_t reg, uintptr_t value) OVERRIDE;
+  void SetGPR(uint32_t reg, uintptr_t value) override;
 
-  bool IsAccessibleFPR(uint32_t reg) OVERRIDE {
+  bool IsAccessibleFPR(uint32_t reg) override {
     CHECK_LT(reg, static_cast<uint32_t>(kNumberOfFRegisters));
     return fprs_[reg] != nullptr;
   }
 
-  uintptr_t GetFPR(uint32_t reg) OVERRIDE {
+  uintptr_t GetFPR(uint32_t reg) override {
     CHECK_LT(reg, static_cast<uint32_t>(kNumberOfFRegisters));
     DCHECK(IsAccessibleFPR(reg));
     return *fprs_[reg];
   }
 
-  void SetFPR(uint32_t reg, uintptr_t value) OVERRIDE;
+  void SetFPR(uint32_t reg, uintptr_t value) override;
 
-  void SmashCallerSaves() OVERRIDE;
-  NO_RETURN void DoLongJump() OVERRIDE;
+  void SmashCallerSaves() override;
+  NO_RETURN void DoLongJump() override;
 
-  void SetArg0(uintptr_t new_arg0_value) OVERRIDE {
+  void SetArg0(uintptr_t new_arg0_value) override {
     SetGPR(A0, new_arg0_value);
   }
 

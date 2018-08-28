@@ -89,13 +89,13 @@ class FdFile : public RandomAccessFile {
   virtual ~FdFile();
 
   // RandomAccessFile API.
-  int Close() OVERRIDE WARN_UNUSED;
-  int64_t Read(char* buf, int64_t byte_count, int64_t offset) const OVERRIDE WARN_UNUSED;
-  int SetLength(int64_t new_length) OVERRIDE WARN_UNUSED;
-  int64_t GetLength() const OVERRIDE;
-  int64_t Write(const char* buf, int64_t byte_count, int64_t offset) OVERRIDE WARN_UNUSED;
+  int Close() override WARN_UNUSED;
+  int64_t Read(char* buf, int64_t byte_count, int64_t offset) const override WARN_UNUSED;
+  int SetLength(int64_t new_length) override WARN_UNUSED;
+  int64_t GetLength() const override;
+  int64_t Write(const char* buf, int64_t byte_count, int64_t offset) override WARN_UNUSED;
 
-  int Flush() OVERRIDE WARN_UNUSED;
+  int Flush() override WARN_UNUSED;
 
   // Short for SetLength(0); Flush(); Close();
   // If the file was opened with a path name and unlink = true, also calls Unlink() on the path.

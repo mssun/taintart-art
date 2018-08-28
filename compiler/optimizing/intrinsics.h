@@ -42,7 +42,7 @@ class IntrinsicsRecognizer : public HOptimization {
                        const char* name = kIntrinsicsRecognizerPassName)
       : HOptimization(graph, name, stats) {}
 
-  bool Run() OVERRIDE;
+  bool Run() override;
 
   // Static helper that recognizes intrinsic call. Returns true on success.
   // If it fails due to invoke type mismatch, wrong_invoke_type is set.

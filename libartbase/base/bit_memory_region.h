@@ -26,7 +26,7 @@ namespace art {
 
 // Bit memory region is a bit offset subregion of a normal memoryregion. This is useful for
 // abstracting away the bit start offset to avoid needing passing as an argument everywhere.
-class BitMemoryRegion FINAL : public ValueObject {
+class BitMemoryRegion final : public ValueObject {
  public:
   struct Less {
     bool operator()(const BitMemoryRegion& lhs, const BitMemoryRegion& rhs) const {

@@ -65,8 +65,8 @@ class Experiment {
 // Analyze debug info sizes.
 class AnalyzeDebugInfo  : public Experiment {
  public:
-  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) OVERRIDE;
-  void Dump(std::ostream& os, uint64_t total_size) const OVERRIDE;
+  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) override;
+  void Dump(std::ostream& os, uint64_t total_size) const override;
 
  private:
   int64_t total_bytes_ = 0u;
@@ -91,8 +91,8 @@ class AnalyzeDebugInfo  : public Experiment {
 // Count numbers of dex indices.
 class CountDexIndices : public Experiment {
  public:
-  void ProcessDexFile(const DexFile& dex_file) OVERRIDE;
-  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) OVERRIDE;
+  void ProcessDexFile(const DexFile& dex_file) override;
+  void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) override;
 
   void Dump(std::ostream& os, uint64_t total_size) const;
 
@@ -162,9 +162,9 @@ class CountDexIndices : public Experiment {
 // Measure various code metrics including args per invoke-virtual, fill/spill move patterns.
 class CodeMetrics : public Experiment {
  public:
-  void ProcessDexFile(const DexFile& dex_file) OVERRIDE;
+  void ProcessDexFile(const DexFile& dex_file) override;
 
-  void Dump(std::ostream& os, uint64_t total_size) const OVERRIDE;
+  void Dump(std::ostream& os, uint64_t total_size) const override;
 
  private:
   static constexpr size_t kMaxArgCount = 6;

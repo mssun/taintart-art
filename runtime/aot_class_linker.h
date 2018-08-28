@@ -34,14 +34,14 @@ class AotClassLinker : public ClassLinker {
                                                  Handle<mirror::Class> klass,
                                                  verifier::HardFailLogMode log_level,
                                                  std::string* error_msg)
-      OVERRIDE
+      override
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool InitializeClass(Thread *self,
                        Handle<mirror::Class> klass,
                        bool can_run_clinit,
                        bool can_init_parents)
-      OVERRIDE
+      override
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
 };

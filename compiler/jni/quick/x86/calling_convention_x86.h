@@ -25,7 +25,7 @@ namespace x86 {
 
 constexpr size_t kFramePointerSize = static_cast<size_t>(PointerSize::k32);
 
-class X86ManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCallingConvention {
+class X86ManagedRuntimeCallingConvention final : public ManagedRuntimeCallingConvention {
  public:
   X86ManagedRuntimeCallingConvention(bool is_static, bool is_synchronized, const char* shorty)
       : ManagedRuntimeCallingConvention(is_static,
@@ -33,17 +33,17 @@ class X86ManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCallingCon
                                         shorty,
                                         PointerSize::k32),
         gpr_arg_count_(0) {}
-  ~X86ManagedRuntimeCallingConvention() OVERRIDE {}
+  ~X86ManagedRuntimeCallingConvention() override {}
   // Calling convention
-  ManagedRegister ReturnRegister() OVERRIDE;
-  ManagedRegister InterproceduralScratchRegister() OVERRIDE;
+  ManagedRegister ReturnRegister() override;
+  ManagedRegister InterproceduralScratchRegister() override;
   // Managed runtime calling convention
-  ManagedRegister MethodRegister() OVERRIDE;
-  bool IsCurrentParamInRegister() OVERRIDE;
-  bool IsCurrentParamOnStack() OVERRIDE;
-  ManagedRegister CurrentParamRegister() OVERRIDE;
-  FrameOffset CurrentParamStackOffset() OVERRIDE;
-  const ManagedRegisterEntrySpills& EntrySpills() OVERRIDE;
+  ManagedRegister MethodRegister() override;
+  bool IsCurrentParamInRegister() override;
+  bool IsCurrentParamOnStack() override;
+  ManagedRegister CurrentParamRegister() override;
+  FrameOffset CurrentParamStackOffset() override;
+  const ManagedRegisterEntrySpills& EntrySpills() override;
 
  private:
   int gpr_arg_count_;
@@ -53,36 +53,36 @@ class X86ManagedRuntimeCallingConvention FINAL : public ManagedRuntimeCallingCon
 };
 
 // Implements the x86 cdecl calling convention.
-class X86JniCallingConvention FINAL : public JniCallingConvention {
+class X86JniCallingConvention final : public JniCallingConvention {
  public:
   X86JniCallingConvention(bool is_static,
                           bool is_synchronized,
                           bool is_critical_native,
                           const char* shorty);
-  ~X86JniCallingConvention() OVERRIDE {}
+  ~X86JniCallingConvention() override {}
   // Calling convention
-  ManagedRegister ReturnRegister() OVERRIDE;
-  ManagedRegister IntReturnRegister() OVERRIDE;
-  ManagedRegister InterproceduralScratchRegister() OVERRIDE;
+  ManagedRegister ReturnRegister() override;
+  ManagedRegister IntReturnRegister() override;
+  ManagedRegister InterproceduralScratchRegister() override;
   // JNI calling convention
-  size_t FrameSize() OVERRIDE;
-  size_t OutArgSize() OVERRIDE;
-  ArrayRef<const ManagedRegister> CalleeSaveRegisters() const OVERRIDE;
-  ManagedRegister ReturnScratchRegister() const OVERRIDE;
-  uint32_t CoreSpillMask() const OVERRIDE;
-  uint32_t FpSpillMask() const OVERRIDE;
-  bool IsCurrentParamInRegister() OVERRIDE;
-  bool IsCurrentParamOnStack() OVERRIDE;
-  ManagedRegister CurrentParamRegister() OVERRIDE;
-  FrameOffset CurrentParamStackOffset() OVERRIDE;
+  size_t FrameSize() override;
+  size_t OutArgSize() override;
+  ArrayRef<const ManagedRegister> CalleeSaveRegisters() const override;
+  ManagedRegister ReturnScratchRegister() const override;
+  uint32_t CoreSpillMask() const override;
+  uint32_t FpSpillMask() const override;
+  bool IsCurrentParamInRegister() override;
+  bool IsCurrentParamOnStack() override;
+  ManagedRegister CurrentParamRegister() override;
+  FrameOffset CurrentParamStackOffset() override;
 
   // x86 needs to extend small return types.
-  bool RequiresSmallResultTypeExtension() const OVERRIDE {
+  bool RequiresSmallResultTypeExtension() const override {
     return true;
   }
 
  protected:
-  size_t NumberOfOutgoingStackArgs() OVERRIDE;
+  size_t NumberOfOutgoingStackArgs() override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(X86JniCallingConvention);

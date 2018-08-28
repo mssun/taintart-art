@@ -86,7 +86,7 @@ TEST_F(InternTableTest, CrossHash) {
 
 class TestPredicate : public IsMarkedVisitor {
  public:
-  mirror::Object* IsMarked(mirror::Object* s) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+  mirror::Object* IsMarked(mirror::Object* s) override REQUIRES_SHARED(Locks::mutator_lock_) {
     bool erased = false;
     for (auto it = expected_.begin(), end = expected_.end(); it != end; ++it) {
       if (*it == s) {

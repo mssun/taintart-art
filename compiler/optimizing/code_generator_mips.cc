@@ -176,7 +176,7 @@ class BoundsCheckSlowPathMIPS : public SlowPathCodeMIPS {
  public:
   explicit BoundsCheckSlowPathMIPS(HBoundsCheck* instruction) : SlowPathCodeMIPS(instruction) {}
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     LocationSummary* locations = instruction_->GetLocations();
     CodeGeneratorMIPS* mips_codegen = down_cast<CodeGeneratorMIPS*>(codegen);
     __ Bind(GetEntryLabel());
@@ -201,9 +201,9 @@ class BoundsCheckSlowPathMIPS : public SlowPathCodeMIPS {
     CheckEntrypointTypes<kQuickThrowArrayBounds, void, int32_t, int32_t>();
   }
 
-  bool IsFatal() const OVERRIDE { return true; }
+  bool IsFatal() const override { return true; }
 
-  const char* GetDescription() const OVERRIDE { return "BoundsCheckSlowPathMIPS"; }
+  const char* GetDescription() const override { return "BoundsCheckSlowPathMIPS"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BoundsCheckSlowPathMIPS);
@@ -213,16 +213,16 @@ class DivZeroCheckSlowPathMIPS : public SlowPathCodeMIPS {
  public:
   explicit DivZeroCheckSlowPathMIPS(HDivZeroCheck* instruction) : SlowPathCodeMIPS(instruction) {}
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     CodeGeneratorMIPS* mips_codegen = down_cast<CodeGeneratorMIPS*>(codegen);
     __ Bind(GetEntryLabel());
     mips_codegen->InvokeRuntime(kQuickThrowDivZero, instruction_, instruction_->GetDexPc(), this);
     CheckEntrypointTypes<kQuickThrowDivZero, void, void>();
   }
 
-  bool IsFatal() const OVERRIDE { return true; }
+  bool IsFatal() const override { return true; }
 
-  const char* GetDescription() const OVERRIDE { return "DivZeroCheckSlowPathMIPS"; }
+  const char* GetDescription() const override { return "DivZeroCheckSlowPathMIPS"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DivZeroCheckSlowPathMIPS);
@@ -236,7 +236,7 @@ class LoadClassSlowPathMIPS : public SlowPathCodeMIPS {
     DCHECK_EQ(instruction_->IsLoadClass(), cls_ == instruction_);
   }
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     LocationSummary* locations = instruction_->GetLocations();
     Location out = locations->Out();
     const uint32_t dex_pc = instruction_->GetDexPc();
@@ -280,7 +280,7 @@ class LoadClassSlowPathMIPS : public SlowPathCodeMIPS {
     __ B(GetExitLabel());
   }
 
-  const char* GetDescription() const OVERRIDE { return "LoadClassSlowPathMIPS"; }
+  const char* GetDescription() const override { return "LoadClassSlowPathMIPS"; }
 
  private:
   // The class this slow path will load.
@@ -294,7 +294,7 @@ class LoadStringSlowPathMIPS : public SlowPathCodeMIPS {
   explicit LoadStringSlowPathMIPS(HLoadString* instruction)
       : SlowPathCodeMIPS(instruction) {}
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     DCHECK(instruction_->IsLoadString());
     DCHECK_EQ(instruction_->AsLoadString()->GetLoadKind(), HLoadString::LoadKind::kBssEntry);
     LocationSummary* locations = instruction_->GetLocations();
@@ -318,7 +318,7 @@ class LoadStringSlowPathMIPS : public SlowPathCodeMIPS {
     __ B(GetExitLabel());
   }
 
-  const char* GetDescription() const OVERRIDE { return "LoadStringSlowPathMIPS"; }
+  const char* GetDescription() const override { return "LoadStringSlowPathMIPS"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LoadStringSlowPathMIPS);
@@ -328,7 +328,7 @@ class NullCheckSlowPathMIPS : public SlowPathCodeMIPS {
  public:
   explicit NullCheckSlowPathMIPS(HNullCheck* instr) : SlowPathCodeMIPS(instr) {}
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     CodeGeneratorMIPS* mips_codegen = down_cast<CodeGeneratorMIPS*>(codegen);
     __ Bind(GetEntryLabel());
     if (instruction_->CanThrowIntoCatchBlock()) {
@@ -342,9 +342,9 @@ class NullCheckSlowPathMIPS : public SlowPathCodeMIPS {
     CheckEntrypointTypes<kQuickThrowNullPointer, void, void>();
   }
 
-  bool IsFatal() const OVERRIDE { return true; }
+  bool IsFatal() const override { return true; }
 
-  const char* GetDescription() const OVERRIDE { return "NullCheckSlowPathMIPS"; }
+  const char* GetDescription() const override { return "NullCheckSlowPathMIPS"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NullCheckSlowPathMIPS);
@@ -355,7 +355,7 @@ class SuspendCheckSlowPathMIPS : public SlowPathCodeMIPS {
   SuspendCheckSlowPathMIPS(HSuspendCheck* instruction, HBasicBlock* successor)
       : SlowPathCodeMIPS(instruction), successor_(successor) {}
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     LocationSummary* locations = instruction_->GetLocations();
     CodeGeneratorMIPS* mips_codegen = down_cast<CodeGeneratorMIPS*>(codegen);
     __ Bind(GetEntryLabel());
@@ -375,7 +375,7 @@ class SuspendCheckSlowPathMIPS : public SlowPathCodeMIPS {
     return &return_label_;
   }
 
-  const char* GetDescription() const OVERRIDE { return "SuspendCheckSlowPathMIPS"; }
+  const char* GetDescription() const override { return "SuspendCheckSlowPathMIPS"; }
 
   HBasicBlock* GetSuccessor() const {
     return successor_;
@@ -396,7 +396,7 @@ class TypeCheckSlowPathMIPS : public SlowPathCodeMIPS {
   explicit TypeCheckSlowPathMIPS(HInstruction* instruction, bool is_fatal)
       : SlowPathCodeMIPS(instruction), is_fatal_(is_fatal) {}
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     LocationSummary* locations = instruction_->GetLocations();
     uint32_t dex_pc = instruction_->GetDexPc();
     DCHECK(instruction_->IsCheckCast()
@@ -435,9 +435,9 @@ class TypeCheckSlowPathMIPS : public SlowPathCodeMIPS {
     }
   }
 
-  const char* GetDescription() const OVERRIDE { return "TypeCheckSlowPathMIPS"; }
+  const char* GetDescription() const override { return "TypeCheckSlowPathMIPS"; }
 
-  bool IsFatal() const OVERRIDE { return is_fatal_; }
+  bool IsFatal() const override { return is_fatal_; }
 
  private:
   const bool is_fatal_;
@@ -450,7 +450,7 @@ class DeoptimizationSlowPathMIPS : public SlowPathCodeMIPS {
   explicit DeoptimizationSlowPathMIPS(HDeoptimize* instruction)
     : SlowPathCodeMIPS(instruction) {}
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     CodeGeneratorMIPS* mips_codegen = down_cast<CodeGeneratorMIPS*>(codegen);
     __ Bind(GetEntryLabel());
     LocationSummary* locations = instruction_->GetLocations();
@@ -462,7 +462,7 @@ class DeoptimizationSlowPathMIPS : public SlowPathCodeMIPS {
     CheckEntrypointTypes<kQuickDeoptimize, void, DeoptimizationKind>();
   }
 
-  const char* GetDescription() const OVERRIDE { return "DeoptimizationSlowPathMIPS"; }
+  const char* GetDescription() const override { return "DeoptimizationSlowPathMIPS"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DeoptimizationSlowPathMIPS);
@@ -472,7 +472,7 @@ class ArraySetSlowPathMIPS : public SlowPathCodeMIPS {
  public:
   explicit ArraySetSlowPathMIPS(HInstruction* instruction) : SlowPathCodeMIPS(instruction) {}
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     LocationSummary* locations = instruction_->GetLocations();
     __ Bind(GetEntryLabel());
     SaveLiveRegisters(codegen, locations);
@@ -503,7 +503,7 @@ class ArraySetSlowPathMIPS : public SlowPathCodeMIPS {
     __ B(GetExitLabel());
   }
 
-  const char* GetDescription() const OVERRIDE { return "ArraySetSlowPathMIPS"; }
+  const char* GetDescription() const override { return "ArraySetSlowPathMIPS"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ArraySetSlowPathMIPS);
@@ -533,9 +533,9 @@ class ReadBarrierMarkSlowPathMIPS : public SlowPathCodeMIPS {
     DCHECK(kEmitCompilerReadBarrier);
   }
 
-  const char* GetDescription() const OVERRIDE { return "ReadBarrierMarkSlowPathMIPS"; }
+  const char* GetDescription() const override { return "ReadBarrierMarkSlowPathMIPS"; }
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     LocationSummary* locations = instruction_->GetLocations();
     Register ref_reg = ref_.AsRegister<Register>();
     DCHECK(locations->CanCall());
@@ -627,11 +627,11 @@ class ReadBarrierMarkAndUpdateFieldSlowPathMIPS : public SlowPathCodeMIPS {
     DCHECK(kEmitCompilerReadBarrier);
   }
 
-  const char* GetDescription() const OVERRIDE {
+  const char* GetDescription() const override {
     return "ReadBarrierMarkAndUpdateFieldSlowPathMIPS";
   }
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     LocationSummary* locations = instruction_->GetLocations();
     Register ref_reg = ref_.AsRegister<Register>();
     DCHECK(locations->CanCall());
@@ -798,7 +798,7 @@ class ReadBarrierForHeapReferenceSlowPathMIPS : public SlowPathCodeMIPS {
     DCHECK(!obj.Equals(ref)) << "obj=" << obj << " ref=" << ref;
   }
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     CodeGeneratorMIPS* mips_codegen = down_cast<CodeGeneratorMIPS*>(codegen);
     LocationSummary* locations = instruction_->GetLocations();
     Register reg_out = out_.AsRegister<Register>();
@@ -922,7 +922,7 @@ class ReadBarrierForHeapReferenceSlowPathMIPS : public SlowPathCodeMIPS {
     __ B(GetExitLabel());
   }
 
-  const char* GetDescription() const OVERRIDE { return "ReadBarrierForHeapReferenceSlowPathMIPS"; }
+  const char* GetDescription() const override { return "ReadBarrierForHeapReferenceSlowPathMIPS"; }
 
  private:
   Register FindAvailableCallerSaveRegister(CodeGenerator* codegen) {
@@ -965,7 +965,7 @@ class ReadBarrierForRootSlowPathMIPS : public SlowPathCodeMIPS {
     DCHECK(kEmitCompilerReadBarrier);
   }
 
-  void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
+  void EmitNativeCode(CodeGenerator* codegen) override {
     LocationSummary* locations = instruction_->GetLocations();
     Register reg_out = out_.AsRegister<Register>();
     DCHECK(locations->CanCall());
@@ -995,7 +995,7 @@ class ReadBarrierForRootSlowPathMIPS : public SlowPathCodeMIPS {
     __ B(GetExitLabel());
   }
 
-  const char* GetDescription() const OVERRIDE { return "ReadBarrierForRootSlowPathMIPS"; }
+  const char* GetDescription() const override { return "ReadBarrierForRootSlowPathMIPS"; }
 
  private:
   const Location out_;

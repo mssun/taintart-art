@@ -20,7 +20,7 @@
 namespace art {
 
 // Compute the address of the method for X86 Constant area support.
-class HX86ComputeBaseMethodAddress FINAL : public HExpression<0> {
+class HX86ComputeBaseMethodAddress final : public HExpression<0> {
  public:
   // Treat the value as an int32_t, but it is really a 32 bit native pointer.
   HX86ComputeBaseMethodAddress()
@@ -30,7 +30,7 @@ class HX86ComputeBaseMethodAddress FINAL : public HExpression<0> {
                     kNoDexPc) {
   }
 
-  bool CanBeMoved() const OVERRIDE { return true; }
+  bool CanBeMoved() const override { return true; }
 
   DECLARE_INSTRUCTION(X86ComputeBaseMethodAddress);
 
@@ -39,7 +39,7 @@ class HX86ComputeBaseMethodAddress FINAL : public HExpression<0> {
 };
 
 // Load a constant value from the constant table.
-class HX86LoadFromConstantTable FINAL : public HExpression<2> {
+class HX86LoadFromConstantTable final : public HExpression<2> {
  public:
   HX86LoadFromConstantTable(HX86ComputeBaseMethodAddress* method_base,
                             HConstant* constant)
@@ -66,7 +66,7 @@ class HX86LoadFromConstantTable FINAL : public HExpression<2> {
 };
 
 // Version of HNeg with access to the constant table for FP types.
-class HX86FPNeg FINAL : public HExpression<2> {
+class HX86FPNeg final : public HExpression<2> {
  public:
   HX86FPNeg(DataType::Type result_type,
             HInstruction* input,
@@ -89,7 +89,7 @@ class HX86FPNeg FINAL : public HExpression<2> {
 };
 
 // X86 version of HPackedSwitch that holds a pointer to the base method address.
-class HX86PackedSwitch FINAL : public HExpression<2> {
+class HX86PackedSwitch final : public HExpression<2> {
  public:
   HX86PackedSwitch(int32_t start_value,
                    int32_t num_entries,
@@ -103,7 +103,7 @@ class HX86PackedSwitch FINAL : public HExpression<2> {
     SetRawInputAt(1, method_base);
   }
 
-  bool IsControlFlow() const OVERRIDE { return true; }
+  bool IsControlFlow() const override { return true; }
 
   int32_t GetStartValue() const { return start_value_; }
 

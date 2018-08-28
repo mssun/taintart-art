@@ -708,12 +708,12 @@ class InstructionOperands {
 
 // Class for accessing operands for instructions with a range format
 // (e.g. 3rc and 4rcc).
-class RangeInstructionOperands FINAL : public InstructionOperands {
+class RangeInstructionOperands final : public InstructionOperands {
  public:
   RangeInstructionOperands(uint32_t first_operand, size_t num_operands)
       : InstructionOperands(num_operands), first_operand_(first_operand) {}
   ~RangeInstructionOperands() {}
-  uint32_t GetOperand(size_t operand_index) const OVERRIDE;
+  uint32_t GetOperand(size_t operand_index) const override;
 
  private:
   const uint32_t first_operand_;
@@ -723,13 +723,13 @@ class RangeInstructionOperands FINAL : public InstructionOperands {
 
 // Class for accessing operands for instructions with a variable
 // number of arguments format (e.g. 35c and 45cc).
-class VarArgsInstructionOperands FINAL : public InstructionOperands {
+class VarArgsInstructionOperands final : public InstructionOperands {
  public:
   VarArgsInstructionOperands(const uint32_t (&operands)[Instruction::kMaxVarArgRegs],
                              size_t num_operands)
       : InstructionOperands(num_operands), operands_(operands) {}
   ~VarArgsInstructionOperands() {}
-  uint32_t GetOperand(size_t operand_index) const OVERRIDE;
+  uint32_t GetOperand(size_t operand_index) const override;
 
  private:
   const uint32_t (&operands_)[Instruction::kMaxVarArgRegs];
@@ -739,12 +739,12 @@ class VarArgsInstructionOperands FINAL : public InstructionOperands {
 
 // Class for accessing operands without the receiver by wrapping an
 // existing InstructionOperands instance.
-class NoReceiverInstructionOperands FINAL : public InstructionOperands {
+class NoReceiverInstructionOperands final : public InstructionOperands {
  public:
   explicit NoReceiverInstructionOperands(const InstructionOperands* const inner)
       : InstructionOperands(inner->GetNumberOfOperands() - 1), inner_(inner) {}
   ~NoReceiverInstructionOperands() {}
-  uint32_t GetOperand(size_t operand_index) const OVERRIDE;
+  uint32_t GetOperand(size_t operand_index) const override;
 
  private:
   const InstructionOperands* const inner_;

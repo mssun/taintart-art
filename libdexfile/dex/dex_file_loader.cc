@@ -36,21 +36,21 @@ namespace {
 class VectorContainer : public DexFileContainer {
  public:
   explicit VectorContainer(std::vector<uint8_t>&& vector) : vector_(std::move(vector)) { }
-  virtual ~VectorContainer() OVERRIDE { }
+  ~VectorContainer() override { }
 
-  int GetPermissions() OVERRIDE {
+  int GetPermissions() override {
     return 0;
   }
 
-  bool IsReadOnly() OVERRIDE {
+  bool IsReadOnly() override {
     return true;
   }
 
-  bool EnableWrite() OVERRIDE {
+  bool EnableWrite() override {
     return false;
   }
 
-  bool DisableWrite() OVERRIDE {
+  bool DisableWrite() override {
     return false;
   }
 

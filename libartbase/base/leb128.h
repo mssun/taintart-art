@@ -357,7 +357,7 @@ class Leb128Encoder {
 
 // An encoder with an API similar to vector<uint32_t> where the data is captured in ULEB128 format.
 template <typename Vector = std::vector<uint8_t>>
-class Leb128EncodingVector FINAL : private Vector,
+class Leb128EncodingVector final : private Vector,
                                    public Leb128Encoder<Vector> {
   static_assert(std::is_same<typename Vector::value_type, uint8_t>::value, "Invalid value type");
 

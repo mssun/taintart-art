@@ -24,7 +24,7 @@
 namespace art {
 namespace mips {
 
-class DisassemblerMips FINAL : public Disassembler {
+class DisassemblerMips final : public Disassembler {
  public:
   explicit DisassemblerMips(DisassemblerOptions* options, bool is_o32_abi)
       : Disassembler(options),
@@ -33,8 +33,8 @@ class DisassemblerMips FINAL : public Disassembler {
         is_o32_abi_(is_o32_abi) {}
 
   const char* RegName(uint32_t reg);
-  size_t Dump(std::ostream& os, const uint8_t* begin) OVERRIDE;
-  void Dump(std::ostream& os, const uint8_t* begin, const uint8_t* end) OVERRIDE;
+  size_t Dump(std::ostream& os, const uint8_t* begin) override;
+  void Dump(std::ostream& os, const uint8_t* begin, const uint8_t* end) override;
 
  private:
   // Address and encoding of the last disassembled instruction.

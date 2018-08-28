@@ -39,12 +39,12 @@ namespace art {
 namespace gc {
 namespace space {
 
-class MemoryToolLargeObjectMapSpace FINAL : public LargeObjectMapSpace {
+class MemoryToolLargeObjectMapSpace final : public LargeObjectMapSpace {
  public:
   explicit MemoryToolLargeObjectMapSpace(const std::string& name) : LargeObjectMapSpace(name) {
   }
 
-  ~MemoryToolLargeObjectMapSpace() OVERRIDE {
+  ~MemoryToolLargeObjectMapSpace() override {
     // Historical note: We were deleting large objects to keep Valgrind happy if there were
     // any large objects such as Dex cache arrays which aren't freed since they are held live
     // by the class linker.
@@ -52,7 +52,7 @@ class MemoryToolLargeObjectMapSpace FINAL : public LargeObjectMapSpace {
 
   mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
                         size_t* usable_size, size_t* bytes_tl_bulk_allocated)
-      OVERRIDE {
+      override {
     mirror::Object* obj =
         LargeObjectMapSpace::Alloc(self, num_bytes + kMemoryToolRedZoneBytes * 2, bytes_allocated,
                                    usable_size, bytes_tl_bulk_allocated);
@@ -68,21 +68,21 @@ class MemoryToolLargeObjectMapSpace FINAL : public LargeObjectMapSpace {
     return object_without_rdz;
   }
 
-  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) OVERRIDE {
+  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) override {
     return LargeObjectMapSpace::AllocationSize(ObjectWithRedzone(obj), usable_size);
   }
 
-  bool IsZygoteLargeObject(Thread* self, mirror::Object* obj) const OVERRIDE {
+  bool IsZygoteLargeObject(Thread* self, mirror::Object* obj) const override {
     return LargeObjectMapSpace::IsZygoteLargeObject(self, ObjectWithRedzone(obj));
   }
 
-  size_t Free(Thread* self, mirror::Object* obj) OVERRIDE {
+  size_t Free(Thread* self, mirror::Object* obj) override {
     mirror::Object* object_with_rdz = ObjectWithRedzone(obj);
     MEMORY_TOOL_MAKE_UNDEFINED(object_with_rdz, AllocationSize(obj, nullptr));
     return LargeObjectMapSpace::Free(self, object_with_rdz);
   }
 
-  bool Contains(const mirror::Object* obj) const OVERRIDE {
+  bool Contains(const mirror::Object* obj) const override {
     return LargeObjectMapSpace::Contains(ObjectWithRedzone(obj));
   }
 

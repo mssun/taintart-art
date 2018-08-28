@@ -29,7 +29,7 @@ namespace gc {
 
 class HeapTest : public CommonRuntimeTest {
  public:
-  void SetUp() OVERRIDE {
+  void SetUp() override {
     MemMap::Init();
     std::string error_msg;
     // Reserve the preferred address to force the heap to use another one for testing.

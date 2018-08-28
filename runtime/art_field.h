@@ -40,7 +40,7 @@ class Object;
 class String;
 }  // namespace mirror
 
-class ArtField FINAL {
+class ArtField final {
  public:
   template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   ObjPtr<mirror::Class> GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_);

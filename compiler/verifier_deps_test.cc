@@ -47,11 +47,11 @@ class VerifierDepsCompilerCallbacks : public CompilerCallbacks {
       : CompilerCallbacks(CompilerCallbacks::CallbackMode::kCompileApp),
         deps_(nullptr) {}
 
-  void MethodVerified(verifier::MethodVerifier* verifier ATTRIBUTE_UNUSED) OVERRIDE {}
-  void ClassRejected(ClassReference ref ATTRIBUTE_UNUSED) OVERRIDE {}
-  bool IsRelocationPossible() OVERRIDE { return false; }
+  void MethodVerified(verifier::MethodVerifier* verifier ATTRIBUTE_UNUSED) override {}
+  void ClassRejected(ClassReference ref ATTRIBUTE_UNUSED) override {}
+  bool IsRelocationPossible() override { return false; }
 
-  verifier::VerifierDeps* GetVerifierDeps() const OVERRIDE { return deps_; }
+  verifier::VerifierDeps* GetVerifierDeps() const override { return deps_; }
   void SetVerifierDeps(verifier::VerifierDeps* deps) { deps_ = deps; }
 
  private:

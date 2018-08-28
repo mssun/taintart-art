@@ -157,11 +157,11 @@ class CommonRuntimeTestBase : public TestType, public CommonRuntimeTestImpl {
   virtual ~CommonRuntimeTestBase() {}
 
  protected:
-  virtual void SetUp() OVERRIDE {
+  void SetUp() override {
     CommonRuntimeTestImpl::SetUp();
   }
 
-  virtual void TearDown() OVERRIDE {
+  void TearDown() override {
     CommonRuntimeTestImpl::TearDown();
   }
 };
