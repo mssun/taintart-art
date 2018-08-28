@@ -224,5 +224,15 @@
           "libcore.javax.crypto.CipherInputStreamTest#testCloseTwice",
           "libcore.libcore.io.BlockGuardOsTest#test_android_getaddrinfo_networkPolicy",
           "libcore.libcore.io.BlockGuardOsTest#test_checkNewMethodsInPosix"]
+},
+{
+  description: "fdsan doesn't exist on the host",
+  result: EXEC_FAILED,
+  modes: [host],
+  bug: 113177877,
+  names: ["libcore.libcore.io.FdsanTest#testFileInputStream",
+          "libcore.libcore.io.FdsanTest#testFileOutputStream",
+          "libcore.libcore.io.FdsanTest#testRandomAccessFile",
+          "libcore.libcore.io.FdsanTest#testParcelFileDescriptor"]
 }
 ]
