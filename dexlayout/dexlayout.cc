@@ -1794,14 +1794,20 @@ bool DexLayout::OutputDexFile(const DexFile* input_dex_file,
   // If options_.output_dex_directory_ is non null, we are outputting to a file.
   if (options_.output_dex_directory_ != nullptr) {
     std::string output_location(options_.output_dex_directory_);
-    size_t last_slash = dex_file_location.rfind('/');
+    const size_t last_slash = dex_file_location.rfind('/');
     std::string dex_file_directory = dex_file_location.substr(0, last_slash + 1);
     if (output_location == dex_file_directory) {
       output_location = dex_file_location + ".new";
-    } else if (last_slash != std::string::npos) {
-      output_location += dex_file_location.substr(last_slash);
     } else {
-      output_location += "/" + dex_file_location + ".new";
+      if (!output_location.empty() && output_location.back() != '/') {
+        output_location += "/";
+      }
+      const size_t separator = dex_file_location.rfind('!');
+      if (separator != std::string::npos) {
+        output_location += dex_file_location.substr(separator + 1);
+      } else {
+        output_location += "classes.dex";
+      }
     }
     new_file.reset(OS::CreateEmptyFile(output_location.c_str()));
     if (new_file == nullptr) {
