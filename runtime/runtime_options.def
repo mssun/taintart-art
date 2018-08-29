@@ -21,7 +21,7 @@
 
 // This file defines the list of keys for RuntimeOptions.
 // These can be used with RuntimeOptions.Get/Set/etc, for example:
-//         RuntimeOptions opt; bool* dex2oat_enabled = opt.Get(RuntimeOptions::Dex2Oat);
+//         RuntimeOptions opt; bool* image_dex2oat_enabled = opt.Get(RuntimeOptions::ImageDex2Oat);
 //
 // Column Descriptions:
 //                   <<Type>>             <<Key Name>>                  <<Default Value>>
@@ -88,7 +88,6 @@ RUNTIME_OPTIONS_KEY (std::vector<std::string>, \
 RUNTIME_OPTIONS_KEY (std::string,         JniTrace)
 RUNTIME_OPTIONS_KEY (std::string,         PatchOat)
 RUNTIME_OPTIONS_KEY (bool,                Relocate,                       kDefaultMustRelocate)
-RUNTIME_OPTIONS_KEY (bool,                Dex2Oat,                        true)
 RUNTIME_OPTIONS_KEY (bool,                ImageDex2Oat,                   true)
 RUNTIME_OPTIONS_KEY (bool,                Interpret,                      false) // -Xint
                                                         // Disable the compiler for CC (for now).

@@ -145,7 +145,7 @@ def gather_test_info():
   VARIANT_TYPE_DICT['image'] = {'picimage', 'no-image', 'multipicimage'}
   VARIANT_TYPE_DICT['debuggable'] = {'ndebuggable', 'debuggable'}
   VARIANT_TYPE_DICT['gc'] = {'gcstress', 'gcverify', 'cms'}
-  VARIANT_TYPE_DICT['prebuild'] = {'no-prebuild', 'no-dex2oat', 'prebuild'}
+  VARIANT_TYPE_DICT['prebuild'] = {'no-prebuild', 'prebuild'}
   VARIANT_TYPE_DICT['cdex_level'] = {'cdex-none', 'cdex-fast'}
   VARIANT_TYPE_DICT['relocate'] = {'relocate-npatchoat', 'relocate', 'no-relocate'}
   VARIANT_TYPE_DICT['jni'] = {'jni', 'forcecopy', 'checkjni'}
@@ -414,8 +414,6 @@ def run_tests(tests):
         options_test += ' --prebuild'
       elif prebuild == 'no-prebuild':
         options_test += ' --no-prebuild'
-      elif prebuild == 'no-dex2oat':
-        options_test += ' --no-prebuild --no-dex2oat'
 
       if cdex_level:
         # Add option and remove the cdex- prefix.

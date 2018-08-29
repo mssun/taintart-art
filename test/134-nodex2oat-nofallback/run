@@ -17,6 +17,6 @@
 flags="${@}"
 
 # Make sure we cannot run without an oat file without fallback.
-${RUN} ${flags} --runtime-option -Xnodex2oat --runtime-option -Xno-dex-file-fallback
+${RUN} ${flags} --runtime-option -Xno-dex-file-fallback
 # Suppress the exit value. This isn't expected to be successful.
 echo "Exit status:" $?
