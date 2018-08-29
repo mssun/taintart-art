@@ -1,0 +1,2 @@
+Test that ZipFile.finalize doesn't throw exceptions
+in the presence of a not fully constructed instance.
