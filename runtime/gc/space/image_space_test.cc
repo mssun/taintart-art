@@ -41,7 +41,7 @@ TEST_F(DexoptTest, ValidateOatFile) {
   args.push_back("--dex-file=" + multidex1);
   args.push_back("--dex-file=" + dex2);
   args.push_back("--oat-file=" + oat_location);
-  ASSERT_TRUE(Dex2Oat(args, &error_msg)) << error_msg;
+  ASSERT_TRUE(OatFileAssistant::Dex2Oat(args, &error_msg)) << error_msg;
 
   std::unique_ptr<OatFile> oat(OatFile::Open(/* zip_fd */ -1,
                                              oat_location.c_str(),

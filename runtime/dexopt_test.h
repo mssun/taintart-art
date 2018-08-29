@@ -71,8 +71,6 @@ class DexoptTest : public Dex2oatEnvironmentTest {
   // Generate a standard oat file in the oat location.
   void GenerateOatForTest(const char* dex_location, CompilerFilter::Filter filter);
 
-  static bool Dex2Oat(const std::vector<std::string>& args, std::string* error_msg);
-
  private:
   // Pre-Relocate the image to a known non-zero offset so we don't have to
   // deal with the runtime randomly relocating the image by 0 and messing up
