@@ -60,6 +60,7 @@ static void Usage(void) {
   LOG(ERROR) << " -p : profile file name (defaults to no profile)";
   LOG(ERROR) << " -s : visualize reference pattern";
   LOG(ERROR) << " -t : display file section sizes";
+  LOG(ERROR) << " -u : update dex checksums";
   LOG(ERROR) << " -v : verify output file is canonical to input (IR level comparison)";
   LOG(ERROR) << " -w : output dex directory";
   LOG(ERROR) << " -x : compact dex generation level, either 'none' or 'fast'";
@@ -85,7 +86,7 @@ int DexlayoutDriver(int argc, char** argv) {
 
   // Parse all arguments.
   while (1) {
-    const int ic = getopt(argc, argv, "abcdefghil:o:p:stvw:x:");
+    const int ic = getopt(argc, argv, "abcdefghil:o:p:stuvw:x:");
     if (ic < 0) {
       break;  // done
     }
@@ -137,6 +138,9 @@ int DexlayoutDriver(int argc, char** argv) {
       case 't':  // display section statistics
         options.show_section_statistics_ = true;
         options.verbose_ = false;
+        break;
+      case 'u':  // update checksum
+        options.update_checksum_ = true;
         break;
       case 'v':  // verify output
         options.verify_output_ = true;
