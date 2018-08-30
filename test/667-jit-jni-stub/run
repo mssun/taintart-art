@@ -16,4 +16,4 @@
 
 # Disable AOT compilation of JNI stubs.
 # Ensure this test is not subject to unexpected code collection.
-${RUN} "${@}" --no-prebuild --no-dex2oat --runtime-option -Xjitinitialsize:32M
+${RUN} "${@}" --no-prebuild --runtime-option -Xjitinitialsize:32M

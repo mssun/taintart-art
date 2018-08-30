@@ -558,13 +558,12 @@ TEST_F(CmdlineParserTest, TestIgnoredArguments) {
 TEST_F(CmdlineParserTest, MultipleArguments) {
   EXPECT_TRUE(IsResultSuccessful(parser_->Parse(
       "-help -XX:ForegroundHeapGrowthMultiplier=0.5 "
-      "-Xnodex2oat -Xmethod-trace -XX:LargeObjectSpace=map")));
+      "-Xmethod-trace -XX:LargeObjectSpace=map")));
 
   auto&& map = parser_->ReleaseArgumentsMap();
-  EXPECT_EQ(5u, map.Size());
+  EXPECT_EQ(4u, map.Size());
   EXPECT_KEY_VALUE(map, M::Help, Unit{});
   EXPECT_KEY_VALUE(map, M::ForegroundHeapGrowthMultiplier, 0.5);
-  EXPECT_KEY_VALUE(map, M::Dex2Oat, false);
   EXPECT_KEY_VALUE(map, M::MethodTrace, Unit{});
   EXPECT_KEY_VALUE(map, M::LargeObjectSpace, gc::space::LargeObjectSpaceType::kMap);
 }  //  TEST_F

@@ -148,7 +148,6 @@ jvmti_redefine_stress="false"
 strace="false"
 always_clean="no"
 never_clean="no"
-have_dex2oat="yes"
 have_patchoat="yes"
 have_image="yes"
 multi_image_suffix=""
@@ -194,9 +193,6 @@ while true; do
     elif [ "x$1" = "x--dalvik" ]; then
         lib="libdvm.so"
         runtime="dalvik"
-        shift
-    elif [ "x$1" = "x--no-dex2oat" ]; then
-        have_dex2oat="no"
         shift
     elif [ "x$1" = "x--no-patchoat" ]; then
         have_patchoat="no"
@@ -580,10 +576,6 @@ if [ "$have_patchoat" = "no" ]; then
   run_args="${run_args} --no-patchoat"
 fi
 
-if [ "$have_dex2oat" = "no" ]; then
-  run_args="${run_args} --no-dex2oat"
-fi
-
 if [ ! "$runtime" = "jvm" ]; then
   run_args="${run_args} --lib $lib"
 fi
@@ -636,11 +628,6 @@ fi
 
 if [ "$bisection_search" = "yes" -a "$prebuild_mode" = "yes" ]; then
     err_echo "--bisection-search and --prebuild are mutually exclusive"
-    usage="yes"
-fi
-
-if [ "$bisection_search" = "yes" -a "$have_dex2oat" = "no" ]; then
-    err_echo "--bisection-search and --no-dex2oat are mutually exclusive"
     usage="yes"
 fi
 

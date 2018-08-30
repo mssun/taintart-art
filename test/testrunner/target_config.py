@@ -184,7 +184,7 @@ target_config = {
         'run-test' : ['--relocate-npatchoat']
     },
     'art-no-dex2oat' : {
-        'run-test' : ['--no-dex2oat']
+        # Deprecated configuration.
     },
     'art-heap-poisoning' : {
         'run-test' : ['--interpreter',
