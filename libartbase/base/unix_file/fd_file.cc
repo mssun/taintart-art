@@ -36,13 +36,8 @@
 
 namespace unix_file {
 
-FdFile::FdFile()
-    : guard_state_(GuardState::kClosed), fd_(-1), read_only_mode_(false) {}
-
 FdFile::FdFile(int fd, bool check_usage)
-    : guard_state_(check_usage ? GuardState::kBase : GuardState::kNoCheck),
-      fd_(fd),
-      read_only_mode_(false) {}
+    : FdFile(fd, std::string(), check_usage) {}
 
 FdFile::FdFile(int fd, const std::string& path, bool check_usage)
     : FdFile(fd, path, check_usage, false) {}
@@ -55,8 +50,7 @@ FdFile::FdFile(int fd, const std::string& path, bool check_usage,
       read_only_mode_(read_only_mode) {}
 
 FdFile::FdFile(const std::string& path, int flags, mode_t mode,
-               bool check_usage)
-    : fd_(-1) {
+               bool check_usage) {
   Open(path, flags, mode);
   if (!check_usage || !IsOpened()) {
     guard_state_ = GuardState::kNoCheck;

@@ -34,7 +34,7 @@ static constexpr bool kCheckSafeUsage = true;
 // Not thread safe.
 class FdFile : public RandomAccessFile {
  public:
-  FdFile();
+  FdFile() = default;
   // Creates an FdFile using the given file descriptor.
   // Takes ownership of the file descriptor.
   FdFile(int fd, bool checkUsage);
@@ -164,7 +164,7 @@ class FdFile : public RandomAccessFile {
     }
   }
 
-  GuardState guard_state_;
+  GuardState guard_state_ = GuardState::kClosed;
 
   // Opens file 'file_path' using 'flags' and 'mode'.
   bool Open(const std::string& file_path, int flags);
@@ -176,9 +176,9 @@ class FdFile : public RandomAccessFile {
 
   void Destroy();  // For ~FdFile and operator=(&&).
 
-  int fd_;
+  int fd_ = -1;
   std::string file_path_;
-  bool read_only_mode_;
+  bool read_only_mode_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(FdFile);
 };
