@@ -183,7 +183,7 @@ function detect_boot_image_location() {
 }
 
 function run_dex2oat() {
-  CLASS_LOADER_CONTEXT=
+  local class_loader_context=
   for dex_file in "${DEX2OAT_CLASSPATH[@]}"
   do
     while [ -h "$dex_file" ]; do
@@ -206,14 +206,14 @@ function run_dex2oat() {
           --runtime-arg -Xnorelocate                          \
           --boot-image=$DEX2OAT_BOOT_IMAGE                    \
           --instruction-set=$ISA                              \
-          --class-loader-context="PCL[$CLASS_LOADER_CONTEXT]" \
+          --class-loader-context="PCL[$class_loader_context]" \
           "${DEX2OAT_FLAGS[@]}"                               \
           --dex-file=$dex_file                                \
           --oat-file=$oat_file
-    if [[ ! -z $CLASS_LOADER_CONTEXT ]]; then
-      CLASS_LOADER_CONTEXT+=":"
+    if [[ -n $class_loader_context ]]; then
+      class_loader_context+=":"
     fi
-    CLASS_LOADER_CONTEXT+="$dex_file"
+    class_loader_context+="$dex_file"
   done
 }
 
@@ -368,7 +368,7 @@ if [ $# -eq 0 ]; then
 fi
 
 # Follow all sym links to get the program name.
-if [ z"$BASH_SOURCE" != z ]; then
+if [[ -n "$BASH_SOURCE" ]]; then
   PROG_NAME="$BASH_SOURCE"
 else
   PROG_NAME="$0"
