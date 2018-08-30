@@ -383,9 +383,6 @@ void Trace::Start(std::unique_ptr<File>&& trace_file_in,
     }
   };
   std::unique_ptr<File, decltype(deleter)> trace_file(trace_file_in.release(), deleter);
-  if (trace_file != nullptr) {
-    trace_file->DisableAutoClose();
-  }
 
   Thread* self = Thread::Current();
   {

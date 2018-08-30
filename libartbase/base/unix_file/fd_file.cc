@@ -37,25 +37,26 @@
 namespace unix_file {
 
 FdFile::FdFile()
-    : guard_state_(GuardState::kClosed), fd_(-1), auto_close_(true), read_only_mode_(false) {
-}
+    : guard_state_(GuardState::kClosed), fd_(-1), read_only_mode_(false) {}
 
 FdFile::FdFile(int fd, bool check_usage)
     : guard_state_(check_usage ? GuardState::kBase : GuardState::kNoCheck),
-      fd_(fd), auto_close_(true), read_only_mode_(false) {
-}
+      fd_(fd),
+      read_only_mode_(false) {}
 
 FdFile::FdFile(int fd, const std::string& path, bool check_usage)
-    : FdFile(fd, path, check_usage, false) {
-}
+    : FdFile(fd, path, check_usage, false) {}
 
-FdFile::FdFile(int fd, const std::string& path, bool check_usage, bool read_only_mode)
+FdFile::FdFile(int fd, const std::string& path, bool check_usage,
+               bool read_only_mode)
     : guard_state_(check_usage ? GuardState::kBase : GuardState::kNoCheck),
-      fd_(fd), file_path_(path), auto_close_(true), read_only_mode_(read_only_mode) {
-}
+      fd_(fd),
+      file_path_(path),
+      read_only_mode_(read_only_mode) {}
 
-FdFile::FdFile(const std::string& path, int flags, mode_t mode, bool check_usage)
-    : fd_(-1), auto_close_(true) {
+FdFile::FdFile(const std::string& path, int flags, mode_t mode,
+               bool check_usage)
+    : fd_(-1) {
   Open(path, flags, mode);
   if (!check_usage || !IsOpened()) {
     guard_state_ = GuardState::kNoCheck;
@@ -72,7 +73,7 @@ void FdFile::Destroy() {
     }
     DCHECK_GE(guard_state_, GuardState::kClosed);
   }
-  if (auto_close_ && fd_ != -1) {
+  if (fd_ != -1) {
     if (Close() != 0) {
       PLOG(WARNING) << "Failed to close file with fd=" << fd_ << " path=" << file_path_;
     }
@@ -91,7 +92,6 @@ FdFile& FdFile::operator=(FdFile&& other) {
   guard_state_ = other.guard_state_;
   fd_ = other.fd_;
   file_path_ = std::move(other.file_path_);
-  auto_close_ = other.auto_close_;
   read_only_mode_ = other.read_only_mode_;
   other.Release();  // Release other.
 
@@ -123,10 +123,6 @@ void FdFile::moveUp(GuardState target, const char* warning) {
       }
     }
   }
-}
-
-void FdFile::DisableAutoClose() {
-  auto_close_ = false;
 }
 
 bool FdFile::Open(const std::string& path, int flags) {
