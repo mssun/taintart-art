@@ -21,6 +21,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#if defined(__BIONIC__)
+#include <android/fdsan.h>
+#endif
+
 #include <limits>
 
 #include <android-base/logging.h>
@@ -36,6 +40,13 @@
 
 namespace unix_file {
 
+#if defined(__BIONIC__)
+static uint64_t GetFdFileOwnerTag(FdFile* fd_file) {
+  return android_fdsan_create_owner_tag(ANDROID_FDSAN_OWNER_TYPE_ART_FDFILE,
+                                        reinterpret_cast<uint64_t>(fd_file));
+}
+#endif
+
 FdFile::FdFile(int fd, bool check_usage)
     : FdFile(fd, std::string(), check_usage) {}
 
@@ -47,7 +58,13 @@ FdFile::FdFile(int fd, const std::string& path, bool check_usage,
     : guard_state_(check_usage ? GuardState::kBase : GuardState::kNoCheck),
       fd_(fd),
       file_path_(path),
-      read_only_mode_(read_only_mode) {}
+      read_only_mode_(read_only_mode) {
+#if defined(__BIONIC__)
+  if (fd >= 0) {
+    android_fdsan_exchange_owner_tag(fd, 0, GetFdFileOwnerTag(this));
+  }
+#endif
+}
 
 FdFile::FdFile(const std::string& path, int flags, mode_t mode,
                bool check_usage) {
@@ -74,6 +91,20 @@ void FdFile::Destroy() {
   }
 }
 
+FdFile::FdFile(FdFile&& other)
+    : guard_state_(other.guard_state_),
+      fd_(other.fd_),
+      file_path_(std::move(other.file_path_)),
+      read_only_mode_(other.read_only_mode_) {
+#if defined(__BIONIC__)
+  if (fd_ >= 0) {
+    android_fdsan_exchange_owner_tag(fd_, GetFdFileOwnerTag(&other), GetFdFileOwnerTag(this));
+  }
+#endif
+  other.guard_state_ = GuardState::kClosed;
+  other.fd_ = -1;
+}
+
 FdFile& FdFile::operator=(FdFile&& other) {
   if (this == &other) {
     return *this;
@@ -87,13 +118,52 @@ FdFile& FdFile::operator=(FdFile&& other) {
   fd_ = other.fd_;
   file_path_ = std::move(other.file_path_);
   read_only_mode_ = other.read_only_mode_;
-  other.Release();  // Release other.
 
+#if defined(__BIONIC__)
+  if (fd_ >= 0) {
+    android_fdsan_exchange_owner_tag(fd_, GetFdFileOwnerTag(&other), GetFdFileOwnerTag(this));
+  }
+#endif
+  other.guard_state_ = GuardState::kClosed;
+  other.fd_ = -1;
   return *this;
 }
 
 FdFile::~FdFile() {
   Destroy();
+}
+
+int FdFile::Release() {
+  int tmp_fd = fd_;
+  fd_ = -1;
+  guard_state_ = GuardState::kNoCheck;
+#if defined(__BIONIC__)
+  if (tmp_fd >= 0) {
+    android_fdsan_exchange_owner_tag(tmp_fd, GetFdFileOwnerTag(this), 0);
+  }
+#endif
+  return tmp_fd;
+}
+
+void FdFile::Reset(int fd, bool check_usage) {
+  CHECK_NE(fd, fd_);
+
+  if (fd_ != -1) {
+    Destroy();
+  }
+  fd_ = fd;
+
+#if defined(__BIONIC__)
+  if (fd_ >= 0) {
+    android_fdsan_exchange_owner_tag(fd_, 0, GetFdFileOwnerTag(this));
+  }
+#endif
+
+  if (check_usage) {
+    guard_state_ = fd == -1 ? GuardState::kNoCheck : GuardState::kBase;
+  } else {
+    guard_state_ = GuardState::kNoCheck;
+  }
 }
 
 void FdFile::moveTo(GuardState target, GuardState warn_threshold, const char* warning) {
@@ -131,6 +201,11 @@ bool FdFile::Open(const std::string& path, int flags, mode_t mode) {
   if (fd_ == -1) {
     return false;
   }
+
+#if defined(__BIONIC__)
+  android_fdsan_exchange_owner_tag(fd_, 0, GetFdFileOwnerTag(this));
+#endif
+
   file_path_ = path;
   if (kCheckSafeUsage && (flags & (O_RDWR | O_CREAT | O_WRONLY)) != 0) {
     // Start in the base state (not flushed, not closed).
@@ -144,7 +219,11 @@ bool FdFile::Open(const std::string& path, int flags, mode_t mode) {
 }
 
 int FdFile::Close() {
+#if defined(__BIONIC__)
+  int result = android_fdsan_close_with_tag(fd_, GetFdFileOwnerTag(this));
+#else
   int result = close(fd_);
+#endif
 
   // Test here, so the file is closed and not leaked.
   if (kCheckSafeUsage) {

@@ -46,37 +46,16 @@ class FdFile : public RandomAccessFile {
   FdFile(const std::string& path, int flags, mode_t mode, bool checkUsage);
 
   // Move constructor.
-  FdFile(FdFile&& other)
-      : guard_state_(other.guard_state_),
-        fd_(other.fd_),
-        file_path_(std::move(other.file_path_)),
-        read_only_mode_(other.read_only_mode_) {
-    other.Release();  // Release the src.
-  }
+  FdFile(FdFile&& other);
 
   // Move assignment operator.
   FdFile& operator=(FdFile&& other);
 
   // Release the file descriptor. This will make further accesses to this FdFile invalid. Disables
   // all further state checking.
-  int Release() {
-    int tmp_fd = fd_;
-    fd_ = -1;
-    guard_state_ = GuardState::kNoCheck;
-    return tmp_fd;
-  }
+  int Release();
 
-  void Reset(int fd, bool check_usage) {
-    if (fd_ != -1 && fd_ != fd) {
-      Destroy();
-    }
-    fd_ = fd;
-    if (check_usage) {
-      guard_state_ = fd == -1 ? GuardState::kNoCheck : GuardState::kBase;
-    } else {
-      guard_state_ = GuardState::kNoCheck;
-    }
-  }
+  void Reset(int fd, bool check_usage);
 
   // Destroys an FdFile, closing the file descriptor if Close hasn't already
   // been called. (If you care about the return value of Close, call it
