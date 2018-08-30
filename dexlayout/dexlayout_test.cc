@@ -267,7 +267,7 @@ class DexLayoutTest : public CommonRuntimeTest {
     ScratchFile dexlayout_output;
     const std::string& dexlayout_filename = dexlayout_output.GetFilename();
 
-    for (const std::string &dex_file : GetLibCoreDexFileNames()) {
+    for (const std::string& dex_file : GetLibCoreDexFileNames()) {
       std::vector<std::string> dexdump_exec_argv =
           { dexdump, "-d", "-f", "-h", "-l", "plain", "-o", dexdump_filename, dex_file };
       std::vector<std::string> dexlayout_args =
@@ -293,31 +293,33 @@ class DexLayoutTest : public CommonRuntimeTest {
     const std::string& tmp_name = tmp_file.GetFilename();
     size_t tmp_last_slash = tmp_name.rfind('/');
     std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
+    std::string unzip_dir = tmp_dir + "unzip/";
 
-    for (const std::string &dex_file : GetLibCoreDexFileNames()) {
+    for (const std::string& dex_file : GetLibCoreDexFileNames()) {
       std::vector<std::string> dexlayout_args =
           { "-w", tmp_dir, "-o", tmp_name, dex_file };
       if (!DexLayoutExec(dexlayout_args, error_msg, /*pass_default_cdex_option*/ false)) {
         return false;
       }
-      size_t dex_file_last_slash = dex_file.rfind('/');
-      std::string dex_file_name = dex_file.substr(dex_file_last_slash + 1);
+      std::string dex_file_name = "classes.dex";
       std::vector<std::string> unzip_exec_argv =
-          { "/usr/bin/unzip", dex_file, "classes.dex", "-d", tmp_dir};
+          { "/usr/bin/unzip", dex_file, "classes.dex", "-d", unzip_dir};
       if (!::art::Exec(unzip_exec_argv, error_msg)) {
         return false;
       }
       std::vector<std::string> diff_exec_argv =
-          { "/usr/bin/diff", tmp_dir + "classes.dex" , tmp_dir + dex_file_name };
+          { "/usr/bin/diff", tmp_dir + "classes.dex" , unzip_dir + dex_file_name };
       if (!::art::Exec(diff_exec_argv, error_msg)) {
         return false;
       }
-      if (!UnlinkFile(tmp_dir + "classes.dex")) {
+      if (!UnlinkFile(unzip_dir + "classes.dex")) {
         return false;
       }
       if (!UnlinkFile(tmp_dir + dex_file_name)) {
         return false;
       }
+      // Remove the unzip temp directory so that unlinking android_data doesn't fail.
+      EXPECT_EQ(rmdir(unzip_dir.c_str()), 0);
     }
     return true;
   }
