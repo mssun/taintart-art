@@ -14,12 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-echo "Run default"
 ${RUN} $@ --runtime-option -Xonly-use-system-oat-files
-return_status1=$?
-
-echo "Run without dex2oat"
-${RUN} $@ --no-dex2oat --runtime-option -Xonly-use-system-oat-files
-return_status2=$?
-
-(exit $return_status1) && (exit $return_status2)

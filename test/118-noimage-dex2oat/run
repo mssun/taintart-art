@@ -47,12 +47,12 @@ bpath_arg="--runtime-option -Xbootclasspath:${bpath}"
 
 # Make sure we can run without an oat file.
 echo "Run -Xnoimage-dex2oat"
-${RUN} ${flags} ${bpath_arg} --runtime-option -Xnoimage-dex2oat --runtime-option -Xnodex2oat
+${RUN} ${flags} ${bpath_arg} --runtime-option -Xnoimage-dex2oat
 return_status1=$?
 
 # Make sure we cannot run without an oat file without fallback.
 echo "Run -Xnoimage-dex2oat -Xno-dex-file-fallback"
-${RUN} ${flags} ${bpath_arg} --runtime-option -Xnoimage-dex2oat --runtime-option -Xnodex2oat \
+${RUN} ${flags} ${bpath_arg} --runtime-option -Xnoimage-dex2oat \
   --runtime-option -Xno-dex-file-fallback
 return_status2=$?
 

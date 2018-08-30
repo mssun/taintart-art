@@ -90,19 +90,6 @@ public class Main {
       return true;
     }
 
-    // This test takes relies on dex2oat being skipped.
-    // (enforced in 'run' file by using '--no-dex2oat'
-    //
-    // This could happen in a non-test situation
-    // if a secondary dex file is loaded (but not yet maintenance-mode compiled)
-    // with JIT.
-    //
-    // Or it could also happen if a secondary dex file is loaded and forced
-    // into running into the interpreter (e.g. duplicate classes).
-    //
-    // Rather than relying on those weird fallbacks,
-    // we force the runtime not to dex2oat the dex file to ensure
-    // this test is repeatable and less brittle.
     private static void testDexMemoryMaps() throws Exception {
         // Ensure that the secondary dex file is mapped clean (directly from JAR file).
         String smaps = new String(Files.readAllBytes(Paths.get("/proc/self/smaps")));

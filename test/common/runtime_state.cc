@@ -71,13 +71,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_runtimeIsSoftFail(JNIEnv* env AT
   return Runtime::Current()->IsVerificationSoftFail() ? JNI_TRUE : JNI_FALSE;
 }
 
-// public static native boolean isDex2OatEnabled();
-
-extern "C" JNIEXPORT jboolean JNICALL Java_Main_isDex2OatEnabled(JNIEnv* env ATTRIBUTE_UNUSED,
-                                                                 jclass cls ATTRIBUTE_UNUSED) {
-  return Runtime::Current()->IsDex2OatEnabled();
-}
-
 // public static native boolean hasImage();
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasImage(JNIEnv* env ATTRIBUTE_UNUSED,

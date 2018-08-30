@@ -17,17 +17,8 @@
 public class Main {
   public static void main(String[] args) {
     System.loadLibrary(args[0]);
-    System.out.println(
-        "Has oat is " + hasOat() + ", is dex2oat enabled is " + isDex2OatEnabled() + ".");
-
-    if (hasOat() && !isDex2OatEnabled()) {
-      throw new Error("Application with dex2oat disabled runs with an oat file");
-    } else if (!hasOat() && isDex2OatEnabled()) {
-      throw new Error("Application with dex2oat enabled runs without an oat file");
-    }
+    System.out.println("Has oat is " + hasOat());
   }
 
   private native static boolean hasOat();
-
-  private native static boolean isDex2OatEnabled();
 }

@@ -76,7 +76,7 @@
     },
     {
         "tests" : "629-vdex-speed",
-        "variant": "interp-ac | no-dex2oat | interpreter | jit | relocate-npatchoat",
+        "variant": "interp-ac | interpreter | jit | relocate-npatchoat",
         "description": "629 requires compilation."
     },
     {
@@ -163,7 +163,7 @@
     },
     {
         "tests": "147-stripped-dex-fallback",
-        "variant": "no-dex2oat | no-image | relocate-npatchoat",
+        "variant": "no-image | relocate-npatchoat",
         "description": ["147-stripped-dex-fallback is disabled because it",
                         "requires --prebuild."]
     },
@@ -174,7 +174,7 @@
                   "119-noimage-patchoat",
                   "137-cfi",
                   "138-duplicate-classes-check2"],
-        "variant": "no-dex2oat | no-image | relocate-npatchoat",
+        "variant": "no-image | relocate-npatchoat",
         "description": ["All these tests check that we have sane behavior if we",
                         "don't have a patchoat or dex2oat. Therefore we",
                         "shouldn't run them in situations where we actually",
@@ -649,9 +649,9 @@
     },
     {
         "tests": "660-clinit",
-        "variant": "no-image | no-dex2oat | no-prebuild | jvmti-stress | redefine-stress",
+        "variant": "no-image | no-prebuild | jvmti-stress | redefine-stress",
         "description": ["Tests <clinit> for app images, which --no-image, --no-prebuild, ",
-                        "--no-dex2oat, and --redefine-stress do not create"]
+                        "and --redefine-stress do not create"]
     },
     {
         "tests": ["961-default-iface-resolution-gen",
@@ -674,7 +674,7 @@
     },
     {
         "tests": "661-oat-writer-layout",
-        "variant": "interp-ac | interpreter | jit | no-dex2oat | no-prebuild | no-image | trace | redefine-stress | jvmti-stress",
+        "variant": "interp-ac | interpreter | jit | no-prebuild | no-image | trace | redefine-stress | jvmti-stress",
         "description": ["Test is designed to only check --compiler-filter=speed"]
     },
     {
@@ -1010,7 +1010,7 @@
     },
     {
         "tests": "677-fsi",
-        "variant": "no-dex2oat | no-image | no-prebuild | relocate-npatchoat | jvm",
+        "variant": "no-image | no-prebuild | relocate-npatchoat | jvm",
         "description": ["Test requires a successful dex2oat invocation"]
     },
     {
