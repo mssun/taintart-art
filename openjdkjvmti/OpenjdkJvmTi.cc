@@ -506,13 +506,15 @@ class JvmtiFunctions {
 
   static jvmtiError IterateOverInstancesOfClass(
       jvmtiEnv* env,
-      jclass klass ATTRIBUTE_UNUSED,
-      jvmtiHeapObjectFilter object_filter ATTRIBUTE_UNUSED,
-      jvmtiHeapObjectCallback heap_object_callback ATTRIBUTE_UNUSED,
-      const void* user_data ATTRIBUTE_UNUSED) {
+      jclass klass,
+      jvmtiHeapObjectFilter object_filter,
+      jvmtiHeapObjectCallback heap_object_callback,
+      const void* user_data) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_tag_objects);
-    return ERR(NOT_IMPLEMENTED);
+    HeapUtil heap_util(ArtJvmTiEnv::AsArtJvmTiEnv(env)->object_tag_table.get());
+    return heap_util.IterateOverInstancesOfClass(
+        env, klass, object_filter, heap_object_callback, user_data);
   }
 
   static jvmtiError GetLocalObject(jvmtiEnv* env,

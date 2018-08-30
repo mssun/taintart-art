@@ -653,6 +653,70 @@ void HeapUtil::Unregister() {
   art::Runtime::Current()->RemoveSystemWeakHolder(&gIndexCachingTable);
 }
 
+jvmtiError HeapUtil::IterateOverInstancesOfClass(jvmtiEnv* env,
+                                                 jclass klass,
+                                                 jvmtiHeapObjectFilter filter,
+                                                 jvmtiHeapObjectCallback cb,
+                                                 const void* user_data) {
+  if (cb == nullptr || klass == nullptr) {
+    return ERR(NULL_POINTER);
+  }
+
+  art::Thread* self = art::Thread::Current();
+  art::ScopedObjectAccess soa(self);      // Now we know we have the shared lock.
+  art::StackHandleScope<1> hs(self);
+
+  art::ObjPtr<art::mirror::Object> klass_ptr(soa.Decode<art::mirror::Class>(klass));
+  if (!klass_ptr->IsClass()) {
+    return ERR(INVALID_CLASS);
+  }
+  art::Handle<art::mirror::Class> filter_klass(hs.NewHandle(klass_ptr->AsClass()));
+  if (filter_klass->IsInterface()) {
+    // nothing is an 'instance' of an interface so just return without walking anything.
+    return OK;
+  }
+
+  ObjectTagTable* tag_table = ArtJvmTiEnv::AsArtJvmTiEnv(env)->object_tag_table.get();
+  bool stop_reports = false;
+  auto visitor = [&](art::mirror::Object* obj) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    // Early return, as we can't really stop visiting.
+    if (stop_reports) {
+      return;
+    }
+
+    art::ScopedAssertNoThreadSuspension no_suspension("IterateOverInstancesOfClass");
+
+    art::ObjPtr<art::mirror::Class> klass = obj->GetClass();
+
+    if (filter_klass != nullptr && !filter_klass->IsAssignableFrom(klass)) {
+      return;
+    }
+
+    jlong tag = 0;
+    tag_table->GetTag(obj, &tag);
+    if ((filter != JVMTI_HEAP_OBJECT_EITHER) &&
+        ((tag == 0 && filter == JVMTI_HEAP_OBJECT_TAGGED) ||
+         (tag != 0 && filter == JVMTI_HEAP_OBJECT_UNTAGGED))) {
+      return;
+    }
+
+    jlong class_tag = 0;
+    tag_table->GetTag(klass.Ptr(), &class_tag);
+
+    jlong saved_tag = tag;
+    jint ret = cb(class_tag, obj->SizeOf(), &tag, const_cast<void*>(user_data));
+
+    stop_reports = (ret == JVMTI_ITERATION_ABORT);
+
+    if (tag != saved_tag) {
+      tag_table->Set(obj, tag);
+    }
+  };
+  art::Runtime::Current()->GetHeap()->VisitObjects(visitor);
+
+  return OK;
+}
+
 template <typename T>
 static jvmtiError DoIterateThroughHeap(T fn,
                                        jvmtiEnv* env,
