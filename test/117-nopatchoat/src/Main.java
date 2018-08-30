@@ -23,17 +23,12 @@ public class Main {
     // Hitting this condition should be rare and ideally we would prevent it from happening but
     // there is no way to do so without major changes to the run-test framework.
     boolean executable_correct = (needsRelocation() ?
-        hasExecutableOat() == (isDex2OatEnabled() || isRelocationDeltaZero()) :
+        hasExecutableOat() == isRelocationDeltaZero() :
         hasExecutableOat() == true);
 
     System.out.println(
-        "dex2oat & patchoat are " + ((isDex2OatEnabled()) ? "enabled" : "disabled") +
-        ", has oat is " + hasOatFile() + ", has executable oat is " + (
+        "Has oat is " + hasOatFile() + ", has executable oat is " + (
         executable_correct ? "expected" : "not expected") + ".");
-
-    if (!hasOatFile() && isDex2OatEnabled()) {
-      throw new Error("Application with dex2oat enabled runs without an oat file");
-    }
 
     System.out.println(functionCall());
   }
@@ -46,8 +41,6 @@ public class Main {
     }
     return ret.substring(0, ret.length() - 1);
   }
-
-  private native static boolean isDex2OatEnabled();
 
   private native static boolean needsRelocation();
 

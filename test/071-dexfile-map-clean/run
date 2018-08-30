@@ -14,13 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Run without dex2oat so that we don't create oat/vdex files
-# when trying to load the secondary dex file.
-
-# In this way, the secondary dex file will be forced to be
-# loaded directly.
-#
-# In addition, make sure we call 'sync'
+# Make sure we call 'sync'
 # before executing dalvikvm because otherwise
 # it's highly likely the pushed JAR files haven't
 # been committed to permanent storage yet,
@@ -28,4 +22,4 @@
 # the memory is dirty (despite being file-backed).
 # (Note: this was reproducible 100% of the time on
 # a target angler device).
-./default-run "$@" --no-dex2oat --sync
+./default-run "$@" --sync

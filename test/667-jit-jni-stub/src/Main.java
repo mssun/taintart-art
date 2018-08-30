@@ -18,7 +18,7 @@ public class Main {
   public static void main(String[] args) throws Exception {
     System.loadLibrary(args[0]);
     if (isAotCompiled(Main.class, "hasJit")) {
-      throw new Error("This test must be run with --no-prebuild --no-dex2oat!");
+      throw new Error("This test must be run with --no-prebuild!");
     }
     if (!hasJit()) {
       return;
