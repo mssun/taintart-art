@@ -1461,9 +1461,10 @@ class ImageSpace::BootImageLoader {
     return cache_filename_;
   }
 
-  bool LoadFromSystem(/*out*/ std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
-                      /*out*/ uint8_t** oat_file_end,
-                      /*out*/ std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool LoadFromSystem(size_t extra_reservation_size,
+                      /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
+                      /*out*/MemMap* extra_reservation,
+                      /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
     std::string filename = GetSystemImageFilename(image_location_.c_str(), image_isa_);
     std::vector<std::string> locations;
     if (!GetBootClassPathImageLocations(image_location_, filename, &locations, error_msg)) {
@@ -1484,11 +1485,14 @@ class ImageSpace::BootImageLoader {
     }
     MemMap image_reservation;
     MemMap oat_reservation;
+    MemMap local_extra_reservation;
     if (!ReserveBootImageMemory(image_start,
                                 image_end,
                                 oat_end,
+                                extra_reservation_size,
                                 &image_reservation,
                                 &oat_reservation,
+                                &local_extra_reservation,
                                 error_msg)) {
       return false;
     }
@@ -1511,7 +1515,7 @@ class ImageSpace::BootImageLoader {
       return false;
     }
 
-    *oat_file_end = GetOatFileEnd(spaces);
+    *extra_reservation = std::move(local_extra_reservation);
     boot_image_spaces->swap(spaces);
     return true;
   }
@@ -1519,9 +1523,10 @@ class ImageSpace::BootImageLoader {
   bool LoadFromDalvikCache(
       bool validate_system_checksums,
       bool validate_oat_file,
-      /*out*/ std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
-      /*out*/ uint8_t** oat_file_end,
-      /*out*/ std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
+      size_t extra_reservation_size,
+      /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
+      /*out*/MemMap* extra_reservation,
+      /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(DalvikCacheExists());
     std::vector<std::string> locations;
     if (!GetBootClassPathImageLocations(image_location_, cache_filename_, &locations, error_msg)) {
@@ -1548,11 +1553,14 @@ class ImageSpace::BootImageLoader {
     }
     MemMap image_reservation;
     MemMap oat_reservation;
+    MemMap local_extra_reservation;
     if (!ReserveBootImageMemory(image_start,
                                 image_end,
                                 oat_end,
+                                extra_reservation_size,
                                 &image_reservation,
                                 &oat_reservation,
+                                &local_extra_reservation,
                                 error_msg)) {
       return false;
     }
@@ -1594,7 +1602,7 @@ class ImageSpace::BootImageLoader {
       return false;
     }
 
-    *oat_file_end = GetOatFileEnd(spaces);
+    *extra_reservation = std::move(local_extra_reservation);
     boot_image_spaces->swap(spaces);
     return true;
   }
@@ -1692,14 +1700,18 @@ class ImageSpace::BootImageLoader {
   bool ReserveBootImageMemory(uint32_t image_start,
                               uint32_t image_end,
                               uint32_t oat_end,
+                              size_t extra_reservation_size,
                               /*out*/MemMap* image_reservation,
                               /*out*/MemMap* oat_reservation,
+                              /*out*/MemMap* extra_reservation,
                               /*out*/std::string* error_msg) {
     DCHECK(!image_reservation->IsValid());
+    size_t total_size =
+        dchecked_integral_cast<size_t>(oat_end - image_start) + extra_reservation_size;
     *image_reservation =
         MemMap::MapAnonymous("Boot image reservation",
                              reinterpret_cast32<uint8_t*>(image_start),
-                             oat_end - image_start,
+                             total_size,
                              PROT_NONE,
                              /* low_4gb */ true,
                              /* reuse */ false,
@@ -1707,6 +1719,19 @@ class ImageSpace::BootImageLoader {
                              error_msg);
     if (!image_reservation->IsValid()) {
       return false;
+    }
+    DCHECK(!extra_reservation->IsValid());
+    if (extra_reservation_size != 0u) {
+      DCHECK_ALIGNED(extra_reservation_size, kPageSize);
+      DCHECK_LT(extra_reservation_size, image_reservation->Size());
+      uint8_t* split = image_reservation->End() - extra_reservation_size;
+      *extra_reservation = image_reservation->RemapAtEnd(split,
+                                                         "Boot image extra reservation",
+                                                         PROT_NONE,
+                                                         error_msg);
+      if (!extra_reservation->IsValid()) {
+        return false;
+      }
     }
     DCHECK(!oat_reservation->IsValid());
     *oat_reservation = image_reservation->RemapAtEnd(reinterpret_cast32<uint8_t*>(image_end),
@@ -1736,16 +1761,6 @@ class ImageSpace::BootImageLoader {
       return false;
     }
     return true;
-  }
-
-  uint8_t* GetOatFileEnd(const std::vector<std::unique_ptr<ImageSpace>>& spaces) {
-    DCHECK(std::is_sorted(
-        spaces.begin(),
-        spaces.end(),
-        [](const std::unique_ptr<ImageSpace>& lhs, const std::unique_ptr<ImageSpace>& rhs) {
-          return lhs->GetOatFileEnd() < rhs->GetOatFileEnd();
-        }));
-    return AlignUp(spaces.back()->GetOatFileEnd(), kPageSize);
   }
 
   const std::string& image_location_;
@@ -1797,13 +1812,15 @@ static bool CheckSpace(const std::string& cache_filename, std::string* error_msg
 bool ImageSpace::LoadBootImage(
     const std::string& image_location,
     const InstructionSet image_isa,
-    /*out*/ std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
-    /*out*/ uint8_t** oat_file_end) {
+    size_t extra_reservation_size,
+    /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
+    /*out*/MemMap* extra_reservation) {
   ScopedTrace trace(__FUNCTION__);
 
   DCHECK(boot_image_spaces != nullptr);
   DCHECK(boot_image_spaces->empty());
-  DCHECK(oat_file_end != nullptr);
+  DCHECK_ALIGNED(extra_reservation_size, kPageSize);
+  DCHECK(extra_reservation != nullptr);
   DCHECK_NE(image_isa, InstructionSet::kNone);
 
   if (image_location.empty()) {
@@ -1860,8 +1877,9 @@ bool ImageSpace::LoadBootImage(
     // If we have system image, validate system image checksums, otherwise validate the oat file.
     if (loader.LoadFromDalvikCache(/* validate_system_checksums */ loader.HasSystem(),
                                    /* validate_oat_file */ !loader.HasSystem(),
+                                   extra_reservation_size,
                                    boot_image_spaces,
-                                   oat_file_end,
+                                   extra_reservation,
                                    &local_error_msg)) {
       return true;
     }
@@ -1875,7 +1893,10 @@ bool ImageSpace::LoadBootImage(
 
   if (loader.HasSystem() && !relocate) {
     std::string local_error_msg;
-    if (loader.LoadFromSystem(boot_image_spaces, oat_file_end, &local_error_msg)) {
+    if (loader.LoadFromSystem(extra_reservation_size,
+                              boot_image_spaces,
+                              extra_reservation,
+                              &local_error_msg)) {
       return true;
     }
     error_msgs.push_back(local_error_msg);
@@ -1892,8 +1913,9 @@ bool ImageSpace::LoadBootImage(
       if (patch_success) {
         if (loader.LoadFromDalvikCache(/* validate_system_checksums */ false,
                                        /* validate_oat_file */ false,
+                                       extra_reservation_size,
                                        boot_image_spaces,
-                                       oat_file_end,
+                                       extra_reservation,
                                        &local_error_msg)) {
           return true;
         }
@@ -1917,8 +1939,9 @@ bool ImageSpace::LoadBootImage(
       if (compilation_success) {
         if (loader.LoadFromDalvikCache(/* validate_system_checksums */ false,
                                        /* validate_oat_file */ false,
+                                       extra_reservation_size,
                                        boot_image_spaces,
-                                       oat_file_end,
+                                       extra_reservation,
                                        &local_error_msg)) {
           return true;
         }
