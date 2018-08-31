@@ -2348,10 +2348,13 @@ void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* o
       // If `ref` is on the allocation stack, then it may not be
       // marked live, but considered marked/alive (but not
       // necessarily on the live stack).
-      CHECK(IsOnAllocStack(ref)) << "Unmarked ref that's not on the allocation stack."
-                                 << " obj=" << obj
-                                 << " ref=" << ref
-                                 << " is_los=" << std::boolalpha << is_los << std::noboolalpha;
+      CHECK(IsOnAllocStack(ref))
+          << "Unmarked ref that's not on the allocation stack."
+          << " obj=" << obj
+          << " ref=" << ref
+          << " is_los=" << std::boolalpha << is_los << std::noboolalpha
+          << " is_marking=" << std::boolalpha << is_marking_ << std::noboolalpha
+          << " young_gen=" << std::boolalpha << young_gen_ << std::noboolalpha;
     }
   }
 }
