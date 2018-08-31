@@ -1401,7 +1401,10 @@ void Monitor::VisitLocks(StackVisitor* stack_visitor, void (*callback)(mirror::O
   // Ask the verifier for the dex pcs of all the monitor-enter instructions corresponding to
   // the locks held in this stack frame.
   std::vector<verifier::MethodVerifier::DexLockInfo> monitor_enter_dex_pcs;
-  verifier::MethodVerifier::FindLocksAtDexPc(m, dex_pc, &monitor_enter_dex_pcs);
+  verifier::MethodVerifier::FindLocksAtDexPc(m,
+                                             dex_pc,
+                                             &monitor_enter_dex_pcs,
+                                             Runtime::Current()->GetTargetSdkVersion());
   for (verifier::MethodVerifier::DexLockInfo& dex_lock_info : monitor_enter_dex_pcs) {
     // As a debug check, check that dex PC corresponds to a monitor-enter.
     if (kIsDebugBuild) {

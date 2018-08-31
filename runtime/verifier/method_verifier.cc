@@ -149,6 +149,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
                                         CompilerCallbacks* callbacks,
                                         bool allow_soft_failures,
                                         HardFailLogMode log_level,
+                                        uint32_t api_level,
                                         std::string* error) {
   if (klass->IsVerified()) {
     return FailureKind::kNoFailure;
@@ -188,6 +189,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
                      callbacks,
                      allow_soft_failures,
                      log_level,
+                     api_level,
                      error);
 }
 
@@ -211,6 +213,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
                                         CompilerCallbacks* callbacks,
                                         bool allow_soft_failures,
                                         HardFailLogMode log_level,
+                                        uint32_t api_level,
                                         std::string* error) {
   // A class must not be abstract and final.
   if ((class_def.access_flags_ & (kAccAbstract | kAccFinal)) == (kAccAbstract | kAccFinal)) {
@@ -261,6 +264,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
                                                       allow_soft_failures,
                                                       log_level,
                                                       /*need_precise_constants*/ false,
+                                                      api_level,
                                                       &hard_failure_msg);
     if (result.kind == FailureKind::kHardFailure) {
       if (failure_data.kind == FailureKind::kHardFailure) {
@@ -322,6 +326,7 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
                                                          bool allow_soft_failures,
                                                          HardFailLogMode log_level,
                                                          bool need_precise_constants,
+                                                         uint32_t api_level,
                                                          std::string* hard_failure_msg) {
   MethodVerifier::FailureData result;
   uint64_t start_ns = kTimeVerifyMethod ? NanoTime() : 0;
@@ -339,7 +344,8 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
                           allow_soft_failures,
                           need_precise_constants,
                           false /* verify to dump */,
-                          true /* allow_thread_suspension */);
+                          true /* allow_thread_suspension */,
+                          api_level);
   if (verifier.Verify()) {
     // Verification completed, however failures may be pending that didn't cause the verification
     // to hard fail.
@@ -458,7 +464,8 @@ MethodVerifier* MethodVerifier::VerifyMethodAndDump(Thread* self,
                                                     const DexFile::ClassDef& class_def,
                                                     const DexFile::CodeItem* code_item,
                                                     ArtMethod* method,
-                                                    uint32_t method_access_flags) {
+                                                    uint32_t method_access_flags,
+                                                    uint32_t api_level) {
   MethodVerifier* verifier = new MethodVerifier(self,
                                                 dex_file,
                                                 dex_cache,
@@ -472,7 +479,8 @@ MethodVerifier* MethodVerifier::VerifyMethodAndDump(Thread* self,
                                                 true /* allow_soft_failures */,
                                                 true /* need_precise_constants */,
                                                 true /* verify_to_dump */,
-                                                true /* allow_thread_suspension */);
+                                                true /* allow_thread_suspension */,
+                                                api_level);
   verifier->Verify();
   verifier->DumpFailures(vios->Stream());
   vios->Stream() << verifier->info_messages_.str();
@@ -500,7 +508,8 @@ MethodVerifier::MethodVerifier(Thread* self,
                                bool allow_soft_failures,
                                bool need_precise_constants,
                                bool verify_to_dump,
-                               bool allow_thread_suspension)
+                               bool allow_thread_suspension,
+                               uint32_t api_level)
     : self_(self),
       arena_stack_(Runtime::Current()->GetArenaPool()),
       allocator_(&arena_stack_),
@@ -534,7 +543,8 @@ MethodVerifier::MethodVerifier(Thread* self,
       verify_to_dump_(verify_to_dump),
       allow_thread_suspension_(allow_thread_suspension),
       is_constructor_(false),
-      link_(nullptr) {
+      link_(nullptr),
+      api_level_(api_level == 0 ? std::numeric_limits<uint32_t>::max() : api_level) {
   self->PushVerifier(this);
 }
 
@@ -546,7 +556,8 @@ MethodVerifier::~MethodVerifier() {
 void MethodVerifier::FindLocksAtDexPc(
     ArtMethod* m,
     uint32_t dex_pc,
-    std::vector<MethodVerifier::DexLockInfo>* monitor_enter_dex_pcs) {
+    std::vector<MethodVerifier::DexLockInfo>* monitor_enter_dex_pcs,
+    uint32_t api_level) {
   StackHandleScope<2> hs(Thread::Current());
   Handle<mirror::DexCache> dex_cache(hs.NewHandle(m->GetDexCache()));
   Handle<mirror::ClassLoader> class_loader(hs.NewHandle(m->GetClassLoader()));
@@ -563,7 +574,8 @@ void MethodVerifier::FindLocksAtDexPc(
                           true  /* allow_soft_failures */,
                           false /* need_precise_constants */,
                           false /* verify_to_dump */,
-                          false /* allow_thread_suspension */);
+                          false /* allow_thread_suspension */,
+                          api_level);
   verifier.interesting_dex_pc_ = dex_pc;
   verifier.monitor_enter_dex_pcs_ = monitor_enter_dex_pcs;
   verifier.FindLocksAtDexPc();
@@ -3663,9 +3675,11 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   // the access-checks interpreter. If result is primitive, skip the access check.
   //
   // Note: we do this for unresolved classes to trigger re-verification at runtime.
-  if (C == CheckAccess::kYes && result->IsNonZeroReferenceTypes()) {
+  if (C == CheckAccess::kYes &&
+      result->IsNonZeroReferenceTypes() &&
+      (api_level_ >= 28u || !result->IsUnresolvedTypes())) {
     const RegType& referrer = GetDeclaringClass();
-    if (!referrer.CanAccess(*result)) {
+    if ((api_level_ >= 28u || !referrer.IsUnresolvedTypes()) && !referrer.CanAccess(*result)) {
       Fail(VERIFY_ERROR_ACCESS_CLASS) << "(possibly) illegal class access: '"
                                       << referrer << "' -> '" << *result << "'";
     }
@@ -4725,7 +4739,7 @@ void MethodVerifier::VerifyISFieldAccess(const Instruction* inst, const RegType&
       DCHECK(!can_load_classes_ || self_->IsExceptionPending());
       self_->ClearException();
     }
-  } else {
+  } else if (api_level_ >= 28u) {
     // If we don't have the field (it seems we failed resolution) and this is a PUT, we need to
     // redo verification at runtime as the field may be final, unless the field id shows it's in
     // the same class.

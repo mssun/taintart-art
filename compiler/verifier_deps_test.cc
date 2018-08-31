@@ -178,7 +178,8 @@ class VerifierDepsTest : public CommonCompilerTest {
                                 true /* allow_soft_failures */,
                                 true /* need_precise_constants */,
                                 false /* verify to dump */,
-                                true /* allow_thread_suspension */);
+                                true /* allow_thread_suspension */,
+                                0 /* api_level */);
         verifier.Verify();
         soa.Self()->SetVerifierDeps(nullptr);
         has_failures = verifier.HasFailures();

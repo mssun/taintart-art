@@ -1886,7 +1886,9 @@ void CompilerDriver::Verify(jobject jclass_loader,
 class VerifyClassVisitor : public CompilationVisitor {
  public:
   VerifyClassVisitor(const ParallelCompilationManager* manager, verifier::HardFailLogMode log_level)
-     : manager_(manager), log_level_(log_level) {}
+     : manager_(manager),
+       log_level_(log_level),
+       sdk_version_(Runtime::Current()->GetTargetSdkVersion()) {}
 
   void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) override {
     ScopedTrace trace(__FUNCTION__);
@@ -1923,6 +1925,7 @@ class VerifyClassVisitor : public CompilationVisitor {
                                                 Runtime::Current()->GetCompilerCallbacks(),
                                                 true /* allow soft failures */,
                                                 log_level_,
+                                                sdk_version_,
                                                 &error_msg);
       if (failure_kind == verifier::FailureKind::kHardFailure) {
         LOG(ERROR) << "Verification failed on class " << PrettyDescriptor(descriptor)
@@ -1995,6 +1998,7 @@ class VerifyClassVisitor : public CompilationVisitor {
  private:
   const ParallelCompilationManager* const manager_;
   const verifier::HardFailLogMode log_level_;
+  const uint32_t sdk_version_;
 };
 
 void CompilerDriver::VerifyDexFile(jobject class_loader,
