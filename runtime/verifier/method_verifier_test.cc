@@ -42,7 +42,7 @@ class MethodVerifierTest : public CommonRuntimeTest {
     // Verify the class
     std::string error_msg;
     FailureKind failure = MethodVerifier::VerifyClass(
-        self, klass, nullptr, true, HardFailLogMode::kLogWarning, &error_msg);
+        self, klass, nullptr, true, HardFailLogMode::kLogWarning, /* api_level */ 0u, &error_msg);
 
     if (android::base::StartsWith(descriptor, "Ljava/lang/invoke")) {
       ASSERT_TRUE(failure == FailureKind::kSoftFailure ||
