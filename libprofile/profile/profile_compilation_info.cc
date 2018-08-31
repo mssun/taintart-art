@@ -34,6 +34,7 @@
 
 #include "base/arena_allocator.h"
 #include "base/dumpable.h"
+#include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/malloc_arena_pool.h"
 #include "base/os.h"
@@ -1171,7 +1172,8 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::OpenSource(
     source->reset(ProfileSource::Create(fd));
     return kProfileLoadSuccess;
   } else {
-    std::unique_ptr<ZipArchive> zip_archive(ZipArchive::OpenFromFd(fd, "profile", error));
+    std::unique_ptr<ZipArchive> zip_archive(
+        ZipArchive::OpenFromFd(DupCloexec(fd), "profile", error));
     if (zip_archive.get() == nullptr) {
       *error = "Could not open the profile zip archive";
       return kProfileLoadBadData;
