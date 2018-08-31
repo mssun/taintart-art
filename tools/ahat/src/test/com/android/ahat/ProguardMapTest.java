@@ -48,7 +48,8 @@ public class ProguardMapTest {
     + "    59:61:void methodWithObfObjArg(class.with.only.Fields) -> m\n"
     + "    64:66:class.with.only.Fields methodWithObfRes() -> n\n"
     + "    80:80:void lineObfuscatedMethod():8:8 -> o\n"
-    + "    90:90:void lineObfuscatedMethod2():9 -> p\n"
+    + "    100:105:void lineObfuscatedMethod():50 -> o\n"
+    + "    90:94:void lineObfuscatedMethod2():9 -> p\n"
     ;
 
   @Test
@@ -156,6 +157,12 @@ public class ProguardMapTest {
     assertEquals("()V", frame.signature);
     assertEquals("Methods.java", frame.filename);
     assertEquals(8, frame.line);
+
+    frame = map.getFrame("class.with.Methods", "o", "()V", "SourceFile.java", 103);
+    assertEquals("lineObfuscatedMethod", frame.method);
+    assertEquals("()V", frame.signature);
+    assertEquals("Methods.java", frame.filename);
+    assertEquals(53, frame.line);
 
     frame = map.getFrame("class.with.Methods", "p", "()V", "SourceFile.java", 94);
     assertEquals("lineObfuscatedMethod2", frame.method);
