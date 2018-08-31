@@ -131,7 +131,7 @@ inline uint32_t Object::GetReadBarrierState() {
     UNREACHABLE();
   }
   DCHECK(kUseBakerReadBarrier);
-  LockWord lw(GetField<uint32_t, /*kIsVolatile*/false>(MonitorOffset()));
+  LockWord lw(GetFieldPrimitive<uint32_t, /*kIsVolatile*/false>(MonitorOffset()));
   uint32_t rb_state = lw.ReadBarrierState();
   DCHECK(ReadBarrier::IsValidReadBarrierState(rb_state)) << rb_state;
   return rb_state;

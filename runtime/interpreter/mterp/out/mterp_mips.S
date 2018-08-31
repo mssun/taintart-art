@@ -2665,85 +2665,28 @@ artMterpAsmInstructionStart = .L_op_nop
     .balign 128
 .L_op_iget: /* 0x52 */
 /* File: mips/op_iget.S */
-    /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
-     */
-    /* op vA, vB, field@CCCC */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- referrer
-    move  a3, rSELF                        # a3 <- self
-    JAL(MterpIGetU32)
-    lw   a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA4(a2)                           # a2<- A+
-    PREFETCH_INST(2)                       # load rINST
-    bnez  a3, MterpPossibleException        # bail out
-    ADVANCE(2)                             #  advance rPC
-    GET_INST_OPCODE(t0)                    #  extract opcode from rINST
-    .if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[A] <- v0
-    .else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[A] <- v0
-    .endif
+/* File: mips/field.S */
+TODO
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iget_wide: /* 0x53 */
 /* File: mips/op_iget_wide.S */
-    /*
-     * 64-bit instance field get.
-     *
-     * for: iget-wide
-     */
-    /* op vA, vB, field@CCCC */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field byte offset
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- referrer
-    move  a3, rSELF                        # a3 <- self
-    JAL(MterpIGetU64)
-    lw   a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA4(a2)                           # a2<- A+
-    PREFETCH_INST(2)                       # load rINST
-    bnez a3, MterpException                # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    SET_VREG64_GOTO(v0, v1, a2, t0)        # fp[A] <- v0/v1
+/* File: mips/op_iget.S */
+/* File: mips/field.S */
+TODO
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iget_object: /* 0x54 */
 /* File: mips/op_iget_object.S */
 /* File: mips/op_iget.S */
-    /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
-     */
-    /* op vA, vB, field@CCCC */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- referrer
-    move  a3, rSELF                        # a3 <- self
-    JAL(MterpIGetObj)
-    lw   a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA4(a2)                           # a2<- A+
-    PREFETCH_INST(2)                       # load rINST
-    bnez  a3, MterpPossibleException        # bail out
-    ADVANCE(2)                             #  advance rPC
-    GET_INST_OPCODE(t0)                    #  extract opcode from rINST
-    .if 1
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[A] <- v0
-    .else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[A] <- v0
-    .endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -2751,30 +2694,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iget_boolean: /* 0x55 */
 /* File: mips/op_iget_boolean.S */
 /* File: mips/op_iget.S */
-    /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
-     */
-    /* op vA, vB, field@CCCC */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- referrer
-    move  a3, rSELF                        # a3 <- self
-    JAL(MterpIGetU8)
-    lw   a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA4(a2)                           # a2<- A+
-    PREFETCH_INST(2)                       # load rINST
-    bnez  a3, MterpPossibleException        # bail out
-    ADVANCE(2)                             #  advance rPC
-    GET_INST_OPCODE(t0)                    #  extract opcode from rINST
-    .if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[A] <- v0
-    .else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[A] <- v0
-    .endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -2782,30 +2704,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iget_byte: /* 0x56 */
 /* File: mips/op_iget_byte.S */
 /* File: mips/op_iget.S */
-    /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
-     */
-    /* op vA, vB, field@CCCC */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- referrer
-    move  a3, rSELF                        # a3 <- self
-    JAL(MterpIGetI8)
-    lw   a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA4(a2)                           # a2<- A+
-    PREFETCH_INST(2)                       # load rINST
-    bnez  a3, MterpPossibleException        # bail out
-    ADVANCE(2)                             #  advance rPC
-    GET_INST_OPCODE(t0)                    #  extract opcode from rINST
-    .if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[A] <- v0
-    .else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[A] <- v0
-    .endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -2813,30 +2714,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iget_char: /* 0x57 */
 /* File: mips/op_iget_char.S */
 /* File: mips/op_iget.S */
-    /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
-     */
-    /* op vA, vB, field@CCCC */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- referrer
-    move  a3, rSELF                        # a3 <- self
-    JAL(MterpIGetU16)
-    lw   a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA4(a2)                           # a2<- A+
-    PREFETCH_INST(2)                       # load rINST
-    bnez  a3, MterpPossibleException        # bail out
-    ADVANCE(2)                             #  advance rPC
-    GET_INST_OPCODE(t0)                    #  extract opcode from rINST
-    .if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[A] <- v0
-    .else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[A] <- v0
-    .endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -2844,123 +2724,47 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iget_short: /* 0x58 */
 /* File: mips/op_iget_short.S */
 /* File: mips/op_iget.S */
-    /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
-     */
-    /* op vA, vB, field@CCCC */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- referrer
-    move  a3, rSELF                        # a3 <- self
-    JAL(MterpIGetI16)
-    lw   a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA4(a2)                           # a2<- A+
-    PREFETCH_INST(2)                       # load rINST
-    bnez  a3, MterpPossibleException        # bail out
-    ADVANCE(2)                             #  advance rPC
-    GET_INST_OPCODE(t0)                    #  extract opcode from rINST
-    .if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[A] <- v0
-    .else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[A] <- v0
-    .endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
     .balign 128
 .L_op_iput: /* 0x59 */
 /* File: mips/op_iput.S */
-    /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-boolean, iput-byte, iput-char, iput-short
-     */
-    /* op vA, vB, field@CCCC */
-    .extern MterpIPutU32
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    GET_OPA4(a2)                           # a2 <- A+
-    GET_VREG(a2, a2)                       # a2 <- fp[A]
-    lw    a3, OFF_FP_METHOD(rFP)           # a3 <- referrer
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpIPutU32)
-    bnez  v0, MterpPossibleException       # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iput_wide: /* 0x5a */
 /* File: mips/op_iput_wide.S */
-    /* iput-wide vA, vB, field@CCCC */
-    .extern MterpIPutU64
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    GET_OPA4(a2)                           # a2 <- A+
-    EAS2(a2, rFP, a2)                      # a2 <- &fp[A]
-    lw    a3, OFF_FP_METHOD(rFP)           # a3 <- referrer
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpIPutU64)
-    bnez  v0, MterpPossibleException       # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/op_iput.S */
+/* File: mips/field.S */
+TODO
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iput_object: /* 0x5b */
 /* File: mips/op_iput_object.S */
-    /*
-     * 32-bit instance field put.
-     *
-     * for: iput-object, iput-object-volatile
-     */
-    /* op vA, vB, field@CCCC */
-    EXPORT_PC()
-    addu   a0, rFP, OFF_FP_SHADOWFRAME
-    move   a1, rPC
-    move   a2, rINST
-    move   a3, rSELF
-    JAL(MterpIPutObj)
-    beqz   v0, MterpException
-    FETCH_ADVANCE_INST(2)               # advance rPC, load rINST
-    GET_INST_OPCODE(t0)                 # extract opcode from rINST
-    GOTO_OPCODE(t0)                     # jump to next instruction
+/* File: mips/op_iput.S */
+/* File: mips/field.S */
+TODO
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iput_boolean: /* 0x5c */
 /* File: mips/op_iput_boolean.S */
 /* File: mips/op_iput.S */
-    /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-boolean, iput-byte, iput-char, iput-short
-     */
-    /* op vA, vB, field@CCCC */
-    .extern MterpIPutU8
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    GET_OPA4(a2)                           # a2 <- A+
-    GET_VREG(a2, a2)                       # a2 <- fp[A]
-    lw    a3, OFF_FP_METHOD(rFP)           # a3 <- referrer
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpIPutU8)
-    bnez  v0, MterpPossibleException       # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -2968,26 +2772,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iput_byte: /* 0x5d */
 /* File: mips/op_iput_byte.S */
 /* File: mips/op_iput.S */
-    /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-boolean, iput-byte, iput-char, iput-short
-     */
-    /* op vA, vB, field@CCCC */
-    .extern MterpIPutI8
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    GET_OPA4(a2)                           # a2 <- A+
-    GET_VREG(a2, a2)                       # a2 <- fp[A]
-    lw    a3, OFF_FP_METHOD(rFP)           # a3 <- referrer
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpIPutI8)
-    bnez  v0, MterpPossibleException       # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -2995,26 +2782,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iput_char: /* 0x5e */
 /* File: mips/op_iput_char.S */
 /* File: mips/op_iput.S */
-    /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-boolean, iput-byte, iput-char, iput-short
-     */
-    /* op vA, vB, field@CCCC */
-    .extern MterpIPutU16
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    GET_OPA4(a2)                           # a2 <- A+
-    GET_VREG(a2, a2)                       # a2 <- fp[A]
-    lw    a3, OFF_FP_METHOD(rFP)           # a3 <- referrer
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpIPutU16)
-    bnez  v0, MterpPossibleException       # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -3022,105 +2792,37 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iput_short: /* 0x5f */
 /* File: mips/op_iput_short.S */
 /* File: mips/op_iput.S */
-    /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-boolean, iput-byte, iput-char, iput-short
-     */
-    /* op vA, vB, field@CCCC */
-    .extern MterpIPutI16
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPB(a1)                            # a1 <- B
-    GET_VREG(a1, a1)                       # a1 <- fp[B], the object pointer
-    GET_OPA4(a2)                           # a2 <- A+
-    GET_VREG(a2, a2)                       # a2 <- fp[A]
-    lw    a3, OFF_FP_METHOD(rFP)           # a3 <- referrer
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpIPutI16)
-    bnez  v0, MterpPossibleException       # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
     .balign 128
 .L_op_sget: /* 0x60 */
 /* File: mips/op_sget.S */
-    /*
-     * General SGET handler.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
-     */
-    /* op vAA, field@BBBB */
-    .extern MterpSGetU32
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    lw    a1, OFF_FP_METHOD(rFP)           # a1 <- method
-    move  a2, rSELF                        # a2 <- self
-    JAL(MterpSGetU32)
-    lw    a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA(a2)                            # a2 <- AA
-    PREFETCH_INST(2)
-    bnez  a3, MterpException               # bail out
-    ADVANCE(2)
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-.if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[AA] <- v0
-.else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[AA] <- v0
-.endif
+/* File: mips/field.S */
+TODO
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sget_wide: /* 0x61 */
 /* File: mips/op_sget_wide.S */
-    /*
-     * 64-bit SGET handler.
-     */
-    /* sget-wide vAA, field@BBBB */
-    .extern MterpSGetU64
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    lw    a1, OFF_FP_METHOD(rFP)           # a1 <- method
-    move  a2, rSELF                        # a2 <- self
-    JAL(MterpSGetU64)
-    lw    a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    bnez  a3, MterpException
-    GET_OPA(a1)                            # a1 <- AA
-    FETCH_ADVANCE_INST(2)                  # advance rPC, load rINST
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    SET_VREG64_GOTO(v0, v1, a1, t0)        # vAA/vAA+1 <- v0/v1
+/* File: mips/op_sget.S */
+/* File: mips/field.S */
+TODO
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sget_object: /* 0x62 */
 /* File: mips/op_sget_object.S */
 /* File: mips/op_sget.S */
-    /*
-     * General SGET handler.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
-     */
-    /* op vAA, field@BBBB */
-    .extern MterpSGetObj
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    lw    a1, OFF_FP_METHOD(rFP)           # a1 <- method
-    move  a2, rSELF                        # a2 <- self
-    JAL(MterpSGetObj)
-    lw    a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA(a2)                            # a2 <- AA
-    PREFETCH_INST(2)
-    bnez  a3, MterpException               # bail out
-    ADVANCE(2)
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-.if 1
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[AA] <- v0
-.else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[AA] <- v0
-.endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -3128,29 +2830,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sget_boolean: /* 0x63 */
 /* File: mips/op_sget_boolean.S */
 /* File: mips/op_sget.S */
-    /*
-     * General SGET handler.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
-     */
-    /* op vAA, field@BBBB */
-    .extern MterpSGetU8
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    lw    a1, OFF_FP_METHOD(rFP)           # a1 <- method
-    move  a2, rSELF                        # a2 <- self
-    JAL(MterpSGetU8)
-    lw    a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA(a2)                            # a2 <- AA
-    PREFETCH_INST(2)
-    bnez  a3, MterpException               # bail out
-    ADVANCE(2)
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-.if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[AA] <- v0
-.else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[AA] <- v0
-.endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -3158,29 +2840,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sget_byte: /* 0x64 */
 /* File: mips/op_sget_byte.S */
 /* File: mips/op_sget.S */
-    /*
-     * General SGET handler.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
-     */
-    /* op vAA, field@BBBB */
-    .extern MterpSGetI8
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    lw    a1, OFF_FP_METHOD(rFP)           # a1 <- method
-    move  a2, rSELF                        # a2 <- self
-    JAL(MterpSGetI8)
-    lw    a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA(a2)                            # a2 <- AA
-    PREFETCH_INST(2)
-    bnez  a3, MterpException               # bail out
-    ADVANCE(2)
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-.if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[AA] <- v0
-.else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[AA] <- v0
-.endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -3188,29 +2850,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sget_char: /* 0x65 */
 /* File: mips/op_sget_char.S */
 /* File: mips/op_sget.S */
-    /*
-     * General SGET handler.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
-     */
-    /* op vAA, field@BBBB */
-    .extern MterpSGetU16
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    lw    a1, OFF_FP_METHOD(rFP)           # a1 <- method
-    move  a2, rSELF                        # a2 <- self
-    JAL(MterpSGetU16)
-    lw    a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA(a2)                            # a2 <- AA
-    PREFETCH_INST(2)
-    bnez  a3, MterpException               # bail out
-    ADVANCE(2)
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-.if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[AA] <- v0
-.else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[AA] <- v0
-.endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -3218,120 +2860,47 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sget_short: /* 0x66 */
 /* File: mips/op_sget_short.S */
 /* File: mips/op_sget.S */
-    /*
-     * General SGET handler.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
-     */
-    /* op vAA, field@BBBB */
-    .extern MterpSGetI16
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    lw    a1, OFF_FP_METHOD(rFP)           # a1 <- method
-    move  a2, rSELF                        # a2 <- self
-    JAL(MterpSGetI16)
-    lw    a3, THREAD_EXCEPTION_OFFSET(rSELF)
-    GET_OPA(a2)                            # a2 <- AA
-    PREFETCH_INST(2)
-    bnez  a3, MterpException               # bail out
-    ADVANCE(2)
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-.if 0
-    SET_VREG_OBJECT_GOTO(v0, a2, t0)       # fp[AA] <- v0
-.else
-    SET_VREG_GOTO(v0, a2, t0)              # fp[AA] <- v0
-.endif
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
     .balign 128
 .L_op_sput: /* 0x67 */
 /* File: mips/op_sput.S */
-    /*
-     * General SPUT handler.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
-     */
-    /* op vAA, field@BBBB */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    GET_OPA(a3)                            # a3 <- AA
-    GET_VREG(a1, a3)                       # a1 <- fp[AA], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- method
-    move  a3, rSELF                        # a3 <- self
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpSPutU32)
-    bnez  v0, MterpException               # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sput_wide: /* 0x68 */
 /* File: mips/op_sput_wide.S */
-    /*
-     * 64-bit SPUT handler.
-     */
-    /* sput-wide vAA, field@BBBB */
-    .extern MterpSPutU64
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref CCCC
-    GET_OPA(a1)                            # a1 <- AA
-    EAS2(a1, rFP, a1)                      # a1 <- &fp[AA]
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- method
-    move  a3, rSELF                        # a3 <- self
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpSPutU64)
-    bnez  v0, MterpException               # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/op_sput.S */
+/* File: mips/field.S */
+TODO
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sput_object: /* 0x69 */
 /* File: mips/op_sput_object.S */
-    /*
-     * General 32-bit SPUT handler.
-     *
-     * for: sput-object,
-     */
-    /* op vAA, field@BBBB */
-    EXPORT_PC()
-    addu   a0, rFP, OFF_FP_SHADOWFRAME
-    move   a1, rPC
-    move   a2, rINST
-    move   a3, rSELF
-    JAL(MterpSPutObj)
-    beqz   v0, MterpException
-    FETCH_ADVANCE_INST(2)               # advance rPC, load rINST
-    GET_INST_OPCODE(t0)                 # extract opcode from rINST
-    GOTO_OPCODE(t0)                     # jump to next instruction
+/* File: mips/op_sput.S */
+/* File: mips/field.S */
+TODO
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sput_boolean: /* 0x6a */
 /* File: mips/op_sput_boolean.S */
 /* File: mips/op_sput.S */
-    /*
-     * General SPUT handler.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
-     */
-    /* op vAA, field@BBBB */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    GET_OPA(a3)                            # a3 <- AA
-    GET_VREG(a1, a3)                       # a1 <- fp[AA], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- method
-    move  a3, rSELF                        # a3 <- self
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpSPutU8)
-    bnez  v0, MterpException               # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -3339,24 +2908,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sput_byte: /* 0x6b */
 /* File: mips/op_sput_byte.S */
 /* File: mips/op_sput.S */
-    /*
-     * General SPUT handler.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
-     */
-    /* op vAA, field@BBBB */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    GET_OPA(a3)                            # a3 <- AA
-    GET_VREG(a1, a3)                       # a1 <- fp[AA], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- method
-    move  a3, rSELF                        # a3 <- self
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpSPutI8)
-    bnez  v0, MterpException               # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -3364,24 +2918,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sput_char: /* 0x6c */
 /* File: mips/op_sput_char.S */
 /* File: mips/op_sput.S */
-    /*
-     * General SPUT handler.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
-     */
-    /* op vAA, field@BBBB */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    GET_OPA(a3)                            # a3 <- AA
-    GET_VREG(a1, a3)                       # a1 <- fp[AA], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- method
-    move  a3, rSELF                        # a3 <- self
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpSPutU16)
-    bnez  v0, MterpException               # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */
@@ -3389,24 +2928,9 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sput_short: /* 0x6d */
 /* File: mips/op_sput_short.S */
 /* File: mips/op_sput.S */
-    /*
-     * General SPUT handler.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
-     */
-    /* op vAA, field@BBBB */
-    EXPORT_PC()
-    FETCH(a0, 1)                           # a0 <- field ref BBBB
-    GET_OPA(a3)                            # a3 <- AA
-    GET_VREG(a1, a3)                       # a1 <- fp[AA], the object pointer
-    lw    a2, OFF_FP_METHOD(rFP)           # a2 <- method
-    move  a3, rSELF                        # a3 <- self
-    PREFETCH_INST(2)                       # load rINST
-    JAL(MterpSPutI16)
-    bnez  v0, MterpException               # bail out
-    ADVANCE(2)                             # advance rPC
-    GET_INST_OPCODE(t0)                    # extract opcode from rINST
-    GOTO_OPCODE(t0)                        # jump to next instruction
+/* File: mips/field.S */
+TODO
+
 
 
 /* ------------------------------ */

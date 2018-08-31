@@ -28,13 +28,6 @@
 
 namespace art {
 
-inline constexpr bool FindFieldTypeIsRead(FindFieldType type) {
-  return type == InstanceObjectRead ||
-         type == InstancePrimitiveRead ||
-         type == StaticObjectRead ||
-         type == StaticPrimitiveRead;
-}
-
 // Helper function to do a null check after trying to resolve the field. Not for statics since obj
 // does not exist there. There is a suspend check, object is a double pointer to update the value
 // in the caller in case it moves.
@@ -50,7 +43,7 @@ ALWAYS_INLINE static inline ArtField* FindInstanceField(uint32_t field_idx,
   HandleWrapper<mirror::Object> h(hs.NewHandleWrapper(obj));
   ArtField* field = FindFieldFromCode<type, kAccessCheck>(field_idx, referrer, self, size);
   if (LIKELY(field != nullptr) && UNLIKELY(h == nullptr)) {
-    ThrowNullPointerExceptionForFieldAccess(field, /*is_read*/FindFieldTypeIsRead(type));
+    ThrowNullPointerExceptionForFieldAccess(field, (type & FindFieldFlags::ReadBit) != 0);
     return nullptr;
   }
   return field;

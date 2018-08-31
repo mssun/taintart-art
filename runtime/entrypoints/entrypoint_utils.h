@@ -103,16 +103,25 @@ ALWAYS_INLINE inline mirror::Array* AllocArrayFromCodeResolved(mirror::Class* kl
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 
+enum FindFieldFlags {
+  InstanceBit = 1 << 0,
+  StaticBit = 1 << 1,
+  ObjectBit = 1 << 2,
+  PrimitiveBit = 1 << 3,
+  ReadBit = 1 << 4,
+  WriteBit = 1 << 5,
+};
+
 // Type of find field operation for fast and slow case.
 enum FindFieldType {
-  InstanceObjectRead,
-  InstanceObjectWrite,
-  InstancePrimitiveRead,
-  InstancePrimitiveWrite,
-  StaticObjectRead,
-  StaticObjectWrite,
-  StaticPrimitiveRead,
-  StaticPrimitiveWrite,
+  InstanceObjectRead = InstanceBit | ObjectBit | ReadBit,
+  InstanceObjectWrite = InstanceBit | ObjectBit | WriteBit,
+  InstancePrimitiveRead = InstanceBit | PrimitiveBit | ReadBit,
+  InstancePrimitiveWrite = InstanceBit | PrimitiveBit | WriteBit,
+  StaticObjectRead = StaticBit | ObjectBit | ReadBit,
+  StaticObjectWrite = StaticBit | ObjectBit | WriteBit,
+  StaticPrimitiveRead = StaticBit | PrimitiveBit | ReadBit,
+  StaticPrimitiveWrite = StaticBit | PrimitiveBit | WriteBit,
 };
 
 template<FindFieldType type, bool access_check>
