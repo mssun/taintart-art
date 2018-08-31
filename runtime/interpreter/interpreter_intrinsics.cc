@@ -116,10 +116,10 @@ UNARY_INTRINSIC(MterpLongNumberOfLeadingZeros, JAVASTYLE_CLZ, GetVRegLong, SetJ)
 UNARY_INTRINSIC(MterpLongNumberOfTrailingZeros, JAVASTYLE_CTZ, GetVRegLong, SetJ);
 
 // java.lang.Long.rotateRight(JI)J
-BINARY_JJ_INTRINSIC(MterpLongRotateRight, (Rot<int64_t, false>), SetJ);
+BINARY_JI_INTRINSIC(MterpLongRotateRight, (Rot<int64_t, false>), SetJ);
 
 // java.lang.Long.rotateLeft(JI)J
-BINARY_JJ_INTRINSIC(MterpLongRotateLeft, (Rot<int64_t, true>), SetJ);
+BINARY_JI_INTRINSIC(MterpLongRotateLeft, (Rot<int64_t, true>), SetJ);
 
 // java.lang.Long.signum(J)I
 UNARY_INTRINSIC(MterpLongSignum, Signum, GetVRegLong, SetI);
