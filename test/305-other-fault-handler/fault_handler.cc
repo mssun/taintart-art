@@ -40,6 +40,7 @@ class TestFaultHandler final : public FaultHandler {
                                          /* prot */ PROT_NONE,
                                          /* low_4gb */ false,
                                          /* reuse */ false,
+                                         /* reservation */ nullptr,
                                          /* error_msg */ &map_error_,
                                          /* use_ashmem */ false)),
         was_hit_(false) {

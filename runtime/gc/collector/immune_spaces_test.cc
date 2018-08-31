@@ -41,13 +41,13 @@ class DummyOatFile : public OatFile {
 class DummyImageSpace : public space::ImageSpace {
  public:
   DummyImageSpace(MemMap&& map,
-                  accounting::ContinuousSpaceBitmap* live_bitmap,
+                  std::unique_ptr<accounting::ContinuousSpaceBitmap> live_bitmap,
                   std::unique_ptr<DummyOatFile>&& oat_file,
                   MemMap&& oat_map)
       : ImageSpace("DummyImageSpace",
                    /*image_location*/"",
                    std::move(map),
-                   live_bitmap,
+                   std::move(live_bitmap),
                    map.End()),
         oat_map_(std::move(oat_map)) {
     oat_file_ = std::move(oat_file);
@@ -130,7 +130,7 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
         ImageHeader::kStorageModeUncompressed,
         /*storage_size*/0u);
     return new DummyImageSpace(std::move(map),
-                               live_bitmap.release(),
+                               std::move(live_bitmap),
                                std::move(oat_file),
                                std::move(oat_map));
   }

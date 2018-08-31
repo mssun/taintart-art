@@ -150,10 +150,11 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
       (writable || unquicken) ? PROT_READ | PROT_WRITE : PROT_READ,
       unquicken ? MAP_PRIVATE : MAP_SHARED,
       file_fd,
-      0 /* start offset */,
+      /* start */ 0u,
       low_4gb,
-      mmap_reuse,
       vdex_filename.c_str(),
+      mmap_reuse,
+      /* reservation */ nullptr,
       error_msg);
   if (!mmap.IsValid()) {
     *error_msg = "Failed to mmap file " + vdex_filename + " : " + *error_msg;
