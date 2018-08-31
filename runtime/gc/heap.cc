@@ -312,39 +312,7 @@ Heap::Heap(size_t initial_size,
   ChangeCollector(desired_collector_type_);
   live_bitmap_.reset(new accounting::HeapBitmap(this));
   mark_bitmap_.reset(new accounting::HeapBitmap(this));
-  // Requested begin for the alloc space, to follow the mapped image and oat files
-  uint8_t* requested_alloc_space_begin = nullptr;
-  if (foreground_collector_type_ == kCollectorTypeCC) {
-    // Need to use a low address so that we can allocate a contiguous 2 * Xmx space when there's no
-    // image (dex2oat for target).
-    requested_alloc_space_begin = kPreferredAllocSpaceBegin;
-  }
 
-  // Load image space(s).
-  std::vector<std::unique_ptr<space::ImageSpace>> boot_image_spaces;
-  if (space::ImageSpace::LoadBootImage(image_file_name,
-                                       image_instruction_set,
-                                       &boot_image_spaces,
-                                       &requested_alloc_space_begin)) {
-    for (std::unique_ptr<space::ImageSpace>& space : boot_image_spaces) {
-      boot_image_spaces_.push_back(space.get());
-      AddSpace(space.release());
-    }
-  }
-
-  /*
-  requested_alloc_space_begin ->     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-                                     +-  nonmoving space (non_moving_space_capacity)+-
-                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-                                     +-????????????????????????????????????????????+-
-                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-                                     +-main alloc space / bump space 1 (capacity_) +-
-                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-                                     +-????????????????????????????????????????????+-
-                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-                                     +-main alloc space2 / bump space 2 (capacity_)+-
-                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  */
   // We don't have hspace compaction enabled with GSS or CC.
   if (foreground_collector_type_ == kCollectorTypeGSS ||
       foreground_collector_type_ == kCollectorTypeCC) {
@@ -363,21 +331,63 @@ Heap::Heap(size_t initial_size,
   if (foreground_collector_type_ == kCollectorTypeGSS) {
     separate_non_moving_space = false;
   }
+
+  // Requested begin for the alloc space, to follow the mapped image and oat files
+  uint8_t* request_begin = nullptr;
+  // Calculate the extra space required after the boot image, see allocations below.
+  size_t heap_reservation_size = separate_non_moving_space
+      ? non_moving_space_capacity
+      : ((is_zygote && foreground_collector_type_ != kCollectorTypeCC) ? capacity_ : 0u);
+  heap_reservation_size = RoundUp(heap_reservation_size, kPageSize);
+  // Load image space(s).
+  std::vector<std::unique_ptr<space::ImageSpace>> boot_image_spaces;
+  MemMap heap_reservation;
+  if (space::ImageSpace::LoadBootImage(image_file_name,
+                                       image_instruction_set,
+                                       heap_reservation_size,
+                                       &boot_image_spaces,
+                                       &heap_reservation)) {
+    DCHECK_EQ(heap_reservation_size, heap_reservation.IsValid() ? heap_reservation.Size() : 0u);
+    DCHECK(!boot_image_spaces.empty());
+    request_begin = boot_image_spaces.back()->GetImageHeader().GetOatFileEnd();
+    DCHECK(!heap_reservation.IsValid() || request_begin == heap_reservation.Begin())
+        << "request_begin=" << static_cast<const void*>(request_begin)
+        << " heap_reservation.Begin()=" << static_cast<const void*>(heap_reservation.Begin());
+    for (std::unique_ptr<space::ImageSpace>& space : boot_image_spaces) {
+      boot_image_spaces_.push_back(space.get());
+      AddSpace(space.release());
+    }
+  } else {
+    if (foreground_collector_type_ == kCollectorTypeCC) {
+      // Need to use a low address so that we can allocate a contiguous 2 * Xmx space
+      // when there's no image (dex2oat for target).
+      request_begin = kPreferredAllocSpaceBegin;
+    }
+    // Gross hack to make dex2oat deterministic.
+    if (foreground_collector_type_ == kCollectorTypeMS && Runtime::Current()->IsAotCompiler()) {
+      // Currently only enabled for MS collector since that is what the deterministic dex2oat uses.
+      // b/26849108
+      request_begin = reinterpret_cast<uint8_t*>(kAllocSpaceBeginForDeterministicAoT);
+    }
+  }
+
+  /*
+  requested_alloc_space_begin ->     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+                                     +-  nonmoving space (non_moving_space_capacity)+-
+                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+                                     +-????????????????????????????????????????????+-
+                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+                                     +-main alloc space / bump space 1 (capacity_) +-
+                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+                                     +-????????????????????????????????????????????+-
+                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+                                     +-main alloc space2 / bump space 2 (capacity_)+-
+                                     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+  */
+
   MemMap main_mem_map_1;
   MemMap main_mem_map_2;
 
-  // Gross hack to make dex2oat deterministic.
-  if (foreground_collector_type_ == kCollectorTypeMS &&
-      requested_alloc_space_begin == nullptr &&
-      Runtime::Current()->IsAotCompiler()) {
-    // Currently only enabled for MS collector since that is what the deterministic dex2oat uses.
-    // b/26849108
-    requested_alloc_space_begin = reinterpret_cast<uint8_t*>(kAllocSpaceBeginForDeterministicAoT);
-  }
-  uint8_t* request_begin = requested_alloc_space_begin;
-  if (request_begin != nullptr && separate_non_moving_space) {
-    request_begin += non_moving_space_capacity;
-  }
   std::string error_str;
   MemMap non_moving_space_mem_map;
   if (separate_non_moving_space) {
@@ -388,9 +398,16 @@ Heap::Heap(size_t initial_size,
     const char* space_name = is_zygote ? kZygoteSpaceName : kNonMovingSpaceName;
     // Reserve the non moving mem map before the other two since it needs to be at a specific
     // address.
-    non_moving_space_mem_map = MapAnonymousPreferredAddress(
-        space_name, requested_alloc_space_begin, non_moving_space_capacity, &error_str);
+    DCHECK_EQ(heap_reservation.IsValid(), !boot_image_spaces_.empty());
+    if (heap_reservation.IsValid()) {
+      non_moving_space_mem_map = heap_reservation.RemapAtEnd(
+          heap_reservation.Begin(), space_name, PROT_READ | PROT_WRITE, &error_str);
+    } else {
+      non_moving_space_mem_map = MapAnonymousPreferredAddress(
+          space_name, request_begin, non_moving_space_capacity, &error_str);
+    }
     CHECK(non_moving_space_mem_map.IsValid()) << error_str;
+    DCHECK(!heap_reservation.IsValid());
     // Try to reserve virtual memory at a lower address if we have a separate non moving space.
     request_begin = kPreferredAllocSpaceBegin + non_moving_space_capacity;
   }
@@ -404,14 +421,19 @@ Heap::Heap(size_t initial_size,
       // If no separate non-moving space and we are the zygote, the main space must come right
       // after the image space to avoid a gap. This is required since we want the zygote space to
       // be adjacent to the image space.
-      main_mem_map_1 = MemMap::MapAnonymous(kMemMapSpaceName[0],
-                                            request_begin,
-                                            capacity_,
-                                            PROT_READ | PROT_WRITE,
-                                            /* low_4gb */ true,
-                                            &error_str);
+      DCHECK_EQ(heap_reservation.IsValid(), !boot_image_spaces_.empty());
+      main_mem_map_1 = MemMap::MapAnonymous(
+          kMemMapSpaceName[0],
+          request_begin,
+          capacity_,
+          PROT_READ | PROT_WRITE,
+          /* low_4gb */ true,
+          /* reuse */ false,
+          heap_reservation.IsValid() ? &heap_reservation : nullptr,
+          &error_str);
     }
     CHECK(main_mem_map_1.IsValid()) << error_str;
+    DCHECK(!heap_reservation.IsValid());
   }
   if (support_homogeneous_space_compaction ||
       background_collector_type_ == kCollectorTypeSS ||
@@ -437,7 +459,7 @@ Heap::Heap(size_t initial_size,
                                                                /* can_move_objects */ false);
     non_moving_space_->SetFootprintLimit(non_moving_space_->Capacity());
     CHECK(non_moving_space_ != nullptr) << "Failed creating non moving space "
-        << requested_alloc_space_begin;
+        << non_moving_space_mem_map.Begin();
     AddSpace(non_moving_space_);
   }
   // Create other spaces based on whether or not we have a moving GC.
