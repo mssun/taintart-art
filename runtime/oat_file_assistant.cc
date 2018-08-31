@@ -831,22 +831,22 @@ const OatFile* OatFileAssistant::OatFileInfo::GetFile() {
                                     vdex_fd_,
                                     oat_fd_,
                                     filename_.c_str(),
-                                    nullptr,
-                                    nullptr,
+                                    /* requested_base */ nullptr,
                                     executable,
-                                    false /* low_4gb */,
+                                    /* low_4gb */ false,
                                     oat_file_assistant_->dex_location_.c_str(),
+                                    /* reservation */ nullptr,
                                     &error_msg));
         }
       } else {
         file_.reset(OatFile::Open(/* zip_fd */ -1,
                                   filename_.c_str(),
                                   filename_.c_str(),
-                                  nullptr,
-                                  nullptr,
+                                  /* requested_base */ nullptr,
                                   executable,
-                                  false /* low_4gb */,
+                                  /* low_4gb */ false,
                                   oat_file_assistant_->dex_location_.c_str(),
+                                  /* reservation */ nullptr,
                                   &error_msg));
       }
       if (file_.get() == nullptr) {

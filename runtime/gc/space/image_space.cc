@@ -63,7 +63,7 @@ Atomic<uint32_t> ImageSpace::bitmap_index_(0);
 ImageSpace::ImageSpace(const std::string& image_filename,
                        const char* image_location,
                        MemMap&& mem_map,
-                       accounting::ContinuousSpaceBitmap* live_bitmap,
+                       std::unique_ptr<accounting::ContinuousSpaceBitmap> live_bitmap,
                        uint8_t* end)
     : MemMapSpace(image_filename,
                   std::move(mem_map),
@@ -71,10 +71,10 @@ ImageSpace::ImageSpace(const std::string& image_filename,
                   end,
                   end,
                   kGcRetentionPolicyNeverCollect),
+      live_bitmap_(std::move(live_bitmap)),
       oat_file_non_owned_(nullptr),
       image_location_(image_location) {
-  DCHECK(live_bitmap != nullptr);
-  live_bitmap_.reset(live_bitmap);
+  DCHECK(live_bitmap_ != nullptr);
 }
 
 static int32_t ChooseRelocationOffsetDelta(int32_t min_delta, int32_t max_delta) {
@@ -480,52 +480,16 @@ std::ostream& operator<<(std::ostream& os, const RelocationRange& reloc) {
 }
 
 // Helper class encapsulating loading, so we can access private ImageSpace members (this is a
-// friend class), but not declare functions in the header.
+// nested class), but not declare functions in the header.
 class ImageSpace::Loader {
  public:
-  static std::unique_ptr<ImageSpace> Load(const std::string& image_location,
-                                          const std::string& image_filename,
-                                          bool is_zygote,
-                                          bool is_global_cache,
-                                          bool validate_oat_file,
-                                          std::string* error_msg)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    // Should this be a RDWR lock? This is only a defensive measure, as at
-    // this point the image should exist.
-    // However, only the zygote can write into the global dalvik-cache, so
-    // restrict to zygote processes, or any process that isn't using
-    // /data/dalvik-cache (which we assume to be allowed to write there).
-    const bool rw_lock = is_zygote || !is_global_cache;
-
-    // Note that we must not use the file descriptor associated with
-    // ScopedFlock::GetFile to Init the image file. We want the file
-    // descriptor (and the associated exclusive lock) to be released when
-    // we leave Create.
-    ScopedFlock image = LockedFile::Open(image_filename.c_str(),
-                                         rw_lock ? (O_CREAT | O_RDWR) : O_RDONLY /* flags */,
-                                         true /* block */,
-                                         error_msg);
-
-    VLOG(startup) << "Using image file " << image_filename.c_str() << " for image location "
-                  << image_location;
-    // If we are in /system we can assume the image is good. We can also
-    // assume this if we are using a relocated image (i.e. image checksum
-    // matches) since this is only different by the offset. We need this to
-    // make sure that host tests continue to work.
-    // Since we are the boot image, pass null since we load the oat file from the boot image oat
-    // file name.
-    return Init(image_filename.c_str(),
-                image_location.c_str(),
-                validate_oat_file,
-                /* oat_file */nullptr,
-                error_msg);
-  }
-
   static std::unique_ptr<ImageSpace> Init(const char* image_filename,
                                           const char* image_location,
                                           bool validate_oat_file,
                                           const OatFile* oat_file,
-                                          std::string* error_msg)
+                                          /*inout*/MemMap* image_reservation,
+                                          /*inout*/MemMap* oat_reservation,
+                                          /*out*/std::string* error_msg)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     CHECK(image_filename != nullptr);
     CHECK(image_location != nullptr);
@@ -616,22 +580,27 @@ class ImageSpace::Loader {
     // image at the image begin, the amount of fixup work required is minimized.
     // If it is pic we will retry with error_msg for the failure case. Pass a null error_msg to
     // avoid reading proc maps for a mapping failure and slowing everything down.
-    map = LoadImageFile(image_filename,
-                        image_location,
-                        *image_header,
-                        image_header->GetImageBegin(),
-                        file->Fd(),
-                        logger,
-                        image_header->IsPic() ? nullptr : error_msg);
+    // For the boot image, we have already reserved the memory and we load the image
+    // into the `image_reservation`.
+    map = LoadImageFile(
+        image_filename,
+        image_location,
+        *image_header,
+        image_header->GetImageBegin(),
+        file->Fd(),
+        logger,
+        image_reservation,
+        (image_reservation == nullptr && image_header->IsPic()) ? nullptr : error_msg);
     // If the header specifies PIC mode, we can also map at a random low_4gb address since we can
     // relocate in-place.
-    if (!map.IsValid() && image_header->IsPic()) {
+    if (!map.IsValid() && image_reservation == nullptr && image_header->IsPic()) {
       map = LoadImageFile(image_filename,
                           image_location,
                           *image_header,
                           /* address */ nullptr,
                           file->Fd(),
                           logger,
+                          /* image_reservation */ nullptr,
                           error_msg);
     }
     // Were we able to load something and continue?
@@ -641,15 +610,13 @@ class ImageSpace::Loader {
     }
     DCHECK_EQ(0, memcmp(image_header, map.Begin(), sizeof(ImageHeader)));
 
-    MemMap image_bitmap_map = MemMap::MapFileAtAddress(nullptr,
-                                                       bitmap_section.Size(),
-                                                       PROT_READ, MAP_PRIVATE,
-                                                       file->Fd(),
-                                                       image_bitmap_offset,
-                                                       /*low_4gb*/false,
-                                                       /*reuse*/false,
-                                                       image_filename,
-                                                       error_msg);
+    MemMap image_bitmap_map = MemMap::MapFile(bitmap_section.Size(),
+                                              PROT_READ, MAP_PRIVATE,
+                                              file->Fd(),
+                                              image_bitmap_offset,
+                                              /* low_4gb */ false,
+                                              image_filename,
+                                              error_msg);
     if (!image_bitmap_map.IsValid()) {
       *error_msg = StringPrintf("Failed to map image bitmap: %s", error_msg->c_str());
       return nullptr;
@@ -694,7 +661,7 @@ class ImageSpace::Loader {
     std::unique_ptr<ImageSpace> space(new ImageSpace(image_filename,
                                                      image_location,
                                                      std::move(map),
-                                                     bitmap.release(),
+                                                     std::move(bitmap),
                                                      image_end));
 
     // VerifyImageAllocations() will be called later in Runtime::Init()
@@ -704,7 +671,7 @@ class ImageSpace::Loader {
     // set yet at this point.
     if (oat_file == nullptr) {
       TimingLogger::ScopedTiming timing("OpenOatFile", &logger);
-      space->oat_file_ = OpenOatFile(*space, image_filename, error_msg);
+      space->oat_file_ = OpenOatFile(*space, image_filename, oat_reservation, error_msg);
       if (space->oat_file_ == nullptr) {
         DCHECK(!error_msg->empty());
         return nullptr;
@@ -787,7 +754,8 @@ class ImageSpace::Loader {
                               uint8_t* address,
                               int fd,
                               TimingLogger& logger,
-                              std::string* error_msg) {
+                              /*inout*/MemMap* image_reservation,
+                              /*out*/std::string* error_msg) {
     TimingLogger::ScopedTiming timing("MapImageFile", &logger);
     const ImageHeader::StorageMode storage_mode = image_header.GetStorageMode();
     if (storage_mode == ImageHeader::kStorageModeUncompressed) {
@@ -796,10 +764,11 @@ class ImageSpace::Loader {
                                       PROT_READ | PROT_WRITE,
                                       MAP_PRIVATE,
                                       fd,
-                                      0,
-                                      /*low_4gb*/true,
-                                      /*reuse*/false,
+                                      /* start */ 0,
+                                      /* low_4gb */ true,
                                       image_filename,
+                                      /* reuse */ false,
+                                      image_reservation,
                                       error_msg);
     }
 
@@ -817,7 +786,9 @@ class ImageSpace::Loader {
                                       address,
                                       image_header.GetImageSize(),
                                       PROT_READ | PROT_WRITE,
-                                      /*low_4gb*/ true,
+                                      /* low_4gb */ true,
+                                      /* reuse */ false,
+                                      image_reservation,
                                       error_msg);
     if (map.IsValid()) {
       const size_t stored_size = image_header.GetDataSize();
@@ -826,8 +797,8 @@ class ImageSpace::Loader {
                                         PROT_READ,
                                         MAP_PRIVATE,
                                         fd,
-                                        /*offset*/0,
-                                        /*low_4gb*/false,
+                                        /* offset */ 0,
+                                        /* low_4gb */ false,
                                         image_filename,
                                         error_msg);
       if (!temp_map.IsValid()) {
@@ -1396,6 +1367,7 @@ class ImageSpace::Loader {
 
   static std::unique_ptr<OatFile> OpenOatFile(const ImageSpace& image,
                                               const char* image_path,
+                                              /*inout*/MemMap* oat_reservation,
                                               std::string* error_msg) {
     const ImageHeader& image_header = image.GetImageHeader();
     std::string oat_filename = ImageHeader::GetOatLocationFromImageLocation(image_path);
@@ -1406,10 +1378,10 @@ class ImageSpace::Loader {
                                                     oat_filename,
                                                     oat_filename,
                                                     image_header.GetOatDataBegin(),
-                                                    image_header.GetOatFileBegin(),
                                                     !Runtime::Current()->IsAotCompiler(),
-                                                    /*low_4gb*/false,
-                                                    nullptr,
+                                                    /* low_4gb */ false,
+                                                    /* abs_dex_location */ nullptr,
+                                                    oat_reservation,
                                                     error_msg));
     if (oat_file == nullptr) {
       *error_msg = StringPrintf("Failed to open oat file '%s' referenced from image %s: %s",
@@ -1497,20 +1469,48 @@ class ImageSpace::BootImageLoader {
     if (!GetBootClassPathImageLocations(image_location_, filename, &locations, error_msg)) {
       return false;
     }
+    uint32_t image_start;
+    uint32_t image_end;
+    uint32_t oat_end;
+    if (!GetBootImageAddressRange(filename, &image_start, &image_end, &oat_end, error_msg)) {
+      return false;
+    }
+    if (locations.size() > 1u) {
+      std::string last_filename = GetSystemImageFilename(locations.back().c_str(), image_isa_);
+      uint32_t dummy;
+      if (!GetBootImageAddressRange(last_filename, &dummy, &image_end, &oat_end, error_msg)) {
+        return false;
+      }
+    }
+    MemMap image_reservation;
+    MemMap oat_reservation;
+    if (!ReserveBootImageMemory(image_start,
+                                image_end,
+                                oat_end,
+                                &image_reservation,
+                                &oat_reservation,
+                                error_msg)) {
+      return false;
+    }
+
     std::vector<std::unique_ptr<ImageSpace>> spaces;
     spaces.reserve(locations.size());
     for (const std::string& location : locations) {
       filename = GetSystemImageFilename(location.c_str(), image_isa_);
-      spaces.push_back(Loader::Load(location,
-                                    filename,
-                                    is_zygote_,
-                                    is_global_cache_,
-                                    /* validate_oat_file */ false,
-                                    error_msg));
+      spaces.push_back(Load(location,
+                            filename,
+                            /* validate_oat_file */ false,
+                            &image_reservation,
+                            &oat_reservation,
+                            error_msg));
       if (spaces.back() == nullptr) {
         return false;
       }
     }
+    if (!CheckReservationsExhausted(image_reservation, oat_reservation, error_msg)) {
+      return false;
+    }
+
     *oat_file_end = GetOatFileEnd(spaces);
     boot_image_spaces->swap(spaces);
     return true;
@@ -1527,6 +1527,36 @@ class ImageSpace::BootImageLoader {
     if (!GetBootClassPathImageLocations(image_location_, cache_filename_, &locations, error_msg)) {
       return false;
     }
+    uint32_t image_start;
+    uint32_t image_end;
+    uint32_t oat_end;
+    if (!GetBootImageAddressRange(cache_filename_, &image_start, &image_end, &oat_end, error_msg)) {
+      return false;
+    }
+    if (locations.size() > 1u) {
+      std::string last_filename;
+      if (!GetDalvikCacheFilename(locations.back().c_str(),
+                                  dalvik_cache_.c_str(),
+                                  &last_filename,
+                                  error_msg)) {
+        return false;
+      }
+      uint32_t dummy;
+      if (!GetBootImageAddressRange(last_filename, &dummy, &image_end, &oat_end, error_msg)) {
+        return false;
+      }
+    }
+    MemMap image_reservation;
+    MemMap oat_reservation;
+    if (!ReserveBootImageMemory(image_start,
+                                image_end,
+                                oat_end,
+                                &image_reservation,
+                                &oat_reservation,
+                                error_msg)) {
+      return false;
+    }
+
     std::vector<std::unique_ptr<ImageSpace>> spaces;
     spaces.reserve(locations.size());
     for (const std::string& location : locations) {
@@ -1534,12 +1564,12 @@ class ImageSpace::BootImageLoader {
       if (!GetDalvikCacheFilename(location.c_str(), dalvik_cache_.c_str(), &filename, error_msg)) {
         return false;
       }
-      spaces.push_back(Loader::Load(location,
-                                    filename,
-                                    is_zygote_,
-                                    is_global_cache_,
-                                    validate_oat_file,
-                                    error_msg));
+      spaces.push_back(Load(location,
+                            filename,
+                            validate_oat_file,
+                            &image_reservation,
+                            &oat_reservation,
+                            error_msg));
       if (spaces.back() == nullptr) {
         return false;
       }
@@ -1560,12 +1590,56 @@ class ImageSpace::BootImageLoader {
         }
       }
     }
+    if (!CheckReservationsExhausted(image_reservation, oat_reservation, error_msg)) {
+      return false;
+    }
+
     *oat_file_end = GetOatFileEnd(spaces);
     boot_image_spaces->swap(spaces);
     return true;
   }
 
  private:
+  std::unique_ptr<ImageSpace> Load(const std::string& image_location,
+                                   const std::string& image_filename,
+                                   bool validate_oat_file,
+                                   /*inout*/MemMap* image_reservation,
+                                   /*inout*/MemMap* oat_reservation,
+                                   /*out*/std::string* error_msg)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    // Should this be a RDWR lock? This is only a defensive measure, as at
+    // this point the image should exist.
+    // However, only the zygote can write into the global dalvik-cache, so
+    // restrict to zygote processes, or any process that isn't using
+    // /data/dalvik-cache (which we assume to be allowed to write there).
+    const bool rw_lock = is_zygote_ || !is_global_cache_;
+
+    // Note that we must not use the file descriptor associated with
+    // ScopedFlock::GetFile to Init the image file. We want the file
+    // descriptor (and the associated exclusive lock) to be released when
+    // we leave Create.
+    ScopedFlock image = LockedFile::Open(image_filename.c_str(),
+                                         rw_lock ? (O_CREAT | O_RDWR) : O_RDONLY /* flags */,
+                                         true /* block */,
+                                         error_msg);
+
+    VLOG(startup) << "Using image file " << image_filename.c_str() << " for image location "
+                  << image_location;
+    // If we are in /system we can assume the image is good. We can also
+    // assume this if we are using a relocated image (i.e. image checksum
+    // matches) since this is only different by the offset. We need this to
+    // make sure that host tests continue to work.
+    // Since we are the boot image, pass null since we load the oat file from the boot image oat
+    // file name.
+    return Loader::Init(image_filename.c_str(),
+                        image_location.c_str(),
+                        validate_oat_file,
+                        /* oat_file */ nullptr,
+                        image_reservation,
+                        oat_reservation,
+                        error_msg);
+  }
+
   // Extract boot class path from oat file associated with `image_filename`
   // and list all associated image locations.
   static bool GetBootClassPathImageLocations(const std::string& image_location,
@@ -1577,10 +1651,10 @@ class ImageSpace::BootImageLoader {
                                                     oat_filename,
                                                     oat_filename,
                                                     /* requested_base */ nullptr,
-                                                    /* oat_file_begin */ nullptr,
                                                     /* executable */ false,
                                                     /* low_4gb */ false,
                                                     /* abs_dex_location */ nullptr,
+                                                    /* reservation */ nullptr,
                                                     error_msg));
     if (oat_file == nullptr) {
       *error_msg = StringPrintf("Failed to open oat file '%s' for image file %s: %s",
@@ -1594,6 +1668,72 @@ class ImageSpace::BootImageLoader {
     all_locations->push_back(image_location);
     if (boot_classpath != nullptr && boot_classpath[0] != 0) {
       ExtractMultiImageLocations(image_location, boot_classpath, all_locations);
+    }
+    return true;
+  }
+
+  bool GetBootImageAddressRange(const std::string& filename,
+                                /*out*/uint32_t* start,
+                                /*out*/uint32_t* end,
+                                /*out*/uint32_t* oat_end,
+                                /*out*/std::string* error_msg) {
+    ImageHeader system_hdr;
+    if (!ReadSpecificImageHeader(filename.c_str(), &system_hdr)) {
+      *error_msg = StringPrintf("Cannot read header of %s", filename.c_str());
+      return false;
+    }
+    *start = reinterpret_cast32<uint32_t>(system_hdr.GetImageBegin());
+    CHECK_ALIGNED(*start, kPageSize);
+    *end = RoundUp(*start + system_hdr.GetImageSize(), kPageSize);
+    *oat_end = RoundUp(reinterpret_cast32<uint32_t>(system_hdr.GetOatFileEnd()), kPageSize);
+    return true;
+  }
+
+  bool ReserveBootImageMemory(uint32_t image_start,
+                              uint32_t image_end,
+                              uint32_t oat_end,
+                              /*out*/MemMap* image_reservation,
+                              /*out*/MemMap* oat_reservation,
+                              /*out*/std::string* error_msg) {
+    DCHECK(!image_reservation->IsValid());
+    *image_reservation =
+        MemMap::MapAnonymous("Boot image reservation",
+                             reinterpret_cast32<uint8_t*>(image_start),
+                             oat_end - image_start,
+                             PROT_NONE,
+                             /* low_4gb */ true,
+                             /* reuse */ false,
+                             /* reservation */ nullptr,
+                             error_msg);
+    if (!image_reservation->IsValid()) {
+      return false;
+    }
+    DCHECK(!oat_reservation->IsValid());
+    *oat_reservation = image_reservation->RemapAtEnd(reinterpret_cast32<uint8_t*>(image_end),
+                                                     "Boot image oat reservation",
+                                                     PROT_NONE,
+                                                     error_msg);
+    if (!oat_reservation->IsValid()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  bool CheckReservationsExhausted(const MemMap& image_reservation,
+                                  const MemMap& oat_reservation,
+                                  /*out*/std::string* error_msg) {
+    if (image_reservation.IsValid()) {
+      *error_msg = StringPrintf("Excessive image reservation after loading boot image: %p-%p",
+                                image_reservation.Begin(),
+                                image_reservation.End());
+      return false;
+    }
+    if (oat_reservation.IsValid()) {
+      *error_msg = StringPrintf("Excessive oat reservation after loading boot image: %p-%p",
+                                image_reservation.Begin(),
+                                image_reservation.End());
+      return false;
     }
     return true;
   }
@@ -1834,7 +1974,13 @@ ImageSpace::~ImageSpace() {
 std::unique_ptr<ImageSpace> ImageSpace::CreateFromAppImage(const char* image,
                                                            const OatFile* oat_file,
                                                            std::string* error_msg) {
-  return Loader::Init(image, image, /*validate_oat_file*/false, oat_file, /*out*/error_msg);
+  return Loader::Init(image,
+                      image,
+                      /* validate_oat_file */ false,
+                      oat_file,
+                      /* image_reservation */ nullptr,
+                      /* oat_reservation */ nullptr,
+                      error_msg);
 }
 
 const OatFile* ImageSpace::GetOatFile() const {
