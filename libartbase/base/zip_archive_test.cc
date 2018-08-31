@@ -41,7 +41,7 @@ TEST_F(ZipArchiveTest, FindAndExtract) {
 
   ScratchFile tmp;
   ASSERT_NE(-1, tmp.GetFd());
-  std::unique_ptr<File> file(new File(tmp.GetFd(), tmp.GetFilename(), false));
+  std::unique_ptr<File> file(new File(dup(tmp.GetFd()), tmp.GetFilename(), false));
   ASSERT_TRUE(file.get() != nullptr);
   bool success = zip_entry->ExtractToFile(*file, &error_msg);
   ASSERT_TRUE(success) << error_msg;

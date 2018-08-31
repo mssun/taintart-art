@@ -34,9 +34,9 @@ static constexpr bool kCheckSafeUsage = true;
 // Not thread safe.
 class FdFile : public RandomAccessFile {
  public:
-  FdFile();
-  // Creates an FdFile using the given file descriptor. Takes ownership of the
-  // file descriptor. (Use DisableAutoClose to retain ownership.)
+  FdFile() = default;
+  // Creates an FdFile using the given file descriptor.
+  // Takes ownership of the file descriptor.
   FdFile(int fd, bool checkUsage);
   FdFile(int fd, const std::string& path, bool checkUsage);
   FdFile(int fd, const std::string& path, bool checkUsage, bool read_only_mode);
@@ -46,40 +46,16 @@ class FdFile : public RandomAccessFile {
   FdFile(const std::string& path, int flags, mode_t mode, bool checkUsage);
 
   // Move constructor.
-  FdFile(FdFile&& other)
-      : guard_state_(other.guard_state_),
-        fd_(other.fd_),
-        file_path_(std::move(other.file_path_)),
-        auto_close_(other.auto_close_),
-        read_only_mode_(other.read_only_mode_) {
-    other.Release();  // Release the src.
-  }
+  FdFile(FdFile&& other);
 
   // Move assignment operator.
   FdFile& operator=(FdFile&& other);
 
   // Release the file descriptor. This will make further accesses to this FdFile invalid. Disables
   // all further state checking.
-  int Release() {
-    int tmp_fd = fd_;
-    fd_ = -1;
-    guard_state_ = GuardState::kNoCheck;
-    auto_close_ = false;
-    return tmp_fd;
-  }
+  int Release();
 
-  void Reset(int fd, bool check_usage) {
-    if (fd_ != -1 && fd_ != fd) {
-      Destroy();
-    }
-    fd_ = fd;
-    if (check_usage) {
-      guard_state_ = fd == -1 ? GuardState::kNoCheck : GuardState::kBase;
-    } else {
-      guard_state_ = GuardState::kNoCheck;
-    }
-    // Keep the auto_close_ state.
-  }
+  void Reset(int fd, bool check_usage);
 
   // Destroys an FdFile, closing the file descriptor if Close hasn't already
   // been called. (If you care about the return value of Close, call it
@@ -121,7 +97,6 @@ class FdFile : public RandomAccessFile {
   const std::string& GetPath() const {
     return file_path_;
   }
-  void DisableAutoClose();
   bool ReadFully(void* buffer, size_t byte_count) WARN_UNUSED;
   bool PreadFully(void* buffer, size_t byte_count, size_t offset) WARN_UNUSED;
   bool WriteFully(const void* buffer, size_t byte_count) WARN_UNUSED;
@@ -168,7 +143,7 @@ class FdFile : public RandomAccessFile {
     }
   }
 
-  GuardState guard_state_;
+  GuardState guard_state_ = GuardState::kClosed;
 
   // Opens file 'file_path' using 'flags' and 'mode'.
   bool Open(const std::string& file_path, int flags);
@@ -180,10 +155,9 @@ class FdFile : public RandomAccessFile {
 
   void Destroy();  // For ~FdFile and operator=(&&).
 
-  int fd_;
+  int fd_ = -1;
   std::string file_path_;
-  bool auto_close_;
-  bool read_only_mode_;
+  bool read_only_mode_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(FdFile);
 };

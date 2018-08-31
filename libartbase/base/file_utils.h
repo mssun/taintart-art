@@ -78,6 +78,9 @@ bool LocationIsOnSystem(const char* location);
 // Return whether the location is on system/framework (i.e. android_root/framework).
 bool LocationIsOnSystemFramework(const char* location);
 
+// dup(2), except setting the O_CLOEXEC flag atomically, when possible.
+int DupCloexec(int fd);
+
 }  // namespace art
 
 #endif  // ART_LIBARTBASE_BASE_FILE_UTILS_H_
