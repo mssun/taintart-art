@@ -151,11 +151,11 @@ void DexoptTest::GenerateOatForTest(const std::string& dex_location,
   std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
                                                    oat_location.c_str(),
                                                    oat_location.c_str(),
-                                                   nullptr,
-                                                   nullptr,
-                                                   false,
-                                                   /*low_4gb*/false,
+                                                   /* requested_base */ nullptr,
+                                                   /* executable */ false,
+                                                   /* low_4gb */ false,
                                                    dex_location.c_str(),
+                                                   /* reservation */ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file.get() != nullptr) << error_msg;
   EXPECT_EQ(pic, odex_file->IsPic());
