@@ -1045,7 +1045,7 @@ bool DlOpenOatFile::Dlopen(const std::string& elf_filename,
 #ifdef __APPLE__
   // The dl_iterate_phdr syscall is missing.  There is similar API on OSX,
   // but let's fallback to the custom loading code for the time being.
-  UNUSED(elf_filename, oat_file_begin);
+  UNUSED(elf_filename, reservation);
   *error_msg = "Dlopen unsupported on Mac.";
   return false;
 #else
