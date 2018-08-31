@@ -18,6 +18,7 @@ package art;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Random;
 
 public class Test906 {
   public static void run() throws Exception {
@@ -69,6 +70,40 @@ public class Test906 {
     throw lastThrow;
   }
 
+  private static Object[] GenTs(Class<?> k) throws Exception {
+    Object[] ret = new Object[new Random().nextInt(100) + 10];
+    for (int i = 0; i < ret.length; i++) {
+      ret[i] = k.newInstance();
+    }
+    return ret;
+  }
+
+  private static void checkEq(int a, int b) {
+    if (a != b) {
+      Error e = new Error("Failed: Expected equal " + a + " and " + b);
+      System.out.println(e);
+      e.printStackTrace(System.out);
+    }
+  }
+
+  public static class Foo {}
+  public static class Bar extends Foo {}
+  public static class Baz extends Bar {}
+  public static class Alpha extends Bar {}
+  public static class MISSING extends Baz {}
+  private static void testIterateOverInstances() throws Exception {
+    Object[] foos = GenTs(Foo.class);
+    Object[] bars = GenTs(Bar.class);
+    Object[] bazs = GenTs(Baz.class);
+    Object[] alphas = GenTs(Alpha.class);
+    checkEq(0, iterateOverInstancesCount(MISSING.class));
+    checkEq(alphas.length, iterateOverInstancesCount(Alpha.class));
+    checkEq(bazs.length, iterateOverInstancesCount(Baz.class));
+    checkEq(bazs.length + alphas.length + bars.length, iterateOverInstancesCount(Bar.class));
+    checkEq(bazs.length + alphas.length + bars.length + foos.length,
+        iterateOverInstancesCount(Foo.class));
+  }
+
   public static void doTest() throws Exception {
     A a = new A();
     B b = new B();
@@ -85,6 +120,8 @@ public class Test906 {
     setTag(B.class, 100);
 
     testHeapCount();
+
+    testIterateOverInstances();
 
     long classTags[] = new long[100];
     long sizes[] = new long[100];
@@ -307,6 +344,8 @@ public class Test906 {
   private static long getTag(Object o) {
     return Main.getTag(o);
   }
+
+  private static native int iterateOverInstancesCount(Class<?> klass);
 
   private static native boolean checkInitialized(Class<?> klass);
   private static native int iterateThroughHeapCount(int heapFilter,
