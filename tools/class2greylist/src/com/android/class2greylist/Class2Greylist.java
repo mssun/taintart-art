@@ -86,6 +86,12 @@ public class Class2Greylist {
                 .withDescription("Enable debug")
                 .create("d"));
         options.addOption(OptionBuilder
+                .withLongOpt("dump-all-members")
+                .withDescription("Dump all members from jar files to stdout. Ignore annotations. " +
+                        "Do not use in conjunction with any other arguments.")
+                .hasArgs(0)
+                .create('m'));
+        options.addOption(OptionBuilder
                 .withLongOpt("help")
                 .hasArgs(0)
                 .withDescription("Show this help")
@@ -113,16 +119,21 @@ public class Class2Greylist {
         }
 
         Status status = new Status(cmd.hasOption('d'));
-        try {
-            Class2Greylist c2gl = new Class2Greylist(
-                    status,
-                    cmd.getOptionValue('p', null),
-                    cmd.getOptionValues('g'),
-                    cmd.getOptionValue('w', null),
-                    jarFiles);
-            c2gl.main();
-        } catch (IOException e) {
-            status.error(e);
+
+        if (cmd.hasOption('m')) {
+            dumpAllMembers(status, jarFiles);
+        } else {
+            try {
+                Class2Greylist c2gl = new Class2Greylist(
+                        status,
+                        cmd.getOptionValue('p', null),
+                        cmd.getOptionValues('g'),
+                        cmd.getOptionValue('w', null),
+                        jarFiles);
+                c2gl.main();
+            } catch (IOException e) {
+                status.error(e);
+            }
         }
 
         if (status.ok()) {
@@ -219,6 +230,20 @@ public class Class2Greylist {
             }
         }
         return map;
+    }
+
+    private static void dumpAllMembers(Status status, String[] jarFiles) {
+        for (String jarFile : jarFiles) {
+            status.debug("Processing jar file %s", jarFile);
+            try {
+                JarReader reader = new JarReader(status, jarFile);
+                reader.stream().forEach(clazz -> new MemberDumpingVisitor(clazz, status)
+                        .visit());
+                reader.close();
+            } catch (IOException e) {
+                status.error(e);
+            }
+        }
     }
 
     private static void help(Options options) {
