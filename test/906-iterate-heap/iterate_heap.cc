@@ -418,5 +418,21 @@ extern "C" JNIEXPORT jboolean JNICALL Java_art_Test906_checkInitialized(
   return (status & JVMTI_CLASS_STATUS_INITIALIZED) != 0;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_art_Test906_iterateOverInstancesCount(
+    JNIEnv* env, jclass, jclass target) {
+  jint cnt = 0;
+  auto count_func = [](jlong, jlong, jlong*, void* user_data) -> jvmtiIterationControl {
+    *reinterpret_cast<jint*>(user_data) += 1;
+    return JVMTI_ITERATION_CONTINUE;
+  };
+  JvmtiErrorToException(env,
+                        jvmti_env,
+                        jvmti_env->IterateOverInstancesOfClass(target,
+                                                               JVMTI_HEAP_OBJECT_EITHER,
+                                                               count_func,
+                                                               &cnt));
+  return cnt;
+}
+
 }  // namespace Test906IterateHeap
 }  // namespace art

@@ -30,6 +30,12 @@ class HeapUtil {
 
   jvmtiError GetLoadedClasses(jvmtiEnv* env, jint* class_count_ptr, jclass** classes_ptr);
 
+  jvmtiError IterateOverInstancesOfClass(jvmtiEnv* env,
+                                         jclass klass,
+                                         jvmtiHeapObjectFilter filter,
+                                         jvmtiHeapObjectCallback cb,
+                                         const void* user_data);
+
   jvmtiError IterateThroughHeap(jvmtiEnv* env,
                                 jint heap_filter,
                                 jclass klass,
