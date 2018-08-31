@@ -1175,7 +1175,13 @@ class RaceGenerateTask : public Task {
       args.push_back("--dex-file=" + dex_location_);
       args.push_back("--oat-file=" + oat_location_);
       std::string error_msg;
-      ASSERT_TRUE(DexoptTest::Dex2Oat(args, &error_msg)) << error_msg;
+      if (kIsTargetBuild) {
+        // Don't check whether dex2oat is successful: given we're running kNumThreads in
+        // parallel, low memory killer might just kill some of the dex2oat invocations.
+        DexoptTest::Dex2Oat(args, &error_msg);
+      } else {
+        ASSERT_TRUE(DexoptTest::Dex2Oat(args, &error_msg)) << error_msg;
+      }
     }
 
     dex_files = Runtime::Current()->GetOatFileManager().OpenDexFilesFromOat(
