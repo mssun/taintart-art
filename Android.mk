@@ -41,18 +41,18 @@ endif
 
 .PHONY: clean-oat-target
 clean-oat-target:
-	adb root
-	adb wait-for-device remount
-	adb shell rm -rf $(ART_TARGET_NATIVETEST_DIR)
-	adb shell rm -rf $(ART_TARGET_TEST_DIR)
-	adb shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*/*
-	adb shell rm -rf $(DEXPREOPT_BOOT_JAR_DIR)/$(DEX2OAT_TARGET_ARCH)
-	adb shell rm -rf system/app/$(DEX2OAT_TARGET_ARCH)
+	$(ADB) root
+	$(ADB) wait-for-device remount
+	$(ADB) shell rm -rf $(ART_TARGET_NATIVETEST_DIR)
+	$(ADB) shell rm -rf $(ART_TARGET_TEST_DIR)
+	$(ADB) shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*/*
+	$(ADB) shell rm -rf $(DEXPREOPT_BOOT_JAR_DIR)/$(DEX2OAT_TARGET_ARCH)
+	$(ADB) shell rm -rf system/app/$(DEX2OAT_TARGET_ARCH)
 ifdef TARGET_2ND_ARCH
-	adb shell rm -rf $(DEXPREOPT_BOOT_JAR_DIR)/$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH)
-	adb shell rm -rf system/app/$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH)
+	$(ADB) shell rm -rf $(DEXPREOPT_BOOT_JAR_DIR)/$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH)
+	$(ADB) shell rm -rf system/app/$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH)
 endif
-	adb shell rm -rf data/run-test/test-*/dalvik-cache/*
+	$(ADB) shell rm -rf data/run-test/test-*/dalvik-cache/*
 
 ########################################################################
 # cpplint rules to style check art source files
@@ -92,7 +92,7 @@ endif
 # test rules
 
 # All the dependencies that must be built ahead of sync-ing them onto the target device.
-TEST_ART_TARGET_SYNC_DEPS :=
+TEST_ART_TARGET_SYNC_DEPS := $(ADB_EXECUTABLE)
 
 include $(art_path)/build/Android.common_test.mk
 include $(art_path)/build/Android.gtest.mk
@@ -100,14 +100,14 @@ include $(art_path)/test/Android.run-test.mk
 
 # Make sure /system is writable on the device.
 TEST_ART_ADB_ROOT_AND_REMOUNT := \
-    (adb root && \
-     adb wait-for-device remount && \
-     ((adb shell touch /system/testfile && \
-       (adb shell rm /system/testfile || true)) || \
-      (adb disable-verity && \
-       adb reboot && \
-       adb wait-for-device root && \
-       adb wait-for-device remount)))
+    ($(ADB) root && \
+     $(ADB) wait-for-device remount && \
+     (($(ADB) shell touch /system/testfile && \
+       ($(ADB) shell rm /system/testfile || true)) || \
+      ($(ADB) disable-verity && \
+       $(ADB) reboot && \
+       $(ADB) wait-for-device root && \
+       $(ADB) wait-for-device remount)))
 
 # Sync test files to the target, depends upon all things that must be pushed to the target.
 .PHONY: test-art-target-sync
@@ -121,25 +121,25 @@ ifeq ($(ART_TEST_ANDROID_ROOT),)
 ifeq ($(ART_TEST_CHROOT),)
 test-art-target-sync: $(TEST_ART_TARGET_SYNC_DEPS)
 	$(TEST_ART_ADB_ROOT_AND_REMOUNT)
-	adb sync system && adb sync data
+	$(ADB) sync system && $(ADB) sync data
 else
 # TEST_ART_ADB_ROOT_AND_REMOUNT is not needed here, as we are only
 # pushing things to the chroot dir, which is expected to be under
 # /data on the device.
 test-art-target-sync: $(TEST_ART_TARGET_SYNC_DEPS)
-	adb wait-for-device
-	adb push $(PRODUCT_OUT)/system $(ART_TEST_CHROOT)/
-	adb push $(PRODUCT_OUT)/data $(ART_TEST_CHROOT)/
+	$(ADB) wait-for-device
+	$(ADB) push $(PRODUCT_OUT)/system $(ART_TEST_CHROOT)/
+	$(ADB) push $(PRODUCT_OUT)/data $(ART_TEST_CHROOT)/
 endif
 else
 test-art-target-sync: $(TEST_ART_TARGET_SYNC_DEPS)
 	$(TEST_ART_ADB_ROOT_AND_REMOUNT)
-	adb wait-for-device
-	adb push $(PRODUCT_OUT)/system $(ART_TEST_CHROOT)$(ART_TEST_ANDROID_ROOT)
+	$(ADB) wait-for-device
+	$(ADB) push $(PRODUCT_OUT)/system $(ART_TEST_CHROOT)$(ART_TEST_ANDROID_ROOT)
 # Push the contents of the `data` dir into `$(ART_TEST_CHROOT)/data` on the device (note
 # that $(ART_TEST_CHROOT) can be empty).  If `$(ART_TEST_CHROOT)/data` already exists on
 # the device, it is not overwritten, but its content is updated.
-	adb push $(PRODUCT_OUT)/data $(ART_TEST_CHROOT)/
+	$(ADB) push $(PRODUCT_OUT)/data $(ART_TEST_CHROOT)/
 endif
 endif
 
@@ -493,90 +493,90 @@ build-art-target-tests:   build-art-target $(TEST_ART_RUN_TEST_DEPENDENCIES) $(T
 
 .PHONY: use-art
 use-art:
-	adb root
-	adb wait-for-device shell stop
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libart.so
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libart.so
+	$(ADB) shell start
 
 .PHONY: use-artd
 use-artd:
-	adb root
-	adb wait-for-device shell stop
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libartd.so
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libartd.so
+	$(ADB) shell start
 
 .PHONY: use-dalvik
 use-dalvik:
-	adb root
-	adb wait-for-device shell stop
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libdvm.so
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libdvm.so
+	$(ADB) shell start
 
 .PHONY: use-art-full
 use-art-full:
-	adb root
-	adb wait-for-device shell stop
-	adb shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
-	adb shell setprop dalvik.vm.dex2oat-filter \"\"
-	adb shell setprop dalvik.vm.image-dex2oat-filter \"\"
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libart.so
-	adb shell setprop dalvik.vm.usejit false
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
+	$(ADB) shell setprop dalvik.vm.dex2oat-filter \"\"
+	$(ADB) shell setprop dalvik.vm.image-dex2oat-filter \"\"
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libart.so
+	$(ADB) shell setprop dalvik.vm.usejit false
+	$(ADB) shell start
 
 .PHONY: use-artd-full
 use-artd-full:
-	adb root
-	adb wait-for-device shell stop
-	adb shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
-	adb shell setprop dalvik.vm.dex2oat-filter \"\"
-	adb shell setprop dalvik.vm.image-dex2oat-filter \"\"
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libartd.so
-	adb shell setprop dalvik.vm.usejit false
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
+	$(ADB) shell setprop dalvik.vm.dex2oat-filter \"\"
+	$(ADB) shell setprop dalvik.vm.image-dex2oat-filter \"\"
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libartd.so
+	$(ADB) shell setprop dalvik.vm.usejit false
+	$(ADB) shell start
 
 .PHONY: use-art-jit
 use-art-jit:
-	adb root
-	adb wait-for-device shell stop
-	adb shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
-	adb shell setprop dalvik.vm.dex2oat-filter "verify-at-runtime"
-	adb shell setprop dalvik.vm.image-dex2oat-filter "verify-at-runtime"
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libart.so
-	adb shell setprop dalvik.vm.usejit true
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
+	$(ADB) shell setprop dalvik.vm.dex2oat-filter "verify-at-runtime"
+	$(ADB) shell setprop dalvik.vm.image-dex2oat-filter "verify-at-runtime"
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libart.so
+	$(ADB) shell setprop dalvik.vm.usejit true
+	$(ADB) shell start
 
 .PHONY: use-art-interpret-only
 use-art-interpret-only:
-	adb root
-	adb wait-for-device shell stop
-	adb shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
-	adb shell setprop dalvik.vm.dex2oat-filter "interpret-only"
-	adb shell setprop dalvik.vm.image-dex2oat-filter "interpret-only"
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libart.so
-	adb shell setprop dalvik.vm.usejit false
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
+	$(ADB) shell setprop dalvik.vm.dex2oat-filter "interpret-only"
+	$(ADB) shell setprop dalvik.vm.image-dex2oat-filter "interpret-only"
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libart.so
+	$(ADB) shell setprop dalvik.vm.usejit false
+	$(ADB) shell start
 
 .PHONY: use-artd-interpret-only
 use-artd-interpret-only:
-	adb root
-	adb wait-for-device shell stop
-	adb shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
-	adb shell setprop dalvik.vm.dex2oat-filter "interpret-only"
-	adb shell setprop dalvik.vm.image-dex2oat-filter "interpret-only"
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libartd.so
-	adb shell setprop dalvik.vm.usejit false
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
+	$(ADB) shell setprop dalvik.vm.dex2oat-filter "interpret-only"
+	$(ADB) shell setprop dalvik.vm.image-dex2oat-filter "interpret-only"
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libartd.so
+	$(ADB) shell setprop dalvik.vm.usejit false
+	$(ADB) shell start
 
 .PHONY: use-art-verify-none
 use-art-verify-none:
-	adb root
-	adb wait-for-device shell stop
-	adb shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
-	adb shell setprop dalvik.vm.dex2oat-filter "verify-none"
-	adb shell setprop dalvik.vm.image-dex2oat-filter "verify-none"
-	adb shell setprop persist.sys.dalvik.vm.lib.2 libart.so
-	adb shell setprop dalvik.vm.usejit false
-	adb shell start
+	$(ADB) root
+	$(ADB) wait-for-device shell stop
+	$(ADB) shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*
+	$(ADB) shell setprop dalvik.vm.dex2oat-filter "verify-none"
+	$(ADB) shell setprop dalvik.vm.image-dex2oat-filter "verify-none"
+	$(ADB) shell setprop persist.sys.dalvik.vm.lib.2 libart.so
+	$(ADB) shell setprop dalvik.vm.usejit false
+	$(ADB) shell start
 
 ########################################################################
 
