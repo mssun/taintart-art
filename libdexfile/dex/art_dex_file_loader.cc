@@ -95,7 +95,7 @@ bool ArtDexFileLoader::GetMultiDexChecksums(const char* filename,
   File fd;
   if (zip_fd != -1) {
      if (ReadMagicAndReset(zip_fd, &magic, error_msg)) {
-       fd = File(zip_fd, false /* check_usage */);
+       fd = File(DupCloexec(zip_fd), false /* check_usage */);
      }
   } else {
     fd = OpenAndReadMagic(filename, &magic, error_msg);
