@@ -549,6 +549,76 @@
 .end array-data
 .end method
 
+
+## CHECK-START-{ARM,ARM64}: int Runtime.testIntAddressCatch(int, int[]) GVN$after_arch (after)
+## CHECK-DAG: <<Const1:i\d+>>       IntConstant 1
+## CHECK-DAG: <<Offset:i\d+>>       IntConstant 12
+## CHECK-DAG: <<IndexParam:i\d+>>   ParameterValue
+## CHECK-DAG: <<Array:l\d+>>        ParameterValue
+
+## CHECK-DAG: <<NullCh1:l\d+>>      NullCheck [<<Array>>]
+## CHECK-DAG: <<Length:i\d+>>       ArrayLength
+## CHECK-DAG: <<BoundsCh1:i\d+>>    BoundsCheck [<<IndexParam>>,<<Length>>]
+## CHECK-DAG: <<IntAddr1:i\d+>>     IntermediateAddress [<<NullCh1>>,<<Offset>>]
+## CHECK-DAG:                       ArrayGet [<<IntAddr1>>,<<BoundsCh1>>]
+## CHECK-DAG:                       TryBoundary
+
+## CHECK-DAG: <<Xplus1:i\d+>>       Add [<<IndexParam>>,<<Const1>>]
+## CHECK-DAG: <<BoundsCh2:i\d+>>    BoundsCheck [<<Xplus1>>,<<Length>>]
+## CHECK-DAG:                       ArrayGet [<<IntAddr1>>,<<BoundsCh2>>]
+## CHECK-DAG:                       TryBoundary
+
+## CHECK-DAG: <<Phi:i\d+>>          Phi [<<Xplus1>>]
+## CHECK-DAG: <<Phiplus1:i\d+>>     Add [<<Phi>>,<<Const1>>]
+## CHECK-DAG: <<BoundsCh3:i\d+>>    BoundsCheck [<<Phiplus1>>,<<Length>>]
+## CHECK-DAG: <<IntAddr3:i\d+>>     IntermediateAddress [<<NullCh1>>,<<Offset>>]
+## CHECK-DAG:                       ArrayGet [<<IntAddr3>>,<<BoundsCh3>>]
+
+## CHECK-START-{ARM,ARM64}: int Runtime.testIntAddressCatch(int, int[]) GVN$after_arch (after)
+## CHECK:                           NullCheck
+## CHECK-NOT:                       NullCheck
+
+## CHECK-START-{ARM,ARM64}: int Runtime.testIntAddressCatch(int, int[]) GVN$after_arch (after)
+## CHECK:                           IntermediateAddress
+## CHECK:                           IntermediateAddress
+## CHECK-NOT:                       IntermediateAddress
+
+## CHECK-START-{ARM,ARM64}: int Runtime.testIntAddressCatch(int, int[]) GVN$after_arch (after)
+## CHECK:                           BoundsCheck
+## CHECK:                           BoundsCheck
+## CHECK:                           BoundsCheck
+## CHECK-NOT:                       BoundsCheck
+
+## CHECK-START-{ARM,ARM64}: int Runtime.testIntAddressCatch(int, int[]) GVN$after_arch (after)
+## CHECK:                           ArrayGet
+## CHECK:                           ArrayGet
+## CHECK:                           ArrayGet
+## CHECK-NOT:                       ArrayGet
+.method public static testIntAddressCatch(I[I)I
+    .registers 4
+    aget v0, p1, p0
+    add-int v1, v0, v0
+
+    :try_start
+    const/4 v0, 0x1
+    add-int p0, p0, v0
+    aget v0, p1, p0
+
+    :try_end
+    .catch Ljava/lang/ArithmException; {:try_start .. :try_end} :catch_block
+
+    :return
+    add-int v1, v1, v0
+    return v1
+
+    :catch_block
+    const/4 v0, 0x1
+    add-int p0, p0, v0
+    aget v0, p1, p0
+
+    goto :return
+.end method
+
 .field public static intArray:[I
 .field public static longArray:[J
 .field public static floatArray:[F
