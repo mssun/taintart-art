@@ -2320,6 +2320,7 @@ void ConcurrentCopying::LogFromSpaceRefHolder(mirror::Object* obj, MemberOffset 
 
 void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* obj,
                                                                mirror::Object* ref) {
+  CHECK(ref != nullptr);
   CHECK(!region_space_->HasAddress(ref)) << "obj=" << obj << " ref=" << ref;
   // In a non-moving space. Check that the ref is marked.
   if (immune_spaces_.ContainsObject(ref)) {
@@ -2352,9 +2353,11 @@ void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* o
           << "Unmarked ref that's not on the allocation stack."
           << " obj=" << obj
           << " ref=" << ref
+          << " rb_state=" << ref->GetReadBarrierState()
           << " is_los=" << std::boolalpha << is_los << std::noboolalpha
           << " is_marking=" << std::boolalpha << is_marking_ << std::noboolalpha
-          << " young_gen=" << std::boolalpha << young_gen_ << std::noboolalpha;
+          << " young_gen=" << std::boolalpha << young_gen_ << std::noboolalpha
+          << " self=" << Thread::Current();
     }
   }
 }
