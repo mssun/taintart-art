@@ -25,6 +25,7 @@ import java.io.Reader;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * A representation of a proguard mapping for deobfuscating class names,
@@ -35,13 +36,36 @@ public class ProguardMap {
   private static final String ARRAY_SYMBOL = "[]";
 
   private static class FrameData {
-    public FrameData(String clearMethodName, int lineDelta) {
+    public FrameData(String clearMethodName) {
       this.clearMethodName = clearMethodName;
-      this.lineDelta = lineDelta;
     }
 
-    public final String clearMethodName;
-    public final int lineDelta;   // lineDelta = obfuscatedLine - clearLine
+    private final String clearMethodName;
+    private final TreeMap<Integer, LineNumber> lineNumbers = new TreeMap<>();
+
+    public int getClearLine(int obfuscatedLine) {
+      Map.Entry<Integer, LineNumber> lineNumberEntry = lineNumbers.floorEntry(obfuscatedLine);
+      LineNumber lineNumber = lineNumberEntry == null ? null : lineNumberEntry.getValue();
+      if (lineNumber != null
+          && obfuscatedLine >= lineNumber.obfuscatedLineStart
+          && obfuscatedLine <= lineNumber.obfuscatedLineEnd) {
+        return lineNumber.clearLineStart + obfuscatedLine - lineNumber.obfuscatedLineStart;
+      } else {
+        return obfuscatedLine;
+      }
+    }
+  }
+
+  private static class LineNumber {
+    public LineNumber(int obfuscatedLineStart, int obfuscatedLineEnd, int clearLineStart) {
+      this.obfuscatedLineStart = obfuscatedLineStart;
+      this.obfuscatedLineEnd = obfuscatedLineEnd;
+      this.clearLineStart = clearLineStart;
+    }
+
+    private final int obfuscatedLineStart;
+    private final int obfuscatedLineEnd;
+    private final int clearLineStart;
   }
 
   private static class ClassData {
@@ -77,13 +101,16 @@ public class ProguardMap {
       return clearField == null ? obfuscatedName : clearField;
     }
 
-    // TODO: Does this properly interpret the meaning of line numbers? Is
-    // it possible to have multiple frame entries for the same method
-    // name and signature that differ only by line ranges?
     public void addFrame(String obfuscatedMethodName, String clearMethodName,
-        String clearSignature, int obfuscatedLine, int clearLine) {
-      String key = obfuscatedMethodName + clearSignature;
-      mFrames.put(key, new FrameData(clearMethodName, obfuscatedLine - clearLine));
+            String clearSignature, int obfuscatedLine, int obfuscatedLineEnd, int clearLine) {
+        String key = obfuscatedMethodName + clearSignature;
+        FrameData data = mFrames.get(key);
+        if (data == null) {
+          data = new FrameData(clearMethodName);
+        }
+        data.lineNumbers.put(
+            obfuscatedLine, new LineNumber(obfuscatedLine, obfuscatedLineEnd, clearLine));
+        mFrames.put(key, data);
     }
 
     public Frame getFrame(String clearClassName, String obfuscatedMethodName,
@@ -91,10 +118,10 @@ public class ProguardMap {
       String key = obfuscatedMethodName + clearSignature;
       FrameData frame = mFrames.get(key);
       if (frame == null) {
-        frame = new FrameData(obfuscatedMethodName, 0);
+        frame = new FrameData(obfuscatedMethodName);
       }
       return new Frame(frame.clearMethodName, clearSignature,
-          getFileName(clearClassName), obfuscatedLine - frame.lineDelta);
+          getFileName(clearClassName), frame.getClearLine(obfuscatedLine));
     }
   }
 
@@ -225,13 +252,18 @@ public class ProguardMap {
         } else {
           // For methods, the type is of the form: [#:[#:]]<returnType>
           int obfuscatedLine = 0;
+          // The end of the obfuscated line range.
+          // If line does not contain explicit end range, e.g #:, it is equivalent to #:#:
+          int obfuscatedLineEnd = 0;
           int colon = type.indexOf(':');
           if (colon != -1) {
             obfuscatedLine = Integer.parseInt(type.substring(0, colon));
+            obfuscatedLineEnd = obfuscatedLine;
             type = type.substring(colon + 1);
           }
           colon = type.indexOf(':');
           if (colon != -1) {
+            obfuscatedLineEnd = Integer.parseInt(type.substring(0, colon));
             type = type.substring(colon + 1);
           }
 
@@ -261,7 +293,7 @@ public class ProguardMap {
 
           String clearSig = fromProguardSignature(sig + type);
           classData.addFrame(obfuscatedName, clearName, clearSig,
-              obfuscatedLine, clearLine);
+                  obfuscatedLine, obfuscatedLineEnd, clearLine);
         }
 
         line = reader.readLine();
