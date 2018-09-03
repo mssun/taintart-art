@@ -1626,6 +1626,21 @@ using HConstInputsRef = TransformArrayRef<const HUserRecord<HInstruction*>, HInp
  * the same, and any reference read depends on any reference read without
  * further regard of its type).
  *
+ * kDependsOnGCBit is defined in the following way: instructions with kDependsOnGCBit must not be
+ * alive across the point where garbage collection might happen.
+ *
+ * Note: Instructions with kCanTriggerGCBit do not depend on each other.
+ *
+ * kCanTriggerGCBit must be used for instructions for which GC might happen on the path across
+ * those instructions from the compiler perspective (between this instruction and the next one
+ * in the IR).
+ *
+ * Note: Instructions which can cause GC only on a fatal slow path do not need
+ *       kCanTriggerGCBit as the execution never returns to the instruction next to the exceptional
+ *       one. However the execution may return to compiled code if there is a catch block in the
+ *       current method; for this purpose the TryBoundary exit instruction has kCanTriggerGCBit
+ *       set.
+ *
  * The internal representation uses 38-bit and is described in the table below.
  * The first line indicates the side effect, and for field/array accesses the
  * second line indicates the type of the access (in the order of the
@@ -1698,10 +1713,17 @@ class SideEffects : public ValueObject {
     return SideEffects(TypeFlag(type, kArrayReadOffset));
   }
 
+  // Returns whether GC might happen across this instruction from the compiler perspective so
+  // the next instruction in the IR would see that.
+  //
+  // See the SideEffect class comments.
   static SideEffects CanTriggerGC() {
     return SideEffects(1ULL << kCanTriggerGCBit);
   }
 
+  // Returns whether the instruction must not be alive across a GC point.
+  //
+  // See the SideEffect class comments.
   static SideEffects DependsOnGC() {
     return SideEffects(1ULL << kDependsOnGCBit);
   }
@@ -3136,8 +3158,15 @@ class HTryBoundary final : public HExpression<0> {
     kLast = kExit
   };
 
+  // SideEffects::CanTriggerGC prevents instructions with SideEffects::DependOnGC to be alive
+  // across the catch block entering edges as GC might happen during throwing an exception.
+  // TryBoundary with BoundaryKind::kExit is conservatively used for that as there is no
+  // HInstruction which a catch block must start from.
   explicit HTryBoundary(BoundaryKind kind, uint32_t dex_pc = kNoDexPc)
-      : HExpression(kTryBoundary, SideEffects::None(), dex_pc) {
+      : HExpression(kTryBoundary,
+                    (kind == BoundaryKind::kExit) ? SideEffects::CanTriggerGC()
+                                                  : SideEffects::None(),
+                    dex_pc) {
     SetPackedField<BoundaryKindField>(kind);
   }
 
@@ -5163,9 +5192,10 @@ class HAbs final : public HUnaryOperation {
 class HDivZeroCheck final : public HExpression<1> {
  public:
   // `HDivZeroCheck` can trigger GC, as it may call the `ArithmeticException`
-  // constructor.
+  // constructor. However it can only do it on a fatal slow path so execution never returns to the
+  // instruction following the current one; thus 'SideEffects::None()' is used.
   HDivZeroCheck(HInstruction* value, uint32_t dex_pc)
-      : HExpression(kDivZeroCheck, value->GetType(), SideEffects::CanTriggerGC(), dex_pc) {
+      : HExpression(kDivZeroCheck, value->GetType(), SideEffects::None(), dex_pc) {
     SetRawInputAt(0, value);
   }
 
@@ -5642,9 +5672,10 @@ static constexpr uint32_t kNoRegNumber = -1;
 class HNullCheck final : public HExpression<1> {
  public:
   // `HNullCheck` can trigger GC, as it may call the `NullPointerException`
-  // constructor.
+  // constructor. However it can only do it on a fatal slow path so execution never returns to the
+  // instruction following the current one; thus 'SideEffects::None()' is used.
   HNullCheck(HInstruction* value, uint32_t dex_pc)
-      : HExpression(kNullCheck, value->GetType(), SideEffects::CanTriggerGC(), dex_pc) {
+      : HExpression(kNullCheck, value->GetType(), SideEffects::None(), dex_pc) {
     SetRawInputAt(0, value);
   }
 
@@ -6071,12 +6102,13 @@ class HArrayLength final : public HExpression<1> {
 class HBoundsCheck final : public HExpression<2> {
  public:
   // `HBoundsCheck` can trigger GC, as it may call the `IndexOutOfBoundsException`
-  // constructor.
+  // constructor. However it can only do it on a fatal slow path so execution never returns to the
+  // instruction following the current one; thus 'SideEffects::None()' is used.
   HBoundsCheck(HInstruction* index,
                HInstruction* length,
                uint32_t dex_pc,
                bool is_string_char_at = false)
-      : HExpression(kBoundsCheck, index->GetType(), SideEffects::CanTriggerGC(), dex_pc) {
+      : HExpression(kBoundsCheck, index->GetType(), SideEffects::None(), dex_pc) {
     DCHECK_EQ(DataType::Type::kInt32, DataType::Kind(index->GetType()));
     SetPackedFlag<kFlagIsStringCharAt>(is_string_char_at);
     SetRawInputAt(0, index);
