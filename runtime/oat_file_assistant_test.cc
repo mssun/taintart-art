@@ -1159,8 +1159,13 @@ TEST_F(OatFileAssistantTest, LongDexExtension) {
 // A task to generate a dex location. Used by the RaceToGenerate test.
 class RaceGenerateTask : public Task {
  public:
-  RaceGenerateTask(const std::string& dex_location, const std::string& oat_location)
-      : dex_location_(dex_location), oat_location_(oat_location), loaded_oat_file_(nullptr)
+  RaceGenerateTask(const std::string& dex_location,
+                   const std::string& oat_location,
+                   Mutex* lock)
+      : dex_location_(dex_location),
+        oat_location_(oat_location),
+        lock_(lock),
+        loaded_oat_file_(nullptr)
   {}
 
   void Run(Thread* self ATTRIBUTE_UNUSED) {
@@ -1170,18 +1175,13 @@ class RaceGenerateTask : public Task {
     std::vector<std::string> error_msgs;
     const OatFile* oat_file = nullptr;
     {
+      MutexLock mu(Thread::Current(), *lock_);
       // Create the oat file.
       std::vector<std::string> args;
       args.push_back("--dex-file=" + dex_location_);
       args.push_back("--oat-file=" + oat_location_);
       std::string error_msg;
-      if (kIsTargetBuild) {
-        // Don't check whether dex2oat is successful: given we're running kNumThreads in
-        // parallel, low memory killer might just kill some of the dex2oat invocations.
-        DexoptTest::Dex2Oat(args, &error_msg);
-      } else {
-        ASSERT_TRUE(DexoptTest::Dex2Oat(args, &error_msg)) << error_msg;
-      }
+      ASSERT_TRUE(DexoptTest::Dex2Oat(args, &error_msg)) << error_msg;
     }
 
     dex_files = Runtime::Current()->GetOatFileManager().OpenDexFilesFromOat(
@@ -1204,6 +1204,7 @@ class RaceGenerateTask : public Task {
  private:
   std::string dex_location_;
   std::string oat_location_;
+  Mutex* lock_;
   const OatFile* loaded_oat_file_;
 };
 
@@ -1225,8 +1226,9 @@ TEST_F(OatFileAssistantTest, RaceToGenerate) {
   Thread* self = Thread::Current();
   ThreadPool thread_pool("Oat file assistant test thread pool", kNumThreads);
   std::vector<std::unique_ptr<RaceGenerateTask>> tasks;
+  Mutex lock("RaceToGenerate");
   for (size_t i = 0; i < kNumThreads; i++) {
-    std::unique_ptr<RaceGenerateTask> task(new RaceGenerateTask(dex_location, oat_location));
+    std::unique_ptr<RaceGenerateTask> task(new RaceGenerateTask(dex_location, oat_location, &lock));
     thread_pool.AddTask(self, task.get());
     tasks.push_back(std::move(task));
   }
