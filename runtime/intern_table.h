@@ -185,6 +185,11 @@ class InternTable {
       return item.IsNull();
     }
   };
+  using UnorderedSet = HashSet<GcRoot<mirror::String>,
+                               GcRootEmptyFn,
+                               StringHashEquals,
+                               StringHashEquals,
+                               TrackingAllocator<GcRoot<mirror::String>, kAllocatorTagInternTable>>;
 
   // Table which holds pre zygote and post zygote interned strings. There is one instance for
   // weak interns and strong interns.
@@ -217,9 +222,6 @@ class InternTable {
         REQUIRES(Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
    private:
-    typedef HashSet<GcRoot<mirror::String>, GcRootEmptyFn, StringHashEquals, StringHashEquals,
-        TrackingAllocator<GcRoot<mirror::String>, kAllocatorTagInternTable>> UnorderedSet;
-
     void SweepWeaks(UnorderedSet* set, IsMarkedVisitor* visitor)
         REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
 
@@ -287,6 +289,7 @@ class InternTable {
   // Weak root state, used for concurrent system weak processing and more.
   gc::WeakRootState weak_root_state_ GUARDED_BY(Locks::intern_table_lock_);
 
+  friend class gc::space::ImageSpace;
   friend class linker::ImageWriter;
   friend class Transaction;
   ART_FRIEND_TEST(InternTableTest, CrossHash);

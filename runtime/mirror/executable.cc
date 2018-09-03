@@ -38,18 +38,6 @@ template bool Executable::CreateFromArtMethod<PointerSize::k32, true>(ArtMethod*
 template bool Executable::CreateFromArtMethod<PointerSize::k64, false>(ArtMethod* method);
 template bool Executable::CreateFromArtMethod<PointerSize::k64, true>(ArtMethod* method);
 
-ArtMethod* Executable::GetArtMethod() {
-  return reinterpret_cast<ArtMethod*>(GetField64(ArtMethodOffset()));
-}
-
-template <bool kTransactionActive>
-void Executable::SetArtMethod(ArtMethod* method) {
-  SetField64<kTransactionActive>(ArtMethodOffset(), reinterpret_cast<uint64_t>(method));
-}
-
-template void Executable::SetArtMethod<false>(ArtMethod* method);
-template void Executable::SetArtMethod<true>(ArtMethod* method);
-
 mirror::Class* Executable::GetDeclaringClass() {
   return GetFieldObject<mirror::Class>(DeclaringClassOffset());
 }

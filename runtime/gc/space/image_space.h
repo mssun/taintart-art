@@ -57,9 +57,9 @@ class ImageSpace : public MemMapSpace {
   // Reads the image header from the specified image location for the
   // instruction set image_isa. Returns null on failure, with
   // reason in error_msg.
-  static ImageHeader* ReadImageHeader(const char* image_location,
-                                      InstructionSet image_isa,
-                                      std::string* error_msg);
+  static std::unique_ptr<ImageHeader> ReadImageHeader(const char* image_location,
+                                                      InstructionSet image_isa,
+                                                      std::string* error_msg);
 
   // Give access to the OatFile.
   const OatFile* GetOatFile() const;
