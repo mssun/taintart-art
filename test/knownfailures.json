@@ -578,6 +578,30 @@
     },
     {
         "tests": [
+            "018-stack-overflow",
+            "107-int-math2"
+        ],
+        "description": [
+            "Insufficient stack guards for ASAN."
+        ],
+        "variant": "interp-ac & host",
+        "env_vars": {"SANITIZE_HOST": "address"},
+        "bug": "b/31098551"
+    },
+    {
+        "tests": [
+            "018-stack-overflow",
+            "107-int-math2"
+        ],
+        "description": [
+            "Insufficient stack guards for ASAN."
+        ],
+        "variant": "interp-ac & target",
+        "env_vars": {"SANITIZE_TARGET": "address"},
+        "bug": "b/31098551"
+    },
+    {
+        "tests": [
             "059-finalizer-throw",
             "074-gc-thrash",
             "911-get-stack-trace",
