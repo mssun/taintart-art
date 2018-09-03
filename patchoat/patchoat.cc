@@ -475,21 +475,21 @@ bool PatchOat::CreateVdexAndOatSymlinks(const std::string& input_image_filename,
                                              PROT_READ | PROT_WRITE,
                                              MAP_PRIVATE,
                                              &error_msg));
-  if (elf.get() == nullptr) {
+  if (elf == nullptr) {
     LOG(ERROR) << "Unable to open oat file " << input_oat_filename << " : " << error_msg;
     return false;
   }
 
-  MaybePic is_oat_pic = IsOatPic(elf.get());
-  if (is_oat_pic >= ERROR_FIRST) {
-    // Error logged by IsOatPic
-    return false;
-  } else if (is_oat_pic == NOT_PIC) {
-    LOG(ERROR) << "patchoat cannot be used on non-PIC oat file: " << input_oat_filename;
+  const OatHeader* oat_header = GetOatHeader(elf.get());
+  if (oat_header == nullptr) {
+    LOG(ERROR) << "Failed to find oat header in oat file " << input_oat_filename;
     return false;
   }
 
-  CHECK(is_oat_pic == PIC);
+  if (!oat_header->IsValid()) {
+    LOG(ERROR) << "Elf file " << input_oat_filename << " has an invalid oat header";
+    return false;
+  }
 
   std::string output_vdex_filename =
       ImageHeader::GetVdexLocationFromImageLocation(output_image_filename);
@@ -782,33 +782,6 @@ bool PatchOat::IsImagePic(const ImageHeader& image_header, const std::string& im
   }
 
   return true;
-}
-
-PatchOat::MaybePic PatchOat::IsOatPic(const ElfFile* oat_in) {
-  if (oat_in == nullptr) {
-    LOG(ERROR) << "No ELF input oat fie available";
-    return ERROR_OAT_FILE;
-  }
-
-  const std::string& file_path = oat_in->GetFilePath();
-
-  const OatHeader* oat_header = GetOatHeader(oat_in);
-  if (oat_header == nullptr) {
-    LOG(ERROR) << "Failed to find oat header in oat file " << file_path;
-    return ERROR_OAT_FILE;
-  }
-
-  if (!oat_header->IsValid()) {
-    LOG(ERROR) << "Elf file " << file_path << " has an invalid oat header";
-    return ERROR_OAT_FILE;
-  }
-
-  bool is_pic = oat_header->IsPic();
-  if (kIsDebugBuild) {
-    LOG(INFO) << "Oat file at " << file_path << " is " << (is_pic ? "PIC" : "not pic");
-  }
-
-  return is_pic ? PIC : NOT_PIC;
 }
 
 class PatchOat::PatchOatArtFieldVisitor : public ArtFieldVisitor {

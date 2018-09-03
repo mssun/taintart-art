@@ -39,10 +39,8 @@ enum ReturnCodes {
   kDex2OatFromScratch = 1,
   kDex2OatForBootImageOat = 2,
   kDex2OatForFilterOat = 3,
-  kDex2OatForRelocationOat = 4,
-  kDex2OatForBootImageOdex = 5,
-  kDex2OatForFilterOdex = 6,
-  kDex2OatForRelocationOdex = 7,
+  kDex2OatForBootImageOdex = 4,
+  kDex2OatForFilterOdex = 5,
 
   kErrorInvalidArguments = 101,
   kErrorCannotCreateRuntime = 102,
@@ -119,10 +117,8 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("        kDex2OatFromScratch = 1");
   UsageError("        kDex2OatForBootImageOat = 2");
   UsageError("        kDex2OatForFilterOat = 3");
-  UsageError("        kDex2OatForRelocationOat = 4");
-  UsageError("        kDex2OatForBootImageOdex = 5");
-  UsageError("        kDex2OatForFilterOdex = 6");
-  UsageError("        kDex2OatForRelocationOdex = 7");
+  UsageError("        kDex2OatForBootImageOdex = 4");
+  UsageError("        kDex2OatForFilterOdex = 5");
 
   UsageError("        kErrorInvalidArguments = 101");
   UsageError("        kErrorCannotCreateRuntime = 102");
@@ -275,11 +271,9 @@ class DexoptAnalyzer final {
       case OatFileAssistant::kDex2OatFromScratch: return kDex2OatFromScratch;
       case OatFileAssistant::kDex2OatForBootImage: return kDex2OatForBootImageOat;
       case OatFileAssistant::kDex2OatForFilter: return kDex2OatForFilterOat;
-      case OatFileAssistant::kDex2OatForRelocation: return kDex2OatForRelocationOat;
 
       case -OatFileAssistant::kDex2OatForBootImage: return kDex2OatForBootImageOdex;
       case -OatFileAssistant::kDex2OatForFilter: return kDex2OatForFilterOdex;
-      case -OatFileAssistant::kDex2OatForRelocation: return kDex2OatForRelocationOdex;
       default:
         LOG(ERROR) << "Unknown dexoptNeeded " << dexoptNeeded;
         return kErrorUnknownDexOptNeeded;

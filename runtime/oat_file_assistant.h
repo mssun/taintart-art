@@ -66,11 +66,6 @@ class OatFileAssistant {
     // is out of date with respect to the target compiler filter.
     // Matches Java: dalvik.system.DexFile.DEX2OAT_FOR_FILTER
     kDex2OatForFilter = 3,
-
-    // dex2oat should be run to update the apk/jar because the existing code
-    // is not relocated to match the boot image.
-    // Matches Java: dalvik.system.DexFile.DEX2OAT_FOR_RELOCATION
-    kDex2OatForRelocation = 4,
   };
 
   enum OatStatus {
@@ -84,13 +79,6 @@ class OatFileAssistant {
     // kOatBootImageOutOfDate - The oat file is up to date with respect to the
     // dex file, but is out of date with respect to the boot image.
     kOatBootImageOutOfDate,
-
-    // kOatRelocationOutOfDate - The oat file is up to date with respect to
-    // the dex file and boot image, but contains compiled code that has the
-    // wrong patch delta with respect to the boot image. Patchoat should be
-    // run on the oat file to update the patch delta of the compiled code to
-    // match the boot image.
-    kOatRelocationOutOfDate,
 
     // kOatUpToDate - The oat file is completely up to date with respect to
     // the dex file and boot image.
