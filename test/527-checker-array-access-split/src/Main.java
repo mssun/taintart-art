@@ -552,6 +552,28 @@ public class Main {
     return (int)s;
   }
 
+  //
+  //  Check that IntermediateAddress can be shared across BoundsCheck, DivZeroCheck and NullCheck -
+  //  instruction which have fatal slow paths.
+  //
+  /// CHECK-START-{ARM,ARM64}: void Main.checkGVNForFatalChecks(int, int, char[], int[]) GVN$after_arch (before)
+  /// CHECK:                       IntermediateAddress
+  /// CHECK:                       IntermediateAddress
+  //
+  /// CHECK-NOT:                   IntermediateAddress
+
+  /// CHECK-START-{ARM,ARM64}: void Main.checkGVNForFatalChecks(int, int, char[], int[]) GVN$after_arch (after)
+  /// CHECK:                       IntermediateAddress
+  //
+  /// CHECK-NOT:                   IntermediateAddress
+  public final static void checkGVNForFatalChecks(int begin, int end, char[] buf1, int[] buf2) {
+    buf1[begin] = 'a';
+    buf2[0] = begin / end;
+    buf1[end] = 'n';
+  }
+
+  public final static int ARRAY_SIZE = 128;
+
   public static void main(String[] args) {
     int[] array = {123, 456, 789};
 
@@ -575,5 +597,10 @@ public class Main {
     assertIntEquals(2097152, canMergeAfterBCE2());
 
     assertIntEquals(18, checkLongFloatDouble());
+
+    char[] c1 = new char[ARRAY_SIZE];
+    int[] i1 = new int[ARRAY_SIZE];
+    checkGVNForFatalChecks(1, 2, c1, i1);
+    assertIntEquals('n', c1[2]);
   }
 }

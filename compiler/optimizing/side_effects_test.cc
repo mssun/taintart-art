@@ -202,6 +202,7 @@ TEST(SideEffectsTest, GC) {
   EXPECT_TRUE(depends_on_gc.MayDependOn(all_changes));
   EXPECT_TRUE(depends_on_gc.Union(can_trigger_gc).MayDependOn(all_changes));
   EXPECT_FALSE(can_trigger_gc.MayDependOn(all_changes));
+  EXPECT_FALSE(can_trigger_gc.MayDependOn(can_trigger_gc));
 
   EXPECT_TRUE(all_changes.Includes(can_trigger_gc));
   EXPECT_FALSE(all_changes.Includes(depends_on_gc));
