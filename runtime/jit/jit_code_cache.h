@@ -223,7 +223,7 @@ class JitCodeCache {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool OwnsSpace(const void* mspace) const NO_THREAD_SAFETY_ANALYSIS {
-    return mspace == code_mspace_ || mspace == data_mspace_;
+    return mspace == data_mspace_ || mspace == exec_mspace_;
   }
 
   void* MoreCore(const void* mspace, intptr_t increment);
@@ -279,13 +279,13 @@ class JitCodeCache {
 
  private:
   // Take ownership of maps.
-  JitCodeCache(MemMap&& code_map,
-               MemMap&& data_map,
-               size_t initial_code_capacity,
+  JitCodeCache(MemMap&& data_pages,
+               MemMap&& exec_pages,
+               MemMap&& non_exec_pages,
                size_t initial_data_capacity,
+               size_t initial_exec_capacity,
                size_t max_capacity,
-               bool garbage_collect_code,
-               int memmap_flags_prot_code);
+               bool garbage_collect_code);
 
   // Internal version of 'CommitCode' that will not retry if the
   // allocation fails. Return null if the allocation fails.
@@ -381,6 +381,16 @@ class JitCodeCache {
   uint8_t* AllocateData(size_t data_size) REQUIRES(lock_);
   void FreeData(uint8_t* data) REQUIRES(lock_);
 
+  bool HasDualCodeMapping() const {
+    return non_exec_pages_.IsValid();
+  }
+
+  bool HasCodeMapping() const {
+    return exec_pages_.IsValid();
+  }
+
+  const MemMap* GetUpdatableCodeMapping() const;
+
   bool IsWeakAccessEnabled(Thread* self) const;
   void WaitUntilInlineCacheAccessible(Thread* self)
       REQUIRES(!lock_)
@@ -395,14 +405,17 @@ class JitCodeCache {
   ConditionVariable lock_cond_ GUARDED_BY(lock_);
   // Whether there is a code cache collection in progress.
   bool collection_in_progress_ GUARDED_BY(lock_);
-  // Mem map which holds code.
-  MemMap code_map_;
   // Mem map which holds data (stack maps and profiling info).
-  MemMap data_map_;
-  // The opaque mspace for allocating code.
-  void* code_mspace_ GUARDED_BY(lock_);
+  MemMap data_pages_;
+  // Mem map which holds code and has executable permission.
+  MemMap exec_pages_;
+  // Mem map which holds code with non executable permission. Only valid for dual view JIT when
+  // this is the non-executable view of code used to write updates.
+  MemMap non_exec_pages_;
   // The opaque mspace for allocating data.
   void* data_mspace_ GUARDED_BY(lock_);
+  // The opaque mspace for allocating code.
+  void* exec_mspace_ GUARDED_BY(lock_);
   // Bitmap for collecting code and data.
   std::unique_ptr<CodeCacheBitmap> live_bitmap_;
   // Holds compiled code associated with the shorty for a JNI stub.
@@ -420,11 +433,11 @@ class JitCodeCache {
   // The current capacity in bytes of the code cache.
   size_t current_capacity_ GUARDED_BY(lock_);
 
-  // The current footprint in bytes of the code portion of the code cache.
-  size_t code_end_ GUARDED_BY(lock_);
-
   // The current footprint in bytes of the data portion of the code cache.
   size_t data_end_ GUARDED_BY(lock_);
+
+  // The current footprint in bytes of the code portion of the code cache.
+  size_t exec_end_ GUARDED_BY(lock_);
 
   // Whether the last collection round increased the code cache.
   bool last_collection_increased_code_cache_ GUARDED_BY(lock_);
@@ -463,9 +476,6 @@ class JitCodeCache {
 
   // Condition to wait on for accessing inline caches.
   ConditionVariable inline_cache_cond_ GUARDED_BY(lock_);
-
-  // Mapping flags for the code section.
-  const int memmap_flags_prot_code_;
 
   friend class art::JitJniStubTestHelper;
   friend class ScopedCodeCacheWrite;
