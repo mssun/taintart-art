@@ -150,6 +150,7 @@ $(AHAT_RI_TEST_DUMP_HPROF): $(AHAT_RI_TEST_DUMP_JAR)
 	java -cp $(PRIVATE_AHAT_RI_TEST_DUMP_JAR) Main $@
 
 # --- ahat-tests.jar --------------
+# To run these tests, use: atest ahat-tests --host
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(call all-java-files-under, src/test)
 LOCAL_JAR_MANIFEST := etc/ahat-tests.mf
@@ -170,10 +171,6 @@ LOCAL_COMPATIBILITY_SUITE := general-tests
 include $(BUILD_HOST_JAVA_LIBRARY)
 AHAT_TEST_JAR := $(LOCAL_BUILT_MODULE)
 
-.PHONY: ahat-test
-ahat-test: PRIVATE_AHAT_TEST_JAR := $(AHAT_TEST_JAR)
-ahat-test: $(AHAT_TEST_JAR)
-	java -enableassertions -jar $(PRIVATE_AHAT_TEST_JAR)
 endif # EMMA_INSTRUMENT
 endif # linux
 
