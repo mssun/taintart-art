@@ -162,9 +162,6 @@ inline void FlushInstructionCache(void* begin, void* end) {
   __builtin___clear_cache(reinterpret_cast<char*>(begin), reinterpret_cast<char*>(end));
 }
 
-// Flush instruction pipeline. Returns true on success, false if feature is unsupported.
-bool FlushInstructionPipeline();
-
 template <typename T>
 constexpr PointerSize ConvertToPointerSize(T any) {
   if (any == 4 || any == 8) {
