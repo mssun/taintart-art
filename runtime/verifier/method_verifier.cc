@@ -3675,9 +3675,11 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   // the access-checks interpreter. If result is primitive, skip the access check.
   //
   // Note: we do this for unresolved classes to trigger re-verification at runtime.
-  if (C == CheckAccess::kYes && result->IsNonZeroReferenceTypes()) {
+  if (C == CheckAccess::kYes &&
+      result->IsNonZeroReferenceTypes() &&
+      (api_level_ >= 28u || !result->IsUnresolvedTypes())) {
     const RegType& referrer = GetDeclaringClass();
-    if (!referrer.CanAccess(*result)) {
+    if ((api_level_ >= 28u || !referrer.IsUnresolvedTypes()) && !referrer.CanAccess(*result)) {
       Fail(VERIFY_ERROR_ACCESS_CLASS) << "(possibly) illegal class access: '"
                                       << referrer << "' -> '" << *result << "'";
     }
@@ -4560,7 +4562,7 @@ ArtField* MethodVerifier::GetStaticField(int field_idx) {
   }
   if (klass_type.IsUnresolvedTypes()) {
     // Accessibility checks depend on resolved fields.
-    DCHECK(klass_type.Equals(GetDeclaringClass()) || !failures_.empty());
+    DCHECK(klass_type.Equals(GetDeclaringClass()) || !failures_.empty() || api_level_ < 28u);
 
     return nullptr;  // Can't resolve Class so no more to do here, will do checking at runtime.
   }
@@ -4601,7 +4603,7 @@ ArtField* MethodVerifier::GetInstanceField(const RegType& obj_type, int field_id
   }
   if (klass_type.IsUnresolvedTypes()) {
     // Accessibility checks depend on resolved fields.
-    DCHECK(klass_type.Equals(GetDeclaringClass()) || !failures_.empty());
+    DCHECK(klass_type.Equals(GetDeclaringClass()) || !failures_.empty() || api_level_ < 28u);
 
     return nullptr;  // Can't resolve Class so no more to do here
   }
@@ -4737,7 +4739,7 @@ void MethodVerifier::VerifyISFieldAccess(const Instruction* inst, const RegType&
       DCHECK(!can_load_classes_ || self_->IsExceptionPending());
       self_->ClearException();
     }
-  } else {
+  } else if (api_level_ >= 28u) {
     // If we don't have the field (it seems we failed resolution) and this is a PUT, we need to
     // redo verification at runtime as the field may be final, unless the field id shows it's in
     // the same class.
