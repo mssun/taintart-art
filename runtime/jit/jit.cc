@@ -416,7 +416,7 @@ void Jit::DumpTypeInfoForLoadedTypes(ClassLinker* linker) {
 }
 
 extern "C" void art_quick_osr_stub(void** stack,
-                                   uint32_t stack_size_in_bytes,
+                                   size_t stack_size_in_bytes,
                                    const uint8_t* native_pc,
                                    JValue* result,
                                    const char* shorty,
