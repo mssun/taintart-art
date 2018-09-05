@@ -28,14 +28,4 @@ TEST_F(OatDumpTest, TestAppWithBootImageStatic) {
   ASSERT_TRUE(Exec(kStatic, kModeOatWithBootImage, {}, kListAndCode));
 }
 
-TEST_F(OatDumpTest, TestPicAppWithBootImage) {
-  ASSERT_TRUE(GenerateAppOdexFile(kDynamic, {"--runtime-arg", "-Xmx64M", "--compile-pic"}));
-  ASSERT_TRUE(Exec(kDynamic, kModeOatWithBootImage, {}, kListAndCode));
-}
-TEST_F(OatDumpTest, TestPicAppWithBootImageStatic) {
-  TEST_DISABLED_FOR_NON_STATIC_HOST_BUILDS();
-  ASSERT_TRUE(GenerateAppOdexFile(kStatic, {"--runtime-arg", "-Xmx64M", "--compile-pic"}));
-  ASSERT_TRUE(Exec(kStatic, kModeOatWithBootImage, {}, kListAndCode));
-}
-
 }  // namespace art

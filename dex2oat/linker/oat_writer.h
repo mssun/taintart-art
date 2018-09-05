@@ -198,10 +198,7 @@ class OatWriter {
   // Check the size of the written oat file.
   bool CheckOatSize(OutputStream* out, size_t file_offset, size_t relative_offset);
   // Write the oat header. This finalizes the oat file.
-  bool WriteHeader(OutputStream* out,
-                   uint32_t image_file_location_oat_checksum,
-                   uintptr_t image_file_location_oat_begin,
-                   int32_t image_patch_delta);
+  bool WriteHeader(OutputStream* out, uint32_t image_file_location_oat_checksum);
 
   // Returns whether the oat file has an associated image.
   bool HasImage() const {

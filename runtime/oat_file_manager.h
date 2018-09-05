@@ -65,11 +65,6 @@ class OatFileManager {
   const OatFile* FindOpenedOatFileFromDexLocation(const std::string& dex_base_location) const
       REQUIRES(!Locks::oat_file_manager_lock_);
 
-  // Returns true if we have a non pic oat file.
-  bool HaveNonPicOatFile() const {
-    return have_non_pic_oat_file_;
-  }
-
   // Returns the boot image oat files.
   std::vector<const OatFile*> GetBootOatFiles() const;
 
@@ -142,7 +137,6 @@ class OatFileManager {
                           std::string* error_msg);
 
   std::set<std::unique_ptr<const OatFile>> oat_files_ GUARDED_BY(Locks::oat_file_manager_lock_);
-  bool have_non_pic_oat_file_;
 
   // Only use the compiled code in an OAT file when the file is on /system. If the OAT file
   // is not on /system, don't load it "executable".
