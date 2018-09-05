@@ -643,9 +643,16 @@ class ConcurrentCopying::VerifyNoMissingCardMarkVisitor {
 
   void CheckReference(mirror::Object* ref, int32_t offset = -1) const
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    CHECK(ref == nullptr || !cc_->region_space_->IsInNewlyAllocatedRegion(ref))
+    if (ref != nullptr && cc_->region_space_->IsInNewlyAllocatedRegion(ref)) {
+      LOG(FATAL_WITHOUT_ABORT)
         << holder_->PrettyTypeOf() << "(" << holder_.Ptr() << ") references object "
         << ref->PrettyTypeOf() << "(" << ref << ") in newly allocated region at offset=" << offset;
+      LOG(FATAL_WITHOUT_ABORT) << "time=" << cc_->region_space_->Time();
+      constexpr const char* kIndent = "  ";
+      LOG(FATAL_WITHOUT_ABORT) << cc_->DumpReferenceInfo(holder_.Ptr(), "holder_", kIndent);
+      LOG(FATAL_WITHOUT_ABORT) << cc_->DumpReferenceInfo(ref, "ref", kIndent);
+      LOG(FATAL) << "Unexpected reference to newly allocated region.";
+    }
   }
 
  private:
