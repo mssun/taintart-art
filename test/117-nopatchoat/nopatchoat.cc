@@ -46,18 +46,6 @@ class NoPatchoatTest {
 
     return oat_dex_file != nullptr && oat_dex_file->GetOatFile()->IsExecutable();
   }
-
-  static bool needsRelocation(jclass cls) {
-    const OatDexFile* oat_dex_file = getOatDexFile(cls);
-
-    if (oat_dex_file == nullptr) {
-      return false;
-    }
-
-    const OatFile* oat_file = oat_dex_file->GetOatFile();
-    return !oat_file->IsPic()
-        && CompilerFilter::IsAotCompilationEnabled(oat_file->GetCompilerFilter());
-  }
 };
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_isRelocationDeltaZero(JNIEnv*, jclass) {
@@ -66,10 +54,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_isRelocationDeltaZero(JNIEnv*, j
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasExecutableOat(JNIEnv*, jclass cls) {
   return NoPatchoatTest::hasExecutableOat(cls);
-}
-
-extern "C" JNIEXPORT jboolean JNICALL Java_Main_needsRelocation(JNIEnv*, jclass cls) {
-  return NoPatchoatTest::needsRelocation(cls);
 }
 
 }  // namespace art

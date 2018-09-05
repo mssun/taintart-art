@@ -59,10 +59,8 @@ class DexoptAnalyzerTest : public DexoptTest {
       case 1: return OatFileAssistant::kDex2OatFromScratch;
       case 2: return OatFileAssistant::kDex2OatForBootImage;
       case 3: return OatFileAssistant::kDex2OatForFilter;
-      case 4: return OatFileAssistant::kDex2OatForRelocation;
-      case 5: return -OatFileAssistant::kDex2OatForBootImage;
-      case 6: return -OatFileAssistant::kDex2OatForFilter;
-      case 7: return -OatFileAssistant::kDex2OatForRelocation;
+      case 4: return -OatFileAssistant::kDex2OatForBootImage;
+      case 5: return -OatFileAssistant::kDex2OatForFilter;
       default: return dexoptanalyzerResult;
     }
   }
@@ -177,8 +175,6 @@ TEST_F(DexoptAnalyzerTest, OatImageOutOfDate) {
   Copy(GetDexSrc1(), dex_location);
   GenerateOatForTest(dex_location.c_str(),
                      CompilerFilter::kSpeed,
-                     /*relocate*/true,
-                     /*pic*/false,
                      /*with_alternate_image*/true);
 
   Verify(dex_location, CompilerFilter::kExtract);
@@ -196,8 +192,6 @@ TEST_F(DexoptAnalyzerTest, OatVerifyAtRuntimeImageOutOfDate) {
   Copy(GetDexSrc1(), dex_location);
   GenerateOatForTest(dex_location.c_str(),
                      CompilerFilter::kExtract,
-                     /*relocate*/true,
-                     /*pic*/false,
                      /*with_alternate_image*/true);
 
   Verify(dex_location, CompilerFilter::kExtract);
@@ -222,7 +216,7 @@ TEST_F(DexoptAnalyzerTest, StrippedDexOdexNoOat) {
   std::string odex_location = GetOdexDir() + "/StrippedDexOdexNoOat.odex";
 
   Copy(GetDexSrc1(), dex_location);
-  GeneratePicOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed);
+  GenerateOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed);
 
   // Strip the dex file
   Copy(GetStrippedDexSrc1(), dex_location);
@@ -241,7 +235,7 @@ TEST_F(DexoptAnalyzerTest, StrippedDexOdexOat) {
 
   // Create the odex file
   Copy(GetDexSrc1(), dex_location);
-  GeneratePicOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed);
+  GenerateOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed);
 
   // Strip the dex file.
   Copy(GetStrippedDexSrc1(), dex_location);
@@ -263,8 +257,7 @@ TEST_F(DexoptAnalyzerTest, ResourceOnlyDex) {
   Verify(dex_location, CompilerFilter::kQuicken);
 }
 
-// Case: We have a DEX file, an ODEX file and an OAT file, where the ODEX and
-// OAT files both have patch delta of 0.
+// Case: We have a DEX file, an ODEX file and an OAT file.
 TEST_F(DexoptAnalyzerTest, OdexOatOverlap) {
   std::string dex_location = GetScratchDir() + "/OdexOatOverlap.jar";
   std::string odex_location = GetOdexDir() + "/OdexOatOverlap.odex";
@@ -278,18 +271,6 @@ TEST_F(DexoptAnalyzerTest, OdexOatOverlap) {
   Copy(odex_location, oat_location);
 
   Verify(dex_location, CompilerFilter::kSpeed);
-}
-
-// Case: We have a DEX file and a PIC ODEX file, but no OAT file.
-TEST_F(DexoptAnalyzerTest, DexPicOdexNoOat) {
-  std::string dex_location = GetScratchDir() + "/DexPicOdexNoOat.jar";
-  std::string odex_location = GetOdexDir() + "/DexPicOdexNoOat.odex";
-
-  Copy(GetDexSrc1(), dex_location);
-  GeneratePicOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed);
-
-  Verify(dex_location, CompilerFilter::kSpeed);
-  Verify(dex_location, CompilerFilter::kEverything);
 }
 
 // Case: We have a DEX file and a VerifyAtRuntime ODEX file, but no OAT file..

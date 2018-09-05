@@ -129,8 +129,6 @@ class OatFile {
     return is_executable_;
   }
 
-  bool IsPic() const;
-
   // Indicates whether the oat file was compiled with full debugging capability.
   bool IsDebuggable() const;
 

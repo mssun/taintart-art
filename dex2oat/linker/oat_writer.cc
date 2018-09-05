@@ -2815,21 +2815,10 @@ bool OatWriter::CheckOatSize(OutputStream* out, size_t file_offset, size_t relat
   return true;
 }
 
-bool OatWriter::WriteHeader(OutputStream* out,
-                            uint32_t image_file_location_oat_checksum,
-                            uintptr_t image_file_location_oat_begin,
-                            int32_t image_patch_delta) {
+bool OatWriter::WriteHeader(OutputStream* out, uint32_t image_file_location_oat_checksum) {
   CHECK(write_state_ == WriteState::kWriteHeader);
 
   oat_header_->SetImageFileLocationOatChecksum(image_file_location_oat_checksum);
-  oat_header_->SetImageFileLocationOatDataBegin(image_file_location_oat_begin);
-  if (GetCompilerOptions().IsBootImage()) {
-    CHECK_EQ(image_patch_delta, 0);
-    CHECK_EQ(oat_header_->GetImagePatchDelta(), 0);
-  } else {
-    CHECK_ALIGNED(image_patch_delta, kPageSize);
-    oat_header_->SetImagePatchDelta(image_patch_delta);
-  }
   oat_header_->UpdateChecksumWithHeaderData();
 
   const size_t file_offset = oat_data_offset_;

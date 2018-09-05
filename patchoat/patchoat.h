@@ -81,16 +81,6 @@ class PatchOat {
   // Was the .art image at image_path made with --compile-pic ?
   static bool IsImagePic(const ImageHeader& image_header, const std::string& image_path);
 
-  enum MaybePic {
-      NOT_PIC,            // Code not pic. Patch as usual.
-      PIC,                // Code was pic. Create symlink; skip OAT patching.
-      ERROR_OAT_FILE,     // Failed to symlink oat file
-      ERROR_FIRST = ERROR_OAT_FILE,
-  };
-
-  // Was the .oat image at oat_in made with --compile-pic ?
-  static MaybePic IsOatPic(const ElfFile* oat_in);
-
   static bool CreateVdexAndOatSymlinks(const std::string& input_image_filename,
                                        const std::string& output_image_filename);
 
