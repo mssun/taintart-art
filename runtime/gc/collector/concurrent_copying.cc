@@ -406,7 +406,7 @@ class ConcurrentCopying::ThreadFlipVisitor : public Closure, public RootVisitor 
         concurrent_copying_->region_space_->RevokeThreadLocalBuffers(thread);
         reinterpret_cast<Atomic<size_t>*>(
             &concurrent_copying_->from_space_num_objects_at_first_pause_)->
-                fetch_add(thread_local_objects, std::memory_order_seq_cst);
+                fetch_add(thread_local_objects, std::memory_order_relaxed);
       } else {
         concurrent_copying_->region_space_->RevokeThreadLocalBuffers(thread);
       }
@@ -2013,9 +2013,9 @@ void ConcurrentCopying::ReclaimPhase() {
     const uint64_t from_objects = region_space_->GetObjectsAllocatedInFromSpace();
     const uint64_t unevac_from_bytes = region_space_->GetBytesAllocatedInUnevacFromSpace();
     const uint64_t unevac_from_objects = region_space_->GetObjectsAllocatedInUnevacFromSpace();
-    uint64_t to_bytes = bytes_moved_.load(std::memory_order_seq_cst) + bytes_moved_gc_thread_;
+    uint64_t to_bytes = bytes_moved_.load(std::memory_order_relaxed) + bytes_moved_gc_thread_;
     cumulative_bytes_moved_.fetch_add(to_bytes, std::memory_order_relaxed);
-    uint64_t to_objects = objects_moved_.load(std::memory_order_seq_cst) + objects_moved_gc_thread_;
+    uint64_t to_objects = objects_moved_.load(std::memory_order_relaxed) + objects_moved_gc_thread_;
     cumulative_objects_moved_.fetch_add(to_objects, std::memory_order_relaxed);
     if (kEnableFromSpaceAccountingCheck) {
       CHECK_EQ(from_space_num_objects_at_first_pause_, from_objects + unevac_from_objects);
@@ -2047,12 +2047,12 @@ void ConcurrentCopying::ReclaimPhase() {
                 << " unevac_from_space size=" << region_space_->UnevacFromSpaceSize()
                 << " to_space size=" << region_space_->ToSpaceSize();
       LOG(INFO) << "(before) num_bytes_allocated="
-                << heap_->num_bytes_allocated_.load(std::memory_order_seq_cst);
+                << heap_->num_bytes_allocated_.load();
     }
     RecordFree(ObjectBytePair(freed_objects, freed_bytes));
     if (kVerboseMode) {
       LOG(INFO) << "(after) num_bytes_allocated="
-                << heap_->num_bytes_allocated_.load(std::memory_order_seq_cst);
+                << heap_->num_bytes_allocated_.load();
     }
   }
 
@@ -2729,17 +2729,17 @@ mirror::Object* ConcurrentCopying::Copy(Thread* const self,
         region_space_->RecordAlloc(to_ref);
       }
       bytes_allocated = region_space_alloc_size;
-      heap_->num_bytes_allocated_.fetch_sub(bytes_allocated, std::memory_order_seq_cst);
-      to_space_bytes_skipped_.fetch_sub(bytes_allocated, std::memory_order_seq_cst);
-      to_space_objects_skipped_.fetch_sub(1, std::memory_order_seq_cst);
+      heap_->num_bytes_allocated_.fetch_sub(bytes_allocated, std::memory_order_relaxed);
+      to_space_bytes_skipped_.fetch_sub(bytes_allocated, std::memory_order_relaxed);
+      to_space_objects_skipped_.fetch_sub(1, std::memory_order_relaxed);
     } else {
       // Fall back to the non-moving space.
       fall_back_to_non_moving = true;
       if (kVerboseMode) {
         LOG(INFO) << "Out of memory in the to-space. Fall back to non-moving. skipped_bytes="
-                  << to_space_bytes_skipped_.load(std::memory_order_seq_cst)
+                  << to_space_bytes_skipped_.load(std::memory_order_relaxed)
                   << " skipped_objects="
-                  << to_space_objects_skipped_.load(std::memory_order_seq_cst);
+                  << to_space_objects_skipped_.load(std::memory_order_relaxed);
       }
       to_ref = heap_->non_moving_space_->Alloc(self, obj_size,
                                                &non_moving_space_bytes_allocated, nullptr, &dummy);
@@ -2791,9 +2791,9 @@ mirror::Object* ConcurrentCopying::Copy(Thread* const self,
           region_space_->FreeLarge</*kForEvac*/ true>(to_ref, bytes_allocated);
         } else {
           // Record the lost copy for later reuse.
-          heap_->num_bytes_allocated_.fetch_add(bytes_allocated, std::memory_order_seq_cst);
-          to_space_bytes_skipped_.fetch_add(bytes_allocated, std::memory_order_seq_cst);
-          to_space_objects_skipped_.fetch_add(1, std::memory_order_seq_cst);
+          heap_->num_bytes_allocated_.fetch_add(bytes_allocated, std::memory_order_relaxed);
+          to_space_bytes_skipped_.fetch_add(bytes_allocated, std::memory_order_relaxed);
+          to_space_objects_skipped_.fetch_add(1, std::memory_order_relaxed);
           MutexLock mu(self, skipped_blocks_lock_);
           skipped_blocks_map_.insert(std::make_pair(bytes_allocated,
                                                     reinterpret_cast<uint8_t*>(to_ref)));
