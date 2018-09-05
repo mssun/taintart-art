@@ -18,13 +18,7 @@ public class Main {
   public static void main(String[] args) {
     System.loadLibrary(args[0]);
 
-    // With a relocationDelta of 0, the runtime has no way to determine if the oat file in
-    // ANDROID_DATA has been relocated, since a non-relocated oat file always has a 0 delta.
-    // Hitting this condition should be rare and ideally we would prevent it from happening but
-    // there is no way to do so without major changes to the run-test framework.
-    boolean executable_correct = (needsRelocation() ?
-        hasExecutableOat() == isRelocationDeltaZero() :
-        hasExecutableOat() == true);
+    boolean executable_correct = hasExecutableOat();
 
     System.out.println(
         "Has oat is " + hasOatFile() + ", has executable oat is " + (
@@ -41,8 +35,6 @@ public class Main {
     }
     return ret.substring(0, ret.length() - 1);
   }
-
-  private native static boolean needsRelocation();
 
   private native static boolean hasOatFile();
 

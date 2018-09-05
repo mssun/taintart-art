@@ -1400,17 +1400,6 @@ class ImageSpace::Loader {
                                 image.GetName());
       return nullptr;
     }
-    int32_t image_patch_delta = image_header.GetPatchDelta();
-    int32_t oat_patch_delta = oat_file->GetOatHeader().GetImagePatchDelta();
-    if (oat_patch_delta != image_patch_delta && !image_header.CompilePic()) {
-      // We should have already relocated by this point. Bail out.
-      *error_msg = StringPrintf("Failed to match oat file patch delta %d to expected patch delta %d "
-                                "in image %s",
-                                oat_patch_delta,
-                                image_patch_delta,
-                                image.GetName());
-      return nullptr;
-    }
 
     return oat_file;
   }

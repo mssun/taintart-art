@@ -235,7 +235,8 @@ class OatTest : public CommonCompilerTest {
       elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
     }
 
-    if (!oat_writer.WriteHeader(elf_writer->GetStream(), 42U, 4096U, 0)) {
+    if (!oat_writer.WriteHeader(elf_writer->GetStream(),
+                                /* image_file_location_oat_checksum */ 42U)) {
       return false;
     }
 
@@ -417,7 +418,6 @@ TEST_F(OatTest, WriteRead) {
   ASSERT_TRUE(oat_header.IsValid());
   ASSERT_EQ(class_linker->GetBootClassPath().size(), oat_header.GetDexFileCount());  // core
   ASSERT_EQ(42U, oat_header.GetImageFileLocationOatChecksum());
-  ASSERT_EQ(4096U, oat_header.GetImageFileLocationOatDataBegin());
   ASSERT_EQ("lue.art", std::string(oat_header.GetStoreValueByKey(OatHeader::kImageLocationKey)));
 
   ASSERT_TRUE(java_lang_dex_file_ != nullptr);
@@ -464,7 +464,7 @@ TEST_F(OatTest, WriteRead) {
 TEST_F(OatTest, OatHeaderSizeCheck) {
   // If this test is failing and you have to update these constants,
   // it is time to update OatHeader::kOatVersion
-  EXPECT_EQ(76U, sizeof(OatHeader));
+  EXPECT_EQ(68U, sizeof(OatHeader));
   EXPECT_EQ(4U, sizeof(OatMethodOffsets));
   EXPECT_EQ(8U, sizeof(OatQuickMethodHeader));
   EXPECT_EQ(166 * static_cast<size_t>(GetInstructionSetPointerSize(kRuntimeISA)),

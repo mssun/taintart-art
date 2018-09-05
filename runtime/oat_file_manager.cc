@@ -72,7 +72,6 @@ const OatFile* OatFileManager::RegisterOatFile(std::unique_ptr<const OatFile> oa
       CHECK_NE(oat_file->Begin(), existing->Begin()) << "Oat file already mapped at that location";
     }
   }
-  have_non_pic_oat_file_ = have_non_pic_oat_file_ || !oat_file->IsPic();
   const OatFile* ret = oat_file.get();
   oat_files_.insert(std::move(oat_file));
   return ret;
@@ -143,7 +142,7 @@ const OatFile* OatFileManager::GetPrimaryOatFile() const {
 }
 
 OatFileManager::OatFileManager()
-    : have_non_pic_oat_file_(false), only_use_system_oat_files_(false) {}
+    : only_use_system_oat_files_(false) {}
 
 OatFileManager::~OatFileManager() {
   // Explicitly clear oat_files_ since the OatFile destructor calls back into OatFileManager for

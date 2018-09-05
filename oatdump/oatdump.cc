@@ -470,16 +470,8 @@ class OatDumper {
                            GetQuickToInterpreterBridgeOffset);
 #undef DUMP_OAT_HEADER_OFFSET
 
-    os << "IMAGE PATCH DELTA:\n";
-    os << StringPrintf("%d (0x%08x)\n\n",
-                       oat_header.GetImagePatchDelta(),
-                       oat_header.GetImagePatchDelta());
-
     os << "IMAGE FILE LOCATION OAT CHECKSUM:\n";
     os << StringPrintf("0x%08x\n\n", oat_header.GetImageFileLocationOatChecksum());
-
-    os << "IMAGE FILE LOCATION OAT BEGIN:\n";
-    os << StringPrintf("0x%08x\n\n", oat_header.GetImageFileLocationOatDataBegin());
 
     // Print the key-value store.
     {

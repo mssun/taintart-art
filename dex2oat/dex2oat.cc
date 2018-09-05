@@ -619,8 +619,6 @@ class Dex2Oat final {
       compiler_kind_(Compiler::kOptimizing),
       // Take the default set of instruction features from the build.
       image_file_location_oat_checksum_(0),
-      image_file_location_oat_data_begin_(0),
-      image_patch_delta_(0),
       key_value_store_(nullptr),
       verification_results_(nullptr),
       runtime_(nullptr),
@@ -1105,9 +1103,6 @@ class Dex2Oat final {
     oss << kRuntimeISA;
     key_value_store_->Put(OatHeader::kDex2OatHostKey, oss.str());
     key_value_store_->Put(
-        OatHeader::kPicKey,
-        compiler_options_->compile_pic_ ? OatHeader::kTrueValue : OatHeader::kFalseValue);
-    key_value_store_->Put(
         OatHeader::kDebuggableKey,
         compiler_options_->debuggable_ ? OatHeader::kTrueValue : OatHeader::kFalseValue);
     key_value_store_->Put(
@@ -1563,9 +1558,6 @@ class Dex2Oat final {
         std::vector<gc::space::ImageSpace*> image_spaces =
             Runtime::Current()->GetHeap()->GetBootImageSpaces();
         image_file_location_oat_checksum_ = image_spaces[0]->GetImageHeader().GetOatChecksum();
-        image_file_location_oat_data_begin_ =
-            reinterpret_cast<uintptr_t>(image_spaces[0]->GetImageHeader().GetOatDataBegin());
-        image_patch_delta_ = image_spaces[0]->GetImageHeader().GetPatchDelta();
         // Store the boot image filename(s).
         std::vector<std::string> image_filenames;
         for (const gc::space::ImageSpace* image_space : image_spaces) {
@@ -1577,8 +1569,6 @@ class Dex2Oat final {
         }
       } else {
         image_file_location_oat_checksum_ = 0u;
-        image_file_location_oat_data_begin_ = 0u;
-        image_patch_delta_ = 0;
       }
 
       // Open dex files for class path.
@@ -2148,10 +2138,7 @@ class Dex2Oat final {
           elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
         }
 
-        if (!oat_writer->WriteHeader(elf_writer->GetStream(),
-                                     image_file_location_oat_checksum_,
-                                     image_file_location_oat_data_begin_,
-                                     image_patch_delta_)) {
+        if (!oat_writer->WriteHeader(elf_writer->GetStream(), image_file_location_oat_checksum_)) {
           LOG(ERROR) << "Failed to write oat header to the ELF file " << oat_file->GetPath();
           return false;
         }
@@ -2802,8 +2789,6 @@ class Dex2Oat final {
   Compiler::Kind compiler_kind_;
 
   uint32_t image_file_location_oat_checksum_;
-  uintptr_t image_file_location_oat_data_begin_;
-  int32_t image_patch_delta_;
   std::unique_ptr<SafeMap<std::string, std::string> > key_value_store_;
 
   std::unique_ptr<VerificationResults> verification_results_;
