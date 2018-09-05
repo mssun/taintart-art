@@ -26,7 +26,8 @@
  * SUCH DAMAGE.
  */
 
-
+#include <dlfcn.h>
+#include <pthread.h>
 #include <signal.h>
 #include <sys/syscall.h>
 
@@ -63,10 +64,25 @@ class SigchainTest : public ::testing::Test {
   }
 
   art::SigchainAction action = {
-      .sc_sigaction = [](int, siginfo_t*, void*) { return true; },
+      .sc_sigaction = [](int, siginfo_t* info, void*) -> bool {
+        return info->si_value.sival_ptr;
+      },
       .sc_mask = {},
       .sc_flags = 0,
   };
+
+ protected:
+  void RaiseHandled() {
+      sigval_t value;
+      value.sival_ptr = &value;
+      pthread_sigqueue(pthread_self(), SIGSEGV, value);
+  }
+
+  void RaiseUnhandled() {
+      sigval_t value;
+      value.sival_ptr = nullptr;
+      pthread_sigqueue(pthread_self(), SIGSEGV, value);
+  }
 };
 
 
@@ -185,3 +201,40 @@ TEST_F(SigchainTest, sigsetmask) {
 }
 
 #endif
+
+// Make sure that we properly put ourselves back in front if we get circumvented.
+TEST_F(SigchainTest, EnsureFrontOfChain) {
+#if defined(__BIONIC__)
+  constexpr char kLibcSoName[] = "libc.so";
+#elif defined(__GNU_LIBRARY__) && __GNU_LIBRARY__ == 6
+  constexpr char kLibcSoName[] = "libc.so.6";
+#else
+  #error Unknown libc
+#endif
+  void* libc = dlopen(kLibcSoName, RTLD_LAZY | RTLD_NOLOAD);
+  ASSERT_TRUE(libc);
+
+  static sig_atomic_t called = 0;
+  struct sigaction action = {};
+  action.sa_flags = SA_SIGINFO;
+  action.sa_sigaction = [](int, siginfo_t*, void*) { called = 1; };
+
+  ASSERT_EQ(0, sigaction(SIGSEGV, &action, nullptr));
+
+  // Try before EnsureFrontOfChain.
+  RaiseHandled();
+  ASSERT_EQ(0, called);
+
+  RaiseUnhandled();
+  ASSERT_EQ(1, called);
+  called = 0;
+
+  // ...and after.
+  art::EnsureFrontOfChain(SIGSEGV);
+  ASSERT_EQ(0, called);
+  called = 0;
+
+  RaiseUnhandled();
+  ASSERT_EQ(1, called);
+  called = 0;
+}
