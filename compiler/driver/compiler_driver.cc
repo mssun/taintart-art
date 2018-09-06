@@ -2564,8 +2564,8 @@ static void CompileDexFile(CompilerDriver* driver,
                                      thread_pool);
 
   auto compile = [&context, &compile_fn](size_t class_def_index) {
-    ScopedTrace trace(__FUNCTION__);
     const DexFile& dex_file = *context.GetDexFile();
+    SCOPED_TRACE << "compile " << dex_file.GetLocation() << "@" << class_def_index;
     ClassLinker* class_linker = context.GetClassLinker();
     jobject jclass_loader = context.GetClassLoader();
     ClassReference ref(&dex_file, class_def_index);
