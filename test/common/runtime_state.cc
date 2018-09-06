@@ -292,15 +292,6 @@ extern "C" JNIEXPORT void JNICALL Java_Main_fetchProfiles(JNIEnv*, jclass) {
   code_cache->GetProfiledMethods(unused_locations, unused_vector);
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_Main_isClassMoveable(JNIEnv*,
-                                                                jclass,
-                                                                jclass cls) {
-  Runtime* runtime = Runtime::Current();
-  ScopedObjectAccess soa(Thread::Current());
-  ObjPtr<mirror::Class> klass = soa.Decode<mirror::Class>(cls);
-  return runtime->GetHeap()->IsMovableObject(klass);
-}
-
 extern "C" JNIEXPORT void JNICALL Java_Main_waitForCompilation(JNIEnv*, jclass) {
   jit::Jit* jit = Runtime::Current()->GetJit();
   if (jit != nullptr) {
