@@ -96,6 +96,7 @@ package com.android.ahat.heapdump {
     method public boolean isArrayInstance();
     method public boolean isClassInstance();
     method public boolean isClassObj();
+    method public boolean isInstanceOfClass(java.lang.String);
     method public boolean isPlaceHolder();
     method public boolean isRoot();
     method public boolean isStronglyReachable();
@@ -226,6 +227,7 @@ package com.android.ahat.heapdump {
     method public int getLineNumber();
     method public java.lang.String getMethodName();
     method public void getObjects(java.lang.String, java.lang.String, java.util.Collection<com.android.ahat.heapdump.AhatInstance>);
+    method public void getObjects(java.util.function.Predicate<com.android.ahat.heapdump.AhatInstance>, java.util.function.Consumer<com.android.ahat.heapdump.AhatInstance>);
     method public java.util.List<com.android.ahat.heapdump.Site.ObjectsInfo> getObjectsInfos();
     method public com.android.ahat.heapdump.Site getParent();
     method public java.lang.String getSignature();
