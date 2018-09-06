@@ -2331,6 +2331,7 @@ void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* o
   CHECK(!region_space_->HasAddress(ref)) << "obj=" << obj << " ref=" << ref;
   // In a non-moving space. Check that the ref is marked.
   if (immune_spaces_.ContainsObject(ref)) {
+    // Immune space case.
     if (kUseBakerReadBarrier) {
       // Immune object may not be gray if called from the GC.
       if (Thread::Current() == thread_running_gc_ && !gc_grays_immune_objects_) {
@@ -2344,28 +2345,68 @@ void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* o
           << " updated_all_immune_objects=" << updated_all_immune_objects;
     }
   } else {
+    // Non-moving space and large-object space (LOS) cases.
     accounting::ContinuousSpaceBitmap* mark_bitmap =
         heap_mark_bitmap_->GetContinuousSpaceBitmap(ref);
     accounting::LargeObjectBitmap* los_bitmap =
         heap_mark_bitmap_->GetLargeObjectBitmap(ref);
-    bool is_los = mark_bitmap == nullptr;
-    if ((!is_los && mark_bitmap->Test(ref)) ||
-        (is_los && los_bitmap->Test(ref))) {
-      // OK.
-    } else {
-      // If `ref` is on the allocation stack, then it may not be
-      // marked live, but considered marked/alive (but not
-      // necessarily on the live stack).
-      CHECK(IsOnAllocStack(ref))
-          << "Unmarked ref that's not on the allocation stack."
-          << " obj=" << obj
-          << " ref=" << ref
-          << " rb_state=" << ref->GetReadBarrierState()
-          << " is_los=" << std::boolalpha << is_los << std::noboolalpha
-          << " is_marking=" << std::boolalpha << is_marking_ << std::noboolalpha
-          << " young_gen=" << std::boolalpha << young_gen_ << std::noboolalpha
-          << " self=" << Thread::Current();
-    }
+    bool is_los = (mark_bitmap == nullptr);
+
+    bool marked_in_non_moving_space_or_los =
+        (kUseBakerReadBarrier
+         && kEnableGenerationalConcurrentCopyingCollection
+         && young_gen_
+         && !done_scanning_.load(std::memory_order_acquire))
+        // Don't use the mark bitmap to ensure `ref` is marked: check that the
+        // read barrier state is gray instead. This is to take into account a
+        // potential race between two read barriers on the same reference when the
+        // young-generation collector is still scanning the dirty cards.
+        //
+        // For instance consider two concurrent read barriers on the same GC root
+        // reference during the dirty-card-scanning step of a young-generation
+        // collection. Both threads would call ReadBarrier::BarrierForRoot, which
+        // would:
+        // a. mark the reference (leading to a call to
+        //    ConcurrentCopying::MarkNonMoving); then
+        // b. check the to-space invariant (leading to a call this
+        //    ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace -- this
+        //    method).
+        //
+        // In this situation, the following race could happen:
+        // 1. Thread A successfully changes `ref`'s read barrier state from
+        //    non-gray (white) to gray (with AtomicSetReadBarrierState) in
+        //    ConcurrentCopying::MarkNonMoving, then gets preempted.
+        // 2. Thread B also tries to change `ref`'s read barrier state with
+        //    AtomicSetReadBarrierState from non-gray to gray in
+        //    ConcurrentCopying::MarkNonMoving, but fails, as Thread A already
+        //    changed it.
+        // 3. Because Thread B failed the previous CAS, it does *not* set the
+        //    bit in the mark bitmap for `ref`.
+        // 4. Thread B checks the to-space invariant and calls
+        //    ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace: the bit
+        //    is not set in the mark bitmap for `ref`; checking that this bit is
+        //    set to check the to-space invariant is therefore not a reliable
+        //    test.
+        // 5. (Note that eventually, Thread A will resume its execution and set
+        //    the bit for `ref` in the mark bitmap.)
+        ? (ref->GetReadBarrierState() == ReadBarrier::GrayState())
+        // It is safe to use the heap mark bitmap otherwise.
+        : (!is_los && mark_bitmap->Test(ref)) || (is_los && los_bitmap->Test(ref));
+
+    // If `ref` is on the allocation stack, then it may not be
+    // marked live, but considered marked/alive (but not
+    // necessarily on the live stack).
+    CHECK(marked_in_non_moving_space_or_los || IsOnAllocStack(ref))
+        << "Unmarked ref that's not on the allocation stack."
+        << " obj=" << obj
+        << " ref=" << ref
+        << " rb_state=" << ref->GetReadBarrierState()
+        << " is_los=" << std::boolalpha << is_los << std::noboolalpha
+        << " is_marking=" << std::boolalpha << is_marking_ << std::noboolalpha
+        << " young_gen=" << std::boolalpha << young_gen_ << std::noboolalpha
+        << " done_scanning="
+        << std::boolalpha << done_scanning_.load(std::memory_order_acquire) << std::noboolalpha
+        << " self=" << Thread::Current();
   }
 }
 
