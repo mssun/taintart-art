@@ -2183,88 +2183,67 @@ artMterpAsmInstructionStart = .L_op_nop
     .balign 128
 .L_op_iget: /* 0x52 */
 /* File: arm64/op_iget.S */
+/* File: arm64/field.S */
     /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    EXPORT_PC
-    FETCH    w0, 1                         // w0<- field ref CCCC
-    lsr      w1, wINST, #12                // w1<- B
-    GET_VREG w1, w1                        // w1<- fp[B], the object pointer
-    ldr      x2, [xFP, #OFF_FP_METHOD]     // w2<- referrer
-    mov      x3, xSELF                     // w3<- self
+    .extern MterpIGetU32
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIGetU32
-    ldr      x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    
-    ubfx     w2, wINST, #8, #4             // w2<- A
-    PREFETCH_INST 2
-    cbnz     x3, MterpPossibleException    // bail out
-    .if 0
-    SET_VREG_OBJECT w0, w2                 // fp[A]<- w0
-    .else
-    SET_VREG w0, w2                        // fp[A]<- w0
-    .endif
+    cbz      x0, MterpPossibleException
     ADVANCE 2
     GET_INST_OPCODE ip                     // extract opcode from rINST
     GOTO_OPCODE ip                         // jump to next instruction
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iget_wide: /* 0x53 */
 /* File: arm64/op_iget_wide.S */
+/* File: arm64/op_iget.S */
+/* File: arm64/field.S */
     /*
-     * 64-bit instance field get.
-     *
-     * for: iget-wide
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    EXPORT_PC
-    FETCH    w0, 1                         // w0<- field ref CCCC
-    lsr      w1, wINST, #12                // w1<- B
-    GET_VREG w1, w1                        // w1<- fp[B], the object pointer
-    ldr      x2, [xFP, #OFF_FP_METHOD]     // w2<- referrer
-    mov      x3, xSELF                     // w3<- self
+    .extern MterpIGetU64
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIGetU64
-    ldr      x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    ubfx     w2, wINST, #8, #4             // w2<- A
-    PREFETCH_INST 2
-    cmp      w3, #0
-    cbnz     w3, MterpException            // bail out
-    SET_VREG_WIDE x0, w2
+    cbz      x0, MterpPossibleException
     ADVANCE 2
-    GET_INST_OPCODE ip                     // extract opcode from wINST
+    GET_INST_OPCODE ip                     // extract opcode from rINST
     GOTO_OPCODE ip                         // jump to next instruction
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iget_object: /* 0x54 */
 /* File: arm64/op_iget_object.S */
 /* File: arm64/op_iget.S */
+/* File: arm64/field.S */
     /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    EXPORT_PC
-    FETCH    w0, 1                         // w0<- field ref CCCC
-    lsr      w1, wINST, #12                // w1<- B
-    GET_VREG w1, w1                        // w1<- fp[B], the object pointer
-    ldr      x2, [xFP, #OFF_FP_METHOD]     // w2<- referrer
-    mov      x3, xSELF                     // w3<- self
+    .extern MterpIGetObj
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIGetObj
-    ldr      x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    
-    ubfx     w2, wINST, #8, #4             // w2<- A
-    PREFETCH_INST 2
-    cbnz     x3, MterpPossibleException    // bail out
-    .if 1
-    SET_VREG_OBJECT w0, w2                 // fp[A]<- w0
-    .else
-    SET_VREG w0, w2                        // fp[A]<- w0
-    .endif
+    cbz      x0, MterpPossibleException
     ADVANCE 2
     GET_INST_OPCODE ip                     // extract opcode from rINST
     GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2272,31 +2251,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iget_boolean: /* 0x55 */
 /* File: arm64/op_iget_boolean.S */
 /* File: arm64/op_iget.S */
+/* File: arm64/field.S */
     /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    EXPORT_PC
-    FETCH    w0, 1                         // w0<- field ref CCCC
-    lsr      w1, wINST, #12                // w1<- B
-    GET_VREG w1, w1                        // w1<- fp[B], the object pointer
-    ldr      x2, [xFP, #OFF_FP_METHOD]     // w2<- referrer
-    mov      x3, xSELF                     // w3<- self
+    .extern MterpIGetU8
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIGetU8
-    ldr      x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    uxtb w0, w0
-    ubfx     w2, wINST, #8, #4             // w2<- A
-    PREFETCH_INST 2
-    cbnz     x3, MterpPossibleException    // bail out
-    .if 0
-    SET_VREG_OBJECT w0, w2                 // fp[A]<- w0
-    .else
-    SET_VREG w0, w2                        // fp[A]<- w0
-    .endif
+    cbz      x0, MterpPossibleException
     ADVANCE 2
     GET_INST_OPCODE ip                     // extract opcode from rINST
     GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2304,31 +2274,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iget_byte: /* 0x56 */
 /* File: arm64/op_iget_byte.S */
 /* File: arm64/op_iget.S */
+/* File: arm64/field.S */
     /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    EXPORT_PC
-    FETCH    w0, 1                         // w0<- field ref CCCC
-    lsr      w1, wINST, #12                // w1<- B
-    GET_VREG w1, w1                        // w1<- fp[B], the object pointer
-    ldr      x2, [xFP, #OFF_FP_METHOD]     // w2<- referrer
-    mov      x3, xSELF                     // w3<- self
+    .extern MterpIGetI8
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIGetI8
-    ldr      x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    sxtb w0, w0
-    ubfx     w2, wINST, #8, #4             // w2<- A
-    PREFETCH_INST 2
-    cbnz     x3, MterpPossibleException    // bail out
-    .if 0
-    SET_VREG_OBJECT w0, w2                 // fp[A]<- w0
-    .else
-    SET_VREG w0, w2                        // fp[A]<- w0
-    .endif
+    cbz      x0, MterpPossibleException
     ADVANCE 2
     GET_INST_OPCODE ip                     // extract opcode from rINST
     GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2336,31 +2297,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iget_char: /* 0x57 */
 /* File: arm64/op_iget_char.S */
 /* File: arm64/op_iget.S */
+/* File: arm64/field.S */
     /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    EXPORT_PC
-    FETCH    w0, 1                         // w0<- field ref CCCC
-    lsr      w1, wINST, #12                // w1<- B
-    GET_VREG w1, w1                        // w1<- fp[B], the object pointer
-    ldr      x2, [xFP, #OFF_FP_METHOD]     // w2<- referrer
-    mov      x3, xSELF                     // w3<- self
+    .extern MterpIGetU16
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIGetU16
-    ldr      x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    uxth w0, w0
-    ubfx     w2, wINST, #8, #4             // w2<- A
-    PREFETCH_INST 2
-    cbnz     x3, MterpPossibleException    // bail out
-    .if 0
-    SET_VREG_OBJECT w0, w2                 // fp[A]<- w0
-    .else
-    SET_VREG w0, w2                        // fp[A]<- w0
-    .endif
+    cbz      x0, MterpPossibleException
     ADVANCE 2
     GET_INST_OPCODE ip                     // extract opcode from rINST
     GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2368,28 +2320,40 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iget_short: /* 0x58 */
 /* File: arm64/op_iget_short.S */
 /* File: arm64/op_iget.S */
+/* File: arm64/field.S */
     /*
-     * General instance field get.
-     *
-     * for: iget, iget-object, iget-boolean, iget-byte, iget-char, iget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    EXPORT_PC
-    FETCH    w0, 1                         // w0<- field ref CCCC
-    lsr      w1, wINST, #12                // w1<- B
-    GET_VREG w1, w1                        // w1<- fp[B], the object pointer
-    ldr      x2, [xFP, #OFF_FP_METHOD]     // w2<- referrer
-    mov      x3, xSELF                     // w3<- self
+    .extern MterpIGetI16
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIGetI16
-    ldr      x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    sxth w0, w0
-    ubfx     w2, wINST, #8, #4             // w2<- A
-    PREFETCH_INST 2
-    cbnz     x3, MterpPossibleException    // bail out
-    .if 0
-    SET_VREG_OBJECT w0, w2                 // fp[A]<- w0
-    .else
-    SET_VREG w0, w2                        // fp[A]<- w0
-    .endif
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
+
+
+/* ------------------------------ */
+    .balign 128
+.L_op_iput: /* 0x59 */
+/* File: arm64/op_iput.S */
+/* File: arm64/field.S */
+    /*
+     * General field read / write (iget-* iput-* sget-* sput-*).
+     */
+    .extern MterpIPutU32
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpIPutU32
+    cbz      x0, MterpPossibleException
     ADVANCE 2
     GET_INST_OPCODE ip                     // extract opcode from rINST
     GOTO_OPCODE ip                         // jump to next instruction
@@ -2397,89 +2361,71 @@ artMterpAsmInstructionStart = .L_op_nop
 
 /* ------------------------------ */
     .balign 128
-.L_op_iput: /* 0x59 */
-/* File: arm64/op_iput.S */
-    /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-object, iput-boolean, iput-byte, iput-char, iput-short
-     */
-    /* op vA, vB, field//CCCC */
-    .extern MterpIPutU32
-    EXPORT_PC
-    FETCH    w0, 1                      // w0<- field ref CCCC
-    lsr      w1, wINST, #12             // w1<- B
-    GET_VREG w1, w1                     // w1<- fp[B], the object pointer
-    ubfx     w2, wINST, #8, #4          // w2<- A
-    GET_VREG w2, w2                     // w2<- fp[A]
-    ldr      x3, [xFP, #OFF_FP_METHOD]  // w3<- referrer
-    PREFETCH_INST 2
-    bl       MterpIPutU32
-    cbnz     w0, MterpPossibleException
-    ADVANCE  2                          // advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
-
-/* ------------------------------ */
-    .balign 128
 .L_op_iput_wide: /* 0x5a */
 /* File: arm64/op_iput_wide.S */
-    /* iput-wide vA, vB, field//CCCC */
+/* File: arm64/op_iput.S */
+/* File: arm64/field.S */
+    /*
+     * General field read / write (iget-* iput-* sget-* sput-*).
+     */
     .extern MterpIPutU64
-    EXPORT_PC
-    FETCH    w0, 1                      // w0<- field ref CCCC
-    lsr      w1, wINST, #12             // w1<- B
-    GET_VREG w1, w1                     // w1<- fp[B], the object pointer
-    ubfx     w2, wINST, #8, #4          // w2<- A
-    VREG_INDEX_TO_ADDR x2, x2           // w2<- &fp[A]
-    ldr      x3, [xFP, #OFF_FP_METHOD]  // w3<- referrer
-    PREFETCH_INST 2
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIPutU64
-    cbnz     w0, MterpPossibleException
-    ADVANCE  2                          // advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from wINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iput_object: /* 0x5b */
 /* File: arm64/op_iput_object.S */
-    EXPORT_PC
-    add     x0, xFP, #OFF_FP_SHADOWFRAME
-    mov     x1, xPC
-    mov     w2, wINST
-    mov     x3, xSELF
-    bl      MterpIPutObj
-    cbz     w0, MterpException
-    FETCH_ADVANCE_INST 2                // advance rPC, load rINST
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+/* File: arm64/op_iput.S */
+/* File: arm64/field.S */
+    /*
+     * General field read / write (iget-* iput-* sget-* sput-*).
+     */
+    .extern MterpIPutObj
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpIPutObj
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_iput_boolean: /* 0x5c */
 /* File: arm64/op_iput_boolean.S */
 /* File: arm64/op_iput.S */
+/* File: arm64/field.S */
     /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-object, iput-boolean, iput-byte, iput-char, iput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vA, vB, field//CCCC */
     .extern MterpIPutU8
-    EXPORT_PC
-    FETCH    w0, 1                      // w0<- field ref CCCC
-    lsr      w1, wINST, #12             // w1<- B
-    GET_VREG w1, w1                     // w1<- fp[B], the object pointer
-    ubfx     w2, wINST, #8, #4          // w2<- A
-    GET_VREG w2, w2                     // w2<- fp[A]
-    ldr      x3, [xFP, #OFF_FP_METHOD]  // w3<- referrer
-    PREFETCH_INST 2
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIPutU8
-    cbnz     w0, MterpPossibleException
-    ADVANCE  2                          // advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2487,26 +2433,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iput_byte: /* 0x5d */
 /* File: arm64/op_iput_byte.S */
 /* File: arm64/op_iput.S */
+/* File: arm64/field.S */
     /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-object, iput-boolean, iput-byte, iput-char, iput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vA, vB, field//CCCC */
     .extern MterpIPutI8
-    EXPORT_PC
-    FETCH    w0, 1                      // w0<- field ref CCCC
-    lsr      w1, wINST, #12             // w1<- B
-    GET_VREG w1, w1                     // w1<- fp[B], the object pointer
-    ubfx     w2, wINST, #8, #4          // w2<- A
-    GET_VREG w2, w2                     // w2<- fp[A]
-    ldr      x3, [xFP, #OFF_FP_METHOD]  // w3<- referrer
-    PREFETCH_INST 2
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIPutI8
-    cbnz     w0, MterpPossibleException
-    ADVANCE  2                          // advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2514,26 +2456,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iput_char: /* 0x5e */
 /* File: arm64/op_iput_char.S */
 /* File: arm64/op_iput.S */
+/* File: arm64/field.S */
     /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-object, iput-boolean, iput-byte, iput-char, iput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vA, vB, field//CCCC */
     .extern MterpIPutU16
-    EXPORT_PC
-    FETCH    w0, 1                      // w0<- field ref CCCC
-    lsr      w1, wINST, #12             // w1<- B
-    GET_VREG w1, w1                     // w1<- fp[B], the object pointer
-    ubfx     w2, wINST, #8, #4          // w2<- A
-    GET_VREG w2, w2                     // w2<- fp[A]
-    ldr      x3, [xFP, #OFF_FP_METHOD]  // w3<- referrer
-    PREFETCH_INST 2
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIPutU16
-    cbnz     w0, MterpPossibleException
-    ADVANCE  2                          // advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2541,114 +2479,89 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_iput_short: /* 0x5f */
 /* File: arm64/op_iput_short.S */
 /* File: arm64/op_iput.S */
+/* File: arm64/field.S */
     /*
-     * General 32-bit instance field put.
-     *
-     * for: iput, iput-object, iput-boolean, iput-byte, iput-char, iput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vA, vB, field//CCCC */
     .extern MterpIPutI16
-    EXPORT_PC
-    FETCH    w0, 1                      // w0<- field ref CCCC
-    lsr      w1, wINST, #12             // w1<- B
-    GET_VREG w1, w1                     // w1<- fp[B], the object pointer
-    ubfx     w2, wINST, #8, #4          // w2<- A
-    GET_VREG w2, w2                     // w2<- fp[A]
-    ldr      x3, [xFP, #OFF_FP_METHOD]  // w3<- referrer
-    PREFETCH_INST 2
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
     bl       MterpIPutI16
-    cbnz     w0, MterpPossibleException
-    ADVANCE  2                          // advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
     .balign 128
 .L_op_sget: /* 0x60 */
 /* File: arm64/op_sget.S */
+/* File: arm64/field.S */
     /*
-     * General SGET handler wrapper.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-
     .extern MterpSGetU32
-    EXPORT_PC
-    FETCH w0, 1                         // w0<- field ref BBBB
-    ldr   x1, [xFP, #OFF_FP_METHOD]
-    mov   x2, xSELF
-    bl    MterpSGetU32
-    ldr   x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    lsr   w2, wINST, #8                 // w2<- AA
-    
-    PREFETCH_INST 2
-    cbnz  x3, MterpException            // bail out
-.if 0
-    SET_VREG_OBJECT w0, w2              // fp[AA]<- w0
-.else
-    SET_VREG w0, w2                     // fp[AA]<- w0
-.endif
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSGetU32
+    cbz      x0, MterpPossibleException
     ADVANCE 2
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sget_wide: /* 0x61 */
 /* File: arm64/op_sget_wide.S */
+/* File: arm64/op_sget.S */
+/* File: arm64/field.S */
     /*
-     * SGET_WIDE handler wrapper.
-     *
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* sget-wide vAA, field//BBBB */
+    .extern MterpSGetU64
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSGetU64
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
 
-    .extern MterpGet64StaticFromCode
-    EXPORT_PC
-    FETCH w0, 1                         // w0<- field ref BBBB
-    ldr   x1, [xFP, #OFF_FP_METHOD]
-    mov   x2, xSELF
-    bl    MterpSGetU64
-    ldr   x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    lsr   w4, wINST, #8                 // w4<- AA
-    cbnz  x3, MterpException            // bail out
-    FETCH_ADVANCE_INST 2                // advance rPC, load wINST
-    SET_VREG_WIDE x0, w4
-    GET_INST_OPCODE ip                  // extract opcode from wINST
-    GOTO_OPCODE ip                      // jump to next instruction
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sget_object: /* 0x62 */
 /* File: arm64/op_sget_object.S */
 /* File: arm64/op_sget.S */
+/* File: arm64/field.S */
     /*
-     * General SGET handler wrapper.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-
     .extern MterpSGetObj
-    EXPORT_PC
-    FETCH w0, 1                         // w0<- field ref BBBB
-    ldr   x1, [xFP, #OFF_FP_METHOD]
-    mov   x2, xSELF
-    bl    MterpSGetObj
-    ldr   x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    lsr   w2, wINST, #8                 // w2<- AA
-    
-    PREFETCH_INST 2
-    cbnz  x3, MterpException            // bail out
-.if 1
-    SET_VREG_OBJECT w0, w2              // fp[AA]<- w0
-.else
-    SET_VREG w0, w2                     // fp[AA]<- w0
-.endif
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSGetObj
+    cbz      x0, MterpPossibleException
     ADVANCE 2
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2656,32 +2569,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sget_boolean: /* 0x63 */
 /* File: arm64/op_sget_boolean.S */
 /* File: arm64/op_sget.S */
+/* File: arm64/field.S */
     /*
-     * General SGET handler wrapper.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-
     .extern MterpSGetU8
-    EXPORT_PC
-    FETCH w0, 1                         // w0<- field ref BBBB
-    ldr   x1, [xFP, #OFF_FP_METHOD]
-    mov   x2, xSELF
-    bl    MterpSGetU8
-    ldr   x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    lsr   w2, wINST, #8                 // w2<- AA
-    uxtb w0, w0
-    PREFETCH_INST 2
-    cbnz  x3, MterpException            // bail out
-.if 0
-    SET_VREG_OBJECT w0, w2              // fp[AA]<- w0
-.else
-    SET_VREG w0, w2                     // fp[AA]<- w0
-.endif
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSGetU8
+    cbz      x0, MterpPossibleException
     ADVANCE 2
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2689,32 +2592,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sget_byte: /* 0x64 */
 /* File: arm64/op_sget_byte.S */
 /* File: arm64/op_sget.S */
+/* File: arm64/field.S */
     /*
-     * General SGET handler wrapper.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-
     .extern MterpSGetI8
-    EXPORT_PC
-    FETCH w0, 1                         // w0<- field ref BBBB
-    ldr   x1, [xFP, #OFF_FP_METHOD]
-    mov   x2, xSELF
-    bl    MterpSGetI8
-    ldr   x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    lsr   w2, wINST, #8                 // w2<- AA
-    sxtb w0, w0
-    PREFETCH_INST 2
-    cbnz  x3, MterpException            // bail out
-.if 0
-    SET_VREG_OBJECT w0, w2              // fp[AA]<- w0
-.else
-    SET_VREG w0, w2                     // fp[AA]<- w0
-.endif
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSGetI8
+    cbz      x0, MterpPossibleException
     ADVANCE 2
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2722,32 +2615,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sget_char: /* 0x65 */
 /* File: arm64/op_sget_char.S */
 /* File: arm64/op_sget.S */
+/* File: arm64/field.S */
     /*
-     * General SGET handler wrapper.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-
     .extern MterpSGetU16
-    EXPORT_PC
-    FETCH w0, 1                         // w0<- field ref BBBB
-    ldr   x1, [xFP, #OFF_FP_METHOD]
-    mov   x2, xSELF
-    bl    MterpSGetU16
-    ldr   x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    lsr   w2, wINST, #8                 // w2<- AA
-    uxth w0, w0
-    PREFETCH_INST 2
-    cbnz  x3, MterpException            // bail out
-.if 0
-    SET_VREG_OBJECT w0, w2              // fp[AA]<- w0
-.else
-    SET_VREG w0, w2                     // fp[AA]<- w0
-.endif
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSGetU16
+    cbz      x0, MterpPossibleException
     ADVANCE 2
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2755,118 +2638,112 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sget_short: /* 0x66 */
 /* File: arm64/op_sget_short.S */
 /* File: arm64/op_sget.S */
+/* File: arm64/field.S */
     /*
-     * General SGET handler wrapper.
-     *
-     * for: sget, sget-object, sget-boolean, sget-byte, sget-char, sget-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-
     .extern MterpSGetI16
-    EXPORT_PC
-    FETCH w0, 1                         // w0<- field ref BBBB
-    ldr   x1, [xFP, #OFF_FP_METHOD]
-    mov   x2, xSELF
-    bl    MterpSGetI16
-    ldr   x3, [xSELF, #THREAD_EXCEPTION_OFFSET]
-    lsr   w2, wINST, #8                 // w2<- AA
-    sxth w0, w0
-    PREFETCH_INST 2
-    cbnz  x3, MterpException            // bail out
-.if 0
-    SET_VREG_OBJECT w0, w2              // fp[AA]<- w0
-.else
-    SET_VREG w0, w2                     // fp[AA]<- w0
-.endif
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSGetI16
+    cbz      x0, MterpPossibleException
     ADVANCE 2
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
     .balign 128
 .L_op_sput: /* 0x67 */
 /* File: arm64/op_sput.S */
+/* File: arm64/field.S */
     /*
-     * General SPUT handler wrapper.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-    EXPORT_PC
-    FETCH   w0, 1                       // r0<- field ref BBBB
-    lsr     w3, wINST, #8               // r3<- AA
-    GET_VREG w1, w3                     // r1<= fp[AA]
-    ldr     x2, [xFP, #OFF_FP_METHOD]
-    mov     x3, xSELF
-    PREFETCH_INST 2                     // Get next inst, but don't advance rPC
-    bl      MterpSPutU32
-    cbnz    w0, MterpException          // 0 on success
-    ADVANCE 2                           // Past exception point - now advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    .extern MterpSPutU32
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSPutU32
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sput_wide: /* 0x68 */
 /* File: arm64/op_sput_wide.S */
+/* File: arm64/op_sput.S */
+/* File: arm64/field.S */
     /*
-     * SPUT_WIDE handler wrapper.
-     *
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* sput-wide vAA, field//BBBB */
     .extern MterpSPutU64
-    EXPORT_PC
-    FETCH   w0, 1                       // w0<- field ref BBBB
-    lsr     w1, wINST, #8               // w1<- AA
-    VREG_INDEX_TO_ADDR x1, w1
-    ldr     x2, [xFP, #OFF_FP_METHOD]
-    mov     x3, xSELF
-    PREFETCH_INST 2                     // Get next inst, but don't advance rPC
-    bl      MterpSPutU64
-    cbnz    w0, MterpException          // 0 on success, -1 on failure
-    ADVANCE 2                           // Past exception point - now advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from wINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSPutU64
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sput_object: /* 0x69 */
 /* File: arm64/op_sput_object.S */
-    EXPORT_PC
-    add     x0, xFP, #OFF_FP_SHADOWFRAME
-    mov     x1, xPC
-    mov     x2, xINST
-    mov     x3, xSELF
-    bl      MterpSPutObj
-    cbz     w0, MterpException
-    FETCH_ADVANCE_INST 2                // advance rPC, load rINST
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+/* File: arm64/op_sput.S */
+/* File: arm64/field.S */
+    /*
+     * General field read / write (iget-* iput-* sget-* sput-*).
+     */
+    .extern MterpSPutObj
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSPutObj
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
+
 
 /* ------------------------------ */
     .balign 128
 .L_op_sput_boolean: /* 0x6a */
 /* File: arm64/op_sput_boolean.S */
 /* File: arm64/op_sput.S */
+/* File: arm64/field.S */
     /*
-     * General SPUT handler wrapper.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-    EXPORT_PC
-    FETCH   w0, 1                       // r0<- field ref BBBB
-    lsr     w3, wINST, #8               // r3<- AA
-    GET_VREG w1, w3                     // r1<= fp[AA]
-    ldr     x2, [xFP, #OFF_FP_METHOD]
-    mov     x3, xSELF
-    PREFETCH_INST 2                     // Get next inst, but don't advance rPC
-    bl      MterpSPutU8
-    cbnz    w0, MterpException          // 0 on success
-    ADVANCE 2                           // Past exception point - now advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    .extern MterpSPutU8
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSPutU8
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2874,24 +2751,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sput_byte: /* 0x6b */
 /* File: arm64/op_sput_byte.S */
 /* File: arm64/op_sput.S */
+/* File: arm64/field.S */
     /*
-     * General SPUT handler wrapper.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-    EXPORT_PC
-    FETCH   w0, 1                       // r0<- field ref BBBB
-    lsr     w3, wINST, #8               // r3<- AA
-    GET_VREG w1, w3                     // r1<= fp[AA]
-    ldr     x2, [xFP, #OFF_FP_METHOD]
-    mov     x3, xSELF
-    PREFETCH_INST 2                     // Get next inst, but don't advance rPC
-    bl      MterpSPutI8
-    cbnz    w0, MterpException          // 0 on success
-    ADVANCE 2                           // Past exception point - now advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    .extern MterpSPutI8
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSPutI8
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2899,24 +2774,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sput_char: /* 0x6c */
 /* File: arm64/op_sput_char.S */
 /* File: arm64/op_sput.S */
+/* File: arm64/field.S */
     /*
-     * General SPUT handler wrapper.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-    EXPORT_PC
-    FETCH   w0, 1                       // r0<- field ref BBBB
-    lsr     w3, wINST, #8               // r3<- AA
-    GET_VREG w1, w3                     // r1<= fp[AA]
-    ldr     x2, [xFP, #OFF_FP_METHOD]
-    mov     x3, xSELF
-    PREFETCH_INST 2                     // Get next inst, but don't advance rPC
-    bl      MterpSPutU16
-    cbnz    w0, MterpException          // 0 on success
-    ADVANCE 2                           // Past exception point - now advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    .extern MterpSPutU16
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSPutU16
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
@@ -2924,24 +2797,22 @@ artMterpAsmInstructionStart = .L_op_nop
 .L_op_sput_short: /* 0x6d */
 /* File: arm64/op_sput_short.S */
 /* File: arm64/op_sput.S */
+/* File: arm64/field.S */
     /*
-     * General SPUT handler wrapper.
-     *
-     * for: sput, sput-boolean, sput-byte, sput-char, sput-short
+     * General field read / write (iget-* iput-* sget-* sput-*).
      */
-    /* op vAA, field//BBBB */
-    EXPORT_PC
-    FETCH   w0, 1                       // r0<- field ref BBBB
-    lsr     w3, wINST, #8               // r3<- AA
-    GET_VREG w1, w3                     // r1<= fp[AA]
-    ldr     x2, [xFP, #OFF_FP_METHOD]
-    mov     x3, xSELF
-    PREFETCH_INST 2                     // Get next inst, but don't advance rPC
-    bl      MterpSPutI16
-    cbnz    w0, MterpException          // 0 on success
-    ADVANCE 2                           // Past exception point - now advance rPC
-    GET_INST_OPCODE ip                  // extract opcode from rINST
-    GOTO_OPCODE ip                      // jump to next instruction
+    .extern MterpSPutI16
+    mov      x0, xPC                       // arg0: Instruction* inst
+    mov      x1, xINST                     // arg1: uint16_t inst_data
+    add      x2, xFP, #OFF_FP_SHADOWFRAME  // arg2: ShadowFrame* sf
+    mov      x3, xSELF                     // arg3: Thread* self
+    PREFETCH_INST 2                        // prefetch next opcode
+    bl       MterpSPutI16
+    cbz      x0, MterpPossibleException
+    ADVANCE 2
+    GET_INST_OPCODE ip                     // extract opcode from rINST
+    GOTO_OPCODE ip                         // jump to next instruction
+
 
 
 /* ------------------------------ */
