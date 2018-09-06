@@ -364,7 +364,7 @@ inline size_t Object::SizeOf() {
 template<VerifyObjectFlags kVerifyFlags, bool kIsVolatile>
 inline int8_t Object::GetFieldByte(MemberOffset field_offset) {
   Verify<kVerifyFlags>();
-  return GetField<int8_t, kIsVolatile>(field_offset);
+  return GetFieldPrimitive<int8_t, kIsVolatile>(field_offset);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -391,7 +391,7 @@ inline void Object::SetFieldBoolean(MemberOffset field_offset, uint8_t new_value
         kIsVolatile);
   }
   Verify<kVerifyFlags>();
-  SetField<uint8_t, kIsVolatile>(field_offset, new_value);
+  SetFieldPrimitive<uint8_t, kIsVolatile>(field_offset, new_value);
 }
 
 template<bool kTransactionActive,
@@ -407,7 +407,7 @@ inline void Object::SetFieldByte(MemberOffset field_offset, int8_t new_value) {
                                              kIsVolatile);
   }
   Verify<kVerifyFlags>();
-  SetField<int8_t, kIsVolatile>(field_offset, new_value);
+  SetFieldPrimitive<int8_t, kIsVolatile>(field_offset, new_value);
 }
 
 template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
@@ -425,13 +425,13 @@ inline void Object::SetFieldByteVolatile(MemberOffset field_offset, int8_t new_v
 template<VerifyObjectFlags kVerifyFlags, bool kIsVolatile>
 inline uint16_t Object::GetFieldChar(MemberOffset field_offset) {
   Verify<kVerifyFlags>();
-  return GetField<uint16_t, kIsVolatile>(field_offset);
+  return GetFieldPrimitive<uint16_t, kIsVolatile>(field_offset);
 }
 
 template<VerifyObjectFlags kVerifyFlags, bool kIsVolatile>
 inline int16_t Object::GetFieldShort(MemberOffset field_offset) {
   Verify<kVerifyFlags>();
-  return GetField<int16_t, kIsVolatile>(field_offset);
+  return GetFieldPrimitive<int16_t, kIsVolatile>(field_offset);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -457,7 +457,7 @@ inline void Object::SetFieldChar(MemberOffset field_offset, uint16_t new_value) 
                                              kIsVolatile);
   }
   Verify<kVerifyFlags>();
-  SetField<uint16_t, kIsVolatile>(field_offset, new_value);
+  SetFieldPrimitive<uint16_t, kIsVolatile>(field_offset, new_value);
 }
 
 template<bool kTransactionActive,
@@ -473,7 +473,7 @@ inline void Object::SetFieldShort(MemberOffset field_offset, int16_t new_value) 
                                              kIsVolatile);
   }
   Verify<kVerifyFlags>();
-  SetField<int16_t, kIsVolatile>(field_offset, new_value);
+  SetFieldPrimitive<int16_t, kIsVolatile>(field_offset, new_value);
 }
 
 template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
@@ -501,7 +501,7 @@ inline void Object::SetField32(MemberOffset field_offset, int32_t new_value) {
                                            kIsVolatile);
   }
   Verify<kVerifyFlags>();
-  SetField<int32_t, kIsVolatile>(field_offset, new_value);
+  SetFieldPrimitive<int32_t, kIsVolatile>(field_offset, new_value);
 }
 
 template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
@@ -531,7 +531,7 @@ inline void Object::SetField64(MemberOffset field_offset, int64_t new_value) {
                                            kIsVolatile);
   }
   Verify<kVerifyFlags>();
-  SetField<int64_t, kIsVolatile>(field_offset, new_value);
+  SetFieldPrimitive<int64_t, kIsVolatile>(field_offset, new_value);
 }
 
 template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVerifyFlags>
