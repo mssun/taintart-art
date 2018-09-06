@@ -327,6 +327,7 @@ The following registers have fixed assignments:
 #define LONG_MIN            0x8000000000000000
 #define LONG_MIN_AS_FLOAT   0xDF000000
 #define LONG_MIN_AS_DOUBLE  0xC3E0000000000000
+
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -425,6 +426,7 @@ ExecuteMterpImpl:
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
     .text
+
 /* ------------------------------ */
     .balign 128
 .L_op_nop: /* 0x00 */
@@ -2228,6 +2230,7 @@ TODO
     bnezc   v0, MterpFallback
     GET_INST_OPCODE v0
     GOTO_OPCODE v0
+
     /*
      * Handle a virtual method call.
      *
@@ -2258,6 +2261,7 @@ TODO
     bnezc   v0, MterpFallback
     GET_INST_OPCODE v0
     GOTO_OPCODE v0
+
     /*
      * Handle a "super" method call.
      *
@@ -2334,6 +2338,7 @@ TODO
     bnezc   v0, MterpFallback
     GET_INST_OPCODE v0
     GOTO_OPCODE v0
+
     /*
      * Handle an interface method call.
      *
@@ -2586,6 +2591,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_FLOAT f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     neg.s   f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2624,6 +2630,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_DOUBLE f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     neg.d   f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2679,6 +2686,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_FLOAT f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     cvt.s.w f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2722,6 +2730,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_FLOAT f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     cvt.d.w f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2783,6 +2792,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_DOUBLE f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     cvt.s.l f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2826,6 +2836,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_DOUBLE f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     cvt.d.l f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2864,6 +2875,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_FLOAT f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     trunc.w.s f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2902,6 +2914,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_FLOAT f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     trunc.l.s f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2945,6 +2958,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_FLOAT f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     cvt.d.s f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -2983,6 +2997,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_DOUBLE f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     trunc.w.d f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -3021,6 +3036,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_DOUBLE f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     trunc.l.d f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -3064,6 +3080,7 @@ TODO
     srl     a2, rINST, 12               # a2 <- B
     GET_VREG_DOUBLE f0, a2
     FETCH_ADVANCE_INST 1                # advance rPC, load rINST
+
     cvt.s.d f0, f0
     /*
      * Stores a specified register containing the result of conversion
@@ -6062,6 +6079,7 @@ artMterpAsmSisterEnd:
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
+
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */
@@ -10674,6 +10692,7 @@ artMterpAsmAltInstructionStart = .L_ALT_op_nop
 
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
+
 /*
  * We've detected a condition that will result in an exception, but the exception
  * has not yet been thrown.  Just bail out to the reference interpreter to deal with it.
@@ -10950,3 +10969,4 @@ MterpProfileActive:
     .cfi_endproc
     .set    reorder
     .size ExecuteMterpImpl, .-ExecuteMterpImpl
+

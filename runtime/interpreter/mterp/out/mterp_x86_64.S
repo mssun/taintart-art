@@ -301,6 +301,7 @@ unspecified registers or condition codes.
     movl    MACRO_LITERAL(0),  (rREFS,\_vreg,4)
     movl    MACRO_LITERAL(0), 4(rREFS,\_vreg,4)
 .endm
+
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -386,6 +387,7 @@ SYMBOL(ExecuteMterpImpl):
     .global SYMBOL(artMterpAsmInstructionStart)
 SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .text
+
 /* ------------------------------ */
     .balign 128
 .L_op_nop: /* 0x00 */
@@ -2388,6 +2390,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     jnz     MterpFallback
     FETCH_INST
     GOTO_NEXT
+
 /*
  * Handle a virtual method call.
  *
@@ -2420,6 +2423,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     jnz     MterpFallback
     FETCH_INST
     GOTO_NEXT
+
 /*
  * Handle a "super" method call.
  *
@@ -2502,6 +2506,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     jnz     MterpFallback
     FETCH_INST
     GOTO_NEXT
+
 /*
  * Handle an interface method call.
  *
@@ -5364,6 +5369,7 @@ SYMBOL(artMterpAsmSisterEnd):
     .global SYMBOL(artMterpAsmAltInstructionStart)
     .text
 SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
+
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */
@@ -10746,6 +10752,7 @@ SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
     ASM_HIDDEN SYMBOL(artMterpAsmAltInstructionEnd)
     .global SYMBOL(artMterpAsmAltInstructionEnd)
 SYMBOL(artMterpAsmAltInstructionEnd):
+
 /*
  * ===========================================================================
  *  Common subroutines and data
@@ -11043,3 +11050,4 @@ MRestoreFrame:
     ret
     .cfi_endproc
     SIZE(ExecuteMterpImpl,ExecuteMterpImpl)
+

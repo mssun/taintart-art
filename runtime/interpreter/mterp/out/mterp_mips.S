@@ -725,6 +725,7 @@
 #define LONG_MIN_HIGH           0x80000000
 #define LONG_MIN_AS_FLOAT       0xDF000000
 #define LONG_MIN_AS_DOUBLE_HIGH 0xC3E00000
+
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -804,6 +805,7 @@ ExecuteMterpImpl:
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
     .text
+
 /* ------------------------------ */
     .balign 128
 .L_op_nop: /* 0x00 */
@@ -3527,6 +3529,7 @@ TODO
     div a0, a0, a1                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vAA <- a0
+
 #else
     /*
      * Generic 32-bit binary operation.  Provide an "instr" line that
@@ -3559,6 +3562,7 @@ TODO
     mflo a0                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vAA <- a0
+
 #endif
 
 /* ------------------------------ */
@@ -3596,6 +3600,7 @@ TODO
     mod a0, a0, a1                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vAA <- a0
+
 #else
     /*
      * Generic 32-bit binary operation.  Provide an "instr" line that
@@ -3628,6 +3633,7 @@ TODO
     mfhi a0                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vAA <- a0
+
 #endif
 
 /* ------------------------------ */
@@ -4616,6 +4622,7 @@ TODO
     div a0, a0, a1                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vA <- a0
+
 #else
     /*
      * Generic 32-bit "/2addr" binary operation.  Provide an "instr" line
@@ -4644,6 +4651,7 @@ TODO
     mflo a0                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vA <- a0
+
 #endif
 
 /* ------------------------------ */
@@ -4677,6 +4685,7 @@ TODO
     mod a0, a0, a1                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vA <- a0
+
 #else
     /*
      * Generic 32-bit "/2addr" binary operation.  Provide an "instr" line
@@ -4705,6 +4714,7 @@ TODO
     mfhi a0                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vA <- a0
+
 #endif
 
 /* ------------------------------ */
@@ -5603,6 +5613,7 @@ TODO
     div a0, a0, a1                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vA <- a0
+
 #else
     /*
      * Generic 32-bit "lit16" binary operation.  Provide an "instr" line
@@ -5631,6 +5642,7 @@ TODO
     mflo a0                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vA <- a0
+
 #endif
 
 /* ------------------------------ */
@@ -5664,6 +5676,7 @@ TODO
     mod a0, a0, a1                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vA <- a0
+
 #else
     /*
      * Generic 32-bit "lit16" binary operation.  Provide an "instr" line
@@ -5692,6 +5705,7 @@ TODO
     mfhi a0                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vA <- a0
+
 #endif
 
 /* ------------------------------ */
@@ -5919,6 +5933,7 @@ TODO
     div a0, a0, a1                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vAA <- a0
+
 #else
     /*
      * Generic 32-bit "lit8" binary operation.  Provide an "instr" line
@@ -5949,6 +5964,7 @@ TODO
     mflo a0                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vAA <- a0
+
 #endif
 
 /* ------------------------------ */
@@ -5984,6 +6000,7 @@ TODO
     mod a0, a0, a1                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vAA <- a0
+
 #else
     /*
      * Generic 32-bit "lit8" binary operation.  Provide an "instr" line
@@ -6014,6 +6031,7 @@ TODO
     mfhi a0                                 #  a0 <- op, a0-a3 changed
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG_GOTO(a0, rOBJ, t0)       #  vAA <- a0
+
 #endif
 
 /* ------------------------------ */
@@ -6739,6 +6757,7 @@ artMterpAsmSisterEnd:
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
+
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */
@@ -11095,6 +11114,7 @@ artMterpAsmAltInstructionStart = .L_ALT_op_nop
 
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
+
 /*
  * ===========================================================================
  *  Common subroutines and data
@@ -11383,3 +11403,4 @@ MterpProfileActive:
 
     .cfi_endproc
     .end ExecuteMterpImpl
+

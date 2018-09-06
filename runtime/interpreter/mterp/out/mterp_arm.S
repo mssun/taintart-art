@@ -311,6 +311,7 @@ unspecified registers or condition codes.
     .cfi_endproc
     .size \name, .-\name
 .endm
+
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -393,6 +394,7 @@ ENTRY ExecuteMterpImpl
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
     .text
+
 /* ------------------------------ */
     .balign 128
 .L_op_nop: /* 0x00 */
@@ -6733,6 +6735,7 @@ f2l_maybeNaN:
     mov     r0, #0
     mov     r1, #0
     bx      lr                          @ return 0 for NaN
+
 /*
  * Convert the double in r0/r1 to a long in r0/r1.
  *
@@ -6774,6 +6777,7 @@ artMterpAsmSisterEnd:
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
+
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */
@@ -11132,6 +11136,7 @@ artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .hidden artMterpAsmAltInstructionEnd
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
+
 /*
  * ===========================================================================
  *  Common subroutines and data

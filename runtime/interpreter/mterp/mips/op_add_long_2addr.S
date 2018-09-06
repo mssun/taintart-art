@@ -1,5 +1,0 @@
-%def op_add_long_2addr():
-/*
- * See op_add_long.S for details
- */
-%  binopWide2addr(result0="v0", result1="v1", preinstr="addu v0, a2, a0", instr="addu a1, a3, a1; sltu v1, v0, a2; addu v1, v1, a1")
