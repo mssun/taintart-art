@@ -1,13 +1,1 @@
-    EXPORT_PC
-    leal    OFF_FP_SHADOWFRAME(rFP), %eax
-    movl    %eax, OUT_ARG0(%esp)
-    movl    rPC, OUT_ARG1(%esp)
-    REFRESH_INST ${opnum}
-    movl    rINST, OUT_ARG2(%esp)
-    movl    rSELF, %eax
-    movl    %eax, OUT_ARG3(%esp)
-    call    SYMBOL(MterpIPutObj)
-    testb   %al, %al
-    jz      MterpException
-    RESTORE_IBASE
-    ADVANCE_PC_FETCH_AND_GOTO_NEXT 2
+%include "x86/op_iput.S" { "is_object":"1", "helper":"MterpIPutObj" }

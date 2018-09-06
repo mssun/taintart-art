@@ -349,11 +349,35 @@ class MANAGED LOCKABLE Object {
   HeapReference<Object>* GetFieldObjectReferenceAddr(MemberOffset field_offset)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  template<typename kType, bool kIsVolatile>
+  ALWAYS_INLINE void SetFieldPrimitive(MemberOffset field_offset, kType new_value)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
+    kType* addr = reinterpret_cast<kType*>(raw_addr);
+    if (kIsVolatile) {
+      reinterpret_cast<Atomic<kType>*>(addr)->store(new_value, std::memory_order_seq_cst);
+    } else {
+      reinterpret_cast<Atomic<kType>*>(addr)->StoreJavaData(new_value);
+    }
+  }
+
+  template<typename kType, bool kIsVolatile>
+  ALWAYS_INLINE kType GetFieldPrimitive(MemberOffset field_offset)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    const uint8_t* raw_addr = reinterpret_cast<const uint8_t*>(this) + field_offset.Int32Value();
+    const kType* addr = reinterpret_cast<const kType*>(raw_addr);
+    if (kIsVolatile) {
+      return reinterpret_cast<const Atomic<kType>*>(addr)->load(std::memory_order_seq_cst);
+    } else {
+      return reinterpret_cast<const Atomic<kType>*>(addr)->LoadJavaData();
+    }
+  }
+
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>
   ALWAYS_INLINE uint8_t GetFieldBoolean(MemberOffset field_offset)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     Verify<kVerifyFlags>();
-    return GetField<uint8_t, kIsVolatile>(field_offset);
+    return GetFieldPrimitive<uint8_t, kIsVolatile>(field_offset);
   }
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>
@@ -440,7 +464,7 @@ class MANAGED LOCKABLE Object {
   ALWAYS_INLINE int32_t GetField32(MemberOffset field_offset)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     Verify<kVerifyFlags>();
-    return GetField<int32_t, kIsVolatile>(field_offset);
+    return GetFieldPrimitive<int32_t, kIsVolatile>(field_offset);
   }
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
@@ -482,7 +506,7 @@ class MANAGED LOCKABLE Object {
   ALWAYS_INLINE int64_t GetField64(MemberOffset field_offset)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     Verify<kVerifyFlags>();
-    return GetField<int64_t, kIsVolatile>(field_offset);
+    return GetFieldPrimitive<int64_t, kIsVolatile>(field_offset);
   }
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
@@ -683,30 +707,6 @@ class MANAGED LOCKABLE Object {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
-  template<typename kSize, bool kIsVolatile>
-  ALWAYS_INLINE void SetField(MemberOffset field_offset, kSize new_value)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
-    kSize* addr = reinterpret_cast<kSize*>(raw_addr);
-    if (kIsVolatile) {
-      reinterpret_cast<Atomic<kSize>*>(addr)->store(new_value, std::memory_order_seq_cst);
-    } else {
-      reinterpret_cast<Atomic<kSize>*>(addr)->StoreJavaData(new_value);
-    }
-  }
-
-  template<typename kSize, bool kIsVolatile>
-  ALWAYS_INLINE kSize GetField(MemberOffset field_offset)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    const uint8_t* raw_addr = reinterpret_cast<const uint8_t*>(this) + field_offset.Int32Value();
-    const kSize* addr = reinterpret_cast<const kSize*>(raw_addr);
-    if (kIsVolatile) {
-      return reinterpret_cast<const Atomic<kSize>*>(addr)->load(std::memory_order_seq_cst);
-    } else {
-      return reinterpret_cast<const Atomic<kSize>*>(addr)->LoadJavaData();
-    }
-  }
-
   // Get a field with acquire semantics.
   template<typename kSize>
   ALWAYS_INLINE kSize GetFieldAcquire(MemberOffset field_offset)
