@@ -1,19 +1,36 @@
+/*
+ * Copyright (C) 2011 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// This test depends on the exact format of the DEX file. Since dx is deprecated,
+// the classes.dex file is packaged as a test input. It was created with:
+//
+// $ javac -g -Xlint:-options -source 1.7 -target 1.7 -d classes src/Main.java
+// $ dx --debug --dex --output=classes.dex classes
+
 public class Main {
   public Main() {
   }
 
-  boolean doThrow = false;
-
   int $noinline$f() throws Exception {
-    g(1);
-    g(2);
-
-    // This currently defeats inlining of `f`.
-    if (doThrow) { throw new Error(); }
+    $noinline$g(1);
+    $noinline$g(2);
     return 0;
   }
 
-  void g(int num_calls) {
+  void $noinline$g(int num_calls) {
     if (num_calls == 1) {
       System.out.println("1st call");
     } else if (num_calls == 2) {
@@ -81,11 +98,14 @@ public class Main {
     s4 = s18 = s19;
     s += s4;
     s += s18;
-    stackmap(0);
-    return s;
+    // Add a branch to workaround ART's large methods without branches heuristic.
+    if (testStackWalk(0) != 0) {
+      return s;
+    }
+    return s18;
   }
 
-  native int stackmap(int x);
+  native int testStackWalk(int x);
 
   public static void main(String[] args) throws Exception {
     System.loadLibrary(args[0]);

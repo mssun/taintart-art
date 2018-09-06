@@ -20,7 +20,7 @@
 
 namespace art {
 
-#define CHECK_REGS(...) do { \
+#define CHECK_REGS_ARE_REFERENCES(...) do { \
   int t[] = {__VA_ARGS__}; \
   int t_size = sizeof(t) / sizeof(*t); \
   CheckReferences(t, t_size, GetNativePcOffset()); \
@@ -43,40 +43,50 @@ class TestReferenceMapVisitor : public CheckReferenceMapVisitor {
     // Given the method name and the number of times the method has been called,
     // we know the Dex registers with live reference values. Assert that what we
     // find is what is expected.
-    if (m_name == "f") {
+    if (m_name == "$noinline$f") {
       if (gJava_StackWalk_refmap_calls == 1) {
         CHECK_EQ(1U, GetDexPc());
-        CHECK_REGS(4);
+        CHECK_REGS_ARE_REFERENCES(1);
       } else {
         CHECK_EQ(gJava_StackWalk_refmap_calls, 2);
         CHECK_EQ(5U, GetDexPc());
-        CHECK_REGS(4);
+        CHECK_REGS_ARE_REFERENCES(1);
       }
-    } else if (m_name == "g") {
+      found_f_ = true;
+    } else if (m_name == "$noinline$g") {
       if (gJava_StackWalk_refmap_calls == 1) {
         CHECK_EQ(0xcU, GetDexPc());
-        CHECK_REGS(0, 2);  // Note that v1 is not in the minimal root set
+        CHECK_REGS_ARE_REFERENCES(0, 2);  // Note that v1 is not in the minimal root set
       } else {
         CHECK_EQ(gJava_StackWalk_refmap_calls, 2);
         CHECK_EQ(0xcU, GetDexPc());
-        CHECK_REGS(0, 2);
+        CHECK_REGS_ARE_REFERENCES(0, 2);
       }
+      found_g_ = true;
     } else if (m_name == "shlemiel") {
       if (gJava_StackWalk_refmap_calls == 1) {
         CHECK_EQ(0x380U, GetDexPc());
-        CHECK_REGS(2, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 21, 25);
+        CHECK_REGS_ARE_REFERENCES(2, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 21, 25);
       } else {
         CHECK_EQ(gJava_StackWalk_refmap_calls, 2);
         CHECK_EQ(0x380U, GetDexPc());
-        CHECK_REGS(2, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 21, 25);
+        CHECK_REGS_ARE_REFERENCES(2, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 21, 25);
       }
+      found_shlemiel_ = true;
     }
 
     return true;
   }
+
+  ~TestReferenceMapVisitor() {
+  }
+
+  bool found_f_ = false;
+  bool found_g_ = false;
+  bool found_shlemiel_ = false;
 };
 
-extern "C" JNIEXPORT jint JNICALL Java_Main_stackmap(JNIEnv*, jobject, jint count) {
+extern "C" JNIEXPORT jint JNICALL Java_Main_testStackWalk(JNIEnv*, jobject, jint count) {
   ScopedObjectAccess soa(Thread::Current());
   CHECK_EQ(count, 0);
   gJava_StackWalk_refmap_calls++;
@@ -84,17 +94,9 @@ extern "C" JNIEXPORT jint JNICALL Java_Main_stackmap(JNIEnv*, jobject, jint coun
   // Visitor
   TestReferenceMapVisitor mapper(soa.Self());
   mapper.WalkStack();
-
-  return count + 1;
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_Main_refmap2(JNIEnv*, jobject, jint count) {
-  ScopedObjectAccess soa(Thread::Current());
-  gJava_StackWalk_refmap_calls++;
-
-  // Visitor
-  TestReferenceMapVisitor mapper(soa.Self());
-  mapper.WalkStack();
+  CHECK(mapper.found_f_);
+  CHECK(mapper.found_g_);
+  CHECK(mapper.found_shlemiel_);
 
   return count + 1;
 }
