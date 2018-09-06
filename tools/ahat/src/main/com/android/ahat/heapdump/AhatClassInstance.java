@@ -107,21 +107,6 @@ public class AhatClassInstance extends AhatInstance {
     return new ReferenceIterator();
   }
 
-  /**
-   * Returns true if this is an instance of a (subclass of a) class with the
-   * given name.
-   */
-  private boolean isInstanceOfClass(String className) {
-    AhatClassObj cls = getClassObj();
-    while (cls != null) {
-      if (className.equals(cls.getName())) {
-        return true;
-      }
-      cls = cls.getSuperClassObj();
-    }
-    return false;
-  }
-
   @Override public String asString(int maxChars) {
     if (!isInstanceOfClass("java.lang.String")) {
       return null;

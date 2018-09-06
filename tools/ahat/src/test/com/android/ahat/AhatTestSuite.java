@@ -29,6 +29,7 @@ import org.junit.runners.Suite;
   InstanceTest.class,
   NativeAllocationTest.class,
   ObjectHandlerTest.class,
+  ObjectsHandlerTest.class,
   OverviewHandlerTest.class,
   PerformanceTest.class,
   ProguardMapTest.class,

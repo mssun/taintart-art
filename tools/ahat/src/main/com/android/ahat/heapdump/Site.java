@@ -23,6 +23,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Used to collection information about objects allocated at a particular
@@ -259,22 +261,37 @@ public class Site implements Diffable<Site> {
    *                 every heap should be collected.
    * @param className the name of the class the collected objects should
    *                  belong to. This may be null to indicate objects of
-   *                  every class should be collected.
+   *                  every class should be collected. Instances of subclasses
+   *                  of this class are not included.
    * @param objects out parameter. A collection of objects that all
    *                collected objects should be added to.
    */
   public void getObjects(String heapName, String className, Collection<AhatInstance> objects) {
+    Predicate<AhatInstance> predicate = x -> {
+      return (heapName == null || x.getHeap().getName().equals(heapName))
+        && (className == null || x.getClassName().equals(className));
+    };
+    getObjects(predicate, x -> objects.add(x));
+  }
+
+  /**
+   * Collects the objects allocated under this site, filtered by the given
+   * predicate.
+   * Includes objects allocated in children sites.
+   * @param predicate limit instances to those satisfying this predicate
+   * @param consumer consumer of the objects
+   */
+  public void getObjects(Predicate<AhatInstance> predicate, Consumer<AhatInstance> consumer) {
     for (AhatInstance inst : mObjects) {
-      if ((heapName == null || inst.getHeap().getName().equals(heapName))
-          && (className == null || inst.getClassName().equals(className))) {
-        objects.add(inst);
+      if (predicate.test(inst)) {
+        consumer.accept(inst);
       }
     }
 
     // Recursively visit children. Recursion should be okay here because the
     // stack depth is limited by a reasonable amount (128 frames or so).
     for (Site child : mChildren) {
-      child.getObjects(heapName, className, objects);
+      child.getObjects(predicate, consumer);
     }
   }
 
