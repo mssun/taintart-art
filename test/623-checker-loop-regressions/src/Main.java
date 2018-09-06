@@ -304,6 +304,19 @@ public class Main {
     }
   }
 
+  /// CHECK-START-ARM: void Main.$noinline$stringToShorts(short[], java.lang.String) loop_optimization (after)
+  /// CHECK-NOT: VecLoad
+
+  /// CHECK-START-ARM64: void Main.$noinline$stringToShorts(short[], java.lang.String) loop_optimization (after)
+  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
+  private static void $noinline$stringToShorts(short[] dest, String src) {
+    int min = Math.min(dest.length, src.length());
+    for (int i = 0; i < min; ++i) {
+      dest[i] = (short) src.charAt(i);
+    }
+  }
+
   // A strange function that does not inline.
   private static void $noinline$foo(boolean x, int n) {
     if (n < 0)
@@ -682,6 +695,12 @@ public class Main {
     string2Bytes(aa, cc);
     for (int i = 0; i < aa.length; i++) {
       expectEquals(aa[i], cc.charAt(i));
+    }
+
+    short[] s2s = new short[12];
+    $noinline$stringToShorts(s2s, "abcdefghijkl");
+    for (int i = 0; i < s2s.length; ++i) {
+      expectEquals((short) "abcdefghijkl".charAt(i), s2s[i]);
     }
 
     envUsesInCond();
