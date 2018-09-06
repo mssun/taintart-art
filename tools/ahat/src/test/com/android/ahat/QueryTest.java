@@ -41,6 +41,7 @@ public class QueryTest {
     assertEquals("/object?answer=43&foo=bar", query.with("answer", "43").toString());
     assertEquals("/object?answer=43&foo=bar", query.with("answer", 43).toString());
     assertEquals("/object?answer=42&bar=finally&foo=bar", query.with("bar", "finally").toString());
+    assertEquals("/object?answer=42", query.with("foo", null).toString());
   }
 
   @Test
@@ -55,6 +56,7 @@ public class QueryTest {
     assertEquals("/object?answer=43&foo=sludge", query.with("answer", "43").toString());
     assertEquals("/object?answer=42&bar=finally&foo=sludge",
         query.with("bar", "finally").toString());
+    assertEquals("/object?answer=42", query.with("foo", null).toString());
   }
 
   @Test
@@ -66,5 +68,6 @@ public class QueryTest {
     assertEquals(2, query.getInt("foo", 2));
     assertEquals("/object?foo=sludge", query.with("foo", "sludge").toString());
     assertEquals("/object?answer=43", query.with("answer", "43").toString());
+    assertEquals("/object?", query.with("foo", null).toString());
   }
 }
