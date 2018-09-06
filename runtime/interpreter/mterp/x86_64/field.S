@@ -1,4 +1,4 @@
-%default { }
+%def field(helper=""):
     /*
      * General field read / write (iget-* iput-* sget-* sput-*).
      */

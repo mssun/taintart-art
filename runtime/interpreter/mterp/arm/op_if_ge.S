@@ -1,1 +1,2 @@
-%include "arm/bincmp.S" { "condition":"ge" }
+%def op_if_ge():
+%  bincmp(condition="ge")

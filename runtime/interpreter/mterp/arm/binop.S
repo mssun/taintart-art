@@ -1,4 +1,4 @@
-%default {"preinstr":"", "result":"r0", "chkzero":"0"}
+%def binop(preinstr="", result="r0", chkzero="0", instr=""):
     /*
      * Generic 32-bit binary operation.  Provide an "instr" line that
      * specifies an instruction that performs "result = r0 op r1".

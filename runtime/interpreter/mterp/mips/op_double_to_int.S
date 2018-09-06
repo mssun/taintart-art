@@ -1,3 +1,4 @@
+%def op_double_to_int():
     /*
      * double-to-int
      *

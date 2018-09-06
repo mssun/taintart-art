@@ -1,1 +1,2 @@
-%include "mips/op_cmpl_float.S" { "gt_bias":"1" }
+%def op_cmpg_float():
+%  op_cmpl_float(gt_bias="1")

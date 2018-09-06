@@ -1,1 +1,2 @@
-%include "x86/op_return.S"
+%def op_return_object():
+%  op_return()

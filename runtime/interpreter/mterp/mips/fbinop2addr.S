@@ -1,3 +1,4 @@
+%def fbinop2addr(instr=""):
     /*
      * Generic 32-bit "/2addr" binary operation.  Provide an "instr"
      * that specifies an instruction that performs "fv0 = fa0 op fa1".

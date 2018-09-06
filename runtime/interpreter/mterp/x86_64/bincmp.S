@@ -1,3 +1,4 @@
+%def bincmp(revcmp=""):
 /*
  * Generic two-operand compare-and-branch operation.  Provide a "revcmp"
  * fragment that specifies the *reverse* comparison to perform, e.g.

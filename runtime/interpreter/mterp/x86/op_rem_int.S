@@ -1,1 +1,2 @@
-%include "x86/bindiv.S" {"result":"rIBASE","special":"$0","rem":"1"}
+%def op_rem_int():
+%  bindiv(result="rIBASE", special="$0", rem="1")

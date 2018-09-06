@@ -1,1 +1,2 @@
-%include "mips64/op_sput.S" {"helper":"MterpSPutU8"}
+%def op_sput_boolean():
+%  op_sput(helper="MterpSPutU8")

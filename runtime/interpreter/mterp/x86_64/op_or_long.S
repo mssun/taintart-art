@@ -1,1 +1,2 @@
-%include "x86_64/binopWide.S" {"instr":"orq     (rFP,%rcx,4), %rax"}
+%def op_or_long():
+%  binopWide(instr="orq     (rFP,%rcx,4), %rax")

@@ -1,1 +1,2 @@
-%include "mips64/binopWide.S" {"instr":"xor a0, a0, a1"}
+%def op_xor_long():
+%  binopWide(instr="xor a0, a0, a1")

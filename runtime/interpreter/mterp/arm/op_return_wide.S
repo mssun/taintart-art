@@ -1,3 +1,4 @@
+%def op_return_wide():
     /*
      * Return a 64-bit value.
      */

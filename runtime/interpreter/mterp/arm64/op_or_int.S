@@ -1,1 +1,2 @@
-%include "arm64/binop.S" {"instr":"orr     w0, w0, w1"}
+%def op_or_int():
+%  binop(instr="orr     w0, w0, w1")

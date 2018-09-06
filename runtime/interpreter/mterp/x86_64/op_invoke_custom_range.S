@@ -1,1 +1,2 @@
-%include "x86_64/invoke.S" { "helper":"MterpInvokeCustomRange" }
+%def op_invoke_custom_range():
+%  invoke(helper="MterpInvokeCustomRange")

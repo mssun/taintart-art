@@ -1,4 +1,4 @@
-%default {"load":"LOAD64_F(fa0, fa0f, a3)"}
+%def unopNarrower(load="LOAD64_F(fa0, fa0f, a3)", instr=""):
     /*
      * Generic 64bit-to-32bit floating-point unary operation.  Provide an "instr"
      * line that specifies an instruction that performs "fv0 = op fa0".

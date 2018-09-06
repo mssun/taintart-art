@@ -1,1 +1,2 @@
-%include "mips64/binopLit8.S" {"instr":"subu a0, a1, a0"}
+%def op_rsub_int_lit8():
+%  binopLit8(instr="subu a0, a1, a0")

@@ -1,3 +1,4 @@
+%def instruction_start():
 
     OBJECT_TYPE(artMterpAsmInstructionStart)
     ASM_HIDDEN SYMBOL(artMterpAsmInstructionStart)

@@ -1,1 +1,2 @@
-%include "x86/unused.S"
+%def op_unused_f6():
+%  unused()

@@ -1,3 +1,4 @@
+%def op_int_to_long():
     /* int-to-long vA, vB */
     ext     a3, rINST, 12, 4            # a3 <- B
     GET_VREG a0, a3                     # a0 <- vB (sign-extended to 64 bits)

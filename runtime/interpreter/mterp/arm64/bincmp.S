@@ -1,3 +1,4 @@
+%def bincmp(condition=""):
     /*
      * Generic two-operand compare-and-branch operation.  Provide a "condition"
      * fragment that specifies the comparison to perform.

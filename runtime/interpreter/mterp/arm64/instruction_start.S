@@ -1,3 +1,4 @@
+%def instruction_start():
 
     .type artMterpAsmInstructionStart, #object
     .hidden artMterpAsmInstructionStart

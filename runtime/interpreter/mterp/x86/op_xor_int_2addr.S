@@ -1,1 +1,2 @@
-%include "x86/binop2addr.S" {"instr":"xorl    %eax, (rFP,%ecx,4)"}
+%def op_xor_int_2addr():
+%  binop2addr(instr="xorl    %eax, (rFP,%ecx,4)")

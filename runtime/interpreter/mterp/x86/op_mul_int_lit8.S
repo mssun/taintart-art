@@ -1,3 +1,4 @@
+%def op_mul_int_lit8():
     /* mul/lit8 vAA, vBB, #+CC */
     movzbl  2(rPC), %eax                    # eax <- BB
     movl    rIBASE, %ecx

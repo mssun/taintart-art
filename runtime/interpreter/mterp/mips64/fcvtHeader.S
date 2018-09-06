@@ -1,3 +1,4 @@
+%def fcvtHeader(suffix="", valreg=""):
     /*
      * Loads a specified register from vB. Used primarily for conversions
      * from or to a floating-point type.

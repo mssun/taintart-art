@@ -1,1 +1,2 @@
-%include "x86_64/binopWide.S" {"instr":"imulq   (rFP,%rcx,4), %rax"}
+%def op_mul_long():
+%  binopWide(instr="imulq   (rFP,%rcx,4), %rax")

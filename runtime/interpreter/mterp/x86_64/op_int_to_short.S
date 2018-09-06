@@ -1,1 +1,2 @@
-%include "x86_64/unop.S" {"instr":"movswl %ax, %eax"}
+%def op_int_to_short():
+%  unop(instr="movswl %ax, %eax")

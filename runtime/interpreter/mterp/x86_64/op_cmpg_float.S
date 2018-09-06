@@ -1,1 +1,2 @@
-%include "x86_64/fpcmp.S" {"suff":"s","nanval":"pos"}
+%def op_cmpg_float():
+%  fpcmp(suff="s", nanval="pos")

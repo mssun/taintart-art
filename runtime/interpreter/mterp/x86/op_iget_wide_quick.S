@@ -1,3 +1,4 @@
+%def op_iget_wide_quick():
     /* iget-wide-quick vA, vB, offset@CCCC */
     movzbl  rINSTbl, %ecx                   # ecx <- BA
     sarl    $$4, %ecx                       # ecx <- B

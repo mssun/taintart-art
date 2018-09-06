@@ -1,4 +1,4 @@
-%default { "load":"movl"}
+%def op_iget_quick(load="movl"):
     /* For: iget-quick, iget-boolean-quick, iget-byte-quick, iget-char-quick, iget-short-quick */
     /* op vA, vB, offset@CCCC */
     movzbl  rINSTbl, %ecx                   # ecx <- BA

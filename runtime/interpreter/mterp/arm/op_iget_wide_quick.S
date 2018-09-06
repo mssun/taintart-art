@@ -1,3 +1,4 @@
+%def op_iget_wide_quick():
     /* iget-wide-quick vA, vB, offset@CCCC */
     mov     r2, rINST, lsr #12          @ r2<- B
     FETCH ip, 1                         @ ip<- field byte offset

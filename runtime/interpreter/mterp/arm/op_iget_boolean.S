@@ -1,1 +1,2 @@
-%include "arm/op_iget.S" { "helper":"MterpIGetU8" }
+%def op_iget_boolean():
+%  op_iget(helper="MterpIGetU8")

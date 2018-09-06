@@ -1,1 +1,2 @@
-%include "arm64/fbinop2addr.S" {"instr":"fsub   s2, s0, s1"}
+%def op_sub_float_2addr():
+%  fbinop2addr(instr="fsub   s2, s0, s1")

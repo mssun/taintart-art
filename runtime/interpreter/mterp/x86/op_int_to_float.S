@@ -1,1 +1,2 @@
-%include "x86/fpcvt.S" {"load":"fildl","store":"fstps"}
+%def op_int_to_float():
+%  fpcvt(load="fildl", store="fstps")

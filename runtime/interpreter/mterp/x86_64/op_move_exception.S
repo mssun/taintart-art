@@ -1,3 +1,4 @@
+%def op_move_exception():
     /* move-exception vAA */
     movq    rSELF, %rcx
     movl    THREAD_EXCEPTION_OFFSET(%rcx), %eax

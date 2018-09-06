@@ -1,4 +1,4 @@
-%default { "load":"lw" }
+%def op_iget_quick(load="lw"):
     /* For: iget-quick, iget-boolean-quick, iget-byte-quick, iget-char-quick, iget-short-quick */
     /* op vA, vB, offset//CCCC */
     srl     a2, rINST, 12               # a2 <- B

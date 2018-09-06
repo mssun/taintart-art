@@ -1,4 +1,4 @@
-%default {"result":"","special":""}
+%def bindivLit16(result="", special=""):
 /*
  * 32-bit binary div/rem operation.  Handles special case of op0=minint and
  * op1=-1.

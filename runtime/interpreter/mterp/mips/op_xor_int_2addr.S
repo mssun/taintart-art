@@ -1,1 +1,2 @@
-%include "mips/binop2addr.S" {"instr":"xor a0, a0, a1"}
+%def op_xor_int_2addr():
+%  binop2addr(instr="xor a0, a0, a1")

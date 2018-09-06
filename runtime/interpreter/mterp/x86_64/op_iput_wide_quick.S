@@ -1,3 +1,4 @@
+%def op_iput_wide_quick():
     /* iput-wide-quick vA, vB, offset@CCCC */
     movzbq    rINSTbl, %rcx                 # rcx<- BA
     sarl      $$4, %ecx                     # ecx<- B

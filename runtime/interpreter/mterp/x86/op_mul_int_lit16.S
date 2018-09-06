@@ -1,3 +1,4 @@
+%def op_mul_int_lit16():
     /* mul/lit16 vA, vB, #+CCCC */
     /* Need A in rINST, ssssCCCC in ecx, vB in eax */
     movzbl  rINSTbl, %eax                   # eax <- 000000BA

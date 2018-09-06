@@ -1,1 +1,2 @@
-%include "x86_64/op_iput_quick.S" { "reg":"rINSTw", "store":"movw" }
+%def op_iput_char_quick():
+%  op_iput_quick(reg="rINSTw", store="movw")

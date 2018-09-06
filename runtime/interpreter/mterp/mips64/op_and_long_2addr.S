@@ -1,1 +1,2 @@
-%include "mips64/binopWide2addr.S" {"instr":"and a0, a0, a1"}
+%def op_and_long_2addr():
+%  binopWide2addr(instr="and a0, a0, a1")

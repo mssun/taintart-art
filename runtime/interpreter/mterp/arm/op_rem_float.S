@@ -1,2 +1,3 @@
+%def op_rem_float():
 /* EABI doesn't define a float remainder function, but libm does */
-%include "arm/binop.S" {"instr":"bl      fmodf"}
+%  binop(instr="bl      fmodf")

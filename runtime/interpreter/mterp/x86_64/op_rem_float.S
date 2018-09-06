@@ -1,3 +1,4 @@
+%def op_rem_float():
     /* rem_float vAA, vBB, vCC */
     movzbq  3(rPC), %rcx                    # ecx <- BB
     movzbq  2(rPC), %rax                    # eax <- CC

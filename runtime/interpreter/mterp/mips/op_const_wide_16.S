@@ -1,3 +1,4 @@
+%def op_const_wide_16():
     /* const-wide/16 vAA, +BBBB */
     FETCH_S(a0, 1)                         #  a0 <- ssssBBBB (sign-extended)
     GET_OPA(a3)                            #  a3 <- AA

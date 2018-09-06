@@ -1,4 +1,4 @@
-%default {"wide":"0"}
+%def binop1(wide="0", instr=""):
 /*
  * Generic 32-bit binary operation in which both operands loaded to
  * registers (op0 in eax, op1 in ecx).

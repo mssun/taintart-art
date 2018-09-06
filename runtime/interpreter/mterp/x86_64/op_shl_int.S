@@ -1,1 +1,2 @@
-%include "x86_64/binop1.S" {"instr":"sall    %cl, %eax"}
+%def op_shl_int():
+%  binop1(instr="sall    %cl, %eax")

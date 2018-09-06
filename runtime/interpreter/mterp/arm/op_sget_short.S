@@ -1,1 +1,2 @@
-%include "arm/op_sget.S" {"helper":"MterpSGetI16"}
+%def op_sget_short():
+%  op_sget(helper="MterpSGetI16")

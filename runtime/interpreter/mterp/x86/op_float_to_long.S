@@ -1,1 +1,2 @@
-%include "x86/cvtfp_int.S" {"srcdouble":"0","tgtlong":"1"}
+%def op_float_to_long():
+%  cvtfp_int(srcdouble="0", tgtlong="1")

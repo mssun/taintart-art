@@ -1,4 +1,4 @@
-%default {"wide":"", "r1":"s1", "r2":"s2", "cond":"lt"}
+%def fcmp(wide="", r1="s1", r2="s2", cond="lt"):
     /*
      * Compare two floating-point values.  Puts 0, 1, or -1 into the
      * destination register based on the results of the comparison.

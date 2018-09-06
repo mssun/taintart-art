@@ -1,1 +1,2 @@
-%include "mips/zcmp.S" { "condition":"eq" }
+%def op_if_eqz():
+%  zcmp(condition="eq")

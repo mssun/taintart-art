@@ -1,4 +1,4 @@
-%default {"instr":"","suff":""}
+%def sseBinop2Addr(instr="", suff=""):
     movzx   rINSTbl, %ecx                   # ecx <- A+
     andl    $$0xf, %ecx                     # ecx <- A
     movs${suff} VREG_ADDRESS(%ecx), %xmm0      # %xmm0 <- 1st src

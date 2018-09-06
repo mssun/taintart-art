@@ -1,3 +1,4 @@
+%def op_shl_long_2addr():
 /*
  * Long integer shift, 2addr version.  vA is 64-bit value/result, vB is
  * 32-bit shift distance.

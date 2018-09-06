@@ -1,1 +1,2 @@
-%include "arm/invoke_polymorphic.S" { "helper":"MterpInvokePolymorphicRange" }
+%def op_invoke_polymorphic_range():
+%  invoke_polymorphic(helper="MterpInvokePolymorphicRange")

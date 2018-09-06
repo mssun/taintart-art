@@ -1,4 +1,4 @@
-%default {"result":"%eax"}
+%def binop(result="%eax", instr=""):
 /*
  * Generic 32-bit binary operation.  Provide an "instr" line that
  * specifies an instruction that performs "result = eax op (rFP,%ecx,4)".

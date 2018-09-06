@@ -1,3 +1,4 @@
+%def op_monitor_enter():
 /*
  * Synchronize on an object.
  */

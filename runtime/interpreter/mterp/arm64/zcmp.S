@@ -1,4 +1,4 @@
-%default { "compare":"1" }
+%def zcmp(compare="1", branch=""):
     /*
      * Generic one-operand compare-and-branch operation.  Provide a "condition"
      * fragment that specifies the comparison to perform.

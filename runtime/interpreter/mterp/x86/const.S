@@ -1,4 +1,4 @@
-%default { "helper":"UndefinedConstHandler" }
+%def const(helper="UndefinedConstHandler"):
     /* const/class vAA, type@BBBB */
     /* const/method-handle vAA, method_handle@BBBB */
     /* const/method-type vAA, proto@BBBB */

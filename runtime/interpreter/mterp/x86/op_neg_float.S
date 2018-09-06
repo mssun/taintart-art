@@ -1,1 +1,2 @@
-%include "x86/fpcvt.S" {"instr":"fchs","load":"flds","store":"fstps"}
+%def op_neg_float():
+%  fpcvt(instr="fchs", load="flds", store="fstps")

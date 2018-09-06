@@ -1,1 +1,2 @@
-%include "arm/fbinopWide.S" {"instr":"fsubd   d2, d0, d1"}
+%def op_sub_double():
+%  fbinopWide(instr="fsubd   d2, d0, d1")

@@ -1,1 +1,2 @@
-%include "arm/zcmp.S" { "condition":"ne" }
+%def op_if_nez():
+%  zcmp(condition="ne")

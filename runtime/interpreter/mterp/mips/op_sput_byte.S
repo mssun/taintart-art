@@ -1,1 +1,2 @@
-%include "mips/op_sput.S" {"helper":"MterpSPutI8"}
+%def op_sput_byte():
+%  op_sput(helper="MterpSPutI8")

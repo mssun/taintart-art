@@ -1,3 +1,4 @@
+%def op_goto_32():
     /*
      * Unconditional branch, 32-bit offset.
      *

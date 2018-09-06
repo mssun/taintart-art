@@ -1,1 +1,2 @@
-%include "arm/zcmp.S" { "condition":"le" }
+%def op_if_lez():
+%  zcmp(condition="le")

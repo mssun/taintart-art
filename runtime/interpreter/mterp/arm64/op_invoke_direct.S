@@ -1,1 +1,2 @@
-%include "arm64/invoke.S" { "helper":"MterpInvokeDirect" }
+%def op_invoke_direct():
+%  invoke(helper="MterpInvokeDirect")

@@ -1,3 +1,4 @@
+%def op_iget_wide_quick():
     /* iget-wide-quick vA, vB, offset//CCCC */
     lsr     w2, wINST, #12              // w2<- B
     FETCH w4, 1                         // w4<- field byte offset

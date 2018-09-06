@@ -1,3 +1,4 @@
+%def op_const():
     /* const vAA, +BBBBbbbb */
     GET_OPA(a3)                            #  a3 <- AA
     FETCH(a0, 1)                           #  a0 <- bbbb (low)

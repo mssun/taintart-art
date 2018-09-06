@@ -1,3 +1,4 @@
+%def op_fill_array_data():
     /* fill-array-data vAA, +BBBBBBBB */
     .extern MterpFillArrayData
     EXPORT_PC

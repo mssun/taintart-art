@@ -1,3 +1,4 @@
-%include "mips64/fcvtHeader.S" { "suffix":"_DOUBLE", "valreg":"f0" }
+%def op_neg_double():
+%  fcvtHeader(suffix="_DOUBLE", valreg="f0")
     neg.d   f0, f0
-%include "mips64/fcvtFooter.S" { "suffix":"_DOUBLE", "valreg":"f0" }
+%  fcvtFooter(suffix="_DOUBLE", valreg="f0")

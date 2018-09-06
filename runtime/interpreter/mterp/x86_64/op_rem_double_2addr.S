@@ -1,3 +1,4 @@
+%def op_rem_double_2addr():
     /* rem_double/2addr vA, vB */
     movzbq  rINSTbl, %rcx                   # ecx <- A+
     sarl    $$4, rINST                      # rINST <- B

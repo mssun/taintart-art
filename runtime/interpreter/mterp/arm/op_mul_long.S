@@ -1,3 +1,4 @@
+%def op_mul_long():
     /*
      * Signed 64-bit integer multiply.
      *

@@ -1,3 +1,4 @@
+%def op_move_result_wide():
     /* move-result-wide vAA */
     movl    OFF_FP_RESULT_REGISTER(rFP), %eax    # get pointer to result JType.
     movl    4(%eax), %ecx                   # Get high

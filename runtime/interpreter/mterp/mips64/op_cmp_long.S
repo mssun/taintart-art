@@ -1,3 +1,4 @@
+%def op_cmp_long():
     /* cmp-long vAA, vBB, vCC */
     lbu     a2, 2(rPC)                  # a2 <- BB
     lbu     a3, 3(rPC)                  # a3 <- CC

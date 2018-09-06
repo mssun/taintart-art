@@ -1,4 +1,4 @@
-%default {"preinstr":""}
+%def unop(preinstr="", instr=""):
     /*
      * Generic 32-bit unary operation.  Provide an "instr" line that
      * specifies an instruction that performs "result = op r0".

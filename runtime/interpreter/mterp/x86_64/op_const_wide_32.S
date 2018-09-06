@@ -1,3 +1,4 @@
+%def op_const_wide_32():
     /* const-wide/32 vAA, #+BBBBbbbb */
     movslq   2(rPC), %rax                   # eax <- ssssssssBBBBbbbb
     SET_WIDE_VREG %rax, rINSTq              # store

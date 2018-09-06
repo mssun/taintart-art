@@ -1,1 +1,2 @@
-%include "mips/funopWider.S" {"instr":"cvt.d.s fv0, fa0"}
+%def op_float_to_double():
+%  funopWider(instr="cvt.d.s fv0, fa0")

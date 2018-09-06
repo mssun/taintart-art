@@ -1,3 +1,4 @@
+%def instruction_start_sister():
 
     .type artMterpAsmSisterStart, #object
     .hidden artMterpAsmSisterStart

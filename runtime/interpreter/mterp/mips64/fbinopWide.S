@@ -1,4 +1,4 @@
-%default {}
+%def fbinopWide(instr=""):
     /*:
      * Generic 64-bit floating-point operation.
      *

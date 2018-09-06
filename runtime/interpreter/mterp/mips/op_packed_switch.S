@@ -1,4 +1,4 @@
-%default { "func":"MterpDoPackedSwitch" }
+%def op_packed_switch(func="MterpDoPackedSwitch"):
     /*
      * Handle a packed-switch or sparse-switch instruction.  In both cases
      * we decode it and hand it off to a helper function.

@@ -1,1 +1,2 @@
-%include "arm64/binopWide2addr.S" {"instr":"orr     x0, x0, x1"}
+%def op_or_long_2addr():
+%  binopWide2addr(instr="orr     x0, x0, x1")

@@ -1,1 +1,2 @@
-%include "mips64/bincmp.S" { "condition":"ne" }
+%def op_if_ne():
+%  bincmp(condition="ne")

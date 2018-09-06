@@ -1,1 +1,2 @@
-%include "mips/unused.S"
+%def op_unused_fd():
+%  unused()

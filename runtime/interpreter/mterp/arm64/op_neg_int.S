@@ -1,1 +1,2 @@
-%include "arm64/unop.S" {"instr":"sub     w0, wzr, w0"}
+%def op_neg_int():
+%  unop(instr="sub     w0, wzr, w0")

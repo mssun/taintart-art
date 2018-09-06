@@ -1,1 +1,2 @@
-%include "arm/fbinop.S" {"instr":"fmuls   s2, s0, s1"}
+%def op_mul_float():
+%  fbinop(instr="fmuls   s2, s0, s1")

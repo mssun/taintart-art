@@ -1,4 +1,4 @@
-%default {"preinstr":"", "instr":"", "wide":"0"}
+%def unop(preinstr="", instr="", wide="0"):
 /*
  * Generic 32/64-bit unary operation.  Provide an "instr" line that
  * specifies an instruction that performs "result = op eax".

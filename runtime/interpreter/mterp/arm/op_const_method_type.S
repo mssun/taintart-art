@@ -1,1 +1,2 @@
-%include "arm/const.S" { "helper":"MterpConstMethodType" }
+%def op_const_method_type():
+%  const(helper="MterpConstMethodType")

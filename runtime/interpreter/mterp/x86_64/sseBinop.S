@@ -1,4 +1,4 @@
-%default {"instr":"","suff":""}
+%def sseBinop(instr="", suff=""):
     movzbq  2(rPC), %rcx                    # ecx <- BB
     movzbq  3(rPC), %rax                    # eax <- CC
     movs${suff}   VREG_ADDRESS(%rcx), %xmm0       # %xmm0 <- 1st src

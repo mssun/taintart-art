@@ -1,1 +1,2 @@
-%include "x86_64/invoke.S" { "helper":"MterpInvokeSuperRange" }
+%def op_invoke_super_range():
+%  invoke(helper="MterpInvokeSuperRange")

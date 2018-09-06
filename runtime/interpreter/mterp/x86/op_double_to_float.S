@@ -1,1 +1,2 @@
-%include "x86/fpcvt.S" {"load":"fldl","store":"fstps"}
+%def op_double_to_float():
+%  fpcvt(load="fldl", store="fstps")

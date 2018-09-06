@@ -1,1 +1,2 @@
-%include "arm/bincmp.S" { "condition":"lt" }
+%def op_if_lt():
+%  bincmp(condition="lt")

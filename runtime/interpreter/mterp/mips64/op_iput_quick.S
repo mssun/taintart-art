@@ -1,4 +1,4 @@
-%default { "store":"sw" }
+%def op_iput_quick(store="sw"):
     /* For: iput-quick, iput-boolean-quick, iput-byte-quick, iput-char-quick, iput-short-quick */
     /* op vA, vB, offset//CCCC */
     srl     a2, rINST, 12               # a2 <- B

@@ -1,1 +1,2 @@
-%include "x86_64/sseBinop.S" {"instr":"adds","suff":"d"}
+%def op_add_double():
+%  sseBinop(instr="adds", suff="d")

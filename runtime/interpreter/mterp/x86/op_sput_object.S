@@ -1,1 +1,2 @@
-%include "x86/op_sput.S" {"is_object":"1", "helper":"MterpSPutObj"}
+%def op_sput_object():
+%  op_sput(is_object="1", helper="MterpSPutObj")

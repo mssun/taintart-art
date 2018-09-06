@@ -1,3 +1,4 @@
+%def op_const_4():
     /* const/4 vA, #+B */
     sbfx    r1, rINST, #12, #4          @ r1<- sssssssB (sign-extended)
     ubfx    r0, rINST, #8, #4           @ r0<- A

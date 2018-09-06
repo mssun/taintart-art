@@ -1,1 +1,2 @@
-%include "x86/op_iput.S" { "is_object":"1", "helper":"MterpIPutObj" }
+%def op_iput_object():
+%  op_iput(is_object="1", helper="MterpIPutObj")

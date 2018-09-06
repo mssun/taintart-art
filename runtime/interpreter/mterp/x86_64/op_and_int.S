@@ -1,1 +1,2 @@
-%include "x86_64/binop.S" {"instr":"andl    (rFP,%rcx,4), %eax"}
+%def op_and_int():
+%  binop(instr="andl    (rFP,%rcx,4), %eax")

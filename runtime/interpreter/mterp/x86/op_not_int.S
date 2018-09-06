@@ -1,1 +1,2 @@
-%include "x86/unop.S" {"instr":"notl %eax"}
+%def op_not_int():
+%  unop(instr="notl %eax")

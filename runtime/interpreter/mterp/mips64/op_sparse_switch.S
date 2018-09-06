@@ -1,1 +1,2 @@
-%include "mips64/op_packed_switch.S" { "func":"MterpDoSparseSwitch" }
+%def op_sparse_switch():
+%  op_packed_switch(func="MterpDoSparseSwitch")

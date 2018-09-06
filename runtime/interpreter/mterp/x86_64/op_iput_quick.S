@@ -1,4 +1,4 @@
-%default { "reg":"rINST", "store":"movl" }
+%def op_iput_quick(reg="rINST", store="movl"):
     /* For: iput-quick, iput-object-quick */
     /* op vA, vB, offset@CCCC */
     movzbq  rINSTbl, %rcx                   # rcx <- BA

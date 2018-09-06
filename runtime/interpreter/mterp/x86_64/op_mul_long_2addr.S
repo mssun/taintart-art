@@ -1,3 +1,4 @@
+%def op_mul_long_2addr():
     /* mul vA, vB */
     movl    rINST, %ecx                     # rcx <- A+
     sarl    $$4, rINST                      # rINST <- B

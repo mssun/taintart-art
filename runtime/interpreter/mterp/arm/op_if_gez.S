@@ -1,1 +1,2 @@
-%include "arm/zcmp.S" { "condition":"ge" }
+%def op_if_gez():
+%  zcmp(condition="ge")

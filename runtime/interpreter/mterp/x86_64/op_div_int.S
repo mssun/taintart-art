@@ -1,1 +1,2 @@
-%include "x86_64/bindiv.S" {"result":"%eax","second":"%ecx","wide":"0","suffix":"l"}
+%def op_div_int():
+%  bindiv(result="%eax", second="%ecx", wide="0", suffix="l")

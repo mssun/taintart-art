@@ -1,1 +1,2 @@
-%include "x86_64/binop1.S" {"instr":"salq    %cl, %rax","wide":"1"}
+%def op_shl_long():
+%  binop1(instr="salq    %cl, %rax", wide="1")

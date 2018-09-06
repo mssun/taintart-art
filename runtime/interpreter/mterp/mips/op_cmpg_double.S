@@ -1,1 +1,2 @@
-%include "mips/op_cmpl_double.S" { "gt_bias":"1" }
+%def op_cmpg_double():
+%  op_cmpl_double(gt_bias="1")

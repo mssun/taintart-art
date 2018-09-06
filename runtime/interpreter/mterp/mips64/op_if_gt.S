@@ -1,1 +1,2 @@
-%include "mips64/bincmp.S" { "condition":"gt" }
+%def op_if_gt():
+%  bincmp(condition="gt")

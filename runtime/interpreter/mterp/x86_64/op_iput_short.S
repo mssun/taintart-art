@@ -1,1 +1,2 @@
-%include "x86_64/op_iput.S" { "helper":"MterpIPutI16" }
+%def op_iput_short():
+%  op_iput(helper="MterpIPutI16")

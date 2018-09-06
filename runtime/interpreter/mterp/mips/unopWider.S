@@ -1,4 +1,4 @@
-%default {"preinstr":"", "result0":"a0", "result1":"a1"}
+%def unopWider(preinstr="", result0="a0", result1="a1", instr=""):
     /*
      * Generic 32bit-to-64bit unary operation.  Provide an "instr" line
      * that specifies an instruction that performs "result0/result1 = op a0".

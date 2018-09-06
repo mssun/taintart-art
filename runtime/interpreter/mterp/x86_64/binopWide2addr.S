@@ -1,3 +1,4 @@
+%def binopWide2addr(instr=""):
 /*
  * Generic 64-bit binary operation.
  */

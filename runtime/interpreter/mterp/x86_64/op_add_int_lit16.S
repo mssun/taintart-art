@@ -1,1 +1,2 @@
-%include "x86_64/binopLit16.S" {"instr":"addl    %ecx, %eax"}
+%def op_add_int_lit16():
+%  binopLit16(instr="addl    %ecx, %eax")

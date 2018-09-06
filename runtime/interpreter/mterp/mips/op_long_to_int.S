@@ -1,2 +1,3 @@
+%def op_long_to_int():
 /* we ignore the high word, making this equivalent to a 32-bit reg move */
-%include "mips/op_move.S"
+%  op_move()

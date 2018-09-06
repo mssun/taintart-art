@@ -1,3 +1,4 @@
+%def op_monitor_exit():
 /*
  * Unlock an object.
  *

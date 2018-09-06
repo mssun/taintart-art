@@ -1,3 +1,4 @@
+%def op_move_wide():
     /* move-wide vA, vB */
     /* NOTE: regs can overlap, e.g. "move v6, v7" or "move v7, v6" */
     GET_OPA4(a2)                           #  a2 <- A(+)

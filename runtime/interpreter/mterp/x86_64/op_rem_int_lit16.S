@@ -1,1 +1,2 @@
-%include "x86_64/bindivLit16.S" {"result":"%edx","rem":"1"}
+%def op_rem_int_lit16():
+%  bindivLit16(result="%edx", rem="1")

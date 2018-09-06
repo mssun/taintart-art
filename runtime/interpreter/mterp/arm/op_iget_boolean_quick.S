@@ -1,1 +1,2 @@
-%include "arm/op_iget_quick.S" { "load":"ldrb" }
+%def op_iget_boolean_quick():
+%  op_iget_quick(load="ldrb")

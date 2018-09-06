@@ -1,4 +1,4 @@
-%default { "is_object":"0" }
+%def op_move_result(is_object="0"):
     /* for: move-result, move-result-object */
     /* op vAA */
     movl    OFF_FP_RESULT_REGISTER(rFP), %eax    # get pointer to result JType.

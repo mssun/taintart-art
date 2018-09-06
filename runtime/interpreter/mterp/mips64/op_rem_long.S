@@ -1,1 +1,2 @@
-%include "mips64/binopWide.S" {"instr":"dmod a0, a0, a1", "chkzero":"1"}
+%def op_rem_long():
+%  binopWide(instr="dmod a0, a0, a1", chkzero="1")

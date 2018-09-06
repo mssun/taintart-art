@@ -1,3 +1,4 @@
+%def op_mul_long():
     /*
      * Signed 64-bit integer multiply.
      *         a1   a0
@@ -35,7 +36,7 @@
     GET_OPA(a0)                            #  a0 <- AA
     FETCH_ADVANCE_INST(2)                  #  advance rPC, load rINST
     b         .L${opcode}_finish
-%break
+%def op_mul_long_sister_code():
 
 .L${opcode}_finish:
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST

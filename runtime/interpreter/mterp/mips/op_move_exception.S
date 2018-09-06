@@ -1,3 +1,4 @@
+%def op_move_exception():
     /* move-exception vAA */
     GET_OPA(a2)                                 #  a2 <- AA
     lw    a3, THREAD_EXCEPTION_OFFSET(rSELF)    #  get exception obj

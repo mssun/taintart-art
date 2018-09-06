@@ -1,3 +1,4 @@
+%def op_move_result_wide():
     /* for: move-result-wide */
     /* op vAA */
     srl     a2, rINST, 8                # a2 <- AA

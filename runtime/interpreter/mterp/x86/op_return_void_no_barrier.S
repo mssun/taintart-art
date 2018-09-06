@@ -1,3 +1,4 @@
+%def op_return_void_no_barrier():
     movl    rSELF, %eax
     testl   $$(THREAD_SUSPEND_OR_CHECKPOINT_REQUEST), THREAD_FLAGS_OFFSET(%eax)
     jz      1f

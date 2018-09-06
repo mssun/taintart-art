@@ -1,3 +1,4 @@
+%def op_const():
     /* const vAA, #+BBBBbbbb */
     lsr     w3, wINST, #8               // w3<- AA
     FETCH w0, 1                         // w0<- bbbb (low

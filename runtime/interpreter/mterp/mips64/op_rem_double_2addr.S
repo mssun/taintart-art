@@ -1,3 +1,4 @@
+%def op_rem_double_2addr():
     /* rem-double/2addr vA, vB */
     .extern fmod
     ext     a2, rINST, 8, 4             # a2 <- A

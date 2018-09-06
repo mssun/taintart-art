@@ -1,1 +1,2 @@
-%include "x86/binop2addr.S" {"instr":"subl    %eax, (rFP,%ecx,4)"}
+%def op_sub_int_2addr():
+%  binop2addr(instr="subl    %eax, (rFP,%ecx,4)")

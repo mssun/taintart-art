@@ -1,3 +1,4 @@
+%def op_iput_object_quick():
     EXPORT_PC
     leaq    OFF_FP_SHADOWFRAME(rFP), OUT_ARG0
     movq    rPC, OUT_ARG1

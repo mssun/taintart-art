@@ -1,1 +1,2 @@
-%include "x86/fpcmp.S" {"suff":"d","nanval":"pos"}
+%def op_cmpg_double():
+%  fpcmp(suff="d", nanval="pos")

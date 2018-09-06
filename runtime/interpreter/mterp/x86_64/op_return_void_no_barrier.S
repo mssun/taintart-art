@@ -1,3 +1,4 @@
+%def op_return_void_no_barrier():
     movq    rSELF, OUT_ARG0
     testl   $$(THREAD_SUSPEND_OR_CHECKPOINT_REQUEST), THREAD_FLAGS_OFFSET(OUT_ARG0)
     jz      1f

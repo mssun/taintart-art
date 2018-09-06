@@ -1,1 +1,2 @@
-%include "mips64/unopWide.S" {"instr":"nor     a0, zero, a0"}
+%def op_not_long():
+%  unopWide(instr="nor     a0, zero, a0")

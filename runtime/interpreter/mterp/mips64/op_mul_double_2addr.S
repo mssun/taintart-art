@@ -1,1 +1,2 @@
-%include "mips64/fbinopWide2addr.S" {"instr":"mul.d f0, f0, f1"}
+%def op_mul_double_2addr():
+%  fbinopWide2addr(instr="mul.d f0, f0, f1")

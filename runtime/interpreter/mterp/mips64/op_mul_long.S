@@ -1,1 +1,2 @@
-%include "mips64/binopWide.S" {"instr":"dmul a0, a0, a1"}
+%def op_mul_long():
+%  binopWide(instr="dmul a0, a0, a1")

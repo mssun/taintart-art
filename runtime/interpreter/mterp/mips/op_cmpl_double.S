@@ -1,4 +1,4 @@
-%default { "gt_bias":"0" }
+%def op_cmpl_double(gt_bias="0"):
     /*
      * Compare two floating-point values. Puts 0(==), 1(>), or -1(<)
      * into the destination register based on the comparison results.

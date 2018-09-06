@@ -1,3 +1,4 @@
+%def op_iput_wide_quick():
     /* iput-wide-quick vA, vB, offset@CCCC */
     GET_OPA4(a0)                           #  a0 <- A(+)
     GET_OPB(a1)                            #  a1 <- B

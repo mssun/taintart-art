@@ -1,1 +1,2 @@
-%include "x86_64/bincmp.S" { "revcmp":"ge" }
+%def op_if_lt():
+%  bincmp(revcmp="ge")

@@ -1,1 +1,2 @@
-%include "x86/op_sget.S" {"is_object":"1", "helper":"MterpSGetObj"}
+%def op_sget_object():
+%  op_sget(is_object="1", helper="MterpSGetObj")

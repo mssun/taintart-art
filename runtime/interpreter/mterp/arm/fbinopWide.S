@@ -1,3 +1,4 @@
+%def fbinopWide(instr=""):
     /*
      * Generic 64-bit double-precision floating point binary operation.
      * Provide an "instr" line that specifies an instruction that performs

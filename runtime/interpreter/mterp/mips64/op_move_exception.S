@@ -1,3 +1,4 @@
+%def op_move_exception():
     /* move-exception vAA */
     srl     a2, rINST, 8                # a2 <- AA
     ld      a0, THREAD_EXCEPTION_OFFSET(rSELF)  # load exception obj

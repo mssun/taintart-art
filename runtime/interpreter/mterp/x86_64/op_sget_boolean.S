@@ -1,1 +1,2 @@
-%include "x86_64/op_sget.S" {"helper":"MterpSGetU8"}
+%def op_sget_boolean():
+%  op_sget(helper="MterpSGetU8")

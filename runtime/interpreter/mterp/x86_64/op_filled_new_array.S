@@ -1,4 +1,4 @@
-%default { "helper":"MterpFilledNewArray" }
+%def op_filled_new_array(helper="MterpFilledNewArray"):
 /*
  * Create a new array with elements filled from registers.
  *

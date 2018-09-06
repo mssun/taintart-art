@@ -1,3 +1,4 @@
+%def funop(instr=""):
     /*
      * Generic 32-bit unary floating-point operation.  Provide an "instr"
      * line that specifies an instruction that performs "s1 = op s0".

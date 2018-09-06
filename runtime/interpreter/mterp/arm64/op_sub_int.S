@@ -1,1 +1,2 @@
-%include "arm64/binop.S" {"instr":"sub     w0, w0, w1"}
+%def op_sub_int():
+%  binop(instr="sub     w0, w0, w1")

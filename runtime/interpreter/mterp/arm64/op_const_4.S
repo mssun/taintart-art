@@ -1,3 +1,4 @@
+%def op_const_4():
     /* const/4 vA, #+B */
     sbfx    w1, wINST, #12, #4          // w1<- sssssssB
     ubfx    w0, wINST, #8, #4           // w0<- A

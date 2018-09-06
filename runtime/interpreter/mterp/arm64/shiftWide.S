@@ -1,4 +1,4 @@
-%default {"opcode":"shl"}
+%def shiftWide(opcode="shl"):
     /*
      * 64-bit shift operation.
      *

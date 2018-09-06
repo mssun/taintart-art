@@ -1,3 +1,4 @@
+%def fbinopWide2addr(instr=""):
     /*
      * Generic 64-bit floating point "/2addr" binary operation.  Provide
      * an "instr" line that specifies an instruction that performs

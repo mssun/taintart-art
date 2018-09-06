@@ -1,1 +1,2 @@
-%include "arm/op_sput.S" {"helper":"MterpSPutU64"}
+%def op_sput_wide():
+%  op_sput(helper="MterpSPutU64")

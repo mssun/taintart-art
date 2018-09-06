@@ -1,1 +1,2 @@
-%include "x86_64/sseBinop2Addr.S" {"instr":"divs","suff":"s"}
+%def op_div_float_2addr():
+%  sseBinop2Addr(instr="divs", suff="s")

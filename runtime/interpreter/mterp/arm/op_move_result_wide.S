@@ -1,3 +1,4 @@
+%def op_move_result_wide():
     /* move-result-wide vAA */
     mov     rINST, rINST, lsr #8        @ rINST<- AA
     ldr     r3, [rFP, #OFF_FP_RESULT_REGISTER]

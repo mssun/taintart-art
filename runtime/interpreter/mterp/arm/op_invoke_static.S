@@ -1,2 +1,3 @@
-%include "arm/invoke.S" { "helper":"MterpInvokeStatic" }
+%def op_invoke_static():
+%  invoke(helper="MterpInvokeStatic")
 

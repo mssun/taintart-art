@@ -1,3 +1,4 @@
+%def op_rem_double():
     /* rem-double vAA, vBB, vCC */
     .extern fmod
     lbu     a2, 2(rPC)                  # a2 <- BB

@@ -1,3 +1,4 @@
+%def op_iput_object_quick():
     .extern MterpIputObjectQuick
     EXPORT_PC
     daddu   a0, rFP, OFF_FP_SHADOWFRAME

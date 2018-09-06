@@ -1,1 +1,2 @@
-%include "x86/op_sget.S" {"helper":"MterpSGetU64"}
+%def op_sget_wide():
+%  op_sget(helper="MterpSGetU64")

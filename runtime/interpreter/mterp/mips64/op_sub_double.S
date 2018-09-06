@@ -1,1 +1,2 @@
-%include "mips64/fbinopWide.S" {"instr":"sub.d f0, f0, f1"}
+%def op_sub_double():
+%  fbinopWide(instr="sub.d f0, f0, f1")

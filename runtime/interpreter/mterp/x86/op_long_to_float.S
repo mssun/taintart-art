@@ -1,1 +1,2 @@
-%include "x86/fpcvt.S" {"load":"fildll","store":"fstps"}
+%def op_long_to_float():
+%  fpcvt(load="fildll", store="fstps")

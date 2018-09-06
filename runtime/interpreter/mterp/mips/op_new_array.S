@@ -1,3 +1,4 @@
+%def op_new_array():
     /*
      * Allocate an array of objects, specified with the array class
      * and a count.

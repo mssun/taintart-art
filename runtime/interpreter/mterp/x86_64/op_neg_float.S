@@ -1,1 +1,2 @@
-%include "x86_64/unop.S" {"instr":"    xorl    $0x80000000, %eax"}
+%def op_neg_float():
+%  unop(instr="    xorl    $0x80000000, %eax")

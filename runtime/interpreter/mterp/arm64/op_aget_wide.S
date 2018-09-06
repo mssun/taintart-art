@@ -1,3 +1,4 @@
+%def op_aget_wide():
     /*
      * Array get, 64 bits.  vAA <- vBB[vCC].
      *

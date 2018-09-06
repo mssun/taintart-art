@@ -1,1 +1,2 @@
-%include "mips64/binop2addr.S" {"instr":"addu a0, a0, a1"}
+%def op_add_int_2addr():
+%  binop2addr(instr="addu a0, a0, a1")

@@ -1,3 +1,4 @@
+%def op_rem_float_2addr():
     /* rem vA, vB */
     lsr     w3, wINST, #12              // w3<- B
     ubfx    w9, wINST, #8, #4           // w9<- A

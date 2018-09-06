@@ -1,4 +1,4 @@
-%default {"preinstr":"", "result0":"a0", "result1":"a1", "chkzero":"0", "arg0":"a0", "arg1":"a1", "arg2":"a2", "arg3":"a3"}
+%def binopWide2addr(preinstr="", result0="a0", result1="a1", chkzero="0", arg0="a0", arg1="a1", arg2="a2", arg3="a3", instr=""):
     /*
      * Generic 64-bit "/2addr" binary operation.  Provide an "instr" line
      * that specifies an instruction that performs "result = a0-a1 op a2-a3".

@@ -1,1 +1,2 @@
-%include "mips/const.S" { "helper":"MterpConstMethodHandle" }
+%def op_const_method_handle():
+%  const(helper="MterpConstMethodHandle")

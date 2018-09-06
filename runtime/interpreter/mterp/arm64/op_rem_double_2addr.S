@@ -1,3 +1,4 @@
+%def op_rem_double_2addr():
     /* rem vA, vB */
     lsr     w1, wINST, #12              // w1<- B
     ubfx    w2, wINST, #8, #4           // w2<- A

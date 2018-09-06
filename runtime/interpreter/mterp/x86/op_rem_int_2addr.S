@@ -1,1 +1,2 @@
-%include "x86/bindiv2addr.S" {"result":"rIBASE","special":"$0"}
+%def op_rem_int_2addr():
+%  bindiv2addr(result="rIBASE", special="$0")

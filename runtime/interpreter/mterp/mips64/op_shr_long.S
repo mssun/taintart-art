@@ -1,1 +1,2 @@
-%include "mips64/binopWide.S" {"instr":"dsra a0, a0, a1"}
+%def op_shr_long():
+%  binopWide(instr="dsra a0, a0, a1")

@@ -1,1 +1,2 @@
-%include "x86_64/bindiv2addr.S" {"result":"%eax","second":"%ecx","wide":"0","suffix":"l"}
+%def op_div_int_2addr():
+%  bindiv2addr(result="%eax", second="%ecx", wide="0", suffix="l")

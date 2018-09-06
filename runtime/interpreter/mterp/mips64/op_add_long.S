@@ -1,1 +1,2 @@
-%include "mips64/binopWide.S" {"instr":"daddu a0, a0, a1"}
+%def op_add_long():
+%  binopWide(instr="daddu a0, a0, a1")

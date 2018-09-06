@@ -1,1 +1,2 @@
-%include "mips64/op_return.S" {"instr":"GET_VREG_U"}
+%def op_return_object():
+%  op_return(instr="GET_VREG_U")

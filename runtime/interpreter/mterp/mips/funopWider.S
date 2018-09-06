@@ -1,3 +1,4 @@
+%def funopWider(instr=""):
     /*
      * Generic 32bit-to-64bit floating-point unary operation.  Provide an "instr"
      * line that specifies an instruction that performs "fv0 = op fa0".

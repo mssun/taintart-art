@@ -1,3 +1,4 @@
+%def op_const_wide():
     /* const-wide vAA, #+HHHHhhhhBBBBbbbb */
     FETCH w0, 1                         // w0<- bbbb (low)
     FETCH w1, 2                         // w1<- BBBB (low middle)

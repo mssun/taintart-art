@@ -1,3 +1,4 @@
+%def op_shl_long_2addr():
     /*
      * Long integer shift, 2addr version.  vA is 64-bit value/result, vB is
      * 32-bit shift distance.
@@ -21,7 +22,7 @@
     sll     v1, a1, a2                     #  rhi<- ahi << (shift&31)
     or      v1, a0                         #  rhi<- rhi | alo
     SET_VREG64_GOTO(v0, v1, rOBJ, t0)      #  vA/vA+1 <- v0/v1
-%break
+%def op_shl_long_2addr_sister_code():
 
 .L${opcode}_finish:
     SET_VREG64_GOTO(zero, v0, rOBJ, t0)    #  vA/vA+1 <- rlo/rhi

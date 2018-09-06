@@ -1,3 +1,4 @@
+%def op_new_instance():
 /*
  * Create a new instance of a class.
  */

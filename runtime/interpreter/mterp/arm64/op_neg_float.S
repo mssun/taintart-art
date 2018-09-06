@@ -1,1 +1,2 @@
-%include "arm64/unop.S" {"instr":"eor     w0, w0, #0x80000000"}
+%def op_neg_float():
+%  unop(instr="eor     w0, w0, #0x80000000")

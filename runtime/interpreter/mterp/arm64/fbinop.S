@@ -1,4 +1,4 @@
-%default {}
+%def fbinop(instr=""):
     /*:
      * Generic 32-bit floating-point operation.
      *

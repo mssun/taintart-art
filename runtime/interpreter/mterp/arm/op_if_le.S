@@ -1,1 +1,2 @@
-%include "arm/bincmp.S" { "condition":"le" }
+%def op_if_le():
+%  bincmp(condition="le")

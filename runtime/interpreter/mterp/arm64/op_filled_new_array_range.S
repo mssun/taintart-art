@@ -1,1 +1,2 @@
-%include "arm64/op_filled_new_array.S" { "helper":"MterpFilledNewArrayRange" }
+%def op_filled_new_array_range():
+%  op_filled_new_array(helper="MterpFilledNewArrayRange")

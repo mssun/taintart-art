@@ -1,1 +1,2 @@
-%include "x86_64/binopWide2addr.S" {"instr":"subq    %rax, (rFP,%rcx,4)"}
+%def op_sub_long_2addr():
+%  binopWide2addr(instr="subq    %rax, (rFP,%rcx,4)")

@@ -1,3 +1,4 @@
+%def instruction_start_alt():
 
     .type artMterpAsmAltInstructionStart, #object
     .hidden artMterpAsmAltInstructionStart

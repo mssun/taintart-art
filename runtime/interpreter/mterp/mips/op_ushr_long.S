@@ -1,3 +1,4 @@
+%def op_ushr_long():
     /*
      * Long integer shift.  This is different from the generic 32/64-bit
      * binary operations because vAA/vBB are 64-bit but vCC (the shift
@@ -25,7 +26,7 @@
     sll       a1, a0                       #  ahi<- ahi << (32-(shift&31))
     or        v0, a1                       #  rlo<- rlo | ahi
     SET_VREG64_GOTO(v0, v1, rOBJ, t0)      #  vAA/vAA+1 <- v0/v1
-%break
+%def op_ushr_long_sister_code():
 
 .L${opcode}_finish:
     SET_VREG64_GOTO(v1, zero, rOBJ, t0)    #  vAA/vAA+1 <- rlo/rhi

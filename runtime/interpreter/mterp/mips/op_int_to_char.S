@@ -1,1 +1,2 @@
-%include "mips/unop.S" {"preinstr":"", "instr":"and a0, 0xffff"}
+%def op_int_to_char():
+%  unop(preinstr="", instr="and a0, 0xffff")

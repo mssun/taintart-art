@@ -1,3 +1,4 @@
+%def op_iput_wide_quick():
     /* iput-wide-quick vA, vB, offset//CCCC */
     srl     a2, rINST, 12               # a2 <- B
     lhu     a3, 2(rPC)                  # a3 <- field byte offset

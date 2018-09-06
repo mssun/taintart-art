@@ -1,4 +1,4 @@
-%default { "is_object":"0" }
+%def op_move(is_object="0"):
     /* for move, move-object, long-to-int */
     /* op vA, vB */
     lsr     w1, wINST, #12              // x1<- B from 15:12

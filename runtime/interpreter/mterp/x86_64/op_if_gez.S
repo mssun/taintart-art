@@ -1,1 +1,2 @@
-%include "x86_64/zcmp.S" { "revcmp":"l" }
+%def op_if_gez():
+%  zcmp(revcmp="l")

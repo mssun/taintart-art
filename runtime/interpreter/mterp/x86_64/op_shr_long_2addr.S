@@ -1,1 +1,2 @@
-%include "x86_64/shop2addr.S" {"instr":"sarq    %cl, %rax","wide":"1"}
+%def op_shr_long_2addr():
+%  shop2addr(instr="sarq    %cl, %rax", wide="1")

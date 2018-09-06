@@ -1,1 +1,2 @@
-%include "x86/fpcvt.S" {"load":"fildll","store":"fstpl","wide":"1"}
+%def op_long_to_double():
+%  fpcvt(load="fildll", store="fstpl", wide="1")

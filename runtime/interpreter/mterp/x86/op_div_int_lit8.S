@@ -1,1 +1,2 @@
-%include "x86/bindivLit8.S" {"result":"%eax","special":"$0x80000000"}
+%def op_div_int_lit8():
+%  bindivLit8(result="%eax", special="$0x80000000")

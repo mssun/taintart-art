@@ -1,3 +1,4 @@
+%def op_const_wide_high16():
     /* const-wide/high16 vAA, #+BBBB000000000000 */
     movzwl  2(rPC), %eax                    # eax <- 0000BBBB
     sall    $$16, %eax                      # eax <- BBBB0000

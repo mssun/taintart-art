@@ -1,3 +1,4 @@
+%def op_return_void_no_barrier():
     ldr     lr, [rSELF, #THREAD_FLAGS_OFFSET]
     mov     r0, rSELF
     ands    lr, #THREAD_SUSPEND_OR_CHECKPOINT_REQUEST

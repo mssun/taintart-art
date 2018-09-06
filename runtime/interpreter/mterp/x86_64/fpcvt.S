@@ -1,4 +1,4 @@
-%default {"source_suffix":"","dest_suffix":"","wide":""}
+%def fpcvt(source_suffix="", dest_suffix="", wide=""):
 /*
  * Generic 32-bit FP conversion operation.
  */

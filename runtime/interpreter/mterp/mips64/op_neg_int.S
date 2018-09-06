@@ -1,1 +1,2 @@
-%include "mips64/unop.S" {"instr":"subu    a0, zero, a0"}
+%def op_neg_int():
+%  unop(instr="subu    a0, zero, a0")

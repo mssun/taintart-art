@@ -1,4 +1,4 @@
-%default {"instr":"","load":"","store":"","wide":"0"}
+%def fpcvt(instr="", load="", store="", wide="0"):
 /*
  * Generic 32-bit FP conversion operation.
  */

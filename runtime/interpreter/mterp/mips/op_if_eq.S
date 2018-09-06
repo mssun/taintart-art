@@ -1,1 +1,2 @@
-%include "mips/bincmp.S" { "condition":"eq" }
+%def op_if_eq():
+%  bincmp(condition="eq")

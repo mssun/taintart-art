@@ -1,3 +1,4 @@
+%def op_const_wide_16():
     /* const-wide/16 vAA, #+BBBB */
     FETCH_S x0, 1                       // x0<- ssssssssssssBBBB (sign-extended)
     lsr     w3, wINST, #8               // w3<- AA

@@ -1,1 +1,2 @@
-%include "mips64/binop.S" {"instr":"or a0, a0, a1"}
+%def op_or_int():
+%  binop(instr="or a0, a0, a1")

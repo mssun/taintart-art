@@ -1,3 +1,4 @@
+%def zcmp(condition=""):
     /*
      * Generic one-operand compare-and-branch operation.  Provide a "condition"
      * fragment that specifies the comparison to perform.

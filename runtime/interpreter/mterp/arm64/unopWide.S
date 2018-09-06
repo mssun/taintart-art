@@ -1,4 +1,4 @@
-%default {"instr":"sub x0, xzr, x0"}
+%def unopWide(instr="sub x0, xzr, x0"):
     /*
      * Generic 64-bit unary operation.  Provide an "instr" line that
      * specifies an instruction that performs "result = op x0".

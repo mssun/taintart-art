@@ -1,1 +1,2 @@
-%include "x86/op_iget.S" { "helper":"MterpIGetU16" }
+%def op_iget_char():
+%  op_iget(helper="MterpIGetU16")

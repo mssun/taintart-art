@@ -1,3 +1,4 @@
+%def op_rem_double():
     /* rem_double vAA, vBB, vCC */
     movzbq  3(rPC), %rcx                    # ecx <- BB
     movzbq  2(rPC), %rax                    # eax <- CC

@@ -1,4 +1,4 @@
-%default { "load":"ldr" }
+%def op_iget_quick(load="ldr"):
     /* For: iget-quick, iget-boolean-quick, iget-byte-quick, iget-char-quick, iget-short-quick */
     /* op vA, vB, offset@CCCC */
     mov     r2, rINST, lsr #12          @ r2<- B

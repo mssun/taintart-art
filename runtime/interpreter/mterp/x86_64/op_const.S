@@ -1,3 +1,4 @@
+%def op_const():
     /* const vAA, #+BBBBbbbb */
     movl    2(rPC), %eax                    # grab all 32 bits at once
     SET_VREG %eax, rINSTq                   # vAA<- eax

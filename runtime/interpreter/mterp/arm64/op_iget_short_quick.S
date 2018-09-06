@@ -1,1 +1,2 @@
-%include "arm64/op_iget_quick.S" { "load":"ldrsh" }
+%def op_iget_short_quick():
+%  op_iget_quick(load="ldrsh")

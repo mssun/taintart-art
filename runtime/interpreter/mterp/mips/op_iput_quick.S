@@ -1,4 +1,4 @@
-%default { "store":"sw" }
+%def op_iput_quick(store="sw"):
     /* For: iput-quick, iput-object-quick */
     /* op vA, vB, offset@CCCC */
     GET_OPB(a2)                            #  a2 <- B

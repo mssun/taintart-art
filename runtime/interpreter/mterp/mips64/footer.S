@@ -1,3 +1,4 @@
+%def footer():
 /*
  * We've detected a condition that will result in an exception, but the exception
  * has not yet been thrown.  Just bail out to the reference interpreter to deal with it.

@@ -1,1 +1,2 @@
-%include "x86/binop.S" {"instr":"xorl    (rFP,%ecx,4), %eax"}
+%def op_xor_int():
+%  binop(instr="xorl    (rFP,%ecx,4), %eax")

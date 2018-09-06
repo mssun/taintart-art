@@ -1,4 +1,4 @@
-%default { "is_object":"0" }
+%def op_move_from16(is_object="0"):
     /* for: move/from16, move-object/from16 */
     /* op vAA, vBBBB */
     lhu     a3, 2(rPC)                  # a3 <- BBBB

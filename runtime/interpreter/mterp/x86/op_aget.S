@@ -1,4 +1,4 @@
-%default { "load":"movl", "shift":"4", "data_offset":"MIRROR_INT_ARRAY_DATA_OFFSET" }
+%def op_aget(load="movl", shift="4", data_offset="MIRROR_INT_ARRAY_DATA_OFFSET"):
 /*
  * Array get, 32 bits or less.  vAA <- vBB[vCC].
  *

@@ -1,3 +1,4 @@
+%def op_instance_of():
     /*
      * Check to see if an object reference is an instance of a class.
      *

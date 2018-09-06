@@ -1,3 +1,4 @@
+%def op_return_void():
     .extern MterpThreadFenceForConstructor
     call    SYMBOL(MterpThreadFenceForConstructor)
     movl    rSELF, %eax

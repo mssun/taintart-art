@@ -1,3 +1,4 @@
+%def op_const_wide():
     /* const-wide vAA, #+HHHHhhhhBBBBbbbb */
     movl    2(rPC), %eax                    # eax <- lsw
     movzbl  rINSTbl, %ecx                   # ecx <- AA

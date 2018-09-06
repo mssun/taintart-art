@@ -1,3 +1,4 @@
+%def op_float_to_int():
     /*
      * float-to-int
      *

@@ -1,1 +1,2 @@
-%include "x86_64/op_iget_quick.S" { "load":"movsbl" }
+%def op_iget_byte_quick():
+%  op_iget_quick(load="movsbl")

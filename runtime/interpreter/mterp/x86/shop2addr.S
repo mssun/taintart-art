@@ -1,4 +1,4 @@
-%default {"result":"%eax"}
+%def shop2addr(result="%eax", instr=""):
 /*
  * Generic 32-bit "shift/2addr" operation.
  */

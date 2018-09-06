@@ -1,4 +1,4 @@
-%default {"opcode":"lsl"}
+%def shiftWide2addr(opcode="lsl"):
     /*
      * Generic 64-bit shift operation.
      */

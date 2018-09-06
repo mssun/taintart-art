@@ -1,1 +1,2 @@
-%include "x86_64/binopLit16.S" {"instr":"xorl    %ecx, %eax"}
+%def op_xor_int_lit16():
+%  binopLit16(instr="xorl    %ecx, %eax")

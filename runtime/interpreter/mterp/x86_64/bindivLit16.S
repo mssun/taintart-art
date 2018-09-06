@@ -1,4 +1,4 @@
-%default {"result":"","rem":"0"}
+%def bindivLit16(result="", rem="0"):
 /*
  * 32-bit binary div/rem operation.  Handles special case of op1=-1.
  */

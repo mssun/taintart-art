@@ -1,4 +1,4 @@
-%default { "load":"ldr", "extend":"" }
+%def op_iget_quick(load="ldr", extend=""):
     /* For: iget-quick, iget-boolean-quick, iget-byte-quick, iget-char-quick, iget-short-quick */
     /* op vA, vB, offset//CCCC */
     lsr     w2, wINST, #12              // w2<- B

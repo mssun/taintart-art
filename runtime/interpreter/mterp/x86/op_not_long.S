@@ -1,3 +1,4 @@
+%def op_not_long():
     /* unop vA, vB */
     movzbl  rINSTbl, %ecx                   # ecx <- BA
     sarl    $$4, %ecx                       # ecx <- B

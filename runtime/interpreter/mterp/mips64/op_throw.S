@@ -1,3 +1,4 @@
+%def op_throw():
     /*
      * Throw an exception object in the current thread.
      */

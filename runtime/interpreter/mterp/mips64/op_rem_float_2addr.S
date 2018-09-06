@@ -1,3 +1,4 @@
+%def op_rem_float_2addr():
     /* rem-float/2addr vA, vB */
     .extern fmodf
     ext     a2, rINST, 8, 4             # a2 <- A

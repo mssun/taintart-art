@@ -1,1 +1,2 @@
-%include "arm64/shiftWide.S" {"opcode":"lsl"}
+%def op_shl_long():
+%  shiftWide(opcode="lsl")

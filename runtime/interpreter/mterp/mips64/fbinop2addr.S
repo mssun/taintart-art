@@ -1,4 +1,4 @@
-%default {}
+%def fbinop2addr(instr=""):
     /*:
      * Generic 32-bit "/2addr" floating-point operation.
      *

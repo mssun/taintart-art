@@ -1,3 +1,4 @@
+%def op_const_wide():
     /* const-wide vAA, #+HHHHhhhhBBBBbbbb */
     srl     a4, rINST, 8                # a4 <- AA
     lh      a0, 2(rPC)                  # a0 <- bbbb (low)

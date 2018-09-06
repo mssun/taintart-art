@@ -1,3 +1,4 @@
+%def op_const_string_jumbo():
     /* const/string vAA, String//BBBBBBBB */
     .extern MterpConstString
     EXPORT_PC

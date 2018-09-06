@@ -1,3 +1,4 @@
+%def op_iget_object_quick():
     /* For: iget-object-quick */
     /* op vA, vB, offset@CCCC */
     .extern artIGetObjectFromMterp

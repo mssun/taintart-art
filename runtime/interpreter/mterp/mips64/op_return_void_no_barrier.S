@@ -1,3 +1,4 @@
+%def op_return_void_no_barrier():
     .extern MterpSuspendCheck
     lw      ra, THREAD_FLAGS_OFFSET(rSELF)
     move    a0, rSELF

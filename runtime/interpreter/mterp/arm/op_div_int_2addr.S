@@ -1,4 +1,4 @@
-%default {}
+%def op_div_int_2addr():
     /*
      * Specialized 32-bit binary operation
      *

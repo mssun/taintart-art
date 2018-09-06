@@ -1,4 +1,4 @@
-%default { "helper":"UndefinedInvokeHandler" }
+%def invoke(helper="UndefinedInvokeHandler"):
 /*
  * Generic invoke handler wrapper.
  */

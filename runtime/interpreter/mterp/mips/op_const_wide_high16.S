@@ -1,3 +1,4 @@
+%def op_const_wide_high16():
     /* const-wide/high16 vAA, +BBBB000000000000 */
     FETCH(a1, 1)                           #  a1 <- 0000BBBB (zero-extended)
     GET_OPA(a3)                            #  a3 <- AA

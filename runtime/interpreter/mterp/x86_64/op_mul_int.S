@@ -1,1 +1,2 @@
-%include "x86_64/binop.S" {"instr":"imull   (rFP,%rcx,4), %eax"}
+%def op_mul_int():
+%  binop(instr="imull   (rFP,%rcx,4), %eax")

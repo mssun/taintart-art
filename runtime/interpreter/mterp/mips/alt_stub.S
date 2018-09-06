@@ -1,3 +1,4 @@
+%def alt_stub():
 /*
  * Inter-instruction transfer stub.  Call out to MterpCheckBefore to handle
  * any interesting requests and then jump to the real instruction

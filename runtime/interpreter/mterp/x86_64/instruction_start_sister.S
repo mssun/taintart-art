@@ -1,3 +1,4 @@
+%def instruction_start_sister():
 
     OBJECT_TYPE(artMterpAsmSisterStart)
     ASM_HIDDEN SYMBOL(artMterpAsmSisterStart)

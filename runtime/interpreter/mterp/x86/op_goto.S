@@ -1,3 +1,4 @@
+%def op_goto():
 /*
  * Unconditional branch, 8-bit offset.
  *

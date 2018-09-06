@@ -1,3 +1,4 @@
+%def op_const_string_jumbo():
     /* const/string vAA, String@BBBBBBBB */
     EXPORT_PC
     movl    2(rPC), %eax                    # eax <- BBBB

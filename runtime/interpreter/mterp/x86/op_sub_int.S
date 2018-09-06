@@ -1,1 +1,2 @@
-%include "x86/binop.S" {"instr":"subl    (rFP,%ecx,4), %eax"}
+%def op_sub_int():
+%  binop(instr="subl    (rFP,%ecx,4), %eax")

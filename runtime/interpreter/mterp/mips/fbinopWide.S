@@ -1,3 +1,4 @@
+%def fbinopWide(instr=""):
     /*
      * Generic 64-bit floating-point binary operation.  Provide an "instr"
      * line that specifies an instruction that performs "fv0 = fa0 op fa1".

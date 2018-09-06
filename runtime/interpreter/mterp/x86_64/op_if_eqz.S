@@ -1,1 +1,2 @@
-%include "x86_64/zcmp.S" { "revcmp":"ne" }
+%def op_if_eqz():
+%  zcmp(revcmp="ne")

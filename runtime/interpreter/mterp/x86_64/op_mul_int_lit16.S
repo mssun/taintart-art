@@ -1,1 +1,2 @@
-%include "x86_64/binopLit16.S" {"instr":"imull   %ecx, %eax"}
+%def op_mul_int_lit16():
+%  binopLit16(instr="imull   %ecx, %eax")

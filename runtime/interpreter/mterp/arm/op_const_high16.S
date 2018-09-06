@@ -1,3 +1,4 @@
+%def op_const_high16():
     /* const/high16 vAA, #+BBBB0000 */
     FETCH r0, 1                         @ r0<- 0000BBBB (zero-extended)
     mov     r3, rINST, lsr #8           @ r3<- AA

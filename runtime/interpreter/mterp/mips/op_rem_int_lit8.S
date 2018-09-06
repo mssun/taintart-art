@@ -1,5 +1,6 @@
+%def op_rem_int_lit8():
 #ifdef MIPS32REVGE6
-%include "mips/binopLit8.S" {"instr":"mod a0, a0, a1", "chkzero":"1"}
+%  binopLit8(instr="mod a0, a0, a1", chkzero="1")
 #else
-%include "mips/binopLit8.S" {"preinstr":"div zero, a0, a1", "instr":"mfhi a0", "chkzero":"1"}
+%  binopLit8(preinstr="div zero, a0, a1", instr="mfhi a0", chkzero="1")
 #endif

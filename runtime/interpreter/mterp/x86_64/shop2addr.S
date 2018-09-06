@@ -1,4 +1,4 @@
-%default {"wide":"0"}
+%def shop2addr(wide="0", instr=""):
 /*
  * Generic 32-bit "shift/2addr" operation.
  */

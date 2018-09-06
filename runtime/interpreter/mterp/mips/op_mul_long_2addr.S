@@ -1,3 +1,4 @@
+%def op_mul_long_2addr():
     /*
      * See op_mul_long.S for more details
      */

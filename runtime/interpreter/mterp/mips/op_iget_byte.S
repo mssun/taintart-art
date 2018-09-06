@@ -1,1 +1,2 @@
-%include "mips/op_iget.S" { "helper":"MterpIGetI8" }
+%def op_iget_byte():
+%  op_iget(helper="MterpIGetI8")

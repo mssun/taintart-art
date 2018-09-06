@@ -1,1 +1,2 @@
-%include "mips64/op_sput.S" {"helper":"MterpSPutU16"}
+%def op_sput_char():
+%  op_sput(helper="MterpSPutU16")

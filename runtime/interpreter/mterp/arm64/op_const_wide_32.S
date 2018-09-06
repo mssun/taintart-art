@@ -1,3 +1,4 @@
+%def op_const_wide_32():
     /* const-wide/32 vAA, #+BBBBbbbb */
     FETCH   w0, 1                       // x0<- 000000000000bbbb (low)
     lsr     w3, wINST, #8               // w3<- AA

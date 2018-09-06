@@ -1,3 +1,4 @@
+%def op_shl_long():
 /*
  * Long integer shift.  This is different from the generic 32/64-bit
  * binary operations because vAA/vBB are 64-bit but vCC (the shift

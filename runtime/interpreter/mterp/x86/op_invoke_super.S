@@ -1,4 +1,5 @@
-%include "x86/invoke.S" { "helper":"MterpInvokeSuper" }
+%def op_invoke_super():
+%  invoke(helper="MterpInvokeSuper")
 /*
  * Handle a "super" method call.
  *

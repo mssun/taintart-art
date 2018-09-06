@@ -1,1 +1,2 @@
-%include "x86_64/binopWide.S" {"instr":"addq    (rFP,%rcx,4), %rax"}
+%def op_add_long():
+%  binopWide(instr="addq    (rFP,%rcx,4), %rax")

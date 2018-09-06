@@ -1,3 +1,4 @@
+%def op_const_4():
     /* const/4 vA, #+B */
     ext     a2, rINST, 8, 4             # a2 <- A
     seh     a0, rINST                   # sign extend B in rINST

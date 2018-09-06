@@ -1,1 +1,2 @@
-%include "x86/fpcmp.S" {"suff":"s","nanval":"neg"}
+%def op_cmpl_float():
+%  fpcmp(suff="s", nanval="neg")

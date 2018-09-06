@@ -1,3 +1,4 @@
+%def header():
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -662,7 +663,6 @@
 
 #define STORE64_F(rlo, rhi, rbase) STORE64_off_F(rlo, rhi, rbase, 0)
 #define LOAD64_F(rlo, rhi, rbase) LOAD64_off_F(rlo, rhi, rbase, 0)
-
 
 #define LOAD_base_offMirrorArray_length(rd, rbase) LOAD_RB_OFF(rd, rbase, MIRROR_ARRAY_LENGTH_OFFSET)
 

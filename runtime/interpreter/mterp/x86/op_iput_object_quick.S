@@ -1,3 +1,4 @@
+%def op_iput_object_quick():
     EXPORT_PC
     leal    OFF_FP_SHADOWFRAME(rFP), %eax
     movl    %eax, OUT_ARG0(%esp)

@@ -1,4 +1,4 @@
-%default { "is_object":"0" }
+%def op_move_result(is_object="0"):
     /* for: move-result, move-result-object */
     /* op vAA */
     srl     a2, rINST, 8                # a2 <- AA

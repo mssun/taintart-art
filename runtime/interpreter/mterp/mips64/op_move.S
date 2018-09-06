@@ -1,4 +1,4 @@
-%default { "is_object":"0" }
+%def op_move(is_object="0"):
     /* for move, move-object, long-to-int */
     /* op vA, vB */
     ext     a2, rINST, 8, 4             # a2 <- A

@@ -1,1 +1,2 @@
-%include "arm64/unopWide.S" {"instr":"sub x0, xzr, x0"}
+%def op_neg_long():
+%  unopWide(instr="sub x0, xzr, x0")

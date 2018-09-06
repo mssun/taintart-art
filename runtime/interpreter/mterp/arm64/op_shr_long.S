@@ -1,1 +1,2 @@
-%include "arm64/shiftWide.S" {"opcode":"asr"}
+%def op_shr_long():
+%  shiftWide(opcode="asr")

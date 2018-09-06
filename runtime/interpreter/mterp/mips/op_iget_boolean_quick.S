@@ -1,1 +1,2 @@
-%include "mips/op_iget_quick.S" { "load":"lbu" }
+%def op_iget_boolean_quick():
+%  op_iget_quick(load="lbu")

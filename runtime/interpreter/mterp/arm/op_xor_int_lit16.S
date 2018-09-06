@@ -1,1 +1,2 @@
-%include "arm/binopLit16.S" {"instr":"eor     r0, r0, r1"}
+%def op_xor_int_lit16():
+%  binopLit16(instr="eor     r0, r0, r1")

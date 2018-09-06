@@ -1,3 +1,4 @@
+%def fbinop(instr=""):
     /*
      * Generic 32-bit binary float operation.
      *

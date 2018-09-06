@@ -1,1 +1,2 @@
-%include "mips/op_iput.S" { "helper":"MterpIPutI8" }
+%def op_iput_byte():
+%  op_iput(helper="MterpIPutI8")

@@ -1,3 +1,4 @@
+%def op_mul_int():
     /*
      * 32-bit binary multiplication.
      */

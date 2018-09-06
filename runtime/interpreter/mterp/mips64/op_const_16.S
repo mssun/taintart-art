@@ -1,3 +1,4 @@
+%def op_const_16():
     /* const/16 vAA, #+BBBB */
     srl     a2, rINST, 8                # a2 <- AA
     lh      a0, 2(rPC)                  # a0 <- sign-extended BBBB

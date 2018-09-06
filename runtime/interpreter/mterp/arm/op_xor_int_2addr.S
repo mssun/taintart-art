@@ -1,1 +1,2 @@
-%include "arm/binop2addr.S" {"instr":"eor     r0, r0, r1"}
+%def op_xor_int_2addr():
+%  binop2addr(instr="eor     r0, r0, r1")

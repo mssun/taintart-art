@@ -1,3 +1,4 @@
+%def op_cmp_long():
     FETCH w0, 1                         // w0<- CCBB
     lsr     w4, wINST, #8               // w4<- AA
     and     w2, w0, #255                // w2<- BB

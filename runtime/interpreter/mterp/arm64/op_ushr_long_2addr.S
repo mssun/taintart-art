@@ -1,1 +1,2 @@
-%include "arm64/shiftWide2addr.S" {"opcode":"lsr"}
+%def op_ushr_long_2addr():
+%  shiftWide2addr(opcode="lsr")

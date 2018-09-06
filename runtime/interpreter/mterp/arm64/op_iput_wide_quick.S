@@ -1,3 +1,4 @@
+%def op_iput_wide_quick():
     /* iput-wide-quick vA, vB, offset//CCCC */
     lsr     w2, wINST, #12              // w2<- B
     FETCH w3, 1                         // w3<- field byte offset

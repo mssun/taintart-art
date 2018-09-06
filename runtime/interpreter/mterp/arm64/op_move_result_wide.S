@@ -1,3 +1,4 @@
+%def op_move_result_wide():
     /* for: move-result-wide */
     /* op vAA */
     lsr     w2, wINST, #8               // r2<- AA

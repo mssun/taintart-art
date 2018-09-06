@@ -1,1 +1,2 @@
-%include "mips64/fcmp.S" {"gt_bias":"0"}
+%def op_cmpl_float():
+%  fcmp(gt_bias="0")

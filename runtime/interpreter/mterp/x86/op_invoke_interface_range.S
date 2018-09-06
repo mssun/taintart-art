@@ -1,1 +1,2 @@
-%include "x86/invoke.S" { "helper":"MterpInvokeInterfaceRange" }
+%def op_invoke_interface_range():
+%  invoke(helper="MterpInvokeInterfaceRange")

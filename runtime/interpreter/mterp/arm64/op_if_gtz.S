@@ -1,1 +1,2 @@
-%include "arm64/zcmp.S" { "branch":"b.gt" }
+%def op_if_gtz():
+%  zcmp(branch="b.gt")

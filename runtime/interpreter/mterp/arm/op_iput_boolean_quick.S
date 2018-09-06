@@ -1,1 +1,2 @@
-%include "arm/op_iput_quick.S" { "store":"strb" }
+%def op_iput_boolean_quick():
+%  op_iput_quick(store="strb")

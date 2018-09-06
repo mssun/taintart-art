@@ -1,3 +1,4 @@
+%def op_cmp_long():
     /*
      * Compare two 64-bit values
      *    x = y     return  0

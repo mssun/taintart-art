@@ -1,3 +1,4 @@
+%def op_mul_int_2addr():
     /* mul vA, vB */
     movzx   rINSTbl, %ecx                   # ecx <- A+
     sarl    $$4, rINST                      # rINST <- B

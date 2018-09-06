@@ -1,3 +1,4 @@
+%def op_iget_wide_quick():
     /* iget-wide-quick vA, vB, offset@CCCC */
     GET_OPB(a2)                            #  a2 <- B
     GET_VREG(a3, a2)                       #  a3 <- object we're operating on

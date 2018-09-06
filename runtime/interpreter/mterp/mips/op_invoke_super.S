@@ -1,1 +1,2 @@
-%include "mips/invoke.S" { "helper":"MterpInvokeSuper" }
+%def op_invoke_super():
+%  invoke(helper="MterpInvokeSuper")

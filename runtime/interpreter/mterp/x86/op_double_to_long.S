@@ -1,1 +1,2 @@
-%include "x86/cvtfp_int.S" {"srcdouble":"1","tgtlong":"1"}
+%def op_double_to_long():
+%  cvtfp_int(srcdouble="1", tgtlong="1")

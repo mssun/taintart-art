@@ -1,1 +1,2 @@
-%include "x86/unop.S" {"instr":"movzwl  %ax,%eax"}
+%def op_int_to_char():
+%  unop(instr="movzwl  %ax,%eax")

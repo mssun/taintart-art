@@ -1,4 +1,4 @@
-%default {"preinstr":"", "result0":"r0", "result1":"r1", "chkzero":"0"}
+%def binopWide(preinstr="", result0="r0", result1="r1", chkzero="0", instr=""):
     /*
      * Generic 64-bit binary operation.  Provide an "instr" line that
      * specifies an instruction that performs "result = r0-r1 op r2-r3".

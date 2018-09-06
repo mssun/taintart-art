@@ -1,4 +1,4 @@
-%default { "is_object":"0" }
+%def op_move_16(is_object="0"):
     /* for: move/16, move-object/16 */
     /* op vAAAA, vBBBB */
     FETCH r1, 2                         @ r1<- BBBB

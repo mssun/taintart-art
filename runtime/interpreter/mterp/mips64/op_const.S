@@ -1,3 +1,4 @@
+%def op_const():
     /* const vAA, #+BBBBbbbb */
     srl     a2, rINST, 8                # a2 <- AA
     lh      a0, 2(rPC)                  # a0 <- bbbb (low)

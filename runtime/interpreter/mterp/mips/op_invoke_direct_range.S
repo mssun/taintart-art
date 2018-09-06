@@ -1,1 +1,2 @@
-%include "mips/invoke.S" { "helper":"MterpInvokeDirectRange" }
+%def op_invoke_direct_range():
+%  invoke(helper="MterpInvokeDirectRange")

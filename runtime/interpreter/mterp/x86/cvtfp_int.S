@@ -1,4 +1,4 @@
-%default {"srcdouble":"1","tgtlong":"1"}
+%def cvtfp_int(srcdouble="1", tgtlong="1"):
 /* On fp to int conversions, Java requires that
  * if the result > maxint, it should be clamped to maxint.  If it is less
  * than minint, it should be clamped to minint.  If it is a nan, the result

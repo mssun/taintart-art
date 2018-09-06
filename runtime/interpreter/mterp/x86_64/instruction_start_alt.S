@@ -1,3 +1,4 @@
+%def instruction_start_alt():
 
     OBJECT_TYPE(artMterpAsmAltInstructionStart)
     ASM_HIDDEN SYMBOL(artMterpAsmAltInstructionStart)

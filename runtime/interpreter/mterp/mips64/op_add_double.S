@@ -1,1 +1,2 @@
-%include "mips64/fbinopWide.S" {"instr":"add.d f0, f0, f1"}
+%def op_add_double():
+%  fbinopWide(instr="add.d f0, f0, f1")

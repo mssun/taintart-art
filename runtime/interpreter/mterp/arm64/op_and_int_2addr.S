@@ -1,1 +1,2 @@
-%include "arm64/binop2addr.S" {"instr":"and     w0, w0, w1"}
+%def op_and_int_2addr():
+%  binop2addr(instr="and     w0, w0, w1")

@@ -1,3 +1,4 @@
+%def binopWide(instr1="", instr2=""):
 /*
  * Generic 64-bit binary operation.
  */

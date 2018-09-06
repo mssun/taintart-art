@@ -1,1 +1,2 @@
-%include "mips/fbinopWide.S" {"instr":"JAL(fmod)"}
+%def op_rem_double():
+%  fbinopWide(instr="JAL(fmod)")

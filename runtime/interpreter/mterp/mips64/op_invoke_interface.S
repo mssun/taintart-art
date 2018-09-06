@@ -1,4 +1,5 @@
-%include "mips64/invoke.S" { "helper":"MterpInvokeInterface" }
+%def op_invoke_interface():
+%  invoke(helper="MterpInvokeInterface")
     /*
      * Handle an interface method call.
      *

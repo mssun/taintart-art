@@ -1,1 +1,2 @@
-%include "mips64/fbinop2addr.S" {"instr":"mul.s f0, f0, f1"}
+%def op_mul_float_2addr():
+%  fbinop2addr(instr="mul.s f0, f0, f1")

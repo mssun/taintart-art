@@ -1,3 +1,4 @@
+%def op_iput_object_quick():
     EXPORT_PC
     add     x0, xFP, #OFF_FP_SHADOWFRAME
     mov     x1, xPC

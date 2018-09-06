@@ -1,1 +1,2 @@
-%include "arm/op_aget.S" { "load":"ldrh", "shift":"1", "data_offset":"MIRROR_CHAR_ARRAY_DATA_OFFSET" }
+%def op_aget_char():
+%  op_aget(load="ldrh", shift="1", data_offset="MIRROR_CHAR_ARRAY_DATA_OFFSET")

@@ -1,1 +1,2 @@
-%include "mips/invoke.S" { "helper":"MterpInvokeVirtual" }
+%def op_invoke_virtual():
+%  invoke(helper="MterpInvokeVirtual")

@@ -1,3 +1,4 @@
+%def op_rem_double():
     /* rem vAA, vBB, vCC */
     FETCH w0, 1                         // w0<- CCBB
     lsr     w2, w0, #8                  // w2<- CC

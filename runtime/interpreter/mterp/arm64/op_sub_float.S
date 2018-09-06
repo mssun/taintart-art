@@ -1,1 +1,2 @@
-%include "arm64/fbinop.S" {"instr":"fsub   s0, s0, s1"}
+%def op_sub_float():
+%  fbinop(instr="fsub   s0, s0, s1")

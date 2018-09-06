@@ -1,3 +1,4 @@
-%include "mips64/fcvtHeader.S" { "suffix":"_FLOAT", "valreg":"f0" }
+%def op_float_to_long():
+%  fcvtHeader(suffix="_FLOAT", valreg="f0")
     trunc.l.s f0, f0
-%include "mips64/fcvtFooter.S" { "suffix":"_DOUBLE", "valreg":"f0" }
+%  fcvtFooter(suffix="_DOUBLE", valreg="f0")

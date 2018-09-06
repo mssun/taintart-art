@@ -1,1 +1,2 @@
-%include "mips64/zcmp.S" { "condition":"lt" }
+%def op_if_ltz():
+%  zcmp(condition="lt")

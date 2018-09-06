@@ -1,1 +1,2 @@
-%include "arm64/zcmp.S" { "compare":"0", "branch":"tbz     w2, #31," }
+%def op_if_gez():
+%  zcmp(compare="0", branch="tbz     w2, #31,")

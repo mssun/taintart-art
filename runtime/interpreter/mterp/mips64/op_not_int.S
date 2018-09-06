@@ -1,1 +1,2 @@
-%include "mips64/unop.S" {"instr":"nor     a0, zero, a0"}
+%def op_not_int():
+%  unop(instr="nor     a0, zero, a0")

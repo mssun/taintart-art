@@ -1,4 +1,4 @@
-%default {}
+%def op_long_to_double():
     /*
      * Specialised 64-bit floating point operation.
      *

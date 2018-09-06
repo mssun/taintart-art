@@ -1,3 +1,4 @@
+%def op_const_wide():
     /* const-wide vAA, +HHHHhhhhBBBBbbbb */
     FETCH(a0, 1)                           #  a0 <- bbbb (low)
     FETCH(a1, 2)                           #  a1 <- BBBB (low middle)

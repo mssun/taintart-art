@@ -1,4 +1,4 @@
-%default {"instr":"GET_VREG"}
+%def op_return(instr="GET_VREG"):
     /*
      * Return a 32-bit value.
      *

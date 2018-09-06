@@ -1,1 +1,2 @@
-%include "x86_64/op_iget_quick.S" { "load":"movswl", "wide":"1" }
+%def op_iget_wide_quick():
+%  op_iget_quick(load="movswl", wide="1")

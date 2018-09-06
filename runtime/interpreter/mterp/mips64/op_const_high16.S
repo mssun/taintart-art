@@ -1,3 +1,4 @@
+%def op_const_high16():
     /* const/high16 vAA, #+BBBB0000 */
     srl     a2, rINST, 8                # a2 <- AA
     lh      a0, 2(rPC)                  # a0 <- BBBB

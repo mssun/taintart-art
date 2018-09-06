@@ -1,1 +1,2 @@
-%include "arm/op_iput_quick.S" { "store":"strh" }
+%def op_iput_char_quick():
+%  op_iput_quick(store="strh")

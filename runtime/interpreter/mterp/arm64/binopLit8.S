@@ -1,4 +1,4 @@
-%default {"extract": "asr     w1, w3, #8", "preinstr":"", "result":"w0", "chkzero":"0"}
+%def binopLit8(extract="asr     w1, w3, #8", preinstr="", result="w0", chkzero="0", instr=""):
     /*
      * Generic 32-bit "lit8" binary operation.  Provide an "instr" line
      * that specifies an instruction that performs "result = w0 op w1".

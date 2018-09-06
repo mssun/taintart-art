@@ -1,4 +1,4 @@
-%default {}
+%def op_rem_int_lit8():
     /*
      * Specialized 32-bit binary operation
      *

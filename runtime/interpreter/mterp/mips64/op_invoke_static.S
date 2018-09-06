@@ -1,1 +1,2 @@
-%include "mips64/invoke.S" { "helper":"MterpInvokeStatic" }
+%def op_invoke_static():
+%  invoke(helper="MterpInvokeStatic")

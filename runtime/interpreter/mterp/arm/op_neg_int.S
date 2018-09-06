@@ -1,1 +1,2 @@
-%include "arm/unop.S" {"instr":"rsb     r0, r0, #0"}
+%def op_neg_int():
+%  unop(instr="rsb     r0, r0, #0")

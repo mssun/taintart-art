@@ -1,1 +1,2 @@
-%include "mips64/binop.S" {"instr":"subu a0, a0, a1"}
+%def op_sub_int():
+%  binop(instr="subu a0, a0, a1")

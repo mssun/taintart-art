@@ -1,1 +1,2 @@
-%include "x86/op_iget_quick.S" { "load":"movzwl" }
+%def op_iget_char_quick():
+%  op_iget_quick(load="movzwl")

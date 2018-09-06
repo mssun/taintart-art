@@ -1,1 +1,2 @@
-%include "arm64/unused.S"
+%def op_unused_f9():
+%  unused()

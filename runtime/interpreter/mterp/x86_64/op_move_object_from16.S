@@ -1,1 +1,2 @@
-%include "x86_64/op_move_from16.S" {"is_object":"1"}
+%def op_move_object_from16():
+%  op_move_from16(is_object="1")

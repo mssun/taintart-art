@@ -1,3 +1,4 @@
+%def unused():
 /*
  * Bail to reference interpreter to throw.
  */

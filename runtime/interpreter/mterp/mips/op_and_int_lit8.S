@@ -1,1 +1,2 @@
-%include "mips/binopLit8.S" {"instr":"and a0, a0, a1"}
+%def op_and_int_lit8():
+%  binopLit8(instr="and a0, a0, a1")

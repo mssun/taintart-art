@@ -1,1 +1,2 @@
-%include "x86/sseBinop.S" {"instr":"divs","suff":"d"}
+%def op_div_double():
+%  sseBinop(instr="divs", suff="d")

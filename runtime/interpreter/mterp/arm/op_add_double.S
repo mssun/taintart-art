@@ -1,1 +1,2 @@
-%include "arm/fbinopWide.S" {"instr":"faddd   d2, d0, d1"}
+%def op_add_double():
+%  fbinopWide(instr="faddd   d2, d0, d1")

@@ -1,3 +1,4 @@
+%def op_cmpg_double():
     /*
      * Compare two floating-point values.  Puts 0, 1, or -1 into the
      * destination register based on the results of the comparison.

@@ -1,1 +1,2 @@
-%include "x86_64/sseBinop2Addr.S" {"instr":"subs","suff":"d"}
+%def op_sub_double_2addr():
+%  sseBinop2Addr(instr="subs", suff="d")

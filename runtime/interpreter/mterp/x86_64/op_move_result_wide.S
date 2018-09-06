@@ -1,3 +1,4 @@
+%def op_move_result_wide():
     /* move-result-wide vAA */
     movq    OFF_FP_RESULT_REGISTER(rFP), %rax    # get pointer to result JType.
     movq    (%rax), %rdx                         # Get wide

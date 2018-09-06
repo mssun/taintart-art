@@ -1,3 +1,4 @@
+%def op_float_to_long():
     /*
      * float-to-long
      *
@@ -38,7 +39,7 @@
     GET_INST_OPCODE(t1)                    #  extract opcode from rINST
     b         .L${opcode}_set_vreg
 #endif
-%break
+%def op_float_to_long_sister_code():
 
 #ifndef MIPS32REVGE6
 .L${opcode}_get_opcode:

@@ -1,3 +1,4 @@
+%def op_mul_long_2addr():
     /*
      * Signed 64-bit integer multiply, "/2addr" version.
      *

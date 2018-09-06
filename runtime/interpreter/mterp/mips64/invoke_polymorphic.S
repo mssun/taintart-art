@@ -1,4 +1,4 @@
-%default { "helper":"UndefinedInvokeHandler" }
+%def invoke_polymorphic(helper="UndefinedInvokeHandler"):
     /*
      * invoke-polymorphic handler wrapper.
      */

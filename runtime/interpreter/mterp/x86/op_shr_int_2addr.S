@@ -1,1 +1,2 @@
-%include "x86/shop2addr.S" {"instr":"sarl    %cl, %eax"}
+%def op_shr_int_2addr():
+%  shop2addr(instr="sarl    %cl, %eax")

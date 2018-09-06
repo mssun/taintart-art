@@ -1,3 +1,4 @@
+%def op_iput_object_quick():
     /* For: iput-object-quick */
     /* op vA, vB, offset@CCCC */
     EXPORT_PC()

@@ -1,1 +1,2 @@
-%include "mips64/unused.S"
+%def op_unused_f7():
+%  unused()

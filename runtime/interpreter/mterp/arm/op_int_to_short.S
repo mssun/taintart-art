@@ -1,1 +1,2 @@
-%include "arm/unop.S" {"instr":"sxth    r0, r0"}
+%def op_int_to_short():
+%  unop(instr="sxth    r0, r0")

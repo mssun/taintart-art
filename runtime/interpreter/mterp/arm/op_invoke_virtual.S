@@ -1,4 +1,5 @@
-%include "arm/invoke.S" { "helper":"MterpInvokeVirtual" }
+%def op_invoke_virtual():
+%  invoke(helper="MterpInvokeVirtual")
     /*
      * Handle a virtual method call.
      *

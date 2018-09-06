@@ -1,1 +1,2 @@
-%include "mips64/op_iget_quick.S" { "load":"lhu" }
+%def op_iget_char_quick():
+%  op_iget_quick(load="lhu")

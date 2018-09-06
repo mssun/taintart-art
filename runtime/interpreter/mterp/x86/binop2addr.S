@@ -1,4 +1,4 @@
-%default {"result":"%eax"}
+%def binop2addr(result="%eax", instr=""):
 /*
  * Generic 32-bit "/2addr" binary operation.  Provide an "instr" line
  * that specifies an instruction that performs "result = r0 op r1".

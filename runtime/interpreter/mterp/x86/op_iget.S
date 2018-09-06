@@ -1,2 +1,2 @@
-%default { "is_object":"0", "helper":"MterpIGetU32"}
-%include "x86/field.S" { }
+%def op_iget(is_object="0", helper="MterpIGetU32"):
+%  field(helper=helper)

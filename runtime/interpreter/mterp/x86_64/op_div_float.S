@@ -1,1 +1,2 @@
-%include "x86_64/sseBinop.S" {"instr":"divs","suff":"s"}
+%def op_div_float():
+%  sseBinop(instr="divs", suff="s")

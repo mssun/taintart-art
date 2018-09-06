@@ -1,1 +1,2 @@
-%include "mips64/fbinop.S" {"instr":"add.s f0, f0, f1"}
+%def op_add_float():
+%  fbinop(instr="add.s f0, f0, f1")

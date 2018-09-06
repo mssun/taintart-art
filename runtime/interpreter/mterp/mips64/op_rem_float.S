@@ -1,3 +1,4 @@
+%def op_rem_float():
     /* rem-float vAA, vBB, vCC */
     .extern fmodf
     lbu     a2, 2(rPC)                  # a2 <- BB

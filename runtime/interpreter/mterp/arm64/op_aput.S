@@ -1,4 +1,4 @@
-%default { "store":"str", "shift":"2", "data_offset":"MIRROR_INT_ARRAY_DATA_OFFSET" }
+%def op_aput(store="str", shift="2", data_offset="MIRROR_INT_ARRAY_DATA_OFFSET"):
     /*
      * Array put, 32 bits or less.  vBB[vCC] <- vAA.
      *

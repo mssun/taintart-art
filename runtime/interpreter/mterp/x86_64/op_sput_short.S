@@ -1,1 +1,2 @@
-%include "x86_64/op_sput.S" {"helper":"MterpSPutI16"}
+%def op_sput_short():
+%  op_sput(helper="MterpSPutI16")

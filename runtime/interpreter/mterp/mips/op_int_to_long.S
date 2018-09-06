@@ -1,1 +1,2 @@
-%include "mips/unopWider.S" {"instr":"sra a1, a0, 31"}
+%def op_int_to_long():
+%  unopWider(instr="sra a1, a0, 31")

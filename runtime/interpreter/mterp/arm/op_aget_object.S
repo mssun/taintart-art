@@ -1,3 +1,4 @@
+%def op_aget_object():
     /*
      * Array object get.  vAA <- vBB[vCC].
      *

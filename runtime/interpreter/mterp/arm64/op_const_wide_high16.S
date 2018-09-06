@@ -1,3 +1,4 @@
+%def op_const_wide_high16():
     /* const-wide/high16 vAA, #+BBBB000000000000 */
     FETCH w0, 1                         // w0<- 0000BBBB (zero-extended)
     lsr     w1, wINST, #8               // w1<- AA

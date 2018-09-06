@@ -1,1 +1,2 @@
-%include "arm64/fbinop.S" {"instr":"fadd   s0, s0, s1"}
+%def op_add_float():
+%  fbinop(instr="fadd   s0, s0, s1")

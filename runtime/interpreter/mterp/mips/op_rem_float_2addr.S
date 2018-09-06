@@ -1,1 +1,2 @@
-%include "mips/fbinop2addr.S" {"instr":"JAL(fmodf)"}
+%def op_rem_float_2addr():
+%  fbinop2addr(instr="JAL(fmodf)")

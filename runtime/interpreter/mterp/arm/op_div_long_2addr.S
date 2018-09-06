@@ -1,1 +1,2 @@
-%include "arm/binopWide2addr.S" {"instr":"bl      __aeabi_ldivmod", "chkzero":"1"}
+%def op_div_long_2addr():
+%  binopWide2addr(instr="bl      __aeabi_ldivmod", chkzero="1")

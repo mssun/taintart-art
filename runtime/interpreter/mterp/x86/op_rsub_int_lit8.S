@@ -1,1 +1,2 @@
-%include "x86/binopLit8.S" {"instr":"subl    %eax, %ecx" , "result":"%ecx"}
+%def op_rsub_int_lit8():
+%  binopLit8(instr="subl    %eax, %ecx", result="%ecx")

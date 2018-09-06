@@ -1,3 +1,4 @@
+%def op_array_length():
     /*
      * Return the length of an array.
      */

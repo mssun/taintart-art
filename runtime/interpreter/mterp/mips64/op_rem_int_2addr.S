@@ -1,1 +1,2 @@
-%include "mips64/binop2addr.S" {"instr":"mod a0, a0, a1", "chkzero":"1"}
+%def op_rem_int_2addr():
+%  binop2addr(instr="mod a0, a0, a1", chkzero="1")

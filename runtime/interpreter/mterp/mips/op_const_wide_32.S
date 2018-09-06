@@ -1,3 +1,4 @@
+%def op_const_wide_32():
     /* const-wide/32 vAA, +BBBBbbbb */
     FETCH(a0, 1)                           #  a0 <- 0000bbbb (low)
     GET_OPA(a3)                            #  a3 <- AA

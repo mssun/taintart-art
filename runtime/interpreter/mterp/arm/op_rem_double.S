@@ -1,2 +1,3 @@
+%def op_rem_double():
 /* EABI doesn't define a double remainder function, but libm does */
-%include "arm/binopWide.S" {"instr":"bl      fmod"}
+%  binopWide(instr="bl      fmod")

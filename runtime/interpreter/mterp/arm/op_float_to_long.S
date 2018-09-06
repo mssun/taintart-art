@@ -1,6 +1,7 @@
-%include "arm/unopWider.S" {"instr":"bl      f2l_doconv"}
+%def op_float_to_long():
+%  unopWider(instr="bl      f2l_doconv")
 
-%break
+%def op_float_to_long_sister_code():
 /*
  * Convert the float in r0 to a long in r0/r1.
  *

@@ -1,4 +1,4 @@
-%default {}
+%def fcmp(gt_bias=""):
     /*
      * Compare two floating-point values.  Puts 0, 1, or -1 into the
      * destination register based on the results of the comparison.

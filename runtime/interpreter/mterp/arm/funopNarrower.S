@@ -1,3 +1,4 @@
+%def funopNarrower(instr=""):
     /*
      * Generic 64bit-to-32bit unary floating point operation.  Provide an
      * "instr" line that specifies an instruction that performs "s0 = op d0".

@@ -1,3 +1,4 @@
+%def op_move_wide_16():
     /* move-wide/16 vAAAA, vBBBB */
     /* NOTE: regs can overlap, e.g. "move v6,v7" or "move v7,v6" */
     movzwl  4(rPC), %ecx                    # ecx<- BBBB

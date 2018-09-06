@@ -1,1 +1,2 @@
-%include "arm/binopWide.S" {"preinstr":"adds    r0, r0, r2", "instr":"adc     r1, r1, r3"}
+%def op_add_long():
+%  binopWide(preinstr="adds    r0, r0, r2", instr="adc     r1, r1, r3")

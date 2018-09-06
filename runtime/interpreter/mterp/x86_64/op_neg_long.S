@@ -1,1 +1,2 @@
-%include "x86_64/unop.S" {"instr":"    negq    %rax", "wide":"1"}
+%def op_neg_long():
+%  unop(instr="    negq    %rax", wide="1")

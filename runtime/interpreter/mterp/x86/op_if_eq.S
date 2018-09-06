@@ -1,1 +1,2 @@
-%include "x86/bincmp.S" { "revcmp":"ne" }
+%def op_if_eq():
+%  bincmp(revcmp="ne")

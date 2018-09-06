@@ -1,4 +1,4 @@
-%default {"preinstr":"", "result":"w0", "chkzero":"0"}
+%def binop2addr(preinstr="", result="w0", chkzero="0", instr=""):
     /*
      * Generic 32-bit "/2addr" binary operation.  Provide an "instr" line
      * that specifies an instruction that performs "result = w0 op w1".

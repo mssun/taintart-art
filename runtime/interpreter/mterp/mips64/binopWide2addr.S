@@ -1,4 +1,4 @@
-%default {"preinstr":"", "result":"a0", "chkzero":"0"}
+%def binopWide2addr(preinstr="", result="a0", chkzero="0", instr=""):
     /*
      * Generic 64-bit "/2addr" binary operation.  Provide an "instr" line
      * that specifies an instruction that performs "result = a0 op a1".

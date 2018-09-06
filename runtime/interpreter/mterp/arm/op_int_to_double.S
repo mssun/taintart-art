@@ -1,1 +1,2 @@
-%include "arm/funopWider.S" {"instr":"fsitod  d0, s0"}
+%def op_int_to_double():
+%  funopWider(instr="fsitod  d0, s0")

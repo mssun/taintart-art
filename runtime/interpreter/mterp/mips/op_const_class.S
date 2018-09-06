@@ -1,1 +1,2 @@
-%include "mips/const.S" { "helper":"MterpConstClass" }
+%def op_const_class():
+%  const(helper="MterpConstClass")

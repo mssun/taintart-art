@@ -1,3 +1,4 @@
+%def op_goto_16():
 /*
  * Unconditional branch, 16-bit offset.
  *

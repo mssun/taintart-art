@@ -1,1 +1,2 @@
-%include "arm64/fcmp.S" {"wide":"", "r1":"s1", "r2":"s2", "cond":"cc"}
+%def op_cmpg_float():
+%  fcmp(wide="", r1="s1", r2="s2", cond="cc")

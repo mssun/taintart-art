@@ -1,3 +1,4 @@
+%def op_cmp_long():
     /*
      * Compare two 64-bit values.  Puts 0, 1, or -1 into the destination
      * register based on the results of the comparison.

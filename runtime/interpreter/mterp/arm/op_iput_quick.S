@@ -1,4 +1,4 @@
-%default { "store":"str" }
+%def op_iput_quick(store="str"):
     /* For: iput-quick, iput-object-quick */
     /* op vA, vB, offset@CCCC */
     mov     r2, rINST, lsr #12          @ r2<- B

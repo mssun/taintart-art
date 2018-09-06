@@ -1,3 +1,4 @@
+%def op_return():
 /*
  * Return a 32-bit value.
  *

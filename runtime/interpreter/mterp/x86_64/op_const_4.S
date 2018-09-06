@@ -1,3 +1,4 @@
+%def op_const_4():
     /* const/4 vA, #+B */
     movsbl  rINSTbl, %eax                   # eax <-ssssssBx
     movl    $$0xf, rINST

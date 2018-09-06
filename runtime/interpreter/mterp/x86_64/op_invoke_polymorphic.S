@@ -1,1 +1,2 @@
-%include "x86_64/invoke_polymorphic.S" { "helper":"MterpInvokePolymorphic" }
+%def op_invoke_polymorphic():
+%  invoke_polymorphic(helper="MterpInvokePolymorphic")

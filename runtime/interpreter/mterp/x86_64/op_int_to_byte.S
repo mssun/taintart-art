@@ -1,1 +1,2 @@
-%include "x86_64/unop.S" {"instr":"movsbl  %al, %eax"}
+%def op_int_to_byte():
+%  unop(instr="movsbl  %al, %eax")

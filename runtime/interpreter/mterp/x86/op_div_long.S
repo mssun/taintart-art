@@ -1,4 +1,4 @@
-%default {"routine":"art_quick_ldiv"}
+%def op_div_long(routine="art_quick_ldiv"):
 /* art_quick_* methods has quick abi,
  *   so use eax, ecx, edx, ebx for args
  */

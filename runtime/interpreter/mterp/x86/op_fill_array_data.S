@@ -1,3 +1,4 @@
+%def op_fill_array_data():
     /* fill-array-data vAA, +BBBBBBBB */
     EXPORT_PC
     movl    2(rPC), %ecx                    # ecx <- BBBBbbbb

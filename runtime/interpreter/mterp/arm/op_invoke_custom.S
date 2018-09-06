@@ -1,4 +1,5 @@
-%include "arm/invoke.S" { "helper":"MterpInvokeCustom" }
+%def op_invoke_custom():
+%  invoke(helper="MterpInvokeCustom")
     /*
      * Handle an invoke-custom invocation.
      *

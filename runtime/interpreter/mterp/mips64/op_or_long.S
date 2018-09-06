@@ -1,1 +1,2 @@
-%include "mips64/binopWide.S" {"instr":"or a0, a0, a1"}
+%def op_or_long():
+%  binopWide(instr="or a0, a0, a1")

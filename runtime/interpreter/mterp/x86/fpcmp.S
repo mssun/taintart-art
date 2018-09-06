@@ -1,4 +1,4 @@
-%default {"suff":"d","nanval":"pos"}
+%def fpcmp(suff="d", nanval="pos"):
 /*
  * Compare two floating-point values.  Puts 0, 1, or -1 into the
  * destination register based on the results of the comparison.

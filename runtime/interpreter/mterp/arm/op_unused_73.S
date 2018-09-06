@@ -1,1 +1,2 @@
-%include "arm/unused.S"
+%def op_unused_73():
+%  unused()

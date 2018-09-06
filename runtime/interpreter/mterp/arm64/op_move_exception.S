@@ -1,3 +1,4 @@
+%def op_move_exception():
     /* move-exception vAA */
     lsr     w2, wINST, #8               // w2<- AA
     ldr     x3, [xSELF, #THREAD_EXCEPTION_OFFSET]

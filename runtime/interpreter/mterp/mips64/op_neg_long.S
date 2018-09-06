@@ -1,1 +1,2 @@
-%include "mips64/unopWide.S" {"instr":"dsubu   a0, zero, a0"}
+%def op_neg_long():
+%  unopWide(instr="dsubu   a0, zero, a0")

@@ -1,3 +1,4 @@
+%def op_const_wide():
     /* const-wide vAA, #+HHHHhhhhBBBBbbbb */
     movq    2(rPC), %rax                    # rax <- HHHHhhhhBBBBbbbb
     SET_WIDE_VREG %rax, rINSTq

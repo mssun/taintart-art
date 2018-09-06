@@ -1,3 +1,4 @@
+%def op_return_void_no_barrier():
     lw     ra, THREAD_FLAGS_OFFSET(rSELF)
     move   a0, rSELF
     and    ra, THREAD_SUSPEND_OR_CHECKPOINT_REQUEST

@@ -1,1 +1,2 @@
-%include "arm/binop.S" {"instr":"eor     r0, r0, r1"}
+%def op_xor_int():
+%  binop(instr="eor     r0, r0, r1")

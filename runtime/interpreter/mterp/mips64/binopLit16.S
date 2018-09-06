@@ -1,4 +1,4 @@
-%default {"preinstr":"", "result":"a0", "chkzero":"0"}
+%def binopLit16(preinstr="", result="a0", chkzero="0", instr=""):
     /*
      * Generic 32-bit "lit16" binary operation.  Provide an "instr" line
      * that specifies an instruction that performs "result = a0 op a1".

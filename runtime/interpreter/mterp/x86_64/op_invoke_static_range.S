@@ -1,1 +1,2 @@
-%include "x86_64/invoke.S" { "helper":"MterpInvokeStaticRange" }
+%def op_invoke_static_range():
+%  invoke(helper="MterpInvokeStaticRange")

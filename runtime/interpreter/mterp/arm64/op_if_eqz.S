@@ -1,1 +1,2 @@
-%include "arm64/zcmp.S" { "compare":"0", "branch":"cbz     w2," }
+%def op_if_eqz():
+%  zcmp(compare="0", branch="cbz     w2,")

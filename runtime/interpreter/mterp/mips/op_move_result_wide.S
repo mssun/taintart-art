@@ -1,3 +1,4 @@
+%def op_move_result_wide():
     /* move-result-wide vAA */
     GET_OPA(a2)                            #  a2 <- AA
     lw    a3, OFF_FP_RESULT_REGISTER(rFP)  #  get pointer to result JType

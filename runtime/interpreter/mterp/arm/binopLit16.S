@@ -1,4 +1,4 @@
-%default {"result":"r0", "chkzero":"0"}
+%def binopLit16(result="r0", chkzero="0", instr=""):
     /*
      * Generic 32-bit "lit16" binary operation.  Provide an "instr" line
      * that specifies an instruction that performs "result = r0 op r1".

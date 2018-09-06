@@ -1,1 +1,2 @@
-%include "arm64/op_iget.S" { "helper":"MterpIGetU64" }
+%def op_iget_wide():
+%  op_iget(helper="MterpIGetU64")

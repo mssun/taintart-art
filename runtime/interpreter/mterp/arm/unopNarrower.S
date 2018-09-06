@@ -1,4 +1,4 @@
-%default {"preinstr":""}
+%def unopNarrower(preinstr="", instr=""):
     /*
      * Generic 64bit-to-32bit unary operation.  Provide an "instr" line
      * that specifies an instruction that performs "result = op r0/r1", where

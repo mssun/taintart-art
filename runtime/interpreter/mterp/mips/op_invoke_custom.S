@@ -1,1 +1,2 @@
-%include "mips/invoke.S" { "helper":"MterpInvokeCustom" }
+%def op_invoke_custom():
+%  invoke(helper="MterpInvokeCustom")

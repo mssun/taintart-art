@@ -1,1 +1,2 @@
-%include "mips64/op_iget_quick.S" { "load":"lb" }
+%def op_iget_byte_quick():
+%  op_iget_quick(load="lb")

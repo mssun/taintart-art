@@ -1,3 +1,4 @@
+%def fbinop(instr=""):
     /*
      * Generic 32-bit floating-point operation.  Provide an "instr" line that
      * specifies an instruction that performs "s2 = s0 op s1".  Because we

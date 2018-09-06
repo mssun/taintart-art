@@ -1,1 +1,2 @@
-%include "x86_64/op_iput.S" { "helper":"MterpIPutU8" }
+%def op_iput_boolean():
+%  op_iput(helper="MterpIPutU8")

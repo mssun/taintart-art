@@ -1,4 +1,4 @@
-%default { "is_object":"0" }
+%def op_move_from16(is_object="0"):
     /* for: move/from16, move-object/from16 */
     /* op vAA, vBBBB */
     movzwq  2(rPC), %rax                    # eax <- BBBB

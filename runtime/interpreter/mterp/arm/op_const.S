@@ -1,3 +1,4 @@
+%def op_const():
     /* const vAA, #+BBBBbbbb */
     mov     r3, rINST, lsr #8           @ r3<- AA
     FETCH r0, 1                         @ r0<- bbbb (low)

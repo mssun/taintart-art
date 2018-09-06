@@ -1,4 +1,4 @@
-%default {"srcreg":"s0", "tgtreg":"d0"}
+%def funopWide(srcreg="s0", tgtreg="d0", instr=""):
     /*
      * Generic 64bit-to-64bit floating point unary operation.  Provide an
      * "instr" line that specifies an instruction that performs "$tgtreg = op $srcreg".

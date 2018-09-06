@@ -1,1 +1,2 @@
-%include "arm/unop.S" {"instr":"uxth    r0, r0"}
+%def op_int_to_char():
+%  unop(instr="uxth    r0, r0")

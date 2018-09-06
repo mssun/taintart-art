@@ -1,3 +1,4 @@
+%def op_const_16():
     /* const/16 vAA, #+BBBB */
     movswl  2(rPC), %ecx                    # ecx <- ssssBBBB
     SET_VREG %ecx, rINSTq                   # vAA <- ssssBBBB

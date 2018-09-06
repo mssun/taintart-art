@@ -1,1 +1,2 @@
-%include "mips64/fcmpWide.S" {"gt_bias":"0"}
+%def op_cmpl_double():
+%  fcmpWide(gt_bias="0")

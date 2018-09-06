@@ -1,3 +1,4 @@
+%def op_aput_object():
     /*
      * Store an object into an array.  vBB[vCC] <- vAA.
      */

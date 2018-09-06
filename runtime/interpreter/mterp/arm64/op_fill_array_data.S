@@ -1,3 +1,4 @@
+%def op_fill_array_data():
     /* fill-array-data vAA, +BBBBBBBB */
     EXPORT_PC
     FETCH   w0, 1                       // x0<- 000000000000bbbb (lo)

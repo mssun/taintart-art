@@ -1,3 +1,4 @@
+%def op_aput_wide():
     /*
      * Array put, 64 bits.  vBB[vCC] <- vAA.
      */

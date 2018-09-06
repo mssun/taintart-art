@@ -1,3 +1,4 @@
+%def op_check_cast():
 /*
  * Check to see if a cast from one class to another is allowed.
  */

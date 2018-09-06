@@ -1,3 +1,4 @@
+%def op_iget_wide_quick():
     /* iget-wide-quick vA, vB, offset//CCCC */
     srl     a2, rINST, 12               # a2 <- B
     lhu     a4, 2(rPC)                  # a4 <- field byte offset

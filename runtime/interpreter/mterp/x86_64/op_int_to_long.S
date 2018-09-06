@@ -1,3 +1,4 @@
+%def op_int_to_long():
     /* int to long vA, vB */
     movzbq  rINSTbl, %rax                   # rax <- +A
     sarl    $$4, %eax                       # eax <- B

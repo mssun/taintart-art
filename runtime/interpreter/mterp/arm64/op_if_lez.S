@@ -1,1 +1,2 @@
-%include "arm64/zcmp.S" { "branch":"b.le" }
+%def op_if_lez():
+%  zcmp(branch="b.le")

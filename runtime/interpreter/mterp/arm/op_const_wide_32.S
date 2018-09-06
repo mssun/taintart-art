@@ -1,3 +1,4 @@
+%def op_const_wide_32():
     /* const-wide/32 vAA, #+BBBBbbbb */
     FETCH r0, 1                         @ r0<- 0000bbbb (low)
     mov     r3, rINST, lsr #8           @ r3<- AA

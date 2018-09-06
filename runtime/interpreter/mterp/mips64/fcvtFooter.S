@@ -1,3 +1,4 @@
+%def fcvtFooter(suffix="", valreg=""):
     /*
      * Stores a specified register containing the result of conversion
      * from or to a floating-point type and jumps to the next instruction.

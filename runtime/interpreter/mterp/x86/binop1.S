@@ -1,4 +1,4 @@
-%default {"result":"%eax","tmp":"%ecx"}
+%def binop1(result="%eax", tmp="%ecx", instr=""):
 /*
  * Generic 32-bit binary operation in which both operands loaded to
  * registers (op0 in eax, op1 in ecx).

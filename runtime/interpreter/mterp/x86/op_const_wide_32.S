@@ -1,3 +1,4 @@
+%def op_const_wide_32():
     /* const-wide/32 vAA, #+BBBBbbbb */
     movl    2(rPC), %eax                    # eax <- BBBBbbbb
     movl    rIBASE, %ecx                    # preserve rIBASE (cltd trashes it)

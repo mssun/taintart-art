@@ -1,4 +1,4 @@
-%default {"result":"","second":"","wide":"","suffix":"","rem":"0","ext":"cdq"}
+%def bindiv2addr(result="", second="", wide="", suffix="", rem="0", ext="cdq"):
 /*
  * 32-bit binary div/rem operation.  Handles special case of op1=-1.
  */

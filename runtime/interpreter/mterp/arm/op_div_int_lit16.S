@@ -1,4 +1,4 @@
-%default {}
+%def op_div_int_lit16():
     /*
      * Specialized 32-bit binary operation
      *

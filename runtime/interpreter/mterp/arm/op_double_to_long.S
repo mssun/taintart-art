@@ -1,6 +1,7 @@
-%include "arm/unopWide.S" {"instr":"bl      d2l_doconv"}
+%def op_double_to_long():
+%  unopWide(instr="bl      d2l_doconv")
 
-%break
+%def op_double_to_long_sister_code():
 /*
  * Convert the double in r0/r1 to a long in r0/r1.
  *

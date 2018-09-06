@@ -1,1 +1,2 @@
-%include "arm64/zcmp.S" { "compare":"0", "branch":"cbnz    w2," }
+%def op_if_nez():
+%  zcmp(compare="0", branch="cbnz    w2,")

@@ -1,3 +1,4 @@
+%def instruction_start_sister():
 
     .global artMterpAsmSisterStart
     .text

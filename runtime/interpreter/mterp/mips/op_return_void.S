@@ -1,3 +1,4 @@
+%def op_return_void():
     .extern MterpThreadFenceForConstructor
     JAL(MterpThreadFenceForConstructor)
     lw        ra, THREAD_FLAGS_OFFSET(rSELF)

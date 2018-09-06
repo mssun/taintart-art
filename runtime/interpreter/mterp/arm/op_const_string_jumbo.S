@@ -1,3 +1,4 @@
+%def op_const_string_jumbo():
     /* const/string vAA, String@BBBBBBBB */
     EXPORT_PC
     FETCH r0, 1                         @ r0<- bbbb (low)
