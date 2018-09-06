@@ -178,7 +178,8 @@ void HiddenApiFinder::Dump(std::ostream& os,
   stats->linking_count = method_locations_.size() + field_locations_.size();
 
   // Dump methods from hidden APIs linked against.
-  for (const std::pair<std::string, std::vector<MethodReference>>& pair : method_locations_) {
+  for (const std::pair<const std::string,
+                       std::vector<MethodReference>>& pair : method_locations_) {
     HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(pair.first);
     stats->api_counts[api_list]++;
     os << "#" << ++stats->count << ": Linking " << api_list << " " << pair.first << " use(s):";
@@ -190,7 +191,8 @@ void HiddenApiFinder::Dump(std::ostream& os,
   }
 
   // Dump fields from hidden APIs linked against.
-  for (const std::pair<std::string, std::vector<MethodReference>>& pair : field_locations_) {
+  for (const std::pair<const std::string,
+                       std::vector<MethodReference>>& pair : field_locations_) {
     HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(pair.first);
     stats->api_counts[api_list]++;
     os << "#" << ++stats->count << ": Linking " << api_list << " " << pair.first << " use(s):";
