@@ -417,7 +417,6 @@ inline HiddenApiAccessFlags::ApiList ArtMethod::GetHiddenApiAccessFlags()
       case Intrinsics::kMemoryPokeIntNative:
       case Intrinsics::kMemoryPokeLongNative:
       case Intrinsics::kMemoryPokeShortNative:
-        return HiddenApiAccessFlags::kDarkGreylist;
       case Intrinsics::kVarHandleFullFence:
       case Intrinsics::kVarHandleAcquireFence:
       case Intrinsics::kVarHandleReleaseFence:
