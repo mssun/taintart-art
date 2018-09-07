@@ -7039,9 +7039,12 @@ void ClassLinker::LinkInterfaceMethodsHelper::ReallocMethods() {
       // mark this as a default, non-abstract method, since thats what it is. Also clear the
       // kAccSkipAccessChecks bit since this class hasn't been verified yet it shouldn't have
       // methods that are skipping access checks.
+      // Also clear potential kAccSingleImplementation to avoid CHA trying to inline
+      // the default method.
       DCHECK_EQ(new_method.GetAccessFlags() & kAccNative, 0u);
       constexpr uint32_t kSetFlags = kAccDefault | kAccDefaultConflict | kAccCopied;
-      constexpr uint32_t kMaskFlags = ~(kAccAbstract | kAccSkipAccessChecks);
+      constexpr uint32_t kMaskFlags =
+          ~(kAccAbstract | kAccSkipAccessChecks | kAccSingleImplementation);
       new_method.SetAccessFlags((new_method.GetAccessFlags() | kSetFlags) & kMaskFlags);
       DCHECK(new_method.IsDefaultConflicting());
       // The actual method might or might not be marked abstract since we just copied it from a

@@ -15,6 +15,13 @@
  */
 class Main implements Iface, Iface2 {
   public static void main(String[] args) {
+    System.loadLibrary(args[0]);
+    // Ensure we JIT compile the methods to test CHA behavior with default
+    // methods.
+    ensureJitCompiled(Main.class, "callMain");
+    ensureJitCompiled(Main.class, "callIface");
+    ensureJitCompiled(Main.class, "callIface2");
+
     System.out.println("Create Main instance");
     Main m = new Main();
     System.out.println("Calling functions on concrete Main");
@@ -68,4 +75,6 @@ class Main implements Iface, Iface2 {
     }
     return;
   }
+
+  private static native void ensureJitCompiled(Class<?> cls, String method_name);
 }
