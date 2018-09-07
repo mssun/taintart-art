@@ -147,7 +147,7 @@ static void VMDeathCb(jvmtiEnv* jvmti, JNIEnv* env ATTRIBUTE_UNUSED) {
   delete list;
 }
 
-static void CreateFieldList(jvmtiEnv* jvmti, JNIEnv* env, std::string args) {
+static void CreateFieldList(jvmtiEnv* jvmti, JNIEnv* env, const std::string& args) {
   RequestList* list = nullptr;
   CHECK_JVMTI(jvmti->Allocate(sizeof(*list), reinterpret_cast<unsigned char**>(&list)));
   new (list) RequestList { .fields_ = GetRequestedFields(env, args), };
