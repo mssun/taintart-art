@@ -215,7 +215,7 @@ class CollectionBase {
 
   uint32_t GetOffset() const { return offset_; }
   void SetOffset(uint32_t new_offset) { offset_ = new_offset; }
-  virtual uint32_t Size() const { return 0U; }
+  virtual uint32_t Size() const = 0;
 
  private:
   // Start out unassigned.
