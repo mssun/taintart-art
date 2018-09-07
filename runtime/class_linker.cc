@@ -483,9 +483,17 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
                  mirror::ObjectArray<mirror::Object>::ClassSize(image_pointer_size_))));
   object_array_class->SetComponentType(java_lang_Object.Get());
 
-  // Setup String.
+  // Setup java.lang.String.
+  //
+  // We make this class non-movable for the unlikely case where it were to be
+  // moved by a sticky-bit (minor) collection when using the Generational
+  // Concurrent Copying (CC) collector, potentially creating a stale reference
+  // in the `klass_` field of one of its instances allocated in the Large-Object
+  // Space (LOS) -- see the comment about the dirty card scanning logic in
+  // art::gc::collector::ConcurrentCopying::MarkingPhase.
   Handle<mirror::Class> java_lang_String(hs.NewHandle(
-      AllocClass(self, java_lang_Class.Get(), mirror::String::ClassSize(image_pointer_size_))));
+      AllocClass</* kMovable */ false>(
+          self, java_lang_Class.Get(), mirror::String::ClassSize(image_pointer_size_))));
   java_lang_String->SetStringClass();
   mirror::Class::SetStatus(java_lang_String, ClassStatus::kResolved, self);
 
@@ -528,13 +536,13 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
 
   // Create int array type for native pointer arrays (for example vtables) on 32-bit archs.
   Handle<mirror::Class> int_array_class(hs.NewHandle(
-      AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
+      AllocPrimitiveArrayClass(self, java_lang_Class.Get())));
   int_array_class->SetComponentType(GetClassRoot(ClassRoot::kPrimitiveInt, this));
   SetClassRoot(ClassRoot::kIntArrayClass, int_array_class.Get());
 
   // Create long array type for native pointer arrays (for example vtables) on 64-bit archs.
   Handle<mirror::Class> long_array_class(hs.NewHandle(
-      AllocClass(self, java_lang_Class.Get(), mirror::Array::ClassSize(image_pointer_size_))));
+      AllocPrimitiveArrayClass(self, java_lang_Class.Get())));
   long_array_class->SetComponentType(GetClassRoot(ClassRoot::kPrimitiveLong, this));
   SetClassRoot(ClassRoot::kLongArrayClass, long_array_class.Get());
 
@@ -610,20 +618,29 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   CHECK_EQ(dalvik_system_ClassExt->GetObjectSize(), mirror::ClassExt::InstanceSize());
 
   // Setup the primitive array type classes - can't be done until Object has a vtable.
-  SetClassRoot(ClassRoot::kBooleanArrayClass, FindSystemClass(self, "[Z"));
+  AllocAndSetPrimitiveArrayClassRoot(self,
+                                     java_lang_Class.Get(),
+                                     ClassRoot::kBooleanArrayClass,
+                                     ClassRoot::kPrimitiveBoolean,
+                                     "[Z");
 
-  SetClassRoot(ClassRoot::kByteArrayClass, FindSystemClass(self, "[B"));
+  AllocAndSetPrimitiveArrayClassRoot(
+      self, java_lang_Class.Get(), ClassRoot::kByteArrayClass, ClassRoot::kPrimitiveByte, "[B");
 
-  SetClassRoot(ClassRoot::kCharArrayClass, FindSystemClass(self, "[C"));
+  AllocAndSetPrimitiveArrayClassRoot(
+      self, java_lang_Class.Get(), ClassRoot::kCharArrayClass, ClassRoot::kPrimitiveChar, "[C");
 
-  SetClassRoot(ClassRoot::kShortArrayClass, FindSystemClass(self, "[S"));
+  AllocAndSetPrimitiveArrayClassRoot(
+      self, java_lang_Class.Get(), ClassRoot::kShortArrayClass, ClassRoot::kPrimitiveShort, "[S");
 
   CheckSystemClass(self, int_array_class, "[I");
   CheckSystemClass(self, long_array_class, "[J");
 
-  SetClassRoot(ClassRoot::kFloatArrayClass, FindSystemClass(self, "[F"));
+  AllocAndSetPrimitiveArrayClassRoot(
+      self, java_lang_Class.Get(), ClassRoot::kFloatArrayClass, ClassRoot::kPrimitiveFloat, "[F");
 
-  SetClassRoot(ClassRoot::kDoubleArrayClass, FindSystemClass(self, "[D"));
+  AllocAndSetPrimitiveArrayClassRoot(
+      self, java_lang_Class.Get(), ClassRoot::kDoubleArrayClass, ClassRoot::kPrimitiveDouble, "[D");
 
   // Run Class through FindSystemClass. This initializes the dex_cache_ fields and register it
   // in class_table_.
@@ -2165,13 +2182,14 @@ ObjPtr<mirror::DexCache> ClassLinker::AllocAndInitializeDexCache(Thread* self,
   return dex_cache;
 }
 
+template <bool kMovable>
 ObjPtr<mirror::Class> ClassLinker::AllocClass(Thread* self,
                                               ObjPtr<mirror::Class> java_lang_Class,
                                               uint32_t class_size) {
   DCHECK_GE(class_size, sizeof(mirror::Class));
   gc::Heap* heap = Runtime::Current()->GetHeap();
   mirror::Class::InitializeClassVisitor visitor(class_size);
-  ObjPtr<mirror::Object> k = kMovingClasses ?
+  ObjPtr<mirror::Object> k = (kMovingClasses && kMovable) ?
       heap->AllocObject<true>(self, java_lang_Class, class_size, visitor) :
       heap->AllocNonMovableObject<true>(self, java_lang_Class, class_size, visitor);
   if (UNLIKELY(k == nullptr)) {
@@ -2183,6 +2201,18 @@ ObjPtr<mirror::Class> ClassLinker::AllocClass(Thread* self,
 
 ObjPtr<mirror::Class> ClassLinker::AllocClass(Thread* self, uint32_t class_size) {
   return AllocClass(self, GetClassRoot<mirror::Class>(this), class_size);
+}
+
+ObjPtr<mirror::Class> ClassLinker::AllocPrimitiveArrayClass(Thread* self,
+                                                            ObjPtr<mirror::Class> java_lang_Class) {
+  // We make this class non-movable for the unlikely case where it were to be
+  // moved by a sticky-bit (minor) collection when using the Generational
+  // Concurrent Copying (CC) collector, potentially creating a stale reference
+  // in the `klass_` field of one of its instances allocated in the Large-Object
+  // Space (LOS) -- see the comment about the dirty card scanning logic in
+  // art::gc::collector::ConcurrentCopying::MarkingPhase.
+  return AllocClass</* kMovable */ false>(
+      self, java_lang_Class, mirror::Array::ClassSize(image_pointer_size_));
 }
 
 ObjPtr<mirror::ObjectArray<mirror::StackTraceElement>> ClassLinker::AllocStackTraceElementArray(
@@ -3648,10 +3678,22 @@ ObjPtr<mirror::Class> ClassLinker::CreateArrayClass(Thread* self,
       new_class.Assign(GetClassRoot<mirror::ObjectArray<mirror::Object>>(this));
     } else if (strcmp(descriptor, "[Ljava/lang/String;") == 0) {
       new_class.Assign(GetClassRoot<mirror::ObjectArray<mirror::String>>(this));
+    } else if (strcmp(descriptor, "[Z") == 0) {
+      new_class.Assign(GetClassRoot<mirror::BooleanArray>(this));
+    } else if (strcmp(descriptor, "[B") == 0) {
+      new_class.Assign(GetClassRoot<mirror::ByteArray>(this));
+    } else if (strcmp(descriptor, "[C") == 0) {
+      new_class.Assign(GetClassRoot<mirror::CharArray>(this));
+    } else if (strcmp(descriptor, "[S") == 0) {
+      new_class.Assign(GetClassRoot<mirror::ShortArray>(this));
     } else if (strcmp(descriptor, "[I") == 0) {
       new_class.Assign(GetClassRoot<mirror::IntArray>(this));
     } else if (strcmp(descriptor, "[J") == 0) {
       new_class.Assign(GetClassRoot<mirror::LongArray>(this));
+    } else if (strcmp(descriptor, "[F") == 0) {
+      new_class.Assign(GetClassRoot<mirror::FloatArray>(this));
+    } else if (strcmp(descriptor, "[D") == 0) {
+      new_class.Assign(GetClassRoot<mirror::DoubleArray>(this));
     }
   }
   if (new_class == nullptr) {
@@ -8607,6 +8649,19 @@ void ClassLinker::SetClassRoot(ClassRoot class_root, ObjPtr<mirror::Class> klass
   class_roots->Set<false>(index, klass);
 }
 
+void ClassLinker::AllocAndSetPrimitiveArrayClassRoot(Thread* self,
+                                                     ObjPtr<mirror::Class> java_lang_Class,
+                                                     ClassRoot primitive_array_class_root,
+                                                     ClassRoot primitive_class_root,
+                                                     const char* descriptor) {
+  StackHandleScope<1> hs(self);
+  Handle<mirror::Class> primitive_array_class(hs.NewHandle(
+      AllocPrimitiveArrayClass(self, java_lang_Class)));
+  primitive_array_class->SetComponentType(GetClassRoot(primitive_class_root, this));
+  SetClassRoot(primitive_array_class_root, primitive_array_class.Get());
+  CheckSystemClass(self, primitive_array_class, descriptor);
+}
+
 jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
                                                 const std::vector<const DexFile*>& dex_files,
                                                 jclass loader_class,
@@ -8941,7 +8996,7 @@ ObjPtr<mirror::IfTable> ClassLinker::AllocIfTable(Thread* self, size_t ifcount) 
                              ifcount * mirror::IfTable::kMax)));
 }
 
-// Instantiate ResolveMethod.
+// Instantiate ClassLinker::ResolveMethod.
 template ArtMethod* ClassLinker::ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
     uint32_t method_idx,
     Handle<mirror::DexCache> dex_cache,
@@ -8954,5 +9009,15 @@ template ArtMethod* ClassLinker::ResolveMethod<ClassLinker::ResolveMode::kNoChec
     Handle<mirror::ClassLoader> class_loader,
     ArtMethod* referrer,
     InvokeType type);
+
+// Instantiate ClassLinker::AllocClass.
+template ObjPtr<mirror::Class> ClassLinker::AllocClass</* kMovable */ true>(
+    Thread* self,
+    ObjPtr<mirror::Class> java_lang_Class,
+    uint32_t class_size);
+template ObjPtr<mirror::Class> ClassLinker::AllocClass</* kMovable */ false>(
+    Thread* self,
+    ObjPtr<mirror::Class> java_lang_Class,
+    uint32_t class_size);
 
 }  // namespace art

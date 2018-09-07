@@ -1077,5 +1077,10 @@
         "tests": ["566-polymorphic-inlining"],
         "variant": "jit & debuggable",
         "description": ["We do not inline with debuggable."]
+    },
+    {
+        "tests": ["669-moveable-string-class-equals"],
+        "bug": "b/68181300",
+        "description": ["The String class is now always non-movable."]
     }
 ]
