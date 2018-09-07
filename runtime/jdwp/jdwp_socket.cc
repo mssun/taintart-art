@@ -54,10 +54,10 @@ struct JdwpSocketState : public JdwpNetStateBase {
         remote_port_(0U) {
   }
 
-  virtual bool Accept();
-  virtual bool Establish(const JdwpOptions*);
-  virtual void Shutdown();
-  virtual bool ProcessIncoming();
+  bool Accept() override;
+  bool Establish(const JdwpOptions*) override;
+  void Shutdown() override;
+  bool ProcessIncoming() override;
 
  private:
   in_addr remote_addr_;

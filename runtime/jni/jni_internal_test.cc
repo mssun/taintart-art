@@ -34,7 +34,7 @@ using android::base::StringPrintf;
 // TODO: Convert to CommonRuntimeTest. Currently MakeExecutable is used.
 class JniInternalTest : public CommonCompilerTest {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     CommonCompilerTest::SetUp();
 
     vm_ = Runtime::Current()->GetJavaVM();

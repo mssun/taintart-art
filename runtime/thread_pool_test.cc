@@ -29,7 +29,7 @@ class CountTask : public Task {
  public:
   explicit CountTask(AtomicInteger* count) : count_(count), verbose_(false) {}
 
-  void Run(Thread* self) {
+  void Run(Thread* self) override {
     if (verbose_) {
       LOG(INFO) << "Running: " << *self;
     }
@@ -39,7 +39,7 @@ class CountTask : public Task {
     ++*count_;
   }
 
-  void Finalize() {
+  void Finalize() override {
     if (verbose_) {
       LOG(INFO) << "Finalizing: " << *Thread::Current();
     }
@@ -129,7 +129,7 @@ class TreeTask : public Task {
         count_(count),
         depth_(depth) {}
 
-  void Run(Thread* self) {
+  void Run(Thread* self) override {
     if (depth_ > 1) {
       thread_pool_->AddTask(self, new TreeTask(thread_pool_, count_, depth_ - 1));
       thread_pool_->AddTask(self, new TreeTask(thread_pool_, count_, depth_ - 1));
@@ -138,7 +138,7 @@ class TreeTask : public Task {
     ++*count_;
   }
 
-  void Finalize() {
+  void Finalize() override {
     delete this;
   }
 
@@ -164,12 +164,12 @@ class PeerTask : public Task {
  public:
   PeerTask() {}
 
-  void Run(Thread* self) {
+  void Run(Thread* self) override {
     ScopedObjectAccess soa(self);
     CHECK(self->GetPeer() != nullptr);
   }
 
-  void Finalize() {
+  void Finalize() override {
     delete this;
   }
 };
@@ -178,12 +178,12 @@ class NoPeerTask : public Task {
  public:
   NoPeerTask() {}
 
-  void Run(Thread* self) {
+  void Run(Thread* self) override {
     ScopedObjectAccess soa(self);
     CHECK(self->GetPeer() == nullptr);
   }
 
-  void Finalize() {
+  void Finalize() override {
     delete this;
   }
 };

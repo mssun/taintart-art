@@ -1671,7 +1671,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     }
   }
 
-  virtual bool VisitComplete() {
+  bool VisitComplete() override {
     offset_ = writer_->relative_patcher_->WriteThunks(out_, offset_);
     if (UNLIKELY(offset_ == 0u)) {
       PLOG(ERROR) << "Failed to write final relative call thunks";

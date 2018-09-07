@@ -37,7 +37,7 @@ struct ReferenceMap2Visitor : public CheckReferenceMapVisitor {
   explicit ReferenceMap2Visitor(Thread* thread) REQUIRES_SHARED(Locks::mutator_lock_)
       : CheckReferenceMapVisitor(thread) {}
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (CheckReferenceMapVisitor::VisitFrame()) {
       return true;
     }

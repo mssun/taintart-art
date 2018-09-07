@@ -1110,7 +1110,7 @@ jvmtiError ThreadUtil::StopThread(jvmtiEnv* env ATTRIBUTE_UNUSED,
    public:
     explicit StopThreadClosure(art::Handle<art::mirror::Throwable> except) : exception_(except) { }
 
-    void Run(art::Thread* me) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    void Run(art::Thread* me) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
       // Make sure the thread is prepared to notice the exception.
       art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(me);
       me->SetAsyncException(exception_.Get());

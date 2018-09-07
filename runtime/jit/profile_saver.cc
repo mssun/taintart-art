@@ -274,7 +274,7 @@ class GetClassesVisitor : public ClassVisitor {
       : profile_boot_class_path_(profile_boot_class_path),
         out_(out) {}
 
-  virtual bool operator()(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (klass->IsProxyClass() ||
         klass->IsArrayClass() ||
         klass->IsPrimitive() ||

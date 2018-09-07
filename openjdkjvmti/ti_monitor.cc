@@ -370,7 +370,7 @@ jvmtiError MonitorUtil::GetCurrentContendedMonitor(jvmtiEnv* env ATTRIBUTE_UNUSE
    public:
     GetContendedMonitorClosure() : out_(nullptr) {}
 
-    void Run(art::Thread* target_thread) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    void Run(art::Thread* target_thread) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
       art::ScopedAssertNoThreadSuspension sants("GetContendedMonitorClosure::Run");
       switch (target_thread->GetState()) {
         // These three we are actually currently waiting on a monitor and have sent the appropriate

@@ -86,11 +86,11 @@ BitString SetBitStringCharAt(BitString bit_string, size_t i, size_t val) {
 
 struct SubtypeCheckInfoTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     android::base::InitLogging(/*argv*/nullptr);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
   }
 
   static SubtypeCheckInfo MakeSubtypeCheckInfo(BitString path_to_root = {},

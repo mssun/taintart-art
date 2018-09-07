@@ -32,7 +32,7 @@ class CheckWaitTask : public Task {
         count1_(count1),
         count2_(count2) {}
 
-  void Run(Thread* self) {
+  void Run(Thread* self) override {
     LOG(INFO) << "Before barrier" << *self;
     ++*count1_;
     barrier_->Wait(self);
@@ -40,7 +40,7 @@ class CheckWaitTask : public Task {
     LOG(INFO) << "After barrier" << *self;
   }
 
-  virtual void Finalize() {
+  void Finalize() override {
     delete this;
   }
 
@@ -91,7 +91,7 @@ class CheckPassTask : public Task {
         count_(count),
         subtasks_(subtasks) {}
 
-  void Run(Thread* self) {
+  void Run(Thread* self) override {
     for (size_t i = 0; i < subtasks_; ++i) {
       ++*count_;
       // Pass through to next subtask.
@@ -99,7 +99,7 @@ class CheckPassTask : public Task {
     }
   }
 
-  void Finalize() {
+  void Finalize() override {
     delete this;
   }
  private:

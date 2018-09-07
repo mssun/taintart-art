@@ -137,7 +137,7 @@ struct MethodVerifierArgs : public CmdlineArgs {
     return kParseOk;
   }
 
-  virtual std::string GetUsage() const {
+  std::string GetUsage() const override {
     std::string usage;
 
     usage +=

@@ -79,7 +79,7 @@ class CodeVectorAllocator final : public CodeAllocator {
   explicit CodeVectorAllocator(ArenaAllocator* allocator)
       : memory_(allocator->Adapter(kArenaAllocCodeBuffer)) {}
 
-  virtual uint8_t* Allocate(size_t size) {
+  uint8_t* Allocate(size_t size) override {
     memory_.resize(size);
     return &memory_[0];
   }

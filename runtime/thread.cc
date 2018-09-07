@@ -2515,7 +2515,7 @@ class FetchStackTraceVisitor : public StackVisitor {
         saved_frames_(saved_frames),
         max_saved_frames_(max_saved_frames) {}
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     // We want to skip frames up to and including the exception's constructor.
     // Note we also skip the frame if it doesn't have a method (namely the callee
     // save frame)
@@ -2603,7 +2603,7 @@ class BuildInternalStackTraceVisitor : public StackVisitor {
     self_->EndAssertNoThreadSuspension(nullptr);
   }
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (trace_ == nullptr) {
       return true;  // We're probably trying to fillInStackTrace for an OutOfMemoryError.
     }
@@ -3520,7 +3520,7 @@ class ReferenceMapVisitor : public StackVisitor {
       : StackVisitor(thread, context, StackVisitor::StackWalkKind::kSkipInlinedFrames),
         visitor_(visitor) {}
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (false) {
       LOG(INFO) << "Visiting stack roots in " << ArtMethod::PrettyMethod(GetMethod())
                 << StringPrintf("@ PC:%04x", GetDexPc());
