@@ -1464,8 +1464,16 @@ void IntrinsicCodeGeneratorARM64::VisitStringEquals(HInvoke* invoke) {
     // All string objects must have the same type since String cannot be subclassed.
     // Receiver must be a string object, so its class field is equal to all strings' class fields.
     // If the argument is a string object, its class field must be equal to receiver's class field.
+    //
+    // As the String class is expected to be non-movable, we can read the class
+    // field from String.equals' arguments without read barriers.
+    AssertNonMovableStringClass();
+    // /* HeapReference<Class> */ temp = str->klass_
     __ Ldr(temp, MemOperand(str.X(), class_offset));
+    // /* HeapReference<Class> */ temp1 = arg->klass_
     __ Ldr(temp1, MemOperand(arg.X(), class_offset));
+    // Also, because we use the previously loaded class references only in the
+    // following comparison, we don't need to unpoison them.
     __ Cmp(temp, temp1);
     __ B(&return_false, ne);
   }
