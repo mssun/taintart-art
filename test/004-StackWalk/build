@@ -18,10 +18,8 @@
 set -e
 
 # This test depends on the exact format of the DEX file. Since dx is deprecated,
-# the classes.dex file is packaged as a test input. It was created with:
-#
-# $ javac -g -Xlint:-options -source 1.7 -target 1.7 -d classes src/Main.java
-# $ dx --debug --dex --output=classes.dex classes
+# the classes.dex file is packaged as a test input. See src/Main.java file
+# to check how it was created.
 
 # Wrapper function for javac which for this test does nothing as the
 # test uses a pre-built DEX file.
