@@ -38,6 +38,12 @@
 #include "AvailabilityMacros.h"  // For MAC_OS_X_VERSION_MAX_ALLOWED
 #endif
 
+#if defined(__BIONIC__)
+// membarrier(2) is only supported for target builds (b/111199492).
+#include <linux/membarrier.h>
+#include <sys/syscall.h>
+#endif
+
 #if defined(__linux__)
 #include <linux/unistd.h>
 #endif
@@ -205,6 +211,44 @@ void SleepForever() {
   while (true) {
     usleep(1000000);
   }
+}
+
+bool FlushInstructionPipeline() {
+  // membarrier(2) is only supported for target builds (b/111199492).
+#if defined(__BIONIC__)
+  static constexpr int kSyncCoreMask =
+      MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE |
+      MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE;
+  static bool have_probed = false;
+  static bool have_sync_core = false;
+
+  if (UNLIKELY(!have_probed)) {
+    // Probe membarrier(2) commands supported by kernel.
+    int commands = syscall(__NR_membarrier, MEMBARRIER_CMD_QUERY, 0);
+    if (commands >= 0) {
+      have_sync_core = (commands & kSyncCoreMask) == kSyncCoreMask;
+      if (have_sync_core) {
+        // Register with kernel that we'll be using the private expedited sync core command.
+        CheckedCall(syscall,
+                    "membarrier register sync core",
+                    __NR_membarrier,
+                    MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE,
+                    0);
+      }
+    }
+    have_probed = true;
+  }
+
+  if (have_sync_core) {
+    CheckedCall(syscall,
+                "membarrier sync core",
+                __NR_membarrier,
+                MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE,
+                0);
+    return true;
+  }
+#endif  // defined(__BIONIC__)
+  return false;
 }
 
 }  // namespace art

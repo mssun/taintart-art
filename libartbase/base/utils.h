@@ -179,15 +179,18 @@ static T GetRandomNumber(T min, T max) {
 // Sleep forever and never come back.
 NO_RETURN void SleepForever();
 
-inline void FlushInstructionCache(char* begin, char* end) {
-  __builtin___clear_cache(begin, end);
-}
-
 inline void FlushDataCache(char* begin, char* end) {
   // Same as FlushInstructionCache for lack of other builtin. __builtin___clear_cache
   // flushes both caches.
   __builtin___clear_cache(begin, end);
 }
+
+inline void FlushInstructionCache(char* begin, char* end) {
+  __builtin___clear_cache(begin, end);
+}
+
+// Flush instruction pipeline. Returns true on success, false if feature is unsupported.
+bool FlushInstructionPipeline();
 
 template <typename T>
 constexpr PointerSize ConvertToPointerSize(T any) {
