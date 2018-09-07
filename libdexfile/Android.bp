@@ -72,6 +72,36 @@ cc_defaults {
     ],
 }
 
+cc_defaults {
+    name: "libdexfile_static_base_defaults",
+    static_libs: [
+        "libbase",
+        "libcutils",
+        "liblog",
+        "libutils",
+        "libz",
+        "libziparchive",
+    ],
+}
+
+cc_defaults {
+    name: "libdexfile_static_defaults",
+    defaults: [
+        "libartbase_static_defaults",
+        "libdexfile_static_base_defaults",
+    ],
+    static_libs: ["libdexfile"],
+}
+
+cc_defaults {
+    name: "libdexfiled_static_defaults",
+    defaults: [
+        "libartbased_static_defaults",
+        "libdexfile_static_base_defaults",
+    ],
+    static_libs: ["libdexfiled"],
+}
+
 gensrcs {
     name: "dexfile_operator_srcs",
     cmd: "$(location generate_operator_out) art/libdexfile $(in) > $(out)",

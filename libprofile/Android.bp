@@ -56,6 +56,37 @@ cc_defaults {
     export_shared_lib_headers: ["libbase"],
 }
 
+cc_defaults {
+    name: "libprofile_static_base_defaults",
+    static_libs: [
+        "libbase",
+        "libcutils",
+        "libutils",
+        "libz",
+        "libziparchive",
+    ],
+}
+
+cc_defaults {
+    name: "libprofile_static_defaults",
+    defaults: [
+        "libprofile_static_base_defaults",
+        "libartbase_static_defaults",
+        "libdexfile_static_defaults",
+    ],
+    static_libs: ["libprofile"],
+}
+
+cc_defaults {
+    name: "libprofiled_static_defaults",
+    defaults: [
+        "libprofile_static_base_defaults",
+        "libartbased_static_defaults",
+        "libdexfiled_static_defaults",
+    ],
+    static_libs: ["libprofiled"],
+}
+
 art_cc_library {
     name: "libprofile",
     defaults: ["libprofile_defaults"],
