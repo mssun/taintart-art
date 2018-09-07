@@ -310,16 +310,17 @@ inline void DexCache::VisitReferences(ObjPtr<Class> klass, const Visitor& visito
   // Visit arrays after.
   if (kVisitNativeRoots) {
     VisitDexCachePairs<String, kReadBarrierOption, Visitor>(
-        GetStrings(), NumStrings(), visitor);
+        GetStrings<kVerifyFlags>(), NumStrings<kVerifyFlags>(), visitor);
 
     VisitDexCachePairs<Class, kReadBarrierOption, Visitor>(
-        GetResolvedTypes(), NumResolvedTypes(), visitor);
+        GetResolvedTypes<kVerifyFlags>(), NumResolvedTypes<kVerifyFlags>(), visitor);
 
     VisitDexCachePairs<MethodType, kReadBarrierOption, Visitor>(
-        GetResolvedMethodTypes(), NumResolvedMethodTypes(), visitor);
+        GetResolvedMethodTypes<kVerifyFlags>(), NumResolvedMethodTypes<kVerifyFlags>(), visitor);
 
-    GcRoot<mirror::CallSite>* resolved_call_sites = GetResolvedCallSites();
-    for (size_t i = 0, num_call_sites = NumResolvedCallSites(); i != num_call_sites; ++i) {
+    GcRoot<mirror::CallSite>* resolved_call_sites = GetResolvedCallSites<kVerifyFlags>();
+    size_t num_call_sites = NumResolvedCallSites<kVerifyFlags>();
+    for (size_t i = 0; i != num_call_sites; ++i) {
       visitor.VisitRootIfNonNull(resolved_call_sites[i].AddressWithoutBarrier());
     }
   }
