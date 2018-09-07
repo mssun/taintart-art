@@ -79,6 +79,30 @@ cc_defaults {
     export_shared_lib_headers: ["libbase"],
 }
 
+cc_defaults {
+    name: "libartbase_static_base_defaults",
+    static_libs: [
+        "libbase",
+        "libcutils",
+        "liblog",
+        "libutils",
+        "libz",
+        "libziparchive",
+    ],
+}
+
+cc_defaults {
+    name: "libartbase_static_defaults",
+    defaults: ["libartbase_static_base_defaults"],
+    static_libs: ["libartbase"],
+}
+
+cc_defaults {
+    name: "libartbased_static_defaults",
+    defaults: ["libartbase_static_base_defaults"],
+    static_libs: ["libartbased"],
+}
+
 gensrcs {
     name: "art_libartbase_operator_srcs",
     cmd: "$(location generate_operator_out) art/libartbase $(in) > $(out)",

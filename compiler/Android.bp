@@ -191,6 +191,15 @@ art_cc_defaults {
     export_include_dirs: ["."],
 }
 
+cc_defaults {
+    name: "libart-compiler_static_base_defaults",
+    static_libs: [
+        "libbase",
+        "libcutils",
+        "liblzma",
+    ],
+}
+
 gensrcs {
     name: "art_compiler_operator_srcs",
     cmd: "$(location generate_operator_out) art/compiler $(in) > $(out)",
@@ -260,6 +269,18 @@ art_cc_library {
     },
 }
 
+cc_defaults {
+    name: "libart-compiler_static_defaults",
+    defaults: [
+        "libart-compiler_static_base_defaults",
+        "libart_static_defaults",
+        "libartbase_static_defaults",
+        "libdexfile_static_defaults",
+        "libprofile_static_defaults",
+    ],
+    static_libs: ["libart-compiler"],
+}
+
 art_cc_library {
     name: "libartd-compiler",
     defaults: [
@@ -300,6 +321,18 @@ art_cc_library {
         "libdexfiled",
         "libartbased",
     ],
+}
+
+cc_defaults {
+    name: "libartd-compiler_static_defaults",
+    defaults: [
+        "libart-compiler_static_base_defaults",
+        "libartd_static_defaults",
+        "libartbased_static_defaults",
+        "libdexfiled_static_defaults",
+        "libprofiled_static_defaults",
+    ],
+    static_libs: ["libartd-compiler"],
 }
 
 art_cc_library {

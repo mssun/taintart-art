@@ -38,13 +38,13 @@ art_cc_binary {
 
 art_cc_binary {
     name: "dexdumps",
-    defaults: ["dexdump_defaults"],
+    defaults: [
+        "dexdump_defaults",
+        "libartbase_static_defaults",
+        "libdexfile_static_defaults",
+    ],
     host_supported: true,
     device_supported: false,
-    static_libs: [
-        "libdexfile",
-        "libartbase",
-    ] + art_static_dependencies,
     target: {
         darwin: {
             enabled: false,
