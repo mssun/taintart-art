@@ -429,10 +429,6 @@ class ImageWriter final {
   // Debug aid that list of requested image classes.
   void DumpImageClasses();
 
-  // Preinitializes some otherwise lazy fields (such as Class name) to avoid runtime image dirtying.
-  void ComputeLazyFieldsForImageClasses()
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   // Visit all class loaders.
   void VisitClassLoaders(ClassLoaderVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
 
