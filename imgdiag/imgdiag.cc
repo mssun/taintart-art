@@ -26,6 +26,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <android-base/parseint.h>
 #include "android-base/stringprintf.h"
 
 #include "art_field-inl.h"
@@ -1682,14 +1683,14 @@ struct ImgDiagArgs : public CmdlineArgs {
     if (option.starts_with("--image-diff-pid=")) {
       const char* image_diff_pid = option.substr(strlen("--image-diff-pid=")).data();
 
-      if (!ParseInt(image_diff_pid, &image_diff_pid_)) {
+      if (!android::base::ParseInt(image_diff_pid, &image_diff_pid_)) {
         *error_msg = "Image diff pid out of range";
         return kParseError;
       }
     } else if (option.starts_with("--zygote-diff-pid=")) {
       const char* zygote_diff_pid = option.substr(strlen("--zygote-diff-pid=")).data();
 
-      if (!ParseInt(zygote_diff_pid, &zygote_diff_pid_)) {
+      if (!android::base::ParseInt(zygote_diff_pid, &zygote_diff_pid_)) {
         *error_msg = "Zygote diff pid out of range";
         return kParseError;
       }

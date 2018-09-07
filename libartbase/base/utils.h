@@ -24,6 +24,7 @@
 #include <string>
 
 #include <android-base/logging.h>
+#include <android-base/parseint.h>
 
 #include "casts.h"
 #include "enums.h"
@@ -32,34 +33,6 @@
 #include "stringpiece.h"
 
 namespace art {
-
-template <typename T>
-bool ParseUint(const char *in, T* out) {
-  char* end;
-  unsigned long long int result = strtoull(in, &end, 0);  // NOLINT(runtime/int)
-  if (in == end || *end != '\0') {
-    return false;
-  }
-  if (std::numeric_limits<T>::max() < result) {
-    return false;
-  }
-  *out = static_cast<T>(result);
-  return true;
-}
-
-template <typename T>
-bool ParseInt(const char* in, T* out) {
-  char* end;
-  long long int result = strtoll(in, &end, 0);  // NOLINT(runtime/int)
-  if (in == end || *end != '\0') {
-    return false;
-  }
-  if (result < std::numeric_limits<T>::min() || std::numeric_limits<T>::max() < result) {
-    return false;
-  }
-  *out = static_cast<T>(result);
-  return true;
-}
 
 static inline uint32_t PointerToLowMemUInt32(const void* p) {
   uintptr_t intp = reinterpret_cast<uintptr_t>(p);
@@ -130,7 +103,7 @@ static void ParseIntOption(const StringPiece& option,
   DCHECK(option.starts_with(option_prefix)) << option << " " << option_prefix;
   const char* value_string = option.substr(option_prefix.size()).data();
   int64_t parsed_integer_value = 0;
-  if (!ParseInt(value_string, &parsed_integer_value)) {
+  if (!android::base::ParseInt(value_string, &parsed_integer_value)) {
     usage("Failed to parse %s '%s' as an integer", option_name.c_str(), value_string);
   }
   *out = dchecked_integral_cast<T>(parsed_integer_value);
