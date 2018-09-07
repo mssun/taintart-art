@@ -450,6 +450,7 @@ Heap::Heap(size_t initial_size,
     // Non moving space is always dlmalloc since we currently don't have support for multiple
     // active rosalloc spaces.
     const size_t size = non_moving_space_mem_map.Size();
+    const void* non_moving_space_mem_map_begin = non_moving_space_mem_map.Begin();
     non_moving_space_ = space::DlMallocSpace::CreateFromMemMap(std::move(non_moving_space_mem_map),
                                                                "zygote / non moving space",
                                                                kDefaultStartingSize,
@@ -457,9 +458,9 @@ Heap::Heap(size_t initial_size,
                                                                size,
                                                                size,
                                                                /* can_move_objects */ false);
-    non_moving_space_->SetFootprintLimit(non_moving_space_->Capacity());
     CHECK(non_moving_space_ != nullptr) << "Failed creating non moving space "
-        << non_moving_space_mem_map.Begin();
+        << non_moving_space_mem_map_begin;
+    non_moving_space_->SetFootprintLimit(non_moving_space_->Capacity());
     AddSpace(non_moving_space_);
   }
   // Create other spaces based on whether or not we have a moving GC.
