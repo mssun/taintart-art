@@ -29,6 +29,7 @@
   modes: [device],
   names: ["libcore.java.lang.StringTest#testFastPathString_wellFormedUtf8Sequence",
           "org.apache.harmony.tests.java.lang.ref.ReferenceQueueTest#test_remove",
+          "org.apache.harmony.tests.java.text.DateFormatTest#test_getAvailableLocales",
           "org.apache.harmony.tests.java.util.TimerTest#testOverdueTaskExecutesImmediately",
           "org.apache.harmony.tests.java.util.WeakHashMapTest#test_keySet_hasNext",
           "libcore.java.text.DecimalFormatTest#testCurrencySymbolSpacing",
