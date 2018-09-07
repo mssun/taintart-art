@@ -33,10 +33,12 @@ import org.apache.commons.cli.ParseException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -71,9 +73,10 @@ public class Class2Greylist {
                 .hasArgs()
                 .withDescription(
                         "Specify file to write greylist to. Can be specified multiple times. " +
-                        "Format is either just a filename, or \"int:filename\". If an integer is " +
-                        "given, members with a matching maxTargetSdk are written to the file; if " +
-                        "no integer is given, members with no maxTargetSdk are written.")
+                        "Format is either just a filename, or \"int[,int,...]:filename\". If " +
+                        "integers are given, members with matching maxTargetSdk values are " +
+                        "written to the file; if no integer or \"none\" is given, members with " +
+                        "no maxTargetSdk are written.")
                 .create("g"));
         options.addOption(OptionBuilder
                 .withLongOpt("write-whitelist")
@@ -204,15 +207,22 @@ public class Class2Greylist {
     static Map<Integer, String> readGreylistMap(Status status, String[] argValues) {
         Map<Integer, String> map = new HashMap<>();
         for (String sdkFile : argValues) {
-            Integer maxTargetSdk = null;
+            List<Integer> maxTargetSdks = new ArrayList<>();
             String filename;
             int colonPos = sdkFile.indexOf(':');
             if (colonPos != -1) {
-                try {
-                    maxTargetSdk = Integer.valueOf(sdkFile.substring(0, colonPos));
-                } catch (NumberFormatException nfe) {
-                    status.error("Not a valid integer: %s from argument value '%s'",
-                            sdkFile.substring(0, colonPos), sdkFile);
+                String[] targets = sdkFile.substring(0, colonPos).split(",");
+                for (String target : targets) {
+                    if ("none".equals(target)) {
+                        maxTargetSdks.add(null);
+                    } else {
+                        try {
+                            maxTargetSdks.add(Integer.valueOf(target));
+                        } catch (NumberFormatException nfe) {
+                            status.error("Not a valid integer: %s from argument value '%s'",
+                                    sdkFile.substring(0, colonPos), sdkFile);
+                        }
+                    }
                 }
                 filename = sdkFile.substring(colonPos + 1);
                 if (filename.length() == 0) {
@@ -220,13 +230,16 @@ public class Class2Greylist {
                             filename, sdkFile);
                 }
             } else {
-                maxTargetSdk = null;
+                maxTargetSdks.add(null);
                 filename = sdkFile;
             }
-            if (map.containsKey(maxTargetSdk)) {
-                status.error("Multiple output files for maxTargetSdk %s", maxTargetSdk);
-            } else {
-                map.put(maxTargetSdk, filename);
+            for (Integer maxTargetSdk : maxTargetSdks) {
+                if (map.containsKey(maxTargetSdk)) {
+                    status.error("Multiple output files for maxTargetSdk %s",
+                            maxTargetSdk == null ? "none" : maxTargetSdk);
+                } else {
+                    map.put(maxTargetSdk, filename);
+                }
             }
         }
         return map;

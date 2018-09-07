@@ -56,6 +56,31 @@ public class Class2GreylistTest {
     }
 
     @Test
+    public void testReadGreylistMapNone() throws IOException {
+        Map<Integer, String> map = Class2Greylist.readGreylistMap(mStatus,
+                new String[]{"none:noApi"});
+        verifyZeroInteractions(mStatus);
+        assertThat(map).containsExactly(null, "noApi");
+    }
+
+    @Test
+    public void testReadGreylistMapMulti() throws IOException {
+        Map<Integer, String> map = Class2Greylist.readGreylistMap(mStatus,
+                new String[]{"1,none:noOr1Api", "3:apiThree"});
+        verifyZeroInteractions(mStatus);
+        assertThat(map).containsExactly(null, "noOr1Api", 1, "noOr1Api", 3, "apiThree");
+    }
+
+    @Test
+    public void testReadGreylistMapMulti2() throws IOException {
+        Map<Integer, String> map = Class2Greylist.readGreylistMap(mStatus,
+                new String[]{"1,none,2,3,4:allApi"});
+        verifyZeroInteractions(mStatus);
+        assertThat(map).containsExactly(
+                null, "allApi", 1, "allApi", 2, "allApi", 3, "allApi", 4, "allApi");
+    }
+
+    @Test
     public void testReadGreylistMapDuplicate() throws IOException {
         Class2Greylist.readGreylistMap(mStatus,
                 new String[]{"noApi", "1:apiOne", "1:anotherOne"});
