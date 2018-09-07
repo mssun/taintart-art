@@ -39,7 +39,7 @@ inline void Object::VisitReferences(const Visitor& visitor,
   if (LIKELY(class_flags == kClassFlagNormal)) {
     DCHECK((!klass->IsVariableSize<kVerifyFlags, kReadBarrierOption>()));
     VisitInstanceFieldsReferences<kVerifyFlags, kReadBarrierOption>(klass, visitor);
-    DCHECK((!klass->IsClassClass<kVerifyFlags, kReadBarrierOption>()));
+    DCHECK((!klass->IsClassClass<kVerifyFlags>()));
     DCHECK(!klass->IsStringClass());
     DCHECK(!klass->IsClassLoaderClass());
     DCHECK((!klass->IsArrayClass<kVerifyFlags, kReadBarrierOption>()));
@@ -47,8 +47,8 @@ inline void Object::VisitReferences(const Visitor& visitor,
     if ((class_flags & kClassFlagNoReferenceFields) == 0) {
       DCHECK(!klass->IsStringClass());
       if (class_flags == kClassFlagClass) {
-        DCHECK((klass->IsClassClass<kVerifyFlags, kReadBarrierOption>()));
-        ObjPtr<Class> as_klass = AsClass<kVerifyNone, kReadBarrierOption>();
+        DCHECK((klass->IsClassClass<kVerifyFlags>()));
+        ObjPtr<Class> as_klass = AsClass<kVerifyNone>();
         as_klass->VisitReferences<kVisitNativeRoots, kVerifyFlags, kReadBarrierOption>(klass,
                                                                                        visitor);
       } else if (class_flags == kClassFlagObjectArray) {
@@ -69,7 +69,7 @@ inline void Object::VisitReferences(const Visitor& visitor,
                                       kReadBarrierOption>(klass, visitor);
       }
     } else if (kIsDebugBuild) {
-      CHECK((!klass->IsClassClass<kVerifyFlags, kReadBarrierOption>()));
+      CHECK((!klass->IsClassClass<kVerifyFlags>()));
       CHECK((!klass->IsObjectArrayClass<kVerifyFlags, kReadBarrierOption>()));
       // String still has instance fields for reflection purposes but these don't exist in
       // actual string instances.

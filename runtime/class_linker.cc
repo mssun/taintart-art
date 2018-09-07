@@ -431,6 +431,8 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   heap->IncrementDisableMovingGC(self);
   StackHandleScope<64> hs(self);  // 64 is picked arbitrarily.
   auto class_class_size = mirror::Class::ClassClassSize(image_pointer_size_);
+  // Allocate the object as non-movable so that there are no cases where Object::IsClass returns
+  // the incorrect result when comparing to-space vs from-space.
   Handle<mirror::Class> java_lang_Class(hs.NewHandle(ObjPtr<mirror::Class>::DownCast(MakeObjPtr(
       heap->AllocNonMovableObject<true>(self, nullptr, class_class_size, VoidFunctor())))));
   CHECK(java_lang_Class != nullptr);
