@@ -115,6 +115,8 @@ template<class T> class CollectionMap : public CollectionBase {
     return it != collection_.end() ? it->second : nullptr;
   }
 
+  uint32_t Size() const override { return size(); }
+
   // Lower case for template interop with std::map.
   uint32_t size() const { return collection_.size(); }
   std::map<uint32_t, T*>& Collection() { return collection_; }
