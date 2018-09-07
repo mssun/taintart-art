@@ -630,7 +630,7 @@ bool PatchOat::Patch(const std::string& image_location,
       std::string image_relocation_filename =
           output_image_relocation_directory
               + (android::base::StartsWith(original_image_filename, "/") ? "" : "/")
-              + original_image_filename.substr(original_image_filename.find_last_of("/"));
+              + original_image_filename.substr(original_image_filename.find_last_of('/'));
       int64_t input_image_size = input_image->GetLength();
       if (input_image_size < 0) {
         LOG(ERROR) << "Error while getting input image size";
