@@ -48,6 +48,7 @@ template<typename T> ART_FRIEND_TEST(test_set_name, individual_test)
 #define OFFSETOF_MEMBERPTR(t, f) \
   (reinterpret_cast<uintptr_t>(&(reinterpret_cast<t*>(16)->*f)) - static_cast<uintptr_t>(16))  // NOLINT
 
+#define ALIGNED(x) __attribute__ ((__aligned__(x)))
 #define PACKED(x) __attribute__ ((__aligned__(x), __packed__))
 
 // Stringify the argument.
