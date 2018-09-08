@@ -1099,7 +1099,7 @@ class ImageSpace::Loader {
           fixup_heap_objects_(fixup_heap_objects),
           pointer_size_(pointer_size) {}
 
-    virtual void Visit(ArtMethod* method) NO_THREAD_SAFETY_ANALYSIS {
+    void Visit(ArtMethod* method) override NO_THREAD_SAFETY_ANALYSIS {
       // TODO: Separate visitor for runtime vs normal methods.
       if (UNLIKELY(method->IsRuntimeMethod())) {
         ImtConflictTable* table = method->GetImtConflictTable(pointer_size_);
@@ -1132,7 +1132,7 @@ class ImageSpace::Loader {
     template<typename... Args>
     explicit FixupArtFieldVisitor(Args... args) : FixupVisitor(args...) {}
 
-    virtual void Visit(ArtField* field) NO_THREAD_SAFETY_ANALYSIS {
+    void Visit(ArtField* field) override NO_THREAD_SAFETY_ANALYSIS {
       field->UpdateObjects(ForwardObjectAdapter(this));
     }
   };

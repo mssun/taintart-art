@@ -113,7 +113,7 @@ static jobject VMStack_getClosestUserClassLoader(JNIEnv* env, jclass) {
       : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
         class_loader(nullptr) {}
 
-    bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
       DCHECK(class_loader == nullptr);
       ObjPtr<mirror::Class> c = GetMethod()->GetDeclaringClass();
       // c is null for runtime methods.

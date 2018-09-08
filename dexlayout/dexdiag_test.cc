@@ -34,7 +34,7 @@ static const char* kDexDiagBinaryName = "dexdiag";
 
 class DexDiagTest : public CommonRuntimeTest {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     CommonRuntimeTest::SetUp();
   }
 

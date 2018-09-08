@@ -33,7 +33,7 @@ class TestReferenceMapVisitor : public CheckReferenceMapVisitor {
   explicit TestReferenceMapVisitor(Thread* thread) REQUIRES_SHARED(Locks::mutator_lock_)
       : CheckReferenceMapVisitor(thread) {}
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     if (CheckReferenceMapVisitor::VisitFrame()) {
       return true;
     }

@@ -689,7 +689,7 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
         val_(val),
         obj_val_(nullptr) {}
 
-  virtual jvmtiError GetResult() REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  jvmtiError GetResult() override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     if (result_ == OK && type_ == art::Primitive::kPrimNot) {
       val_->l = obj_val_.IsNull()
           ? nullptr

@@ -897,7 +897,7 @@ JDWP::JdwpError Dbg::GetOwnedMonitors(JDWP::ObjectId thread_id,
 
     // TODO: Enable annotalysis. We know lock is held in constructor, but abstraction confuses
     // annotalysis.
-    bool VisitFrame() NO_THREAD_SAFETY_ANALYSIS {
+    bool VisitFrame() override NO_THREAD_SAFETY_ANALYSIS {
       if (!GetMethod()->IsRuntimeMethod()) {
         Monitor::VisitLocks(this, AppendOwnedMonitors, this);
         ++current_stack_depth;
@@ -2406,7 +2406,7 @@ static int GetStackDepth(Thread* thread) REQUIRES_SHARED(Locks::mutator_lock_) {
 
     // TODO: Enable annotalysis. We know lock is held in constructor, but abstraction confuses
     // annotalysis.
-    bool VisitFrame() NO_THREAD_SAFETY_ANALYSIS {
+    bool VisitFrame() override NO_THREAD_SAFETY_ANALYSIS {
       if (!GetMethod()->IsRuntimeMethod()) {
         ++depth;
       }
@@ -2576,7 +2576,7 @@ struct GetThisVisitor : public StackVisitor {
 
   // TODO: Enable annotalysis. We know lock is held in constructor, but abstraction confuses
   // annotalysis.
-  virtual bool VisitFrame() NO_THREAD_SAFETY_ANALYSIS {
+  bool VisitFrame() override NO_THREAD_SAFETY_ANALYSIS {
     if (frame_id != GetFrameId()) {
       return true;  // continue
     } else {
@@ -2618,7 +2618,7 @@ class FindFrameVisitor final : public StackVisitor {
 
   // TODO: Enable annotalysis. We know lock is held in constructor, but abstraction confuses
   // annotalysis.
-  bool VisitFrame() NO_THREAD_SAFETY_ANALYSIS {
+  bool VisitFrame() override NO_THREAD_SAFETY_ANALYSIS {
     if (GetFrameId() != frame_id_) {
       return true;  // Not our frame, carry on.
     }
@@ -3831,7 +3831,7 @@ JDWP::JdwpError Dbg::ConfigureStep(JDWP::ObjectId thread_id, JDWP::JdwpStepSize 
 
     // TODO: Enable annotalysis. We know lock is held in constructor, but abstraction confuses
     // annotalysis.
-    bool VisitFrame() NO_THREAD_SAFETY_ANALYSIS {
+    bool VisitFrame() override NO_THREAD_SAFETY_ANALYSIS {
       ArtMethod* m = GetMethod();
       if (!m->IsRuntimeMethod()) {
         ++stack_depth;

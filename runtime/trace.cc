@@ -64,7 +64,7 @@ class BuildStackTraceVisitor : public StackVisitor {
       : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
         method_trace_(Trace::AllocStackTrace()) {}
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* m = GetMethod();
     // Ignore runtime frames (in particular callee save).
     if (!m->IsRuntimeMethod()) {

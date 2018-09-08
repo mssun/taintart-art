@@ -458,20 +458,20 @@ class MonitorWaitCallbacksTest : public RuntimeCallbacksTest {
       ref_ = { &k->GetDexFile(), k->GetDexClassDefIndex() };
     }
 
-    void MonitorContendedLocking(Monitor* mon ATTRIBUTE_UNUSED)
+    void MonitorContendedLocking(Monitor* mon ATTRIBUTE_UNUSED) override
         REQUIRES_SHARED(Locks::mutator_lock_) { }
 
-    void MonitorContendedLocked(Monitor* mon ATTRIBUTE_UNUSED)
+    void MonitorContendedLocked(Monitor* mon ATTRIBUTE_UNUSED) override
         REQUIRES_SHARED(Locks::mutator_lock_) { }
 
-    void ObjectWaitStart(Handle<mirror::Object> obj, int64_t millis ATTRIBUTE_UNUSED)
+    void ObjectWaitStart(Handle<mirror::Object> obj, int64_t millis ATTRIBUTE_UNUSED) override
         REQUIRES_SHARED(Locks::mutator_lock_) {
       if (IsInterestingObject(obj.Get())) {
         saw_wait_start_ = true;
       }
     }
 
-    void MonitorWaitFinished(Monitor* m, bool timed_out ATTRIBUTE_UNUSED)
+    void MonitorWaitFinished(Monitor* m, bool timed_out ATTRIBUTE_UNUSED) override
         REQUIRES_SHARED(Locks::mutator_lock_) {
       if (IsInterestingObject(m->GetObject())) {
         saw_wait_finished_ = true;
