@@ -49,6 +49,7 @@
 #include "debug/debug_info.h"
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/descriptors_names.h"
@@ -56,6 +57,7 @@
 #include "dex/dex_instruction-inl.h"
 #include "dex/string_reference.h"
 #include "dex/type_lookup_table.h"
+#include "dexlayout.h"
 #include "disassembler.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/space/image_space.h"
@@ -625,8 +627,64 @@ class OatDumper {
         const OatDexFile* oat_dex_file = oat_dex_files_[i];
         CHECK(oat_dex_file != nullptr);
         CHECK(vdex_dex_file != nullptr);
-        if (!ExportDexFile(os, *oat_dex_file, vdex_dex_file.get())) {
-          success = false;
+
+        // Remove hiddenapis
+        vdex_dex_file->UnhideApis();
+
+        // If a CompactDex file is detected within a Vdex container, DexLayout is used to convert
+        // back to a StandardDex file. Since the converted DexFile will most likely not reproduce
+        // the original input Dex file, the `update_checksum_` option is used to recompute the
+        // checksum. If the vdex container does not contain cdex resources (`used_dexlayout` is
+        // false), ExportDexFile() enforces a reproducible checksum verification.
+        if (vdex_dex_file->IsCompactDexFile()) {
+          Options options;
+          options.compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
+          options.update_checksum_ = true;
+          DexLayout dex_layout(options, /*info*/ nullptr, /*out_file*/ nullptr, /*header*/ nullptr);
+          std::unique_ptr<art::DexContainer> dex_container;
+          bool result = dex_layout.ProcessDexFile(vdex_dex_file->GetLocation().c_str(),
+                                                  vdex_dex_file.get(),
+                                                  i,
+                                                  &dex_container,
+                                                  &error_msg);
+          if (!result) {
+            os << "DexLayout failed to process Dex file: " + error_msg;
+            success = false;
+            break;
+          }
+          DexContainer::Section* main_section = dex_container->GetMainSection();
+          CHECK_EQ(dex_container->GetDataSection()->Size(), 0u);
+
+          const ArtDexFileLoader dex_file_loader;
+          std::unique_ptr<const DexFile> dex(dex_file_loader.Open(
+              main_section->Begin(),
+              main_section->Size(),
+              vdex_dex_file->GetLocation(),
+              vdex_file->GetLocationChecksum(i),
+              nullptr /*oat_dex_file*/,
+              false /*verify*/,
+              true /*verify_checksum*/,
+              &error_msg));
+          if (dex == nullptr) {
+            os << "Failed to load DexFile from layout container: " + error_msg;
+            success = false;
+            break;
+          }
+          if (dex->IsCompactDexFile()) {
+            os <<"CompactDex conversion to StandardDex failed";
+            success = false;
+            break;
+          }
+
+          if (!ExportDexFile(os, *oat_dex_file, dex.get(), true /*used_dexlayout*/)) {
+            success = false;
+            break;
+          }
+        } else {
+          if (!ExportDexFile(os, *oat_dex_file, vdex_dex_file.get(), false /*used_dexlayout*/)) {
+            success = false;
+            break;
+          }
         }
         i++;
       }
@@ -898,10 +956,16 @@ class OatDumper {
   // Dex resource is extracted from the oat_dex_file and its checksum is repaired since it's not
   // unquickened. Otherwise the dex_file has been fully unquickened and is expected to verify the
   // original checksum.
-  bool ExportDexFile(std::ostream& os, const OatDexFile& oat_dex_file, const DexFile* dex_file) {
+  bool ExportDexFile(std::ostream& os,
+                     const OatDexFile& oat_dex_file,
+                     const DexFile* dex_file,
+                     bool used_dexlayout) {
     std::string error_msg;
     std::string dex_file_location = oat_dex_file.GetDexFileLocation();
-    size_t fsize = oat_dex_file.FileSize();
+
+    // If dex_file (from unquicken or dexlayout) is not available, the output DexFile size is the
+    // same as the one extracted from the Oat container (pre-oreo)
+    size_t fsize = dex_file == nullptr ? oat_dex_file.FileSize() : dex_file->Size();
 
     // Some quick checks just in case
     if (fsize == 0 || fsize < sizeof(DexFile::Header)) {
@@ -921,27 +985,19 @@ class OatDumper {
       reinterpret_cast<DexFile::Header*>(const_cast<uint8_t*>(dex_file->Begin()))->checksum_ =
           dex_file->CalculateChecksum();
     } else {
-      // Vdex unquicken output should match original input bytecode
-      uint32_t orig_checksum =
-          reinterpret_cast<DexFile::Header*>(const_cast<uint8_t*>(dex_file->Begin()))->checksum_;
-      CHECK_EQ(orig_checksum, dex_file->CalculateChecksum());
-      if (orig_checksum != dex_file->CalculateChecksum()) {
-        os << "Unexpected checksum from unquicken dex file '" << dex_file_location << "'\n";
-        return false;
+      // If dexlayout was used to convert CompactDex back to StandardDex, checksum will be updated
+      // due to `update_checksum_` option, otherwise we expect a reproducible checksum.
+      if (!used_dexlayout) {
+        // Vdex unquicken output should match original input bytecode
+        uint32_t orig_checksum =
+            reinterpret_cast<DexFile::Header*>(const_cast<uint8_t*>(dex_file->Begin()))->checksum_;
+        if (orig_checksum != dex_file->CalculateChecksum()) {
+          os << "Unexpected checksum from unquicken dex file '" << dex_file_location << "'\n";
+          return false;
+        }
       }
     }
 
-    // Update header for shared section.
-    uint32_t shared_section_offset = 0u;
-    uint32_t shared_section_size = 0u;
-    if (dex_file->IsCompactDexFile()) {
-      CompactDexFile::Header* const header =
-          reinterpret_cast<CompactDexFile::Header*>(const_cast<uint8_t*>(dex_file->Begin()));
-      shared_section_offset = header->data_off_;
-      shared_section_size = header->data_size_;
-      // The shared section will be serialized right after the dex file.
-      header->data_off_ = header->file_size_;
-    }
     // Verify output directory exists
     if (!OS::DirectoryExists(options_.export_dex_location_)) {
       // TODO: Extend OS::DirectoryExists if symlink support is required
@@ -993,15 +1049,6 @@ class OatDumper {
       os << "Failed to write dex file";
       file->Erase();
       return false;
-    }
-
-    if (shared_section_size != 0) {
-      success = file->WriteFully(dex_file->Begin() + shared_section_offset, shared_section_size);
-      if (!success) {
-        os << "Failed to write shared data section";
-        file->Erase();
-        return false;
-      }
     }
 
     if (file->FlushCloseOrErase() != 0) {
