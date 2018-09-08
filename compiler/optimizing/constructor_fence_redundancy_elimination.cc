@@ -78,7 +78,7 @@ class CFREVisitor : public HGraphVisitor {
     VisitSetLocation(instruction, value);
   }
 
-  void VisitDeoptimize(HDeoptimize* instruction ATTRIBUTE_UNUSED) {
+  void VisitDeoptimize(HDeoptimize* instruction ATTRIBUTE_UNUSED) override {
     // Pessimize: Merge all fences.
     MergeCandidateFences();
   }

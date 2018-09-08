@@ -114,9 +114,9 @@ class ReferenceTypePropagation::RTPVisitor : public HGraphDelegateVisitor {
   void VisitCheckCast(HCheckCast* instr) override;
   void VisitBoundType(HBoundType* instr) override;
   void VisitNullCheck(HNullCheck* instr) override;
-  void VisitPhi(HPhi* phi);
+  void VisitPhi(HPhi* phi) override;
 
-  void VisitBasicBlock(HBasicBlock* block);
+  void VisitBasicBlock(HBasicBlock* block) override;
   void ProcessWorklist();
 
  private:

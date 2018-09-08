@@ -96,12 +96,12 @@ class MultiOatRelativePatcherTest : public testing::Test {
 
     void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code ATTRIBUTE_UNUSED,
                                      const LinkerPatch& patch ATTRIBUTE_UNUSED,
-                                     uint32_t patch_offset ATTRIBUTE_UNUSED) {
+                                     uint32_t patch_offset ATTRIBUTE_UNUSED) override {
       LOG(FATAL) << "UNIMPLEMENTED";
     }
 
     std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(
-        uint32_t executable_offset ATTRIBUTE_UNUSED) {
+        uint32_t executable_offset ATTRIBUTE_UNUSED) override {
       LOG(FATAL) << "UNIMPLEMENTED";
       UNREACHABLE();
     }

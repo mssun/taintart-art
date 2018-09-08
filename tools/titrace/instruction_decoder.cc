@@ -32,7 +32,7 @@ class ClassInstructionDecoder : public InstructionDecoder {
     return Bytecode::ToString(op);
   }
 
-  virtual size_t LocationToOffset(size_t j_location) {
+  size_t LocationToOffset(size_t j_location) override {
     return j_location;
   }
 
@@ -474,7 +474,7 @@ class DexInstructionDecoder : public InstructionDecoder {
     return Bytecode::ToString(op);
   }
 
-  virtual size_t LocationToOffset(size_t j_location) {
+  size_t LocationToOffset(size_t j_location) override {
     // dex pc is uint16_t*, but offset needs to be in bytes.
     return j_location * (sizeof(uint16_t) / sizeof(uint8_t));
   }

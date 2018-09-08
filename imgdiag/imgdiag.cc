@@ -1731,7 +1731,7 @@ struct ImgDiagArgs : public CmdlineArgs {
     return kParseOk;
   }
 
-  virtual std::string GetUsage() const {
+  std::string GetUsage() const override {
     std::string usage;
 
     usage +=
@@ -1761,7 +1761,7 @@ struct ImgDiagArgs : public CmdlineArgs {
 };
 
 struct ImgDiagMain : public CmdlineMain<ImgDiagArgs> {
-  virtual bool ExecuteWithRuntime(Runtime* runtime) {
+  bool ExecuteWithRuntime(Runtime* runtime) override {
     CHECK(args_ != nullptr);
 
     return DumpImage(runtime,

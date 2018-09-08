@@ -80,13 +80,13 @@ static void JNICALL RedefineObjectHook(jvmtiEnv *jvmti_env,
    public:
     explicit JvmtiAllocator(jvmtiEnv* jvmti) : jvmti_(jvmti) {}
 
-    void* Allocate(size_t size) {
+    void* Allocate(size_t size) override {
       unsigned char* res = nullptr;
       jvmti_->Allocate(size, &res);
       return res;
     }
 
-    void Free(void* ptr) {
+    void Free(void* ptr) override {
       jvmti_->Deallocate(reinterpret_cast<unsigned char*>(ptr));
     }
 

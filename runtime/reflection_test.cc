@@ -33,7 +33,7 @@ namespace art {
 // TODO: Convert to CommonRuntimeTest. Currently MakeExecutable is used.
 class ReflectionTest : public CommonCompilerTest {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     CommonCompilerTest::SetUp();
 
     vm_ = Runtime::Current()->GetJavaVM();
@@ -73,7 +73,7 @@ class ReflectionTest : public CommonCompilerTest {
     }
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     CleanUpJniEnv();
     CommonCompilerTest::TearDown();
   }

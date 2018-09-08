@@ -68,7 +68,7 @@ class DebugInfoTask : public Task {
         debug_info_(debug_info) {
   }
 
-  void Run(Thread*) {
+  void Run(Thread*) override {
     result_ = debug::MakeMiniDebugInfo(isa_,
                                        instruction_set_features_,
                                        text_section_address_,

@@ -50,7 +50,7 @@ class ExceptionTest : public CommonRuntimeTest {
   // which always points to the first source statement.
   static constexpr const uint32_t kDexPc = 0;
 
-  virtual void SetUp() {
+  void SetUp() override {
     CommonRuntimeTest::SetUp();
 
     ScopedObjectAccess soa(Thread::Current());

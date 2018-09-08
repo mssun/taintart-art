@@ -1385,7 +1385,7 @@ struct RuntimeMethodShortyVisitor : public StackVisitor {
       : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
         shorty('V') {}
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* m = GetMethod();
     if (m != nullptr && !m->IsRuntimeMethod()) {
       // The first Java method.

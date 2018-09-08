@@ -1157,7 +1157,7 @@ class VerifyDeclaringClassVisitor : public ArtMethodVisitor {
   VerifyDeclaringClassVisitor() REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_)
       : live_bitmap_(Runtime::Current()->GetHeap()->GetLiveBitmap()) {}
 
-  virtual void Visit(ArtMethod* method)
+  void Visit(ArtMethod* method) override
       REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_) {
     ObjPtr<mirror::Class> klass = method->GetDeclaringClassUnchecked();
     if (klass != nullptr) {
@@ -1557,7 +1557,7 @@ static void VerifyAppImage(const ImageHeader& header,
      public:
       explicit VerifyClassInTableArtMethodVisitor(ClassTable* table) : table_(table) {}
 
-      virtual void Visit(ArtMethod* method)
+      void Visit(ArtMethod* method) override
           REQUIRES_SHARED(Locks::mutator_lock_, Locks::classlinker_classes_lock_) {
         ObjPtr<mirror::Class> klass = method->GetDeclaringClass();
         if (klass != nullptr && !Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(klass)) {

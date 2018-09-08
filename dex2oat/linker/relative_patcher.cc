@@ -79,7 +79,7 @@ std::unique_ptr<RelativePatcher> RelativePatcher::Create(
 
     void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code ATTRIBUTE_UNUSED,
                                      const LinkerPatch& patch ATTRIBUTE_UNUSED,
-                                     uint32_t patch_offset ATTRIBUTE_UNUSED) {
+                                     uint32_t patch_offset ATTRIBUTE_UNUSED) override {
       LOG(FATAL) << "Unexpected baker read barrier branch patch.";
     }
 

@@ -128,7 +128,7 @@ class AllocRaceTask : public Task {
   AllocRaceTask(size_t id, size_t iterations, size_t size, LargeObjectSpace* los) :
     id_(id), iterations_(iterations), size_(size), los_(los) {}
 
-  void Run(Thread* self) {
+  void Run(Thread* self) override {
     for (size_t i = 0; i < iterations_ ; ++i) {
       size_t alloc_size, bytes_tl_bulk_allocated;
       mirror::Object* ptr = los_->Alloc(self, size_, &alloc_size, nullptr,
@@ -140,7 +140,7 @@ class AllocRaceTask : public Task {
     }
   }
 
-  virtual void Finalize() {
+  void Finalize() override {
     delete this;
   }
 

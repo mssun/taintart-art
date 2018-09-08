@@ -96,7 +96,7 @@ TEST_F(HeapTest, DumpGCPerformanceOnShutdown) {
 }
 
 class ZygoteHeapTest : public CommonRuntimeTest {
-  void SetUpRuntimeOptions(RuntimeOptions* options) {
+  void SetUpRuntimeOptions(RuntimeOptions* options) override {
     CommonRuntimeTest::SetUpRuntimeOptions(options);
     options->push_back(std::make_pair("-Xzygote", nullptr));
   }

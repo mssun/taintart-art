@@ -276,7 +276,7 @@ class ClearedReferenceTask : public HeapTask {
   explicit ClearedReferenceTask(jobject cleared_references)
       : HeapTask(NanoTime()), cleared_references_(cleared_references) {
   }
-  virtual void Run(Thread* thread) {
+  void Run(Thread* thread) override {
     ScopedObjectAccess soa(thread);
     jvalue args[1];
     args[0].l = cleared_references_;

@@ -165,7 +165,7 @@ class InstrumentationStackVisitor : public StackVisitor {
     CHECK_NE(frame_depth_, kInvalidFrameDepth);
   }
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     size_t current_frame_depth = GetFrameDepth();
     if (current_frame_depth < frame_depth_) {
       CHECK(GetMethod() != nullptr);

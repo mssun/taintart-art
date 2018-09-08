@@ -62,11 +62,11 @@ class ArenaBitVectorAllocator final : public Allocator, private ArenaBitVectorAl
     UNREACHABLE();
   }
 
-  virtual void* Alloc(size_t size) {
+  void* Alloc(size_t size) override {
     return allocator_->Alloc(size, this->Kind());
   }
 
-  virtual void Free(void*) {}  // Nop.
+  void Free(void*) override {}  // Nop.
 
  private:
   ArenaBitVectorAllocator(ArenaAlloc* allocator, ArenaAllocKind kind)

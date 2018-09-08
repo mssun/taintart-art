@@ -301,13 +301,13 @@ struct MockScopedLockMutator {
 
 struct SubtypeCheckTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     android::base::InitLogging(/*argv*/nullptr);
 
     CreateRootedTree(BitString::kCapacity + 2u, BitString::kCapacity + 2u);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
   }
 
   void CreateRootedTree(size_t width, size_t height) {

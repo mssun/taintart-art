@@ -27,7 +27,7 @@ namespace art {
 
 class JavaVmExtTest : public CommonRuntimeTest {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     CommonRuntimeTest::SetUp();
 
     vm_ = Runtime::Current()->GetJavaVM();

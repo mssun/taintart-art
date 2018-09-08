@@ -176,7 +176,7 @@ class AssemblerMIPSTest : public AssemblerTest<mips::MipsAssembler,
     STLDeleteElements(&fp_registers_);
   }
 
-  std::vector<mips::MipsLabel> GetAddresses() {
+  std::vector<mips::MipsLabel> GetAddresses() override {
     UNIMPLEMENTED(FATAL) << "Feature not implemented yet";
     UNREACHABLE();
   }
