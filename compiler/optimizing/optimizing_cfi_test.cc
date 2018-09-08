@@ -128,7 +128,7 @@ class OptimizingCFITest : public CFITest, public OptimizingUnitTestHelper {
    public:
     InternalCodeAllocator() {}
 
-    virtual uint8_t* Allocate(size_t size) {
+    uint8_t* Allocate(size_t size) override {
       memory_.resize(size);
       return memory_.data();
     }

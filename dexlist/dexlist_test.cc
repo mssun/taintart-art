@@ -33,7 +33,7 @@ namespace art {
 
 class DexListTest : public CommonRuntimeTest {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     CommonRuntimeTest::SetUp();
     // Dogfood our own lib core dex file.
     dex_file_ = GetLibCoreDexFileNames()[0];

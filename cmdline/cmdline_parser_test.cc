@@ -131,7 +131,7 @@ class CmdlineParserTest : public ::testing::Test {
     art::InitLogging(nullptr, art::Runtime::Abort);  // argv = null
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     parser_ = ParsedOptions::MakeParser(false);  // do not ignore unrecognized options
   }
 

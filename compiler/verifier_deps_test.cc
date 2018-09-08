@@ -52,7 +52,7 @@ class VerifierDepsCompilerCallbacks : public CompilerCallbacks {
   bool IsRelocationPossible() override { return false; }
 
   verifier::VerifierDeps* GetVerifierDeps() const override { return deps_; }
-  void SetVerifierDeps(verifier::VerifierDeps* deps) { deps_ = deps; }
+  void SetVerifierDeps(verifier::VerifierDeps* deps) override { deps_ = deps; }
 
  private:
   verifier::VerifierDeps* deps_;
@@ -60,7 +60,7 @@ class VerifierDepsCompilerCallbacks : public CompilerCallbacks {
 
 class VerifierDepsTest : public CommonCompilerTest {
  public:
-  void SetUpRuntimeOptions(RuntimeOptions* options) {
+  void SetUpRuntimeOptions(RuntimeOptions* options) override {
     CommonCompilerTest::SetUpRuntimeOptions(options);
     callbacks_.reset(new VerifierDepsCompilerCallbacks());
   }

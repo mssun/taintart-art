@@ -32,7 +32,7 @@ class TestVisitor : public StackVisitor {
   TestVisitor(Thread* thread, Context* context) REQUIRES_SHARED(Locks::mutator_lock_)
       : StackVisitor(thread, context, StackVisitor::StackWalkKind::kIncludeInlinedFrames) {}
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* m = GetMethod();
     std::string m_name(m->GetName());
 

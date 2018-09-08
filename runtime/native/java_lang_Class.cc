@@ -62,7 +62,7 @@ static bool IsCallerTrusted(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) 
           caller(nullptr) {
     }
 
-    bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
       ArtMethod *m = GetMethod();
       if (m == nullptr) {
         // Attached native thread. Assume this is *not* boot class path.

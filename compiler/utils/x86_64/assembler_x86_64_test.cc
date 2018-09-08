@@ -297,7 +297,7 @@ class AssemblerX86_64Test : public AssemblerTest<x86_64::X86_64Assembler,
     STLDeleteElements(&fp_registers_);
   }
 
-  std::vector<x86_64::Address> GetAddresses() {
+  std::vector<x86_64::Address> GetAddresses() override {
     return addresses_;
   }
 

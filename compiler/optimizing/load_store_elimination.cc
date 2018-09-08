@@ -692,7 +692,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
     VisitSetLocation(instruction, idx, instruction->InputAt(2));
   }
 
-  void VisitDeoptimize(HDeoptimize* instruction) {
+  void VisitDeoptimize(HDeoptimize* instruction) override {
     const ScopedArenaVector<HInstruction*>& heap_values =
         heap_values_for_[instruction->GetBlock()->GetBlockId()];
     for (HInstruction* heap_value : heap_values) {

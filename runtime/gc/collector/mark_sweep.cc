@@ -789,12 +789,12 @@ class MarkSweep::MarkStackTask : public Task {
     mark_stack_[mark_stack_pos_++].Assign(obj);
   }
 
-  virtual void Finalize() {
+  void Finalize() override {
     delete this;
   }
 
   // Scans all of the objects
-  virtual void Run(Thread* self ATTRIBUTE_UNUSED)
+  void Run(Thread* self ATTRIBUTE_UNUSED) override
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     ScanObjectParallelVisitor visitor(this);
@@ -852,11 +852,11 @@ class MarkSweep::CardScanTask : public MarkStackTask<false> {
   const uint8_t minimum_age_;
   const bool clear_card_;
 
-  virtual void Finalize() {
+  void Finalize() override {
     delete this;
   }
 
-  virtual void Run(Thread* self) NO_THREAD_SAFETY_ANALYSIS {
+  void Run(Thread* self) override NO_THREAD_SAFETY_ANALYSIS {
     ScanObjectParallelVisitor visitor(this);
     accounting::CardTable* card_table = mark_sweep_->GetHeap()->GetCardTable();
     size_t cards_scanned = clear_card_
@@ -1009,12 +1009,12 @@ class MarkSweep::RecursiveMarkTask : public MarkStackTask<false> {
   const uintptr_t begin_;
   const uintptr_t end_;
 
-  virtual void Finalize() {
+  void Finalize() override {
     delete this;
   }
 
   // Scans all of the objects
-  virtual void Run(Thread* self) NO_THREAD_SAFETY_ANALYSIS {
+  void Run(Thread* self) override NO_THREAD_SAFETY_ANALYSIS {
     ScanObjectParallelVisitor visitor(this);
     bitmap_->VisitMarkedRange(begin_, end_, visitor);
     // Finish by emptying our local mark stack.

@@ -92,7 +92,7 @@ static bool DoExtractClassFromData(jvmtiEnv* env,
 
   struct Allocator : public dex::Writer::Allocator {
     explicit Allocator(jvmtiEnv* jvmti_env) : jvmti_env_(jvmti_env) {}
-    virtual void* Allocate(size_t size) {
+    void* Allocate(size_t size) override {
       unsigned char* out = nullptr;
       if (JVMTI_ERROR_NONE != jvmti_env_->Allocate(size, &out)) {
         return nullptr;
@@ -100,7 +100,7 @@ static bool DoExtractClassFromData(jvmtiEnv* env,
         return out;
       }
     }
-    virtual void Free(void* ptr) {
+    void Free(void* ptr) override {
       jvmti_env_->Deallocate(reinterpret_cast<unsigned char*>(ptr));
     }
    private:

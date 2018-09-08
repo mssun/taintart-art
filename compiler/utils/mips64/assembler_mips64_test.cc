@@ -240,7 +240,7 @@ class AssemblerMIPS64Test : public AssemblerTest<mips64::Mips64Assembler,
     STLDeleteElements(&vec_registers_);
   }
 
-  std::vector<mips64::Mips64Label> GetAddresses() {
+  std::vector<mips64::Mips64Label> GetAddresses() override {
     UNIMPLEMENTED(FATAL) << "Feature not implemented yet";
     UNREACHABLE();
   }

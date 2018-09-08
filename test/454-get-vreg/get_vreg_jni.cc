@@ -34,7 +34,7 @@ class TestVisitor : public StackVisitor {
         this_value_(this_value),
         found_method_index_(0) {}
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* m = GetMethod();
     std::string m_name(m->GetName());
 

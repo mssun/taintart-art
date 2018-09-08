@@ -47,7 +47,7 @@ static const pid_t kImgDiagGuaranteedBadPid = (PID_MAX_LIMIT + 1);
 
 class ImgDiagTest : public CommonRuntimeTest {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     CommonRuntimeTest::SetUp();
 
     // We loaded the runtime with an explicit image. Therefore the image space must exist.
