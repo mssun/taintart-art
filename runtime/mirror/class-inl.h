@@ -378,7 +378,7 @@ template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
 inline bool Class::IsVariableSize() {
   // Classes, arrays, and strings vary in size, and so the object_size_ field cannot
   // be used to Get their instance size
-  return IsClassClass<kVerifyFlags, kReadBarrierOption>() ||
+  return IsClassClass<kVerifyFlags>() ||
          IsArrayClass<kVerifyFlags, kReadBarrierOption>() ||
          IsStringClass();
 }
@@ -853,10 +853,12 @@ inline uint32_t Class::ComputeClassSize(bool has_embedded_vtable,
   return size;
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline bool Class::IsClassClass() {
-  ObjPtr<Class> java_lang_Class = GetClass<kVerifyFlags, kReadBarrierOption>()->
-      template GetClass<kVerifyFlags, kReadBarrierOption>();
+  // OK to look at from-space copies since java.lang.Class.class is not movable.
+  // See b/114413743
+  ObjPtr<Class> java_lang_Class = GetClass<kVerifyFlags, kWithoutReadBarrier>()->
+      template GetClass<kVerifyFlags, kWithoutReadBarrier>();
   return this == java_lang_Class;
 }
 
