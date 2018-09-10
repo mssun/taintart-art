@@ -3400,11 +3400,6 @@ bool OatWriter::SeekToDexFile(OutputStream* out, File* file, OatDexFile* oat_dex
 }
 
 bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_file) {
-  // Open dex files and write them into `out`.
-  // Note that we only verify dex files which do not belong to the boot class path.
-  // This is because those have been processed by `hiddenapi` and would not pass
-  // some of the checks. No guarantees are lost, however, as `hiddenapi` verifies
-  // the dex files prior to processing.
   TimingLogger::ScopedTiming split("Dex Layout", timings_);
   std::string error_msg;
   std::string location(oat_dex_file->GetLocation());
@@ -3425,7 +3420,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
     dex_file = dex_file_loader.Open(location,
                                     zip_entry->GetCrc32(),
                                     std::move(mem_map),
-                                    /* verify */ !GetCompilerOptions().IsBootImage(),
+                                    /* verify */ true,
                                     /* verify_checksum */ true,
                                     &error_msg);
   } else if (oat_dex_file->source_.IsRawFile()) {
@@ -3437,7 +3432,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
     }
     TimingLogger::ScopedTiming extract("Open", timings_);
     dex_file = dex_file_loader.OpenDex(dup_fd, location,
-                                       /* verify */ !GetCompilerOptions().IsBootImage(),
+                                       /* verify */ true,
                                        /* verify_checksum */ true,
                                        /* mmap_shared */ false,
                                        &error_msg);

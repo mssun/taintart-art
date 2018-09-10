@@ -257,6 +257,7 @@ class DexWriter {
   void WriteStringDatas(Stream* stream);
   void WriteClassDatas(Stream* stream);
   void WriteMethodHandles(Stream* stream);
+  void WriteHiddenapiClassData(Stream* stream);
   void WriteMapItems(Stream* stream, MapItemQueue* queue);
   void GenerateAndWriteMapItems(Stream* stream);
 

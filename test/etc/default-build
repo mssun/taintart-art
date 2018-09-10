@@ -323,7 +323,8 @@ function make_dexmerge() {
 function make_hiddenapi() {
   local args=( "encode" )
   while [[ $# -gt 0 ]]; do
-    args+=("--dex=$1")
+    args+=("--input-dex=$1")
+    args+=("--output-dex=$1")
     shift
   done
   if [ -f api-light-greylist.txt ]; then
