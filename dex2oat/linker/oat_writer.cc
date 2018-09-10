@@ -2405,7 +2405,7 @@ bool OatWriter::WriteRodata(OutputStream* out) {
   if (static_cast<uint32_t>(new_offset) != expected_file_offset) {
     PLOG(ERROR) << "Failed to seek to oat code section. Actual: " << new_offset
                 << " Expected: " << expected_file_offset << " File: " << out->GetLocation();
-    return 0;
+    return false;
   }
   DCHECK_OFFSET();
 
