@@ -123,6 +123,7 @@ art_cc_binary {
         "libvixld-arm",
         "libvixld-arm64",
     ],
+    group_static_libs: true,
 }
 
 art_cc_test {
