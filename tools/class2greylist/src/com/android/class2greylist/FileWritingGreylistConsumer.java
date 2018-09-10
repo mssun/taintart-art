@@ -1,5 +1,7 @@
 package com.android.class2greylist;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -20,11 +22,16 @@ public class FileWritingGreylistConsumer implements GreylistConsumer {
         return new PrintStream(new FileOutputStream(new File(filename)));
     }
 
-    private static Map<Integer, PrintStream> openFiles(
+    @VisibleForTesting
+    public static Map<Integer, PrintStream> openFiles(
             Map<Integer, String> filenames) throws FileNotFoundException {
+        Map<String, PrintStream> streamsByName = new HashMap<>();
         Map<Integer, PrintStream> streams = new HashMap<>();
         for (Map.Entry<Integer, String> entry : filenames.entrySet()) {
-            streams.put(entry.getKey(), openFile(entry.getValue()));
+            if (!streamsByName.containsKey(entry.getValue())) {
+                streamsByName.put(entry.getValue(), openFile(entry.getValue()));
+            }
+            streams.put(entry.getKey(), streamsByName.get(entry.getValue()));
         }
         return streams;
     }
