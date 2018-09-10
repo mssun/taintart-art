@@ -530,7 +530,7 @@ static inline void ProcessWeakClass(GcRoot<mirror::Class>* root_ptr,
   // This does not need a read barrier because this is called by GC.
   mirror::Class* cls = root_ptr->Read<kWithoutReadBarrier>();
   if (cls != nullptr && cls != weak_sentinel) {
-    DCHECK((cls->IsClass<kDefaultVerifyFlags, kWithoutReadBarrier>()));
+    DCHECK((cls->IsClass<kDefaultVerifyFlags>()));
     // Look at the classloader of the class to know if it has been unloaded.
     // This does not need a read barrier because this is called by GC.
     mirror::Object* class_loader =

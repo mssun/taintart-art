@@ -1008,7 +1008,7 @@ class ImageSpace::Loader {
       }
 
       if (obj->IsClass()) {
-        mirror::Class* klass = obj->AsClass<kVerifyNone, kWithoutReadBarrier>();
+        mirror::Class* klass = obj->AsClass<kVerifyNone>();
         // Fixup super class before visiting instance fields which require
         // information from their super class to calculate offsets.
         mirror::Class* super_class = klass->GetSuperClass<kVerifyNone, kWithoutReadBarrier>();
@@ -1026,8 +1026,8 @@ class ImageSpace::Loader {
           *this);
       // Note that this code relies on no circular dependencies.
       // We want to use our own class loader and not the one in the image.
-      if (obj->IsClass<kVerifyNone, kWithoutReadBarrier>()) {
-        mirror::Class* as_klass = obj->AsClass<kVerifyNone, kWithoutReadBarrier>();
+      if (obj->IsClass<kVerifyNone>()) {
+        mirror::Class* as_klass = obj->AsClass<kVerifyNone>();
         FixupObjectAdapter visitor(boot_image_, boot_oat_, app_image_, app_oat_);
         as_klass->FixupNativePointers<kVerifyNone, kWithoutReadBarrier>(as_klass,
                                                                         pointer_size_,

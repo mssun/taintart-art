@@ -137,17 +137,18 @@ inline bool Object::InstanceOf(ObjPtr<Class> klass) {
   return klass->IsAssignableFrom(GetClass<kVerifyFlags>());
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline bool Object::IsClass() {
-  constexpr auto kNewFlags = RemoveThisFlags(kVerifyFlags);
-  Class* java_lang_Class = GetClass<kVerifyFlags, kReadBarrierOption>()->
-      template GetClass<kVerifyFlags, kReadBarrierOption>();
-  return GetClass<kNewFlags, kReadBarrierOption>() == java_lang_Class;
+  // OK to look at from-space copies since java.lang.Class.class is not movable.
+  // See b/114413743
+  ObjPtr<Class> klass = GetClass<kVerifyFlags, kWithoutReadBarrier>();
+  ObjPtr<Class> java_lang_Class = klass->template GetClass<kVerifyFlags, kWithoutReadBarrier>();
+  return klass == java_lang_Class;
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline Class* Object::AsClass() {
-  DCHECK((IsClass<kVerifyFlags, kReadBarrierOption>()));
+  DCHECK((IsClass<kVerifyFlags>()));
   return down_cast<Class*>(this);
 }
 
@@ -350,8 +351,8 @@ inline size_t Object::SizeOf() {
   constexpr auto kNewFlags = RemoveThisFlags(kVerifyFlags);
   if (IsArrayInstance<kVerifyFlags, kRBO>()) {
     result = AsArray<kNewFlags, kRBO>()->template SizeOf<kNewFlags, kRBO>();
-  } else if (IsClass<kNewFlags, kRBO>()) {
-    result = AsClass<kNewFlags, kRBO>()->template SizeOf<kNewFlags, kRBO>();
+  } else if (IsClass<kNewFlags>()) {
+    result = AsClass<kNewFlags>()->template SizeOf<kNewFlags, kRBO>();
   } else if (GetClass<kNewFlags, kRBO>()->IsStringClass()) {
     result = AsString<kNewFlags, kRBO>()->template SizeOf<kNewFlags>();
   } else {
@@ -867,7 +868,7 @@ inline void Object::VisitFieldsReferences(uint32_t ref_offsets, const Visitor& v
     // inheritance hierarchy and find reference offsets the hard way. In the static case, just
     // consider this class.
     for (ObjPtr<Class> klass = kIsStatic
-            ? AsClass<kVerifyFlags, kReadBarrierOption>()
+            ? AsClass<kVerifyFlags>()
             : GetClass<kVerifyFlags, kReadBarrierOption>();
         klass != nullptr;
         klass = kIsStatic ? nullptr : klass->GetSuperClass<kVerifyFlags, kReadBarrierOption>()) {
