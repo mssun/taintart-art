@@ -430,8 +430,7 @@ class MANAGED Class final : public Object {
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   bool IsArrayClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
-           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   bool IsClassClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool IsThrowableClass() REQUIRES_SHARED(Locks::mutator_lock_);
