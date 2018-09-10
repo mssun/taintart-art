@@ -37,6 +37,7 @@ art_cc_binary {
     shared_libs: [
         "libart",
         "libart-compiler",
+        "libart-dexlayout",
         "libart-disassembler",
         "libdexfile",
         "libartbase",
@@ -54,6 +55,7 @@ art_cc_binary {
     shared_libs: [
         "libartd",
         "libartd-compiler",
+        "libartd-dexlayout",
         "libartd-disassembler",
         "libdexfiled",
         "libartbased",
@@ -93,6 +95,7 @@ art_cc_binary {
         "libdexfile_static_defaults",
         "libprofile_static_defaults",
         "libart-compiler_static_defaults",
+        "libart-dexlayout_static_defaults",
         "oatdumps-defaults",
     ],
     static_libs: [
@@ -111,6 +114,7 @@ art_cc_binary {
         "libdexfiled_static_defaults",
         "libprofiled_static_defaults",
         "libartd-compiler_static_defaults",
+        "libartd-dexlayout_static_defaults",
         "oatdumps-defaults",
     ],
     target: {

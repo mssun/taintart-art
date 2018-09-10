@@ -60,6 +60,17 @@ void DexFile::UnHideAccessFlags(uint8_t* data_ptr,
   UpdateUnsignedLeb128(data_ptr, new_access_flags);
 }
 
+void DexFile::UnhideApis() const {
+  for (ClassAccessor accessor : GetClasses()) {
+    for (const ClassAccessor::Field& field : accessor.GetFields()) {
+      field.UnHideAccessFlags();
+    }
+    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+      method.UnHideAccessFlags();
+    }
+  }
+}
+
 uint32_t DexFile::CalculateChecksum() const {
   return CalculateChecksum(Begin(), Size());
 }
