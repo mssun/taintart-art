@@ -1013,6 +1013,9 @@ class DexFile {
   // Changes the dex class data pointed to by data_ptr it to not have any hiddenapi flags.
   static void UnHideAccessFlags(uint8_t* data_ptr, uint32_t new_access_flags, bool is_method);
 
+  // Iterate dex classes and remove hiddenapi flags in fields and methods.
+  void UnhideApis() const;
+
   inline IterationRange<ClassIterator> GetClasses() const;
 
  protected:
