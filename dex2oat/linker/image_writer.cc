@@ -213,10 +213,6 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
       // since the cookie field contains long pointers to DexFiles which are not deterministic.
       // b/34090128
       ClearDexFileCookies();
-    } else {
-      TimingLogger::ScopedTiming t("ComputeLazyFieldsForImageClasses", timings);
-      // Avoid for app image since this may increase RAM and image size.
-      ComputeLazyFieldsForImageClasses();  // Add useful information
     }
   }
   {
@@ -751,21 +747,6 @@ bool ImageWriter::AllocMemory() {
     }
   }
   return true;
-}
-
-class ImageWriter::ComputeLazyFieldsForClassesVisitor : public ClassVisitor {
- public:
-  bool operator()(ObjPtr<Class> c) override REQUIRES_SHARED(Locks::mutator_lock_) {
-    StackHandleScope<1> hs(Thread::Current());
-    mirror::Class::ComputeName(hs.NewHandle(c));
-    return true;
-  }
-};
-
-void ImageWriter::ComputeLazyFieldsForImageClasses() {
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  ComputeLazyFieldsForClassesVisitor visitor;
-  class_linker->VisitClassesWithoutClassesLock(&visitor);
 }
 
 static bool IsBootClassLoaderClass(ObjPtr<mirror::Class> klass)
