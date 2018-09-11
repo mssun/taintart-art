@@ -21,6 +21,7 @@
 #include <iostream>
 #include <queue>
 
+#include "base/time_utils.h"
 #include "dex/class_accessor-inl.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_instruction-inl.h"
@@ -34,10 +35,140 @@ static const size_t kMaxPrefixLen = 255;
 static const size_t kPrefixConstantCost = 4;
 static const size_t kPrefixIndexCost = 2;
 
+class PrefixDictionary {
+ public:
+  // Add prefix data and return the offset to the start of the added data.
+  size_t AddPrefixData(const uint8_t* data, size_t len) {
+    const size_t offset = prefix_data_.size();
+    prefix_data_.insert(prefix_data_.end(), data, data + len);
+    return offset;
+  }
+
+  static constexpr size_t kLengthBits = 8;
+  static constexpr size_t kLengthMask = (1u << kLengthBits) - 1;
+
+  // Return the prefix offset and length.
+  ALWAYS_INLINE void GetOffset(uint32_t prefix_index, uint32_t* offset, uint32_t* length) const {
+    CHECK_LT(prefix_index, offsets_.size());
+    const uint32_t data = offsets_[prefix_index];
+    *length = data & kLengthMask;
+    *offset = data >> kLengthBits;
+  }
+
+  uint32_t AddOffset(uint32_t offset, uint32_t length) {
+    CHECK_LE(length, kLengthMask);
+    offsets_.push_back((offset << kLengthBits) | length);
+    return offsets_.size() - 1;
+  }
+
+ public:
+  std::vector<uint32_t> offsets_;
+  std::vector<uint8_t> prefix_data_;
+};
+
+class PrefixStrings {
+ public:
+  class Builder {
+   public:
+    explicit Builder(PrefixStrings* output) : output_(output) {}
+    void Build(const std::vector<std::string>& strings);
+
+   private:
+    PrefixStrings* const output_;
+  };
+
+  // Return the string index that was added.
+  size_t AddString(uint16_t prefix, const std::string& str) {
+    const size_t string_offset = chars_.size();
+    chars_.push_back(static_cast<uint8_t>(prefix >> 8));
+    chars_.push_back(static_cast<uint8_t>(prefix >> 0));
+    EncodeUnsignedLeb128(&chars_, str.length());
+    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&str[0]);
+    chars_.insert(chars_.end(), ptr, ptr + str.length());
+    string_offsets_.push_back(string_offset);
+    return string_offsets_.size() - 1;
+  }
+
+  std::string GetString(uint32_t string_idx) const {
+    const size_t offset = string_offsets_[string_idx];
+    const uint8_t* suffix_data = &chars_[offset];
+    uint16_t prefix_idx = (static_cast<uint16_t>(suffix_data[0]) << 8) +
+        suffix_data[1];
+    suffix_data += 2;
+    uint32_t prefix_offset;
+    uint32_t prefix_len;
+    dictionary_.GetOffset(prefix_idx, &prefix_offset, &prefix_len);
+    const uint8_t* prefix_data = &dictionary_.prefix_data_[prefix_offset];
+    std::string ret(prefix_data, prefix_data + prefix_len);
+    uint32_t suffix_len = DecodeUnsignedLeb128(&suffix_data);
+    ret.insert(ret.end(), suffix_data, suffix_data + suffix_len);
+    return ret;
+  }
+
+  ALWAYS_INLINE bool Equal(uint32_t string_idx, const uint8_t* data, size_t len) const {
+    const size_t offset = string_offsets_[string_idx];
+    const uint8_t* suffix_data = &chars_[offset];
+    uint16_t prefix_idx = (static_cast<uint16_t>(suffix_data[0]) << 8) +
+        suffix_data[1];
+    suffix_data += 2;
+    uint32_t prefix_offset;
+    uint32_t prefix_len;
+    dictionary_.GetOffset(prefix_idx, &prefix_offset, &prefix_len);
+    uint32_t suffix_len = DecodeUnsignedLeb128(&suffix_data);
+    if (prefix_len + suffix_len != len) {
+      return false;
+    }
+    const uint8_t* prefix_data = &dictionary_.prefix_data_[prefix_offset];
+    return memcmp(prefix_data, data, prefix_len) == 0u &&
+        memcmp(suffix_data, data + prefix_len, len - prefix_len) == 0u;
+  }
+
+ public:
+  PrefixDictionary dictionary_;
+  std::vector<uint8_t> chars_;
+  std::vector<uint32_t> string_offsets_;
+};
+
+// Normal non prefix strings.
+class NormalStrings {
+ public:
+  // Return the string index that was added.
+  size_t AddString(const std::string& str) {
+    const size_t string_offset = chars_.size();
+    EncodeUnsignedLeb128(&chars_, str.length());
+    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&str[0]);
+    chars_.insert(chars_.end(), ptr, ptr + str.length());
+    string_offsets_.push_back(string_offset);
+    return string_offsets_.size() - 1;
+  }
+
+  std::string GetString(uint32_t string_idx) const {
+    const size_t offset = string_offsets_[string_idx];
+    const uint8_t* data = &chars_[offset];
+    uint32_t len = DecodeUnsignedLeb128(&data);
+    return std::string(data, data + len);
+  }
+
+  ALWAYS_INLINE bool Equal(uint32_t string_idx, const uint8_t* data, size_t len) const {
+    const size_t offset = string_offsets_[string_idx];
+    const uint8_t* str_data = &chars_[offset];
+    uint32_t str_len = DecodeUnsignedLeb128(&str_data);
+    if (str_len != len) {
+      return false;
+    }
+    return memcmp(data, str_data, len) == 0u;
+  }
+
+ public:
+  std::vector<uint8_t> chars_;
+  std::vector<uint32_t> string_offsets_;
+};
+
+
 // Node value = (distance from root) * (occurrences - 1).
 class MatchTrie {
  public:
-  void Add(const std::string& str) {
+  MatchTrie* Add(const std::string& str) {
     MatchTrie* node = this;
     size_t depth = 0u;
     for (uint8_t c : str) {
@@ -54,33 +185,28 @@ class MatchTrie {
       }
       ++node->count_;
     }
-    node->is_end_ = true;
+    return node;
   }
 
   // Returns the length of the longest prefix and if it's a leaf node.
-  std::pair<size_t, bool> LongestPrefix(const std::string& str) const {
-    const MatchTrie* node = this;
-    const MatchTrie* best_node = this;
-    size_t depth = 0u;
-    size_t best_depth = 0u;
+  MatchTrie* LongestPrefix(const std::string& str) {
+    MatchTrie* node = this;
     for (uint8_t c : str) {
       if (node->nodes_[c] == nullptr) {
         break;
       }
       node = node->nodes_[c].get();
-      ++depth;
-      if (node->is_end_) {
-        best_depth = depth;
-        best_node = node;
-      }
     }
-    bool is_leaf = true;
-    for (const std::unique_ptr<MatchTrie>& cur_node : best_node->nodes_) {
+    return node;
+  }
+
+  bool IsLeaf() const {
+    for (const std::unique_ptr<MatchTrie>& cur_node : nodes_) {
       if (cur_node != nullptr) {
-        is_leaf = false;
+        return false;
       }
     }
-    return {best_depth, is_leaf};
+    return true;
   }
 
   int32_t Savings() const {
@@ -134,7 +260,7 @@ class MatchTrie {
           ++num_childs;
         }
       }
-      if (num_childs > 1u || elem->is_end_) {
+      if (num_childs > 1u || elem->value_ != 0u) {
         queue.emplace(elem->Savings(), elem);
       }
     }
@@ -166,29 +292,116 @@ class MatchTrie {
       if (pair.first <= 0) {
         continue;
       }
-      std::vector<uint8_t> chars;
-      for (MatchTrie* cur = pair.second; cur != this; cur = cur->parent_) {
-        chars.push_back(cur->incoming_);
-      }
-      ret.push_back(std::string(chars.rbegin(), chars.rend()));
-      // LOG(INFO) << pair.second->Savings() << " : " << ret.back();
+      ret.push_back(pair.second->GetString());
     }
     return ret;
+  }
+
+  std::string GetString() const {
+    std::vector<uint8_t> chars;
+    for (const MatchTrie* cur = this; cur->parent_ != nullptr; cur = cur->parent_) {
+      chars.push_back(cur->incoming_);
+    }
+    return std::string(chars.rbegin(), chars.rend());
   }
 
   std::unique_ptr<MatchTrie> nodes_[256];
   MatchTrie* parent_ = nullptr;
   uint32_t count_ = 0u;
-  int32_t depth_ = 0u;
+  uint32_t depth_ = 0u;
   int32_t savings_ = 0u;
   uint8_t incoming_ = 0u;
-  // If the current node is the end of a possible prefix.
-  bool is_end_ = false;
+  // Value of the current node, non zero if the node is chosen.
+  uint32_t value_ = 0u;
   // If the current node is chosen to be a used prefix.
   bool chosen_ = false;
   // If the current node is a prefix of a longer chosen prefix.
   uint32_t chosen_suffix_count_ = 0u;
 };
+
+void PrefixStrings::Builder::Build(const std::vector<std::string>& strings) {
+  std::unique_ptr<MatchTrie> prefixe_trie(new MatchTrie());
+  for (size_t i = 0; i < strings.size(); ++i) {
+    size_t len = 0u;
+    if (i > 0u) {
+      CHECK_GT(strings[i], strings[i - 1]);
+      len = std::max(len, PrefixLen(strings[i], strings[i - 1]));
+    }
+    if (i < strings.size() - 1) {
+      len = std::max(len, PrefixLen(strings[i], strings[i + 1]));
+    }
+    len = std::min(len, kMaxPrefixLen);
+    if (len >= kMinPrefixLen) {
+      prefixe_trie->Add(strings[i].substr(0, len))->value_ = 1u;
+    }
+  }
+
+  // Build prefixes.
+  {
+    static constexpr size_t kPrefixBits = 15;
+    std::vector<std::string> prefixes(prefixe_trie->ExtractPrefixes(1 << kPrefixBits));
+    // Add longest prefixes first so that subprefixes can share data.
+    std::sort(prefixes.begin(), prefixes.end(), [](const std::string& a, const std::string& b) {
+      return a.length() > b.length();
+    });
+    prefixe_trie.reset();
+    prefixe_trie.reset(new MatchTrie());
+    uint32_t prefix_idx = 0u;
+    CHECK_EQ(output_->dictionary_.AddOffset(0u, 0u), prefix_idx++);
+    for (const std::string& str : prefixes) {
+      uint32_t prefix_offset = 0u;
+      MatchTrie* node = prefixe_trie->LongestPrefix(str);
+      if (node != nullptr && node->depth_ == str.length() && node->value_ != 0u) {
+        CHECK_EQ(node->GetString(), str);
+        uint32_t existing_len = 0u;
+        output_->dictionary_.GetOffset(node->value_, &prefix_offset, &existing_len);
+        // Make sure to register the current node.
+        prefixe_trie->Add(str)->value_ = prefix_idx;
+      } else {
+        auto add_str = [&](const std::string& s) {
+          node = prefixe_trie->Add(s);
+          node->value_ = prefix_idx;
+          while (node != nullptr) {
+            node->value_ = prefix_idx;
+            node = node->parent_;
+          }
+        };
+        static constexpr size_t kNumSubstrings = 1u;
+        // Increasing kNumSubstrings provides savings since it enables common substrings and not
+        // only prefixes to share data. The problem is that it's slow.
+        for (size_t i = 0; i < std::min(str.length(), kNumSubstrings); ++i) {
+          add_str(str.substr(i));
+        }
+        prefix_offset = output_->dictionary_.AddPrefixData(
+            reinterpret_cast<const uint8_t*>(&str[0]),
+            str.length());
+      }
+      // TODO: Validiate the prefix offset.
+      CHECK_EQ(output_->dictionary_.AddOffset(prefix_offset, str.length()), prefix_idx);
+      ++prefix_idx;
+    }
+  }
+
+  // Add strings to the dictionary.
+  for (const std::string& str : strings) {
+    MatchTrie* node = prefixe_trie->LongestPrefix(str);
+    uint32_t prefix_idx = 0u;
+    uint32_t best_length = 0u;
+    while (node != nullptr) {
+      uint32_t offset = 0u;
+      uint32_t length = 0u;
+      output_->dictionary_.GetOffset(node->value_, &offset, &length);
+      if (node->depth_ == length) {
+        prefix_idx = node->value_;
+        best_length = node->depth_;
+        break;
+        // Actually the prefix we want.
+      }
+      node = node->parent_;
+    }
+    output_->AddString(prefix_idx, str.substr(best_length));
+  }
+}
 
 void AnalyzeStrings::ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) {
   std::set<std::string> unique_strings;
@@ -212,18 +425,13 @@ void AnalyzeStrings::ProcessDexFiles(const std::vector<std::unique_ptr<const Dex
       unique_strings.insert(data);
     }
   }
-  // Unique strings only since we want to exclude savings from multidex duplication.
-  ProcessStrings(std::vector<std::string>(unique_strings.begin(), unique_strings.end()), 1);
+  // Unique strings only since we want to exclude savings from multi-dex duplication.
+  ProcessStrings(std::vector<std::string>(unique_strings.begin(), unique_strings.end()));
 }
 
-void AnalyzeStrings::ProcessStrings(const std::vector<std::string>& strings, size_t iterations) {
-  if (iterations == 0u) {
-    return;
-  }
+void AnalyzeStrings::ProcessStrings(const std::vector<std::string>& strings) {
   // Calculate total shared prefix.
-  std::vector<size_t> shared_len;
-  prefixes_.clear();
-  std::unique_ptr<MatchTrie> prefix_construct(new MatchTrie());
+  size_t prefix_index_cost_ = 0u;
   for (size_t i = 0; i < strings.size(); ++i) {
     size_t best_len = 0;
     if (i > 0) {
@@ -233,131 +441,117 @@ void AnalyzeStrings::ProcessStrings(const std::vector<std::string>& strings, siz
       best_len = std::max(best_len, PrefixLen(strings[i], strings[i + 1]));
     }
     best_len = std::min(best_len, kMaxPrefixLen);
-    std::string prefix;
     if (best_len >= kMinPrefixLen) {
-      prefix = strings[i].substr(0, best_len);
-      prefix_construct->Add(prefix);
-      ++prefixes_[prefix];
       total_shared_prefix_bytes_ += best_len;
     }
-    total_prefix_index_cost_ += kPrefixIndexCost;
-  }
-
-  static constexpr size_t kPrefixBits = 15;
-  static constexpr size_t kShortLen = (1u << (15 - kPrefixBits)) - 1;
-  std::unique_ptr<MatchTrie> prefix_trie(new MatchTrie());
-  static constexpr bool kUseGreedyTrie = true;
-  if (kUseGreedyTrie) {
-    std::vector<std::string> prefixes(prefix_construct->ExtractPrefixes(1 << kPrefixBits));
-    for (auto&& str : prefixes) {
-      prefix_trie->Add(str);
-    }
-  } else {
-    // Optimize the result by moving long prefixes to shorter ones if it causes additional savings.
-    while (true) {
-      bool have_savings = false;
-      auto it = prefixes_.begin();
-      std::vector<std::string> longest;
-      for (const auto& pair : prefixes_) {
-        longest.push_back(pair.first);
-      }
-      std::sort(longest.begin(), longest.end(), [](const std::string& a, const std::string& b) {
-        return a.length() > b.length();
-      });
-      // Do longest first since this provides the best results.
-      for (const std::string& s : longest) {
-        it = prefixes_.find(s);
-        CHECK(it != prefixes_.end());
-        const std::string& prefix = it->first;
-        int64_t best_savings = 0u;
-        int64_t best_len = -1;
-        for (int64_t len = prefix.length() - 1; len >= 0; --len) {
-          auto found = prefixes_.find(prefix.substr(0, len));
-          if (len != 0 && found == prefixes_.end()) {
-            continue;
-          }
-          // Calculate savings from downgrading the prefix.
-          int64_t savings = kPrefixConstantCost + prefix.length() -
-              (prefix.length() - len) * it->second;
-          if (savings > best_savings) {
-            best_savings = savings;
-            best_len = len;
-            break;
-          }
-        }
-        if (best_len != -1) {
-          prefixes_[prefix.substr(0, best_len)] += it->second;
-          it = prefixes_.erase(it);
-          optimization_savings_ += best_savings;
-          have_savings = true;
-        } else {
-          ++it;
-        }
-      }
-      if (!have_savings) {
-        break;
-      }
-    }
-    for (auto&& pair : prefixes_) {
-      prefix_trie->Add(pair.first);
-    }
-  }
-
-  // Count longest prefixes.
-  std::set<std::string> used_prefixes;
-  std::vector<std::string> suffix;
-  for (const std::string& str : strings) {
-    auto pair = prefix_trie->LongestPrefix(str);
-    const size_t len = pair.first;
-    if (len >= kMinPrefixLen) {
-      ++strings_used_prefixed_;
-      total_prefix_savings_ += len;
-      used_prefixes.insert(str.substr(0, len));
-    }
-    suffix.push_back(str.substr(len));
-    if (suffix.back().size() < kShortLen) {
+    prefix_index_cost_ += kPrefixIndexCost;
+    if (strings[i].length() < 64) {
       ++short_strings_;
     } else {
       ++long_strings_;
     }
   }
-  std::sort(suffix.begin(), suffix.end());
-  for (const std::string& prefix : used_prefixes) {
-    // 4 bytes for an offset, one for length.
-    auto pair = prefix_trie->LongestPrefix(prefix);
-    CHECK_EQ(pair.first, prefix.length());
-    if (pair.second) {
-      // Only need to add to dictionary if it's a leaf, otherwise we can reuse string data of the
-      // other prefix.
-      total_prefix_dict_ += prefix.size();
-    }
-    total_prefix_table_ += kPrefixConstantCost;
+  total_prefix_index_cost_ += prefix_index_cost_;
+
+  PrefixStrings prefix_strings;
+  {
+    PrefixStrings::Builder prefix_builder(&prefix_strings);
+    prefix_builder.Build(strings);
   }
-  ProcessStrings(suffix, iterations - 1);
+  Benchmark(prefix_strings, strings, &prefix_timings_);
+  const size_t num_prefixes = prefix_strings.dictionary_.offsets_.size();
+  total_num_prefixes_ += num_prefixes;
+  total_prefix_table_ += num_prefixes * sizeof(prefix_strings.dictionary_.offsets_[0]);
+  total_prefix_dict_ += prefix_strings.dictionary_.prefix_data_.size();
+
+  {
+    NormalStrings normal_strings;
+    for (const std::string& s : strings) {
+      normal_strings.AddString(s);
+    }
+    const uint64_t unique_string_data_bytes = normal_strings.chars_.size();
+    total_unique_string_data_bytes_ += unique_string_data_bytes;
+    total_prefix_savings_ += unique_string_data_bytes - prefix_strings.chars_.size() +
+        prefix_index_cost_;
+    Benchmark(normal_strings, strings, &normal_timings_);
+  }
+}
+
+template <typename Strings>
+void AnalyzeStrings::Benchmark(const Strings& strings,
+                               const std::vector<std::string>& reference,
+                               StringTimings* timings) {
+  const size_t kIterations = 100;
+  timings->num_comparisons_ += reference.size() * kIterations;
+
+  uint64_t start = NanoTime();
+  for (size_t j = 0; j < kIterations; ++j) {
+    for (size_t i = 0; i < reference.size(); ++i) {
+      CHECK(strings.Equal(
+          i,
+          reinterpret_cast<const uint8_t*>(&reference[i][0]),
+          reference[i].length()))
+          << i << ": " << strings.GetString(i) << " vs " << reference[i];
+    }
+  }
+  timings->time_equal_comparisons_ += NanoTime() - start;
+
+  start = NanoTime();
+  for (size_t j = 0; j < kIterations; ++j) {
+    size_t count = 0u;
+    for (size_t i = 0; i < reference.size(); ++i) {
+      count += strings.Equal(
+          reference.size() - 1 - i,
+          reinterpret_cast<const uint8_t*>(&reference[i][0]),
+          reference[i].length());
+    }
+    CHECK_LT(count, 2u);
+  }
+  timings->time_non_equal_comparisons_ += NanoTime() - start;
+}
+
+template void AnalyzeStrings::Benchmark(const PrefixStrings&,
+                                        const std::vector<std::string>&,
+                                        StringTimings* timings);
+template void AnalyzeStrings::Benchmark(const NormalStrings&,
+                                        const std::vector<std::string>&,
+                                        StringTimings* timings);
+
+void StringTimings::Dump(std::ostream& os) const {
+  const double comparisons = static_cast<double>(num_comparisons_);
+  os << "Compare equal " << static_cast<double>(time_equal_comparisons_) / comparisons << "\n";
+  os << "Compare not equal " << static_cast<double>(time_non_equal_comparisons_) / comparisons << "\n";
 }
 
 void AnalyzeStrings::Dump(std::ostream& os, uint64_t total_size) const {
   os << "Total string data bytes " << Percent(string_data_bytes_, total_size) << "\n";
+  os << "Total unique string data bytes "
+     << Percent(total_unique_string_data_bytes_, total_size) << "\n";
   os << "UTF-16 string data bytes " << Percent(wide_string_bytes_, total_size) << "\n";
   os << "ASCII string data bytes " << Percent(ascii_string_bytes_, total_size) << "\n";
+
+  os << "Prefix string timings\n";
+  prefix_timings_.Dump(os);
+  os << "Normal string timings\n";
+  normal_timings_.Dump(os);
 
   // Prefix based strings.
   os << "Total shared prefix bytes " << Percent(total_shared_prefix_bytes_, total_size) << "\n";
   os << "Prefix dictionary cost " << Percent(total_prefix_dict_, total_size) << "\n";
   os << "Prefix table cost " << Percent(total_prefix_table_, total_size) << "\n";
   os << "Prefix index cost " << Percent(total_prefix_index_cost_, total_size) << "\n";
-  int64_t net_savings = total_prefix_savings_ + short_strings_;
+  int64_t net_savings = total_prefix_savings_;
   net_savings -= total_prefix_dict_;
   net_savings -= total_prefix_table_;
   net_savings -= total_prefix_index_cost_;
   os << "Prefix dictionary elements " << total_num_prefixes_ << "\n";
-  os << "Optimization savings " << Percent(optimization_savings_, total_size) << "\n";
+  os << "Prefix base savings " << Percent(total_prefix_savings_, total_size) << "\n";
   os << "Prefix net savings " << Percent(net_savings, total_size) << "\n";
   os << "Strings using prefix "
      << Percent(strings_used_prefixed_, total_prefix_index_cost_ / kPrefixIndexCost) << "\n";
   os << "Short strings " << Percent(short_strings_, short_strings_ + long_strings_) << "\n";
   if (verbose_level_ >= VerboseLevel::kEverything) {
-    std::vector<std::pair<std::string, size_t>> pairs(prefixes_.begin(), prefixes_.end());
+    std::vector<std::pair<std::string, size_t>> pairs;  // (prefixes_.begin(), prefixes_.end());
     // Sort lexicographically.
     std::sort(pairs.begin(), pairs.end());
     for (const auto& pair : pairs) {
