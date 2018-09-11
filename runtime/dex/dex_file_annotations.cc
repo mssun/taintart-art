@@ -1578,9 +1578,9 @@ int32_t GetLineNumFromPC(const DexFile* dex_file, ArtMethod* method, uint32_t re
   DCHECK(accessor.HasCodeItem()) << method->PrettyMethod() << " " << dex_file->GetLocation();
 
   // A method with no line number info should return -1
-  DexFile::LineNumFromPcContext context(rel_pc, -1);
-  dex_file->DecodeDebugPositionInfo(accessor.DebugInfoOffset(), DexFile::LineNumForPcCb, &context);
-  return context.line_num_;
+  uint32_t line_num = -1;
+  accessor.GetLineNumForPc(rel_pc, &line_num);
+  return line_num;
 }
 
 template<bool kTransactionActive>

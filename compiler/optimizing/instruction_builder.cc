@@ -466,22 +466,17 @@ void HInstructionBuilder::BuildIntrinsic(ArtMethod* method) {
 }
 
 ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
-  // The callback gets called when the line number changes.
-  // In other words, it marks the start of new java statement.
-  struct Callback {
-    static bool Position(void* ctx, const DexFile::PositionInfo& entry) {
-      static_cast<ArenaBitVector*>(ctx)->SetBit(entry.address_);
-      return false;
-    }
-  };
   ArenaBitVector* locations = ArenaBitVector::Create(local_allocator_,
                                                      code_item_accessor_.InsnsSizeInCodeUnits(),
                                                      /* expandable */ false,
                                                      kArenaAllocGraphBuilder);
   locations->ClearAllBits();
-  dex_file_->DecodeDebugPositionInfo(code_item_accessor_.DebugInfoOffset(),
-                                     Callback::Position,
-                                     locations);
+  // The visitor gets called when the line number changes.
+  // In other words, it marks the start of new java statement.
+  code_item_accessor_.DecodeDebugPositionInfo([&](const DexFile::PositionInfo& entry) {
+    locations->SetBit(entry.address_);
+    return false;
+  });
   // Instruction-specific tweaks.
   for (const DexInstructionPcPair& inst : code_item_accessor_) {
     switch (inst->Opcode()) {

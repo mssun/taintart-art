@@ -1037,15 +1037,6 @@ void DexLayout::DumpBytecodes(uint32_t idx, const dex_ir::CodeItem* code, uint32
 }
 
 /*
- * Callback for dumping each positions table entry.
- */
-static bool DumpPositionsCb(void* context, const DexFile::PositionInfo& entry) {
-  FILE* out_file = reinterpret_cast<FILE*>(context);
-  fprintf(out_file, "        0x%04x line=%d\n", entry.address_, entry.line_);
-  return false;
-}
-
-/*
  * Callback for dumping locals table entry.
  */
 static void DumpLocalsCb(void* context, const DexFile::LocalInfo& entry) {
@@ -1112,8 +1103,13 @@ void DexLayout::DumpCode(uint32_t idx,
                                      [this](uint32_t idx) {
                                        return StringDataByIdx(idx, this->header_);
                                      },
-                                     DumpPositionsCb,
-                                     out_file_);
+                                     [&](const DexFile::PositionInfo& entry) {
+                                       fprintf(out_file_,
+                                               "        0x%04x line=%d\n",
+                                               entry.address_,
+                                               entry.line_);
+                                        return false;
+                                     });
   }
   fprintf(out_file_, "      locals        : \n");
   if (debug_info != nullptr) {

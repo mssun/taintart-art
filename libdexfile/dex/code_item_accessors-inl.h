@@ -199,6 +199,36 @@ inline bool CodeItemDebugInfoAccessor::DecodeDebugLocalInfo(bool is_static,
                                          context);
 }
 
+template <typename Visitor>
+inline uint32_t CodeItemDebugInfoAccessor::VisitParameterNames(const Visitor& visitor) const {
+  const uint8_t* stream = dex_file_->GetDebugInfoStream(DebugInfoOffset());
+  return (stream != nullptr) ? DexFile::DecodeDebugInfoParameterNames(&stream, visitor) : 0u;
+}
+
+inline bool CodeItemDebugInfoAccessor::GetLineNumForPc(const uint32_t address,
+                                                       uint32_t* line_num) const {
+  return DecodeDebugPositionInfo([&](const DexFile::PositionInfo& entry) {
+    // We know that this callback will be called in ascending address order, so keep going until we
+    // find a match or we've just gone past it.
+    if (entry.address_ > address) {
+      // The line number from the previous positions callback will be the final result.
+      return true;
+    }
+    *line_num = entry.line_;
+    return entry.address_ == address;
+  });
+}
+
+template <typename Visitor>
+inline bool CodeItemDebugInfoAccessor::DecodeDebugPositionInfo(const Visitor& visitor) const {
+  return dex_file_->DecodeDebugPositionInfo(
+      dex_file_->GetDebugInfoStream(DebugInfoOffset()),
+      [this](uint32_t idx) {
+        return dex_file_->StringDataByIdx(dex::StringIndex(idx));
+      },
+      visitor);
+}
+
 }  // namespace art
 
 #endif  // ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_INL_H_

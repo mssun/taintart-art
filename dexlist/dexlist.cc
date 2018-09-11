@@ -80,19 +80,6 @@ static std::unique_ptr<char[]> descriptorToDot(const char* str) {
 }
 
 /*
- * Positions table callback; we just want to catch the number of the
- * first line in the method, which *should* correspond to the first
- * entry from the table.  (Could also use "min" here.)
- */
-static bool positionsCb(void* context, const DexFile::PositionInfo& entry) {
-  int* pFirstLine = reinterpret_cast<int *>(context);
-  if (*pFirstLine == -1) {
-    *pFirstLine = entry.line_;
-  }
-  return 0;
-}
-
-/*
  * Dumps a method.
  */
 static void dumpMethod(const DexFile* pDexFile,
@@ -123,9 +110,13 @@ static void dumpMethod(const DexFile* pDexFile,
     fileName = "(none)";
   }
 
-  // Find the first line.
-  int firstLine = -1;
-  pDexFile->DecodeDebugPositionInfo(accessor.DebugInfoOffset(), positionsCb, &firstLine);
+  // We just want to catch the number of the first line in the method, which *should* correspond to
+  // the first entry from the table.
+  int first_line = -1;
+  accessor.DecodeDebugPositionInfo([&](const DexFile::PositionInfo& entry) {
+    first_line = entry.line_;
+    return true;  // Early exit since we only want the first line.
+  });
 
   // Method signature.
   const Signature signature = pDexFile->GetMethodSignature(pMethodId);
@@ -134,7 +125,7 @@ static void dumpMethod(const DexFile* pDexFile,
   // Dump actual method information.
   fprintf(gOutFile, "0x%08x %d %s %s %s %s %d\n",
           insnsOff, accessor.InsnsSizeInCodeUnits() * 2,
-          className.get(), methodName, typeDesc, fileName, firstLine);
+          className.get(), methodName, typeDesc, fileName, first_line);
 
   free(typeDesc);
 }

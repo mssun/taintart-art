@@ -1667,18 +1667,6 @@ JDWP::JdwpError Dbg::OutputDeclaredInterfaces(JDWP::RefTypeId class_id, JDWP::Ex
 }
 
 void Dbg::OutputLineTable(JDWP::RefTypeId, JDWP::MethodId method_id, JDWP::ExpandBuf* pReply) {
-  struct DebugCallbackContext {
-    int numItems;
-    JDWP::ExpandBuf* pReply;
-
-    static bool Callback(void* context, const DexFile::PositionInfo& entry) {
-      DebugCallbackContext* pContext = reinterpret_cast<DebugCallbackContext*>(context);
-      expandBufAdd8BE(pContext->pReply, entry.address_);
-      expandBufAdd4BE(pContext->pReply, entry.line_);
-      pContext->numItems++;
-      return false;
-    }
-  };
   ArtMethod* m = FromMethodId(method_id);
   CodeItemDebugInfoAccessor accessor(m->DexInstructionDebugInfo());
   uint64_t start, end;
@@ -1699,17 +1687,15 @@ void Dbg::OutputLineTable(JDWP::RefTypeId, JDWP::MethodId method_id, JDWP::Expan
   size_t numLinesOffset = expandBufGetLength(pReply);
   expandBufAdd4BE(pReply, 0);
 
-  DebugCallbackContext context;
-  context.numItems = 0;
-  context.pReply = pReply;
+  int numItems = 0;
+  accessor.DecodeDebugPositionInfo([&](const DexFile::PositionInfo& entry) {
+    expandBufAdd8BE(pReply, entry.address_);
+    expandBufAdd4BE(pReply, entry.line_);
+    numItems++;
+    return false;
+  });
 
-  if (accessor.HasCodeItem()) {
-    m->GetDexFile()->DecodeDebugPositionInfo(accessor.DebugInfoOffset(),
-                                             DebugCallbackContext::Callback,
-                                             &context);
-  }
-
-  JDWP::Set4BE(expandBufGetBuffer(pReply) + numLinesOffset, context.numItems);
+  JDWP::Set4BE(expandBufGetBuffer(pReply) + numLinesOffset, numItems);
 }
 
 void Dbg::OutputVariableTable(JDWP::RefTypeId, JDWP::MethodId method_id, bool with_generic,
@@ -3855,50 +3841,6 @@ JDWP::JdwpError Dbg::ConfigureStep(JDWP::ObjectId thread_id, JDWP::JdwpStepSize 
   SingleStepStackVisitor visitor(thread);
   visitor.WalkStack();
 
-  // Find the dex_pc values that correspond to the current line, for line-based single-stepping.
-  struct DebugCallbackContext {
-    DebugCallbackContext(SingleStepControl* single_step_control_cb,
-                         int32_t line_number_cb, uint32_t num_insns_in_code_units)
-        : single_step_control_(single_step_control_cb), line_number_(line_number_cb),
-          num_insns_in_code_units_(num_insns_in_code_units), last_pc_valid(false), last_pc(0) {
-    }
-
-    static bool Callback(void* raw_context, const DexFile::PositionInfo& entry) {
-      DebugCallbackContext* context = reinterpret_cast<DebugCallbackContext*>(raw_context);
-      if (static_cast<int32_t>(entry.line_) == context->line_number_) {
-        if (!context->last_pc_valid) {
-          // Everything from this address until the next line change is ours.
-          context->last_pc = entry.address_;
-          context->last_pc_valid = true;
-        }
-        // Otherwise, if we're already in a valid range for this line,
-        // just keep going (shouldn't really happen)...
-      } else if (context->last_pc_valid) {  // and the line number is new
-        // Add everything from the last entry up until here to the set
-        for (uint32_t dex_pc = context->last_pc; dex_pc < entry.address_; ++dex_pc) {
-          context->single_step_control_->AddDexPc(dex_pc);
-        }
-        context->last_pc_valid = false;
-      }
-      return false;  // There may be multiple entries for any given line.
-    }
-
-    ~DebugCallbackContext() {
-      // If the line number was the last in the position table...
-      if (last_pc_valid) {
-        for (uint32_t dex_pc = last_pc; dex_pc < num_insns_in_code_units_; ++dex_pc) {
-          single_step_control_->AddDexPc(dex_pc);
-        }
-      }
-    }
-
-    SingleStepControl* const single_step_control_;
-    const int32_t line_number_;
-    const uint32_t num_insns_in_code_units_;
-    bool last_pc_valid;
-    uint32_t last_pc;
-  };
-
   // Allocate single step.
   SingleStepControl* single_step_control =
       new (std::nothrow) SingleStepControl(step_size, step_depth,
@@ -3914,10 +3856,33 @@ JDWP::JdwpError Dbg::ConfigureStep(JDWP::ObjectId thread_id, JDWP::JdwpStepSize 
   // method on the stack (and no line number either).
   if (m != nullptr && !m->IsNative()) {
     CodeItemDebugInfoAccessor accessor(m->DexInstructionDebugInfo());
-    DebugCallbackContext context(single_step_control, line_number, accessor.InsnsSizeInCodeUnits());
-    m->GetDexFile()->DecodeDebugPositionInfo(accessor.DebugInfoOffset(),
-                                             DebugCallbackContext::Callback,
-                                             &context);
+    bool last_pc_valid = false;
+    uint32_t last_pc = 0u;
+    // Find the dex_pc values that correspond to the current line, for line-based single-stepping.
+    accessor.DecodeDebugPositionInfo([&](const DexFile::PositionInfo& entry) {
+      if (static_cast<int32_t>(entry.line_) == line_number) {
+        if (!last_pc_valid) {
+          // Everything from this address until the next line change is ours.
+          last_pc = entry.address_;
+          last_pc_valid = true;
+        }
+        // Otherwise, if we're already in a valid range for this line,
+        // just keep going (shouldn't really happen)...
+      } else if (last_pc_valid) {  // and the line number is new
+        // Add everything from the last entry up until here to the set
+        for (uint32_t dex_pc = last_pc; dex_pc < entry.address_; ++dex_pc) {
+          single_step_control->AddDexPc(dex_pc);
+        }
+        last_pc_valid = false;
+      }
+      return false;  // There may be multiple entries for any given line.
+    });
+    // If the line number was the last in the position table...
+    if (last_pc_valid) {
+      for (uint32_t dex_pc = last_pc; dex_pc < accessor.InsnsSizeInCodeUnits(); ++dex_pc) {
+        single_step_control->AddDexPc(dex_pc);
+      }
+    }
   }
 
   // Activate single-step in the thread.
