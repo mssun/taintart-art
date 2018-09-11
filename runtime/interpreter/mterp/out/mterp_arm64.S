@@ -6226,18 +6226,6 @@ artMterpAsmInstructionStart = .L_op_nop
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
 
-    .type artMterpAsmSisterStart, #object
-    .hidden artMterpAsmSisterStart
-    .global artMterpAsmSisterStart
-    .text
-    .balign 4
-artMterpAsmSisterStart:
-
-    .type artMterpAsmSisterEnd, #object
-    .hidden artMterpAsmSisterEnd
-    .global artMterpAsmSisterEnd
-artMterpAsmSisterEnd:
-
 /*
  * ===========================================================================
  *  Common subroutines and data
@@ -6547,7 +6535,6 @@ MterpProfileActive:
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
-
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */

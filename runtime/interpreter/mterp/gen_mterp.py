@@ -85,29 +85,6 @@ def generate_script(arch, setup_code):
     script.write("\n")
     f.close()
 
-  # TODO: Remove the concept of sister snippets. It is barely used.
-  script.write("def write_sister():\n")
-  if arch == "arm":
-    script.write("  op_float_to_long_sister_code()\n")
-    script.write("  op_double_to_long_sister_code()\n")
-  if arch == "mips":
-    script.write("  global opnum, opcode\n")
-    names = [
-      "op_float_to_long",
-      "op_double_to_long",
-      "op_mul_long",
-      "op_shl_long",
-      "op_shr_long",
-      "op_ushr_long",
-      "op_shl_long_2addr",
-      "op_shr_long_2addr",
-      "op_ushr_long_2addr"
-    ]
-    for name in names:
-      script.write('  opcode = "' + name + '"\n')
-      script.write("  " + name + "_sister_code()\n")
-  script.write("  pass\n")
-
   script.write('generate()\n')
   script.seek(0)
   return script.read()

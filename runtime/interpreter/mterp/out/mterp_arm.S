@@ -6701,12 +6701,6 @@ constvalop_long_to_double:
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
 
-    .type artMterpAsmSisterStart, #object
-    .hidden artMterpAsmSisterStart
-    .global artMterpAsmSisterStart
-    .text
-    .balign 4
-artMterpAsmSisterStart:
 /*
  * Convert the float in r0 to a long in r0/r1.
  *
@@ -6767,17 +6761,11 @@ d2l_maybeNaN:
     mov     r1, #0
     bx      lr                          @ return 0 for NaN
 
-    .type artMterpAsmSisterEnd, #object
-    .hidden artMterpAsmSisterEnd
-    .global artMterpAsmSisterEnd
-artMterpAsmSisterEnd:
-
     .type artMterpAsmAltInstructionStart, #object
     .hidden artMterpAsmAltInstructionStart
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
-
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */

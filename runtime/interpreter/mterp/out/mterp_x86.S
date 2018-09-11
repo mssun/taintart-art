@@ -5660,18 +5660,6 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .global SYMBOL(artMterpAsmInstructionEnd)
 SYMBOL(artMterpAsmInstructionEnd):
 
-    OBJECT_TYPE(artMterpAsmSisterStart)
-    ASM_HIDDEN SYMBOL(artMterpAsmSisterStart)
-    .global SYMBOL(artMterpAsmSisterStart)
-    .text
-    .balign 4
-SYMBOL(artMterpAsmSisterStart):
-
-    OBJECT_TYPE(artMterpAsmSisterEnd)
-    ASM_HIDDEN SYMBOL(artMterpAsmSisterEnd)
-    .global SYMBOL(artMterpAsmSisterEnd)
-SYMBOL(artMterpAsmSisterEnd):
-
     OBJECT_TYPE(artMterpAsmAltInstructionStart)
     ASM_HIDDEN SYMBOL(artMterpAsmAltInstructionStart)
     .global SYMBOL(artMterpAsmAltInstructionStart)

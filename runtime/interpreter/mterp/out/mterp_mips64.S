@@ -6068,18 +6068,9 @@ TODO
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
 
-    .global artMterpAsmSisterStart
-    .text
-    .balign 4
-artMterpAsmSisterStart:
-
-    .global artMterpAsmSisterEnd
-artMterpAsmSisterEnd:
-
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
-
 /* ------------------------------ */
     .balign 128
 .L_ALT_op_nop: /* 0x00 */

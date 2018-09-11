@@ -332,12 +332,12 @@
     GET_INST_OPCODE(t1)                    #  extract opcode from rINST
     b         .L${opcode}_set_vreg
 #endif
-%def op_double_to_long_sister_code():
+%def op_double_to_long_helper_code():
 
 #ifndef MIPS32REVGE6
-.L${opcode}_get_opcode:
+.Lop_double_to_long_get_opcode:
     GET_INST_OPCODE(t1)                    #  extract opcode from rINST
-.L${opcode}_set_vreg:
+.Lop_double_to_long_set_vreg:
     SET_VREG64_GOTO(rRESULT0, rRESULT1, rOBJ, t1)   #  vA/vA+1 <- v0/v1
 #endif
 
@@ -416,12 +416,12 @@
     GET_INST_OPCODE(t1)                    #  extract opcode from rINST
     b         .L${opcode}_set_vreg
 #endif
-%def op_float_to_long_sister_code():
+%def op_float_to_long_helper_code():
 
 #ifndef MIPS32REVGE6
-.L${opcode}_get_opcode:
+.Lop_float_to_long_get_opcode:
     GET_INST_OPCODE(t1)                    #  extract opcode from rINST
-.L${opcode}_set_vreg:
+.Lop_float_to_long_set_vreg:
     SET_VREG64_GOTO(rRESULT0, rRESULT1, rOBJ, t1)   #  vA/vA+1 <- v0/v1
 #endif
 

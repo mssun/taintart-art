@@ -407,6 +407,9 @@ SYMBOL(ExecuteMterpImpl):
     jmp     MterpFallback
 
 
+%def helpers():
+%  pass
+
 %def footer():
 /*
  * ===========================================================================
@@ -720,13 +723,6 @@ SYMBOL(artMterpAsmInstructionEnd):
     .global SYMBOL(artMterpAsmAltInstructionEnd)
 SYMBOL(artMterpAsmAltInstructionEnd):
 
-%def instruction_end_sister():
-
-    OBJECT_TYPE(artMterpAsmSisterEnd)
-    ASM_HIDDEN SYMBOL(artMterpAsmSisterEnd)
-    .global SYMBOL(artMterpAsmSisterEnd)
-SYMBOL(artMterpAsmSisterEnd):
-
 %def instruction_start():
 
     OBJECT_TYPE(artMterpAsmInstructionStart)
@@ -742,12 +738,3 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .global SYMBOL(artMterpAsmAltInstructionStart)
     .text
 SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
-
-%def instruction_start_sister():
-
-    OBJECT_TYPE(artMterpAsmSisterStart)
-    ASM_HIDDEN SYMBOL(artMterpAsmSisterStart)
-    .global SYMBOL(artMterpAsmSisterStart)
-    .text
-    .balign 4
-SYMBOL(artMterpAsmSisterStart):

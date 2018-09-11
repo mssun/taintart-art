@@ -327,7 +327,7 @@
 %def op_double_to_long():
 %  unopWide(instr="bl      d2l_doconv")
 
-%def op_double_to_long_sister_code():
+%def op_double_to_long_helper_code():
 /*
  * Convert the double in r0/r1 to a long in r0/r1.
  *
@@ -368,7 +368,7 @@ d2l_maybeNaN:
 %def op_float_to_long():
 %  unopWider(instr="bl      f2l_doconv")
 
-%def op_float_to_long_sister_code():
+%def op_float_to_long_helper_code():
 /*
  * Convert the float in r0 to a long in r0/r1.
  *

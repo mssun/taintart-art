@@ -410,6 +410,10 @@ ENTRY ExecuteMterpImpl
     b    MterpFallback
 
 
+%def helpers():
+%  op_float_to_long_helper_code()
+%  op_double_to_long_helper_code()
+
 %def footer():
 /*
  * ===========================================================================
@@ -723,13 +727,6 @@ artMterpAsmInstructionEnd:
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
 
-%def instruction_end_sister():
-
-    .type artMterpAsmSisterEnd, #object
-    .hidden artMterpAsmSisterEnd
-    .global artMterpAsmSisterEnd
-artMterpAsmSisterEnd:
-
 %def instruction_start():
 
     .type artMterpAsmInstructionStart, #object
@@ -745,12 +742,3 @@ artMterpAsmInstructionStart = .L_op_nop
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
-
-%def instruction_start_sister():
-
-    .type artMterpAsmSisterStart, #object
-    .hidden artMterpAsmSisterStart
-    .global artMterpAsmSisterStart
-    .text
-    .balign 4
-artMterpAsmSisterStart:

@@ -822,6 +822,17 @@ ExecuteMterpImpl:
 /* Transfer stub to alternate interpreter */
     b    MterpFallback
 
+%def helpers():
+%  op_float_to_long_helper_code()
+%  op_double_to_long_helper_code()
+%  op_mul_long_helper_code()
+%  op_shl_long_helper_code()
+%  op_shr_long_helper_code()
+%  op_ushr_long_helper_code()
+%  op_shl_long_2addr_helper_code()
+%  op_shr_long_2addr_helper_code()
+%  op_ushr_long_2addr_helper_code()
+
 %def footer():
 /*
  * ===========================================================================
@@ -1122,11 +1133,6 @@ artMterpAsmInstructionEnd:
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
 
-%def instruction_end_sister():
-
-    .global artMterpAsmSisterEnd
-artMterpAsmSisterEnd:
-
 %def instruction_start():
 
     .global artMterpAsmInstructionStart
@@ -1139,9 +1145,3 @@ artMterpAsmInstructionStart = .L_op_nop
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
 
-%def instruction_start_sister():
-
-    .global artMterpAsmSisterStart
-    .text
-    .balign 4
-artMterpAsmSisterStart:

@@ -6708,11 +6708,6 @@ TODO
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
 
-    .global artMterpAsmSisterStart
-    .text
-    .balign 4
-artMterpAsmSisterStart:
-
 #ifndef MIPS32REVGE6
 .Lop_float_to_long_get_opcode:
     GET_INST_OPCODE(t1)                    #  extract opcode from rINST
@@ -6750,9 +6745,6 @@ artMterpAsmSisterStart:
 
 .Lop_ushr_long_2addr_finish:
     SET_VREG64_GOTO(v1, zero, t3, t0)      #  vA/vA+1 <- rlo/rhi
-
-    .global artMterpAsmSisterEnd
-artMterpAsmSisterEnd:
 
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop

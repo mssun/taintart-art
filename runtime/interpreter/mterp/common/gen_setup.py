@@ -58,24 +58,14 @@ def generate():
   balign()
   instruction_end()
 
-  instruction_start_sister()
-  write_sister()
-  instruction_end_sister()
-
-  # We need to footer sooner so that branch instruction can reach it.
-  # TODO: Clean up.
-  if arch == "arm64":
-    footer()
+  helpers()
 
   instruction_start_alt()
   opcodes(is_alt = True)
   balign()
   instruction_end_alt()
 
-  if arch == "arm64":
-    close_cfi()
-  else:
-    footer()
+  footer()
 
   out.seek(0)
   # Squash consequtive empty lines.

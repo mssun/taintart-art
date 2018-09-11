@@ -444,6 +444,9 @@ ExecuteMterpImpl:
 /* Transfer stub to alternate interpreter */
     b       MterpFallback
 
+%def helpers():
+%  pass
+
 %def footer():
 /*
  * We've detected a condition that will result in an exception, but the exception
@@ -618,7 +621,7 @@ MterpCommonTakenBranchNoFlags:
     EXPORT_PC
     jal     MterpMaybeDoOnStackReplacement # (self, shadow_frame, offset)
     bnezc   v0, MterpOnStackReplacement
-    FETCH_ADVANCE_INST 2 
+    FETCH_ADVANCE_INST 2
     GET_INST_OPCODE v0                  # extract opcode from rINST
     GOTO_OPCODE v0                      # jump to next instruction
 
@@ -732,11 +735,6 @@ artMterpAsmInstructionEnd:
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
 
-%def instruction_end_sister():
-
-    .global artMterpAsmSisterEnd
-artMterpAsmSisterEnd:
-
 %def instruction_start():
 
     .global artMterpAsmInstructionStart
@@ -748,10 +746,3 @@ artMterpAsmInstructionStart = .L_op_nop
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
-
-%def instruction_start_sister():
-
-    .global artMterpAsmSisterStart
-    .text
-    .balign 4
-artMterpAsmSisterStart:

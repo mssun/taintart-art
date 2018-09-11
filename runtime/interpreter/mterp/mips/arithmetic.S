@@ -441,9 +441,9 @@
     GET_OPA(a0)                            #  a0 <- AA
     FETCH_ADVANCE_INST(2)                  #  advance rPC, load rINST
     b         .L${opcode}_finish
-%def op_mul_long_sister_code():
+%def op_mul_long_helper_code():
 
-.L${opcode}_finish:
+.Lop_mul_long_finish:
     GET_INST_OPCODE(t0)                    #  extract opcode from rINST
     SET_VREG64_GOTO(v0, v1, a0, t0)        #  vAA/vAA+1 <- v0(low)/v1(high)
 
@@ -586,9 +586,9 @@
     sll     v1, a1, a2                     #  rhi<- ahi << (shift&31)
     or      v1, a0                         #  rhi<- rhi | alo
     SET_VREG64_GOTO(v0, v1, t2, t0)        #  vAA/vAA+1 <- v0/v1
-%def op_shl_long_sister_code():
+%def op_shl_long_helper_code():
 
-.L${opcode}_finish:
+.Lop_shl_long_finish:
     SET_VREG64_GOTO(zero, v0, t2, t0)      #  vAA/vAA+1 <- rlo/rhi
 
 %def op_shl_long_2addr():
@@ -615,9 +615,9 @@
     sll     v1, a1, a2                     #  rhi<- ahi << (shift&31)
     or      v1, a0                         #  rhi<- rhi | alo
     SET_VREG64_GOTO(v0, v1, rOBJ, t0)      #  vA/vA+1 <- v0/v1
-%def op_shl_long_2addr_sister_code():
+%def op_shl_long_2addr_helper_code():
 
-.L${opcode}_finish:
+.Lop_shl_long_2addr_finish:
     SET_VREG64_GOTO(zero, v0, rOBJ, t0)    #  vA/vA+1 <- rlo/rhi
 
 %def op_shr_int():
@@ -656,9 +656,9 @@
     sll     a1, a0                         #  ahi<- ahi << (32-(shift&31))
     or      v0, a1                         #  rlo<- rlo | ahi
     SET_VREG64_GOTO(v0, v1, t3, t0)        #  vAA/VAA+1 <- v0/v1
-%def op_shr_long_sister_code():
+%def op_shr_long_helper_code():
 
-.L${opcode}_finish:
+.Lop_shr_long_finish:
     sra     a3, a1, 31                     #  a3<- sign(ah)
     SET_VREG64_GOTO(v1, a3, t3, t0)        #  vAA/VAA+1 <- rlo/rhi
 
@@ -685,9 +685,9 @@
     sll     a1, a0                         #  ahi<- ahi << (32-(shift&31))
     or      v0, a1                         #  rlo<- rlo | ahi
     SET_VREG64_GOTO(v0, v1, t2, t0)        #  vA/vA+1 <- v0/v1
-%def op_shr_long_2addr_sister_code():
+%def op_shr_long_2addr_helper_code():
 
-.L${opcode}_finish:
+.Lop_shr_long_2addr_finish:
     sra     a3, a1, 31                     #  a3<- sign(ah)
     SET_VREG64_GOTO(v1, a3, t2, t0)        #  vA/vA+1 <- rlo/rhi
 
@@ -750,9 +750,9 @@
     sll       a1, a0                       #  ahi<- ahi << (32-(shift&31))
     or        v0, a1                       #  rlo<- rlo | ahi
     SET_VREG64_GOTO(v0, v1, rOBJ, t0)      #  vAA/vAA+1 <- v0/v1
-%def op_ushr_long_sister_code():
+%def op_ushr_long_helper_code():
 
-.L${opcode}_finish:
+.Lop_ushr_long_finish:
     SET_VREG64_GOTO(v1, zero, rOBJ, t0)    #  vAA/vAA+1 <- rlo/rhi
 
 %def op_ushr_long_2addr():
@@ -779,9 +779,9 @@
     sll       a1, a0                       #  ahi<- ahi << (32-(shift&31))
     or        v0, a1                       #  rlo<- rlo | ahi
     SET_VREG64_GOTO(v0, v1, t3, t0)        #  vA/vA+1 <- v0/v1
-%def op_ushr_long_2addr_sister_code():
+%def op_ushr_long_2addr_helper_code():
 
-.L${opcode}_finish:
+.Lop_ushr_long_2addr_finish:
     SET_VREG64_GOTO(v1, zero, t3, t0)      #  vA/vA+1 <- rlo/rhi
 
 %def op_xor_int():

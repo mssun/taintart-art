@@ -435,7 +435,7 @@ ENTRY ExecuteMterpImpl
     mov    x2, xPC
     b      MterpCheckBefore     // (self, shadow_frame, dex_pc_ptr) Note: tail call.
 
-%def close_cfi():
+%def footer():
 // Close out the cfi info.  We're treating mterp as a single function.
 
 END ExecuteMterpImpl
@@ -446,7 +446,7 @@ END ExecuteMterpImpl
     b    MterpFallback
 
 
-%def footer():
+%def helpers():
 /*
  * ===========================================================================
  *  Common subroutines and data
@@ -766,13 +766,6 @@ artMterpAsmInstructionEnd:
     .global artMterpAsmAltInstructionEnd
 artMterpAsmAltInstructionEnd:
 
-%def instruction_end_sister():
-
-    .type artMterpAsmSisterEnd, #object
-    .hidden artMterpAsmSisterEnd
-    .global artMterpAsmSisterEnd
-artMterpAsmSisterEnd:
-
 %def instruction_start():
 
     .type artMterpAsmInstructionStart, #object
@@ -788,12 +781,3 @@ artMterpAsmInstructionStart = .L_op_nop
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
-
-%def instruction_start_sister():
-
-    .type artMterpAsmSisterStart, #object
-    .hidden artMterpAsmSisterStart
-    .global artMterpAsmSisterStart
-    .text
-    .balign 4
-artMterpAsmSisterStart:
