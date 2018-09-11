@@ -86,7 +86,10 @@ class SharedLibrary {
       self->GetJniEnv()->DeleteWeakGlobalRef(class_loader_);
     }
 
-    android::CloseNativeLibrary(handle_, needs_native_bridge_);
+    std::string error_msg;
+    if (!android::CloseNativeLibrary(handle_, needs_native_bridge_, &error_msg)) {
+      LOG(WARNING) << "Error while unloading native library \"" << path_ << "\": " << error_msg;
+    }
   }
 
   jweak GetClassLoader() const {
