@@ -751,14 +751,6 @@ static void dumpCatches(const DexFile* pDexFile, const DexFile::CodeItem* pCode)
 }
 
 /*
- * Callback for dumping each positions table entry.
- */
-static bool dumpPositionsCb(void* /*context*/, const DexFile::PositionInfo& entry) {
-  fprintf(gOutFile, "        0x%04x line=%d\n", entry.address_, entry.line_);
-  return false;
-}
-
-/*
  * Callback for dumping locals table entry.
  */
 static void dumpLocalsCb(void* /*context*/, const DexFile::LocalInfo& entry) {
@@ -1201,7 +1193,10 @@ static void dumpCode(const DexFile* pDexFile, u4 idx, u4 flags,
   // Positions and locals table in the debug info.
   bool is_static = (flags & kAccStatic) != 0;
   fprintf(gOutFile, "      positions     : \n");
-  pDexFile->DecodeDebugPositionInfo(accessor.DebugInfoOffset(), dumpPositionsCb, nullptr);
+  accessor.DecodeDebugPositionInfo([&](const DexFile::PositionInfo& entry) {
+    fprintf(gOutFile, "        0x%04x line=%d\n", entry.address_, entry.line_);
+    return false;
+  });
   fprintf(gOutFile, "      locals        : \n");
   accessor.DecodeDebugLocalInfo(is_static, idx, dumpLocalsCb, nullptr);
 }

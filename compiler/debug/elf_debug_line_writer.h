@@ -34,11 +34,6 @@ namespace debug {
 
 typedef std::vector<DexFile::PositionInfo> PositionInfos;
 
-static bool PositionInfoCallback(void* ctx, const DexFile::PositionInfo& entry) {
-  static_cast<PositionInfos*>(ctx)->push_back(entry);
-  return false;
-}
-
 template<typename ElfTypes>
 class ElfDebugLineWriter {
   using Elf_Addr = typename ElfTypes::Addr;
@@ -154,11 +149,14 @@ class ElfDebugLineWriter {
       Elf_Addr method_address = base_address + mi->code_address;
 
       PositionInfos dex2line_map;
-      DCHECK(mi->dex_file != nullptr);
       const DexFile* dex = mi->dex_file;
+      DCHECK(dex != nullptr);
       CodeItemDebugInfoAccessor accessor(*dex, mi->code_item, mi->dex_method_index);
-      const uint32_t debug_info_offset = accessor.DebugInfoOffset();
-      if (!dex->DecodeDebugPositionInfo(debug_info_offset, PositionInfoCallback, &dex2line_map)) {
+      if (!accessor.DecodeDebugPositionInfo(
+          [&](const DexFile::PositionInfo& entry) {
+            dex2line_map.push_back(entry);
+            return false;
+          })) {
         continue;
       }
 
