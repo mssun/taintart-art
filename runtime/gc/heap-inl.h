@@ -108,7 +108,8 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
     pre_fence_visitor(obj, usable_size);
     QuasiAtomic::ThreadFenceForConstructor();
   } else {
-    // Bytes allocated that takes bulk thread-local buffer allocations into account.
+    // Bytes allocated that includes bulk thread-local buffer allocations in addition to direct
+    // non-TLAB object allocations.
     size_t bytes_tl_bulk_allocated = 0u;
     obj = TryToAllocate<kInstrumented, false>(self, allocator, byte_count, &bytes_allocated,
                                               &usable_size, &bytes_tl_bulk_allocated);
@@ -156,10 +157,10 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
     }
     pre_fence_visitor(obj, usable_size);
     QuasiAtomic::ThreadFenceForConstructor();
-    size_t num_bytes_allocated_before =
-        num_bytes_allocated_.fetch_add(bytes_tl_bulk_allocated, std::memory_order_relaxed);
-    new_num_bytes_allocated = num_bytes_allocated_before + bytes_tl_bulk_allocated;
     if (bytes_tl_bulk_allocated > 0) {
+      size_t num_bytes_allocated_before =
+          num_bytes_allocated_.fetch_add(bytes_tl_bulk_allocated, std::memory_order_relaxed);
+      new_num_bytes_allocated = num_bytes_allocated_before + bytes_tl_bulk_allocated;
       // Only trace when we get an increase in the number of bytes allocated. This happens when
       // obtaining a new TLAB and isn't often enough to hurt performance according to golem.
       TraceHeapSize(new_num_bytes_allocated);
@@ -212,6 +213,8 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
   // optimized out. And for the other allocators, AllocatorMayHaveConcurrentGC is a constant since
   // the allocator_type should be constant propagated.
   if (AllocatorMayHaveConcurrentGC(allocator) && IsGcConcurrent()) {
+    // New_num_bytes_allocated is zero if we didn't update num_bytes_allocated_.
+    // That's fine.
     CheckConcurrentGC(self, new_num_bytes_allocated, &obj);
   }
   VerifyObject(obj);
@@ -394,7 +397,7 @@ inline bool Heap::ShouldAllocLargeObject(ObjPtr<mirror::Class> c, size_t byte_co
 inline bool Heap::IsOutOfMemoryOnAllocation(AllocatorType allocator_type,
                                             size_t alloc_size,
                                             bool grow) {
-  size_t new_footprint = num_bytes_allocated_.load(std::memory_order_seq_cst) + alloc_size;
+  size_t new_footprint = num_bytes_allocated_.load(std::memory_order_relaxed) + alloc_size;
   if (UNLIKELY(new_footprint > max_allowed_footprint_)) {
     if (UNLIKELY(new_footprint > growth_limit_)) {
       return true;
@@ -411,6 +414,8 @@ inline bool Heap::IsOutOfMemoryOnAllocation(AllocatorType allocator_type,
   return false;
 }
 
+// Request a GC if new_num_bytes_allocated is sufficiently large.
+// A call with new_num_bytes_allocated == 0 is a fast no-op.
 inline void Heap::CheckConcurrentGC(Thread* self,
                                     size_t new_num_bytes_allocated,
                                     ObjPtr<mirror::Object>* obj) {

@@ -206,8 +206,8 @@ uint64_t BumpPointerSpace::GetObjectsAllocated() {
 }
 
 void BumpPointerSpace::RevokeThreadLocalBuffersLocked(Thread* thread) {
-  objects_allocated_.fetch_add(thread->GetThreadLocalObjectsAllocated(), std::memory_order_seq_cst);
-  bytes_allocated_.fetch_add(thread->GetThreadLocalBytesAllocated(), std::memory_order_seq_cst);
+  objects_allocated_.fetch_add(thread->GetThreadLocalObjectsAllocated(), std::memory_order_relaxed);
+  bytes_allocated_.fetch_add(thread->GetThreadLocalBytesAllocated(), std::memory_order_relaxed);
   thread->SetTlab(nullptr, nullptr, nullptr);
 }
 

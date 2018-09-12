@@ -23,15 +23,19 @@ namespace art {
 namespace gc {
 
 // Different types of allocators.
+// Those marked with * have fast path entrypoints callable from generated code.
 enum AllocatorType {
-  kAllocatorTypeBumpPointer,  // Use BumpPointer allocator, has entrypoints.
-  kAllocatorTypeTLAB,  // Use TLAB allocator, has entrypoints.
-  kAllocatorTypeRosAlloc,  // Use RosAlloc allocator, has entrypoints.
-  kAllocatorTypeDlMalloc,  // Use dlmalloc allocator, has entrypoints.
-  kAllocatorTypeNonMoving,  // Special allocator for non moving objects, doesn't have entrypoints.
-  kAllocatorTypeLOS,  // Large object space, also doesn't have entrypoints.
-  kAllocatorTypeRegion,
-  kAllocatorTypeRegionTLAB,
+  // BumpPointer spaces are currently only used for ZygoteSpace construction.
+  kAllocatorTypeBumpPointer,  // Use global CAS-based BumpPointer allocator. (*)
+  kAllocatorTypeTLAB,  // Use TLAB allocator within BumpPointer space. (*)
+  kAllocatorTypeRosAlloc,  // Use RosAlloc (segregated size, free list) allocator. (*)
+  kAllocatorTypeDlMalloc,  // Use dlmalloc (well-known C malloc) allocator. (*)
+  kAllocatorTypeNonMoving,  // Special allocator for non moving objects.
+  kAllocatorTypeLOS,  // Large object space.
+  // The following differ from the BumpPointer allocators primarily in that memory is
+  // allocated from multiple regions, instead of a single contiguous space.
+  kAllocatorTypeRegion,  // Use CAS-based contiguous bump-pointer allocation within a region. (*)
+  kAllocatorTypeRegionTLAB,  // Use region pieces as TLABs. Default for most small objects. (*)
 };
 std::ostream& operator<<(std::ostream& os, const AllocatorType& rhs);
 

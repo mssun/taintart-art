@@ -22,6 +22,7 @@
 #include "base/tracking_safe_map.h"
 #include "dlmalloc_space.h"
 #include "space.h"
+#include "thread-current-inl.h"
 
 #include <set>
 #include <vector>
@@ -50,15 +51,19 @@ class LargeObjectSpace : public DiscontinuousSpace, public AllocSpace {
   virtual ~LargeObjectSpace() {}
 
   uint64_t GetBytesAllocated() override {
+    MutexLock mu(Thread::Current(), lock_);
     return num_bytes_allocated_;
   }
   uint64_t GetObjectsAllocated() override {
+    MutexLock mu(Thread::Current(), lock_);
     return num_objects_allocated_;
   }
   uint64_t GetTotalBytesAllocated() const {
+    MutexLock mu(Thread::Current(), lock_);
     return total_bytes_allocated_;
   }
   uint64_t GetTotalObjectsAllocated() const {
+    MutexLock mu(Thread::Current(), lock_);
     return total_objects_allocated_;
   }
   size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) override;
@@ -110,14 +115,26 @@ class LargeObjectSpace : public DiscontinuousSpace, public AllocSpace {
   virtual std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const = 0;
 
  protected:
-  explicit LargeObjectSpace(const std::string& name, uint8_t* begin, uint8_t* end);
+  explicit LargeObjectSpace(const std::string& name, uint8_t* begin, uint8_t* end,
+                            const char* lock_name);
   static void SweepCallback(size_t num_ptrs, mirror::Object** ptrs, void* arg);
 
-  // Approximate number of bytes which have been allocated into the space.
-  uint64_t num_bytes_allocated_;
-  uint64_t num_objects_allocated_;
-  uint64_t total_bytes_allocated_;
-  uint64_t total_objects_allocated_;
+  // Used to ensure mutual exclusion when the allocation spaces data structures,
+  // including the allocation counters below, are being modified.
+  mutable Mutex lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
+
+  // Number of bytes which have been allocated into the space and not yet freed. The count is also
+  // included in the identically named field in Heap. Counts actual allocated (after rounding),
+  // not requested, sizes. TODO: It would be cheaper to just maintain total allocated and total
+  // free counts.
+  uint64_t num_bytes_allocated_ GUARDED_BY(lock_);
+  uint64_t num_objects_allocated_ GUARDED_BY(lock_);
+
+  // Totals for large objects ever allocated, including those that have since been deallocated.
+  // Never decremented.
+  uint64_t total_bytes_allocated_ GUARDED_BY(lock_);
+  uint64_t total_objects_allocated_ GUARDED_BY(lock_);
+
   // Begin and end, may change as more large objects are allocated.
   uint8_t* begin_;
   uint8_t* end_;
@@ -157,8 +174,6 @@ class LargeObjectMapSpace : public LargeObjectSpace {
   bool IsZygoteLargeObject(Thread* self, mirror::Object* obj) const override REQUIRES(!lock_);
   void SetAllLargeObjectsAsZygoteObjects(Thread* self) override REQUIRES(!lock_);
 
-  // Used to ensure mutual exclusion when the allocation spaces data structures are being modified.
-  mutable Mutex lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
   AllocationTrackingSafeMap<mirror::Object*, LargeObject, kAllocatorTagLOSMaps> large_objects_
       GUARDED_BY(lock_);
 };
@@ -215,7 +230,6 @@ class FreeListSpace final : public LargeObjectSpace {
   MemMap allocation_info_map_;
   AllocationInfo* allocation_info_;
 
-  mutable Mutex lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
   // Free bytes at the end of the space.
   size_t free_end_ GUARDED_BY(lock_);
   FreeBlocks free_blocks_ GUARDED_BY(lock_);

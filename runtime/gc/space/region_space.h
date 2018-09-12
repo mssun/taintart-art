@@ -580,6 +580,8 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
     // (large region + one or more large tail regions).
     Atomic<uint8_t*> top_;              // The current position of the allocation.
     uint8_t* end_;                      // The end address of the region.
+    // objects_allocated_ is accessed using memory_order_relaxed. Treat as approximate when there
+    // are concurrent updates.
     Atomic<size_t> objects_allocated_;  // The number of objects allocated.
     uint32_t alloc_time_;               // The allocation time of the region.
     // Note that newly allocated and evacuated regions use -1 as
