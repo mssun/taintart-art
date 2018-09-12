@@ -134,7 +134,9 @@ std::unique_ptr<Agent> AgentSpec::DoDlOpen(JNIEnv* env,
   }
   if (needs_native_bridge) {
     // TODO: Consider support?
-    android::CloseNativeLibrary(dlopen_handle, needs_native_bridge);
+    // The result of this call and error_msg is ignored because the most
+    // relevant error is that native bridge is unsupported.
+    android::CloseNativeLibrary(dlopen_handle, needs_native_bridge, error_msg);
     *error_msg = StringPrintf("Native-bridge agents unsupported: %s", name_.c_str());
     *error = kLoadingError;
     return nullptr;
