@@ -260,8 +260,8 @@ else
   # we don't want to be trying to connect to adbconnection which might not have
   # been built.
   vm_args="${vm_args} --vm-arg -XjdwpProvider:none"
-  # Make sure the debuggee doesn't clean up what the debugger has generated.
-  art_debugee="$art_debugee --no-clean"
+  # Make sure the debuggee doesn't re-generate, nor clean up what the debugger has generated.
+  art_debugee="$art_debugee --no-compile --no-clean"
 fi
 
 function jlib_name {

@@ -49,6 +49,7 @@ Supported OPTIONS include:
   --profile                Run with profiling, then run using profile data.
   --verbose                Run script verbosely.
   --no-clean               Don't cleanup oat directories.
+  --no-compile             Don't invoke dex2oat before running.
   --allow-default-jdwp     Don't automatically put in -XjdwpProvider:none.
                            You probably do not want this.
 
@@ -290,6 +291,7 @@ JIT_PROFILE="no"
 ALLOW_DEFAULT_JDWP="no"
 VERBOSE="no"
 CLEAN_OAT_FILES="yes"
+RUN_DEX2OAT="yes"
 EXTRA_OPTIONS=()
 DEX2OAT_FLAGS=()
 DEX2OAT_CLASSPATH=()
@@ -346,6 +348,10 @@ while [[ "$1" = "-"* ]]; do
     ;;
   --no-clean)
     CLEAN_OAT_FILES="no"
+    ;;
+  --no-compile)
+    CLEAN_OAT_FILES="no"
+    RUN_DEX2OAT="no"
     ;;
   --allow-default-jdwp)
     ALLOW_DEFAULT_JDWP="yes"
@@ -480,8 +486,10 @@ if [ "$JIT_PROFILE" = "yes" ]; then
 fi
 
 if [ -x "$DEX2OAT_BINARY_PATH" ]; then
-  # Run dex2oat before launching ART to generate the oat files for the classpath.
-  run_dex2oat
+  if [ "$RUN_DEX2OAT" = "yes" ]; then
+    # Run dex2oat before launching ART to generate the oat files for the classpath.
+    run_dex2oat
+  fi
 fi
 
 # Do not continue if the dex2oat failed.
