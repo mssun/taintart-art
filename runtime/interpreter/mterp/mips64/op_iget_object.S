@@ -1,1 +1,0 @@
-%include "mips64/op_iget.S" { "is_object":"1", "helper":"MterpIGetObj" }
