@@ -1,3 +1,0 @@
-
-    .global artMterpAsmInstructionEnd
-artMterpAsmInstructionEnd:

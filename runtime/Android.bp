@@ -246,7 +246,7 @@ libart_cc_defaults {
         arm: {
             srcs: [
                 "interpreter/mterp/mterp.cc",
-                "interpreter/mterp/out/mterp_arm.S",
+                ":libart_mterp.arm",
                 "arch/arm/context_arm.cc",
                 "arch/arm/entrypoints_init_arm.cc",
                 "arch/arm/instruction_set_features_assembly_tests.S",
@@ -261,7 +261,7 @@ libart_cc_defaults {
         arm64: {
             srcs: [
                 "interpreter/mterp/mterp.cc",
-                "interpreter/mterp/out/mterp_arm64.S",
+                ":libart_mterp.arm64",
                 "arch/arm64/context_arm64.cc",
                 "arch/arm64/entrypoints_init_arm64.cc",
                 "arch/arm64/jni_entrypoints_arm64.S",
@@ -275,7 +275,7 @@ libart_cc_defaults {
         x86: {
             srcs: [
                 "interpreter/mterp/mterp.cc",
-                "interpreter/mterp/out/mterp_x86.S",
+                ":libart_mterp.x86",
                 "arch/x86/context_x86.cc",
                 "arch/x86/entrypoints_init_x86.cc",
                 "arch/x86/jni_entrypoints_x86.S",
@@ -290,7 +290,7 @@ libart_cc_defaults {
                 // Note that the fault_handler_x86.cc is not a mistake.  This file is
                 // shared between the x86 and x86_64 architectures.
                 "interpreter/mterp/mterp.cc",
-                "interpreter/mterp/out/mterp_x86_64.S",
+                ":libart_mterp.x86_64",
                 "arch/x86_64/context_x86_64.cc",
                 "arch/x86_64/entrypoints_init_x86_64.cc",
                 "arch/x86_64/jni_entrypoints_x86_64.S",
@@ -304,7 +304,7 @@ libart_cc_defaults {
         mips: {
             srcs: [
                 "interpreter/mterp/mterp.cc",
-                "interpreter/mterp/out/mterp_mips.S",
+                ":libart_mterp.mips",
                 "arch/mips/context_mips.cc",
                 "arch/mips/entrypoints_init_mips.cc",
                 "arch/mips/jni_entrypoints_mips.S",
@@ -317,7 +317,7 @@ libart_cc_defaults {
         mips64: {
             srcs: [
                 "interpreter/mterp/mterp.cc",
-                "interpreter/mterp/out/mterp_mips64.S",
+                ":libart_mterp.mips64",
                 "arch/mips64/context_mips64.cc",
                 "arch/mips64/entrypoints_init_mips64.cc",
                 "arch/mips64/jni_entrypoints_mips64.S",
@@ -668,4 +668,52 @@ cc_library_headers {
     name: "libart_runtime_headers",
     host_supported: true,
     export_include_dirs: ["."],
+}
+
+genrule {
+  name: "libart_mterp.arm",
+  out: ["mterp_arm.S"],
+  srcs: ["interpreter/mterp/arm/*.S"],
+  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
+  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+}
+
+genrule {
+  name: "libart_mterp.arm64",
+  out: ["mterp_arm64.S"],
+  srcs: ["interpreter/mterp/arm64/*.S"],
+  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
+  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+}
+
+genrule {
+  name: "libart_mterp.mips",
+  out: ["mterp_mips.S"],
+  srcs: ["interpreter/mterp/mips/*.S"],
+  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
+  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+}
+
+genrule {
+  name: "libart_mterp.mips64",
+  out: ["mterp_mips64.S"],
+  srcs: ["interpreter/mterp/mips64/*.S"],
+  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
+  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+}
+
+genrule {
+  name: "libart_mterp.x86",
+  out: ["mterp_x86.S"],
+  srcs: ["interpreter/mterp/x86/*.S"],
+  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
+  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+}
+
+genrule {
+  name: "libart_mterp.x86_64",
+  out: ["mterp_x86_64.S"],
+  srcs: ["interpreter/mterp/x86_64/*.S"],
+  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
+  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
 }
