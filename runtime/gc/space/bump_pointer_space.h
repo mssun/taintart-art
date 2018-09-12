@@ -155,8 +155,8 @@ class BumpPointerSpace final : public ContinuousMemMapAllocSpace {
 
   // Record objects / bytes freed.
   void RecordFree(int32_t objects, int32_t bytes) {
-    objects_allocated_.fetch_sub(objects, std::memory_order_seq_cst);
-    bytes_allocated_.fetch_sub(bytes, std::memory_order_seq_cst);
+    objects_allocated_.fetch_sub(objects, std::memory_order_relaxed);
+    bytes_allocated_.fetch_sub(bytes, std::memory_order_relaxed);
   }
 
   void LogFragmentationAllocFailure(std::ostream& os, size_t failed_alloc_bytes) override

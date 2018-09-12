@@ -108,8 +108,10 @@ void LargeObjectSpace::SwapBitmaps() {
   mark_bitmap_->SetName(temp_name);
 }
 
-LargeObjectSpace::LargeObjectSpace(const std::string& name, uint8_t* begin, uint8_t* end)
+LargeObjectSpace::LargeObjectSpace(const std::string& name, uint8_t* begin, uint8_t* end,
+                                   const char* lock_name)
     : DiscontinuousSpace(name, kGcRetentionPolicyAlwaysCollect),
+      lock_(lock_name, kAllocSpaceLock),
       num_bytes_allocated_(0), num_objects_allocated_(0), total_bytes_allocated_(0),
       total_objects_allocated_(0), begin_(begin), end_(end) {
 }
@@ -120,8 +122,7 @@ void LargeObjectSpace::CopyLiveToMarked() {
 }
 
 LargeObjectMapSpace::LargeObjectMapSpace(const std::string& name)
-    : LargeObjectSpace(name, nullptr, nullptr),
-      lock_("large object map space lock", kAllocSpaceLock) {}
+    : LargeObjectSpace(name, nullptr, nullptr, "large object map space lock") {}
 
 LargeObjectMapSpace* LargeObjectMapSpace::Create(const std::string& name) {
   if (Runtime::Current()->IsRunningOnMemoryTool()) {
@@ -362,9 +363,8 @@ FreeListSpace::FreeListSpace(const std::string& name,
                              MemMap&& mem_map,
                              uint8_t* begin,
                              uint8_t* end)
-    : LargeObjectSpace(name, begin, end),
-      mem_map_(std::move(mem_map)),
-      lock_("free list space lock", kAllocSpaceLock) {
+    : LargeObjectSpace(name, begin, end, "free list space lock"),
+      mem_map_(std::move(mem_map)) {
   const size_t space_capacity = end - begin;
   free_end_ = space_capacity;
   CHECK_ALIGNED(space_capacity, kAlignment);

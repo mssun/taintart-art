@@ -477,8 +477,9 @@ class Heap {
   void AddFinalizerReference(Thread* self, ObjPtr<mirror::Object>* object);
 
   // Returns the number of bytes currently allocated.
+  // The result should be treated as an approximation, if it is being concurrently updated.
   size_t GetBytesAllocated() const {
-    return num_bytes_allocated_.load(std::memory_order_seq_cst);
+    return num_bytes_allocated_.load(std::memory_order_relaxed);
   }
 
   // Returns the number of objects currently allocated.
@@ -506,7 +507,7 @@ class Heap {
   // were specified. Android apps start with a growth limit (small heap size) which is
   // cleared/extended for large apps.
   size_t GetMaxMemory() const {
-    // There is some race conditions in the allocation code that can cause bytes allocated to
+    // There are some race conditions in the allocation code that can cause bytes allocated to
     // become larger than growth_limit_ in rare cases.
     return std::max(GetBytesAllocated(), growth_limit_);
   }
@@ -528,7 +529,7 @@ class Heap {
   // Returns how much free memory we have until we need to grow the heap to perform an allocation.
   // Similar to GetFreeMemoryUntilGC. Implements java.lang.Runtime.freeMemory.
   size_t GetFreeMemory() const {
-    size_t byte_allocated = num_bytes_allocated_.load(std::memory_order_seq_cst);
+    size_t byte_allocated = num_bytes_allocated_.load(std::memory_order_relaxed);
     size_t total_memory = GetTotalMemory();
     // Make sure we don't get a negative number.
     return total_memory - std::min(total_memory, byte_allocated);
@@ -1222,7 +1223,8 @@ class Heap {
   // Since the heap was created, how many objects have been freed.
   uint64_t total_objects_freed_ever_;
 
-  // Number of bytes allocated.  Adjusted after each allocation and free.
+  // Number of bytes currently allocated and not yet reclaimed. Includes active
+  // TLABS in their entirety, even if they have not yet been parceled out.
   Atomic<size_t> num_bytes_allocated_;
 
   // Number of registered native bytes allocated since the last time GC was

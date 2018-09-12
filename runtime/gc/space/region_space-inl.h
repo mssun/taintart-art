@@ -60,7 +60,8 @@ inline mirror::Object* RegionSpace::AllocNonvirtual(size_t num_bytes,
       return obj;
     }
     MutexLock mu(Thread::Current(), region_lock_);
-    // Retry with current region since another thread may have updated it.
+    // Retry with current region since another thread may have updated
+    // current_region_ or evac_region_.  TODO: fix race.
     obj = (kForEvac ? evac_region_ : current_region_)->Alloc(num_bytes,
                                                              bytes_allocated,
                                                              usable_size,

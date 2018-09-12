@@ -51,6 +51,7 @@
 #include "gc/collector/partial_mark_sweep.h"
 #include "gc/collector/semi_space.h"
 #include "gc/collector/sticky_mark_sweep.h"
+#include "gc/racing_check.h"
 #include "gc/reference_processor.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "gc/space/bump_pointer_space.h"
@@ -1199,8 +1200,8 @@ Heap::~Heap() {
   delete thread_flip_lock_;
   delete pending_task_lock_;
   delete backtrace_lock_;
-  uint64_t unique_count = unique_backtrace_count_.load(std::memory_order_relaxed);
-  uint64_t seen_count = seen_backtrace_count_.load(std::memory_order_relaxed);
+  uint64_t unique_count = unique_backtrace_count_.load();
+  uint64_t seen_count = seen_backtrace_count_.load();
   if (unique_count != 0 || seen_count != 0) {
     LOG(INFO) << "gc stress unique=" << unique_count << " total=" << (unique_count + seen_count);
   }
@@ -1582,10 +1583,10 @@ void Heap::RecordFree(uint64_t freed_objects, int64_t freed_bytes) {
   // Use signed comparison since freed bytes can be negative when background compaction foreground
   // transitions occurs. This is caused by the moving objects from a bump pointer space to a
   // free list backed space typically increasing memory footprint due to padding and binning.
-  DCHECK_LE(freed_bytes,
-            static_cast<int64_t>(num_bytes_allocated_.load(std::memory_order_relaxed)));
+  RACING_DCHECK_LE(freed_bytes,
+                   static_cast<int64_t>(num_bytes_allocated_.load(std::memory_order_relaxed)));
   // Note: This relies on 2s complement for handling negative freed_bytes.
-  num_bytes_allocated_.fetch_sub(static_cast<ssize_t>(freed_bytes));
+  num_bytes_allocated_.fetch_sub(static_cast<ssize_t>(freed_bytes), std::memory_order_relaxed);
   if (Runtime::Current()->HasStatsEnabled()) {
     RuntimeStats* thread_stats = Thread::Current()->GetStats();
     thread_stats->freed_objects += freed_objects;
@@ -1602,10 +1603,10 @@ void Heap::RecordFreeRevoke() {
   // ahead-of-time, bulk counting of bytes allocated in rosalloc thread-local buffers.
   // If there's a concurrent revoke, ok to not necessarily reset num_bytes_freed_revoke_
   // all the way to zero exactly as the remainder will be subtracted at the next GC.
-  size_t bytes_freed = num_bytes_freed_revoke_.load();
-  CHECK_GE(num_bytes_freed_revoke_.fetch_sub(bytes_freed),
+  size_t bytes_freed = num_bytes_freed_revoke_.load(std::memory_order_relaxed);
+  CHECK_GE(num_bytes_freed_revoke_.fetch_sub(bytes_freed, std::memory_order_relaxed),
            bytes_freed) << "num_bytes_freed_revoke_ underflow";
-  CHECK_GE(num_bytes_allocated_.fetch_sub(bytes_freed),
+  CHECK_GE(num_bytes_allocated_.fetch_sub(bytes_freed, std::memory_order_relaxed),
            bytes_freed) << "num_bytes_allocated_ underflow";
   GetCurrentGcIteration()->SetFreedRevoke(bytes_freed);
 }
@@ -2030,7 +2031,7 @@ void Heap::TransitionCollector(CollectorType collector_type) {
   VLOG(heap) << "TransitionCollector: " << static_cast<int>(collector_type_)
              << " -> " << static_cast<int>(collector_type);
   uint64_t start_time = NanoTime();
-  uint32_t before_allocated = num_bytes_allocated_.load();
+  uint32_t before_allocated = num_bytes_allocated_.load(std::memory_order_relaxed);
   Runtime* const runtime = Runtime::Current();
   Thread* const self = Thread::Current();
   ScopedThreadStateChange tsc(self, kWaitingPerformingGc);
@@ -2166,7 +2167,7 @@ void Heap::TransitionCollector(CollectorType collector_type) {
     ScopedObjectAccess soa(self);
     soa.Vm()->UnloadNativeLibraries();
   }
-  int32_t after_allocated = num_bytes_allocated_.load(std::memory_order_seq_cst);
+  int32_t after_allocated = num_bytes_allocated_.load(std::memory_order_relaxed);
   int32_t delta_allocated = before_allocated - after_allocated;
   std::string saved_str;
   if (delta_allocated >= 0) {
@@ -3799,7 +3800,7 @@ void Heap::RequestTrim(Thread* self) {
 
 void Heap::IncrementNumberOfBytesFreedRevoke(size_t freed_bytes_revoke) {
   size_t previous_num_bytes_freed_revoke =
-      num_bytes_freed_revoke_.fetch_add(freed_bytes_revoke, std::memory_order_seq_cst);
+      num_bytes_freed_revoke_.fetch_add(freed_bytes_revoke, std::memory_order_relaxed);
   // Check the updated value is less than the number of bytes allocated. There is a risk of
   // execution being suspended between the increment above and the CHECK below, leading to
   // the use of previous_num_bytes_freed_revoke in the comparison.
@@ -4018,9 +4019,9 @@ void Heap::CheckGcStressMode(Thread* self, ObjPtr<mirror::Object>* obj) {
       StackHandleScope<1> hs(self);
       auto h = hs.NewHandleWrapper(obj);
       CollectGarbage(/* clear_soft_references */ false);
-      unique_backtrace_count_.fetch_add(1, std::memory_order_seq_cst);
+      unique_backtrace_count_.fetch_add(1);
     } else {
-      seen_backtrace_count_.fetch_add(1, std::memory_order_seq_cst);
+      seen_backtrace_count_.fetch_add(1);
     }
   }
 }
@@ -4201,7 +4202,7 @@ class Heap::TriggerPostForkCCGcTask : public HeapTask {
   explicit TriggerPostForkCCGcTask(uint64_t target_time) : HeapTask(target_time) {}
   void Run(Thread* self) override {
     gc::Heap* heap = Runtime::Current()->GetHeap();
-    // Trigger a GC, if not already done. The first GC after fork, whenever
+    // Trigger a GC, if not already done. The first GC after fork, whenever it
     // takes place, will adjust the thresholds to normal levels.
     if (heap->max_allowed_footprint_ == heap->growth_limit_) {
       heap->RequestConcurrentGC(self, kGcCauseBackground, false);
