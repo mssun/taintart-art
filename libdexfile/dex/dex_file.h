@@ -782,8 +782,6 @@ class DexFile {
   // Callback for "new locals table entry".
   typedef void (*DexDebugNewLocalCb)(void* context, const LocalInfo& entry);
 
-  static bool LineNumForPcCb(void* context, const PositionInfo& entry);
-
   const AnnotationsDirectoryItem* GetAnnotationsDirectory(const ClassDef& class_def) const {
     return DataPointer<AnnotationsDirectoryItem>(class_def.annotations_off_);
   }
@@ -865,15 +863,6 @@ class DexFile {
     DBG_LINE_RANGE           = 15,
   };
 
-  struct LineNumFromPcContext {
-    LineNumFromPcContext(uint32_t address, uint32_t line_num)
-        : address_(address), line_num_(line_num) {}
-    uint32_t address_;
-    uint32_t line_num_;
-   private:
-    DISALLOW_COPY_AND_ASSIGN(LineNumFromPcContext);
-  };
-
   // Returns false if there is no debugging information or if it cannot be decoded.
   template<typename NewLocalCallback, typename IndexToStringData, typename TypeIndexToStringData>
   static bool DecodeDebugLocalInfo(const uint8_t* stream,
@@ -902,13 +891,8 @@ class DexFile {
   // Returns false if there is no debugging information or if it cannot be decoded.
   template<typename DexDebugNewPosition, typename IndexToStringData>
   static bool DecodeDebugPositionInfo(const uint8_t* stream,
-                                      IndexToStringData index_to_string_data,
-                                      DexDebugNewPosition position_functor,
-                                      void* context);
-  template<typename DexDebugNewPosition>
-  bool DecodeDebugPositionInfo(uint32_t debug_info_offset,
-                               DexDebugNewPosition position_functor,
-                               void* context) const;
+                                      const IndexToStringData& index_to_string_data,
+                                      const DexDebugNewPosition& position_functor);
 
   const char* GetSourceFile(const ClassDef& class_def) const {
     if (!class_def.source_file_idx_.IsValid()) {
@@ -1016,7 +1000,11 @@ class DexFile {
   // Iterate dex classes and remove hiddenapi flags in fields and methods.
   void UnhideApis() const;
 
-  inline IterationRange<ClassIterator> GetClasses() const;
+  IterationRange<ClassIterator> GetClasses() const;
+
+  template <typename Visitor>
+  static uint32_t DecodeDebugInfoParameterNames(const uint8_t** debug_info,
+                                                const Visitor& visitor);
 
  protected:
   // First Dex format version supporting default methods.

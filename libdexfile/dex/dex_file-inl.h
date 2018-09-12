@@ -22,6 +22,7 @@
 #include "base/casts.h"
 #include "base/leb128.h"
 #include "base/stringpiece.h"
+#include "base/utils.h"
 #include "class_iterator.h"
 #include "compact_dex_file.h"
 #include "dex_instruction_iterator.h"
@@ -401,19 +402,14 @@ bool DexFile::DecodeDebugLocalInfo(uint32_t registers_size,
 
 template<typename DexDebugNewPosition, typename IndexToStringData>
 bool DexFile::DecodeDebugPositionInfo(const uint8_t* stream,
-                                      IndexToStringData index_to_string_data,
-                                      DexDebugNewPosition position_functor,
-                                      void* context) {
+                                      const IndexToStringData& index_to_string_data,
+                                      const DexDebugNewPosition& position_functor) {
   if (stream == nullptr) {
     return false;
   }
 
-  PositionInfo entry = PositionInfo();
-  entry.line_ = DecodeUnsignedLeb128(&stream);
-  uint32_t parameters_size = DecodeUnsignedLeb128(&stream);
-  for (uint32_t i = 0; i < parameters_size; ++i) {
-    DecodeUnsignedLeb128P1(&stream);  // Parameter name.
-  }
+  PositionInfo entry;
+  entry.line_ = DecodeDebugInfoParameterNames(&stream, VoidFunctor());
 
   for (;;)  {
     uint8_t opcode = *stream++;
@@ -456,7 +452,7 @@ bool DexFile::DecodeDebugPositionInfo(const uint8_t* stream,
         int adjopcode = opcode - DBG_FIRST_SPECIAL;
         entry.address_ += adjopcode / DBG_LINE_RANGE;
         entry.line_ += DBG_LINE_BASE + (adjopcode % DBG_LINE_RANGE);
-        if (position_functor(context, entry)) {
+        if (position_functor(entry)) {
           return true;  // early exit.
         }
         entry.prologue_end_ = false;
@@ -465,18 +461,6 @@ bool DexFile::DecodeDebugPositionInfo(const uint8_t* stream,
       }
     }
   }
-}
-
-template<typename DexDebugNewPosition>
-bool DexFile::DecodeDebugPositionInfo(uint32_t debug_info_offset,
-                                      DexDebugNewPosition position_functor,
-                                      void* context) const {
-  return DecodeDebugPositionInfo(GetDebugInfoStream(debug_info_offset),
-                                 [this](uint32_t idx) {
-                                   return StringDataByIdx(dex::StringIndex(idx));
-                                 },
-                                 position_functor,
-                                 context);
 }
 
 inline const CompactDexFile* DexFile::AsCompactDexFile() const {
@@ -500,6 +484,18 @@ inline const uint8_t* DexFile::GetCatchHandlerData(const DexInstructionIterator&
 
 inline IterationRange<ClassIterator> DexFile::GetClasses() const {
   return { ClassIterator(*this, 0u), ClassIterator(*this, NumClassDefs()) };
+}
+
+// Returns the line number
+template <typename Visitor>
+inline uint32_t DexFile::DecodeDebugInfoParameterNames(const uint8_t** debug_info,
+                                                       const Visitor& visitor) {
+  uint32_t line = DecodeUnsignedLeb128(debug_info);
+  const uint32_t parameters_size = DecodeUnsignedLeb128(debug_info);
+  for (uint32_t i = 0; i < parameters_size; ++i) {
+    visitor(dex::StringIndex(DecodeUnsignedLeb128P1(debug_info)));
+  }
+  return line;
 }
 
 }  // namespace art
