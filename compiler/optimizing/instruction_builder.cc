@@ -1497,21 +1497,22 @@ bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
   // to be visited once it is clear whether it has remaining uses.
   if (arg_this->IsNewInstance()) {
     ssa_builder_->AddUninitializedString(arg_this->AsNewInstance());
-    // Walk over all vregs and replace any occurrence of `arg_this` with `invoke`.
-    for (size_t vreg = 0, e = current_locals_->size(); vreg < e; ++vreg) {
-      if ((*current_locals_)[vreg] == arg_this) {
-        (*current_locals_)[vreg] = invoke;
-      }
-    }
   } else {
     DCHECK(arg_this->IsPhi());
     // We can get a phi as input of a String.<init> if there is a loop between the
     // allocation and the String.<init> call. As we don't know which other phis might alias
-    // with `arg_this`, we keep a record of these phis and will analyze their inputs and
-    // uses once the inputs and users are populated (in ssa_builder.cc).
-    // Note: we only do this for phis, as it is a somewhat more expensive operation than
-    // what we're doing above when the input is the `HNewInstance`.
-    ssa_builder_->AddUninitializedStringPhi(arg_this->AsPhi(), invoke);
+    // with `arg_this`, we keep a record of those invocations so we can later replace
+    // the allocation with the invocation.
+    // Add the actual 'this' input so the analysis knows what is the allocation instruction.
+    // The input will be removed during the analysis.
+    invoke->AddInput(arg_this);
+    ssa_builder_->AddUninitializedStringPhi(invoke);
+  }
+  // Walk over all vregs and replace any occurrence of `arg_this` with `invoke`.
+  for (size_t vreg = 0, e = current_locals_->size(); vreg < e; ++vreg) {
+    if ((*current_locals_)[vreg] == arg_this) {
+      (*current_locals_)[vreg] = invoke;
+    }
   }
   return true;
 }

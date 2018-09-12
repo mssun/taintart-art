@@ -133,6 +133,29 @@ public class Main {
       result = (String) m.invoke(null, new Object[] { testData, false });
       assertEqual(testString, result);
     }
+    {
+      Method m =
+          c.getMethod("loopAndTwoStringInitAndPhi", byte[].class, boolean.class, boolean.class);
+      String result = (String) m.invoke(null, new Object[] { testData, false, false });
+      assertEqual(testString, result);
+      result = (String) m.invoke(null, new Object[] { testData, false, true });
+      assertEqual(testString, result);
+    }
+    {
+      Method m = c.getMethod("stringAndCatch", byte[].class, boolean.class);
+      String result = (String) m.invoke(null, new Object[] { testData, false });
+      assertEqual(testString, result);
+    }
+    {
+      Method m = c.getMethod("stringAndCatch2", byte[].class, boolean.class);
+      String result = (String) m.invoke(null, new Object[] { testData, false });
+      assertEqual(testString, result);
+    }
+    {
+      Method m = c.getMethod("stringAndCatch3", byte[].class, boolean.class);
+      String result = (String) m.invoke(null, new Object[] { testData, false });
+      assertEqual(testString, result);
+    }
   }
 
   public static boolean doThrow = false;
