@@ -507,7 +507,8 @@ void ClassHierarchyAnalysis::CheckInterfaceMethodSingleImplementationInfo(
     return;
   }
   DCHECK(!single_impl->IsAbstract());
-  if (single_impl->GetDeclaringClass() == implementation_method->GetDeclaringClass()) {
+  if ((single_impl->GetDeclaringClass() == implementation_method->GetDeclaringClass()) &&
+      !implementation_method->IsDefaultConflicting()) {
     // Same implementation. Since implementation_method may be a copy of a default
     // method, we need to check the declaring class for equality.
     return;
@@ -543,7 +544,10 @@ void ClassHierarchyAnalysis::InitSingleImplementationFlag(Handle<mirror::Class> 
       method->SetHasSingleImplementation(true);
       DCHECK(method->GetSingleImplementation(pointer_size) == nullptr);
     }
-  } else {
+  // Default conflicting methods cannot be treated with single implementations,
+  // as we need to call them (and not inline them) in case of ICCE.
+  // See class_linker.cc:EnsureThrowsInvocationError.
+  } else if (!method->IsDefaultConflicting()) {
     method->SetHasSingleImplementation(true);
     // Single implementation of non-abstract method is itself.
     DCHECK_EQ(method->GetSingleImplementation(pointer_size), method);
