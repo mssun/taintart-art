@@ -24,6 +24,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <fstream>
 #include <memory>
 
 #include "android-base/file.h"
@@ -211,6 +212,27 @@ void SleepForever() {
   while (true) {
     usleep(1000000);
   }
+}
+
+std::string GetProcessStatus(const char* key) {
+  // Build search pattern of key and separator.
+  std::string pattern(key);
+  pattern.push_back(':');
+
+  // Search for status lines starting with pattern.
+  std::ifstream fs("/proc/self/status");
+  std::string line;
+  while (std::getline(fs, line)) {
+    if (strncmp(pattern.c_str(), line.c_str(), pattern.size()) == 0) {
+      // Skip whitespace in matching line (if any).
+      size_t pos = line.find_first_not_of(" \t", pattern.size());
+      if (UNLIKELY(pos == std::string::npos)) {
+        break;
+      }
+      return std::string(line, pos);
+    }
+  }
+  return "<unknown>";
 }
 
 }  // namespace art

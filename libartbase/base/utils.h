@@ -216,6 +216,11 @@ static inline void CheckedCall(const Func& function, const char* what, Args... a
   }
 }
 
+// Lookup value for a given key in /proc/self/status. Keys and values are separated by a ':' in
+// the status file. Returns value found on success and "<unknown>" if the key is not found or
+// there is an I/O error.
+std::string GetProcessStatus(const char* key);
+
 }  // namespace art
 
 #endif  // ART_LIBARTBASE_BASE_UTILS_H_
