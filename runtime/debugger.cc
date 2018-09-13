@@ -1700,37 +1700,6 @@ void Dbg::OutputLineTable(JDWP::RefTypeId, JDWP::MethodId method_id, JDWP::Expan
 
 void Dbg::OutputVariableTable(JDWP::RefTypeId, JDWP::MethodId method_id, bool with_generic,
                               JDWP::ExpandBuf* pReply) {
-  struct DebugCallbackContext {
-    ArtMethod* method;
-    JDWP::ExpandBuf* pReply;
-    size_t variable_count;
-    bool with_generic;
-
-    static void Callback(void* context, const DexFile::LocalInfo& entry)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      DebugCallbackContext* pContext = reinterpret_cast<DebugCallbackContext*>(context);
-
-      uint16_t slot = entry.reg_;
-      VLOG(jdwp) << StringPrintf("    %2zd: %d(%d) '%s' '%s' '%s' actual slot=%d mangled slot=%d",
-                                 pContext->variable_count, entry.start_address_,
-                                 entry.end_address_ - entry.start_address_,
-                                 entry.name_, entry.descriptor_, entry.signature_, slot,
-                                 MangleSlot(slot, pContext->method));
-
-      slot = MangleSlot(slot, pContext->method);
-
-      expandBufAdd8BE(pContext->pReply, entry.start_address_);
-      expandBufAddUtf8String(pContext->pReply, entry.name_);
-      expandBufAddUtf8String(pContext->pReply, entry.descriptor_);
-      if (pContext->with_generic) {
-        expandBufAddUtf8String(pContext->pReply, entry.signature_);
-      }
-      expandBufAdd4BE(pContext->pReply, entry.end_address_- entry.start_address_);
-      expandBufAdd4BE(pContext->pReply, slot);
-
-      ++pContext->variable_count;
-    }
-  };
   ArtMethod* m = FromMethodId(method_id);
   CodeItemDebugInfoAccessor accessor(m->DexInstructionDebugInfo());
 
@@ -1742,24 +1711,39 @@ void Dbg::OutputVariableTable(JDWP::RefTypeId, JDWP::MethodId method_id, bool wi
   size_t variable_count_offset = expandBufGetLength(pReply);
   expandBufAdd4BE(pReply, 0);
 
-  DebugCallbackContext context;
-  context.method = m;
-  context.pReply = pReply;
-  context.variable_count = 0;
-  context.with_generic = with_generic;
+  size_t variable_count = 0;
 
   if (accessor.HasCodeItem()) {
-    m->GetDexFile()->DecodeDebugLocalInfo(accessor.RegistersSize(),
-                                          accessor.InsSize(),
-                                          accessor.InsnsSizeInCodeUnits(),
-                                          accessor.DebugInfoOffset(),
-                                          m->IsStatic(),
-                                          m->GetDexMethodIndex(),
-                                          DebugCallbackContext::Callback,
-                                          &context);
+    accessor.DecodeDebugLocalInfo(m->IsStatic(),
+                                  m->GetDexMethodIndex(),
+                                  [&](const DexFile::LocalInfo& entry)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      uint16_t slot = entry.reg_;
+      VLOG(jdwp) << StringPrintf("    %2zd: %d(%d) '%s' '%s' '%s' actual slot=%d mangled slot=%d",
+                                 variable_count,
+                                 entry.start_address_,
+                                 entry.end_address_ - entry.start_address_,
+                                 entry.name_,
+                                 entry.descriptor_, entry.signature_,
+                                 slot,
+                                 MangleSlot(slot, m));
+
+      slot = MangleSlot(slot, m);
+
+      expandBufAdd8BE(pReply, entry.start_address_);
+      expandBufAddUtf8String(pReply, entry.name_);
+      expandBufAddUtf8String(pReply, entry.descriptor_);
+      if (with_generic) {
+        expandBufAddUtf8String(pReply, entry.signature_);
+      }
+      expandBufAdd4BE(pReply, entry.end_address_- entry.start_address_);
+      expandBufAdd4BE(pReply, slot);
+
+      ++variable_count;
+    });
   }
 
-  JDWP::Set4BE(expandBufGetBuffer(pReply) + variable_count_offset, context.variable_count);
+  JDWP::Set4BE(expandBufGetBuffer(pReply) + variable_count_offset, variable_count);
 }
 
 void Dbg::OutputMethodReturnValue(JDWP::MethodId method_id, const JValue* return_value,

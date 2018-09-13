@@ -41,12 +41,6 @@
 namespace art {
 namespace debug {
 
-typedef std::vector<DexFile::LocalInfo> LocalInfos;
-
-static void LocalInfoCallback(void* ctx, const DexFile::LocalInfo& entry) {
-  static_cast<LocalInfos*>(ctx)->push_back(entry);
-}
-
 static std::vector<const char*> GetParamNames(const MethodDebugInfo* mi) {
   std::vector<const char*> names;
   DCHECK(mi->dex_file != nullptr);
@@ -251,11 +245,12 @@ class ElfCompilationUnitWriter {
       }
 
       // Write local variables.
-      LocalInfos local_infos;
+      std::vector<DexFile::LocalInfo> local_infos;
       if (accessor.DecodeDebugLocalInfo(is_static,
                                         mi->dex_method_index,
-                                        LocalInfoCallback,
-                                        &local_infos)) {
+                                        [&](const DexFile::LocalInfo& entry) {
+                                          local_infos.push_back(entry);
+                                        })) {
         for (const DexFile::LocalInfo& var : local_infos) {
           if (var.reg_ < accessor.RegistersSize() - accessor.InsSize()) {
             info_.StartTag(DW_TAG_variable);
