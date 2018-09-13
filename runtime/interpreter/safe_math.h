@@ -41,19 +41,19 @@ static inline typename select_bigger<T1, T2>::type SafeMath(T1 a, T2 b) {
   return static_cast<biggest_T>(Op<unsigned_biggest_T>()(val1, val2));
 }
 
-// Perform signed a signed add on 'a' and 'b' with defined wrapping behavior.
+// Perform a signed add on 'a' and 'b' with defined wrapping behavior.
 template<typename T1, typename T2>
 static inline typename select_bigger<T1, T2>::type SafeAdd(T1 a, T2 b) {
   return SafeMath<std::plus>(a, b);
 }
 
-// Perform signed a signed substract on 'a' and 'b' with defined wrapping behavior.
+// Perform a signed substract on 'a' and 'b' with defined wrapping behavior.
 template<typename T1, typename T2>
 static inline typename select_bigger<T1, T2>::type SafeSub(T1 a, T2 b) {
   return SafeMath<std::minus>(a, b);
 }
 
-// Perform signed a signed multiply on 'a' and 'b' with defined wrapping behavior.
+// Perform a signed multiply on 'a' and 'b' with defined wrapping behavior.
 template<typename T1, typename T2>
 static inline typename select_bigger<T1, T2>::type SafeMul(T1 a, T2 b) {
   return SafeMath<std::multiplies>(a, b);
