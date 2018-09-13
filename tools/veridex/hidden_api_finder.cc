@@ -35,7 +35,7 @@ void HiddenApiFinder::CheckMethod(uint32_t method_id,
   // Note: we always query whether a method is in a list, as the app
   // might define blacklisted APIs (which won't be used at runtime).
   std::string name = HiddenApi::GetApiMethodName(resolver->GetDexFile(), method_id);
-  if (hidden_api_.IsInRestrictionList(name)) {
+  if (hidden_api_.IsInAnyList(name)) {
     method_locations_[name].push_back(ref);
   }
 }
@@ -46,7 +46,7 @@ void HiddenApiFinder::CheckField(uint32_t field_id,
   // Note: we always query whether a field is in a list, as the app
   // might define blacklisted APIs (which won't be used at runtime).
   std::string name = HiddenApi::GetApiFieldName(resolver->GetDexFile(), field_id);
-  if (hidden_api_.IsInRestrictionList(name)) {
+  if (hidden_api_.IsInAnyList(name)) {
     field_locations_[name].push_back(ref);
   }
 }
@@ -57,7 +57,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
   // types can lead to being used through reflection.
   for (uint32_t i = 0; i < dex_file.NumTypeIds(); ++i) {
     std::string name(dex_file.StringByTypeIdx(dex::TypeIndex(i)));
-    if (hidden_api_.IsInRestrictionList(name)) {
+    if (hidden_api_.IsInAnyList(name)) {
       classes_.insert(name);
     }
   }
@@ -81,9 +81,9 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
               // private methods and fields in them.
               // We don't add class names to the `strings_` set as we know method/field names
               // don't have '.' or '/'. All hidden API class names have a '/'.
-              if (hidden_api_.IsInRestrictionList(str)) {
+              if (hidden_api_.IsInAnyList(str)) {
                 classes_.insert(str);
-              } else if (hidden_api_.IsInRestrictionList(name)) {
+              } else if (hidden_api_.IsInAnyList(name)) {
                 // Could be something passed to JNI.
                 classes_.insert(name);
               } else {
@@ -210,7 +210,7 @@ void HiddenApiFinder::Dump(std::ostream& os,
         std::string full_name = cls + "->" + name;
         HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
         stats->api_counts[api_list]++;
-        if (api_list != HiddenApiAccessFlags::kWhitelist) {
+        if (api_list != HiddenApiAccessFlags::kNoList) {
           stats->reflection_count++;
           os << "#" << ++stats->count << ": Reflection " << api_list << " " << full_name
              << " potential use(s):";

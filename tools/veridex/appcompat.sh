@@ -22,6 +22,7 @@ echo "that do not exist. It can also miss on reflection uses."
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [[ -e ${SCRIPT_DIR}/veridex && \
+      -e ${SCRIPT_DIR}/hiddenapi-whitelist.txt && \
       -e ${SCRIPT_DIR}/hiddenapi-blacklist.txt && \
       -e ${SCRIPT_DIR}/hiddenapi-light-greylist.txt && \
       -e ${SCRIPT_DIR}/hiddenapi-dark-greylist.txt && \
@@ -29,6 +30,7 @@ if [[ -e ${SCRIPT_DIR}/veridex && \
       -e ${SCRIPT_DIR}/system-stubs.zip ]]; then
   exec ${SCRIPT_DIR}/veridex \
     --core-stubs=${SCRIPT_DIR}/system-stubs.zip:${SCRIPT_DIR}/org.apache.http.legacy-stubs.zip \
+    --whitelist=${SCRIPT_DIR}/hiddenapi-whitelist.txt \
     --blacklist=${SCRIPT_DIR}/hiddenapi-blacklist.txt \
     --light-greylist=${SCRIPT_DIR}/hiddenapi-light-greylist.txt \
     --dark-greylist=${SCRIPT_DIR}/hiddenapi-dark-greylist.txt \
@@ -62,6 +64,7 @@ fi
 
 ${ANDROID_HOST_OUT}/bin/veridex \
     --core-stubs=${PACKAGING}/core_dex_intermediates/classes.dex:${PACKAGING}/oahl_dex_intermediates/classes.dex \
+    --whitelist=${PACKAGING}/hiddenapi-whitelist.txt \
     --blacklist=${PACKAGING}/hiddenapi-blacklist.txt \
     --light-greylist=${PACKAGING}/hiddenapi-light-greylist.txt \
     --dark-greylist=${PACKAGING}/hiddenapi-dark-greylist.txt \
