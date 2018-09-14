@@ -119,8 +119,25 @@ class PrefixStrings {
       return false;
     }
     const uint8_t* prefix_data = &dictionary_.prefix_data_[prefix_offset];
-    return memcmp(prefix_data, data, prefix_len) == 0u &&
-        memcmp(suffix_data, data + prefix_len, len - prefix_len) == 0u;
+    if ((true)) {
+      return memcmp(prefix_data, data, prefix_len) == 0u &&
+          memcmp(suffix_data, data + prefix_len, len - prefix_len) == 0u;
+    } else {
+      len -= prefix_len;
+      while (prefix_len != 0u) {
+        if (*prefix_data++ != *data++) {
+          return false;
+        }
+        --prefix_len;
+      }
+      while (len != 0u) {
+        if (*suffix_data++ != *data++) {
+          return false;
+        }
+        --len;
+      }
+      return true;
+    }
   }
 
  public:
@@ -163,7 +180,6 @@ class NormalStrings {
   std::vector<uint8_t> chars_;
   std::vector<uint32_t> string_offsets_;
 };
-
 
 // Node value = (distance from root) * (occurrences - 1).
 class MatchTrie {
