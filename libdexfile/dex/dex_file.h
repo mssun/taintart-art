@@ -874,10 +874,9 @@ class DexFile {
                                    uint16_t registers_size,
                                    uint16_t ins_size,
                                    uint16_t insns_size_in_code_units,
-                                   IndexToStringData index_to_string_data,
-                                   TypeIndexToStringData type_index_to_string_data,
-                                   NewLocalCallback new_local,
-                                   void* context);
+                                   const IndexToStringData& index_to_string_data,
+                                   const TypeIndexToStringData& type_index_to_string_data,
+                                   const NewLocalCallback& new_local) NO_THREAD_SAFETY_ANALYSIS;
   template<typename NewLocalCallback>
   bool DecodeDebugLocalInfo(uint32_t registers_size,
                             uint32_t ins_size,
@@ -885,8 +884,7 @@ class DexFile {
                             uint32_t debug_info_offset,
                             bool is_static,
                             uint32_t method_idx,
-                            NewLocalCallback new_local,
-                            void* context) const;
+                            const NewLocalCallback& new_local) const;
 
   // Returns false if there is no debugging information or if it cannot be decoded.
   template<typename DexDebugNewPosition, typename IndexToStringData>

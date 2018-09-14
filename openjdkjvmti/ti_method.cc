@@ -206,76 +206,59 @@ jvmtiError MethodUtil::GetLocalVariableTable(jvmtiEnv* env,
     return ERR(ABSENT_INFORMATION);
   }
 
-  struct LocalVariableContext {
-    explicit LocalVariableContext(jvmtiEnv* jenv) : env_(jenv), variables_(), err_(OK) {}
+  std::vector<jvmtiLocalVariableEntry> variables;
+  jvmtiError err = OK;
 
-    static void Callback(void* raw_ctx, const art::DexFile::LocalInfo& entry) {
-      reinterpret_cast<LocalVariableContext*>(raw_ctx)->Insert(entry);
+  auto release = [&](jint* out_entry_count_ptr, jvmtiLocalVariableEntry** out_table_ptr) {
+    jlong table_size = sizeof(jvmtiLocalVariableEntry) * variables.size();
+    if (err != OK ||
+        (err = env->Allocate(table_size,
+                              reinterpret_cast<unsigned char**>(out_table_ptr))) != OK) {
+      for (jvmtiLocalVariableEntry& e : variables) {
+        env->Deallocate(reinterpret_cast<unsigned char*>(e.name));
+        env->Deallocate(reinterpret_cast<unsigned char*>(e.signature));
+        env->Deallocate(reinterpret_cast<unsigned char*>(e.generic_signature));
+      }
+      return err;
     }
-
-    void Insert(const art::DexFile::LocalInfo& entry) {
-      if (err_ != OK) {
-        return;
-      }
-      JvmtiUniquePtr<char[]> name_str = CopyString(env_, entry.name_, &err_);
-      if (err_ != OK) {
-        return;
-      }
-      JvmtiUniquePtr<char[]> sig_str = CopyString(env_, entry.descriptor_, &err_);
-      if (err_ != OK) {
-        return;
-      }
-      JvmtiUniquePtr<char[]> generic_sig_str = CopyString(env_, entry.signature_, &err_);
-      if (err_ != OK) {
-        return;
-      }
-      variables_.push_back({
-        .start_location = static_cast<jlocation>(entry.start_address_),
-        .length = static_cast<jint>(entry.end_address_ - entry.start_address_),
-        .name = name_str.release(),
-        .signature = sig_str.release(),
-        .generic_signature = generic_sig_str.release(),
-        .slot = entry.reg_,
-      });
-    }
-
-    jvmtiError Release(jint* out_entry_count_ptr, jvmtiLocalVariableEntry** out_table_ptr) {
-      jlong table_size = sizeof(jvmtiLocalVariableEntry) * variables_.size();
-      if (err_ != OK ||
-          (err_ = env_->Allocate(table_size,
-                                 reinterpret_cast<unsigned char**>(out_table_ptr))) != OK) {
-        Cleanup();
-        return err_;
-      } else {
-        *out_entry_count_ptr = variables_.size();
-        memcpy(*out_table_ptr, variables_.data(), table_size);
-        return OK;
-      }
-    }
-
-    void Cleanup() {
-      for (jvmtiLocalVariableEntry& e : variables_) {
-        env_->Deallocate(reinterpret_cast<unsigned char*>(e.name));
-        env_->Deallocate(reinterpret_cast<unsigned char*>(e.signature));
-        env_->Deallocate(reinterpret_cast<unsigned char*>(e.generic_signature));
-      }
-    }
-
-    jvmtiEnv* env_;
-    std::vector<jvmtiLocalVariableEntry> variables_;
-    jvmtiError err_;
+    *out_entry_count_ptr = variables.size();
+    memcpy(*out_table_ptr, variables.data(), table_size);
+    return OK;
   };
 
-  LocalVariableContext context(env);
+  auto visitor = [&](const art::DexFile::LocalInfo& entry) {
+    if (err != OK) {
+      return;
+    }
+    JvmtiUniquePtr<char[]> name_str = CopyString(env, entry.name_, &err);
+    if (err != OK) {
+      return;
+    }
+    JvmtiUniquePtr<char[]> sig_str = CopyString(env, entry.descriptor_, &err);
+    if (err != OK) {
+      return;
+    }
+    JvmtiUniquePtr<char[]> generic_sig_str = CopyString(env, entry.signature_, &err);
+    if (err != OK) {
+      return;
+    }
+    variables.push_back({
+      .start_location = static_cast<jlocation>(entry.start_address_),
+      .length = static_cast<jint>(entry.end_address_ - entry.start_address_),
+      .name = name_str.release(),
+      .signature = sig_str.release(),
+      .generic_signature = generic_sig_str.release(),
+      .slot = entry.reg_,
+    });
+  };
+
   if (!accessor.DecodeDebugLocalInfo(art_method->IsStatic(),
                                      art_method->GetDexMethodIndex(),
-                                     LocalVariableContext::Callback,
-                                     &context)) {
+                                     visitor)) {
     // Something went wrong with decoding the debug information. It might as well not be there.
     return ERR(ABSENT_INFORMATION);
-  } else {
-    return context.Release(entry_count_ptr, table_ptr);
   }
+  return release(entry_count_ptr, table_ptr);
 }
 
 jvmtiError MethodUtil::GetMaxLocals(jvmtiEnv* env ATTRIBUTE_UNUSED,
@@ -614,55 +597,25 @@ class CommonLocalVariableClosure : public art::Closure {
     if (!accessor.HasCodeItem()) {
       return ERR(OPAQUE_FRAME);
     }
-
-    struct GetLocalVariableInfoContext {
-      explicit GetLocalVariableInfoContext(jint slot,
-                                          uint32_t pc,
-                                          std::string* out_descriptor,
-                                          art::Primitive::Type* out_type)
-          : found_(false), jslot_(slot), pc_(pc), descriptor_(out_descriptor), type_(out_type) {
-        *descriptor_ = "";
-        *type_ = art::Primitive::kPrimVoid;
+    bool found = false;
+    *type = art::Primitive::kPrimVoid;
+    descriptor->clear();
+    auto visitor = [&](const art::DexFile::LocalInfo& entry) {
+      if (!found &&
+          entry.start_address_ <= dex_pc &&
+          entry.end_address_ > dex_pc &&
+          entry.reg_ == slot_) {
+        found = true;
+        *type = art::Primitive::GetType(entry.descriptor_[0]);
+        *descriptor = entry.descriptor_;
       }
-
-      static void Callback(void* raw_ctx, const art::DexFile::LocalInfo& entry) {
-        reinterpret_cast<GetLocalVariableInfoContext*>(raw_ctx)->Handle(entry);
-      }
-
-      void Handle(const art::DexFile::LocalInfo& entry) {
-        if (found_) {
-          return;
-        } else if (entry.start_address_ <= pc_ &&
-                   entry.end_address_ > pc_ &&
-                   entry.reg_ == jslot_) {
-          found_ = true;
-          *type_ = art::Primitive::GetType(entry.descriptor_[0]);
-          *descriptor_ = entry.descriptor_;
-        }
-        return;
-      }
-
-      bool found_;
-      jint jslot_;
-      uint32_t pc_;
-      std::string* descriptor_;
-      art::Primitive::Type* type_;
     };
-
-    GetLocalVariableInfoContext context(slot_, dex_pc, descriptor, type);
-    if (!dex_file->DecodeDebugLocalInfo(accessor.RegistersSize(),
-                                        accessor.InsSize(),
-                                        accessor.InsnsSizeInCodeUnits(),
-                                        accessor.DebugInfoOffset(),
-                                        method->IsStatic(),
-                                        method->GetDexMethodIndex(),
-                                        GetLocalVariableInfoContext::Callback,
-                                        &context) || !context.found_) {
+    if (!accessor.DecodeDebugLocalInfo(method->IsStatic(), method->GetDexMethodIndex(), visitor) ||
+        !found) {
       // Something went wrong with decoding the debug information. It might as well not be there.
       return ERR(INVALID_SLOT);
-    } else {
-      return OK;
     }
+    return OK;
   }
 
   jvmtiError result_;

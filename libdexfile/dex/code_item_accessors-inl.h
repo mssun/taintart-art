@@ -184,19 +184,18 @@ inline void CodeItemDebugInfoAccessor::Init(const StandardDexFile::CodeItem& cod
   CodeItemDataAccessor::Init(code_item);
 }
 
-template<typename NewLocalCallback>
-inline bool CodeItemDebugInfoAccessor::DecodeDebugLocalInfo(bool is_static,
-                                                            uint32_t method_idx,
-                                                            NewLocalCallback new_local,
-                                                            void* context) const {
+template<typename NewLocalVisitor>
+inline bool CodeItemDebugInfoAccessor::DecodeDebugLocalInfo(
+    bool is_static,
+    uint32_t method_idx,
+    const NewLocalVisitor& new_local) const {
   return dex_file_->DecodeDebugLocalInfo(RegistersSize(),
                                          InsSize(),
                                          InsnsSizeInCodeUnits(),
                                          DebugInfoOffset(),
                                          is_static,
                                          method_idx,
-                                         new_local,
-                                         context);
+                                         new_local);
 }
 
 template <typename Visitor>
