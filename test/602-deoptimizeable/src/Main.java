@@ -77,7 +77,7 @@ public class Main {
                 assertIsManaged();  // Only single frame is deoptimized.
                 if (res != 79) {
                     System.out.println("Failure 1!");
-                    System.exit(0);
+                    System.exit(1);
                 }
             }
         });
@@ -96,7 +96,7 @@ public class Main {
                     assertIsManaged();  // Only single frame is deoptimized.
                     if (res != 79.3d) {
                         System.out.println("Failure 2!");
-                        System.exit(0);
+                        System.exit(2);
                     }
                 } catch (Exception e) {
                     e.printStackTrace(System.out);
@@ -112,7 +112,7 @@ public class Main {
                 assertIsInterpreted();  // Every deoptimizeable method is deoptimized.
                 if (res != 0.034f) {
                     System.out.println("Failure 3!");
-                    System.exit(0);
+                    System.exit(3);
                 }
             }
         });
@@ -136,9 +136,11 @@ public class Main {
 
         if (!DummyObject.sHashCodeInvoked) {
             System.out.println("hashCode() method not invoked!");
+            System.exit(4);
         }
         if (map.get(new DummyObject(10)) != 100) {
             System.out.println("Wrong hashmap value!");
+            System.exit(5);
         }
         System.out.println("Finishing");
     }
@@ -163,6 +165,7 @@ public class Main {
         }
         if (!caught) {
             System.out.println("Expected exception");
+            System.exit(6);
         }
         assertIsInterpreted();
         return 79;
@@ -188,6 +191,7 @@ public class Main {
         }
         if (!caught) {
             System.out.println("Expected exception");
+            System.exit(7);
         }
         assertIsInterpreted();
         return 79.3d;
