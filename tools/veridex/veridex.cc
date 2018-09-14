@@ -68,11 +68,13 @@ VeriField VeriClass::sdkInt_ = nullptr;
 struct VeridexOptions {
   const char* dex_file = nullptr;
   const char* core_stubs = nullptr;
+  const char* whitelist = nullptr;
   const char* blacklist = nullptr;
   const char* light_greylist = nullptr;
   const char* dark_greylist = nullptr;
   bool precise = true;
   int target_sdk_version = 28; /* P */
+  bool only_report_sdk_uses = false;
 };
 
 static const char* Substr(const char* str, int index) {
@@ -90,17 +92,21 @@ static void ParseArgs(VeridexOptions* options, int argc, char** argv) {
 
   static const char* kDexFileOption = "--dex-file=";
   static const char* kStubsOption = "--core-stubs=";
+  static const char* kWhitelistOption = "--whitelist=";
   static const char* kBlacklistOption = "--blacklist=";
   static const char* kDarkGreylistOption = "--dark-greylist=";
   static const char* kLightGreylistOption = "--light-greylist=";
   static const char* kImprecise = "--imprecise";
   static const char* kTargetSdkVersion = "--target-sdk-version=";
+  static const char* kOnlyReportSdkUses = "--only-report-sdk-uses";
 
   for (int i = 0; i < argc; ++i) {
     if (StartsWith(argv[i], kDexFileOption)) {
       options->dex_file = Substr(argv[i], strlen(kDexFileOption));
     } else if (StartsWith(argv[i], kStubsOption)) {
       options->core_stubs = Substr(argv[i], strlen(kStubsOption));
+    } else if (StartsWith(argv[i], kWhitelistOption)) {
+      options->whitelist = Substr(argv[i], strlen(kWhitelistOption));
     } else if (StartsWith(argv[i], kBlacklistOption)) {
       options->blacklist = Substr(argv[i], strlen(kBlacklistOption));
     } else if (StartsWith(argv[i], kDarkGreylistOption)) {
@@ -111,6 +117,8 @@ static void ParseArgs(VeridexOptions* options, int argc, char** argv) {
       options->precise = false;
     } else if (StartsWith(argv[i], kTargetSdkVersion)) {
       options->target_sdk_version = atoi(Substr(argv[i], strlen(kTargetSdkVersion)));
+    } else if (strcmp(argv[i], kOnlyReportSdkUses) == 0) {
+      options->only_report_sdk_uses = true;
     }
   }
 }
@@ -215,8 +223,17 @@ class Veridex {
     std::vector<std::unique_ptr<VeridexResolver>> app_resolvers;
     Resolve(app_dex_files, resolver_map, type_map, &app_resolvers);
 
+    if (options.only_report_sdk_uses) {
+      // If we only need to report SDK uses, clear out any of the other lists so that
+      // the analysis don't report them.
+      options.blacklist = nullptr;
+      options.dark_greylist = nullptr;
+      options.light_greylist = nullptr;
+    }
+
     // Find and log uses of hidden APIs.
-    HiddenApi hidden_api(options.blacklist, options.dark_greylist, options.light_greylist);
+    HiddenApi hidden_api(
+        options.whitelist, options.blacklist, options.dark_greylist, options.light_greylist);
     HiddenApiStats stats;
 
     HiddenApiFinder api_finder(hidden_api);
@@ -229,7 +246,7 @@ class Veridex {
       precise_api_finder.Dump(std::cout, &stats);
     }
 
-    DumpSummaryStats(std::cout, stats);
+    DumpSummaryStats(std::cout, stats, options);
 
     if (options.precise) {
       std::cout << "To run an analysis that can give more reflection accesses, " << std::endl
@@ -240,17 +257,23 @@ class Veridex {
   }
 
  private:
-  static void DumpSummaryStats(std::ostream& os, const HiddenApiStats& stats) {
+  static void DumpSummaryStats(std::ostream& os,
+                               const HiddenApiStats& stats,
+                               const VeridexOptions& options) {
     static const char* kPrefix = "       ";
-    os << stats.count << " hidden API(s) used: "
-       << stats.linking_count << " linked against, "
-       << stats.reflection_count << " through reflection" << std::endl;
-    os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kBlacklist]
-       << " in blacklist" << std::endl;
-    os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kDarkGreylist]
-       << " in dark greylist" << std::endl;
-    os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kLightGreylist]
-       << " in light greylist" << std::endl;
+    if (options.only_report_sdk_uses) {
+      os << stats.api_counts[HiddenApiAccessFlags::kWhitelist] << " SDK API uses." << std::endl;
+    } else {
+      os << stats.count << " hidden API(s) used: "
+         << stats.linking_count << " linked against, "
+         << stats.reflection_count << " through reflection" << std::endl;
+      os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kBlacklist]
+         << " in blacklist" << std::endl;
+      os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kDarkGreylist]
+         << " in dark greylist" << std::endl;
+      os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kLightGreylist]
+         << " in light greylist" << std::endl;
+    }
   }
 
   static bool Load(const std::string& filename,

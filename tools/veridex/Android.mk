@@ -31,6 +31,7 @@ $(oahl_stub_dex): $(call get-prebuilt-sdk-dir,current)/org.apache.http.legacy.ja
 	$(transform-classes.jar-to-dex)
 
 app_compat_lists := \
+  $(INTERNAL_PLATFORM_HIDDENAPI_WHITELIST) \
   $(INTERNAL_PLATFORM_HIDDENAPI_LIGHT_GREYLIST) \
   $(INTERNAL_PLATFORM_HIDDENAPI_DARK_GREYLIST) \
   $(INTERNAL_PLATFORM_HIDDENAPI_BLACKLIST)
