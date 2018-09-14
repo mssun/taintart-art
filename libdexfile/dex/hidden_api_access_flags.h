@@ -62,6 +62,7 @@ class HiddenApiAccessFlags {
     kLightGreylist,
     kDarkGreylist,
     kBlacklist,
+    kNoList,
   };
 
   static ALWAYS_INLINE ApiList DecodeFromDex(uint32_t dex_access_flags) {
@@ -158,6 +159,9 @@ inline std::ostream& operator<<(std::ostream& os, HiddenApiAccessFlags::ApiList 
       break;
     case HiddenApiAccessFlags::kBlacklist:
       os << "blacklist";
+      break;
+    case HiddenApiAccessFlags::kNoList:
+      os << "no list";
       break;
   }
   return os;
