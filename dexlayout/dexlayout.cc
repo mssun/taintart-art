@@ -1037,17 +1037,6 @@ void DexLayout::DumpBytecodes(uint32_t idx, const dex_ir::CodeItem* code, uint32
 }
 
 /*
- * Callback for dumping locals table entry.
- */
-static void DumpLocalsCb(void* context, const DexFile::LocalInfo& entry) {
-  const char* signature = entry.signature_ != nullptr ? entry.signature_ : "";
-  FILE* out_file = reinterpret_cast<FILE*>(context);
-  fprintf(out_file, "        0x%04x - 0x%04x reg=%d %s %s %s\n",
-          entry.start_address_, entry.end_address_, entry.reg_,
-          entry.name_, entry.descriptor_, signature);
-}
-
-/*
  * Lookup functions.
  */
 static const char* StringDataByIdx(uint32_t idx, dex_ir::Header* header) {
@@ -1140,8 +1129,18 @@ void DexLayout::DumpCode(uint32_t idx,
                                         StringDataByTypeIdx(dchecked_integral_cast<uint16_t>(idx),
                                                             this->header_);
                                   },
-                                  DumpLocalsCb,
-                                  out_file_);
+                                  [&](const DexFile::LocalInfo& entry) {
+                                    const char* signature =
+                                        entry.signature_ != nullptr ? entry.signature_ : "";
+                                    fprintf(out_file_,
+                                            "        0x%04x - 0x%04x reg=%d %s %s %s\n",
+                                            entry.start_address_,
+                                            entry.end_address_,
+                                            entry.reg_,
+                                            entry.name_,
+                                            entry.descriptor_,
+                                            signature);
+                                  });
   }
 }
 

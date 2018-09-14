@@ -751,16 +751,6 @@ static void dumpCatches(const DexFile* pDexFile, const DexFile::CodeItem* pCode)
 }
 
 /*
- * Callback for dumping locals table entry.
- */
-static void dumpLocalsCb(void* /*context*/, const DexFile::LocalInfo& entry) {
-  const char* signature = entry.signature_ != nullptr ? entry.signature_ : "";
-  fprintf(gOutFile, "        0x%04x - 0x%04x reg=%d %s %s %s\n",
-          entry.start_address_, entry.end_address_, entry.reg_,
-          entry.name_, entry.descriptor_, signature);
-}
-
-/*
  * Helper for dumpInstruction(), which builds the string
  * representation for the index in the given instruction.
  * Returns a pointer to a buffer of sufficient size.
@@ -1198,7 +1188,19 @@ static void dumpCode(const DexFile* pDexFile, u4 idx, u4 flags,
     return false;
   });
   fprintf(gOutFile, "      locals        : \n");
-  accessor.DecodeDebugLocalInfo(is_static, idx, dumpLocalsCb, nullptr);
+  accessor.DecodeDebugLocalInfo(is_static,
+                                idx,
+                                [&](const DexFile::LocalInfo& entry) {
+    const char* signature = entry.signature_ != nullptr ? entry.signature_ : "";
+    fprintf(gOutFile,
+            "        0x%04x - 0x%04x reg=%d %s %s %s\n",
+            entry.start_address_,
+            entry.end_address_,
+            entry.reg_,
+            entry.name_,
+            entry.descriptor_,
+            signature);
+  });
 }
 
 /*

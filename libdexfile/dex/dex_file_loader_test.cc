@@ -480,10 +480,6 @@ TEST_F(DexFileLoaderTest, GetStringWithNoIndex) {
   EXPECT_EQ(raw->StringByTypeIdx(idx), nullptr);
 }
 
-static void Callback(void* context ATTRIBUTE_UNUSED,
-                     const DexFile::LocalInfo& entry ATTRIBUTE_UNUSED) {
-}
-
 TEST_F(DexFileLoaderTest, OpenDexDebugInfoLocalNullType) {
   std::vector<uint8_t> dex_bytes;
   std::unique_ptr<const DexFile> raw = OpenDexFileInMemoryBase64(kRawDexDebugInfoLocalNullType,
@@ -496,7 +492,7 @@ TEST_F(DexFileLoaderTest, OpenDexDebugInfoLocalNullType) {
   const DexFile::CodeItem* code_item = raw->GetCodeItem(raw->FindCodeItemOffset(class_def,
                                                                                 kMethodIdx));
   CodeItemDebugInfoAccessor accessor(*raw, code_item, kMethodIdx);
-  ASSERT_TRUE(accessor.DecodeDebugLocalInfo(true, 1, Callback, nullptr));
+  ASSERT_TRUE(accessor.DecodeDebugLocalInfo(true, 1, VoidFunctor()));
 }
 
 }  // namespace art

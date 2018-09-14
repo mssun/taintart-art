@@ -215,10 +215,9 @@ bool DexFile::DecodeDebugLocalInfo(const uint8_t* stream,
                                    uint16_t registers_size,
                                    uint16_t ins_size,
                                    uint16_t insns_size_in_code_units,
-                                   IndexToStringData index_to_string_data,
-                                   TypeIndexToStringData type_index_to_string_data,
-                                   NewLocalCallback new_local_callback,
-                                   void* context) {
+                                   const IndexToStringData& index_to_string_data,
+                                   const TypeIndexToStringData& type_index_to_string_data,
+                                   const NewLocalCallback& new_local_callback) {
   if (stream == nullptr) {
     return false;
   }
@@ -278,7 +277,7 @@ bool DexFile::DecodeDebugLocalInfo(const uint8_t* stream,
         for (uint16_t reg = 0; reg < registers_size; reg++) {
           if (local_in_reg[reg].is_live_) {
             local_in_reg[reg].end_address_ = insns_size_in_code_units;
-            new_local_callback(context, local_in_reg[reg]);
+            new_local_callback(local_in_reg[reg]);
           }
         }
         return true;
@@ -307,7 +306,7 @@ bool DexFile::DecodeDebugLocalInfo(const uint8_t* stream,
         // Emit what was previously there, if anything
         if (local_in_reg[reg].is_live_) {
           local_in_reg[reg].end_address_ = address;
-          new_local_callback(context, local_in_reg[reg]);
+          new_local_callback(local_in_reg[reg]);
         }
 
         local_in_reg[reg].name_ = index_to_string_data(name_idx);
@@ -329,7 +328,7 @@ bool DexFile::DecodeDebugLocalInfo(const uint8_t* stream,
         // closed register is sloppy, but harmless if no further action is taken.
         if (local_in_reg[reg].is_live_) {
           local_in_reg[reg].end_address_ = address;
-          new_local_callback(context, local_in_reg[reg]);
+          new_local_callback(local_in_reg[reg]);
           local_in_reg[reg].is_live_ = false;
         }
         break;
@@ -369,8 +368,7 @@ bool DexFile::DecodeDebugLocalInfo(uint32_t registers_size,
                                    uint32_t debug_info_offset,
                                    bool is_static,
                                    uint32_t method_idx,
-                                   NewLocalCallback new_local_callback,
-                                   void* context) const {
+                                   const NewLocalCallback& new_local_callback) const {
   const uint8_t* const stream = GetDebugInfoStream(debug_info_offset);
   if (stream == nullptr) {
     return false;
@@ -396,8 +394,7 @@ bool DexFile::DecodeDebugLocalInfo(uint32_t registers_size,
                                 return StringByTypeIdx(dex::TypeIndex(
                                     dchecked_integral_cast<uint16_t>(idx)));
                               },
-                              new_local_callback,
-                              context);
+                              new_local_callback);
 }
 
 template<typename DexDebugNewPosition, typename IndexToStringData>
