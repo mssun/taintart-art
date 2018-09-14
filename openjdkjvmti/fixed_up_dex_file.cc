@@ -51,17 +51,6 @@ static void RecomputeDexChecksum(art::DexFile* dex_file) {
       dex_file->CalculateChecksum();
 }
 
-static void UnhideApis(const art::DexFile& target_dex_file) {
-  for (art::ClassAccessor accessor : target_dex_file.GetClasses()) {
-    for (const art::ClassAccessor::Field& field : accessor.GetFields()) {
-      field.UnHideAccessFlags();
-    }
-    for (const art::ClassAccessor::Method& method : accessor.GetMethods()) {
-      method.UnHideAccessFlags();
-    }
-  }
-}
-
 static const art::VdexFile* GetVdex(const art::DexFile& original_dex_file) {
   const art::OatDexFile* oat_dex = original_dex_file.GetOatDexFile();
   if (oat_dex == nullptr) {
@@ -80,7 +69,7 @@ static void DoDexUnquicken(const art::DexFile& new_dex_file,
   if (vdex != nullptr) {
     vdex->UnquickenDexFile(new_dex_file, original_dex_file, /* decompile_return_instruction */true);
   }
-  UnhideApis(new_dex_file);
+  new_dex_file.UnhideApis();
 }
 
 static void DCheckVerifyDexFile(const art::DexFile& dex) {
