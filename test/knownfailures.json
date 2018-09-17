@@ -1082,5 +1082,12 @@
         "tests": ["566-polymorphic-inlining"],
         "variant": "jit & debuggable",
         "description": ["We do not inline with debuggable."]
+    },
+    {
+        "tests": ["135-MirandaDispatch"],
+        "variant": "interp-ac & 32 & host",
+        "env_vars": {"SANITIZE_HOST": "address"},
+        "bug": "b/112993554",
+        "description": ["Timeout with ASan and interp-ac on 32-bit host (x86)."]
     }
 ]
