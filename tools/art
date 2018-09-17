@@ -50,6 +50,9 @@ Supported OPTIONS include:
   --verbose                Run script verbosely.
   --no-clean               Don't cleanup oat directories.
   --no-compile             Don't invoke dex2oat before running.
+  --toybox-path <path>     Path for toybox executable. Provide this
+                           path if your device does not have
+                           'env', 'rm', 'dirname', 'basename', or 'mkdir'.
   --allow-default-jdwp     Don't automatically put in -XjdwpProvider:none.
                            You probably do not want this.
 
@@ -68,7 +71,7 @@ EOF
 
 function clean_android_data() {
   if [ "$DELETE_ANDROID_DATA" = "yes" ]; then
-    rm -rf $ANDROID_DATA
+    $TOYBOX rm -rf $ANDROID_DATA
   fi
 }
 
@@ -81,7 +84,7 @@ function verbose_run() {
     echo "$@"
   fi
 
-  env "$@"
+  $TOYBOX env "$@"
 }
 
 # Parse a colon-separated list into an array (e.g. "foo.dex:bar.dex" -> (foo.dex bar.dex))
@@ -131,8 +134,8 @@ cleanup_oat_directory() {
   local dirpath
 
   for path in "${classpath[@]}"; do
-    dirpath="$(dirname "$path")"
-    [[ -d "$dirpath" ]] && verbose_run rm -rf "$dirpath/oat"
+    dirpath="$($TOYBOX dirname "$path")"
+    [[ -d "$dirpath" ]] && verbose_run $TOYBOX rm -rf "$dirpath/oat"
   done
 }
 
@@ -192,9 +195,9 @@ function run_dex2oat() {
       dex_file="$(readlink "$dex_file")"
     done
     # Create oat file directory.
-    verbose_run mkdir -p $(dirname "$dex_file")/oat/$ISA
-    local oat_file=$(basename "$dex_file")
-    local oat_file=$(dirname "$dex_file")/oat/$ISA/${oat_file%.*}.odex
+    verbose_run $TOYBOX mkdir -p $($TOYBOX dirname "$dex_file")/oat/$ISA
+    local oat_file=$($TOYBOX basename "$dex_file")
+    local oat_file=$($TOYBOX dirname "$dex_file")/oat/$ISA/${oat_file%.*}.odex
     # When running dex2oat use the exact same context as when running dalvikvm.
     # (see run_art function)
     verbose_run ANDROID_DATA=$ANDROID_DATA                    \
@@ -295,6 +298,7 @@ RUN_DEX2OAT="yes"
 EXTRA_OPTIONS=()
 DEX2OAT_FLAGS=()
 DEX2OAT_CLASSPATH=()
+TOYBOX=
 
 # Parse arguments
 while [[ "$1" = "-"* ]]; do
@@ -355,6 +359,10 @@ while [[ "$1" = "-"* ]]; do
     ;;
   --allow-default-jdwp)
     ALLOW_DEFAULT_JDWP="yes"
+    ;;
+  --toybox-path)
+    TOYBOX=$2
+    shift
     ;;
   --*)
     echo "unknown option: $1" 1>&2
@@ -433,7 +441,7 @@ if [ "$ANDROID_DATA" = "/data" ] || [ "$ANDROID_DATA" = "" ]; then
     # by default.
     ANDROID_DATA="$ANDROID_DATA/local/tmp/android-data$$"
   fi
-  mkdir -p "$ANDROID_DATA"
+  $TOYBOX mkdir -p "$ANDROID_DATA"
   DELETE_ANDROID_DATA="yes"
 fi
 
@@ -479,7 +487,7 @@ if [ "$JIT_PROFILE" = "yes" ]; then
 
   # Wipe dalvik-cache so that a subsequent run_art must regenerate it.
   # Leave $ANDROID_DATA intact since it contains our profile file.
-  rm -rf "$ANDROID_DATA/dalvik-cache"
+  $TOYBOX rm -rf "$ANDROID_DATA/dalvik-cache"
 
   # Append arguments so next invocation of run_art uses the profile.
   DEX2OAT_FLAGS+=(--profile-file="$PROFILE_PATH")
