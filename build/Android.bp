@@ -18,16 +18,25 @@ bootstrap_go_package {
 }
 
 art_clang_tidy_errors = [
-    // Protect scoped things like MutexLock.
-    "bugprone-unused-raii",
+    "bugprone-lambda-function-name",
+    "bugprone-unused-raii",  // Protect scoped things like MutexLock.
+    "bugprone-virtual-near-miss",
+    "modernize-use-nullptr",
+    "performance-faster-string-find",
     "performance-for-range-copy",
+    "performance-implicit-conversion-in-loop",
     "performance-unnecessary-copy-initialization",
     "performance-unnecessary-value-param",
     "misc-unused-using-decls",
 ]
 // Should be: strings.Join(art_clang_tidy_errors, ",").
-art_clang_tidy_errors_str = "bugprone-unused-raii"
+art_clang_tidy_errors_str = "bugprone-lambda-function-name"
+        + ",bugprone-unused-raii"
+        + ",bugprone-virtual-near-miss"
+        + ",modernize-use-nullptr"
+        + ",performance-faster-string-find"
         + ",performance-for-range-copy"
+        + ",performance-implicit-conversion-in-loop"
         + ",performance-unnecessary-copy-initialization"
         + ",performance-unnecessary-value-param"
         + ",misc-unused-using-decls"
@@ -44,6 +53,11 @@ art_clang_tidy_disabled = [
     // No exceptions.
     "-misc-noexcept-move-constructor",
     "-performance-noexcept-move-constructor",
+    // "Modernization" we don't agree with.
+    "-modernize-use-auto",
+    "-modernize-return-braced-init-list",
+    "-modernize-use-default-member-init",
+    "-modernize-pass-by-value",
 ]
 
 art_global_defaults {
