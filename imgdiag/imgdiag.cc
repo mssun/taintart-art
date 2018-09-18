@@ -762,7 +762,8 @@ class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
 
     std::unordered_set<size_t> dirty_members;
     // Examine the members comprising the ArtMethod, computing which members are dirty.
-    for (const std::pair<size_t, MemberInfo::NameAndSize>& p : member_info_.offset_to_name_size_) {
+    for (const std::pair<const size_t,
+                         MemberInfo::NameAndSize>& p : member_info_.offset_to_name_size_) {
       const size_t offset = p.first;
       if (memcmp(base_ptr + offset, remote_bytes + offset, p.second.size_) != 0) {
         dirty_members.insert(p.first);
@@ -788,7 +789,8 @@ class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
   void DumpDirtyEntries() REQUIRES_SHARED(Locks::mutator_lock_) {
     DumpSamplesAndOffsetCount();
     os_ << "      offset to field map:\n";
-    for (const std::pair<size_t, MemberInfo::NameAndSize>& p : member_info_.offset_to_name_size_) {
+    for (const std::pair<const size_t,
+                         MemberInfo::NameAndSize>& p : member_info_.offset_to_name_size_) {
       const size_t offset = p.first;
       const size_t size = p.second.size_;
       os_ << StringPrintf("        %zu-%zu: ", offset, offset + size - 1)
