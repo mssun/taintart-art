@@ -16,11 +16,10 @@
 .super Ljava/lang/Object;
 
 ## CHECK-START: int Main2.signBoolean(boolean) intrinsics_recognition (after)
-## CHECK-DAG:     <<Method:[ij]\d+>> CurrentMethod
 ## CHECK-DAG:     <<Zero:i\d+>>   IntConstant 0
 ## CHECK-DAG:     <<One:i\d+>>    IntConstant 1
 ## CHECK-DAG:     <<Phi:i\d+>>    Phi [<<One>>,<<Zero>>]
-## CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect [<<Phi>>,<<Method>>] intrinsic:IntegerSignum
+## CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect [<<Phi>>{{(,[ij]\d+)?}}] intrinsic:IntegerSignum
 ## CHECK-DAG:                     Return [<<Result>>]
 
 ## CHECK-START: int Main2.signBoolean(boolean) instruction_simplifier (after)

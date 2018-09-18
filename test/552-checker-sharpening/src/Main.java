@@ -41,10 +41,7 @@ public class Main {
     return x;
   }
 
-  /// CHECK-START: int Main.testSimple(int) sharpening (before)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
-
-  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: int Main.testSimple(int) sharpening (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: int Main.testSimple(int) builder (after)
   /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
 
   /// CHECK-START-X86: int Main.testSimple(int) pc_relative_fixups_x86 (before)
@@ -59,11 +56,7 @@ public class Main {
     return $noinline$foo(x);
   }
 
-  /// CHECK-START: int Main.testDiamond(boolean, int) sharpening (before)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
-
-  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: int Main.testDiamond(boolean, int) sharpening (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: int Main.testDiamond(boolean, int) builder (after)
   /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
   /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
 
@@ -194,18 +187,12 @@ public class Main {
   }
 
   /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexString(int) builder (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
-
-  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexString(int) sharpening (after)
   /// CHECK:                InvokeStaticOrDirect method_load_kind:BootImageRelRo
   public static String $noinline$toHexString(int value) {
     return Integer.toString(value, 16);
   }
 
   /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexStringIndirect(int) builder (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
-
-  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexStringIndirect(int) sharpening (after)
   /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
 
   /// CHECK-START-X86: java.lang.String Main.$noinline$toHexStringIndirect(int) pc_relative_fixups_x86 (before)

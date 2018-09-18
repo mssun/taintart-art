@@ -35,22 +35,6 @@
 
 namespace art {
 
-bool HSharpening::Run() {
-  // We don't care about the order of the blocks here.
-  for (HBasicBlock* block : graph_->GetReversePostOrder()) {
-    for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
-      HInstruction* instruction = it.Current();
-      if (instruction->IsInvokeStaticOrDirect()) {
-        SharpenInvokeStaticOrDirect(instruction->AsInvokeStaticOrDirect(), codegen_);
-      }
-      // TODO: Move the sharpening of invoke-virtual/-interface/-super from HGraphBuilder
-      //       here. Rewrite it to avoid the CompilerDriver's reliance on verifier data
-      //       because we know the type better when inlining.
-    }
-  }
-  return true;
-}
-
 static bool IsInBootImage(ArtMethod* method) {
   const std::vector<gc::space::ImageSpace*>& image_spaces =
       Runtime::Current()->GetHeap()->GetBootImageSpaces();
@@ -72,16 +56,13 @@ static bool BootImageAOTCanEmbedMethod(ArtMethod* method, const CompilerOptions&
   return compiler_options.IsImageClass(dex_file.StringByTypeIdx(klass->GetDexTypeIndex()));
 }
 
-void HSharpening::SharpenInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke,
-                                              CodeGenerator* codegen) {
-  if (invoke->IsStringInit()) {
-    // Not using the dex cache arrays. But we could still try to use a better dispatch...
-    // TODO: Use direct_method and direct_code for the appropriate StringFactory method.
-    return;
+HInvokeStaticOrDirect::DispatchInfo HSharpening::SharpenInvokeStaticOrDirect(
+    ArtMethod* callee, CodeGenerator* codegen) {
+  if (kIsDebugBuild) {
+    ScopedObjectAccess soa(Thread::Current());  // Required for GetDeclaringClass below.
+    DCHECK(callee != nullptr);
+    DCHECK(!(callee->IsConstructor() && callee->GetDeclaringClass()->IsStringClass()));
   }
-
-  ArtMethod* callee = invoke->GetResolvedMethod();
-  DCHECK(callee != nullptr);
 
   HInvokeStaticOrDirect::MethodLoadKind method_load_kind;
   HInvokeStaticOrDirect::CodePtrLocation code_ptr_location;
@@ -141,9 +122,7 @@ void HSharpening::SharpenInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke,
   HInvokeStaticOrDirect::DispatchInfo desired_dispatch_info = {
       method_load_kind, code_ptr_location, method_load_data
   };
-  HInvokeStaticOrDirect::DispatchInfo dispatch_info =
-      codegen->GetSupportedInvokeStaticOrDirectDispatch(desired_dispatch_info, invoke);
-  invoke->SetDispatchInfo(dispatch_info);
+  return codegen->GetSupportedInvokeStaticOrDirectDispatch(desired_dispatch_info, callee);
 }
 
 HLoadClass::LoadKind HSharpening::ComputeLoadClassKind(

@@ -22,9 +22,8 @@ public class Main {
 
   /// CHECK-START: void Main.$opt$noinline$testReplaceInputWithItself(int) intrinsics_recognition (after)
   /// CHECK-DAG:     <<ArgX:i\d+>>   ParameterValue
-  /// CHECK-DAG:     <<Method:[ij]\d+>> CurrentMethod
   /// CHECK-DAG:     <<Zero:i\d+>>   IntConstant 0
-  /// CHECK-DAG:     <<Cmp:i\d+>>    InvokeStaticOrDirect [<<ArgX>>,<<Zero>>,<<Method>>] intrinsic:IntegerCompare
+  /// CHECK-DAG:     <<Cmp:i\d+>>    InvokeStaticOrDirect [<<ArgX>>,<<Zero>>{{(,[ij]\d+)?}}] intrinsic:IntegerCompare
   /// CHECK-DAG:                     GreaterThanOrEqual [<<Cmp>>,<<Zero>>]
 
   /// CHECK-START: void Main.$opt$noinline$testReplaceInputWithItself(int) instruction_simplifier (after)

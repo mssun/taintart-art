@@ -26,7 +26,7 @@ public class Main {
   /// CHECK-START: void Main.invokeStaticInlined() builder (after)
   /// CHECK-DAG:     <<LoadClass:l\d+>>    LoadClass gen_clinit_check:false
   /// CHECK-DAG:     <<ClinitCheck:l\d+>>  ClinitCheck [<<LoadClass>>]
-  /// CHECK-DAG:                           InvokeStaticOrDirect [{{[ij]\d+}},<<ClinitCheck>>]
+  /// CHECK-DAG:                           InvokeStaticOrDirect [{{([ij]\d+,)?}}<<ClinitCheck>>]
 
   /// CHECK-START: void Main.invokeStaticInlined() inliner (after)
   /// CHECK-DAG:     <<LoadClass:l\d+>>    LoadClass gen_clinit_check:false
@@ -69,7 +69,7 @@ public class Main {
   /// CHECK-START: void Main.invokeStaticNotInlined() builder (after)
   /// CHECK:         <<LoadClass:l\d+>>    LoadClass gen_clinit_check:false
   /// CHECK:         <<ClinitCheck:l\d+>>  ClinitCheck [<<LoadClass>>]
-  /// CHECK:                               InvokeStaticOrDirect [{{[ij]\d+}},<<ClinitCheck>>]
+  /// CHECK:                               InvokeStaticOrDirect [{{([ij]\d+,)?}}<<ClinitCheck>>]
 
   /// CHECK-START: void Main.invokeStaticNotInlined() inliner (after)
   /// CHECK:         <<LoadClass:l\d+>>    LoadClass gen_clinit_check:false

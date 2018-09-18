@@ -410,7 +410,7 @@ class CodeGeneratorX86 : public CodeGenerator {
   // otherwise return a fall-back info that should be used instead.
   HInvokeStaticOrDirect::DispatchInfo GetSupportedInvokeStaticOrDirectDispatch(
       const HInvokeStaticOrDirect::DispatchInfo& desired_dispatch_info,
-      HInvokeStaticOrDirect* invoke) override;
+      ArtMethod* method) override;
 
   // Generate a call to a static or direct method.
   void GenerateStaticOrDirectCall(
