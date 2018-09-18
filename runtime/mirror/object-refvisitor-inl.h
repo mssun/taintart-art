@@ -37,23 +37,23 @@ inline void Object::VisitReferences(const Visitor& visitor,
   visitor(this, ClassOffset(), false);
   const uint32_t class_flags = klass->GetClassFlags<kVerifyNone>();
   if (LIKELY(class_flags == kClassFlagNormal)) {
-    DCHECK((!klass->IsVariableSize<kVerifyFlags, kReadBarrierOption>()));
+    DCHECK((!klass->IsVariableSize<kVerifyFlags>()));
     VisitInstanceFieldsReferences<kVerifyFlags, kReadBarrierOption>(klass, visitor);
     DCHECK((!klass->IsClassClass<kVerifyFlags>()));
-    DCHECK(!klass->IsStringClass());
-    DCHECK(!klass->IsClassLoaderClass());
-    DCHECK((!klass->IsArrayClass<kVerifyFlags, kReadBarrierOption>()));
+    DCHECK(!klass->IsStringClass<kVerifyFlags>());
+    DCHECK(!klass->IsClassLoaderClass<kVerifyFlags>());
+    DCHECK((!klass->IsArrayClass<kVerifyFlags>()));
   } else {
     if ((class_flags & kClassFlagNoReferenceFields) == 0) {
-      DCHECK(!klass->IsStringClass());
+      DCHECK(!klass->IsStringClass<kVerifyFlags>());
       if (class_flags == kClassFlagClass) {
         DCHECK((klass->IsClassClass<kVerifyFlags>()));
         ObjPtr<Class> as_klass = AsClass<kVerifyNone>();
         as_klass->VisitReferences<kVisitNativeRoots, kVerifyFlags, kReadBarrierOption>(klass,
                                                                                        visitor);
       } else if (class_flags == kClassFlagObjectArray) {
-        DCHECK((klass->IsObjectArrayClass<kVerifyFlags, kReadBarrierOption>()));
-        AsObjectArray<mirror::Object, kVerifyNone, kReadBarrierOption>()->VisitReferences(visitor);
+        DCHECK((klass->IsObjectArrayClass<kVerifyFlags>()));
+        AsObjectArray<mirror::Object, kVerifyNone>()->VisitReferences(visitor);
       } else if ((class_flags & kClassFlagReference) != 0) {
         VisitInstanceFieldsReferences<kVerifyFlags, kReadBarrierOption>(klass, visitor);
         ref_visitor(klass, AsReference<kVerifyFlags, kReadBarrierOption>());
@@ -70,14 +70,15 @@ inline void Object::VisitReferences(const Visitor& visitor,
       }
     } else if (kIsDebugBuild) {
       CHECK((!klass->IsClassClass<kVerifyFlags>()));
-      CHECK((!klass->IsObjectArrayClass<kVerifyFlags, kReadBarrierOption>()));
+      CHECK((!klass->IsObjectArrayClass<kVerifyFlags>()));
       // String still has instance fields for reflection purposes but these don't exist in
       // actual string instances.
-      if (!klass->IsStringClass()) {
+      if (!klass->IsStringClass<kVerifyFlags>()) {
         size_t total_reference_instance_fields = 0;
         ObjPtr<Class> super_class = klass;
         do {
-          total_reference_instance_fields += super_class->NumReferenceInstanceFields();
+          total_reference_instance_fields +=
+              super_class->NumReferenceInstanceFields<kVerifyFlags>();
           super_class = super_class->GetSuperClass<kVerifyFlags, kReadBarrierOption>();
         } while (super_class != nullptr);
         // The only reference field should be the object's class. This field is handled at the

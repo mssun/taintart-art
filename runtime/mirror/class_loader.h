@@ -44,9 +44,10 @@ class MANAGED ClassLoader : public Object {
     return GetFieldObject<ClassLoader>(OFFSET_OF_OBJECT_MEMBER(ClassLoader, parent_));
   }
 
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   ClassTable* GetClassTable() REQUIRES_SHARED(Locks::mutator_lock_) {
     return reinterpret_cast<ClassTable*>(
-        GetField64(OFFSET_OF_OBJECT_MEMBER(ClassLoader, class_table_)));
+        GetField64<kVerifyFlags>(OFFSET_OF_OBJECT_MEMBER(ClassLoader, class_table_)));
   }
 
   void SetClassTable(ClassTable* class_table) REQUIRES_SHARED(Locks::mutator_lock_) {
