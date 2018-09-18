@@ -33,7 +33,7 @@ inline void ClassLoader::VisitReferences(ObjPtr<mirror::Class> klass, const Visi
   VisitInstanceFieldsReferences<kVerifyFlags, kReadBarrierOption>(klass, visitor);
   if (kVisitClasses) {
     // Visit classes loaded after.
-    ClassTable* const class_table = GetClassTable();
+    ClassTable* const class_table = GetClassTable<kVerifyFlags>();
     if (class_table != nullptr) {
       class_table->VisitRoots(visitor);
     }

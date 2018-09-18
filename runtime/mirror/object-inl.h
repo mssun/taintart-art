@@ -142,7 +142,7 @@ inline bool Object::IsClass() {
   // OK to look at from-space copies since java.lang.Class.class is not movable.
   // See b/114413743
   ObjPtr<Class> klass = GetClass<kVerifyFlags, kWithoutReadBarrier>();
-  ObjPtr<Class> java_lang_Class = klass->template GetClass<kVerifyFlags, kWithoutReadBarrier>();
+  ObjPtr<Class> java_lang_Class = klass->GetClass<kVerifyFlags, kWithoutReadBarrier>();
   return klass == java_lang_Class;
 }
 
@@ -152,24 +152,27 @@ inline Class* Object::AsClass() {
   return down_cast<Class*>(this);
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline bool Object::IsObjectArray() {
+  // We do not need a read barrier here as the primitive type is constant,
+  // both from-space and to-space component type classes shall yield the same result.
   constexpr auto kNewFlags = RemoveThisFlags(kVerifyFlags);
-  return IsArrayInstance<kVerifyFlags, kReadBarrierOption>() &&
-      !GetClass<kNewFlags, kReadBarrierOption>()->
-          template GetComponentType<kNewFlags, kReadBarrierOption>()->IsPrimitive();
+  return IsArrayInstance<kVerifyFlags>() &&
+      !GetClass<kNewFlags, kWithoutReadBarrier>()->
+          template GetComponentType<kNewFlags, kWithoutReadBarrier>()->IsPrimitive();
 }
 
-template<class T, VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<class T, VerifyObjectFlags kVerifyFlags>
 inline ObjectArray<T>* Object::AsObjectArray() {
-  DCHECK((IsObjectArray<kVerifyFlags, kReadBarrierOption>()));
+  DCHECK((IsObjectArray<kVerifyFlags>()));
   return down_cast<ObjectArray<T>*>(this);
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline bool Object::IsArrayInstance() {
-  return GetClass<kVerifyFlags, kReadBarrierOption>()->
-      template IsArrayClass<kVerifyFlags, kReadBarrierOption>();
+  // We do not need a read barrier here, both from-space and to-space version of the class
+  // shall return the same result from IsArrayClass().
+  return GetClass<kVerifyFlags, kWithoutReadBarrier>()->template IsArrayClass<kVerifyFlags>();
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
@@ -183,9 +186,9 @@ inline Reference* Object::AsReference() {
   return down_cast<Reference*>(this);
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline Array* Object::AsArray() {
-  DCHECK((IsArrayInstance<kVerifyFlags, kReadBarrierOption>()));
+  DCHECK((IsArrayInstance<kVerifyFlags>()));
   return down_cast<Array*>(this);
 }
 
@@ -349,14 +352,14 @@ inline size_t Object::SizeOf() {
   static constexpr ReadBarrierOption kRBO = kWithoutReadBarrier;
   size_t result;
   constexpr auto kNewFlags = RemoveThisFlags(kVerifyFlags);
-  if (IsArrayInstance<kVerifyFlags, kRBO>()) {
-    result = AsArray<kNewFlags, kRBO>()->template SizeOf<kNewFlags, kRBO>();
+  if (IsArrayInstance<kVerifyFlags>()) {
+    result = AsArray<kNewFlags>()->template SizeOf<kNewFlags, kRBO>();
   } else if (IsClass<kNewFlags>()) {
     result = AsClass<kNewFlags>()->template SizeOf<kNewFlags, kRBO>();
   } else if (GetClass<kNewFlags, kRBO>()->IsStringClass()) {
     result = AsString<kNewFlags, kRBO>()->template SizeOf<kNewFlags>();
   } else {
-    result = GetClass<kNewFlags, kRBO>()->template GetObjectSize<kNewFlags, kRBO>();
+    result = GetClass<kNewFlags, kRBO>()->template GetObjectSize<kNewFlags>();
   }
   DCHECK_GE(result, sizeof(Object)) << " class=" << Class::PrettyClass(GetClass<kNewFlags, kRBO>());
   return result;
@@ -880,7 +883,7 @@ inline void Object::VisitFieldsReferences(uint32_t ref_offsets, const Visitor& v
       // Presumably GC can happen when we are cross compiling, it should not cause performance
       // problems to do pointer size logic.
       MemberOffset field_offset = kIsStatic
-          ? klass->GetFirstReferenceStaticFieldOffset<kVerifyFlags, kReadBarrierOption>(
+          ? klass->GetFirstReferenceStaticFieldOffset<kVerifyFlags>(
               Runtime::Current()->GetClassLinker()->GetImagePointerSize())
           : klass->GetFirstReferenceInstanceFieldOffset<kVerifyFlags, kReadBarrierOption>();
       for (size_t i = 0u; i < num_reference_fields; ++i) {
@@ -903,13 +906,13 @@ inline void Object::VisitInstanceFieldsReferences(ObjPtr<Class> klass, const Vis
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption, typename Visitor>
 inline void Object::VisitStaticFieldsReferences(ObjPtr<Class> klass, const Visitor& visitor) {
-  DCHECK(!klass->IsTemp());
+  DCHECK(!klass->IsTemp<kVerifyFlags>());
   klass->VisitFieldsReferences<true, kVerifyFlags, kReadBarrierOption>(0, visitor);
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
 inline bool Object::IsClassLoader() {
-  return GetClass<kVerifyFlags, kReadBarrierOption>()->IsClassLoaderClass();
+  return GetClass<kVerifyFlags, kReadBarrierOption>()->template IsClassLoaderClass<kVerifyFlags>();
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
@@ -920,7 +923,7 @@ inline mirror::ClassLoader* Object::AsClassLoader() {
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
 inline bool Object::IsDexCache() {
-  return GetClass<kVerifyFlags, kReadBarrierOption>()->IsDexCacheClass();
+  return GetClass<kVerifyFlags, kReadBarrierOption>()->template IsDexCacheClass<kVerifyFlags>();
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>

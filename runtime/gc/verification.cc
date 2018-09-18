@@ -58,8 +58,8 @@ std::string Verification::DumpObjectInfo(const void* addr, const char* tag) cons
     oss << " klass=" << klass;
     if (IsValidClass(klass)) {
       oss << "(" << klass->PrettyClass() << ")";
-      if (klass->IsArrayClass<kVerifyNone, kWithoutReadBarrier>()) {
-        oss << " length=" << obj->AsArray<kVerifyNone, kWithoutReadBarrier>()->GetLength();
+      if (klass->IsArrayClass<kVerifyNone>()) {
+        oss << " length=" << obj->AsArray<kVerifyNone>()->GetLength();
       }
     } else {
       oss << " <invalid address>";
