@@ -21,7 +21,6 @@ art_clang_tidy_errors = [
     "bugprone-lambda-function-name",
     "bugprone-unused-raii",  // Protect scoped things like MutexLock.
     "bugprone-virtual-near-miss",
-    "modernize-redundant-void-arg",
     "modernize-use-bool-literals",
     "modernize-use-nullptr",
     "performance-faster-string-find",

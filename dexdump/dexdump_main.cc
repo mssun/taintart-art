@@ -37,7 +37,7 @@ static const char* gProgName = "dexdump";
 /*
  * Shows usage.
  */
-static void usage(void) {
+static void usage() {
   LOG(ERROR) << "Copyright (C) 2007 The Android Open Source Project\n";
   LOG(ERROR) << gProgName << ": [-a] [-c] [-d] [-e] [-f] [-h] [-i] [-j] [-l layout] [-o outfile]"
                   " dexfile...\n";
@@ -64,7 +64,7 @@ int dexdumpDriver(int argc, char** argv) {
   gOptions.verbose = true;
 
   // Parse all arguments.
-  while (1) {
+  while (true) {
     const int ic = getopt(argc, argv, "acdefghijl:o:");
     if (ic < 0) {
       break;  // done

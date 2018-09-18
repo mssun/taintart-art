@@ -197,7 +197,7 @@ static int processFile(const char* fileName) {
 /*
  * Shows usage.
  */
-static void usage(void) {
+static void usage() {
   LOG(ERROR) << "Copyright (C) 2007 The Android Open Source Project\n";
   LOG(ERROR) << gProgName << ": [-m p.c.m] [-o outfile] dexfile...";
   LOG(ERROR) << "";
@@ -212,7 +212,7 @@ int dexlistDriver(int argc, char** argv) {
   memset(&gOptions, 0, sizeof(gOptions));
 
   // Parse all arguments.
-  while (1) {
+  while (true) {
     const int ic = getopt(argc, argv, "o:m:");
     if (ic < 0) {
       break;  // done

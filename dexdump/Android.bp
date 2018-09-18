@@ -17,12 +17,12 @@
 
 cc_defaults {
     name: "dexdump_defaults",
+    defaults: ["art_defaults"],
     srcs: [
         "dexdump_cfg.cc",
         "dexdump_main.cc",
         "dexdump.cc",
     ],
-    cflags: ["-Wall", "-Werror"],
 }
 
 art_cc_binary {
