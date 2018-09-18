@@ -2611,15 +2611,15 @@ void ConcurrentCopying::FillWithDummyObject(Thread* const self,
     if (ReadBarrier::kEnableToSpaceInvariantChecks) {
       AssertToSpaceInvariant(nullptr, MemberOffset(0), java_lang_Object_);
     }
-    CHECK_EQ(byte_size, (java_lang_Object_->GetObjectSize<kVerifyNone, kWithoutReadBarrier>()));
+    CHECK_EQ(byte_size, java_lang_Object_->GetObjectSize<kVerifyNone>());
     dummy_obj->SetClass(java_lang_Object_);
     CHECK_EQ(byte_size, (dummy_obj->SizeOf<kVerifyNone>()));
   } else {
     // Use an int array.
     dummy_obj->SetClass(int_array_class);
-    CHECK((dummy_obj->IsArrayInstance<kVerifyNone, kWithoutReadBarrier>()));
+    CHECK(dummy_obj->IsArrayInstance<kVerifyNone>());
     int32_t length = (byte_size - data_offset) / component_size;
-    mirror::Array* dummy_arr = dummy_obj->AsArray<kVerifyNone, kWithoutReadBarrier>();
+    mirror::Array* dummy_arr = dummy_obj->AsArray<kVerifyNone>();
     dummy_arr->SetLength(length);
     CHECK_EQ(dummy_arr->GetLength(), length)
         << "byte_size=" << byte_size << " length=" << length

@@ -174,12 +174,9 @@ class MANAGED LOCKABLE Object {
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   Class* AsClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
-           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   bool IsObjectArray() REQUIRES_SHARED(Locks::mutator_lock_);
-  template<class T,
-           VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
-           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
+  template<class T, VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   ObjectArray<T>* AsObjectArray() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
@@ -196,11 +193,9 @@ class MANAGED LOCKABLE Object {
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   DexCache* AsDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
-           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   bool IsArrayInstance() REQUIRES_SHARED(Locks::mutator_lock_);
-  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
-           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   Array* AsArray() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
