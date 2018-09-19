@@ -229,6 +229,9 @@ class Veridex {
       options.blacklist = nullptr;
       options.dark_greylist = nullptr;
       options.light_greylist = nullptr;
+    } else {
+      // Otherwise, omit SDK uses.
+      options.whitelist = nullptr;
     }
 
     // Find and log uses of hidden APIs.
@@ -335,4 +338,3 @@ class Veridex {
 int main(int argc, char** argv) {
   return art::Veridex::Run(argc, argv);
 }
-
