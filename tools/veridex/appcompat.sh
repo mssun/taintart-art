@@ -55,7 +55,9 @@ else
   OUT=${OUT_DIR}
 fi
 
-PACKAGING=${OUT}/target/common/obj/PACKAGING
+if [[ -z "${PACKAGING}" ]]; then
+  PACKAGING=${OUT}/target/common/obj/PACKAGING
+fi
 
 if [ -z "$ANDROID_HOST_OUT" ] ; then
   ANDROID_HOST_OUT=${OUT}/host/linux-x86
