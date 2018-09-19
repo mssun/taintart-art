@@ -405,7 +405,7 @@ TEST_F(PatchoatTest, PatchoatRelocationSameAsDex2oatRelocation) {
   std::vector<std::string> patchoat_image_shortened_basenames(patchoat_image_basenames.size());
   for (size_t i = 0; i < patchoat_image_basenames.size(); i++) {
     patchoat_image_shortened_basenames[i] =
-        patchoat_image_basenames[i].substr(patchoat_image_basenames[i].find_last_of("@") + 1);
+        patchoat_image_basenames[i].substr(patchoat_image_basenames[i].find_last_of('@') + 1);
   }
   ASSERT_EQ(dex2oat_image_basenames, patchoat_image_shortened_basenames);
 
@@ -515,16 +515,16 @@ class PatchoatVerificationTest : public PatchoatTest {
     std::vector<std::string> rel_shortened_basenames(rel_basenames.size());
     std::vector<std::string> relocated_image_shortened_basenames(relocated_image_basenames.size());
     for (size_t i = 0; i < rel_basenames.size(); i++) {
-      rel_shortened_basenames[i] = rel_basenames[i].substr(rel_basenames[i].find_last_of("@") + 1);
+      rel_shortened_basenames[i] = rel_basenames[i].substr(rel_basenames[i].find_last_of('@') + 1);
       rel_shortened_basenames[i] =
-          rel_shortened_basenames[i].substr(0, rel_shortened_basenames[i].find("."));
+          rel_shortened_basenames[i].substr(0, rel_shortened_basenames[i].find('.'));
     }
     for (size_t i = 0; i < relocated_image_basenames.size(); i++) {
       relocated_image_shortened_basenames[i] =
-          relocated_image_basenames[i].substr(relocated_image_basenames[i].find_last_of("@") + 1);
+          relocated_image_basenames[i].substr(relocated_image_basenames[i].find_last_of('@') + 1);
       relocated_image_shortened_basenames[i] =
           relocated_image_shortened_basenames[i].substr(
-              0, relocated_image_shortened_basenames[i].find("."));
+              0, relocated_image_shortened_basenames[i].find('.'));
     }
     ASSERT_EQ(rel_shortened_basenames, relocated_image_shortened_basenames);
   }
