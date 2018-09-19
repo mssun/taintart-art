@@ -17,7 +17,7 @@ CHROOT=
 COMPILE_FLAGS=""
 DALVIKVM="dalvikvm32"
 DEBUGGER="n"
-WITH_AGENT=""
+WITH_AGENT=()
 DEBUGGER_AGENT=""
 WRAP_DEBUGGER_AGENT="n"
 DEV_MODE="n"
@@ -232,7 +232,7 @@ while true; do
     elif [ "x$1" = "x--with-agent" ]; then
         shift
         USE_JVMTI="y"
-        WITH_AGENT="$1"
+        WITH_AGENT+=("$1")
         shift
     elif [ "x$1" = "x--debug-wrap-agent" ]; then
         WRAP_DEBUGGER_AGENT="y"
@@ -454,9 +454,9 @@ elif [ "$DEBUGGER" = "agent" ]; then
   DEBUGGER_OPTS="-agentpath:${AGENTPATH}=transport=dt_socket,address=$PORT,server=y,suspend=y"
 fi
 
-if [ "x$WITH_AGENT" != "x" ]; then
-  FLAGS="${FLAGS} -agentpath:${WITH_AGENT}"
-fi
+for agent in "${WITH_AGENT[@]}"; do
+  FLAGS="${FLAGS} -agentpath:${agent}"
+done
 
 if [ "$USE_JVMTI" = "y" ]; then
   if [ "$USE_JVM" = "n" ]; then
