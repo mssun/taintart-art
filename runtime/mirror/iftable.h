@@ -39,9 +39,15 @@ class MANAGED IfTable final : public ObjectArray<Object> {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
+  PointerArray* GetMethodArrayOrNull(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_) {
+    return down_cast<PointerArray*>(
+        Get<kVerifyFlags, kReadBarrierOption>((i * kMax) + kMethodArray));
+  }
+
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
+           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   PointerArray* GetMethodArray(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_) {
-    auto* method_array = down_cast<PointerArray*>(Get<kVerifyFlags, kReadBarrierOption>(
-        (i * kMax) + kMethodArray));
+    PointerArray* method_array = GetMethodArrayOrNull<kVerifyFlags, kReadBarrierOption>(i);
     DCHECK(method_array != nullptr);
     return method_array;
   }
@@ -49,9 +55,8 @@ class MANAGED IfTable final : public ObjectArray<Object> {
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   size_t GetMethodArrayCount(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_) {
-    auto* method_array = down_cast<PointerArray*>(
-        Get<kVerifyFlags, kReadBarrierOption>((i * kMax) + kMethodArray));
-    return method_array == nullptr ? 0u : method_array->GetLength();
+    PointerArray* method_array = GetMethodArrayOrNull<kVerifyFlags, kReadBarrierOption>(i);
+    return method_array == nullptr ? 0u : method_array->GetLength<kVerifyFlags>();
   }
 
   void SetMethodArray(int32_t i, ObjPtr<PointerArray> arr) REQUIRES_SHARED(Locks::mutator_lock_);

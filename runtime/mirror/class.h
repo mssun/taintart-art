@@ -1263,14 +1263,14 @@ class MANAGED Class final : public Object {
   // the corresponding entry in dest if visitor(obj) != obj to prevent dirty memory. Dest should be
   // initialized to a copy of *this to prevent issues. Does not visit the ArtMethod and ArtField
   // roots.
-  template <VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
-            ReadBarrierOption kReadBarrierOption = kWithReadBarrier,
-            typename Visitor>
+  template <VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, typename Visitor>
   void FixupNativePointers(Class* dest, PointerSize pointer_size, const Visitor& visitor)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
-  ALWAYS_INLINE void SetMethodsPtrInternal(LengthPrefixedArray<ArtMethod>* new_methods)
+  template <typename T, VerifyObjectFlags kVerifyFlags, typename Visitor>
+  void FixupNativePointer(
+      Class* dest, PointerSize pointer_size, const Visitor& visitor, MemberOffset member_offset)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE static ArraySlice<ArtMethod> GetMethodsSliceRangeUnchecked(
