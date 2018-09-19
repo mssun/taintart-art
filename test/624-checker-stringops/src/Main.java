@@ -38,7 +38,7 @@ public class Main {
   /// CHECK-DAG: InvokeVirtual intrinsic:StringStringIndexOf      loop:none
   /// CHECK-DAG: InvokeVirtual intrinsic:StringStringIndexOfAfter loop:none
   static int liveIndexOf() {
-    int k = ABC.length() + XYZ.length();  // does LoadString before loops
+    int k = ABC.lastIndexOf('Z') + XYZ.lastIndexOf('Z');  // does LoadString before loops
     for (char c = 'A'; c <= 'Z'; c++) {
       k += ABC.indexOf(c);
     }
@@ -290,7 +290,7 @@ public class Main {
   }
 
   public static void main(String[] args) throws Exception {
-    expectEquals(1865, liveIndexOf());
+    expectEquals(1863, liveIndexOf());
     expectEquals(29, deadIndexOf());
 
     try {
