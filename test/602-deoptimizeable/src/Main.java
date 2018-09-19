@@ -126,6 +126,9 @@ public class Main {
                     assertIsManaged();
                     map.put(new DummyObject(10), Long.valueOf(100));
                     assertIsInterpreted();  // Every deoptimizeable method is deoptimized.
+                    if (map.get(new DummyObject(10)) == null) {
+                        System.out.println("Expected map to contain DummyObject(10)");
+                    }
                 } catch (Exception e) {
                     e.printStackTrace(System.out);
                 }
