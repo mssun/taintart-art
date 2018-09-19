@@ -346,7 +346,7 @@ bool JdwpAdbState::ProcessIncoming() {
   if (!HaveFullPacket()) {
     /* read some more, looping until we have data */
     errno = 0;
-    while (1) {
+    while (true) {
       int selCount;
       fd_set readfds;
       int maxfd = -1;

@@ -85,7 +85,7 @@ int DexlayoutDriver(int argc, char** argv) {
   bool want_usage = false;
 
   // Parse all arguments.
-  while (1) {
+  while (true) {
     const int ic = getopt(argc, argv, "abcdefghil:o:p:stuvw:x:");
     if (ic < 0) {
       break;  // done
