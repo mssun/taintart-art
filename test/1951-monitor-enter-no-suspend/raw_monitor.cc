@@ -26,7 +26,7 @@
 namespace art {
 namespace Test1951MonitorEnterNoSuspend {
 
-typedef jvmtiError (*RawMonitorEnterNoSuspend)(jvmtiEnv* env, jrawMonitorID mon);
+using RawMonitorEnterNoSuspend = jvmtiError(*)(jvmtiEnv* env, jrawMonitorID mon);
 
 template <typename T>
 static void Dealloc(T* t) {
