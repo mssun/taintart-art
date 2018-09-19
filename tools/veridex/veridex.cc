@@ -65,6 +65,16 @@ VeriMethod VeriClass::getClass_ = nullptr;
 VeriMethod VeriClass::loadClass_ = nullptr;
 VeriField VeriClass::sdkInt_ = nullptr;
 
+static const char* kDexFileOption = "--dex-file=";
+static const char* kStubsOption = "--core-stubs=";
+static const char* kWhitelistOption = "--whitelist=";
+static const char* kBlacklistOption = "--blacklist=";
+static const char* kDarkGreylistOption = "--dark-greylist=";
+static const char* kLightGreylistOption = "--light-greylist=";
+static const char* kImprecise = "--imprecise";
+static const char* kTargetSdkVersion = "--target-sdk-version=";
+static const char* kOnlyReportSdkUses = "--only-report-sdk-uses";
+
 struct VeridexOptions {
   const char* dex_file = nullptr;
   const char* core_stubs = nullptr;
@@ -89,16 +99,6 @@ static void ParseArgs(VeridexOptions* options, int argc, char** argv) {
   // Skip over the command name.
   argv++;
   argc--;
-
-  static const char* kDexFileOption = "--dex-file=";
-  static const char* kStubsOption = "--core-stubs=";
-  static const char* kWhitelistOption = "--whitelist=";
-  static const char* kBlacklistOption = "--blacklist=";
-  static const char* kDarkGreylistOption = "--dark-greylist=";
-  static const char* kLightGreylistOption = "--light-greylist=";
-  static const char* kImprecise = "--imprecise";
-  static const char* kTargetSdkVersion = "--target-sdk-version=";
-  static const char* kOnlyReportSdkUses = "--only-report-sdk-uses";
 
   for (int i = 0; i < argc; ++i) {
     if (StartsWith(argv[i], kDexFileOption)) {
@@ -138,6 +138,12 @@ class Veridex {
   static int Run(int argc, char** argv) {
     VeridexOptions options;
     ParseArgs(&options, argc, argv);
+
+    if (!options.dex_file) {
+      LOG(ERROR) << "Required argument '" << kDexFileOption << "' not provided.";
+      return 1;
+    }
+
     gTargetSdkVersion = options.target_sdk_version;
 
     std::vector<std::string> boot_content;
