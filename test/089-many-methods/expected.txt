@@ -1,1 +1,1 @@
-Error: Cannot fit requested classes in a single dex file (# fields: 131000 > 65536)
+See the 'check' script for the expectation!

@@ -14,5 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-grep Error "$2" > "$2.tmp"
-diff --strip-trailing-cr -q "$1" "$2.tmp" >/dev/null
+EXPECTED_ERROR="Cannot fit requested classes in a single dex"
+if ! grep -q "$EXPECTED_ERROR" "$2"; then
+  exit 1
+else
+  exit 0
+fi
