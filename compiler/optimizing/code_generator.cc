@@ -197,7 +197,7 @@ class CodeGenerator::CodeGenerationData : public DeletableArenaObject<kArenaAllo
     return GetNumberOfJitStringRoots() + GetNumberOfJitClassRoots();
   }
 
-  void EmitJitRoots(Handle<mirror::ObjectArray<mirror::Object>> roots)
+  void EmitJitRoots(/*out*/std::vector<Handle<mirror::Object>>* roots)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
@@ -230,29 +230,31 @@ class CodeGenerator::CodeGenerationData : public DeletableArenaObject<kArenaAllo
 };
 
 void CodeGenerator::CodeGenerationData::EmitJitRoots(
-    Handle<mirror::ObjectArray<mirror::Object>> roots) {
-  DCHECK_EQ(static_cast<size_t>(roots->GetLength()), GetNumberOfJitRoots());
+    /*out*/std::vector<Handle<mirror::Object>>* roots) {
+  DCHECK(roots->empty());
+  roots->reserve(GetNumberOfJitRoots());
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   size_t index = 0;
   for (auto& entry : jit_string_roots_) {
     // Update the `roots` with the string, and replace the address temporarily
     // stored to the index in the table.
     uint64_t address = entry.second;
-    roots->Set(index, reinterpret_cast<StackReference<mirror::String>*>(address)->AsMirrorPtr());
-    DCHECK(roots->Get(index) != nullptr);
+    roots->emplace_back(reinterpret_cast<StackReference<mirror::Object>*>(address));
+    DCHECK(roots->back() != nullptr);
+    DCHECK(roots->back()->IsString());
     entry.second = index;
     // Ensure the string is strongly interned. This is a requirement on how the JIT
     // handles strings. b/32995596
-    class_linker->GetInternTable()->InternStrong(
-        reinterpret_cast<mirror::String*>(roots->Get(index)));
+    class_linker->GetInternTable()->InternStrong(roots->back()->AsString());
     ++index;
   }
   for (auto& entry : jit_class_roots_) {
     // Update the `roots` with the class, and replace the address temporarily
     // stored to the index in the table.
     uint64_t address = entry.second;
-    roots->Set(index, reinterpret_cast<StackReference<mirror::Class>*>(address)->AsMirrorPtr());
-    DCHECK(roots->Get(index) != nullptr);
+    roots->emplace_back(reinterpret_cast<StackReference<mirror::Object>*>(address));
+    DCHECK(roots->back() != nullptr);
+    DCHECK(roots->back()->IsClass());
     entry.second = index;
     ++index;
   }
@@ -1645,8 +1647,8 @@ void CodeGenerator::CreateSystemArrayCopyLocationSummary(HInvoke* invoke) {
 }
 
 void CodeGenerator::EmitJitRoots(uint8_t* code,
-                                 Handle<mirror::ObjectArray<mirror::Object>> roots,
-                                 const uint8_t* roots_data) {
+                                 const uint8_t* roots_data,
+                                 /*out*/std::vector<Handle<mirror::Object>>* roots) {
   code_generation_data_->EmitJitRoots(roots);
   EmitJitRootPatches(code, roots_data);
 }
