@@ -77,11 +77,11 @@
 
 namespace art {
 extern "C" {
-  enum JITAction {
+  typedef enum {
     JIT_NOACTION = 0,
     JIT_REGISTER_FN,
     JIT_UNREGISTER_FN
-  };
+  } JITAction;
 
   struct JITCodeEntry {
     // Atomic to ensure the reader can always iterate over the linked list

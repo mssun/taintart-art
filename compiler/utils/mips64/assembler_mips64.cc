@@ -52,7 +52,7 @@ void Mips64Assembler::PatchCFI() {
     return;
   }
 
-  using DelayedAdvancePC = DebugFrameOpCodeWriterForAssembler::DelayedAdvancePC;
+  typedef DebugFrameOpCodeWriterForAssembler::DelayedAdvancePC DelayedAdvancePC;
   const auto data = cfi().ReleaseStreamAndPrepareForDelayedAdvancePC();
   const std::vector<uint8_t>& old_stream = data.first;
   const std::vector<DelayedAdvancePC>& advances = data.second;

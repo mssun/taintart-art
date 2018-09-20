@@ -24,7 +24,7 @@
 namespace art {
 namespace Test1900TrackAlloc {
 
-using GetGlobalState = jvmtiError(*)(jvmtiEnv* env, jlong* allocated);
+typedef jvmtiError (*GetGlobalState)(jvmtiEnv* env, jlong* allocated);
 
 struct AllocTrackingData {
   GetGlobalState get_global_state;
