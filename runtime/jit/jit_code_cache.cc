@@ -23,6 +23,7 @@
 #include "base/enums.h"
 #include "base/histogram-inl.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/membarrier.h"
 #include "base/mem_map.h"
 #include "base/quasi_atomic.h"
 #include "base/stl_util.h"
@@ -185,6 +186,11 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
         << PrettySize(max_capacity) << " is too big";
     *error_msg = oss.str();
     return nullptr;
+  }
+
+  // Register for membarrier expedited sync core if JIT will be generating code.
+  if (!used_only_for_profile_data) {
+    art::membarrier(art::MembarrierCommand::kRegisterPrivateExpeditedSyncCore);
   }
 
   // Decide how we should map the code and data sections.
@@ -809,9 +815,8 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
     // shootdown (incidentally invalidating the CPU pipelines by sending an IPI to all cores to
     // notify them of the TLB invalidation). Some architectures, notably ARM and ARM64, have
     // hardware support that broadcasts TLB invalidations and so their kernels have no software
-    // based TLB shootdown. FlushInstructionPipeline() is a wrapper around the Linux
-    // membarrier(MEMBARRIER_CMD_PRIVATE_EXPEDITED) syscall which does the appropriate flushing.
-    FlushInstructionPipeline();
+    // based TLB shootdown.
+    art::membarrier(art::MembarrierCommand::kPrivateExpeditedSyncCore);
 
     DCHECK(!Runtime::Current()->IsAotCompiler());
     if (has_should_deoptimize_flag) {
