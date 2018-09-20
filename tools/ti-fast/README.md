@@ -21,6 +21,10 @@ following format:
   called. This behavior is static. The no-log methods have no branches and just
   immediately return.
 
+* If 'all' is one of the arguments all events the current runtime is capable of
+  providing will be listened for and all other arguments (excepting 'log') will
+  be ignored.
+
 * The event-names are the same names as are used in the jvmtiEventCallbacks
   struct.
 
