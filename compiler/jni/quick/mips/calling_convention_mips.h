@@ -87,7 +87,7 @@ class MipsJniCallingConvention final : public JniCallingConvention {
  private:
   // Padding to ensure longs and doubles are not split in o32.
   size_t padding_;
-  size_t use_fp_arg_registers_;
+  bool use_fp_arg_registers_;
 
   DISALLOW_COPY_AND_ASSIGN(MipsJniCallingConvention);
 };

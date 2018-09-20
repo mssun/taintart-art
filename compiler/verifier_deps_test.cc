@@ -424,7 +424,7 @@ class VerifierDepsTest : public CommonCompilerTest {
     return verifier_deps_->dex_deps_.size();
   }
 
-  size_t HasEachKindOfRecord() {
+  bool HasEachKindOfRecord() {
     bool has_strings = false;
     bool has_assignability = false;
     bool has_classes = false;
