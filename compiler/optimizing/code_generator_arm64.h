@@ -557,7 +557,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
   // otherwise return a fall-back info that should be used instead.
   HInvokeStaticOrDirect::DispatchInfo GetSupportedInvokeStaticOrDirectDispatch(
       const HInvokeStaticOrDirect::DispatchInfo& desired_dispatch_info,
-      HInvokeStaticOrDirect* invoke) override;
+      ArtMethod* method) override;
 
   void GenerateStaticOrDirectCall(
       HInvokeStaticOrDirect* invoke, Location temp, SlowPathCode* slow_path = nullptr) override;

@@ -978,11 +978,8 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
       }
     }
 
-    HInvokeStaticOrDirect::DispatchInfo dispatch_info = {
-        HInvokeStaticOrDirect::MethodLoadKind::kRuntimeCall,
-        HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod,
-        0u
-    };
+    HInvokeStaticOrDirect::DispatchInfo dispatch_info =
+        HSharpening::SharpenInvokeStaticOrDirect(resolved_method, code_generator_);
     MethodReference target_method(resolved_method->GetDexFile(),
                                   resolved_method->GetDexMethodIndex());
     invoke = new (allocator_) HInvokeStaticOrDirect(allocator_,
