@@ -135,14 +135,14 @@ void Split(const std::string& s, char separator, std::vector<std::string>* resul
 }
 
 void SetThreadName(const char* thread_name) {
-  int hasAt = 0;
-  int hasDot = 0;
+  bool hasAt = false;
+  bool hasDot = false;
   const char* s = thread_name;
   while (*s) {
     if (*s == '.') {
-      hasDot = 1;
+      hasDot = true;
     } else if (*s == '@') {
-      hasAt = 1;
+      hasAt = true;
     }
     s++;
   }

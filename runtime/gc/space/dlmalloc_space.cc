@@ -154,7 +154,7 @@ void* DlMallocSpace::CreateMspace(void* begin, size_t morecore_start, size_t ini
   // create mspace using our backing storage starting at begin and with a footprint of
   // morecore_start. Don't use an internal dlmalloc lock (as we already hold heap lock). When
   // morecore_start bytes of memory is exhaused morecore will be called.
-  void* msp = create_mspace_with_base(begin, morecore_start, false /*locked*/);
+  void* msp = create_mspace_with_base(begin, morecore_start, 0 /*locked*/);
   if (msp != nullptr) {
     // Do not allow morecore requests to succeed beyond the initial size of the heap
     mspace_set_footprint_limit(msp, initial_size);

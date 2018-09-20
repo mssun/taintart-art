@@ -890,7 +890,7 @@ inline bool RosAlloc::Run::MergeThreadLocalFreeListToFreeList(bool* is_all_free_
   DCHECK(IsThreadLocal());
   // Merge the thread local free list into the free list and clear the thread local free list.
   const uint8_t idx = size_bracket_idx_;
-  bool thread_local_free_list_size = thread_local_free_list_.Size();
+  size_t thread_local_free_list_size = thread_local_free_list_.Size();
   const size_t size_before = free_list_.Size();
   free_list_.Merge(&thread_local_free_list_);
   const size_t size_after = free_list_.Size();

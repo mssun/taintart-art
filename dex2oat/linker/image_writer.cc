@@ -1356,10 +1356,6 @@ class ImageWriter::PruneObjectReferenceVisitor {
     operator()(ref, mirror::Reference::ReferentOffset(), /* is_static */ false);
   }
 
-  ALWAYS_INLINE bool GetResult() const {
-    return result_;
-  }
-
  private:
   ImageWriter* image_writer_;
   bool* early_exit_;

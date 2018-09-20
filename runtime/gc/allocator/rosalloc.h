@@ -352,7 +352,8 @@ class RosAlloc {
     uint8_t magic_num_;                 // The magic number used for debugging.
     uint8_t size_bracket_idx_;          // The index of the size bracket of this run.
     uint8_t is_thread_local_;           // True if this run is used as a thread-local run.
-    uint8_t to_be_bulk_freed_;          // Used within BulkFree() to flag a run that's involved with a bulk free.
+    bool to_be_bulk_freed_;             // Used within BulkFree() to flag a run that's involved with
+                                        // a bulk free.
     uint32_t padding_ ATTRIBUTE_UNUSED;
     // Use a tailless free list for free_list_ so that the alloc fast path does not manage the tail.
     SlotFreeList<false> free_list_;

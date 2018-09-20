@@ -336,7 +336,7 @@ void Trace::Start(int trace_fd,
     Thread::Current()->ThrowNewException("Ljava/lang/RuntimeException;", msg.c_str());
     return;
   }
-  std::unique_ptr<File> file(new File(trace_fd, "tracefile"));
+  std::unique_ptr<File> file(new File(trace_fd, /* path= */ "tracefile", /* check_usage= */ true));
   Start(std::move(file), buffer_size, flags, output_mode, trace_mode, interval_us);
 }
 

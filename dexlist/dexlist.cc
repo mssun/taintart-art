@@ -273,7 +273,7 @@ int dexlistDriver(int argc, char** argv) {
   }  // while
 
   free(gOptions.argCopy);
-  return result != 0;
+  return result != 0 ? 1 : 0;
 }
 
 }  // namespace art

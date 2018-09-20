@@ -369,7 +369,7 @@ struct JdwpState {
   pthread_t pthread_;
   Thread* thread_;
 
-  volatile int32_t debug_thread_started_ GUARDED_BY(thread_start_lock_);
+  volatile bool debug_thread_started_ GUARDED_BY(thread_start_lock_);
   ObjectId debug_thread_id_;
 
  private:
