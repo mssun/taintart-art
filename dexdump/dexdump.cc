@@ -331,7 +331,7 @@ static char* createAccessFlagStr(u4 flags, AccessFor forWhat) {
  * NULL-terminated.
  */
 static void asciify(char* out, const unsigned char* data, size_t len) {
-  while (len--) {
+  for (; len != 0u; --len) {
     if (*data < 0x20) {
       // Could do more here, but we don't need them yet.
       switch (*data) {
