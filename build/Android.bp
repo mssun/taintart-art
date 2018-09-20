@@ -23,6 +23,7 @@ art_clang_tidy_errors = [
     "bugprone-virtual-near-miss",
     "modernize-use-bool-literals",
     "modernize-use-nullptr",
+    "modernize-use-using",
     "performance-faster-string-find",
     "performance-for-range-copy",
     "performance-implicit-conversion-in-loop",
@@ -34,8 +35,10 @@ art_clang_tidy_errors = [
 art_clang_tidy_errors_str = "bugprone-lambda-function-name"
         + ",bugprone-unused-raii"
         + ",bugprone-virtual-near-miss"
+        + ",modernize-redundant-void-arg"
         + ",modernize-use-bool-literals"
         + ",modernize-use-nullptr"
+        + ",modernize-use-using"
         + ",performance-faster-string-find"
         + ",performance-for-range-copy"
         + ",performance-implicit-conversion-in-loop"

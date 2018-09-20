@@ -69,14 +69,14 @@ FILE* gOutFile = stdout;
 /*
  * Data types that match the definitions in the VM specification.
  */
-typedef uint8_t  u1;
-typedef uint16_t u2;
-typedef uint32_t u4;
-typedef uint64_t u8;
-typedef int8_t   s1;
-typedef int16_t  s2;
-typedef int32_t  s4;
-typedef int64_t  s8;
+using u1 = uint8_t;
+using u2 = uint16_t;
+using u4 = uint32_t;
+using u8 = uint64_t;
+using s1 = int8_t;
+using s2 = int16_t;
+using s4 = int32_t;
+using s8 = int64_t;
 
 /*
  * Basic information about a field or a method.
@@ -1800,18 +1800,18 @@ static void processDexFile(const char* fileName,
   // Iterate over all classes.
   char* package = nullptr;
   const u4 classDefsSize = pDexFile->GetHeader().class_defs_size_;
-  for (u4 i = 0; i < classDefsSize; i++) {
-    dumpClass(pDexFile, i, &package);
+  for (u4 j = 0; j < classDefsSize; j++) {
+    dumpClass(pDexFile, j, &package);
   }  // for
 
   // Iterate over all method handles.
-  for (u4 i = 0; i < pDexFile->NumMethodHandles(); ++i) {
-    dumpMethodHandle(pDexFile, i);
+  for (u4 j = 0; j < pDexFile->NumMethodHandles(); ++j) {
+    dumpMethodHandle(pDexFile, j);
   }  // for
 
   // Iterate over all call site ids.
-  for (u4 i = 0; i < pDexFile->NumCallSiteIds(); ++i) {
-    dumpCallSite(pDexFile, i);
+  for (u4 j = 0; j < pDexFile->NumCallSiteIds(); ++j) {
+    dumpCallSite(pDexFile, j);
   }  // for
 
   // Free the last package allocated.

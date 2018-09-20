@@ -92,10 +92,10 @@ static constexpr bool kOatWriterForceOatCodeLayout = false;
 
 static constexpr bool kOatWriterDebugOatCodeLayout = false;
 
-typedef DexFile::Header __attribute__((aligned(1))) UnalignedDexFileHeader;
+using UnalignedDexFileHeader = __attribute__((aligned(1))) DexFile::Header;
 
 const UnalignedDexFileHeader* AsUnalignedDexFileHeader(const uint8_t* raw_data) {
-    return reinterpret_cast<const UnalignedDexFileHeader*>(raw_data);
+  return reinterpret_cast<const UnalignedDexFileHeader*>(raw_data);
 }
 
 class ChecksumUpdatingOutputStream : public OutputStream {
