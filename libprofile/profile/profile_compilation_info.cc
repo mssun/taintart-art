@@ -23,12 +23,15 @@
 #include <unistd.h>
 #include <zlib.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <climits>
 #include <cstdlib>
+#include <iostream>
+#include <numeric>
+#include <random>
 #include <string>
 #include <vector>
-#include <iostream>
 
 #include "android-base/file.h"
 
@@ -1872,43 +1875,42 @@ bool ProfileCompilationInfo::GenerateTestProfile(
     uint16_t method_percentage,
     uint16_t class_percentage,
     uint32_t random_seed) {
-  std::srand(random_seed);
   ProfileCompilationInfo info;
+  std::default_random_engine rng(random_seed);
+  auto create_shuffled_range = [&rng](uint32_t take, uint32_t out_of) {
+    CHECK_LE(take, out_of);
+    std::vector<uint32_t> vec(out_of);
+    std::iota(vec.begin(), vec.end(), 0u);
+    std::shuffle(vec.begin(), vec.end(), rng);
+    vec.erase(vec.begin() + take, vec.end());
+    std::sort(vec.begin(), vec.end());
+    return vec;
+  };
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     const std::string& location = dex_file->GetLocation();
     uint32_t checksum = dex_file->GetLocationChecksum();
 
     uint32_t number_of_classes = dex_file->NumClassDefs();
     uint32_t classes_required_in_profile = (number_of_classes * class_percentage) / 100;
-    uint32_t class_start_index = rand() % number_of_classes;
-    for (uint32_t i = 0; i < number_of_classes && classes_required_in_profile; ++i) {
-      if (number_of_classes - i == classes_required_in_profile ||
-          std::rand() % (number_of_classes - i - classes_required_in_profile) == 0) {
-        uint32_t class_index = (i + class_start_index) % number_of_classes;
-        info.AddClassIndex(location,
-                           checksum,
-                           dex_file->GetClassDef(class_index).class_idx_,
-                           dex_file->NumMethodIds());
-        classes_required_in_profile--;
-      }
+    for (uint32_t class_index : create_shuffled_range(classes_required_in_profile,
+                                                      number_of_classes)) {
+      info.AddClassIndex(location,
+                         checksum,
+                         dex_file->GetClassDef(class_index).class_idx_,
+                         dex_file->NumMethodIds());
     }
 
     uint32_t number_of_methods = dex_file->NumMethodIds();
     uint32_t methods_required_in_profile = (number_of_methods * method_percentage) / 100;
-    uint32_t method_start_index = rand() % number_of_methods;
-    for (uint32_t i = 0; i < number_of_methods && methods_required_in_profile; ++i) {
-      if (number_of_methods - i == methods_required_in_profile ||
-          std::rand() % (number_of_methods - i - methods_required_in_profile) == 0) {
-        uint32_t method_index = (method_start_index + i) % number_of_methods;
-        // Alternate between startup and post startup.
-        uint32_t flags = MethodHotness::kFlagHot;
-        flags |= ((method_index & 1) != 0)
-            ? MethodHotness::kFlagPostStartup
-            : MethodHotness::kFlagStartup;
-        info.AddMethodIndex(static_cast<MethodHotness::Flag>(flags),
-                            MethodReference(dex_file.get(), method_index));
-        methods_required_in_profile--;
-      }
+    for (uint32_t method_index : create_shuffled_range(methods_required_in_profile,
+                                                       number_of_methods)) {
+      // Alternate between startup and post startup.
+      uint32_t flags = MethodHotness::kFlagHot;
+      flags |= ((method_index & 1) != 0)
+                   ? MethodHotness::kFlagPostStartup
+                   : MethodHotness::kFlagStartup;
+      info.AddMethodIndex(static_cast<MethodHotness::Flag>(flags),
+                          MethodReference(dex_file.get(), method_index));
     }
   }
   return info.Save(fd);
