@@ -189,8 +189,9 @@ class PointerArray : public Array {
   T GetElementPtrSize(uint32_t idx, PointerSize ptr_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  template<VerifyObjectFlags kVerifyFlags = kVerifyNone>
   void** ElementAddress(size_t index, PointerSize ptr_size) REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK_LT(index, static_cast<size_t>(GetLength()));
+    DCHECK_LT(index, static_cast<size_t>(GetLength<kVerifyFlags>()));
     return reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(this) +
                                     Array::DataOffset(static_cast<size_t>(ptr_size)).Uint32Value() +
                                     static_cast<size_t>(ptr_size) * index);
