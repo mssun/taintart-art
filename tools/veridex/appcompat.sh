@@ -45,8 +45,8 @@ if [ ! -d art ]; then
 fi
 
 # Logic for setting out_dir from build/make/core/envsetup.mk:
-if [[ -z $OUT_DIR ]]; then
-  if [[ -z $OUT_DIR_COMMON_BASE ]]; then
+if [[ -z "${OUT_DIR}" ]]; then
+  if [[ -z "${OUT_DIR_COMMON_BASE}" ]]; then
     OUT=out
   else
     OUT=${OUT_DIR_COMMON_BASE}/${PWD##*/}
@@ -59,7 +59,7 @@ if [[ -z "${PACKAGING}" ]]; then
   PACKAGING=${OUT}/target/common/obj/PACKAGING
 fi
 
-if [ -z "$ANDROID_HOST_OUT" ] ; then
+if [[ -z "${ANDROID_HOST_OUT}" ]]; then
   ANDROID_HOST_OUT=${OUT}/host/linux-x86
 fi
 
