@@ -24,7 +24,7 @@
 namespace art {
 namespace Test1946Descriptors {
 
-using GetDescriptorList = jvmtiError(*)(jvmtiEnv* env, jobject loader, jint* cnt, char*** descs);
+typedef jvmtiError (*GetDescriptorList)(jvmtiEnv* env, jobject loader, jint* cnt, char*** descs);
 
 struct DescriptorData {
   GetDescriptorList get_descriptor_list;

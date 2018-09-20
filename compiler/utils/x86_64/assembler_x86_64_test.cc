@@ -137,11 +137,11 @@ class AssemblerX86_64Test : public AssemblerTest<x86_64::X86_64Assembler,
                                                  x86_64::XmmRegister,
                                                  x86_64::Immediate> {
  public:
-  using Base = AssemblerTest<x86_64::X86_64Assembler,
-                             x86_64::Address,
-                             x86_64::CpuRegister,
-                             x86_64::XmmRegister,
-                             x86_64::Immediate>;
+  typedef AssemblerTest<x86_64::X86_64Assembler,
+                        x86_64::Address,
+                        x86_64::CpuRegister,
+                        x86_64::XmmRegister,
+                        x86_64::Immediate> Base;
 
  protected:
   // Get the typically used name for this architecture, e.g., aarch64, x86-64, ...

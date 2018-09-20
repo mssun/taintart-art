@@ -62,7 +62,7 @@ static void* AttachHelper(void* arg) {
   int attach_result = jvm->AttachCurrentThread(&env, &args);
   CHECK_EQ(attach_result, 0);
 
-  using Fn = void(*)(JNIEnv*);
+  typedef void (*Fn)(JNIEnv*);
   Fn fn = reinterpret_cast<Fn>(arg);
   fn(env);
 
