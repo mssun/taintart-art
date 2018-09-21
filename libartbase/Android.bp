@@ -29,6 +29,8 @@ cc_defaults {
         "base/hex_dump.cc",
         "base/logging.cc",
         "base/malloc_arena_pool.cc",
+        "base/membarrier.cc",
+        "base/memfd.cc",
         "base/memory_region.cc",
         "base/mem_map.cc",
         // "base/mem_map_fuchsia.cc", put in target when fuchsia supported by soong
@@ -186,6 +188,8 @@ art_cc_test {
         "base/indenter_test.cc",
         "base/leb128_test.cc",
         "base/logging_test.cc",
+        "base/memfd_test.cc",
+        "base/membarrier_test.cc",
         "base/memory_region_test.cc",
         "base/mem_map_test.cc",
         "base/safe_copy_test.cc",
