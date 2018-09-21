@@ -401,12 +401,14 @@ class MANAGED DexCache final : public Object {
     return GetField32<kVerifyFlags>(NumResolvedTypesOffset());
   }
 
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   size_t NumResolvedMethods() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetField32(NumResolvedMethodsOffset());
+    return GetField32<kVerifyFlags>(NumResolvedMethodsOffset());
   }
 
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   size_t NumResolvedFields() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetField32(NumResolvedFieldsOffset());
+    return GetField32<kVerifyFlags>(NumResolvedFieldsOffset());
   }
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>

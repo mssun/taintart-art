@@ -1029,9 +1029,7 @@ class ImageSpace::Loader {
       if (obj->IsClass<kVerifyNone>()) {
         mirror::Class* as_klass = obj->AsClass<kVerifyNone>();
         FixupObjectAdapter visitor(boot_image_, boot_oat_, app_image_, app_oat_);
-        as_klass->FixupNativePointers<kVerifyNone, kWithoutReadBarrier>(as_klass,
-                                                                        pointer_size_,
-                                                                        visitor);
+        as_klass->FixupNativePointers<kVerifyNone>(as_klass, pointer_size_, visitor);
         // Deal with the pointer arrays. Use the helper function since multiple classes can reference
         // the same arrays.
         mirror::PointerArray* const vtable = as_klass->GetVTable<kVerifyNone, kWithoutReadBarrier>();
