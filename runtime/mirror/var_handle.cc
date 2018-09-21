@@ -1033,7 +1033,7 @@ bool FieldAccessor<ObjPtr<Object>>::Dispatch(VarHandle::AccessMode access_mode,
                                                                CASMode::kStrong,
                                                                std::memory_order_seq_cst);
       }
-      StoreResult(cas_result, result);
+      StoreResult(static_cast<uint8_t>(cas_result), result);
       break;
     }
     case VarHandle::AccessMode::kWeakCompareAndSet:
@@ -1058,7 +1058,7 @@ bool FieldAccessor<ObjPtr<Object>>::Dispatch(VarHandle::AccessMode access_mode,
             CASMode::kWeak,
             std::memory_order_seq_cst);
       }
-      StoreResult(cas_result, result);
+      StoreResult(static_cast<uint8_t>(cas_result), result);
       break;
     }
     case VarHandle::AccessMode::kCompareAndExchange:
