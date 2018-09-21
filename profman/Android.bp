@@ -26,6 +26,7 @@ cc_defaults {
 
     target: {
         android: {
+            // Use the 32-bit version of profman on devices.
             compile_multilib: "prefer32",
         },
     },

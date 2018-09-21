@@ -1,0 +1,100 @@
+// Android Runtime APEX module.
+
+// Modules listed in LOCAL_REQUIRED_MODULES for module art-runtime in art/Android.mk.
+// - Base requirements (binaries for which both 32- and 64-bit versions are built, if relevant).
+art_runtime_base_binaries_both = [
+    "dalvikvm",
+]
+// - Base requirements (binaries for which a 32-bit version is preferred).
+art_runtime_base_binaries_prefer32 = [
+    "dex2oat",
+    "dexoptanalyzer",
+    "profman",
+]
+// - Base requirements (libraries).
+art_runtime_base_native_shared_libs = [
+    "libart",
+    "libart-compiler",
+    "libopenjdkjvm",
+    "libopenjdkjvmti",
+    "libadbconnection",
+]
+// - Fake library that avoids namespace issues and gives some warnings for nosy apps.
+art_runtime_fake_native_shared_libs = [
+     // FIXME: Does not work as-is, because `libart_fake` is defined in libart_fake/Android.mk,
+     // and because a module defined in a Blueprint file cannot depend on a module defined in a
+     // Makefile. To support `libart_fake` as a dependency of this APEX module, we can either
+     // (probably in that order of preference):
+     // a. translate that logic into Blueprint; or
+     // b. write the whole Android Runtime APEX generation logic in Android.mk; or
+     // c. introduce an `art_apex` module type extending the `apex` module type and write the
+     //    corresponding Go logic to handle this extra dependency.
+     //"libart_fake",
+]
+// - Debug variants (binaries for which a 32-bit version is preferred).
+//   FIXME: These modules are optional (the built product can decide to include them or not).
+//   Should they be moved to another APEX file?
+art_runtime_debug_binaries_prefer32 = [
+    "dex2oatd",
+    "dexoptanalyzerd",
+    "profmand",
+]
+art_runtime_debug_native_shared_libs = [
+    "libartd",
+    "libartd-compiler",
+    "libopenjdkd",
+    "libopenjdkjvmd",
+    "libopenjdkjvmtid",
+    "libadbconnectiond",
+]
+
+// Modules listed in LOCAL_REQUIRED_MODULES for module art-tools in art/Android.mk.
+art_tools_binaries = [
+    "dexdiag",
+    "dexdump",
+    "dexlist",
+    "oatdump",
+]
+
+// Host-only modules listed in LOCAL_REQUIRED_MODULES for module art-tools in art/Android.mk.
+// TODO: Include these modules in the future "host APEX".
+art_tools_host_binaries = [
+    // FIXME: Does not work as-is, because `ahat` is defined in tools/ahat/Android.mk
+    // (same issue as for `libart_fake` above).
+    //"ahat",
+    "hprof-conv",
+    // ...
+]
+
+apex_key {
+    name: "com.android.runtime.key",
+    public_key: "runtime.avbpubkey",
+    private_key: "runtime.pem",
+}
+
+apex {
+    name: "com.android.runtime",
+    compile_multilib: "both",
+    manifest: "manifest.json",
+    file_contexts: "file_contexts",
+    native_shared_libs: art_runtime_base_native_shared_libs
+        + art_runtime_fake_native_shared_libs
+        + art_runtime_debug_native_shared_libs,
+    multilib: {
+        both: {
+            // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
+            // (see `symlink_preferred_arch` in art/dalvikvm/Android.bp).
+            binaries: art_runtime_base_binaries_both,
+        },
+        prefer32: {
+            binaries: art_runtime_base_binaries_prefer32
+                + art_runtime_debug_binaries_prefer32
+        },
+        first: {
+            binaries: art_tools_binaries,
+        }
+    },
+    key: "com.android.runtime.key",
+    // TODO: Also package a `ld.config.txt` config file (to be placed in `etc/`).
+    // ...
+}
