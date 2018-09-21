@@ -545,7 +545,11 @@ cc_defaults {
     name: "badsuspend-defaults",
     host_supported: true,
     srcs: ["1952-bad-jit-suspend/bad_suspend.cc"],
-    defaults: ["art_defaults"],
+    defaults: [
+        "art_test_defaults",
+        "art_debug_defaults",
+        "art_defaults",
+    ],
 
     // Note that this tool needs to be built for both 32-bit and 64-bit since it requires
     // to be same ISA as what it is attached to.
