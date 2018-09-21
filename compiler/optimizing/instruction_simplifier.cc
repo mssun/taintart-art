@@ -1317,7 +1317,7 @@ void InstructionSimplifierVisitor::VisitAdd(HAdd* instruction) {
   }
 
   HNeg* neg = left_is_neg ? left->AsNeg() : right->AsNeg();
-  if ((left_is_neg ^ right_is_neg) && neg->HasOnlyOneNonEnvironmentUse()) {
+  if (left_is_neg != right_is_neg && neg->HasOnlyOneNonEnvironmentUse()) {
     // Replace code looking like
     //    NEG tmp, b
     //    ADD dst, a, tmp
