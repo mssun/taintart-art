@@ -106,8 +106,7 @@ std::ostream& operator<<(std::ostream& os, const StringList& list) {
   }
 }
 
-typedef Disassembler* create_disasm_prototype(InstructionSet instruction_set,
-                                              DisassemblerOptions* options);
+using create_disasm_prototype = Disassembler*(InstructionSet, DisassemblerOptions*);
 class HGraphVisualizerDisassembler {
  public:
   HGraphVisualizerDisassembler(InstructionSet instruction_set,

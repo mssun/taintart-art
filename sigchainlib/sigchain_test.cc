@@ -38,7 +38,7 @@
 #include "sigchain.h"
 
 #if !defined(__BIONIC__)
-typedef sigset_t sigset64_t;
+using sigset64_t = sigset_t;
 
 static int sigemptyset64(sigset64_t* set) {
   return sigemptyset(set);

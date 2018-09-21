@@ -37,11 +37,11 @@ class AssemblerMIPSTest : public AssemblerTest<mips::MipsAssembler,
                                                mips::FRegister,
                                                uint32_t> {
  public:
-  typedef AssemblerTest<mips::MipsAssembler,
-                        mips::MipsLabel,
-                        mips::Register,
-                        mips::FRegister,
-                        uint32_t> Base;
+  using Base = AssemblerTest<mips::MipsAssembler,
+                             mips::MipsLabel,
+                             mips::Register,
+                             mips::FRegister,
+                             uint32_t>;
 
   // These tests were taking too long, so we hide the DriverStr() from AssemblerTest<>
   // and reimplement it without the verification against `assembly_string`. b/73903608

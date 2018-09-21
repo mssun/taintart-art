@@ -34,13 +34,13 @@ CodeSimulatorContainer::CodeSimulatorContainer(InstructionSet target_isa)
   if (libart_simulator_handle_ == nullptr) {
     VLOG(simulator) << "Could not load " << libart_simulator_so_name << ": " << dlerror();
   } else {
-    typedef CodeSimulator* (*create_code_simulator_ptr_)(InstructionSet target_isa);
-    create_code_simulator_ptr_ create_code_simulator_ =
-        reinterpret_cast<create_code_simulator_ptr_>(
+    using CreateCodeSimulatorPtr = CodeSimulator*(*)(InstructionSet);
+    CreateCodeSimulatorPtr create_code_simulator =
+        reinterpret_cast<CreateCodeSimulatorPtr>(
             dlsym(libart_simulator_handle_, "CreateCodeSimulator"));
-    DCHECK(create_code_simulator_ != nullptr) << "Fail to find symbol of CreateCodeSimulator: "
+    DCHECK(create_code_simulator != nullptr) << "Fail to find symbol of CreateCodeSimulator: "
         << dlerror();
-    simulator_ = create_code_simulator_(target_isa);
+    simulator_ = create_code_simulator(target_isa);
   }
 }
 

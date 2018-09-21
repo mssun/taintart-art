@@ -42,7 +42,7 @@ static const char* kProgramName = "dexlayout";
 /*
  * Shows usage.
  */
-static void Usage(void) {
+static void Usage() {
   LOG(ERROR) << "Copyright (C) 2016 The Android Open Source Project\n";
   LOG(ERROR) << kProgramName
              << ": [-a] [-c] [-d] [-e] [-f] [-h] [-i] [-l layout] [-o outfile] [-p profile]"
