@@ -356,8 +356,8 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   // Fills the `literals` array with literals collected during code generation.
   // Also emits literal patches.
   void EmitJitRoots(uint8_t* code,
-                    Handle<mirror::ObjectArray<mirror::Object>> roots,
-                    const uint8_t* roots_data)
+                    const uint8_t* roots_data,
+                    /*out*/std::vector<Handle<mirror::Object>>* roots)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool IsLeafMethod() const {

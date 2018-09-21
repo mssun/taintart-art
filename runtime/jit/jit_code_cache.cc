@@ -417,7 +417,7 @@ uint8_t* JitCodeCache::CommitCode(Thread* self,
                                   size_t code_size,
                                   size_t data_size,
                                   bool osr,
-                                  Handle<mirror::ObjectArray<mirror::Object>> roots,
+                                  const std::vector<Handle<mirror::Object>>& roots,
                                   bool has_should_deoptimize_flag,
                                   const ArenaSet<ArtMethod*>& cha_single_implementation_list) {
   uint8_t* result = CommitCodeInternal(self,
@@ -483,18 +483,16 @@ static const uint8_t* FromStackMapToRoots(const uint8_t* stack_map_data) {
   return stack_map_data - ComputeRootTableSize(GetNumberOfRoots(stack_map_data));
 }
 
-static void DCheckRootsAreValid(Handle<mirror::ObjectArray<mirror::Object>> roots)
+static void DCheckRootsAreValid(const std::vector<Handle<mirror::Object>>& roots)
     REQUIRES(!Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_) {
   if (!kIsDebugBuild) {
     return;
   }
-  const uint32_t length = roots->GetLength();
   // Put all roots in `roots_data`.
-  for (uint32_t i = 0; i < length; ++i) {
-    ObjPtr<mirror::Object> object = roots->Get(i);
+  for (Handle<mirror::Object> object : roots) {
     // Ensure the string is strongly interned. b/32995596
     if (object->IsString()) {
-      ObjPtr<mirror::String> str = ObjPtr<mirror::String>::DownCast(object);
+      ObjPtr<mirror::String> str = object->AsString();
       ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
       CHECK(class_linker->GetInternTable()->LookupStrong(Thread::Current(), str) != nullptr);
     }
@@ -502,12 +500,12 @@ static void DCheckRootsAreValid(Handle<mirror::ObjectArray<mirror::Object>> root
 }
 
 void JitCodeCache::FillRootTable(uint8_t* roots_data,
-                                 Handle<mirror::ObjectArray<mirror::Object>> roots) {
+                                 const std::vector<Handle<mirror::Object>>& roots) {
   GcRoot<mirror::Object>* gc_roots = reinterpret_cast<GcRoot<mirror::Object>*>(roots_data);
-  const uint32_t length = roots->GetLength();
+  const uint32_t length = roots.size();
   // Put all roots in `roots_data`.
   for (uint32_t i = 0; i < length; ++i) {
-    ObjPtr<mirror::Object> object = roots->Get(i);
+    ObjPtr<mirror::Object> object = roots[i].Get();
     gc_roots[i] = GcRoot<mirror::Object>(object);
   }
 }
@@ -763,7 +761,7 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
                                           size_t code_size,
                                           size_t data_size,
                                           bool osr,
-                                          Handle<mirror::ObjectArray<mirror::Object>> roots,
+                                          const std::vector<Handle<mirror::Object>>& roots,
                                           bool has_should_deoptimize_flag,
                                           const ArenaSet<ArtMethod*>&
                                               cha_single_implementation_list) {

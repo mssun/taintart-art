@@ -1218,7 +1218,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
     JniCompiledMethod jni_compiled_method = ArtQuickJniCompileMethod(
         compiler_options, access_flags, method_idx, *dex_file);
-    ScopedNullHandle<mirror::ObjectArray<mirror::Object>> roots;
+    std::vector<Handle<mirror::Object>> roots;
     ArenaSet<ArtMethod*, std::less<ArtMethod*>> cha_single_implementation_list(
         allocator.Adapter(kArenaAllocCHA));
     ArenaStack arena_stack(runtime->GetJitArenaPool());
@@ -1320,19 +1320,6 @@ bool OptimizingCompiler::JitCompile(Thread* self,
 
   ScopedArenaVector<uint8_t> stack_map = codegen->BuildStackMaps(code_item);
   size_t number_of_roots = codegen->GetNumberOfJitRoots();
-  // We allocate an object array to ensure the JIT roots that we will collect in EmitJitRoots
-  // will be visible by the GC between EmitLiterals and CommitCode. Once CommitCode is
-  // executed, this array is not needed.
-  Handle<mirror::ObjectArray<mirror::Object>> roots(
-      hs.NewHandle(mirror::ObjectArray<mirror::Object>::Alloc(
-          self, GetClassRoot<mirror::ObjectArray<mirror::Object>>(), number_of_roots)));
-  if (roots == nullptr) {
-    // Out of memory, just clear the exception to avoid any Java exception uncaught problems.
-    MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kJitOutOfMemoryForCommit);
-    DCHECK(self->IsExceptionPending());
-    self->ClearException();
-    return false;
-  }
   uint8_t* stack_map_data = nullptr;
   uint8_t* roots_data = nullptr;
   uint32_t data_size = code_cache->ReserveData(self,
@@ -1346,7 +1333,14 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     return false;
   }
   memcpy(stack_map_data, stack_map.data(), stack_map.size());
-  codegen->EmitJitRoots(code_allocator.GetData(), roots, roots_data);
+  std::vector<Handle<mirror::Object>> roots;
+  codegen->EmitJitRoots(code_allocator.GetData(), roots_data, &roots);
+  // The root Handle<>s filled by the codegen reference entries in the VariableSizedHandleScope.
+  DCHECK(std::all_of(roots.begin(),
+                     roots.end(),
+                     [&handles](Handle<mirror::Object> root){
+                       return handles.Contains(root.GetReference());
+                     }));
 
   const void* code = code_cache->CommitCode(
       self,
