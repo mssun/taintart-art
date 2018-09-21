@@ -419,7 +419,7 @@ class OatDumper {
     return instruction_set_;
   }
 
-  typedef std::vector<std::unique_ptr<const DexFile>> DexFileUniqV;
+  using DexFileUniqV = std::vector<std::unique_ptr<const DexFile>>;
 
   bool Dump(std::ostream& os) {
     bool success = true;
@@ -2480,7 +2480,7 @@ class ImageDumper {
       size_t bytes;
       size_t count;
     };
-    typedef SafeMap<std::string, SizeAndCount> SizeAndCountTable;
+    using SizeAndCountTable = SafeMap<std::string, SizeAndCount>;
     SizeAndCountTable sizes_and_counts;
 
     void Update(const char* descriptor, size_t object_bytes_in) {

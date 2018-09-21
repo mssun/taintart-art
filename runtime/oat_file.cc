@@ -410,7 +410,7 @@ inline static bool ReadOatDexFileData(const OatFile& oat_file,
     return false;
   }
   static_assert(std::is_trivial<T>::value, "T must be a trivial type");
-  typedef __attribute__((__aligned__(1))) T unaligned_type;
+  using unaligned_type __attribute__((__aligned__(1))) = T;
   *value = *reinterpret_cast<const unaligned_type*>(*oat);
   *oat += sizeof(T);
   return true;
