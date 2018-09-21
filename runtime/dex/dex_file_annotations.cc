@@ -209,7 +209,7 @@ bool SkipAnnotationValue(const DexFile& dex_file, const uint8_t** annotation_ptr
     case DexFile::kDexAnnotationArray:
     {
       uint32_t size = DecodeUnsignedLeb128(&annotation);
-      while (size--) {
+      for (; size != 0u; --size) {
         if (!SkipAnnotationValue(dex_file, &annotation)) {
           return false;
         }
@@ -221,7 +221,7 @@ bool SkipAnnotationValue(const DexFile& dex_file, const uint8_t** annotation_ptr
     {
       DecodeUnsignedLeb128(&annotation);  // unused type_index
       uint32_t size = DecodeUnsignedLeb128(&annotation);
-      while (size--) {
+      for (; size != 0u; --size) {
         DecodeUnsignedLeb128(&annotation);  // unused element_name_index
         if (!SkipAnnotationValue(dex_file, &annotation)) {
           return false;

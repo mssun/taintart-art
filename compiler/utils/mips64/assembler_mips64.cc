@@ -2889,7 +2889,7 @@ void Mips64Assembler::FinalizeLabeledBranch(Mips64Label* label) {
     label->LinkTo(branch_id);
   }
   // Reserve space for the branch.
-  while (length--) {
+  for (; length != 0u; --length) {
     Nop();
   }
 }
