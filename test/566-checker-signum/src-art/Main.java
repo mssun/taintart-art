@@ -18,7 +18,7 @@ import java.lang.reflect.Method;
 
 public class Main {
 
-  /// CHECK-START: int Main.signByte(byte) intrinsics_recognition (after)
+  /// CHECK-START: int Main.signByte(byte) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerSignum
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -33,7 +33,7 @@ public class Main {
     return Integer.signum(x);
   }
 
-  /// CHECK-START: int Main.signShort(short) intrinsics_recognition (after)
+  /// CHECK-START: int Main.signShort(short) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerSignum
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -48,7 +48,7 @@ public class Main {
     return Integer.signum(x);
   }
 
-  /// CHECK-START: int Main.signChar(char) intrinsics_recognition (after)
+  /// CHECK-START: int Main.signChar(char) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerSignum
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -63,7 +63,7 @@ public class Main {
     return Integer.signum(x);
   }
 
-  /// CHECK-START: int Main.signInt(int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.signInt(int) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerSignum
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -78,7 +78,7 @@ public class Main {
     return Integer.signum(x);
   }
 
-  /// CHECK-START: int Main.signLong(long) intrinsics_recognition (after)
+  /// CHECK-START: int Main.signLong(long) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:LongSignum
   /// CHECK-DAG:                     Return [<<Result>>]
 

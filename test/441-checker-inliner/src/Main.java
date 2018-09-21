@@ -135,11 +135,7 @@ public class Main {
     }
   }
 
-  /// CHECK-START: int Main.returnAbs(int) intrinsics_recognition (before)
-  /// CHECK-DAG:     <<Result:i\d+>>      InvokeStaticOrDirect
-  /// CHECK-DAG:                          Return [<<Result>>]
-
-  /// CHECK-START: int Main.returnAbs(int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.returnAbs(int) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>>      InvokeStaticOrDirect intrinsic:MathAbsInt
   /// CHECK-DAG:                          Return [<<Result>>]
 

@@ -15,7 +15,7 @@
 .class public LSmali;
 .super Ljava/lang/Object;
 
-##  CHECK-START: int Smali.compareBooleans(boolean, boolean) intrinsics_recognition (after)
+##  CHECK-START: int Smali.compareBooleans(boolean, boolean) builder (after)
 ##  CHECK-DAG:     <<Zero:i\d+>>   IntConstant 0
 ##  CHECK-DAG:     <<One:i\d+>>    IntConstant 1
 ##  CHECK-DAG:     <<PhiX:i\d+>>   Phi [<<One>>,<<Zero>>]

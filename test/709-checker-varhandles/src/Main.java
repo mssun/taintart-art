@@ -28,7 +28,7 @@ public class Main {
   // Fences (native).
   //
 
-  /// CHECK-START: void Main.fullFence() intrinsics_recognition (after)
+  /// CHECK-START: void Main.fullFence() builder (after)
   /// CHECK-DAG: InvokeStaticOrDirect intrinsic:VarHandleFullFence
   //
   /// CHECK-START: void Main.fullFence() instruction_simplifier (after)
@@ -40,7 +40,7 @@ public class Main {
       VarHandle.fullFence();
   }
 
-  /// CHECK-START: void Main.acquireFence() intrinsics_recognition (after)
+  /// CHECK-START: void Main.acquireFence() builder (after)
   /// CHECK-DAG: InvokeStaticOrDirect intrinsic:VarHandleAcquireFence
   //
   /// CHECK-START: void Main.acquireFence() instruction_simplifier (after)
@@ -52,7 +52,7 @@ public class Main {
       VarHandle.acquireFence();
   }
 
-  /// CHECK-START: void Main.releaseFence() intrinsics_recognition (after)
+  /// CHECK-START: void Main.releaseFence() builder (after)
   /// CHECK-DAG: InvokeStaticOrDirect intrinsic:VarHandleReleaseFence
   //
   /// CHECK-START: void Main.releaseFence() instruction_simplifier (after)
@@ -64,7 +64,7 @@ public class Main {
       VarHandle.releaseFence();
   }
 
-  /// CHECK-START: void Main.loadLoadFence() intrinsics_recognition (after)
+  /// CHECK-START: void Main.loadLoadFence() builder (after)
   /// CHECK-DAG: InvokeStaticOrDirect intrinsic:VarHandleLoadLoadFence
   //
   /// CHECK-START: void Main.loadLoadFence() instruction_simplifier (after)
@@ -76,7 +76,7 @@ public class Main {
       VarHandle.loadLoadFence();
   }
 
-  /// CHECK-START: void Main.storeStoreFence() intrinsics_recognition (after)
+  /// CHECK-START: void Main.storeStoreFence() builder (after)
   /// CHECK-DAG: InvokeStaticOrDirect intrinsic:VarHandleStoreStoreFence
   //
   /// CHECK-START: void Main.storeStoreFence() instruction_simplifier (after)
