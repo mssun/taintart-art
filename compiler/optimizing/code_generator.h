@@ -622,7 +622,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   // otherwise return a fall-back info that should be used instead.
   virtual HInvokeStaticOrDirect::DispatchInfo GetSupportedInvokeStaticOrDirectDispatch(
       const HInvokeStaticOrDirect::DispatchInfo& desired_dispatch_info,
-      HInvokeStaticOrDirect* invoke) = 0;
+      ArtMethod* method) = 0;
 
   // Generate a call to a static or direct method.
   virtual void GenerateStaticOrDirectCall(

@@ -100,14 +100,12 @@ public class Main {
   }
 
   /// CHECK-START: int Main.longToIntOfBoolean() builder (after)
-  /// CHECK-DAG:     <<Method:[ij]\d+>>     CurrentMethod
   /// CHECK-DAG:     <<Sget:z\d+>>          StaticFieldGet
-  /// CHECK-DAG:     <<ZToJ:j\d+>>          InvokeStaticOrDirect [<<Sget>>,<<Method>>]
+  /// CHECK-DAG:     <<ZToJ:j\d+>>          InvokeStaticOrDirect [<<Sget>>{{(,[ij]\d+)?}}]
   /// CHECK-DAG:     <<JToI:i\d+>>          TypeConversion [<<ZToJ>>]
   /// CHECK-DAG:                            Return [<<JToI>>]
 
   /// CHECK-START: int Main.longToIntOfBoolean() inliner (after)
-  /// CHECK-DAG:     <<Method:[ij]\d+>>     CurrentMethod
   /// CHECK-DAG:     <<Zero:j\d+>>          LongConstant 0
   /// CHECK-DAG:     <<One:j\d+>>           LongConstant 1
   /// CHECK-DAG:     <<Sget:z\d+>>          StaticFieldGet
@@ -123,7 +121,6 @@ public class Main {
   /// CHECK-NOT:                            Phi
 
   /// CHECK-START: int Main.longToIntOfBoolean() select_generator (after)
-  /// CHECK-DAG:     <<Method:[ij]\d+>>     CurrentMethod
   /// CHECK-DAG:     <<Zero:j\d+>>          LongConstant 0
   /// CHECK-DAG:     <<One:j\d+>>           LongConstant 1
   /// CHECK-DAG:     <<Sget:z\d+>>          StaticFieldGet
@@ -135,7 +132,6 @@ public class Main {
   // TODO: Re-enable checks below after simplifier is updated to handle this pattern: b/63064517
 
   // CHECK-START: int Main.longToIntOfBoolean() instruction_simplifier$after_bce (after)
-  // CHECK-DAG:     <<Method:[ij]\d+>>     CurrentMethod
   // CHECK-DAG:     <<Sget:z\d+>>          StaticFieldGet
   // CHECK-DAG:                            Return [<<Sget>>]
 

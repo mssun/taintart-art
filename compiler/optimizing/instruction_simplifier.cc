@@ -2290,7 +2290,7 @@ void InstructionSimplifierVisitor::SimplifySystemArrayCopy(HInvoke* instruction)
       // the invoke, as we would need to look it up in the current dex file, and it
       // is unlikely that it exists. The most usual situation for such typed
       // arraycopy methods is a direct pointer to the boot image.
-      HSharpening::SharpenInvokeStaticOrDirect(invoke, codegen_);
+      invoke->SetDispatchInfo(HSharpening::SharpenInvokeStaticOrDirect(method, codegen_));
     }
   }
 }

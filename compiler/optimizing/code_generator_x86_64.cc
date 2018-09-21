@@ -978,7 +978,7 @@ inline Condition X86_64FPCondition(IfCondition cond) {
 
 HInvokeStaticOrDirect::DispatchInfo CodeGeneratorX86_64::GetSupportedInvokeStaticOrDirectDispatch(
       const HInvokeStaticOrDirect::DispatchInfo& desired_dispatch_info,
-      HInvokeStaticOrDirect* invoke ATTRIBUTE_UNUSED) {
+      ArtMethod* method ATTRIBUTE_UNUSED) {
   return desired_dispatch_info;
 }
 
