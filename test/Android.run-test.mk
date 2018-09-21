@@ -35,6 +35,9 @@ TEST_ART_TARGET_SYNC_DEPS += libartagent-target libartagentd-target
 # Also need libtiagent.
 TEST_ART_TARGET_SYNC_DEPS += libtiagent-target libtiagentd-target
 
+# Also need libbadsuspend.
+TEST_ART_TARGET_SYNC_DEPS += libbadsuspend-target libbadsuspendd-target
+
 # Also need libtistress.
 TEST_ART_TARGET_SYNC_DEPS += libtistress-target libtistressd-target
 
@@ -59,6 +62,8 @@ TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/conscrypt-testdex.jar
 ART_TEST_HOST_RUN_TEST_DEPENDENCIES := \
   $(ART_HOST_EXECUTABLES) \
   $(HOST_OUT_EXECUTABLES)/hprof-conv \
+  $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libbadsuspend) \
+  $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libbadsuspendd) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libtiagent) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libtiagentd) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libtistress) \
@@ -76,6 +81,8 @@ ART_TEST_HOST_RUN_TEST_DEPENDENCIES := \
 
 ifneq ($(HOST_PREFER_32_BIT),true)
 ART_TEST_HOST_RUN_TEST_DEPENDENCIES += \
+  $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libbadsuspend) \
+  $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libbadsuspendd) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libtiagent) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libtiagentd) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libtistress) \
