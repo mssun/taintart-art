@@ -540,3 +540,74 @@ art_cc_test_library {
     header_libs: ["libnativebridge-dummy-headers"],
     srcs: ["115-native-bridge/nativebridge.cc"],
 }
+
+cc_defaults {
+    name: "badsuspend-defaults",
+    host_supported: true,
+    srcs: ["1952-bad-jit-suspend/bad_suspend.cc"],
+    defaults: ["art_defaults"],
+
+    // Note that this tool needs to be built for both 32-bit and 64-bit since it requires
+    // to be same ISA as what it is attached to.
+    compile_multilib: "both",
+
+    cflags: [ "-frtti", ],
+
+    shared_libs: [
+        "libbase",
+        "slicer",
+    ],
+    target: {
+        android: {
+            shared_libs: [
+                "libcutils",
+            ],
+        },
+        host: {
+        },
+        darwin: {
+            enabled: false,
+        },
+    },
+    header_libs: [
+        "libnativehelper_header_only",
+        "libopenjdkjvmti_headers",
+    ],
+    multilib: {
+        lib32: {
+            suffix: "32",
+        },
+        lib64: {
+            suffix: "64",
+        },
+    },
+    symlink_preferred_arch: true,
+    rtti: true,
+}
+
+art_cc_test_library {
+    name: "libbadsuspend",
+    defaults: ["badsuspend-defaults"],
+    shared_libs: [
+        "libart",
+        "libart-compiler",
+        "libart-dexlayout",
+        "libdexfile",
+        "libartbase",
+    ],
+}
+
+art_cc_test_library {
+    name: "libbadsuspendd",
+    defaults: [
+        "art_debug_defaults",
+        "badsuspend-defaults",
+    ],
+    shared_libs: [
+        "libartd",
+        "libartd-compiler",
+        "libartd-dexlayout",
+        "libdexfiled",
+        "libartbased",
+    ],
+}

@@ -1,0 +1,2 @@
+Test that tries to deadlock class redefinition with the jit thread. If the jit
+thread loads a class the process might deadlock.
