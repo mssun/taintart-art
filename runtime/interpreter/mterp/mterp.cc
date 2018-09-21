@@ -172,7 +172,7 @@ extern "C" size_t MterpInvokeVirtual(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoFastInvoke<kVirtual>(
+  return DoInvoke<kVirtual, /*is_range*/ false, /*access_check*/ false, /*fast_invoke*/ true>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -183,7 +183,7 @@ extern "C" size_t MterpInvokeSuper(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoInvoke<kSuper, false, false>(
+  return DoInvoke<kSuper, /*is_range*/ false, /*access_check*/ false>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -194,7 +194,7 @@ extern "C" size_t MterpInvokeInterface(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoInvoke<kInterface, false, false>(
+  return DoInvoke<kInterface, /*is_range*/ false, /*access_check*/ false>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -205,7 +205,7 @@ extern "C" size_t MterpInvokeDirect(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoFastInvoke<kDirect>(
+  return DoInvoke<kDirect, /*is_range*/ false, /*access_check*/ false, /*fast_invoke*/ true>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -216,7 +216,7 @@ extern "C" size_t MterpInvokeStatic(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoFastInvoke<kStatic>(
+  return DoInvoke<kStatic, /*is_range*/ false, /*access_check*/ false, /*fast_invoke*/ true>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -249,7 +249,7 @@ extern "C" size_t MterpInvokeVirtualRange(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoInvoke<kVirtual, true, false>(
+  return DoInvoke<kVirtual, /*is_range*/ true, /*access_check*/ false>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -260,7 +260,7 @@ extern "C" size_t MterpInvokeSuperRange(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoInvoke<kSuper, true, false>(
+  return DoInvoke<kSuper, /*is_range*/ true, /*access_check*/ false>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -271,7 +271,7 @@ extern "C" size_t MterpInvokeInterfaceRange(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoInvoke<kInterface, true, false>(
+  return DoInvoke<kInterface, /*is_range*/ true, /*access_check*/ false>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -282,7 +282,7 @@ extern "C" size_t MterpInvokeDirectRange(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoInvoke<kDirect, true, false>(
+  return DoInvoke<kDirect, /*is_range*/ true, /*access_check*/ false>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -293,7 +293,7 @@ extern "C" size_t MterpInvokeStaticRange(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoInvoke<kStatic, true, false>(
+  return DoInvoke<kStatic, /*is_range*/ true, /*access_check*/ false>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 

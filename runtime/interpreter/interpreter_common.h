@@ -121,56 +121,15 @@ template<bool is_range, bool do_assignability_check>
 bool DoCall(ArtMethod* called_method, Thread* self, ShadowFrame& shadow_frame,
             const Instruction* inst, uint16_t inst_data, JValue* result);
 
-// Handles streamlined non-range invoke static, direct and virtual instructions originating in
-// mterp. Access checks and instrumentation other than jit profiling are not supported, but does
-// support interpreter intrinsics if applicable.
-// Returns true on success, otherwise throws an exception and returns false.
-template<InvokeType type>
-static inline bool DoFastInvoke(Thread* self,
-                                ShadowFrame& shadow_frame,
-                                const Instruction* inst,
-                                uint16_t inst_data,
-                                JValue* result) {
-  const uint32_t method_idx = inst->VRegB_35c();
-  const uint32_t vregC = inst->VRegC_35c();
-  ObjPtr<mirror::Object> receiver = (type == kStatic)
-      ? nullptr
-      : shadow_frame.GetVRegReference(vregC);
-  ArtMethod* sf_method = shadow_frame.GetMethod();
-  ArtMethod* const called_method = FindMethodFromCode<type, false>(
-      method_idx, &receiver, sf_method, self);
-  // The shadow frame should already be pushed, so we don't need to update it.
-  if (UNLIKELY(called_method == nullptr)) {
-    CHECK(self->IsExceptionPending());
-    result->SetJ(0);
-    return false;
-  } else if (UNLIKELY(!called_method->IsInvokable())) {
-    called_method->ThrowInvocationTimeError();
-    result->SetJ(0);
-    return false;
-  } else {
-    jit::Jit* jit = Runtime::Current()->GetJit();
-    if (jit != nullptr && type == kVirtual) {
-      jit->InvokeVirtualOrInterface(receiver, sf_method, shadow_frame.GetDexPC(), called_method);
-    }
-    if (called_method->IsIntrinsic()) {
-      if (MterpHandleIntrinsic(&shadow_frame, called_method, inst, inst_data,
-                               shadow_frame.GetResultRegister())) {
-        return !self->IsExceptionPending();
-      }
-    }
-    return DoCall<false, false>(called_method, self, shadow_frame, inst, inst_data, result);
-  }
-}
-
 // Handles all invoke-XXX/range instructions except for invoke-polymorphic[/range].
 // Returns true on success, otherwise throws an exception and returns false.
-template<InvokeType type, bool is_range, bool do_access_check>
-static inline bool DoInvoke(Thread* self,
-                            ShadowFrame& shadow_frame,
-                            const Instruction* inst,
-                            uint16_t inst_data,
-                            JValue* result) {
+template<InvokeType type, bool is_range, bool do_access_check, bool fast_invoke = false>
+static ALWAYS_INLINE bool DoInvoke(Thread* self,
+                                   ShadowFrame& shadow_frame,
+                                   const Instruction* inst,
+                                   uint16_t inst_data,
+                                   JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   // Make sure to check for async exceptions before anything else.
   if (UNLIKELY(self->ObserveAsyncException())) {
     return false;
@@ -196,12 +155,24 @@ static inline bool DoInvoke(Thread* self,
     if (jit != nullptr && (type == kVirtual || type == kInterface)) {
       jit->InvokeVirtualOrInterface(receiver, sf_method, shadow_frame.GetDexPC(), called_method);
     }
-    // TODO: Remove the InvokeVirtualOrInterface instrumentation, as it was only used by the JIT.
-    if (type == kVirtual || type == kInterface) {
-      instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
-      if (UNLIKELY(instrumentation->HasInvokeVirtualOrInterfaceListeners())) {
-        instrumentation->InvokeVirtualOrInterface(
-            self, receiver.Ptr(), sf_method, shadow_frame.GetDexPC(), called_method);
+    // The fast invoke is used from mterp for some invoke variants.
+    // The non-fast version is used from switch interpreter and it might not support intrinsics.
+    // TODO: Unify both paths.
+    if (fast_invoke) {
+      if (called_method->IsIntrinsic()) {
+        if (MterpHandleIntrinsic(&shadow_frame, called_method, inst, inst_data,
+                                 shadow_frame.GetResultRegister())) {
+          return !self->IsExceptionPending();
+        }
+      }
+    } else {
+      // TODO: Remove the InvokeVirtualOrInterface instrumentation, as it was only used by the JIT.
+      if (type == kVirtual || type == kInterface) {
+        instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
+        if (UNLIKELY(instrumentation->HasInvokeVirtualOrInterfaceListeners())) {
+          instrumentation->InvokeVirtualOrInterface(
+              self, receiver.Ptr(), sf_method, shadow_frame.GetDexPC(), called_method);
+        }
       }
     }
     return DoCall<is_range, do_access_check>(called_method, self, shadow_frame, inst, inst_data,
@@ -277,7 +248,8 @@ bool DoInvokeCustom(Thread* self,
 template<bool is_range>
 static inline bool DoInvokeVirtualQuick(Thread* self, ShadowFrame& shadow_frame,
                                         const Instruction* inst, uint16_t inst_data,
-                                        JValue* result) {
+                                        JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   const uint32_t vregC = (is_range) ? inst->VRegC_3rc() : inst->VRegC_35c();
   ObjPtr<mirror::Object> const receiver = shadow_frame.GetVRegReference(vregC);
   if (UNLIKELY(receiver == nullptr)) {
@@ -600,52 +572,6 @@ static inline bool IsStringInit(const Instruction* instr, ArtMethod* caller)
 void SetStringInitValueToAllAliases(ShadowFrame* shadow_frame,
                                     uint16_t this_obj_vreg,
                                     JValue result);
-
-// Explicitly instantiate all DoInvoke functions.
-#define EXPLICIT_DO_INVOKE_TEMPLATE_DECL(_type, _is_range, _do_check)                      \
-  template REQUIRES_SHARED(Locks::mutator_lock_)                                           \
-  bool DoInvoke<_type, _is_range, _do_check>(Thread* self,                                 \
-                                             ShadowFrame& shadow_frame,                    \
-                                             const Instruction* inst, uint16_t inst_data,  \
-                                             JValue* result)
-
-#define EXPLICIT_DO_INVOKE_ALL_TEMPLATE_DECL(_type)       \
-  EXPLICIT_DO_INVOKE_TEMPLATE_DECL(_type, false, false);  \
-  EXPLICIT_DO_INVOKE_TEMPLATE_DECL(_type, false, true);   \
-  EXPLICIT_DO_INVOKE_TEMPLATE_DECL(_type, true, false);   \
-  EXPLICIT_DO_INVOKE_TEMPLATE_DECL(_type, true, true);
-
-EXPLICIT_DO_INVOKE_ALL_TEMPLATE_DECL(kStatic)      // invoke-static/range.
-EXPLICIT_DO_INVOKE_ALL_TEMPLATE_DECL(kDirect)      // invoke-direct/range.
-EXPLICIT_DO_INVOKE_ALL_TEMPLATE_DECL(kVirtual)     // invoke-virtual/range.
-EXPLICIT_DO_INVOKE_ALL_TEMPLATE_DECL(kSuper)       // invoke-super/range.
-EXPLICIT_DO_INVOKE_ALL_TEMPLATE_DECL(kInterface)   // invoke-interface/range.
-#undef EXPLICIT_DO_INVOKE_ALL_TEMPLATE_DECL
-#undef EXPLICIT_DO_INVOKE_TEMPLATE_DECL
-
-// Explicitly instantiate all DoFastInvoke functions.
-#define EXPLICIT_DO_FAST_INVOKE_TEMPLATE_DECL(_type)                     \
-  template REQUIRES_SHARED(Locks::mutator_lock_)                         \
-  bool DoFastInvoke<_type>(Thread* self,                                 \
-                           ShadowFrame& shadow_frame,                    \
-                           const Instruction* inst, uint16_t inst_data,  \
-                           JValue* result)
-
-EXPLICIT_DO_FAST_INVOKE_TEMPLATE_DECL(kStatic);     // invoke-static
-EXPLICIT_DO_FAST_INVOKE_TEMPLATE_DECL(kDirect);     // invoke-direct
-EXPLICIT_DO_FAST_INVOKE_TEMPLATE_DECL(kVirtual);    // invoke-virtual
-#undef EXPLICIT_DO_FAST_INVOKE_TEMPLATE_DECL
-
-// Explicitly instantiate all DoInvokeVirtualQuick functions.
-#define EXPLICIT_DO_INVOKE_VIRTUAL_QUICK_TEMPLATE_DECL(_is_range)                    \
-  template REQUIRES_SHARED(Locks::mutator_lock_)                                     \
-  bool DoInvokeVirtualQuick<_is_range>(Thread* self, ShadowFrame& shadow_frame,      \
-                                       const Instruction* inst, uint16_t inst_data,  \
-                                       JValue* result)
-
-EXPLICIT_DO_INVOKE_VIRTUAL_QUICK_TEMPLATE_DECL(false);  // invoke-virtual-quick.
-EXPLICIT_DO_INVOKE_VIRTUAL_QUICK_TEMPLATE_DECL(true);   // invoke-virtual-quick-range.
-#undef EXPLICIT_INSTANTIATION_DO_INVOKE_VIRTUAL_QUICK
 
 }  // namespace interpreter
 }  // namespace art
