@@ -25,6 +25,10 @@
 #include "standard_dex_file.h"
 #include "ziparchive/zip_archive.h"
 
+// system/core/zip_archive definitions.
+struct ZipEntry;
+typedef void* ZipArchiveHandle;
+
 namespace art {
 
 namespace {

@@ -44,11 +44,11 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler,
                                               x86::XmmRegister,
                                               x86::Immediate> {
  public:
-  using Base = AssemblerTest<x86::X86Assembler,
-                             x86::Address,
-                             x86::Register,
-                             x86::XmmRegister,
-                             x86::Immediate>;
+  typedef AssemblerTest<x86::X86Assembler,
+                        x86::Address,
+                        x86::Register,
+                        x86::XmmRegister,
+                        x86::Immediate> Base;
 
  protected:
   std::string GetArchitectureString() override {

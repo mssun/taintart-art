@@ -1417,7 +1417,7 @@ template <typename ElfTypes>
 void ElfFileImpl<ElfTypes>::ApplyOatPatches(
     const uint8_t* patches, const uint8_t* patches_end, Elf_Addr delta,
     uint8_t* to_patch, const uint8_t* to_patch_end) {
-  using UnalignedAddress = __attribute__((__aligned__(1))) Elf_Addr;
+  typedef __attribute__((__aligned__(1))) Elf_Addr UnalignedAddress;
   while (patches < patches_end) {
     to_patch += DecodeUnsignedLeb128(&patches);
     DCHECK_LE(patches, patches_end) << "Unexpected end of patch list.";
