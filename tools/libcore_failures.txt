@@ -223,6 +223,8 @@
   names: ["libcore.libcore.io.FdsanTest#testFileInputStream",
           "libcore.libcore.io.FdsanTest#testFileOutputStream",
           "libcore.libcore.io.FdsanTest#testRandomAccessFile",
-          "libcore.libcore.io.FdsanTest#testParcelFileDescriptor"]
+          "libcore.libcore.io.FdsanTest#testParcelFileDescriptor",
+          "libcore.libcore.io.FdsanTest#testDatagramSocket",
+          "libcore.libcore.io.FdsanTest#testSocket"]
 }
 ]
