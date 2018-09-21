@@ -866,7 +866,7 @@ bool DexFileVerifier::CheckEncodedValue() {
 bool DexFileVerifier::CheckEncodedArray() {
   DECODE_UNSIGNED_CHECKED_FROM(ptr_, size);
 
-  while (size--) {
+  for (; size != 0u; --size) {
     if (!CheckEncodedValue()) {
       failure_reason_ = StringPrintf("Bad encoded_array value: %s", failure_reason_.c_str());
       return false;
@@ -1304,7 +1304,7 @@ bool DexFileVerifier::CheckIntraCodeItem() {
   }
 
   uint32_t last_addr = 0;
-  while (try_items_size--) {
+  for (; try_items_size != 0u; --try_items_size) {
     if (UNLIKELY(try_items->start_addr_ < last_addr)) {
       ErrorStringPrintf("Out-of_order try_item with start_addr: %x", try_items->start_addr_);
       return false;
@@ -1884,7 +1884,7 @@ bool DexFileVerifier::CheckIntraSection() {
   ptr_ = begin_;
 
   // Check the items listed in the map.
-  while (count--) {
+  for (; count != 0u; --count) {
     const size_t current_offset = offset;
     uint32_t section_offset = item->offset_;
     uint32_t section_count = item->size_;
@@ -2554,7 +2554,7 @@ bool DexFileVerifier::CheckInterAnnotationSetRefList() {
   const DexFile::AnnotationSetRefItem* item = list->list_;
   uint32_t count = list->size_;
 
-  while (count--) {
+  for (; count != 0u; --count) {
     if (item->annotations_off_ != 0 &&
         !CheckOffsetToTypeMap(item->annotations_off_, DexFile::kDexTypeAnnotationSetItem)) {
       return false;
@@ -2839,7 +2839,7 @@ bool DexFileVerifier::CheckInterSection() {
   uint32_t count = map->size_;
 
   // Cross check the items listed in the map.
-  while (count--) {
+  for (; count != 0u; --count) {
     uint32_t section_offset = item->offset_;
     uint32_t section_count = item->size_;
     DexFile::MapItemType type = static_cast<DexFile::MapItemType>(item->type_);
