@@ -1092,7 +1092,8 @@ static void GenCas(HInvoke* invoke, DataType::Type type, CodeGeneratorARMVIXL* c
     assembler->MaybeUnpoisonHeapReference(tmp);
   }
   __ Subs(tmp, tmp, expected);
-  __ B(ne, failure, (failure == loop_exit) ? kNear : kBranchWithoutHint);
+  static_cast<vixl32::MacroAssembler*>(assembler->GetVIXLAssembler())->
+      B(ne, failure, /* hint= */ (failure == loop_exit) ? kNear : kBranchWithoutHint);
   if (type == DataType::Type::kReference) {
     assembler->MaybePoisonHeapReference(value);
   }
