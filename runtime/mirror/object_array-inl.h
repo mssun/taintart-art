@@ -67,7 +67,7 @@ inline ObjPtr<ObjectArray<T>> ObjectArray<T>::Alloc(Thread* self,
 
 template<class T> template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
 inline T* ObjectArray<T>::Get(int32_t i) {
-  if (!CheckIsValidIndex(i)) {
+  if (!CheckIsValidIndex<kVerifyFlags>(i)) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
   }
