@@ -145,6 +145,21 @@ public class AhatClassInstance extends AhatInstance {
     return null;
   }
 
+  @Override public String getBinderProxyInterfaceName() {
+    if (isInstanceOfClass("android.os.BinderProxy")) {
+      for (AhatInstance inst : getReverseReferences()) {
+        String className = inst.getClassName();
+        if (className.endsWith("$Stub$Proxy")) {
+          Value value = inst.getField("mRemote");
+          if (value != null && value.asAhatInstance() == this) {
+            return className.substring(0, className.lastIndexOf("$Stub$Proxy"));
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   @Override public AhatInstance getAssociatedBitmapInstance() {
     return getBitmapInfo() == null ? null : this;
   }
