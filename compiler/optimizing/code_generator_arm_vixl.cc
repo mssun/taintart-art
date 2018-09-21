@@ -8650,7 +8650,7 @@ void CodeGeneratorARMVIXL::GenerateReadBarrierForRootSlow(HInstruction* instruct
 // otherwise return a fall-back info that should be used instead.
 HInvokeStaticOrDirect::DispatchInfo CodeGeneratorARMVIXL::GetSupportedInvokeStaticOrDirectDispatch(
     const HInvokeStaticOrDirect::DispatchInfo& desired_dispatch_info,
-    HInvokeStaticOrDirect* invoke ATTRIBUTE_UNUSED) {
+    ArtMethod* method ATTRIBUTE_UNUSED) {
   return desired_dispatch_info;
 }
 
