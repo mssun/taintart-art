@@ -70,36 +70,12 @@ target_config = {
                       '--gcstress',
                       '--gcverify']
     },
-    # TODO: Remove this configuration (which is a duplicate of
-    # 'art-interpreter-gcstress-gcverify') when it is no longer used by any
-    # continuous testing target (b/62611253).
-    'art-interpreter-gcstress' : {
-        'run-test' : ['--interpreter',
-                      '--gcstress',
-                      '--gcverify']
-    },
     'art-optimizing-gcstress-gcverify' : {
         'run-test' : ['--optimizing',
                       '--gcstress',
                       '--gcverify']
     },
-    # TODO: Remove this configuration (which is a duplicate of
-    # 'art-optimizing-gcstress-gcverify') when it is no longer used by any
-    # continuous testing target (b/62611253).
-    'art-optimizing-gcstress' : {
-        'run-test' : ['--optimizing',
-                      '--gcstress',
-                      '--gcverify']
-    },
     'art-jit-gcstress-gcverify' : {
-        'run-test' : ['--jit',
-                      '--gcstress',
-                      '--gcverify']
-    },
-    # TODO: Remove this configuration (which is a duplicate of
-    # 'art-jit-gcstress-gcverify') when it is no longer used by any
-    # continuous testing target (b/62611253).
-    'art-jit-gcstress' : {
         'run-test' : ['--jit',
                       '--gcstress',
                       '--gcverify']
@@ -112,29 +88,6 @@ target_config = {
     'art-read-barrier-heap-poisoning' : {
         'run-test': ['--interpreter',
                      '--optimizing'],
-        'env' : {
-            'ART_HEAP_POISONING' : 'true'
-        }
-    },
-    # TODO: Remove this configuration (which is a duplicate of
-    # 'art-read-barrier-heap-poisoning') when it is no longer used by any
-    # continuous testing target (b/62611253).
-    'art-read-barrier' : {
-        'run-test': ['--interpreter',
-                     '--optimizing'],
-        'env' : {
-            'ART_HEAP_POISONING' : 'true'
-        }
-    },
-    # TODO: Remove this configuration when it is no longer used by any
-    # continuous testing target (b/62611253). This configuration is scheduled
-    # for removal as it is now covered by 'art-interpreter-gcstress-gcverify'
-    # and 'art-optimizing-gcstress-gcverify' -- except for heap poisoning, but
-    # that's fine.
-    'art-read-barrier-gcstress' : {
-        'run-test' : ['--interpreter',
-                      '--optimizing',
-                      '--gcstress'],
         'env' : {
             'ART_HEAP_POISONING' : 'true'
         }
