@@ -204,7 +204,7 @@ TEST_F(ObjectTest, AllocArray_FillUsable) {
 template<typename ArrayT>
 void TestPrimitiveArray(ClassLinker* cl) {
   ScopedObjectAccess soa(Thread::Current());
-  typedef typename ArrayT::ElementType T;
+  using T = typename ArrayT::ElementType;
 
   StackHandleScope<2> hs(soa.Self());
   Handle<ArrayT> a = hs.NewHandle(ArrayT::Alloc(soa.Self(), 2));
@@ -252,9 +252,9 @@ TEST_F(ObjectTest, PrimitiveArray_Short_Alloc) {
 }
 
 TEST_F(ObjectTest, PrimitiveArray_Double_Alloc) {
-  typedef DoubleArray ArrayT;
+  using ArrayT = DoubleArray;
   ScopedObjectAccess soa(Thread::Current());
-  typedef typename ArrayT::ElementType T;
+  using T = typename ArrayT::ElementType;
 
   StackHandleScope<2> hs(soa.Self());
   Handle<ArrayT> a = hs.NewHandle(ArrayT::Alloc(soa.Self(), 2));
@@ -283,9 +283,9 @@ TEST_F(ObjectTest, PrimitiveArray_Double_Alloc) {
 }
 
 TEST_F(ObjectTest, PrimitiveArray_Float_Alloc) {
-  typedef FloatArray ArrayT;
+  using ArrayT = FloatArray;
   ScopedObjectAccess soa(Thread::Current());
-  typedef typename ArrayT::ElementType T;
+  using T = typename ArrayT::ElementType;
 
   StackHandleScope<2> hs(soa.Self());
   Handle<ArrayT> a = hs.NewHandle(ArrayT::Alloc(soa.Self(), 2));

@@ -148,11 +148,11 @@ enum HprofBasicType {
   hprof_basic_long = 11,
 };
 
-typedef uint32_t HprofStringId;
-typedef uint32_t HprofClassObjectId;
-typedef uint32_t HprofClassSerialNumber;
-typedef uint32_t HprofStackTraceSerialNumber;
-typedef uint32_t HprofStackFrameId;
+using HprofStringId = uint32_t;
+using HprofClassObjectId = uint32_t;
+using HprofClassSerialNumber = uint32_t;
+using HprofStackTraceSerialNumber = uint32_t;
+using HprofStackFrameId = uint32_t;
 static constexpr HprofStackTraceSerialNumber kHprofNullStackTrace = 0;
 
 class EndianOutput {

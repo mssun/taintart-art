@@ -320,7 +320,7 @@ void Transaction::VisitRoots(RootVisitor* visitor) {
 
 void Transaction::VisitObjectLogs(RootVisitor* visitor) {
   // List of moving roots.
-  typedef std::pair<mirror::Object*, mirror::Object*> ObjectPair;
+  using ObjectPair = std::pair<mirror::Object*, mirror::Object*>;
   std::list<ObjectPair> moving_roots;
 
   // Visit roots.
@@ -348,7 +348,7 @@ void Transaction::VisitObjectLogs(RootVisitor* visitor) {
 
 void Transaction::VisitArrayLogs(RootVisitor* visitor) {
   // List of moving roots.
-  typedef std::pair<mirror::Array*, mirror::Array*> ArrayPair;
+  using ArrayPair = std::pair<mirror::Array*, mirror::Array*>;
   std::list<ArrayPair> moving_roots;
 
   for (auto& it : array_logs_) {
