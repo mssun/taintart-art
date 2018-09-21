@@ -41,7 +41,7 @@ namespace {  // anonymous namespace
 class Matcher {
  public:
   // Match function type.
-  using MatchFn = bool(Matcher*);
+  typedef bool MatchFn(Matcher* matcher);
 
   template <size_t size>
   static bool Match(const CodeItemDataAccessor* code_item, MatchFn* const (&pattern)[size]);

@@ -55,9 +55,9 @@ static FILE* gOutFile = stdout;
 /*
  * Data types that match the definitions in the VM specification.
  */
-using u1 = uint8_t;
-using u4 = uint32_t;
-using u8 = uint64_t;
+typedef uint8_t  u1;
+typedef uint32_t u4;
+typedef uint64_t u8;
 
 /*
  * Returns a newly-allocated string for the "dot version" of the class

@@ -691,7 +691,7 @@ class TypeAdaptorAccessor : public Object::Accessor<T> {
 template <typename T>
 class FieldAccessViaAccessor {
  public:
-  using Accessor = Object::Accessor<T>;
+  typedef Object::Accessor<T> Accessor;
 
   // Apply an Accessor to get a field in an object.
   static void Get(ObjPtr<Object> obj,

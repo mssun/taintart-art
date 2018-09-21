@@ -164,7 +164,7 @@ TEST_F(ElfWriterTest, EncodeDecodeOatPatches) {
     // Patch manually.
     std::vector<uint8_t> expected = initial_data;
     for (uintptr_t location : patch_locations) {
-      using UnalignedAddress = __attribute__((__aligned__(1))) uint32_t;
+      typedef __attribute__((__aligned__(1))) uint32_t UnalignedAddress;
       *reinterpret_cast<UnalignedAddress*>(expected.data() + location) += delta;
     }
 
