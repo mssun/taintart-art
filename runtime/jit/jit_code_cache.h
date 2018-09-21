@@ -141,7 +141,7 @@ class JitCodeCache {
                       size_t code_size,
                       size_t data_size,
                       bool osr,
-                      Handle<mirror::ObjectArray<mirror::Object>> roots,
+                      const std::vector<Handle<mirror::Object>>& roots,
                       bool has_should_deoptimize_flag,
                       const ArenaSet<ArtMethod*>& cha_single_implementation_list)
       REQUIRES_SHARED(Locks::mutator_lock_)
@@ -297,14 +297,14 @@ class JitCodeCache {
                               size_t code_size,
                               size_t data_size,
                               bool osr,
-                              Handle<mirror::ObjectArray<mirror::Object>> roots,
+                              const std::vector<Handle<mirror::Object>>& roots,
                               bool has_should_deoptimize_flag,
                               const ArenaSet<ArtMethod*>& cha_single_implementation_list)
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Adds the given roots to the roots_data. Only a member for annotalysis.
-  void FillRootTable(uint8_t* roots_data, Handle<mirror::ObjectArray<mirror::Object>> roots)
+  void FillRootTable(uint8_t* roots_data, const std::vector<Handle<mirror::Object>>& roots)
       REQUIRES(lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
