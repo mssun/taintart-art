@@ -1761,7 +1761,6 @@ bool JitCodeCache::NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr
     }
 
     if (info->IsMethodBeingCompiled(osr)) {
-      VLOG(jit) << method->PrettyMethod() << " is already being compiled";
       return false;
     }
 
