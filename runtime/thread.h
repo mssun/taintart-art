@@ -1002,13 +1002,16 @@ class Thread {
       REQUIRES(!Locks::thread_suspend_count_lock_, !Locks::user_code_suspension_lock_);
 
   // Returns true if the thread is allowed to call into java.
-  bool CanCallIntoJava() const {
-    return can_call_into_java_;
+  bool IsRuntimeThread() const {
+    return is_runtime_thread_;
   }
 
-  void SetCanCallIntoJava(bool can_call_into_java) {
-    can_call_into_java_ = can_call_into_java;
+  void SetIsRuntimeThread(bool is_runtime_thread) {
+    is_runtime_thread_ = is_runtime_thread;
   }
+
+  // Returns true if the thread is allowed to load java classes.
+  bool CanLoadClasses() const;
 
   // Activates single step control for debugging. The thread takes the
   // ownership of the given SingleStepControl*. It is deleted by a call
@@ -1812,9 +1815,8 @@ class Thread {
   // compiled code or entrypoints.
   SafeMap<std::string, std::unique_ptr<TLSData>> custom_tls_ GUARDED_BY(Locks::custom_tls_lock_);
 
-  // True if the thread is allowed to call back into java (for e.g. during class resolution).
-  // By default this is true.
-  bool can_call_into_java_;
+  // True if the thread is some form of runtime thread (ex, GC or JIT).
+  bool is_runtime_thread_;
 
   // True if the thread is subject to user-code suspension. By default this is true. This can only
   // be false for threads where '!can_call_into_java_'.
