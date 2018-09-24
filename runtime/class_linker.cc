@@ -8474,7 +8474,7 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
   target_method->GetShorty(&shorty_length);
   int32_t num_params = static_cast<int32_t>(shorty_length + receiver_count - 1);
 
-  StackHandleScope<7> hs(self);
+  StackHandleScope<5> hs(self);
   ObjPtr<mirror::Class> array_of_class = GetClassRoot<mirror::ObjectArray<mirror::Class>>(this);
   Handle<mirror::ObjectArray<mirror::Class>> method_params(hs.NewHandle(
       mirror::ObjectArray<mirror::Class>::Alloc(self, array_of_class, num_params)));
@@ -8483,20 +8483,25 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
     return nullptr;
   }
 
+  const DexFile* dex_file = referrer->GetDexFile();
+  const DexFile::MethodId& method_id = dex_file->GetMethodId(method_handle.field_or_method_idx_);
   int32_t index = 0;
   if (receiver_count != 0) {
-    // Insert receiver
-    method_params->Set(index++, target_method->GetDeclaringClass());
+    // Insert receiver. Use the class identified in the method handle rather than the declaring
+    // class of the resolved method which may be super class or default interface method
+    // (b/115964401).
+    ObjPtr<mirror::Class> receiver_class = LookupResolvedType(method_id.class_idx_, referrer);
+    // receiver_class should have been resolved when resolving the target method.
+    DCHECK(receiver_class != nullptr);
+    method_params->Set(index++, receiver_class);
   }
-  DexFileParameterIterator it(*target_method->GetDexFile(), target_method->GetPrototype());
-  Handle<mirror::DexCache> target_method_dex_cache(hs.NewHandle(target_method->GetDexCache()));
-  Handle<mirror::ClassLoader> target_method_class_loader(hs.NewHandle(target_method->GetClassLoader()));
+
+  const DexFile::ProtoId& proto_id = dex_file->GetProtoId(method_id.proto_idx_);
+  DexFileParameterIterator it(*dex_file, proto_id);
   while (it.HasNext()) {
     DCHECK_LT(index, num_params);
     const dex::TypeIndex type_idx = it.GetTypeIdx();
-    ObjPtr<mirror::Class> klass = ResolveType(type_idx,
-                                              target_method_dex_cache,
-                                              target_method_class_loader);
+    ObjPtr<mirror::Class> klass = ResolveType(type_idx, referrer);
     if (nullptr == klass) {
       DCHECK(self->IsExceptionPending());
       return nullptr;
@@ -8505,7 +8510,8 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
     it.Next();
   }
 
-  Handle<mirror::Class> return_type = hs.NewHandle(target_method->ResolveReturnType());
+  Handle<mirror::Class> return_type =
+      hs.NewHandle(ResolveType(proto_id.return_type_idx_, referrer));
   if (UNLIKELY(return_type.IsNull())) {
     DCHECK(self->IsExceptionPending());
     return nullptr;
