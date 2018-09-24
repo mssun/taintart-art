@@ -1124,7 +1124,7 @@ static void DumpThread(Thread* t, void* arg) {
 
 void Trace::DumpThreadList(std::ostream& os) {
   Thread* self = Thread::Current();
-  for (auto it : exited_threads_) {
+  for (const auto& it : exited_threads_) {
     os << it.first << "\t" << it.second << "\n";
   }
   Locks::thread_list_lock_->AssertNotHeld(self);
