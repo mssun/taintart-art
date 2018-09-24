@@ -74,6 +74,8 @@ package com.android.ahat.heapdump {
     method public com.android.ahat.heapdump.AhatClassObj getAssociatedClassForOverhead();
     method public com.android.ahat.heapdump.AhatInstance getBaseline();
     method public java.lang.String getBinderProxyInterfaceName();
+    method public java.lang.String getBinderStubInterfaceName();
+    method public java.lang.String getBinderTokenDescriptor();
     method public java.lang.String getClassName();
     method public com.android.ahat.heapdump.AhatClassObj getClassObj();
     method public java.lang.String getDexCacheLocation(int);

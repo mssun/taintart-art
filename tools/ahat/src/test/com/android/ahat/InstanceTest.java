@@ -563,4 +563,46 @@ public class InstanceTest {
     AhatInstance carriedObj = dump.getDumpedAhatInstance("carriedBinderProxy");
     assertNull(carriedObj.getBinderProxyInterfaceName());
   }
+
+  @Test
+  public void binderToken() throws IOException {
+    TestDump dump = TestDump.getTestDump();
+
+    // Tokens without a descriptor return an empty string
+    AhatInstance binderToken = dump.getDumpedAhatInstance("binderToken");
+    assertEquals("", binderToken.getBinderTokenDescriptor());
+
+    // Named binder tokens return their descriptor
+    AhatInstance namedBinderToken = dump.getDumpedAhatInstance("namedBinderToken");
+    assertEquals("awesomeToken", namedBinderToken.getBinderTokenDescriptor());
+
+    // Binder stubs aren't considered binder tokens
+    AhatInstance binderService = dump.getDumpedAhatInstance("binderService");
+    assertEquals(null, binderService.getBinderTokenDescriptor());
+  }
+
+  @Test
+  public void binderStub() throws IOException {
+    TestDump dump = TestDump.getTestDump();
+
+    // Regular binder service returns the interface name and no token descriptor
+    AhatInstance binderService = dump.getDumpedAhatInstance("binderService");
+    assertEquals("DumpedStuff$IDumpedManager", binderService.getBinderStubInterfaceName());
+
+    // Binder tokens aren't considered binder services
+    AhatInstance binderToken = dump.getDumpedAhatInstance("binderToken");
+    assertEquals(null, binderToken.getBinderStubInterfaceName());
+
+    // Named binder tokens aren't considered binder services
+    AhatInstance namedBinderToken = dump.getDumpedAhatInstance("namedBinderToken");
+    assertEquals(null, namedBinderToken.getBinderStubInterfaceName());
+
+    // Fake service returns null
+    AhatInstance fakeService = dump.getDumpedAhatInstance("fakeBinderService");
+    assertNull(fakeService.getBinderStubInterfaceName());
+
+    // Random non-binder object returns null
+    AhatInstance nonBinderObject = dump.getDumpedAhatInstance("anObject");
+    assertNull(nonBinderObject.getBinderStubInterfaceName());
+  }
 }
