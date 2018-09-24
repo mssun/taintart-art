@@ -988,6 +988,7 @@ else
 
     if [ "$USE_GDB" = "y" ]; then
       # When running under gdb, we cannot do piping and grepping...
+      echo "Run 'gdbclient.py -p <pid printed below>' to debug."
       $cmdline "$@"
     else
       if [ "$TIME_OUT" != "gdb" ]; then
