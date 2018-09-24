@@ -43,7 +43,7 @@ seconds_per_hour=3600
 # Kill logd first, so that when we set the adb buffer size later in this file,
 # it is brought up again.
 echo -e "${green}Killing logd, seen leaking on fugu/N${nc}"
-adb shell killall -9 /system/bin/logd
+adb shell pkill -9 -U logd logd && echo -e "${green}...logd killed${nc}"
 
 # Update date on device if the difference with host is more than one hour.
 if [ $abs_time_difference_in_seconds -gt $seconds_per_hour ]; then
