@@ -123,7 +123,7 @@ class SsaBuilder : public ValueObject {
   HArrayGet* GetFloatOrDoubleEquivalentOfArrayGet(HArrayGet* aget);
 
   void RemoveRedundantUninitializedStrings();
-  void ReplaceUninitializedStringPhis();
+  bool ReplaceUninitializedStringPhis();
 
   HGraph* const graph_;
   Handle<mirror::ClassLoader> class_loader_;
