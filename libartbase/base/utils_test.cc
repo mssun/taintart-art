@@ -126,4 +126,12 @@ TEST_F(UtilsTest, BoundsCheckedCast) {
   EXPECT_EQ(BoundsCheckedCast<const uint64_t*>(buffer + 57, buffer, buffer_end), nullptr);
 }
 
+TEST_F(UtilsTest, GetProcessStatus) {
+  EXPECT_EQ("utils_test", GetProcessStatus("Name"));
+  EXPECT_EQ("R (running)", GetProcessStatus("State"));
+  EXPECT_EQ("<unknown>", GetProcessStatus("tate"));
+  EXPECT_EQ("<unknown>", GetProcessStatus("e"));
+  EXPECT_EQ("<unknown>", GetProcessStatus("Dummy"));
+}
+
 }  // namespace art
