@@ -131,7 +131,7 @@ struct SubtypeCheckInfoTest : public ::testing::Test {
 
   // Create an SubtypeCheckInfo with the same depth, but with everything else reset.
   // Returns: SubtypeCheckInfo in the Uninitialized state.
-  static SubtypeCheckInfo CopyCleared(SubtypeCheckInfo sc) {
+  static SubtypeCheckInfo CopyCleared(const SubtypeCheckInfo& sc) {
     SubtypeCheckInfo cleared_copy{};
     cleared_copy.depth_ = sc.depth_;
     DCHECK_EQ(SubtypeCheckInfo::kUninitialized, cleared_copy.GetState());

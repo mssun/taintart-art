@@ -704,7 +704,7 @@ class JniCallDefaultMethodsTest {
   }
 
  private:
-  void TestCalls(const char* declaring_class, std::vector<const char*> methods) {
+  void TestCalls(const char* declaring_class, const std::vector<const char*>& methods) {
     jmethodID new_method = env_->GetMethodID(concrete_class_, "<init>", "()V");
     jobject obj = env_->NewObject(concrete_class_, new_method);
     CHECK(!env_->ExceptionCheck());
