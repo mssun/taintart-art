@@ -1021,6 +1021,66 @@ class HVecSADAccumulate final : public HVecOperation {
   DEFAULT_COPY_CONSTRUCTOR(VecSADAccumulate);
 };
 
+// Performs dot product of two vectors and adds the result to wider precision components in
+// the accumulator.
+//
+// viz. DOT_PRODUCT([ a1, .. , am], [ x1, .. , xn ], [ y1, .. , yn ]) =
+//                  [ a1 + sum(xi * yi), .. , am + sum(xj * yj) ],
+//      for m <= n, non-overlapping sums,
+//      for either both signed or both unsigned operands x, y.
+//
+// Notes:
+//   - packed type reflects the type of sum reduction, not the type of the operands.
+//   - IsZeroExtending() is used to determine the kind of signed/zero extension to be
+//     performed for the operands.
+//
+// TODO: Support types other than kInt32 for packed type.
+class HVecDotProd final : public HVecOperation {
+ public:
+  HVecDotProd(ArenaAllocator* allocator,
+              HInstruction* accumulator,
+              HInstruction* left,
+              HInstruction* right,
+              DataType::Type packed_type,
+              bool is_zero_extending,
+              size_t vector_length,
+              uint32_t dex_pc)
+    : HVecOperation(kVecDotProd,
+                    allocator,
+                    packed_type,
+                    SideEffects::None(),
+                    /* number_of_inputs */ 3,
+                    vector_length,
+                    dex_pc) {
+    DCHECK(HasConsistentPackedTypes(accumulator, packed_type));
+    DCHECK(DataType::IsIntegralType(packed_type));
+    DCHECK(left->IsVecOperation());
+    DCHECK(right->IsVecOperation());
+    DCHECK_EQ(ToSignedType(left->AsVecOperation()->GetPackedType()),
+              ToSignedType(right->AsVecOperation()->GetPackedType()));
+    SetRawInputAt(0, accumulator);
+    SetRawInputAt(1, left);
+    SetRawInputAt(2, right);
+    SetPackedFlag<kFieldHDotProdIsZeroExtending>(is_zero_extending);
+  }
+
+  bool IsZeroExtending() const { return GetPackedFlag<kFieldHDotProdIsZeroExtending>(); }
+
+  bool CanBeMoved() const override { return true; }
+
+  DECLARE_INSTRUCTION(VecDotProd);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(VecDotProd);
+
+ private:
+  // Additional packed bits.
+  static constexpr size_t kFieldHDotProdIsZeroExtending =
+      HVecOperation::kNumberOfVectorOpPackedBits;
+  static constexpr size_t kNumberOfHDotProdPackedBits = kFieldHDotProdIsZeroExtending + 1;
+  static_assert(kNumberOfHDotProdPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
+};
+
 // Loads a vector from memory, viz. load(mem, 1)
 // yield the vector [ mem(1), .. , mem(n) ].
 class HVecLoad final : public HVecMemoryOperation {

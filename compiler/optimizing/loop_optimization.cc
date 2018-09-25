@@ -351,7 +351,10 @@ static bool HasReductionFormat(HInstruction* reduction, HInstruction* phi) {
 
 // Translates vector operation to reduction kind.
 static HVecReduce::ReductionKind GetReductionKind(HVecOperation* reduction) {
-  if (reduction->IsVecAdd() || reduction->IsVecSub() || reduction->IsVecSADAccumulate()) {
+  if (reduction->IsVecAdd() ||
+      reduction->IsVecSub() ||
+      reduction->IsVecSADAccumulate() ||
+      reduction->IsVecDotProd()) {
     return HVecReduce::kSum;
   }
   LOG(FATAL) << "Unsupported SIMD reduction " << reduction->GetId();
@@ -429,6 +432,23 @@ static void PeelByCount(HLoopInformation* loop_info, int count) {
     PeelUnrollSimpleHelper helper(loop_info);
     helper.DoPeeling();
   }
+}
+
+// Returns the narrower type out of instructions a and b types.
+static DataType::Type GetNarrowerType(HInstruction* a, HInstruction* b) {
+  DataType::Type type = a->GetType();
+  if (DataType::Size(b->GetType()) < DataType::Size(type)) {
+    type = b->GetType();
+  }
+  if (a->IsTypeConversion() &&
+      DataType::Size(a->InputAt(0)->GetType()) < DataType::Size(type)) {
+    type = a->InputAt(0)->GetType();
+  }
+  if (b->IsTypeConversion() &&
+      DataType::Size(b->InputAt(0)->GetType()) < DataType::Size(type)) {
+    type = b->InputAt(0)->GetType();
+  }
+  return type;
 }
 
 //
@@ -1289,6 +1309,7 @@ bool HLoopOptimization::VectorizeDef(LoopNode* node,
     DataType::Type type = instruction->GetType();
     // Recognize SAD idiom or direct reduction.
     if (VectorizeSADIdiom(node, instruction, generate_code, type, restrictions) ||
+        VectorizeDotProdIdiom(node, instruction, generate_code, type, restrictions) ||
         (TrySetVectorType(type, &restrictions) &&
          VectorizeUse(node, instruction, generate_code, type, restrictions))) {
       if (generate_code) {
@@ -1531,11 +1552,11 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
         case DataType::Type::kBool:
         case DataType::Type::kUint8:
         case DataType::Type::kInt8:
-          *restrictions |= kNoDiv | kNoReduction;
+          *restrictions |= kNoDiv | kNoReduction | kNoDotProd;
           return TrySetVectorLength(8);
         case DataType::Type::kUint16:
         case DataType::Type::kInt16:
-          *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction;
+          *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction | kNoDotProd;
           return TrySetVectorLength(4);
         case DataType::Type::kInt32:
           *restrictions |= kNoDiv | kNoWideSAD;
@@ -1580,12 +1601,23 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
           case DataType::Type::kBool:
           case DataType::Type::kUint8:
           case DataType::Type::kInt8:
-            *restrictions |=
-                kNoMul | kNoDiv | kNoShift | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd | kNoSAD;
+            *restrictions |= kNoMul |
+                             kNoDiv |
+                             kNoShift |
+                             kNoAbs |
+                             kNoSignedHAdd |
+                             kNoUnroundedHAdd |
+                             kNoSAD |
+                             kNoDotProd;
             return TrySetVectorLength(16);
           case DataType::Type::kUint16:
           case DataType::Type::kInt16:
-            *restrictions |= kNoDiv | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd | kNoSAD;
+            *restrictions |= kNoDiv |
+                             kNoAbs |
+                             kNoSignedHAdd |
+                             kNoUnroundedHAdd |
+                             kNoSAD|
+                             kNoDotProd;
             return TrySetVectorLength(8);
           case DataType::Type::kInt32:
             *restrictions |= kNoDiv | kNoSAD;
@@ -1610,11 +1642,11 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
           case DataType::Type::kBool:
           case DataType::Type::kUint8:
           case DataType::Type::kInt8:
-            *restrictions |= kNoDiv;
+            *restrictions |= kNoDiv | kNoDotProd;
             return TrySetVectorLength(16);
           case DataType::Type::kUint16:
           case DataType::Type::kInt16:
-            *restrictions |= kNoDiv | kNoStringCharAt;
+            *restrictions |= kNoDiv | kNoStringCharAt | kNoDotProd;
             return TrySetVectorLength(8);
           case DataType::Type::kInt32:
             *restrictions |= kNoDiv;
@@ -1639,11 +1671,11 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
           case DataType::Type::kBool:
           case DataType::Type::kUint8:
           case DataType::Type::kInt8:
-            *restrictions |= kNoDiv;
+            *restrictions |= kNoDiv | kNoDotProd;
             return TrySetVectorLength(16);
           case DataType::Type::kUint16:
           case DataType::Type::kInt16:
-            *restrictions |= kNoDiv | kNoStringCharAt;
+            *restrictions |= kNoDiv | kNoStringCharAt | kNoDotProd;
             return TrySetVectorLength(8);
           case DataType::Type::kInt32:
             *restrictions |= kNoDiv;
@@ -2071,18 +2103,7 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
   HInstruction* r = a;
   HInstruction* s = b;
   bool is_unsigned = false;
-  DataType::Type sub_type = a->GetType();
-  if (DataType::Size(b->GetType()) < DataType::Size(sub_type)) {
-    sub_type = b->GetType();
-  }
-  if (a->IsTypeConversion() &&
-      DataType::Size(a->InputAt(0)->GetType()) < DataType::Size(sub_type)) {
-    sub_type = a->InputAt(0)->GetType();
-  }
-  if (b->IsTypeConversion() &&
-      DataType::Size(b->InputAt(0)->GetType()) < DataType::Size(sub_type)) {
-    sub_type = b->InputAt(0)->GetType();
-  }
+  DataType::Type sub_type = GetNarrowerType(a, b);
   if (reduction_type != sub_type &&
       (!IsNarrowerOperands(a, b, sub_type, &r, &s, &is_unsigned) || is_unsigned)) {
     return false;
@@ -2115,6 +2136,75 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
         MaybeRecordStat(stats_, MethodCompilationStat::kLoopVectorizedIdiom);
       } else {
         GenerateVecOp(v, vector_map_->Get(r), nullptr, reduction_type);
+        GenerateVecOp(instruction, vector_map_->Get(q), vector_map_->Get(v), reduction_type);
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+// Method recognises the following dot product idiom:
+//   q += a * b for operands a, b whose type is narrower than the reduction one.
+// Provided that the operands have the same type or are promoted to a wider form.
+// Since this may involve a vector length change, the idiom is handled by going directly
+// to a dot product node (rather than relying combining finer grained nodes later).
+bool HLoopOptimization::VectorizeDotProdIdiom(LoopNode* node,
+                                              HInstruction* instruction,
+                                              bool generate_code,
+                                              DataType::Type reduction_type,
+                                              uint64_t restrictions) {
+  if (!instruction->IsAdd() || (reduction_type != DataType::Type::kInt32)) {
+    return false;
+  }
+
+  HInstruction* q = instruction->InputAt(0);
+  HInstruction* v = instruction->InputAt(1);
+  if (!v->IsMul() || v->GetType() != reduction_type) {
+    return false;
+  }
+
+  HInstruction* a = v->InputAt(0);
+  HInstruction* b = v->InputAt(1);
+  HInstruction* r = a;
+  HInstruction* s = b;
+  DataType::Type op_type = GetNarrowerType(a, b);
+  bool is_unsigned = false;
+
+  if (!IsNarrowerOperands(a, b, op_type, &r, &s, &is_unsigned)) {
+    return false;
+  }
+  op_type = HVecOperation::ToProperType(op_type, is_unsigned);
+
+  if (!TrySetVectorType(op_type, &restrictions) ||
+      HasVectorRestrictions(restrictions, kNoDotProd)) {
+    return false;
+  }
+
+  DCHECK(r != nullptr && s != nullptr);
+  // Accept dot product idiom for vectorizable operands. Vectorized code uses the shorthand
+  // idiomatic operation. Sequential code uses the original scalar expressions.
+  if (generate_code && vector_mode_ != kVector) {  // de-idiom
+    r = a;
+    s = b;
+  }
+  if (VectorizeUse(node, q, generate_code, op_type, restrictions) &&
+      VectorizeUse(node, r, generate_code, op_type, restrictions) &&
+      VectorizeUse(node, s, generate_code, op_type, restrictions)) {
+    if (generate_code) {
+      if (vector_mode_ == kVector) {
+        vector_map_->Put(instruction, new (global_allocator_) HVecDotProd(
+            global_allocator_,
+            vector_map_->Get(q),
+            vector_map_->Get(r),
+            vector_map_->Get(s),
+            reduction_type,
+            is_unsigned,
+            GetOtherVL(reduction_type, op_type, vector_length_),
+            kNoDexPc));
+        MaybeRecordStat(stats_, MethodCompilationStat::kLoopVectorizedIdiom);
+      } else {
+        GenerateVecOp(v, vector_map_->Get(r), vector_map_->Get(s), reduction_type);
         GenerateVecOp(instruction, vector_map_->Get(q), vector_map_->Get(v), reduction_type);
       }
     }
