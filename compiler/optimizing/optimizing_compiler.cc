@@ -399,7 +399,8 @@ class OptimizingCompiler final : public Compiler {
                             PassObserver* pass_observer,
                             VariableSizedHandleScope* handles) const;
 
-  void GenerateJitDebugInfo(ArtMethod* method, debug::MethodDebugInfo method_debug_info)
+  void GenerateJitDebugInfo(ArtMethod* method,
+                            const debug::MethodDebugInfo& method_debug_info)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   std::unique_ptr<OptimizingCompilerStats> compilation_stats_;
@@ -1406,7 +1407,8 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   return true;
 }
 
-void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method, debug::MethodDebugInfo info) {
+void OptimizingCompiler::GenerateJitDebugInfo(
+    ArtMethod* method, const debug::MethodDebugInfo& info) {
   const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
   DCHECK(compiler_options.GenerateAnyDebugInfo());
 

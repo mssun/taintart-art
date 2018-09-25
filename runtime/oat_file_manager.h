@@ -73,7 +73,8 @@ class OatFileManager {
 
   // Returns the oat files for the images, registers the oat files.
   // Takes ownership of the imagespace's underlying oat files.
-  std::vector<const OatFile*> RegisterImageOatFiles(std::vector<gc::space::ImageSpace*> spaces)
+  std::vector<const OatFile*> RegisterImageOatFiles(
+      const std::vector<gc::space::ImageSpace*>& spaces)
       REQUIRES(!Locks::oat_file_manager_lock_);
 
   // Finds or creates the oat file holding dex_location. Then loads and returns
