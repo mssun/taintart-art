@@ -50,7 +50,7 @@ void X86BaseRelativePatcher::PatchCall(std::vector<uint8_t>* code,
   uint32_t displacement = target_offset - patch_offset;
   displacement -= kPcDisplacement;  // The base PC is at the end of the 4-byte patch.
 
-  typedef __attribute__((__aligned__(1))) int32_t unaligned_int32_t;
+  using unaligned_int32_t __attribute__((__aligned__(1))) = int32_t;
   reinterpret_cast<unaligned_int32_t*>(&(*code)[literal_offset])[0] = displacement;
 }
 

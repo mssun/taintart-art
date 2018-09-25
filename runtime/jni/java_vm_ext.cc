@@ -333,7 +333,7 @@ class Libraries {
     }
     ScopedThreadSuspension sts(self, kNative);
     // Do this without holding the jni libraries lock to prevent possible deadlocks.
-    typedef void (*JNI_OnUnloadFn)(JavaVM*, void*);
+    using JNI_OnUnloadFn = void(*)(JavaVM*, void*);
     for (auto library : unload_libraries) {
       void* const sym = library->FindSymbol("JNI_OnUnload", nullptr);
       if (sym == nullptr) {
@@ -1026,7 +1026,7 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
     self->SetClassLoaderOverride(class_loader);
 
     VLOG(jni) << "[Calling JNI_OnLoad in \"" << path << "\"]";
-    typedef int (*JNI_OnLoadFn)(JavaVM*, void*);
+    using JNI_OnLoadFn = int(*)(JavaVM*, void*);
     JNI_OnLoadFn jni_on_load = reinterpret_cast<JNI_OnLoadFn>(sym);
     int version = (*jni_on_load)(this, nullptr);
 

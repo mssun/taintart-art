@@ -25,7 +25,7 @@
 namespace art {
 namespace Test1940DdmExt {
 
-typedef jvmtiError (*DdmHandleChunk)(jvmtiEnv* env,
+using DdmHandleChunk = jvmtiError(*)(jvmtiEnv* env,
                                      jint type_in,
                                      jint len_in,
                                      const jbyte* data_in,

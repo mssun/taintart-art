@@ -307,7 +307,7 @@ struct FieldGapsComparator {
     return lhs.size < rhs.size || (lhs.size == rhs.size && lhs.start_offset > rhs.start_offset);
   }
 };
-typedef std::priority_queue<FieldGap, std::vector<FieldGap>, FieldGapsComparator> FieldGaps;
+using FieldGaps = std::priority_queue<FieldGap, std::vector<FieldGap>, FieldGapsComparator>;
 
 // Adds largest aligned gaps to queue of gaps.
 static void AddFieldGap(uint32_t gap_start, uint32_t gap_end, FieldGaps* gaps) {
@@ -2301,7 +2301,7 @@ ObjPtr<mirror::Class> ClassLinker::EnsureResolved(Thread* self,
   return klass;
 }
 
-typedef std::pair<const DexFile*, const DexFile::ClassDef*> ClassPathEntry;
+using ClassPathEntry = std::pair<const DexFile*, const DexFile::ClassDef*>;
 
 // Search a collection of DexFiles for a descriptor
 ClassPathEntry FindInClassPath(const char* descriptor,
