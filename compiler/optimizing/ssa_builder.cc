@@ -440,7 +440,10 @@ static bool HasAliasInEnvironments(HInstruction* instruction) {
   return false;
 }
 
-void SsaBuilder::ReplaceUninitializedStringPhis() {
+// Returns whether the analysis succeeded. If it did not, we are going to bail
+// to interpreter.
+// TODO(ngeoffray): Remove this workaround.
+bool SsaBuilder::ReplaceUninitializedStringPhis() {
   ScopedArenaHashSet<HInstruction*> seen_instructions(
       local_allocator_->Adapter(kArenaAllocGraphBuilder));
   ScopedArenaVector<HInstruction*> worklist(local_allocator_->Adapter(kArenaAllocGraphBuilder));
@@ -467,17 +470,23 @@ void SsaBuilder::ReplaceUninitializedStringPhis() {
         if (found_instance == nullptr) {
           found_instance = current->AsNewInstance();
         } else {
-          DCHECK(found_instance == current);
+          if (found_instance != current) {
+            return false;
+          }
         }
       } else if (current->IsPhi()) {
         // Push all inputs to the worklist. Those should be Phis or NewInstance.
         for (HInstruction* input : current->GetInputs()) {
-          DCHECK(input->IsPhi() || input->IsNewInstance()) << input->DebugName();
+          if (!input->IsPhi() && !input->IsNewInstance()) {
+            return false;
+          }
           worklist.push_back(input);
         }
       } else {
         // The verifier prevents any other DEX uses of the uninitialized string.
-        DCHECK(current->IsEqual() || current->IsNotEqual());
+        if (!current->IsEqual() && !current->IsNotEqual()) {
+          return false;
+        }
         continue;
       }
       current->ReplaceUsesDominatedBy(invoke, invoke);
@@ -487,13 +496,18 @@ void SsaBuilder::ReplaceUninitializedStringPhis() {
       // be Phi, or Equal/NotEqual.
       for (const HUseListNode<HInstruction*>& use : current->GetUses()) {
         HInstruction* user = use.GetUser();
-        DCHECK(user->IsPhi() || user->IsEqual() || user->IsNotEqual()) << user->DebugName();
+        if (!user->IsPhi() && !user->IsEqual() && !user->IsNotEqual()) {
+          return false;
+        }
         worklist.push_back(user);
       }
     } while (!worklist.empty());
     seen_instructions.clear();
-    DCHECK(found_instance != nullptr);
+    if (found_instance == nullptr) {
+      return false;
+    }
   }
+  return true;
 }
 
 void SsaBuilder::RemoveRedundantUninitializedStrings() {
@@ -547,7 +561,9 @@ GraphAnalysisResult SsaBuilder::BuildSsa() {
   // Replace Phis that feed in a String.<init>, as well as their aliases, with
   // the actual String allocation invocation. We do this first, as the phis stored in
   // the data structure might get removed from the graph in later stages during `BuildSsa`.
-  ReplaceUninitializedStringPhis();
+  if (!ReplaceUninitializedStringPhis()) {
+    return kAnalysisSkipped;
+  }
 
   // Propagate types of phis. At this point, phis are typed void in the general
   // case, or float/double/reference if we created an equivalent phi. So we need
