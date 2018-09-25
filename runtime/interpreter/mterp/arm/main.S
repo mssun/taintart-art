@@ -292,7 +292,7 @@ unspecified registers or condition codes.
 .endm
 
 /*
- * cfi support macros.
+ * function support macros.
  */
 .macro ENTRY name
     .arm
@@ -302,13 +302,9 @@ unspecified registers or condition codes.
     /* Cache alignment for function entry */
     .balign 16
 \name:
-    .cfi_startproc
-    .fnstart
 .endm
 
 .macro END name
-    .fnend
-    .cfi_endproc
     .size \name, .-\name
 .endm
 
@@ -345,6 +341,7 @@ unspecified registers or condition codes.
  */
 
 ENTRY ExecuteMterpImpl
+    .cfi_startproc
     stmfd   sp!, {r3-r10,fp,lr}         @ save 10 regs, (r3 just to align 64)
     .cfi_adjust_cfa_offset 40
     .cfi_rel_offset r3, 0
@@ -389,6 +386,8 @@ ENTRY ExecuteMterpImpl
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     GOTO_OPCODE ip                      @ jump to next instruction
     /* NOTE: no fallthrough */
+    // cfi info continues, and covers the whole mterp implementation.
+    END ExecuteMterpImpl
 
 %def alt_stub():
 /*
@@ -411,6 +410,7 @@ ENTRY ExecuteMterpImpl
 
 
 %def helpers():
+    ENTRY MterpHelpers
 %  op_float_to_long_helper_code()
 %  op_double_to_long_helper_code()
 
@@ -710,8 +710,8 @@ MterpProfileActive:
     mov     r0, rINST                               @ restore return value
     ldmfd   sp!, {r3-r10,fp,pc}                     @ restore 10 regs and return
 
-    END ExecuteMterpImpl
-
+    .cfi_endproc
+    END MterpHelpers
 
 %def instruction_end():
 
@@ -742,3 +742,8 @@ artMterpAsmInstructionStart = .L_op_nop
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
+
+%def opcode_start():
+    ENTRY Mterp_${opcode}
+%def opcode_end():
+    END Mterp_${opcode}
