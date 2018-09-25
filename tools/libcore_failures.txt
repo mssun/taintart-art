@@ -226,5 +226,12 @@
           "libcore.libcore.io.FdsanTest#testParcelFileDescriptor",
           "libcore.libcore.io.FdsanTest#testDatagramSocket",
           "libcore.libcore.io.FdsanTest#testSocket"]
+},
+{
+  description: "Timeout on heap-poisoning target builds",
+  result: EXEC_FAILED,
+  modes: [device],
+  bug: 116446372,
+  names: ["libcore.libcore.io.FdsanTest#testSocket"]
 }
 ]
