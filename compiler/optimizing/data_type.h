@@ -231,6 +231,21 @@ class DataType {
     }
   }
 
+  static Type ToUnsigned(Type type) {
+    switch (type) {
+      case Type::kInt8:
+        return Type::kUint8;
+      case Type::kInt16:
+        return Type::kUint16;
+      case Type::kInt32:
+        return Type::kUint32;
+      case Type::kInt64:
+        return Type::kUint64;
+      default:
+        return type;
+    }
+  }
+
   static const char* PrettyDescriptor(Type type);
 
  private:
