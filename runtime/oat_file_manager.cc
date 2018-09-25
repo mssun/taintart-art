@@ -151,7 +151,7 @@ OatFileManager::~OatFileManager() {
 }
 
 std::vector<const OatFile*> OatFileManager::RegisterImageOatFiles(
-    std::vector<gc::space::ImageSpace*> spaces) {
+    const std::vector<gc::space::ImageSpace*>& spaces) {
   std::vector<const OatFile*> oat_files;
   for (gc::space::ImageSpace* space : spaces) {
     oat_files.push_back(RegisterOatFile(space->ReleaseOatFile()));
