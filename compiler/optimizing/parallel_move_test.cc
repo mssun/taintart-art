@@ -174,8 +174,8 @@ class ParallelMoveTest : public ::testing::Test {
 template<> const bool ParallelMoveTest<TestParallelMoveResolverWithSwap>::has_swap = true;
 template<> const bool ParallelMoveTest<TestParallelMoveResolverNoSwap>::has_swap = false;
 
-typedef ::testing::Types<TestParallelMoveResolverWithSwap, TestParallelMoveResolverNoSwap>
-    ParallelMoveResolverTestTypes;
+using ParallelMoveResolverTestTypes =
+    ::testing::Types<TestParallelMoveResolverWithSwap, TestParallelMoveResolverNoSwap>;
 
 TYPED_TEST_CASE(ParallelMoveTest, ParallelMoveResolverTestTypes);
 

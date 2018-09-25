@@ -45,7 +45,7 @@ static const android::NativeBridgeRuntimeCallbacks* gNativeBridgeArtCallbacks;
 
 static jint trampoline_JNI_OnLoad(JavaVM* vm, void* reserved) {
   JNIEnv* env = nullptr;
-  typedef jint (*FnPtr_t)(JavaVM*, void*);
+  using FnPtr_t = jint(*)(JavaVM*, void*);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>(find_native_bridge_method("JNI_OnLoad")->fnPtr);
 
   vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
@@ -91,9 +91,8 @@ static jint trampoline_JNI_OnLoad(JavaVM* vm, void* reserved) {
   return fnPtr(vm, reserved);
 }
 
-static void trampoline_Java_Main_testFindClassOnAttachedNativeThread(JNIEnv* env,
-                                                                     jclass klass) {
-  typedef void (*FnPtr_t)(JNIEnv*, jclass);
+static void trampoline_Java_Main_testFindClassOnAttachedNativeThread(JNIEnv* env, jclass klass) {
+  using FnPtr_t = void(*)(JNIEnv*, jclass);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>
     (find_native_bridge_method("testFindClassOnAttachedNativeThread")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
@@ -102,7 +101,7 @@ static void trampoline_Java_Main_testFindClassOnAttachedNativeThread(JNIEnv* env
 
 static void trampoline_Java_Main_testFindFieldOnAttachedNativeThreadNative(JNIEnv* env,
                                                                            jclass klass) {
-  typedef void (*FnPtr_t)(JNIEnv*, jclass);
+  using FnPtr_t = void(*)(JNIEnv*, jclass);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>
     (find_native_bridge_method("testFindFieldOnAttachedNativeThreadNative")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
@@ -111,7 +110,7 @@ static void trampoline_Java_Main_testFindFieldOnAttachedNativeThreadNative(JNIEn
 
 static void trampoline_Java_Main_testCallStaticVoidMethodOnSubClassNative(JNIEnv* env,
                                                                           jclass klass) {
-  typedef void (*FnPtr_t)(JNIEnv*, jclass);
+  using FnPtr_t = void(*)(JNIEnv*, jclass);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>
     (find_native_bridge_method("testCallStaticVoidMethodOnSubClassNative")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
@@ -119,7 +118,7 @@ static void trampoline_Java_Main_testCallStaticVoidMethodOnSubClassNative(JNIEnv
 }
 
 static jobject trampoline_Java_Main_testGetMirandaMethodNative(JNIEnv* env, jclass klass) {
-  typedef jobject (*FnPtr_t)(JNIEnv*, jclass);
+  using FnPtr_t = jobject(*)(JNIEnv*, jclass);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>
     (find_native_bridge_method("testGetMirandaMethodNative")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
@@ -127,7 +126,7 @@ static jobject trampoline_Java_Main_testGetMirandaMethodNative(JNIEnv* env, jcla
 }
 
 static void trampoline_Java_Main_testNewStringObject(JNIEnv* env, jclass klass) {
-  typedef void (*FnPtr_t)(JNIEnv*, jclass);
+  using FnPtr_t = void(*)(JNIEnv*, jclass);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>
     (find_native_bridge_method("testNewStringObject")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
@@ -135,7 +134,7 @@ static void trampoline_Java_Main_testNewStringObject(JNIEnv* env, jclass klass) 
 }
 
 static void trampoline_Java_Main_testZeroLengthByteBuffers(JNIEnv* env, jclass klass) {
-  typedef void (*FnPtr_t)(JNIEnv*, jclass);
+  using FnPtr_t = void(*)(JNIEnv*, jclass);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>
     (find_native_bridge_method("testZeroLengthByteBuffers")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
@@ -145,8 +144,8 @@ static void trampoline_Java_Main_testZeroLengthByteBuffers(JNIEnv* env, jclass k
 static jbyte trampoline_Java_Main_byteMethod(JNIEnv* env, jclass klass, jbyte b1, jbyte b2,
                                              jbyte b3, jbyte b4, jbyte b5, jbyte b6,
                                              jbyte b7, jbyte b8, jbyte b9, jbyte b10) {
-  typedef jbyte (*FnPtr_t)(JNIEnv*, jclass, jbyte, jbyte, jbyte, jbyte, jbyte,
-                           jbyte, jbyte, jbyte, jbyte, jbyte);
+  using FnPtr_t = jbyte(*)(JNIEnv*, jclass, jbyte, jbyte, jbyte, jbyte, jbyte, jbyte, jbyte, jbyte,
+                           jbyte, jbyte);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>(find_native_bridge_method("byteMethod")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
   return fnPtr(env, klass, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10);
@@ -155,8 +154,8 @@ static jbyte trampoline_Java_Main_byteMethod(JNIEnv* env, jclass klass, jbyte b1
 static jshort trampoline_Java_Main_shortMethod(JNIEnv* env, jclass klass, jshort s1, jshort s2,
                                                jshort s3, jshort s4, jshort s5, jshort s6,
                                                jshort s7, jshort s8, jshort s9, jshort s10) {
-  typedef jshort (*FnPtr_t)(JNIEnv*, jclass, jshort, jshort, jshort, jshort, jshort,
-                            jshort, jshort, jshort, jshort, jshort);
+  using FnPtr_t = jshort(*)(JNIEnv*, jclass, jshort, jshort, jshort, jshort, jshort, jshort, jshort,
+                            jshort, jshort, jshort);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>(find_native_bridge_method("shortMethod")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
   return fnPtr(env, klass, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10);
@@ -166,7 +165,7 @@ static jboolean trampoline_Java_Main_booleanMethod(JNIEnv* env, jclass klass, jb
                                                    jboolean b2, jboolean b3, jboolean b4,
                                                    jboolean b5, jboolean b6, jboolean b7,
                                                    jboolean b8, jboolean b9, jboolean b10) {
-  typedef jboolean (*FnPtr_t)(JNIEnv*, jclass, jboolean, jboolean, jboolean, jboolean, jboolean,
+  using FnPtr_t = jboolean(*)(JNIEnv*, jclass, jboolean, jboolean, jboolean, jboolean, jboolean,
                               jboolean, jboolean, jboolean, jboolean, jboolean);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>(find_native_bridge_method("booleanMethod")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
@@ -176,8 +175,8 @@ static jboolean trampoline_Java_Main_booleanMethod(JNIEnv* env, jclass klass, jb
 static jchar trampoline_Java_Main_charMethod(JNIEnv* env, jclass klass, jchar c1, jchar c2,
                                              jchar c3, jchar c4, jchar c5, jchar c6,
                                              jchar c7, jchar c8, jchar c9, jchar c10) {
-  typedef jchar (*FnPtr_t)(JNIEnv*, jclass, jchar, jchar, jchar, jchar, jchar,
-                           jchar, jchar, jchar, jchar, jchar);
+  using FnPtr_t = jchar(*)(JNIEnv*, jclass, jchar, jchar, jchar, jchar, jchar, jchar, jchar, jchar,
+                           jchar, jchar);
   FnPtr_t fnPtr = reinterpret_cast<FnPtr_t>(find_native_bridge_method("charMethod")->fnPtr);
   printf("%s called!\n", __FUNCTION__);
   return fnPtr(env, klass, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10);
