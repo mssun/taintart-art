@@ -137,12 +137,12 @@ class DisassemblerArm::CustomDisassembler final : public PrintDisassembler {
 void DisassemblerArm::CustomDisassembler::CustomDisassemblerStream::PrintLiteral(LocationType type,
                                                                                  int32_t offset) {
   // Literal offsets are not required to be aligned, so we may need unaligned access.
-  typedef const int16_t unaligned_int16_t __attribute__ ((aligned (1)));
-  typedef const uint16_t unaligned_uint16_t __attribute__ ((aligned (1)));
-  typedef const int32_t unaligned_int32_t __attribute__ ((aligned (1)));
-  typedef const int64_t unaligned_int64_t __attribute__ ((aligned (1)));
-  typedef const float unaligned_float __attribute__ ((aligned (1)));
-  typedef const double unaligned_double __attribute__ ((aligned (1)));
+  using unaligned_int16_t  __attribute__((__aligned__(1))) = const int16_t;
+  using unaligned_uint16_t __attribute__((__aligned__(1))) = const uint16_t;
+  using unaligned_int32_t  __attribute__((__aligned__(1))) = const int32_t;
+  using unaligned_int64_t  __attribute__((__aligned__(1))) = const int64_t;
+  using unaligned_float    __attribute__((__aligned__(1))) = const float;
+  using unaligned_double   __attribute__((__aligned__(1))) = const double;
 
   // Zeros are used for the LocationType values this function does not care about.
   const size_t literal_size[kVst4Location + 1] = {

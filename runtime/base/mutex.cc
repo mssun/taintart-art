@@ -227,18 +227,15 @@ void BaseMutex::DumpAll(std::ostream& os) {
       // No mutexes have been created yet during at startup.
       return;
     }
-    typedef std::set<BaseMutex*>::const_iterator It;
     os << "(Contended)\n";
-    for (It it = all_mutexes->begin(); it != all_mutexes->end(); ++it) {
-      BaseMutex* mutex = *it;
+    for (const BaseMutex* mutex : *all_mutexes) {
       if (mutex->HasEverContended()) {
         mutex->Dump(os);
         os << "\n";
       }
     }
     os << "(Never contented)\n";
-    for (It it = all_mutexes->begin(); it != all_mutexes->end(); ++it) {
-      BaseMutex* mutex = *it;
+    for (const BaseMutex* mutex : *all_mutexes) {
       if (!mutex->HasEverContended()) {
         mutex->Dump(os);
         os << "\n";

@@ -1432,7 +1432,7 @@ static JdwpError DDM_Chunk(JdwpState* state, Request* request, ExpandBuf* pReply
 /*
  * Handler map decl.
  */
-typedef JdwpError (*JdwpRequestHandler)(JdwpState* state, Request* request, ExpandBuf* reply);
+using JdwpRequestHandler = JdwpError(*)(JdwpState* state, Request* request, ExpandBuf* reply);
 
 struct JdwpHandlerMap {
   uint8_t cmdSet;

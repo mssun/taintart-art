@@ -1180,19 +1180,19 @@ static void UnstartedMemoryPeek(
     }
 
     case Primitive::kPrimShort: {
-      typedef int16_t unaligned_short __attribute__ ((aligned (1)));
+      using unaligned_short __attribute__((__aligned__(1))) = int16_t;
       result->SetS(*reinterpret_cast<unaligned_short*>(static_cast<intptr_t>(address)));
       return;
     }
 
     case Primitive::kPrimInt: {
-      typedef int32_t unaligned_int __attribute__ ((aligned (1)));
+      using unaligned_int __attribute__((__aligned__(1))) = int32_t;
       result->SetI(*reinterpret_cast<unaligned_int*>(static_cast<intptr_t>(address)));
       return;
     }
 
     case Primitive::kPrimLong: {
-      typedef int64_t unaligned_long __attribute__ ((aligned (1)));
+      using unaligned_long __attribute__((__aligned__(1))) = int64_t;
       result->SetJ(*reinterpret_cast<unaligned_long*>(static_cast<intptr_t>(address)));
       return;
     }
@@ -1919,11 +1919,16 @@ void UnstartedRuntime::UnstartedJNIUnsafeGetArrayIndexScaleForComponentType(
   result->SetI(Primitive::ComponentSize(primitive_type));
 }
 
-typedef void (*InvokeHandler)(Thread* self, ShadowFrame* shadow_frame, JValue* result,
-    size_t arg_size);
+using InvokeHandler = void(*)(Thread* self,
+                              ShadowFrame* shadow_frame,
+                              JValue* result,
+                              size_t arg_size);
 
-typedef void (*JNIHandler)(Thread* self, ArtMethod* method, mirror::Object* receiver,
-    uint32_t* args, JValue* result);
+using JNIHandler = void(*)(Thread* self,
+                           ArtMethod* method,
+                           mirror::Object* receiver,
+                           uint32_t* args,
+                           JValue* result);
 
 static bool tables_initialized_ = false;
 static std::unordered_map<std::string, InvokeHandler> invoke_handlers_;
