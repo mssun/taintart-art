@@ -3147,8 +3147,10 @@ void Thread::ThrowNewWrappedException(const char* exception_class_descriptor,
 }
 
 void Thread::ThrowOutOfMemoryError(const char* msg) {
-  LOG(WARNING) << StringPrintf("Throwing OutOfMemoryError \"%s\"%s",
-      msg, (tls32_.throwing_OutOfMemoryError ? " (recursive case)" : ""));
+  LOG(WARNING) << "Throwing OutOfMemoryError "
+               << '"' << msg << '"'
+               << " (VmSize " << GetProcessStatus("VmSize")
+               << (tls32_.throwing_OutOfMemoryError ? ", recursive case)" : ")");
   if (!tls32_.throwing_OutOfMemoryError) {
     tls32_.throwing_OutOfMemoryError = true;
     ThrowNewException("Ljava/lang/OutOfMemoryError;", msg);
