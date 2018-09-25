@@ -854,6 +854,14 @@ void InstructionCodeGeneratorARMVIXL::VisitVecSADAccumulate(HVecSADAccumulate* i
   }
 }
 
+void LocationsBuilderARMVIXL::VisitVecDotProd(HVecDotProd* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitVecDotProd(HVecDotProd* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
 // Return whether the vector memory access operation is guaranteed to be word-aligned (ARM word
 // size equals to 4).
 static bool IsWordAligned(HVecMemoryOperation* instruction) {

@@ -1116,6 +1116,14 @@ void InstructionCodeGeneratorX86_64::VisitVecSADAccumulate(HVecSADAccumulate* in
   LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
+void LocationsBuilderX86_64::VisitVecDotProd(HVecDotProd* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
+void InstructionCodeGeneratorX86_64::VisitVecDotProd(HVecDotProd* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
 // Helper to set up locations for vector memory operations.
 static void CreateVecMemLocations(ArenaAllocator* allocator,
                                   HVecMemoryOperation* instruction,

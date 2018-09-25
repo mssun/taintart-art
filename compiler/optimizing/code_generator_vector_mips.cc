@@ -1274,6 +1274,14 @@ void InstructionCodeGeneratorMIPS::VisitVecSADAccumulate(HVecSADAccumulate* inst
   }
 }
 
+void LocationsBuilderMIPS::VisitVecDotProd(HVecDotProd* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
+void InstructionCodeGeneratorMIPS::VisitVecDotProd(HVecDotProd* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
 // Helper to set up locations for vector memory operations.
 static void CreateVecMemLocations(ArenaAllocator* allocator,
                                   HVecMemoryOperation* instruction,

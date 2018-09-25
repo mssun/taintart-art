@@ -1277,6 +1277,74 @@ void InstructionCodeGeneratorARM64::VisitVecSADAccumulate(HVecSADAccumulate* ins
   }
 }
 
+void LocationsBuilderARM64::VisitVecDotProd(HVecDotProd* instruction) {
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
+  DCHECK(instruction->GetPackedType() == DataType::Type::kInt32);
+  locations->SetInAt(0, Location::RequiresFpuRegister());
+  locations->SetInAt(1, Location::RequiresFpuRegister());
+  locations->SetInAt(2, Location::RequiresFpuRegister());
+  locations->SetOut(Location::SameAsFirstInput());
+
+  // For Int8 and Uint8 we need a temp register.
+  if (DataType::Size(instruction->InputAt(1)->AsVecOperation()->GetPackedType()) == 1) {
+    locations->AddTemp(Location::RequiresFpuRegister());
+  }
+}
+
+void InstructionCodeGeneratorARM64::VisitVecDotProd(HVecDotProd* instruction) {
+  LocationSummary* locations = instruction->GetLocations();
+  DCHECK(locations->InAt(0).Equals(locations->Out()));
+  VRegister acc = VRegisterFrom(locations->InAt(0));
+  VRegister left = VRegisterFrom(locations->InAt(1));
+  VRegister right = VRegisterFrom(locations->InAt(2));
+  HVecOperation* a = instruction->InputAt(1)->AsVecOperation();
+  HVecOperation* b = instruction->InputAt(2)->AsVecOperation();
+  DCHECK_EQ(HVecOperation::ToSignedType(a->GetPackedType()),
+            HVecOperation::ToSignedType(b->GetPackedType()));
+  DCHECK_EQ(instruction->GetPackedType(), DataType::Type::kInt32);
+  DCHECK_EQ(4u, instruction->GetVectorLength());
+
+  size_t inputs_data_size = DataType::Size(a->GetPackedType());
+  switch (inputs_data_size) {
+    case 1u: {
+      DCHECK_EQ(16u, a->GetVectorLength());
+      VRegister tmp = VRegisterFrom(locations->GetTemp(0));
+      if (instruction->IsZeroExtending()) {
+        // TODO: Use Armv8.4-A UDOT instruction when it is available.
+        __ Umull(tmp.V8H(), left.V8B(), right.V8B());
+        __ Uaddw(acc.V4S(), acc.V4S(), tmp.V4H());
+        __ Uaddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+
+        __ Umull2(tmp.V8H(), left.V16B(), right.V16B());
+        __ Uaddw(acc.V4S(), acc.V4S(), tmp.V4H());
+        __ Uaddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+      } else {
+        // TODO: Use Armv8.4-A SDOT instruction when it is available.
+        __ Smull(tmp.V8H(), left.V8B(), right.V8B());
+        __ Saddw(acc.V4S(), acc.V4S(), tmp.V4H());
+        __ Saddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+
+        __ Smull2(tmp.V8H(), left.V16B(), right.V16B());
+        __ Saddw(acc.V4S(), acc.V4S(), tmp.V4H());
+        __ Saddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+      }
+      break;
+    }
+    case 2u:
+      DCHECK_EQ(8u, a->GetVectorLength());
+      if (instruction->IsZeroExtending()) {
+        __ Umlal(acc.V4S(), left.V4H(), right.V4H());
+        __ Umlal2(acc.V4S(), left.V8H(), right.V8H());
+      } else {
+        __ Smlal(acc.V4S(), left.V4H(), right.V4H());
+        __ Smlal2(acc.V4S(), left.V8H(), right.V8H());
+      }
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type size: " << inputs_data_size;
+  }
+}
+
 // Helper to set up locations for vector memory operations.
 static void CreateVecMemLocations(ArenaAllocator* allocator,
                                   HVecMemoryOperation* instruction,

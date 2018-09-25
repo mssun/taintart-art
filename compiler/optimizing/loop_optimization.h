@@ -82,6 +82,7 @@ class HLoopOptimization : public HOptimization {
     kNoReduction     = 1 << 9,   // no reduction
     kNoSAD           = 1 << 10,  // no sum of absolute differences (SAD)
     kNoWideSAD       = 1 << 11,  // no sum of absolute differences (SAD) with operand widening
+    kNoDotProd       = 1 << 12,  // no dot product
   };
 
   /*
@@ -217,6 +218,11 @@ class HLoopOptimization : public HOptimization {
                          bool generate_code,
                          DataType::Type type,
                          uint64_t restrictions);
+  bool VectorizeDotProdIdiom(LoopNode* node,
+                             HInstruction* instruction,
+                             bool generate_code,
+                             DataType::Type type,
+                             uint64_t restrictions);
 
   // Vectorization heuristics.
   Alignment ComputeAlignment(HInstruction* offset,
