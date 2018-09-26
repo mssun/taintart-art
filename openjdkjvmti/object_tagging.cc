@@ -36,6 +36,7 @@
 #include "art_jvmti.h"
 #include "events-inl.h"
 #include "jvmti_weak_table-inl.h"
+#include "mirror/object-inl.h"
 
 namespace openjdkjvmti {
 
