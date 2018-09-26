@@ -751,7 +751,7 @@ void ParsedOptions::Usage(const char* fmt, ...) {
   UsageMessage(stream, "  -Xcompiler:filename\n");
   UsageMessage(stream, "  -Xcompiler-option dex2oat-option\n");
   UsageMessage(stream, "  -Ximage-compiler-option dex2oat-option\n");
-  UsageMessage(stream, "  -Xpatchoat:filename\n");
+  UsageMessage(stream, "  -Xpatchoat:filename (obsolete, ignored)\n");
   UsageMessage(stream, "  -Xusejit:booleanvalue\n");
   UsageMessage(stream, "  -Xjitinitialsize:N\n");
   UsageMessage(stream, "  -Xjitmaxsize:N\n");

@@ -164,7 +164,6 @@ class Runtime {
   }
 
   std::string GetCompilerExecutable() const;
-  std::string GetPatchoatExecutable() const;
 
   const std::vector<std::string>& GetCompilerOptions() const {
     return compiler_options_;
@@ -845,7 +844,6 @@ class Runtime {
   bool image_dex2oat_enabled_;
 
   std::string compiler_executable_;
-  std::string patchoat_executable_;
   std::vector<std::string> compiler_options_;
   std::vector<std::string> image_compiler_options_;
   std::string image_location_;
@@ -963,7 +961,7 @@ class Runtime {
   bool implicit_suspend_checks_;    // Thread suspension checks are implicit.
 
   // Whether or not the sig chain (and implicitly the fault handler) should be
-  // disabled. Tools like dex2oat or patchoat don't need them. This enables
+  // disabled. Tools like dex2oat don't need them. This enables
   // building a statically link version of dex2oat.
   bool no_sig_chain_;
 

@@ -70,22 +70,20 @@
                         "doesn't (and isn't meant to) work with --prebuild."]
     },
     {
-        "tests": ["117-nopatchoat",
-                  "147-stripped-dex-fallback",
+        "tests": ["147-stripped-dex-fallback",
                   "608-checker-unresolved-lse"],
         "variant": "no-prebuild"
     },
     {
-        "tests": ["117-nopatchoat",
-                  "118-noimage-dex2oat"],
+        "tests": ["118-noimage-dex2oat"],
         "variant": "no-relocate",
-        "description": ["117-nopatchoat is not broken per-se it just doesn't",
-                        "work (and isn't meant to) without --prebuild",
+        "description": ["118-noimage-dex2oat is not broken per-se it just ",
+                        "doesn't work (and isn't meant to) without --prebuild ",
                         "--relocate"]
     },
     {
         "tests" : "629-vdex-speed",
-        "variant": "interp-ac | interpreter | jit | relocate-npatchoat",
+        "variant": "interp-ac | interpreter | jit",
         "description": "629 requires compilation."
     },
     {
@@ -172,19 +170,18 @@
     },
     {
         "tests": "147-stripped-dex-fallback",
-        "variant": "no-image | relocate-npatchoat",
+        "variant": "no-image",
         "description": ["147-stripped-dex-fallback is disabled because it",
                         "requires --prebuild."]
     },
     {
         "tests": ["116-nodex2oat",
-                  "117-nopatchoat",
                   "118-noimage-dex2oat",
                   "137-cfi",
                   "138-duplicate-classes-check2"],
-        "variant": "no-image | relocate-npatchoat",
+        "variant": "no-image",
         "description": ["All these tests check that we have sane behavior if we",
-                        "don't have a patchoat or dex2oat. Therefore we",
+                        "don't have a dex2oat. Therefore we",
                         "shouldn't run them in situations where we actually",
                         "don't have these since they explicitly test for them.",
                         "These all also assume we have an image."]
@@ -339,7 +336,6 @@
     {
         "tests": ["018-stack-overflow",
                   "116-nodex2oat",
-                  "117-nopatchoat",
                   "118-noimage-dex2oat",
                   "126-miranda-multidex",
                   "137-cfi"],
@@ -767,7 +763,6 @@
           "111-unresolvable-exception",
           "115-native-bridge",
           "116-nodex2oat",
-          "117-nopatchoat",
           "118-noimage-dex2oat",
           "127-checker-secondarydex",
           "129-ThreadGetId",
@@ -1045,7 +1040,7 @@
     },
     {
         "tests": "677-fsi",
-        "variant": "no-image | no-prebuild | relocate-npatchoat | jvm",
+        "variant": "no-image | no-prebuild | jvm",
         "description": ["Test requires a successful dex2oat invocation"]
     },
     {

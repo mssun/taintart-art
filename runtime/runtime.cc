@@ -695,15 +695,6 @@ static jobject CreateSystemClassLoader(Runtime* runtime) {
   return env->NewGlobalRef(system_class_loader.get());
 }
 
-std::string Runtime::GetPatchoatExecutable() const {
-  if (!patchoat_executable_.empty()) {
-    return patchoat_executable_;
-  }
-  std::string patchoat_executable(GetAndroidRoot());
-  patchoat_executable += (kIsDebugBuild ? "/bin/patchoatd" : "/bin/patchoat");
-  return patchoat_executable;
-}
-
 std::string Runtime::GetCompilerExecutable() const {
   if (!compiler_executable_.empty()) {
     return compiler_executable_;
@@ -1190,7 +1181,6 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   properties_ = runtime_options.ReleaseOrDefault(Opt::PropertiesList);
 
   compiler_callbacks_ = runtime_options.GetOrDefault(Opt::CompilerCallbacksPtr);
-  patchoat_executable_ = runtime_options.ReleaseOrDefault(Opt::PatchOat);
   must_relocate_ = runtime_options.GetOrDefault(Opt::Relocate);
   is_zygote_ = runtime_options.Exists(Opt::Zygote);
   is_explicit_gc_disabled_ = runtime_options.Exists(Opt::DisableExplicitGC);

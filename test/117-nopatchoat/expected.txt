@@ -1,3 +1,0 @@
-JNI_OnLoad called
-Has oat is true, has executable oat is expected.
-This is a function call

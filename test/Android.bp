@@ -454,7 +454,6 @@ cc_defaults {
         "004-UnsafeTest/unsafe_test.cc",
         "044-proxy/native_proxy.cc",
         "051-thread/thread_test.cc",
-        "117-nopatchoat/nopatchoat.cc",
         "1337-gc-coverage/gc_coverage.cc",
         "136-daemon-jni-shutdown/daemon_jni_shutdown.cc",
         "137-cfi/cfi.cc",
