@@ -261,6 +261,16 @@ class MemMap {
                     std::string* error_msg,
                     bool use_debug_name = true);
 
+  // Unmap the pages of a file at end and remap them to create another memory map.
+  MemMap RemapAtEnd(uint8_t* new_end,
+                    const char* tail_name,
+                    int tail_prot,
+                    int tail_flags,
+                    int fd,
+                    off_t offset,
+                    std::string* error_msg,
+                    bool use_debug_name = true);
+
   // Take ownership of pages at the beginning of the mapping. The mapping must be an
   // anonymous reservation mapping, owning entire pages. The `byte_count` must not
   // exceed the size of this reservation.
