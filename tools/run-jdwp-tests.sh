@@ -311,16 +311,16 @@ if [[ "$plugin" != "" ]]; then
   vm_args="$vm_args --vm-arg $plugin"
 fi
 
-# Because we're running debuggable, we discard any AOT code.
-# Therefore we run de2oat with 'quicken' to avoid spending time compiling.
-vm_args="$vm_args --vm-arg -Xcompiler-option --vm-arg --compiler-filter=quicken"
-debuggee_args="$debuggee_args -Xcompiler-option --compiler-filter=quicken"
-
-if $instant_jit; then
-  debuggee_args="$debuggee_args -Xjitthreshold:0"
-fi
-
 if [[ $mode != "ri" ]]; then
+  # Because we're running debuggable, we discard any AOT code.
+  # Therefore we run de2oat with 'quicken' to avoid spending time compiling.
+  vm_args="$vm_args --vm-arg -Xcompiler-option --vm-arg --compiler-filter=quicken"
+  debuggee_args="$debuggee_args -Xcompiler-option --compiler-filter=quicken"
+
+  if $instant_jit; then
+    debuggee_args="$debuggee_args -Xjitthreshold:0"
+  fi
+
   vm_args="$vm_args --vm-arg -Xusejit:$use_jit"
   debuggee_args="$debuggee_args -Xusejit:$use_jit"
 fi
