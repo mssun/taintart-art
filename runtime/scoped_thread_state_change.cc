@@ -20,6 +20,7 @@
 
 #include "base/casts.h"
 #include "jni/java_vm_ext.h"
+#include "mirror/object-inl.h"
 #include "obj_ptr-inl.h"
 #include "runtime-inl.h"
 
