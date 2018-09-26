@@ -18,12 +18,15 @@
 
 #include <sstream>
 
+#include "android-base/unique_fd.h"
+
 #include "arch/context.h"
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/histogram-inl.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/membarrier.h"
+#include "base/memfd.h"
 #include "base/mem_map.h"
 #include "base/quasi_atomic.h"
 #include "base/stl_util.h"
@@ -52,15 +55,31 @@
 #include "thread-current-inl.h"
 #include "thread_list.h"
 
+using android::base::unique_fd;
+
 namespace art {
 namespace jit {
 
-static constexpr int kProtCode = PROT_READ | PROT_EXEC;
-static constexpr int kProtData = PROT_READ | PROT_WRITE;
-static constexpr int kProtProfile = PROT_READ;
-
 static constexpr size_t kCodeSizeLogThreshold = 50 * KB;
 static constexpr size_t kStackMapSizeLogThreshold = 50 * KB;
+
+static constexpr int kProtR = PROT_READ;
+static constexpr int kProtRW = PROT_READ | PROT_WRITE;
+static constexpr int kProtRWX = PROT_READ | PROT_WRITE | PROT_EXEC;
+static constexpr int kProtRX = PROT_READ | PROT_EXEC;
+
+namespace {
+
+// Translate an address belonging to one memory map into an address in a second. This is useful
+// when there are two virtual memory ranges for the same physical memory range.
+template <typename T>
+T* TranslateAddress(T* src_ptr, const MemMap& src, const MemMap& dst) {
+  CHECK(src.HasAddress(src_ptr));
+  uint8_t* const raw_src_ptr = reinterpret_cast<uint8_t*>(src_ptr);
+  return reinterpret_cast<T*>(raw_src_ptr - src.Begin() + dst.Begin());
+}
+
+}  // namespace
 
 class JitCodeCache::JniStubKey {
  public:
@@ -190,17 +209,41 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
 
   // Register for membarrier expedited sync core if JIT will be generating code.
   if (!used_only_for_profile_data) {
-    art::membarrier(art::MembarrierCommand::kRegisterPrivateExpeditedSyncCore);
+    if (art::membarrier(art::MembarrierCommand::kRegisterPrivateExpeditedSyncCore) != 0) {
+      // MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE ensures that CPU instruction pipelines are
+      // flushed and it's used when adding code to the JIT. The memory used by the new code may
+      // have just been released and, in theory, the old code could still be in a pipeline.
+      VLOG(jit) << "Kernel does not support membarrier sync-core";
+    }
   }
 
-  // Decide how we should map the code and data sections.
-  // If we use the code cache just for profiling we do not need to map the code section as
-  // executable.
-  // NOTE 1: this is yet another workaround to bypass strict SElinux policies in order to be able
-  //         to profile system server.
-  // NOTE 2: We could just not create the code section at all but we will need to
-  //         special case too many cases.
-  int memmap_flags_prot_code = used_only_for_profile_data ? kProtProfile : kProtCode;
+  // File descriptor enabling dual-view mapping of code section.
+  unique_fd mem_fd;
+
+  // Bionic supports memfd_create, but the call may fail on older kernels.
+  mem_fd = unique_fd(art::memfd_create("/jit-cache", /* flags */ 0));
+  if (mem_fd.get() < 0) {
+    VLOG(jit) << "Failed to initialize dual view JIT. memfd_create() error: "
+              << strerror(errno);
+  }
+
+  if (mem_fd.get() >= 0 && ftruncate(mem_fd, max_capacity) != 0) {
+    std::ostringstream oss;
+    oss << "Failed to initialize memory file: " << strerror(errno);
+    *error_msg = oss.str();
+    return nullptr;
+  }
+
+  // Data cache will be half of the initial allocation.
+  // Code cache will be the other half of the initial allocation.
+  // TODO: Make this variable?
+
+  // Align both capacities to page size, as that's the unit mspaces use.
+  initial_capacity = RoundDown(initial_capacity, 2 * kPageSize);
+  max_capacity = RoundDown(max_capacity, 2 * kPageSize);
+  const size_t data_capacity = max_capacity / 2;
+  const size_t exec_capacity = used_only_for_profile_data ? 0 : max_capacity - data_capacity;
+  DCHECK_LE(data_capacity + exec_capacity, max_capacity);
 
   std::string error_str;
   // Map name specific for android_os_Debug.cpp accounting.
@@ -208,71 +251,149 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
   // We could do PC-relative addressing to avoid this problem, but that
   // would require reserving code and data area before submitting, which
   // means more windows for the code memory to be RWX.
-  MemMap data_map = MemMap::MapAnonymous(
-      "data-code-cache",
-      /* addr */ nullptr,
-      max_capacity,
-      kProtData,
-      /* low_4gb */ true,
-      /* reuse */ false,
-      /* reservation */ nullptr,
-      &error_str);
-  if (!data_map.IsValid()) {
+  int base_flags;
+  MemMap data_pages;
+  if (mem_fd.get() >= 0) {
+    // Dual view of JIT code cache case. Create an initial mapping of data pages large enough
+    // for data and non-writable view of JIT code pages. We use the memory file descriptor to
+    // enable dual mapping - we'll create a second mapping using the descriptor below. The
+    // mappings will look like:
+    //
+    //       VA                  PA
+    //
+    //       +---------------+
+    //       | non exec code |\
+    //       +---------------+ \
+    //       :               :\ \
+    //       +---------------+.\.+---------------+
+    //       |  exec code    |  \|     code      |
+    //       +---------------+...+---------------+
+    //       |      data     |   |     data      |
+    //       +---------------+...+---------------+
+    //
+    // In this configuration code updates are written to the non-executable view of the code
+    // cache, and the executable view of the code cache has fixed RX memory protections.
+    //
+    // This memory needs to be mapped shared as the code portions will have two mappings.
+    base_flags = MAP_SHARED;
+    data_pages = MemMap::MapFile(
+        data_capacity + exec_capacity,
+        kProtRW,
+        base_flags,
+        mem_fd,
+        /* start */ 0,
+        /* low_4gb */ true,
+        "data-code-cache",
+        &error_str);
+  } else {
+    // Single view of JIT code cache case. Create an initial mapping of data pages large enough
+    // for data and JIT code pages. The mappings will look like:
+    //
+    //       VA                  PA
+    //
+    //       +---------------+...+---------------+
+    //       |  exec code    |   |     code      |
+    //       +---------------+...+---------------+
+    //       |      data     |   |     data      |
+    //       +---------------+...+---------------+
+    //
+    // In this configuration code updates are written to the executable view of the code cache,
+    // and the executable view of the code cache transitions RX to RWX for the update and then
+    // back to RX after the update.
+    base_flags = MAP_PRIVATE | MAP_ANON;
+    data_pages = MemMap::MapAnonymous(
+        "data-code-cache",
+        /* addr */ nullptr,
+        data_capacity + exec_capacity,
+        kProtRW,
+        /* low_4gb */ true,
+        /* reuse */ false,
+        /* reservation */ nullptr,
+        &error_str);
+  }
+
+  if (!data_pages.IsValid()) {
     std::ostringstream oss;
     oss << "Failed to create read write cache: " << error_str << " size=" << max_capacity;
     *error_msg = oss.str();
     return nullptr;
   }
 
-  // Align both capacities to page size, as that's the unit mspaces use.
-  initial_capacity = RoundDown(initial_capacity, 2 * kPageSize);
-  max_capacity = RoundDown(max_capacity, 2 * kPageSize);
+  MemMap exec_pages;
+  MemMap non_exec_pages;
+  if (exec_capacity > 0) {
+    uint8_t* const divider = data_pages.Begin() + data_capacity;
+    // Set initial permission for executable view to catch any SELinux permission problems early
+    // (for processes that cannot map WX pages). Otherwise, this region does not need to be
+    // executable as there is no code in the cache yet.
+    exec_pages = data_pages.RemapAtEnd(divider,
+                                       "jit-code-cache",
+                                       kProtRX,
+                                       base_flags | MAP_FIXED,
+                                       mem_fd.get(),
+                                       (mem_fd.get() >= 0) ? data_capacity : 0,
+                                       &error_str);
+    if (!exec_pages.IsValid()) {
+      std::ostringstream oss;
+      oss << "Failed to create read execute code cache: " << error_str << " size=" << max_capacity;
+      *error_msg = oss.str();
+      return nullptr;
+    }
 
-  // Data cache is 1 / 2 of the map.
-  // TODO: Make this variable?
-  size_t data_size = max_capacity / 2;
-  size_t code_size = max_capacity - data_size;
-  DCHECK_EQ(code_size + data_size, max_capacity);
-  uint8_t* divider = data_map.Begin() + data_size;
-
-  MemMap code_map = data_map.RemapAtEnd(
-      divider, "jit-code-cache", memmap_flags_prot_code | PROT_WRITE, &error_str);
-  if (!code_map.IsValid()) {
-    std::ostringstream oss;
-    oss << "Failed to create read write execute cache: " << error_str << " size=" << max_capacity;
-    *error_msg = oss.str();
-    return nullptr;
+    if (mem_fd.get() >= 0) {
+      // For dual view, create the secondary view of code memory used for updating code. This view
+      // is never executable.
+      non_exec_pages = MemMap::MapFile(exec_capacity,
+                                       kProtR,
+                                       base_flags,
+                                       mem_fd,
+                                       /* start */ data_capacity,
+                                       /* low_4GB */ false,
+                                       "jit-code-cache-rw",
+                                       &error_str);
+      if (!exec_pages.IsValid()) {
+        std::ostringstream oss;
+        oss << "Failed to create read write code cache: " << error_str << " size=" << max_capacity;
+        *error_msg = oss.str();
+        return nullptr;
+      }
+    }
+  } else {
+    // Profiling only. No memory for code required.
+    DCHECK(used_only_for_profile_data);
   }
-  DCHECK_EQ(code_map.Begin(), divider);
-  data_size = initial_capacity / 2;
-  code_size = initial_capacity - data_size;
-  DCHECK_EQ(code_size + data_size, initial_capacity);
+
+  const size_t initial_data_capacity = initial_capacity / 2;
+  const size_t initial_exec_capacity =
+      (exec_capacity == 0) ? 0 : (initial_capacity - initial_data_capacity);
+
   return new JitCodeCache(
-      std::move(code_map),
-      std::move(data_map),
-      code_size,
-      data_size,
+      std::move(data_pages),
+      std::move(exec_pages),
+      std::move(non_exec_pages),
+      initial_data_capacity,
+      initial_exec_capacity,
       max_capacity,
-      garbage_collect_code,
-      memmap_flags_prot_code);
+      garbage_collect_code);
 }
 
-JitCodeCache::JitCodeCache(MemMap&& code_map,
-                           MemMap&& data_map,
-                           size_t initial_code_capacity,
+JitCodeCache::JitCodeCache(MemMap&& data_pages,
+                           MemMap&& exec_pages,
+                           MemMap&& non_exec_pages,
                            size_t initial_data_capacity,
+                           size_t initial_exec_capacity,
                            size_t max_capacity,
-                           bool garbage_collect_code,
-                           int memmap_flags_prot_code)
+                           bool garbage_collect_code)
     : lock_("Jit code cache", kJitCodeCacheLock),
       lock_cond_("Jit code cache condition variable", lock_),
       collection_in_progress_(false),
-      code_map_(std::move(code_map)),
-      data_map_(std::move(data_map)),
+      data_pages_(std::move(data_pages)),
+      exec_pages_(std::move(exec_pages)),
+      non_exec_pages_(std::move(non_exec_pages)),
       max_capacity_(max_capacity),
-      current_capacity_(initial_code_capacity + initial_data_capacity),
-      code_end_(initial_code_capacity),
+      current_capacity_(initial_exec_capacity + initial_data_capacity),
       data_end_(initial_data_capacity),
+      exec_end_(initial_exec_capacity),
       last_collection_increased_code_cache_(false),
       garbage_collect_code_(garbage_collect_code),
       used_memory_for_data_(0),
@@ -284,40 +405,46 @@ JitCodeCache::JitCodeCache(MemMap&& code_map,
       histogram_code_memory_use_("Memory used for compiled code", 16),
       histogram_profiling_info_memory_use_("Memory used for profiling info", 16),
       is_weak_access_enabled_(true),
-      inline_cache_cond_("Jit inline cache condition variable", lock_),
-      memmap_flags_prot_code_(memmap_flags_prot_code) {
+      inline_cache_cond_("Jit inline cache condition variable", lock_) {
 
-  DCHECK_GE(max_capacity, initial_code_capacity + initial_data_capacity);
-  code_mspace_ = create_mspace_with_base(code_map_.Begin(), code_end_, false /*locked*/);
-  data_mspace_ = create_mspace_with_base(data_map_.Begin(), data_end_, false /*locked*/);
+  DCHECK_GE(max_capacity, initial_exec_capacity + initial_data_capacity);
 
-  if (code_mspace_ == nullptr || data_mspace_ == nullptr) {
-    PLOG(FATAL) << "create_mspace_with_base failed";
+  // Initialize the data heap
+  data_mspace_ = create_mspace_with_base(data_pages_.Begin(), data_end_, false /*locked*/);
+  CHECK(data_mspace_ != nullptr) << "create_mspace_with_base (data) failed";
+
+  // Initialize the code heap
+  MemMap* code_heap = nullptr;
+  if (non_exec_pages_.IsValid()) {
+    code_heap = &non_exec_pages_;
+  } else if (exec_pages_.IsValid()) {
+    code_heap = &exec_pages_;
   }
-
-  SetFootprintLimit(current_capacity_);
-
-  CheckedCall(mprotect,
-              "mprotect jit code cache",
-              code_map_.Begin(),
-              code_map_.Size(),
-              memmap_flags_prot_code_);
-  CheckedCall(mprotect,
-              "mprotect jit data cache",
-              data_map_.Begin(),
-              data_map_.Size(),
-              kProtData);
+  if (code_heap != nullptr) {
+    // Make all pages reserved for the code heap writable. The mspace allocator, that manages the
+    // heap, will take and initialize pages in create_mspace_with_base().
+    CheckedCall(mprotect, "create code heap", code_heap->Begin(), code_heap->Size(), kProtRW);
+    exec_mspace_ = create_mspace_with_base(code_heap->Begin(), exec_end_, false /*locked*/);
+    CHECK(exec_mspace_ != nullptr) << "create_mspace_with_base (exec) failed";
+    SetFootprintLimit(current_capacity_);
+    // Protect pages containing heap metadata. Updates to the code heap toggle write permission to
+    // perform the update and there are no other times write access is required.
+    CheckedCall(mprotect, "protect code heap", code_heap->Begin(), code_heap->Size(), kProtR);
+  } else {
+    exec_mspace_ = nullptr;
+    SetFootprintLimit(current_capacity_);
+  }
 
   VLOG(jit) << "Created jit code cache: initial data size="
             << PrettySize(initial_data_capacity)
             << ", initial code size="
-            << PrettySize(initial_code_capacity);
+            << PrettySize(initial_exec_capacity);
 }
 
 JitCodeCache::~JitCodeCache() {}
 
 bool JitCodeCache::ContainsPc(const void* ptr) const {
-  return code_map_.Begin() <= ptr && ptr < code_map_.End();
+  return exec_pages_.Begin() <= ptr && ptr < exec_pages_.End();
 }
 
 bool JitCodeCache::WillExecuteJitCode(ArtMethod* method) {
@@ -385,22 +512,20 @@ class ScopedCodeCacheWrite : ScopedTrace {
       : ScopedTrace("ScopedCodeCacheWrite"),
         code_cache_(code_cache) {
     ScopedTrace trace("mprotect all");
-    CheckedCall(
-        mprotect,
-        "make code writable",
-        code_cache_->code_map_.Begin(),
-        code_cache_->code_map_.Size(),
-        code_cache_->memmap_flags_prot_code_ | PROT_WRITE);
+    const MemMap* const updatable_pages = code_cache_->GetUpdatableCodeMapping();
+    if (updatable_pages != nullptr) {
+      int prot = code_cache_->HasDualCodeMapping() ? kProtRW : kProtRWX;
+      CheckedCall(mprotect, "Cache +W", updatable_pages->Begin(), updatable_pages->Size(), prot);
+    }
   }
 
   ~ScopedCodeCacheWrite() {
     ScopedTrace trace("mprotect code");
-    CheckedCall(
-        mprotect,
-        "make code protected",
-        code_cache_->code_map_.Begin(),
-        code_cache_->code_map_.Size(),
-        code_cache_->memmap_flags_prot_code_);
+    const MemMap* const updatable_pages = code_cache_->GetUpdatableCodeMapping();
+    if (updatable_pages != nullptr) {
+      int prot = code_cache_->HasDualCodeMapping() ? kProtR : kProtRX;
+      CheckedCall(mprotect, "Cache -W", updatable_pages->Begin(), updatable_pages->Size(), prot);
+    }
   }
 
  private:
@@ -602,7 +727,13 @@ void JitCodeCache::FreeCodeAndData(const void* code_ptr) {
   if (OatQuickMethodHeader::FromCodePointer(code_ptr)->IsOptimized()) {
     FreeData(GetRootTable(code_ptr));
   }  // else this is a JNI stub without any data.
-  FreeCode(reinterpret_cast<uint8_t*>(allocation));
+
+  uint8_t* code_allocation = reinterpret_cast<uint8_t*>(allocation);
+  if (HasDualCodeMapping()) {
+    code_allocation = TranslateAddress(code_allocation, exec_pages_, non_exec_pages_);
+  }
+
+  FreeCode(code_allocation);
 }
 
 void JitCodeCache::FreeAllMethodHeaders(
@@ -753,6 +884,16 @@ void JitCodeCache::WaitForPotentialCollectionToCompleteRunnable(Thread* self) {
   }
 }
 
+const MemMap* JitCodeCache::GetUpdatableCodeMapping() const {
+  if (HasDualCodeMapping()) {
+    return &non_exec_pages_;
+  } else if (HasCodeMapping()) {
+    return &exec_pages_;
+  } else {
+    return nullptr;
+  }
+}
+
 uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
                                           ArtMethod* method,
                                           uint8_t* stack_map,
@@ -773,31 +914,52 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
     DCheckRootsAreValid(roots);
   }
 
-  size_t alignment = GetInstructionSetAlignment(kRuntimeISA);
-  // Ensure the header ends up at expected instruction alignment.
-  size_t header_size = RoundUp(sizeof(OatQuickMethodHeader), alignment);
-  size_t total_size = header_size + code_size;
-
   OatQuickMethodHeader* method_header = nullptr;
   uint8_t* code_ptr = nullptr;
-  uint8_t* memory = nullptr;
+
   MutexLock mu(self, lock_);
   // We need to make sure that there will be no jit-gcs going on and wait for any ongoing one to
   // finish.
   WaitForPotentialCollectionToCompleteRunnable(self);
   {
     ScopedCodeCacheWrite scc(this);
-    memory = AllocateCode(total_size);
-    if (memory == nullptr) {
+
+    size_t alignment = GetInstructionSetAlignment(kRuntimeISA);
+    // Ensure the header ends up at expected instruction alignment.
+    size_t header_size = RoundUp(sizeof(OatQuickMethodHeader), alignment);
+    size_t total_size = header_size + code_size;
+
+    // AllocateCode allocates memory in non-executable region for alignment header and code. The
+    // header size may include alignment padding.
+    uint8_t* nox_memory = AllocateCode(total_size);
+    if (nox_memory == nullptr) {
       return nullptr;
     }
-    code_ptr = memory + header_size;
 
+    // code_ptr points to non-executable code.
+    code_ptr = nox_memory + header_size;
     std::copy(code, code + code_size, code_ptr);
     method_header = OatQuickMethodHeader::FromCodePointer(code_ptr);
+
+    // From here code_ptr points to executable code.
+    if (non_exec_pages_.IsValid()) {
+      code_ptr = TranslateAddress(code_ptr, non_exec_pages_, exec_pages_);
+    }
+
     new (method_header) OatQuickMethodHeader(
         (stack_map != nullptr) ? code_ptr - stack_map : 0u,
         code_size);
+
+    DCHECK(!Runtime::Current()->IsAotCompiler());
+    if (has_should_deoptimize_flag) {
+      method_header->SetHasShouldDeoptimizeFlag();
+    }
+
+    // Update method_header pointer to executable code region.
+    if (non_exec_pages_.IsValid()) {
+      method_header = TranslateAddress(method_header, non_exec_pages_, exec_pages_);
+    }
+
     // Flush caches before we remove write permission because some ARMv8 Qualcomm kernels may
     // trigger a segfault if a page fault occurs when requesting a cache maintenance operation.
     // This is a kernel bug that we need to work around until affected devices (e.g. Nexus 5X and
@@ -813,16 +975,14 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
     // shootdown (incidentally invalidating the CPU pipelines by sending an IPI to all cores to
     // notify them of the TLB invalidation). Some architectures, notably ARM and ARM64, have
     // hardware support that broadcasts TLB invalidations and so their kernels have no software
-    // based TLB shootdown.
+    // based TLB shootdown. The sync-core flavor of membarrier was introduced in Linux 4.16 to
+    // address this (see mbarrier(2)). The membarrier here will fail on prior kernels and on
+    // platforms lacking the appropriate support.
     art::membarrier(art::MembarrierCommand::kPrivateExpeditedSyncCore);
-
-    DCHECK(!Runtime::Current()->IsAotCompiler());
-    if (has_should_deoptimize_flag) {
-      method_header->SetHasShouldDeoptimizeFlag();
-    }
 
     number_of_compilations_++;
   }
+
   // We need to update the entry point in the runnable state for the instrumentation.
   {
     // The following needs to be guarded by cha_lock_ also. Otherwise it's possible that the
@@ -1167,9 +1327,9 @@ void JitCodeCache::SetFootprintLimit(size_t new_footprint) {
   DCHECK(IsAlignedParam(per_space_footprint, kPageSize));
   DCHECK_EQ(per_space_footprint * 2, new_footprint);
   mspace_set_footprint_limit(data_mspace_, per_space_footprint);
-  {
+  if (HasCodeMapping()) {
     ScopedCodeCacheWrite scc(this);
-    mspace_set_footprint_limit(code_mspace_, per_space_footprint);
+    mspace_set_footprint_limit(exec_mspace_, per_space_footprint);
   }
 }
 
@@ -1244,8 +1404,8 @@ void JitCodeCache::GarbageCollectCache(Thread* self) {
       number_of_collections_++;
       live_bitmap_.reset(CodeCacheBitmap::Create(
           "code-cache-bitmap",
-          reinterpret_cast<uintptr_t>(code_map_.Begin()),
-          reinterpret_cast<uintptr_t>(code_map_.Begin() + current_capacity_ / 2)));
+          reinterpret_cast<uintptr_t>(exec_pages_.Begin()),
+          reinterpret_cast<uintptr_t>(exec_pages_.Begin() + current_capacity_ / 2)));
       collection_in_progress_ = true;
     }
   }
@@ -1614,15 +1774,17 @@ ProfilingInfo* JitCodeCache::AddProfilingInfoInternal(Thread* self ATTRIBUTE_UNU
 // NO_THREAD_SAFETY_ANALYSIS as this is called from mspace code, at which point the lock
 // is already held.
 void* JitCodeCache::MoreCore(const void* mspace, intptr_t increment) NO_THREAD_SAFETY_ANALYSIS {
-  if (code_mspace_ == mspace) {
-    size_t result = code_end_;
-    code_end_ += increment;
-    return reinterpret_cast<void*>(result + code_map_.Begin());
+  if (mspace == exec_mspace_) {
+    DCHECK(exec_mspace_ != nullptr);
+    const MemMap* const code_pages = GetUpdatableCodeMapping();
+    void* result = code_pages->Begin() + exec_end_;
+    exec_end_ += increment;
+    return result;
   } else {
     DCHECK_EQ(data_mspace_, mspace);
-    size_t result = data_end_;
+    void* result = data_pages_.Begin() + data_end_;
     data_end_ += increment;
-    return reinterpret_cast<void*>(result + data_map_.Begin());
+    return result;
   }
 }
 
@@ -1849,7 +2011,7 @@ void JitCodeCache::InvalidateCompiledCodeFor(ArtMethod* method,
 uint8_t* JitCodeCache::AllocateCode(size_t code_size) {
   size_t alignment = GetInstructionSetAlignment(kRuntimeISA);
   uint8_t* result = reinterpret_cast<uint8_t*>(
-      mspace_memalign(code_mspace_, alignment, code_size));
+      mspace_memalign(exec_mspace_, alignment, code_size));
   size_t header_size = RoundUp(sizeof(OatQuickMethodHeader), alignment);
   // Ensure the header ends up at expected instruction alignment.
   DCHECK_ALIGNED_PARAM(reinterpret_cast<uintptr_t>(result + header_size), alignment);
@@ -1859,7 +2021,7 @@ uint8_t* JitCodeCache::AllocateCode(size_t code_size) {
 
 void JitCodeCache::FreeCode(uint8_t* code) {
   used_memory_for_code_ -= mspace_usable_size(code);
-  mspace_free(code_mspace_, code);
+  mspace_free(exec_mspace_, code);
 }
 
 uint8_t* JitCodeCache::AllocateData(size_t data_size) {
