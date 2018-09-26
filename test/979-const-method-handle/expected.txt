@@ -7,3 +7,11 @@ name is HoverFly
 2.718281828459045
 repeatConstMethodHandle()
 Attempting to set Math.E raised IAE
+Quack
+Moo
+Woof
+Test
+Getting field in TestTokenizer raised WMTE (woohoo!)
+Stack: tos was 7
+Stack: capacity was 10
+Stack: capacity is 2
