@@ -21,6 +21,7 @@
 #include "base/utils.h"
 #include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
+#include "mirror/object-inl.h"
 #include "nth_caller_visitor.h"
 #include "reference_table.h"
 #include "runtime.h"
