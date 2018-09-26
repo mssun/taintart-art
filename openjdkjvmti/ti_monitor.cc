@@ -38,6 +38,7 @@
 
 #include "art_jvmti.h"
 #include "gc_root-inl.h"
+#include "mirror/object-inl.h"
 #include "monitor.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
