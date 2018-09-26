@@ -35,8 +35,10 @@ namespace space {
 // will not try to allocate a new region from the beginning of the
 // region space, but from the last allocated region. This allocation
 // strategy reduces region reuse and should help catch some GC bugs
-// earlier.
-static constexpr bool kCyclicRegionAllocation = true;
+// earlier. However, cyclic region allocation can also create memory
+// fragmentation at the region level (see b/33795328); therefore, we
+// only enable it in debug mode.
+static constexpr bool kCyclicRegionAllocation = kIsDebugBuild;
 
 // A space that consists of equal-sized regions.
 class RegionSpace final : public ContinuousMemMapAllocSpace {
