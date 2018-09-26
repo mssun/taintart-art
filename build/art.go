@@ -66,7 +66,7 @@ func globalFlags(ctx android.BaseContext) ([]string, []string) {
 			"-DART_READ_BARRIER_TYPE_IS_"+barrierType+"=1")
 	}
 
-	if envTrue(ctx, "ART_USE_GENERATIONAL_CC") {
+	if !envFalse(ctx, "ART_USE_GENERATIONAL_CC") {
 		cflags = append(cflags, "-DART_USE_GENERATIONAL_CC=1")
 	}
 
