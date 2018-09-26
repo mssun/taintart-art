@@ -18,6 +18,11 @@ import annotations.ConstantMethodHandle;
 import annotations.ConstantMethodType;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.WrongMethodTypeException;
+
+import java.io.StreamTokenizer;
+import java.io.StringReader;
+import java.util.Stack;
 
 class Main {
     /**
@@ -43,6 +48,12 @@ class Main {
         public LocalClass() {}
 
         private int field;
+    }
+
+    private static class TestTokenizer extends StreamTokenizer {
+        public TestTokenizer(String message) {
+            super(new StringReader(message));
+        }
     }
 
     @ConstantMethodType(
@@ -136,6 +147,48 @@ class Main {
         return null;
     }
 
+    @ConstantMethodHandle(
+        kind = ConstantMethodHandle.INSTANCE_GET,
+        owner = "java/io/StreamTokenizer",
+        fieldOrMethodName = "sval",
+        descriptor = "Ljava/lang/String;")
+     private static MethodHandle getSval() {
+        unreachable();
+        return null;
+    }
+
+    // This constant-method-handle references a private instance field. If
+    // referenced in bytecode it raises IAE at load time.
+    @ConstantMethodHandle(
+        kind = ConstantMethodHandle.INSTANCE_PUT,
+        owner = "java/io/StreamTokenizer",
+        fieldOrMethodName = "peekc",
+        descriptor = "I")
+     private static MethodHandle putPeekc() {
+        unreachable();
+        return null;
+    }
+
+    @ConstantMethodHandle(
+        kind = ConstantMethodHandle.INVOKE_VIRTUAL,
+        owner = "java/util/Stack",
+        fieldOrMethodName = "pop",
+        descriptor = "()Ljava/lang/Object;")
+    private static MethodHandle stackPop() {
+        unreachable();
+        return null;
+    }
+
+    @ConstantMethodHandle(
+        kind = ConstantMethodHandle.INVOKE_VIRTUAL,
+        owner = "java/util/Stack",
+        fieldOrMethodName = "trimToSize",
+        descriptor = "()V")
+    private static MethodHandle stackTrim() {
+        unreachable();
+        return null;
+    }
+
     private static void repeatConstMethodHandle() throws Throwable {
         System.out.println("repeatConstMethodHandle()");
         String[] values = {"A", "B", "C"};
@@ -166,5 +219,29 @@ class Main {
         } catch (IllegalAccessError expected) {
             System.out.println("Attempting to set Math.E raised IAE");
         }
+
+        StreamTokenizer st = new StreamTokenizer(new StringReader("Quack Moo Woof"));
+        while (st.nextToken() != StreamTokenizer.TT_EOF) {
+            System.out.println((String) getSval().invokeExact(st));
+        }
+
+        TestTokenizer tt = new TestTokenizer("Test message 123");
+        tt.nextToken();
+        System.out.println((String) getSval().invoke(tt));
+        try {
+            System.out.println((String) getSval().invokeExact(tt));
+        } catch (WrongMethodTypeException wmte) {
+            System.out.println("Getting field in TestTokenizer raised WMTE (woohoo!)");
+        }
+
+        Stack stack = new Stack();
+        stack.push(Integer.valueOf(3));
+        stack.push(Integer.valueOf(5));
+        stack.push(Integer.valueOf(7));
+        Object tos = stackPop().invokeExact(stack);
+        System.out.println("Stack: tos was " + tos);
+        System.out.println("Stack: capacity was " + stack.capacity());
+        stackTrim().invokeExact(stack);
+        System.out.println("Stack: capacity is " + stack.capacity());
     }
 }
