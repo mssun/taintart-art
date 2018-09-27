@@ -2499,7 +2499,7 @@ void Runtime::CreateJit() {
 }
 
 bool Runtime::CanRelocate() const {
-  return !IsAotCompiler();
+  return !IsAotCompiler() || compiler_callbacks_->IsRelocationPossible();
 }
 
 bool Runtime::IsCompilingBootImage() const {
