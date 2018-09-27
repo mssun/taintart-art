@@ -725,10 +725,6 @@ class ArtMethod final {
   ALWAYS_INLINE CodeItemDebugInfoAccessor DexInstructionDebugInfo()
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  GcRoot<mirror::Class>& DeclaringClassRoot() {
-    return declaring_class_;
-  }
-
  protected:
   // Field order required by test "ValidateFieldOrderOfJavaCppUnionClasses".
   // The class we are a part of.
