@@ -35,6 +35,10 @@ class Thread;
 // All operations must be done from the owning thread,
 // or at a point when the owning thread is suspended.
 //
+// The values stored for opcodes in the cache currently are:
+//   iget/iput: The field offset. The field must be non-volatile.
+//   sget/sput: The ArtField* pointer. The field must be non-volitile.
+//
 // Aligned to 16-bytes to make it easier to get the address of the cache
 // from assembly (it ensures that the offset is valid immediate value).
 class ALIGNED(16) InterpreterCache {
