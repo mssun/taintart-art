@@ -93,6 +93,7 @@ libart_cc_defaults {
         "instrumentation.cc",
         "intern_table.cc",
         "interpreter/interpreter.cc",
+        "interpreter/interpreter_cache.cc",
         "interpreter/interpreter_common.cc",
         "interpreter/interpreter_intrinsics.cc",
         "interpreter/interpreter_switch_impl.cc",

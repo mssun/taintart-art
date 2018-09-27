@@ -164,6 +164,8 @@ DEFINE_CHECK_EQ(static_cast<int32_t>(THREAD_CHECKPOINT_REQUEST), (static_cast<in
 DEFINE_CHECK_EQ(static_cast<int32_t>(THREAD_EMPTY_CHECKPOINT_REQUEST), (static_cast<int32_t>((art::kEmptyCheckpointRequest))))
 #define THREAD_SUSPEND_OR_CHECKPOINT_REQUEST 7
 DEFINE_CHECK_EQ(static_cast<int32_t>(THREAD_SUSPEND_OR_CHECKPOINT_REQUEST), (static_cast<int32_t>((art::kSuspendRequest | art::kCheckpointRequest | art::kEmptyCheckpointRequest))))
+#define THREAD_INTERPRETER_CACHE_SIZE_LOG2 8
+DEFINE_CHECK_EQ(static_cast<int32_t>(THREAD_INTERPRETER_CACHE_SIZE_LOG2), (static_cast<int32_t>((art::Thread::InterpreterCacheSizeLog2()))))
 #define JIT_CHECK_OSR (-1)
 DEFINE_CHECK_EQ(static_cast<int16_t>(JIT_CHECK_OSR), (static_cast<int16_t>((art::jit::kJitCheckForOSR))))
 #define JIT_HOTNESS_DISABLE (-2)
