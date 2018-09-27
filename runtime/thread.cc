@@ -3422,45 +3422,37 @@ Context* Thread::GetLongJumpContext() {
   return result;
 }
 
-// Note: this visitor may return with a method set, but dex_pc_ being DexFile:kDexNoIndex. This is
-//       so we don't abort in a special situation (thinlocked monitor) when dumping the Java stack.
-struct CurrentMethodVisitor final : public StackVisitor {
-  CurrentMethodVisitor(Thread* thread, Context* context, bool check_suspended, bool abort_on_error)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(thread,
-                     context,
-                     StackVisitor::StackWalkKind::kIncludeInlinedFrames,
-                     check_suspended),
-        this_object_(nullptr),
-        method_(nullptr),
-        dex_pc_(0),
-        abort_on_error_(abort_on_error) {}
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    ArtMethod* m = GetMethod();
-    if (m->IsRuntimeMethod()) {
-      // Continue if this is a runtime method.
-      return true;
-    }
-    if (context_ != nullptr) {
-      this_object_ = GetThisObject();
-    }
-    method_ = m;
-    dex_pc_ = GetDexPc(abort_on_error_);
-    return false;
-  }
-  ObjPtr<mirror::Object> this_object_;
-  ArtMethod* method_;
-  uint32_t dex_pc_;
-  const bool abort_on_error_;
-};
-
 ArtMethod* Thread::GetCurrentMethod(uint32_t* dex_pc,
                                     bool check_suspended,
                                     bool abort_on_error) const {
-  CurrentMethodVisitor visitor(const_cast<Thread*>(this),
-                               nullptr,
-                               check_suspended,
-                               abort_on_error);
+  // Note: this visitor may return with a method set, but dex_pc_ being DexFile:kDexNoIndex. This is
+  //       so we don't abort in a special situation (thinlocked monitor) when dumping the Java
+  //       stack.
+  struct CurrentMethodVisitor final : public StackVisitor {
+    CurrentMethodVisitor(Thread* thread, bool check_suspended, bool abort_on_error)
+        REQUIRES_SHARED(Locks::mutator_lock_)
+        : StackVisitor(thread,
+                       /* context= */nullptr,
+            StackVisitor::StackWalkKind::kIncludeInlinedFrames,
+            check_suspended),
+            method_(nullptr),
+            dex_pc_(0),
+            abort_on_error_(abort_on_error) {}
+    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
+      ArtMethod* m = GetMethod();
+      if (m->IsRuntimeMethod()) {
+        // Continue if this is a runtime method.
+        return true;
+      }
+      method_ = m;
+      dex_pc_ = GetDexPc(abort_on_error_);
+      return false;
+    }
+    ArtMethod* method_;
+    uint32_t dex_pc_;
+    const bool abort_on_error_;
+  };
+  CurrentMethodVisitor visitor(const_cast<Thread*>(this), check_suspended, abort_on_error);
   visitor.WalkStack(false);
   if (dex_pc != nullptr) {
     *dex_pc = visitor.dex_pc_;
