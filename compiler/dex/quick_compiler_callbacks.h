@@ -38,6 +38,11 @@ class QuickCompilerCallbacks final : public CompilerCallbacks {
 
   void ClassRejected(ClassReference ref) override;
 
+  // We are running in an environment where we can call patchoat safely so we should.
+  bool IsRelocationPossible() override {
+    return true;
+  }
+
   verifier::VerifierDeps* GetVerifierDeps() const override {
     return verifier_deps_.get();
   }

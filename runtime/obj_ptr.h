@@ -156,7 +156,9 @@ class ObjPtr {
 
  private:
   // Trim off high bits of thread local cookie.
-  ALWAYS_INLINE static uintptr_t GetCurrentTrimedCookie();
+  ALWAYS_INLINE static uintptr_t TrimCookie(uintptr_t cookie) {
+    return cookie & kCookieMask;
+  }
 
   ALWAYS_INLINE uintptr_t GetCookie() const {
     return reference_ >> kCookieShift;
