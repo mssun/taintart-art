@@ -111,7 +111,7 @@ class AllocatorVisitor {
 
 class ClassLinker {
  public:
-  static constexpr bool kAppImageMayContainStrings = false;
+  static constexpr bool kAppImageMayContainStrings = true;
 
   explicit ClassLinker(InternTable* intern_table);
   virtual ~ClassLinker();

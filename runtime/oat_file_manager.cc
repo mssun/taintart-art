@@ -526,6 +526,8 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
   if (source_oat_file != nullptr) {
     bool added_image_space = false;
     if (source_oat_file->IsExecutable()) {
+      ScopedTrace app_image_timing("AppImage:Loading");
+
       // We need to throw away the image space if we are debuggable but the oat-file source of the
       // image is not otherwise we might get classes with inlined methods or other such things.
       std::unique_ptr<gc::space::ImageSpace> image_space;

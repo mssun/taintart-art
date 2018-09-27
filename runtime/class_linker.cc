@@ -1251,6 +1251,8 @@ void AppImageClassLoadersAndDexCachesHelper::Update(
     ClassTable::ClassSet* new_class_set)
     REQUIRES(!Locks::dex_lock_)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  ScopedTrace app_image_timing("AppImage:Updating");
+
   Thread* const self = Thread::Current();
   gc::Heap* const heap = Runtime::Current()->GetHeap();
   const ImageHeader& header = space->GetImageHeader();
@@ -1311,7 +1313,7 @@ void AppImageClassLoadersAndDexCachesHelper::Update(
   }
   if (ClassLinker::kAppImageMayContainStrings) {
     // Fixup all the literal strings happens at app images which are supposed to be interned.
-    ScopedTrace timing("Fixup String Intern in image and dex_cache");
+    ScopedTrace timing("AppImage:InternString");
     const auto& image_header = space->GetImageHeader();
     const auto bitmap = space->GetMarkBitmap();  // bitmap of objects
     const uint8_t* target_base = space->GetMemMap()->Begin();
@@ -1324,7 +1326,7 @@ void AppImageClassLoadersAndDexCachesHelper::Update(
     bitmap->VisitMarkedRange(objects_begin, objects_end, fixup_intern_visitor);
   }
   if (kVerifyArtMethodDeclaringClasses) {
-    ScopedTrace timing("Verify declaring classes");
+    ScopedTrace timing("AppImage:VerifyDeclaringClasses");
     ReaderMutexLock rmu(self, *Locks::heap_bitmap_lock_);
     VerifyDeclaringClassVisitor visitor;
     header.VisitPackedArtMethods(&visitor, space->Begin(), kRuntimePointerSize);
@@ -1842,7 +1844,7 @@ bool ClassLinker::AddImageSpace(
       // Force every app image class's SubtypeCheck to be at least kIninitialized.
       //
       // See also ImageWriter::FixupClass.
-      ScopedTrace trace("Recalculate app image SubtypeCheck bitstrings");
+      ScopedTrace trace("AppImage:RecacluateSubtypeCheckBitstrings");
       MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
       for (const ClassTable::TableSlot& root : temp_set) {
         SubtypeCheck<ObjPtr<mirror::Class>>::EnsureInitialized(root.Read());
@@ -1862,7 +1864,7 @@ bool ClassLinker::AddImageSpace(
   if (kIsDebugBuild && app_image) {
     // This verification needs to happen after the classes have been added to the class loader.
     // Since it ensures classes are in the class table.
-    ScopedTrace trace("VerifyAppImage");
+    ScopedTrace trace("AppImage:Verify");
     VerifyAppImage(header, class_loader, dex_caches, class_table, space);
   }
 
