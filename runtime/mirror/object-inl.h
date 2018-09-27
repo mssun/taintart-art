@@ -588,6 +588,10 @@ inline bool Object::CasFieldStrongSequentiallyConsistent64(MemberOffset field_of
   return atomic_addr->CompareAndSetStrongSequentiallyConsistent(old_value, new_value);
 }
 
+/*
+ * Returns a pointer to an object representing what the field points to, not an
+ * object representing the field.
+ */
 template<class T,
          VerifyObjectFlags kVerifyFlags,
          ReadBarrierOption kReadBarrierOption,

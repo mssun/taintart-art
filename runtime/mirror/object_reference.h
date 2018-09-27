@@ -60,6 +60,15 @@ class MANAGED ObjectReference {
   using Compression = PtrCompression<kPoisonReferences, MirrorType>;
 
  public:
+  /*
+   * Returns a pointer to the mirror of the managed object this reference is for.
+   *
+   * This does NOT return the current object (which isn't derived from, and
+   * therefor cannot be a mirror::Object) as a mirror pointer.  Instead, this
+   * returns a pointer to the mirror of the managed object this refers to.
+   *
+   * TODO (chriswailes): Rename to GetPtr().
+   */
   MirrorType* AsMirrorPtr() const {
     return Compression::Decompress(reference_);
   }

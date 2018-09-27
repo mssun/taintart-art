@@ -84,6 +84,22 @@ class ImageWriter final {
               const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
               const HashSet<std::string>* dirty_image_objects);
 
+  /*
+   * Modifies the heap and collects information about objects and code so that
+   * they can be written to the boot or app image later.
+   *
+   * First, unneeded classes are removed from the managed heap.  Next, we
+   * remove cached values and calculate necessary metadata for later in the
+   * process. Optionally some debugging information is collected and used to
+   * verify the state of the heap at this point.  Next, metadata from earlier
+   * is used to calculate offsets of references to strings to speed up string
+   * interning when the image is loaded.  Lastly, we allocate enough memory to
+   * fit all image data minus the bitmap and relocation sections.
+   *
+   * This function should only be called when all objects to be included in the
+   * image have been initialized and all native methods have been generated.  In
+   * addition, no other thread should be modifying the heap.
+   */
   bool PrepareImageAddressSpace(TimingLogger* timings);
 
   bool IsImageAddressSpaceReady() const {
@@ -270,9 +286,18 @@ class ImageWriter final {
     ImageInfo();
     ImageInfo(ImageInfo&&) = default;
 
-    // Create the image sections into the out sections variable, returns the size of the image
-    // excluding the bitmap.
-    size_t CreateImageSections(ImageSection* out_sections) const;
+    /*
+     * Creates ImageSection objects that describe most of the sections of a
+     * boot or AppImage.  The following sections are not included:
+     *   - ImageHeader::kSectionImageBitmap
+     *   - ImageHeader::kSectionImageRelocations
+     *
+     * In addition, the ImageHeader is not covered here.
+     *
+     * This function will return the total size of the covered sections as well
+     * as a vector containing the individual ImageSection objects.
+     */
+    std::pair<size_t, std::vector<ImageSection>> CreateImageSections() const;
 
     size_t GetStubOffset(StubType stub_type) const {
       DCHECK_LT(static_cast<size_t>(stub_type), kNumberOfStubTypes);
@@ -363,6 +388,10 @@ class ImageWriter final {
 
     // Number of pointer fixup bytes.
     size_t pointer_fixup_bytes_ = 0;
+
+    // Number of offsets to string references that will be written to the
+    // StringFieldOffsets section.
+    size_t num_string_references_ = 0;
 
     // Intern table associated with this image for serialization.
     std::unique_ptr<InternTable> intern_table_;
@@ -474,6 +503,21 @@ class ImageWriter final {
                                     ImtConflictTable* copy,
                                     size_t oat_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  /*
+   * Copies metadata from the heap into a buffer that will be compressed and
+   * written to the image.
+   *
+   * This function copies the string offset metadata from a local vector to an
+   * offset inside the image_ field of an ImageInfo struct.  The offset into the
+   * memory pointed to by the image_ field is obtained from the ImageSection
+   * object for the String Offsets section.
+   *
+   * All data for the image, besides the object bitmap and the relocation data,
+   * will also be copied into the memory region pointed to by image_.
+   */
+  void CopyMetadata();
+
   template <bool kCheckNotNull = true>
   void RecordImageRelocation(const void* dest, size_t oat_index, bool app_to_boot_image = false);
   void FixupClass(mirror::Class* orig, mirror::Class* copy, size_t oat_index)
@@ -554,6 +598,60 @@ class ImageWriter final {
                                   std::unordered_set<mirror::Object*>* visited)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  /*
+   * A pair containing the information necessary to calculate the position of a
+   * managed object's field or native reference inside an AppImage.
+   *
+   * The first element of this pair is a raw mirror::Object pointer because its
+   * usage will cross a suspend point and ObjPtr would produce a false positive.
+   *
+   * The second element is an offset either into the object or into the string
+   * array of a DexCache object.
+   *
+   * TODO (chriswailes): Add a note indicating the source line where we ensure
+   * that no moving garbage collection will occur.
+   */
+  typedef std::pair<mirror::Object*, uint32_t> RefInfoPair;
+
+  /*
+   * Collects the info necessary for calculating image offsets to string field
+   * later.
+   *
+   * This function is used when constructing AppImages.  Because AppImages
+   * contain strings that must be interned we need to visit references to these
+   * strings when the AppImage is loaded and either insert them into the
+   * runtime intern table or replace the existing reference with a reference
+   * to the interned strings.
+   *
+   * To speed up the interning of strings when the AppImage is loaded we include
+   * a list of offsets to string references in the AppImage.  These are then
+   * iterated over at load time and fixed up.
+   *
+   * To record the offsets we first have to count the number of string
+   * references that will be included in the AppImage.  This allows use to both
+   * allocate enough memory for soring the offsets and correctly calculate the
+   * offsets of various objects into the image.  Once the image offset
+   * calculations are done for Java objects the reference object/offset pairs
+   * are translated to image offsets.  The CopyMetadata function then copies
+   * these offsets into the image.
+   *
+   * A vector containing pairs of object pointers and offsets.  The offsets are
+   * tagged to indicate if the offset is for a field of a mirror object or a
+   * native reference.  If the offset is tagged as a native reference it must
+   * have come from a DexCache's string array.
+   */
+  std::vector<RefInfoPair> CollectStringReferenceInfo() const
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  /*
+   * Ensures that assumptions about native GC roots and AppImages hold.
+   *
+   * This function verifies the following condition(s):
+   *   - Native references to Java strings are only reachable through DexCache
+   *     objects
+   */
+  void VerifyNativeGCRootInvariants() const REQUIRES_SHARED(Locks::mutator_lock_);
+
   bool IsMultiImage() const {
     return image_infos_.size() > 1;
   }
@@ -628,6 +726,18 @@ class ImageWriter final {
   void CopyAndFixupPointer(void* object, MemberOffset offset, void* value, size_t oat_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  /*
+   * Tests an object to see if it will be contained in an AppImage.
+   *
+   * An object reference is considered to be a AppImage String reference iff:
+   *   - It isn't null
+   *   - The referred-object isn't in the boot image
+   *   - The referred-object is a Java String
+   */
+  ALWAYS_INLINE
+  bool IsValidAppImageStringReference(ObjPtr<mirror::Object> referred_obj) const
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   const CompilerOptions& compiler_options_;
 
   // Beginning target image address for the first image.
@@ -680,6 +790,9 @@ class ImageWriter final {
   // Boot image live objects, null for app image.
   mirror::ObjectArray<mirror::Object>* boot_image_live_objects_;
 
+  // Offsets into the image that indicate where string references are recorded.
+  std::vector<uint32_t> string_reference_offsets_;
+
   // Which mode the image is stored as, see image.h
   const ImageHeader::StorageMode image_storage_mode_;
 
@@ -700,9 +813,23 @@ class ImageWriter final {
   class NativeLocationVisitor;
   class PruneClassesVisitor;
   class PruneClassLoaderClassesVisitor;
+  class PruneObjectReferenceVisitor;
   class RegisterBootClassPathClassesVisitor;
   class VisitReferencesVisitor;
-  class PruneObjectReferenceVisitor;
+
+  /*
+   * A visitor class for extracting object/offset pairs.
+   *
+   * This visitor walks the fields of an object and extracts object/offset pairs
+   * that are later translated to image offsets.  This visitor is only
+   * responsible for extracting info for Java references.  Native references to
+   * Java strings are handled in the wrapper function
+   * CollectStringReferenceInfo().
+   */
+  class CollectStringReferenceVisitor;
+
+  // A visitor used by the VerifyNativeGCRootInvariants() function.
+  class NativeGCRootInvariantVisitor;
 
   DISALLOW_COPY_AND_ASSIGN(ImageWriter);
 };
