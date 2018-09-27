@@ -96,6 +96,10 @@ ADD_TEST_EQ(THREAD_LOCAL_ALLOC_STACK_TOP_OFFSET,
 #define THREAD_LOCAL_ALLOC_STACK_END_OFFSET (THREAD_ROSALLOC_RUNS_OFFSET + 17 * __SIZEOF_POINTER__)
 ADD_TEST_EQ(THREAD_LOCAL_ALLOC_STACK_END_OFFSET,
             art::Thread::ThreadLocalAllocStackEndOffset<POINTER_SIZE>().Int32Value())
+// Offset of field Thread::interpreter_cache_.
+#define THREAD_INTERPRETER_CACHE_OFFSET (144 + 312 * __SIZEOF_POINTER__)
+ADD_TEST_EQ(THREAD_INTERPRETER_CACHE_OFFSET,
+            art::Thread::InterpreterCacheOffset<POINTER_SIZE>().Int32Value())
 
 // Offsets within ShadowFrame.
 #define SHADOWFRAME_LINK_OFFSET 0
