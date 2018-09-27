@@ -49,7 +49,6 @@ class VerifierDepsCompilerCallbacks : public CompilerCallbacks {
 
   void MethodVerified(verifier::MethodVerifier* verifier ATTRIBUTE_UNUSED) override {}
   void ClassRejected(ClassReference ref ATTRIBUTE_UNUSED) override {}
-  bool IsRelocationPossible() override { return false; }
 
   verifier::VerifierDeps* GetVerifierDeps() const override { return deps_; }
   void SetVerifierDeps(verifier::VerifierDeps* deps) override { deps_ = deps; }
