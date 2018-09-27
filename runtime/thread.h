@@ -38,6 +38,7 @@
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "handle_scope.h"
 #include "instrumentation.h"
+#include "interpreter/interpreter_cache.h"
 #include "jvalue.h"
 #include "managed_stack.h"
 #include "offsets.h"
@@ -1299,6 +1300,29 @@ class Thread {
                                        jobject thread_group)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  ALWAYS_INLINE InterpreterCache* GetInterpreterCache() {
+    return &interpreter_cache_;
+  }
+
+  // Clear all thread-local interpreter caches.
+  //
+  // Since the caches are keyed by memory pointer to dex instructions, this must be
+  // called when any dex code is unloaded (before different code gets loaded at the
+  // same memory location).
+  //
+  // If presence of cache entry implies some pre-conditions, this must also be
+  // called if the pre-conditions might no longer hold true.
+  static void ClearAllInterpreterCaches();
+
+  template<PointerSize pointer_size>
+  static ThreadOffset<pointer_size> InterpreterCacheOffset() {
+    return ThreadOffset<pointer_size>(OFFSETOF_MEMBER(Thread, interpreter_cache_));
+  }
+
+  static int InterpreterCacheSizeLog2() {
+    return WhichPowerOf2(InterpreterCache::kSize);
+  }
+
  private:
   explicit Thread(bool daemon);
   ~Thread() REQUIRES(!Locks::mutator_lock_, !Locks::thread_suspend_count_lock_);
@@ -1787,6 +1811,11 @@ class Thread {
   // True if the thread is subject to user-code suspension. By default this is true. This can only
   // be false for threads where '!can_call_into_java_'.
   bool can_be_suspended_by_user_code_;
+
+  // Small thread-local cache to be used from the interpreter.
+  // It is keyed by dex instruction pointer.
+  // The value is opcode-depended (e.g. field offset).
+  InterpreterCache interpreter_cache_;
 
   friend class Dbg;  // For SetStateUnsafe.
   friend class gc::collector::SemiSpace;  // For getting stack traces.
