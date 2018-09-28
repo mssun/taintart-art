@@ -16,14 +16,14 @@
 
 public class Main {
 
-  /// CHECK-START: int Main.round32(float) intrinsics_recognition (after)
+  /// CHECK-START: int Main.round32(float) builder (after)
   /// CHECK-DAG: <<Result:i\d+>> InvokeStaticOrDirect intrinsic:MathRoundFloat
   /// CHECK-DAG:                 Return [<<Result>>]
   private static int round32(float f) {
     return Math.round(f);
   }
 
-  /// CHECK-START: long Main.round64(double) intrinsics_recognition (after)
+  /// CHECK-START: long Main.round64(double) builder (after)
   /// CHECK-DAG: <<Result:j\d+>> InvokeStaticOrDirect intrinsic:MathRoundDouble
   /// CHECK-DAG:                 Return [<<Result>>]
   private static long round64(double d) {

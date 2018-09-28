@@ -52,11 +52,11 @@ public class Main {
 
   /// CHECK-START: boolean Main.$noinline$stringEquals(java.lang.Object) inliner (after)
   /// CHECK:       Deoptimize
-  /// CHECK:       InvokeVirtual method_name:java.lang.Object.equals intrinsic:StringEquals
+  /// CHECK:       InvokeVirtual method_name:java.lang.String.equals intrinsic:StringEquals
 
   /// CHECK-START: boolean Main.$noinline$stringEquals(java.lang.Object) instruction_simplifier$after_inlining (after)
   /// CHECK:       Deoptimize
-  /// CHECK:       InvokeVirtual method_name:java.lang.Object.equals intrinsic:StringEquals
+  /// CHECK:       InvokeVirtual method_name:java.lang.String.equals intrinsic:StringEquals
 
   public static boolean $noinline$stringEquals(Object obj) {
     return obj.equals("def");

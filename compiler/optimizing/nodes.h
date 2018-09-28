@@ -29,6 +29,7 @@
 #include "base/quasi_atomic.h"
 #include "base/stl_util.h"
 #include "base/transform_array_ref.h"
+#include "art_method.h"
 #include "data_type.h"
 #include "deoptimization_kind.h"
 #include "dex/dex_file.h"
@@ -4323,7 +4324,7 @@ class HInvoke : public HVariableInputSizeInstruction {
   bool IsIntrinsic() const { return intrinsic_ != Intrinsics::kNone; }
 
   ArtMethod* GetResolvedMethod() const { return resolved_method_; }
-  void SetResolvedMethod(ArtMethod* method) { resolved_method_ = method; }
+  void SetResolvedMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
 
   DECLARE_ABSTRACT_INSTRUCTION(Invoke);
 
@@ -4355,12 +4356,14 @@ class HInvoke : public HVariableInputSizeInstruction {
           number_of_arguments + number_of_other_inputs,
           kArenaAllocInvokeInputs),
       number_of_arguments_(number_of_arguments),
-      resolved_method_(resolved_method),
       dex_method_index_(dex_method_index),
       intrinsic_(Intrinsics::kNone),
       intrinsic_optimizations_(0) {
     SetPackedField<InvokeTypeField>(invoke_type);
     SetPackedFlag<kFlagCanThrow>(true);
+    // Check mutator lock, constructors lack annotalysis support.
+    Locks::mutator_lock_->AssertNotExclusiveHeld(Thread::Current());
+    SetResolvedMethod(resolved_method);
   }
 
   DEFAULT_COPY_CONSTRUCTOR(Invoke);

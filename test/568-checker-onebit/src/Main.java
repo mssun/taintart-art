@@ -16,28 +16,28 @@
 
 public class Main {
 
-  /// CHECK-START: int Main.hi32(int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.hi32(int) builder (after)
   /// CHECK-DAG: <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerHighestOneBit
   /// CHECK-DAG:                 Return [<<Result>>]
   private static int hi32(int x) {
     return Integer.highestOneBit(x);
   }
 
-  /// CHECK-START: int Main.lo32(int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.lo32(int) builder (after)
   /// CHECK-DAG: <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerLowestOneBit
   /// CHECK-DAG:                 Return [<<Result>>]
   private static int lo32(int x) {
     return Integer.lowestOneBit(x);
   }
 
-  /// CHECK-START: long Main.hi64(long) intrinsics_recognition (after)
+  /// CHECK-START: long Main.hi64(long) builder (after)
   /// CHECK-DAG: <<Result:j\d+>> InvokeStaticOrDirect intrinsic:LongHighestOneBit
   /// CHECK-DAG:                 Return [<<Result>>]
   private static long hi64(long x) {
     return Long.highestOneBit(x);
   }
 
-  /// CHECK-START: long Main.lo64(long) intrinsics_recognition (after)
+  /// CHECK-START: long Main.lo64(long) builder (after)
   /// CHECK-DAG: <<Result:j\d+>> InvokeStaticOrDirect intrinsic:LongLowestOneBit
   /// CHECK-DAG:                 Return [<<Result>>]
   private static long lo64(long x) {

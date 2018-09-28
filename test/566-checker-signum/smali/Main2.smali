@@ -15,7 +15,7 @@
 .class public LMain2;
 .super Ljava/lang/Object;
 
-## CHECK-START: int Main2.signBoolean(boolean) intrinsics_recognition (after)
+## CHECK-START: int Main2.signBoolean(boolean) builder (after)
 ## CHECK-DAG:     <<Zero:i\d+>>   IntConstant 0
 ## CHECK-DAG:     <<One:i\d+>>    IntConstant 1
 ## CHECK-DAG:     <<Phi:i\d+>>    Phi [<<One>>,<<Zero>>]

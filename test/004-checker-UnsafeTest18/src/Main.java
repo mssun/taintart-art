@@ -47,21 +47,21 @@ public class Main {
   // Setters.
   //
 
-  /// CHECK-START: int Main.set32(java.lang.Object, long, int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.set32(java.lang.Object, long, int) builder (after)
   /// CHECK-DAG: <<Result:i\d+>> InvokeVirtual intrinsic:UnsafeGetAndSetInt
   /// CHECK-DAG:                 Return [<<Result>>]
   private static int set32(Object o, long offset, int newValue) {
     return unsafe.getAndSetInt(o, offset, newValue);
   }
 
-  /// CHECK-START: long Main.set64(java.lang.Object, long, long) intrinsics_recognition (after)
+  /// CHECK-START: long Main.set64(java.lang.Object, long, long) builder (after)
   /// CHECK-DAG: <<Result:j\d+>> InvokeVirtual intrinsic:UnsafeGetAndSetLong
   /// CHECK-DAG:                 Return [<<Result>>]
   private static long set64(Object o, long offset, long newValue) {
     return unsafe.getAndSetLong(o, offset, newValue);
   }
 
-  /// CHECK-START: java.lang.Object Main.setObj(java.lang.Object, long, java.lang.Object) intrinsics_recognition (after)
+  /// CHECK-START: java.lang.Object Main.setObj(java.lang.Object, long, java.lang.Object) builder (after)
   /// CHECK-DAG: <<Result:l\d+>> InvokeVirtual intrinsic:UnsafeGetAndSetObject
   /// CHECK-DAG:                 Return [<<Result>>]
   private static Object setObj(Object o, long offset, Object newValue) {
@@ -72,14 +72,14 @@ public class Main {
   // Adders.
   //
 
-  /// CHECK-START: int Main.add32(java.lang.Object, long, int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.add32(java.lang.Object, long, int) builder (after)
   /// CHECK-DAG: <<Result:i\d+>> InvokeVirtual intrinsic:UnsafeGetAndAddInt
   /// CHECK-DAG:                 Return [<<Result>>]
   private static int add32(Object o, long offset, int delta) {
     return unsafe.getAndAddInt(o, offset, delta);
   }
 
-  /// CHECK-START: long Main.add64(java.lang.Object, long, long) intrinsics_recognition (after)
+  /// CHECK-START: long Main.add64(java.lang.Object, long, long) builder (after)
   /// CHECK-DAG: <<Result:j\d+>> InvokeVirtual intrinsic:UnsafeGetAndAddLong
   /// CHECK-DAG:                 Return [<<Result>>]
   private static long add64(Object o, long offset, long delta) {
@@ -90,7 +90,7 @@ public class Main {
   // Fences (native).
   //
 
-  /// CHECK-START: void Main.load() intrinsics_recognition (after)
+  /// CHECK-START: void Main.load() builder (after)
   /// CHECK-DAG: InvokeVirtual intrinsic:UnsafeLoadFence
   //
   /// CHECK-START: void Main.load() instruction_simplifier (after)
@@ -102,7 +102,7 @@ public class Main {
     unsafe.loadFence();
   }
 
-  /// CHECK-START: void Main.store() intrinsics_recognition (after)
+  /// CHECK-START: void Main.store() builder (after)
   /// CHECK-DAG: InvokeVirtual intrinsic:UnsafeStoreFence
   //
   /// CHECK-START: void Main.store() instruction_simplifier (after)
@@ -114,7 +114,7 @@ public class Main {
     unsafe.storeFence();
   }
 
-  /// CHECK-START: void Main.full() intrinsics_recognition (after)
+  /// CHECK-START: void Main.full() builder (after)
   /// CHECK-DAG: InvokeVirtual intrinsic:UnsafeFullFence
   //
   /// CHECK-START: void Main.full() instruction_simplifier (after)
