@@ -19,7 +19,8 @@
 
 namespace art {
 
-  // Call memfd(2) if available on platform and return result.
+// Call memfd(2) if available on platform and return result. This call also makes a kernel version
+// check for safety on older kernels (b/116769556)..
 int memfd_create(const char* name, unsigned int flags);
 
 }  // namespace art
