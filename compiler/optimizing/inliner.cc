@@ -1296,9 +1296,7 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
 
   // If invoke_instruction is devirtualized to a different method, give intrinsics
   // another chance before we try to inline it.
-  bool wrong_invoke_type = false;
-  if (invoke_instruction->GetResolvedMethod() != method &&
-      IntrinsicsRecognizer::Recognize(invoke_instruction, method, &wrong_invoke_type)) {
+  if (invoke_instruction->GetResolvedMethod() != method && method->IsIntrinsic()) {
     MaybeRecordStat(stats_, MethodCompilationStat::kIntrinsicRecognized);
     if (invoke_instruction->IsInvokeInterface()) {
       // We don't intrinsify an invoke-interface directly.
@@ -1311,6 +1309,7 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
           invoke_instruction->GetDexMethodIndex(),  // Use interface method's dex method index.
           method,
           method->GetMethodIndex());
+      DCHECK_NE(new_invoke->GetIntrinsic(), Intrinsics::kNone);
       HInputsRef inputs = invoke_instruction->GetInputs();
       for (size_t index = 0; index != inputs.size(); ++index) {
         new_invoke->SetArgumentAt(index, inputs[index]);
@@ -1320,14 +1319,11 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
       if (invoke_instruction->GetType() == DataType::Type::kReference) {
         new_invoke->SetReferenceTypeInfo(invoke_instruction->GetReferenceTypeInfo());
       }
-      // Run intrinsic recognizer again to set new_invoke's intrinsic.
-      IntrinsicsRecognizer::Recognize(new_invoke, method, &wrong_invoke_type);
-      DCHECK_NE(new_invoke->GetIntrinsic(), Intrinsics::kNone);
       return_replacement = new_invoke;
       // invoke_instruction is replaced with new_invoke.
       should_remove_invoke_instruction = true;
     } else {
-      // invoke_instruction is intrinsified and stays.
+      invoke_instruction->SetResolvedMethod(method);
     }
   } else if (!TryBuildAndInline(invoke_instruction, method, receiver_type, &return_replacement)) {
     if (invoke_instruction->IsInvokeInterface()) {
@@ -2023,10 +2019,8 @@ void HInliner::RunOptimizations(HGraph* callee_graph,
   HDeadCodeElimination dce(callee_graph, inline_stats_, "dead_code_elimination$inliner");
   HConstantFolding fold(callee_graph, "constant_folding$inliner");
   InstructionSimplifier simplify(callee_graph, codegen_, inline_stats_);
-  IntrinsicsRecognizer intrinsics(callee_graph, inline_stats_);
 
   HOptimization* optimizations[] = {
-    &intrinsics,
     &simplify,
     &fold,
     &dce,

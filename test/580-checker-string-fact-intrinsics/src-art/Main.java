@@ -17,9 +17,6 @@
 public class Main {
 
   /// CHECK-START: void Main.testNewStringFromBytes() builder (after)
-  /// CHECK-DAG:     InvokeStaticOrDirect method_name:java.lang.StringFactory.newStringFromBytes intrinsic:None
-
-  /// CHECK-START: void Main.testNewStringFromBytes() intrinsics_recognition (after)
   /// CHECK-DAG:     InvokeStaticOrDirect method_name:java.lang.StringFactory.newStringFromBytes intrinsic:StringNewStringFromBytes
 
   public static void testNewStringFromBytes() {
@@ -51,9 +48,6 @@ public class Main {
   /// CHECK-START: void Main.testNewStringFromChars() builder (after)
   /// CHECK-DAG:     InvokeStaticOrDirect method_name:java.lang.StringFactory.newStringFromChars intrinsic:None
 
-  /// CHECK-START: void Main.testNewStringFromChars() intrinsics_recognition (after)
-  /// CHECK-DAG:     InvokeStaticOrDirect method_name:java.lang.StringFactory.newStringFromChars intrinsic:None
-
   /// CHECK-START: void Main.testNewStringFromChars() inliner (after)
   /// CHECK-DAG:     InvokeStaticOrDirect method_name:java.lang.StringFactory.newStringFromChars intrinsic:None
 
@@ -64,9 +58,6 @@ public class Main {
   }
 
   /// CHECK-START: void Main.testNewStringFromString() builder (after)
-  /// CHECK-DAG:     InvokeStaticOrDirect method_name:java.lang.StringFactory.newStringFromString intrinsic:None
-
-  /// CHECK-START: void Main.testNewStringFromString() intrinsics_recognition (after)
   /// CHECK-DAG:     InvokeStaticOrDirect method_name:java.lang.StringFactory.newStringFromString intrinsic:StringNewStringFromString
 
   public static void testNewStringFromString() {

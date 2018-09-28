@@ -21,7 +21,7 @@ public class Main {
   // CHECK-DAG: popcnt
 
 
-  /// CHECK-START: int Main.$noinline$BitCountBoolean(boolean) intrinsics_recognition (after)
+  /// CHECK-START: int Main.$noinline$BitCountBoolean(boolean) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>>  InvokeStaticOrDirect intrinsic:IntegerBitCount
   /// CHECK-DAG:                      Return [<<Result>>]
   private static int $noinline$BitCountBoolean(boolean x) {
@@ -29,7 +29,7 @@ public class Main {
     return Integer.bitCount(x ? 1 : 0);
   }
 
-  /// CHECK-START: int Main.$noinline$BitCountByte(byte) intrinsics_recognition (after)
+  /// CHECK-START: int Main.$noinline$BitCountByte(byte) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>>  InvokeStaticOrDirect intrinsic:IntegerBitCount
   /// CHECK-DAG:                      Return [<<Result>>]
   private static int $noinline$BitCountByte(byte x) {
@@ -37,7 +37,7 @@ public class Main {
     return Integer.bitCount(x);
   }
 
-  /// CHECK-START: int Main.$noinline$BitCountShort(short) intrinsics_recognition (after)
+  /// CHECK-START: int Main.$noinline$BitCountShort(short) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>>  InvokeStaticOrDirect intrinsic:IntegerBitCount
   /// CHECK-DAG:                      Return [<<Result>>]
   private static int $noinline$BitCountShort(short x) {
@@ -45,7 +45,7 @@ public class Main {
     return Integer.bitCount(x);
   }
 
-  /// CHECK-START: int Main.$noinline$BitCountChar(char) intrinsics_recognition (after)
+  /// CHECK-START: int Main.$noinline$BitCountChar(char) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>>  InvokeStaticOrDirect intrinsic:IntegerBitCount
   /// CHECK-DAG:                      Return [<<Result>>]
   private static int $noinline$BitCountChar(char x) {
@@ -53,7 +53,7 @@ public class Main {
     return Integer.bitCount(x);
   }
 
-  /// CHECK-START: int Main.$noinline$BitCountInt(int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.$noinline$BitCountInt(int) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>>  InvokeStaticOrDirect intrinsic:IntegerBitCount
   /// CHECK-DAG:                      Return [<<Result>>]
   private static int $noinline$BitCountInt(int x) {
@@ -61,7 +61,7 @@ public class Main {
     return Integer.bitCount(x);
   }
 
-  /// CHECK-START: int Main.$noinline$BitCountLong(long) intrinsics_recognition (after)
+  /// CHECK-START: int Main.$noinline$BitCountLong(long) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>>  InvokeStaticOrDirect intrinsic:LongBitCount
   /// CHECK-DAG:                      Return [<<Result>>]
   private static int $noinline$BitCountLong(long x) {
