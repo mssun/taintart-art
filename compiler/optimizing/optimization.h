@@ -77,7 +77,6 @@ enum class OptimizationPass {
   kInductionVarAnalysis,
   kInliner,
   kInstructionSimplifier,
-  kIntrinsicsRecognizer,
   kInvariantCodeMotion,
   kLoadStoreAnalysis,
   kLoadStoreElimination,

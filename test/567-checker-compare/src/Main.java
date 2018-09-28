@@ -20,7 +20,7 @@ public class Main {
 
   public static boolean doThrow = false;
 
-  /// CHECK-START: void Main.$opt$noinline$testReplaceInputWithItself(int) intrinsics_recognition (after)
+  /// CHECK-START: void Main.$opt$noinline$testReplaceInputWithItself(int) builder (after)
   /// CHECK-DAG:     <<ArgX:i\d+>>   ParameterValue
   /// CHECK-DAG:     <<Zero:i\d+>>   IntConstant 0
   /// CHECK-DAG:     <<Cmp:i\d+>>    InvokeStaticOrDirect [<<ArgX>>,<<Zero>>{{(,[ij]\d+)?}}] intrinsic:IntegerCompare
@@ -65,7 +65,7 @@ public class Main {
     return (Integer) m.invoke(null, x, y);
   }
 
-  /// CHECK-START: int Main.compareBytes(byte, byte) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareBytes(byte, byte) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -80,7 +80,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareShorts(short, short) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareShorts(short, short) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -95,7 +95,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareChars(char, char) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareChars(char, char) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -110,7 +110,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareInts(int, int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareInts(int, int) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -125,7 +125,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareLongs(long, long) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareLongs(long, long) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:LongCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -141,7 +141,7 @@ public class Main {
   }
 
 
-  /// CHECK-START: int Main.compareByteShort(byte, short) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareByteShort(byte, short) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -156,7 +156,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareByteChar(byte, char) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareByteChar(byte, char) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -171,7 +171,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareByteInt(byte, int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareByteInt(byte, int) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -187,7 +187,7 @@ public class Main {
   }
 
 
-  /// CHECK-START: int Main.compareShortByte(short, byte) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareShortByte(short, byte) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -202,7 +202,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareShortChar(short, char) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareShortChar(short, char) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -217,7 +217,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareShortInt(short, int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareShortInt(short, int) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -233,7 +233,7 @@ public class Main {
   }
 
 
-  /// CHECK-START: int Main.compareCharByte(char, byte) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareCharByte(char, byte) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -248,7 +248,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareCharShort(char, short) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareCharShort(char, short) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -263,7 +263,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareCharInt(char, int) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareCharInt(char, int) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -279,7 +279,7 @@ public class Main {
   }
 
 
-  /// CHECK-START: int Main.compareIntByte(int, byte) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareIntByte(int, byte) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -294,7 +294,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareIntShort(int, short) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareIntShort(int, short) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
@@ -309,7 +309,7 @@ public class Main {
     return Integer.compare(x, y);
   }
 
-  /// CHECK-START: int Main.compareIntChar(int, char) intrinsics_recognition (after)
+  /// CHECK-START: int Main.compareIntChar(int, char) builder (after)
   /// CHECK-DAG:     <<Result:i\d+>> InvokeStaticOrDirect intrinsic:IntegerCompare
   /// CHECK-DAG:                     Return [<<Result>>]
 
