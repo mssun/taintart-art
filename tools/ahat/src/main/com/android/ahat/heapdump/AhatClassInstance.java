@@ -160,6 +160,37 @@ public class AhatClassInstance extends AhatInstance {
     return null;
   }
 
+  @Override public String getBinderTokenDescriptor() {
+    String descriptor = getBinderDescriptor();
+    if (descriptor == null) {
+      return null;
+    }
+
+    if (isInstanceOfClass(descriptor + "$Stub")) {
+      // This is an instance of an auto-generated interface class, and
+      // therefore not a binder token.
+      return null;
+    }
+
+    return descriptor;
+  }
+
+  @Override public String getBinderStubInterfaceName() {
+    String descriptor = getBinderDescriptor();
+    if (descriptor == null || descriptor.isEmpty()) {
+      // Binder interface stubs always have a non-empty descriptor
+      return null;
+    }
+
+    // We only consider something a binder service if it's an instance of the
+    // auto-generated descriptor$Stub class.
+    if (isInstanceOfClass(descriptor + "$Stub")) {
+      return descriptor;
+    }
+
+    return null;
+  }
+
   @Override public AhatInstance getAssociatedBitmapInstance() {
     return getBitmapInfo() == null ? null : this;
   }
@@ -174,6 +205,25 @@ public class AhatClassInstance extends AhatInstance {
 
   @Override public String toString() {
     return String.format("%s@%08x", getClassName(), getId());
+  }
+
+  /**
+   * Returns the descriptor of an android.os.Binder object.
+   * If no descriptor is set, returns an empty string.
+   * If the object is not an android.os.Binder object, returns null.
+   */
+  private String getBinderDescriptor() {
+    if (isInstanceOfClass("android.os.Binder")) {
+      Value value = getField("mDescriptor");;
+
+      if (value == null) {
+        return "";
+      } else {
+        return value.asAhatInstance().asString();
+      }
+    } else {
+      return null;
+    }
   }
 
   /**
