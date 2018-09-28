@@ -174,7 +174,6 @@ void HiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolver>>& r
 void HiddenApiFinder::Dump(std::ostream& os,
                            HiddenApiStats* stats,
                            bool dump_reflection) {
-  static const char* kPrefix = "       ";
   stats->linking_count = method_locations_.size() + field_locations_.size();
 
   // Dump methods from hidden APIs linked against.
@@ -184,9 +183,7 @@ void HiddenApiFinder::Dump(std::ostream& os,
     stats->api_counts[api_list]++;
     os << "#" << ++stats->count << ": Linking " << api_list << " " << pair.first << " use(s):";
     os << std::endl;
-    for (const MethodReference& ref : pair.second) {
-      os << kPrefix << HiddenApi::GetApiMethodName(ref) << std::endl;
-    }
+    HiddenApiFinder::DumpReferences(os, pair.second);
     os << std::endl;
   }
 
@@ -197,9 +194,7 @@ void HiddenApiFinder::Dump(std::ostream& os,
     stats->api_counts[api_list]++;
     os << "#" << ++stats->count << ": Linking " << api_list << " " << pair.first << " use(s):";
     os << std::endl;
-    for (const MethodReference& ref : pair.second) {
-      os << kPrefix << HiddenApi::GetApiMethodName(ref) << std::endl;
-    }
+    HiddenApiFinder::DumpReferences(os, pair.second);
     os << std::endl;
   }
 
@@ -215,13 +210,34 @@ void HiddenApiFinder::Dump(std::ostream& os,
           os << "#" << ++stats->count << ": Reflection " << api_list << " " << full_name
              << " potential use(s):";
           os << std::endl;
-          for (const MethodReference& ref : reflection_locations_[name]) {
-            os << kPrefix << HiddenApi::GetApiMethodName(ref) << std::endl;
-          }
+          HiddenApiFinder::DumpReferences(os, reflection_locations_[name]);
           os << std::endl;
         }
       }
     }
+  }
+}
+
+void HiddenApiFinder::DumpReferences(std::ostream& os,
+                                     const std::vector<MethodReference>& references) {
+  static const char* kPrefix = "       ";
+
+  // Count number of occurrences of each reference, to make the output clearer.
+  std::map<std::string, size_t> counts;
+  for (const MethodReference& ref : references) {
+    std::string ref_string = HiddenApi::GetApiMethodName(ref);
+    if (!counts.count(ref_string)) {
+      counts[ref_string] = 0;
+    }
+    counts[ref_string]++;
+  }
+
+  for (const std::pair<const std::string, const size_t>& pair : counts) {
+    os << kPrefix << pair.first;
+    if (pair.second > 1) {
+       os << " (" << pair.second << " occurrences)";
+    }
+    os << std::endl;
   }
 }
 
