@@ -95,7 +95,7 @@ class PACKED(4) ManagedStack {
     tagged_top_quick_frame_ = TaggedTopQuickFrame::CreateTagged(top);
   }
 
-  static size_t TaggedTopQuickFrameOffset() {
+  static constexpr size_t TaggedTopQuickFrameOffset() {
     return OFFSETOF_MEMBER(ManagedStack, tagged_top_quick_frame_);
   }
 

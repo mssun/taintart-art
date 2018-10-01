@@ -399,7 +399,7 @@ class Runtime {
   QuickMethodFrameInfo GetRuntimeMethodFrameInfo(ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static size_t GetCalleeSaveMethodOffset(CalleeSaveType type) {
+  static constexpr size_t GetCalleeSaveMethodOffset(CalleeSaveType type) {
     return OFFSETOF_MEMBER(Runtime, callee_save_methods_[static_cast<size_t>(type)]);
   }
 

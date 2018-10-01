@@ -219,12 +219,6 @@ static JniCompiledMethod ArtJniCompileMethodInternal(const CompilerOptions& comp
   jni_asm->cfi().SetEnabled(compiler_options.GenerateAnyDebugInfo());
   jni_asm->SetEmitRunTimeChecksInDebugMode(compiler_options.EmitRunTimeChecksInDebugMode());
 
-  // Offsets into data structures
-  // TODO: if cross compiling these offsets are for the host not the target
-  const Offset functions(OFFSETOF_MEMBER(JNIEnvExt, functions));
-  const Offset monitor_enter(OFFSETOF_MEMBER(JNINativeInterface, MonitorEnter));
-  const Offset monitor_exit(OFFSETOF_MEMBER(JNINativeInterface, MonitorExit));
-
   // 1. Build the frame saving all callee saves, Method*, and PC return address.
   const size_t frame_size(main_jni_conv->FrameSize());  // Excludes outgoing args.
   ArrayRef<const ManagedRegister> callee_save_regs = main_jni_conv->CalleeSaveRegisters();

@@ -42,8 +42,16 @@ template<typename T> ART_FRIEND_TEST(test_set_name, individual_test)
   private: \
     void* operator new(size_t) = delete  // NOLINT
 
-#define OFFSETOF_MEMBER(t, f) \
-  (reinterpret_cast<uintptr_t>(&reinterpret_cast<t*>(16)->f) - static_cast<uintptr_t>(16u))  // NOLINT
+// offsetof is not defined by the spec on types with non-standard layout,
+// however it is implemented by compilers in practice.
+// (note that reinterpret_cast is not valid constexpr)
+//
+// Alternative approach would be something like:
+// #define OFFSETOF_HELPER(t, f) \
+//   (reinterpret_cast<uintptr_t>(&reinterpret_cast<t*>(16)->f) - static_cast<uintptr_t>(16u))
+// #define OFFSETOF_MEMBER(t, f) \
+//   (__builtin_constant_p(OFFSETOF_HELPER(t,f)) ? OFFSETOF_HELPER(t,f) : OFFSETOF_HELPER(t,f))
+#define OFFSETOF_MEMBER(t, f) offsetof(t, f)
 
 #define OFFSETOF_MEMBERPTR(t, f) \
   (reinterpret_cast<uintptr_t>(&(reinterpret_cast<t*>(16)->*f)) - static_cast<uintptr_t>(16))  // NOLINT
