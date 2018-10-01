@@ -110,7 +110,7 @@ TEST_F(DexoptTest, ValidateOatFile) {
   EXPECT_FALSE(ImageSpace::ValidateOatFile(*oat, &error_msg));
 }
 
-template <bool kImage, bool kRelocate, bool kPatchoat, bool kImageDex2oat>
+template <bool kImage, bool kRelocate, bool kImageDex2oat>
 class ImageSpaceLoadingTest : public CommonRuntimeTest {
  protected:
   void SetUpRuntimeOptions(RuntimeOptions* options) override {
@@ -119,9 +119,6 @@ class ImageSpaceLoadingTest : public CommonRuntimeTest {
                             nullptr);
     }
     options->emplace_back(kRelocate ? "-Xrelocate" : "-Xnorelocate", nullptr);
-    if (!kPatchoat) {
-      options->emplace_back("-Xpatchoat:false", nullptr);
-    }
     options->emplace_back(kImageDex2oat ? "-Ximage-dex2oat" : "-Xnoimage-dex2oat", nullptr);
 
     // We want to test the relocation behavior of ImageSpace. As such, don't pretend we're a
@@ -130,27 +127,22 @@ class ImageSpaceLoadingTest : public CommonRuntimeTest {
   }
 };
 
-using ImageSpacePatchoatTest = ImageSpaceLoadingTest<true, true, true, true>;
-TEST_F(ImageSpacePatchoatTest, Test) {
-  EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
-}
-
-using ImageSpaceDex2oatTest = ImageSpaceLoadingTest<false, true, false, true>;
+using ImageSpaceDex2oatTest = ImageSpaceLoadingTest<false, true, true>;
 TEST_F(ImageSpaceDex2oatTest, Test) {
   EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
 }
 
-using ImageSpaceNoDex2oatNoPatchoatTest = ImageSpaceLoadingTest<true, true, false, false>;
-TEST_F(ImageSpaceNoDex2oatNoPatchoatTest, Test) {
-  EXPECT_TRUE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
-}
-
-using ImageSpaceNoRelocateNoDex2oatNoPatchoatTest = ImageSpaceLoadingTest<true, false, false, false>;
-TEST_F(ImageSpaceNoRelocateNoDex2oatNoPatchoatTest, Test) {
+using ImageSpaceNoDex2oatTest = ImageSpaceLoadingTest<true, true, false>;
+TEST_F(ImageSpaceNoDex2oatTest, Test) {
   EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
 }
 
-class NoAccessAndroidDataTest : public ImageSpaceLoadingTest<false, true, false, true> {
+using ImageSpaceNoRelocateNoDex2oatTest = ImageSpaceLoadingTest<true, false, false>;
+TEST_F(ImageSpaceNoRelocateNoDex2oatTest, Test) {
+  EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
+}
+
+class NoAccessAndroidDataTest : public ImageSpaceLoadingTest<false, true, true> {
  protected:
   void SetUpRuntimeOptions(RuntimeOptions* options) override {
     const char* android_data = getenv("ANDROID_DATA");
@@ -169,7 +161,7 @@ class NoAccessAndroidDataTest : public ImageSpaceLoadingTest<false, true, false,
     CHECK_NE(fd, -1) << strerror(errno);
     result = close(fd);
     CHECK_EQ(result, 0) << strerror(errno);
-    ImageSpaceLoadingTest<false, true, false, true>::SetUpRuntimeOptions(options);
+    ImageSpaceLoadingTest<false, true, true>::SetUpRuntimeOptions(options);
   }
 
   void TearDown() override {
@@ -179,7 +171,7 @@ class NoAccessAndroidDataTest : public ImageSpaceLoadingTest<false, true, false,
     CHECK_EQ(result, 0) << strerror(errno);
     result = setenv("ANDROID_DATA", old_android_data_.c_str(), /* replace */ 1);
     CHECK_EQ(result, 0) << strerror(errno);
-    ImageSpaceLoadingTest<false, true, false, true>::TearDown();
+    ImageSpaceLoadingTest<false, true, true>::TearDown();
   }
 
  private:

@@ -31,11 +31,6 @@ class NoopCompilerCallbacks final : public CompilerCallbacks {
 
   void ClassRejected(ClassReference ref ATTRIBUTE_UNUSED) override {}
 
-  // This is only used by compilers which need to be able to run without relocation even when it
-  // would normally be enabled. For example the patchoat executable, and dex2oat --image, both need
-  // to disable the relocation since both deal with writing out the images directly.
-  bool IsRelocationPossible() override { return false; }
-
   verifier::VerifierDeps* GetVerifierDeps() const override { return nullptr; }
 
  private:
