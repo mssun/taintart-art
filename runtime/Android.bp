@@ -642,6 +642,7 @@ art_cc_test {
     ],
     header_libs: [
         "art_cmdlineparser_headers", // For parsed_options_test.
+        "cpp-define-generator-definitions",
     ],
     include_dirs: [
         "external/zlib",
