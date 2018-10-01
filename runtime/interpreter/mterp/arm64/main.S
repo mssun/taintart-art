@@ -336,7 +336,7 @@ codes.
 .endm
 
 /*
- * cfi support macros.
+ * function support macros.
  */
 .macro ENTRY name
     .type \name, #function
@@ -345,11 +345,9 @@ codes.
     /* Cache alignment for function entry */
     .balign 16
 \name:
-    .cfi_startproc
 .endm
 
 .macro END name
-    .cfi_endproc
     .size \name, .-\name
 .endm
 
@@ -382,6 +380,7 @@ codes.
  *
  */
 ENTRY ExecuteMterpImpl
+    .cfi_startproc
     SAVE_TWO_REGS_INCREASE_FRAME xPROFILE, x27, 80
     SAVE_TWO_REGS                xIBASE, xREFS, 16
     SAVE_TWO_REGS                xSELF, xINST, 32
@@ -420,6 +419,8 @@ ENTRY ExecuteMterpImpl
     GET_INST_OPCODE ip                  // extract opcode from wINST
     GOTO_OPCODE ip                      // jump to next instruction
     /* NOTE: no fallthrough */
+    // cfi info continues, and covers the whole mterp implementation.
+    END ExecuteMterpImpl
 
 %def alt_stub():
 /*
@@ -436,10 +437,8 @@ ENTRY ExecuteMterpImpl
     b      MterpCheckBefore     // (self, shadow_frame, dex_pc_ptr) Note: tail call.
 
 %def footer():
-// Close out the cfi info.  We're treating mterp as a single function.
-
-END ExecuteMterpImpl
-
+    .cfi_endproc
+    END ExecuteMterpImpl
 
 %def fallback():
 /* Transfer stub to alternate interpreter */
@@ -447,6 +446,7 @@ END ExecuteMterpImpl
 
 
 %def helpers():
+    ENTRY MterpHelpers
 /*
  * ===========================================================================
  *  Common subroutines and data
@@ -781,3 +781,8 @@ artMterpAsmInstructionStart = .L_op_nop
     .global artMterpAsmAltInstructionStart
 artMterpAsmAltInstructionStart = .L_ALT_op_nop
     .text
+
+%def opcode_start():
+    ENTRY Mterp_${opcode}
+%def opcode_end():
+    END Mterp_${opcode}

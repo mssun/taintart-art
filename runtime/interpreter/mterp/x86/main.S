@@ -316,6 +316,21 @@ unspecified registers or condition codes.
     movl    MACRO_LITERAL(0), 4(rREFS,\_vreg,4)
 .endm
 
+/*
+ * function support macros.
+ */
+.macro ENTRY name
+    .text
+    ASM_HIDDEN SYMBOL(\name)
+    .global SYMBOL(\name)
+    FUNCTION_TYPE(\name)
+SYMBOL(\name):
+.endm
+
+.macro END name
+    SIZE(\name,\name)
+.endm
+
 %def entry():
 /*
  * Copyright (C) 2016 The Android Open Source Project
@@ -334,14 +349,7 @@ unspecified registers or condition codes.
  */
 /*
  * Interpreter entry point.
- */
-
-    .text
-    ASM_HIDDEN SYMBOL(ExecuteMterpImpl)
-    .global SYMBOL(ExecuteMterpImpl)
-    FUNCTION_TYPE(ExecuteMterpImpl)
-
-/*
+ *
  * On entry:
  *  0  Thread* self
  *  1  insns_
@@ -349,8 +357,7 @@ unspecified registers or condition codes.
  *  3  JValue* result_register
  *
  */
-
-SYMBOL(ExecuteMterpImpl):
+ENTRY ExecuteMterpImpl
     .cfi_startproc
     .cfi_def_cfa esp, 4
 
@@ -400,6 +407,8 @@ SYMBOL(ExecuteMterpImpl):
     FETCH_INST
     GOTO_NEXT
     /* NOTE: no fallthrough */
+    // cfi info continues, and covers the whole mterp implementation.
+    END ExecuteMterpImpl
 
 %def alt_stub():
 /*
@@ -428,7 +437,7 @@ SYMBOL(ExecuteMterpImpl):
 
 
 %def helpers():
-%  pass
+    ENTRY MterpHelpers
 
 %def footer():
 /*
@@ -755,7 +764,7 @@ MRestoreFrame:
     POP     %ebp
     ret
     .cfi_endproc
-    SIZE(ExecuteMterpImpl,ExecuteMterpImpl)
+    END MterpHelpers
 
 %def instruction_end():
 
@@ -787,3 +796,7 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .text
 SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
 
+%def opcode_start():
+    ENTRY Mterp_${opcode}
+%def opcode_end():
+    END Mterp_${opcode}
