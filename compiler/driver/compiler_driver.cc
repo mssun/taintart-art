@@ -2647,7 +2647,7 @@ void CompilerDriver::Compile(jobject class_loader,
     LOG(INFO) << "[ProfileGuidedCompilation] " <<
         ((profile_compilation_info_ == nullptr)
             ? "null"
-            : profile_compilation_info_->DumpInfo(&dex_files));
+            : profile_compilation_info_->DumpInfo(dex_files));
   }
 
   dex_to_dex_compiler_.ClearState();
