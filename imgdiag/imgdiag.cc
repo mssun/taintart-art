@@ -36,7 +36,7 @@
 #include "class_linker.h"
 #include "gc/heap.h"
 #include "gc/space/image_space.h"
-#include "image.h"
+#include "image-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "oat.h"

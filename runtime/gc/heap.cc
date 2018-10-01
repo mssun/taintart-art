@@ -336,9 +336,13 @@ Heap::Heap(size_t initial_size,
   // Requested begin for the alloc space, to follow the mapped image and oat files
   uint8_t* request_begin = nullptr;
   // Calculate the extra space required after the boot image, see allocations below.
-  size_t heap_reservation_size = separate_non_moving_space
-      ? non_moving_space_capacity
-      : ((is_zygote && foreground_collector_type_ != kCollectorTypeCC) ? capacity_ : 0u);
+  size_t heap_reservation_size = 0u;
+  if (separate_non_moving_space) {
+    heap_reservation_size = non_moving_space_capacity;
+  } else if ((foreground_collector_type_ != kCollectorTypeCC) &&
+             (is_zygote || foreground_collector_type_ == kCollectorTypeGSS)) {
+    heap_reservation_size = capacity_;
+  }
   heap_reservation_size = RoundUp(heap_reservation_size, kPageSize);
   // Load image space(s).
   std::vector<std::unique_ptr<space::ImageSpace>> boot_image_spaces;
@@ -415,13 +419,14 @@ Heap::Heap(size_t initial_size,
   // Attempt to create 2 mem maps at or after the requested begin.
   if (foreground_collector_type_ != kCollectorTypeCC) {
     ScopedTrace trace2("Create main mem map");
-    if (separate_non_moving_space || !is_zygote) {
+    if (separate_non_moving_space ||
+        !(is_zygote || foreground_collector_type_ == kCollectorTypeGSS)) {
       main_mem_map_1 = MapAnonymousPreferredAddress(
           kMemMapSpaceName[0], request_begin, capacity_, &error_str);
     } else {
-      // If no separate non-moving space and we are the zygote, the main space must come right
-      // after the image space to avoid a gap. This is required since we want the zygote space to
-      // be adjacent to the image space.
+      // If no separate non-moving space and we are the zygote or the collector type is GSS,
+      // the main space must come right after the image space to avoid a gap.
+      // This is required since we want the zygote space to be adjacent to the image space.
       DCHECK_EQ(heap_reservation.IsValid(), !boot_image_spaces_.empty());
       main_mem_map_1 = MemMap::MapAnonymous(
           kMemMapSpaceName[0],
