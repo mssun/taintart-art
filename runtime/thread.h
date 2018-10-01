@@ -1783,6 +1783,14 @@ class Thread {
     mirror::Throwable* async_exception;
   } tlsPtr_;
 
+  // Small thread-local cache to be used from the interpreter.
+  // It is keyed by dex instruction pointer.
+  // The value is opcode-depended (e.g. field offset).
+  InterpreterCache interpreter_cache_;
+
+  // All fields below this line should not be accessed by native code. This means these fields can
+  // be modified, rearranged, added or removed without having to modify asm_support.h
+
   // Guards the 'wait_monitor_' members.
   Mutex* wait_mutex_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
@@ -1811,11 +1819,6 @@ class Thread {
   // True if the thread is subject to user-code suspension. By default this is true. This can only
   // be false for threads where '!can_call_into_java_'.
   bool can_be_suspended_by_user_code_;
-
-  // Small thread-local cache to be used from the interpreter.
-  // It is keyed by dex instruction pointer.
-  // The value is opcode-depended (e.g. field offset).
-  InterpreterCache interpreter_cache_;
 
   friend class Dbg;  // For SetStateUnsafe.
   friend class gc::collector::SemiSpace;  // For getting stack traces.
