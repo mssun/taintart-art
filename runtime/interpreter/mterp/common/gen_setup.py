@@ -15,6 +15,8 @@
 #
 
 # Common global variables and helper methods for the in-memory python script.
+# The script starts with this file and is followed by the code generated form
+# the templated snippets. Those define all the helper functions used below.
 
 import sys, re
 from cStringIO import StringIO
@@ -42,7 +44,9 @@ def write_opcode(num, name, write_method, is_alt):
   if is_alt:
     alt_stub()
   else:
+    opcode_start()
     write_method()
+    opcode_end()
   write_line("")
   opnum, opcode = None, None
 
