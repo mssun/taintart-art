@@ -446,7 +446,7 @@ void IntrinsicLocationsBuilderARMVIXL::VisitMathRint(HInvoke* invoke) {
 void IntrinsicCodeGeneratorARMVIXL::VisitMathRint(HInvoke* invoke) {
   DCHECK(codegen_->GetInstructionSetFeatures().HasARMv8AInstructions());
   ArmVIXLAssembler* assembler = GetAssembler();
-  __ Vrintn(F64, F64, OutputDRegister(invoke), InputDRegisterAt(invoke, 0));
+  __ Vrintn(F64, OutputDRegister(invoke), InputDRegisterAt(invoke, 0));
 }
 
 void IntrinsicLocationsBuilderARMVIXL::VisitMathRoundFloat(HInvoke* invoke) {
@@ -481,7 +481,7 @@ void IntrinsicCodeGeneratorARMVIXL::VisitMathRoundFloat(HInvoke* invoke) {
   // Handle input < 0 cases.
   // If input is negative but not a tie, previous result (round to nearest) is valid.
   // If input is a negative tie, change rounding direction to positive infinity, out_reg += 1.
-  __ Vrinta(F32, F32, temp1, in_reg);
+  __ Vrinta(F32, temp1, in_reg);
   __ Vmov(temp2, 0.5);
   __ Vsub(F32, temp1, in_reg, temp1);
   __ Vcmp(F32, temp1, temp2);
@@ -2945,7 +2945,7 @@ void IntrinsicLocationsBuilderARMVIXL::VisitMathCeil(HInvoke* invoke) {
 void IntrinsicCodeGeneratorARMVIXL::VisitMathCeil(HInvoke* invoke) {
   ArmVIXLAssembler* assembler = GetAssembler();
   DCHECK(codegen_->GetInstructionSetFeatures().HasARMv8AInstructions());
-  __ Vrintp(F64, F64, OutputDRegister(invoke), InputDRegisterAt(invoke, 0));
+  __ Vrintp(F64, OutputDRegister(invoke), InputDRegisterAt(invoke, 0));
 }
 
 void IntrinsicLocationsBuilderARMVIXL::VisitMathFloor(HInvoke* invoke) {
@@ -2957,7 +2957,7 @@ void IntrinsicLocationsBuilderARMVIXL::VisitMathFloor(HInvoke* invoke) {
 void IntrinsicCodeGeneratorARMVIXL::VisitMathFloor(HInvoke* invoke) {
   ArmVIXLAssembler* assembler = GetAssembler();
   DCHECK(codegen_->GetInstructionSetFeatures().HasARMv8AInstructions());
-  __ Vrintm(F64, F64, OutputDRegister(invoke), InputDRegisterAt(invoke, 0));
+  __ Vrintm(F64, OutputDRegister(invoke), InputDRegisterAt(invoke, 0));
 }
 
 void IntrinsicLocationsBuilderARMVIXL::VisitIntegerValueOf(HInvoke* invoke) {
