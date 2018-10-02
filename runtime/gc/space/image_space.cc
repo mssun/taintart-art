@@ -389,7 +389,7 @@ class ImageSpace::Loader {
                                                   /*inout*/MemMap* oat_reservation,
                                                   /*out*/std::string* error_msg)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    TimingLogger logger(__PRETTY_FUNCTION__, true, VLOG_IS_ON(image));
+    TimingLogger logger(__PRETTY_FUNCTION__, /* precise= */ true, VLOG_IS_ON(image));
     std::unique_ptr<ImageSpace> space = Init(image_filename,
                                              image_location,
                                              validate_oat_file,
@@ -1323,7 +1323,7 @@ class ImageSpace::BootImageLoader {
                       /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
                       /*out*/MemMap* extra_reservation,
                       /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
-    TimingLogger logger(__PRETTY_FUNCTION__, true, VLOG_IS_ON(image));
+    TimingLogger logger(__PRETTY_FUNCTION__, /* precise= */ true, VLOG_IS_ON(image));
     std::string filename = GetSystemImageFilename(image_location_.c_str(), image_isa_);
     std::vector<std::string> locations;
     if (!GetBootClassPathImageLocations(image_location_, filename, &locations, error_msg)) {
@@ -1393,7 +1393,7 @@ class ImageSpace::BootImageLoader {
       /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
       /*out*/MemMap* extra_reservation,
       /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
-    TimingLogger logger(__PRETTY_FUNCTION__, true, VLOG_IS_ON(image));
+    TimingLogger logger(__PRETTY_FUNCTION__, /* precise= */ true, VLOG_IS_ON(image));
     DCHECK(DalvikCacheExists());
     std::vector<std::string> locations;
     if (!GetBootClassPathImageLocations(image_location_, cache_filename_, &locations, error_msg)) {
@@ -1597,11 +1597,25 @@ class ImageSpace::BootImageLoader {
         : diff_(diff) {}
 
     void VisitClass(mirror::Class* klass) REQUIRES_SHARED(Locks::mutator_lock_) {
+      // A mirror::Class object consists of
+      //  - instance fields inherited from j.l.Object,
+      //  - instance fields inherited from j.l.Class,
+      //  - embedded tables (vtable, interface method table),
+      //  - static fields of the class itself.
+      // The reference fields are at the start of each field section (this is how the
+      // ClassLinker orders fields; except when that would create a gap between superclass
+      // fields and the first reference of the subclass due to alignment, it can be filled
+      // with smaller fields - but that's not the case for j.l.Object and j.l.Class).
+
+      DCHECK_ALIGNED(klass, kObjectAlignment);
+      static_assert(IsAligned<kHeapReferenceSize>(kObjectAlignment), "Object alignment check.");
       // First, patch the `klass->klass_`, known to be a reference to the j.l.Class.class.
       // This should be the only reference field in j.l.Object and we assert that below.
       PatchReferenceField</* kMayBeNull */ false>(klass, mirror::Object::ClassOffset());
       // Then patch the reference instance fields described by j.l.Class.class.
-      // Use the sizeof(Object) to determine where these reference fields start.
+      // Use the sizeof(Object) to determine where these reference fields start;
+      // this is the same as `class_class->GetFirstReferenceInstanceFieldOffset()`
+      // after patching but the j.l.Class may not have been patched yet.
       mirror::Class* class_class = klass->GetClass<kVerifyNone, kWithoutReadBarrier>();
       size_t num_reference_instance_fields = class_class->NumReferenceInstanceFields<kVerifyNone>();
       DCHECK_NE(num_reference_instance_fields, 0u);
@@ -1609,8 +1623,10 @@ class ImageSpace::BootImageLoader {
       MemberOffset instance_field_offset(sizeof(mirror::Object));
       for (size_t i = 0; i != num_reference_instance_fields; ++i) {
         PatchReferenceField(klass, instance_field_offset);
-        instance_field_offset = MemberOffset(
-            instance_field_offset.Uint32Value() + sizeof(mirror::HeapReference<mirror::Object>));
+        static_assert(sizeof(mirror::HeapReference<mirror::Object>) == kHeapReferenceSize,
+                      "Heap reference sizes equality check.");
+        instance_field_offset =
+            MemberOffset(instance_field_offset.Uint32Value() + kHeapReferenceSize);
       }
       // Now that we have patched the `super_class_`, if this is the j.l.Class.class,
       // we can get a reference to j.l.Object.class and assert that it has only one
@@ -1626,8 +1642,10 @@ class ImageSpace::BootImageLoader {
             klass->GetFirstReferenceStaticFieldOffset<kVerifyNone>(kPointerSize);
         for (size_t i = 0; i != num_reference_static_fields; ++i) {
           PatchReferenceField(klass, static_field_offset);
-          static_field_offset = MemberOffset(
-              static_field_offset.Uint32Value() + sizeof(mirror::HeapReference<mirror::Object>));
+          static_assert(sizeof(mirror::HeapReference<mirror::Object>) == kHeapReferenceSize,
+                        "Heap reference sizes equality check.");
+          static_field_offset =
+              MemberOffset(static_field_offset.Uint32Value() + kHeapReferenceSize);
         }
       }
       // Then patch native pointers.
@@ -1774,7 +1792,7 @@ class ImageSpace::BootImageLoader {
     PatchObjectVisitor<kPointerSize> patch_object_visitor(diff);
 
     mirror::Class* dcheck_class_class = nullptr;  // Used only for a DCHECK().
-    for (size_t s = 0, size = spaces.size(); s != size; ++s) {
+    for (size_t s = 0u, size = spaces.size(); s != size; ++s) {
       const ImageSpace* space = spaces[s].get();
 
       // First patch the image header. The `diff` is OK for patching 32-bit fields but
@@ -1876,7 +1894,7 @@ class ImageSpace::BootImageLoader {
       constructor_class = GetClassRoot<mirror::Constructor, kWithoutReadBarrier>(class_roots);
     }
 
-    for (size_t s = 0, size = spaces.size(); s != size; ++s) {
+    for (size_t s = 0u, size = spaces.size(); s != size; ++s) {
       const ImageSpace* space = spaces[s].get();
       const ImageHeader& image_header = space->GetImageHeader();
 
