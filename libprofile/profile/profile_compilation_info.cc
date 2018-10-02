@@ -1636,25 +1636,7 @@ uint32_t ProfileCompilationInfo::GetNumberOfResolvedClasses() const {
   return total;
 }
 
-// Produce a non-owning vector from a vector.
-template<typename T>
-const std::vector<T*>* MakeNonOwningVector(const std::vector<std::unique_ptr<T>>* owning_vector) {
-  auto non_owning_vector = new std::vector<T*>();
-  for (auto& element : *owning_vector) {
-    non_owning_vector->push_back(element.get());
-  }
-  return non_owning_vector;
-}
-
-std::string ProfileCompilationInfo::DumpInfo(
-    const std::vector<std::unique_ptr<const DexFile>>* dex_files,
-    bool print_full_dex_location) const {
-  std::unique_ptr<const std::vector<const DexFile*>> non_owning_dex_files(
-      MakeNonOwningVector(dex_files));
-  return DumpInfo(non_owning_dex_files.get(), print_full_dex_location);
-}
-
-std::string ProfileCompilationInfo::DumpInfo(const std::vector<const DexFile*>* dex_files,
+std::string ProfileCompilationInfo::DumpInfo(const std::vector<const DexFile*>& dex_files,
                                              bool print_full_dex_location) const {
   std::ostringstream os;
   if (info_.empty()) {
@@ -1677,11 +1659,10 @@ std::string ProfileCompilationInfo::DumpInfo(const std::vector<const DexFile*>* 
     os << " [index=" << static_cast<uint32_t>(dex_data->profile_index) << "]";
     os << " [checksum=" << std::hex << dex_data->checksum << "]" << std::dec;
     const DexFile* dex_file = nullptr;
-    if (dex_files != nullptr) {
-      for (size_t i = 0; i < dex_files->size(); i++) {
-        if (dex_data->profile_key == (*dex_files)[i]->GetLocation()) {
-          dex_file = (*dex_files)[i];
-        }
+    for (const DexFile* current : dex_files) {
+      if (dex_data->profile_key == current->GetLocation() &&
+          dex_data->checksum == current->GetLocationChecksum()) {
+        dex_file = current;
       }
     }
     os << "\n\thot methods: ";

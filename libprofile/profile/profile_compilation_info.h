@@ -377,12 +377,10 @@ class ProfileCompilationInfo {
                                                       uint16_t dex_method_index) const;
 
   // Dump all the loaded profile info into a string and returns it.
-  // If dex_files is not null then the method indices will be resolved to their
+  // If dex_files is not empty then the method indices will be resolved to their
   // names.
   // This is intended for testing and debugging.
-  std::string DumpInfo(const std::vector<std::unique_ptr<const DexFile>>* dex_files,
-                       bool print_full_dex_location = true) const;
-  std::string DumpInfo(const std::vector<const DexFile*>* dex_files,
+  std::string DumpInfo(const std::vector<const DexFile*>& dex_files,
                        bool print_full_dex_location = true) const;
 
   // Return the classes and methods for a given dex file through out args. The out args are the set
