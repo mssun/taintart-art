@@ -54,9 +54,9 @@ class ScratchFile {
 
   ScratchFile(const ScratchFile& other, const char* suffix);
 
-  ScratchFile(ScratchFile&& other);
+  ScratchFile(ScratchFile&& other) noexcept;
 
-  ScratchFile& operator=(ScratchFile&& other);
+  ScratchFile& operator=(ScratchFile&& other) noexcept;
 
   explicit ScratchFile(File* file);
 
