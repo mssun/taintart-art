@@ -106,7 +106,7 @@ void* ArenaStack::AllocWithMemoryTool(size_t bytes, ArenaAllocKind kind) {
   return ptr;
 }
 
-ScopedArenaAllocator::ScopedArenaAllocator(ScopedArenaAllocator&& other)
+ScopedArenaAllocator::ScopedArenaAllocator(ScopedArenaAllocator&& other) noexcept
     : DebugStackReference(std::move(other)),
       DebugStackRefCounter(),
       ArenaAllocatorStats(other),

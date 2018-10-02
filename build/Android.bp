@@ -27,6 +27,7 @@ art_clang_tidy_errors = [
     "performance-faster-string-find",
     "performance-for-range-copy",
     "performance-implicit-conversion-in-loop",
+    "performance-noexcept-move-constructor",
     "performance-unnecessary-copy-initialization",
     "performance-unnecessary-value-param",
     "misc-unused-using-decls",
@@ -42,6 +43,7 @@ art_clang_tidy_errors_str = "bugprone-lambda-function-name"
         + ",performance-faster-string-find"
         + ",performance-for-range-copy"
         + ",performance-implicit-conversion-in-loop"
+        + ",performance-noexcept-move-constructor"
         + ",performance-unnecessary-copy-initialization"
         + ",performance-unnecessary-value-param"
         + ",misc-unused-using-decls"
@@ -55,9 +57,6 @@ art_clang_tidy_disabled = [
     // We have lots of C-style variadic functions, and are OK with them. JNI ensures
     // that working around this warning would be extra-painful.
     "-cert-dcl50-cpp",
-    // No exceptions.
-    "-misc-noexcept-move-constructor",
-    "-performance-noexcept-move-constructor",
     // "Modernization" we don't agree with.
     "-modernize-use-auto",
     "-modernize-return-braced-init-list",

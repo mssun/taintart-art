@@ -46,10 +46,10 @@ class FdFile : public RandomAccessFile {
   FdFile(const std::string& path, int flags, mode_t mode, bool checkUsage);
 
   // Move constructor.
-  FdFile(FdFile&& other);
+  FdFile(FdFile&& other) noexcept;
 
   // Move assignment operator.
-  FdFile& operator=(FdFile&& other);
+  FdFile& operator=(FdFile&& other) noexcept;
 
   // Release the file descriptor. This will make further accesses to this FdFile invalid. Disables
   // all further state checking.

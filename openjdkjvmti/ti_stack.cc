@@ -77,7 +77,7 @@ struct GetStackTraceVisitor : public art::StackVisitor {
         start(start_),
         stop(stop_) {}
   GetStackTraceVisitor(const GetStackTraceVisitor&) = default;
-  GetStackTraceVisitor(GetStackTraceVisitor&&) = default;
+  GetStackTraceVisitor(GetStackTraceVisitor&&) noexcept = default;
 
   bool VisitFrame() override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     art::ArtMethod* m = GetMethod();
