@@ -692,6 +692,24 @@ MemMap MemMap::RemapAtEnd(uint8_t* new_end,
                           int tail_prot,
                           std::string* error_msg,
                           bool use_debug_name) {
+  return RemapAtEnd(new_end,
+                    tail_name,
+                    tail_prot,
+                    MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
+                    /* fd */ -1,
+                    /* offset */ 0,
+                    error_msg,
+                    use_debug_name);
+}
+
+MemMap MemMap::RemapAtEnd(uint8_t* new_end,
+                          const char* tail_name,
+                          int tail_prot,
+                          int flags,
+                          int fd,
+                          off_t offset,
+                          std::string* error_msg,
+                          bool use_debug_name) {
   DCHECK_GE(new_end, Begin());
   DCHECK_LE(new_end, End());
   DCHECK_LE(begin_ + size_, reinterpret_cast<uint8_t*>(base_begin_) + base_size_);
@@ -715,9 +733,6 @@ MemMap MemMap::RemapAtEnd(uint8_t* new_end,
   DCHECK_EQ(tail_base_begin + tail_base_size, old_base_end);
   DCHECK_ALIGNED(tail_base_size, kPageSize);
 
-  unique_fd fd;
-  int flags = MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS;
-
   MEMORY_TOOL_MAKE_UNDEFINED(tail_base_begin, tail_base_size);
   // Note: Do not explicitly unmap the tail region, mmap() with MAP_FIXED automatically
   // removes old mappings for the overlapping region. This makes the operation atomic
@@ -726,13 +741,13 @@ MemMap MemMap::RemapAtEnd(uint8_t* new_end,
                                                           tail_base_size,
                                                           tail_prot,
                                                           flags,
-                                                          fd.get(),
-                                                          0));
+                                                          fd,
+                                                          offset));
   if (actual == MAP_FAILED) {
     PrintFileToLog("/proc/self/maps", LogSeverity::WARNING);
-    *error_msg = StringPrintf("anonymous mmap(%p, %zd, 0x%x, 0x%x, %d, 0) failed. See process "
+    *error_msg = StringPrintf("map(%p, %zd, 0x%x, 0x%x, %d, 0) failed. See process "
                               "maps in the log.", tail_base_begin, tail_base_size, tail_prot, flags,
-                              fd.get());
+                              fd);
     return Invalid();
   }
   // Update *this.
