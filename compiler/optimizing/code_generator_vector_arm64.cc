@@ -1290,6 +1290,7 @@ void InstructionCodeGeneratorARM64::VisitVecLoad(HVecLoad* instruction) {
   Register scratch;
 
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kInt16:  // (short) s.charAt(.) can yield HVecLoad/Int16/StringCharAt.
     case DataType::Type::kUint16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       // Special handling of compressed/uncompressed string load.
@@ -1321,7 +1322,6 @@ void InstructionCodeGeneratorARM64::VisitVecLoad(HVecLoad* instruction) {
     case DataType::Type::kBool:
     case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kInt32:
     case DataType::Type::kFloat32:
     case DataType::Type::kInt64:
