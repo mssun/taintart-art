@@ -233,10 +233,10 @@ ART_GTEST_oat_file_assistant_test_TARGET_DEPS := \
 
 ART_GTEST_dexoptanalyzer_test_HOST_DEPS := \
   $(ART_GTEST_dex2oat_environment_tests_HOST_DEPS) \
-  dexoptanalyzerd-host
+  $(HOST_OUT_EXECUTABLES)/dexoptanalyzerd
 ART_GTEST_dexoptanalyzer_test_TARGET_DEPS := \
   $(ART_GTEST_dex2oat_environment_tests_TARGET_DEPS) \
-  dexoptanalyzerd-target
+  $(TARGET_OUT_EXECUTABLES)/dexoptanalyzerd
 
 ART_GTEST_image_space_test_HOST_DEPS := \
   $(ART_GTEST_dex2oat_environment_tests_HOST_DEPS)
@@ -245,68 +245,68 @@ ART_GTEST_image_space_test_TARGET_DEPS := \
 
 ART_GTEST_dex2oat_test_HOST_DEPS := \
   $(ART_GTEST_dex2oat_environment_tests_HOST_DEPS) \
-  dex2oatd-host
+  $(HOST_OUT_EXECUTABLES)/dex2oatd
 ART_GTEST_dex2oat_test_TARGET_DEPS := \
   $(ART_GTEST_dex2oat_environment_tests_TARGET_DEPS) \
-  dex2oatd-target
+  $(TARGET_OUT_EXECUTABLES)/dex2oatd
 
 ART_GTEST_dex2oat_image_test_HOST_DEPS := \
   $(ART_GTEST_dex2oat_environment_tests_HOST_DEPS) \
-  dex2oatd-host
+  $(HOST_OUT_EXECUTABLES)/dex2oatd
 ART_GTEST_dex2oat_image_test_TARGET_DEPS := \
   $(ART_GTEST_dex2oat_environment_tests_TARGET_DEPS) \
-  dex2oatd-target
+  $(TARGET_OUT_EXECUTABLES)/dex2oatd
 
 # TODO: document why this is needed.
 ART_GTEST_proxy_test_HOST_DEPS := $(HOST_CORE_IMAGE_DEFAULT_64) $(HOST_CORE_IMAGE_DEFAULT_32)
 
 # The dexdiag test requires the dexdiag utility.
-ART_GTEST_dexdiag_test_HOST_DEPS := dexdiag-host
-ART_GTEST_dexdiag_test_TARGET_DEPS := dexdiag-target
+ART_GTEST_dexdiag_test_HOST_DEPS := $(HOST_OUT_EXECUTABLES)/dexdiag
+ART_GTEST_dexdiag_test_TARGET_DEPS := $(TARGET_OUT_EXECUTABLES)/dexdiag
 
 # The dexdump test requires an image and the dexdump utility.
 # TODO: rename into dexdump when migration completes
 ART_GTEST_dexdump_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
-  dexdump2-host
+  $(HOST_OUT_EXECUTABLES)/dexdump2
 ART_GTEST_dexdump_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_64) \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
-  dexdump2-target
+  $(TARGET_OUT_EXECUTABLES)/dexdump2
 
 # The dexanalyze test requires an image and the dexanalyze utility.
 ART_GTEST_dexanalyze_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
-  dexanalyze-host
+  $(HOST_OUT_EXECUTABLES)/dexanalyze
 ART_GTEST_dexanalyze_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_64) \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
-  dexanalyze-target
+  $(TARGET_OUT_EXECUTABLES)/dexanalyze
 
 # The dexlayout test requires an image and the dexlayout utility.
 # TODO: rename into dexdump when migration completes
 ART_GTEST_dexlayout_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
-  dexlayoutd-host \
-  dexdump2-host
+  $(HOST_OUT_EXECUTABLES)/dexlayoutd \
+  $(HOST_OUT_EXECUTABLES)/dexdump2
 ART_GTEST_dexlayout_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_64) \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
-  dexlayoutd-target \
-  dexdump2-target
+  $(TARGET_OUT_EXECUTABLES)/dexlayoutd \
+  $(TARGET_OUT_EXECUTABLES)/dexdump2
 
 # The dexlist test requires an image and the dexlist utility.
 ART_GTEST_dexlist_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
-  dexlist-host
+  $(HOST_OUT_EXECUTABLES)/dexlist
 ART_GTEST_dexlist_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_64) \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
-  dexlist-target
+  $(TARGET_OUT_EXECUTABLES)/dexlist
 
 # The imgdiag test has dependencies on core.oat since it needs to load it during the test.
 # For the host, also add the installed tool (in the base size, that should suffice). For the
@@ -314,46 +314,46 @@ ART_GTEST_dexlist_test_TARGET_DEPS := \
 ART_GTEST_imgdiag_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
-  imgdiagd-host
+  $(HOST_OUT_EXECUTABLES)/imgdiagd
 ART_GTEST_imgdiag_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_64) \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
-  imgdiagd-target
+  $(TARGET_OUT_EXECUTABLES)/imgdiagd
 
 # Dex analyze test requires dexanalyze.
 ART_GTEST_dexanalyze_test_HOST_DEPS := \
-  dexanalyze-host
+  $(HOST_OUT_EXECUTABLES)/dexanalyze
 ART_GTEST_dexanalyze_test_TARGET_DEPS := \
-  dexanalyze-target
+  $(TARGET_OUT_EXECUTABLES)/dexanalyze
 
 # Oatdump test requires an image and oatfile to dump.
 ART_GTEST_oatdump_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
-  oatdumpd-host \
-  oatdumpds-host \
-  dexdump2-host
+  $(HOST_OUT_EXECUTABLES)/oatdumpd \
+  $(HOST_OUT_EXECUTABLES)/oatdumpds \
+  $(HOST_OUT_EXECUTABLES)/dexdump2
 ART_GTEST_oatdump_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_64) \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
-  oatdumpd-target \
-  dexdump2-target
+  $(TARGET_OUT_EXECUTABLES)/oatdumpd \
+  $(TARGET_OUT_EXECUTABLES)/dexdump2
 ART_GTEST_oatdump_image_test_HOST_DEPS := $(ART_GTEST_oatdump_test_HOST_DEPS)
 ART_GTEST_oatdump_image_test_TARGET_DEPS := $(ART_GTEST_oatdump_test_TARGET_DEPS)
 ART_GTEST_oatdump_app_test_HOST_DEPS := $(ART_GTEST_oatdump_test_HOST_DEPS) \
-  dex2oatd-host \
-  dex2oatds-host
+  $(HOST_OUT_EXECUTABLES)/dex2oatd \
+  $(HOST_OUT_EXECUTABLES)/dex2oatds
 ART_GTEST_oatdump_app_test_TARGET_DEPS := $(ART_GTEST_oatdump_test_TARGET_DEPS) \
-  dex2oatd-target
+  $(TARGET_OUT_EXECUTABLES)/dex2oatd
 
 # Profile assistant tests requires profman utility.
-ART_GTEST_profile_assistant_test_HOST_DEPS := profmand-host
-ART_GTEST_profile_assistant_test_TARGET_DEPS := profmand-target
+ART_GTEST_profile_assistant_test_HOST_DEPS := $(HOST_OUT_EXECUTABLES)/profmand
+ART_GTEST_profile_assistant_test_TARGET_DEPS := $(TARGET_OUT_EXECUTABLES)/profmand
 
 ART_GTEST_hiddenapi_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
-  hiddenapid-host
+  $(HOST_OUT_EXECUTABLES)/hiddenapid
 
 # The path for which all the source files are relative, not actually the current directory.
 LOCAL_PATH := art
@@ -482,7 +482,10 @@ endef  # define-art-gtest-rule-target
 # $(2): path relative to $OUT to the test binary
 # $(3): 2ND_ or undefined - used to differentiate between the primary and secondary architecture.
 define define-art-gtest-rule-host
-  gtest_rule := test-art-host-gtest-$(1)$$($(3)ART_PHONY_TEST_HOST_SUFFIX)
+  gtest_suffix := $(1)$$($(3)ART_PHONY_TEST_HOST_SUFFIX)
+  gtest_rule := test-art-host-gtest-$$(gtest_suffix)
+  gtest_output := $(call intermediates-dir-for,PACKAGING,art-host-gtest,HOST)/$$(gtest_suffix).xml
+  $$(call dist-for-goals,$$(gtest_rule),$$(gtest_output):gtest/$$(gtest_suffix))
   gtest_exe := $(OUT_DIR)/$(2)
   # Dependencies for all host gtests.
   gtest_deps := $$(HOST_CORE_DEX_LOCATIONS) \
@@ -491,20 +494,20 @@ define define-art-gtest-rule-host
     $$(gtest_exe) \
     $$(ART_GTEST_$(1)_HOST_DEPS) \
     $(foreach file,$(ART_GTEST_$(1)_DEX_DEPS),$(ART_TEST_HOST_GTEST_$(file)_DEX))
-  ifneq (,$(DIST_DIR))
-    gtest_xml_output := --gtest_output=xml:$(DIST_DIR)/gtest/$(1)$$($(3)ART_PHONY_TEST_HOST_SUFFIX).xml
-  else
-    gtest_xml_output :=
-  endif
 
   ART_TEST_HOST_GTEST_DEPENDENCIES += $$(gtest_deps)
 
 .PHONY: $$(gtest_rule)
+$$(gtest_rule): $$(gtest_output)
+
+# Re-run the tests, even if nothing changed. Until the build system has a dedicated "no cache"
+# option, claim to write a file that is never produced.
+$$(gtest_output): .KATI_IMPLICIT_OUTPUTS := $$(gtest_output)-nocache
+$$(gtest_output): NAME := $$(gtest_rule)
 ifeq (,$(SANITIZE_HOST))
-$$(gtest_rule): PRIVATE_XML_OUTPUT := $$(gtest_xml_output)
-$$(gtest_rule): $$(gtest_exe) $$(gtest_deps)
-	$(hide) ($$(call ART_TEST_SKIP,$$@) && $$< $$(PRIVATE_XML_OUTPUT) && \
-		$$(call ART_TEST_PASSED,$$@)) || $$(call ART_TEST_FAILED,$$@)
+$$(gtest_output): $$(gtest_exe) $$(gtest_deps)
+	$(hide) ($$(call ART_TEST_SKIP,$$(NAME)) && $$< --gtest_output=xml:$$@ && \
+		$$(call ART_TEST_PASSED,$$(NAME))) || $$(call ART_TEST_FAILED,$$(NAME))
 else
 # Note: envsetup currently exports ASAN_OPTIONS=detect_leaks=0 to suppress leak detection, as some
 #       build tools (e.g., ninja) intentionally leak. We want leak checks when we run our tests, so
@@ -513,14 +516,13 @@ else
 # (with the x86-64 ABI, as this allows symbolization of both x86 and x86-64). We don't do this in
 # general as it loses all the color output, and we have our own symbolization step when not running
 # under ASAN.
-$$(gtest_rule): PRIVATE_XML_OUTPUT := $$(gtest_xml_output)
-$$(gtest_rule): $$(gtest_exe) $$(gtest_deps)
-	$(hide) ($$(call ART_TEST_SKIP,$$@) && set -o pipefail && \
-		ASAN_OPTIONS=detect_leaks=1 $$< $$(PRIVATE_XML_OUTPUT) 2>&1 | tee $$<.tmp.out >&2 && \
-		{ $$(call ART_TEST_PASSED,$$@) ; rm $$<.tmp.out ; }) || \
+$$(gtest_output): $$(gtest_exe) $$(gtest_deps)
+	$(hide) ($$(call ART_TEST_SKIP,$$(NAME)) && set -o pipefail && \
+		ASAN_OPTIONS=detect_leaks=1 $$< --gtest_output=xml:$$@ 2>&1 | tee $$<.tmp.out >&2 && \
+		{ $$(call ART_TEST_PASSED,$$(NAME)) ; rm $$<.tmp.out ; }) || \
 		( grep -q AddressSanitizer $$<.tmp.out && export ANDROID_BUILD_TOP=`pwd` && \
 			{ echo "ABI: 'x86_64'" | cat - $$<.tmp.out | development/scripts/stack | tail -n 3000 ; } ; \
-		rm $$<.tmp.out ; $$(call ART_TEST_FAILED,$$@))
+		rm $$<.tmp.out ; $$(call ART_TEST_FAILED,$$(NAME)))
 endif
 
   ART_TEST_HOST_GTEST$$($(3)ART_PHONY_TEST_HOST_SUFFIX)_RULES += $$(gtest_rule)
@@ -531,7 +533,9 @@ endif
   # Clear locally defined variables.
   gtest_deps :=
   gtest_exe :=
+  gtest_output :=
   gtest_rule :=
+  gtest_suffix :=
 endef  # define-art-gtest-rule-host
 
 # Define the rules to build and run host and target gtests.
