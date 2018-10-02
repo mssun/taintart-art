@@ -102,15 +102,10 @@ void* ThreadPoolWorker::Callback(void* arg) {
                                      nullptr,
                                      worker->thread_pool_->create_peers_));
   worker->thread_ = Thread::Current();
-  // Thread pool workers cannot call into java.
-  worker->thread_->SetCanCallIntoJava(false);
-  // Thread pool workers should not be getting paused by user-code.
-  worker->thread_->SetCanBeSuspendedByUserCode(false);
+  // Mark thread pool workers as runtime-threads.
+  worker->thread_->SetIsRuntimeThread(true);
   // Do work until its time to shut down.
   worker->Run();
-  // Thread pool worker is finished. We want to allow suspension during shutdown.
-  worker->thread_->SetCanBeSuspendedByUserCode(true);
-  // Thread shuts down.
   runtime->DetachCurrentThread();
   return nullptr;
 }

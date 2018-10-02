@@ -990,25 +990,17 @@ class Thread {
     --tls32_.disable_thread_flip_count;
   }
 
-  // Returns true if the thread is subject to user_code_suspensions.
-  bool CanBeSuspendedByUserCode() const {
-    return can_be_suspended_by_user_code_;
-  }
-
-  // Sets CanBeSuspenededByUserCode and adjusts the suspend-count as needed. This may only be called
-  // when running on the current thread. It is **absolutely required** that this be called only on
-  // the Thread::Current() thread.
-  void SetCanBeSuspendedByUserCode(bool can_be_suspended_by_user_code)
-      REQUIRES(!Locks::thread_suspend_count_lock_, !Locks::user_code_suspension_lock_);
-
   // Returns true if the thread is allowed to call into java.
-  bool CanCallIntoJava() const {
-    return can_call_into_java_;
+  bool IsRuntimeThread() const {
+    return is_runtime_thread_;
   }
 
-  void SetCanCallIntoJava(bool can_call_into_java) {
-    can_call_into_java_ = can_call_into_java;
+  void SetIsRuntimeThread(bool is_runtime_thread) {
+    is_runtime_thread_ = is_runtime_thread;
   }
+
+  // Returns true if the thread is allowed to load java classes.
+  bool CanLoadClasses() const;
 
   // Activates single step control for debugging. The thread takes the
   // ownership of the given SingleStepControl*. It is deleted by a call
@@ -1587,9 +1579,8 @@ class Thread {
     // critical section enter.
     uint32_t disable_thread_flip_count;
 
-    // If CanBeSuspendedByUserCode, how much of 'suspend_count_' is by request of user code, used to
-    // distinguish threads suspended by the runtime from those suspended by user code. Otherwise
-    // this is just a count of how many user-code suspends have been attempted (but were ignored).
+    // How much of 'suspend_count_' is by request of user code, used to distinguish threads
+    // suspended by the runtime from those suspended by user code.
     // This should have GUARDED_BY(Locks::user_code_suspension_lock_) but auto analysis cannot be
     // told that AssertHeld should be good enough.
     int user_code_suspend_count GUARDED_BY(Locks::thread_suspend_count_lock_);
@@ -1783,6 +1774,14 @@ class Thread {
     mirror::Throwable* async_exception;
   } tlsPtr_;
 
+  // Small thread-local cache to be used from the interpreter.
+  // It is keyed by dex instruction pointer.
+  // The value is opcode-depended (e.g. field offset).
+  InterpreterCache interpreter_cache_;
+
+  // All fields below this line should not be accessed by native code. This means these fields can
+  // be modified, rearranged, added or removed without having to modify asm_support.h
+
   // Guards the 'wait_monitor_' members.
   Mutex* wait_mutex_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
@@ -1804,18 +1803,8 @@ class Thread {
   // compiled code or entrypoints.
   SafeMap<std::string, std::unique_ptr<TLSData>> custom_tls_ GUARDED_BY(Locks::custom_tls_lock_);
 
-  // True if the thread is allowed to call back into java (for e.g. during class resolution).
-  // By default this is true.
-  bool can_call_into_java_;
-
-  // True if the thread is subject to user-code suspension. By default this is true. This can only
-  // be false for threads where '!can_call_into_java_'.
-  bool can_be_suspended_by_user_code_;
-
-  // Small thread-local cache to be used from the interpreter.
-  // It is keyed by dex instruction pointer.
-  // The value is opcode-depended (e.g. field offset).
-  InterpreterCache interpreter_cache_;
+  // True if the thread is some form of runtime thread (ex, GC or JIT).
+  bool is_runtime_thread_;
 
   friend class Dbg;  // For SetStateUnsafe.
   friend class gc::collector::SemiSpace;  // For getting stack traces.

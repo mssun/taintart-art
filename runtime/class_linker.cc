@@ -2501,7 +2501,7 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
       // the Java-side could still succeed for racy programs if another thread is actively
       // modifying the class loader's path list.
 
-      if (!self->CanCallIntoJava()) {
+      if (self->IsRuntimeThread()) {
         // Oops, we can't call into java so we can't run actual class-loader code.
         // This is true for e.g. for the compiler (jit or aot).
         ObjPtr<mirror::Throwable> pre_allocated =
@@ -2632,6 +2632,17 @@ ObjPtr<mirror::Class> ClassLinker::DefineClass(Thread* self,
     } else if (strcmp(descriptor, "Ldalvik/system/ClassExt;") == 0) {
       klass.Assign(GetClassRoot<mirror::ClassExt>(this));
     }
+  }
+
+  // This is to prevent the calls to ClassLoad and ClassPrepare which can cause java/user-supplied
+  // code to be executed. We put it up here so we can avoid all the allocations associated with
+  // creating the class. This can happen with (eg) jit threads.
+  if (!self->CanLoadClasses()) {
+    // Make sure we don't try to load anything, potentially causing an infinite loop.
+    ObjPtr<mirror::Throwable> pre_allocated =
+        Runtime::Current()->GetPreAllocatedNoClassDefFoundError();
+    self->SetException(pre_allocated);
+    return nullptr;
   }
 
   if (klass == nullptr) {
@@ -3622,6 +3633,18 @@ ObjPtr<mirror::Class> ClassLinker::CreateArrayClass(Thread* self,
   // Identify the underlying component type
   CHECK_EQ('[', descriptor[0]);
   StackHandleScope<2> hs(self);
+
+  // This is to prevent the calls to ClassLoad and ClassPrepare which can cause java/user-supplied
+  // code to be executed. We put it up here so we can avoid all the allocations associated with
+  // creating the class. This can happen with (eg) jit threads.
+  if (!self->CanLoadClasses()) {
+    // Make sure we don't try to load anything, potentially causing an infinite loop.
+    ObjPtr<mirror::Throwable> pre_allocated =
+        Runtime::Current()->GetPreAllocatedNoClassDefFoundError();
+    self->SetException(pre_allocated);
+    return nullptr;
+  }
+
   MutableHandle<mirror::Class> component_type(hs.NewHandle(FindClass(self, descriptor + 1,
                                                                      class_loader)));
   if (component_type == nullptr) {
@@ -3809,6 +3832,7 @@ ObjPtr<mirror::Class> ClassLinker::FindPrimitiveClass(char type) {
 ObjPtr<mirror::Class> ClassLinker::InsertClass(const char* descriptor,
                                                ObjPtr<mirror::Class> klass,
                                                size_t hash) {
+  DCHECK(Thread::Current()->CanLoadClasses());
   if (VLOG_IS_ON(class_linker)) {
     ObjPtr<mirror::DexCache> dex_cache = klass->GetDexCache();
     std::string source;
@@ -4333,6 +4357,18 @@ ObjPtr<mirror::Class> ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRun
                                                     jobjectArray methods,
                                                     jobjectArray throws) {
   Thread* self = soa.Self();
+
+  // This is to prevent the calls to ClassLoad and ClassPrepare which can cause java/user-supplied
+  // code to be executed. We put it up here so we can avoid all the allocations associated with
+  // creating the class. This can happen with (eg) jit-threads.
+  if (!self->CanLoadClasses()) {
+    // Make sure we don't try to load anything, potentially causing an infinite loop.
+    ObjPtr<mirror::Throwable> pre_allocated =
+        Runtime::Current()->GetPreAllocatedNoClassDefFoundError();
+    self->SetException(pre_allocated);
+    return nullptr;
+  }
+
   StackHandleScope<10> hs(self);
   MutableHandle<mirror::Class> temp_klass(hs.NewHandle(
       AllocClass(self, GetClassRoot<mirror::Class>(this), sizeof(mirror::Class))));

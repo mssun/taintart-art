@@ -27,6 +27,9 @@
 #define ADD_TEST_EQ(x, y)
 #endif
 
+// Rounds the value n up to the nearest multiple of sz. sz must be a multiple of two.
+#define ALIGN_UP(n, sz) (((n) + (sz - 1)) & ~((sz) - 1))
+
 #if defined(__LP64__)
 #define POINTER_SIZE_SHIFT 3
 #define POINTER_SIZE art::PointerSize::k64
@@ -96,8 +99,10 @@ ADD_TEST_EQ(THREAD_LOCAL_ALLOC_STACK_TOP_OFFSET,
 #define THREAD_LOCAL_ALLOC_STACK_END_OFFSET (THREAD_ROSALLOC_RUNS_OFFSET + 17 * __SIZEOF_POINTER__)
 ADD_TEST_EQ(THREAD_LOCAL_ALLOC_STACK_END_OFFSET,
             art::Thread::ThreadLocalAllocStackEndOffset<POINTER_SIZE>().Int32Value())
-// Offset of field Thread::interpreter_cache_.
-#define THREAD_INTERPRETER_CACHE_OFFSET (144 + 312 * __SIZEOF_POINTER__)
+// Offset of field Thread::interpreter_cache_. This is aligned on a 16 byte boundary so we need to
+// round up depending on the size of tlsPtr_.
+#define THREAD_INTERPRETER_CACHE_OFFSET \
+  (ALIGN_UP((THREAD_CARD_TABLE_OFFSET + 301 * __SIZEOF_POINTER__), 16))
 ADD_TEST_EQ(THREAD_INTERPRETER_CACHE_OFFSET,
             art::Thread::InterpreterCacheOffset<POINTER_SIZE>().Int32Value())
 
@@ -226,5 +231,7 @@ ADD_TEST_EQ(STRING_COMPRESSION_FEATURE, art::mirror::kUseStringCompression);
 #undef ADD_TEST_EQ
 #undef DEFINED_ADD_TEST_EQ
 #endif
+
+#undef ALIGN_UP
 
 #endif  // ART_RUNTIME_ASM_SUPPORT_H_
