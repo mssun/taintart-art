@@ -455,6 +455,53 @@ TEST_F(MemMapTest, RemapAtEnd32bit) {
 }
 #endif
 
+TEST_F(MemMapTest, RemapFileViewAtEnd) {
+  CommonInit();
+  std::string error_msg;
+  ScratchFile scratch_file;
+
+  // Create a scratch file 3 pages large.
+  constexpr size_t kMapSize = 3 * kPageSize;
+  std::unique_ptr<uint8_t[]> data(new uint8_t[kMapSize]());
+  memset(data.get(), 1, kPageSize);
+  memset(&data[0], 0x55, kPageSize);
+  memset(&data[kPageSize], 0x5a, kPageSize);
+  memset(&data[2 * kPageSize], 0xaa, kPageSize);
+  ASSERT_TRUE(scratch_file.GetFile()->WriteFully(&data[0], kMapSize));
+
+  MemMap map = MemMap::MapFile(/*byte_count*/kMapSize,
+                               PROT_READ,
+                               MAP_PRIVATE,
+                               scratch_file.GetFd(),
+                               /*start*/0,
+                               /*low_4gb*/true,
+                               scratch_file.GetFilename().c_str(),
+                               &error_msg);
+  ASSERT_TRUE(map.IsValid()) << error_msg;
+  ASSERT_TRUE(error_msg.empty());
+  ASSERT_EQ(map.Size(), kMapSize);
+  ASSERT_LT(reinterpret_cast<uintptr_t>(map.BaseBegin()), 1ULL << 32);
+  ASSERT_EQ(data[0], *map.Begin());
+  ASSERT_EQ(data[kPageSize], *(map.Begin() + kPageSize));
+  ASSERT_EQ(data[2 * kPageSize], *(map.Begin() + 2 * kPageSize));
+
+  for (size_t offset = 2 * kPageSize; offset > 0; offset -= kPageSize) {
+    MemMap tail = map.RemapAtEnd(map.Begin() + offset,
+                                 "bad_offset_map",
+                                 PROT_READ,
+                                 MAP_PRIVATE | MAP_FIXED,
+                                 scratch_file.GetFd(),
+                                 offset,
+                                 &error_msg);
+    ASSERT_TRUE(tail.IsValid()) << error_msg;
+    ASSERT_TRUE(error_msg.empty());
+    ASSERT_EQ(offset, map.Size());
+    ASSERT_EQ(static_cast<size_t>(kPageSize), tail.Size());
+    ASSERT_EQ(tail.Begin(), map.Begin() + map.Size());
+    ASSERT_EQ(data[offset], *tail.Begin());
+  }
+}
+
 TEST_F(MemMapTest, MapAnonymousExactAddr32bitHighAddr) {
   // Some MIPS32 hardware (namely the Creator Ci20 development board)
   // cannot allocate in the 2GB-4GB region.
