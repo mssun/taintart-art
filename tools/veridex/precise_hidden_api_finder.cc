@@ -85,7 +85,7 @@ void PreciseHiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolv
 void PreciseHiddenApiFinder::Dump(std::ostream& os, HiddenApiStats* stats) {
   static const char* kPrefix = "       ";
   std::map<std::string, std::vector<MethodReference>> named_uses;
-  for (auto it : concrete_uses_) {
+  for (auto& it : concrete_uses_) {
     MethodReference ref = it.first;
     for (const ReflectAccessInfo& info : it.second) {
       std::string cls(info.cls.ToString());
@@ -98,7 +98,7 @@ void PreciseHiddenApiFinder::Dump(std::ostream& os, HiddenApiStats* stats) {
     }
   }
 
-  for (auto it : named_uses) {
+  for (auto& it : named_uses) {
     ++stats->reflection_count;
     const std::string& full_name = it.first;
     HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
