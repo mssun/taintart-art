@@ -1,0 +1,42 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#if ASM_DEFINE_INCLUDE_DEPENDENCIES
+#include "interpreter/shadow_frame.h"
+#endif
+
+ASM_DEFINE(SHADOWFRAME_CACHED_HOTNESS_COUNTDOWN_OFFSET,
+           art::ShadowFrame::CachedHotnessCountdownOffset())
+ASM_DEFINE(SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET,
+           art::ShadowFrame::DexInstructionsOffset())
+ASM_DEFINE(SHADOWFRAME_DEX_PC_OFFSET,
+           art::ShadowFrame::DexPCOffset())
+ASM_DEFINE(SHADOWFRAME_DEX_PC_PTR_OFFSET,
+           art::ShadowFrame::DexPCPtrOffset())
+ASM_DEFINE(SHADOWFRAME_HOTNESS_COUNTDOWN_OFFSET,
+           art::ShadowFrame::HotnessCountdownOffset())
+ASM_DEFINE(SHADOWFRAME_LINK_OFFSET,
+           art::ShadowFrame::LinkOffset())
+ASM_DEFINE(SHADOWFRAME_LOCK_COUNT_DATA_OFFSET,
+           art::ShadowFrame::LockCountDataOffset())
+ASM_DEFINE(SHADOWFRAME_METHOD_OFFSET,
+           art::ShadowFrame::MethodOffset())
+ASM_DEFINE(SHADOWFRAME_NUMBER_OF_VREGS_OFFSET,
+           art::ShadowFrame::NumberOfVRegsOffset())
+ASM_DEFINE(SHADOWFRAME_RESULT_REGISTER_OFFSET,
+           art::ShadowFrame::ResultRegisterOffset())
+ASM_DEFINE(SHADOWFRAME_VREGS_OFFSET,
+           art::ShadowFrame::VRegsOffset())

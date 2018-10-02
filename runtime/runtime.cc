@@ -49,7 +49,6 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "asm_support.h"
-#include "asm_support_check.h"
 #include "base/aborting.h"
 #include "base/arena_allocator.h"
 #include "base/atomic.h"
@@ -278,7 +277,6 @@ Runtime::Runtime()
   static_assert(Runtime::kCalleeSaveSize ==
                     static_cast<uint32_t>(CalleeSaveType::kLastCalleeSaveType), "Unexpected size");
 
-  CheckAsmSupportOffsetsAndSizes();
   std::fill(callee_save_methods_, callee_save_methods_ + arraysize(callee_save_methods_), 0u);
   interpreter::CheckInterpreterAsmConstants();
   callbacks_.reset(new RuntimeCallbacks());
