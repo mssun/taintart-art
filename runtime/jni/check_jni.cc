@@ -181,7 +181,7 @@ class VarArgs {
     }
   }
 
-  VarArgs(VarArgs&& other) {
+  VarArgs(VarArgs&& other) noexcept {
     m_ = other.m_;
     cnt_ = other.cnt_;
     type_ = other.type_;

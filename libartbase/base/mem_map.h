@@ -68,8 +68,8 @@ class MemMap {
     return MemMap();
   }
 
-  MemMap(MemMap&& other) REQUIRES(!MemMap::mem_maps_lock_);
-  MemMap& operator=(MemMap&& other) REQUIRES(!MemMap::mem_maps_lock_) {
+  MemMap(MemMap&& other) noexcept REQUIRES(!MemMap::mem_maps_lock_);
+  MemMap& operator=(MemMap&& other) noexcept REQUIRES(!MemMap::mem_maps_lock_) {
     Reset();
     swap(other);
     return *this;

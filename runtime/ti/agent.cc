@@ -176,7 +176,7 @@ void Agent::Unload() {
   }
 }
 
-Agent::Agent(Agent&& other)
+Agent::Agent(Agent&& other) noexcept
     : dlopen_handle_(nullptr),
       onload_(nullptr),
       onattach_(nullptr),
@@ -184,7 +184,7 @@ Agent::Agent(Agent&& other)
   *this = std::move(other);
 }
 
-Agent& Agent::operator=(Agent&& other) {
+Agent& Agent::operator=(Agent&& other) noexcept {
   if (this != &other) {
     if (dlopen_handle_ != nullptr) {
       Unload();

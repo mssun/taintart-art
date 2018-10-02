@@ -138,7 +138,7 @@ class ArenaStack : private DebugStackRefCounter, private ArenaAllocatorMemoryToo
 class ScopedArenaAllocator
     : private DebugStackReference, private DebugStackRefCounter, private ArenaAllocatorStats {
  public:
-  ScopedArenaAllocator(ScopedArenaAllocator&& other);
+  ScopedArenaAllocator(ScopedArenaAllocator&& other) noexcept;
   explicit ScopedArenaAllocator(ArenaStack* arena_stack);
   ~ScopedArenaAllocator();
 

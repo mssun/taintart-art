@@ -73,11 +73,11 @@ ScratchFile::ScratchFile(File* file) {
   file_.reset(file);
 }
 
-ScratchFile::ScratchFile(ScratchFile&& other) {
+ScratchFile::ScratchFile(ScratchFile&& other) noexcept {
   *this = std::move(other);
 }
 
-ScratchFile& ScratchFile::operator=(ScratchFile&& other) {
+ScratchFile& ScratchFile::operator=(ScratchFile&& other) noexcept {
   if (GetFile() != other.GetFile()) {
     std::swap(filename_, other.filename_);
     std::swap(file_, other.file_);

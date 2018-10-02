@@ -91,7 +91,7 @@ void FdFile::Destroy() {
   }
 }
 
-FdFile::FdFile(FdFile&& other)
+FdFile::FdFile(FdFile&& other) noexcept
     : guard_state_(other.guard_state_),
       fd_(other.fd_),
       file_path_(std::move(other.file_path_)),
@@ -105,7 +105,7 @@ FdFile::FdFile(FdFile&& other)
   other.fd_ = -1;
 }
 
-FdFile& FdFile::operator=(FdFile&& other) {
+FdFile& FdFile::operator=(FdFile&& other) noexcept {
   if (this == &other) {
     return *this;
   }
