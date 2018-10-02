@@ -105,8 +105,8 @@ class Agent {
   // TODO We need to acquire some locks probably.
   void Unload();
 
-  Agent(Agent&& other);
-  Agent& operator=(Agent&& other);
+  Agent(Agent&& other) noexcept;
+  Agent& operator=(Agent&& other) noexcept;
 
   ~Agent();
 

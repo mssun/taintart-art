@@ -585,7 +585,7 @@ MemMap MemMap::MapFileAtAddress(uint8_t* expected_ptr,
                 redzone_size);
 }
 
-MemMap::MemMap(MemMap&& other)
+MemMap::MemMap(MemMap&& other) noexcept
     : MemMap() {
   swap(other);
 }

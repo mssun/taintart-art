@@ -277,7 +277,7 @@ void ReferenceTable::Dump(std::ostream& os, Table& entries) {
     size_t identical;
 
     SummaryElement() : equiv(0), identical(0) {}
-    SummaryElement(SummaryElement&& ref) {
+    SummaryElement(SummaryElement&& ref) noexcept {
       root = ref.root;
       equiv = ref.equiv;
       identical = ref.identical;
