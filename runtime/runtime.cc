@@ -1458,7 +1458,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   CHECK_EQ(self->GetThreadId(), ThreadList::kMainThreadId);
   CHECK(self != nullptr);
 
-  self->SetCanCallIntoJava(!IsAotCompiler());
+  self->SetIsRuntimeThread(IsAotCompiler());
 
   // Set us to runnable so tools using a runtime can allocate and GC by default
   self->TransitionFromSuspendedToRunnable();
