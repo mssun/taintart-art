@@ -35,6 +35,7 @@
 #include "base/logging.h"  // For InitLogging.
 #include "base/mem_map.h"
 #include "base/scoped_flock.h"
+#include "base/stl_util.h"
 #include "base/stringpiece.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
@@ -500,7 +501,7 @@ class ProfMan final {
       LOG(ERROR) << "Cannot load profile info from filename=" << filename << " fd=" << fd;
       return -1;
     }
-    *dump += banner + "\n" + info->DumpInfo(dex_files) + "\n";
+    *dump += banner + "\n" + info->DumpInfo(MakeNonOwningPointerVector(*dex_files)) + "\n";
     return 0;
   }
 
@@ -513,10 +514,23 @@ class ProfMan final {
     static const char* kEmptyString = "";
     static const char* kOrdinaryProfile = "=== profile ===";
     static const char* kReferenceProfile = "=== reference profile ===";
+    static const char* kDexFiles = "=== Dex files  ===";
 
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     OpenApkFilesFromLocations(&dex_files);
+
     std::string dump;
+
+    // Dump checkfiles and corresponding checksums.
+    dump += kDexFiles;
+    dump += "\n";
+    for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
+      std::ostringstream oss;
+      oss << dex_file->GetLocation()
+          << " [checksum=" << std::hex << dex_file->GetLocationChecksum() << "]\n";
+      dump += oss.str();
+    }
+
     // Dump individual profile files.
     if (!profile_files_fd_.empty()) {
       for (int profile_file_fd : profile_files_fd_) {
@@ -530,12 +544,10 @@ class ProfMan final {
         }
       }
     }
-    if (!profile_files_.empty()) {
-      for (const std::string& profile_file : profile_files_) {
-        int ret = DumpOneProfile(kOrdinaryProfile, profile_file, kInvalidFd, &dex_files, &dump);
-        if (ret != 0) {
-          return ret;
-        }
+    for (const std::string& profile_file : profile_files_) {
+      int ret = DumpOneProfile(kOrdinaryProfile, profile_file, kInvalidFd, &dex_files, &dump);
+      if (ret != 0) {
+        return ret;
       }
     }
     // Dump reference profile file.
