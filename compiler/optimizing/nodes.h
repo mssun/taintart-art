@@ -6140,6 +6140,9 @@ class HBoundsCheck final : public HExpression<2> {
 
  private:
   static constexpr size_t kFlagIsStringCharAt = kNumberOfGenericPackedBits;
+  static constexpr size_t kNumberOfBoundsCheckPackedBits = kFlagIsStringCharAt + 1;
+  static_assert(kNumberOfBoundsCheckPackedBits <= HInstruction::kMaxNumberOfPackedBits,
+                "Too many packed fields.");
 };
 
 class HSuspendCheck final : public HExpression<0> {
