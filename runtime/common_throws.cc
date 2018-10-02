@@ -771,13 +771,19 @@ void ThrowStackOverflowError(Thread* self) {
 
   // Avoid running Java code for exception initialization.
   // TODO: Checks to make this a bit less brittle.
+  //
+  // Note: this lambda ensures that the destruction of the ScopedLocalRefs will run in the extended
+  //       stack, which is important for modes with larger stack sizes (e.g., ASAN). Using a lambda
+  //       instead of a block simplifies the control flow.
+  auto create_and_throw = [&]() REQUIRES_SHARED(Locks::mutator_lock_) {
+    // Allocate an uninitialized object.
+    ScopedLocalRef<jobject> exc(env,
+                                env->AllocObject(WellKnownClasses::java_lang_StackOverflowError));
+    if (exc == nullptr) {
+      LOG(WARNING) << "Could not allocate StackOverflowError object.";
+      return;
+    }
 
-  std::string error_msg;
-
-  // Allocate an uninitialized object.
-  ScopedLocalRef<jobject> exc(env,
-                              env->AllocObject(WellKnownClasses::java_lang_StackOverflowError));
-  if (exc.get() != nullptr) {
     // "Initialize".
     // StackOverflowError -> VirtualMachineError -> Error -> Throwable -> Object.
     // Only Throwable has "custom" fields:
@@ -793,57 +799,54 @@ void ThrowStackOverflowError(Thread* self) {
     // detailMessage.
     // TODO: Use String::FromModifiedUTF...?
     ScopedLocalRef<jstring> s(env, env->NewStringUTF(msg.c_str()));
-    if (s.get() != nullptr) {
-      env->SetObjectField(exc.get(), WellKnownClasses::java_lang_Throwable_detailMessage, s.get());
-
-      // cause.
-      env->SetObjectField(exc.get(), WellKnownClasses::java_lang_Throwable_cause, exc.get());
-
-      // suppressedExceptions.
-      ScopedLocalRef<jobject> emptylist(env, env->GetStaticObjectField(
-          WellKnownClasses::java_util_Collections,
-          WellKnownClasses::java_util_Collections_EMPTY_LIST));
-      CHECK(emptylist.get() != nullptr);
-      env->SetObjectField(exc.get(),
-                          WellKnownClasses::java_lang_Throwable_suppressedExceptions,
-                          emptylist.get());
-
-      // stackState is set as result of fillInStackTrace. fillInStackTrace calls
-      // nativeFillInStackTrace.
-      ScopedLocalRef<jobject> stack_state_val(env, nullptr);
-      {
-        ScopedObjectAccessUnchecked soa(env);
-        stack_state_val.reset(soa.Self()->CreateInternalStackTrace<false>(soa));
-      }
-      if (stack_state_val.get() != nullptr) {
-        env->SetObjectField(exc.get(),
-                            WellKnownClasses::java_lang_Throwable_stackState,
-                            stack_state_val.get());
-
-        // stackTrace.
-        ScopedLocalRef<jobject> stack_trace_elem(env, env->GetStaticObjectField(
-            WellKnownClasses::libcore_util_EmptyArray,
-            WellKnownClasses::libcore_util_EmptyArray_STACK_TRACE_ELEMENT));
-        env->SetObjectField(exc.get(),
-                            WellKnownClasses::java_lang_Throwable_stackTrace,
-                            stack_trace_elem.get());
-      } else {
-        error_msg = "Could not create stack trace.";
-      }
-      // Throw the exception.
-      self->SetException(self->DecodeJObject(exc.get())->AsThrowable());
-    } else {
-      // Could not allocate a string object.
-      error_msg = "Couldn't throw new StackOverflowError because JNI NewStringUTF failed.";
+    if (s == nullptr) {
+      LOG(WARNING) << "Could not throw new StackOverflowError because JNI NewStringUTF failed.";
+      return;
     }
-  } else {
-    error_msg = "Could not allocate StackOverflowError object.";
-  }
 
-  if (!error_msg.empty()) {
-    LOG(WARNING) << error_msg;
-    CHECK(self->IsExceptionPending());
-  }
+    env->SetObjectField(exc.get(), WellKnownClasses::java_lang_Throwable_detailMessage, s.get());
+
+    // cause.
+    env->SetObjectField(exc.get(), WellKnownClasses::java_lang_Throwable_cause, exc.get());
+
+    // suppressedExceptions.
+    ScopedLocalRef<jobject> emptylist(env, env->GetStaticObjectField(
+        WellKnownClasses::java_util_Collections,
+        WellKnownClasses::java_util_Collections_EMPTY_LIST));
+    CHECK(emptylist != nullptr);
+    env->SetObjectField(exc.get(),
+                        WellKnownClasses::java_lang_Throwable_suppressedExceptions,
+                        emptylist.get());
+
+    // stackState is set as result of fillInStackTrace. fillInStackTrace calls
+    // nativeFillInStackTrace.
+    ScopedLocalRef<jobject> stack_state_val(env, nullptr);
+    {
+      ScopedObjectAccessUnchecked soa(env);  // TODO: Is this necessary?
+      stack_state_val.reset(soa.Self()->CreateInternalStackTrace<false>(soa));
+    }
+    if (stack_state_val != nullptr) {
+      env->SetObjectField(exc.get(),
+                          WellKnownClasses::java_lang_Throwable_stackState,
+                          stack_state_val.get());
+
+      // stackTrace.
+      ScopedLocalRef<jobject> stack_trace_elem(env, env->GetStaticObjectField(
+          WellKnownClasses::libcore_util_EmptyArray,
+          WellKnownClasses::libcore_util_EmptyArray_STACK_TRACE_ELEMENT));
+      env->SetObjectField(exc.get(),
+                          WellKnownClasses::java_lang_Throwable_stackTrace,
+                          stack_trace_elem.get());
+    } else {
+      LOG(WARNING) << "Could not create stack trace.";
+      // Note: we'll create an exception without stack state, which is valid.
+    }
+
+    // Throw the exception.
+    self->SetException(self->DecodeJObject(exc.get())->AsThrowable());
+  };
+  create_and_throw();
+  CHECK(self->IsExceptionPending());
 
   bool explicit_overflow_check = Runtime::Current()->ExplicitStackOverflowChecks();
   self->ResetDefaultStackEnd();  // Return to default stack size.
