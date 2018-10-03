@@ -259,6 +259,14 @@ unspecified registers or condition codes.
     mov     \reg, #0
     str     \reg, [rREFS, \vreg, lsl #2]
 .endm
+.macro SET_VREG_WIDE regLo, regHi, vreg
+    add     ip, rFP, \vreg, lsl #2
+    strd    \regLo, \regHi, [ip]
+    mov     \regLo, #0
+    mov     \regHi, #0
+    add     ip, rREFS, \vreg, lsl #2
+    strd    \regLo, \regHi, [ip]
+.endm
 .macro SET_VREG_OBJECT reg, vreg, tmpreg
     str     \reg, [rFP, \vreg, lsl #2]
     str     \reg, [rREFS, \vreg, lsl #2]
