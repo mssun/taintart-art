@@ -59,6 +59,7 @@ enum class MethodCompilationStat {
   kNotCompiledUnsupportedIsa,
   kNotCompiledVerificationError,
   kNotCompiledVerifyAtRuntime,
+  kNotCompiledIrreducibleLoopAndStringInit,
   kInlinedMonomorphicCall,
   kInlinedPolymorphicCall,
   kMonomorphicCall,
