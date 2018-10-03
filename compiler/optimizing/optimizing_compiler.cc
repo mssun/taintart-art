@@ -847,6 +847,11 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
                           MethodCompilationStat::kNotCompiledAmbiguousArrayOp);
           break;
         }
+        case kAnalysisFailIrreducibleLoopAndStringInit: {
+          MaybeRecordStat(compilation_stats_.get(),
+                          MethodCompilationStat::kNotCompiledIrreducibleLoopAndStringInit);
+          break;
+        }
         case kAnalysisSuccess:
           UNREACHABLE();
       }

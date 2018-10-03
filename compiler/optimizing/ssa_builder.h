@@ -97,8 +97,8 @@ class SsaBuilder : public ValueObject {
     }
   }
 
-  void AddUninitializedStringPhi(HPhi* phi, HInvoke* invoke) {
-    uninitialized_string_phis_.push_back(std::make_pair(phi, invoke));
+  void AddUninitializedStringPhi(HInvoke* invoke) {
+    uninitialized_string_phis_.push_back(invoke);
   }
 
  private:
@@ -124,6 +124,7 @@ class SsaBuilder : public ValueObject {
 
   void RemoveRedundantUninitializedStrings();
   bool ReplaceUninitializedStringPhis();
+  bool HasAliasInEnvironments(HInstruction* instruction);
 
   HGraph* const graph_;
   Handle<mirror::ClassLoader> class_loader_;
@@ -137,7 +138,7 @@ class SsaBuilder : public ValueObject {
   ScopedArenaVector<HArrayGet*> ambiguous_agets_;
   ScopedArenaVector<HArraySet*> ambiguous_asets_;
   ScopedArenaVector<HNewInstance*> uninitialized_strings_;
-  ScopedArenaVector<std::pair<HPhi*, HInvoke*>> uninitialized_string_phis_;
+  ScopedArenaVector<HInvoke*> uninitialized_string_phis_;
 
   DISALLOW_COPY_AND_ASSIGN(SsaBuilder);
 };
