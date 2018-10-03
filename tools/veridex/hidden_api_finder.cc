@@ -232,7 +232,7 @@ void HiddenApiFinder::DumpReferences(std::ostream& os,
     counts[ref_string]++;
   }
 
-  for (const std::pair<const std::string, const size_t>& pair : counts) {
+  for (const std::pair<const std::string, size_t>& pair : counts) {
     os << kPrefix << pair.first;
     if (pair.second > 1) {
        os << " (" << pair.second << " occurrences)";

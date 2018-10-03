@@ -44,7 +44,6 @@ using VeriMethod = const uint8_t*;
  */
 class VeriClass {
  public:
-  VeriClass(const VeriClass& other) = default;
   VeriClass() = default;
   VeriClass(Primitive::Type k, uint8_t dims, const DexFile::ClassDef* cl)
       : kind_(k), dimensions_(dims), class_def_(cl) {}
