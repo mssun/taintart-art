@@ -148,7 +148,7 @@ def gather_test_info():
   VARIANT_TYPE_DICT['gc'] = {'gcstress', 'gcverify', 'cms'}
   VARIANT_TYPE_DICT['prebuild'] = {'no-prebuild', 'prebuild'}
   VARIANT_TYPE_DICT['cdex_level'] = {'cdex-none', 'cdex-fast'}
-  VARIANT_TYPE_DICT['relocate'] = {'relocate-npatchoat', 'relocate', 'no-relocate'}
+  VARIANT_TYPE_DICT['relocate'] = {'relocate', 'no-relocate'}
   VARIANT_TYPE_DICT['jni'] = {'jni', 'forcecopy', 'checkjni'}
   VARIANT_TYPE_DICT['address_sizes'] = {'64', '32'}
   VARIANT_TYPE_DICT['jvmti'] = {'no-jvmti', 'jvmti-stress', 'redefine-stress', 'trace-stress',
@@ -440,8 +440,6 @@ def run_tests(tests):
         options_test += ' --relocate'
       elif relocate == 'no-relocate':
         options_test += ' --no-relocate'
-      elif relocate == 'relocate-npatchoat':
-        options_test += ' --relocate --no-patchoat'
 
       if trace == 'trace':
         options_test += ' --trace'

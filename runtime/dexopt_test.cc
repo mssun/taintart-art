@@ -39,8 +39,6 @@ void DexoptTest::SetUp() {
 
 void DexoptTest::PreRuntimeCreate() {
   std::string error_msg;
-  ASSERT_TRUE(PreRelocateImage(GetImageLocation(), &error_msg)) << error_msg;
-  ASSERT_TRUE(PreRelocateImage(GetImageLocation2(), &error_msg)) << error_msg;
   UnreserveImageSpace();
 }
 
@@ -180,34 +178,6 @@ void DexoptTest::GenerateOatForTest(const char* dex_location,
 
 void DexoptTest::GenerateOatForTest(const char* dex_location, CompilerFilter::Filter filter) {
   GenerateOatForTest(dex_location, filter, /* with_alternate_image */ false);
-}
-
-bool DexoptTest::PreRelocateImage(const std::string& image_location, std::string* error_msg) {
-  std::string dalvik_cache;
-  bool have_android_data;
-  bool dalvik_cache_exists;
-  bool is_global_cache;
-  GetDalvikCache(GetInstructionSetString(kRuntimeISA),
-                 /* create_if_absent */ true,
-                 &dalvik_cache,
-                 &have_android_data,
-                 &dalvik_cache_exists,
-                 &is_global_cache);
-  if (!dalvik_cache_exists) {
-    *error_msg = "Failed to create dalvik cache";
-    return false;
-  }
-
-  std::string patchoat = GetAndroidRoot();
-  patchoat += kIsDebugBuild ? "/bin/patchoatd" : "/bin/patchoat";
-
-  std::vector<std::string> argv;
-  argv.push_back(patchoat);
-  argv.push_back("--input-image-location=" + image_location);
-  argv.push_back("--output-image-directory=" + dalvik_cache);
-  argv.push_back("--instruction-set=" + std::string(GetInstructionSetString(kRuntimeISA)));
-  argv.push_back("--base-offset-delta=0x00008000");
-  return Exec(argv, error_msg);
 }
 
 void DexoptTest::ReserveImageSpace() {

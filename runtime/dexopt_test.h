@@ -62,11 +62,6 @@ class DexoptTest : public Dex2oatEnvironmentTest {
   static bool Dex2Oat(const std::vector<std::string>& args, std::string* error_msg);
 
  private:
-  // Pre-Relocate the image to a known non-zero offset so we don't have to
-  // deal with the runtime randomly relocating the image by 0 and messing up
-  // the expected results of the tests.
-  bool PreRelocateImage(const std::string& image_location, std::string* error_msg);
-
   // Reserve memory around where the image will be loaded so other memory
   // won't conflict when it comes time to load the image.
   // This can be called with an already loaded image to reserve the space
