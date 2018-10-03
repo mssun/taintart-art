@@ -165,15 +165,6 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
           return !self->IsExceptionPending();
         }
       }
-    } else {
-      // TODO: Remove the InvokeVirtualOrInterface instrumentation, as it was only used by the JIT.
-      if (type == kVirtual || type == kInterface) {
-        instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
-        if (UNLIKELY(instrumentation->HasInvokeVirtualOrInterfaceListeners())) {
-          instrumentation->InvokeVirtualOrInterface(
-              self, receiver.Ptr(), sf_method, shadow_frame.GetDexPC(), called_method);
-        }
-      }
     }
     return DoCall<is_range, do_access_check>(called_method, self, shadow_frame, inst, inst_data,
                                              result);
@@ -276,12 +267,6 @@ static inline bool DoInvokeVirtualQuick(Thread* self, ShadowFrame& shadow_frame,
       jit->InvokeVirtualOrInterface(
           receiver, shadow_frame.GetMethod(), shadow_frame.GetDexPC(), called_method);
       jit->AddSamples(self, shadow_frame.GetMethod(), 1, /*with_backedges*/false);
-    }
-    instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
-    // TODO: Remove the InvokeVirtualOrInterface instrumentation, as it was only used by the JIT.
-    if (UNLIKELY(instrumentation->HasInvokeVirtualOrInterfaceListeners())) {
-      instrumentation->InvokeVirtualOrInterface(
-          self, receiver.Ptr(), shadow_frame.GetMethod(), shadow_frame.GetDexPC(), called_method);
     }
     // No need to check since we've been quickened.
     return DoCall<is_range, false>(called_method, self, shadow_frame, inst, inst_data, result);
