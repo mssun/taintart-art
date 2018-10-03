@@ -307,7 +307,6 @@
 .end method
 
 ## CHECK-START: java.lang.String TestCase.loopAndStringInitAndPhi(byte[], boolean) register (after)
-## CHECK:                        NewInstance
 ## CHECK-NOT:                    NewInstance
 ## CHECK-DAG:   <<Invoke1:l\d+>> InvokeStaticOrDirect method_name:java.lang.String.<init>
 ## CHECK-DAG:   <<Invoke2:l\d+>> InvokeStaticOrDirect method_name:java.lang.String.<init>
@@ -333,6 +332,143 @@
    const-string v1, "UTF8"
    new-instance v0, Ljava/lang/String;
    invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   :exit
+   return-object v0
+
+.end method
+
+.method public static loopAndTwoStringInitAndPhi([BZZ)Ljava/lang/String;
+   .registers 6
+
+   new-instance v0, Ljava/lang/String;
+   new-instance v2, Ljava/lang/String;
+
+   if-nez p2, :allocate_other
+
+   # Loop
+   :loop_header
+   if-eqz p1, :loop_exit
+   goto :loop_header
+
+   :loop_exit
+   const-string v1, "UTF8"
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   goto :exit
+
+   :allocate_other
+
+   # Loop
+   :loop_header2
+   if-eqz p1, :loop_exit2
+   goto :loop_header2
+
+   :loop_exit2
+   const-string v1, "UTF8"
+   invoke-direct {v2, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   move-object v0, v2
+
+   :exit
+   return-object v0
+
+.end method
+
+# Regression test for a new string flowing into a catch phi.
+.method public static stringAndCatch([BZ)Ljava/lang/Object;
+   .registers 4
+
+   const v0, 0x0
+
+   :try_start_a
+   new-instance v0, Ljava/lang/String;
+
+   # Loop
+   :loop_header
+   if-eqz p1, :loop_exit
+   goto :loop_header
+
+   :loop_exit
+   const-string v1, "UTF8"
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   goto :exit
+   :try_end_a
+   .catch Ljava/lang/Exception; {:try_start_a .. :try_end_a} :catch_a
+
+   :catch_a
+   # Initially, we create a catch phi with the potential uninitalized string, which used to
+   # trip the compiler. However, using that catch phi is an error caught by the verifier, so
+   # having the phi is benign.
+   const v0, 0x0
+
+   :exit
+   return-object v0
+
+.end method
+
+# Same test as above, but with a catch phi being used by the string constructor.
+.method public static stringAndCatch2([BZ)Ljava/lang/Object;
+   .registers 4
+
+   const v0, 0x0
+   new-instance v0, Ljava/lang/String;
+
+   :try_start_a
+   const-string v1, "UTF8"
+   :try_end_a
+   .catch Ljava/lang/Exception; {:try_start_a .. :try_end_a} :catch_a
+
+   :catch_a
+   const-string v1, "UTF8"
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   return-object v0
+
+.end method
+
+# Same test as above, but with a catch phi being used by the string constructor and
+# a null test.
+.method public static stringAndCatch3([BZ)Ljava/lang/Object;
+   .registers 4
+
+   const v0, 0x0
+   new-instance v0, Ljava/lang/String;
+
+   :try_start_a
+   const-string v1, "UTF8"
+   :try_end_a
+   .catch Ljava/lang/Exception; {:try_start_a .. :try_end_a} :catch_a
+
+   :catch_a
+   if-eqz v0, :unexpected
+   const-string v1, "UTF8"
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   goto :exit
+   :unexpected
+   const-string v0, "UTF8"
+   :exit
+   return-object v0
+
+.end method
+
+# Regression test that tripped the compiler.
+.method public static stringAndPhi([BZ)Ljava/lang/Object;
+   .registers 4
+
+   new-instance v0, Ljava/lang/String;
+   const-string v1, "UTF8"
+
+   :loop_header
+   if-nez p1, :unused
+   if-eqz p1, :invoke
+   goto :loop_header
+
+   :invoke
+   invoke-direct {v0, p0, v1}, Ljava/lang/String;-><init>([BLjava/lang/String;)V
+   goto :exit
+
+   :unused
+   const-string v0, "UTF8"
+   if-nez p1, :exit
+   goto :unused
+
    :exit
    return-object v0
 

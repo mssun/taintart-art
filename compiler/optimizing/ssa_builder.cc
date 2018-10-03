@@ -16,6 +16,8 @@
 
 #include "ssa_builder.h"
 
+#include "base/arena_bit_vector.h"
+#include "base/bit_vector-inl.h"
 #include "data_type-inl.h"
 #include "dex/bytecode_utils.h"
 #include "mirror/class-inl.h"
@@ -415,97 +417,34 @@ bool SsaBuilder::FixAmbiguousArrayOps() {
   return true;
 }
 
-static bool HasAliasInEnvironments(HInstruction* instruction) {
-  HEnvironment* last_user = nullptr;
+bool SsaBuilder::HasAliasInEnvironments(HInstruction* instruction) {
+  ScopedArenaHashSet<size_t> seen_users(
+      local_allocator_->Adapter(kArenaAllocGraphBuilder));
   for (const HUseListNode<HEnvironment*>& use : instruction->GetEnvUses()) {
     DCHECK(use.GetUser() != nullptr);
-    // Note: The first comparison (== null) always fails.
-    if (use.GetUser() == last_user) {
+    size_t id = use.GetUser()->GetHolder()->GetId();
+    if (seen_users.find(id) != seen_users.end()) {
       return true;
     }
-    last_user = use.GetUser();
-  }
-
-  if (kIsDebugBuild) {
-    // Do a quadratic search to ensure same environment uses are next
-    // to each other.
-    const HUseList<HEnvironment*>& env_uses = instruction->GetEnvUses();
-    for (auto current = env_uses.begin(), end = env_uses.end(); current != end; ++current) {
-      auto next = current;
-      for (++next; next != end; ++next) {
-        DCHECK(next->GetUser() != current->GetUser());
-      }
-    }
+    seen_users.insert(id);
   }
   return false;
 }
 
-// Returns whether the analysis succeeded. If it did not, we are going to bail
-// to interpreter.
-// TODO(ngeoffray): Remove this workaround.
 bool SsaBuilder::ReplaceUninitializedStringPhis() {
-  ScopedArenaHashSet<HInstruction*> seen_instructions(
-      local_allocator_->Adapter(kArenaAllocGraphBuilder));
-  ScopedArenaVector<HInstruction*> worklist(local_allocator_->Adapter(kArenaAllocGraphBuilder));
-
-  // Iterate over all inputs and uses of the phi, recursively, until all related instructions
-  // have been visited.
-  for (const auto& pair : uninitialized_string_phis_) {
-    HPhi* string_phi = pair.first;
-    HInvoke* invoke = pair.second;
-    worklist.push_back(string_phi);
-    HNewInstance* found_instance = nullptr;
-    do {
-      HInstruction* current = worklist.back();
-      worklist.pop_back();
-      if (seen_instructions.find(current) != seen_instructions.end()) {
-        continue;
-      }
-      seen_instructions.insert(current);
-      if (current->IsNewInstance()) {
-        // If it is the first time we see the allocation, replace its uses. We don't register
-        // it through `RemoveRedundantUninitializedStrings`, as that method makes assumption about
-        // aliasing and environment uses that don't hold when the string escapes to phis.
-        // Note that this also means we will keep the (useless) allocation.
-        if (found_instance == nullptr) {
-          found_instance = current->AsNewInstance();
-        } else {
-          if (found_instance != current) {
-            return false;
-          }
-        }
-      } else if (current->IsPhi()) {
-        // Push all inputs to the worklist. Those should be Phis or NewInstance.
-        for (HInstruction* input : current->GetInputs()) {
-          if (!input->IsPhi() && !input->IsNewInstance()) {
-            return false;
-          }
-          worklist.push_back(input);
-        }
-      } else {
-        // The verifier prevents any other DEX uses of the uninitialized string.
-        if (!current->IsEqual() && !current->IsNotEqual()) {
-          return false;
-        }
-        continue;
-      }
-      current->ReplaceUsesDominatedBy(invoke, invoke);
-      current->ReplaceEnvUsesDominatedBy(invoke, invoke);
-      // Push all users to the worklist. Now that we have replaced
-      // the uses dominated by the invokes, the remaining users should only
-      // be Phi, or Equal/NotEqual.
-      for (const HUseListNode<HInstruction*>& use : current->GetUses()) {
-        HInstruction* user = use.GetUser();
-        if (!user->IsPhi() && !user->IsEqual() && !user->IsNotEqual()) {
-          return false;
-        }
-        worklist.push_back(user);
-      }
-    } while (!worklist.empty());
-    seen_instructions.clear();
-    if (found_instance == nullptr) {
+  for (HInvoke* invoke : uninitialized_string_phis_) {
+    HInstruction* str = invoke->InputAt(invoke->InputCount() - 1);
+    if (str->IsPhi()) {
+      // If after redundant phi and dead phi elimination, it's still a phi that feeds
+      // the invoke, then we must be compiling a method with irreducible loops. Just bail.
+      DCHECK(graph_->HasIrreducibleLoops());
       return false;
     }
+    DCHECK(str->IsNewInstance());
+    AddUninitializedString(str->AsNewInstance());
+    str->ReplaceUsesDominatedBy(invoke, invoke);
+    str->ReplaceEnvUsesDominatedBy(invoke, invoke);
+    invoke->RemoveInputAt(invoke->InputCount() - 1);
   }
   return true;
 }
@@ -522,8 +461,9 @@ void SsaBuilder::RemoveRedundantUninitializedStrings() {
     DCHECK(new_instance->IsStringAlloc());
 
     // Replace NewInstance of String with NullConstant if not used prior to
-    // calling StringFactory. In case of deoptimization, the interpreter is
-    // expected to skip null check on the `this` argument of the StringFactory call.
+    // calling StringFactory. We check for alias environments in case of deoptimization.
+    // The interpreter is expected to skip null check on the `this` argument of the
+    // StringFactory call.
     if (!new_instance->HasNonEnvironmentUses() && !HasAliasInEnvironments(new_instance)) {
       new_instance->ReplaceWith(graph_->GetNullConstant());
       new_instance->GetBlock()->RemoveInstruction(new_instance);
@@ -557,13 +497,6 @@ void SsaBuilder::RemoveRedundantUninitializedStrings() {
 
 GraphAnalysisResult SsaBuilder::BuildSsa() {
   DCHECK(!graph_->IsInSsaForm());
-
-  // Replace Phis that feed in a String.<init>, as well as their aliases, with
-  // the actual String allocation invocation. We do this first, as the phis stored in
-  // the data structure might get removed from the graph in later stages during `BuildSsa`.
-  if (!ReplaceUninitializedStringPhis()) {
-    return kAnalysisSkipped;
-  }
 
   // Propagate types of phis. At this point, phis are typed void in the general
   // case, or float/double/reference if we created an equivalent phi. So we need
@@ -622,6 +555,14 @@ GraphAnalysisResult SsaBuilder::BuildSsa() {
   // as for the code generation, which does not deal with phis of conflicting
   // input types.
   dead_phi_elimimation.EliminateDeadPhis();
+
+  // Replace Phis that feed in a String.<init> during instruction building. We
+  // run this after redundant and dead phi elimination to make sure the phi will have
+  // been replaced by the actual allocation. Only with an irreducible loop
+  // a phi can still be the input, in which case we bail.
+  if (!ReplaceUninitializedStringPhis()) {
+    return kAnalysisFailIrreducibleLoopAndStringInit;
+  }
 
   // HInstructionBuidler replaced uses of NewInstances of String with the
   // results of their corresponding StringFactory calls. Unless the String
