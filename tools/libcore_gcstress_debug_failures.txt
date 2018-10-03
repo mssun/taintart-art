@@ -45,7 +45,8 @@
     "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringAbbrev",
     "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringCTS",
     "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringFrench",
-    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringGerman"
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringGerman",
+    "org.apache.harmony.tests.java.lang.ProcessManagerTest#testSleep"
   ]
 }
 ]
