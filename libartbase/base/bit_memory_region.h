@@ -85,15 +85,15 @@ class BitMemoryRegion final : public ValueObject {
 
   // Load a single bit in the region. The bit at offset 0 is the least
   // significant bit in the first byte.
-  ATTRIBUTE_NO_SANITIZE_ADDRESS  // We might touch extra bytes due to the alignment.
-  ALWAYS_INLINE bool LoadBit(uintptr_t bit_offset) const {
+  ALWAYS_INLINE bool LoadBit(size_t bit_offset) const {
     DCHECK_LT(bit_offset, bit_size_);
-    size_t index = (bit_start_ + bit_offset) / kBitsPerIntPtrT;
-    size_t shift = (bit_start_ + bit_offset) % kBitsPerIntPtrT;
-    return ((data_[index] >> shift) & 1) != 0;
+    uint8_t* data = reinterpret_cast<uint8_t*>(data_);
+    size_t index = (bit_start_ + bit_offset) / kBitsPerByte;
+    size_t shift = (bit_start_ + bit_offset) % kBitsPerByte;
+    return ((data[index] >> shift) & 1) != 0;
   }
 
-  ALWAYS_INLINE void StoreBit(uintptr_t bit_offset, bool value) {
+  ALWAYS_INLINE void StoreBit(size_t bit_offset, bool value) {
     DCHECK_LT(bit_offset, bit_size_);
     uint8_t* data = reinterpret_cast<uint8_t*>(data_);
     size_t index = (bit_start_ + bit_offset) / kBitsPerByte;
