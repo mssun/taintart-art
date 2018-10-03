@@ -313,4 +313,9 @@ extern "C" JNIEXPORT void JNICALL Java_Main_startJit(JNIEnv*, jclass) {
   }
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_Main_getJitThreshold(JNIEnv*, jclass) {
+  jit::Jit* jit = Runtime::Current()->GetJit();
+  return (jit != nullptr) ? jit->HotMethodThreshold() : 0;
+}
+
 }  // namespace art
