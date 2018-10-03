@@ -341,7 +341,6 @@ LOCAL_REQUIRED_MODULES := \
     libart-compiler \
     libopenjdkjvm \
     libopenjdkjvmti \
-    patchoat \
     profman \
     libadbconnection \
 
@@ -367,7 +366,6 @@ LOCAL_REQUIRED_MODULES += \
     libopenjdkd \
     libopenjdkjvmd \
     libopenjdkjvmtid \
-    patchoatd \
     profmand \
     libadbconnectiond \
 
@@ -451,7 +449,7 @@ build-art-target: $(TARGET_OUT_EXECUTABLES)/art $(ART_TARGET_DEPENDENCIES) $(TAR
 # Also include libartbenchmark, we always include it when running golem.
 # libstdc++ is needed when building for ART_TARGET_LINUX.
 ART_TARGET_SHARED_LIBRARY_BENCHMARK := $(TARGET_OUT_SHARED_LIBRARIES)/libartbenchmark.so
-build-art-target-golem: dex2oat dalvikvm patchoat linker libstdc++ \
+build-art-target-golem: dex2oat dalvikvm linker libstdc++ \
                         $(TARGET_OUT_EXECUTABLES)/art \
                         $(TARGET_OUT)/etc/public.libraries.txt \
                         $(ART_TARGET_DEX_DEPENDENCIES) \
