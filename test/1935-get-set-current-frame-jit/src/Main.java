@@ -58,7 +58,8 @@ public class Main {
     }
     public void run() {
       int TARGET = 42;
-      if (hasJit() && expectOsr && !Main.isInterpreted()) {
+      boolean normalJit = hasJit() && getJitThreshold() != 0;  // Excluding JIT-at-first-use.
+      if (normalJit && expectOsr && !Main.isInterpreted()) {
           System.out.println("Unexpectedly in jit code prior to restarting the JIT!");
       }
       startJit();
@@ -72,10 +73,10 @@ public class Main {
       do {
         // Don't actually do anything here.
         inBusyLoop = true;
-      } while (hasJit() && !Main.isInOsrCode("run") && osrDeadline.compareTo(Instant.now()) > 0);
+      } while (normalJit && !Main.isInOsrCode("run") && osrDeadline.compareTo(Instant.now()) > 0);
       // We shouldn't be doing OSR since we are using JVMTI and the set prevents OSR.
       // Set local will also push us to interpreter but the get local may remain in compiled code.
-      if (hasJit()) {
+      if (normalJit) {
         boolean inOsr = Main.isInOsrCode("run");
         if (expectOsr && !inOsr) {
           throw new Error(
@@ -184,4 +185,5 @@ public class Main {
   public static native boolean stopJit();
   public static native boolean startJit();
   public static native boolean hasJit();
+  public static native int getJitThreshold();
 }
