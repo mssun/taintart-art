@@ -232,6 +232,4 @@ ADD_TEST_EQ(STRING_COMPRESSION_FEATURE, art::mirror::kUseStringCompression);
 #undef DEFINED_ADD_TEST_EQ
 #endif
 
-#undef ALIGN_UP
-
 #endif  // ART_RUNTIME_ASM_SUPPORT_H_
