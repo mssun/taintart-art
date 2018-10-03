@@ -1427,6 +1427,7 @@ class MANAGED Class final : public Object {
 
   // Tid used to check for recursive <clinit> invocation.
   pid_t clinit_thread_id_;
+  static_assert(sizeof(pid_t) == sizeof(int32_t), "java.lang.Class.clinitThreadId size check");
 
   // ClassDef index in dex file, -1 if no class definition such as an array.
   // TODO: really 16bits
