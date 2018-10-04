@@ -34,29 +34,76 @@
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     GOTO_OPCODE ip                      @ jump to next instruction
 
-%def op_iget(is_object="0", helper="MterpIGetU32"):
-%  field(helper=helper)
+%def op_iget(is_object=False, is_wide=False, load="ldr", helper="MterpIGetU32"):
+   @ Fast-path which gets the field offset from thread-local cache.
+   add      r0, rSELF, #THREAD_INTERPRETER_CACHE_OFFSET       @ cache address
+   ubfx     r1, rPC, #2, #THREAD_INTERPRETER_CACHE_SIZE_LOG2  @ entry index
+   add      r0, r0, r1, lsl #3            @ entry address within the cache
+   ldrd     r0, r1, [r0]                  @ entry key (pc) and value (offset)
+   mov      r2, rINST, lsr #12            @ B
+   GET_VREG r2, r2                        @ object we're operating on
+   cmp      r0, rPC
+%  slow_path_label = add_helper("slow_path", lambda: field(helper))
+   bne      ${slow_path_label}            @ cache miss
+   cmp      r2, #0
+   beq      common_errNullObject          @ null object
+%  if is_wide:
+     ldrd     r0, r1, [r2, r1]            @ r0,r1 <- obj.field
+%  else:
+     ${load}  r0, [r2, r1]                @ r0 <- obj.field
+%  #endif
+%  if is_object:
+     UNPOISON_HEAP_REF r0
+#if defined(USE_READ_BARRIER)
+# if defined(USE_BAKER_READ_BARRIER)
+     ldr    ip, [rSELF, #THREAD_IS_GC_MARKING_OFFSET]
+     cmp    ip, #0
+     bne    .L_${opcode}_mark             @ GC is active
+.L_${opcode}_marked:
+# else
+     bl artReadBarrierMark                @ r0 <- artReadBarrierMark(r0)
+# endif
+#endif
+%  #endif
+   ubfx     r2, rINST, #8, #4             @ A
+   FETCH_ADVANCE_INST 2                   @ advance rPC, load rINST
+%  if is_object:
+     SET_VREG_OBJECT r0, r2               @ fp[A]<- r0
+%  elif is_wide:
+     SET_VREG_WIDE r0, r1, r2             @ fp[A]<- r0, r1
+%  else:
+     SET_VREG r0, r2                      @ fp[A]<- r0
+%  #endif
+   GET_INST_OPCODE ip                     @ extract opcode from rINST
+   GOTO_OPCODE ip                         @ jump to next instruction
+%  if is_object:
+#if defined(USE_READ_BARRIER) && defined(USE_BAKER_READ_BARRIER)
+.L_${opcode}_mark:
+     bl artReadBarrierMark                @ r0 <- artReadBarrierMark(r0)
+     b .L_${opcode}_marked
+#endif
+%  #endif
 
 %def op_iget_boolean():
-%  op_iget(helper="MterpIGetU8")
+%  op_iget(load="ldrb", helper="MterpIGetU8")
 
 %def op_iget_boolean_quick():
 %  op_iget_quick(load="ldrb")
 
 %def op_iget_byte():
-%  op_iget(helper="MterpIGetI8")
+%  op_iget(load="ldrsb", helper="MterpIGetI8")
 
 %def op_iget_byte_quick():
 %  op_iget_quick(load="ldrsb")
 
 %def op_iget_char():
-%  op_iget(helper="MterpIGetU16")
+%  op_iget(load="ldrh", helper="MterpIGetU16")
 
 %def op_iget_char_quick():
 %  op_iget_quick(load="ldrh")
 
 %def op_iget_object():
-%  op_iget(is_object="1", helper="MterpIGetObj")
+%  op_iget(is_object=True, helper="MterpIGetObj")
 
 %def op_iget_object_quick():
     /* For: iget-object-quick */
@@ -92,13 +139,13 @@
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_iget_short():
-%  op_iget(helper="MterpIGetI16")
+%  op_iget(load="ldrsh", helper="MterpIGetI16")
 
 %def op_iget_short_quick():
 %  op_iget_quick(load="ldrsh")
 
 %def op_iget_wide():
-%  op_iget(helper="MterpIGetU64")
+%  op_iget(is_wide=True, helper="MterpIGetU64")
 
 %def op_iget_wide_quick():
     /* iget-wide-quick vA, vB, offset@CCCC */
@@ -141,7 +188,7 @@
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     GOTO_OPCODE ip                      @ jump to next instruction
 
-%def op_iput(is_object="0", helper="MterpIPutU32"):
+%def op_iput(helper="MterpIPutU32"):
 %  field(helper=helper)
 
 %def op_iput_boolean():
@@ -163,7 +210,7 @@
 %  op_iput_quick(store="strh")
 
 %def op_iput_object():
-%  op_iput(is_object="1", helper="MterpIPutObj")
+%  op_iput(helper="MterpIPutObj")
 
 %def op_iput_object_quick():
     EXPORT_PC
@@ -232,7 +279,7 @@
     GET_INST_OPCODE ip                 @ extract opcode from rINST
     GOTO_OPCODE ip                     @ jump to next instruction
 
-%def op_sget(is_object="0", helper="MterpSGetU32"):
+%def op_sget(helper="MterpSGetU32"):
 %  field(helper=helper)
 
 %def op_sget_boolean():
@@ -245,7 +292,7 @@
 %  op_sget(helper="MterpSGetU16")
 
 %def op_sget_object():
-%  op_sget(is_object="1", helper="MterpSGetObj")
+%  op_sget(helper="MterpSGetObj")
 
 %def op_sget_short():
 %  op_sget(helper="MterpSGetI16")
@@ -253,7 +300,7 @@
 %def op_sget_wide():
 %  op_sget(helper="MterpSGetU64")
 
-%def op_sput(is_object="0", helper="MterpSPutU32"):
+%def op_sput(helper="MterpSPutU32"):
 %  field(helper=helper)
 
 %def op_sput_boolean():
@@ -266,7 +313,7 @@
 %  op_sput(helper="MterpSPutU16")
 
 %def op_sput_object():
-%  op_sput(is_object="1", helper="MterpSPutObj")
+%  op_sput(helper="MterpSPutObj")
 
 %def op_sput_short():
 %  op_sput(helper="MterpSPutI16")
