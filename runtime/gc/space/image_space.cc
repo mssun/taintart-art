@@ -673,7 +673,7 @@ class ImageSpace::Loader {
                                         PROT_READ,
                                         MAP_PRIVATE,
                                         fd,
-                                        /* offset= */ 0,
+                                        /* start= */ 0,
                                         /* low_4gb= */ false,
                                         image_filename,
                                         error_msg);

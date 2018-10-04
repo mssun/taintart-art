@@ -18,6 +18,7 @@ bootstrap_go_package {
 }
 
 art_clang_tidy_errors = [
+    "bugprone-argument-comment",
     "bugprone-lambda-function-name",
     "bugprone-unused-raii",  // Protect scoped things like MutexLock.
     "bugprone-virtual-near-miss",
@@ -33,7 +34,8 @@ art_clang_tidy_errors = [
     "misc-unused-using-decls",
 ]
 // Should be: strings.Join(art_clang_tidy_errors, ",").
-art_clang_tidy_errors_str = "bugprone-lambda-function-name"
+art_clang_tidy_errors_str = "bugprone-argument-comment"
+        + ",bugprone-lambda-function-name"
         + ",bugprone-unused-raii"
         + ",bugprone-virtual-near-miss"
         + ",modernize-redundant-void-arg"
