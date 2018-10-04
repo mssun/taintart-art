@@ -226,51 +226,51 @@ class MANAGED DexCache final : public Object {
     return GetFieldObject<String>(OFFSET_OF_OBJECT_MEMBER(DexCache, location_));
   }
 
-  static MemberOffset StringsOffset() {
+  static constexpr MemberOffset StringsOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, strings_);
   }
 
-  static MemberOffset ResolvedTypesOffset() {
+  static constexpr MemberOffset ResolvedTypesOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, resolved_types_);
   }
 
-  static MemberOffset ResolvedFieldsOffset() {
+  static constexpr MemberOffset ResolvedFieldsOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, resolved_fields_);
   }
 
-  static MemberOffset ResolvedMethodsOffset() {
+  static constexpr MemberOffset ResolvedMethodsOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, resolved_methods_);
   }
 
-  static MemberOffset ResolvedMethodTypesOffset() {
+  static constexpr MemberOffset ResolvedMethodTypesOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, resolved_method_types_);
   }
 
-  static MemberOffset ResolvedCallSitesOffset() {
+  static constexpr MemberOffset ResolvedCallSitesOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, resolved_call_sites_);
   }
 
-  static MemberOffset NumStringsOffset() {
+  static constexpr MemberOffset NumStringsOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_strings_);
   }
 
-  static MemberOffset NumResolvedTypesOffset() {
+  static constexpr MemberOffset NumResolvedTypesOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_resolved_types_);
   }
 
-  static MemberOffset NumResolvedFieldsOffset() {
+  static constexpr MemberOffset NumResolvedFieldsOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_resolved_fields_);
   }
 
-  static MemberOffset NumResolvedMethodsOffset() {
+  static constexpr MemberOffset NumResolvedMethodsOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_resolved_methods_);
   }
 
-  static MemberOffset NumResolvedMethodTypesOffset() {
+  static constexpr MemberOffset NumResolvedMethodTypesOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_resolved_method_types_);
   }
 
-  static MemberOffset NumResolvedCallSitesOffset() {
+  static constexpr MemberOffset NumResolvedCallSitesOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_resolved_call_sites_);
   }
 

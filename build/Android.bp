@@ -106,6 +106,10 @@ art_global_defaults {
         "-Wunreachable-code-break",
         "-Wunreachable-code-return",
 
+        // Disable warning for use of offsetof on non-standard layout type.
+        // We use it to implement OFFSETOF_MEMBER - see macros.h.
+        "-Wno-invalid-offsetof",
+
         // Enable thread annotations for std::mutex, etc.
         "-D_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS",
     ],

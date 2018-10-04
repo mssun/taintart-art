@@ -86,7 +86,7 @@ class MANAGED LOCKABLE Object {
     return sizeof(Object);
   }
 
-  static MemberOffset ClassOffset() {
+  static constexpr MemberOffset ClassOffset() {
     return OFFSET_OF_OBJECT_MEMBER(Object, klass_);
   }
 
@@ -138,7 +138,7 @@ class MANAGED LOCKABLE Object {
       REQUIRES(!Locks::thread_list_lock_,
                !Locks::thread_suspend_count_lock_);
 
-  static MemberOffset MonitorOffset() {
+  static constexpr MemberOffset MonitorOffset() {
     return OFFSET_OF_OBJECT_MEMBER(Object, monitor_);
   }
 
