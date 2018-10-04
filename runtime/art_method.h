@@ -103,7 +103,7 @@ class ArtMethod final {
   bool CASDeclaringClass(ObjPtr<mirror::Class> expected_class, ObjPtr<mirror::Class> desired_class)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static MemberOffset DeclaringClassOffset() {
+  static constexpr MemberOffset DeclaringClassOffset() {
     return MemberOffset(OFFSETOF_MEMBER(ArtMethod, declaring_class_));
   }
 
@@ -118,7 +118,7 @@ class ArtMethod final {
     access_flags_.store(new_access_flags, std::memory_order_relaxed);
   }
 
-  static MemberOffset AccessFlagsOffset() {
+  static constexpr MemberOffset AccessFlagsOffset() {
     return MemberOffset(OFFSETOF_MEMBER(ArtMethod, access_flags_));
   }
 
@@ -351,11 +351,11 @@ class ArtMethod final {
     method_index_ = new_method_index;
   }
 
-  static MemberOffset DexMethodIndexOffset() {
+  static constexpr MemberOffset DexMethodIndexOffset() {
     return MemberOffset(OFFSETOF_MEMBER(ArtMethod, dex_method_index_));
   }
 
-  static MemberOffset MethodIndexOffset() {
+  static constexpr MemberOffset MethodIndexOffset() {
     return MemberOffset(OFFSETOF_MEMBER(ArtMethod, method_index_));
   }
 
@@ -431,16 +431,16 @@ class ArtMethod final {
 
   void UnregisterNative() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static MemberOffset DataOffset(PointerSize pointer_size) {
+  static constexpr MemberOffset DataOffset(PointerSize pointer_size) {
     return MemberOffset(PtrSizedFieldsOffset(pointer_size) + OFFSETOF_MEMBER(
         PtrSizedFields, data_) / sizeof(void*) * static_cast<size_t>(pointer_size));
   }
 
-  static MemberOffset EntryPointFromJniOffset(PointerSize pointer_size) {
+  static constexpr MemberOffset EntryPointFromJniOffset(PointerSize pointer_size) {
     return DataOffset(pointer_size);
   }
 
-  static MemberOffset EntryPointFromQuickCompiledCodeOffset(PointerSize pointer_size) {
+  static constexpr MemberOffset EntryPointFromQuickCompiledCodeOffset(PointerSize pointer_size) {
     return MemberOffset(PtrSizedFieldsOffset(pointer_size) + OFFSETOF_MEMBER(
         PtrSizedFields, entry_point_from_quick_compiled_code_) / sizeof(void*)
             * static_cast<size_t>(pointer_size));
@@ -652,7 +652,7 @@ class ArtMethod final {
     return hotness_count_;
   }
 
-  static MemberOffset HotnessCountOffset() {
+  static constexpr MemberOffset HotnessCountOffset() {
     return MemberOffset(OFFSETOF_MEMBER(ArtMethod, hotness_count_));
   }
 

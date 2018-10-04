@@ -279,47 +279,47 @@ class ShadowFrame {
     return lock_count_data_;
   }
 
-  static size_t LockCountDataOffset() {
+  static constexpr size_t LockCountDataOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, lock_count_data_);
   }
 
-  static size_t LinkOffset() {
+  static constexpr size_t LinkOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, link_);
   }
 
-  static size_t MethodOffset() {
+  static constexpr size_t MethodOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, method_);
   }
 
-  static size_t DexPCOffset() {
+  static constexpr size_t DexPCOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, dex_pc_);
   }
 
-  static size_t NumberOfVRegsOffset() {
+  static constexpr size_t NumberOfVRegsOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, number_of_vregs_);
   }
 
-  static size_t VRegsOffset() {
+  static constexpr size_t VRegsOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, vregs_);
   }
 
-  static size_t ResultRegisterOffset() {
+  static constexpr size_t ResultRegisterOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, result_register_);
   }
 
-  static size_t DexPCPtrOffset() {
+  static constexpr size_t DexPCPtrOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, dex_pc_ptr_);
   }
 
-  static size_t DexInstructionsOffset() {
+  static constexpr size_t DexInstructionsOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, dex_instructions_);
   }
 
-  static size_t CachedHotnessCountdownOffset() {
+  static constexpr size_t CachedHotnessCountdownOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, cached_hotness_countdown_);
   }
 
-  static size_t HotnessCountdownOffset() {
+  static constexpr size_t HotnessCountdownOffset() {
     return OFFSETOF_MEMBER(ShadowFrame, hotness_countdown_);
   }
 
