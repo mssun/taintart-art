@@ -172,7 +172,7 @@ static int processFile(const char* fileName) {
   if (!dex_file_loader.OpenAll(reinterpret_cast<const uint8_t*>(content.data()),
                                content.size(),
                                fileName,
-                               /*verify*/ true,
+                               /*verify=*/ true,
                                kVerifyChecksum,
                                &error_code,
                                &error_msg,

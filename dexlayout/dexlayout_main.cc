@@ -203,7 +203,7 @@ int DexlayoutDriver(int argc, char** argv) {
   }
 
   // Create DexLayout instance.
-  DexLayout dex_layout(options, profile_info.get(), out_file, /*header*/ nullptr);
+  DexLayout dex_layout(options, profile_info.get(), out_file, /*header=*/ nullptr);
 
   // Process all files supplied on command line.
   int result = 0;

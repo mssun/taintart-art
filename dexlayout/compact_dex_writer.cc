@@ -26,7 +26,7 @@
 namespace art {
 
 CompactDexWriter::CompactDexWriter(DexLayout* dex_layout)
-    : DexWriter(dex_layout, /*compute_offsets*/ true) {
+    : DexWriter(dex_layout, /*compute_offsets=*/ true) {
   CHECK(GetCompactDexLevel() != CompactDexLevel::kCompactDexLevelNone);
 }
 
@@ -36,7 +36,7 @@ CompactDexLevel CompactDexWriter::GetCompactDexLevel() const {
 
 CompactDexWriter::Container::Container(bool dedupe_code_items)
     : code_item_dedupe_(dedupe_code_items, &data_section_),
-      data_item_dedupe_(/*dedupe*/ true, &data_section_) {}
+      data_item_dedupe_(/*enabled=*/ true, &data_section_) {}
 
 uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(Stream* stream) {
   const uint32_t start_offset = stream->Tell();
@@ -211,7 +211,7 @@ void CompactDexWriter::WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem*
 
 CompactDexWriter::Deduper::Deduper(bool enabled, DexContainer::Section* section)
     : enabled_(enabled),
-      dedupe_map_(/*bucket_count*/ 32,
+      dedupe_map_(/*__n=*/ 32,
                   HashedMemoryRange::HashEqual(section),
                   HashedMemoryRange::HashEqual(section)) {}
 
@@ -406,16 +406,16 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
   // Based on: https://source.android.com/devices/tech/dalvik/dex-format
   // Since the offsets may not be calculated already, the writing must be done in the correct order.
   const uint32_t string_ids_offset = main_stream->Tell();
-  WriteStringIds(main_stream, /*reserve_only*/ true);
+  WriteStringIds(main_stream, /*reserve_only=*/ true);
   WriteTypeIds(main_stream);
   const uint32_t proto_ids_offset = main_stream->Tell();
-  WriteProtoIds(main_stream, /*reserve_only*/ true);
+  WriteProtoIds(main_stream, /*reserve_only=*/ true);
   WriteFieldIds(main_stream);
   WriteMethodIds(main_stream);
   const uint32_t class_defs_offset = main_stream->Tell();
-  WriteClassDefs(main_stream, /*reserve_only*/ true);
+  WriteClassDefs(main_stream, /*reserve_only=*/ true);
   const uint32_t call_site_ids_offset = main_stream->Tell();
-  WriteCallSiteIds(main_stream, /*reserve_only*/ true);
+  WriteCallSiteIds(main_stream, /*reserve_only=*/ true);
   WriteMethodHandles(main_stream);
 
   if (compute_offsets_) {
@@ -426,7 +426,7 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
 
   // Write code item first to minimize the space required for encoded methods.
   // For cdex, the code items don't depend on the debug info.
-  WriteCodeItems(data_stream, /*reserve_only*/ false);
+  WriteCodeItems(data_stream, /*reserve_only=*/ false);
 
   // Sort the debug infos by method index order, this reduces size by ~0.1% by reducing the size of
   // the debug info offset table.
@@ -445,19 +445,19 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
   // Write delayed id sections that depend on data sections.
   {
     Stream::ScopedSeek seek(main_stream, string_ids_offset);
-    WriteStringIds(main_stream, /*reserve_only*/ false);
+    WriteStringIds(main_stream, /*reserve_only=*/ false);
   }
   {
     Stream::ScopedSeek seek(main_stream, proto_ids_offset);
-    WriteProtoIds(main_stream, /*reserve_only*/ false);
+    WriteProtoIds(main_stream, /*reserve_only=*/ false);
   }
   {
     Stream::ScopedSeek seek(main_stream, class_defs_offset);
-    WriteClassDefs(main_stream, /*reserve_only*/ false);
+    WriteClassDefs(main_stream, /*reserve_only=*/ false);
   }
   {
     Stream::ScopedSeek seek(main_stream, call_site_ids_offset);
-    WriteCallSiteIds(main_stream, /*reserve_only*/ false);
+    WriteCallSiteIds(main_stream, /*reserve_only=*/ false);
   }
 
   // Write the map list.

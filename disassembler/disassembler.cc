@@ -41,9 +41,9 @@ Disassembler* Disassembler::Create(InstructionSet instruction_set, DisassemblerO
   } else if (instruction_set == InstructionSet::kArm64) {
     return new arm64::DisassemblerArm64(options);
   } else if (instruction_set == InstructionSet::kMips) {
-    return new mips::DisassemblerMips(options, /* is_o32_abi */ true);
+    return new mips::DisassemblerMips(options, /* is_o32_abi= */ true);
   } else if (instruction_set == InstructionSet::kMips64) {
-    return new mips::DisassemblerMips(options, /* is_o32_abi */ false);
+    return new mips::DisassemblerMips(options, /* is_o32_abi= */ false);
   } else if (instruction_set == InstructionSet::kX86) {
     return new x86::DisassemblerX86(options, false);
   } else if (instruction_set == InstructionSet::kX86_64) {

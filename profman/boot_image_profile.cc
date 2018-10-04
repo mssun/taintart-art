@@ -38,7 +38,7 @@ void GenerateBootImageProfile(
     // Avoid merging classes since we may want to only add classes that fit a certain criteria.
     // If we merged the classes, every single class in each profile would be in the out_profile,
     // but we want to only included classes that are in at least a few profiles.
-    out_profile->MergeWith(*profile, /*merge_classes*/ false);
+    out_profile->MergeWith(*profile, /*merge_classes=*/ false);
   }
 
   // Image classes that were added because they are commonly used.
@@ -96,7 +96,7 @@ void GenerateBootImageProfile(
               is_clean = false;
             }
           },
-          /*instance_fields*/ VoidFunctor(),
+          /*instance_field_visitor=*/ VoidFunctor(),
           method_visitor,
           method_visitor);
 

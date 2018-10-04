@@ -720,7 +720,7 @@ TEST_F(ProfileAssistantTest, TestProfileCreationGenerateMethods) {
   ASSERT_TRUE(info.Load(GetFd(profile_file)));
   // Verify that the profile has matching methods.
   ScopedObjectAccess soa(Thread::Current());
-  ObjPtr<mirror::Class> klass = GetClass(soa, /* class_loader */ nullptr, "Ljava/lang/Math;");
+  ObjPtr<mirror::Class> klass = GetClass(soa, /* class_loader= */ nullptr, "Ljava/lang/Math;");
   ASSERT_TRUE(klass != nullptr);
   size_t method_count = 0;
   for (ArtMethod& method : klass->GetMethods(kRuntimePointerSize)) {
@@ -932,8 +932,8 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
     AssertInlineCaches(inline_monomorphic,
                        expected_monomorphic,
                        info,
-                       /*megamorphic*/false,
-                       /*missing_types*/false);
+                       /*is_megamorphic=*/false,
+                       /*is_missing_types=*/false);
   }
 
   {
@@ -949,8 +949,8 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
     AssertInlineCaches(inline_polymorhic,
                        expected_polymorphic,
                        info,
-                       /*megamorphic*/false,
-                       /*missing_types*/false);
+                       /*is_megamorphic=*/false,
+                       /*is_missing_types=*/false);
   }
 
   {
@@ -963,8 +963,8 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
     AssertInlineCaches(inline_megamorphic,
                        expected_megamorphic,
                        info,
-                       /*megamorphic*/true,
-                       /*missing_types*/false);
+                       /*is_megamorphic=*/true,
+                       /*is_missing_types=*/false);
   }
 
   {
@@ -977,8 +977,8 @@ TEST_F(ProfileAssistantTest, TestProfileCreateInlineCache) {
     AssertInlineCaches(inline_missing_types,
                        expected_missing_Types,
                        info,
-                       /*megamorphic*/false,
-                       /*missing_types*/true);
+                       /*is_megamorphic=*/false,
+                       /*is_missing_types=*/true);
   }
 
   {
@@ -1005,7 +1005,7 @@ TEST_F(ProfileAssistantTest, MergeProfilesWithDifferentDexOrder) {
   const uint16_t kNumberOfMethodsToEnableCompilation = 100;
   ProfileCompilationInfo info1;
   SetupProfile("p1", 1, kNumberOfMethodsToEnableCompilation, 0, profile1, &info1,
-      /*start_method_index*/0, /*reverse_dex_write_order*/false);
+      /*start_method_index=*/0, /*reverse_dex_write_order=*/false);
 
   // The reference profile info will contain the methods with indices 50-150.
   // When setting up the profile reverse the order in which the dex files
@@ -1014,7 +1014,7 @@ TEST_F(ProfileAssistantTest, MergeProfilesWithDifferentDexOrder) {
   const uint16_t kNumberOfMethodsAlreadyCompiled = 100;
   ProfileCompilationInfo reference_info;
   SetupProfile("p1", 1, kNumberOfMethodsAlreadyCompiled, 0, reference_profile,
-      &reference_info, kNumberOfMethodsToEnableCompilation / 2, /*reverse_dex_write_order*/true);
+      &reference_info, kNumberOfMethodsToEnableCompilation / 2, /*reverse_dex_write_order=*/true);
 
   // We should advise compilation.
   ASSERT_EQ(ProfileAssistant::kCompile,
@@ -1233,9 +1233,9 @@ TEST_F(ProfileAssistantTest, MergeProfilesWithFilter) {
   ProfileCompilationInfo info2_filter;
   ProfileCompilationInfo expected;
 
-  info2_filter.Load(profile1.GetFd(), /*merge_classes*/ true, filter_fn);
-  info2_filter.Load(profile2.GetFd(), /*merge_classes*/ true, filter_fn);
-  expected.Load(reference_profile.GetFd(), /*merge_classes*/ true, filter_fn);
+  info2_filter.Load(profile1.GetFd(), /*merge_classes=*/ true, filter_fn);
+  info2_filter.Load(profile2.GetFd(), /*merge_classes=*/ true, filter_fn);
+  expected.Load(reference_profile.GetFd(), /*merge_classes=*/ true, filter_fn);
 
   ASSERT_TRUE(expected.MergeWith(info1_filter));
   ASSERT_TRUE(expected.MergeWith(info2_filter));
@@ -1260,13 +1260,13 @@ TEST_F(ProfileAssistantTest, CopyAndUpdateProfileKey) {
                "fake-location2",
                d2.GetLocationChecksum(),
                num_methods_to_add,
-               /*num_classes*/ 0,
+               /*number_of_classes=*/ 0,
                profile1,
                &info1,
-               /*start_method_index*/ 0,
-               /*reverse_dex_write_order*/ false,
-               /*number_of_methods1*/ d1.NumMethodIds(),
-               /*number_of_methods2*/ d2.NumMethodIds());
+               /*start_method_index=*/ 0,
+               /*reverse_dex_write_order=*/ false,
+               /*number_of_methods1=*/ d1.NumMethodIds(),
+               /*number_of_methods2=*/ d2.NumMethodIds());
 
   // Run profman and pass the dex file with --apk-fd.
   android::base::unique_fd apk_fd(
