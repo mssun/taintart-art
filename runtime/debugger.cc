@@ -256,17 +256,6 @@ class DebugInstrumentationListener final : public instrumentation::Instrumentati
                << " " << dex_pc << ", " << dex_pc_offset;
   }
 
-  // We only care about invokes in the Jit.
-  void InvokeVirtualOrInterface(Thread* thread ATTRIBUTE_UNUSED,
-                                Handle<mirror::Object> this_object ATTRIBUTE_UNUSED,
-                                ArtMethod* method,
-                                uint32_t dex_pc,
-                                ArtMethod* target ATTRIBUTE_UNUSED)
-      override REQUIRES_SHARED(Locks::mutator_lock_) {
-    LOG(ERROR) << "Unexpected invoke event in debugger " << ArtMethod::PrettyMethod(method)
-               << " " << dex_pc;
-  }
-
   // TODO Might be worth it to post ExceptionCatch event.
   void ExceptionHandled(Thread* thread ATTRIBUTE_UNUSED,
                         Handle<mirror::Throwable> throwable ATTRIBUTE_UNUSED) override {
