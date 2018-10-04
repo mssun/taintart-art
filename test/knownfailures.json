@@ -291,7 +291,8 @@
     {
         "tests": ["454-get-vreg",
                   "457-regs",
-                  "602-deoptimizeable"],
+                  "602-deoptimizeable",
+                  "685-deoptimizeable"],
         "description": ["Tests that should fail when the optimizing compiler ",
                         "compiles them non-debuggable."],
         "variant": "optimizing & ndebuggable | regalloc_gc & ndebuggable | speed-profile & ndebuggable | jit & ndebuggable"
@@ -944,6 +945,7 @@
           "675-checker-unverified-method",
           "676-proxy-jit-at-first-use",
           "676-resolve-field-type",
+          "685-deoptimizeable",
           "706-checker-scheduler",
           "707-checker-invalid-profile",
           "714-invoke-custom-lambda-metafactory",
