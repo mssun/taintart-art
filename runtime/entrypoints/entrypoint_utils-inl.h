@@ -420,28 +420,17 @@ EXPLICIT_FIND_FIELD_FROM_CODE_TYPED_TEMPLATE_DECL(StaticPrimitiveWrite);
 #undef EXPLICIT_FIND_FIELD_FROM_CODE_TYPED_TEMPLATE_DECL
 #undef EXPLICIT_FIND_FIELD_FROM_CODE_TEMPLATE_DECL
 
+// Follow virtual/interface indirections if applicable.
+// Will throw null-pointer exception the if the object is null.
 template<InvokeType type, bool access_check>
-inline ArtMethod* FindMethodFromCode(uint32_t method_idx,
-                                     ObjPtr<mirror::Object>* this_object,
-                                     ArtMethod* referrer,
-                                     Thread* self) {
+ALWAYS_INLINE ArtMethod* FindMethodToCall(uint32_t method_idx,
+                                          ArtMethod* resolved_method,
+                                          ObjPtr<mirror::Object>* this_object,
+                                          ArtMethod* referrer,
+                                          Thread* self)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
-  constexpr ClassLinker::ResolveMode resolve_mode =
-      access_check ? ClassLinker::ResolveMode::kCheckICCEAndIAE
-                   : ClassLinker::ResolveMode::kNoChecks;
-  ArtMethod* resolved_method;
-  if (type == kStatic) {
-    resolved_method = class_linker->ResolveMethod<resolve_mode>(self, method_idx, referrer, type);
-  } else {
-    StackHandleScope<1> hs(self);
-    HandleWrapperObjPtr<mirror::Object> h_this(hs.NewHandleWrapper(this_object));
-    resolved_method = class_linker->ResolveMethod<resolve_mode>(self, method_idx, referrer, type);
-  }
-  if (UNLIKELY(resolved_method == nullptr)) {
-    DCHECK(self->IsExceptionPending());  // Throw exception and unwind.
-    return nullptr;  // Failure.
-  }
-  // Next, null pointer check.
+  // Null pointer check.
   if (UNLIKELY(*this_object == nullptr && type != kStatic)) {
     if (UNLIKELY(resolved_method->GetDeclaringClass()->IsStringClass() &&
                  resolved_method->IsConstructor())) {
@@ -568,6 +557,31 @@ inline ArtMethod* FindMethodFromCode(uint32_t method_idx,
       LOG(FATAL) << "Unknown invoke type " << type;
       return nullptr;  // Failure.
   }
+}
+
+template<InvokeType type, bool access_check>
+inline ArtMethod* FindMethodFromCode(uint32_t method_idx,
+                                     ObjPtr<mirror::Object>* this_object,
+                                     ArtMethod* referrer,
+                                     Thread* self) {
+  ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
+  constexpr ClassLinker::ResolveMode resolve_mode =
+      access_check ? ClassLinker::ResolveMode::kCheckICCEAndIAE
+                   : ClassLinker::ResolveMode::kNoChecks;
+  ArtMethod* resolved_method;
+  if (type == kStatic) {
+    resolved_method = class_linker->ResolveMethod<resolve_mode>(self, method_idx, referrer, type);
+  } else {
+    StackHandleScope<1> hs(self);
+    HandleWrapperObjPtr<mirror::Object> h_this(hs.NewHandleWrapper(this_object));
+    resolved_method = class_linker->ResolveMethod<resolve_mode>(self, method_idx, referrer, type);
+  }
+  if (UNLIKELY(resolved_method == nullptr)) {
+    DCHECK(self->IsExceptionPending());  // Throw exception and unwind.
+    return nullptr;  // Failure.
+  }
+  return FindMethodToCall<type, access_check>(
+      method_idx, resolved_method, this_object, referrer, self);
 }
 
 // Explicit template declarations of FindMethodFromCode for all invoke types.
