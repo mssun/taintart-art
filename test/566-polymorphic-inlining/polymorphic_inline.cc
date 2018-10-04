@@ -41,11 +41,12 @@ static void do_checks(jclass cls, const char* method_name) {
       header = OatQuickMethodHeader::FromEntryPoint(pc);
       break;
     } else {
+      ScopedThreadSuspension sts(soa.Self(), kSuspended);
       // Sleep to yield to the compiler thread.
       usleep(1000);
-      // Will either ensure it's compiled or do the compilation itself.
-      jit->CompileMethod(method, soa.Self(), /* osr */ false);
     }
+    // Will either ensure it's compiled or do the compilation itself.
+    jit->CompileMethod(method, soa.Self(), /* osr */ false);
   }
 
   CodeInfo info(header);
