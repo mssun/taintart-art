@@ -843,16 +843,6 @@ class JvmtiMethodTraceListener final : public art::instrumentation::Instrumentat
     return;
   }
 
-  // Call-back for when we get an invokevirtual or an invokeinterface.
-  void InvokeVirtualOrInterface(art::Thread* self ATTRIBUTE_UNUSED,
-                                art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
-                                art::ArtMethod* caller ATTRIBUTE_UNUSED,
-                                uint32_t dex_pc ATTRIBUTE_UNUSED,
-                                art::ArtMethod* callee ATTRIBUTE_UNUSED)
-      REQUIRES_SHARED(art::Locks::mutator_lock_) override {
-    return;
-  }
-
  private:
   EventHandler* const event_handler_;
 };

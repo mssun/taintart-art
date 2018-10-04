@@ -111,13 +111,6 @@ class Tracer final : public art::instrumentation::InstrumentationListener {
               int32_t dex_pc_offset ATTRIBUTE_UNUSED)
       override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
 
-  void InvokeVirtualOrInterface(art::Thread* thread ATTRIBUTE_UNUSED,
-                                art::Handle<art::mirror::Object> this_object ATTRIBUTE_UNUSED,
-                                art::ArtMethod* caller ATTRIBUTE_UNUSED,
-                                uint32_t dex_pc ATTRIBUTE_UNUSED,
-                                art::ArtMethod* callee ATTRIBUTE_UNUSED)
-      override REQUIRES_SHARED(art::Locks::mutator_lock_) { }
-
   void WatchedFramePop(art::Thread* thread ATTRIBUTE_UNUSED,
                        const art::ShadowFrame& frame ATTRIBUTE_UNUSED)
       override REQUIRES_SHARED(art::Locks::mutator_lock_) { }

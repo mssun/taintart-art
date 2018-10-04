@@ -50,7 +50,6 @@ class TestInstrumentationListener final : public instrumentation::Instrumentatio
       received_exception_thrown_event(false),
       received_exception_handled_event(false),
       received_branch_event(false),
-      received_invoke_virtual_or_interface_event(false),
       received_watched_frame_pop(false) {}
 
   virtual ~TestInstrumentationListener() {}
@@ -146,15 +145,6 @@ class TestInstrumentationListener final : public instrumentation::Instrumentatio
     received_branch_event = true;
   }
 
-  void InvokeVirtualOrInterface(Thread* thread ATTRIBUTE_UNUSED,
-                                Handle<mirror::Object> this_object ATTRIBUTE_UNUSED,
-                                ArtMethod* caller ATTRIBUTE_UNUSED,
-                                uint32_t dex_pc ATTRIBUTE_UNUSED,
-                                ArtMethod* callee ATTRIBUTE_UNUSED)
-      override REQUIRES_SHARED(Locks::mutator_lock_) {
-    received_invoke_virtual_or_interface_event = true;
-  }
-
   void WatchedFramePop(Thread* thread ATTRIBUTE_UNUSED, const ShadowFrame& frame ATTRIBUTE_UNUSED)
       override REQUIRES_SHARED(Locks::mutator_lock_) {
     received_watched_frame_pop  = true;
@@ -172,7 +162,6 @@ class TestInstrumentationListener final : public instrumentation::Instrumentatio
     received_exception_thrown_event = false;
     received_exception_handled_event = false;
     received_branch_event = false;
-    received_invoke_virtual_or_interface_event = false;
     received_watched_frame_pop = false;
   }
 
@@ -187,7 +176,6 @@ class TestInstrumentationListener final : public instrumentation::Instrumentatio
   bool received_exception_thrown_event;
   bool received_exception_handled_event;
   bool received_branch_event;
-  bool received_invoke_virtual_or_interface_event;
   bool received_watched_frame_pop;
 
  private:
@@ -382,8 +370,6 @@ class InstrumentationTest : public CommonRuntimeTest {
         return instr->HasExceptionHandledListeners();
       case instrumentation::Instrumentation::kBranch:
         return instr->HasBranchListeners();
-      case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
-        return instr->HasInvokeVirtualOrInterfaceListeners();
       case instrumentation::Instrumentation::kWatchedFramePop:
         return instr->HasWatchedFramePopListeners();
       default:
@@ -434,9 +420,6 @@ class InstrumentationTest : public CommonRuntimeTest {
       case instrumentation::Instrumentation::kBranch:
         instr->Branch(self, method, dex_pc, -1);
         break;
-      case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
-        instr->InvokeVirtualOrInterface(self, obj, method, dex_pc, method);
-        break;
       case instrumentation::Instrumentation::kWatchedFramePop:
         instr->WatchedFramePopped(self, frame);
         break;
@@ -477,8 +460,6 @@ class InstrumentationTest : public CommonRuntimeTest {
         return listener.received_exception_handled_event;
       case instrumentation::Instrumentation::kBranch:
         return listener.received_branch_event;
-      case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
-        return listener.received_invoke_virtual_or_interface_event;
       case instrumentation::Instrumentation::kWatchedFramePop:
         return listener.received_watched_frame_pop;
       default:
@@ -634,10 +615,6 @@ TEST_F(InstrumentationTest, ExceptionThrownEvent) {
 
 TEST_F(InstrumentationTest, BranchEvent) {
   TestEvent(instrumentation::Instrumentation::kBranch);
-}
-
-TEST_F(InstrumentationTest, InvokeVirtualOrInterfaceEvent) {
-  TestEvent(instrumentation::Instrumentation::kInvokeVirtualOrInterface);
 }
 
 TEST_F(InstrumentationTest, DeoptimizeDirectMethod) {
