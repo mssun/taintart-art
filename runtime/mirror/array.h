@@ -17,6 +17,7 @@
 #ifndef ART_RUNTIME_MIRROR_ARRAY_H_
 #define ART_RUNTIME_MIRROR_ARRAY_H_
 
+#include "base/bit_utils.h"
 #include "base/enums.h"
 #include "gc/allocator_type.h"
 #include "obj_ptr.h"
@@ -66,11 +67,17 @@ class MANAGED Array : public Object {
     SetField32<false, false, kVerifyNone>(OFFSET_OF_OBJECT_MEMBER(Array, length_), length);
   }
 
-  static MemberOffset LengthOffset() {
+  static constexpr MemberOffset LengthOffset() {
     return OFFSET_OF_OBJECT_MEMBER(Array, length_);
   }
 
-  static MemberOffset DataOffset(size_t component_size);
+  static constexpr MemberOffset DataOffset(size_t component_size) {
+    DCHECK(IsPowerOfTwo(component_size)) << component_size;
+    size_t data_offset = RoundUp(OFFSETOF_MEMBER(Array, first_element_), component_size);
+    DCHECK_EQ(RoundUp(data_offset, component_size), data_offset)
+        << "Array data offset isn't aligned with component size";
+    return MemberOffset(data_offset);
+  }
 
   void* GetRawData(size_t component_size, int32_t index)
       REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -102,9 +109,11 @@ class MANAGED Array : public Object {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // The number of array elements.
-  int32_t length_;
+  // We only use the field indirectly using the LengthOffset() method.
+  int32_t length_ ATTRIBUTE_UNUSED;
   // Marker for the data (used by generated code)
-  uint32_t first_element_[0];
+  // We only use the field indirectly using the DataOffset() method.
+  uint32_t first_element_[0] ATTRIBUTE_UNUSED;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(Array);
 };

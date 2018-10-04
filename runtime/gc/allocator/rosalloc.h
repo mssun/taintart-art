@@ -830,16 +830,16 @@ class RosAlloc {
            size_t page_release_size_threshold = kDefaultPageReleaseSizeThreshold);
   ~RosAlloc();
 
-  static size_t RunFreeListOffset() {
+  static constexpr size_t RunFreeListOffset() {
     return OFFSETOF_MEMBER(Run, free_list_);
   }
-  static size_t RunFreeListHeadOffset() {
+  static constexpr size_t RunFreeListHeadOffset() {
     return OFFSETOF_MEMBER(SlotFreeList<false>, head_);
   }
-  static size_t RunFreeListSizeOffset() {
+  static constexpr size_t RunFreeListSizeOffset() {
     return OFFSETOF_MEMBER(SlotFreeList<false>, size_);
   }
-  static size_t RunSlotNextOffset() {
+  static constexpr size_t RunSlotNextOffset() {
     return OFFSETOF_MEMBER(Slot, next_);
   }
 
