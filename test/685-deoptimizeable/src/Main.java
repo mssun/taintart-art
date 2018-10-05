@@ -36,7 +36,6 @@ class DummyObject {
         Main.assertIsManaged();
         Main.deoptimizeAll();
         Main.assertIsInterpreted();
-        Main.assertCallerIsManaged();  // Caller is from framework code HashMap.
         return i % 64;
     }
 }
@@ -49,10 +48,9 @@ public class Main {
     public static native void assertIsInterpreted();
     public static native void assertIsManaged();
     public static native void assertCallerIsInterpreted();
-    public static native void assertCallerIsManaged();
     public static native void disableStackFrameAsserts();
-    public static native boolean hasOatFile();
-    public static native boolean isInterpreted();
+    public static native boolean hasJit();
+    private static native void ensureJitCompiled(Class<?> itf, String method_name);
 
     public static void execute(Runnable runnable) throws Exception {
       Thread t = new Thread(runnable);
@@ -60,17 +58,34 @@ public class Main {
       t.join();
     }
 
+    public static void ensureAllJitCompiled() {
+        ensureJitCompiled(HashMap.class, "hash");
+        ensureJitCompiled(Main.class, "$noinline$run1");
+        ensureJitCompiled(Main.class, "$noinline$run2");
+        ensureJitCompiled(Main.class, "$noinline$run3A");
+        ensureJitCompiled(Main.class, "$noinline$run3B");
+        ensureJitCompiled(DummyObject.class, "hashCode");
+    }
+
     public static void main(String[] args) throws Exception {
         System.loadLibrary(args[0]);
-        // TODO: Stack frame assertions are irrelevant in this test as we now
-        // always run JIT with debuggable. 685-deoptimizeable is the proper version
-        // of this test, but we keep this version around to diagnose a gcstress issue.
-        disableStackFrameAsserts();
+        // Only test stack frames in compiled mode.
+        if (!hasJit()) {
+          disableStackFrameAsserts();
+        }
+
+        ensureAllJitCompiled();
+
         final HashMap<DummyObject, Long> map = new HashMap<DummyObject, Long>();
 
         // Single-frame deoptimization that covers partial fragment.
         execute(new Runnable() {
             public void run() {
+                ensureJitCompiled(this.getClass(), "runInternal");
+                runInternal();
+            }
+
+            public void runInternal() {
                 int[] arr = new int[3];
                 assertIsManaged();
                 int res = $noinline$run1(arr);
@@ -85,6 +100,11 @@ public class Main {
         // Single-frame deoptimization that covers a full fragment.
         execute(new Runnable() {
             public void run() {
+                ensureJitCompiled(this.getClass(), "runInternal");
+                runInternal();
+            }
+
+            public void runInternal() {
                 try {
                     int[] arr = new int[3];
                     assertIsManaged();
@@ -107,6 +127,11 @@ public class Main {
         // Full-fragment deoptimization.
         execute(new Runnable() {
             public void run() {
+                ensureJitCompiled(this.getClass(), "runInternal");
+                runInternal();
+            }
+
+            public void runInternal() {
                 assertIsManaged();
                 float res = $noinline$run3B();
                 assertIsInterpreted();  // Every deoptimizeable method is deoptimized.
@@ -118,17 +143,21 @@ public class Main {
         });
 
         undeoptimizeAll();  // Make compiled code useable again.
+        ensureAllJitCompiled();
 
         // Partial-fragment deoptimization.
         execute(new Runnable() {
             public void run() {
+                ensureJitCompiled(this.getClass(), "runInternal");
+                ensureJitCompiled(HashMap.class, "hash");
+                runInternal();
+            }
+
+            public void runInternal() {
                 try {
                     assertIsManaged();
                     map.put(new DummyObject(10), Long.valueOf(100));
                     assertIsInterpreted();  // Every deoptimizeable method is deoptimized.
-                    if (map.get(new DummyObject(10)) == null) {
-                        System.out.println("Expected map to contain DummyObject(10)");
-                    }
                 } catch (Exception e) {
                     e.printStackTrace(System.out);
                 }
@@ -136,6 +165,7 @@ public class Main {
         });
 
         undeoptimizeAll();  // Make compiled code useable again.
+        ensureAllJitCompiled();
 
         if (!DummyObject.sHashCodeInvoked) {
             System.out.println("hashCode() method not invoked!");
