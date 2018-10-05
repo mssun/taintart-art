@@ -981,7 +981,7 @@ class Thread {
     --tls32_.disable_thread_flip_count;
   }
 
-  // Returns true if the thread is allowed to call into java.
+  // Returns true if the thread is a runtime thread (eg from a ThreadPool).
   bool IsRuntimeThread() const {
     return is_runtime_thread_;
   }
