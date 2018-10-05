@@ -351,6 +351,13 @@ codes.
     .size \name, .-\name
 .endm
 
+// Macro to unpoison (negate) the reference for heap poisoning.
+.macro UNPOISON_HEAP_REF rRef
+#ifdef USE_HEAP_POISONING
+    neg \rRef, \rRef
+#endif  // USE_HEAP_POISONING
+.endm
+
 %def entry():
 /*
  * Copyright (C) 2016 The Android Open Source Project
@@ -438,7 +445,7 @@ ENTRY ExecuteMterpImpl
 
 %def footer():
     .cfi_endproc
-    END ExecuteMterpImpl
+    END MterpHelpers
 
 %def fallback():
 /* Transfer stub to alternate interpreter */
