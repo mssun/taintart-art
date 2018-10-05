@@ -152,11 +152,6 @@ extern "C" size_t MterpShouldSwitchInterpreters()
   const instrumentation::Instrumentation* const instrumentation = runtime->GetInstrumentation();
   return instrumentation->NonJitProfilingActive() ||
       Dbg::IsDebuggerActive() ||
-      // mterp only knows how to deal with the normal exits. It cannot handle any of the
-      // non-standard force-returns.
-      // TODO We really only need to switch interpreters if a PopFrame has actually happened. We
-      // should check this here.
-      UNLIKELY(runtime->AreNonStandardExitsEnabled()) ||
       // An async exception has been thrown. We need to go to the switch interpreter. MTerp doesn't
       // know how to deal with these so we could end up never dealing with it if we are in an
       // infinite loop. Since this can be called in a tight loop and getting the current thread

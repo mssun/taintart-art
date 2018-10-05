@@ -3368,51 +3368,22 @@ void Thread::QuickDeliverException() {
     HandleWrapperObjPtr<mirror::Throwable> h_exception(hs.NewHandleWrapper(&exception));
     instrumentation->ExceptionThrownEvent(this, exception.Ptr());
   }
-  // Does instrumentation need to deoptimize the stack or otherwise go to interpreter for something?
-  // Note: we do this *after* reporting the exception to instrumentation in case it now requires
-  // deoptimization. It may happen if a debugger is attached and requests new events (single-step,
-  // breakpoint, ...) when the exception is reported.
-  ShadowFrame* cf;
-  bool force_frame_pop = false;
-  {
-    NthCallerVisitor visitor(this, 0, false);
-    visitor.WalkStack();
-    cf = visitor.GetCurrentShadowFrame();
-    if (cf == nullptr) {
-      cf = FindDebuggerShadowFrame(visitor.GetFrameId());
-    }
-    force_frame_pop = cf != nullptr && cf->GetForcePopFrame();
-    if (kIsDebugBuild && force_frame_pop) {
-      NthCallerVisitor penultimate_visitor(this, 1, false);
-      penultimate_visitor.WalkStack();
-      ShadowFrame* penultimate_frame = penultimate_visitor.GetCurrentShadowFrame();
-      if (penultimate_frame == nullptr) {
-        penultimate_frame = FindDebuggerShadowFrame(penultimate_visitor.GetFrameId());
-      }
-      DCHECK(penultimate_frame != nullptr &&
-             penultimate_frame->GetForceRetryInstruction())
-          << "Force pop frame without retry instruction found. penultimate frame is null: "
-          << (penultimate_frame == nullptr ? "true" : "false");
-    }
-  }
-  if (Dbg::IsForcedInterpreterNeededForException(this) || force_frame_pop) {
+  // Does instrumentation need to deoptimize the stack?
+  // Note: we do this *after* reporting the exception to instrumentation in case it
+  // now requires deoptimization. It may happen if a debugger is attached and requests
+  // new events (single-step, breakpoint, ...) when the exception is reported.
+  if (Dbg::IsForcedInterpreterNeededForException(this)) {
     NthCallerVisitor visitor(this, 0, false);
     visitor.WalkStack();
     if (Runtime::Current()->IsAsyncDeoptimizeable(visitor.caller_pc)) {
-      VLOG(deopt) << "Deopting " << cf->GetMethod()->PrettyMethod() << " for frame-pop";
       // method_type shouldn't matter due to exception handling.
       const DeoptimizationMethodType method_type = DeoptimizationMethodType::kDefault;
       // Save the exception into the deoptimization context so it can be restored
       // before entering the interpreter.
-      if (force_frame_pop) {
-        DCHECK(Runtime::Current()->AreNonStandardExitsEnabled());
-        // Get rid of the exception since we are doing a framepop instead.
-        ClearException();
-      }
       PushDeoptimizationContext(
           JValue(),
           false /* is_reference */,
-          (force_frame_pop ? nullptr : exception),
+          exception,
           false /* from_code */,
           method_type);
       artDeoptimize(this);
