@@ -1090,15 +1090,6 @@
         "description": ["We do not inline with debuggable."]
     },
     {
-        "tests": ["1953-pop-frame", "1954-pop-frame-jit"],
-        "variant": "interp-ac",
-        "description": [
-          "Interp-ac causes the verifier to run in a mode where it will load classes, ",
-          "this makes it impossible to run tests such as the class-load and class-prepare ",
-          "pop-frames because the classes have already been loaded and prepared."
-        ]
-    },
-    {
         "tests": ["135-MirandaDispatch"],
         "variant": "interp-ac & 32 & host",
         "env_vars": {"SANITIZE_HOST": "address"},

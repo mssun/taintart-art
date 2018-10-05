@@ -49,17 +49,6 @@ using ShadowFrameAllocaUniquePtr = std::unique_ptr<ShadowFrame, ShadowFrameDelet
 //  - interpreter - separate VRegs and reference arrays. References are in the reference array.
 //  - JNI - just VRegs, but where every VReg holds a reference.
 class ShadowFrame {
- private:
-  // Used to keep track of extra state the shadowframe has.
-  enum class FrameFlags : uint32_t {
-    // We have been requested to notify when this frame gets popped.
-    kNotifyFramePop = 1 << 0,
-    // We have been asked to pop this frame off the stack as soon as possible.
-    kForcePopFrame  = 1 << 1,
-    // We have been asked to re-execute the last instruction.
-    kForceRetryInst = 1 << 2,
-  };
-
  public:
   // Compute size of ShadowFrame in bytes assuming it has a reference array.
   static size_t ComputeSize(uint32_t num_vregs) {
@@ -356,27 +345,11 @@ class ShadowFrame {
   }
 
   bool NeedsNotifyPop() const {
-    return GetFrameFlag(FrameFlags::kNotifyFramePop);
+    return needs_notify_pop_;
   }
 
   void SetNotifyPop(bool notify) {
-    UpdateFrameFlag(notify, FrameFlags::kNotifyFramePop);
-  }
-
-  bool GetForcePopFrame() const {
-    return GetFrameFlag(FrameFlags::kForcePopFrame);
-  }
-
-  void SetForcePopFrame(bool enable) {
-    UpdateFrameFlag(enable, FrameFlags::kForcePopFrame);
-  }
-
-  bool GetForceRetryInstruction() const {
-    return GetFrameFlag(FrameFlags::kForceRetryInst);
-  }
-
-  void SetForceRetryInstruction(bool enable) {
-    UpdateFrameFlag(enable, FrameFlags::kForceRetryInst);
+    needs_notify_pop_ = notify;
   }
 
  private:
@@ -391,7 +364,7 @@ class ShadowFrame {
         dex_pc_(dex_pc),
         cached_hotness_countdown_(0),
         hotness_countdown_(0),
-        frame_flags_(0) {
+        needs_notify_pop_(0) {
     // TODO(iam): Remove this parameter, it's an an artifact of portable removal
     DCHECK(has_reference_array);
     if (has_reference_array) {
@@ -399,18 +372,6 @@ class ShadowFrame {
     } else {
       memset(vregs_, 0, num_vregs * sizeof(uint32_t));
     }
-  }
-
-  void UpdateFrameFlag(bool enable, FrameFlags flag) {
-    if (enable) {
-      frame_flags_ |= static_cast<uint32_t>(flag);
-    } else {
-      frame_flags_ &= ~static_cast<uint32_t>(flag);
-    }
-  }
-
-  bool GetFrameFlag(FrameFlags flag) const {
-    return (frame_flags_ & static_cast<uint32_t>(flag)) != 0;
   }
 
   const StackReference<mirror::Object>* References() const {
@@ -436,11 +397,9 @@ class ShadowFrame {
   uint32_t dex_pc_;
   int16_t cached_hotness_countdown_;
   int16_t hotness_countdown_;
-
-  // This is a set of ShadowFrame::FrameFlags which denote special states this frame is in.
-  // NB alignment requires that this field takes 4 bytes no matter its size. Only 3 bits are
-  // currently used.
-  uint32_t frame_flags_;
+  // TODO Might be worth it to try to bit-pack this into some other field to reduce stack usage.
+  // NB alignment requires that this field takes 4 bytes. Only 1 bit is actually ever used.
+  bool needs_notify_pop_;
 
   // This is a two-part array:
   //  - [0..number_of_vregs) holds the raw virtual registers, and each element here is always 4
