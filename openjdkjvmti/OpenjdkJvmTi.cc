@@ -313,10 +313,10 @@ class JvmtiFunctions {
     return StackUtil::GetFrameCount(env, thread, count_ptr);
   }
 
-  static jvmtiError PopFrame(jvmtiEnv* env, jthread thread) {
+  static jvmtiError PopFrame(jvmtiEnv* env, jthread thread ATTRIBUTE_UNUSED) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_pop_frame);
-    return StackUtil::PopFrame(env, thread);
+    return ERR(NOT_IMPLEMENTED);
   }
 
   static jvmtiError GetFrameLocation(jvmtiEnv* env,
