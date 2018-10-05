@@ -219,6 +219,16 @@ class PACKED(4) ImageHeader {
     kBootImageLiveObjects = kSpecialRoots,  // Array of boot image objects that must be kept live.
   };
 
+  /*
+   * This describes the number and ordering of sections inside of Boot
+   * and App Images.  It is very important that changes to this struct
+   * are reflected in the compiler and loader.
+   *
+   * See:
+   *   - ImageWriter::ImageInfo::CreateImageSections()
+   *   - ImageWriter::Write()
+   *   - ImageWriter::AllocMemory()
+   */
   enum ImageSections {
     kSectionObjects,
     kSectionArtFields,
@@ -229,6 +239,7 @@ class PACKED(4) ImageHeader {
     kSectionDexCacheArrays,
     kSectionInternedStrings,
     kSectionClassTable,
+    kSectionStringReferenceOffsets,
     kSectionImageBitmap,
     kSectionImageRelocations,
     kSectionCount,  // Number of elements in enum.
@@ -289,6 +300,10 @@ class PACKED(4) ImageHeader {
 
   const ImageSection& GetImageRelocationsSection() const {
     return GetImageSection(kSectionImageRelocations);
+  }
+
+  const ImageSection& GetImageStringReferenceOffsetsSection() const {
+    return GetImageSection(kSectionStringReferenceOffsets);
   }
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
@@ -450,6 +465,39 @@ class PACKED(4) ImageHeader {
 
   friend class linker::ImageWriter;
 };
+
+/*
+ * Tags the last bit.  Used by AppImage logic to differentiate between managed
+ * and native references.
+ */
+template<typename T>
+T SetNativeRefTag(T val) {
+  static_assert(std::is_integral<T>::value, "Expected integral type.");
+
+  return val | 1u;
+}
+
+/*
+ * Retrieves the value of the last bit.  Used by AppImage logic to
+ * differentiate between managed and native references.
+ */
+template<typename T>
+bool HasNativeRefTag(T val) {
+  static_assert(std::is_integral<T>::value, "Expected integral type.");
+
+  return (val & 1u) == 1u;
+}
+
+/*
+ * Sets the last bit of the value to 0.  Used by AppImage logic to
+ * differentiate between managed and native references.
+ */
+template<typename T>
+T ClearNativeRefTag(T val) {
+  static_assert(std::is_integral<T>::value, "Expected integral type.");
+
+  return val & ~1u;
+}
 
 std::ostream& operator<<(std::ostream& os, const ImageHeader::ImageMethod& policy);
 std::ostream& operator<<(std::ostream& os, const ImageHeader::ImageRoot& policy);
