@@ -27,6 +27,7 @@
 #include "dex/primitive.h"
 #include "handle_scope-inl.h"
 #include "instrumentation.h"
+#include "interpreter/interpreter.h"
 #include "interpreter/shadow_frame.h"
 #include "interpreter/unstarted_runtime.h"
 #include "jvalue-inl.h"
@@ -171,6 +172,14 @@ ALWAYS_INLINE bool DoFieldPutCommon(Thread* self,
                                      value);
     if (UNLIKELY(self->IsExceptionPending())) {
       return false;
+    }
+    if (shadow_frame.GetForcePopFrame()) {
+      // We need to check this here since we expect that the FieldWriteEvent happens before the
+      // actual field write. If one pops the stack we should not modify the field.  The next
+      // instruction will force a pop. Return true.
+      DCHECK(Runtime::Current()->AreNonStandardExitsEnabled());
+      DCHECK(interpreter::PrevFrameWillRetry(self, shadow_frame));
+      return true;
     }
   }
 
