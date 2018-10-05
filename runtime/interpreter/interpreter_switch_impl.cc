@@ -17,6 +17,7 @@
 #include "interpreter_switch_impl.h"
 
 #include "base/enums.h"
+#include "base/memory_tool.h"
 #include "base/quasi_atomic.h"
 #include "dex/dex_file_types.h"
 #include "experimental_flags.h"
@@ -256,8 +257,11 @@ NO_INLINE static bool SendMethodExitEvents(Thread* self,
   }
 }
 
+// TODO On ASAN builds this function gets a huge stack frame. Since normally we run in the mterp
+// this shouldn't cause any problems for stack overflow detection. Remove this once b/117341496 is
+// fixed.
 template<bool do_access_check, bool transaction_active>
-void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
+ATTRIBUTE_NO_SANITIZE_ADDRESS void ExecuteSwitchImplCpp(SwitchImplContext* ctx) {
   Thread* self = ctx->self;
   const CodeItemDataAccessor& accessor = ctx->accessor;
   ShadowFrame& shadow_frame = ctx->shadow_frame;
