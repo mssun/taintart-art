@@ -44,7 +44,8 @@ public class FileWritingGreylistConsumer implements GreylistConsumer {
     }
 
     @Override
-    public void greylistEntry(String signature, Integer maxTargetSdk) {
+    public void greylistEntry(
+            String signature, Integer maxTargetSdk, Map<String, String> annotationProperties) {
         PrintStream p = mSdkToPrintStreamMap.get(maxTargetSdk);
         if (p == null) {
             mStatus.error("No output file for signature %s with maxTargetSdk of %d", signature,
