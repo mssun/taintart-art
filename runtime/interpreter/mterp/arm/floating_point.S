@@ -326,6 +326,7 @@
 
 %def op_double_to_long():
 %  unopWide(instr="bl      d2l_doconv")
+%  add_helper("helper_code", op_double_to_long_helper_code)
 
 %def op_double_to_long_helper_code():
 /*
@@ -367,6 +368,7 @@ d2l_maybeNaN:
 
 %def op_float_to_long():
 %  unopWider(instr="bl      f2l_doconv")
+%  add_helper("helper_code", op_float_to_long_helper_code)
 
 %def op_float_to_long_helper_code():
 /*
