@@ -2157,10 +2157,9 @@ class InitializeClassVisitor : public CompilationVisitor {
         // Otherwise it's in app image but superclasses can't be initialized, no need to proceed.
         old_status = klass->GetStatus();
 
-        bool too_many_encoded_fields = false;
-        if (!is_boot_image && klass->NumStaticFields() > kMaxEncodedFields) {
-          too_many_encoded_fields = true;
-        }
+        bool too_many_encoded_fields = !is_boot_image &&
+            klass->NumStaticFields() > kMaxEncodedFields;
+
         // If the class was not initialized, we can proceed to see if we can initialize static
         // fields. Limit the max number of encoded fields.
         if (!klass->IsInitialized() &&
@@ -2210,9 +2209,13 @@ class InitializeClassVisitor : public CompilationVisitor {
               if (success) {
                 runtime->ExitTransactionMode();
                 DCHECK(!runtime->IsActiveTransaction());
-              }
 
-              if (!success) {
+                if (is_boot_image) {
+                  // For boot image, we want to put the updated status in the oat class since we
+                  // can't reject the image anyways.
+                  old_status = klass->GetStatus();
+                }
+              } else {
                 CHECK(soa.Self()->IsExceptionPending());
                 mirror::Throwable* exception = soa.Self()->GetException();
                 VLOG(compiler) << "Initialization of " << descriptor << " aborted because of "
@@ -2226,10 +2229,6 @@ class InitializeClassVisitor : public CompilationVisitor {
                 soa.Self()->ClearException();
                 runtime->RollbackAllTransactions();
                 CHECK_EQ(old_status, klass->GetStatus()) << "Previous class status not restored";
-              } else if (is_boot_image) {
-                // For boot image, we want to put the updated status in the oat class since we can't
-                // reject the image anyways.
-                old_status = klass->GetStatus();
               }
             }
 
