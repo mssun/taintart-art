@@ -2501,6 +2501,7 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
       // the Java-side could still succeed for racy programs if another thread is actively
       // modifying the class loader's path list.
 
+      // The runtime is not allowed to call into java from a runtime-thread so just abort.
       if (self->IsRuntimeThread()) {
         // Oops, we can't call into java so we can't run actual class-loader code.
         // This is true for e.g. for the compiler (jit or aot).
