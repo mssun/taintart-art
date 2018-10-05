@@ -800,3 +800,7 @@ SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
     ENTRY Mterp_${opcode}
 %def opcode_end():
     END Mterp_${opcode}
+%def helper_start(name):
+    ENTRY ${name}
+%def helper_end(name):
+    END ${name}
