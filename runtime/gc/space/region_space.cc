@@ -70,6 +70,7 @@ MemMap RegionSpace::CreateMemMap(const std::string& name,
   if (!mem_map.IsValid()) {
     LOG(ERROR) << "Failed to allocate pages for alloc space (" << name << ") of size "
         << PrettySize(capacity) << " with message " << error_msg;
+    PrintFileToLog("/proc/self/maps", LogSeverity::ERROR);
     MemMap::DumpMaps(LOG_STREAM(ERROR));
     return MemMap::Invalid();
   }
