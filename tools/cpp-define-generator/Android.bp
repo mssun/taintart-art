@@ -47,6 +47,6 @@ genrule {
     name: "cpp-define-generator-asm-support",
     out: ["asm_support_gen.h"],
     tools: ["cpp-define-generator-data"],
-    tool_files: ["verify-asm-support"],
-    cmd: "$(location verify-asm-support) --quiet \"$(location cpp-define-generator-data)\" \"$(out)\"",
+    tool_files: ["*.def"],
+    cmd: "$(location cpp-define-generator-data) > \"$(out)\"",
 }
