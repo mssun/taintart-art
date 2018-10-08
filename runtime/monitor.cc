@@ -269,43 +269,6 @@ void Monitor::SetObject(mirror::Object* object) {
   obj_ = GcRoot<mirror::Object>(object);
 }
 
-// Note: Adapted from CurrentMethodVisitor in thread.cc. We must not resolve here.
-
-struct NthCallerWithDexPcVisitor final : public StackVisitor {
-  explicit NthCallerWithDexPcVisitor(Thread* thread, size_t frame)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        method_(nullptr),
-        dex_pc_(0),
-        current_frame_number_(0),
-        wanted_frame_number_(frame) {}
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    ArtMethod* m = GetMethod();
-    if (m == nullptr || m->IsRuntimeMethod()) {
-      // Runtime method, upcall, or resolution issue. Skip.
-      return true;
-    }
-
-    // Is this the requested frame?
-    if (current_frame_number_ == wanted_frame_number_) {
-      method_ = m;
-      dex_pc_ = GetDexPc(/* abort_on_failure=*/ false);
-      return false;
-    }
-
-    // Look for more.
-    current_frame_number_++;
-    return true;
-  }
-
-  ArtMethod* method_;
-  uint32_t dex_pc_;
-
- private:
-  size_t current_frame_number_;
-  const size_t wanted_frame_number_;
-};
-
 // This function is inlined and just helps to not have the VLOG and ATRACE check at all the
 // potential tracing points.
 void Monitor::AtraceMonitorLock(Thread* self, mirror::Object* obj, bool is_wait) {
@@ -318,13 +281,41 @@ void Monitor::AtraceMonitorLockImpl(Thread* self, mirror::Object* obj, bool is_w
   // Wait() requires a deeper call stack to be useful. Otherwise you'll see "Waiting at
   // Object.java". Assume that we'll wait a nontrivial amount, so it's OK to do a longer
   // stack walk than if !is_wait.
-  NthCallerWithDexPcVisitor visitor(self, is_wait ? 1U : 0U);
-  visitor.WalkStack(false);
+  const size_t wanted_frame_number = is_wait ? 1U : 0U;
+
+  ArtMethod* method = nullptr;
+  uint32_t dex_pc = 0u;
+
+  size_t current_frame_number = 0u;
+  StackVisitor::WalkStack(
+      // Note: Adapted from CurrentMethodVisitor in thread.cc. We must not resolve here.
+      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        ArtMethod* m = stack_visitor->GetMethod();
+        if (m == nullptr || m->IsRuntimeMethod()) {
+          // Runtime method, upcall, or resolution issue. Skip.
+          return true;
+        }
+
+        // Is this the requested frame?
+        if (current_frame_number == wanted_frame_number) {
+          method = m;
+          dex_pc = stack_visitor->GetDexPc(false /* abort_on_error*/);
+          return false;
+        }
+
+        // Look for more.
+        current_frame_number++;
+        return true;
+      },
+      self,
+      /* context= */ nullptr,
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
+
   const char* prefix = is_wait ? "Waiting on " : "Locking ";
 
   const char* filename;
   int32_t line_number;
-  TranslateLocation(visitor.method_, visitor.dex_pc_, &filename, &line_number);
+  TranslateLocation(method, dex_pc, &filename, &line_number);
 
   // It would be nice to have a stable "ID" for the object here. However, the only stable thing
   // would be the identity hashcode. But we cannot use IdentityHashcode here: For one, there are

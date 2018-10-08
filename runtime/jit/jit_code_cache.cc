@@ -1278,31 +1278,6 @@ size_t JitCodeCache::ReserveData(Thread* self,
   }
 }
 
-class MarkCodeVisitor final : public StackVisitor {
- public:
-  MarkCodeVisitor(Thread* thread_in, JitCodeCache* code_cache_in)
-      : StackVisitor(thread_in, nullptr, StackVisitor::StackWalkKind::kSkipInlinedFrames),
-        code_cache_(code_cache_in),
-        bitmap_(code_cache_->GetLiveBitmap()) {}
-
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
-    if (method_header == nullptr) {
-      return true;
-    }
-    const void* code = method_header->GetCode();
-    if (code_cache_->ContainsPc(code)) {
-      // Use the atomic set version, as multiple threads are executing this code.
-      bitmap_->AtomicTestAndSet(FromCodeToAllocation(code));
-    }
-    return true;
-  }
-
- private:
-  JitCodeCache* const code_cache_;
-  CodeCacheBitmap* const bitmap_;
-};
-
 class MarkCodeClosure final : public Closure {
  public:
   MarkCodeClosure(JitCodeCache* code_cache, Barrier* barrier)
@@ -1311,8 +1286,24 @@ class MarkCodeClosure final : public Closure {
   void Run(Thread* thread) override REQUIRES_SHARED(Locks::mutator_lock_) {
     ScopedTrace trace(__PRETTY_FUNCTION__);
     DCHECK(thread == Thread::Current() || thread->IsSuspended());
-    MarkCodeVisitor visitor(thread, code_cache_);
-    visitor.WalkStack();
+    StackVisitor::WalkStack(
+        [&](const art::StackVisitor* stack_visitor) {
+          const OatQuickMethodHeader* method_header =
+              stack_visitor->GetCurrentOatQuickMethodHeader();
+          if (method_header == nullptr) {
+            return true;
+          }
+          const void* code = method_header->GetCode();
+          if (code_cache_->ContainsPc(code)) {
+            // Use the atomic set version, as multiple threads are executing this code.
+            code_cache_->GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(code));
+          }
+          return true;
+        },
+        thread,
+        /* context= */ nullptr,
+        art::StackVisitor::StackWalkKind::kSkipInlinedFrames);
+
     if (kIsDebugBuild) {
       // The stack walking code queries the side instrumentation stack if it
       // sees an instrumentation exit pc, so the JIT code of methods in that stack

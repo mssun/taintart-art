@@ -3470,42 +3470,34 @@ Context* Thread::GetLongJumpContext() {
   return result;
 }
 
-ArtMethod* Thread::GetCurrentMethod(uint32_t* dex_pc,
+ArtMethod* Thread::GetCurrentMethod(uint32_t* dex_pc_out,
                                     bool check_suspended,
                                     bool abort_on_error) const {
   // Note: this visitor may return with a method set, but dex_pc_ being DexFile:kDexNoIndex. This is
   //       so we don't abort in a special situation (thinlocked monitor) when dumping the Java
   //       stack.
-  struct CurrentMethodVisitor final : public StackVisitor {
-    CurrentMethodVisitor(Thread* thread, bool check_suspended, bool abort_on_error)
-        REQUIRES_SHARED(Locks::mutator_lock_)
-        : StackVisitor(thread,
-                       /* context= */nullptr,
-            StackVisitor::StackWalkKind::kIncludeInlinedFrames,
-            check_suspended),
-            method_(nullptr),
-            dex_pc_(0),
-            abort_on_error_(abort_on_error) {}
-    bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-      ArtMethod* m = GetMethod();
-      if (m->IsRuntimeMethod()) {
-        // Continue if this is a runtime method.
-        return true;
-      }
-      method_ = m;
-      dex_pc_ = GetDexPc(abort_on_error_);
-      return false;
-    }
-    ArtMethod* method_;
-    uint32_t dex_pc_;
-    const bool abort_on_error_;
-  };
-  CurrentMethodVisitor visitor(const_cast<Thread*>(this), check_suspended, abort_on_error);
-  visitor.WalkStack(false);
-  if (dex_pc != nullptr) {
-    *dex_pc = visitor.dex_pc_;
+  ArtMethod* method = nullptr;
+  uint32_t dex_pc = dex::kDexNoIndex;
+  StackVisitor::WalkStack(
+      [&](const StackVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        ArtMethod* m = visitor->GetMethod();
+        if (m->IsRuntimeMethod()) {
+          // Continue if this is a runtime method.
+          return true;
+        }
+        method = m;
+        dex_pc = visitor->GetDexPc(abort_on_error);
+        return false;
+      },
+      const_cast<Thread*>(this),
+      /* context= */ nullptr,
+      StackVisitor::StackWalkKind::kIncludeInlinedFrames,
+      check_suspended);
+
+  if (dex_pc_out != nullptr) {
+    *dex_pc_out = dex_pc;
   }
-  return visitor.method_;
+  return method;
 }
 
 bool Thread::HoldsLock(ObjPtr<mirror::Object> object) const {
