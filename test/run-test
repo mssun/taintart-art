@@ -767,7 +767,7 @@ fi
 echo "${test_dir}: building..." 1>&2
 
 rm -rf "$tmp_dir"
-cp -Rp "$test_dir" "$tmp_dir"
+cp -LRp "$test_dir" "$tmp_dir"
 cd "$tmp_dir"
 
 if [ '!' -r "$build" ]; then

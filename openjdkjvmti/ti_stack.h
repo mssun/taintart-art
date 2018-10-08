@@ -81,6 +81,8 @@ class StackUtil {
                                         jobject** owned_monitors_ptr);
 
   static jvmtiError NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth);
+
+  static jvmtiError PopFrame(jvmtiEnv* env, jthread thread);
 };
 
 struct FindFrameAtDepthVisitor : art::StackVisitor {
@@ -109,6 +111,9 @@ struct FindFrameAtDepthVisitor : art::StackVisitor {
       return true;
     }
   }
+
+  art::ShadowFrame* GetOrCreateShadowFrame(/*out*/bool* created_frame)
+      REQUIRES_SHARED(art::Locks::mutator_lock_);
 
  private:
   bool found_frame_;
