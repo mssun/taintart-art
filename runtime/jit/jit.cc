@@ -718,6 +718,22 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
   method->SetCounter(new_count);
 }
 
+class ScopedSetRuntimeThread {
+ public:
+  explicit ScopedSetRuntimeThread(Thread* self)
+      : self_(self), was_runtime_thread_(self_->IsRuntimeThread()) {
+    self_->SetIsRuntimeThread(true);
+  }
+
+  ~ScopedSetRuntimeThread() {
+    self_->SetIsRuntimeThread(was_runtime_thread_);
+  }
+
+ private:
+  Thread* self_;
+  bool was_runtime_thread_;
+};
+
 void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
   Runtime* runtime = Runtime::Current();
   if (UNLIKELY(runtime->UseJitCompilation() && runtime->GetJit()->JitAtFirstUse())) {
@@ -728,6 +744,8 @@ void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
         ProfilingInfo::Create(thread, np_method, /* retry_allocation */ true);
       }
       JitCompileTask compile_task(method, JitCompileTask::kCompile);
+      // Fake being in a runtime thread so that class-load behavior will be the same as normal jit.
+      ScopedSetRuntimeThread ssrt(thread);
       compile_task.Run(thread);
     }
     return;
