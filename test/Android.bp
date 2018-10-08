@@ -291,6 +291,7 @@ art_cc_defaults {
         "1946-list-descriptors/descriptors.cc",
         "1950-unprepared-transform/unprepared_transform.cc",
         "1951-monitor-enter-no-suspend/raw_monitor.cc",
+        "1953-pop-frame/pop_frame.cc",
     ],
     // Use NDK-compatible headers for ctstiagent.
     header_libs: [
@@ -320,6 +321,7 @@ art_cc_defaults {
         "983-source-transform-verify/source_transform_art.cc",
         "1940-ddms-ext/ddm_ext.cc",
         "1944-sudden-exit/sudden_exit.cc",
+        // "1952-pop-frame-jit/pop_frame.cc",
     ],
     static_libs: [
         "libz",
