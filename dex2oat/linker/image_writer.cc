@@ -255,7 +255,7 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
   }
 
   // Obtain class count for debugging purposes
-  if (kIsDebugBuild && compile_app_image_) {
+  if (VLOG_IS_ON(compiler) && compile_app_image_) {
     ScopedObjectAccess soa(self);
 
     size_t app_image_class_count  = 0;
@@ -272,7 +272,7 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
       });
     }
 
-    LOG(INFO) << "Dex2Oat:AppImage:classCount = " << app_image_class_count;
+    VLOG(compiler) << "Dex2Oat:AppImage:classCount = " << app_image_class_count;
   }
 
   if (ClassLinker::kAppImageMayContainStrings && compile_app_image_) {
@@ -316,9 +316,9 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
     CHECK_EQ(image_infos_.back().num_string_references_,
              string_reference_offsets_.size());
 
-    LOG(INFO) << "Dex2Oat:AppImage:stringReferences = " << string_reference_offsets_.size();
-    LOG(INFO) << "Dex2Oat:AppImage:managedStringReferences = " << managed_string_refs;
-    LOG(INFO) << "Dex2Oat:AppImage:nativeStringReferences = " << native_string_refs;
+    VLOG(compiler) << "Dex2Oat:AppImage:stringReferences = " << string_reference_offsets_.size();
+    VLOG(compiler) << "Dex2Oat:AppImage:managedStringReferences = " << managed_string_refs;
+    VLOG(compiler) << "Dex2Oat:AppImage:nativeStringReferences = " << native_string_refs;
   }
 
   // This needs to happen after CalculateNewObjectOffsets since it relies on intern_table_bytes_ and
@@ -706,7 +706,7 @@ bool ImageWriter::Write(int image_fd,
       return false;
     }
 
-    if (kIsDebugBuild) {
+    if (VLOG_IS_ON(compiler)) {
       size_t separately_written_section_size = bitmap_section.Size() +
                                                image_header->GetImageRelocationsSection().Size() +
                                                sizeof(ImageHeader);
@@ -714,9 +714,9 @@ bool ImageWriter::Write(int image_fd,
       size_t total_uncompressed_size = raw_image_data.size() + separately_written_section_size,
              total_compressed_size   = image_data.size() + separately_written_section_size;
 
-      LOG(INFO) << "Dex2Oat:uncompressedImageSize = " << total_uncompressed_size;
+      VLOG(compiler) << "Dex2Oat:uncompressedImageSize = " << total_uncompressed_size;
       if (total_uncompressed_size != total_compressed_size) {
-        LOG(INFO) << "Dex2Oat:compressedImageSize = " << total_compressed_size;
+        VLOG(compiler) << "Dex2Oat:compressedImageSize = " << total_compressed_size;
       }
     }
 
