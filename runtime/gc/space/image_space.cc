@@ -2084,15 +2084,12 @@ class ImageSpace::BootImageLoader {
     size_t total_size =
         dchecked_integral_cast<size_t>(oat_end - image_start) + extra_reservation_size;
     bool relocate = Runtime::Current()->ShouldRelocate();
-    // If relocating, choose a random address for ALSR. Since mmap() does not randomize
-    // on its own, over-allocate and select a sub-region at a random offset.
-    size_t randomize_size = relocate
-        ? RoundUp(ART_BASE_ADDRESS_MAX_DELTA - ART_BASE_ADDRESS_MIN_DELTA, kPageSize) + kPageSize
-        : 0u;
+    // If relocating, choose a random address for ALSR.
+    uint32_t addr = relocate ? ART_BASE_ADDRESS + ChooseRelocationOffsetDelta() : image_start;
     *image_reservation =
         MemMap::MapAnonymous("Boot image reservation",
-                             relocate ? nullptr : reinterpret_cast32<uint8_t*>(image_start),
-                             total_size + randomize_size,
+                             reinterpret_cast32<uint8_t*>(addr),
+                             total_size,
                              PROT_NONE,
                              /* low_4gb= */ true,
                              /* reuse= */ false,
@@ -2100,17 +2097,6 @@ class ImageSpace::BootImageLoader {
                              error_msg);
     if (!image_reservation->IsValid()) {
       return false;
-    }
-    if (relocate) {
-      uint32_t offset = RoundDown(GetRandomNumber<uint32_t>(0u, randomize_size), kPageSize);
-      if (offset != 0u) {
-        MemMap unmapped_head = image_reservation->TakeReservedMemory(offset);
-        // Let the destructor of `unmapped_head` unmap the memory before the chunk we shall use.
-      }
-      DCHECK_LE(total_size, image_reservation->Size());
-      MemMap tmp = image_reservation->TakeReservedMemory(total_size);
-      tmp.swap(*image_reservation);
-      // Let the destructor of `tmp` unmap the memory after the chunk we shall use.
     }
     DCHECK(!extra_reservation->IsValid());
     if (extra_reservation_size != 0u) {
