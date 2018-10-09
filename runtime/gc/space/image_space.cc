@@ -2378,6 +2378,12 @@ std::string ImageSpace::GetMultiImageBootClassPath(
   DCHECK_GT(oat_filenames.size(), 1u);
   // If the image filename was adapted (e.g., for our tests), we need to change this here,
   // too, but need to strip all path components (they will be re-established when loading).
+  // For example, dex location
+  //    /system/framework/core-libart.art
+  // with image name
+  //    out/target/product/taimen/dex_bootjars/system/framework/arm64/boot-core-libart.art
+  // yields boot class path component
+  //    /system/framework/boot-core-libart.art .
   std::ostringstream bootcp_oss;
   bool first_bootcp = true;
   for (size_t i = 0; i < dex_locations.size(); ++i) {
@@ -2397,7 +2403,7 @@ std::string ImageSpace::GetMultiImageBootClassPath(
     size_t image_last_sep = (image_last_slash == std::string::npos)
                                 ? image_last_at
                                 : (image_last_at == std::string::npos)
-                                      ? std::string::npos
+                                      ? image_last_slash
                                       : std::max(image_last_slash, image_last_at);
     // Note: whenever image_last_sep == npos, +1 overflow means using the full string.
 

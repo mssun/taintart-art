@@ -1010,25 +1010,6 @@ class Dex2Oat final {
 
     base_img = base_img.substr(0, last_img_slash + 1);
 
-    // Note: we have some special case here for our testing. We have to inject the differentiating
-    //       parts for the different core images.
-    std::string infix;  // Empty infix by default.
-    {
-      // Check the first name.
-      std::string dex_file = oat_filenames_[0];
-      size_t last_dex_slash = dex_file.rfind('/');
-      if (last_dex_slash != std::string::npos) {
-        dex_file = dex_file.substr(last_dex_slash + 1);
-      }
-      size_t last_dex_dot = dex_file.rfind('.');
-      if (last_dex_dot != std::string::npos) {
-        dex_file = dex_file.substr(0, last_dex_dot);
-      }
-      if (android::base::StartsWith(dex_file, "core-")) {
-        infix = dex_file.substr(strlen("core"));
-      }
-    }
-
     std::string base_symbol_oat;
     if (!oat_unstripped_.empty()) {
       base_symbol_oat = oat_unstripped_[0];
@@ -1042,11 +1023,11 @@ class Dex2Oat final {
     // Now create the other names. Use a counted loop to skip the first one.
     for (size_t i = 1; i < dex_locations_.size(); ++i) {
       // TODO: Make everything properly std::string.
-      std::string image_name = CreateMultiImageName(dex_locations_[i], prefix, infix, ".art");
+      std::string image_name = CreateMultiImageName(dex_locations_[i], prefix, ".art");
       char_backing_storage_.push_front(base_img + image_name);
       image_filenames_.push_back(char_backing_storage_.front().c_str());
 
-      std::string oat_name = CreateMultiImageName(dex_locations_[i], prefix, infix, ".oat");
+      std::string oat_name = CreateMultiImageName(dex_locations_[i], prefix, ".oat");
       char_backing_storage_.push_front(base_oat + oat_name);
       oat_filenames_.push_back(char_backing_storage_.front().c_str());
 
@@ -1061,11 +1042,9 @@ class Dex2Oat final {
   //   0) Assume input is /a/b/c.d
   //   1) Strip the path  -> c.d
   //   2) Inject prefix p -> pc.d
-  //   3) Inject infix i  -> pci.d
-  //   4) Replace suffix with s if it's "jar"  -> d == "jar" -> pci.s
+  //   3) Replace suffix with s if it's "jar"  -> d == "jar" -> pc.s
   static std::string CreateMultiImageName(std::string in,
                                           const std::string& prefix,
-                                          const std::string& infix,
                                           const char* replace_suffix) {
     size_t last_dex_slash = in.rfind('/');
     if (last_dex_slash != std::string::npos) {
@@ -1073,13 +1052,6 @@ class Dex2Oat final {
     }
     if (!prefix.empty()) {
       in = prefix + in;
-    }
-    if (!infix.empty()) {
-      // Inject infix.
-      size_t last_dot = in.rfind('.');
-      if (last_dot != std::string::npos) {
-        in.insert(last_dot, infix);
-      }
     }
     if (android::base::EndsWith(in, ".jar")) {
       in = in.substr(0, in.length() - strlen(".jar")) +
