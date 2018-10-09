@@ -1017,7 +1017,8 @@
         "description": ["Failing on RI. Needs further investigating."]
     },
     {
-        "tests": ["616-cha-unloading",
+        "tests": ["530-checker-peel-unroll",
+                  "616-cha-unloading",
                   "674-hiddenapi",
                   "677-fsi2",
                   "678-quickening",
