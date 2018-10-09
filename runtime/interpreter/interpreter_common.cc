@@ -590,10 +590,10 @@ void SetStringInitValueToAllAliases(ShadowFrame* shadow_frame,
   for (uint32_t i = 0, e = shadow_frame->NumberOfVRegs(); i < e; ++i) {
     if (shadow_frame->GetVRegReference(i) == existing) {
       DCHECK_EQ(shadow_frame->GetVRegReference(i),
-                reinterpret_cast<mirror::Object*>(shadow_frame->GetVReg(i)));
+                reinterpret_cast<mirror::Object*>(static_cast<uint32_t>(shadow_frame->GetVReg(i))));
       shadow_frame->SetVRegReference(i, result.GetL());
       DCHECK_EQ(shadow_frame->GetVRegReference(i),
-                reinterpret_cast<mirror::Object*>(shadow_frame->GetVReg(i)));
+                reinterpret_cast<mirror::Object*>(static_cast<uint32_t>(shadow_frame->GetVReg(i))));
     }
   }
 }
