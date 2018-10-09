@@ -63,11 +63,12 @@ print(custom_env)
 os.environ.update(custom_env)
 
 if 'make' in target:
-  build_command = 'make'
+  build_command = 'build/soong/soong_ui.bash --make-mode'
   build_command += ' DX='
   build_command += ' -j' + str(n_threads)
-  build_command += ' -C ' + env.ANDROID_BUILD_TOP
   build_command += ' ' + target.get('make')
+  if env.DIST_DIR:
+    build_command += ' dist'
   sys.stdout.write(str(build_command) + '\n')
   sys.stdout.flush()
   if subprocess.call(build_command.split()):
