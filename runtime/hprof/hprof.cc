@@ -1073,7 +1073,8 @@ void Hprof::DumpHeapObject(mirror::Object* obj) {
   if (obj->IsClass() && obj->AsClass()->IsRetired()) {
     return;
   }
-  DCHECK(visited_objects_.insert(obj).second) << "Already visited " << obj;
+  DCHECK(visited_objects_.insert(obj).second)
+      << "Already visited " << obj << "(" << obj->PrettyTypeOf() << ")";
 
   ++total_objects_;
 
