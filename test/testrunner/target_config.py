@@ -47,8 +47,7 @@ target_config = {
         'run-test' : ['--jit', '--debuggable', '--ndebuggable']
     },
     'art-jit-on-first-use' : {
-        'run-test' : ['--jit',
-                      '--runtime-option=-Xjitthreshold:0']
+        'run-test' : ['--jit-on-first-use']
     },
     'art-pictest' : {
         'run-test' : ['--pictest',
@@ -81,9 +80,8 @@ target_config = {
                       '--gcverify']
     },
     'art-jit-on-first-use-gcstress' : {
-        'run-test' : ['--jit',
-                      '--gcstress',
-                      '--runtime-option=-Xjitthreshold:0']
+        'run-test' : ['--jit-on-first-use',
+                      '--gcstress']
     },
     'art-read-barrier-heap-poisoning' : {
         'run-test': ['--interpreter',
