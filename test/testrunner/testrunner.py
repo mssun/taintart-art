@@ -1019,10 +1019,8 @@ def main():
       build_targets += 'test-art-target-run-test-dependencies '
     if 'jvm' in _user_input_variants['target']:
       build_targets += 'test-art-host-run-test-dependencies '
-    build_command = 'make'
+    build_command = 'build/soong/soong_ui.bash --make-mode'
     build_command += ' DX='
-    build_command += ' -j'
-    build_command += ' -C ' + env.ANDROID_BUILD_TOP
     build_command += ' ' + build_targets
     if subprocess.call(build_command.split()):
       # Debugging for b/62653020
