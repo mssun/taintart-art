@@ -31,8 +31,7 @@ namespace space {
 static constexpr uint kEvacuateLivePercentThreshold = 75U;
 
 // Whether we protect the unused and cleared regions.
-// Only protect for target builds to prevent flaky test failures (b/63131961).
-static constexpr bool kProtectClearedRegions = kIsTargetBuild;
+static constexpr bool kProtectClearedRegions = true;
 
 // Wether we poison memory areas occupied by dead objects in unevacuated regions.
 static constexpr bool kPoisonDeadObjectsInUnevacuatedRegions = true;
