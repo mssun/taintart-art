@@ -47,6 +47,7 @@ CompilerOptions::CompilerOptions()
       boot_image_(false),
       core_image_(false),
       app_image_(false),
+      baseline_(false),
       debuggable_(false),
       generate_debug_info_(kDefaultGenerateDebugInfo),
       generate_mini_debug_info_(kDefaultGenerateMiniDebugInfo),

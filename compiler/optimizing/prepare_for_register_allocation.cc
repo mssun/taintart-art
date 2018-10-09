@@ -304,4 +304,13 @@ bool PrepareForRegisterAllocation::CanMoveClinitCheck(HInstruction* input,
   return true;
 }
 
+void PrepareForRegisterAllocation::VisitTypeConversion(HTypeConversion* instruction) {
+  // For simplicity, our code generators don't handle implicit type conversion, so ensure
+  // there are none before hitting codegen.
+  if (instruction->IsImplicitConversion()) {
+    instruction->ReplaceWith(instruction->GetInput());
+    instruction->GetBlock()->RemoveInstruction(instruction);
+  }
+}
+
 }  // namespace art

@@ -298,6 +298,7 @@ class OptimizingCompiler final : public Compiler {
   bool JitCompile(Thread* self,
                   jit::JitCodeCache* code_cache,
                   ArtMethod* method,
+                  bool baseline,
                   bool osr,
                   jit::JitLogger* jit_logger)
       override
@@ -383,6 +384,7 @@ class OptimizingCompiler final : public Compiler {
                             CodeVectorAllocator* code_allocator,
                             const DexCompilationUnit& dex_compilation_unit,
                             ArtMethod* method,
+                            bool baseline,
                             bool osr,
                             VariableSizedHandleScope* handles) const;
 
@@ -398,6 +400,12 @@ class OptimizingCompiler final : public Compiler {
                             const DexCompilationUnit& dex_compilation_unit,
                             PassObserver* pass_observer,
                             VariableSizedHandleScope* handles) const;
+
+  bool RunBaselineOptimizations(HGraph* graph,
+                                CodeGenerator* codegen,
+                                const DexCompilationUnit& dex_compilation_unit,
+                                PassObserver* pass_observer,
+                                VariableSizedHandleScope* handles) const;
 
   void GenerateJitDebugInfo(ArtMethod* method,
                             const debug::MethodDebugInfo& method_debug_info)
@@ -455,6 +463,48 @@ static bool IsInstructionSetSupported(InstructionSet instruction_set) {
       || instruction_set == InstructionSet::kMips64
       || instruction_set == InstructionSet::kX86
       || instruction_set == InstructionSet::kX86_64;
+}
+
+bool OptimizingCompiler::RunBaselineOptimizations(HGraph* graph,
+                                                  CodeGenerator* codegen,
+                                                  const DexCompilationUnit& dex_compilation_unit,
+                                                  PassObserver* pass_observer,
+                                                  VariableSizedHandleScope* handles) const {
+  switch (codegen->GetCompilerOptions().GetInstructionSet()) {
+#ifdef ART_ENABLE_CODEGEN_mips
+    case InstructionSet::kMips: {
+      OptimizationDef mips_optimizations[] = {
+        OptDef(OptimizationPass::kPcRelativeFixupsMips)
+      };
+      return RunOptimizations(graph,
+                              codegen,
+                              dex_compilation_unit,
+                              pass_observer,
+                              handles,
+                              mips_optimizations);
+    }
+#endif
+#ifdef ART_ENABLE_CODEGEN_x86
+    case InstructionSet::kX86: {
+      OptimizationDef x86_optimizations[] = {
+        OptDef(OptimizationPass::kPcRelativeFixupsX86),
+      };
+      return RunOptimizations(graph,
+                              codegen,
+                              dex_compilation_unit,
+                              pass_observer,
+                              handles,
+                              x86_optimizations);
+    }
+#endif
+    default:
+      UNUSED(graph);
+      UNUSED(codegen);
+      UNUSED(dex_compilation_unit);
+      UNUSED(pass_observer);
+      UNUSED(handles);
+      return false;
+  }
 }
 
 bool OptimizingCompiler::RunArchOptimizations(HGraph* graph,
@@ -738,6 +788,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
                                               CodeVectorAllocator* code_allocator,
                                               const DexCompilationUnit& dex_compilation_unit,
                                               ArtMethod* method,
+                                              bool baseline,
                                               bool osr,
                                               VariableSizedHandleScope* handles) const {
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kAttemptBytecodeCompilation);
@@ -860,11 +911,11 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
     }
   }
 
-  RunOptimizations(graph,
-                   codegen.get(),
-                   dex_compilation_unit,
-                   &pass_observer,
-                   handles);
+  if (baseline) {
+    RunBaselineOptimizations(graph, codegen.get(), dex_compilation_unit, &pass_observer, handles);
+  } else {
+    RunOptimizations(graph, codegen.get(), dex_compilation_unit, &pass_observer, handles);
+  }
 
   RegisterAllocator::Strategy regalloc_strategy =
     compiler_options.GetRegisterAllocationStrategy();
@@ -1041,7 +1092,8 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
                        &code_allocator,
                        dex_compilation_unit,
                        method,
-                       /* osr */ false,
+                       compiler_driver->GetCompilerOptions().IsBaseline(),
+                       /* osr= */ false,
                        &handles));
       }
     }
@@ -1201,6 +1253,7 @@ bool CanEncodeInlinedMethodInStackMap(const DexFile& caller_dex_file, ArtMethod*
 bool OptimizingCompiler::JitCompile(Thread* self,
                                     jit::JitCodeCache* code_cache,
                                     ArtMethod* method,
+                                    bool baseline,
                                     bool osr,
                                     jit::JitLogger* jit_logger) {
   StackHandleScope<3> hs(self);
@@ -1315,6 +1368,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
                    &code_allocator,
                    dex_compilation_unit,
                    method,
+                   baseline,
                    osr,
                    &handles));
     if (codegen.get() == nullptr) {

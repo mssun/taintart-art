@@ -154,7 +154,7 @@ def gather_test_info():
   VARIANT_TYPE_DICT['jvmti'] = {'no-jvmti', 'jvmti-stress', 'redefine-stress', 'trace-stress',
                                 'field-stress', 'step-stress'}
   VARIANT_TYPE_DICT['compiler'] = {'interp-ac', 'interpreter', 'jit', 'jit-on-first-use',
-                                   'optimizing', 'regalloc_gc', 'speed-profile'}
+                                   'optimizing', 'regalloc_gc', 'speed-profile', 'baseline'}
 
   for v_type in VARIANT_TYPE_DICT:
     TOTAL_VARIANTS_SET = TOTAL_VARIANTS_SET.union(VARIANT_TYPE_DICT.get(v_type))
@@ -437,6 +437,8 @@ def run_tests(tests):
         options_test += ' --jit --runtime-option -Xjitthreshold:0'
       elif compiler == 'speed-profile':
         options_test += ' --random-profile'
+      elif compiler == 'baseline':
+        options_test += ' --baseline'
 
       if relocate == 'relocate':
         options_test += ' --relocate'

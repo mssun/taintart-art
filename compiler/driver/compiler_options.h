@@ -193,6 +193,10 @@ class CompilerOptions final {
     return boot_image_;
   }
 
+  bool IsBaseline() const {
+    return baseline_;
+  }
+
   // Are we compiling a core image (small boot image only used for ART testing)?
   bool IsCoreImage() const {
     // Ensure that `core_image_` => `boot_image_`.
@@ -346,6 +350,7 @@ class CompilerOptions final {
   bool boot_image_;
   bool core_image_;
   bool app_image_;
+  bool baseline_;
   bool debuggable_;
   bool generate_debug_info_;
   bool generate_mini_debug_info_;
