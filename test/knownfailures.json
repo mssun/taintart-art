@@ -295,7 +295,7 @@
                   "685-deoptimizeable"],
         "description": ["Tests that should fail when the optimizing compiler ",
                         "compiles them non-debuggable."],
-        "variant": "optimizing & ndebuggable | regalloc_gc & ndebuggable | speed-profile & ndebuggable | jit & ndebuggable"
+        "variant": "optimizing & ndebuggable | regalloc_gc & ndebuggable | speed-profile & ndebuggable | jit & ndebuggable | jit-on-first-use & ndebuggable"
     },
     {
         "tests": "596-app-images",
@@ -702,7 +702,7 @@
     },
     {
         "tests": ["661-oat-writer-layout"],
-        "variant": "interp-ac | interpreter | jit | no-prebuild | no-image | trace | redefine-stress | jvmti-stress",
+        "variant": "interp-ac | interpreter | jit | jit-on-first-use | no-prebuild | no-image | trace | redefine-stress | jvmti-stress",
         "description": ["Test is designed to only check --optimizing"]
     },
     {
