@@ -402,6 +402,8 @@ class DeoptimizeStackVisitor final : public StackVisitor {
   bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     exception_handler_->SetHandlerFrameDepth(GetFrameDepth());
     ArtMethod* method = GetMethod();
+    VLOG(deopt) << "Deoptimizing stack: depth: " << GetFrameDepth()
+                << " at method " << ArtMethod::PrettyMethod(method);
     if (method == nullptr || single_frame_done_) {
       FinishStackWalk();
       return false;  // End stack walk.

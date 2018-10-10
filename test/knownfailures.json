@@ -1089,6 +1089,14 @@
         "description": ["We do not inline with debuggable."]
     },
     {
+        "tests": ["1955-pop-frame-jit-called", "1956-pop-frame-jit-calling"],
+        "variant": "jit-on-first-use",
+        "description": [
+          "These tests directly set -Xjitthreshold:1000 to prevent the jit from compiling any",
+          "extra methods. jit-at-first-use would disrupt this."
+        ]
+    },
+    {
         "tests": ["135-MirandaDispatch"],
         "variant": "interp-ac & 32 & host",
         "env_vars": {"SANITIZE_HOST": "address"},

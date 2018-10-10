@@ -371,6 +371,12 @@ bool DoIPutQuick(const ShadowFrame& shadow_frame, const Instruction* inst, uint1
     if (UNLIKELY(self->IsExceptionPending())) {
       return false;
     }
+    if (UNLIKELY(shadow_frame.GetForcePopFrame())) {
+      // Don't actually set the field. The next instruction will force us to pop.
+      DCHECK(Runtime::Current()->AreNonStandardExitsEnabled());
+      DCHECK(PrevFrameWillRetry(self, shadow_frame));
+      return true;
+    }
   }
   // Note: iput-x-quick instructions are only for non-volatile fields.
   switch (field_type) {
@@ -440,6 +446,11 @@ bool MoveToExceptionHandler(Thread* self,
       self->IsExceptionThrownByCurrentMethod(exception.Get())) {
     // See b/65049545 for why we don't need to check to see if the exception has changed.
     instrumentation->ExceptionThrownEvent(self, exception.Get());
+    if (shadow_frame.GetForcePopFrame()) {
+      // We will check in the caller for GetForcePopFrame again. We need to bail out early to
+      // prevent an ExceptionHandledEvent from also being sent before popping.
+      return true;
+    }
   }
   bool clear_exception = false;
   uint32_t found_dex_pc = shadow_frame.GetMethod()->FindCatchBlock(
