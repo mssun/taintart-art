@@ -265,6 +265,9 @@ while true; do
     elif [ "x$1" = "x--jit" ]; then
         JIT="y"
         shift
+    elif [ "x$1" = "x--baseline" ]; then
+        FLAGS="${FLAGS} -Xcompiler-option --baseline"
+        shift
     elif [ "x$1" = "x--jvm" ]; then
         USE_JVM="y"
         shift
