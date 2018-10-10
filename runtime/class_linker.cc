@@ -79,7 +79,7 @@
 #include "image-inl.h"
 #include "imt_conflict_table.h"
 #include "imtable-inl.h"
-#include "intern_table.h"
+#include "intern_table-inl.h"
 #include "interpreter/interpreter.h"
 #include "jit/debugger_interface.h"
 #include "jit/jit.h"
@@ -1279,7 +1279,7 @@ bool VerifyStringInterning(gc::space::ImageSpace& space) REQUIRES_SHARED(Locks::
 // new_class_set is the set of classes that were read from the class table section in the image.
 // If there was no class table section, it is null.
 // Note: using a class here to avoid having to make ClassLinker internals public.
-class AppImageClassLoadersAndDexCachesHelper {
+class AppImageLoadingHelper {
  public:
   static void Update(
       ClassLinker* class_linker,
@@ -1289,9 +1289,17 @@ class AppImageClassLoadersAndDexCachesHelper {
       ClassTable::ClassSet* new_class_set)
       REQUIRES(!Locks::dex_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  static void AddImageInternTable(gc::space::ImageSpace* space)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  static void UpdateInternStrings(
+      gc::space::ImageSpace* space,
+      const SafeMap<mirror::String*, mirror::String*>& intern_remap)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 };
 
-void AppImageClassLoadersAndDexCachesHelper::Update(
+void AppImageLoadingHelper::Update(
     ClassLinker* class_linker,
     gc::space::ImageSpace* space,
     Handle<mirror::ClassLoader> class_loader,
@@ -1366,49 +1374,7 @@ void AppImageClassLoadersAndDexCachesHelper::Update(
   }
 
   if (ClassLinker::kAppImageMayContainStrings) {
-    // Iterate over the string reference offsets stored in the image and intern
-    // the strings they point to.
-
-    ScopedTrace timing("AppImage:InternString");
-    const auto& image_header = space->GetImageHeader();
-    const uint8_t* target_base = space->GetMemMap()->Begin();
-    const ImageSection& sro_section = image_header.GetImageStringReferenceOffsetsSection();
-
-    size_t num_string_offsets = sro_section.Size() / sizeof(uint32_t);
-
-    if (kIsDebugBuild) {
-      LOG(INFO)
-          << "ClassLinker:AppImage:InternStrings:imageStringReferenceOffsetCount = "
-          << num_string_offsets;
-    }
-
-    DCHECK(Runtime::Current()->GetInternTable() != nullptr);
-
-    InternTable& intern_table = *Runtime::Current()->GetInternTable();
-    const uint32_t* sro_base =
-        reinterpret_cast<const uint32_t*>(target_base + sro_section.Offset());
-
-    for (size_t offset_index = 0; offset_index < num_string_offsets; ++offset_index) {
-      if (HasNativeRefTag(sro_base[offset_index])) {
-        void* raw_field_addr = space->Begin() + ClearNativeRefTag(sro_base[offset_index]);
-        mirror::CompressedReference<mirror::Object>* objref_addr =
-            reinterpret_cast<mirror::CompressedReference<mirror::Object>*>(raw_field_addr);
-        mirror::String* referred_string = objref_addr->AsMirrorPtr()->AsString();
-        DCHECK(referred_string != nullptr);
-
-        objref_addr->Assign(intern_table.InternStrong(referred_string));
-
-      } else {
-        void* raw_field_addr = space->Begin() + sro_base[offset_index];
-        mirror::HeapReference<mirror::Object>* objref_addr =
-            reinterpret_cast<mirror::HeapReference<mirror::Object>*>(raw_field_addr);
-        mirror::String* referred_string = objref_addr->AsMirrorPtr()->AsString();
-        DCHECK(referred_string !=  nullptr);
-
-        objref_addr->Assign<false>(intern_table.InternStrong(referred_string));
-      }
-    }
-
+    AddImageInternTable(space);
     DCHECK(VerifyStringInterning(*space));
   }
 
@@ -1417,6 +1383,87 @@ void AppImageClassLoadersAndDexCachesHelper::Update(
     ReaderMutexLock rmu(self, *Locks::heap_bitmap_lock_);
     VerifyDeclaringClassVisitor visitor;
     header.VisitPackedArtMethods(&visitor, space->Begin(), kRuntimePointerSize);
+  }
+}
+
+void AppImageLoadingHelper::UpdateInternStrings(
+    gc::space::ImageSpace* space,
+    const SafeMap<mirror::String*, mirror::String*>& intern_remap) {
+  const uint8_t* target_base = space->Begin();
+  const ImageSection& sro_section = space->GetImageHeader().GetImageStringReferenceOffsetsSection();
+  const size_t num_string_offsets = sro_section.Size() / sizeof(uint32_t);
+
+  VLOG(image)
+      << "ClassLinker:AppImage:InternStrings:imageStringReferenceOffsetCount = "
+      << num_string_offsets;
+
+  const uint32_t* sro_base =
+      reinterpret_cast<const uint32_t*>(target_base + sro_section.Offset());
+
+  for (size_t offset_index = 0; offset_index < num_string_offsets; ++offset_index) {
+    if (HasNativeRefTag(sro_base[offset_index])) {
+      void* raw_field_addr = space->Begin() + ClearNativeRefTag(sro_base[offset_index]);
+      mirror::CompressedReference<mirror::Object>* objref_addr =
+          reinterpret_cast<mirror::CompressedReference<mirror::Object>*>(raw_field_addr);
+      mirror::String* referred_string = objref_addr->AsMirrorPtr()->AsString();
+      DCHECK(referred_string != nullptr);
+
+      auto it = intern_remap.find(referred_string);
+      if (it != intern_remap.end()) {
+        objref_addr->Assign(it->second);
+      }
+    } else {
+      void* raw_field_addr = space->Begin() + sro_base[offset_index];
+      mirror::HeapReference<mirror::Object>* objref_addr =
+          reinterpret_cast<mirror::HeapReference<mirror::Object>*>(raw_field_addr);
+      mirror::String* referred_string = objref_addr->AsMirrorPtr()->AsString();
+      DCHECK(referred_string !=  nullptr);
+
+      auto it = intern_remap.find(referred_string);
+      if (it != intern_remap.end()) {
+        objref_addr->Assign<false>(it->second);
+      }
+    }
+  }
+}
+
+void AppImageLoadingHelper::AddImageInternTable(gc::space::ImageSpace* space) {
+  // Iterate over the string reference offsets stored in the image and intern
+  // the strings they point to.
+  ScopedTrace timing("AppImage:InternString");
+
+  Thread* const self = Thread::Current();
+  Runtime* const runtime = Runtime::Current();
+  InternTable* const intern_table = runtime->GetInternTable();
+
+  // Add the intern table, removing any conflicts. For conflicts, store the new address in a map
+  // for faster lookup.
+  // TODO: Optimize with a bitmap or bloom filter
+  SafeMap<mirror::String*, mirror::String*> intern_remap;
+  intern_table->AddImageStringsToTable(space, [&](InternTable::UnorderedSet& interns)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    VLOG(image) << "AppImage:StringsInInternTable = " << interns.size();
+    for (auto it = interns.begin(); it != interns.end(); ) {
+      ObjPtr<mirror::String> string = it->Read();
+      ObjPtr<mirror::String> existing = intern_table->LookupWeak(self, string);
+      if (existing == nullptr) {
+        existing = intern_table->LookupStrong(self, string);
+      }
+      if (existing != nullptr) {
+        intern_remap.Put(string.Ptr(), existing.Ptr());
+        it = interns.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  });
+
+  VLOG(image) << "AppImage:ConflictingInternStrings = " << intern_remap.size();
+
+  // For debug builds, always run the code below to get coverage.
+  if (kIsDebugBuild || !intern_remap.empty()) {
+    // Slow path case is when there are conflicting intern strings to fix up.
+    UpdateInternStrings(space, intern_remap);
   }
 }
 
@@ -1907,11 +1954,7 @@ bool ClassLinker::AddImageSpace(
     VLOG(image) << "Adding class table classes took " << PrettyDuration(NanoTime() - start_time2);
   }
   if (app_image) {
-    AppImageClassLoadersAndDexCachesHelper::Update(this,
-                                                   space,
-                                                   class_loader,
-                                                   dex_caches,
-                                                   &temp_set);
+    AppImageLoadingHelper::Update(this, space, class_loader, dex_caches, &temp_set);
     // Update class loader and resolved strings. If added_class_table is false, the resolved
     // strings were forwarded UpdateAppImageClassLoadersAndDexCaches.
     UpdateClassLoaderVisitor visitor(space, class_loader.Get());

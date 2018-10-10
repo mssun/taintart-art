@@ -86,7 +86,7 @@
 #include "hidden_api.h"
 #include "image-inl.h"
 #include "instrumentation.h"
-#include "intern_table.h"
+#include "intern_table-inl.h"
 #include "interpreter/interpreter.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
@@ -1485,7 +1485,9 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     }
     {
       ScopedTrace trace2("AddImageStringsToTable");
-      GetInternTable()->AddImagesStringsToTable(heap_->GetBootImageSpaces());
+      for (gc::space::ImageSpace* image_space : heap_->GetBootImageSpaces()) {
+        GetInternTable()->AddImageStringsToTable(image_space, VoidFunctor());
+      }
     }
     if (IsJavaDebuggable()) {
       // Now that we have loaded the boot image, deoptimize its methods if we are running
