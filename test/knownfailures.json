@@ -947,6 +947,7 @@
           "676-resolve-field-type",
           "685-deoptimizeable",
           "685-shifts",
+          "686-get-this",
           "706-checker-scheduler",
           "707-checker-invalid-profile",
           "714-invoke-custom-lambda-metafactory",
