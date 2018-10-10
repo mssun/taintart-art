@@ -1125,7 +1125,7 @@ void CodeGeneratorX86_64::LoadBootImageAddress(CpuRegister reg, uint32_t boot_im
   if (GetCompilerOptions().IsBootImage()) {
     __ leal(reg, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
     RecordBootImageIntrinsicPatch(boot_image_reference);
-  } else if (Runtime::Current()->IsAotCompiler()) {
+  } else if (GetCompilerOptions().GetCompilePic()) {
     __ movl(reg, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
     RecordBootImageRelRoPatch(boot_image_reference);
   } else {

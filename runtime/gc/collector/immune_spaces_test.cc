@@ -125,8 +125,6 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
         /*boot_oat_begin*/0u,
         /*boot_oat_size*/0u,
         /*pointer_size*/sizeof(void*),
-        /*compile_pic*/false,
-        /*is_pic*/false,
         ImageHeader::kStorageModeUncompressed,
         /*storage_size*/0u);
     return new DummyImageSpace(std::move(map),

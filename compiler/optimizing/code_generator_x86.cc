@@ -4988,7 +4988,7 @@ void CodeGeneratorX86::LoadBootImageAddress(Register reg,
         invoke->GetLocations()->InAt(invoke->GetSpecialInputIndex()).AsRegister<Register>();
     __ leal(reg, Address(method_address_reg, CodeGeneratorX86::kDummy32BitOffset));
     RecordBootImageIntrinsicPatch(method_address, boot_image_reference);
-  } else if (Runtime::Current()->IsAotCompiler()) {
+  } else if (GetCompilerOptions().GetCompilePic()) {
     DCHECK_EQ(invoke->InputCount(), invoke->GetNumberOfArguments() + 1u);
     HX86ComputeBaseMethodAddress* method_address =
         invoke->InputAt(invoke->GetSpecialInputIndex())->AsX86ComputeBaseMethodAddress();

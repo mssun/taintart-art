@@ -77,7 +77,6 @@ class ImageWriter final {
  public:
   ImageWriter(const CompilerOptions& compiler_options,
               uintptr_t image_begin,
-              bool compile_pic,
               bool compile_app_image,
               ImageHeader::StorageMode image_storage_mode,
               const std::vector<const char*>& oat_filenames,
@@ -758,7 +757,6 @@ class ImageWriter final {
   std::unordered_map<mirror::Object*, uint32_t> oat_index_map_;
 
   // Boolean flags.
-  const bool compile_pic_;
   const bool compile_app_image_;
 
   // Size of pointers on the target architecture.

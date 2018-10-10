@@ -50,8 +50,8 @@ target_config = {
         'run-test' : ['--jit-on-first-use']
     },
     'art-pictest' : {
-        'run-test' : ['--pictest',
-                      '--optimizing']
+        # Deprecated config: All AOT-compiled code is PIC now.
+        'run-test' : ['--optimizing']
     },
     'art-gcstress-gcverify': {
         # Do not exercise '--interpreter', '--optimizing', nor '--jit' in this
@@ -185,10 +185,9 @@ target_config = {
     },
     'art-preopt' : {
         # This test configuration is intended to be representative of the case
-        # of preopted apps, which are precompiled compiled pic against an
+        # of preopted apps, which are precompiled against an
         # unrelocated image, then used with a relocated image.
-        'run-test' : ['--pictest',
-                      '--prebuild',
+        'run-test' : ['--prebuild',
                       '--relocate',
                       '--jit']
     },
