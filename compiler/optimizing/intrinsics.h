@@ -240,11 +240,14 @@ void IntrinsicCodeGenerator ## Arch::Visit ## Name(HInvoke* invoke ATTRIBUTE_UNU
 
 // Defines a list of unreached intrinsics: that is, method calls that are recognized as
 // an intrinsic, and then always converted into HIR instructions before they reach any
-// architecture-specific intrinsics code generator.
+// architecture-specific intrinsics code generator. This only applies to non-baseline
+// compilation.
 #define UNREACHABLE_INTRINSIC(Arch, Name)                                \
 void IntrinsicLocationsBuilder ## Arch::Visit ## Name(HInvoke* invoke) { \
-  LOG(FATAL) << "Unreachable: intrinsic " << invoke->GetIntrinsic()      \
-             << " should have been converted to HIR";                    \
+  if (!codegen_->GetCompilerOptions().IsBaseline()) {                    \
+    LOG(FATAL) << "Unreachable: intrinsic " << invoke->GetIntrinsic()    \
+               << " should have been converted to HIR";                  \
+  }                                                                      \
 }                                                                        \
 void IntrinsicCodeGenerator ## Arch::Visit ## Name(HInvoke* invoke) {    \
   LOG(FATAL) << "Unreachable: intrinsic " << invoke->GetIntrinsic()      \

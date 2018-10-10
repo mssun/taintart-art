@@ -160,9 +160,8 @@ multi_image_suffix=""
 android_root="/system"
 bisection_search="no"
 suspend_timeout="500000"
-# By default we will use optimizing.
-image_args=""
 image_suffix=""
+run_optimizing="false"
 
 while true; do
     if [ "x$1" = "x--host" ]; then
@@ -186,7 +185,6 @@ while true; do
         target_mode="no"
         DEX_LOCATION="$tmp_dir"
         runtime="jvm"
-        image_args=""
         prebuild_mode="no"
         NEED_DEX="false"
         run_args="${run_args} --jvm"
@@ -316,17 +314,20 @@ while true; do
         image_suffix="-interpreter"
         shift
     elif [ "x$1" = "x--jit" ]; then
-        image_args="--jit"
+        run_args="${run_args} --jit"
         image_suffix="-interpreter"
         shift
+    elif [ "x$1" = "x--baseline" ]; then
+        run_args="${run_args} --baseline"
+        shift
     elif [ "x$1" = "x--optimizing" ]; then
-        image_args="-Xcompiler-option --compiler-backend=Optimizing"
+        run_optimizing="true"
         shift
     elif [ "x$1" = "x--no-verify" ]; then
         run_args="${run_args} --no-verify"
         shift
     elif [ "x$1" = "x--verify-soft-fail" ]; then
-        image_args="--verify-soft-fail"
+        run_args="${run_args} --verify-soft-fail"
         image_suffix="-interp-ac"
         shift
     elif [ "x$1" = "x--no-optimize" ]; then
@@ -448,7 +449,6 @@ fi
 # The DEX_LOCATION with the chroot prefix, if any.
 chroot_dex_location="$chroot$DEX_LOCATION"
 
-run_args="${run_args} ${image_args}"
 # Allocate file descriptor real_stderr and redirect it to the shell's error
 # output (fd 2).
 if [ ${BASH_VERSINFO[1]} -ge 4 ] && [ ${BASH_VERSINFO[2]} -ge 1 ]; then
@@ -797,7 +797,7 @@ export TEST_NAME=`basename ${test_dir}`
 # Tests named '<number>-checker-*' will also have their CFGs verified with
 # Checker when compiled with Optimizing on host.
 if [[ "$TEST_NAME" =~ ^[0-9]+-checker- ]]; then
-  if [ "$runtime" = "art" -a "$image_suffix" = "" ]; then
+  if [ "$runtime" = "art" -a "$image_suffix" = "" -a "$run_optimizing" = "true" ]; then
     # In no-prebuild or no-image mode, the compiler only quickens so disable the checker.
     if [ "$prebuild_mode" = "yes" -a "$have_image" = "yes" ]; then
       run_checker="yes"
@@ -820,7 +820,7 @@ if [[ "$TEST_NAME" =~ ^[0-9]+-checker- ]]; then
   fi
 fi
 
-  run_args="${run_args} --testlib ${testlib}"
+run_args="${run_args} --testlib ${testlib}"
 
 # To cause tests to fail fast, limit the file sizes created by dx, dex2oat and
 # ART output to approximately 128MB. This should be more than sufficient

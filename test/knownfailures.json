@@ -946,6 +946,7 @@
           "676-proxy-jit-at-first-use",
           "676-resolve-field-type",
           "685-deoptimizeable",
+          "685-shifts",
           "706-checker-scheduler",
           "707-checker-invalid-profile",
           "714-invoke-custom-lambda-metafactory",
@@ -1093,5 +1094,10 @@
         "env_vars": {"SANITIZE_HOST": "address"},
         "bug": "b/112993554",
         "description": ["Timeout with ASan and interp-ac on 32-bit host (x86)."]
+    },
+    {
+        "tests": ["454-get-vreg", "457-regs"],
+        "variant": "baseline",
+        "description": ["Tests are expected to fail with baseline."]
     }
 ]

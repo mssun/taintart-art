@@ -188,7 +188,7 @@ bool JitCompiler::CompileMethod(Thread* self, ArtMethod* method, bool osr) {
     TimingLogger::ScopedTiming t2("Compiling", &logger);
     JitCodeCache* const code_cache = runtime->GetJit()->GetCodeCache();
     success = compiler_driver_->GetCompiler()->JitCompile(
-        self, code_cache, method, osr, jit_logger_.get());
+        self, code_cache, method, /* baseline= */ false, osr, jit_logger_.get());
   }
 
   // Trim maps to reduce memory usage.
