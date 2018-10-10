@@ -5660,6 +5660,10 @@ class HTypeConversion final : public HExpression<1> {
   bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const override {
     return true;
   }
+  // Return whether the conversion is implicit. This includes conversion to the same type.
+  bool IsImplicitConversion() const {
+    return DataType::IsTypeConversionImplicit(GetInputType(), GetResultType());
+  }
 
   // Try to statically evaluate the conversion and return a HConstant
   // containing the result.  If the input cannot be converted, return nullptr.

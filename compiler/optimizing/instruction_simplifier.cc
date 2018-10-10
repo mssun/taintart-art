@@ -1181,8 +1181,7 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
   HInstruction* input = instruction->GetInput();
   DataType::Type input_type = input->GetType();
   DataType::Type result_type = instruction->GetResultType();
-  if (DataType::IsTypeConversionImplicit(input_type, result_type)) {
-    // Remove the implicit conversion; this includes conversion to the same type.
+  if (instruction->IsImplicitConversion()) {
     instruction->ReplaceWith(input);
     instruction->GetBlock()->RemoveInstruction(instruction);
     RecordSimplification();

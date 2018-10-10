@@ -71,6 +71,7 @@ class Compiler {
   virtual bool JitCompile(Thread* self ATTRIBUTE_UNUSED,
                           jit::JitCodeCache* code_cache ATTRIBUTE_UNUSED,
                           ArtMethod* method ATTRIBUTE_UNUSED,
+                          bool baseline ATTRIBUTE_UNUSED,
                           bool osr ATTRIBUTE_UNUSED,
                           jit::JitLogger* jit_logger ATTRIBUTE_UNUSED)
       REQUIRES_SHARED(Locks::mutator_lock_) {
