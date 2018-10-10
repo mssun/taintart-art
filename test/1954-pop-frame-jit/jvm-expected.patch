@@ -1,9 +1,0 @@
-75,82d74
-< Test stopped during a ClassLoad event.
-< Single call with PopFrame on ClassLoadObject { cnt: 0, curClass: 0} base-call-count: 0
-< TC0.foo == 1
-< result is ClassLoadObject { cnt: 2, curClass: 1} base-call count: 1
-< Test stopped during a ClassPrepare event.
-< Single call with PopFrame on ClassLoadObject { cnt: 0, curClass: 1} base-call-count: 0
-< TC1.foo == 2
-< result is ClassLoadObject { cnt: 2, curClass: 2} base-call count: 1
