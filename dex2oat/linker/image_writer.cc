@@ -2408,8 +2408,6 @@ void ImageWriter::CreateHeader(size_t oat_index) {
       boot_oat_begin,
       boot_oat_end - boot_oat_begin,
       static_cast<uint32_t>(target_ptr_size_),
-      compile_pic_,
-      /*is_pic*/compile_app_image_,
       image_storage_mode_,
       /*data_size*/0u);
 
@@ -3339,7 +3337,6 @@ void ImageWriter::UpdateOatFileHeader(size_t oat_index, const OatHeader& oat_hea
 ImageWriter::ImageWriter(
     const CompilerOptions& compiler_options,
     uintptr_t image_begin,
-    bool compile_pic,
     bool compile_app_image,
     ImageHeader::StorageMode image_storage_mode,
     const std::vector<const char*>& oat_filenames,
@@ -3348,7 +3345,6 @@ ImageWriter::ImageWriter(
     : compiler_options_(compiler_options),
       global_image_begin_(reinterpret_cast<uint8_t*>(image_begin)),
       image_objects_offset_begin_(0),
-      compile_pic_(compile_pic),
       compile_app_image_(compile_app_image),
       target_ptr_size_(InstructionSetPointerSize(compiler_options.GetInstructionSet())),
       image_infos_(oat_filenames.size()),

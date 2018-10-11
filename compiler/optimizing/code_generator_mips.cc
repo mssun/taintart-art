@@ -1766,7 +1766,7 @@ void CodeGeneratorMIPS::LoadBootImageAddress(Register reg, uint32_t boot_image_r
     PcRelativePatchInfo* info_low = NewBootImageIntrinsicPatch(boot_image_reference, info_high);
     EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, /* base */ ZERO);
     __ Addiu(reg, TMP, /* placeholder */ 0x5678, &info_low->label);
-  } else if (Runtime::Current()->IsAotCompiler()) {
+  } else if (GetCompilerOptions().GetCompilePic()) {
     PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_reference);
     PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_reference, info_high);
     EmitPcRelativeAddressPlaceholderHigh(info_high, reg, /* base */ ZERO);
