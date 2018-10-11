@@ -100,7 +100,7 @@ CompactDexFile::CompactDexFile(const uint8_t* base,
               location_checksum,
               oat_dex_file,
               std::move(container),
-              /*is_compact_dex*/ true),
+              /*is_compact_dex=*/ true),
       debug_info_offsets_(DataBegin() + GetHeader().debug_info_offsets_pos_,
                           GetHeader().debug_info_base_,
                           GetHeader().debug_info_offsets_table_offset_) {}

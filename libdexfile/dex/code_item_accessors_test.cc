@@ -45,10 +45,10 @@ std::unique_ptr<const DexFile> CreateFakeDex(bool compact_dex, std::vector<uint8
   std::unique_ptr<const DexFile> dex(dex_file_loader.Open(data->data(),
                                                           data->size(),
                                                           "location",
-                                                          /*location_checksum*/ 123,
-                                                          /*oat_dex_file*/nullptr,
-                                                          /*verify*/false,
-                                                          /*verify_checksum*/false,
+                                                          /*location_checksum=*/ 123,
+                                                          /*oat_dex_file=*/nullptr,
+                                                          /*verify=*/false,
+                                                          /*verify_checksum=*/false,
                                                           &error_msg));
   CHECK(dex != nullptr) << error_msg;
   return dex;
@@ -56,11 +56,11 @@ std::unique_ptr<const DexFile> CreateFakeDex(bool compact_dex, std::vector<uint8
 
 TEST(CodeItemAccessorsTest, TestDexInstructionsAccessor) {
   std::vector<uint8_t> standard_dex_data;
-  std::unique_ptr<const DexFile> standard_dex(CreateFakeDex(/*compact_dex*/false,
+  std::unique_ptr<const DexFile> standard_dex(CreateFakeDex(/*compact_dex=*/false,
                                                             &standard_dex_data));
   ASSERT_TRUE(standard_dex != nullptr);
   std::vector<uint8_t> compact_dex_data;
-  std::unique_ptr<const DexFile> compact_dex(CreateFakeDex(/*compact_dex*/true,
+  std::unique_ptr<const DexFile> compact_dex(CreateFakeDex(/*compact_dex=*/true,
                                                            &compact_dex_data));
   ASSERT_TRUE(compact_dex != nullptr);
   static constexpr uint16_t kRegisterSize = 2;

@@ -251,7 +251,7 @@ std::unique_ptr<const DexFile> CommonArtTestImpl::LoadExpectSingleDexFile(const 
   static constexpr bool kVerifyChecksum = true;
   const ArtDexFileLoader dex_file_loader;
   if (!dex_file_loader.Open(
-        location, location, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files)) {
+        location, location, /* verify= */ true, kVerifyChecksum, &error_msg, &dex_files)) {
     LOG(FATAL) << "Could not open .dex file '" << location << "': " << error_msg << "\n";
     UNREACHABLE();
   } else {
