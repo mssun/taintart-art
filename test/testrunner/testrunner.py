@@ -142,7 +142,7 @@ def gather_test_info():
   VARIANT_TYPE_DICT['run'] = {'ndebug', 'debug'}
   VARIANT_TYPE_DICT['target'] = {'target', 'host', 'jvm'}
   VARIANT_TYPE_DICT['trace'] = {'trace', 'ntrace', 'stream'}
-  VARIANT_TYPE_DICT['image'] = {'picimage', 'no-image', 'multipicimage'}
+  VARIANT_TYPE_DICT['image'] = {'picimage', 'no-image'}
   VARIANT_TYPE_DICT['debuggable'] = {'ndebuggable', 'debuggable'}
   VARIANT_TYPE_DICT['gc'] = {'gcstress', 'gcverify', 'cms'}
   VARIANT_TYPE_DICT['prebuild'] = {'no-prebuild', 'prebuild'}
@@ -458,8 +458,6 @@ def run_tests(tests):
 
       if image == 'no-image':
         options_test += ' --no-image'
-      elif image == 'multipicimage':
-        options_test += ' --multi-image'
 
       if debuggable == 'debuggable':
         options_test += ' --debuggable'
