@@ -4350,7 +4350,7 @@ void CodeGeneratorARM64::LoadBootImageAddress(vixl::aarch64::Register reg,
     // Add ADD with its PC-relative type patch.
     vixl::aarch64::Label* add_label = NewBootImageIntrinsicPatch(boot_image_reference, adrp_label);
     EmitAddPlaceholder(add_label, reg.X(), reg.X());
-  } else if (Runtime::Current()->IsAotCompiler()) {
+  } else if (GetCompilerOptions().GetCompilePic()) {
     // Add ADRP with its PC-relative .data.bimg.rel.ro patch.
     vixl::aarch64::Label* adrp_label = NewBootImageRelRoPatch(boot_image_reference);
     EmitAdrpPlaceholder(adrp_label, reg.X());

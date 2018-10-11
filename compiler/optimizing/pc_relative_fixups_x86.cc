@@ -17,7 +17,6 @@
 #include "pc_relative_fixups_x86.h"
 #include "code_generator_x86.h"
 #include "intrinsics_x86.h"
-#include "runtime.h"
 
 namespace art {
 namespace x86 {
@@ -239,7 +238,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
       case Intrinsics::kIntegerValueOf:
         // This intrinsic can be call free if it loads the address of the boot image object.
         // If we're compiling PIC, we need the address base for loading from .data.bimg.rel.ro.
-        if (Runtime::Current()->UseJitCompilation()) {
+        if (!codegen_->GetCompilerOptions().GetCompilePic()) {
           break;
         }
         FALLTHROUGH_INTENDED;

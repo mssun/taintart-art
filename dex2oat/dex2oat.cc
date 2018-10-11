@@ -296,9 +296,6 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("      Example: --instruction-set-features=div");
   UsageError("      Default: default");
   UsageError("");
-  UsageError("  --compile-pic: Force indirect use of code, methods, and classes");
-  UsageError("      Default: disabled for apps (ignored for boot image which is always PIC)");
-  UsageError("");
   UsageError("  --compiler-backend=(Quick|Optimizing): select compiler backend");
   UsageError("      set.");
   UsageError("      Example: --compiler-backend=Optimizing");
@@ -727,10 +724,8 @@ class Dex2Oat final {
   }
 
   void ProcessOptions(ParserOptions* parser_options) {
+    compiler_options_->compile_pic_ = true;  // All AOT compilation is PIC.
     compiler_options_->boot_image_ = !image_filenames_.empty();
-    if (compiler_options_->boot_image_) {
-      compiler_options_->compile_pic_ = true;
-    }
     compiler_options_->app_image_ = app_image_fd_ != -1 || !app_image_file_name_.empty();
 
     if (IsBootImage() && image_filenames_.size() == 1) {
@@ -1987,7 +1982,6 @@ class Dex2Oat final {
 
       image_writer_.reset(new linker::ImageWriter(*compiler_options_,
                                                   image_base_,
-                                                  compiler_options_->GetCompilePic(),
                                                   IsAppImage(),
                                                   image_storage_mode_,
                                                   oat_filenames_,
@@ -2610,31 +2604,8 @@ class Dex2Oat final {
     for (size_t i = 0, size = oat_filenames_.size(); i != size; ++i) {
       oat_data_begins.push_back(image_writer_->GetOatDataBegin(i));
     }
-    // Destroy ImageWriter before doing FixupElf.
+    // Destroy ImageWriter.
     image_writer_.reset();
-
-    for (size_t i = 0, size = oat_filenames_.size(); i != size; ++i) {
-      const char* oat_filename = oat_filenames_[i];
-      // Do not fix up the ELF file if we are --compile-pic or compiling the app image
-      if (!compiler_options_->GetCompilePic() && IsBootImage()) {
-        std::unique_ptr<File> oat_file(OS::OpenFileReadWrite(oat_filename));
-        if (oat_file.get() == nullptr) {
-          PLOG(ERROR) << "Failed to open ELF file: " << oat_filename;
-          return false;
-        }
-
-        if (!linker::ElfWriter::Fixup(oat_file.get(), oat_data_begins[i])) {
-          oat_file->Erase();
-          LOG(ERROR) << "Failed to fixup ELF file " << oat_file->GetPath();
-          return false;
-        }
-
-        if (oat_file->FlushCloseOrErase()) {
-          PLOG(ERROR) << "Failed to flush and close fixed ELF file " << oat_file->GetPath();
-          return false;
-        }
-      }
-    }
 
     return true;
   }

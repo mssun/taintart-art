@@ -208,6 +208,7 @@ TEST_F(DexoptAnalyzerTest, DexOdexNoOat) {
 
   Verify(dex_location, CompilerFilter::kExtract);
   Verify(dex_location, CompilerFilter::kSpeed);
+  Verify(dex_location, CompilerFilter::kEverything);
 }
 
 // Case: We have a stripped DEX file and a PIC ODEX file, but no OAT file.

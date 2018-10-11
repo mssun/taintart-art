@@ -108,8 +108,6 @@ class PACKED(4) ImageHeader {
         patch_delta_(0),
         image_roots_(0U),
         pointer_size_(0U),
-        compile_pic_(0),
-        is_pic_(0),
         storage_mode_(kDefaultStorageMode),
         data_size_(0) {}
 
@@ -127,8 +125,6 @@ class PACKED(4) ImageHeader {
               uint32_t boot_oat_begin,
               uint32_t boot_oat_size,
               uint32_t pointer_size,
-              bool compile_pic,
-              bool is_pic,
               StorageMode storage_mode,
               size_t data_size);
 
@@ -318,14 +314,6 @@ class PACKED(4) ImageHeader {
   void RelocateImageMethods(int64_t delta);
   void RelocateImageObjects(int64_t delta);
 
-  bool CompilePic() const {
-    return compile_pic_ != 0;
-  }
-
-  bool IsPic() const {
-    return is_pic_ != 0;
-  }
-
   uint32_t GetBootImageBegin() const {
     return boot_image_begin_;
   }
@@ -441,14 +429,6 @@ class PACKED(4) ImageHeader {
 
   // Pointer size, this affects the size of the ArtMethods.
   uint32_t pointer_size_;
-
-  // Boolean (0 or 1) to denote if the image was compiled with --compile-pic option
-  const uint32_t compile_pic_;
-
-  // Boolean (0 or 1) to denote if the image can be mapped at a random address, this only refers to
-  // the .art file. Currently, app oat files do not depend on their app image. There are no pointers
-  // from the app oat code to the app image.
-  const uint32_t is_pic_;
 
   // Image section sizes/offsets correspond to the uncompressed form.
   ImageSection sections_[kSectionCount];

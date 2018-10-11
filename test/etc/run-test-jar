@@ -319,10 +319,6 @@ while true; do
         TEST_DIRECTORY="nativetest64"
         ARCHITECTURES_PATTERN="${ARCHITECTURES_64}"
         shift
-    elif [ "x$1" = "x--pic-test" ]; then
-        FLAGS="${FLAGS} -Xcompiler-option --compile-pic"
-        COMPILE_FLAGS="${COMPILE_FLAGS} --compile-pic"
-        shift
     elif [ "x$1" = "x--experimental" ]; then
         if [ "$#" -lt 2 ]; then
             echo "missing --experimental option" 1>&2

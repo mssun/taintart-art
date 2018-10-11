@@ -8914,7 +8914,7 @@ void CodeGeneratorARMVIXL::LoadBootImageAddress(vixl32::Register reg,
     CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
         NewBootImageIntrinsicPatch(boot_image_reference);
     EmitMovwMovtPlaceholder(labels, reg);
-  } else if (Runtime::Current()->IsAotCompiler()) {
+  } else if (GetCompilerOptions().GetCompilePic()) {
     CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
         NewBootImageRelRoPatch(boot_image_reference);
     EmitMovwMovtPlaceholder(labels, reg);
