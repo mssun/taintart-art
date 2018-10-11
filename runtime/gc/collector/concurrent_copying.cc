@@ -573,8 +573,10 @@ class ConcurrentCopying::VerifyGrayImmuneObjectsVisitor {
     if (ref != nullptr) {
       if (!collector_->immune_spaces_.ContainsObject(ref.Ptr())) {
         // Not immune, must be a zygote large object.
-        CHECK(Runtime::Current()->GetHeap()->GetLargeObjectsSpace()->IsZygoteLargeObject(
-            Thread::Current(), ref.Ptr()))
+        space::LargeObjectSpace* large_object_space =
+            Runtime::Current()->GetHeap()->GetLargeObjectsSpace();
+        CHECK(large_object_space->Contains(ref.Ptr()) &&
+              large_object_space->IsZygoteLargeObject(Thread::Current(), ref.Ptr()))
             << "Non gray object references non immune, non zygote large object "<< ref << " "
             << mirror::Object::PrettyTypeOf(ref) << " in holder " << holder << " "
             << mirror::Object::PrettyTypeOf(holder) << " offset=" << offset.Uint32Value();
