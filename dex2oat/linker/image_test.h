@@ -214,7 +214,6 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
   // TODO: compile_pic should be a test argument.
   std::unique_ptr<ImageWriter> writer(new ImageWriter(*compiler_options_,
                                                       kRequestedImageBase,
-                                                      /*compile_pic*/false,
                                                       /*compile_app_image*/false,
                                                       storage_mode,
                                                       oat_filename_vector,

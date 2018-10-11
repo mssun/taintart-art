@@ -1680,7 +1680,7 @@ void CodeGeneratorMIPS64::LoadBootImageAddress(GpuRegister reg, uint32_t boot_im
     PcRelativePatchInfo* info_low = NewBootImageIntrinsicPatch(boot_image_reference, info_high);
     EmitPcRelativeAddressPlaceholderHigh(info_high, AT, info_low);
     __ Daddiu(reg, AT, /* placeholder */ 0x5678);
-  } else if (Runtime::Current()->IsAotCompiler()) {
+  } else if (GetCompilerOptions().GetCompilePic()) {
     PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_reference);
     PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_reference, info_high);
     EmitPcRelativeAddressPlaceholderHigh(info_high, AT, info_low);

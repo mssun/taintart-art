@@ -79,8 +79,6 @@ TEST_F(ImageTest, ImageHeaderIsValid) {
                              /*boot_oat_begin*/0U,
                              /*boot_oat_size_*/0U,
                              sizeof(void*),
-                             /*compile_pic*/false,
-                             /*is_pic*/false,
                              ImageHeader::kDefaultStorageMode,
                              /*data_size*/0u);
     ASSERT_TRUE(image_header.IsValid());

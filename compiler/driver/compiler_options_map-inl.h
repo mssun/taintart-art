@@ -43,9 +43,6 @@ inline bool ReadCompilerOptions(Base& map, CompilerOptions* options, std::string
     }
     options->SetCompilerFilter(compiler_filter);
   }
-  if (map.Exists(Base::PIC)) {
-    options->compile_pic_ = true;
-  }
   map.AssignIfExists(Base::HugeMethodMaxThreshold, &options->huge_method_threshold_);
   map.AssignIfExists(Base::LargeMethodMaxThreshold, &options->large_method_threshold_);
   map.AssignIfExists(Base::SmallMethodMaxThreshold, &options->small_method_threshold_);
@@ -108,9 +105,6 @@ inline void AddCompilerOptionsArgumentParserOptions(Builder& b) {
       Define("--compiler-filter=_")
           .template WithType<std::string>()
           .IntoKey(Map::CompilerFilter)
-
-      .Define("--compile-pic")
-          .IntoKey(Map::PIC)
 
       .Define("--huge-method-max=_")
           .template WithType<unsigned int>()

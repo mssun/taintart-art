@@ -204,9 +204,6 @@ while true; do
     elif [ "x$1" = "x--multi-image" ]; then
         multi_image_suffix="-multi"
         shift
-    elif [ "x$1" = "x--pic-test" ]; then
-        run_args="${run_args} --pic-test"
-        shift
     elif [ "x$1" = "x--relocate" ]; then
         relocate="yes"
         shift
@@ -736,7 +733,6 @@ if [ "$usage" = "yes" ]; then
         echo "                          Set instruction-set-features for compilation."
         echo "    --multi-image         Use a set of images compiled with dex2oat multi-image for"
         echo "                          the boot class path."
-        echo "    --pic-test            Compile the test code position independent."
         echo "    --quiet               Don't print anything except failure messages"
         echo "    --bisection-search    Perform bisection bug search."
         echo "    --vdex                Test using vdex as in input to dex2oat. Only works with --prebuild."

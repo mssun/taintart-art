@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '6', '3', '\0' };  // Image relocations.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '6', '4', '\0' };  // Remove PIC flags.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
@@ -42,8 +42,6 @@ ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t boot_oat_begin,
                          uint32_t boot_oat_size,
                          uint32_t pointer_size,
-                         bool compile_pic,
-                         bool is_pic,
                          StorageMode storage_mode,
                          size_t data_size)
   : image_begin_(image_begin),
@@ -60,8 +58,6 @@ ImageHeader::ImageHeader(uint32_t image_begin,
     patch_delta_(0),
     image_roots_(image_roots),
     pointer_size_(pointer_size),
-    compile_pic_(compile_pic),
-    is_pic_(is_pic),
     storage_mode_(storage_mode),
     data_size_(data_size) {
   CHECK_EQ(image_begin, RoundUp(image_begin, kPageSize));
