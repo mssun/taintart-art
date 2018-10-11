@@ -45,6 +45,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/bit_utils.h"
+#include "base/casts.h"
 #include "base/file_utils.h"
 #include "base/memory_tool.h"
 #include "base/mutex.h"
@@ -500,7 +501,7 @@ void* Thread::CreateCallback(void* arg) {
 Thread* Thread::FromManagedThread(const ScopedObjectAccessAlreadyRunnable& soa,
                                   ObjPtr<mirror::Object> thread_peer) {
   ArtField* f = jni::DecodeArtField(WellKnownClasses::java_lang_Thread_nativePeer);
-  Thread* result = reinterpret_cast<Thread*>(static_cast<uintptr_t>(f->GetLong(thread_peer)));
+  Thread* result = reinterpret_cast64<Thread*>(f->GetLong(thread_peer));
   // Sanity check that if we have a result it is either suspended or we hold the thread_list_lock_
   // to stop it from going away.
   if (kIsDebugBuild) {
@@ -907,7 +908,7 @@ Thread* Thread::Attach(const char* thread_name, bool as_daemon, jobject thread_p
     }
     self->GetJniEnv()->SetLongField(thread_peer,
                                     WellKnownClasses::java_lang_Thread_nativePeer,
-                                    reinterpret_cast<jlong>(self));
+                                    reinterpret_cast64<jlong>(self));
     return true;
   };
   return Attach(thread_name, as_daemon, set_peer_action);
@@ -949,8 +950,9 @@ void Thread::CreatePeer(const char* name, bool as_daemon, jobject thread_group) 
 
   Thread* self = this;
   DCHECK_EQ(self, Thread::Current());
-  env->SetLongField(peer.get(), WellKnownClasses::java_lang_Thread_nativePeer,
-                    reinterpret_cast<jlong>(self));
+  env->SetLongField(peer.get(),
+                    WellKnownClasses::java_lang_Thread_nativePeer,
+                    reinterpret_cast64<jlong>(self));
 
   ScopedObjectAccess soa(self);
   StackHandleScope<1> hs(self);
@@ -3567,8 +3569,8 @@ class ReferenceMapVisitor : public StackVisitor {
     if (!m->IsNative() && !m->IsRuntimeMethod() && (!m->IsProxyMethod() || m->IsConstructor())) {
       const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
       DCHECK(method_header->IsOptimized());
-      StackReference<mirror::Object>* vreg_base = reinterpret_cast<StackReference<mirror::Object>*>(
-          reinterpret_cast<uintptr_t>(cur_quick_frame));
+      StackReference<mirror::Object>* vreg_base =
+          reinterpret_cast<StackReference<mirror::Object>*>(cur_quick_frame);
       uintptr_t native_pc_offset = method_header->NativeQuickPcOffset(GetCurrentQuickFramePc());
       CodeInfo code_info(method_header, kPrecise
           ? CodeInfo::DecodeFlags::AllTables  // We will need dex register maps.

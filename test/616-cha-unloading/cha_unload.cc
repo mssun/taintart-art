@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include "art_method.h"
+#include "base/casts.h"
 #include "class_linker.h"
 #include "jit/jit.h"
 #include "linear_alloc.h"
@@ -51,13 +52,13 @@ extern "C" JNIEXPORT jlong JNICALL Java_Main_getArtMethod(JNIEnv* env,
                                                           jobject java_method) {
   ScopedObjectAccess soa(env);
   ArtMethod* method = ArtMethod::FromReflectedMethod(soa, java_method);
-  return static_cast<jlong>(reinterpret_cast<uintptr_t>(method));
+  return reinterpret_cast64<jlong>(method);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_Main_reuseArenaOfMethod(JNIEnv*,
                                                                jclass,
                                                                jlong art_method) {
-  void* ptr = reinterpret_cast<void*>(static_cast<uintptr_t>(art_method));
+  void* ptr = reinterpret_cast64<void*>(art_method);
 
   ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
   ReaderMutexLock mu2(Thread::Current(), *Locks::classlinker_classes_lock_);

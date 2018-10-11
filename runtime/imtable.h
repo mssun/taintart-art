@@ -21,6 +21,7 @@
 #error IMT_SIZE not defined
 #endif
 
+#include "base/casts.h"
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/mutex.h"
@@ -46,10 +47,10 @@ class ImTable {
     uint8_t* ptr = AddressOfElement(index, pointer_size);
     if (pointer_size == PointerSize::k32) {
       uint32_t value = *reinterpret_cast<uint32_t*>(ptr);
-      return reinterpret_cast<ArtMethod*>(value);
+      return reinterpret_cast32<ArtMethod*>(value);
     } else {
       uint64_t value = *reinterpret_cast<uint64_t*>(ptr);
-      return reinterpret_cast<ArtMethod*>(value);
+      return reinterpret_cast64<ArtMethod*>(value);
     }
   }
 
@@ -57,11 +58,9 @@ class ImTable {
     DCHECK_LT(index, kSize);
     uint8_t* ptr = AddressOfElement(index, pointer_size);
     if (pointer_size == PointerSize::k32) {
-      uintptr_t value = reinterpret_cast<uintptr_t>(method);
-      DCHECK_EQ(static_cast<uint32_t>(value), value);  // Check that we dont lose any non 0 bits.
-      *reinterpret_cast<uint32_t*>(ptr) = static_cast<uint32_t>(value);
+      *reinterpret_cast<uint32_t*>(ptr) = reinterpret_cast32<uint32_t>(method);
     } else {
-      *reinterpret_cast<uint64_t*>(ptr) = reinterpret_cast<uint64_t>(method);
+      *reinterpret_cast<uint64_t*>(ptr) = reinterpret_cast64<uint64_t>(method);
     }
   }
 
