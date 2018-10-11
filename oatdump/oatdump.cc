@@ -224,7 +224,7 @@ class OatSymbolizer final {
     debug::WriteDebugInfo(builder_.get(),
                           debug_info,
                           dwarf::DW_DEBUG_FRAME_FORMAT,
-                          true /* write_oat_patches */);
+                          /* write_oat_patches= */ true);
 
     builder_->End();
 
@@ -401,7 +401,7 @@ class OatDumper {
                                              options_.absolute_addresses_,
                                              oat_file.Begin(),
                                              oat_file.End(),
-                                             true /* can_read_literals_ */,
+                                             /* can_read_literals_= */ true,
                                              Is64BitInstructionSet(instruction_set_)
                                                  ? &Thread::DumpThreadOffset<PointerSize::k64>
                                                  : &Thread::DumpThreadOffset<PointerSize::k32>))) {
@@ -640,7 +640,7 @@ class OatDumper {
           Options options;
           options.compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
           options.update_checksum_ = true;
-          DexLayout dex_layout(options, /*info*/ nullptr, /*out_file*/ nullptr, /*header*/ nullptr);
+          DexLayout dex_layout(options, /*info=*/ nullptr, /*out_file=*/ nullptr, /*header=*/ nullptr);
           std::unique_ptr<art::DexContainer> dex_container;
           bool result = dex_layout.ProcessDexFile(vdex_dex_file->GetLocation().c_str(),
                                                   vdex_dex_file.get(),
@@ -661,9 +661,9 @@ class OatDumper {
               main_section->Size(),
               vdex_dex_file->GetLocation(),
               vdex_file->GetLocationChecksum(i),
-              nullptr /*oat_dex_file*/,
-              false /*verify*/,
-              true /*verify_checksum*/,
+              /*oat_dex_file=*/ nullptr,
+              /*verify=*/ false,
+              /*verify_checksum=*/ true,
               &error_msg));
           if (dex == nullptr) {
             os << "Failed to load DexFile from layout container: " + error_msg;
@@ -676,12 +676,12 @@ class OatDumper {
             break;
           }
 
-          if (!ExportDexFile(os, *oat_dex_file, dex.get(), true /*used_dexlayout*/)) {
+          if (!ExportDexFile(os, *oat_dex_file, dex.get(), /*used_dexlayout=*/ true)) {
             success = false;
             break;
           }
         } else {
-          if (!ExportDexFile(os, *oat_dex_file, vdex_dex_file.get(), false /*used_dexlayout*/)) {
+          if (!ExportDexFile(os, *oat_dex_file, vdex_dex_file.get(), /*used_dexlayout=*/ false)) {
             success = false;
             break;
           }
@@ -764,8 +764,8 @@ class OatDumper {
         PROT_READ | PROT_WRITE,
         MAP_PRIVATE,
         file->Fd(),
-        /* start offset */ 0,
-        /* low_4gb */ false,
+        /* start offset= */ 0,
+        /* low_4gb= */ false,
         vdex_filename.c_str(),
         error_msg);
     if (!mmap.IsValid()) {
@@ -786,7 +786,7 @@ class OatDumper {
     }
 
     vdex_file->Unquicken(MakeNonOwningPointerVector(tmp_dex_files),
-                         /* decompile_return_instruction */ true);
+                         /* decompile_return_instruction= */ true);
 
     *dex_files = std::move(tmp_dex_files);
     return vdex_file;
@@ -1514,7 +1514,7 @@ class OatDumper {
       }
       return verifier::MethodVerifier::VerifyMethodAndDump(
           soa.Self(), vios, dex_method_idx, dex_file, dex_cache, *options_.class_loader_,
-          class_def, code_item, method, method_access_flags, /* api_level */ 0);
+          class_def, code_item, method, method_access_flags, /* api_level= */ 0);
     }
 
     return nullptr;
@@ -1862,14 +1862,14 @@ class ImageDumper {
       oat_file = runtime->GetOatFileManager().FindOpenedOatFileFromOatLocation(oat_location);
     }
     if (oat_file == nullptr) {
-      oat_file = OatFile::Open(/* zip_fd */ -1,
+      oat_file = OatFile::Open(/* zip_fd= */ -1,
                                oat_location,
                                oat_location,
-                               /* requested_base */ nullptr,
-                               /* executable */ false,
-                               /* low_4gb */ false,
-                               /* abs_dex_location */ nullptr,
-                               /* reservation */ nullptr,
+                               /* requested_base= */ nullptr,
+                               /* executable= */ false,
+                               /* low_4gb= */ false,
+                               /* abs_dex_location= */ nullptr,
+                               /* reservation= */ nullptr,
                                &error_msg);
     }
     if (oat_file == nullptr) {
@@ -2760,14 +2760,14 @@ static int DumpImages(Runtime* runtime, OatDumperOptions* options, std::ostream*
     // We need to map the oat file in the low 4gb or else the fixup wont be able to fit oat file
     // pointers into 32 bit pointer sized ArtMethods.
     std::string error_msg;
-    std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+    std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd= */ -1,
                                                     options->app_oat_,
                                                     options->app_oat_,
-                                                    /* requested_base */ nullptr,
-                                                    /* executable */ false,
-                                                    /* low_4gb */ true,
-                                                    /* abs_dex_location */ nullptr,
-                                                    /* reservation */ nullptr,
+                                                    /* requested_base= */ nullptr,
+                                                    /* executable= */ false,
+                                                    /* low_4gb= */ true,
+                                                    /* abs_dex_location= */ nullptr,
+                                                    /* reservation= */ nullptr,
                                                     &error_msg));
     if (oat_file == nullptr) {
       LOG(ERROR) << "Failed to open oat file " << options->app_oat_ << " with error " << error_msg;
@@ -2884,14 +2884,14 @@ static int DumpOat(Runtime* runtime,
                  << "oatdump might fail if the oat file does not contain the dex code.";
   }
   std::string error_msg;
-  std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd= */ -1,
                                                   oat_filename,
                                                   oat_filename,
-                                                  /* requested_base */ nullptr,
-                                                  /* executable */ false,
-                                                  /* low_4gb */ false,
+                                                  /* requested_base= */ nullptr,
+                                                  /* executable= */ false,
+                                                  /* low_4gb= */ false,
                                                   dex_filename,
-                                                  /* reservation */ nullptr,
+                                                  /* reservation= */ nullptr,
                                                   &error_msg));
   if (oat_file == nullptr) {
     LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;
@@ -2910,14 +2910,14 @@ static int SymbolizeOat(const char* oat_filename,
                         std::string& output_name,
                         bool no_bits) {
   std::string error_msg;
-  std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd= */ -1,
                                                   oat_filename,
                                                   oat_filename,
-                                                  /* requested_base */ nullptr,
-                                                  /* executable */ false,
-                                                  /* low_4gb */ false,
+                                                  /* requested_base= */ nullptr,
+                                                  /* executable= */ false,
+                                                  /* low_4gb= */ false,
                                                   dex_filename,
-                                                  /* reservation */ nullptr,
+                                                  /* reservation= */ nullptr,
                                                   &error_msg));
   if (oat_file == nullptr) {
     LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;
@@ -2958,14 +2958,14 @@ class IMTDumper {
 
     if (oat_filename != nullptr) {
       std::string error_msg;
-      std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+      std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd= */ -1,
                                                       oat_filename,
                                                       oat_filename,
-                                                      /* requested_base */ nullptr,
-                                                      /* executable */ false,
-                                                      /*low_4gb*/false,
+                                                      /* requested_base= */ nullptr,
+                                                      /* executable= */ false,
+                                                      /*low_4gb=*/false,
                                                       dex_filename,
-                                                      /* reservation */ nullptr,
+                                                      /* reservation= */ nullptr,
                                                       &error_msg));
       if (oat_file == nullptr) {
         LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;

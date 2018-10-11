@@ -85,15 +85,15 @@ class HiddenApiTest : public CommonRuntimeTest {
     ArtDexFileLoader dex_loader;
     std::string error_msg;
 
-    File fd(file.GetFilename(), O_RDONLY, /* check_usage */ false);
+    File fd(file.GetFilename(), O_RDONLY, /* check_usage= */ false);
     if (fd.Fd() == -1) {
       LOG(FATAL) << "Unable to open file '" << file.GetFilename() << "': " << strerror(errno);
       UNREACHABLE();
     }
 
     std::unique_ptr<const DexFile> dex_file(dex_loader.OpenDex(
-        fd.Release(), /* location */ file.GetFilename(), /* verify */ false,
-        /* verify_checksum */ true, /* mmap_shared */ false, &error_msg));
+        fd.Release(), /* location= */ file.GetFilename(), /* verify= */ false,
+        /* verify_checksum= */ true, /* mmap_shared= */ false, &error_msg));
     if (dex_file.get() == nullptr) {
       LOG(FATAL) << "Open failed for '" << file.GetFilename() << "' " << error_msg;
       UNREACHABLE();
@@ -179,22 +179,31 @@ class HiddenApiTest : public CommonRuntimeTest {
 
   HiddenApiAccessFlags::ApiList GetIMethodHiddenFlags(const DexFile& dex_file) {
     return GetMethodHiddenFlags(
-        "imethod", 0, /* native */ false, FindClass("LMain;", dex_file), dex_file);
+        "imethod", 0, /* expected_native= */ false, FindClass("LMain;", dex_file), dex_file);
   }
 
   HiddenApiAccessFlags::ApiList GetSMethodHiddenFlags(const DexFile& dex_file) {
-    return GetMethodHiddenFlags(
-        "smethod", kAccPublic, /* native */ false, FindClass("LMain;", dex_file), dex_file);
+    return GetMethodHiddenFlags("smethod",
+                                kAccPublic,
+                                /* expected_native= */ false,
+                                FindClass("LMain;", dex_file),
+                                dex_file);
   }
 
   HiddenApiAccessFlags::ApiList GetINMethodHiddenFlags(const DexFile& dex_file) {
-    return GetMethodHiddenFlags(
-        "inmethod", kAccPublic, /* native */ true, FindClass("LMain;", dex_file), dex_file);
+    return GetMethodHiddenFlags("inmethod",
+                                kAccPublic,
+                                /* expected_native= */ true,
+                                FindClass("LMain;", dex_file),
+                                dex_file);
   }
 
   HiddenApiAccessFlags::ApiList GetSNMethodHiddenFlags(const DexFile& dex_file) {
-    return GetMethodHiddenFlags(
-        "snmethod", kAccProtected, /* native */ true, FindClass("LMain;", dex_file), dex_file);
+    return GetMethodHiddenFlags("snmethod",
+                                kAccProtected,
+                                /* expected_native= */ true,
+                                FindClass("LMain;", dex_file),
+                                dex_file);
   }
 };
 

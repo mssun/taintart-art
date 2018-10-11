@@ -318,7 +318,7 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
     case Instruction::INVOKE_STATIC:
     case Instruction::INVOKE_SUPER:
     case Instruction::INVOKE_VIRTUAL: {
-      last_result_ = AnalyzeInvoke(instruction, /* is_range */ false);
+      last_result_ = AnalyzeInvoke(instruction, /* is_range= */ false);
       break;
     }
 
@@ -327,7 +327,7 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
     case Instruction::INVOKE_STATIC_RANGE:
     case Instruction::INVOKE_SUPER_RANGE:
     case Instruction::INVOKE_VIRTUAL_RANGE: {
-      last_result_ = AnalyzeInvoke(instruction, /* is_range */ true);
+      last_result_ = AnalyzeInvoke(instruction, /* is_range= */ true);
       break;
     }
 
@@ -702,14 +702,14 @@ RegisterValue FlowAnalysisCollector::AnalyzeInvoke(const Instruction& instructio
     // second parameter for the field name.
     RegisterValue cls = GetRegister(GetParameterAt(instruction, is_range, args, 0));
     RegisterValue name = GetRegister(GetParameterAt(instruction, is_range, args, 1));
-    uses_.push_back(ReflectAccessInfo(cls, name, /* is_method */ false));
+    uses_.push_back(ReflectAccessInfo(cls, name, /* is_method= */ false));
     return GetReturnType(id);
   } else if (IsGetMethod(method)) {
     // Class.getMethod or Class.getDeclaredMethod. Fetch the first parameter for the class, and the
     // second parameter for the field name.
     RegisterValue cls = GetRegister(GetParameterAt(instruction, is_range, args, 0));
     RegisterValue name = GetRegister(GetParameterAt(instruction, is_range, args, 1));
-    uses_.push_back(ReflectAccessInfo(cls, name, /* is_method */ true));
+    uses_.push_back(ReflectAccessInfo(cls, name, /* is_method= */ true));
     return GetReturnType(id);
   } else if (method == VeriClass::getClass_) {
     // Get the type of the first parameter.

@@ -1914,10 +1914,10 @@ bool DexLayout::ProcessDexFile(const char* file_name,
               data_section->Begin(),
               data_section->Size(),
               location,
-              /* checksum */ 0,
-              /*oat_dex_file*/ nullptr,
+              /* location_checksum= */ 0,
+              /*oat_dex_file=*/ nullptr,
               verify,
-              /*verify_checksum*/ false,
+              /*verify_checksum=*/ false,
               error_msg));
       CHECK(output_dex_file != nullptr) << "Failed to re-open output file:" << *error_msg;
 
@@ -1928,11 +1928,11 @@ bool DexLayout::ProcessDexFile(const char* file_name,
       // Regenerate output IR to catch any bugs that might happen during writing.
       std::unique_ptr<dex_ir::Header> output_header(
           dex_ir::DexIrBuilder(*output_dex_file,
-                               /*eagerly_assign_offsets*/ true,
+                               /*eagerly_assign_offsets=*/ true,
                                GetOptions()));
       std::unique_ptr<dex_ir::Header> orig_header(
           dex_ir::DexIrBuilder(*dex_file,
-                               /*eagerly_assign_offsets*/ true,
+                               /*eagerly_assign_offsets=*/ true,
                                GetOptions()));
       CHECK(VerifyOutputDexFile(output_header.get(), orig_header.get(), error_msg)) << *error_msg;
     }
@@ -1955,7 +1955,7 @@ int DexLayout::ProcessFile(const char* file_name) {
   const ArtDexFileLoader dex_file_loader;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
   if (!dex_file_loader.Open(
-        file_name, file_name, /* verify */ true, verify_checksum, &error_msg, &dex_files)) {
+        file_name, file_name, /* verify= */ true, verify_checksum, &error_msg, &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
     LOG(ERROR) << error_msg;
@@ -1972,7 +1972,7 @@ int DexLayout::ProcessFile(const char* file_name) {
       if (!ProcessDexFile(file_name,
                           dex_files[i].get(),
                           i,
-                          /*dex_container*/ nullptr,
+                          /*dex_container=*/ nullptr,
                           &error_msg)) {
         LOG(WARNING) << "Failed to run dex file " << i << " in " << file_name << " : " << error_msg;
       }

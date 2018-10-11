@@ -93,8 +93,8 @@ TEST_F(OatDumpTest, TestExportDex) {
   ASSERT_TRUE(Exec(kDynamic, kModeOat, {"--export-dex-to=" + tmp_dir_}, kListOnly));
   const std::string dex_location = tmp_dir_+ "/core-oj-hostdex.jar_export.dex";
   const std::string dexdump2 = GetExecutableFilePath("dexdump2",
-                                                     /*is_debug*/false,
-                                                     /*is_static*/false);
+                                                     /*is_debug=*/false,
+                                                     /*is_static=*/false);
   std::string output;
   auto post_fork_fn = []() { return true; };
   ForkAndExecResult res = ForkAndExec({dexdump2, "-d", dex_location}, post_fork_fn, &output);

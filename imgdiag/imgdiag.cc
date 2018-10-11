@@ -1007,7 +1007,7 @@ class RegionData : public RegionSpecializedBase<T> {
                      begin_image_ptr,
                      RegionCommon<T>::remote_contents_,
                      base_ptr,
-                     /*log_dirty_objects*/true);
+                     /*log_dirty_objects=*/true);
     // Print shared dirty after since it's less important.
     if (RegionCommon<T>::GetZygoteDirtyEntryCount() != 0) {
       // We only reach this point if both pids were specified.  Furthermore,
@@ -1019,7 +1019,7 @@ class RegionData : public RegionSpecializedBase<T> {
                        begin_image_ptr,
                        RegionCommon<T>::zygote_contents_,
                        begin_image_ptr,
-                       /*log_dirty_objects*/false);
+                       /*log_dirty_objects=*/false);
     }
     RegionSpecializedBase<T>::DumpDirtyObjects();
     RegionSpecializedBase<T>::DumpDirtyEntries();
