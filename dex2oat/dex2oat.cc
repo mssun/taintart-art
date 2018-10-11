@@ -416,8 +416,7 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --app-image-file=<file-name>: specify a file name for app image.");
   UsageError("      Example: --app-image-file=/data/dalvik-cache/system@app@Calculator.apk.art");
   UsageError("");
-  UsageError("  --multi-image: specify that separate oat and image files be generated for each "
-             "input dex file.");
+  UsageError("  --multi-image: obsolete, ignored");
   UsageError("");
   UsageError("  --force-determinism: force the compiler to emit a deterministic output.");
   UsageError("");
@@ -634,7 +633,6 @@ class Dex2Oat final {
       image_storage_mode_(ImageHeader::kStorageModeUncompressed),
       passes_to_run_filename_(nullptr),
       dirty_image_objects_filename_(nullptr),
-      multi_image_(false),
       is_host_(false),
       elf_writers_(),
       oat_writers_(),
@@ -914,20 +912,6 @@ class Dex2Oat final {
         break;
     }
 
-    if (!IsBootImage() && multi_image_) {
-      Usage("--multi-image can only be used when creating boot images");
-    }
-    if (IsBootImage() && multi_image_ && image_filenames_.size() > 1) {
-      Usage("--multi-image cannot be used with multiple image names");
-    }
-
-    // For now, if we're on the host and compile the boot image, *always* use multiple image files.
-    if (!kIsTargetBuild && IsBootImage()) {
-      if (image_filenames_.size() == 1) {
-        multi_image_ = true;
-      }
-    }
-
     // Done with usage checks, enable watchdog if requested
     if (parser_options->watch_dog_enabled) {
       int64_t timeout = parser_options->watch_dog_timeout_in_ms > 0
@@ -973,7 +957,7 @@ class Dex2Oat final {
     std::string base_oat = oat_filenames_[0];
     size_t last_oat_slash = base_oat.rfind('/');
     if (last_oat_slash == std::string::npos) {
-      Usage("--multi-image used with unusable oat filename %s", base_oat.c_str());
+      Usage("Unusable boot image oat filename %s", base_oat.c_str());
     }
     // We also need to honor path components that were encoded through '@'. Otherwise the loading
     // code won't be able to find the images.
@@ -985,7 +969,7 @@ class Dex2Oat final {
     std::string base_img = image_filenames_[0];
     size_t last_img_slash = base_img.rfind('/');
     if (last_img_slash == std::string::npos) {
-      Usage("--multi-image used with unusable image filename %s", base_img.c_str());
+      Usage("Unusable boot image filename %s", base_img.c_str());
     }
     // We also need to honor path components that were encoded through '@'. Otherwise the loading
     // code won't be able to find the images.
@@ -1010,7 +994,7 @@ class Dex2Oat final {
       base_symbol_oat = oat_unstripped_[0];
       size_t last_symbol_oat_slash = base_symbol_oat.rfind('/');
       if (last_symbol_oat_slash == std::string::npos) {
-        Usage("--multi-image used with unusable symbol filename %s", base_symbol_oat.c_str());
+        Usage("Unusable boot image symbol filename %s", base_symbol_oat.c_str());
       }
       base_symbol_oat = base_symbol_oat.substr(0, last_symbol_oat_slash + 1);
     }
@@ -1194,7 +1178,6 @@ class Dex2Oat final {
 
     AssignTrueIfExists(args, M::Host, &is_host_);
     AssignTrueIfExists(args, M::AvoidStoringInvocation, &avoid_storing_invocation_);
-    AssignTrueIfExists(args, M::MultiImage, &multi_image_);
     AssignIfExists(args, M::CopyDexFiles, &copy_dex_files_);
 
     if (args.Exists(M::ForceDeterminism)) {
@@ -1258,7 +1241,7 @@ class Dex2Oat final {
     PruneNonExistentDexFiles();
 
     // Expand oat and image filenames for multi image.
-    if (IsBootImage() && multi_image_) {
+    if (IsBootImage() && image_filenames_.size() == 1) {
       ExpandOatAndImageFilenames();
     }
 
@@ -2780,7 +2763,6 @@ class Dex2Oat final {
   const char* dirty_image_objects_filename_;
   std::unique_ptr<HashSet<std::string>> dirty_image_objects_;
   std::unique_ptr<std::vector<std::string>> passes_to_run_;
-  bool multi_image_;
   bool is_host_;
   std::string android_root_;
   std::string no_inline_from_string_;

@@ -39,7 +39,6 @@ endif
 # Use dex2oat debug version for better error reporting
 # $(1): compiler - optimizing, interpreter or interp-ac (interpreter-access-checks).
 # $(2): 2ND_ or undefined, 2ND_ for 32-bit host builds.
-# $(3): multi-image.
 # NB depending on HOST_CORE_DEX_LOCATIONS so we are sure to have the dex files in frameworks for
 # run-test --no-image
 define create-core-oat-host-rules
@@ -66,25 +65,14 @@ define create-core-oat-host-rules
     $$(error found $(1) expected interpreter, interp-ac, or optimizing)
   endif
 
-  # If $(3) is true, generate a multi-image.
-  ifeq ($(3),true)
-    core_multi_infix := -multi
-    core_multi_param := --multi-image --no-inline-from=core-oj-hostdex.jar
-    core_multi_group := _multi
-  else
-    core_multi_infix :=
-    core_multi_param :=
-    core_multi_group :=
-  endif
-
-  core_image_name := $($(2)HOST_CORE_IMG_OUT_BASE)$$(core_infix)$$(core_multi_infix)$(CORE_IMG_SUFFIX)
-  core_oat_name := $($(2)HOST_CORE_OAT_OUT_BASE)$$(core_infix)$$(core_multi_infix)$(CORE_OAT_SUFFIX)
+  core_image_name := $($(2)HOST_CORE_IMG_OUT_BASE)$$(core_infix)$(CORE_IMG_SUFFIX)
+  core_oat_name := $($(2)HOST_CORE_OAT_OUT_BASE)$$(core_infix)$(CORE_OAT_SUFFIX)
 
   # Using the bitness suffix makes it easier to add as a dependency for the run-test mk.
   ifeq ($(2),)
-    HOST_CORE_IMAGE_$(1)$$(core_multi_group)_64 := $$(core_image_name)
+    HOST_CORE_IMAGE_$(1)_64 := $$(core_image_name)
   else
-    HOST_CORE_IMAGE_$(1)$$(core_multi_group)_32 := $$(core_image_name)
+    HOST_CORE_IMAGE_$(1)_32 := $$(core_image_name)
   endif
   HOST_CORE_IMG_OUTS += $$(core_image_name)
   HOST_CORE_OAT_OUTS += $$(core_oat_name)
@@ -92,7 +80,6 @@ define create-core-oat-host-rules
 $$(core_image_name): PRIVATE_CORE_COMPILE_OPTIONS := $$(core_compile_options)
 $$(core_image_name): PRIVATE_CORE_IMG_NAME := $$(core_image_name)
 $$(core_image_name): PRIVATE_CORE_OAT_NAME := $$(core_oat_name)
-$$(core_image_name): PRIVATE_CORE_MULTI_PARAM := $$(core_multi_param)
 $$(core_image_name): $$(HOST_CORE_DEX_LOCATIONS) $$(core_dex2oat_dependency)
 	@echo "host dex2oat: $$@"
 	@mkdir -p $$(dir $$@)
@@ -106,7 +93,8 @@ $$(core_image_name): $$(HOST_CORE_DEX_LOCATIONS) $$(core_dex2oat_dependency)
 	  --host --android-root=$$(HOST_OUT) \
 	  --generate-debug-info --generate-build-id \
 	  --runtime-arg -XX:SlowDebug=true \
-	  $$(PRIVATE_CORE_MULTI_PARAM) $$(PRIVATE_CORE_COMPILE_OPTIONS)
+	  --no-inline-from=core-oj-hostdex.jar \
+	  $$(PRIVATE_CORE_COMPILE_OPTIONS)
 
 $$(core_oat_name): $$(core_image_name)
 
@@ -119,21 +107,17 @@ $$(core_oat_name): $$(core_image_name)
 endef  # create-core-oat-host-rules
 
 # $(1): compiler - optimizing, interpreter or interp-ac (interpreter-access-checks).
-# $(2): multi-image.
 define create-core-oat-host-rule-combination
-  $(call create-core-oat-host-rules,$(1),,$(2))
+  $(call create-core-oat-host-rules,$(1),)
 
   ifneq ($(HOST_PREFER_32_BIT),true)
-    $(call create-core-oat-host-rules,$(1),2ND_,$(2))
+    $(call create-core-oat-host-rules,$(1),2ND_)
   endif
 endef
 
-$(eval $(call create-core-oat-host-rule-combination,optimizing,false))
-$(eval $(call create-core-oat-host-rule-combination,interpreter,false))
-$(eval $(call create-core-oat-host-rule-combination,interp-ac,false))
-$(eval $(call create-core-oat-host-rule-combination,optimizing,true))
-$(eval $(call create-core-oat-host-rule-combination,interpreter,true))
-$(eval $(call create-core-oat-host-rule-combination,interp-ac,true))
+$(eval $(call create-core-oat-host-rule-combination,optimizing))
+$(eval $(call create-core-oat-host-rule-combination,interpreter))
+$(eval $(call create-core-oat-host-rule-combination,interp-ac))
 
 .PHONY: test-art-host-dex2oat-host
 test-art-host-dex2oat-host: $(HOST_CORE_IMG_OUTS)

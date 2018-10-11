@@ -156,7 +156,6 @@ strace="false"
 always_clean="no"
 never_clean="no"
 have_image="yes"
-multi_image_suffix=""
 android_root="/system"
 bisection_search="no"
 suspend_timeout="500000"
@@ -200,9 +199,6 @@ while true; do
         shift
     elif [ "x$1" = "x--no-image" ]; then
         have_image="no"
-        shift
-    elif [ "x$1" = "x--multi-image" ]; then
-        multi_image_suffix="-multi"
         shift
     elif [ "x$1" = "x--relocate" ]; then
         relocate="yes"
@@ -587,12 +583,12 @@ if [ "$runtime" = "dalvik" ]; then
 elif [ "$runtime" = "art" ]; then
     if [ "$target_mode" = "no" ]; then
         guess_host_arch_name
-        run_args="${run_args} --boot ${ANDROID_HOST_OUT}/framework/core${image_suffix}${multi_image_suffix}.art"
+        run_args="${run_args} --boot ${ANDROID_HOST_OUT}/framework/core${image_suffix}.art"
         run_args="${run_args} --runtime-option -Djava.library.path=${ANDROID_HOST_OUT}/lib${suffix64}:${ANDROID_HOST_OUT}/nativetest${suffix64}"
     else
         guess_target_arch_name
         run_args="${run_args} --runtime-option -Djava.library.path=/data/nativetest${suffix64}/art/${target_arch_name}"
-        run_args="${run_args} --boot /data/art-test/core${image_suffix}${multi_image_suffix}.art"
+        run_args="${run_args} --boot /data/art-test/core${image_suffix}.art"
     fi
     if [ "$relocate" = "yes" ]; then
       run_args="${run_args} --relocate"
@@ -731,8 +727,6 @@ if [ "$usage" = "yes" ]; then
         echo "    --dex2oat-swap        Use a dex2oat swap file."
         echo "    --instruction-set-features [string]"
         echo "                          Set instruction-set-features for compilation."
-        echo "    --multi-image         Use a set of images compiled with dex2oat multi-image for"
-        echo "                          the boot class path."
         echo "    --quiet               Don't print anything except failure messages"
         echo "    --bisection-search    Perform bisection bug search."
         echo "    --vdex                Test using vdex as in input to dex2oat. Only works with --prebuild."
