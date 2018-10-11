@@ -278,7 +278,7 @@ class ClassPath final {
 
     if (open_writable) {
       for (const std::string& filename : dex_paths) {
-        File fd(filename.c_str(), O_RDWR, /* check_usage */ false);
+        File fd(filename.c_str(), O_RDWR, /* check_usage= */ false);
         CHECK_NE(fd.Fd(), -1) << "Unable to open file '" << filename << "': " << strerror(errno);
 
         // Memory-map the dex file with MAP_SHARED flag so that changes in memory
@@ -288,10 +288,10 @@ class ClassPath final {
         // We do those checks here and skip them when loading the processed file
         // into boot class path.
         std::unique_ptr<const DexFile> dex_file(dex_loader.OpenDex(fd.Release(),
-                                                                   /* location */ filename,
-                                                                   /* verify */ true,
-                                                                   /* verify_checksum */ true,
-                                                                   /* mmap_shared */ true,
+                                                                   /* location= */ filename,
+                                                                   /* verify= */ true,
+                                                                   /* verify_checksum= */ true,
+                                                                   /* mmap_shared= */ true,
                                                                    &error_msg));
         CHECK(dex_file.get() != nullptr) << "Open failed for '" << filename << "' " << error_msg;
         CHECK(dex_file->IsStandardDexFile()) << "Expected a standard dex file '" << filename << "'";
@@ -302,9 +302,9 @@ class ClassPath final {
     } else {
       for (const std::string& filename : dex_paths) {
         bool success = dex_loader.Open(filename.c_str(),
-                                       /* location */ filename,
-                                       /* verify */ true,
-                                       /* verify_checksum */ true,
+                                       /* location= */ filename,
+                                       /* verify= */ true,
+                                       /* verify_checksum= */ true,
                                        &error_msg,
                                        &dex_files_);
         CHECK(success) << "Open failed for '" << filename << "' " << error_msg;
@@ -640,7 +640,7 @@ class HiddenApi final {
     OpenApiFile(blacklist_path_, api_list, HiddenApiAccessFlags::kBlacklist);
 
     // Open all dex files.
-    ClassPath boot_classpath(boot_dex_paths_, /* open_writable */ true);
+    ClassPath boot_classpath(boot_dex_paths_, /* open_writable= */ true);
 
     // Set access flags of all members.
     boot_classpath.ForEachDexMember([&api_list](const DexMember& boot_member) {
@@ -688,7 +688,7 @@ class HiddenApi final {
     std::set<std::string> unresolved;
 
     // Open all dex files.
-    ClassPath boot_classpath(boot_dex_paths_, /* open_writable */ false);
+    ClassPath boot_classpath(boot_dex_paths_, /* open_writable= */ false);
     Hierarchy boot_hierarchy(boot_classpath);
 
     // Mark all boot dex members private.
@@ -698,7 +698,7 @@ class HiddenApi final {
 
     // Resolve each SDK dex member against the framework and mark it white.
     for (const std::vector<std::string>& stub_classpath_dex : stub_classpaths_) {
-      ClassPath stub_classpath(stub_classpath_dex, /* open_writable */ false);
+      ClassPath stub_classpath(stub_classpath_dex, /* open_writable= */ false);
       Hierarchy stub_hierarchy(stub_classpath);
       stub_classpath.ForEachDexMember(
           [&stub_hierarchy, &boot_hierarchy, &boot_members, &unresolved](

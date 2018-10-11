@@ -37,23 +37,23 @@ class DexAnalyzeTest : public CommonRuntimeTest {
 };
 
 TEST_F(DexAnalyzeTest, NoInputFileGiven) {
-  DexAnalyzeExec({ "-a" }, /*expect_success*/ false);
+  DexAnalyzeExec({ "-a" }, /*expect_success=*/ false);
 }
 
 TEST_F(DexAnalyzeTest, CantOpenInput) {
-  DexAnalyzeExec({ "-a", "/non/existent/path" }, /*expect_success*/ false);
+  DexAnalyzeExec({ "-a", "/non/existent/path" }, /*expect_success=*/ false);
 }
 
 TEST_F(DexAnalyzeTest, TestAnalyzeMultidex) {
-  DexAnalyzeExec({ "-a", GetTestDexFileName("MultiDex") }, /*expect_success*/ true);
+  DexAnalyzeExec({ "-a", GetTestDexFileName("MultiDex") }, /*expect_success=*/ true);
 }
 
 TEST_F(DexAnalyzeTest, TestAnalizeCoreDex) {
-  DexAnalyzeExec({ "-a", GetLibCoreDexFileNames()[0] }, /*expect_success*/ true);
+  DexAnalyzeExec({ "-a", GetLibCoreDexFileNames()[0] }, /*expect_success=*/ true);
 }
 
 TEST_F(DexAnalyzeTest, TestInvalidArg) {
-  DexAnalyzeExec({ "-invalid-option" }, /*expect_success*/ false);
+  DexAnalyzeExec({ "-invalid-option" }, /*expect_success=*/ false);
 }
 
 }  // namespace art

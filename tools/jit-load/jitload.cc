@@ -90,7 +90,7 @@ JNICALL void VMDeathCb(jvmtiEnv* jvmti, JNIEnv* env ATTRIBUTE_UNUSED) {
 }
 
 static jvmtiEnv* SetupJvmti(JavaVM* vm, const char* options) {
-  android::base::InitLogging(/* argv */nullptr);
+  android::base::InitLogging(/* argv= */nullptr);
 
   jvmtiEnv* jvmti = nullptr;
   if (vm->GetEnv(reinterpret_cast<void**>(&jvmti), JVMTI_VERSION_1_0) != JNI_OK &&

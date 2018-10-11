@@ -37,13 +37,13 @@ class FdFile : public RandomAccessFile {
   FdFile() = default;
   // Creates an FdFile using the given file descriptor.
   // Takes ownership of the file descriptor.
-  FdFile(int fd, bool checkUsage);
-  FdFile(int fd, const std::string& path, bool checkUsage);
-  FdFile(int fd, const std::string& path, bool checkUsage, bool read_only_mode);
+  FdFile(int fd, bool check_usage);
+  FdFile(int fd, const std::string& path, bool check_usage);
+  FdFile(int fd, const std::string& path, bool check_usage, bool read_only_mode);
 
-  FdFile(const std::string& path, int flags, bool checkUsage)
-      : FdFile(path, flags, 0640, checkUsage) {}
-  FdFile(const std::string& path, int flags, mode_t mode, bool checkUsage);
+  FdFile(const std::string& path, int flags, bool check_usage)
+      : FdFile(path, flags, 0640, check_usage) {}
+  FdFile(const std::string& path, int flags, mode_t mode, bool check_usage);
 
   // Move constructor.
   FdFile(FdFile&& other) noexcept;

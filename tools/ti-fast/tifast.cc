@@ -528,7 +528,7 @@ void LogPrinter::PrintRest(jvmtiEnv* jvmti, JNIEnv* jni, jthreadContainer thr, A
 template<typename ...Args>
 void LogPrinter::PrintRest(jvmtiEnv* jvmti, JNIEnv* jni, jclass klass, Args... args) {
   ScopedClassInfo sci(jvmti, klass);
-  if (sci.Init(/*get_generic*/event_ != JVMTI_EVENT_VM_OBJECT_ALLOC)) {
+  if (sci.Init(/*get_generic=*/event_ != JVMTI_EVENT_VM_OBJECT_ALLOC)) {
     stream << ", jclass[" << sci << "]";
   } else {
     stream << ", jclass[TYPE UNKNOWN]";

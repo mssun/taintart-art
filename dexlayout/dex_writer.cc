@@ -790,16 +790,16 @@ bool DexWriter::Write(DexContainer* output, std::string* error_msg) {
   // Based on: https://source.android.com/devices/tech/dalvik/dex-format
   // Since the offsets may not be calculated already, the writing must be done in the correct order.
   const uint32_t string_ids_offset = stream->Tell();
-  WriteStringIds(stream, /*reserve_only*/ true);
+  WriteStringIds(stream, /*reserve_only=*/ true);
   WriteTypeIds(stream);
   const uint32_t proto_ids_offset = stream->Tell();
-  WriteProtoIds(stream, /*reserve_only*/ true);
+  WriteProtoIds(stream, /*reserve_only=*/ true);
   WriteFieldIds(stream);
   WriteMethodIds(stream);
   const uint32_t class_defs_offset = stream->Tell();
-  WriteClassDefs(stream, /*reserve_only*/ true);
+  WriteClassDefs(stream, /*reserve_only=*/ true);
   const uint32_t call_site_ids_offset = stream->Tell();
-  WriteCallSiteIds(stream, /*reserve_only*/ true);
+  WriteCallSiteIds(stream, /*reserve_only=*/ true);
   WriteMethodHandles(stream);
 
   uint32_t data_offset_ = 0u;
@@ -812,13 +812,13 @@ bool DexWriter::Write(DexContainer* output, std::string* error_msg) {
   // Write code item first to minimize the space required for encoded methods.
   // Reserve code item space since we need the debug offsets to actually write them.
   const uint32_t code_items_offset = stream->Tell();
-  WriteCodeItems(stream, /*reserve_only*/ true);
+  WriteCodeItems(stream, /*reserve_only=*/ true);
   // Write debug info section.
   WriteDebugInfoItems(stream);
   {
     // Actually write code items since debug info offsets are calculated now.
     Stream::ScopedSeek seek(stream, code_items_offset);
-    WriteCodeItems(stream, /*reserve_only*/ false);
+    WriteCodeItems(stream, /*reserve_only=*/ false);
   }
 
   WriteEncodedArrays(stream);
@@ -833,19 +833,19 @@ bool DexWriter::Write(DexContainer* output, std::string* error_msg) {
   // Write delayed id sections that depend on data sections.
   {
     Stream::ScopedSeek seek(stream, string_ids_offset);
-    WriteStringIds(stream, /*reserve_only*/ false);
+    WriteStringIds(stream, /*reserve_only=*/ false);
   }
   {
     Stream::ScopedSeek seek(stream, proto_ids_offset);
-    WriteProtoIds(stream, /*reserve_only*/ false);
+    WriteProtoIds(stream, /*reserve_only=*/ false);
   }
   {
     Stream::ScopedSeek seek(stream, class_defs_offset);
-    WriteClassDefs(stream, /*reserve_only*/ false);
+    WriteClassDefs(stream, /*reserve_only=*/ false);
   }
   {
     Stream::ScopedSeek seek(stream, call_site_ids_offset);
-    WriteCallSiteIds(stream, /*reserve_only*/ false);
+    WriteCallSiteIds(stream, /*reserve_only=*/ false);
   }
 
   // Write the map list.

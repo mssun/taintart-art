@@ -294,7 +294,7 @@ static void ProcessOneDexMapping(uint64_t* pagemap,
   {
     Options options;
     std::unique_ptr<dex_ir::Header> header(dex_ir::DexIrBuilder(*dex_file,
-                                                                /*eagerly_assign_offsets*/ true,
+                                                                /*eagerly_assign_offsets=*/ true,
                                                                 options));
     sections = dex_ir::GetSortedDexFileSections(header.get(),
                                                 dex_ir::SortDirection::kSortDescending);
@@ -321,9 +321,9 @@ static bool DisplayMappingIfFromVdexFile(pm_map_t* map, Printer* printer) {
   // Extract all the dex files from the vdex file.
   std::string error_msg;
   std::unique_ptr<VdexFile> vdex(VdexFile::Open(vdex_name,
-                                                false /*writeable*/,
-                                                false /*low_4gb*/,
-                                                false /*unquicken */,
+                                                /*writable=*/ false,
+                                                /*low_4gb=*/ false,
+                                                /*unquicken= */ false,
                                                 &error_msg /*out*/));
   if (vdex == nullptr) {
     std::cerr << "Could not open vdex file "
