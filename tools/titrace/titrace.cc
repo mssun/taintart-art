@@ -237,7 +237,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM* jvm,
                                     void* /* reserved */) {
   using namespace titrace;  // NOLINT [build/namespaces] [5]
 
-  android::base::InitLogging(/* argv */nullptr);
+  android::base::InitLogging(/* argv= */nullptr);
 
   jvmtiEnv* jvmti = nullptr;
   {

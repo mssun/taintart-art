@@ -174,7 +174,8 @@ struct ReflectAccessInfo {
   RegisterValue name;
   bool is_method;
 
-  ReflectAccessInfo(RegisterValue c, RegisterValue n, bool m) : cls(c), name(n), is_method(m) {}
+  ReflectAccessInfo(RegisterValue c, RegisterValue n, bool is_method)
+      : cls(c), name(n), is_method(is_method) {}
 
   bool IsConcrete() const {
     // We capture RegisterSource::kString for the class, for example in Class.forName.

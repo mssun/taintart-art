@@ -31,8 +31,8 @@ class DexFile;
 // A type is located by its DexFile and the string_ids_ table index into that DexFile.
 class TypeReference : public DexFileReference {
  public:
-  TypeReference(const DexFile* file, dex::TypeIndex index)
-      : DexFileReference(file, index.index_) {}
+  TypeReference(const DexFile* dex_file, dex::TypeIndex index)
+      : DexFileReference(dex_file, index.index_) {}
 
   dex::TypeIndex TypeIndex() const {
     return dex::TypeIndex(index);

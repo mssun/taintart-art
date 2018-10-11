@@ -118,7 +118,7 @@ void NewRegisterInstructions::ProcessDexFiles(
         ProcessCodeItem(*dex_file,
                         method.GetInstructionsAndData(),
                         accessor.GetClassIdx(),
-                        /*count_types*/ true,
+                        /*count_types=*/ true,
                         types);
       }
     }
@@ -143,7 +143,7 @@ void NewRegisterInstructions::ProcessDexFiles(
         ProcessCodeItem(*dex_file,
                         data,
                         accessor.GetClassIdx(),
-                        /*count_types*/ false,
+                        /*count_types=*/ false,
                         types);
         std::vector<uint8_t> buffer = std::move(buffer_);
         buffer_.clear();

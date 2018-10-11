@@ -37,7 +37,7 @@ ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfilesInternal(
 
   ProfileCompilationInfo info;
   // Load the reference profile.
-  if (!info.Load(reference_profile_file->Fd(), /*merge_classes*/ true, filter_fn)) {
+  if (!info.Load(reference_profile_file->Fd(), /*merge_classes=*/ true, filter_fn)) {
     LOG(WARNING) << "Could not load reference profile file";
     return kErrorBadProfiles;
   }
@@ -49,7 +49,7 @@ ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfilesInternal(
   // Merge all current profiles.
   for (size_t i = 0; i < profile_files.size(); i++) {
     ProfileCompilationInfo cur_info;
-    if (!cur_info.Load(profile_files[i]->Fd(), /*merge_classes*/ true, filter_fn)) {
+    if (!cur_info.Load(profile_files[i]->Fd(), /*merge_classes=*/ true, filter_fn)) {
       LOG(WARNING) << "Could not load profile file at index " << i;
       return kErrorBadProfiles;
     }
@@ -92,7 +92,7 @@ class ScopedFlockList {
   // Will block until all the locks are acquired.
   bool Init(const std::vector<std::string>& filenames, /* out */ std::string* error) {
     for (size_t i = 0; i < filenames.size(); i++) {
-      flocks_[i] = LockedFile::Open(filenames[i].c_str(), O_RDWR, /* block */ true, error);
+      flocks_[i] = LockedFile::Open(filenames[i].c_str(), O_RDWR, /* block= */ true, error);
       if (flocks_[i].get() == nullptr) {
         *error += " (index=" + std::to_string(i) + ")";
         return false;
@@ -106,7 +106,7 @@ class ScopedFlockList {
     for (size_t i = 0; i < fds.size(); i++) {
       DCHECK_GE(fds[i], 0);
       flocks_[i] = LockedFile::DupOf(fds[i], "profile-file",
-                                     true /* read_only_mode */, error);
+                                     /* read_only_mode= */ true, error);
       if (flocks_[i].get() == nullptr) {
         *error += " (index=" + std::to_string(i) + ")";
         return false;
@@ -138,7 +138,7 @@ ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfiles(
   // cleared after processing.
   ScopedFlock reference_profile_file = LockedFile::DupOf(reference_profile_file_fd,
                                                          "reference-profile",
-                                                         false /* read_only_mode */,
+                                                         /* read_only_mode= */ false,
                                                          &error);
   if (reference_profile_file.get() == nullptr) {
     LOG(WARNING) << "Could not lock reference profiled files: " << error;
@@ -163,7 +163,7 @@ ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfiles(
   }
 
   ScopedFlock locked_reference_profile_file = LockedFile::Open(
-      reference_profile_file.c_str(), O_RDWR, /* block */ true, &error);
+      reference_profile_file.c_str(), O_RDWR, /* block= */ true, &error);
   if (locked_reference_profile_file.get() == nullptr) {
     LOG(WARNING) << "Could not lock reference profile files: " << error;
     return kErrorCannotLock;

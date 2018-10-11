@@ -73,7 +73,7 @@ class DexoptAnalyzerTest : public DexoptTest {
               bool downgrade = false) {
     int dexoptanalyzerResult = Analyze(dex_file, compiler_filter, assume_profile_changed);
     dexoptanalyzerResult = DexoptanalyzerToOatFileAssistant(dexoptanalyzerResult);
-    OatFileAssistant oat_file_assistant(dex_file.c_str(), kRuntimeISA, /*load_executable*/ false);
+    OatFileAssistant oat_file_assistant(dex_file.c_str(), kRuntimeISA, /*load_executable=*/ false);
     int assistantResult = oat_file_assistant.GetDexOptNeeded(
         compiler_filter, assume_profile_changed, downgrade);
     EXPECT_EQ(assistantResult, dexoptanalyzerResult);
@@ -175,7 +175,7 @@ TEST_F(DexoptAnalyzerTest, OatImageOutOfDate) {
   Copy(GetDexSrc1(), dex_location);
   GenerateOatForTest(dex_location.c_str(),
                      CompilerFilter::kSpeed,
-                     /*with_alternate_image*/true);
+                     /*with_alternate_image=*/true);
 
   Verify(dex_location, CompilerFilter::kExtract);
   Verify(dex_location, CompilerFilter::kQuicken);
@@ -192,7 +192,7 @@ TEST_F(DexoptAnalyzerTest, OatVerifyAtRuntimeImageOutOfDate) {
   Copy(GetDexSrc1(), dex_location);
   GenerateOatForTest(dex_location.c_str(),
                      CompilerFilter::kExtract,
-                     /*with_alternate_image*/true);
+                     /*with_alternate_image=*/true);
 
   Verify(dex_location, CompilerFilter::kExtract);
   Verify(dex_location, CompilerFilter::kQuicken);

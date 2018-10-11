@@ -427,7 +427,7 @@ class ProfMan final {
       if (use_apk_fd_list) {
         if (dex_file_loader.OpenZip(apks_fd_[i],
                                     dex_locations_[i],
-                                    /* verify */ false,
+                                    /* verify= */ false,
                                     kVerifyChecksum,
                                     &error_msg,
                                     &dex_files_for_location)) {
@@ -438,7 +438,7 @@ class ProfMan final {
       } else {
         if (dex_file_loader.Open(apk_files_[i].c_str(),
                                  dex_locations_[i],
-                                 /* verify */ false,
+                                 /* verify= */ false,
                                  kVerifyChecksum,
                                  &error_msg,
                                  &dex_files_for_location)) {
@@ -574,7 +574,7 @@ class ProfMan final {
     if (!FdIsValid(dump_output_to_fd_)) {
       std::cout << dump;
     } else {
-      unix_file::FdFile out_fd(dump_output_to_fd_, false /*check_usage*/);
+      unix_file::FdFile out_fd(dump_output_to_fd_, /*check_usage=*/ false);
       if (!out_fd.WriteFully(dump.c_str(), dump.length())) {
         return -1;
       }
@@ -700,7 +700,7 @@ class ProfMan final {
     if (!FdIsValid(dump_output_to_fd_)) {
       std::cout << dump;
     } else {
-      unix_file::FdFile out_fd(dump_output_to_fd_, false /*check_usage*/);
+      unix_file::FdFile out_fd(dump_output_to_fd_, /*check_usage=*/ false);
       if (!out_fd.WriteFully(dump.c_str(), dump.length())) {
         return -1;
       }
@@ -924,7 +924,7 @@ class ProfMan final {
       flags |= ProfileCompilationInfo::MethodHotness::kFlagPostStartup;
     }
 
-    TypeReference class_ref(/* dex_file */ nullptr, dex::TypeIndex());
+    TypeReference class_ref(/* dex_file= */ nullptr, dex::TypeIndex());
     if (!FindClass(dex_files, klass, &class_ref)) {
       LOG(WARNING) << "Could not find class: " << klass;
       return false;
@@ -993,7 +993,7 @@ class ProfMan final {
         return false;
       }
       std::vector<TypeReference> classes(inline_cache_elems.size(),
-                                         TypeReference(/* dex_file */ nullptr, dex::TypeIndex()));
+                                         TypeReference(/* dex_file= */ nullptr, dex::TypeIndex()));
       size_t class_it = 0;
       for (const std::string& ic_class : inline_cache_elems) {
         if (!FindClass(dex_files, ic_class, &(classes[class_it++]))) {
@@ -1213,7 +1213,7 @@ class ProfMan final {
     // Do not clear if invalid. The input might be an archive.
     bool load_ok = use_fds
         ? profile.Load(profile_files_fd_[0])
-        : profile.Load(profile_files_[0], /*clear_if_invalid*/ false);
+        : profile.Load(profile_files_[0], /*clear_if_invalid=*/ false);
     if (load_ok) {
       // Open the dex files to look up classes and methods.
       std::vector<std::unique_ptr<const DexFile>> dex_files;
@@ -1223,7 +1223,7 @@ class ProfMan final {
       }
       bool result = use_fds
           ? profile.Save(reference_profile_file_fd_)
-          : profile.Save(reference_profile_file_, /*bytes_written*/ nullptr);
+          : profile.Save(reference_profile_file_, /*bytes_written=*/ nullptr);
       return result ? 0 : kErrorFailedToSaveProfile;
     } else {
       return kErrorFailedToLoadProfile;

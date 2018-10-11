@@ -164,8 +164,8 @@ static jobject CreateAdbConnectionThread(art::Thread* thr) {
                         art::WellKnownClasses::java_lang_Thread_init,
                         thr_group.get(),
                         thr_name.get(),
-                        /*Priority*/ 0,
-                        /*Daemon*/ true);
+                        /*Priority=*/ 0,
+                        /*Daemon=*/ true);
 }
 
 struct CallbackData {
@@ -289,7 +289,7 @@ void AdbConnectionState::CloseFds() {
 
   // If the agent isn't loaded we might need to tell ddms code the connection is closed.
   if (!agent_loaded_ && notified_ddm_active_) {
-    NotifyDdms(/*active*/false);
+    NotifyDdms(/*active=*/false);
   }
 }
 
@@ -605,7 +605,7 @@ void AdbConnectionState::RunPollLoop(art::Thread* self) {
         if (memcmp(kListenStartMessage, buf, sizeof(kListenStartMessage)) == 0) {
           agent_listening_ = true;
           if (adb_connection_socket_ != -1) {
-            SendAgentFds(/*require_handshake*/ !performed_handshake_);
+            SendAgentFds(/*require_handshake=*/ !performed_handshake_);
           }
         } else if (memcmp(kListenEndMessage, buf, sizeof(kListenEndMessage)) == 0) {
           agent_listening_ = false;
@@ -647,7 +647,7 @@ void AdbConnectionState::RunPollLoop(art::Thread* self) {
           VLOG(jdwp) << "Sending fds as soon as we received them.";
           // The agent was already loaded so this must be after a disconnection. Therefore have the
           // transport perform the handshake.
-          SendAgentFds(/*require_handshake*/ true);
+          SendAgentFds(/*require_handshake=*/ true);
         }
       } else if (FlagsSet(control_sock_poll.revents, POLLRDHUP)) {
         // The other end of the adb connection just dropped it.
@@ -663,7 +663,7 @@ void AdbConnectionState::RunPollLoop(art::Thread* self) {
         } else if (agent_listening_ && !sent_agent_fds_) {
           VLOG(jdwp) << "Sending agent fds again on data.";
           // Agent was already loaded so it can deal with the handshake.
-          SendAgentFds(/*require_handshake*/ true);
+          SendAgentFds(/*require_handshake=*/ true);
         }
       } else if (FlagsSet(adb_socket_poll.revents, POLLRDHUP)) {
         DCHECK(!agent_has_socket_);
@@ -763,7 +763,7 @@ void AdbConnectionState::HandleDataWithoutAgent(art::Thread* self) {
   }
 
   if (!notified_ddm_active_) {
-    NotifyDdms(/*active*/ true);
+    NotifyDdms(/*active=*/ true);
   }
   uint32_t reply_type;
   std::vector<uint8_t> reply;
@@ -826,9 +826,9 @@ void AdbConnectionState::PerformHandshake() {
 void AdbConnectionState::AttachJdwpAgent(art::Thread* self) {
   art::Runtime* runtime = art::Runtime::Current();
   self->AssertNoPendingException();
-  runtime->AttachAgent(/* JNIEnv */ nullptr,
+  runtime->AttachAgent(/* env= */ nullptr,
                        MakeAgentArg(),
-                       /* classloader */ nullptr);
+                       /* class_loader= */ nullptr);
   if (self->IsExceptionPending()) {
     LOG(ERROR) << "Failed to load agent " << agent_name_;
     art::ScopedObjectAccess soa(self);
