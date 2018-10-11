@@ -75,7 +75,7 @@ elif [[ $mode == "target" ]]; then
   make_command="make $j_arg $extra_args $showcommands build-art-target-tests $common_targets"
   make_command+=" libjavacrypto-target libnetd_client-target linker toybox toolbox sh"
   make_command+=" debuggerd su"
-  make_command+=" ${out_dir}/host/linux-x86/bin/adb libstdc++ "
+  make_command+=" libstdc++ "
   make_command+=" ${ANDROID_PRODUCT_OUT#"${ANDROID_BUILD_TOP}/"}/system/etc/public.libraries.txt"
   if [[ -n "$ART_TEST_CHROOT" ]]; then
     # These targets are needed for the chroot environment.
