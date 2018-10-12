@@ -196,4 +196,24 @@ extern "C" JNIEXPORT void JNICALL Java_Main_assertCallerIsManaged(JNIEnv* env, j
   }
 }
 
+struct GetCallingFrameVisitor : public StackVisitor {
+  GetCallingFrameVisitor(Thread* thread, Context* context)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      : StackVisitor(thread, context, StackVisitor::StackWalkKind::kIncludeInlinedFrames) {}
+
+  bool VisitFrame() override NO_THREAD_SAFETY_ANALYSIS {
+    // Discard stubs and Main.getThisOfCaller.
+    return GetMethod() == nullptr || GetMethod()->IsNative();
+  }
+};
+
+extern "C" JNIEXPORT jobject JNICALL Java_Main_getThisOfCaller(
+    JNIEnv* env, jclass cls ATTRIBUTE_UNUSED) {
+  ScopedObjectAccess soa(env);
+  std::unique_ptr<art::Context> context(art::Context::Create());
+  GetCallingFrameVisitor visitor(soa.Self(), context.get());
+  visitor.WalkStack();
+  return soa.AddLocalReference<jobject>(visitor.GetThisObject());
+}
+
 }  // namespace art
