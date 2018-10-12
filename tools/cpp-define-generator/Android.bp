@@ -41,7 +41,7 @@ cc_genrule {
     host_supported: true,
     device_supported: true,
     srcs: [":asm_defines.s"],
-    out: ["asm_support_gen.h"],
+    out: ["asm_defines.h"],
     tool_files: ["make_header.py"],
     cmd: "$(location make_header.py) \"$(in)\" > \"$(out)\"",
 }

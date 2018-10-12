@@ -1,0 +1,64 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#if ASM_DEFINE_INCLUDE_DEPENDENCIES
+#include "thread.h"
+#endif
+
+ASM_DEFINE(THREAD_ALT_IBASE_OFFSET,
+           art::Thread::MterpAltIBaseOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_CARD_TABLE_OFFSET,
+           art::Thread::CardTableOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_CHECKPOINT_REQUEST,
+           art::kCheckpointRequest)
+ASM_DEFINE(THREAD_CURRENT_IBASE_OFFSET,
+           art::Thread::MterpCurrentIBaseOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_DEFAULT_IBASE_OFFSET,
+           art::Thread::MterpDefaultIBaseOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_EMPTY_CHECKPOINT_REQUEST,
+           art::kEmptyCheckpointRequest)
+ASM_DEFINE(THREAD_EXCEPTION_OFFSET,
+           art::Thread::ExceptionOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_FLAGS_OFFSET,
+           art::Thread::ThreadFlagsOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_ID_OFFSET,
+           art::Thread::ThinLockIdOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_INTERPRETER_CACHE_OFFSET,
+           art::Thread::InterpreterCacheOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_INTERPRETER_CACHE_SIZE_LOG2,
+           art::Thread::InterpreterCacheSizeLog2())
+ASM_DEFINE(THREAD_IS_GC_MARKING_OFFSET,
+           art::Thread::IsGcMarkingOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_LOCAL_ALLOC_STACK_END_OFFSET,
+           art::Thread::ThreadLocalAllocStackEndOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_LOCAL_ALLOC_STACK_TOP_OFFSET,
+           art::Thread::ThreadLocalAllocStackTopOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_LOCAL_END_OFFSET,
+           art::Thread::ThreadLocalEndOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_LOCAL_OBJECTS_OFFSET,
+           art::Thread::ThreadLocalObjectsOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_LOCAL_POS_OFFSET,
+           art::Thread::ThreadLocalPosOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_ROSALLOC_RUNS_OFFSET,
+           art::Thread::RosAllocRunsOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_SELF_OFFSET,
+           art::Thread::SelfOffset<art::kRuntimePointerSize>().Int32Value())
+ASM_DEFINE(THREAD_SUSPEND_OR_CHECKPOINT_REQUEST,
+           art::kSuspendRequest | art::kCheckpointRequest | art::kEmptyCheckpointRequest)
+ASM_DEFINE(THREAD_SUSPEND_REQUEST,
+           art::kSuspendRequest)
+ASM_DEFINE(THREAD_TOP_QUICK_FRAME_OFFSET,
+           art::Thread::TopOfManagedStackOffset<art::kRuntimePointerSize>().Int32Value())

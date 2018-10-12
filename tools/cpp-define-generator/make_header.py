@@ -47,7 +47,6 @@ def convert(input):
       # Overflow - uint64_t constant was pretty printed as negative value.
       value += 2 ** 64  # Python will use arbitrary precision arithmetic.
     output.append("#define {0} {1:#x}".format(name, value))
-    output.append("#define {0} {1:#x}".format(name.upper(), value))
   return "\n".join(output)
 
 if __name__ == "__main__":

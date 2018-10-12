@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-// Constants within jit.h.
-
-#if defined(DEFINE_INCLUDE_DEPENDENCIES)
-#include "jit/jit.h"   // art::kSuspendRequest, etc.
+#if ASM_DEFINE_INCLUDE_DEPENDENCIES
+#include "mirror/string.h"
 #endif
 
-#define DEFINE_JIT_CONSTANT(macro_name, type, expr) \
-  DEFINE_EXPR(JIT_ ## macro_name, type, (expr))
-
-DEFINE_JIT_CONSTANT(CHECK_OSR,       int16_t, art::jit::kJitCheckForOSR)
-DEFINE_JIT_CONSTANT(HOTNESS_DISABLE, int16_t, art::jit::kJitHotnessDisabled)
-
-#undef DEFINE_JIT_CONSTANT
+ASM_DEFINE(MIRROR_STRING_COUNT_OFFSET,
+           art::mirror::String::CountOffset().Int32Value())
+ASM_DEFINE(MIRROR_STRING_VALUE_OFFSET,
+           art::mirror::String::ValueOffset().Int32Value())
+ASM_DEFINE(STRING_COMPRESSION_FEATURE,
+           art::mirror::kUseStringCompression)

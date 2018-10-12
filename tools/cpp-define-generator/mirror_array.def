@@ -1,0 +1,40 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#if ASM_DEFINE_INCLUDE_DEPENDENCIES
+#include "mirror/array.h"
+#endif
+
+ASM_DEFINE(MIRROR_ARRAY_LENGTH_OFFSET,
+           art::mirror::Array::LengthOffset().Int32Value())
+ASM_DEFINE(MIRROR_BOOLEAN_ARRAY_DATA_OFFSET,
+           art::mirror::Array::DataOffset(sizeof(uint8_t)).Int32Value())
+ASM_DEFINE(MIRROR_BYTE_ARRAY_DATA_OFFSET,
+           art::mirror::Array::DataOffset(sizeof(int8_t)).Int32Value())
+ASM_DEFINE(MIRROR_CHAR_ARRAY_DATA_OFFSET,
+           art::mirror::Array::DataOffset(sizeof(uint16_t)).Int32Value())
+ASM_DEFINE(MIRROR_INT_ARRAY_DATA_OFFSET,
+           art::mirror::Array::DataOffset(sizeof(int32_t)).Int32Value())
+ASM_DEFINE(MIRROR_LONG_ARRAY_DATA_OFFSET,
+           art::mirror::Array::DataOffset(sizeof(uint64_t)).Int32Value())
+ASM_DEFINE(MIRROR_OBJECT_ARRAY_COMPONENT_SIZE,
+           sizeof(art::mirror::HeapReference<art::mirror::Object>))
+ASM_DEFINE(MIRROR_OBJECT_ARRAY_DATA_OFFSET,
+           art::mirror::Array::DataOffset(sizeof(art::mirror::HeapReference<art::mirror::Object>)).Int32Value())
+ASM_DEFINE(MIRROR_SHORT_ARRAY_DATA_OFFSET,
+           art::mirror::Array::DataOffset(sizeof(int16_t)).Int32Value())
+ASM_DEFINE(MIRROR_WIDE_ARRAY_DATA_OFFSET,
+           art::mirror::Array::DataOffset(sizeof(uint64_t)).Int32Value())

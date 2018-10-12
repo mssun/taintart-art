@@ -17,36 +17,16 @@
 #include <stdint.h>
 
 #include "art_method-inl.h"
+#include "asm_defines.h"
 #include "base/callee_save_type.h"
 #include "entrypoints/quick/callee_save_frame.h"
 #include "common_runtime_test.h"
 #include "quick/quick_method_frame_info.h"
 
-// asm_support.h declares tests next to the #defines. We use asm_support_check.h to (safely)
-// generate CheckAsmSupportOffsetsAndSizes using gtest's EXPECT for the tests. We also use the
-// RETURN_TYPE, HEADER and FOOTER defines from asm_support_check.h to try to ensure that any
-// tests are actually generated.
-
-// Let CheckAsmSupportOffsetsAndSizes return a size_t (the count).
-#define ASM_SUPPORT_CHECK_RETURN_TYPE size_t
-
-// Declare the counter that will be updated per test.
-#define ASM_SUPPORT_CHECK_HEADER size_t count = 0;
-
-// Use EXPECT_EQ for tests, and increment the counter.
-#define ADD_TEST_EQ(x, y) EXPECT_EQ(x, y); count++;
-
-// Return the counter at the end of CheckAsmSupportOffsetsAndSizes.
-#define ASM_SUPPORT_CHECK_FOOTER return count;
-
-// Generate CheckAsmSupportOffsetsAndSizes().
-#include "asm_support_check.h"
-
 // Static asserts to check the values of generated #defines for assembly.
-#define DEFINE_INCLUDE_DEPENDENCIES
-#include "offsets_all.def"
-#define DEFINE_EXPR(NAME, TYPE, EXPR) static_assert(NAME == EXPR, "Unexpected value of " #NAME);
-#include "offsets_all.def"
+#define ASM_DEFINE(NAME, EXPR) static_assert((NAME) == (EXPR), "Unexpected value of " #NAME);
+#include "asm_defines.def"
+#undef ASM_DEFINE
 
 namespace art {
 
@@ -65,11 +45,6 @@ class ArchTest : public CommonRuntimeTest {
     ASSERT_EQ(InstructionSet::kX86_64, Runtime::Current()->GetInstructionSet());
   }
 };
-
-TEST_F(ArchTest, CheckCommonOffsetsAndSizes) {
-  size_t test_count = CheckAsmSupportOffsetsAndSizes();
-  EXPECT_GT(test_count, 0u);
-}
 
 // Grab architecture specific constants.
 namespace arm {
