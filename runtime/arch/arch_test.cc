@@ -42,6 +42,12 @@
 // Generate CheckAsmSupportOffsetsAndSizes().
 #include "asm_support_check.h"
 
+// Static asserts to check the values of generated #defines for assembly.
+#define DEFINE_INCLUDE_DEPENDENCIES
+#include "offsets_all.def"
+#define DEFINE_EXPR(NAME, TYPE, EXPR) static_assert(NAME == EXPR, "Unexpected value of " #NAME);
+#include "offsets_all.def"
+
 namespace art {
 
 class ArchTest : public CommonRuntimeTest {
