@@ -36,12 +36,8 @@ bx      lr
 
 test_output = r'''
 #define JIT_CHECK_OSR -0x1
-#define JIT_CHECK_OSR -0x1
-#define MIRROR_OBJECT_LOCK_WORD_OFFSET 0x4
 #define MIRROR_OBJECT_LOCK_WORD_OFFSET 0x4
 #define OBJECT_ALIGNMENT_MASK_TOGGLED 0xfffffff8
-#define OBJECT_ALIGNMENT_MASK_TOGGLED 0xfffffff8
-#define OBJECT_ALIGNMENT_MASK_TOGGLED64 0xfffffffffffffff8
 #define OBJECT_ALIGNMENT_MASK_TOGGLED64 0xfffffffffffffff8
 '''
 

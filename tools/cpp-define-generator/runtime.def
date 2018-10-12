@@ -1,0 +1,32 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#if ASM_DEFINE_INCLUDE_DEPENDENCIES
+#include "runtime.h"
+#endif
+
+ASM_DEFINE(RUNTIME_SAVE_ALL_CALLEE_SAVES_METHOD_OFFSET,
+           art::Runtime::GetCalleeSaveMethodOffset(art::CalleeSaveType::kSaveAllCalleeSaves))
+ASM_DEFINE(RUNTIME_SAVE_EVERYTHING_FOR_CLINIT_METHOD_OFFSET,
+           art::Runtime::GetCalleeSaveMethodOffset(art::CalleeSaveType::kSaveEverythingForClinit))
+ASM_DEFINE(RUNTIME_SAVE_EVERYTHING_FOR_SUSPEND_CHECK_METHOD_OFFSET,
+           art::Runtime::GetCalleeSaveMethodOffset(art::CalleeSaveType::kSaveEverythingForSuspendCheck))
+ASM_DEFINE(RUNTIME_SAVE_EVERYTHING_METHOD_OFFSET,
+           art::Runtime::GetCalleeSaveMethodOffset(art::CalleeSaveType::kSaveEverything))
+ASM_DEFINE(RUNTIME_SAVE_REFS_AND_ARGS_METHOD_OFFSET,
+           art::Runtime::GetCalleeSaveMethodOffset(art::CalleeSaveType::kSaveRefsAndArgs))
+ASM_DEFINE(RUNTIME_SAVE_REFS_ONLY_METHOD_OFFSET,
+           art::Runtime::GetCalleeSaveMethodOffset(art::CalleeSaveType::kSaveRefsOnly))
