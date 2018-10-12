@@ -2962,7 +2962,13 @@ mirror::Object* ConcurrentCopying::MarkNonMoving(Thread* const self,
       // Since the mark bitmap is still filled in from last GC, we can not use that or else the
       // mutator may see references to the from space. Instead, use the Baker pointer itself as
       // the mark bit.
-      if (ref->AtomicSetReadBarrierState(ReadBarrier::NonGrayState(), ReadBarrier::GrayState())) {
+      //
+      // We need to avoid marking objects that are on allocation stack as that will lead to a
+      // situation (after this GC cycle is finished) where some object(s) are on both allocation
+      // stack and live bitmap. This leads to visiting the same object(s) twice during a heapdump
+      // (b/117426281).
+      if (!IsOnAllocStack(ref) &&
+          ref->AtomicSetReadBarrierState(ReadBarrier::NonGrayState(), ReadBarrier::GrayState())) {
         // TODO: We don't actually need to scan this object later, we just need to clear the gray
         // bit.
         // Also make sure the object is marked.
@@ -2971,6 +2977,8 @@ mirror::Object* ConcurrentCopying::MarkNonMoving(Thread* const self,
         } else {
           mark_bitmap->AtomicTestAndSet(ref);
         }
+        // We don't need to mark newly allocated objects (those in allocation stack) as they can
+        // only point to to-space objects. Also, they are considered live till the next GC cycle.
         PushOntoMarkStack(self, ref);
       }
       return ref;
