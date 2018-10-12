@@ -1,0 +1,118 @@
+Test stopped using breakpoint
+Single call with PopFrame on StandardTestObject { cnt: 0 } base-call-count: 0
+result is StandardTestObject { cnt: 2 } base-call count: 1
+Test stopped using breakpoint with declared synchronized function
+Single call with PopFrame on SynchronizedFunctionTestObject { cnt: 0 } base-call-count: 0
+result is SynchronizedFunctionTestObject { cnt: 2 } base-call count: 1
+Test stopped using breakpoint with synchronized block
+Single call with PopFrame on SynchronizedTestObject { cnt: 0 } base-call-count: 0
+result is SynchronizedTestObject { cnt: 2 } base-call count: 1
+Test stopped on single step
+Single call with PopFrame on StandardTestObject { cnt: 0 } base-call-count: 0
+result is StandardTestObject { cnt: 2 } base-call count: 1
+Test stopped on field access
+Single call with PopFrame on FieldBasedTestObject { cnt: 0, TARGET_FIELD: 0 } base-call-count: 0
+result is FieldBasedTestObject { cnt: 2, TARGET_FIELD: 10 } base-call count: 1
+Test stopped on field modification
+Single call with PopFrame on FieldBasedTestObject { cnt: 0, TARGET_FIELD: 0 } base-call-count: 0
+result is FieldBasedTestObject { cnt: 2, TARGET_FIELD: 10 } base-call count: 1
+Test stopped during Method Exit of doNothing
+Single call with PopFrame on StandardTestObject { cnt: 0 } base-call-count: 0
+result is StandardTestObject { cnt: 1 } base-call count: 1
+Test stopped during Method Enter of doNothing
+Single call with PopFrame on StandardTestObject { cnt: 0 } base-call-count: 0
+result is StandardTestObject { cnt: 1 } base-call count: 1
+Test stopped during Method Exit of calledFunction
+Single call with PopFrame on StandardTestObject { cnt: 0 } base-call-count: 0
+result is StandardTestObject { cnt: 2 } base-call count: 1
+Test stopped during Method Enter of calledFunction
+Single call with PopFrame on StandardTestObject { cnt: 0 } base-call-count: 0
+result is StandardTestObject { cnt: 1 } base-call count: 1
+Test stopped during Method Exit due to exception thrown in same function
+Single call with PopFrame on ExceptionOnceObject { cnt: 0, throwInSub: false } base-call-count: 0
+result is ExceptionOnceObject { cnt: 2, throwInSub: false } base-call count: 1
+Test stopped during Method Exit due to exception thrown in subroutine
+Single call with PopFrame on ExceptionOnceObject { cnt: 0, throwInSub: true } base-call-count: 0
+result is ExceptionOnceObject { cnt: 2, throwInSub: true } base-call count: 1
+Test stopped during notifyFramePop without exception on pop of calledFunction
+Single call with PopFrame on StandardTestObject { cnt: 0 } base-call-count: 0
+result is StandardTestObject { cnt: 2 } base-call count: 1
+Test stopped during notifyFramePop without exception on pop of doNothing
+Single call with PopFrame on StandardTestObject { cnt: 0 } base-call-count: 0
+result is StandardTestObject { cnt: 1 } base-call count: 1
+Test stopped during notifyFramePop with exception on pop of calledFunction
+Single call with PopFrame on ExceptionThrowTestObject { cnt: 0 } base-call-count: 0
+art.Test1953$ExceptionThrowTestObject$TestError thrown and caught!
+result is ExceptionThrowTestObject { cnt: 2 } base-call count: 1
+Test stopped during notifyFramePop with exception on pop of doThrow
+Single call with PopFrame on ExceptionCatchTestObject { cnt: 0 } base-call-count: 0
+art.Test1953$ExceptionCatchTestObject$TestError caught in called function.
+result is ExceptionCatchTestObject { cnt: 1 } base-call count: 1
+Test stopped during ExceptionCatch event of calledFunction (catch in called function, throw in called function)
+Single call with PopFrame on ExceptionThrowTestObject { cnt: 0 } base-call-count: 0
+art.Test1953$ExceptionThrowTestObject$TestError caught in same function.
+result is ExceptionThrowTestObject { cnt: 2 } base-call count: 1
+Test stopped during ExceptionCatch event of calledFunction (catch in called function, throw in subroutine)
+Single call with PopFrame on ExceptionCatchTestObject { cnt: 0 } base-call-count: 0
+art.Test1953$ExceptionCatchTestObject$TestError caught in called function.
+result is ExceptionCatchTestObject { cnt: 2 } base-call count: 1
+Test stopped during Exception event of calledFunction (catch in calling function)
+Single call with PopFrame on ExceptionThrowTestObject { cnt: 0 } base-call-count: 0
+art.Test1953$ExceptionThrowTestObject$TestError thrown and caught!
+result is ExceptionThrowTestObject { cnt: 2 } base-call count: 1
+Test stopped during Exception event of calledFunction (catch in called function)
+Single call with PopFrame on ExceptionThrowTestObject { cnt: 0 } base-call-count: 0
+art.Test1953$ExceptionThrowTestObject$TestError caught in same function.
+result is ExceptionThrowTestObject { cnt: 2 } base-call count: 1
+Test stopped during Exception event of calledFunction (catch in parent of calling function)
+Single call with PopFrame on ExceptionThrowFarTestObject { cnt: 0 } base-call-count: 0
+art.Test1953$ExceptionThrowFarTestObject$TestError thrown and caught!
+result is ExceptionThrowFarTestObject { cnt: 2 } base-call count: 1
+Test stopped during Exception event of calledFunction (catch in called function)
+Single call with PopFrame on ExceptionThrowFarTestObject { cnt: 0 } base-call-count: 0
+art.Test1953$ExceptionThrowFarTestObject$TestError caught in same function.
+result is ExceptionThrowFarTestObject { cnt: 2 } base-call count: 1
+Test stopped during a ClassLoad event.
+Single call with PopFrame on ClassLoadObject { cnt: 0, curClass: 0} base-call-count: 0
+Failed to pop frame due to java.lang.RuntimeException: JVMTI_ERROR_OPAQUE_FRAME
+	art.Test1953.popFrame(Native Method)
+	art.Test1953.runTestOn(Test1953.java)
+	art.Test1953.runTestOn(Test1953.java)
+	art.Test1953.runTests(Test1953.java)
+	<Additional frames hidden>
+TC0.foo == 1
+result is ClassLoadObject { cnt: 1, curClass: 1} base-call count: 1
+Test stopped during a ClassPrepare event.
+Single call with PopFrame on ClassLoadObject { cnt: 0, curClass: 1} base-call-count: 0
+Failed to pop frame due to java.lang.RuntimeException: JVMTI_ERROR_OPAQUE_FRAME
+	art.Test1953.popFrame(Native Method)
+	art.Test1953.runTestOn(Test1953.java)
+	art.Test1953.runTestOn(Test1953.java)
+	art.Test1953.runTests(Test1953.java)
+	<Additional frames hidden>
+TC1.foo == 2
+result is ClassLoadObject { cnt: 1, curClass: 2} base-call count: 1
+Test stopped during random Suspend.
+Single call with PopFrame on SuspendSuddenlyObject { cnt: 0 } base-call-count: 0
+result is SuspendSuddenlyObject { cnt: 2 } base-call count: 1
+Test redefining frame being popped.
+Single call with PopFrame on RedefineTestObject { states: [] current: ORIGINAL } base-call-count: 0
+result is RedefineTestObject { states: [ORIGINAL, REDEFINED] current: REDEFINED } base-call count: 1
+Test stopped during a native method fails
+Single call with PopFrame on NativeCalledObject { cnt: 0 } base-call-count: 0
+Failed to pop frame due to java.lang.RuntimeException: JVMTI_ERROR_OPAQUE_FRAME
+	art.Test1953.popFrame(Native Method)
+	art.Test1953.runTestOn(Test1953.java)
+	art.Test1953.runTestOn(Test1953.java)
+	art.Test1953.runTests(Test1953.java)
+	<Additional frames hidden>
+result is NativeCalledObject { cnt: 1 } base-call count: 1
+Test stopped in a method called by native fails
+Single call with PopFrame on NativeCallerObject { cnt: 0 } base-call-count: 0
+Failed to pop frame due to java.lang.RuntimeException: JVMTI_ERROR_OPAQUE_FRAME
+	art.Test1953.popFrame(Native Method)
+	art.Test1953.runTestOn(Test1953.java)
+	art.Test1953.runTestOn(Test1953.java)
+	art.Test1953.runTests(Test1953.java)
+	<Additional frames hidden>
+result is NativeCallerObject { cnt: 1 } base-call count: 1

@@ -301,6 +301,13 @@ class EventHandler {
                                                            unsigned char** new_class_data) const
       REQUIRES(!envs_lock_);
 
+  template <ArtJvmtiEvent kEvent>
+  ALWAYS_INLINE inline void DispatchClassLoadOrPrepareEvent(art::Thread* thread,
+                                                            JNIEnv* jnienv,
+                                                            jthread jni_thread,
+                                                            jclass klass) const
+      REQUIRES(!envs_lock_);
+
   void HandleEventType(ArtJvmtiEvent event, bool enable);
   void HandleLocalAccessCapabilityAdded();
   void HandleBreakpointEventsChanged(bool enable);
