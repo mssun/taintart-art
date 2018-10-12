@@ -1106,5 +1106,11 @@
         "variant": "target & gcstress & debug",
         "bug": "b/117597114",
         "description": ["Looks timing dependent"]
+    },
+    {
+        "tests": ["920-objects"],
+        "variant": "jit-on-first-use",
+        "bug": "b/117638896",
+        "description": ["SIGSEGVs on jit-on-first-use configuration."]
     }
 ]
