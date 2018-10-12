@@ -27,32 +27,32 @@ TEST_ART_RUN_TEST_DEPENDENCIES := \
 
 # We need dex2oat and dalvikvm on the target as well as the core images (all images as we sync
 # only once).
-TEST_ART_TARGET_SYNC_DEPS += $(ART_TARGET_EXECUTABLES) $(TARGET_CORE_IMG_OUTS)
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES := $(ART_TARGET_EXECUTABLES) $(TARGET_CORE_IMG_OUTS)
 
 # Also need libartagent.
-TEST_ART_TARGET_SYNC_DEPS += libartagent-target libartagentd-target
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libartagent-target libartagentd-target
 
 # Also need libtiagent.
-TEST_ART_TARGET_SYNC_DEPS += libtiagent-target libtiagentd-target
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libtiagent-target libtiagentd-target
 
 # Also need libtistress.
-TEST_ART_TARGET_SYNC_DEPS += libtistress-target libtistressd-target
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libtistress-target libtistressd-target
 
 # Also need libarttest.
-TEST_ART_TARGET_SYNC_DEPS += libarttest-target libarttestd-target
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libarttest-target libarttestd-target
 
 # Also need libnativebridgetest.
-TEST_ART_TARGET_SYNC_DEPS += libnativebridgetest-target
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libnativebridgetest-target
 
 # Also need libopenjdkjvmti.
-TEST_ART_TARGET_SYNC_DEPS += libopenjdkjvmti-target libopenjdkjvmtid-target
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libopenjdkjvmti-target libopenjdkjvmtid-target
 
-TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/core-libart-testdex.jar
-TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar
-TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/core-simple-testdex.jar
-TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/okhttp-testdex.jar
-TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/bouncycastle-testdex.jar
-TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/conscrypt-testdex.jar
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/core-libart-testdex.jar
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/core-simple-testdex.jar
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/okhttp-testdex.jar
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/bouncycastle-testdex.jar
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/conscrypt-testdex.jar
 
 # All tests require the host executables. The tests also depend on the core images, but on
 # specific version depending on the compiler.
