@@ -206,6 +206,10 @@ void Class::SetStatus(Handle<Class> h_this, ClassStatus new_status, Thread* self
     }
   }
 
+  if (kIsDebugBuild && new_status >= ClassStatus::kInitialized) {
+    CHECK(h_this->WasVerificationAttempted()) << h_this->PrettyClassAndClassLoader();
+  }
+
   if (!class_linker_initialized) {
     // When the class linker is being initialized its single threaded and by definition there can be
     // no waiters. During initialization classes may appear temporary but won't be retired as their
