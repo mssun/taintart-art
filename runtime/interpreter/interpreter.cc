@@ -261,6 +261,12 @@ static inline JValue Execute(
                                         shadow_frame.GetThisObject(accessor.InsSize()),
                                         method,
                                         0);
+      if (UNLIKELY(shadow_frame.GetForcePopFrame())) {
+        // The caller will retry this invoke. Just return immediately without any value.
+        DCHECK(Runtime::Current()->AreNonStandardExitsEnabled());
+        DCHECK(PrevFrameWillRetry(self, shadow_frame));
+        return JValue();
+      }
       if (UNLIKELY(self->IsExceptionPending())) {
         instrumentation->MethodUnwindEvent(self,
                                            shadow_frame.GetThisObject(accessor.InsSize()),
@@ -494,8 +500,8 @@ void EnterInterpreterFromDeoptimize(Thread* self,
   JValue value;
   // Set value to last known result in case the shadow frame chain is empty.
   value.SetJ(ret_val->GetJ());
-  // Are we executing the first shadow frame?
-  bool first = true;
+  // How many frames we have executed.
+  size_t frame_cnt = 0;
   while (shadow_frame != nullptr) {
     // We do not want to recover lock state for lock counting when deoptimizing. Currently,
     // the compiler should not have compiled a method that failed structured-locking checks.
@@ -510,24 +516,30 @@ void EnterInterpreterFromDeoptimize(Thread* self,
       // the instrumentation. To prevent from reporting it a second time, we simply pass a
       // null Instrumentation*.
       const instrumentation::Instrumentation* const instrumentation =
-          first ? nullptr : Runtime::Current()->GetInstrumentation();
+          frame_cnt == 0 ? nullptr : Runtime::Current()->GetInstrumentation();
       new_dex_pc = MoveToExceptionHandler(
           self, *shadow_frame, instrumentation) ? shadow_frame->GetDexPC() : dex::kDexNoIndex;
     } else if (!from_code) {
       // Deoptimization is not called from code directly.
       const Instruction* instr = &accessor.InstructionAt(dex_pc);
-      if (deopt_method_type == DeoptimizationMethodType::kKeepDexPc) {
-        DCHECK(first);
+      if (deopt_method_type == DeoptimizationMethodType::kKeepDexPc ||
+          shadow_frame->GetForceRetryInstruction()) {
+        DCHECK(frame_cnt == 0 || (frame_cnt == 1 && shadow_frame->GetForceRetryInstruction()))
+            << "frame_cnt: " << frame_cnt
+            << " force-retry: " << shadow_frame->GetForceRetryInstruction();
         // Need to re-execute the dex instruction.
         // (1) An invocation might be split into class initialization and invoke.
         //     In this case, the invoke should not be skipped.
         // (2) A suspend check should also execute the dex instruction at the
         //     corresponding dex pc.
+        // If the ForceRetryInstruction bit is set this must be the second frame (the first being
+        // the one that is being popped).
         DCHECK_EQ(new_dex_pc, dex_pc);
+        shadow_frame->SetForceRetryInstruction(false);
       } else if (instr->Opcode() == Instruction::MONITOR_ENTER ||
                  instr->Opcode() == Instruction::MONITOR_EXIT) {
         DCHECK(deopt_method_type == DeoptimizationMethodType::kDefault);
-        DCHECK(first);
+        DCHECK_EQ(frame_cnt, 0u);
         // Non-idempotent dex instruction should not be re-executed.
         // On the other hand, if a MONITOR_ENTER is at the dex_pc of a suspend
         // check, that MONITOR_ENTER should be executed. That case is handled
@@ -553,7 +565,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
         DCHECK_EQ(new_dex_pc, dex_pc);
       } else {
         DCHECK(deopt_method_type == DeoptimizationMethodType::kDefault);
-        DCHECK(first);
+        DCHECK_EQ(frame_cnt, 0u);
         // By default, we re-execute the dex instruction since if they are not
         // an invoke, so that we don't have to decode the dex instruction to move
         // result into the right vreg. All slow paths have been audited to be
@@ -566,7 +578,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
     } else {
       // Nothing to do, the dex_pc is the one at which the code requested
       // the deoptimization.
-      DCHECK(first);
+      DCHECK_EQ(frame_cnt, 0u);
       DCHECK_EQ(new_dex_pc, dex_pc);
     }
     if (new_dex_pc != dex::kDexNoIndex) {
@@ -585,7 +597,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
     // and should advance dex pc past the invoke instruction.
     from_code = false;
     deopt_method_type = DeoptimizationMethodType::kDefault;
-    first = false;
+    frame_cnt++;
   }
   ret_val->SetJ(value.GetJ());
 }
@@ -655,6 +667,19 @@ void CheckInterpreterAsmConstants() {
 
 void InitInterpreterTls(Thread* self) {
   InitMterpTls(self);
+}
+
+bool PrevFrameWillRetry(Thread* self, const ShadowFrame& frame) {
+  ShadowFrame* prev_frame = frame.GetLink();
+  if (prev_frame == nullptr) {
+    NthCallerVisitor vis(self, 1, false);
+    vis.WalkStack();
+    prev_frame = vis.GetCurrentShadowFrame();
+    if (prev_frame == nullptr) {
+      prev_frame = self->FindDebuggerShadowFrame(vis.GetFrameId());
+    }
+  }
+  return prev_frame != nullptr && prev_frame->GetForceRetryInstruction();
 }
 
 }  // namespace interpreter

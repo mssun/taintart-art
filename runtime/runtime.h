@@ -654,6 +654,14 @@ class Runtime {
     is_native_debuggable_ = value;
   }
 
+  bool AreNonStandardExitsEnabled() const {
+    return non_standard_exits_enabled_;
+  }
+
+  void SetNonStandardExitsEnabled() {
+    non_standard_exits_enabled_ = true;
+  }
+
   bool AreAsyncExceptionsThrown() const {
     return async_exceptions_thrown_;
   }
@@ -985,6 +993,10 @@ class Runtime {
   // whether or not any async exceptions have ever been thrown. This is used to speed up the
   // MterpShouldSwitchInterpreters function.
   bool async_exceptions_thrown_;
+
+  // Whether anything is going to be using the shadow-frame APIs to force a function to return
+  // early. Doing this requires that (1) we be debuggable and (2) that mterp is exited.
+  bool non_standard_exits_enabled_;
 
   // Whether Java code needs to be debuggable.
   bool is_java_debuggable_;

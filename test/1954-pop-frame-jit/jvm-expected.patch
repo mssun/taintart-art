@@ -1,0 +1,21 @@
+75,94d74
+< Test stopped during a ClassLoad event.
+< Single call with PopFrame on ClassLoadObject { cnt: 0, curClass: 0} base-call-count: 0
+< Failed to pop frame due to java.lang.RuntimeException: JVMTI_ERROR_OPAQUE_FRAME
+< 	art.Test1953.popFrame(Native Method)
+< 	art.Test1953.runTestOn(Test1953.java)
+< 	art.Test1953.runTestOn(Test1953.java)
+< 	art.Test1953.runTests(Test1953.java)
+< 	<Additional frames hidden>
+< TC0.foo == 1
+< result is ClassLoadObject { cnt: 1, curClass: 1} base-call count: 1
+< Test stopped during a ClassPrepare event.
+< Single call with PopFrame on ClassLoadObject { cnt: 0, curClass: 1} base-call-count: 0
+< Failed to pop frame due to java.lang.RuntimeException: JVMTI_ERROR_OPAQUE_FRAME
+< 	art.Test1953.popFrame(Native Method)
+< 	art.Test1953.runTestOn(Test1953.java)
+< 	art.Test1953.runTestOn(Test1953.java)
+< 	art.Test1953.runTests(Test1953.java)
+< 	<Additional frames hidden>
+< TC1.foo == 2
+< result is ClassLoadObject { cnt: 1, curClass: 2} base-call count: 1
