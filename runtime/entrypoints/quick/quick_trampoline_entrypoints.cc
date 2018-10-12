@@ -753,6 +753,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
   const char* shorty = non_proxy_method->GetShorty(&shorty_len);
 
   JValue result;
+  bool force_frame_pop = false;
 
   if (UNLIKELY(deopt_frame != nullptr)) {
     HandleDeoptimization(&result, method, deopt_frame, &fragment);
@@ -788,6 +789,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
     }
 
     result = interpreter::EnterInterpreterFromEntryPoint(self, accessor, shadow_frame);
+    force_frame_pop = shadow_frame->GetForcePopFrame();
   }
 
   // Pop transition.
@@ -804,12 +806,20 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
       LOG(WARNING) << "Got a deoptimization request on un-deoptimizable method "
                    << caller->PrettyMethod();
     } else {
+      VLOG(deopt) << "Forcing deoptimization on return from method " << method->PrettyMethod()
+                  << " to " << caller->PrettyMethod()
+                  << (force_frame_pop ? " for frame-pop" : "");
+      DCHECK(!force_frame_pop || result.GetJ() == 0) << "Force frame pop should have no result.";
+      if (force_frame_pop && self->GetException() != nullptr) {
+        LOG(WARNING) << "Suppressing exception for instruction-retry: "
+                     << self->GetException()->Dump();
+      }
       // Push the context of the deoptimization stack so we can restore the return value and the
       // exception before executing the deoptimized frames.
       self->PushDeoptimizationContext(
           result,
           shorty[0] == 'L' || shorty[0] == '[',  /* class or array */
-          self->GetException(),
+          force_frame_pop ? nullptr : self->GetException(),
           false /* from_code */,
           DeoptimizationMethodType::kDefault);
 
