@@ -1110,11 +1110,5 @@
         "tests": ["454-get-vreg", "457-regs"],
         "variant": "baseline",
         "description": ["Tests are expected to fail with baseline."]
-    },
-    {
-        "tests": ["050-sync-test"],
-        "variant": "target & gcstress & debug",
-        "bug": "b/117597114",
-        "description": ["Looks timing dependent"]
     }
 ]
