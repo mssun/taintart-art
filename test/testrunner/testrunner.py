@@ -1012,7 +1012,7 @@ def main():
       build_targets += 'test-art-target-run-test-dependencies '
     if 'jvm' in _user_input_variants['target']:
       build_targets += 'test-art-host-run-test-dependencies '
-    build_command = 'build/soong/soong_ui.bash --make-mode'
+    build_command = env.ANDROID_BUILD_TOP + '/build/soong/soong_ui.bash --make-mode'
     build_command += ' DX='
     build_command += ' ' + build_targets
     if subprocess.call(build_command.split()):
