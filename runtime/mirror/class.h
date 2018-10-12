@@ -1306,6 +1306,8 @@ class MANAGED Class final : public Object {
   template<VerifyObjectFlags kVerifyFlags>
   void GetAccessFlagsDCheck() REQUIRES_SHARED(Locks::mutator_lock_);
 
+  void SetAccessFlagsDCheck(uint32_t new_access_flags) REQUIRES_SHARED(Locks::mutator_lock_);
+
   // Check that the pointer size matches the one in the class linker.
   ALWAYS_INLINE static void CheckPointerSize(PointerSize pointer_size);
 

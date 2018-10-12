@@ -1461,5 +1461,12 @@ template void Class::GetAccessFlagsDCheck<kVerifyReads>();
 template void Class::GetAccessFlagsDCheck<kVerifyWrites>();
 template void Class::GetAccessFlagsDCheck<kVerifyAll>();
 
+void Class::SetAccessFlagsDCheck(uint32_t new_access_flags) {
+  uint32_t old_access_flags = GetField32<kVerifyNone>(AccessFlagsOffset());
+  // kAccVerificationAttempted is retained.
+  CHECK((old_access_flags & kAccVerificationAttempted) == 0 ||
+        (new_access_flags & kAccVerificationAttempted) != 0);
+}
+
 }  // namespace mirror
 }  // namespace art
