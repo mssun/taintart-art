@@ -1,0 +1,66 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#if ASM_DEFINE_INCLUDE_DEPENDENCIES
+#include "base/bit_utils.h"
+#include "base/callee_save_type.h"
+#include "base/enums.h"
+#include "base/globals.h"
+#include "dex/modifiers.h"
+#include "gc/accounting/card_table.h"
+#include "gc/heap.h"
+#include "jit/jit.h"
+#include "mirror/object.h"
+#include "mirror/object_reference.h"
+#include "stack.h"
+#endif
+
+ASM_DEFINE(ACCESS_FLAGS_CLASS_IS_FINALIZABLE,
+           art::kAccClassIsFinalizable)
+ASM_DEFINE(ACCESS_FLAGS_CLASS_IS_FINALIZABLE_BIT,
+           art::MostSignificantBit(art::kAccClassIsFinalizable))
+ASM_DEFINE(ACCESS_FLAGS_CLASS_IS_INTERFACE,
+           art::kAccInterface)
+ASM_DEFINE(ACC_OBSOLETE_METHOD,
+           art::kAccObsoleteMethod)
+ASM_DEFINE(ACC_OBSOLETE_METHOD_SHIFT,
+           art::WhichPowerOf2(art::kAccObsoleteMethod))
+ASM_DEFINE(CARD_TABLE_CARD_SHIFT,
+           art::gc::accounting::CardTable::kCardShift)
+ASM_DEFINE(COMPRESSED_REFERENCE_SIZE,
+           sizeof(art::mirror::CompressedReference<art::mirror::Object>))
+ASM_DEFINE(COMPRESSED_REFERENCE_SIZE_SHIFT,
+           art::WhichPowerOf2(sizeof(art::mirror::CompressedReference<art::mirror::Object>)))
+ASM_DEFINE(JIT_CHECK_OSR,
+           art::jit::kJitCheckForOSR)
+ASM_DEFINE(JIT_HOTNESS_DISABLE,
+           art::jit::kJitHotnessDisabled)
+ASM_DEFINE(MIN_LARGE_OBJECT_THRESHOLD,
+           art::gc::Heap::kMinLargeObjectThreshold)
+ASM_DEFINE(OBJECT_ALIGNMENT_MASK,
+           art::kObjectAlignment - 1)
+ASM_DEFINE(OBJECT_ALIGNMENT_MASK_TOGGLED,
+           ~static_cast<uint32_t>(art::kObjectAlignment - 1))
+ASM_DEFINE(OBJECT_ALIGNMENT_MASK_TOGGLED64,
+           ~static_cast<uint64_t>(art::kObjectAlignment - 1))
+ASM_DEFINE(POINTER_SIZE,
+           static_cast<size_t>(art::kRuntimePointerSize))
+ASM_DEFINE(POINTER_SIZE_SHIFT,
+           art::WhichPowerOf2(static_cast<size_t>(art::kRuntimePointerSize)))
+ASM_DEFINE(STACK_REFERENCE_SIZE,
+           sizeof(art::StackReference<art::mirror::Object>))
+ASM_DEFINE(STD_MEMORY_ORDER_RELAXED,
+           std::memory_order_relaxed)

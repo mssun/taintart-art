@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,19 @@
  * limitations under the License.
  */
 
-// Convenience macro to define an offset expression.
-
-#ifndef DEFINE_OFFSET_EXPR
-#define DEFINE_OFFSET_EXPR(holder_type, field_name, field_type, expr) \
-  DEFINE_EXPR(holder_type ## _ ## field_name ## _OFFSET, field_type, expr)
-#define DEFINE_OFFSET_EXPR_STANDARD_DEFINITION
+#if !defined(ASM_DEFINE_INCLUDE_DEPENDENCIES)
+#define ASM_DEFINE_INCLUDE_DEPENDENCIES 1
 #endif
 
+#include "globals.def"
+#include "art_method.def"
+#include "lockword.def"
+#include "mirror_array.def"
+#include "mirror_class.def"
+#include "mirror_dex_cache.def"
+#include "mirror_object.def"
+#include "mirror_string.def"
+#include "rosalloc.def"
+#include "runtime.def"
+#include "shadow_frame.def"
+#include "thread.def"
