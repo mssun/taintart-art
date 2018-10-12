@@ -179,12 +179,8 @@ class ShadowFrame {
   mirror::Object* GetVRegReference(size_t i) const REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK_LT(i, NumberOfVRegs());
     mirror::Object* ref;
-    if (HasReferenceArray()) {
-      ref = References()[i].AsMirrorPtr();
-    } else {
-      const uint32_t* vreg_ptr = &vregs_[i];
-      ref = reinterpret_cast<const StackReference<mirror::Object>*>(vreg_ptr)->AsMirrorPtr();
-    }
+    DCHECK(HasReferenceArray());
+    ref = References()[i].AsMirrorPtr();
     ReadBarrier::MaybeAssertToSpaceInvariant(ref);
     if (kVerifyFlags & kVerifyReads) {
       VerifyObject(ref);
