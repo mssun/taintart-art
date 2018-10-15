@@ -49,6 +49,11 @@ class Arm64InstructionSetFeatures final : public InstructionSetFeatures {
 
   bool Equals(const InstructionSetFeatures* other) const override;
 
+  // Note that newer CPUs do not have a53 erratum 835769 and 843419,
+  // so the two a53 fix features (fix_cortex_a53_835769 and fix_cortex_a53_843419)
+  // are not tested for HasAtLeast.
+  bool HasAtLeast(const InstructionSetFeatures* other) const override;
+
   InstructionSet GetInstructionSet() const override {
     return InstructionSet::kArm64;
   }
@@ -68,6 +73,23 @@ class Arm64InstructionSetFeatures final : public InstructionSetFeatures {
       return fix_cortex_a53_843419_;
   }
 
+  bool HasCRC() const {
+    return has_crc_;
+  }
+
+  bool HasLSE() const {
+    return has_lse_;
+  }
+
+  bool HasFP16() const {
+    return has_fp16_;
+  }
+
+  // Are Dot Product instructions (UDOT/SDOT) available?
+  bool HasDotProd() const {
+    return has_dotprod_;
+  }
+
   virtual ~Arm64InstructionSetFeatures() {}
 
  protected:
@@ -77,19 +99,36 @@ class Arm64InstructionSetFeatures final : public InstructionSetFeatures {
                                  std::string* error_msg) const override;
 
  private:
-  Arm64InstructionSetFeatures(bool needs_a53_835769_fix, bool needs_a53_843419_fix)
+  Arm64InstructionSetFeatures(bool needs_a53_835769_fix,
+                              bool needs_a53_843419_fix,
+                              bool has_crc,
+                              bool has_lse,
+                              bool has_fp16,
+                              bool has_dotprod)
       : InstructionSetFeatures(),
         fix_cortex_a53_835769_(needs_a53_835769_fix),
-        fix_cortex_a53_843419_(needs_a53_843419_fix) {
+        fix_cortex_a53_843419_(needs_a53_843419_fix),
+        has_crc_(has_crc),
+        has_lse_(has_lse),
+        has_fp16_(has_fp16),
+        has_dotprod_(has_dotprod) {
   }
 
   // Bitmap positions for encoding features as a bitmap.
   enum {
     kA53Bitfield = 1 << 0,
+    kCRCBitField = 1 << 1,
+    kLSEBitField = 1 << 2,
+    kFP16BitField = 1 << 3,
+    kDotProdBitField = 1 << 4,
   };
 
   const bool fix_cortex_a53_835769_;
   const bool fix_cortex_a53_843419_;
+  const bool has_crc_;      // optional in ARMv8.0, mandatory in ARMv8.1.
+  const bool has_lse_;      // ARMv8.1 Large System Extensions.
+  const bool has_fp16_;     // ARMv8.2 FP16 extensions.
+  const bool has_dotprod_;  // optional in ARMv8.2, mandatory in ARMv8.4.
 
   DISALLOW_COPY_AND_ASSIGN(Arm64InstructionSetFeatures);
 };
