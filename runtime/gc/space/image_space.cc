@@ -46,7 +46,7 @@
 #include "gc/accounting/space_bitmap-inl.h"
 #include "image-inl.h"
 #include "image_space_fs.h"
-#include "intern_table.h"
+#include "intern_table-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/executable.h"
 #include "mirror/object-inl.h"
@@ -1222,6 +1222,24 @@ class ImageSpace::Loader {
         temp_table.ReadFromMemory(target_base + class_table_section.Offset());
         FixupRootVisitor root_visitor(boot_image, boot_oat, app_image, app_oat);
         temp_table.VisitRoots(root_visitor);
+      }
+      // Fix up the intern table.
+      const auto& intern_table_section = image_header.GetInternedStringsSection();
+      if (intern_table_section.Size() > 0u) {
+        TimingLogger::ScopedTiming timing("Fixup intern table", &logger);
+        ScopedObjectAccess soa(Thread::Current());
+        // Fixup the pointers in the newly written intern table to contain image addresses.
+        InternTable temp_intern_table;
+        // Note that we require that ReadFromMemory does not make an internal copy of the elements
+        // so that the VisitRoots() will update the memory directly rather than the copies.
+        FixupRootVisitor root_visitor(boot_image, boot_oat, app_image, app_oat);
+        temp_intern_table.AddTableFromMemory(target_base + intern_table_section.Offset(),
+                                             [&](InternTable::UnorderedSet& strings)
+            REQUIRES_SHARED(Locks::mutator_lock_) {
+          for (GcRoot<mirror::String>& root : strings) {
+            root = GcRoot<mirror::String>(fixup_adapter(root.Read<kWithoutReadBarrier>()));
+          }
+        });
       }
     }
     if (VLOG_IS_ON(image)) {

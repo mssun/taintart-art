@@ -1355,7 +1355,7 @@ class ClassLinker {
 
   class FindVirtualMethodHolderVisitor;
 
-  friend class AppImageClassLoadersAndDexCachesHelper;
+  friend class AppImageLoadingHelper;
   friend class ImageDumper;  // for DexLock
   friend struct linker::CompilationHelper;  // For Compile in ImageTest.
   friend class linker::ImageWriter;  // for GetClassRoots

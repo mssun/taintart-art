@@ -177,18 +177,6 @@ void InternTable::RemoveWeakFromTransaction(ObjPtr<mirror::String> s) {
   RemoveWeak(s);
 }
 
-void InternTable::AddImagesStringsToTable(const std::vector<gc::space::ImageSpace*>& image_spaces) {
-  MutexLock mu(Thread::Current(), *Locks::intern_table_lock_);
-  for (gc::space::ImageSpace* image_space : image_spaces) {
-    const ImageHeader* const header = &image_space->GetImageHeader();
-    // Check if we have the interned strings section.
-    const ImageSection& section = header->GetInternedStringsSection();
-    if (section.Size() > 0) {
-      AddTableFromMemoryLocked(image_space->Begin() + section.Offset());
-    }
-  }
-}
-
 void InternTable::BroadcastForNewInterns() {
   Thread* self = Thread::Current();
   MutexLock mu(self, *Locks::intern_table_lock_);
@@ -303,15 +291,6 @@ void InternTable::SweepInternTableWeaks(IsMarkedVisitor* visitor) {
   weak_interns_.SweepWeaks(visitor);
 }
 
-size_t InternTable::AddTableFromMemory(const uint8_t* ptr) {
-  MutexLock mu(Thread::Current(), *Locks::intern_table_lock_);
-  return AddTableFromMemoryLocked(ptr);
-}
-
-size_t InternTable::AddTableFromMemoryLocked(const uint8_t* ptr) {
-  return strong_interns_.AddTableFromMemory(ptr);
-}
-
 size_t InternTable::WriteToMemory(uint8_t* ptr) {
   MutexLock mu(Thread::Current(), *Locks::intern_table_lock_);
   return strong_interns_.WriteToMemory(ptr);
@@ -361,25 +340,6 @@ bool InternTable::StringHashEquals::operator()(const GcRoot<mirror::String>& a,
     const uint16_t* a_value = a_string->GetValue();
     return CompareModifiedUtf8ToUtf16AsCodePointValues(b.GetUtf8Data(), a_value, a_length) == 0;
   }
-}
-
-size_t InternTable::Table::AddTableFromMemory(const uint8_t* ptr) {
-  size_t read_count = 0;
-  UnorderedSet set(ptr, /*make copy*/false, &read_count);
-  if (set.empty()) {
-    // Avoid inserting empty sets.
-    return read_count;
-  }
-  // TODO: Disable this for app images if app images have intern tables.
-  static constexpr bool kCheckDuplicates = kIsDebugBuild;
-  if (kCheckDuplicates) {
-    for (GcRoot<mirror::String>& string : set) {
-      CHECK(Find(string.Read()) == nullptr) << "Already found " << string.Read()->ToModifiedUtf8();
-    }
-  }
-  // Insert at the front since we add new interns into the back.
-  tables_.insert(tables_.begin(), std::move(set));
-  return read_count;
 }
 
 size_t InternTable::Table::WriteToMemory(uint8_t* ptr) {
