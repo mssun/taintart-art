@@ -8892,7 +8892,7 @@ jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
         self,
         kDexFileIndexStart + 1));
     DCHECK(h_long_array != nullptr);
-    h_long_array->Set(kDexFileIndexStart, reinterpret_cast<intptr_t>(dex_file));
+    h_long_array->Set(kDexFileIndexStart, reinterpret_cast64<int64_t>(dex_file));
 
     // Note that this creates a finalizable dalvik.system.DexFile object and a corresponding
     // FinalizerReference which will never get cleaned up without a started runtime.

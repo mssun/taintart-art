@@ -22,6 +22,7 @@
 #include "arch/instruction_set.h"
 #include "art_method.h"
 #include "base/callee_save_type.h"
+#include "base/casts.h"
 #include "entrypoints/quick/callee_save_frame.h"
 #include "gc_root-inl.h"
 #include "obj_ptr-inl.h"
@@ -82,7 +83,7 @@ inline ArtMethod* Runtime::GetCalleeSaveMethod(CalleeSaveType type)
 
 inline ArtMethod* Runtime::GetCalleeSaveMethodUnchecked(CalleeSaveType type)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return reinterpret_cast<ArtMethod*>(callee_save_methods_[static_cast<size_t>(type)]);
+  return reinterpret_cast64<ArtMethod*>(callee_save_methods_[static_cast<size_t>(type)]);
 }
 
 }  // namespace art
