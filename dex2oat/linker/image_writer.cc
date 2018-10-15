@@ -53,6 +53,7 @@
 #include "handle_scope-inl.h"
 #include "image.h"
 #include "imt_conflict_table.h"
+#include "intern_table-inl.h"
 #include "jni/jni_internal.h"
 #include "linear_alloc.h"
 #include "lock_word.h"
@@ -2610,7 +2611,7 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
     // the VisitRoots() will update the memory directly rather than the copies.
     // This also relies on visit roots not doing any verification which could fail after we update
     // the roots to be the image addresses.
-    temp_intern_table.AddTableFromMemory(intern_table_memory_ptr);
+    temp_intern_table.AddTableFromMemory(intern_table_memory_ptr, VoidFunctor());
     CHECK_EQ(temp_intern_table.Size(), intern_table->Size());
     temp_intern_table.VisitRoots(&root_visitor, kVisitRootFlagAllRoots);
     // Record relocations. (The root visitor does not get to see the slot addresses.)

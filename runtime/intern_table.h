@@ -59,6 +59,54 @@ class Transaction;
  */
 class InternTable {
  public:
+  // Modified UTF-8-encoded string treated as UTF16.
+  class Utf8String {
+   public:
+    Utf8String(uint32_t utf16_length, const char* utf8_data, int32_t hash)
+        : hash_(hash), utf16_length_(utf16_length), utf8_data_(utf8_data) { }
+
+    int32_t GetHash() const { return hash_; }
+    uint32_t GetUtf16Length() const { return utf16_length_; }
+    const char* GetUtf8Data() const { return utf8_data_; }
+
+   private:
+    int32_t hash_;
+    uint32_t utf16_length_;
+    const char* utf8_data_;
+  };
+
+  class StringHashEquals {
+   public:
+    std::size_t operator()(const GcRoot<mirror::String>& root) const NO_THREAD_SAFETY_ANALYSIS;
+    bool operator()(const GcRoot<mirror::String>& a, const GcRoot<mirror::String>& b) const
+        NO_THREAD_SAFETY_ANALYSIS;
+
+    // Utf8String can be used for lookup.
+    std::size_t operator()(const Utf8String& key) const {
+      // A cast to prevent undesired sign extension.
+      return static_cast<uint32_t>(key.GetHash());
+    }
+
+    bool operator()(const GcRoot<mirror::String>& a, const Utf8String& b) const
+        NO_THREAD_SAFETY_ANALYSIS;
+  };
+
+  class GcRootEmptyFn {
+   public:
+    void MakeEmpty(GcRoot<mirror::String>& item) const {
+      item = GcRoot<mirror::String>();
+    }
+    bool IsEmpty(const GcRoot<mirror::String>& item) const {
+      return item.IsNull();
+    }
+  };
+
+  using UnorderedSet = HashSet<GcRoot<mirror::String>,
+                               GcRootEmptyFn,
+                               StringHashEquals,
+                               StringHashEquals,
+                               TrackingAllocator<GcRoot<mirror::String>, kAllocatorTagInternTable>>;
+
   InternTable();
 
   // Interns a potentially new string in the 'strong' table. May cause thread suspension.
@@ -119,21 +167,18 @@ class InternTable {
 
   void BroadcastForNewInterns();
 
-  // Adds all of the resolved image strings from the image spaces into the intern table. The
-  // advantage of doing this is preventing expensive DexFile::FindStringId calls. Sets
-  // images_added_to_intern_table_ to true.
-  void AddImagesStringsToTable(const std::vector<gc::space::ImageSpace*>& image_spaces)
+  // Add all of the strings in the image's intern table into this intern table. This is required so
+  // the intern table is correct.
+  // The visitor arg type is UnorderedSet
+  template <typename Visitor>
+  void AddImageStringsToTable(gc::space::ImageSpace* image_space,
+                              const Visitor& visitor)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Locks::intern_table_lock_);
 
   // Add a new intern table for inserting to, previous intern tables are still there but no
   // longer inserted into and ideally unmodified. This is done to prevent dirty pages.
   void AddNewTable()
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Locks::intern_table_lock_);
-
-  // Read the intern table from memory. The elements aren't copied, the intern hash set data will
-  // point to somewhere within ptr. Only reads the strong interns.
-  size_t AddTableFromMemory(const uint8_t* ptr) REQUIRES(!Locks::intern_table_lock_)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Write the post zygote intern table to a pointer. Only writes the strong interns since it is
   // expected that there is no weak interns since this is called from the image writer.
@@ -145,52 +190,6 @@ class InternTable {
       REQUIRES(!Locks::intern_table_lock_);
 
  private:
-  // Modified UTF-8-encoded string treated as UTF16.
-  class Utf8String {
-   public:
-    Utf8String(uint32_t utf16_length, const char* utf8_data, int32_t hash)
-        : hash_(hash), utf16_length_(utf16_length), utf8_data_(utf8_data) { }
-
-    int32_t GetHash() const { return hash_; }
-    uint32_t GetUtf16Length() const { return utf16_length_; }
-    const char* GetUtf8Data() const { return utf8_data_; }
-
-   private:
-    int32_t hash_;
-    uint32_t utf16_length_;
-    const char* utf8_data_;
-  };
-
-  class StringHashEquals {
-   public:
-    std::size_t operator()(const GcRoot<mirror::String>& root) const NO_THREAD_SAFETY_ANALYSIS;
-    bool operator()(const GcRoot<mirror::String>& a, const GcRoot<mirror::String>& b) const
-        NO_THREAD_SAFETY_ANALYSIS;
-
-    // Utf8String can be used for lookup.
-    std::size_t operator()(const Utf8String& key) const {
-      // A cast to prevent undesired sign extension.
-      return static_cast<uint32_t>(key.GetHash());
-    }
-
-    bool operator()(const GcRoot<mirror::String>& a, const Utf8String& b) const
-        NO_THREAD_SAFETY_ANALYSIS;
-  };
-  class GcRootEmptyFn {
-   public:
-    void MakeEmpty(GcRoot<mirror::String>& item) const {
-      item = GcRoot<mirror::String>();
-    }
-    bool IsEmpty(const GcRoot<mirror::String>& item) const {
-      return item.IsNull();
-    }
-  };
-  using UnorderedSet = HashSet<GcRoot<mirror::String>,
-                               GcRootEmptyFn,
-                               StringHashEquals,
-                               StringHashEquals,
-                               TrackingAllocator<GcRoot<mirror::String>, kAllocatorTagInternTable>>;
-
   // Table which holds pre zygote and post zygote interned strings. There is one instance for
   // weak interns and strong interns.
   class Table {
@@ -214,8 +213,10 @@ class InternTable {
     // Read and add an intern table from ptr.
     // Tables read are inserted at the front of the table array. Only checks for conflicts in
     // debug builds. Returns how many bytes were read.
-    size_t AddTableFromMemory(const uint8_t* ptr)
-        REQUIRES(Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
+    // NO_THREAD_SAFETY_ANALYSIS for the visitor that may require locks.
+    template <typename Visitor>
+    size_t AddTableFromMemory(const uint8_t* ptr, const Visitor& visitor)
+        REQUIRES(!Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
     // Write the intern tables to ptr, if there are multiple tables they are combined into a single
     // one. Returns how many bytes were written.
     size_t WriteToMemory(uint8_t* ptr)
@@ -225,10 +226,15 @@ class InternTable {
     void SweepWeaks(UnorderedSet* set, IsMarkedVisitor* visitor)
         REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
 
+    // Add a table to the front of the tables vector.
+    void AddInternStrings(UnorderedSet&& intern_strings)
+        REQUIRES(Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
+
     // We call AddNewTable when we create the zygote to reduce private dirty pages caused by
     // modifying the zygote intern table. The back of table is modified when strings are interned.
     std::vector<UnorderedSet> tables_;
 
+    friend class InternTable;
     friend class linker::ImageWriter;
     ART_FRIEND_TEST(InternTableTest, CrossHash);
   };
@@ -237,6 +243,11 @@ class InternTable {
   // If holding_locks is true, then we may also hold other locks. If holding_locks is true, then we
   // require GC is not running since it is not safe to wait while holding locks.
   ObjPtr<mirror::String> Insert(ObjPtr<mirror::String> s, bool is_strong, bool holding_locks)
+      REQUIRES(!Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Add a table from memory to the strong interns.
+  template <typename Visitor>
+  size_t AddTableFromMemory(const uint8_t* ptr, const Visitor& visitor)
       REQUIRES(!Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
   ObjPtr<mirror::String> LookupStrongLocked(ObjPtr<mirror::String> s)
@@ -261,9 +272,6 @@ class InternTable {
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
   void RemoveWeakFromTransaction(ObjPtr<mirror::String> s)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
-
-  size_t AddTableFromMemoryLocked(const uint8_t* ptr)
-      REQUIRES(Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Change the weak root state. May broadcast to waiters.
   void ChangeWeakRootStateLocked(gc::WeakRootState new_state)
