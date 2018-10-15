@@ -18,6 +18,7 @@
 
 #include "array-inl.h"
 #include "art_field-inl.h"
+#include "base/casts.h"
 #include "class-inl.h"
 #include "class_linker.h"
 #include "class_root.h"
@@ -1680,8 +1681,7 @@ bool VarHandle::GetAccessModeByMethodName(const char* method_name, AccessMode* a
 }
 
 ArtField* FieldVarHandle::GetField() {
-  uintptr_t opaque_field = static_cast<uintptr_t>(GetField64(ArtFieldOffset()));
-  return reinterpret_cast<ArtField*>(opaque_field);
+  return reinterpret_cast64<ArtField*>(GetField64(ArtFieldOffset()));
 }
 
 bool FieldVarHandle::Access(AccessMode access_mode,

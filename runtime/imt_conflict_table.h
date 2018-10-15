@@ -187,17 +187,17 @@ class ImtConflictTable {
 
   ArtMethod* GetMethod(size_t index, PointerSize pointer_size) const {
     if (pointer_size == PointerSize::k64) {
-      return reinterpret_cast<ArtMethod*>(static_cast<uintptr_t>(data64_[index]));
+      return reinterpret_cast64<ArtMethod*>(data64_[index]);
     } else {
-      return reinterpret_cast<ArtMethod*>(static_cast<uintptr_t>(data32_[index]));
+      return reinterpret_cast32<ArtMethod*>(data32_[index]);
     }
   }
 
   void SetMethod(size_t index, PointerSize pointer_size, ArtMethod* method) {
     if (pointer_size == PointerSize::k64) {
-      data64_[index] = dchecked_integral_cast<uint64_t>(reinterpret_cast<uintptr_t>(method));
+      data64_[index] = reinterpret_cast64<uint64_t>(method);
     } else {
-      data32_[index] = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(method));
+      data32_[index] = reinterpret_cast32<uint32_t>(method);
     }
   }
 
