@@ -638,7 +638,7 @@ static void GetResourceAsStream(Thread* self,
   }
 
   uint32_t args[1];
-  args[0] = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(h_array.Get()));
+  args[0] = reinterpret_cast32<uint32_t>(h_array.Get());
   EnterInterpreterFromInvoke(self, constructor, h_obj.Get(), args, nullptr);
 
   if (self->IsExceptionPending()) {
@@ -1691,14 +1691,21 @@ void UnstartedRuntime::UnstartedJNIVMRuntimeIs64Bit(
 }
 
 void UnstartedRuntime::UnstartedJNIVMRuntimeNewUnpaddedArray(
-    Thread* self, ArtMethod* method ATTRIBUTE_UNUSED, mirror::Object* receiver ATTRIBUTE_UNUSED,
-    uint32_t* args, JValue* result) {
+    Thread* self,
+    ArtMethod* method ATTRIBUTE_UNUSED,
+    mirror::Object* receiver ATTRIBUTE_UNUSED,
+    uint32_t* args,
+    JValue* result) {
   int32_t length = args[1];
   DCHECK_GE(length, 0);
-  ObjPtr<mirror::Class> element_class = reinterpret_cast<mirror::Object*>(args[0])->AsClass();
+  ObjPtr<mirror::Object> element_class = reinterpret_cast32<mirror::Object*>(args[0])->AsClass();
+  if (element_class == nullptr) {
+    AbortTransactionOrFail(self, "VMRuntime.newUnpaddedArray with null element_class.");
+    return;
+  }
   Runtime* runtime = Runtime::Current();
   ObjPtr<mirror::Class> array_class =
-      runtime->GetClassLinker()->FindArrayClass(self, element_class);
+      runtime->GetClassLinker()->FindArrayClass(self, element_class->AsClass());
   DCHECK(array_class != nullptr);
   gc::AllocatorType allocator = runtime->GetHeap()->GetCurrentAllocator();
   result->SetL(mirror::Array::Alloc<true, true>(self,
@@ -1789,14 +1796,17 @@ void UnstartedRuntime::UnstartedJNIObjectNotifyAll(
   receiver->NotifyAll(self);
 }
 
-void UnstartedRuntime::UnstartedJNIStringCompareTo(
-    Thread* self, ArtMethod* method ATTRIBUTE_UNUSED, mirror::Object* receiver, uint32_t* args,
-    JValue* result) {
-  mirror::String* rhs = reinterpret_cast<mirror::Object*>(args[0])->AsString();
+void UnstartedRuntime::UnstartedJNIStringCompareTo(Thread* self,
+                                                   ArtMethod* method ATTRIBUTE_UNUSED,
+                                                   mirror::Object* receiver,
+                                                   uint32_t* args,
+                                                   JValue* result) {
+  ObjPtr<mirror::Object> rhs = reinterpret_cast32<mirror::Object*>(args[0]);
   if (rhs == nullptr) {
-    AbortTransactionOrFail(self, "String.compareTo with null object");
+    AbortTransactionOrFail(self, "String.compareTo with null object.");
+    return;
   }
-  result->SetI(receiver->AsString()->CompareTo(rhs));
+  result->SetI(receiver->AsString()->CompareTo(rhs->AsString()));
 }
 
 void UnstartedRuntime::UnstartedJNIStringIntern(
@@ -1854,9 +1864,16 @@ void UnstartedRuntime::UnstartedJNIByteOrderIsLittleEndian(
 }
 
 void UnstartedRuntime::UnstartedJNIUnsafeCompareAndSwapInt(
-    Thread* self ATTRIBUTE_UNUSED, ArtMethod* method ATTRIBUTE_UNUSED,
-    mirror::Object* receiver ATTRIBUTE_UNUSED, uint32_t* args, JValue* result) {
-  mirror::Object* obj = reinterpret_cast<mirror::Object*>(args[0]);
+    Thread* self,
+    ArtMethod* method ATTRIBUTE_UNUSED,
+    mirror::Object* receiver ATTRIBUTE_UNUSED,
+    uint32_t* args,
+    JValue* result) {
+  ObjPtr<mirror::Object> obj = reinterpret_cast32<mirror::Object*>(args[0]);
+  if (obj == nullptr) {
+    AbortTransactionOrFail(self, "Unsafe.compareAndSwapInt with null object.");
+    return;
+  }
   jlong offset = (static_cast<uint64_t>(args[2]) << 32) | args[1];
   jint expectedValue = args[3];
   jint newValue = args[4];
@@ -1877,12 +1894,14 @@ void UnstartedRuntime::UnstartedJNIUnsafeCompareAndSwapInt(
   result->SetZ(success ? JNI_TRUE : JNI_FALSE);
 }
 
-void UnstartedRuntime::UnstartedJNIUnsafeGetIntVolatile(
-    Thread* self, ArtMethod* method ATTRIBUTE_UNUSED, mirror::Object* receiver ATTRIBUTE_UNUSED,
-    uint32_t* args, JValue* result) {
-  mirror::Object* obj = reinterpret_cast<mirror::Object*>(args[0]);
+void UnstartedRuntime::UnstartedJNIUnsafeGetIntVolatile(Thread* self,
+                                                        ArtMethod* method ATTRIBUTE_UNUSED,
+                                                        mirror::Object* receiver ATTRIBUTE_UNUSED,
+                                                        uint32_t* args,
+                                                        JValue* result) {
+  ObjPtr<mirror::Object> obj = reinterpret_cast32<mirror::Object*>(args[0]);
   if (obj == nullptr) {
-    AbortTransactionOrFail(self, "Cannot access null object, retry at runtime.");
+    AbortTransactionOrFail(self, "Unsafe.compareAndSwapIntVolatile with null object.");
     return;
   }
 
@@ -1890,12 +1909,18 @@ void UnstartedRuntime::UnstartedJNIUnsafeGetIntVolatile(
   result->SetI(obj->GetField32Volatile(MemberOffset(offset)));
 }
 
-void UnstartedRuntime::UnstartedJNIUnsafePutObject(
-    Thread* self ATTRIBUTE_UNUSED, ArtMethod* method ATTRIBUTE_UNUSED,
-    mirror::Object* receiver ATTRIBUTE_UNUSED, uint32_t* args, JValue* result ATTRIBUTE_UNUSED) {
-  mirror::Object* obj = reinterpret_cast<mirror::Object*>(args[0]);
+void UnstartedRuntime::UnstartedJNIUnsafePutObject(Thread* self,
+                                                   ArtMethod* method ATTRIBUTE_UNUSED,
+                                                   mirror::Object* receiver ATTRIBUTE_UNUSED,
+                                                   uint32_t* args,
+                                                   JValue* result ATTRIBUTE_UNUSED) {
+  ObjPtr<mirror::Object> obj = reinterpret_cast32<mirror::Object*>(args[0]);
+  if (obj == nullptr) {
+    AbortTransactionOrFail(self, "Unsafe.putObject with null object.");
+    return;
+  }
   jlong offset = (static_cast<uint64_t>(args[2]) << 32) | args[1];
-  mirror::Object* newValue = reinterpret_cast<mirror::Object*>(args[3]);
+  ObjPtr<mirror::Object> newValue = reinterpret_cast32<mirror::Object*>(args[3]);
   if (Runtime::Current()->IsActiveTransaction()) {
     obj->SetFieldObject<true>(MemberOffset(offset), newValue);
   } else {
@@ -1904,18 +1929,32 @@ void UnstartedRuntime::UnstartedJNIUnsafePutObject(
 }
 
 void UnstartedRuntime::UnstartedJNIUnsafeGetArrayBaseOffsetForComponentType(
-    Thread* self ATTRIBUTE_UNUSED, ArtMethod* method ATTRIBUTE_UNUSED,
-    mirror::Object* receiver ATTRIBUTE_UNUSED, uint32_t* args, JValue* result) {
-  ObjPtr<mirror::Class> component = reinterpret_cast<mirror::Object*>(args[0])->AsClass();
-  Primitive::Type primitive_type = component->GetPrimitiveType();
+    Thread* self,
+    ArtMethod* method ATTRIBUTE_UNUSED,
+    mirror::Object* receiver ATTRIBUTE_UNUSED,
+    uint32_t* args,
+    JValue* result) {
+  ObjPtr<mirror::Object> component = reinterpret_cast32<mirror::Object*>(args[0]);
+  if (component == nullptr) {
+    AbortTransactionOrFail(self, "Unsafe.getArrayBaseOffsetForComponentType with null component.");
+    return;
+  }
+  Primitive::Type primitive_type = component->AsClass()->GetPrimitiveType();
   result->SetI(mirror::Array::DataOffset(Primitive::ComponentSize(primitive_type)).Int32Value());
 }
 
 void UnstartedRuntime::UnstartedJNIUnsafeGetArrayIndexScaleForComponentType(
-    Thread* self ATTRIBUTE_UNUSED, ArtMethod* method ATTRIBUTE_UNUSED,
-    mirror::Object* receiver ATTRIBUTE_UNUSED, uint32_t* args, JValue* result) {
-  ObjPtr<mirror::Class> component = reinterpret_cast<mirror::Object*>(args[0])->AsClass();
-  Primitive::Type primitive_type = component->GetPrimitiveType();
+    Thread* self,
+    ArtMethod* method ATTRIBUTE_UNUSED,
+    mirror::Object* receiver ATTRIBUTE_UNUSED,
+    uint32_t* args,
+    JValue* result) {
+  ObjPtr<mirror::Object> component = reinterpret_cast32<mirror::Object*>(args[0]);
+  if (component == nullptr) {
+    AbortTransactionOrFail(self, "Unsafe.getArrayIndexScaleForComponentType with null component.");
+    return;
+  }
+  Primitive::Type primitive_type = component->AsClass()->GetPrimitiveType();
   result->SetI(Primitive::ComponentSize(primitive_type));
 }
 

@@ -20,6 +20,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/casts.h"
 #include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/os.h"
@@ -74,10 +75,10 @@ static bool ConvertJavaArrayToDexFiles(
     return false;
   }
 
-  oat_file = reinterpret_cast<const OatFile*>(static_cast<uintptr_t>(long_data[kOatFileIndex]));
+  oat_file = reinterpret_cast64<const OatFile*>(long_data[kOatFileIndex]);
   dex_files.reserve(array_size - 1);
   for (jsize i = kDexFileIndexStart; i < array_size; ++i) {
-    dex_files.push_back(reinterpret_cast<const DexFile*>(static_cast<uintptr_t>(long_data[i])));
+    dex_files.push_back(reinterpret_cast64<const DexFile*>(long_data[i]));
   }
 
   env->ReleaseLongArrayElements(reinterpret_cast<jlongArray>(array), long_data, JNI_ABORT);
@@ -99,9 +100,9 @@ static jlongArray ConvertDexFilesToJavaArray(JNIEnv* env,
     return nullptr;
   }
 
-  long_data[kOatFileIndex] = reinterpret_cast<uintptr_t>(oat_file);
+  long_data[kOatFileIndex] = reinterpret_cast64<jlong>(oat_file);
   for (size_t i = 0; i < vec.size(); ++i) {
-    long_data[kDexFileIndexStart + i] = reinterpret_cast<uintptr_t>(vec[i].get());
+    long_data[kDexFileIndexStart + i] = reinterpret_cast64<jlong>(vec[i].get());
   }
 
   env->ReleaseLongArrayElements(long_array, long_data, 0);
