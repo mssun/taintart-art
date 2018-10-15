@@ -61,6 +61,7 @@ GTEST_DEX_DIRECTORIES := \
   StaticLeafMethods \
   Statics \
   StaticsFromCode \
+  StringLiterals \
   Transaction \
   XandY
 
@@ -174,7 +175,7 @@ ART_GTEST_compiler_driver_test_DEX_DEPS := AbstractMethod StaticLeafMethods Prof
 ART_GTEST_dex_cache_test_DEX_DEPS := Main Packages MethodTypes
 ART_GTEST_dexanalyze_test_DEX_DEPS := MultiDex
 ART_GTEST_dexlayout_test_DEX_DEPS := ManyMethods
-ART_GTEST_dex2oat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) ManyMethods Statics VerifierDeps MainUncompressed EmptyUncompressed
+ART_GTEST_dex2oat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) ManyMethods Statics VerifierDeps MainUncompressed EmptyUncompressed StringLiterals
 ART_GTEST_dex2oat_image_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) Statics VerifierDeps
 ART_GTEST_exception_test_DEX_DEPS := ExceptionHandle
 ART_GTEST_hiddenapi_test_DEX_DEPS := HiddenApi

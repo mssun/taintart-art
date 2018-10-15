@@ -313,6 +313,10 @@ class CompilerOptions final {
     return count_hotness_in_compiled_code_;
   }
 
+  bool ResolveStartupConstStrings() const {
+    return resolve_startup_const_strings_;
+  }
+
  private:
   bool ParseDumpInitFailures(const std::string& option, std::string* error_msg);
   void ParseDumpCfgPasses(const StringPiece& option, UsageFn Usage);
@@ -391,6 +395,10 @@ class CompilerOptions final {
   // Whether compiled code should increment the hotness count of ArtMethod. Note that the increments
   // won't be atomic for performance reasons, so we accept races, just like in interpreter.
   bool count_hotness_in_compiled_code_;
+
+  // Whether we eagerly resolve all of the const strings that are loaded from startup methods in the
+  // profile.
+  bool resolve_startup_const_strings_;
 
   RegisterAllocator::Strategy register_allocation_strategy_;
 
