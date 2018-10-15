@@ -18,16 +18,12 @@
 #include "thread.h"
 #endif
 
-ASM_DEFINE(THREAD_ALT_IBASE_OFFSET,
-           art::Thread::MterpAltIBaseOffset<art::kRuntimePointerSize>().Int32Value())
 ASM_DEFINE(THREAD_CARD_TABLE_OFFSET,
            art::Thread::CardTableOffset<art::kRuntimePointerSize>().Int32Value())
 ASM_DEFINE(THREAD_CHECKPOINT_REQUEST,
            art::kCheckpointRequest)
 ASM_DEFINE(THREAD_CURRENT_IBASE_OFFSET,
            art::Thread::MterpCurrentIBaseOffset<art::kRuntimePointerSize>().Int32Value())
-ASM_DEFINE(THREAD_DEFAULT_IBASE_OFFSET,
-           art::Thread::MterpDefaultIBaseOffset<art::kRuntimePointerSize>().Int32Value())
 ASM_DEFINE(THREAD_EMPTY_CHECKPOINT_REQUEST,
            art::kEmptyCheckpointRequest)
 ASM_DEFINE(THREAD_EXCEPTION_OFFSET,
