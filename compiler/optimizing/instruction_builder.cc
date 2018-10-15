@@ -1842,15 +1842,27 @@ void HInstructionBuilder::BuildArrayAccess(const Instruction& instruction,
   graph_->SetHasBoundsChecks(true);
 }
 
+HNewArray* HInstructionBuilder::BuildNewArray(uint32_t dex_pc,
+                                              dex::TypeIndex type_index,
+                                              HInstruction* length) {
+  HLoadClass* cls = BuildLoadClass(type_index, dex_pc);
+
+  const char* descriptor = dex_file_->GetTypeDescriptor(dex_file_->GetTypeId(type_index));
+  DCHECK_EQ(descriptor[0], '[');
+  size_t component_type_shift = Primitive::ComponentSizeShift(Primitive::GetType(descriptor[1]));
+
+  HNewArray* new_array = new (allocator_) HNewArray(cls, length, dex_pc, component_type_shift);
+  AppendInstruction(new_array);
+  return new_array;
+}
+
 HNewArray* HInstructionBuilder::BuildFilledNewArray(uint32_t dex_pc,
                                                     dex::TypeIndex type_index,
                                                     const InstructionOperands& operands) {
   const size_t number_of_operands = operands.GetNumberOfOperands();
   HInstruction* length = graph_->GetIntConstant(number_of_operands, dex_pc);
-  HLoadClass* cls = BuildLoadClass(type_index, dex_pc);
-  HNewArray* const object = new (allocator_) HNewArray(cls, length, dex_pc);
-  AppendInstruction(object);
 
+  HNewArray* new_array = BuildNewArray(dex_pc, type_index, length);
   const char* descriptor = dex_file_->StringByTypeIdx(type_index);
   DCHECK_EQ(descriptor[0], '[') << descriptor;
   char primitive = descriptor[1];
@@ -1863,13 +1875,13 @@ HNewArray* HInstructionBuilder::BuildFilledNewArray(uint32_t dex_pc,
   for (size_t i = 0; i < number_of_operands; ++i) {
     HInstruction* value = LoadLocal(operands.GetOperand(i), type);
     HInstruction* index = graph_->GetIntConstant(i, dex_pc);
-    HArraySet* aset = new (allocator_) HArraySet(object, index, value, type, dex_pc);
+    HArraySet* aset = new (allocator_) HArraySet(new_array, index, value, type, dex_pc);
     ssa_builder_->MaybeAddAmbiguousArraySet(aset);
     AppendInstruction(aset);
   }
-  latest_result_ = object;
+  latest_result_ = new_array;
 
-  return object;
+  return new_array;
 }
 
 template <typename T>
@@ -2892,10 +2904,8 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::NEW_ARRAY: {
       dex::TypeIndex type_index(instruction.VRegC_22c());
       HInstruction* length = LoadLocal(instruction.VRegB_22c(), DataType::Type::kInt32);
-      HLoadClass* cls = BuildLoadClass(type_index, dex_pc);
+      HNewArray* new_array = BuildNewArray(dex_pc, type_index, length);
 
-      HNewArray* new_array = new (allocator_) HNewArray(cls, length, dex_pc);
-      AppendInstruction(new_array);
       UpdateLocal(instruction.VRegA_22c(), current_block_->GetLastInstruction());
       BuildConstructorFenceForAllocation(new_array);
       break;

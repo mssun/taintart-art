@@ -1653,19 +1653,12 @@ void CodeGenerator::EmitJitRoots(uint8_t* code,
   EmitJitRootPatches(code, roots_data);
 }
 
-QuickEntrypointEnum CodeGenerator::GetArrayAllocationEntrypoint(Handle<mirror::Class> array_klass) {
-  ScopedObjectAccess soa(Thread::Current());
-  if (array_klass == nullptr) {
-    // This can only happen for non-primitive arrays, as primitive arrays can always
-    // be resolved.
-    return kQuickAllocArrayResolved32;
-  }
-
-  switch (array_klass->GetComponentSize()) {
-    case 1: return kQuickAllocArrayResolved8;
-    case 2: return kQuickAllocArrayResolved16;
-    case 4: return kQuickAllocArrayResolved32;
-    case 8: return kQuickAllocArrayResolved64;
+QuickEntrypointEnum CodeGenerator::GetArrayAllocationEntrypoint(HNewArray* new_array) {
+  switch (new_array->GetComponentSizeShift()) {
+    case 0: return kQuickAllocArrayResolved8;
+    case 1: return kQuickAllocArrayResolved16;
+    case 2: return kQuickAllocArrayResolved32;
+    case 3: return kQuickAllocArrayResolved64;
   }
   LOG(FATAL) << "Unreachable";
   return kQuickAllocArrayResolved;
