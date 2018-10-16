@@ -80,6 +80,7 @@ inline bool ReadCompilerOptions(Base& map, CompilerOptions* options, std::string
   if (map.Exists(Base::CountHotnessInCompiledCode)) {
     options->count_hotness_in_compiled_code_ = true;
   }
+  map.AssignIfExists(Base::ResolveStartupConstStrings, &options->resolve_startup_const_strings_);
 
   if (map.Exists(Base::DumpTimings)) {
     options->dump_timings_ = true;
@@ -183,6 +184,11 @@ inline void AddCompilerOptionsArgumentParserOptions(Builder& b) {
       .Define("--register-allocation-strategy=_")
           .template WithType<std::string>()
           .IntoKey(Map::RegisterAllocationStrategy)
+
+      .Define("--resolve-startup-const-strings=_")
+          .template WithType<bool>()
+          .WithValueMap({{"false", false}, {"true", true}})
+          .IntoKey(Map::ResolveStartupConstStrings)
 
       .Define("--verbose-methods=_")
           .template WithType<ParseStringList<','>>()
