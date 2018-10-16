@@ -92,4 +92,5 @@ done
 
 
 echo "Executing $make_command"
-bash -c "$make_command"
+# Disable path restrictions to enable luci builds using vpython.
+bash -c "TEMPORARY_DISABLE_PATH_RESTRICTIONS=true $make_command"
