@@ -430,6 +430,12 @@ class CompilerDriver {
   typedef AtomicDexRefMap<MethodReference, CompiledMethod*> MethodTable;
 
  private:
+  // Resolve const string literals that are loaded from dex code. If only_startup_strings is
+  // specified, only methods that are marked startup in the profile are resolved.
+  void ResolveConstStrings(const std::vector<const DexFile*>& dex_files,
+                           bool only_startup_strings,
+                           /*inout*/ TimingLogger* timings);
+
   // All method references that this compiler has compiled.
   MethodTable compiled_methods_;
 

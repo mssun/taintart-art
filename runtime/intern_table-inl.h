@@ -19,6 +19,9 @@
 
 #include "intern_table.h"
 
+// Required for ToModifiedUtf8 below.
+#include "mirror/string-inl.h"
+
 namespace art {
 
 template <typename Visitor>
