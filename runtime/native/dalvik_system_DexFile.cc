@@ -112,7 +112,7 @@ static jlongArray ConvertDexFilesToJavaArray(JNIEnv* env,
 
   // Now release all the unique_ptrs.
   for (auto& dex_file : vec) {
-    dex_file.release();
+    dex_file.release();  // NOLINT
   }
 
   return long_array;
@@ -295,7 +295,7 @@ static jobject DexFile_openDexFileNative(JNIEnv* env,
       ScopedObjectAccess soa(env);
       for (auto& dex_file : dex_files) {
         if (linker->IsDexFileRegistered(soa.Self(), *dex_file)) {
-          dex_file.release();
+          dex_file.release();  // NOLINT
         }
       }
     }

@@ -729,7 +729,7 @@ void Thread::CreateNativeThread(JNIEnv* env, jobject java_peer, size_t stack_siz
       // JNIEnvExt we created.
       // Note: we can't check for tmp_jni_env == nullptr, as that would require synchronization
       //       between the threads.
-      child_jni_env_ext.release();
+      child_jni_env_ext.release();  // NOLINT pthreads API.
       return;
     }
   }

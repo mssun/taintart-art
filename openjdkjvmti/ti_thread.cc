@@ -812,7 +812,7 @@ jvmtiError ThreadUtil::RunAgentThread(jvmtiEnv* jvmti_env,
     runtime->EndThreadBirth();
     return ERR(INTERNAL);
   }
-  data.release();
+  data.release();  // NOLINT pthreads API.
 
   return ERR(NONE);
 }
