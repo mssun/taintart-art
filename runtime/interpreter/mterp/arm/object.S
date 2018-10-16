@@ -43,7 +43,7 @@
    mov      r2, rINST, lsr #12            @ B
    GET_VREG r2, r2                        @ object we're operating on
    cmp      r0, rPC
-%  slow_path_label = add_helper("slow_path", lambda: field(helper))
+%  slow_path_label = add_helper(lambda: field(helper))
    bne      ${slow_path_label}            @ cache miss
    cmp      r2, #0
    beq      common_errNullObject          @ null object

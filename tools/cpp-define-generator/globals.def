@@ -22,6 +22,7 @@
 #include "dex/modifiers.h"
 #include "gc/accounting/card_table.h"
 #include "gc/heap.h"
+#include "interpreter/mterp/mterp.h"
 #include "jit/jit.h"
 #include "mirror/object.h"
 #include "mirror/object_reference.h"
@@ -50,6 +51,10 @@ ASM_DEFINE(JIT_HOTNESS_DISABLE,
            art::jit::kJitHotnessDisabled)
 ASM_DEFINE(MIN_LARGE_OBJECT_THRESHOLD,
            art::gc::Heap::kMinLargeObjectThreshold)
+ASM_DEFINE(MTERP_HANDLER_SIZE,
+           art::interpreter::kMterpHandlerSize)
+ASM_DEFINE(MTERP_HANDLER_SIZE_LOG2,
+           art::WhichPowerOf2(art::interpreter::kMterpHandlerSize))
 ASM_DEFINE(OBJECT_ALIGNMENT_MASK,
            art::kObjectAlignment - 1)
 ASM_DEFINE(OBJECT_ALIGNMENT_MASK_TOGGLED,
