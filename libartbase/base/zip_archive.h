@@ -30,8 +30,9 @@
 #include "unix_file/random_access_file.h"
 
 // system/core/zip_archive definitions.
+struct ZipArchive;
 struct ZipEntry;
-typedef void* ZipArchiveHandle;
+typedef ZipArchive* ZipArchiveHandle;
 
 namespace art {
 
