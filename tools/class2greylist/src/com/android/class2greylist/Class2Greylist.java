@@ -18,6 +18,7 @@ package com.android.class2greylist;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
@@ -48,7 +49,10 @@ import java.util.Set;
  */
 public class Class2Greylist {
 
-    private static final String GREYLIST_ANNOTATION = "Landroid/annotation/UnsupportedAppUsage;";
+    private static final Set<String> GREYLIST_ANNOTATIONS =
+            ImmutableSet.of(
+                    "Landroid/annotation/UnsupportedAppUsage;",
+                    "Ldalvik/annotation/compat/UnsupportedAppUsage;");
     private static final Set<String> WHITELIST_ANNOTATIONS = ImmutableSet.of();
 
     private final Status mStatus;
@@ -176,10 +180,11 @@ public class Class2Greylist {
     }
 
     private Map<String, AnnotationHandler> createAnnotationHandlers() {
-        return ImmutableMap.<String, AnnotationHandler>builder()
-                .put(GreylistAnnotationHandler.ANNOTATION_NAME,
-                        new GreylistAnnotationHandler(
-                                mStatus, mOutput, mPublicApis, mAllowedSdkVersions))
+        Builder<String, AnnotationHandler> builder = ImmutableMap.builder();
+        GreylistAnnotationHandler greylistAnnotationHandler = new GreylistAnnotationHandler(
+            mStatus, mOutput, mPublicApis, mAllowedSdkVersions);
+        GREYLIST_ANNOTATIONS.forEach(a -> builder.put(a, greylistAnnotationHandler));
+        return builder
                 .put(CovariantReturnTypeHandler.ANNOTATION_NAME,
                         new CovariantReturnTypeHandler(mOutput, mPublicApis))
                 .put(CovariantReturnTypeMultiHandler.ANNOTATION_NAME,
