@@ -598,9 +598,10 @@ static HInstruction* BuildSSAGraph3(HGraph* graph,
   entry->AddSuccessor(block);
   // We pass a bogus constant for the class to avoid mocking one.
   HInstruction* new_array = new (allocator) HNewArray(
-      constant_10,
-      constant_10,
-      0);
+      /* cls= */ constant_10,
+      /* length= */ constant_10,
+      /* dex_pc= */ 0,
+      /* component_size_shift= */ 0);
   block->AddInstruction(new_array);
   block->AddInstruction(new (allocator) HGoto());
 
@@ -977,7 +978,11 @@ TEST_F(BoundsCheckEliminationTest, ModArrayBoundsElimination) {
   graph_->AddBlock(block);
   entry->AddSuccessor(block);
   // We pass a bogus constant for the class to avoid mocking one.
-  HInstruction* new_array = new (GetAllocator()) HNewArray(constant_10, constant_10, 0);
+  HInstruction* new_array = new (GetAllocator()) HNewArray(
+      /* cls= */ constant_10,
+      /* length= */ constant_10,
+      /* dex_pc= */ 0,
+      /* component_size_shift= */ 0);
   block->AddInstruction(new_array);
   block->AddInstruction(new (GetAllocator()) HGoto());
 

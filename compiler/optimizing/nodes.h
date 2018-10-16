@@ -4849,10 +4849,11 @@ class HNeg final : public HUnaryOperation {
 
 class HNewArray final : public HExpression<2> {
  public:
-  HNewArray(HInstruction* cls, HInstruction* length, uint32_t dex_pc)
+  HNewArray(HInstruction* cls, HInstruction* length, uint32_t dex_pc, size_t component_size_shift)
       : HExpression(kNewArray, DataType::Type::kReference, SideEffects::CanTriggerGC(), dex_pc) {
     SetRawInputAt(0, cls);
     SetRawInputAt(1, length);
+    SetPackedField<ComponentSizeShiftField>(component_size_shift);
   }
 
   bool IsClonable() const override { return true; }
@@ -4874,10 +4875,23 @@ class HNewArray final : public HExpression<2> {
     return InputAt(1);
   }
 
+  size_t GetComponentSizeShift() {
+    return GetPackedField<ComponentSizeShiftField>();
+  }
+
   DECLARE_INSTRUCTION(NewArray);
 
  protected:
   DEFAULT_COPY_CONSTRUCTOR(NewArray);
+
+ private:
+  static constexpr size_t kFieldComponentSizeShift = kNumberOfGenericPackedBits;
+  static constexpr size_t kFieldComponentSizeShiftSize = MinimumBitsToStore(3u);
+  static constexpr size_t kNumberOfNewArrayPackedBits =
+      kFieldComponentSizeShift + kFieldComponentSizeShiftSize;
+  static_assert(kNumberOfNewArrayPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
+  using ComponentSizeShiftField =
+      BitField<size_t, kFieldComponentSizeShift, kFieldComponentSizeShift>;
 };
 
 class HAdd final : public HBinaryOperation {

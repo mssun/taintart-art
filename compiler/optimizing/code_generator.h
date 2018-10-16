@@ -636,7 +636,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   virtual void GenerateNop() = 0;
 
-  static QuickEntrypointEnum GetArrayAllocationEntrypoint(Handle<mirror::Class> array_klass);
+  static QuickEntrypointEnum GetArrayAllocationEntrypoint(HNewArray* new_array);
 
  protected:
   // Patch info used for recording locations of required linker patches and their targets,
