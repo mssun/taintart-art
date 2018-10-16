@@ -887,7 +887,8 @@ class ImageSpace::Loader {
         mirror::Class* klass = obj->AsClass<kVerifyNone>();
         // Fixup super class before visiting instance fields which require
         // information from their super class to calculate offsets.
-        mirror::Class* super_class = klass->GetSuperClass<kVerifyNone, kWithoutReadBarrier>();
+        mirror::Class* super_class =
+            klass->GetSuperClass<kVerifyNone, kWithoutReadBarrier>().Ptr();
         if (super_class != nullptr) {
           mirror::Class* new_super_class = down_cast<mirror::Class*>(ForwardObject(super_class));
           if (new_super_class != super_class && IsInAppImage(new_super_class)) {
@@ -1650,7 +1651,8 @@ class ImageSpace::BootImageLoader {
       // we can get a reference to j.l.Object.class and assert that it has only one
       // reference instance field (the `klass_` patched above).
       if (kIsDebugBuild && klass == class_class) {
-        mirror::Class* object_class = klass->GetSuperClass<kVerifyNone, kWithoutReadBarrier>();
+        ObjPtr<mirror::Class> object_class =
+            klass->GetSuperClass<kVerifyNone, kWithoutReadBarrier>();
         CHECK_EQ(object_class->NumReferenceInstanceFields<kVerifyNone>(), 1u);
       }
       // Then patch static fields.

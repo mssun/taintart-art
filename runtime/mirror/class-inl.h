@@ -57,14 +57,14 @@ inline uint32_t Class::GetObjectSizeAllocFastPath() {
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline Class* Class::GetSuperClass() {
+inline ObjPtr<Class> Class::GetSuperClass() {
   // Can only get super class for loaded classes (hack for when runtime is
   // initializing)
   DCHECK(IsLoaded<kVerifyFlags>() ||
          IsErroneous<kVerifyFlags>() ||
          !Runtime::Current()->IsStarted()) << IsLoaded();
-  return GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(
-      OFFSET_OF_OBJECT_MEMBER(Class, super_class_));
+  return ObjPtr<Class>(GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(
+      OFFSET_OF_OBJECT_MEMBER(Class, super_class_)));
 }
 
 inline void Class::SetSuperClass(ObjPtr<Class> new_super_class) {

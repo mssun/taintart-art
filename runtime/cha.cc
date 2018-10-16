@@ -277,7 +277,7 @@ class CHACheckpoint final : public Closure {
 };
 
 
-static void VerifyNonSingleImplementation(mirror::Class* verify_class,
+static void VerifyNonSingleImplementation(ObjPtr<mirror::Class> verify_class,
                                           uint16_t verify_index,
                                           ArtMethod* excluded_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -291,7 +291,7 @@ static void VerifyNonSingleImplementation(mirror::Class* verify_class,
   PointerSize image_pointer_size =
       Runtime::Current()->GetClassLinker()->GetImagePointerSize();
 
-  mirror::Class* input_verify_class = verify_class;
+  ObjPtr<mirror::Class> input_verify_class = verify_class;
 
   while (verify_class != nullptr) {
     if (verify_index >= verify_class->GetVTableLength()) {
@@ -299,7 +299,7 @@ static void VerifyNonSingleImplementation(mirror::Class* verify_class,
     }
     ArtMethod* verify_method = verify_class->GetVTableEntry(verify_index, image_pointer_size);
     if (verify_method != excluded_method) {
-      auto construct_parent_chain = [](mirror::Class* failed, mirror::Class* in)
+      auto construct_parent_chain = [](ObjPtr<mirror::Class> failed, ObjPtr<mirror::Class> in)
           REQUIRES_SHARED(Locks::mutator_lock_) {
         std::string tmp = in->PrettyClass();
         while (in != failed) {
@@ -432,7 +432,7 @@ void ClassHierarchyAnalysis::CheckVirtualMethodSingleImplementationInfo(
 
     // method_in_super might be the single-implementation of another abstract method,
     // which should be also invalidated of its single-implementation status.
-    mirror::Class* super_super = klass->GetSuperClass()->GetSuperClass();
+    ObjPtr<mirror::Class> super_super = klass->GetSuperClass()->GetSuperClass();
     while (super_super != nullptr &&
            method_index < super_super->GetVTableLength()) {
       ArtMethod* method_in_super_super = super_super->GetVTableEntry(method_index, pointer_size);
@@ -564,7 +564,7 @@ void ClassHierarchyAnalysis::UpdateAfterLoadingOf(Handle<mirror::Class> klass) {
     return;
   }
 
-  mirror::Class* super_class = klass->GetSuperClass();
+  ObjPtr<mirror::Class> super_class = klass->GetSuperClass();
   if (super_class == nullptr) {
     return;
   }
