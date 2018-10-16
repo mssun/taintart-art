@@ -517,7 +517,7 @@ class JvmtiMethodTraceListener final : public art::instrumentation::Instrumentat
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
-          /*was_popped_by_exception*/ static_cast<jboolean>(JNI_FALSE),
+          /*was_popped_by_exception=*/ static_cast<jboolean>(JNI_FALSE),
           val);
     }
   }
@@ -545,7 +545,7 @@ class JvmtiMethodTraceListener final : public art::instrumentation::Instrumentat
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
-          /*was_popped_by_exception*/ static_cast<jboolean>(JNI_FALSE),
+          /*was_popped_by_exception=*/ static_cast<jboolean>(JNI_FALSE),
           val);
     }
   }
@@ -572,7 +572,7 @@ class JvmtiMethodTraceListener final : public art::instrumentation::Instrumentat
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
-          /*was_popped_by_exception*/ static_cast<jboolean>(JNI_TRUE),
+          /*was_popped_by_exception=*/ static_cast<jboolean>(JNI_TRUE),
           val);
       // Match RI behavior of just throwing away original exception if a new one is thrown.
       if (LIKELY(!self->IsExceptionPending())) {
@@ -777,7 +777,7 @@ class JvmtiMethodTraceListener final : public art::instrumentation::Instrumentat
                             context.get(),
                             /*out*/ out_method,
                             /*out*/ dex_pc);
-    clf.WalkStack(/* include_transitions */ false);
+    clf.WalkStack(/* include_transitions= */ false);
   }
 
   // Call-back when an exception is thrown.
@@ -793,8 +793,8 @@ class JvmtiMethodTraceListener final : public art::instrumentation::Instrumentat
       FindCatchMethodsFromThrow(self, exception_object, &catch_method, &catch_pc);
       uint32_t dex_pc = 0;
       art::ArtMethod* method = self->GetCurrentMethod(&dex_pc,
-                                                      /* check_suspended */ true,
-                                                      /* abort_on_error */ art::kIsDebugBuild);
+                                                      /* check_suspended= */ true,
+                                                      /* abort_on_error= */ art::kIsDebugBuild);
       ScopedLocalRef<jobject> exception(jnienv,
                                         AddLocalRef<jobject>(jnienv, exception_object.Get()));
       RunEventCallback<ArtJvmtiEvent::kException>(
@@ -819,8 +819,8 @@ class JvmtiMethodTraceListener final : public art::instrumentation::Instrumentat
       art::JNIEnvExt* jnienv = self->GetJniEnv();
       uint32_t dex_pc;
       art::ArtMethod* method = self->GetCurrentMethod(&dex_pc,
-                                                      /* check_suspended */ true,
-                                                      /* abort_on_error */ art::kIsDebugBuild);
+                                                      /* check_suspended= */ true,
+                                                      /* abort_on_error= */ art::kIsDebugBuild);
       ScopedLocalRef<jobject> exception(jnienv,
                                         AddLocalRef<jobject>(jnienv, exception_object.Get()));
       RunEventCallback<ArtJvmtiEvent::kExceptionCatch>(

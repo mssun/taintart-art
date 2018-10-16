@@ -152,7 +152,7 @@ class ObsoleteMethodStackVisitor : public art::StackVisitor {
       const std::unordered_set<art::ArtMethod*>& obsoleted_methods,
       ObsoleteMap* obsolete_maps)
         : StackVisitor(thread,
-                       /*context*/nullptr,
+                       /*context=*/nullptr,
                        StackVisitor::StackWalkKind::kIncludeInlinedFrames),
           allocator_(allocator),
           obsoleted_methods_(obsoleted_methods),
@@ -305,10 +305,10 @@ art::MemMap Redefiner::MoveDataToMemMap(const std::string& original_location,
                                         std::string* error_msg) {
   art::MemMap map = art::MemMap::MapAnonymous(
       StringPrintf("%s-transformed", original_location.c_str()).c_str(),
-      /* addr */ nullptr,
+      /* addr= */ nullptr,
       data.size(),
       PROT_READ|PROT_WRITE,
-      /*low_4gb*/ false,
+      /*low_4gb=*/ false,
       error_msg);
   if (LIKELY(map.IsValid())) {
     memcpy(map.Begin(), data.data(), data.size());
@@ -445,8 +445,8 @@ jvmtiError Redefiner::AddRedefinition(ArtJvmTiEnv* env, const ArtClassDefinition
   std::unique_ptr<const art::DexFile> dex_file(dex_file_loader.Open(name,
                                                                     checksum,
                                                                     std::move(map),
-                                                                    /*verify*/true,
-                                                                    /*verify_checksum*/true,
+                                                                    /*verify=*/true,
+                                                                    /*verify_checksum=*/true,
                                                                     error_msg_));
   if (dex_file.get() == nullptr) {
     os << "Unable to load modified dex file for " << def.GetName() << ": " << *error_msg_;
@@ -1117,10 +1117,10 @@ bool Redefiner::ClassRedefinition::CheckVerification(const RedefinitionDataIter&
                                                  dex_file_.get(),
                                                  hs.NewHandle(iter.GetNewDexCache()),
                                                  hs.NewHandle(GetClassLoader()),
-                                                 dex_file_->GetClassDef(0), /*class_def*/
-                                                 nullptr, /*compiler_callbacks*/
-                                                 true, /*allow_soft_failures*/
-                                                 /*log_level*/
+                                                 /*class_def=*/ dex_file_->GetClassDef(0),
+                                                 /*callbacks=*/ nullptr,
+                                                 /*allow_soft_failures=*/ true,
+                                                 /*log_level=*/
                                                  art::verifier::HardFailLogMode::kLogWarning,
                                                  art::Runtime::Current()->GetTargetSdkVersion(),
                                                  &error);
@@ -1367,7 +1367,7 @@ jvmtiError Redefiner::Run() {
   // TODO We might want to give this its own suspended state!
   // TODO This isn't right. We need to change state without any chance of suspend ideally!
   art::ScopedThreadSuspension sts(self_, art::ThreadState::kNative);
-  art::ScopedSuspendAll ssa("Final installation of redefined Classes!", /*long_suspend*/true);
+  art::ScopedSuspendAll ssa("Final installation of redefined Classes!", /*long_suspend=*/true);
   for (RedefinitionDataIter data = holder.begin(); data != holder.end(); ++data) {
     art::ScopedAssertNoThreadSuspension nts("Updating runtime objects for redefinition");
     ClassRedefinition& redef = data.GetRedefinition();

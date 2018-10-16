@@ -76,7 +76,7 @@ class TransformationFaultHandler final : public art::FaultHandler {
                                               art::LockLevel::kSignalHandlingLock),
         class_definition_initialized_cond_("JVMTI Initialized class definitions condition",
                                            uninitialized_class_definitions_lock_) {
-    manager->AddHandler(this, /* generated_code */ false);
+    manager->AddHandler(this, /* generated_code= */ false);
   }
 
   ~TransformationFaultHandler() {

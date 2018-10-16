@@ -246,17 +246,17 @@ void ArtClassDefinition::InitWithDex(GetOriginalDexFile get_original,
     mmap_name += name_;
     std::string error;
     dex_data_mmap_ = art::MemMap::MapAnonymous(mmap_name.c_str(),
-                                               /* addr */ nullptr,
+                                               /* addr= */ nullptr,
                                                dequick_size,
                                                PROT_NONE,
-                                               /*low_4gb*/ false,
+                                               /*low_4gb=*/ false,
                                                &error);
     mmap_name += "-TEMP";
     temp_mmap_ = art::MemMap::MapAnonymous(mmap_name.c_str(),
-                                           /* addr */ nullptr,
+                                           /* addr= */ nullptr,
                                            dequick_size,
                                            PROT_READ | PROT_WRITE,
-                                           /*low_4gb*/ false,
+                                           /*low_4gb=*/ false,
                                            &error);
     if (UNLIKELY(dex_data_mmap_.IsValid() && temp_mmap_.IsValid())) {
       // Need to save the initial dexfile so we don't need to search for it in the fault-handler.
