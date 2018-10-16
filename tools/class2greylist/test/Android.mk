@@ -21,7 +21,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_MODULE := class2greylisttest
 
-LOCAL_STATIC_JAVA_LIBRARIES := class2greylistlib truth-host-prebuilt mockito-host junit-host
+LOCAL_STATIC_JAVA_LIBRARIES := class2greylistlib truth-host-prebuilt mockito-host junit-host objenesis
 
 # tag this module as a cts test artifact
 LOCAL_COMPATIBILITY_SUITE := general-tests
