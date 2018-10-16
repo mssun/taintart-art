@@ -3374,8 +3374,13 @@ void Thread::QuickDeliverException() {
   // Note: we do this *after* reporting the exception to instrumentation in case it now requires
   // deoptimization. It may happen if a debugger is attached and requests new events (single-step,
   // breakpoint, ...) when the exception is reported.
+  //
+  // Note we need to check for both force_frame_pop and force_retry_instruction. The first is
+  // expected to happen fairly regularly but the second can only happen if we are using
+  // instrumentation trampolines (for example with DDMS tracing). That forces us to do deopt later
+  // and see every frame being popped. We don't need to handle it any differently.
   ShadowFrame* cf;
-  bool force_frame_pop = false;
+  bool force_deopt;
   {
     NthCallerVisitor visitor(this, 0, false);
     visitor.WalkStack();
@@ -3383,7 +3388,8 @@ void Thread::QuickDeliverException() {
     if (cf == nullptr) {
       cf = FindDebuggerShadowFrame(visitor.GetFrameId());
     }
-    force_frame_pop = cf != nullptr && cf->GetForcePopFrame();
+    bool force_frame_pop = cf != nullptr && cf->GetForcePopFrame();
+    bool force_retry_instr = cf != nullptr && cf->GetForceRetryInstruction();
     if (kIsDebugBuild && force_frame_pop) {
       NthCallerVisitor penultimate_visitor(this, 1, false);
       penultimate_visitor.WalkStack();
@@ -3396,8 +3402,9 @@ void Thread::QuickDeliverException() {
           << "Force pop frame without retry instruction found. penultimate frame is null: "
           << (penultimate_frame == nullptr ? "true" : "false");
     }
+    force_deopt = force_frame_pop || force_retry_instr;
   }
-  if (Dbg::IsForcedInterpreterNeededForException(this) || force_frame_pop) {
+  if (Dbg::IsForcedInterpreterNeededForException(this) || force_deopt) {
     NthCallerVisitor visitor(this, 0, false);
     visitor.WalkStack();
     if (Runtime::Current()->IsAsyncDeoptimizeable(visitor.caller_pc)) {
@@ -3405,16 +3412,18 @@ void Thread::QuickDeliverException() {
       const DeoptimizationMethodType method_type = DeoptimizationMethodType::kDefault;
       // Save the exception into the deoptimization context so it can be restored
       // before entering the interpreter.
-      if (force_frame_pop) {
+      if (force_deopt) {
         VLOG(deopt) << "Deopting " << cf->GetMethod()->PrettyMethod() << " for frame-pop";
         DCHECK(Runtime::Current()->AreNonStandardExitsEnabled());
         // Get rid of the exception since we are doing a framepop instead.
+        LOG(WARNING) << "Suppressing pending exception for retry-instruction/frame-pop: "
+                     << exception->Dump();
         ClearException();
       }
       PushDeoptimizationContext(
           JValue(),
           false /* is_reference */,
-          (force_frame_pop ? nullptr : exception),
+          (force_deopt ? nullptr : exception),
           false /* from_code */,
           method_type);
       artDeoptimize(this);
