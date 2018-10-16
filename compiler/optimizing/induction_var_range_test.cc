@@ -701,7 +701,11 @@ TEST_F(InductionVarRangeTest, MaxValue) {
 
 TEST_F(InductionVarRangeTest, ArrayLengthAndHints) {
   // We pass a bogus constant for the class to avoid mocking one.
-  HInstruction* new_array = new (GetAllocator()) HNewArray(x_, x_, 0);
+  HInstruction* new_array = new (GetAllocator()) HNewArray(
+      /* cls= */ x_,
+      /* length= */ x_,
+      /* dex_pc= */ 0,
+      /* component_size_shift= */ 0);
   entry_block_->AddInstruction(new_array);
   HInstruction* array_length = new (GetAllocator()) HArrayLength(new_array, 0);
   entry_block_->AddInstruction(array_length);
