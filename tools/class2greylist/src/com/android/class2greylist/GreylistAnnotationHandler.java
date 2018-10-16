@@ -27,8 +27,6 @@ import java.util.function.Predicate;
  */
 public class GreylistAnnotationHandler implements AnnotationHandler {
 
-    public static final String ANNOTATION_NAME = "Landroid/annotation/UnsupportedAppUsage;";
-
     // properties of greylist annotations:
     private static final String EXPECTED_SIGNATURE = "expectedSignature";
     private static final String MAX_TARGET_SDK = "maxTargetSdk";
