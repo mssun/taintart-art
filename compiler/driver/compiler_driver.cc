@@ -708,9 +708,9 @@ void CompilerDriver::Resolve(jobject class_loader,
   }
 }
 
-static void ResolveConstStrings(CompilerDriver* driver,
-                                const std::vector<const DexFile*>& dex_files,
-                                TimingLogger* timings) {
+void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_files,
+                                         bool only_startup_strings,
+                                         TimingLogger* timings) {
   ScopedObjectAccess soa(Thread::Current());
   StackHandleScope<1> hs(soa.Self());
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
@@ -721,12 +721,18 @@ static void ResolveConstStrings(CompilerDriver* driver,
     TimingLogger::ScopedTiming t("Resolve const-string Strings", timings);
 
     for (ClassAccessor accessor : dex_file->GetClasses()) {
-      if (!driver->IsClassToCompile(accessor.GetDescriptor())) {
+      if (!IsClassToCompile(accessor.GetDescriptor())) {
         // Compilation is skipped, do not resolve const-string in code of this class.
         // FIXME: Make sure that inlining honors this. b/26687569
         continue;
       }
       for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+        if (only_startup_strings &&
+            profile_compilation_info_ != nullptr &&
+            !profile_compilation_info_->GetMethodHotness(method.GetReference()).IsStartup()) {
+          continue;
+        }
+
         // Resolve const-strings in the code. Done to have deterministic allocation behavior. Right
         // now this is single-threaded for simplicity.
         // TODO: Collect the relevant string indices in parallel, then allocate them sequentially
@@ -897,8 +903,10 @@ void CompilerDriver::PreCompile(jobject class_loader,
 
   if (GetCompilerOptions().IsForceDeterminism() && GetCompilerOptions().IsBootImage()) {
     // Resolve strings from const-string. Do this now to have a deterministic image.
-    ResolveConstStrings(this, dex_files, timings);
+    ResolveConstStrings(dex_files, /*only_startup_strings=*/ false, timings);
     VLOG(compiler) << "Resolve const-strings: " << GetMemoryUsageString(false);
+  } else if (GetCompilerOptions().ResolveStartupConstStrings()) {
+    ResolveConstStrings(dex_files, /*only_startup_strings=*/ true, timings);
   }
 
   Verify(class_loader, dex_files, timings);

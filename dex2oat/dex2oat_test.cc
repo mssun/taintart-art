@@ -39,6 +39,7 @@
 #include "dex/dex_file_loader.h"
 #include "dex2oat_environment_test.h"
 #include "dex2oat_return_codes.h"
+#include "intern_table-inl.h"
 #include "oat.h"
 #include "oat_file.h"
 #include "profile/profile_compilation_info.h"
@@ -2081,6 +2082,74 @@ TEST_F(Dex2oatTest, AppImageNoProfile) {
   EXPECT_EQ(header.GetImageSection(ImageHeader::kSectionArtMethods).Size(), 0u);
   EXPECT_EQ(header.GetImageSection(ImageHeader::kSectionArtFields).Size(), 0u);
 }
+
+TEST_F(Dex2oatTest, AppImageResolveStrings) {
+  using Hotness = ProfileCompilationInfo::MethodHotness;
+  // Create a profile with the startup method marked.
+  ScratchFile profile_file;
+  std::vector<uint16_t> methods;
+  {
+    std::unique_ptr<const DexFile> dex(OpenTestDexFile("StringLiterals"));
+    for (size_t method_idx = 0; method_idx < dex->NumMethodIds(); ++method_idx) {
+      if (std::string(dex->GetMethodName(dex->GetMethodId(method_idx))) == "startUpMethod") {
+        methods.push_back(method_idx);
+      }
+    }
+    ASSERT_GT(methods.size(), 0u);
+    // Here, we build the profile from the method lists.
+    ProfileCompilationInfo info;
+    info.AddMethodsForDex(Hotness::kFlagStartup, dex.get(), methods.begin(), methods.end());
+    // Save the profile since we want to use it with dex2oat to produce an oat file.
+    ASSERT_TRUE(info.Save(profile_file.GetFd()));
+  }
+  const std::string out_dir = GetScratchDir();
+  const std::string odex_location = out_dir + "/base.odex";
+  const std::string app_image_location = out_dir + "/base.art";
+  GenerateOdexForTest(GetTestDexFileName("StringLiterals"),
+                      odex_location,
+                      CompilerFilter::Filter::kSpeedProfile,
+                      { "--app-image-file=" + app_image_location,
+                        "--resolve-startup-const-strings=true",
+                        "--profile-file=" + profile_file.GetFilename()},
+                      /* expect_success= */ true,
+                      /* use_fd= */ false,
+                      [](const OatFile&) {});
+  // Open our generated oat file.
+  std::string error_msg;
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd= */ -1,
+                                                   odex_location.c_str(),
+                                                   odex_location.c_str(),
+                                                   /* requested_base= */ nullptr,
+                                                   /* executable= */ false,
+                                                   /* low_4gb= */ false,
+                                                   odex_location.c_str(),
+                                                   /* reservation= */ nullptr,
+                                                   &error_msg));
+  ASSERT_TRUE(odex_file != nullptr);
+  // Check the strings in the app image intern table only contain the "startup" strigs.
+  {
+    ScopedObjectAccess soa(Thread::Current());
+    std::unique_ptr<gc::space::ImageSpace> space =
+        gc::space::ImageSpace::CreateFromAppImage(app_image_location.c_str(),
+                                                  odex_file.get(),
+                                                  &error_msg);
+    ASSERT_TRUE(space != nullptr) << error_msg;
+    std::set<std::string> seen;
+    InternTable intern_table;
+    intern_table.AddImageStringsToTable(space.get(), [&](InternTable::UnorderedSet& interns)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      for (const GcRoot<mirror::String>& str : interns) {
+        seen.insert(str.Read()->ToModifiedUtf8());
+      }
+    });
+    EXPECT_TRUE(seen.find("Loading ") != seen.end());
+    EXPECT_TRUE(seen.find("Starting up") != seen.end());
+    EXPECT_TRUE(seen.find("abcd.apk") != seen.end());
+    EXPECT_TRUE(seen.find("Unexpected error") == seen.end());
+    EXPECT_TRUE(seen.find("Shutting down!") == seen.end());
+  }
+}
+
 
 TEST_F(Dex2oatClassLoaderContextTest, StoredClassLoaderContext) {
   std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("MultiDex");
