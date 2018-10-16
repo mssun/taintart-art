@@ -25,25 +25,29 @@
 
 namespace art {
 
-class Instruction;
 class Thread;
 
 // Small fast thread-local cache for the interpreter.
-// The key for the cache is the dex instruction pointer.
-// The interpretation of the value depends on the opcode.
-// Presence of entry might imply some performance pre-conditions.
+// It can hold arbitrary pointer-sized key-value pair.
+// The interpretation of the value depends on the key.
+// Presence of entry might imply some pre-conditions.
 // All operations must be done from the owning thread,
 // or at a point when the owning thread is suspended.
 //
-// The values stored for opcodes in the cache currently are:
+// The key-value pairs stored in the cache currently are:
 //   iget/iput: The field offset. The field must be non-volatile.
 //   sget/sput: The ArtField* pointer. The field must be non-volitile.
+//   invoke: The ArtMethod* pointer (before vtable indirection, etc).
+//   ArtMethod*: The ImtIndex of the method.
+//
+// We ensure consistency of the cache by clearing it
+// whenever any dex file is unloaded.
 //
 // Aligned to 16-bytes to make it easier to get the address of the cache
 // from assembly (it ensures that the offset is valid immediate value).
 class ALIGNED(16) InterpreterCache {
   // Aligned since we load the whole entry in single assembly instruction.
-  typedef std::pair<const Instruction*, size_t> Entry ALIGNED(2 * sizeof(size_t));
+  typedef std::pair<const void*, size_t> Entry ALIGNED(2 * sizeof(size_t));
 
  public:
   // 2x size increase/decrease corresponds to ~0.5% interpreter performance change.
@@ -59,7 +63,7 @@ class ALIGNED(16) InterpreterCache {
   // Clear the whole cache. It requires the owning thread for DCHECKs.
   void Clear(Thread* owning_thread);
 
-  ALWAYS_INLINE bool Get(const Instruction* key, /* out */ size_t* value) {
+  ALWAYS_INLINE bool Get(const void* key, /* out */ size_t* value) {
     DCHECK(IsCalledFromOwningThread());
     Entry& entry = data_[IndexOf(key)];
     if (LIKELY(entry.first == key)) {
@@ -69,7 +73,7 @@ class ALIGNED(16) InterpreterCache {
     return false;
   }
 
-  ALWAYS_INLINE void Set(const Instruction* key, size_t value) {
+  ALWAYS_INLINE void Set(const void* key, size_t value) {
     DCHECK(IsCalledFromOwningThread());
     data_[IndexOf(key)] = Entry{key, value};
   }
@@ -77,7 +81,7 @@ class ALIGNED(16) InterpreterCache {
  private:
   bool IsCalledFromOwningThread();
 
-  static ALWAYS_INLINE size_t IndexOf(const Instruction* key) {
+  static ALWAYS_INLINE size_t IndexOf(const void* key) {
     static_assert(IsPowerOfTwo(kSize), "Size must be power of two");
     size_t index = (reinterpret_cast<uintptr_t>(key) >> 2) & (kSize - 1);
     DCHECK_LT(index, kSize);
