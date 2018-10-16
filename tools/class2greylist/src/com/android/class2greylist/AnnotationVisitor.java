@@ -77,6 +77,9 @@ public class AnnotationVisitor extends EmptyVisitor {
                 mStatus.debug("Member has annotation %s for which we have a handler",
                         a.getAnnotationType());
                 mAnnotationHandlers.get(a.getAnnotationType()).handleAnnotation(a, context);
+            } else {
+                mStatus.debug("Member has annotation %s for which we do not have a handler",
+                    a.getAnnotationType());
             }
         }
     }
