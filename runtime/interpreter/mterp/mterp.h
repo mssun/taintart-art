@@ -25,8 +25,6 @@
  */
 extern "C" void* artMterpAsmInstructionStart[];
 extern "C" void* artMterpAsmInstructionEnd[];
-extern "C" void* artMterpAsmAltInstructionStart[];
-extern "C" void* artMterpAsmAltInstructionEnd[];
 
 namespace art {
 

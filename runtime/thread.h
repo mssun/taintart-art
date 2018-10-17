@@ -743,18 +743,6 @@ class Thread {
   }
 
   template<PointerSize pointer_size>
-  static constexpr ThreadOffset<pointer_size> MterpDefaultIBaseOffset() {
-    return ThreadOffsetFromTlsPtr<pointer_size>(
-        OFFSETOF_MEMBER(tls_ptr_sized_values, mterp_default_ibase));
-  }
-
-  template<PointerSize pointer_size>
-  static constexpr ThreadOffset<pointer_size> MterpAltIBaseOffset() {
-    return ThreadOffsetFromTlsPtr<pointer_size>(
-        OFFSETOF_MEMBER(tls_ptr_sized_values, mterp_alt_ibase));
-  }
-
-  template<PointerSize pointer_size>
   static constexpr ThreadOffset<pointer_size> ExceptionOffset() {
     return ThreadOffsetFromTlsPtr<pointer_size>(OFFSETOF_MEMBER(tls_ptr_sized_values, exception));
   }
@@ -1199,28 +1187,12 @@ class Thread {
   bool ProtectStack(bool fatal_on_error = true);
   bool UnprotectStack();
 
-  void SetMterpDefaultIBase(void* ibase) {
-    tlsPtr_.mterp_default_ibase = ibase;
-  }
-
   void SetMterpCurrentIBase(void* ibase) {
     tlsPtr_.mterp_current_ibase = ibase;
   }
 
-  void SetMterpAltIBase(void* ibase) {
-    tlsPtr_.mterp_alt_ibase = ibase;
-  }
-
-  const void* GetMterpDefaultIBase() const {
-    return tlsPtr_.mterp_default_ibase;
-  }
-
   const void* GetMterpCurrentIBase() const {
     return tlsPtr_.mterp_current_ibase;
-  }
-
-  const void* GetMterpAltIBase() const {
-    return tlsPtr_.mterp_alt_ibase;
   }
 
   bool HandlingSignal() const {
@@ -1599,8 +1571,7 @@ class Thread {
       last_no_thread_suspension_cause(nullptr), checkpoint_function(nullptr),
       thread_local_start(nullptr), thread_local_pos(nullptr), thread_local_end(nullptr),
       thread_local_limit(nullptr),
-      thread_local_objects(0), mterp_current_ibase(nullptr), mterp_default_ibase(nullptr),
-      mterp_alt_ibase(nullptr), thread_local_alloc_stack_top(nullptr),
+      thread_local_objects(0), mterp_current_ibase(nullptr), thread_local_alloc_stack_top(nullptr),
       thread_local_alloc_stack_end(nullptr),
       flip_function(nullptr), method_verifier(nullptr), thread_local_mark_stack(nullptr),
       async_exception(nullptr) {
@@ -1737,10 +1708,8 @@ class Thread {
     JniEntryPoints jni_entrypoints;
     QuickEntryPoints quick_entrypoints;
 
-    // Mterp jump table bases.
+    // Mterp jump table base.
     void* mterp_current_ibase;
-    void* mterp_default_ibase;
-    void* mterp_alt_ibase;
 
     // There are RosAlloc::kNumThreadLocalSizeBrackets thread-local size brackets per thread.
     void* rosalloc_runs[kNumRosAllocThreadLocalSizeBracketsInThread];
