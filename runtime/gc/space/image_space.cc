@@ -429,9 +429,9 @@ class ImageSpace::Loader {
                image_header->GetImageMethod(ImageHeader::kSaveEverythingMethodForSuspendCheck));
 
       VLOG(image) << "ImageSpace::Loader::InitAppImage exiting " << *space.get();
-      if (VLOG_IS_ON(image)) {
-        logger.Dump(LOG_STREAM(INFO));
-      }
+    }
+    if (VLOG_IS_ON(image)) {
+      logger.Dump(LOG_STREAM(INFO));
     }
     return space;
   }
@@ -1396,9 +1396,9 @@ class ImageSpace::BootImageLoader {
     MaybeRelocateSpaces(spaces, &logger);
     InitRuntimeMethods(spaces);
     *extra_reservation = std::move(local_extra_reservation);
+    VLOG(image) << "ImageSpace::BootImageLoader::InitFromDalvikCache exiting " << *spaces.front();
     boot_image_spaces->swap(spaces);
 
-    VLOG(image) << "ImageSpace::BootImageLoader::InitFromDalvikCache exiting " << *spaces.front();
     if (VLOG_IS_ON(image)) {
       logger.Dump(LOG_STREAM(INFO));
     }
