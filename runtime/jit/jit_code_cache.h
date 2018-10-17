@@ -92,8 +92,8 @@ class JitCodeCache {
   // in the out arg error_msg.
   static JitCodeCache* Create(size_t initial_capacity,
                               size_t max_capacity,
-                              bool generate_debug_info,
                               bool used_only_for_profile_data,
+                              bool rwx_memory_allowed,
                               std::string* error_msg);
   ~JitCodeCache();
 
@@ -261,8 +261,8 @@ class JitCodeCache {
   void MoveObsoleteMethod(ArtMethod* old_method, ArtMethod* new_method)
       REQUIRES(!lock_) REQUIRES(Locks::mutator_lock_);
 
-  // Dynamically change whether we want to garbage collect code. Should only be used
-  // by tests.
+  // Dynamically change whether we want to garbage collect code. Should only be used during JIT
+  // initialization or by tests.
   void SetGarbageCollectCode(bool value) {
     garbage_collect_code_ = value;
   }
@@ -284,8 +284,7 @@ class JitCodeCache {
                MemMap&& non_exec_pages,
                size_t initial_data_capacity,
                size_t initial_exec_capacity,
-               size_t max_capacity,
-               bool garbage_collect_code);
+               size_t max_capacity);
 
   // Internal version of 'CommitCode' that will not retry if the
   // allocation fails. Return null if the allocation fails.
