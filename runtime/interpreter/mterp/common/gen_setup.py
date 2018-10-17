@@ -33,20 +33,16 @@ def write_line(line):
 def balign():
   write_line("    .balign {}".format(handler_size_bytes))
 
-def write_opcode(num, name, write_method, is_alt):
+def write_opcode(num, name, write_method):
   global opnum, opcode
   opnum, opcode = str(num), name
-  if is_alt:
-    name = "ALT_" + name
   write_line("/* ------------------------------ */")
   balign()
   write_line(".L_{1}: /* {0:#04x} */".format(num, name))
-  if is_alt:
-    alt_stub()
-  else:
-    opcode_start()
-    write_method()
-    opcode_end()
+  opcode_start()
+  opcode_pre()
+  write_method()
+  opcode_end()
   write_line("")
   opnum, opcode = None, None
 
@@ -76,18 +72,13 @@ def generate(output_filename):
   entry()
 
   instruction_start()
-  opcodes(is_alt = False)
+  opcodes()
   balign()
   instruction_end()
 
   for name, helper in sorted(generated_helpers.items()):
     out.write(helper)
   helpers()
-
-  instruction_start_alt()
-  opcodes(is_alt = True)
-  balign()
-  instruction_end_alt()
 
   footer()
 

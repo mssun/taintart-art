@@ -48,11 +48,7 @@ void CheckMterpAsmConstants() {
 }
 
 void InitMterpTls(Thread* self) {
-  self->SetMterpDefaultIBase(artMterpAsmInstructionStart);
-  self->SetMterpAltIBase(artMterpAsmAltInstructionStart);
-  self->SetMterpCurrentIBase((kTraceExecutionEnabled || kTestExportPC) ?
-                             artMterpAsmAltInstructionStart :
-                             artMterpAsmInstructionStart);
+  self->SetMterpCurrentIBase(artMterpAsmInstructionStart);
 }
 
 /*
