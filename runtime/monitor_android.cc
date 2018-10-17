@@ -43,7 +43,7 @@ void Monitor::LogContentionEvent(Thread* self,
 
   // Emit the process name, <= 37 bytes.
   {
-    int fd = open("/proc/self/cmdline", O_RDONLY);
+    int fd = open("/proc/self/cmdline", O_RDONLY  | O_CLOEXEC);
     char procName[33];
     memset(procName, 0, sizeof(procName));
     read(fd, procName, sizeof(procName) - 1);

@@ -634,7 +634,9 @@ class Dex2oatLayoutTest : public Dex2oatTest {
                        const std::string& dex_location,
                        size_t num_classes,
                        uint32_t checksum) {
-    int profile_test_fd = open(test_profile.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0644);
+    int profile_test_fd = open(test_profile.c_str(),
+                               O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC,
+                               0644);
     CHECK_GE(profile_test_fd, 0);
 
     ProfileCompilationInfo info;
@@ -1698,7 +1700,7 @@ TEST_F(Dex2oatTest, CompactDexGenerationFailureMultiDex) {
   // Create a multidex file with only one dex that gets rejected for cdex conversion.
   ScratchFile apk_file;
   {
-    FILE* file = fdopen(dup(apk_file.GetFd()), "w+b");
+    FILE* file = fdopen(DupCloexec(apk_file.GetFd()), "w+b");
     ZipWriter writer(file);
     // Add vdex to zip.
     writer.StartEntry("classes.dex", ZipWriter::kCompress);
@@ -1837,7 +1839,7 @@ TEST_F(Dex2oatTest, DontExtract) {
     std::unique_ptr<File> vdex_file(OS::OpenFileForReading(vdex_location.c_str()));
     ASSERT_TRUE(vdex_file != nullptr);
     ASSERT_GT(vdex_file->GetLength(), 0u);
-    FILE* file = fdopen(dup(dm_file.GetFd()), "w+b");
+    FILE* file = fdopen(DupCloexec(dm_file.GetFd()), "w+b");
     ZipWriter writer(file);
     auto write_all_bytes = [&](File* file) {
       std::unique_ptr<uint8_t[]> bytes(new uint8_t[file->GetLength()]);
@@ -1963,7 +1965,7 @@ TEST_F(Dex2oatTest, QuickenedInput) {
 TEST_F(Dex2oatTest, CompactDexInvalidSource) {
   ScratchFile invalid_dex;
   {
-    FILE* file = fdopen(dup(invalid_dex.GetFd()), "w+b");
+    FILE* file = fdopen(DupCloexec(invalid_dex.GetFd()), "w+b");
     ZipWriter writer(file);
     writer.StartEntry("classes.dex", ZipWriter::kAlign32);
     DexFile::Header header = {};
@@ -2005,7 +2007,7 @@ TEST_F(Dex2oatTest, CompactDexInZip) {
   // Create a zip containing the invalid dex.
   ScratchFile invalid_dex_zip;
   {
-    FILE* file = fdopen(dup(invalid_dex_zip.GetFd()), "w+b");
+    FILE* file = fdopen(DupCloexec(invalid_dex_zip.GetFd()), "w+b");
     ZipWriter writer(file);
     writer.StartEntry("classes.dex", ZipWriter::kCompress);
     ASSERT_GE(writer.WriteBytes(&header, sizeof(header)), 0);

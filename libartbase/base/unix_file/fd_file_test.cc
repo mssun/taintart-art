@@ -15,6 +15,7 @@
  */
 
 #include "base/common_art_test.h"  // For ScratchFile
+#include "base/file_utils.h"
 #include "gtest/gtest.h"
 #include "fd_file.h"
 #include "random_access_file_test.h"
@@ -25,7 +26,7 @@ class FdFileTest : public RandomAccessFileTest {
  protected:
   RandomAccessFile* MakeTestFile() override {
     FILE* tmp = tmpfile();
-    int fd = dup(fileno(tmp));
+    int fd = art::DupCloexec(fileno(tmp));
     fclose(tmp);
     return new FdFile(fd, false);
   }

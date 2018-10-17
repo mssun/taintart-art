@@ -22,6 +22,7 @@
 #include <android-base/logging.h>
 #include <android-base/stringprintf.h>
 
+#include "file_utils.h"
 #include "unix_file/fd_file.h"
 
 namespace art {
@@ -98,7 +99,7 @@ ScopedFlock LockedFile::DupOf(const int fd, const std::string& path,
   // destructor. Callers should explicitly flush files they're writing to if
   // that is the desired behaviour.
   ScopedFlock locked_file(
-      new LockedFile(dup(fd), path, /* check_usage= */ false, read_only_mode));
+      new LockedFile(DupCloexec(fd), path, /* check_usage= */ false, read_only_mode));
   if (locked_file->Fd() == -1) {
     *error_msg = StringPrintf("Failed to duplicate open file '%s': %s",
                               locked_file->GetPath().c_str(), strerror(errno));

@@ -53,7 +53,7 @@ class Dumper {
 
   bool OpenAndPrintHeader(size_t dex_index) {
     // Open the file and emit the gnuplot prologue.
-    out_file_ = fopen(MultidexName("layout", dex_index, ".gnuplot").c_str(), "w");
+    out_file_ = fopen(MultidexName("layout", dex_index, ".gnuplot").c_str(), "we");
     if (out_file_ == nullptr) {
       return false;
     }
