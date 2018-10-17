@@ -562,11 +562,11 @@ class JFuzz {
       case 1:
         if (emitArrayVariable(tp))
           return;
-        // FALL-THROUGH
+        [[fallthrough]];
       case 2:
         if (emitLocalVariable(tp))
           return;
-        // FALL-THROUGH
+        [[fallthrough]];
       default:
         emitFieldVariable(tp);
         break;
