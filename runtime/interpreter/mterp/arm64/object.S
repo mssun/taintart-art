@@ -41,7 +41,7 @@
    lsr      w2, wINST, #12                // B
    GET_VREG w2, w2                        // object we're operating on
    cmp      x0, xPC
-%  slow_path_label = add_helper("slow_path", lambda: field(helper))
+%  slow_path_label = add_helper(lambda: field(helper))
    b.ne     ${slow_path_label}            // cache miss
    cbz      w2, common_errNullObject      // null object
 %  if is_wide:

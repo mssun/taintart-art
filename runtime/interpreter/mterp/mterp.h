@@ -50,6 +50,8 @@ constexpr uintptr_t kExportPCPoison = 0xdead00ff;
 // Set true to enable poison testing of ExportPC.  Uses Alt interpreter.
 constexpr bool kTestExportPC = false;
 
+constexpr size_t kMterpHandlerSize = 128;
+
 }  // namespace interpreter
 }  // namespace art
 
