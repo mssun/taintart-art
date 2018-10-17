@@ -137,14 +137,13 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
       ASSERT_TRUE(success) << error_msg << std::endl << output_;
 
       // Verify the odex file was generated as expected.
-      std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+      std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                        odex_location.c_str(),
                                                        odex_location.c_str(),
-                                                       /* requested_base */ nullptr,
-                                                       /* executable */ false,
-                                                       /* low_4gb */ false,
+                                                       /*executable=*/ false,
+                                                       /*low_4gb=*/ false,
                                                        dex_location.c_str(),
-                                                       /* reservation */ nullptr,
+                                                       /*reservation=*/ nullptr,
                                                        &error_msg));
       ASSERT_TRUE(odex_file.get() != nullptr) << error_msg;
 
@@ -157,14 +156,13 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
 
       if (!test_accepts_odex_file_on_failure) {
         // Verify there's no loadable odex file.
-        std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+        std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                          odex_location.c_str(),
                                                          odex_location.c_str(),
-                                                         /* requested_base */ nullptr,
-                                                         /* executable */ false,
-                                                         /* low_4gb */ false,
+                                                         /*executable=*/ false,
+                                                         /*low_4gb=*/ false,
                                                          dex_location.c_str(),
-                                                         /* reservation */ nullptr,
+                                                         /*reservation=*/ nullptr,
                                                          &error_msg));
         ASSERT_TRUE(odex_file.get() == nullptr);
       }
@@ -325,26 +323,26 @@ class Dex2oatSwapTest : public Dex2oatTest {
 };
 
 TEST_F(Dex2oatSwapTest, DoNotUseSwapDefaultSingleSmall) {
-  RunTest(false /* use_fd */, false /* expect_use */);
-  RunTest(true /* use_fd */, false /* expect_use */);
+  RunTest(/*use_fd=*/ false, /*expect_use=*/ false);
+  RunTest(/*use_fd=*/ true, /*expect_use=*/ false);
 }
 
 TEST_F(Dex2oatSwapTest, DoNotUseSwapSingle) {
-  RunTest(false /* use_fd */, false /* expect_use */, { "--swap-dex-size-threshold=0" });
-  RunTest(true /* use_fd */, false /* expect_use */, { "--swap-dex-size-threshold=0" });
+  RunTest(/*use_fd=*/ false, /*expect_use=*/ false, { "--swap-dex-size-threshold=0" });
+  RunTest(/*use_fd=*/ true, /*expect_use=*/ false, { "--swap-dex-size-threshold=0" });
 }
 
 TEST_F(Dex2oatSwapTest, DoNotUseSwapSmall) {
-  RunTest(false /* use_fd */, false /* expect_use */, { "--swap-dex-count-threshold=0" });
-  RunTest(true /* use_fd */, false /* expect_use */, { "--swap-dex-count-threshold=0" });
+  RunTest(/*use_fd=*/ false, /*expect_use=*/ false, { "--swap-dex-count-threshold=0" });
+  RunTest(/*use_fd=*/ true, /*expect_use=*/ false, { "--swap-dex-count-threshold=0" });
 }
 
 TEST_F(Dex2oatSwapTest, DoUseSwapSingleSmall) {
-  RunTest(false /* use_fd */,
-          true /* expect_use */,
+  RunTest(/*use_fd=*/ false,
+          /*expect_use=*/ true,
           { "--swap-dex-size-threshold=0", "--swap-dex-count-threshold=0" });
-  RunTest(true /* use_fd */,
-          true /* expect_use */,
+  RunTest(/*use_fd=*/ true,
+          /*expect_use=*/ true,
           { "--swap-dex-size-threshold=0", "--swap-dex-count-threshold=0" });
 }
 
@@ -370,7 +368,7 @@ class Dex2oatSwapUseTest : public Dex2oatSwapTest {
   void GrabResult1() {
     if (!kIsTargetBuild) {
       native_alloc_1_ = ParseNativeAlloc();
-      swap_1_ = ParseSwap(false /* expected */);
+      swap_1_ = ParseSwap(/*expected=*/ false);
     } else {
       native_alloc_1_ = std::numeric_limits<size_t>::max();
       swap_1_ = 0;
@@ -380,7 +378,7 @@ class Dex2oatSwapUseTest : public Dex2oatSwapTest {
   void GrabResult2() {
     if (!kIsTargetBuild) {
       native_alloc_2_ = ParseNativeAlloc();
-      swap_2_ = ParseSwap(true /* expected */);
+      swap_2_ = ParseSwap(/*expected=*/ true);
     } else {
       native_alloc_2_ = 0;
       swap_2_ = std::numeric_limits<size_t>::max();
@@ -450,15 +448,15 @@ TEST_F(Dex2oatSwapUseTest, CheckSwapUsage) {
   // investigate (b/29259363).
   TEST_DISABLED_FOR_X86();
 
-  RunTest(false /* use_fd */,
-          false /* expect_use */);
+  RunTest(/*use_fd=*/ false,
+          /*expect_use=*/ false);
   GrabResult1();
   std::string output_1 = output_;
 
   output_ = "";
 
-  RunTest(false /* use_fd */,
-          true /* expect_use */,
+  RunTest(/*use_fd=*/ false,
+          /*expect_use=*/ true,
           { "--swap-dex-size-threshold=0", "--swap-dex-count-threshold=0" });
   GrabResult2();
   std::string output_2 = output_;
@@ -514,14 +512,13 @@ class Dex2oatVeryLargeTest : public Dex2oatTest {
     }
     // Host/target independent checks.
     std::string error_msg;
-    std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+    std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                      odex_location.c_str(),
                                                      odex_location.c_str(),
-                                                     /* requested_base */ nullptr,
-                                                     /* executable */ false,
-                                                     /* low_4gb */ false,
+                                                     /*executable=*/ false,
+                                                     /*low_4gb=*/ false,
                                                      dex_location.c_str(),
-                                                     /* reservation */ nullptr,
+                                                     /*reservation=*/ nullptr,
                                                      &error_msg));
     ASSERT_TRUE(odex_file.get() != nullptr) << error_msg;
     EXPECT_GT(app_image_file.length(), 0u);
@@ -663,7 +660,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     const ArtDexFileLoader dex_file_loader;
     ASSERT_TRUE(dex_file_loader.Open(
-        location, location, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files));
+        location, location, /*verify=*/ true, /*verify_checksum=*/ true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& dex_file = dex_files[0];
     GenerateProfile(profile_location,
@@ -715,8 +712,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
       CompileProfileOdex(dex_location,
                          odex_location,
                          app_image_file,
-                         /* use_fd */ false,
-                         /* num_profile_classes */ 0);
+                         /*use_fd=*/ false,
+                         /*num_profile_classes=*/ 0);
       CheckValidity();
       ASSERT_TRUE(success_);
       // Don't check the result since CheckResult relies on the class being in the profile.
@@ -728,8 +725,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     CompileProfileOdex(dex_location,
                        odex_location,
                        app_image_file,
-                       /* use_fd */ false,
-                       /* num_profile_classes */ 1);
+                       /*use_fd=*/ false,
+                       /*num_profile_classes=*/ 1);
     CheckValidity();
     ASSERT_TRUE(success_);
     CheckResult(dex_location, odex_location, app_image_file);
@@ -757,8 +754,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
       CompileProfileOdex(dex_location,
                          odex_location,
                          app_image_file_name,
-                         /* use_fd */ true,
-                         /* num_profile_classes */ 1,
+                         /*use_fd=*/ true,
+                         /*num_profile_classes=*/ 1,
                          { input_vdex, output_vdex });
       EXPECT_GT(vdex_file1->GetLength(), 0u);
     }
@@ -769,10 +766,10 @@ class Dex2oatLayoutTest : public Dex2oatTest {
       CompileProfileOdex(dex_location,
                          odex_location,
                          app_image_file_name,
-                         /* use_fd */ true,
-                         /* num_profile_classes */ 1,
+                         /*use_fd=*/ true,
+                         /*num_profile_classes=*/ 1,
                          { input_vdex, output_vdex },
-                         /* expect_success */ true);
+                         /*expect_success=*/ true);
       EXPECT_GT(vdex_file2.GetFile()->GetLength(), 0u);
     }
     ASSERT_EQ(vdex_file1->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
@@ -785,14 +782,13 @@ class Dex2oatLayoutTest : public Dex2oatTest {
                    const std::string& app_image_file_name) {
     // Host/target independent checks.
     std::string error_msg;
-    std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+    std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                      odex_location.c_str(),
                                                      odex_location.c_str(),
-                                                     /* requested_base */ nullptr,
-                                                     /* executable */ false,
-                                                     /* low_4gb */ false,
+                                                     /*executable=*/ false,
+                                                     /*low_4gb=*/ false,
                                                      dex_location.c_str(),
-                                                     /* reservation */ nullptr,
+                                                     /*reservation=*/ nullptr,
                                                      &error_msg));
     ASSERT_TRUE(odex_file.get() != nullptr) << error_msg;
 
@@ -800,7 +796,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     const ArtDexFileLoader dex_file_loader;
     ASSERT_TRUE(dex_file_loader.Open(
-        location, location, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files));
+        location, location, /*verify=*/ true, /*verify_checksum=*/ true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& old_dex_file = dex_files[0];
 
@@ -853,11 +849,11 @@ class Dex2oatLayoutTest : public Dex2oatTest {
 };
 
 TEST_F(Dex2oatLayoutTest, TestLayout) {
-  RunTest(/* app-image */ false);
+  RunTest(/*app_image=*/ false);
 }
 
 TEST_F(Dex2oatLayoutTest, TestLayoutAppImage) {
-  RunTest(/* app-image */ true);
+  RunTest(/*app_image=*/ true);
 }
 
 TEST_F(Dex2oatLayoutTest, TestVdexLayout) {
@@ -882,8 +878,8 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
                           odex_location,
                           CompilerFilter::kQuicken,
                           { input_vdex, output_vdex },
-                          /* expect_success */ true,
-                          /* use_fd */ true);
+                          /*expect_success=*/ true,
+                          /*use_fd=*/ true);
       EXPECT_GT(vdex_file1->GetLength(), 0u);
     }
     // Unquicken by running the verify compiler filter on the vdex file.
@@ -894,8 +890,8 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
                           odex_location,
                           CompilerFilter::kVerify,
                           { input_vdex, output_vdex, kDisableCompactDex },
-                          /* expect_success */ true,
-                          /* use_fd */ true);
+                          /*expect_success=*/ true,
+                          /*use_fd=*/ true);
     }
     ASSERT_EQ(vdex_file1->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
     CheckResult(dex_location, odex_location);
@@ -923,8 +919,8 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
                           odex_location,
                           CompilerFilter::kQuicken,
                           { input_vdex, output_vdex, "--compact-dex-level=fast"},
-                          /* expect_success */ true,
-                          /* use_fd */ true);
+                          /*expect_success=*/ true,
+                          /*use_fd=*/ true);
       EXPECT_GT(vdex_file1->GetLength(), 0u);
     }
 
@@ -936,8 +932,8 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
                           odex_location2,
                           CompilerFilter::kVerify,
                           { input_vdex, output_vdex, "--compact-dex-level=none"},
-                          /* expect_success */ true,
-                          /* use_fd */ true);
+                          /*expect_success=*/ true,
+                          /*use_fd=*/ true);
     }
     ASSERT_EQ(vdex_file1->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
     ASSERT_EQ(vdex_file2->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
@@ -947,14 +943,13 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
 
   void CheckResult(const std::string& dex_location, const std::string& odex_location) {
     std::string error_msg;
-    std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+    std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                      odex_location.c_str(),
                                                      odex_location.c_str(),
-                                                     /* requested_base */ nullptr,
-                                                     /* executable */ false,
-                                                     /* low_4gb */ false,
+                                                     /*executable=*/ false,
+                                                     /*low_4gb=*/ false,
                                                      dex_location.c_str(),
-                                                     /* reservation */ nullptr,
+                                                     /*reservation=*/ nullptr,
                                                      &error_msg));
     ASSERT_TRUE(odex_file.get() != nullptr) << error_msg;
     ASSERT_GE(odex_file->GetOatDexFiles().size(), 1u);
@@ -1327,14 +1322,13 @@ TEST_F(Dex2oatTest, LayoutSections) {
   EXPECT_EQ(res, 0);
 
   // Open our generated oat file.
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    oat_filename.c_str(),
                                                    oat_filename.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    dex->GetLocation().c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   std::vector<const OatDexFile*> oat_dex_files = odex_file->GetOatDexFiles();
@@ -1437,14 +1431,13 @@ TEST_F(Dex2oatTest, GenerateCompactDex) {
       {"--compact-dex-level=fast"});
   EXPECT_EQ(res, 0);
   // Open our generated oat file.
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    oat_filename.c_str(),
                                                    oat_filename.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    dex_location.c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   std::vector<const OatDexFile*> oat_dex_files = odex_file->GetOatDexFiles();
@@ -1682,14 +1675,13 @@ TEST_F(Dex2oatTest, CompactDexGenerationFailure) {
                       });
   // Open our generated oat file.
   std::string error_msg;
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    oat_filename.c_str(),
                                                    oat_filename.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    temp_dex.GetFilename().c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   std::vector<const OatDexFile*> oat_dex_files = odex_file->GetOatDexFiles();
@@ -1760,14 +1752,13 @@ TEST_F(Dex2oatTest, VerifyCompilationReason) {
                       { "--compilation-reason=install" },
                       true);
   std::string error_msg;
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    odex_location.c_str(),
                                                    odex_location.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    dex_location.c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   ASSERT_STREQ("install", odex_file->GetCompilationReason());
@@ -1786,14 +1777,13 @@ TEST_F(Dex2oatTest, VerifyNoCompilationReason) {
                       {},
                       true);
   std::string error_msg;
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    odex_location.c_str(),
                                                    odex_location.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    dex_location.c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   ASSERT_EQ(nullptr, odex_file->GetCompilationReason());
@@ -1817,21 +1807,20 @@ TEST_F(Dex2oatTest, DontExtract) {
   {
     // Check the vdex doesn't have dex.
     std::unique_ptr<VdexFile> vdex(VdexFile::Open(vdex_location.c_str(),
-                                                  /*writable*/ false,
-                                                  /*low_4gb*/ false,
-                                                  /*unquicken*/ false,
+                                                  /*writable=*/ false,
+                                                  /*low_4gb=*/ false,
+                                                  /*unquicken=*/ false,
                                                   &error_msg));
     ASSERT_TRUE(vdex != nullptr);
     EXPECT_FALSE(vdex->HasDexSection()) << output_;
   }
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    odex_location.c_str(),
                                                    odex_location.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    dex_location.c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr) << dex_location;
   std::vector<const OatDexFile*> oat_dex_files = odex_file->GetOatDexFiles();
@@ -1930,8 +1919,8 @@ TEST_F(Dex2oatTest, QuickenedInput) {
                         // Disable cdex since we want to compare against the original dex file
                         // after unquickening.
                         { input_vdex, output_vdex, kDisableCompactDex },
-                        /* expect_success */ true,
-                        /* use_fd */ true);
+                        /*expect_success=*/ true,
+                        /*use_fd=*/ true);
   }
   // Unquicken by running the verify compiler filter on the vdex file and verify it matches.
   std::string odex_location2 = GetOdexDir() + "/unquickened.odex";
@@ -1945,8 +1934,8 @@ TEST_F(Dex2oatTest, QuickenedInput) {
                         CompilerFilter::kVerify,
                         // Disable cdex to avoid needing to write out the shared section.
                         { input_vdex, output_vdex, kDisableCompactDex },
-                        /* expect_success */ true,
-                        /* use_fd */ true);
+                        /*expect_success=*/ true,
+                        /*use_fd=*/ true);
   }
   ASSERT_EQ(vdex_unquickened->Flush(), 0) << "Could not flush and close vdex file";
   ASSERT_TRUE(success_);
@@ -2063,14 +2052,13 @@ TEST_F(Dex2oatTest, AppImageNoProfile) {
                       [](const OatFile&) {});
   // Open our generated oat file.
   std::string error_msg;
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    odex_location.c_str(),
                                                    odex_location.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    odex_location.c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   ImageHeader header = {};
@@ -2114,19 +2102,18 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
                       { "--app-image-file=" + app_image_location,
                         "--resolve-startup-const-strings=true",
                         "--profile-file=" + profile_file.GetFilename()},
-                      /* expect_success= */ true,
-                      /* use_fd= */ false,
+                      /*expect_success=*/ true,
+                      /*use_fd=*/ false,
                       [](const OatFile&) {});
   // Open our generated oat file.
   std::string error_msg;
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd= */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    odex_location.c_str(),
                                                    odex_location.c_str(),
-                                                   /* requested_base= */ nullptr,
-                                                   /* executable= */ false,
-                                                   /* low_4gb= */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    odex_location.c_str(),
-                                                   /* reservation= */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   // Check the strings in the app image intern table only contain the "startup" strigs.

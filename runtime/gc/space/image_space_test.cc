@@ -43,14 +43,13 @@ TEST_F(DexoptTest, ValidateOatFile) {
   args.push_back("--oat-file=" + oat_location);
   ASSERT_TRUE(Dex2Oat(args, &error_msg)) << error_msg;
 
-  std::unique_ptr<OatFile> oat(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> oat(OatFile::Open(/*zip_fd=*/ -1,
                                              oat_location.c_str(),
                                              oat_location.c_str(),
-                                             /* requested_base */ nullptr,
-                                             /* executable */ false,
-                                             /* low_4gb */ false,
-                                             /* abs_dex_location */ nullptr,
-                                             /* reservation */ nullptr,
+                                             /*executable=*/ false,
+                                             /*low_4gb=*/ false,
+                                             /*abs_dex_location=*/ nullptr,
+                                             /*reservation=*/ nullptr,
                                              &error_msg));
   ASSERT_TRUE(oat != nullptr) << error_msg;
 

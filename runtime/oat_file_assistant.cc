@@ -76,9 +76,9 @@ OatFileAssistant::OatFileAssistant(const char* dex_location,
                        isa,
                        load_executable,
                        only_load_system_executable,
-                       -1 /* vdex_fd */,
-                       -1 /* oat_fd */,
-                       -1 /* zip_fd */) {}
+                       /*vdex_fd=*/ -1,
+                       /*oat_fd=*/ -1,
+                       /*zip_fd=*/ -1) {}
 
 
 OatFileAssistant::OatFileAssistant(const char* dex_location,
@@ -124,7 +124,7 @@ OatFileAssistant::OatFileAssistant(const char* dex_location,
     // Get the oat filename.
     std::string oat_file_name;
     if (DexLocationToOatFilename(dex_location_, isa_, &oat_file_name, &error_msg)) {
-      oat_.Reset(oat_file_name, false /* use_fd */);
+      oat_.Reset(oat_file_name, /*use_fd=*/ false);
     } else {
       LOG(WARNING) << "Failed to determine oat file name for dex location "
                    << dex_location_ << ": " << error_msg;
@@ -575,7 +575,6 @@ OatFileAssistant::ImageInfo::GetRuntimeImageInfo(InstructionSet isa, std::string
   }
 
   info->oat_checksum = image_header->GetOatChecksum();
-  info->oat_data_begin = reinterpret_cast<uintptr_t>(image_header->GetOatDataBegin());
   info->patch_delta = image_header->GetPatchDelta();
   return info;
 }
@@ -693,9 +692,9 @@ OatFileAssistant::OatStatus OatFileAssistant::OatFileInfo::Status() {
             vdex = VdexFile::Open(vdex_fd_,
                                   s.st_size,
                                   vdex_filename,
-                                  false /*writable*/,
-                                  false /*low_4gb*/,
-                                  false /* unquicken */,
+                                  /*writable=*/ false,
+                                  /*low_4gb=*/ false,
+                                  /*unquicken=*/ false,
                                   &error_msg);
           }
         }
@@ -779,22 +778,20 @@ const OatFile* OatFileAssistant::OatFileInfo::GetFile() {
                                     vdex_fd_,
                                     oat_fd_,
                                     filename_.c_str(),
-                                    /* requested_base */ nullptr,
                                     executable,
-                                    /* low_4gb */ false,
+                                    /*low_4gb=*/ false,
                                     oat_file_assistant_->dex_location_.c_str(),
-                                    /* reservation */ nullptr,
+                                    /*reservation=*/ nullptr,
                                     &error_msg));
         }
       } else {
-        file_.reset(OatFile::Open(/* zip_fd */ -1,
+        file_.reset(OatFile::Open(/*zip_fd=*/ -1,
                                   filename_.c_str(),
                                   filename_.c_str(),
-                                  /* requested_base */ nullptr,
                                   executable,
-                                  /* low_4gb */ false,
+                                  /*low_4gb=*/ false,
                                   oat_file_assistant_->dex_location_.c_str(),
-                                  /* reservation */ nullptr,
+                                  /*reservation=*/ nullptr,
                                   &error_msg));
       }
       if (file_.get() == nullptr) {
@@ -924,7 +921,7 @@ void OatFileAssistant::GetOptimizationStatus(
     std::string* out_compilation_reason) {
   // It may not be possible to load an oat file executable (e.g., selinux restrictions). Load
   // non-executable and check the status manually.
-  OatFileAssistant oat_file_assistant(filename.c_str(), isa, false /* load_executable */);
+  OatFileAssistant oat_file_assistant(filename.c_str(), isa, /*load_executable=*/ false);
   std::unique_ptr<OatFile> oat_file = oat_file_assistant.GetBestOatFile();
 
   if (oat_file == nullptr) {
