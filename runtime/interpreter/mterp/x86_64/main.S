@@ -256,50 +256,52 @@ unspecified registers or condition codes.
  * Get/set the 32-bit value from a Dalvik register.
  */
 #define VREG_ADDRESS(_vreg) (rFP,_vreg,4)
+#define VREG_HIGH_ADDRESS(_vreg) 4(rFP,_vreg,4)
 #define VREG_REF_ADDRESS(_vreg) (rREFS,_vreg,4)
+#define VREG_REF_HIGH_ADDRESS(_vreg) 4(rREFS,_vreg,4)
 
 .macro GET_VREG _reg _vreg
-    movl    (rFP,\_vreg,4), \_reg
+    movl    VREG_ADDRESS(\_vreg), \_reg
 .endm
 
 /* Read wide value. */
 .macro GET_WIDE_VREG _reg _vreg
-    movq    (rFP,\_vreg,4), \_reg
+    movq    VREG_ADDRESS(\_vreg), \_reg
 .endm
 
 .macro SET_VREG _reg _vreg
-    movl    \_reg, (rFP,\_vreg,4)
-    movl    MACRO_LITERAL(0), (rREFS,\_vreg,4)
+    movl    \_reg, VREG_ADDRESS(\_vreg)
+    movl    MACRO_LITERAL(0), VREG_REF_ADDRESS(\_vreg)
 .endm
 
 /* Write wide value. reg is clobbered. */
 .macro SET_WIDE_VREG _reg _vreg
-    movq    \_reg, (rFP,\_vreg,4)
+    movq    \_reg, VREG_ADDRESS(\_vreg)
     xorq    \_reg, \_reg
-    movq    \_reg, (rREFS,\_vreg,4)
+    movq    \_reg, VREG_REF_ADDRESS(\_vreg)
 .endm
 
 .macro SET_VREG_OBJECT _reg _vreg
-    movl    \_reg, (rFP,\_vreg,4)
-    movl    \_reg, (rREFS,\_vreg,4)
+    movl    \_reg, VREG_ADDRESS(\_vreg)
+    movl    \_reg, VREG_REF_ADDRESS(\_vreg)
 .endm
 
 .macro GET_VREG_HIGH _reg _vreg
-    movl    4(rFP,\_vreg,4), \_reg
+    movl    VREG_HIGH_ADDRESS(\_vreg), \_reg
 .endm
 
 .macro SET_VREG_HIGH _reg _vreg
-    movl    \_reg, 4(rFP,\_vreg,4)
-    movl    MACRO_LITERAL(0), 4(rREFS,\_vreg,4)
+    movl    \_reg, VREG_HIGH_ADDRESS(\_vreg)
+    movl    MACRO_LITERAL(0), VREG_REF_HIGH_ADDRESS(\_vreg)
 .endm
 
 .macro CLEAR_REF _vreg
-    movl    MACRO_LITERAL(0),  (rREFS,\_vreg,4)
+    movl    MACRO_LITERAL(0), VREG_REF_ADDRESS(\_vreg)
 .endm
 
 .macro CLEAR_WIDE_REF _vreg
-    movl    MACRO_LITERAL(0),  (rREFS,\_vreg,4)
-    movl    MACRO_LITERAL(0), 4(rREFS,\_vreg,4)
+    movl    MACRO_LITERAL(0), VREG_REF_ADDRESS(\_vreg)
+    movl    MACRO_LITERAL(0), VREG_REF_HIGH_ADDRESS(\_vreg)
 .endm
 
 /*
