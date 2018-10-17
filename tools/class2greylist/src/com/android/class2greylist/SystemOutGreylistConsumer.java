@@ -1,8 +1,11 @@
 package com.android.class2greylist;
 
+import java.util.Map;
+
 public class SystemOutGreylistConsumer implements GreylistConsumer {
     @Override
-    public void greylistEntry(String signature, Integer maxTargetSdk) {
+    public void greylistEntry(
+            String signature, Integer maxTargetSdk, Map<String, String> annotationValues) {
         System.out.println(signature);
     }
 

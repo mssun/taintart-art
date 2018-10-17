@@ -60,7 +60,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
             Predicate<GreylistAnnotationHandler.GreylistMember> greylistFilter,
             Set<Integer> validMaxTargetSdkValues) {
         return new GreylistAnnotationHandler(
-                mStatus, mConsumer, greylistFilter, validMaxTargetSdkValues);
+                mStatus, mConsumer, greylistFilter, x -> validMaxTargetSdkValues.contains(x));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
 
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
-        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;->method()V");
     }
 
@@ -101,7 +101,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
 
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
-        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;-><init>()V");
     }
 
@@ -122,7 +122,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
 
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
-        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;->i:I");
     }
 
@@ -143,7 +143,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
 
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
-        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;->method()V");
     }
 
@@ -184,7 +184,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
 
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
-        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class$Inner;->method()V");
     }
 
@@ -202,7 +202,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
         ).visit();
 
         assertNoErrors();
-        verify(mConsumer, never()).greylistEntry(any(String.class), any());
+        verify(mConsumer, never()).greylistEntry(any(String.class), any(), any());
     }
 
     @Test
@@ -222,7 +222,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
 
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
-        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;->method(Ljava/lang/String;)V");
     }
 
@@ -252,7 +252,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
         // A bridge method is generated for the above, so we expect 2 greylist entries.
-        verify(mConsumer, times(2)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(2)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getAllValues()).containsExactly(
                 "La/b/Class;->method(Ljava/lang/Object;)V",
                 "La/b/Class;->method(Ljava/lang/String;)V");
@@ -284,7 +284,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
         // A bridge method is generated for the above, so we expect 2 greylist entries.
-        verify(mConsumer, times(2)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(2)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getAllValues()).containsExactly(
                 "La/b/Class;->method(Ljava/lang/Object;)V",
                 "La/b/Class;->method(Ljava/lang/String;)V");
@@ -322,7 +322,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
         // A bridge method is generated for the above, so we expect 2 greylist entries.
-        verify(mConsumer, times(2)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(2)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getAllValues()).containsExactly(
                 "La/b/Class;->method(Ljava/lang/Object;)V",
                 "La/b/Base;->method(Ljava/lang/Object;)V");
@@ -355,14 +355,14 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
                                 mStatus,
                                 mConsumer,
                                 publicApis,
-                                emptySet()));
+                                x -> false));
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Base"), mStatus, handlerMap).visit();
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus, handlerMap).visit();
 
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
         // The bridge method generated for the above, is a public API so should be excluded
-        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;->method(Ljava/lang/String;)V");
     }
 
@@ -384,7 +384,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus, handlerMap).visit();
         assertNoErrors();
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
-        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any());
+        verify(mConsumer, times(1)).greylistEntry(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;->field:I");
     }
 
@@ -423,7 +423,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus, handlerMap).visit();
         assertNoErrors();
         ArgumentCaptor<Integer> maxTargetSdk = ArgumentCaptor.forClass(Integer.class);
-        verify(mConsumer, times(1)).greylistEntry(any(), maxTargetSdk.capture());
+        verify(mConsumer, times(1)).greylistEntry(any(), maxTargetSdk.capture(), any());
         assertThat(maxTargetSdk.getValue()).isEqualTo(1);
     }
 
@@ -445,7 +445,7 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus, handlerMap).visit();
         assertNoErrors();
         ArgumentCaptor<Integer> maxTargetSdk = ArgumentCaptor.forClass(Integer.class);
-        verify(mConsumer, times(1)).greylistEntry(any(), maxTargetSdk.capture());
+        verify(mConsumer, times(1)).greylistEntry(any(), maxTargetSdk.capture(), any());
         assertThat(maxTargetSdk.getValue()).isEqualTo(null);
     }
 
@@ -466,6 +466,39 @@ public class GreylistAnnotationHandlerTest extends AnnotationHandlerTestBase {
                         ImmutableSet.of(1)));
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus, handlerMap).visit();
         verify(mStatus, times(1)).error(any(), any());
+    }
+
+    @Test
+    public void testAnnotationPropertiesIntoMap() throws IOException {
+        mJavac.addSource("annotation.Anno2", Joiner.on('\n').join(
+                "package annotation;",
+                "import static java.lang.annotation.RetentionPolicy.CLASS;",
+                "import java.lang.annotation.Retention;",
+                "@Retention(CLASS)",
+                "public @interface Anno2 {",
+                "  String expectedSignature() default \"\";",
+                "  int maxTargetSdk() default Integer.MAX_VALUE;",
+                "  long trackingBug() default 0;",
+                "}"));
+        mJavac.addSource("a.b.Class", Joiner.on('\n').join(
+                "package a.b;",
+                "import annotation.Anno2;",
+                "public class Class {",
+                "  @Anno2(maxTargetSdk=2, trackingBug=123456789)",
+                "  public int field;",
+                "}"));
+        assertThat(mJavac.compile()).isTrue();
+        new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
+                ImmutableMap.of("Lannotation/Anno2;", createGreylistHandler(x -> true,
+                        ImmutableSet.of(2)))
+        ).visit();
+
+        assertNoErrors();
+        ArgumentCaptor<Map<String, String>> properties = ArgumentCaptor.forClass(Map.class);
+        verify(mConsumer, times(1)).greylistEntry(any(), any(), properties.capture());
+        assertThat(properties.getValue()).containsExactly(
+                "maxTargetSdk", "2",
+                "trackingBug", "123456789");
     }
 
 }
