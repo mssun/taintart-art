@@ -535,10 +535,6 @@ class Runtime {
     return hidden_api_policy_;
   }
 
-  void SetPendingHiddenApiWarning(bool value) {
-    pending_hidden_api_warning_ = value;
-  }
-
   void SetHiddenApiExemptions(const std::vector<std::string>& exemptions) {
     hidden_api_exemptions_ = exemptions;
   }
@@ -547,24 +543,12 @@ class Runtime {
     return hidden_api_exemptions_;
   }
 
-  bool HasPendingHiddenApiWarning() const {
-    return pending_hidden_api_warning_;
-  }
-
   void SetDedupeHiddenApiWarnings(bool value) {
     dedupe_hidden_api_warnings_ = value;
   }
 
   bool ShouldDedupeHiddenApiWarnings() {
     return dedupe_hidden_api_warnings_;
-  }
-
-  void AlwaysSetHiddenApiWarningFlag() {
-    always_set_hidden_api_warning_flag_ = true;
-  }
-
-  bool ShouldAlwaysSetHiddenApiWarningFlag() const {
-    return always_set_hidden_api_warning_flag_;
   }
 
   void SetHiddenApiEventLogSampleRate(uint32_t rate) {

@@ -269,10 +269,8 @@ Runtime::Runtime()
       oat_file_manager_(nullptr),
       is_low_memory_mode_(false),
       safe_mode_(false),
-      hidden_api_policy_(hiddenapi::EnforcementPolicy::kNoChecks),
-      pending_hidden_api_warning_(false),
+      hidden_api_policy_(hiddenapi::EnforcementPolicy::kDisabled),
       dedupe_hidden_api_warnings_(true),
-      always_set_hidden_api_warning_flag_(false),
       hidden_api_access_event_log_rate_(0),
       dump_native_stack_on_sig_quit_(true),
       pruned_dalvik_cache_(false),
@@ -1235,8 +1233,8 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   // As is, we're encoding some logic here about which specific policy to use, which would be better
   // controlled by the framework.
   hidden_api_policy_ = do_hidden_api_checks
-      ? hiddenapi::EnforcementPolicy::kDarkGreyAndBlackList
-      : hiddenapi::EnforcementPolicy::kNoChecks;
+      ? hiddenapi::EnforcementPolicy::kEnabled
+      : hiddenapi::EnforcementPolicy::kDisabled;
 
   no_sig_chain_ = runtime_options.Exists(Opt::NoSigChain);
   force_native_bridge_ = runtime_options.Exists(Opt::ForceNativeBridge);

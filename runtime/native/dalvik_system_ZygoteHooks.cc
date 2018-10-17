@@ -304,8 +304,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   // Our system thread ID, etc, has changed so reset Thread state.
   thread->InitAfterFork();
   runtime_flags = EnableDebugFeatures(runtime_flags);
-  hiddenapi::EnforcementPolicy api_enforcement_policy = hiddenapi::EnforcementPolicy::kNoChecks;
-  bool dedupe_hidden_api_warnings = true;
+  hiddenapi::EnforcementPolicy api_enforcement_policy = hiddenapi::EnforcementPolicy::kDisabled;
 
   if ((runtime_flags & DISABLE_VERIFIER) != 0) {
     Runtime::Current()->DisableVerifier();
@@ -372,23 +371,20 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     }
   }
 
-  bool do_hidden_api_checks = api_enforcement_policy != hiddenapi::EnforcementPolicy::kNoChecks;
+  bool do_hidden_api_checks = api_enforcement_policy != hiddenapi::EnforcementPolicy::kDisabled;
   DCHECK(!(is_system_server && do_hidden_api_checks))
       << "SystemServer should be forked with EnforcementPolicy::kDisable";
   DCHECK(!(is_zygote && do_hidden_api_checks))
       << "Child zygote processes should be forked with EnforcementPolicy::kDisable";
   Runtime::Current()->SetHiddenApiEnforcementPolicy(api_enforcement_policy);
-  Runtime::Current()->SetDedupeHiddenApiWarnings(dedupe_hidden_api_warnings);
-  if (api_enforcement_policy != hiddenapi::EnforcementPolicy::kNoChecks &&
+  Runtime::Current()->SetDedupeHiddenApiWarnings(true);
+  if (api_enforcement_policy != hiddenapi::EnforcementPolicy::kDisabled &&
       Runtime::Current()->GetHiddenApiEventLogSampleRate() != 0) {
     // Hidden API checks are enabled, and we are sampling access for the event log. Initialize the
     // random seed, to ensure the sampling is actually random. We do this post-fork, as doing it
     // pre-fork would result in the same sequence for every forked process.
     std::srand(static_cast<uint32_t>(NanoTime()));
   }
-
-  // Clear the hidden API warning flag, in case it was set.
-  Runtime::Current()->SetPendingHiddenApiWarning(false);
 
   if (is_zygote) {
     // If creating a child-zygote, do not call into the runtime's post-fork logic.
