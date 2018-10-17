@@ -51,9 +51,12 @@ inline size_t InternTable::AddTableFromMemory(const uint8_t* ptr, const Visitor&
 inline void InternTable::Table::AddInternStrings(UnorderedSet&& intern_strings) {
   static constexpr bool kCheckDuplicates = kIsDebugBuild;
   if (kCheckDuplicates) {
+    // Avoid doing read barriers since the space might not yet be added to the heap.
+    // See b/117803941
     for (GcRoot<mirror::String>& string : intern_strings) {
-      CHECK(Find(string.Read()) == nullptr)
-          << "Already found " << string.Read()->ToModifiedUtf8() << " in the intern table";
+      CHECK(Find(string.Read<kWithoutReadBarrier>()) == nullptr)
+          << "Already found " << string.Read<kWithoutReadBarrier>()->ToModifiedUtf8()
+          << " in the intern table";
     }
   }
   // Insert at the front since we add new interns into the back.
