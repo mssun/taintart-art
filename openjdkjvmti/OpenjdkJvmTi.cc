@@ -58,6 +58,7 @@
 #include "ti_field.h"
 #include "ti_heap.h"
 #include "ti_jni.h"
+#include "ti_logging.h"
 #include "ti_method.h"
 #include "ti_monitor.h"
 #include "ti_object.h"
@@ -787,7 +788,7 @@ class JvmtiFunctions {
                                                      classes,
                                                      &error_msg);
     if (res != OK) {
-      LOG(WARNING) << "FAILURE TO RETRANFORM " << error_msg;
+      JVMTI_LOG(WARNING, env) << "FAILURE TO RETRANFORM " << error_msg;
     }
     return res;
   }
@@ -806,7 +807,7 @@ class JvmtiFunctions {
                                                 class_definitions,
                                                 &error_msg);
     if (res != OK) {
-      LOG(WARNING) << "FAILURE TO REDEFINE " << error_msg;
+      JVMTI_LOG(WARNING, env) << "FAILURE TO REDEFINE " << error_msg;
     }
     return res;
   }
@@ -1489,7 +1490,8 @@ ArtJvmTiEnv::ArtJvmTiEnv(art::JavaVMExt* runtime, EventHandler* event_handler, j
       local_data(nullptr),
       ti_version(version),
       capabilities(),
-      event_info_mutex_("jvmtiEnv_EventInfoMutex") {
+      event_info_mutex_("jvmtiEnv_EventInfoMutex"),
+      last_error_mutex_("jvmtiEnv_LastErrorMutex", art::LockLevel::kGenericBottomLock) {
   object_tag_table = std::unique_ptr<ObjectTagTable>(new ObjectTagTable(event_handler, this));
   functions = &gJvmtiInterface;
 }
