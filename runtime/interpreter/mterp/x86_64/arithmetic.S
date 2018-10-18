@@ -137,7 +137,7 @@
     movzbq  2(rPC), %rax                    # rax <- BB
     movzbq  3(rPC), %rcx                    # rcx <- CC
     GET_VREG %eax, %rax                     # eax <- vBB
-    $instr                                  # ex: addl    (rFP,%rcx,4),%eax
+    $instr                                  # ex: addl    VREG_ADDRESS(%rcx),%eax
     SET_VREG $result, rINSTq
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 2
 
@@ -228,7 +228,7 @@
     movzbq  2(rPC), %rax                    # eax <- BB
     movzbq  3(rPC), %rcx                    # ecx <- CC
     GET_WIDE_VREG %rax, %rax                # rax <- v[BB]
-    $instr                                  # ex: addq   (rFP,%rcx,4),%rax
+    $instr                                  # ex: addq   VREG_ADDRESS(%rcx),%rax
     SET_WIDE_VREG %rax, rINSTq              # v[AA] <- rax
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 2
 
@@ -241,7 +241,7 @@
     sarl    $$4, rINST                      # rINST <- B
     andb    $$0xf, %cl                      # ecx <- A
     GET_WIDE_VREG %rax, rINSTq              # rax <- vB
-    $instr                                  # for ex: addq   %rax,(rFP,%rcx,4)
+    $instr                                  # for ex: addq   %rax,VREG_ADDRESS(%rcx)
     CLEAR_WIDE_REF %rcx
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 1
 
@@ -317,10 +317,10 @@ $instr
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 1
 
 %def op_add_int():
-%  binop(instr="addl    (rFP,%rcx,4), %eax")
+%  binop(instr="addl    VREG_ADDRESS(%rcx), %eax")
 
 %def op_add_int_2addr():
-%  binop2addr(instr="addl    %eax, (rFP,%rcx,4)")
+%  binop2addr(instr="addl    %eax, VREG_ADDRESS(%rcx)")
 
 %def op_add_int_lit16():
 %  binopLit16(instr="addl    %ecx, %eax")
@@ -329,16 +329,16 @@ $instr
 %  binopLit8(instr="addl    %ecx, %eax")
 
 %def op_add_long():
-%  binopWide(instr="addq    (rFP,%rcx,4), %rax")
+%  binopWide(instr="addq    VREG_ADDRESS(%rcx), %rax")
 
 %def op_add_long_2addr():
-%  binopWide2addr(instr="addq    %rax, (rFP,%rcx,4)")
+%  binopWide2addr(instr="addq    %rax, VREG_ADDRESS(%rcx)")
 
 %def op_and_int():
-%  binop(instr="andl    (rFP,%rcx,4), %eax")
+%  binop(instr="andl    VREG_ADDRESS(%rcx), %eax")
 
 %def op_and_int_2addr():
-%  binop2addr(instr="andl    %eax, (rFP,%rcx,4)")
+%  binop2addr(instr="andl    %eax, VREG_ADDRESS(%rcx)")
 
 %def op_and_int_lit16():
 %  binopLit16(instr="andl    %ecx, %eax")
@@ -347,10 +347,10 @@ $instr
 %  binopLit8(instr="andl    %ecx, %eax")
 
 %def op_and_long():
-%  binopWide(instr="andq    (rFP,%rcx,4), %rax")
+%  binopWide(instr="andq    VREG_ADDRESS(%rcx), %rax")
 
 %def op_and_long_2addr():
-%  binopWide2addr(instr="andq    %rax, (rFP,%rcx,4)")
+%  binopWide2addr(instr="andq    %rax, VREG_ADDRESS(%rcx)")
 
 %def op_cmp_long():
 /*
@@ -413,7 +413,7 @@ $instr
 %  op_move()
 
 %def op_mul_int():
-%  binop(instr="imull   (rFP,%rcx,4), %eax")
+%  binop(instr="imull   VREG_ADDRESS(%rcx), %eax")
 
 %def op_mul_int_2addr():
     /* mul vA, vB */
@@ -432,7 +432,7 @@ $instr
 %  binopLit8(instr="imull   %ecx, %eax")
 
 %def op_mul_long():
-%  binopWide(instr="imulq   (rFP,%rcx,4), %rax")
+%  binopWide(instr="imulq   VREG_ADDRESS(%rcx), %rax")
 
 %def op_mul_long_2addr():
     /* mul vA, vB */
@@ -457,10 +457,10 @@ $instr
 %  unop(instr="    notq    %rax", wide="1")
 
 %def op_or_int():
-%  binop(instr="orl     (rFP,%rcx,4), %eax")
+%  binop(instr="orl     VREG_ADDRESS(%rcx), %eax")
 
 %def op_or_int_2addr():
-%  binop2addr(instr="orl     %eax, (rFP,%rcx,4)")
+%  binop2addr(instr="orl     %eax, VREG_ADDRESS(%rcx)")
 
 %def op_or_int_lit16():
 %  binopLit16(instr="orl     %ecx, %eax")
@@ -469,10 +469,10 @@ $instr
 %  binopLit8(instr="orl     %ecx, %eax")
 
 %def op_or_long():
-%  binopWide(instr="orq     (rFP,%rcx,4), %rax")
+%  binopWide(instr="orq     VREG_ADDRESS(%rcx), %rax")
 
 %def op_or_long_2addr():
-%  binopWide2addr(instr="orq     %rax, (rFP,%rcx,4)")
+%  binopWide2addr(instr="orq     %rax, VREG_ADDRESS(%rcx)")
 
 %def op_rem_int():
 %  bindiv(result="%edx", second="%ecx", wide="0", suffix="l", rem="1")
@@ -530,16 +530,16 @@ $instr
 %  shop2addr(instr="sarq    %cl, %rax", wide="1")
 
 %def op_sub_int():
-%  binop(instr="subl    (rFP,%rcx,4), %eax")
+%  binop(instr="subl    VREG_ADDRESS(%rcx), %eax")
 
 %def op_sub_int_2addr():
-%  binop2addr(instr="subl    %eax, (rFP,%rcx,4)")
+%  binop2addr(instr="subl    %eax, VREG_ADDRESS(%rcx)")
 
 %def op_sub_long():
-%  binopWide(instr="subq    (rFP,%rcx,4), %rax")
+%  binopWide(instr="subq    VREG_ADDRESS(%rcx), %rax")
 
 %def op_sub_long_2addr():
-%  binopWide2addr(instr="subq    %rax, (rFP,%rcx,4)")
+%  binopWide2addr(instr="subq    %rax, VREG_ADDRESS(%rcx)")
 
 %def op_ushr_int():
 %  binop1(instr="shrl    %cl, %eax")
@@ -557,10 +557,10 @@ $instr
 %  shop2addr(instr="shrq    %cl, %rax", wide="1")
 
 %def op_xor_int():
-%  binop(instr="xorl    (rFP,%rcx,4), %eax")
+%  binop(instr="xorl    VREG_ADDRESS(%rcx), %eax")
 
 %def op_xor_int_2addr():
-%  binop2addr(instr="xorl    %eax, (rFP,%rcx,4)")
+%  binop2addr(instr="xorl    %eax, VREG_ADDRESS(%rcx)")
 
 %def op_xor_int_lit16():
 %  binopLit16(instr="xorl    %ecx, %eax")
@@ -569,7 +569,7 @@ $instr
 %  binopLit8(instr="xorl    %ecx, %eax")
 
 %def op_xor_long():
-%  binopWide(instr="xorq    (rFP,%rcx,4), %rax")
+%  binopWide(instr="xorq    VREG_ADDRESS(%rcx), %rax")
 
 %def op_xor_long_2addr():
-%  binopWide2addr(instr="xorq    %rax, (rFP,%rcx,4)")
+%  binopWide2addr(instr="xorq    %rax, VREG_ADDRESS(%rcx)")
