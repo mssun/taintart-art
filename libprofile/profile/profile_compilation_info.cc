@@ -190,8 +190,8 @@ bool ProfileCompilationInfo::AddClasses(const std::set<DexCacheResolvedClasses>&
 bool ProfileCompilationInfo::MergeWith(const std::string& filename) {
   std::string error;
   int flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
-  ScopedFlock profile_file = LockedFile::Open(filename.c_str(), flags,
-      /*block*/false, &error);
+  ScopedFlock profile_file =
+      LockedFile::Open(filename.c_str(), flags, /*block=*/false, &error);
 
   if (profile_file.get() == nullptr) {
     LOG(WARNING) << "Couldn't lock the profile file " << filename << ": " << error;
@@ -221,8 +221,8 @@ bool ProfileCompilationInfo::Load(const std::string& filename, bool clear_if_inv
   // There's no need to fsync profile data right away. We get many chances
   // to write it again in case something goes wrong. We can rely on a simple
   // close(), no sync, and let to the kernel decide when to write to disk.
-  ScopedFlock profile_file = LockedFile::Open(filename.c_str(), flags,
-                                              /*block*/false, &error);
+  ScopedFlock profile_file =
+      LockedFile::Open(filename.c_str(), flags, /*block=*/false, &error);
 
   if (profile_file.get() == nullptr) {
     LOG(WARNING) << "Couldn't lock the profile file " << filename << ": " << error;
@@ -259,8 +259,8 @@ bool ProfileCompilationInfo::Save(const std::string& filename, uint64_t* bytes_w
   // There's no need to fsync profile data right away. We get many chances
   // to write it again in case something goes wrong. We can rely on a simple
   // close(), no sync, and let to the kernel decide when to write to disk.
-  ScopedFlock profile_file = LockedFile::Open(filename.c_str(), flags,
-                                              /*block*/false, &error);
+  ScopedFlock profile_file =
+      LockedFile::Open(filename.c_str(), flags, /*block=*/false, &error);
   if (profile_file.get() == nullptr) {
     LOG(WARNING) << "Couldn't lock the profile file " << filename << ": " << error;
     return false;
@@ -1393,8 +1393,8 @@ bool ProfileCompilationInfo::RemapProfileIndex(
     // verify_checksum is false because we want to differentiate between a missing dex data and
     // a mismatched checksum.
     const DexFileData* dex_data = FindDexData(other_profile_line_header.dex_location,
-                                              0u,
-                                              false /* verify_checksum */);
+                                              /* checksum= */ 0u,
+                                              /* verify_checksum= */ false);
     if ((dex_data != nullptr) && (dex_data->checksum != other_profile_line_header.checksum)) {
       LOG(WARNING) << "Checksum mismatch for dex " << other_profile_line_header.dex_location;
       return false;
@@ -1481,8 +1481,8 @@ bool ProfileCompilationInfo::MergeWith(const ProfileCompilationInfo& other,
     // verify_checksum is false because we want to differentiate between a missing dex data and
     // a mismatched checksum.
     const DexFileData* dex_data = FindDexData(other_dex_data->profile_key,
-                                              0u,
-                                              /* verify_checksum */ false);
+                                              /* checksum= */ 0u,
+                                              /* verify_checksum= */ false);
     if ((dex_data != nullptr) && (dex_data->checksum != other_dex_data->checksum)) {
       LOG(WARNING) << "Checksum mismatch for dex " << other_dex_data->profile_key;
       return false;
@@ -1829,7 +1829,7 @@ bool ProfileCompilationInfo::GenerateTestProfile(int fd,
       flags |= ((m & 1) != 0) ? MethodHotness::kFlagPostStartup : MethodHotness::kFlagStartup;
       info.AddMethodIndex(static_cast<MethodHotness::Flag>(flags),
                           profile_key,
-                          /*method_idx*/ 0,
+                          /*checksum=*/ 0,
                           method_idx,
                           max_method);
     }
@@ -1975,20 +1975,20 @@ void ProfileCompilationInfo::DexFileData::SetMethodHotness(size_t index,
                                                            MethodHotness::Flag flags) {
   DCHECK_LT(index, num_method_ids);
   if ((flags & MethodHotness::kFlagStartup) != 0) {
-    method_bitmap.StoreBit(MethodBitIndex(/*startup*/ true, index), /*value*/ true);
+    method_bitmap.StoreBit(MethodBitIndex(/*startup=*/ true, index), /*value=*/ true);
   }
   if ((flags & MethodHotness::kFlagPostStartup) != 0) {
-    method_bitmap.StoreBit(MethodBitIndex(/*startup*/ false, index), /*value*/ true);
+    method_bitmap.StoreBit(MethodBitIndex(/*startup=*/ false, index), /*value=*/ true);
   }
 }
 
 ProfileCompilationInfo::MethodHotness ProfileCompilationInfo::DexFileData::GetHotnessInfo(
     uint32_t dex_method_index) const {
   MethodHotness ret;
-  if (method_bitmap.LoadBit(MethodBitIndex(/*startup*/ true, dex_method_index))) {
+  if (method_bitmap.LoadBit(MethodBitIndex(/*startup=*/ true, dex_method_index))) {
     ret.AddFlag(MethodHotness::kFlagStartup);
   }
-  if (method_bitmap.LoadBit(MethodBitIndex(/*startup*/ false, dex_method_index))) {
+  if (method_bitmap.LoadBit(MethodBitIndex(/*startup=*/ false, dex_method_index))) {
     ret.AddFlag(MethodHotness::kFlagPostStartup);
   }
   auto it = method_map.find(dex_method_index);

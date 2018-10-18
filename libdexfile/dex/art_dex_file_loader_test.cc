@@ -217,9 +217,9 @@ TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
 
     std::string plain_method = std::string("GetMethodSignature.") + r.name;
     ASSERT_EQ(plain_method,
-              raw->PrettyMethod(cur_method->GetIndex(), /* with_signature */ false));
+              raw->PrettyMethod(cur_method->GetIndex(), /* with_signature= */ false));
     ASSERT_EQ(r.pretty_method,
-              raw->PrettyMethod(cur_method->GetIndex(), /* with_signature */ true));
+              raw->PrettyMethod(cur_method->GetIndex(), /* with_signature= */ true));
   }
 }
 
@@ -332,8 +332,8 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_DataDir) {
   std::string error_msg;
   bool success = loader.Open(data_location_path.c_str(),
                              data_location_path,
-                             /* verify */ false,
-                             /* verify_checksum */ false,
+                             /* verify= */ false,
+                             /* verify_checksum= */ false,
                              &error_msg,
                              &dex_files);
   ASSERT_TRUE(success) << error_msg;
@@ -360,8 +360,8 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemDir) {
   std::string error_msg;
   bool success = loader.Open(system_location_path.c_str(),
                              system_location_path,
-                             /* verify */ false,
-                             /* verify_checksum */ false,
+                             /* verify= */ false,
+                             /* verify_checksum= */ false,
                              &error_msg,
                              &dex_files);
   ASSERT_TRUE(success) << error_msg;
@@ -388,8 +388,8 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemFrameworkDir) {
   std::string error_msg;
   bool success = loader.Open(system_framework_location_path.c_str(),
                              system_framework_location_path,
-                             /* verify */ false,
-                             /* verify_checksum */ false,
+                             /* verify= */ false,
+                             /* verify_checksum= */ false,
                              &error_msg,
                              &dex_files);
   ASSERT_TRUE(success) << error_msg;
@@ -416,8 +416,8 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_DataDir_MultiDex) {
   std::string error_msg;
   bool success = loader.Open(data_multi_location_path.c_str(),
                              data_multi_location_path,
-                             /* verify */ false,
-                             /* verify_checksum */ false,
+                             /* verify= */ false,
+                             /* verify_checksum= */ false,
                              &error_msg,
                              &dex_files);
   ASSERT_TRUE(success) << error_msg;
@@ -445,8 +445,8 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemDir_MultiDex) {
   std::string error_msg;
   bool success = loader.Open(system_multi_location_path.c_str(),
                              system_multi_location_path,
-                             /* verify */ false,
-                             /* verify_checksum */ false,
+                             /* verify= */ false,
+                             /* verify_checksum= */ false,
                              &error_msg,
                              &dex_files);
   ASSERT_TRUE(success) << error_msg;
@@ -474,8 +474,8 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemFrameworkDir_MultiDex) {
   std::string error_msg;
   bool success = loader.Open(system_framework_multi_location_path.c_str(),
                              system_framework_multi_location_path,
-                             /* verify */ false,
-                             /* verify_checksum */ false,
+                             /* verify= */ false,
+                             /* verify_checksum= */ false,
                              &error_msg,
                              &dex_files);
   ASSERT_TRUE(success) << error_msg;

@@ -71,12 +71,12 @@ TEST_F(FileUtilsTest, GetAndroidRootSafe) {
   // Set ANDROID_ROOT to something else (but the directory must exist). So use dirname.
   UniqueCPtr<char> root_dup(strdup(android_root_env.c_str()));
   char* dir = dirname(root_dup.get());
-  ASSERT_EQ(0, setenv("ANDROID_ROOT", dir, 1 /* overwrite */));
+  ASSERT_EQ(0, setenv("ANDROID_ROOT", dir, /* overwrite */ 1));
   std::string android_root2 = GetAndroidRootSafe(&error_msg);
   EXPECT_STREQ(dir, android_root2.c_str());
 
   // Set a bogus value for ANDROID_ROOT. This should be an error.
-  ASSERT_EQ(0, setenv("ANDROID_ROOT", "/this/is/obviously/bogus", 1 /* overwrite */));
+  ASSERT_EQ(0, setenv("ANDROID_ROOT", "/this/is/obviously/bogus", /* overwrite */ 1));
   EXPECT_EQ(GetAndroidRootSafe(&error_msg), "");
 
   // Unset ANDROID_ROOT and see that it still returns something (as libart code is running).
@@ -90,7 +90,7 @@ TEST_F(FileUtilsTest, GetAndroidRootSafe) {
 
 
   // Reset ANDROID_ROOT, as other things may depend on it.
-  ASSERT_EQ(0, setenv("ANDROID_ROOT", android_root_env.c_str(), 1 /* overwrite */));
+  ASSERT_EQ(0, setenv("ANDROID_ROOT", android_root_env.c_str(), /* overwrite */ 1));
 }
 
 TEST_F(FileUtilsTest, ReplaceFileExtension) {

@@ -222,16 +222,16 @@ std::unique_ptr<const DexFile> DexFileLoader::Open(const uint8_t* base,
                                                    std::string* error_msg) const {
   return OpenCommon(base,
                     size,
-                    /*data_base*/ nullptr,
-                    /*data_size*/ 0,
+                    /*data_base=*/ nullptr,
+                    /*data_size=*/ 0,
                     location,
                     location_checksum,
                     oat_dex_file,
                     verify,
                     verify_checksum,
                     error_msg,
-                    /*container*/ nullptr,
-                    /*verify_result*/ nullptr);
+                    /*container=*/ nullptr,
+                    /*verify_result=*/ nullptr);
 }
 
 std::unique_ptr<const DexFile> DexFileLoader::OpenWithDataSection(
@@ -255,8 +255,8 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenWithDataSection(
                     verify,
                     verify_checksum,
                     error_msg,
-                    /*container*/ nullptr,
-                    /*verify_result*/ nullptr);
+                    /*container=*/ nullptr,
+                    /*verify_result=*/ nullptr);
 }
 
 bool DexFileLoader::OpenAll(
@@ -290,7 +290,7 @@ bool DexFileLoader::OpenAll(
                                                  size,
                                                  location,
                                                  dex_header->checksum_,
-                                                 /*oat_dex_file*/ nullptr,
+                                                 /*oat_dex_file=*/ nullptr,
                                                  verify,
                                                  verify_checksum,
                                                  error_msg));
@@ -410,11 +410,11 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
   std::unique_ptr<const DexFile> dex_file = OpenCommon(
       map.data(),
       map.size(),
-      /*data_base*/ nullptr,
-      /*data_size*/ 0u,
+      /*data_base=*/ nullptr,
+      /*data_size=*/ 0u,
       location,
       zip_entry->GetCrc32(),
-      /*oat_dex_file*/ nullptr,
+      /*oat_dex_file=*/ nullptr,
       verify,
       verify_checksum,
       error_msg,

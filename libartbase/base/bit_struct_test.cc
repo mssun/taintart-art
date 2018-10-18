@@ -73,7 +73,7 @@ struct CustomBitStruct {
 TEST(BitStructs, Custom) {
   CustomBitStruct expected(0b1111);
 
-  BitStructField<CustomBitStruct, /*lsb*/4, /*width*/4> f{};
+  BitStructField<CustomBitStruct, /*lsb=*/4, /*width=*/4> f{};
 
   EXPECT_EQ(1u, sizeof(f));
 
@@ -85,9 +85,9 @@ TEST(BitStructs, Custom) {
   EXPECT_EQ(AsUint(f), 0b11110000u);
 }
 
-BITSTRUCT_DEFINE_START(TestTwoCustom, /* size */ 8)
-  BitStructField<CustomBitStruct, /*lsb*/0, /*width*/4> f4_a;
-  BitStructField<CustomBitStruct, /*lsb*/4, /*width*/4> f4_b;
+BITSTRUCT_DEFINE_START(TestTwoCustom, /* size= */ 8)
+  BitStructField<CustomBitStruct, /*lsb=*/0, /*width=*/4> f4_a;
+  BitStructField<CustomBitStruct, /*lsb=*/4, /*width=*/4> f4_b;
 BITSTRUCT_DEFINE_END(TestTwoCustom);
 
 TEST(BitStructs, TwoCustom) {
@@ -122,7 +122,7 @@ TEST(BitStructs, TwoCustom) {
 }
 
 TEST(BitStructs, Number) {
-  BitStructNumber<uint16_t, /*lsb*/4, /*width*/4> bsn{};
+  BitStructNumber<uint16_t, /*lsb=*/4, /*width=*/4> bsn{};
   EXPECT_EQ(2u, sizeof(bsn));
 
   bsn = 0b1111;
@@ -135,20 +135,20 @@ TEST(BitStructs, Number) {
   EXPECT_EQ(AsUint(bsn), 0b11110000u);
 }
 
-BITSTRUCT_DEFINE_START(TestBitStruct, /* size */ 8)
-  BitStructInt</*lsb*/0, /*width*/3> i3;
-  BitStructUint</*lsb*/3, /*width*/4> u4;
+BITSTRUCT_DEFINE_START(TestBitStruct, /* size= */ 8)
+  BitStructInt</*lsb=*/0, /*width=*/3> i3;
+  BitStructUint</*lsb=*/3, /*width=*/4> u4;
 
-  BitStructUint</*lsb*/0, /*width*/7> alias_all;
+  BitStructUint</*lsb=*/0, /*width=*/7> alias_all;
 BITSTRUCT_DEFINE_END(TestBitStruct);
 
 TEST(BitStructs, Test1) {
   {
     // Check minimal size selection is correct.
-    BitStructInt</*lsb*/0, /*width*/3> i3;
-    BitStructUint</*lsb*/3, /*width*/4> u4;
+    BitStructInt</*lsb=*/0, /*width=*/3> i3;
+    BitStructUint</*lsb=*/3, /*width=*/4> u4;
 
-    BitStructUint</*lsb*/0, /*width*/7> alias_all;
+    BitStructUint</*lsb=*/0, /*width=*/7> alias_all;
 
     EXPECT_EQ(1u, sizeof(i3));
     EXPECT_EQ(1u, sizeof(u4));
@@ -216,12 +216,12 @@ TEST(BitStructs, Test1) {
   }
 }
 
-BITSTRUCT_DEFINE_START(MixedSizeBitStruct, /* size */ 32)
-  BitStructUint</*lsb*/0, /*width*/3> u3;
-  BitStructUint</*lsb*/3, /*width*/10> u10;
-  BitStructUint</*lsb*/13, /*width*/19> u19;
+BITSTRUCT_DEFINE_START(MixedSizeBitStruct, /* size= */ 32)
+  BitStructUint</*lsb=*/0, /*width=*/3> u3;
+  BitStructUint</*lsb=*/3, /*width=*/10> u10;
+  BitStructUint</*lsb=*/13, /*width=*/19> u19;
 
-  BitStructUint</*lsb*/0, /*width*/32> alias_all;
+  BitStructUint</*lsb=*/0, /*width=*/32> alias_all;
 BITSTRUCT_DEFINE_END(MixedSizeBitStruct);
 
 // static_assert(sizeof(MixedSizeBitStruct) == sizeof(uint32_t), "TestBitStructs#MixedSize");
@@ -255,11 +255,11 @@ TEST(BitStructs, Mixed) {
   EXPECT_EQ(0b10101010101010101011111010100111u, AsUint(tst));
 }
 
-BITSTRUCT_DEFINE_START(TestBitStruct_u8, /* size */ 8)
-  BitStructInt</*lsb*/0, /*width*/3> i3;
-  BitStructUint</*lsb*/3, /*width*/4> u4;
+BITSTRUCT_DEFINE_START(TestBitStruct_u8, /* size= */ 8)
+  BitStructInt</*lsb=*/0, /*width=*/3> i3;
+  BitStructUint</*lsb=*/3, /*width=*/4> u4;
 
-  BitStructUint</*lsb*/0, /*width*/8> alias_all;
+  BitStructUint</*lsb=*/0, /*width=*/8> alias_all;
 BITSTRUCT_DEFINE_END(TestBitStruct_u8);
 
 TEST(BitStructs, FieldAssignment) {
@@ -283,11 +283,11 @@ TEST(BitStructs, FieldAssignment) {
   }
 }
 
-BITSTRUCT_DEFINE_START(NestedStruct, /* size */ 64)
-  BitStructField<MixedSizeBitStruct, /*lsb*/0> mixed_lower;
-  BitStructField<MixedSizeBitStruct, /*lsb*/32> mixed_upper;
+BITSTRUCT_DEFINE_START(NestedStruct, /* size= */ 64)
+  BitStructField<MixedSizeBitStruct, /*lsb=*/0> mixed_lower;
+  BitStructField<MixedSizeBitStruct, /*lsb=*/32> mixed_upper;
 
-  BitStructUint</*lsb*/0, /*width*/64> alias_all;
+  BitStructUint</*lsb=*/0, /*width=*/64> alias_all;
 BITSTRUCT_DEFINE_END(NestedStruct);
 
 TEST(BitStructs, NestedFieldAssignment) {
