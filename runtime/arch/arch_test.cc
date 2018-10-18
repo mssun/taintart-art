@@ -17,16 +17,10 @@
 #include <stdint.h>
 
 #include "art_method-inl.h"
-#include "asm_defines.h"
 #include "base/callee_save_type.h"
 #include "entrypoints/quick/callee_save_frame.h"
 #include "common_runtime_test.h"
 #include "quick/quick_method_frame_info.h"
-
-// Static asserts to check the values of generated #defines for assembly.
-#define ASM_DEFINE(NAME, EXPR) static_assert((NAME) == (EXPR), "Unexpected value of " #NAME);
-#include "asm_defines.def"
-#undef ASM_DEFINE
 
 namespace art {
 
