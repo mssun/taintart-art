@@ -580,6 +580,11 @@ class Thread {
     return poison_object_cookie_;
   }
 
+  // Parking for 0ns of relative time means an untimed park, negative (though
+  // should be handled in java code) returns immediately
+  void Park(bool is_absolute, int64_t time) REQUIRES_SHARED(Locks::mutator_lock_);
+  void Unpark();
+
  private:
   void NotifyLocked(Thread* self) REQUIRES(wait_mutex_);
 
@@ -1555,6 +1560,8 @@ class Thread {
 
     // Thread "interrupted" status; stays raised until queried or thrown.
     Atomic<bool32_t> interrupted;
+
+    AtomicInteger park_state_;
 
     // True if the thread is allowed to access a weak ref (Reference::GetReferent() and system
     // weaks) and to potentially mark an object alive/gray. This is used for concurrent reference
