@@ -1028,7 +1028,11 @@ bool ConditionVariable::TimedWait(Thread* self, int64_t ms, int32_t ns) {
   guard_.recursion_count_ = 0;
   timespec ts;
   InitTimeSpec(true, clock, ms, ns, &ts);
-  int rc = TEMP_FAILURE_RETRY(pthread_cond_timedwait(&cond_, &guard_.mutex_, &ts));
+  int rc;
+  while ((rc = pthread_cond_timedwait(&cond_, &guard_.mutex_, &ts)) == EINTR) {
+    continue;
+  }
+
   if (rc == ETIMEDOUT) {
     timed_out = true;
   } else if (rc != 0) {
