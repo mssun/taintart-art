@@ -589,8 +589,10 @@ class WatchDog {
     const char* reason = "dex2oat watch dog thread waiting";
     CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_lock, (&mutex_), reason);
     while (!shutting_down_) {
-      int rc = TEMP_FAILURE_RETRY(pthread_cond_timedwait(&cond_, &mutex_, &timeout_ts));
-      if (rc == ETIMEDOUT) {
+      int rc = pthread_cond_timedwait(&cond_, &mutex_, &timeout_ts);
+      if (rc == EINTR) {
+        continue;
+      } else if (rc == ETIMEDOUT) {
         Fatal(StringPrintf("dex2oat did not finish after %" PRId64 " seconds",
                            timeout_in_milliseconds_/1000));
       } else if (rc != 0) {
