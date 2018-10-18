@@ -165,6 +165,11 @@
 #include <android/set_abort_message.h>
 #endif
 
+// Static asserts to check the values of generated assembly-support macros.
+#define ASM_DEFINE(NAME, EXPR) static_assert((NAME) == (EXPR), "Unexpected value of " #NAME);
+#include "asm_defines.def"
+#undef ASM_DEFINE
+
 namespace art {
 
 // If a signal isn't handled properly, enable a handler that attempts to dump the Java stack.
