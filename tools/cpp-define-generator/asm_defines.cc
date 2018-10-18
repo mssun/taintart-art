@@ -31,6 +31,6 @@
 #define ASM_DEFINE(NAME, EXPR) \
 void AsmDefineHelperFor_##NAME() { \
   asm volatile("\n.ascii \">>" #NAME " %0 %1<<\"" \
-  :: "i" (static_cast<int64_t>(EXPR)), "i" (EXPR < 0 ? 1 : 0)); \
+  :: "i" (static_cast<int64_t>(EXPR)), "i" ((EXPR) < 0 ? 1 : 0)); \
 }
 #include "asm_defines.def"
