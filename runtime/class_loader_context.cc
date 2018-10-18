@@ -64,10 +64,10 @@ ClassLoaderContext::~ClassLoaderContext() {
     // make sure we do not de-allocate them.
     for (ClassLoaderInfo& info : class_loader_chain_) {
       for (std::unique_ptr<OatFile>& oat_file : info.opened_oat_files) {
-        oat_file.release();
+        oat_file.release();  // NOLINT b/117926937
       }
       for (std::unique_ptr<const DexFile>& dex_file : info.opened_dex_files) {
-        dex_file.release();
+        dex_file.release();  // NOLINT b/117926937
       }
     }
   }

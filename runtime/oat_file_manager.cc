@@ -84,7 +84,7 @@ void OatFileManager::UnRegisterAndDeleteOatFile(const OatFile* oat_file) {
   auto it = oat_files_.find(compare);
   CHECK(it != oat_files_.end());
   oat_files_.erase(it);
-  compare.release();
+  compare.release();  // NOLINT b/117926937
 }
 
 const OatFile* OatFileManager::FindOpenedOatFileFromDexLocation(
@@ -567,7 +567,7 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
           if (added_image_space) {
             // Successfully added image space to heap, release the map so that it does not get
             // freed.
-            image_space.release();
+            image_space.release();  // NOLINT b/117926937
 
             // Register for tracking.
             for (const auto& dex_file : dex_files) {

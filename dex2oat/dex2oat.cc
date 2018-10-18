@@ -662,21 +662,21 @@ class Dex2Oat final {
     if (!kIsDebugBuild && !(kRunningOnMemoryTool && kMemoryToolDetectsLeaks)) {
       // We want to just exit on non-debug builds, not bringing the runtime down
       // in an orderly fashion. So release the following fields.
-      driver_.release();
-      image_writer_.release();
+      driver_.release();                // NOLINT
+      image_writer_.release();          // NOLINT
       for (std::unique_ptr<const DexFile>& dex_file : opened_dex_files_) {
-        dex_file.release();
+        dex_file.release();             // NOLINT
       }
       new std::vector<MemMap>(std::move(opened_dex_files_maps_));  // Leak MemMaps.
       for (std::unique_ptr<File>& vdex_file : vdex_files_) {
-        vdex_file.release();
+        vdex_file.release();            // NOLINT
       }
       for (std::unique_ptr<File>& oat_file : oat_files_) {
-        oat_file.release();
+        oat_file.release();             // NOLINT
       }
-      runtime_.release();
-      verification_results_.release();
-      key_value_store_.release();
+      runtime_.release();               // NOLINT
+      verification_results_.release();  // NOLINT
+      key_value_store_.release();       // NOLINT
     }
   }
 
