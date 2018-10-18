@@ -79,7 +79,7 @@ void VerificationResults::ProcessVerifiedMethod(verifier::MethodVerifier* method
   if (inserted) {
     // Successfully added, release the unique_ptr since we no longer have ownership.
     DCHECK_EQ(GetVerifiedMethod(ref), verified_method.get());
-    verified_method.release();
+    verified_method.release();  // NOLINT b/117926937
   } else {
     // TODO: Investigate why are we doing the work again for this method and try to avoid it.
     LOG(WARNING) << "Method processed more than once: " << ref.PrettyMethod();
@@ -117,7 +117,7 @@ void VerificationResults::CreateVerifiedMethodFor(MethodReference ref) {
                                       /*expected*/ nullptr,
                                       verified_method.get()) ==
           AtomicMap::InsertResult::kInsertResultSuccess) {
-    verified_method.release();
+    verified_method.release();  // NOLINT b/117926937
   }
 }
 

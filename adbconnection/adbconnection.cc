@@ -251,6 +251,8 @@ void AdbConnectionState::StartDebuggerThreads() {
     runtime->StartThreadBirth();
   }
   ScopedLocalRef<jobject> thr(soa.Env(), CreateAdbConnectionThread(soa.Self()));
+  // Note: Using pthreads instead of std::thread to not abort when the thread cannot be
+  //       created (exception support required).
   pthread_t pthread;
   std::unique_ptr<CallbackData> data(new CallbackData { this, soa.Env()->NewGlobalRef(thr.get()) });
   started_debugger_threads_ = true;
@@ -268,7 +270,7 @@ void AdbConnectionState::StartDebuggerThreads() {
     runtime->EndThreadBirth();
     return;
   }
-  data.release();
+  data.release();  // NOLINT pthreads API.
 }
 
 static bool FlagsSet(int16_t data, int16_t flags) {

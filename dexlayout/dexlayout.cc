@@ -1554,7 +1554,7 @@ void DexLayout::LayoutClassDefsAndClassData(const DexFile* dex_file) {
       // Overwrite the existing vector with the new ordering, note that the sets of objects are
       // equivalent, but the order changes. This is why this is not a memory leak.
       // TODO: Consider cleaning this up with a shared_ptr.
-      class_datas[class_data_index].release();
+      class_datas[class_data_index].release();  // NOLINT b/117926937
       class_datas[class_data_index].reset(class_data);
       ++class_data_index;
     }
@@ -1570,7 +1570,7 @@ void DexLayout::LayoutClassDefsAndClassData(const DexFile* dex_file) {
       // Overwrite the existing vector with the new ordering, note that the sets of objects are
       // equivalent, but the order changes. This is why this is not a memory leak.
       // TODO: Consider cleaning this up with a shared_ptr.
-      class_defs[i].release();
+      class_defs[i].release();  // NOLINT b/117926937
       class_defs[i].reset(new_class_def_order[i]);
     }
   }
@@ -1671,7 +1671,7 @@ void DexLayout::LayoutStringData(const DexFile* dex_file) {
   // Now we know what order we want the string data, reorder them.
   size_t data_index = 0;
   for (dex_ir::StringId* string_id : string_ids) {
-    string_datas[data_index].release();
+    string_datas[data_index].release();  // NOLINT b/117926937
     string_datas[data_index].reset(string_id->DataItem());
     ++data_index;
   }

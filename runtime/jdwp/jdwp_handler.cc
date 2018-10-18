@@ -1344,13 +1344,14 @@ static JdwpError ER_Set(JdwpState* state, Request* request, ExpandBuf* pReply)
   VLOG(jdwp) << StringPrintf("    --> event requestId=%#x", requestId);
 
   /* add it to the list */
+  // TODO: RegisterEvent() should take std::unique_ptr<>.
   JdwpError err = state->RegisterEvent(pEvent.get());
   if (err != ERR_NONE) {
     /* registration failed, probably because event is bogus */
     LOG(WARNING) << "WARNING: event request rejected";
     return err;
   }
-  pEvent.release();
+  pEvent.release();  // NOLINT b/117926937
   return ERR_NONE;
 }
 
