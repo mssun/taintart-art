@@ -113,8 +113,8 @@ static std::unique_ptr<const art::DexFile> MakeSingleDexFile(art::Thread* self,
   std::unique_ptr<const art::DexFile> dex_file(dex_file_loader.Open(map_name,
                                                                     checksum,
                                                                     std::move(map),
-                                                                    /*verify*/true,
-                                                                    /*verify_checksum*/true,
+                                                                    /*verify=*/true,
+                                                                    /*verify_checksum=*/true,
                                                                     &error_msg));
   if (dex_file.get() == nullptr) {
     LOG(WARNING) << "Unable to load modified dex file for " << descriptor << ": " << error_msg;

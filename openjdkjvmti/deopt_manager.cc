@@ -289,7 +289,7 @@ class ScopedDeoptimizationContext : public art::ValueObject {
     uninterruptible_cause_ = critical_section_.Enter(art::gc::kGcCauseInstrumentation,
                                                      art::gc::kCollectorTypeCriticalSection);
     art::Runtime::Current()->GetThreadList()->SuspendAll("JMVTI Deoptimizing methods",
-                                                         /*long_suspend*/ false);
+                                                         /*long_suspend=*/ false);
   }
 
   ~ScopedDeoptimizationContext()
