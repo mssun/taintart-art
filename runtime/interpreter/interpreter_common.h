@@ -123,7 +123,7 @@ bool DoCall(ArtMethod* called_method, Thread* self, ShadowFrame& shadow_frame,
 
 // Handles all invoke-XXX/range instructions except for invoke-polymorphic[/range].
 // Returns true on success, otherwise throws an exception and returns false.
-template<InvokeType type, bool is_range, bool do_access_check, bool fast_invoke = false>
+template<InvokeType type, bool is_range, bool do_access_check, bool is_mterp>
 static ALWAYS_INLINE bool DoInvoke(Thread* self,
                                    ShadowFrame& shadow_frame,
                                    const Instruction* inst,
@@ -169,29 +169,29 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
     CHECK(self->IsExceptionPending());
     result->SetJ(0);
     return false;
-  } else if (UNLIKELY(!called_method->IsInvokable())) {
+  }
+  if (UNLIKELY(!called_method->IsInvokable())) {
     called_method->ThrowInvocationTimeError();
     result->SetJ(0);
     return false;
-  } else {
-    jit::Jit* jit = Runtime::Current()->GetJit();
-    if (jit != nullptr && (type == kVirtual || type == kInterface)) {
-      jit->InvokeVirtualOrInterface(receiver, sf_method, shadow_frame.GetDexPC(), called_method);
-    }
-    // The fast invoke is used from mterp for some invoke variants.
-    // The non-fast version is used from switch interpreter and it might not support intrinsics.
-    // TODO: Unify both paths.
-    if (fast_invoke) {
-      if (called_method->IsIntrinsic()) {
-        if (MterpHandleIntrinsic(&shadow_frame, called_method, inst, inst_data,
-                                 shadow_frame.GetResultRegister())) {
-          return !self->IsExceptionPending();
-        }
+  }
+
+  jit::Jit* jit = Runtime::Current()->GetJit();
+  if (jit != nullptr && (type == kVirtual || type == kInterface)) {
+    jit->InvokeVirtualOrInterface(receiver, sf_method, shadow_frame.GetDexPC(), called_method);
+  }
+
+  if (is_mterp && !is_range && called_method->IsIntrinsic()) {
+    if (type == kDirect || type == kStatic || type == kVirtual) {
+      if (MterpHandleIntrinsic(&shadow_frame, called_method, inst, inst_data,
+                               shadow_frame.GetResultRegister())) {
+        return !self->IsExceptionPending();
       }
     }
-    return DoCall<is_range, do_access_check>(called_method, self, shadow_frame, inst, inst_data,
-                                             result);
   }
+
+  return DoCall<is_range, do_access_check>(called_method, self, shadow_frame, inst, inst_data,
+                                           result);
 }
 
 static inline ObjPtr<mirror::MethodHandle> ResolveMethodHandle(Thread* self,
