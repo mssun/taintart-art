@@ -67,7 +67,9 @@ static void DoDexUnquicken(const art::DexFile& new_dex_file,
                            const art::DexFile& original_dex_file) {
   const art::VdexFile* vdex = GetVdex(original_dex_file);
   if (vdex != nullptr) {
-    vdex->UnquickenDexFile(new_dex_file, original_dex_file, /* decompile_return_instruction */true);
+    vdex->UnquickenDexFile(new_dex_file,
+                           original_dex_file,
+                           /* decompile_return_instruction= */ true);
   }
   new_dex_file.UnhideApis();
 }
@@ -79,7 +81,7 @@ static void DCheckVerifyDexFile(const art::DexFile& dex) {
                                       dex.Begin(),
                                       dex.Size(),
                                       "FixedUpDexFile_Verification.dex",
-                                      /*verify_checksum*/ true,
+                                      /*verify_checksum=*/ true,
                                       &error)) {
       LOG(FATAL) << "Failed to verify de-quickened dex file: " << error;
     }
@@ -113,9 +115,9 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
       options.class_filter_.insert(descriptor);
     }
     art::DexLayout dex_layout(options,
-                              /*info*/ nullptr,
-                              /*out_file*/ nullptr,
-                              /*header*/ nullptr);
+                              /*info=*/ nullptr,
+                              /*out_file=*/ nullptr,
+                              /*header=*/ nullptr);
     std::unique_ptr<art::DexContainer> dex_container;
     bool result = dex_layout.ProcessDexFile(
         original.GetLocation().c_str(),
@@ -136,11 +138,11 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
   new_dex_file = dex_file_loader.Open(
       data.data(),
       data.size(),
-      /*location*/"Unquickening_dexfile.dex",
-      /*location_checksum*/0,
-      /*oat_dex_file*/nullptr,
-      /*verify*/false,
-      /*verify_checksum*/false,
+      /*location=*/"Unquickening_dexfile.dex",
+      /*location_checksum=*/0,
+      /*oat_dex_file=*/nullptr,
+      /*verify=*/false,
+      /*verify_checksum=*/false,
       &error);
 
   if (new_dex_file  == nullptr) {

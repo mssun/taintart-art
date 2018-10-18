@@ -424,7 +424,7 @@ jvmtiError ExtensionUtil::SetExtensionEventCallback(jvmtiEnv* env,
     }
   }
   return event_handler->SetEvent(art_env,
-                                 /*event_thread*/nullptr,
+                                 /*thread=*/nullptr,
                                  static_cast<ArtJvmtiEvent>(extension_event_index),
                                  mode);
 }

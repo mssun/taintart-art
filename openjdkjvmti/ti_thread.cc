@@ -857,7 +857,7 @@ jvmtiError ThreadUtil::SuspendOther(art::Thread* self,
     bool timeout = true;
     art::Thread* ret_target = art::Runtime::Current()->GetThreadList()->SuspendThreadByPeer(
         target_jthread,
-        /* request_suspension */ true,
+        /* request_suspension= */ true,
         art::SuspendReason::kForUserCode,
         &timeout);
     if (ret_target == nullptr && !timeout) {
