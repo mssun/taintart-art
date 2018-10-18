@@ -34,11 +34,11 @@ namespace interpreter {
 void CheckMterpAsmConstants() {
   /*
    * If we're using computed goto instruction transitions, make sure
-   * none of the handlers overflows the 128-byte limit.  This won't tell
+   * none of the handlers overflows the byte limit.  This won't tell
    * which one did, but if any one is too big the total size will
    * overflow.
    */
-  const int width = 128;
+  const int width = kMterpHandlerSize;
   int interp_size = (uintptr_t) artMterpAsmInstructionEnd -
                     (uintptr_t) artMterpAsmInstructionStart;
   if ((interp_size == 0) || (interp_size != (art::kNumPackedOpcodes * width))) {
