@@ -341,42 +341,43 @@ bool DexFileVerifier::CheckHeader() {
   bool result =
       CheckValidOffsetAndSize(header_->link_off_,
                               header_->link_size_,
-                              0 /* unaligned */,
+                              /* alignment= */ 0,
                               "link") &&
       CheckValidOffsetAndSize(header_->map_off_,
                               header_->map_off_,
-                              4,
+                              /* alignment= */ 4,
                               "map") &&
       CheckValidOffsetAndSize(header_->string_ids_off_,
                               header_->string_ids_size_,
-                              4,
+                              /* alignment= */ 4,
                               "string-ids") &&
       CheckValidOffsetAndSize(header_->type_ids_off_,
                               header_->type_ids_size_,
-                              4,
+                              /* alignment= */ 4,
                               "type-ids") &&
       CheckSizeLimit(header_->type_ids_size_, DexFile::kDexNoIndex16, "type-ids") &&
       CheckValidOffsetAndSize(header_->proto_ids_off_,
                               header_->proto_ids_size_,
-                              4,
+                              /* alignment= */ 4,
                               "proto-ids") &&
       CheckSizeLimit(header_->proto_ids_size_, DexFile::kDexNoIndex16, "proto-ids") &&
       CheckValidOffsetAndSize(header_->field_ids_off_,
                               header_->field_ids_size_,
-                              4,
+                              /* alignment= */ 4,
                               "field-ids") &&
       CheckValidOffsetAndSize(header_->method_ids_off_,
                               header_->method_ids_size_,
-                              4,
+                              /* alignment= */ 4,
                               "method-ids") &&
       CheckValidOffsetAndSize(header_->class_defs_off_,
                               header_->class_defs_size_,
-                              4,
+                              /* alignment= */ 4,
                               "class-defs") &&
       CheckValidOffsetAndSize(header_->data_off_,
                               header_->data_size_,
-                              0,  // Unaligned, spec doesn't talk about it, even though size
-                                  // is supposed to be a multiple of 4.
+                              // Unaligned, spec doesn't talk about it, even though size
+                              // is supposed to be a multiple of 4.
+                              /* alignment= */ 0,
                               "data");
   return result;
 }
@@ -1197,7 +1198,7 @@ bool DexFileVerifier::CheckIntraClassDataItem() {
   ClassAccessor::Method method(*dex_file_, field.ptr_pos_);
   if (!CheckIntraClassDataItemMethods(&method,
                                       accessor.NumDirectMethods(),
-                                      nullptr /* direct_it */,
+                                      /* direct_method= */ nullptr,
                                       0u,
                                       &have_class,
                                       &class_type_index,

@@ -107,8 +107,8 @@ static std::unique_ptr<const DexFile> OpenDexFileBase64(const char* base64,
   bool success = dex_file_loader.OpenAll(dex_bytes.get(),
                                          length,
                                          location,
-                                         /* verify */ true,
-                                         /* verify_checksum */ true,
+                                         /* verify= */ true,
+                                         /* verify_checksum= */ true,
                                          &error_code,
                                          error_msg,
                                          &tmp);
@@ -1621,13 +1621,13 @@ TEST_F(DexFileVerifierTest, Checksum) {
                                       dex_file->Begin(),
                                       dex_file->Size(),
                                        "good checksum, no verify",
-                                      /*verify_checksum*/ false,
+                                      /*verify_checksum=*/ false,
                                       &error_msg));
   EXPECT_TRUE(DexFileVerifier::Verify(dex_file.get(),
                                       dex_file->Begin(),
                                       dex_file->Size(),
                                       "good checksum, verify",
-                                      /*verify_checksum*/ true,
+                                      /*verify_checksum=*/ true,
                                       &error_msg));
 
   // Bad checksum: !verify_checksum passes verify_checksum fails.
@@ -1638,13 +1638,13 @@ TEST_F(DexFileVerifierTest, Checksum) {
                                       dex_file->Begin(),
                                       dex_file->Size(),
                                       "bad checksum, no verify",
-                                      /*verify_checksum*/ false,
+                                      /*verify_checksum=*/ false,
                                       &error_msg));
   EXPECT_FALSE(DexFileVerifier::Verify(dex_file.get(),
                                        dex_file->Begin(),
                                        dex_file->Size(),
                                        "bad checksum, verify",
-                                       /*verify_checksum*/ true,
+                                       /*verify_checksum=*/ true,
                                        &error_msg));
   EXPECT_NE(error_msg.find("Bad checksum"), std::string::npos) << error_msg;
 }
@@ -1691,7 +1691,7 @@ TEST_F(DexFileVerifierTest, BadStaticMethodName) {
                                        dex_file->Begin(),
                                        dex_file->Size(),
                                        "bad static method name",
-                                       /*verify_checksum*/ true,
+                                       /*verify_checksum=*/ true,
                                        &error_msg));
 }
 
@@ -1735,7 +1735,7 @@ TEST_F(DexFileVerifierTest, BadVirtualMethodName) {
                                        dex_file->Begin(),
                                        dex_file->Size(),
                                        "bad virtual method name",
-                                       /*verify_checksum*/ true,
+                                       /*verify_checksum=*/ true,
                                        &error_msg));
 }
 
@@ -1779,7 +1779,7 @@ TEST_F(DexFileVerifierTest, BadClinitSignature) {
                                        dex_file->Begin(),
                                        dex_file->Size(),
                                        "bad clinit signature",
-                                       /*verify_checksum*/ true,
+                                       /*verify_checksum=*/ true,
                                        &error_msg));
 }
 
@@ -1823,7 +1823,7 @@ TEST_F(DexFileVerifierTest, BadClinitSignatureAgain) {
                                        dex_file->Begin(),
                                        dex_file->Size(),
                                        "bad clinit signature",
-                                       /*verify_checksum*/ true,
+                                       /*verify_checksum=*/ true,
                                        &error_msg));
 }
 
@@ -1860,7 +1860,7 @@ TEST_F(DexFileVerifierTest, BadInitSignature) {
                                        dex_file->Begin(),
                                        dex_file->Size(),
                                        "bad init signature",
-                                       /*verify_checksum*/ true,
+                                       /*verify_checksum=*/ true,
                                        &error_msg));
 }
 
@@ -2063,7 +2063,7 @@ TEST_F(DexFileVerifierTest, InvokeCustomDexSamples) {
                                         dex_file->Begin(),
                                         dex_file->Size(),
                                         "good checksum, verify",
-                                        /*verify_checksum*/ true,
+                                        /*verify_checksum=*/ true,
                                         &error_msg));
     // TODO(oth): Test corruptions (b/35308502)
   }
@@ -2110,7 +2110,7 @@ TEST_F(DexFileVerifierTest, BadStaticFieldInitialValuesArray) {
                                        dex_file->Begin(),
                                        dex_file->Size(),
                                        "bad static field initial values array",
-                                       /*verify_checksum*/ true,
+                                       /*verify_checksum=*/ true,
                                        &error_msg));
 }
 
@@ -2166,7 +2166,7 @@ TEST_F(DexFileVerifierTest, GoodStaticFieldInitialValuesArray) {
                                       dex_file->Begin(),
                                       dex_file->Size(),
                                       "good static field initial values array",
-                                      /*verify_checksum*/ true,
+                                      /*verify_checksum=*/ true,
                                       &error_msg));
 }
 

@@ -353,89 +353,92 @@ static_assert(MaskLeastSignificant<int8_t>(8) == 0xFF, "TestMaskLeastSignificant
 static_assert(MaskLeastSignificant<uint64_t>(63) == (std::numeric_limits<uint64_t>::max() >> 1u),
               "TestMaskLeastSignificant#6");
 
-static_assert(BitFieldClear(0xFF, /*lsb*/0, /*width*/0) == 0xFF, "TestBitFieldClear#1");
-static_assert(BitFieldClear(std::numeric_limits<uint32_t>::max(), /*lsb*/0, /*width*/32) == 0x0,
+static_assert(BitFieldClear(0xFF, /*lsb=*/0, /*width=*/0) == 0xFF, "TestBitFieldClear#1");
+static_assert(BitFieldClear(std::numeric_limits<uint32_t>::max(), /*lsb=*/0, /*width=*/32) == 0x0,
               "TestBitFieldClear#2");
-static_assert(BitFieldClear(std::numeric_limits<int32_t>::max(), /*lsb*/0, /*width*/32) == 0x0,
+static_assert(BitFieldClear(std::numeric_limits<int32_t>::max(), /*lsb=*/0, /*width=*/32) == 0x0,
               "TestBitFieldClear#3");
-static_assert(BitFieldClear(0xFF, /*lsb*/0, /*width*/2) == 0b11111100, "TestBitFieldClear#4");
-static_assert(BitFieldClear(0xFF, /*lsb*/0, /*width*/3) == 0b11111000, "TestBitFieldClear#5");
-static_assert(BitFieldClear(0xFF, /*lsb*/1, /*width*/3) == 0b11110001, "TestBitFieldClear#6");
-static_assert(BitFieldClear(0xFF, /*lsb*/2, /*width*/3) == 0b11100011, "TestBitFieldClear#7");
+static_assert(BitFieldClear(0xFF, /*lsb=*/0, /*width=*/2) == 0b11111100, "TestBitFieldClear#4");
+static_assert(BitFieldClear(0xFF, /*lsb=*/0, /*width=*/3) == 0b11111000, "TestBitFieldClear#5");
+static_assert(BitFieldClear(0xFF, /*lsb=*/1, /*width=*/3) == 0b11110001, "TestBitFieldClear#6");
+static_assert(BitFieldClear(0xFF, /*lsb=*/2, /*width=*/3) == 0b11100011, "TestBitFieldClear#7");
 
-static_assert(BitFieldExtract(0xFF, /*lsb*/0, /*width*/0) == 0x0, "TestBitFieldExtract#1");
-static_assert(BitFieldExtract(std::numeric_limits<uint32_t>::max(), /*lsb*/0, /*width*/32)
+static_assert(BitFieldExtract(0xFF, /*lsb=*/0, /*width=*/0) == 0x0, "TestBitFieldExtract#1");
+static_assert(BitFieldExtract(std::numeric_limits<uint32_t>::max(), /*lsb=*/0, /*width=*/32)
                   == std::numeric_limits<uint32_t>::max(),
               "TestBitFieldExtract#2");
-static_assert(BitFieldExtract(std::numeric_limits<int32_t>::max(), /*lsb*/0, /*width*/32)
+static_assert(BitFieldExtract(std::numeric_limits<int32_t>::max(), /*lsb=*/0, /*width=*/32)
                   == std::numeric_limits<int32_t>::max(),
               "TestBitFieldExtract#3");
-static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb*/0, /*width*/2) == 0b00000011,
+static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb=*/0, /*width=*/2) == 0b00000011,
               "TestBitFieldExtract#4");
-static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb*/0, /*width*/3) == 0b00000111,
+static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb=*/0, /*width=*/3) == 0b00000111,
               "TestBitFieldExtract#5");
-static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb*/1, /*width*/3) == 0b00000111,
+static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb=*/1, /*width=*/3) == 0b00000111,
               "TestBitFieldExtract#6");
-static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb*/2, /*width*/3) == 0b00000111,
+static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb=*/2, /*width=*/3) == 0b00000111,
               "TestBitFieldExtract#7");
-static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb*/3, /*width*/3) == 0b00000111,
+static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb=*/3, /*width=*/3) == 0b00000111,
               "TestBitFieldExtract#8");
-static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb*/8, /*width*/3) == 0b00000000,
+static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb=*/8, /*width=*/3) == 0b00000000,
               "TestBitFieldExtract#9");
-static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb*/7, /*width*/3) == 0b00000001,
+static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb=*/7, /*width=*/3) == 0b00000001,
               "TestBitFieldExtract#10");
-static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb*/6, /*width*/3) == 0b00000011,
+static_assert(BitFieldExtract(static_cast<uint32_t>(0xFF), /*lsb=*/6, /*width=*/3) == 0b00000011,
               "TestBitFieldExtract#11");
-static_assert(BitFieldExtract(0xFF, /*lsb*/0, /*width*/2) == -1, "TestBitFieldExtract#12");
-static_assert(BitFieldExtract(0xFF, /*lsb*/0, /*width*/3) == -1, "TestBitFieldExtract#13");
-static_assert(BitFieldExtract(0xFF, /*lsb*/1, /*width*/3) == -1, "TestBitFieldExtract#14");
-static_assert(BitFieldExtract(0xFF, /*lsb*/2, /*width*/3) == -1, "TestBitFieldExtract#15");
-static_assert(BitFieldExtract(0xFF, /*lsb*/3, /*width*/3) == -1, "TestBitFieldExtract#16");
-static_assert(BitFieldExtract(0xFF, /*lsb*/8, /*width*/3) == 0b00000000, "TestBitFieldExtract#17");
-static_assert(BitFieldExtract(0xFF, /*lsb*/7, /*width*/3) == 0b00000001, "TestBitFieldExtract#18");
-static_assert(BitFieldExtract(0xFF, /*lsb*/6, /*width*/3) == 0b00000011, "TestBitFieldExtract#19");
-static_assert(BitFieldExtract(static_cast<uint8_t>(0b01101010), /*lsb*/2, /*width*/4)
+static_assert(BitFieldExtract(0xFF, /*lsb=*/0, /*width=*/2) == -1, "TestBitFieldExtract#12");
+static_assert(BitFieldExtract(0xFF, /*lsb=*/0, /*width=*/3) == -1, "TestBitFieldExtract#13");
+static_assert(BitFieldExtract(0xFF, /*lsb=*/1, /*width=*/3) == -1, "TestBitFieldExtract#14");
+static_assert(BitFieldExtract(0xFF, /*lsb=*/2, /*width=*/3) == -1, "TestBitFieldExtract#15");
+static_assert(BitFieldExtract(0xFF, /*lsb=*/3, /*width=*/3) == -1, "TestBitFieldExtract#16");
+static_assert(BitFieldExtract(0xFF, /*lsb=*/8, /*width=*/3) == 0b00000000,
+              "TestBitFieldExtract#17");
+static_assert(BitFieldExtract(0xFF, /*lsb=*/7, /*width=*/3) == 0b00000001,
+              "TestBitFieldExtract#18");
+static_assert(BitFieldExtract(0xFF, /*lsb=*/6, /*width=*/3) == 0b00000011,
+              "TestBitFieldExtract#19");
+static_assert(BitFieldExtract(static_cast<uint8_t>(0b01101010), /*lsb=*/2, /*width=*/4)
                   == 0b00001010,
               "TestBitFieldExtract#20");
-static_assert(BitFieldExtract(static_cast<int8_t>(0b01101010), /*lsb*/2, /*width*/4)
+static_assert(BitFieldExtract(static_cast<int8_t>(0b01101010), /*lsb=*/2, /*width=*/4)
                   == static_cast<int8_t>(0b11111010),
               "TestBitFieldExtract#21");
 
-static_assert(BitFieldInsert(0xFF, /*data*/0x0, /*lsb*/0, /*width*/0) == 0xFF,
+static_assert(BitFieldInsert(0xFF, /*data=*/0x0, /*lsb=*/0, /*width=*/0) == 0xFF,
               "TestBitFieldInsert#1");
 static_assert(BitFieldInsert(std::numeric_limits<uint32_t>::max(),
-                             /*data*/std::numeric_limits<uint32_t>::max(),
-                             /*lsb*/0,
-                             /*width*/32)
+                             /*data=*/std::numeric_limits<uint32_t>::max(),
+                             /*lsb=*/0,
+                             /*width=*/32)
                   == std::numeric_limits<uint32_t>::max(),
               "TestBitFieldInsert#2");
 static_assert(BitFieldInsert(std::numeric_limits<int32_t>::max(),
-                             /*data*/std::numeric_limits<uint32_t>::max(),
-                             /*lsb*/0,
-                             /*width*/32)
+                             /*data=*/std::numeric_limits<uint32_t>::max(),
+                             /*lsb=*/0,
+                             /*width=*/32)
                   == std::numeric_limits<uint32_t>::max(),
               "TestBitFieldInsert#3");
 static_assert(BitFieldInsert(0u,
-                             /*data*/std::numeric_limits<uint32_t>::max(),
-                             /*lsb*/0,
-                             /*width*/32)
+                             /*data=*/std::numeric_limits<uint32_t>::max(),
+                             /*lsb=*/0,
+                             /*width=*/32)
                   == std::numeric_limits<uint32_t>::max(),
               "TestBitFieldInsert#4");
 static_assert(BitFieldInsert(-(-0),
-                             /*data*/std::numeric_limits<uint32_t>::max(),
-                             /*lsb*/0,
-                             /*width*/32)
+                             /*data=*/std::numeric_limits<uint32_t>::max(),
+                             /*lsb=*/0,
+                             /*width=*/32)
                   == std::numeric_limits<uint32_t>::max(),
               "TestBitFieldInsert#5");
-static_assert(BitFieldInsert(0x00, /*data*/0b11u, /*lsb*/0, /*width*/2) == 0b00000011,
+static_assert(BitFieldInsert(0x00, /*data=*/0b11u, /*lsb=*/0, /*width=*/2) == 0b00000011,
               "TestBitFieldInsert#6");
-static_assert(BitFieldInsert(0x00, /*data*/0b111u, /*lsb*/0, /*width*/3) == 0b00000111,
+static_assert(BitFieldInsert(0x00, /*data=*/0b111u, /*lsb=*/0, /*width=*/3) == 0b00000111,
               "TestBitFieldInsert#7");
-static_assert(BitFieldInsert(0x00, /*data*/0b111u, /*lsb*/1, /*width*/3) == 0b00001110,
+static_assert(BitFieldInsert(0x00, /*data=*/0b111u, /*lsb=*/1, /*width=*/3) == 0b00001110,
               "TestBitFieldInsert#8");
-static_assert(BitFieldInsert(0x00, /*data*/0b111u, /*lsb*/2, /*width*/3) == 0b00011100,
+static_assert(BitFieldInsert(0x00, /*data=*/0b111u, /*lsb=*/2, /*width=*/3) == 0b00011100,
               "TestBitFieldInsert#9");
-static_assert(BitFieldInsert(0b01011100, /*data*/0b1101u, /*lsb*/4, /*width*/4) == 0b11011100,
+static_assert(BitFieldInsert(0b01011100, /*data=*/0b1101u, /*lsb=*/4, /*width=*/4) == 0b11011100,
               "TestBitFieldInsert#10");
 
 template <typename Container>

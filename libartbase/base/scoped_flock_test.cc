@@ -38,7 +38,7 @@ TEST_F(ScopedFlockTest, TestLocking) {
     // Attempt to acquire a second lock on the same file. This must fail.
     ScopedFlock second_lock = LockedFile::Open(scratch_file.GetFilename().c_str(),
                                                O_RDONLY,
-                                               /* block */ false,
+                                               /* block= */ false,
                                                &error_msg);
     ASSERT_TRUE(second_lock.get() == nullptr);
     ASSERT_TRUE(!error_msg.empty());

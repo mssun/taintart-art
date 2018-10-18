@@ -394,7 +394,7 @@ MemMap MemMap::MapDummy(const char* name, uint8_t* addr, size_t byte_count) {
     return Invalid();
   }
   const size_t page_aligned_byte_count = RoundUp(byte_count, kPageSize);
-  return MemMap(name, addr, byte_count, addr, page_aligned_byte_count, 0, true /* reuse */);
+  return MemMap(name, addr, byte_count, addr, page_aligned_byte_count, 0, /* reuse= */ true);
 }
 
 template<typename A, typename B>
@@ -696,8 +696,8 @@ MemMap MemMap::RemapAtEnd(uint8_t* new_end,
                     tail_name,
                     tail_prot,
                     MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
-                    /* fd */ -1,
-                    /* offset */ 0,
+                    /* fd= */ -1,
+                    /* offset= */ 0,
                     error_msg,
                     use_debug_name);
 }
@@ -771,7 +771,7 @@ MemMap MemMap::TakeReservedMemory(size_t byte_count) {
   uint8_t* begin = Begin();
   ReleaseReservedMemory(byte_count);  // Performs necessary DCHECK()s on this reservation.
   size_t base_size = RoundUp(byte_count, kPageSize);
-  return MemMap(name_, begin, byte_count, begin, base_size, prot_, /* reuse */ false);
+  return MemMap(name_, begin, byte_count, begin, base_size, prot_, /* reuse= */ false);
 }
 
 void MemMap::ReleaseReservedMemory(size_t byte_count) {

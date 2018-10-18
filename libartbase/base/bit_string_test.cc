@@ -110,17 +110,17 @@ TEST(InstanceOfBitString, ReadWrite) {
   ASSERT_EQ(BitString::kCapacity, 3u);
 
   EXPECT_BITSTRING_STR("BitString[]", bs);
-  bs = SetBitStringCharAt(bs, /*i*/0, /*val*/1u);
+  bs = SetBitStringCharAt(bs, /*i=*/0, /*val=*/1u);
   EXPECT_BITSTRING_STR("BitString[1]", bs);
-  bs = SetBitStringCharAt(bs, /*i*/1, /*val*/2u);
+  bs = SetBitStringCharAt(bs, /*i=*/1, /*val=*/2u);
   EXPECT_BITSTRING_STR("BitString[1,2]", bs);
-  bs = SetBitStringCharAt(bs, /*i*/2, /*val*/3u);
+  bs = SetBitStringCharAt(bs, /*i=*/2, /*val=*/3u);
   EXPECT_BITSTRING_STR("BitString[1,2,3]", bs);
 
   // There should be at least "kCapacity" # of checks here, 1 for each unique position.
-  EXPECT_EQ(MakeBitStringChar(/*idx*/0, /*val*/1u), bs[0]);
-  EXPECT_EQ(MakeBitStringChar(/*idx*/1, /*val*/2u), bs[1]);
-  EXPECT_EQ(MakeBitStringChar(/*idx*/2, /*val*/3u), bs[2]);
+  EXPECT_EQ(MakeBitStringChar(/*idx=*/0, /*val=*/1u), bs[0]);
+  EXPECT_EQ(MakeBitStringChar(/*idx=*/1, /*val=*/2u), bs[1]);
+  EXPECT_EQ(MakeBitStringChar(/*idx=*/2, /*val=*/3u), bs[2]);
 
   // Each maximal value should be tested here for each position.
   uint32_t max_bitstring_ints[] = {
