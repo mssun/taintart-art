@@ -21,6 +21,7 @@ art_clang_tidy_errors = [
     "bugprone-argument-comment",
     "bugprone-lambda-function-name",
     "bugprone-unused-raii",  // Protect scoped things like MutexLock.
+    "bugprone-unused-return-value",
     "bugprone-virtual-near-miss",
     "modernize-use-bool-literals",
     "modernize-use-nullptr",
@@ -37,6 +38,7 @@ art_clang_tidy_errors = [
 art_clang_tidy_errors_str = "bugprone-argument-comment"
         + ",bugprone-lambda-function-name"
         + ",bugprone-unused-raii"
+        + ",bugprone-unused-return-value"
         + ",bugprone-virtual-near-miss"
         + ",modernize-redundant-void-arg"
         + ",modernize-use-bool-literals"
