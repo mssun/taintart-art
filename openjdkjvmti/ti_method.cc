@@ -547,7 +547,7 @@ class CommonLocalVariableClosure : public art::Closure {
       return;
     }
     bool needs_instrument = !visitor.IsShadowFrame();
-    uint32_t pc = visitor.GetDexPc(/*abort_on_failure*/ false);
+    uint32_t pc = visitor.GetDexPc(/*abort_on_failure=*/ false);
     if (pc == art::dex::kDexNoIndex) {
       // Cannot figure out current PC.
       result_ = ERR(OPAQUE_FRAME);

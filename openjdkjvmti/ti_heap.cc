@@ -981,7 +981,9 @@ class FollowReferencesHelper final {
           // TODO: We don't have this info.
           if (thread != nullptr) {
             ref_info->jni_local.depth = 0;
-            art::ArtMethod* method = thread->GetCurrentMethod(nullptr, false /* abort_on_error */);
+            art::ArtMethod* method = thread->GetCurrentMethod(nullptr,
+                                                              /* check_suspended= */ true,
+                                                              /* abort_on_error= */ false);
             if (method != nullptr) {
               ref_info->jni_local.method = art::jni::EncodeArtMethod(method);
             }
@@ -1012,7 +1014,7 @@ class FollowReferencesHelper final {
           ref_info->stack_local.slot = static_cast<jint>(java_info.GetVReg());
           const art::StackVisitor* visitor = java_info.GetVisitor();
           ref_info->stack_local.location =
-              static_cast<jlocation>(visitor->GetDexPc(false /* abort_on_failure */));
+              static_cast<jlocation>(visitor->GetDexPc(/* abort_on_failure= */ false));
           ref_info->stack_local.depth = static_cast<jint>(visitor->GetFrameDepth());
           art::ArtMethod* method = visitor->GetMethod();
           if (method != nullptr) {
@@ -1447,7 +1449,7 @@ jvmtiError HeapUtil::GetLoadedClasses(jvmtiEnv* env,
 }
 
 jvmtiError HeapUtil::ForceGarbageCollection(jvmtiEnv* env ATTRIBUTE_UNUSED) {
-  art::Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
+  art::Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references= */ false);
 
   return ERR(NONE);
 }

@@ -150,7 +150,7 @@ struct GetStackTraceVectorClosure : public art::Closure {
       frames.push_back(info);
     };
     auto visitor = MakeStackTraceVisitor(self, start_input, stop_input, frames_fn);
-    visitor.WalkStack(/* include_transitions */ false);
+    visitor.WalkStack(/* include_transitions= */ false);
 
     start_result = visitor.start;
     stop_result = visitor.stop;
@@ -218,7 +218,7 @@ struct GetStackTraceDirectClosure : public art::Closure {
       ++index;
     };
     auto visitor = MakeStackTraceVisitor(self, start_input, stop_input, frames_fn);
-    visitor.WalkStack(/* include_transitions */ false);
+    visitor.WalkStack(/* include_transitions= */ false);
   }
 
   jvmtiFrameInfo* frame_buffer;
@@ -330,7 +330,7 @@ struct GetAllStackTracesVectorClosure : public art::Closure {
       thread_frames->push_back(info);
     };
     auto visitor = MakeStackTraceVisitor(thread, 0u, stop_input, frames_fn);
-    visitor.WalkStack(/* include_transitions */ false);
+    visitor.WalkStack(/* include_transitions= */ false);
   }
 
   art::Barrier barrier;
@@ -910,7 +910,7 @@ struct MonitorInfoClosure : public art::Closure {
     art::Locks::mutator_lock_->AssertSharedHeld(art::Thread::Current());
     // Find the monitors on the stack.
     MonitorVisitor visitor(target);
-    visitor.WalkStack(/* include_transitions */ false);
+    visitor.WalkStack(/* include_transitions= */ false);
     // Find any other monitors, including ones acquired in native code.
     art::RootInfo root_info(art::kRootVMInternal);
     target->GetJniEnv()->VisitMonitorRoots(&visitor, root_info);

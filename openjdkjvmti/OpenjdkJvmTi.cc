@@ -1195,7 +1195,7 @@ class JvmtiFunctions {
 #undef ADD_CAPABILITY
     gEventHandler->HandleChangedCapabilities(ArtJvmTiEnv::AsArtJvmTiEnv(env),
                                              changed,
-                                             /*added*/true);
+                                             /*added=*/true);
     return ret;
   }
 
@@ -1219,7 +1219,7 @@ class JvmtiFunctions {
 #undef DEL_CAPABILITY
     gEventHandler->HandleChangedCapabilities(ArtJvmTiEnv::AsArtJvmTiEnv(env),
                                              changed,
-                                             /*added*/false);
+                                             /*added=*/false);
     return OK;
   }
 
