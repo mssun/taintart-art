@@ -71,10 +71,13 @@ static void Build4rcc(uint16_t num_args, uint16_t method_idx, uint16_t proto_idx
 
 TEST(Instruction, PropertiesOf45cc) {
   uint16_t instruction[4];
-  Build45cc(4u /* num_vregs */, 16u /* method_idx */, 32u /* proto_idx */,
-            0xcafe /* arg_regs */, instruction);
+  Build45cc(/* num_args= */ 4u,
+            /* method_idx= */ 16u,
+            /* proto_idx= */ 32u,
+            /* arg_regs= */ 0xcafe,
+            instruction);
 
-  DexInstructionIterator ins(instruction, /*dex_pc*/ 0u);
+  DexInstructionIterator ins(instruction, /*dex_pc=*/ 0u);
   ASSERT_EQ(4u, ins->SizeInCodeUnits());
 
   ASSERT_TRUE(ins->HasVRegA());
@@ -106,10 +109,13 @@ TEST(Instruction, PropertiesOf45cc) {
 
 TEST(Instruction, PropertiesOf4rcc) {
   uint16_t instruction[4];
-  Build4rcc(4u /* num_vregs */, 16u /* method_idx */, 32u /* proto_idx */,
-            0xcafe /* arg_regs */, instruction);
+  Build4rcc(/* num_args= */ 4u,
+            /* method_idx= */ 16u,
+            /* proto_idx= */ 32u,
+            /* arg_regs_start= */ 0xcafe,
+            instruction);
 
-  DexInstructionIterator ins(instruction, /*dex_pc*/ 0u);
+  DexInstructionIterator ins(instruction, /*dex_pc=*/ 0u);
   ASSERT_EQ(4u, ins->SizeInCodeUnits());
 
   ASSERT_TRUE(ins->HasVRegA());

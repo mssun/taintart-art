@@ -94,7 +94,7 @@ TypeLookupTable TypeLookupTable::Open(const uint8_t* dex_data_pointer,
   DCHECK_ALIGNED(raw_data, alignof(Entry));
   const Entry* entries = reinterpret_cast<const Entry*>(raw_data);
   size_t mask_bits = CalculateMaskBits(num_class_defs);
-  return TypeLookupTable(dex_data_pointer, mask_bits, entries, /* owned_entries */ nullptr);
+  return TypeLookupTable(dex_data_pointer, mask_bits, entries, /* owned_entries= */ nullptr);
 }
 
 uint32_t TypeLookupTable::Lookup(const char* str, uint32_t hash) const {

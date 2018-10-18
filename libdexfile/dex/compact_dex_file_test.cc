@@ -68,11 +68,11 @@ TEST(CompactDexFileTest, CodeItemFields) {
     uint16_t out_outs_size;
     uint16_t out_tries_size;
     uint32_t out_insns_size_in_code_units;
-    code_item->DecodeFields</*kDecodeOnlyInstructionCount*/false>(&out_insns_size_in_code_units,
-                                                                  &out_registers_size,
-                                                                  &out_ins_size,
-                                                                  &out_outs_size,
-                                                                  &out_tries_size);
+    code_item->DecodeFields</*kDecodeOnlyInstructionCount=*/false>(&out_insns_size_in_code_units,
+                                                                   &out_registers_size,
+                                                                   &out_ins_size,
+                                                                   &out_outs_size,
+                                                                   &out_tries_size);
     ASSERT_EQ(registers_size, out_registers_size);
     ASSERT_EQ(ins_size, out_ins_size);
     ASSERT_EQ(outs_size, out_outs_size);
@@ -80,11 +80,11 @@ TEST(CompactDexFileTest, CodeItemFields) {
     ASSERT_EQ(insns_size_in_code_units, out_insns_size_in_code_units);
 
     ++out_insns_size_in_code_units;  // Force value to change.
-    code_item->DecodeFields</*kDecodeOnlyInstructionCount*/true>(&out_insns_size_in_code_units,
-                                                                 /*registers_size*/ nullptr,
-                                                                 /*ins_size*/ nullptr,
-                                                                 /*outs_size*/ nullptr,
-                                                                 /*tries_size*/ nullptr);
+    code_item->DecodeFields</*kDecodeOnlyInstructionCount=*/true>(&out_insns_size_in_code_units,
+                                                                  /*registers_size=*/ nullptr,
+                                                                  /*ins_size=*/ nullptr,
+                                                                  /*outs_size=*/ nullptr,
+                                                                  /*tries_size=*/ nullptr);
     ASSERT_EQ(insns_size_in_code_units, out_insns_size_in_code_units);
   };
   static constexpr uint32_t kMax32 = std::numeric_limits<uint32_t>::max();

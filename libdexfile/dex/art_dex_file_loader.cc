@@ -95,7 +95,7 @@ bool ArtDexFileLoader::GetMultiDexChecksums(const char* filename,
   File fd;
   if (zip_fd != -1) {
      if (ReadMagicAndReset(zip_fd, &magic, error_msg)) {
-       fd = File(DupCloexec(zip_fd), false /* check_usage */);
+       fd = File(DupCloexec(zip_fd), /* check_usage= */ false);
      }
   } else {
     fd = OpenAndReadMagic(filename, &magic, error_msg);
@@ -142,9 +142,9 @@ bool ArtDexFileLoader::GetMultiDexChecksums(const char* filename,
   if (IsMagicValid(magic)) {
     std::unique_ptr<const DexFile> dex_file(OpenFile(fd.Release(),
                                                      filename,
-                                                     /* verify */ false,
-                                                     /* verify_checksum */ false,
-                                                     /* mmap_shared */ false,
+                                                     /* verify= */ false,
+                                                     /* verify_checksum= */ false,
+                                                     /* mmap_shared= */ false,
                                                      error_msg));
     if (dex_file == nullptr) {
       return false;
@@ -167,16 +167,16 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::Open(const uint8_t* base,
   ScopedTrace trace(std::string("Open dex file from RAM ") + location);
   return OpenCommon(base,
                     size,
-                    /*data_base*/ nullptr,
-                    /*data_size*/ 0u,
+                    /*data_base=*/ nullptr,
+                    /*data_size=*/ 0u,
                     location,
                     location_checksum,
                     oat_dex_file,
                     verify,
                     verify_checksum,
                     error_msg,
-                    /*container*/ nullptr,
-                    /*verify_result*/ nullptr);
+                    /*container=*/ nullptr,
+                    /*verify_result=*/ nullptr);
 }
 
 std::unique_ptr<const DexFile> ArtDexFileLoader::Open(const std::string& location,
@@ -199,8 +199,8 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::Open(const std::string& locatio
   uint8_t* begin = map.Begin();
   std::unique_ptr<DexFile> dex_file = OpenCommon(begin,
                                                  size,
-                                                 /*data_base*/ nullptr,
-                                                 /*data_size*/ 0u,
+                                                 /*data_base=*/ nullptr,
+                                                 /*data_size=*/ 0u,
                                                  location,
                                                  location_checksum,
                                                  kNoOatDexFile,
@@ -208,7 +208,7 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::Open(const std::string& locatio
                                                  verify_checksum,
                                                  error_msg,
                                                  std::make_unique<MemMapContainer>(std::move(map)),
-                                                 /*verify_result*/ nullptr);
+                                                 /*verify_result=*/ nullptr);
   // Opening CompactDex is only supported from vdex files.
   if (dex_file != nullptr && dex_file->IsCompactDexFile()) {
     *error_msg = StringPrintf("Opening CompactDex file '%s' is only supported from vdex files",
@@ -240,7 +240,7 @@ bool ArtDexFileLoader::Open(const char* filename,
                                                      location,
                                                      verify,
                                                      verify_checksum,
-                                                     /* mmap_shared */ false,
+                                                     /* mmap_shared= */ false,
                                                      error_msg));
     if (dex_file.get() != nullptr) {
       dex_files->push_back(std::move(dex_file));
@@ -290,7 +290,7 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenFile(int fd,
   CHECK(!location.empty());
   MemMap map;
   {
-    File delayed_close(fd, /* check_usage */ false);
+    File delayed_close(fd, /* check_usage= */ false);
     struct stat sbuf;
     memset(&sbuf, 0, sizeof(sbuf));
     if (fstat(fd, &sbuf) == -1) {
@@ -308,7 +308,7 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenFile(int fd,
                           mmap_shared ? MAP_SHARED : MAP_PRIVATE,
                           fd,
                           0,
-                          /*low_4gb*/false,
+                          /*low_4gb=*/false,
                           location.c_str(),
                           error_msg);
     if (!map.IsValid()) {
@@ -330,8 +330,8 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenFile(int fd,
 
   std::unique_ptr<DexFile> dex_file = OpenCommon(begin,
                                                  size,
-                                                 /*data_base*/ nullptr,
-                                                 /*data_size*/ 0u,
+                                                 /*data_base=*/ nullptr,
+                                                 /*data_size=*/ 0u,
                                                  location,
                                                  dex_header->checksum_,
                                                  kNoOatDexFile,
@@ -339,7 +339,7 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenFile(int fd,
                                                  verify_checksum,
                                                  error_msg,
                                                  std::make_unique<MemMapContainer>(std::move(map)),
-                                                 /*verify_result*/ nullptr);
+                                                 /*verify_result=*/ nullptr);
 
   // Opening CompactDex is only supported from vdex files.
   if (dex_file != nullptr && dex_file->IsCompactDexFile()) {
@@ -407,8 +407,8 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenOneDexFileFromZip(
   size_t size = map.Size();
   std::unique_ptr<DexFile> dex_file = OpenCommon(begin,
                                                  size,
-                                                 /*data_base*/ nullptr,
-                                                 /*data_size*/ 0u,
+                                                 /*data_base=*/ nullptr,
+                                                 /*data_size=*/ 0u,
                                                  location,
                                                  zip_entry->GetCrc32(),
                                                  kNoOatDexFile,
