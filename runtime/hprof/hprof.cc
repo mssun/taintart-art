@@ -1252,7 +1252,7 @@ void Hprof::DumpHeapClass(mirror::Class* klass) {
   __ AddU1(HPROF_CLASS_DUMP);
   __ AddClassId(LookupClassId(klass));
   __ AddStackTraceSerialNumber(LookupStackTraceSerialNumber(klass));
-  __ AddClassId(LookupClassId(klass->GetSuperClass()));
+  __ AddClassId(LookupClassId(klass->GetSuperClass().Ptr()));
   __ AddObjectId(klass->GetClassLoader());
   __ AddObjectId(nullptr);    // no signer
   __ AddObjectId(nullptr);    // no prot domain
@@ -1543,7 +1543,7 @@ void Hprof::DumpHeapInstanceObject(mirror::Object* obj,
           reinterpret_cast<uintptr_t>(obj) + kObjectAlignment / 2);
       __ AddObjectId(fake_object_array);
     }
-    klass = klass->GetSuperClass();
+    klass = klass->GetSuperClass().Ptr();
   } while (klass != nullptr);
 
   // Patch the instance field length.

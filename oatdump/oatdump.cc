@@ -2101,9 +2101,9 @@ class ImageDumper {
     }
   }
 
-  static void DumpFields(std::ostream& os, mirror::Object* obj, mirror::Class* klass)
+  static void DumpFields(std::ostream& os, mirror::Object* obj, ObjPtr<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    mirror::Class* super = klass->GetSuperClass();
+    ObjPtr<mirror::Class> super = klass->GetSuperClass();
     if (super != nullptr) {
       DumpFields(os, obj, super);
     }

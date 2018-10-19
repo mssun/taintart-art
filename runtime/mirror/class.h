@@ -624,7 +624,7 @@ class MANAGED Class final : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ALWAYS_INLINE Class* GetSuperClass() REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<Class> GetSuperClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Get first common super class. It will never return null.
   // `This` and `klass` must be classes.

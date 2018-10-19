@@ -1167,7 +1167,7 @@ static void MaybeAddToImageClasses(Thread* self,
     if (klass->IsArrayClass()) {
       MaybeAddToImageClasses(self, klass->GetComponentType(), image_classes);
     }
-    klass.Assign(klass->GetSuperClass());
+    klass = klass->GetSuperClass();
   }
 }
 

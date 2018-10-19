@@ -372,10 +372,10 @@ class ElfCompilationUnitWriter {
         }
 
         // Base class.
-        mirror::Class* base_class = type->GetSuperClass();
+        ObjPtr<mirror::Class> base_class = type->GetSuperClass();
         if (base_class != nullptr) {
           info_.StartTag(DW_TAG_inheritance);
-          base_class_references.emplace(info_.size(), base_class);
+          base_class_references.emplace(info_.size(), base_class.Ptr());
           info_.WriteRef4(DW_AT_type, 0);
           info_.WriteUdata(DW_AT_data_member_location, 0);
           info_.WriteSdata(DW_AT_accessibility, DW_ACCESS_public);
