@@ -182,11 +182,12 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
   }
 
   if (is_mterp && !is_range && called_method->IsIntrinsic()) {
-    if (type == kDirect || type == kStatic || type == kVirtual) {
-      if (MterpHandleIntrinsic(&shadow_frame, called_method, inst, inst_data,
-                               shadow_frame.GetResultRegister())) {
-        return !self->IsExceptionPending();
+    if (MterpHandleIntrinsic(&shadow_frame, called_method, inst, inst_data,
+                             shadow_frame.GetResultRegister())) {
+      if (jit != nullptr && sf_method != nullptr) {
+        jit->NotifyInterpreterToCompiledCodeTransition(self, sf_method);
       }
+      return !self->IsExceptionPending();
     }
   }
 
