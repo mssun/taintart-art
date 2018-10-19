@@ -2079,16 +2079,25 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
   // Create a profile with the startup method marked.
   ScratchFile profile_file;
   std::vector<uint16_t> methods;
+  std::vector<dex::TypeIndex> classes;
   {
     std::unique_ptr<const DexFile> dex(OpenTestDexFile("StringLiterals"));
-    for (size_t method_idx = 0; method_idx < dex->NumMethodIds(); ++method_idx) {
-      if (std::string(dex->GetMethodName(dex->GetMethodId(method_idx))) == "startUpMethod") {
-        methods.push_back(method_idx);
+    for (ClassAccessor accessor : dex->GetClasses()) {
+      if (accessor.GetDescriptor() == std::string("LStringLiterals$StartupClass;")) {
+        classes.push_back(accessor.GetClassIdx());
+      }
+      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+        std::string method_name(dex->GetMethodName(dex->GetMethodId(method.GetIndex())));
+        if (method_name == "startUpMethod") {
+          methods.push_back(method.GetIndex());
+        }
       }
     }
+    ASSERT_GT(classes.size(), 0u);
     ASSERT_GT(methods.size(), 0u);
     // Here, we build the profile from the method lists.
     ProfileCompilationInfo info;
+    info.AddClassesForDex(dex.get(), classes.begin(), classes.end());
     info.AddMethodsForDex(Hotness::kFlagStartup, dex.get(), methods.begin(), methods.end());
     // Save the profile since we want to use it with dex2oat to produce an oat file.
     ASSERT_TRUE(info.Save(profile_file.GetFd()));
@@ -2132,11 +2141,15 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
         seen.insert(str.Read()->ToModifiedUtf8());
       }
     });
+    // Normal methods
     EXPECT_TRUE(seen.find("Loading ") != seen.end());
     EXPECT_TRUE(seen.find("Starting up") != seen.end());
     EXPECT_TRUE(seen.find("abcd.apk") != seen.end());
     EXPECT_TRUE(seen.find("Unexpected error") == seen.end());
     EXPECT_TRUE(seen.find("Shutting down!") == seen.end());
+    // Classes initializers
+    EXPECT_TRUE(seen.find("Startup init") != seen.end());
+    EXPECT_TRUE(seen.find("Other class init") == seen.end());
   }
 }
 
