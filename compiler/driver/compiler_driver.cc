@@ -715,6 +715,7 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
   StackHandleScope<1> hs(soa.Self());
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
   MutableHandle<mirror::DexCache> dex_cache(hs.NewHandle<mirror::DexCache>(nullptr));
+  size_t num_instructions = 0u;
 
   for (const DexFile* dex_file : dex_files) {
     dex_cache.Assign(class_linker->FindDexCache(soa.Self(), *dex_file));
@@ -726,10 +727,20 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
         // FIXME: Make sure that inlining honors this. b/26687569
         continue;
       }
+
+      const bool is_startup_class =
+          profile_compilation_info_ != nullptr &&
+          profile_compilation_info_->ContainsClass(*dex_file, accessor.GetClassIdx());
+
       for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+        const bool is_clinit = (method.GetAccessFlags() & kAccConstructor) != 0 &&
+            (method.GetAccessFlags() & kAccStatic) != 0;
+        const bool is_startup_clinit = is_startup_class && is_clinit;
+
         if (only_startup_strings &&
             profile_compilation_info_ != nullptr &&
-            !profile_compilation_info_->GetMethodHotness(method.GetReference()).IsStartup()) {
+            (!profile_compilation_info_->GetMethodHotness(method.GetReference()).IsStartup() &&
+             !is_startup_clinit)) {
           continue;
         }
 
@@ -746,6 +757,7 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
                   : inst->VRegB_31c());
               ObjPtr<mirror::String> string = class_linker->ResolveString(string_index, dex_cache);
               CHECK(string != nullptr) << "Could not allocate a string when forcing determinism";
+              ++num_instructions;
               break;
             }
 
@@ -756,6 +768,7 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
       }
     }
   }
+  VLOG(compiler) << "Resolved " << num_instructions << " const string instructions";
 }
 
 // Initialize type check bit strings for check-cast and instance-of in the code. Done to have
