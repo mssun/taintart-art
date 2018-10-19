@@ -581,19 +581,27 @@ class ImageWriter final {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
-   * A pair containing the information necessary to calculate the position of a
-   * managed object's field or native reference inside an AppImage.
+   * This type holds the information necessary for calculating
+   * AppImageReferenceOffsetInfo values after the object relocations have been
+   * computed.
    *
-   * The first element of this pair is a raw mirror::Object pointer because its
-   * usage will cross a suspend point and ObjPtr would produce a false positive.
+   * The first element will always be a pointer to a managed object.  If the
+   * pointer has been tagged (testable with HasDexCacheNativeRefTag) it
+   * indicates that the referenced object is a DexCache object that requires
+   * special handling during loading and the second element has no meaningful
+   * value.  If the pointer isn't tagged then the second element is an
+   * object-relative offset to a field containing a string reference.
    *
-   * The second element is an offset either into the object or into the string
-   * array of a DexCache object.
+   * Note that it is possible for an untagged DexCache pointer to occur in the
+   * first position if it has a managed reference that needs to be updated.
    *
    * TODO (chriswailes): Add a note indicating the source line where we ensure
    * that no moving garbage collection will occur.
+   *
+   * TODO (chriswailes): Replace with std::variant once ART is building with
+   * C++17
    */
-  typedef std::pair<mirror::Object*, uint32_t> RefInfoPair;
+  typedef std::pair<uintptr_t, uint32_t> HeapReferencePointerInfo;
 
   /*
    * Collects the info necessary for calculating image offsets to string field
@@ -613,23 +621,18 @@ class ImageWriter final {
    * references that will be included in the AppImage.  This allows use to both
    * allocate enough memory for soring the offsets and correctly calculate the
    * offsets of various objects into the image.  Once the image offset
-   * calculations are done for Java objects the reference object/offset pairs
+   * calculations are done for managed objects the reference object/offset pairs
    * are translated to image offsets.  The CopyMetadata function then copies
    * these offsets into the image.
-   *
-   * A vector containing pairs of object pointers and offsets.  The offsets are
-   * tagged to indicate if the offset is for a field of a mirror object or a
-   * native reference.  If the offset is tagged as a native reference it must
-   * have come from a DexCache's string array.
    */
-  std::vector<RefInfoPair> CollectStringReferenceInfo() const
+  std::vector<HeapReferencePointerInfo> CollectStringReferenceInfo() const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
    * Ensures that assumptions about native GC roots and AppImages hold.
    *
    * This function verifies the following condition(s):
-   *   - Native references to Java strings are only reachable through DexCache
+   *   - Native references to managed strings are only reachable through DexCache
    *     objects
    */
   void VerifyNativeGCRootInvariants() const REQUIRES_SHARED(Locks::mutator_lock_);
@@ -772,7 +775,7 @@ class ImageWriter final {
   mirror::ObjectArray<mirror::Object>* boot_image_live_objects_;
 
   // Offsets into the image that indicate where string references are recorded.
-  std::vector<uint32_t> string_reference_offsets_;
+  std::vector<AppImageReferenceOffsetInfo> string_reference_offsets_;
 
   // Which mode the image is stored as, see image.h
   const ImageHeader::StorageMode image_storage_mode_;
