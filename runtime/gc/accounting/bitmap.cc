@@ -49,10 +49,10 @@ MemMap Bitmap::AllocateMemMap(const std::string& name, size_t num_bits) {
       RoundUp(num_bits, kBitsPerBitmapWord) / kBitsPerBitmapWord * sizeof(uintptr_t), kPageSize);
   std::string error_msg;
   MemMap mem_map = MemMap::MapAnonymous(name.c_str(),
-                                        /* addr */ nullptr,
+                                        /* addr= */ nullptr,
                                         bitmap_size,
                                         PROT_READ | PROT_WRITE,
-                                        /* low_4gb */ false,
+                                        /* low_4gb= */ false,
                                         &error_msg);
   if (UNLIKELY(!mem_map.IsValid())) {
     LOG(ERROR) << "Failed to allocate bitmap " << name << ": " << error_msg;

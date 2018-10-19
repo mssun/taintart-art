@@ -58,7 +58,7 @@ MemMap MemMapArena::Allocate(size_t size, bool low_4gb, const char* name) {
   size = RoundUp(size, kPageSize);
   std::string error_msg;
   MemMap map = MemMap::MapAnonymous(name,
-                                    /* addr */ nullptr,
+                                    /* addr= */ nullptr,
                                     size,
                                     PROT_READ | PROT_WRITE,
                                     low_4gb,

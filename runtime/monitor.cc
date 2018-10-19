@@ -289,7 +289,7 @@ struct NthCallerWithDexPcVisitor final : public StackVisitor {
     // Is this the requested frame?
     if (current_frame_number_ == wanted_frame_number_) {
       method_ = m;
-      dex_pc_ = GetDexPc(false /* abort_on_error*/);
+      dex_pc_ = GetDexPc(/* abort_on_failure=*/ false);
       return false;
     }
 
@@ -385,7 +385,7 @@ bool Monitor::TryLockLocked(Thread* self) {
   } else {
     return false;
   }
-  AtraceMonitorLock(self, GetObject(), false /* is_wait */);
+  AtraceMonitorLock(self, GetObject(), /* is_wait= */ false);
   return true;
 }
 
@@ -777,7 +777,7 @@ void Monitor::Wait(Thread* self, int64_t ms, int32_t ns,
   AtraceMonitorUnlock();  // For the implict Unlock() just above. This will only end the deepest
                           // nesting, but that is enough for the visualization, and corresponds to
                           // the single Lock() we do afterwards.
-  AtraceMonitorLock(self, GetObject(), true /* is_wait */);
+  AtraceMonitorLock(self, GetObject(), /* is_wait= */ true);
 
   bool was_interrupted = false;
   bool timed_out = false;
@@ -1042,7 +1042,7 @@ mirror::Object* Monitor::MonitorEnter(Thread* self, mirror::Object* obj, bool tr
         // No ordering required for preceding lockword read, since we retest.
         LockWord thin_locked(LockWord::FromThinLockId(thread_id, 0, lock_word.GCState()));
         if (h_obj->CasLockWord(lock_word, thin_locked, CASMode::kWeak, std::memory_order_acquire)) {
-          AtraceMonitorLock(self, h_obj.Get(), false /* is_wait */);
+          AtraceMonitorLock(self, h_obj.Get(), /* is_wait= */ false);
           return h_obj.Get();  // Success!
         }
         continue;  // Go again.
@@ -1060,8 +1060,8 @@ mirror::Object* Monitor::MonitorEnter(Thread* self, mirror::Object* obj, bool tr
             // Only this thread pays attention to the count. Thus there is no need for stronger
             // than relaxed memory ordering.
             if (!kUseReadBarrier) {
-              h_obj->SetLockWord(thin_locked, false /* volatile */);
-              AtraceMonitorLock(self, h_obj.Get(), false /* is_wait */);
+              h_obj->SetLockWord(thin_locked, /* as_volatile= */ false);
+              AtraceMonitorLock(self, h_obj.Get(), /* is_wait= */ false);
               return h_obj.Get();  // Success!
             } else {
               // Use CAS to preserve the read barrier state.
@@ -1069,7 +1069,7 @@ mirror::Object* Monitor::MonitorEnter(Thread* self, mirror::Object* obj, bool tr
                                      thin_locked,
                                      CASMode::kWeak,
                                      std::memory_order_relaxed)) {
-                AtraceMonitorLock(self, h_obj.Get(), false /* is_wait */);
+                AtraceMonitorLock(self, h_obj.Get(), /* is_wait= */ false);
                 return h_obj.Get();  // Success!
               }
             }

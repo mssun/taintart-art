@@ -82,7 +82,7 @@ namespace art {
 static constexpr bool kWarnJniAbort = false;
 
 static bool IsCallerTrusted(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::IsCallerTrusted(GetCallingClass(self, /* num_frames */ 1));
+  return hiddenapi::IsCallerTrusted(GetCallingClass(self, /* num_frames= */ 1));
 }
 
 template<typename T>
@@ -106,9 +106,9 @@ static void NotifySetObjectField(ArtField* field, jobject obj, jobject jval)
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
   if (UNLIKELY(instrumentation->HasFieldWriteListeners())) {
     Thread* self = Thread::Current();
-    ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc*/ nullptr,
-                                                   /*check_suspended*/ true,
-                                                   /*abort_on_error*/ false);
+    ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc=*/ nullptr,
+                                                   /*check_suspended=*/ true,
+                                                   /*abort_on_error=*/ false);
 
     if (cur_method == nullptr) {
       // Set/Get Fields can be issued without a method during runtime startup/teardown. Ignore all
@@ -133,9 +133,9 @@ static void NotifySetPrimitiveField(ArtField* field, jobject obj, JValue val)
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
   if (UNLIKELY(instrumentation->HasFieldWriteListeners())) {
     Thread* self = Thread::Current();
-    ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc*/ nullptr,
-                                                   /*check_suspended*/ true,
-                                                   /*abort_on_error*/ false);
+    ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc=*/ nullptr,
+                                                   /*check_suspended=*/ true,
+                                                   /*abort_on_error=*/ false);
 
     if (cur_method == nullptr) {
       // Set/Get Fields can be issued without a method during runtime startup/teardown. Ignore all
@@ -157,9 +157,9 @@ static void NotifyGetField(ArtField* field, jobject obj)
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
   if (UNLIKELY(instrumentation->HasFieldReadListeners())) {
     Thread* self = Thread::Current();
-    ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc*/ nullptr,
-                                                   /*check_suspended*/ true,
-                                                   /*abort_on_error*/ false);
+    ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc=*/ nullptr,
+                                                   /*check_suspended=*/ true,
+                                                   /*abort_on_error=*/ false);
 
     if (cur_method == nullptr) {
       // Set/Get Fields can be issued without a method during runtime startup/teardown. Ignore all

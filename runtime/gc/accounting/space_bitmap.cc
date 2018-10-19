@@ -85,10 +85,10 @@ SpaceBitmap<kAlignment>* SpaceBitmap<kAlignment>::Create(
   const size_t bitmap_size = ComputeBitmapSize(heap_capacity);
   std::string error_msg;
   MemMap mem_map = MemMap::MapAnonymous(name.c_str(),
-                                        /* addr */ nullptr,
+                                        /* addr= */ nullptr,
                                         bitmap_size,
                                         PROT_READ | PROT_WRITE,
-                                        /* low_4gb */ false,
+                                        /* low_4gb= */ false,
                                         &error_msg);
   if (UNLIKELY(!mem_map.IsValid())) {
     LOG(ERROR) << "Failed to allocate bitmap " << name << ": " << error_msg;

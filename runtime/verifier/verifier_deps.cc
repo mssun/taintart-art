@@ -43,7 +43,7 @@ VerifierDeps::VerifierDeps(const std::vector<const DexFile*>& dex_files, bool ou
 }
 
 VerifierDeps::VerifierDeps(const std::vector<const DexFile*>& dex_files)
-    : VerifierDeps(dex_files, /*output_only*/ true) {}
+    : VerifierDeps(dex_files, /*output_only=*/ true) {}
 
 void VerifierDeps::MergeWith(const VerifierDeps& other,
                              const std::vector<const DexFile*>& dex_files) {
@@ -439,7 +439,7 @@ void VerifierDeps::AddAssignability(const DexFile& dex_file,
       AddAssignability(dex_file,
                        destination_component,
                        source_component,
-                       /* is_strict */ true,
+                       /* is_strict= */ true,
                        is_assignable);
       return;
     }
@@ -707,7 +707,7 @@ void VerifierDeps::Encode(const std::vector<const DexFile*>& dex_files,
 
 VerifierDeps::VerifierDeps(const std::vector<const DexFile*>& dex_files,
                            ArrayRef<const uint8_t> data)
-    : VerifierDeps(dex_files, /*output_only*/ false) {
+    : VerifierDeps(dex_files, /*output_only=*/ false) {
   if (data.empty()) {
     // Return eagerly, as the first thing we expect from VerifierDeps data is
     // the number of created strings, even if there is no dependency.
@@ -1089,9 +1089,9 @@ bool VerifierDeps::VerifyDexFile(Handle<mirror::ClassLoader> class_loader,
                                  const DexFileDeps& deps,
                                  Thread* self) const {
   bool result = VerifyAssignability(
-      class_loader, dex_file, deps.assignable_types_, /* expected_assignability */ true, self);
+      class_loader, dex_file, deps.assignable_types_, /* expected_assignability= */ true, self);
   result = result && VerifyAssignability(
-      class_loader, dex_file, deps.unassignable_types_, /* expected_assignability */ false, self);
+      class_loader, dex_file, deps.unassignable_types_, /* expected_assignability= */ false, self);
 
   result = result && VerifyClasses(class_loader, dex_file, deps.classes_, self);
   result = result && VerifyFields(class_loader, dex_file, deps.fields_, self);

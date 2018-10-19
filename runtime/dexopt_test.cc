@@ -206,7 +206,7 @@ void DexoptTest::ReserveImageSpaceChunk(uintptr_t start, uintptr_t end) {
                                                       reinterpret_cast<uint8_t*>(start),
                                                       end - start,
                                                       PROT_NONE,
-                                                      /* low_4gb*/ false,
+                                                      /* low_4gb=*/ false,
                                                       &error_msg));
     ASSERT_TRUE(image_reservation_.back().IsValid()) << error_msg;
     LOG(INFO) << "Reserved space for image " <<

@@ -226,12 +226,12 @@ class OatFile {
     // A representation of an invalid OatClass, used when an OatClass can't be found.
     // See FindOatClass().
     static OatClass Invalid() {
-      return OatClass(/* oat_file */ nullptr,
+      return OatClass(/* oat_file= */ nullptr,
                       ClassStatus::kErrorUnresolved,
                       kOatClassNoneCompiled,
-                      /* bitmap_size */ 0,
-                      /* bitmap_pointer */ nullptr,
-                      /* methods_pointer */ nullptr);
+                      /* bitmap_size= */ 0,
+                      /* bitmap_pointer= */ nullptr,
+                      /* methods_pointer= */ nullptr);
     }
 
    private:

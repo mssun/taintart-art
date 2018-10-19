@@ -1495,8 +1495,8 @@ TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
     DeoptimizationMethodType deopt_method_type = GetDeoptimizationMethodType(method);
     self->PushDeoptimizationContext(return_value,
                                     return_shorty == 'L' || return_shorty == '[',
-                                    nullptr /* no pending exception */,
-                                    false /* from_code */,
+                                    /* exception= */ nullptr ,
+                                    /* from_code= */ false,
                                     deopt_method_type);
     return GetTwoWordSuccessValue(*return_pc,
                                   reinterpret_cast<uintptr_t>(GetQuickDeoptimizationEntryPoint()));

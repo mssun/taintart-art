@@ -302,7 +302,7 @@ struct MockScopedLockMutator {
 struct SubtypeCheckTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    android::base::InitLogging(/*argv*/nullptr);
+    android::base::InitLogging(/*argv=*/nullptr);
 
     CreateRootedTree(BitString::kCapacity + 2u, BitString::kCapacity + 2u);
   }
@@ -312,8 +312,8 @@ struct SubtypeCheckTest : public ::testing::Test {
 
   void CreateRootedTree(size_t width, size_t height) {
     all_classes_.clear();
-    root_ = CreateClassFor(/*parent*/nullptr, /*x*/0, /*y*/0);
-    CreateTreeFor(root_, /*width*/width, /*depth*/height);
+    root_ = CreateClassFor(/*parent=*/nullptr, /*x=*/0, /*y=*/0);
+    CreateTreeFor(root_, /*width=*/width, /*levels=*/height);
   }
 
   MockClass* CreateClassFor(MockClass* parent, size_t x, size_t y) {
@@ -681,7 +681,7 @@ void EnsureStateChangedTest(
     const std::vector<std::pair<SubtypeCheckInfo::State, SubtypeCheckInfo::State>>& transitions) {
   ASSERT_EQ(depth, transitions.size());
 
-  EnsureStateChangedTestRecursive(root, /*cur_depth*/0u, depth, transitions);
+  EnsureStateChangedTestRecursive(root, /*cur_depth=*/0u, depth, transitions);
 }
 
 TEST_F(SubtypeCheckTest, EnsureInitialized_NoOverflow) {
@@ -869,8 +869,8 @@ TEST_F(SubtypeCheckTest, EnsureInitialized_TooWide) {
 
   {
     // Create too-wide siblings at the kTargetDepth level.
-    MockClass* child = root_->FindChildAt(/*x*/0, kTargetDepth - 1u);
-    CreateTreeFor(child, kMaxWidthCutOff*2, /*depth*/1);
+    MockClass* child = root_->FindChildAt(/*x=*/0, kTargetDepth - 1u);
+    CreateTreeFor(child, kMaxWidthCutOff*2, /*levels=*/1);
     ASSERT_LE(kMaxWidthCutOff*2, child->GetNumberOfChildren());
     ASSERT_TRUE(IsTooWide(child->GetMaxChild())) << *(child->GetMaxChild());
     // Leave the rest of the tree as the default.
@@ -914,15 +914,15 @@ TEST_F(SubtypeCheckTest, EnsureInitialized_TooWide_TooWide) {
 
   {
     // Create too-wide siblings at the kTargetDepth level.
-    MockClass* child = root_->FindChildAt(/*x*/0, kTargetDepth - 1);
-    CreateTreeFor(child, kMaxWidthCutOff*2, /*depth*/1);
+    MockClass* child = root_->FindChildAt(/*x=*/0, kTargetDepth - 1);
+    CreateTreeFor(child, kMaxWidthCutOff*2, /*levels=*/1);
     ASSERT_LE(kMaxWidthCutOff*2, child->GetNumberOfChildren()) << *child;
     ASSERT_TRUE(IsTooWide(child->GetMaxChild())) << *(child->GetMaxChild());
     // Leave the rest of the tree as the default.
 
     // Create too-wide children for a too-wide parent.
-    MockClass* child_subchild = child->FindChildAt(/*x*/0, kTargetDepth);
-    CreateTreeFor(child_subchild, kMaxWidthCutOffSub*2, /*depth*/1);
+    MockClass* child_subchild = child->FindChildAt(/*x=*/0, kTargetDepth);
+    CreateTreeFor(child_subchild, kMaxWidthCutOffSub*2, /*levels=*/1);
     ASSERT_LE(kMaxWidthCutOffSub*2, child_subchild->GetNumberOfChildren()) << *child_subchild;
     ASSERT_TRUE(IsTooWide(child_subchild->GetMaxChild())) << *(child_subchild->GetMaxChild());
   }
@@ -1035,8 +1035,8 @@ TEST_F(SubtypeCheckTest, EnsureInitialized_TooWide_TooDeep) {
 
   {
     // Create too-wide siblings at the kTargetDepth level.
-    MockClass* child = root_->FindChildAt(/*x*/0, kTargetDepth - 1u);
-    CreateTreeFor(child, kMaxWidthCutOff*2, /*depth*/1);
+    MockClass* child = root_->FindChildAt(/*x=*/0, kTargetDepth - 1u);
+    CreateTreeFor(child, kMaxWidthCutOff*2, /*levels=*/1);
     ASSERT_LE(kMaxWidthCutOff*2, child->GetNumberOfChildren());
     ASSERT_TRUE(IsTooWide(child->GetMaxChild())) << *(child->GetMaxChild());
     // Leave the rest of the tree as the default.
@@ -1045,7 +1045,7 @@ TEST_F(SubtypeCheckTest, EnsureInitialized_TooWide_TooDeep) {
     MockClass* child_subchild = child->GetMaxChild();
     ASSERT_TRUE(child_subchild != nullptr);
     ASSERT_EQ(0u, child_subchild->GetNumberOfChildren()) << *child_subchild;
-    CreateTreeFor(child_subchild, /*width*/1, /*levels*/kTooDeepTargetDepth);
+    CreateTreeFor(child_subchild, /*width=*/1, /*levels=*/kTooDeepTargetDepth);
     MockClass* too_deep_child = child_subchild->FindChildAt(0, kTooDeepTargetDepth + 2);
     ASSERT_TRUE(too_deep_child != nullptr) << child_subchild->ToDotGraph();
     ASSERT_TRUE(IsTooWide(too_deep_child)) << *(too_deep_child);

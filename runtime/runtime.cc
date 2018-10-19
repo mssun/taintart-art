@@ -305,15 +305,15 @@ Runtime::~Runtime() {
     // Very few things are actually capable of distinguishing between the peer & peerless states so
     // this should be fine.
     bool thread_attached = AttachCurrentThread("Shutdown thread",
-                                               /* as_daemon */ false,
+                                               /* as_daemon= */ false,
                                                GetSystemThreadGroup(),
-                                               /* Create peer */ IsStarted());
+                                               /* create_peer= */ IsStarted());
     if (UNLIKELY(!thread_attached)) {
       LOG(WARNING) << "Failed to attach shutdown thread. Trying again without a peer.";
       CHECK(AttachCurrentThread("Shutdown thread (no java peer)",
-                                /* as_daemon */   false,
-                                /* thread_group*/ nullptr,
-                                /* Create peer */ false));
+                                /* as_daemon= */   false,
+                                /* thread_group=*/ nullptr,
+                                /* create_peer= */ false));
     }
     self = Thread::Current();
   } else {
@@ -614,7 +614,7 @@ bool Runtime::ParseOptions(const RuntimeOptions& raw_options,
                            bool ignore_unrecognized,
                            RuntimeArgumentMap* runtime_options) {
   Locks::Init();
-  InitLogging(/* argv */ nullptr, Abort);  // Calls Locks::Init() as a side effect.
+  InitLogging(/* argv= */ nullptr, Abort);  // Calls Locks::Init() as a side effect.
   bool parsed = ParsedOptions::Parse(raw_options, ignore_unrecognized, runtime_options);
   if (!parsed) {
     LOG(ERROR) << "Failed to parse options";
@@ -815,7 +815,7 @@ bool Runtime::Start() {
         ? NativeBridgeAction::kInitialize
         : NativeBridgeAction::kUnload;
     InitNonZygoteOrPostFork(self->GetJniEnv(),
-                            /* is_system_server */ false,
+                            /* is_system_server= */ false,
                             action,
                             GetInstructionSetString(kRuntimeISA));
   }
@@ -1002,9 +1002,9 @@ static bool OpenDexFilesFromImage(const std::string& image_location,
     std::string error_msg;
 
     std::unique_ptr<VdexFile> vdex_file(VdexFile::Open(vdex_filename,
-                                                       false /* writable */,
-                                                       false /* low_4gb */,
-                                                       false, /* unquicken */
+                                                       /* writable= */ false,
+                                                       /* low_4gb= */ false,
+                                                       /* unquicken= */ false,
                                                        &error_msg));
     if (vdex_file.get() == nullptr) {
       return false;
@@ -1015,15 +1015,15 @@ static bool OpenDexFilesFromImage(const std::string& image_location,
       return false;
     }
     std::unique_ptr<ElfFile> elf_file(ElfFile::Open(file.get(),
-                                                    false /* writable */,
-                                                    false /* program_header_only */,
-                                                    false /* low_4gb */,
+                                                    /* writable= */ false,
+                                                    /* program_header_only= */ false,
+                                                    /* low_4gb= */ false,
                                                     &error_msg));
     if (elf_file.get() == nullptr) {
       return false;
     }
     std::unique_ptr<const OatFile> oat_file(
-        OatFile::OpenWithElfFile(/* zip_fd */ -1,
+        OatFile::OpenWithElfFile(/* zip_fd= */ -1,
                                  elf_file.release(),
                                  vdex_file.release(),
                                  oat_location,
@@ -1117,7 +1117,7 @@ static inline void CreatePreAllocatedException(Thread* self,
   CHECK(klass != nullptr);
   gc::AllocatorType allocator_type = runtime->GetHeap()->GetCurrentAllocator();
   ObjPtr<mirror::Throwable> exception_object = ObjPtr<mirror::Throwable>::DownCast(
-      klass->Alloc</* kIsInstrumented */ true>(self, allocator_type));
+      klass->Alloc</* kIsInstrumented= */ true>(self, allocator_type));
   CHECK(exception_object != nullptr);
   *exception = GcRoot<mirror::Throwable>(exception_object);
   // Initialize the "detailMessage" field.
@@ -1127,7 +1127,7 @@ static inline void CreatePreAllocatedException(Thread* self,
   ArtField* detailMessageField =
       throwable->FindDeclaredInstanceField("detailMessage", "Ljava/lang/String;");
   CHECK(detailMessageField != nullptr);
-  detailMessageField->SetObject</* kTransactionActive */ false>(exception->Read(), message);
+  detailMessageField->SetObject</* kTransactionActive= */ false>(exception->Read(), message);
 }
 
 bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
@@ -1160,8 +1160,8 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
                                                  reinterpret_cast<uint8_t*>(kSentinelAddr),
                                                  kPageSize,
                                                  PROT_NONE,
-                                                 /* low_4g */ true,
-                                                 /* error_msg */ nullptr);
+                                                 /* low_4gb= */ true,
+                                                 /* error_msg= */ nullptr);
     if (!protected_fault_page_.IsValid()) {
       LOG(WARNING) << "Could not reserve sentinel fault page";
     } else if (reinterpret_cast<uintptr_t>(protected_fault_page_.Begin()) != kSentinelAddr) {
@@ -1371,13 +1371,13 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     arena_pool_.reset(new MallocArenaPool());
     jit_arena_pool_.reset(new MallocArenaPool());
   } else {
-    arena_pool_.reset(new MemMapArenaPool(/* low_4gb */ false));
-    jit_arena_pool_.reset(new MemMapArenaPool(/* low_4gb */ false, "CompilerMetadata"));
+    arena_pool_.reset(new MemMapArenaPool(/* low_4gb= */ false));
+    jit_arena_pool_.reset(new MemMapArenaPool(/* low_4gb= */ false, "CompilerMetadata"));
   }
 
   if (IsAotCompiler() && Is64BitInstructionSet(kRuntimeISA)) {
     // 4gb, no malloc. Explanation in header.
-    low_4gb_arena_pool_.reset(new MemMapArenaPool(/* low_4gb */ true));
+    low_4gb_arena_pool_.reset(new MemMapArenaPool(/* low_4gb= */ true));
   }
   linear_alloc_.reset(CreateLinearAlloc());
 
@@ -2148,7 +2148,7 @@ ArtMethod* Runtime::CreateImtConflictMethod(LinearAlloc* linear_alloc) {
     method->SetEntryPointFromQuickCompiledCode(GetQuickImtConflictStub());
   }
   // Create empty conflict table.
-  method->SetImtConflictTable(class_linker->CreateImtConflictTable(/*count*/0u, linear_alloc),
+  method->SetImtConflictTable(class_linker->CreateImtConflictTable(/*count=*/0u, linear_alloc),
                               pointer_size);
   return method;
 }
@@ -2280,7 +2280,7 @@ void Runtime::RegisterAppInfo(const std::vector<std::string>& code_paths,
     LOG(WARNING) << "JIT profile information will not be recorded: profile filename is empty.";
     return;
   }
-  if (!OS::FileExists(profile_output_filename.c_str(), false /*check_file_type*/)) {
+  if (!OS::FileExists(profile_output_filename.c_str(), /*check_file_type=*/ false)) {
     LOG(WARNING) << "JIT profile information will not be recorded: profile file does not exits.";
     return;
   }
@@ -2519,12 +2519,12 @@ void Runtime::FixupConflictTables() {
   const PointerSize pointer_size = GetClassLinker()->GetImagePointerSize();
   if (imt_unimplemented_method_->GetImtConflictTable(pointer_size) == nullptr) {
     imt_unimplemented_method_->SetImtConflictTable(
-        ClassLinker::CreateImtConflictTable(/*count*/0u, GetLinearAlloc(), pointer_size),
+        ClassLinker::CreateImtConflictTable(/*count=*/0u, GetLinearAlloc(), pointer_size),
         pointer_size);
   }
   if (imt_conflict_method_->GetImtConflictTable(pointer_size) == nullptr) {
     imt_conflict_method_->SetImtConflictTable(
-          ClassLinker::CreateImtConflictTable(/*count*/0u, GetLinearAlloc(), pointer_size),
+          ClassLinker::CreateImtConflictTable(/*count=*/0u, GetLinearAlloc(), pointer_size),
           pointer_size);
   }
 }

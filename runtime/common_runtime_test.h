@@ -78,8 +78,8 @@ class CommonRuntimeTestImpl : public CommonArtTestImpl {
     const ArtDexFileLoader dex_file_loader;
     CHECK(dex_file_loader.Open(input_jar.c_str(),
                                input_jar.c_str(),
-                               /*verify*/ true,
-                               /*verify_checksum*/ true,
+                               /*verify=*/ true,
+                               /*verify_checksum=*/ true,
                                &error_msg,
                                &dex_files)) << error_msg;
     EXPECT_EQ(dex_files.size(), 1u) << "Only one input dex is supported";

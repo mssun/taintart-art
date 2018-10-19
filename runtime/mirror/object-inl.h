@@ -80,11 +80,11 @@ inline uint32_t Object::GetLockOwnerThreadId() {
 }
 
 inline mirror::Object* Object::MonitorEnter(Thread* self) {
-  return Monitor::MonitorEnter(self, this, /*trylock*/false);
+  return Monitor::MonitorEnter(self, this, /*trylock=*/false);
 }
 
 inline mirror::Object* Object::MonitorTryEnter(Thread* self) {
-  return Monitor::MonitorEnter(self, this, /*trylock*/true);
+  return Monitor::MonitorEnter(self, this, /*trylock=*/true);
 }
 
 inline bool Object::MonitorExit(Thread* self) {
@@ -738,7 +738,7 @@ template<bool kTransactionActive, bool kCheckTransaction, VerifyObjectFlags kVer
 inline ObjPtr<Object> Object::ExchangeFieldObject(MemberOffset field_offset,
                                                   ObjPtr<Object> new_value) {
   VerifyTransaction<kTransactionActive, kCheckTransaction>();
-  VerifyCAS<kVerifyFlags>(new_value, /*old_value*/ nullptr);
+  VerifyCAS<kVerifyFlags>(new_value, /*old_value=*/ nullptr);
 
   uint32_t new_ref(PtrCompression<kPoisonHeapReferences, Object>::Compress(new_value));
   uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();

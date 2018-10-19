@@ -91,8 +91,8 @@ OatFileAssistant::OatFileAssistant(const char* dex_location,
     : isa_(isa),
       load_executable_(load_executable),
       only_load_system_executable_(only_load_system_executable),
-      odex_(this, /*is_oat_location*/ false),
-      oat_(this, /*is_oat_location*/ true),
+      odex_(this, /*is_oat_location=*/ false),
+      oat_(this, /*is_oat_location=*/ true),
       zip_fd_(zip_fd) {
   CHECK(dex_location != nullptr) << "OatFileAssistant: null dex location";
 
@@ -700,9 +700,9 @@ OatFileAssistant::OatStatus OatFileAssistant::OatFileInfo::Status() {
         }
       } else {
         vdex = VdexFile::Open(vdex_filename,
-                              false /*writeable*/,
-                              false /*low_4gb*/,
-                              false /*unquicken*/,
+                              /*writable=*/ false,
+                              /*low_4gb=*/ false,
+                              /*unquicken=*/ false,
                               &error_msg);
       }
       if (vdex == nullptr) {

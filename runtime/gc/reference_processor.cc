@@ -60,16 +60,16 @@ static inline MemberOffset GetSlowPathFlagOffset(ObjPtr<mirror::Class> reference
 static inline void SetSlowPathFlag(bool enabled) REQUIRES_SHARED(Locks::mutator_lock_) {
   ObjPtr<mirror::Class> reference_class = GetClassRoot<mirror::Reference>();
   MemberOffset slow_path_offset = GetSlowPathFlagOffset(reference_class);
-  reference_class->SetFieldBoolean</* kTransactionActive */ false, /* kCheckTransaction */ false>(
+  reference_class->SetFieldBoolean</* kTransactionActive= */ false, /* kCheckTransaction= */ false>(
       slow_path_offset, enabled ? 1 : 0);
 }
 
 void ReferenceProcessor::EnableSlowPath() {
-  SetSlowPathFlag(/* enabled */ true);
+  SetSlowPathFlag(/* enabled= */ true);
 }
 
 void ReferenceProcessor::DisableSlowPath(Thread* self) {
-  SetSlowPathFlag(/* enabled */ false);
+  SetSlowPathFlag(/* enabled= */ false);
   condition_.Broadcast(self);
 }
 
@@ -238,13 +238,13 @@ void ReferenceProcessor::DelayReferenceReferent(ObjPtr<mirror::Class> klass,
   mirror::HeapReference<mirror::Object>* referent = ref->GetReferentReferenceAddr();
   // do_atomic_update needs to be true because this happens outside of the reference processing
   // phase.
-  if (!collector->IsNullOrMarkedHeapReference(referent, /*do_atomic_update*/true)) {
+  if (!collector->IsNullOrMarkedHeapReference(referent, /*do_atomic_update=*/true)) {
     if (UNLIKELY(collector->IsTransactionActive())) {
       // In transaction mode, keep the referent alive and avoid any reference processing to avoid the
       // issue of rolling back reference processing.  do_atomic_update needs to be true because this
       // happens outside of the reference processing phase.
       if (!referent->IsNull()) {
-        collector->MarkHeapReference(referent, /*do_atomic_update*/ true);
+        collector->MarkHeapReference(referent, /*do_atomic_update=*/ true);
       }
       return;
     }

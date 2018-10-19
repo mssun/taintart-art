@@ -126,7 +126,7 @@ class CatchBlockStackVisitor final : public StackVisitor {
         exception_handler_->SetHandlerDexPc(found_dex_pc);
         exception_handler_->SetHandlerQuickFramePc(
             GetCurrentOatQuickMethodHeader()->ToNativeQuickPc(
-                method, found_dex_pc, /* is_catch_handler */ true));
+                method, found_dex_pc, /* is_for_catch_handler= */ true));
         exception_handler_->SetHandlerQuickFrame(GetCurrentQuickFrame());
         exception_handler_->SetHandlerMethodHeader(GetCurrentOatQuickMethodHeader());
         return false;  // End stack walk.
@@ -218,7 +218,10 @@ void QuickExceptionHandler::FindCatch(ObjPtr<mirror::Throwable> exception) {
     }
 
     // Walk the stack to find catch handler.
-    CatchBlockStackVisitor visitor(self_, context_, &exception_ref, this, /*skip*/already_popped);
+    CatchBlockStackVisitor visitor(self_, context_,
+                                   &exception_ref,
+                                   this,
+                                   /*skip_frames=*/already_popped);
     visitor.WalkStack(true);
     uint32_t new_pop_count = handler_frame_depth_;
     DCHECK_GE(new_pop_count, already_popped);
@@ -606,7 +609,7 @@ void QuickExceptionHandler::DeoptimizeSingleFrame(DeoptimizationKind kind) {
               << deopt_method->PrettyMethod()
               << " due to "
               << GetDeoptimizationKindName(kind);
-    DumpFramesWithType(self_, /* details */ true);
+    DumpFramesWithType(self_, /* details= */ true);
   }
   if (Runtime::Current()->UseJitCompilation()) {
     Runtime::Current()->GetJit()->GetCodeCache()->InvalidateCompiledCodeFor(

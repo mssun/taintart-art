@@ -105,10 +105,10 @@ MarkSweep::MarkSweep(Heap* heap, bool is_concurrent, const std::string& name_pre
   std::string error_msg;
   sweep_array_free_buffer_mem_map_ = MemMap::MapAnonymous(
       "mark sweep sweep array free buffer",
-      /* addr */ nullptr,
+      /* addr= */ nullptr,
       RoundUp(kSweepArrayChunkFreeSize * sizeof(mirror::Object*), kPageSize),
       PROT_READ | PROT_WRITE,
-      /* low_4gb */ false,
+      /* low_4gb= */ false,
       &error_msg);
   CHECK(sweep_array_free_buffer_mem_map_.IsValid())
       << "Couldn't allocate sweep array free buffer: " << error_msg;
@@ -283,9 +283,9 @@ void MarkSweep::MarkingPhase() {
   // cards (during the call to Heap::ProcessCard) are not reordered
   // *after* marking actually starts?
   heap_->ProcessCards(GetTimings(),
-                      /* use_rem_sets */ false,
-                      /* process_alloc_space_cards */ true,
-                      /* clear_alloc_space_cards */ GetGcType() != kGcTypeSticky);
+                      /* use_rem_sets= */ false,
+                      /* process_alloc_space_cards= */ true,
+                      /* clear_alloc_space_cards= */ GetGcType() != kGcTypeSticky);
   WriterMutexLock mu(self, *Locks::heap_bitmap_lock_);
   MarkRoots(self);
   MarkReachableObjects();
@@ -446,7 +446,7 @@ class MarkSweep::MarkObjectSlowPath {
                      !large_object_space->Contains(obj)))) {
       // Lowest priority logging first:
       PrintFileToLog("/proc/self/maps", LogSeverity::FATAL_WITHOUT_ABORT);
-      MemMap::DumpMaps(LOG_STREAM(FATAL_WITHOUT_ABORT), /* terse */ true);
+      MemMap::DumpMaps(LOG_STREAM(FATAL_WITHOUT_ABORT), /* terse= */ true);
       // Buffer the output in the string stream since it is more important than the stack traces
       // and we want it to have log priority. The stack traces are printed from Runtime::Abort
       // which is called from LOG(FATAL) but before the abort message.

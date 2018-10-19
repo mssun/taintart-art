@@ -140,7 +140,7 @@ extern "C" mirror::Class* artInitializeStaticStorageFromCode(mirror::Class* klas
   StackHandleScope<1> hs(self);
   Handle<mirror::Class> h_klass = hs.NewHandle(klass);
   bool success = class_linker->EnsureInitialized(
-      self, h_klass, /* can_init_fields */ true, /* can_init_parents */ true);
+      self, h_klass, /* can_init_fields= */ true, /* can_init_parents= */ true);
   if (UNLIKELY(!success)) {
     return nullptr;
   }
@@ -157,8 +157,8 @@ extern "C" mirror::Class* artResolveTypeFromCode(uint32_t type_idx, Thread* self
   ObjPtr<mirror::Class> result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
                                                         caller,
                                                         self,
-                                                        /* can_run_clinit */ false,
-                                                        /* verify_access */ false);
+                                                        /* can_run_clinit= */ false,
+                                                        /* verify_access= */ false);
   if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
     StoreTypeInBss(caller_and_outer.outer_method, dex::TypeIndex(type_idx), result);
   }
@@ -175,8 +175,8 @@ extern "C" mirror::Class* artResolveTypeAndVerifyAccessFromCode(uint32_t type_id
   ObjPtr<mirror::Class> result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
                                                         caller,
                                                         self,
-                                                        /* can_run_clinit */ false,
-                                                        /* verify_access */ true);
+                                                        /* can_run_clinit= */ false,
+                                                        /* verify_access= */ true);
   // Do not StoreTypeInBss(); access check entrypoint is never used together with .bss.
   return result.Ptr();
 }

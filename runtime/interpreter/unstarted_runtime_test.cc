@@ -695,7 +695,7 @@ TEST_F(UnstartedRuntimeTest, Ceil) {
       {  ld2,  ld2 }
   };
 
-  TestCeilFloor(true /* ceil */, self, tmp.get(), test_pairs, arraysize(test_pairs));
+  TestCeilFloor(/* ceil= */ true, self, tmp.get(), test_pairs, arraysize(test_pairs));
 }
 
 TEST_F(UnstartedRuntimeTest, Floor) {
@@ -722,7 +722,7 @@ TEST_F(UnstartedRuntimeTest, Floor) {
       {  ld2,  ld2 }
   };
 
-  TestCeilFloor(false /* floor */, self, tmp.get(), test_pairs, arraysize(test_pairs));
+  TestCeilFloor(/* ceil= */ false, self, tmp.get(), test_pairs, arraysize(test_pairs));
 }
 
 TEST_F(UnstartedRuntimeTest, ToLowerUpper) {

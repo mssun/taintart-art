@@ -756,13 +756,13 @@ const RegType& RegType::Merge(const RegType& incoming_type,
         VerifierDeps::MaybeRecordAssignability(verifier->GetDexFile(),
                                                join_class,
                                                GetClass(),
-                                               /* strict */ true,
-                                               /* is_assignable */ true);
+                                               /* is_strict= */ true,
+                                               /* is_assignable= */ true);
         VerifierDeps::MaybeRecordAssignability(verifier->GetDexFile(),
                                                join_class,
                                                incoming_type.GetClass(),
-                                               /* strict */ true,
-                                               /* is_assignable */ true);
+                                               /* is_strict= */ true,
+                                               /* is_assignable= */ true);
       }
       if (GetClass() == join_class && !IsPreciseReference()) {
         return *this;
@@ -771,7 +771,7 @@ const RegType& RegType::Merge(const RegType& incoming_type,
       } else {
         std::string temp;
         const char* descriptor = join_class->GetDescriptor(&temp);
-        return reg_types->FromClass(descriptor, join_class, /* precise */ false);
+        return reg_types->FromClass(descriptor, join_class, /* precise= */ false);
       }
     }
   } else {

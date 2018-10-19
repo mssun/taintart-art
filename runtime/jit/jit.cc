@@ -599,12 +599,12 @@ class JitCompileTask final : public Task {
   void Run(Thread* self) override {
     ScopedObjectAccess soa(self);
     if (kind_ == kCompile) {
-      Runtime::Current()->GetJit()->CompileMethod(method_, self, /* osr */ false);
+      Runtime::Current()->GetJit()->CompileMethod(method_, self, /* osr= */ false);
     } else if (kind_ == kCompileOsr) {
-      Runtime::Current()->GetJit()->CompileMethod(method_, self, /* osr */ true);
+      Runtime::Current()->GetJit()->CompileMethod(method_, self, /* osr= */ true);
     } else {
       DCHECK(kind_ == kAllocateProfile);
-      if (ProfilingInfo::Create(self, method_, /* retry_allocation */ true)) {
+      if (ProfilingInfo::Create(self, method_, /* retry_allocation= */ true)) {
         VLOG(jit) << "Start profiling " << ArtMethod::PrettyMethod(method_);
       }
     }
@@ -673,7 +673,7 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
   if (LIKELY(!method->IsNative()) && starting_count < WarmMethodThreshold()) {
     if ((new_count >= WarmMethodThreshold()) &&
         (method->GetProfilingInfo(kRuntimePointerSize) == nullptr)) {
-      bool success = ProfilingInfo::Create(self, method, /* retry_allocation */ false);
+      bool success = ProfilingInfo::Create(self, method, /* retry_allocation= */ false);
       if (success) {
         VLOG(jit) << "Start profiling " << method->PrettyMethod();
       }
@@ -741,7 +741,7 @@ void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
     if (np_method->IsCompilable()) {
       if (!np_method->IsNative()) {
         // The compiler requires a ProfilingInfo object for non-native methods.
-        ProfilingInfo::Create(thread, np_method, /* retry_allocation */ true);
+        ProfilingInfo::Create(thread, np_method, /* retry_allocation= */ true);
       }
       JitCompileTask compile_task(method, JitCompileTask::kCompile);
       // Fake being in a runtime thread so that class-load behavior will be the same as normal jit.
@@ -761,7 +761,7 @@ void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
     Runtime::Current()->GetInstrumentation()->UpdateMethodsCode(
         method, profiling_info->GetSavedEntryPoint());
   } else {
-    AddSamples(thread, method, 1, /* with_backedges */false);
+    AddSamples(thread, method, 1, /* with_backedges= */false);
   }
 }
 

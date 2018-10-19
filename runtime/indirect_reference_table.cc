@@ -80,10 +80,10 @@ IndirectReferenceTable::IndirectReferenceTable(size_t max_count,
 
   const size_t table_bytes = max_count * sizeof(IrtEntry);
   table_mem_map_ = MemMap::MapAnonymous("indirect ref table",
-                                        /* addr */ nullptr,
+                                        /* addr= */ nullptr,
                                         table_bytes,
                                         PROT_READ | PROT_WRITE,
-                                        /* low_4gb */ false,
+                                        /* low_4gb= */ false,
                                         error_msg);
   if (!table_mem_map_.IsValid() && error_msg->empty()) {
     *error_msg = "Unable to map memory for indirect ref table";
@@ -223,10 +223,10 @@ bool IndirectReferenceTable::Resize(size_t new_size, std::string* error_msg) {
 
   const size_t table_bytes = new_size * sizeof(IrtEntry);
   MemMap new_map = MemMap::MapAnonymous("indirect ref table",
-                                        /* addr */ nullptr,
+                                        /* addr= */ nullptr,
                                         table_bytes,
                                         PROT_READ | PROT_WRITE,
-                                        /* is_low_4gb */ false,
+                                        /* low_4gb= */ false,
                                         error_msg);
   if (!new_map.IsValid()) {
     return false;

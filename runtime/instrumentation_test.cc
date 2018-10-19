@@ -509,9 +509,9 @@ TEST_F(InstrumentationTest, MethodEntryEvent) {
   ASSERT_TRUE(method->IsDirect());
   ASSERT_TRUE(method->GetDeclaringClass() == klass);
   TestEvent(instrumentation::Instrumentation::kMethodEntered,
-            /*event_method*/ method,
-            /*event_field*/ nullptr,
-            /*with_object*/ true);
+            /*event_method=*/ method,
+            /*event_field=*/ nullptr,
+            /*with_object=*/ true);
 }
 
 TEST_F(InstrumentationTest, MethodExitObjectEvent) {
@@ -529,9 +529,9 @@ TEST_F(InstrumentationTest, MethodExitObjectEvent) {
   ASSERT_TRUE(method->IsDirect());
   ASSERT_TRUE(method->GetDeclaringClass() == klass);
   TestEvent(instrumentation::Instrumentation::kMethodExited,
-            /*event_method*/ method,
-            /*event_field*/ nullptr,
-            /*with_object*/ true);
+            /*event_method=*/ method,
+            /*event_field=*/ nullptr,
+            /*with_object=*/ true);
 }
 
 TEST_F(InstrumentationTest, MethodExitPrimEvent) {
@@ -548,9 +548,9 @@ TEST_F(InstrumentationTest, MethodExitPrimEvent) {
   ASSERT_TRUE(method->IsDirect());
   ASSERT_TRUE(method->GetDeclaringClass() == klass);
   TestEvent(instrumentation::Instrumentation::kMethodExited,
-            /*event_method*/ method,
-            /*event_field*/ nullptr,
-            /*with_object*/ false);
+            /*event_method=*/ method,
+            /*event_field=*/ nullptr,
+            /*with_object=*/ false);
 }
 
 TEST_F(InstrumentationTest, MethodUnwindEvent) {
@@ -582,9 +582,9 @@ TEST_F(InstrumentationTest, FieldWriteObjectEvent) {
   ASSERT_TRUE(field != nullptr);
 
   TestEvent(instrumentation::Instrumentation::kFieldWritten,
-            /*event_method*/ nullptr,
-            /*event_field*/ field,
-            /*with_object*/ true);
+            /*event_method=*/ nullptr,
+            /*event_field=*/ field,
+            /*with_object=*/ true);
 }
 
 TEST_F(InstrumentationTest, FieldWritePrimEvent) {
@@ -600,9 +600,9 @@ TEST_F(InstrumentationTest, FieldWritePrimEvent) {
   ASSERT_TRUE(field != nullptr);
 
   TestEvent(instrumentation::Instrumentation::kFieldWritten,
-            /*event_method*/ nullptr,
-            /*event_field*/ field,
-            /*with_object*/ false);
+            /*event_method=*/ nullptr,
+            /*event_field=*/ field,
+            /*with_object=*/ false);
 }
 
 TEST_F(InstrumentationTest, ExceptionHandledEvent) {

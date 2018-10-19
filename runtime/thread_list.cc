@@ -438,7 +438,7 @@ void ThreadList::RunEmptyCheckpoint() {
   // Wake up the threads blocking for weak ref access so that they will respond to the empty
   // checkpoint request. Otherwise we will hang as they are blocking in the kRunnable state.
   Runtime::Current()->GetHeap()->GetReferenceProcessor()->BroadcastForSlowPath(self);
-  Runtime::Current()->BroadcastForNewSystemWeaks(/*broadcast_for_checkpoint*/true);
+  Runtime::Current()->BroadcastForNewSystemWeaks(/*broadcast_for_checkpoint=*/true);
   {
     ScopedThreadStateChange tsc(self, kWaitingForCheckPointsToRun);
     uint64_t total_wait_time = 0;
@@ -491,9 +491,9 @@ void ThreadList::RunEmptyCheckpoint() {
               // Found a runnable thread that hasn't responded to the empty checkpoint request.
               // Assume it's stuck and safe to dump its stack.
               thread->Dump(LOG_STREAM(FATAL_WITHOUT_ABORT),
-                           /*dump_native_stack*/ true,
-                           /*backtrace_map*/ nullptr,
-                           /*force_dump_stack*/ true);
+                           /*dump_native_stack=*/ true,
+                           /*backtrace_map=*/ nullptr,
+                           /*force_dump_stack=*/ true);
             }
           }
         }

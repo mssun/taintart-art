@@ -587,8 +587,8 @@ void EnterInterpreterFromDeoptimize(Thread* self,
                       accessor,
                       *shadow_frame,
                       value,
-                      /* stay_in_interpreter */ true,
-                      /* from_deoptimize */ true);
+                      /* stay_in_interpreter= */ true,
+                      /* from_deoptimize= */ true);
     }
     ShadowFrame* old_frame = shadow_frame;
     shadow_frame = shadow_frame->GetLink();

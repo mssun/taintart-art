@@ -462,7 +462,7 @@ void ModUnionTableReferenceCache::UpdateAndMarkReferences(MarkObjectVisitor* vis
     for (mirror::HeapReference<mirror::Object>* obj_ptr : references) {
       if (obj_ptr->AsMirrorPtr() != nullptr) {
         all_null = false;
-        visitor->MarkHeapReference(obj_ptr, /*do_atomic_update*/ false);
+        visitor->MarkHeapReference(obj_ptr, /*do_atomic_update=*/ false);
       }
     }
     count += references.size();

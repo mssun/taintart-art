@@ -83,7 +83,7 @@ ObjPtr<mirror::Class> Class::GetPrimitiveClass(ObjPtr<mirror::String> name) {
     Thread* self = Thread::Current();
     if (name == nullptr) {
       // Note: ThrowNullPointerException() requires a message which we deliberately want to omit.
-      self->ThrowNewException("Ljava/lang/NullPointerException;", /* msg */ nullptr);
+      self->ThrowNewException("Ljava/lang/NullPointerException;", /* msg= */ nullptr);
     } else {
       self->ThrowNewException("Ljava/lang/ClassNotFoundException;", name->ToModifiedUtf8().c_str());
     }

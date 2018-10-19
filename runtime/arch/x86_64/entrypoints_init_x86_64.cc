@@ -120,7 +120,7 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
 
   // Read barrier.
   qpoints->pReadBarrierJni = ReadBarrierJni;
-  UpdateReadBarrierEntrypoints(qpoints, /*is_active*/ false);
+  UpdateReadBarrierEntrypoints(qpoints, /*is_active=*/ false);
   qpoints->pReadBarrierMarkReg04 = nullptr;  // Cannot use register 4 (RSP) to pass arguments.
   // x86-64 has only 16 core registers.
   qpoints->pReadBarrierMarkReg16 = nullptr;

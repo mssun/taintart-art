@@ -433,8 +433,8 @@ Heap::Heap(size_t initial_size,
           request_begin,
           capacity_,
           PROT_READ | PROT_WRITE,
-          /* low_4gb */ true,
-          /* reuse */ false,
+          /* low_4gb= */ true,
+          /* reuse= */ false,
           heap_reservation.IsValid() ? &heap_reservation : nullptr,
           &error_str);
     }
@@ -463,7 +463,7 @@ Heap::Heap(size_t initial_size,
                                                                initial_size,
                                                                size,
                                                                size,
-                                                               /* can_move_objects */ false);
+                                                               /* can_move_objects= */ false);
     CHECK(non_moving_space_ != nullptr) << "Failed creating non moving space "
         << non_moving_space_mem_map_begin;
     non_moving_space_->SetFootprintLimit(non_moving_space_->Capacity());
@@ -505,11 +505,11 @@ Heap::Heap(size_t initial_size,
       // Create bump pointer spaces instead of a backup space.
       main_mem_map_2.Reset();
       bump_pointer_space_ = space::BumpPointerSpace::Create(
-          "Bump pointer space 1", kGSSBumpPointerSpaceCapacity, /* requested_begin */ nullptr);
+          "Bump pointer space 1", kGSSBumpPointerSpaceCapacity, /* requested_begin= */ nullptr);
       CHECK(bump_pointer_space_ != nullptr);
       AddSpace(bump_pointer_space_);
       temp_space_ = space::BumpPointerSpace::Create(
-          "Bump pointer space 2", kGSSBumpPointerSpaceCapacity, /* requested_begin */ nullptr);
+          "Bump pointer space 2", kGSSBumpPointerSpaceCapacity, /* requested_begin= */ nullptr);
       CHECK(temp_space_ != nullptr);
       AddSpace(temp_space_);
     } else if (main_mem_map_2.IsValid()) {
@@ -519,7 +519,7 @@ Heap::Heap(size_t initial_size,
                                                            growth_limit_,
                                                            capacity_,
                                                            name,
-                                                           /* can_move_objects */ true));
+                                                           /* can_move_objects= */ true));
       CHECK(main_space_backup_.get() != nullptr);
       // Add the space so its accounted for in the heap_begin and heap_end.
       AddSpace(main_space_backup_.get());
@@ -634,13 +634,13 @@ Heap::Heap(size_t initial_size,
     }
     if (MayUseCollector(kCollectorTypeCC)) {
       concurrent_copying_collector_ = new collector::ConcurrentCopying(this,
-                                                                       /*young_gen*/false,
+                                                                       /*young_gen=*/false,
                                                                        "",
                                                                        measure_gc_performance);
       if (kEnableGenerationalConcurrentCopyingCollection) {
         young_concurrent_copying_collector_ = new collector::ConcurrentCopying(
             this,
-            /*young_gen*/true,
+            /*young_gen=*/true,
             "young",
             measure_gc_performance);
       }
@@ -671,7 +671,7 @@ Heap::Heap(size_t initial_size,
     bool no_gap = MemMap::CheckNoGaps(*first_space->GetMemMap(), *non_moving_space_->GetMemMap());
     if (!no_gap) {
       PrintFileToLog("/proc/self/maps", LogSeverity::ERROR);
-      MemMap::DumpMaps(LOG_STREAM(ERROR), /* terse */ true);
+      MemMap::DumpMaps(LOG_STREAM(ERROR), /* terse= */ true);
       LOG(FATAL) << "There's a gap between the image space and the non-moving space";
     }
   }
@@ -696,7 +696,7 @@ MemMap Heap::MapAnonymousPreferredAddress(const char* name,
                                       request_begin,
                                       capacity,
                                       PROT_READ | PROT_WRITE,
-                                      /* low_4gb*/ true,
+                                      /* low_4gb=*/ true,
                                       out_error_str);
     if (map.IsValid() || request_begin == nullptr) {
       return map;
@@ -1323,7 +1323,7 @@ void Heap::DoPendingCollectorTransition() {
       // Invoke CC full compaction.
       CollectGarbageInternal(collector::kGcTypeFull,
                              kGcCauseCollectorTransition,
-                             /*clear_soft_references*/false);
+                             /*clear_soft_references=*/false);
     } else {
       VLOG(gc) << "CC background compaction ignored due to jank perceptible process state";
     }
@@ -1783,7 +1783,7 @@ mirror::Object* Heap::AllocateInternalWithGc(Thread* self,
           break;
         }
         // Try to transition the heap if the allocation failure was due to the space being full.
-        if (!IsOutOfMemoryOnAllocation(allocator, alloc_size, /*grow*/ false)) {
+        if (!IsOutOfMemoryOnAllocation(allocator, alloc_size, /*grow=*/ false)) {
           // If we aren't out of memory then the OOM was probably from the non moving space being
           // full. Attempt to disable compaction and turn the main space into a non moving space.
           DisableMovingGc();
@@ -3870,7 +3870,7 @@ void Heap::RegisterNativeAllocation(JNIEnv* env, size_t bytes) {
     // Trigger another GC because there have been enough native bytes
     // allocated since the last GC.
     if (IsGcConcurrent()) {
-      RequestConcurrentGC(ThreadForEnv(env), kGcCauseForNativeAlloc, /*force_full*/true);
+      RequestConcurrentGC(ThreadForEnv(env), kGcCauseForNativeAlloc, /*force_full=*/true);
     } else {
       CollectGarbageInternal(NonStickyGcType(), kGcCauseForNativeAlloc, false);
     }
@@ -3916,7 +3916,7 @@ void Heap::CheckPreconditionsForAllocObject(ObjPtr<mirror::Class> c, size_t byte
       << " IsVariableSize=" << c->IsVariableSize()
       << " ObjectSize=" << c->GetObjectSize()
       << " sizeof(Class)=" << sizeof(mirror::Class)
-      << " " << verification_->DumpObjectInfo(c.Ptr(), /*tag*/ "klass");
+      << " " << verification_->DumpObjectInfo(c.Ptr(), /*tag=*/ "klass");
   CHECK_GE(byte_count, sizeof(mirror::Object));
 }
 
@@ -4012,7 +4012,7 @@ void Heap::CheckGcStressMode(Thread* self, ObjPtr<mirror::Object>* obj) {
     {
       static constexpr size_t kMaxFrames = 16u;
       FixedSizeBacktrace<kMaxFrames> backtrace;
-      backtrace.Collect(/* skip_frames */ 2);
+      backtrace.Collect(/* skip_count= */ 2);
       uint64_t hash = backtrace.Hash();
       MutexLock mu(self, *backtrace_lock_);
       new_backtrace = seen_backtraces_.find(hash) == seen_backtraces_.end();
@@ -4023,7 +4023,7 @@ void Heap::CheckGcStressMode(Thread* self, ObjPtr<mirror::Object>* obj) {
     if (new_backtrace) {
       StackHandleScope<1> hs(self);
       auto h = hs.NewHandleWrapper(obj);
-      CollectGarbage(/* clear_soft_references */ false);
+      CollectGarbage(/* clear_soft_references= */ false);
       unique_backtrace_count_.fetch_add(1);
     } else {
       seen_backtrace_count_.fetch_add(1);

@@ -290,7 +290,7 @@ static inline bool DoInvokeVirtualQuick(Thread* self, ShadowFrame& shadow_frame,
     if (jit != nullptr) {
       jit->InvokeVirtualOrInterface(
           receiver, shadow_frame.GetMethod(), shadow_frame.GetDexPC(), called_method);
-      jit->AddSamples(self, shadow_frame.GetMethod(), 1, /*with_backedges*/false);
+      jit->AddSamples(self, shadow_frame.GetMethod(), 1, /*with_backedges=*/false);
     }
     // No need to check since we've been quickened.
     return DoCall<is_range, false>(called_method, self, shadow_frame, inst, inst_data, result);
