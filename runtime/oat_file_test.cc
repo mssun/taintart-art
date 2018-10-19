@@ -74,14 +74,13 @@ TEST_F(OatFileTest, LoadOat) {
   std::string error_msg;
   ASSERT_TRUE(OatFileAssistant::DexLocationToOatFilename(
         dex_location, kRuntimeISA, &oat_location, &error_msg)) << error_msg;
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    oat_location.c_str(),
                                                    oat_location.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    dex_location.c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file.get() != nullptr);
 
@@ -102,14 +101,13 @@ TEST_F(OatFileTest, ChangingMultiDexUncompressed) {
 
   // Ensure we can load that file. Just a precondition.
   {
-    std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+    std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                      oat_location.c_str(),
                                                      oat_location.c_str(),
-                                                     /* requested_base */ nullptr,
-                                                     /* executable */ false,
-                                                     /* low_4gb */ false,
+                                                     /*executable=*/ false,
+                                                     /*low_4gb=*/ false,
                                                      dex_location.c_str(),
-                                                     /* reservation */ nullptr,
+                                                     /*reservation=*/ nullptr,
                                                      &error_msg));
     ASSERT_TRUE(odex_file != nullptr);
     ASSERT_EQ(2u, odex_file->GetOatDexFiles().size());
@@ -119,14 +117,13 @@ TEST_F(OatFileTest, ChangingMultiDexUncompressed) {
   Copy(GetTestDexFileName("MainUncompressed"), dex_location);
 
   // And try to load again.
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    oat_location,
                                                    oat_location,
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    dex_location.c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   EXPECT_TRUE(odex_file == nullptr);
   EXPECT_NE(std::string::npos, error_msg.find("expected 2 uncompressed dex files, but found 1"))

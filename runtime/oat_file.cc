@@ -101,7 +101,6 @@ class OatFileBase : public OatFile {
                                   const std::string& vdex_filename,
                                   const std::string& elf_filename,
                                   const std::string& location,
-                                  uint8_t* requested_base,
                                   bool writable,
                                   bool executable,
                                   bool low_4gb,
@@ -115,7 +114,6 @@ class OatFileBase : public OatFile {
                                   int oat_fd,
                                   const std::string& vdex_filename,
                                   const std::string& oat_filename,
-                                  uint8_t* requested_base,
                                   bool writable,
                                   bool executable,
                                   bool low_4gb,
@@ -156,9 +154,7 @@ class OatFileBase : public OatFile {
                     /*inout*/MemMap* reservation,  // Where to load if not null.
                     /*out*/std::string* error_msg) = 0;
 
-  bool ComputeFields(uint8_t* requested_base,
-                     const std::string& file_path,
-                     std::string* error_msg);
+  bool ComputeFields(const std::string& file_path, std::string* error_msg);
 
   virtual void PreSetup(const std::string& elf_filename) = 0;
 
@@ -187,7 +183,6 @@ OatFileBase* OatFileBase::OpenOatFile(int zip_fd,
                                       const std::string& vdex_filename,
                                       const std::string& elf_filename,
                                       const std::string& location,
-                                      uint8_t* requested_base,
                                       bool writable,
                                       bool executable,
                                       bool low_4gb,
@@ -207,7 +202,7 @@ OatFileBase* OatFileBase::OpenOatFile(int zip_fd,
     return nullptr;
   }
 
-  if (!ret->ComputeFields(requested_base, elf_filename, error_msg)) {
+  if (!ret->ComputeFields(elf_filename, error_msg)) {
     return nullptr;
   }
 
@@ -230,7 +225,6 @@ OatFileBase* OatFileBase::OpenOatFile(int zip_fd,
                                       int oat_fd,
                                       const std::string& vdex_location,
                                       const std::string& oat_location,
-                                      uint8_t* requested_base,
                                       bool writable,
                                       bool executable,
                                       bool low_4gb,
@@ -248,7 +242,7 @@ OatFileBase* OatFileBase::OpenOatFile(int zip_fd,
     return nullptr;
   }
 
-  if (!ret->ComputeFields(requested_base, oat_location, error_msg)) {
+  if (!ret->ComputeFields(oat_location, error_msg)) {
     return nullptr;
   }
 
@@ -271,7 +265,7 @@ bool OatFileBase::LoadVdex(const std::string& vdex_filename,
                            std::string* error_msg) {
   vdex_ = VdexFile::OpenAtAddress(vdex_begin_,
                                   vdex_end_ - vdex_begin_,
-                                  vdex_begin_ != nullptr /* mmap_reuse */,
+                                  /*mmap_reuse=*/ vdex_begin_ != nullptr,
                                   vdex_filename,
                                   writable,
                                   low_4gb,
@@ -299,13 +293,13 @@ bool OatFileBase::LoadVdex(int vdex_fd,
     } else {
       vdex_ = VdexFile::OpenAtAddress(vdex_begin_,
                                       vdex_end_ - vdex_begin_,
-                                      vdex_begin_ != nullptr /* mmap_reuse */,
+                                      /*mmap_reuse=*/ vdex_begin_ != nullptr,
                                       vdex_fd,
                                       s.st_size,
                                       vdex_filename,
                                       writable,
                                       low_4gb,
-                                      false /* unquicken */,
+                                      /*unquicken=*/ false,
                                       error_msg);
       if (vdex_.get() == nullptr) {
         *error_msg = "Failed opening vdex file.";
@@ -316,25 +310,13 @@ bool OatFileBase::LoadVdex(int vdex_fd,
   return true;
 }
 
-bool OatFileBase::ComputeFields(uint8_t* requested_base,
-                                const std::string& file_path,
-                                std::string* error_msg) {
+bool OatFileBase::ComputeFields(const std::string& file_path, std::string* error_msg) {
   std::string symbol_error_msg;
   begin_ = FindDynamicSymbolAddress("oatdata", &symbol_error_msg);
   if (begin_ == nullptr) {
     *error_msg = StringPrintf("Failed to find oatdata symbol in '%s' %s",
                               file_path.c_str(),
                               symbol_error_msg.c_str());
-    return false;
-  }
-  if (requested_base != nullptr && begin_ != requested_base) {
-    // Host can fail this check. Do not dump there to avoid polluting the output.
-    if (kIsTargetBuild && (kIsDebugBuild || VLOG_IS_ON(oat))) {
-      PrintFileToLog("/proc/self/maps", android::base::LogSeverity::WARNING);
-    }
-    *error_msg = StringPrintf("Failed to find oatdata symbol at expected address: "
-        "oatdata=%p != expected=%p. See process maps in the log.",
-        begin_, requested_base);
     return false;
   }
   end_ = FindDynamicSymbolAddress("oatlastword", &symbol_error_msg);
@@ -649,15 +631,15 @@ bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* e
         if (zip_fd != -1) {
           loaded = dex_file_loader.OpenZip(zip_fd,
                                            dex_file_location,
-                                           /* verify */ false,
-                                           /* verify_checksum */ false,
+                                           /*verify=*/ false,
+                                           /*verify_checksum=*/ false,
                                            error_msg,
                                            uncompressed_dex_files_.get());
         } else {
           loaded = dex_file_loader.Open(dex_file_location.c_str(),
                                         dex_file_location,
-                                        /* verify */ false,
-                                        /* verify_checksum */ false,
+                                        /*verify=*/ false,
+                                        /*verify_checksum=*/ false,
                                         error_msg,
                                         uncompressed_dex_files_.get());
         }
@@ -1323,7 +1305,7 @@ ElfOatFile* ElfOatFile::OpenElfFile(int zip_fd,
   }
 
   // Complete the setup.
-  if (!oat_file->ComputeFields(/* requested_base */ nullptr, file->GetPath(), error_msg)) {
+  if (!oat_file->ComputeFields(file->GetPath(), error_msg)) {
     return nullptr;
   }
 
@@ -1407,10 +1389,9 @@ bool ElfOatFile::ElfFileOpen(File* file,
                              /*inout*/MemMap* reservation,
                              /*out*/std::string* error_msg) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
-  // TODO: rename requested_base to oat_data_begin
   elf_file_.reset(ElfFile::Open(file,
                                 writable,
-                                /*program_header_only*/true,
+                                /*program_header_only=*/ true,
                                 low_4gb,
                                 error_msg));
   if (elf_file_ == nullptr) {
@@ -1458,7 +1439,7 @@ OatFile* OatFile::OpenWithElfFile(int zip_fd,
                                   const std::string& location,
                                   const char* abs_dex_location,
                                   std::string* error_msg) {
-  std::unique_ptr<ElfOatFile> oat_file(new ElfOatFile(location, false /* executable */));
+  std::unique_ptr<ElfOatFile> oat_file(new ElfOatFile(location, /*executable=*/ false));
   return oat_file->InitializeFromElfFile(zip_fd, elf_file, vdex_file, abs_dex_location, error_msg)
       ? oat_file.release()
       : nullptr;
@@ -1467,7 +1448,6 @@ OatFile* OatFile::OpenWithElfFile(int zip_fd,
 OatFile* OatFile::Open(int zip_fd,
                        const std::string& oat_filename,
                        const std::string& oat_location,
-                       uint8_t* requested_base,
                        bool executable,
                        bool low_4gb,
                        const char* abs_dex_location,
@@ -1494,8 +1474,7 @@ OatFile* OatFile::Open(int zip_fd,
                                                                  vdex_filename,
                                                                  oat_filename,
                                                                  oat_location,
-                                                                 requested_base,
-                                                                 false /* writable */,
+                                                                 /*writable=*/ false,
                                                                  executable,
                                                                  low_4gb,
                                                                  abs_dex_location,
@@ -1524,8 +1503,7 @@ OatFile* OatFile::Open(int zip_fd,
                                                                 vdex_filename,
                                                                 oat_filename,
                                                                 oat_location,
-                                                                requested_base,
-                                                                false /* writable */,
+                                                                /*writable=*/ false,
                                                                 executable,
                                                                 low_4gb,
                                                                 abs_dex_location,
@@ -1538,7 +1516,6 @@ OatFile* OatFile::Open(int zip_fd,
                        int vdex_fd,
                        int oat_fd,
                        const std::string& oat_location,
-                       uint8_t* requested_base,
                        bool executable,
                        bool low_4gb,
                        const char* abs_dex_location,
@@ -1553,8 +1530,7 @@ OatFile* OatFile::Open(int zip_fd,
                                                                 oat_fd,
                                                                 vdex_location,
                                                                 oat_location,
-                                                                requested_base,
-                                                                false /* writable */,
+                                                                /*writable=*/ false,
                                                                 executable,
                                                                 low_4gb,
                                                                 abs_dex_location,
@@ -1572,11 +1548,11 @@ OatFile* OatFile::OpenWritable(int zip_fd,
   return ElfOatFile::OpenElfFile(zip_fd,
                                  file,
                                  location,
-                                 /* writable */ true,
-                                 /* executable */ false,
-                                 /*low_4gb*/false,
+                                 /*writable=*/ true,
+                                 /*executable=*/ false,
+                                 /*low_4gb=*/false,
                                  abs_dex_location,
-                                 /* reservation */ nullptr,
+                                 /*reservation=*/ nullptr,
                                  error_msg);
 }
 
@@ -1589,11 +1565,11 @@ OatFile* OatFile::OpenReadable(int zip_fd,
   return ElfOatFile::OpenElfFile(zip_fd,
                                  file,
                                  location,
-                                 /* writable */ false,
-                                 /* executable */ false,
-                                 /*low_4gb*/false,
+                                 /*writable=*/ false,
+                                 /*executable=*/ false,
+                                 /*low_4gb=*/false,
                                  abs_dex_location,
-                                 /* reservation */ nullptr,
+                                 /*reservation=*/ nullptr,
                                  error_msg);
 }
 
