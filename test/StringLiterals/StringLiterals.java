@@ -15,6 +15,18 @@
  */
 
 class StringLiterals {
+    static class StartupClass {
+        static {
+            System.out.println("Startup init");
+        }
+    }
+
+    static class OtherClass {
+        static {
+            System.out.println("Other class init");
+        }
+    }
+
     void startUpMethod() {
         String resource = "abcd.apk";
         System.out.println("Starting up");
