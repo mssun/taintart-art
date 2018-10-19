@@ -148,16 +148,6 @@ class ImageSpace : public MemMapSpace {
     return Begin() + GetImageHeader().GetImageSize();
   }
 
-  // Return the start of the associated oat file.
-  uint8_t* GetOatFileBegin() const {
-    return GetImageHeader().GetOatFileBegin();
-  }
-
-  // Return the end of the associated oat file.
-  uint8_t* GetOatFileEnd() const {
-    return GetImageHeader().GetOatFileEnd();
-  }
-
   void DumpSections(std::ostream& os) const;
 
   // De-initialize the image-space by undoing the effects in Init().

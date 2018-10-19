@@ -123,14 +123,13 @@ void DexoptTest::GenerateOatForTest(const std::string& dex_location,
   ASSERT_TRUE(Dex2Oat(args, &error_msg)) << error_msg;
 
   // Verify the odex file was generated as expected.
-  std::unique_ptr<OatFile> odex_file(OatFile::Open(/* zip_fd */ -1,
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    oat_location.c_str(),
                                                    oat_location.c_str(),
-                                                   /* requested_base */ nullptr,
-                                                   /* executable */ false,
-                                                   /* low_4gb */ false,
+                                                   /*executable=*/ false,
+                                                   /*low_4gb=*/ false,
                                                    dex_location.c_str(),
-                                                   /* reservation */ nullptr,
+                                                   /*reservation=*/ nullptr,
                                                    &error_msg));
   ASSERT_TRUE(odex_file.get() != nullptr) << error_msg;
   EXPECT_EQ(filter, odex_file->GetCompilerFilter());
@@ -159,7 +158,7 @@ void DexoptTest::GenerateOdexForTest(const std::string& dex_location,
   GenerateOatForTest(dex_location,
                      odex_location,
                      filter,
-                     /* with_alternate_image */ false,
+                     /*with_alternate_image=*/ false,
                      compilation_reason);
 }
 
@@ -177,7 +176,7 @@ void DexoptTest::GenerateOatForTest(const char* dex_location,
 }
 
 void DexoptTest::GenerateOatForTest(const char* dex_location, CompilerFilter::Filter filter) {
-  GenerateOatForTest(dex_location, filter, /* with_alternate_image */ false);
+  GenerateOatForTest(dex_location, filter, /*with_alternate_image=*/ false);
 }
 
 void DexoptTest::ReserveImageSpace() {
