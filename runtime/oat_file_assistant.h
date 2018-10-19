@@ -247,7 +247,6 @@ class OatFileAssistant {
  private:
   struct ImageInfo {
     uint32_t oat_checksum = 0;
-    uintptr_t oat_data_begin = 0;
     int32_t patch_delta = 0;
     std::string location;
 
