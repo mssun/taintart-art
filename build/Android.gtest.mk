@@ -490,7 +490,6 @@ define define-art-gtest-rule-host
   gtest_suffix := $(1)$$($(3)ART_PHONY_TEST_HOST_SUFFIX)
   gtest_rule := test-art-host-gtest-$$(gtest_suffix)
   gtest_output := $(call intermediates-dir-for,PACKAGING,art-host-gtest,HOST)/$$(gtest_suffix).xml
-  $$(call dist-for-goals,$$(gtest_rule),$$(gtest_output):gtest/$$(gtest_suffix))
   gtest_exe := $(OUT_DIR)/$(2)
   # Dependencies for all host gtests.
   gtest_deps := $$(HOST_CORE_DEX_LOCATIONS) \
