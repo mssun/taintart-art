@@ -105,12 +105,21 @@ static void SendListenMessage(const android::base::unique_fd& fd) {
   TEMP_FAILURE_RETRY(send(fd, kListenStartMessage, sizeof(kListenStartMessage), MSG_EOR));
 }
 
+// Copy from file_utils, so we do not need to depend on libartbase.
+static int DupCloexec(int fd) {
+#if defined(__linux__)
+  return fcntl(fd, F_DUPFD_CLOEXEC, 0);
+#else
+  return dup(fd);
+#endif
+}
+
 jdwpTransportError FdForwardTransport::SetupListen(int listen_fd) {
   std::lock_guard<std::mutex> lk(state_mutex_);
   if (!ChangeState(TransportState::kClosed, TransportState::kListenSetup)) {
     return ERR(ILLEGAL_STATE);
   } else {
-    listen_fd_.reset(dup(listen_fd));
+    listen_fd_.reset(DupCloexec(listen_fd));
     SendListenMessage(listen_fd_);
     CHECK(ChangeState(TransportState::kListenSetup, TransportState::kListening));
     return OK;
@@ -339,7 +348,7 @@ IOResult FdForwardTransport::ReceiveFdsFromSocket(bool* do_handshake) {
   write_lock_fd_.reset(out_fds.write_lock_fd_);
 
   // We got the fds. Send ack.
-  close_notify_fd_.reset(dup(listen_fd_));
+  close_notify_fd_.reset(DupCloexec(listen_fd_));
   SendAcceptMessage(close_notify_fd_);
 
   return IOResult::kOk;

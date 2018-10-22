@@ -26,6 +26,7 @@
 #include "base/bit_vector-inl.h"
 #include "base/enums.h"
 #include "base/file_magic.h"
+#include "base/file_utils.h"
 #include "base/indenter.h"
 #include "base/logging.h"  // For VLOG
 #include "base/os.h"
@@ -3430,7 +3431,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
                                     &error_msg);
   } else if (oat_dex_file->source_.IsRawFile()) {
     File* raw_file = oat_dex_file->source_.GetRawFile();
-    int dup_fd = dup(raw_file->Fd());
+    int dup_fd = DupCloexec(raw_file->Fd());
     if (dup_fd < 0) {
       PLOG(ERROR) << "Failed to dup dex file descriptor (" << raw_file->Fd() << ") at " << location;
       return false;

@@ -19,6 +19,7 @@
 #include "arch/instruction_set_features.h"
 #include "art_method-inl.h"
 #include "base/enums.h"
+#include "base/file_utils.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
@@ -765,7 +766,7 @@ void OatTest::TestZipFileInput(bool verify) {
 
   {
     // Test using the AddZipDexFileSource() interface with the zip file handle.
-    File zip_fd(dup(zip_file.GetFd()), /*check_usage=*/ false);
+    File zip_fd(DupCloexec(zip_file.GetFd()), /*check_usage=*/ false);
     ASSERT_NE(-1, zip_fd.Fd());
 
     ScratchFile tmp_base, tmp_oat(tmp_base, ".oat"), tmp_vdex(tmp_base, ".vdex");

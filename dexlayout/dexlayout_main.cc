@@ -190,7 +190,7 @@ int DexlayoutDriver(int argc, char** argv) {
   // Open profile file.
   std::unique_ptr<ProfileCompilationInfo> profile_info;
   if (options.profile_file_name_) {
-    int profile_fd = open(options.profile_file_name_, O_RDONLY);
+    int profile_fd = open(options.profile_file_name_, O_RDONLY | O_CLOEXEC);
     if (profile_fd < 0) {
       PLOG(ERROR) << "Can't open " << options.profile_file_name_;
       return 1;

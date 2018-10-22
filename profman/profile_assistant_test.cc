@@ -1192,7 +1192,7 @@ TEST_F(ProfileAssistantTest, MergeProfilesWithFilter) {
 
   // Run profman and pass the dex file with --apk-fd.
   android::base::unique_fd apk_fd(
-      open(GetTestDexFileName("ProfileTestMultiDex").c_str(), O_RDONLY));
+      open(GetTestDexFileName("ProfileTestMultiDex").c_str(), O_RDONLY));  // NOLINT
   ASSERT_GE(apk_fd.get(), 0);
 
   std::string profman_cmd = GetProfmanCmd();
@@ -1270,7 +1270,7 @@ TEST_F(ProfileAssistantTest, CopyAndUpdateProfileKey) {
 
   // Run profman and pass the dex file with --apk-fd.
   android::base::unique_fd apk_fd(
-      open(GetTestDexFileName("ProfileTestMultiDex").c_str(), O_RDONLY));
+      open(GetTestDexFileName("ProfileTestMultiDex").c_str(), O_RDONLY));  // NOLINT
   ASSERT_GE(apk_fd.get(), 0);
 
   std::string profman_cmd = GetProfmanCmd();

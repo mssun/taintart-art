@@ -338,9 +338,9 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithFd) {
                      CompilerFilter::kSpeed,
                      /* with_alternate_image */ false);
 
-  android::base::unique_fd odex_fd(open(odex_location.c_str(), O_RDONLY));
-  android::base::unique_fd vdex_fd(open(vdex_location.c_str(), O_RDONLY));
-  android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY));
+  android::base::unique_fd odex_fd(open(odex_location.c_str(), O_RDONLY | O_CLOEXEC));
+  android::base::unique_fd vdex_fd(open(vdex_location.c_str(), O_RDONLY | O_CLOEXEC));
+  android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY | O_CLOEXEC));
 
   OatFileAssistant oat_file_assistant(dex_location.c_str(),
                                       kRuntimeISA,
@@ -377,8 +377,8 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidOdexFd) {
                      CompilerFilter::kSpeed,
                      /* with_alternate_image */ false);
 
-  android::base::unique_fd vdex_fd(open(vdex_location.c_str(), O_RDONLY));
-  android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY));
+  android::base::unique_fd vdex_fd(open(vdex_location.c_str(), O_RDONLY | O_CLOEXEC));
+  android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY | O_CLOEXEC));
 
   OatFileAssistant oat_file_assistant(dex_location.c_str(),
                                       kRuntimeISA,
@@ -410,8 +410,8 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidVdexFd) {
                      CompilerFilter::kSpeed,
                      /* with_alternate_image */ false);
 
-  android::base::unique_fd odex_fd(open(odex_location.c_str(), O_RDONLY));
-  android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY));
+  android::base::unique_fd odex_fd(open(odex_location.c_str(), O_RDONLY | O_CLOEXEC));
+  android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY | O_CLOEXEC));
 
   OatFileAssistant oat_file_assistant(dex_location.c_str(),
                                       kRuntimeISA,
@@ -436,7 +436,7 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidOdexVdexFd) {
 
   Copy(GetDexSrc1(), dex_location);
 
-  android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY));
+  android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY | O_CLOEXEC));
   OatFileAssistant oat_file_assistant(dex_location.c_str(),
                                       kRuntimeISA,
                                       false,
