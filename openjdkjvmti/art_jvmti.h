@@ -102,6 +102,10 @@ struct ArtJvmTiEnv : public jvmtiEnv {
   // RW lock to protect access to all of the event data.
   art::ReaderWriterMutex event_info_mutex_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
+  std::string last_error_ GUARDED_BY(last_error_mutex_);
+  // Lock to touch the last-error-message.
+  art::Mutex last_error_mutex_ BOTTOM_MUTEX_ACQUIRED_AFTER;
+
   ArtJvmTiEnv(art::JavaVMExt* runtime, EventHandler* event_handler, jint ti_version);
 
   static ArtJvmTiEnv* AsArtJvmTiEnv(jvmtiEnv* env) {
