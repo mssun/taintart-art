@@ -895,40 +895,37 @@ void ConditionVariable::Broadcast(Thread* self) {
   // guard_.AssertExclusiveHeld(self);
   DCHECK_EQ(guard_.GetExclusiveOwnerTid(), SafeGetTid(self));
 #if ART_USE_FUTEXES
-  if (num_waiters_ > 0) {
-    sequence_++;  // Indicate the broadcast occurred.
-    bool done = false;
-    do {
-      int32_t cur_sequence = sequence_.load(std::memory_order_relaxed);
-      // Requeue waiters onto mutex. The waiter holds the contender count on the mutex high ensuring
-      // mutex unlocks will awaken the requeued waiter thread.
-      done = futex(sequence_.Address(), FUTEX_CMP_REQUEUE, 0,
-                   reinterpret_cast<const timespec*>(std::numeric_limits<int32_t>::max()),
-                   guard_.state_.Address(), cur_sequence) != -1;
-      if (!done) {
-        if (errno != EAGAIN && errno != EINTR) {
-          PLOG(FATAL) << "futex cmp requeue failed for " << name_;
-        }
-      }
-    } while (!done);
-  }
+  RequeueWaiters(std::numeric_limits<int32_t>::max());
 #else
   CHECK_MUTEX_CALL(pthread_cond_broadcast, (&cond_));
 #endif
 }
 
+#if ART_USE_FUTEXES
+void ConditionVariable::RequeueWaiters(int32_t count) {
+  if (num_waiters_ > 0) {
+    sequence_++;  // Indicate a signal occurred.
+    // Move waiters from the condition variable's futex to the guard's futex,
+    // so that they will be woken up when the mutex is released.
+    bool done = futex(sequence_.Address(),
+                      FUTEX_REQUEUE,
+                      /* Threads to wake */ 0,
+                      /* Threads to requeue*/ reinterpret_cast<const timespec*>(count),
+                      guard_.state_.Address(),
+                      0) != -1;
+    if (!done && errno != EAGAIN && errno != EINTR) {
+      PLOG(FATAL) << "futex requeue failed for " << name_;
+    }
+  }
+}
+#endif
+
+
 void ConditionVariable::Signal(Thread* self) {
   DCHECK(self == nullptr || self == Thread::Current());
   guard_.AssertExclusiveHeld(self);
 #if ART_USE_FUTEXES
-  if (num_waiters_ > 0) {
-    sequence_++;  // Indicate a signal occurred.
-    // Futex wake 1 waiter who will then come and in contend on mutex. It'd be nice to requeue them
-    // to avoid this, however, requeueing can only move all waiters.
-    int num_woken = futex(sequence_.Address(), FUTEX_WAKE, 1, nullptr, nullptr, 0);
-    // Check something was woken or else we changed sequence_ before they had chance to wait.
-    CHECK((num_woken == 0) || (num_woken == 1));
-  }
+  RequeueWaiters(1);
 #else
   CHECK_MUTEX_CALL(pthread_cond_signal, (&cond_));
 #endif
