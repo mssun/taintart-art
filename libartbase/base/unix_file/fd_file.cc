@@ -431,7 +431,7 @@ bool FdFile::Unlink() {
   bool is_current = false;
   {
     struct stat this_stat, current_stat;
-    int cur_fd = TEMP_FAILURE_RETRY(open(file_path_.c_str(), O_RDONLY));
+    int cur_fd = TEMP_FAILURE_RETRY(open(file_path_.c_str(), O_RDONLY | O_CLOEXEC));
     if (cur_fd > 0) {
       // File still exists.
       if (fstat(fd_, &this_stat) == 0 && fstat(cur_fd, &current_stat) == 0) {

@@ -23,6 +23,7 @@
 #include <memory>
 
 #include "base/common_art_test.h"
+#include "file_utils.h"
 #include "os.h"
 #include "unix_file/fd_file.h"
 
@@ -41,7 +42,7 @@ TEST_F(ZipArchiveTest, FindAndExtract) {
 
   ScratchFile tmp;
   ASSERT_NE(-1, tmp.GetFd());
-  std::unique_ptr<File> file(new File(dup(tmp.GetFd()), tmp.GetFilename(), false));
+  std::unique_ptr<File> file(new File(DupCloexec(tmp.GetFd()), tmp.GetFilename(), false));
   ASSERT_TRUE(file.get() != nullptr);
   bool success = zip_entry->ExtractToFile(*file, &error_msg);
   ASSERT_TRUE(success) << error_msg;
@@ -49,7 +50,7 @@ TEST_F(ZipArchiveTest, FindAndExtract) {
   file.reset(nullptr);
 
   uint32_t computed_crc = crc32(0L, Z_NULL, 0);
-  int fd = open(tmp.GetFilename().c_str(), O_RDONLY);
+  int fd = open(tmp.GetFilename().c_str(), O_RDONLY | O_CLOEXEC);
   ASSERT_NE(-1, fd);
   const size_t kBufSize = 32768;
   uint8_t buf[kBufSize];
