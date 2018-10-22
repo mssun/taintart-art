@@ -1,0 +1,4 @@
+LastError is: <call returned error: class java.lang.RuntimeException: JVMTI_ERROR_ABSENT_INFORMATION>
+Got class java.lang.Exception: Failed to redefine class <Lart/Test1957$Transform;> due to JVMTI_ERROR_UNSUPPORTED_REDEFINITION_METHOD_DELETED
+LastError is: FAILURE TO REDEFINE Unable to perform redefinition of 'Lart/Test1957$Transform;': Total number of declared methods changed from 2 to 1
+LastError is: <call returned error: class java.lang.RuntimeException: JVMTI_ERROR_ABSENT_INFORMATION>

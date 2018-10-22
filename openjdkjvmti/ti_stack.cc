@@ -57,6 +57,7 @@
 #include "nativehelper/scoped_local_ref.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
+#include "ti_logging.h"
 #include "ti_thread.h"
 #include "thread-current-inl.h"
 #include "thread_list.h"
@@ -1097,7 +1098,7 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
   } while (true);
 }
 
-jvmtiError StackUtil::PopFrame(jvmtiEnv* env ATTRIBUTE_UNUSED, jthread thread) {
+jvmtiError StackUtil::PopFrame(jvmtiEnv* env, jthread thread) {
   art::Thread* self = art::Thread::Current();
   art::Thread* target;
   do {
@@ -1131,9 +1132,10 @@ jvmtiError StackUtil::PopFrame(jvmtiEnv* env ATTRIBUTE_UNUSED, jthread thread) {
         tls_data->disable_pop_frame_depth != JvmtiGlobalTLSData::kNoDisallowedPopFrame &&
         tls_data->disable_pop_frame_depth == art::StackVisitor::ComputeNumFrames(target,
                                                                                  kWalkKind)) {
-      LOG(WARNING) << "Disallowing frame pop due to in-progress class-load/prepare. Frame at depth "
-                   << tls_data->disable_pop_frame_depth << " was marked as un-poppable by the "
-                   << "jvmti plugin. See b/117615146 for more information.";
+      JVMTI_LOG(WARNING, env) << "Disallowing frame pop due to in-progress class-load/prepare. "
+                              << "Frame at depth " << tls_data->disable_pop_frame_depth << " was "
+                              << "marked as un-poppable by the jvmti plugin. See b/117615146 for "
+                              << "more information.";
       return ERR(OPAQUE_FRAME);
     }
     // We hold the user_code_suspension_lock_ so the target thread is staying suspended until we are
