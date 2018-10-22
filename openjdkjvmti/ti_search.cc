@@ -52,6 +52,7 @@
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 #include "thread_list.h"
+#include "ti_logging.h"
 #include "ti_phase.h"
 #include "well_known_classes.h"
 
@@ -213,7 +214,7 @@ void SearchUtil::Unregister() {
   runtime->GetRuntimeCallbacks()->RemoveRuntimePhaseCallback(&gSearchCallback);
 }
 
-jvmtiError SearchUtil::AddToBootstrapClassLoaderSearch(jvmtiEnv* env ATTRIBUTE_UNUSED,
+jvmtiError SearchUtil::AddToBootstrapClassLoaderSearch(jvmtiEnv* env,
                                                        const char* segment) {
   art::Runtime* current = art::Runtime::Current();
   if (current == nullptr) {
@@ -235,7 +236,8 @@ jvmtiError SearchUtil::AddToBootstrapClassLoaderSearch(jvmtiEnv* env ATTRIBUTE_U
                             /* verify_checksum= */ true,
                             &error_msg,
                             &dex_files)) {
-    LOG(WARNING) << "Could not open " << segment << " for boot classpath extension: " << error_msg;
+    JVMTI_LOG(WARNING, env) << "Could not open " << segment << " for boot classpath extension: "
+                            << error_msg;
     return ERR(ILLEGAL_ARGUMENT);
   }
 

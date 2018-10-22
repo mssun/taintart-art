@@ -39,6 +39,7 @@
 #include "debugger.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-inl.h"
+#include "ti_logging.h"
 
 namespace openjdkjvmti {
 
@@ -69,7 +70,7 @@ jvmtiError DDMSUtil::HandleChunk(jvmtiEnv* env,
                                 data_arr,
                                 /*out*/reinterpret_cast<uint32_t*>(type_out),
                                 /*out*/&out_data)) {
-    LOG(WARNING) << "Something went wrong with handling the ddm chunk.";
+    JVMTI_LOG(WARNING, env) << "Something went wrong with handling the ddm chunk.";
     return ERR(INTERNAL);
   } else {
     jvmtiError error = OK;
