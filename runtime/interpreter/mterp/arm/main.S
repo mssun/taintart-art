@@ -531,9 +531,9 @@ MterpException:
     ldr     rIBASE, [rSELF, #THREAD_CURRENT_IBASE_OFFSET]
     add     rPC, r0, r1, lsl #1                     @ generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
-    bl      MterpShouldSwitchInterpreters
+    ldr     r0, [rSELF, #THREAD_USE_MTERP_OFFSET]
     cmp     r0, #0
-    bne     MterpFallback
+    beq     MterpFallback
     /* resume execution at catch block */
     EXPORT_PC
     FETCH_INST

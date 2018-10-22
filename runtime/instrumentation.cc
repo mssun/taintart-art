@@ -43,6 +43,7 @@
 #include "mirror/object_array-inl.h"
 #include "nth_caller_visitor.h"
 #include "oat_quick_method_header.h"
+#include "runtime-inl.h"
 #include "thread.h"
 #include "thread_list.h"
 
@@ -536,7 +537,7 @@ static void PotentiallyAddListenerTo(Instrumentation::InstrumentationEvent event
   } else {
     list.push_back(listener);
   }
-  *has_listener = true;
+  Runtime::DoAndMaybeSwitchInterpreter([=](){ *has_listener = true; });
 }
 
 void Instrumentation::AddListener(InstrumentationListener* listener, uint32_t events) {
@@ -614,11 +615,11 @@ static void PotentiallyRemoveListenerFrom(Instrumentation::InstrumentationEvent 
   // Check if the list contains any non-null listener, and update 'has_listener'.
   for (InstrumentationListener* l : list) {
     if (l != nullptr) {
-      *has_listener = true;
+      Runtime::DoAndMaybeSwitchInterpreter([=](){ *has_listener = true; });
       return;
     }
   }
-  *has_listener = false;
+  Runtime::DoAndMaybeSwitchInterpreter([=](){ *has_listener = false; });
 }
 
 void Instrumentation::RemoveListener(InstrumentationListener* listener, uint32_t events) {

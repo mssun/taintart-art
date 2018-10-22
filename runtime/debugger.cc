@@ -65,6 +65,7 @@
 #include "oat_file.h"
 #include "obj_ptr-inl.h"
 #include "reflection.h"
+#include "runtime-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "thread_list.h"
@@ -688,7 +689,7 @@ void Dbg::GoActive() {
     runtime->GetInstrumentation()->EnableDeoptimization();
   }
   instrumentation_events_ = 0;
-  gDebuggerActive = true;
+  Runtime::DoAndMaybeSwitchInterpreter([=](){ gDebuggerActive = true; });
   Runtime::Current()->GetRuntimeCallbacks()->AddMethodInspectionCallback(&gDebugActiveCallback);
   LOG(INFO) << "Debugger is active";
 }
@@ -726,7 +727,7 @@ void Dbg::Disconnected() {
       if (RequiresDeoptimization()) {
         runtime->GetInstrumentation()->DisableDeoptimization(kDbgInstrumentationKey);
       }
-      gDebuggerActive = false;
+      Runtime::DoAndMaybeSwitchInterpreter([=](){ gDebuggerActive = false; });
       Runtime::Current()->GetRuntimeCallbacks()->RemoveMethodInspectionCallback(
           &gDebugActiveCallback);
     }
