@@ -25,7 +25,9 @@
 #include "base/casts.h"
 #include "entrypoints/quick/callee_save_frame.h"
 #include "gc_root-inl.h"
+#include "interpreter/mterp/mterp.h"
 #include "obj_ptr-inl.h"
+#include "thread_list.h"
 
 namespace art {
 
@@ -84,6 +86,15 @@ inline ArtMethod* Runtime::GetCalleeSaveMethod(CalleeSaveType type)
 inline ArtMethod* Runtime::GetCalleeSaveMethodUnchecked(CalleeSaveType type)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return reinterpret_cast64<ArtMethod*>(callee_save_methods_[static_cast<size_t>(type)]);
+}
+
+template<typename Action>
+void Runtime::DoAndMaybeSwitchInterpreter(Action lamda) {
+  MutexLock tll_mu(Thread::Current(), *Locks::thread_list_lock_);
+  lamda();
+  Runtime::Current()->GetThreadList()->ForEach([](Thread* thread, void*) {
+      thread->tls32_.use_mterp.store(interpreter::CanUseMterp());
+  }, nullptr);
 }
 
 }  // namespace art

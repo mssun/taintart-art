@@ -13,8 +13,8 @@
     bl      $helper
     cbz     w0, MterpException
     FETCH_ADVANCE_INST 3
-    bl      MterpShouldSwitchInterpreters
-    cbnz    w0, MterpFallback
+    ldr     w0, [xSELF, #THREAD_USE_MTERP_OFFSET]
+    cbz     w0, MterpFallback
     GET_INST_OPCODE ip
     GOTO_OPCODE ip
 
@@ -34,8 +34,8 @@
     bl      $helper
     cbz     w0, MterpException
     FETCH_ADVANCE_INST 4
-    bl      MterpShouldSwitchInterpreters
-    cbnz    w0, MterpFallback
+    ldr     w0, [xSELF, #THREAD_USE_MTERP_OFFSET]
+    cbz     w0, MterpFallback
     GET_INST_OPCODE ip
     GOTO_OPCODE ip
 

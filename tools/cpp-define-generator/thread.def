@@ -56,5 +56,7 @@ ASM_DEFINE(THREAD_SUSPEND_OR_CHECKPOINT_REQUEST,
            art::kSuspendRequest | art::kCheckpointRequest | art::kEmptyCheckpointRequest)
 ASM_DEFINE(THREAD_SUSPEND_REQUEST,
            art::kSuspendRequest)
+ASM_DEFINE(THREAD_USE_MTERP_OFFSET,
+           art::Thread::UseMterpOffset<art::kRuntimePointerSize>().Int32Value())
 ASM_DEFINE(THREAD_TOP_QUICK_FRAME_OFFSET,
            art::Thread::TopOfManagedStackOffset<art::kRuntimePointerSize>().Int32Value())
