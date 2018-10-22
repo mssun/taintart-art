@@ -20,6 +20,7 @@
 
 #include "android-base/endian.h"
 #include "android-base/stringprintf.h"
+#include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/mutex.h"
@@ -428,11 +429,11 @@ void AdbConnectionState::SendAgentFds(bool require_handshake) {
   cmsg->cmsg_type  = SCM_RIGHTS;
 
   // Duplicate the fds before sending them.
-  android::base::unique_fd read_fd(dup(adb_connection_socket_));
+  android::base::unique_fd read_fd(art::DupCloexec(adb_connection_socket_));
   CHECK_NE(read_fd.get(), -1) << "Failed to dup read_fd_: " << strerror(errno);
-  android::base::unique_fd write_fd(dup(adb_connection_socket_));
+  android::base::unique_fd write_fd(art::DupCloexec(adb_connection_socket_));
   CHECK_NE(write_fd.get(), -1) << "Failed to dup write_fd: " << strerror(errno);
-  android::base::unique_fd write_lock_fd(dup(adb_write_event_fd_));
+  android::base::unique_fd write_lock_fd(art::DupCloexec(adb_write_event_fd_));
   CHECK_NE(write_lock_fd.get(), -1) << "Failed to dup write_lock_fd: " << strerror(errno);
 
   dt_fd_forward::FdSet {

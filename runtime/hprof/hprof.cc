@@ -41,6 +41,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/array_ref.h"
+#include "base/file_utils.h"
 #include "base/globals.h"
 #include "base/macros.h"
 #include "base/mutex.h"
@@ -761,13 +762,13 @@ class Hprof : public SingleRootVisitor {
     // Where exactly are we writing to?
     int out_fd;
     if (fd_ >= 0) {
-      out_fd = dup(fd_);
+      out_fd = DupCloexec(fd_);
       if (out_fd < 0) {
         ThrowRuntimeException("Couldn't dump heap; dup(%d) failed: %s", fd_, strerror(errno));
         return false;
       }
     } else {
-      out_fd = open(filename_.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
+      out_fd = open(filename_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
       if (out_fd < 0) {
         ThrowRuntimeException("Couldn't dump heap; open(\"%s\") failed: %s", filename_.c_str(),
                               strerror(errno));

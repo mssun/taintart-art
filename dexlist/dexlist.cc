@@ -257,7 +257,7 @@ int dexlistDriver(int argc, char** argv) {
 
   // Open alternative output file.
   if (gOptions.outputFileName) {
-    gOutFile = fopen(gOptions.outputFileName, "w");
+    gOutFile = fopen(gOptions.outputFileName, "we");
     if (!gOutFile) {
       PLOG(ERROR) << "Can't open " << gOptions.outputFileName;
       free(gOptions.argCopy);

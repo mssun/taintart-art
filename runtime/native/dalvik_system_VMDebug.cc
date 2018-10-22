@@ -23,6 +23,7 @@
 
 #include "nativehelper/jni_macros.h"
 
+#include "base/file_utils.h"
 #include "base/histogram-inl.h"
 #include "base/time_utils.h"
 #include "class_linker.h"
@@ -113,7 +114,7 @@ static void VMDebug_startMethodTracingFd(JNIEnv* env,
     return;
   }
 
-  int fd = dup(originalFd);
+  int fd = DupCloexec(originalFd);
   if (fd < 0) {
     ScopedObjectAccess soa(env);
     soa.Self()->ThrowNewExceptionF("Ljava/lang/RuntimeException;",

@@ -18,6 +18,8 @@ bootstrap_go_package {
 }
 
 art_clang_tidy_errors = [
+    "android-cloexec-dup",
+    "android-cloexec-open",
     "bugprone-argument-comment",
     "bugprone-lambda-function-name",
     "bugprone-unused-raii",  // Protect scoped things like MutexLock.
@@ -35,7 +37,9 @@ art_clang_tidy_errors = [
     "misc-unused-using-decls",
 ]
 // Should be: strings.Join(art_clang_tidy_errors, ",").
-art_clang_tidy_errors_str = "bugprone-argument-comment"
+art_clang_tidy_errors_str = "android-cloexec-dup"
+        + ",android-cloexec-open"
+        + ",bugprone-argument-comment"
         + ",bugprone-lambda-function-name"
         + ",bugprone-unused-raii"
         + ",bugprone-unused-return-value"

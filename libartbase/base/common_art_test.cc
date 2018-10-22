@@ -62,7 +62,7 @@ ScratchFile::ScratchFile(const ScratchFile& other, const char* suffix)
     : ScratchFile(other.GetFilename() + suffix) {}
 
 ScratchFile::ScratchFile(const std::string& filename) : filename_(filename) {
-  int fd = open(filename_.c_str(), O_RDWR | O_CREAT, 0666);
+  int fd = open(filename_.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0666);
   CHECK_NE(-1, fd);
   file_.reset(new File(fd, GetFilename(), true));
 }
