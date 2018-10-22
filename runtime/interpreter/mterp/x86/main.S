@@ -560,9 +560,10 @@ MterpException:
     lea     (%eax, %ecx, 2), rPC
     movl    rPC, OFF_FP_DEX_PC_PTR(rFP)
     /* Do we need to switch interpreters? */
-    call    SYMBOL(MterpShouldSwitchInterpreters)
+    movl    rSELF, %eax
+    movb    THREAD_USE_MTERP_OFFSET(%eax), %al
     testb   %al, %al
-    jnz     MterpFallback
+    jz      MterpFallback
     /* resume execution at catch block */
     REFRESH_IBASE
     FETCH_INST

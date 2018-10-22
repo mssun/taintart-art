@@ -15,9 +15,10 @@
     testb   %al, %al
     jz      MterpException
     ADVANCE_PC 3
-    call    SYMBOL(MterpShouldSwitchInterpreters)
+    movq    rSELF, %rax
+    movb    THREAD_USE_MTERP_OFFSET(%rax), %al
     testb   %al, %al
-    jnz     MterpFallback
+    jz      MterpFallback
     FETCH_INST
     GOTO_NEXT
 
@@ -38,9 +39,10 @@
     testb   %al, %al
     jz      MterpException
     ADVANCE_PC 4
-    call    SYMBOL(MterpShouldSwitchInterpreters)
+    movq    rSELF, %rax
+    movb    THREAD_USE_MTERP_OFFSET(%rax), %al
     testb   %al, %al
-    jnz     MterpFallback
+    jz      MterpFallback
     FETCH_INST
     GOTO_NEXT
 

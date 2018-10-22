@@ -526,9 +526,10 @@ MterpException:
     leaq    (%rax, %rcx, 2), rPC
     movq    rPC, OFF_FP_DEX_PC_PTR(rFP)
     /* Do we need to switch interpreters? */
-    call    SYMBOL(MterpShouldSwitchInterpreters)
+    movq    rSELF, %rax
+    movb    THREAD_USE_MTERP_OFFSET(%rax), %al
     testb   %al, %al
-    jnz     MterpFallback
+    jz      MterpFallback
     /* resume execution at catch block */
     REFRESH_IBASE
     FETCH_INST

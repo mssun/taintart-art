@@ -25,6 +25,7 @@
 #include "events.h"
 #include "jni/jni_internal.h"
 #include "nativehelper/scoped_local_ref.h"
+#include "runtime-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "ti_breakpoint.h"

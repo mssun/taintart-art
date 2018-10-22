@@ -553,8 +553,8 @@ MterpException:
     ldr     xIBASE, [xSELF, #THREAD_CURRENT_IBASE_OFFSET]
     add     xPC, x0, x1, lsl #1                     // generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
-    bl      MterpShouldSwitchInterpreters
-    cbnz    w0, MterpFallback
+    ldr     w0, [xSELF, #THREAD_USE_MTERP_OFFSET]
+    cbz     w0, MterpFallback
     /* resume execution at catch block */
     EXPORT_PC
     FETCH_INST
