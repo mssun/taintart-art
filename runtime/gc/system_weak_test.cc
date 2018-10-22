@@ -112,6 +112,7 @@ static bool CollectorDoesAllowOrBroadcast() {
   switch (type) {
     case CollectorType::kCollectorTypeCMS:
     case CollectorType::kCollectorTypeCC:
+    case CollectorType::kCollectorTypeSS:
       return true;
 
     default:
