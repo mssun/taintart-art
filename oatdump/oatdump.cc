@@ -1953,6 +1953,8 @@ class ImageDumper {
     const auto& dex_cache_arrays_section = image_header_.GetDexCacheArraysSection();
     const auto& intern_section = image_header_.GetInternedStringsSection();
     const auto& class_table_section = image_header_.GetClassTableSection();
+    const auto& sro_section = image_header_.GetImageStringReferenceOffsetsSection();
+    const auto& metadata_section = image_header_.GetMetadataSection();
     const auto& bitmap_section = image_header_.GetImageBitmapSection();
 
     stats_.header_bytes = header_bytes;
@@ -1999,6 +2001,9 @@ class ImageDumper {
     stats_.dex_cache_arrays_bytes += dex_cache_arrays_section.Size();
     stats_.interned_strings_bytes += intern_section.Size();
     stats_.class_table_bytes += class_table_section.Size();
+    stats_.sro_offset_bytes += sro_section.Size();
+    stats_.metadata_bytes += metadata_section.Size();
+
     stats_.Dump(os, indent_os);
     os << "\n";
 
@@ -2415,55 +2420,38 @@ class ImageDumper {
 
  public:
   struct Stats {
-    size_t oat_file_bytes;
-    size_t file_bytes;
+    size_t oat_file_bytes = 0u;
+    size_t file_bytes = 0u;
 
-    size_t header_bytes;
-    size_t object_bytes;
-    size_t art_field_bytes;
-    size_t art_method_bytes;
-    size_t dex_cache_arrays_bytes;
-    size_t interned_strings_bytes;
-    size_t class_table_bytes;
-    size_t bitmap_bytes;
-    size_t alignment_bytes;
+    size_t header_bytes = 0u;
+    size_t object_bytes = 0u;
+    size_t art_field_bytes = 0u;
+    size_t art_method_bytes = 0u;
+    size_t dex_cache_arrays_bytes = 0u;
+    size_t interned_strings_bytes = 0u;
+    size_t class_table_bytes = 0u;
+    size_t sro_offset_bytes = 0u;
+    size_t metadata_bytes = 0u;
+    size_t bitmap_bytes = 0u;
+    size_t alignment_bytes = 0u;
 
-    size_t managed_code_bytes;
-    size_t managed_code_bytes_ignoring_deduplication;
-    size_t native_to_managed_code_bytes;
-    size_t class_initializer_code_bytes;
-    size_t large_initializer_code_bytes;
-    size_t large_method_code_bytes;
+    size_t managed_code_bytes = 0u;
+    size_t managed_code_bytes_ignoring_deduplication = 0u;
+    size_t native_to_managed_code_bytes = 0u;
+    size_t class_initializer_code_bytes = 0u;
+    size_t large_initializer_code_bytes = 0u;
+    size_t large_method_code_bytes = 0u;
 
-    size_t vmap_table_bytes;
+    size_t vmap_table_bytes = 0u;
 
-    size_t dex_instruction_bytes;
+    size_t dex_instruction_bytes = 0u;
 
     std::vector<ArtMethod*> method_outlier;
     std::vector<size_t> method_outlier_size;
     std::vector<double> method_outlier_expansion;
     std::vector<std::pair<std::string, size_t>> oat_dex_file_sizes;
 
-    Stats()
-        : oat_file_bytes(0),
-          file_bytes(0),
-          header_bytes(0),
-          object_bytes(0),
-          art_field_bytes(0),
-          art_method_bytes(0),
-          dex_cache_arrays_bytes(0),
-          interned_strings_bytes(0),
-          class_table_bytes(0),
-          bitmap_bytes(0),
-          alignment_bytes(0),
-          managed_code_bytes(0),
-          managed_code_bytes_ignoring_deduplication(0),
-          native_to_managed_code_bytes(0),
-          class_initializer_code_bytes(0),
-          large_initializer_code_bytes(0),
-          large_method_code_bytes(0),
-          vmap_table_bytes(0),
-          dex_instruction_bytes(0) {}
+    Stats() {}
 
     struct SizeAndCount {
       SizeAndCount(size_t bytes_in, size_t count_in) : bytes(bytes_in), count(count_in) {}
@@ -2617,6 +2605,8 @@ class ImageDumper {
                                   "dex_cache_arrays_bytes =  %8zd (%2.0f%% of art file bytes)\n"
                                   "interned_string_bytes  =  %8zd (%2.0f%% of art file bytes)\n"
                                   "class_table_bytes      =  %8zd (%2.0f%% of art file bytes)\n"
+                                  "sro_bytes              =  %8zd (%2.0f%% of art file bytes)\n"
+                                  "metadata_bytes         =  %8zd (%2.0f%% of art file bytes)\n"
                                   "bitmap_bytes           =  %8zd (%2.0f%% of art file bytes)\n"
                                   "alignment_bytes        =  %8zd (%2.0f%% of art file bytes)\n\n",
                                   header_bytes, PercentOfFileBytes(header_bytes),
@@ -2628,13 +2618,15 @@ class ImageDumper {
                                   interned_strings_bytes,
                                   PercentOfFileBytes(interned_strings_bytes),
                                   class_table_bytes, PercentOfFileBytes(class_table_bytes),
+                                  sro_offset_bytes, PercentOfFileBytes(sro_offset_bytes),
+                                  metadata_bytes, PercentOfFileBytes(metadata_bytes),
                                   bitmap_bytes, PercentOfFileBytes(bitmap_bytes),
                                   alignment_bytes, PercentOfFileBytes(alignment_bytes))
             << std::flush;
         CHECK_EQ(file_bytes,
                  header_bytes + object_bytes + art_field_bytes + art_method_bytes +
                  dex_cache_arrays_bytes + interned_strings_bytes + class_table_bytes +
-                 bitmap_bytes + alignment_bytes);
+                 sro_offset_bytes + metadata_bytes + bitmap_bytes + alignment_bytes);
       }
 
       os << "object_bytes breakdown:\n";

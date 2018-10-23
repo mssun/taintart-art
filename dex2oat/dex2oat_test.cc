@@ -2079,8 +2079,8 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
   ScratchFile profile_file;
   std::vector<uint16_t> methods;
   std::vector<dex::TypeIndex> classes;
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("StringLiterals"));
   {
-    std::unique_ptr<const DexFile> dex(OpenTestDexFile("StringLiterals"));
     for (ClassAccessor accessor : dex->GetClasses()) {
       if (accessor.GetDescriptor() == std::string("LStringLiterals$StartupClass;")) {
         classes.push_back(accessor.GetClassIdx());
@@ -2140,15 +2140,43 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
         seen.insert(str.Read()->ToModifiedUtf8());
       }
     });
+    // Ensure that the dex cache has a preresolved string array.
+    std::set<std::string> preresolved_seen;
+    bool saw_dexcache = false;
+    space->GetLiveBitmap()->VisitAllMarked(
+        [&](mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
+      if (obj->IsDexCache<kVerifyNone>()) {
+        ObjPtr<mirror::DexCache> dex_cache = obj->AsDexCache();
+        GcRoot<mirror::String>* preresolved_strings = dex_cache->GetPreResolvedStrings();
+        ASSERT_EQ(dex->NumStringIds(), dex_cache->NumPreResolvedStrings());
+        for (size_t i = 0; i < dex_cache->NumPreResolvedStrings(); ++i) {
+          ObjPtr<mirror::String> string = preresolved_strings[i].Read<kWithoutReadBarrier>();
+          if (string != nullptr) {
+            preresolved_seen.insert(string->ToModifiedUtf8());
+          }
+        }
+        saw_dexcache = true;
+      }
+    });
+    ASSERT_TRUE(saw_dexcache);
+    // Everything in the preresolved array should also be in the intern table.
+    for (const std::string& str : preresolved_seen) {
+      EXPECT_TRUE(seen.find(str) != seen.end());
+    }
     // Normal methods
-    EXPECT_TRUE(seen.find("Loading ") != seen.end());
-    EXPECT_TRUE(seen.find("Starting up") != seen.end());
-    EXPECT_TRUE(seen.find("abcd.apk") != seen.end());
+    EXPECT_TRUE(preresolved_seen.find("Loading ") != preresolved_seen.end());
+    EXPECT_TRUE(preresolved_seen.find("Starting up") != preresolved_seen.end());
+    EXPECT_TRUE(preresolved_seen.find("abcd.apk") != preresolved_seen.end());
     EXPECT_TRUE(seen.find("Unexpected error") == seen.end());
     EXPECT_TRUE(seen.find("Shutting down!") == seen.end());
+    EXPECT_TRUE(preresolved_seen.find("Unexpected error") == preresolved_seen.end());
+    EXPECT_TRUE(preresolved_seen.find("Shutting down!") == preresolved_seen.end());
     // Classes initializers
-    EXPECT_TRUE(seen.find("Startup init") != seen.end());
+    EXPECT_TRUE(preresolved_seen.find("Startup init") != preresolved_seen.end());
     EXPECT_TRUE(seen.find("Other class init") == seen.end());
+    EXPECT_TRUE(preresolved_seen.find("Other class init") == preresolved_seen.end());
+    // Expect the sets match.
+    EXPECT_GE(seen.size(), preresolved_seen.size());
   }
 }
 

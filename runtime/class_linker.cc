@@ -1415,9 +1415,9 @@ void AppImageLoadingHelper::UpdateInternStrings(
   for (size_t offset_index = 0; offset_index < num_string_offsets; ++offset_index) {
     uint32_t base_offset = sro_base[offset_index].first;
 
-    if (HasDexCacheNativeRefTag(base_offset)) {
-      base_offset = ClearDexCacheNativeRefTag(base_offset);
-      DCHECK_ALIGNED(base_offset,  2);
+    if (HasDexCacheStringNativeRefTag(base_offset)) {
+      base_offset = ClearDexCacheNativeRefTags(base_offset);
+      DCHECK_ALIGNED(base_offset, 2);
 
       ObjPtr<mirror::DexCache> dex_cache =
           reinterpret_cast<mirror::DexCache*>(space->Begin() + base_offset);
@@ -1437,10 +1437,27 @@ void AppImageLoadingHelper::UpdateInternStrings(
         dex_cache->GetStrings()[string_index].store(
             mirror::StringDexCachePair(it->second, source.index));
       }
+    } else if (HasDexCachePreResolvedStringNativeRefTag(base_offset)) {
+      base_offset = ClearDexCacheNativeRefTags(base_offset);
+      DCHECK_ALIGNED(base_offset, 2);
 
+      ObjPtr<mirror::DexCache> dex_cache =
+          reinterpret_cast<mirror::DexCache*>(space->Begin() + base_offset);
+      uint32_t string_index = sro_base[offset_index].second;
+
+      ObjPtr<mirror::String> referred_string =
+          dex_cache->GetPreResolvedStrings()[string_index].Read();
+      DCHECK(referred_string != nullptr);
+
+      auto it = intern_remap.find(referred_string.Ptr());
+      if (it != intern_remap.end()) {
+        // Because we are not using a helper function we need to mark the GC card manually.
+        WriteBarrier::ForEveryFieldWrite(dex_cache);
+        dex_cache->GetPreResolvedStrings()[string_index] = GcRoot<mirror::String>(it->second);
+      }
     } else {
       uint32_t raw_member_offset = sro_base[offset_index].second;
-      DCHECK_ALIGNED(base_offset,  2);
+      DCHECK_ALIGNED(base_offset, 2);
       DCHECK_ALIGNED(raw_member_offset, 2);
 
       ObjPtr<mirror::Object> obj_ptr =
