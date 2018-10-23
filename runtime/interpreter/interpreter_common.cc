@@ -1071,7 +1071,7 @@ static bool PackCollectorArrayForBootstrapMethod(Thread* self,
   return true;
 
 #define COLLECT_REFERENCE_ARRAY(T, Type)                                \
-  Handle<mirror::ObjectArray<T>> array =                                \
+  Handle<mirror::ObjectArray<T>> array =                   /* NOLINT */ \
       hs.NewHandle(mirror::ObjectArray<T>::Alloc(self,                  \
                                                  array_type,            \
                                                  array_length));        \

@@ -574,7 +574,7 @@ static jvmtiEventCallbacks kLogCallbacks {
 
 static std::string EventToName(jvmtiEvent desired_event) {
 #define CHECK_NAME(name, event, args, argnames) \
-  if (desired_event == event) { \
+  if (desired_event == (event)) { \
     return #name; \
   }
   FOR_ALL_SUPPORTED_EVENTS(CHECK_NAME);

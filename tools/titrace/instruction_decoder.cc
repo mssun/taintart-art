@@ -484,7 +484,7 @@ class DexInstructionDecoder : public InstructionDecoder {
    public:
     enum Opcode {
 #define MAKE_ENUM_DEFINITION(opcode, instruction_code, name, format, index, flags, extended_flags, verifier_flags) \
-      instruction_code = opcode,
+      instruction_code = opcode,  /* NOLINT */
 DEX_INSTRUCTION_LIST(MAKE_ENUM_DEFINITION)
 #undef MAKE_ENUM_DEFINITION
     };
