@@ -29,7 +29,7 @@
 #include <linux/membarrier.h>
 
 #define CHECK_MEMBARRIER_CMD(art_value, membarrier_value) \
-  static_assert(static_cast<int>(art_value) == membarrier_value, "Bad value for " # art_value)
+  static_assert(static_cast<int>(art_value) == (membarrier_value), "Bad value for " # art_value)
 CHECK_MEMBARRIER_CMD(art::MembarrierCommand::kQuery, MEMBARRIER_CMD_QUERY);
 CHECK_MEMBARRIER_CMD(art::MembarrierCommand::kGlobal, MEMBARRIER_CMD_SHARED);
 CHECK_MEMBARRIER_CMD(art::MembarrierCommand::kPrivateExpedited, MEMBARRIER_CMD_PRIVATE_EXPEDITED);

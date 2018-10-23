@@ -274,13 +274,13 @@ using BitStructUint =
 // If a standard-layout union contains several standard-layout structs that share a common
 // initial sequence ... it is permitted to inspect the common initial sequence of any of
 // standard-layout struct members.
-#define BITSTRUCT_DEFINE_START(name, bitwidth)                                 \
-    union name {                                                               \
-      art::detail::DefineBitStructSize<(bitwidth)> _;                          \
-      static constexpr size_t BitStructSizeOf() { return (bitwidth); }         \
-      name& operator=(const name& other) { _ = other._; return *this; }        \
-      name(const name& other) : _(other._) {}                                  \
-      name() = default;                                                        \
+#define BITSTRUCT_DEFINE_START(name, bitwidth)                                        \
+    union name {                                                         /* NOLINT */ \
+      art::detail::DefineBitStructSize<(bitwidth)> _;                                 \
+      static constexpr size_t BitStructSizeOf() { return (bitwidth); }                \
+      name& operator=(const name& other) { _ = other._; return *this; }  /* NOLINT */ \
+      name(const name& other) : _(other._) {}                                         \
+      name() = default;                                                               \
       ~name() = default;
 
 // End the definition of a bitstruct, and insert a sanity check
