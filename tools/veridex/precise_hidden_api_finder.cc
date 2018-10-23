@@ -91,8 +91,8 @@ void PreciseHiddenApiFinder::Dump(std::ostream& os, HiddenApiStats* stats) {
       std::string cls(info.cls.ToString());
       std::string name(info.name.ToString());
       std::string full_name = cls + "->" + name;
-      HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
-      if (api_list != HiddenApiAccessFlags::kNoList) {
+      hiddenapi::ApiList api_list = hidden_api_.GetApiList(full_name);
+      if (api_list != hiddenapi::ApiList::kNoList) {
         named_uses[full_name].push_back(ref);
       }
     }
@@ -101,8 +101,8 @@ void PreciseHiddenApiFinder::Dump(std::ostream& os, HiddenApiStats* stats) {
   for (auto& it : named_uses) {
     ++stats->reflection_count;
     const std::string& full_name = it.first;
-    HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
-    stats->api_counts[api_list]++;
+    hiddenapi::ApiList api_list = hidden_api_.GetApiList(full_name);
+    stats->api_counts[static_cast<unsigned>(api_list)]++;
     os << "#" << ++stats->count << ": Reflection " << api_list << " " << full_name << " use(s):";
     os << std::endl;
     for (const MethodReference& ref : it.second) {

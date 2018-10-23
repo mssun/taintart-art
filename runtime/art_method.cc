@@ -688,13 +688,13 @@ void ArtMethod::SetNotIntrinsic() {
   }
 
   // Query the hidden API access flags of the intrinsic.
-  HiddenApiAccessFlags::ApiList intrinsic_api_list = GetHiddenApiAccessFlags();
+  hiddenapi::ApiList intrinsic_api_list = GetHiddenApiAccessFlags();
 
   // Clear intrinsic-related access flags.
   ClearAccessFlags(kAccIntrinsic | kAccIntrinsicBits);
 
   // Re-apply hidden API access flags now that the method is not an intrinsic.
-  SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(GetAccessFlags(), intrinsic_api_list));
+  SetAccessFlags(hiddenapi::EncodeForRuntime(GetAccessFlags(), intrinsic_api_list));
   DCHECK_EQ(GetHiddenApiAccessFlags(), intrinsic_api_list);
 }
 

@@ -89,39 +89,39 @@ class HiddenApiTest : public CommonRuntimeTest {
 
 TEST_F(HiddenApiTest, CheckGetActionFromRuntimeFlags) {
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kNoChecks);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kWhitelist), hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kLightGreylist), hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kDarkGreylist), hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kBlacklist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kWhitelist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kLightGreylist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kDarkGreylist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kBlacklist), hiddenapi::kAllow);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kJustWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kWhitelist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kWhitelist),
             hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kLightGreylist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kLightGreylist),
             hiddenapi::kAllowButWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kDarkGreylist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kDarkGreylist),
             hiddenapi::kAllowButWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kBlacklist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kBlacklist),
             hiddenapi::kAllowButWarn);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kDarkGreyAndBlackList);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kWhitelist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kWhitelist),
             hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kLightGreylist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kLightGreylist),
             hiddenapi::kAllowButWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kDarkGreylist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kDarkGreylist),
             hiddenapi::kDeny);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kBlacklist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kBlacklist),
             hiddenapi::kDeny);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kBlacklistOnly);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kWhitelist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kWhitelist),
             hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kLightGreylist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kLightGreylist),
             hiddenapi::kAllowButWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kDarkGreylist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kDarkGreylist),
             hiddenapi::kAllowButWarnAndToast);
-  ASSERT_EQ(GetActionFromAccessFlags(HiddenApiAccessFlags::kBlacklist),
+  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kBlacklist),
             hiddenapi::kDeny);
 }
 

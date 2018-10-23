@@ -68,8 +68,8 @@ enum AccessContextFlags {
   kAccessDenied  = 1 << 1,
 };
 
-inline Action GetActionFromAccessFlags(HiddenApiAccessFlags::ApiList api_list) {
-  if (api_list == HiddenApiAccessFlags::kWhitelist) {
+inline Action GetActionFromAccessFlags(ApiList api_list) {
+  if (api_list == ApiList::kWhitelist) {
     return kAllow;
   }
 
@@ -85,9 +85,9 @@ inline Action GetActionFromAccessFlags(HiddenApiAccessFlags::ApiList api_list) {
   }
   DCHECK(policy >= EnforcementPolicy::kDarkGreyAndBlackList);
   // The logic below relies on equality of values in the enums EnforcementPolicy and
-  // HiddenApiAccessFlags::ApiList, and their ordering. Assertions are in hidden_api.cc.
+  // ApiList, and their ordering. Assertions are in hidden_api.cc.
   if (static_cast<int>(policy) > static_cast<int>(api_list)) {
-    return api_list == HiddenApiAccessFlags::kDarkGreylist
+    return api_list == ApiList::kDarkGreylist
         ? kAllowButWarnAndToast
         : kAllowButWarn;
   } else {
@@ -144,14 +144,14 @@ class MemberSignature {
 
   bool IsExempted(const std::vector<std::string>& exemptions);
 
-  void WarnAboutAccess(AccessMethod access_method, HiddenApiAccessFlags::ApiList list);
+  void WarnAboutAccess(AccessMethod access_method, ApiList list);
 
   void LogAccessToEventLog(AccessMethod access_method, Action action_taken);
 };
 
 template<typename T>
 Action GetMemberActionImpl(T* member,
-                           HiddenApiAccessFlags::ApiList api_list,
+                           ApiList api_list,
                            Action action,
                            AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_);
@@ -208,7 +208,7 @@ inline Action GetMemberAction(T* member,
   // cannot change Java semantics. We should, however, decode the access flags
   // once and use it throughout this function, otherwise we may get inconsistent
   // results, e.g. print whitelist warnings (b/78327881).
-  HiddenApiAccessFlags::ApiList api_list = member->GetHiddenApiAccessFlags();
+  ApiList api_list = member->GetHiddenApiAccessFlags();
 
   Action action = GetActionFromAccessFlags(member->GetHiddenApiAccessFlags());
   if (action == kAllow) {
