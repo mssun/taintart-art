@@ -162,7 +162,7 @@ int VeriFlowAnalysis::GetBranchFlags(const Instruction& instruction) const {
     case Instruction::IF_##cond##Z: { \
       RegisterValue val = GetRegister(instruction.VRegA()); \
       if (val.IsConstant()) { \
-        if (val.GetConstant() op 0) { \
+        if (val.GetConstant() op 0) {  /* NOLINT */ \
           return Instruction::kBranch; \
         } else { \
           return Instruction::kContinue; \
