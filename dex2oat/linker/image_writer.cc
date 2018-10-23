@@ -27,7 +27,6 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
-#include "base/bit_memory_region.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "base/globals.h"
@@ -87,14 +86,6 @@ using ::art::mirror::String;
 
 namespace art {
 namespace linker {
-
-static inline size_t RelocationIndex(size_t relocation_offset, PointerSize target_ptr_size) {
-  static_assert(sizeof(GcRoot<mirror::Object>) == sizeof(mirror::HeapReference<mirror::Object>),
-                "Expecting heap GC roots and references to have the same size.");
-  DCHECK_LE(sizeof(GcRoot<mirror::Object>), static_cast<size_t>(target_ptr_size));
-  DCHECK_ALIGNED(relocation_offset, sizeof(GcRoot<mirror::Object>));
-  return relocation_offset / sizeof(GcRoot<mirror::Object>);
-}
 
 static ArrayRef<const uint8_t> MaybeCompressData(ArrayRef<const uint8_t> source,
                                                  ImageHeader::StorageMode image_storage_mode,
@@ -672,22 +663,6 @@ bool ImageWriter::Write(int image_fd,
       return false;
     }
 
-    // Write out relocations.
-    size_t relocations_position_in_file = bitmap_position_in_file + bitmap_section.Size();
-    ArrayRef<const uint8_t> relocations = MaybeCompressData(
-        ArrayRef<const uint8_t>(image_info.relocation_bitmap_),
-        image_storage_mode_,
-        &compressed_data);
-    image_header->sections_[ImageHeader::kSectionImageRelocations] =
-        ImageSection(bitmap_section.Offset() + bitmap_section.Size(), relocations.size());
-    if (!image_file->PwriteFully(relocations.data(),
-                                 relocations.size(),
-                                 relocations_position_in_file)) {
-      PLOG(ERROR) << "Failed to write image file relocations " << image_filename;
-      image_file->Erase();
-      return false;
-    }
-
     int err = image_file->Flush();
     if (err < 0) {
       PLOG(ERROR) << "Failed to flush image file " << image_filename << " with result " << err;
@@ -708,9 +683,7 @@ bool ImageWriter::Write(int image_fd,
     }
 
     if (VLOG_IS_ON(compiler)) {
-      size_t separately_written_section_size = bitmap_section.Size() +
-                                               image_header->GetImageRelocationsSection().Size() +
-                                               sizeof(ImageHeader);
+      size_t separately_written_section_size = bitmap_section.Size() + sizeof(ImageHeader);
 
       size_t total_uncompressed_size = raw_image_data.size() + separately_written_section_size,
              total_compressed_size   = image_data.size() + separately_written_section_size;
@@ -721,7 +694,7 @@ bool ImageWriter::Write(int image_fd,
       }
     }
 
-    CHECK_EQ(relocations_position_in_file + relocations.size(),
+    CHECK_EQ(bitmap_position_in_file + bitmap_section.Size(),
              static_cast<size_t>(image_file->GetLength()));
 
     if (image_file->FlushCloseOrErase() != 0) {
@@ -2366,8 +2339,6 @@ void ImageWriter::CreateHeader(size_t oat_index) {
   const size_t bitmap_bytes = image_info.image_bitmap_->Size();
   auto* bitmap_section = &sections[ImageHeader::kSectionImageBitmap];
   *bitmap_section = ImageSection(RoundUp(image_end, kPageSize), RoundUp(bitmap_bytes, kPageSize));
-  // The relocations section shall be finished later as we do not know its actual size yet.
-
   if (VLOG_IS_ON(compiler)) {
     LOG(INFO) << "Creating header for " << oat_filenames_[oat_index];
     size_t idx = 0;
@@ -2394,7 +2365,7 @@ void ImageWriter::CreateHeader(size_t oat_index) {
 
   // Create the header, leave 0 for data size since we will fill this in as we are writing the
   // image.
-  ImageHeader* header = new (image_info.image_.Begin()) ImageHeader(
+  new (image_info.image_.Begin()) ImageHeader(
       PointerToLowMemUInt32(image_info.image_begin_),
       image_end,
       sections.data(),
@@ -2411,28 +2382,6 @@ void ImageWriter::CreateHeader(size_t oat_index) {
       static_cast<uint32_t>(target_ptr_size_),
       image_storage_mode_,
       /*data_size*/0u);
-
-  // Resize relocation bitmap for recording reference/pointer relocations.
-  size_t number_of_relocation_locations = RelocationIndex(image_end, target_ptr_size_);
-  DCHECK(image_info.relocation_bitmap_.empty());
-  image_info.relocation_bitmap_.resize(
-      BitsToBytesRoundUp(number_of_relocation_locations * (compile_app_image_ ? 2u : 1u)));
-  // Record header relocations.
-  RecordImageRelocation(&header->image_begin_, oat_index);
-  RecordImageRelocation(&header->oat_file_begin_, oat_index);
-  RecordImageRelocation(&header->oat_data_begin_, oat_index);
-  RecordImageRelocation(&header->oat_data_end_, oat_index);
-  RecordImageRelocation(&header->oat_file_end_, oat_index);
-  if (compile_app_image_) {
-    RecordImageRelocation(&header->boot_image_begin_, oat_index, /* app_to_boot_image */ true);
-    RecordImageRelocation(&header->boot_oat_begin_, oat_index, /* app_to_boot_image */ true);
-  } else {
-    DCHECK_EQ(header->boot_image_begin_, 0u);
-    DCHECK_EQ(header->boot_oat_begin_, 0u);
-  }
-  RecordImageRelocation(&header->image_roots_, oat_index);
-  // Skip non-null check for `patch_delta_` as it is actually 0 but still needs to be recorded.
-  RecordImageRelocation</* kCheckNotNull */ false>(&header->patch_delta_, oat_index);
 }
 
 ArtMethod* ImageWriter::GetImageMethodAddress(ArtMethod* method) {
@@ -2492,28 +2441,23 @@ class ImageWriter::FixupRootVisitor : public RootVisitor {
   ImageWriter* const image_writer_;
 };
 
-void ImageWriter::CopyAndFixupImTable(ImTable* orig, ImTable* copy, size_t oat_index) {
+void ImageWriter::CopyAndFixupImTable(ImTable* orig, ImTable* copy) {
   for (size_t i = 0; i < ImTable::kSize; ++i) {
     ArtMethod* method = orig->Get(i, target_ptr_size_);
     void** address = reinterpret_cast<void**>(copy->AddressOfElement(i, target_ptr_size_));
-    CopyAndFixupPointer(address, method, oat_index);
+    CopyAndFixupPointer(address, method);
     DCHECK_EQ(copy->Get(i, target_ptr_size_), NativeLocationInImage(method));
   }
 }
 
-void ImageWriter::CopyAndFixupImtConflictTable(ImtConflictTable* orig,
-                                               ImtConflictTable* copy,
-                                               size_t oat_index) {
+void ImageWriter::CopyAndFixupImtConflictTable(ImtConflictTable* orig, ImtConflictTable* copy) {
   const size_t count = orig->NumEntries(target_ptr_size_);
   for (size_t i = 0; i < count; ++i) {
     ArtMethod* interface_method = orig->GetInterfaceMethod(i, target_ptr_size_);
     ArtMethod* implementation_method = orig->GetImplementationMethod(i, target_ptr_size_);
-    CopyAndFixupPointer(copy->AddressOfInterfaceMethod(i, target_ptr_size_),
-                        interface_method,
-                        oat_index);
-    CopyAndFixupPointer(copy->AddressOfImplementationMethod(i, target_ptr_size_),
-                        implementation_method,
-                        oat_index);
+    CopyAndFixupPointer(copy->AddressOfInterfaceMethod(i, target_ptr_size_), interface_method);
+    CopyAndFixupPointer(
+        copy->AddressOfImplementationMethod(i, target_ptr_size_), implementation_method);
     DCHECK_EQ(copy->GetInterfaceMethod(i, target_ptr_size_),
               NativeLocationInImage(interface_method));
     DCHECK_EQ(copy->GetImplementationMethod(i, target_ptr_size_),
@@ -2538,8 +2482,7 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
         memcpy(dest, pair.first, sizeof(ArtField));
         CopyAndFixupReference(
             reinterpret_cast<ArtField*>(dest)->GetDeclaringClassAddressWithoutBarrier(),
-            reinterpret_cast<ArtField*>(pair.first)->GetDeclaringClass(),
-            oat_index);
+            reinterpret_cast<ArtField*>(pair.first)->GetDeclaringClass());
         break;
       }
       case NativeObjectRelocationType::kRuntimeMethod:
@@ -2572,15 +2515,14 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
       case NativeObjectRelocationType::kIMTable: {
         ImTable* orig_imt = reinterpret_cast<ImTable*>(pair.first);
         ImTable* dest_imt = reinterpret_cast<ImTable*>(dest);
-        CopyAndFixupImTable(orig_imt, dest_imt, oat_index);
+        CopyAndFixupImTable(orig_imt, dest_imt);
         break;
       }
       case NativeObjectRelocationType::kIMTConflictTable: {
         auto* orig_table = reinterpret_cast<ImtConflictTable*>(pair.first);
         CopyAndFixupImtConflictTable(
             orig_table,
-            new(dest)ImtConflictTable(orig_table->NumEntries(target_ptr_size_), target_ptr_size_),
-            oat_index);
+            new(dest)ImtConflictTable(orig_table->NumEntries(target_ptr_size_), target_ptr_size_));
         break;
       }
     }
@@ -2590,10 +2532,8 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
   for (size_t i = 0; i < ImageHeader::kImageMethodsCount; ++i) {
     ArtMethod* method = image_methods_[i];
     CHECK(method != nullptr);
-    CopyAndFixupPointer(reinterpret_cast<void**>(&image_header->image_methods_[i]),
-                        method,
-                        oat_index,
-                        PointerSize::k32);
+    CopyAndFixupPointer(
+        reinterpret_cast<void**>(&image_header->image_methods_[i]), method, PointerSize::k32);
   }
   FixupRootVisitor root_visitor(this);
 
@@ -2618,9 +2558,6 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
     MutexLock lock(Thread::Current(), *Locks::intern_table_lock_);
     DCHECK(!temp_intern_table.strong_interns_.tables_.empty());
     DCHECK(!temp_intern_table.strong_interns_.tables_[0].empty());  // Inserted at the beginning.
-    for (const GcRoot<mirror::String>& slot : temp_intern_table.strong_interns_.tables_[0]) {
-      RecordImageRelocation(&slot, oat_index);
-    }
   }
   // Write the class table(s) into the image. class_table_bytes_ may be 0 if there are multiple
   // class loaders. Writing multiple class tables into the image is currently unsupported.
@@ -2649,9 +2586,6 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
     ReaderMutexLock lock(self, temp_class_table.lock_);
     DCHECK(!temp_class_table.classes_.empty());
     DCHECK(!temp_class_table.classes_[0].empty());  // The ClassSet was inserted at the beginning.
-    for (const ClassTable::TableSlot& slot : temp_class_table.classes_[0]) {
-      RecordImageRelocation(&slot, oat_index);
-    }
   }
 }
 
@@ -2668,15 +2602,13 @@ void ImageWriter::CopyAndFixupObjects() {
 void ImageWriter::FixupPointerArray(mirror::Object* dst,
                                     mirror::PointerArray* arr,
                                     mirror::Class* klass,
-                                    Bin array_type,
-                                    size_t oat_index) {
+                                    Bin array_type) {
   CHECK(klass->IsArrayClass());
   CHECK(arr->IsIntArray() || arr->IsLongArray()) << klass->PrettyClass() << " " << arr;
   // Fixup int and long pointers for the ArtMethod or ArtField arrays.
   const size_t num_elements = arr->GetLength();
-  CopyAndFixupReference(dst->GetFieldObjectReferenceAddr<kVerifyNone>(Class::ClassOffset()),
-                        arr->GetClass(),
-                        oat_index);
+  CopyAndFixupReference(
+      dst->GetFieldObjectReferenceAddr<kVerifyNone>(Class::ClassOffset()), arr->GetClass());
   auto* dest_array = down_cast<mirror::PointerArray*>(dst);
   for (size_t i = 0, count = num_elements; i < count; ++i) {
     void* elem = arr->GetElementPtrSize<void*>(i, target_ptr_size_);
@@ -2698,7 +2630,7 @@ void ImageWriter::FixupPointerArray(mirror::Object* dst,
         UNREACHABLE();
       }
     }
-    CopyAndFixupPointer(dest_array->ElementAddress(i, target_ptr_size_), elem, oat_index);
+    CopyAndFixupPointer(dest_array->ElementAddress(i, target_ptr_size_), elem);
   }
 }
 
@@ -2729,14 +2661,14 @@ void ImageWriter::CopyAndFixupObject(Object* obj) {
     // safe since we mark all of the objects that may reference non immune objects as gray.
     CHECK(dst->AtomicSetMarkBit(0, 1));
   }
-  FixupObject(obj, dst, oat_index);
+  FixupObject(obj, dst);
 }
 
 // Rewrite all the references in the copied object to point to their image address equivalent
 class ImageWriter::FixupVisitor {
  public:
-  FixupVisitor(ImageWriter* image_writer, Object* copy, size_t oat_index)
-      : image_writer_(image_writer), copy_(copy), oat_index_(oat_index) {
+  FixupVisitor(ImageWriter* image_writer, Object* copy)
+      : image_writer_(image_writer), copy_(copy) {
   }
 
   // Ignore class roots since we don't have a way to map them to the destination. These are handled
@@ -2751,9 +2683,7 @@ class ImageWriter::FixupVisitor {
     ObjPtr<Object> ref = obj->GetFieldObject<Object, kVerifyNone>(offset);
     // Copy the reference and record the fixup if necessary.
     image_writer_->CopyAndFixupReference(
-        copy_->GetFieldObjectReferenceAddr<kVerifyNone>(offset),
-        ref.Ptr(),
-        oat_index_);
+        copy_->GetFieldObjectReferenceAddr<kVerifyNone>(offset), ref);
   }
 
   // java.lang.ref.Reference visitor.
@@ -2766,13 +2696,12 @@ class ImageWriter::FixupVisitor {
  protected:
   ImageWriter* const image_writer_;
   mirror::Object* const copy_;
-  size_t oat_index_;
 };
 
 class ImageWriter::FixupClassVisitor final : public FixupVisitor {
  public:
-  FixupClassVisitor(ImageWriter* image_writer, Object* copy, size_t oat_index)
-      : FixupVisitor(image_writer, copy, oat_index) {}
+  FixupClassVisitor(ImageWriter* image_writer, Object* copy)
+      : FixupVisitor(image_writer, copy) {}
 
   void operator()(ObjPtr<Object> obj, MemberOffset offset, bool is_static ATTRIBUTE_UNUSED) const
       REQUIRES(Locks::mutator_lock_, Locks::heap_bitmap_lock_) {
@@ -2828,14 +2757,13 @@ T* ImageWriter::NativeCopyLocation(T* obj) {
 
 class ImageWriter::NativeLocationVisitor {
  public:
-  NativeLocationVisitor(ImageWriter* image_writer, size_t oat_index)
-      : image_writer_(image_writer),
-        oat_index_(oat_index) {}
+  explicit NativeLocationVisitor(ImageWriter* image_writer)
+      : image_writer_(image_writer) {}
 
   template <typename T>
   T* operator()(T* ptr, void** dest_addr) const REQUIRES_SHARED(Locks::mutator_lock_) {
     if (ptr != nullptr) {
-      image_writer_->CopyAndFixupPointer(dest_addr, ptr, oat_index_);
+      image_writer_->CopyAndFixupPointer(dest_addr, ptr);
     }
     // TODO: The caller shall overwrite the value stored by CopyAndFixupPointer()
     // with the value we return here. We should try to avoid the duplicate work.
@@ -2844,12 +2772,11 @@ class ImageWriter::NativeLocationVisitor {
 
  private:
   ImageWriter* const image_writer_;
-  const size_t oat_index_;
 };
 
-void ImageWriter::FixupClass(mirror::Class* orig, mirror::Class* copy, size_t oat_index) {
-  orig->FixupNativePointers(copy, target_ptr_size_, NativeLocationVisitor(this, oat_index));
-  FixupClassVisitor visitor(this, copy, oat_index);
+void ImageWriter::FixupClass(mirror::Class* orig, mirror::Class* copy) {
+  orig->FixupNativePointers(copy, target_ptr_size_, NativeLocationVisitor(this));
+  FixupClassVisitor visitor(this, copy);
   ObjPtr<mirror::Object>(orig)->VisitReferences(visitor, visitor);
 
   if (kBitstringSubtypeCheckEnabled && compile_app_image_) {
@@ -2877,7 +2804,7 @@ void ImageWriter::FixupClass(mirror::Class* orig, mirror::Class* copy, size_t oa
   copy->SetClinitThreadId(static_cast<pid_t>(0));
 }
 
-void ImageWriter::FixupObject(Object* orig, Object* copy, size_t oat_index) {
+void ImageWriter::FixupObject(Object* orig, Object* copy) {
   DCHECK(orig != nullptr);
   DCHECK(copy != nullptr);
   if (kUseBakerReadBarrier) {
@@ -2889,13 +2816,13 @@ void ImageWriter::FixupObject(Object* orig, Object* copy, size_t oat_index) {
     auto it = pointer_arrays_.find(down_cast<mirror::PointerArray*>(orig));
     if (it != pointer_arrays_.end()) {
       // Should only need to fixup every pointer array exactly once.
-      FixupPointerArray(copy, down_cast<mirror::PointerArray*>(orig), klass, it->second, oat_index);
+      FixupPointerArray(copy, down_cast<mirror::PointerArray*>(orig), klass, it->second);
       pointer_arrays_.erase(it);
       return;
     }
   }
   if (orig->IsClass()) {
-    FixupClass(orig->AsClass<kVerifyNone>(), down_cast<mirror::Class*>(copy), oat_index);
+    FixupClass(orig->AsClass<kVerifyNone>(), down_cast<mirror::Class*>(copy));
   } else {
     ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
         Runtime::Current()->GetClassLinker()->GetClassRoots();
@@ -2905,11 +2832,9 @@ void ImageWriter::FixupObject(Object* orig, Object* copy, size_t oat_index) {
       auto* dest = down_cast<mirror::Executable*>(copy);
       auto* src = down_cast<mirror::Executable*>(orig);
       ArtMethod* src_method = src->GetArtMethod();
-      CopyAndFixupPointer(dest, mirror::Executable::ArtMethodOffset(), src_method, oat_index);
+      CopyAndFixupPointer(dest, mirror::Executable::ArtMethodOffset(), src_method);
     } else if (klass == GetClassRoot<mirror::DexCache>(class_roots)) {
-      FixupDexCache(down_cast<mirror::DexCache*>(orig),
-                    down_cast<mirror::DexCache*>(copy),
-                    oat_index);
+      FixupDexCache(down_cast<mirror::DexCache*>(orig), down_cast<mirror::DexCache*>(copy));
     } else if (klass->IsClassLoaderClass()) {
       mirror::ClassLoader* copy_loader = down_cast<mirror::ClassLoader*>(copy);
       // If src is a ClassLoader, set the class table to null so that it gets recreated by the
@@ -2920,7 +2845,7 @@ void ImageWriter::FixupObject(Object* orig, Object* copy, size_t oat_index) {
       // roots.
       copy_loader->SetAllocator(nullptr);
     }
-    FixupVisitor visitor(this, copy, oat_index);
+    FixupVisitor visitor(this, copy);
     orig->VisitReferences(visitor, visitor);
   }
 }
@@ -2928,8 +2853,7 @@ void ImageWriter::FixupObject(Object* orig, Object* copy, size_t oat_index) {
 template <typename T>
 void ImageWriter::FixupDexCacheArrayEntry(std::atomic<mirror::DexCachePair<T>>* orig_array,
                                           std::atomic<mirror::DexCachePair<T>>* new_array,
-                                          uint32_t array_index,
-                                          size_t oat_index) {
+                                          uint32_t array_index) {
   static_assert(sizeof(std::atomic<mirror::DexCachePair<T>>) == sizeof(mirror::DexCachePair<T>),
                 "Size check for removing std::atomic<>.");
   mirror::DexCachePair<T>* orig_pair =
@@ -2937,15 +2861,14 @@ void ImageWriter::FixupDexCacheArrayEntry(std::atomic<mirror::DexCachePair<T>>* 
   mirror::DexCachePair<T>* new_pair =
       reinterpret_cast<mirror::DexCachePair<T>*>(&new_array[array_index]);
   CopyAndFixupReference(
-      new_pair->object.AddressWithoutBarrier(), orig_pair->object.Read(), oat_index);
+      new_pair->object.AddressWithoutBarrier(), orig_pair->object.Read());
   new_pair->index = orig_pair->index;
 }
 
 template <typename T>
 void ImageWriter::FixupDexCacheArrayEntry(std::atomic<mirror::NativeDexCachePair<T>>* orig_array,
                                           std::atomic<mirror::NativeDexCachePair<T>>* new_array,
-                                          uint32_t array_index,
-                                          size_t oat_index) {
+                                          uint32_t array_index) {
   static_assert(
       sizeof(std::atomic<mirror::NativeDexCachePair<T>>) == sizeof(mirror::NativeDexCachePair<T>),
       "Size check for removing std::atomic<>.");
@@ -2956,9 +2879,8 @@ void ImageWriter::FixupDexCacheArrayEntry(std::atomic<mirror::NativeDexCachePair
         reinterpret_cast<DexCache::ConversionPair64*>(new_array) + array_index;
     *new_pair = *orig_pair;  // Copy original value and index.
     if (orig_pair->first != 0u) {
-      CopyAndFixupPointer(reinterpret_cast<void**>(&new_pair->first),
-                          reinterpret_cast64<void*>(orig_pair->first),
-                          oat_index);
+      CopyAndFixupPointer(
+          reinterpret_cast<void**>(&new_pair->first), reinterpret_cast64<void*>(orig_pair->first));
     }
   } else {
     DexCache::ConversionPair32* orig_pair =
@@ -2967,26 +2889,22 @@ void ImageWriter::FixupDexCacheArrayEntry(std::atomic<mirror::NativeDexCachePair
         reinterpret_cast<DexCache::ConversionPair32*>(new_array) + array_index;
     *new_pair = *orig_pair;  // Copy original value and index.
     if (orig_pair->first != 0u) {
-      CopyAndFixupPointer(reinterpret_cast<void**>(&new_pair->first),
-                          reinterpret_cast32<void*>(orig_pair->first),
-                          oat_index);
+      CopyAndFixupPointer(
+          reinterpret_cast<void**>(&new_pair->first), reinterpret_cast32<void*>(orig_pair->first));
     }
   }
 }
 
 void ImageWriter::FixupDexCacheArrayEntry(GcRoot<mirror::CallSite>* orig_array,
                                           GcRoot<mirror::CallSite>* new_array,
-                                          uint32_t array_index,
-                                          size_t oat_index) {
-  CopyAndFixupReference(new_array[array_index].AddressWithoutBarrier(),
-                        orig_array[array_index].Read(),
-                        oat_index);
+                                          uint32_t array_index) {
+  CopyAndFixupReference(
+      new_array[array_index].AddressWithoutBarrier(), orig_array[array_index].Read());
 }
 
 template <typename EntryType>
 void ImageWriter::FixupDexCacheArray(DexCache* orig_dex_cache,
                                      DexCache* copy_dex_cache,
-                                     size_t oat_index,
                                      MemberOffset array_offset,
                                      uint32_t size) {
   EntryType* orig_array = orig_dex_cache->GetFieldPtr64<EntryType*>(array_offset);
@@ -2994,45 +2912,37 @@ void ImageWriter::FixupDexCacheArray(DexCache* orig_dex_cache,
   if (orig_array != nullptr) {
     // Though the DexCache array fields are usually treated as native pointers, we clear
     // the top 32 bits for 32-bit targets.
-    CopyAndFixupPointer(copy_dex_cache, array_offset, orig_array, oat_index, PointerSize::k64);
+    CopyAndFixupPointer(copy_dex_cache, array_offset, orig_array, PointerSize::k64);
     EntryType* new_array = NativeCopyLocation(orig_array);
     for (uint32_t i = 0; i != size; ++i) {
-      FixupDexCacheArrayEntry(orig_array, new_array, i, oat_index);
+      FixupDexCacheArrayEntry(orig_array, new_array, i);
     }
   }
 }
 
-void ImageWriter::FixupDexCache(DexCache* orig_dex_cache,
-                                DexCache* copy_dex_cache,
-                                size_t oat_index) {
+void ImageWriter::FixupDexCache(DexCache* orig_dex_cache, DexCache* copy_dex_cache) {
   FixupDexCacheArray<mirror::StringDexCacheType>(orig_dex_cache,
                                                  copy_dex_cache,
-                                                 oat_index,
                                                  DexCache::StringsOffset(),
                                                  orig_dex_cache->NumStrings());
   FixupDexCacheArray<mirror::TypeDexCacheType>(orig_dex_cache,
                                                copy_dex_cache,
-                                               oat_index,
                                                DexCache::ResolvedTypesOffset(),
                                                orig_dex_cache->NumResolvedTypes());
   FixupDexCacheArray<mirror::MethodDexCacheType>(orig_dex_cache,
                                                  copy_dex_cache,
-                                                 oat_index,
                                                  DexCache::ResolvedMethodsOffset(),
                                                  orig_dex_cache->NumResolvedMethods());
   FixupDexCacheArray<mirror::FieldDexCacheType>(orig_dex_cache,
                                                 copy_dex_cache,
-                                                oat_index,
                                                 DexCache::ResolvedFieldsOffset(),
                                                 orig_dex_cache->NumResolvedFields());
   FixupDexCacheArray<mirror::MethodTypeDexCacheType>(orig_dex_cache,
                                                      copy_dex_cache,
-                                                     oat_index,
                                                      DexCache::ResolvedMethodTypesOffset(),
                                                      orig_dex_cache->NumResolvedMethodTypes());
   FixupDexCacheArray<GcRoot<mirror::CallSite>>(orig_dex_cache,
                                                copy_dex_cache,
-                                               oat_index,
                                                DexCache::ResolvedCallSitesOffset(),
                                                orig_dex_cache->NumResolvedCallSites());
 
@@ -3141,9 +3051,8 @@ void ImageWriter::CopyAndFixupMethod(ArtMethod* orig,
 
   memcpy(copy, orig, ArtMethod::Size(target_ptr_size_));
 
-  CopyAndFixupReference(copy->GetDeclaringClassAddressWithoutBarrier(),
-                        orig->GetDeclaringClassUnchecked(),
-                        oat_index);
+  CopyAndFixupReference(
+      copy->GetDeclaringClassAddressWithoutBarrier(), orig->GetDeclaringClassUnchecked());
 
   // OatWriter replaces the code_ with an offset value. Here we re-adjust to a pointer relative to
   // oat_begin_
@@ -3156,7 +3065,7 @@ void ImageWriter::CopyAndFixupMethod(ArtMethod* orig,
     if (orig_table != nullptr) {
       // Special IMT conflict method, normal IMT conflict method or unimplemented IMT method.
       quick_code = GetOatAddress(StubType::kQuickIMTConflictTrampoline);
-      CopyAndFixupPointer(copy, ArtMethod::DataOffset(target_ptr_size_), orig_table, oat_index);
+      CopyAndFixupPointer(copy, ArtMethod::DataOffset(target_ptr_size_), orig_table);
     } else if (UNLIKELY(orig == runtime->GetResolutionMethod())) {
       quick_code = GetOatAddress(StubType::kQuickResolutionTrampoline);
     } else {
@@ -3190,9 +3099,6 @@ void ImageWriter::CopyAndFixupMethod(ArtMethod* orig,
         // Note this is not the code_ pointer, that is handled above.
         copy->SetEntryPointFromJniPtrSize(
             GetOatAddress(StubType::kJNIDlsymLookup), target_ptr_size_);
-        MemberOffset offset = ArtMethod::EntryPointFromJniOffset(target_ptr_size_);
-        const void* dest = reinterpret_cast<const uint8_t*>(copy) + offset.Uint32Value();
-        RecordImageRelocation(dest, oat_index, /* app_to_boot_image */ compile_app_image_);
       } else {
         CHECK(copy->GetDataPtrSize(target_ptr_size_) == nullptr);
       }
@@ -3200,9 +3106,6 @@ void ImageWriter::CopyAndFixupMethod(ArtMethod* orig,
   }
   if (quick_code != nullptr) {
     copy->SetEntryPointFromQuickCompiledCodePtrSize(quick_code, target_ptr_size_);
-    MemberOffset offset = ArtMethod::EntryPointFromQuickCompiledCodeOffset(target_ptr_size_);
-    const void* dest = reinterpret_cast<const uint8_t*>(copy) + offset.Uint32Value();
-    RecordImageRelocation(dest, oat_index, /* app_to_boot_image */ IsInBootOatFile(quick_code));
   }
 }
 
@@ -3366,55 +3269,15 @@ ImageWriter::ImageInfo::ImageInfo()
     : intern_table_(new InternTable),
       class_table_(new ClassTable) {}
 
-template <bool kCheckNotNull /* = true */>
-void ImageWriter::RecordImageRelocation(const void* dest,
-                                        size_t oat_index,
-                                        bool app_to_boot_image /* = false */) {
-  // Check that we're not recording a relocation for null.
-  if (kCheckNotNull) {
-    DCHECK(reinterpret_cast<const uint32_t*>(dest)[0] != 0u);
-  }
-  // Calculate the offset within the image.
-  ImageInfo* image_info = &image_infos_[oat_index];
-  DCHECK(image_info->image_.HasAddress(dest))
-      << "MemMap range " << static_cast<const void*>(image_info->image_.Begin())
-      << "-" << static_cast<const void*>(image_info->image_.End())
-      << " does not contain " << dest;
-  size_t offset = reinterpret_cast<const uint8_t*>(dest) - image_info->image_.Begin();
-  ImageHeader* const image_header = reinterpret_cast<ImageHeader*>(image_info->image_.Begin());
-  size_t image_end = image_header->GetClassTableSection().End();
-  DCHECK_LT(offset, image_end);
-  // Calculate the location index.
-  size_t size = RelocationIndex(image_end, target_ptr_size_);
-  size_t index = RelocationIndex(offset, target_ptr_size_);
-  if (app_to_boot_image) {
-    index += size;
-  }
-  // Mark the location in the bitmap.
-  DCHECK(compile_app_image_ || !app_to_boot_image);
-  MemoryRegion region(image_info->relocation_bitmap_.data(), image_info->relocation_bitmap_.size());
-  BitMemoryRegion bit_region(region, /* bit_offset */ 0u, compile_app_image_ ? 2u * size : size);
-  DCHECK(!bit_region.LoadBit(index));
-  bit_region.StoreBit(index, /* value*/ true);
-}
-
 template <typename DestType>
-void ImageWriter::CopyAndFixupReference(DestType* dest,
-                                        ObjPtr<mirror::Object> src,
-                                        size_t oat_index) {
+void ImageWriter::CopyAndFixupReference(DestType* dest, ObjPtr<mirror::Object> src) {
   static_assert(std::is_same<DestType, mirror::CompressedReference<mirror::Object>>::value ||
                     std::is_same<DestType, mirror::HeapReference<mirror::Object>>::value,
                 "DestType must be a Compressed-/HeapReference<Object>.");
   dest->Assign(GetImageAddress(src.Ptr()));
-  if (src != nullptr) {
-    RecordImageRelocation(dest, oat_index, /* app_to_boot_image */ IsInBootImage(src.Ptr()));
-  }
 }
 
-void ImageWriter::CopyAndFixupPointer(void** target,
-                                      void* value,
-                                      size_t oat_index,
-                                      PointerSize pointer_size) {
+void ImageWriter::CopyAndFixupPointer(void** target, void* value, PointerSize pointer_size) {
   void* new_value = NativeLocationInImage(value);
   if (pointer_size == PointerSize::k32) {
     *reinterpret_cast<uint32_t*>(target) = reinterpret_cast32<uint32_t>(new_value);
@@ -3422,24 +3285,22 @@ void ImageWriter::CopyAndFixupPointer(void** target,
     *reinterpret_cast<uint64_t*>(target) = reinterpret_cast64<uint64_t>(new_value);
   }
   DCHECK(value != nullptr);
-  RecordImageRelocation(target, oat_index, /* app_to_boot_image */ IsInBootImage(value));
 }
 
-void ImageWriter::CopyAndFixupPointer(void** target, void* value, size_t oat_index)
+void ImageWriter::CopyAndFixupPointer(void** target, void* value)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  CopyAndFixupPointer(target, value, oat_index, target_ptr_size_);
+  CopyAndFixupPointer(target, value, target_ptr_size_);
 }
 
 void ImageWriter::CopyAndFixupPointer(
-    void* object, MemberOffset offset, void* value, size_t oat_index, PointerSize pointer_size) {
+    void* object, MemberOffset offset, void* value, PointerSize pointer_size) {
   void** target =
       reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(object) + offset.Uint32Value());
-  return CopyAndFixupPointer(target, value, oat_index, pointer_size);
+  return CopyAndFixupPointer(target, value, pointer_size);
 }
 
-void ImageWriter::CopyAndFixupPointer(
-    void* object, MemberOffset offset, void* value, size_t oat_index) {
-  return CopyAndFixupPointer(object, offset, value, oat_index, target_ptr_size_);
+void ImageWriter::CopyAndFixupPointer(void* object, MemberOffset offset, void* value) {
+  return CopyAndFixupPointer(object, offset, value, target_ptr_size_);
 }
 
 }  // namespace linker
