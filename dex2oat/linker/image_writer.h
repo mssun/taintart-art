@@ -289,7 +289,7 @@ class ImageWriter final {
      * Creates ImageSection objects that describe most of the sections of a
      * boot or AppImage.  The following sections are not included:
      *   - ImageHeader::kSectionImageBitmap
-     *   - ImageHeader::kSectionImageRelocations
+     *   - ImageHeader::kSectionStringReferenceOffsets
      *
      * In addition, the ImageHeader is not covered here.
      *
@@ -397,12 +397,6 @@ class ImageWriter final {
 
     // Class table associated with this image for serialization.
     std::unique_ptr<ClassTable> class_table_;
-
-    // Relocations of references/pointers. For boot image, it contains one bit
-    // for each location that can be relocated. For app image, it contains twice
-    // that many bits, first half contains relocations within this image and the
-    // second half contains relocations for references to the boot image.
-    std::vector<uint8_t> relocation_bitmap_;
   };
 
   // We use the lock word to store the offset of the object in the image.
@@ -496,11 +490,9 @@ class ImageWriter final {
   void CopyAndFixupObject(mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_);
   void CopyAndFixupMethod(ArtMethod* orig, ArtMethod* copy, size_t oat_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  void CopyAndFixupImTable(ImTable* orig, ImTable* copy, size_t oat_index)
+  void CopyAndFixupImTable(ImTable* orig, ImTable* copy)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  void CopyAndFixupImtConflictTable(ImtConflictTable* orig,
-                                    ImtConflictTable* copy,
-                                    size_t oat_index)
+  void CopyAndFixupImtConflictTable(ImtConflictTable* orig, ImtConflictTable* copy)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
@@ -517,45 +509,37 @@ class ImageWriter final {
    */
   void CopyMetadata();
 
-  template <bool kCheckNotNull = true>
-  void RecordImageRelocation(const void* dest, size_t oat_index, bool app_to_boot_image = false);
-  void FixupClass(mirror::Class* orig, mirror::Class* copy, size_t oat_index)
+  void FixupClass(mirror::Class* orig, mirror::Class* copy)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  void FixupObject(mirror::Object* orig, mirror::Object* copy, size_t oat_index)
+  void FixupObject(mirror::Object* orig, mirror::Object* copy)
       REQUIRES_SHARED(Locks::mutator_lock_);
   template <typename T>
   void FixupDexCacheArrayEntry(std::atomic<mirror::DexCachePair<T>>* orig_array,
                                std::atomic<mirror::DexCachePair<T>>* new_array,
-                               uint32_t array_index,
-                               size_t oat_index)
+                               uint32_t array_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
   template <typename T>
   void FixupDexCacheArrayEntry(std::atomic<mirror::NativeDexCachePair<T>>* orig_array,
                                std::atomic<mirror::NativeDexCachePair<T>>* new_array,
-                               uint32_t array_index,
-                               size_t oat_index)
+                               uint32_t array_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
   void FixupDexCacheArrayEntry(GcRoot<mirror::CallSite>* orig_array,
                                GcRoot<mirror::CallSite>* new_array,
-                               uint32_t array_index,
-                               size_t oat_index)
+                               uint32_t array_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
   template <typename EntryType>
   void FixupDexCacheArray(mirror::DexCache* orig_dex_cache,
                           mirror::DexCache* copy_dex_cache,
-                          size_t oat_index,
                           MemberOffset array_offset,
                           uint32_t size)
       REQUIRES_SHARED(Locks::mutator_lock_);
   void FixupDexCache(mirror::DexCache* orig_dex_cache,
-                     mirror::DexCache* copy_dex_cache,
-                     size_t oat_index)
+                     mirror::DexCache* copy_dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
   void FixupPointerArray(mirror::Object* dst,
                          mirror::PointerArray* arr,
                          mirror::Class* klass,
-                         Bin array_type,
-                         size_t oat_index)
+                         Bin array_type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Get quick code for non-resolution/imt_conflict/abstract method.
@@ -711,18 +695,18 @@ class ImageWriter final {
 
   // Copy a reference and record image relocation.
   template <typename DestType>
-  void CopyAndFixupReference(DestType* dest, ObjPtr<mirror::Object> src, size_t oat_index)
+  void CopyAndFixupReference(DestType* dest, ObjPtr<mirror::Object> src)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Copy a native pointer and record image relocation.
-  void CopyAndFixupPointer(void** target, void* value, size_t oat_index, PointerSize pointer_size)
+  void CopyAndFixupPointer(void** target, void* value, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  void CopyAndFixupPointer(void** target, void* value, size_t oat_index)
+  void CopyAndFixupPointer(void** target, void* value)
       REQUIRES_SHARED(Locks::mutator_lock_);
   void CopyAndFixupPointer(
-      void* object, MemberOffset offset, void* value, size_t oat_index, PointerSize pointer_size)
+      void* object, MemberOffset offset, void* value, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  void CopyAndFixupPointer(void* object, MemberOffset offset, void* value, size_t oat_index)
+  void CopyAndFixupPointer(void* object, MemberOffset offset, void* value)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
