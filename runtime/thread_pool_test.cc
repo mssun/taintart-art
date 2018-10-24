@@ -119,7 +119,7 @@ TEST_F(ThreadPoolTest, StopWait) {
   // Drain the task list. Note: we have to restart here, as no tasks will be finished when
   // the pool is stopped.
   thread_pool.StartWorkers(self);
-  thread_pool.Wait(self, /* do_work */ true, false);
+  thread_pool.Wait(self, /* do_work= */ true, false);
 }
 
 class TreeTask : public Task {

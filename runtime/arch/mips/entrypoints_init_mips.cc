@@ -184,7 +184,7 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   jpoints->pDlsymLookup = art_jni_dlsym_lookup_stub;
 
   // Alloc
-  ResetQuickAllocEntryPoints(qpoints, /*is_active*/ false);
+  ResetQuickAllocEntryPoints(qpoints, /*is_active=*/ false);
 
   // Cast
   qpoints->pInstanceofNonTrivial = artInstanceOfFromCode;
@@ -445,7 +445,7 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   // Read barrier.
   qpoints->pReadBarrierJni = ReadBarrierJni;
   static_assert(IsDirectEntrypoint(kQuickReadBarrierJni), "Direct C stub not marked direct.");
-  UpdateReadBarrierEntrypoints(qpoints, /*is_active*/ false);
+  UpdateReadBarrierEntrypoints(qpoints, /*is_active=*/ false);
   // Cannot use the following registers to pass arguments:
   // 0(ZERO), 1(AT), 16(S0), 17(S1), 24(T8), 25(T9), 26(K0), 27(K1), 28(GP), 29(SP), 31(RA).
   // Note that there are 30 entry points only: 00 for register 1(AT), ..., 29 for register 30(S8).

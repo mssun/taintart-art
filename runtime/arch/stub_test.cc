@@ -1899,7 +1899,7 @@ TEST_F(StubTest, DISABLED_IMT) {
   LinearAlloc* linear_alloc = Runtime::Current()->GetLinearAlloc();
   ArtMethod* conflict_method = Runtime::Current()->CreateImtConflictMethod(linear_alloc);
   ImtConflictTable* empty_conflict_table =
-      Runtime::Current()->GetClassLinker()->CreateImtConflictTable(/*count*/0u, linear_alloc);
+      Runtime::Current()->GetClassLinker()->CreateImtConflictTable(/*count=*/0u, linear_alloc);
   void* data = linear_alloc->Alloc(
       self,
       ImtConflictTable::ComputeSizeWithOneMoreEntry(empty_conflict_table, kRuntimePointerSize));

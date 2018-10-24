@@ -118,7 +118,7 @@ void SignalCatcher::Output(const std::string& s) {
 
   ScopedThreadStateChange tsc(Thread::Current(), kWaitingForSignalCatcherOutput);
 
-  std::unique_ptr<File> file(new File(output_fd.release(), true /* check_usage */));
+  std::unique_ptr<File> file(new File(output_fd.release(), true /* check_usage= */));
   bool success = file->WriteFully(s.data(), s.size());
   if (success) {
     success = file->FlushCloseOrErase() == 0;
@@ -169,7 +169,7 @@ void SignalCatcher::HandleSigQuit() {
 
 void SignalCatcher::HandleSigUsr1() {
   LOG(INFO) << "SIGUSR1 forcing GC (no HPROF) and profile save";
-  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references= */ false);
   ProfileSaver::ForceProcessProfiles();
 }
 

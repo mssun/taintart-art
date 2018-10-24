@@ -152,7 +152,8 @@ static void CollectNonDebuggableClasses() REQUIRES(!Locks::mutator_lock_) {
     // Drop the shared mutator lock.
     ScopedThreadSuspension sts(self, art::ThreadState::kNative);
     // Get exclusive mutator lock with suspend all.
-    ScopedSuspendAll suspend("Checking stacks for non-obsoletable methods!", /*long_suspend*/false);
+    ScopedSuspendAll suspend("Checking stacks for non-obsoletable methods!",
+                             /*long_suspend=*/false);
     MutexLock mu(Thread::Current(), *Locks::thread_list_lock_);
     runtime->GetThreadList()->ForEach(DoCollectNonDebuggableCallback, &classes);
   }
@@ -399,7 +400,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
         env,
         is_system_server,
         Runtime::NativeBridgeAction::kUnload,
-        /*isa*/ nullptr,
+        /*isa=*/ nullptr,
         profile_system_server);
   }
 }

@@ -76,8 +76,8 @@ inline mirror::Object* ConcurrentCopying::MarkUnevacFromSpaceRegion(
     // we can avoid an expensive CAS.
     // For the baker case, an object is marked if either the mark bit marked or the bitmap bit is
     // set.
-    success = ref->AtomicSetReadBarrierState(/* expected_rb_state */ ReadBarrier::NonGrayState(),
-                                             /* rb_state */ ReadBarrier::GrayState());
+    success = ref->AtomicSetReadBarrierState(/* expected_rb_state= */ ReadBarrier::NonGrayState(),
+                                             /* rb_state= */ ReadBarrier::GrayState());
   } else {
     success = !bitmap->AtomicTestAndSet(ref);
   }
@@ -113,8 +113,8 @@ inline mirror::Object* ConcurrentCopying::MarkImmuneSpace(Thread* const self,
     }
     // This may or may not succeed, which is ok because the object may already be gray.
     bool success =
-        ref->AtomicSetReadBarrierState(/* expected_rb_state */ ReadBarrier::NonGrayState(),
-                                       /* rb_state */ ReadBarrier::GrayState());
+        ref->AtomicSetReadBarrierState(/* expected_rb_state= */ ReadBarrier::NonGrayState(),
+                                       /* rb_state= */ ReadBarrier::GrayState());
     if (success) {
       MutexLock mu(self, immune_gray_stack_lock_);
       immune_gray_stack_.push_back(ref);
@@ -186,7 +186,7 @@ inline mirror::Object* ConcurrentCopying::Mark(Thread* const self,
         region_space_->Unprotect();
         LOG(FATAL_WITHOUT_ABORT) << DumpHeapReference(holder, offset, from_ref);
         region_space_->DumpNonFreeRegions(LOG_STREAM(FATAL_WITHOUT_ABORT));
-        heap_->GetVerification()->LogHeapCorruption(holder, offset, from_ref, /* fatal */ true);
+        heap_->GetVerification()->LogHeapCorruption(holder, offset, from_ref, /* fatal= */ true);
         UNREACHABLE();
     }
   } else {
@@ -209,8 +209,8 @@ inline mirror::Object* ConcurrentCopying::MarkFromReadBarrier(mirror::Object* fr
   if (UNLIKELY(mark_from_read_barrier_measurements_)) {
     ret = MarkFromReadBarrierWithMeasurements(self, from_ref);
   } else {
-    ret = Mark</*kGrayImmuneObject*/true, /*kNoUnEvac*/false, /*kFromGCThread*/false>(self,
-                                                                                      from_ref);
+    ret = Mark</*kGrayImmuneObject=*/true, /*kNoUnEvac=*/false, /*kFromGCThread=*/false>(self,
+                                                                                         from_ref);
   }
   // Only set the mark bit for baker barrier.
   if (kUseBakerReadBarrier && LIKELY(!rb_mark_bit_stack_full_ && ret->AtomicSetMarkBit(0, 1))) {

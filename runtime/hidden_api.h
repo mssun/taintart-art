@@ -242,9 +242,9 @@ inline Action GetMemberAction(T* member,
                               AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   bool is_caller_trusted =
-      detail::IsCallerTrusted(/* caller */ nullptr, caller_class_loader, caller_dex_cache);
+      detail::IsCallerTrusted(/* caller= */ nullptr, caller_class_loader, caller_dex_cache);
   return GetMemberAction(member,
-                         /* thread */ nullptr,
+                         /* thread= */ nullptr,
                          [is_caller_trusted] (Thread*) { return is_caller_trusted; },
                          access_method);
 }

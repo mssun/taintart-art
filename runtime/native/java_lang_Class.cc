@@ -647,7 +647,7 @@ static jobjectArray Class_getDeclaredAnnotations(JNIEnv* env, jobject javaThis) 
     ObjPtr<mirror::ObjectArray<mirror::Object>> empty_array =
         mirror::ObjectArray<mirror::Object>::Alloc(soa.Self(),
                                                    annotation_array_class,
-                                                   /* length */ 0);
+                                                   /* length= */ 0);
     return soa.AddLocalReference<jobjectArray>(empty_array);
   }
   return soa.AddLocalReference<jobjectArray>(annotations::GetAnnotationsForClass(klass));

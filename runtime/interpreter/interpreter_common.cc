@@ -714,12 +714,12 @@ bool DoMethodHandleInvokeExact(Thread* self,
   if (inst->Opcode() == Instruction::INVOKE_POLYMORPHIC) {
     static const bool kIsRange = false;
     return DoMethodHandleInvokeCommon<kIsRange>(
-        self, shadow_frame, true /* is_exact */, inst, inst_data, result);
+        self, shadow_frame, /* invoke_exact= */ true, inst, inst_data, result);
   } else {
     DCHECK_EQ(inst->Opcode(), Instruction::INVOKE_POLYMORPHIC_RANGE);
     static const bool kIsRange = true;
     return DoMethodHandleInvokeCommon<kIsRange>(
-        self, shadow_frame, true /* is_exact */, inst, inst_data, result);
+        self, shadow_frame, /* invoke_exact= */ true, inst, inst_data, result);
   }
 }
 
@@ -731,12 +731,12 @@ bool DoMethodHandleInvoke(Thread* self,
   if (inst->Opcode() == Instruction::INVOKE_POLYMORPHIC) {
     static const bool kIsRange = false;
     return DoMethodHandleInvokeCommon<kIsRange>(
-        self, shadow_frame, false /* is_exact */, inst, inst_data, result);
+        self, shadow_frame, /* invoke_exact= */ false, inst, inst_data, result);
   } else {
     DCHECK_EQ(inst->Opcode(), Instruction::INVOKE_POLYMORPHIC_RANGE);
     static const bool kIsRange = true;
     return DoMethodHandleInvokeCommon<kIsRange>(
-        self, shadow_frame, false /* is_exact */, inst, inst_data, result);
+        self, shadow_frame, /* invoke_exact= */ false, inst, inst_data, result);
   }
 }
 

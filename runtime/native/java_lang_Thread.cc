@@ -147,7 +147,7 @@ static void Thread_setNativeName(JNIEnv* env, jobject peer, jstring java_name) {
   bool timed_out;
   // Take suspend thread lock to avoid races with threads trying to suspend this one.
   Thread* thread = thread_list->SuspendThreadByPeer(peer,
-                                                    /* request_suspension */ true,
+                                                    /* request_suspension= */ true,
                                                     SuspendReason::kInternal,
                                                     &timed_out);
   if (thread != nullptr) {

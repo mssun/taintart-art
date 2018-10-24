@@ -181,7 +181,7 @@ class TypeIndexInfo {
 
  private:
   static BitVector GenerateTypeIndexes(const DexFile* dex_file) {
-    BitVector type_indexes(/*start_bits*/0, /*expandable*/true, Allocator::GetMallocAllocator());
+    BitVector type_indexes(/*start_bits=*/0, /*expandable=*/true, Allocator::GetMallocAllocator());
     for (uint16_t i = 0; i < dex_file->NumClassDefs(); ++i) {
       const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
       uint16_t type_idx = class_def.class_idx_.index_;
@@ -302,12 +302,12 @@ static bool CheckClassCollision(const OatFile* oat_file,
   std::priority_queue<DexFileAndClassPair> queue;
   for (size_t i = 0; i < dex_files_loaded.size(); ++i) {
     if (loaded_types[i].GetIterator() != loaded_types[i].GetIteratorEnd()) {
-      queue.emplace(dex_files_loaded[i], &loaded_types[i], /*from_loaded_oat*/true);
+      queue.emplace(dex_files_loaded[i], &loaded_types[i], /*from_loaded_oat=*/true);
     }
   }
   for (size_t i = 0; i < dex_files_unloaded.size(); ++i) {
     if (unloaded_types[i].GetIterator() != unloaded_types[i].GetIteratorEnd()) {
-      queue.emplace(dex_files_unloaded[i], &unloaded_types[i], /*from_loaded_oat*/false);
+      queue.emplace(dex_files_unloaded[i], &unloaded_types[i], /*from_loaded_oat=*/false);
     }
   }
 
@@ -385,8 +385,8 @@ OatFileManager::CheckCollisionResult OatFileManager::CheckCollision(
   // the oat file without addition checks
   ClassLoaderContext::VerificationResult result = context->VerifyClassLoaderContextMatch(
       oat_file->GetClassLoaderContext(),
-      /*verify_names*/ true,
-      /*verify_checksums*/ true);
+      /*verify_names=*/ true,
+      /*verify_checksums=*/ true);
   switch (result) {
     case ClassLoaderContext::VerificationResult::kForcedToSkipChecks:
       return CheckCollisionResult::kSkippedClassLoaderContextSharedLibrary;

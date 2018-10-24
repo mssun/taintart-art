@@ -404,7 +404,7 @@ static void PreloadDexCachesResolveField(ObjPtr<mirror::DexCache> dex_cache,
   const DexFile* dex_file = dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file->GetFieldId(field_idx);
   ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->LookupResolvedType(
-      field_id.class_idx_, dex_cache, /* class_loader */ nullptr);
+      field_id.class_idx_, dex_cache, /* class_loader= */ nullptr);
   if (klass == nullptr) {
     return;
   }
@@ -432,12 +432,12 @@ static void PreloadDexCachesResolveMethod(ObjPtr<mirror::DexCache> dex_cache, ui
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
 
   ObjPtr<mirror::Class> klass = class_linker->LookupResolvedType(
-      method_id.class_idx_, dex_cache, /* class_loader */ nullptr);
+      method_id.class_idx_, dex_cache, /* class_loader= */ nullptr);
   if (klass == nullptr) {
     return;
   }
   // Call FindResolvedMethod to populate the dex cache.
-  class_linker->FindResolvedMethod(klass, dex_cache, /* class_loader */ nullptr, method_idx);
+  class_linker->FindResolvedMethod(klass, dex_cache, /* class_loader= */ nullptr, method_idx);
 }
 
 struct DexCacheStats {

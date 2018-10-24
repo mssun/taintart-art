@@ -253,10 +253,10 @@ class AtomicStack {
   void Init() {
     std::string error_msg;
     mem_map_ = MemMap::MapAnonymous(name_.c_str(),
-                                    /* addr */ nullptr,
+                                    /* addr= */ nullptr,
                                     capacity_ * sizeof(begin_[0]),
                                     PROT_READ | PROT_WRITE,
-                                    /* low_4gb */ false,
+                                    /* low_4gb= */ false,
                                     &error_msg);
     CHECK(mem_map_.IsValid()) << "couldn't allocate mark stack.\n" << error_msg;
     uint8_t* addr = mem_map_.Begin();

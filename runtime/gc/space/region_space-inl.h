@@ -409,7 +409,7 @@ inline void RegionSpace::FreeLarge(mirror::Object* large_obj, size_t bytes_alloc
     } else {
       DCHECK(reg->IsLargeTail());
     }
-    reg->Clear(/*zero_and_release_pages*/true);
+    reg->Clear(/*zero_and_release_pages=*/true);
     if (kForEvac) {
       --num_evac_regions_;
     } else {

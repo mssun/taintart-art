@@ -67,7 +67,7 @@ extern "C" NO_RETURN void artThrowNullPointerExceptionFromCode(Thread* self)
   ScopedQuickEntrypointChecks sqec(self);
   // We come from an explicit check in the generated code. This path is triggered
   // only if the object is indeed null.
-  ThrowNullPointerExceptionFromDexPC(/* check_address */ false, 0U);
+  ThrowNullPointerExceptionFromDexPC(/* check_address= */ false, 0U);
   self->QuickDeliverException();
 }
 
@@ -75,7 +75,7 @@ extern "C" NO_RETURN void artThrowNullPointerExceptionFromCode(Thread* self)
 extern "C" NO_RETURN void artThrowNullPointerExceptionFromSignal(uintptr_t addr, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ScopedQuickEntrypointChecks sqec(self);
-  ThrowNullPointerExceptionFromDexPC(/* check_address */ true, addr);
+  ThrowNullPointerExceptionFromDexPC(/* check_address= */ true, addr);
   self->QuickDeliverException();
 }
 

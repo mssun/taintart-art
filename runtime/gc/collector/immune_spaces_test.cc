@@ -32,7 +32,7 @@ namespace collector {
 
 class DummyOatFile : public OatFile {
  public:
-  DummyOatFile(uint8_t* begin, uint8_t* end) : OatFile("Location", /*is_executable*/ false) {
+  DummyOatFile(uint8_t* begin, uint8_t* end) : OatFile("Location", /*executable=*/ false) {
     begin_ = begin;
     end_ = end;
   }
@@ -45,7 +45,7 @@ class DummyImageSpace : public space::ImageSpace {
                   std::unique_ptr<DummyOatFile>&& oat_file,
                   MemMap&& oat_map)
       : ImageSpace("DummyImageSpace",
-                   /*image_location*/"",
+                   /*image_location=*/"",
                    std::move(map),
                    std::move(live_bitmap),
                    map.End()),
@@ -87,7 +87,7 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
                                       image_begin,
                                       image_size,
                                       PROT_READ | PROT_WRITE,
-                                      /*low_4gb*/true,
+                                      /*low_4gb=*/true,
                                       &error_str);
     if (!map.IsValid()) {
       LOG(ERROR) << error_str;
@@ -100,7 +100,7 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
                                           oat_begin,
                                           oat_size,
                                           PROT_READ | PROT_WRITE,
-                                          /*low_4gb*/true,
+                                          /*low_4gb=*/true,
                                           &error_str);
     if (!oat_map.IsValid()) {
       LOG(ERROR) << error_str;
@@ -110,23 +110,23 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
     // Create image header.
     ImageSection sections[ImageHeader::kSectionCount];
     new (map.Begin()) ImageHeader(
-        /*image_begin*/PointerToLowMemUInt32(map.Begin()),
-        /*image_size*/map.Size(),
+        /*image_begin=*/PointerToLowMemUInt32(map.Begin()),
+        /*image_size=*/map.Size(),
         sections,
-        /*image_roots*/PointerToLowMemUInt32(map.Begin()) + 1,
-        /*oat_checksum*/0u,
+        /*image_roots=*/PointerToLowMemUInt32(map.Begin()) + 1,
+        /*oat_checksum=*/0u,
         // The oat file data in the header is always right after the image space.
-        /*oat_file_begin*/PointerToLowMemUInt32(oat_begin),
-        /*oat_data_begin*/PointerToLowMemUInt32(oat_begin),
-        /*oat_data_end*/PointerToLowMemUInt32(oat_begin + oat_size),
-        /*oat_file_end*/PointerToLowMemUInt32(oat_begin + oat_size),
-        /*boot_image_begin*/0u,
-        /*boot_image_size*/0u,
-        /*boot_oat_begin*/0u,
-        /*boot_oat_size*/0u,
-        /*pointer_size*/sizeof(void*),
+        /*oat_file_begin=*/PointerToLowMemUInt32(oat_begin),
+        /*oat_data_begin=*/PointerToLowMemUInt32(oat_begin),
+        /*oat_data_end=*/PointerToLowMemUInt32(oat_begin + oat_size),
+        /*oat_file_end=*/PointerToLowMemUInt32(oat_begin + oat_size),
+        /*boot_image_begin=*/0u,
+        /*boot_image_size=*/0u,
+        /*boot_oat_begin=*/0u,
+        /*boot_oat_size=*/0u,
+        /*pointer_size=*/sizeof(void*),
         ImageHeader::kStorageModeUncompressed,
-        /*storage_size*/0u);
+        /*data_size=*/0u);
     return new DummyImageSpace(std::move(map),
                                std::move(live_bitmap),
                                std::move(oat_file),
@@ -138,10 +138,10 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
   static uint8_t* GetContinuousMemoryRegion(size_t size) {
     std::string error_str;
     MemMap map = MemMap::MapAnonymous("reserve",
-                                      /* addr */ nullptr,
+                                      /* addr= */ nullptr,
                                       size,
                                       PROT_READ | PROT_WRITE,
-                                      /*low_4gb*/ true,
+                                      /*low_4gb=*/ true,
                                       &error_str);
     if (!map.IsValid()) {
       LOG(ERROR) << "Failed to allocate memory region " << error_str;
@@ -163,7 +163,7 @@ class DummySpace : public space::ContinuousSpace {
                         space::kGcRetentionPolicyNeverCollect,
                         begin,
                         end,
-                        /*limit*/end) {}
+                        /*limit=*/end) {}
 
   space::SpaceType GetType() const override {
     return space::kSpaceTypeMallocSpace;

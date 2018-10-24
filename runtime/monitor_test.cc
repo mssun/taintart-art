@@ -361,7 +361,7 @@ TEST_F(MonitorTest, TestTryLock) {
     thread_pool.AddTask(self, new TryLockTask(obj1));
     thread_pool.StartWorkers(self);
     ScopedThreadSuspension sts(self, kSuspended);
-    thread_pool.Wait(Thread::Current(), /*do_work*/false, /*may_hold_locks*/false);
+    thread_pool.Wait(Thread::Current(), /*do_work=*/false, /*may_hold_locks=*/false);
   }
   // Test that the trylock actually locks the object.
   {

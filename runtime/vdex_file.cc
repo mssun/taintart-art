@@ -150,11 +150,11 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
       (writable || unquicken) ? PROT_READ | PROT_WRITE : PROT_READ,
       unquicken ? MAP_PRIVATE : MAP_SHARED,
       file_fd,
-      /* start */ 0u,
+      /* start= */ 0u,
       low_4gb,
       vdex_filename.c_str(),
       mmap_reuse,
-      /* reservation */ nullptr,
+      /* reservation= */ nullptr,
       error_msg);
   if (!mmap.IsValid()) {
     *error_msg = "Failed to mmap file " + vdex_filename + " : " + *error_msg;
@@ -173,7 +173,7 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
       return nullptr;
     }
     vdex->Unquicken(MakeNonOwningPointerVector(unique_ptr_dex_files),
-                    /* decompile_return_instruction */ false);
+                    /* decompile_return_instruction= */ false);
     // Update the quickening info size to pretend there isn't any.
     size_t offset = vdex->GetDexSectionHeaderOffset();
     reinterpret_cast<DexSectionHeader*>(vdex->mmap_.Begin() + offset)->quickening_info_size_ = 0;
@@ -213,13 +213,13 @@ bool VdexFile::OpenAllDexFiles(std::vector<std::unique_ptr<const DexFile>>* dex_
     std::unique_ptr<const DexFile> dex(dex_file_loader.OpenWithDataSection(
         dex_file_start,
         size,
-        /*data_base*/ nullptr,
-        /*data_size*/ 0u,
+        /*data_base=*/ nullptr,
+        /*data_size=*/ 0u,
         location,
         GetLocationChecksum(i),
-        nullptr /*oat_dex_file*/,
-        false /*verify*/,
-        false /*verify_checksum*/,
+        /*oat_dex_file=*/ nullptr,
+        /*verify=*/ false,
+        /*verify_checksum=*/ false,
         error_msg));
     if (dex == nullptr) {
       return false;

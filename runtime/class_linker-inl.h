@@ -315,7 +315,7 @@ inline ArtMethod* ClassLinker::GetResolvedMethod(uint32_t method_idx, ArtMethod*
     // Check if the invoke type matches the class type.
     ObjPtr<mirror::DexCache> dex_cache = referrer->GetDexCache();
     ObjPtr<mirror::ClassLoader> class_loader = referrer->GetClassLoader();
-    if (CheckInvokeClassMismatch</* kThrow */ false>(dex_cache, type, method_idx, class_loader)) {
+    if (CheckInvokeClassMismatch</* kThrow= */ false>(dex_cache, type, method_idx, class_loader)) {
       return nullptr;
     }
     // Check access.
@@ -366,7 +366,7 @@ inline ArtMethod* ClassLinker::ResolveMethod(Thread* self,
     // Check if the invoke type matches the class type.
     ObjPtr<mirror::DexCache> dex_cache = referrer->GetDexCache();
     ObjPtr<mirror::ClassLoader> class_loader = referrer->GetClassLoader();
-    if (CheckInvokeClassMismatch</* kThrow */ true>(dex_cache, type, method_idx, class_loader)) {
+    if (CheckInvokeClassMismatch</* kThrow= */ true>(dex_cache, type, method_idx, class_loader)) {
       DCHECK(Thread::Current()->IsExceptionPending());
       return nullptr;
     }

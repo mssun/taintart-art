@@ -191,10 +191,10 @@ TEST_F(ThreadLifecycleCallbackRuntimeCallbacksTest, ThreadLifecycleCallbackJava)
 TEST_F(ThreadLifecycleCallbackRuntimeCallbacksTest, ThreadLifecycleCallbackAttach) {
   std::string error_msg;
   MemMap stack = MemMap::MapAnonymous("ThreadLifecycleCallback Thread",
-                                      /* addr */ nullptr,
+                                      /* addr= */ nullptr,
                                       128 * kPageSize,  // Just some small stack.
                                       PROT_READ | PROT_WRITE,
-                                      /* low_4gb */ false,
+                                      /* low_4gb= */ false,
                                       &error_msg);
   ASSERT_TRUE(stack.IsValid()) << error_msg;
 
@@ -505,10 +505,10 @@ TEST_F(MonitorWaitCallbacksTest, WaitUnlocked) {
           self,
           // Just a random class
           soa.Decode<mirror::Class>(WellKnownClasses::java_util_Collections).Ptr(),
-          /*ms*/0,
-          /*ns*/0,
-          /*interruptShouldThrow*/false,
-          /*why*/kWaiting);
+          /*ms=*/0,
+          /*ns=*/0,
+          /*interruptShouldThrow=*/false,
+          /*why=*/kWaiting);
     }
   }
   ASSERT_TRUE(cb_.saw_wait_start_);

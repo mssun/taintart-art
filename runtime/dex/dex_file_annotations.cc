@@ -1251,7 +1251,7 @@ static void DCheckNativeAnnotation(const char* descriptor, jclass cls) {
     // WellKnownClasses may not be initialized yet, so `klass` may be null.
     if (klass != nullptr) {
       // Lookup using the boot class path loader should yield the annotation class.
-      CHECK_EQ(klass, linker->LookupClass(soa.Self(), descriptor, /* class_loader */ nullptr));
+      CHECK_EQ(klass, linker->LookupClass(soa.Self(), descriptor, /* class_loader= */ nullptr));
     }
   }
 }

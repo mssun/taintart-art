@@ -242,7 +242,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
     *previous_idx = method_idx;
     const InvokeType type = method.GetInvokeType(class_def.access_flags_);
     ArtMethod* resolved_method = linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-        method_idx, dex_cache, class_loader, /* referrer */ nullptr, type);
+        method_idx, dex_cache, class_loader, /* referrer= */ nullptr, type);
     if (resolved_method == nullptr) {
       DCHECK(self->IsExceptionPending());
       // We couldn't resolve the method, but continue regardless.
@@ -263,7 +263,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
                                                       callbacks,
                                                       allow_soft_failures,
                                                       log_level,
-                                                      /*need_precise_constants*/ false,
+                                                      /*need_precise_constants=*/ false,
                                                       api_level,
                                                       &hard_failure_msg);
     if (result.kind == FailureKind::kHardFailure) {
@@ -340,11 +340,11 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
                           method_idx,
                           method,
                           method_access_flags,
-                          true /* can_load_classes */,
+                          /* can_load_classes= */ true,
                           allow_soft_failures,
                           need_precise_constants,
-                          false /* verify to dump */,
-                          true /* allow_thread_suspension */,
+                          /* verify to dump */ false,
+                          /* allow_thread_suspension= */ true,
                           api_level);
   if (verifier.Verify()) {
     // Verification completed, however failures may be pending that didn't cause the verification
@@ -475,11 +475,11 @@ MethodVerifier* MethodVerifier::VerifyMethodAndDump(Thread* self,
                                                 dex_method_idx,
                                                 method,
                                                 method_access_flags,
-                                                true /* can_load_classes */,
-                                                true /* allow_soft_failures */,
-                                                true /* need_precise_constants */,
-                                                true /* verify_to_dump */,
-                                                true /* allow_thread_suspension */,
+                                                /* can_load_classes= */ true,
+                                                /* allow_soft_failures= */ true,
+                                                /* need_precise_constants= */ true,
+                                                /* verify_to_dump= */ true,
+                                                /* allow_thread_suspension= */ true,
                                                 api_level);
   verifier->Verify();
   verifier->DumpFailures(vios->Stream());
@@ -570,11 +570,11 @@ void MethodVerifier::FindLocksAtDexPc(
                           m->GetDexMethodIndex(),
                           m,
                           m->GetAccessFlags(),
-                          false /* can_load_classes */,
-                          true  /* allow_soft_failures */,
-                          false /* need_precise_constants */,
-                          false /* verify_to_dump */,
-                          false /* allow_thread_suspension */,
+                          /* can_load_classes= */ false,
+                          /* allow_soft_failures= */ true,
+                          /* need_precise_constants= */ false,
+                          /* verify_to_dump= */ false,
+                          /* allow_thread_suspension= */ false,
                           api_level);
   verifier.interesting_dex_pc_ = dex_pc;
   verifier.monitor_enter_dex_pcs_ = monitor_enter_dex_pcs;

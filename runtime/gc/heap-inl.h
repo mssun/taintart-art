@@ -129,10 +129,10 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
         if (!self->IsExceptionPending()) {
           // AllocObject will pick up the new allocator type, and instrumented as true is the safe
           // default.
-          return AllocObject</*kInstrumented*/true>(self,
-                                                    klass,
-                                                    byte_count,
-                                                    pre_fence_visitor);
+          return AllocObject</*kInstrumented=*/true>(self,
+                                                     klass,
+                                                     byte_count,
+                                                     pre_fence_visitor);
         }
         return nullptr;
       }

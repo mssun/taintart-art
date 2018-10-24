@@ -31,8 +31,8 @@ void HandleUnexpectedSignalLinux(int signal_number, siginfo_t* info, void* raw_c
   HandleUnexpectedSignalCommon(signal_number,
                                info,
                                raw_context,
-                               /* handle_timeout_signal */ true,
-                               /* dump_on_stderr */ true);
+                               /* handle_timeout_signal= */ true,
+                               /* dump_on_stderr= */ true);
 
   if (getenv("debug_db_uid") != nullptr || getenv("art_wait_for_gdb_on_crash") != nullptr) {
     pid_t tid = GetTid();
@@ -77,7 +77,7 @@ void Runtime::InitPlatformSignalHandlers() {
   // On the host, we don't have debuggerd to dump a stack for us when something unexpected happens.
   InitPlatformSignalHandlersCommon(HandleUnexpectedSignalLinux,
                                    nullptr,
-                                   /* handle_timeout_signal */ true);
+                                   /* handle_timeout_signal= */ true);
 }
 
 }  // namespace art

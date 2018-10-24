@@ -58,7 +58,7 @@ MemMap RegionSpace::CreateMemMap(const std::string& name,
                                    requested_begin,
                                    capacity + kRegionSize,
                                    PROT_READ | PROT_WRITE,
-                                   /* low_4gb */ true,
+                                   /* low_4gb= */ true,
                                    &error_msg);
     if (mem_map.IsValid() || requested_begin == nullptr) {
       break;
@@ -393,7 +393,7 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
   uint8_t* clear_block_begin = nullptr;
   uint8_t* clear_block_end = nullptr;
   auto clear_region = [&clear_block_begin, &clear_block_end](Region* r) {
-    r->Clear(/*zero_and_release_pages*/false);
+    r->Clear(/*zero_and_release_pages=*/false);
     if (clear_block_end != r->Begin()) {
       // Region `r` is not adjacent to the current clear block; zero and release
       // pages within the current block and restart a new clear block at the
@@ -656,7 +656,7 @@ void RegionSpace::Clear() {
     if (!r->IsFree()) {
       --num_non_free_regions_;
     }
-    r->Clear(/*zero_and_release_pages*/true);
+    r->Clear(/*zero_and_release_pages=*/true);
   }
   SetNonFreeRegionLimit(0);
   DCHECK_EQ(num_non_free_regions_, 0u);
@@ -735,7 +735,7 @@ bool RegionSpace::AllocNewTlab(Thread* self, size_t min_bytes) {
   RevokeThreadLocalBuffersLocked(self);
   // Retain sufficient free regions for full evacuation.
 
-  Region* r = AllocateRegion(/*for_evac*/ false);
+  Region* r = AllocateRegion(/*for_evac=*/ false);
   if (r != nullptr) {
     r->is_a_tlab_ = true;
     r->thread_ = self;

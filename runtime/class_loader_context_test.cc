@@ -125,7 +125,7 @@ class ClassLoaderContextTest : public CommonRuntimeTest {
 
   std::unique_ptr<ClassLoaderContext> ParseContextWithChecksums(const std::string& context_spec) {
     std::unique_ptr<ClassLoaderContext> context(new ClassLoaderContext());
-    if (!context->Parse(context_spec, /*parse_checksums*/ true)) {
+    if (!context->Parse(context_spec, /*parse_checksums=*/ true)) {
       return nullptr;
     }
     return context;
@@ -263,7 +263,7 @@ TEST_F(ClassLoaderContextTest, OpenValidDexFiles) {
           "PCL[" + multidex_name + ":" + myclass_dex_name + "];" +
           "DLC[" + dex_name + "]");
 
-  ASSERT_TRUE(context->OpenDexFiles(InstructionSet::kArm, /*classpath_dir*/ ""));
+  ASSERT_TRUE(context->OpenDexFiles(InstructionSet::kArm, /*classpath_dir=*/ ""));
 
   VerifyContextSize(context.get(), 2);
 
@@ -314,7 +314,7 @@ TEST_F(ClassLoaderContextTest, OpenValidDexFilesRelative) {
           "PCL[" + multidex_name + ":" + myclass_dex_name + "];" +
           "DLC[" + dex_name + "]");
 
-  ASSERT_TRUE(context->OpenDexFiles(InstructionSet::kArm, /*classpath_dir*/ ""));
+  ASSERT_TRUE(context->OpenDexFiles(InstructionSet::kArm, /*classpath_dir=*/ ""));
 
   std::vector<std::unique_ptr<const DexFile>> all_dex_files0 = OpenTestDexFiles("MultiDex");
   std::vector<std::unique_ptr<const DexFile>> myclass_dex_files = OpenTestDexFiles("MyClass");
