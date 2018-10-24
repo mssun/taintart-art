@@ -47,6 +47,7 @@ class HiddenApiTest : public CommonRuntimeTest {
                                               const std::vector<std::string>& extra_args,
                                               ScratchFile* out_dex) {
     std::string error;
+    ScratchFile in_dex;
     std::unique_ptr<ZipArchive> jar(
         ZipArchive::Open(GetTestDexFileName("HiddenApi").c_str(), &error));
     if (jar == nullptr) {
@@ -58,7 +59,7 @@ class HiddenApiTest : public CommonRuntimeTest {
       LOG(FATAL) << "Could not find classes.dex in test file " << GetTestDexFileName("HiddenApi")
                  << ": " << error;
       UNREACHABLE();
-    } else if (!jar_classes_dex->ExtractToFile(*out_dex->GetFile(), &error)) {
+    } else if (!jar_classes_dex->ExtractToFile(*in_dex.GetFile(), &error)) {
       LOG(FATAL) << "Could not extract classes.dex from test file "
                  << GetTestDexFileName("HiddenApi") << ": " << error;
       UNREACHABLE();
@@ -68,7 +69,8 @@ class HiddenApiTest : public CommonRuntimeTest {
     argv_str.push_back(GetHiddenApiCmd());
     argv_str.insert(argv_str.end(), extra_args.begin(), extra_args.end());
     argv_str.push_back("encode");
-    argv_str.push_back("--dex=" + out_dex->GetFilename());
+    argv_str.push_back("--input-dex=" + in_dex.GetFilename());
+    argv_str.push_back("--output-dex=" + out_dex->GetFilename());
     argv_str.push_back("--light-greylist=" + light_greylist.GetFilename());
     argv_str.push_back("--dark-greylist=" + dark_greylist.GetFilename());
     argv_str.push_back("--blacklist=" + blacklist.GetFilename());
@@ -92,7 +94,7 @@ class HiddenApiTest : public CommonRuntimeTest {
     }
 
     std::unique_ptr<const DexFile> dex_file(dex_loader.OpenDex(
-        fd.Release(), /* location= */ file.GetFilename(), /* verify= */ false,
+        fd.Release(), /* location= */ file.GetFilename(), /* verify= */ true,
         /* verify_checksum= */ true, /* mmap_shared= */ false, &error_msg));
     if (dex_file.get() == nullptr) {
       LOG(FATAL) << "Open failed for '" << file.GetFilename() << "' " << error_msg;
@@ -126,8 +128,12 @@ class HiddenApiTest : public CommonRuntimeTest {
                                                     uint32_t expected_visibility,
                                                     const DexFile::ClassDef& class_def,
                                                     const DexFile& dex_file) {
-    ClassAccessor accessor(dex_file, class_def);
+    ClassAccessor accessor(dex_file, class_def, /* parse hiddenapi flags */ true);
     CHECK(accessor.HasClassData()) << "Class " << accessor.GetDescriptor() << " has no data";
+
+    if (!accessor.HasHiddenapiClassData()) {
+      return HiddenApiAccessFlags::kWhitelist;
+    }
 
     for (const ClassAccessor::Field& field : accessor.GetFields()) {
       const DexFile::FieldId& fid = dex_file.GetFieldId(field.GetIndex());
@@ -135,7 +141,7 @@ class HiddenApiTest : public CommonRuntimeTest {
         const uint32_t actual_visibility = field.GetAccessFlags() & kAccVisibilityFlags;
         CHECK_EQ(actual_visibility, expected_visibility)
             << "Field " << name << " in class " << accessor.GetDescriptor();
-        return field.DecodeHiddenAccessFlags();
+        return static_cast<HiddenApiAccessFlags::ApiList>(field.GetHiddenapiFlags());
       }
     }
 
@@ -149,8 +155,12 @@ class HiddenApiTest : public CommonRuntimeTest {
                                                      bool expected_native,
                                                      const DexFile::ClassDef& class_def,
                                                      const DexFile& dex_file) {
-    ClassAccessor accessor(dex_file, class_def);
+    ClassAccessor accessor(dex_file, class_def, /* parse hiddenapi flags */ true);
     CHECK(accessor.HasClassData()) << "Class " << accessor.GetDescriptor() << " has no data";
+
+    if (!accessor.HasHiddenapiClassData()) {
+      return HiddenApiAccessFlags::kWhitelist;
+    }
 
     for (const ClassAccessor::Method& method : accessor.GetMethods()) {
       const DexFile::MethodId& mid = dex_file.GetMethodId(method.GetIndex());
@@ -160,7 +170,7 @@ class HiddenApiTest : public CommonRuntimeTest {
         const uint32_t actual_visibility = method.GetAccessFlags() & kAccVisibilityFlags;
         CHECK_EQ(actual_visibility, expected_visibility)
             << "Method " << name << " in class " << accessor.GetDescriptor();
-        return method.DecodeHiddenAccessFlags();
+        return static_cast<HiddenApiAccessFlags::ApiList>(method.GetHiddenapiFlags());
       }
     }
 

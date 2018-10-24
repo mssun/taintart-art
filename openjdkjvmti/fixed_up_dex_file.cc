@@ -71,7 +71,6 @@ static void DoDexUnquicken(const art::DexFile& new_dex_file,
                            original_dex_file,
                            /* decompile_return_instruction= */ true);
   }
-  new_dex_file.UnhideApis();
 }
 
 static void DCheckVerifyDexFile(const art::DexFile& dex) {
