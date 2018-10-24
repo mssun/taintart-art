@@ -287,9 +287,8 @@ class ImageWriter final {
 
     /*
      * Creates ImageSection objects that describe most of the sections of a
-     * boot or AppImage.  The following sections are not included:
+     * boot or AppImage. The following sections are not included:
      *   - ImageHeader::kSectionImageBitmap
-     *   - ImageHeader::kSectionStringReferenceOffsets
      *
      * In addition, the ImageHeader is not covered here.
      *
