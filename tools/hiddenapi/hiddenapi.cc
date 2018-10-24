@@ -22,8 +22,6 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
-#include "base/bit_utils.h"
-#include "base/stl_util.h"
 #include "base/mem_map.h"
 #include "base/os.h"
 #include "base/unix_file/fd_file.h"
@@ -68,9 +66,8 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("Usage: hiddenapi [command_name] [options]...");
   UsageError("");
   UsageError("  Command \"encode\": encode API list membership in boot dex files");
-  UsageError("    --input-dex=<filename>: dex file which belongs to boot class path");
-  UsageError("    --output-dex=<filename>: file to write encoded dex into");
-  UsageError("        input and output dex files are paired in order of appearance");
+  UsageError("    --dex=<filename>: dex file which belongs to boot class path,");
+  UsageError("                      the file will be overwritten");
   UsageError("");
   UsageError("    --light-greylist=<filename>:");
   UsageError("    --dark-greylist=<filename>:");
@@ -149,6 +146,30 @@ class DexMember {
   }
 
   inline const DexClass& GetDeclaringClass() const { return klass_; }
+
+  // Sets hidden bits in access flags and writes them back into the DEX in memory.
+  // Note that this will not update the cached data of the class accessor
+  // until it iterates over this item again and therefore will fail a CHECK if
+  // it is called multiple times on the same DexMember.
+  void SetHidden(HiddenApiAccessFlags::ApiList value) const {
+    const uint32_t old_flags = item_.GetRawAccessFlags();
+    const uint32_t new_flags = HiddenApiAccessFlags::EncodeForDex(old_flags, value);
+    CHECK_EQ(UnsignedLeb128Size(new_flags), UnsignedLeb128Size(old_flags));
+
+    // Locate the LEB128-encoded access flags in class data.
+    // `ptr` initially points to the next ClassData item. We iterate backwards
+    // until we hit the terminating byte of the previous Leb128 value.
+    const uint8_t* ptr = item_.GetDataPointer();
+    if (IsMethod()) {
+      ptr = ReverseSearchUnsignedLeb128(ptr);
+      DCHECK_EQ(DecodeUnsignedLeb128WithoutMovingCursor(ptr), GetMethod().GetCodeItemOffset());
+    }
+    ptr = ReverseSearchUnsignedLeb128(ptr);
+    DCHECK_EQ(DecodeUnsignedLeb128WithoutMovingCursor(ptr), old_flags);
+
+    // Overwrite the access flags.
+    UpdateUnsignedLeb128(const_cast<uint8_t*>(ptr), new_flags);
+  }
 
   inline bool IsMethod() const { return is_method_; }
   inline bool IsVirtualMethod() const { return IsMethod() && !GetMethod().IsStaticOrDirect(); }
@@ -239,10 +260,6 @@ class ClassPath final {
         fn(DexMember(klass, method));
       }
     });
-  }
-
-  std::vector<const DexFile*> GetDexFiles() const {
-    return MakeNonOwningPointerVector(dex_files_);
   }
 
   void UpdateDexChecksums() {
@@ -542,316 +559,6 @@ class Hierarchy final {
   std::map<std::string, HierarchyClass> classes_;
 };
 
-// Builder of dex section containing hiddenapi flags.
-class HiddenapiClassDataBuilder final {
- public:
-  explicit HiddenapiClassDataBuilder(const DexFile& dex_file)
-      : num_classdefs_(dex_file.NumClassDefs()),
-        next_class_def_idx_(0u),
-        class_def_has_non_zero_flags_(false),
-        dex_file_has_non_zero_flags_(false),
-        data_(sizeof(uint32_t) * (num_classdefs_ + 1), 0u) {
-    *GetSizeField() = GetCurrentDataSize();
-  }
-
-  // Notify the builder that new flags for the next class def
-  // will be written now. The builder records the current offset
-  // into the header.
-  void BeginClassDef(uint32_t idx) {
-    CHECK_EQ(next_class_def_idx_, idx);
-    CHECK_LT(idx, num_classdefs_);
-    GetOffsetArray()[idx] = GetCurrentDataSize();
-    class_def_has_non_zero_flags_ = false;
-  }
-
-  // Notify the builder that all flags for this class def have been
-  // written. The builder updates the total size of the data struct
-  // and may set offset for class def in header to zero if no data
-  // has been written.
-  void EndClassDef(uint32_t idx) {
-    CHECK_EQ(next_class_def_idx_, idx);
-    CHECK_LT(idx, num_classdefs_);
-
-    ++next_class_def_idx_;
-
-    if (!class_def_has_non_zero_flags_) {
-      // No need to store flags for this class. Remove the written flags
-      // and set offset in header to zero.
-      data_.resize(GetOffsetArray()[idx]);
-      GetOffsetArray()[idx] = 0u;
-    }
-
-    dex_file_has_non_zero_flags_ |= class_def_has_non_zero_flags_;
-
-    if (idx == num_classdefs_ - 1) {
-      if (dex_file_has_non_zero_flags_) {
-        // This was the last class def and we have generated non-zero hiddenapi
-        // flags. Update total size in the header.
-        *GetSizeField() = GetCurrentDataSize();
-      } else {
-        // This was the last class def and we have not generated any non-zero
-        // hiddenapi flags. Clear all the data.
-        data_.clear();
-      }
-    }
-  }
-
-  // Append flags at the end of the data struct. This should be called
-  // between BeginClassDef and EndClassDef in the order of appearance of
-  // fields/methods in the class data stream.
-  void WriteFlags(uint32_t flags) {
-    EncodeUnsignedLeb128(&data_, flags);
-    class_def_has_non_zero_flags_ |= (flags != 0u);
-  }
-
-  // Return backing data, assuming that all flags have been written.
-  const std::vector<uint8_t>& GetData() const {
-    CHECK_EQ(next_class_def_idx_, num_classdefs_) << "Incomplete data";
-    return data_;
-  }
-
- private:
-  // Returns pointer to the size field in the header of this dex section.
-  uint32_t* GetSizeField() {
-    // Assume malloc() aligns allocated memory to at least uint32_t.
-    CHECK(IsAligned<sizeof(uint32_t)>(data_.data()));
-    return reinterpret_cast<uint32_t*>(data_.data());
-  }
-
-  // Returns pointer to array of offsets (indexed by class def indices) in the
-  // header of this dex section.
-  uint32_t* GetOffsetArray() { return &GetSizeField()[1]; }
-  uint32_t GetCurrentDataSize() const { return data_.size(); }
-
-  // Number of class defs in this dex file.
-  const uint32_t num_classdefs_;
-
-  // Next expected class def index.
-  uint32_t next_class_def_idx_;
-
-  // Whether non-zero flags have been encountered for this class def.
-  bool class_def_has_non_zero_flags_;
-
-  // Whether any non-zero flags have been encountered for this dex file.
-  bool dex_file_has_non_zero_flags_;
-
-  // Vector containing the data of the built data structure.
-  std::vector<uint8_t> data_;
-};
-
-// Edits a dex file, inserting a new HiddenapiClassData section.
-class DexFileEditor final {
- public:
-  DexFileEditor(const DexFile& old_dex, const std::vector<uint8_t>& hiddenapi_class_data)
-      : old_dex_(old_dex),
-        hiddenapi_class_data_(hiddenapi_class_data),
-        loaded_dex_header_(nullptr),
-        loaded_dex_maplist_(nullptr) {}
-
-  // Copies dex file into a backing data vector, appends the given HiddenapiClassData
-  // and updates the MapList.
-  void Encode() {
-    // We do not support non-standard dex encodings, e.g. compact dex.
-    CHECK(old_dex_.IsStandardDexFile());
-
-    // If there are no data to append, copy the old dex file and return.
-    if (hiddenapi_class_data_.empty()) {
-      AllocateMemory(old_dex_.Size());
-      Append(old_dex_.Begin(), old_dex_.Size(), /* update_header= */ false);
-      return;
-    }
-
-    // Find the old MapList, find its size.
-    const DexFile::MapList* old_map = old_dex_.GetMapList();
-    CHECK_LT(old_map->size_, std::numeric_limits<uint32_t>::max());
-
-    // Compute the size of the new dex file. We append the HiddenapiClassData,
-    // one MapItem and possibly some padding to align the new MapList.
-    CHECK(IsAligned<kMapListAlignment>(old_dex_.Size()))
-        << "End of input dex file is not 4-byte aligned, possibly because its MapList is not "
-        << "at the end of the file.";
-    size_t size_delta =
-        RoundUp(hiddenapi_class_data_.size(), kMapListAlignment) + sizeof(DexFile::MapItem);
-    size_t new_size = old_dex_.Size() + size_delta;
-    AllocateMemory(new_size);
-
-    // Copy the old dex file into the backing data vector. Load the copied
-    // dex file to obtain pointers to its header and MapList.
-    Append(old_dex_.Begin(), old_dex_.Size(), /* update_header= */ false);
-    ReloadDex(/* verify= */ false);
-
-    // Truncate the new dex file before the old MapList. This assumes that
-    // the MapList is the last entry in the dex file. This is currently true
-    // for our tooling.
-    // TODO: Implement the general case by zero-ing the old MapList (turning
-    // it into padding.
-    RemoveOldMapList();
-
-    // Append HiddenapiClassData.
-    size_t payload_offset = AppendHiddenapiClassData();
-
-    // Wrute new MapList with an entry for HiddenapiClassData.
-    CreateMapListWithNewItem(payload_offset);
-
-    // Check that the pre-computed size matches the actual size.
-    CHECK_EQ(offset_, new_size);
-
-    // Reload to all data structures.
-    ReloadDex(/* verify= */ false);
-
-    // Update the dex checksum.
-    UpdateChecksum();
-
-    // Run DexFileVerifier on the new dex file as a CHECK.
-    ReloadDex(/* verify= */ true);
-  }
-
-  // Writes the edited dex file into a file.
-  void WriteTo(const std::string& path) {
-    CHECK(!data_.empty());
-    std::ofstream ofs(path.c_str(), std::ofstream::out | std::ofstream::binary);
-    ofs.write(reinterpret_cast<const char*>(data_.data()), data_.size());
-    ofs.flush();
-    CHECK(ofs.good());
-    ofs.close();
-  }
-
- private:
-  static constexpr size_t kMapListAlignment = 4u;
-  static constexpr size_t kHiddenapiClassDataAlignment = 4u;
-
-  void ReloadDex(bool verify) {
-    std::string error_msg;
-    DexFileLoader loader;
-    loaded_dex_ = loader.Open(
-        data_.data(),
-        data_.size(),
-        "test_location",
-        old_dex_.GetLocationChecksum(),
-        /* oat_dex_file= */ nullptr,
-        /* verify= */ verify,
-        /* verify_checksum= */ verify,
-        &error_msg);
-    if (loaded_dex_.get() == nullptr) {
-      LOG(FATAL) << "Failed to load edited dex file: " << error_msg;
-      UNREACHABLE();
-    }
-
-    // Load the location of header and map list before we start editing the file.
-    loaded_dex_header_ = const_cast<DexFile::Header*>(&loaded_dex_->GetHeader());
-    loaded_dex_maplist_ = const_cast<DexFile::MapList*>(loaded_dex_->GetMapList());
-  }
-
-  DexFile::Header& GetHeader() const {
-    CHECK(loaded_dex_header_ != nullptr);
-    return *loaded_dex_header_;
-  }
-
-  DexFile::MapList& GetMapList() const {
-    CHECK(loaded_dex_maplist_ != nullptr);
-    return *loaded_dex_maplist_;
-  }
-
-  void AllocateMemory(size_t total_size) {
-    data_.clear();
-    data_.resize(total_size);
-    CHECK(IsAligned<kMapListAlignment>(data_.data()));
-    CHECK(IsAligned<kHiddenapiClassDataAlignment>(data_.data()));
-    offset_ = 0;
-  }
-
-  uint8_t* GetCurrentDataPtr() {
-    return data_.data() + offset_;
-  }
-
-  void UpdateDataSize(off_t delta, bool update_header) {
-    offset_ += delta;
-    if (update_header) {
-      DexFile::Header& header = GetHeader();
-      header.file_size_ += delta;
-      header.data_size_ += delta;
-    }
-  }
-
-  template<typename T>
-  T* Append(const T* src, size_t len, bool update_header = true) {
-    CHECK_LE(offset_ + len, data_.size());
-    uint8_t* dst = GetCurrentDataPtr();
-    memcpy(dst, src, len);
-    UpdateDataSize(len, update_header);
-    return reinterpret_cast<T*>(dst);
-  }
-
-  void InsertPadding(size_t alignment) {
-    size_t len = RoundUp(offset_, alignment) - offset_;
-    std::vector<uint8_t> padding(len, 0);
-    Append(padding.data(), padding.size());
-  }
-
-  void RemoveOldMapList() {
-    size_t map_size = GetMapList().Size();
-    uint8_t* map_start = reinterpret_cast<uint8_t*>(&GetMapList());
-    CHECK_EQ(map_start + map_size, GetCurrentDataPtr()) << "MapList not at the end of dex file";
-    UpdateDataSize(-static_cast<off_t>(map_size), /* update_header= */ true);
-    CHECK_EQ(map_start, GetCurrentDataPtr());
-    loaded_dex_maplist_ = nullptr;  // do not use this map list any more
-  }
-
-  void CreateMapListWithNewItem(size_t payload_offset) {
-    InsertPadding(/* alignment= */ kMapListAlignment);
-
-    size_t new_map_offset = offset_;
-    DexFile::MapList* map = Append(old_dex_.GetMapList(), old_dex_.GetMapList()->Size());
-
-    // Check last map entry is a pointer to itself.
-    DexFile::MapItem& old_item = map->list_[map->size_ - 1];
-    CHECK(old_item.type_ == DexFile::kDexTypeMapList);
-    CHECK_EQ(old_item.size_, 1u);
-    CHECK_EQ(old_item.offset_, GetHeader().map_off_);
-
-    // Create a new MapItem entry with new MapList details.
-    DexFile::MapItem new_item;
-    new_item.type_ = old_item.type_;
-    new_item.size_ = old_item.size_;
-    new_item.offset_ = new_map_offset;
-
-    // Update pointer in the header.
-    GetHeader().map_off_ = new_map_offset;
-
-    // Append a new MapItem and return its pointer.
-    map->size_++;
-    Append(&new_item, sizeof(DexFile::MapItem));
-
-    // Change penultimate entry to point to metadata.
-    old_item.type_ = DexFile::kDexTypeHiddenapiClassData;
-    old_item.size_ = 1u;  // there is only one section
-    old_item.offset_ = payload_offset;
-  }
-
-  size_t AppendHiddenapiClassData() {
-    size_t payload_offset = offset_;
-    CHECK_EQ(kMapListAlignment, kHiddenapiClassDataAlignment);
-    CHECK(IsAligned<kHiddenapiClassDataAlignment>(payload_offset))
-        << "Should not need to align the section, previous data was already aligned";
-    Append(hiddenapi_class_data_.data(), hiddenapi_class_data_.size());
-    return payload_offset;
-  }
-
-  void UpdateChecksum() {
-    GetHeader().checksum_ = loaded_dex_->CalculateChecksum();
-  }
-
-  const DexFile& old_dex_;
-  const std::vector<uint8_t>& hiddenapi_class_data_;
-
-  std::vector<uint8_t> data_;
-  size_t offset_;
-
-  std::unique_ptr<const DexFile> loaded_dex_;
-  DexFile::Header* loaded_dex_header_;
-  DexFile::MapList* loaded_dex_maplist_;
-};
-
 class HiddenApi final {
  public:
   HiddenApi() {}
@@ -883,10 +590,8 @@ class HiddenApi final {
       if (command == "encode") {
         for (int i = 1; i < argc; ++i) {
           const StringPiece option(argv[i]);
-          if (option.starts_with("--input-dex=")) {
-            boot_dex_paths_.push_back(option.substr(strlen("--input-dex=")).ToString());
-          } else if (option.starts_with("--output-dex=")) {
-            output_dex_paths_.push_back(option.substr(strlen("--output-dex=")).ToString());
+          if (option.starts_with("--dex=")) {
+            boot_dex_paths_.push_back(option.substr(strlen("--dex=")).ToString());
           } else if (option.starts_with("--light-greylist=")) {
             light_greylist_path_ = option.substr(strlen("--light-greylist=")).ToString();
           } else if (option.starts_with("--dark-greylist=")) {
@@ -925,9 +630,7 @@ class HiddenApi final {
 
   void EncodeAccessFlags() {
     if (boot_dex_paths_.empty()) {
-      Usage("No input DEX files specified");
-    } else if (output_dex_paths_.size() != boot_dex_paths_.size()) {
-      Usage("Number of input DEX files does not match number of output DEX files");
+      Usage("No boot DEX files specified");
     }
 
     // Load dex signatures.
@@ -936,41 +639,16 @@ class HiddenApi final {
     OpenApiFile(dark_greylist_path_, api_list, HiddenApiAccessFlags::kDarkGreylist);
     OpenApiFile(blacklist_path_, api_list, HiddenApiAccessFlags::kBlacklist);
 
-    // Iterate over input dex files and insert HiddenapiClassData sections.
-    for (size_t i = 0; i < boot_dex_paths_.size(); ++i) {
-      const std::string& input_path = boot_dex_paths_[i];
-      const std::string& output_path = output_dex_paths_[i];
+    // Open all dex files.
+    ClassPath boot_classpath(boot_dex_paths_, /* open_writable= */ true);
 
-      ClassPath boot_classpath({ input_path }, /* open_writable= */ false);
-      std::vector<const DexFile*> input_dex_files = boot_classpath.GetDexFiles();
-      CHECK_EQ(input_dex_files.size(), 1u);
-      const DexFile& input_dex = *input_dex_files[0];
+    // Set access flags of all members.
+    boot_classpath.ForEachDexMember([&api_list](const DexMember& boot_member) {
+      auto it = api_list.find(boot_member.GetApiEntry());
+      boot_member.SetHidden(it == api_list.end() ? HiddenApiAccessFlags::kWhitelist : it->second);
+    });
 
-      HiddenapiClassDataBuilder builder(input_dex);
-      boot_classpath.ForEachDexClass([&api_list, &builder](const DexClass& boot_class) {
-        builder.BeginClassDef(boot_class.GetClassDefIndex());
-        if (boot_class.GetData() != nullptr) {
-          auto fn_shared = [&](const DexMember& boot_member) {
-            // TODO: Load whitelist and CHECK that entry was found.
-            auto it = api_list.find(boot_member.GetApiEntry());
-            builder.WriteFlags(
-                (it == api_list.end()) ? HiddenApiAccessFlags::kWhitelist : it->second);
-          };
-          auto fn_field = [&](const ClassAccessor::Field& boot_field) {
-            fn_shared(DexMember(boot_class, boot_field));
-          };
-          auto fn_method = [&](const ClassAccessor::Method& boot_method) {
-            fn_shared(DexMember(boot_class, boot_method));
-          };
-          boot_class.VisitFieldsAndMethods(fn_field, fn_field, fn_method, fn_method);
-        }
-        builder.EndClassDef(boot_class.GetClassDefIndex());
-      });
-
-      DexFileEditor dex_editor(input_dex, builder.GetData());
-      dex_editor.Encode();
-      dex_editor.WriteTo(output_path);
-    }
+    boot_classpath.UpdateDexChecksums();
   }
 
   void OpenApiFile(const std::string& path,
@@ -1070,9 +748,6 @@ class HiddenApi final {
   // Paths to DEX files which should be processed.
   std::vector<std::string> boot_dex_paths_;
 
-  // Output paths where modified DEX files should be written.
-  std::vector<std::string> output_dex_paths_;
-
   // Set of public API stub classpaths. Each classpath is formed by a list
   // of DEX/APK files in the order they appear on the classpath.
   std::vector<std::vector<std::string>> stub_classpaths_;
@@ -1090,8 +765,6 @@ class HiddenApi final {
 }  // namespace art
 
 int main(int argc, char** argv) {
-  art::original_argc = argc;
-  art::original_argv = argv;
   android::base::InitLogging(argv);
   art::MemMap::Init();
   art::HiddenApi().Run(argc, argv);
