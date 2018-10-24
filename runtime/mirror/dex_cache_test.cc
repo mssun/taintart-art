@@ -108,7 +108,7 @@ TEST_F(DexCacheTest, TestResolvedFieldAccess) {
   EXPECT_NE(klass1->NumStaticFields(), 0u);
   for (ArtField& field : klass2->GetSFields()) {
     EXPECT_FALSE(
-        klass1->ResolvedFieldAccessTest</*throw_on_failure*/ false>(
+        klass1->ResolvedFieldAccessTest</*throw_on_failure=*/ false>(
             klass2.Get(),
             &field,
             klass1->GetDexCache(),

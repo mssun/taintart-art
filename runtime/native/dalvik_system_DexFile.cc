@@ -174,10 +174,10 @@ static MemMap AllocateDexMemoryMap(JNIEnv* env, jint start, jint end) {
   std::string error_message;
   size_t length = static_cast<size_t>(end - start);
   MemMap dex_mem_map = MemMap::MapAnonymous("DEX data",
-                                            /* addr */ nullptr,
+                                            /* addr= */ nullptr,
                                             length,
                                             PROT_READ | PROT_WRITE,
-                                            /* low_4gb */ false,
+                                            /* low_4gb= */ false,
                                             &error_message);
   if (!dex_mem_map.IsValid()) {
     ScopedObjectAccess soa(env);
@@ -196,8 +196,8 @@ static const DexFile* CreateDexFile(JNIEnv* env, MemMap&& dex_mem_map) {
   std::unique_ptr<const DexFile> dex_file(dex_file_loader.Open(location,
                                                                0,
                                                                std::move(dex_mem_map),
-                                                               /* verify */ true,
-                                                               /* verify_location */ true,
+                                                               /* verify= */ true,
+                                                               /* verify_checksum= */ true,
                                                                &error_message));
   if (dex_file == nullptr) {
     ScopedObjectAccess soa(env);
@@ -551,7 +551,7 @@ static jstring DexFile_getDexFileStatus(JNIEnv* env,
   }
 
   OatFileAssistant oat_file_assistant(filename.c_str(), target_instruction_set,
-                                      false /* load_executable */);
+                                      /* load_executable= */ false);
   return env->NewStringUTF(oat_file_assistant.GetStatusDump().c_str());
 }
 
@@ -774,7 +774,7 @@ static jobjectArray DexFile_getDexFileOutputPaths(JNIEnv* env,
 
   OatFileAssistant oat_file_assistant(filename.c_str(),
                                       target_instruction_set,
-                                      false /* load_executable */);
+                                      /* load_executable= */ false);
 
   std::unique_ptr<OatFile> best_oat_file = oat_file_assistant.GetBestOatFile();
   if (best_oat_file == nullptr) {

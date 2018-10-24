@@ -1073,8 +1073,8 @@ inline void Class::FixupNativePointer(
   T old_value = GetFieldPtrWithSize<T, kVerifyFlags>(member_offset, pointer_size);
   T new_value = visitor(old_value, address);
   if (old_value != new_value) {
-    dest->SetFieldPtrWithSize</* kTransactionActive */ false,
-                              /* kCheckTransaction */ true,
+    dest->SetFieldPtrWithSize</* kTransactionActive= */ false,
+                              /* kCheckTransaction= */ true,
                               kVerifyNone>(member_offset, new_value, pointer_size);
   }
 }

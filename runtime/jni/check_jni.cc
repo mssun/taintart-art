@@ -286,7 +286,7 @@ bool CheckAttachedThread(const char* function_name) {
     // to get reasonable stacks and environment, rather than relying on
     // tombstoned.
     JNIEnv* env;
-    Runtime::Current()->GetJavaVM()->AttachCurrentThread(&env, /* thread_args */ nullptr);
+    Runtime::Current()->GetJavaVM()->AttachCurrentThread(&env, /* thr_args= */ nullptr);
 
     std::string tmp = android::base::StringPrintf(
         "a thread (tid %" PRId64 " is making JNI calls without being attached",

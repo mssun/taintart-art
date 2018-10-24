@@ -47,7 +47,7 @@ ObjPtr<mirror::Class> GenerateProxyClass(ScopedObjectAccess& soa,
 
   // Builds the interfaces array.
   jobjectArray proxyClassInterfaces =
-      soa.Env()->NewObjectArray(interfaces.size(), javaLangClass, /* initialElement */ nullptr);
+      soa.Env()->NewObjectArray(interfaces.size(), javaLangClass, /* initialElement= */ nullptr);
   soa.Self()->AssertNoPendingException();
   for (size_t i = 0; i < interfaces.size(); ++i) {
     soa.Env()->SetObjectArrayElement(proxyClassInterfaces, i,
@@ -62,7 +62,7 @@ ObjPtr<mirror::Class> GenerateProxyClass(ScopedObjectAccess& soa,
   jobjectArray proxyClassMethods = soa.Env()->NewObjectArray(
       methods_count,
       soa.AddLocalReference<jclass>(GetClassRoot<mirror::Method>()),
-      /* initialElement */ nullptr);
+      /* initialElement= */ nullptr);
   soa.Self()->AssertNoPendingException();
 
   jsize array_index = 0;

@@ -269,7 +269,7 @@ bool OatFileBase::LoadVdex(const std::string& vdex_filename,
                                   vdex_filename,
                                   writable,
                                   low_4gb,
-                                  /* unquicken*/ false,
+                                  /* unquicken=*/ false,
                                   error_msg);
   if (vdex_.get() == nullptr) {
     *error_msg = StringPrintf("Failed to load vdex file '%s' %s",

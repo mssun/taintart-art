@@ -1043,12 +1043,12 @@ class ClassLinker {
    public:
     // This slot must become a default conflict method.
     static MethodTranslation CreateConflictingMethod() {
-      return MethodTranslation(Type::kConflict, /*translation*/nullptr);
+      return MethodTranslation(Type::kConflict, /*translation=*/nullptr);
     }
 
     // This slot must become an abstract method.
     static MethodTranslation CreateAbstractMethod() {
-      return MethodTranslation(Type::kAbstract, /*translation*/nullptr);
+      return MethodTranslation(Type::kAbstract, /*translation=*/nullptr);
     }
 
     // Use the given method as the current value for this vtable slot during translation.

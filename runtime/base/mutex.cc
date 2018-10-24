@@ -1250,9 +1250,9 @@ void Locks::Init() {
     #undef UPDATE_CURRENT_LOCK_LEVEL
 
     // List of mutexes that we may hold when accessing a weak ref.
-    AddToExpectedMutexesOnWeakRefAccess(dex_lock_, /*need_lock*/ false);
-    AddToExpectedMutexesOnWeakRefAccess(classlinker_classes_lock_, /*need_lock*/ false);
-    AddToExpectedMutexesOnWeakRefAccess(jni_libraries_lock_, /*need_lock*/ false);
+    AddToExpectedMutexesOnWeakRefAccess(dex_lock_, /*need_lock=*/ false);
+    AddToExpectedMutexesOnWeakRefAccess(classlinker_classes_lock_, /*need_lock=*/ false);
+    AddToExpectedMutexesOnWeakRefAccess(jni_libraries_lock_, /*need_lock=*/ false);
 
     InitConditions();
   }

@@ -92,10 +92,10 @@ RosAlloc::RosAlloc(void* base, size_t capacity, size_t max_capacity,
   size_t max_num_of_pages = max_capacity_ / kPageSize;
   std::string error_msg;
   page_map_mem_map_ = MemMap::MapAnonymous("rosalloc page map",
-                                           /* addr */ nullptr,
+                                           /* addr= */ nullptr,
                                            RoundUp(max_num_of_pages, kPageSize),
                                            PROT_READ | PROT_WRITE,
-                                           /* low_4gb */ false,
+                                           /* low_4gb= */ false,
                                            &error_msg);
   CHECK(page_map_mem_map_.IsValid()) << "Couldn't allocate the page map : " << error_msg;
   page_map_ = page_map_mem_map_.Begin();

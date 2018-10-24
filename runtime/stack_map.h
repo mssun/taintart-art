@@ -358,7 +358,7 @@ class CodeInfo {
   ALWAYS_INLINE DexRegisterMap GetDexRegisterMapOf(StackMap stack_map) const {
     if (stack_map.HasDexRegisterMap()) {
       DexRegisterMap map(number_of_dex_registers_, DexRegisterLocation::Invalid());
-      DecodeDexRegisterMap(stack_map.Row(), /* first_dex_register */ 0, &map);
+      DecodeDexRegisterMap(stack_map.Row(), /* first_dex_register= */ 0, &map);
       return map;
     }
     return DexRegisterMap(0, DexRegisterLocation::None());

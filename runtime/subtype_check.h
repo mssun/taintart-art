@@ -237,7 +237,7 @@ struct SubtypeCheck {
   static SubtypeCheckInfo::State EnsureInitialized(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    return InitializeOrAssign(klass, /*assign*/false).GetState();
+    return InitializeOrAssign(klass, /*assign=*/false).GetState();
   }
 
   // Force this class's SubtypeCheckInfo state into Assigned|Overflowed.
@@ -250,7 +250,7 @@ struct SubtypeCheck {
   static SubtypeCheckInfo::State EnsureAssigned(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    return InitializeOrAssign(klass, /*assign*/true).GetState();
+    return InitializeOrAssign(klass, /*assign=*/true).GetState();
   }
 
   // Resets the SubtypeCheckInfo into the Uninitialized state.
@@ -398,7 +398,7 @@ struct SubtypeCheck {
 
     // Force all ancestors to Assigned | Overflowed.
     ClassPtr parent_klass = GetParentClass(klass);
-    size_t parent_depth = InitializeOrAssign(parent_klass, /*assign*/true).GetDepth();
+    size_t parent_depth = InitializeOrAssign(parent_klass, /*assign=*/true).GetDepth();
     if (kIsDebugBuild) {
       SubtypeCheckInfo::State parent_state = GetSubtypeCheckInfo(parent_klass).GetState();
       DCHECK(parent_state == SubtypeCheckInfo::kAssigned ||
@@ -542,17 +542,17 @@ struct SubtypeCheck {
                                                    int32_t new_value)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (Runtime::Current() != nullptr && Runtime::Current()->IsActiveTransaction()) {
-      return klass->template CasField32</*kTransactionActive*/true>(offset,
-                                                                    old_value,
-                                                                    new_value,
-                                                                    CASMode::kWeak,
-                                                                    std::memory_order_seq_cst);
-    } else {
-      return klass->template CasField32</*kTransactionActive*/false>(offset,
+      return klass->template CasField32</*kTransactionActive=*/true>(offset,
                                                                      old_value,
                                                                      new_value,
                                                                      CASMode::kWeak,
                                                                      std::memory_order_seq_cst);
+    } else {
+      return klass->template CasField32</*kTransactionActive=*/false>(offset,
+                                                                      old_value,
+                                                                      new_value,
+                                                                      CASMode::kWeak,
+                                                                      std::memory_order_seq_cst);
     }
   }
 

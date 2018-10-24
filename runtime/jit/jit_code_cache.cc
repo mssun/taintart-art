@@ -221,7 +221,7 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
   unique_fd mem_fd;
 
   // Bionic supports memfd_create, but the call may fail on older kernels.
-  mem_fd = unique_fd(art::memfd_create("/jit-cache", /* flags */ 0));
+  mem_fd = unique_fd(art::memfd_create("/jit-cache", /* flags= */ 0));
   if (mem_fd.get() < 0) {
     VLOG(jit) << "Failed to initialize dual view JIT. memfd_create() error: "
               << strerror(errno);
@@ -281,8 +281,8 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
         kProtRW,
         base_flags,
         mem_fd,
-        /* start */ 0,
-        /* low_4gb */ true,
+        /* start= */ 0,
+        /* low_4gb= */ true,
         "data-code-cache",
         &error_str);
   } else {
@@ -303,12 +303,12 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
     base_flags = MAP_PRIVATE | MAP_ANON;
     data_pages = MemMap::MapAnonymous(
         "data-code-cache",
-        /* addr */ nullptr,
+        /* addr= */ nullptr,
         data_capacity + exec_capacity,
         kProtRW,
-        /* low_4gb */ true,
-        /* reuse */ false,
-        /* reservation */ nullptr,
+        /* low_4gb= */ true,
+        /* reuse= */ false,
+        /* reservation= */ nullptr,
         &error_str);
   }
 
@@ -347,8 +347,8 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
                                        kProtR,
                                        base_flags,
                                        mem_fd,
-                                       /* start */ data_capacity,
-                                       /* low_4GB */ false,
+                                       /* start= */ data_capacity,
+                                       /* low_4GB= */ false,
                                        "jit-code-cache-rw",
                                        &error_str);
       if (!non_exec_pages.IsValid()) {
@@ -1008,7 +1008,7 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
         // Simply discard the compiled code. Clear the counter so that it may be recompiled later.
         // Hopefully the class hierarchy will be more stable when compilation is retried.
         single_impl_still_valid = false;
-        ClearMethodCounter(method, /*was_warm*/ false);
+        ClearMethodCounter(method, /*was_warm=*/ false);
         break;
       }
     }
@@ -1156,7 +1156,7 @@ bool JitCodeCache::RemoveMethodLocked(ArtMethod* method, bool release_memory) {
 // method. The compiled code for the method (if there is any) must not be in any threads call stack.
 void JitCodeCache::NotifyMethodRedefined(ArtMethod* method) {
   MutexLock mu(Thread::Current(), lock_);
-  RemoveMethodLocked(method, /* release_memory */ true);
+  RemoveMethodLocked(method, /* release_memory= */ true);
 }
 
 // This invalidates old_method. Once this function returns one can no longer use old_method to
@@ -1314,7 +1314,7 @@ class MarkCodeClosure final : public Closure {
         // its stack frame, it is not the method owning return_pc_. We just pass null to
         // LookupMethodHeader: the method is only checked against in debug builds.
         OatQuickMethodHeader* method_header =
-            code_cache_->LookupMethodHeader(frame.return_pc_, /* method */ nullptr);
+            code_cache_->LookupMethodHeader(frame.return_pc_, /* method= */ nullptr);
         if (method_header != nullptr) {
           const void* code = method_header->GetCode();
           CHECK(code_cache_->GetLiveBitmap()->Test(FromCodeToAllocation(code)));
@@ -1438,7 +1438,7 @@ void JitCodeCache::GarbageCollectCache(Thread* self) {
               << PrettySize(CodeCacheSize())
               << ", data=" << PrettySize(DataCacheSize());
 
-    DoCollection(self, /* collect_profiling_info */ do_full_collection);
+    DoCollection(self, /* collect_profiling_info= */ do_full_collection);
 
     VLOG(jit) << "After code cache collection, code="
               << PrettySize(CodeCacheSize())
@@ -1551,7 +1551,7 @@ void JitCodeCache::DoCollection(Thread* self, bool collect_profiling_info) {
           info->SetSavedEntryPoint(nullptr);
           // We are going to move this method back to interpreter. Clear the counter now to
           // give it a chance to be hot again.
-          ClearMethodCounter(info->GetMethod(), /*was_warm*/ true);
+          ClearMethodCounter(info->GetMethod(), /*was_warm=*/ true);
         }
       }
     } else if (kIsDebugBuild) {
@@ -1933,7 +1933,7 @@ bool JitCodeCache::NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr
       VLOG(jit) << method->PrettyMethod() << " needs a ProfilingInfo to be compiled";
       // Because the counter is not atomic, there are some rare cases where we may not hit the
       // threshold for creating the ProfilingInfo. Reset the counter now to "correct" this.
-      ClearMethodCounter(method, /*was_warm*/ false);
+      ClearMethodCounter(method, /*was_warm=*/ false);
       return false;
     }
 
@@ -2009,7 +2009,7 @@ void JitCodeCache::InvalidateCompiledCodeFor(ArtMethod* method,
     // and clear the counter to get the method Jitted again.
     Runtime::Current()->GetInstrumentation()->UpdateMethodsCode(
         method, GetQuickToInterpreterBridge());
-    ClearMethodCounter(method, /*was_warm*/ profiling_info != nullptr);
+    ClearMethodCounter(method, /*was_warm=*/ profiling_info != nullptr);
   } else {
     MutexLock mu(Thread::Current(), lock_);
     auto it = osr_code_map_.find(method);

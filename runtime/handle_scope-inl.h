@@ -199,7 +199,7 @@ inline MutableHandle<MirrorType> VariableSizedHandleScope::NewHandle(ObjPtr<Mirr
 inline VariableSizedHandleScope::VariableSizedHandleScope(Thread* const self)
     : BaseHandleScope(self->GetTopHandleScope()),
       self_(self) {
-  current_scope_ = new LocalScopeType(/*link*/ nullptr);
+  current_scope_ = new LocalScopeType(/*link=*/ nullptr);
   self_->PushHandleScope(this);
 }
 

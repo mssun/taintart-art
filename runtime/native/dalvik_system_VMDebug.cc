@@ -367,7 +367,7 @@ static jobjectArray VMDebug_getInstancesOfClasses(JNIEnv* env,
 
     VariableSizedHandleScope hs2(soa.Self());
     std::vector<Handle<mirror::Object>> raw_instances;
-    heap->GetInstances(hs2, h_class, includeAssignable, /* max_count */ 0, raw_instances);
+    heap->GetInstances(hs2, h_class, includeAssignable, /* max_count= */ 0, raw_instances);
     jobjectArray array = env->NewObjectArray(raw_instances.size(),
                                              WellKnownClasses::java_lang_Object,
                                              nullptr);

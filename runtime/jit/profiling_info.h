@@ -125,7 +125,7 @@ class ProfilingInfo {
   }
 
   bool IsInUseByCompiler() const {
-    return IsMethodBeingCompiled(/*osr*/ true) || IsMethodBeingCompiled(/*osr*/ false) ||
+    return IsMethodBeingCompiled(/*osr=*/ true) || IsMethodBeingCompiled(/*osr=*/ false) ||
         (current_inline_uses_ > 0);
   }
 

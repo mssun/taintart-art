@@ -223,7 +223,7 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
       if (!dex_file_loader.Open(location.c_str(),
                                 location.c_str(),
                                 Runtime::Current()->IsVerificationEnabled(),
-                                /*verify_checksum*/ true,
+                                /*verify_checksum=*/ true,
                                 &error_msg,
                                 &info.opened_dex_files)) {
         // If we fail to open the dex file because it's been stripped, try to open the dex file
@@ -298,12 +298,12 @@ bool ClassLoaderContext::RemoveLocationsFromClassPaths(
 }
 
 std::string ClassLoaderContext::EncodeContextForDex2oat(const std::string& base_dir) const {
-  return EncodeContext(base_dir, /*for_dex2oat*/ true, /*stored_context*/ nullptr);
+  return EncodeContext(base_dir, /*for_dex2oat=*/ true, /*stored_context=*/ nullptr);
 }
 
 std::string ClassLoaderContext::EncodeContextForOatFile(const std::string& base_dir,
                                                         ClassLoaderContext* stored_context) const {
-  return EncodeContext(base_dir, /*for_dex2oat*/ false, stored_context);
+  return EncodeContext(base_dir, /*for_dex2oat=*/ false, stored_context);
 }
 
 std::string ClassLoaderContext::EncodeContext(const std::string& base_dir,
@@ -663,7 +663,7 @@ std::unique_ptr<ClassLoaderContext> ClassLoaderContext::CreateContextForClassLoa
   Handle<mirror::ObjectArray<mirror::Object>> h_dex_elements =
       hs.NewHandle(soa.Decode<mirror::ObjectArray<mirror::Object>>(dex_elements));
 
-  std::unique_ptr<ClassLoaderContext> result(new ClassLoaderContext(/*owns_the_dex_files*/ false));
+  std::unique_ptr<ClassLoaderContext> result(new ClassLoaderContext(/*owns_the_dex_files=*/ false));
   if (result->AddInfoToContextFromClassLoader(soa, h_class_loader, h_dex_elements)) {
     return result;
   } else {

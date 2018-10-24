@@ -37,7 +37,7 @@ std::string DescribeSpace(ObjPtr<mirror::Class> klass) {
   std::ostringstream oss;
   gc::Heap* heap = Runtime::Current()->GetHeap();
   gc::space::ContinuousSpace* cs =
-      heap->FindContinuousSpaceFromObject(klass, /* fail_ok */ true);
+      heap->FindContinuousSpaceFromObject(klass, /* fail_ok= */ true);
   if (cs != nullptr) {
     if (cs->IsImageSpace()) {
       gc::space::ImageSpace* ispace = cs->AsImageSpace();
@@ -50,7 +50,7 @@ std::string DescribeSpace(ObjPtr<mirror::Class> klass) {
     }
   } else {
     gc::space::DiscontinuousSpace* ds =
-        heap->FindDiscontinuousSpaceFromObject(klass, /* fail_ok */ true);
+        heap->FindDiscontinuousSpaceFromObject(klass, /* fail_ok= */ true);
     if (ds != nullptr) {
       oss << "discontinuous;" << ds->GetName();
     } else {

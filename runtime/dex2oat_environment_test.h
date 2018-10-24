@@ -87,7 +87,7 @@ class Dex2oatEnvironmentTest : public CommonRuntimeTest {
     std::vector<std::unique_ptr<const DexFile>> multi1;
     ASSERT_TRUE(dex_file_loader.Open(GetMultiDexSrc1().c_str(),
                                      GetMultiDexSrc1().c_str(),
-                                     /* verify */ true,
+                                     /* verify= */ true,
                                      kVerifyChecksum,
                                      &error_msg,
                                      &multi1)) << error_msg;
@@ -96,7 +96,7 @@ class Dex2oatEnvironmentTest : public CommonRuntimeTest {
     std::vector<std::unique_ptr<const DexFile>> multi2;
     ASSERT_TRUE(dex_file_loader.Open(GetMultiDexSrc2().c_str(),
                                      GetMultiDexSrc2().c_str(),
-                                     /* verify */ true,
+                                     /* verify= */ true,
                                      kVerifyChecksum,
                                      &error_msg,
                                      &multi2)) << error_msg;

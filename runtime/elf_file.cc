@@ -86,7 +86,7 @@ ElfFileImpl<ElfTypes>* ElfFileImpl<ElfTypes>::Open(File* file,
                                                    bool low_4gb,
                                                    std::string* error_msg) {
   std::unique_ptr<ElfFileImpl<ElfTypes>> elf_file(
-      new ElfFileImpl<ElfTypes>(file, (prot & PROT_WRITE) != 0, /* program_header_only */ false));
+      new ElfFileImpl<ElfTypes>(file, (prot & PROT_WRITE) != 0, /* program_header_only= */ false));
   if (!elf_file->Setup(file, prot, flags, low_4gb, error_msg)) {
     return nullptr;
   }
@@ -1163,7 +1163,7 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
           vaddr_size,
           PROT_NONE,
           low_4gb,
-          /* reuse */ false,
+          /* reuse= */ false,
           reservation,
           error_msg);
       if (!local_reservation.IsValid()) {
@@ -1237,10 +1237,10 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
                                    flags,
                                    file->Fd(),
                                    program_header->p_offset,
-                                   /* low4_gb */ false,
+                                   /* low_4gb= */ false,
                                    file->GetPath().c_str(),
-                                   /* reuse */ true,  // implies MAP_FIXED
-                                   /* reservation */ nullptr,
+                                   /* reuse= */ true,  // implies MAP_FIXED
+                                   /* reservation= */ nullptr,
                                    error_msg);
       if (!segment.IsValid()) {
         *error_msg = StringPrintf("Failed to map ELF file segment %d from %s: %s",
@@ -1262,9 +1262,9 @@ bool ElfFileImpl<ElfTypes>::Load(File* file,
                                             p_vaddr + program_header->p_filesz,
                                             program_header->p_memsz - program_header->p_filesz,
                                             prot,
-                                            /* low_4gb */ false,
-                                            /* reuse */ true,
-                                            /* reservation */ nullptr,
+                                            /* low_4gb= */ false,
+                                            /* reuse= */ true,
+                                            /* reservation= */ nullptr,
                                             error_msg);
       if (!segment.IsValid()) {
         *error_msg = StringPrintf("Failed to map zero-initialized ELF file segment %d from %s: %s",
@@ -1763,7 +1763,7 @@ ElfFile* ElfFile::Open(File* file, int mmap_prot, int mmap_flags, /*out*/std::st
                                PROT_READ,
                                MAP_PRIVATE,
                                file->Fd(),
-                               /* start */ 0,
+                               /* start= */ 0,
                                low_4gb,
                                file->GetPath().c_str(),
                                error_msg);
@@ -1886,7 +1886,7 @@ bool ElfFile::GetLoadedSize(size_t* size, std::string* error_msg) const {
 }
 
 bool ElfFile::Strip(File* file, std::string* error_msg) {
-  std::unique_ptr<ElfFile> elf_file(ElfFile::Open(file, true, false, /*low_4gb*/false, error_msg));
+  std::unique_ptr<ElfFile> elf_file(ElfFile::Open(file, true, false, /*low_4gb=*/false, error_msg));
   if (elf_file.get() == nullptr) {
     return false;
   }

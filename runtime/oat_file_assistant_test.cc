@@ -182,8 +182,8 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithUpToDateContextRelative) {
   EXPECT_EQ(-OatFileAssistant::kNoDexOptNeeded,
             oat_file_assistant.GetDexOptNeeded(
                 CompilerFilter::kDefaultCompilerFilter,
-                /* downgrade */ false,
-                /* profile_changed */ false,
+                /* profile_changed= */ false,
+                /* downgrade= */ false,
                 relative_context.get()));
 }
 
@@ -336,7 +336,7 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithFd) {
   GenerateOatForTest(dex_location.c_str(),
                      odex_location.c_str(),
                      CompilerFilter::kSpeed,
-                     /* with_alternate_image */ false);
+                     /* with_alternate_image= */ false);
 
   android::base::unique_fd odex_fd(open(odex_location.c_str(), O_RDONLY | O_CLOEXEC));
   android::base::unique_fd vdex_fd(open(vdex_location.c_str(), O_RDONLY | O_CLOEXEC));
@@ -375,7 +375,7 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidOdexFd) {
   GenerateOatForTest(dex_location.c_str(),
                      odex_location.c_str(),
                      CompilerFilter::kSpeed,
-                     /* with_alternate_image */ false);
+                     /* with_alternate_image= */ false);
 
   android::base::unique_fd vdex_fd(open(vdex_location.c_str(), O_RDONLY | O_CLOEXEC));
   android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY | O_CLOEXEC));
@@ -385,7 +385,7 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidOdexFd) {
                                       false,
                                       false,
                                       vdex_fd.get(),
-                                      -1 /* oat_fd */,
+                                      /* oat_fd= */ -1,
                                       zip_fd.get());
   EXPECT_EQ(-OatFileAssistant::kDex2OatForBootImage,
       oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
@@ -408,7 +408,7 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidVdexFd) {
   GenerateOatForTest(dex_location.c_str(),
                      odex_location.c_str(),
                      CompilerFilter::kSpeed,
-                     /* with_alternate_image */ false);
+                     /* with_alternate_image= */ false);
 
   android::base::unique_fd odex_fd(open(odex_location.c_str(), O_RDONLY | O_CLOEXEC));
   android::base::unique_fd zip_fd(open(dex_location.c_str(), O_RDONLY | O_CLOEXEC));
@@ -417,7 +417,7 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidVdexFd) {
                                       kRuntimeISA,
                                       false,
                                       false,
-                                      -1 /* vdex_fd */,
+                                      /* vdex_fd= */ -1,
                                       odex_fd.get(),
                                       zip_fd.get());
 
@@ -441,8 +441,8 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidOdexVdexFd) {
                                       kRuntimeISA,
                                       false,
                                       false,
-                                      -1 /* vdex_fd */,
-                                      -1 /* oat_fd */,
+                                      /* vdex_fd= */ -1,
+                                      /* oat_fd= */ -1,
                                       zip_fd);
   EXPECT_EQ(OatFileAssistant::kDex2OatFromScratch,
       oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
@@ -637,7 +637,7 @@ TEST_F(OatFileAssistantTest, StrippedMultiDexNonMainOutOfDate) {
   // Strip the dex file.
   Copy(GetStrippedDexSrc1(), dex_location);
 
-  OatFileAssistant oat_file_assistant(dex_location.c_str(), kRuntimeISA, /*load_executable*/false);
+  OatFileAssistant oat_file_assistant(dex_location.c_str(), kRuntimeISA, /*load_executable=*/false);
 
   // Because the dex file is stripped, the odex file is considered the source
   // of truth for the dex checksums. The oat file should be considered
@@ -730,7 +730,7 @@ TEST_F(OatFileAssistantTest, OatImageOutOfDate) {
   Copy(GetDexSrc1(), dex_location);
   GenerateOatForTest(dex_location.c_str(),
                      CompilerFilter::kSpeed,
-                     /* with_alternate_image */ true);
+                     /* with_alternate_image= */ true);
 
   ScopedNonWritable scoped_non_writable(dex_location);
   ASSERT_TRUE(scoped_non_writable.IsSuccessful());
@@ -765,7 +765,7 @@ TEST_F(OatFileAssistantTest, OatVerifyAtRuntimeImageOutOfDate) {
   Copy(GetDexSrc1(), dex_location);
   GenerateOatForTest(dex_location.c_str(),
                      CompilerFilter::kExtract,
-                     /* with_alternate_image */ true);
+                     /* with_alternate_image= */ true);
 
   ScopedNonWritable scoped_non_writable(dex_location);
   ASSERT_TRUE(scoped_non_writable.IsSuccessful());
@@ -1167,7 +1167,7 @@ class RaceGenerateTask : public Task {
     dex_files = Runtime::Current()->GetOatFileManager().OpenDexFilesFromOat(
         dex_location_.c_str(),
         Runtime::Current()->GetSystemClassLoader(),
-        /*dex_elements*/nullptr,
+        /*dex_elements=*/nullptr,
         &oat_file,
         &error_msgs);
     CHECK(!dex_files.empty()) << android::base::Join(error_msgs, '\n');
@@ -1213,7 +1213,7 @@ TEST_F(OatFileAssistantTest, RaceToGenerate) {
     tasks.push_back(std::move(task));
   }
   thread_pool.StartWorkers(self);
-  thread_pool.Wait(self, /* do_work */ true, /* may_hold_locks */ false);
+  thread_pool.Wait(self, /* do_work= */ true, /* may_hold_locks= */ false);
 
   // Verify that tasks which got an oat file got a unique one.
   std::set<const OatFile*> oat_files;
@@ -1335,8 +1335,8 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithOutOfDateContext) {
   EXPECT_EQ(OatFileAssistant::kDex2OatFromScratch,
             oat_file_assistant.GetDexOptNeeded(
                   CompilerFilter::kDefaultCompilerFilter,
-                  /* downgrade */ false,
-                  /* profile_changed */ false,
+                  /* profile_changed= */ false,
+                  /* downgrade= */ false,
                   updated_context.get()));
 }
 

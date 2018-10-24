@@ -191,7 +191,7 @@ inline mirror::Object* AllocObjectFromCode(mirror::Class* klass,
       return nullptr;
     }
     // CheckObjectAlloc can cause thread suspension which means we may now be instrumented.
-    return klass->Alloc</*kInstrumented*/true>(
+    return klass->Alloc</*kInstrumented=*/true>(
         self,
         Runtime::Current()->GetHeap()->GetCurrentAllocator()).Ptr();
   }
@@ -216,7 +216,7 @@ inline mirror::Object* AllocObjectFromCodeResolved(mirror::Class* klass,
     // Pass in false since the object cannot be finalizable.
     // CheckClassInitializedForObjectAlloc can cause thread suspension which means we may now be
     // instrumented.
-    return klass->Alloc</*kInstrumented*/true, false>(self, heap->GetCurrentAllocator()).Ptr();
+    return klass->Alloc</*kInstrumented=*/true, false>(self, heap->GetCurrentAllocator()).Ptr();
   }
   // Pass in false since the object cannot be finalizable.
   return klass->Alloc<kInstrumented, false>(self, allocator_type).Ptr();
@@ -287,11 +287,11 @@ inline ObjPtr<mirror::Array> AllocArrayFromCode(dex::TypeIndex type_idx,
     }
     gc::Heap* heap = Runtime::Current()->GetHeap();
     // CheckArrayAlloc can cause thread suspension which means we may now be instrumented.
-    return mirror::Array::Alloc</*kInstrumented*/true>(self,
-                                                       klass,
-                                                       component_count,
-                                                       klass->GetComponentSizeShift(),
-                                                       heap->GetCurrentAllocator());
+    return mirror::Array::Alloc</*kInstrumented=*/true>(self,
+                                                        klass,
+                                                        component_count,
+                                                        klass->GetComponentSizeShift(),
+                                                        heap->GetCurrentAllocator());
   }
   return mirror::Array::Alloc<kInstrumented>(self, klass, component_count,
                                              klass->GetComponentSizeShift(), allocator_type);

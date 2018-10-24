@@ -167,7 +167,7 @@ namespace interpreter {
 #define HOTNESS_UPDATE()                                                                       \
   do {                                                                                         \
     if (jit != nullptr) {                                                                      \
-      jit->AddSamples(self, shadow_frame.GetMethod(), 1, /*with_backedges*/ true);             \
+      jit->AddSamples(self, shadow_frame.GetMethod(), 1, /*with_backedges=*/ true);            \
     }                                                                                          \
   } while (false)
 
@@ -1754,7 +1754,7 @@ ATTRIBUTE_NO_SANITIZE_ADDRESS void ExecuteSwitchImplCpp(SwitchImplContext* ctx) 
       case Instruction::INVOKE_POLYMORPHIC: {
         PREAMBLE();
         DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
-        bool success = DoInvokePolymorphic<false /* is_range */>(
+        bool success = DoInvokePolymorphic</* is_range= */ false>(
             self, shadow_frame, inst, inst_data, &result_register);
         POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE_POLYMORPHIC(!success);
         break;
@@ -1762,7 +1762,7 @@ ATTRIBUTE_NO_SANITIZE_ADDRESS void ExecuteSwitchImplCpp(SwitchImplContext* ctx) 
       case Instruction::INVOKE_POLYMORPHIC_RANGE: {
         PREAMBLE();
         DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
-        bool success = DoInvokePolymorphic<true /* is_range */>(
+        bool success = DoInvokePolymorphic</* is_range= */ true>(
             self, shadow_frame, inst, inst_data, &result_register);
         POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE_POLYMORPHIC(!success);
         break;
@@ -1770,7 +1770,7 @@ ATTRIBUTE_NO_SANITIZE_ADDRESS void ExecuteSwitchImplCpp(SwitchImplContext* ctx) 
       case Instruction::INVOKE_CUSTOM: {
         PREAMBLE();
         DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
-        bool success = DoInvokeCustom<false /* is_range */>(
+        bool success = DoInvokeCustom</* is_range= */ false>(
             self, shadow_frame, inst, inst_data, &result_register);
         POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE(!success);
         break;
@@ -1778,7 +1778,7 @@ ATTRIBUTE_NO_SANITIZE_ADDRESS void ExecuteSwitchImplCpp(SwitchImplContext* ctx) 
       case Instruction::INVOKE_CUSTOM_RANGE: {
         PREAMBLE();
         DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
-        bool success = DoInvokeCustom<true /* is_range */>(
+        bool success = DoInvokeCustom</* is_range= */ true>(
             self, shadow_frame, inst, inst_data, &result_register);
         POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE(!success);
         break;

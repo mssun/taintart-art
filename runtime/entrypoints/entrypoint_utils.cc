@@ -244,7 +244,7 @@ CallerAndOuterMethod GetCalleeSaveMethodCallerAndOuterMethod(Thread* self, Calle
   result.outer_method = outer_caller_and_pc.first;
   uintptr_t caller_pc = outer_caller_and_pc.second;
   result.caller =
-      DoGetCalleeSaveMethodCaller(result.outer_method, caller_pc, /* do_caller_check */ true);
+      DoGetCalleeSaveMethodCaller(result.outer_method, caller_pc, /* do_caller_check= */ true);
   return result;
 }
 
