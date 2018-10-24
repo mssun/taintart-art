@@ -289,12 +289,12 @@ class PACKED(4) ImageHeader {
     return GetImageSection(kSectionClassTable);
   }
 
-  const ImageSection& GetImageBitmapSection() const {
-    return GetImageSection(kSectionImageBitmap);
-  }
-
   const ImageSection& GetImageStringReferenceOffsetsSection() const {
     return GetImageSection(kSectionStringReferenceOffsets);
+  }
+
+  const ImageSection& GetImageBitmapSection() const {
+    return GetImageSection(kSectionImageBitmap);
   }
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
