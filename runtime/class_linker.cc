@@ -496,7 +496,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   // Space (LOS) -- see the comment about the dirty card scanning logic in
   // art::gc::collector::ConcurrentCopying::MarkingPhase.
   Handle<mirror::Class> java_lang_String(hs.NewHandle(
-      AllocClass</* kMovable */ false>(
+      AllocClass</* kMovable= */ false>(
           self, java_lang_Class.Get(), mirror::String::ClassSize(image_pointer_size_))));
   java_lang_String->SetStringClass();
   mirror::Class::SetStatus(java_lang_String, ClassStatus::kResolved, self);
@@ -1039,8 +1039,8 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     if (!AddImageSpace(image_space,
                        ScopedNullHandle<mirror::ClassLoader>(),
-                       /*dex_elements*/nullptr,
-                       /*dex_location*/nullptr,
+                       /*dex_elements=*/nullptr,
+                       /*dex_location=*/nullptr,
                        /*out*/&dex_files,
                        error_msg)) {
       return false;
@@ -1127,7 +1127,10 @@ static bool FlattenPathClassLoader(ObjPtr<mirror::ClassLoader> class_loader,
       }
       return true;  // Continue with the next Element.
     };
-    bool error = VisitClassLoaderDexElements(soa, handle, add_element_names, /* error */ false);
+    bool error = VisitClassLoaderDexElements(soa,
+                                             handle,
+                                             add_element_names,
+                                             /* defaultReturn= */ false);
     if (error) {
       // An error occurred during DexPathList Element visiting.
       return false;
@@ -1259,16 +1262,16 @@ bool VerifyStringInterning(gc::space::ImageSpace& space) REQUIRES_SHARED(Locks::
     REQUIRES_SHARED(Locks::mutator_lock_) {
     if (space.HasAddress(obj)) {
       if (obj->IsDexCache()) {
-        obj->VisitReferences</* kVisitNativeRoots */ true,
-                                                     kVerifyNone,
-                                                     kWithoutReadBarrier>(visitor, visitor);
+        obj->VisitReferences</*kVisitNativeRoots=*/ true,
+                                                    kVerifyNone,
+                                                    kWithoutReadBarrier>(visitor, visitor);
       } else {
         // Don't visit native roots for non-dex-cache as they can't contain
         // native references to strings.  This is verified during compilation
         // by ImageWriter::VerifyNativeGCRootInvariants.
-        obj->VisitReferences</* kVisitNativeRoots */ false,
-                                                     kVerifyNone,
-                                                     kWithoutReadBarrier>(visitor, visitor);
+        obj->VisitReferences</*kVisitNativeRoots=*/ false,
+                                                    kVerifyNone,
+                                                    kWithoutReadBarrier>(visitor, visitor);
       }
     }
   });
@@ -2241,7 +2244,7 @@ ClassLinker::~ClassLinker() {
   for (const ClassLoaderData& data : class_loaders_) {
     // CHA unloading analysis is not needed. No negative consequences are expected because
     // all the classloaders are deleted at the same time.
-    DeleteClassLoader(self, data, false /*cleanup_cha*/);
+    DeleteClassLoader(self, data, /*cleanup_cha=*/ false);
   }
   class_loaders_.clear();
 }
@@ -2345,7 +2348,7 @@ ObjPtr<mirror::Class> ClassLinker::AllocPrimitiveArrayClass(Thread* self,
   // in the `klass_` field of one of its instances allocated in the Large-Object
   // Space (LOS) -- see the comment about the dirty card scanning logic in
   // art::gc::collector::ConcurrentCopying::MarkingPhase.
-  return AllocClass</* kMovable */ false>(
+  return AllocClass</* kMovable= */ false>(
       self, java_lang_Class, mirror::Array::ClassSize(image_pointer_size_));
 }
 
@@ -3441,7 +3444,7 @@ void ClassLinker::AppendToBootClassPath(const DexFile& dex_file,
   CHECK(dex_cache != nullptr) << dex_file.GetLocation();
   boot_class_path_.push_back(&dex_file);
   WriterMutexLock mu(Thread::Current(), *Locks::dex_lock_);
-  RegisterDexFileLocked(dex_file, dex_cache, /* class_loader */ nullptr);
+  RegisterDexFileLocked(dex_file, dex_cache, /* class_loader= */ nullptr);
 }
 
 void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
@@ -5012,7 +5015,7 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
         ArtField* art_field = ResolveField(field.GetIndex(),
                                            dex_cache,
                                            class_loader,
-                                           /* is_static */ true);
+                                           /* is_static= */ true);
         if (Runtime::Current()->IsActiveTransaction()) {
           value_it.ReadValueToField<true>(art_field);
         } else {
@@ -6412,8 +6415,8 @@ void ClassLinker::FillIMTAndConflictTables(ObjPtr<mirror::Class> klass) {
                        unimplemented_method,
                        conflict_method,
                        klass,
-                       /*create_conflict_tables*/true,
-                       /*ignore_copied_methods*/false,
+                       /*create_conflict_tables=*/true,
+                       /*ignore_copied_methods=*/false,
                        &new_conflict,
                        &imt_data[0]);
   }
@@ -6901,8 +6904,8 @@ void ClassLinker::FillImtFromSuperClass(Handle<mirror::Class> klass,
                          unimplemented_method,
                          imt_conflict_method,
                          klass.Get(),
-                         /*create_conflict_table*/false,
-                         /*ignore_copied_methods*/true,
+                         /*create_conflict_tables=*/false,
+                         /*ignore_copied_methods=*/true,
                          /*out*/new_conflict,
                          /*out*/imt);
     }
@@ -8120,7 +8123,7 @@ ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
 
   // Check if the invoke type matches the class type.
   if (kResolveMode == ResolveMode::kCheckICCEAndIAE &&
-      CheckInvokeClassMismatch</* kThrow */ true>(
+      CheckInvokeClassMismatch</* kThrow= */ true>(
           dex_cache.Get(), type, [klass]() { return klass; })) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
@@ -9088,7 +9091,7 @@ void ClassLinker::CleanupClassLoaders() {
   }
   for (ClassLoaderData& data : to_delete) {
     // CHA unloading analysis and SingleImplementaion cleanups are required.
-    DeleteClassLoader(self, data, true /*cleanup_cha*/);
+    DeleteClassLoader(self, data, /*cleanup_cha=*/ true);
   }
 }
 
@@ -9234,11 +9237,11 @@ template ArtMethod* ClassLinker::ResolveMethod<ClassLinker::ResolveMode::kNoChec
     InvokeType type);
 
 // Instantiate ClassLinker::AllocClass.
-template ObjPtr<mirror::Class> ClassLinker::AllocClass</* kMovable */ true>(
+template ObjPtr<mirror::Class> ClassLinker::AllocClass</* kMovable= */ true>(
     Thread* self,
     ObjPtr<mirror::Class> java_lang_Class,
     uint32_t class_size);
-template ObjPtr<mirror::Class> ClassLinker::AllocClass</* kMovable */ false>(
+template ObjPtr<mirror::Class> ClassLinker::AllocClass</* kMovable= */ false>(
     Thread* self,
     ObjPtr<mirror::Class> java_lang_Class,
     uint32_t class_size);

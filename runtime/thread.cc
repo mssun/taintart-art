@@ -152,7 +152,7 @@ void UpdateReadBarrierEntrypoints(QuickEntryPoints* qpoints, bool is_active);
 void Thread::SetIsGcMarkingAndUpdateEntrypoints(bool is_marking) {
   CHECK(kUseReadBarrier);
   tls32_.is_gc_marking = is_marking;
-  UpdateReadBarrierEntrypoints(&tlsPtr_.quick_entrypoints, /* is_active */ is_marking);
+  UpdateReadBarrierEntrypoints(&tlsPtr_.quick_entrypoints, /* is_active= */ is_marking);
   ResetQuickAllocEntryPointsForThread(is_marking);
 }
 
@@ -579,7 +579,7 @@ void Thread::InstallImplicitProtection() {
   VLOG(threads) << "installing stack protected region at " << std::hex <<
         static_cast<void*>(pregion) << " to " <<
         static_cast<void*>(pregion + kStackOverflowProtectedSize - 1);
-  if (ProtectStack(/* fatal_on_error */ false)) {
+  if (ProtectStack(/* fatal_on_error= */ false)) {
     // Tell the kernel that we won't be needing these pages any more.
     // NB. madvise will probably write zeroes into the memory (on linux it does).
     uint32_t unwanted_size = stack_top - pregion - kPageSize;
@@ -648,7 +648,7 @@ void Thread::InstallImplicitProtection() {
       static_cast<void*>(pregion + kStackOverflowProtectedSize - 1);
 
   // Protect the bottom of the stack to prevent read/write to it.
-  ProtectStack(/* fatal_on_error */ true);
+  ProtectStack(/* fatal_on_error= */ true);
 
   // Tell the kernel that we won't be needing these pages any more.
   // NB. madvise will probably write zeroes into the memory (on linux it does).
@@ -2014,13 +2014,13 @@ void Thread::DumpStack(std::ostream& os,
       DumpKernelStack(os, GetTid(), "  kernel: ", false);
       ArtMethod* method =
           GetCurrentMethod(nullptr,
-                           /*check_suspended*/ !force_dump_stack,
-                           /*abort_on_error*/ !(dump_for_abort || force_dump_stack));
+                           /*check_suspended=*/ !force_dump_stack,
+                           /*abort_on_error=*/ !(dump_for_abort || force_dump_stack));
       DumpNativeStack(os, GetTid(), backtrace_map, "  native: ", method);
     }
     DumpJavaStack(os,
-                  /*check_suspended*/ !force_dump_stack,
-                  /*dump_locks*/ !force_dump_stack);
+                  /*check_suspended=*/ !force_dump_stack,
+                  /*dump_locks=*/ !force_dump_stack);
   } else {
     os << "Not able to dump stack of thread that isn't suspended";
   }
@@ -2911,8 +2911,8 @@ jobjectArray Thread::CreateAnnotatedStackTrace(const ScopedObjectAccessAlreadyRu
   // Make sure the AnnotatedStackTraceElement.class is initialized, b/76208924 .
   class_linker->EnsureInitialized(soa.Self(),
                                   h_aste_class,
-                                  /* can_init_fields */ true,
-                                  /* can_init_parents */ true);
+                                  /* can_init_fields= */ true,
+                                  /* can_init_parents= */ true);
   if (soa.Self()->IsExceptionPending()) {
     // This should not fail in a healthy runtime.
     return nullptr;
@@ -3429,9 +3429,9 @@ void Thread::QuickDeliverException() {
       }
       PushDeoptimizationContext(
           JValue(),
-          false /* is_reference */,
+          /* is_reference= */ false,
           (force_deopt ? nullptr : exception),
-          false /* from_code */,
+          /* from_code= */ false,
           method_type);
       artDeoptimize(this);
       UNREACHABLE();
@@ -3557,7 +3557,7 @@ class ReferenceMapVisitor : public StackVisitor {
       }
     }
     // Mark lock count map required for structured locking checks.
-    shadow_frame->GetLockCountData().VisitMonitors(visitor_, /* vreg */ -1, this);
+    shadow_frame->GetLockCountData().VisitMonitors(visitor_, /* vreg= */ -1, this);
   }
 
  private:
@@ -3573,7 +3573,7 @@ class ReferenceMapVisitor : public StackVisitor {
       if (kVerifyImageObjectsMarked) {
         gc::Heap* const heap = Runtime::Current()->GetHeap();
         gc::space::ContinuousSpace* space = heap->FindContinuousSpaceFromObject(klass,
-                                                                                /*fail_ok*/true);
+                                                                                /*fail_ok=*/true);
         if (space != nullptr && space->IsImageSpace()) {
           bool failed = false;
           if (!space->GetLiveBitmap()->Test(klass.Ptr())) {
@@ -3595,7 +3595,7 @@ class ReferenceMapVisitor : public StackVisitor {
         }
       }
       mirror::Object* new_ref = klass.Ptr();
-      visitor_(&new_ref, /* vreg */ -1, this);
+      visitor_(&new_ref, /* vreg= */ -1, this);
       if (new_ref != klass) {
         method->CASDeclaringClass(klass.Ptr(), new_ref->AsClass());
       }
@@ -3668,7 +3668,7 @@ class ReferenceMapVisitor : public StackVisitor {
         mirror::Object* ref = ref_addr->AsMirrorPtr();
         if (ref != nullptr) {
           mirror::Object* new_ref = ref;
-          visitor_(&new_ref, /* vreg */ -1, this);
+          visitor_(&new_ref, /* vreg= */ -1, this);
           if (ref != new_ref) {
             ref_addr->Assign(new_ref);
           }
@@ -3861,9 +3861,9 @@ void Thread::VisitRoots(RootVisitor* visitor) {
 
 void Thread::VisitRoots(RootVisitor* visitor, VisitRootFlags flags) {
   if ((flags & VisitRootFlags::kVisitRootFlagPrecise) != 0) {
-    VisitRoots</* kPrecise */ true>(visitor);
+    VisitRoots</* kPrecise= */ true>(visitor);
   } else {
-    VisitRoots</* kPrecise */ false>(visitor);
+    VisitRoots</* kPrecise= */ false>(visitor);
   }
 }
 
@@ -4078,7 +4078,7 @@ mirror::Object* Thread::GetPeerFromOtherThread() const {
 
 void Thread::SetReadBarrierEntrypoints() {
   // Make sure entrypoints aren't null.
-  UpdateReadBarrierEntrypoints(&tlsPtr_.quick_entrypoints, /* is_active*/ true);
+  UpdateReadBarrierEntrypoints(&tlsPtr_.quick_entrypoints, /* is_active=*/ true);
 }
 
 void Thread::ClearAllInterpreterCaches() {

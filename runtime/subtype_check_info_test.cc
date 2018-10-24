@@ -87,7 +87,7 @@ BitString SetBitStringCharAt(BitString bit_string, size_t i, size_t val) {
 struct SubtypeCheckInfoTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    android::base::InitLogging(/*argv*/nullptr);
+    android::base::InitLogging(/*argv=*/nullptr);
   }
 
   void TearDown() override {
@@ -158,33 +158,33 @@ TEST_F(SubtypeCheckInfoTest, IllegalValues) {
 
   // Illegal values during construction would cause a Dcheck failure and crash.
   ASSERT_DEATH(MakeSubtypeCheckInfo(MakeBitString({1u}),
-                                    /*next*/MakeBitStringChar(0),
-                                    /*overflow*/false,
-                                    /*depth*/0u),
+                                    /*next=*/MakeBitStringChar(0),
+                                    /*overflow=*/false,
+                                    /*depth=*/0u),
                GetExpectedMessageForDeathTest("Path was too long for the depth"));
   ASSERT_DEATH(MakeSubtypeCheckInfoInfused(MakeBitString({1u, 1u}),
-                                           /*overflow*/false,
-                                           /*depth*/0u),
+                                           /*overflow=*/false,
+                                           /*depth=*/0u),
                GetExpectedMessageForDeathTest("Bitstring too long for depth"));
   ASSERT_DEATH(MakeSubtypeCheckInfo(MakeBitString({1u}),
-                                    /*next*/MakeBitStringChar(0),
-                                    /*overflow*/false,
-                                    /*depth*/1u),
+                                    /*next=*/MakeBitStringChar(0),
+                                    /*overflow=*/false,
+                                    /*depth=*/1u),
                GetExpectedMessageForDeathTest("Expected \\(Assigned\\|Initialized\\) "
                                               "state to have >0 Next value"));
   ASSERT_DEATH(MakeSubtypeCheckInfoInfused(MakeBitString({0u, 2u, 1u}),
-                                           /*overflow*/false,
-                                           /*depth*/2u),
+                                           /*overflow=*/false,
+                                           /*depth=*/2u),
                GetExpectedMessageForDeathTest("Path to root had non-0s following 0s"));
   ASSERT_DEATH(MakeSubtypeCheckInfo(MakeBitString({0u, 2u}),
-                                    /*next*/MakeBitStringChar(1u),
-                                    /*overflow*/false,
-                                    /*depth*/2u),
+                                    /*next=*/MakeBitStringChar(1u),
+                                    /*overflow=*/false,
+                                    /*depth=*/2u),
                GetExpectedMessageForDeathTest("Path to root had non-0s following 0s"));
   ASSERT_DEATH(MakeSubtypeCheckInfo(MakeBitString({0u, 1u, 1u}),
-                                    /*next*/MakeBitStringChar(0),
-                                    /*overflow*/false,
-                                    /*depth*/3u),
+                                    /*next=*/MakeBitStringChar(0),
+                                    /*overflow=*/false,
+                                    /*depth=*/3u),
                GetExpectedMessageForDeathTest("Path to root had non-0s following 0s"));
 
   // These are really slow (~1sec per death test on host),
@@ -194,62 +194,62 @@ TEST_F(SubtypeCheckInfoTest, IllegalValues) {
 TEST_F(SubtypeCheckInfoTest, States) {
   EXPECT_EQ(SubtypeCheckInfo::kUninitialized, MakeSubtypeCheckInfo().GetState());
   EXPECT_EQ(SubtypeCheckInfo::kInitialized,
-            MakeSubtypeCheckInfo(/*path*/{}, /*next*/MakeBitStringChar(1)).GetState());
+            MakeSubtypeCheckInfo(/*path_to_root=*/{}, /*next=*/MakeBitStringChar(1)).GetState());
   EXPECT_EQ(SubtypeCheckInfo::kOverflowed,
-            MakeSubtypeCheckInfo(/*path*/{},
-                                 /*next*/MakeBitStringChar(1),
-                                 /*overflow*/true,
-                                 /*depth*/1u).GetState());
+            MakeSubtypeCheckInfo(/*path_to_root=*/{},
+                                 /*next=*/MakeBitStringChar(1),
+                                 /*overflow=*/true,
+                                 /*depth=*/1u).GetState());
   EXPECT_EQ(SubtypeCheckInfo::kAssigned,
-            MakeSubtypeCheckInfo(/*path*/MakeBitString({1u}),
-                                 /*next*/MakeBitStringChar(1),
-                                 /*overflow*/false,
-                                 /*depth*/1u).GetState());
+            MakeSubtypeCheckInfo(/*path_to_root=*/MakeBitString({1u}),
+                                 /*next=*/MakeBitStringChar(1),
+                                 /*overflow=*/false,
+                                 /*depth=*/1u).GetState());
 
   // Test edge conditions: depth == BitString::kCapacity (No Next value).
   EXPECT_EQ(SubtypeCheckInfo::kAssigned,
-            MakeSubtypeCheckInfo(/*path*/MakeBitStringMax(),
-                                 /*next*/MakeBitStringChar(0),
-                                 /*overflow*/false,
-                                 /*depth*/BitString::kCapacity).GetState());
+            MakeSubtypeCheckInfo(/*path_to_root=*/MakeBitStringMax(),
+                                 /*next=*/MakeBitStringChar(0),
+                                 /*overflow=*/false,
+                                 /*depth=*/BitString::kCapacity).GetState());
   EXPECT_EQ(SubtypeCheckInfo::kInitialized,
-            MakeSubtypeCheckInfo(/*path*/MakeBitStringMax<BitString::kCapacity - 1u>(),
-                                 /*next*/MakeBitStringChar(0),
-                                 /*overflow*/false,
-                                 /*depth*/BitString::kCapacity).GetState());
+            MakeSubtypeCheckInfo(/*path_to_root=*/MakeBitStringMax<BitString::kCapacity - 1u>(),
+                                 /*next=*/MakeBitStringChar(0),
+                                 /*overflow=*/false,
+                                 /*depth=*/BitString::kCapacity).GetState());
   // Test edge conditions: depth > BitString::kCapacity (Must overflow).
   EXPECT_EQ(SubtypeCheckInfo::kOverflowed,
-            MakeSubtypeCheckInfo(/*path*/MakeBitStringMax(),
-                                 /*next*/MakeBitStringChar(0),
-                                 /*overflow*/true,
-                                 /*depth*/BitString::kCapacity + 1u).GetState());
+            MakeSubtypeCheckInfo(/*path_to_root=*/MakeBitStringMax(),
+                                 /*next=*/MakeBitStringChar(0),
+                                 /*overflow=*/true,
+                                 /*depth=*/BitString::kCapacity + 1u).GetState());
 }
 
 TEST_F(SubtypeCheckInfoTest, NextValue) {
   // Validate "Next" is correctly aliased as the Bitstring[Depth] character.
   EXPECT_EQ(MakeBitStringChar(1u), MakeSubtypeCheckInfoUnchecked(MakeBitString({1u, 2u, 3u}),
-                                                           /*overflow*/false,
-                                                           /*depth*/0u).GetNext());
+                                                                 /*overflow=*/false,
+                                                                 /*depth=*/0u).GetNext());
   EXPECT_EQ(MakeBitStringChar(2u), MakeSubtypeCheckInfoUnchecked(MakeBitString({1u, 2u, 3u}),
-                                                           /*overflow*/false,
-                                                           /*depth*/1u).GetNext());
+                                                                 /*overflow=*/false,
+                                                                 /*depth=*/1u).GetNext());
   EXPECT_EQ(MakeBitStringChar(3u), MakeSubtypeCheckInfoUnchecked(MakeBitString({1u, 2u, 3u}),
-                                                           /*overflow*/false,
-                                                           /*depth*/2u).GetNext());
+                                                                 /*overflow=*/false,
+                                                                 /*depth=*/2u).GetNext());
   EXPECT_EQ(MakeBitStringChar(1u), MakeSubtypeCheckInfoUnchecked(MakeBitString({0u, 2u, 1u}),
-                                                           /*overflow*/false,
-                                                           /*depth*/2u).GetNext());
+                                                                 /*overflow=*/false,
+                                                                 /*depth=*/2u).GetNext());
   // Test edge conditions: depth == BitString::kCapacity (No Next value).
   EXPECT_FALSE(HasNext(MakeSubtypeCheckInfoUnchecked(MakeBitStringMax<BitString::kCapacity>(),
-                                                     /*overflow*/false,
-                                                     /*depth*/BitString::kCapacity)));
+                                                     /*overflow=*/false,
+                                                     /*depth=*/BitString::kCapacity)));
   // Anything with depth >= BitString::kCapacity has no next value.
   EXPECT_FALSE(HasNext(MakeSubtypeCheckInfoUnchecked(MakeBitStringMax<BitString::kCapacity>(),
-                                                     /*overflow*/false,
-                                                     /*depth*/BitString::kCapacity + 1u)));
+                                                     /*overflow=*/false,
+                                                     /*depth=*/BitString::kCapacity + 1u)));
   EXPECT_FALSE(HasNext(MakeSubtypeCheckInfoUnchecked(MakeBitStringMax(),
-                                                     /*overflow*/false,
-                                                     /*depth*/std::numeric_limits<size_t>::max())));
+                                                     /*overflow=*/false,
+                                                     /*depth=*/std::numeric_limits<size_t>::max())));
 }
 
 template <size_t kPos = BitString::kCapacity>
@@ -259,10 +259,10 @@ TEST_F(SubtypeCheckInfoTest, EncodedPathToRoot) {
   using StorageType = BitString::StorageType;
 
   SubtypeCheckInfo sci =
-      MakeSubtypeCheckInfo(/*path_to_root*/MakeBitStringMax(),
-                           /*next*/BitStringChar{},
-                           /*overflow*/false,
-                           /*depth*/BitString::kCapacity);
+      MakeSubtypeCheckInfo(/*path_to_root=*/MakeBitStringMax(),
+                           /*next=*/BitStringChar{},
+                           /*overflow=*/false,
+                           /*depth=*/BitString::kCapacity);
   // 0b000...111 where LSB == 1, and trailing 1s = the maximum bitstring representation.
   EXPECT_EQ(MaxInt<StorageType>(LenForPos()), sci.GetEncodedPathToRoot());
 
@@ -275,8 +275,8 @@ TEST_F(SubtypeCheckInfoTest, EncodedPathToRoot) {
 
   SubtypeCheckInfo sci2 =
       MakeSubtypeCheckInfoUnchecked(MakeBitStringMax<2u>(),
-                                   /*overflow*/false,
-                                   /*depth*/BitString::kCapacity);
+                                   /*overflow=*/false,
+                                   /*depth=*/BitString::kCapacity);
 
 #define MAKE_ENCODED_PATH(pos0, pos1, pos2) \
     (((pos0) << 0) | \
@@ -290,8 +290,8 @@ TEST_F(SubtypeCheckInfoTest, EncodedPathToRoot) {
 
   SubtypeCheckInfo sci3 =
       MakeSubtypeCheckInfoUnchecked(MakeBitStringMax<2u>(),
-                                   /*overflow*/false,
-                                   /*depth*/BitString::kCapacity - 1u);
+                                   /*overflow=*/false,
+                                   /*depth=*/BitString::kCapacity - 1u);
 
   EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b1111, 0b0),
             sci3.GetEncodedPathToRoot());
@@ -300,8 +300,8 @@ TEST_F(SubtypeCheckInfoTest, EncodedPathToRoot) {
 
   SubtypeCheckInfo sci4 =
       MakeSubtypeCheckInfoUnchecked(MakeBitString({0b1010101u}),
-                                   /*overflow*/false,
-                                   /*depth*/BitString::kCapacity - 2u);
+                                   /*overflow=*/false,
+                                   /*depth=*/BitString::kCapacity - 2u);
 
   EXPECT_EQ(MAKE_ENCODED_PATH(0b1010101u, 0b0000, 0b0), sci4.GetEncodedPathToRoot());
   EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b0000, 0b0),
@@ -320,7 +320,7 @@ TEST_F(SubtypeCheckInfoTest, CopyCleared) {
   SubtypeCheckInfo root = SubtypeCheckInfo::CreateRoot();
   EXPECT_EQ(MakeBitStringChar(1u), root.GetNext());
 
-  SubtypeCheckInfo childC = root.CreateChild(/*assign*/true);
+  SubtypeCheckInfo childC = root.CreateChild(/*assign_next=*/true);
   EXPECT_EQ(SubtypeCheckInfo::kAssigned, childC.GetState());
   EXPECT_EQ(MakeBitStringChar(2u), root.GetNext());  // Next incremented for Assign.
   EXPECT_EQ(MakeBitString({1u}), GetPathToRoot(childC));
@@ -331,7 +331,7 @@ TEST_F(SubtypeCheckInfoTest, CopyCleared) {
 
   // CopyCleared is just a thin wrapper around value-init and providing the depth.
   SubtypeCheckInfo cleared_copy_value =
-      SubtypeCheckInfo::Create(SubtypeCheckBits{}, /*depth*/1u);
+      SubtypeCheckInfo::Create(SubtypeCheckBits{}, /*depth=*/1u);
   EXPECT_EQ(SubtypeCheckInfo::kUninitialized, cleared_copy_value.GetState());
   EXPECT_EQ(MakeBitString({}), GetPathToRoot(cleared_copy_value));
 }
@@ -340,7 +340,7 @@ TEST_F(SubtypeCheckInfoTest, NewForChild2) {
   SubtypeCheckInfo root = SubtypeCheckInfo::CreateRoot();
   EXPECT_EQ(MakeBitStringChar(1u), root.GetNext());
 
-  SubtypeCheckInfo childC = root.CreateChild(/*assign*/true);
+  SubtypeCheckInfo childC = root.CreateChild(/*assign_next=*/true);
   EXPECT_EQ(SubtypeCheckInfo::kAssigned, childC.GetState());
   EXPECT_EQ(MakeBitStringChar(2u), root.GetNext());  // Next incremented for Assign.
   EXPECT_EQ(MakeBitString({1u}), GetPathToRoot(childC));
@@ -350,17 +350,17 @@ TEST_F(SubtypeCheckInfoTest, NewForChild) {
   SubtypeCheckInfo root = SubtypeCheckInfo::CreateRoot();
   EXPECT_EQ(MakeBitStringChar(1u), root.GetNext());
 
-  SubtypeCheckInfo childA = root.CreateChild(/*assign*/false);
+  SubtypeCheckInfo childA = root.CreateChild(/*assign_next=*/false);
   EXPECT_EQ(SubtypeCheckInfo::kInitialized, childA.GetState());
   EXPECT_EQ(MakeBitStringChar(1u), root.GetNext());  // Next unchanged for Initialize.
   EXPECT_EQ(MakeBitString({}), GetPathToRoot(childA));
 
-  SubtypeCheckInfo childB = root.CreateChild(/*assign*/false);
+  SubtypeCheckInfo childB = root.CreateChild(/*assign_next=*/false);
   EXPECT_EQ(SubtypeCheckInfo::kInitialized, childB.GetState());
   EXPECT_EQ(MakeBitStringChar(1u), root.GetNext());  // Next unchanged for Initialize.
   EXPECT_EQ(MakeBitString({}), GetPathToRoot(childB));
 
-  SubtypeCheckInfo childC = root.CreateChild(/*assign*/true);
+  SubtypeCheckInfo childC = root.CreateChild(/*assign_next=*/true);
   EXPECT_EQ(SubtypeCheckInfo::kAssigned, childC.GetState());
   EXPECT_EQ(MakeBitStringChar(2u), root.GetNext());  // Next incremented for Assign.
   EXPECT_EQ(MakeBitString({1u}), GetPathToRoot(childC));
@@ -369,19 +369,19 @@ TEST_F(SubtypeCheckInfoTest, NewForChild) {
     size_t cur_depth = 1u;
     SubtypeCheckInfo latest_child = childC;
     while (cur_depth != BitString::kCapacity) {
-      latest_child = latest_child.CreateChild(/*assign*/true);
+      latest_child = latest_child.CreateChild(/*assign_next=*/true);
       ASSERT_EQ(SubtypeCheckInfo::kAssigned, latest_child.GetState());
       ASSERT_EQ(cur_depth + 1u, GetPathToRoot(latest_child).Length());
       cur_depth++;
     }
 
     // Future assignments will result in a too-deep overflow.
-    SubtypeCheckInfo child_of_deep = latest_child.CreateChild(/*assign*/true);
+    SubtypeCheckInfo child_of_deep = latest_child.CreateChild(/*assign_next=*/true);
     EXPECT_EQ(SubtypeCheckInfo::kOverflowed, child_of_deep.GetState());
     EXPECT_EQ(GetPathToRoot(latest_child), GetPathToRoot(child_of_deep));
 
     // Assignment of too-deep overflow also causes overflow.
-    SubtypeCheckInfo child_of_deep_2 = child_of_deep.CreateChild(/*assign*/true);
+    SubtypeCheckInfo child_of_deep_2 = child_of_deep.CreateChild(/*assign_next=*/true);
     EXPECT_EQ(SubtypeCheckInfo::kOverflowed, child_of_deep_2.GetState());
     EXPECT_EQ(GetPathToRoot(child_of_deep), GetPathToRoot(child_of_deep_2));
   }
@@ -393,7 +393,7 @@ TEST_F(SubtypeCheckInfoTest, NewForChild) {
         break;
       }
 
-      SubtypeCheckInfo child = root.CreateChild(/*assign*/true);
+      SubtypeCheckInfo child = root.CreateChild(/*assign_next=*/true);
       ASSERT_EQ(SubtypeCheckInfo::kAssigned, child.GetState());
       ASSERT_EQ(MakeBitStringChar(cur_next+1u), root.GetNext());
       ASSERT_EQ(MakeBitString({cur_next}), GetPathToRoot(child));
@@ -403,20 +403,20 @@ TEST_F(SubtypeCheckInfoTest, NewForChild) {
     // Now the root will be in a state that further assigns will be too-wide overflow.
 
     // Initialization still succeeds.
-    SubtypeCheckInfo child = root.CreateChild(/*assign*/false);
+    SubtypeCheckInfo child = root.CreateChild(/*assign_next=*/false);
     EXPECT_EQ(SubtypeCheckInfo::kInitialized, child.GetState());
     EXPECT_EQ(MakeBitStringChar(cur_next), root.GetNext());
     EXPECT_EQ(MakeBitString({}), GetPathToRoot(child));
 
     // Assignment goes to too-wide Overflow.
-    SubtypeCheckInfo child_of = root.CreateChild(/*assign*/true);
+    SubtypeCheckInfo child_of = root.CreateChild(/*assign_next=*/true);
     EXPECT_EQ(SubtypeCheckInfo::kOverflowed, child_of.GetState());
     EXPECT_EQ(MakeBitStringChar(cur_next), root.GetNext());
     EXPECT_EQ(MakeBitString({}), GetPathToRoot(child_of));
 
     // Assignment of overflowed child still succeeds.
     // The path to root is the same.
-    SubtypeCheckInfo child_of2 = child_of.CreateChild(/*assign*/true);
+    SubtypeCheckInfo child_of2 = child_of.CreateChild(/*assign_next=*/true);
     EXPECT_EQ(SubtypeCheckInfo::kOverflowed, child_of2.GetState());
     EXPECT_EQ(GetPathToRoot(child_of), GetPathToRoot(child_of2));
   }

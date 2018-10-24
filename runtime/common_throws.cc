@@ -105,10 +105,10 @@ void ThrowAbstractMethodError(ArtMethod* method) {
 }
 
 void ThrowAbstractMethodError(uint32_t method_idx, const DexFile& dex_file) {
-  ThrowException("Ljava/lang/AbstractMethodError;", /* referrer */ nullptr,
+  ThrowException("Ljava/lang/AbstractMethodError;", /* referrer= */ nullptr,
                  StringPrintf("abstract method \"%s\"",
                               dex_file.PrettyMethod(method_idx,
-                                                    /* with_signature */ true).c_str()).c_str());
+                                                    /* with_signature= */ true).c_str()).c_str());
 }
 
 // ArithmeticException
@@ -324,7 +324,7 @@ void ThrowIncompatibleClassChangeError(ObjPtr<mirror::Class> referrer, const cha
 void ThrowIncompatibleClassChangeErrorForMethodConflict(ArtMethod* method) {
   DCHECK(method != nullptr);
   ThrowException("Ljava/lang/IncompatibleClassChangeError;",
-                 /*referrer*/nullptr,
+                 /*referrer=*/nullptr,
                  StringPrintf("Conflicting default method implementations %s",
                               ArtMethod::PrettyMethod(method).c_str()).c_str());
 }
@@ -633,7 +633,7 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
       ArtField* field =
           Runtime::Current()->GetClassLinker()->ResolveField(instr.VRegC_22c(), method, false);
       Thread::Current()->ClearException();  // Resolution may fail, ignore.
-      ThrowNullPointerExceptionForFieldAccess(field, true /* read */);
+      ThrowNullPointerExceptionForFieldAccess(field, /* is_read= */ true);
       break;
     }
     case Instruction::IGET_QUICK:
@@ -647,9 +647,9 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
       ArtField* field = nullptr;
       CHECK_NE(field_idx, DexFile::kDexNoIndex16);
       field = Runtime::Current()->GetClassLinker()->ResolveField(
-          field_idx, method, /* is_static */ false);
+          field_idx, method, /* is_static= */ false);
       Thread::Current()->ClearException();  // Resolution may fail, ignore.
-      ThrowNullPointerExceptionForFieldAccess(field, true /* read */);
+      ThrowNullPointerExceptionForFieldAccess(field, /* is_read= */ true);
       break;
     }
     case Instruction::IPUT:
@@ -660,9 +660,9 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
     case Instruction::IPUT_CHAR:
     case Instruction::IPUT_SHORT: {
       ArtField* field = Runtime::Current()->GetClassLinker()->ResolveField(
-          instr.VRegC_22c(), method, /* is_static */ false);
+          instr.VRegC_22c(), method, /* is_static= */ false);
       Thread::Current()->ClearException();  // Resolution may fail, ignore.
-      ThrowNullPointerExceptionForFieldAccess(field, false /* write */);
+      ThrowNullPointerExceptionForFieldAccess(field, /* is_read= */ false);
       break;
     }
     case Instruction::IPUT_QUICK:
@@ -676,9 +676,9 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
       ArtField* field = nullptr;
       CHECK_NE(field_idx, DexFile::kDexNoIndex16);
       field = Runtime::Current()->GetClassLinker()->ResolveField(
-          field_idx, method, /* is_static */ false);
+          field_idx, method, /* is_static= */ false);
       Thread::Current()->ClearException();  // Resolution may fail, ignore.
-      ThrowNullPointerExceptionForFieldAccess(field, false /* write */);
+      ThrowNullPointerExceptionForFieldAccess(field, /* is_read= */ false);
       break;
     }
     case Instruction::AGET:

@@ -363,7 +363,7 @@ void ClassHierarchyAnalysis::CheckVirtualMethodSingleImplementationInfo(
     // non-single-implementation already.
     VerifyNonSingleImplementation(klass->GetSuperClass()->GetSuperClass(),
                                   method_in_super->GetMethodIndex(),
-                                  nullptr /* excluded_method */);
+                                  /* excluded_method= */ nullptr);
     return;
   }
 

@@ -160,7 +160,7 @@ inline void VisitClassLoaderDexFiles(ScopedObjectAccessAlreadyRunnable& soa,
   VisitClassLoaderDexFiles<decltype(helper), void*>(soa,
                                                     class_loader,
                                                     helper,
-                                                    /* default */ nullptr);
+                                                    /* default= */ nullptr);
 }
 
 }  // namespace art

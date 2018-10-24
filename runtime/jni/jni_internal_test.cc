@@ -962,11 +962,11 @@ TEST_F(JniInternalTest, FromReflectedField_ToReflectedField) {
   // Make sure we can actually use it.
   jstring s = env_->NewStringUTF("poop");
   if (mirror::kUseStringCompression) {
-    ASSERT_EQ(mirror::String::GetFlaggedCount(4, /* compressible */ true),
+    ASSERT_EQ(mirror::String::GetFlaggedCount(4, /* compressible= */ true),
               env_->GetIntField(s, fid2));
     // Create incompressible string
     jstring s_16 = env_->NewStringUTF("\u0444\u0444");
-    ASSERT_EQ(mirror::String::GetFlaggedCount(2, /* compressible */ false),
+    ASSERT_EQ(mirror::String::GetFlaggedCount(2, /* compressible= */ false),
               env_->GetIntField(s_16, fid2));
   } else {
     ASSERT_EQ(4, env_->GetIntField(s, fid2));
@@ -1485,7 +1485,7 @@ TEST_F(JniInternalTest, StaleWeakGlobal) {
   ASSERT_NE(weak_global, nullptr);
   env_->DeleteLocalRef(local_ref);
   // GC should clear the weak global.
-  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references= */ false);
   jobject new_global_ref = env_->NewGlobalRef(weak_global);
   EXPECT_EQ(new_global_ref, nullptr);
   jobject new_local_ref = env_->NewLocalRef(weak_global);

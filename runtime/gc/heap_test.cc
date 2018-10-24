@@ -37,7 +37,7 @@ class HeapTest : public CommonRuntimeTest {
                                      gc::Heap::kPreferredAllocSpaceBegin,
                                      16 * KB,
                                      PROT_READ,
-                                     /*low_4gb*/ true,
+                                     /*low_4gb=*/ true,
                                      &error_msg);
     ASSERT_TRUE(reserved_.IsValid()) << error_msg;
     CommonRuntimeTest::SetUp();
@@ -77,7 +77,7 @@ TEST_F(HeapTest, GarbageCollectClassLinkerInit) {
       }
     }
   }
-  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references= */ false);
 }
 
 TEST_F(HeapTest, HeapBitmapCapacityTest) {
@@ -91,7 +91,7 @@ TEST_F(HeapTest, HeapBitmapCapacityTest) {
 }
 
 TEST_F(HeapTest, DumpGCPerformanceOnShutdown) {
-  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references= */ false);
   Runtime::Current()->SetDumpGCPerformanceOnShutdown(true);
 }
 

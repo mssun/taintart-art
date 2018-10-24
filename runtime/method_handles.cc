@@ -745,7 +745,7 @@ bool DoInvokePolymorphicMethod(Thread* self,
                                        callee_type,
                                        self,
                                        shadow_frame,
-                                       method_handle /* receiver */,
+                                       /* receiver= */ method_handle,
                                        operands,
                                        result);
   } else {
@@ -1103,7 +1103,7 @@ static inline bool MethodHandleInvokeInternal(Thread* self,
   if (IsInvokeVarHandle(handle_kind)) {
     return DoVarHandleInvokeTranslation(self,
                                         shadow_frame,
-                                        /*invokeExact*/ false,
+                                        /*invokeExact=*/ false,
                                         method_handle,
                                         callsite_type,
                                         operands,
@@ -1155,7 +1155,7 @@ static inline bool MethodHandleInvokeExactInternal(
   } else if (IsInvokeVarHandle(handle_kind)) {
     return DoVarHandleInvokeTranslation(self,
                                         shadow_frame,
-                                        /*invokeExact*/ true,
+                                        /*invokeExact=*/ true,
                                         method_handle,
                                         callsite_type,
                                         operands,

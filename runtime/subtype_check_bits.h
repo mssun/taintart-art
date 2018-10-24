@@ -56,9 +56,9 @@ namespace art {
  *
  * See subtype_check.h and subtype_check_info.h for more details.
  */
-BITSTRUCT_DEFINE_START(SubtypeCheckBits, /*size*/ BitString::BitStructSizeOf() + 1u)
-  BitStructField<BitString, /*lsb*/ 0> bitstring_;
-  BitStructUint</*lsb*/ BitString::BitStructSizeOf(), /*width*/ 1> overflow_;
+BITSTRUCT_DEFINE_START(SubtypeCheckBits, /*size=*/ BitString::BitStructSizeOf() + 1u)
+  BitStructField<BitString, /*lsb=*/ 0> bitstring_;
+  BitStructUint</*lsb=*/ BitString::BitStructSizeOf(), /*width=*/ 1> overflow_;
 BITSTRUCT_DEFINE_END(SubtypeCheckBits);
 
 }  // namespace art

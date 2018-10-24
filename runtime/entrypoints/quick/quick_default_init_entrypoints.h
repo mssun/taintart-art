@@ -31,7 +31,7 @@ static void DefaultInitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qp
   jpoints->pDlsymLookup = art_jni_dlsym_lookup_stub;
 
   // Alloc
-  ResetQuickAllocEntryPoints(qpoints, /* is_marking */ true);
+  ResetQuickAllocEntryPoints(qpoints, /* is_marking= */ true);
 
   // Resolution and initialization
   qpoints->pInitializeStaticStorage = art_quick_initialize_static_storage;

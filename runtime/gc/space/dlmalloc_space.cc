@@ -54,7 +54,7 @@ DlMallocSpace::DlMallocSpace(MemMap&& mem_map,
                   end,
                   limit,
                   growth_limit,
-                  /* create_bitmaps */ true,
+                  /* create_bitmaps= */ true,
                   can_move_objects,
                   starting_size, initial_size),
       mspace_(mspace) {

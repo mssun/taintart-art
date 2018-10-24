@@ -59,7 +59,7 @@ static ResultT GetThreadStack(const ScopedFastNativeObjectAccess& soa,
     ThreadList* thread_list = Runtime::Current()->GetThreadList();
     bool timed_out;
     Thread* thread = thread_list->SuspendThreadByPeer(peer,
-                                                      /* request_suspension */ true,
+                                                      /* request_suspension= */ true,
                                                       SuspendReason::kInternal,
                                                       &timed_out);
     if (thread != nullptr) {

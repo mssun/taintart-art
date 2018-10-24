@@ -1034,8 +1034,8 @@ TEST_F(ClassLinkerTest, LookupResolvedTypeErroneousInit) {
   // Force initialization to turn the class erroneous.
   bool initialized = class_linker_->EnsureInitialized(soa.Self(),
                                                       klass,
-                                                      /* can_init_fields */ true,
-                                                      /* can_init_parents */ true);
+                                                      /* can_init_fields= */ true,
+                                                      /* can_init_parents= */ true);
   EXPECT_FALSE(initialized);
   EXPECT_TRUE(soa.Self()->IsExceptionPending());
   soa.Self()->ClearException();
@@ -1320,15 +1320,15 @@ TEST_F(ClassLinkerTest, ResolveVerifyAndClinit) {
   ObjPtr<mirror::Class> uninit = ResolveVerifyAndClinit(type_idx,
                                                         clinit,
                                                         soa.Self(),
-                                                        /* can_run_clinit */ true,
-                                                        /* verify_access */ false);
+                                                        /* can_run_clinit= */ true,
+                                                        /* verify_access= */ false);
   EXPECT_TRUE(uninit != nullptr);
   EXPECT_FALSE(uninit->IsInitialized());
   ObjPtr<mirror::Class> init = ResolveVerifyAndClinit(type_idx,
                                                       getS0,
                                                       soa.Self(),
-                                                      /* can_run_clinit */ true,
-                                                      /* verify_access */ false);
+                                                      /* can_run_clinit= */ true,
+                                                      /* verify_access= */ false);
   EXPECT_TRUE(init != nullptr);
   EXPECT_TRUE(init->IsInitialized());
 }
@@ -1530,7 +1530,7 @@ TEST_F(ClassLinkerTest, RegisterDexFileName) {
   {
     WriterMutexLock mu(soa.Self(), *Locks::dex_lock_);
     // Check that inserting with a UTF16 name works.
-    class_linker->RegisterDexFileLocked(*dex_file, dex_cache.Get(), /* class_loader */ nullptr);
+    class_linker->RegisterDexFileLocked(*dex_file, dex_cache.Get(), /* class_loader= */ nullptr);
   }
 }
 
@@ -1699,14 +1699,14 @@ TEST_F(ClassLinkerClassLoaderTest, CreatePathClassLoader) {
   jobject class_loader_a = LoadDexInPathClassLoader("ForClassLoaderA", nullptr);
   VerifyClassResolution("LDefinedInA;", class_loader_a, class_loader_a);
   VerifyClassResolution("Ljava/lang/String;", class_loader_a, nullptr);
-  VerifyClassResolution("LDefinedInB;", class_loader_a, nullptr, /*should_find*/ false);
+  VerifyClassResolution("LDefinedInB;", class_loader_a, nullptr, /*should_find=*/ false);
 }
 
 TEST_F(ClassLinkerClassLoaderTest, CreateDelegateLastClassLoader) {
   jobject class_loader_a = LoadDexInDelegateLastClassLoader("ForClassLoaderA", nullptr);
   VerifyClassResolution("LDefinedInA;", class_loader_a, class_loader_a);
   VerifyClassResolution("Ljava/lang/String;", class_loader_a, nullptr);
-  VerifyClassResolution("LDefinedInB;", class_loader_a, nullptr, /*should_find*/ false);
+  VerifyClassResolution("LDefinedInB;", class_loader_a, nullptr, /*should_find=*/ false);
 }
 
 TEST_F(ClassLinkerClassLoaderTest, CreateClassLoaderChain) {
@@ -1753,7 +1753,7 @@ TEST_F(ClassLinkerClassLoaderTest, CreateClassLoaderChain) {
   VerifyClassResolution("LDefinedInAC;", class_loader_d, class_loader_a);
 
   // Sanity check that we don't find an undefined class.
-  VerifyClassResolution("LNotDefined;", class_loader_d, nullptr, /*should_find*/ false);
+  VerifyClassResolution("LNotDefined;", class_loader_d, nullptr, /*should_find=*/ false);
 }
 
 }  // namespace art

@@ -324,12 +324,12 @@ void ArtMethod::Invoke(Thread* self, uint32_t* args, uint32_t args_size, JValue*
   if (UNLIKELY(!runtime->IsStarted() || Dbg::IsForcedInterpreterNeededForCalling(self, this))) {
     if (IsStatic()) {
       art::interpreter::EnterInterpreterFromInvoke(
-          self, this, nullptr, args, result, /*stay_in_interpreter*/ true);
+          self, this, nullptr, args, result, /*stay_in_interpreter=*/ true);
     } else {
       mirror::Object* receiver =
           reinterpret_cast<StackReference<mirror::Object>*>(&args[0])->AsMirrorPtr();
       art::interpreter::EnterInterpreterFromInvoke(
-          self, this, receiver, args + 1, result, /*stay_in_interpreter*/ true);
+          self, this, receiver, args + 1, result, /*stay_in_interpreter=*/ true);
     }
   } else {
     DCHECK_EQ(runtime->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);

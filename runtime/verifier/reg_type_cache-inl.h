@@ -126,7 +126,7 @@ inline const ImpreciseConstType& RegTypeCache::PosShortConstant() {
 inline const PreciseReferenceType& RegTypeCache::JavaLangClass() {
   const RegType* result = &FromClass("Ljava/lang/Class;",
                                      GetClassRoot<mirror::Class>(),
-                                     /* precise */ true);
+                                     /* precise= */ true);
   DCHECK(result->IsPreciseReference());
   return *down_cast<const PreciseReferenceType*>(result);
 }
@@ -135,7 +135,7 @@ inline const PreciseReferenceType& RegTypeCache::JavaLangString() {
   // String is final and therefore always precise.
   const RegType* result = &FromClass("Ljava/lang/String;",
                                      GetClassRoot<mirror::String>(),
-                                     /* precise */ true);
+                                     /* precise= */ true);
   DCHECK(result->IsPreciseReference());
   return *down_cast<const PreciseReferenceType*>(result);
 }
@@ -143,7 +143,7 @@ inline const PreciseReferenceType& RegTypeCache::JavaLangString() {
 inline const PreciseReferenceType& RegTypeCache::JavaLangInvokeMethodHandle() {
   const RegType* result = &FromClass("Ljava/lang/invoke/MethodHandle;",
                                      GetClassRoot<mirror::MethodHandle>(),
-                                     /* precise */ true);
+                                     /* precise= */ true);
   DCHECK(result->IsPreciseReference());
   return *down_cast<const PreciseReferenceType*>(result);
 }
@@ -151,7 +151,7 @@ inline const PreciseReferenceType& RegTypeCache::JavaLangInvokeMethodHandle() {
 inline const PreciseReferenceType& RegTypeCache::JavaLangInvokeMethodType() {
   const RegType* result = &FromClass("Ljava/lang/invoke/MethodType;",
                                      GetClassRoot<mirror::MethodType>(),
-                                     /* precise */ true);
+                                     /* precise= */ true);
   DCHECK(result->IsPreciseReference());
   return *down_cast<const PreciseReferenceType*>(result);
 }

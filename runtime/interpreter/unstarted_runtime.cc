@@ -865,10 +865,10 @@ void UnstartedRuntime::UnstartedSystemArraycopy(
       // checking version, however, does.
       if (Runtime::Current()->IsActiveTransaction()) {
         dst->AssignableCheckingMemcpy<true>(
-            dst_pos, src, src_pos, length, true /* throw_exception */);
+            dst_pos, src, src_pos, length, /* throw_exception= */ true);
       } else {
         dst->AssignableCheckingMemcpy<false>(
-                    dst_pos, src, src_pos, length, true /* throw_exception */);
+            dst_pos, src, src_pos, length, /* throw_exception= */ true);
       }
     }
   } else if (src_type->IsPrimitiveByte()) {
@@ -1478,9 +1478,9 @@ void UnstartedRuntime::UnstartedUnsafeCompareAndSwapObject(
             reinterpret_cast<uint8_t*>(obj) + static_cast<size_t>(offset));
     ReadBarrier::Barrier<
         mirror::Object,
-        /* kIsVolatile */ false,
+        /* kIsVolatile= */ false,
         kWithReadBarrier,
-        /* kAlwaysUpdateField */ true>(
+        /* kAlwaysUpdateField= */ true>(
         obj,
         MemberOffset(offset),
         field_addr);

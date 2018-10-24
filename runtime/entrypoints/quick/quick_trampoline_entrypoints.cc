@@ -763,7 +763,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
     uint16_t num_regs = accessor.RegistersSize();
     // No last shadow coming from quick.
     ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
-        CREATE_SHADOW_FRAME(num_regs, /* link */ nullptr, method, /* dex pc */ 0);
+        CREATE_SHADOW_FRAME(num_regs, /* link= */ nullptr, method, /* dex_pc= */ 0);
     ShadowFrame* shadow_frame = shadow_frame_unique_ptr.get();
     size_t first_arg_reg = accessor.RegistersSize() - accessor.InsSize();
     BuildQuickShadowFrameVisitor shadow_frame_builder(sp, method->IsStatic(), shorty, shorty_len,
@@ -820,7 +820,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
           result,
           shorty[0] == 'L' || shorty[0] == '[',  /* class or array */
           force_frame_pop ? nullptr : self->GetException(),
-          false /* from_code */,
+          /* from_code= */ false,
           DeoptimizationMethodType::kDefault);
 
       // Set special exception to cause deoptimization.
@@ -912,7 +912,7 @@ extern "C" uint64_t artQuickProxyInvokeHandler(
   uint32_t shorty_len = 0;
   const char* shorty = non_proxy_method->GetShorty(&shorty_len);
   BuildQuickArgumentVisitor local_ref_visitor(
-      sp, /* is_static */ false, shorty, shorty_len, &soa, &args);
+      sp, /* is_static= */ false, shorty, shorty_len, &soa, &args);
 
   local_ref_visitor.VisitArguments();
   DCHECK_GT(args.size(), 0U) << proxy_method->PrettyMethod();
@@ -975,7 +975,7 @@ class GetQuickReferenceArgumentAtVisitor final : public QuickArgumentVisitor {
                                      const char* shorty,
                                      uint32_t shorty_len,
                                      size_t arg_pos)
-      : QuickArgumentVisitor(sp, /* is_static */ false, shorty, shorty_len),
+      : QuickArgumentVisitor(sp, /* is_static= */ false, shorty, shorty_len),
         cur_pos_(0u),
         arg_pos_(arg_pos),
         ref_arg_(nullptr) {
@@ -1061,7 +1061,7 @@ std::vector<StackReference<mirror::Object>*> GetProxyReferenceArguments(ArtMetho
       << proxy_method->PrettyMethod() << " " << non_proxy_method->PrettyMethod();
   uint32_t shorty_len = 0;
   const char* shorty = non_proxy_method->GetShorty(&shorty_len);
-  GetQuickReferenceArgumentsVisitor ref_args_visitor(sp, /* is_static */ false, shorty, shorty_len);
+  GetQuickReferenceArgumentsVisitor ref_args_visitor(sp, /*is_static=*/ false, shorty, shorty_len);
   ref_args_visitor.VisitArguments();
   std::vector<StackReference<mirror::Object>*> ref_args = ref_args_visitor.GetReferenceArguments();
   return ref_args;
@@ -2709,7 +2709,7 @@ extern "C" TwoWordReturn artInvokeInterfaceTrampoline(ArtMethod* interface_metho
       conflict_method,
       interface_method,
       method,
-      /*force_new_conflict_method*/false);
+      /*force_new_conflict_method=*/false);
   if (new_conflict_method != conflict_method) {
     // Update the IMT if we create a new conflict method. No fence needed here, as the
     // data is consistent.
@@ -2784,7 +2784,7 @@ extern "C" uint64_t artInvokePolymorphic(mirror::Object* raw_receiver, Thread* s
   const size_t num_vregs = is_range ? inst.VRegA_4rcc() : inst.VRegA_45cc();
   const size_t first_arg = 0;
   ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
-      CREATE_SHADOW_FRAME(num_vregs, /* link */ nullptr, resolved_method, dex_pc);
+      CREATE_SHADOW_FRAME(num_vregs, /* link= */ nullptr, resolved_method, dex_pc);
   ShadowFrame* shadow_frame = shadow_frame_unique_ptr.get();
   ScopedStackedShadowFramePusher
       frame_pusher(self, shadow_frame, StackedShadowFrameType::kShadowFrameUnderConstruction);
@@ -2877,7 +2877,7 @@ extern "C" uint64_t artInvokeCustom(uint32_t call_site_idx, Thread* self, ArtMet
   const size_t first_arg = 0;
   const size_t num_vregs = ArtMethod::NumArgRegisters(shorty);
   ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
-      CREATE_SHADOW_FRAME(num_vregs, /* link */ nullptr, caller_method, dex_pc);
+      CREATE_SHADOW_FRAME(num_vregs, /* link= */ nullptr, caller_method, dex_pc);
   ShadowFrame* shadow_frame = shadow_frame_unique_ptr.get();
   ScopedStackedShadowFramePusher
       frame_pusher(self, shadow_frame, StackedShadowFrameType::kShadowFrameUnderConstruction);

@@ -438,14 +438,14 @@ const RegType& RegTypeCache::FromUnresolvedMerge(const RegType& left,
 
     // Is the resolved part a primitive array?
     if (resolved_merged_is_array && !resolved_parts_merged.IsObjectArrayTypes()) {
-      return JavaLangObject(false /* precise */);
+      return JavaLangObject(/* precise= */ false);
     }
 
     // Is any part not an array (but exists)?
     if ((!left_unresolved_is_array && left_resolved != &left) ||
         (!right_unresolved_is_array && right_resolved != &right) ||
         !resolved_merged_is_array) {
-      return JavaLangObject(false /* precise */);
+      return JavaLangObject(/* precise= */ false);
     }
   }
 
