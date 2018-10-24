@@ -21,11 +21,11 @@
 
 #include <stdint.h>
 
-#include <map>
 #include <vector>
 
 #include "base/iteration_range.h"
 #include "base/leb128.h"
+#include "base/safe_map.h"
 #include "base/stl_util.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_types.h"
@@ -50,6 +50,7 @@ class EncodedValue;
 class FieldId;
 class FieldItem;
 class Header;
+class HiddenapiClassData;
 class MapList;
 class MapItem;
 class MethodHandleItem;
@@ -101,6 +102,7 @@ class AbstractDispatcher {
   virtual void Dispatch(AnnotationSetItem* annotation_set_item) = 0;
   virtual void Dispatch(AnnotationSetRefList* annotation_set_ref_list) = 0;
   virtual void Dispatch(AnnotationsDirectoryItem* annotations_directory_item) = 0;
+  virtual void Dispatch(HiddenapiClassData* hiddenapi_class_data) = 0;
   virtual void Dispatch(MapList* map_list) = 0;
   virtual void Dispatch(MapItem* map_item) = 0;
 
@@ -216,6 +218,7 @@ class CollectionBase {
   uint32_t GetOffset() const { return offset_; }
   void SetOffset(uint32_t new_offset) { offset_ = new_offset; }
   virtual uint32_t Size() const = 0;
+  bool Empty() const { return Size() == 0u; }
 
  private:
   // Start out unassigned.
@@ -476,6 +479,12 @@ class Header : public Item {
   const CollectionVector<AnnotationsDirectoryItem>& AnnotationsDirectoryItems() const {
     return annotations_directory_items_;
   }
+  IndexedCollectionVector<HiddenapiClassData>& HiddenapiClassDatas() {
+    return hiddenapi_class_datas_;
+  }
+  const IndexedCollectionVector<HiddenapiClassData>& HiddenapiClassDatas() const {
+    return hiddenapi_class_datas_;
+  }
   CollectionVector<DebugInfoItem>& DebugInfoItems() { return debug_info_items_; }
   const CollectionVector<DebugInfoItem>& DebugInfoItems() const { return debug_info_items_; }
   CollectionVector<CodeItem>& CodeItems() { return code_items_; }
@@ -553,6 +562,7 @@ class Header : public Item {
   IndexedCollectionVector<AnnotationSetItem> annotation_set_items_;
   IndexedCollectionVector<AnnotationSetRefList> annotation_set_ref_lists_;
   IndexedCollectionVector<AnnotationsDirectoryItem> annotations_directory_items_;
+  IndexedCollectionVector<HiddenapiClassData> hiddenapi_class_datas_;
   // The order of the vectors controls the layout of the output file by index order, to change the
   // layout just sort the vector. Note that you may only change the order of the non indexed vectors
   // below. Indexed vectors are accessed by indices in other places, changing the sorting order will
@@ -1262,6 +1272,49 @@ class MethodHandleItem : public IndexedItem {
   IndexedItem* field_or_method_id_;
 
   DISALLOW_COPY_AND_ASSIGN(MethodHandleItem);
+};
+
+using HiddenapiFlagsMap = SafeMap<const Item*, uint32_t>;
+
+class HiddenapiClassData : public IndexedItem {
+ public:
+  HiddenapiClassData(const ClassDef* class_def, std::unique_ptr<HiddenapiFlagsMap> flags)
+      : class_def_(class_def), flags_(std::move(flags)) { }
+  ~HiddenapiClassData() override { }
+
+  const ClassDef* GetClassDef() const { return class_def_; }
+
+  uint32_t GetFlags(const Item* field_or_method_item) const {
+    return (flags_ == nullptr) ? 0u : flags_->Get(field_or_method_item);
+  }
+
+  static uint32_t GetFlags(Header* header, ClassDef* class_def, const Item* field_or_method_item) {
+    DCHECK(header != nullptr);
+    DCHECK(class_def != nullptr);
+    return (header->HiddenapiClassDatas().Empty())
+        ? 0u
+        : header->HiddenapiClassDatas()[class_def->GetIndex()]->GetFlags(field_or_method_item);
+  }
+
+  uint32_t ItemSize() const {
+    uint32_t size = 0u;
+    bool has_non_zero_entries = false;
+    if (flags_ != nullptr) {
+      for (const auto& entry : *flags_) {
+        size += UnsignedLeb128Size(entry.second);
+        has_non_zero_entries |= (entry.second != 0u);
+      }
+    }
+    return has_non_zero_entries ? size : 0u;
+  }
+
+  void Accept(AbstractDispatcher* dispatch) { dispatch->Dispatch(this); }
+
+ private:
+  const ClassDef* class_def_;
+  std::unique_ptr<HiddenapiFlagsMap> flags_;
+
+  DISALLOW_COPY_AND_ASSIGN(HiddenapiClassData);
 };
 
 // TODO(sehr): implement MapList.

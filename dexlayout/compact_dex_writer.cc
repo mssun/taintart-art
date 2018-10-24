@@ -441,6 +441,7 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
   WriteTypeLists(data_stream);
   WriteClassDatas(data_stream);
   WriteStringDatas(data_stream);
+  WriteHiddenapiClassData(data_stream);
 
   // Write delayed id sections that depend on data sections.
   {
