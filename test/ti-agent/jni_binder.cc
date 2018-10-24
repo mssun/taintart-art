@@ -174,7 +174,7 @@ static jclass FindClassWithClassLoader(JNIEnv* env, const char* class_name, jobj
                                                          class_loader));
 }
 
-jclass FindClass(jvmtiEnv* jvmti_env, JNIEnv* env, const char* class_name, jobject class_loader) {
+jclass GetClass(jvmtiEnv* jvmti_env, JNIEnv* env, const char* class_name, jobject class_loader) {
   if (class_loader != nullptr) {
     return FindClassWithClassLoader(env, class_name, class_loader);
   }
@@ -223,7 +223,7 @@ jclass FindClass(jvmtiEnv* jvmti_env, JNIEnv* env, const char* class_name, jobje
   }
 
   // TODO: Implement scanning *all* classloaders.
-  LOG(FATAL) << "Unimplemented";
+  LOG(WARNING) << "Scanning all classloaders unimplemented";
 
   return nullptr;
 }
@@ -251,7 +251,7 @@ void BindFunctionsOnClass(jvmtiEnv* jvmti_env, JNIEnv* env, jclass klass) {
 
 void BindFunctions(jvmtiEnv* jvmti_env, JNIEnv* env, const char* class_name, jobject class_loader) {
   // Use JNI to load the class.
-  ScopedLocalRef<jclass> klass(env, FindClass(jvmti_env, env, class_name, class_loader));
+  ScopedLocalRef<jclass> klass(env, GetClass(jvmti_env, env, class_name, class_loader));
   CHECK(klass.get() != nullptr) << class_name;
   BindFunctionsOnClass(jvmti_env, env, klass.get());
 }
