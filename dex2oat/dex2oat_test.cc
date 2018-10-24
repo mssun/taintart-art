@@ -2074,9 +2074,6 @@ TEST_F(Dex2oatTest, AppImageNoProfile) {
 }
 
 TEST_F(Dex2oatTest, AppImageResolveStrings) {
-  if (!ClassLinker::kAppImageMayContainStrings) {
-    TEST_DISABLED();
-  }
   using Hotness = ProfileCompilationInfo::MethodHotness;
   // Create a profile with the startup method marked.
   ScratchFile profile_file;
