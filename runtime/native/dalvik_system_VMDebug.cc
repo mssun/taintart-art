@@ -38,6 +38,8 @@
 #include "hprof/hprof.h"
 #include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
+#include "mirror/array-alloc-inl.h"
+#include "mirror/array-inl.h"
 #include "mirror/class.h"
 #include "mirror/object_array-inl.h"
 #include "native_util.h"
