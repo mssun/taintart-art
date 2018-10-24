@@ -27,6 +27,7 @@
 #include "gc/accounting/card_table-inl.h"
 #include "handle_scope-inl.h"
 #include "object-inl.h"
+#include "object_array-alloc-inl.h"
 #include "object_array-inl.h"
 #include "thread.h"
 

@@ -29,6 +29,7 @@
 #include "linear_alloc.h"
 #include "mirror/class-inl.h"
 #include "mirror/string-inl.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "scoped_thread_state_change-inl.h"
 
 namespace art {

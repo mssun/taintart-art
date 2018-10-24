@@ -30,6 +30,7 @@
 #include "mirror/array-alloc-inl.h"
 #include "mirror/field.h"
 #include "mirror/method.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"
 #include "oat_file.h"
 #include "obj_ptr-inl.h"

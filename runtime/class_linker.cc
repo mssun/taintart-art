@@ -105,6 +105,7 @@
 #include "mirror/method_type.h"
 #include "mirror/object-inl.h"
 #include "mirror/object-refvisitor-inl.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/object_reference.h"
 #include "mirror/object_reference-inl.h"

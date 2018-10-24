@@ -25,6 +25,7 @@
 #include "class_root.h"
 #include "common_runtime_test.h"
 #include "handle_scope-inl.h"
+#include "object_array-alloc-inl.h"
 #include "object_array-inl.h"
 #include "scoped_thread_state_change-inl.h"
 

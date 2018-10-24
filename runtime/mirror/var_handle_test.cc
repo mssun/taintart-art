@@ -28,6 +28,7 @@
 #include "handle_scope-inl.h"
 #include "jvalue-inl.h"
 #include "method_type.h"
+#include "object_array-alloc-inl.h"
 #include "object_array-inl.h"
 #include "reflection.h"
 #include "scoped_thread_state_change-inl.h"
