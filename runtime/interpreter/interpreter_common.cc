@@ -50,17 +50,6 @@ void ThrowNullPointerExceptionFromInterpreter() {
   ThrowNullPointerExceptionFromDexPC();
 }
 
-bool CheckStackOverflow(Thread* self, size_t frame_size)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  bool implicit_check = !Runtime::Current()->ExplicitStackOverflowChecks();
-  uint8_t* stack_end = self->GetStackEndForInterpreter(implicit_check);
-  if (UNLIKELY(__builtin_frame_address(0) < stack_end + frame_size)) {
-    ThrowStackOverflowError(self);
-    return false;
-  }
-  return true;
-}
-
 template<FindFieldType find_type, Primitive::Type field_type, bool do_access_check,
          bool transaction_active>
 bool DoFieldGet(Thread* self, ShadowFrame& shadow_frame, const Instruction* inst,
