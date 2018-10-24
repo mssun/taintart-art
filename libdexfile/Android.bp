@@ -39,18 +39,8 @@ cc_defaults {
 
     target: {
         android: {
-            static_libs: [
-                "libziparchive",
-                "libz",
-            ],
             shared_libs: [
                 "libutils",
-            ],
-        },
-        host: {
-            shared_libs: [
-                "libziparchive",
-                "libz",
             ],
         },
     },
@@ -63,7 +53,6 @@ cc_defaults {
         "libcutils",
         // For common macros.
         "libbase",
-        "libz",
     ],
     export_include_dirs: ["."],
     export_shared_lib_headers: [
@@ -79,8 +68,6 @@ cc_defaults {
         "libcutils",
         "liblog",
         "libutils",
-        "libz",
-        "libziparchive",
     ],
 }
 
@@ -158,7 +145,6 @@ art_cc_test {
     ],
     shared_libs: [
         "libbacktrace",
-        "libziparchive",
     ],
     include_dirs: [
         "external/zlib",

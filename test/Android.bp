@@ -70,7 +70,6 @@ art_cc_defaults {
         "libicuuc",
         "libicui18n",
         "libnativehelper",
-        "libz",
     ],
     whole_static_libs: [
         "libsigchain",
@@ -91,11 +90,6 @@ art_cc_defaults {
                 "-Wno-used-but-marked-unused",
                 "-Wno-deprecated",
                 "-Wno-missing-noreturn",
-            ],
-        },
-        host: {
-            shared_libs: [
-                "libziparchive",
             ],
         },
         android: {
@@ -325,7 +319,6 @@ art_cc_defaults {
         // "1952-pop-frame-jit/pop_frame.cc",
     ],
     static_libs: [
-        "libz",
         "slicer",
     ],
 }
@@ -367,9 +360,6 @@ cc_library_static {
     ],
     static_libs: [
         "libbase_ndk",
-    ],
-    shared_libs: [
-        "libz",  // for slicer (using adler32).
     ],
     sdk_version: "current",
     stl: "c++_static",

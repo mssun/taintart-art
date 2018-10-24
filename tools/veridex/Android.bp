@@ -31,8 +31,6 @@ cc_binary {
         "libbase",
         "liblog",
         "libutils",
-        "libz",
-        "libziparchive",
     ],
     stl: "libc++_static",
     header_libs: [
