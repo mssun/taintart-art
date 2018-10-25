@@ -18,6 +18,10 @@
 #define ART_RUNTIME_GC_SPACE_REGION_SPACE_INL_H_
 
 #include "region_space.h"
+
+#include "base/mutex-inl.h"
+#include "mirror/object-inl.h"
+#include "region_space.h"
 #include "thread-current-inl.h"
 
 namespace art {
@@ -234,6 +238,15 @@ inline void RegionSpace::WalkInternal(Visitor&& visitor) {
       }
     }
   }
+}
+
+template <typename Visitor>
+inline void RegionSpace::Walk(Visitor&& visitor) {
+  WalkInternal</* kToSpaceOnly= */ false>(visitor);
+}
+template <typename Visitor>
+inline void RegionSpace::WalkToSpace(Visitor&& visitor) {
+  WalkInternal</* kToSpaceOnly= */ true>(visitor);
 }
 
 inline mirror::Object* RegionSpace::GetNextObject(mirror::Object* obj) {

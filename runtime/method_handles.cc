@@ -22,6 +22,7 @@
 #include "common_dex_operations.h"
 #include "interpreter/shadow_frame-inl.h"
 #include "jvalue-inl.h"
+#include "mirror/class-inl.h"
 #include "mirror/emulated_stack_frame.h"
 #include "mirror/method_handle_impl-inl.h"
 #include "mirror/method_type.h"

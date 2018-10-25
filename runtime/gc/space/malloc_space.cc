@@ -19,6 +19,7 @@
 #include "android-base/stringprintf.h"
 
 #include "base/logging.h"  // For VLOG
+#include "base/mutex-inl.h"
 #include "base/utils.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc/accounting/space_bitmap-inl.h"
