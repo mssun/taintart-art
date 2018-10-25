@@ -42,6 +42,8 @@
 #include "dex/dex_instruction-inl.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "handle_scope-inl.h"
+#include "interpreter_mterp_impl.h"
+#include "interpreter_switch_impl.h"
 #include "jit/jit.h"
 #include "mirror/call_site.h"
 #include "mirror/class-inl.h"
@@ -51,6 +53,7 @@
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/string-inl.h"
+#include "mterp/mterp.h"
 #include "obj_ptr.h"
 #include "stack.h"
 #include "thread.h"
@@ -121,6 +124,43 @@ template<bool is_range, bool do_assignability_check>
 bool DoCall(ArtMethod* called_method, Thread* self, ShadowFrame& shadow_frame,
             const Instruction* inst, uint16_t inst_data, JValue* result);
 
+template<InvokeType type>
+static ALWAYS_INLINE bool UseInterpreterToInterpreterFastPath(ArtMethod* method)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  Runtime* runtime = Runtime::Current();
+  if (!runtime->IsStarted()) {
+    return false;
+  }
+  const void* quick_code = method->GetEntryPointFromQuickCompiledCode();
+  if (!runtime->GetClassLinker()->IsQuickToInterpreterBridge(quick_code)) {
+    return false;
+  }
+  if (!method->SkipAccessChecks() || method->IsNative() || method->IsProxyMethod()) {
+    return false;
+  }
+  if (method->GetDeclaringClass()->IsStringClass() && method->IsConstructor()) {
+    return false;
+  }
+  if (type == kStatic && !method->GetDeclaringClass()->IsInitialized()) {
+    return false;
+  }
+  if (runtime->IsActiveTransaction() || runtime->GetInstrumentation()->HasMethodEntryListeners()) {
+    return false;
+  }
+  ProfilingInfo* profiling_info = method->GetProfilingInfo(kRuntimePointerSize);
+  if ((profiling_info != nullptr) && (profiling_info->GetSavedEntryPoint() != nullptr)) {
+    return false;
+  }
+  if (runtime->GetJit() != nullptr && runtime->GetJit()->JitAtFirstUse()) {
+    return false;
+  }
+  return true;
+}
+
+// Throws exception if we are getting close to the end of the stack.
+NO_INLINE bool CheckStackOverflow(Thread* self, size_t frame_size)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
 // Handles all invoke-XXX/range instructions except for invoke-polymorphic[/range].
 // Returns true on success, otherwise throws an exception and returns false.
 template<InvokeType type, bool is_range, bool do_access_check, bool is_mterp>
@@ -163,8 +203,6 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
       (type == kStatic) ? nullptr : shadow_frame.GetVRegReference(vregC);
   ArtMethod* const called_method = FindMethodToCall<type, do_access_check>(
       method_idx, resolved_method, &receiver, sf_method, self);
-
-  // The shadow frame should already be pushed, so we don't need to update it.
   if (UNLIKELY(called_method == nullptr)) {
     CHECK(self->IsExceptionPending());
     result->SetJ(0);
@@ -189,6 +227,68 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
       }
       return !self->IsExceptionPending();
     }
+  }
+
+  if (is_mterp && UseInterpreterToInterpreterFastPath<type>(called_method)) {
+    const uint16_t number_of_inputs =
+        (is_range) ? inst->VRegA_3rc(inst_data) : inst->VRegA_35c(inst_data);
+    CodeItemDataAccessor accessor(called_method->DexInstructionData());
+    uint32_t num_regs = accessor.RegistersSize();
+    DCHECK_EQ(number_of_inputs, accessor.InsSize());
+    DCHECK_GE(num_regs, number_of_inputs);
+    size_t first_dest_reg = num_regs - number_of_inputs;
+
+    if (UNLIKELY(!CheckStackOverflow(self, ShadowFrame::ComputeSize(num_regs)))) {
+      return false;
+    }
+
+    // Create shadow frame on the stack.
+    const char* old_cause = self->StartAssertNoThreadSuspension("DoFastInvoke");
+    ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
+        CREATE_SHADOW_FRAME(num_regs, &shadow_frame, called_method, /* dex pc */ 0);
+    ShadowFrame* new_shadow_frame = shadow_frame_unique_ptr.get();
+    if (is_range) {
+      size_t src = vregC;
+      for (size_t i = 0, dst = first_dest_reg; i < number_of_inputs; ++i, ++dst, ++src) {
+        *new_shadow_frame->GetVRegAddr(dst) = *shadow_frame.GetVRegAddr(src);
+        *new_shadow_frame->GetShadowRefAddr(dst) = *shadow_frame.GetShadowRefAddr(src);
+      }
+    } else {
+      uint32_t arg[Instruction::kMaxVarArgRegs];
+      inst->GetVarArgs(arg, inst_data);
+      for (size_t i = 0, dst = first_dest_reg; i < number_of_inputs; ++i, ++dst) {
+        *new_shadow_frame->GetVRegAddr(dst) = *shadow_frame.GetVRegAddr(arg[i]);
+        *new_shadow_frame->GetShadowRefAddr(dst) = *shadow_frame.GetShadowRefAddr(arg[i]);
+      }
+    }
+    self->EndAssertNoThreadSuspension(old_cause);
+
+    if (jit != nullptr) {
+      jit->AddSamples(self, called_method, 1, /* with_backedges */false);
+    }
+
+    self->PushShadowFrame(new_shadow_frame);
+    DCheckStaticState(self, called_method);
+    while (true) {
+      // Mterp does not support all instrumentation/debugging.
+      if (!self->UseMterp()) {
+        *result =
+            ExecuteSwitchImpl<false, false>(self, accessor, *new_shadow_frame, *result, false);
+        break;
+      }
+      if (ExecuteMterpImpl(self, accessor.Insns(), new_shadow_frame, result)) {
+        break;
+      } else {
+        // Mterp didn't like that instruction.  Single-step it with the reference interpreter.
+        *result = ExecuteSwitchImpl<false, false>(self, accessor, *new_shadow_frame, *result, true);
+        if (new_shadow_frame->GetDexPC() == dex::kDexNoIndex) {
+          break;  // Single-stepped a return or an exception not handled locally.
+        }
+      }
+    }
+    self->PopShadowFrame();
+
+    return !self->IsExceptionPending();
   }
 
   return DoCall<is_range, do_access_check>(called_method, self, shadow_frame, inst, inst_data,
