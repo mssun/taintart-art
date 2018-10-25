@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#ifndef ART_RUNTIME_INTERPRETER_INTERPRETER_SWITCH_IMPL_INL_H_
+#define ART_RUNTIME_INTERPRETER_INTERPRETER_SWITCH_IMPL_INL_H_
+
 #include "interpreter_switch_impl.h"
 
 #include "base/enums.h"
@@ -2571,15 +2574,7 @@ ATTRIBUTE_NO_SANITIZE_ADDRESS void ExecuteSwitchImplCpp(SwitchImplContext* ctx) 
   return;
 }  // NOLINT(readability/fn_size)
 
-// Explicit definitions of ExecuteSwitchImplCpp.
-template HOT_ATTR
-void ExecuteSwitchImplCpp<true, false>(SwitchImplContext* ctx);
-template HOT_ATTR
-void ExecuteSwitchImplCpp<false, false>(SwitchImplContext* ctx);
-template
-void ExecuteSwitchImplCpp<true, true>(SwitchImplContext* ctx);
-template
-void ExecuteSwitchImplCpp<false, true>(SwitchImplContext* ctx);
-
 }  // namespace interpreter
 }  // namespace art
+
+#endif  // ART_RUNTIME_INTERPRETER_INTERPRETER_SWITCH_IMPL_INL_H_
