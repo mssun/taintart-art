@@ -1414,7 +1414,9 @@ TEST_F(AssemblerX86_64Test, Andpd) {
 TEST_F(AssemblerX86_64Test, Pand) {
   DriverStr(RepeatFF(&x86_64::X86_64Assembler::pand, "pand %{reg2}, %{reg1}"), "pand");
 }
-
+TEST_F(AssemblerX86_64Test, Andn) {
+  DriverStr(RepeatRRR(&x86_64::X86_64Assembler::andn, "andn %{reg3}, %{reg2}, %{reg1}"), "andn");
+}
 TEST_F(AssemblerX86_64Test, andnpd) {
   DriverStr(RepeatFF(&x86_64::X86_64Assembler::andnpd, "andnpd %{reg2}, %{reg1}"), "andnpd");
 }
@@ -1783,6 +1785,18 @@ std::string ret_and_leave_fn(AssemblerX86_64Test::Base* assembler_test ATTRIBUTE
 
 TEST_F(AssemblerX86_64Test, RetAndLeave) {
   DriverFn(&ret_and_leave_fn, "retleave");
+}
+
+TEST_F(AssemblerX86_64Test, Blsmask) {
+  DriverStr(RepeatRR(&x86_64::X86_64Assembler::blsmsk, "blsmsk %{reg2}, %{reg1}"), "blsmsk");
+}
+
+TEST_F(AssemblerX86_64Test, Blsi) {
+  DriverStr(RepeatRR(&x86_64::X86_64Assembler::blsi, "blsi %{reg2}, %{reg1}"), "blsi");
+}
+
+TEST_F(AssemblerX86_64Test, Blsr) {
+  DriverStr(RepeatRR(&x86_64::X86_64Assembler::blsr, "blsr %{reg2}, %{reg1}"), "blsr");
 }
 
 TEST_F(AssemblerX86_64Test, Bswapl) {

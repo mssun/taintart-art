@@ -337,6 +337,10 @@ class X86Assembler final : public Assembler {
 
   void movntl(const Address& dst, Register src);
 
+  void blsi(Register dst, Register src);  // no addr variant (for now)
+  void blsmsk(Register dst, Register src);  // no addr variant (for now)
+  void blsr(Register dst, Register src);  // no addr varianr (for now)
+
   void bswapl(Register dst);
 
   void bsfl(Register dst, Register src);
@@ -500,6 +504,7 @@ class X86Assembler final : public Assembler {
   void andps(XmmRegister dst, const Address& src);
   void pand(XmmRegister dst, XmmRegister src);  // no addr variant (for now)
 
+  void andn(Register dst, Register src1, Register src2);  // no addr variant (for now)
   void andnpd(XmmRegister dst, XmmRegister src);  // no addr variant (for now)
   void andnps(XmmRegister dst, XmmRegister src);
   void pandn(XmmRegister dst, XmmRegister src);
@@ -836,6 +841,11 @@ class X86Assembler final : public Assembler {
 
   void EmitGenericShift(int rm, const Operand& operand, const Immediate& imm);
   void EmitGenericShift(int rm, const Operand& operand, Register shifter);
+
+  // Emit a 3 byte VEX Prefix
+  uint8_t EmitVexByteZero(bool is_two_byte);
+  uint8_t EmitVexByte1(bool r, bool x, bool b, int mmmmm);
+  uint8_t EmitVexByte2(bool w , int l , X86ManagedRegister operand, int pp);
 
   ConstantArea constant_area_;
 
