@@ -111,9 +111,7 @@ class AllocatorVisitor {
 
 class ClassLinker {
  public:
-  // Disabled until AppImageLoadingHelper::UpdateInternStrings does the missing GC card marks.
-  // Bug: 117846779
-  static constexpr bool kAppImageMayContainStrings = false;
+  static constexpr bool kAppImageMayContainStrings = true;
 
   explicit ClassLinker(InternTable* intern_table);
   virtual ~ClassLinker();
