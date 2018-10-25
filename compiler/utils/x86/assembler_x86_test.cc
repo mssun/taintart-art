@@ -349,6 +349,18 @@ TEST_F(AssemblerX86Test, RepMovsw) {
   DriverStr(expected, "rep_movsw");
 }
 
+TEST_F(AssemblerX86Test, Blsmask) {
+  DriverStr(RepeatRR(&x86::X86Assembler::blsmsk, "blsmsk %{reg2}, %{reg1}"), "blsmsk");
+}
+
+TEST_F(AssemblerX86Test, Blsi) {
+  DriverStr(RepeatRR(&x86::X86Assembler::blsi, "blsi %{reg2}, %{reg1}"), "blsi");
+}
+
+TEST_F(AssemblerX86Test, Blsr) {
+  DriverStr(RepeatRR(&x86::X86Assembler::blsr, "blsr %{reg2}, %{reg1}"), "blsr");
+}
+
 TEST_F(AssemblerX86Test, Bsfl) {
   DriverStr(RepeatRR(&x86::X86Assembler::bsfl, "bsfl %{reg2}, %{reg1}"), "bsfl");
 }
@@ -655,6 +667,10 @@ TEST_F(AssemblerX86Test, AndPS) {
 
 TEST_F(AssemblerX86Test, PAnd) {
   DriverStr(RepeatFF(&x86::X86Assembler::pand, "pand %{reg2}, %{reg1}"), "pand");
+}
+
+TEST_F(AssemblerX86Test, Andn) {
+  DriverStr(RepeatRRR(&x86::X86Assembler::andn, "andn %{reg3}, %{reg2}, %{reg1}"), "andn");
 }
 
 TEST_F(AssemblerX86Test, AndnPD) {
