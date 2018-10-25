@@ -23,6 +23,7 @@
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/socket_peer_is_trusted.h"
 #include "jni/java_vm_ext.h"
 #include "jni/jni_env_ext.h"
 #include "mirror/throwable.h"
@@ -37,10 +38,6 @@
 #include "fd_transport.h"
 
 #include "poll.h"
-
-#ifdef ART_TARGET_ANDROID
-#include "cutils/sockets.h"
-#endif
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -514,11 +511,7 @@ bool AdbConnectionState::SetupAdbConnection() {
     // the debuggable flag set.
     int ret = connect(sock, &control_addr_.controlAddrPlain, control_addr_len_);
     if (ret == 0) {
-      bool trusted = sock >= 0;
-#ifdef ART_TARGET_ANDROID
-      // Needed for socket_peer_is_trusted.
-      trusted = trusted && socket_peer_is_trusted(sock);
-#endif
+      bool trusted = sock >= 0 && art::SocketPeerIsTrusted(sock);
       if (!trusted) {
         LOG(ERROR) << "adb socket is not trusted. Aborting connection.";
         if (sock >= 0 && shutdown(sock, SHUT_RDWR)) {
