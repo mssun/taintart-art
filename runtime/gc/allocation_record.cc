@@ -24,9 +24,7 @@
 #include "object_callbacks.h"
 #include "stack.h"
 
-#ifdef ART_TARGET_ANDROID
-#include "cutils/properties.h"
-#endif
+#include <android-base/properties.h>
 
 namespace art {
 namespace gc {
@@ -45,10 +43,10 @@ void AllocRecordObjectMap::SetProperties() {
 #ifdef ART_TARGET_ANDROID
   // Check whether there's a system property overriding the max number of records.
   const char* propertyName = "dalvik.vm.allocTrackerMax";
-  char allocMaxString[PROPERTY_VALUE_MAX];
-  if (property_get(propertyName, allocMaxString, "") > 0) {
+  std::string allocMaxString = android::base::GetProperty(propertyName, "");
+  if (!allocMaxString.empty()) {
     char* end;
-    size_t value = strtoul(allocMaxString, &end, 10);
+    size_t value = strtoul(allocMaxString.c_str(), &end, 10);
     if (*end != '\0') {
       LOG(ERROR) << "Ignoring  " << propertyName << " '" << allocMaxString
                  << "' --- invalid";
@@ -61,10 +59,10 @@ void AllocRecordObjectMap::SetProperties() {
   }
   // Check whether there's a system property overriding the number of recent records.
   propertyName = "dalvik.vm.recentAllocMax";
-  char recentAllocMaxString[PROPERTY_VALUE_MAX];
-  if (property_get(propertyName, recentAllocMaxString, "") > 0) {
+  std::string recentAllocMaxString = android::base::GetProperty(propertyName, "");
+  if (!recentAllocMaxString.empty()) {
     char* end;
-    size_t value = strtoul(recentAllocMaxString, &end, 10);
+    size_t value = strtoul(recentAllocMaxString.c_str(), &end, 10);
     if (*end != '\0') {
       LOG(ERROR) << "Ignoring  " << propertyName << " '" << recentAllocMaxString
                  << "' --- invalid";
@@ -77,10 +75,10 @@ void AllocRecordObjectMap::SetProperties() {
   }
   // Check whether there's a system property overriding the max depth of stack trace.
   propertyName = "debug.allocTracker.stackDepth";
-  char stackDepthString[PROPERTY_VALUE_MAX];
-  if (property_get(propertyName, stackDepthString, "") > 0) {
+  std::string stackDepthString = android::base::GetProperty(propertyName, "");
+  if (!stackDepthString.empty()) {
     char* end;
-    size_t value = strtoul(stackDepthString, &end, 10);
+    size_t value = strtoul(stackDepthString.c_str(), &end, 10);
     if (*end != '\0') {
       LOG(ERROR) << "Ignoring  " << propertyName << " '" << stackDepthString
                  << "' --- invalid";
