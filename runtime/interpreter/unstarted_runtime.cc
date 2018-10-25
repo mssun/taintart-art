@@ -46,7 +46,7 @@
 #include "jvalue-inl.h"
 #include "mirror/array-alloc-inl.h"
 #include "mirror/array-inl.h"
-#include "mirror/class.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/field-inl.h"
 #include "mirror/method.h"
 #include "mirror/object-inl.h"

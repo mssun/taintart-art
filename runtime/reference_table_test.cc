@@ -27,6 +27,7 @@
 #include "handle_scope-inl.h"
 #include "mirror/array-inl.h"
 #include "mirror/array-alloc-inl.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/string.h"

@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "handle.h"
 #include "handle_scope-inl.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/object.h"
 #include "scoped_thread_state_change-inl.h"

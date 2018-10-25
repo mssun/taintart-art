@@ -16,7 +16,7 @@
 
 #include "method_handle_impl-inl.h"
 
-#include "class-inl.h"
+#include "class-alloc-inl.h"
 #include "class_root.h"
 
 namespace art {

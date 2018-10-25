@@ -30,6 +30,7 @@
 #include "dex/utf.h"
 #include "hidden_api.h"
 #include "jni/jni_internal.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/field-inl.h"
