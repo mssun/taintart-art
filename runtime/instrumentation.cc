@@ -1360,38 +1360,56 @@ struct RuntimeMethodShortyVisitor : public StackVisitor {
       : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
         shorty('V') {}
 
+  static uint16_t GetMethodIndexOfInvoke(ArtMethod* caller,
+                                         const Instruction& inst,
+                                         uint32_t dex_pc)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+    switch (inst.Opcode()) {
+      case Instruction::INVOKE_VIRTUAL_RANGE_QUICK:
+      case Instruction::INVOKE_VIRTUAL_QUICK: {
+        uint16_t method_idx = caller->GetIndexFromQuickening(dex_pc);
+        CHECK_NE(method_idx, DexFile::kDexNoIndex16);
+        return method_idx;
+      }
+      default: {
+        return inst.VRegB();
+      }
+    }
+  }
+
   bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* m = GetMethod();
-    if (m != nullptr && !m->IsRuntimeMethod()) {
-      // The first Java method.
-      if (m->IsNative()) {
-        // Use JNI method's shorty for the jni stub.
-        shorty = m->GetShorty()[0];
-        return false;
-      }
-      if (m->IsProxyMethod()) {
-        // Proxy method just invokes its proxied method via
-        // art_quick_proxy_invoke_handler.
-        shorty = m->GetInterfaceMethodIfProxy(kRuntimePointerSize)->GetShorty()[0];
-        return false;
-      }
+    if (m == nullptr || m->IsRuntimeMethod()) {
+      return true;
+    }
+    // The first Java method.
+    if (m->IsNative()) {
+      // Use JNI method's shorty for the jni stub.
+      shorty = m->GetShorty()[0];
+    } else if (m->IsProxyMethod()) {
+      // Proxy method just invokes its proxied method via
+      // art_quick_proxy_invoke_handler.
+      shorty = m->GetInterfaceMethodIfProxy(kRuntimePointerSize)->GetShorty()[0];
+    } else {
       const Instruction& instr = m->DexInstructions().InstructionAt(GetDexPc());
       if (instr.IsInvoke()) {
+        uint16_t method_index = GetMethodIndexOfInvoke(m, instr, GetDexPc());
         const DexFile* dex_file = m->GetDexFile();
-        if (interpreter::IsStringInit(dex_file, instr.VRegB())) {
+        if (interpreter::IsStringInit(dex_file, method_index)) {
           // Invoking string init constructor is turned into invoking
           // StringFactory.newStringFromChars() which returns a string.
           shorty = 'L';
-          return false;
+        } else {
+          shorty = dex_file->GetMethodShorty(method_index)[0];
         }
-        // A regular invoke, use callee's shorty.
-        uint32_t method_idx = instr.VRegB();
-        shorty = dex_file->GetMethodShorty(method_idx)[0];
+      } else {
+        // It could be that a non-invoke opcode invokes a stub, which in turn
+        // invokes Java code. In such cases, we should never expect a return
+        // value from the stub.
       }
-      // Stop stack walking since we've seen a Java frame.
-      return false;
     }
-    return true;
+    // Stop stack walking since we've seen a Java frame.
+    return false;
   }
 
   char shorty;
