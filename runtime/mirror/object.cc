@@ -27,7 +27,7 @@
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
-#include "gc/heap.h"
+#include "gc/heap-inl.h"
 #include "handle_scope-inl.h"
 #include "iftable-inl.h"
 #include "monitor.h"

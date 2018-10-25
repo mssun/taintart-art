@@ -21,7 +21,7 @@
 #include "base/bit_utils.h"
 #include "base/mutex.h"
 #include "dex/dex_file_types.h"
-#include "gc_root-inl.h"
+#include "gc_root.h"  // Note: must not use -inl here to avoid circular dependency.
 #include "object.h"
 #include "object_array.h"
 
@@ -67,19 +67,12 @@ template <typename T> struct PACKED(8) DexCachePair {
   // it's always non-null if the id branch succeeds (except for the 0th id).
   // Set the initial state for the 0th entry to be {0,1} which is guaranteed to fail
   // the lookup id == stored id branch.
-  DexCachePair(ObjPtr<T> object, uint32_t index)
-      : object(object),
-        index(index) {}
+  DexCachePair(ObjPtr<T> object, uint32_t index);
   DexCachePair() : index(0) {}
   DexCachePair(const DexCachePair<T>&) = default;
   DexCachePair& operator=(const DexCachePair<T>&) = default;
 
-  static void Initialize(std::atomic<DexCachePair<T>>* dex_cache) {
-    DexCachePair<T> first_elem;
-    first_elem.object = GcRoot<T>(nullptr);
-    first_elem.index = InvalidIndexForSlot(0);
-    dex_cache[0].store(first_elem, std::memory_order_relaxed);
-  }
+  static void Initialize(std::atomic<DexCachePair<T>>* dex_cache);
 
   static uint32_t InvalidIndexForSlot(uint32_t slot) {
     // Since the cache size is a power of two, 0 will always map to slot 0.
@@ -87,13 +80,7 @@ template <typename T> struct PACKED(8) DexCachePair {
     return (slot == 0) ? 1u : 0u;
   }
 
-  T* GetObjectForIndex(uint32_t idx) REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (idx != index) {
-      return nullptr;
-    }
-    DCHECK(!object.IsNull());
-    return object.Read();
-  }
+  T* GetObjectForIndex(uint32_t idx) REQUIRES_SHARED(Locks::mutator_lock_);
 };
 
 template <typename T> struct PACKED(2 * __SIZEOF_POINTER__) NativeDexCachePair {

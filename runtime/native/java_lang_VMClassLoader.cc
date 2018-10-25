@@ -21,6 +21,7 @@
 #include "dex/descriptors_names.h"
 #include "dex/dex_file_loader.h"
 #include "dex/utf.h"
+#include "handle_scope-inl.h"
 #include "jni/jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"

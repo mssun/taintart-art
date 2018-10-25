@@ -22,7 +22,6 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "class_linker.h"
-#include "gc/heap-inl.h"
 #include "gc_root-inl.h"
 #include "handle_scope-inl.h"
 #include "mirror/class_loader.h"
@@ -437,6 +436,14 @@ inline void ClassLinker::VisitClassTables(const Visitor& visitor) {
       visitor(data.class_table);
     }
   }
+}
+
+template <ReadBarrierOption kReadBarrierOption>
+inline ObjPtr<mirror::ObjectArray<mirror::Class>> ClassLinker::GetClassRoots() {
+  ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
+      class_roots_.Read<kReadBarrierOption>();
+  DCHECK(class_roots != nullptr);
+  return class_roots;
 }
 
 }  // namespace art
