@@ -314,10 +314,7 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <ResolveMode kResolveMode>
-  ALWAYS_INLINE ArtMethod* ResolveMethod(Thread* self,
-                                         uint32_t method_idx,
-                                         ArtMethod* referrer,
-                                         InvokeType type)
+  ArtMethod* ResolveMethod(Thread* self, uint32_t method_idx, ArtMethod* referrer, InvokeType type)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
   ArtMethod* ResolveMethodWithoutInvokeType(uint32_t method_idx,
