@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "rosalloc.h"
+#include "rosalloc-inl.h"
 
 #include <list>
 #include <map>

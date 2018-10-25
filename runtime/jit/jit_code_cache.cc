@@ -39,6 +39,7 @@
 #include "dex/method_reference.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/accounting/bitmap-inl.h"
+#include "gc/allocator/dlmalloc.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "handle.h"
 #include "instrumentation.h"

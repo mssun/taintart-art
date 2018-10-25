@@ -27,6 +27,7 @@
 #include "class.h"
 #include "gc/heap-inl.h"
 #include "obj_ptr-inl.h"
+#include "runtime.h"
 #include "thread-current-inl.h"
 
 namespace art {

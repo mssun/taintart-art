@@ -205,14 +205,9 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
 
   // Go through all of the blocks and visit the continuous objects.
   template <typename Visitor>
-  ALWAYS_INLINE void Walk(Visitor&& visitor) REQUIRES(Locks::mutator_lock_) {
-    WalkInternal</* kToSpaceOnly= */ false>(visitor);
-  }
+  ALWAYS_INLINE void Walk(Visitor&& visitor) REQUIRES(Locks::mutator_lock_);
   template <typename Visitor>
-  ALWAYS_INLINE void WalkToSpace(Visitor&& visitor)
-      REQUIRES(Locks::mutator_lock_) {
-    WalkInternal</* kToSpaceOnly= */ true>(visitor);
-  }
+  ALWAYS_INLINE void WalkToSpace(Visitor&& visitor) REQUIRES(Locks::mutator_lock_);
 
   accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() override {
     return nullptr;

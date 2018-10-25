@@ -16,6 +16,8 @@
 
 #include "space_test.h"
 
+#include "rosalloc_space.h"
+
 namespace art {
 namespace gc {
 namespace space {

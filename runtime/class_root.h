@@ -17,7 +17,8 @@
 #ifndef ART_RUNTIME_CLASS_ROOT_H_
 #define ART_RUNTIME_CLASS_ROOT_H_
 
-#include "class_linker.h"
+#include "class_linker-inl.h"
+#include "gc_root-inl.h"
 #include "mirror/class.h"
 #include "mirror/object_array-inl.h"
 #include "obj_ptr-inl.h"

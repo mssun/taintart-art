@@ -22,6 +22,7 @@
 
 #include "base/globals.h"
 #include "common_runtime_test.h"
+#include "handle_scope-inl.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
