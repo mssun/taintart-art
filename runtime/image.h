@@ -442,11 +442,27 @@ class PACKED(4) ImageHeader {
 };
 
 /*
- * Tags the last bit.  Used by AppImage logic to differentiate between managed
- * and native references.
+ * This type holds the information necessary to fix up AppImage string
+ * references.
+ *
+ * The first element of the pair is an offset into the image space.  If the
+ * offset is tagged (testable using HasDexCacheNativeRefTag) it indicates the location
+ * of a DexCache object that has one or more native references to managed
+ * strings that need to be fixed up.  In this case the second element has no
+ * meaningful value.
+ *
+ * If the first element isn't tagged then it indicates the location of a
+ * managed object with a field that needs fixing up.  In this case the second
+ * element of the pair is an object-relative offset to the field in question.
+ */
+typedef std::pair<uint32_t, uint32_t> AppImageReferenceOffsetInfo;
+
+/*
+ * Tags the last bit.  Used by AppImage logic to differentiate between pointers
+ * to managed objects and pointers to native reference arrays.
  */
 template<typename T>
-T SetNativeRefTag(T val) {
+T SetDexCacheNativeRefTag(T val) {
   static_assert(std::is_integral<T>::value, "Expected integral type.");
 
   return val | 1u;
@@ -454,10 +470,11 @@ T SetNativeRefTag(T val) {
 
 /*
  * Retrieves the value of the last bit.  Used by AppImage logic to
- * differentiate between managed and native references.
+ * differentiate between pointers to managed objects and pointers to native
+ * reference arrays.
  */
 template<typename T>
-bool HasNativeRefTag(T val) {
+bool HasDexCacheNativeRefTag(T val) {
   static_assert(std::is_integral<T>::value, "Expected integral type.");
 
   return (val & 1u) == 1u;
@@ -465,10 +482,11 @@ bool HasNativeRefTag(T val) {
 
 /*
  * Sets the last bit of the value to 0.  Used by AppImage logic to
- * differentiate between managed and native references.
+ * differentiate between pointers to managed objects and pointers to native
+ * reference arrays.
  */
 template<typename T>
-T ClearNativeRefTag(T val) {
+T ClearDexCacheNativeRefTag(T val) {
   static_assert(std::is_integral<T>::value, "Expected integral type.");
 
   return val & ~1u;
