@@ -96,6 +96,10 @@ enum class OptimizationPass {
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
   kPcRelativeFixupsX86,
+  kInstructionSimplifierX86,
+#endif
+#ifdef ART_ENABLE_CODEGEN_x86_64
+  kInstructionSimplifierX86_64,
 #endif
 #if defined(ART_ENABLE_CODEGEN_x86) || defined(ART_ENABLE_CODEGEN_x86_64)
   kX86MemoryOperandGeneration,

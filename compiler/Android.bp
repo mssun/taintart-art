@@ -157,6 +157,8 @@ art_cc_defaults {
                 "optimizing/code_generator_x86.cc",
                 "optimizing/code_generator_vector_x86.cc",
                 "optimizing/intrinsics_x86.cc",
+                "optimizing/instruction_simplifier_x86_shared.cc",
+                "optimizing/instruction_simplifier_x86.cc",
                 "optimizing/pc_relative_fixups_x86.cc",
                 "optimizing/x86_memory_gen.cc",
                 "utils/x86/assembler_x86.cc",
@@ -168,6 +170,7 @@ art_cc_defaults {
             srcs: [
                 "jni/quick/x86_64/calling_convention_x86_64.cc",
                 "optimizing/intrinsics_x86_64.cc",
+                "optimizing/instruction_simplifier_x86_64.cc",
                 "optimizing/code_generator_x86_64.cc",
                 "optimizing/code_generator_vector_x86_64.cc",
                 "utils/x86_64/assembler_x86_64.cc",

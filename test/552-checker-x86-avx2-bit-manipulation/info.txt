@@ -1,0 +1,1 @@
+Tests for generating bit manipulation instructions on x86
