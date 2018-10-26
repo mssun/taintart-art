@@ -21,8 +21,9 @@
 #include <memory>
 #include <random>
 
-#include "base/common_art_test.h"
+#include "common_art_test.h"
 #include "common_runtime_test.h"  // For TEST_DISABLED_FOR_MIPS
+#include "logging.h"
 #include "memory_tool.h"
 #include "unix_file/fd_file.h"
 
@@ -874,3 +875,30 @@ TEST_F(MemMapTest, Reservation) {
 }
 
 }  // namespace art
+
+namespace {
+
+class DumpMapsOnFailListener : public testing::EmptyTestEventListener {
+  void OnTestPartResult(const testing::TestPartResult& result) override {
+    switch (result.type()) {
+      case testing::TestPartResult::kFatalFailure:
+        art::PrintFileToLog("/proc/self/maps", android::base::LogSeverity::ERROR);
+        break;
+
+      // TODO: Could consider logging on EXPECT failures.
+      case testing::TestPartResult::kNonFatalFailure:
+      case testing::TestPartResult::kSuccess:
+        break;
+    }
+  }
+};
+
+}  // namespace
+
+// Inject our listener into the test runner.
+extern "C"
+__attribute__((visibility("default"))) __attribute__((used))
+void ArtTestGlobalInit() {
+  LOG(ERROR) << "Installing listener";
+  testing::UnitTest::GetInstance()->listeners().Append(new DumpMapsOnFailListener());
+}
