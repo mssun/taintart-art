@@ -22,6 +22,7 @@
 #include "common_runtime_test.h"
 #include "dex/dex_file.h"
 #include "mirror/array-alloc-inl.h"
+#include "mirror/class-alloc-inl.h"
 #include "scoped_thread_state_change-inl.h"
 
 namespace art {

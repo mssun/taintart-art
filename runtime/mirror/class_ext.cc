@@ -20,6 +20,7 @@
 #include "base/casts.h"
 #include "base/enums.h"
 #include "base/utils.h"
+#include "class-alloc-inl.h"
 #include "class-inl.h"
 #include "class_root.h"
 #include "dex/dex_file-inl.h"

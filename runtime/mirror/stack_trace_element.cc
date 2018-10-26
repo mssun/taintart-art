@@ -16,7 +16,7 @@
 
 #include "stack_trace_element.h"
 
-#include "class-inl.h"
+#include "class-alloc-inl.h"
 #include "class.h"
 #include "class_root.h"
 #include "gc/accounting/card_table-inl.h"

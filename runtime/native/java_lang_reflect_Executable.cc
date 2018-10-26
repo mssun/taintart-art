@@ -24,6 +24,7 @@
 #include "dex/dex_file_annotations.h"
 #include "handle.h"
 #include "jni/jni_internal.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/method.h"
 #include "mirror/object-inl.h"

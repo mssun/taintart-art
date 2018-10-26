@@ -77,7 +77,7 @@
 #include "java_frame_root_info.h"
 #include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
-#include "mirror/class-inl.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"

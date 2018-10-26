@@ -34,7 +34,7 @@
 #include "object.h"
 #include "object_array.h"
 #include "read_barrier_option.h"
-#include "thread.h"
+#include "thread-current-inl.h"
 
 namespace art {
 

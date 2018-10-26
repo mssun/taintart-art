@@ -30,7 +30,6 @@
 #include "dex/dex_file-inl.h"
 #include "dex/invoke_type.h"
 #include "dex_cache.h"
-#include "gc/heap-inl.h"
 #include "iftable.h"
 #include "object-inl.h"
 #include "object_array.h"
@@ -750,58 +749,6 @@ inline size_t Class::GetPrimitiveTypeSizeShift() {
   DCHECK_EQ(size_shift,
             Primitive::ComponentSizeShift(static_cast<Primitive::Type>(v32 & kPrimitiveTypeMask)));
   return size_shift;
-}
-
-inline void Class::CheckObjectAlloc() {
-  DCHECK(!IsArrayClass())
-      << PrettyClass()
-      << "A array shouldn't be allocated through this "
-      << "as it requires a pre-fence visitor that sets the class size.";
-  DCHECK(!IsClassClass())
-      << PrettyClass()
-      << "A class object shouldn't be allocated through this "
-      << "as it requires a pre-fence visitor that sets the class size.";
-  DCHECK(!IsStringClass())
-      << PrettyClass()
-      << "A string shouldn't be allocated through this "
-      << "as it requires a pre-fence visitor that sets the class size.";
-  DCHECK(IsInstantiable()) << PrettyClass();
-  // TODO: decide whether we want this check. It currently fails during bootstrap.
-  // DCHECK(!Runtime::Current()->IsStarted() || IsInitializing()) << PrettyClass();
-  DCHECK_GE(this->object_size_, sizeof(Object));
-}
-
-template<bool kIsInstrumented, bool kCheckAddFinalizer>
-inline ObjPtr<Object> Class::Alloc(Thread* self, gc::AllocatorType allocator_type) {
-  CheckObjectAlloc();
-  gc::Heap* heap = Runtime::Current()->GetHeap();
-  const bool add_finalizer = kCheckAddFinalizer && IsFinalizable();
-  if (!kCheckAddFinalizer) {
-    DCHECK(!IsFinalizable());
-  }
-  // Note that the this pointer may be invalidated after the allocation.
-  ObjPtr<Object> obj =
-      heap->AllocObjectWithAllocator<kIsInstrumented, false>(self,
-                                                             this,
-                                                             this->object_size_,
-                                                             allocator_type,
-                                                             VoidFunctor());
-  if (add_finalizer && LIKELY(obj != nullptr)) {
-    heap->AddFinalizerReference(self, &obj);
-    if (UNLIKELY(self->IsExceptionPending())) {
-      // Failed to allocate finalizer reference, it means that the whole allocation failed.
-      obj = nullptr;
-    }
-  }
-  return obj;
-}
-
-inline ObjPtr<Object> Class::AllocObject(Thread* self) {
-  return Alloc<true>(self, Runtime::Current()->GetHeap()->GetCurrentAllocator());
-}
-
-inline ObjPtr<Object> Class::AllocNonMovableObject(Thread* self) {
-  return Alloc<true>(self, Runtime::Current()->GetHeap()->GetCurrentNonMovingAllocator());
 }
 
 inline uint32_t Class::ComputeClassSize(bool has_embedded_vtable,

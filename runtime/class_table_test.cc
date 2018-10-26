@@ -24,7 +24,7 @@
 #include "gc/accounting/card_table-inl.h"
 #include "gc/heap.h"
 #include "handle_scope-inl.h"
-#include "mirror/class-inl.h"
+#include "mirror/class-alloc-inl.h"
 #include "obj_ptr.h"
 #include "scoped_thread_state_change-inl.h"
 
