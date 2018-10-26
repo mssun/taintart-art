@@ -27,6 +27,7 @@
 #include "jvalue-inl.h"
 #include "method_handles-inl.h"
 #include "method_type.h"
+#include "object_array-alloc-inl.h"
 #include "obj_ptr-inl.h"
 #include "well_known_classes.h"
 

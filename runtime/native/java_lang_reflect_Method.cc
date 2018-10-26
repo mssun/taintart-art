@@ -27,7 +27,7 @@
 #include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
-#include "mirror/object_array-inl.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "native_util.h"
 #include "reflection.h"
 #include "scoped_fast_native_object_access-inl.h"

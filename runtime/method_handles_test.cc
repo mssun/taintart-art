@@ -22,6 +22,7 @@
 #include "handle_scope-inl.h"
 #include "jvalue-inl.h"
 #include "mirror/method_type.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"
 #include "reflection.h"
 #include "scoped_thread_state_change-inl.h"

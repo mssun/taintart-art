@@ -25,7 +25,8 @@
 #include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "object-inl.h"
-#include "object_array.h"
+#include "object_array-alloc-inl.h"
+#include "object_array-inl.h"
 #include "stack_trace_element.h"
 #include "well_known_classes.h"
 

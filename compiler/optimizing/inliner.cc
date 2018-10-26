@@ -36,6 +36,8 @@
 #include "jit/jit_code_cache.h"
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache.h"
+#include "mirror/object_array-alloc-inl.h"
+#include "mirror/object_array-inl.h"
 #include "nodes.h"
 #include "optimizing_compiler.h"
 #include "reference_type_propagation.h"
