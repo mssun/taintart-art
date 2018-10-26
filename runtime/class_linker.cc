@@ -87,6 +87,8 @@
 #include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
 #include "linear_alloc.h"
+#include "mirror/array-alloc-inl.h"
+#include "mirror/array-inl.h"
 #include "mirror/call_site.h"
 #include "mirror/class-inl.h"
 #include "mirror/class.h"

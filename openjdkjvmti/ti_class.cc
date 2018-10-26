@@ -56,6 +56,7 @@
 #include "handle.h"
 #include "jni/jni_env_ext-inl.h"
 #include "jni/jni_internal.h"
+#include "mirror/array-alloc-inl.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_ext.h"

@@ -29,6 +29,7 @@
 #include "jvalue-inl.h"
 #include "method_handles-inl.h"
 #include "method_handles.h"
+#include "mirror/array-alloc-inl.h"
 #include "mirror/array-inl.h"
 #include "mirror/class.h"
 #include "mirror/emulated_stack_frame.h"
