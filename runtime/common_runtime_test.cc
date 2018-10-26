@@ -59,20 +59,6 @@
 #include "thread.h"
 #include "well_known_classes.h"
 
-int main(int argc, char **argv) {
-  // Gtests can be very noisy. For example, an executable with multiple tests will trigger native
-  // bridge warnings. The following line reduces the minimum log severity to ERROR and suppresses
-  // everything else. In case you want to see all messages, comment out the line.
-  setenv("ANDROID_LOG_TAGS", "*:e", 1);
-
-  art::Locks::Init();
-  art::InitLogging(argv, art::Runtime::Abort);
-  art::MemMap::Init();
-  LOG(INFO) << "Running main() from common_runtime_test.cc...";
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
-
 namespace art {
 
 using android::base::StringPrintf;
@@ -420,3 +406,26 @@ void CheckJniAbortCatcher::Hook(void* data, const std::string& reason) {
 }
 
 }  // namespace art
+
+// Allow other test code to run global initialization/configuration before
+// gtest infra takes over.
+extern "C"
+__attribute__((visibility("default"))) __attribute__((weak))
+void ArtTestGlobalInit() {
+  LOG(ERROR) << "ArtTestGlobalInit in common_runtime_test";
+}
+
+int main(int argc, char **argv) {
+  // Gtests can be very noisy. For example, an executable with multiple tests will trigger native
+  // bridge warnings. The following line reduces the minimum log severity to ERROR and suppresses
+  // everything else. In case you want to see all messages, comment out the line.
+  setenv("ANDROID_LOG_TAGS", "*:e", 1);
+
+  art::Locks::Init();
+  art::InitLogging(argv, art::Runtime::Abort);
+  art::MemMap::Init();
+  LOG(INFO) << "Running main() from common_runtime_test.cc...";
+  testing::InitGoogleTest(&argc, argv);
+  ArtTestGlobalInit();
+  return RUN_ALL_TESTS();
+}
