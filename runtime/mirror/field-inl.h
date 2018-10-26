@@ -20,7 +20,7 @@
 #include "field.h"
 
 #include "art_field-inl.h"
-#include "class-inl.h"
+#include "class-alloc-inl.h"
 #include "class_root.h"
 #include "dex_cache-inl.h"
 

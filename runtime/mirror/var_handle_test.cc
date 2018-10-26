@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "art_field-inl.h"
+#include "class-alloc-inl.h"
 #include "class-inl.h"
 #include "class_linker-inl.h"
 #include "class_loader.h"

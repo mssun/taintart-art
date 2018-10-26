@@ -45,6 +45,7 @@
 #include "java_vm_ext.h"
 #include "jni_env_ext.h"
 #include "jvalue-inl.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/field-inl.h"

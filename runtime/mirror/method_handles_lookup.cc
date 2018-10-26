@@ -16,7 +16,7 @@
 
 #include "method_handles_lookup.h"
 
-#include "class-inl.h"
+#include "class-alloc-inl.h"
 #include "class_root.h"
 #include "dex/modifiers.h"
 #include "handle_scope.h"

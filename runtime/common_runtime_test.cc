@@ -50,6 +50,7 @@
 #include "interpreter/unstarted_runtime.h"
 #include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/object_array-alloc-inl.h"

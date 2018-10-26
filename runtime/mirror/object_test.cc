@@ -26,6 +26,7 @@
 #include "art_method-inl.h"
 #include "asm_support.h"
 #include "base/enums.h"
+#include "class-alloc-inl.h"
 #include "class-inl.h"
 #include "class_linker-inl.h"
 #include "class_linker.h"
