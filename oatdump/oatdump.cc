@@ -628,6 +628,9 @@ class OatDumper {
         CHECK(oat_dex_file != nullptr);
         CHECK(vdex_dex_file != nullptr);
 
+        // Remove hiddenapis
+        vdex_dex_file->UnhideApis();
+
         // If a CompactDex file is detected within a Vdex container, DexLayout is used to convert
         // back to a StandardDex file. Since the converted DexFile will most likely not reproduce
         // the original input Dex file, the `update_checksum_` option is used to recompute the
@@ -1075,7 +1078,7 @@ class OatDumper {
                          dex_file,
                          method.GetIndex(),
                          method.GetCodeItem(),
-                         method.GetAccessFlags(),
+                         method.GetRawAccessFlags(),
                          &addr_found)) {
         success = false;
       }
