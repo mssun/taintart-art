@@ -23,12 +23,9 @@
 #include "android-base/stringprintf.h"
 
 #include "base/logging.h"  // For VLOG.
+#include "base/socket_peer_is_trusted.h"
 #include "jdwp/jdwp_priv.h"
 #include "thread-current-inl.h"
-
-#ifdef ART_TARGET_ANDROID
-#include "cutils/sockets.h"
-#endif
 
 /*
  * The JDWP <-> ADB transport protocol is explained in detail
@@ -265,7 +262,7 @@ bool JdwpAdbState::Accept() {
       if (!ret) {
         int control_sock = ControlSock();
 #ifdef ART_TARGET_ANDROID
-        if (control_sock < 0 || !socket_peer_is_trusted(control_sock)) {
+        if (control_sock < 0 || !art::SocketPeerIsTrusted(control_sock)) {
           if (control_sock >= 0 && shutdown(control_sock, SHUT_RDWR)) {
             PLOG(ERROR) << "trouble shutting down socket";
           }

@@ -392,7 +392,7 @@ libart_cc_defaults {
         "libbacktrace",
         "liblz4",
         "liblog",
-        // For atrace, properties, ashmem, set_sched_policy and socket_peer_is_trusted.
+        // For atrace, properties, ashmem, set_sched_policy.
         "libcutils",
         // For common macros.
         "libbase",
