@@ -46,6 +46,7 @@
 #include "mirror/method_handles_lookup.h"
 #include "mirror/method_type.h"
 #include "mirror/object-inl.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/proxy.h"
 #include "mirror/reference.h"

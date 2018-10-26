@@ -24,6 +24,7 @@
 #include "handle_scope-inl.h"
 #include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "mirror/object-inl.h"
 #include "native_util.h"
 #include "scoped_fast_native_object_access-inl.h"

@@ -33,6 +33,7 @@
 #include "mirror/array-alloc-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/string-inl.h"
 #include "runtime.h"
