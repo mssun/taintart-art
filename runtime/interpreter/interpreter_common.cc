@@ -34,6 +34,8 @@
 #include "mirror/class.h"
 #include "mirror/emulated_stack_frame.h"
 #include "mirror/method_handle_impl-inl.h"
+#include "mirror/object_array-alloc-inl.h"
+#include "mirror/object_array-inl.h"
 #include "mirror/var_handle.h"
 #include "reflection-inl.h"
 #include "reflection.h"
