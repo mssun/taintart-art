@@ -410,6 +410,12 @@ TEST_F(MemMapTest, MapFile32Bit) {
 #endif
 
 TEST_F(MemMapTest, MapAnonymousExactAddr) {
+  // TODO: The semantics of the MemMap::MapAnonymous() with a given address but without
+  // `reuse == true` or `reservation != nullptr` is weird. We should either drop support
+  // for it, or take it only as a hint and allow the result to be mapped elsewhere.
+  // Currently we're seeing failures with ASAN. b/118408378
+  TEST_DISABLED_FOR_MEMORY_TOOL();
+
   CommonInit();
   std::string error_msg;
   // Find a valid address.
