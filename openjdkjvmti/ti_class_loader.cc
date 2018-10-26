@@ -48,6 +48,8 @@
 #include "jit/jit_code_cache.h"
 #include "jni/jni_env_ext-inl.h"
 #include "jvmti_allocator.h"
+#include "mirror/array-alloc-inl.h"
+#include "mirror/array-inl.h"
 #include "mirror/class.h"
 #include "mirror/class_ext.h"
 #include "mirror/object.h"

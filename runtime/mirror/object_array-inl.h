@@ -23,6 +23,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "array-alloc-inl.h"
 #include "array-inl.h"
 #include "base/utils.h"
 #include "class.h"
