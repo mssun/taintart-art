@@ -875,6 +875,15 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
 
+  bool FindClassInSharedLibraries(ScopedObjectAccessAlreadyRunnable& soa,
+                                  Thread* self,
+                                  const char* descriptor,
+                                  size_t hash,
+                                  Handle<mirror::ClassLoader> class_loader,
+                                  /*out*/ ObjPtr<mirror::Class>* result)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::dex_lock_);
+
   // Finds the class in the classpath of the given class loader. It only searches the class loader
   // dex files and does not recurse into its parent.
   // The method checks that the provided class loader is either a PathClassLoader or a

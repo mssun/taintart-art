@@ -119,6 +119,7 @@ jmethodID WellKnownClasses::org_apache_harmony_dalvik_ddmc_DdmServer_dispatch;
 jfieldID WellKnownClasses::dalvik_system_DexFile_cookie;
 jfieldID WellKnownClasses::dalvik_system_DexFile_fileName;
 jfieldID WellKnownClasses::dalvik_system_BaseDexClassLoader_pathList;
+jfieldID WellKnownClasses::dalvik_system_BaseDexClassLoader_sharedLibraryLoaders;
 jfieldID WellKnownClasses::dalvik_system_DexPathList_dexElements;
 jfieldID WellKnownClasses::dalvik_system_DexPathList__Element_dexFile;
 jfieldID WellKnownClasses::dalvik_system_VMRuntime_nonSdkApiUsageConsumer;
@@ -365,6 +366,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
   org_apache_harmony_dalvik_ddmc_DdmServer_dispatch = CacheMethod(env, org_apache_harmony_dalvik_ddmc_DdmServer, true, "dispatch", "(I[BII)Lorg/apache/harmony/dalvik/ddmc/Chunk;");
 
   dalvik_system_BaseDexClassLoader_pathList = CacheField(env, dalvik_system_BaseDexClassLoader, false, "pathList", "Ldalvik/system/DexPathList;");
+  dalvik_system_BaseDexClassLoader_sharedLibraryLoaders = CacheField(env, dalvik_system_BaseDexClassLoader, false, "sharedLibraryLoaders", "[Ljava/lang/ClassLoader;");
   dalvik_system_DexFile_cookie = CacheField(env, dalvik_system_DexFile, false, "mCookie", "Ljava/lang/Object;");
   dalvik_system_DexFile_fileName = CacheField(env, dalvik_system_DexFile, false, "mFileName", "Ljava/lang/String;");
   dalvik_system_DexPathList_dexElements = CacheField(env, dalvik_system_DexPathList, false, "dexElements", "[Ldalvik/system/DexPathList$Element;");
