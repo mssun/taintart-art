@@ -28,6 +28,7 @@
 #include "jni/jni_internal.h"
 #include "jvalue-inl.h"
 #include "mirror/array-alloc-inl.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/field.h"
 #include "mirror/method.h"
 #include "mirror/object_array-alloc-inl.h"

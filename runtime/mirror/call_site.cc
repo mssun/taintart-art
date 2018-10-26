@@ -16,7 +16,7 @@
 
 #include "call_site.h"
 
-#include "class-inl.h"
+#include "class-alloc-inl.h"
 #include "class_root.h"
 #include "obj_ptr-inl.h"
 

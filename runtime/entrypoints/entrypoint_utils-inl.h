@@ -33,6 +33,7 @@
 #include "indirect_reference_table.h"
 #include "jni/jni_internal.h"
 #include "mirror/array-alloc-inl.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/throwable.h"

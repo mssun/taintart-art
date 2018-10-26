@@ -95,6 +95,7 @@
 #include "linear_alloc.h"
 #include "memory_representation.h"
 #include "mirror/array.h"
+#include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_ext.h"
 #include "mirror/class_loader.h"
