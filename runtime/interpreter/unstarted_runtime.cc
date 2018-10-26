@@ -44,6 +44,7 @@
 #include "hidden_api.h"
 #include "interpreter/interpreter_common.h"
 #include "jvalue-inl.h"
+#include "mirror/array-alloc-inl.h"
 #include "mirror/array-inl.h"
 #include "mirror/class.h"
 #include "mirror/field-inl.h"

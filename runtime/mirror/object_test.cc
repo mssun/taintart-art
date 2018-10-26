@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <memory>
 
+#include "array-alloc-inl.h"
 #include "array-inl.h"
 #include "art_field-inl.h"
 #include "art_method-inl.h"

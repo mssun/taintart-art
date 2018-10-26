@@ -26,6 +26,7 @@
 namespace art {
 
 template<class T> class Handle;
+class Thread;
 
 namespace mirror {
 

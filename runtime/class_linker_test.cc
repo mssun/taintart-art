@@ -33,6 +33,7 @@
 #include "experimental_flags.h"
 #include "gc/heap.h"
 #include "handle_scope-inl.h"
+#include "mirror/array-alloc-inl.h"
 #include "mirror/accessible_object.h"
 #include "mirror/call_site.h"
 #include "mirror/class-inl.h"

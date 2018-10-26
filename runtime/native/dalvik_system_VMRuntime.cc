@@ -44,6 +44,7 @@ extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #include "intern_table.h"
 #include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
+#include "mirror/array-alloc-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"

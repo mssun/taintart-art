@@ -16,6 +16,7 @@
 
 #include "array-inl.h"
 
+#include "array-alloc-inl.h"
 #include "base/utils.h"
 #include "class-inl.h"
 #include "class.h"

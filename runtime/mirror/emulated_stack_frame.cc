@@ -16,6 +16,8 @@
 
 #include "emulated_stack_frame.h"
 
+#include "array-alloc-inl.h"
+#include "array-inl.h"
 #include "class-inl.h"
 #include "class_root.h"
 #include "jvalue-inl.h"
