@@ -28,14 +28,31 @@ namespace art {
  * of information on whether the given class member should be hidden from apps
  * and under what circumstances.
  *
- * Two bits are encoded for each class member in the HiddenapiClassData item,
- * stored in a stream of uleb128-encoded values for each ClassDef item.
- * The two bits correspond to values in the ApiList enum below.
+ * The encoding is different inside DexFile, where we are concerned with size,
+ * and at runtime where we want to optimize for speed of access. The class
+ * provides helper functions to decode/encode both of them.
  *
- * At runtime, two bits are set aside in the uint32_t access flags in the
- * intrinsics ordinal space (thus intrinsics need to be special-cased). These are
- * two consecutive bits and they are directly used to store the integer value of
- * the ApiList enum values.
+ * Encoding in DexFile
+ * ===================
+ *
+ * First bit is encoded as inversion of visibility flags (public/private/protected).
+ * At most one can be set for any given class member. If two or three are set,
+ * this is interpreted as the first bit being set and actual visibility flags
+ * being the complement of the encoded flags.
+ *
+ * Second bit is either encoded as bit 5 for fields and non-native methods, where
+ * it carries no other meaning. If a method is native (bit 8 set), bit 9 is used.
+ *
+ * Bits were selected so that they never increase the length of unsigned LEB-128
+ * encoding of the access flags.
+ *
+ * Encoding at runtime
+ * ===================
+ *
+ * Two bits are set aside in the uint32_t access flags in the intrinsics ordinal
+ * space (thus intrinsics need to be special-cased). These are two consecutive
+ * bits and they are directly used to store the integer value of the ApiList
+ * enum values.
  *
  */
 class HiddenApiAccessFlags {
@@ -47,6 +64,27 @@ class HiddenApiAccessFlags {
     kBlacklist,
     kNoList,
   };
+
+  static ALWAYS_INLINE ApiList DecodeFromDex(uint32_t dex_access_flags) {
+    DexHiddenAccessFlags flags(dex_access_flags);
+    uint32_t int_value = (flags.IsFirstBitSet() ? 1 : 0) + (flags.IsSecondBitSet() ? 2 : 0);
+    return static_cast<ApiList>(int_value);
+  }
+
+  static ALWAYS_INLINE uint32_t RemoveFromDex(uint32_t dex_access_flags) {
+    DexHiddenAccessFlags flags(dex_access_flags);
+    flags.SetFirstBit(false);
+    flags.SetSecondBit(false);
+    return flags.GetEncoding();
+  }
+
+  static ALWAYS_INLINE uint32_t EncodeForDex(uint32_t dex_access_flags, ApiList value) {
+    DexHiddenAccessFlags flags(RemoveFromDex(dex_access_flags));
+    uint32_t int_value = static_cast<uint32_t>(value);
+    flags.SetFirstBit((int_value & 1) != 0);
+    flags.SetSecondBit((int_value & 2) != 0);
+    return flags.GetEncoding();
+  }
 
   static ALWAYS_INLINE ApiList DecodeFromRuntime(uint32_t runtime_access_flags) {
     // This is used in the fast path, only DCHECK here.
@@ -65,14 +103,47 @@ class HiddenApiAccessFlags {
     return runtime_access_flags | hidden_api_flags;
   }
 
-  static ALWAYS_INLINE bool AreValidFlags(uint32_t flags) {
-    return flags <= static_cast<uint32_t>(kBlacklist);
-  }
-
  private:
   static const int kAccFlagsShift = CTZ(kAccHiddenApiBits);
   static_assert(IsPowerOfTwo((kAccHiddenApiBits >> kAccFlagsShift) + 1),
                 "kAccHiddenApiBits are not continuous");
+
+  struct DexHiddenAccessFlags {
+    explicit DexHiddenAccessFlags(uint32_t access_flags) : access_flags_(access_flags) {}
+
+    ALWAYS_INLINE uint32_t GetSecondFlag() {
+      return ((access_flags_ & kAccNative) != 0) ? kAccDexHiddenBitNative : kAccDexHiddenBit;
+    }
+
+    ALWAYS_INLINE bool IsFirstBitSet() {
+      static_assert(IsPowerOfTwo(0u), "Following statement checks if *at most* one bit is set");
+      return !IsPowerOfTwo(access_flags_ & kAccVisibilityFlags);
+    }
+
+    ALWAYS_INLINE void SetFirstBit(bool value) {
+      if (IsFirstBitSet() != value) {
+        access_flags_ ^= kAccVisibilityFlags;
+      }
+    }
+
+    ALWAYS_INLINE bool IsSecondBitSet() {
+      return (access_flags_ & GetSecondFlag()) != 0;
+    }
+
+    ALWAYS_INLINE void SetSecondBit(bool value) {
+      if (value) {
+        access_flags_ |= GetSecondFlag();
+      } else {
+        access_flags_ &= ~GetSecondFlag();
+      }
+    }
+
+    ALWAYS_INLINE uint32_t GetEncoding() const {
+      return access_flags_;
+    }
+
+    uint32_t access_flags_;
+  };
 };
 
 inline std::ostream& operator<<(std::ostream& os, HiddenApiAccessFlags::ApiList value) {
