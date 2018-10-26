@@ -36,7 +36,7 @@ namespace art {
 namespace interpreter {
 
 #define CHECK_FORCE_RETURN()                                                        \
-  do {                                                                              \
+  {                                                                                 \
     if (UNLIKELY(shadow_frame.GetForcePopFrame())) {                                \
       DCHECK(PrevFrameWillRetry(self, shadow_frame))                                \
           << "Pop frame forced without previous frame ready to retry instruction!"; \
@@ -53,10 +53,11 @@ namespace interpreter {
       ctx->result = JValue(); /* Handled in caller. */                              \
       return;                                                                       \
     }                                                                               \
-  } while (false)
+  }                                                                                 \
+  do {} while (false)
 
 #define HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(instr)                                    \
-  do {                                                                                          \
+  {                                                                                             \
     DCHECK(self->IsExceptionPending());                                                         \
     self->AllowThreadSuspension();                                                              \
     CHECK_FORCE_RETURN();                                                                       \
@@ -74,13 +75,15 @@ namespace interpreter {
       int32_t displacement =                                                                    \
           static_cast<int32_t>(shadow_frame.GetDexPC()) - static_cast<int32_t>(dex_pc);         \
       inst = inst->RelativeAt(displacement);                                                    \
+      break;  /* Stop executing this opcode and continue in the exception handler. */           \
     }                                                                                           \
-  } while (false)
+  }                                                                                             \
+  do {} while (false)
 
 #define HANDLE_PENDING_EXCEPTION() HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(instrumentation)
 
 #define POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE_IMPL(_is_exception_pending, _next_function) \
-  do {                                                                                          \
+  {                                                                                             \
     if (UNLIKELY(shadow_frame.GetForceRetryInstruction())) {                                    \
       /* Don't need to do anything except clear the flag and exception. We leave the */         \
       /* instruction the same so it will be re-executed on the next go-around.       */         \
@@ -101,7 +104,8 @@ namespace interpreter {
     } else {                                                                                    \
       inst = inst->_next_function();                                                            \
     }                                                                                           \
-  } while (false)
+  }                                                                                             \
+  do {} while (false)
 
 #define POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE_POLYMORPHIC(_is_exception_pending) \
   POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE_IMPL(_is_exception_pending, Next_4xx)
@@ -109,7 +113,7 @@ namespace interpreter {
   POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE_IMPL(_is_exception_pending, Next_3xx)
 
 #define POSSIBLY_HANDLE_PENDING_EXCEPTION(_is_exception_pending, _next_function)  \
-  do {                                                                            \
+  {                                                                               \
     /* Should only be on invoke instructions. */                                  \
     DCHECK(!shadow_frame.GetForceRetryInstruction());                             \
     if (UNLIKELY(_is_exception_pending)) {                                        \
@@ -117,7 +121,8 @@ namespace interpreter {
     } else {                                                                      \
       inst = inst->_next_function();                                              \
     }                                                                             \
-  } while (false)
+  }                                                                               \
+  do {} while (false)
 
 #define HANDLE_MONITOR_CHECKS()                                                                   \
   if (!DoMonitorCheckOnExit<do_assignability_check>(self, &shadow_frame)) {                       \
@@ -148,7 +153,7 @@ namespace interpreter {
 #define PREAMBLE() PREAMBLE_SAVE(nullptr)
 
 #define BRANCH_INSTRUMENTATION(offset)                                                         \
-  do {                                                                                         \
+  {                                                                                            \
     if (UNLIKELY(instrumentation->HasBranchListeners())) {                                     \
       instrumentation->Branch(self, shadow_frame.GetMethod(), dex_pc, offset);                 \
     }                                                                                          \
@@ -165,31 +170,33 @@ namespace interpreter {
       ctx->result = result;                                                                    \
       return;                                                                                  \
     }                                                                                          \
-  } while (false)
+  }                                                                                            \
+  do {} while (false)
 
 #define HOTNESS_UPDATE()                                                                       \
-  do {                                                                                         \
+  {                                                                                            \
     if (jit != nullptr) {                                                                      \
       jit->AddSamples(self, shadow_frame.GetMethod(), 1, /*with_backedges=*/ true);            \
     }                                                                                          \
-  } while (false)
+  }                                                                                            \
+  do {} while (false)
 
 #define HANDLE_ASYNC_EXCEPTION()                                                               \
   if (UNLIKELY(self->ObserveAsyncException())) {                                               \
     HANDLE_PENDING_EXCEPTION();                                                                \
-    break;                                                                                     \
   }                                                                                            \
   do {} while (false)
 
 #define HANDLE_BACKWARD_BRANCH(offset)                                                         \
-  do {                                                                                         \
+  {                                                                                            \
     if (IsBackwardBranch(offset)) {                                                            \
       HOTNESS_UPDATE();                                                                        \
       /* Record new dex pc early to have consistent suspend point at loop header. */           \
       shadow_frame.SetDexPC(inst->GetDexPc(insns));                                            \
       self->AllowThreadSuspension();                                                           \
     }                                                                                          \
-  } while (false)
+  }                                                                                            \
+  do {} while (false)
 
 // Unlike most other events the DexPcMovedEvent can be sent when there is a pending exception (if
 // the next instruction is MOVE_EXCEPTION). This means it needs to be handled carefully to be able
