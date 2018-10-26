@@ -82,8 +82,7 @@ MemMap MallocSpace::CreateMemMap(const std::string& name,
                                  size_t starting_size,
                                  size_t* initial_size,
                                  size_t* growth_limit,
-                                 size_t* capacity,
-                                 uint8_t* requested_begin) {
+                                 size_t* capacity) {
   // Sanity check arguments
   if (starting_size > *initial_size) {
     *initial_size = starting_size;
@@ -107,10 +106,9 @@ MemMap MallocSpace::CreateMemMap(const std::string& name,
 
   std::string error_msg;
   MemMap mem_map = MemMap::MapAnonymous(name.c_str(),
-                                        requested_begin,
                                         *capacity,
                                         PROT_READ | PROT_WRITE,
-                                        /* low_4gb= */ true,
+                                        /*low_4gb=*/ true,
                                         &error_msg);
   if (!mem_map.IsValid()) {
     LOG(ERROR) << "Failed to allocate pages for alloc space (" << name << ") of size "

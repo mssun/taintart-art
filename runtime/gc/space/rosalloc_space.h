@@ -38,8 +38,11 @@ class RosAllocSpace : public MallocSpace {
   // base address is not guaranteed to be granted, if it is required,
   // the caller should call Begin on the returned space to confirm the
   // request was granted.
-  static RosAllocSpace* Create(const std::string& name, size_t initial_size, size_t growth_limit,
-                               size_t capacity, uint8_t* requested_begin, bool low_memory_mode,
+  static RosAllocSpace* Create(const std::string& name,
+                               size_t initial_size,
+                               size_t growth_limit,
+                               size_t capacity,
+                               bool low_memory_mode,
                                bool can_move_objects);
   static RosAllocSpace* CreateFromMemMap(MemMap&& mem_map,
                                          const std::string& name,

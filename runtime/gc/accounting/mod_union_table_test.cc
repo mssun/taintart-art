@@ -185,7 +185,7 @@ void ModUnionTableTest::RunTest(ModUnionTableFactory::TableType type) {
   ResetClass();
   // Create another space that we can put references in.
   std::unique_ptr<space::DlMallocSpace> other_space(space::DlMallocSpace::Create(
-      "other space", 128 * KB, 4 * MB, 4 * MB, nullptr, false));
+      "other space", 128 * KB, 4 * MB, 4 * MB, /*can_move_objects=*/ false));
   ASSERT_TRUE(other_space.get() != nullptr);
   {
     ScopedThreadSuspension sts(self, kSuspended);

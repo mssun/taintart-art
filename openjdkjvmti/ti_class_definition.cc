@@ -246,14 +246,12 @@ void ArtClassDefinition::InitWithDex(GetOriginalDexFile get_original,
     mmap_name += name_;
     std::string error;
     dex_data_mmap_ = art::MemMap::MapAnonymous(mmap_name.c_str(),
-                                               /* addr= */ nullptr,
                                                dequick_size,
                                                PROT_NONE,
                                                /*low_4gb=*/ false,
                                                &error);
     mmap_name += "-TEMP";
     temp_mmap_ = art::MemMap::MapAnonymous(mmap_name.c_str(),
-                                           /* addr= */ nullptr,
                                            dequick_size,
                                            PROT_READ | PROT_WRITE,
                                            /*low_4gb=*/ false,

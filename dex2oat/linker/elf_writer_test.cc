@@ -68,9 +68,9 @@ TEST_F(ElfWriterTest, dlsym) {
   {
     std::string error_msg;
     std::unique_ptr<ElfFile> ef(ElfFile::Open(file.get(),
-                                              /* writable */ false,
-                                              /* program_header_only */ false,
-                                              /*low_4gb*/false,
+                                              /*writable=*/ false,
+                                              /*program_header_only=*/ false,
+                                              /*low_4gb=*/false,
                                               &error_msg));
     CHECK(ef.get() != nullptr) << error_msg;
     EXPECT_ELF_FILE_ADDRESS(ef, dl_oatdata, "oatdata", false);
@@ -80,9 +80,9 @@ TEST_F(ElfWriterTest, dlsym) {
   {
     std::string error_msg;
     std::unique_ptr<ElfFile> ef(ElfFile::Open(file.get(),
-                                              /* writable */ false,
-                                              /* program_header_only */ false,
-                                              /* low_4gb */ false,
+                                              /*writable=*/ false,
+                                              /*program_header_only=*/ false,
+                                              /*low_4gb=*/ false,
                                               &error_msg));
     CHECK(ef.get() != nullptr) << error_msg;
     EXPECT_ELF_FILE_ADDRESS(ef, dl_oatdata, "oatdata", true);
@@ -92,24 +92,23 @@ TEST_F(ElfWriterTest, dlsym) {
   {
     std::string error_msg;
     std::unique_ptr<ElfFile> ef(ElfFile::Open(file.get(),
-                                              /* writable */ false,
-                                              /* program_header_only */ true,
-                                              /* low_4gb */ false,
+                                              /*writable=*/ false,
+                                              /*program_header_only=*/ true,
+                                              /*low_4gb=*/ false,
                                               &error_msg));
     CHECK(ef.get() != nullptr) << error_msg;
     size_t size;
     bool success = ef->GetLoadedSize(&size, &error_msg);
     CHECK(success) << error_msg;
     MemMap reservation = MemMap::MapAnonymous("ElfWriterTest#dlsym reservation",
-                                              /* addr */ nullptr,
                                               RoundUp(size, kPageSize),
                                               PROT_NONE,
-                                              /* low_4gb */ true,
+                                              /*low_4gb=*/ true,
                                               &error_msg);
     CHECK(reservation.IsValid()) << error_msg;
     uint8_t* base = reservation.Begin();
     success =
-        ef->Load(file.get(), /* executable */ false, /* low_4gb */ false, &reservation, &error_msg);
+        ef->Load(file.get(), /*executable=*/ false, /*low_4gb=*/ false, &reservation, &error_msg);
     CHECK(success) << error_msg;
     CHECK(!reservation.IsValid());
     EXPECT_EQ(reinterpret_cast<uintptr_t>(dl_oatdata) + reinterpret_cast<uintptr_t>(base),
@@ -131,9 +130,9 @@ TEST_F(ElfWriterTest, CheckBuildIdPresent) {
   {
     std::string error_msg;
     std::unique_ptr<ElfFile> ef(ElfFile::Open(file.get(),
-                                              /* writable */ false,
-                                              /* program_header_only */ false,
-                                              /* low_4gb */ false,
+                                              /*writable=*/ false,
+                                              /*program_header_only=*/ false,
+                                              /*low_4gb=*/ false,
                                               &error_msg));
     CHECK(ef.get() != nullptr) << error_msg;
     EXPECT_TRUE(ef->HasSection(".note.gnu.build-id"));

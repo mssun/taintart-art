@@ -75,10 +75,9 @@ MemMap ZipEntry::ExtractToMemMap(const char* zip_filename,
   name += " extracted in memory from ";
   name += zip_filename;
   MemMap map = MemMap::MapAnonymous(name.c_str(),
-                                    /* addr= */ nullptr,
                                     GetUncompressedLength(),
                                     PROT_READ | PROT_WRITE,
-                                    /* low_4gb= */ false,
+                                    /*low_4gb=*/ false,
                                     error_msg);
   if (!map.IsValid()) {
     DCHECK(!error_msg->empty());
@@ -138,7 +137,7 @@ MemMap ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* erro
                       MAP_PRIVATE,
                       zip_fd,
                       offset,
-                      /* low_4gb= */ false,
+                      /*low_4gb=*/ false,
                       name.c_str(),
                       error_msg);
 

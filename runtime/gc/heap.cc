@@ -505,11 +505,11 @@ Heap::Heap(size_t initial_size,
       // Create bump pointer spaces instead of a backup space.
       main_mem_map_2.Reset();
       bump_pointer_space_ = space::BumpPointerSpace::Create(
-          "Bump pointer space 1", kGSSBumpPointerSpaceCapacity, /* requested_begin= */ nullptr);
+          "Bump pointer space 1", kGSSBumpPointerSpaceCapacity);
       CHECK(bump_pointer_space_ != nullptr);
       AddSpace(bump_pointer_space_);
       temp_space_ = space::BumpPointerSpace::Create(
-          "Bump pointer space 2", kGSSBumpPointerSpaceCapacity, /* requested_begin= */ nullptr);
+          "Bump pointer space 2", kGSSBumpPointerSpaceCapacity);
       CHECK(temp_space_ != nullptr);
       AddSpace(temp_space_);
     } else if (main_mem_map_2.IsValid()) {
@@ -529,8 +529,7 @@ Heap::Heap(size_t initial_size,
   CHECK(!non_moving_space_->CanMoveObjects());
   // Allocate the large object space.
   if (large_object_space_type == space::LargeObjectSpaceType::kFreeList) {
-    large_object_space_ = space::FreeListSpace::Create("free list large object space", nullptr,
-                                                       capacity_);
+    large_object_space_ = space::FreeListSpace::Create("free list large object space", capacity_);
     CHECK(large_object_space_ != nullptr) << "Failed to create large object space";
   } else if (large_object_space_type == space::LargeObjectSpaceType::kMap) {
     large_object_space_ = space::LargeObjectMapSpace::Create("mem map large object space");
@@ -696,7 +695,9 @@ MemMap Heap::MapAnonymousPreferredAddress(const char* name,
                                       request_begin,
                                       capacity,
                                       PROT_READ | PROT_WRITE,
-                                      /* low_4gb=*/ true,
+                                      /*low_4gb=*/ true,
+                                      /*reuse=*/ false,
+                                      /*reservation=*/ nullptr,
                                       out_error_str);
     if (map.IsValid() || request_begin == nullptr) {
       return map;
