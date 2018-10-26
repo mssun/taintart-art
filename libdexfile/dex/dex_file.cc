@@ -46,31 +46,6 @@ static_assert(std::is_trivially_copyable<dex::StringIndex>::value, "StringIndex 
 static_assert(sizeof(dex::TypeIndex) == sizeof(uint16_t), "TypeIndex size is wrong");
 static_assert(std::is_trivially_copyable<dex::TypeIndex>::value, "TypeIndex not trivial");
 
-void DexFile::UnHideAccessFlags(uint8_t* data_ptr,
-                                uint32_t new_access_flags,
-                                bool is_method) {
-  // Go back 1 uleb to start.
-  data_ptr = ReverseSearchUnsignedLeb128(data_ptr);
-  if (is_method) {
-    // Methods have another uleb field before the access flags
-    data_ptr = ReverseSearchUnsignedLeb128(data_ptr);
-  }
-  DCHECK_EQ(HiddenApiAccessFlags::RemoveFromDex(DecodeUnsignedLeb128WithoutMovingCursor(data_ptr)),
-            new_access_flags);
-  UpdateUnsignedLeb128(data_ptr, new_access_flags);
-}
-
-void DexFile::UnhideApis() const {
-  for (ClassAccessor accessor : GetClasses()) {
-    for (const ClassAccessor::Field& field : accessor.GetFields()) {
-      field.UnHideAccessFlags();
-    }
-    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-      method.UnHideAccessFlags();
-    }
-  }
-}
-
 uint32_t DexFile::CalculateChecksum() const {
   return CalculateChecksum(Begin(), Size());
 }
@@ -130,6 +105,7 @@ DexFile::DexFile(const uint8_t* base,
       num_method_handles_(0),
       call_site_ids_(nullptr),
       num_call_site_ids_(0),
+      hiddenapi_class_data_(nullptr),
       oat_dex_file_(oat_dex_file),
       container_(std::move(container)),
       is_compact_dex_(is_compact_dex),
@@ -205,6 +181,11 @@ void DexFile::InitializeSectionsFromMapList() {
     } else if (map_item.type_ == kDexTypeCallSiteIdItem) {
       call_site_ids_ = reinterpret_cast<const CallSiteIdItem*>(Begin() + map_item.offset_);
       num_call_site_ids_ = map_item.size_;
+    } else if (map_item.type_ == kDexTypeHiddenapiClassData) {
+      hiddenapi_class_data_ = GetHiddenapiClassDataAtOffset(map_item.offset_);
+    } else {
+      // Pointers to other sections are not necessary to retain in the DexFile struct.
+      // Other items have pointers directly into their data.
     }
   }
 }
