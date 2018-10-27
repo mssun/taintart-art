@@ -63,7 +63,6 @@ class DexInstructionIteratorBase : public
   using value_type = std::iterator<std::forward_iterator_tag, DexInstructionPcPair>::value_type;
   using difference_type = std::iterator<std::forward_iterator_tag, value_type>::difference_type;
 
-  DexInstructionIteratorBase() = default;
   explicit DexInstructionIteratorBase(const Instruction* inst, uint32_t dex_pc)
       : data_(reinterpret_cast<const uint16_t*>(inst), dex_pc) {}
 
