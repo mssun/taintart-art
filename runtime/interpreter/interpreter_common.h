@@ -140,8 +140,10 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
                                    uint16_t inst_data,
                                    JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  DCHECK_EQ(self->UseMterp(), CanUseMterp());
   // Make sure to check for async exceptions before anything else.
-  if (is_mterp && self->UseMterp()) {
+  if (is_mterp) {
+    DCHECK(self->UseMterp());
     DCHECK(!self->ObserveAsyncException());
   } else if (UNLIKELY(self->ObserveAsyncException())) {
     return false;
@@ -219,7 +221,7 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
   // If the bit is not set, we explicitly recheck all the conditions.
   // If any of the conditions get falsified, it is important to clear the bit.
   bool use_fast_path = false;
-  if (is_mterp && self->UseMterp()) {
+  if (is_mterp) {
     use_fast_path = called_method->UseFastInterpreterToInterpreterInvoke();
     if (!use_fast_path) {
       use_fast_path = UseFastInterpreterToInterpreterInvoke(called_method);
