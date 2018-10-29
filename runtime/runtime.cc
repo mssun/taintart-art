@@ -744,7 +744,7 @@ bool Runtime::Start() {
 
   self->TransitionFromRunnableToSuspended(kNative);
 
-  started_ = true;
+  DoAndMaybeSwitchInterpreter([=](){ started_ = true; });
 
   if (!IsImageDex2OatEnabled() || !GetHeap()->HasBootImageSpace()) {
     ScopedObjectAccess soa(self);
@@ -2488,7 +2488,8 @@ void Runtime::CreateJit() {
     DCHECK(!jit_options_->UseJitCompilation());
   }
   std::string error_msg;
-  jit_.reset(jit::Jit::Create(jit_options_.get(), &error_msg));
+  jit::Jit* jit = jit::Jit::Create(jit_options_.get(), &error_msg);
+  DoAndMaybeSwitchInterpreter([=](){ jit_.reset(jit); });
   if (jit_.get() == nullptr) {
     LOG(WARNING) << "Failed to create JIT " << error_msg;
     return;

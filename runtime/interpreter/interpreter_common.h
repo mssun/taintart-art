@@ -128,10 +128,8 @@ template<InvokeType type>
 static ALWAYS_INLINE bool UseInterpreterToInterpreterFastPath(ArtMethod* method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   Runtime* runtime = Runtime::Current();
-  if (!runtime->IsStarted()) {
-    return false;
-  }
   const void* quick_code = method->GetEntryPointFromQuickCompiledCode();
+  DCHECK(runtime->IsStarted());
   if (!runtime->GetClassLinker()->IsQuickToInterpreterBridge(quick_code)) {
     return false;
   }
@@ -144,14 +142,9 @@ static ALWAYS_INLINE bool UseInterpreterToInterpreterFastPath(ArtMethod* method)
   if (type == kStatic && !method->GetDeclaringClass()->IsInitialized()) {
     return false;
   }
-  if (runtime->IsActiveTransaction() || runtime->GetInstrumentation()->HasMethodEntryListeners()) {
-    return false;
-  }
+  DCHECK(!runtime->IsActiveTransaction());
   ProfilingInfo* profiling_info = method->GetProfilingInfo(kRuntimePointerSize);
   if ((profiling_info != nullptr) && (profiling_info->GetSavedEntryPoint() != nullptr)) {
-    return false;
-  }
-  if (runtime->GetJit() != nullptr && runtime->GetJit()->JitAtFirstUse()) {
     return false;
   }
   return true;
@@ -171,7 +164,9 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
                                    JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // Make sure to check for async exceptions before anything else.
-  if (UNLIKELY(self->ObserveAsyncException())) {
+  if (is_mterp && self->UseMterp()) {
+    DCHECK(!self->ObserveAsyncException());
+  } else if (UNLIKELY(self->ObserveAsyncException())) {
     return false;
   }
   const uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
@@ -229,7 +224,7 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
     }
   }
 
-  if (is_mterp && UseInterpreterToInterpreterFastPath<type>(called_method)) {
+  if (is_mterp && self->UseMterp() && UseInterpreterToInterpreterFastPath<type>(called_method)) {
     const uint16_t number_of_inputs =
         (is_range) ? inst->VRegA_3rc(inst_data) : inst->VRegA_35c(inst_data);
     CodeItemDataAccessor accessor(called_method->DexInstructionData());

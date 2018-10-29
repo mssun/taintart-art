@@ -384,15 +384,6 @@ class Instrumentation {
         have_exception_handled_listeners_;
   }
 
-  // Any instrumentation *other* than what is needed for Jit profiling active?
-  bool NonJitProfilingActive() const REQUIRES_SHARED(Locks::mutator_lock_) {
-    return have_dex_pc_listeners_ || have_method_exit_listeners_ ||
-        have_field_read_listeners_ || have_field_write_listeners_ ||
-        have_exception_thrown_listeners_ || have_method_unwind_listeners_ ||
-        have_branch_listeners_ || have_watched_frame_pop_listeners_ ||
-        have_exception_handled_listeners_;
-  }
-
   // Inform listeners that a method has been entered. A dex PC is provided as we may install
   // listeners into executing code and get method enter events for methods already on the stack.
   void MethodEnterEvent(Thread* thread, mirror::Object* this_object,
