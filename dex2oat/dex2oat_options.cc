@@ -187,7 +187,7 @@ static void AddTargetMappings(Builder& builder) {
 }
 
 static Parser CreateArgumentParser() {
-  std::unique_ptr<Builder> parser_builder = std::unique_ptr<Builder>(new Builder());
+  std::unique_ptr<Builder> parser_builder = std::make_unique<Builder>();
 
   AddInputMappings(*parser_builder);
   AddGeneratedArtifactMappings(*parser_builder);
@@ -267,7 +267,7 @@ std::unique_ptr<Dex2oatArgumentMap> Dex2oatArgumentMap::Parse(int argc,
     return nullptr;
   }
 
-  return std::unique_ptr<Dex2oatArgumentMap>(new Dex2oatArgumentMap(parser.ReleaseArgumentsMap()));
+  return std::make_unique<Dex2oatArgumentMap>(parser.ReleaseArgumentsMap());
 }
 
 #pragma GCC diagnostic pop
