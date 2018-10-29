@@ -146,15 +146,18 @@ bool CanUseMterp()
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const Runtime* const runtime = Runtime::Current();
   return
+      runtime->IsStarted() &&
+      !runtime->IsAotCompiler() &&
       !Dbg::IsDebuggerActive() &&
-      !runtime->GetInstrumentation()->NonJitProfilingActive() &&
+      !runtime->GetInstrumentation()->IsActive() &&
       // mterp only knows how to deal with the normal exits. It cannot handle any of the
       // non-standard force-returns.
       !runtime->AreNonStandardExitsEnabled() &&
       // An async exception has been thrown. We need to go to the switch interpreter. MTerp doesn't
       // know how to deal with these so we could end up never dealing with it if we are in an
       // infinite loop.
-      !runtime->AreAsyncExceptionsThrown();
+      !runtime->AreAsyncExceptionsThrown() &&
+      (runtime->GetJit() == nullptr || !runtime->GetJit()->JitAtFirstUse());
 }
 
 
@@ -560,6 +563,7 @@ extern "C" void MterpCheckBefore(Thread* self, ShadowFrame* shadow_frame, uint16
     MutexLock tll_mu(self, *Locks::thread_list_lock_);
     DCHECK_EQ(self->UseMterp(), CanUseMterp());
   }
+  DCHECK(!Runtime::Current()->IsActiveTransaction());
   const Instruction* inst = Instruction::At(dex_pc_ptr);
   uint16_t inst_data = inst->Fetch16(0);
   if (inst->Opcode(inst_data) == Instruction::MOVE_EXCEPTION) {
