@@ -18,6 +18,7 @@
 
 #include <string.h>
 
+#include "handle_scope-inl.h"
 #include "jni/jni_internal.h"
 #include "mirror/string-inl.h"
 #include "mirror/string.h"
