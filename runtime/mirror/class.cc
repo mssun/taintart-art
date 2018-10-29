@@ -32,6 +32,7 @@
 #include "dex/dex_file_annotations.h"
 #include "dex_cache.h"
 #include "gc/accounting/card_table-inl.h"
+#include "gc/heap-inl.h"
 #include "handle_scope-inl.h"
 #include "subtype_check.h"
 #include "method.h"

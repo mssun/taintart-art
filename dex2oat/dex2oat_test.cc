@@ -39,6 +39,7 @@
 #include "dex/dex_file_loader.h"
 #include "dex2oat_environment_test.h"
 #include "dex2oat_return_codes.h"
+#include "gc_root-inl.h"
 #include "intern_table-inl.h"
 #include "oat.h"
 #include "oat_file.h"

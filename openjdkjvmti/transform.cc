@@ -48,6 +48,7 @@
 #include "events-inl.h"
 #include "fault_handler.h"
 #include "gc_root-inl.h"
+#include "handle_scope-inl.h"
 #include "jni/jni_env_ext-inl.h"
 #include "jvalue.h"
 #include "jvmti.h"
