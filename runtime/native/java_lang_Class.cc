@@ -39,6 +39,7 @@
 #include "mirror/object-inl.h"
 #include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"
+#include "mirror/string-alloc-inl.h"
 #include "mirror/string-inl.h"
 #include "native_util.h"
 #include "nativehelper/jni_macros.h"
