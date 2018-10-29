@@ -23,6 +23,7 @@
 #include "gc/space/image_space.h"
 #include "gc/weak_root_state.h"
 #include "gc_root-inl.h"
+#include "handle_scope-inl.h"
 #include "image-inl.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
