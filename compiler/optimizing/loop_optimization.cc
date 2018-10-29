@@ -334,29 +334,12 @@ static bool IsAddConst(HInstruction* instruction,
 // Detect reductions of the following forms,
 //   x = x_phi + ..
 //   x = x_phi - ..
-//   x = max(x_phi, ..)
-//   x = min(x_phi, ..)
 static bool HasReductionFormat(HInstruction* reduction, HInstruction* phi) {
   if (reduction->IsAdd()) {
     return (reduction->InputAt(0) == phi && reduction->InputAt(1) != phi) ||
            (reduction->InputAt(0) != phi && reduction->InputAt(1) == phi);
   } else if (reduction->IsSub()) {
     return (reduction->InputAt(0) == phi && reduction->InputAt(1) != phi);
-  } else if (reduction->IsInvokeStaticOrDirect()) {
-    switch (reduction->AsInvokeStaticOrDirect()->GetIntrinsic()) {
-      case Intrinsics::kMathMinIntInt:
-      case Intrinsics::kMathMinLongLong:
-      case Intrinsics::kMathMinFloatFloat:
-      case Intrinsics::kMathMinDoubleDouble:
-      case Intrinsics::kMathMaxIntInt:
-      case Intrinsics::kMathMaxLongLong:
-      case Intrinsics::kMathMaxFloatFloat:
-      case Intrinsics::kMathMaxDoubleDouble:
-        return (reduction->InputAt(0) == phi && reduction->InputAt(1) != phi) ||
-               (reduction->InputAt(0) != phi && reduction->InputAt(1) == phi);
-      default:
-        return false;
-    }
   }
   return false;
 }
@@ -365,10 +348,6 @@ static bool HasReductionFormat(HInstruction* reduction, HInstruction* phi) {
 static HVecReduce::ReductionKind GetReductionKind(HVecOperation* reduction) {
   if (reduction->IsVecAdd() || reduction->IsVecSub() || reduction->IsVecSADAccumulate()) {
     return HVecReduce::kSum;
-  } else if (reduction->IsVecMin()) {
-    return HVecReduce::kMin;
-  } else if (reduction->IsVecMax()) {
-    return HVecReduce::kMax;
   }
   LOG(FATAL) << "Unsupported SIMD reduction " << reduction->GetId();
   UNREACHABLE();
@@ -1124,7 +1103,6 @@ bool HLoopOptimization::VectorizeDef(LoopNode* node,
   return !IsUsedOutsideLoop(node->loop_info, instruction) && !instruction->DoesAnyWrite();
 }
 
-// TODO: saturation arithmetic.
 bool HLoopOptimization::VectorizeUse(LoopNode* node,
                                      HInstruction* instruction,
                                      bool generate_code,
@@ -1331,43 +1309,6 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
         }
         return false;
       }
-      case Intrinsics::kMathMinIntInt:
-      case Intrinsics::kMathMinLongLong:
-      case Intrinsics::kMathMinFloatFloat:
-      case Intrinsics::kMathMinDoubleDouble:
-      case Intrinsics::kMathMaxIntInt:
-      case Intrinsics::kMathMaxLongLong:
-      case Intrinsics::kMathMaxFloatFloat:
-      case Intrinsics::kMathMaxDoubleDouble: {
-        // Deal with vector restrictions.
-        HInstruction* opa = instruction->InputAt(0);
-        HInstruction* opb = instruction->InputAt(1);
-        HInstruction* r = opa;
-        HInstruction* s = opb;
-        bool is_unsigned = false;
-        if (HasVectorRestrictions(restrictions, kNoMinMax)) {
-          return false;
-        } else if (HasVectorRestrictions(restrictions, kNoHiBits) &&
-                   !IsNarrowerOperands(opa, opb, type, &r, &s, &is_unsigned)) {
-          return false;  // reject, unless all operands are same-extension narrower
-        }
-        // Accept MIN/MAX(x, y) for vectorizable operands.
-        DCHECK(r != nullptr);
-        DCHECK(s != nullptr);
-        if (generate_code && vector_mode_ != kVector) {  // de-idiom
-          r = opa;
-          s = opb;
-        }
-        if (VectorizeUse(node, r, generate_code, type, restrictions) &&
-            VectorizeUse(node, s, generate_code, type, restrictions)) {
-          if (generate_code) {
-            GenerateVecOp(
-                instruction, vector_map_->Get(r), vector_map_->Get(s), type, is_unsigned);
-          }
-          return true;
-        }
-        return false;
-      }
       default:
         return false;
     }  // switch
@@ -1426,7 +1367,7 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
           *restrictions |= kNoDiv;
           return TrySetVectorLength(4);
         case DataType::Type::kInt64:
-          *restrictions |= kNoDiv | kNoMul | kNoMinMax;
+          *restrictions |= kNoDiv | kNoMul;
           return TrySetVectorLength(2);
         case DataType::Type::kFloat32:
           *restrictions |= kNoReduction;
@@ -1456,13 +1397,13 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
             *restrictions |= kNoDiv | kNoSAD;
             return TrySetVectorLength(4);
           case DataType::Type::kInt64:
-            *restrictions |= kNoMul | kNoDiv | kNoShr | kNoAbs | kNoMinMax | kNoSAD;
+            *restrictions |= kNoMul | kNoDiv | kNoShr | kNoAbs | kNoSAD;
             return TrySetVectorLength(2);
           case DataType::Type::kFloat32:
-            *restrictions |= kNoMinMax | kNoReduction;  // minmax: -0.0 vs +0.0
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(4);
           case DataType::Type::kFloat64:
-            *restrictions |= kNoMinMax | kNoReduction;  // minmax: -0.0 vs +0.0
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(2);
           default:
             break;
@@ -1488,10 +1429,10 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
             *restrictions |= kNoDiv;
             return TrySetVectorLength(2);
           case DataType::Type::kFloat32:
-            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(4);
           case DataType::Type::kFloat64:
-            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(2);
           default:
             break;
@@ -1517,10 +1458,10 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
             *restrictions |= kNoDiv;
             return TrySetVectorLength(2);
           case DataType::Type::kFloat32:
-            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(4);
           case DataType::Type::kFloat64:
-            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
+            *restrictions |= kNoReduction;
             return TrySetVectorLength(2);
           default:
             break;
@@ -1745,8 +1686,7 @@ HInstruction* HLoopOptimization::ReduceAndExtractIfNeeded(HInstruction* instruct
 void HLoopOptimization::GenerateVecOp(HInstruction* org,
                                       HInstruction* opa,
                                       HInstruction* opb,
-                                      DataType::Type type,
-                                      bool is_unsigned) {
+                                      DataType::Type type) {
   uint32_t dex_pc = org->GetDexPc();
   HInstruction* vector = nullptr;
   DataType::Type org_type = org->GetType();
@@ -1823,32 +1763,6 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
             vector = new (global_allocator_)
                 HVecAbs(global_allocator_, opa, type, vector_length_, dex_pc);
             break;
-          case Intrinsics::kMathMinIntInt:
-          case Intrinsics::kMathMinLongLong:
-          case Intrinsics::kMathMinFloatFloat:
-          case Intrinsics::kMathMinDoubleDouble: {
-            vector = new (global_allocator_)
-                HVecMin(global_allocator_,
-                        opa,
-                        opb,
-                        HVecOperation::ToProperType(type, is_unsigned),
-                        vector_length_,
-                        dex_pc);
-            break;
-          }
-          case Intrinsics::kMathMaxIntInt:
-          case Intrinsics::kMathMaxLongLong:
-          case Intrinsics::kMathMaxFloatFloat:
-          case Intrinsics::kMathMaxDoubleDouble: {
-            vector = new (global_allocator_)
-                HVecMax(global_allocator_,
-                        opa,
-                        opb,
-                        HVecOperation::ToProperType(type, is_unsigned),
-                        vector_length_,
-                        dex_pc);
-            break;
-          }
           default:
             LOG(FATAL) << "Unsupported SIMD intrinsic " << org->GetId();
             UNREACHABLE();

@@ -75,11 +75,10 @@ class HLoopOptimization : public HOptimization {
     kNoSignedHAdd    = 1 << 5,   // no signed halving add
     kNoUnroundedHAdd = 1 << 6,   // no unrounded halving add
     kNoAbs           = 1 << 7,   // no absolute value
-    kNoMinMax        = 1 << 8,   // no min/max
-    kNoStringCharAt  = 1 << 9,   // no StringCharAt
-    kNoReduction     = 1 << 10,  // no reduction
-    kNoSAD           = 1 << 11,  // no sum of absolute differences (SAD)
-    kNoWideSAD       = 1 << 12,  // no sum of absolute differences (SAD) with operand widening
+    kNoStringCharAt  = 1 << 8,   // no StringCharAt
+    kNoReduction     = 1 << 9,   // no reduction
+    kNoSAD           = 1 << 10,  // no sum of absolute differences (SAD)
+    kNoWideSAD       = 1 << 11,  // no sum of absolute differences (SAD) with operand widening
   };
 
   /*
@@ -173,8 +172,7 @@ class HLoopOptimization : public HOptimization {
   void GenerateVecOp(HInstruction* org,
                      HInstruction* opa,
                      HInstruction* opb,
-                     DataType::Type type,
-                     bool is_unsigned = false);
+                     DataType::Type type);
 
   // Vectorization idioms.
   bool VectorizeHalvingAddIdiom(LoopNode* node,
