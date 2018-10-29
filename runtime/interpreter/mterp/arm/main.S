@@ -274,6 +274,12 @@ unspecified registers or condition codes.
 .macro SET_VREG_SHADOW reg, vreg
     str     \reg, [rREFS, \vreg, lsl #2]
 .endm
+.macro SET_VREG_FLOAT reg, vreg, tmpreg
+    add     \tmpreg, rFP, \vreg, lsl #2
+    fsts    \reg, [\tmpreg]
+    mov     \tmpreg, #0
+    str     \tmpreg, [rREFS, \vreg, lsl #2]
+.endm
 
 /*
  * Clear the corresponding shadow regs for a vreg pair

@@ -234,7 +234,7 @@
      * that specifies an instruction that performs "result = op r0/r1", where
      * "result" is a 32-bit quantity in r0.
      *
-     * For: long-to-float, double-to-int, double-to-float
+     * For: long-to-float
      *
      * (This would work for long-to-int, but that instruction is actually
      * an exact match for op_move.)
