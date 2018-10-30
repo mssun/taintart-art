@@ -309,7 +309,6 @@ art::MemMap Redefiner::MoveDataToMemMap(const std::string& original_location,
                                         std::string* error_msg) {
   art::MemMap map = art::MemMap::MapAnonymous(
       StringPrintf("%s-transformed", original_location.c_str()).c_str(),
-      /* addr= */ nullptr,
       data.size(),
       PROT_READ|PROT_WRITE,
       /*low_4gb=*/ false,

@@ -34,25 +34,22 @@ class SpaceCreateTest : public SpaceTest<CommonRuntimeTestWithParam<MallocSpaceT
   MallocSpace* CreateSpace(const std::string& name,
                            size_t initial_size,
                            size_t growth_limit,
-                           size_t capacity,
-                           uint8_t* requested_begin) {
+                           size_t capacity) {
     const MallocSpaceType type = GetParam();
     if (type == kMallocSpaceDlMalloc) {
       return DlMallocSpace::Create(name,
                                    initial_size,
                                    growth_limit,
                                    capacity,
-                                   requested_begin,
-                                   false);
+                                   /*can_move_objects=*/ false);
     }
     DCHECK_EQ(static_cast<uint32_t>(type), static_cast<uint32_t>(kMallocSpaceRosAlloc));
     return RosAllocSpace::Create(name,
                                  initial_size,
                                  growth_limit,
                                  capacity,
-                                 requested_begin,
                                  Runtime::Current()->GetHeap()->IsLowMemoryMode(),
-                                 false);
+                                 /*can_move_objects=*/ false);
   }
 };
 
@@ -62,25 +59,25 @@ TEST_P(SpaceCreateTest, InitTestBody) {
 
   {
     // Init < max == growth
-    std::unique_ptr<Space> space(CreateSpace("test", 16 * MB, 32 * MB, 32 * MB, nullptr));
+    std::unique_ptr<Space> space(CreateSpace("test", 16 * MB, 32 * MB, 32 * MB));
     EXPECT_TRUE(space != nullptr);
     // Init == max == growth
-    space.reset(CreateSpace("test", 16 * MB, 16 * MB, 16 * MB, nullptr));
+    space.reset(CreateSpace("test", 16 * MB, 16 * MB, 16 * MB));
     EXPECT_TRUE(space != nullptr);
     // Init > max == growth
-    space.reset(CreateSpace("test", 32 * MB, 16 * MB, 16 * MB, nullptr));
+    space.reset(CreateSpace("test", 32 * MB, 16 * MB, 16 * MB));
     EXPECT_TRUE(space == nullptr);
     // Growth == init < max
-    space.reset(CreateSpace("test", 16 * MB, 16 * MB, 32 * MB, nullptr));
+    space.reset(CreateSpace("test", 16 * MB, 16 * MB, 32 * MB));
     EXPECT_TRUE(space != nullptr);
     // Growth < init < max
-    space.reset(CreateSpace("test", 16 * MB, 8 * MB, 32 * MB, nullptr));
+    space.reset(CreateSpace("test", 16 * MB, 8 * MB, 32 * MB));
     EXPECT_TRUE(space == nullptr);
     // Init < growth < max
-    space.reset(CreateSpace("test", 8 * MB, 16 * MB, 32 * MB, nullptr));
+    space.reset(CreateSpace("test", 8 * MB, 16 * MB, 32 * MB));
     EXPECT_TRUE(space != nullptr);
     // Init < max < growth
-    space.reset(CreateSpace("test", 8 * MB, 32 * MB, 16 * MB, nullptr));
+    space.reset(CreateSpace("test", 8 * MB, 32 * MB, 16 * MB));
     EXPECT_TRUE(space == nullptr);
   }
 }
@@ -91,7 +88,7 @@ TEST_P(SpaceCreateTest, InitTestBody) {
 // the GC works with the ZygoteSpace.
 TEST_P(SpaceCreateTest, ZygoteSpaceTestBody) {
   size_t dummy;
-  MallocSpace* space(CreateSpace("test", 4 * MB, 16 * MB, 16 * MB, nullptr));
+  MallocSpace* space(CreateSpace("test", 4 * MB, 16 * MB, 16 * MB));
   ASSERT_TRUE(space != nullptr);
 
   // Make space findable to the heap, will also delete space when runtime is cleaned up
@@ -225,7 +222,7 @@ TEST_P(SpaceCreateTest, ZygoteSpaceTestBody) {
 
 TEST_P(SpaceCreateTest, AllocAndFreeTestBody) {
   size_t dummy = 0;
-  MallocSpace* space(CreateSpace("test", 4 * MB, 16 * MB, 16 * MB, nullptr));
+  MallocSpace* space(CreateSpace("test", 4 * MB, 16 * MB, 16 * MB));
   ASSERT_TRUE(space != nullptr);
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
@@ -301,7 +298,7 @@ TEST_P(SpaceCreateTest, AllocAndFreeTestBody) {
 }
 
 TEST_P(SpaceCreateTest, AllocAndFreeListTestBody) {
-  MallocSpace* space(CreateSpace("test", 4 * MB, 16 * MB, 16 * MB, nullptr));
+  MallocSpace* space(CreateSpace("test", 4 * MB, 16 * MB, 16 * MB));
   ASSERT_TRUE(space != nullptr);
 
   // Make space findable to the heap, will also delete space when runtime is cleaned up

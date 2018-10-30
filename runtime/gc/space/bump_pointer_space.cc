@@ -24,15 +24,13 @@ namespace art {
 namespace gc {
 namespace space {
 
-BumpPointerSpace* BumpPointerSpace::Create(const std::string& name, size_t capacity,
-                                           uint8_t* requested_begin) {
+BumpPointerSpace* BumpPointerSpace::Create(const std::string& name, size_t capacity) {
   capacity = RoundUp(capacity, kPageSize);
   std::string error_msg;
   MemMap mem_map = MemMap::MapAnonymous(name.c_str(),
-                                        requested_begin,
                                         capacity,
                                         PROT_READ | PROT_WRITE,
-                                        /* low_4gb= */ true,
+                                        /*low_4gb=*/ true,
                                         &error_msg);
   if (!mem_map.IsValid()) {
     LOG(ERROR) << "Failed to allocate pages for alloc space (" << name << ") of size "

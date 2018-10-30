@@ -1161,8 +1161,10 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
                                                  reinterpret_cast<uint8_t*>(kSentinelAddr),
                                                  kPageSize,
                                                  PROT_NONE,
-                                                 /* low_4gb= */ true,
-                                                 /* error_msg= */ nullptr);
+                                                 /*low_4gb=*/ true,
+                                                 /*reuse=*/ false,
+                                                 /*reservation=*/ nullptr,
+                                                 /*error_msg=*/ nullptr);
     if (!protected_fault_page_.IsValid()) {
       LOG(WARNING) << "Could not reserve sentinel fault page";
     } else if (reinterpret_cast<uintptr_t>(protected_fault_page_.Begin()) != kSentinelAddr) {

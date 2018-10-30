@@ -622,9 +622,9 @@ class ImageSpace::Loader {
                               /*inout*/MemMap* image_reservation,
                               /*out*/std::string* error_msg) {
     TimingLogger::ScopedTiming timing("MapImageFile", logger);
-    uint8_t* address = (image_reservation != nullptr) ? image_reservation->Begin() : nullptr;
     const ImageHeader::StorageMode storage_mode = image_header.GetStorageMode();
     if (storage_mode == ImageHeader::kStorageModeUncompressed) {
+      uint8_t* address = (image_reservation != nullptr) ? image_reservation->Begin() : nullptr;
       return MemMap::MapFileAtAddress(address,
                                       image_header.GetImageSize(),
                                       PROT_READ | PROT_WRITE,
@@ -649,11 +649,9 @@ class ImageSpace::Loader {
 
     // Reserve output and decompress into it.
     MemMap map = MemMap::MapAnonymous(image_location,
-                                      address,
                                       image_header.GetImageSize(),
                                       PROT_READ | PROT_WRITE,
                                       /*low_4gb=*/ true,
-                                      /*reuse=*/ false,
                                       image_reservation,
                                       error_msg);
     if (map.IsValid()) {

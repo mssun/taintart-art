@@ -58,7 +58,9 @@ MemMap RegionSpace::CreateMemMap(const std::string& name,
                                    requested_begin,
                                    capacity + kRegionSize,
                                    PROT_READ | PROT_WRITE,
-                                   /* low_4gb= */ true,
+                                   /*low_4gb=*/ true,
+                                   /*reuse=*/ false,
+                                   /*reservation=*/ nullptr,
                                    &error_msg);
     if (mem_map.IsValid() || requested_begin == nullptr) {
       break;

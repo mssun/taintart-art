@@ -304,12 +304,9 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
     base_flags = MAP_PRIVATE | MAP_ANON;
     data_pages = MemMap::MapAnonymous(
         "data-code-cache",
-        /* addr= */ nullptr,
         data_capacity + exec_capacity,
         kProtRW,
         /* low_4gb= */ true,
-        /* reuse= */ false,
-        /* reservation= */ nullptr,
         &error_str);
   }
 

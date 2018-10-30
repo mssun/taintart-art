@@ -133,17 +133,19 @@ RosAllocSpace::~RosAllocSpace() {
   delete rosalloc_;
 }
 
-RosAllocSpace* RosAllocSpace::Create(const std::string& name, size_t initial_size,
-                                     size_t growth_limit, size_t capacity, uint8_t* requested_begin,
-                                     bool low_memory_mode, bool can_move_objects) {
+RosAllocSpace* RosAllocSpace::Create(const std::string& name,
+                                     size_t initial_size,
+                                     size_t growth_limit,
+                                     size_t capacity,
+                                     bool low_memory_mode,
+                                     bool can_move_objects) {
   uint64_t start_time = 0;
   if (VLOG_IS_ON(heap) || VLOG_IS_ON(startup)) {
     start_time = NanoTime();
     VLOG(startup) << "RosAllocSpace::Create entering " << name
                   << " initial_size=" << PrettySize(initial_size)
                   << " growth_limit=" << PrettySize(growth_limit)
-                  << " capacity=" << PrettySize(capacity)
-                  << " requested_begin=" << reinterpret_cast<void*>(requested_begin);
+                  << " capacity=" << PrettySize(capacity);
   }
 
   // Memory we promise to rosalloc before it asks for morecore.
@@ -151,8 +153,7 @@ RosAllocSpace* RosAllocSpace::Create(const std::string& name, size_t initial_siz
   // will ask for this memory from sys_alloc which will fail as the footprint (this value plus the
   // size of the large allocation) will be greater than the footprint limit.
   size_t starting_size = Heap::kDefaultStartingSize;
-  MemMap mem_map =
-      CreateMemMap(name, starting_size, &initial_size, &growth_limit, &capacity, requested_begin);
+  MemMap mem_map = CreateMemMap(name, starting_size, &initial_size, &growth_limit, &capacity);
   if (!mem_map.IsValid()) {
     LOG(ERROR) << "Failed to create mem map for alloc space (" << name << ") of size "
                << PrettySize(capacity);
