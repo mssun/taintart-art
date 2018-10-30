@@ -52,7 +52,7 @@ static constexpr uint32_t kAccObsoleteMethod =        0x00040000;  // method (ru
 static constexpr uint32_t kAccSkipAccessChecks =      0x00080000;  // method (runtime, not native)
 // Used by a class to denote that the verifier has attempted to check it at least once.
 static constexpr uint32_t kAccVerificationAttempted = 0x00080000;  // class (runtime)
-static constexpr uint32_t kAccSkipHiddenApiChecks =   0x00100000;  // class (runtime)
+static constexpr uint32_t kAccSkipHiddenapiChecks =   0x00100000;  // class (runtime)
 // This is set by the class linker during LinkInterfaceMethods. It is used by a method to represent
 // that it was copied from its declaring class into another class. All methods marked kAccMiranda
 // and kAccDefaultConflict will have this bit set. Any kAccDefault method contained in the methods_
@@ -84,7 +84,8 @@ static constexpr uint32_t kAccMustCountLocks =        0x04000000;  // method (ru
 // virtual call.
 static constexpr uint32_t kAccSingleImplementation =  0x08000000;  // method (runtime)
 
-static constexpr uint32_t kAccHiddenApiBits =         0x30000000;  // field, method
+static constexpr uint32_t kAccPublicApi =             0x10000000;  // field, method
+static constexpr uint32_t kAccHiddenapiBits =         0x30000000;  // field, method
 
 // Non-intrinsics: Caches whether we can use fast-path in the interpreter invokes.
 // Intrinsics: These bits are part of the intrinsic ordinal.
@@ -103,7 +104,7 @@ static constexpr uint32_t kAccClassIsFinalizable        = 0x80000000;
 
 // Continuous sequence of bits used to hold the ordinal of an intrinsic method. Flags
 // which overlap are not valid when kAccIntrinsic is set.
-static constexpr uint32_t kAccIntrinsicBits = kAccHiddenApiBits |
+static constexpr uint32_t kAccIntrinsicBits = kAccHiddenapiBits |
     kAccSingleImplementation | kAccMustCountLocks | kAccCompileDontBother | kAccDefaultConflict |
     kAccPreviouslyWarm | kAccFastInterpreterToInterpreterInvoke;
 

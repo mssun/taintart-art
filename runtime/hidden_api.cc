@@ -18,8 +18,12 @@
 
 #include <nativehelper/scoped_local_ref.h>
 
+#include "art_field-inl.h"
+#include "art_method-inl.h"
 #include "base/dumpable.h"
-#include "thread-current-inl.h"
+#include "dex/class_accessor-inl.h"
+#include "scoped_thread_state_change.h"
+#include "thread-inl.h"
 #include "well_known_classes.h"
 
 #ifdef ART_TARGET_ANDROID
@@ -235,21 +239,80 @@ void MemberSignature::NotifyHiddenApiListener(AccessMethod access_method) {
   }
 }
 
-static ALWAYS_INLINE bool CanUpdateMemberAccessFlags(ArtField*) {
+static ALWAYS_INLINE bool CanUpdateRuntimeFlags(ArtField*) {
   return true;
 }
 
-static ALWAYS_INLINE bool CanUpdateMemberAccessFlags(ArtMethod* method) {
+static ALWAYS_INLINE bool CanUpdateRuntimeFlags(ArtMethod* method) {
   return !method->IsIntrinsic();
 }
 
 template<typename T>
 static ALWAYS_INLINE void MaybeWhitelistMember(Runtime* runtime, T* member)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  if (CanUpdateMemberAccessFlags(member) && runtime->ShouldDedupeHiddenApiWarnings()) {
-    member->SetAccessFlags(hiddenapi::EncodeForRuntime(
-        member->GetAccessFlags(), hiddenapi::ApiList::kWhitelist));
+  if (CanUpdateRuntimeFlags(member) && runtime->ShouldDedupeHiddenApiWarnings()) {
+    member->SetAccessFlags(member->GetAccessFlags() | kAccPublicApi);
   }
+}
+
+static constexpr uint32_t kNoDexFlags = 0u;
+static constexpr uint32_t kInvalidDexFlags = static_cast<uint32_t>(-1);
+
+uint32_t GetDexFlags(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::Class> declaring_class = field->GetDeclaringClass();
+  DCHECK(declaring_class != nullptr) << "Fields always have a declaring class";
+
+  const DexFile::ClassDef* class_def = declaring_class->GetClassDef();
+  if (class_def == nullptr) {
+    return kNoDexFlags;
+  }
+
+  uint32_t flags = kInvalidDexFlags;
+  DCHECK(!AreValidFlags(flags));
+
+  ClassAccessor accessor(declaring_class->GetDexFile(),
+                         *class_def,
+                         /* parse_hiddenapi_class_data= */ true);
+  auto fn_visit = [&](const ClassAccessor::Field& dex_field) {
+    if (dex_field.GetIndex() == field->GetDexFieldIndex()) {
+      flags = dex_field.GetHiddenapiFlags();
+    }
+  };
+  accessor.VisitFields(fn_visit, fn_visit);
+
+  CHECK_NE(flags, kInvalidDexFlags) << "Could not find flags for field " << field->PrettyField();
+  DCHECK(AreValidFlags(flags));
+  return flags;
+}
+
+uint32_t GetDexFlags(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::Class> declaring_class = method->GetDeclaringClass();
+  if (declaring_class.IsNull()) {
+    DCHECK(method->IsRuntimeMethod());
+    return kNoDexFlags;
+  }
+
+  const DexFile::ClassDef* class_def = declaring_class->GetClassDef();
+  if (class_def == nullptr) {
+    return kNoDexFlags;
+  }
+
+  uint32_t flags = kInvalidDexFlags;
+  DCHECK(!AreValidFlags(flags));
+
+  ClassAccessor accessor(declaring_class->GetDexFile(),
+                         *class_def,
+                         /* parse_hiddenapi_class_data= */ true);
+  auto fn_visit = [&](const ClassAccessor::Method& dex_method) {
+    if (dex_method.GetIndex() == method->GetDexMethodIndex()) {
+      flags = dex_method.GetHiddenapiFlags();
+    }
+  };
+  accessor.VisitMethods(fn_visit, fn_visit);
+
+  CHECK_NE(flags, kInvalidDexFlags) << "Could not find flags for method " << method->PrettyMethod();
+  DCHECK(AreValidFlags(flags));
+  return flags;
 }
 
 template<typename T>

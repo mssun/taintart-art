@@ -17,10 +17,11 @@
 #ifndef ART_RUNTIME_HIDDEN_API_H_
 #define ART_RUNTIME_HIDDEN_API_H_
 
-#include "art_field-inl.h"
-#include "art_method-inl.h"
+#include "art_field.h"
+#include "art_method.h"
 #include "base/mutex.h"
 #include "dex/hidden_api_access_flags.h"
+#include "intrinsics_enum.h"
 #include "mirror/class-inl.h"
 #include "reflection.h"
 #include "runtime.h"
@@ -164,11 +165,135 @@ class MemberSignature {
   void NotifyHiddenApiListener(AccessMethod access_method);
 };
 
+// Locates hiddenapi flags for `field` in the corresponding dex file.
+// NB: This is an O(N) operation, linear with the number of members in the class def.
+uint32_t GetDexFlags(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_);
+
+// Locates hiddenapi flags for `method` in the corresponding dex file.
+// NB: This is an O(N) operation, linear with the number of members in the class def.
+uint32_t GetDexFlags(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
+
 template<typename T>
 bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 }  // namespace detail
+
+// Returns access flags for the runtime representation of a class member (ArtField/ArtMember).
+ALWAYS_INLINE inline uint32_t CreateRuntimeFlags(const ClassAccessor::BaseItem& member) {
+  uint32_t runtime_flags = 0u;
+
+  uint32_t dex_flags = member.GetHiddenapiFlags();
+  DCHECK(AreValidFlags(dex_flags));
+
+  ApiList api_list = static_cast<hiddenapi::ApiList>(dex_flags);
+  if (api_list == ApiList::kWhitelist) {
+    runtime_flags |= kAccPublicApi;
+  }
+
+  DCHECK_EQ(runtime_flags & kAccHiddenapiBits, runtime_flags)
+      << "Runtime flags not in reserved access flags bits";
+  return runtime_flags;
+}
+
+// Extracts hiddenapi runtime flags from access flags of ArtField.
+ALWAYS_INLINE inline uint32_t GetRuntimeFlags(ArtField* field)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  return field->GetAccessFlags() & kAccHiddenapiBits;
+}
+
+// Extracts hiddenapi runtime flags from access flags of ArtMethod.
+// Uses hardcoded values for intrinsics.
+ALWAYS_INLINE inline uint32_t GetRuntimeFlags(ArtMethod* method)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (UNLIKELY(method->IsIntrinsic())) {
+    switch (static_cast<Intrinsics>(method->GetIntrinsic())) {
+      case Intrinsics::kSystemArrayCopyChar:
+      case Intrinsics::kStringGetCharsNoCheck:
+      case Intrinsics::kReferenceGetReferent:
+      case Intrinsics::kMemoryPeekByte:
+      case Intrinsics::kMemoryPokeByte:
+      case Intrinsics::kUnsafeCASInt:
+      case Intrinsics::kUnsafeCASLong:
+      case Intrinsics::kUnsafeCASObject:
+      case Intrinsics::kUnsafeGet:
+      case Intrinsics::kUnsafeGetAndAddInt:
+      case Intrinsics::kUnsafeGetAndAddLong:
+      case Intrinsics::kUnsafeGetAndSetInt:
+      case Intrinsics::kUnsafeGetAndSetLong:
+      case Intrinsics::kUnsafeGetAndSetObject:
+      case Intrinsics::kUnsafeGetLong:
+      case Intrinsics::kUnsafeGetLongVolatile:
+      case Intrinsics::kUnsafeGetObject:
+      case Intrinsics::kUnsafeGetObjectVolatile:
+      case Intrinsics::kUnsafeGetVolatile:
+      case Intrinsics::kUnsafePut:
+      case Intrinsics::kUnsafePutLong:
+      case Intrinsics::kUnsafePutLongOrdered:
+      case Intrinsics::kUnsafePutLongVolatile:
+      case Intrinsics::kUnsafePutObject:
+      case Intrinsics::kUnsafePutObjectOrdered:
+      case Intrinsics::kUnsafePutObjectVolatile:
+      case Intrinsics::kUnsafePutOrdered:
+      case Intrinsics::kUnsafePutVolatile:
+      case Intrinsics::kUnsafeLoadFence:
+      case Intrinsics::kUnsafeStoreFence:
+      case Intrinsics::kUnsafeFullFence:
+      case Intrinsics::kCRC32Update:
+      case Intrinsics::kStringNewStringFromBytes:
+      case Intrinsics::kStringNewStringFromChars:
+      case Intrinsics::kStringNewStringFromString:
+      case Intrinsics::kMemoryPeekIntNative:
+      case Intrinsics::kMemoryPeekLongNative:
+      case Intrinsics::kMemoryPeekShortNative:
+      case Intrinsics::kMemoryPokeIntNative:
+      case Intrinsics::kMemoryPokeLongNative:
+      case Intrinsics::kMemoryPokeShortNative:
+      case Intrinsics::kVarHandleFullFence:
+      case Intrinsics::kVarHandleAcquireFence:
+      case Intrinsics::kVarHandleReleaseFence:
+      case Intrinsics::kVarHandleLoadLoadFence:
+      case Intrinsics::kVarHandleStoreStoreFence:
+      case Intrinsics::kVarHandleCompareAndExchange:
+      case Intrinsics::kVarHandleCompareAndExchangeAcquire:
+      case Intrinsics::kVarHandleCompareAndExchangeRelease:
+      case Intrinsics::kVarHandleCompareAndSet:
+      case Intrinsics::kVarHandleGet:
+      case Intrinsics::kVarHandleGetAcquire:
+      case Intrinsics::kVarHandleGetAndAdd:
+      case Intrinsics::kVarHandleGetAndAddAcquire:
+      case Intrinsics::kVarHandleGetAndAddRelease:
+      case Intrinsics::kVarHandleGetAndBitwiseAnd:
+      case Intrinsics::kVarHandleGetAndBitwiseAndAcquire:
+      case Intrinsics::kVarHandleGetAndBitwiseAndRelease:
+      case Intrinsics::kVarHandleGetAndBitwiseOr:
+      case Intrinsics::kVarHandleGetAndBitwiseOrAcquire:
+      case Intrinsics::kVarHandleGetAndBitwiseOrRelease:
+      case Intrinsics::kVarHandleGetAndBitwiseXor:
+      case Intrinsics::kVarHandleGetAndBitwiseXorAcquire:
+      case Intrinsics::kVarHandleGetAndBitwiseXorRelease:
+      case Intrinsics::kVarHandleGetAndSet:
+      case Intrinsics::kVarHandleGetAndSetAcquire:
+      case Intrinsics::kVarHandleGetAndSetRelease:
+      case Intrinsics::kVarHandleGetOpaque:
+      case Intrinsics::kVarHandleGetVolatile:
+      case Intrinsics::kVarHandleSet:
+      case Intrinsics::kVarHandleSetOpaque:
+      case Intrinsics::kVarHandleSetRelease:
+      case Intrinsics::kVarHandleSetVolatile:
+      case Intrinsics::kVarHandleWeakCompareAndSet:
+      case Intrinsics::kVarHandleWeakCompareAndSetAcquire:
+      case Intrinsics::kVarHandleWeakCompareAndSetPlain:
+      case Intrinsics::kVarHandleWeakCompareAndSetRelease:
+        return 0u;
+      default:
+        // Remaining intrinsics are public API. We DCHECK that in SetIntrinsic().
+        return kAccPublicApi;
+    }
+  } else {
+    return method->GetAccessFlags() & kAccHiddenapiBits;
+  }
+}
 
 // Returns true if access to `member` should be denied in the given context.
 // The decision is based on whether the caller is in a trusted context or not.
@@ -183,16 +308,9 @@ inline bool ShouldDenyAccessToMember(T* member,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(member != nullptr);
 
-  // Decode hidden API access flags.
-  // NB Multiple threads might try to access (and overwrite) these simultaneously,
-  // causing a race. We only do that if access has not been denied, so the race
-  // cannot change Java semantics. We should, however, decode the access flags
-  // once and use it throughout this function, otherwise we may get inconsistent
-  // results, e.g. print whitelist warnings (b/78327881).
-  ApiList api_list = member->GetHiddenApiAccessFlags();
-
-  // Exit early if member is on the whitelist.
-  if (api_list == ApiList::kWhitelist) {
+  // Exit early if member is public API. This flag is also set for non-boot class
+  // path fields/methods.
+  if ((GetRuntimeFlags(member) & kAccPublicApi) != 0) {
     return false;
   }
 
@@ -201,6 +319,11 @@ inline bool ShouldDenyAccessToMember(T* member,
   if (fn_get_access_context().IsTrusted()) {
     return false;
   }
+
+  // Decode hidden API access flags from the dex file.
+  // This is an O(N) operation scaling with the number of fields/methods
+  // in the class. Only do this on slow path and only do it once.
+  ApiList api_list = static_cast<hiddenapi::ApiList>(detail::GetDexFlags(member));
 
   // Member is hidden and caller is not exempted. Enter slow path.
   return detail::ShouldDenyAccessToMemberImpl(member, api_list, access_method);

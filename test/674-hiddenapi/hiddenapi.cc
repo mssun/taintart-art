@@ -284,7 +284,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_JNI_canInvokeConstructorV(
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_Reflection_getHiddenApiAccessFlags(JNIEnv*, jclass) {
-  return static_cast<jint>(kAccHiddenApiBits);
+  return static_cast<jint>(kAccHiddenapiBits);
 }
 
 }  // namespace Test674HiddenApi
