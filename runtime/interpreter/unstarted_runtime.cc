@@ -52,6 +52,7 @@
 #include "mirror/object-inl.h"
 #include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"
+#include "mirror/string-alloc-inl.h"
 #include "mirror/string-inl.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "nth_caller_visitor.h"
