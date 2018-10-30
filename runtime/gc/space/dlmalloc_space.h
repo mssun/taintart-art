@@ -46,8 +46,11 @@ class DlMallocSpace : public MallocSpace {
   // base address is not guaranteed to be granted, if it is required,
   // the caller should call Begin on the returned space to confirm the
   // request was granted.
-  static DlMallocSpace* Create(const std::string& name, size_t initial_size, size_t growth_limit,
-                               size_t capacity, uint8_t* requested_begin, bool can_move_objects);
+  static DlMallocSpace* Create(const std::string& name,
+                               size_t initial_size,
+                               size_t growth_limit,
+                               size_t capacity,
+                               bool can_move_objects);
 
   // Virtual to allow MemoryToolMallocSpace to intercept.
   mirror::Object* AllocWithGrowth(Thread* self,

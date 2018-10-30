@@ -47,10 +47,9 @@ ThreadPoolWorker::ThreadPoolWorker(ThreadPool* thread_pool, const std::string& n
   stack_size += kPageSize;
   std::string error_msg;
   stack_ = MemMap::MapAnonymous(name.c_str(),
-                                /* addr= */ nullptr,
                                 stack_size,
                                 PROT_READ | PROT_WRITE,
-                                /* low_4gb= */ false,
+                                /*low_4gb=*/ false,
                                 &error_msg);
   CHECK(stack_.IsValid()) << error_msg;
   CHECK_ALIGNED(stack_.Begin(), kPageSize);

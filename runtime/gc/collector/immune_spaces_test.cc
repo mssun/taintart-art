@@ -78,18 +78,20 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
   }
 
   // Create an image space, the oat file is optional.
-  DummyImageSpace* CreateImageSpace(uint8_t* image_begin,
-                                    size_t image_size,
-                                    uint8_t* oat_begin,
-                                    size_t oat_size) {
+  DummyImageSpace* CreateImageSpace(size_t image_size,
+                                    size_t oat_size,
+                                    MemMap* image_reservation,
+                                    MemMap* oat_reservation) {
+    DCHECK(image_reservation != nullptr);
+    DCHECK(oat_reservation != nullptr);
     std::string error_str;
-    MemMap map = MemMap::MapAnonymous("DummyImageSpace",
-                                      image_begin,
-                                      image_size,
-                                      PROT_READ | PROT_WRITE,
-                                      /*low_4gb=*/true,
-                                      &error_str);
-    if (!map.IsValid()) {
+    MemMap image_map = MemMap::MapAnonymous("DummyImageSpace",
+                                            image_size,
+                                            PROT_READ | PROT_WRITE,
+                                            /*low_4gb=*/ true,
+                                            /*reservation=*/ image_reservation,
+                                            &error_str);
+    if (!image_map.IsValid()) {
       LOG(ERROR) << error_str;
       return nullptr;
     }
@@ -97,10 +99,10 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
     std::unique_ptr<accounting::ContinuousSpaceBitmap> live_bitmap(std::move(live_bitmaps_.back()));
     live_bitmaps_.pop_back();
     MemMap oat_map = MemMap::MapAnonymous("OatMap",
-                                          oat_begin,
                                           oat_size,
                                           PROT_READ | PROT_WRITE,
-                                          /*low_4gb=*/true,
+                                          /*low_4gb=*/ true,
+                                          /*reservation=*/ oat_reservation,
                                           &error_str);
     if (!oat_map.IsValid()) {
       LOG(ERROR) << error_str;
@@ -109,17 +111,17 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
     std::unique_ptr<DummyOatFile> oat_file(new DummyOatFile(oat_map.Begin(), oat_map.End()));
     // Create image header.
     ImageSection sections[ImageHeader::kSectionCount];
-    new (map.Begin()) ImageHeader(
-        /*image_begin=*/PointerToLowMemUInt32(map.Begin()),
-        /*image_size=*/map.Size(),
+    new (image_map.Begin()) ImageHeader(
+        /*image_begin=*/ PointerToLowMemUInt32(image_map.Begin()),
+        /*image_size=*/ image_map.Size(),
         sections,
-        /*image_roots=*/PointerToLowMemUInt32(map.Begin()) + 1,
-        /*oat_checksum=*/0u,
+        /*image_roots=*/ PointerToLowMemUInt32(image_map.Begin()) + 1,
+        /*oat_checksum=*/ 0u,
         // The oat file data in the header is always right after the image space.
-        /*oat_file_begin=*/PointerToLowMemUInt32(oat_begin),
-        /*oat_data_begin=*/PointerToLowMemUInt32(oat_begin),
-        /*oat_data_end=*/PointerToLowMemUInt32(oat_begin + oat_size),
-        /*oat_file_end=*/PointerToLowMemUInt32(oat_begin + oat_size),
+        /*oat_file_begin=*/ PointerToLowMemUInt32(oat_map.Begin()),
+        /*oat_data_begin=*/PointerToLowMemUInt32(oat_map.Begin()),
+        /*oat_data_end=*/PointerToLowMemUInt32(oat_map.Begin() + oat_size),
+        /*oat_file_end=*/PointerToLowMemUInt32(oat_map.Begin() + oat_size),
         /*boot_image_begin=*/0u,
         /*boot_image_size=*/0u,
         /*boot_oat_begin=*/0u,
@@ -127,27 +129,10 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
         /*pointer_size=*/sizeof(void*),
         ImageHeader::kStorageModeUncompressed,
         /*data_size=*/0u);
-    return new DummyImageSpace(std::move(map),
+    return new DummyImageSpace(std::move(image_map),
                                std::move(live_bitmap),
                                std::move(oat_file),
                                std::move(oat_map));
-  }
-
-  // Does not reserve the memory, the caller needs to be sure no other threads will map at the
-  // returned address.
-  static uint8_t* GetContinuousMemoryRegion(size_t size) {
-    std::string error_str;
-    MemMap map = MemMap::MapAnonymous("reserve",
-                                      /* addr= */ nullptr,
-                                      size,
-                                      PROT_READ | PROT_WRITE,
-                                      /*low_4gb=*/ true,
-                                      &error_str);
-    if (!map.IsValid()) {
-      LOG(ERROR) << "Failed to allocate memory region " << error_str;
-      return nullptr;
-    }
-    return map.Begin();
   }
 
  private:
@@ -206,13 +191,25 @@ TEST_F(ImmuneSpacesTest, AppendAfterImage) {
   constexpr size_t kImageOatSize = 321 * kPageSize;
   constexpr size_t kOtherSpaceSize = 100 * kPageSize;
 
-  uint8_t* memory = GetContinuousMemoryRegion(kImageSize + kImageOatSize + kOtherSpaceSize);
+  std::string error_str;
+  MemMap reservation = MemMap::MapAnonymous("reserve",
+                                            kImageSize + kImageOatSize + kOtherSpaceSize,
+                                            PROT_READ | PROT_WRITE,
+                                            /*low_4gb=*/ true,
+                                            &error_str);
+  ASSERT_TRUE(reservation.IsValid()) << "Failed to allocate memory region " << error_str;
+  MemMap image_reservation = reservation.TakeReservedMemory(kImageSize);
+  ASSERT_TRUE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
 
-  std::unique_ptr<DummyImageSpace> image_space(CreateImageSpace(memory,
-                                                                kImageSize,
-                                                                memory + kImageSize,
-                                                                kImageOatSize));
+  std::unique_ptr<DummyImageSpace> image_space(CreateImageSpace(kImageSize,
+                                                                kImageOatSize,
+                                                                &image_reservation,
+                                                                &reservation));
   ASSERT_TRUE(image_space != nullptr);
+  ASSERT_FALSE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
+
   const ImageHeader& image_header = image_space->GetImageHeader();
   DummySpace space(image_header.GetOatFileEnd(), image_header.GetOatFileEnd() + kOtherSpaceSize);
 
@@ -257,36 +254,44 @@ TEST_F(ImmuneSpacesTest, MultiImage) {
   constexpr size_t kImage3OatSize = kPageSize;
   constexpr size_t kImageBytes = kImage1Size + kImage2Size + kImage3Size;
   constexpr size_t kMemorySize = kImageBytes + kImage1OatSize + kImage2OatSize + kImage3OatSize;
-  uint8_t* memory = GetContinuousMemoryRegion(kMemorySize);
-  uint8_t* space1_begin = memory;
-  memory += kImage1Size;
-  uint8_t* space2_begin = memory;
-  memory += kImage2Size;
-  uint8_t* space1_oat_begin = memory;
-  memory += kImage1OatSize;
-  uint8_t* space2_oat_begin = memory;
-  memory += kImage2OatSize;
-  uint8_t* space3_begin = memory;
+  std::string error_str;
+  MemMap reservation = MemMap::MapAnonymous("reserve",
+                                            kMemorySize,
+                                            PROT_READ | PROT_WRITE,
+                                            /*low_4gb=*/ true,
+                                            &error_str);
+  ASSERT_TRUE(reservation.IsValid()) << "Failed to allocate memory region " << error_str;
+  MemMap image_reservation = reservation.TakeReservedMemory(kImage1Size + kImage2Size);
+  ASSERT_TRUE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
 
-  std::unique_ptr<DummyImageSpace> space1(CreateImageSpace(space1_begin,
-                                                           kImage1Size,
-                                                           space1_oat_begin,
-                                                           kImage1OatSize));
+  std::unique_ptr<DummyImageSpace> space1(CreateImageSpace(kImage1Size,
+                                                           kImage1OatSize,
+                                                           &image_reservation,
+                                                           &reservation));
   ASSERT_TRUE(space1 != nullptr);
+  ASSERT_TRUE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
 
-
-  std::unique_ptr<DummyImageSpace> space2(CreateImageSpace(space2_begin,
-                                                           kImage2Size,
-                                                           space2_oat_begin,
-                                                           kImage2OatSize));
+  std::unique_ptr<DummyImageSpace> space2(CreateImageSpace(kImage2Size,
+                                                           kImage2OatSize,
+                                                           &image_reservation,
+                                                           &reservation));
   ASSERT_TRUE(space2 != nullptr);
+  ASSERT_FALSE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
 
   // Finally put a 3rd image space.
-  std::unique_ptr<DummyImageSpace> space3(CreateImageSpace(space3_begin,
-                                                           kImage3Size,
-                                                           space3_begin + kImage3Size,
-                                                           kImage3OatSize));
+  image_reservation = reservation.TakeReservedMemory(kImage3Size);
+  ASSERT_TRUE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
+  std::unique_ptr<DummyImageSpace> space3(CreateImageSpace(kImage3Size,
+                                                           kImage3OatSize,
+                                                           &image_reservation,
+                                                           &reservation));
   ASSERT_TRUE(space3 != nullptr);
+  ASSERT_FALSE(image_reservation.IsValid());
+  ASSERT_FALSE(reservation.IsValid());
 
   // Check that we do not include the oat if there is no space after.
   ImmuneSpaces spaces;
@@ -323,12 +328,29 @@ TEST_F(ImmuneSpacesTest, MultiImage) {
   constexpr size_t kGuardSize = kPageSize;
   constexpr size_t kImage4Size = kImageBytes - kPageSize;
   constexpr size_t kImage4OatSize = kPageSize;
-  uint8_t* memory2 = GetContinuousMemoryRegion(kImage4Size + kImage4OatSize + kGuardSize * 2);
-  std::unique_ptr<DummyImageSpace> space4(CreateImageSpace(memory2 + kGuardSize,
-                                                           kImage4Size,
-                                                           memory2 + kGuardSize + kImage4Size,
-                                                           kImage4OatSize));
+
+  reservation = MemMap::MapAnonymous("reserve",
+                                     kImage4Size + kImage4OatSize + kGuardSize * 2,
+                                     PROT_READ | PROT_WRITE,
+                                     /*low_4gb=*/ true,
+                                     &error_str);
+  ASSERT_TRUE(reservation.IsValid()) << "Failed to allocate memory region " << error_str;
+  MemMap guard = reservation.TakeReservedMemory(kGuardSize);
+  ASSERT_TRUE(guard.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
+  guard.Reset();  // Release the guard memory.
+  image_reservation = reservation.TakeReservedMemory(kImage4Size);
+  ASSERT_TRUE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
+  std::unique_ptr<DummyImageSpace> space4(CreateImageSpace(kImage4Size,
+                                                           kImage4OatSize,
+                                                           &image_reservation,
+                                                           &reservation));
   ASSERT_TRUE(space4 != nullptr);
+  ASSERT_FALSE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
+  ASSERT_EQ(reservation.Size(), kGuardSize);
+  reservation.Reset();  // Release the guard memory.
   {
     WriterMutexLock mu(Thread::Current(), *Locks::heap_bitmap_lock_);
     LOG(INFO) << "Adding space4 " << reinterpret_cast<const void*>(space4->Begin());
@@ -346,12 +368,28 @@ TEST_F(ImmuneSpacesTest, MultiImage) {
   // Layout:  [guard page][image][oat][guard page]
   constexpr size_t kImage5Size = kImageBytes + kPageSize;
   constexpr size_t kImage5OatSize = kPageSize;
-  uint8_t* memory3 = GetContinuousMemoryRegion(kImage5Size + kImage5OatSize + kGuardSize * 2);
-  std::unique_ptr<DummyImageSpace> space5(CreateImageSpace(memory3 + kGuardSize,
-                                                           kImage5Size,
-                                                           memory3 + kGuardSize + kImage5Size,
-                                                           kImage5OatSize));
+  reservation = MemMap::MapAnonymous("reserve",
+                                     kImage5Size + kImage5OatSize + kGuardSize * 2,
+                                     PROT_READ | PROT_WRITE,
+                                     /*low_4gb=*/ true,
+                                     &error_str);
+  ASSERT_TRUE(reservation.IsValid()) << "Failed to allocate memory region " << error_str;
+  guard = reservation.TakeReservedMemory(kGuardSize);
+  ASSERT_TRUE(guard.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
+  guard.Reset();  // Release the guard memory.
+  image_reservation = reservation.TakeReservedMemory(kImage5Size);
+  ASSERT_TRUE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
+  std::unique_ptr<DummyImageSpace> space5(CreateImageSpace(kImage5Size,
+                                                           kImage5OatSize,
+                                                           &image_reservation,
+                                                           &reservation));
   ASSERT_TRUE(space5 != nullptr);
+  ASSERT_FALSE(image_reservation.IsValid());
+  ASSERT_TRUE(reservation.IsValid());
+  ASSERT_EQ(reservation.Size(), kGuardSize);
+  reservation.Reset();  // Release the guard memory.
   {
     WriterMutexLock mu(Thread::Current(), *Locks::heap_bitmap_lock_);
     LOG(INFO) << "Adding space5 " << reinterpret_cast<const void*>(space5->Begin());

@@ -139,18 +139,32 @@ class MemMap {
                              /*out*/std::string* error_msg,
                              bool use_debug_name = true);
   static MemMap MapAnonymous(const char* name,
-                             uint8_t* addr,
                              size_t byte_count,
                              int prot,
                              bool low_4gb,
                              /*out*/std::string* error_msg) {
     return MapAnonymous(name,
-                        addr,
+                        /*addr=*/ nullptr,
                         byte_count,
                         prot,
                         low_4gb,
-                        /* reuse */ false,
-                        /* reservation */ nullptr,
+                        /*reuse=*/ false,
+                        /*reservation=*/ nullptr,
+                        error_msg);
+  }
+  static MemMap MapAnonymous(const char* name,
+                             size_t byte_count,
+                             int prot,
+                             bool low_4gb,
+                             MemMap* reservation,
+                             /*out*/std::string* error_msg) {
+    return MapAnonymous(name,
+                        /*addr=*/ (reservation != nullptr) ? reservation->Begin() : nullptr,
+                        byte_count,
+                        prot,
+                        low_4gb,
+                        /*reuse=*/ false,
+                        reservation,
                         error_msg);
   }
 
@@ -178,10 +192,10 @@ class MemMap {
                             flags,
                             fd,
                             start,
-                            /* low_4gb */ low_4gb,
+                            /*low_4gb=*/ low_4gb,
                             filename,
-                            /* reuse */ false,
-                            /* reservation */ nullptr,
+                            /*reuse=*/ false,
+                            /*reservation=*/ nullptr,
                             error_msg);
   }
 
