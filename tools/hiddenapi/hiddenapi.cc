@@ -599,9 +599,10 @@ class HiddenapiClassDataBuilder final {
   // Append flags at the end of the data struct. This should be called
   // between BeginClassDef and EndClassDef in the order of appearance of
   // fields/methods in the class data stream.
-  void WriteFlags(uint32_t flags) {
-    EncodeUnsignedLeb128(&data_, flags);
-    class_def_has_non_zero_flags_ |= (flags != 0u);
+  void WriteFlags(hiddenapi::ApiList flags) {
+    uint32_t uint_flags = static_cast<uint32_t>(flags);
+    EncodeUnsignedLeb128(&data_, uint_flags);
+    class_def_has_non_zero_flags_ |= (uint_flags != 0u);
   }
 
   // Return backing data, assuming that all flags have been written.
@@ -931,10 +932,10 @@ class HiddenApi final {
     }
 
     // Load dex signatures.
-    std::map<std::string, HiddenApiAccessFlags::ApiList> api_list;
-    OpenApiFile(light_greylist_path_, api_list, HiddenApiAccessFlags::kLightGreylist);
-    OpenApiFile(dark_greylist_path_, api_list, HiddenApiAccessFlags::kDarkGreylist);
-    OpenApiFile(blacklist_path_, api_list, HiddenApiAccessFlags::kBlacklist);
+    std::map<std::string, hiddenapi::ApiList> api_list;
+    OpenApiFile(light_greylist_path_, api_list, hiddenapi::ApiList::kLightGreylist);
+    OpenApiFile(dark_greylist_path_, api_list, hiddenapi::ApiList::kDarkGreylist);
+    OpenApiFile(blacklist_path_, api_list, hiddenapi::ApiList::kBlacklist);
 
     // Iterate over input dex files and insert HiddenapiClassData sections.
     for (size_t i = 0; i < boot_dex_paths_.size(); ++i) {
@@ -954,7 +955,7 @@ class HiddenApi final {
             // TODO: Load whitelist and CHECK that entry was found.
             auto it = api_list.find(boot_member.GetApiEntry());
             builder.WriteFlags(
-                (it == api_list.end()) ? HiddenApiAccessFlags::kWhitelist : it->second);
+                (it == api_list.end()) ? hiddenapi::ApiList::kWhitelist : it->second);
           };
           auto fn_field = [&](const ClassAccessor::Field& boot_field) {
             fn_shared(DexMember(boot_class, boot_field));
@@ -974,8 +975,8 @@ class HiddenApi final {
   }
 
   void OpenApiFile(const std::string& path,
-                   std::map<std::string, HiddenApiAccessFlags::ApiList>& api_list,
-                   HiddenApiAccessFlags::ApiList membership) {
+                   std::map<std::string, hiddenapi::ApiList>& api_list,
+                   hiddenapi::ApiList membership) {
     if (path.empty()) {
       return;
     }
