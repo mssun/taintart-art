@@ -43,22 +43,22 @@ class HiddenApi {
     FillList(whitelist, whitelist_);
   }
 
-  HiddenApiAccessFlags::ApiList GetApiList(const std::string& name) const {
+  hiddenapi::ApiList GetApiList(const std::string& name) const {
     if (IsInList(name, blacklist_)) {
-      return HiddenApiAccessFlags::kBlacklist;
+      return hiddenapi::ApiList::kBlacklist;
     } else if (IsInList(name, dark_greylist_)) {
-      return HiddenApiAccessFlags::kDarkGreylist;
+      return hiddenapi::ApiList::kDarkGreylist;
     } else if (IsInList(name, light_greylist_)) {
-      return HiddenApiAccessFlags::kLightGreylist;
+      return hiddenapi::ApiList::kLightGreylist;
     } else if (IsInList(name, whitelist_)) {
-      return HiddenApiAccessFlags::kWhitelist;
+      return hiddenapi::ApiList::kWhitelist;
     } else {
-      return HiddenApiAccessFlags::kNoList;
+      return hiddenapi::ApiList::kNoList;
     }
   }
 
   bool IsInAnyList(const std::string& name) const {
-    return GetApiList(name) != HiddenApiAccessFlags::kNoList;
+    return GetApiList(name) != hiddenapi::ApiList::kNoList;
   }
 
   static std::string GetApiMethodName(const DexFile& dex_file, uint32_t method_index);
