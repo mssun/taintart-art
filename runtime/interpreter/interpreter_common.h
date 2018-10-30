@@ -156,7 +156,7 @@ NO_INLINE bool CheckStackOverflow(Thread* self, size_t frame_size)
 
 // Handles all invoke-XXX/range instructions except for invoke-polymorphic[/range].
 // Returns true on success, otherwise throws an exception and returns false.
-template<InvokeType type, bool is_range, bool do_access_check, bool is_mterp>
+template<InvokeType type, bool is_range, bool do_access_check, bool is_mterp, bool is_quick = false>
 static ALWAYS_INLINE bool DoInvoke(Thread* self,
                                    ShadowFrame& shadow_frame,
                                    const Instruction* inst,
@@ -177,7 +177,9 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
   InterpreterCache* tls_cache = self->GetInterpreterCache();
   size_t tls_value;
   ArtMethod* resolved_method;
-  if (LIKELY(tls_cache->Get(inst, &tls_value))) {
+  if (is_quick) {
+    resolved_method = nullptr;  // We don't know/care what the original method was.
+  } else if (LIKELY(tls_cache->Get(inst, &tls_value))) {
     resolved_method = reinterpret_cast<ArtMethod*>(tls_value);
   } else {
     ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
@@ -196,8 +198,20 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
   // Null pointer check and virtual method resolution.
   ObjPtr<mirror::Object> receiver =
       (type == kStatic) ? nullptr : shadow_frame.GetVRegReference(vregC);
-  ArtMethod* const called_method = FindMethodToCall<type, do_access_check>(
-      method_idx, resolved_method, &receiver, sf_method, self);
+  ArtMethod* called_method;
+  if (is_quick) {
+    if (UNLIKELY(receiver == nullptr)) {
+      // We lost the reference to the method index so we cannot get a more precise exception.
+      ThrowNullPointerExceptionFromDexPC();
+      return false;
+    }
+    DCHECK(receiver->GetClass()->ShouldHaveEmbeddedVTable());
+    called_method = receiver->GetClass()->GetEmbeddedVTableEntry(
+        /*vtable_idx=*/ method_idx, Runtime::Current()->GetClassLinker()->GetImagePointerSize());
+  } else {
+    called_method = FindMethodToCall<type, do_access_check>(
+        method_idx, resolved_method, &receiver, sf_method, self);
+  }
   if (UNLIKELY(called_method == nullptr)) {
     CHECK(self->IsExceptionPending());
     result->SetJ(0);
@@ -350,45 +364,6 @@ bool DoInvokeCustom(Thread* self,
     inst->GetVarArgs(args, inst_data);
     VarArgsInstructionOperands operands(args, inst->VRegA_35c());
     return DoInvokeCustom(self, shadow_frame, call_site_idx, &operands, result);
-  }
-}
-
-// Handles invoke-virtual-quick and invoke-virtual-quick-range instructions.
-// Returns true on success, otherwise throws an exception and returns false.
-template<bool is_range>
-static inline bool DoInvokeVirtualQuick(Thread* self, ShadowFrame& shadow_frame,
-                                        const Instruction* inst, uint16_t inst_data,
-                                        JValue* result)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  const uint32_t vregC = (is_range) ? inst->VRegC_3rc() : inst->VRegC_35c();
-  ObjPtr<mirror::Object> const receiver = shadow_frame.GetVRegReference(vregC);
-  if (UNLIKELY(receiver == nullptr)) {
-    // We lost the reference to the method index so we cannot get a more
-    // precised exception message.
-    ThrowNullPointerExceptionFromDexPC();
-    return false;
-  }
-  const uint32_t vtable_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
-  CHECK(receiver->GetClass()->ShouldHaveEmbeddedVTable());
-  ArtMethod* const called_method = receiver->GetClass()->GetEmbeddedVTableEntry(
-      vtable_idx, Runtime::Current()->GetClassLinker()->GetImagePointerSize());
-  if (UNLIKELY(called_method == nullptr)) {
-    CHECK(self->IsExceptionPending());
-    result->SetJ(0);
-    return false;
-  } else if (UNLIKELY(!called_method->IsInvokable())) {
-    called_method->ThrowInvocationTimeError();
-    result->SetJ(0);
-    return false;
-  } else {
-    jit::Jit* jit = Runtime::Current()->GetJit();
-    if (jit != nullptr) {
-      jit->InvokeVirtualOrInterface(
-          receiver, shadow_frame.GetMethod(), shadow_frame.GetDexPC(), called_method);
-      jit->AddSamples(self, shadow_frame.GetMethod(), 1, /*with_backedges=*/false);
-    }
-    // No need to check since we've been quickened.
-    return DoCall<is_range, false>(called_method, self, shadow_frame, inst, inst_data, result);
   }
 }
 
