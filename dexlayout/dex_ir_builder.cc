@@ -17,6 +17,7 @@
  */
 
 #include <stdint.h>
+#include <memory>
 #include <vector>
 
 #include "dex_ir_builder.h"
@@ -698,8 +699,8 @@ AnnotationsDirectoryItem* BuilderMaps::CreateAnnotationsDirectoryItem(const DexF
       uint32_t annotation_set_offset = fields[i].annotations_off_;
       AnnotationSetItem* annotation_set_item =
           CreateAnnotationSetItem(dex_file, field_set_item, annotation_set_offset);
-      field_annotations->push_back(std::unique_ptr<FieldAnnotation>(
-          new FieldAnnotation(field_id, annotation_set_item)));
+      field_annotations->push_back(std::make_unique<FieldAnnotation>(
+          field_id, annotation_set_item));
     }
   }
   const DexFile::MethodAnnotationsItem* methods =
@@ -714,8 +715,8 @@ AnnotationsDirectoryItem* BuilderMaps::CreateAnnotationsDirectoryItem(const DexF
       uint32_t annotation_set_offset = methods[i].annotations_off_;
       AnnotationSetItem* annotation_set_item =
           CreateAnnotationSetItem(dex_file, method_set_item, annotation_set_offset);
-      method_annotations->push_back(std::unique_ptr<MethodAnnotation>(
-          new MethodAnnotation(method_id, annotation_set_item)));
+      method_annotations->push_back(std::make_unique<MethodAnnotation>(
+          method_id, annotation_set_item));
     }
   }
   const DexFile::ParameterAnnotationsItem* parameters =
@@ -1160,9 +1161,9 @@ void BuilderMaps::ReadEncodedValue(const DexFile& dex_file,
       // Decode all name=value pairs.
       for (uint32_t i = 0; i < size; i++) {
         const uint32_t name_index = DecodeUnsignedLeb128(data);
-        elements->push_back(std::unique_ptr<AnnotationElement>(
-            new AnnotationElement(header_->StringIds()[name_index],
-                                  ReadEncodedValue(dex_file, data))));
+        elements->push_back(std::make_unique<AnnotationElement>(
+            header_->StringIds()[name_index],
+            ReadEncodedValue(dex_file, data)));
       }
       item->SetEncodedAnnotation(new EncodedAnnotation(header_->TypeIds()[type_idx], elements));
       break;

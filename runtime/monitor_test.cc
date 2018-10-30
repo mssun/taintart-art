@@ -16,6 +16,7 @@
 
 #include "monitor.h"
 
+#include <memory>
 #include <string>
 
 #include "base/atomic.h"
@@ -251,8 +252,8 @@ static void CommonWaitSetup(MonitorTest* test, ClassLinker* class_linker, uint64
                                                                               "hello, world!"));
 
   // Create the barrier used to synchronize.
-  test->barrier_ = std::unique_ptr<Barrier>(new Barrier(2));
-  test->complete_barrier_ = std::unique_ptr<Barrier>(new Barrier(3));
+  test->barrier_ = std::make_unique<Barrier>(2);
+  test->complete_barrier_ = std::make_unique<Barrier>(3);
   test->completed_ = false;
 
   // Our job: Fill the heap, then try Wait.
