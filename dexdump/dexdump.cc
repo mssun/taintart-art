@@ -1208,7 +1208,7 @@ static void dumpCode(const DexFile* pDexFile, u4 idx, u4 flags,
  */
 static void dumpMethod(const ClassAccessor::Method& method, int i) {
   // Bail for anything private if export only requested.
-  const uint32_t flags = method.GetRawAccessFlags();
+  const uint32_t flags = method.GetAccessFlags();
   if (gOptions.exportsOnly && (flags & (kAccPublic | kAccProtected)) == 0) {
     return;
   }
@@ -1319,7 +1319,7 @@ static void dumpMethod(const ClassAccessor::Method& method, int i) {
  */
 static void dumpField(const ClassAccessor::Field& field, int i, const u1** data = nullptr) {
   // Bail for anything private if export only requested.
-  const uint32_t flags = field.GetRawAccessFlags();
+  const uint32_t flags = field.GetAccessFlags();
   if (gOptions.exportsOnly && (flags & (kAccPublic | kAccProtected)) == 0) {
     return;
   }
