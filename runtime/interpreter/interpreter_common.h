@@ -237,6 +237,10 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
       return false;
     }
 
+    if (jit != nullptr) {
+      jit->AddSamples(self, called_method, 1, /* with_backedges */false);
+    }
+
     // Create shadow frame on the stack.
     const char* old_cause = self->StartAssertNoThreadSuspension("DoFastInvoke");
     ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
@@ -256,13 +260,9 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
         *new_shadow_frame->GetShadowRefAddr(dst) = *shadow_frame.GetShadowRefAddr(arg[i]);
       }
     }
+    self->PushShadowFrame(new_shadow_frame);
     self->EndAssertNoThreadSuspension(old_cause);
 
-    if (jit != nullptr) {
-      jit->AddSamples(self, called_method, 1, /* with_backedges */false);
-    }
-
-    self->PushShadowFrame(new_shadow_frame);
     DCheckStaticState(self, called_method);
     while (true) {
       // Mterp does not support all instrumentation/debugging.
