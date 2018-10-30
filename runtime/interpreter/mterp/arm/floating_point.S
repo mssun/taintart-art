@@ -19,8 +19,7 @@
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     $instr                              @ s2<- op
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    VREG_INDEX_TO_ADDR r9, r9           @ r9<- &vAA
-    fsts    s2, [r9]                    @ vAA<- s2
+    SET_VREG_FLOAT s2, r9, lr           @ vAA<- s2
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def fbinop2addr(instr=""):
@@ -41,7 +40,7 @@
     flds    s0, [r9]                    @ s0<- vA
     $instr                              @ s2<- op
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    fsts    s2, [r9]                    @ vAA<- s2
+    fsts    s2, [r9]                    @ vAA<- s2 No need to clear as it's 2addr
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def fbinopWide(instr=""):
@@ -107,8 +106,7 @@
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     $instr                              @ s1<- op
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    VREG_INDEX_TO_ADDR r9, r9           @ r9<- &vA
-    fsts    s1, [r9]                    @ vA<- s1
+    SET_VREG_FLOAT s1, r9, lr           @ vA<- s1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def funopNarrower(instr=""):
@@ -126,8 +124,7 @@
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     $instr                              @ s0<- op
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    VREG_INDEX_TO_ADDR r9, r9           @ r9<- &vA
-    fsts    s0, [r9]                    @ vA<- s0
+    SET_VREG_FLOAT s0, r9, lr           @ vA<- s0
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def funopWider(instr=""):

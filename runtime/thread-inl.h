@@ -385,6 +385,7 @@ inline bool Thread::ModifySuspendCount(Thread* self,
 }
 
 inline ShadowFrame* Thread::PushShadowFrame(ShadowFrame* new_top_frame) {
+  new_top_frame->CheckConsistentVRegs();
   return tlsPtr_.managed_stack.PushShadowFrame(new_top_frame);
 }
 
