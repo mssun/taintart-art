@@ -341,9 +341,6 @@ libart_cc_defaults {
             shared_libs: [
                 "libtombstoned_client",
             ],
-            static_libs: [
-                "libz",  // For adler32.
-            ],
         },
         android_arm: {
             ldflags: JIT_DEBUG_REGISTER_CODE_LDFLAGS,
@@ -362,9 +359,6 @@ libart_cc_defaults {
                 "monitor_linux.cc",
                 "runtime_linux.cc",
                 "thread_linux.cc",
-            ],
-            shared_libs: [
-                "libz",  // For adler32.
             ],
         },
     },
@@ -390,7 +384,6 @@ libart_cc_defaults {
         "libnativebridge",
         "libnativeloader",
         "libbacktrace",
-        "liblz4",
         "liblog",
         // For atrace, properties, ashmem, set_sched_policy.
         "libcutils",
@@ -422,12 +415,9 @@ libart_static_cc_defaults {
         "libbase",
         "libcutils",
         "liblog",
-        "liblz4",
-        "liblzma",
         "libnativebridge",
         "libnativeloader",
         "libunwindstack",
-        "libz",
     ],
 }
 

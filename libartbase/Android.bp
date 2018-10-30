@@ -49,20 +49,15 @@ cc_defaults {
     ],
     target: {
         android: {
-            static_libs: [
-                // ZipArchive support, the order matters here to get all symbols.
-                "libziparchive",
-                "libz",
-            ],
 	    shared_libs: [
 	        // For android::FileMap used by libziparchive.
                 "libutils",
 	    ],
         },
         host: {
-            shared_libs: [
-                "libziparchive",
-                "libz",
+            static_libs: [
+                // For android::FileMap used by libziparchive.
+                "libutils",
             ],
         },
     },
@@ -75,6 +70,18 @@ cc_defaults {
         // For common macros.
         "libbase",
     ],
+
+    // Utilities used by various ART libs and tools are linked in statically
+    // here to avoid shared lib dependencies outside the ART APEX. No target
+    // there should depend on these separately.
+    whole_static_libs: [
+        "liblz4",
+        "liblzma",
+        // ZipArchive support, the order matters here to get all symbols.
+        "libziparchive",
+        "libz",
+    ],
+
     export_include_dirs: ["."],
     // ART's macros.h depends on libbase's macros.h.
     // Note: runtime_options.h depends on cmdline. But we don't really want to export this
@@ -89,8 +96,6 @@ cc_defaults {
         "libcutils",
         "liblog",
         "libutils",
-        "libz",
-        "libziparchive",
     ],
 }
 
@@ -129,7 +134,6 @@ art_cc_library {
     },
     shared_libs: [
         "libbase",
-        "libziparchive",
     ],
     export_shared_lib_headers: ["libbase"],
 }
@@ -140,11 +144,6 @@ art_cc_library {
         "art_debug_defaults",
         "libartbase_defaults",
     ],
-    shared_libs: [
-        "libbase",
-        "libziparchive",
-    ],
-    export_shared_lib_headers: ["libbase"],
 }
 
 art_cc_library {
