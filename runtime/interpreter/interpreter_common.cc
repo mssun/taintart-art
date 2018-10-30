@@ -64,6 +64,31 @@ bool CheckStackOverflow(Thread* self, size_t frame_size)
   return true;
 }
 
+bool UseFastInterpreterToInterpreterInvoke(ArtMethod* method) {
+  Runtime* runtime = Runtime::Current();
+  const void* quick_code = method->GetEntryPointFromQuickCompiledCode();
+  if (!runtime->GetClassLinker()->IsQuickToInterpreterBridge(quick_code)) {
+    return false;
+  }
+  if (!method->SkipAccessChecks() || method->IsNative() || method->IsProxyMethod()) {
+    return false;
+  }
+  if (method->IsIntrinsic()) {
+    return false;
+  }
+  if (method->GetDeclaringClass()->IsStringClass() && method->IsConstructor()) {
+    return false;
+  }
+  if (method->IsStatic() && !method->GetDeclaringClass()->IsInitialized()) {
+    return false;
+  }
+  ProfilingInfo* profiling_info = method->GetProfilingInfo(kRuntimePointerSize);
+  if ((profiling_info != nullptr) && (profiling_info->GetSavedEntryPoint() != nullptr)) {
+    return false;
+  }
+  return true;
+}
+
 template<FindFieldType find_type, Primitive::Type field_type, bool do_access_check,
          bool transaction_active>
 bool DoFieldGet(Thread* self, ShadowFrame& shadow_frame, const Instruction* inst,
