@@ -146,7 +146,7 @@ void dumpClass(const DexFile* pDexFile, u4 idx) {
     dumpMethod(pDexFile,
                fileName,
                method.GetIndex(),
-               method.GetRawAccessFlags(),
+               method.GetAccessFlags(),
                method.GetCodeItem(),
                method.GetCodeItemOffset());
   }

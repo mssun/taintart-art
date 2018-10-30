@@ -71,7 +71,6 @@ static void DoDexUnquicken(const art::DexFile& new_dex_file,
                            original_dex_file,
                            /* decompile_return_instruction= */ true);
   }
-  new_dex_file.UnhideApis();
 }
 
 static void DCheckVerifyDexFile(const art::DexFile& dex) {
@@ -106,9 +105,6 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
     // this before unquickening.
     art::Options options;
     options.compact_dex_level_ = art::CompactDexLevel::kCompactDexLevelNone;
-    // Never verify the output since hidden API flags may cause the dex file verifier to fail.
-    // See b/74063493
-    options.verify_output_ = false;
     // Add a filter to only include the class that has the matching descriptor.
     static constexpr bool kFilterByDescriptor = true;
     if (kFilterByDescriptor) {
