@@ -1650,12 +1650,38 @@ size_t ConcurrentCopying::ProcessThreadLocalMarkStacks(bool disable_weak_ref_acc
 
 inline void ConcurrentCopying::ProcessMarkStackRef(mirror::Object* to_ref) {
   DCHECK(!region_space_->IsInFromSpace(to_ref));
-  if (kUseBakerReadBarrier) {
-    DCHECK(to_ref->GetReadBarrierState() == ReadBarrier::GrayState())
-        << " " << to_ref << " " << to_ref->GetReadBarrierState()
-        << " is_marked=" << IsMarked(to_ref);
-  }
   space::RegionSpace::RegionType rtype = region_space_->GetRegionType(to_ref);
+  auto find_space_from_ref = [this] (mirror::Object* ref)
+      REQUIRES_SHARED(Locks::mutator_lock_) -> space::Space* {
+    for (const auto& space : heap_->GetContinuousSpaces()) {
+      if (space->Contains(ref)) {
+        return space;
+      }
+    }
+    for (const auto& space : heap_->GetDiscontinuousSpaces()) {
+      if (space->Contains(ref)) {
+        return space;
+      }
+    }
+    return nullptr;
+  };
+  if (kUseBakerReadBarrier &&
+      kIsDebugBuild &&
+      to_ref->GetReadBarrierState() != ReadBarrier::GrayState()) {
+        space::Space* space = find_space_from_ref(to_ref);
+        LOG(FATAL_WITHOUT_ABORT) << " " << to_ref
+                                 << " " << to_ref->GetReadBarrierState()
+                                 << " is_marked=" << IsMarked(to_ref)
+                                 << " type=" << to_ref->PrettyTypeOf()
+                                 << " is_young_gc=" << young_gen_;
+        if (space == region_space_) {
+          LOG(FATAL) << " region_type=" << rtype;
+        } else if (space != nullptr) {
+          LOG(FATAL) << " space=" << space->GetName();
+        } else {
+          LOG(FATAL) << "no space";
+        }
+  }
   bool add_to_live_bytes = false;
   // Invariant: There should be no object from a newly-allocated
   // region (either large or non-large) on the mark stack.
@@ -1690,10 +1716,22 @@ inline void ConcurrentCopying::ProcessMarkStackRef(mirror::Object* to_ref) {
       Scan<false>(to_ref);
     }
   }
-  if (kUseBakerReadBarrier) {
-    DCHECK(to_ref->GetReadBarrierState() == ReadBarrier::GrayState())
-        << " " << to_ref << " " << to_ref->GetReadBarrierState()
-        << " is_marked=" << IsMarked(to_ref);
+  if (kUseBakerReadBarrier &&
+      kIsDebugBuild &&
+      to_ref->GetReadBarrierState() != ReadBarrier::GrayState()) {
+        space::Space* space = find_space_from_ref(to_ref);
+        LOG(FATAL_WITHOUT_ABORT) << " " << to_ref
+                                 << " " << to_ref->GetReadBarrierState()
+                                 << " is_marked=" << IsMarked(to_ref)
+                                 << " type=" << to_ref->PrettyTypeOf()
+                                 << " is_young_gc=" << young_gen_;
+        if (space == region_space_) {
+          LOG(FATAL) << " region_type=" << rtype;
+        } else if (space != nullptr) {
+          LOG(FATAL) << " space=" << space->GetName();
+        } else {
+          LOG(FATAL) << "no space";
+        }
   }
 #ifdef USE_BAKER_OR_BROOKS_READ_BARRIER
   mirror::Object* referent = nullptr;
