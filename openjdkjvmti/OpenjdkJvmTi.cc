@@ -29,6 +29,7 @@
  * questions.
  */
 
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -1492,7 +1493,7 @@ ArtJvmTiEnv::ArtJvmTiEnv(art::JavaVMExt* runtime, EventHandler* event_handler, j
       capabilities(),
       event_info_mutex_("jvmtiEnv_EventInfoMutex"),
       last_error_mutex_("jvmtiEnv_LastErrorMutex", art::LockLevel::kGenericBottomLock) {
-  object_tag_table = std::unique_ptr<ObjectTagTable>(new ObjectTagTable(event_handler, this));
+  object_tag_table = std::make_unique<ObjectTagTable>(event_handler, this);
   functions = &gJvmtiInterface;
 }
 
