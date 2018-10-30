@@ -27,6 +27,7 @@
 #include "interpreter_common.h"
 #include "jit/jit.h"
 #include "jvalue-inl.h"
+#include "mirror/string-alloc-inl.h"
 #include "nth_caller_visitor.h"
 #include "safe_math.h"
 #include "shadow_frame-inl.h"

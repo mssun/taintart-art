@@ -25,7 +25,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
-#include "mirror/string-inl.h"
+#include "mirror/string-alloc-inl.h"
 
 namespace art {
 
