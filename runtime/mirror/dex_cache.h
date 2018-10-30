@@ -217,6 +217,10 @@ class MANAGED DexCache final : public Object {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, strings_);
   }
 
+  static constexpr MemberOffset PreResolvedStringsOffset() {
+    return OFFSET_OF_OBJECT_MEMBER(DexCache, preresolved_strings_);
+  }
+
   static constexpr MemberOffset ResolvedTypesOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, resolved_types_);
   }
@@ -241,6 +245,10 @@ class MANAGED DexCache final : public Object {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_strings_);
   }
 
+  static constexpr MemberOffset NumPreResolvedStringsOffset() {
+    return OFFSET_OF_OBJECT_MEMBER(DexCache, num_preresolved_strings_);
+  }
+
   static constexpr MemberOffset NumResolvedTypesOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_resolved_types_);
   }
@@ -261,11 +269,19 @@ class MANAGED DexCache final : public Object {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, num_resolved_call_sites_);
   }
 
+  static constexpr size_t PreResolvedStringsAlignment() {
+    return alignof(GcRoot<mirror::String>);
+  }
+
   String* GetResolvedString(dex::StringIndex string_idx) ALWAYS_INLINE
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void SetResolvedString(dex::StringIndex string_idx, ObjPtr<mirror::String> resolved) ALWAYS_INLINE
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  void SetPreResolvedString(dex::StringIndex string_idx,
+                            ObjPtr<mirror::String> resolved)
+      ALWAYS_INLINE REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Clear a string for a string_idx, used to undo string intern transactions to make sure
   // the string isn't kept live.
@@ -318,8 +334,19 @@ class MANAGED DexCache final : public Object {
     return GetFieldPtr64<StringDexCacheType*, kVerifyFlags>(StringsOffset());
   }
 
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
+  GcRoot<mirror::String>* GetPreResolvedStrings() ALWAYS_INLINE
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    return GetFieldPtr64<GcRoot<mirror::String>*, kVerifyFlags>(PreResolvedStringsOffset());
+  }
+
   void SetStrings(StringDexCacheType* strings) ALWAYS_INLINE REQUIRES_SHARED(Locks::mutator_lock_) {
     SetFieldPtr<false>(StringsOffset(), strings);
+  }
+
+  void SetPreResolvedStrings(GcRoot<mirror::String>* strings)
+      ALWAYS_INLINE REQUIRES_SHARED(Locks::mutator_lock_) {
+    SetFieldPtr<false>(PreResolvedStringsOffset(), strings);
   }
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
@@ -384,6 +411,11 @@ class MANAGED DexCache final : public Object {
   }
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
+  size_t NumPreResolvedStrings() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return GetField32<kVerifyFlags>(NumPreResolvedStringsOffset());
+  }
+
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   size_t NumResolvedTypes() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetField32<kVerifyFlags>(NumResolvedTypesOffset());
   }
@@ -429,11 +461,17 @@ class MANAGED DexCache final : public Object {
                                    NativeDexCachePair<T> pair,
                                    PointerSize ptr_size);
 
+  static size_t PreResolvedStringsSize(size_t num_strings) {
+    return sizeof(GcRoot<mirror::String>) * num_strings;
+  }
+
   uint32_t StringSlotIndex(dex::StringIndex string_idx) REQUIRES_SHARED(Locks::mutator_lock_);
   uint32_t TypeSlotIndex(dex::TypeIndex type_idx) REQUIRES_SHARED(Locks::mutator_lock_);
   uint32_t FieldSlotIndex(uint32_t field_idx) REQUIRES_SHARED(Locks::mutator_lock_);
   uint32_t MethodSlotIndex(uint32_t method_idx) REQUIRES_SHARED(Locks::mutator_lock_);
   uint32_t MethodTypeSlotIndex(dex::ProtoIndex proto_idx) REQUIRES_SHARED(Locks::mutator_lock_);
+
+  void AddPreResolvedStringsArray() REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   void Init(const DexFile* dex_file,
@@ -516,22 +554,25 @@ class MANAGED DexCache final : public Object {
 #endif
 
   HeapReference<String> location_;
-  // Number of elements in the call_sites_ array. Note that this appears here
-  // because of our packing logic for 32 bit fields.
-  uint32_t num_resolved_call_sites_;
+  // Number of elements in the preresolved_strings_ array. Note that this appears here because of
+  // our packing logic for 32 bit fields.
+  uint32_t num_preresolved_strings_;
 
-  uint64_t dex_file_;               // const DexFile*
-  uint64_t resolved_call_sites_;    // GcRoot<CallSite>* array with num_resolved_call_sites_
-                                    // elements.
-  uint64_t resolved_fields_;        // std::atomic<FieldDexCachePair>*, array with
-                                    // num_resolved_fields_ elements.
-  uint64_t resolved_method_types_;  // std::atomic<MethodTypeDexCachePair>* array with
-                                    // num_resolved_method_types_ elements.
-  uint64_t resolved_methods_;       // ArtMethod*, array with num_resolved_methods_ elements.
-  uint64_t resolved_types_;         // TypeDexCacheType*, array with num_resolved_types_ elements.
-  uint64_t strings_;                // std::atomic<StringDexCachePair>*, array with num_strings_
-                                    // elements.
+  uint64_t dex_file_;                // const DexFile*
+  uint64_t preresolved_strings_;     // GcRoot<mirror::String*> array with num_preresolved_strings
+                                     // elements.
+  uint64_t resolved_call_sites_;     // GcRoot<CallSite>* array with num_resolved_call_sites_
+                                     // elements.
+  uint64_t resolved_fields_;         // std::atomic<FieldDexCachePair>*, array with
+                                     // num_resolved_fields_ elements.
+  uint64_t resolved_method_types_;   // std::atomic<MethodTypeDexCachePair>* array with
+                                     // num_resolved_method_types_ elements.
+  uint64_t resolved_methods_;        // ArtMethod*, array with num_resolved_methods_ elements.
+  uint64_t resolved_types_;          // TypeDexCacheType*, array with num_resolved_types_ elements.
+  uint64_t strings_;                 // std::atomic<StringDexCachePair>*, array with num_strings_
+                                     // elements.
 
+  uint32_t num_resolved_call_sites_;    // Number of elements in the call_sites_ array.
   uint32_t num_resolved_fields_;        // Number of elements in the resolved_fields_ array.
   uint32_t num_resolved_method_types_;  // Number of elements in the resolved_method_types_ array.
   uint32_t num_resolved_methods_;       // Number of elements in the resolved_methods_ array.

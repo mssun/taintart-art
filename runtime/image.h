@@ -236,6 +236,7 @@ class PACKED(4) ImageHeader {
     kSectionInternedStrings,
     kSectionClassTable,
     kSectionStringReferenceOffsets,
+    kSectionMetadata,
     kSectionImageBitmap,
     kSectionCount,  // Number of elements in enum.
   };
@@ -291,6 +292,10 @@ class PACKED(4) ImageHeader {
 
   const ImageSection& GetImageStringReferenceOffsetsSection() const {
     return GetImageSection(kSectionStringReferenceOffsets);
+  }
+
+  const ImageSection& GetMetadataSection() const {
+    return GetImageSection(kSectionMetadata);
   }
 
   const ImageSection& GetImageBitmapSection() const {
@@ -462,10 +467,21 @@ typedef std::pair<uint32_t, uint32_t> AppImageReferenceOffsetInfo;
  * to managed objects and pointers to native reference arrays.
  */
 template<typename T>
-T SetDexCacheNativeRefTag(T val) {
+T SetDexCacheStringNativeRefTag(T val) {
   static_assert(std::is_integral<T>::value, "Expected integral type.");
 
   return val | 1u;
+}
+
+/*
+ * Tags the second last bit.  Used by AppImage logic to differentiate between pointers
+ * to managed objects and pointers to native reference arrays.
+ */
+template<typename T>
+T SetDexCachePreResolvedStringNativeRefTag(T val) {
+  static_assert(std::is_integral<T>::value, "Expected integral type.");
+
+  return val | 2u;
 }
 
 /*
@@ -474,10 +490,22 @@ T SetDexCacheNativeRefTag(T val) {
  * reference arrays.
  */
 template<typename T>
-bool HasDexCacheNativeRefTag(T val) {
+bool HasDexCacheStringNativeRefTag(T val) {
   static_assert(std::is_integral<T>::value, "Expected integral type.");
 
-  return (val & 1u) == 1u;
+  return (val & 1u) != 0u;
+}
+
+/*
+ * Retrieves the value of the second last bit.  Used by AppImage logic to
+ * differentiate between pointers to managed objects and pointers to native
+ * reference arrays.
+ */
+template<typename T>
+bool HasDexCachePreResolvedStringNativeRefTag(T val) {
+  static_assert(std::is_integral<T>::value, "Expected integral type.");
+
+  return (val & 2u) != 0u;
 }
 
 /*
@@ -486,10 +514,10 @@ bool HasDexCacheNativeRefTag(T val) {
  * reference arrays.
  */
 template<typename T>
-T ClearDexCacheNativeRefTag(T val) {
+T ClearDexCacheNativeRefTags(T val) {
   static_assert(std::is_integral<T>::value, "Expected integral type.");
 
-  return val & ~1u;
+  return val & ~3u;
 }
 
 std::ostream& operator<<(std::ostream& os, const ImageHeader::ImageMethod& policy);

@@ -84,6 +84,15 @@ inline uint32_t DexCache::StringSlotIndex(dex::StringIndex string_idx) {
 }
 
 inline String* DexCache::GetResolvedString(dex::StringIndex string_idx) {
+  const uint32_t num_preresolved_strings = NumPreResolvedStrings();
+  if (num_preresolved_strings != 0u) {
+    DCHECK_LT(string_idx.index_, num_preresolved_strings);
+    DCHECK_EQ(num_preresolved_strings, GetDexFile()->NumStringIds());
+    mirror::String* string = GetPreResolvedStrings()[string_idx.index_].Read();
+    if (LIKELY(string != nullptr)) {
+      return string;
+    }
+  }
   return GetStrings()[StringSlotIndex(string_idx)].load(
       std::memory_order_relaxed).GetObjectForIndex(string_idx.index_);
 }
@@ -97,6 +106,18 @@ inline void DexCache::SetResolvedString(dex::StringIndex string_idx, ObjPtr<Stri
     DCHECK(runtime->IsAotCompiler());
     runtime->RecordResolveString(this, string_idx);
   }
+  // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
+  WriteBarrier::ForEveryFieldWrite(this);
+}
+
+inline void DexCache::SetPreResolvedString(dex::StringIndex string_idx,
+                                           ObjPtr<String> resolved) {
+  DCHECK(resolved != nullptr);
+  DCHECK_LT(string_idx.index_, GetDexFile()->NumStringIds());
+  GetPreResolvedStrings()[string_idx.index_] = GcRoot<mirror::String>(resolved);
+  Runtime* const runtime = Runtime::Current();
+  CHECK(runtime->IsAotCompiler());
+  CHECK(!runtime->IsActiveTransaction());
   // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
   WriteBarrier::ForEveryFieldWrite(this);
 }
@@ -343,6 +364,12 @@ inline void DexCache::VisitReferences(ObjPtr<Class> klass, const Visitor& visito
     size_t num_call_sites = NumResolvedCallSites<kVerifyFlags>();
     for (size_t i = 0; i != num_call_sites; ++i) {
       visitor.VisitRootIfNonNull(resolved_call_sites[i].AddressWithoutBarrier());
+    }
+
+    GcRoot<mirror::String>* const preresolved_strings = GetPreResolvedStrings();
+    const size_t num_preresolved_strings = NumPreResolvedStrings();
+    for (size_t i = 0; i != num_preresolved_strings; ++i) {
+      visitor.VisitRootIfNonNull(preresolved_strings[i].AddressWithoutBarrier());
     }
   }
 }

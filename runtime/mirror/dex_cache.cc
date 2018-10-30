@@ -172,6 +172,21 @@ void DexCache::InitializeDexCache(Thread* self,
                   dex_file->NumCallSiteIds());
 }
 
+void DexCache::AddPreResolvedStringsArray() {
+  DCHECK_EQ(NumPreResolvedStrings(), 0u);
+  Thread* const self = Thread::Current();
+  LinearAlloc* linear_alloc = Runtime::Current()->GetLinearAlloc();
+  const size_t num_strings = GetDexFile()->NumStringIds();
+  SetField32<false>(NumPreResolvedStringsOffset(), num_strings);
+  GcRoot<mirror::String>* strings =
+      linear_alloc->AllocArray<GcRoot<mirror::String>>(self, num_strings);
+  CHECK(strings != nullptr);
+  SetPreResolvedStrings(strings);
+  for (size_t i = 0; i < GetDexFile()->NumStringIds(); ++i) {
+    CHECK(GetPreResolvedStrings()[i].Read() == nullptr);
+  }
+}
+
 void DexCache::Init(const DexFile* dex_file,
                     ObjPtr<String> location,
                     StringDexCacheType* strings,

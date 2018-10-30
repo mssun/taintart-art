@@ -662,12 +662,14 @@ struct DexCacheOffsets : public CheckOffsets<mirror::DexCache> {
   DexCacheOffsets() : CheckOffsets<mirror::DexCache>(false, "Ljava/lang/DexCache;") {
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, dex_file_), "dexFile");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, location_), "location");
+    addOffset(OFFSETOF_MEMBER(mirror::DexCache, num_preresolved_strings_), "numPreResolvedStrings");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, num_resolved_call_sites_), "numResolvedCallSites");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, num_resolved_fields_), "numResolvedFields");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, num_resolved_method_types_), "numResolvedMethodTypes");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, num_resolved_methods_), "numResolvedMethods");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, num_resolved_types_), "numResolvedTypes");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, num_strings_), "numStrings");
+    addOffset(OFFSETOF_MEMBER(mirror::DexCache, preresolved_strings_), "preResolvedStrings");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, resolved_call_sites_), "resolvedCallSites");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, resolved_fields_), "resolvedFields");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, resolved_method_types_), "resolvedMethodTypes");

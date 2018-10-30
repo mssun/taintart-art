@@ -1170,6 +1170,19 @@ class ImageSpace::Loader {
           }
           dex_cache->FixupResolvedCallSites<kWithoutReadBarrier>(new_call_sites, fixup_adapter);
         }
+
+        GcRoot<mirror::String>* preresolved_strings = dex_cache->GetPreResolvedStrings();
+        if (preresolved_strings != nullptr) {
+          GcRoot<mirror::String>* new_array = fixup_adapter.ForwardObject(preresolved_strings);
+          if (preresolved_strings != new_array) {
+            dex_cache->SetPreResolvedStrings(new_array);
+          }
+          const size_t num_preresolved_strings = dex_cache->NumPreResolvedStrings();
+          for (size_t j = 0; j < num_preresolved_strings; ++j) {
+            new_array[j] = GcRoot<mirror::String>(
+                fixup_adapter(new_array[j].Read<kWithoutReadBarrier>()));
+          }
+        }
       }
     }
     {
@@ -1729,6 +1742,10 @@ class ImageSpace::BootImageLoader {
           dex_cache,
           mirror::DexCache::ResolvedCallSitesOffset(),
           dex_cache->NumResolvedCallSites<kVerifyNone>());
+      FixupDexCacheArray<GcRoot<mirror::String>>(
+          dex_cache,
+          mirror::DexCache::PreResolvedStringsOffset(),
+          dex_cache->NumPreResolvedStrings<kVerifyNone>());
     }
 
    private:
@@ -1769,6 +1786,11 @@ class ImageSpace::BootImageLoader {
     }
 
     void FixupDexCacheArrayEntry(GcRoot<mirror::CallSite>* array, uint32_t index)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      PatchGcRoot(diff_, &array[index]);
+    }
+
+    void FixupDexCacheArrayEntry(GcRoot<mirror::String>* array, uint32_t index)
         REQUIRES_SHARED(Locks::mutator_lock_) {
       PatchGcRoot(diff_, &array[index]);
     }
