@@ -375,6 +375,17 @@ class ShadowFrame {
     UpdateFrameFlag(enable, FrameFlags::kForceRetryInst);
   }
 
+  void CheckConsistentVRegs() const {
+    if (kIsDebugBuild) {
+      // A shadow frame visible to GC requires the following rule: for a given vreg,
+      // its vreg reference equivalent should be the same, or null.
+      for (uint32_t i = 0; i < NumberOfVRegs(); ++i) {
+        int32_t reference_value = References()[i].AsVRegValue();
+        CHECK((GetVReg(i) == reference_value) || (reference_value == 0));
+      }
+    }
+  }
+
  private:
   ShadowFrame(uint32_t num_vregs, ShadowFrame* link, ArtMethod* method,
               uint32_t dex_pc, bool has_reference_array)
