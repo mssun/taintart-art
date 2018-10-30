@@ -887,6 +887,7 @@ class DumpMapsOnFailListener : public testing::EmptyTestEventListener {
 
       // TODO: Could consider logging on EXPECT failures.
       case testing::TestPartResult::kNonFatalFailure:
+      case testing::TestPartResult::kSkip:
       case testing::TestPartResult::kSuccess:
         break;
     }
