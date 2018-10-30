@@ -222,6 +222,17 @@ static char* CreateAccessFlagStr(uint32_t flags, AccessFor for_what) {
   return str;
 }
 
+static const char* GetHiddenapiFlagStr(uint32_t hiddenapi_flags) {
+  static const char* const kValue[] = {
+    "WHITELIST",             /* 0x0 */
+    "LIGHT_GREYLIST",        /* 0x1 */
+    "DARK_GREYLIST",         /* 0x2 */
+    "BLACKLIST",             /* 0x3 */
+  };
+  DCHECK_LT(hiddenapi_flags, arraysize(kValue));
+  return kValue[hiddenapi_flags];
+}
+
 static std::string GetSignatureForProtoId(const dex_ir::ProtoId* proto) {
   if (proto == nullptr) {
     return "<no signature>";
@@ -1147,7 +1158,11 @@ void DexLayout::DumpCode(uint32_t idx,
 /*
  * Dumps a method.
  */
-void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem* code, int i) {
+void DexLayout::DumpMethod(uint32_t idx,
+                           uint32_t flags,
+                           uint32_t hiddenapi_flags,
+                           const dex_ir::CodeItem* code,
+                           int i) {
   // Bail for anything private if export only requested.
   if (options_.exports_only_ && (flags & (kAccPublic | kAccProtected)) == 0) {
     return;
@@ -1158,12 +1173,16 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
   char* type_descriptor = strdup(GetSignatureForProtoId(method_id->Proto()).c_str());
   const char* back_descriptor = method_id->Class()->GetStringId()->Data();
   char* access_str = CreateAccessFlagStr(flags, kAccessForMethod);
+  const char* hiddenapi_str = GetHiddenapiFlagStr(hiddenapi_flags);
 
   if (options_.output_format_ == kOutputPlain) {
     fprintf(out_file_, "    #%d              : (in %s)\n", i, back_descriptor);
     fprintf(out_file_, "      name          : '%s'\n", name);
     fprintf(out_file_, "      type          : '%s'\n", type_descriptor);
     fprintf(out_file_, "      access        : 0x%04x (%s)\n", flags, access_str);
+    if (hiddenapi_flags != 0u) {
+      fprintf(out_file_, "      hiddenapi     : 0x%04x (%s)\n", hiddenapi_flags, hiddenapi_str);
+    }
     if (code == nullptr) {
       fprintf(out_file_, "      code          : (none)\n");
     } else {
@@ -1257,7 +1276,11 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
 /*
  * Dumps a static (class) field.
  */
-void DexLayout::DumpSField(uint32_t idx, uint32_t flags, int i, dex_ir::EncodedValue* init) {
+void DexLayout::DumpSField(uint32_t idx,
+                           uint32_t flags,
+                           uint32_t hiddenapi_flags,
+                           int i,
+                           dex_ir::EncodedValue* init) {
   // Bail for anything private if export only requested.
   if (options_.exports_only_ && (flags & (kAccPublic | kAccProtected)) == 0) {
     return;
@@ -1268,12 +1291,16 @@ void DexLayout::DumpSField(uint32_t idx, uint32_t flags, int i, dex_ir::EncodedV
   const char* type_descriptor = field_id->Type()->GetStringId()->Data();
   const char* back_descriptor = field_id->Class()->GetStringId()->Data();
   char* access_str = CreateAccessFlagStr(flags, kAccessForField);
+  const char* hiddenapi_str = GetHiddenapiFlagStr(hiddenapi_flags);
 
   if (options_.output_format_ == kOutputPlain) {
     fprintf(out_file_, "    #%d              : (in %s)\n", i, back_descriptor);
     fprintf(out_file_, "      name          : '%s'\n", name);
     fprintf(out_file_, "      type          : '%s'\n", type_descriptor);
     fprintf(out_file_, "      access        : 0x%04x (%s)\n", flags, access_str);
+    if (hiddenapi_flags != 0u) {
+      fprintf(out_file_, "      hiddenapi     : 0x%04x (%s)\n", hiddenapi_flags, hiddenapi_str);
+    }
     if (init != nullptr) {
       fputs("      value         : ", out_file_);
       DumpEncodedValue(init);
@@ -1304,8 +1331,11 @@ void DexLayout::DumpSField(uint32_t idx, uint32_t flags, int i, dex_ir::EncodedV
 /*
  * Dumps an instance field.
  */
-void DexLayout::DumpIField(uint32_t idx, uint32_t flags, int i) {
-  DumpSField(idx, flags, i, nullptr);
+void DexLayout::DumpIField(uint32_t idx,
+                           uint32_t flags,
+                           uint32_t hiddenapi_flags,
+                           int i) {
+  DumpSField(idx, flags, hiddenapi_flags, i, nullptr);
 }
 
 /*
@@ -1431,6 +1461,7 @@ void DexLayout::DumpClass(int idx, char** last_package) {
       for (uint32_t i = 0; i < static_fields->size(); i++) {
         DumpSField((*static_fields)[i].GetFieldId()->GetIndex(),
                    (*static_fields)[i].GetAccessFlags(),
+                   dex_ir::HiddenapiClassData::GetFlags(header_, class_def, &(*static_fields)[i]),
                    i,
                    i < encoded_values_size ? (*encoded_values)[i].get() : nullptr);
       }  // for
@@ -1447,6 +1478,7 @@ void DexLayout::DumpClass(int idx, char** last_package) {
       for (uint32_t i = 0; i < instance_fields->size(); i++) {
         DumpIField((*instance_fields)[i].GetFieldId()->GetIndex(),
                    (*instance_fields)[i].GetAccessFlags(),
+                   dex_ir::HiddenapiClassData::GetFlags(header_, class_def, &(*instance_fields)[i]),
                    i);
       }  // for
     }
@@ -1462,8 +1494,9 @@ void DexLayout::DumpClass(int idx, char** last_package) {
       for (uint32_t i = 0; i < direct_methods->size(); i++) {
         DumpMethod((*direct_methods)[i].GetMethodId()->GetIndex(),
                    (*direct_methods)[i].GetAccessFlags(),
+                   dex_ir::HiddenapiClassData::GetFlags(header_, class_def, &(*direct_methods)[i]),
                    (*direct_methods)[i].GetCodeItem(),
-                 i);
+                   i);
       }  // for
     }
   }
@@ -1478,6 +1511,7 @@ void DexLayout::DumpClass(int idx, char** last_package) {
       for (uint32_t i = 0; i < virtual_methods->size(); i++) {
         DumpMethod((*virtual_methods)[i].GetMethodId()->GetIndex(),
                    (*virtual_methods)[i].GetAccessFlags(),
+                   dex_ir::HiddenapiClassData::GetFlags(header_, class_def, &(*virtual_methods)[i]),
                    (*virtual_methods)[i].GetCodeItem(),
                    i);
       }  // for
