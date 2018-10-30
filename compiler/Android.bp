@@ -180,7 +180,6 @@ art_cc_defaults {
     shared_libs: [
         "libbase",
         "libcutils",  // for atrace.
-        "liblzma",
     ],
     include_dirs: ["art/disassembler"],
     header_libs: [
@@ -196,7 +195,6 @@ cc_defaults {
     static_libs: [
         "libbase",
         "libcutils",
-        "liblzma",
     ],
 }
 

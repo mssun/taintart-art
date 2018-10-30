@@ -29,14 +29,12 @@ art_cc_defaults {
     shared_libs: [
         "libbase",
     ],
-    static_libs: ["libz"],
 }
 
 cc_defaults {
     name: "libart-dexlayout_static_base_defaults",
     static_libs: [
         "libbase",
-        "libz",
     ],
 }
 
