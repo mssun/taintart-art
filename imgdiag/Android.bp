@@ -34,9 +34,6 @@ cc_defaults {
         android: {
             shared_libs: ["libcutils"],
         },
-        host: {
-            shared_libs: ["libziparchive"],
-        },
     },
     header_libs: [
         "art_cmdlineparser_headers",
