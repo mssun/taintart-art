@@ -719,6 +719,10 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
 
   for (const DexFile* dex_file : dex_files) {
     dex_cache.Assign(class_linker->FindDexCache(soa.Self(), *dex_file));
+    if (only_startup_strings) {
+      // When resolving startup strings, create the preresolved strings array.
+      dex_cache->AddPreResolvedStringsArray();
+    }
     TimingLogger::ScopedTiming t("Resolve const-string Strings", timings);
 
     for (ClassAccessor accessor : dex_file->GetClasses()) {
@@ -757,6 +761,10 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
                   : inst->VRegB_31c());
               ObjPtr<mirror::String> string = class_linker->ResolveString(string_index, dex_cache);
               CHECK(string != nullptr) << "Could not allocate a string when forcing determinism";
+              if (only_startup_strings) {
+                dex_cache->GetPreResolvedStrings()[string_index.index_] =
+                    GcRoot<mirror::String>(string);
+              }
               ++num_instructions;
               break;
             }

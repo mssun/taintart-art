@@ -151,6 +151,12 @@ class SpaceBitmap {
   void VisitMarkedRange(uintptr_t visit_begin, uintptr_t visit_end, Visitor&& visitor) const
       NO_THREAD_SAFETY_ANALYSIS;
 
+  // Visit all of the set bits in HeapBegin(), HeapLimit().
+  template <typename Visitor>
+  void VisitAllMarked(Visitor&& visitor) const {
+    VisitMarkedRange(HeapBegin(), HeapLimit(), visitor);
+  }
+
   // Visits set bits in address order.  The callback is not permitted to change the bitmap bits or
   // max during the traversal.
   template <typename Visitor>
