@@ -179,8 +179,8 @@ void HiddenApiFinder::Dump(std::ostream& os,
   // Dump methods from hidden APIs linked against.
   for (const std::pair<const std::string,
                        std::vector<MethodReference>>& pair : method_locations_) {
-    HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(pair.first);
-    stats->api_counts[api_list]++;
+    hiddenapi::ApiList api_list = hidden_api_.GetApiList(pair.first);
+    stats->api_counts[static_cast<unsigned>(api_list)]++;
     os << "#" << ++stats->count << ": Linking " << api_list << " " << pair.first << " use(s):";
     os << std::endl;
     HiddenApiFinder::DumpReferences(os, pair.second);
@@ -190,8 +190,8 @@ void HiddenApiFinder::Dump(std::ostream& os,
   // Dump fields from hidden APIs linked against.
   for (const std::pair<const std::string,
                        std::vector<MethodReference>>& pair : field_locations_) {
-    HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(pair.first);
-    stats->api_counts[api_list]++;
+    hiddenapi::ApiList api_list = hidden_api_.GetApiList(pair.first);
+    stats->api_counts[static_cast<unsigned>(api_list)]++;
     os << "#" << ++stats->count << ": Linking " << api_list << " " << pair.first << " use(s):";
     os << std::endl;
     HiddenApiFinder::DumpReferences(os, pair.second);
@@ -203,9 +203,9 @@ void HiddenApiFinder::Dump(std::ostream& os,
     for (const std::string& cls : classes_) {
       for (const std::string& name : strings_) {
         std::string full_name = cls + "->" + name;
-        HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
-        stats->api_counts[api_list]++;
-        if (api_list != HiddenApiAccessFlags::kNoList) {
+        hiddenapi::ApiList api_list = hidden_api_.GetApiList(full_name);
+        stats->api_counts[static_cast<unsigned>(api_list)]++;
+        if (api_list != hiddenapi::ApiList::kNoList) {
           stats->reflection_count++;
           os << "#" << ++stats->count << ": Reflection " << api_list << " " << full_name
              << " potential use(s):";

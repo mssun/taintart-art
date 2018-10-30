@@ -21,8 +21,6 @@
 #include "base/macros.h"
 #include "dex/modifiers.h"
 
-namespace art {
-
 /* This class is used for encoding and decoding access flags of class members
  * from the boot class path. These access flags might contain additional two bits
  * of information on whether the given class member should be hidden from apps
@@ -38,64 +36,65 @@ namespace art {
  * the ApiList enum values.
  *
  */
-class HiddenApiAccessFlags {
- public:
-  enum ApiList {
-    kWhitelist = 0,
-    kLightGreylist,
-    kDarkGreylist,
-    kBlacklist,
-    kNoList,
-  };
 
-  static ALWAYS_INLINE ApiList DecodeFromRuntime(uint32_t runtime_access_flags) {
-    // This is used in the fast path, only DCHECK here.
-    DCHECK_EQ(runtime_access_flags & kAccIntrinsic, 0u);
-    uint32_t int_value = (runtime_access_flags & kAccHiddenApiBits) >> kAccFlagsShift;
-    return static_cast<ApiList>(int_value);
-  }
+namespace art {
+namespace hiddenapi {
 
-  static ALWAYS_INLINE uint32_t EncodeForRuntime(uint32_t runtime_access_flags, ApiList value) {
-    CHECK_EQ(runtime_access_flags & kAccIntrinsic, 0u);
-
-    uint32_t hidden_api_flags = static_cast<uint32_t>(value) << kAccFlagsShift;
-    CHECK_EQ(hidden_api_flags & ~kAccHiddenApiBits, 0u);
-
-    runtime_access_flags &= ~kAccHiddenApiBits;
-    return runtime_access_flags | hidden_api_flags;
-  }
-
-  static ALWAYS_INLINE bool AreValidFlags(uint32_t flags) {
-    return flags <= static_cast<uint32_t>(kBlacklist);
-  }
-
- private:
-  static const int kAccFlagsShift = CTZ(kAccHiddenApiBits);
-  static_assert(IsPowerOfTwo((kAccHiddenApiBits >> kAccFlagsShift) + 1),
-                "kAccHiddenApiBits are not continuous");
+enum class ApiList {
+  kWhitelist = 0,
+  kLightGreylist,
+  kDarkGreylist,
+  kBlacklist,
+  kNoList,
 };
 
-inline std::ostream& operator<<(std::ostream& os, HiddenApiAccessFlags::ApiList value) {
+static const int kAccFlagsShift = CTZ(kAccHiddenApiBits);
+static_assert(IsPowerOfTwo((kAccHiddenApiBits >> kAccFlagsShift) + 1),
+              "kAccHiddenApiBits are not continuous");
+
+inline ApiList DecodeFromRuntime(uint32_t runtime_access_flags) {
+  // This is used in the fast path, only DCHECK here.
+  DCHECK_EQ(runtime_access_flags & kAccIntrinsic, 0u);
+  uint32_t int_value = (runtime_access_flags & kAccHiddenApiBits) >> kAccFlagsShift;
+  return static_cast<ApiList>(int_value);
+}
+
+inline uint32_t EncodeForRuntime(uint32_t runtime_access_flags, ApiList value) {
+  CHECK_EQ(runtime_access_flags & kAccIntrinsic, 0u);
+
+  uint32_t hidden_api_flags = static_cast<uint32_t>(value) << kAccFlagsShift;
+  CHECK_EQ(hidden_api_flags & ~kAccHiddenApiBits, 0u);
+
+  runtime_access_flags &= ~kAccHiddenApiBits;
+  return runtime_access_flags | hidden_api_flags;
+}
+
+inline bool AreValidFlags(uint32_t flags) {
+  return flags <= static_cast<uint32_t>(ApiList::kBlacklist);
+}
+
+inline std::ostream& operator<<(std::ostream& os, ApiList value) {
   switch (value) {
-    case HiddenApiAccessFlags::kWhitelist:
+    case ApiList::kWhitelist:
       os << "whitelist";
       break;
-    case HiddenApiAccessFlags::kLightGreylist:
+    case ApiList::kLightGreylist:
       os << "light greylist";
       break;
-    case HiddenApiAccessFlags::kDarkGreylist:
+    case ApiList::kDarkGreylist:
       os << "dark greylist";
       break;
-    case HiddenApiAccessFlags::kBlacklist:
+    case ApiList::kBlacklist:
       os << "blacklist";
       break;
-    case HiddenApiAccessFlags::kNoList:
+    case ApiList::kNoList:
       os << "no list";
       break;
   }
   return os;
 }
 
+}  // namespace hiddenapi
 }  // namespace art
 
 

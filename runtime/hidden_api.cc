@@ -60,14 +60,14 @@ static inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
   return os;
 }
 
-static constexpr bool EnumsEqual(EnforcementPolicy policy, HiddenApiAccessFlags::ApiList apiList) {
+static constexpr bool EnumsEqual(EnforcementPolicy policy, hiddenapi::ApiList apiList) {
   return static_cast<int>(policy) == static_cast<int>(apiList);
 }
 
 // GetMemberAction-related static_asserts.
 static_assert(
-    EnumsEqual(EnforcementPolicy::kDarkGreyAndBlackList, HiddenApiAccessFlags::kDarkGreylist) &&
-    EnumsEqual(EnforcementPolicy::kBlacklistOnly, HiddenApiAccessFlags::kBlacklist),
+    EnumsEqual(EnforcementPolicy::kDarkGreyAndBlackList, hiddenapi::ApiList::kDarkGreylist) &&
+    EnumsEqual(EnforcementPolicy::kBlacklistOnly, hiddenapi::ApiList::kBlacklist),
     "Mismatch between EnforcementPolicy and ApiList enums");
 static_assert(
     EnforcementPolicy::kJustWarn < EnforcementPolicy::kDarkGreyAndBlackList &&
@@ -133,8 +133,7 @@ void MemberSignature::Dump(std::ostream& os) const {
   }
 }
 
-void MemberSignature::WarnAboutAccess(AccessMethod access_method,
-                                      HiddenApiAccessFlags::ApiList list) {
+void MemberSignature::WarnAboutAccess(AccessMethod access_method, hiddenapi::ApiList list) {
   LOG(WARNING) << "Accessing hidden " << (type_ == kField ? "field " : "method ")
                << Dumpable<MemberSignature>(*this) << " (" << list << ", " << access_method << ")";
 }
@@ -200,14 +199,14 @@ template<typename T>
 static ALWAYS_INLINE void MaybeWhitelistMember(Runtime* runtime, T* member)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (CanUpdateMemberAccessFlags(member) && runtime->ShouldDedupeHiddenApiWarnings()) {
-    member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
-        member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
+    member->SetAccessFlags(hiddenapi::EncodeForRuntime(
+        member->GetAccessFlags(), hiddenapi::ApiList::kWhitelist));
   }
 }
 
 template<typename T>
 Action GetMemberActionImpl(T* member,
-                           HiddenApiAccessFlags::ApiList api_list,
+                           hiddenapi::ApiList api_list,
                            Action action,
                            AccessMethod access_method) {
   DCHECK_NE(action, kAllow);
@@ -276,11 +275,11 @@ Action GetMemberActionImpl(T* member,
 
 // Need to instantiate this.
 template Action GetMemberActionImpl<ArtField>(ArtField* member,
-                                              HiddenApiAccessFlags::ApiList api_list,
+                                              hiddenapi::ApiList api_list,
                                               Action action,
                                               AccessMethod access_method);
 template Action GetMemberActionImpl<ArtMethod>(ArtMethod* member,
-                                               HiddenApiAccessFlags::ApiList api_list,
+                                               hiddenapi::ApiList api_list,
                                                Action action,
                                                AccessMethod access_method);
 }  // namespace detail
