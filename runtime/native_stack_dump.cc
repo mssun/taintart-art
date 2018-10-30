@@ -16,6 +16,7 @@
 
 #include "native_stack_dump.h"
 
+#include <memory>
 #include <ostream>
 
 #include <stdio.h>
@@ -128,10 +129,10 @@ static std::unique_ptr<Addr2linePipe> Connect(const std::string& name, const cha
   } else {
     close(caller_to_addr2line[0]);
     close(addr2line_to_caller[1]);
-    return std::unique_ptr<Addr2linePipe>(new Addr2linePipe(addr2line_to_caller[0],
-                                                            caller_to_addr2line[1],
-                                                            name,
-                                                            pid));
+    return std::make_unique<Addr2linePipe>(addr2line_to_caller[0],
+                                           caller_to_addr2line[1],
+                                           name,
+                                           pid);
   }
 }
 

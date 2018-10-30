@@ -50,7 +50,7 @@ using Parser = CmdlineParser<SimpleParseArgumentMap, SimpleParseArgumentMapKey>;
 
 static inline Parser CreateSimpleParser(bool ignore_unrecognized) {
   std::unique_ptr<Parser::Builder> parser_builder =
-      std::unique_ptr<Parser::Builder>(new Parser::Builder());
+      std::make_unique<Parser::Builder>();
 
   AddCompilerOptionsArgumentParserOptions<SimpleParseArgumentMap>(*parser_builder);
 

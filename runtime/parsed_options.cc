@@ -16,6 +16,7 @@
 
 #include "parsed_options.h"
 
+#include <memory>
 #include <sstream>
 
 #include <android-base/logging.h>
@@ -67,7 +68,7 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
   using M = RuntimeArgumentMap;
 
   std::unique_ptr<RuntimeParser::Builder> parser_builder =
-      std::unique_ptr<RuntimeParser::Builder>(new RuntimeParser::Builder());
+      std::make_unique<RuntimeParser::Builder>();
 
   parser_builder->
        Define("-Xzygote")
@@ -346,7 +347,7 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
 
   // TODO: Move Usage information into this DSL.
 
-  return std::unique_ptr<RuntimeParser>(new RuntimeParser(parser_builder->Build()));
+  return std::make_unique<RuntimeParser>(parser_builder->Build());
 }
 
 #pragma GCC diagnostic pop
