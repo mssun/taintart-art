@@ -23,17 +23,27 @@ cc_defaults {
     ],
     target: {
         android: {
+            static_libs: [
+                // ZipArchive support, the order matters here to get all symbols.
+                "libziparchive",
+                "libz",
+            ],
 	    shared_libs: [
 	        // For android::FileMap used by libziparchive.
                 "libutils",
 	    ],
+        },
+        host: {
+            shared_libs: [
+                "libziparchive",
+                "libz",
+            ],
         },
     },
     //generated_sources: ["art_libartbase_operator_srcs"],
     cflags: ["-DBUILDING_LIBART=1"],
     shared_libs: [
         "libartbase",
-        "libbase",
         "libdexfile",
         "libartbase",
 	// For atrace.
@@ -52,6 +62,8 @@ cc_defaults {
         "libbase",
         "libcutils",
         "libutils",
+        "libz",
+        "libziparchive",
     ],
 }
 
@@ -85,7 +97,9 @@ art_cc_library {
     },
     shared_libs: [
         "libbase",
+        "libziparchive",
     ],
+    export_shared_lib_headers: ["libbase"],
 }
 
 art_cc_library {
@@ -96,7 +110,9 @@ art_cc_library {
     ],
     shared_libs: [
         "libbase",
+        "libziparchive",
     ],
+    export_shared_lib_headers: ["libbase"],
 }
 
 // For now many of these tests still use CommonRuntimeTest, almost universally because of
@@ -114,5 +130,6 @@ art_cc_test {
         "libartbased",
         "libdexfiled",
         "libartbased",
+        "libziparchive",
     ],
 }
