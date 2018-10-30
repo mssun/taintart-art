@@ -46,7 +46,7 @@ class BumpPointerSpace final : public ContinuousMemMapAllocSpace {
   // Create a bump pointer space with the requested sizes. The requested base address is not
   // guaranteed to be granted, if it is required, the caller should call Begin on the returned
   // space to confirm the request was granted.
-  static BumpPointerSpace* Create(const std::string& name, size_t capacity, uint8_t* requested_begin);
+  static BumpPointerSpace* Create(const std::string& name, size_t capacity);
   static BumpPointerSpace* CreateFromMemMap(const std::string& name, MemMap&& mem_map);
 
   // Allocate num_bytes, returns null if the space is full.

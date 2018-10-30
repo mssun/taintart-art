@@ -40,10 +40,9 @@ class ReadBarrierTable {
               static_cast<uint64_t>(static_cast<size_t>(kHeapCapacity / kRegionSize)));
     std::string error_msg;
     mem_map_ = MemMap::MapAnonymous("read barrier table",
-                                    /* addr= */ nullptr,
                                     capacity,
                                     PROT_READ | PROT_WRITE,
-                                    /* low_4gb= */ false,
+                                    /*low_4gb=*/ false,
                                     &error_msg);
     CHECK(mem_map_.IsValid() && mem_map_.Begin() != nullptr)
         << "couldn't allocate read barrier table: " << error_msg;

@@ -157,8 +157,7 @@ class MallocSpace : public ContinuousMemMapAllocSpace {
                              size_t starting_size,
                              size_t* initial_size,
                              size_t* growth_limit,
-                             size_t* capacity,
-                             uint8_t* requested_begin);
+                             size_t* capacity);
 
   // When true the low memory mode argument specifies that the heap wishes the created allocator to
   // be more aggressive in releasing unused pages.

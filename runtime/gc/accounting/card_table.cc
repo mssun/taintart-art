@@ -65,10 +65,9 @@ CardTable* CardTable::Create(const uint8_t* heap_begin, size_t heap_capacity) {
   /* Allocate an extra 256 bytes to allow fixed low-byte of base */
   std::string error_msg;
   MemMap mem_map = MemMap::MapAnonymous("card table",
-                                        /* addr= */ nullptr,
                                         capacity + 256,
                                         PROT_READ | PROT_WRITE,
-                                        /* low_4gb= */ false,
+                                        /*low_4gb=*/ false,
                                         &error_msg);
   CHECK(mem_map.IsValid()) << "couldn't allocate card table: " << error_msg;
   // All zeros is the correct initial value; all clean. Anonymous mmaps are initialized to zero, we

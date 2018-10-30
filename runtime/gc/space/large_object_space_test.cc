@@ -42,7 +42,7 @@ void LargeObjectSpaceTest::LargeObjectTest() {
     if (i == 0) {
       los = space::LargeObjectMapSpace::Create("large object space");
     } else {
-      los = space::FreeListSpace::Create("large object space", nullptr, capacity);
+      los = space::FreeListSpace::Create("large object space", capacity);
     }
 
     // Make sure the bitmap is not empty and actually covers at least how much we expect.
@@ -157,7 +157,7 @@ void LargeObjectSpaceTest::RaceTest() {
     if (los_type == 0) {
       los = space::LargeObjectMapSpace::Create("large object space");
     } else {
-      los = space::FreeListSpace::Create("large object space", nullptr, 128 * MB);
+      los = space::FreeListSpace::Create("large object space", 128 * MB);
     }
 
     Thread* self = Thread::Current();

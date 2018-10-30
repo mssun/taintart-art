@@ -175,10 +175,9 @@ static MemMap AllocateDexMemoryMap(JNIEnv* env, jint start, jint end) {
   std::string error_message;
   size_t length = static_cast<size_t>(end - start);
   MemMap dex_mem_map = MemMap::MapAnonymous("DEX data",
-                                            /* addr= */ nullptr,
                                             length,
                                             PROT_READ | PROT_WRITE,
-                                            /* low_4gb= */ false,
+                                            /*low_4gb=*/ false,
                                             &error_message);
   if (!dex_mem_map.IsValid()) {
     ScopedObjectAccess soa(env);
