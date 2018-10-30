@@ -209,6 +209,8 @@ class ImageWriter final {
     kIMTConflictTable,
     // Runtime methods (always clean, do not have a length prefix array).
     kRuntimeMethod,
+    // Metadata bin for data that is temporary during image lifetime.
+    kMetadata,
     // Dex cache arrays have a special slot for PC-relative addressing. Since they are
     // huge, and as such their dirtiness is not important for the clean/dirty separation,
     // we arbitrarily keep them at the end of the native data.
@@ -226,6 +228,7 @@ class ImageWriter final {
     kArtMethodArrayClean,
     kArtMethodDirty,
     kArtMethodArrayDirty,
+    kGcRootPointer,
     kRuntimeMethod,
     kIMTable,
     kIMTConflictTable,
