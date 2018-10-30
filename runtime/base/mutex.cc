@@ -447,7 +447,7 @@ void Mutex::ExclusiveLock(Thread* self) {
         if (UNLIKELY(should_respond_to_empty_checkpoint_request_)) {
           self->CheckEmptyCheckpointFromMutex();
         }
-        if (futex(state_.Address(), FUTEX_WAIT, 1, nullptr, nullptr, 0) != 0) {
+        if (futex(state_.Address(), FUTEX_WAIT_PRIVATE, 1, nullptr, nullptr, 0) != 0) {
           // EAGAIN and EINTR both indicate a spurious failure, try again from the beginning.
           // We don't use TEMP_FAILURE_RETRY so we can intentionally retry to acquire the lock.
           if ((errno != EAGAIN) && (errno != EINTR)) {
@@ -551,7 +551,7 @@ void Mutex::ExclusiveUnlock(Thread* self) {
         if (LIKELY(done)) {  // Spurious fail?
           // Wake a contender.
           if (UNLIKELY(num_contenders_.load(std::memory_order_seq_cst) > 0)) {
-            futex(state_.Address(), FUTEX_WAKE, 1, nullptr, nullptr, 0);
+            futex(state_.Address(), FUTEX_WAKE_PRIVATE, 1, nullptr, nullptr, 0);
           }
         }
       } else {
@@ -594,7 +594,7 @@ void Mutex::WakeupToRespondToEmptyCheckpoint() {
   // Wake up all the waiters so they will respond to the emtpy checkpoint.
   DCHECK(should_respond_to_empty_checkpoint_request_);
   if (UNLIKELY(num_contenders_.load(std::memory_order_relaxed) > 0)) {
-    futex(state_.Address(), FUTEX_WAKE, -1, nullptr, nullptr, 0);
+    futex(state_.Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
   }
 #else
   LOG(FATAL) << "Non futex case isn't supported.";
@@ -648,7 +648,7 @@ void ReaderWriterMutex::ExclusiveLock(Thread* self) {
       if (UNLIKELY(should_respond_to_empty_checkpoint_request_)) {
         self->CheckEmptyCheckpointFromMutex();
       }
-      if (futex(state_.Address(), FUTEX_WAIT, cur_state, nullptr, nullptr, 0) != 0) {
+      if (futex(state_.Address(), FUTEX_WAIT_PRIVATE, cur_state, nullptr, nullptr, 0) != 0) {
         // EAGAIN and EINTR both indicate a spurious failure, try again from the beginning.
         // We don't use TEMP_FAILURE_RETRY so we can intentionally retry to acquire the lock.
         if ((errno != EAGAIN) && (errno != EINTR)) {
@@ -689,7 +689,7 @@ void ReaderWriterMutex::ExclusiveUnlock(Thread* self) {
         // Wake any waiters.
         if (UNLIKELY(num_pending_readers_.load(std::memory_order_seq_cst) > 0 ||
                      num_pending_writers_.load(std::memory_order_seq_cst) > 0)) {
-          futex(state_.Address(), FUTEX_WAKE, -1, nullptr, nullptr, 0);
+          futex(state_.Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
         }
       }
     } else {
@@ -727,7 +727,7 @@ bool ReaderWriterMutex::ExclusiveLockWithTimeout(Thread* self, int64_t ms, int32
       if (UNLIKELY(should_respond_to_empty_checkpoint_request_)) {
         self->CheckEmptyCheckpointFromMutex();
       }
-      if (futex(state_.Address(), FUTEX_WAIT, cur_state, &rel_ts, nullptr, 0) != 0) {
+      if (futex(state_.Address(), FUTEX_WAIT_PRIVATE, cur_state, &rel_ts, nullptr, 0) != 0) {
         if (errno == ETIMEDOUT) {
           --num_pending_writers_;
           return false;  // Timed out.
@@ -768,7 +768,7 @@ void ReaderWriterMutex::HandleSharedLockContention(Thread* self, int32_t cur_sta
   if (UNLIKELY(should_respond_to_empty_checkpoint_request_)) {
     self->CheckEmptyCheckpointFromMutex();
   }
-  if (futex(state_.Address(), FUTEX_WAIT, cur_state, nullptr, nullptr, 0) != 0) {
+  if (futex(state_.Address(), FUTEX_WAIT_PRIVATE, cur_state, nullptr, nullptr, 0) != 0) {
     if (errno != EAGAIN && errno != EINTR) {
       PLOG(FATAL) << "futex wait failed for " << name_;
     }
@@ -846,7 +846,7 @@ void ReaderWriterMutex::WakeupToRespondToEmptyCheckpoint() {
   DCHECK(should_respond_to_empty_checkpoint_request_);
   if (UNLIKELY(num_pending_readers_.load(std::memory_order_relaxed) > 0 ||
                num_pending_writers_.load(std::memory_order_relaxed) > 0)) {
-    futex(state_.Address(), FUTEX_WAKE, -1, nullptr, nullptr, 0);
+    futex(state_.Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
   }
 #else
   LOG(FATAL) << "Non futex case isn't supported.";
@@ -908,7 +908,7 @@ void ConditionVariable::RequeueWaiters(int32_t count) {
     // Move waiters from the condition variable's futex to the guard's futex,
     // so that they will be woken up when the mutex is released.
     bool done = futex(sequence_.Address(),
-                      FUTEX_REQUEUE,
+                      FUTEX_REQUEUE_PRIVATE,
                       /* Threads to wake */ 0,
                       /* Threads to requeue*/ reinterpret_cast<const timespec*>(count),
                       guard_.state_.Address(),
@@ -947,7 +947,7 @@ void ConditionVariable::WaitHoldingLocks(Thread* self) {
   guard_.recursion_count_ = 1;
   int32_t cur_sequence = sequence_.load(std::memory_order_relaxed);
   guard_.ExclusiveUnlock(self);
-  if (futex(sequence_.Address(), FUTEX_WAIT, cur_sequence, nullptr, nullptr, 0) != 0) {
+  if (futex(sequence_.Address(), FUTEX_WAIT_PRIVATE, cur_sequence, nullptr, nullptr, 0) != 0) {
     // Futex failed, check it is an expected error.
     // EAGAIN == EWOULDBLK, so we let the caller try again.
     // EINTR implies a signal was sent to this thread.
@@ -998,7 +998,7 @@ bool ConditionVariable::TimedWait(Thread* self, int64_t ms, int32_t ns) {
   guard_.recursion_count_ = 1;
   int32_t cur_sequence = sequence_.load(std::memory_order_relaxed);
   guard_.ExclusiveUnlock(self);
-  if (futex(sequence_.Address(), FUTEX_WAIT, cur_sequence, &rel_ts, nullptr, 0) != 0) {
+  if (futex(sequence_.Address(), FUTEX_WAIT_PRIVATE, cur_sequence, &rel_ts, nullptr, 0) != 0) {
     if (errno == ETIMEDOUT) {
       // Timed out we're done.
       timed_out = true;
