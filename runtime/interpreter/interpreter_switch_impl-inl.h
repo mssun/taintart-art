@@ -1749,15 +1749,15 @@ ATTRIBUTE_NO_SANITIZE_ADDRESS void ExecuteSwitchImplCpp(SwitchImplContext* ctx) 
       }
       case Instruction::INVOKE_VIRTUAL_QUICK: {
         PREAMBLE();
-        bool success = DoInvokeVirtualQuick<false>(
-            self, shadow_frame, inst, inst_data, &result_register);
+        bool success = DoInvoke<kVirtual, false, do_access_check, /*is_mterp=*/ false,
+            /*is_quick=*/ true>(self, shadow_frame, inst, inst_data, &result_register);
         POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE(!success);
         break;
       }
       case Instruction::INVOKE_VIRTUAL_RANGE_QUICK: {
         PREAMBLE();
-        bool success = DoInvokeVirtualQuick<true>(
-            self, shadow_frame, inst, inst_data, &result_register);
+        bool success = DoInvoke<kVirtual, true, do_access_check, /*is_mterp=*/ false,
+            /*is_quick=*/ true>(self, shadow_frame, inst, inst_data, &result_register);
         POSSIBLY_HANDLE_PENDING_EXCEPTION_ON_INVOKE(!success);
         break;
       }

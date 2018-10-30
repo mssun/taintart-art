@@ -321,25 +321,8 @@ extern "C" size_t MterpInvokeVirtualQuick(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  const uint32_t vregC = inst->VRegC_35c();
-  const uint32_t vtable_idx = inst->VRegB_35c();
-  ObjPtr<mirror::Object> const receiver = shadow_frame->GetVRegReference(vregC);
-  if (receiver != nullptr) {
-    ArtMethod* const called_method = receiver->GetClass()->GetEmbeddedVTableEntry(
-        vtable_idx, kRuntimePointerSize);
-    if ((called_method != nullptr) && called_method->IsIntrinsic()) {
-      if (MterpHandleIntrinsic(shadow_frame, called_method, inst, inst_data, result_register)) {
-        jit::Jit* jit = Runtime::Current()->GetJit();
-        if (jit != nullptr) {
-          jit->InvokeVirtualOrInterface(
-              receiver, shadow_frame->GetMethod(), shadow_frame->GetDexPC(), called_method);
-        }
-        return !self->IsExceptionPending();
-      }
-    }
-  }
-  return DoInvokeVirtualQuick<false>(
-      self, *shadow_frame, inst, inst_data, result_register);
+  return DoInvoke<kVirtual, /*is_range=*/ false, /*do_access_check=*/ false, /*is_mterp=*/ true,
+      /*is_quick=*/ true>(self, *shadow_frame, inst, inst_data, result_register);
 }
 
 extern "C" size_t MterpInvokeVirtualQuickRange(Thread* self,
@@ -349,8 +332,8 @@ extern "C" size_t MterpInvokeVirtualQuickRange(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  return DoInvokeVirtualQuick<true>(
-      self, *shadow_frame, inst, inst_data, result_register);
+  return DoInvoke<kVirtual, /*is_range=*/ true, /*do_access_check=*/ false, /*is_mterp=*/ true,
+      /*is_quick=*/ true>(self, *shadow_frame, inst, inst_data, result_register);
 }
 
 extern "C" void MterpThreadFenceForConstructor() {
