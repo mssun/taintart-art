@@ -1304,15 +1304,18 @@ bool HInstructionBuilder::IsInitialized(ScopedObjectAccess& soa, Handle<mirror::
     }
   }
 
-  // We can avoid the class initialization check for `cls` in static methods in the
-  // very same class. Instance methods of the same class can run on an escaped instance
+  // We can avoid the class initialization check for `cls` in static methods and constructors
+  // in the very same class; invoking a static method involves a class initialization check
+  // and so does the instance allocation that must be executed before invoking a constructor.
+  // Other instance methods of the same class can run on an escaped instance
   // of an erroneous class. Even a superclass may need to be checked as the subclass
   // can be completely initialized while the superclass is initializing and the subclass
   // remains initialized when the superclass initializer throws afterwards. b/62478025
   // Note: The HClinitCheck+HInvokeStaticOrDirect merging can still apply.
   ObjPtr<mirror::Class> outermost_cls = ResolveOutermostCompilingClass(soa);
-  bool is_static = (dex_compilation_unit_->GetAccessFlags() & kAccStatic) != 0u;
-  if (is_static && outermost_cls == cls.Get()) {
+  bool is_outer_static_or_constructor =
+      (outer_compilation_unit_->GetAccessFlags() & (kAccStatic | kAccConstructor)) != 0u;
+  if (is_outer_static_or_constructor && outermost_cls == cls.Get()) {
     return true;
   }
   // Remember if the compiled class is a subclass of `cls`. By the time this is used
@@ -1325,7 +1328,9 @@ bool HInstructionBuilder::IsInitialized(ScopedObjectAccess& soa, Handle<mirror::
     // TODO: We should walk over the entire inlined method chain, but we don't pass that
     // information to the builder.
     ObjPtr<mirror::Class> innermost_cls = ResolveCompilingClass(soa);
-    if (is_static && innermost_cls == cls.Get()) {
+    bool is_inner_static_or_constructor =
+        (dex_compilation_unit_->GetAccessFlags() & (kAccStatic | kAccConstructor)) != 0u;
+    if (is_inner_static_or_constructor && innermost_cls == cls.Get()) {
       return true;
     }
     is_subclass = is_subclass || IsSubClass(innermost_cls, cls.Get());
