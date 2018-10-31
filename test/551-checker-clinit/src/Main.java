@@ -57,7 +57,7 @@ class Sub extends Main {
   }
 
   /// CHECK-START: void Sub.invokeSubClass() builder (after)
-  /// CHECK:                            ClinitCheck
+  /// CHECK:                        ClinitCheck
   public void invokeSubClass() {
     int a = SubSub.foo;
   }
@@ -70,4 +70,24 @@ class SubSub {
     int a = Main.foo;
   }
   public static int foo = 42;
+}
+
+class NonTrivial {
+  public static int staticFoo = 42;
+  public int instanceFoo;
+
+  static {
+    System.out.println("NonTrivial.<clinit>");
+  }
+
+  /// CHECK-START: void NonTrivial.<init>() builder (after)
+  /// CHECK-NOT:                    ClinitCheck
+
+  /// CHECK-START: void NonTrivial.<init>() builder (after)
+  /// CHECK:                        StaticFieldGet
+  public NonTrivial() {
+    // ClinitCheck is eliminated because this is a constructor and therefore the
+    // corresponding new-instance in the caller must have performed the check.
+    instanceFoo = staticFoo;
+  }
 }
