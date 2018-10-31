@@ -1,6 +1,8 @@
 Bad.foo()
 Bad.instanceValue = 33
 Caught NoClassDefFoundError.
+Bad.bar()
+Caught NoClassDefFoundError.
 BadSuper.foo()
 BadSuper.superInstanceValue = 1
 Caught NoClassDefFoundError.
