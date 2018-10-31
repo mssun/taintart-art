@@ -200,7 +200,7 @@ TEST_F(MemMapTest, ReplaceMapping_MakeLarger) {
                                      5 * kPageSize,  // Need to make it larger
                                                      // initially so we know
                                                      // there won't be mappings
-                                                     // in the way we we move
+                                                     // in the way when we move
                                                      // source.
                                      PROT_READ,
                                      /*low_4gb=*/ false,
@@ -279,7 +279,7 @@ TEST_F(MemMapTest, ReplaceMapping_FailureOverlap) {
       MemMap::MapAnonymous(
           "MapAnonymousEmpty-atomic-replace-dest",
           3 * kPageSize,  // Need to make it larger initially so we know there won't be mappings in
-                          // the way we we move source.
+                          // the way when we move source.
           PROT_READ | PROT_WRITE,
           /*low_4gb=*/ false,
           &error_msg);
@@ -575,8 +575,8 @@ TEST_F(MemMapTest, MapAnonymousLow4GBRangeTooHigh) {
   CommonInit();
   std::string error_msg;
   MemMap map = MemMap::MapAnonymous("MapAnonymousLow4GBRangeTooHigh",
-                                    reinterpret_cast<uint8_t*>(0xF0000000),
-                                    0x20000000,
+                                    /*addr=*/ reinterpret_cast<uint8_t*>(0xF0000000),
+                                    /*byte_count=*/ 0x20000000,
                                     PROT_READ | PROT_WRITE,
                                     /*low_4gb=*/ true,
                                     /*reuse=*/ false,
@@ -591,15 +591,15 @@ TEST_F(MemMapTest, MapAnonymousReuse) {
   CommonInit();
   std::string error_msg;
   MemMap map = MemMap::MapAnonymous("MapAnonymousReserve",
-                                    0x20000,
+                                    /*byte_count=*/ 0x20000,
                                     PROT_READ | PROT_WRITE,
                                     /*low_4gb=*/ false,
                                     &error_msg);
   ASSERT_TRUE(map.IsValid());
   ASSERT_TRUE(error_msg.empty());
   MemMap map2 = MemMap::MapAnonymous("MapAnonymousReused",
-                                     reinterpret_cast<uint8_t*>(map.BaseBegin()),
-                                     0x10000,
+                                     /*addr=*/ reinterpret_cast<uint8_t*>(map.BaseBegin()),
+                                     /*byte_count=*/ 0x10000,
                                      PROT_READ | PROT_WRITE,
                                      /*low_4gb=*/ false,
                                      /*reuse=*/ true,
