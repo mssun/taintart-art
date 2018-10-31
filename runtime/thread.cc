@@ -44,7 +44,6 @@
 #include "arch/context.h"
 #include "art_field-inl.h"
 #include "art_method-inl.h"
-#include "base/atomic.h"
 #include "base/bit_utils.h"
 #include "base/casts.h"
 #include "base/file_utils.h"
@@ -286,115 +285,6 @@ void Thread::AssertHasDeoptimizationContext() {
       << "No deoptimization context for thread " << *this;
 }
 
-enum {
-  kPermitAvailable = 0,  // Incrementing consumes the permit
-  kNoPermit = 1,  // Incrementing marks as waiter waiting
-  kNoPermitWaiterWaiting = 2
-};
-
-void Thread::Park(bool is_absolute, int64_t time) {
-  DCHECK(this == Thread::Current());
-#if ART_USE_FUTEXES
-  // Consume the permit, or mark as waiting. This cannot cause park_state to go
-  // outside of its valid range (0, 1, 2), because in all cases where 2 is
-  // assigned it is set back to 1 before returning, and this method cannot run
-  // concurrently with itself since it operates on the current thread.
-  int old_state = tls32_.park_state_.fetch_add(1, std::memory_order_relaxed);
-  if (old_state == kNoPermit) {
-    // no permit was available. block thread until later.
-    // TODO: Call to signal jvmti here
-    int result = 0;
-    if (!is_absolute && time == 0) {
-      // Thread.getState() is documented to return waiting for untimed parks.
-      ScopedThreadSuspension sts(this, ThreadState::kWaiting);
-      DCHECK_EQ(NumberOfHeldMutexes(), 0u);
-      result = futex(tls32_.park_state_.Address(),
-                     FUTEX_WAIT_PRIVATE,
-                     /* sleep if val = */ kNoPermitWaiterWaiting,
-                     /* timeout */ nullptr,
-                     nullptr,
-                     0);
-    } else if (time > 0) {
-      // Only actually suspend and futex_wait if we're going to wait for some
-      // positive amount of time - the kernel will reject negative times with
-      // EINVAL, and a zero time will just noop.
-
-      // Thread.getState() is documented to return timed wait for timed parks.
-      ScopedThreadSuspension sts(this, ThreadState::kTimedWaiting);
-      DCHECK_EQ(NumberOfHeldMutexes(), 0u);
-      timespec timespec;
-      if (is_absolute) {
-        // Time is millis when scheduled for an absolute time
-        timespec.tv_nsec = (time % 1000) * 1000000;
-        timespec.tv_sec = time / 1000;
-        // This odd looking pattern is recommended by futex documentation to
-        // wait until an absolute deadline, with otherwise identical behavior to
-        // FUTEX_WAIT_PRIVATE. This also allows parkUntil() to return at the
-        // correct time when the system clock changes.
-        result = futex(tls32_.park_state_.Address(),
-                       FUTEX_WAIT_BITSET_PRIVATE | FUTEX_CLOCK_REALTIME,
-                       /* sleep if val = */ kNoPermitWaiterWaiting,
-                       &timespec,
-                       nullptr,
-                       FUTEX_BITSET_MATCH_ANY);
-      } else {
-        // Time is nanos when scheduled for a relative time
-        timespec.tv_sec = time / 1000000000;
-        timespec.tv_nsec = time % 1000000000;
-        result = futex(tls32_.park_state_.Address(),
-                       FUTEX_WAIT_PRIVATE,
-                       /* sleep if val = */ kNoPermitWaiterWaiting,
-                       &timespec,
-                       nullptr,
-                       0);
-      }
-    }
-    if (result == -1) {
-      switch (errno) {
-        case EAGAIN:
-        case ETIMEDOUT:
-        case EINTR: break;  // park() is allowed to spuriously return
-        default: PLOG(FATAL) << "Failed to park";
-      }
-    }
-    // Mark as no longer waiting, and consume permit if there is one.
-    tls32_.park_state_.store(kNoPermit, std::memory_order_relaxed);
-    // TODO: Call to signal jvmti here
-  } else {
-    // the fetch_add has consumed the permit. immediately return.
-    DCHECK_EQ(old_state, kPermitAvailable);
-  }
-#else
-  #pragma clang diagnostic push
-  #pragma clang diagnostic warning "-W#warnings"
-  #warning "LockSupport.park/unpark implemented as noops without FUTEX support."
-  #pragma clang diagnostic pop
-  UNIMPLEMENTED(WARNING);
-  sched_yield();
-#endif
-}
-
-void Thread::Unpark() {
-#if ART_USE_FUTEXES
-  // Set permit available; will be consumed either by fetch_add (when the thread
-  // tries to park) or store (when the parked thread is woken up)
-  if (tls32_.park_state_.exchange(kPermitAvailable, std::memory_order_relaxed)
-      == kNoPermitWaiterWaiting) {
-    int result = futex(tls32_.park_state_.Address(),
-                       FUTEX_WAKE_PRIVATE,
-                       /* number of waiters = */ 1,
-                       nullptr,
-                       nullptr,
-                       0);
-    if (result == -1) {
-      PLOG(FATAL) << "Failed to unpark";
-    }
-  }
-#else
-  UNIMPLEMENTED(WARNING);
-#endif
-}
-
 void Thread::PushStackedShadowFrame(ShadowFrame* sf, StackedShadowFrameType type) {
   StackedShadowFrameRecord* record = new StackedShadowFrameRecord(
       sf, type, tlsPtr_.stacked_shadow_frame_record);
@@ -599,22 +489,6 @@ void* Thread::CreateCallback(void* arg) {
 
     runtime->GetRuntimeCallbacks()->ThreadStart(self);
 
-    // Unpark ourselves if the java peer was unparked before it started (see
-    // b/28845097#comment49 for more information)
-
-    ArtField* unparkedField = jni::DecodeArtField(
-        WellKnownClasses::java_lang_Thread_unparkedBeforeStart);
-    bool should_unpark = false;
-    {
-      // Hold the lock here, so that if another thread calls unpark before the thread starts
-      // we don't observe the unparkedBeforeStart field before the unparker writes to it,
-      // which could cause a lost unpark.
-      art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
-      should_unpark = unparkedField->GetBoolean(self->tlsPtr_.opeer) == JNI_TRUE;
-    }
-    if (should_unpark) {
-      self->Unpark();
-    }
     // Invoke the 'run' method of our java.lang.Thread.
     ObjPtr<mirror::Object> receiver = self->tlsPtr_.opeer;
     jmethodID mid = WellKnownClasses::java_lang_Thread_run;
@@ -2259,9 +2133,6 @@ Thread::Thread(bool daemon)
   tls32_.state_and_flags.as_struct.flags = 0;
   tls32_.state_and_flags.as_struct.state = kNative;
   tls32_.interrupted.store(false, std::memory_order_relaxed);
-  // Initialize with no permit; if the java Thread was unparked before being
-  // started, it will unpark itself before calling into java code.
-  tls32_.park_state_.store(kNoPermit, std::memory_order_relaxed);
   memset(&tlsPtr_.held_mutexes[0], 0, sizeof(tlsPtr_.held_mutexes));
   std::fill(tlsPtr_.rosalloc_runs,
             tlsPtr_.rosalloc_runs + kNumRosAllocThreadLocalSizeBracketsInThread,
@@ -2578,15 +2449,12 @@ bool Thread::IsInterrupted() {
 }
 
 void Thread::Interrupt(Thread* self) {
-  {
-    MutexLock mu(self, *wait_mutex_);
-    if (tls32_.interrupted.load(std::memory_order_seq_cst)) {
-      return;
-    }
-    tls32_.interrupted.store(true, std::memory_order_seq_cst);
-    NotifyLocked(self);
+  MutexLock mu(self, *wait_mutex_);
+  if (tls32_.interrupted.load(std::memory_order_seq_cst)) {
+    return;
   }
-  Unpark();
+  tls32_.interrupted.store(true, std::memory_order_seq_cst);
+  NotifyLocked(self);
 }
 
 void Thread::Notify() {
