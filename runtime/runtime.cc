@@ -407,6 +407,7 @@ Runtime::~Runtime() {
   if (jit_ != nullptr) {
     VLOG(jit) << "Deleting jit";
     jit_.reset(nullptr);
+    jit_code_cache_.reset(nullptr);
   }
 
   // Shutdown the fault manager if it was initialized.
@@ -785,17 +786,15 @@ bool Runtime::Start() {
   // TODO(calin): We use the JIT class as a proxy for JIT compilation and for
   // recoding profiles. Maybe we should consider changing the name to be more clear it's
   // not only about compiling. b/28295073.
-  if (jit_options_->UseJitCompilation() || jit_options_->GetSaveProfilingInfo()) {
+  if (!safe_mode_ && (jit_options_->UseJitCompilation() || jit_options_->GetSaveProfilingInfo())) {
+    // Try to load compiler pre zygote to reduce PSS. b/27744947
     std::string error_msg;
-    if (!IsZygote()) {
-    // If we are the zygote then we need to wait until after forking to create the code cache
-    // due to SELinux restrictions on r/w/x memory regions.
-      CreateJit();
-    } else if (jit_options_->UseJitCompilation()) {
-      if (!jit::Jit::LoadCompilerLibrary(&error_msg)) {
-        // Try to load compiler pre zygote to reduce PSS. b/27744947
-        LOG(WARNING) << "Failed to load JIT compiler with error " << error_msg;
-      }
+    if (!jit::Jit::LoadCompiler(&error_msg)) {
+      LOG(WARNING) << "Failed to load JIT compiler with error " << error_msg;
+    } else if (!IsZygote()) {
+      // If we are the zygote then we need to wait until after forking to create the code cache
+      // due to SELinux restrictions on r/w/x memory regions.
+      CreateJitCodeCache(/*rwx_memory_allowed=*/true);
     }
   }
 
@@ -892,28 +891,25 @@ void Runtime::InitNonZygoteOrPostFork(
     }
   }
 
-  // Create the thread pools.
-  heap_->CreateThreadPool();
-  // Reset the gc performance data at zygote fork so that the GCs
-  // before fork aren't attributed to an app.
-  heap_->ResetGcPerformanceInfo();
-
-  // We may want to collect profiling samples for system server, but we never want to JIT there.
   if (is_system_server) {
-    jit_options_->SetUseJitCompilation(false);
     jit_options_->SetSaveProfilingInfo(profile_system_server);
     if (profile_system_server) {
       jit_options_->SetWaitForJitNotificationsToSaveProfile(false);
       VLOG(profiler) << "Enabling system server profiles";
     }
   }
-  if (!safe_mode_ &&
-      (jit_options_->UseJitCompilation() || jit_options_->GetSaveProfilingInfo()) &&
-      jit_ == nullptr) {
+
+  if (jit_ == nullptr) {
     // Note that when running ART standalone (not zygote, nor zygote fork),
     // the jit may have already been created.
     CreateJit();
   }
+
+  // Create the thread pools.
+  heap_->CreateThreadPool();
+  // Reset the gc performance data at zygote fork so that the GCs
+  // before fork aren't attributed to an app.
+  heap_->ResetGcPerformanceInfo();
 
   StartSignalCatcher();
 
@@ -2484,17 +2480,42 @@ void Runtime::AddCurrentRuntimeFeaturesAsDex2OatArguments(std::vector<std::strin
   argv->push_back(feature_string);
 }
 
-void Runtime::CreateJit() {
-  CHECK(!IsAotCompiler());
+void Runtime::CreateJitCodeCache(bool rwx_memory_allowed) {
   if (kIsDebugBuild && GetInstrumentation()->IsForcedInterpretOnly()) {
     DCHECK(!jit_options_->UseJitCompilation());
   }
-  std::string error_msg;
-  jit::Jit* jit = jit::Jit::Create(jit_options_.get(), &error_msg);
-  DoAndMaybeSwitchInterpreter([=](){ jit_.reset(jit); });
-  if (jit_.get() == nullptr) {
-    LOG(WARNING) << "Failed to create JIT " << error_msg;
+
+  if (safe_mode_ || (!jit_options_->UseJitCompilation() && !jit_options_->GetSaveProfilingInfo())) {
     return;
+  }
+
+  // SystemServer has execmem blocked by SELinux so can not use RWX page permissions after the
+  // cache initialized.
+  jit_options_->SetRWXMemoryAllowed(rwx_memory_allowed);
+
+  std::string error_msg;
+  bool profiling_only = !jit_options_->UseJitCompilation();
+  jit_code_cache_.reset(jit::JitCodeCache::Create(jit_options_->GetCodeCacheInitialCapacity(),
+                                                  jit_options_->GetCodeCacheMaxCapacity(),
+                                                  profiling_only,
+                                                  jit_options_->RWXMemoryAllowed(),
+                                                  &error_msg));
+  if (jit_code_cache_.get() == nullptr) {
+    LOG(WARNING) << "Failed to create JIT Code Cache: " << error_msg;
+  }
+}
+
+void Runtime::CreateJit() {
+  if (jit_code_cache_.get() == nullptr) {
+    return;
+  }
+
+  jit::Jit* jit = jit::Jit::Create(jit_code_cache_.get(), jit_options_.get());
+  DoAndMaybeSwitchInterpreter([=](){ jit_.reset(jit); });
+  if (jit == nullptr) {
+    LOG(WARNING) << "Failed to allocate JIT";
+    // Release JIT code cache resources (several MB of memory).
+    jit_code_cache_.reset(nullptr);
   }
 }
 
