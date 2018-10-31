@@ -22,7 +22,6 @@
 #include "dex/code_item_accessors.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file.h"
-#include "driver/compiler_driver.h"
 #include "nodes.h"
 
 namespace art {
@@ -38,7 +37,6 @@ class HGraphBuilder : public ValueObject {
                 const CodeItemDebugInfoAccessor& accessor,
                 const DexCompilationUnit* dex_compilation_unit,
                 const DexCompilationUnit* outer_compilation_unit,
-                CompilerDriver* driver,
                 CodeGenerator* code_generator,
                 OptimizingCompilerStats* compiler_stats,
                 ArrayRef<const uint8_t> interpreter_metadata,
@@ -70,7 +68,6 @@ class HGraphBuilder : public ValueObject {
   // The compilation unit of the enclosing method being compiled.
   const DexCompilationUnit* const outer_compilation_unit_;
 
-  CompilerDriver* const compiler_driver_;
   CodeGenerator* const code_generator_;
 
   OptimizingCompilerStats* const compilation_stats_;

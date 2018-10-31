@@ -7402,7 +7402,7 @@ class HMemoryBarrier final : public HExpression<0> {
 //     }
 //
 // See also:
-// * CompilerDriver::RequiresConstructorBarrier
+// * DexCompilationUnit::RequiresConstructorBarrier
 // * QuasiAtomic::ThreadFenceForConstructor
 //
 class HConstructorFence final : public HVariableInputSizeInstruction {
