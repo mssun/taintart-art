@@ -168,33 +168,25 @@ void Jit::AddTimingLogger(const TimingLogger& logger) {
   cumulative_timings_.AddLogger(logger);
 }
 
-Jit::Jit(JitOptions* options) : options_(options),
-                                cumulative_timings_("JIT timings"),
-                                memory_use_("Memory used for compilation", 16),
-                                lock_("JIT memory use lock") {}
+Jit::Jit(JitCodeCache* code_cache, JitOptions* options)
+    : code_cache_(code_cache),
+      options_(options),
+      cumulative_timings_("JIT timings"),
+      memory_use_("Memory used for compilation", 16),
+      lock_("JIT memory use lock") {}
 
-Jit* Jit::Create(JitOptions* options, std::string* error_msg) {
-  DCHECK(options->UseJitCompilation() || options->GetProfileSaverOptions().IsEnabled());
-  std::unique_ptr<Jit> jit(new Jit(options));
-  if (jit_compiler_handle_ == nullptr && !LoadCompiler(error_msg)) {
+Jit* Jit::Create(JitCodeCache* code_cache, JitOptions* options) {
+  CHECK(jit_compiler_handle_ != nullptr) << "Jit::LoadLibrary() needs to be called first";
+  std::unique_ptr<Jit> jit(new Jit(code_cache, options));
+  if (jit_compiler_handle_ == nullptr) {
     return nullptr;
   }
-  bool code_cache_only_for_profile_data = !options->UseJitCompilation();
-  jit->code_cache_.reset(JitCodeCache::Create(
-      options->GetCodeCacheInitialCapacity(),
-      options->GetCodeCacheMaxCapacity(),
-      jit->generate_debug_info_,
-      code_cache_only_for_profile_data,
-      error_msg));
-  if (jit->GetCodeCache() == nullptr) {
-    return nullptr;
-  }
+
   VLOG(jit) << "JIT created with initial_capacity="
       << PrettySize(options->GetCodeCacheInitialCapacity())
       << ", max_capacity=" << PrettySize(options->GetCodeCacheMaxCapacity())
       << ", compile_threshold=" << options->GetCompileThreshold()
       << ", profile_saver_options=" << options->GetProfileSaverOptions();
-
 
   jit->CreateThreadPool();
 
@@ -203,7 +195,7 @@ Jit* Jit::Create(JitOptions* options, std::string* error_msg) {
   return jit.release();
 }
 
-bool Jit::LoadCompilerLibrary(std::string* error_msg) {
+bool Jit::BindCompilerMethods(std::string* error_msg) {
   jit_library_handle_ = dlopen(
       kIsDebugBuild ? "libartd-compiler.so" : "libart-compiler.so", RTLD_NOW);
   if (jit_library_handle_ == nullptr) {
@@ -243,7 +235,7 @@ bool Jit::LoadCompilerLibrary(std::string* error_msg) {
 }
 
 bool Jit::LoadCompiler(std::string* error_msg) {
-  if (jit_library_handle_ == nullptr && !LoadCompilerLibrary(error_msg)) {
+  if (jit_library_handle_ == nullptr && !BindCompilerMethods(error_msg)) {
     return false;
   }
   bool will_generate_debug_symbols = false;
@@ -308,6 +300,11 @@ bool Jit::CompileMethod(ArtMethod* method, Thread* self, bool osr) {
   return success;
 }
 
+bool Jit::ShouldGenerateDebugInfo() {
+  CHECK(CompilerIsLoaded());
+  return generate_debug_info_;
+}
+
 void Jit::CreateThreadPool() {
   // There is a DCHECK in the 'AddSamples' method to ensure the tread pool
   // is not null when we instrument.
@@ -347,10 +344,7 @@ void Jit::DeleteThreadPool() {
 void Jit::StartProfileSaver(const std::string& filename,
                             const std::vector<std::string>& code_paths) {
   if (options_->GetSaveProfilingInfo()) {
-    ProfileSaver::Start(options_->GetProfileSaverOptions(),
-                        filename,
-                        code_cache_.get(),
-                        code_paths);
+    ProfileSaver::Start(options_->GetProfileSaverOptions(), filename, code_cache_, code_paths);
   }
 }
 
@@ -391,7 +385,7 @@ void Jit::NewTypeLoadedIfUsingJit(mirror::Class* type) {
     return;
   }
   jit::Jit* jit = Runtime::Current()->GetJit();
-  if (jit->generate_debug_info_) {
+  if (generate_debug_info_) {
     DCHECK(jit->jit_types_loaded_ != nullptr);
     jit->jit_types_loaded_(jit->jit_compiler_handle_, &type, 1);
   }

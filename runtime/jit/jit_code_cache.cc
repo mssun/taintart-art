@@ -185,17 +185,11 @@ class JitCodeCache::JniStubData {
 
 JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
                                    size_t max_capacity,
-                                   bool generate_debug_info,
                                    bool used_only_for_profile_data,
+                                   bool rwx_memory_allowed,
                                    std::string* error_msg) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   CHECK_GE(max_capacity, initial_capacity);
-
-  // With 'perf', we want a 1-1 mapping between an address and a method.
-  // We aren't able to keep method pointers live during the instrumentation method entry trampoline
-  // so we will just disable jit-gc if we are doing that.
-  bool garbage_collect_code = !generate_debug_info &&
-      !Runtime::Current()->GetInstrumentation()->AreExitStubsInstalled();
 
   // We need to have 32 bit offsets from method headers in code cache which point to things
   // in the data cache. If the maps are more than 4G apart, having multiple maps wouldn't work.
@@ -224,8 +218,15 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
   // Bionic supports memfd_create, but the call may fail on older kernels.
   mem_fd = unique_fd(art::memfd_create("/jit-cache", /* flags= */ 0));
   if (mem_fd.get() < 0) {
-    VLOG(jit) << "Failed to initialize dual view JIT. memfd_create() error: "
-              << strerror(errno);
+    std::ostringstream oss;
+    oss << "Failed to initialize dual view JIT. memfd_create() error: " << strerror(errno);
+    if (!rwx_memory_allowed) {
+      // Without using RWX page permissions, the JIT can not fallback to single mapping as it
+      // requires tranitioning the code pages to RWX for updates.
+      *error_msg = oss.str();
+      return nullptr;
+    }
+    VLOG(jit) << oss.str();
   }
 
   if (mem_fd.get() >= 0 && ftruncate(mem_fd, max_capacity) != 0) {
@@ -350,8 +351,14 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
                                        "jit-code-cache-rw",
                                        &error_str);
       if (!non_exec_pages.IsValid()) {
-        // Log and continue as single view JIT.
-        VLOG(jit) << "Failed to map non-executable view of JIT code cache";
+        static const char* kFailedNxView = "Failed to map non-executable view of JIT code cache";
+        if (rwx_memory_allowed) {
+          // Log and continue as single view JIT (requires RWX memory).
+          VLOG(jit) << kFailedNxView;
+        } else {
+          *error_msg = kFailedNxView;
+          return nullptr;
+        }
       }
     }
   } else {
@@ -369,8 +376,7 @@ JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
       std::move(non_exec_pages),
       initial_data_capacity,
       initial_exec_capacity,
-      max_capacity,
-      garbage_collect_code);
+      max_capacity);
 }
 
 JitCodeCache::JitCodeCache(MemMap&& data_pages,
@@ -378,8 +384,7 @@ JitCodeCache::JitCodeCache(MemMap&& data_pages,
                            MemMap&& non_exec_pages,
                            size_t initial_data_capacity,
                            size_t initial_exec_capacity,
-                           size_t max_capacity,
-                           bool garbage_collect_code)
+                           size_t max_capacity)
     : lock_("Jit code cache", kJitCodeCacheLock),
       lock_cond_("Jit code cache condition variable", lock_),
       collection_in_progress_(false),
@@ -391,7 +396,7 @@ JitCodeCache::JitCodeCache(MemMap&& data_pages,
       data_end_(initial_data_capacity),
       exec_end_(initial_exec_capacity),
       last_collection_increased_code_cache_(false),
-      garbage_collect_code_(garbage_collect_code),
+      garbage_collect_code_(true),
       used_memory_for_data_(0),
       used_memory_for_code_(0),
       number_of_compilations_(0),
@@ -430,6 +435,12 @@ JitCodeCache::JitCodeCache(MemMap&& data_pages,
     exec_mspace_ = nullptr;
     SetFootprintLimit(current_capacity_);
   }
+
+  // With 'perf', we want a 1-1 mapping between an address and a method.
+  // We aren't able to keep method pointers live during the instrumentation method entry trampoline
+  // so we will just disable jit-gc if we are doing that.
+  garbage_collect_code_ = !Jit::ShouldGenerateDebugInfo() &&
+      !Runtime::Current()->GetInstrumentation()->AreExitStubsInstalled();
 
   VLOG(jit) << "Created jit code cache: initial data size="
             << PrettySize(initial_data_capacity)
