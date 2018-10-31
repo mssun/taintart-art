@@ -28,10 +28,6 @@ cc_defaults {
                 "libziparchive",
                 "libz",
             ],
-	    shared_libs: [
-	        // For android::FileMap used by libziparchive.
-                "libutils",
-	    ],
         },
         host: {
             shared_libs: [
@@ -61,7 +57,6 @@ cc_defaults {
     static_libs: [
         "libbase",
         "libcutils",
-        "libutils",
         "libz",
         "libziparchive",
     ],
