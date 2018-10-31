@@ -338,6 +338,10 @@ class HInstructionBuilder : public ValueObject {
 
   ScopedArenaVector<HBasicBlock*> loop_headers_;
 
+  // Cached resolved types for the current compilation unit's DexFile.
+  // Handle<>s reference entries in the `handles_`.
+  ScopedArenaSafeMap<dex::TypeIndex, Handle<mirror::Class>> class_cache_;
+
   static constexpr int kDefaultNumberOfLoops = 2;
 
   DISALLOW_COPY_AND_ASSIGN(HInstructionBuilder);

@@ -20,11 +20,12 @@
 #include "base/arena_bit_vector.h"
 #include "base/bit_vector-inl.h"
 #include "block_builder.h"
-#include "class_linker.h"
+#include "class_linker-inl.h"
+#include "code_generator.h"
 #include "data_type-inl.h"
 #include "dex/bytecode_utils.h"
 #include "dex/dex_instruction-inl.h"
-#include "driver/compiler_driver-inl.h"
+#include "driver/compiler_driver.h"
 #include "driver/dex_compilation_unit.h"
 #include "driver/compiler_options.h"
 #include "imtable-inl.h"
@@ -73,7 +74,8 @@ HInstructionBuilder::HInstructionBuilder(HGraph* graph,
       current_locals_(nullptr),
       latest_result_(nullptr),
       current_this_parameter_(nullptr),
-      loop_headers_(local_allocator->Adapter(kArenaAllocGraphBuilder)) {
+      loop_headers_(local_allocator->Adapter(kArenaAllocGraphBuilder)),
+      class_cache_(std::less<dex::TypeIndex>(), local_allocator->Adapter(kArenaAllocGraphBuilder)) {
   loop_headers_.reserve(kDefaultNumberOfLoops);
 }
 
@@ -319,8 +321,8 @@ bool HInstructionBuilder::Build() {
   // Find locations where we want to generate extra stackmaps for native debugging.
   // This allows us to generate the info only at interesting points (for example,
   // at start of java statement) rather than before every dex instruction.
-  const bool native_debuggable = compiler_driver_ != nullptr &&
-                                 compiler_driver_->GetCompilerOptions().GetNativeDebuggable();
+  const bool native_debuggable = code_generator_ != nullptr &&
+                                 code_generator_->GetCompilerOptions().GetNativeDebuggable();
   ArenaBitVector* native_debug_info_locations = nullptr;
   if (native_debuggable) {
     native_debug_info_locations = FindNativeDebugInfoLocations();
@@ -1299,7 +1301,7 @@ bool HInstructionBuilder::IsInitialized(Handle<mirror::Class> cls) const {
     }
     // Assume loaded only if klass is in the boot image. App classes cannot be assumed
     // loaded because we don't even know what class loader will be used to load them.
-    if (IsInBootImage(cls.Get(), compiler_driver_->GetCompilerOptions())) {
+    if (IsInBootImage(cls.Get(), code_generator_->GetCompilerOptions())) {
       return true;
     }
   }
@@ -1351,7 +1353,7 @@ bool HInstructionBuilder::IsInitialized(Handle<mirror::Class> cls) const {
     is_subclass = is_subclass ||
                   IsSubClass(dex_compilation_unit_->GetCompilingClass().Get(), cls.Get());
   }
-  if (is_subclass && HasTrivialInitialization(cls.Get(), compiler_driver_->GetCompilerOptions())) {
+  if (is_subclass && HasTrivialInitialization(cls.Get(), code_generator_->GetCompilerOptions())) {
     return true;
   }
 
@@ -1993,12 +1995,19 @@ HLoadClass* HInstructionBuilder::BuildLoadClass(dex::TypeIndex type_index,
 
 Handle<mirror::Class> HInstructionBuilder::ResolveClass(ScopedObjectAccess& soa,
                                                         dex::TypeIndex type_index) {
-  Handle<mirror::ClassLoader> class_loader = dex_compilation_unit_->GetClassLoader();
-  ObjPtr<mirror::Class> klass = compiler_driver_->ResolveClass(
-      soa, dex_compilation_unit_->GetDexCache(), class_loader, type_index, dex_compilation_unit_);
-  // TODO: Avoid creating excessive handles if the method references the same class repeatedly.
-  // (Use a map on the local_allocator_.)
-  return handles_->NewHandle(klass);
+  auto it = class_cache_.find(type_index);
+  if (it != class_cache_.end()) {
+    return it->second;
+  }
+
+  ObjPtr<mirror::Class> klass = dex_compilation_unit_->GetClassLinker()->ResolveType(
+      type_index, dex_compilation_unit_->GetDexCache(), dex_compilation_unit_->GetClassLoader());
+  DCHECK_EQ(klass == nullptr, soa.Self()->IsExceptionPending());
+  soa.Self()->ClearException();  // Clean up the exception left by type resolution if any.
+
+  Handle<mirror::Class> h_klass = handles_->NewHandle(klass);
+  class_cache_.Put(type_index, h_klass);
+  return h_klass;
 }
 
 bool HInstructionBuilder::LoadClassNeedsAccessCheck(Handle<mirror::Class> klass) {
