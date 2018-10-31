@@ -30,7 +30,6 @@ cc_binary {
         "libartbase",
         "libbase",
         "liblog",
-        "libutils",
         "libz",
         "libziparchive",
     ],
