@@ -88,6 +88,8 @@ if [ -z "$ANDROID_HOST_OUT" ]; then
     export ANDROID_HOST_OUT=${OUT_DIR}/host/linux-x86
 fi
 
+host_lib_root=${ANDROID_HOST_OUT}
+
 # Allow changing DESUGAR script to something else, or to disable it with DESUGAR=false.
 if [ -z "$DESUGAR" ]; then
   export DESUGAR="$ANDROID_BUILD_TOP/art/tools/desugar.sh"
@@ -385,6 +387,14 @@ while true; do
         run_args="${run_args} --64"
         suffix64="64"
         shift
+    elif [ "x$1" = "x--bionic" ]; then
+        # soong linux_bionic builds are 64bit only.
+        run_args="${run_args} --bionic --host --64"
+        suffix64="64"
+        target_mode="no"
+        DEX_LOCATION=$tmp_dir
+        host_lib_root=$OUT_DIR/soong/host/linux_bionic-x86
+        shift
     elif [ "x$1" = "x--trace" ]; then
         trace="true"
         shift
@@ -584,7 +594,7 @@ elif [ "$runtime" = "art" ]; then
     if [ "$target_mode" = "no" ]; then
         guess_host_arch_name
         run_args="${run_args} --boot ${ANDROID_HOST_OUT}/framework/core${image_suffix}.art"
-        run_args="${run_args} --runtime-option -Djava.library.path=${ANDROID_HOST_OUT}/lib${suffix64}:${ANDROID_HOST_OUT}/nativetest${suffix64}"
+        run_args="${run_args} --runtime-option -Djava.library.path=${host_lib_root}/lib${suffix64}:${host_lib_root}/nativetest${suffix64}"
     else
         guess_target_arch_name
         run_args="${run_args} --runtime-option -Djava.library.path=/data/nativetest${suffix64}/art/${target_arch_name}"
@@ -711,6 +721,7 @@ if [ "$usage" = "yes" ]; then
         echo "    --output-path [path]  Location where to store the build" \
              "files."
         echo "    --64                  Run the test in 64-bit mode"
+        echo "    --bionic              Use the (host, 64-bit only) linux_bionic libc runtime"
         echo "    --trace               Run with method tracing"
         echo "    --strace              Run with syscall tracing from strace."
         echo "    --stream              Run method tracing in streaming mode (requires --trace)"

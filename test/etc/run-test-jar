@@ -31,6 +31,8 @@ GDB_ARGS=""
 GDB_SERVER="gdbserver"
 HAVE_IMAGE="y"
 HOST="n"
+BIONIC="n"
+CREATE_ANDROID_ROOT="n"
 INTERPRETER="n"
 JIT="n"
 INVOKE_WITH=""
@@ -209,6 +211,13 @@ while true; do
         HOST="y"
         ANDROID_ROOT="$ANDROID_HOST_OUT"
         shift
+    elif [ "x$1" = "x--bionic" ]; then
+        BIONIC="y"
+        # We need to create an ANDROID_ROOT because currently we cannot create
+        # the frameworks/libcore with linux_bionic so we need to use the normal
+        # host ones which are in a different location.
+        CREATE_ANDROID_ROOT="y"
+        shift
     elif [ "x$1" = "x--no-prebuild" ]; then
         PREBUILD="n"
         shift
@@ -372,6 +381,10 @@ if [ "$USE_JVM" = "n" ]; then
         FLAGS="${FLAGS} -Xexperimental:${feature} -Xcompiler-option --runtime-arg -Xcompiler-option -Xexperimental:${feature}"
         COMPILE_FLAGS="${COMPILE_FLAGS} --runtime-arg -Xexperimental:${feature}"
     done
+fi
+
+if [ "$CREATE_ANDROID_ROOT" = "y" ]; then
+    ANDROID_ROOT=$DEX_LOCATION/android-root
 fi
 
 if [ "x$1" = "x" ] ; then
@@ -644,6 +657,15 @@ if [ "$HOST" = "n" ]; then
   fi
 fi
 
+if [ "$BIONIC" = "y" ]; then
+  # This is the location that soong drops linux_bionic builds. Despite being
+  # called linux_bionic-x86 the build is actually amd64 (x86_64) only.
+  if [ ! -e "$OUT_DIR/soong/host/linux_bionic-x86" ]; then
+    echo "linux_bionic-x86 target doesn't seem to have been built!" >&2
+    exit 1
+  fi
+fi
+
 # Prevent test from silently falling back to interpreter in no-prebuild mode. This happens
 # when DEX_LOCATION path is too long, because vdex/odex filename is constructed by taking
 # full path to dex, stripping leading '/', appending '@classes.vdex' and changing every
@@ -671,6 +693,21 @@ dm_cmdline="true"
 mkdir_locations="${DEX_LOCATION}/dalvik-cache/$ISA"
 strip_cmdline="true"
 sync_cmdline="true"
+linkroot_cmdline="true"
+linkroot_overlay_cmdline="true"
+
+linkdirs() {
+  find "$1" -maxdepth 1 -mindepth 1 -type d | xargs -i ln -sf '{}' "$2"
+}
+
+if [ "$CREATE_ANDROID_ROOT" = "y" ]; then
+  mkdir_locations="${mkdir_locations} ${ANDROID_ROOT}"
+  linkroot_cmdline="linkdirs ${ANDROID_HOST_OUT} ${ANDROID_ROOT}"
+  if [ "${BIONIC}" = "y" ]; then
+    # TODO Make this overlay more generic.
+    linkroot_overlay_cmdline="linkdirs $OUT_DIR/soong/host/linux_bionic-x86 ${ANDROID_ROOT}"
+  fi
+fi
 
 # PROFILE takes precedence over RANDOM_PROFILE, since PROFILE tests require a
 # specific profile to run properly.
@@ -949,7 +986,8 @@ else
       for var in ANDROID_PRINTF_LOG ANDROID_DATA ANDROID_ROOT LD_LIBRARY_PATH DYLD_LIBRARY_PATH PATH LD_USE_LOAD_BIAS; do
         echo EXPORT $var=${!var}
       done
-      echo "mkdir -p ${mkdir_locations} && $profman_cmdline && $dex2oat_cmdline && $dm_cmdline && $vdex_cmdline && $strip_cmdline && $sync_cmdline && $cmdline"
+      echo "$(declare -f linkdirs)"
+      echo "mkdir -p ${mkdir_locations} && $linkroot_cmdline && $linkroot_overlay_cmdline && $profman_cmdline && $dex2oat_cmdline && $dm_cmdline && $vdex_cmdline && $strip_cmdline && $sync_cmdline && $cmdline"
     fi
 
     cd $ANDROID_BUILD_TOP
@@ -963,6 +1001,8 @@ else
     export ASAN_OPTIONS=$RUN_TEST_ASAN_OPTIONS
 
     mkdir -p ${mkdir_locations} || exit 1
+    $linkroot_cmdline || { echo "create symlink android-root failed." >&2 ; exit 2; }
+    $linkroot_overlay_cmdline || { echo "overlay android-root failed." >&2 ; exit 2; }
     $profman_cmdline || { echo "Profman failed." >&2 ; exit 2; }
     $dex2oat_cmdline || { echo "Dex2oat failed." >&2 ; exit 2; }
     $dm_cmdline || { echo "Dex2oat failed." >&2 ; exit 2; }
