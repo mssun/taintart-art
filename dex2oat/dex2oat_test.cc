@@ -2178,6 +2178,22 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
     EXPECT_TRUE(preresolved_seen.find("Other class init") == preresolved_seen.end());
     // Expect the sets match.
     EXPECT_GE(seen.size(), preresolved_seen.size());
+
+    // Verify what strings are marked as boot image.
+    std::set<std::string> boot_image_strings;
+    std::set<std::string> app_image_strings;
+
+    MutexLock mu(Thread::Current(), *Locks::intern_table_lock_);
+    intern_table.VisitInterns([&](const GcRoot<mirror::String>& root)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      boot_image_strings.insert(root.Read()->ToModifiedUtf8());
+    }, /*visit_boot_images=*/true, /*visit_non_boot_images=*/false);
+    intern_table.VisitInterns([&](const GcRoot<mirror::String>& root)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      app_image_strings.insert(root.Read()->ToModifiedUtf8());
+    }, /*visit_boot_images=*/false, /*visit_non_boot_images=*/true);
+    EXPECT_EQ(boot_image_strings.size(), 0u);
+    EXPECT_TRUE(app_image_strings == seen);
   }
 }
 

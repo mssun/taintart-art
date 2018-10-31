@@ -351,22 +351,22 @@ size_t InternTable::Table::WriteToMemory(uint8_t* ptr) {
   UnorderedSet combined;
   if (tables_.size() > 1) {
     table_to_write = &combined;
-    for (UnorderedSet& table : tables_) {
-      for (GcRoot<mirror::String>& string : table) {
+    for (InternalTable& table : tables_) {
+      for (GcRoot<mirror::String>& string : table.set_) {
         combined.insert(string);
       }
     }
   } else {
-    table_to_write = &tables_.back();
+    table_to_write = &tables_.back().set_;
   }
   return table_to_write->WriteToMemory(ptr);
 }
 
 void InternTable::Table::Remove(ObjPtr<mirror::String> s) {
-  for (UnorderedSet& table : tables_) {
-    auto it = table.find(GcRoot<mirror::String>(s));
-    if (it != table.end()) {
-      table.erase(it);
+  for (InternalTable& table : tables_) {
+    auto it = table.set_.find(GcRoot<mirror::String>(s));
+    if (it != table.set_.end()) {
+      table.set_.erase(it);
       return;
     }
   }
@@ -375,9 +375,9 @@ void InternTable::Table::Remove(ObjPtr<mirror::String> s) {
 
 ObjPtr<mirror::String> InternTable::Table::Find(ObjPtr<mirror::String> s) {
   Locks::intern_table_lock_->AssertHeld(Thread::Current());
-  for (UnorderedSet& table : tables_) {
-    auto it = table.find(GcRoot<mirror::String>(s));
-    if (it != table.end()) {
+  for (InternalTable& table : tables_) {
+    auto it = table.set_.find(GcRoot<mirror::String>(s));
+    if (it != table.set_.end()) {
       return it->Read();
     }
   }
@@ -386,9 +386,9 @@ ObjPtr<mirror::String> InternTable::Table::Find(ObjPtr<mirror::String> s) {
 
 ObjPtr<mirror::String> InternTable::Table::Find(const Utf8String& string) {
   Locks::intern_table_lock_->AssertHeld(Thread::Current());
-  for (UnorderedSet& table : tables_) {
-    auto it = table.find(string);
-    if (it != table.end()) {
+  for (InternalTable& table : tables_) {
+    auto it = table.set_.find(string);
+    if (it != table.set_.end()) {
       return it->Read();
     }
   }
@@ -396,29 +396,29 @@ ObjPtr<mirror::String> InternTable::Table::Find(const Utf8String& string) {
 }
 
 void InternTable::Table::AddNewTable() {
-  tables_.push_back(UnorderedSet());
+  tables_.push_back(InternalTable());
 }
 
 void InternTable::Table::Insert(ObjPtr<mirror::String> s) {
   // Always insert the last table, the image tables are before and we avoid inserting into these
   // to prevent dirty pages.
   DCHECK(!tables_.empty());
-  tables_.back().insert(GcRoot<mirror::String>(s));
+  tables_.back().set_.insert(GcRoot<mirror::String>(s));
 }
 
 void InternTable::Table::VisitRoots(RootVisitor* visitor) {
   BufferedRootVisitor<kDefaultBufferedRootCount> buffered_visitor(
       visitor, RootInfo(kRootInternedString));
-  for (UnorderedSet& table : tables_) {
-    for (auto& intern : table) {
+  for (InternalTable& table : tables_) {
+    for (auto& intern : table.set_) {
       buffered_visitor.VisitRoot(intern);
     }
   }
 }
 
 void InternTable::Table::SweepWeaks(IsMarkedVisitor* visitor) {
-  for (UnorderedSet& table : tables_) {
-    SweepWeaks(&table, visitor);
+  for (InternalTable& table : tables_) {
+    SweepWeaks(&table.set_, visitor);
   }
 }
 
@@ -440,8 +440,8 @@ size_t InternTable::Table::Size() const {
   return std::accumulate(tables_.begin(),
                          tables_.end(),
                          0U,
-                         [](size_t sum, const UnorderedSet& set) {
-                           return sum + set.size();
+                         [](size_t sum, const InternalTable& table) {
+                           return sum + table.Size();
                          });
 }
 
@@ -460,10 +460,10 @@ void InternTable::ChangeWeakRootStateLocked(gc::WeakRootState new_state) {
 
 InternTable::Table::Table() {
   Runtime* const runtime = Runtime::Current();
-  // Initial table.
-  tables_.push_back(UnorderedSet());
-  tables_.back().SetLoadFactor(runtime->GetHashTableMinLoadFactor(),
-                               runtime->GetHashTableMaxLoadFactor());
+  InternalTable initial_table;
+  initial_table.set_.SetLoadFactor(runtime->GetHashTableMinLoadFactor(),
+                                   runtime->GetHashTableMaxLoadFactor());
+  tables_.push_back(std::move(initial_table));
 }
 
 }  // namespace art
