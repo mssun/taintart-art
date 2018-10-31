@@ -19,6 +19,7 @@ package com.android.class2greylist;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -38,6 +39,7 @@ import java.util.Map;
 
 public class CovariantReturnTypeMultiHandlerTest extends AnnotationHandlerTestBase {
 
+    private static final String FLAG = "test-flag";
 
     @Before
     public void setup() throws IOException {
@@ -79,16 +81,17 @@ public class CovariantReturnTypeMultiHandlerTest extends AnnotationHandlerTestBa
                         new CovariantReturnTypeMultiHandler(
                                 mConsumer,
                                 ImmutableSet.of("La/b/Class;->method()Ljava/lang/String;"),
+                                FLAG,
                                 "Lannotation/Annotation;"));
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus, handlerMap).visit();
 
         assertNoErrors();
         ArgumentCaptor<String> whitelist = ArgumentCaptor.forClass(String.class);
-        verify(mConsumer, times(2)).whitelistEntry(whitelist.capture());
+        verify(mConsumer, times(2)).consume(whitelist.capture(), any(),
+                eq(ImmutableSet.of(FLAG)));
         assertThat(whitelist.getAllValues()).containsExactly(
                 "La/b/Class;->method()Ljava/lang/Integer;",
-                "La/b/Class;->method()Ljava/lang/Long;"
-        );
+                "La/b/Class;->method()Ljava/lang/Long;");
     }
 
     @Test
@@ -108,6 +111,7 @@ public class CovariantReturnTypeMultiHandlerTest extends AnnotationHandlerTestBa
                         new CovariantReturnTypeMultiHandler(
                                 mConsumer,
                                 emptySet(),
+                                FLAG,
                                 "Lannotation/Annotation;"));
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus, handlerMap).visit();
 

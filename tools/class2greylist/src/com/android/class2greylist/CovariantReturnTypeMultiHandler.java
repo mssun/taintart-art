@@ -18,7 +18,7 @@ import java.util.Set;
  *
  * <p>The enclosed annotations are passed to {@link CovariantReturnTypeHandler}.
  */
-public class CovariantReturnTypeMultiHandler implements AnnotationHandler {
+public class CovariantReturnTypeMultiHandler extends AnnotationHandler {
 
     public static final String ANNOTATION_NAME =
             "Ldalvik/annotation/codegen/CovariantReturnType$CovariantReturnTypes;";
@@ -28,14 +28,15 @@ public class CovariantReturnTypeMultiHandler implements AnnotationHandler {
     private final CovariantReturnTypeHandler mWrappedHandler;
     private final String mInnerAnnotationName;
 
-    public CovariantReturnTypeMultiHandler(GreylistConsumer consumer, Set<String> publicApis) {
-        this(consumer, publicApis, CovariantReturnTypeHandler.ANNOTATION_NAME);
+    public CovariantReturnTypeMultiHandler(AnnotationConsumer consumer, Set<String> publicApis,
+            String hiddenapiFlag) {
+        this(consumer, publicApis, hiddenapiFlag, CovariantReturnTypeHandler.ANNOTATION_NAME);
     }
 
     @VisibleForTesting
-    public CovariantReturnTypeMultiHandler(GreylistConsumer consumer, Set<String> publicApis,
-            String innerAnnotationName) {
-        mWrappedHandler = new CovariantReturnTypeHandler(consumer, publicApis);
+    public CovariantReturnTypeMultiHandler(AnnotationConsumer consumer, Set<String> publicApis,
+            String hiddenapiFlag, String innerAnnotationName) {
+        mWrappedHandler = new CovariantReturnTypeHandler(consumer, publicApis, hiddenapiFlag);
         mInnerAnnotationName = innerAnnotationName;
     }
 
