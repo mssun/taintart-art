@@ -39,6 +39,17 @@ public class Main {
         ncdfe.printStackTrace();
       }
     }
+    // Call bar() on the escaped instance of Bad.
+    try {
+      bad.bar();
+    } catch (NoClassDefFoundError ncdfe) {
+      // On RI, the NCDFE has no cause. On ART, the badClinit is the cause.
+      if (ncdfe.getCause() == badClinit || ncdfe.getCause() == null) {
+        System.out.println("Caught NoClassDefFoundError.");
+      } else {
+        ncdfe.printStackTrace();
+      }
+    }
   }
 
   public static void hierarchyTest() {
@@ -117,9 +128,19 @@ class Bad {
     System.out.println("Bad.instanceValue = " + instanceValue);
     System.out.println("Bad.staticValue = " + staticValue);
   }
+  public void bar() {
+    System.out.println("Bad.bar()");
+    System.out.println("Bad.staticValue [indirect] = " + Helper.$inline$getBadStaticValue());
+  }
   public Bad(int iv) { instanceValue = iv; }
   public int instanceValue;
   public static int staticValue;
+
+  public static class Helper {
+    public static int $inline$getBadStaticValue() {
+      return Bad.staticValue;
+    }
+  }
 }
 
 class BadSuper {
