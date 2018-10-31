@@ -124,31 +124,8 @@ template<bool is_range, bool do_assignability_check>
 bool DoCall(ArtMethod* called_method, Thread* self, ShadowFrame& shadow_frame,
             const Instruction* inst, uint16_t inst_data, JValue* result);
 
-template<InvokeType type>
-static ALWAYS_INLINE bool UseInterpreterToInterpreterFastPath(ArtMethod* method)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  Runtime* runtime = Runtime::Current();
-  const void* quick_code = method->GetEntryPointFromQuickCompiledCode();
-  DCHECK(runtime->IsStarted());
-  if (!runtime->GetClassLinker()->IsQuickToInterpreterBridge(quick_code)) {
-    return false;
-  }
-  if (!method->SkipAccessChecks() || method->IsNative() || method->IsProxyMethod()) {
-    return false;
-  }
-  if (method->GetDeclaringClass()->IsStringClass() && method->IsConstructor()) {
-    return false;
-  }
-  if (type == kStatic && !method->GetDeclaringClass()->IsInitialized()) {
-    return false;
-  }
-  DCHECK(!runtime->IsActiveTransaction());
-  ProfilingInfo* profiling_info = method->GetProfilingInfo(kRuntimePointerSize);
-  if ((profiling_info != nullptr) && (profiling_info->GetSavedEntryPoint() != nullptr)) {
-    return false;
-  }
-  return true;
-}
+bool UseFastInterpreterToInterpreterInvoke(ArtMethod* method)
+    REQUIRES_SHARED(Locks::mutator_lock_);
 
 // Throws exception if we are getting close to the end of the stack.
 NO_INLINE bool CheckStackOverflow(Thread* self, size_t frame_size)
@@ -238,7 +215,31 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
     }
   }
 
-  if (is_mterp && self->UseMterp() && UseInterpreterToInterpreterFastPath<type>(called_method)) {
+  // Check whether we can use the fast path. The result is cached in the ArtMethod.
+  // If the bit is not set, we explicitly recheck all the conditions.
+  // If any of the conditions get falsified, it is important to clear the bit.
+  bool use_fast_path = false;
+  if (is_mterp && self->UseMterp()) {
+    use_fast_path = called_method->UseFastInterpreterToInterpreterInvoke();
+    if (!use_fast_path) {
+      use_fast_path = UseFastInterpreterToInterpreterInvoke(called_method);
+      if (use_fast_path) {
+        called_method->SetFastInterpreterToInterpreterInvokeFlag();
+      }
+    }
+  }
+
+  if (use_fast_path) {
+    DCHECK(Runtime::Current()->IsStarted());
+    DCHECK(!Runtime::Current()->IsActiveTransaction());
+    DCHECK(called_method->SkipAccessChecks());
+    DCHECK(!called_method->IsNative());
+    DCHECK(!called_method->IsProxyMethod());
+    DCHECK(!called_method->IsIntrinsic());
+    DCHECK(!(called_method->GetDeclaringClass()->IsStringClass() &&
+        called_method->IsConstructor()));
+    DCHECK(type != kStatic || called_method->GetDeclaringClass()->IsInitialized());
+
     const uint16_t number_of_inputs =
         (is_range) ? inst->VRegA_3rc(inst_data) : inst->VRegA_35c(inst_data);
     CodeItemDataAccessor accessor(called_method->DexInstructionData());
