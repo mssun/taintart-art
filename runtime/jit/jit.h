@@ -100,6 +100,10 @@ class JitOptions {
     return use_jit_compilation_;
   }
 
+  bool RWXMemoryAllowed() const {
+    return rwx_memory_allowed_;
+  }
+
   void SetUseJitCompilation(bool b) {
     use_jit_compilation_ = b;
   }
@@ -121,6 +125,10 @@ class JitOptions {
     compile_threshold_ = 0;
   }
 
+  void SetRWXMemoryAllowed(bool rwx_allowed) {
+    rwx_memory_allowed_ = rwx_allowed;
+  }
+
  private:
   bool use_jit_compilation_;
   size_t code_cache_initial_capacity_;
@@ -132,6 +140,7 @@ class JitOptions {
   uint16_t invoke_transition_weight_;
   bool dump_info_on_shutdown_;
   int thread_pool_pthread_priority_;
+  bool rwx_memory_allowed_;
   ProfileSaverOptions profile_saver_options_;
 
   JitOptions()
@@ -144,7 +153,8 @@ class JitOptions {
         priority_thread_weight_(0),
         invoke_transition_weight_(0),
         dump_info_on_shutdown_(false),
-        thread_pool_pthread_priority_(kJitPoolThreadPthreadDefaultPriority) {}
+        thread_pool_pthread_priority_(kJitPoolThreadPthreadDefaultPriority),
+        rwx_memory_allowed_(true) {}
 
   DISALLOW_COPY_AND_ASSIGN(JitOptions);
 };
@@ -157,20 +167,24 @@ class Jit {
   static constexpr int16_t kJitRecheckOSRThreshold = 100;
 
   virtual ~Jit();
-  static Jit* Create(JitOptions* options, std::string* error_msg);
+
+  // Create JIT itself.
+  static Jit* Create(JitCodeCache* code_cache, JitOptions* options);
+
   bool CompileMethod(ArtMethod* method, Thread* self, bool osr)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  void CreateThreadPool();
 
   const JitCodeCache* GetCodeCache() const {
-    return code_cache_.get();
+    return code_cache_;
   }
 
   JitCodeCache* GetCodeCache() {
-    return code_cache_.get();
+    return code_cache_;
   }
 
+  void CreateThreadPool();
   void DeleteThreadPool();
+
   // Dump interesting info: #methods compiled, code vs data size, compile / verify cumulative
   // loggers.
   void DumpInfo(std::ostream& os) REQUIRES(!lock_);
@@ -268,7 +282,13 @@ class Jit {
                                         JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static bool LoadCompilerLibrary(std::string* error_msg);
+  // Load and initialize compiler.
+  static bool LoadCompiler(std::string* error_msg);
+
+  static bool CompilerIsLoaded() { return jit_compiler_handle_ != nullptr; }
+
+  // Return whether debug info should be generated. Requires LoadCompiler() to have been called.
+  static bool ShouldGenerateDebugInfo();
 
   ThreadPool* GetThreadPool() const {
     return thread_pool_.get();
@@ -281,9 +301,9 @@ class Jit {
   void Start();
 
  private:
-  explicit Jit(JitOptions* options);
+  Jit(JitCodeCache* code_cache, JitOptions* options);
 
-  static bool LoadCompiler(std::string* error_msg);
+  static bool BindCompilerMethods(std::string* error_msg);
 
   // JIT compiler
   static void* jit_library_handle_;
@@ -296,9 +316,10 @@ class Jit {
   // We make this static to simplify the interaction with libart-compiler.so.
   static bool generate_debug_info_;
 
+  // JIT resources owned by runtime.
+  jit::JitCodeCache* const code_cache_;
   const JitOptions* const options_;
 
-  std::unique_ptr<jit::JitCodeCache> code_cache_;
   std::unique_ptr<ThreadPool> thread_pool_;
 
   // Performance monitoring.
