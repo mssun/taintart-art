@@ -554,6 +554,9 @@ class Heap {
   space::Space* FindSpaceFromAddress(const void* ptr) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  std::string DumpSpaceNameFromAddress(const void* addr) const
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   void DumpForSigQuit(std::ostream& os) REQUIRES(!*gc_complete_lock_);
 
   // Do a pending collector transition.

@@ -1271,6 +1271,10 @@ space::Space* Heap::FindSpaceFromAddress(const void* addr) const {
   return nullptr;
 }
 
+std::string Heap::DumpSpaceNameFromAddress(const void* addr) const {
+  space::Space* space = FindSpaceFromAddress(addr);
+  return (space != nullptr) ? space->GetName() : "no space";
+}
 
 void Heap::ThrowOutOfMemoryError(Thread* self, size_t byte_count, AllocatorType allocator_type) {
   // If we're in a stack overflow, do not create a new exception. It would require running the
