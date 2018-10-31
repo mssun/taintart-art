@@ -271,17 +271,17 @@ class Veridex {
                                const VeridexOptions& options) {
     static const char* kPrefix = "       ";
     if (options.only_report_sdk_uses) {
-      os << stats.api_counts[static_cast<unsigned>(hiddenapi::ApiList::kWhitelist)]
+      os << stats.api_counts[hiddenapi::ApiList::Whitelist().GetIntValue()]
          << " SDK API uses." << std::endl;
     } else {
       os << stats.count << " hidden API(s) used: "
          << stats.linking_count << " linked against, "
          << stats.reflection_count << " through reflection" << std::endl;
-      os << kPrefix << stats.api_counts[static_cast<unsigned>(hiddenapi::ApiList::kBlacklist)]
+      os << kPrefix << stats.api_counts[hiddenapi::ApiList::Blacklist().GetIntValue()]
          << " in blacklist" << std::endl;
-      os << kPrefix << stats.api_counts[static_cast<unsigned>(hiddenapi::ApiList::kDarkGreylist)]
+      os << kPrefix << stats.api_counts[hiddenapi::ApiList::GreylistMaxO().GetIntValue()]
          << " in dark greylist" << std::endl;
-      os << kPrefix << stats.api_counts[static_cast<unsigned>(hiddenapi::ApiList::kLightGreylist)]
+      os << kPrefix << stats.api_counts[hiddenapi::ApiList::Greylist().GetIntValue()]
          << " in light greylist" << std::endl;
     }
   }

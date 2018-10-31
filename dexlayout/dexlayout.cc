@@ -34,6 +34,7 @@
 #include "android-base/stringprintf.h"
 
 #include "base/logging.h"  // For VLOG_IS_ON.
+#include "base/hiddenapi_flags.h"
 #include "base/mem_map.h"
 #include "base/os.h"
 #include "base/utils.h"
@@ -222,15 +223,10 @@ static char* CreateAccessFlagStr(uint32_t flags, AccessFor for_what) {
   return str;
 }
 
-static const char* GetHiddenapiFlagStr(uint32_t hiddenapi_flags) {
-  static const char* const kValue[] = {
-    "WHITELIST",             /* 0x0 */
-    "LIGHT_GREYLIST",        /* 0x1 */
-    "DARK_GREYLIST",         /* 0x2 */
-    "BLACKLIST",             /* 0x3 */
-  };
-  DCHECK_LT(hiddenapi_flags, arraysize(kValue));
-  return kValue[hiddenapi_flags];
+static std::string GetHiddenapiFlagStr(uint32_t hiddenapi_flags) {
+  std::string api_list(hiddenapi::ApiList::FromDexFlags(hiddenapi_flags).GetName());
+  std::transform(api_list.begin(), api_list.end(), api_list.begin(), ::toupper);
+  return api_list;
 }
 
 static std::string GetSignatureForProtoId(const dex_ir::ProtoId* proto) {
@@ -1173,7 +1169,6 @@ void DexLayout::DumpMethod(uint32_t idx,
   char* type_descriptor = strdup(GetSignatureForProtoId(method_id->Proto()).c_str());
   const char* back_descriptor = method_id->Class()->GetStringId()->Data();
   char* access_str = CreateAccessFlagStr(flags, kAccessForMethod);
-  const char* hiddenapi_str = GetHiddenapiFlagStr(hiddenapi_flags);
 
   if (options_.output_format_ == kOutputPlain) {
     fprintf(out_file_, "    #%d              : (in %s)\n", i, back_descriptor);
@@ -1181,7 +1176,10 @@ void DexLayout::DumpMethod(uint32_t idx,
     fprintf(out_file_, "      type          : '%s'\n", type_descriptor);
     fprintf(out_file_, "      access        : 0x%04x (%s)\n", flags, access_str);
     if (hiddenapi_flags != 0u) {
-      fprintf(out_file_, "      hiddenapi     : 0x%04x (%s)\n", hiddenapi_flags, hiddenapi_str);
+      fprintf(out_file_,
+              "      hiddenapi     : 0x%04x (%s)\n",
+              hiddenapi_flags,
+              GetHiddenapiFlagStr(hiddenapi_flags).c_str());
     }
     if (code == nullptr) {
       fprintf(out_file_, "      code          : (none)\n");
@@ -1291,7 +1289,6 @@ void DexLayout::DumpSField(uint32_t idx,
   const char* type_descriptor = field_id->Type()->GetStringId()->Data();
   const char* back_descriptor = field_id->Class()->GetStringId()->Data();
   char* access_str = CreateAccessFlagStr(flags, kAccessForField);
-  const char* hiddenapi_str = GetHiddenapiFlagStr(hiddenapi_flags);
 
   if (options_.output_format_ == kOutputPlain) {
     fprintf(out_file_, "    #%d              : (in %s)\n", i, back_descriptor);
@@ -1299,7 +1296,10 @@ void DexLayout::DumpSField(uint32_t idx,
     fprintf(out_file_, "      type          : '%s'\n", type_descriptor);
     fprintf(out_file_, "      access        : 0x%04x (%s)\n", flags, access_str);
     if (hiddenapi_flags != 0u) {
-      fprintf(out_file_, "      hiddenapi     : 0x%04x (%s)\n", hiddenapi_flags, hiddenapi_str);
+      fprintf(out_file_,
+              "      hiddenapi     : 0x%04x (%s)\n",
+              hiddenapi_flags,
+              GetHiddenapiFlagStr(hiddenapi_flags).c_str());
     }
     if (init != nullptr) {
       fputs("      value         : ", out_file_);
