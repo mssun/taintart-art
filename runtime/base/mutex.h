@@ -480,7 +480,9 @@ class ConditionVariable {
   ConditionVariable(const char* name, Mutex& mutex);
   ~ConditionVariable();
 
+  // Requires the mutex to be held.
   void Broadcast(Thread* self);
+  // Requires the mutex to be held.
   void Signal(Thread* self);
   // TODO: No thread safety analysis on Wait and TimedWait as they call mutex operations via their
   //       pointer copy, thereby defeating annotalysis.
@@ -505,6 +507,8 @@ class ConditionVariable {
   // Number of threads that have come into to wait, not the length of the waiters on the futex as
   // waiters may have been requeued onto guard_. Guarded by guard_.
   volatile int32_t num_waiters_;
+
+  void RequeueWaiters(int32_t count);
 #else
   pthread_cond_t cond_;
 #endif
