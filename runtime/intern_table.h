@@ -145,11 +145,15 @@ class InternTable {
   ObjPtr<mirror::String> LookupStrong(Thread* self, uint32_t utf16_length, const char* utf8_data)
       REQUIRES(!Locks::intern_table_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::String> LookupStrongLocked(ObjPtr<mirror::String> s)
+      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
 
   // Lookup a weak intern, returns null if not found.
   ObjPtr<mirror::String> LookupWeak(Thread* self, ObjPtr<mirror::String> s)
       REQUIRES(!Locks::intern_table_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::String> LookupWeakLocked(ObjPtr<mirror::String> s)
+      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
 
   // Total number of interned strings.
   size_t Size() const REQUIRES(!Locks::intern_table_lock_);
@@ -250,10 +254,6 @@ class InternTable {
   size_t AddTableFromMemory(const uint8_t* ptr, const Visitor& visitor)
       REQUIRES(!Locks::intern_table_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ObjPtr<mirror::String> LookupStrongLocked(ObjPtr<mirror::String> s)
-      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
-  ObjPtr<mirror::String> LookupWeakLocked(ObjPtr<mirror::String> s)
-      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
   ObjPtr<mirror::String> InsertStrong(ObjPtr<mirror::String> s)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
   ObjPtr<mirror::String> InsertWeak(ObjPtr<mirror::String> s)

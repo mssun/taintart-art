@@ -39,11 +39,15 @@ template <typename Visitor>
 inline size_t InternTable::AddTableFromMemory(const uint8_t* ptr, const Visitor& visitor) {
   size_t read_count = 0;
   UnorderedSet set(ptr, /*make copy*/false, &read_count);
-  // Visit the unordered set, may remove elements.
-  visitor(set);
-  if (!set.empty()) {
+  {
+    // Hold the lock while calling the visitor to prevent possible race
+    // conditions with another thread adding intern strings.
     MutexLock mu(Thread::Current(), *Locks::intern_table_lock_);
-    strong_interns_.AddInternStrings(std::move(set));
+    // Visit the unordered set, may remove elements.
+    visitor(set);
+    if (!set.empty()) {
+      strong_interns_.AddInternStrings(std::move(set));
+    }
   }
   return read_count;
 }

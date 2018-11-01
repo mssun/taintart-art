@@ -1486,7 +1486,6 @@ void AppImageLoadingHelper::HandleAppImageStrings(gc::space::ImageSpace* space) 
   // the strings they point to.
   ScopedTrace timing("AppImage:InternString");
 
-  Thread* const self = Thread::Current();
   InternTable* const intern_table = Runtime::Current()->GetInternTable();
 
   // Add the intern table, removing any conflicts. For conflicts, store the new address in a map
@@ -1494,13 +1493,14 @@ void AppImageLoadingHelper::HandleAppImageStrings(gc::space::ImageSpace* space) 
   // TODO: Optimize with a bitmap or bloom filter
   SafeMap<mirror::String*, mirror::String*> intern_remap;
   intern_table->AddImageStringsToTable(space, [&](InternTable::UnorderedSet& interns)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(Locks::intern_table_lock_) {
     VLOG(image) << "AppImage:stringsInInternTableSize = " << interns.size();
     for (auto it = interns.begin(); it != interns.end(); ) {
       ObjPtr<mirror::String> string = it->Read();
-      ObjPtr<mirror::String> existing = intern_table->LookupWeak(self, string);
+      ObjPtr<mirror::String> existing = intern_table->LookupWeakLocked(string);
       if (existing == nullptr) {
-        existing = intern_table->LookupStrong(self, string);
+        existing = intern_table->LookupStrongLocked(string);
       }
       if (existing != nullptr) {
         intern_remap.Put(string.Ptr(), existing.Ptr());
