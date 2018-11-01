@@ -62,13 +62,14 @@ public class Class2Greylist {
     public static final String FLAG_GREYLIST = "greylist";
     public static final String FLAG_BLACKLIST = "blacklist";
     public static final String FLAG_GREYLIST_MAX_O = "greylist-max-o";
+    public static final String FLAG_GREYLIST_MAX_P = "greylist-max-p";
 
     private static final Map<Integer, String> TARGET_SDK_TO_LIST_MAP;
     static {
         Map<Integer, String> map = new HashMap<>();
         map.put(null, FLAG_GREYLIST);
         map.put(26, FLAG_GREYLIST_MAX_O);
-        map.put(28, FLAG_GREYLIST);
+        map.put(28, FLAG_GREYLIST_MAX_P);
         TARGET_SDK_TO_LIST_MAP = Collections.unmodifiableMap(map);
     }
 
