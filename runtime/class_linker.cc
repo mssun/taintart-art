@@ -1495,18 +1495,44 @@ void AppImageLoadingHelper::HandleAppImageStrings(gc::space::ImageSpace* space) 
   intern_table->AddImageStringsToTable(space, [&](InternTable::UnorderedSet& interns)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(Locks::intern_table_lock_) {
+    const size_t non_boot_image_strings = intern_table->CountInterns(
+        /*visit_boot_images=*/false,
+        /*visit_non_boot_images=*/true);
     VLOG(image) << "AppImage:stringsInInternTableSize = " << interns.size();
-    for (auto it = interns.begin(); it != interns.end(); ) {
-      ObjPtr<mirror::String> string = it->Read();
-      ObjPtr<mirror::String> existing = intern_table->LookupWeakLocked(string);
-      if (existing == nullptr) {
-        existing = intern_table->LookupStrongLocked(string);
+    VLOG(image) << "AppImage:nonBootImageInternStrings = " << non_boot_image_strings;
+    // Visit the smaller of the two sets to compute the intersection.
+    if (interns.size() < non_boot_image_strings) {
+      for (auto it = interns.begin(); it != interns.end(); ) {
+        ObjPtr<mirror::String> string = it->Read();
+        ObjPtr<mirror::String> existing = intern_table->LookupWeakLocked(string);
+        if (existing == nullptr) {
+          existing = intern_table->LookupStrongLocked(string);
+        }
+        if (existing != nullptr) {
+          intern_remap.Put(string.Ptr(), existing.Ptr());
+          it = interns.erase(it);
+        } else {
+          ++it;
+        }
       }
-      if (existing != nullptr) {
-        intern_remap.Put(string.Ptr(), existing.Ptr());
-        it = interns.erase(it);
-      } else {
-        ++it;
+    } else {
+      intern_table->VisitInterns([&](const GcRoot<mirror::String>& root)
+          REQUIRES_SHARED(Locks::mutator_lock_)
+          REQUIRES(Locks::intern_table_lock_) {
+        auto it = interns.find(root);
+        if (it != interns.end()) {
+          ObjPtr<mirror::String> existing = root.Read();
+          intern_remap.Put(it->Read(), existing.Ptr());
+          it = interns.erase(it);
+        }
+      }, /*visit_boot_images=*/false, /*visit_non_boot_images=*/true);
+    }
+    // Sanity check to ensure correctness.
+    if (kIsDebugBuild) {
+      for (GcRoot<mirror::String>& root : interns) {
+        ObjPtr<mirror::String> string = root.Read();
+        CHECK(intern_table->LookupWeakLocked(string) == nullptr) << string->ToModifiedUtf8();
+        CHECK(intern_table->LookupStrongLocked(string) == nullptr) << string->ToModifiedUtf8();
       }
     }
   });
