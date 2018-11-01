@@ -1039,11 +1039,8 @@ bool DlOpenOatFile::Dlopen(const std::string& elf_filename,
     }
 #ifdef ART_TARGET_ANDROID
     android_dlextinfo extinfo = {};
-    extinfo.flags = ANDROID_DLEXT_FORCE_LOAD |                  // Force-load, don't reuse handle
-                                                                //   (open oat files multiple
-                                                                //    times).
-                    ANDROID_DLEXT_FORCE_FIXED_VADDR;            // Take a non-zero vaddr as absolute
-                                                                //   (non-pic boot image).
+    extinfo.flags = ANDROID_DLEXT_FORCE_LOAD;   // Force-load, don't reuse handle
+                                                //   (open oat files multiple times).
     if (reservation != nullptr) {
       if (!reservation->IsValid()) {
         *error_msg = StringPrintf("Invalid reservation for %s", elf_filename.c_str());
