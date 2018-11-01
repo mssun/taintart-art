@@ -196,7 +196,7 @@ inline void ReaderWriterMutex::SharedUnlock(Thread* self) {
         if (num_pending_writers_.load(std::memory_order_seq_cst) > 0 ||
             num_pending_readers_.load(std::memory_order_seq_cst) > 0) {
           // Wake any exclusive waiters as there are now no readers.
-          futex(state_.Address(), FUTEX_WAKE, -1, nullptr, nullptr, 0);
+          futex(state_.Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
         }
       }
     } else {
