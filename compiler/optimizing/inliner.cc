@@ -1757,6 +1757,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
                            caller_compilation_unit_.GetClassLoader(),
                            handles_);
 
+  Handle<mirror::Class> compiling_class = handles_->NewHandle(resolved_method->GetDeclaringClass());
   DexCompilationUnit dex_compilation_unit(
       class_loader,
       class_linker,
@@ -1766,7 +1767,8 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
       method_index,
       resolved_method->GetAccessFlags(),
       /* verified_method */ nullptr,
-      dex_cache);
+      dex_cache,
+      compiling_class);
 
   InvokeType invoke_type = invoke_instruction->GetInvokeType();
   if (invoke_type == kInterface) {
