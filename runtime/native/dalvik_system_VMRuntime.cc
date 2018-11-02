@@ -76,10 +76,6 @@ static void VMRuntime_startJitCompilation(JNIEnv*, jobject) {
 static void VMRuntime_disableJitCompilation(JNIEnv*, jobject) {
 }
 
-static jboolean VMRuntime_hasUsedHiddenApi(JNIEnv*, jobject) {
-  return Runtime::Current()->HasPendingHiddenApiWarning() ? JNI_TRUE : JNI_FALSE;
-}
-
 static void VMRuntime_setHiddenApiExemptions(JNIEnv* env,
                                             jclass,
                                             jobjectArray exemptions) {
@@ -697,7 +693,6 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, concurrentGC, "()V"),
   NATIVE_METHOD(VMRuntime, disableJitCompilation, "()V"),
   FAST_NATIVE_METHOD(VMRuntime, hasBootImageSpaces, "()Z"),  // Could be CRITICAL.
-  NATIVE_METHOD(VMRuntime, hasUsedHiddenApi, "()Z"),
   NATIVE_METHOD(VMRuntime, setHiddenApiExemptions, "([Ljava/lang/String;)V"),
   NATIVE_METHOD(VMRuntime, setHiddenApiAccessLogSamplingRate, "(I)V"),
   NATIVE_METHOD(VMRuntime, getTargetHeapUtilization, "()F"),
