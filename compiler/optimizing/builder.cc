@@ -21,6 +21,7 @@
 #include "base/bit_vector-inl.h"
 #include "base/logging.h"
 #include "block_builder.h"
+#include "code_generator.h"
 #include "data_type-inl.h"
 #include "dex/verified_method.h"
 #include "driver/compiler_options.h"
@@ -40,7 +41,6 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
                              const CodeItemDebugInfoAccessor& accessor,
                              const DexCompilationUnit* dex_compilation_unit,
                              const DexCompilationUnit* outer_compilation_unit,
-                             CompilerDriver* driver,
                              CodeGenerator* code_generator,
                              OptimizingCompilerStats* compiler_stats,
                              ArrayRef<const uint8_t> interpreter_metadata,
@@ -50,7 +50,6 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
       code_item_accessor_(accessor),
       dex_compilation_unit_(dex_compilation_unit),
       outer_compilation_unit_(outer_compilation_unit),
-      compiler_driver_(driver),
       code_generator_(code_generator),
       compilation_stats_(compiler_stats),
       interpreter_metadata_(interpreter_metadata),
@@ -67,19 +66,18 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
       code_item_accessor_(accessor),
       dex_compilation_unit_(dex_compilation_unit),
       outer_compilation_unit_(nullptr),
-      compiler_driver_(nullptr),
       code_generator_(nullptr),
       compilation_stats_(nullptr),
       handles_(handles),
       return_type_(return_type) {}
 
 bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {
-  if (compiler_driver_ == nullptr) {
-    // Note that the compiler driver is null when unit testing.
+  if (code_generator_ == nullptr) {
+    // Note that the codegen is null when unit testing.
     return false;
   }
 
-  const CompilerOptions& compiler_options = compiler_driver_->GetCompilerOptions();
+  const CompilerOptions& compiler_options = code_generator_->GetCompilerOptions();
   CompilerFilter::Filter compiler_filter = compiler_options.GetCompilerFilter();
   if (compiler_filter == CompilerFilter::kEverything) {
     return false;
@@ -131,7 +129,6 @@ GraphAnalysisResult HGraphBuilder::BuildGraph() {
                                           return_type_,
                                           dex_compilation_unit_,
                                           outer_compilation_unit_,
-                                          compiler_driver_,
                                           code_generator_,
                                           interpreter_metadata_,
                                           compilation_stats_,
@@ -203,7 +200,6 @@ void HGraphBuilder::BuildIntrinsicGraph(ArtMethod* method) {
                                           return_type_,
                                           dex_compilation_unit_,
                                           outer_compilation_unit_,
-                                          compiler_driver_,
                                           code_generator_,
                                           interpreter_metadata_,
                                           compilation_stats_,

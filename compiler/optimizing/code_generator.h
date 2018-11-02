@@ -59,7 +59,6 @@ static constexpr ReadBarrierOption kCompilerReadBarrierOption =
 
 class Assembler;
 class CodeGenerator;
-class CompilerDriver;
 class CompilerOptions;
 class StackMapStream;
 class ParallelMoveResolver;

@@ -34,7 +34,6 @@ class ArenaBitVector;
 class ArtField;
 class ArtMethod;
 class CodeGenerator;
-class CompilerDriver;
 class DexCompilationUnit;
 class HBasicBlockBuilder;
 class Instruction;
@@ -59,7 +58,6 @@ class HInstructionBuilder : public ValueObject {
                       DataType::Type return_type,
                       const DexCompilationUnit* dex_compilation_unit,
                       const DexCompilationUnit* outer_compilation_unit,
-                      CompilerDriver* compiler_driver,
                       CodeGenerator* code_generator,
                       ArrayRef<const uint8_t> interpreter_metadata,
                       OptimizingCompilerStats* compiler_stats,
@@ -306,8 +304,6 @@ class HInstructionBuilder : public ValueObject {
 
   HBasicBlockBuilder* const block_builder_;
   SsaBuilder* const ssa_builder_;
-
-  CompilerDriver* const compiler_driver_;
 
   CodeGenerator* const code_generator_;
 

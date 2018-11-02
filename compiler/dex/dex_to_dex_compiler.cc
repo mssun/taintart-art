@@ -376,9 +376,7 @@ void DexToDexCompiler::CompilationState::CompileReturnVoid(Instruction* inst, ui
   DCHECK_EQ(inst->Opcode(), Instruction::RETURN_VOID);
   if (unit_.IsConstructor()) {
     // Are we compiling a non clinit constructor which needs a barrier ?
-    if (!unit_.IsStatic() &&
-        driver_.RequiresConstructorBarrier(Thread::Current(), unit_.GetDexFile(),
-                                           unit_.GetClassDefIndex())) {
+    if (!unit_.IsStatic() && unit_.RequiresConstructorBarrier()) {
       return;
     }
   }
