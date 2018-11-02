@@ -1241,7 +1241,7 @@ class ImageSpace::Loader {
           for (GcRoot<mirror::String>& root : strings) {
             root = GcRoot<mirror::String>(fixup_adapter(root.Read<kWithoutReadBarrier>()));
           }
-        });
+        }, /*is_boot_image=*/ false);
       }
     }
     if (VLOG_IS_ON(image)) {
