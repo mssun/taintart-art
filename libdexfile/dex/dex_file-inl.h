@@ -110,6 +110,14 @@ inline const char* DexFile::GetMethodName(const MethodId& method_id) const {
   return StringDataByIdx(method_id.name_idx_);
 }
 
+inline const char* DexFile::GetMethodName(const MethodId& method_id, uint32_t* utf_length) const {
+  return StringDataAndUtf16LengthByIdx(method_id.name_idx_, utf_length);
+}
+
+inline const char* DexFile::GetMethodName(uint32_t idx, uint32_t* utf_length) const {
+  return StringDataAndUtf16LengthByIdx(GetMethodId(idx).name_idx_, utf_length);
+}
+
 inline const char* DexFile::GetMethodShorty(uint32_t idx) const {
   return StringDataByIdx(GetProtoId(GetMethodId(idx).proto_idx_).shorty_idx_);
 }
