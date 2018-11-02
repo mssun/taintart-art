@@ -105,18 +105,7 @@ size_t GetInstructionSetAlignment(InstructionSet isa) {
   UNREACHABLE();
 }
 
-#if !defined(ART_STACK_OVERFLOW_GAP_arm) || !defined(ART_STACK_OVERFLOW_GAP_arm64) || \
-    !defined(ART_STACK_OVERFLOW_GAP_mips) || !defined(ART_STACK_OVERFLOW_GAP_mips64) || \
-    !defined(ART_STACK_OVERFLOW_GAP_x86) || !defined(ART_STACK_OVERFLOW_GAP_x86_64)
-#error "Missing defines for stack overflow gap"
-#endif
-
-static constexpr size_t kArmStackOverflowReservedBytes    = ART_STACK_OVERFLOW_GAP_arm;
-static constexpr size_t kArm64StackOverflowReservedBytes  = ART_STACK_OVERFLOW_GAP_arm64;
-static constexpr size_t kMipsStackOverflowReservedBytes   = ART_STACK_OVERFLOW_GAP_mips;
-static constexpr size_t kMips64StackOverflowReservedBytes = ART_STACK_OVERFLOW_GAP_mips64;
-static constexpr size_t kX86StackOverflowReservedBytes    = ART_STACK_OVERFLOW_GAP_x86;
-static constexpr size_t kX86_64StackOverflowReservedBytes = ART_STACK_OVERFLOW_GAP_x86_64;
+namespace instruction_set_details {
 
 static_assert(IsAligned<kPageSize>(kArmStackOverflowReservedBytes), "ARM gap not page aligned");
 static_assert(IsAligned<kPageSize>(kArm64StackOverflowReservedBytes), "ARM64 gap not page aligned");
@@ -144,32 +133,10 @@ static_assert(ART_FRAME_SIZE_LIMIT < kX86StackOverflowReservedBytes,
 static_assert(ART_FRAME_SIZE_LIMIT < kX86_64StackOverflowReservedBytes,
               "Frame size limit too large");
 
-size_t GetStackOverflowReservedBytes(InstructionSet isa) {
-  switch (isa) {
-    case InstructionSet::kArm:      // Intentional fall-through.
-    case InstructionSet::kThumb2:
-      return kArmStackOverflowReservedBytes;
+}  // namespace instruction_set_details
 
-    case InstructionSet::kArm64:
-      return kArm64StackOverflowReservedBytes;
-
-    case InstructionSet::kMips:
-      return kMipsStackOverflowReservedBytes;
-
-    case InstructionSet::kMips64:
-      return kMips64StackOverflowReservedBytes;
-
-    case InstructionSet::kX86:
-      return kX86StackOverflowReservedBytes;
-
-    case InstructionSet::kX86_64:
-      return kX86_64StackOverflowReservedBytes;
-
-    case InstructionSet::kNone:
-      LOG(FATAL) << "kNone has no stack overflow size";
-      UNREACHABLE();
-  }
-  LOG(FATAL) << "Unknown instruction set" << isa;
+NO_RETURN void GetStackOverflowReservedBytesFailure(const char* error_msg) {
+  LOG(FATAL) << error_msg;
   UNREACHABLE();
 }
 
