@@ -226,7 +226,53 @@ constexpr size_t GetBytesPerFprSpillLocation(InstructionSet isa) {
   InstructionSetAbort(isa);
 }
 
-size_t GetStackOverflowReservedBytes(InstructionSet isa);
+namespace instruction_set_details {
+
+#if !defined(ART_STACK_OVERFLOW_GAP_arm) || !defined(ART_STACK_OVERFLOW_GAP_arm64) || \
+    !defined(ART_STACK_OVERFLOW_GAP_mips) || !defined(ART_STACK_OVERFLOW_GAP_mips64) || \
+    !defined(ART_STACK_OVERFLOW_GAP_x86) || !defined(ART_STACK_OVERFLOW_GAP_x86_64)
+#error "Missing defines for stack overflow gap"
+#endif
+
+static constexpr size_t kArmStackOverflowReservedBytes    = ART_STACK_OVERFLOW_GAP_arm;
+static constexpr size_t kArm64StackOverflowReservedBytes  = ART_STACK_OVERFLOW_GAP_arm64;
+static constexpr size_t kMipsStackOverflowReservedBytes   = ART_STACK_OVERFLOW_GAP_mips;
+static constexpr size_t kMips64StackOverflowReservedBytes = ART_STACK_OVERFLOW_GAP_mips64;
+static constexpr size_t kX86StackOverflowReservedBytes    = ART_STACK_OVERFLOW_GAP_x86;
+static constexpr size_t kX86_64StackOverflowReservedBytes = ART_STACK_OVERFLOW_GAP_x86_64;
+
+NO_RETURN void GetStackOverflowReservedBytesFailure(const char* error_msg);
+
+}  // namespace instruction_set_details
+
+ALWAYS_INLINE
+constexpr size_t GetStackOverflowReservedBytes(InstructionSet isa) {
+  switch (isa) {
+    case InstructionSet::kArm:      // Intentional fall-through.
+    case InstructionSet::kThumb2:
+      return instruction_set_details::kArmStackOverflowReservedBytes;
+
+    case InstructionSet::kArm64:
+      return instruction_set_details::kArm64StackOverflowReservedBytes;
+
+    case InstructionSet::kMips:
+      return instruction_set_details::kMipsStackOverflowReservedBytes;
+
+    case InstructionSet::kMips64:
+      return instruction_set_details::kMips64StackOverflowReservedBytes;
+
+    case InstructionSet::kX86:
+      return instruction_set_details::kX86StackOverflowReservedBytes;
+
+    case InstructionSet::kX86_64:
+      return instruction_set_details::kX86_64StackOverflowReservedBytes;
+
+    case InstructionSet::kNone:
+      instruction_set_details::GetStackOverflowReservedBytesFailure(
+          "kNone has no stack overflow size");
+  }
+  instruction_set_details::GetStackOverflowReservedBytesFailure("Unknown instruction set");
+}
 
 // The following definitions create return types for two word-sized entities that will be passed
 // in registers so that memory operations for the interface trampolines can be avoided. The entities
