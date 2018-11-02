@@ -123,6 +123,41 @@ class DexCompilationUnit : public DeletableArenaObject<kArenaAllocMisc> {
     return compiling_class_;
   }
 
+  // Does this <init> method require a constructor barrier (prior to the return)?
+  // The answer is "yes", if and only if the class has any instance final fields.
+  // (This must not be called for any non-<init> methods; the answer would be "no").
+  //
+  // ---
+  //
+  // JLS 17.5.1 "Semantics of final fields" mandates that all final fields are frozen at the end
+  // of the invoked constructor. The constructor barrier is a conservative implementation means of
+  // enforcing the freezes happen-before the object being constructed is observable by another
+  // thread.
+  //
+  // Note: This question only makes sense for instance constructors;
+  // static constructors (despite possibly having finals) never need
+  // a barrier.
+  //
+  // JLS 12.4.2 "Detailed Initialization Procedure" approximately describes
+  // class initialization as:
+  //
+  //   lock(class.lock)
+  //     class.state = initializing
+  //   unlock(class.lock)
+  //
+  //   invoke <clinit>
+  //
+  //   lock(class.lock)
+  //     class.state = initialized
+  //   unlock(class.lock)              <-- acts as a release
+  //
+  // The last operation in the above example acts as an atomic release
+  // for any stores in <clinit>, which ends up being stricter
+  // than what a constructor barrier needs.
+  //
+  // See also QuasiAtomic::ThreadFenceForConstructor().
+  bool RequiresConstructorBarrier() const;
+
  private:
   const Handle<mirror::ClassLoader> class_loader_;
 

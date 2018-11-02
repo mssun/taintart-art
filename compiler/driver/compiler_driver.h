@@ -151,50 +151,6 @@ class CompilerDriver {
   void AddCompiledMethod(const MethodReference& method_ref, CompiledMethod* const compiled_method);
   CompiledMethod* RemoveCompiledMethod(const MethodReference& method_ref);
 
-  void SetRequiresConstructorBarrier(Thread* self,
-                                     const DexFile* dex_file,
-                                     uint16_t class_def_index,
-                                     bool requires)
-      REQUIRES(!requires_constructor_barrier_lock_);
-
-  // Do the <init> methods for this class require a constructor barrier (prior to the return)?
-  // The answer is "yes", if and only if this class has any instance final fields.
-  // (This must not be called for any non-<init> methods; the answer would be "no").
-  //
-  // ---
-  //
-  // JLS 17.5.1 "Semantics of final fields" mandates that all final fields are frozen at the end
-  // of the invoked constructor. The constructor barrier is a conservative implementation means of
-  // enforcing the freezes happen-before the object being constructed is observable by another
-  // thread.
-  //
-  // Note: This question only makes sense for instance constructors;
-  // static constructors (despite possibly having finals) never need
-  // a barrier.
-  //
-  // JLS 12.4.2 "Detailed Initialization Procedure" approximately describes
-  // class initialization as:
-  //
-  //   lock(class.lock)
-  //     class.state = initializing
-  //   unlock(class.lock)
-  //
-  //   invoke <clinit>
-  //
-  //   lock(class.lock)
-  //     class.state = initialized
-  //   unlock(class.lock)              <-- acts as a release
-  //
-  // The last operation in the above example acts as an atomic release
-  // for any stores in <clinit>, which ends up being stricter
-  // than what a constructor barrier needs.
-  //
-  // See also QuasiAtomic::ThreadFenceForConstructor().
-  bool RequiresConstructorBarrier(Thread* self,
-                                  const DexFile* dex_file,
-                                  uint16_t class_def_index)
-      REQUIRES(!requires_constructor_barrier_lock_);
-
   // Resolve compiling method's class. Returns null on failure.
   ObjPtr<mirror::Class> ResolveCompilingMethodsClass(const ScopedObjectAccess& soa,
                                                      Handle<mirror::DexCache> dex_cache,
@@ -407,19 +363,11 @@ class CompilerDriver {
   void FreeThreadPools();
   void CheckThreadPools();
 
-  bool RequiresConstructorBarrier(const DexFile& dex_file, uint16_t class_def_idx) const;
-
   const CompilerOptions* const compiler_options_;
   VerificationResults* const verification_results_;
 
   std::unique_ptr<Compiler> compiler_;
   Compiler::Kind compiler_kind_;
-
-  // All class references that require constructor barriers. If the class reference is not in the
-  // set then the result has not yet been computed.
-  mutable ReaderWriterMutex requires_constructor_barrier_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
-  std::map<ClassReference, bool> requires_constructor_barrier_
-      GUARDED_BY(requires_constructor_barrier_lock_);
 
   // All class references that this compiler has compiled. Indexed by class defs.
   using ClassStateTable = AtomicDexRefMap<ClassReference, ClassStatus>;

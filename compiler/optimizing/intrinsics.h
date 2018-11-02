@@ -24,7 +24,6 @@
 
 namespace art {
 
-class CompilerDriver;
 class DexFile;
 
 // Positive floating-point infinities.

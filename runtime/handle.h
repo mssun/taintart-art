@@ -62,8 +62,9 @@ class Handle : public ValueObject {
     return down_cast<T*>(reference_->AsMirrorPtr());
   }
 
-  ALWAYS_INLINE bool IsNull() const REQUIRES_SHARED(Locks::mutator_lock_) {
-    return Get() == nullptr;
+  ALWAYS_INLINE bool IsNull() const {
+    // It's safe to null-check it without a read barrier.
+    return reference_->IsNull();
   }
 
   ALWAYS_INLINE jobject ToJObject() const REQUIRES_SHARED(Locks::mutator_lock_) {

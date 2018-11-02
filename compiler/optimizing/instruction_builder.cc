@@ -25,7 +25,6 @@
 #include "data_type-inl.h"
 #include "dex/bytecode_utils.h"
 #include "dex/dex_instruction-inl.h"
-#include "driver/compiler_driver.h"
 #include "driver/dex_compilation_unit.h"
 #include "driver/compiler_options.h"
 #include "imtable-inl.h"
@@ -48,7 +47,6 @@ HInstructionBuilder::HInstructionBuilder(HGraph* graph,
                                          DataType::Type return_type,
                                          const DexCompilationUnit* dex_compilation_unit,
                                          const DexCompilationUnit* outer_compilation_unit,
-                                         CompilerDriver* compiler_driver,
                                          CodeGenerator* code_generator,
                                          ArrayRef<const uint8_t> interpreter_metadata,
                                          OptimizingCompilerStats* compiler_stats,
@@ -62,7 +60,6 @@ HInstructionBuilder::HInstructionBuilder(HGraph* graph,
       return_type_(return_type),
       block_builder_(block_builder),
       ssa_builder_(ssa_builder),
-      compiler_driver_(compiler_driver),
       code_generator_(code_generator),
       dex_compilation_unit_(dex_compilation_unit),
       outer_compilation_unit_(outer_compilation_unit),
@@ -711,20 +708,18 @@ void HInstructionBuilder::Binop_22b(const Instruction& instruction, bool reverse
 
 // Does the method being compiled need any constructor barriers being inserted?
 // (Always 'false' for methods that aren't <init>.)
-static bool RequiresConstructorBarrier(const DexCompilationUnit* cu, CompilerDriver* driver) {
+static bool RequiresConstructorBarrier(const DexCompilationUnit* cu) {
   // Can be null in unit tests only.
   if (UNLIKELY(cu == nullptr)) {
     return false;
   }
 
-  Thread* self = Thread::Current();
-  return cu->IsConstructor()
-      && !cu->IsStatic()
-      // RequiresConstructorBarrier must only be queried for <init> methods;
-      // it's effectively "false" for every other method.
-      //
-      // See CompilerDriver::RequiresConstructBarrier for more explanation.
-      && driver->RequiresConstructorBarrier(self, cu->GetDexFile(), cu->GetClassDefIndex());
+  // Constructor barriers are applicable only for <init> methods.
+  if (LIKELY(!cu->IsConstructor() || cu->IsStatic())) {
+    return false;
+  }
+
+  return cu->RequiresConstructorBarrier();
 }
 
 // Returns true if `block` has only one successor which starts at the next
@@ -770,7 +765,7 @@ void HInstructionBuilder::BuildReturn(const Instruction& instruction,
     // Only <init> (which is a return-void) could possibly have a constructor fence.
     // This may insert additional redundant constructor fences from the super constructors.
     // TODO: remove redundant constructor fences (b/36656456).
-    if (RequiresConstructorBarrier(dex_compilation_unit_, compiler_driver_)) {
+    if (RequiresConstructorBarrier(dex_compilation_unit_)) {
       // Compiling instance constructor.
       DCHECK_STREQ("<init>", graph_->GetMethodName());
 
@@ -784,7 +779,7 @@ void HInstructionBuilder::BuildReturn(const Instruction& instruction,
     }
     AppendInstruction(new (allocator_) HReturnVoid(dex_pc));
   } else {
-    DCHECK(!RequiresConstructorBarrier(dex_compilation_unit_, compiler_driver_));
+    DCHECK(!RequiresConstructorBarrier(dex_compilation_unit_));
     HInstruction* value = LoadLocal(instruction.VRegA(), type);
     AppendInstruction(new (allocator_) HReturn(value, dex_pc));
   }
@@ -881,8 +876,8 @@ ArtMethod* HInstructionBuilder::ResolveMethod(uint16_t method_idx, InvokeType in
       // The back-end code generator relies on this check in order to ensure that it will not
       // attempt to read the dex_cache with a dex_method_index that is not from the correct
       // dex_file. If we didn't do this check then the dex_method_index will not be updated in the
-      // builder, which means that the code-generator (and compiler driver during sharpening and
-      // inliner, maybe) might invoke an incorrect method.
+      // builder, which means that the code-generator (and sharpening and inliner, maybe)
+      // might invoke an incorrect method.
       // TODO: The actual method could still be referenced in the current dex file, so we
       //       could try locating it.
       // TODO: Remove the dex_file restriction.
