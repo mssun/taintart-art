@@ -77,7 +77,7 @@ inline void InternTable::VisitInterns(const Visitor& visitor,
                                       bool visit_boot_images,
                                       bool visit_non_boot_images) {
   auto visit_tables = [&](std::vector<Table::InternalTable>& tables)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
+      NO_THREAD_SAFETY_ANALYSIS {
     for (Table::InternalTable& table : tables) {
       // Determine if we want to visit the table based on the flags..
       const bool visit =
@@ -92,6 +92,26 @@ inline void InternTable::VisitInterns(const Visitor& visitor,
   };
   visit_tables(strong_interns_.tables_);
   visit_tables(weak_interns_.tables_);
+}
+
+inline size_t InternTable::CountInterns(bool visit_boot_images,
+                                        bool visit_non_boot_images) const {
+  size_t ret = 0u;
+  auto visit_tables = [&](const std::vector<Table::InternalTable>& tables)
+      NO_THREAD_SAFETY_ANALYSIS {
+    for (const Table::InternalTable& table : tables) {
+      // Determine if we want to visit the table based on the flags..
+      const bool visit =
+          (visit_boot_images && table.IsBootImage()) ||
+          (visit_non_boot_images && !table.IsBootImage());
+      if (visit) {
+        ret += table.set_.size();
+      }
+    }
+  };
+  visit_tables(strong_interns_.tables_);
+  visit_tables(weak_interns_.tables_);
+  return ret;
 }
 
 }  // namespace art
