@@ -31,7 +31,8 @@ DexCompilationUnit::DexCompilationUnit(Handle<mirror::ClassLoader> class_loader,
                                        uint32_t method_idx,
                                        uint32_t access_flags,
                                        const VerifiedMethod* verified_method,
-                                       Handle<mirror::DexCache> dex_cache)
+                                       Handle<mirror::DexCache> dex_cache,
+                                       Handle<mirror::Class> compiling_class)
     : class_loader_(class_loader),
       class_linker_(class_linker),
       dex_file_(&dex_file),
@@ -41,7 +42,8 @@ DexCompilationUnit::DexCompilationUnit(Handle<mirror::ClassLoader> class_loader,
       access_flags_(access_flags),
       verified_method_(verified_method),
       dex_cache_(dex_cache),
-      code_item_accessor_(dex_file, code_item) {}
+      code_item_accessor_(dex_file, code_item),
+      compiling_class_(compiling_class) {}
 
 const std::string& DexCompilationUnit::GetSymbol() {
   if (symbol_.empty()) {
