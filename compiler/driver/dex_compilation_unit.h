@@ -27,6 +27,7 @@
 
 namespace art {
 namespace mirror {
+class Class;
 class ClassLoader;
 class DexCache;
 }  // namespace mirror
@@ -43,7 +44,8 @@ class DexCompilationUnit : public DeletableArenaObject<kArenaAllocMisc> {
                      uint32_t method_idx,
                      uint32_t access_flags,
                      const VerifiedMethod* verified_method,
-                     Handle<mirror::DexCache> dex_cache);
+                     Handle<mirror::DexCache> dex_cache,
+                     Handle<mirror::Class> compiling_class = Handle<mirror::Class>());
 
   Handle<mirror::ClassLoader> GetClassLoader() const {
     return class_loader_;
@@ -117,6 +119,10 @@ class DexCompilationUnit : public DeletableArenaObject<kArenaAllocMisc> {
     return code_item_accessor_;
   }
 
+  Handle<mirror::Class> GetCompilingClass() const {
+    return compiling_class_;
+  }
+
  private:
   const Handle<mirror::ClassLoader> class_loader_;
 
@@ -133,6 +139,8 @@ class DexCompilationUnit : public DeletableArenaObject<kArenaAllocMisc> {
   const Handle<mirror::DexCache> dex_cache_;
 
   const CodeItemDataAccessor code_item_accessor_;
+
+  Handle<mirror::Class> compiling_class_;
 
   std::string symbol_;
 };
