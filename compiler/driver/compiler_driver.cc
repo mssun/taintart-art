@@ -254,7 +254,6 @@ CompilerDriver::CompilerDriver(
       verification_results_(verification_results),
       compiler_(Compiler::Create(this, compiler_kind)),
       compiler_kind_(compiler_kind),
-      requires_constructor_barrier_lock_("constructor barrier lock"),
       image_classes_(std::move(image_classes)),
       number_of_soft_verifier_failures_(0),
       had_hard_verifier_failure_(false),
@@ -1580,18 +1579,6 @@ static void CheckAndClearResolveException(Thread* self)
   self->ClearException();
 }
 
-bool CompilerDriver::RequiresConstructorBarrier(const DexFile& dex_file,
-                                                uint16_t class_def_idx) const {
-  ClassAccessor accessor(dex_file, class_def_idx);
-  // We require a constructor barrier if there are final instance fields.
-  for (const ClassAccessor::Field& field : accessor.GetInstanceFields()) {
-    if (field.IsFinal()) {
-      return true;
-    }
-  }
-  return false;
-}
-
 class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
  public:
   explicit ResolveClassFieldsAndMethodsVisitor(const ParallelCompilationManager* manager)
@@ -1635,57 +1622,42 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
       // We want to resolve the methods and fields eagerly.
       resolve_fields_and_methods = true;
     }
-    // If an instance field is final then we need to have a barrier on the return, static final
-    // fields are assigned within the lock held for class initialization.
-    bool requires_constructor_barrier = false;
 
-    ClassAccessor accessor(dex_file, class_def_index);
-    // Optionally resolve fields and methods and figure out if we need a constructor barrier.
-    auto method_visitor = [&](const ClassAccessor::Method& method)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      if (resolve_fields_and_methods) {
+    if (resolve_fields_and_methods) {
+      ClassAccessor accessor(dex_file, class_def_index);
+      // Optionally resolve fields and methods and figure out if we need a constructor barrier.
+      auto method_visitor = [&](const ClassAccessor::Method& method)
+          REQUIRES_SHARED(Locks::mutator_lock_) {
         ArtMethod* resolved = class_linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
             method.GetIndex(),
             dex_cache,
             class_loader,
-            /* referrer */ nullptr,
+            /*referrer=*/ nullptr,
             method.GetInvokeType(class_def.access_flags_));
         if (resolved == nullptr) {
           CheckAndClearResolveException(soa.Self());
         }
-      }
-    };
-    accessor.VisitFieldsAndMethods(
-        // static fields
-        [&](ClassAccessor::Field& field) REQUIRES_SHARED(Locks::mutator_lock_) {
-          if (resolve_fields_and_methods) {
+      };
+      accessor.VisitFieldsAndMethods(
+          // static fields
+          [&](ClassAccessor::Field& field) REQUIRES_SHARED(Locks::mutator_lock_) {
             ArtField* resolved = class_linker->ResolveField(
-                field.GetIndex(), dex_cache, class_loader, /* is_static */ true);
+                field.GetIndex(), dex_cache, class_loader, /*is_static=*/ true);
             if (resolved == nullptr) {
               CheckAndClearResolveException(soa.Self());
             }
-          }
-        },
-        // instance fields
-        [&](ClassAccessor::Field& field) REQUIRES_SHARED(Locks::mutator_lock_) {
-          if (field.IsFinal()) {
-            // We require a constructor barrier if there are final instance fields.
-            requires_constructor_barrier = true;
-          }
-          if (resolve_fields_and_methods) {
+          },
+          // instance fields
+          [&](ClassAccessor::Field& field) REQUIRES_SHARED(Locks::mutator_lock_) {
             ArtField* resolved = class_linker->ResolveField(
-                field.GetIndex(), dex_cache, class_loader, /* is_static */ false);
+                field.GetIndex(), dex_cache, class_loader, /*is_static=*/ false);
             if (resolved == nullptr) {
               CheckAndClearResolveException(soa.Self());
             }
-          }
-        },
-        /*direct methods*/ method_visitor,
-        /*virtual methods*/ method_visitor);
-    manager_->GetCompiler()->SetRequiresConstructorBarrier(self,
-                                                           &dex_file,
-                                                           class_def_index,
-                                                           requires_constructor_barrier);
+          },
+          /*direct_method_visitor=*/ method_visitor,
+          /*virtual_method_visitor=*/ method_visitor);
+    }
   }
 
  private:
@@ -2830,31 +2802,6 @@ bool CompilerDriver::IsMethodVerifiedWithoutFailures(uint32_t method_idx,
     self->ClearException();
   }
   return is_system_class;
-}
-
-void CompilerDriver::SetRequiresConstructorBarrier(Thread* self,
-                                                   const DexFile* dex_file,
-                                                   uint16_t class_def_index,
-                                                   bool requires) {
-  WriterMutexLock mu(self, requires_constructor_barrier_lock_);
-  requires_constructor_barrier_.emplace(ClassReference(dex_file, class_def_index), requires);
-}
-
-bool CompilerDriver::RequiresConstructorBarrier(Thread* self,
-                                                const DexFile* dex_file,
-                                                uint16_t class_def_index) {
-  ClassReference class_ref(dex_file, class_def_index);
-  {
-    ReaderMutexLock mu(self, requires_constructor_barrier_lock_);
-    auto it = requires_constructor_barrier_.find(class_ref);
-    if (it != requires_constructor_barrier_.end()) {
-      return it->second;
-    }
-  }
-  WriterMutexLock mu(self, requires_constructor_barrier_lock_);
-  const bool requires = RequiresConstructorBarrier(*dex_file, class_def_index);
-  requires_constructor_barrier_.emplace(class_ref, requires);
-  return requires;
 }
 
 std::string CompilerDriver::GetMemoryUsageString(bool extended) const {
