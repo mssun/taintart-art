@@ -34,13 +34,16 @@ art_runtime_debug_binaries_prefer32 = [
     "dexoptanalyzerd",
     "profmand",
 ]
+// - Debug variants (libraries).
 art_runtime_debug_native_shared_libs = [
     "libartd",
     "libartd-compiler",
-    "libopenjdkd",
     "libopenjdkjvmd",
     "libopenjdkjvmtid",
     "libadbconnectiond",
+]
+libcore_debug_native_shared_libs = [
+    "libopenjdkd",
 ]
 
 // Data files associated with bionic / managed core library APIs.
@@ -77,6 +80,11 @@ art_tools_host_only_binaries = [
 art_tools_device_binaries = art_tools_common_binaries + art_tools_device_only_binaries
 art_tools_host_binaries = art_tools_common_binaries + art_tools_host_only_binaries
 
+// (Some) Libcore native libraries.
+libcore_native_shared_libs = [
+    "libopenjdk",
+]
+
 apex_key {
     name: "com.android.runtime.key",
     public_key: "com.android.runtime.avbpubkey",
@@ -101,7 +109,8 @@ apex {
     compile_multilib: "both",
     manifest: "manifest.json",
     native_shared_libs: art_runtime_base_native_shared_libs
-        + bionic_native_shared_libs,
+        + bionic_native_shared_libs
+        + libcore_native_shared_libs,
     multilib: {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
@@ -130,7 +139,9 @@ apex {
     manifest: "manifest.json",
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_debug_native_shared_libs
-        + bionic_native_shared_libs,
+        + bionic_native_shared_libs
+        + libcore_native_shared_libs
+        + libcore_debug_native_shared_libs,
     multilib: {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
@@ -164,7 +175,9 @@ art_apex {
     device_supported: false,
     manifest: "manifest.json",
     native_shared_libs: art_runtime_base_native_shared_libs
-        + art_runtime_debug_native_shared_libs,
+        + art_runtime_debug_native_shared_libs
+        + libcore_native_shared_libs
+        + libcore_debug_native_shared_libs,
     multilib: {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
