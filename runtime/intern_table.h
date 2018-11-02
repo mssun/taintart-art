@@ -174,6 +174,10 @@ class InternTable {
                     bool visit_non_boot_images)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
 
+  // Count the number of intern strings in the table.
+  size_t CountInterns(bool visit_boot_images, bool visit_non_boot_images) const
+      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::intern_table_lock_);
+
   void DumpForSigQuit(std::ostream& os) const REQUIRES(!Locks::intern_table_lock_);
 
   void BroadcastForNewInterns();
