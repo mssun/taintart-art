@@ -78,9 +78,9 @@ TEST_F(InternTableTest, CrossHash) {
   GcRoot<mirror::String> str(mirror::String::AllocFromModifiedUtf8(soa.Self(), "00000000"));
 
   MutexLock mu(Thread::Current(), *Locks::intern_table_lock_);
-  for (InternTable::UnorderedSet& table : t.strong_interns_.tables_) {
+  for (InternTable::Table::InternalTable& table : t.strong_interns_.tables_) {
     // The negative hash value shall be 32-bit wide on every host.
-    ASSERT_TRUE(IsUint<32>(table.hashfn_(str)));
+    ASSERT_TRUE(IsUint<32>(table.set_.hashfn_(str)));
   }
 }
 

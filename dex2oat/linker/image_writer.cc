@@ -2614,17 +2614,19 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
     CHECK_EQ(intern_table_bytes, image_info.intern_table_bytes_);
     // Fixup the pointers in the newly written intern table to contain image addresses.
     InternTable temp_intern_table;
-    // Note that we require that ReadFromMemory does not make an internal copy of the elements so that
-    // the VisitRoots() will update the memory directly rather than the copies.
+    // Note that we require that ReadFromMemory does not make an internal copy of the elements so
+    // that the VisitRoots() will update the memory directly rather than the copies.
     // This also relies on visit roots not doing any verification which could fail after we update
     // the roots to be the image addresses.
-    temp_intern_table.AddTableFromMemory(intern_table_memory_ptr, VoidFunctor());
+    temp_intern_table.AddTableFromMemory(intern_table_memory_ptr,
+                                         VoidFunctor(),
+                                         /*is_boot_image=*/ false);
     CHECK_EQ(temp_intern_table.Size(), intern_table->Size());
     temp_intern_table.VisitRoots(&root_visitor, kVisitRootFlagAllRoots);
     // Record relocations. (The root visitor does not get to see the slot addresses.)
     MutexLock lock(Thread::Current(), *Locks::intern_table_lock_);
     DCHECK(!temp_intern_table.strong_interns_.tables_.empty());
-    DCHECK(!temp_intern_table.strong_interns_.tables_[0].empty());  // Inserted at the beginning.
+    DCHECK(!temp_intern_table.strong_interns_.tables_[0].Empty());  // Inserted at the beginning.
   }
   // Write the class table(s) into the image. class_table_bytes_ may be 0 if there are multiple
   // class loaders. Writing multiple class tables into the image is currently unsupported.
