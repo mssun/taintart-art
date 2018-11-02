@@ -99,9 +99,9 @@ TEST_F(ImageTest, ImageHeaderIsValid) {
 TEST_F(ImageTest, TestDefaultMethods) {
   CompilationHelper helper;
   Compile(ImageHeader::kStorageModeUncompressed,
-      helper,
-      "DefaultMethods",
-      {"LIface;", "LImpl;", "LIterableBase;"});
+          helper,
+          "DefaultMethods",
+          {"LIface;", "LImpl;", "LIterableBase;"});
 
   PointerSize pointer_size = class_linker_->GetImagePointerSize();
   Thread* self = Thread::Current();
@@ -150,6 +150,18 @@ TEST_F(ImageTest, TestDefaultMethods) {
   code = copied->GetEntryPointFromQuickCompiledCodePtrSize(pointer_size);
   // the copied method should have a pointer to interpreter
   ASSERT_TRUE(class_linker_->IsQuickToInterpreterBridge(code));
+}
+
+// Regression test for dex2oat crash for soft verification failure during
+// class initialization check from the transactional interpreter while
+// running the class initializer for another class.
+TEST_F(ImageTest, TestSoftVerificationFailureDuringClassInitialization) {
+  CompilationHelper helper;
+  Compile(ImageHeader::kStorageModeUncompressed,
+          helper,
+          "VerifySoftFailDuringClinit",
+          /*image_classes=*/ {"LClassToInitialize;"},
+          /*image_classes_failing_aot_clinit=*/ {"LClassToInitialize;"});
 }
 
 }  // namespace linker

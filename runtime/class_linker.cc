@@ -4903,7 +4903,10 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
         } else {
           CHECK(Runtime::Current()->IsAotCompiler());
           CHECK_EQ(klass->GetStatus(), ClassStatus::kRetryVerificationAtRuntime);
+          self->AssertNoPendingException();
+          self->SetException(Runtime::Current()->GetPreAllocatedNoClassDefFoundError());
         }
+        self->AssertPendingException();
         return false;
       } else {
         self->AssertNoPendingException();
