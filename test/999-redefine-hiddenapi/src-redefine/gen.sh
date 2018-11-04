@@ -25,7 +25,7 @@ CLASS="art/Test999"
     d8 --output . "$TMP/${CLASS}.class" &&
     hiddenapi encode --input-dex="$TMP/classes.dex" \
                      --output-dex="$TMP/classes-hiddenapi.dex" \
-                     --flags="$DIR/../hiddenapi-flags.csv" \
+                     --api-flags="$DIR/../hiddenapi-flags.csv" \
                      --no-force-assign-all)
 
 echo '  private static final byte[] CLASS_BYTES = Base64.getDecoder().decode('
