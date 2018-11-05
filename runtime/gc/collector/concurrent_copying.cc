@@ -93,6 +93,8 @@ ConcurrentCopying::ConcurrentCopying(Heap* heap,
       from_space_num_bytes_at_first_pause_(0),
       mark_stack_mode_(kMarkStackModeOff),
       weak_ref_access_enabled_(true),
+      copied_live_bytes_ratio_sum_(0.f),
+      gc_count_(0),
       young_gen_(young_gen),
       skipped_blocks_lock_("concurrent copying bytes blocks lock", kMarkSweepMarkStackLock),
       measure_read_barrier_slow_path_(measure_read_barrier_slow_path),
@@ -2038,6 +2040,11 @@ void ConcurrentCopying::ReclaimPhase() {
     }
     CHECK_LE(to_objects, from_objects);
     CHECK_LE(to_bytes, from_bytes);
+    if (from_bytes > 0) {
+      copied_live_bytes_ratio_sum_ += static_cast<float>(to_bytes) / from_bytes;
+      gc_count_++;
+    }
+
     // Cleared bytes and objects, populated by the call to RegionSpace::ClearFromSpace below.
     uint64_t cleared_bytes;
     uint64_t cleared_objects;
@@ -3203,6 +3210,15 @@ void ConcurrentCopying::DumpPerformanceInfo(std::ostream& os) {
   }
   if (rb_slow_path_count_gc_total_ > 0) {
     os << "GC slow path count " << rb_slow_path_count_gc_total_ << "\n";
+  }
+  float average_ratio = copied_live_bytes_ratio_sum_ / gc_count_;
+
+  if (young_gen_) {
+    os << "Average minor GC copied live bytes ratio "
+       << average_ratio << " over " << gc_count_ << " minor GCs\n";
+  } else {
+    os << "Average major GC copied live bytes ratio "
+       << average_ratio << " over " << gc_count_ << " major GCs\n";
   }
   os << "Cumulative bytes moved "
      << cumulative_bytes_moved_.load(std::memory_order_relaxed) << "\n";
