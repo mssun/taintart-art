@@ -28,6 +28,7 @@
 #include "art_method-inl.h"
 #include "base/file_utils.h"
 #include "base/hash_set.h"
+#include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
 #include "class_linker-inl.h"
@@ -81,7 +82,8 @@ class ImageTest : public CommonCompilerTest {
   void Compile(ImageHeader::StorageMode storage_mode,
                /*out*/ CompilationHelper& out_helper,
                const std::string& extra_dex = "",
-               const std::initializer_list<std::string>& image_classes = {});
+               const std::initializer_list<std::string>& image_classes = {},
+               const std::initializer_list<std::string>& image_classes_failing_aot_clinit = {});
 
   void SetUpRuntimeOptions(RuntimeOptions* options) override {
     CommonCompilerTest::SetUpRuntimeOptions(options);
@@ -370,10 +372,15 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
   }
 }
 
-inline void ImageTest::Compile(ImageHeader::StorageMode storage_mode,
-                        CompilationHelper& helper,
-                        const std::string& extra_dex,
-                        const std::initializer_list<std::string>& image_classes) {
+inline void ImageTest::Compile(
+    ImageHeader::StorageMode storage_mode,
+    CompilationHelper& helper,
+    const std::string& extra_dex,
+    const std::initializer_list<std::string>& image_classes,
+    const std::initializer_list<std::string>& image_classes_failing_aot_clinit) {
+  for (const std::string& image_class : image_classes_failing_aot_clinit) {
+    ASSERT_TRUE(ContainsElement(image_classes, image_class));
+  }
   for (const std::string& image_class : image_classes) {
     image_classes_.insert(image_class);
   }
@@ -394,7 +401,12 @@ inline void ImageTest::Compile(ImageHeader::StorageMode storage_mode,
       ObjPtr<mirror::Class> klass =
           class_linker->FindSystemClass(Thread::Current(), image_class.c_str());
       EXPECT_TRUE(klass != nullptr);
-      EXPECT_TRUE(klass->IsInitialized());
+      EXPECT_TRUE(klass->IsResolved());
+      if (ContainsElement(image_classes_failing_aot_clinit, image_class)) {
+        EXPECT_FALSE(klass->IsInitialized());
+      } else {
+        EXPECT_TRUE(klass->IsInitialized());
+      }
     }
   }
 }
