@@ -163,6 +163,16 @@ $(ART_TEST_HOST_GTEST_VerifierDepsMulti_DEX): $(ART_TEST_GTEST_VerifierDepsMulti
 $(ART_TEST_TARGET_GTEST_VerifierDepsMulti_DEX): $(ART_TEST_GTEST_VerifierDepsMulti_SRC) $(HOST_OUT_EXECUTABLES)/smali
 	 $(HOST_OUT_EXECUTABLES)/smali assemble --output $@ $(filter %.smali,$^)
 
+ART_TEST_GTEST_VerifySoftFailDuringClinit_SRC := $(abspath $(wildcard $(LOCAL_PATH)/VerifySoftFailDuringClinit/*.smali))
+ART_TEST_HOST_GTEST_VerifySoftFailDuringClinit_DEX := $(dir $(ART_TEST_HOST_GTEST_Main_DEX))$(subst Main,VerifySoftFailDuringClinit,$(basename $(notdir $(ART_TEST_HOST_GTEST_Main_DEX))))$(suffix $(ART_TEST_HOST_GTEST_Main_DEX))
+ART_TEST_TARGET_GTEST_VerifySoftFailDuringClinit_DEX := $(dir $(ART_TEST_TARGET_GTEST_Main_DEX))$(subst Main,VerifySoftFailDuringClinit,$(basename $(notdir $(ART_TEST_TARGET_GTEST_Main_DEX))))$(suffix $(ART_TEST_TARGET_GTEST_Main_DEX))
+
+$(ART_TEST_HOST_GTEST_VerifySoftFailDuringClinit_DEX): $(ART_TEST_GTEST_VerifySoftFailDuringClinit_SRC) $(HOST_OUT_EXECUTABLES)/smali
+	 $(HOST_OUT_EXECUTABLES)/smali assemble --output $@ $(filter %.smali,$^)
+
+$(ART_TEST_TARGET_GTEST_VerifySoftFailDuringClinit_DEX): $(ART_TEST_GTEST_VerifySoftFailDuringClinit_SRC) $(HOST_OUT_EXECUTABLES)/smali
+	 $(HOST_OUT_EXECUTABLES)/smali assemble --output $@ $(filter %.smali,$^)
+
 # Dex file dependencies for each gtest.
 ART_GTEST_art_dex_file_loader_test_DEX_DEPS := GetMethodSignature Main Nested MultiDex
 ART_GTEST_dex2oat_environment_tests_DEX_DEPS := Main MainStripped MultiDex MultiDexModifiedSecondary MyClassNatives Nested VerifierDeps VerifierDepsMulti
@@ -180,7 +190,7 @@ ART_GTEST_dex2oat_image_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_D
 ART_GTEST_exception_test_DEX_DEPS := ExceptionHandle
 ART_GTEST_hiddenapi_test_DEX_DEPS := HiddenApi
 ART_GTEST_hidden_api_test_DEX_DEPS := HiddenApiSignatures
-ART_GTEST_image_test_DEX_DEPS := ImageLayoutA ImageLayoutB DefaultMethods
+ART_GTEST_image_test_DEX_DEPS := ImageLayoutA ImageLayoutB DefaultMethods VerifySoftFailDuringClinit
 ART_GTEST_imtable_test_DEX_DEPS := IMTA IMTB
 ART_GTEST_instrumentation_test_DEX_DEPS := Instrumentation
 ART_GTEST_jni_compiler_test_DEX_DEPS := MyClassNatives
@@ -752,5 +762,8 @@ ART_TEST_TARGET_GTEST_EmptyUncompressed_DEX :=
 ART_TEST_GTEST_VerifierDeps_SRC :=
 ART_TEST_HOST_GTEST_VerifierDeps_DEX :=
 ART_TEST_TARGET_GTEST_VerifierDeps_DEX :=
+ART_TEST_GTEST_VerifySoftFailDuringClinit_SRC :=
+ART_TEST_HOST_GTEST_VerifySoftFailDuringClinit_DEX :=
+ART_TEST_TARGET_GTEST_VerifySoftFailDuringClinit_DEX :=
 GTEST_DEX_DIRECTORIES :=
 LOCAL_PATH :=
