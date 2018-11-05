@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include <android-base/logging.h>
+#include <android-base/macros.h>
 #include <android-base/stringprintf.h>
 
 #include "common_runtime_test.h"
@@ -90,6 +91,10 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
     args.push_back("--runtime-arg");
     args.push_back("-Xnorelocate");
 
+    // Unless otherwise stated, use a small amount of threads, so that potential aborts are
+    // shorter. This can be overridden with extra_args.
+    args.push_back("-j4");
+
     args.insert(args.end(), extra_args.begin(), extra_args.end());
 
     int status = Dex2Oat(args, error_msg);
@@ -99,33 +104,33 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
     return status;
   }
 
-  void GenerateOdexForTest(
+  ::testing::AssertionResult GenerateOdexForTest(
       const std::string& dex_location,
       const std::string& odex_location,
       CompilerFilter::Filter filter,
       const std::vector<std::string>& extra_args = {},
       bool expect_success = true,
-      bool use_fd = false) {
-    GenerateOdexForTest(dex_location,
-                        odex_location,
-                        filter,
-                        extra_args,
-                        expect_success,
-                        use_fd,
-                        [](const OatFile&) {});
+      bool use_fd = false) WARN_UNUSED {
+    return GenerateOdexForTest(dex_location,
+                               odex_location,
+                               filter,
+                               extra_args,
+                               expect_success,
+                               use_fd,
+                               [](const OatFile&) {});
   }
 
   bool test_accepts_odex_file_on_failure = false;
 
   template <typename T>
-  void GenerateOdexForTest(
+  ::testing::AssertionResult GenerateOdexForTest(
       const std::string& dex_location,
       const std::string& odex_location,
       CompilerFilter::Filter filter,
       const std::vector<std::string>& extra_args,
       bool expect_success,
       bool use_fd,
-      T check_oat) {
+      T check_oat) WARN_UNUSED {
     std::string error_msg;
     int status = GenerateOdexForTestWithStatus({dex_location},
                                                odex_location,
@@ -135,7 +140,10 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
                                                use_fd);
     bool success = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
     if (expect_success) {
-      ASSERT_TRUE(success) << error_msg << std::endl << output_;
+      if (!success) {
+        return ::testing::AssertionFailure()
+            << "Failed to compile odex: " << error_msg << std::endl << output_;
+      }
 
       // Verify the odex file was generated as expected.
       std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
@@ -146,12 +154,16 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
                                                        dex_location.c_str(),
                                                        /*reservation=*/ nullptr,
                                                        &error_msg));
-      ASSERT_TRUE(odex_file.get() != nullptr) << error_msg;
+      if (odex_file == nullptr) {
+        return ::testing::AssertionFailure() << "Could not open odex file: " << error_msg;
+      }
 
       CheckFilter(filter, odex_file->GetCompilerFilter());
       check_oat(*(odex_file.get()));
     } else {
-      ASSERT_FALSE(success) << output_;
+      if (success) {
+        return ::testing::AssertionFailure() << "Succeeded to compile odex: " << output_;
+      }
 
       error_msg_ = error_msg;
 
@@ -165,9 +177,12 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
                                                          dex_location.c_str(),
                                                          /*reservation=*/ nullptr,
                                                          &error_msg));
-        ASSERT_TRUE(odex_file.get() == nullptr);
+        if (odex_file != nullptr) {
+          return ::testing::AssertionFailure() << "Could open odex file: " << error_msg;
+        }
       }
     }
+    return ::testing::AssertionSuccess();
   }
 
   // Check the input compiler filter against the generated oat file's filter. May be overridden
@@ -265,7 +280,7 @@ class Dex2oatSwapTest : public Dex2oatTest {
       std::string swap_location = GetOdexDir() + "/Dex2OatSwapTest.odex.swap";
       copy.push_back("--swap-file=" + swap_location);
     }
-    GenerateOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed, copy);
+    ASSERT_TRUE(GenerateOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed, copy));
 
     CheckValidity();
     ASSERT_TRUE(success_);
@@ -490,7 +505,7 @@ class Dex2oatVeryLargeTest : public Dex2oatTest {
 
     std::vector<std::string> new_args(extra_args);
     new_args.push_back("--app-image-file=" + app_image_file);
-    GenerateOdexForTest(dex_location, odex_location, filter, new_args);
+    ASSERT_TRUE(GenerateOdexForTest(dex_location, odex_location, filter, new_args));
 
     CheckValidity();
     ASSERT_TRUE(success_);
@@ -681,12 +696,12 @@ class Dex2oatLayoutTest : public Dex2oatTest {
         copy.push_back("--app-image-file=" + app_image_file_name);
       }
     }
-    GenerateOdexForTest(dex_location,
-                        odex_location,
-                        CompilerFilter::kSpeedProfile,
-                        copy,
-                        expect_success,
-                        use_fd);
+    ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                    odex_location,
+                                    CompilerFilter::kSpeedProfile,
+                                    copy,
+                                    expect_success,
+                                    use_fd));
     if (app_image_file != nullptr) {
       ASSERT_EQ(app_image_file->FlushCloseOrErase(), 0) << "Could not flush and close art file";
     }
@@ -877,24 +892,24 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
     {
       std::string input_vdex = "--input-vdex-fd=-1";
       std::string output_vdex = StringPrintf("--output-vdex-fd=%d", vdex_file1->Fd());
-      GenerateOdexForTest(dex_location,
-                          odex_location,
-                          CompilerFilter::kQuicken,
-                          { input_vdex, output_vdex },
-                          /*expect_success=*/ true,
-                          /*use_fd=*/ true);
+      ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                      odex_location,
+                                      CompilerFilter::kQuicken,
+                                      { input_vdex, output_vdex },
+                                      /* expect_success= */ true,
+                                      /* use_fd= */ true));
       EXPECT_GT(vdex_file1->GetLength(), 0u);
     }
     // Unquicken by running the verify compiler filter on the vdex file.
     {
       std::string input_vdex = StringPrintf("--input-vdex-fd=%d", vdex_file1->Fd());
       std::string output_vdex = StringPrintf("--output-vdex-fd=%d", vdex_file1->Fd());
-      GenerateOdexForTest(dex_location,
-                          odex_location,
-                          CompilerFilter::kVerify,
-                          { input_vdex, output_vdex, kDisableCompactDex },
-                          /*expect_success=*/ true,
-                          /*use_fd=*/ true);
+      ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                      odex_location,
+                                      CompilerFilter::kVerify,
+                                      { input_vdex, output_vdex, kDisableCompactDex },
+                                      /* expect_success= */ true,
+                                      /* use_fd= */ true));
     }
     ASSERT_EQ(vdex_file1->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
     CheckResult(dex_location, odex_location);
@@ -918,12 +933,12 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
     {
       std::string input_vdex = "--input-vdex-fd=-1";
       std::string output_vdex = StringPrintf("--output-vdex-fd=%d", vdex_file1->Fd());
-      GenerateOdexForTest(dex_location,
-                          odex_location,
-                          CompilerFilter::kQuicken,
-                          { input_vdex, output_vdex, "--compact-dex-level=fast"},
-                          /*expect_success=*/ true,
-                          /*use_fd=*/ true);
+      ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                      odex_location,
+                                      CompilerFilter::kQuicken,
+                                      { input_vdex, output_vdex, "--compact-dex-level=fast"},
+                                      /* expect_success= */ true,
+                                      /* use_fd= */ true));
       EXPECT_GT(vdex_file1->GetLength(), 0u);
     }
 
@@ -931,12 +946,12 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
     {
       std::string input_vdex = StringPrintf("--input-vdex-fd=%d", vdex_file1->Fd());
       std::string output_vdex = StringPrintf("--output-vdex-fd=%d", vdex_file2->Fd());
-      GenerateOdexForTest(dex_location,
-                          odex_location2,
-                          CompilerFilter::kVerify,
-                          { input_vdex, output_vdex, "--compact-dex-level=none"},
-                          /*expect_success=*/ true,
-                          /*use_fd=*/ true);
+      ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                      odex_location2,
+                                      CompilerFilter::kVerify,
+                                      { input_vdex, output_vdex, "--compact-dex-level=none"},
+                                      /* expect_success= */ true,
+                                      /* use_fd= */ true));
     }
     ASSERT_EQ(vdex_file1->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
     ASSERT_EQ(vdex_file2->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
@@ -992,11 +1007,11 @@ class Dex2oatWatchdogTest : public Dex2oatTest {
     std::string swap_location = GetOdexDir() + "/Dex2OatSwapTest.odex.swap";
     copy.push_back("--swap-file=" + swap_location);
     copy.push_back("-j512");  // Excessive idle threads just slow down dex2oat.
-    GenerateOdexForTest(dex_location,
-                        odex_location,
-                        CompilerFilter::kSpeed,
-                        copy,
-                        expect_success);
+    ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                    odex_location,
+                                    CompilerFilter::kSpeed,
+                                    copy,
+                                    expect_success));
   }
 
   std::string GetTestDexFileName() {
@@ -1072,13 +1087,13 @@ class Dex2oatClassLoaderContextTest : public Dex2oatTest {
       ASSERT_STREQ(expected_classpath_key, classpath);
     };
 
-    GenerateOdexForTest(dex_location,
-                        odex_location,
-                        CompilerFilter::kQuicken,
-                        extra_args,
-                        expected_success,
-                        /*use_fd*/ false,
-                        check_oat);
+    ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                    odex_location,
+                                    CompilerFilter::kQuicken,
+                                    extra_args,
+                                    expected_success,
+                                    /*use_fd*/ false,
+                                    check_oat));
   }
 
   std::string GetUsedDexLocation() {
@@ -1135,11 +1150,11 @@ TEST_F(Dex2oatClassLoaderContextTest, ContextWithStrippedDexFilesBackedByOdex) {
 
   Copy(GetDexSrc1(), stripped_classpath);
 
-  GenerateOdexForTest(stripped_classpath,
-                      odex_for_classpath,
-                      CompilerFilter::kQuicken,
-                      {},
-                      true);
+  ASSERT_TRUE(GenerateOdexForTest(stripped_classpath,
+                                  odex_for_classpath,
+                                  CompilerFilter::kQuicken,
+                                  {},
+                                  true));
 
   // Strip the dex file
   Copy(GetStrippedDexSrc1(), stripped_classpath);
@@ -1216,7 +1231,7 @@ TEST_F(Dex2oatDeterminism, UnloadCompile) {
       CompilerFilter::Filter::kQuicken,
       &error_msg,
       {"--force-determinism", "--avoid-storing-invocation"});
-  EXPECT_EQ(res, 0);
+  ASSERT_EQ(res, 0);
   Copy(base_oat_name, unload_oat_name);
   Copy(base_vdex_name, unload_vdex_name);
   std::unique_ptr<File> unload_oat(OS::OpenFileForReading(unload_oat_name.c_str()));
@@ -1233,7 +1248,7 @@ TEST_F(Dex2oatDeterminism, UnloadCompile) {
       CompilerFilter::Filter::kQuicken,
       &error_msg,
       {"--force-determinism", "--avoid-storing-invocation", "--app-image-file=" + app_image_name});
-  EXPECT_EQ(res2, 0);
+  ASSERT_EQ(res2, 0);
   Copy(base_oat_name, no_unload_oat_name);
   Copy(base_vdex_name, no_unload_vdex_name);
   std::unique_ptr<File> no_unload_oat(OS::OpenFileForReading(no_unload_oat_name.c_str()));
@@ -1535,26 +1550,26 @@ TEST_F(Dex2oatDedupeCode, DedupeTest) {
   std::string out_dir = GetScratchDir();
   const std::string base_oat_name = out_dir + "/base.oat";
   size_t no_dedupe_size = 0;
-  GenerateOdexForTest(dex->GetLocation(),
-                      base_oat_name,
-                      CompilerFilter::Filter::kSpeed,
-                      { "--deduplicate-code=false" },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [&no_dedupe_size](const OatFile& o) {
-                        no_dedupe_size = o.Size();
-                      });
+  ASSERT_TRUE(GenerateOdexForTest(dex->GetLocation(),
+                                  base_oat_name,
+                                  CompilerFilter::Filter::kSpeed,
+                                  { "--deduplicate-code=false" },
+                                  true,  // expect_success
+                                  false,  // use_fd
+                                  [&no_dedupe_size](const OatFile& o) {
+                                    no_dedupe_size = o.Size();
+                                  }));
 
   size_t dedupe_size = 0;
-  GenerateOdexForTest(dex->GetLocation(),
-                      base_oat_name,
-                      CompilerFilter::Filter::kSpeed,
-                      { "--deduplicate-code=true" },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [&dedupe_size](const OatFile& o) {
-                        dedupe_size = o.Size();
-                      });
+  ASSERT_TRUE(GenerateOdexForTest(dex->GetLocation(),
+                                  base_oat_name,
+                                  CompilerFilter::Filter::kSpeed,
+                                  { "--deduplicate-code=true" },
+                                  true,  // expect_success
+                                  false,  // use_fd
+                                  [&dedupe_size](const OatFile& o) {
+                                    dedupe_size = o.Size();
+                                  }));
 
   EXPECT_LT(dedupe_size, no_dedupe_size);
 }
@@ -1563,15 +1578,15 @@ TEST_F(Dex2oatTest, UncompressedTest) {
   std::unique_ptr<const DexFile> dex(OpenTestDexFile("MainUncompressed"));
   std::string out_dir = GetScratchDir();
   const std::string base_oat_name = out_dir + "/base.oat";
-  GenerateOdexForTest(dex->GetLocation(),
-                      base_oat_name,
-                      CompilerFilter::Filter::kQuicken,
-                      { },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [](const OatFile& o) {
-                        CHECK(!o.ContainsDexCode());
-                      });
+  ASSERT_TRUE(GenerateOdexForTest(dex->GetLocation(),
+                                  base_oat_name,
+                                  CompilerFilter::Filter::kQuicken,
+                                  { },
+                                  true,  // expect_success
+                                  false,  // use_fd
+                                  [](const OatFile& o) {
+                                    CHECK(!o.ContainsDexCode());
+                                  }));
 }
 
 TEST_F(Dex2oatTest, EmptyUncompressedDexTest) {
@@ -1667,15 +1682,15 @@ TEST_F(Dex2oatTest, CompactDexGenerationFailure) {
   std::string out_dir = GetScratchDir();
   const std::string oat_filename = out_dir + "/base.oat";
   // The dex won't pass the method verifier, only use the verify filter.
-  GenerateOdexForTest(temp_dex.GetFilename(),
-                      oat_filename,
-                      CompilerFilter::Filter::kVerify,
-                      { },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [](const OatFile& o) {
-                        CHECK(o.ContainsDexCode());
-                      });
+  ASSERT_TRUE(GenerateOdexForTest(temp_dex.GetFilename(),
+                                  oat_filename,
+                                  CompilerFilter::Filter::kVerify,
+                                  { },
+                                  true,  // expect_success
+                                  false,  // use_fd
+                                  [](const OatFile& o) {
+                                    CHECK(o.ContainsDexCode());
+                                  }));
   // Open our generated oat file.
   std::string error_msg;
   std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
@@ -1718,11 +1733,11 @@ TEST_F(Dex2oatTest, CompactDexGenerationFailureMultiDex) {
   }
   const std::string& dex_location = apk_file.GetFilename();
   const std::string odex_location = GetOdexDir() + "/output.odex";
-  GenerateOdexForTest(dex_location,
-                      odex_location,
-                      CompilerFilter::kQuicken,
-                      { "--compact-dex-level=fast" },
-                      true);
+  ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                  odex_location,
+                                  CompilerFilter::kQuicken,
+                                  { "--compact-dex-level=fast" },
+                                  true));
 }
 
 TEST_F(Dex2oatTest, StderrLoggerOutput) {
@@ -1732,11 +1747,11 @@ TEST_F(Dex2oatTest, StderrLoggerOutput) {
   // Test file doesn't matter.
   Copy(GetDexSrc1(), dex_location);
 
-  GenerateOdexForTest(dex_location,
-                      odex_location,
-                      CompilerFilter::kQuicken,
-                      { "--runtime-arg", "-Xuse-stderr-logger" },
-                      true);
+  ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                  odex_location,
+                                  CompilerFilter::kQuicken,
+                                  { "--runtime-arg", "-Xuse-stderr-logger" },
+                                  true));
   // Look for some random part of dex2oat logging. With the stderr logger this should be captured,
   // even on device.
   EXPECT_NE(std::string::npos, output_.find("dex2oat took"));
@@ -1749,11 +1764,11 @@ TEST_F(Dex2oatTest, VerifyCompilationReason) {
   // Test file doesn't matter.
   Copy(GetDexSrc1(), dex_location);
 
-  GenerateOdexForTest(dex_location,
-                      odex_location,
-                      CompilerFilter::kVerify,
-                      { "--compilation-reason=install" },
-                      true);
+  ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                  odex_location,
+                                  CompilerFilter::kVerify,
+                                  { "--compilation-reason=install" },
+                                  true));
   std::string error_msg;
   std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    odex_location.c_str(),
@@ -1774,11 +1789,11 @@ TEST_F(Dex2oatTest, VerifyNoCompilationReason) {
   // Test file doesn't matter.
   Copy(GetDexSrc1(), dex_location);
 
-  GenerateOdexForTest(dex_location,
-                      odex_location,
-                      CompilerFilter::kVerify,
-                      {},
-                      true);
+  ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                  odex_location,
+                                  CompilerFilter::kVerify,
+                                  {},
+                                  true));
   std::string error_msg;
   std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
                                                    odex_location.c_str(),
@@ -1799,14 +1814,13 @@ TEST_F(Dex2oatTest, DontExtract) {
   const std::string dex_location = dex->GetLocation();
   const std::string odex_location = out_dir + "/base.oat";
   const std::string vdex_location = out_dir + "/base.vdex";
-  GenerateOdexForTest(dex_location,
-                      odex_location,
-                      CompilerFilter::Filter::kVerify,
-                      { "--copy-dex-files=false" },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [](const OatFile&) {
-                      });
+  ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                  odex_location,
+                                  CompilerFilter::Filter::kVerify,
+                                  { "--copy-dex-files=false" },
+                                  true,  // expect_success
+                                  false,  // use_fd
+                                  [](const OatFile&) {}));
   {
     // Check the vdex doesn't have dex.
     std::unique_ptr<VdexFile> vdex(VdexFile::Open(vdex_location.c_str(),
@@ -1856,19 +1870,21 @@ TEST_F(Dex2oatTest, DontExtract) {
   }
 
   auto generate_and_check = [&](CompilerFilter::Filter filter) {
-    GenerateOdexForTest(dex_location,
-                        odex_location,
-                        filter,
-                        { "--dump-timings",
-                          "--dm-file=" + dm_file.GetFilename(),
-                          // Pass -Xuse-stderr-logger have dex2oat output in output_ on target.
-                          "--runtime-arg",
-                          "-Xuse-stderr-logger" },
-                        true,  // expect_success
-                        false,  // use_fd
-                        [](const OatFile& o) {
-                          CHECK(o.ContainsDexCode());
-                        });
+    output_.clear();
+    ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                    odex_location,
+                                    filter,
+                                    { "--dump-timings",
+                                      "--dm-file=" + dm_file.GetFilename(),
+                                      // Pass -Xuse-stderr-logger have dex2oat output in output_ on
+                                      // target.
+                                      "--runtime-arg",
+                                      "-Xuse-stderr-logger" },
+                                    true,  // expect_success
+                                    false,  // use_fd
+                                    [](const OatFile& o) {
+                                      CHECK(o.ContainsDexCode());
+                                    }));
     // Check the output for "Fast verify", this is printed from --dump-timings.
     std::istringstream iss(output_);
     std::string line;
@@ -1916,14 +1932,14 @@ TEST_F(Dex2oatTest, QuickenedInput) {
   {
     std::string input_vdex = "--input-vdex-fd=-1";
     std::string output_vdex = StringPrintf("--output-vdex-fd=%d", vdex_output->Fd());
-    GenerateOdexForTest(dex_location,
-                        odex_location,
-                        CompilerFilter::kQuicken,
-                        // Disable cdex since we want to compare against the original dex file
-                        // after unquickening.
-                        { input_vdex, output_vdex, kDisableCompactDex },
-                        /*expect_success=*/ true,
-                        /*use_fd=*/ true);
+    ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                    odex_location,
+                                    CompilerFilter::kQuicken,
+                                    // Disable cdex since we want to compare against the original
+                                    // dex file after unquickening.
+                                    { input_vdex, output_vdex, kDisableCompactDex },
+                                    /* expect_success= */ true,
+                                    /* use_fd= */ true));
   }
   // Unquicken by running the verify compiler filter on the vdex file and verify it matches.
   std::string odex_location2 = GetOdexDir() + "/unquickened.odex";
@@ -1932,13 +1948,14 @@ TEST_F(Dex2oatTest, QuickenedInput) {
   {
     std::string input_vdex = StringPrintf("--input-vdex-fd=%d", vdex_output->Fd());
     std::string output_vdex = StringPrintf("--output-vdex-fd=%d", vdex_unquickened->Fd());
-    GenerateOdexForTest(dex_location,
-                        odex_location2,
-                        CompilerFilter::kVerify,
-                        // Disable cdex to avoid needing to write out the shared section.
-                        { input_vdex, output_vdex, kDisableCompactDex },
-                        /*expect_success=*/ true,
-                        /*use_fd=*/ true);
+    ASSERT_TRUE(GenerateOdexForTest(dex_location,
+                                    odex_location2,
+                                    CompilerFilter::kVerify,
+                                    // Disable cdex to avoid needing to write out the shared
+                                    // section.
+                                    { input_vdex, output_vdex, kDisableCompactDex },
+                                    /* expect_success= */ true,
+                                    /* use_fd= */ true));
   }
   ASSERT_EQ(vdex_unquickened->Flush(), 0) << "Could not flush and close vdex file";
   ASSERT_TRUE(success_);
@@ -2046,13 +2063,13 @@ TEST_F(Dex2oatTest, AppImageNoProfile) {
   ScratchFile app_image_file;
   const std::string out_dir = GetScratchDir();
   const std::string odex_location = out_dir + "/base.odex";
-  GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
-                      odex_location,
-                      CompilerFilter::Filter::kSpeedProfile,
-                      { "--app-image-fd=" + std::to_string(app_image_file.GetFd()) },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [](const OatFile&) {});
+  ASSERT_TRUE(GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
+                                  odex_location,
+                                  CompilerFilter::Filter::kSpeedProfile,
+                                  { "--app-image-fd=" + std::to_string(app_image_file.GetFd()) },
+                                  true,  // expect_success
+                                  false,  // use_fd
+                                  [](const OatFile&) {}));
   // Open our generated oat file.
   std::string error_msg;
   std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
@@ -2105,15 +2122,15 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
   const std::string out_dir = GetScratchDir();
   const std::string odex_location = out_dir + "/base.odex";
   const std::string app_image_location = out_dir + "/base.art";
-  GenerateOdexForTest(GetTestDexFileName("StringLiterals"),
-                      odex_location,
-                      CompilerFilter::Filter::kSpeedProfile,
-                      { "--app-image-file=" + app_image_location,
-                        "--resolve-startup-const-strings=true",
-                        "--profile-file=" + profile_file.GetFilename()},
-                      /*expect_success=*/ true,
-                      /*use_fd=*/ false,
-                      [](const OatFile&) {});
+  ASSERT_TRUE(GenerateOdexForTest(GetTestDexFileName("StringLiterals"),
+                                  odex_location,
+                                  CompilerFilter::Filter::kSpeedProfile,
+                                  { "--app-image-file=" + app_image_location,
+                                    "--resolve-startup-const-strings=true",
+                                    "--profile-file=" + profile_file.GetFilename()},
+                                  /* expect_success= */ true,
+                                  /* use_fd= */ false,
+                                  [](const OatFile&) {}));
   // Open our generated oat file.
   std::string error_msg;
   std::unique_ptr<OatFile> odex_file(OatFile::Open(/*zip_fd=*/ -1,
@@ -2220,27 +2237,27 @@ TEST_F(Dex2oatClassLoaderContextTest, StoredClassLoaderContext) {
   }
   expected_stored_context +=    + "]";
   // The class path should not be valid and should fail being stored.
-  GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
-                      odex_location,
-                      CompilerFilter::Filter::kQuicken,
-                      { "--class-loader-context=" + stored_context },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [&](const OatFile& oat_file) {
+  EXPECT_TRUE(GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
+                                  odex_location,
+                                  CompilerFilter::Filter::kQuicken,
+                                  { "--class-loader-context=" + stored_context },
+                                  true,  // expect_success
+                                  false,  // use_fd
+                                  [&](const OatFile& oat_file) {
     EXPECT_NE(oat_file.GetClassLoaderContext(), stored_context) << output_;
     EXPECT_NE(oat_file.GetClassLoaderContext(), valid_context) << output_;
-  });
+  }));
   // The stored context should match what we expect even though it's invalid.
-  GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
-                      odex_location,
-                      CompilerFilter::Filter::kQuicken,
-                      { "--class-loader-context=" + valid_context,
-                        "--stored-class-loader-context=" + stored_context },
-                      true,  // expect_success
-                      false,  // use_fd
-                      [&](const OatFile& oat_file) {
+  EXPECT_TRUE(GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
+                                  odex_location,
+                                  CompilerFilter::Filter::kQuicken,
+                                  { "--class-loader-context=" + valid_context,
+                                    "--stored-class-loader-context=" + stored_context },
+                                  true,  // expect_success
+                                  false,  // use_fd
+                                  [&](const OatFile& oat_file) {
     EXPECT_EQ(oat_file.GetClassLoaderContext(), expected_stored_context) << output_;
-  });
+  }));
 }
 
 }  // namespace art
