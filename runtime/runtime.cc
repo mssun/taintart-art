@@ -791,10 +791,6 @@ bool Runtime::Start() {
     std::string error_msg;
     if (!jit::Jit::LoadCompiler(&error_msg)) {
       LOG(WARNING) << "Failed to load JIT compiler with error " << error_msg;
-    } else if (!IsZygote()) {
-      // If we are the zygote then we need to wait until after forking to create the code cache
-      // due to SELinux restrictions on r/w/x memory regions.
-      CreateJitCodeCache(/*rwx_memory_allowed=*/true);
     }
   }
 
@@ -900,6 +896,11 @@ void Runtime::InitNonZygoteOrPostFork(
   }
 
   if (jit_ == nullptr) {
+    // The system server's code cache was initialized specially. For other zygote forks or
+    // processes create it now.
+    if (!is_system_server) {
+      CreateJitCodeCache(/*rwx_memory_allowed=*/true);
+    }
     // Note that when running ART standalone (not zygote, nor zygote fork),
     // the jit may have already been created.
     CreateJit();
