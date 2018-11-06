@@ -2034,11 +2034,15 @@ bool ClassLinker::AddImageSpace(
   }
   if (app_image) {
     AppImageLoadingHelper::Update(this, space, class_loader, dex_caches, &temp_set);
-    // Update class loader and resolved strings. If added_class_table is false, the resolved
-    // strings were forwarded UpdateAppImageClassLoadersAndDexCaches.
-    UpdateClassLoaderVisitor visitor(space, class_loader.Get());
-    for (const ClassTable::TableSlot& root : temp_set) {
-      visitor(root.Read());
+
+    {
+      ScopedTrace trace("AppImage:UpdateClassLoaders");
+      // Update class loader and resolved strings. If added_class_table is false, the resolved
+      // strings were forwarded UpdateAppImageClassLoadersAndDexCaches.
+      UpdateClassLoaderVisitor visitor(space, class_loader.Get());
+      for (const ClassTable::TableSlot& root : temp_set) {
+        visitor(root.Read());
+      }
     }
 
     if (kBitstringSubtypeCheckEnabled) {
