@@ -121,6 +121,23 @@ public class Main {
             assertSameObject(f4444, la[i4444]);
             assertDifferentObject(f4999, la[i4998]);
             assertSameObject(f4999, la[i4999]);
+
+            la = largeArray;
+            // Group the ArrayGets so they aren't divided by a function call; this will enable
+            // interm. address sharing for arm64.
+            Object tmp1 = la[i0];
+            Object tmp2 = la[i0 + 1];
+            Object tmp3 = la[i0 + 1024];
+            Object tmp4 = la[i0 + 4444];
+            Object tmp5 = la[i0 + 4998];
+            Object tmp6 = la[i0 + 4999];
+
+            assertSameObject(f0000, tmp1);
+            assertDifferentObject(f0000, tmp2);
+            assertSameObject(f1024, tmp3);
+            assertSameObject(f4444, tmp4);
+            assertDifferentObject(f4999, tmp5);
+            assertSameObject(f4999, tmp6);
         }
     }
 
