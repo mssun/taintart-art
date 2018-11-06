@@ -213,6 +213,7 @@ class InstructionCodeGeneratorX86_64 : public InstructionCodeGenerator {
   void GenerateRemFP(HRem* rem);
   void DivRemOneOrMinusOne(HBinaryOperation* instruction);
   void DivByPowerOfTwo(HDiv* instruction);
+  void RemByPowerOfTwo(HRem* instruction);
   void GenerateDivRemWithAnyConstant(HBinaryOperation* instruction);
   void GenerateDivRemIntegral(HBinaryOperation* instruction);
   void HandleCondition(HCondition* condition);
