@@ -71,6 +71,16 @@ cc_defaults {
         // For common macros.
         "libbase",
     ],
+
+    // Utilities used by various ART libs and tools are linked in statically
+    // here to avoid shared lib dependencies outside the ART APEX. No target
+    // there should depend on these separately.
+    whole_static_libs: [
+        "liblz4",
+        "liblzma",
+    ],
+    version_script: "libartbase.map",
+
     export_include_dirs: ["."],
     // ART's macros.h depends on libbase's macros.h.
     // Note: runtime_options.h depends on cmdline. But we don't really want to export this
