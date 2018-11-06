@@ -691,6 +691,9 @@ class Runtime {
 
   // Called from class linker.
   void SetSentinel(mirror::Object* sentinel) REQUIRES_SHARED(Locks::mutator_lock_);
+  // For testing purpose only.
+  // TODO: Remove this when this is no longer needed (b/116087961).
+  GcRoot<mirror::Object> GetSentinel() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Create a normal LinearAlloc or low 4gb version if we are 64 bit AOT compiler.
   LinearAlloc* CreateLinearAlloc();
