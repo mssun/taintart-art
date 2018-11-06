@@ -2916,6 +2916,40 @@ void IntrinsicLocationsBuilderARM64::VisitReachabilityFence(HInvoke* invoke) {
 
 void IntrinsicCodeGeneratorARM64::VisitReachabilityFence(HInvoke* invoke ATTRIBUTE_UNUSED) { }
 
+void IntrinsicLocationsBuilderARM64::VisitCRC32Update(HInvoke* invoke) {
+  if (!codegen_->GetInstructionSetFeatures().HasCRC()) {
+    return;
+  }
+
+  LocationSummary* locations = new (allocator_) LocationSummary(invoke,
+                                                                LocationSummary::kNoCall,
+                                                                kIntrinsified);
+
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetInAt(1, Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister());
+}
+
+// Lower the invoke of CRC32.update(int crc, int b).
+void IntrinsicCodeGeneratorARM64::VisitCRC32Update(HInvoke* invoke) {
+  DCHECK(codegen_->GetInstructionSetFeatures().HasCRC());
+
+  MacroAssembler* masm = GetVIXLAssembler();
+
+  Register crc = InputRegisterAt(invoke, 0);
+  Register val = InputRegisterAt(invoke, 1);
+  Register out = OutputRegister(invoke);
+
+  // The general algorithm of the CRC32 calculation is:
+  //   crc = ~crc
+  //   result = crc32_for_byte(crc, b)
+  //   crc = ~result
+  // It is directly lowered to three instructions.
+  __ Mvn(out, crc);
+  __ Crc32b(out, out, val);
+  __ Mvn(out, out);
+}
+
 UNIMPLEMENTED_INTRINSIC(ARM64, ReferenceGetReferent)
 
 UNIMPLEMENTED_INTRINSIC(ARM64, StringStringIndexOf);
