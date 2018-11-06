@@ -2319,9 +2319,10 @@ void LocationsBuilderARM64::VisitArrayGet(HArrayGet* instruction) {
       if (offset >= kReferenceLoadMinFarOffset) {
         locations->AddTemp(FixedTempLocation());
       }
-    } else {
+    } else if (!instruction->GetArray()->IsIntermediateAddress()) {
       // We need a non-scratch temporary for the array data pointer in
-      // CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier().
+      // CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier() for the case with no
+      // intermediate address.
       locations->AddTemp(Location::RequiresRegister());
     }
   }
@@ -2351,11 +2352,12 @@ void InstructionCodeGeneratorARM64::VisitArrayGet(HArrayGet* instruction) {
   MacroAssembler* masm = GetVIXLAssembler();
   UseScratchRegisterScope temps(masm);
 
-  // The read barrier instrumentation of object ArrayGet instructions
+  // The non-Baker read barrier instrumentation of object ArrayGet instructions
   // does not support the HIntermediateAddress instruction.
   DCHECK(!((type == DataType::Type::kReference) &&
            instruction->GetArray()->IsIntermediateAddress() &&
-           kEmitCompilerReadBarrier));
+           kEmitCompilerReadBarrier &&
+           !kUseBakerReadBarrier));
 
   if (type == DataType::Type::kReference && kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
     // Object ArrayGet with Baker's read barrier case.
@@ -2363,6 +2365,7 @@ void InstructionCodeGeneratorARM64::VisitArrayGet(HArrayGet* instruction) {
     // CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier call.
     DCHECK(!instruction->CanDoImplicitNullCheckOn(instruction->InputAt(0)));
     if (index.IsConstant()) {
+      DCHECK(!instruction->GetArray()->IsIntermediateAddress());
       // Array load with a constant index can be treated as a field load.
       offset += Int64FromLocation(index) << DataType::SizeShift(type);
       Location maybe_temp =
@@ -2375,9 +2378,8 @@ void InstructionCodeGeneratorARM64::VisitArrayGet(HArrayGet* instruction) {
                                                       /* needs_null_check */ false,
                                                       /* use_load_acquire */ false);
     } else {
-      Register temp = WRegisterFrom(locations->GetTemp(0));
       codegen_->GenerateArrayLoadWithBakerReadBarrier(
-          out, obj.W(), offset, index, temp, /* needs_null_check */ false);
+          instruction, out, obj.W(), offset, index, /* needs_null_check */ false);
     }
   } else {
     // General case.
@@ -2426,8 +2428,8 @@ void InstructionCodeGeneratorARM64::VisitArrayGet(HArrayGet* instruction) {
         // input instruction has done it already. See the comment in
         // `TryExtractArrayAccessAddress()`.
         if (kIsDebugBuild) {
-          HIntermediateAddress* tmp = instruction->GetArray()->AsIntermediateAddress();
-          DCHECK_EQ(tmp->GetOffset()->AsIntConstant()->GetValueAsUint64(), offset);
+          HIntermediateAddress* interm_addr = instruction->GetArray()->AsIntermediateAddress();
+          DCHECK_EQ(interm_addr->GetOffset()->AsIntConstant()->GetValueAsUint64(), offset);
         }
         temp = obj;
       } else {
@@ -2539,8 +2541,8 @@ void InstructionCodeGeneratorARM64::VisitArraySet(HArraySet* instruction) {
         // input instruction has done it already. See the comment in
         // `TryExtractArrayAccessAddress()`.
         if (kIsDebugBuild) {
-          HIntermediateAddress* tmp = instruction->GetArray()->AsIntermediateAddress();
-          DCHECK(tmp->GetOffset()->AsIntConstant()->GetValueAsUint64() == offset);
+          HIntermediateAddress* interm_addr = instruction->GetArray()->AsIntermediateAddress();
+          DCHECK(interm_addr->GetOffset()->AsIntConstant()->GetValueAsUint64() == offset);
         }
         temp = array;
       } else {
@@ -5957,11 +5959,11 @@ void CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier(HInstruction* ins
       instruction, ref, obj, src, needs_null_check, use_load_acquire);
 }
 
-void CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier(Location ref,
+void CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier(HArrayGet* instruction,
+                                                               Location ref,
                                                                Register obj,
                                                                uint32_t data_offset,
                                                                Location index,
-                                                               Register temp,
                                                                bool needs_null_check) {
   DCHECK(kEmitCompilerReadBarrier);
   DCHECK(kUseBakerReadBarrier);
@@ -6000,9 +6002,24 @@ void CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier(Location ref,
   DCHECK(temps.IsAvailable(ip0));
   DCHECK(temps.IsAvailable(ip1));
   temps.Exclude(ip0, ip1);
+
+  Register temp;
+  if (instruction->GetArray()->IsIntermediateAddress()) {
+    // We do not need to compute the intermediate address from the array: the
+    // input instruction has done it already. See the comment in
+    // `TryExtractArrayAccessAddress()`.
+    if (kIsDebugBuild) {
+      HIntermediateAddress* interm_addr = instruction->GetArray()->AsIntermediateAddress();
+      DCHECK_EQ(interm_addr->GetOffset()->AsIntConstant()->GetValueAsUint64(), data_offset);
+    }
+    temp = obj;
+  } else {
+    temp = WRegisterFrom(instruction->GetLocations()->GetTemp(0));
+    __ Add(temp.X(), obj.X(), Operand(data_offset));
+  }
+
   uint32_t custom_data = EncodeBakerReadBarrierArrayData(temp.GetCode());
 
-  __ Add(temp.X(), obj.X(), Operand(data_offset));
   {
     ExactAssemblyScope guard(GetVIXLAssembler(),
                              (kPoisonHeapReferences ? 4u : 3u) * vixl::aarch64::kInstructionSize);

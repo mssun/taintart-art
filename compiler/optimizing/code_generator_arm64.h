@@ -694,11 +694,11 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                              bool use_load_acquire);
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference array load when Baker's read barriers are used.
-  void GenerateArrayLoadWithBakerReadBarrier(Location ref,
+  void GenerateArrayLoadWithBakerReadBarrier(HArrayGet* instruction,
+                                             Location ref,
                                              vixl::aarch64::Register obj,
                                              uint32_t data_offset,
                                              Location index,
-                                             vixl::aarch64::Register temp,
                                              bool needs_null_check);
 
   // Emit code checking the status of the Marking Register, and

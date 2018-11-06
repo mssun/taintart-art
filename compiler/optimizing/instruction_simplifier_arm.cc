@@ -202,6 +202,11 @@ void InstructionSimplifierArmVisitor::VisitArrayGet(HArrayGet* instruction) {
     return;
   }
 
+  // TODO: Support intermediate address for object arrays on arm.
+  if (type == DataType::Type::kReference) {
+    return;
+  }
+
   if (type == DataType::Type::kInt64
       || type == DataType::Type::kFloat32
       || type == DataType::Type::kFloat64) {
