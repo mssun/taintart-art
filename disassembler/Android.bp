@@ -20,11 +20,39 @@ art_cc_defaults {
     host_supported: true,
     srcs: [
         "disassembler.cc",
-        "disassembler_arm.cc",
-        "disassembler_arm64.cc",
         "disassembler_mips.cc",
         "disassembler_x86.cc",
     ],
+    codegen: {
+        arm: {
+            srcs: ["disassembler_arm.cc"]
+        },
+        arm64: {
+            srcs: ["disassembler_arm64.cc"]
+        },
+        // TODO: We should also conditionally include the MIPS32/MIPS64 and the
+        // x86/x86-64 disassembler definitions (b/119090273). However, using the
+        // following syntax here:
+        //
+        //   mips: {
+        //       srcs: ["disassembler_mips.cc"]
+        //   },
+        //   mips64: {
+        //       srcs: ["disassembler_mips.cc"]
+        //   },
+        //   x86: {
+        //       srcs: ["disassembler_x86.cc"]
+        //   },
+        //   x86_64: {
+        //       srcs: ["disassembler_x86.cc"]
+        //   },
+        //
+        // does not work, as it generates a file rejected by ninja with this
+        // error message (e.g. on host, where we include all the back ends by
+        // default):
+        //
+        //   FAILED: ninja: out/soong/build.ninja:320768: multiple rules generate out/soong/.intermediates/art/disassembler/libart-disassembler/linux_glibc_x86_64_static/obj/art/disassembler/disassembler_mips.o [-w dupbuild=err]
+    },
     include_dirs: ["art/runtime"],
 
     shared_libs: [
