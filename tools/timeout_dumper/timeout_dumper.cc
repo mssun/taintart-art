@@ -25,6 +25,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <thread>
 #include <memory>
 #include <set>
@@ -246,10 +247,7 @@ void Drain(size_t expected,
 
         break;
       } else {
-        char saved = *(new_line + 1);
-        *(new_line + 1) = 0;
-        os << tmp;
-        *(new_line + 1) = saved;
+        os << std::string(tmp, new_line - tmp + 1);
 
         tmp = new_line + 1;
         prefix_written = false;
@@ -284,7 +282,7 @@ void Addr2line(const std::string& addr2line,
     }
     pipe->reset();  // Close early.
 
-    const char* args[7] = {
+    const char* args[] = {
         addr2line.c_str(),
         "--functions",
         "--inlines",
@@ -421,6 +419,9 @@ void DumpThread(pid_t pid,
                 const std::string* addr2line_path,
                 const char* prefix,
                 BacktraceMap* map) {
+  // Use std::cerr to avoid the LOG prefix.
+  std::cerr << std::endl << "=== pid: " << pid << " tid: " << tid << " ===" << std::endl;
+
   constexpr uint32_t kMaxWaitMicros = 1000 * 1000;  // 1s.
   if (pid != tid && !WaitForSigStopped(tid, kMaxWaitMicros)) {
     LOG(ERROR) << "Failed to wait for sigstop on " << tid;
@@ -477,19 +478,19 @@ void DumpThread(pid_t pid,
       }
       oss << ")";
     }
-    LOG(ERROR) << oss.str();
+    std::cerr << oss.str() << std::endl;
     if (try_addr2line && addr2line_path != nullptr) {
       addr2line::Addr2line(*addr2line_path,
                            it->map.name,
                            it->rel_pc,
-                           LOG_STREAM(ERROR),
+                           std::cerr,
                            prefix,
                            &addr2line_state);
     }
   }
 
   if (addr2line_state != nullptr) {
-    addr2line::Drain(0, prefix, &addr2line_state, LOG_STREAM(ERROR));
+    addr2line::Drain(0, prefix, &addr2line_state, std::cerr);
   }
 }
 
@@ -519,7 +520,6 @@ void DumpProcess(pid_t forked_pid, const std::atomic<bool>& saw_wif_stopped_for_
   }
 
   for (pid_t tid : tids) {
-    LOG(ERROR) << "pid: " << forked_pid << " tid: " << tid;
     DumpThread(forked_pid,
                tid,
                use_addr2line ? addr2line_path.get() : nullptr,
