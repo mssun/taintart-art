@@ -1102,6 +1102,10 @@ void Runtime::SetSentinel(mirror::Object* sentinel) {
   sentinel_ = GcRoot<mirror::Object>(sentinel);
 }
 
+GcRoot<mirror::Object> Runtime::GetSentinel() {
+  return sentinel_;
+}
+
 static inline void CreatePreAllocatedException(Thread* self,
                                                Runtime* runtime,
                                                GcRoot<mirror::Throwable>* exception,
