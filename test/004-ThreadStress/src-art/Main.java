@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.LockSupport;
 
 // Run on host with:
 //   javac ThreadTest.java && java ThreadStress && rm *.class
@@ -52,6 +53,7 @@ import java.util.concurrent.Semaphore;
 //    -sleep:X .......... frequency of Sleep (double)
 //    -wait:X ........... frequency of Wait (double)
 //    -timedwait:X ...... frequency of TimedWait (double)
+//    -timedpark:X ...... frequency of TimedPark (double)
 //    -syncandwork:X .... frequency of SyncAndWork (double)
 //    -queuedwait:X ..... frequency of QueuedWait (double)
 
@@ -251,6 +253,18 @@ public class Main implements Runnable {
         }
     }
 
+    private final static class TimedPark extends Operation {
+        private final static int SLEEP_TIME = 100;
+
+        public TimedPark() {}
+
+        @Override
+        public boolean perform() {
+            LockSupport.parkNanos(this, 100*1000000);
+            return true;
+        }
+    }
+
     private final static class SyncAndWork extends Operation {
         private final Object lock;
 
@@ -320,7 +334,8 @@ public class Main implements Runnable {
         frequencyMap.put(new NonMovingAlloc(), 0.025);        //   5/200
         frequencyMap.put(new StackTrace(), 0.1);              //  20/200
         frequencyMap.put(new Exit(), 0.225);                  //  45/200
-        frequencyMap.put(new Sleep(), 0.125);                 //  25/200
+        frequencyMap.put(new Sleep(), 0.075);                 //  15/200
+        frequencyMap.put(new TimedPark(), 0.05);              //  10/200
         frequencyMap.put(new TimedWait(lock), 0.05);          //  10/200
         frequencyMap.put(new Wait(lock), 0.075);              //  15/200
         frequencyMap.put(new QueuedWait(semaphore), 0.05);    //  10/200
@@ -341,9 +356,10 @@ public class Main implements Runnable {
     private final static Map<Operation, Double> createLockFrequencyMap(Object lock) {
       Map<Operation, Double> frequencyMap = new HashMap<Operation, Double>();
       frequencyMap.put(new Sleep(), 0.2);                     //  40/200
-      frequencyMap.put(new TimedWait(lock), 0.2);             //  40/200
+      frequencyMap.put(new TimedWait(lock), 0.1);             //  20/200
       frequencyMap.put(new Wait(lock), 0.2);                  //  40/200
       frequencyMap.put(new SyncAndWork(lock), 0.4);           //  80/200
+      frequencyMap.put(new TimedPark(), 0.1);                 //  20/200
 
       return frequencyMap;
     }
@@ -389,6 +405,8 @@ public class Main implements Runnable {
             op = new Wait(lock);
         } else if (split[0].equals("-timedwait")) {
             op = new TimedWait(lock);
+        } else if (split[0].equals("-timedpark")) {
+            op = new TimedPark();
         } else if (split[0].equals("-syncandwork")) {
             op = new SyncAndWork(lock);
         } else if (split[0].equals("-queuedwait")) {
@@ -693,13 +711,18 @@ public class Main implements Runnable {
         }
 
         // The notifier thread is a daemon just loops forever to wake
-        // up threads in operation Wait.
+        // up threads in operations Wait and Park.
         if (lock != null) {
             Thread notifier = new Thread("Notifier") {
                 public void run() {
                     while (true) {
                         synchronized (lock) {
                             lock.notifyAll();
+                        }
+                        for (Thread runner : runners) {
+                          if (runner != null) {
+                            LockSupport.unpark(runner);
+                          }
                         }
                     }
                 }
