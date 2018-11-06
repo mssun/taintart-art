@@ -91,15 +91,6 @@ inline void BaseMutex::RegisterAsLocked(Thread* self) {
     CheckUnattachedThread(level_);
     return;
   }
-  LockLevel level = level_;
-  // It would be nice to avoid this condition checking in the non-debug case,
-  // but that would make the various methods that check if a mutex is held not
-  // work properly for thread wait locks. Since the vast majority of lock
-  // acquisitions are not thread wait locks, this check should not be too
-  // expensive.
-  if (UNLIKELY(level == kThreadWaitLock) && self->GetHeldMutex(kThreadWaitLock) != nullptr) {
-    level = kThreadWaitWakeLock;
-  }
   if (kDebugLocking) {
     // Check if a bad Mutex of this level or lower is held.
     bool bad_mutexes_held = false;
@@ -107,13 +98,13 @@ inline void BaseMutex::RegisterAsLocked(Thread* self) {
     // mutator_lock_ exclusive. This is because we suspending when holding locks at this level is
     // not allowed and if we hold the mutator_lock_ exclusive we must unsuspend stuff eventually
     // so there are no deadlocks.
-    if (level == kTopLockLevel &&
+    if (level_ == kTopLockLevel &&
         Locks::mutator_lock_->IsSharedHeld(self) &&
         !Locks::mutator_lock_->IsExclusiveHeld(self)) {
       LOG(ERROR) << "Lock level violation: holding \"" << Locks::mutator_lock_->name_ << "\" "
                   << "(level " << kMutatorLock << " - " << static_cast<int>(kMutatorLock)
                   << ") non-exclusive while locking \"" << name_ << "\" "
-                  << "(level " << level << " - " << static_cast<int>(level) << ") a top level"
+                  << "(level " << level_ << " - " << static_cast<int>(level_) << ") a top level"
                   << "mutex. This is not allowed.";
       bad_mutexes_held = true;
     } else if (this == Locks::mutator_lock_ && self->GetHeldMutex(kTopLockLevel) != nullptr) {
@@ -122,10 +113,10 @@ inline void BaseMutex::RegisterAsLocked(Thread* self) {
                  << "not allowed.";
       bad_mutexes_held = true;
     }
-    for (int i = level; i >= 0; --i) {
+    for (int i = level_; i >= 0; --i) {
       LockLevel lock_level_i = static_cast<LockLevel>(i);
       BaseMutex* held_mutex = self->GetHeldMutex(lock_level_i);
-      if (level == kTopLockLevel &&
+      if (level_ == kTopLockLevel &&
           lock_level_i == kMutatorLock &&
           Locks::mutator_lock_->IsExclusiveHeld(self)) {
         // This is checked above.
@@ -134,7 +125,7 @@ inline void BaseMutex::RegisterAsLocked(Thread* self) {
         LOG(ERROR) << "Lock level violation: holding \"" << held_mutex->name_ << "\" "
                    << "(level " << lock_level_i << " - " << i
                    << ") while locking \"" << name_ << "\" "
-                   << "(level " << level << " - " << static_cast<int>(level) << ")";
+                   << "(level " << level_ << " - " << static_cast<int>(level_) << ")";
         if (lock_level_i > kAbortLock) {
           // Only abort in the check below if this is more than abort level lock.
           bad_mutexes_held = true;
@@ -147,8 +138,8 @@ inline void BaseMutex::RegisterAsLocked(Thread* self) {
   }
   // Don't record monitors as they are outside the scope of analysis. They may be inspected off of
   // the monitor list.
-  if (level != kMonitorLock) {
-    self->SetHeldMutex(level, this);
+  if (level_ != kMonitorLock) {
+    self->SetHeldMutex(level_, this);
   }
 }
 
@@ -158,17 +149,10 @@ inline void BaseMutex::RegisterAsUnlocked(Thread* self) {
     return;
   }
   if (level_ != kMonitorLock) {
-    auto level = level_;
-    if (UNLIKELY(level == kThreadWaitLock) && self->GetHeldMutex(kThreadWaitWakeLock) == this) {
-      level = kThreadWaitWakeLock;
-    }
     if (kDebugLocking && gAborting == 0) {  // Avoid recursive aborts.
-      if (level == kThreadWaitWakeLock) {
-        CHECK(self->GetHeldMutex(kThreadWaitLock) != nullptr) << "Held " << kThreadWaitWakeLock << " without " << kThreadWaitLock;;
-      }
-      CHECK(self->GetHeldMutex(level) == this) << "Unlocking on unacquired mutex: " << name_;
+      CHECK(self->GetHeldMutex(level_) == this) << "Unlocking on unacquired mutex: " << name_;
     }
-    self->SetHeldMutex(level, nullptr);
+    self->SetHeldMutex(level_, nullptr);
   }
 }
 
@@ -230,11 +214,7 @@ inline bool Mutex::IsExclusiveHeld(const Thread* self) const {
   if (kDebugLocking) {
     // Sanity debug check that if we think it is locked we have it in our held mutexes.
     if (result && self != nullptr && level_ != kMonitorLock && !gAborting) {
-      if (level_ == kThreadWaitLock && self->GetHeldMutex(kThreadWaitLock) != this) {
-        CHECK_EQ(self->GetHeldMutex(kThreadWaitWakeLock), this);
-      } else {
-        CHECK_EQ(self->GetHeldMutex(level_), this);
-      }
+      CHECK_EQ(self->GetHeldMutex(level_), this);
     }
   }
   return result;
