@@ -572,6 +572,75 @@ public class Main {
     buf1[end] = 'n';
   }
 
+  //
+  // Check that IntermediateAddress can be shared for object ArrayGets.
+  //
+  /// CHECK-START-ARM64: int Main.checkObjectArrayGet(int, java.lang.Integer[], java.lang.Integer[]) instruction_simplifier_arm64 (before)
+  /// CHECK: <<Parameter:l\d+>>     ParameterValue
+  /// CHECK: <<Array:l\d+>>         NullCheck [<<Parameter>>]
+  /// CHECK:                        ArrayGet [<<Array>>,{{i\d+}}]
+  /// CHECK:                        ArrayGet [<<Array>>,{{i\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+  /// CHECK:                        ArrayGet [<<Array>>,{{i\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+
+  /// CHECK-START-ARM64: int Main.checkObjectArrayGet(int, java.lang.Integer[], java.lang.Integer[]) instruction_simplifier_arm64 (after)
+  /// CHECK: <<Parameter:l\d+>>     ParameterValue
+  /// CHECK: <<DataOffset:i\d+>>    IntConstant 12
+  /// CHECK: <<Array:l\d+>>         NullCheck [<<Parameter>>]
+  /// CHECK: <<IntAddr1:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
+  /// CHECK:                        ArrayGet [<<IntAddr1>>,{{i\d+}}]
+  /// CHECK: <<IntAddr2:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
+  /// CHECK:                        ArrayGet [<<IntAddr2>>,{{i\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+  /// CHECK: <<IntAddr3:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
+  /// CHECK:                        ArrayGet [<<IntAddr3>>,{{i\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+  //
+  /// CHECK-NOT:                    IntermediateAddress
+
+  /// CHECK-START-ARM64: int Main.checkObjectArrayGet(int, java.lang.Integer[], java.lang.Integer[]) GVN$after_arch (after)
+  /// CHECK: <<Parameter:l\d+>>     ParameterValue
+  /// CHECK: <<DataOffset:i\d+>>    IntConstant 12
+  /// CHECK: <<Array:l\d+>>         NullCheck [<<Parameter>>]
+  /// CHECK: <<IntAddr1:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
+  /// CHECK:                        ArrayGet [<<IntAddr1>>,{{i\d+}}]
+  /// CHECK:                        ArrayGet [<<IntAddr1>>,{{i\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+  /// CHECK: <<IntAddr3:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
+  /// CHECK:                        ArrayGet [<<IntAddr3>>,{{i\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+  /// CHECK:                        ArraySet [<<Array>>,{{i\d+}},{{l\d+}}]
+  //
+  /// CHECK-NOT:                    IntermediateAddress
+  public final static int checkObjectArrayGet(int index, Integer[] a, Integer[] b) {
+    Integer five = Integer.valueOf(5);
+    int tmp1 = a[index];
+    tmp1 += a[index + 1];
+    a[index + 1] = five;
+    tmp1 += a[index + 2];
+    a[index + 2] = five;
+    a[index + 3] = five;
+    return tmp1;
+  }
+
+  /// CHECK-START-ARM64: int Main.testIntAddressObjDisasm(java.lang.Integer[], int) disassembly (after)
+  /// CHECK: <<IntAddr:i\d+>>       IntermediateAddress
+  /// CHECK:                          add w<<AddrReg:\d+>>, {{w\d+}}, #0xc
+  /// CHECK:                        ArrayGet [<<IntAddr>>,{{i\d+}}]
+  /// CHECK:                          ldr {{w\d+}}, [x<<AddrReg>>, x{{\d+}}, lsl #2]
+  /// CHECK:                        ArrayGet [<<IntAddr>>,{{i\d+}}]
+  /// CHECK:                          ldr {{w\d+}}, [x<<AddrReg>>, x{{\d+}}, lsl #2]
+
+  /// CHECK-START-ARM64: int Main.testIntAddressObjDisasm(java.lang.Integer[], int) disassembly (after)
+  /// CHECK:                          add {{w\d+}}, {{w\d+}}, #0xc
+  /// CHECK-NOT:                      add {{w\d+}}, {{w\d+}}, #0xc
+  private int testIntAddressObjDisasm(Integer[] obj, int x) {
+    return obj[x] + obj[x + 1];
+  }
+
   public final static int ARRAY_SIZE = 128;
 
   public static void main(String[] args) {

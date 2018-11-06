@@ -245,11 +245,11 @@ bool TryExtractArrayAccessAddress(HInstruction* access,
     return false;
   }
   if (kEmitCompilerReadBarrier &&
+      !kUseBakerReadBarrier &&
       access->IsArrayGet() &&
       access->GetType() == DataType::Type::kReference) {
-    // For object arrays, the read barrier instrumentation requires
+    // For object arrays, the non-Baker read barrier instrumentation requires
     // the original array pointer.
-    // TODO: This can be relaxed for Baker CC.
     return false;
   }
 
