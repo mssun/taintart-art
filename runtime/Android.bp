@@ -396,8 +396,10 @@ libart_cc_defaults {
         "libnativeloader",
         "libbacktrace",
         "liblog",
-        // For atrace, properties, ashmem, set_sched_policy.
+        // For atrace, properties, ashmem.
         "libcutils",
+        // For set_sched_policy.
+        "libprocessgroup",
         // For common macros.
         "libbase",
     ],
