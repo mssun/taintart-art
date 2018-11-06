@@ -83,11 +83,15 @@ TEST_F(FileUtilsTest, GetAndroidRootSafe) {
   ASSERT_EQ(0, unsetenv("ANDROID_ROOT"));
   std::string android_root3 = GetAndroidRootSafe(&error_msg);
   // This should be the same as the other root (modulo realpath), otherwise the test setup is
-  // broken.
-  UniqueCPtr<char> real_root(realpath(android_root.c_str(), nullptr));
+  // broken. On non-bionic. On bionic we can be running with a different libart that lives outside
+  // of ANDROID_ROOT
   UniqueCPtr<char> real_root3(realpath(android_root3.c_str(), nullptr));
+#if !defined(__BIONIC__ ) || defined(__ANDROID__)
+  UniqueCPtr<char> real_root(realpath(android_root.c_str(), nullptr));
   EXPECT_STREQ(real_root.get(), real_root3.get());
-
+#else
+  EXPECT_STRNE(real_root3.get(), "");
+#endif
 
   // Reset ANDROID_ROOT, as other things may depend on it.
   ASSERT_EQ(0, setenv("ANDROID_ROOT", android_root_env.c_str(), /* overwrite */ 1));

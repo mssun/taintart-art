@@ -125,7 +125,7 @@ void DumpAndCheck(std::vector<uint8_t>& code, const char* testname, const char* 
   // Assemble the .S
   snprintf(cmd, sizeof(cmd), "%sas %s -o %s.o", toolsdir.c_str(), filename, filename);
   int cmd_result = system(cmd);
-  ASSERT_EQ(cmd_result, 0) << strerror(errno);
+  ASSERT_EQ(cmd_result, 0) << cmd << strerror(errno);
 
   // Disassemble.
   snprintf(cmd, sizeof(cmd), "%sobjdump -D -M force-thumb --section=.text %s.o  | grep '^  *[0-9a-f][0-9a-f]*:'",
