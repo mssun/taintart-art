@@ -4011,33 +4011,31 @@ ObjPtr<mirror::Class> ClassLinker::CreateArrayClass(Thread* self,
   return existing;
 }
 
-ObjPtr<mirror::Class> ClassLinker::FindPrimitiveClass(char type) {
-  ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots = GetClassRoots();
+ObjPtr<mirror::Class> ClassLinker::LookupPrimitiveClass(char type) {
+  ClassRoot class_root;
   switch (type) {
-    case 'B':
-      return GetClassRoot(ClassRoot::kPrimitiveByte, class_roots);
-    case 'C':
-      return GetClassRoot(ClassRoot::kPrimitiveChar, class_roots);
-    case 'D':
-      return GetClassRoot(ClassRoot::kPrimitiveDouble, class_roots);
-    case 'F':
-      return GetClassRoot(ClassRoot::kPrimitiveFloat, class_roots);
-    case 'I':
-      return GetClassRoot(ClassRoot::kPrimitiveInt, class_roots);
-    case 'J':
-      return GetClassRoot(ClassRoot::kPrimitiveLong, class_roots);
-    case 'S':
-      return GetClassRoot(ClassRoot::kPrimitiveShort, class_roots);
-    case 'Z':
-      return GetClassRoot(ClassRoot::kPrimitiveBoolean, class_roots);
-    case 'V':
-      return GetClassRoot(ClassRoot::kPrimitiveVoid, class_roots);
+    case 'B': class_root = ClassRoot::kPrimitiveByte; break;
+    case 'C': class_root = ClassRoot::kPrimitiveChar; break;
+    case 'D': class_root = ClassRoot::kPrimitiveDouble; break;
+    case 'F': class_root = ClassRoot::kPrimitiveFloat; break;
+    case 'I': class_root = ClassRoot::kPrimitiveInt; break;
+    case 'J': class_root = ClassRoot::kPrimitiveLong; break;
+    case 'S': class_root = ClassRoot::kPrimitiveShort; break;
+    case 'Z': class_root = ClassRoot::kPrimitiveBoolean; break;
+    case 'V': class_root = ClassRoot::kPrimitiveVoid; break;
     default:
-      break;
+      return nullptr;
   }
-  std::string printable_type(PrintableChar(type));
-  ThrowNoClassDefFoundError("Not a primitive type: %s", printable_type.c_str());
-  return nullptr;
+  return GetClassRoot(class_root, this);
+}
+
+ObjPtr<mirror::Class> ClassLinker::FindPrimitiveClass(char type) {
+  ObjPtr<mirror::Class> result = LookupPrimitiveClass(type);
+  if (UNLIKELY(result == nullptr)) {
+    std::string printable_type(PrintableChar(type));
+    ThrowNoClassDefFoundError("Not a primitive type: %s", printable_type.c_str());
+  }
+  return result;
 }
 
 ObjPtr<mirror::Class> ClassLinker::InsertClass(const char* descriptor,
@@ -8033,7 +8031,7 @@ ObjPtr<mirror::Class> ClassLinker::DoLookupResolvedType(dex::TypeIndex type_idx,
   if (descriptor[1] == '\0') {
     // only the descriptors of primitive types should be 1 character long, also avoid class lookup
     // for primitive classes that aren't backed by dex files.
-    type = FindPrimitiveClass(descriptor[0]);
+    type = LookupPrimitiveClass(descriptor[0]);
   } else {
     Thread* const self = Thread::Current();
     DCHECK(self != nullptr);
@@ -8562,7 +8560,7 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
   switch (handle_type) {
     case DexFile::MethodHandleType::kStaticPut: {
       method_params->Set(0, target_field->ResolveType());
-      return_type = hs.NewHandle(FindPrimitiveClass('V'));
+      return_type = hs.NewHandle(GetClassRoot(ClassRoot::kPrimitiveVoid, this));
       break;
     }
     case DexFile::MethodHandleType::kStaticGet: {
@@ -8572,7 +8570,7 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
     case DexFile::MethodHandleType::kInstancePut: {
       method_params->Set(0, target_field->GetDeclaringClass());
       method_params->Set(1, target_field->ResolveType());
-      return_type = hs.NewHandle(FindPrimitiveClass('V'));
+      return_type = hs.NewHandle(GetClassRoot(ClassRoot::kPrimitiveVoid, this));
       break;
     }
     case DexFile::MethodHandleType::kInstanceGet: {

@@ -334,14 +334,15 @@ static void Field_set(JNIEnv* env, jobject javaField, jobject javaObj, jobject j
     return;
   }
   ObjPtr<mirror::Class> field_type;
-  const char* field_type_desciptor = f->GetArtField()->GetTypeDescriptor();
-  Primitive::Type field_prim_type = Primitive::GetType(field_type_desciptor[0]);
+  const char* field_type_descriptor = f->GetArtField()->GetTypeDescriptor();
+  Primitive::Type field_prim_type = Primitive::GetType(field_type_descriptor[0]);
   if (field_prim_type == Primitive::kPrimNot) {
     field_type = f->GetType();
-    DCHECK(field_type != nullptr);
   } else {
-    field_type = Runtime::Current()->GetClassLinker()->FindPrimitiveClass(field_type_desciptor[0]);
+    field_type =
+        Runtime::Current()->GetClassLinker()->LookupPrimitiveClass(field_type_descriptor[0]);
   }
+  DCHECK(field_type != nullptr) << field_type_descriptor;
   // We now don't expect suspension unless an exception is thrown.
   // Unbox the value, if necessary.
   ObjPtr<mirror::Object> boxed_value = soa.Decode<mirror::Object>(javaValue);

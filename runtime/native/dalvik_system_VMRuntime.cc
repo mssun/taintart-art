@@ -371,7 +371,7 @@ static void PreloadDexCachesResolveType(Thread* self,
   const char* class_name = dex_file->StringByTypeIdx(type_idx);
   ClassLinker* linker = Runtime::Current()->GetClassLinker();
   ObjPtr<mirror::Class> klass = (class_name[1] == '\0')
-      ? linker->FindPrimitiveClass(class_name[0])
+      ? linker->LookupPrimitiveClass(class_name[0])
       : linker->LookupClass(self, class_name, nullptr);
   if (klass == nullptr) {
     return;
