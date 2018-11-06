@@ -170,4 +170,54 @@ TEST(Arm64InstructionSetFeaturesTest, Arm64AddFeaturesFromString) {
   EXPECT_EQ(armv8_2a_cpu_features->AsBitmap(), 14U);
 }
 
+TEST(Arm64InstructionSetFeaturesTest, IsRuntimeDetectionSupported) {
+  if (kRuntimeISA == InstructionSet::kArm64) {
+    EXPECT_TRUE(InstructionSetFeatures::IsRuntimeDetectionSupported());
+  }
+}
+
+TEST(Arm64InstructionSetFeaturesTest, FeaturesFromRuntimeDetection) {
+  if (kRuntimeISA != InstructionSet::kArm64) {
+    return;
+  }
+
+  std::unique_ptr<const InstructionSetFeatures> hwcap_features(
+      InstructionSetFeatures::FromHwcap());
+  std::unique_ptr<const InstructionSetFeatures> runtime_detected_features(
+      InstructionSetFeatures::FromRuntimeDetection());
+  std::unique_ptr<const InstructionSetFeatures> cpp_defined_features(
+      InstructionSetFeatures::FromCppDefines());
+  EXPECT_NE(runtime_detected_features, nullptr);
+  EXPECT_TRUE(InstructionSetFeatures::IsRuntimeDetectionSupported());
+  EXPECT_TRUE(runtime_detected_features->Equals(hwcap_features.get()));
+  EXPECT_TRUE(runtime_detected_features->HasAtLeast(cpp_defined_features.get()));
+}
+
+TEST(Arm64InstructionSetFeaturesTest, AddFeaturesFromStringRuntime) {
+  std::unique_ptr<const InstructionSetFeatures> features(
+      InstructionSetFeatures::FromBitmap(InstructionSet::kArm64, 0x0));
+  std::unique_ptr<const InstructionSetFeatures> hwcap_features(
+      InstructionSetFeatures::FromHwcap());
+
+  std::string error_msg;
+  features = features->AddFeaturesFromString("runtime", &error_msg);
+
+  EXPECT_NE(features, nullptr);
+  EXPECT_TRUE(error_msg.empty());
+
+  if (kRuntimeISA == InstructionSet::kArm64) {
+    EXPECT_TRUE(features->Equals(hwcap_features.get()));
+    EXPECT_EQ(features->GetFeatureString(), hwcap_features->GetFeatureString());
+  }
+
+  std::unique_ptr<const InstructionSetFeatures> a53_features(
+      Arm64InstructionSetFeatures::FromVariant("cortex-a53", &error_msg));
+  features = a53_features->AddFeaturesFromString("runtime", &error_msg);
+  EXPECT_NE(features, nullptr);
+  EXPECT_TRUE(error_msg.empty()) << error_msg;
+  const Arm64InstructionSetFeatures *arm64_features = features->AsArm64InstructionSetFeatures();
+  EXPECT_TRUE(arm64_features->NeedFixCortexA53_835769());
+  EXPECT_TRUE(arm64_features->NeedFixCortexA53_843419());
+}
+
 }  // namespace art
