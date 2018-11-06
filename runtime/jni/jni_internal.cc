@@ -311,7 +311,9 @@ static jfieldID FindFieldID(const ScopedObjectAccess& soa, jclass jni_class, con
   ArtField* field = nullptr;
   ObjPtr<mirror::Class> field_type;
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  if (sig[1] != '\0') {
+  if (UNLIKELY(sig[0] == '\0')) {
+    DCHECK(field == nullptr);
+  } else if (sig[1] != '\0') {
     Handle<mirror::ClassLoader> class_loader(hs.NewHandle(c->GetClassLoader()));
     field_type = class_linker->FindClass(soa.Self(), sig, class_loader);
   } else {
@@ -319,7 +321,7 @@ static jfieldID FindFieldID(const ScopedObjectAccess& soa, jclass jni_class, con
   }
   if (field_type == nullptr) {
     // Failed to find type from the signature of the field.
-    DCHECK(soa.Self()->IsExceptionPending());
+    DCHECK(sig[0] == '\0' || soa.Self()->IsExceptionPending());
     StackHandleScope<1> hs2(soa.Self());
     Handle<mirror::Throwable> cause(hs2.NewHandle(soa.Self()->GetException()));
     soa.Self()->ClearException();
@@ -328,7 +330,9 @@ static jfieldID FindFieldID(const ScopedObjectAccess& soa, jclass jni_class, con
                                    "no type \"%s\" found and so no field \"%s\" "
                                    "could be found in class \"%s\" or its superclasses", sig, name,
                                    c->GetDescriptor(&temp));
-    soa.Self()->GetException()->SetCause(cause.Get());
+    if (cause != nullptr) {
+      soa.Self()->GetException()->SetCause(cause.Get());
+    }
     return nullptr;
   }
   std::string temp;

@@ -1,4 +1,6 @@
 JNI_OnLoad called
+getFieldId(class TestClass, "intField", "")
+Caught java.lang.NoSuchFieldError
 getFieldId(class TestClass, "intField", "I")
 Result: true
 getFieldId(class TestClass, "intField", "int")
