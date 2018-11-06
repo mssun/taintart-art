@@ -21,10 +21,21 @@
 #include "android-base/logging.h"
 #include "android-base/stringprintf.h"
 
-#include "disassembler_arm.h"
-#include "disassembler_arm64.h"
-#include "disassembler_mips.h"
-#include "disassembler_x86.h"
+#ifdef ART_ENABLE_CODEGEN_arm
+# include "disassembler_arm.h"
+#endif
+
+#ifdef ART_ENABLE_CODEGEN_arm64
+# include "disassembler_arm64.h"
+#endif
+
+#if defined(ART_ENABLE_CODEGEN_mips) || defined(ART_ENABLE_CODEGEN_mips64)
+# include "disassembler_mips.h"
+#endif
+
+#if defined(ART_ENABLE_CODEGEN_x86) || defined(ART_ENABLE_CODEGEN_x86_64)
+# include "disassembler_x86.h"
+#endif
 
 using android::base::StringPrintf;
 
@@ -36,21 +47,35 @@ Disassembler::Disassembler(DisassemblerOptions* disassembler_options)
 }
 
 Disassembler* Disassembler::Create(InstructionSet instruction_set, DisassemblerOptions* options) {
-  if (instruction_set == InstructionSet::kArm || instruction_set == InstructionSet::kThumb2) {
-    return new arm::DisassemblerArm(options);
-  } else if (instruction_set == InstructionSet::kArm64) {
-    return new arm64::DisassemblerArm64(options);
-  } else if (instruction_set == InstructionSet::kMips) {
-    return new mips::DisassemblerMips(options, /* is_o32_abi= */ true);
-  } else if (instruction_set == InstructionSet::kMips64) {
-    return new mips::DisassemblerMips(options, /* is_o32_abi= */ false);
-  } else if (instruction_set == InstructionSet::kX86) {
-    return new x86::DisassemblerX86(options, false);
-  } else if (instruction_set == InstructionSet::kX86_64) {
-    return new x86::DisassemblerX86(options, true);
-  } else {
-    UNIMPLEMENTED(FATAL) << static_cast<uint32_t>(instruction_set);
-    return nullptr;
+  switch (instruction_set) {
+#ifdef ART_ENABLE_CODEGEN_arm
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
+      return new arm::DisassemblerArm(options);
+#endif
+#ifdef ART_ENABLE_CODEGEN_arm64
+    case InstructionSet::kArm64:
+      return new arm64::DisassemblerArm64(options);
+#endif
+#ifdef ART_ENABLE_CODEGEN_mips
+    case InstructionSet::kMips:
+      return new mips::DisassemblerMips(options, /* is_o32_abi= */ true);
+#endif
+#ifdef ART_ENABLE_CODEGEN_mips64
+    case InstructionSet::kMips64:
+      return new mips::DisassemblerMips(options, /* is_o32_abi= */ false);
+#endif
+#ifdef ART_ENABLE_CODEGEN_x86
+    case InstructionSet::kX86:
+      return new x86::DisassemblerX86(options, /* supports_rex= */ false);
+#endif
+#ifdef ART_ENABLE_CODEGEN_x86_64
+    case InstructionSet::kX86_64:
+      return new x86::DisassemblerX86(options, /* supports_rex= */ true);
+#endif
+    default:
+      UNIMPLEMENTED(FATAL) << static_cast<uint32_t>(instruction_set);
+      return nullptr;
   }
 }
 
