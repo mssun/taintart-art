@@ -60,7 +60,6 @@ void* (*Jit::jit_load_)(bool*) = nullptr;
 void (*Jit::jit_unload_)(void*) = nullptr;
 bool (*Jit::jit_compile_method_)(void*, ArtMethod*, Thread*, bool) = nullptr;
 void (*Jit::jit_types_loaded_)(void*, mirror::Class**, size_t count) = nullptr;
-bool Jit::generate_debug_info_ = false;
 
 struct StressModeHelper {
   DECLARE_RUNTIME_DEBUG_FLAG(kSlowMode);
@@ -176,11 +175,24 @@ Jit::Jit(JitCodeCache* code_cache, JitOptions* options)
       lock_("JIT memory use lock") {}
 
 Jit* Jit::Create(JitCodeCache* code_cache, JitOptions* options) {
-  CHECK(jit_compiler_handle_ != nullptr) << "Jit::LoadLibrary() needs to be called first";
-  std::unique_ptr<Jit> jit(new Jit(code_cache, options));
-  if (jit_compiler_handle_ == nullptr) {
+  if (jit_load_ == nullptr) {
+    LOG(WARNING) << "Not creating JIT: library not loaded";
     return nullptr;
   }
+  bool will_generate_debug_symbols = false;
+  jit_compiler_handle_ = (jit_load_)(&will_generate_debug_symbols);
+  if (jit_compiler_handle_ == nullptr) {
+    LOG(WARNING) << "Not creating JIT: failed to allocate a compiler";
+    return nullptr;
+  }
+  std::unique_ptr<Jit> jit(new Jit(code_cache, options));
+  jit->generate_debug_info_ = will_generate_debug_symbols;
+
+  // With 'perf', we want a 1-1 mapping between an address and a method.
+  // We aren't able to keep method pointers live during the instrumentation method entry trampoline
+  // so we will just disable jit-gc if we are doing that.
+  code_cache->SetGarbageCollectCode(!jit->generate_debug_info_ &&
+      !Runtime::Current()->GetInstrumentation()->AreExitStubsInstalled());
 
   VLOG(jit) << "JIT created with initial_capacity="
       << PrettySize(options->GetCodeCacheInitialCapacity())
@@ -195,7 +207,7 @@ Jit* Jit::Create(JitCodeCache* code_cache, JitOptions* options) {
   return jit.release();
 }
 
-bool Jit::BindCompilerMethods(std::string* error_msg) {
+bool Jit::LoadCompilerLibrary(std::string* error_msg) {
   jit_library_handle_ = dlopen(
       kIsDebugBuild ? "libartd-compiler.so" : "libart-compiler.so", RTLD_NOW);
   if (jit_library_handle_ == nullptr) {
@@ -231,23 +243,6 @@ bool Jit::BindCompilerMethods(std::string* error_msg) {
     *error_msg = "JIT couldn't find jit_types_loaded entry point";
     return false;
   }
-  return true;
-}
-
-bool Jit::LoadCompiler(std::string* error_msg) {
-  if (jit_library_handle_ == nullptr && !BindCompilerMethods(error_msg)) {
-    return false;
-  }
-  bool will_generate_debug_symbols = false;
-  VLOG(jit) << "Calling JitLoad interpreter_only="
-      << Runtime::Current()->GetInstrumentation()->InterpretOnly();
-  jit_compiler_handle_ = (jit_load_)(&will_generate_debug_symbols);
-  if (jit_compiler_handle_ == nullptr) {
-    dlclose(jit_library_handle_);
-    *error_msg = "JIT couldn't load compiler";
-    return false;
-  }
-  generate_debug_info_ = will_generate_debug_symbols;
   return true;
 }
 
@@ -298,11 +293,6 @@ bool Jit::CompileMethod(ArtMethod* method, Thread* self, bool osr) {
     }
   }
   return success;
-}
-
-bool Jit::ShouldGenerateDebugInfo() {
-  CHECK(CompilerIsLoaded());
-  return generate_debug_info_;
 }
 
 void Jit::CreateThreadPool() {
@@ -385,7 +375,7 @@ void Jit::NewTypeLoadedIfUsingJit(mirror::Class* type) {
     return;
   }
   jit::Jit* jit = Runtime::Current()->GetJit();
-  if (generate_debug_info_) {
+  if (jit->generate_debug_info_) {
     DCHECK(jit->jit_types_loaded_ != nullptr);
     jit->jit_types_loaded_(jit->jit_compiler_handle_, &type, 1);
   }

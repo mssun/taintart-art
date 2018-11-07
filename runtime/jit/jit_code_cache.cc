@@ -436,12 +436,6 @@ JitCodeCache::JitCodeCache(MemMap&& data_pages,
     SetFootprintLimit(current_capacity_);
   }
 
-  // With 'perf', we want a 1-1 mapping between an address and a method.
-  // We aren't able to keep method pointers live during the instrumentation method entry trampoline
-  // so we will just disable jit-gc if we are doing that.
-  garbage_collect_code_ = !Jit::ShouldGenerateDebugInfo() &&
-      !Runtime::Current()->GetInstrumentation()->AreExitStubsInstalled();
-
   VLOG(jit) << "Created jit code cache: initial data size="
             << PrettySize(initial_data_capacity)
             << ", initial code size="
