@@ -789,7 +789,7 @@ bool Runtime::Start() {
   if (!safe_mode_ && (jit_options_->UseJitCompilation() || jit_options_->GetSaveProfilingInfo())) {
     // Try to load compiler pre zygote to reduce PSS. b/27744947
     std::string error_msg;
-    if (!jit::Jit::LoadCompiler(&error_msg)) {
+    if (!jit::Jit::LoadCompilerLibrary(&error_msg)) {
       LOG(WARNING) << "Failed to load JIT compiler with error " << error_msg;
     }
   }
