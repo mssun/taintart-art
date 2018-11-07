@@ -886,32 +886,31 @@ static bool UnboxPrimitive(ObjPtr<mirror::Object> o,
 
   JValue boxed_value;
   ObjPtr<mirror::Class> klass = o->GetClass();
-  ObjPtr<mirror::Class> src_class = nullptr;
-  ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
+  Primitive::Type primitive_type;
   ArtField* primitive_field = &klass->GetIFieldsPtr()->At(0);
   if (klass->DescriptorEquals("Ljava/lang/Boolean;")) {
-    src_class = class_linker->FindPrimitiveClass('Z');
+    primitive_type = Primitive::kPrimBoolean;
     boxed_value.SetZ(primitive_field->GetBoolean(o));
   } else if (klass->DescriptorEquals("Ljava/lang/Byte;")) {
-    src_class = class_linker->FindPrimitiveClass('B');
+    primitive_type = Primitive::kPrimByte;
     boxed_value.SetB(primitive_field->GetByte(o));
   } else if (klass->DescriptorEquals("Ljava/lang/Character;")) {
-    src_class = class_linker->FindPrimitiveClass('C');
+    primitive_type = Primitive::kPrimChar;
     boxed_value.SetC(primitive_field->GetChar(o));
   } else if (klass->DescriptorEquals("Ljava/lang/Float;")) {
-    src_class = class_linker->FindPrimitiveClass('F');
+    primitive_type = Primitive::kPrimFloat;
     boxed_value.SetF(primitive_field->GetFloat(o));
   } else if (klass->DescriptorEquals("Ljava/lang/Double;")) {
-    src_class = class_linker->FindPrimitiveClass('D');
+    primitive_type = Primitive::kPrimDouble;
     boxed_value.SetD(primitive_field->GetDouble(o));
   } else if (klass->DescriptorEquals("Ljava/lang/Integer;")) {
-    src_class = class_linker->FindPrimitiveClass('I');
+    primitive_type = Primitive::kPrimInt;
     boxed_value.SetI(primitive_field->GetInt(o));
   } else if (klass->DescriptorEquals("Ljava/lang/Long;")) {
-    src_class = class_linker->FindPrimitiveClass('J');
+    primitive_type = Primitive::kPrimLong;
     boxed_value.SetJ(primitive_field->GetLong(o));
   } else if (klass->DescriptorEquals("Ljava/lang/Short;")) {
-    src_class = class_linker->FindPrimitiveClass('S');
+    primitive_type = Primitive::kPrimShort;
     boxed_value.SetS(primitive_field->GetShort(o));
   } else {
     std::string temp;
@@ -923,7 +922,8 @@ static bool UnboxPrimitive(ObjPtr<mirror::Object> o,
   }
 
   return ConvertPrimitiveValue(unbox_for_result,
-                               src_class->GetPrimitiveType(), dst_class->GetPrimitiveType(),
+                               primitive_type,
+                               dst_class->GetPrimitiveType(),
                                boxed_value, unboxed_value);
 }
 
