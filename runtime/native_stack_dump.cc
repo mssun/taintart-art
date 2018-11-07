@@ -373,7 +373,7 @@ void DumpNativeStack(std::ostream& os,
     }
     os << std::endl;
     if (try_addr2line && use_addr2line) {
-      Addr2line(it->map.name, it->pc - it->map.start, os, prefix, &addr2line_state);
+      Addr2line(it->map.name, it->rel_pc, os, prefix, &addr2line_state);
     }
   }
 
