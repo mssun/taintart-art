@@ -713,6 +713,11 @@ class Runtime {
   double GetHashTableMinLoadFactor() const;
   double GetHashTableMaxLoadFactor() const;
 
+  bool IsSafeMode() const {
+    CHECK(!is_zygote_);
+    return safe_mode_;
+  }
+
   void SetSafeMode(bool mode) {
     safe_mode_ = mode;
   }
