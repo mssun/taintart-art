@@ -1,0 +1,5 @@
+Tests that JVMTI transformation seems to work even when we try to get a method
+inlined by the jit.
+
+Note this test deliberately avoids any internal libart calls so it can be
+included in CTS.
