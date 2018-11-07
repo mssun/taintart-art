@@ -146,7 +146,6 @@ class CompilerDriver {
   bool GetCompiledClass(const ClassReference& ref, ClassStatus* status) const;
 
   CompiledMethod* GetCompiledMethod(MethodReference ref) const;
-  size_t GetNonRelativeLinkerPatchCount() const;
   // Add a compiled method.
   void AddCompiledMethod(const MethodReference& method_ref, CompiledMethod* const compiled_method);
   CompiledMethod* RemoveCompiledMethod(const MethodReference& method_ref);
@@ -181,16 +180,6 @@ class CompilerDriver {
                                             uint16_t field_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Resolve a method. Returns null on failure, including incompatible class change.
-  ArtMethod* ResolveMethod(
-      ScopedObjectAccess& soa,
-      Handle<mirror::DexCache> dex_cache,
-      Handle<mirror::ClassLoader> class_loader,
-      const DexCompilationUnit* mUnit,
-      uint32_t method_idx,
-      InvokeType invoke_type)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   void ProcessedInstanceField(bool resolved);
   void ProcessedStaticField(bool resolved, bool local);
 
@@ -208,14 +197,6 @@ class CompilerDriver {
 
   const VerifiedMethod* GetVerifiedMethod(const DexFile* dex_file, uint32_t method_idx) const;
   bool IsSafeCast(const DexCompilationUnit* mUnit, uint32_t dex_pc);
-
-  void SetCompilerContext(void* compiler_context) {
-    compiler_context_ = compiler_context;
-  }
-
-  void* GetCompilerContext() const {
-    return compiler_context_;
-  }
 
   size_t GetThreadCount() const {
     return parallel_thread_count_;
@@ -363,6 +344,12 @@ class CompilerDriver {
   void FreeThreadPools();
   void CheckThreadPools();
 
+  // Resolve const string literals that are loaded from dex code. If only_startup_strings is
+  // specified, only methods that are marked startup in the profile are resolved.
+  void ResolveConstStrings(const std::vector<const DexFile*>& dex_files,
+                           bool only_startup_strings,
+                           /*inout*/ TimingLogger* timings);
+
   const CompilerOptions* const compiler_options_;
   VerificationResults* const verification_results_;
 
@@ -376,13 +363,6 @@ class CompilerDriver {
   ClassStateTable classpath_classes_;
 
   typedef AtomicDexRefMap<MethodReference, CompiledMethod*> MethodTable;
-
- private:
-  // Resolve const string literals that are loaded from dex code. If only_startup_strings is
-  // specified, only methods that are marked startup in the profile are resolved.
-  void ResolveConstStrings(const std::vector<const DexFile*>& dex_files,
-                           bool only_startup_strings,
-                           /*inout*/ TimingLogger* timings);
 
   // All method references that this compiler has compiled.
   MethodTable compiled_methods_;
@@ -411,11 +391,6 @@ class CompilerDriver {
 
   class AOTCompilationStats;
   std::unique_ptr<AOTCompilationStats> stats_;
-
-  typedef void (*CompilerCallbackFn)(CompilerDriver& driver);
-  typedef MutexLock* (*CompilerMutexLockFn)(CompilerDriver& driver);
-
-  void* compiler_context_;
 
   CompiledMethodStorage compiled_method_storage_;
 
