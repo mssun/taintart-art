@@ -34,7 +34,6 @@ class PACKED(4) OatHeader {
   // Last oat version changed reason: Remove interpreter alt tables.
   static constexpr uint8_t kOatVersion[] = { '1', '6', '3', '\0' };
 
-  static constexpr const char* kImageLocationKey = "image-location";
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
   static constexpr const char* kDex2OatHostKey = "dex2oat-host";
   static constexpr const char* kDebuggableKey = "debuggable";

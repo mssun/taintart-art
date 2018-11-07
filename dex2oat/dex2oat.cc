@@ -1045,8 +1045,8 @@ class Dex2Oat final {
   }
 
   void InsertCompileOptions(int argc, char** argv) {
-    std::ostringstream oss;
     if (!avoid_storing_invocation_) {
+      std::ostringstream oss;
       for (int i = 0; i < argc; ++i) {
         if (i > 0) {
           oss << ' ';
@@ -1055,9 +1055,9 @@ class Dex2Oat final {
       }
       key_value_store_->Put(OatHeader::kDex2OatCmdLineKey, oss.str());
       oss.str("");  // Reset.
+      oss << kRuntimeISA;
+      key_value_store_->Put(OatHeader::kDex2OatHostKey, oss.str());
     }
-    oss << kRuntimeISA;
-    key_value_store_->Put(OatHeader::kDex2OatHostKey, oss.str());
     key_value_store_->Put(
         OatHeader::kDebuggableKey,
         compiler_options_->debuggable_ ? OatHeader::kTrueValue : OatHeader::kFalseValue);
@@ -1513,15 +1513,6 @@ class Dex2Oat final {
         std::vector<gc::space::ImageSpace*> image_spaces =
             Runtime::Current()->GetHeap()->GetBootImageSpaces();
         image_file_location_oat_checksum_ = image_spaces[0]->GetImageHeader().GetOatChecksum();
-        // Store the boot image filename(s).
-        std::vector<std::string> image_filenames;
-        for (const gc::space::ImageSpace* image_space : image_spaces) {
-          image_filenames.push_back(image_space->GetImageFilename());
-        }
-        std::string image_file_location = android::base::Join(image_filenames, ':');
-        if (!image_file_location.empty()) {
-          key_value_store_->Put(OatHeader::kImageLocationKey, image_file_location);
-        }
       } else {
         image_file_location_oat_checksum_ = 0u;
       }

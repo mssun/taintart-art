@@ -965,9 +965,6 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
       runtime->GetOatFileManager().RegisterImageOatFiles(spaces);
   DCHECK(!oat_files.empty());
   const OatHeader& default_oat_header = oat_files[0]->GetOatHeader();
-  const char* image_file_location = oat_files[0]->GetOatHeader().
-      GetStoreValueByKey(OatHeader::kImageLocationKey);
-  CHECK(image_file_location == nullptr || *image_file_location == 0);
   quick_resolution_trampoline_ = default_oat_header.GetQuickResolutionTrampoline();
   quick_imt_conflict_trampoline_ = default_oat_header.GetQuickImtConflictTrampoline();
   quick_generic_jni_trampoline_ = default_oat_header.GetQuickGenericJniTrampoline();
