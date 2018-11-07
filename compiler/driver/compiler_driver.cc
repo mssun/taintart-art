@@ -248,8 +248,7 @@ CompilerDriver::CompilerDriver(
     Compiler::Kind compiler_kind,
     HashSet<std::string>* image_classes,
     size_t thread_count,
-    int swap_fd,
-    const ProfileCompilationInfo* profile_compilation_info)
+    int swap_fd)
     : compiler_options_(compiler_options),
       verification_results_(verification_results),
       compiler_(Compiler::Create(this, compiler_kind)),
@@ -261,7 +260,6 @@ CompilerDriver::CompilerDriver(
       stats_(new AOTCompilationStats),
       compiler_context_(nullptr),
       compiled_method_storage_(swap_fd),
-      profile_compilation_info_(profile_compilation_info),
       max_arena_alloc_(0),
       dex_to_dex_compiler_(this) {
   DCHECK(compiler_options_ != nullptr);
@@ -731,9 +729,11 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
         continue;
       }
 
+      const ProfileCompilationInfo* profile_compilation_info =
+          GetCompilerOptions().GetProfileCompilationInfo();
       const bool is_startup_class =
-          profile_compilation_info_ != nullptr &&
-          profile_compilation_info_->ContainsClass(*dex_file, accessor.GetClassIdx());
+          profile_compilation_info != nullptr &&
+          profile_compilation_info->ContainsClass(*dex_file, accessor.GetClassIdx());
 
       for (const ClassAccessor::Method& method : accessor.GetMethods()) {
         const bool is_clinit = (method.GetAccessFlags() & kAccConstructor) != 0 &&
@@ -741,8 +741,8 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
         const bool is_startup_clinit = is_startup_class && is_clinit;
 
         if (only_startup_strings &&
-            profile_compilation_info_ != nullptr &&
-            (!profile_compilation_info_->GetMethodHotness(method.GetReference()).IsStartup() &&
+            profile_compilation_info != nullptr &&
+            (!profile_compilation_info->GetMethodHotness(method.GetReference()).IsStartup() &&
              !is_startup_clinit)) {
           continue;
         }
@@ -981,12 +981,14 @@ bool CompilerDriver::ShouldCompileBasedOnProfile(const MethodReference& method_r
     return true;
   }
   // If we are using a profile filter but do not have a profile compilation info, compile nothing.
-  if (profile_compilation_info_ == nullptr) {
+  const ProfileCompilationInfo* profile_compilation_info =
+      GetCompilerOptions().GetProfileCompilationInfo();
+  if (profile_compilation_info == nullptr) {
     return false;
   }
   // Compile only hot methods, it is the profile saver's job to decide what startup methods to mark
   // as hot.
-  bool result = profile_compilation_info_->GetMethodHotness(method_ref).IsHot();
+  bool result = profile_compilation_info->GetMethodHotness(method_ref).IsHot();
 
   if (kDebugProfileGuidedCompilation) {
     LOG(INFO) << "[ProfileGuidedCompilation] "
@@ -2644,10 +2646,12 @@ void CompilerDriver::Compile(jobject class_loader,
                              const std::vector<const DexFile*>& dex_files,
                              TimingLogger* timings) {
   if (kDebugProfileGuidedCompilation) {
+    const ProfileCompilationInfo* profile_compilation_info =
+        GetCompilerOptions().GetProfileCompilationInfo();
     LOG(INFO) << "[ProfileGuidedCompilation] " <<
-        ((profile_compilation_info_ == nullptr)
+        ((profile_compilation_info == nullptr)
             ? "null"
-            : profile_compilation_info_->DumpInfo(dex_files));
+            : profile_compilation_info->DumpInfo(dex_files));
   }
 
   dex_to_dex_compiler_.ClearState();

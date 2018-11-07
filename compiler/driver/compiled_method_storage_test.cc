@@ -33,8 +33,7 @@ TEST(CompiledMethodStorage, Deduplicate) {
                         Compiler::kOptimizing,
                         /* image_classes */ nullptr,
                         /* thread_count */ 1u,
-                        /* swap_fd */ -1,
-                        /* profile_compilation_info */ nullptr);
+                        /* swap_fd */ -1);
   CompiledMethodStorage* storage = driver.GetCompiledMethodStorage();
 
   ASSERT_TRUE(storage->DedupeEnabled());  // The default.
