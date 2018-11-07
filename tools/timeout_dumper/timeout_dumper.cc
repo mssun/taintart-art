@@ -25,6 +25,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <thread>
 #include <memory>
 #include <set>
@@ -246,10 +247,7 @@ void Drain(size_t expected,
 
         break;
       } else {
-        char saved = *(new_line + 1);
-        *(new_line + 1) = 0;
-        os << tmp;
-        *(new_line + 1) = saved;
+        os << std::string(tmp, new_line - tmp + 1);
 
         tmp = new_line + 1;
         prefix_written = false;
@@ -284,7 +282,7 @@ void Addr2line(const std::string& addr2line,
     }
     pipe->reset();  // Close early.
 
-    const char* args[7] = {
+    const char* args[] = {
         addr2line.c_str(),
         "--functions",
         "--inlines",
@@ -360,18 +358,54 @@ std::set<pid_t> PtraceSiblings(pid_t pid) {
 
 }  // namespace ptrace
 
-bool WaitForSigStoppedOrError(pid_t pid) {
-  int status;
-  pid_t res = TEMP_FAILURE_RETRY(waitpid(pid, &status, 0));
-  if (res == -1) {
-    PLOG(ERROR) << "Failed to waitpid for " << pid;
-    return false;
+template <typename T>
+bool WaitLoop(uint32_t max_wait_micros, const T& handler) {
+  constexpr uint32_t kWaitMicros = 10;
+  const size_t kMaxLoopCount = max_wait_micros / kWaitMicros;
+
+  for (size_t loop_count = 1; loop_count <= kMaxLoopCount; ++loop_count) {
+    bool ret;
+    if (handler(&ret)) {
+      return ret;
+    }
+    usleep(kWaitMicros);
   }
-  if (!(WIFSTOPPED(status))) {
-    LOG(ERROR) << "Did not get expected stopped signal for " << pid;
+  return false;
+}
+
+bool WaitForMainSigStop(const std::atomic<bool>& saw_wif_stopped_for_main) {
+  auto handler = [&](bool* res) {
+    if (saw_wif_stopped_for_main) {
+      *res = true;
+      return true;
+    }
     return false;
-  }
-  return true;
+  };
+  constexpr uint32_t kMaxWaitMicros = 30 * 1000 * 1000;  // 30s wait.
+  return WaitLoop(kMaxWaitMicros, handler);
+}
+
+bool WaitForSigStopped(pid_t pid, uint32_t max_wait_micros) {
+  auto handler = [&](bool* res) {
+    int status;
+    pid_t rc = TEMP_FAILURE_RETRY(waitpid(pid, &status, WNOHANG));
+    if (rc == -1) {
+      PLOG(ERROR) << "Failed to waitpid for " << pid;
+      *res = false;
+      return true;
+    }
+    if (rc == pid) {
+      if (!(WIFSTOPPED(status))) {
+        LOG(ERROR) << "Did not get expected stopped signal for " << pid;
+        *res = false;
+      } else {
+        *res = true;
+      }
+      return true;
+    }
+    return false;
+  };
+  return WaitLoop(max_wait_micros, handler);
 }
 
 #ifdef __LP64__
@@ -385,8 +419,12 @@ void DumpThread(pid_t pid,
                 const std::string* addr2line_path,
                 const char* prefix,
                 BacktraceMap* map) {
-  if (pid != tid && !WaitForSigStoppedOrError(tid)) {
-    return;
+  // Use std::cerr to avoid the LOG prefix.
+  std::cerr << std::endl << "=== pid: " << pid << " tid: " << tid << " ===" << std::endl;
+
+  constexpr uint32_t kMaxWaitMicros = 1000 * 1000;  // 1s.
+  if (pid != tid && !WaitForSigStopped(tid, kMaxWaitMicros)) {
+    LOG(ERROR) << "Failed to wait for sigstop on " << tid;
   }
 
   std::unique_ptr<Backtrace> backtrace(Backtrace::Create(pid, tid, map));
@@ -440,38 +478,20 @@ void DumpThread(pid_t pid,
       }
       oss << ")";
     }
-    LOG(ERROR) << oss.str();
+    std::cerr << oss.str() << std::endl;
     if (try_addr2line && addr2line_path != nullptr) {
       addr2line::Addr2line(*addr2line_path,
                            it->map.name,
                            it->rel_pc,
-                           LOG_STREAM(ERROR),
+                           std::cerr,
                            prefix,
                            &addr2line_state);
     }
   }
 
   if (addr2line_state != nullptr) {
-    addr2line::Drain(0, prefix, &addr2line_state, LOG_STREAM(ERROR));
+    addr2line::Drain(0, prefix, &addr2line_state, std::cerr);
   }
-}
-
-bool WaitForMainSigStop(const std::atomic<bool>& saw_wif_stopped_for_main) {
-  constexpr uint32_t kWaitMicros = 10;
-  constexpr size_t kMaxLoopCount = 10 * 1000 * 1000 / kWaitMicros;  // 10s wait.
-
-  for (size_t loop_count = 0; !saw_wif_stopped_for_main; ++loop_count) {
-    if (loop_count > kMaxLoopCount) {
-      LOG(ERROR) << "Waited too long for main pid to stop";
-      return false;
-    }
-
-    timespec tm;
-    tm.tv_sec = 0;
-    tm.tv_nsec = kWaitMicros * 1000;
-    nanosleep(&tm, nullptr);
-  }
-  return true;
 }
 
 void DumpProcess(pid_t forked_pid, const std::atomic<bool>& saw_wif_stopped_for_main) {
@@ -490,7 +510,7 @@ void DumpProcess(pid_t forked_pid, const std::atomic<bool>& saw_wif_stopped_for_
   LOG(ERROR) << (use_addr2line ? "U" : "Not u") << "sing addr2line";
 
   if (!WaitForMainSigStop(saw_wif_stopped_for_main)) {
-    return;
+    LOG(ERROR) << "Did not receive SIGSTOP for pid " << forked_pid;
   }
 
   std::unique_ptr<BacktraceMap> backtrace_map(BacktraceMap::Create(forked_pid));
@@ -500,7 +520,6 @@ void DumpProcess(pid_t forked_pid, const std::atomic<bool>& saw_wif_stopped_for_
   }
 
   for (pid_t tid : tids) {
-    LOG(ERROR) << "pid: " << forked_pid << " tid: " << tid;
     DumpThread(forked_pid,
                tid,
                use_addr2line ? addr2line_path.get() : nullptr,
