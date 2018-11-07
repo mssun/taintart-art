@@ -444,7 +444,7 @@ void DumpThread(pid_t pid,
     if (try_addr2line && addr2line_path != nullptr) {
       addr2line::Addr2line(*addr2line_path,
                            it->map.name,
-                           it->pc - it->map.start,
+                           it->rel_pc,
                            LOG_STREAM(ERROR),
                            prefix,
                            &addr2line_state);
