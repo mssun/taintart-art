@@ -766,10 +766,6 @@ void OatWriter::PrepareLayout(MultiOatRelativePatcher* relative_patcher) {
   bss_start_ = (bss_size_ != 0u) ? RoundUp(oat_size_, kPageSize) : 0u;
 
   CHECK_EQ(dex_files_->size(), oat_dex_files_.size());
-  if (GetCompilerOptions().IsBootImage()) {
-    CHECK_EQ(image_writer_ != nullptr,
-             oat_header_->GetStoreValueByKey(OatHeader::kImageLocationKey) == nullptr);
-  }
 
   write_state_ = WriteState::kWriteRoData;
 }
