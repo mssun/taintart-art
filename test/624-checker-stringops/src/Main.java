@@ -120,7 +120,7 @@ public class Main {
   /// CHECK-DAG:                  InvokeVirtual [<<New>>]             intrinsic:StringBufferLength
   static int bufferLen2() {
     StringBuffer s = new StringBuffer();
-    return s.append("x").append("x").length();
+    return s.append("x").append("y").length();
   }
 
   static int bufferLen2Smali() throws Exception {
@@ -150,7 +150,7 @@ public class Main {
   /// CHECK-DAG:                  InvokeVirtual [<<New>>]             intrinsic:StringBuilderLength
   static int builderLen2() {
     StringBuilder s = new StringBuilder();
-    return s.append("x").append("x").length();
+    return s.append("x").append("y").length();
   }
 
   static int builderLen2Smali() throws Exception {
