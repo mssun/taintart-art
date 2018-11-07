@@ -282,13 +282,8 @@ class Jit {
                                         JValue* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Load and initialize compiler.
-  static bool LoadCompiler(std::string* error_msg);
-
-  static bool CompilerIsLoaded() { return jit_compiler_handle_ != nullptr; }
-
-  // Return whether debug info should be generated. Requires LoadCompiler() to have been called.
-  static bool ShouldGenerateDebugInfo();
+  // Load the compiler library.
+  static bool LoadCompilerLibrary(std::string* error_msg);
 
   ThreadPool* GetThreadPool() const {
     return thread_pool_.get();
@@ -313,8 +308,8 @@ class Jit {
   static bool (*jit_compile_method_)(void*, ArtMethod*, Thread*, bool);
   static void (*jit_types_loaded_)(void*, mirror::Class**, size_t count);
 
-  // We make this static to simplify the interaction with libart-compiler.so.
-  static bool generate_debug_info_;
+  // Whether we should generate debug info when compiling.
+  bool generate_debug_info_;
 
   // JIT resources owned by runtime.
   jit::JitCodeCache* const code_cache_;
