@@ -128,6 +128,92 @@ class HX86PackedSwitch final : public HExpression<2> {
   const int32_t num_entries_;
 };
 
+class HX86AndNot final : public HBinaryOperation {
+ public:
+  HX86AndNot(DataType::Type result_type,
+       HInstruction* left,
+       HInstruction* right,
+       uint32_t dex_pc = kNoDexPc)
+      : HBinaryOperation(kX86AndNot, result_type, left, right, SideEffects::None(), dex_pc) {
+  }
+
+  bool IsCommutative() const override { return false; }
+
+  template <typename T> static T Compute(T x, T y) { return ~x & y; }
+
+  HConstant* Evaluate(HIntConstant* x, HIntConstant* y) const override {
+    return GetBlock()->GetGraph()->GetIntConstant(
+        Compute(x->GetValue(), y->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HLongConstant* x, HLongConstant* y) const override {
+    return GetBlock()->GetGraph()->GetLongConstant(
+        Compute(x->GetValue(), y->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HFloatConstant* x ATTRIBUTE_UNUSED,
+                      HFloatConstant* y ATTRIBUTE_UNUSED) const override {
+    LOG(FATAL) << DebugName() << " is not defined for float values";
+    UNREACHABLE();
+  }
+  HConstant* Evaluate(HDoubleConstant* x ATTRIBUTE_UNUSED,
+                      HDoubleConstant* y ATTRIBUTE_UNUSED) const override {
+    LOG(FATAL) << DebugName() << " is not defined for double values";
+    UNREACHABLE();
+  }
+
+  DECLARE_INSTRUCTION(X86AndNot);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(X86AndNot);
+};
+
+class HX86MaskOrResetLeastSetBit final : public HUnaryOperation {
+ public:
+  HX86MaskOrResetLeastSetBit(DataType::Type result_type, InstructionKind op,
+                             HInstruction* input, uint32_t dex_pc = kNoDexPc)
+      : HUnaryOperation(kX86MaskOrResetLeastSetBit, result_type, input, dex_pc),
+        op_kind_(op) {
+    DCHECK_EQ(result_type, DataType::Kind(input->GetType()));
+    DCHECK(op == HInstruction::kAnd || op == HInstruction::kXor) << op;
+  }
+  template <typename T>
+  auto Compute(T x) const -> decltype(x & (x-1)) {
+    static_assert(std::is_same<decltype(x & (x-1)), decltype(x ^(x-1))>::value,
+                  "Inconsistent  bitwise types");
+    switch (op_kind_) {
+      case HInstruction::kAnd:
+        return x & (x-1);
+      case HInstruction::kXor:
+        return x ^ (x-1);
+      default:
+        LOG(FATAL) << "Unreachable";
+        UNREACHABLE();
+    }
+  }
+
+  HConstant* Evaluate(HIntConstant* x) const override {
+    return GetBlock()->GetGraph()->GetIntConstant(Compute(x->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HLongConstant* x) const override {
+    return GetBlock()->GetGraph()->GetLongConstant(Compute(x->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HFloatConstant* x ATTRIBUTE_UNUSED) const override {
+    LOG(FATAL) << DebugName() << "is not defined for float values";
+    UNREACHABLE();
+  }
+  HConstant* Evaluate(HDoubleConstant* x ATTRIBUTE_UNUSED) const override {
+    LOG(FATAL) << DebugName() << "is not defined for double values";
+    UNREACHABLE();
+  }
+  InstructionKind GetOpKind() const { return op_kind_; }
+
+  DECLARE_INSTRUCTION(X86MaskOrResetLeastSetBit);
+
+ protected:
+  const InstructionKind op_kind_;
+
+  DEFAULT_COPY_CONSTRUCTOR(X86MaskOrResetLeastSetBit);
+};
+
 }  // namespace art
 
 #endif  // ART_COMPILER_OPTIMIZING_NODES_X86_H_
