@@ -99,8 +99,7 @@ class CompilerDriver {
                  Compiler::Kind compiler_kind,
                  HashSet<std::string>* image_classes,
                  size_t thread_count,
-                 int swap_fd,
-                 const ProfileCompilationInfo* profile_compilation_info);
+                 int swap_fd);
 
   ~CompilerDriver();
 
@@ -247,10 +246,6 @@ class CompilerDriver {
     return &compiled_method_storage_;
   }
 
-  const ProfileCompilationInfo* GetProfileCompilationInfo() const {
-    return profile_compilation_info_;
-  }
-
   // Is `boot_image_filename` the name of a core image (small boot
   // image used for ART testing only)?
   static bool IsCoreImageFilename(const std::string& boot_image_filename) {
@@ -393,9 +388,6 @@ class CompilerDriver {
   std::unique_ptr<AOTCompilationStats> stats_;
 
   CompiledMethodStorage compiled_method_storage_;
-
-  // Info for profile guided compilation.
-  const ProfileCompilationInfo* const profile_compilation_info_;
 
   size_t max_arena_alloc_;
 

@@ -151,8 +151,7 @@ JitCompiler::JitCompiler() {
       Compiler::kOptimizing,
       /* image_classes */ nullptr,
       /* thread_count */ 1,
-      /* swap_fd */ -1,
-      /* profile_compilation_info */ nullptr));
+      /* swap_fd */ -1));
   // Disable dedupe so we can remove compiled methods.
   compiler_driver_->SetDedupeEnabled(false);
 
