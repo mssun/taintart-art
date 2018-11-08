@@ -579,6 +579,7 @@ bool OptimizingCompiler::RunArchOptimizations(HGraph* graph,
 #ifdef ART_ENABLE_CODEGEN_x86
     case InstructionSet::kX86: {
       OptimizationDef x86_optimizations[] = {
+        OptDef(OptimizationPass::kInstructionSimplifierX86),
         OptDef(OptimizationPass::kSideEffectsAnalysis),
         OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
         OptDef(OptimizationPass::kPcRelativeFixupsX86),
@@ -595,6 +596,7 @@ bool OptimizingCompiler::RunArchOptimizations(HGraph* graph,
 #ifdef ART_ENABLE_CODEGEN_x86_64
     case InstructionSet::kX86_64: {
       OptimizationDef x86_64_optimizations[] = {
+        OptDef(OptimizationPass::kInstructionSimplifierX86_64),
         OptDef(OptimizationPass::kSideEffectsAnalysis),
         OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
         OptDef(OptimizationPass::kX86MemoryOperandGeneration)

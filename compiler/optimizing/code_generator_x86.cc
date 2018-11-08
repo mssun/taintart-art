@@ -7424,6 +7424,61 @@ void InstructionCodeGeneratorX86::VisitMonitorOperation(HMonitorOperation* instr
   }
 }
 
+void LocationsBuilderX86::VisitX86AndNot(HX86AndNot* instruction) {
+  DCHECK(codegen_->GetInstructionSetFeatures().HasAVX2());
+  DCHECK(DataType::IsIntOrLongType(instruction->GetType())) << instruction->GetType();
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetInAt(1, Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+}
+
+void InstructionCodeGeneratorX86::VisitX86AndNot(HX86AndNot* instruction) {
+  LocationSummary* locations = instruction->GetLocations();
+  Location first = locations->InAt(0);
+  Location second = locations->InAt(1);
+  Location dest = locations->Out();
+  if (instruction->GetResultType() == DataType::Type::kInt32) {
+    __ andn(dest.AsRegister<Register>(),
+            first.AsRegister<Register>(),
+            second.AsRegister<Register>());
+  } else {
+    DCHECK_EQ(instruction->GetResultType(), DataType::Type::kInt64);
+    __ andn(dest.AsRegisterPairLow<Register>(),
+            first.AsRegisterPairLow<Register>(),
+            second.AsRegisterPairLow<Register>());
+    __ andn(dest.AsRegisterPairHigh<Register>(),
+            first.AsRegisterPairHigh<Register>(),
+            second.AsRegisterPairHigh<Register>());
+  }
+}
+
+void LocationsBuilderX86::VisitX86MaskOrResetLeastSetBit(HX86MaskOrResetLeastSetBit* instruction) {
+  DCHECK(codegen_->GetInstructionSetFeatures().HasAVX2());
+  DCHECK(instruction->GetType() == DataType::Type::kInt32) << instruction->GetType();
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+}
+
+void InstructionCodeGeneratorX86::VisitX86MaskOrResetLeastSetBit(
+    HX86MaskOrResetLeastSetBit* instruction) {
+  LocationSummary* locations = instruction->GetLocations();
+  Location src = locations->InAt(0);
+  Location dest = locations->Out();
+  DCHECK(instruction->GetResultType() == DataType::Type::kInt32);
+  switch (instruction->GetOpKind()) {
+    case HInstruction::kAnd:
+      __ blsr(dest.AsRegister<Register>(), src.AsRegister<Register>());
+      break;
+    case HInstruction::kXor:
+      __ blsmsk(dest.AsRegister<Register>(), src.AsRegister<Register>());
+      break;
+    default:
+      LOG(FATAL) << "Unreachable";
+  }
+}
+
 void LocationsBuilderX86::VisitAnd(HAnd* instruction) { HandleBitwiseOperation(instruction); }
 void LocationsBuilderX86::VisitOr(HOr* instruction) { HandleBitwiseOperation(instruction); }
 void LocationsBuilderX86::VisitXor(HXor* instruction) { HandleBitwiseOperation(instruction); }
