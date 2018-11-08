@@ -188,13 +188,13 @@ void CommonCompilerTest::CreateCompilerDriver() {
   compiler_options_->compile_pic_ = false;  // Non-PIC boot image is a test configuration.
   compiler_options_->SetCompilerFilter(GetCompilerFilter());
   compiler_options_->image_classes_.swap(*GetImageClasses());
+  compiler_options_->profile_compilation_info_ = GetProfileCompilationInfo();
   compiler_driver_.reset(new CompilerDriver(compiler_options_.get(),
                                             verification_results_.get(),
                                             compiler_kind_,
                                             &compiler_options_->image_classes_,
                                             number_of_threads_,
-                                            /* swap_fd */ -1,
-                                            GetProfileCompilationInfo()));
+                                            /* swap_fd */ -1));
 }
 
 void CommonCompilerTest::SetUpRuntimeOptions(RuntimeOptions* options) {

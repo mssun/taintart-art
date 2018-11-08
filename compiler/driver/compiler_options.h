@@ -42,6 +42,7 @@ class VerifierDepsTest;
 class DexFile;
 enum class InstructionSet;
 class InstructionSetFeatures;
+class ProfileCompilationInfo;
 
 class CompilerOptions final {
  public:
@@ -218,6 +219,10 @@ class CompilerOptions final {
     return compile_pic_;
   }
 
+  const ProfileCompilationInfo* GetProfileCompilationInfo() const {
+    return profile_compilation_info_;
+  }
+
   bool HasVerboseMethods() const {
     return !verbose_methods_.empty();
   }
@@ -369,6 +374,9 @@ class CompilerOptions final {
 
   // When using a profile file only the top K% of the profiled samples will be compiled.
   double top_k_profile_threshold_;
+
+  // Info for profile guided compilation.
+  const ProfileCompilationInfo* profile_compilation_info_;
 
   // Vector of methods to have verbose output enabled for.
   std::vector<std::string> verbose_methods_;

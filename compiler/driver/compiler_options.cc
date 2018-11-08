@@ -60,6 +60,7 @@ CompilerOptions::CompilerOptions()
       dump_pass_timings_(false),
       dump_stats_(false),
       top_k_profile_threshold_(kDefaultTopKProfileThreshold),
+      profile_compilation_info_(nullptr),
       verbose_methods_(),
       abort_on_hard_verifier_failure_(false),
       abort_on_soft_verifier_failure_(false),

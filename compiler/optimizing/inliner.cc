@@ -680,7 +680,7 @@ HInliner::InlineCacheType HInliner::GetInlineCacheAOT(
     /*out*/Handle<mirror::ObjectArray<mirror::Class>>* inline_cache)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(Runtime::Current()->IsAotCompiler());
-  const ProfileCompilationInfo* pci = compiler_driver_->GetProfileCompilationInfo();
+  const ProfileCompilationInfo* pci = codegen_->GetCompilerOptions().GetProfileCompilationInfo();
   if (pci == nullptr) {
     return kInlineCacheNoData;
   }
@@ -1647,7 +1647,7 @@ bool HInliner::TryPatternSubstitution(HInvoke* invoke_instruction,
         }
       }
       if (needs_constructor_barrier) {
-        // See CompilerDriver::RequiresConstructorBarrier for more details.
+        // See DexCompilationUnit::RequiresConstructorBarrier for more details.
         DCHECK(obj != nullptr) << "only non-static methods can have a constructor fence";
 
         HConstructorFence* constructor_fence =
