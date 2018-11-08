@@ -99,25 +99,6 @@ inline std::pair<bool, bool> CompilerDriver::IsFastInstanceField(
   return std::make_pair(fast_get, fast_put);
 }
 
-inline ArtMethod* CompilerDriver::ResolveMethod(
-    ScopedObjectAccess& soa,
-    Handle<mirror::DexCache> dex_cache,
-    Handle<mirror::ClassLoader> class_loader,
-    const DexCompilationUnit* mUnit,
-    uint32_t method_idx,
-    InvokeType invoke_type) {
-  DCHECK_EQ(class_loader.Get(), mUnit->GetClassLoader().Get());
-  ArtMethod* resolved_method =
-      mUnit->GetClassLinker()->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-          method_idx, dex_cache, class_loader, /* referrer */ nullptr, invoke_type);
-  if (UNLIKELY(resolved_method == nullptr)) {
-    DCHECK(soa.Self()->IsExceptionPending());
-    // Clean up any exception left by type resolution.
-    soa.Self()->ClearException();
-  }
-  return resolved_method;
-}
-
 inline VerificationResults* CompilerDriver::GetVerificationResults() const {
   DCHECK(Runtime::Current()->IsAotCompiler());
   return verification_results_;
