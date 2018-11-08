@@ -1127,6 +1127,9 @@ class Runtime {
 
   MemMap protected_fault_page_;
 
+  uint64_t process_cpu_start_time_;
+  uint64_t process_cpu_end_time_;
+
   uint32_t verifier_logging_threshold_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(Runtime);
