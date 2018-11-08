@@ -1,0 +1,15 @@
+# This is used only to hide data symbols that get imported through
+# whole_static_libs, or else they might trigger the ASan odr-violation check.
+# Before adding symbols here, please make sure that it doesn't give rise to a
+# real ODR problem. All these symbols are either in .rodata or .data.rel.ro
+# sections.
+LIBARTBASE {
+  local:
+    PPMD7_kExpEscape;
+    XZ_SIG;
+    g_AlignedAlloc;
+    g_Alloc;
+    g_BigAlloc;
+    g_MidAlloc;
+    k7zSignature;
+};
