@@ -71,11 +71,8 @@ art_cc_defaults {
     generated_sources: ["art_dex2oat_operator_srcs"],
     shared_libs: [
         "libbase",
-        "liblz4",
-        "liblzma",
     ],
     include_dirs: [
-        "external/lz4/lib",
         "external/zlib",
     ],
     export_include_dirs: ["."],
@@ -98,8 +95,6 @@ cc_defaults {
     },
     static_libs: [
         "libbase",
-        "liblz4",
-        "liblzma",
     ],
 }
 
@@ -247,7 +242,6 @@ art_cc_binary {
         "libdexfile",
         "libartbase",
         "libbase",
-        "liblz4",
         "libsigchain",
     ],
     static_libs: [
@@ -285,7 +279,6 @@ art_cc_binary {
         "libdexfiled",
         "libartbased",
         "libbase",
-        "liblz4",
         "libsigchain",
     ],
     static_libs: [
@@ -315,7 +308,6 @@ cc_defaults {
     ],
     static_libs: [
         "libbase",
-        "liblz4",
         "libsigchain_dummy",
     ],
 }
@@ -411,11 +403,11 @@ art_cc_test {
         "external/zlib",
     ],
     shared_libs: [
-        "libprofiled",
+        "libartbased",
         "libartd-compiler",
         "libartd-dexlayout",
         "libbase",
-        "liblz4",
+        "libprofiled",
         "libsigchain",
         "libziparchive",
     ],
