@@ -40,6 +40,12 @@ target_config = {
     'art-interpreter' : {
         'run-test' : ['--interpreter']
     },
+    'art-interpreter-cxx' : {
+        'run-test' : ['--interpreter'],
+        'env' : {
+            'ART_USE_CXX_INTERPRETER' : 'true'
+        }
+    },
     'art-interpreter-access-checks' : {
         'run-test' : ['--interp-ac']
     },
