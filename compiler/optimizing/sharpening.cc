@@ -233,7 +233,7 @@ static inline bool CanUseTypeCheckBitstring(ObjPtr<mirror::Class> klass, CodeGen
 
   // Try to assign a type check bitstring.
   MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
-  if ((false) &&  // FIXME: Inliner does not respect CompilerDriver::IsClassToCompile()
+  if ((false) &&  // FIXME: Inliner does not respect CompilerDriver::ShouldCompileMethod()
                   // and we're hitting an unassigned bitstring in dex2oat_image_test. b/26687569
       kIsDebugBuild &&
       codegen->GetCompilerOptions().IsBootImage() &&
