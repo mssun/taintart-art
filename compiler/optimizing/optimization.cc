@@ -28,9 +28,13 @@
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
 #include "pc_relative_fixups_x86.h"
+#include "instruction_simplifier_x86.h"
 #endif
 #if defined(ART_ENABLE_CODEGEN_x86) || defined(ART_ENABLE_CODEGEN_x86_64)
 #include "x86_memory_gen.h"
+#endif
+#ifdef ART_ENABLE_CODEGEN_x86_64
+#include "instruction_simplifier_x86_64.h"
 #endif
 
 #include "bounds_check_elimination.h"
@@ -113,6 +117,12 @@ const char* OptimizationPassName(OptimizationPass pass) {
 #ifdef ART_ENABLE_CODEGEN_x86
     case OptimizationPass::kPcRelativeFixupsX86:
       return x86::PcRelativeFixups::kPcRelativeFixupsX86PassName;
+    case OptimizationPass::kInstructionSimplifierX86:
+      return x86::InstructionSimplifierX86::kInstructionSimplifierX86PassName;
+#endif
+#ifdef ART_ENABLE_CODEGEN_x86_64
+    case OptimizationPass::kInstructionSimplifierX86_64:
+      return x86_64::InstructionSimplifierX86_64::kInstructionSimplifierX86_64PassName;
 #endif
 #if defined(ART_ENABLE_CODEGEN_x86) || defined(ART_ENABLE_CODEGEN_x86_64)
     case OptimizationPass::kX86MemoryOperandGeneration:
@@ -310,6 +320,14 @@ ArenaVector<HOptimization*> ConstructOptimizations(
       case OptimizationPass::kX86MemoryOperandGeneration:
         DCHECK(alt_name == nullptr) << "arch-specific pass does not support alternative name";
         opt = new (allocator) x86::X86MemoryOperandGeneration(graph, codegen, stats);
+        break;
+      case OptimizationPass::kInstructionSimplifierX86:
+       opt = new (allocator) x86::InstructionSimplifierX86(graph, codegen, stats);
+       break;
+#endif
+#ifdef ART_ENABLE_CODEGEN_x86_64
+      case OptimizationPass::kInstructionSimplifierX86_64:
+        opt = new (allocator) x86_64::InstructionSimplifierX86_64(graph, codegen, stats);
         break;
 #endif
       case OptimizationPass::kNone:
