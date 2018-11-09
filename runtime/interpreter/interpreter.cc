@@ -237,7 +237,11 @@ enum InterpreterImplKind {
   kMterpImplKind          // Assembly interpreter
 };
 
+#if ART_USE_CXX_INTERPRETER
+static constexpr InterpreterImplKind kInterpreterImplKind = kSwitchImplKind;
+#else
 static constexpr InterpreterImplKind kInterpreterImplKind = kMterpImplKind;
+#endif
 
 static inline JValue Execute(
     Thread* self,
