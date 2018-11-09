@@ -18,8 +18,7 @@
     jz      MterpException
     ADVANCE_PC 3
     movl    rSELF, %eax
-    movb    THREAD_USE_MTERP_OFFSET(%eax), %al
-    testb   %al, %al
+    cmpb    LITERAL(0), THREAD_USE_MTERP_OFFSET(%eax)
     jz      MterpFallback
     RESTORE_IBASE
     FETCH_INST
@@ -45,8 +44,7 @@
     jz      MterpException
     ADVANCE_PC 4
     movl    rSELF, %eax
-    movb    THREAD_USE_MTERP_OFFSET(%eax), %al
-    testb   %al, %al
+    cmpb    LITERAL(0), THREAD_USE_MTERP_OFFSET(%eax)
     jz      MterpFallback
     RESTORE_IBASE
     FETCH_INST
