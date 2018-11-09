@@ -879,9 +879,11 @@ extern "C" ssize_t MterpSetUpHotnessCountdown(ArtMethod* method,
   int32_t countdown_value = jit::kJitHotnessDisabled;
   jit::Jit* jit = Runtime::Current()->GetJit();
   if (jit != nullptr) {
-    int32_t warm_threshold = jit->WarmMethodThreshold();
-    int32_t hot_threshold = jit->HotMethodThreshold();
-    int32_t osr_threshold = jit->OSRMethodThreshold();
+    // We need to add batch size to ensure the threshold gets passed even after rounding.
+    constexpr int32_t kBatchSize = jit::kJitSamplesBatchSize;
+    int32_t warm_threshold = static_cast<int32_t>(jit->WarmMethodThreshold()) + kBatchSize;
+    int32_t hot_threshold = static_cast<int32_t>(jit->HotMethodThreshold()) + kBatchSize;
+    int32_t osr_threshold = static_cast<int32_t>(jit->OSRMethodThreshold()) + kBatchSize;
     if (hotness_count < warm_threshold) {
       countdown_value = warm_threshold - hotness_count;
     } else if (hotness_count < hot_threshold) {
