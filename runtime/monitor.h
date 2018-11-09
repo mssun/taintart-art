@@ -181,6 +181,8 @@ class Monitor {
   // this routine.
   void RemoveFromWaitSet(Thread* thread) REQUIRES(monitor_lock_);
 
+  void SignalContendersAndReleaseMonitorLock(Thread* self) RELEASE(monitor_lock_);
+
   // Changes the shape of a monitor from thin to fat, preserving the internal lock state. The
   // calling thread must own the lock or the owner must be suspended. There's a race with other
   // threads inflating the lock, installing hash codes and spurious failures. The caller should
@@ -305,6 +307,9 @@ class Monitor {
 
   // Threads currently waiting on this monitor.
   Thread* wait_set_ GUARDED_BY(monitor_lock_);
+
+  // Threads that were waiting on this monitor, but are now contending on it.
+  Thread* wake_set_ GUARDED_BY(monitor_lock_);
 
   // Stored object hash code, generated lazily by GetHashCode.
   AtomicInteger hash_code_;
