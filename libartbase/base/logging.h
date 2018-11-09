@@ -77,12 +77,12 @@ extern void InitLogging(char* argv[], AbortFunction& default_aborter);
 // performed.
 extern const char* GetCmdLine();
 
-// The command used to start the ART runtime, such as "/system/bin/dalvikvm". If InitLogging hasn't
-// been performed then just returns "art"
+// The command used to start the ART runtime, such as "/apex/com.android.runtime/bin/dalvikvm". If
+// InitLogging hasn't been performed then just returns "art".
 extern const char* ProgramInvocationName();
 
 // A short version of the command used to start the ART runtime, such as "dalvikvm". If InitLogging
-// hasn't been performed then just returns "art"
+// hasn't been performed then just returns "art".
 extern const char* ProgramInvocationShortName();
 
 class LogHelper {
