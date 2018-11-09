@@ -35,6 +35,7 @@ class JvmtiDdmChunkListener;
 class JvmtiGcPauseListener;
 class JvmtiMethodTraceListener;
 class JvmtiMonitorListener;
+class JvmtiParkListener;
 
 // an enum for ArtEvents. This differs from the JVMTI events only in that we distinguish between
 // retransformation capable and incapable loading
@@ -331,6 +332,7 @@ class EventHandler {
   std::unique_ptr<JvmtiGcPauseListener> gc_pause_listener_;
   std::unique_ptr<JvmtiMethodTraceListener> method_trace_listener_;
   std::unique_ptr<JvmtiMonitorListener> monitor_listener_;
+  std::unique_ptr<JvmtiParkListener> park_listener_;
 
   // True if frame pop has ever been enabled. Since we store pointers to stack frames we need to
   // continue to listen to this event even if it has been disabled.

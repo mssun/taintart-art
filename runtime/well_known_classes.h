@@ -131,6 +131,7 @@ struct WellKnownClasses {
   static jfieldID dalvik_system_DexPathList_dexElements;
   static jfieldID dalvik_system_DexPathList__Element_dexFile;
   static jfieldID dalvik_system_VMRuntime_nonSdkApiUsageConsumer;
+  static jfieldID java_lang_Thread_parkBlocker;
   static jfieldID java_lang_Thread_daemon;
   static jfieldID java_lang_Thread_group;
   static jfieldID java_lang_Thread_lock;

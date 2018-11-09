@@ -151,6 +151,26 @@ void RuntimeCallbacks::RemoveMonitorCallback(MonitorCallback* cb) {
   Remove(cb, &monitor_callbacks_);
 }
 
+void RuntimeCallbacks::ThreadParkStart(bool is_absolute, int64_t timeout) {
+  for (ParkCallback * cb : park_callbacks_) {
+    cb->ThreadParkStart(is_absolute, timeout);
+  }
+}
+
+void RuntimeCallbacks::ThreadParkFinished(bool timeout) {
+  for (ParkCallback * cb : park_callbacks_) {
+    cb->ThreadParkFinished(timeout);
+  }
+}
+
+void RuntimeCallbacks::AddParkCallback(ParkCallback* cb) {
+  park_callbacks_.push_back(cb);
+}
+
+void RuntimeCallbacks::RemoveParkCallback(ParkCallback* cb) {
+  Remove(cb, &park_callbacks_);
+}
+
 void RuntimeCallbacks::RemoveThreadLifecycleCallback(ThreadLifecycleCallback* cb) {
   Remove(cb, &thread_callbacks_);
 }

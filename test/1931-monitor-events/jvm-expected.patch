@@ -1,0 +1,3 @@
+5,6d4
+< ParkThread start-monitor-wait NamedLock[Parking blocker object] timeout: 1
+< ParkThread monitor-waited NamedLock[Parking blocker object] timed_out: true

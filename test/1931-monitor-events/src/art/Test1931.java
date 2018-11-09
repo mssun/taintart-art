@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.*;
+import java.util.concurrent.locks.LockSupport;
 import java.util.ListIterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -67,6 +68,9 @@ public class Test1931 {
     System.out.println("Testing contended locking.");
     testLock(new Monitors.NamedLock("Lock testLock"));
 
+    System.out.println("Testing park.");
+    testPark(new Monitors.NamedLock("Parking blocker object"));
+
     System.out.println("Testing monitor wait.");
     testWait(new Monitors.NamedLock("Lock testWait"));
 
@@ -86,6 +90,14 @@ public class Test1931 {
 
     System.out.println("Interrupt a monitor being waited on.");
     testInteruptWait(new Monitors.NamedLock("Lock testInteruptWait"));
+  }
+
+  public static void testPark(Object blocker) throws Exception {
+    Thread holder = new Thread(() -> {
+      LockSupport.parkNanos(blocker, 10); // Should round up to one millisecond
+    }, "ParkThread");
+    holder.start();
+    holder.join();
   }
 
   public static void testInteruptWait(final Monitors.NamedLock lk) throws Exception {
