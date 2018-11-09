@@ -183,7 +183,7 @@ cc_defaults {
 
     target: {
         android: {
-            // Use the 32-bit version of dex2oat on devices
+            // Use the 32-bit version of dex2oat on devices.
             compile_multilib: "prefer32",
         },
     },
