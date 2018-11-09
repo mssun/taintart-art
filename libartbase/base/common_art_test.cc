@@ -335,7 +335,6 @@ std::vector<std::string> CommonArtTestImpl::GetLibCoreDexFileNames() {
       // CORE_IMG_JARS modules.
       "core-oj",
       "core-libart",
-      "core-simple",
       "okhttp",
       "bouncycastle",
       "apache-xml",
