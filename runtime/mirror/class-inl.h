@@ -313,8 +313,7 @@ inline ArtMethod* Class::GetVTableEntry(uint32_t i, PointerSize pointer_size) {
   }
   auto* vtable = GetVTable<kVerifyFlags, kReadBarrierOption>();
   DCHECK(vtable != nullptr);
-  return vtable->template GetElementPtrSize<ArtMethod*, kVerifyFlags, kReadBarrierOption>(
-      i, pointer_size);
+  return vtable->template GetElementPtrSize<ArtMethod*, kVerifyFlags>(i, pointer_size);
 }
 
 template<VerifyObjectFlags kVerifyFlags>

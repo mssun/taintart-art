@@ -15,6 +15,7 @@
  */
 
 #include "art_method-inl.h"
+#include "base/casts.h"
 #include "jni.h"
 #include "mirror/array.h"
 #include "mirror/class-inl.h"
@@ -35,6 +36,18 @@ extern "C" JNIEXPORT jint JNICALL Java_Main_vmArrayIndexScale(JNIEnv* env, jclas
   ScopedObjectAccess soa(env);
   ObjPtr<mirror::Class> klass = soa.Decode<mirror::Class>(classObj);
   return Primitive::ComponentSize(klass->GetComponentType()->GetPrimitiveType());
+}
+
+extern "C" JNIEXPORT jlong JNICALL Java_Main_unsafeTestMalloc(JNIEnv*, jclass, jlong size) {
+  void* memory = malloc(dchecked_integral_cast<size_t>(size));
+  CHECK(memory != nullptr);
+  return reinterpret_cast64<jlong>(memory);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_Main_unsafeTestFree(JNIEnv*, jclass, jlong memory) {
+  void* mem = reinterpret_cast64<void*>(memory);
+  CHECK(mem != nullptr);
+  free(mem);
 }
 
 }  // namespace art

@@ -32,6 +32,20 @@ public class Main {
     }
   }
 
+  private static void check(float actual, float expected, String msg) {
+    if (actual != expected) {
+      System.out.println(msg + " : " + actual + " != " + expected);
+      System.exit(1);
+    }
+  }
+
+  private static void check(double actual, double expected, String msg) {
+    if (actual != expected) {
+      System.out.println(msg + " : " + actual + " != " + expected);
+      System.exit(1);
+    }
+  }
+
   private static void check(Object actual, Object expected, String msg) {
     if (actual != expected) {
       System.out.println(msg + " : " + actual + " != " + expected);
@@ -54,6 +68,7 @@ public class Main {
     testArrayIndexScale(unsafe);
     testGetAndPutAndCAS(unsafe);
     testGetAndPutVolatile(unsafe);
+    testCopyMemoryPrimitiveArrays(unsafe);
   }
 
   private static void testArrayBaseOffset(Unsafe unsafe) {
@@ -237,6 +252,38 @@ public class Main {
           "Unsafe.getObjectVolatile(Object, long)");
   }
 
+  // Regression test for "copyMemory" operations hitting a DCHECK() for float/double arrays.
+  private static void testCopyMemoryPrimitiveArrays(Unsafe unsafe) {
+    int size = 4 * 1024;
+    long memory = unsafeTestMalloc(size);
+
+    int floatSize = 4;
+    float[] inputFloats = new float[size / floatSize];
+    for (int i = 0; i != inputFloats.length; ++i) {
+      inputFloats[i] = ((float)i) + 0.5f;
+    }
+    float[] outputFloats = new float[size / floatSize];
+    unsafe.copyMemoryFromPrimitiveArray(inputFloats, 0, memory, size);
+    unsafe.copyMemoryToPrimitiveArray(memory, outputFloats, 0, size);
+    for (int i = 0; i != inputFloats.length; ++i) {
+      check(inputFloats[i], outputFloats[i], "unsafe.copyMemory/float");
+    }
+
+    int doubleSize = 8;
+    double[] inputDoubles = new double[size / doubleSize];
+    for (int i = 0; i != inputDoubles.length; ++i) {
+      inputDoubles[i] = ((double)i) + 0.5;
+    }
+    double[] outputDoubles = new double[size / doubleSize];
+    unsafe.copyMemoryFromPrimitiveArray(inputDoubles, 0, memory, size);
+    unsafe.copyMemoryToPrimitiveArray(memory, outputDoubles, 0, size);
+    for (int i = 0; i != inputDoubles.length; ++i) {
+      check(inputDoubles[i], outputDoubles[i], "unsafe.copyMemory/double");
+    }
+
+    unsafeTestFree(memory);
+  }
+
   private static class TestClass {
     public int intVar = 0;
     public long longVar = 0;
@@ -251,4 +298,6 @@ public class Main {
 
   private static native int vmArrayBaseOffset(Class<?> clazz);
   private static native int vmArrayIndexScale(Class<?> clazz);
+  private static native long unsafeTestMalloc(long size);
+  private static native void unsafeTestFree(long memory);
 }

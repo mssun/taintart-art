@@ -193,9 +193,7 @@ extern template class PrimitiveArray<int16_t>;   // ShortArray
 // Either an IntArray or a LongArray.
 class PointerArray : public Array {
  public:
-  template<typename T,
-           VerifyObjectFlags kVerifyFlags = kVerifyNone,
-           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
+  template<typename T, VerifyObjectFlags kVerifyFlags = kVerifyNone>
   T GetElementPtrSize(uint32_t idx, PointerSize ptr_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -216,9 +214,7 @@ class PointerArray : public Array {
 
   // Fixup the pointers in the dest arrays by passing our pointers through the visitor. Only copies
   // to dest if visitor(source_ptr) != source_ptr.
-  template <VerifyObjectFlags kVerifyFlags = kVerifyNone,
-            ReadBarrierOption kReadBarrierOption = kWithReadBarrier,
-            typename Visitor>
+  template <VerifyObjectFlags kVerifyFlags = kVerifyNone, typename Visitor>
   void Fixup(mirror::PointerArray* dest, PointerSize pointer_size, const Visitor& visitor)
       REQUIRES_SHARED(Locks::mutator_lock_);
 

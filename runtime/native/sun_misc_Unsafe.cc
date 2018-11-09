@@ -366,13 +366,17 @@ static void Unsafe_copyMemoryToPrimitiveArray(JNIEnv *env,
   ObjPtr<mirror::Object> dst = soa.Decode<mirror::Object>(dstObj);
   ObjPtr<mirror::Class> component_type = dst->GetClass()->GetComponentType();
   if (component_type->IsPrimitiveByte() || component_type->IsPrimitiveBoolean()) {
-    copyToArray(srcAddr, MakeObjPtr(dst->AsByteSizedArray()), dst_offset, sz);
+    // Note: Treating BooleanArray as ByteArray.
+    copyToArray(srcAddr, ObjPtr<mirror::ByteArray>::DownCast(dst), dst_offset, sz);
   } else if (component_type->IsPrimitiveShort() || component_type->IsPrimitiveChar()) {
-    copyToArray(srcAddr, MakeObjPtr(dst->AsShortSizedArray()), dst_offset, sz);
+    // Note: Treating CharArray as ShortArray.
+    copyToArray(srcAddr, ObjPtr<mirror::ShortArray>::DownCast(dst), dst_offset, sz);
   } else if (component_type->IsPrimitiveInt() || component_type->IsPrimitiveFloat()) {
-    copyToArray(srcAddr, MakeObjPtr(dst->AsIntArray()), dst_offset, sz);
+    // Note: Treating FloatArray as IntArray.
+    copyToArray(srcAddr, ObjPtr<mirror::IntArray>::DownCast(dst), dst_offset, sz);
   } else if (component_type->IsPrimitiveLong() || component_type->IsPrimitiveDouble()) {
-    copyToArray(srcAddr, MakeObjPtr(dst->AsLongArray()), dst_offset, sz);
+    // Note: Treating DoubleArray as LongArray.
+    copyToArray(srcAddr, ObjPtr<mirror::LongArray>::DownCast(dst), dst_offset, sz);
   } else {
     ThrowIllegalAccessException("not a primitive array");
   }
@@ -397,13 +401,17 @@ static void Unsafe_copyMemoryFromPrimitiveArray(JNIEnv *env,
   ObjPtr<mirror::Object> src = soa.Decode<mirror::Object>(srcObj);
   ObjPtr<mirror::Class> component_type = src->GetClass()->GetComponentType();
   if (component_type->IsPrimitiveByte() || component_type->IsPrimitiveBoolean()) {
-    copyFromArray(dstAddr, MakeObjPtr(src->AsByteSizedArray()), src_offset, sz);
+    // Note: Treating BooleanArray as ByteArray.
+    copyFromArray(dstAddr, ObjPtr<mirror::ByteArray>::DownCast(src), src_offset, sz);
   } else if (component_type->IsPrimitiveShort() || component_type->IsPrimitiveChar()) {
-    copyFromArray(dstAddr, MakeObjPtr(src->AsShortSizedArray()), src_offset, sz);
+    // Note: Treating CharArray as ShortArray.
+    copyFromArray(dstAddr, ObjPtr<mirror::ShortArray>::DownCast(src), src_offset, sz);
   } else if (component_type->IsPrimitiveInt() || component_type->IsPrimitiveFloat()) {
-    copyFromArray(dstAddr, MakeObjPtr(src->AsIntArray()), src_offset, sz);
+    // Note: Treating FloatArray as IntArray.
+    copyFromArray(dstAddr, ObjPtr<mirror::IntArray>::DownCast(src), src_offset, sz);
   } else if (component_type->IsPrimitiveLong() || component_type->IsPrimitiveDouble()) {
-    copyFromArray(dstAddr, MakeObjPtr(src->AsLongArray()), src_offset, sz);
+    // Note: Treating DoubleArray as LongArray.
+    copyFromArray(dstAddr, ObjPtr<mirror::LongArray>::DownCast(src), src_offset, sz);
   } else {
     ThrowIllegalAccessException("not a primitive array");
   }
