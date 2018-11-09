@@ -359,6 +359,18 @@ class ConcurrentCopying : public GarbageCollector {
   Atomic<uint64_t> cumulative_bytes_moved_;
   Atomic<uint64_t> cumulative_objects_moved_;
 
+  // copied_live_bytes_ratio_sum_ and gc_count_ are read and written by CC per
+  // GC, in ReclaimPhase, and are read by DumpPerformanceInfo (potentially from
+  // another thread). However, at present, DumpPerformanceInfo is only called
+  // when the runtime shuts down, so no concurrent access.
+  // The sum of of all copied live bytes ratio (to_bytes/from_bytes)
+  float copied_live_bytes_ratio_sum_;
+  // The number of GC counts, used to calculate the average above. (It doesn't
+  // include GC where from_bytes is zero, IOW, from-space is empty, which is
+  // possible for minor GC if all allocated objects are in non-moving
+  // space.)
+  size_t gc_count_;
+
   // Generational "sticky", only trace through dirty objects in region space.
   const bool young_gen_;
   // If true, the GC thread is done scanning marked objects on dirty and aged
