@@ -156,7 +156,7 @@ template<VerifyObjectFlags kVerifyFlags>
 inline bool Object::IsObjectArray() {
   // We do not need a read barrier here as the primitive type is constant,
   // both from-space and to-space component type classes shall yield the same result.
-  constexpr auto kNewFlags = RemoveThisFlags(kVerifyFlags);
+  constexpr VerifyObjectFlags kNewFlags = RemoveThisFlags(kVerifyFlags);
   return IsArrayInstance<kVerifyFlags>() &&
       !GetClass<kNewFlags, kWithoutReadBarrier>()->
           template GetComponentType<kNewFlags, kWithoutReadBarrier>()->IsPrimitive();
@@ -197,7 +197,7 @@ ALWAYS_INLINE bool Object::IsSpecificPrimitiveArray() {
   // We do not need a read barrier here as the primitive type is constant,
   // both from-space and to-space component type classes shall yield the same result.
   ObjPtr<Class> klass = GetClass<kVerifyFlags, kWithoutReadBarrier>();
-  constexpr auto kNewFlags = RemoveThisFlags(kVerifyFlags);
+  constexpr VerifyObjectFlags kNewFlags = RemoveThisFlags(kVerifyFlags);
   ObjPtr<Class> const component_type = klass->GetComponentType<kNewFlags, kWithoutReadBarrier>();
   return component_type != nullptr &&
          component_type->GetPrimitiveType<kNewFlags>() == kType;
@@ -340,7 +340,7 @@ inline size_t Object::SizeOf() {
   // values is OK because of that.
   static constexpr ReadBarrierOption kRBO = kWithoutReadBarrier;
   size_t result;
-  constexpr auto kNewFlags = RemoveThisFlags(kVerifyFlags);
+  constexpr VerifyObjectFlags kNewFlags = RemoveThisFlags(kVerifyFlags);
   if (IsArrayInstance<kVerifyFlags>()) {
     result = AsArray<kNewFlags>()->template SizeOf<kNewFlags, kRBO>();
   } else if (IsClass<kNewFlags>()) {

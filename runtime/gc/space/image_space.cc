@@ -1884,7 +1884,7 @@ class ImageSpace::BootImageLoader {
           }
           auto* iftable = klass->GetIfTable<kVerifyNone, kWithoutReadBarrier>();
           if (iftable != nullptr) {
-            int32_t ifcount = klass->GetIfTableCount<kVerifyNone, kWithoutReadBarrier>();
+            int32_t ifcount = klass->GetIfTableCount<kVerifyNone>();
             for (int32_t i = 0; i != ifcount; ++i) {
               mirror::PointerArray* unpatched_ifarray =
                   iftable->GetMethodArrayOrNull<kVerifyNone, kWithoutReadBarrier>(i);

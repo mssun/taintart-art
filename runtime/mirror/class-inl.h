@@ -294,16 +294,20 @@ inline void Class::SetVTable(ObjPtr<PointerArray> new_vtable) {
 }
 
 inline bool Class::HasVTable() {
-  return GetVTable() != nullptr || ShouldHaveEmbeddedVTable();
+  // No read barrier is needed for comparing with null.
+  return GetVTable<kDefaultVerifyFlags, kWithoutReadBarrier>() != nullptr ||
+         ShouldHaveEmbeddedVTable();
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline int32_t Class::GetVTableLength() {
   if (ShouldHaveEmbeddedVTable<kVerifyFlags>()) {
     return GetEmbeddedVTableLength();
   }
-  return GetVTable<kVerifyFlags, kReadBarrierOption>() != nullptr ?
-      GetVTable<kVerifyFlags, kReadBarrierOption>()->GetLength() : 0;
+  // We do not need a read barrier here as the length is constant,
+  // both from-space and to-space vtables shall yield the same result.
+  ObjPtr<PointerArray> vtable = GetVTable<kVerifyFlags, kWithoutReadBarrier>();
+  return vtable != nullptr ? vtable->GetLength() : 0;
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
@@ -311,9 +315,9 @@ inline ArtMethod* Class::GetVTableEntry(uint32_t i, PointerSize pointer_size) {
   if (ShouldHaveEmbeddedVTable<kVerifyFlags>()) {
     return GetEmbeddedVTableEntry(i, pointer_size);
   }
-  auto* vtable = GetVTable<kVerifyFlags, kReadBarrierOption>();
+  ObjPtr<PointerArray> vtable = GetVTable<kVerifyFlags, kReadBarrierOption>();
   DCHECK(vtable != nullptr);
-  return vtable->template GetElementPtrSize<ArtMethod*, kVerifyFlags>(i, pointer_size);
+  return vtable->GetElementPtrSize<ArtMethod*, kVerifyFlags>(i, pointer_size);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -623,9 +627,11 @@ inline IfTable* Class::GetIfTable() {
   return ret.Ptr();
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline int32_t Class::GetIfTableCount() {
-  return GetIfTable<kVerifyFlags, kReadBarrierOption>()->Count();
+  // We do not need a read barrier here as the length is constant,
+  // both from-space and to-space iftables shall yield the same result.
+  return GetIfTable<kVerifyFlags, kWithoutReadBarrier>()->Count();
 }
 
 inline void Class::SetIfTable(ObjPtr<IfTable> new_iftable) {
@@ -969,7 +975,17 @@ inline bool Class::IsObjectArrayClass() {
   // We do not need a read barrier here as the primitive type is constant,
   // both from-space and to-space component type classes shall yield the same result.
   ObjPtr<Class> const component_type = GetComponentType<kVerifyFlags, kWithoutReadBarrier>();
-  return component_type != nullptr && !component_type->IsPrimitive<kVerifyFlags>();
+  constexpr VerifyObjectFlags kNewFlags = RemoveThisFlags(kVerifyFlags);
+  return component_type != nullptr && !component_type->IsPrimitive<kNewFlags>();
+}
+
+template<VerifyObjectFlags kVerifyFlags>
+bool Class::IsPrimitiveArray() {
+  // We do not need a read barrier here as the primitive type is constant,
+  // both from-space and to-space component type classes shall yield the same result.
+  ObjPtr<Class> const component_type = GetComponentType<kVerifyFlags, kWithoutReadBarrier>();
+  constexpr VerifyObjectFlags kNewFlags = RemoveThisFlags(kVerifyFlags);
+  return component_type != nullptr && component_type->IsPrimitive<kNewFlags>();
 }
 
 inline bool Class::IsAssignableFrom(ObjPtr<Class> src) {
