@@ -92,6 +92,17 @@ public class RemTest {
   /// CHECK:                 cmp w{{\d+}}, #0x0
   /// CHECK:                 and w{{\d+}}, w{{\d+}}, #0x1
   /// CHECK:                 cneg w{{\d+}}, w{{\d+}}, lt
+  /// CHECK-START-X86_64: java.lang.Integer RemTest.$noinline$IntMod2(int) disassembly (after)
+  /// CHECK:          Rem [{{i\d+}},{{i\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shr
+  /// CHECK-NOT:      imul
+  /// CHECK:          mov
+  /// CHECK:          and
+  /// CHECK:          jz/eq
+  /// CHECK:          lea
+  /// CHECK:          test
+  /// CHECK:          cmovl/nge
   private static Integer $noinline$IntMod2(int v) {
     int r = v % 2;
     return r;
@@ -101,6 +112,17 @@ public class RemTest {
   /// CHECK:                 cmp w{{\d+}}, #0x0
   /// CHECK:                 and w{{\d+}}, w{{\d+}}, #0x1
   /// CHECK:                 cneg w{{\d+}}, w{{\d+}}, lt
+  /// CHECK-START-X86_64: java.lang.Integer RemTest.$noinline$IntModMinus2(int) disassembly (after)
+  /// CHECK:          Rem [{{i\d+}},{{i\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shr
+  /// CHECK-NOT:      imul
+  /// CHECK:          mov
+  /// CHECK:          and
+  /// CHECK:          jz/eq
+  /// CHECK:          lea
+  /// CHECK:          test
+  /// CHECK:          cmovl/nge
   private static Integer $noinline$IntModMinus2(int v) {
     int r = v % -2;
     return r;
@@ -111,6 +133,17 @@ public class RemTest {
   /// CHECK:                 and w{{\d+}}, w{{\d+}}, #0xf
   /// CHECK:                 and w{{\d+}}, w{{\d+}}, #0xf
   /// CHECK:                 csneg w{{\d+}}, w{{\d+}}, mi
+  /// CHECK-START-X86_64: java.lang.Integer RemTest.$noinline$IntMod16(int) disassembly (after)
+  /// CHECK:          Rem [{{i\d+}},{{i\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shr
+  /// CHECK-NOT:      imul
+  /// CHECK:          mov
+  /// CHECK:          and
+  /// CHECK:          jz/eq
+  /// CHECK:          lea
+  /// CHECK:          test
+  /// CHECK:          cmovl/nge
   private static Integer $noinline$IntMod16(int v) {
     int r = v % 16;
     return r;
@@ -121,6 +154,17 @@ public class RemTest {
   /// CHECK:                 and w{{\d+}}, w{{\d+}}, #0xf
   /// CHECK:                 and w{{\d+}}, w{{\d+}}, #0xf
   /// CHECK:                 csneg w{{\d+}}, w{{\d+}}, mi
+  /// CHECK-START-X86_64: java.lang.Integer RemTest.$noinline$IntModMinus16(int) disassembly (after)
+  /// CHECK:          Rem [{{i\d+}},{{i\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shr
+  /// CHECK-NOT:      imul
+  /// CHECK:          mov
+  /// CHECK:          and
+  /// CHECK:          jz/eq
+  /// CHECK:          lea
+  /// CHECK:          test
+  /// CHECK:          cmovl/nge
   private static Integer $noinline$IntModMinus16(int v) {
     int r = v % -16;
     return r;
@@ -131,6 +175,17 @@ public class RemTest {
   /// CHECK:                 and w{{\d+}}, w{{\d+}}, #0x7fffffff
   /// CHECK:                 and w{{\d+}}, w{{\d+}}, #0x7fffffff
   /// CHECK:                 csneg w{{\d+}}, w{{\d+}}, mi
+  /// CHECK-START-X86_64: java.lang.Integer RemTest.$noinline$IntModIntMin(int) disassembly (after)
+  /// CHECK:          Rem [{{i\d+}},{{i\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shr
+  /// CHECK-NOT:      imul
+  /// CHECK:          mov
+  /// CHECK:          and
+  /// CHECK:          jz/eq
+  /// CHECK:          lea
+  /// CHECK:          test
+  /// CHECK:          cmovl/nge
   private static Integer $noinline$IntModIntMin(int v) {
     int r = v % Integer.MIN_VALUE;
     return r;
@@ -211,6 +266,18 @@ public class RemTest {
   /// CHECK:                 cmp x{{\d+}}, #0x0
   /// CHECK:                 and x{{\d+}}, x{{\d+}}, #0x1
   /// CHECK:                 cneg x{{\d+}}, x{{\d+}}, lt
+  /// CHECK-START-X86_64: java.lang.Long RemTest.$noinline$LongMod2(long) disassembly (after)
+  /// CHECK:          Rem [{{j\d+}},{{j\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shrq
+  /// CHECK-NOT:      imulq
+  /// CHECK:          movq
+  /// CHECK:          andq
+  /// CHECK:          jz/eq
+  /// CHECK:          movq
+  /// CHECK:          sarq
+  /// CHECK:          shlq
+  /// CHECK:          orq
   private static Long $noinline$LongMod2(long v) {
     long r = v % 2;
     return r;
@@ -220,6 +287,18 @@ public class RemTest {
   /// CHECK:                 cmp x{{\d+}}, #0x0
   /// CHECK:                 and x{{\d+}}, x{{\d+}}, #0x1
   /// CHECK:                 cneg x{{\d+}}, x{{\d+}}, lt
+  /// CHECK-START-X86_64: java.lang.Long RemTest.$noinline$LongModMinus2(long) disassembly (after)
+  /// CHECK:          Rem [{{j\d+}},{{j\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shrq
+  /// CHECK-NOT:      imulq
+  /// CHECK:          movq
+  /// CHECK:          andq
+  /// CHECK:          jz/eq
+  /// CHECK:          movq
+  /// CHECK:          sarq
+  /// CHECK:          shlq
+  /// CHECK:          orq
   private static Long $noinline$LongModMinus2(long v) {
     long r = v % -2;
     return r;
@@ -230,6 +309,19 @@ public class RemTest {
   /// CHECK:                 and x{{\d+}}, x{{\d+}}, #0xf
   /// CHECK:                 and x{{\d+}}, x{{\d+}}, #0xf
   /// CHECK:                 csneg x{{\d+}}, x{{\d+}}, mi
+
+  /// CHECK-START-X86_64: java.lang.Long RemTest.$noinline$LongMod16(long) disassembly (after)
+  /// CHECK:          Rem [{{j\d+}},{{j\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shrq
+  /// CHECK-NOT:      imulq
+  /// CHECK:          movq
+  /// CHECK:          andq
+  /// CHECK:          jz/eq
+  /// CHECK:          movq
+  /// CHECK:          sarq
+  /// CHECK:          shlq
+  /// CHECK:          orq
   private static Long $noinline$LongMod16(long v) {
     long r = v % 16;
     return r;
@@ -240,6 +332,18 @@ public class RemTest {
   /// CHECK:                 and x{{\d+}}, x{{\d+}}, #0xf
   /// CHECK:                 and x{{\d+}}, x{{\d+}}, #0xf
   /// CHECK:                 csneg x{{\d+}}, x{{\d+}}, mi
+  /// CHECK-START-X86_64: java.lang.Long RemTest.$noinline$LongModMinus16(long) disassembly (after)
+  /// CHECK:          Rem [{{j\d+}},{{j\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shrq
+  /// CHECK-NOT:      imulq
+  /// CHECK:          movq
+  /// CHECK:          andq
+  /// CHECK:          jz/eq
+  /// CHECK:          movq
+  /// CHECK:          sarq
+  /// CHECK:          shlq
+  /// CHECK:          orq
   private static Long $noinline$LongModMinus16(long v) {
     long r = v % -16;
     return r;
@@ -250,6 +354,18 @@ public class RemTest {
   /// CHECK:                 and x{{\d+}}, x{{\d+}}, #0x7fffffffffffffff
   /// CHECK:                 and x{{\d+}}, x{{\d+}}, #0x7fffffffffffffff
   /// CHECK:                 csneg x{{\d+}}, x{{\d+}}, mi
+  /// CHECK-START-X86_64: java.lang.Long RemTest.$noinline$LongModLongMin(long) disassembly (after)
+  /// CHECK:          Rem [{{j\d+}},{{j\d+}}]
+  /// CHECK-NOT:      imul
+  /// CHECK-NOT:      shrq
+  /// CHECK-NOT:      imulq
+  /// CHECK:          movq
+  /// CHECK:          andq
+  /// CHECK:          jz/eq
+  /// CHECK:          movq
+  /// CHECK:          sarq
+  /// CHECK:          shlq
+  /// CHECK:          orq
   private static Long $noinline$LongModLongMin(long v) {
     long r = v % Long.MIN_VALUE;
     return r;
