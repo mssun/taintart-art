@@ -1,6 +1,9 @@
 Testing contended locking.
 Locker thread 1 for NamedLock[Lock testLock] contended-LOCKING NamedLock[Lock testLock]
 Locker thread 1 for NamedLock[Lock testLock] LOCKED NamedLock[Lock testLock]
+Testing park.
+ParkThread start-monitor-wait NamedLock[Parking blocker object] timeout: 1
+ParkThread monitor-waited NamedLock[Parking blocker object] timed_out: true
 Testing monitor wait.
 Locker thread 2 for NamedLock[Lock testWait] start-monitor-wait NamedLock[Lock testWait] timeout: 0
 Locker thread 2 for NamedLock[Lock testWait] monitor-waited NamedLock[Lock testWait] timed_out: false
