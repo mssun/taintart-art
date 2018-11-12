@@ -81,6 +81,8 @@ elif [[ $mode == "target" ]]; then
     # These targets are needed for the chroot environment.
     make_command+=" crash_dump event-log-tags"
   fi
+  # Build the Runtime APEX.
+  make_command+=" com.android.runtime"
   mode_suffix="-target"
 fi
 
