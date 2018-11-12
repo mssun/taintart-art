@@ -813,6 +813,7 @@ class DexFileEditor final {
     // Create a new MapItem entry with new MapList details.
     DexFile::MapItem new_item;
     new_item.type_ = old_item.type_;
+    new_item.unused_ = 0u;  // initialize to ensure dex output is deterministic (b/119308882)
     new_item.size_ = old_item.size_;
     new_item.offset_ = new_map_offset;
 
