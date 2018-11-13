@@ -338,6 +338,7 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
   // no dex files. So that we can distinguish the real failures...
   const ArtDexFileLoader dex_file_loader;
   std::vector<ClassLoaderInfo*> work_list;
+  CHECK(class_loader_chain_ != nullptr);
   work_list.push_back(class_loader_chain_.get());
   while (!work_list.empty()) {
     ClassLoaderInfo* info = work_list.back();
@@ -908,7 +909,9 @@ ClassLoaderContext::VerificationResult ClassLoaderContext::VerifyClassLoaderCont
   // collision check.
   if (expected_context.special_shared_library_) {
     // Special case where we are the only entry in the class path.
-    if (class_loader_chain_->parent == nullptr && class_loader_chain_->classpath.size() == 0) {
+    if (class_loader_chain_ != nullptr &&
+        class_loader_chain_->parent == nullptr &&
+        class_loader_chain_->classpath.size() == 0) {
       return VerificationResult::kVerifies;
     }
     return VerificationResult::kForcedToSkipChecks;
