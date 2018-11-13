@@ -735,6 +735,17 @@ TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextMatch) {
             ClassLoaderContext::VerificationResult::kMismatch);
 }
 
+TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextMatchSpecial) {
+  std::string context_spec = "&";
+  std::unique_ptr<ClassLoaderContext> context = ParseContextWithChecksums(context_spec);
+  // Pretend that we successfully open the dex files to pass the DCHECKS.
+  // (as it's much easier to test all the corner cases without relying on actual dex files).
+  PretendContextOpenedDexFiles(context.get());
+
+  ASSERT_EQ(context->VerifyClassLoaderContextMatch(context_spec),
+            ClassLoaderContext::VerificationResult::kForcedToSkipChecks);
+}
+
 TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextMatchWithSL) {
   std::string context_spec =
       "PCL[a.dex*123:b.dex*456]{PCL[d.dex*321];PCL[e.dex*654]#PCL[f.dex*098:g.dex*999]}"
