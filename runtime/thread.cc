@@ -302,8 +302,9 @@ void Thread::Park(bool is_absolute, int64_t time) {
   int old_state = tls32_.park_state_.fetch_add(1, std::memory_order_relaxed);
   if (old_state == kNoPermit) {
     // no permit was available. block thread until later.
-    // TODO: Call to signal jvmti here
+    Runtime::Current()->GetRuntimeCallbacks()->ThreadParkStart(is_absolute, time);
     int result = 0;
+    bool timed_out = false;
     if (!is_absolute && time == 0) {
       // Thread.getState() is documented to return waiting for untimed parks.
       ScopedThreadSuspension sts(this, ThreadState::kWaiting);
@@ -351,8 +352,10 @@ void Thread::Park(bool is_absolute, int64_t time) {
     }
     if (result == -1) {
       switch (errno) {
-        case EAGAIN:
         case ETIMEDOUT:
+          timed_out = true;
+          FALLTHROUGH_INTENDED;
+        case EAGAIN:
         case EINTR: break;  // park() is allowed to spuriously return
         default: PLOG(FATAL) << "Failed to park";
       }
@@ -360,6 +363,7 @@ void Thread::Park(bool is_absolute, int64_t time) {
     // Mark as no longer waiting, and consume permit if there is one.
     tls32_.park_state_.store(kNoPermit, std::memory_order_relaxed);
     // TODO: Call to signal jvmti here
+    Runtime::Current()->GetRuntimeCallbacks()->ThreadParkFinished(timed_out);
   } else {
     // the fetch_add has consumed the permit. immediately return.
     DCHECK_EQ(old_state, kPermitAvailable);
