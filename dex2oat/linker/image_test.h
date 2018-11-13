@@ -77,9 +77,10 @@ class ImageTest : public CommonCompilerTest {
     CommonCompilerTest::SetUp();
   }
 
-  void TestWriteRead(ImageHeader::StorageMode storage_mode);
+  void TestWriteRead(ImageHeader::StorageMode storage_mode, uint32_t max_image_block_size);
 
   void Compile(ImageHeader::StorageMode storage_mode,
+               uint32_t max_image_block_size,
                /*out*/ CompilationHelper& out_helper,
                const std::string& extra_dex = "",
                const std::initializer_list<std::string>& image_classes = {},
@@ -374,6 +375,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
 
 inline void ImageTest::Compile(
     ImageHeader::StorageMode storage_mode,
+    uint32_t max_image_block_size,
     CompilationHelper& helper,
     const std::string& extra_dex,
     const std::initializer_list<std::string>& image_classes,
@@ -388,6 +390,7 @@ inline void ImageTest::Compile(
   CreateCompilerDriver();
   // Set inline filter values.
   compiler_options_->SetInlineMaxCodeUnits(CompilerOptions::kDefaultInlineMaxCodeUnits);
+  compiler_options_->SetMaxImageBlockSize(max_image_block_size);
   image_classes_.clear();
   if (!extra_dex.empty()) {
     helper.extra_dex_files = OpenTestDexFiles(extra_dex.c_str());
@@ -411,9 +414,10 @@ inline void ImageTest::Compile(
   }
 }
 
-inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode) {
+inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode,
+                                     uint32_t max_image_block_size) {
   CompilationHelper helper;
-  Compile(storage_mode, /*out*/ helper);
+  Compile(storage_mode, max_image_block_size, /*out*/ helper);
   std::vector<uint64_t> image_file_sizes;
   for (ScratchFile& image_file : helper.image_files) {
     std::unique_ptr<File> file(OS::OpenFileForReading(image_file.GetFilename().c_str()));
@@ -488,6 +492,10 @@ inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode) {
     } else if (image_file_size > 16 * KB) {
       // Compressed, file should be smaller than image. Not really valid for small images.
       ASSERT_LE(image_file_size, image_space->GetImageHeader().GetImageSize());
+      // TODO: Actually validate the blocks, this is hard since the blocks are not copied over for
+      // compressed images. Add kPageSize since image_size is rounded up to this.
+      ASSERT_GT(image_space->GetImageHeader().GetBlockCount() * max_image_block_size,
+                image_space->GetImageHeader().GetImageSize() - kPageSize);
     }
 
     image_space->VerifyImageAllocations();

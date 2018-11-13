@@ -16,7 +16,6 @@
 
 #include "image_space.h"
 
-#include <lz4.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -466,9 +465,10 @@ class ImageSpace::Loader {
     // Check that the file is larger or equal to the header size + data size.
     const uint64_t image_file_size = static_cast<uint64_t>(file->GetLength());
     if (image_file_size < sizeof(ImageHeader) + image_header->GetDataSize()) {
-      *error_msg = StringPrintf("Image file truncated: %" PRIu64 " vs. %" PRIu64 ".",
-                                image_file_size,
-                                sizeof(ImageHeader) + image_header->GetDataSize());
+      *error_msg = StringPrintf(
+          "Image file truncated: %" PRIu64 " vs. %" PRIu64 ".",
+           image_file_size,
+           static_cast<uint64_t>(sizeof(ImageHeader) + image_header->GetDataSize()));
       return nullptr;
     }
 
@@ -588,8 +588,9 @@ class ImageSpace::Loader {
                               /*inout*/MemMap* image_reservation,
                               /*out*/std::string* error_msg) {
     TimingLogger::ScopedTiming timing("MapImageFile", logger);
-    const ImageHeader::StorageMode storage_mode = image_header.GetStorageMode();
-    if (storage_mode == ImageHeader::kStorageModeUncompressed) {
+    std::string temp_error_msg;
+    const bool is_compressed = image_header.HasCompressedBlock();
+    if (!is_compressed) {
       uint8_t* address = (image_reservation != nullptr) ? image_reservation->Begin() : nullptr;
       return MemMap::MapFileAtAddress(address,
                                       image_header.GetImageSize(),
@@ -604,15 +605,6 @@ class ImageSpace::Loader {
                                       error_msg);
     }
 
-    if (storage_mode != ImageHeader::kStorageModeLZ4 &&
-        storage_mode != ImageHeader::kStorageModeLZ4HC) {
-      if (error_msg != nullptr) {
-        *error_msg = StringPrintf("Invalid storage mode in image header %d",
-                                  static_cast<int>(storage_mode));
-      }
-      return MemMap::Invalid();
-    }
-
     // Reserve output and decompress into it.
     MemMap map = MemMap::MapAnonymous(image_location,
                                       image_header.GetImageSize(),
@@ -622,7 +614,6 @@ class ImageSpace::Loader {
                                       error_msg);
     if (map.IsValid()) {
       const size_t stored_size = image_header.GetDataSize();
-      const size_t decompress_offset = sizeof(ImageHeader);  // Skip the header.
       MemMap temp_map = MemMap::MapFile(sizeof(ImageHeader) + stored_size,
                                         PROT_READ,
                                         MAP_PRIVATE,
@@ -637,27 +628,20 @@ class ImageSpace::Loader {
       }
       memcpy(map.Begin(), &image_header, sizeof(ImageHeader));
       const uint64_t start = NanoTime();
-      // LZ4HC and LZ4 have same internal format, both use LZ4_decompress.
-      TimingLogger::ScopedTiming timing2("LZ4 decompress image", logger);
-      const size_t decompressed_size = LZ4_decompress_safe(
-          reinterpret_cast<char*>(temp_map.Begin()) + sizeof(ImageHeader),
-          reinterpret_cast<char*>(map.Begin()) + decompress_offset,
-          stored_size,
-          map.Size() - decompress_offset);
+      for (const ImageHeader::Block& block : image_header.GetBlocks(temp_map.Begin())) {
+        TimingLogger::ScopedTiming timing2("LZ4 decompress image", logger);
+        if (!block.Decompress(/*out_ptr=*/map.Begin(), /*in_ptr=*/temp_map.Begin(), error_msg)) {
+          if (error_msg != nullptr) {
+            *error_msg = "Failed to decompress image block " + *error_msg;
+          }
+          return MemMap::Invalid();
+        }
+      }
       const uint64_t time = NanoTime() - start;
       // Add one 1 ns to prevent possible divide by 0.
       VLOG(image) << "Decompressing image took " << PrettyDuration(time) << " ("
                   << PrettySize(static_cast<uint64_t>(map.Size()) * MsToNs(1000) / (time + 1))
                   << "/s)";
-      if (decompressed_size + sizeof(ImageHeader) != image_header.GetImageSize()) {
-        if (error_msg != nullptr) {
-          *error_msg = StringPrintf(
-              "Decompressed size does not match expected image size %zu vs %zu",
-              decompressed_size + sizeof(ImageHeader),
-              image_header.GetImageSize());
-        }
-        return MemMap::Invalid();
-      }
     }
 
     return map;
@@ -766,6 +750,7 @@ class ImageSpace::Loader {
 
     ALWAYS_INLINE void operator()(ObjPtr<mirror::Object> obj,
                                   MemberOffset offset,
+
                                   bool is_static ATTRIBUTE_UNUSED) const
         NO_THREAD_SAFETY_ANALYSIS {
       // There could be overlap between ranges, we must avoid visiting the same reference twice.

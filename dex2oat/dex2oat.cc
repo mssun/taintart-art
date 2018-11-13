@@ -482,6 +482,8 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --resolve-startup-const-strings=true|false: If true, the compiler eagerly");
   UsageError("      resolves strings referenced from const-string of startup methods.");
   UsageError("");
+  UsageError("  --max-image-block-size=<size>: Maximum solid block size for compressed images.");
+  UsageError("");
   UsageError("      Example: --compilation-reason=install");
   UsageError("");
   std::cerr << "See log for usage error information\n";

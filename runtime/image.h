@@ -21,6 +21,7 @@
 
 #include "base/enums.h"
 #include "base/globals.h"
+#include "base/iteration_range.h"
 #include "mirror/object.h"
 
 namespace art {
@@ -82,8 +83,10 @@ class PACKED(4) ImageSection {
   uint32_t size_;
 };
 
-// header of image files written by ImageWriter, read and validated by Space.
-class PACKED(4) ImageHeader {
+// Header of image files written by ImageWriter, read and validated by Space.
+// Packed to object alignment since the first object follows directly after the header.
+static_assert(kObjectAlignment == 8, "Alignment check");
+class PACKED(8) ImageHeader {
  public:
   enum StorageMode : uint32_t {
     kStorageModeUncompressed,
@@ -93,8 +96,40 @@ class PACKED(4) ImageHeader {
   };
   static constexpr StorageMode kDefaultStorageMode = kStorageModeUncompressed;
 
-  ImageHeader() {}
+  // Solid block of the image. May be compressed or uncompressed.
+  class PACKED(4) Block final {
+   public:
+    Block(StorageMode storage_mode,
+          uint32_t data_offset,
+          uint32_t data_size,
+          uint32_t image_offset,
+          uint32_t image_size)
+        : storage_mode_(storage_mode),
+          data_offset_(data_offset),
+          data_size_(data_size),
+          image_offset_(image_offset),
+          image_size_(image_size) {}
 
+    bool Decompress(uint8_t* out_ptr, const uint8_t* in_ptr, std::string* error_msg) const;
+
+    StorageMode GetStorageMode() const {
+      return storage_mode_;
+    }
+
+   private:
+    // Storage method for the image, the image may be compressed.
+    StorageMode storage_mode_ = kDefaultStorageMode;
+
+    // Compressed offset and size.
+    uint32_t data_offset_ = 0u;
+    uint32_t data_size_ = 0u;
+
+    // Image offset and size (decompressed or mapped location).
+    uint32_t image_offset_ = 0u;
+    uint32_t image_size_ = 0u;
+  };
+
+  ImageHeader() {}
   ImageHeader(uint32_t image_begin,
               uint32_t image_size,
               ImageSection* sections,
@@ -106,9 +141,7 @@ class PACKED(4) ImageHeader {
               uint32_t oat_file_end,
               uint32_t boot_image_begin,
               uint32_t boot_image_size,
-              uint32_t pointer_size,
-              StorageMode storage_mode,
-              size_t data_size);
+              uint32_t pointer_size);
 
   bool IsValid() const;
   const char* GetMagic() const;
@@ -231,6 +264,11 @@ class PACKED(4) ImageHeader {
 
   ArtMethod* GetImageMethod(ImageMethod index) const;
 
+  ImageSection& GetImageSection(ImageSections index) {
+    DCHECK_LT(static_cast<size_t>(index), kSectionCount);
+    return sections_[index];
+  }
+
   const ImageSection& GetImageSection(ImageSections index) const {
     DCHECK_LT(static_cast<size_t>(index), kSectionCount);
     return sections_[index];
@@ -304,10 +342,6 @@ class PACKED(4) ImageHeader {
     return boot_image_size_;
   }
 
-  StorageMode GetStorageMode() const {
-    return storage_mode_;
-  }
-
   uint64_t GetDataSize() const {
     return data_size_;
   }
@@ -344,6 +378,24 @@ class PACKED(4) ImageHeader {
   void VisitPackedImtConflictTables(const Visitor& visitor,
                                     uint8_t* base,
                                     PointerSize pointer_size) const;
+
+  IterationRange<const Block*> GetBlocks() const {
+    return GetBlocks(GetImageBegin());
+  }
+
+  IterationRange<const Block*> GetBlocks(const uint8_t* image_begin) const {
+    const Block* begin = reinterpret_cast<const Block*>(image_begin + blocks_offset_);
+    return {begin, begin + blocks_count_};
+  }
+
+  // Return true if the image has any compressed blocks.
+  bool HasCompressedBlock() const {
+    return blocks_count_ != 0u;
+  }
+
+  uint32_t GetBlockCount() const {
+    return blocks_count_;
+  }
 
  private:
   static const uint8_t kImageMagic[4];
@@ -404,12 +456,13 @@ class PACKED(4) ImageHeader {
   // Image methods, may be inside of the boot image for app images.
   uint64_t image_methods_[kImageMethodsCount];
 
-  // Storage method for the image, the image may be compressed.
-  StorageMode storage_mode_ = kDefaultStorageMode;
-
   // Data size for the image data excluding the bitmap and the header. For compressed images, this
   // is the compressed size in the file.
   uint32_t data_size_ = 0u;
+
+  // Image blocks, only used for compressed images.
+  uint32_t blocks_offset_ = 0u;
+  uint32_t blocks_count_ = 0u;
 
   friend class linker::ImageWriter;
 };

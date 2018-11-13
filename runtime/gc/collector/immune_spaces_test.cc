@@ -124,9 +124,7 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
         /*oat_file_end=*/ PointerToLowMemUInt32(oat_map.Begin() + oat_size),
         /*boot_image_begin=*/ 0u,
         /*boot_image_size=*/ 0u,
-        /*pointer_size=*/ sizeof(void*),
-        ImageHeader::kStorageModeUncompressed,
-        /*data_size=*/ 0u);
+        /*pointer_size=*/ sizeof(void*));
     return new DummyImageSpace(std::move(image_map),
                                std::move(live_bitmap),
                                std::move(oat_file),
