@@ -732,11 +732,6 @@ class Dex2Oat final {
     compiler_options_->boot_image_ = !image_filenames_.empty();
     compiler_options_->app_image_ = app_image_fd_ != -1 || !app_image_file_name_.empty();
 
-    if (IsBootImage() && image_filenames_.size() == 1) {
-      const std::string& boot_image_filename = image_filenames_[0];
-      compiler_options_->core_image_ = CompilerDriver::IsCoreImageFilename(boot_image_filename);
-    }
-
     if (IsAppImage() && IsBootImage()) {
       Usage("Can't have both --image and (--app-image-fd or --app-image-file)");
     }
@@ -951,6 +946,9 @@ class Dex2Oat final {
       }
     }
     compiler_options_->passes_to_run_ = passes_to_run_.get();
+    compiler_options_->compiling_with_core_image_ =
+        !boot_image_filename_.empty() &&
+        CompilerDriver::IsCoreImageFilename(boot_image_filename_);
   }
 
   static bool SupportsDeterministicCompilation() {

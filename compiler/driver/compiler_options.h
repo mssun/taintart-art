@@ -198,13 +198,6 @@ class CompilerOptions final {
     return baseline_;
   }
 
-  // Are we compiling a core image (small boot image only used for ART testing)?
-  bool IsCoreImage() const {
-    // Ensure that `core_image_` => `boot_image_`.
-    DCHECK(!core_image_ || boot_image_);
-    return core_image_;
-  }
-
   // Are we compiling an app image?
   bool IsAppImage() const {
     return app_image_;
@@ -212,6 +205,13 @@ class CompilerOptions final {
 
   void DisableAppImage() {
     app_image_ = false;
+  }
+
+  // Returns whether we are compiling against a "core" image, which
+  // is an indicative we are running tests. The compiler will use that
+  // information for checking invariants.
+  bool CompilingWithCoreImage() const {
+    return compiling_with_core_image_;
   }
 
   // Should the code be compiled as position independent?
@@ -357,8 +357,8 @@ class CompilerOptions final {
   HashSet<std::string> image_classes_;
 
   bool boot_image_;
-  bool core_image_;
   bool app_image_;
+  bool compiling_with_core_image_;
   bool baseline_;
   bool debuggable_;
   bool generate_debug_info_;

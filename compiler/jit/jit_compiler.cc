@@ -90,10 +90,11 @@ JitCompiler::JitCompiler() {
   // Special case max code units for inlining, whose default is "unset" (implictly
   // meaning no limit). Do this before parsing the actual passed options.
   compiler_options_->SetInlineMaxCodeUnits(CompilerOptions::kDefaultInlineMaxCodeUnits);
+  Runtime* runtime = Runtime::Current();
   {
     std::string error_msg;
-    if (!compiler_options_->ParseCompilerOptions(Runtime::Current()->GetCompilerOptions(),
-                                                 true /* ignore_unrecognized */,
+    if (!compiler_options_->ParseCompilerOptions(runtime->GetCompilerOptions(),
+                                                 /*ignore_unrecognized=*/ true,
                                                  &error_msg)) {
       LOG(FATAL) << error_msg;
       UNREACHABLE();
@@ -103,7 +104,7 @@ JitCompiler::JitCompiler() {
   compiler_options_->SetNonPic();
 
   // Set debuggability based on the runtime value.
-  compiler_options_->SetDebuggable(Runtime::Current()->IsJavaDebuggable());
+  compiler_options_->SetDebuggable(runtime->IsJavaDebuggable());
 
   const InstructionSet instruction_set = compiler_options_->GetInstructionSet();
   if (kRuntimeISA == InstructionSet::kArm) {
@@ -112,7 +113,7 @@ JitCompiler::JitCompiler() {
     DCHECK_EQ(instruction_set, kRuntimeISA);
   }
   std::unique_ptr<const InstructionSetFeatures> instruction_set_features;
-  for (const StringPiece option : Runtime::Current()->GetCompilerOptions()) {
+  for (const StringPiece option : runtime->GetCompilerOptions()) {
     VLOG(compiler) << "JIT compiler option " << option;
     std::string error_msg;
     if (option.starts_with("--instruction-set-variant=")) {
@@ -144,6 +145,8 @@ JitCompiler::JitCompiler() {
     instruction_set_features = InstructionSetFeatures::FromCppDefines();
   }
   compiler_options_->instruction_set_features_ = std::move(instruction_set_features);
+  compiler_options_->compiling_with_core_image_ =
+      CompilerDriver::IsCoreImageFilename(runtime->GetImageLocation());
 
   compiler_driver_.reset(new CompilerDriver(
       compiler_options_.get(),

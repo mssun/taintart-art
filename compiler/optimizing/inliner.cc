@@ -39,7 +39,6 @@
 #include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"
 #include "nodes.h"
-#include "optimizing_compiler.h"
 #include "reference_type_propagation.h"
 #include "register_allocator_linear_scan.h"
 #include "scoped_thread_state_change-inl.h"
@@ -151,13 +150,13 @@ bool HInliner::Run() {
 
   // If we're compiling with a core image (which is only used for
   // test purposes), honor inlining directives in method names:
-  // - if a method's name contains the substring "$inline$", ensure
-  //   that this method is actually inlined;
   // - if a method's name contains the substring "$noinline$", do not
-  //   inline that method.
+  //   inline that method;
+  // - if a method's name contains the substring "$inline$", ensure
+  //   that this method is actually inlined.
   // We limit the latter to AOT compilation, as the JIT may or may not inline
   // depending on the state of classes at runtime.
-  const bool honor_noinline_directives = IsCompilingWithCoreImage();
+  const bool honor_noinline_directives = codegen_->GetCompilerOptions().CompilingWithCoreImage();
   const bool honor_inline_directives =
       honor_noinline_directives && Runtime::Current()->IsAotCompiler();
 
@@ -1735,6 +1734,21 @@ static inline Handle<T> NewHandleIfDifferent(T* object,
                                              VariableSizedHandleScope* handles)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return (object != hint.Get()) ? handles->NewHandle(object) : hint;
+}
+
+static bool CanEncodeInlinedMethodInStackMap(const DexFile& caller_dex_file, ArtMethod* callee)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (!Runtime::Current()->IsAotCompiler()) {
+    // JIT can always encode methods in stack maps.
+    return true;
+  }
+  if (IsSameDexFile(caller_dex_file, *callee->GetDexFile())) {
+    return true;
+  }
+  // TODO(ngeoffray): Support more AOT cases for inlining:
+  // - methods in multidex
+  // - methods in boot image for on-device non-PIC compilation.
+  return false;
 }
 
 bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
