@@ -832,7 +832,7 @@ class ImageSpace::Loader {
           reinterpret_cast<uintptr_t>(array) + kObjectAlignment);
       // If the bit is not set then the contents have not yet been updated.
       if (!visited_->Test(contents_bit)) {
-        array->Fixup<kVerifyNone, kWithoutReadBarrier>(array, pointer_size_, visitor);
+        array->Fixup<kVerifyNone>(array, pointer_size_, visitor);
         visited_->Set(contents_bit);
       }
     }

@@ -2670,10 +2670,8 @@ void ImageWriter::CopyAndFixupObjects() {
 
 void ImageWriter::FixupPointerArray(mirror::Object* dst,
                                     mirror::PointerArray* arr,
-                                    mirror::Class* klass,
                                     Bin array_type) {
-  CHECK(klass->IsArrayClass());
-  CHECK(arr->IsIntArray() || arr->IsLongArray()) << klass->PrettyClass() << " " << arr;
+  CHECK(arr->IsIntArray() || arr->IsLongArray()) << arr->GetClass()->PrettyClass() << " " << arr;
   // Fixup int and long pointers for the ArtMethod or ArtField arrays.
   const size_t num_elements = arr->GetLength();
   CopyAndFixupReference(
@@ -2879,13 +2877,12 @@ void ImageWriter::FixupObject(Object* orig, Object* copy) {
   if (kUseBakerReadBarrier) {
     orig->AssertReadBarrierState();
   }
-  auto* klass = orig->GetClass();
-  if (klass->IsIntArrayClass() || klass->IsLongArrayClass()) {
+  if (orig->IsIntArray() || orig->IsLongArray()) {
     // Is this a native pointer array?
     auto it = pointer_arrays_.find(down_cast<mirror::PointerArray*>(orig));
     if (it != pointer_arrays_.end()) {
       // Should only need to fixup every pointer array exactly once.
-      FixupPointerArray(copy, down_cast<mirror::PointerArray*>(orig), klass, it->second);
+      FixupPointerArray(copy, down_cast<mirror::PointerArray*>(orig), it->second);
       pointer_arrays_.erase(it);
       return;
     }
@@ -2895,6 +2892,7 @@ void ImageWriter::FixupObject(Object* orig, Object* copy) {
   } else {
     ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
         Runtime::Current()->GetClassLinker()->GetClassRoots();
+    ObjPtr<mirror::Class> klass = orig->GetClass();
     if (klass == GetClassRoot<mirror::Method>(class_roots) ||
         klass == GetClassRoot<mirror::Constructor>(class_roots)) {
       // Need to go update the ArtMethod.
