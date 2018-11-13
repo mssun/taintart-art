@@ -115,7 +115,7 @@ void ClassHierarchyAnalysis::ResetSingleImplementationInHierarchy(ObjPtr<mirror:
   // if they have SingleImplementations methods defined by 'klass'.
   // Skip all virtual methods that do not override methods from super class since they cannot be
   // SingleImplementations for anything.
-  int32_t vtbl_size = super->GetVTableLength<kDefaultVerifyFlags, kWithoutReadBarrier>();
+  int32_t vtbl_size = super->GetVTableLength<kDefaultVerifyFlags>();
   ObjPtr<mirror::ClassLoader> loader =
       klass->GetClassLoader<kDefaultVerifyFlags, kWithoutReadBarrier>();
   for (int vtbl_index = 0; vtbl_index < vtbl_size; ++vtbl_index) {
@@ -131,7 +131,7 @@ void ClassHierarchyAnalysis::ResetSingleImplementationInHierarchy(ObjPtr<mirror:
     // so start with a superclass and move up looking into a corresponding vtbl slot.
     for (ObjPtr<mirror::Class> super_it = super;
          super_it != nullptr &&
-             super_it->GetVTableLength<kDefaultVerifyFlags, kWithoutReadBarrier>() > vtbl_index;
+             super_it->GetVTableLength<kDefaultVerifyFlags>() > vtbl_index;
          super_it = super_it->GetSuperClass<kDefaultVerifyFlags, kWithoutReadBarrier>()) {
       // Skip superclasses that are also going to be unloaded.
       ObjPtr<mirror::ClassLoader> super_loader = super_it->
@@ -158,7 +158,7 @@ void ClassHierarchyAnalysis::ResetSingleImplementationInHierarchy(ObjPtr<mirror:
 
   // Check all possible interface methods too.
   ObjPtr<mirror::IfTable> iftable = klass->GetIfTable<kDefaultVerifyFlags, kWithoutReadBarrier>();
-  const size_t ifcount = klass->GetIfTableCount<kDefaultVerifyFlags, kWithoutReadBarrier>();
+  const size_t ifcount = klass->GetIfTableCount<kDefaultVerifyFlags>();
   for (size_t i = 0; i < ifcount; ++i) {
     ObjPtr<mirror::Class> interface =
         iftable->GetInterface<kDefaultVerifyFlags, kWithoutReadBarrier>(i);
