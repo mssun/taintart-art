@@ -101,32 +101,36 @@ static void System_arraycopy(JNIEnv* env, jclass, jobject javaSrc, jint srcPos, 
       case Primitive::kPrimBoolean:
       case Primitive::kPrimByte:
         DCHECK_EQ(Primitive::ComponentSize(dstComponentPrimitiveType), 1U);
-        dstArray->AsByteSizedArray()->Memmove(dstPos, srcArray->AsByteSizedArray(), srcPos, count);
+        // Note: Treating BooleanArray as ByteArray.
+        ObjPtr<mirror::ByteArray>::DownCast(dstArray)->Memmove(
+            dstPos, ObjPtr<mirror::ByteArray>::DownCast(srcArray), srcPos, count);
         return;
       case Primitive::kPrimChar:
       case Primitive::kPrimShort:
         DCHECK_EQ(Primitive::ComponentSize(dstComponentPrimitiveType), 2U);
-        dstArray->AsShortSizedArray()->Memmove(dstPos, srcArray->AsShortSizedArray(), srcPos, count);
+        // Note: Treating CharArray as ShortArray.
+        ObjPtr<mirror::ShortArray>::DownCast(dstArray)->Memmove(
+            dstPos, ObjPtr<mirror::ShortArray>::DownCast(srcArray), srcPos, count);
         return;
       case Primitive::kPrimInt:
-        DCHECK_EQ(Primitive::ComponentSize(dstComponentPrimitiveType), 4U);
-        dstArray->AsIntArray()->Memmove(dstPos, srcArray->AsIntArray(), srcPos, count);
-        return;
       case Primitive::kPrimFloat:
         DCHECK_EQ(Primitive::ComponentSize(dstComponentPrimitiveType), 4U);
-        dstArray->AsFloatArray()->Memmove(dstPos, srcArray->AsFloatArray(), srcPos, count);
+        // Note: Treating FloatArray as IntArray.
+        ObjPtr<mirror::IntArray>::DownCast(dstArray)->Memmove(
+            dstPos, ObjPtr<mirror::IntArray>::DownCast(srcArray), srcPos, count);
         return;
       case Primitive::kPrimLong:
-        DCHECK_EQ(Primitive::ComponentSize(dstComponentPrimitiveType), 8U);
-        dstArray->AsLongArray()->Memmove(dstPos, srcArray->AsLongArray(), srcPos, count);
-        return;
       case Primitive::kPrimDouble:
         DCHECK_EQ(Primitive::ComponentSize(dstComponentPrimitiveType), 8U);
-        dstArray->AsDoubleArray()->Memmove(dstPos, srcArray->AsDoubleArray(), srcPos, count);
+        // Note: Treating DoubleArray as LongArray.
+        ObjPtr<mirror::LongArray>::DownCast(dstArray)->Memmove(
+            dstPos, ObjPtr<mirror::LongArray>::DownCast(srcArray), srcPos, count);
         return;
       case Primitive::kPrimNot: {
-        mirror::ObjectArray<mirror::Object>* dstObjArray = dstArray->AsObjectArray<mirror::Object>();
-        mirror::ObjectArray<mirror::Object>* srcObjArray = srcArray->AsObjectArray<mirror::Object>();
+        mirror::ObjectArray<mirror::Object>* dstObjArray =
+            dstArray->AsObjectArray<mirror::Object>();
+        mirror::ObjectArray<mirror::Object>* srcObjArray =
+            srcArray->AsObjectArray<mirror::Object>();
         dstObjArray->AssignableMemmove(dstPos, srcObjArray, srcPos, count);
         return;
       }

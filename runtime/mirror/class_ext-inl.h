@@ -32,9 +32,7 @@ void ClassExt::VisitNativeRoots(Visitor& visitor, PointerSize pointer_size) {
   }
   int32_t len = arr->GetLength();
   for (int32_t i = 0; i < len; i++) {
-    ArtMethod* method = arr->GetElementPtrSize<ArtMethod*,
-                                               kDefaultVerifyFlags,
-                                               kReadBarrierOption>(i, pointer_size);
+    ArtMethod* method = arr->GetElementPtrSize<ArtMethod*, kDefaultVerifyFlags>(i, pointer_size);
     if (method != nullptr) {
       method->VisitRoots<kReadBarrierOption>(visitor, pointer_size);
     }
