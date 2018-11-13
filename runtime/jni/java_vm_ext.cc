@@ -23,6 +23,7 @@
 #include "art_method-inl.h"
 #include "base/dumpable.h"
 #include "base/mutex-inl.h"
+#include "base/sdk_version.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "check_jni.h"
@@ -1030,7 +1031,7 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
     JNI_OnLoadFn jni_on_load = reinterpret_cast<JNI_OnLoadFn>(sym);
     int version = (*jni_on_load)(this, nullptr);
 
-    if (runtime_->GetTargetSdkVersion() != 0 && runtime_->GetTargetSdkVersion() <= 21) {
+    if (IsSdkVersionSetAndAtMost(runtime_->GetTargetSdkVersion(), SdkVersion::kL)) {
       // Make sure that sigchain owns SIGSEGV.
       EnsureFrontOfChain(SIGSEGV);
     }

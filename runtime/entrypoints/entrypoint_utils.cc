@@ -20,6 +20,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/mutex.h"
+#include "base/sdk_version.h"
 #include "class_linker-inl.h"
 #include "dex/dex_file-inl.h"
 #include "entrypoints/entrypoint_utils-inl.h"
@@ -64,9 +65,9 @@ JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa, cons
   soa.Self()->AssertThreadSuspensionIsAllowable();
   jobjectArray args_jobj = nullptr;
   const JValue zero;
-  int32_t target_sdk_version = Runtime::Current()->GetTargetSdkVersion();
+  uint32_t target_sdk_version = Runtime::Current()->GetTargetSdkVersion();
   // Do not create empty arrays unless needed to maintain Dalvik bug compatibility.
-  if (args.size() > 0 || (target_sdk_version > 0 && target_sdk_version <= 21)) {
+  if (args.size() > 0 || IsSdkVersionSetAndAtMost(target_sdk_version, SdkVersion::kL)) {
     args_jobj = soa.Env()->NewObjectArray(args.size(), WellKnownClasses::java_lang_Object, nullptr);
     if (args_jobj == nullptr) {
       CHECK(soa.Self()->IsExceptionPending());

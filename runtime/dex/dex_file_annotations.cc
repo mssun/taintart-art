@@ -22,6 +22,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/sdk_version.h"
 #include "class_linker-inl.h"
 #include "class_root.h"
 #include "dex/dex_file-inl.h"
@@ -129,8 +130,7 @@ ObjPtr<mirror::Object> CreateAnnotationMember(const ClassData& klass,
 
 bool IsVisibilityCompatible(uint32_t actual, uint32_t expected) {
   if (expected == DexFile::kDexVisibilityRuntime) {
-    int32_t sdk_version = Runtime::Current()->GetTargetSdkVersion();
-    if (sdk_version > 0 && sdk_version <= 23) {
+    if (IsSdkVersionSetAndAtMost(Runtime::Current()->GetTargetSdkVersion(), SdkVersion::kM)) {
       return actual == DexFile::kDexVisibilityRuntime || actual == DexFile::kDexVisibilityBuild;
     }
   }

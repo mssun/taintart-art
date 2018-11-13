@@ -323,7 +323,7 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
           .WithValueMap({{"false", false}, {"true", true}})
           .IntoKey(M::SlowDebug)
       .Define("-Xtarget-sdk-version:_")
-          .WithType<int>()
+          .WithType<unsigned int>()
           .IntoKey(M::TargetSdkVersion)
       .Define("-Xhidden-api-checks")
           .IntoKey(M::HiddenApiChecks)

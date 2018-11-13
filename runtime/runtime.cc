@@ -61,6 +61,7 @@
 #include "base/mutex.h"
 #include "base/os.h"
 #include "base/quasi_atomic.h"
+#include "base/sdk_version.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
@@ -253,7 +254,7 @@ Runtime::Runtime()
       preinitialization_transactions_(),
       verify_(verifier::VerifyMode::kNone),
       allow_dex_file_fallback_(true),
-      target_sdk_version_(kUnsetSdkVersion),
+      target_sdk_version_(static_cast<uint32_t>(SdkVersion::kUnset)),
       implicit_null_checks_(false),
       implicit_so_checks_(false),
       implicit_suspend_checks_(false),

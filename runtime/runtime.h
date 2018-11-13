@@ -583,11 +583,11 @@ class Runtime {
     return is_running_on_memory_tool_;
   }
 
-  void SetTargetSdkVersion(int32_t version) {
+  void SetTargetSdkVersion(uint32_t version) {
     target_sdk_version_ = version;
   }
 
-  int32_t GetTargetSdkVersion() const {
+  uint32_t GetTargetSdkVersion() const {
     return target_sdk_version_;
   }
 
@@ -793,8 +793,6 @@ class Runtime {
     return jdwp_provider_;
   }
 
-  static constexpr int32_t kUnsetSdkVersion = 0u;
-
   uint32_t GetVerifierLoggingThresholdMs() const {
     return verifier_logging_threshold_ms_;
   }
@@ -975,7 +973,7 @@ class Runtime {
   std::vector<std::string> cpu_abilist_;
 
   // Specifies target SDK version to allow workarounds for certain API levels.
-  int32_t target_sdk_version_;
+  uint32_t target_sdk_version_;
 
   // Implicit checks flags.
   bool implicit_null_checks_;       // NullPointer checks are implicit.
