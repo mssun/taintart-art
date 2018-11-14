@@ -1136,7 +1136,7 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
   }
 
   if (kIsDebugBuild &&
-      IsCompilingWithCoreImage() &&
+      compiler_driver->GetCompilerOptions().CompilingWithCoreImage() &&
       IsInstructionSetSupported(compiler_driver->GetCompilerOptions().GetInstructionSet())) {
     // For testing purposes, we put a special marker on method names
     // that should be compiled with this compiler (when the
@@ -1234,28 +1234,9 @@ Compiler* CreateOptimizingCompiler(CompilerDriver* driver) {
   return new OptimizingCompiler(driver);
 }
 
-bool IsCompilingWithCoreImage() {
-  const std::string& image = Runtime::Current()->GetImageLocation();
-  return CompilerDriver::IsCoreImageFilename(image);
-}
-
 bool EncodeArtMethodInInlineInfo(ArtMethod* method ATTRIBUTE_UNUSED) {
   // Note: the runtime is null only for unit testing.
   return Runtime::Current() == nullptr || !Runtime::Current()->IsAotCompiler();
-}
-
-bool CanEncodeInlinedMethodInStackMap(const DexFile& caller_dex_file, ArtMethod* callee) {
-  if (!Runtime::Current()->IsAotCompiler()) {
-    // JIT can always encode methods in stack maps.
-    return true;
-  }
-  if (IsSameDexFile(caller_dex_file, *callee->GetDexFile())) {
-    return true;
-  }
-  // TODO(ngeoffray): Support more AOT cases for inlining:
-  // - methods in multidex
-  // - methods in boot image for on-device non-PIC compilation.
-  return false;
 }
 
 bool OptimizingCompiler::JitCompile(Thread* self,
