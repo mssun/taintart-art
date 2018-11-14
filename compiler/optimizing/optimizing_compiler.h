@@ -29,14 +29,7 @@ class DexFile;
 
 Compiler* CreateOptimizingCompiler(CompilerDriver* driver);
 
-// Returns whether we are compiling against a "core" image, which
-// is an indicative we are running tests. The compiler will use that
-// information for checking invariants.
-bool IsCompilingWithCoreImage();
-
 bool EncodeArtMethodInInlineInfo(ArtMethod* method);
-bool CanEncodeInlinedMethodInStackMap(const DexFile& caller_dex_file, ArtMethod* callee)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
 }  // namespace art
 
