@@ -1418,10 +1418,6 @@ size_t HInliner::CountRecursiveCallsOf(ArtMethod* method) const {
 static inline bool MayInline(const CompilerOptions& compiler_options,
                              const DexFile& inlined_from,
                              const DexFile& inlined_into) {
-  if (kIsTargetBuild) {
-    return true;
-  }
-
   // We're not allowed to inline across dex files if we're the no-inline-from dex file.
   if (!IsSameDexFile(inlined_from, inlined_into) &&
       ContainsElement(compiler_options.GetNoInlineFromDexFile(), &inlined_from)) {
