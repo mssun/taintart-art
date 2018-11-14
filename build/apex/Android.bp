@@ -76,7 +76,6 @@ apex {
     name: "com.android.runtime",
     compile_multilib: "both",
     manifest: "manifest.json",
-    file_contexts: "file_contexts",
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_fake_native_shared_libs
         + art_runtime_debug_native_shared_libs,
