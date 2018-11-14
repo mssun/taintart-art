@@ -35,7 +35,6 @@ class PACKED(4) OatHeader {
   static constexpr uint8_t kOatVersion[] = { '1', '6', '3', '\0' };
 
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
-  static constexpr const char* kDex2OatHostKey = "dex2oat-host";
   static constexpr const char* kDebuggableKey = "debuggable";
   static constexpr const char* kNativeDebuggableKey = "native-debuggable";
   static constexpr const char* kCompilerFilter = "compiler-filter";
