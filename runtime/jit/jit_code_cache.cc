@@ -892,7 +892,8 @@ void JitCodeCache::CopyInlineCacheInto(const InlineCache& ic,
   }
 }
 
-static void ClearMethodCounter(ArtMethod* method, bool was_warm) {
+static void ClearMethodCounter(ArtMethod* method, bool was_warm)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   if (was_warm) {
     method->SetPreviouslyWarm();
   }
@@ -1128,7 +1129,7 @@ bool JitCodeCache::RemoveMethod(ArtMethod* method, bool release_memory) {
     return false;
   }
 
-  method->ClearCounter();
+  method->SetCounter(0);
   Runtime::Current()->GetInstrumentation()->UpdateMethodsCode(
       method, GetQuickToInterpreterBridge());
   VLOG(jit)

@@ -38,7 +38,6 @@ class Thread;
 //   iget/iput: The field offset. The field must be non-volatile.
 //   sget/sput: The ArtField* pointer. The field must be non-volitile.
 //   invoke: The ArtMethod* pointer (before vtable indirection, etc).
-//   ArtMethod*: The ImtIndex of the method.
 //
 // We ensure consistency of the cache by clearing it
 // whenever any dex file is unloaded.
