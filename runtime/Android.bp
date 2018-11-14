@@ -377,7 +377,6 @@ libart_cc_defaults {
     include_dirs: [
         "art/sigchainlib",
         "external/icu/icu4c/source/common",
-        "external/lz4/lib",
         "external/zlib",
     ],
     header_libs: [
@@ -390,7 +389,6 @@ libart_cc_defaults {
         "libnativebridge",
         "libnativeloader",
         "libbacktrace",
-        "liblz4",
         "liblog",
         // For atrace, properties, ashmem, set_sched_policy.
         "libcutils",
@@ -422,8 +420,6 @@ libart_static_cc_defaults {
         "libbase",
         "libcutils",
         "liblog",
-        "liblz4",
-        "liblzma",
         "libnativebridge",
         "libnativeloader",
         "libunwindstack",
