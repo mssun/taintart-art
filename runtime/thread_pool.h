@@ -18,6 +18,7 @@
 #define ART_RUNTIME_THREAD_POOL_H_
 
 #include <deque>
+#include <functional>
 #include <vector>
 
 #include "barrier.h"
@@ -46,6 +47,18 @@ class SelfDeletingTask : public Task {
   virtual void Finalize() {
     delete this;
   }
+};
+
+class FunctionTask : public SelfDeletingTask {
+ public:
+  explicit FunctionTask(std::function<void(Thread*)>&& func) : func_(std::move(func)) {}
+
+  void Run(Thread* self) override {
+    func_(self);
+  }
+
+ private:
+  std::function<void(Thread*)> func_;
 };
 
 class ThreadPoolWorker {
