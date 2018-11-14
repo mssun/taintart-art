@@ -26,7 +26,7 @@ TEST(StaticGetters, PropertiesOfNopTest) {
   EXPECT_EQ(Instruction::k10x, Instruction::FormatOf(nop));
   EXPECT_EQ(Instruction::kIndexNone, Instruction::IndexTypeOf(nop));
   EXPECT_EQ(Instruction::kContinue, Instruction::FlagsOf(nop));
-  EXPECT_EQ(Instruction::kVerifyNone, Instruction::VerifyFlagsOf(nop));
+  EXPECT_EQ(Instruction::kVerifyNothing, Instruction::VerifyFlagsOf(nop));
 }
 
 static void Build45cc(uint8_t num_args, uint16_t method_idx, uint16_t proto_idx,
