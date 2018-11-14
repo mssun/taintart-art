@@ -729,11 +729,15 @@ class Dex2Oat final {
 
   void ProcessOptions(ParserOptions* parser_options) {
     compiler_options_->compile_pic_ = true;  // All AOT compilation is PIC.
-    compiler_options_->boot_image_ = !image_filenames_.empty();
-    compiler_options_->app_image_ = app_image_fd_ != -1 || !app_image_file_name_.empty();
-
-    if (IsAppImage() && IsBootImage()) {
-      Usage("Can't have both --image and (--app-image-fd or --app-image-file)");
+    DCHECK(compiler_options_->image_type_ == CompilerOptions::ImageType::kNone);
+    if (!image_filenames_.empty()) {
+      compiler_options_->image_type_ = CompilerOptions::ImageType::kBootImage;
+    }
+    if (app_image_fd_ != -1 || !app_image_file_name_.empty()) {
+      if (compiler_options_->IsBootImage()) {
+        Usage("Can't have both --image and (--app-image-fd or --app-image-file)");
+      }
+      compiler_options_->image_type_ = CompilerOptions::ImageType::kAppImage;
     }
 
     if (oat_filenames_.empty() && oat_fd_ == -1) {
@@ -1595,7 +1599,7 @@ class Dex2Oat final {
     // If we need to downgrade the compiler-filter for size reasons.
     if (!IsBootImage() && IsVeryLarge(dex_files)) {
       // Disable app image to make sure dex2oat unloading is enabled.
-      compiler_options_->DisableAppImage();
+      compiler_options_->image_type_ = CompilerOptions::ImageType::kNone;
 
       // If we need to downgrade the compiler-filter for size reasons, do that early before we read
       // it below for creating verification callbacks.
@@ -1957,7 +1961,6 @@ class Dex2Oat final {
 
       image_writer_.reset(new linker::ImageWriter(*compiler_options_,
                                                   image_base_,
-                                                  IsAppImage(),
                                                   image_storage_mode_,
                                                   oat_filenames_,
                                                   dex_file_oat_index_map_,
