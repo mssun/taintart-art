@@ -1055,9 +1055,6 @@ class Dex2Oat final {
         oss << argv[i];
       }
       key_value_store_->Put(OatHeader::kDex2OatCmdLineKey, oss.str());
-      oss.str("");  // Reset.
-      oss << kRuntimeISA;
-      key_value_store_->Put(OatHeader::kDex2OatHostKey, oss.str());
     }
     key_value_store_->Put(
         OatHeader::kDebuggableKey,
