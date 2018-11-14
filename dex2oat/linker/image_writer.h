@@ -460,9 +460,18 @@ class ImageWriter final {
   // Remove unwanted classes from various roots.
   void PruneNonImageClasses() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Remove unwanted classes from the DexCache roots and preload deterministic DexCache contents.
-  void PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
-                               ObjPtr<mirror::ClassLoader> class_loader)
+  // Remove unwanted classes from the DexCache roots.
+  void PruneDexCache(ObjPtr<mirror::DexCache> dex_cache, ObjPtr<mirror::ClassLoader> class_loader)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::classlinker_classes_lock_);
+
+  // Preload deterministic DexCache contents.
+  void PreloadDexCache(ObjPtr<mirror::DexCache> dex_cache, ObjPtr<mirror::ClassLoader> class_loader)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::classlinker_classes_lock_);
+
+  // Find dex caches for pruning or preloading.
+  std::vector<ObjPtr<mirror::DexCache>> FindDexCaches(Thread* self)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::classlinker_classes_lock_);
 

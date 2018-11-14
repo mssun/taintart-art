@@ -613,8 +613,22 @@ bool ImageWriter::Write(int image_fd,
   CHECK(!oat_filenames.empty());
   CHECK_EQ(image_filenames.size(), oat_filenames.size());
 
+  Thread* self = Thread::Current();
   {
-    ScopedObjectAccess soa(Thread::Current());
+    // Preload deterministic contents to the dex cache arrays we're going to write.
+    ScopedObjectAccess soa(self);
+    ObjPtr<mirror::ClassLoader> class_loader = GetClassLoader();
+    std::vector<ObjPtr<mirror::DexCache>> dex_caches = FindDexCaches(self);
+    for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
+      if (compile_app_image_ && IsInBootImage(dex_cache.Ptr())) {
+        continue;  // Boot image DexCache is not written to the app image.
+      }
+      PreloadDexCache(dex_cache, class_loader);
+    }
+  }
+
+  {
+    ScopedObjectAccess soa(self);
     for (size_t i = 0; i < oat_filenames.size(); ++i) {
       CreateHeader(i);
       CopyAndFixupNativeData(i);
@@ -623,7 +637,7 @@ bool ImageWriter::Write(int image_fd,
 
   {
     // TODO: heap validation can't handle these fix up passes.
-    ScopedObjectAccess soa(Thread::Current());
+    ScopedObjectAccess soa(self);
     Runtime::Current()->GetHeap()->DisableObjectValidation();
     CopyAndFixupObjects();
   }
@@ -1409,8 +1423,79 @@ void ImageWriter::VisitClassLoaders(ClassLoaderVisitor* visitor) {
   Runtime::Current()->GetClassLinker()->VisitClassLoaders(visitor);
 }
 
-void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
-                                          ObjPtr<mirror::ClassLoader> class_loader) {
+void ImageWriter::PruneDexCache(ObjPtr<mirror::DexCache> dex_cache,
+                                ObjPtr<mirror::ClassLoader> class_loader) {
+  Runtime* runtime = Runtime::Current();
+  ClassLinker* class_linker = runtime->GetClassLinker();
+  const DexFile& dex_file = *dex_cache->GetDexFile();
+  // Prune methods.
+  dex::TypeIndex last_class_idx;  // Initialized to invalid index.
+  ObjPtr<mirror::Class> last_class = nullptr;
+  mirror::MethodDexCacheType* resolved_methods = dex_cache->GetResolvedMethods();
+  for (size_t slot_idx = 0, num = dex_cache->NumResolvedMethods(); slot_idx != num; ++slot_idx) {
+    auto pair =
+        mirror::DexCache::GetNativePairPtrSize(resolved_methods, slot_idx, target_ptr_size_);
+    uint32_t stored_index = pair.index;
+    ArtMethod* method = pair.object;
+    if (method == nullptr) {
+      continue;  // Empty entry.
+    }
+    // Check if the referenced class is in the image. Note that we want to check the referenced
+    // class rather than the declaring class to preserve the semantics, i.e. using a MethodId
+    // results in resolving the referenced class and that can for example throw OOME.
+    const DexFile::MethodId& method_id = dex_file.GetMethodId(stored_index);
+    if (method_id.class_idx_ != last_class_idx) {
+      last_class_idx = method_id.class_idx_;
+      last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);
+      if (last_class != nullptr && !KeepClass(last_class)) {
+        last_class = nullptr;
+      }
+    }
+    if (last_class == nullptr) {
+      dex_cache->ClearResolvedMethod(stored_index, target_ptr_size_);
+    }
+  }
+  // Prune fields.
+  mirror::FieldDexCacheType* resolved_fields = dex_cache->GetResolvedFields();
+  last_class_idx = dex::TypeIndex();  // Initialized to invalid index.
+  last_class = nullptr;
+  for (size_t slot_idx = 0, num = dex_cache->NumResolvedFields(); slot_idx != num; ++slot_idx) {
+    auto pair = mirror::DexCache::GetNativePairPtrSize(resolved_fields, slot_idx, target_ptr_size_);
+    uint32_t stored_index = pair.index;
+    ArtField* field = pair.object;
+    if (field == nullptr) {
+      continue;  // Empty entry.
+    }
+    // Check if the referenced class is in the image. Note that we want to check the referenced
+    // class rather than the declaring class to preserve the semantics, i.e. using a FieldId
+    // results in resolving the referenced class and that can for example throw OOME.
+    const DexFile::FieldId& field_id = dex_file.GetFieldId(stored_index);
+    if (field_id.class_idx_ != last_class_idx) {
+      last_class_idx = field_id.class_idx_;
+      last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);
+      if (last_class != nullptr && !KeepClass(last_class)) {
+        last_class = nullptr;
+      }
+    }
+    if (last_class == nullptr) {
+      dex_cache->ClearResolvedField(stored_index, target_ptr_size_);
+    }
+  }
+  // Prune types.
+  for (size_t slot_idx = 0, num = dex_cache->NumResolvedTypes(); slot_idx != num; ++slot_idx) {
+    mirror::TypeDexCachePair pair =
+        dex_cache->GetResolvedTypes()[slot_idx].load(std::memory_order_relaxed);
+    uint32_t stored_index = pair.index;
+    ObjPtr<mirror::Class> klass = pair.object.Read();
+    if (klass != nullptr && !KeepClass(klass)) {
+      dex_cache->ClearResolvedType(dex::TypeIndex(stored_index));
+    }
+  }
+  // Strings do not need pruning.
+}
+
+void ImageWriter::PreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
+                                  ObjPtr<mirror::ClassLoader> class_loader) {
   // To ensure deterministic contents of the hash-based arrays, each slot shall contain
   // the candidate with the lowest index. As we're processing entries in increasing index
   // order, this means trying to look up the entry for the current index if the slot is
@@ -1419,7 +1504,7 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
   Runtime* runtime = Runtime::Current();
   ClassLinker* class_linker = runtime->GetClassLinker();
   const DexFile& dex_file = *dex_cache->GetDexFile();
-  // Prune methods.
+  // Preload the methods array and make the contents deterministic.
   mirror::MethodDexCacheType* resolved_methods = dex_cache->GetResolvedMethods();
   dex::TypeIndex last_class_idx;  // Initialized to invalid index.
   ObjPtr<mirror::Class> last_class = nullptr;
@@ -1439,27 +1524,20 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     if (method_id.class_idx_ != last_class_idx) {
       last_class_idx = method_id.class_idx_;
       last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);
-      if (last_class != nullptr && !KeepClass(last_class)) {
-        last_class = nullptr;
-      }
     }
     if (method == nullptr || i < stored_index) {
       if (last_class != nullptr) {
         // Try to resolve the method with the class linker, which will insert
         // it into the dex cache if successful.
         method = class_linker->FindResolvedMethod(last_class, dex_cache, class_loader, i);
-        // If the referenced class is in the image, the defining class must also be there.
-        DCHECK(method == nullptr || KeepClass(method->GetDeclaringClass()));
         DCHECK(method == nullptr || dex_cache->GetResolvedMethod(i, target_ptr_size_) == method);
       }
     } else {
       DCHECK_EQ(i, stored_index);
-      if (last_class == nullptr) {
-        dex_cache->ClearResolvedMethod(stored_index, target_ptr_size_);
-      }
+      DCHECK(last_class != nullptr);
     }
   }
-  // Prune fields and make the contents of the field array deterministic.
+  // Preload the fields array and make the contents deterministic.
   mirror::FieldDexCacheType* resolved_fields = dex_cache->GetResolvedFields();
   last_class_idx = dex::TypeIndex();  // Initialized to invalid index.
   last_class = nullptr;
@@ -1484,19 +1562,17 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     }
     if (field == nullptr || i < stored_index) {
       if (last_class != nullptr) {
+        // Try to resolve the field with the class linker, which will insert
+        // it into the dex cache if successful.
         field = class_linker->FindResolvedFieldJLS(last_class, dex_cache, class_loader, i);
-        // If the referenced class is in the image, the defining class must also be there.
-        DCHECK(field == nullptr || KeepClass(field->GetDeclaringClass()));
         DCHECK(field == nullptr || dex_cache->GetResolvedField(i, target_ptr_size_) == field);
       }
     } else {
       DCHECK_EQ(i, stored_index);
-      if (last_class == nullptr) {
-        dex_cache->ClearResolvedField(stored_index, target_ptr_size_);
-      }
+      DCHECK(last_class != nullptr);
     }
   }
-  // Prune types and make the contents of the type array deterministic.
+  // Preload the types array and make the contents deterministic.
   // This is done after fields and methods as their lookup can touch the types array.
   for (size_t i = 0, end = dex_cache->GetDexFile()->NumTypeIds(); i < end; ++i) {
     dex::TypeIndex type_idx(i);
@@ -1507,15 +1583,10 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     ObjPtr<mirror::Class> klass = pair.object.Read();
     if (klass == nullptr || i < stored_index) {
       klass = class_linker->LookupResolvedType(type_idx, dex_cache, class_loader);
-      if (klass != nullptr) {
-        DCHECK_EQ(dex_cache->GetResolvedType(type_idx), klass);
-        stored_index = i;  // For correct clearing below if not keeping the `klass`.
-      }
-    } else if (i == stored_index && !KeepClass(klass)) {
-      dex_cache->ClearResolvedType(dex::TypeIndex(stored_index));
+      DCHECK(klass == nullptr || dex_cache->GetResolvedType(type_idx) == klass);
     }
   }
-  // Strings do not need pruning, but the contents of the string array must be deterministic.
+  // Preload the strings array and make the contents deterministic.
   for (size_t i = 0, end = dex_cache->GetDexFile()->NumStringIds(); i < end; ++i) {
     dex::StringIndex string_idx(i);
     uint32_t slot_idx = dex_cache->StringSlotIndex(string_idx);
@@ -1564,21 +1635,11 @@ void ImageWriter::PruneNonImageClasses() {
   }
 
   // Clear references to removed classes from the DexCaches.
-  std::vector<ObjPtr<mirror::DexCache>> dex_caches;
-  {
-    ReaderMutexLock mu2(self, *Locks::dex_lock_);
-    dex_caches.reserve(class_linker->GetDexCachesData().size());
-    for (const ClassLinker::DexCacheData& data : class_linker->GetDexCachesData()) {
-      if (self->IsJWeakCleared(data.weak_root)) {
-        continue;
-      }
-      dex_caches.push_back(self->DecodeJObject(data.weak_root)->AsDexCache());
-    }
-  }
+  std::vector<ObjPtr<mirror::DexCache>> dex_caches = FindDexCaches(self);
   for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
     // Pass the class loader associated with the DexCache. This can either be
     // the app's `class_loader` or `nullptr` if boot class loader.
-    PruneAndPreloadDexCache(dex_cache, IsInBootImage(dex_cache.Ptr()) ? nullptr : class_loader);
+    PruneDexCache(dex_cache, IsInBootImage(dex_cache.Ptr()) ? nullptr : class_loader);
   }
 
   // Drop the array class cache in the ClassLinker, as these are roots holding those classes live.
@@ -1586,6 +1647,20 @@ void ImageWriter::PruneNonImageClasses() {
 
   // Clear to save RAM.
   prune_class_memo_.clear();
+}
+
+std::vector<ObjPtr<mirror::DexCache>> ImageWriter::FindDexCaches(Thread* self) {
+  std::vector<ObjPtr<mirror::DexCache>> dex_caches;
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  ReaderMutexLock mu2(self, *Locks::dex_lock_);
+  dex_caches.reserve(class_linker->GetDexCachesData().size());
+  for (const ClassLinker::DexCacheData& data : class_linker->GetDexCachesData()) {
+    if (self->IsJWeakCleared(data.weak_root)) {
+      continue;
+    }
+    dex_caches.push_back(self->DecodeJObject(data.weak_root)->AsDexCache());
+  }
+  return dex_caches;
 }
 
 void ImageWriter::CheckNonImageClassesRemoved() {
