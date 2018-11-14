@@ -159,6 +159,9 @@
     cmp      r0, #0
     bne      MterpException
     FETCH_ADVANCE_INST 1
+    ldr      r0, [rSELF, #THREAD_USE_MTERP_OFFSET]
+    cmp      r0, #0
+    beq      MterpFallback
     GET_INST_OPCODE ip                   @ extract opcode from rINST
     GOTO_OPCODE ip                       @ jump to next instruction
 
@@ -179,6 +182,9 @@
     cmp     r0, #0                      @ failed?
     bne     MterpException
     FETCH_ADVANCE_INST 1                @ before throw: advance rPC, load rINST
+    ldr      r0, [rSELF, #THREAD_USE_MTERP_OFFSET]
+    cmp      r0, #0
+    beq      MterpFallback
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     GOTO_OPCODE ip                      @ jump to next instruction
 

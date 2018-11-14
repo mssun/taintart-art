@@ -146,6 +146,8 @@
     bl       artLockObjectFromCode
     cbnz     w0, MterpException
     FETCH_ADVANCE_INST 1
+    ldr      w0, [xSELF, #THREAD_USE_MTERP_OFFSET]
+    cbz      w0, MterpFallback
     GET_INST_OPCODE ip                   // extract opcode from rINST
     GOTO_OPCODE ip                       // jump to next instruction
 
@@ -165,6 +167,8 @@
     bl       artUnlockObjectFromCode    // w0<- success for unlock(self, obj)
     cbnz     w0, MterpException
     FETCH_ADVANCE_INST 1                // before throw: advance rPC, load rINST
+    ldr      w0, [xSELF, #THREAD_USE_MTERP_OFFSET]
+    cbz      w0, MterpFallback
     GET_INST_OPCODE ip                  // extract opcode from rINST
     GOTO_OPCODE ip                      // jump to next instruction
 
