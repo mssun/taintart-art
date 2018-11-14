@@ -87,6 +87,8 @@ unspecified registers or condition codes.
 #include "asm_support.h"
 #include "interpreter/cfi_asm_support.h"
 
+#define LITERAL(value) $$(value)
+
 /*
  * Handle mac compiler specific
  */
@@ -527,8 +529,7 @@ MterpException:
     movq    rPC, OFF_FP_DEX_PC_PTR(rFP)
     /* Do we need to switch interpreters? */
     movq    rSELF, %rax
-    movb    THREAD_USE_MTERP_OFFSET(%rax), %al
-    testb   %al, %al
+    cmpb    LITERAL(0), THREAD_USE_MTERP_OFFSET(%rax)
     jz      MterpFallback
     /* resume execution at catch block */
     REFRESH_IBASE
