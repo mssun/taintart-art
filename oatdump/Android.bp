@@ -100,8 +100,7 @@ art_cc_binary {
     ],
     static_libs: [
         "libart-disassembler",
-        "libvixl-arm",
-        "libvixl-arm64",
+        "libvixl",
     ],
 }
 
@@ -124,8 +123,7 @@ art_cc_binary {
     },
     static_libs: [
         "libartd-disassembler",
-        "libvixld-arm",
-        "libvixld-arm64",
+        "libvixld",
     ],
     group_static_libs: true,
 }
