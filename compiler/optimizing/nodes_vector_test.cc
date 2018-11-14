@@ -401,9 +401,9 @@ TEST_F(NodesVectorTest, VectorKindMattersOnReduce) {
   EXPECT_TRUE(v2->CanBeMoved());
   EXPECT_TRUE(v3->CanBeMoved());
 
-  EXPECT_EQ(HVecReduce::kSum, v1->GetKind());
-  EXPECT_EQ(HVecReduce::kMin, v2->GetKind());
-  EXPECT_EQ(HVecReduce::kMax, v3->GetKind());
+  EXPECT_EQ(HVecReduce::kSum, v1->GetReductionKind());
+  EXPECT_EQ(HVecReduce::kMin, v2->GetReductionKind());
+  EXPECT_EQ(HVecReduce::kMax, v3->GetReductionKind());
 
   EXPECT_TRUE(v1->Equals(v1));
   EXPECT_TRUE(v2->Equals(v2));
