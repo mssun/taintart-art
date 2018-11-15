@@ -827,26 +827,38 @@ void Thumb2RelativePatcherTest::TestBakerFieldNarrow(uint32_t offset, uint32_t r
   }
 }
 
-#define TEST_BAKER_FIELD_WIDE(offset, ref_reg)    \
-  TEST_F(Thumb2RelativePatcherTest,               \
-    BakerOffsetWide##offset##_##ref_reg) {        \
-    TestBakerFieldWide(offset, ref_reg);          \
+TEST_F(Thumb2RelativePatcherTest, BakerOffsetWide) {
+  struct TestCase {
+    uint32_t offset;
+    uint32_t ref_reg;
+  };
+  static const TestCase test_cases[] = {
+      { 0u, 0u },
+      { 8u, 3u },
+      { 28u, 7u },
+      { 0xffcu, 11u },
+  };
+  for (const TestCase& test_case : test_cases) {
+    Reset();
+    TestBakerFieldWide(test_case.offset, test_case.ref_reg);
   }
+}
 
-TEST_BAKER_FIELD_WIDE(/* offset */ 0, /* ref_reg */ 0)
-TEST_BAKER_FIELD_WIDE(/* offset */ 8, /* ref_reg */ 3)
-TEST_BAKER_FIELD_WIDE(/* offset */ 28, /* ref_reg */ 7)
-TEST_BAKER_FIELD_WIDE(/* offset */ 0xffc, /* ref_reg */ 11)
-
-#define TEST_BAKER_FIELD_NARROW(offset, ref_reg)  \
-  TEST_F(Thumb2RelativePatcherTest,               \
-    BakerOffsetNarrow##offset##_##ref_reg) {      \
-    TestBakerFieldNarrow(offset, ref_reg);        \
+TEST_F(Thumb2RelativePatcherTest, BakerOffsetNarrow) {
+  struct TestCase {
+    uint32_t offset;
+    uint32_t ref_reg;
+  };
+  static const TestCase test_cases[] = {
+      { 0, 0u },
+      { 8, 3u },
+      { 28, 7u },
+  };
+  for (const TestCase& test_case : test_cases) {
+    Reset();
+    TestBakerFieldNarrow(test_case.offset, test_case.ref_reg);
   }
-
-TEST_BAKER_FIELD_NARROW(/* offset */ 0, /* ref_reg */ 0)
-TEST_BAKER_FIELD_NARROW(/* offset */ 8, /* ref_reg */ 3)
-TEST_BAKER_FIELD_NARROW(/* offset */ 28, /* ref_reg */ 7)
+}
 
 TEST_F(Thumb2RelativePatcherTest, BakerOffsetThunkInTheMiddle) {
   // One thunk in the middle with maximum distance branches to it from both sides.
