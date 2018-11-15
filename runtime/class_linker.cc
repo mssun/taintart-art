@@ -1543,26 +1543,6 @@ void AppImageLoadingHelper::HandleAppImageStrings(gc::space::ImageSpace* space) 
   }
 }
 
-// Update the class loader. Should only be used on classes in the image space.
-class UpdateClassLoaderVisitor {
- public:
-  UpdateClassLoaderVisitor(gc::space::ImageSpace* space, ObjPtr<mirror::ClassLoader> class_loader)
-      : space_(space),
-        class_loader_(class_loader) {}
-
-  bool operator()(ObjPtr<mirror::Class> klass) const REQUIRES_SHARED(Locks::mutator_lock_) {
-    // Do not update class loader for boot image classes where the app image
-    // class loader is only the initiating loader but not the defining loader.
-    if (klass->GetClassLoader() != nullptr) {
-      klass->SetClassLoader(class_loader_);
-    }
-    return true;
-  }
-
-  gc::space::ImageSpace* const space_;
-  ObjPtr<mirror::ClassLoader> const class_loader_;
-};
-
 static std::unique_ptr<const DexFile> OpenOatDexFile(const OatFile* oat_file,
                                                      const char* location,
                                                      std::string* error_msg)
@@ -2036,9 +2016,17 @@ bool ClassLinker::AddImageSpace(
       ScopedTrace trace("AppImage:UpdateClassLoaders");
       // Update class loader and resolved strings. If added_class_table is false, the resolved
       // strings were forwarded UpdateAppImageClassLoadersAndDexCaches.
-      UpdateClassLoaderVisitor visitor(space, class_loader.Get());
+      ObjPtr<mirror::ClassLoader> loader(class_loader.Get());
       for (const ClassTable::TableSlot& root : temp_set) {
-        visitor(root.Read());
+        // Note: We probably don't need the read barrier unless we copy the app image objects into
+        // the region space.
+        ObjPtr<mirror::Class> klass(root.Read());
+        // Do not update class loader for boot image classes where the app image
+        // class loader is only the initiating loader but not the defining loader.
+        // Avoid read barrier since we are comparing against null.
+        if (klass->GetClassLoader<kDefaultVerifyFlags, kWithoutReadBarrier>() != nullptr) {
+          klass->SetClassLoader</*kCheckTransaction=*/ false>(loader);
+        }
       }
     }
 
