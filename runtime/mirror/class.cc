@@ -427,14 +427,6 @@ bool Class::IsThrowableClass() {
   return GetClassRoot<mirror::Throwable>()->IsAssignableFrom(this);
 }
 
-void Class::SetClassLoader(ObjPtr<ClassLoader> new_class_loader) {
-  if (Runtime::Current()->IsActiveTransaction()) {
-    SetFieldObject<true>(OFFSET_OF_OBJECT_MEMBER(Class, class_loader_), new_class_loader);
-  } else {
-    SetFieldObject<false>(OFFSET_OF_OBJECT_MEMBER(Class, class_loader_), new_class_loader);
-  }
-}
-
 template <typename SignatureType>
 static inline ArtMethod* FindInterfaceMethodWithSignature(ObjPtr<Class> klass,
                                                           const StringPiece& name,
