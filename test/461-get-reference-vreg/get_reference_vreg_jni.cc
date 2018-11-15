@@ -25,62 +25,50 @@ namespace art {
 
 namespace {
 
-class TestVisitor : public StackVisitor {
- public:
-  TestVisitor(Thread* thread, Context* context, mirror::Object* this_value)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(thread, context, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        this_value_(this_value),
-        found_method_index_(0) {}
-
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    ArtMethod* m = GetMethod();
-    std::string m_name(m->GetName());
-
-    if (m_name.compare("$noinline$testThisWithInstanceCall") == 0) {
-      found_method_index_ = 1;
-      uint32_t value = 0;
-      CHECK(GetVReg(m, 1, kReferenceVReg, &value));
-      CHECK_EQ(reinterpret_cast<mirror::Object*>(value), this_value_);
-      CHECK_EQ(GetThisObject(), this_value_);
-    } else if (m_name.compare("$noinline$testThisWithStaticCall") == 0) {
-      found_method_index_ = 2;
-      uint32_t value = 0;
-      CHECK(GetVReg(m, 1, kReferenceVReg, &value));
-    } else if (m_name.compare("$noinline$testParameter") == 0) {
-      found_method_index_ = 3;
-      uint32_t value = 0;
-      CHECK(GetVReg(m, 1, kReferenceVReg, &value));
-    } else if (m_name.compare("$noinline$testObjectInScope") == 0) {
-      found_method_index_ = 4;
-      uint32_t value = 0;
-      CHECK(GetVReg(m, 0, kReferenceVReg, &value));
-    }
-
-    return true;
-  }
-
-  mirror::Object* this_value_;
-
-  // Value returned to Java to ensure the methods testSimpleVReg and testPairVReg
-  // have been found and tested.
-  jint found_method_index_;
-};
-
-extern "C" JNIEXPORT jint JNICALL Java_Main_doNativeCallRef(JNIEnv*, jobject value) {
+jint FindMethodIndex(jobject this_value_jobj) {
   ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<Context> context(Context::Create());
-  TestVisitor visitor(soa.Self(), context.get(), soa.Decode<mirror::Object>(value).Ptr());
-  visitor.WalkStack();
-  return visitor.found_method_index_;
+  ObjPtr<mirror::Object> this_value = soa.Decode<mirror::Object>(this_value_jobj);
+  jint found_method_index = 0;
+  StackVisitor::WalkStack(
+      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        ArtMethod* m = stack_visitor->GetMethod();
+        std::string m_name(m->GetName());
+
+        if (m_name.compare("$noinline$testThisWithInstanceCall") == 0) {
+          found_method_index = 1;
+          uint32_t value = 0;
+          CHECK(stack_visitor->GetVReg(m, 1, kReferenceVReg, &value));
+          CHECK_EQ(reinterpret_cast<mirror::Object*>(value), this_value);
+          CHECK_EQ(stack_visitor->GetThisObject(), this_value);
+        } else if (m_name.compare("$noinline$testThisWithStaticCall") == 0) {
+          found_method_index = 2;
+          uint32_t value = 0;
+          CHECK(stack_visitor->GetVReg(m, 1, kReferenceVReg, &value));
+        } else if (m_name.compare("$noinline$testParameter") == 0) {
+          found_method_index = 3;
+          uint32_t value = 0;
+          CHECK(stack_visitor->GetVReg(m, 1, kReferenceVReg, &value));
+        } else if (m_name.compare("$noinline$testObjectInScope") == 0) {
+          found_method_index = 4;
+          uint32_t value = 0;
+          CHECK(stack_visitor->GetVReg(m, 0, kReferenceVReg, &value));
+        }
+
+        return true;
+      },
+      soa.Self(),
+      context.get(),
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
+  return found_method_index;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_Main_doNativeCallRef(JNIEnv*, jobject value) {
+  return FindMethodIndex(value);
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_Main_doStaticNativeCallRef(JNIEnv*, jclass) {
-  ScopedObjectAccess soa(Thread::Current());
-  std::unique_ptr<Context> context(Context::Create());
-  TestVisitor visitor(soa.Self(), context.get(), nullptr);
-  visitor.WalkStack();
-  return visitor.found_method_index_;
+  return FindMethodIndex(nullptr);
 }
 
 }  // namespace
