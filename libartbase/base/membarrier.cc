@@ -25,7 +25,6 @@
 #if defined(__BIONIC__)
 
 #include <atomic>
-#include <android/get_device_api_level.h>
 #include <linux/membarrier.h>
 
 #define CHECK_MEMBARRIER_CMD(art_value, membarrier_value) \
