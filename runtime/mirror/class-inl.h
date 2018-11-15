@@ -1102,6 +1102,16 @@ inline bool Class::CannotBeAssignedFromOtherTypes() {
   return component->IsPrimitive() || component->CannotBeAssignedFromOtherTypes();
 }
 
+template <bool kCheckTransaction>
+inline void Class::SetClassLoader(ObjPtr<ClassLoader> new_class_loader) {
+  if (kCheckTransaction && Runtime::Current()->IsActiveTransaction()) {
+    SetFieldObject<true>(OFFSET_OF_OBJECT_MEMBER(Class, class_loader_), new_class_loader);
+  } else {
+    DCHECK(!Runtime::Current()->IsActiveTransaction());
+    SetFieldObject<false>(OFFSET_OF_OBJECT_MEMBER(Class, class_loader_), new_class_loader);
+  }
+}
+
 }  // namespace mirror
 }  // namespace art
 
