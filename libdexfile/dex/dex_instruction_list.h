@@ -19,7 +19,7 @@
 
 // V(opcode, instruction_code, name, format, index, flags, extended_flags, verifier_flags);
 #define DEX_INSTRUCTION_LIST(V) \
-  V(0x00, NOP, "nop", k10x, kIndexNone, kContinue, 0, kVerifyNone) \
+  V(0x00, NOP, "nop", k10x, kIndexNone, kContinue, 0, kVerifyNothing) \
   V(0x01, MOVE, "move", k12x, kIndexNone, kContinue, 0, kVerifyRegA | kVerifyRegB) \
   V(0x02, MOVE_FROM16, "move/from16", k22x, kIndexNone, kContinue, 0, kVerifyRegA | kVerifyRegB) \
   V(0x03, MOVE_16, "move/16", k32x, kIndexNone, kContinue, 0, kVerifyRegA | kVerifyRegB) \
@@ -33,7 +33,7 @@
   V(0x0B, MOVE_RESULT_WIDE, "move-result-wide", k11x, kIndexNone, kContinue, 0, kVerifyRegAWide) \
   V(0x0C, MOVE_RESULT_OBJECT, "move-result-object", k11x, kIndexNone, kContinue, 0, kVerifyRegA) \
   V(0x0D, MOVE_EXCEPTION, "move-exception", k11x, kIndexNone, kContinue, 0, kVerifyRegA) \
-  V(0x0E, RETURN_VOID, "return-void", k10x, kIndexNone, kReturn, 0, kVerifyNone) \
+  V(0x0E, RETURN_VOID, "return-void", k10x, kIndexNone, kReturn, 0, kVerifyNothing) \
   V(0x0F, RETURN, "return", k11x, kIndexNone, kReturn, 0, kVerifyRegA) \
   V(0x10, RETURN_WIDE, "return-wide", k11x, kIndexNone, kReturn, 0, kVerifyRegAWide) \
   V(0x11, RETURN_OBJECT, "return-object", k11x, kIndexNone, kReturn, 0, kVerifyRegA) \
@@ -134,7 +134,7 @@
   V(0x70, INVOKE_DIRECT, "invoke-direct", k35c, kIndexMethodRef, kContinue | kThrow | kInvoke, 0, kVerifyRegBMethod | kVerifyVarArgNonZero) \
   V(0x71, INVOKE_STATIC, "invoke-static", k35c, kIndexMethodRef, kContinue | kThrow | kInvoke, 0, kVerifyRegBMethod | kVerifyVarArg) \
   V(0x72, INVOKE_INTERFACE, "invoke-interface", k35c, kIndexMethodRef, kContinue | kThrow | kInvoke, 0, kVerifyRegBMethod | kVerifyVarArgNonZero) \
-  V(0x73, RETURN_VOID_NO_BARRIER, "return-void-no-barrier", k10x, kIndexNone, kReturn, 0, kVerifyNone) \
+  V(0x73, RETURN_VOID_NO_BARRIER, "return-void-no-barrier", k10x, kIndexNone, kReturn, 0, kVerifyNothing) \
   V(0x74, INVOKE_VIRTUAL_RANGE, "invoke-virtual/range", k3rc, kIndexMethodRef, kContinue | kThrow | kInvoke, 0, kVerifyRegBMethod | kVerifyVarArgRangeNonZero) \
   V(0x75, INVOKE_SUPER_RANGE, "invoke-super/range", k3rc, kIndexMethodRef, kContinue | kThrow | kInvoke, 0, kVerifyRegBMethod | kVerifyVarArgRangeNonZero) \
   V(0x76, INVOKE_DIRECT_RANGE, "invoke-direct/range", k3rc, kIndexMethodRef, kContinue | kThrow | kInvoke, 0, kVerifyRegBMethod | kVerifyVarArgRangeNonZero) \

@@ -173,7 +173,7 @@ class Instruction {
   };
 
   enum VerifyFlag : uint32_t {
-    kVerifyNone               = 0x0000000,
+    kVerifyNothing            = 0x0000000,
     kVerifyRegA               = 0x0000001,
     kVerifyRegAWide           = 0x0000002,
     kVerifyRegB               = 0x0000004,
