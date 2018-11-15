@@ -673,34 +673,24 @@ jvmtiError StackUtil::GetThreadListStackTraces(jvmtiEnv* env,
   return ERR(NONE);
 }
 
-// Walks up the stack counting Java frames. This is not StackVisitor::ComputeNumFrames, as
-// runtime methods and transitions must not be counted.
-struct GetFrameCountVisitor : public art::StackVisitor {
-  explicit GetFrameCountVisitor(art::Thread* thread)
-      : art::StackVisitor(thread, nullptr, art::StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        count(0) {}
-
-  bool VisitFrame() override REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    art::ArtMethod* m = GetMethod();
-    const bool do_count = !(m == nullptr || m->IsRuntimeMethod());
-    if (do_count) {
-      count++;
-    }
-    return true;
-  }
-
-  size_t count;
-};
-
 struct GetFrameCountClosure : public art::Closure {
  public:
   GetFrameCountClosure() : count(0) {}
 
   void Run(art::Thread* self) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    GetFrameCountVisitor visitor(self);
-    visitor.WalkStack(false);
-
-    count = visitor.count;
+    // This is not StackVisitor::ComputeNumFrames, as runtime methods and transitions must not be
+    // counted.
+    art::StackVisitor::WalkStack(
+        [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+          art::ArtMethod* m = stack_visitor->GetMethod();
+          if (m != nullptr && !m->IsRuntimeMethod()) {
+            count++;
+          }
+          return true;
+        },
+        self,
+        /* context= */ nullptr,
+        art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
   }
 
   size_t count;
@@ -743,46 +733,30 @@ jvmtiError StackUtil::GetFrameCount(jvmtiEnv* env ATTRIBUTE_UNUSED,
   return ERR(NONE);
 }
 
-// Walks up the stack 'n' callers, when used with Thread::WalkStack.
-struct GetLocationVisitor : public art::StackVisitor {
-  GetLocationVisitor(art::Thread* thread, size_t n_in)
-      : art::StackVisitor(thread, nullptr, art::StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        n(n_in),
-        count(0),
-        caller(nullptr),
-        caller_dex_pc(0) {}
-
-  bool VisitFrame() override REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    art::ArtMethod* m = GetMethod();
-    const bool do_count = !(m == nullptr || m->IsRuntimeMethod());
-    if (do_count) {
-      DCHECK(caller == nullptr);
-      if (count == n) {
-        caller = m;
-        caller_dex_pc = GetDexPc(false);
-        return false;
-      }
-      count++;
-    }
-    return true;
-  }
-
-  const size_t n;
-  size_t count;
-  art::ArtMethod* caller;
-  uint32_t caller_dex_pc;
-};
-
 struct GetLocationClosure : public art::Closure {
  public:
   explicit GetLocationClosure(size_t n_in) : n(n_in), method(nullptr), dex_pc(0) {}
 
   void Run(art::Thread* self) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    GetLocationVisitor visitor(self, n);
-    visitor.WalkStack(false);
-
-    method = visitor.caller;
-    dex_pc = visitor.caller_dex_pc;
+    // Walks up the stack 'n' callers.
+    size_t count = 0u;
+    art::StackVisitor::WalkStack(
+        [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+          art::ArtMethod* m = stack_visitor->GetMethod();
+          if (m != nullptr && !m->IsRuntimeMethod()) {
+            DCHECK(method == nullptr);
+            if (count == n) {
+              method = m;
+              dex_pc = stack_visitor->GetDexPc(/*abort_on_failure=*/false);
+              return false;
+            }
+            count++;
+          }
+          return true;
+        },
+        self,
+        /* context= */ nullptr,
+        art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
   }
 
   const size_t n;
