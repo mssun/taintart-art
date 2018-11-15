@@ -1,0 +1,13 @@
+LIBDEXFILE_EXTERNAL_1 {
+  global:
+    ExtDexFileFree;
+    ExtDexFileFreeString;
+    ExtDexFileGetAllMethodInfos;
+    ExtDexFileGetMethodInfoForOffset;
+    ExtDexFileGetString;
+    ExtDexFileMakeString;
+    ExtDexFileOpenFromFd;
+    ExtDexFileOpenFromMemory;
+  local:
+    *;
+};

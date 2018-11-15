@@ -420,6 +420,8 @@ libart_static_cc_defaults {
         "libbacktrace",
         "libbase",
         "libcutils",
+        "libdexfile_external",  // libunwindstack dependency
+        "libdexfile_support",  // libunwindstack dependency
         "liblog",
         "libnativebridge",
         "libnativeloader",

@@ -131,6 +131,71 @@ art_cc_library {
     ],
 }
 
+cc_library_headers {
+    name: "libdexfile_external_headers",
+    host_supported: true,
+    header_libs: ["libbase_headers"],
+    export_header_lib_headers: ["libbase_headers"],
+    export_include_dirs: ["external/include"],
+
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
+}
+
+cc_library {
+    name: "libdexfile_external",
+    host_supported: true,
+    srcs: [
+        "external/dex_file_ext.cc",
+    ],
+    header_libs: ["libdexfile_external_headers"],
+    shared_libs: [
+        "libbase",
+        "libdexfile",
+    ],
+
+    // TODO(b/120670568): Enable this when linking bug is fixed.
+    // stubs: {
+    //     symbol_file: "external/libdexfile_external.map.txt",
+    //     versions: ["1"],
+    // },
+
+    // Hide symbols using version scripts for targets that support it, i.e. all
+    // but Darwin.
+    // TODO(b/120670568): Clean this up when stubs above is enabled.
+    target: {
+        android: {
+            version_script: "external/libdexfile_external.map.txt",
+        },
+        linux_bionic: {
+            version_script: "external/libdexfile_external.map.txt",
+        },
+        linux_glibc: {
+            version_script: "external/libdexfile_external.map.txt",
+        },
+        windows: {
+            version_script: "external/libdexfile_external.map.txt",
+        },
+    },
+}
+
+// Support library with a C++ API for accessing the libdexfile API for external
+// (non-ART) users. They should link to their own instance of this (either
+// statically or through linker namespaces).
+cc_library {
+    name: "libdexfile_support",
+    host_supported: true,
+    srcs: [
+        "external/dex_file_supp.cc",
+    ],
+    header_libs: ["libdexfile_external_headers"],
+    shared_libs: ["libdexfile_external"],
+    export_header_lib_headers: ["libdexfile_external_headers"],
+}
+
 art_cc_test {
     name: "art_libdexfile_tests",
     defaults: [
