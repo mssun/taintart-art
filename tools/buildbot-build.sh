@@ -61,7 +61,7 @@ while true; do
 done
 
 # Allow to build successfully in master-art.
-extra_args=SOONG_ALLOW_MISSING_DEPENDENCIES=true
+extra_args="SOONG_ALLOW_MISSING_DEPENDENCIES=true TEMPORARY_DISABLE_PATH_RESTRICTIONS=true"
 
 if [[ $mode == "host" ]]; then
   make_command="make $j_arg $extra_args $showcommands build-art-host-tests $common_targets"
@@ -95,4 +95,4 @@ done
 
 echo "Executing $make_command"
 # Disable path restrictions to enable luci builds using vpython.
-bash -c "TEMPORARY_DISABLE_PATH_RESTRICTIONS=true $make_command"
+bash -c "$make_command"
