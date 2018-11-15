@@ -384,21 +384,21 @@ class HVecReduce final : public HVecUnaryOperation {
              HInstruction* input,
              DataType::Type packed_type,
              size_t vector_length,
-             ReductionKind kind,
+             ReductionKind reduction_kind,
              uint32_t dex_pc)
       : HVecUnaryOperation(kVecReduce, allocator, input, packed_type, vector_length, dex_pc),
-        kind_(kind) {
+        reduction_kind_(reduction_kind) {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
   }
 
-  ReductionKind GetKind() const { return kind_; }
+  ReductionKind GetReductionKind() const { return reduction_kind_; }
 
   bool CanBeMoved() const override { return true; }
 
   bool InstructionDataEquals(const HInstruction* other) const override {
     DCHECK(other->IsVecReduce());
     const HVecReduce* o = other->AsVecReduce();
-    return HVecOperation::InstructionDataEquals(o) && GetKind() == o->GetKind();
+    return HVecOperation::InstructionDataEquals(o) && GetReductionKind() == o->GetReductionKind();
   }
 
   DECLARE_INSTRUCTION(VecReduce);
@@ -407,7 +407,7 @@ class HVecReduce final : public HVecUnaryOperation {
   DEFAULT_COPY_CONSTRUCTOR(VecReduce);
 
  private:
-  const ReductionKind kind_;
+  const ReductionKind reduction_kind_;
 };
 
 // Converts every component in the vector,

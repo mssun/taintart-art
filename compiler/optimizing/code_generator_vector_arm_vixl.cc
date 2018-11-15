@@ -138,7 +138,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecReduce(HVecReduce* instruction) {
   switch (instruction->GetPackedType()) {
     case DataType::Type::kInt32:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      switch (instruction->GetKind()) {
+      switch (instruction->GetReductionKind()) {
         case HVecReduce::kSum:
           __ Vpadd(DataTypeValue::I32, dst, src, src);
           break;

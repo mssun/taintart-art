@@ -185,7 +185,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecReduce(HVecReduce* instruction) {
   switch (instruction->GetPackedType()) {
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      switch (instruction->GetKind()) {
+      switch (instruction->GetReductionKind()) {
         case HVecReduce::kSum:
           __ Hadd_sD(tmp, src, src);
           __ IlvlD(dst, tmp, tmp);
@@ -207,7 +207,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecReduce(HVecReduce* instruction) {
       break;
     case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      switch (instruction->GetKind()) {
+      switch (instruction->GetReductionKind()) {
         case HVecReduce::kSum:
           __ IlvlD(dst, src, src);
           __ AddvD(dst, dst, src);
