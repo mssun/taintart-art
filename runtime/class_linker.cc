@@ -5070,8 +5070,10 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
       ArtField* resolved_field = dex_cache->GetResolvedField(field_idx, image_pointer_size_);
       if (resolved_field == nullptr) {
         // Populating cache of a dex file which defines `klass` should always be allowed.
-        DCHECK_EQ(hiddenapi::GetMemberAction(
-            field, class_loader.Get(), dex_cache.Get(), hiddenapi::kNone), hiddenapi::kAllow);
+        DCHECK(!hiddenapi::ShouldDenyAccessToMember(
+            field,
+            hiddenapi::AccessContext(class_loader.Get(), dex_cache.Get()),
+            hiddenapi::AccessMethod::kNone));
         dex_cache->SetResolvedField(field_idx, field, image_pointer_size_);
       } else {
         DCHECK_EQ(field, resolved_field);
@@ -8102,8 +8104,9 @@ ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
   }
   DCHECK(resolved == nullptr || resolved->GetDeclaringClassUnchecked() != nullptr);
   if (resolved != nullptr &&
-      hiddenapi::GetMemberAction(
-          resolved, class_loader, dex_cache, hiddenapi::kLinking) == hiddenapi::kDeny) {
+      hiddenapi::ShouldDenyAccessToMember(resolved,
+                                          hiddenapi::AccessContext(class_loader, dex_cache),
+                                          hiddenapi::AccessMethod::kLinking)) {
     resolved = nullptr;
   }
   if (resolved != nullptr) {
@@ -8133,11 +8136,9 @@ static bool CheckNoSuchMethod(ArtMethod* method,
                               ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_) {
   return method == nullptr ||
-         hiddenapi::GetMemberAction(method,
-                                    class_loader,
-                                    dex_cache,
-                                    hiddenapi::kNone)  // do not print warnings
-             == hiddenapi::kDeny;
+         hiddenapi::ShouldDenyAccessToMember(method,
+                                             hiddenapi::AccessContext(class_loader, dex_cache),
+                                             hiddenapi::AccessMethod::kNone);  // no warnings
 }
 
 ArtMethod* ClassLinker::FindIncompatibleMethod(ObjPtr<mirror::Class> klass,
@@ -8273,8 +8274,10 @@ ArtMethod* ClassLinker::ResolveMethodWithoutInvokeType(uint32_t method_idx,
     resolved = klass->FindClassMethod(dex_cache.Get(), method_idx, image_pointer_size_);
   }
   if (resolved != nullptr &&
-      hiddenapi::GetMemberAction(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
+      hiddenapi::ShouldDenyAccessToMember(
+          resolved,
+          hiddenapi::AccessContext(class_loader.Get(), dex_cache.Get()),
+          hiddenapi::AccessMethod::kLinking)) {
     resolved = nullptr;
   }
   return resolved;
@@ -8373,8 +8376,9 @@ ArtField* ClassLinker::FindResolvedField(ObjPtr<mirror::Class> klass,
   }
 
   if (resolved != nullptr &&
-      hiddenapi::GetMemberAction(
-          resolved, class_loader, dex_cache, hiddenapi::kLinking) == hiddenapi::kDeny) {
+      hiddenapi::ShouldDenyAccessToMember(resolved,
+                                          hiddenapi::AccessContext(class_loader, dex_cache),
+                                          hiddenapi::AccessMethod::kLinking)) {
     resolved = nullptr;
   }
 
@@ -8399,8 +8403,9 @@ ArtField* ClassLinker::FindResolvedFieldJLS(ObjPtr<mirror::Class> klass,
   resolved = mirror::Class::FindField(self, klass, name, type);
 
   if (resolved != nullptr &&
-      hiddenapi::GetMemberAction(
-          resolved, class_loader, dex_cache, hiddenapi::kLinking) == hiddenapi::kDeny) {
+      hiddenapi::ShouldDenyAccessToMember(resolved,
+                                          hiddenapi::AccessContext(class_loader, dex_cache),
+                                          hiddenapi::AccessMethod::kLinking)) {
     resolved = nullptr;
   }
 

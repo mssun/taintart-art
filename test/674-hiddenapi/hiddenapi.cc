@@ -28,9 +28,9 @@ namespace Test674HiddenApi {
 
 extern "C" JNIEXPORT void JNICALL Java_Main_init(JNIEnv*, jclass) {
   Runtime* runtime = Runtime::Current();
-  runtime->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kBlacklistOnly);
+  runtime->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
+  runtime->SetTargetSdkVersion(static_cast<int32_t>(hiddenapi::detail::SdkCodes::kVersionO_MR1));
   runtime->SetDedupeHiddenApiWarnings(false);
-  runtime->AlwaysSetHiddenApiWarningFlag();
 }
 
 extern "C" JNIEXPORT void JNICALL Java_Main_appendToBootClassLoader(
@@ -285,14 +285,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_JNI_canInvokeConstructorV(
 
 extern "C" JNIEXPORT jint JNICALL Java_Reflection_getHiddenApiAccessFlags(JNIEnv*, jclass) {
   return static_cast<jint>(kAccHiddenApiBits);
-}
-
-extern "C" JNIEXPORT jboolean JNICALL Java_ChildClass_hasPendingWarning(JNIEnv*, jclass) {
-  return Runtime::Current()->HasPendingHiddenApiWarning();
-}
-
-extern "C" JNIEXPORT void JNICALL Java_ChildClass_clearWarning(JNIEnv*, jclass) {
-  Runtime::Current()->SetPendingHiddenApiWarning(false);
 }
 
 }  // namespace Test674HiddenApi

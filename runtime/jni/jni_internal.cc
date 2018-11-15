@@ -84,20 +84,20 @@ namespace art {
 // things not rendering correctly. E.g. b/16858794
 static constexpr bool kWarnJniAbort = false;
 
-static bool IsCallerTrusted(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::IsCallerTrusted(GetCallingClass(self, /* num_frames= */ 1));
-}
-
 template<typename T>
-ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
+ALWAYS_INLINE static bool ShouldDenyAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  hiddenapi::Action action = hiddenapi::GetMemberAction(
-      member, self, IsCallerTrusted, hiddenapi::kJNI);
-  if (action != hiddenapi::kAllow) {
-    hiddenapi::NotifyHiddenApiListener(member);
-  }
-
-  return action == hiddenapi::kDeny;
+  return hiddenapi::ShouldDenyAccessToMember(
+      member,
+      [&]() REQUIRES_SHARED(Locks::mutator_lock_) {
+        // Construct AccessContext from the first calling class on stack.
+        // If the calling class cannot be determined, e.g. unattached threads,
+        // we conservatively assume the caller is trusted.
+        ObjPtr<mirror::Class> caller = GetCallingClass(self, /* num_frames */ 1);
+        return caller.IsNull() ? hiddenapi::AccessContext(/* is_trusted= */ true)
+                               : hiddenapi::AccessContext(caller);
+      },
+      hiddenapi::AccessMethod::kJNI);
 }
 
 // Helpers to call instrumentation functions for fields. These take jobjects so we don't need to set
@@ -259,7 +259,7 @@ static jmethodID FindMethodID(ScopedObjectAccess& soa, jclass jni_class,
   } else {
     method = c->FindClassMethod(name, sig, pointer_size);
   }
-  if (method != nullptr && ShouldBlockAccessToMember(method, soa.Self())) {
+  if (method != nullptr && ShouldDenyAccessToMember(method, soa.Self())) {
     method = nullptr;
   }
   if (method == nullptr || method->IsStatic() != is_static) {
@@ -338,7 +338,7 @@ static jfieldID FindFieldID(const ScopedObjectAccess& soa, jclass jni_class, con
   } else {
     field = c->FindInstanceField(name, field_type->GetDescriptor(&temp));
   }
-  if (field != nullptr && ShouldBlockAccessToMember(field, soa.Self())) {
+  if (field != nullptr && ShouldDenyAccessToMember(field, soa.Self())) {
     field = nullptr;
   }
   if (field == nullptr) {
