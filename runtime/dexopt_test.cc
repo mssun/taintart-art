@@ -66,7 +66,7 @@ bool DexoptTest::Dex2Oat(const std::vector<std::string>& args, std::string* erro
   }
   runtime->AddCurrentRuntimeFeaturesAsDex2OatArguments(&argv);
 
-  if (runtime->GetHiddenApiEnforcementPolicy() != hiddenapi::EnforcementPolicy::kNoChecks) {
+  if (runtime->GetHiddenApiEnforcementPolicy() != hiddenapi::EnforcementPolicy::kDisabled) {
     argv.push_back("--runtime-arg");
     argv.push_back("-Xhidden-api-checks");
   }

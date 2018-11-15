@@ -293,7 +293,7 @@ uint32_t WellKnownClasses::StringInitToEntryPoint(ArtMethod* string_init) {
 
 void WellKnownClasses::Init(JNIEnv* env) {
   hiddenapi::ScopedHiddenApiEnforcementPolicySetting hiddenapi_exemption(
-      hiddenapi::EnforcementPolicy::kNoChecks);
+      hiddenapi::EnforcementPolicy::kDisabled);
 
   dalvik_annotation_optimization_CriticalNative =
       CacheClass(env, "dalvik/annotation/optimization/CriticalNative");

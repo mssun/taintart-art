@@ -98,10 +98,8 @@ public class ChildClass {
         expected = Behaviour.Granted;
       } else if (hiddenness == Hiddenness.Blacklist) {
         expected = Behaviour.Denied;
-      } else if (isDebuggable) {
-        expected = Behaviour.Warning;
       } else {
-        expected = Behaviour.Granted;
+        expected = Behaviour.Warning;
       }
 
       for (boolean isStatic : booleanValues) {
@@ -145,7 +143,7 @@ public class ChildClass {
   }
 
   private static void checkMemberCallback(Class<?> klass, String name,
-          boolean isPublic, boolean isField) {
+          boolean isPublic, boolean isField, boolean expectedCallback) {
       try {
           RecordingConsumer consumer = new RecordingConsumer();
           VMRuntime.setNonSdkApiUsageConsumer(consumer);
@@ -168,8 +166,14 @@ public class ChildClass {
               // only interested in whether the callback is invoked.
           }
 
-          if (consumer.recordedValue == null || !consumer.recordedValue.contains(name)) {
-              throw new RuntimeException("No callback for member: " + name);
+          boolean actualCallback = consumer.recordedValue != null &&
+                          consumer.recordedValue.contains(name);
+          if (expectedCallback != actualCallback) {
+              if (expectedCallback) {
+                throw new RuntimeException("Expected callback for member: " + name);
+              } else {
+                throw new RuntimeException("Did not expect callback for member: " + name);
+              }
           }
       } finally {
           VMRuntime.setNonSdkApiUsageConsumer(null);
@@ -181,7 +185,7 @@ public class ChildClass {
 
     boolean isPublic = (visibility == Visibility.Public);
     boolean canDiscover = (behaviour != Behaviour.Denied);
-    boolean setsWarning = (behaviour == Behaviour.Warning);
+    boolean invokesMemberCallback = (behaviour != Behaviour.Granted);
 
     if (klass.isInterface() && (!isStatic || !isPublic)) {
       // Interfaces only have public static fields.
@@ -243,8 +247,6 @@ public class ChildClass {
                               canDiscover);
     }
 
-    // Finish here if we could not discover the field.
-
     if (canDiscover) {
       // Test that modifiers are unaffected.
 
@@ -254,44 +256,22 @@ public class ChildClass {
 
       // Test getters and setters when meaningful.
 
-      clearWarning();
       if (!Reflection.canGetField(klass, name)) {
         throwAccessException(klass, name, true, "Field.getInt()");
       }
-      if (hasPendingWarning() != setsWarning) {
-        throwWarningException(klass, name, true, "Field.getInt()", setsWarning);
-      }
-
-      clearWarning();
       if (!Reflection.canSetField(klass, name)) {
         throwAccessException(klass, name, true, "Field.setInt()");
       }
-      if (hasPendingWarning() != setsWarning) {
-        throwWarningException(klass, name, true, "Field.setInt()", setsWarning);
-      }
-
-      clearWarning();
       if (!JNI.canGetField(klass, name, isStatic)) {
         throwAccessException(klass, name, true, "getIntField");
       }
-      if (hasPendingWarning() != setsWarning) {
-        throwWarningException(klass, name, true, "getIntField", setsWarning);
-      }
-
-      clearWarning();
       if (!JNI.canSetField(klass, name, isStatic)) {
         throwAccessException(klass, name, true, "setIntField");
-      }
-      if (hasPendingWarning() != setsWarning) {
-        throwWarningException(klass, name, true, "setIntField", setsWarning);
       }
     }
 
     // Test that callbacks are invoked correctly.
-    clearWarning();
-    if (setsWarning || !canDiscover) {
-      checkMemberCallback(klass, name, isPublic, true /* isField */);
-    }
+    checkMemberCallback(klass, name, isPublic, true /* isField */, invokesMemberCallback);
   }
 
   private static void checkMethod(Class<?> klass, String name, boolean isStatic,
@@ -304,7 +284,7 @@ public class ChildClass {
     }
 
     boolean canDiscover = (behaviour != Behaviour.Denied);
-    boolean setsWarning = (behaviour == Behaviour.Warning);
+    boolean invokesMemberCallback = (behaviour != Behaviour.Granted);
 
     // Test discovery with reflection.
 
@@ -354,39 +334,21 @@ public class ChildClass {
       }
 
       // Test whether we can invoke the method. This skips non-static interface methods.
-
       if (!klass.isInterface() || isStatic) {
-        clearWarning();
         if (!Reflection.canInvokeMethod(klass, name)) {
           throwAccessException(klass, name, false, "invoke()");
         }
-        if (hasPendingWarning() != setsWarning) {
-          throwWarningException(klass, name, false, "invoke()", setsWarning);
-        }
-
-        clearWarning();
         if (!JNI.canInvokeMethodA(klass, name, isStatic)) {
           throwAccessException(klass, name, false, "CallMethodA");
         }
-        if (hasPendingWarning() != setsWarning) {
-          throwWarningException(klass, name, false, "CallMethodA()", setsWarning);
-        }
-
-        clearWarning();
         if (!JNI.canInvokeMethodV(klass, name, isStatic)) {
           throwAccessException(klass, name, false, "CallMethodV");
-        }
-        if (hasPendingWarning() != setsWarning) {
-          throwWarningException(klass, name, false, "CallMethodV()", setsWarning);
         }
       }
     }
 
     // Test that callbacks are invoked correctly.
-    clearWarning();
-    if (setsWarning || !canDiscover) {
-        checkMemberCallback(klass, name, isPublic, false /* isField */);
-    }
+    checkMemberCallback(klass, name, isPublic, false /* isField */, invokesMemberCallback);
   }
 
   private static void checkConstructor(Class<?> klass, Visibility visibility, Hiddenness hiddenness,
@@ -403,7 +365,6 @@ public class ChildClass {
     MethodType methodType = MethodType.methodType(void.class, args);
 
     boolean canDiscover = (behaviour != Behaviour.Denied);
-    boolean setsWarning = (behaviour == Behaviour.Warning);
 
     // Test discovery with reflection.
 
@@ -446,69 +407,40 @@ public class ChildClass {
                               canDiscover);
     }
 
-    // Finish here if we could not discover the constructor.
+    if (canDiscover) {
+      // Test whether we can invoke the constructor.
 
-    if (!canDiscover) {
-      return;
-    }
-
-    // Test whether we can invoke the constructor.
-
-    clearWarning();
-    if (!Reflection.canInvokeConstructor(klass, args, initargs)) {
-      throwAccessException(klass, fullName, false, "invoke()");
-    }
-    if (hasPendingWarning() != setsWarning) {
-      throwWarningException(klass, fullName, false, "invoke()", setsWarning);
-    }
-
-    clearWarning();
-    if (!JNI.canInvokeConstructorA(klass, signature)) {
-      throwAccessException(klass, fullName, false, "NewObjectA");
-    }
-    if (hasPendingWarning() != setsWarning) {
-      throwWarningException(klass, fullName, false, "NewObjectA", setsWarning);
-    }
-
-    clearWarning();
-    if (!JNI.canInvokeConstructorV(klass, signature)) {
-      throwAccessException(klass, fullName, false, "NewObjectV");
-    }
-    if (hasPendingWarning() != setsWarning) {
-      throwWarningException(klass, fullName, false, "NewObjectV", setsWarning);
+      if (!Reflection.canInvokeConstructor(klass, args, initargs)) {
+        throwAccessException(klass, fullName, false, "invoke()");
+      }
+      if (!JNI.canInvokeConstructorA(klass, signature)) {
+        throwAccessException(klass, fullName, false, "NewObjectA");
+      }
+      if (!JNI.canInvokeConstructorV(klass, signature)) {
+        throwAccessException(klass, fullName, false, "NewObjectV");
+      }
     }
   }
 
   private static void checkNullaryConstructor(Class<?> klass, Behaviour behaviour)
       throws Exception {
     boolean canAccess = (behaviour != Behaviour.Denied);
-    boolean setsWarning = (behaviour == Behaviour.Warning);
 
-    clearWarning();
     if (Reflection.canUseNewInstance(klass) != canAccess) {
       throw new RuntimeException("Expected to " + (canAccess ? "" : "not ") +
           "be able to construct " + klass.getName() + ". " +
           "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot);
-    }
-    if (canAccess && hasPendingWarning() != setsWarning) {
-      throwWarningException(klass, "nullary constructor", false, "newInstance", setsWarning);
     }
   }
 
   private static void checkLinking(String className, boolean takesParameter, Behaviour behaviour)
       throws Exception {
     boolean canAccess = (behaviour != Behaviour.Denied);
-    boolean setsWarning = (behaviour == Behaviour.Warning);
 
-    clearWarning();
     if (Linking.canAccess(className, takesParameter) != canAccess) {
       throw new RuntimeException("Expected to " + (canAccess ? "" : "not ") +
           "be able to verify " + className + "." +
           "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot);
-    }
-    if (canAccess && hasPendingWarning() != setsWarning) {
-      throwWarningException(
-          Class.forName(className), "access", false, "static linking", setsWarning);
     }
   }
 
@@ -528,15 +460,6 @@ public class ChildClass {
         "everythingWhitelisted = " + everythingWhitelisted);
   }
 
-  private static void throwWarningException(Class<?> klass, String name, boolean isField,
-      String fn, boolean setsWarning) {
-    throw new RuntimeException("Expected access to " + (isField ? "field " : "method ") +
-        klass.getName() + "." + name + " using " + fn + " to " + (setsWarning ? "" : "not ") +
-        "set the warning flag. " +
-        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot + ", " +
-        "everythingWhitelisted = " + everythingWhitelisted);
-  }
-
   private static void throwModifiersException(Class<?> klass, String name, boolean isField) {
     throw new RuntimeException("Expected " + (isField ? "field " : "method ") + klass.getName() +
         "." + name + " to not expose hidden modifiers");
@@ -545,7 +468,4 @@ public class ChildClass {
   private static boolean isParentInBoot;
   private static boolean isChildInBoot;
   private static boolean everythingWhitelisted;
-
-  private static native boolean hasPendingWarning();
-  private static native void clearWarning();
 }

@@ -23,7 +23,7 @@
 namespace art {
 
 using hiddenapi::detail::MemberSignature;
-using hiddenapi::GetActionFromAccessFlags;
+using hiddenapi::detail::ShouldDenyAccessToMemberImpl;
 
 class HiddenApiTest : public CommonRuntimeTest {
  protected:
@@ -68,6 +68,15 @@ class HiddenApiTest : public CommonRuntimeTest {
     return art_field;
   }
 
+  bool ShouldDenyAccess(hiddenapi::ApiList list) REQUIRES_SHARED(Locks::mutator_lock_) {
+    // Choose parameters such that there are no side effects (AccessMethod::kNone)
+    // and that the member is not on the exemptions list (here we choose one which
+    // is not even in boot class path).
+    return ShouldDenyAccessToMemberImpl(/* member= */ class1_field1_,
+                                        list,
+                                        /* access_method= */ hiddenapi::AccessMethod::kNone);
+  }
+
  protected:
   Thread* self_;
   jobject jclass_loader_;
@@ -88,41 +97,33 @@ class HiddenApiTest : public CommonRuntimeTest {
 };
 
 TEST_F(HiddenApiTest, CheckGetActionFromRuntimeFlags) {
-  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kNoChecks);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kWhitelist), hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kLightGreylist), hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kDarkGreylist), hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kBlacklist), hiddenapi::kAllow);
+  ScopedObjectAccess soa(self_);
+
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kDisabled);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), false);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kJustWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kWhitelist),
-            hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kLightGreylist),
-            hiddenapi::kAllowButWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kDarkGreylist),
-            hiddenapi::kAllowButWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kBlacklist),
-            hiddenapi::kAllowButWarn);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), false);
 
-  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kDarkGreyAndBlackList);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kWhitelist),
-            hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kLightGreylist),
-            hiddenapi::kAllowButWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kDarkGreylist),
-            hiddenapi::kDeny);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kBlacklist),
-            hiddenapi::kDeny);
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
+  runtime_->SetTargetSdkVersion(static_cast<int32_t>(hiddenapi::detail::SdkCodes::kVersionO_MR1));
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), true);
 
-  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kBlacklistOnly);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kWhitelist),
-            hiddenapi::kAllow);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kLightGreylist),
-            hiddenapi::kAllowButWarn);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kDarkGreylist),
-            hiddenapi::kAllowButWarnAndToast);
-  ASSERT_EQ(GetActionFromAccessFlags(hiddenapi::ApiList::kBlacklist),
-            hiddenapi::kDeny);
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
+  runtime_->SetTargetSdkVersion(static_cast<int32_t>(hiddenapi::detail::SdkCodes::kVersionP));
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), true);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), true);
 }
 
 TEST_F(HiddenApiTest, CheckMembersRead) {
