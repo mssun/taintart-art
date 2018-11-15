@@ -207,26 +207,11 @@ void InstructionCodeGeneratorX86_64::VisitVecReduce(HVecReduce* instruction) {
           __ phaddd(dst, dst);
           __ phaddd(dst, dst);
           break;
-        case HVecReduce::kMin: {
-          XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
-          __ movaps(tmp, src);
-          __ movaps(dst, src);
-          __ psrldq(tmp, Immediate(8));
-          __ pminsd(dst, tmp);
-          __ psrldq(tmp, Immediate(4));
-          __ pminsd(dst, tmp);
-          break;
-        }
-        case HVecReduce::kMax: {
-          XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
-          __ movaps(tmp, src);
-          __ movaps(dst, src);
-          __ psrldq(tmp, Immediate(8));
-          __ pmaxsd(dst, tmp);
-          __ psrldq(tmp, Immediate(4));
-          __ pmaxsd(dst, tmp);
-          break;
-        }
+        case HVecReduce::kMin:
+        case HVecReduce::kMax:
+          // Historical note: We've had a broken implementation here. b/117863065
+          // Do not draw on the old code if we ever want to bring MIN/MAX reduction back.
+          LOG(FATAL) << "Unsupported reduction type.";
       }
       break;
     case DataType::Type::kInt64: {
