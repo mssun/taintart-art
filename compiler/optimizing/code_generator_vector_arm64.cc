@@ -216,7 +216,7 @@ void InstructionCodeGeneratorARM64::VisitVecReduce(HVecReduce* instruction) {
   switch (instruction->GetPackedType()) {
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      switch (instruction->GetKind()) {
+      switch (instruction->GetReductionKind()) {
         case HVecReduce::kSum:
           __ Addv(dst.S(), src.V4S());
           break;
@@ -230,7 +230,7 @@ void InstructionCodeGeneratorARM64::VisitVecReduce(HVecReduce* instruction) {
       break;
     case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      switch (instruction->GetKind()) {
+      switch (instruction->GetReductionKind()) {
         case HVecReduce::kSum:
           __ Addp(dst.D(), src.V2D());
           break;
