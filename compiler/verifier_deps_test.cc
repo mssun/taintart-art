@@ -79,7 +79,7 @@ class VerifierDepsTest : public CommonCompilerTest {
   }
 
   void SetupCompilerDriver() {
-    compiler_options_->boot_image_ = false;
+    compiler_options_->image_type_ = CompilerOptions::ImageType::kNone;
     compiler_driver_->InitializeThreadPools();
   }
 

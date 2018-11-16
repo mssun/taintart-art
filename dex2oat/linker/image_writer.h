@@ -78,7 +78,6 @@ class ImageWriter final {
  public:
   ImageWriter(const CompilerOptions& compiler_options,
               uintptr_t image_begin,
-              bool compile_app_image,
               ImageHeader::StorageMode image_storage_mode,
               const std::vector<const char*>& oat_filenames,
               const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
@@ -112,10 +111,7 @@ class ImageWriter final {
     return true;
   }
 
-  ObjPtr<mirror::ClassLoader> GetClassLoader() {
-    CHECK_EQ(class_loaders_.size(), compile_app_image_ ? 1u : 0u);
-    return compile_app_image_ ? *class_loaders_.begin() : nullptr;
-  }
+  ObjPtr<mirror::ClassLoader> GetClassLoader();
 
   template <typename T>
   T* GetImageAddress(T* object) const REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -753,9 +749,6 @@ class ImageWriter final {
 
   // Oat index map for objects.
   std::unordered_map<mirror::Object*, uint32_t> oat_index_map_;
-
-  // Boolean flags.
-  const bool compile_app_image_;
 
   // Size of pointers on the target architecture.
   PointerSize target_ptr_size_;
