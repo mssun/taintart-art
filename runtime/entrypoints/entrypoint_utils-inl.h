@@ -22,6 +22,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/enums.h"
+#include "base/sdk_version.h"
 #include "class_linker-inl.h"
 #include "common_throws.h"
 #include "dex/dex_file.h"
@@ -94,8 +95,9 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
       // even going back from boot image methods to the same oat file. However, this is
       // not currently implemented in the compiler. Therefore crossing dex file boundary
       // indicates that the inlined definition is not the same as the one used at runtime.
-      bool target_sdk_pre_p = Runtime::Current()->GetTargetSdkVersion() < 28;
-      LOG(target_sdk_pre_p ? WARNING : FATAL)
+      bool target_sdk_at_least_p =
+          IsSdkVersionSetAndAtLeast(Runtime::Current()->GetTargetSdkVersion(), SdkVersion::kP);
+      LOG(target_sdk_at_least_p ? FATAL : WARNING)
           << "Inlined method resolution crossed dex file boundary: from "
           << method->PrettyMethod()
           << " in " << method->GetDexFile()->GetLocation() << "/"

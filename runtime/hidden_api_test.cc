@@ -16,6 +16,7 @@
 
 #include "hidden_api.h"
 
+#include "base/sdk_version.h"
 #include "common_runtime_test.h"
 #include "jni/jni_internal.h"
 #include "proxy_test.h"
@@ -112,14 +113,14 @@ TEST_F(HiddenApiTest, CheckGetActionFromRuntimeFlags) {
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), false);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
-  runtime_->SetTargetSdkVersion(static_cast<int32_t>(hiddenapi::detail::SdkCodes::kVersionO_MR1));
+  runtime_->SetTargetSdkVersion(static_cast<uint32_t>(SdkVersion::kO_MR1));
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), false);
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), true);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
-  runtime_->SetTargetSdkVersion(static_cast<int32_t>(hiddenapi::detail::SdkCodes::kVersionP));
+  runtime_->SetTargetSdkVersion(static_cast<uint32_t>(SdkVersion::kP));
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), true);
