@@ -71,7 +71,6 @@ template<class T> class ObjectArray;
 
 namespace jit {
 
-class JitInstrumentationCache;
 class ScopedCodeCacheWrite;
 
 // Alignment in bits that will suit all architectures.
@@ -96,12 +95,6 @@ class JitCodeCache {
                               bool rwx_memory_allowed,
                               std::string* error_msg);
   ~JitCodeCache();
-
-  // Number of bytes allocated in the code cache.
-  size_t CodeCacheSize() REQUIRES(!lock_);
-
-  // Number of bytes allocated in the data cache.
-  size_t DataCacheSize() REQUIRES(!lock_);
 
   bool NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr)
       REQUIRES_SHARED(Locks::mutator_lock_)
@@ -177,10 +170,6 @@ class JitCodeCache {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!lock_);
 
-  CodeCacheBitmap* GetLiveBitmap() const {
-    return live_bitmap_.get();
-  }
-
   // Perform a collection on the code cache.
   void GarbageCollectCache(Thread* self)
       REQUIRES(!lock_)
@@ -233,10 +222,6 @@ class JitCodeCache {
                           std::vector<ProfileMethodInfo>& methods)
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
-
-  uint64_t GetLastUpdateTimeNs() const;
-
-  size_t GetMemorySizeOfCodePointer(const void* ptr) REQUIRES(!lock_);
 
   void InvalidateCompiledCodeFor(ArtMethod* method, const OatQuickMethodHeader* code)
       REQUIRES(!lock_)
@@ -339,6 +324,12 @@ class JitCodeCache {
   void FreeCodeAndData(const void* code_ptr) REQUIRES(lock_);
 
   // Number of bytes allocated in the code cache.
+  size_t CodeCacheSize() REQUIRES(!lock_);
+
+  // Number of bytes allocated in the data cache.
+  size_t DataCacheSize() REQUIRES(!lock_);
+
+  // Number of bytes allocated in the code cache.
   size_t CodeCacheSizeLocked() REQUIRES(lock_);
 
   // Number of bytes allocated in the data cache.
@@ -374,6 +365,10 @@ class JitCodeCache {
   bool CheckLiveCompiledCodeHasProfilingInfo()
       REQUIRES(lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  CodeCacheBitmap* GetLiveBitmap() const {
+    return live_bitmap_.get();
+  }
 
   uint8_t* AllocateCode(size_t code_size) REQUIRES(lock_);
   void FreeCode(uint8_t* code) REQUIRES(lock_);
