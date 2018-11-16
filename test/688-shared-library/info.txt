@@ -1,0 +1,2 @@
+Tests on BaseDexClassLoader shared libraries and their class
+loading behavior.
