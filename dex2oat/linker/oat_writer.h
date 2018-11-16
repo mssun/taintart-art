@@ -198,7 +198,7 @@ class OatWriter {
   // Check the size of the written oat file.
   bool CheckOatSize(OutputStream* out, size_t file_offset, size_t relative_offset);
   // Write the oat header. This finalizes the oat file.
-  bool WriteHeader(OutputStream* out, uint32_t image_file_location_oat_checksum);
+  bool WriteHeader(OutputStream* out, uint32_t boot_image_checksum);
 
   // Returns whether the oat file has an associated image.
   bool HasImage() const {
@@ -256,6 +256,7 @@ class OatWriter {
   }
 
  private:
+  class ChecksumUpdatingOutputStream;
   class DexFileSource;
   class OatClassHeader;
   class OatClass;
@@ -399,6 +400,9 @@ class OatWriter {
 
   // Offset of section holding quickening info inside Vdex.
   size_t vdex_quickening_info_offset_;
+
+  // OAT checksum.
+  uint32_t oat_checksum_;
 
   // Size of the .text segment.
   size_t code_size_;
