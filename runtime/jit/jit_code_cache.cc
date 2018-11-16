@@ -1274,10 +1274,10 @@ size_t JitCodeCache::ReserveData(Thread* self,
 
 class MarkCodeVisitor final : public StackVisitor {
  public:
-  MarkCodeVisitor(Thread* thread_in, JitCodeCache* code_cache_in)
+  MarkCodeVisitor(Thread* thread_in, JitCodeCache* code_cache_in, CodeCacheBitmap* bitmap)
       : StackVisitor(thread_in, nullptr, StackVisitor::StackWalkKind::kSkipInlinedFrames),
         code_cache_(code_cache_in),
-        bitmap_(code_cache_->GetLiveBitmap()) {}
+        bitmap_(bitmap) {}
 
   bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
     const OatQuickMethodHeader* method_header = GetCurrentOatQuickMethodHeader();
@@ -1299,13 +1299,13 @@ class MarkCodeVisitor final : public StackVisitor {
 
 class MarkCodeClosure final : public Closure {
  public:
-  MarkCodeClosure(JitCodeCache* code_cache, Barrier* barrier)
-      : code_cache_(code_cache), barrier_(barrier) {}
+  MarkCodeClosure(JitCodeCache* code_cache, CodeCacheBitmap* bitmap, Barrier* barrier)
+      : code_cache_(code_cache), bitmap_(bitmap), barrier_(barrier) {}
 
   void Run(Thread* thread) override REQUIRES_SHARED(Locks::mutator_lock_) {
     ScopedTrace trace(__PRETTY_FUNCTION__);
     DCHECK(thread == Thread::Current() || thread->IsSuspended());
-    MarkCodeVisitor visitor(thread, code_cache_);
+    MarkCodeVisitor visitor(thread, code_cache_, bitmap_);
     visitor.WalkStack();
     if (kIsDebugBuild) {
       // The stack walking code queries the side instrumentation stack if it
@@ -1320,7 +1320,7 @@ class MarkCodeClosure final : public Closure {
             code_cache_->LookupMethodHeader(frame.return_pc_, /* method= */ nullptr);
         if (method_header != nullptr) {
           const void* code = method_header->GetCode();
-          CHECK(code_cache_->GetLiveBitmap()->Test(FromCodeToAllocation(code)));
+          CHECK(bitmap_->Test(FromCodeToAllocation(code)));
         }
       }
     }
@@ -1329,6 +1329,7 @@ class MarkCodeClosure final : public Closure {
 
  private:
   JitCodeCache* const code_cache_;
+  CodeCacheBitmap* const bitmap_;
   Barrier* const barrier_;
 };
 
@@ -1374,7 +1375,7 @@ bool JitCodeCache::IncreaseCodeCacheCapacity() {
 void JitCodeCache::MarkCompiledCodeOnThreadStacks(Thread* self) {
   Barrier barrier(0);
   size_t threads_running_checkpoint = 0;
-  MarkCodeClosure closure(this, &barrier);
+  MarkCodeClosure closure(this, GetLiveBitmap(), &barrier);
   threads_running_checkpoint = Runtime::Current()->GetThreadList()->RunCheckpoint(&closure);
   // Now that we have run our checkpoint, move to a suspended state and wait
   // for other threads to run the checkpoint.
@@ -1985,11 +1986,6 @@ void JitCodeCache::DoneCompiling(ArtMethod* method, Thread* self, bool osr) {
     DCHECK(info->IsMethodBeingCompiled(osr));
     info->SetIsMethodBeingCompiled(false, osr);
   }
-}
-
-size_t JitCodeCache::GetMemorySizeOfCodePointer(const void* ptr) {
-  MutexLock mu(Thread::Current(), lock_);
-  return mspace_usable_size(reinterpret_cast<const void*>(FromCodeToAllocation(ptr)));
 }
 
 void JitCodeCache::InvalidateCompiledCodeFor(ArtMethod* method,
