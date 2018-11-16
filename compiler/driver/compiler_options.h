@@ -58,6 +58,12 @@ class CompilerOptions final {
   static const size_t kDefaultInlineMaxCodeUnits = 32;
   static constexpr size_t kUnsetInlineMaxCodeUnits = -1;
 
+  enum class ImageType : uint8_t {
+    kNone,                // JIT or AOT app compilation producing only an oat file but no image.
+    kBootImage,           // Creating boot image.
+    kAppImage,            // Creating app image.
+  };
+
   CompilerOptions();
   ~CompilerOptions();
 
@@ -191,7 +197,7 @@ class CompilerOptions final {
 
   // Are we compiling a boot image?
   bool IsBootImage() const {
-    return boot_image_;
+    return image_type_ == ImageType::kBootImage;
   }
 
   bool IsBaseline() const {
@@ -200,11 +206,7 @@ class CompilerOptions final {
 
   // Are we compiling an app image?
   bool IsAppImage() const {
-    return app_image_;
-  }
-
-  void DisableAppImage() {
-    app_image_ = false;
+    return image_type_ == ImageType::kAppImage;
   }
 
   // Returns whether we are compiling against a "core" image, which
@@ -356,8 +358,7 @@ class CompilerOptions final {
   // Must not be empty for real boot image, only for tests pretending to compile boot image.
   HashSet<std::string> image_classes_;
 
-  bool boot_image_;
-  bool app_image_;
+  ImageType image_type_;
   bool compiling_with_core_image_;
   bool baseline_;
   bool debuggable_;
