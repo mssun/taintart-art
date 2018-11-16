@@ -81,6 +81,9 @@ class GarbageCollector : public RootVisitor, public IsMarkedVisitor, public Mark
   void SwapBitmaps()
       REQUIRES(Locks::heap_bitmap_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+  uint64_t GetTotalCpuTime() const {
+    return total_thread_cpu_time_ns_;
+  }
   uint64_t GetTotalPausedTimeNs() REQUIRES(!pause_histogram_lock_);
   int64_t GetTotalFreedBytes() const {
     return total_freed_bytes_;
@@ -146,6 +149,7 @@ class GarbageCollector : public RootVisitor, public IsMarkedVisitor, public Mark
   std::string name_;
   // Cumulative statistics.
   Histogram<uint64_t> pause_histogram_ GUARDED_BY(pause_histogram_lock_);
+  uint64_t total_thread_cpu_time_ns_;
   uint64_t total_time_ns_;
   uint64_t total_freed_objects_;
   int64_t total_freed_bytes_;
