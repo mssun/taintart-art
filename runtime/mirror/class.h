@@ -211,12 +211,12 @@ class MANAGED Class final : public Object {
   }
 
   ALWAYS_INLINE bool ShouldSkipHiddenApiChecks() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return (GetAccessFlags() & kAccSkipHiddenApiChecks) != 0;
+    return (GetAccessFlags() & kAccSkipHiddenapiChecks) != 0;
   }
 
   ALWAYS_INLINE void SetSkipHiddenApiChecks() REQUIRES_SHARED(Locks::mutator_lock_) {
     uint32_t flags = GetAccessFlags();
-    SetAccessFlags(flags | kAccSkipHiddenApiChecks);
+    SetAccessFlags(flags | kAccSkipHiddenapiChecks);
   }
 
   ALWAYS_INLINE void SetRecursivelyInitialized() REQUIRES_SHARED(Locks::mutator_lock_) {

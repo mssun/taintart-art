@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include "base/sdk_version.h"
 #include "base/utils.h"
 #include "debugger.h"
 #include "gc/heap.h"

@@ -3468,14 +3468,8 @@ void ClassLinker::LoadField(const ClassAccessor::Field& field,
   dst->SetDexFieldIndex(field_idx);
   dst->SetDeclaringClass(klass.Get());
 
-  // Get access flags from the DexFile. If this is a boot class path class,
-  // also set its runtime hidden API access flags.
-  uint32_t access_flags = field.GetAccessFlags();
-  if (klass->IsBootStrapClassLoaded()) {
-    access_flags = hiddenapi::EncodeForRuntime(
-        access_flags, static_cast<hiddenapi::ApiList>(field.GetHiddenapiFlags()));
-  }
-  dst->SetAccessFlags(access_flags);
+  // Get access flags from the DexFile and set hiddenapi runtime access flags.
+  dst->SetAccessFlags(field.GetAccessFlags() | hiddenapi::CreateRuntimeFlags(field));
 }
 
 void ClassLinker::LoadMethod(const DexFile& dex_file,
@@ -3491,13 +3485,8 @@ void ClassLinker::LoadMethod(const DexFile& dex_file,
   dst->SetDeclaringClass(klass.Get());
   dst->SetCodeItemOffset(method.GetCodeItemOffset());
 
-  // Get access flags from the DexFile. If this is a boot class path class,
-  // also set its runtime hidden API access flags.
-  uint32_t access_flags = method.GetAccessFlags();
-  if (klass->IsBootStrapClassLoaded()) {
-    access_flags = hiddenapi::EncodeForRuntime(
-        access_flags, static_cast<hiddenapi::ApiList>(method.GetHiddenapiFlags()));
-  }
+  // Get access flags from the DexFile and set hiddenapi runtime access flags.
+  uint32_t access_flags = method.GetAccessFlags() | hiddenapi::CreateRuntimeFlags(method);
 
   if (UNLIKELY(strcmp("finalize", method_name) == 0)) {
     // Set finalizable flag on declaring class.

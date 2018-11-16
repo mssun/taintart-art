@@ -1427,6 +1427,11 @@ void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class>
     method.SetCodeItemOffset(dex_file_->FindCodeItemOffset(class_def, dex_method_idx));
     // Clear all the intrinsics related flags.
     method.SetNotIntrinsic();
+    // Disable hiddenapi checks when accessing this method.
+    // Redefining hiddenapi flags is unsupported for the same reasons as redefining
+    // access flags. Moreover, ArtMethod loses pointer to the old dex file, so just
+    // disable the checks completely for consistency.
+    method.SetAccessFlags(method.GetAccessFlags() | art::kAccPublicApi);
   }
 }
 
@@ -1445,6 +1450,11 @@ void Redefiner::ClassRedefinition::UpdateFields(art::ObjPtr<art::mirror::Class> 
       CHECK(new_field_id != nullptr);
       // We only need to update the index since the other data in the ArtField cannot be updated.
       field.SetDexFieldIndex(dex_file_->GetIndexForFieldId(*new_field_id));
+      // Disable hiddenapi checks when accessing this method.
+      // Redefining hiddenapi flags is unsupported for the same reasons as redefining
+      // access flags. Moreover, ArtField loses pointer to the old dex file, so just
+      // disable the checks completely for consistency.
+      field.SetAccessFlags(field.GetAccessFlags() | art::kAccPublicApi);
     }
   }
 }
