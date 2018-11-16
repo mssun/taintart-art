@@ -1026,6 +1026,7 @@
                   "677-fsi2",
                   "678-quickening",
                   "679-locks",
+                  "688-shared-library",
                   "999-redefine-hiddenapi",
                   "1000-non-moving-space-stress",
                   "1951-monitor-enter-no-suspend",
