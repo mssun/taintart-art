@@ -79,6 +79,7 @@ bionic_targets=(
   $soong_out/bin/profmand
   $soong_out/bin/hiddenapi
   $soong_out/bin/hprof-conv
+  $soong_out/bin/timeout_dumper
   $(find $ANDROID_HOST_OUT/lib64 -type f | sed "s:$ANDROID_HOST_OUT:$soong_out:g")
   $(find $ANDROID_HOST_OUT/nativetest64 -type f | sed "s:$ANDROID_HOST_OUT:$soong_out:g"))
 
