@@ -154,46 +154,36 @@ class CatchBlockStackVisitor final : public StackVisitor {
   DISALLOW_COPY_AND_ASSIGN(CatchBlockStackVisitor);
 };
 
-// Counts instrumentation stack frame prior to catch handler or upcall.
-class InstrumentationStackVisitor : public StackVisitor {
- public:
-  InstrumentationStackVisitor(Thread* self, size_t frame_depth)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(self, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        frame_depth_(frame_depth),
-        instrumentation_frames_to_pop_(0) {
-    CHECK_NE(frame_depth_, kInvalidFrameDepth);
-  }
-
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    size_t current_frame_depth = GetFrameDepth();
-    if (current_frame_depth < frame_depth_) {
-      CHECK(GetMethod() != nullptr);
-      if (UNLIKELY(reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()) == GetReturnPc())) {
-        if (!IsInInlinedFrame()) {
-          // We do not count inlined frames, because we do not instrument them. The reason we
-          // include them in the stack walking is the check against `frame_depth_`, which is
-          // given to us by a visitor that visits inlined frames.
-          ++instrumentation_frames_to_pop_;
+static size_t GetInstrumentationFramesToPop(Thread* self, size_t frame_depth)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  CHECK_NE(frame_depth, kInvalidFrameDepth);
+  size_t instrumentation_frames_to_pop = 0;
+  StackVisitor::WalkStack(
+      [&](art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        size_t current_frame_depth = stack_visitor->GetFrameDepth();
+        if (current_frame_depth < frame_depth) {
+          CHECK(stack_visitor->GetMethod() != nullptr);
+          if (UNLIKELY(reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()) ==
+                  stack_visitor->GetReturnPc())) {
+            if (!stack_visitor->IsInInlinedFrame()) {
+              // We do not count inlined frames, because we do not instrument them. The reason we
+              // include them in the stack walking is the check against `frame_depth_`, which is
+              // given to us by a visitor that visits inlined frames.
+              ++instrumentation_frames_to_pop;
+            }
+          }
+          return true;
         }
-      }
-      return true;
-    } else {
-      // We reached the frame of the catch handler or the upcall.
-      return false;
-    }
-  }
-
-  size_t GetInstrumentationFramesToPop() const {
-    return instrumentation_frames_to_pop_;
-  }
-
- private:
-  const size_t frame_depth_;
-  size_t instrumentation_frames_to_pop_;
-
-  DISALLOW_COPY_AND_ASSIGN(InstrumentationStackVisitor);
-};
+        // We reached the frame of the catch handler or the upcall.
+        return false;
+      },
+      self,
+      /* context= */ nullptr,
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames,
+      /* check_suspended */ true,
+      /* include_transitions */ true);
+  return instrumentation_frames_to_pop;
+}
 
 // Finds the appropriate exception catch after calling all method exit instrumentation functions.
 // Note that this might change the exception being thrown.
@@ -229,9 +219,8 @@ void QuickExceptionHandler::FindCatch(ObjPtr<mirror::Throwable> exception) {
 
     // Figure out how many of those frames have instrumentation we need to remove (Should be the
     // exact same as number of new_pop_count if there aren't inlined frames).
-    InstrumentationStackVisitor instrumentation_visitor(self_, handler_frame_depth_);
-    instrumentation_visitor.WalkStack(true);
-    size_t instrumentation_frames_to_pop = instrumentation_visitor.GetInstrumentationFramesToPop();
+    size_t instrumentation_frames_to_pop =
+        GetInstrumentationFramesToPop(self_, handler_frame_depth_);
 
     if (kDebugExceptionDelivery) {
       if (*handler_quick_frame_ == nullptr) {
@@ -647,10 +636,8 @@ uintptr_t QuickExceptionHandler::UpdateInstrumentationStack() {
   DCHECK(is_deoptimization_) << "Non-deoptimization handlers should use FindCatch";
   uintptr_t return_pc = 0;
   if (method_tracing_active_) {
-    InstrumentationStackVisitor visitor(self_, handler_frame_depth_);
-    visitor.WalkStack(true);
-
-    size_t instrumentation_frames_to_pop = visitor.GetInstrumentationFramesToPop();
+    size_t instrumentation_frames_to_pop =
+        GetInstrumentationFramesToPop(self_, handler_frame_depth_);
     instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
     return_pc = instrumentation->PopFramesForDeoptimization(self_, instrumentation_frames_to_pop);
   }
@@ -671,53 +658,41 @@ void QuickExceptionHandler::DoLongJump(bool smash_caller_saves) {
   UNREACHABLE();
 }
 
-// Prints out methods with their type of frame.
-class DumpFramesWithTypeStackVisitor final : public StackVisitor {
- public:
-  explicit DumpFramesWithTypeStackVisitor(Thread* self, bool show_details = false)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(self, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        show_details_(show_details) {}
-
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    ArtMethod* method = GetMethod();
-    if (show_details_) {
-      LOG(INFO) << "|> pc   = " << std::hex << GetCurrentQuickFramePc();
-      LOG(INFO) << "|> addr = " << std::hex << reinterpret_cast<uintptr_t>(GetCurrentQuickFrame());
-      if (GetCurrentQuickFrame() != nullptr && method != nullptr) {
-        LOG(INFO) << "|> ret  = " << std::hex << GetReturnPc();
-      }
-    }
-    if (method == nullptr) {
-      // Transition, do go on, we want to unwind over bridges, all the way.
-      if (show_details_) {
-        LOG(INFO) << "N  <transition>";
-      }
-      return true;
-    } else if (method->IsRuntimeMethod()) {
-      if (show_details_) {
-        LOG(INFO) << "R  " << method->PrettyMethod(true);
-      }
-      return true;
-    } else {
-      bool is_shadow = GetCurrentShadowFrame() != nullptr;
-      LOG(INFO) << (is_shadow ? "S" : "Q")
-                << ((!is_shadow && IsInInlinedFrame()) ? "i" : " ")
-                << " "
-                << method->PrettyMethod(true);
-      return true;  // Go on.
-    }
-  }
-
- private:
-  bool show_details_;
-
-  DISALLOW_COPY_AND_ASSIGN(DumpFramesWithTypeStackVisitor);
-};
-
 void QuickExceptionHandler::DumpFramesWithType(Thread* self, bool details) {
-  DumpFramesWithTypeStackVisitor visitor(self, details);
-  visitor.WalkStack(true);
+  StackVisitor::WalkStack(
+      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        ArtMethod* method = stack_visitor->GetMethod();
+        if (details) {
+          LOG(INFO) << "|> pc   = " << std::hex << stack_visitor->GetCurrentQuickFramePc();
+          LOG(INFO) << "|> addr = " << std::hex
+              << reinterpret_cast<uintptr_t>(stack_visitor->GetCurrentQuickFrame());
+          if (stack_visitor->GetCurrentQuickFrame() != nullptr && method != nullptr) {
+            LOG(INFO) << "|> ret  = " << std::hex << stack_visitor->GetReturnPc();
+          }
+        }
+        if (method == nullptr) {
+          // Transition, do go on, we want to unwind over bridges, all the way.
+          if (details) {
+            LOG(INFO) << "N  <transition>";
+          }
+          return true;
+        } else if (method->IsRuntimeMethod()) {
+          if (details) {
+            LOG(INFO) << "R  " << method->PrettyMethod(true);
+          }
+          return true;
+        } else {
+          bool is_shadow = stack_visitor->GetCurrentShadowFrame() != nullptr;
+          LOG(INFO) << (is_shadow ? "S" : "Q")
+                    << ((!is_shadow && stack_visitor->IsInInlinedFrame()) ? "i" : " ")
+                    << " "
+                    << method->PrettyMethod(true);
+          return true;  // Go on.
+        }
+      },
+      self,
+      /* context= */ nullptr,
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
 }
 
 }  // namespace art

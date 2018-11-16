@@ -58,32 +58,6 @@ static constexpr uint8_t kOpNewMethod = 1U;
 static constexpr uint8_t kOpNewThread = 2U;
 static constexpr uint8_t kOpTraceSummary = 3U;
 
-class BuildStackTraceVisitor : public StackVisitor {
- public:
-  explicit BuildStackTraceVisitor(Thread* thread)
-      : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        method_trace_(Trace::AllocStackTrace()) {}
-
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    ArtMethod* m = GetMethod();
-    // Ignore runtime frames (in particular callee save).
-    if (!m->IsRuntimeMethod()) {
-      method_trace_->push_back(m);
-    }
-    return true;
-  }
-
-  // Returns a stack trace where the topmost frame corresponds with the first element of the vector.
-  std::vector<ArtMethod*>* GetStackTrace() const {
-    return method_trace_;
-  }
-
- private:
-  std::vector<ArtMethod*>* const method_trace_;
-
-  DISALLOW_COPY_AND_ASSIGN(BuildStackTraceVisitor);
-};
-
 static const char     kTraceTokenChar             = '*';
 static const uint16_t kTraceHeaderLength          = 32;
 static const uint32_t kTraceMagicValue            = 0x574f4c53;
@@ -228,9 +202,19 @@ static void Append8LE(uint8_t* buf, uint64_t val) {
 }
 
 static void GetSample(Thread* thread, void* arg) REQUIRES_SHARED(Locks::mutator_lock_) {
-  BuildStackTraceVisitor build_trace_visitor(thread);
-  build_trace_visitor.WalkStack();
-  std::vector<ArtMethod*>* stack_trace = build_trace_visitor.GetStackTrace();
+  std::vector<ArtMethod*>* const stack_trace = Trace::AllocStackTrace();
+  StackVisitor::WalkStack(
+      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        ArtMethod* m = stack_visitor->GetMethod();
+        // Ignore runtime frames (in particular callee save).
+        if (!m->IsRuntimeMethod()) {
+          stack_trace->push_back(m);
+        }
+        return true;
+      },
+      thread,
+      /* context= */ nullptr,
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
   Trace* the_trace = reinterpret_cast<Trace*>(arg);
   the_trace->CompareAndUpdateStackTrace(thread, stack_trace);
 }
