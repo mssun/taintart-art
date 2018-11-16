@@ -23,33 +23,39 @@
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "stack_map.h"
-#include "thread-current-inl.h"
 
 namespace art {
 
-namespace {
+class OsrVisitor : public StackVisitor {
+ public:
+  explicit OsrVisitor(Thread* thread, const char* method_name)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
+        method_name_(method_name),
+        in_osr_method_(false),
+        in_interpreter_(false) {}
 
-template <typename Handler>
-void ProcessMethodWithName(JNIEnv* env, jstring method_name, const Handler& handler) {
-  ScopedUtfChars chars(env, method_name);
-  CHECK(chars.c_str() != nullptr);
-  ScopedObjectAccess soa(Thread::Current());
-  StackVisitor::WalkStack(
-      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
-        std::string m_name(stack_visitor->GetMethod()->GetName());
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
+    ArtMethod* m = GetMethod();
+    std::string m_name(m->GetName());
 
-        if (m_name.compare(chars.c_str()) == 0) {
-          handler(stack_visitor);
-          return false;
-        }
-        return true;
-      },
-      soa.Self(),
-      /* context= */ nullptr,
-      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
-}
+    if (m_name.compare(method_name_) == 0) {
+      const OatQuickMethodHeader* header =
+          Runtime::Current()->GetJit()->GetCodeCache()->LookupOsrMethodHeader(m);
+      if (header != nullptr && header == GetCurrentOatQuickMethodHeader()) {
+        in_osr_method_ = true;
+      } else if (IsShadowFrame()) {
+        in_interpreter_ = true;
+      }
+      return false;
+    }
+    return true;
+  }
 
-}  // namespace
+  const char* const method_name_;
+  bool in_osr_method_;
+  bool in_interpreter_;
+};
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_isInOsrCode(JNIEnv* env,
                                                             jclass,
@@ -59,19 +65,12 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_isInOsrCode(JNIEnv* env,
     // Just return true for non-jit configurations to stop the infinite loop.
     return JNI_TRUE;
   }
-  bool in_osr_code = false;
-  ProcessMethodWithName(
-      env,
-      method_name,
-      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
-        ArtMethod* m = stack_visitor->GetMethod();
-        const OatQuickMethodHeader* header =
-            Runtime::Current()->GetJit()->GetCodeCache()->LookupOsrMethodHeader(m);
-        if (header != nullptr && header == stack_visitor->GetCurrentOatQuickMethodHeader()) {
-          in_osr_code = true;
-        }
-      });
-  return in_osr_code;
+  ScopedUtfChars chars(env, method_name);
+  CHECK(chars.c_str() != nullptr);
+  ScopedObjectAccess soa(Thread::Current());
+  OsrVisitor visitor(soa.Self(), chars.c_str());
+  visitor.WalkStack();
+  return visitor.in_osr_method_;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_isInInterpreter(JNIEnv* env,
@@ -81,21 +80,34 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_isInInterpreter(JNIEnv* env,
     // The return value is irrelevant if we're not using JIT.
     return false;
   }
-  bool in_interpreter = false;
-  ProcessMethodWithName(
-      env,
-      method_name,
-      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
-        ArtMethod* m = stack_visitor->GetMethod();
-        const OatQuickMethodHeader* header =
-            Runtime::Current()->GetJit()->GetCodeCache()->LookupOsrMethodHeader(m);
-        if ((header == nullptr || header != stack_visitor->GetCurrentOatQuickMethodHeader()) &&
-            stack_visitor->IsShadowFrame()) {
-          in_interpreter = true;
-        }
-      });
-  return in_interpreter;
+  ScopedUtfChars chars(env, method_name);
+  CHECK(chars.c_str() != nullptr);
+  ScopedObjectAccess soa(Thread::Current());
+  OsrVisitor visitor(soa.Self(), chars.c_str());
+  visitor.WalkStack();
+  return visitor.in_interpreter_;
 }
+
+class ProfilingInfoVisitor : public StackVisitor {
+ public:
+  explicit ProfilingInfoVisitor(Thread* thread, const char* method_name)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
+        method_name_(method_name) {}
+
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
+    ArtMethod* m = GetMethod();
+    std::string m_name(m->GetName());
+
+    if (m_name.compare(method_name_) == 0) {
+      ProfilingInfo::Create(Thread::Current(), m, /* retry_allocation */ true);
+      return false;
+    }
+    return true;
+  }
+
+  const char* const method_name_;
+};
 
 extern "C" JNIEXPORT void JNICALL Java_Main_ensureHasProfilingInfo(JNIEnv* env,
                                                                    jclass,
@@ -103,14 +115,39 @@ extern "C" JNIEXPORT void JNICALL Java_Main_ensureHasProfilingInfo(JNIEnv* env,
   if (!Runtime::Current()->UseJitCompilation()) {
     return;
   }
-  ProcessMethodWithName(
-      env,
-      method_name,
-      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
-        ArtMethod* m = stack_visitor->GetMethod();
-        ProfilingInfo::Create(Thread::Current(), m, /* retry_allocation */ true);
-      });
+  ScopedUtfChars chars(env, method_name);
+  CHECK(chars.c_str() != nullptr);
+  ScopedObjectAccess soa(Thread::Current());
+  ProfilingInfoVisitor visitor(soa.Self(), chars.c_str());
+  visitor.WalkStack();
 }
+
+class OsrCheckVisitor : public StackVisitor {
+ public:
+  OsrCheckVisitor(Thread* thread, const char* method_name)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
+        method_name_(method_name) {}
+
+  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
+    ArtMethod* m = GetMethod();
+    std::string m_name(m->GetName());
+
+    jit::Jit* jit = Runtime::Current()->GetJit();
+    if (m_name.compare(method_name_) == 0) {
+      while (jit->GetCodeCache()->LookupOsrMethodHeader(m) == nullptr) {
+        // Sleep to yield to the compiler thread.
+        usleep(1000);
+        // Will either ensure it's compiled or do the compilation itself.
+        jit->CompileMethod(m, Thread::Current(), /* osr */ true);
+      }
+      return false;
+    }
+    return true;
+  }
+
+  const char* const method_name_;
+};
 
 extern "C" JNIEXPORT void JNICALL Java_Main_ensureHasOsrCode(JNIEnv* env,
                                                              jclass,
@@ -118,19 +155,11 @@ extern "C" JNIEXPORT void JNICALL Java_Main_ensureHasOsrCode(JNIEnv* env,
   if (!Runtime::Current()->UseJitCompilation()) {
     return;
   }
-  ProcessMethodWithName(
-      env,
-      method_name,
-      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
-        ArtMethod* m = stack_visitor->GetMethod();
-        jit::Jit* jit = Runtime::Current()->GetJit();
-        while (jit->GetCodeCache()->LookupOsrMethodHeader(m) == nullptr) {
-          // Sleep to yield to the compiler thread.
-          usleep(1000);
-          // Will either ensure it's compiled or do the compilation itself.
-          jit->CompileMethod(m, Thread::Current(), /* osr */ true);
-        }
-      });
+  ScopedUtfChars chars(env, method_name);
+  CHECK(chars.c_str() != nullptr);
+  ScopedObjectAccess soa(Thread::Current());
+  OsrCheckVisitor visitor(soa.Self(), chars.c_str());
+  visitor.WalkStack();
 }
 
 }  // namespace art
