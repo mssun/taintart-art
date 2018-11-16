@@ -798,6 +798,8 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
                FindSystemClass(self, "Ljava/lang/StackTraceElement;"));
   SetClassRoot(ClassRoot::kJavaLangStackTraceElementArrayClass,
                FindSystemClass(self, "[Ljava/lang/StackTraceElement;"));
+  SetClassRoot(ClassRoot::kJavaLangClassLoaderArrayClass,
+               FindSystemClass(self, "[Ljava/lang/ClassLoader;"));
 
   // Create conflict tables that depend on the class linker.
   runtime->FixupConflictTables();
@@ -9005,21 +9007,14 @@ void ClassLinker::AllocAndSetPrimitiveArrayClassRoot(Thread* self,
   CheckSystemClass(self, primitive_array_class, descriptor);
 }
 
-jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
-                                                const std::vector<const DexFile*>& dex_files,
-                                                jclass loader_class,
-                                                jobject parent_loader) {
-  CHECK(self->GetJniEnv()->IsSameObject(loader_class,
-                                        WellKnownClasses::dalvik_system_PathClassLoader) ||
-        self->GetJniEnv()->IsSameObject(loader_class,
-                                        WellKnownClasses::dalvik_system_DelegateLastClassLoader));
+ObjPtr<mirror::ClassLoader> ClassLinker::CreateWellKnownClassLoader(
+    Thread* self,
+    const std::vector<const DexFile*>& dex_files,
+    Handle<mirror::Class> loader_class,
+    Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries,
+    Handle<mirror::ClassLoader> parent_loader) {
 
-  // SOAAlreadyRunnable is protected, and we need something to add a global reference.
-  // We could move the jobject to the callers, but all call-sites do this...
-  ScopedObjectAccessUnchecked soa(self);
-
-  // For now, create a libcore-level DexFile for each ART DexFile. This "explodes" multidex.
-  StackHandleScope<6> hs(self);
+  StackHandleScope<5> hs(self);
 
   ArtField* dex_elements_field =
       jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList_dexElements);
@@ -9109,8 +9104,8 @@ jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
   }
 
   // Create the class loader..
-  Handle<mirror::Class> h_loader_class = hs.NewHandle(soa.Decode<mirror::Class>(loader_class));
-  Handle<mirror::Object> h_class_loader = hs.NewHandle(h_loader_class->AllocObject(self));
+  Handle<mirror::ClassLoader> h_class_loader = hs.NewHandle<mirror::ClassLoader>(
+      ObjPtr<mirror::ClassLoader>::DownCast(loader_class->AllocObject(self)));
   DCHECK(h_class_loader != nullptr);
   // Set DexPathList.
   ArtField* path_list_field =
@@ -9126,15 +9121,59 @@ jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
                                "parent",
                                "Ljava/lang/ClassLoader;");
   DCHECK(parent_field != nullptr);
+  if (parent_loader.Get() == nullptr) {
+    ScopedObjectAccessUnchecked soa(self);
+    ObjPtr<mirror::Object> boot_loader(soa.Decode<mirror::Class>(
+        WellKnownClasses::java_lang_BootClassLoader)->AllocObject(self));
+    parent_field->SetObject<false>(h_class_loader.Get(), boot_loader);
+  } else {
+    parent_field->SetObject<false>(h_class_loader.Get(), parent_loader.Get());
+  }
 
-  ObjPtr<mirror::Object> parent = (parent_loader != nullptr)
-      ? soa.Decode<mirror::ClassLoader>(parent_loader)
-      : soa.Decode<mirror::Class>(WellKnownClasses::java_lang_BootClassLoader)->AllocObject(self);
-  parent_field->SetObject<false>(h_class_loader.Get(), parent);
+  ArtField* shared_libraries_field =
+      jni::DecodeArtField(WellKnownClasses::dalvik_system_BaseDexClassLoader_sharedLibraryLoaders);
+  DCHECK(shared_libraries_field != nullptr);
+  shared_libraries_field->SetObject<false>(h_class_loader.Get(), shared_libraries.Get());
+
+  return h_class_loader.Get();
+}
+
+jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
+                                                const std::vector<const DexFile*>& dex_files,
+                                                jclass loader_class,
+                                                jobject parent_loader) {
+  CHECK(self->GetJniEnv()->IsSameObject(loader_class,
+                                        WellKnownClasses::dalvik_system_PathClassLoader) ||
+        self->GetJniEnv()->IsSameObject(loader_class,
+                                        WellKnownClasses::dalvik_system_DelegateLastClassLoader));
+
+  // SOAAlreadyRunnable is protected, and we need something to add a global reference.
+  // We could move the jobject to the callers, but all call-sites do this...
+  ScopedObjectAccessUnchecked soa(self);
+
+  // For now, create a libcore-level DexFile for each ART DexFile. This "explodes" multidex.
+  StackHandleScope<3> hs(self);
+
+  Handle<mirror::Class> h_loader_class =
+      hs.NewHandle<mirror::Class>(soa.Decode<mirror::Class>(loader_class));
+  Handle<mirror::ClassLoader> parent =
+      hs.NewHandle<mirror::ClassLoader>(ObjPtr<mirror::ClassLoader>::DownCast(
+          (parent_loader != nullptr)
+              ? soa.Decode<mirror::ClassLoader>(parent_loader)
+              : nullptr));
+  Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries =
+      hs.NewHandle<mirror::ObjectArray<mirror::ClassLoader>>(nullptr);
+
+  ObjPtr<mirror::ClassLoader> loader = CreateWellKnownClassLoader(
+      self,
+      dex_files,
+      h_loader_class,
+      shared_libraries,
+      parent);
 
   // Make it a global ref and return.
   ScopedLocalRef<jobject> local_ref(
-      soa.Env(), soa.Env()->AddLocalReference<jobject>(h_class_loader.Get()));
+      soa.Env(), soa.Env()->AddLocalReference<jobject>(loader));
   return soa.Env()->NewGlobalRef(local_ref.get());
 }
 
