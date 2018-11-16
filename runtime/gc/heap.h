@@ -395,8 +395,6 @@ class Heap {
     REQUIRES(!Locks::heap_bitmap_lock_)
     REQUIRES(Locks::mutator_lock_);
 
-  uint64_t GetTotalGcCpuTime();
-
   // Set target ideal heap utilization ratio, implements
   // dalvik.system.VMRuntime.setTargetHeapUtilization.
   void SetTargetHeapUtilization(float target);
