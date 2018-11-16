@@ -133,11 +133,11 @@ static_assert(ART_FRAME_SIZE_LIMIT < kX86StackOverflowReservedBytes,
 static_assert(ART_FRAME_SIZE_LIMIT < kX86_64StackOverflowReservedBytes,
               "Frame size limit too large");
 
-}  // namespace instruction_set_details
-
 NO_RETURN void GetStackOverflowReservedBytesFailure(const char* error_msg) {
   LOG(FATAL) << error_msg;
   UNREACHABLE();
 }
+
+}  // namespace instruction_set_details
 
 }  // namespace art
