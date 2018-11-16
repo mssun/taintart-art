@@ -184,7 +184,7 @@ void CommonCompilerTest::OverrideInstructionSetFeatures(InstructionSet instructi
 void CommonCompilerTest::CreateCompilerDriver() {
   ApplyInstructionSet();
 
-  compiler_options_->boot_image_ = true;
+  compiler_options_->image_type_ = CompilerOptions::ImageType::kBootImage;
   compiler_options_->compile_pic_ = false;  // Non-PIC boot image is a test configuration.
   compiler_options_->SetCompilerFilter(GetCompilerFilter());
   compiler_options_->image_classes_.swap(*GetImageClasses());
@@ -345,7 +345,7 @@ void CommonCompilerTest::SetDexFilesForOatFile(const std::vector<const DexFile*>
 }
 
 void CommonCompilerTest::ClearBootImageOption() {
-  compiler_options_->boot_image_ = false;
+  compiler_options_->image_type_ = CompilerOptions::ImageType::kNone;
 }
 
 }  // namespace art

@@ -145,10 +145,15 @@ static ArrayRef<const uint8_t> MaybeCompressData(ArrayRef<const uint8_t> source,
 // Separate objects into multiple bins to optimize dirty memory use.
 static constexpr bool kBinObjects = true;
 
+ObjPtr<mirror::ClassLoader> ImageWriter::GetClassLoader() {
+  CHECK_EQ(class_loaders_.size(), compiler_options_.IsAppImage() ? 1u : 0u);
+  return compiler_options_.IsAppImage() ? *class_loaders_.begin() : nullptr;
+}
+
 // Return true if an object is already in an image space.
 bool ImageWriter::IsInBootImage(const void* obj) const {
   gc::Heap* const heap = Runtime::Current()->GetHeap();
-  if (!compile_app_image_) {
+  if (compiler_options_.IsBootImage()) {
     DCHECK(heap->GetBootImageSpaces().empty());
     return false;
   }
@@ -165,7 +170,7 @@ bool ImageWriter::IsInBootImage(const void* obj) const {
 
 bool ImageWriter::IsInBootOatFile(const void* ptr) const {
   gc::Heap* const heap = Runtime::Current()->GetHeap();
-  if (!compile_app_image_) {
+  if (compiler_options_.IsBootImage()) {
     DCHECK(heap->GetBootImageSpaces().empty());
     return false;
   }
@@ -204,7 +209,7 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
       PruneNonImageClasses();  // Remove junk
     }
 
-    if (compile_app_image_) {
+    if (compiler_options_.IsAppImage()) {
       TimingLogger::ScopedTiming t("ClearDexFileCookies", timings);
       // Clear dex file cookies for app images to enable app image determinism. This is required
       // since the cookie field contains long pointers to DexFiles which are not deterministic.
@@ -226,7 +231,7 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
   // Used to store information that will later be used to calculate image
   // offsets to string references in the AppImage.
   std::vector<HeapReferencePointerInfo> string_ref_info;
-  if (ClassLinker::kAppImageMayContainStrings && compile_app_image_) {
+  if (ClassLinker::kAppImageMayContainStrings && compiler_options_.IsAppImage()) {
     // Count the number of string fields so we can allocate the appropriate
     // amount of space in the image section.
     TimingLogger::ScopedTiming t("AppImage:CollectStringReferenceInfo", timings);
@@ -248,7 +253,7 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
   }
 
   // Obtain class count for debugging purposes
-  if (VLOG_IS_ON(compiler) && compile_app_image_) {
+  if (VLOG_IS_ON(compiler) && compiler_options_.IsAppImage()) {
     ScopedObjectAccess soa(self);
 
     size_t app_image_class_count  = 0;
@@ -268,7 +273,7 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
     VLOG(compiler) << "Dex2Oat:AppImage:classCount = " << app_image_class_count;
   }
 
-  if (ClassLinker::kAppImageMayContainStrings && compile_app_image_) {
+  if (ClassLinker::kAppImageMayContainStrings && compiler_options_.IsAppImage()) {
     // Use the string reference information obtained earlier to calculate image
     // offsets.  These will later be written to the image by Write/CopyMetadata.
     TimingLogger::ScopedTiming t("AppImage:CalculateImageOffsets", timings);
@@ -580,7 +585,7 @@ void ImageWriter::VerifyNativeGCRootInvariants() const REQUIRES_SHARED(Locks::mu
 }
 
 void ImageWriter::CopyMetadata() {
-  CHECK(compile_app_image_);
+  DCHECK(compiler_options_.IsAppImage());
   CHECK_EQ(image_infos_.size(), 1u);
 
   const ImageInfo& image_info = image_infos_.back();
@@ -620,7 +625,7 @@ bool ImageWriter::Write(int image_fd,
     ObjPtr<mirror::ClassLoader> class_loader = GetClassLoader();
     std::vector<ObjPtr<mirror::DexCache>> dex_caches = FindDexCaches(self);
     for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
-      if (compile_app_image_ && IsInBootImage(dex_cache.Ptr())) {
+      if (IsInBootImage(dex_cache.Ptr())) {
         continue;  // Boot image DexCache is not written to the app image.
       }
       PreloadDexCache(dex_cache, class_loader);
@@ -642,7 +647,7 @@ bool ImageWriter::Write(int image_fd,
     CopyAndFixupObjects();
   }
 
-  if (compile_app_image_) {
+  if (compiler_options_.IsAppImage()) {
     CopyMetadata();
   }
 
@@ -670,7 +675,7 @@ bool ImageWriter::Write(int image_fd,
       return false;
     }
 
-    if (!compile_app_image_ && fchmod(image_file->Fd(), 0644) != 0) {
+    if (!compiler_options_.IsAppImage() && fchmod(image_file->Fd(), 0644) != 0) {
       PLOG(ERROR) << "Failed to make image file world readable: " << image_filename;
       image_file->Erase();
       return EXIT_FAILURE;
@@ -1223,7 +1228,7 @@ bool ImageWriter::PruneAppImageClassInternal(
     std::unordered_set<mirror::Object*>* visited) {
   DCHECK(early_exit != nullptr);
   DCHECK(visited != nullptr);
-  DCHECK(compile_app_image_);
+  DCHECK(compiler_options_.IsAppImage());
   if (klass == nullptr || IsInBootImage(klass.Ptr())) {
     return false;
   }
@@ -1327,7 +1332,8 @@ bool ImageWriter::KeepClass(ObjPtr<mirror::Class> klass) {
   if (klass == nullptr) {
     return false;
   }
-  if (compile_app_image_ && Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(klass)) {
+  if (!compiler_options_.IsBootImage() &&
+      Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(klass)) {
     // Already in boot image, return true.
     return true;
   }
@@ -1335,7 +1341,7 @@ bool ImageWriter::KeepClass(ObjPtr<mirror::Class> klass) {
   if (!compiler_options_.IsImageClass(klass->GetDescriptor(&temp))) {
     return false;
   }
-  if (compile_app_image_) {
+  if (compiler_options_.IsAppImage()) {
     // For app images, we need to prune boot loader classes that are not in the boot image since
     // these may have already been loaded when the app image is loaded.
     // Keep classes in the boot image space since we don't want to re-resolve these.
@@ -1631,7 +1637,7 @@ void ImageWriter::PruneNonImageClasses() {
     VisitClassLoaders(&class_loader_visitor);
     VLOG(compiler) << "Pruned " << class_loader_visitor.GetRemovedClassCount() << " classes";
     class_loader = class_loader_visitor.GetClassLoader();
-    DCHECK_EQ(class_loader != nullptr, compile_app_image_);
+    DCHECK_EQ(class_loader != nullptr, compiler_options_.IsAppImage());
   }
 
   // Clear references to removed classes from the DexCaches.
@@ -1694,7 +1700,7 @@ mirror::String* ImageWriter::FindInternedString(mirror::String* string) {
       return found.Ptr();
     }
   }
-  if (compile_app_image_) {
+  if (!compiler_options_.IsBootImage()) {
     Runtime* const runtime = Runtime::Current();
     ObjPtr<mirror::String> found = runtime->GetInternTable()->LookupStrong(self, string);
     // If we found it in the runtime intern table it could either be in the boot image or interned
@@ -1791,7 +1797,7 @@ ObjPtr<ObjectArray<Object>> ImageWriter::CreateImageRoots(
   Handle<ObjectArray<Object>> dex_caches(hs.NewHandle(CollectDexCaches(self, oat_index)));
 
   // build an Object[] of the roots needed to restore the runtime
-  int32_t image_roots_size = ImageHeader::NumberOfImageRoots(compile_app_image_);
+  int32_t image_roots_size = ImageHeader::NumberOfImageRoots(compiler_options_.IsAppImage());
   Handle<ObjectArray<Object>> image_roots(hs.NewHandle(ObjectArray<Object>::Alloc(
       self, GetClassRoot<ObjectArray<Object>>(class_linker), image_roots_size)));
   image_roots->Set<false>(ImageHeader::kDexCaches, dex_caches.Get());
@@ -1804,14 +1810,14 @@ ObjPtr<ObjectArray<Object>> ImageWriter::CreateImageRoots(
                           runtime->GetPreAllocatedOutOfMemoryErrorWhenHandlingStackOverflow());
   image_roots->Set<false>(ImageHeader::kNoClassDefFoundError,
                           runtime->GetPreAllocatedNoClassDefFoundError());
-  if (!compile_app_image_) {
+  if (!compiler_options_.IsAppImage()) {
     DCHECK(boot_image_live_objects != nullptr);
     image_roots->Set<false>(ImageHeader::kBootImageLiveObjects, boot_image_live_objects.Get());
   } else {
     DCHECK(boot_image_live_objects == nullptr);
   }
-  for (int32_t i = 0, num = ImageHeader::NumberOfImageRoots(compile_app_image_); i != num; ++i) {
-    if (compile_app_image_ && i == ImageHeader::kAppImageClassLoader) {
+  for (int32_t i = 0; i != image_roots_size; ++i) {
+    if (compiler_options_.IsAppImage() && i == ImageHeader::kAppImageClassLoader) {
       // image_roots[ImageHeader::kAppImageClassLoader] will be set later for app image.
       continue;
     }
@@ -1848,7 +1854,7 @@ mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
       mirror::Class* as_klass = obj->AsClass();
       mirror::DexCache* dex_cache = as_klass->GetDexCache();
       DCHECK(!as_klass->IsErroneous()) << as_klass->GetStatus();
-      if (compile_app_image_) {
+      if (compiler_options_.IsAppImage()) {
         // Extra sanity, no boot loader classes should be left!
         CHECK(!IsBootClassLoaderClass(as_klass)) << as_klass->PrettyClass();
       }
@@ -1859,7 +1865,7 @@ mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
       // belongs.
       oat_index = GetOatIndexForDexCache(dex_cache);
       ImageInfo& image_info = GetImageInfo(oat_index);
-      if (!compile_app_image_) {
+      if (!compiler_options_.IsAppImage()) {
         // Note: Avoid locking to prevent lock order violations from root visiting;
         // image_info.class_table_ is only accessed from the image writer.
         image_info.class_table_->InsertWithoutLocks(as_klass);
@@ -1962,7 +1968,7 @@ mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
       // class loader.
       mirror::ClassLoader* class_loader = obj->AsClassLoader();
       if (class_loader->GetClassTable() != nullptr) {
-        DCHECK(compile_app_image_);
+        DCHECK(compiler_options_.IsAppImage());
         DCHECK(class_loaders_.empty());
         class_loaders_.insert(class_loader);
         ImageInfo& image_info = GetImageInfo(oat_index);
@@ -2140,7 +2146,7 @@ void ImageWriter::CalculateNewObjectOffsets() {
   Runtime* const runtime = Runtime::Current();
   VariableSizedHandleScope handles(self);
   MutableHandle<ObjectArray<Object>> boot_image_live_objects = handles.NewHandle(
-      compile_app_image_
+      compiler_options_.IsAppImage()
           ? nullptr
           : IntrinsicObjects::AllocateBootImageLiveObjects(self, runtime->GetClassLinker()));
   std::vector<Handle<ObjectArray<Object>>> image_roots;
@@ -2175,7 +2181,8 @@ void ImageWriter::CalculateNewObjectOffsets() {
   for (auto* m : image_methods_) {
     CHECK(m != nullptr);
     CHECK(m->IsRuntimeMethod());
-    DCHECK_EQ(compile_app_image_, IsInBootImage(m)) << "Trampolines should be in boot image";
+    DCHECK_EQ(!compiler_options_.IsBootImage(), IsInBootImage(m))
+        << "Trampolines should be in boot image";
     if (!IsInBootImage(m)) {
       AssignMethodOffset(m, NativeObjectRelocationType::kRuntimeMethod, GetDefaultOatIndex());
     }
@@ -2227,7 +2234,7 @@ void ImageWriter::CalculateNewObjectOffsets() {
   // For app images, there may be objects that are only held live by the boot image. One
   // example is finalizer references. Forward these objects so that EnsureBinSlotAssignedCallback
   // does not fail any checks.
-  if (compile_app_image_) {
+  if (compiler_options_.IsAppImage()) {
     for (gc::space::ImageSpace* space : heap->GetBootImageSpaces()) {
       DCHECK(space->IsImageSpace());
       gc::accounting::ContinuousSpaceBitmap* live_bitmap = space->GetLiveBitmap();
@@ -2528,7 +2535,7 @@ ArtMethod* ImageWriter::GetImageMethodAddress(ArtMethod* method) {
 }
 
 const void* ImageWriter::GetIntrinsicReferenceAddress(uint32_t intrinsic_data) {
-  DCHECK(!compile_app_image_);
+  DCHECK(compiler_options_.IsBootImage());
   switch (IntrinsicObjects::DecodePatchType(intrinsic_data)) {
     case IntrinsicObjects::PatchType::kIntegerValueOfArray: {
       const uint8_t* base_address =
@@ -2921,7 +2928,7 @@ void ImageWriter::FixupClass(mirror::Class* orig, mirror::Class* copy) {
   FixupClassVisitor visitor(this, copy);
   ObjPtr<mirror::Object>(orig)->VisitReferences(visitor, visitor);
 
-  if (kBitstringSubtypeCheckEnabled && compile_app_image_) {
+  if (kBitstringSubtypeCheckEnabled && compiler_options_.IsAppImage()) {
     // When we call SubtypeCheck::EnsureInitialize, it Assigns new bitstring
     // values to the parent of that class.
     //
@@ -3102,7 +3109,7 @@ void ImageWriter::FixupDexCache(DexCache* orig_dex_cache, DexCache* copy_dex_cac
 const uint8_t* ImageWriter::GetOatAddress(StubType type) const {
   DCHECK_LE(type, StubType::kLast);
   // If we are compiling an app image, we need to use the stubs of the boot image.
-  if (compile_app_image_) {
+  if (!compiler_options_.IsBootImage()) {
     // Use the current image pointers.
     const std::vector<gc::space::ImageSpace*>& image_spaces =
         Runtime::Current()->GetHeap()->GetBootImageSpaces();
@@ -3352,7 +3359,7 @@ void ImageWriter::UpdateOatFileLayout(size_t oat_index,
   cur_image_info.oat_data_begin_ = cur_image_info.oat_file_begin_ + oat_data_offset;
   cur_image_info.oat_size_ = oat_data_size;
 
-  if (compile_app_image_) {
+  if (compiler_options_.IsAppImage()) {
     CHECK_EQ(oat_filenames_.size(), 1u) << "App image should have no next image.";
     return;
   }
@@ -3391,7 +3398,6 @@ void ImageWriter::UpdateOatFileHeader(size_t oat_index, const OatHeader& oat_hea
 ImageWriter::ImageWriter(
     const CompilerOptions& compiler_options,
     uintptr_t image_begin,
-    bool compile_app_image,
     ImageHeader::StorageMode image_storage_mode,
     const std::vector<const char*>& oat_filenames,
     const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
@@ -3399,7 +3405,6 @@ ImageWriter::ImageWriter(
     : compiler_options_(compiler_options),
       global_image_begin_(reinterpret_cast<uint8_t*>(image_begin)),
       image_objects_offset_begin_(0),
-      compile_app_image_(compile_app_image),
       target_ptr_size_(InstructionSetPointerSize(compiler_options.GetInstructionSet())),
       image_infos_(oat_filenames.size()),
       dirty_methods_(0u),
@@ -3409,9 +3414,11 @@ ImageWriter::ImageWriter(
       oat_filenames_(oat_filenames),
       dex_file_oat_index_map_(dex_file_oat_index_map),
       dirty_image_objects_(dirty_image_objects) {
+  DCHECK(compiler_options.IsBootImage() || compiler_options.IsAppImage());
   CHECK_NE(image_begin, 0U);
   std::fill_n(image_methods_, arraysize(image_methods_), nullptr);
-  CHECK_EQ(compile_app_image, !Runtime::Current()->GetHeap()->GetBootImageSpaces().empty())
+  CHECK_EQ(compiler_options.IsBootImage(),
+           Runtime::Current()->GetHeap()->GetBootImageSpaces().empty())
       << "Compiling a boot image should occur iff there are no boot image spaces loaded";
 }
 
