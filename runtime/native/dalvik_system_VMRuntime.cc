@@ -29,6 +29,7 @@ extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #include "arch/instruction_set.h"
 #include "art_method-inl.h"
 #include "base/enums.h"
+#include "base/sdk_version.h"
 #include "class_linker-inl.h"
 #include "common_throws.h"
 #include "debugger.h"
@@ -256,12 +257,15 @@ static void VMRuntime_setTargetSdkVersionNative(JNIEnv*, jobject, jint target_sd
   // where workarounds can be enabled.
   // Note that targetSdkVersion may be CUR_DEVELOPMENT (10000).
   // Note that targetSdkVersion may be 0, meaning "current".
-  Runtime::Current()->SetTargetSdkVersion(target_sdk_version);
+  uint32_t uint_target_sdk_version =
+      target_sdk_version <= 0 ? static_cast<uint32_t>(SdkVersion::kUnset)
+                              : static_cast<uint32_t>(target_sdk_version);
+  Runtime::Current()->SetTargetSdkVersion(uint_target_sdk_version);
 
 #ifdef ART_TARGET_ANDROID
   // This part is letting libc/dynamic linker know about current app's
   // target sdk version to enable compatibility workarounds.
-  android_set_application_target_sdk_version(static_cast<uint32_t>(target_sdk_version));
+  android_set_application_target_sdk_version(uint_target_sdk_version);
 #endif
 }
 

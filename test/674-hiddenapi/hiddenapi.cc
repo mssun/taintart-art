@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "base/sdk_version.h"
 #include "class_linker.h"
 #include "dex/art_dex_file_loader.h"
 #include "hidden_api.h"
@@ -29,7 +30,7 @@ namespace Test674HiddenApi {
 extern "C" JNIEXPORT void JNICALL Java_Main_init(JNIEnv*, jclass) {
   Runtime* runtime = Runtime::Current();
   runtime->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
-  runtime->SetTargetSdkVersion(static_cast<int32_t>(hiddenapi::detail::SdkCodes::kVersionO_MR1));
+  runtime->SetTargetSdkVersion(static_cast<uint32_t>(SdkVersion::kO_MR1));
   runtime->SetDedupeHiddenApiWarnings(false);
 }
 
@@ -284,7 +285,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_JNI_canInvokeConstructorV(
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_Reflection_getHiddenApiAccessFlags(JNIEnv*, jclass) {
-  return static_cast<jint>(kAccHiddenApiBits);
+  return static_cast<jint>(kAccHiddenapiBits);
 }
 
 }  // namespace Test674HiddenApi

@@ -48,27 +48,6 @@ enum class ApiList {
   kNoList,
 };
 
-static const int kAccFlagsShift = CTZ(kAccHiddenApiBits);
-static_assert(IsPowerOfTwo((kAccHiddenApiBits >> kAccFlagsShift) + 1),
-              "kAccHiddenApiBits are not continuous");
-
-inline ApiList DecodeFromRuntime(uint32_t runtime_access_flags) {
-  // This is used in the fast path, only DCHECK here.
-  DCHECK_EQ(runtime_access_flags & kAccIntrinsic, 0u);
-  uint32_t int_value = (runtime_access_flags & kAccHiddenApiBits) >> kAccFlagsShift;
-  return static_cast<ApiList>(int_value);
-}
-
-inline uint32_t EncodeForRuntime(uint32_t runtime_access_flags, ApiList value) {
-  CHECK_EQ(runtime_access_flags & kAccIntrinsic, 0u);
-
-  uint32_t hidden_api_flags = static_cast<uint32_t>(value) << kAccFlagsShift;
-  CHECK_EQ(hidden_api_flags & ~kAccHiddenApiBits, 0u);
-
-  runtime_access_flags &= ~kAccHiddenApiBits;
-  return runtime_access_flags | hidden_api_flags;
-}
-
 inline bool AreValidFlags(uint32_t flags) {
   return flags <= static_cast<uint32_t>(ApiList::kBlacklist);
 }

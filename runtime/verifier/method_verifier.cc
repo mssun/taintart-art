@@ -28,6 +28,7 @@
 #include "base/indenter.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/mutex-inl.h"
+#include "base/sdk_version.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
@@ -3677,9 +3678,10 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   // Note: we do this for unresolved classes to trigger re-verification at runtime.
   if (C == CheckAccess::kYes &&
       result->IsNonZeroReferenceTypes() &&
-      (api_level_ >= 28u || !result->IsUnresolvedTypes())) {
+      (IsSdkVersionSetAndAtLeast(api_level_, SdkVersion::kP) || !result->IsUnresolvedTypes())) {
     const RegType& referrer = GetDeclaringClass();
-    if ((api_level_ >= 28u || !referrer.IsUnresolvedTypes()) && !referrer.CanAccess(*result)) {
+    if ((IsSdkVersionSetAndAtLeast(api_level_, SdkVersion::kP) || !referrer.IsUnresolvedTypes()) &&
+        !referrer.CanAccess(*result)) {
       Fail(VERIFY_ERROR_ACCESS_CLASS) << "(possibly) illegal class access: '"
                                       << referrer << "' -> '" << *result << "'";
     }
@@ -4562,7 +4564,9 @@ ArtField* MethodVerifier::GetStaticField(int field_idx) {
   }
   if (klass_type.IsUnresolvedTypes()) {
     // Accessibility checks depend on resolved fields.
-    DCHECK(klass_type.Equals(GetDeclaringClass()) || !failures_.empty() || api_level_ < 28u);
+    DCHECK(klass_type.Equals(GetDeclaringClass()) ||
+           !failures_.empty() ||
+           IsSdkVersionSetAndLessThan(api_level_, SdkVersion::kP));
 
     return nullptr;  // Can't resolve Class so no more to do here, will do checking at runtime.
   }
@@ -4603,7 +4607,9 @@ ArtField* MethodVerifier::GetInstanceField(const RegType& obj_type, int field_id
   }
   if (klass_type.IsUnresolvedTypes()) {
     // Accessibility checks depend on resolved fields.
-    DCHECK(klass_type.Equals(GetDeclaringClass()) || !failures_.empty() || api_level_ < 28u);
+    DCHECK(klass_type.Equals(GetDeclaringClass()) ||
+           !failures_.empty() ||
+           IsSdkVersionSetAndLessThan(api_level_, SdkVersion::kP));
 
     return nullptr;  // Can't resolve Class so no more to do here
   }
@@ -4739,7 +4745,7 @@ void MethodVerifier::VerifyISFieldAccess(const Instruction* inst, const RegType&
       DCHECK(!can_load_classes_ || self_->IsExceptionPending());
       self_->ClearException();
     }
-  } else if (api_level_ >= 28u) {
+  } else if (IsSdkVersionSetAndAtLeast(api_level_, SdkVersion::kP)) {
     // If we don't have the field (it seems we failed resolution) and this is a PUT, we need to
     // redo verification at runtime as the field may be final, unless the field id shows it's in
     // the same class.
