@@ -22,6 +22,11 @@ art_cc_binary {
         darwin: {
             enabled: false,
         },
+        linux_bionic: {
+            sanitize: {
+                address: false,
+            },
+        },
     },
     device_supported: false,
 
