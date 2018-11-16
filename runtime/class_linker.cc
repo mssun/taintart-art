@@ -2515,6 +2515,35 @@ ClassPathEntry FindInClassPath(const char* descriptor,
   return ClassPathEntry(nullptr, nullptr);
 }
 
+bool ClassLinker::FindClassInSharedLibraries(ScopedObjectAccessAlreadyRunnable& soa,
+                                             Thread* self,
+                                             const char* descriptor,
+                                             size_t hash,
+                                             Handle<mirror::ClassLoader> class_loader,
+                                             /*out*/ ObjPtr<mirror::Class>* result) {
+  ArtField* field =
+      jni::DecodeArtField(WellKnownClasses::dalvik_system_BaseDexClassLoader_sharedLibraryLoaders);
+  ObjPtr<mirror::Object> raw_shared_libraries = field->GetObject(class_loader.Get());
+  if (raw_shared_libraries == nullptr) {
+    return true;
+  }
+
+  StackHandleScope<2> hs(self);
+  Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries(
+      hs.NewHandle(raw_shared_libraries->AsObjectArray<mirror::ClassLoader>()));
+  MutableHandle<mirror::ClassLoader> temp_loader = hs.NewHandle<mirror::ClassLoader>(nullptr);
+  for (int32_t i = 0; i < shared_libraries->GetLength(); ++i) {
+    temp_loader.Assign(shared_libraries->Get(i));
+    if (!FindClassInBaseDexClassLoader(soa, self, descriptor, hash, temp_loader, result)) {
+      return false;  // One of the shared libraries is not supported.
+    }
+    if (*result != nullptr) {
+      return true;  // Found the class up the chain.
+    }
+  }
+  return true;
+}
+
 bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnable& soa,
                                                 Thread* self,
                                                 const char* descriptor,
@@ -2530,6 +2559,7 @@ bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnabl
   if (IsPathOrDexClassLoader(soa, class_loader)) {
     // For regular path or dex class loader the search order is:
     //    - parent
+    //    - shared libraries
     //    - class loader dex files
 
     // Handles as RegisterDexFile may allocate dex caches (and cause thread suspension).
@@ -2542,6 +2572,13 @@ bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnabl
       return true;  // Found the class up the chain.
     }
 
+    if (!FindClassInSharedLibraries(soa, self, descriptor, hash, class_loader, result)) {
+      return false;  // One of the shared library loader is not supported.
+    }
+    if (*result != nullptr) {
+      return true;  // Found the class in a shared library.
+    }
+
     // Search the current class loader classpath.
     *result = FindClassInBaseDexClassLoaderClassPath(soa, descriptor, hash, class_loader);
     return true;
@@ -2550,11 +2587,19 @@ bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnabl
   if (IsDelegateLastClassLoader(soa, class_loader)) {
     // For delegate last, the search order is:
     //    - boot class path
+    //    - shared libraries
     //    - class loader dex files
     //    - parent
     *result = FindClassInBootClassLoaderClassPath(self, descriptor, hash);
     if (*result != nullptr) {
       return true;  // The class is part of the boot class path.
+    }
+
+    if (!FindClassInSharedLibraries(soa, self, descriptor, hash, class_loader, result)) {
+      return false;  // One of the shared library loader is not supported.
+    }
+    if (*result != nullptr) {
+      return true;  // Found the class in a shared library.
     }
 
     *result = FindClassInBaseDexClassLoaderClassPath(soa, descriptor, hash, class_loader);
