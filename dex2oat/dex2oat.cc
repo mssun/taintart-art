@@ -1400,7 +1400,8 @@ class Dex2Oat final {
         MemMap input_file = zip_entry->MapDirectlyOrExtract(
             VdexFile::kVdexNameInDmFile,
             kDexMetadata,
-            &error_msg);
+            &error_msg,
+            alignof(VdexFile));
         if (!input_file.IsValid()) {
           LOG(WARNING) << "Could not open vdex file in DexMetadata archive: " << error_msg;
         } else {

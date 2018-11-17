@@ -1197,7 +1197,8 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::OpenSource(
     }
 
     // TODO(calin) pass along file names to assist with debugging.
-    MemMap map = zip_entry->MapDirectlyOrExtract(kDexMetadataProfileEntry, "profile file", error);
+    MemMap map = zip_entry->MapDirectlyOrExtract(
+        kDexMetadataProfileEntry, "profile file", error, alignof(ProfileSource));
 
     if (map.IsValid()) {
       source->reset(ProfileSource::Create(std::move(map)));
