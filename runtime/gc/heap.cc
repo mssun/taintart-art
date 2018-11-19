@@ -1062,6 +1062,14 @@ void Heap::RemoveSpace(space::Space* space) {
   }
 }
 
+uint64_t Heap::GetTotalGcCpuTime() {
+  uint64_t sum = 0;
+  for (auto& collector : garbage_collectors_) {
+    sum += collector->GetTotalCpuTime();
+  }
+  return sum;
+}
+
 void Heap::DumpGcPerformanceInfo(std::ostream& os) {
   // Dump cumulative timings.
   os << "Dumping cumulative Gc timings\n";
