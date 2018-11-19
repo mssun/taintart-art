@@ -765,7 +765,7 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
   ScopedArenaVector<uint8_t> stack_map = codegen->BuildStackMaps(code_item_for_osr_check);
 
   CompiledMethod* compiled_method = CompiledMethod::SwapAllocCompiledMethod(
-      GetCompilerDriver(),
+      GetCompilerDriver()->GetCompiledMethodStorage(),
       codegen->GetInstructionSet(),
       code_allocator->GetMemory(),
       ArrayRef<const uint8_t>(stack_map),
@@ -1222,7 +1222,7 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
   ScopedArenaVector<uint8_t> stack_map = CreateJniStackMap(&stack_map_allocator,
                                                            jni_compiled_method);
   return CompiledMethod::SwapAllocCompiledMethod(
-      GetCompilerDriver(),
+      GetCompilerDriver()->GetCompiledMethodStorage(),
       jni_compiled_method.GetInstructionSet(),
       jni_compiled_method.GetCode(),
       ArrayRef<const uint8_t>(stack_map),

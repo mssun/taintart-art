@@ -614,7 +614,7 @@ CompiledMethod* DexToDexCompiler::CompileMethod(
     instruction_set = InstructionSet::kArm;
   }
   CompiledMethod* ret = CompiledMethod::SwapAllocCompiledMethod(
-      driver_,
+      driver_->GetCompiledMethodStorage(),
       instruction_set,
       ArrayRef<const uint8_t>(),                   // no code
       ArrayRef<const uint8_t>(quicken_data),       // vmap_table
@@ -665,7 +665,8 @@ void DexToDexCompiler::UnquickenConflictingMethods() {
           // There is up to one compiled method for each method ref. Releasing it leaves the
           // deduped data intact, this means its safe to do even when other threads might be
           // compiling.
-          CompiledMethod::ReleaseSwapAllocatedCompiledMethod(driver_, method);
+          CompiledMethod::ReleaseSwapAllocatedCompiledMethod(driver_->GetCompiledMethodStorage(),
+                                                             method);
         }
       }
     }
