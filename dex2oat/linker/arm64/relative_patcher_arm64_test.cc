@@ -18,6 +18,7 @@
 
 #include "arch/arm64/instruction_set_features_arm64.h"
 #include "base/casts.h"
+#include "driver/compiler_options.h"
 #include "linker/relative_patcher_test.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"
@@ -175,8 +176,8 @@ class Arm64RelativePatcherTest : public RelativePatcherTest {
                                     /*out*/ std::string* debug_name = nullptr) {
     OptimizingUnitTestHelper helper;
     HGraph* graph = helper.CreateGraph();
-    std::string error_msg;
-    arm64::CodeGeneratorARM64 codegen(graph, *compiler_options_);
+    CompilerOptions compiler_options;
+    arm64::CodeGeneratorARM64 codegen(graph, compiler_options);
     ArenaVector<uint8_t> code(helper.GetAllocator()->Adapter());
     codegen.EmitThunkCode(patch, &code, debug_name);
     return std::vector<uint8_t>(code.begin(), code.end());

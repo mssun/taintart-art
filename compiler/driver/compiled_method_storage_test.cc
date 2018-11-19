@@ -19,24 +19,13 @@
 #include <gtest/gtest.h>
 
 #include "compiled_method-inl.h"
-#include "compiler_driver.h"
-#include "compiler_options.h"
-#include "dex/verification_results.h"
 
 namespace art {
 
 TEST(CompiledMethodStorage, Deduplicate) {
-  CompilerOptions compiler_options;
-  VerificationResults verification_results(&compiler_options);
-  CompilerDriver driver(&compiler_options,
-                        &verification_results,
-                        Compiler::kOptimizing,
-                        /* image_classes */ nullptr,
-                        /* thread_count */ 1u,
-                        /* swap_fd */ -1);
-  CompiledMethodStorage* storage = driver.GetCompiledMethodStorage();
+  CompiledMethodStorage storage(/* swap_fd */ -1);
 
-  ASSERT_TRUE(storage->DedupeEnabled());  // The default.
+  ASSERT_TRUE(storage.DedupeEnabled());  // The default.
 
   const uint8_t raw_code1[] = { 1u, 2u, 3u };
   const uint8_t raw_code2[] = { 4u, 3u, 2u, 1u };
@@ -76,7 +65,7 @@ TEST(CompiledMethodStorage, Deduplicate) {
       for (auto&& f : cfi_info) {
         for (auto&& p : patches) {
           compiled_methods.push_back(CompiledMethod::SwapAllocCompiledMethod(
-              &driver, InstructionSet::kNone, c, v, f, p));
+              &storage, InstructionSet::kNone, c, v, f, p));
         }
       }
     }
@@ -105,7 +94,7 @@ TEST(CompiledMethodStorage, Deduplicate) {
     }
   }
   for (CompiledMethod* method : compiled_methods) {
-    CompiledMethod::ReleaseSwapAllocatedCompiledMethod(&driver, method);
+    CompiledMethod::ReleaseSwapAllocatedCompiledMethod(&storage, method);
   }
 }
 
