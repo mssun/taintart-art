@@ -284,6 +284,25 @@ TEST_F(ClassLoaderContextTest, ParseEnclosingSharedLibraries) {
   VerifyClassLoaderSharedLibraryPCL(context.get(), 0, 0, "s1.dex");
 }
 
+TEST_F(ClassLoaderContextTest, ParseComplexSharedLibraries1) {
+  std::unique_ptr<ClassLoaderContext> context = ClassLoaderContext::Create(
+      "PCL[]{PCL[s4.dex]{PCL[s5.dex]{PCL[s6.dex]}#PCL[s6.dex]}}");
+  VerifyContextSize(context.get(), 1);
+  VerifyClassLoaderSharedLibraryPCL(context.get(), 0, 0, "s4.dex");
+}
+
+TEST_F(ClassLoaderContextTest, ParseComplexSharedLibraries2) {
+  std::unique_ptr<ClassLoaderContext> context = ClassLoaderContext::Create(
+      "PCL[]{PCL[s1.dex]{PCL[s2.dex]}#PCL[s2.dex]#"
+      "PCL[s3.dex]#PCL[s4.dex]{PCL[s5.dex]{PCL[s6.dex]}#PCL[s6.dex]}#PCL[s5.dex]{PCL[s6.dex]}}");
+  VerifyContextSize(context.get(), 1);
+  VerifyClassLoaderSharedLibraryPCL(context.get(), 0, 0, "s1.dex");
+  VerifyClassLoaderSharedLibraryPCL(context.get(), 0, 1, "s2.dex");
+  VerifyClassLoaderSharedLibraryPCL(context.get(), 0, 2, "s3.dex");
+  VerifyClassLoaderSharedLibraryPCL(context.get(), 0, 3, "s4.dex");
+  VerifyClassLoaderSharedLibraryPCL(context.get(), 0, 4, "s5.dex");
+}
+
 TEST_F(ClassLoaderContextTest, ParseValidEmptyContextDLC) {
   std::unique_ptr<ClassLoaderContext> context =
       ClassLoaderContext::Create("DLC[]");
@@ -316,6 +335,10 @@ TEST_F(ClassLoaderContextTest, ParseInvalidValidContexts) {
   ASSERT_TRUE(nullptr == ClassLoaderContext::Create("DLC[s4.dex]}"));
   ASSERT_TRUE(nullptr == ClassLoaderContext::Create("DLC[s4.dex]{"));
   ASSERT_TRUE(nullptr == ClassLoaderContext::Create("DLC{DLC[s4.dex]}"));
+  ASSERT_TRUE(nullptr == ClassLoaderContext::Create("PCL{##}"));
+  ASSERT_TRUE(nullptr == ClassLoaderContext::Create("PCL{PCL[s4.dex]#}"));
+  ASSERT_TRUE(nullptr == ClassLoaderContext::Create("PCL{PCL[s4.dex]##}"));
+  ASSERT_TRUE(nullptr == ClassLoaderContext::Create("PCL{PCL[s4.dex]{PCL[s3.dex]}#}"));
 }
 
 TEST_F(ClassLoaderContextTest, OpenInvalidDexFiles) {
