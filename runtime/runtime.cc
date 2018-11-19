@@ -278,6 +278,7 @@ Runtime::Runtime()
       // Initially assume we perceive jank in case the process state is never updated.
       process_state_(kProcessStateJankPerceptible),
       zygote_no_threads_(false),
+      process_cpu_start_time_(ProcessCpuNanoTime()),
       verifier_logging_threshold_ms_(100) {
   static_assert(Runtime::kCalleeSaveSize ==
                     static_cast<uint32_t>(CalleeSaveType::kLastCalleeSaveType), "Unexpected size");
@@ -321,11 +322,20 @@ Runtime::~Runtime() {
   }
 
   if (dump_gc_performance_on_shutdown_) {
+    process_cpu_end_time_ = ProcessCpuNanoTime();
     ScopedLogSeverity sls(LogSeverity::INFO);
     // This can't be called from the Heap destructor below because it
     // could call RosAlloc::InspectAll() which needs the thread_list
     // to be still alive.
     heap_->DumpGcPerformanceInfo(LOG_STREAM(INFO));
+
+    uint64_t process_cpu_time = process_cpu_end_time_ - process_cpu_start_time_;
+    uint64_t gc_cpu_time = heap_->GetTotalGcCpuTime();
+    float ratio = static_cast<float>(gc_cpu_time) / process_cpu_time;
+    LOG_STREAM(INFO) << "GC CPU time " << PrettyDuration(gc_cpu_time)
+        << " out of process CPU time " << PrettyDuration(process_cpu_time)
+        << " (" << ratio << ")"
+        << "\n";
   }
 
   if (jit_ != nullptr) {
