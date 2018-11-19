@@ -41,6 +41,7 @@ cc_defaults {
     header_libs: [
         "javavm_headers",
         "dt_fd_forward_export",
+        "art_libartbase_headers",  // For strlcpy emulation.
     ],
     multilib: {
         lib32: {
