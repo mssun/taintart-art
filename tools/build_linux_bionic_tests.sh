@@ -29,6 +29,7 @@ fi
 source build/envsetup.sh >&/dev/null # for get_build_var
 
 out_dir=$(get_build_var OUT_DIR)
+host_out=$(get_build_var HOST_OUT)
 
 # TODO(b/31559095) Figure out a better way to do this.
 #
@@ -80,8 +81,8 @@ bionic_targets=(
   $soong_out/bin/hiddenapi
   $soong_out/bin/hprof-conv
   $soong_out/bin/timeout_dumper
-  $(find $ANDROID_HOST_OUT/lib64 -type f | sed "s:$ANDROID_HOST_OUT:$soong_out:g")
-  $(find $ANDROID_HOST_OUT/nativetest64 -type f | sed "s:$ANDROID_HOST_OUT:$soong_out:g"))
+  $(find $host_out/lib64 -type f | sed "s:$host_out:$soong_out:g")
+  $(find $host_out/nativetest64 -type f | sed "s:$host_out:$soong_out:g"))
 
 echo building ${bionic_targets[*]}
 
