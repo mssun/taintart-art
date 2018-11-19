@@ -1064,7 +1064,7 @@ void Heap::RemoveSpace(space::Space* space) {
 
 uint64_t Heap::GetTotalGcCpuTime() {
   uint64_t sum = 0;
-  for (auto& collector : garbage_collectors_) {
+  for (auto* collector : garbage_collectors_) {
     sum += collector->GetTotalCpuTime();
   }
   return sum;
@@ -1076,7 +1076,7 @@ void Heap::DumpGcPerformanceInfo(std::ostream& os) {
   uint64_t total_duration = 0;
   // Dump cumulative loggers for each GC type.
   uint64_t total_paused_time = 0;
-  for (auto& collector : garbage_collectors_) {
+  for (auto* collector : garbage_collectors_) {
     total_duration += collector->GetCumulativeTimings().GetTotalNs();
     total_paused_time += collector->GetTotalPausedTimeNs();
     collector->DumpPerformanceInfo(os);
@@ -1136,7 +1136,7 @@ void Heap::DumpGcPerformanceInfo(std::ostream& os) {
 }
 
 void Heap::ResetGcPerformanceInfo() {
-  for (auto& collector : garbage_collectors_) {
+  for (auto* collector : garbage_collectors_) {
     collector->ResetMeasurements();
   }
   total_bytes_freed_ever_ = 0;
@@ -1157,7 +1157,7 @@ void Heap::ResetGcPerformanceInfo() {
 
 uint64_t Heap::GetGcCount() const {
   uint64_t gc_count = 0U;
-  for (auto& collector : garbage_collectors_) {
+  for (auto* collector : garbage_collectors_) {
     gc_count += collector->GetCumulativeTimings().GetIterations();
   }
   return gc_count;
@@ -1165,7 +1165,7 @@ uint64_t Heap::GetGcCount() const {
 
 uint64_t Heap::GetGcTime() const {
   uint64_t gc_time = 0U;
-  for (auto& collector : garbage_collectors_) {
+  for (auto* collector : garbage_collectors_) {
     gc_time += collector->GetCumulativeTimings().GetTotalNs();
   }
   return gc_time;
@@ -3505,7 +3505,7 @@ bool Heap::IsMovableObject(ObjPtr<mirror::Object> obj) const {
 }
 
 collector::GarbageCollector* Heap::FindCollectorByGcType(collector::GcType gc_type) {
-  for (const auto& collector : garbage_collectors_) {
+  for (auto* collector : garbage_collectors_) {
     if (collector->GetCollectorType() == collector_type_ &&
         collector->GetGcType() == gc_type) {
       return collector;
