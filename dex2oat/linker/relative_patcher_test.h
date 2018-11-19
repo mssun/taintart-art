@@ -17,19 +17,17 @@
 #ifndef ART_DEX2OAT_LINKER_RELATIVE_PATCHER_TEST_H_
 #define ART_DEX2OAT_LINKER_RELATIVE_PATCHER_TEST_H_
 
+#include <gtest/gtest.h>
+
 #include "arch/instruction_set.h"
 #include "arch/instruction_set_features.h"
 #include "base/array_ref.h"
 #include "base/globals.h"
 #include "base/macros.h"
-#include "common_compiler_test.h"
 #include "compiled_method-inl.h"
-#include "dex/verification_results.h"
 #include "dex/method_reference.h"
 #include "dex/string_reference.h"
-#include "driver/compiler_driver.h"
-#include "driver/compiler_options.h"
-#include "gtest/gtest.h"
+#include "driver/compiled_method_storage.h"
 #include "linker/relative_patcher.h"
 #include "linker/vector_output_stream.h"
 #include "oat.h"
@@ -39,10 +37,12 @@ namespace art {
 namespace linker {
 
 // Base class providing infrastructure for architecture-specific tests.
-class RelativePatcherTest : public CommonCompilerTest {
+class RelativePatcherTest : public testing::Test {
  protected:
   RelativePatcherTest(InstructionSet instruction_set, const std::string& variant)
-      : variant_(variant),
+      : storage_(/*swap_fd=*/ -1),
+        instruction_set_(instruction_set),
+        instruction_set_features_(nullptr),
         method_offset_map_(),
         patcher_(nullptr),
         bss_begin_(0u),
@@ -51,23 +51,29 @@ class RelativePatcherTest : public CommonCompilerTest {
         patched_code_(),
         output_(),
         out_(nullptr) {
-    // Override CommonCompilerTest's defaults.
-    instruction_set_ = instruction_set;
-    number_of_threads_ = 1u;
+    std::string error_msg;
+    instruction_set_features_ =
+        InstructionSetFeatures::FromVariant(instruction_set, variant, &error_msg);
+    CHECK(instruction_set_features_ != nullptr) << error_msg;
+
     patched_code_.reserve(16 * KB);
   }
 
   void SetUp() override {
-    OverrideInstructionSetFeatures(instruction_set_, variant_);
-    CommonCompilerTest::SetUp();
-
     Reset();
   }
 
   void TearDown() override {
+    thunk_provider_.Reset();
     compiled_methods_.clear();
     patcher_.reset();
-    CommonCompilerTest::TearDown();
+    bss_begin_ = 0u;
+    string_index_to_offset_map_.clear();
+    compiled_method_refs_.clear();
+    compiled_methods_.clear();
+    patched_code_.clear();
+    output_.clear();
+    out_.reset();
   }
 
   // Reset the helper to start another test. Creating and tearing down the Runtime is expensive,
@@ -75,8 +81,8 @@ class RelativePatcherTest : public CommonCompilerTest {
   void Reset() {
     thunk_provider_.Reset();
     method_offset_map_.map.clear();
-    patcher_ = RelativePatcher::Create(compiler_options_->GetInstructionSet(),
-                                       compiler_options_->GetInstructionSetFeatures(),
+    patcher_ = RelativePatcher::Create(instruction_set_,
+                                       instruction_set_features_.get(),
                                        &thunk_provider_,
                                        &method_offset_map_);
     bss_begin_ = 0u;
@@ -99,7 +105,7 @@ class RelativePatcherTest : public CommonCompilerTest {
       const ArrayRef<const LinkerPatch>& patches = ArrayRef<const LinkerPatch>()) {
     compiled_method_refs_.push_back(method_ref);
     compiled_methods_.emplace_back(new CompiledMethod(
-        compiler_driver_.get(),
+        &storage_,
         instruction_set_,
         code,
         /* vmap_table */ ArrayRef<const uint8_t>(),
@@ -351,7 +357,10 @@ class RelativePatcherTest : public CommonCompilerTest {
   static const uint32_t kTrampolineSize = 4u;
   static const uint32_t kTrampolineOffset = 0u;
 
-  std::string variant_;
+  CompiledMethodStorage storage_;
+  InstructionSet instruction_set_;
+  std::unique_ptr<const InstructionSetFeatures> instruction_set_features_;
+
   ThunkProvider thunk_provider_;
   MethodOffsetMap method_offset_map_;
   std::unique_ptr<RelativePatcher> patcher_;
