@@ -23,44 +23,28 @@
 
 namespace art {
 
-namespace {
-
-class TestVisitor : public StackVisitor {
- public:
-  TestVisitor(const ScopedObjectAccess& soa, Context* context, jobject expected_value)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(soa.Self(), context, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        expected_value_(expected_value),
-        found_(false),
-        soa_(soa) {}
-
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    ArtMethod* m = GetMethod();
-    std::string m_name(m->GetName());
-
-    if (m_name == "testCase") {
-      found_ = true;
-      uint32_t value = 0;
-      CHECK(GetVReg(m, 1, kReferenceVReg, &value));
-      CHECK_EQ(reinterpret_cast<mirror::Object*>(value),
-               soa_.Decode<mirror::Object>(expected_value_).Ptr());
-    }
-    return true;
-  }
-
-  jobject expected_value_;
-  bool found_;
-  const ScopedObjectAccess& soa_;
-};
-
-}  // namespace
-
 extern "C" JNIEXPORT void JNICALL Java_Main_lookForMyRegisters(JNIEnv*, jclass, jobject value) {
   ScopedObjectAccess soa(Thread::Current());
   std::unique_ptr<Context> context(Context::Create());
-  TestVisitor visitor(soa, context.get(), value);
-  visitor.WalkStack();
-  CHECK(visitor.found_);
+  bool found = false;
+  StackVisitor::WalkStack(
+      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        ArtMethod* m = stack_visitor->GetMethod();
+        std::string m_name(m->GetName());
+
+        if (m_name == "testCase") {
+          found = true;
+          uint32_t stack_value = 0;
+          CHECK(stack_visitor->GetVReg(m, 1, kReferenceVReg, &stack_value));
+          CHECK_EQ(reinterpret_cast<mirror::Object*>(stack_value),
+                   soa.Decode<mirror::Object>(value).Ptr());
+        }
+        return true;
+      },
+      soa.Self(),
+      context.get(),
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
+  CHECK(found);
 }
 
 }  // namespace art
