@@ -276,7 +276,7 @@ CompilerDriver::~CompilerDriver() {
   compiled_methods_.Visit([this](const DexFileReference& ref ATTRIBUTE_UNUSED,
                                  CompiledMethod* method) {
     if (method != nullptr) {
-      CompiledMethod::ReleaseSwapAllocatedCompiledMethod(this, method);
+      CompiledMethod::ReleaseSwapAllocatedCompiledMethod(GetCompiledMethodStorage(), method);
     }
   });
   compiler_->UnInit();
