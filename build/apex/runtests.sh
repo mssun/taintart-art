@@ -79,7 +79,8 @@ function finish {
 
 trap finish EXIT
 
-apex_module="com.android.runtime"
+# TODO: Also exercise the Release Runtime APEX (`com.android.runtime.release`).
+apex_module="com.android.runtime.debug"
 
 # Build the Android Runtime APEX package (optional).
 $build_apex_p && say "Building package" && make "$apex_module"
@@ -190,10 +191,8 @@ check_library libprofiled.so
 #   libsigchain.so
 #   libtombstoned_client.so
 #   libunwindstack.so
-#   libvixl-arm64.so
-#   libvixl-arm.so
-#   libvixld-arm64.so
-#   libvixld-arm.so
+#   libvixl.so
+#   libvixld.so
 #   ...
 #
 # ?
