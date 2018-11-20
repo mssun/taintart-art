@@ -104,7 +104,7 @@
     FETCH_ADVANCE_INST 5                @ advance rPC, load rINST
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[AA]
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vAA<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vAA<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_const_wide_16():
@@ -116,7 +116,7 @@
     CLEAR_SHADOW_PAIR r3, r2, lr        @ Zero out the shadow regs
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[AA]
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r3, {r0-r1}                 @ vAA<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r3    @ vAA<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_const_wide_32():
@@ -130,7 +130,7 @@
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[AA]
     mov     r1, r0, asr #31             @ r1<- ssssssss
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r3, {r0-r1}                 @ vAA<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r3    @ vAA<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_const_wide_high16():
@@ -143,7 +143,7 @@
     CLEAR_SHADOW_PAIR r3, r0, r2        @ Zero shadow regs
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[AA]
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r3, {r0-r1}                 @ vAA<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r3    @ vAA<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_monitor_enter():
@@ -279,7 +279,7 @@
     ldmia   r3, {r0-r1}                 @ r0/r1<- retval.j
     CLEAR_SHADOW_PAIR rINST, ip, lr     @ Zero out the shadow regs
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
-    stmia   r2, {r0-r1}                 @ fp[AA]<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r2    @ fp[AA]<- r0/r1
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     GOTO_OPCODE ip                      @ jump to next instruction
 
@@ -290,11 +290,11 @@
     ubfx    rINST, rINST, #8, #4        @ rINST<- A
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[B]
     VREG_INDEX_TO_ADDR r2, rINST        @ r2<- &fp[A]
-    ldmia   r3, {r0-r1}                 @ r0/r1<- fp[B]
+    GET_VREG_WIDE_BY_ADDR r0, r1, r3    @ r0/r1<- fp[B]
     CLEAR_SHADOW_PAIR rINST, ip, lr     @ Zero out the shadow regs
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r2, {r0-r1}                 @ fp[A]<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r2    @ fp[A]<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_move_wide_16():
@@ -304,10 +304,10 @@
     FETCH r2, 1                         @ r2<- AAAA
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[BBBB]
     VREG_INDEX_TO_ADDR lr, r2           @ r2<- &fp[AAAA]
-    ldmia   r3, {r0-r1}                 @ r0/r1<- fp[BBBB]
+    GET_VREG_WIDE_BY_ADDR r0, r1, r3    @ r0/r1<- fp[BBBB]
     FETCH_ADVANCE_INST 3                @ advance rPC, load rINST
     CLEAR_SHADOW_PAIR r2, r3, ip        @ Zero out the shadow regs
-    stmia   lr, {r0-r1}                 @ fp[AAAA]<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, lr    @ fp[AAAA]<- r0/r1
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     GOTO_OPCODE ip                      @ jump to next instruction
 
@@ -318,11 +318,11 @@
     mov     rINST, rINST, lsr #8        @ rINST<- AA
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[BBBB]
     VREG_INDEX_TO_ADDR r2, rINST        @ r2<- &fp[AA]
-    ldmia   r3, {r0-r1}                 @ r0/r1<- fp[BBBB]
+    GET_VREG_WIDE_BY_ADDR r0, r1, r3    @ r0/r1<- fp[BBBB]
     CLEAR_SHADOW_PAIR rINST, ip, lr     @ Zero out the shadow regs
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r2, {r0-r1}                 @ fp[AA]<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r2    @ fp[AA]<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_nop():

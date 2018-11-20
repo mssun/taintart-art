@@ -298,6 +298,25 @@ unspecified registers or condition codes.
     add     \reg, rFP, \vreg, lsl #2   /* WARNING/FIXME: handle shadow frame vreg zero if store */
 .endm
 
+.macro GET_VREG_WIDE_BY_ADDR reg0, reg1, addr
+    ldmia \addr, {\reg0, \reg1}
+.endm
+.macro SET_VREG_WIDE_BY_ADDR reg0, reg1, addr
+    stmia \addr, {\reg0, \reg1}
+.endm
+.macro GET_VREG_FLOAT_BY_ADDR reg, addr
+    flds \reg, [\addr]
+.endm
+.macro SET_VREG_FLOAT_BY_ADDR reg, addr
+    fsts \reg, [\addr]
+.endm
+.macro GET_VREG_DOUBLE_BY_ADDR reg, addr
+    fldd \reg, [\addr]
+.endm
+.macro SET_VREG_DOUBLE_BY_ADDR reg, addr
+    fstd \reg, [\addr]
+.endm
+
 /*
  * Refresh handler table.
  */

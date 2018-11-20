@@ -157,8 +157,8 @@
     VREG_INDEX_TO_ADDR r9, rINST        @ r9<- &fp[AA]
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &fp[BB]
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[CC]
-    ldmia   r2, {r0-r1}                 @ r0/r1<- vBB/vBB+1
-    ldmia   r3, {r2-r3}                 @ r2/r3<- vCC/vCC+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r2    @ r0/r1<- vBB/vBB+1
+    GET_VREG_WIDE_BY_ADDR r2, r3, r3    @ r2/r3<- vCC/vCC+1
     .if $chkzero
     orrs    ip, r2, r3                  @ second arg (r2-r3) is zero?
     beq     common_errDivideByZero
@@ -168,7 +168,7 @@
     $preinstr                           @ optional op; may set condition codes
     $instr                              @ result<- op, r0-r3 changed
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {$result0,$result1}     @ vAA/vAA+1<- $result0/$result1
+    SET_VREG_WIDE_BY_ADDR $result0,$result1,r9  @ vAA/vAA+1<,  $result0/$result1
     GOTO_OPCODE ip                      @ jump to next instruction
     /* 14-17 instructions */
 
@@ -192,8 +192,8 @@
     ubfx    rINST, rINST, #8, #4        @ rINST<- A
     VREG_INDEX_TO_ADDR r1, r1           @ r1<- &fp[B]
     VREG_INDEX_TO_ADDR r9, rINST        @ r9<- &fp[A]
-    ldmia   r1, {r2-r3}                 @ r2/r3<- vBB/vBB+1
-    ldmia   r9, {r0-r1}                 @ r0/r1<- vAA/vAA+1
+    GET_VREG_WIDE_BY_ADDR r2, r3, r1    @ r2/r3<- vBB/vBB+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r9    @ r0/r1<- vAA/vAA+1
     .if $chkzero
     orrs    ip, r2, r3                  @ second arg (r2-r3) is zero?
     beq     common_errDivideByZero
@@ -203,7 +203,7 @@
     $preinstr                           @ optional op; may set condition codes
     $instr                              @ result<- op, r0-r3 changed
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {$result0,$result1}     @ vAA/vAA+1<- $result0/$result1
+    SET_VREG_WIDE_BY_ADDR $result0,$result1,r9  @ vAA/vAA+1<- $result0/$result1
     GOTO_OPCODE ip                      @ jump to next instruction
     /* 12-15 instructions */
 
@@ -243,7 +243,7 @@
     mov     r3, rINST, lsr #12          @ r3<- B
     ubfx    r9, rINST, #8, #4           @ r9<- A
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[B]
-    ldmia   r3, {r0-r1}                 @ r0/r1<- vB/vB+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r3    @ r0/r1<- vB/vB+1
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     $preinstr                           @ optional op; may set condition codes
     $instr                              @ r0<- op, r0-r3 changed
@@ -265,13 +265,13 @@
     ubfx    rINST, rINST, #8, #4        @ rINST<- A
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[B]
     VREG_INDEX_TO_ADDR r9, rINST        @ r9<- &fp[A]
-    ldmia   r3, {r0-r1}                 @ r0/r1<- vAA
+    GET_VREG_WIDE_BY_ADDR r0, r1, r3    @ r0/r1<- vAA
     CLEAR_SHADOW_PAIR rINST, ip, lr     @ Zero shadow regs
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     $preinstr                           @ optional op; may set condition codes
     $instr                              @ r0/r1<- op, r2-r3 changed
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vAA<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vAA<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
     /* 10-11 instructions */
 
@@ -293,7 +293,7 @@
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     $instr                              @ r0<- op, r0-r3 changed
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vA/vA+1<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vA/vA+1<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
     /* 9-10 instructions */
 
@@ -345,8 +345,8 @@
     mov     r3, r0, lsr #8              @ r3<- CC
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &fp[BB]
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[CC]
-    ldmia   r2, {r0-r1}                 @ r0/r1<- vBB/vBB+1
-    ldmia   r3, {r2-r3}                 @ r2/r3<- vCC/vCC+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r2    @ r0/r1<- vBB/vBB+1
+    GET_VREG_WIDE_BY_ADDR r2, r3, r3    @ r2/r3<- vCC/vCC+1
     cmp     r0, r2
     sbcs    ip, r1, r3                  @ Sets correct CCs for checking LT (but not EQ/NE)
     mov     ip, #0
@@ -541,8 +541,8 @@
     mov     r3, r0, lsr #8              @ r3<- CC
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &fp[BB]
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[CC]
-    ldmia   r2, {r0-r1}                 @ r0/r1<- vBB/vBB+1
-    ldmia   r3, {r2-r3}                 @ r2/r3<- vCC/vCC+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r2    @ r0/r1<- vBB/vBB+1
+    GET_VREG_WIDE_BY_ADDR r2, r3, r3    @ r2/r3<- vCC/vCC+1
     mul     ip, r2, r1                  @ ip<- ZxW
     umull   r1, lr, r2, r0              @ r1/lr <- ZxX
     mla     r2, r0, r3, ip              @ r2<- YxX + (ZxW)
@@ -552,7 +552,7 @@
     VREG_INDEX_TO_ADDR r0, r0           @ r0<- &fp[AA]
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r0, {r1-r2 }                @ vAA/vAA+1<- r1/r2
+    SET_VREG_WIDE_BY_ADDR r1, r2 , r0   @ vAA/vAA+1<- r1/r2
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_mul_long_2addr():
@@ -569,8 +569,8 @@
     ubfx    r9, rINST, #8, #4           @ r9<- A
     VREG_INDEX_TO_ADDR r1, r1           @ r1<- &fp[B]
     VREG_INDEX_TO_ADDR rINST, r9        @ rINST<- &fp[A]
-    ldmia   r1, {r2-r3}                 @ r2/r3<- vBB/vBB+1
-    ldmia   rINST, {r0-r1}              @ r0/r1<- vAA/vAA+1
+    GET_VREG_WIDE_BY_ADDR r2, r3, r1    @ r2/r3<- vBB/vBB+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, rINST @ r0/r1<- vAA/vAA+1
     mul     ip, r2, r1                  @ ip<- ZxW
     umull   r1, lr, r2, r0              @ r1/lr <- ZxX
     mla     r2, r0, r3, ip              @ r2<- YxX + (ZxW)
@@ -578,7 +578,7 @@
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     add     r2, r2, lr                  @ r2<- r2 + low(ZxW + (YxX))
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r0, {r1-r2}                 @ vAA/vAA+1<- r1/r2
+    SET_VREG_WIDE_BY_ADDR r1, r2, r0    @ vAA/vAA+1<- r1/r2
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_neg_int():
@@ -781,7 +781,7 @@
     mov     r0, r0, lsr #8              @ r0<- CC
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[BB]
     GET_VREG r2, r0                     @ r2<- vCC
-    ldmia   r3, {r0-r1}                 @ r0/r1<- vBB/vBB+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r3    @ r0/r1<- vBB/vBB+1
     CLEAR_SHADOW_PAIR r9, lr, ip        @ Zero out the shadow regs
     and     r2, r2, #63                 @ r2<- r2 & 0x3f
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[AA]
@@ -793,7 +793,7 @@
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     mov     r0, r0, asl r2              @ r0<- r0 << r2
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vAA/vAA+1<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vAA/vAA+1<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_shl_long_2addr():
@@ -808,7 +808,7 @@
     CLEAR_SHADOW_PAIR r9, lr, ip        @ Zero out the shadow regs
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[A]
     and     r2, r2, #63                 @ r2<- r2 & 0x3f
-    ldmia   r9, {r0-r1}                 @ r0/r1<- vAA/vAA+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r9    @ r0/r1<- vAA/vAA+1
     mov     r1, r1, asl r2              @ r1<- r1 << r2
     rsb     r3, r2, #32                 @ r3<- 32 - r2
     orr     r1, r1, r0, lsr r3          @ r1<- r1 | (r0 << (32-r2))
@@ -817,7 +817,7 @@
     movpl   r1, r0, asl ip              @ if r2 >= 32, r1<- r0 << (r2-32)
     mov     r0, r0, asl r2              @ r0<- r0 << r2
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vAA/vAA+1<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vAA/vAA+1<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_shr_int():
@@ -843,7 +843,7 @@
     mov     r0, r0, lsr #8              @ r0<- CC
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[BB]
     GET_VREG r2, r0                     @ r2<- vCC
-    ldmia   r3, {r0-r1}                 @ r0/r1<- vBB/vBB+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r3    @ r0/r1<- vBB/vBB+1
     CLEAR_SHADOW_PAIR r9, lr, ip        @ Zero out the shadow regs
     and     r2, r2, #63                 @ r0<- r0 & 0x3f
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[AA]
@@ -855,7 +855,7 @@
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     mov     r1, r1, asr r2              @ r1<- r1 >> r2
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vAA/vAA+1<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vAA/vAA+1<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_shr_long_2addr():
@@ -870,7 +870,7 @@
     CLEAR_SHADOW_PAIR r9, lr, ip        @ Zero out the shadow regs
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[A]
     and     r2, r2, #63                 @ r2<- r2 & 0x3f
-    ldmia   r9, {r0-r1}                 @ r0/r1<- vAA/vAA+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r9    @ r0/r1<- vAA/vAA+1
     mov     r0, r0, lsr r2              @ r0<- r2 >> r2
     rsb     r3, r2, #32                 @ r3<- 32 - r2
     orr     r0, r0, r1, asl r3          @ r0<- r0 | (r1 << (32-r2))
@@ -879,7 +879,7 @@
     movpl   r0, r1, asr ip              @ if r2 >= 32, r0<-r1 >> (r2-32)
     mov     r1, r1, asr r2              @ r1<- r1 >> r2
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vAA/vAA+1<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vAA/vAA+1<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_sub_int():
@@ -917,7 +917,7 @@
     mov     r0, r0, lsr #8              @ r0<- CC
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[BB]
     GET_VREG r2, r0                     @ r2<- vCC
-    ldmia   r3, {r0-r1}                 @ r0/r1<- vBB/vBB+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r3    @ r0/r1<- vBB/vBB+1
     CLEAR_SHADOW_PAIR r9, lr, ip        @ Zero out the shadow regs
     and     r2, r2, #63                 @ r0<- r0 & 0x3f
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[AA]
@@ -929,7 +929,7 @@
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     mov     r1, r1, lsr r2              @ r1<- r1 >>> r2
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vAA/vAA+1<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vAA/vAA+1<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_ushr_long_2addr():
@@ -944,7 +944,7 @@
     CLEAR_SHADOW_PAIR r9, lr, ip        @ Zero out the shadow regs
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[A]
     and     r2, r2, #63                 @ r2<- r2 & 0x3f
-    ldmia   r9, {r0-r1}                 @ r0/r1<- vAA/vAA+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r9    @ r0/r1<- vAA/vAA+1
     mov     r0, r0, lsr r2              @ r0<- r2 >> r2
     rsb     r3, r2, #32                 @ r3<- 32 - r2
     orr     r0, r0, r1, asl r3          @ r0<- r0 | (r1 << (32-r2))
@@ -953,7 +953,7 @@
     movpl   r0, r1, lsr ip              @ if r2 >= 32, r0<-r1 >>> (r2-32)
     mov     r1, r1, lsr r2              @ r1<- r1 >>> r2
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r0-r1}                 @ vAA/vAA+1<- r0/r1
+    SET_VREG_WIDE_BY_ADDR r0, r1, r9    @ vAA/vAA+1<- r0/r1
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_xor_int():
