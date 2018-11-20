@@ -586,6 +586,16 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
 
+  // Non-GlobalRef version of CreateWellKnownClassLoader
+  ObjPtr<mirror::ClassLoader> CreateWellKnownClassLoader(
+      Thread* self,
+      const std::vector<const DexFile*>& dex_files,
+      Handle<mirror::Class> loader_class,
+      Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries,
+      Handle<mirror::ClassLoader> parent_loader)
+          REQUIRES_SHARED(Locks::mutator_lock_)
+          REQUIRES(!Locks::dex_lock_);
+
   PointerSize GetImagePointerSize() const {
     return image_pointer_size_;
   }

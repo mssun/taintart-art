@@ -1202,6 +1202,17 @@ TEST_F(Dex2oatClassLoaderContextTest, ChainContext) {
   RunTest(context.c_str(), expected_classpath_key.c_str(), true);
 }
 
+TEST_F(Dex2oatClassLoaderContextTest, ContextWithSharedLibrary) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files1 = OpenTestDexFiles("Nested");
+  std::vector<std::unique_ptr<const DexFile>> dex_files2 = OpenTestDexFiles("MultiDex");
+
+  std::string context = "PCL[" + GetTestDexFileName("Nested") + "]" +
+      "{PCL[" + GetTestDexFileName("MultiDex") + "]}";
+  std::string expected_classpath_key = "PCL[" + CreateClassPathWithChecksums(dex_files1) + "]" +
+      "{PCL[" + CreateClassPathWithChecksums(dex_files2) + "]}";
+  RunTest(context.c_str(), expected_classpath_key.c_str(), true);
+}
+
 class Dex2oatDeterminism : public Dex2oatTest {};
 
 TEST_F(Dex2oatDeterminism, UnloadCompile) {
