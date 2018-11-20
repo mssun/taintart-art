@@ -52,6 +52,7 @@ static char** original_argv;
 
 static std::string CommandLine() {
   std::vector<std::string> command;
+  command.reserve(original_argc);
   for (int i = 0; i < original_argc; ++i) {
     command.push_back(original_argv[i]);
   }
