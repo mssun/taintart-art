@@ -1069,7 +1069,8 @@ class Dex2oatClassLoaderContextTest : public Dex2oatTest {
   void RunTest(const char* class_loader_context,
                const char* expected_classpath_key,
                bool expected_success,
-               bool use_second_source = false) {
+               bool use_second_source = false,
+               bool generate_image = false) {
     std::string dex_location = GetUsedDexLocation();
     std::string odex_location = GetUsedOatLocation();
 
@@ -1079,6 +1080,9 @@ class Dex2oatClassLoaderContextTest : public Dex2oatTest {
     std::vector<std::string> extra_args;
     if (class_loader_context != nullptr) {
       extra_args.push_back(std::string("--class-loader-context=") + class_loader_context);
+    }
+    if (generate_image) {
+      extra_args.push_back(std::string("--app-image-file=") + GetUsedImageLocation());
     }
     auto check_oat = [expected_classpath_key](const OatFile& oat_file) {
       ASSERT_TRUE(expected_classpath_key != nullptr);
@@ -1102,6 +1106,10 @@ class Dex2oatClassLoaderContextTest : public Dex2oatTest {
 
   std::string GetUsedOatLocation() {
     return GetOdexDir() + "/Context.odex";
+  }
+
+  std::string GetUsedImageLocation() {
+    return GetOdexDir() + "/Context.art";
   }
 
   const char* kEmptyClassPathKey = "PCL[]";
@@ -1211,6 +1219,55 @@ TEST_F(Dex2oatClassLoaderContextTest, ContextWithSharedLibrary) {
   std::string expected_classpath_key = "PCL[" + CreateClassPathWithChecksums(dex_files1) + "]" +
       "{PCL[" + CreateClassPathWithChecksums(dex_files2) + "]}";
   RunTest(context.c_str(), expected_classpath_key.c_str(), true);
+}
+
+TEST_F(Dex2oatClassLoaderContextTest, ContextWithSharedLibraryAndImage) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files1 = OpenTestDexFiles("Nested");
+  std::vector<std::unique_ptr<const DexFile>> dex_files2 = OpenTestDexFiles("MultiDex");
+
+  std::string context = "PCL[" + GetTestDexFileName("Nested") + "]" +
+      "{PCL[" + GetTestDexFileName("MultiDex") + "]}";
+  std::string expected_classpath_key = "PCL[" + CreateClassPathWithChecksums(dex_files1) + "]" +
+      "{PCL[" + CreateClassPathWithChecksums(dex_files2) + "]}";
+  RunTest(context.c_str(),
+          expected_classpath_key.c_str(),
+          /*expected_success=*/ true,
+          /*use_second_source=*/ false,
+          /*generate_image=*/ true);
+}
+
+TEST_F(Dex2oatClassLoaderContextTest, ContextWithSameSharedLibrariesAndImage) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files1 = OpenTestDexFiles("Nested");
+  std::vector<std::unique_ptr<const DexFile>> dex_files2 = OpenTestDexFiles("MultiDex");
+
+  std::string context = "PCL[" + GetTestDexFileName("Nested") + "]" +
+      "{PCL[" + GetTestDexFileName("MultiDex") + "]" +
+      "#PCL[" + GetTestDexFileName("MultiDex") + "]}";
+  std::string expected_classpath_key = "PCL[" + CreateClassPathWithChecksums(dex_files1) + "]" +
+      "{PCL[" + CreateClassPathWithChecksums(dex_files2) + "]" +
+      "#PCL[" + CreateClassPathWithChecksums(dex_files2) + "]}";
+  RunTest(context.c_str(),
+          expected_classpath_key.c_str(),
+          /*expected_success=*/ true,
+          /*use_second_source=*/ false,
+          /*generate_image=*/ true);
+}
+
+TEST_F(Dex2oatClassLoaderContextTest, ContextWithSharedLibrariesDependenciesAndImage) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files1 = OpenTestDexFiles("Nested");
+  std::vector<std::unique_ptr<const DexFile>> dex_files2 = OpenTestDexFiles("MultiDex");
+
+  std::string context = "PCL[" + GetTestDexFileName("Nested") + "]" +
+      "{PCL[" + GetTestDexFileName("MultiDex") + "]" +
+      "{PCL[" + GetTestDexFileName("Nested") + "]}}";
+  std::string expected_classpath_key = "PCL[" + CreateClassPathWithChecksums(dex_files1) + "]" +
+      "{PCL[" + CreateClassPathWithChecksums(dex_files2) + "]" +
+      "{PCL[" + CreateClassPathWithChecksums(dex_files1) + "]}}";
+  RunTest(context.c_str(),
+          expected_classpath_key.c_str(),
+          /*expected_success=*/ true,
+          /*use_second_source=*/ false,
+          /*generate_image=*/ true);
 }
 
 class Dex2oatDeterminism : public Dex2oatTest {};

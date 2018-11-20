@@ -219,6 +219,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
                                                       storage_mode,
                                                       oat_filename_vector,
                                                       dex_file_to_oat_index_map,
+                                                      /*class_loader=*/ nullptr,
                                                       /*dirty_image_objects=*/ nullptr));
   {
     {

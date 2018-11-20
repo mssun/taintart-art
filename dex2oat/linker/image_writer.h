@@ -81,6 +81,7 @@ class ImageWriter final {
               ImageHeader::StorageMode image_storage_mode,
               const std::vector<const char*>& oat_filenames,
               const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
+              jobject class_loader,
               const HashSet<std::string>* dirty_image_objects);
 
   /*
@@ -111,7 +112,7 @@ class ImageWriter final {
     return true;
   }
 
-  ObjPtr<mirror::ClassLoader> GetClassLoader();
+  ObjPtr<mirror::ClassLoader> GetAppClassLoader() const REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <typename T>
   T* GetImageAddress(T* object) const REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -771,10 +772,8 @@ class ImageWriter final {
   // Prune class memoization table to speed up ContainsBootClassLoaderNonImageClass.
   std::unordered_map<mirror::Class*, bool> prune_class_memo_;
 
-  // Class loaders with a class table to write out. There should only be one class loader because
-  // dex2oat loads the dex files to be compiled into a single class loader. For the boot image,
-  // null is a valid entry.
-  std::unordered_set<mirror::ClassLoader*> class_loaders_;
+  // The application class loader. Null for boot image.
+  jobject app_class_loader_;
 
   // Boot image live objects, null for app image.
   mirror::ObjectArray<mirror::Object>* boot_image_live_objects_;

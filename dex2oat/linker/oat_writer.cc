@@ -1482,7 +1482,7 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
                          const std::vector<const DexFile*>* dex_files)
       : OatDexMethodVisitor(writer, offset),
         pointer_size_(GetInstructionSetPointerSize(writer_->compiler_options_.GetInstructionSet())),
-        class_loader_(writer->HasImage() ? writer->image_writer_->GetClassLoader() : nullptr),
+        class_loader_(writer->HasImage() ? writer->image_writer_->GetAppClassLoader() : nullptr),
         dex_files_(dex_files),
         class_linker_(Runtime::Current()->GetClassLinker()) {}
 
@@ -1623,7 +1623,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
         offset_(relative_offset),
         dex_file_(nullptr),
         pointer_size_(GetInstructionSetPointerSize(writer_->compiler_options_.GetInstructionSet())),
-        class_loader_(writer->HasImage() ? writer->image_writer_->GetClassLoader() : nullptr),
+        class_loader_(writer->HasImage() ? writer->image_writer_->GetAppClassLoader() : nullptr),
         out_(out),
         file_offset_(file_offset),
         class_linker_(Runtime::Current()->GetClassLinker()),
@@ -2264,6 +2264,7 @@ size_t OatWriter::InitOatCodeDexFiles(size_t offset) {
   }
 
   if (HasImage()) {
+    ScopedAssertNoThreadSuspension sants("Init image method visitor", Thread::Current());
     InitImageMethodVisitor image_visitor(this, offset, dex_files_);
     success = VisitDexMethods(&image_visitor);
     image_visitor.Postprocess();

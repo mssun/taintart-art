@@ -145,9 +145,11 @@ static ArrayRef<const uint8_t> MaybeCompressData(ArrayRef<const uint8_t> source,
 // Separate objects into multiple bins to optimize dirty memory use.
 static constexpr bool kBinObjects = true;
 
-ObjPtr<mirror::ClassLoader> ImageWriter::GetClassLoader() {
-  CHECK_EQ(class_loaders_.size(), compiler_options_.IsAppImage() ? 1u : 0u);
-  return compiler_options_.IsAppImage() ? *class_loaders_.begin() : nullptr;
+ObjPtr<mirror::ClassLoader> ImageWriter::GetAppClassLoader() const
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  return compiler_options_.IsAppImage()
+      ? ObjPtr<mirror::ClassLoader>::DownCast(Thread::Current()->DecodeJObject(app_class_loader_))
+      : nullptr;
 }
 
 // Return true if an object is already in an image space.
@@ -622,7 +624,7 @@ bool ImageWriter::Write(int image_fd,
   {
     // Preload deterministic contents to the dex cache arrays we're going to write.
     ScopedObjectAccess soa(self);
-    ObjPtr<mirror::ClassLoader> class_loader = GetClassLoader();
+    ObjPtr<mirror::ClassLoader> class_loader = GetAppClassLoader();
     std::vector<ObjPtr<mirror::DexCache>> dex_caches = FindDexCaches(self);
     for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
       if (IsInBootImage(dex_cache.Ptr())) {
@@ -1400,27 +1402,15 @@ class ImageWriter::PruneClassLoaderClassesVisitor : public ClassLoaderVisitor {
         Runtime::Current()->GetClassLinker()->ClassTableForClassLoader(class_loader);
     class_table->Visit(classes_visitor);
     removed_class_count_ += classes_visitor.Prune();
-
-    // Record app image class loader. The fake boot class loader should not get registered
-    // and we should end up with only one class loader for an app and none for boot image.
-    if (class_loader != nullptr && class_table != nullptr) {
-      DCHECK(class_loader_ == nullptr);
-      class_loader_ = class_loader;
-    }
   }
 
   size_t GetRemovedClassCount() const {
     return removed_class_count_;
   }
 
-  ObjPtr<mirror::ClassLoader> GetClassLoader() const REQUIRES_SHARED(Locks::mutator_lock_) {
-    return class_loader_;
-  }
-
  private:
   ImageWriter* const image_writer_;
   size_t removed_class_count_;
-  ObjPtr<mirror::ClassLoader> class_loader_;
 };
 
 void ImageWriter::VisitClassLoaders(ClassLoaderVisitor* visitor) {
@@ -1631,13 +1621,10 @@ void ImageWriter::PruneNonImageClasses() {
   });
 
   // Remove the undesired classes from the class roots.
-  ObjPtr<mirror::ClassLoader> class_loader;
   {
     PruneClassLoaderClassesVisitor class_loader_visitor(this);
     VisitClassLoaders(&class_loader_visitor);
     VLOG(compiler) << "Pruned " << class_loader_visitor.GetRemovedClassCount() << " classes";
-    class_loader = class_loader_visitor.GetClassLoader();
-    DCHECK_EQ(class_loader != nullptr, compiler_options_.IsAppImage());
   }
 
   // Clear references to removed classes from the DexCaches.
@@ -1645,7 +1632,7 @@ void ImageWriter::PruneNonImageClasses() {
   for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
     // Pass the class loader associated with the DexCache. This can either be
     // the app's `class_loader` or `nullptr` if boot class loader.
-    PruneDexCache(dex_cache, IsInBootImage(dex_cache.Ptr()) ? nullptr : class_loader);
+    PruneDexCache(dex_cache, IsInBootImage(dex_cache.Ptr()) ? nullptr : GetAppClassLoader());
   }
 
   // Drop the array class cache in the ClassLinker, as these are roots holding those classes live.
@@ -1964,18 +1951,17 @@ mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
       }
     } else if (obj->IsClassLoader()) {
       // Register the class loader if it has a class table.
-      // The fake boot class loader should not get registered and we should end up with only one
-      // class loader.
+      // The fake boot class loader should not get registered.
       mirror::ClassLoader* class_loader = obj->AsClassLoader();
       if (class_loader->GetClassTable() != nullptr) {
         DCHECK(compiler_options_.IsAppImage());
-        DCHECK(class_loaders_.empty());
-        class_loaders_.insert(class_loader);
-        ImageInfo& image_info = GetImageInfo(oat_index);
-        // Note: Avoid locking to prevent lock order violations from root visiting;
-        // image_info.class_table_ table is only accessed from the image writer
-        // and class_loader->GetClassTable() is iterated but not modified.
-        image_info.class_table_->CopyWithoutLocks(*class_loader->GetClassTable());
+        if (class_loader == GetAppClassLoader()) {
+          ImageInfo& image_info = GetImageInfo(oat_index);
+          // Note: Avoid locking to prevent lock order violations from root visiting;
+          // image_info.class_table_ table is only accessed from the image writer
+          // and class_loader->GetClassTable() is iterated but not modified.
+          image_info.class_table_->CopyWithoutLocks(*class_loader->GetClassTable());
+        }
       }
     }
     AssignImageBinSlot(obj, oat_index);
@@ -2253,10 +2239,8 @@ void ImageWriter::CalculateNewObjectOffsets() {
     ProcessWorkStack(&work_stack);
 
     // Store the class loader in the class roots.
-    CHECK_EQ(class_loaders_.size(), 1u);
     CHECK_EQ(image_roots.size(), 1u);
-    CHECK(*class_loaders_.begin() != nullptr);
-    image_roots[0]->Set<false>(ImageHeader::kAppImageClassLoader, *class_loaders_.begin());
+    image_roots[0]->Set<false>(ImageHeader::kAppImageClassLoader, GetAppClassLoader());
   }
 
   // Verify that all objects have assigned image bin slots.
@@ -3401,6 +3385,7 @@ ImageWriter::ImageWriter(
     ImageHeader::StorageMode image_storage_mode,
     const std::vector<const char*>& oat_filenames,
     const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
+    jobject class_loader,
     const HashSet<std::string>* dirty_image_objects)
     : compiler_options_(compiler_options),
       global_image_begin_(reinterpret_cast<uint8_t*>(image_begin)),
@@ -3409,6 +3394,7 @@ ImageWriter::ImageWriter(
       image_infos_(oat_filenames.size()),
       dirty_methods_(0u),
       clean_methods_(0u),
+      app_class_loader_(class_loader),
       boot_image_live_objects_(nullptr),
       image_storage_mode_(image_storage_mode),
       oat_filenames_(oat_filenames),

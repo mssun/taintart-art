@@ -1929,7 +1929,7 @@ class Dex2Oat final {
   // ImageWriter, if necessary.
   // Note: Flushing (and closing) the file is the caller's responsibility, except for the failure
   //       case (when the file will be explicitly erased).
-  bool WriteOutputFiles() {
+  bool WriteOutputFiles(jobject class_loader) {
     TimingLogger::ScopedTiming t("dex2oat Oat", timings_);
 
     // Sync the data to the file, in case we did dex2dex transformations.
@@ -1964,6 +1964,7 @@ class Dex2Oat final {
                                                   image_storage_mode_,
                                                   oat_filenames_,
                                                   dex_file_oat_index_map_,
+                                                  class_loader,
                                                   dirty_image_objects_.get()));
 
       // We need to prepare method offsets in the image address space for direct method patching.
@@ -2846,11 +2847,12 @@ class ScopedGlobalRef {
 
 static dex2oat::ReturnCode CompileImage(Dex2Oat& dex2oat) {
   dex2oat.LoadClassProfileDescriptors();
+  jobject class_loader = dex2oat.Compile();
   // Keep the class loader that was used for compilation live for the rest of the compilation
   // process.
-  ScopedGlobalRef class_loader(dex2oat.Compile());
+  ScopedGlobalRef global_ref(class_loader);
 
-  if (!dex2oat.WriteOutputFiles()) {
+  if (!dex2oat.WriteOutputFiles(class_loader)) {
     dex2oat.EraseOutputFiles();
     return dex2oat::ReturnCode::kOther;
   }
@@ -2890,11 +2892,12 @@ static dex2oat::ReturnCode CompileImage(Dex2Oat& dex2oat) {
 }
 
 static dex2oat::ReturnCode CompileApp(Dex2Oat& dex2oat) {
+  jobject class_loader = dex2oat.Compile();
   // Keep the class loader that was used for compilation live for the rest of the compilation
   // process.
-  ScopedGlobalRef class_loader(dex2oat.Compile());
+  ScopedGlobalRef global_ref(class_loader);
 
-  if (!dex2oat.WriteOutputFiles()) {
+  if (!dex2oat.WriteOutputFiles(class_loader)) {
     dex2oat.EraseOutputFiles();
     return dex2oat::ReturnCode::kOther;
   }
