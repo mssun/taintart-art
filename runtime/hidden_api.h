@@ -235,6 +235,7 @@ ALWAYS_INLINE inline uint32_t GetRuntimeFlags(ArtMethod* method)
       case Intrinsics::kUnsafeStoreFence:
       case Intrinsics::kUnsafeFullFence:
       case Intrinsics::kCRC32Update:
+      case Intrinsics::kCRC32UpdateBytes:
       case Intrinsics::kStringNewStringFromBytes:
       case Intrinsics::kStringNewStringFromChars:
       case Intrinsics::kStringNewStringFromString:

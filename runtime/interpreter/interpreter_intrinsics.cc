@@ -559,6 +559,7 @@ bool MterpHandleIntrinsic(ShadowFrame* shadow_frame,
     UNIMPLEMENTED_CASE(IntegerValueOf /* (I)Ljava/lang/Integer; */)
     UNIMPLEMENTED_CASE(ThreadInterrupted /* ()Z */)
     UNIMPLEMENTED_CASE(CRC32Update /* (II)I */)
+    UNIMPLEMENTED_CASE(CRC32UpdateBytes /* (I[BII)I */)
     INTRINSIC_CASE(VarHandleFullFence)
     INTRINSIC_CASE(VarHandleAcquireFence)
     INTRINSIC_CASE(VarHandleReleaseFence)

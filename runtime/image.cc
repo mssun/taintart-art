@@ -29,7 +29,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '7', '1', '\0' };  // Add image blocks.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '7', '2', '\0' };  // CRC32UpdateBytes intrinsic
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,

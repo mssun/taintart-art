@@ -2950,6 +2950,151 @@ void IntrinsicCodeGeneratorARM64::VisitCRC32Update(HInvoke* invoke) {
   __ Mvn(out, out);
 }
 
+// The threshold for sizes of arrays to use the library provided implementation
+// of CRC32.updateBytes instead of the intrinsic.
+static constexpr int32_t kCRC32UpdateBytesThreshold = 64 * 1024;
+
+void IntrinsicLocationsBuilderARM64::VisitCRC32UpdateBytes(HInvoke* invoke) {
+  if (!codegen_->GetInstructionSetFeatures().HasCRC()) {
+    return;
+  }
+
+  LocationSummary* locations
+      = new (allocator_) LocationSummary(invoke,
+                                         LocationSummary::kCallOnSlowPath,
+                                         kIntrinsified);
+
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetInAt(1, Location::RequiresRegister());
+  locations->SetInAt(2, Location::RegisterOrConstant(invoke->InputAt(2)));
+  locations->SetInAt(3, Location::RequiresRegister());
+  locations->AddTemp(Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister());
+}
+
+// Lower the invoke of CRC32.updateBytes(int crc, byte[] b, int off, int len)
+//
+// Note: The intrinsic is not used if len exceeds a threshold.
+void IntrinsicCodeGeneratorARM64::VisitCRC32UpdateBytes(HInvoke* invoke) {
+  DCHECK(codegen_->GetInstructionSetFeatures().HasCRC());
+
+  auto masm = GetVIXLAssembler();
+  auto locations = invoke->GetLocations();
+
+  auto slow_path =
+    new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
+  codegen_->AddSlowPath(slow_path);
+
+  Register length = WRegisterFrom(locations->InAt(3));
+  __ Cmp(length, kCRC32UpdateBytesThreshold);
+  __ B(slow_path->GetEntryLabel(), hi);
+
+  const uint32_t array_data_offset =
+      mirror::Array::DataOffset(Primitive::kPrimByte).Uint32Value();
+  Register ptr = XRegisterFrom(locations->GetTemp(0));
+  Register array = XRegisterFrom(locations->InAt(1));
+  auto offset = locations->InAt(2);
+  if (offset.IsConstant()) {
+    int32_t offset_value = offset.GetConstant()->AsIntConstant()->GetValue();
+    __ Add(ptr, array, array_data_offset + offset_value);
+  } else {
+    __ Add(ptr, array, array_data_offset);
+    __ Add(ptr, ptr, XRegisterFrom(offset));
+  }
+
+  // The algorithm of CRC32 of bytes is:
+  //   crc = ~crc
+  //   process a few first bytes to make the array 8-byte aligned
+  //   while array has 8 bytes do:
+  //     crc = crc32_of_8bytes(crc, 8_bytes(array))
+  //   if array has 4 bytes:
+  //     crc = crc32_of_4bytes(crc, 4_bytes(array))
+  //   if array has 2 bytes:
+  //     crc = crc32_of_2bytes(crc, 2_bytes(array))
+  //   if array has a byte:
+  //     crc = crc32_of_byte(crc, 1_byte(array))
+  //   crc = ~crc
+
+  vixl::aarch64::Label loop, done;
+  vixl::aarch64::Label process_4bytes, process_2bytes, process_1byte;
+  vixl::aarch64::Label aligned2, aligned4, aligned8;
+
+  // Use VIXL scratch registers as the VIXL macro assembler won't use them in
+  // instructions below.
+  UseScratchRegisterScope temps(masm);
+  Register len = temps.AcquireW();
+  Register array_elem = temps.AcquireW();
+
+  Register out = WRegisterFrom(locations->Out());
+  __ Mvn(out, WRegisterFrom(locations->InAt(0)));
+  __ Mov(len, length);
+
+  __ Tbz(ptr, 0, &aligned2);
+  __ Subs(len, len, 1);
+  __ B(&done, lo);
+  __ Ldrb(array_elem, MemOperand(ptr, 1, PostIndex));
+  __ Crc32b(out, out, array_elem);
+
+  __ Bind(&aligned2);
+  __ Tbz(ptr, 1, &aligned4);
+  __ Subs(len, len, 2);
+  __ B(&process_1byte, lo);
+  __ Ldrh(array_elem, MemOperand(ptr, 2, PostIndex));
+  __ Crc32h(out, out, array_elem);
+
+  __ Bind(&aligned4);
+  __ Tbz(ptr, 2, &aligned8);
+  __ Subs(len, len, 4);
+  __ B(&process_2bytes, lo);
+  __ Ldr(array_elem, MemOperand(ptr, 4, PostIndex));
+  __ Crc32w(out, out, array_elem);
+
+  __ Bind(&aligned8);
+  __ Subs(len, len, 8);
+  // If len < 8 go to process data by 4 bytes, 2 bytes and a byte.
+  __ B(&process_4bytes, lo);
+
+  // The main loop processing data by 8 bytes.
+  __ Bind(&loop);
+  __ Ldr(array_elem.X(), MemOperand(ptr, 8, PostIndex));
+  __ Subs(len, len, 8);
+  __ Crc32x(out, out, array_elem.X());
+  // if len >= 8, process the next 8 bytes.
+  __ B(&loop, hs);
+
+  // Process the data which is less than 8 bytes.
+  // The code generated below works with values of len
+  // which come in the range [-8, 0].
+  // The first three bits are used to detect whether 4 bytes or 2 bytes or
+  // a byte can be processed.
+  // The checking order is from bit 2 to bit 0:
+  //  bit 2 is set: at least 4 bytes available
+  //  bit 1 is set: at least 2 bytes available
+  //  bit 0 is set: at least a byte available
+  __ Bind(&process_4bytes);
+  // Goto process_2bytes if less than four bytes available
+  __ Tbz(len, 2, &process_2bytes);
+  __ Ldr(array_elem, MemOperand(ptr, 4, PostIndex));
+  __ Crc32w(out, out, array_elem);
+
+  __ Bind(&process_2bytes);
+  // Goto process_1bytes if less than two bytes available
+  __ Tbz(len, 1, &process_1byte);
+  __ Ldrh(array_elem, MemOperand(ptr, 2, PostIndex));
+  __ Crc32h(out, out, array_elem);
+
+  __ Bind(&process_1byte);
+  // Goto done if no bytes available
+  __ Tbz(len, 0, &done);
+  __ Ldrb(array_elem, MemOperand(ptr));
+  __ Crc32b(out, out, array_elem);
+
+  __ Bind(&done);
+  __ Mvn(out, out);
+
+  __ Bind(slow_path->GetExitLabel());
+}
+
 UNIMPLEMENTED_INTRINSIC(ARM64, ReferenceGetReferent)
 
 UNIMPLEMENTED_INTRINSIC(ARM64, StringStringIndexOf);

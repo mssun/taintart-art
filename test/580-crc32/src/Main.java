@@ -15,29 +15,29 @@
  */
 
 import java.util.zip.CRC32;
+import java.util.Random;
 
 /**
- * The ART compiler can use intrinsics for the java.util.zip.CRC32 method:
- *    private native static int update(int crc, int b)
+ * The ART compiler can use intrinsics for the java.util.zip.CRC32 methods:
+ *   private native static int update(int crc, int b)
+ *   private native static int updateBytes(int crc, byte[] b, int off, int len)
  *
- * As the method is private it is not possible to check the use of intrinsics
- * for it directly.
+ * As the methods are private it is not possible to check the use of intrinsics
+ * for them directly.
  * The tests check that correct checksums are produced.
  */
 public class Main {
-  private static CRC32 crc32 = new CRC32();
-
   public Main() {
   }
 
-  public static long TestInt(int value) {
-    crc32.reset();
+  public static long CRC32Byte(int value) {
+    CRC32 crc32 = new CRC32();
     crc32.update(value);
     return crc32.getValue();
   }
 
-  public static long TestInt(int... values) {
-    crc32.reset();
+  public static long CRC32BytesUsingUpdateInt(int... values) {
+    CRC32 crc32 = new CRC32();
     for (int value : values) {
       crc32.update(value);
     }
@@ -50,82 +50,301 @@ public class Main {
     }
   }
 
-  public static void main(String args[]) {
+  private static void assertEqual(boolean expected, boolean actual) {
+    if (expected != actual) {
+      throw new Error("Expected: " + expected + ", found: " + actual);
+    }
+  }
+
+  private static void TestCRC32Update() {
     // public void update(int b)
     //
     // Tests for checksums of the byte 0x0
-    assertEqual(0xD202EF8DL, TestInt(0x0));
-    assertEqual(0xD202EF8DL, TestInt(0x0100));
-    assertEqual(0xD202EF8DL, TestInt(0x010000));
-    assertEqual(0xD202EF8DL, TestInt(0x01000000));
-    assertEqual(0xD202EF8DL, TestInt(0xff00));
-    assertEqual(0xD202EF8DL, TestInt(0xffff00));
-    assertEqual(0xD202EF8DL, TestInt(0xffffff00));
-    assertEqual(0xD202EF8DL, TestInt(0x1200));
-    assertEqual(0xD202EF8DL, TestInt(0x123400));
-    assertEqual(0xD202EF8DL, TestInt(0x12345600));
-    assertEqual(0xD202EF8DL, TestInt(Integer.MIN_VALUE));
+    // Check that only the low eight bits of the argument are used.
+    assertEqual(0xD202EF8DL, CRC32Byte(0x0));
+    assertEqual(0xD202EF8DL, CRC32Byte(0x0100));
+    assertEqual(0xD202EF8DL, CRC32Byte(0x010000));
+    assertEqual(0xD202EF8DL, CRC32Byte(0x01000000));
+    assertEqual(0xD202EF8DL, CRC32Byte(0xff00));
+    assertEqual(0xD202EF8DL, CRC32Byte(0xffff00));
+    assertEqual(0xD202EF8DL, CRC32Byte(0xffffff00));
+    assertEqual(0xD202EF8DL, CRC32Byte(0x1200));
+    assertEqual(0xD202EF8DL, CRC32Byte(0x123400));
+    assertEqual(0xD202EF8DL, CRC32Byte(0x12345600));
+    assertEqual(0xD202EF8DL, CRC32Byte(Integer.MIN_VALUE));
 
     // Tests for checksums of the byte 0x1
-    assertEqual(0xA505DF1BL, TestInt(0x1));
-    assertEqual(0xA505DF1BL, TestInt(0x0101));
-    assertEqual(0xA505DF1BL, TestInt(0x010001));
-    assertEqual(0xA505DF1BL, TestInt(0x01000001));
-    assertEqual(0xA505DF1BL, TestInt(0xff01));
-    assertEqual(0xA505DF1BL, TestInt(0xffff01));
-    assertEqual(0xA505DF1BL, TestInt(0xffffff01));
-    assertEqual(0xA505DF1BL, TestInt(0x1201));
-    assertEqual(0xA505DF1BL, TestInt(0x123401));
-    assertEqual(0xA505DF1BL, TestInt(0x12345601));
+    // Check that only the low eight bits of the argument are used.
+    assertEqual(0xA505DF1BL, CRC32Byte(0x1));
+    assertEqual(0xA505DF1BL, CRC32Byte(0x0101));
+    assertEqual(0xA505DF1BL, CRC32Byte(0x010001));
+    assertEqual(0xA505DF1BL, CRC32Byte(0x01000001));
+    assertEqual(0xA505DF1BL, CRC32Byte(0xff01));
+    assertEqual(0xA505DF1BL, CRC32Byte(0xffff01));
+    assertEqual(0xA505DF1BL, CRC32Byte(0xffffff01));
+    assertEqual(0xA505DF1BL, CRC32Byte(0x1201));
+    assertEqual(0xA505DF1BL, CRC32Byte(0x123401));
+    assertEqual(0xA505DF1BL, CRC32Byte(0x12345601));
 
     // Tests for checksums of the byte 0x0f
-    assertEqual(0x42BDF21CL, TestInt(0x0f));
-    assertEqual(0x42BDF21CL, TestInt(0x010f));
-    assertEqual(0x42BDF21CL, TestInt(0x01000f));
-    assertEqual(0x42BDF21CL, TestInt(0x0100000f));
-    assertEqual(0x42BDF21CL, TestInt(0xff0f));
-    assertEqual(0x42BDF21CL, TestInt(0xffff0f));
-    assertEqual(0x42BDF21CL, TestInt(0xffffff0f));
-    assertEqual(0x42BDF21CL, TestInt(0x120f));
-    assertEqual(0x42BDF21CL, TestInt(0x12340f));
-    assertEqual(0x42BDF21CL, TestInt(0x1234560f));
+    // Check that only the low eight bits of the argument are used.
+    assertEqual(0x42BDF21CL, CRC32Byte(0x0f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0x010f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0x01000f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0x0100000f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0xff0f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0xffff0f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0xffffff0f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0x120f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0x12340f));
+    assertEqual(0x42BDF21CL, CRC32Byte(0x1234560f));
 
     // Tests for checksums of the byte 0xff
-    assertEqual(0xFF000000L, TestInt(0x00ff));
-    assertEqual(0xFF000000L, TestInt(0x01ff));
-    assertEqual(0xFF000000L, TestInt(0x0100ff));
-    assertEqual(0xFF000000L, TestInt(0x010000ff));
-    assertEqual(0xFF000000L, TestInt(0x0000ffff));
-    assertEqual(0xFF000000L, TestInt(0x00ffffff));
-    assertEqual(0xFF000000L, TestInt(0xffffffff));
-    assertEqual(0xFF000000L, TestInt(0x12ff));
-    assertEqual(0xFF000000L, TestInt(0x1234ff));
-    assertEqual(0xFF000000L, TestInt(0x123456ff));
-    assertEqual(0xFF000000L, TestInt(Integer.MAX_VALUE));
+    // Check that only the low eight bits of the argument are used.
+    assertEqual(0xFF000000L, CRC32Byte(0x00ff));
+    assertEqual(0xFF000000L, CRC32Byte(0x01ff));
+    assertEqual(0xFF000000L, CRC32Byte(0x0100ff));
+    assertEqual(0xFF000000L, CRC32Byte(0x010000ff));
+    assertEqual(0xFF000000L, CRC32Byte(0x0000ffff));
+    assertEqual(0xFF000000L, CRC32Byte(0x00ffffff));
+    assertEqual(0xFF000000L, CRC32Byte(0xffffffff));
+    assertEqual(0xFF000000L, CRC32Byte(0x12ff));
+    assertEqual(0xFF000000L, CRC32Byte(0x1234ff));
+    assertEqual(0xFF000000L, CRC32Byte(0x123456ff));
+    assertEqual(0xFF000000L, CRC32Byte(Integer.MAX_VALUE));
 
     // Tests for sequences
-    assertEqual(0xFF41D912L, TestInt(0, 0, 0));
-    assertEqual(0xFF41D912L, TestInt(0x0100, 0x010000, 0x01000000));
-    assertEqual(0xFF41D912L, TestInt(0xff00, 0xffff00, 0xffffff00));
-    assertEqual(0xFF41D912L, TestInt(0x1200, 0x123400, 0x12345600));
+    // Check that only the low eight bits of the values are used.
+    assertEqual(0xFF41D912L, CRC32BytesUsingUpdateInt(0, 0, 0));
+    assertEqual(0xFF41D912L,
+                CRC32BytesUsingUpdateInt(0x0100, 0x010000, 0x01000000));
+    assertEqual(0xFF41D912L,
+                CRC32BytesUsingUpdateInt(0xff00, 0xffff00, 0xffffff00));
+    assertEqual(0xFF41D912L,
+                CRC32BytesUsingUpdateInt(0x1200, 0x123400, 0x12345600));
 
-    assertEqual(0x909FB2F2L, TestInt(1, 1, 1));
-    assertEqual(0x909FB2F2L, TestInt(0x0101, 0x010001, 0x01000001));
-    assertEqual(0x909FB2F2L, TestInt(0xff01, 0xffff01, 0xffffff01));
-    assertEqual(0x909FB2F2L, TestInt(0x1201, 0x123401, 0x12345601));
+    assertEqual(0x909FB2F2L, CRC32BytesUsingUpdateInt(1, 1, 1));
+    assertEqual(0x909FB2F2L,
+                CRC32BytesUsingUpdateInt(0x0101, 0x010001, 0x01000001));
+    assertEqual(0x909FB2F2L,
+                CRC32BytesUsingUpdateInt(0xff01, 0xffff01, 0xffffff01));
+    assertEqual(0x909FB2F2L,
+                CRC32BytesUsingUpdateInt(0x1201, 0x123401, 0x12345601));
 
-    assertEqual(0xE33A9F71L, TestInt(0x0f, 0x0f, 0x0f));
-    assertEqual(0xE33A9F71L, TestInt(0x010f, 0x01000f, 0x0100000f));
-    assertEqual(0xE33A9F71L, TestInt(0xff0f, 0xffff0f, 0xffffff0f));
-    assertEqual(0xE33A9F71L, TestInt(0x120f, 0x12340f, 0x1234560f));
+    assertEqual(0xE33A9F71L, CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f));
+    assertEqual(0xE33A9F71L,
+                CRC32BytesUsingUpdateInt(0x010f, 0x01000f, 0x0100000f));
+    assertEqual(0xE33A9F71L,
+                CRC32BytesUsingUpdateInt(0xff0f, 0xffff0f, 0xffffff0f));
+    assertEqual(0xE33A9F71L,
+                CRC32BytesUsingUpdateInt(0x120f, 0x12340f, 0x1234560f));
 
-    assertEqual(0xFFFFFF00L, TestInt(0x0ff, 0x0ff, 0x0ff));
-    assertEqual(0xFFFFFF00L, TestInt(0x01ff, 0x0100ff, 0x010000ff));
-    assertEqual(0xFFFFFF00L, TestInt(0x00ffff, 0x00ffffff, 0xffffffff));
-    assertEqual(0xFFFFFF00L, TestInt(0x12ff, 0x1234ff, 0x123456ff));
+    assertEqual(0xFFFFFF00L, CRC32BytesUsingUpdateInt(0x0ff, 0x0ff, 0x0ff));
+    assertEqual(0xFFFFFF00L,
+                CRC32BytesUsingUpdateInt(0x01ff, 0x0100ff, 0x010000ff));
+    assertEqual(0xFFFFFF00L,
+                CRC32BytesUsingUpdateInt(0x00ffff, 0x00ffffff, 0xffffffff));
+    assertEqual(0xFFFFFF00L,
+                CRC32BytesUsingUpdateInt(0x12ff, 0x1234ff, 0x123456ff));
 
-    assertEqual(0xB6CC4292L, TestInt(0x01, 0x02));
+    assertEqual(0xB6CC4292L, CRC32BytesUsingUpdateInt(0x01, 0x02));
 
-    assertEqual(0xB2DE047CL, TestInt(0x0, -1, Integer.MIN_VALUE, Integer.MAX_VALUE));
+    assertEqual(0xB2DE047CL,
+                CRC32BytesUsingUpdateInt(0x0, -1, Integer.MIN_VALUE, Integer.MAX_VALUE));
+  }
+
+  private static long CRC32ByteArray(byte[] bytes, int off, int len) {
+    CRC32 crc32 = new CRC32();
+    crc32.update(bytes, off, len);
+    return crc32.getValue();
+  }
+
+  // This is used to test we generate correct code for constant offsets.
+  // In this case the offset is 0.
+  private static long CRC32ByteArray(byte[] bytes) {
+    CRC32 crc32 = new CRC32();
+    crc32.update(bytes);
+    return crc32.getValue();
+  }
+
+  private static long CRC32ByteAndByteArray(int value, byte[] bytes) {
+    CRC32 crc32 = new CRC32();
+    crc32.update(value);
+    crc32.update(bytes);
+    return crc32.getValue();
+  }
+
+  private static long CRC32ByteArrayAndByte(byte[] bytes, int value) {
+    CRC32 crc32 = new CRC32();
+    crc32.update(bytes);
+    crc32.update(value);
+    return crc32.getValue();
+  }
+
+  private static boolean CRC32ByteArrayThrowsAIOOBE(byte[] bytes, int off, int len) {
+    try {
+      CRC32 crc32 = new CRC32();
+      crc32.update(bytes, off, len);
+    } catch (ArrayIndexOutOfBoundsException ex) {
+      return true;
+    }
+    return false;
+  }
+
+  private static boolean CRC32ByteArrayThrowsNPE() {
+    try {
+      CRC32 crc32 = new CRC32();
+      crc32.update(null, 0, 0);
+      return false;
+    } catch (NullPointerException e) {}
+
+    try {
+      CRC32 crc32 = new CRC32();
+      crc32.update(null, 1, 2);
+      return false;
+    } catch (NullPointerException e) {}
+
+    try {
+      CRC32 crc32 = new CRC32();
+      crc32.update((byte[])null);
+      return false;
+    } catch (NullPointerException e) {}
+
+    return true;
+  }
+
+  private static long CRC32BytesUsingUpdateInt(byte[] bytes, int off, int len) {
+    CRC32 crc32 = new CRC32();
+    while (len-- > 0) {
+      crc32.update(bytes[off++]);
+    }
+    return crc32.getValue();
+  }
+
+  private static void TestCRC32UpdateBytes() {
+    assertEqual(0L, CRC32ByteArray(new byte[] {}));
+    assertEqual(0L, CRC32ByteArray(new byte[] {}, 0, 0));
+    assertEqual(0L, CRC32ByteArray(new byte[] {0}, 0, 0));
+    assertEqual(0L, CRC32ByteArray(new byte[] {0}, 1, 0));
+    assertEqual(0L, CRC32ByteArray(new byte[] {0, 0}, 1, 0));
+
+    assertEqual(true, CRC32ByteArrayThrowsNPE());
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {}, -1, 0));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {0}, -1, 1));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {0}, 0, -1));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {}, 0, -1));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {}, 1, 0));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {}, -1, 1));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {}, 1, -1));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {}, 0, 1));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {}, 0, 10));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {0}, 0, 10));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {}, 10, 10));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {0, 0, 0, 0}, 2, 3));
+    assertEqual(true, CRC32ByteArrayThrowsAIOOBE(new byte[] {0, 0, 0, 0}, 3, 2));
+
+    assertEqual(CRC32Byte(0), CRC32ByteArray(new byte[] {0}));
+    assertEqual(CRC32Byte(0), CRC32ByteArray(new byte[] {0}, 0, 1));
+    assertEqual(CRC32Byte(1), CRC32ByteArray(new byte[] {1}));
+    assertEqual(CRC32Byte(1), CRC32ByteArray(new byte[] {1}, 0, 1));
+    assertEqual(CRC32Byte(0x0f), CRC32ByteArray(new byte[] {0x0f}));
+    assertEqual(CRC32Byte(0x0f), CRC32ByteArray(new byte[] {0x0f}, 0, 1));
+    assertEqual(CRC32Byte(0xff), CRC32ByteArray(new byte[] {-1}));
+    assertEqual(CRC32Byte(0xff), CRC32ByteArray(new byte[] {-1}, 0, 1));
+    assertEqual(CRC32BytesUsingUpdateInt(0, 0, 0),
+                CRC32ByteArray(new byte[] {0, 0, 0}));
+    assertEqual(CRC32BytesUsingUpdateInt(0, 0, 0),
+                CRC32ByteArray(new byte[] {0, 0, 0}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 1, 1),
+                CRC32ByteArray(new byte[] {1, 1, 1}));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 1, 1),
+                CRC32ByteArray(new byte[] {1, 1, 1}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f),
+                CRC32ByteArray(new byte[] {0x0f, 0x0f, 0x0f}));
+    assertEqual(CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f),
+                CRC32ByteArray(new byte[] {0x0f, 0x0f, 0x0f}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(0xff, 0xff, 0xff),
+                CRC32ByteArray(new byte[] {-1, -1, -1}));
+    assertEqual(CRC32BytesUsingUpdateInt(0xff, 0xff, 0xff),
+                CRC32ByteArray(new byte[] {-1, -1, -1}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 2),
+                CRC32ByteArray(new byte[] {1, 2}));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 2),
+                CRC32ByteArray(new byte[] {1, 2}, 0, 2));
+    assertEqual(
+        CRC32BytesUsingUpdateInt(0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE),
+        CRC32ByteArray(new byte[] {0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE}));
+    assertEqual(
+        CRC32BytesUsingUpdateInt(0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE),
+        CRC32ByteArray(new byte[] {0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE}, 0, 4));
+
+    assertEqual(CRC32BytesUsingUpdateInt(0, 0, 0),
+                CRC32ByteAndByteArray(0, new byte[] {0, 0}));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 1, 1),
+                CRC32ByteAndByteArray(1, new byte[] {1, 1}));
+    assertEqual(CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f),
+                CRC32ByteAndByteArray(0x0f, new byte[] {0x0f, 0x0f}));
+    assertEqual(CRC32BytesUsingUpdateInt(0xff, 0xff, 0xff),
+                CRC32ByteAndByteArray(-1, new byte[] {-1, -1}));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 2, 3),
+                CRC32ByteAndByteArray(1, new byte[] {2, 3}));
+    assertEqual(
+        CRC32BytesUsingUpdateInt(0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE),
+        CRC32ByteAndByteArray(0, new byte[] {-1, Byte.MIN_VALUE, Byte.MAX_VALUE}));
+
+    assertEqual(CRC32BytesUsingUpdateInt(0, 0, 0),
+                CRC32ByteArrayAndByte(new byte[] {0, 0}, 0));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 1, 1),
+                CRC32ByteArrayAndByte(new byte[] {1, 1}, 1));
+    assertEqual(CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f),
+                CRC32ByteArrayAndByte(new byte[] {0x0f, 0x0f}, 0x0f));
+    assertEqual(CRC32BytesUsingUpdateInt(0xff, 0xff, 0xff),
+                CRC32ByteArrayAndByte(new byte[] {-1, -1}, -1));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 2, 3),
+                CRC32ByteArrayAndByte(new byte[] {1, 2}, 3));
+    assertEqual(
+        CRC32BytesUsingUpdateInt(0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE),
+        CRC32ByteArrayAndByte(new byte[] {0, -1, Byte.MIN_VALUE}, Byte.MAX_VALUE));
+
+    byte[] bytes = new byte[128 * 1024];
+    Random rnd = new Random(0);
+    rnd.nextBytes(bytes);
+
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, bytes.length),
+                CRC32ByteArray(bytes));
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, 8 * 1024),
+                CRC32ByteArray(bytes, 0, 8 * 1024));
+
+    int off = rnd.nextInt(bytes.length / 2);
+    for (int len = 0; len <= 16; ++len) {
+      assertEqual(CRC32BytesUsingUpdateInt(bytes, off, len),
+                  CRC32ByteArray(bytes, off, len));
+    }
+
+    // Check there are no issues with unaligned accesses.
+    for (int o = 1; o < 8; ++o) {
+      for (int l = 0; l <= 16; ++l) {
+        assertEqual(CRC32BytesUsingUpdateInt(bytes, o, l),
+                    CRC32ByteArray(bytes, o, l));
+      }
+    }
+
+    int len = bytes.length / 2;
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len - 1),
+                CRC32ByteArray(bytes, 0, len - 1));
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len),
+                CRC32ByteArray(bytes, 0, len));
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len + 1),
+                CRC32ByteArray(bytes, 0, len + 1));
+
+    len = rnd.nextInt(bytes.length + 1);
+    off = rnd.nextInt(bytes.length - len);
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, off, len),
+                CRC32ByteArray(bytes, off, len));
+  }
+
+  public static void main(String args[]) {
+    TestCRC32Update();
+    TestCRC32UpdateBytes();
   }
 }
