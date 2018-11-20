@@ -326,6 +326,17 @@ endif
 
 
 #######################
+# Android Runtime APEX.
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := com.android.runtime
+# TODO: Select the debug module (`com.android.runtime.debug`) for
+# userdebug and eng products.
+LOCAL_REQUIRED_MODULES := com.android.runtime.release
+include $(BUILD_PHONY_PACKAGE)
+
+
+#######################
 # Fake packages for ART
 
 # The art-runtime package depends on the core ART libraries and binaries. It exists so we can
