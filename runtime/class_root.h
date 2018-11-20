@@ -101,6 +101,7 @@ class VarHandle;
   M(kLongArrayClass,                        "[J",                                         mirror::PrimitiveArray<int64_t>)                          \
   M(kShortArrayClass,                       "[S",                                         mirror::PrimitiveArray<int16_t>)                          \
   M(kJavaLangStackTraceElementArrayClass,   "[Ljava/lang/StackTraceElement;",             mirror::ObjectArray<mirror::StackTraceElement>)           \
+  M(kJavaLangClassLoaderArrayClass,         "[Ljava/lang/ClassLoader;",                   mirror::ObjectArray<mirror::ClassLoader>)                 \
   M(kDalvikSystemClassExt,                  "Ldalvik/system/ClassExt;",                   mirror::ClassExt)
 
 // Well known mirror::Class roots accessed via ClassLinker::GetClassRoots().

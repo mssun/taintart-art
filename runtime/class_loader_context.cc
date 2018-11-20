@@ -24,11 +24,14 @@
 #include "base/stl_util.h"
 #include "class_linker.h"
 #include "class_loader_utils.h"
+#include "class_root.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "handle_scope-inl.h"
 #include "jni/jni_internal.h"
+#include "mirror/object_array-alloc-inl.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "oat_file_assistant.h"
 #include "obj_ptr-inl.h"
 #include "runtime.h"
@@ -571,20 +574,57 @@ static jclass GetClassLoaderClass(ClassLoaderContext::ClassLoaderType type) {
   UNREACHABLE();
 }
 
-static jobject CreateClassLoaderInternal(Thread* self,
-                                         const ClassLoaderContext::ClassLoaderInfo& info)
+static ObjPtr<mirror::ClassLoader> CreateClassLoaderInternal(
+    Thread* self,
+    ScopedObjectAccess& soa,
+    const ClassLoaderContext::ClassLoaderInfo& info,
+    bool add_compilation_sources,
+    const std::vector<const DexFile*>& compilation_sources)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-  CHECK(info.shared_libraries.empty()) << "Class loader shared library not implemented yet";
-  jobject parent = nullptr;
+  StackHandleScope<3> hs(self);
+  MutableHandle<mirror::ObjectArray<mirror::ClassLoader>> libraries(
+      hs.NewHandle<mirror::ObjectArray<mirror::ClassLoader>>(nullptr));
+
+  if (!info.shared_libraries.empty()) {
+    libraries.Assign(mirror::ObjectArray<mirror::ClassLoader>::Alloc(
+        self,
+        GetClassRoot<mirror::ObjectArray<mirror::ClassLoader>>(),
+        info.shared_libraries.size()));
+    for (uint32_t i = 0; i < info.shared_libraries.size(); ++i) {
+      // We should only add the compilation sources to the first class loader.
+      libraries->Set(i,
+                     CreateClassLoaderInternal(
+                         self,
+                         soa,
+                         *info.shared_libraries[i].get(),
+                         /* add_compilation_sources= */ false,
+                         compilation_sources));
+    }
+  }
+
+  MutableHandle<mirror::ClassLoader> parent = hs.NewHandle<mirror::ClassLoader>(nullptr);
   if (info.parent != nullptr) {
-    parent = CreateClassLoaderInternal(self, *info.parent.get());
+    // We should only add the compilation sources to the first class loader.
+    parent.Assign(CreateClassLoaderInternal(
+        self, soa, *info.parent.get(), /* add_compilation_sources= */ false, compilation_sources));
   }
   std::vector<const DexFile*> class_path_files = MakeNonOwningPointerVector(
       info.opened_dex_files);
+  if (add_compilation_sources) {
+    // For the first class loader, its classpath comes first, followed by compilation sources.
+    // This ensures that whenever we need to resolve classes from it the classpath elements
+    // come first.
+    class_path_files.insert(class_path_files.end(),
+                            compilation_sources.begin(),
+                            compilation_sources.end());
+  }
+  Handle<mirror::Class> loader_class = hs.NewHandle<mirror::Class>(
+      soa.Decode<mirror::Class>(GetClassLoaderClass(info.type)));
   return Runtime::Current()->GetClassLinker()->CreateWellKnownClassLoader(
       self,
       class_path_files,
-      GetClassLoaderClass(info.type),
+      loader_class,
+      libraries,
       parent);
 }
 
@@ -598,30 +638,21 @@ jobject ClassLoaderContext::CreateClassLoader(
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
 
   if (class_loader_chain_ == nullptr) {
+    CHECK(special_shared_library_);
     return class_linker->CreatePathClassLoader(self, compilation_sources);
   }
 
   // Create the class loader of the parent.
-  jobject parent = nullptr;
-  if (class_loader_chain_->parent != nullptr) {
-    parent = CreateClassLoaderInternal(self, *class_loader_chain_->parent.get());
-  }
-
-  // We set up all the parents. Move on to create the first class loader.
-  // Its classpath comes first, followed by compilation sources. This ensures that whenever
-  // we need to resolve classes from it the classpath elements come first.
-
-  std::vector<const DexFile*> first_class_loader_classpath = MakeNonOwningPointerVector(
-      class_loader_chain_->opened_dex_files);
-  first_class_loader_classpath.insert(first_class_loader_classpath.end(),
-                                      compilation_sources.begin(),
-                                      compilation_sources.end());
-
-  return class_linker->CreateWellKnownClassLoader(
-      self,
-      first_class_loader_classpath,
-      GetClassLoaderClass(class_loader_chain_->type),
-      parent);
+  ObjPtr<mirror::ClassLoader> loader =
+      CreateClassLoaderInternal(self,
+                                soa,
+                                *class_loader_chain_.get(),
+                                /* add_compilation_sources= */ true,
+                                compilation_sources);
+  // Make it a global ref and return.
+  ScopedLocalRef<jobject> local_ref(
+      soa.Env(), soa.Env()->AddLocalReference<jobject>(loader));
+  return soa.Env()->NewGlobalRef(local_ref.get());
 }
 
 std::vector<const DexFile*> ClassLoaderContext::FlattenOpenedDexFiles() const {
