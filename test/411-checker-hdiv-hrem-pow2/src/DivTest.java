@@ -94,6 +94,9 @@ public class DivTest {
   /// CHECK-START-ARM64: java.lang.Integer DivTest.$noinline$IntDivBy2(int) disassembly (after)
   /// CHECK:                 add w{{\d+}}, w{{\d+}}, w{{\d+}}, lsr #31
   /// CHECK:                 asr w{{\d+}}, w{{\d+}}, #1
+  /// CHECK-START-X86_64: java.lang.Integer DivTest.$noinline$IntDivBy2(int) disassembly (after)
+  /// CHECK-NOT:             cmovnl/geq
+  /// CHECK:                 add
   private static Integer $noinline$IntDivBy2(int v) {
     int r = v / 2;
     return r;
@@ -102,6 +105,9 @@ public class DivTest {
   /// CHECK-START-ARM64: java.lang.Integer DivTest.$noinline$IntDivByMinus2(int) disassembly (after)
   /// CHECK:                 add w{{\d+}}, w{{\d+}}, w{{\d+}}, lsr #31
   /// CHECK:                 neg w{{\d+}}, w{{\d+}}, asr #1
+  /// CHECK-START-X86_64: java.lang.Integer DivTest.$noinline$IntDivByMinus2(int) disassembly (after)
+  /// CHECK-NOT:             cmovnl/geq
+  /// CHECK:                 add
   private static Integer $noinline$IntDivByMinus2(int v) {
     int r = v / -2;
     return r;
@@ -205,6 +211,9 @@ public class DivTest {
   /// CHECK-START-ARM64: java.lang.Long DivTest.$noinline$LongDivBy2(long) disassembly (after)
   /// CHECK:                 add x{{\d+}}, x{{\d+}}, x{{\d+}}, lsr #63
   /// CHECK:                 asr x{{\d+}}, x{{\d+}}, #1
+  /// CHECK-START-X86_64: java.lang.Long DivTest.$noinline$LongDivBy2(long) disassembly (after)
+  /// CHECK-NOT:             cmovnl/geq
+  /// CHECK:                 addq
   private static Long $noinline$LongDivBy2(long v) {
     long r = v / 2;
     return r;
@@ -213,6 +222,9 @@ public class DivTest {
   /// CHECK-START-ARM64: java.lang.Long DivTest.$noinline$LongDivByMinus2(long) disassembly (after)
   /// CHECK:                 add x{{\d+}}, x{{\d+}}, x{{\d+}}, lsr #63
   /// CHECK:                 neg x{{\d+}}, x{{\d+}}, asr #1
+  /// CHECK-START-X86_64: java.lang.Long DivTest.$noinline$LongDivByMinus2(long) disassembly (after)
+  /// CHECK-NOT:             cmovnl/geq
+  /// CHECK:                 addq
   private static Long $noinline$LongDivByMinus2(long v) {
     long r = v / -2;
     return r;
