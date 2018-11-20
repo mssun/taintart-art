@@ -110,6 +110,39 @@ std::unique_ptr<ClassLoaderContext> ClassLoaderContext::Create(const std::string
   }
 }
 
+static size_t FindMatchingSharedLibraryCloseMarker(const std::string& spec,
+                                                   size_t shared_library_open_index) {
+  // Counter of opened shared library marker we've encountered so far.
+  uint32_t counter = 1;
+  // The index at which we're operating in the loop.
+  uint32_t string_index = shared_library_open_index + 1;
+  size_t shared_library_close = std::string::npos;
+  while (counter != 0) {
+    shared_library_close =
+        spec.find_first_of(kClassLoaderSharedLibraryClosingMark, string_index);
+    size_t shared_library_open =
+        spec.find_first_of(kClassLoaderSharedLibraryOpeningMark, string_index);
+    if (shared_library_close == std::string::npos) {
+      // No matching closing marker. Return an error.
+      break;
+    }
+
+    if ((shared_library_open == std::string::npos) ||
+        (shared_library_close < shared_library_open)) {
+      // We have seen a closing marker. Decrement the counter.
+      --counter;
+      // Move the search index forward.
+      string_index = shared_library_close + 1;
+    } else {
+      // New nested opening marker. Increment the counter and move the search
+      // index after the marker.
+      ++counter;
+      string_index = shared_library_open + 1;
+    }
+  }
+  return shared_library_close;
+}
+
 // The expected format is:
 // "ClassLoaderType1[ClasspathElem1*Checksum1:ClasspathElem2*Checksum2...]{ClassLoaderType2[...]}".
 // The checksum part of the format is expected only if parse_cheksums is true.
@@ -163,7 +196,9 @@ std::unique_ptr<ClassLoaderContext::ClassLoaderInfo> ClassLoaderContext::ParseCl
     }
   }
 
-  if (class_loader_spec[class_loader_spec.length() - 1] == kClassLoaderSharedLibraryClosingMark) {
+  if ((class_loader_spec[class_loader_spec.length() - 1] == kClassLoaderSharedLibraryClosingMark) &&
+      (class_loader_spec[class_loader_spec.length() - 2] != kClassLoaderSharedLibraryOpeningMark)) {
+    // Non-empty list of shared libraries.
     size_t start_index = class_loader_spec.find_first_of(kClassLoaderSharedLibraryOpeningMark);
     if (start_index == std::string::npos) {
       return nullptr;
@@ -171,8 +206,43 @@ std::unique_ptr<ClassLoaderContext::ClassLoaderInfo> ClassLoaderContext::ParseCl
     std::string shared_libraries_spec =
         class_loader_spec.substr(start_index + 1, class_loader_spec.length() - start_index - 2);
     std::vector<std::string> shared_libraries;
-    Split(shared_libraries_spec, kClassLoaderSharedLibrarySeparator, &shared_libraries);
-    for (const std::string& shared_library_spec : shared_libraries) {
+    size_t cursor = 0;
+    while (cursor != shared_libraries_spec.length()) {
+      size_t shared_library_separator =
+          shared_libraries_spec.find_first_of(kClassLoaderSharedLibrarySeparator, cursor);
+      size_t shared_library_open =
+          shared_libraries_spec.find_first_of(kClassLoaderSharedLibraryOpeningMark, cursor);
+      std::string shared_library_spec;
+      if (shared_library_separator == std::string::npos) {
+        // Only one shared library, for example:
+        // PCL[...]
+        shared_library_spec =
+            shared_libraries_spec.substr(cursor, shared_libraries_spec.length() - cursor);
+        cursor = shared_libraries_spec.length();
+      } else if ((shared_library_open == std::string::npos) ||
+                 (shared_library_open > shared_library_separator)) {
+        // We found a shared library without nested shared libraries, for example:
+        // PCL[...]#PCL[...]{...}
+        shared_library_spec =
+            shared_libraries_spec.substr(cursor, shared_library_separator - cursor);
+        cursor = shared_library_separator + 1;
+      } else {
+        // The shared library contains nested shared libraries. Find the matching closing shared
+        // marker for it.
+        size_t closing_marker =
+            FindMatchingSharedLibraryCloseMarker(shared_libraries_spec, shared_library_open);
+        if (closing_marker == std::string::npos) {
+          // No matching closing marker, return an error.
+          return nullptr;
+        }
+        shared_library_spec = shared_libraries_spec.substr(cursor, closing_marker + 1 - cursor);
+        cursor = closing_marker + 1;
+        if (cursor != shared_libraries_spec.length() &&
+            shared_libraries_spec[cursor] == kClassLoaderSharedLibrarySeparator) {
+          // Pass the shared library separator marker.
+          ++cursor;
+        }
+      }
       std::unique_ptr<ClassLoaderInfo> shared_library(
           ParseInternal(shared_library_spec, parse_checksums));
       if (shared_library == nullptr) {
@@ -253,50 +323,24 @@ ClassLoaderContext::ClassLoaderInfo* ClassLoaderContext::ParseInternal(
       // The class loader spec contains shared libraries. Find the matching closing
       // shared library marker for it.
 
-      // Counter of opened shared library marker we've encountered so far.
-      uint32_t counter = 1;
-      // The index at which we're operating in the loop.
-      uint32_t string_index = first_shared_library_open + 1;
-      while (counter != 0) {
-        size_t shared_library_close =
-            remaining.find_first_of(kClassLoaderSharedLibraryClosingMark, string_index);
-        size_t shared_library_open =
-            remaining.find_first_of(kClassLoaderSharedLibraryOpeningMark, string_index);
-        if (shared_library_close == std::string::npos) {
-          // No matching closing market. Return an error.
-          LOG(ERROR) << "Invalid class loader spec: " << class_loader_spec;
-          return nullptr;
-        }
+      uint32_t shared_library_close =
+          FindMatchingSharedLibraryCloseMarker(remaining, first_shared_library_open);
+      if (shared_library_close == std::string::npos) {
+        LOG(ERROR) << "Invalid class loader spec: " << class_loader_spec;
+        return nullptr;
+      }
+      class_loader_spec = remaining.substr(0, shared_library_close + 1);
 
-        if ((shared_library_open == std::string::npos) ||
-            (shared_library_close < shared_library_open)) {
-          // We have seen a closing marker. Decrement the counter.
-          --counter;
-          if (counter == 0) {
-            // Found the matching closing marker.
-            class_loader_spec = remaining.substr(0, shared_library_close + 1);
-
-            // Compute the remaining string to analyze.
-            if (remaining.size() == shared_library_close + 1) {
-              remaining = "";
-            } else if ((remaining.size() == shared_library_close + 2) ||
-                       (remaining.at(shared_library_close + 1) != kClassLoaderSeparator)) {
-              LOG(ERROR) << "Invalid class loader spec: " << class_loader_spec;
-              return nullptr;
-            } else {
-              remaining = remaining.substr(shared_library_close + 2,
-                                           remaining.size() - shared_library_close - 2);
-            }
-          } else {
-            // Move the search index forward.
-            string_index = shared_library_close + 1;
-          }
-        } else {
-          // New nested opening marker. Increment the counter and move the search
-          // index after the marker.
-          ++counter;
-          string_index = shared_library_open + 1;
-        }
+      // Compute the remaining string to analyze.
+      if (remaining.size() == shared_library_close + 1) {
+        remaining = "";
+      } else if ((remaining.size() == shared_library_close + 2) ||
+                 (remaining.at(shared_library_close + 1) != kClassLoaderSeparator)) {
+        LOG(ERROR) << "Invalid class loader spec: " << class_loader_spec;
+        return nullptr;
+      } else {
+        remaining = remaining.substr(shared_library_close + 2,
+                                     remaining.size() - shared_library_close - 2);
       }
     }
 
