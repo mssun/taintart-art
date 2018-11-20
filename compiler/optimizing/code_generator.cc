@@ -1126,6 +1126,7 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
   if (osr) {
     DCHECK_EQ(info->GetSuspendCheck(), instruction);
     DCHECK(info->IsIrreducible());
+    DCHECK(environment != nullptr);
     if (kIsDebugBuild) {
       for (size_t i = 0, environment_size = environment->Size(); i < environment_size; ++i) {
         HInstruction* in_environment = environment->GetInstructionAt(i);
