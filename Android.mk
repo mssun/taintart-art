@@ -329,10 +329,46 @@ endif
 # Android Runtime APEX.
 
 include $(CLEAR_VARS)
+
+# The Android Runtime APEX comes in two flavors:
+# - the release module (`com.android.runtime.release`), containing
+#   only "release" artifacts;
+# - the debug module (`com.android.runtime.debug`), containing both
+#   "release" and "debug" artifacts, as well as additional tools.
+#
+# The Android Runtime APEX module (`com.android.runtime`) is an
+# "alias" for one of the previous modules. By default, "user" build
+# variants contain the release module, while "userdebug" and "eng"
+# build variant contain the debug module. However, if
+# `PRODUCT_ART_TARGET_INCLUDE_DEBUG_BUILD` is defined, it overrides
+# the previous logic:
+# - if `PRODUCT_ART_TARGET_INCLUDE_DEBUG_BUILD` is set to `false`, the
+#   build will include the release module (whatever the build
+#   variant);
+# - if `PRODUCT_ART_TARGET_INCLUDE_DEBUG_BUILD` is set to `true`, the
+#   build will include the debug module (whatever the build variant).
+
+art_target_include_debug_build := $(PRODUCT_ART_TARGET_INCLUDE_DEBUG_BUILD)
+ifneq (false,$(art_target_include_debug_build))
+  ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+    art_target_include_debug_build := true
+  endif
+endif
+ifeq (true,$(art_target_include_debug_build))
+  # Module with both release and debug variants, as well as
+  # additional tools.
+  TARGET_RUNTIME_APEX := com.android.runtime.debug
+else
+  # Release module (without debug variants nor tools).
+  TARGET_RUNTIME_APEX := com.android.runtime.release
+endif
+
 LOCAL_MODULE := com.android.runtime
-# TODO: Select the debug module (`com.android.runtime.debug`) for
-# userdebug and eng products.
-LOCAL_REQUIRED_MODULES := com.android.runtime.release
+LOCAL_REQUIRED_MODULES := $(TARGET_RUNTIME_APEX)
+
+# Clear locally used variable.
+art_target_include_debug_build :=
+
 include $(BUILD_PHONY_PACKAGE)
 
 
