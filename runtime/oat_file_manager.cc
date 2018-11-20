@@ -118,9 +118,10 @@ const OatFile* OatFileManager::FindOpenedOatFileFromOatLocationLocked(
 }
 
 std::vector<const OatFile*> OatFileManager::GetBootOatFiles() const {
-  std::vector<const OatFile*> oat_files;
   std::vector<gc::space::ImageSpace*> image_spaces =
       Runtime::Current()->GetHeap()->GetBootImageSpaces();
+  std::vector<const OatFile*> oat_files;
+  oat_files.reserve(image_spaces.size());
   for (gc::space::ImageSpace* image_space : image_spaces) {
     oat_files.push_back(image_space->GetOatFile());
   }
@@ -153,6 +154,7 @@ OatFileManager::~OatFileManager() {
 std::vector<const OatFile*> OatFileManager::RegisterImageOatFiles(
     const std::vector<gc::space::ImageSpace*>& spaces) {
   std::vector<const OatFile*> oat_files;
+  oat_files.reserve(spaces.size());
   for (gc::space::ImageSpace* space : spaces) {
     oat_files.push_back(RegisterOatFile(space->ReleaseOatFile()));
   }
@@ -290,10 +292,12 @@ static bool CheckClassCollision(const OatFile* oat_file,
 
   // Generate type index information for each dex file.
   std::vector<TypeIndexInfo> loaded_types;
+  loaded_types.reserve(dex_files_loaded.size());
   for (const DexFile* dex_file : dex_files_loaded) {
     loaded_types.push_back(TypeIndexInfo(dex_file));
   }
   std::vector<TypeIndexInfo> unloaded_types;
+  unloaded_types.reserve(dex_files_unloaded.size());
   for (const DexFile* dex_file : dex_files_unloaded) {
     unloaded_types.push_back(TypeIndexInfo(dex_file));
   }
