@@ -33,6 +33,7 @@
 #include "android/dlext.h"
 #endif
 
+#include <android-base/logging.h>
 #include "android-base/stringprintf.h"
 
 #include "art_method.h"
@@ -467,6 +468,7 @@ static void DCheckIndexToBssMapping(OatFile* oat_file,
       }
       prev_entry = &entry;
     }
+    CHECK(prev_entry != nullptr);
     CHECK_LT(prev_entry->GetIndex(index_bits), number_of_indexes);
   }
 }
@@ -1755,11 +1757,15 @@ OatDexFile::OatDexFile(const OatFile* oat_file,
   }
 }
 
-OatDexFile::OatDexFile(TypeLookupTable&& lookup_table) : lookup_table_(std::move(lookup_table)) {}
+OatDexFile::OatDexFile(TypeLookupTable&& lookup_table) : lookup_table_(std::move(lookup_table)) {
+  // Stripped-down OatDexFile only allowed in the compiler.
+  CHECK(Runtime::Current() == nullptr || Runtime::Current()->IsAotCompiler());
+}
 
 OatDexFile::~OatDexFile() {}
 
 size_t OatDexFile::FileSize() const {
+  DCHECK(dex_file_pointer_ != nullptr);
   return reinterpret_cast<const DexFile::Header*>(dex_file_pointer_)->file_size_;
 }
 
@@ -1779,6 +1785,7 @@ std::unique_ptr<const DexFile> OatDexFile::OpenDexFile(std::string* error_msg) c
 }
 
 uint32_t OatDexFile::GetOatClassOffset(uint16_t class_def_index) const {
+  DCHECK(oat_class_offsets_pointer_ != nullptr);
   return oat_class_offsets_pointer_[class_def_index];
 }
 

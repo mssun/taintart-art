@@ -736,7 +736,8 @@ void SemiSpace::ScanObject(Object* obj) {
 void SemiSpace::ProcessMarkStack() {
   TimingLogger::ScopedTiming t(__FUNCTION__, GetTimings());
   accounting::ContinuousSpaceBitmap* live_bitmap = nullptr;
-  if (collect_from_space_only_) {
+  const bool collect_from_space_only = collect_from_space_only_;
+  if (collect_from_space_only) {
     // If a bump pointer space only collection (and the promotion is
     // enabled,) we delay the live-bitmap marking of promoted objects
     // from MarkObject() until this function.
@@ -748,7 +749,7 @@ void SemiSpace::ProcessMarkStack() {
   }
   while (!mark_stack_->IsEmpty()) {
     Object* obj = mark_stack_->PopBack();
-    if (collect_from_space_only_ && promo_dest_space_->HasAddress(obj)) {
+    if (collect_from_space_only && promo_dest_space_->HasAddress(obj)) {
       // obj has just been promoted. Mark the live bitmap for it,
       // which is delayed from MarkObject().
       DCHECK(!live_bitmap->Test(obj));
