@@ -351,11 +351,11 @@ ClassLoaderContext::ClassLoaderInfo* ClassLoaderContext::ParseInternal(
       return nullptr;
     }
     if (first == nullptr) {
-      first.reset(info.release());
+      first = std::move(info);
       previous_iteration = first.get();
     } else {
       CHECK(previous_iteration != nullptr);
-      previous_iteration->parent.reset(info.release());
+      previous_iteration->parent = std::move(info);
       previous_iteration = previous_iteration->parent.get();
     }
   }
