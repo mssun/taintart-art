@@ -17,6 +17,7 @@
 #include "class_loader_context.h"
 
 #include <android-base/parseint.h>
+#include <android-base/strings.h>
 
 #include "art_field-inl.h"
 #include "base/casts.h"
@@ -618,13 +619,28 @@ static jclass GetClassLoaderClass(ClassLoaderContext::ClassLoaderType type) {
   UNREACHABLE();
 }
 
+static std::string FlattenClasspath(const std::vector<std::string>& classpath) {
+  return android::base::Join(classpath, ':');
+}
+
 static ObjPtr<mirror::ClassLoader> CreateClassLoaderInternal(
     Thread* self,
     ScopedObjectAccess& soa,
     const ClassLoaderContext::ClassLoaderInfo& info,
+    bool for_shared_library,
+    VariableSizedHandleScope& map_scope,
+    std::map<std::string, Handle<mirror::ClassLoader>>& canonicalized_libraries,
     bool add_compilation_sources,
     const std::vector<const DexFile*>& compilation_sources)
       REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (for_shared_library) {
+    // Check if the shared library has already been created.
+    auto search = canonicalized_libraries.find(FlattenClasspath(info.classpath));
+    if (search != canonicalized_libraries.end()) {
+      return search->second.Get();
+    }
+  }
+
   StackHandleScope<3> hs(self);
   MutableHandle<mirror::ObjectArray<mirror::ClassLoader>> libraries(
       hs.NewHandle<mirror::ObjectArray<mirror::ClassLoader>>(nullptr));
@@ -641,6 +657,9 @@ static ObjPtr<mirror::ClassLoader> CreateClassLoaderInternal(
                          self,
                          soa,
                          *info.shared_libraries[i].get(),
+                         /* for_shared_library= */ true,
+                         map_scope,
+                         canonicalized_libraries,
                          /* add_compilation_sources= */ false,
                          compilation_sources));
     }
@@ -650,7 +669,14 @@ static ObjPtr<mirror::ClassLoader> CreateClassLoaderInternal(
   if (info.parent != nullptr) {
     // We should only add the compilation sources to the first class loader.
     parent.Assign(CreateClassLoaderInternal(
-        self, soa, *info.parent.get(), /* add_compilation_sources= */ false, compilation_sources));
+        self,
+        soa,
+        *info.parent.get(),
+        /* for_shared_library= */ false,
+        map_scope,
+        canonicalized_libraries,
+        /* add_compilation_sources= */ false,
+        compilation_sources));
   }
   std::vector<const DexFile*> class_path_files = MakeNonOwningPointerVector(
       info.opened_dex_files);
@@ -664,12 +690,18 @@ static ObjPtr<mirror::ClassLoader> CreateClassLoaderInternal(
   }
   Handle<mirror::Class> loader_class = hs.NewHandle<mirror::Class>(
       soa.Decode<mirror::Class>(GetClassLoaderClass(info.type)));
-  return Runtime::Current()->GetClassLinker()->CreateWellKnownClassLoader(
-      self,
-      class_path_files,
-      loader_class,
-      libraries,
-      parent);
+  ObjPtr<mirror::ClassLoader> loader =
+      Runtime::Current()->GetClassLinker()->CreateWellKnownClassLoader(
+          self,
+          class_path_files,
+          loader_class,
+          libraries,
+          parent);
+  if (for_shared_library) {
+    canonicalized_libraries[FlattenClasspath(info.classpath)] =
+        map_scope.NewHandle<mirror::ClassLoader>(loader);
+  }
+  return loader;
 }
 
 jobject ClassLoaderContext::CreateClassLoader(
@@ -686,11 +718,19 @@ jobject ClassLoaderContext::CreateClassLoader(
     return class_linker->CreatePathClassLoader(self, compilation_sources);
   }
 
-  // Create the class loader of the parent.
+  // Create a map of canonicalized shared libraries. As we're holding objects,
+  // we're creating a variable size handle scope to put handles in the map.
+  VariableSizedHandleScope map_scope(self);
+  std::map<std::string, Handle<mirror::ClassLoader>> canonicalized_libraries;
+
+  // Create the class loader.
   ObjPtr<mirror::ClassLoader> loader =
       CreateClassLoaderInternal(self,
                                 soa,
                                 *class_loader_chain_.get(),
+                                /* for_shared_library= */ false,
+                                map_scope,
+                                canonicalized_libraries,
                                 /* add_compilation_sources= */ true,
                                 compilation_sources);
   // Make it a global ref and return.
