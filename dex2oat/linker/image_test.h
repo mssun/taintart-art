@@ -341,7 +341,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
         }
 
         bool header_ok = oat_writer->WriteHeader(elf_writer->GetStream(),
-                                                 /* image_file_location_oat_checksum */ 0u);
+                                                 /*boot_image_checksum=*/ 0u);
         ASSERT_TRUE(header_ok);
 
         writer->UpdateOatFileHeader(i, oat_writer->GetOatHeader());
