@@ -22,7 +22,8 @@
 
 #include <memory>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+#include <android-base/macros.h>
 
 namespace art {
 namespace ti {

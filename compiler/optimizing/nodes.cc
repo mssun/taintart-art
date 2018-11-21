@@ -20,6 +20,7 @@
 #include "art_method-inl.h"
 #include "base/bit_utils.h"
 #include "base/bit_vector-inl.h"
+#include "base/logging.h"
 #include "base/stl_util.h"
 #include "class_linker-inl.h"
 #include "class_root.h"
