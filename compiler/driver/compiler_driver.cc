@@ -24,6 +24,7 @@
 #include <malloc.h>  // For mallinfo
 #endif
 
+#include "android-base/logging.h"
 #include "android-base/strings.h"
 
 #include "art_field-inl.h"
@@ -598,6 +599,29 @@ static void CompileMethodQuick(
                                                          class_loader,
                                                          dex_file,
                                                          dex_cache);
+        ProfileMethodsCheck check_type =
+            driver->GetCompilerOptions().CheckProfiledMethodsCompiled();
+        if (UNLIKELY(check_type != ProfileMethodsCheck::kNone)) {
+          bool violation = driver->ShouldCompileBasedOnProfile(method_ref) &&
+                               (compiled_method == nullptr);
+          if (violation) {
+            std::ostringstream oss;
+            oss << "Failed to compile "
+                << method_ref.dex_file->PrettyMethod(method_ref.index)
+                << "[" << method_ref.dex_file->GetLocation() << "]"
+                << " as expected by profile";
+            switch (check_type) {
+              case ProfileMethodsCheck::kNone:
+                break;
+              case ProfileMethodsCheck::kLog:
+                LOG(ERROR) << oss.str();
+                break;
+              case ProfileMethodsCheck::kAbort:
+                LOG(FATAL_WITHOUT_ABORT) << oss.str();
+                _exit(1);
+            }
+          }
+        }
       }
       if (compiled_method == nullptr &&
           dex_to_dex_compilation_level !=
