@@ -396,6 +396,13 @@ class ImageSpace::Loader {
                                              image_reservation,
                                              error_msg);
     if (space != nullptr) {
+      uint32_t expected_reservation_size =
+          RoundUp(space->GetImageHeader().GetImageSize(), kPageSize);
+      if (!CheckImageReservationSize(*space, expected_reservation_size, error_msg) ||
+          !CheckImageComponentCount(*space, /*expected_component_count=*/ 1u, error_msg)) {
+        return nullptr;
+      }
+
       TimingLogger::ScopedTiming timing("RelocateImage", &logger);
       ImageHeader* image_header = reinterpret_cast<ImageHeader*>(space->GetMemMap()->Begin());
       if (!RelocateInPlace(*image_header,
@@ -579,6 +586,34 @@ class ImageSpace::Loader {
                                                      image_end));
     space->oat_file_non_owned_ = oat_file;
     return space;
+  }
+
+  static bool CheckImageComponentCount(const ImageSpace& space,
+                                       uint32_t expected_component_count,
+                                       /*out*/std::string* error_msg) {
+    const ImageHeader& header = space.GetImageHeader();
+    if (header.GetComponentCount() != expected_component_count) {
+      *error_msg = StringPrintf("Unexpected component count in %s, received %u, expected %u",
+                                space.GetImageFilename().c_str(),
+                                header.GetComponentCount(),
+                                expected_component_count);
+      return false;
+    }
+    return true;
+  }
+
+  static bool CheckImageReservationSize(const ImageSpace& space,
+                                        uint32_t expected_reservation_size,
+                                        /*out*/std::string* error_msg) {
+    const ImageHeader& header = space.GetImageHeader();
+    if (header.GetImageReservationSize() != expected_reservation_size) {
+      *error_msg = StringPrintf("Unexpected reservation size in %s, received %u, expected %u",
+                                space.GetImageFilename().c_str(),
+                                header.GetImageReservationSize(),
+                                expected_reservation_size);
+      return false;
+    }
+    return true;
   }
 
  private:
@@ -1261,61 +1296,16 @@ class ImageSpace::BootImageLoader {
                       /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
     TimingLogger logger(__PRETTY_FUNCTION__, /*precise=*/ true, VLOG_IS_ON(image));
     std::string filename = GetSystemImageFilename(image_location_.c_str(), image_isa_);
-    std::vector<std::string> locations =
-        ExpandMultiImageLocations(boot_class_path_locations_, image_location_);
-    uint32_t image_start;
-    uint32_t image_end;
-    if (!GetBootImageAddressRange(filename, &image_start, &image_end, error_msg)) {
-      return false;
-    }
-    if (locations.size() > 1u) {
-      std::string last_filename = GetSystemImageFilename(locations.back().c_str(), image_isa_);
-      uint32_t dummy;
-      if (!GetBootImageAddressRange(last_filename, &dummy, &image_end, error_msg)) {
-        return false;
-      }
-    }
-    MemMap image_reservation;
-    MemMap local_extra_reservation;
-    if (!ReserveBootImageMemory(/*reservation_size=*/ image_end - image_start,
-                                image_start,
-                                extra_reservation_size,
-                                &image_reservation,
-                                &local_extra_reservation,
-                                error_msg)) {
-      return false;
-    }
 
-    std::vector<std::unique_ptr<ImageSpace>> spaces;
-    spaces.reserve(locations.size());
-    for (const std::string& location : locations) {
-      filename = GetSystemImageFilename(location.c_str(), image_isa_);
-      spaces.push_back(Load(location, filename, &logger, &image_reservation, error_msg));
-      if (spaces.back() == nullptr) {
-        return false;
-      }
-    }
-    for (size_t i = 0u, size = spaces.size(); i != size; ++i) {
-      std::string expected_boot_class_path =
-          (i == 0u) ? android::base::Join(boot_class_path_locations_, ':') : std::string();
-      if (!OpenOatFile(spaces[i].get(),
-                       boot_class_path_[i],
-                       expected_boot_class_path,
-                       /*validate_oat_file=*/ false,
-                       &logger,
-                       &image_reservation,
-                       error_msg)) {
-        return false;
-      }
-    }
-    if (!CheckReservationExhausted(image_reservation, error_msg)) {
+    if (!LoadFromFile(filename,
+                      /*validate_oat_file=*/ false,
+                      extra_reservation_size,
+                      &logger,
+                      boot_image_spaces,
+                      extra_reservation,
+                      error_msg)) {
       return false;
     }
-
-    MaybeRelocateSpaces(spaces, &logger);
-    InitRuntimeMethods(spaces);
-    boot_image_spaces->swap(spaces);
-    *extra_reservation = std::move(local_extra_reservation);
 
     if (VLOG_IS_ON(image)) {
       LOG(INFO) << "ImageSpace::BootImageLoader::LoadFromSystem exiting "
@@ -1333,70 +1323,16 @@ class ImageSpace::BootImageLoader {
       /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
     TimingLogger logger(__PRETTY_FUNCTION__, /*precise=*/ true, VLOG_IS_ON(image));
     DCHECK(DalvikCacheExists());
-    std::vector<std::string> locations =
-        ExpandMultiImageLocations(boot_class_path_locations_, image_location_);
-    uint32_t image_start;
-    uint32_t image_end;
-    if (!GetBootImageAddressRange(cache_filename_, &image_start, &image_end, error_msg)) {
-      return false;
-    }
-    if (locations.size() > 1u) {
-      std::string last_filename;
-      if (!GetDalvikCacheFilename(locations.back().c_str(),
-                                  dalvik_cache_.c_str(),
-                                  &last_filename,
-                                  error_msg)) {
-        return false;
-      }
-      uint32_t dummy;
-      if (!GetBootImageAddressRange(last_filename, &dummy, &image_end, error_msg)) {
-        return false;
-      }
-    }
-    MemMap image_reservation;
-    MemMap local_extra_reservation;
-    if (!ReserveBootImageMemory(/*reservation_size=*/ image_end - image_start,
-                                image_start,
-                                extra_reservation_size,
-                                &image_reservation,
-                                &local_extra_reservation,
-                                error_msg)) {
-      return false;
-    }
 
-    std::vector<std::unique_ptr<ImageSpace>> spaces;
-    spaces.reserve(locations.size());
-    for (const std::string& location : locations) {
-      std::string filename;
-      if (!GetDalvikCacheFilename(location.c_str(), dalvik_cache_.c_str(), &filename, error_msg)) {
-        return false;
-      }
-      spaces.push_back(Load(location, filename, &logger, &image_reservation, error_msg));
-      if (spaces.back() == nullptr) {
-        return false;
-      }
-    }
-    for (size_t i = 0u, size = spaces.size(); i != size; ++i) {
-      std::string expected_boot_class_path =
-          (i == 0u) ? android::base::Join(boot_class_path_locations_, ':') : std::string();
-      if (!OpenOatFile(spaces[i].get(),
-                       boot_class_path_[i],
-                       expected_boot_class_path,
-                       validate_oat_file,
-                       &logger,
-                       &image_reservation,
-                       error_msg)) {
-        return false;
-      }
-    }
-    if (!CheckReservationExhausted(image_reservation, error_msg)) {
+    if (!LoadFromFile(cache_filename_,
+                      validate_oat_file,
+                      extra_reservation_size,
+                      &logger,
+                      boot_image_spaces,
+                      extra_reservation,
+                      error_msg)) {
       return false;
     }
-
-    MaybeRelocateSpaces(spaces, &logger);
-    InitRuntimeMethods(spaces);
-    boot_image_spaces->swap(spaces);
-    *extra_reservation = std::move(local_extra_reservation);
 
     if (VLOG_IS_ON(image)) {
       LOG(INFO) << "ImageSpace::BootImageLoader::LoadFromDalvikCache exiting "
@@ -1407,6 +1343,81 @@ class ImageSpace::BootImageLoader {
   }
 
  private:
+  bool LoadFromFile(
+      const std::string& filename,
+      bool validate_oat_file,
+      size_t extra_reservation_size,
+      TimingLogger* logger,
+      /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
+      /*out*/MemMap* extra_reservation,
+      /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
+    ImageHeader system_hdr;
+    if (!ReadSpecificImageHeader(filename.c_str(), &system_hdr)) {
+      *error_msg = StringPrintf("Cannot read header of %s", filename.c_str());
+      return false;
+    }
+    if (system_hdr.GetComponentCount() != boot_class_path_.size()) {
+      *error_msg = StringPrintf("Unexpected component count in %s, received %u, expected %zu",
+                                filename.c_str(),
+                                system_hdr.GetComponentCount(),
+                                boot_class_path_.size());
+      return false;
+    }
+    MemMap image_reservation;
+    MemMap local_extra_reservation;
+    if (!ReserveBootImageMemory(system_hdr.GetImageReservationSize(),
+                                reinterpret_cast32<uint32_t>(system_hdr.GetImageBegin()),
+                                extra_reservation_size,
+                                &image_reservation,
+                                &local_extra_reservation,
+                                error_msg)) {
+      return false;
+    }
+
+    std::vector<std::string> locations =
+        ExpandMultiImageLocations(boot_class_path_locations_, image_location_);
+    std::vector<std::string> filenames =
+        ExpandMultiImageLocations(boot_class_path_locations_, filename);
+    DCHECK_EQ(locations.size(), filenames.size());
+    std::vector<std::unique_ptr<ImageSpace>> spaces;
+    spaces.reserve(locations.size());
+    for (std::size_t i = 0u, size = locations.size(); i != size; ++i) {
+      spaces.push_back(Load(locations[i], filenames[i], logger, &image_reservation, error_msg));
+      const ImageSpace* space = spaces.back().get();
+      if (space == nullptr) {
+        return false;
+      }
+      uint32_t expected_component_count = (i == 0u) ? system_hdr.GetComponentCount() : 0u;
+      uint32_t expected_reservation_size = (i == 0u) ? system_hdr.GetImageReservationSize() : 0u;
+      if (!Loader::CheckImageReservationSize(*space, expected_reservation_size, error_msg) ||
+          !Loader::CheckImageComponentCount(*space, expected_component_count, error_msg)) {
+        return false;
+      }
+    }
+    for (size_t i = 0u, size = spaces.size(); i != size; ++i) {
+      std::string expected_boot_class_path =
+          (i == 0u) ? android::base::Join(boot_class_path_locations_, ':') : std::string();
+      if (!OpenOatFile(spaces[i].get(),
+                       boot_class_path_[i],
+                       expected_boot_class_path,
+                       validate_oat_file,
+                       logger,
+                       &image_reservation,
+                       error_msg)) {
+        return false;
+      }
+    }
+    if (!CheckReservationExhausted(image_reservation, error_msg)) {
+      return false;
+    }
+
+    MaybeRelocateSpaces(spaces, logger);
+    InitRuntimeMethods(spaces);
+    boot_image_spaces->swap(spaces);
+    *extra_reservation = std::move(local_extra_reservation);
+    return true;
+  }
+
   template <typename T>
   ALWAYS_INLINE static T* RelocatedAddress(T* src, uint32_t diff) {
     DCHECK(src != nullptr);
@@ -2050,27 +2061,14 @@ class ImageSpace::BootImageLoader {
     return true;
   }
 
-  bool GetBootImageAddressRange(const std::string& filename,
-                                /*out*/uint32_t* start,
-                                /*out*/uint32_t* end,
-                                /*out*/std::string* error_msg) {
-    ImageHeader system_hdr;
-    if (!ReadSpecificImageHeader(filename.c_str(), &system_hdr)) {
-      *error_msg = StringPrintf("Cannot read header of %s", filename.c_str());
-      return false;
-    }
-    *start = reinterpret_cast32<uint32_t>(system_hdr.GetImageBegin());
-    CHECK_ALIGNED(*start, kPageSize);
-    *end = RoundUp(reinterpret_cast32<uint32_t>(system_hdr.GetOatFileEnd()), kPageSize);
-    return true;
-  }
-
   bool ReserveBootImageMemory(uint32_t reservation_size,
                               uint32_t image_start,
                               size_t extra_reservation_size,
                               /*out*/MemMap* image_reservation,
                               /*out*/MemMap* extra_reservation,
                               /*out*/std::string* error_msg) {
+    DCHECK_ALIGNED(reservation_size, kPageSize);
+    DCHECK_ALIGNED(image_start, kPageSize);
     DCHECK(!image_reservation->IsValid());
     DCHECK_LT(extra_reservation_size, std::numeric_limits<uint32_t>::max() - reservation_size);
     size_t total_size = reservation_size + extra_reservation_size;

@@ -73,7 +73,10 @@ TEST_F(ImageTest, ImageHeaderIsValid) {
     uint32_t oat_data_end = ART_BASE_ADDRESS + (9 * KB);
     uint32_t oat_file_end = ART_BASE_ADDRESS + (10 * KB);
     ImageSection sections[ImageHeader::kSectionCount];
-    ImageHeader image_header(image_begin,
+    uint32_t image_reservation_size = RoundUp(oat_file_end - image_begin, kPageSize);
+    ImageHeader image_header(image_reservation_size,
+                             /*component_count=*/ 1u,
+                             image_begin,
                              image_size_,
                              sections,
                              image_roots,
