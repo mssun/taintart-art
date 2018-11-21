@@ -119,16 +119,14 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
         /*oat_checksum=*/ 0u,
         // The oat file data in the header is always right after the image space.
         /*oat_file_begin=*/ PointerToLowMemUInt32(oat_map.Begin()),
-        /*oat_data_begin=*/PointerToLowMemUInt32(oat_map.Begin()),
-        /*oat_data_end=*/PointerToLowMemUInt32(oat_map.Begin() + oat_size),
-        /*oat_file_end=*/PointerToLowMemUInt32(oat_map.Begin() + oat_size),
-        /*boot_image_begin=*/0u,
-        /*boot_image_size=*/0u,
-        /*boot_oat_begin=*/0u,
-        /*boot_oat_size=*/0u,
-        /*pointer_size=*/sizeof(void*),
+        /*oat_data_begin=*/ PointerToLowMemUInt32(oat_map.Begin()),
+        /*oat_data_end=*/ PointerToLowMemUInt32(oat_map.Begin() + oat_size),
+        /*oat_file_end=*/ PointerToLowMemUInt32(oat_map.Begin() + oat_size),
+        /*boot_image_begin=*/ 0u,
+        /*boot_image_size=*/ 0u,
+        /*pointer_size=*/ sizeof(void*),
         ImageHeader::kStorageModeUncompressed,
-        /*data_size=*/0u);
+        /*data_size=*/ 0u);
     return new DummyImageSpace(std::move(image_map),
                                std::move(live_bitmap),
                                std::move(oat_file),

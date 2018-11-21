@@ -104,8 +104,6 @@ class PACKED(4) ImageHeader {
         oat_file_end_(0U),
         boot_image_begin_(0U),
         boot_image_size_(0U),
-        boot_oat_begin_(0U),
-        boot_oat_size_(0U),
         image_roots_(0U),
         pointer_size_(0U),
         storage_mode_(kDefaultStorageMode),
@@ -122,8 +120,6 @@ class PACKED(4) ImageHeader {
               uint32_t oat_file_end,
               uint32_t boot_image_begin,
               uint32_t boot_image_size,
-              uint32_t boot_oat_begin,
-              uint32_t boot_oat_size,
               uint32_t pointer_size,
               StorageMode storage_mode,
               size_t data_size);
@@ -322,14 +318,6 @@ class PACKED(4) ImageHeader {
     return boot_image_size_;
   }
 
-  uint32_t GetBootOatBegin() const {
-    return boot_oat_begin_;
-  }
-
-  uint32_t GetBootOatSize() const {
-    return boot_oat_size_;
-  }
-
   StorageMode GetStorageMode() const {
     return storage_mode_;
   }
@@ -416,11 +404,7 @@ class PACKED(4) ImageHeader {
 
   // Boot image begin and end (app image headers only).
   uint32_t boot_image_begin_;
-  uint32_t boot_image_size_;
-
-  // Boot oat begin and end (app image headers only).
-  uint32_t boot_oat_begin_;
-  uint32_t boot_oat_size_;
+  uint32_t boot_image_size_;  // Includes heap (*.art) and code (.oat).
 
   // Absolute address of an Object[] of objects needed to reinitialize from an image.
   uint32_t image_roots_;

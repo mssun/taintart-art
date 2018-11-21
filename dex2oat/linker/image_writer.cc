@@ -2589,9 +2589,7 @@ void ImageWriter::CreateHeader(size_t oat_index) {
       PointerToLowMemUInt32(oat_data_end),
       PointerToLowMemUInt32(oat_file_end),
       boot_image_begin,
-      boot_image_end - boot_image_begin,
-      boot_oat_begin,
-      boot_oat_end - boot_oat_begin,
+      boot_oat_end - boot_image_begin,
       static_cast<uint32_t>(target_ptr_size_),
       image_storage_mode_,
       /*data_size*/0u);

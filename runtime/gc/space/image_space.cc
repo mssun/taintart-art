@@ -700,11 +700,9 @@ class ImageSpace::Loader {
   class FixupVisitor : public ValueObject {
    public:
     FixupVisitor(const RelocationRange& boot_image,
-                 const RelocationRange& boot_oat,
                  const RelocationRange& app_image,
                  const RelocationRange& app_oat)
         : boot_image_(boot_image),
-          boot_oat_(boot_oat),
           app_image_(app_image),
           app_oat_(app_oat) {}
 
@@ -727,8 +725,8 @@ class ImageSpace::Loader {
     // Return the relocated address of a code pointer (contained by an oat file).
     ALWAYS_INLINE const void* ForwardCode(const void* src) const {
       const uintptr_t uint_src = reinterpret_cast<uintptr_t>(src);
-      if (boot_oat_.InSource(uint_src)) {
-        return reinterpret_cast<const void*>(boot_oat_.ToDest(uint_src));
+      if (boot_image_.InSource(uint_src)) {
+        return reinterpret_cast<const void*>(boot_image_.ToDest(uint_src));
       }
       if (app_oat_.InSource(uint_src)) {
         return reinterpret_cast<const void*>(app_oat_.ToDest(uint_src));
@@ -745,7 +743,6 @@ class ImageSpace::Loader {
    protected:
     // Source section.
     const RelocationRange boot_image_;
-    const RelocationRange boot_oat_;
     const RelocationRange app_image_;
     const RelocationRange app_oat_;
   };
@@ -893,7 +890,7 @@ class ImageSpace::Loader {
       // We want to use our own class loader and not the one in the image.
       if (obj->IsClass<kVerifyNone>()) {
         mirror::Class* as_klass = obj->AsClass<kVerifyNone>();
-        FixupObjectAdapter visitor(boot_image_, boot_oat_, app_image_, app_oat_);
+        FixupObjectAdapter visitor(boot_image_, app_image_, app_oat_);
         as_klass->FixupNativePointers<kVerifyNone>(as_klass, pointer_size_, visitor);
         // Deal with the pointer arrays. Use the helper function since multiple classes can reference
         // the same arrays.
@@ -1025,10 +1022,8 @@ class ImageSpace::Loader {
       *error_msg = "Can not relocate app image without boot oat file";
       return false;
     }
-    const uint32_t boot_image_size = boot_image_end - boot_image_begin;
-    const uint32_t boot_oat_size = boot_oat_end - boot_oat_begin;
+    const uint32_t boot_image_size = boot_oat_end - boot_image_begin;
     const uint32_t image_header_boot_image_size = image_header.GetBootImageSize();
-    const uint32_t image_header_boot_oat_size = image_header.GetBootOatSize();
     if (boot_image_size != image_header_boot_image_size) {
       *error_msg = StringPrintf("Boot image size %" PRIu64 " does not match expected size %"
                                     PRIu64,
@@ -1036,20 +1031,10 @@ class ImageSpace::Loader {
                                 static_cast<uint64_t>(image_header_boot_image_size));
       return false;
     }
-    if (boot_oat_size != image_header_boot_oat_size) {
-      *error_msg = StringPrintf("Boot oat size %" PRIu64 " does not match expected size %"
-                                    PRIu64,
-                                static_cast<uint64_t>(boot_oat_size),
-                                static_cast<uint64_t>(image_header_boot_oat_size));
-      return false;
-    }
     TimingLogger logger(__FUNCTION__, true, false);
     RelocationRange boot_image(image_header.GetBootImageBegin(),
                                boot_image_begin,
                                boot_image_size);
-    RelocationRange boot_oat(image_header.GetBootOatBegin(),
-                             boot_oat_begin,
-                             boot_oat_size);
     RelocationRange app_image(reinterpret_cast<uintptr_t>(image_header.GetImageBegin()),
                               reinterpret_cast<uintptr_t>(target_base),
                               image_header.GetImageSize());
@@ -1061,11 +1046,9 @@ class ImageSpace::Loader {
     VLOG(image) << "App image " << app_image;
     VLOG(image) << "App oat " << app_oat;
     VLOG(image) << "Boot image " << boot_image;
-    VLOG(image) << "Boot oat " << boot_oat;
-    // True if we need to fixup any heap pointers, otherwise only code pointers.
+    // True if we need to fixup any heap pointers.
     const bool fixup_image = boot_image.Delta() != 0 || app_image.Delta() != 0;
-    const bool fixup_code = boot_oat.Delta() != 0 || app_oat.Delta() != 0;
-    if (!fixup_image && !fixup_code) {
+    if (!fixup_image) {
       // Nothing to fix up.
       return true;
     }
@@ -1074,7 +1057,7 @@ class ImageSpace::Loader {
     const ImageSection& objects_section = image_header.GetObjectsSection();
     uintptr_t objects_begin = reinterpret_cast<uintptr_t>(target_base + objects_section.Offset());
     uintptr_t objects_end = reinterpret_cast<uintptr_t>(target_base + objects_section.End());
-    FixupObjectAdapter fixup_adapter(boot_image, boot_oat, app_image, app_oat);
+    FixupObjectAdapter fixup_adapter(boot_image, app_image, app_oat);
     if (fixup_image) {
       // Two pass approach, fix up all classes first, then fix up non class-objects.
       // The visited bitmap is used to ensure that pointer arrays are not forwarded twice.
@@ -1085,7 +1068,6 @@ class ImageSpace::Loader {
       FixupObjectVisitor fixup_object_visitor(visited_bitmap.get(),
                                               pointer_size,
                                               boot_image,
-                                              boot_oat,
                                               app_image,
                                               app_oat);
       TimingLogger::ScopedTiming timing("Fixup classes", &logger);
@@ -1191,7 +1173,6 @@ class ImageSpace::Loader {
       FixupArtMethodVisitor method_visitor(fixup_image,
                                            pointer_size,
                                            boot_image,
-                                           boot_oat,
                                            app_image,
                                            app_oat);
       image_header.VisitPackedArtMethods(&method_visitor, target_base, pointer_size);
@@ -1200,7 +1181,7 @@ class ImageSpace::Loader {
       {
         // Only touches objects in the app image, no need for mutator lock.
         TimingLogger::ScopedTiming timing("Fixup fields", &logger);
-        FixupArtFieldVisitor field_visitor(boot_image, boot_oat, app_image, app_oat);
+        FixupArtFieldVisitor field_visitor(boot_image, app_image, app_oat);
         image_header.VisitPackedArtFields(&field_visitor, target_base);
       }
       {
@@ -1222,7 +1203,7 @@ class ImageSpace::Loader {
         WriterMutexLock mu(Thread::Current(), *Locks::classlinker_classes_lock_);
         ClassTable temp_table;
         temp_table.ReadFromMemory(target_base + class_table_section.Offset());
-        FixupRootVisitor root_visitor(boot_image, boot_oat, app_image, app_oat);
+        FixupRootVisitor root_visitor(boot_image, app_image, app_oat);
         temp_table.VisitRoots(root_visitor);
       }
       // Fix up the intern table.
@@ -1234,7 +1215,7 @@ class ImageSpace::Loader {
         InternTable temp_intern_table;
         // Note that we require that ReadFromMemory does not make an internal copy of the elements
         // so that the VisitRoots() will update the memory directly rather than the copies.
-        FixupRootVisitor root_visitor(boot_image, boot_oat, app_image, app_oat);
+        FixupRootVisitor root_visitor(boot_image, app_image, app_oat);
         temp_intern_table.AddTableFromMemory(target_base + intern_table_section.Offset(),
                                              [&](InternTable::UnorderedSet& strings)
             REQUIRES_SHARED(Locks::mutator_lock_) {
