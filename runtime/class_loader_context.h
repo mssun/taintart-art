@@ -89,7 +89,10 @@ class ClassLoaderContext {
   // If the context is empty, this method only creates a single PathClassLoader with the
   // given compilation_sources.
   //
-  // Notes:
+  // Shared libraries found in the chain will be canonicalized based on the dex files they
+  // contain.
+  //
+  // Implementation notes:
   //   1) the objects are not completely set up. Do not use this outside of tests and the compiler.
   //   2) should only be called before the first call to OpenDexFiles().
   jobject CreateClassLoader(const std::vector<const DexFile*>& compilation_sources) const;
