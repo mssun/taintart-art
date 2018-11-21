@@ -794,7 +794,7 @@ class ImageWriter final {
   // Set of objects known to be dirty in the image. Can be nullptr if there are none.
   const HashSet<std::string>* dirty_image_objects_;
 
-  class ComputeLazyFieldsForClassesVisitor;
+  class ImageFileGuard;
   class FixupClassVisitor;
   class FixupRootVisitor;
   class FixupVisitor;

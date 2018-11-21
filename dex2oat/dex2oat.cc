@@ -621,7 +621,7 @@ class Dex2Oat final {
   explicit Dex2Oat(TimingLogger* timings) :
       compiler_kind_(Compiler::kOptimizing),
       // Take the default set of instruction features from the build.
-      image_file_location_oat_checksum_(0),
+      boot_image_checksum_(0),
       key_value_store_(nullptr),
       verification_results_(nullptr),
       runtime_(nullptr),
@@ -1493,7 +1493,7 @@ class Dex2Oat final {
       key_value_store_->Put(OatHeader::kCompilationReasonKey, compilation_reason_);
     }
 
-    if (IsBootImage() && image_filenames_.size() > 1) {
+    if (IsBootImage()) {
       // If we're compiling the boot image, store the boot classpath into the Key-Value store.
       // We need this for the multi-image case.
       key_value_store_->Put(OatHeader::kBootClassPathKey,
@@ -1513,9 +1513,9 @@ class Dex2Oat final {
         TimingLogger::ScopedTiming t3("Loading image checksum", timings_);
         std::vector<gc::space::ImageSpace*> image_spaces =
             Runtime::Current()->GetHeap()->GetBootImageSpaces();
-        image_file_location_oat_checksum_ = image_spaces[0]->GetImageHeader().GetOatChecksum();
+        boot_image_checksum_ = image_spaces[0]->GetImageHeader().GetImageChecksum();
       } else {
-        image_file_location_oat_checksum_ = 0u;
+        boot_image_checksum_ = 0u;
       }
 
       // Open dex files for class path.
@@ -1571,7 +1571,7 @@ class Dex2Oat final {
         if (!oat_writers_[i]->WriteAndOpenDexFiles(
             vdex_files_[i].get(),
             rodata_.back(),
-            key_value_store_.get(),
+            (i == 0u) ? key_value_store_.get() : nullptr,
             verify,
             update_input_vdex_,
             copy_dex_files_,
@@ -2037,14 +2037,6 @@ class Dex2Oat final {
                                              oat_writer->GetOatDataOffset(),
                                              oat_writer->GetOatSize());
         }
-
-        if (IsBootImage()) {
-          // Have the image_file_location_oat_checksum_ for boot oat files
-          // depend on the contents of all the boot oat files. This way only
-          // the primary image checksum needs to be checked to determine
-          // whether any of the images are out of date.
-          image_file_location_oat_checksum_ ^= oat_writer->GetOatHeader().GetChecksum();
-        }
       }
 
       for (size_t i = 0, size = oat_files_.size(); i != size; ++i) {
@@ -2083,7 +2075,7 @@ class Dex2Oat final {
           elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
         }
 
-        if (!oat_writer->WriteHeader(elf_writer->GetStream(), image_file_location_oat_checksum_)) {
+        if (!oat_writer->WriteHeader(elf_writer->GetStream(), boot_image_checksum_)) {
           LOG(ERROR) << "Failed to write oat header to the ELF file " << oat_file->GetPath();
           return false;
         }
@@ -2710,7 +2702,7 @@ class Dex2Oat final {
   std::unique_ptr<CompilerOptions> compiler_options_;
   Compiler::Kind compiler_kind_;
 
-  uint32_t image_file_location_oat_checksum_;
+  uint32_t boot_image_checksum_;
   std::unique_ptr<SafeMap<std::string, std::string> > key_value_store_;
 
   std::unique_ptr<VerificationResults> verification_results_;

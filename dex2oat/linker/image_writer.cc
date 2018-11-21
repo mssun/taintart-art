@@ -19,6 +19,7 @@
 #include <lz4.h>
 #include <lz4hc.h>
 #include <sys/stat.h>
+#include <zlib.h>
 
 #include <memory>
 #include <numeric>
@@ -606,6 +607,58 @@ bool ImageWriter::IsValidAppImageStringReference(ObjPtr<mirror::Object> referred
          referred_obj->IsString();
 }
 
+// Helper class that erases the image file if it isn't properly flushed and closed.
+class ImageWriter::ImageFileGuard {
+ public:
+  ImageFileGuard() noexcept = default;
+  ImageFileGuard(ImageFileGuard&& other) noexcept = default;
+  ImageFileGuard& operator=(ImageFileGuard&& other) noexcept = default;
+
+  ~ImageFileGuard() {
+    if (image_file_ != nullptr) {
+      // Failure, erase the image file.
+      image_file_->Erase();
+    }
+  }
+
+  void reset(File* image_file) {
+    image_file_.reset(image_file);
+  }
+
+  bool operator==(std::nullptr_t) {
+    return image_file_ == nullptr;
+  }
+
+  bool operator!=(std::nullptr_t) {
+    return image_file_ != nullptr;
+  }
+
+  File* operator->() const {
+    return image_file_.get();
+  }
+
+  bool WriteHeaderAndClose(const std::string& image_filename, const ImageHeader* image_header) {
+    // The header is uncompressed since it contains whether the image is compressed or not.
+    if (!image_file_->PwriteFully(image_header, sizeof(ImageHeader), 0)) {
+      PLOG(ERROR) << "Failed to write image file header " << image_filename;
+      return false;
+    }
+
+    // FlushCloseOrErase() takes care of erasing, so the destructor does not need
+    // to do that whether the FlushCloseOrErase() succeeds or fails.
+    std::unique_ptr<File> image_file = std::move(image_file_);
+    if (image_file->FlushCloseOrErase() != 0) {
+      PLOG(ERROR) << "Failed to flush and close image file " << image_filename;
+      return false;
+    }
+
+    return true;
+  }
+
+ private:
+  std::unique_ptr<File> image_file_;
+};
+
 bool ImageWriter::Write(int image_fd,
                         const std::vector<const char*>& image_filenames,
                         const std::vector<const char*>& oat_filenames) {
@@ -651,10 +704,18 @@ bool ImageWriter::Write(int image_fd,
     CopyMetadata();
   }
 
+  // Primary image header shall be written last for two reasons. First, this ensures
+  // that we shall not end up with a valid primary image and invalid secondary image.
+  // Second, its checksum shall include the checksums of the secondary images (XORed).
+  // This way only the primary image checksum needs to be checked to determine whether
+  // any of the images or oat files are out of date. (Oat file checksums are included
+  // in the image checksum calculation.)
+  ImageHeader* primary_header = reinterpret_cast<ImageHeader*>(image_infos_[0].image_.Begin());
+  ImageFileGuard primary_image_file;
   for (size_t i = 0; i < image_filenames.size(); ++i) {
     const char* image_filename = image_filenames[i];
     ImageInfo& image_info = GetImageInfo(i);
-    std::unique_ptr<File> image_file;
+    ImageFileGuard image_file;
     if (image_fd != kInvalidFd) {
       if (strlen(image_filename) == 0u) {
         image_file.reset(new File(image_fd, unix_file::kCheckSafeUsage));
@@ -677,7 +738,6 @@ bool ImageWriter::Write(int image_fd,
 
     if (!compiler_options_.IsAppImage() && fchmod(image_file->Fd(), 0644) != 0) {
       PLOG(ERROR) << "Failed to make image file world readable: " << image_filename;
-      image_file->Erase();
       return EXIT_FAILURE;
     }
 
@@ -690,11 +750,11 @@ bool ImageWriter::Write(int image_fd,
     std::vector<uint8_t> compressed_data;
     ArrayRef<const uint8_t> image_data =
         MaybeCompressData(raw_image_data, image_storage_mode_, &compressed_data);
+    image_header->data_size_ = image_data.size();  // Fill in the data size.
 
     // Write out the image + fields + methods.
     if (!image_file->PwriteFully(image_data.data(), image_data.size(), sizeof(ImageHeader))) {
       PLOG(ERROR) << "Failed to write image file data " << image_filename;
-      image_file->Erase();
       return false;
     }
 
@@ -710,28 +770,25 @@ bool ImageWriter::Write(int image_fd,
                                  bitmap_section.Size(),
                                  bitmap_position_in_file)) {
       PLOG(ERROR) << "Failed to write image file bitmap " << image_filename;
-      image_file->Erase();
       return false;
     }
 
     int err = image_file->Flush();
     if (err < 0) {
       PLOG(ERROR) << "Failed to flush image file " << image_filename << " with result " << err;
-      image_file->Erase();
       return false;
     }
 
-    // Write header last in case the compiler gets killed in the middle of image writing.
-    // We do not want to have a corrupted image with a valid header.
-    // The header is uncompressed since it contains whether the image is compressed or not.
-    image_header->data_size_ = image_data.size();
-    if (!image_file->PwriteFully(reinterpret_cast<char*>(image_info.image_.Begin()),
-                                 sizeof(ImageHeader),
-                                 0)) {
-      PLOG(ERROR) << "Failed to write image file header " << image_filename;
-      image_file->Erase();
-      return false;
-    }
+    // Calculate the image checksum.
+    uint32_t image_checksum = adler32(0L, Z_NULL, 0);
+    image_checksum = adler32(image_checksum,
+                             reinterpret_cast<const uint8_t*>(image_header),
+                             sizeof(ImageHeader));
+    image_checksum = adler32(image_checksum, image_data.data(), image_data.size());
+    image_checksum = adler32(image_checksum,
+                             reinterpret_cast<const uint8_t*>(image_info.image_bitmap_->Begin()),
+                             bitmap_section.Size());
+    image_header->SetImageChecksum(image_checksum);
 
     if (VLOG_IS_ON(compiler)) {
       size_t separately_written_section_size = bitmap_section.Size() + sizeof(ImageHeader);
@@ -748,11 +805,24 @@ bool ImageWriter::Write(int image_fd,
     CHECK_EQ(bitmap_position_in_file + bitmap_section.Size(),
              static_cast<size_t>(image_file->GetLength()));
 
-    if (image_file->FlushCloseOrErase() != 0) {
-      PLOG(ERROR) << "Failed to flush and close image file " << image_filename;
-      return false;
+    // Write header last in case the compiler gets killed in the middle of image writing.
+    // We do not want to have a corrupted image with a valid header.
+    // Delay the writing of the primary image header until after writing secondary images.
+    if (i == 0u) {
+      primary_image_file = std::move(image_file);
+    } else {
+      if (!image_file.WriteHeaderAndClose(image_filename, image_header)) {
+        return false;
+      }
+      // Update the primary image checksum with the secondary image checksum.
+      primary_header->SetImageChecksum(primary_header->GetImageChecksum() ^ image_checksum);
     }
   }
+  DCHECK(primary_image_file != nullptr);
+  if (!primary_image_file.WriteHeaderAndClose(image_filenames[0], primary_header)) {
+    return false;
+  }
+
   return true;
 }
 
@@ -3347,11 +3417,14 @@ void ImageWriter::UpdateOatFileLayout(size_t oat_index,
                                       size_t oat_loaded_size,
                                       size_t oat_data_offset,
                                       size_t oat_data_size) {
+  DCHECK_GE(oat_loaded_size, oat_data_offset);
+  DCHECK_GE(oat_loaded_size - oat_data_offset, oat_data_size);
+
   const uint8_t* images_end = image_infos_.back().image_begin_ + image_infos_.back().image_size_;
+  DCHECK(images_end != nullptr);  // Image space must be ready.
   for (const ImageInfo& info : image_infos_) {
     DCHECK_LE(info.image_begin_ + info.image_size_, images_end);
   }
-  DCHECK(images_end != nullptr);  // Image space must be ready.
 
   ImageInfo& cur_image_info = GetImageInfo(oat_index);
   cur_image_info.oat_file_begin_ = images_end + cur_image_info.oat_offset_;

@@ -419,7 +419,7 @@ OatFileAssistant::OatStatus OatFileAssistant::GivenOatFileStatus(const OatFile& 
       // starts up.
       LOG(WARNING) << "Dex location " << dex_location_ << " does not seem to include dex file. "
         << "Allow oat file use. This is potentially dangerous.";
-    } else if (file.GetOatHeader().GetImageFileLocationOatChecksum() != image_info->oat_checksum) {
+    } else if (file.GetOatHeader().GetBootImageChecksum() != image_info->boot_image_checksum) {
       VLOG(oat) << "Oat image checksum does not match image checksum.";
       return kOatBootImageOutOfDate;
     }
@@ -574,8 +574,7 @@ OatFileAssistant::ImageInfo::GetRuntimeImageInfo(InstructionSet isa, std::string
     return nullptr;
   }
 
-  info->oat_checksum = image_header->GetOatChecksum();
-  info->patch_delta = image_header->GetPatchDelta();
+  info->boot_image_checksum = image_header->GetImageChecksum();
   return info;
 }
 

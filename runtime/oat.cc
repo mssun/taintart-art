@@ -17,7 +17,6 @@
 #include "oat.h"
 
 #include <string.h>
-#include <zlib.h>
 
 #include "android-base/stringprintf.h"
 
@@ -68,7 +67,7 @@ OatHeader::OatHeader(InstructionSet instruction_set,
                      const InstructionSetFeatures* instruction_set_features,
                      uint32_t dex_file_count,
                      const SafeMap<std::string, std::string>* variable_data)
-    : adler32_checksum_(adler32(0L, Z_NULL, 0)),
+    : oat_checksum_(0u),
       instruction_set_(instruction_set),
       instruction_set_features_bitmap_(instruction_set_features->AsBitmap()),
       dex_file_count_(dex_file_count),
@@ -81,7 +80,7 @@ OatHeader::OatHeader(InstructionSet instruction_set,
       quick_imt_conflict_trampoline_offset_(0),
       quick_resolution_trampoline_offset_(0),
       quick_to_interpreter_bridge_offset_(0),
-      image_file_location_oat_checksum_(0) {
+      boot_image_checksum_(0) {
   // Don't want asserts in header as they would be checked in each file that includes it. But the
   // fields are private, so we check inside a method.
   static_assert(sizeof(magic_) == sizeof(kOatMagic),
@@ -143,47 +142,11 @@ const char* OatHeader::GetMagic() const {
 
 uint32_t OatHeader::GetChecksum() const {
   CHECK(IsValid());
-  return adler32_checksum_;
+  return oat_checksum_;
 }
 
-void OatHeader::UpdateChecksumWithHeaderData() {
-  UpdateChecksum(&instruction_set_, sizeof(instruction_set_));
-  UpdateChecksum(&instruction_set_features_bitmap_, sizeof(instruction_set_features_bitmap_));
-  UpdateChecksum(&dex_file_count_, sizeof(dex_file_count_));
-  UpdateChecksum(&image_file_location_oat_checksum_, sizeof(image_file_location_oat_checksum_));
-
-  // Update checksum for variable data size.
-  UpdateChecksum(&key_value_store_size_, sizeof(key_value_store_size_));
-
-  // Update for data, if existing.
-  if (key_value_store_size_ > 0U) {
-    UpdateChecksum(&key_value_store_, key_value_store_size_);
-  }
-
-  UpdateChecksum(&executable_offset_, sizeof(executable_offset_));
-  UpdateChecksum(&interpreter_to_interpreter_bridge_offset_,
-                 sizeof(interpreter_to_interpreter_bridge_offset_));
-  UpdateChecksum(&interpreter_to_compiled_code_bridge_offset_,
-                 sizeof(interpreter_to_compiled_code_bridge_offset_));
-  UpdateChecksum(&jni_dlsym_lookup_offset_, sizeof(jni_dlsym_lookup_offset_));
-  UpdateChecksum(&quick_generic_jni_trampoline_offset_,
-                 sizeof(quick_generic_jni_trampoline_offset_));
-  UpdateChecksum(&quick_imt_conflict_trampoline_offset_,
-                 sizeof(quick_imt_conflict_trampoline_offset_));
-  UpdateChecksum(&quick_resolution_trampoline_offset_,
-                 sizeof(quick_resolution_trampoline_offset_));
-  UpdateChecksum(&quick_to_interpreter_bridge_offset_,
-                 sizeof(quick_to_interpreter_bridge_offset_));
-}
-
-void OatHeader::UpdateChecksum(const void* data, size_t length) {
-  DCHECK(IsValid());
-  if (data != nullptr) {
-    const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data);
-    adler32_checksum_ = adler32(adler32_checksum_, bytes, length);
-  } else {
-    DCHECK_EQ(0U, length);
-  }
+void OatHeader::SetChecksum(uint32_t oat_checksum) {
+  oat_checksum_ = oat_checksum;
 }
 
 InstructionSet OatHeader::GetInstructionSet() const {
@@ -353,14 +316,14 @@ void OatHeader::SetQuickToInterpreterBridgeOffset(uint32_t offset) {
   quick_to_interpreter_bridge_offset_ = offset;
 }
 
-uint32_t OatHeader::GetImageFileLocationOatChecksum() const {
+uint32_t OatHeader::GetBootImageChecksum() const {
   CHECK(IsValid());
-  return image_file_location_oat_checksum_;
+  return boot_image_checksum_;
 }
 
-void OatHeader::SetImageFileLocationOatChecksum(uint32_t image_file_location_oat_checksum) {
+void OatHeader::SetBootImageChecksum(uint32_t boot_image_checksum) {
   CHECK(IsValid());
-  image_file_location_oat_checksum_ = image_file_location_oat_checksum;
+  boot_image_checksum_ = boot_image_checksum;
 }
 
 uint32_t OatHeader::GetKeyValueStoreSize() const {

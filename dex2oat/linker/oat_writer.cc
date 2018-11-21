@@ -99,13 +99,28 @@ const UnalignedDexFileHeader* AsUnalignedDexFileHeader(const uint8_t* raw_data) 
   return reinterpret_cast<const UnalignedDexFileHeader*>(raw_data);
 }
 
-class ChecksumUpdatingOutputStream : public OutputStream {
+inline uint32_t CodeAlignmentSize(uint32_t header_offset, const CompiledMethod& compiled_method) {
+  // We want to align the code rather than the preheader.
+  uint32_t unaligned_code_offset = header_offset + sizeof(OatQuickMethodHeader);
+  uint32_t aligned_code_offset =  compiled_method.AlignCode(unaligned_code_offset);
+  return aligned_code_offset - unaligned_code_offset;
+}
+
+}  // anonymous namespace
+
+class OatWriter::ChecksumUpdatingOutputStream : public OutputStream {
  public:
-  ChecksumUpdatingOutputStream(OutputStream* out, OatHeader* oat_header)
-      : OutputStream(out->GetLocation()), out_(out), oat_header_(oat_header) { }
+  ChecksumUpdatingOutputStream(OutputStream* out, OatWriter* writer)
+      : OutputStream(out->GetLocation()), out_(out), writer_(writer) { }
 
   bool WriteFully(const void* buffer, size_t byte_count) override {
-    oat_header_->UpdateChecksum(buffer, byte_count);
+    if (buffer != nullptr) {
+      const uint8_t* bytes = reinterpret_cast<const uint8_t*>(buffer);
+      uint32_t old_checksum = writer_->oat_checksum_;
+      writer_->oat_checksum_ = adler32(old_checksum, bytes, byte_count);
+    } else {
+      DCHECK_EQ(0U, byte_count);
+    }
     return out_->WriteFully(buffer, byte_count);
   }
 
@@ -119,17 +134,8 @@ class ChecksumUpdatingOutputStream : public OutputStream {
 
  private:
   OutputStream* const out_;
-  OatHeader* const oat_header_;
+  OatWriter* const writer_;
 };
-
-inline uint32_t CodeAlignmentSize(uint32_t header_offset, const CompiledMethod& compiled_method) {
-  // We want to align the code rather than the preheader.
-  uint32_t unaligned_code_offset = header_offset + sizeof(OatQuickMethodHeader);
-  uint32_t aligned_code_offset =  compiled_method.AlignCode(unaligned_code_offset);
-  return aligned_code_offset - unaligned_code_offset;
-}
-
-}  // anonymous namespace
 
 // Defines the location of the raw dex file to write.
 class OatWriter::DexFileSource {
@@ -379,6 +385,7 @@ OatWriter::OatWriter(const CompilerOptions& compiler_options,
     vdex_dex_shared_data_offset_(0u),
     vdex_verifier_deps_offset_(0u),
     vdex_quickening_info_offset_(0u),
+    oat_checksum_(adler32(0L, Z_NULL, 0)),
     code_size_(0u),
     oat_size_(0u),
     data_bimg_rel_ro_start_(0u),
@@ -675,7 +682,7 @@ bool OatWriter::WriteAndOpenDexFiles(
   oat_size_ = InitOatHeader(dchecked_integral_cast<uint32_t>(oat_dex_files_.size()),
                             key_value_store);
 
-  ChecksumUpdatingOutputStream checksum_updating_rodata(oat_rodata, oat_header_.get());
+  ChecksumUpdatingOutputStream checksum_updating_rodata(oat_rodata, this);
 
   std::unique_ptr<BufferedOutputStream> vdex_out =
       std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
@@ -2349,7 +2356,7 @@ bool OatWriter::WriteRodata(OutputStream* out) {
   size_t relative_offset = current_offset - file_offset;
 
   // Wrap out to update checksum with each write.
-  ChecksumUpdatingOutputStream checksum_updating_out(out, oat_header_.get());
+  ChecksumUpdatingOutputStream checksum_updating_out(out, this);
   out = &checksum_updating_out;
 
   relative_offset = WriteClassOffsets(out, file_offset, relative_offset);
@@ -2658,7 +2665,7 @@ bool OatWriter::WriteCode(OutputStream* out) {
   CHECK(write_state_ == WriteState::kWriteText);
 
   // Wrap out to update checksum with each write.
-  ChecksumUpdatingOutputStream checksum_updating_out(out, oat_header_.get());
+  ChecksumUpdatingOutputStream checksum_updating_out(out, this);
   out = &checksum_updating_out;
 
   SetMultiOatRelativePatcherAdjustment();
@@ -2694,7 +2701,7 @@ bool OatWriter::WriteDataBimgRelRo(OutputStream* out) {
   CHECK(write_state_ == WriteState::kWriteDataBimgRelRo);
 
   // Wrap out to update checksum with each write.
-  ChecksumUpdatingOutputStream checksum_updating_out(out, oat_header_.get());
+  ChecksumUpdatingOutputStream checksum_updating_out(out, this);
   out = &checksum_updating_out;
 
   const size_t file_offset = oat_data_offset_;
@@ -2800,11 +2807,18 @@ bool OatWriter::CheckOatSize(OutputStream* out, size_t file_offset, size_t relat
   return true;
 }
 
-bool OatWriter::WriteHeader(OutputStream* out, uint32_t image_file_location_oat_checksum) {
+bool OatWriter::WriteHeader(OutputStream* out, uint32_t boot_image_checksum) {
   CHECK(write_state_ == WriteState::kWriteHeader);
 
-  oat_header_->SetImageFileLocationOatChecksum(image_file_location_oat_checksum);
-  oat_header_->UpdateChecksumWithHeaderData();
+  oat_header_->SetBootImageChecksum(boot_image_checksum);
+
+  // Update checksum with header data.
+  DCHECK_EQ(oat_header_->GetChecksum(), 0u);  // For checksum calculation.
+  const uint8_t* header_begin = reinterpret_cast<const uint8_t*>(oat_header_.get());
+  const uint8_t* header_end = oat_header_->GetKeyValueStore() + oat_header_->GetKeyValueStoreSize();
+  uint32_t old_checksum = oat_checksum_;
+  oat_checksum_ = adler32(old_checksum, header_begin, header_end - header_begin);
+  oat_header_->SetChecksum(oat_checksum_);
 
   const size_t file_offset = oat_data_offset_;
 

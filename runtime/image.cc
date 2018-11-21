@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '6', '7', '\0' };  // Added CRC32 intrinsic
+const uint8_t ImageHeader::kImageVersion[] = { '0', '6', '8', '\0' };  // Image checksums.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
@@ -46,6 +46,7 @@ ImageHeader::ImageHeader(uint32_t image_begin,
                          size_t data_size)
   : image_begin_(image_begin),
     image_size_(image_size),
+    image_checksum_(0u),
     oat_checksum_(oat_checksum),
     oat_file_begin_(oat_file_begin),
     oat_data_begin_(oat_data_begin),
@@ -55,7 +56,6 @@ ImageHeader::ImageHeader(uint32_t image_begin,
     boot_image_size_(boot_image_size),
     boot_oat_begin_(boot_oat_begin),
     boot_oat_size_(boot_oat_size),
-    patch_delta_(0),
     image_roots_(image_roots),
     pointer_size_(pointer_size),
     storage_mode_(storage_mode),
@@ -79,7 +79,6 @@ void ImageHeader::RelocateImage(int64_t delta) {
   oat_data_begin_ += delta;
   oat_data_end_ += delta;
   oat_file_end_ += delta;
-  patch_delta_ += delta;
   RelocateImageObjects(delta);
   RelocateImageMethods(delta);
 }
@@ -113,9 +112,6 @@ bool ImageHeader::IsValid() const {
     return false;
   }
   if (oat_file_begin_ >= oat_data_begin_) {
-    return false;
-  }
-  if (!IsAligned<kPageSize>(patch_delta_)) {
     return false;
   }
   return true;
