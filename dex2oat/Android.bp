@@ -66,14 +66,19 @@ art_cc_defaults {
         android: {
             // For atrace.
             shared_libs: ["libcutils"],
+            static_libs: [
+                "libz",
+            ],
+        },
+        host: {
+            shared_libs: [
+                "libz",
+            ],
         },
     },
     generated_sources: ["art_dex2oat_operator_srcs"],
     shared_libs: [
         "libbase",
-    ],
-    include_dirs: [
-        "external/zlib",
     ],
     export_include_dirs: ["."],
 
@@ -95,6 +100,7 @@ cc_defaults {
     },
     static_libs: [
         "libbase",
+        "libz",
     ],
 }
 
@@ -261,6 +267,14 @@ art_cc_binary {
             lto: {
                  thin: true,
             },
+            static_libs: [
+                "libz",
+            ],
+        },
+        host: {
+            shared_libs: [
+                "libz",
+            ],
         },
     },
 }
@@ -284,6 +298,18 @@ art_cc_binary {
     static_libs: [
         "libartd-dex2oat",
     ],
+    target: {
+        android: {
+            static_libs: [
+                "libz",
+            ],
+        },
+        host: {
+            shared_libs: [
+                "libz",
+            ],
+        },
+    },
 }
 
 cc_defaults {
@@ -309,6 +335,7 @@ cc_defaults {
     static_libs: [
         "libbase",
         "libsigchain_dummy",
+        "libz",
     ],
 }
 

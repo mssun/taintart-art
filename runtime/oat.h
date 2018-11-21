@@ -31,8 +31,8 @@ class InstructionSetFeatures;
 class PACKED(4) OatHeader {
  public:
   static constexpr uint8_t kOatMagic[] = { 'o', 'a', 't', '\n' };
-  // Last oat version changed reason: Remove interpreter alt tables.
-  static constexpr uint8_t kOatVersion[] = { '1', '6', '3', '\0' };
+  // Last oat version changed reason: Image checksums.
+  static constexpr uint8_t kOatVersion[] = { '1', '6', '4', '\0' };
 
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
   static constexpr const char* kDebuggableKey = "debuggable";
@@ -56,8 +56,7 @@ class PACKED(4) OatHeader {
   std::string GetValidationErrorMessage() const;
   const char* GetMagic() const;
   uint32_t GetChecksum() const;
-  void UpdateChecksumWithHeaderData();
-  void UpdateChecksum(const void* data, size_t length);
+  void SetChecksum(uint32_t checksum);
   uint32_t GetDexFileCount() const {
     DCHECK(IsValid());
     return dex_file_count_;
@@ -94,8 +93,8 @@ class PACKED(4) OatHeader {
   InstructionSet GetInstructionSet() const;
   uint32_t GetInstructionSetFeaturesBitmap() const;
 
-  uint32_t GetImageFileLocationOatChecksum() const;
-  void SetImageFileLocationOatChecksum(uint32_t image_file_location_oat_checksum);
+  uint32_t GetBootImageChecksum() const;
+  void SetBootImageChecksum(uint32_t boot_image_checksum);
 
   uint32_t GetKeyValueStoreSize() const;
   const uint8_t* GetKeyValueStore() const;
@@ -123,7 +122,7 @@ class PACKED(4) OatHeader {
 
   uint8_t magic_[4];
   uint8_t version_[4];
-  uint32_t adler32_checksum_;
+  uint32_t oat_checksum_;
 
   InstructionSet instruction_set_;
   uint32_t instruction_set_features_bitmap_;
@@ -138,7 +137,7 @@ class PACKED(4) OatHeader {
   uint32_t quick_resolution_trampoline_offset_;
   uint32_t quick_to_interpreter_bridge_offset_;
 
-  uint32_t image_file_location_oat_checksum_;
+  uint32_t boot_image_checksum_;
 
   uint32_t key_value_store_size_;
   uint8_t key_value_store_[0];  // note variable width data at end

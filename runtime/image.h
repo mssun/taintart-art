@@ -96,6 +96,7 @@ class PACKED(4) ImageHeader {
   ImageHeader()
       : image_begin_(0U),
         image_size_(0U),
+        image_checksum_(0u),
         oat_checksum_(0U),
         oat_file_begin_(0U),
         oat_data_begin_(0U),
@@ -105,7 +106,6 @@ class PACKED(4) ImageHeader {
         boot_image_size_(0U),
         boot_oat_begin_(0U),
         boot_oat_size_(0U),
-        patch_delta_(0),
         image_roots_(0U),
         pointer_size_(0U),
         storage_mode_(kDefaultStorageMode),
@@ -136,7 +136,15 @@ class PACKED(4) ImageHeader {
   }
 
   size_t GetImageSize() const {
-    return static_cast<uint32_t>(image_size_);
+    return image_size_;
+  }
+
+  uint32_t GetImageChecksum() const {
+    return image_checksum_;
+  }
+
+  void SetImageChecksum(uint32_t image_checksum) {
+    image_checksum_ = image_checksum;
   }
 
   uint32_t GetOatChecksum() const {
@@ -169,14 +177,6 @@ class PACKED(4) ImageHeader {
 
   uint32_t GetPointerSizeUnchecked() const {
     return pointer_size_;
-  }
-
-  int32_t GetPatchDelta() const {
-    return patch_delta_;
-  }
-
-  void SetPatchDelta(int32_t patch_delta) {
-    patch_delta_ = patch_delta;
   }
 
   static std::string GetOatLocationFromImageLocation(const std::string& image) {
@@ -395,6 +395,9 @@ class PACKED(4) ImageHeader {
   // Image size, not page aligned.
   uint32_t image_size_;
 
+  // Image file checksum (calculated with the checksum field set to 0).
+  uint32_t image_checksum_;
+
   // Checksum of the oat file we link to for load time sanity check.
   uint32_t oat_checksum_;
 
@@ -418,11 +421,6 @@ class PACKED(4) ImageHeader {
   // Boot oat begin and end (app image headers only).
   uint32_t boot_oat_begin_;
   uint32_t boot_oat_size_;
-
-  // TODO: We should probably insert a boot image checksum for app images.
-
-  // The total delta that this image has been patched.
-  int32_t patch_delta_;
 
   // Absolute address of an Object[] of objects needed to reinitialize from an image.
   uint32_t image_roots_;
