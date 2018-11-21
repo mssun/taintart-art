@@ -177,6 +177,13 @@ class Arm64RelativePatcherTest : public RelativePatcherTest {
     OptimizingUnitTestHelper helper;
     HGraph* graph = helper.CreateGraph();
     CompilerOptions compiler_options;
+
+    // Set isa to arm64.
+    compiler_options.instruction_set_ = instruction_set_;
+    compiler_options.instruction_set_features_ =
+        InstructionSetFeatures::FromBitmap(instruction_set_, instruction_set_features_->AsBitmap());
+    CHECK(compiler_options.instruction_set_features_->Equals(instruction_set_features_.get()));
+
     arm64::CodeGeneratorARM64 codegen(graph, compiler_options);
     ArenaVector<uint8_t> code(helper.GetAllocator()->Adapter());
     codegen.EmitThunkCode(patch, &code, debug_name);

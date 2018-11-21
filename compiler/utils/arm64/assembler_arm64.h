@@ -37,6 +37,9 @@
 #pragma GCC diagnostic pop
 
 namespace art {
+
+class Arm64InstructionSetFeatures;
+
 namespace arm64 {
 
 #define MEM_OP(...)      vixl::aarch64::MemOperand(__VA_ARGS__)
@@ -63,7 +66,8 @@ enum StoreOperandType {
 
 class Arm64Assembler final : public Assembler {
  public:
-  explicit Arm64Assembler(ArenaAllocator* allocator) : Assembler(allocator) {}
+  explicit Arm64Assembler(
+      ArenaAllocator* allocator, const Arm64InstructionSetFeatures* features = nullptr);
 
   virtual ~Arm64Assembler() {}
 
