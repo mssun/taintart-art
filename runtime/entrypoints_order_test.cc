@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include <setjmp.h>
-
 #include <memory>
 
 #include "base/macros.h"
