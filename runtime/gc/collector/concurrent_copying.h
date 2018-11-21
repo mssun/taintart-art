@@ -359,10 +359,12 @@ class ConcurrentCopying : public GarbageCollector {
   Atomic<uint64_t> cumulative_bytes_moved_;
   Atomic<uint64_t> cumulative_objects_moved_;
 
-  // copied_live_bytes_ratio_sum_ and gc_count_ are read and written by CC per
-  // GC, in ReclaimPhase, and are read by DumpPerformanceInfo (potentially from
-  // another thread). However, at present, DumpPerformanceInfo is only called
-  // when the runtime shuts down, so no concurrent access.
+  // copied_live_bytes_ratio_sum_ is read and written by CC per GC, in
+  // ReclaimPhase, and is read by DumpPerformanceInfo (potentially from another
+  // thread). However, at present, DumpPerformanceInfo is only called when the
+  // runtime shuts down, so no concurrent access. The same reasoning goes for
+  // gc_count_ and reclaimed_bytes_ratio_sum_
+
   // The sum of of all copied live bytes ratio (to_bytes/from_bytes)
   float copied_live_bytes_ratio_sum_;
   // The number of GC counts, used to calculate the average above. (It doesn't
@@ -370,6 +372,9 @@ class ConcurrentCopying : public GarbageCollector {
   // possible for minor GC if all allocated objects are in non-moving
   // space.)
   size_t gc_count_;
+
+  // reclaimed_bytes_ratio = reclaimed_bytes/num_allocated_bytes per GC cycle
+  float reclaimed_bytes_ratio_sum_;
 
   // Generational "sticky", only trace through dirty objects in region space.
   const bool young_gen_;
@@ -415,6 +420,9 @@ class ConcurrentCopying : public GarbageCollector {
   // efficiently, by recording dead objects to be freed in batches (see
   // ConcurrentCopying::SweepArray).
   MemMap sweep_array_free_buffer_mem_map_;
+
+  // Use signed because after_gc may be larger than before_gc.
+  int64_t num_bytes_allocated_before_gc_;
 
   class ActivateReadBarrierEntrypointsCallback;
   class ActivateReadBarrierEntrypointsCheckpoint;
