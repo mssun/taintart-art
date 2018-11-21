@@ -25,6 +25,8 @@
 
 namespace art {
 
+enum class ProfileMethodsCheck : uint8_t;
+
 // Defines a type-safe heterogeneous key->value map. This is to be used as the base for
 // an extended map.
 template <typename Base, template <typename TV> class KeyType>
