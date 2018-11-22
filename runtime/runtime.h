@@ -242,8 +242,14 @@ class Runtime {
 
   ~Runtime();
 
-  const std::string& GetBootClassPathString() const {
-    return boot_class_path_string_;
+  const std::vector<std::string>& GetBootClassPath() const {
+    return boot_class_path_;
+  }
+
+  const std::vector<std::string>& GetBootClassPathLocations() const {
+    DCHECK(boot_class_path_locations_.empty() ||
+           boot_class_path_locations_.size() == boot_class_path_.size());
+    return boot_class_path_locations_.empty() ? boot_class_path_ : boot_class_path_locations_;
   }
 
   const std::string& GetClassPathString() const {
@@ -859,7 +865,8 @@ class Runtime {
   std::vector<std::string> image_compiler_options_;
   std::string image_location_;
 
-  std::string boot_class_path_string_;
+  std::vector<std::string> boot_class_path_;
+  std::vector<std::string> boot_class_path_locations_;
   std::string class_path_string_;
   std::vector<std::string> properties_;
 
