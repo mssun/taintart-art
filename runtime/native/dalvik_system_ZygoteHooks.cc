@@ -29,6 +29,7 @@
 #include "debugger.h"
 #include "hidden_api.h"
 #include "jit/jit.h"
+#include "jit/jit_code_cache.h"
 #include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
 #include "native_util.h"
@@ -292,7 +293,10 @@ static void ZygoteHooks_nativePostForkSystemServer(JNIEnv* env ATTRIBUTE_UNUSED,
   // System server has a window where it can create executable pages for this purpose, but this is
   // turned off after this hook. Consequently, the only JIT mode supported is the dual-view JIT
   // where one mapping is R->RW and the other is RX. Single view requires RX->RWX->RX.
-  Runtime::Current()->CreateJitCodeCache(/*rwx_memory_allowed=*/false);
+  if (Runtime::Current()->GetJit() != nullptr) {
+    Runtime::Current()->GetJit()->GetCodeCache()->PostForkChildAction(
+        /* is_system_server= */ true, /* is_zygote= */ false);
+  }
 }
 
 static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
@@ -332,6 +336,15 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   }
 
   Runtime::Current()->GetHeap()->PostForkChildAction(thread);
+  if (Runtime::Current()->GetJit() != nullptr) {
+    if (!is_system_server) {
+      // System server already called the JIT cache post fork action in `nativePostForkSystemServer`.
+      Runtime::Current()->GetJit()->GetCodeCache()->PostForkChildAction(
+          /* is_system_server= */ false, is_zygote);
+    }
+    // This must be called after EnableDebugFeatures.
+    Runtime::Current()->GetJit()->PostForkChildAction();
+  }
 
   // Update tracing.
   if (Trace::GetMethodTracingMode() != TracingMode::kTracingInactive) {
