@@ -18,6 +18,7 @@
 
 #include <sys/mman.h>
 
+#include "base/bit_utils.h"
 #include "dex_file.h"
 
 namespace art {

@@ -17,7 +17,7 @@
 #ifndef ART_TOOLS_VERIDEX_HIDDEN_API_H_
 #define ART_TOOLS_VERIDEX_HIDDEN_API_H_
 
-#include "dex/hidden_api_access_flags.h"
+#include "base/hiddenapi_flags.h"
 #include "dex/method_reference.h"
 
 #include <ostream>
@@ -45,20 +45,20 @@ class HiddenApi {
 
   hiddenapi::ApiList GetApiList(const std::string& name) const {
     if (IsInList(name, blacklist_)) {
-      return hiddenapi::ApiList::kBlacklist;
+      return hiddenapi::ApiList::Blacklist();
     } else if (IsInList(name, dark_greylist_)) {
-      return hiddenapi::ApiList::kDarkGreylist;
+      return hiddenapi::ApiList::GreylistMaxO();
     } else if (IsInList(name, light_greylist_)) {
-      return hiddenapi::ApiList::kLightGreylist;
+      return hiddenapi::ApiList::Greylist();
     } else if (IsInList(name, whitelist_)) {
-      return hiddenapi::ApiList::kWhitelist;
+      return hiddenapi::ApiList::Whitelist();
     } else {
-      return hiddenapi::ApiList::kNoList;
+      return hiddenapi::ApiList::Invalid();
     }
   }
 
   bool IsInAnyList(const std::string& name) const {
-    return GetApiList(name) != hiddenapi::ApiList::kNoList;
+    return GetApiList(name).IsValid();
   }
 
   static std::string GetApiMethodName(const DexFile& dex_file, uint32_t method_index);
@@ -92,7 +92,7 @@ struct HiddenApiStats {
   uint32_t count = 0;
   uint32_t reflection_count = 0;
   uint32_t linking_count = 0;
-  uint32_t api_counts[5] = { 0, 0, 0, 0, 0 };
+  uint32_t api_counts[hiddenapi::ApiList::kValueCount] = {};  // initialize all to zero
 };
 
 }  // namespace art

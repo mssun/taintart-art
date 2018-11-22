@@ -101,30 +101,32 @@ TEST_F(HiddenApiTest, CheckGetActionFromRuntimeFlags) {
   ScopedObjectAccess soa(self_);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kDisabled);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Whitelist()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Greylist()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::GreylistMaxO()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Blacklist()), false);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kJustWarn);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Whitelist()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Greylist()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::GreylistMaxO()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Blacklist()), false);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
-  runtime_->SetTargetSdkVersion(static_cast<uint32_t>(SdkVersion::kO_MR1));
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), true);
+  runtime_->SetTargetSdkVersion(
+      static_cast<uint32_t>(hiddenapi::ApiList::GreylistMaxO().GetMaxAllowedSdkVersion()));
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Whitelist()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Greylist()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::GreylistMaxO()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Blacklist()), true);
 
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
-  runtime_->SetTargetSdkVersion(static_cast<uint32_t>(SdkVersion::kP));
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kWhitelist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kLightGreylist), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kDarkGreylist), true);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::kBlacklist), true);
+  runtime_->SetTargetSdkVersion(
+      static_cast<uint32_t>(hiddenapi::ApiList::GreylistMaxO().GetMaxAllowedSdkVersion()) + 1);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Whitelist()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Greylist()), false);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::GreylistMaxO()), true);
+  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Blacklist()), true);
 }
 
 TEST_F(HiddenApiTest, CheckMembersRead) {

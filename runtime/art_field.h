@@ -20,7 +20,6 @@
 #include <jni.h>
 
 #include "dex/dex_file_types.h"
-#include "dex/hidden_api_access_flags.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
 #include "gc_root.h"
