@@ -2413,59 +2413,64 @@ static void GenOneBit(X86_64Assembler* assembler,
   }
 
   // Handle the non-constant cases.
-  CpuRegister tmp = locations->GetTemp(0).AsRegister<CpuRegister>();
-  if (is_high) {
-    // Use architectural support: basically 1 << bsr.
-    if (src.IsRegister()) {
-      if (is_long) {
-        __ bsrq(tmp, src.AsRegister<CpuRegister>());
+  if (!is_high && codegen->GetInstructionSetFeatures().HasAVX2() &&
+      src.IsRegister()) {
+      __ blsi(out, src.AsRegister<CpuRegister>());
+  } else {
+    CpuRegister tmp = locations->GetTemp(0).AsRegister<CpuRegister>();
+    if (is_high) {
+      // Use architectural support: basically 1 << bsr.
+      if (src.IsRegister()) {
+        if (is_long) {
+          __ bsrq(tmp, src.AsRegister<CpuRegister>());
+        } else {
+          __ bsrl(tmp, src.AsRegister<CpuRegister>());
+        }
+      } else if (is_long) {
+        DCHECK(src.IsDoubleStackSlot());
+        __ bsrq(tmp, Address(CpuRegister(RSP), src.GetStackIndex()));
       } else {
-        __ bsrl(tmp, src.AsRegister<CpuRegister>());
+        DCHECK(src.IsStackSlot());
+        __ bsrl(tmp, Address(CpuRegister(RSP), src.GetStackIndex()));
       }
-    } else if (is_long) {
-      DCHECK(src.IsDoubleStackSlot());
-      __ bsrq(tmp, Address(CpuRegister(RSP), src.GetStackIndex()));
-    } else {
-      DCHECK(src.IsStackSlot());
-      __ bsrl(tmp, Address(CpuRegister(RSP), src.GetStackIndex()));
-    }
-    // BSR sets ZF if the input was zero.
-    NearLabel is_zero, done;
-    __ j(kEqual, &is_zero);
-    __ movl(out, Immediate(1));  // Clears upper bits too.
-    if (is_long) {
-      __ shlq(out, tmp);
-    } else {
-      __ shll(out, tmp);
-    }
-    __ jmp(&done);
-    __ Bind(&is_zero);
-    __ xorl(out, out);  // Clears upper bits too.
-    __ Bind(&done);
-  } else  {
-    // Copy input into temporary.
-    if (src.IsRegister()) {
+      // BSR sets ZF if the input was zero.
+      NearLabel is_zero, done;
+      __ j(kEqual, &is_zero);
+      __ movl(out, Immediate(1));  // Clears upper bits too.
       if (is_long) {
-        __ movq(tmp, src.AsRegister<CpuRegister>());
+        __ shlq(out, tmp);
       } else {
-        __ movl(tmp, src.AsRegister<CpuRegister>());
+        __ shll(out, tmp);
       }
-    } else if (is_long) {
-      DCHECK(src.IsDoubleStackSlot());
-      __ movq(tmp, Address(CpuRegister(RSP), src.GetStackIndex()));
-    } else {
-      DCHECK(src.IsStackSlot());
-      __ movl(tmp, Address(CpuRegister(RSP), src.GetStackIndex()));
-    }
-    // Do the bit twiddling: basically tmp & -tmp;
-    if (is_long) {
-      __ movq(out, tmp);
-      __ negq(tmp);
-      __ andq(out, tmp);
-    } else {
-      __ movl(out, tmp);
-      __ negl(tmp);
-      __ andl(out, tmp);
+      __ jmp(&done);
+      __ Bind(&is_zero);
+      __ xorl(out, out);  // Clears upper bits too.
+      __ Bind(&done);
+    } else  {
+      // Copy input into temporary.
+      if (src.IsRegister()) {
+        if (is_long) {
+          __ movq(tmp, src.AsRegister<CpuRegister>());
+        } else {
+          __ movl(tmp, src.AsRegister<CpuRegister>());
+        }
+      } else if (is_long) {
+        DCHECK(src.IsDoubleStackSlot());
+        __ movq(tmp, Address(CpuRegister(RSP), src.GetStackIndex()));
+      } else {
+        DCHECK(src.IsStackSlot());
+        __ movl(tmp, Address(CpuRegister(RSP), src.GetStackIndex()));
+      }
+      // Do the bit twiddling: basically tmp & -tmp;
+      if (is_long) {
+        __ movq(out, tmp);
+        __ negq(tmp);
+        __ andq(out, tmp);
+      } else {
+        __ movl(out, tmp);
+        __ negl(tmp);
+        __ andl(out, tmp);
+      }
     }
   }
 }
