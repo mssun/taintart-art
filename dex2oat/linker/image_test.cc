@@ -74,13 +74,11 @@ TEST_F(ImageTest, ImageHeaderIsValid) {
                              oat_data_begin,
                              oat_data_end,
                              oat_file_end,
-                             /*boot_image_begin*/0U,
-                             /*boot_image_size*/0U,
-                             /*boot_oat_begin*/0U,
-                             /*boot_oat_size_*/0U,
+                             /*boot_image_begin=*/ 0u,
+                             /*boot_image_size=*/ 0u,
                              sizeof(void*),
                              ImageHeader::kDefaultStorageMode,
-                             /*data_size*/0u);
+                             /*data_size=*/ 0u);
     ASSERT_TRUE(image_header.IsValid());
     ASSERT_TRUE(!image_header.IsAppImage());
 
@@ -110,7 +108,7 @@ TEST_F(ImageTest, TestDefaultMethods) {
   // Test the pointer to quick code is the same in origin method
   // and in the copied method form the same oat file.
   ObjPtr<mirror::Class> iface_klass =
-      class_linker_->LookupClass(self, "LIface;", /* class_loader */ nullptr);
+      class_linker_->LookupClass(self, "LIface;", /*class_loader=*/ nullptr);
   ASSERT_NE(nullptr, iface_klass);
   ArtMethod* origin = iface_klass->FindInterfaceMethod("defaultMethod", "()V", pointer_size);
   ASSERT_NE(nullptr, origin);
@@ -120,7 +118,7 @@ TEST_F(ImageTest, TestDefaultMethods) {
   ASSERT_NE(nullptr, code);
   ASSERT_FALSE(class_linker_->IsQuickToInterpreterBridge(code));
   ObjPtr<mirror::Class> impl_klass =
-      class_linker_->LookupClass(self, "LImpl;", /* class_loader */ nullptr);
+      class_linker_->LookupClass(self, "LImpl;", /*class_loader=*/ nullptr);
   ASSERT_NE(nullptr, impl_klass);
   ArtMethod* copied = FindCopiedMethod(origin, impl_klass);
   ASSERT_NE(nullptr, copied);
@@ -131,7 +129,7 @@ TEST_F(ImageTest, TestDefaultMethods) {
   // but the copied method has pointer to interpreter
   // because these methods are in different oat files.
   ObjPtr<mirror::Class> iterable_klass =
-      class_linker_->LookupClass(self, "Ljava/lang/Iterable;", /* class_loader */ nullptr);
+      class_linker_->LookupClass(self, "Ljava/lang/Iterable;", /*class_loader=*/ nullptr);
   ASSERT_NE(nullptr, iterable_klass);
   origin = iterable_klass->FindClassMethod(
       "forEach", "(Ljava/util/function/Consumer;)V", pointer_size);
@@ -143,7 +141,7 @@ TEST_F(ImageTest, TestDefaultMethods) {
   ASSERT_NE(nullptr, code);
   ASSERT_FALSE(class_linker_->IsQuickToInterpreterBridge(code));
   ObjPtr<mirror::Class> iterablebase_klass =
-      class_linker_->LookupClass(self, "LIterableBase;", /* class_loader */ nullptr);
+      class_linker_->LookupClass(self, "LIterableBase;", /*class_loader=*/ nullptr);
   ASSERT_NE(nullptr, iterablebase_klass);
   copied = FindCopiedMethod(origin, iterablebase_klass);
   ASSERT_NE(nullptr, copied);

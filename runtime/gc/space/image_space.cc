@@ -383,20 +383,16 @@ class ImageSpace::Loader {
  public:
   static std::unique_ptr<ImageSpace> InitAppImage(const char* image_filename,
                                                   const char* image_location,
-                                                  bool validate_oat_file,
                                                   const OatFile* oat_file,
                                                   /*inout*/MemMap* image_reservation,
-                                                  /*inout*/MemMap* oat_reservation,
                                                   /*out*/std::string* error_msg)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     TimingLogger logger(__PRETTY_FUNCTION__, /*precise=*/ true, VLOG_IS_ON(image));
     std::unique_ptr<ImageSpace> space = Init(image_filename,
                                              image_location,
-                                             validate_oat_file,
                                              oat_file,
                                              &logger,
                                              image_reservation,
-                                             oat_reservation,
                                              error_msg);
     if (space != nullptr) {
       TimingLogger::ScopedTiming timing("RelocateImage", &logger);
@@ -438,11 +434,9 @@ class ImageSpace::Loader {
 
   static std::unique_ptr<ImageSpace> Init(const char* image_filename,
                                           const char* image_location,
-                                          bool validate_oat_file,
                                           const OatFile* oat_file,
                                           TimingLogger* logger,
                                           /*inout*/MemMap* image_reservation,
-                                          /*inout*/MemMap* oat_reservation,
                                           /*out*/std::string* error_msg)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     CHECK(image_filename != nullptr);
@@ -479,8 +473,8 @@ class ImageSpace::Loader {
     }
 
     if (oat_file != nullptr) {
-      // If we have an oat file, check the oat file checksum. The oat file is only non-null for the
-      // app image case. Otherwise, we open the oat file after the image and check the checksum there.
+      // If we have an oat file (i.e. for app image), check the oat file checksum.
+      // Otherwise, we open the oat file after the image and check the checksum there.
       const uint32_t oat_checksum = oat_file->GetOatHeader().GetChecksum();
       const uint32_t image_oat_checksum = image_header->GetOatChecksum();
       if (oat_checksum != image_oat_checksum) {
@@ -517,15 +511,13 @@ class ImageSpace::Loader {
       return nullptr;
     }
 
-    MemMap map;
-
     // GetImageBegin is the preferred address to map the image. If we manage to map the
     // image at the image begin, the amount of fixup work required is minimized.
     // If it is pic we will retry with error_msg for the failure case. Pass a null error_msg to
     // avoid reading proc maps for a mapping failure and slowing everything down.
     // For the boot image, we have already reserved the memory and we load the image
     // into the `image_reservation`.
-    map = LoadImageFile(
+    MemMap map = LoadImageFile(
         image_filename,
         image_location,
         *image_header,
@@ -583,33 +575,7 @@ class ImageSpace::Loader {
                                                      std::move(map),
                                                      std::move(bitmap),
                                                      image_end));
-
-    // VerifyImageAllocations() will be called later in Runtime::Init()
-    // as some class roots like ArtMethod::java_lang_reflect_ArtMethod_
-    // and ArtField::java_lang_reflect_ArtField_, which are used from
-    // Object::SizeOf() which VerifyImageAllocations() calls, are not
-    // set yet at this point.
-    if (oat_file == nullptr) {
-      TimingLogger::ScopedTiming timing("OpenOatFile", logger);
-      space->oat_file_ = OpenOatFile(*space, image_filename, oat_reservation, error_msg);
-      if (space->oat_file_ == nullptr) {
-        DCHECK(!error_msg->empty());
-        return nullptr;
-      }
-      space->oat_file_non_owned_ = space->oat_file_.get();
-    } else {
-      space->oat_file_non_owned_ = oat_file;
-    }
-
-    if (validate_oat_file) {
-      TimingLogger::ScopedTiming timing("ValidateOatFile", logger);
-      CHECK(space->oat_file_ != nullptr);
-      if (!ImageSpace::ValidateOatFile(*space->oat_file_, error_msg)) {
-        DCHECK(!error_msg->empty());
-        return nullptr;
-      }
-    }
-
+    space->oat_file_non_owned_ = oat_file;
     return space;
   }
 
@@ -700,11 +666,9 @@ class ImageSpace::Loader {
   class FixupVisitor : public ValueObject {
    public:
     FixupVisitor(const RelocationRange& boot_image,
-                 const RelocationRange& boot_oat,
                  const RelocationRange& app_image,
                  const RelocationRange& app_oat)
         : boot_image_(boot_image),
-          boot_oat_(boot_oat),
           app_image_(app_image),
           app_oat_(app_oat) {}
 
@@ -727,8 +691,8 @@ class ImageSpace::Loader {
     // Return the relocated address of a code pointer (contained by an oat file).
     ALWAYS_INLINE const void* ForwardCode(const void* src) const {
       const uintptr_t uint_src = reinterpret_cast<uintptr_t>(src);
-      if (boot_oat_.InSource(uint_src)) {
-        return reinterpret_cast<const void*>(boot_oat_.ToDest(uint_src));
+      if (boot_image_.InSource(uint_src)) {
+        return reinterpret_cast<const void*>(boot_image_.ToDest(uint_src));
       }
       if (app_oat_.InSource(uint_src)) {
         return reinterpret_cast<const void*>(app_oat_.ToDest(uint_src));
@@ -745,7 +709,6 @@ class ImageSpace::Loader {
    protected:
     // Source section.
     const RelocationRange boot_image_;
-    const RelocationRange boot_oat_;
     const RelocationRange app_image_;
     const RelocationRange app_oat_;
   };
@@ -893,7 +856,7 @@ class ImageSpace::Loader {
       // We want to use our own class loader and not the one in the image.
       if (obj->IsClass<kVerifyNone>()) {
         mirror::Class* as_klass = obj->AsClass<kVerifyNone>();
-        FixupObjectAdapter visitor(boot_image_, boot_oat_, app_image_, app_oat_);
+        FixupObjectAdapter visitor(boot_image_, app_image_, app_oat_);
         as_klass->FixupNativePointers<kVerifyNone>(as_klass, pointer_size_, visitor);
         // Deal with the pointer arrays. Use the helper function since multiple classes can reference
         // the same arrays.
@@ -1025,10 +988,8 @@ class ImageSpace::Loader {
       *error_msg = "Can not relocate app image without boot oat file";
       return false;
     }
-    const uint32_t boot_image_size = boot_image_end - boot_image_begin;
-    const uint32_t boot_oat_size = boot_oat_end - boot_oat_begin;
+    const uint32_t boot_image_size = boot_oat_end - boot_image_begin;
     const uint32_t image_header_boot_image_size = image_header.GetBootImageSize();
-    const uint32_t image_header_boot_oat_size = image_header.GetBootOatSize();
     if (boot_image_size != image_header_boot_image_size) {
       *error_msg = StringPrintf("Boot image size %" PRIu64 " does not match expected size %"
                                     PRIu64,
@@ -1036,20 +997,10 @@ class ImageSpace::Loader {
                                 static_cast<uint64_t>(image_header_boot_image_size));
       return false;
     }
-    if (boot_oat_size != image_header_boot_oat_size) {
-      *error_msg = StringPrintf("Boot oat size %" PRIu64 " does not match expected size %"
-                                    PRIu64,
-                                static_cast<uint64_t>(boot_oat_size),
-                                static_cast<uint64_t>(image_header_boot_oat_size));
-      return false;
-    }
     TimingLogger logger(__FUNCTION__, true, false);
     RelocationRange boot_image(image_header.GetBootImageBegin(),
                                boot_image_begin,
                                boot_image_size);
-    RelocationRange boot_oat(image_header.GetBootOatBegin(),
-                             boot_oat_begin,
-                             boot_oat_size);
     RelocationRange app_image(reinterpret_cast<uintptr_t>(image_header.GetImageBegin()),
                               reinterpret_cast<uintptr_t>(target_base),
                               image_header.GetImageSize());
@@ -1061,11 +1012,9 @@ class ImageSpace::Loader {
     VLOG(image) << "App image " << app_image;
     VLOG(image) << "App oat " << app_oat;
     VLOG(image) << "Boot image " << boot_image;
-    VLOG(image) << "Boot oat " << boot_oat;
-    // True if we need to fixup any heap pointers, otherwise only code pointers.
+    // True if we need to fixup any heap pointers.
     const bool fixup_image = boot_image.Delta() != 0 || app_image.Delta() != 0;
-    const bool fixup_code = boot_oat.Delta() != 0 || app_oat.Delta() != 0;
-    if (!fixup_image && !fixup_code) {
+    if (!fixup_image) {
       // Nothing to fix up.
       return true;
     }
@@ -1074,7 +1023,7 @@ class ImageSpace::Loader {
     const ImageSection& objects_section = image_header.GetObjectsSection();
     uintptr_t objects_begin = reinterpret_cast<uintptr_t>(target_base + objects_section.Offset());
     uintptr_t objects_end = reinterpret_cast<uintptr_t>(target_base + objects_section.End());
-    FixupObjectAdapter fixup_adapter(boot_image, boot_oat, app_image, app_oat);
+    FixupObjectAdapter fixup_adapter(boot_image, app_image, app_oat);
     if (fixup_image) {
       // Two pass approach, fix up all classes first, then fix up non class-objects.
       // The visited bitmap is used to ensure that pointer arrays are not forwarded twice.
@@ -1085,7 +1034,6 @@ class ImageSpace::Loader {
       FixupObjectVisitor fixup_object_visitor(visited_bitmap.get(),
                                               pointer_size,
                                               boot_image,
-                                              boot_oat,
                                               app_image,
                                               app_oat);
       TimingLogger::ScopedTiming timing("Fixup classes", &logger);
@@ -1191,7 +1139,6 @@ class ImageSpace::Loader {
       FixupArtMethodVisitor method_visitor(fixup_image,
                                            pointer_size,
                                            boot_image,
-                                           boot_oat,
                                            app_image,
                                            app_oat);
       image_header.VisitPackedArtMethods(&method_visitor, target_base, pointer_size);
@@ -1200,7 +1147,7 @@ class ImageSpace::Loader {
       {
         // Only touches objects in the app image, no need for mutator lock.
         TimingLogger::ScopedTiming timing("Fixup fields", &logger);
-        FixupArtFieldVisitor field_visitor(boot_image, boot_oat, app_image, app_oat);
+        FixupArtFieldVisitor field_visitor(boot_image, app_image, app_oat);
         image_header.VisitPackedArtFields(&field_visitor, target_base);
       }
       {
@@ -1222,7 +1169,7 @@ class ImageSpace::Loader {
         WriterMutexLock mu(Thread::Current(), *Locks::classlinker_classes_lock_);
         ClassTable temp_table;
         temp_table.ReadFromMemory(target_base + class_table_section.Offset());
-        FixupRootVisitor root_visitor(boot_image, boot_oat, app_image, app_oat);
+        FixupRootVisitor root_visitor(boot_image, app_image, app_oat);
         temp_table.VisitRoots(root_visitor);
       }
       // Fix up the intern table.
@@ -1234,7 +1181,7 @@ class ImageSpace::Loader {
         InternTable temp_intern_table;
         // Note that we require that ReadFromMemory does not make an internal copy of the elements
         // so that the VisitRoots() will update the memory directly rather than the copies.
-        FixupRootVisitor root_visitor(boot_image, boot_oat, app_image, app_oat);
+        FixupRootVisitor root_visitor(boot_image, app_image, app_oat);
         temp_intern_table.AddTableFromMemory(target_base + intern_table_section.Offset(),
                                              [&](InternTable::UnorderedSet& strings)
             REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1248,49 +1195,6 @@ class ImageSpace::Loader {
       logger.Dump(LOG_STREAM(INFO));
     }
     return true;
-  }
-
-  static std::unique_ptr<OatFile> OpenOatFile(const ImageSpace& image,
-                                              const char* image_path,
-                                              /*inout*/MemMap* oat_reservation,
-                                              std::string* error_msg) {
-    const ImageHeader& image_header = image.GetImageHeader();
-    std::string oat_filename = ImageHeader::GetOatLocationFromImageLocation(image_path);
-
-    CHECK(image_header.GetOatDataBegin() != nullptr);
-
-    uint8_t* oat_data_begin = image_header.GetOatDataBegin();
-    if (oat_reservation != nullptr) {
-      oat_data_begin += oat_reservation->Begin() - image_header.GetOatFileBegin();
-    }
-    std::unique_ptr<OatFile> oat_file(OatFile::Open(/*zip_fd=*/ -1,
-                                                    oat_filename,
-                                                    oat_filename,
-                                                    !Runtime::Current()->IsAotCompiler(),
-                                                    /*low_4gb=*/ false,
-                                                    /*abs_dex_location=*/ nullptr,
-                                                    oat_reservation,
-                                                    error_msg));
-    if (oat_file == nullptr) {
-      *error_msg = StringPrintf("Failed to open oat file '%s' referenced from image %s: %s",
-                                oat_filename.c_str(),
-                                image.GetName(),
-                                error_msg->c_str());
-      return nullptr;
-    }
-    CHECK(oat_data_begin == oat_file->Begin());
-    uint32_t oat_checksum = oat_file->GetOatHeader().GetChecksum();
-    uint32_t image_oat_checksum = image_header.GetOatChecksum();
-    if (oat_checksum != image_oat_checksum) {
-      *error_msg = StringPrintf("Failed to match oat file checksum 0x%x to expected oat checksum 0x%x"
-                                " in image %s",
-                                oat_checksum,
-                                image_oat_checksum,
-                                image.GetName());
-      return nullptr;
-    }
-
-    return oat_file;
   }
 };
 
@@ -1351,26 +1255,22 @@ class ImageSpace::BootImageLoader {
     }
     uint32_t image_start;
     uint32_t image_end;
-    uint32_t oat_end;
-    if (!GetBootImageAddressRange(filename, &image_start, &image_end, &oat_end, error_msg)) {
+    if (!GetBootImageAddressRange(filename, &image_start, &image_end, error_msg)) {
       return false;
     }
     if (locations.size() > 1u) {
       std::string last_filename = GetSystemImageFilename(locations.back().c_str(), image_isa_);
       uint32_t dummy;
-      if (!GetBootImageAddressRange(last_filename, &dummy, &image_end, &oat_end, error_msg)) {
+      if (!GetBootImageAddressRange(last_filename, &dummy, &image_end, error_msg)) {
         return false;
       }
     }
     MemMap image_reservation;
-    MemMap oat_reservation;
     MemMap local_extra_reservation;
-    if (!ReserveBootImageMemory(image_start,
-                                image_end,
-                                oat_end,
+    if (!ReserveBootImageMemory(/*reservation_size=*/ image_end - image_start,
+                                image_start,
                                 extra_reservation_size,
                                 &image_reservation,
-                                &oat_reservation,
                                 &local_extra_reservation,
                                 error_msg)) {
       return false;
@@ -1380,28 +1280,29 @@ class ImageSpace::BootImageLoader {
     spaces.reserve(locations.size());
     for (const std::string& location : locations) {
       filename = GetSystemImageFilename(location.c_str(), image_isa_);
-      spaces.push_back(Load(location,
-                            filename,
-                            /*validate_oat_file=*/ false,
-                            &logger,
-                            &image_reservation,
-                            &oat_reservation,
-                            error_msg));
+      spaces.push_back(Load(location, filename, &logger, &image_reservation, error_msg));
       if (spaces.back() == nullptr) {
         return false;
       }
     }
-    if (!CheckReservationsExhausted(image_reservation, oat_reservation, error_msg)) {
+    for (std::unique_ptr<ImageSpace>& space : spaces) {
+      static constexpr bool kValidateOatFile = false;
+      if (!OpenOatFile(space.get(), kValidateOatFile, &logger, &image_reservation, error_msg)) {
+        return false;
+      }
+    }
+    if (!CheckReservationExhausted(image_reservation, error_msg)) {
       return false;
     }
 
     MaybeRelocateSpaces(spaces, &logger);
     InitRuntimeMethods(spaces);
-    *extra_reservation = std::move(local_extra_reservation);
-    VLOG(image) << "ImageSpace::BootImageLoader::InitFromDalvikCache exiting " << *spaces.front();
     boot_image_spaces->swap(spaces);
+    *extra_reservation = std::move(local_extra_reservation);
 
     if (VLOG_IS_ON(image)) {
+      LOG(INFO) << "ImageSpace::BootImageLoader::LoadFromSystem exiting "
+          << boot_image_spaces->front();
       logger.Dump(LOG_STREAM(INFO));
     }
     return true;
@@ -1421,8 +1322,7 @@ class ImageSpace::BootImageLoader {
     }
     uint32_t image_start;
     uint32_t image_end;
-    uint32_t oat_end;
-    if (!GetBootImageAddressRange(cache_filename_, &image_start, &image_end, &oat_end, error_msg)) {
+    if (!GetBootImageAddressRange(cache_filename_, &image_start, &image_end, error_msg)) {
       return false;
     }
     if (locations.size() > 1u) {
@@ -1434,19 +1334,16 @@ class ImageSpace::BootImageLoader {
         return false;
       }
       uint32_t dummy;
-      if (!GetBootImageAddressRange(last_filename, &dummy, &image_end, &oat_end, error_msg)) {
+      if (!GetBootImageAddressRange(last_filename, &dummy, &image_end, error_msg)) {
         return false;
       }
     }
     MemMap image_reservation;
-    MemMap oat_reservation;
     MemMap local_extra_reservation;
-    if (!ReserveBootImageMemory(image_start,
-                                image_end,
-                                oat_end,
+    if (!ReserveBootImageMemory(/*reservation_size=*/ image_end - image_start,
+                                image_start,
                                 extra_reservation_size,
                                 &image_reservation,
-                                &oat_reservation,
                                 &local_extra_reservation,
                                 error_msg)) {
       return false;
@@ -1459,28 +1356,28 @@ class ImageSpace::BootImageLoader {
       if (!GetDalvikCacheFilename(location.c_str(), dalvik_cache_.c_str(), &filename, error_msg)) {
         return false;
       }
-      spaces.push_back(Load(location,
-                            filename,
-                            validate_oat_file,
-                            &logger,
-                            &image_reservation,
-                            &oat_reservation,
-                            error_msg));
+      spaces.push_back(Load(location, filename, &logger, &image_reservation, error_msg));
       if (spaces.back() == nullptr) {
         return false;
       }
     }
-    if (!CheckReservationsExhausted(image_reservation, oat_reservation, error_msg)) {
+    for (std::unique_ptr<ImageSpace>& space : spaces) {
+      if (!OpenOatFile(space.get(), validate_oat_file, &logger, &image_reservation, error_msg)) {
+        return false;
+      }
+    }
+    if (!CheckReservationExhausted(image_reservation, error_msg)) {
       return false;
     }
 
     MaybeRelocateSpaces(spaces, &logger);
     InitRuntimeMethods(spaces);
-    *extra_reservation = std::move(local_extra_reservation);
     boot_image_spaces->swap(spaces);
+    *extra_reservation = std::move(local_extra_reservation);
 
-    VLOG(image) << "ImageSpace::BootImageLoader::InitFromDalvikCache exiting " << *spaces.front();
     if (VLOG_IS_ON(image)) {
+      LOG(INFO) << "ImageSpace::BootImageLoader::LoadFromDalvikCache exiting "
+          << boot_image_spaces->front();
       logger.Dump(LOG_STREAM(INFO));
     }
     return true;
@@ -2013,10 +1910,8 @@ class ImageSpace::BootImageLoader {
 
   std::unique_ptr<ImageSpace> Load(const std::string& image_location,
                                    const std::string& image_filename,
-                                   bool validate_oat_file,
                                    TimingLogger* logger,
                                    /*inout*/MemMap* image_reservation,
-                                   /*inout*/MemMap* oat_reservation,
                                    /*out*/std::string* error_msg)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Should this be a RDWR lock? This is only a defensive measure, as at
@@ -2045,12 +1940,78 @@ class ImageSpace::BootImageLoader {
     // file name.
     return Loader::Init(image_filename.c_str(),
                         image_location.c_str(),
-                        validate_oat_file,
                         /*oat_file=*/ nullptr,
                         logger,
                         image_reservation,
-                        oat_reservation,
                         error_msg);
+  }
+
+  bool OpenOatFile(ImageSpace* space,
+                   bool validate_oat_file,
+                   TimingLogger* logger,
+                   /*inout*/MemMap* image_reservation,
+                   /*out*/std::string* error_msg) {
+    // VerifyImageAllocations() will be called later in Runtime::Init()
+    // as some class roots like ArtMethod::java_lang_reflect_ArtMethod_
+    // and ArtField::java_lang_reflect_ArtField_, which are used from
+    // Object::SizeOf() which VerifyImageAllocations() calls, are not
+    // set yet at this point.
+    DCHECK(image_reservation != nullptr);
+    std::unique_ptr<OatFile> oat_file;
+    {
+      TimingLogger::ScopedTiming timing("OpenOatFile", logger);
+      std::string oat_filename =
+          ImageHeader::GetOatLocationFromImageLocation(space->GetImageFilename());
+
+      oat_file.reset(OatFile::Open(/*zip_fd=*/ -1,
+                                   oat_filename,
+                                   oat_filename,
+                                   !Runtime::Current()->IsAotCompiler(),
+                                   /*low_4gb=*/ false,
+                                   /*abs_dex_location=*/ nullptr,
+                                   image_reservation,
+                                   error_msg));
+      if (oat_file == nullptr) {
+        *error_msg = StringPrintf("Failed to open oat file '%s' referenced from image %s: %s",
+                                  oat_filename.c_str(),
+                                  space->GetName(),
+                                  error_msg->c_str());
+        return false;
+      }
+      const ImageHeader& image_header = space->GetImageHeader();
+      uint32_t oat_checksum = oat_file->GetOatHeader().GetChecksum();
+      uint32_t image_oat_checksum = image_header.GetOatChecksum();
+      if (oat_checksum != image_oat_checksum) {
+        *error_msg = StringPrintf("Failed to match oat file checksum 0x%x to expected oat checksum"
+                                  " 0x%x in image %s",
+                                  oat_checksum,
+                                  image_oat_checksum,
+                                  space->GetName());
+        return false;
+      }
+      ptrdiff_t relocation_diff = space->Begin() - image_header.GetImageBegin();
+      CHECK(image_header.GetOatDataBegin() != nullptr);
+      uint8_t* oat_data_begin = image_header.GetOatDataBegin() + relocation_diff;
+      if (oat_file->Begin() != oat_data_begin) {
+        *error_msg = StringPrintf("Oat file '%s' referenced from image %s has unexpected begin"
+                                      " %p v. %p",
+                                  oat_filename.c_str(),
+                                  space->GetName(),
+                                  oat_file->Begin(),
+                                  oat_data_begin);
+        return false;
+      }
+    }
+    if (validate_oat_file) {
+      TimingLogger::ScopedTiming timing("ValidateOatFile", logger);
+      if (!ImageSpace::ValidateOatFile(*oat_file, error_msg)) {
+        DCHECK(!error_msg->empty());
+        return false;
+      }
+    }
+    space->oat_file_ = std::move(oat_file);
+    space->oat_file_non_owned_ = space->oat_file_.get();
+    return true;
   }
 
   // Extract boot class path from oat file associated with `image_filename`
@@ -2087,7 +2048,6 @@ class ImageSpace::BootImageLoader {
   bool GetBootImageAddressRange(const std::string& filename,
                                 /*out*/uint32_t* start,
                                 /*out*/uint32_t* end,
-                                /*out*/uint32_t* oat_end,
                                 /*out*/std::string* error_msg) {
     ImageHeader system_hdr;
     if (!ReadSpecificImageHeader(filename.c_str(), &system_hdr)) {
@@ -2096,22 +2056,19 @@ class ImageSpace::BootImageLoader {
     }
     *start = reinterpret_cast32<uint32_t>(system_hdr.GetImageBegin());
     CHECK_ALIGNED(*start, kPageSize);
-    *end = RoundUp(*start + system_hdr.GetImageSize(), kPageSize);
-    *oat_end = RoundUp(reinterpret_cast32<uint32_t>(system_hdr.GetOatFileEnd()), kPageSize);
+    *end = RoundUp(reinterpret_cast32<uint32_t>(system_hdr.GetOatFileEnd()), kPageSize);
     return true;
   }
 
-  bool ReserveBootImageMemory(uint32_t image_start,
-                              uint32_t image_end,
-                              uint32_t oat_end,
+  bool ReserveBootImageMemory(uint32_t reservation_size,
+                              uint32_t image_start,
                               size_t extra_reservation_size,
                               /*out*/MemMap* image_reservation,
-                              /*out*/MemMap* oat_reservation,
                               /*out*/MemMap* extra_reservation,
                               /*out*/std::string* error_msg) {
     DCHECK(!image_reservation->IsValid());
-    size_t total_size =
-        dchecked_integral_cast<size_t>(oat_end - image_start) + extra_reservation_size;
+    DCHECK_LT(extra_reservation_size, std::numeric_limits<uint32_t>::max() - reservation_size);
+    size_t total_size = reservation_size + extra_reservation_size;
     bool relocate = Runtime::Current()->ShouldRelocate();
     // If relocating, choose a random address for ALSR.
     uint32_t addr = relocate ? ART_BASE_ADDRESS + ChooseRelocationOffsetDelta() : image_start;
@@ -2140,33 +2097,13 @@ class ImageSpace::BootImageLoader {
         return false;
       }
     }
-    uint32_t diff = reinterpret_cast32<uint32_t>(image_reservation->Begin()) - image_start;
-    image_start += diff;
-    image_end += diff;
-    oat_end += diff;
-    DCHECK(!oat_reservation->IsValid());
-    *oat_reservation = image_reservation->RemapAtEnd(reinterpret_cast32<uint8_t*>(image_end),
-                                                     "Boot image oat reservation",
-                                                     PROT_NONE,
-                                                     error_msg);
-    if (!oat_reservation->IsValid()) {
-      return false;
-    }
 
     return true;
   }
 
-  bool CheckReservationsExhausted(const MemMap& image_reservation,
-                                  const MemMap& oat_reservation,
-                                  /*out*/std::string* error_msg) {
+  bool CheckReservationExhausted(const MemMap& image_reservation, /*out*/std::string* error_msg) {
     if (image_reservation.IsValid()) {
       *error_msg = StringPrintf("Excessive image reservation after loading boot image: %p-%p",
-                                image_reservation.Begin(),
-                                image_reservation.End());
-      return false;
-    }
-    if (oat_reservation.IsValid()) {
-      *error_msg = StringPrintf("Excessive oat reservation after loading boot image: %p-%p",
                                 image_reservation.Begin(),
                                 image_reservation.End());
       return false;
@@ -2374,12 +2311,11 @@ ImageSpace::~ImageSpace() {
 std::unique_ptr<ImageSpace> ImageSpace::CreateFromAppImage(const char* image,
                                                            const OatFile* oat_file,
                                                            std::string* error_msg) {
+  // Note: The oat file has already been validated.
   return Loader::InitAppImage(image,
                               image,
-                              /*validate_oat_file=*/ false,
                               oat_file,
                               /*image_reservation=*/ nullptr,
-                              /*oat_reservation=*/ nullptr,
                               error_msg);
 }
 

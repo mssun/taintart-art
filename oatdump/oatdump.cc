@@ -1783,9 +1783,7 @@ class ImageDumper {
 
     os << "BOOT IMAGE BEGIN: " << reinterpret_cast<void*>(image_header_.GetBootImageBegin())
         << "\n";
-    os << "BOOT IMAGE SIZE: " << image_header_.GetBootImageSize() << "\n";
-    os << "BOOT OAT BEGIN: " << reinterpret_cast<void*>(image_header_.GetBootOatBegin()) << "\n";
-    os << "BOOT OAT SIZE: " << image_header_.GetBootOatSize() << "\n\n";
+    os << "BOOT IMAGE SIZE: " << image_header_.GetBootImageSize() << "\n\n";
 
     for (size_t i = 0; i < ImageHeader::kSectionCount; ++i) {
       auto section = static_cast<ImageHeader::ImageSections>(i);
