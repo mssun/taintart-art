@@ -29,7 +29,6 @@
 #include "base/value_object.h"
 #include "class_iterator.h"
 #include "dex_file_types.h"
-#include "hidden_api_access_flags.h"
 #include "jni.h"
 #include "modifiers.h"
 
