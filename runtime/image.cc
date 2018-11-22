@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '6', '8', '\0' };  // Image checksums.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '6', '9', '\0' };  // Remove boot oat extents.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
@@ -39,8 +39,6 @@ ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t oat_file_end,
                          uint32_t boot_image_begin,
                          uint32_t boot_image_size,
-                         uint32_t boot_oat_begin,
-                         uint32_t boot_oat_size,
                          uint32_t pointer_size,
                          StorageMode storage_mode,
                          size_t data_size)
@@ -54,8 +52,6 @@ ImageHeader::ImageHeader(uint32_t image_begin,
     oat_file_end_(oat_file_end),
     boot_image_begin_(boot_image_begin),
     boot_image_size_(boot_image_size),
-    boot_oat_begin_(boot_oat_begin),
-    boot_oat_size_(boot_oat_size),
     image_roots_(image_roots),
     pointer_size_(pointer_size),
     storage_mode_(storage_mode),

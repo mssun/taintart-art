@@ -93,23 +93,7 @@ class PACKED(4) ImageHeader {
   };
   static constexpr StorageMode kDefaultStorageMode = kStorageModeUncompressed;
 
-  ImageHeader()
-      : image_begin_(0U),
-        image_size_(0U),
-        image_checksum_(0u),
-        oat_checksum_(0U),
-        oat_file_begin_(0U),
-        oat_data_begin_(0U),
-        oat_data_end_(0U),
-        oat_file_end_(0U),
-        boot_image_begin_(0U),
-        boot_image_size_(0U),
-        boot_oat_begin_(0U),
-        boot_oat_size_(0U),
-        image_roots_(0U),
-        pointer_size_(0U),
-        storage_mode_(kDefaultStorageMode),
-        data_size_(0) {}
+  ImageHeader() {}
 
   ImageHeader(uint32_t image_begin,
               uint32_t image_size,
@@ -122,8 +106,6 @@ class PACKED(4) ImageHeader {
               uint32_t oat_file_end,
               uint32_t boot_image_begin,
               uint32_t boot_image_size,
-              uint32_t boot_oat_begin,
-              uint32_t boot_oat_size,
               uint32_t pointer_size,
               StorageMode storage_mode,
               size_t data_size);
@@ -322,14 +304,6 @@ class PACKED(4) ImageHeader {
     return boot_image_size_;
   }
 
-  uint32_t GetBootOatBegin() const {
-    return boot_oat_begin_;
-  }
-
-  uint32_t GetBootOatSize() const {
-    return boot_oat_size_;
-  }
-
   StorageMode GetStorageMode() const {
     return storage_mode_;
   }
@@ -390,43 +364,39 @@ class PACKED(4) ImageHeader {
   uint8_t version_[4];
 
   // Required base address for mapping the image.
-  uint32_t image_begin_;
+  uint32_t image_begin_ = 0u;
 
   // Image size, not page aligned.
-  uint32_t image_size_;
+  uint32_t image_size_ = 0u;
 
   // Image file checksum (calculated with the checksum field set to 0).
-  uint32_t image_checksum_;
+  uint32_t image_checksum_ = 0u;
 
   // Checksum of the oat file we link to for load time sanity check.
-  uint32_t oat_checksum_;
+  uint32_t oat_checksum_ = 0u;
 
   // Start address for oat file. Will be before oat_data_begin_ for .so files.
-  uint32_t oat_file_begin_;
+  uint32_t oat_file_begin_ = 0u;
 
   // Required oat address expected by image Method::GetCode() pointers.
-  uint32_t oat_data_begin_;
+  uint32_t oat_data_begin_ = 0u;
 
   // End of oat data address range for this image file.
-  uint32_t oat_data_end_;
+  uint32_t oat_data_end_ = 0u;
 
   // End of oat file address range. will be after oat_data_end_ for
   // .so files. Used for positioning a following alloc spaces.
-  uint32_t oat_file_end_;
+  uint32_t oat_file_end_ = 0u;
 
   // Boot image begin and end (app image headers only).
-  uint32_t boot_image_begin_;
-  uint32_t boot_image_size_;
-
-  // Boot oat begin and end (app image headers only).
-  uint32_t boot_oat_begin_;
-  uint32_t boot_oat_size_;
+  uint32_t boot_image_begin_ = 0u;
+  uint32_t boot_image_size_ = 0u;  // Includes heap (*.art) and code (.oat).
 
   // Absolute address of an Object[] of objects needed to reinitialize from an image.
-  uint32_t image_roots_;
+  uint32_t image_roots_ = 0u;
 
   // Pointer size, this affects the size of the ArtMethods.
-  uint32_t pointer_size_;
+  uint32_t pointer_size_ = 0u;
 
   // Image section sizes/offsets correspond to the uncompressed form.
   ImageSection sections_[kSectionCount];
@@ -435,11 +405,11 @@ class PACKED(4) ImageHeader {
   uint64_t image_methods_[kImageMethodsCount];
 
   // Storage method for the image, the image may be compressed.
-  StorageMode storage_mode_;
+  StorageMode storage_mode_ = kDefaultStorageMode;
 
   // Data size for the image data excluding the bitmap and the header. For compressed images, this
   // is the compressed size in the file.
-  uint32_t data_size_;
+  uint32_t data_size_ = 0u;
 
   friend class linker::ImageWriter;
 };
