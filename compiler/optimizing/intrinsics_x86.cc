@@ -545,6 +545,96 @@ static void GenFPToFPCall(HInvoke* invoke, CodeGeneratorX86* codegen, QuickEntry
   __ cfi().AdjustCFAOffset(-16);
 }
 
+static void CreateLowestOneBitLocations(ArenaAllocator* allocator, bool is_long, HInvoke* invoke) {
+  LocationSummary* locations =
+      new (allocator) LocationSummary(invoke, LocationSummary::kNoCall, kIntrinsified);
+  if (is_long) {
+    locations->SetInAt(0, Location::RequiresRegister());
+  } else {
+    locations->SetInAt(0, Location::Any());
+  }
+  locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
+}
+
+static void GenLowestOneBit(X86Assembler* assembler,
+                      CodeGeneratorX86* codegen,
+                      bool is_long,
+                      HInvoke* invoke) {
+  LocationSummary* locations = invoke->GetLocations();
+  Location src = locations->InAt(0);
+  Location out_loc = locations->Out();
+
+  if (invoke->InputAt(0)->IsConstant()) {
+    // Evaluate this at compile time.
+    int64_t value = Int64FromConstant(invoke->InputAt(0)->AsConstant());
+    if (value == 0) {
+      if (is_long) {
+        __ xorl(out_loc.AsRegisterPairLow<Register>(), out_loc.AsRegisterPairLow<Register>());
+        __ xorl(out_loc.AsRegisterPairHigh<Register>(), out_loc.AsRegisterPairHigh<Register>());
+      } else {
+        __ xorl(out_loc.AsRegister<Register>(), out_loc.AsRegister<Register>());
+      }
+      return;
+    }
+    // Nonzero value.
+    value = is_long ? CTZ(static_cast<uint64_t>(value))
+                    : CTZ(static_cast<uint32_t>(value));
+    if (is_long) {
+      if (value >= 32) {
+        int shift = value-32;
+        codegen->Load32BitValue(out_loc.AsRegisterPairLow<Register>(), 0);
+        codegen->Load32BitValue(out_loc.AsRegisterPairHigh<Register>(), 1 << shift);
+      } else {
+        codegen->Load32BitValue(out_loc.AsRegisterPairLow<Register>(), 1 << value);
+        codegen->Load32BitValue(out_loc.AsRegisterPairHigh<Register>(), 0);
+      }
+    } else {
+      codegen->Load32BitValue(out_loc.AsRegister<Register>(), 1 << value);
+    }
+    return;
+  }
+  // Handle non constant case
+  if (is_long) {
+    DCHECK(src.IsRegisterPair());
+    Register src_lo = src.AsRegisterPairLow<Register>();
+    Register src_hi = src.AsRegisterPairHigh<Register>();
+
+    Register out_lo = out_loc.AsRegisterPairLow<Register>();
+    Register out_hi = out_loc.AsRegisterPairHigh<Register>();
+
+    __ movl(out_lo, src_lo);
+    __ movl(out_hi, src_hi);
+
+    __ negl(out_lo);
+    __ adcl(out_hi, Immediate(0));
+    __ negl(out_hi);
+
+    __ andl(out_lo, src_lo);
+    __ andl(out_hi, src_hi);
+  } else {
+    if (codegen->GetInstructionSetFeatures().HasAVX2() && src.IsRegister()) {
+      Register out = out_loc.AsRegister<Register>();
+      __ blsi(out, src.AsRegister<Register>());
+    } else {
+      Register out = out_loc.AsRegister<Register>();
+      // Do tmp & -tmp
+      if (src.IsRegister()) {
+        __ movl(out, src.AsRegister<Register>());
+      } else {
+        DCHECK(src.IsStackSlot());
+        __ movl(out, Address(ESP, src.GetStackIndex()));
+      }
+      __ negl(out);
+
+      if (src.IsRegister()) {
+        __ andl(out, src.AsRegister<Register>());
+      } else {
+        __ andl(out, Address(ESP, src.GetStackIndex()));
+      }
+    }
+  }
+}
+
 void IntrinsicLocationsBuilderX86::VisitMathCos(HInvoke* invoke) {
   CreateFPToFPCallLocations(allocator_, invoke);
 }
@@ -655,6 +745,21 @@ void IntrinsicLocationsBuilderX86::VisitMathTanh(HInvoke* invoke) {
 
 void IntrinsicCodeGeneratorX86::VisitMathTanh(HInvoke* invoke) {
   GenFPToFPCall(invoke, codegen_, kQuickTanh);
+}
+
+void IntrinsicLocationsBuilderX86::VisitIntegerLowestOneBit(HInvoke* invoke) {
+  CreateLowestOneBitLocations(allocator_, /*is_long=*/ false, invoke);
+}
+void IntrinsicCodeGeneratorX86::VisitIntegerLowestOneBit(HInvoke* invoke) {
+  GenLowestOneBit(GetAssembler(), codegen_, /*is_long=*/ false, invoke);
+}
+
+void IntrinsicLocationsBuilderX86::VisitLongLowestOneBit(HInvoke* invoke) {
+  CreateLowestOneBitLocations(allocator_, /*is_long=*/ true, invoke);
+}
+
+void IntrinsicCodeGeneratorX86::VisitLongLowestOneBit(HInvoke* invoke) {
+  GenLowestOneBit(GetAssembler(), codegen_, /*is_long=*/ true, invoke);
 }
 
 static void CreateFPFPToFPCallLocations(ArenaAllocator* allocator, HInvoke* invoke) {
@@ -2965,8 +3070,6 @@ UNIMPLEMENTED_INTRINSIC(X86, FloatIsInfinite)
 UNIMPLEMENTED_INTRINSIC(X86, DoubleIsInfinite)
 UNIMPLEMENTED_INTRINSIC(X86, IntegerHighestOneBit)
 UNIMPLEMENTED_INTRINSIC(X86, LongHighestOneBit)
-UNIMPLEMENTED_INTRINSIC(X86, IntegerLowestOneBit)
-UNIMPLEMENTED_INTRINSIC(X86, LongLowestOneBit)
 UNIMPLEMENTED_INTRINSIC(X86, CRC32Update)
 
 UNIMPLEMENTED_INTRINSIC(X86, StringStringIndexOf);
