@@ -100,10 +100,6 @@ class JitOptions {
     return use_jit_compilation_;
   }
 
-  bool RWXMemoryAllowed() const {
-    return rwx_memory_allowed_;
-  }
-
   void SetUseJitCompilation(bool b) {
     use_jit_compilation_ = b;
   }
@@ -125,10 +121,6 @@ class JitOptions {
     compile_threshold_ = 0;
   }
 
-  void SetRWXMemoryAllowed(bool rwx_allowed) {
-    rwx_memory_allowed_ = rwx_allowed;
-  }
-
  private:
   bool use_jit_compilation_;
   size_t code_cache_initial_capacity_;
@@ -140,7 +132,6 @@ class JitOptions {
   uint16_t invoke_transition_weight_;
   bool dump_info_on_shutdown_;
   int thread_pool_pthread_priority_;
-  bool rwx_memory_allowed_;
   ProfileSaverOptions profile_saver_options_;
 
   JitOptions()
@@ -153,8 +144,7 @@ class JitOptions {
         priority_thread_weight_(0),
         invoke_transition_weight_(0),
         dump_info_on_shutdown_(false),
-        thread_pool_pthread_priority_(kJitPoolThreadPthreadDefaultPriority),
-        rwx_memory_allowed_(true) {}
+        thread_pool_pthread_priority_(kJitPoolThreadPthreadDefaultPriority) {}
 
   DISALLOW_COPY_AND_ASSIGN(JitOptions);
 };
@@ -295,6 +285,9 @@ class Jit {
   // Start JIT threads.
   void Start();
 
+  // Transition to a zygote child state.
+  void PostForkChildAction();
+
  private:
   Jit(JitCodeCache* code_cache, JitOptions* options);
 
@@ -303,13 +296,13 @@ class Jit {
   // JIT compiler
   static void* jit_library_handle_;
   static void* jit_compiler_handle_;
-  static void* (*jit_load_)(bool*);
+  static void* (*jit_load_)(void);
   static void (*jit_unload_)(void*);
   static bool (*jit_compile_method_)(void*, ArtMethod*, Thread*, bool);
   static void (*jit_types_loaded_)(void*, mirror::Class**, size_t count);
-
-  // Whether we should generate debug info when compiling.
-  bool generate_debug_info_;
+  static void (*jit_update_options_)(void*);
+  static bool (*jit_generate_debug_info_)(void*);
+  template <typename T> static bool LoadSymbol(T*, const char* symbol, std::string* error_msg);
 
   // JIT resources owned by runtime.
   jit::JitCodeCache* const code_cache_;
