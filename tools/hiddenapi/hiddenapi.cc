@@ -23,14 +23,14 @@
 #include "android-base/strings.h"
 
 #include "base/bit_utils.h"
-#include "base/stl_util.h"
+#include "base/hiddenapi_flags.h"
 #include "base/mem_map.h"
 #include "base/os.h"
+#include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/class_accessor-inl.h"
 #include "dex/dex_file-inl.h"
-#include "dex/hidden_api_access_flags.h"
 
 namespace art {
 
@@ -601,7 +601,7 @@ class HiddenapiClassDataBuilder final {
   // between BeginClassDef and EndClassDef in the order of appearance of
   // fields/methods in the class data stream.
   void WriteFlags(hiddenapi::ApiList flags) {
-    uint32_t uint_flags = static_cast<uint32_t>(flags);
+    uint32_t uint_flags = flags.GetIntValue();
     EncodeUnsignedLeb128(&data_, uint_flags);
     class_def_has_non_zero_flags_ |= (uint_flags != 0u);
   }
@@ -935,9 +935,9 @@ class HiddenApi final {
 
     // Load dex signatures.
     std::map<std::string, hiddenapi::ApiList> api_list;
-    OpenApiFile(light_greylist_path_, api_list, hiddenapi::ApiList::kLightGreylist);
-    OpenApiFile(dark_greylist_path_, api_list, hiddenapi::ApiList::kDarkGreylist);
-    OpenApiFile(blacklist_path_, api_list, hiddenapi::ApiList::kBlacklist);
+    OpenApiFile(light_greylist_path_, api_list, hiddenapi::ApiList::Greylist());
+    OpenApiFile(dark_greylist_path_, api_list, hiddenapi::ApiList::GreylistMaxO());
+    OpenApiFile(blacklist_path_, api_list, hiddenapi::ApiList::Blacklist());
 
     // Iterate over input dex files and insert HiddenapiClassData sections.
     for (size_t i = 0; i < boot_dex_paths_.size(); ++i) {
@@ -957,7 +957,7 @@ class HiddenApi final {
             // TODO: Load whitelist and CHECK that entry was found.
             auto it = api_list.find(boot_member.GetApiEntry());
             builder.WriteFlags(
-                (it == api_list.end()) ? hiddenapi::ApiList::kWhitelist : it->second);
+                (it == api_list.end()) ? hiddenapi::ApiList::Whitelist() : it->second);
           };
           auto fn_field = [&](const ClassAccessor::Field& boot_field) {
             fn_shared(DexMember(boot_class, boot_field));
@@ -988,7 +988,8 @@ class HiddenApi final {
 
     for (std::string line; std::getline(api_file, line);) {
       CHECK(api_list.find(line) == api_list.end())
-          << "Duplicate entry: " << line << " (" << api_list[line] << " and " << membership << ")";
+          << "Duplicate entry: " << line << " (" << api_list.find(line)->second
+          << " and " << membership << ")";
       api_list.emplace(line, membership);
     }
     api_file.close();

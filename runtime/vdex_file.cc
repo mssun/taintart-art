@@ -31,7 +31,6 @@
 #include "dex/class_accessor-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
-#include "dex/hidden_api_access_flags.h"
 #include "dex_to_dex_decompiler.h"
 #include "quicken_info.h"
 

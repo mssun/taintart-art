@@ -26,6 +26,7 @@
 
 #include <android-base/logging.h>
 
+#include "base/bit_utils.h"
 #include "dex/dex_file_loader.h"
 #include "dex/standard_dex_file.h"
 
