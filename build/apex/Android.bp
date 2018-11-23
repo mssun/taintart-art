@@ -68,8 +68,8 @@ art_tools_host_binaries = [
 
 apex_key {
     name: "com.android.runtime.key",
-    public_key: "runtime.avbpubkey",
-    private_key: "runtime.pem",
+    public_key: "com.android.runtime.avbpubkey",
+    private_key: "com.android.runtime.pem",
 }
 
 // TODO: Introduce `apex_defaults` to factor common parts of `apex`
