@@ -261,6 +261,7 @@ function run_art() {
   # Run dalvikvm.
   verbose_run ANDROID_DATA="$ANDROID_DATA"                  \
               ANDROID_ROOT="$ANDROID_ROOT"                  \
+              ANDROID_RUNTIME_ROOT="$ANDROID_RUNTIME_ROOT"  \
               LD_LIBRARY_PATH="$LD_LIBRARY_PATH"            \
               PATH="$ANDROID_ROOT/bin:$PATH"                \
               LD_USE_LOAD_BIAS=1                            \
@@ -386,6 +387,7 @@ done
 
 PROG_DIR="$(cd "${PROG_NAME%/*}" ; pwd -P)"
 ANDROID_ROOT=$PROG_DIR/..
+ANDROID_RUNTIME_ROOT=$ANDROID_ROOT/com.android.runtime
 ART_BINARY_PATH=$ANDROID_ROOT/bin/$ART_BINARY
 
 if [ ! -x "$ART_BINARY_PATH" ]; then

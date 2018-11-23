@@ -26,7 +26,7 @@ namespace art {
 class ParsedOptionsTest : public ::testing::Test {
  public:
   static void SetUpTestCase() {
-    CommonRuntimeTest::SetUpAndroidRoot();
+    CommonRuntimeTest::SetUpAndroidRootEnvVars();
   }
 };
 
