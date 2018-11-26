@@ -73,13 +73,17 @@ enum LockLevel : uint8_t {
   // level lock, it is permitted to acquire a second one - with internal safeguards to ensure that
   // the second lock acquisition does not result in deadlock. This is implemented in the lock
   // order by treating the second acquisition of a kThreadWaitLock as a kThreadWaitWakeLock
-  // acquisition. Thus, acquiring kThreadWaitWakeLock requires holding kThreadWaitLock.
+  // acquisition. Thus, acquiring kThreadWaitWakeLock requires holding kThreadWaitLock. This entry
+  // is here near the bottom of the hierarchy because other locks should not be
+  // acquired while it is held. kThreadWaitLock cannot be moved here because GC
+  // activity acquires locks while holding the wait lock.
   kThreadWaitWakeLock,
-  kThreadWaitLock,
   kJdwpAdbStateLock,
   kJdwpSocketLock,
   kRegionSpaceRegionLock,
   kMarkSweepMarkStackLock,
+  // Can be held while GC related work is done, and thus must be above kMarkSweepMarkStackLock
+  kThreadWaitLock,
   kCHALock,
   kJitCodeCacheLock,
   kRosAllocGlobalLock,
