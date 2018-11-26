@@ -3251,7 +3251,7 @@ bool ClassLinker::ShouldUseInterpreterEntrypoint(ArtMethod* method, const void* 
     return (jit == nullptr) || !jit->GetCodeCache()->ContainsPc(quick_code);
   }
 
-  if (runtime->IsNativeDebuggable()) {
+  if (runtime->IsNativeDebuggableZygoteOK()) {
     DCHECK(runtime->UseJitCompilation() && runtime->GetJit()->JitAtFirstUse());
     // If we are doing native debugging, ignore application's AOT code,
     // since we want to JIT it (at first use) with extra stackmaps for native
