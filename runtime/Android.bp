@@ -345,6 +345,11 @@ libart_cc_defaults {
             static_libs: [
                 "libz",  // For adler32.
             ],
+            cflags: [
+                // ART is allowed to link to libicuuc directly
+                // since they are in the same module
+                "-DANDROID_LINK_SHARED_ICU4C",
+            ],
         },
         android_arm: {
             ldflags: JIT_DEBUG_REGISTER_CODE_LDFLAGS,
@@ -377,12 +382,12 @@ libart_cc_defaults {
     export_generated_headers: ["cpp-define-generator-asm-support"],
     include_dirs: [
         "art/sigchainlib",
-        "external/icu/icu4c/source/common",
         "external/zlib",
     ],
     header_libs: [
         "art_cmdlineparser_headers",
         "cpp-define-generator-definitions",
+        "libicuuc_headers",
         "libnativehelper_header_only",
         "jni_platform_headers",
     ],
