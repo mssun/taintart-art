@@ -399,6 +399,10 @@ inline ArtField* ArtField::FindStaticFieldWithOffset(ObjPtr<mirror::Class> klass
   return FindFieldWithOffset<kExactOffset>(klass->GetSFields(), field_offset);
 }
 
+inline mirror::ClassLoader* ArtField::GetClassLoader() {
+  return GetDeclaringClass()->GetClassLoader();
+}
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_ART_FIELD_INL_H_

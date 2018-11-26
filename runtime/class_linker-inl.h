@@ -135,7 +135,7 @@ inline ObjPtr<mirror::Class> ClassLinker::ResolveType(dex::TypeIndex type_idx,
   ObjPtr<mirror::Class> resolved_type =
       referrer->GetDexCache<kWithoutReadBarrier>()->GetResolvedType(type_idx);
   if (UNLIKELY(resolved_type == nullptr)) {
-    resolved_type = DoResolveType(type_idx, referrer->GetDeclaringClass());
+    resolved_type = DoResolveType(type_idx, referrer);
   }
   return resolved_type;
 }
@@ -149,7 +149,7 @@ inline ObjPtr<mirror::Class> ClassLinker::ResolveType(dex::TypeIndex type_idx,
   ObjPtr<mirror::Class> resolved_type =
       referrer->GetDexCache<kWithoutReadBarrier>()->GetResolvedType(type_idx);
   if (UNLIKELY(resolved_type == nullptr)) {
-    resolved_type = DoResolveType(type_idx, referrer->GetDeclaringClass());
+    resolved_type = DoResolveType(type_idx, referrer);
   }
   return resolved_type;
 }
