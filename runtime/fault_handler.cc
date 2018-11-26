@@ -16,7 +16,6 @@
 
 #include "fault_handler.h"
 
-#include <setjmp.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/ucontext.h>
