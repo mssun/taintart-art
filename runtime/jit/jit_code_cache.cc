@@ -64,11 +64,6 @@ namespace jit {
 static constexpr size_t kCodeSizeLogThreshold = 50 * KB;
 static constexpr size_t kStackMapSizeLogThreshold = 50 * KB;
 
-// Data cache will be half of the capacity
-// Code cache will be the other half of the capacity.
-// TODO: Make this variable?
-static constexpr size_t kCodeAndDataCapacityDivider = 2;
-
 static constexpr int kProtR = PROT_READ;
 static constexpr int kProtRW = PROT_READ | PROT_WRITE;
 static constexpr int kProtRWX = PROT_READ | PROT_WRITE | PROT_EXEC;
@@ -188,45 +183,69 @@ class JitCodeCache::JniStubData {
   std::vector<ArtMethod*> methods_;
 };
 
-bool JitCodeCache::InitializeMappings(bool rwx_memory_allowed,
-                                      bool is_zygote,
-                                      std::string* error_msg) {
+JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
+                                   size_t max_capacity,
+                                   bool used_only_for_profile_data,
+                                   bool rwx_memory_allowed,
+                                   std::string* error_msg) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
+  CHECK_GE(max_capacity, initial_capacity);
 
-  const size_t capacity = max_capacity_;
-  const size_t data_capacity = capacity / kCodeAndDataCapacityDivider;
-  const size_t exec_capacity = capacity - data_capacity;
+  // We need to have 32 bit offsets from method headers in code cache which point to things
+  // in the data cache. If the maps are more than 4G apart, having multiple maps wouldn't work.
+  // Ensure we're below 1 GB to be safe.
+  if (max_capacity > 1 * GB) {
+    std::ostringstream oss;
+    oss << "Maxium code cache capacity is limited to 1 GB, "
+        << PrettySize(max_capacity) << " is too big";
+    *error_msg = oss.str();
+    return nullptr;
+  }
+
+  // Register for membarrier expedited sync core if JIT will be generating code.
+  if (!used_only_for_profile_data) {
+    if (art::membarrier(art::MembarrierCommand::kRegisterPrivateExpeditedSyncCore) != 0) {
+      // MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE ensures that CPU instruction pipelines are
+      // flushed and it's used when adding code to the JIT. The memory used by the new code may
+      // have just been released and, in theory, the old code could still be in a pipeline.
+      VLOG(jit) << "Kernel does not support membarrier sync-core";
+    }
+  }
 
   // File descriptor enabling dual-view mapping of code section.
   unique_fd mem_fd;
 
-  // Zygote shouldn't create a shared mapping for JIT, so we cannot use dual view
-  // for it.
-  if (!is_zygote) {
-    // Bionic supports memfd_create, but the call may fail on older kernels.
-    mem_fd = unique_fd(art::memfd_create("/jit-cache", /* flags= */ 0));
-    if (mem_fd.get() < 0) {
-      std::ostringstream oss;
-      oss << "Failed to initialize dual view JIT. memfd_create() error: " << strerror(errno);
-      if (!rwx_memory_allowed) {
-        // Without using RWX page permissions, the JIT can not fallback to single mapping as it
-        // requires tranitioning the code pages to RWX for updates.
-        *error_msg = oss.str();
-        return false;
-      }
-      VLOG(jit) << oss.str();
+  // Bionic supports memfd_create, but the call may fail on older kernels.
+  mem_fd = unique_fd(art::memfd_create("/jit-cache", /* flags= */ 0));
+  if (mem_fd.get() < 0) {
+    std::ostringstream oss;
+    oss << "Failed to initialize dual view JIT. memfd_create() error: " << strerror(errno);
+    if (!rwx_memory_allowed) {
+      // Without using RWX page permissions, the JIT can not fallback to single mapping as it
+      // requires tranitioning the code pages to RWX for updates.
+      *error_msg = oss.str();
+      return nullptr;
     }
+    VLOG(jit) << oss.str();
   }
 
-  if (mem_fd.get() >= 0 && ftruncate(mem_fd, capacity) != 0) {
+  if (mem_fd.get() >= 0 && ftruncate(mem_fd, max_capacity) != 0) {
     std::ostringstream oss;
     oss << "Failed to initialize memory file: " << strerror(errno);
     *error_msg = oss.str();
-    return false;
+    return nullptr;
   }
 
-  std::string data_cache_name = is_zygote ? "zygote-data-code-cache" : "data-code-cache";
-  std::string exec_cache_name = is_zygote ? "zygote-jit-code-cache" : "jit-code-cache";
+  // Data cache will be half of the initial allocation.
+  // Code cache will be the other half of the initial allocation.
+  // TODO: Make this variable?
+
+  // Align both capacities to page size, as that's the unit mspaces use.
+  initial_capacity = RoundDown(initial_capacity, 2 * kPageSize);
+  max_capacity = RoundDown(max_capacity, 2 * kPageSize);
+  const size_t data_capacity = max_capacity / 2;
+  const size_t exec_capacity = used_only_for_profile_data ? 0 : max_capacity - data_capacity;
+  DCHECK_LE(data_capacity + exec_capacity, max_capacity);
 
   std::string error_str;
   // Map name specific for android_os_Debug.cpp accounting.
@@ -266,7 +285,7 @@ bool JitCodeCache::InitializeMappings(bool rwx_memory_allowed,
         mem_fd,
         /* start= */ 0,
         /* low_4gb= */ true,
-        data_cache_name.c_str(),
+        "data-code-cache",
         &error_str);
   } else {
     // Single view of JIT code cache case. Create an initial mapping of data pages large enough
@@ -285,7 +304,7 @@ bool JitCodeCache::InitializeMappings(bool rwx_memory_allowed,
     // back to RX after the update.
     base_flags = MAP_PRIVATE | MAP_ANON;
     data_pages = MemMap::MapAnonymous(
-        data_cache_name.c_str(),
+        "data-code-cache",
         data_capacity + exec_capacity,
         kProtRW,
         /* low_4gb= */ true,
@@ -294,9 +313,9 @@ bool JitCodeCache::InitializeMappings(bool rwx_memory_allowed,
 
   if (!data_pages.IsValid()) {
     std::ostringstream oss;
-    oss << "Failed to create read write cache: " << error_str << " size=" << capacity;
+    oss << "Failed to create read write cache: " << error_str << " size=" << max_capacity;
     *error_msg = oss.str();
-    return false;
+    return nullptr;
   }
 
   MemMap exec_pages;
@@ -307,7 +326,7 @@ bool JitCodeCache::InitializeMappings(bool rwx_memory_allowed,
     // (for processes that cannot map WX pages). Otherwise, this region does not need to be
     // executable as there is no code in the cache yet.
     exec_pages = data_pages.RemapAtEnd(divider,
-                                       exec_cache_name.c_str(),
+                                       "jit-code-cache",
                                        kProtRX,
                                        base_flags | MAP_FIXED,
                                        mem_fd.get(),
@@ -315,22 +334,21 @@ bool JitCodeCache::InitializeMappings(bool rwx_memory_allowed,
                                        &error_str);
     if (!exec_pages.IsValid()) {
       std::ostringstream oss;
-      oss << "Failed to create read execute code cache: " << error_str << " size=" << capacity;
+      oss << "Failed to create read execute code cache: " << error_str << " size=" << max_capacity;
       *error_msg = oss.str();
-      return false;
+      return nullptr;
     }
 
     if (mem_fd.get() >= 0) {
       // For dual view, create the secondary view of code memory used for updating code. This view
       // is never executable.
-      std::string name = exec_cache_name + "-rw";
       non_exec_pages = MemMap::MapFile(exec_capacity,
                                        kProtR,
                                        base_flags,
                                        mem_fd,
                                        /* start= */ data_capacity,
                                        /* low_4GB= */ false,
-                                       name.c_str(),
+                                       "jit-code-cache-rw",
                                        &error_str);
       if (!non_exec_pages.IsValid()) {
         static const char* kFailedNxView = "Failed to map non-executable view of JIT code cache";
@@ -339,77 +357,44 @@ bool JitCodeCache::InitializeMappings(bool rwx_memory_allowed,
           VLOG(jit) << kFailedNxView;
         } else {
           *error_msg = kFailedNxView;
-          return false;
+          return nullptr;
         }
       }
     }
   } else {
     // Profiling only. No memory for code required.
+    DCHECK(used_only_for_profile_data);
   }
 
-  data_pages_ = std::move(data_pages);
-  exec_pages_ = std::move(exec_pages);
-  non_exec_pages_ = std::move(non_exec_pages);
-  return true;
+  const size_t initial_data_capacity = initial_capacity / 2;
+  const size_t initial_exec_capacity =
+      (exec_capacity == 0) ? 0 : (initial_capacity - initial_data_capacity);
+
+  return new JitCodeCache(
+      std::move(data_pages),
+      std::move(exec_pages),
+      std::move(non_exec_pages),
+      initial_data_capacity,
+      initial_exec_capacity,
+      max_capacity);
 }
 
-JitCodeCache* JitCodeCache::Create(bool used_only_for_profile_data,
-                                   bool rwx_memory_allowed,
-                                   bool is_zygote,
-                                   std::string* error_msg) {
-  // Register for membarrier expedited sync core if JIT will be generating code.
-  if (!used_only_for_profile_data) {
-    if (art::membarrier(art::MembarrierCommand::kRegisterPrivateExpeditedSyncCore) != 0) {
-      // MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE ensures that CPU instruction pipelines are
-      // flushed and it's used when adding code to the JIT. The memory used by the new code may
-      // have just been released and, in theory, the old code could still be in a pipeline.
-      VLOG(jit) << "Kernel does not support membarrier sync-core";
-    }
-  }
-
-  // Check whether the provided max capacity in options is below 1GB.
-  size_t max_capacity = Runtime::Current()->GetJITOptions()->GetCodeCacheMaxCapacity();
-  // We need to have 32 bit offsets from method headers in code cache which point to things
-  // in the data cache. If the maps are more than 4G apart, having multiple maps wouldn't work.
-  // Ensure we're below 1 GB to be safe.
-  if (max_capacity > 1 * GB) {
-    std::ostringstream oss;
-    oss << "Maxium code cache capacity is limited to 1 GB, "
-        << PrettySize(max_capacity) << " is too big";
-    *error_msg = oss.str();
-    return nullptr;
-  }
-
-  size_t initial_capacity = Runtime::Current()->GetJITOptions()->GetCodeCacheInitialCapacity();
-
-  std::unique_ptr<JitCodeCache> jit_code_cache(new JitCodeCache());
-
-  MutexLock mu(Thread::Current(), jit_code_cache->lock_);
-  jit_code_cache->InitializeState(initial_capacity, max_capacity);
-
-  // Zygote should never collect code to share the memory with the children.
-  if (is_zygote) {
-    jit_code_cache->SetGarbageCollectCode(false);
-  }
-
-  if (!jit_code_cache->InitializeMappings(rwx_memory_allowed, is_zygote, error_msg)) {
-    return nullptr;
-  }
-
-  jit_code_cache->InitializeSpaces();
-
-  VLOG(jit) << "Created jit code cache: initial capacity="
-            << PrettySize(initial_capacity)
-            << ", maximum capacity="
-            << PrettySize(max_capacity);
-
-  return jit_code_cache.release();
-}
-
-JitCodeCache::JitCodeCache()
+JitCodeCache::JitCodeCache(MemMap&& data_pages,
+                           MemMap&& exec_pages,
+                           MemMap&& non_exec_pages,
+                           size_t initial_data_capacity,
+                           size_t initial_exec_capacity,
+                           size_t max_capacity)
     : lock_("Jit code cache", kJitCodeCacheLock),
       lock_cond_("Jit code cache condition variable", lock_),
       collection_in_progress_(false),
+      data_pages_(std::move(data_pages)),
+      exec_pages_(std::move(exec_pages)),
+      non_exec_pages_(std::move(non_exec_pages)),
+      max_capacity_(max_capacity),
+      current_capacity_(initial_exec_capacity + initial_data_capacity),
+      data_end_(initial_data_capacity),
+      exec_end_(initial_exec_capacity),
       last_collection_increased_code_cache_(false),
       garbage_collect_code_(true),
       used_memory_for_data_(0),
@@ -421,31 +406,10 @@ JitCodeCache::JitCodeCache()
       histogram_code_memory_use_("Memory used for compiled code", 16),
       histogram_profiling_info_memory_use_("Memory used for profiling info", 16),
       is_weak_access_enabled_(true),
-      inline_cache_cond_("Jit inline cache condition variable", lock_),
-      zygote_data_pages_(),
-      zygote_exec_pages_(),
-      zygote_data_mspace_(nullptr),
-      zygote_exec_mspace_(nullptr) {
-}
+      inline_cache_cond_("Jit inline cache condition variable", lock_) {
 
-void JitCodeCache::InitializeState(size_t initial_capacity, size_t max_capacity) {
-  CHECK_GE(max_capacity, initial_capacity);
-  CHECK(max_capacity <= 1 * GB) << "The max supported size for JIT code cache is 1GB";
-  // Align both capacities to page size, as that's the unit mspaces use.
-  initial_capacity = RoundDown(initial_capacity, 2 * kPageSize);
-  max_capacity = RoundDown(max_capacity, 2 * kPageSize);
+  DCHECK_GE(max_capacity, initial_exec_capacity + initial_data_capacity);
 
-  data_pages_ = MemMap();
-  exec_pages_ = MemMap();
-  non_exec_pages_ = MemMap();
-  initial_capacity_ = initial_capacity;
-  max_capacity_ = max_capacity;
-  current_capacity_ = initial_capacity,
-  data_end_ = initial_capacity / kCodeAndDataCapacityDivider;
-  exec_end_ = initial_capacity - data_end_;
-}
-
-void JitCodeCache::InitializeSpaces() {
   // Initialize the data heap
   data_mspace_ = create_mspace_with_base(data_pages_.Begin(), data_end_, false /*locked*/);
   CHECK(data_mspace_ != nullptr) << "create_mspace_with_base (data) failed";
@@ -463,14 +427,19 @@ void JitCodeCache::InitializeSpaces() {
     CheckedCall(mprotect, "create code heap", code_heap->Begin(), code_heap->Size(), kProtRW);
     exec_mspace_ = create_mspace_with_base(code_heap->Begin(), exec_end_, false /*locked*/);
     CHECK(exec_mspace_ != nullptr) << "create_mspace_with_base (exec) failed";
-    SetFootprintLimit(initial_capacity_);
+    SetFootprintLimit(current_capacity_);
     // Protect pages containing heap metadata. Updates to the code heap toggle write permission to
     // perform the update and there are no other times write access is required.
     CheckedCall(mprotect, "protect code heap", code_heap->Begin(), code_heap->Size(), kProtR);
   } else {
     exec_mspace_ = nullptr;
-    SetFootprintLimit(initial_capacity_);
+    SetFootprintLimit(current_capacity_);
   }
+
+  VLOG(jit) << "Created jit code cache: initial data size="
+            << PrettySize(initial_data_capacity)
+            << ", initial code size="
+            << PrettySize(initial_exec_capacity);
 }
 
 JitCodeCache::~JitCodeCache() {}
@@ -1370,13 +1339,13 @@ void JitCodeCache::NotifyCollectionDone(Thread* self) {
 }
 
 void JitCodeCache::SetFootprintLimit(size_t new_footprint) {
-  size_t data_space_footprint = new_footprint / kCodeAndDataCapacityDivider;
-  DCHECK(IsAlignedParam(data_space_footprint, kPageSize));
-  DCHECK_EQ(data_space_footprint * kCodeAndDataCapacityDivider, new_footprint);
-  mspace_set_footprint_limit(data_mspace_, data_space_footprint);
+  size_t per_space_footprint = new_footprint / 2;
+  DCHECK(IsAlignedParam(per_space_footprint, kPageSize));
+  DCHECK_EQ(per_space_footprint * 2, new_footprint);
+  mspace_set_footprint_limit(data_mspace_, per_space_footprint);
   if (HasCodeMapping()) {
     ScopedCodeCacheWrite scc(this);
-    mspace_set_footprint_limit(exec_mspace_, new_footprint - data_space_footprint);
+    mspace_set_footprint_limit(exec_mspace_, per_space_footprint);
   }
 }
 
@@ -2093,34 +2062,6 @@ void JitCodeCache::Dump(std::ostream& os) {
   histogram_stack_map_memory_use_.PrintMemoryUse(os);
   histogram_code_memory_use_.PrintMemoryUse(os);
   histogram_profiling_info_memory_use_.PrintMemoryUse(os);
-}
-
-void JitCodeCache::PostForkChildAction(bool is_system_server, bool is_zygote) {
-  MutexLock mu(Thread::Current(), lock_);
-  // Currently, we don't expect any compilations from zygote.
-  CHECK_EQ(number_of_compilations_, 0u);
-  CHECK_EQ(number_of_osr_compilations_, 0u);
-  CHECK(jni_stubs_map_.empty());
-  CHECK(method_code_map_.empty());
-  CHECK(osr_code_map_.empty());
-
-  zygote_data_pages_ = std::move(data_pages_);
-  zygote_exec_pages_ = std::move(exec_pages_);
-  zygote_data_mspace_ = data_mspace_;
-  zygote_exec_mspace_ = exec_mspace_;
-
-  size_t initial_capacity = Runtime::Current()->GetJITOptions()->GetCodeCacheInitialCapacity();
-  size_t max_capacity = Runtime::Current()->GetJITOptions()->GetCodeCacheMaxCapacity();
-
-  InitializeState(initial_capacity, max_capacity);
-
-  std::string error_msg;
-  if (!InitializeMappings(/* rwx_memory_allowed= */ !is_system_server, is_zygote, &error_msg)) {
-    LOG(WARNING) << "Could not reset JIT state after zygote fork: " << error_msg;
-    return;
-  }
-
-  InitializeSpaces();
 }
 
 }  // namespace jit

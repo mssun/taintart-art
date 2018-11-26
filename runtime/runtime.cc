@@ -791,8 +791,6 @@ bool Runtime::Start() {
     if (!jit::Jit::LoadCompilerLibrary(&error_msg)) {
       LOG(WARNING) << "Failed to load JIT compiler with error " << error_msg;
     }
-    CreateJitCodeCache(/*rwx_memory_allowed=*/true);
-    CreateJit();
   }
 
   // Send the start phase event. We have to wait till here as this is when the main thread peer
@@ -896,8 +894,15 @@ void Runtime::InitNonZygoteOrPostFork(
     }
   }
 
-  if (jit_ != nullptr) {
-    jit_->CreateThreadPool();
+  if (jit_ == nullptr) {
+    // The system server's code cache was initialized specially. For other zygote forks or
+    // processes create it now.
+    if (!is_system_server) {
+      CreateJitCodeCache(/*rwx_memory_allowed=*/true);
+    }
+    // Note that when running ART standalone (not zygote, nor zygote fork),
+    // the jit may have already been created.
+    CreateJit();
   }
 
   // Create the thread pools.
@@ -2488,11 +2493,16 @@ void Runtime::CreateJitCodeCache(bool rwx_memory_allowed) {
     return;
   }
 
+  // SystemServer has execmem blocked by SELinux so can not use RWX page permissions after the
+  // cache initialized.
+  jit_options_->SetRWXMemoryAllowed(rwx_memory_allowed);
+
   std::string error_msg;
   bool profiling_only = !jit_options_->UseJitCompilation();
-  jit_code_cache_.reset(jit::JitCodeCache::Create(profiling_only,
-                                                  rwx_memory_allowed,
-                                                  IsZygote(),
+  jit_code_cache_.reset(jit::JitCodeCache::Create(jit_options_->GetCodeCacheInitialCapacity(),
+                                                  jit_options_->GetCodeCacheMaxCapacity(),
+                                                  profiling_only,
+                                                  jit_options_->RWXMemoryAllowed(),
                                                   &error_msg));
   if (jit_code_cache_.get() == nullptr) {
     LOG(WARNING) << "Failed to create JIT Code Cache: " << error_msg;
