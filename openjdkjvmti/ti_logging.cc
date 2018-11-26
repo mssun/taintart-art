@@ -34,6 +34,7 @@
 #include "art_jvmti.h"
 
 #include "base/mutex.h"
+#include "base/strlcpy.h"
 #include "thread-current-inl.h"
 
 namespace openjdkjvmti {
@@ -47,13 +48,13 @@ jvmtiError LogUtil::GetLastError(jvmtiEnv* env, char** data) {
   if (tienv->last_error_.empty()) {
     return ERR(ABSENT_INFORMATION);
   }
+  const size_t size = tienv->last_error_.size() + 1;
   char* out;
-  jvmtiError err = tienv->Allocate(tienv->last_error_.size() + 1,
-                                   reinterpret_cast<unsigned char**>(&out));
+  jvmtiError err = tienv->Allocate(size, reinterpret_cast<unsigned char**>(&out));
   if (err != OK) {
     return err;
   }
-  strcpy(out, tienv->last_error_.c_str());
+  strlcpy(out, tienv->last_error_.c_str(), size);
   *data = out;
   return OK;
 }
