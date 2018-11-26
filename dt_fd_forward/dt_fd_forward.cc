@@ -50,6 +50,8 @@
 #include <jni.h>
 #include <jdwpTransport.h>
 
+#include <base/strlcpy.h>
+
 namespace dt_fd_forward {
 
 // Helper that puts line-number in error message.
@@ -651,7 +653,7 @@ void FdForwardTransport::Free(void* data) {
 jdwpTransportError FdForwardTransport::GetLastError(/*out*/char** err) {
   std::string data = global_last_error_;
   *err = reinterpret_cast<char*>(Alloc(data.size() + 1));
-  strcpy(*err, data.c_str());
+  strlcpy(*err, data.c_str(), data.size() + 1);
   return OK;
 }
 
