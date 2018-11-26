@@ -17,8 +17,6 @@
 #ifndef ART_RUNTIME_THREAD_H_
 #define ART_RUNTIME_THREAD_H_
 
-#include <setjmp.h>
-
 #include <atomic>
 #include <bitset>
 #include <deque>
