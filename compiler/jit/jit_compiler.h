@@ -43,12 +43,9 @@ class JitCompiler {
   const CompilerOptions& GetCompilerOptions() const {
     return *compiler_options_.get();
   }
-
   CompilerDriver* GetCompilerDriver() const {
     return compiler_driver_.get();
   }
-
-  void ParseCompilerOptions();
 
  private:
   std::unique_ptr<CompilerOptions> compiler_options_;
@@ -56,6 +53,11 @@ class JitCompiler {
   std::unique_ptr<JitLogger> jit_logger_;
 
   JitCompiler();
+
+  // This is in the compiler since the runtime doesn't have access to the compiled method
+  // structures.
+  bool AddToCodeCache(ArtMethod* method, const CompiledMethod* compiled_method)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   DISALLOW_COPY_AND_ASSIGN(JitCompiler);
 };
