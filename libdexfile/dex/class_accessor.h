@@ -264,7 +264,7 @@ class ClassAccessor {
   };
 
   // Not explicit specifically for range-based loops.
-  ALWAYS_INLINE ClassAccessor(const ClassIteratorData& data);
+  ALWAYS_INLINE ClassAccessor(const ClassIteratorData& data);  // NOLINT [runtime/explicit] [5]
 
   ALWAYS_INLINE ClassAccessor(const DexFile& dex_file,
                               const DexFile::ClassDef& class_def,
