@@ -18,7 +18,7 @@
 #define ART_RUNTIME_NTH_CALLER_VISITOR_H_
 
 #include "art_method.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "stack.h"
 
 namespace art {

@@ -23,7 +23,7 @@
 
 #include <android-base/logging.h>
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "base/safe_map.h"
 #include "base/scoped_arena_containers.h"
 

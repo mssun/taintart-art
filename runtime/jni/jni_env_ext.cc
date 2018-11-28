@@ -21,6 +21,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/mutex.h"
 #include "base/to_str.h"
 #include "check_jni.h"
 #include "indirect_reference_table.h"

@@ -24,8 +24,8 @@
 
 #include "base/arena_object.h"
 #include "base/bit_vector.h"
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "base/stringpiece.h"
 #include "dex/primitive.h"
 #include "gc_root.h"

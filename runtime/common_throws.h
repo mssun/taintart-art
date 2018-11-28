@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_COMMON_THROWS_H_
 #define ART_RUNTIME_COMMON_THROWS_H_
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "obj_ptr.h"
 
 namespace art {

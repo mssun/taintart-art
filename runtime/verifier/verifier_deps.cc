@@ -22,6 +22,7 @@
 #include "art_method-inl.h"
 #include "base/indenter.h"
 #include "base/leb128.h"
+#include "base/mutex-inl.h"
 #include "base/stl_util.h"
 #include "compiler_callbacks.h"
 #include "dex/dex_file-inl.h"

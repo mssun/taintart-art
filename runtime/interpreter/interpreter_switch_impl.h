@@ -17,8 +17,8 @@
 #ifndef ART_RUNTIME_INTERPRETER_INTERPRETER_SWITCH_IMPL_H_
 #define ART_RUNTIME_INTERPRETER_INTERPRETER_SWITCH_IMPL_H_
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "dex/dex_file.h"
 #include "dex/code_item_accessors.h"
 #include "jvalue.h"

@@ -19,8 +19,8 @@
 
 #include <jni.h>
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "deoptimization_kind.h"
 #include "offsets.h"
 

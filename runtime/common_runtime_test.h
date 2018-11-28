@@ -27,7 +27,7 @@
 #include "arch/instruction_set.h"
 #include "base/common_art_test.h"
 #include "base/globals.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"

@@ -20,8 +20,8 @@
 #include <android-base/logging.h>
 
 #include "base/allocator.h"
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "space_bitmap.h"
 
 namespace art {

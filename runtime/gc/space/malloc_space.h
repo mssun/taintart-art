@@ -21,6 +21,7 @@
 
 #include <ostream>
 #include "base/memory_tool.h"
+#include "base/mutex.h"
 
 namespace art {
 namespace gc {

@@ -20,7 +20,7 @@
 #include "subtype_check_bits_and_status.h"
 #include "subtype_check_info.h"
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "mirror/class.h"
 #include "runtime.h"
 
