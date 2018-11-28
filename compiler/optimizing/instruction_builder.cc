@@ -19,6 +19,7 @@
 #include "art_method-inl.h"
 #include "base/arena_bit_vector.h"
 #include "base/bit_vector-inl.h"
+#include "base/logging.h"
 #include "block_builder.h"
 #include "class_linker-inl.h"
 #include "code_generator.h"

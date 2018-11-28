@@ -17,7 +17,8 @@
 #ifndef ART_LIBDEXFILE_DEX_TYPE_LOOKUP_TABLE_H_
 #define ART_LIBDEXFILE_DEX_TYPE_LOOKUP_TABLE_H_
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "dex/dex_file_types.h"
 
 namespace art {

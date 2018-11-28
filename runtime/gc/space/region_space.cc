@@ -17,6 +17,7 @@
 #include "bump_pointer_space-inl.h"
 #include "bump_pointer_space.h"
 #include "base/dumpable.h"
+#include "base/logging.h"
 #include "gc/accounting/read_barrier_table.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"

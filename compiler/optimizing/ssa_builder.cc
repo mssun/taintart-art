@@ -18,6 +18,7 @@
 
 #include "base/arena_bit_vector.h"
 #include "base/bit_vector-inl.h"
+#include "base/logging.h"
 #include "data_type-inl.h"
 #include "dex/bytecode_utils.h"
 #include "mirror/class-inl.h"
