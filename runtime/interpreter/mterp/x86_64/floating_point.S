@@ -18,7 +18,7 @@
     /* op vAA, vBB, vCC */
     movzbq  3(rPC), %rcx                    # ecx<- CC
     movzbq  2(rPC), %rax                    # eax<- BB
-    movs${suff} VREG_ADDRESS(%rax), %xmm0
+    GET_VREG_XMM${suff} %xmm0, %rax
     xor     %eax, %eax
     ucomis${suff} VREG_ADDRESS(%rcx), %xmm0
     jp      .L${opcode}_nan_is_${nanval}
@@ -44,10 +44,10 @@
     andb    $$0xf, %cl                      # ecx <- A
     cvts${source_suffix}2s${dest_suffix}    VREG_ADDRESS(rINSTq), %xmm0
     .if $wide
-    movsd   %xmm0, VREG_ADDRESS(%rcx)
+    SET_VREG_XMMd %xmm0, %rcx
     CLEAR_WIDE_REF %rcx
     .else
-    movss   %xmm0, VREG_ADDRESS(%rcx)
+    SET_VREG_XMMs %xmm0, %rcx
     CLEAR_REF %rcx
     .endif
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 1
@@ -55,9 +55,9 @@
 %def sseBinop(instr="", suff=""):
     movzbq  2(rPC), %rcx                    # ecx <- BB
     movzbq  3(rPC), %rax                    # eax <- CC
-    movs${suff}   VREG_ADDRESS(%rcx), %xmm0       # %xmm0 <- 1st src
+    GET_VREG_XMM${suff} %xmm0, %rcx         # %xmm0 <- 1st src
     ${instr}${suff} VREG_ADDRESS(%rax), %xmm0
-    movs${suff}   %xmm0, VREG_ADDRESS(rINSTq)     # vAA <- %xmm0
+    SET_VREG_XMM${suff} %xmm0, rINSTq       # vAA <- %xmm0
     pxor    %xmm0, %xmm0
     movs${suff}   %xmm0, VREG_REF_ADDRESS(rINSTq) # clear ref
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 2
@@ -65,10 +65,10 @@
 %def sseBinop2Addr(instr="", suff=""):
     movl    rINST, %ecx                     # ecx <- A+
     andl    $$0xf, %ecx                     # ecx <- A
-    movs${suff} VREG_ADDRESS(%rcx), %xmm0        # %xmm0 <- 1st src
+    GET_VREG_XMM${suff} %xmm0, %rcx         # %xmm0 <- 1st src
     sarl    $$4, rINST                      # rINST<- B
     ${instr}${suff} VREG_ADDRESS(rINSTq), %xmm0
-    movs${suff} %xmm0, VREG_ADDRESS(%rcx)   # vAA<- %xmm0
+    SET_VREG_XMM${suff} %xmm0, %rcx         # vAA <- %xmm0
     pxor    %xmm0, %xmm0
     movs${suff} %xmm0, VREG_REF_ADDRESS(rINSTq)  # clear ref
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 1
