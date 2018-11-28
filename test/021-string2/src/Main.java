@@ -15,14 +15,13 @@
  */
 
 import junit.framework.Assert;
-import java.lang.reflect.Method;
 import java.util.Locale;
 
 /**
  * more string tests
  */
 public class Main {
-    public static void main(String args[]) throws Exception {
+    public static void main(String args[]) {
         String test = "0123456789";
         String test1 = new String("0123456789");    // different object
         String test2 = new String("0123456780");    // different value
@@ -86,9 +85,7 @@ public class Main {
         Assert.assertEquals("this is a path", test.replaceAll("/", " "));
         Assert.assertEquals("this is a path", test.replace("/", " "));
 
-        Class<?> Strings = Class.forName("com.android.org.bouncycastle.util.Strings");
-        Method fromUTF8ByteArray = Strings.getDeclaredMethod("fromUTF8ByteArray", byte[].class);
-        String result = (String) fromUTF8ByteArray.invoke(null, new byte[] {'O', 'K'});
+        String result = new String(new char[] { 'O', 'K' });
         System.out.println(result);
 
         testCompareToAndEquals();
