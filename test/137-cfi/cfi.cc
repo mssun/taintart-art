@@ -30,6 +30,7 @@
 #include <backtrace/Backtrace.h>
 
 #include "base/file_utils.h"
+#include "base/logging.h"
 #include "base/macros.h"
 #include "base/utils.h"
 #include "gc/heap.h"

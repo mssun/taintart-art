@@ -21,6 +21,7 @@
 
 #include "art_field-inl.h"
 #include "base/file_utils.h"
+#include "base/logging.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-refvisitor-inl.h"
 

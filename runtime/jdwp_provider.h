@@ -20,8 +20,6 @@
 #include <ios>
 
 #include "base/globals.h"
-#include "base/macros.h"
-#include "base/logging.h"
 
 namespace art {
 

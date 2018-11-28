@@ -32,6 +32,7 @@
 #include "ti_class_definition.h"
 
 #include "base/array_slice.h"
+#include "base/logging.h"
 #include "class_linker-inl.h"
 #include "class_root.h"
 #include "dex/dex_file.h"

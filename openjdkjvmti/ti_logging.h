@@ -37,8 +37,9 @@
 #include <ostream>
 #include <sstream>
 
-#include "base/logging.h"
-#include "base/macros.h"
+#include <android-base/logging.h>
+#include <android-base/macros.h>
+
 #include "base/mutex.h"
 #include "thread-current-inl.h"
 

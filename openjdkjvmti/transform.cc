@@ -40,6 +40,7 @@
 #include "art_method.h"
 #include "base/array_ref.h"
 #include "base/globals.h"
+#include "base/logging.h"
 #include "base/mem_map.h"
 #include "class_linker.h"
 #include "dex/dex_file.h"
