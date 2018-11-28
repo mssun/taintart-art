@@ -956,127 +956,12 @@ void Runtime::StartDaemonThreads() {
   VLOG(startup) << "Runtime::StartDaemonThreads exiting";
 }
 
-// Attempts to open dex files from image(s). Given the image location, try to find the oat file
-// and open it to get the stored dex file. If the image is the first for a multi-image boot
-// classpath, go on and also open the other images.
-static bool OpenDexFilesFromImage(const std::string& image_location,
-                                  std::vector<std::unique_ptr<const DexFile>>* dex_files,
-                                  size_t* failures) {
-  DCHECK(dex_files != nullptr) << "OpenDexFilesFromImage: out-param is nullptr";
-
-  // Use a work-list approach, so that we can easily reuse the opening code.
-  std::vector<std::string> image_locations;
-  image_locations.push_back(image_location);
-
-  for (size_t index = 0; index < image_locations.size(); ++index) {
-    std::string system_filename;
-    bool has_system = false;
-    std::string cache_filename_unused;
-    bool dalvik_cache_exists_unused;
-    bool has_cache_unused;
-    bool is_global_cache_unused;
-    bool found_image = gc::space::ImageSpace::FindImageFilename(image_locations[index].c_str(),
-                                                                kRuntimeISA,
-                                                                &system_filename,
-                                                                &has_system,
-                                                                &cache_filename_unused,
-                                                                &dalvik_cache_exists_unused,
-                                                                &has_cache_unused,
-                                                                &is_global_cache_unused);
-
-    if (!found_image || !has_system) {
-      return false;
-    }
-
-    // We are falling back to non-executable use of the oat file because patching failed, presumably
-    // due to lack of space.
-    std::string vdex_filename =
-        ImageHeader::GetVdexLocationFromImageLocation(system_filename.c_str());
-    std::string oat_filename =
-        ImageHeader::GetOatLocationFromImageLocation(system_filename.c_str());
-    std::string oat_location =
-        ImageHeader::GetOatLocationFromImageLocation(image_locations[index].c_str());
-    // Note: in the multi-image case, the image location may end in ".jar," and not ".art." Handle
-    //       that here.
-    if (android::base::EndsWith(oat_location, ".jar")) {
-      oat_location.replace(oat_location.length() - 3, 3, "oat");
-    }
-    std::string error_msg;
-
-    std::unique_ptr<VdexFile> vdex_file(VdexFile::Open(vdex_filename,
-                                                       /* writable= */ false,
-                                                       /* low_4gb= */ false,
-                                                       /* unquicken= */ false,
-                                                       &error_msg));
-    if (vdex_file.get() == nullptr) {
-      return false;
-    }
-
-    std::unique_ptr<File> file(OS::OpenFileForReading(oat_filename.c_str()));
-    if (file.get() == nullptr) {
-      return false;
-    }
-    std::unique_ptr<ElfFile> elf_file(ElfFile::Open(file.get(),
-                                                    /* writable= */ false,
-                                                    /* program_header_only= */ false,
-                                                    /* low_4gb= */ false,
-                                                    &error_msg));
-    if (elf_file.get() == nullptr) {
-      return false;
-    }
-    std::unique_ptr<const OatFile> oat_file(
-        OatFile::OpenWithElfFile(/* zip_fd= */ -1,
-                                 elf_file.release(),
-                                 vdex_file.release(),
-                                 oat_location,
-                                 nullptr,
-                                 &error_msg));
-    if (oat_file == nullptr) {
-      LOG(WARNING) << "Unable to use '" << oat_filename << "' because " << error_msg;
-      return false;
-    }
-
-    for (const OatDexFile* oat_dex_file : oat_file->GetOatDexFiles()) {
-      if (oat_dex_file == nullptr) {
-        *failures += 1;
-        continue;
-      }
-      std::unique_ptr<const DexFile> dex_file = oat_dex_file->OpenDexFile(&error_msg);
-      if (dex_file.get() == nullptr) {
-        *failures += 1;
-      } else {
-        dex_files->push_back(std::move(dex_file));
-      }
-    }
-
-    if (index == 0) {
-      // First file. See if this is a multi-image environment, and if so, enqueue the other images.
-      const OatHeader& boot_oat_header = oat_file->GetOatHeader();
-      const char* boot_cp = boot_oat_header.GetStoreValueByKey(OatHeader::kBootClassPathKey);
-      if (boot_cp != nullptr) {
-        gc::space::ImageSpace::ExtractMultiImageLocations(image_locations[0],
-                                                          boot_cp,
-                                                          &image_locations);
-      }
-    }
-
-    Runtime::Current()->GetOatFileManager().RegisterOatFile(std::move(oat_file));
-  }
-  return true;
-}
-
-
 static size_t OpenDexFiles(const std::vector<std::string>& dex_filenames,
                            const std::vector<std::string>& dex_locations,
-                           const std::string& image_location,
                            std::vector<std::unique_ptr<const DexFile>>* dex_files) {
   DCHECK(dex_files != nullptr) << "OpenDexFiles: out-param is nullptr";
   size_t failure_count = 0;
-  if (!image_location.empty() && OpenDexFilesFromImage(image_location, dex_files, &failure_count)) {
-    return failure_count;
-  }
   const ArtDexFileLoader dex_file_loader;
-  failure_count = 0;
   for (size_t i = 0; i < dex_filenames.size(); i++) {
     const char* dex_filename = dex_filenames[i].c_str();
     const char* dex_location = dex_locations[i].c_str();
@@ -1522,10 +1407,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     if (runtime_options.Exists(Opt::BootClassPathDexList)) {
       boot_class_path.swap(*runtime_options.GetOrDefault(Opt::BootClassPathDexList));
     } else {
-      OpenDexFiles(dex_filenames,
-                   dex_locations,
-                   runtime_options.GetOrDefault(Opt::Image),
-                   &boot_class_path);
+      OpenDexFiles(dex_filenames, dex_locations, &boot_class_path);
     }
     instruction_set_ = runtime_options.GetOrDefault(Opt::ImageInstructionSet);
     if (!class_linker_->InitWithoutImage(std::move(boot_class_path), &error_msg)) {
