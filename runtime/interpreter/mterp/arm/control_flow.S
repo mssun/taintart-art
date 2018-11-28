@@ -189,7 +189,7 @@
     blne    MterpSuspendCheck                       @ (self)
     mov     r2, rINST, lsr #8           @ r2<- AA
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &fp[AA]
-    ldmia   r2, {r0-r1}                 @ r0/r1 <- vAA/vAA+1
+    GET_VREG_WIDE_BY_ADDR r0, r1, r2    @ r0/r1 <- vAA/vAA+1
     b       MterpReturn
 
 %def op_sparse_switch():

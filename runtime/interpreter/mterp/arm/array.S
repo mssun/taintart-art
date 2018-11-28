@@ -87,7 +87,7 @@
     ldrd    r2, [r0, #MIRROR_WIDE_ARRAY_DATA_OFFSET]  @ r2/r3<- vBB[vCC]
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[AA]
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    stmia   r9, {r2-r3}                 @ vAA/vAA+1<- r2/r3
+    SET_VREG_WIDE_BY_ADDR r2, r3, r9    @ vAA/vAA+1<- r2/r3
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_aput(store="str", shift="2", data_offset="MIRROR_INT_ARRAY_DATA_OFFSET"):
@@ -169,7 +169,7 @@
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[AA]
     bcs     common_errArrayIndex        @ index >= length, bail
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
-    ldmia   r9, {r2-r3}                 @ r2/r3<- vAA/vAA+1
+    GET_VREG_WIDE_BY_ADDR r2, r3, r9    @ r2/r3<- vAA/vAA+1
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     strd    r2, [r0, #MIRROR_WIDE_ARRAY_DATA_OFFSET]  @ r2/r3<- vBB[vCC]
     GOTO_OPCODE ip                      @ jump to next instruction

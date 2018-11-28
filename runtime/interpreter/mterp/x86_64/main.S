@@ -306,6 +306,19 @@ unspecified registers or condition codes.
     movl    MACRO_LITERAL(0), VREG_REF_HIGH_ADDRESS(\_vreg)
 .endm
 
+.macro GET_VREG_XMMs _xmmreg _vreg
+    movss VREG_ADDRESS(\_vreg), \_xmmreg
+.endm
+.macro GET_VREG_XMMd _xmmreg _vreg
+    movsd VREG_ADDRESS(\_vreg), \_xmmreg
+.endm
+.macro SET_VREG_XMMs _xmmreg _vreg
+    movss \_xmmreg, VREG_ADDRESS(\_vreg)
+.endm
+.macro SET_VREG_XMMd _xmmreg _vreg
+    movsd \_xmmreg, VREG_ADDRESS(\_vreg)
+.endm
+
 /*
  * function support macros.
  */

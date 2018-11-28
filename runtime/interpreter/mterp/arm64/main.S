@@ -259,16 +259,29 @@ codes.
     str     \reg, [xFP, \vreg, uxtw #2]
     str     \reg, [xREFS, \vreg, uxtw #2]
 .endm
+.macro SET_VREG_FLOAT reg, vreg
+    str     \reg, [xFP, \vreg, uxtw #2]
+    str     wzr, [xREFS, \vreg, uxtw #2]
+.endm
 
 /*
  * Get/set the 64-bit value from a Dalvik register.
- * TUNING: can we do better here?
  */
 .macro GET_VREG_WIDE reg, vreg
     add     ip2, xFP, \vreg, lsl #2
     ldr     \reg, [ip2]
 .endm
 .macro SET_VREG_WIDE reg, vreg
+    add     ip2, xFP, \vreg, lsl #2
+    str     \reg, [ip2]
+    add     ip2, xREFS, \vreg, lsl #2
+    str     xzr, [ip2]
+.endm
+.macro GET_VREG_DOUBLE reg, vreg
+    add     ip2, xFP, \vreg, lsl #2
+    ldr     \reg, [ip2]
+.endm
+.macro SET_VREG_DOUBLE reg, vreg
     add     ip2, xFP, \vreg, lsl #2
     str     \reg, [ip2]
     add     ip2, xREFS, \vreg, lsl #2
