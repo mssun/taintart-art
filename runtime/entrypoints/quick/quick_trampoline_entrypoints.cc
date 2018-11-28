@@ -2515,7 +2515,7 @@ static TwoWordReturn artInvokeCommon(uint32_t method_idx,
   ArtMethod* caller_method = QuickArgumentVisitor::GetCallingMethod(sp);
   ArtMethod* method = FindMethodFast<type, access_check>(method_idx, this_object, caller_method);
   if (UNLIKELY(method == nullptr)) {
-    const DexFile* dex_file = caller_method->GetDeclaringClass()->GetDexCache()->GetDexFile();
+    const DexFile* dex_file = caller_method->GetDexFile();
     uint32_t shorty_len;
     const char* shorty = dex_file->GetMethodShorty(dex_file->GetMethodId(method_idx), &shorty_len);
     {
@@ -2648,7 +2648,7 @@ extern "C" TwoWordReturn artInvokeInterfaceTrampoline(ArtMethod* interface_metho
       dex_method_idx = instr.VRegB_3rc();
     }
 
-    const DexFile& dex_file = caller_method->GetDeclaringClass()->GetDexFile();
+    const DexFile& dex_file = *caller_method->GetDexFile();
     uint32_t shorty_len;
     const char* shorty = dex_file.GetMethodShorty(dex_file.GetMethodId(dex_method_idx),
                                                   &shorty_len);
