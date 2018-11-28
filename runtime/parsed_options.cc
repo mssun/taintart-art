@@ -586,26 +586,7 @@ bool ParsedOptions::DoParse(const RuntimeOptions& options,
     args.Set(M::BackgroundGc, BackgroundGcOption { background_collector_type_ });
   }
 
-  // If a reference to the dalvik core.jar snuck in, replace it with
-  // the art specific version. This can happen with on device
-  // boot.art/boot.oat generation by GenerateImage which relies on the
-  // value of BOOTCLASSPATH.
-#if defined(ART_TARGET)
-  std::string core_jar("/core.jar");
-  std::string core_libart_jar("/core-libart.jar");
-#else
-  // The host uses hostdex files.
-  std::string core_jar("/core-hostdex.jar");
-  std::string core_libart_jar("/core-libart-hostdex.jar");
-#endif
   auto boot_class_path_string = args.GetOrDefault(M::BootClassPath);
-
-  size_t core_jar_pos = boot_class_path_string.find(core_jar);
-  if (core_jar_pos != std::string::npos) {
-    boot_class_path_string.replace(core_jar_pos, core_jar.size(), core_libart_jar);
-    args.Set(M::BootClassPath, boot_class_path_string);
-  }
-
   {
     auto&& boot_class_path = args.GetOrDefault(M::BootClassPath);
     auto&& boot_class_path_locations = args.GetOrDefault(M::BootClassPathLocations);
