@@ -66,42 +66,30 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_isInterpretedAt(JNIEnv* env,
 
 // public static native boolean isInterpretedFunction(String smali);
 
-// TODO Remove 'allow_runtime_frames' option once we have deoptimization through runtime frames.
-struct MethodIsInterpretedVisitor : public StackVisitor {
- public:
-  MethodIsInterpretedVisitor(Thread* thread, ArtMethod* goal, bool require_deoptable)
-      : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        goal_(goal),
-        method_is_interpreted_(true),
-        method_found_(false),
-        prev_was_runtime_(true),
-        require_deoptable_(require_deoptable) {}
-
-  bool VisitFrame() override REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (goal_ == GetMethod()) {
-      method_is_interpreted_ = (require_deoptable_ && prev_was_runtime_) || IsShadowFrame();
-      method_found_ = true;
-      return false;
-    }
-    prev_was_runtime_ = GetMethod()->IsRuntimeMethod();
-    return true;
-  }
-
-  bool IsInterpreted() {
-    return method_is_interpreted_;
-  }
-
-  bool IsFound() {
-    return method_found_;
-  }
-
- private:
-  const ArtMethod* goal_;
-  bool method_is_interpreted_;
-  bool method_found_;
-  bool prev_was_runtime_;
-  bool require_deoptable_;
-};
+static bool IsMethodInterpreted(Thread* self,
+                                const ArtMethod* goal,
+                                const bool require_deoptable,
+                                /* out */ bool* method_is_interpreted)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  *method_is_interpreted = true;
+  bool method_found = false;
+  bool prev_was_runtime = true;
+  StackVisitor::WalkStack(
+      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        if (goal == stack_visitor->GetMethod()) {
+          *method_is_interpreted =
+              (require_deoptable && prev_was_runtime) || stack_visitor->IsShadowFrame();
+          method_found = true;
+          return false;
+        }
+        prev_was_runtime = stack_visitor->GetMethod()->IsRuntimeMethod();
+        return true;
+      },
+      self,
+      /* context= */ nullptr,
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
+  return method_found;
+}
 
 // TODO Remove 'require_deoptimizable' option once we have deoptimization through runtime frames.
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_isInterpretedFunction(
@@ -119,23 +107,18 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_isInterpretedFunction(
     env->ThrowNew(env->FindClass("java/lang/Error"), "Unable to interpret method argument!");
     return JNI_FALSE;
   }
-  bool result;
-  bool found;
   {
     ScopedObjectAccess soa(env);
     ArtMethod* goal = jni::DecodeArtMethod(id);
-    MethodIsInterpretedVisitor v(soa.Self(), goal, require_deoptimizable);
-    v.WalkStack();
+    bool is_interpreted;
+    if (!IsMethodInterpreted(soa.Self(), goal, require_deoptimizable, &is_interpreted)) {
+      env->ThrowNew(env->FindClass("java/lang/Error"), "Unable to find given method in stack!");
+      return JNI_FALSE;
+    }
     bool enters_interpreter = Runtime::Current()->GetClassLinker()->IsQuickToInterpreterBridge(
         goal->GetEntryPointFromQuickCompiledCode());
-    result = (v.IsInterpreted() || enters_interpreter);
-    found = v.IsFound();
+    return (is_interpreted || enters_interpreter);
   }
-  if (!found) {
-    env->ThrowNew(env->FindClass("java/lang/Error"), "Unable to find given method in stack!");
-    return JNI_FALSE;
-  }
-  return result;
 }
 
 // public static native void assertIsInterpreted();
@@ -196,24 +179,24 @@ extern "C" JNIEXPORT void JNICALL Java_Main_assertCallerIsManaged(JNIEnv* env, j
   }
 }
 
-struct GetCallingFrameVisitor : public StackVisitor {
-  GetCallingFrameVisitor(Thread* thread, Context* context)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(thread, context, StackVisitor::StackWalkKind::kIncludeInlinedFrames) {}
-
-  bool VisitFrame() override NO_THREAD_SAFETY_ANALYSIS {
-    // Discard stubs and Main.getThisOfCaller.
-    return GetMethod() == nullptr || GetMethod()->IsNative();
-  }
-};
-
 extern "C" JNIEXPORT jobject JNICALL Java_Main_getThisOfCaller(
     JNIEnv* env, jclass cls ATTRIBUTE_UNUSED) {
   ScopedObjectAccess soa(env);
   std::unique_ptr<art::Context> context(art::Context::Create());
-  GetCallingFrameVisitor visitor(soa.Self(), context.get());
-  visitor.WalkStack();
-  return soa.AddLocalReference<jobject>(visitor.GetThisObject());
+  jobject result = nullptr;
+  StackVisitor::WalkStack(
+      [&](const art::StackVisitor* stack_visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
+        // Discard stubs and Main.getThisOfCaller.
+        if (stack_visitor->GetMethod() == nullptr || stack_visitor->GetMethod()->IsNative()) {
+          return true;
+        }
+        result = soa.AddLocalReference<jobject>(stack_visitor->GetThisObject());
+        return false;
+      },
+      soa.Self(),
+      context.get(),
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames);
+  return result;
 }
 
 }  // namespace art
