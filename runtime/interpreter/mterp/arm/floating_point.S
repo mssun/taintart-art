@@ -13,8 +13,8 @@
     and     r2, r0, #255                @ r2<- BB
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vCC
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &vBB
-    flds    s1, [r3]                    @ s1<- vCC
-    flds    s0, [r2]                    @ s0<- vBB
+    GET_VREG_FLOAT_BY_ADDR s1, r3       @ s1<- vCC
+    GET_VREG_FLOAT_BY_ADDR s0, r2       @ s0<- vBB
 
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     $instr                              @ s2<- op
@@ -35,12 +35,12 @@
     ubfx    r9, rINST, #8, #4           @ r9<- A
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vB
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &vA
-    flds    s1, [r3]                    @ s1<- vB
+    GET_VREG_FLOAT_BY_ADDR s1, r3       @ s1<- vB
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
-    flds    s0, [r9]                    @ s0<- vA
+    GET_VREG_FLOAT_BY_ADDR s0, r9       @ s0<- vA
     $instr                              @ s2<- op
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    fsts    s2, [r9]                    @ vAA<- s2 No need to clear as it's 2addr
+    SET_VREG_FLOAT_BY_ADDR s2, r9       @ vAA<- s2 No need to clear as it's 2addr
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def fbinopWide(instr=""):
@@ -58,14 +58,14 @@
     and     r2, r0, #255                @ r2<- BB
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vCC
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &vBB
-    fldd    d1, [r3]                    @ d1<- vCC
-    fldd    d0, [r2]                    @ d0<- vBB
+    GET_VREG_DOUBLE_BY_ADDR d1, r3      @ d1<- vCC
+    GET_VREG_DOUBLE_BY_ADDR d0, r2      @ d0<- vBB
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     $instr                              @ s2<- op
     CLEAR_SHADOW_PAIR r9, ip, lr        @ Zero shadow regs
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &vAA
-    fstd    d2, [r9]                    @ vAA<- d2
+    SET_VREG_DOUBLE_BY_ADDR d2, r9      @ vAA<- d2
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def fbinopWide2addr(instr=""):
@@ -82,13 +82,13 @@
     ubfx    r9, rINST, #8, #4           @ r9<- A
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vB
     CLEAR_SHADOW_PAIR r9, ip, r0        @ Zero out shadow regs
-    fldd    d1, [r3]                    @ d1<- vB
+    GET_VREG_DOUBLE_BY_ADDR d1, r3      @ d1<- vB
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &vA
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
-    fldd    d0, [r9]                    @ d0<- vA
+    GET_VREG_DOUBLE_BY_ADDR d0, r9      @ d0<- vA
     $instr                              @ d2<- op
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    fstd    d2, [r9]                    @ vAA<- d2
+    SET_VREG_DOUBLE_BY_ADDR d2, r9      @ vAA<- d2
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def funop(instr=""):
@@ -101,7 +101,7 @@
     /* unop vA, vB */
     mov     r3, rINST, lsr #12          @ r3<- B
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vB
-    flds    s0, [r3]                    @ s0<- vB
+    GET_VREG_FLOAT_BY_ADDR s0, r3       @ s0<- vB
     ubfx    r9, rINST, #8, #4           @ r9<- A
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     $instr                              @ s1<- op
@@ -119,7 +119,7 @@
     /* unop vA, vB */
     mov     r3, rINST, lsr #12          @ r3<- B
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vB
-    fldd    d0, [r3]                    @ d0<- vB
+    GET_VREG_DOUBLE_BY_ADDR d0, r3      @ d0<- vB
     ubfx    r9, rINST, #8, #4           @ r9<- A
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     $instr                              @ s0<- op
@@ -137,14 +137,14 @@
     /* unop vA, vB */
     mov     r3, rINST, lsr #12          @ r3<- B
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vB
-    flds    s0, [r3]                    @ s0<- vB
+    GET_VREG_FLOAT_BY_ADDR s0, r3       @ s0<- vB
     ubfx    r9, rINST, #8, #4           @ r9<- A
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
     $instr                              @ d0<- op
     CLEAR_SHADOW_PAIR r9, ip, lr        @ Zero shadow regs
     GET_INST_OPCODE ip                  @ extract opcode from rINST
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &vA
-    fstd    d0, [r9]                    @ vA<- d0
+    SET_VREG_DOUBLE_BY_ADDR d0, r9      @ vA<- d0
     GOTO_OPCODE ip                      @ jump to next instruction
 
 %def op_add_double():
@@ -183,8 +183,8 @@
     mov     r3, r0, lsr #8              @ r3<- CC
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &vBB
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vCC
-    fldd    d0, [r2]                    @ d0<- vBB
-    fldd    d1, [r3]                    @ d1<- vCC
+    GET_VREG_DOUBLE_BY_ADDR d0, r2      @ d0<- vBB
+    GET_VREG_DOUBLE_BY_ADDR d1, r3      @ d1<- vCC
     vcmpe.f64 d0, d1                    @ compare (vBB, vCC)
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     mov     r0, #1                      @ r0<- 1 (default)
@@ -219,8 +219,8 @@
     mov     r3, r0, lsr #8              @ r3<- CC
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &vBB
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vCC
-    flds    s0, [r2]                    @ s0<- vBB
-    flds    s1, [r3]                    @ s1<- vCC
+    GET_VREG_FLOAT_BY_ADDR s0, r2       @ s0<- vBB
+    GET_VREG_FLOAT_BY_ADDR s1, r3       @ s1<- vCC
     vcmpe.f32 s0, s1                    @ compare (vBB, vCC)
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     mov     r0, #1                      @ r0<- 1 (default)
@@ -255,8 +255,8 @@
     mov     r3, r0, lsr #8              @ r3<- CC
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &vBB
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vCC
-    fldd    d0, [r2]                    @ d0<- vBB
-    fldd    d1, [r3]                    @ d1<- vCC
+    GET_VREG_DOUBLE_BY_ADDR d0, r2      @ d0<- vBB
+    GET_VREG_DOUBLE_BY_ADDR d1, r3      @ d1<- vCC
     vcmpe.f64 d0, d1                    @ compare (vBB, vCC)
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     mvn     r0, #0                      @ r0<- -1 (default)
@@ -291,8 +291,8 @@
     mov     r3, r0, lsr #8              @ r3<- CC
     VREG_INDEX_TO_ADDR r2, r2           @ r2<- &vBB
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &vCC
-    flds    s0, [r2]                    @ s0<- vBB
-    flds    s1, [r3]                    @ s1<- vCC
+    GET_VREG_FLOAT_BY_ADDR s0, r2       @ s0<- vBB
+    GET_VREG_FLOAT_BY_ADDR s1, r3       @ s1<- vCC
     vcmpe.f32  s0, s1                   @ compare (vBB, vCC)
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
     mvn     r0, #0                      @ r0<- -1 (default)
