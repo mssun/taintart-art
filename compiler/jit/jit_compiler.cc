@@ -26,7 +26,6 @@
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "base/timing_logger.h"
-#include "base/unix_file/fd_file.h"
 #include "debug/elf_debug_writer.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
@@ -34,11 +33,6 @@
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "jit/jit_logger.h"
-#include "oat_file-inl.h"
-#include "oat_quick_method_header.h"
-#include "object_lock.h"
-#include "optimizing/register_allocator.h"
-#include "thread_list.h"
 
 namespace art {
 namespace jit {
@@ -47,46 +41,7 @@ JitCompiler* JitCompiler::Create() {
   return new JitCompiler();
 }
 
-extern "C" void* jit_load(bool* generate_debug_info) {
-  VLOG(jit) << "loading jit compiler";
-  auto* const jit_compiler = JitCompiler::Create();
-  CHECK(jit_compiler != nullptr);
-  *generate_debug_info = jit_compiler->GetCompilerOptions().GetGenerateDebugInfo();
-  VLOG(jit) << "Done loading jit compiler";
-  return jit_compiler;
-}
-
-extern "C" void jit_unload(void* handle) {
-  DCHECK(handle != nullptr);
-  delete reinterpret_cast<JitCompiler*>(handle);
-}
-
-extern "C" bool jit_compile_method(
-    void* handle, ArtMethod* method, Thread* self, bool osr)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  auto* jit_compiler = reinterpret_cast<JitCompiler*>(handle);
-  DCHECK(jit_compiler != nullptr);
-  return jit_compiler->CompileMethod(self, method, osr);
-}
-
-extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t count)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  auto* jit_compiler = reinterpret_cast<JitCompiler*>(handle);
-  DCHECK(jit_compiler != nullptr);
-  const CompilerOptions& compiler_options = jit_compiler->GetCompilerOptions();
-  if (compiler_options.GetGenerateDebugInfo()) {
-    const ArrayRef<mirror::Class*> types_array(types, count);
-    std::vector<uint8_t> elf_file = debug::WriteDebugElfFileForClasses(
-        kRuntimeISA, compiler_options.GetInstructionSetFeatures(), types_array);
-    MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
-    // We never free debug info for types, so we don't need to provide a handle
-    // (which would have been otherwise used as identifier to remove it later).
-    AddNativeDebugInfoForJit(nullptr /* handle */, elf_file);
-  }
-}
-
-JitCompiler::JitCompiler() {
-  compiler_options_.reset(new CompilerOptions());
+void JitCompiler::ParseCompilerOptions() {
   // Special case max code units for inlining, whose default is "unset" (implictly
   // meaning no limit). Do this before parsing the actual passed options.
   compiler_options_->SetInlineMaxCodeUnits(CompilerOptions::kDefaultInlineMaxCodeUnits);
@@ -94,8 +49,8 @@ JitCompiler::JitCompiler() {
   {
     std::string error_msg;
     if (!compiler_options_->ParseCompilerOptions(runtime->GetCompilerOptions(),
-                                                 /*ignore_unrecognized=*/ true,
-                                                 &error_msg)) {
+                                                /*ignore_unrecognized=*/ true,
+                                                &error_msg)) {
       LOG(FATAL) << error_msg;
       UNREACHABLE();
     }
@@ -103,8 +58,11 @@ JitCompiler::JitCompiler() {
   // JIT is never PIC, no matter what the runtime compiler options specify.
   compiler_options_->SetNonPic();
 
-  // Set debuggability based on the runtime value.
-  compiler_options_->SetDebuggable(runtime->IsJavaDebuggable());
+  // If the options don't provide whether we generate debuggable code, set
+  // debuggability based on the runtime value.
+  if (!compiler_options_->GetDebuggable()) {
+    compiler_options_->SetDebuggable(runtime->IsJavaDebuggable());
+  }
 
   const InstructionSet instruction_set = compiler_options_->GetInstructionSet();
   if (kRuntimeISA == InstructionSet::kArm) {
@@ -148,6 +106,65 @@ JitCompiler::JitCompiler() {
   compiler_options_->compiling_with_core_image_ =
       CompilerDriver::IsCoreImageFilename(runtime->GetImageLocation());
 
+  if (compiler_options_->GetGenerateDebugInfo()) {
+    jit_logger_.reset(new JitLogger());
+    jit_logger_->OpenLog();
+  }
+}
+
+extern "C" void* jit_load() {
+  VLOG(jit) << "Create jit compiler";
+  auto* const jit_compiler = JitCompiler::Create();
+  CHECK(jit_compiler != nullptr);
+  VLOG(jit) << "Done creating jit compiler";
+  return jit_compiler;
+}
+
+extern "C" void jit_unload(void* handle) {
+  DCHECK(handle != nullptr);
+  delete reinterpret_cast<JitCompiler*>(handle);
+}
+
+extern "C" bool jit_compile_method(
+    void* handle, ArtMethod* method, Thread* self, bool osr)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  auto* jit_compiler = reinterpret_cast<JitCompiler*>(handle);
+  DCHECK(jit_compiler != nullptr);
+  return jit_compiler->CompileMethod(self, method, osr);
+}
+
+extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t count)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  auto* jit_compiler = reinterpret_cast<JitCompiler*>(handle);
+  DCHECK(jit_compiler != nullptr);
+  const CompilerOptions& compiler_options = jit_compiler->GetCompilerOptions();
+  if (compiler_options.GetGenerateDebugInfo()) {
+    const ArrayRef<mirror::Class*> types_array(types, count);
+    std::vector<uint8_t> elf_file = debug::WriteDebugElfFileForClasses(
+        kRuntimeISA, compiler_options.GetInstructionSetFeatures(), types_array);
+    MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
+    // We never free debug info for types, so we don't need to provide a handle
+    // (which would have been otherwise used as identifier to remove it later).
+    AddNativeDebugInfoForJit(nullptr /* handle */, elf_file);
+  }
+}
+
+extern "C" void jit_update_options(void* handle) {
+  JitCompiler* jit_compiler = reinterpret_cast<JitCompiler*>(handle);
+  DCHECK(jit_compiler != nullptr);
+  jit_compiler->ParseCompilerOptions();
+}
+
+extern "C" bool jit_generate_debug_info(void* handle) {
+  JitCompiler* jit_compiler = reinterpret_cast<JitCompiler*>(handle);
+  DCHECK(jit_compiler != nullptr);
+  return jit_compiler->GetCompilerOptions().GetGenerateDebugInfo();
+}
+
+JitCompiler::JitCompiler() {
+  compiler_options_.reset(new CompilerOptions());
+  ParseCompilerOptions();
+
   compiler_driver_.reset(new CompilerDriver(
       compiler_options_.get(),
       /* verification_results */ nullptr,
@@ -157,14 +174,6 @@ JitCompiler::JitCompiler() {
       /* swap_fd */ -1));
   // Disable dedupe so we can remove compiled methods.
   compiler_driver_->SetDedupeEnabled(false);
-
-  size_t thread_count = compiler_driver_->GetThreadCount();
-  if (compiler_options_->GetGenerateDebugInfo()) {
-    DCHECK_EQ(thread_count, 1u)
-        << "Generating debug info only works with one compiler thread";
-    jit_logger_.reset(new JitLogger());
-    jit_logger_->OpenLog();
-  }
 }
 
 JitCompiler::~JitCompiler() {
