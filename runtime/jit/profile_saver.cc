@@ -362,7 +362,7 @@ static void SampleClassesAndExecutedMethods(pthread_t profiler_pthread,
       }
       // Visit all of the methods in the class to see which ones were executed.
       for (ArtMethod& method : klass->GetMethods(kRuntimePointerSize)) {
-        if (!method.IsNative()) {
+        if (!method.IsNative() && !method.IsAbstract()) {
           DCHECK(!method.IsProxyMethod());
           const uint16_t counter = method.GetCounter();
           // Mark startup methods as hot if they have more than hot_method_sample_threshold

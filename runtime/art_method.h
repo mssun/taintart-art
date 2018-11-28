@@ -650,24 +650,13 @@ class ArtMethod final {
   void CopyFrom(ArtMethod* src, PointerSize image_pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Note, hotness_counter_ updates are non-atomic but it doesn't need to be precise.  Also,
-  // given that the counter is only 16 bits wide we can expect wrap-around in some
-  // situations.  Consumers of hotness_count_ must be able to deal with that.
-  uint16_t IncrementCounter() {
-    return ++hotness_count_;
-  }
+  ALWAYS_INLINE void SetCounter(int16_t hotness_count) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void ClearCounter() {
-    hotness_count_ = 0;
-  }
+  ALWAYS_INLINE uint16_t GetCounter() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void SetCounter(int16_t hotness_count) {
-    hotness_count_ = hotness_count;
-  }
+  ALWAYS_INLINE uint32_t GetImtIndex() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  uint16_t GetCounter() const {
-    return hotness_count_;
-  }
+  void CalculateAndSetImtIndex() REQUIRES_SHARED(Locks::mutator_lock_);
 
   static constexpr MemberOffset HotnessCountOffset() {
     return MemberOffset(OFFSETOF_MEMBER(ArtMethod, hotness_count_));
@@ -772,9 +761,14 @@ class ArtMethod final {
   // ifTable.
   uint16_t method_index_;
 
-  // The hotness we measure for this method. Not atomic, as we allow
-  // missing increments: if the method is hot, we will see it eventually.
-  uint16_t hotness_count_;
+  union {
+    // Non-abstract methods: The hotness we measure for this method. Not atomic,
+    // as we allow missing increments: if the method is hot, we will see it eventually.
+    uint16_t hotness_count_;
+    // Abstract methods: IMT index (bitwise negated) or zero if it was not cached.
+    // The negation is needed to distinguish zero index and missing cached entry.
+    uint16_t imt_index_;
+  };
 
   // Fake padding field gets inserted here.
 
