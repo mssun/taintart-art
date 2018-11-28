@@ -1060,7 +1060,7 @@ class HiddenApi final {
     // Write into public/private API files.
     std::ofstream file_public(out_public_path_.c_str());
     std::ofstream file_private(out_private_path_.c_str());
-    for (const std::pair<std::string, bool> entry : boot_members) {
+    for (const std::pair<const std::string, bool>& entry : boot_members) {
       if (entry.second) {
         file_public << entry.first << std::endl;
       } else {
