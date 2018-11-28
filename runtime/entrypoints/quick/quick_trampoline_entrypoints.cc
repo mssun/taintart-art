@@ -2671,7 +2671,7 @@ extern "C" TwoWordReturn artInvokeInterfaceTrampoline(ArtMethod* interface_metho
 
   DCHECK(!interface_method->IsRuntimeMethod());
   // Look whether we have a match in the ImtConflictTable.
-  uint32_t imt_index = ImTable::GetImtIndex(interface_method);
+  uint32_t imt_index = interface_method->GetImtIndex();
   ArtMethod* conflict_method = imt->Get(imt_index, kRuntimePointerSize);
   if (LIKELY(conflict_method->IsRuntimeMethod())) {
     ImtConflictTable* current_table = conflict_method->GetImtConflictTable(kRuntimePointerSize);
