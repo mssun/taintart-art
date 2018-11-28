@@ -54,14 +54,16 @@ class ArtDexFileLoader : public DexFileLoader {
                             bool* only_contains_uncompressed_dex = nullptr) const override;
 
   // Opens .dex file, backed by existing memory
-  std::unique_ptr<const DexFile> Open(const uint8_t* base,
-                                      size_t size,
-                                      const std::string& location,
-                                      uint32_t location_checksum,
-                                      const OatDexFile* oat_dex_file,
-                                      bool verify,
-                                      bool verify_checksum,
-                                      std::string* error_msg) const override;
+  std::unique_ptr<const DexFile> Open(
+      const uint8_t* base,
+      size_t size,
+      const std::string& location,
+      uint32_t location_checksum,
+      const OatDexFile* oat_dex_file,
+      bool verify,
+      bool verify_checksum,
+      std::string* error_msg,
+      std::unique_ptr<DexFileContainer> container = nullptr) const override;
 
   // Opens .dex file that has been memory-mapped by the caller.
   std::unique_ptr<const DexFile> Open(const std::string& location,
