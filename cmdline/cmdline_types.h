@@ -24,11 +24,11 @@
 #include "detail/cmdline_debug_detail.h"
 #include "memory_representation.h"
 
+#include "android-base/logging.h"
 #include "android-base/strings.h"
 
 // Includes for the types that are being specialized
 #include <string>
-#include "base/logging.h"
 #include "base/time_utils.h"
 #include "experimental_flags.h"
 #include "gc/collector_type.h"

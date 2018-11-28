@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "arch/instruction_set.h"
-#include "base/logging.h"
 #include "base/variant_map.h"
 #include "cmdline_types.h"  // TODO: don't need to include this file here
 #include "gc/collector_type.h"

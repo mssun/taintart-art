@@ -17,7 +17,7 @@
 #ifndef ART_LIBDEXFILE_DEX_CLASS_ITERATOR_H_
 #define ART_LIBDEXFILE_DEX_CLASS_ITERATOR_H_
 
-#include "base/logging.h"
+#include <android-base/logging.h>
 
 namespace art {
 

@@ -26,6 +26,7 @@
 #include "base/arena_allocator.h"
 #include "base/arena_containers.h"
 #include "base/dumpable.h"
+#include "base/logging.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/scoped_arena_allocator.h"

@@ -18,6 +18,7 @@
 
 #include "art_method-inl.h"
 #include "base/enums.h"
+#include "base/logging.h"
 #include "builder.h"
 #include "class_linker.h"
 #include "class_root.h"

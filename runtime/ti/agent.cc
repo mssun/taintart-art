@@ -20,6 +20,7 @@
 #include "nativehelper/scoped_local_ref.h"
 #include "nativeloader/native_loader.h"
 
+#include "base/logging.h"
 #include "base/strlcpy.h"
 #include "jni/java_vm_ext.h"
 #include "runtime.h"
