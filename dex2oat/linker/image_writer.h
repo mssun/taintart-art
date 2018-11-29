@@ -79,7 +79,7 @@ class ImageWriter final {
   ImageWriter(const CompilerOptions& compiler_options,
               uintptr_t image_begin,
               ImageHeader::StorageMode image_storage_mode,
-              const std::vector<const char*>& oat_filenames,
+              const std::vector<std::string>& oat_filenames,
               const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
               jobject class_loader,
               const HashSet<std::string>* dirty_image_objects);
@@ -142,8 +142,8 @@ class ImageWriter final {
   // If oat_fd is not kInvalidFd, then we use that for the oat file. Otherwise we open
   // the names in oat_filenames.
   bool Write(int image_fd,
-             const std::vector<const char*>& image_filenames,
-             const std::vector<const char*>& oat_filenames)
+             const std::vector<std::string>& image_filenames,
+             const std::vector<std::string>& oat_filenames)
       REQUIRES(!Locks::mutator_lock_);
 
   uintptr_t GetOatDataBegin(size_t oat_index) {
@@ -785,7 +785,7 @@ class ImageWriter final {
   const ImageHeader::StorageMode image_storage_mode_;
 
   // The file names of oat files.
-  const std::vector<const char*>& oat_filenames_;
+  const std::vector<std::string>& oat_filenames_;
 
   // Map of dex files to the indexes of oat files that they were compiled into.
   const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map_;
