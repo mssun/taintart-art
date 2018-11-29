@@ -2337,9 +2337,9 @@ void ImageSpace::Dump(std::ostream& os) const {
 }
 
 std::string ImageSpace::GetMultiImageBootClassPath(
-    const std::vector<const char*>& dex_locations,
-    const std::vector<const char*>& oat_filenames,
-    const std::vector<const char*>& image_filenames) {
+    const std::vector<std::string>& dex_locations,
+    const std::vector<std::string>& oat_filenames,
+    const std::vector<std::string>& image_filenames) {
   DCHECK_GT(oat_filenames.size(), 1u);
   // If the image filename was adapted (e.g., for our tests), we need to change this here,
   // too, but need to strip all path components (they will be re-established when loading).
