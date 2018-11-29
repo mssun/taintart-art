@@ -44,7 +44,7 @@
 #include "handle_scope-inl.h"
 #include "interpreter_mterp_impl.h"
 #include "interpreter_switch_impl.h"
-#include "jit/jit.h"
+#include "jit/jit-inl.h"
 #include "mirror/call_site.h"
 #include "mirror/class-inl.h"
 #include "mirror/dex_cache.h"
