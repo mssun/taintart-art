@@ -28,7 +28,6 @@
 #include "debugger.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "interpreter/interpreter.h"
-#include "jit-inl.h"
 #include "jit_code_cache.h"
 #include "jni/java_vm_ext.h"
 #include "mirror/method_handle_impl.h"
@@ -148,6 +147,10 @@ JitOptions* JitOptions::CreateFromRuntimeArguments(const RuntimeArgumentMap& opt
   }
 
   return jit_options;
+}
+
+bool Jit::ShouldUsePriorityThreadWeight(Thread* self) {
+  return self->IsJitSensitiveThread() && Runtime::Current()->InJankPerceptibleProcessState();
 }
 
 void Jit::DumpInfo(std::ostream& os) {
@@ -625,25 +628,21 @@ static bool IgnoreSamplesForMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mut
   return false;
 }
 
-bool Jit::MaybeCompileMethod(Thread* self,
-                             ArtMethod* method,
-                             uint32_t old_count,
-                             uint32_t new_count,
-                             bool with_backedges) {
+void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_backedges) {
   if (thread_pool_ == nullptr) {
     // Should only see this when shutting down, starting up, or in zygote, which doesn't
     // have a thread pool.
     DCHECK(Runtime::Current()->IsShuttingDown(self) ||
            !Runtime::Current()->IsFinishedStarting() ||
            Runtime::Current()->IsZygote());
-    return false;
+    return;
   }
   if (IgnoreSamplesForMethod(method)) {
-    return false;
+    return;
   }
   if (HotMethodThreshold() == 0) {
     // Tests might request JIT on first use (compiled synchronously in the interpreter).
-    return false;
+    return;
   }
   DCHECK(thread_pool_ != nullptr);
   DCHECK_GT(WarmMethodThreshold(), 0);
@@ -652,9 +651,15 @@ bool Jit::MaybeCompileMethod(Thread* self,
   DCHECK_GE(PriorityThreadWeight(), 1);
   DCHECK_LE(PriorityThreadWeight(), HotMethodThreshold());
 
-  if (old_count < WarmMethodThreshold() && new_count >= WarmMethodThreshold()) {
-    // Note: Native method have no "warm" state or profiling info.
-    if (!method->IsNative() && method->GetProfilingInfo(kRuntimePointerSize) == nullptr) {
+  uint16_t starting_count = method->GetCounter();
+  if (Jit::ShouldUsePriorityThreadWeight(self)) {
+    count *= PriorityThreadWeight();
+  }
+  uint32_t new_count = starting_count + count;
+  // Note: Native method have no "warm" state or profiling info.
+  if (LIKELY(!method->IsNative()) && starting_count < WarmMethodThreshold()) {
+    if ((new_count >= WarmMethodThreshold()) &&
+        (method->GetProfilingInfo(kRuntimePointerSize) == nullptr)) {
       bool success = ProfilingInfo::Create(self, method, /* retry_allocation= */ false);
       if (success) {
         VLOG(jit) << "Start profiling " << method->PrettyMethod();
@@ -664,7 +669,7 @@ bool Jit::MaybeCompileMethod(Thread* self,
         // Calling ProfilingInfo::Create might put us in a suspended state, which could
         // lead to the thread pool being deleted when we are shutting down.
         DCHECK(Runtime::Current()->IsShuttingDown(self));
-        return false;
+        return;
       }
 
       if (!success) {
@@ -673,26 +678,31 @@ bool Jit::MaybeCompileMethod(Thread* self,
         thread_pool_->AddTask(self, new JitCompileTask(method, JitCompileTask::kAllocateProfile));
       }
     }
-  }
-  if (UseJitCompilation()) {
-    if (old_count < HotMethodThreshold() && new_count >= HotMethodThreshold()) {
-      if (!code_cache_->ContainsPc(method->GetEntryPointFromQuickCompiledCode())) {
+    // Avoid jumping more than one state at a time.
+    new_count = std::min(new_count, static_cast<uint32_t>(HotMethodThreshold() - 1));
+  } else if (UseJitCompilation()) {
+    if (starting_count < HotMethodThreshold()) {
+      if ((new_count >= HotMethodThreshold()) &&
+          !code_cache_->ContainsPc(method->GetEntryPointFromQuickCompiledCode())) {
         DCHECK(thread_pool_ != nullptr);
         thread_pool_->AddTask(self, new JitCompileTask(method, JitCompileTask::kCompile));
       }
-    }
-    if (old_count < OSRMethodThreshold() && new_count >= OSRMethodThreshold()) {
+      // Avoid jumping more than one state at a time.
+      new_count = std::min(new_count, static_cast<uint32_t>(OSRMethodThreshold() - 1));
+    } else if (starting_count < OSRMethodThreshold()) {
       if (!with_backedges) {
-        return false;
+        // If the samples don't contain any back edge, we don't increment the hotness.
+        return;
       }
       DCHECK(!method->IsNative());  // No back edges reported for native methods.
-      if (!code_cache_->IsOsrCompiled(method)) {
+      if ((new_count >= OSRMethodThreshold()) &&  !code_cache_->IsOsrCompiled(method)) {
         DCHECK(thread_pool_ != nullptr);
         thread_pool_->AddTask(self, new JitCompileTask(method, JitCompileTask::kCompileOsr));
       }
     }
   }
-  return true;
+  // Update hotness counter
+  method->SetCounter(new_count);
 }
 
 class ScopedSetRuntimeThread {
