@@ -662,8 +662,8 @@ class ImageWriter::ImageFileGuard {
 };
 
 bool ImageWriter::Write(int image_fd,
-                        const std::vector<const char*>& image_filenames,
-                        const std::vector<const char*>& oat_filenames) {
+                        const std::vector<std::string>& image_filenames,
+                        const std::vector<std::string>& oat_filenames) {
   // If image_fd or oat_fd are not kInvalidFd then we may have empty strings in image_filenames or
   // oat_filenames.
   CHECK(!image_filenames.empty());
@@ -715,11 +715,11 @@ bool ImageWriter::Write(int image_fd,
   ImageHeader* primary_header = reinterpret_cast<ImageHeader*>(image_infos_[0].image_.Begin());
   ImageFileGuard primary_image_file;
   for (size_t i = 0; i < image_filenames.size(); ++i) {
-    const char* image_filename = image_filenames[i];
+    const std::string& image_filename = image_filenames[i];
     ImageInfo& image_info = GetImageInfo(i);
     ImageFileGuard image_file;
     if (image_fd != kInvalidFd) {
-      if (strlen(image_filename) == 0u) {
+      if (image_filename.empty()) {
         image_file.reset(new File(image_fd, unix_file::kCheckSafeUsage));
         // Empty the file in case it already exists.
         if (image_file != nullptr) {
@@ -730,7 +730,7 @@ bool ImageWriter::Write(int image_fd,
         LOG(ERROR) << "image fd " << image_fd << " name " << image_filename;
       }
     } else {
-      image_file.reset(OS::CreateEmptyFile(image_filename));
+      image_file.reset(OS::CreateEmptyFile(image_filename.c_str()));
     }
 
     if (image_file == nullptr) {
@@ -3454,7 +3454,7 @@ ImageWriter::ImageWriter(
     const CompilerOptions& compiler_options,
     uintptr_t image_begin,
     ImageHeader::StorageMode image_storage_mode,
-    const std::vector<const char*>& oat_filenames,
+    const std::vector<std::string>& oat_filenames,
     const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
     jobject class_loader,
     const HashSet<std::string>* dirty_image_objects)

@@ -128,9 +128,9 @@ class ImageSpace : public MemMapSpace {
                                         const std::string& boot_classpath,
                                         std::vector<std::string>* image_filenames);
 
-  static std::string GetMultiImageBootClassPath(const std::vector<const char*>& dex_locations,
-                                                const std::vector<const char*>& oat_filenames,
-                                                const std::vector<const char*>& image_filenames);
+  static std::string GetMultiImageBootClassPath(const std::vector<std::string>& dex_locations,
+                                                const std::vector<std::string>& oat_filenames,
+                                                const std::vector<std::string>& image_filenames);
 
   // Returns true if the dex checksums in the given oat file match the
   // checksums of the original dex files on disk. This is intended to be used
