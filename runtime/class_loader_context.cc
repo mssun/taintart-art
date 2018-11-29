@@ -695,8 +695,8 @@ static ObjPtr<mirror::ClassLoader> CreateClassLoaderInternal(
           self,
           class_path_files,
           loader_class,
-          libraries,
-          parent);
+          parent,
+          libraries);
   if (for_shared_library) {
     canonicalized_libraries[FlattenClasspath(info.classpath)] =
         map_scope.NewHandle<mirror::ClassLoader>(loader);
@@ -914,10 +914,11 @@ static bool GetDexFilesFromDexElementsArray(
 // the classpath.
 // This method is recursive (w.r.t. the class loader parent) and will stop once it reaches the
 // BootClassLoader. Note that the class loader chain is expected to be short.
-bool ClassLoaderContext::AddInfoToContextFromClassLoader(
+bool ClassLoaderContext::CreateInfoFromClassLoader(
       ScopedObjectAccessAlreadyRunnable& soa,
       Handle<mirror::ClassLoader> class_loader,
-      Handle<mirror::ObjectArray<mirror::Object>> dex_elements)
+      Handle<mirror::ObjectArray<mirror::Object>> dex_elements,
+      std::unique_ptr<ClassLoaderInfo>* return_info)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (ClassLinker::IsBootClassLoader(soa, class_loader.Get())) {
     // Nothing to do for the boot class loader as we don't add its dex files to the context.
@@ -951,32 +952,45 @@ bool ClassLoaderContext::AddInfoToContextFromClassLoader(
     GetDexFilesFromDexElementsArray(soa, dex_elements, &dex_files_loaded);
   }
 
-  ClassLoaderInfo* info = new ClassLoaderContext::ClassLoaderInfo(type);
-  if (class_loader_chain_ == nullptr) {
-    class_loader_chain_.reset(info);
-  } else {
-    ClassLoaderInfo* child = class_loader_chain_.get();
-    while (child->parent != nullptr) {
-      child = child->parent.get();
-    }
-    child->parent.reset(info);
-  }
-
+  std::unique_ptr<ClassLoaderInfo> info(new ClassLoaderContext::ClassLoaderInfo(type));
   for (const DexFile* dex_file : dex_files_loaded) {
     info->classpath.push_back(dex_file->GetLocation());
     info->checksums.push_back(dex_file->GetLocationChecksum());
     info->opened_dex_files.emplace_back(dex_file);
   }
 
-  // We created the ClassLoaderInfo for the current loader. Move on to its parent.
-
-  StackHandleScope<1> hs(Thread::Current());
-  Handle<mirror::ClassLoader> parent = hs.NewHandle(class_loader->GetParent());
-
   // Note that dex_elements array is null here. The elements are considered to be part of the
   // current class loader and are not passed to the parents.
   ScopedNullHandle<mirror::ObjectArray<mirror::Object>> null_dex_elements;
-  return AddInfoToContextFromClassLoader(soa, parent, null_dex_elements);
+
+  // Add the shared libraries.
+  StackHandleScope<3> hs(Thread::Current());
+  ArtField* field =
+      jni::DecodeArtField(WellKnownClasses::dalvik_system_BaseDexClassLoader_sharedLibraryLoaders);
+  ObjPtr<mirror::Object> raw_shared_libraries = field->GetObject(class_loader.Get());
+  if (raw_shared_libraries != nullptr) {
+    Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries =
+        hs.NewHandle(raw_shared_libraries->AsObjectArray<mirror::ClassLoader>());
+    MutableHandle<mirror::ClassLoader> temp_loader = hs.NewHandle<mirror::ClassLoader>(nullptr);
+    for (int32_t i = 0; i < shared_libraries->GetLength(); ++i) {
+      temp_loader.Assign(shared_libraries->Get(i));
+      std::unique_ptr<ClassLoaderInfo> result;
+      if (!CreateInfoFromClassLoader(soa, temp_loader, null_dex_elements, &result)) {
+        return false;
+      }
+      info->shared_libraries.push_back(std::move(result));
+    }
+  }
+
+  // We created the ClassLoaderInfo for the current loader. Move on to its parent.
+  Handle<mirror::ClassLoader> parent = hs.NewHandle(class_loader->GetParent());
+  std::unique_ptr<ClassLoaderInfo> parent_info;
+  if (!CreateInfoFromClassLoader(soa, parent, null_dex_elements, &parent_info)) {
+    return false;
+  }
+  info->parent = std::move(parent_info);
+  *return_info = std::move(info);
+  return true;
 }
 
 std::unique_ptr<ClassLoaderContext> ClassLoaderContext::CreateContextForClassLoader(
@@ -991,12 +1005,13 @@ std::unique_ptr<ClassLoaderContext> ClassLoaderContext::CreateContextForClassLoa
   Handle<mirror::ObjectArray<mirror::Object>> h_dex_elements =
       hs.NewHandle(soa.Decode<mirror::ObjectArray<mirror::Object>>(dex_elements));
 
-  std::unique_ptr<ClassLoaderContext> result(new ClassLoaderContext(/*owns_the_dex_files=*/ false));
-  if (result->AddInfoToContextFromClassLoader(soa, h_class_loader, h_dex_elements)) {
-    return result;
-  } else {
+  std::unique_ptr<ClassLoaderInfo> info;
+  if (!CreateInfoFromClassLoader(soa, h_class_loader, h_dex_elements, &info)) {
     return nullptr;
   }
+  std::unique_ptr<ClassLoaderContext> result(new ClassLoaderContext(/*owns_the_dex_files=*/ false));
+  result->class_loader_chain_ = std::move(info);
+  return result;
 }
 
 static bool IsAbsoluteLocation(const std::string& location) {
@@ -1130,8 +1145,8 @@ bool ClassLoaderContext::ClassLoaderInfoMatch(
 
   if (info.shared_libraries.size() != expected_info.shared_libraries.size()) {
     LOG(WARNING) << "ClassLoaderContext shared library size mismatch. "
-          << "Expected=" << expected_info.classpath.size()
-          << ", found=" << info.classpath.size()
+          << "Expected=" << expected_info.shared_libraries.size()
+          << ", found=" << info.shared_libraries.size()
           << " (" << context_spec << " | " << EncodeContextForOatFile("") << ")";
     return false;
   }

@@ -23,6 +23,7 @@
 #include "base/dchecked_vector.h"
 #include "base/stl_util.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "common_runtime_test.h"
 #include "dex/dex_file.h"
 #include "handle_scope-inl.h"
@@ -30,6 +31,7 @@
 #include "mirror/class.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
+#include "mirror/object_array-alloc-inl.h"
 #include "oat_file_assistant.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
@@ -1225,6 +1227,32 @@ TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextMatchAfterEncodingMultide
   jobject class_loader = LoadDexInPathClassLoader("MultiDex", nullptr);
 
   std::unique_ptr<ClassLoaderContext> context = CreateContextForClassLoader(class_loader);
+
+  ASSERT_EQ(context->VerifyClassLoaderContextMatch(context->EncodeContextForOatFile("")),
+            ClassLoaderContext::VerificationResult::kVerifies);
+}
+
+TEST_F(ClassLoaderContextTest, CreateContextForClassLoaderWithSharedLibraries) {
+  jobject class_loader_a = LoadDexInPathClassLoader("ForClassLoaderA", nullptr);
+
+  ScopedObjectAccess soa(Thread::Current());
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::ObjectArray<mirror::ClassLoader>> libraries = hs.NewHandle(
+    mirror::ObjectArray<mirror::ClassLoader>::Alloc(
+        soa.Self(),
+        GetClassRoot<mirror::ObjectArray<mirror::ClassLoader>>(),
+        1));
+  libraries->Set(0, soa.Decode<mirror::ClassLoader>(class_loader_a));
+
+  jobject class_loader_b = LoadDexInPathClassLoader(
+      "ForClassLoaderB", nullptr, soa.AddLocalReference<jobject>(libraries.Get()));
+
+  std::unique_ptr<ClassLoaderContext> context = CreateContextForClassLoader(class_loader_b);
+  ASSERT_TRUE(context != nullptr);
+  std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("ForClassLoaderB");
+  VerifyClassLoaderPCL(context.get(), 0, dex_files[0]->GetLocation());
+  dex_files = OpenTestDexFiles("ForClassLoaderA");
+  VerifyClassLoaderSharedLibraryPCL(context.get(), 0, 0, dex_files[0]->GetLocation());
 
   ASSERT_EQ(context->VerifyClassLoaderContextMatch(context->EncodeContextForOatFile("")),
             ClassLoaderContext::VerificationResult::kVerifies);
