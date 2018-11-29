@@ -65,10 +65,11 @@ class ConcurrentCopying : public GarbageCollector {
   // pages.
   static constexpr bool kGrayDirtyImmuneObjects = true;
 
-  explicit ConcurrentCopying(Heap* heap,
-                             bool young_gen,
-                             const std::string& name_prefix = "",
-                             bool measure_read_barrier_slow_path = false);
+  ConcurrentCopying(Heap* heap,
+                    bool young_gen,
+                    bool use_generational_cc,
+                    const std::string& name_prefix = "",
+                    bool measure_read_barrier_slow_path = false);
   ~ConcurrentCopying();
 
   void RunPhases() override
@@ -90,7 +91,7 @@ class ConcurrentCopying : public GarbageCollector {
   void BindBitmaps() REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::heap_bitmap_lock_);
   GcType GetGcType() const override {
-    return (kEnableGenerationalConcurrentCopyingCollection && young_gen_)
+    return (use_generational_cc_ && young_gen_)
         ? kGcTypeSticky
         : kGcTypePartial;
   }
@@ -323,6 +324,19 @@ class ConcurrentCopying : public GarbageCollector {
   std::unique_ptr<Barrier> gc_barrier_;
   std::unique_ptr<accounting::ObjectStack> gc_mark_stack_;
 
+  // If true, enable generational collection when using the Concurrent Copying
+  // (CC) collector, i.e. use sticky-bit CC for minor collections and (full) CC
+  // for major collections. Generational CC collection is currently only
+  // compatible with Baker read barriers. Set in Heap constructor.
+  const bool use_generational_cc_;
+
+  // Generational "sticky", only trace through dirty objects in region space.
+  const bool young_gen_;
+
+  // If true, the GC thread is done scanning marked objects on dirty and aged
+  // card (see ConcurrentCopying::CopyingPhase).
+  Atomic<bool> done_scanning_;
+
   // The read-barrier mark-bit stack. Stores object references whose
   // mark bit has been set by ConcurrentCopying::MarkFromReadBarrier,
   // so that this bit can be reset at the end of the collection in
@@ -399,12 +413,6 @@ class ConcurrentCopying : public GarbageCollector {
 
   // reclaimed_bytes_ratio = reclaimed_bytes/num_allocated_bytes per GC cycle
   float reclaimed_bytes_ratio_sum_;
-
-  // Generational "sticky", only trace through dirty objects in region space.
-  const bool young_gen_;
-  // If true, the GC thread is done scanning marked objects on dirty and aged
-  // card (see ConcurrentCopying::CopyingPhase).
-  Atomic<bool> done_scanning_;
 
   // The skipped blocks are memory blocks/chucks that were copies of
   // objects that were unused due to lost races (cas failures) at

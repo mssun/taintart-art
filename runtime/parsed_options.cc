@@ -703,6 +703,7 @@ void ParsedOptions::Usage(const char* fmt, ...) {
   UsageMessage(stream, "  -Xgc:[no]postsweepingverify_rosalloc\n");
   UsageMessage(stream, "  -Xgc:[no]postverify_rosalloc\n");
   UsageMessage(stream, "  -Xgc:[no]presweepingverify\n");
+  UsageMessage(stream, "  -Xgc:[no]generational_cc\n");
   UsageMessage(stream, "  -Ximage:filename\n");
   UsageMessage(stream, "  -Xbootclasspath-locations:bootclasspath\n"
                        "     (override the dex locations of the -Xbootclasspath files)\n");

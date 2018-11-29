@@ -93,11 +93,12 @@ MemMap RegionSpace::CreateMemMap(const std::string& name,
   return mem_map;
 }
 
-RegionSpace* RegionSpace::Create(const std::string& name, MemMap&& mem_map) {
-  return new RegionSpace(name, std::move(mem_map));
+RegionSpace* RegionSpace::Create(
+    const std::string& name, MemMap&& mem_map, bool use_generational_cc) {
+  return new RegionSpace(name, std::move(mem_map), use_generational_cc);
 }
 
-RegionSpace::RegionSpace(const std::string& name, MemMap&& mem_map)
+RegionSpace::RegionSpace(const std::string& name, MemMap&& mem_map, bool use_generational_cc)
     : ContinuousMemMapAllocSpace(name,
                                  std::move(mem_map),
                                  mem_map.Begin(),
@@ -105,6 +106,7 @@ RegionSpace::RegionSpace(const std::string& name, MemMap&& mem_map)
                                  mem_map.End(),
                                  kGcRetentionPolicyAlwaysCollect),
       region_lock_("Region lock", kRegionSpaceRegionLock),
+      use_generational_cc_(use_generational_cc),
       time_(1U),
       num_regions_(mem_map_.Size() / kRegionSize),
       num_non_free_regions_(0U),
@@ -179,9 +181,44 @@ size_t RegionSpace::ToSpaceSize() {
   return num_regions * kRegionSize;
 }
 
+void RegionSpace::Region::SetAsUnevacFromSpace(bool clear_live_bytes) {
+  // Live bytes are only preserved (i.e. not cleared) during sticky-bit CC collections.
+  DCHECK(GetUseGenerationalCC() || clear_live_bytes);
+  DCHECK(!IsFree() && IsInToSpace());
+  type_ = RegionType::kRegionTypeUnevacFromSpace;
+  if (IsNewlyAllocated()) {
+    // A newly allocated region set as unevac from-space must be
+    // a large or large tail region.
+    DCHECK(IsLarge() || IsLargeTail()) << static_cast<uint>(state_);
+    // Always clear the live bytes of a newly allocated (large or
+    // large tail) region.
+    clear_live_bytes = true;
+    // Clear the "newly allocated" status here, as we do not want the
+    // GC to see it when encountering (and processing) references in the
+    // from-space.
+    //
+    // Invariant: There should be no newly-allocated region in the
+    // from-space (when the from-space exists, which is between the calls
+    // to RegionSpace::SetFromSpace and RegionSpace::ClearFromSpace).
+    is_newly_allocated_ = false;
+  }
+  if (clear_live_bytes) {
+    // Reset the live bytes, as we have made a non-evacuation
+    // decision (possibly based on the percentage of live bytes).
+    live_bytes_ = 0;
+  }
+}
+
+bool RegionSpace::Region::GetUseGenerationalCC() {
+  // We are retrieving the info from Heap, instead of the cached version in
+  // RegionSpace, because accessing the Heap from a Region object is easier
+  // than accessing the RegionSpace.
+  return art::Runtime::Current()->GetHeap()->GetUseGenerationalCC();
+}
+
 inline bool RegionSpace::Region::ShouldBeEvacuated(EvacMode evac_mode) {
   // Evacuation mode `kEvacModeNewlyAllocated` is only used during sticky-bit CC collections.
-  DCHECK(kEnableGenerationalConcurrentCopyingCollection || (evac_mode != kEvacModeNewlyAllocated));
+  DCHECK(GetUseGenerationalCC() || (evac_mode != kEvacModeNewlyAllocated));
   DCHECK((IsAllocated() || IsLarge()) && IsInToSpace());
   // The region should be evacuated if:
   // - the evacuation is forced (`evac_mode == kEvacModeForceAll`); or
@@ -253,7 +290,7 @@ inline bool RegionSpace::Region::ShouldBeEvacuated(EvacMode evac_mode) {
 
 void RegionSpace::ZeroLiveBytesForLargeObject(mirror::Object* obj) {
   // This method is only used when Generational CC collection is enabled.
-  DCHECK(kEnableGenerationalConcurrentCopyingCollection);
+  DCHECK(use_generational_cc_);
 
   // This code uses a logic similar to the one used in RegionSpace::FreeLarge
   // to traverse the regions supporting `obj`.
@@ -292,7 +329,7 @@ void RegionSpace::SetFromSpace(accounting::ReadBarrierTable* rb_table,
                                EvacMode evac_mode,
                                bool clear_live_bytes) {
   // Live bytes are only preserved (i.e. not cleared) during sticky-bit CC collections.
-  DCHECK(kEnableGenerationalConcurrentCopyingCollection || clear_live_bytes);
+  DCHECK(use_generational_cc_ || clear_live_bytes);
   ++time_;
   if (kUseTableLookupReadBarrier) {
     DCHECK(rb_table->IsAllCleared());
@@ -336,9 +373,7 @@ void RegionSpace::SetFromSpace(accounting::ReadBarrierTable* rb_table,
           // mark-bit otherwise the live_bytes will not be updated in
           // ConcurrentCopying::ProcessMarkStackRef() and hence will break the
           // logic.
-          if (kEnableGenerationalConcurrentCopyingCollection
-              && !should_evacuate
-              && is_newly_allocated) {
+          if (use_generational_cc_ && !should_evacuate && is_newly_allocated) {
             GetMarkBitmap()->Clear(reinterpret_cast<mirror::Object*>(r->Begin()));
           }
           num_expected_large_tails = RoundUp(r->BytesAllocated(), kRegionSize) / kRegionSize - 1;
@@ -506,7 +541,7 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
         // bitmap. But they cannot do so before we know the next GC cycle will
         // be a major one, so this operation happens at the beginning of such a
         // major collection, before marking starts.
-        if (!kEnableGenerationalConcurrentCopyingCollection) {
+        if (!use_generational_cc_) {
           GetLiveBitmap()->ClearRange(
               reinterpret_cast<mirror::Object*>(r->Begin()),
               reinterpret_cast<mirror::Object*>(r->Begin() + regions_to_clear_bitmap * kRegionSize));
@@ -520,8 +555,7 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
         // `r` when it has an undefined live bytes count (i.e. when
         // `r->LiveBytes() == static_cast<size_t>(-1)`) with
         // Generational CC.
-        if (!kEnableGenerationalConcurrentCopyingCollection ||
-            (r->LiveBytes() != static_cast<size_t>(-1))) {
+        if (!use_generational_cc_ || (r->LiveBytes() != static_cast<size_t>(-1))) {
           // Only some allocated bytes are live in this unevac region.
           // This should only happen for an allocated non-large region.
           DCHECK(r->IsAllocated()) << r->State();
@@ -918,7 +952,7 @@ RegionSpace::Region* RegionSpace::AllocateRegion(bool for_evac) {
     Region* r = &regions_[region_index];
     if (r->IsFree()) {
       r->Unfree(this, time_);
-      if (kEnableGenerationalConcurrentCopyingCollection) {
+      if (use_generational_cc_) {
         // TODO: Add an explanation for this assertion.
         DCHECK(!for_evac || !r->is_newly_allocated_);
       }
