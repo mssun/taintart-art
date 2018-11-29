@@ -601,7 +601,16 @@ void Runtime::Abort(const char* msg) {
 }
 
 void Runtime::PreZygoteFork() {
+  if (GetJit() != nullptr) {
+    GetJit()->PreZygoteFork();
+  }
   heap_->PreZygoteFork();
+}
+
+void Runtime::PostZygoteFork() {
+  if (GetJit() != nullptr) {
+    GetJit()->PostZygoteFork();
+  }
 }
 
 void Runtime::CallExitHook(jint status) {
@@ -915,10 +924,6 @@ void Runtime::InitNonZygoteOrPostFork(
       jit_options_->SetWaitForJitNotificationsToSaveProfile(false);
       VLOG(profiler) << "Enabling system server profiles";
     }
-  }
-
-  if (jit_ != nullptr) {
-    jit_->CreateThreadPool();
   }
 
   if (thread_pool_ == nullptr) {
@@ -2430,6 +2435,8 @@ void Runtime::CreateJit() {
     LOG(WARNING) << "Failed to allocate JIT";
     // Release JIT code cache resources (several MB of memory).
     jit_code_cache_.reset();
+  } else {
+    jit->CreateThreadPool();
   }
 }
 

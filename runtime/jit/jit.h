@@ -285,8 +285,14 @@ class Jit {
   // Start JIT threads.
   void Start();
 
-  // Transition to a zygote child state.
-  void PostForkChildAction();
+  // Transition to a child state.
+  void PostForkChildAction(bool is_zygote);
+
+  // Prepare for forking.
+  void PreZygoteFork();
+
+  // Adjust state after forking.
+  void PostZygoteFork();
 
  private:
   Jit(JitCodeCache* code_cache, JitOptions* options);
