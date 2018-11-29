@@ -200,14 +200,6 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
   }
 
   std::unordered_map<const DexFile*, size_t> dex_file_to_oat_index_map;
-  std::vector<const char*> oat_filename_vector;
-  for (const std::string& file : oat_filenames) {
-    oat_filename_vector.push_back(file.c_str());
-  }
-  std::vector<const char*> image_filename_vector;
-  for (const std::string& file : image_filenames) {
-    image_filename_vector.push_back(file.c_str());
-  }
   size_t image_idx = 0;
   for (const DexFile* dex_file : class_path) {
     dex_file_to_oat_index_map.emplace(dex_file, image_idx);
@@ -217,7 +209,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
   std::unique_ptr<ImageWriter> writer(new ImageWriter(*compiler_options_,
                                                       kRequestedImageBase,
                                                       storage_mode,
-                                                      oat_filename_vector,
+                                                      oat_filenames,
                                                       dex_file_to_oat_index_map,
                                                       /*class_loader=*/ nullptr,
                                                       /*dirty_image_objects=*/ nullptr));
@@ -231,15 +223,11 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
 
       t.NewTiming("WriteElf");
       SafeMap<std::string, std::string> key_value_store;
-      std::vector<const char*> dex_filename_vector;
-      for (size_t i = 0; i < class_path.size(); ++i) {
-        dex_filename_vector.push_back("");
-      }
       key_value_store.Put(OatHeader::kBootClassPathKey,
                           gc::space::ImageSpace::GetMultiImageBootClassPath(
-                              dex_filename_vector,
-                              oat_filename_vector,
-                              image_filename_vector));
+                              out_helper.dex_file_locations,
+                              oat_filenames,
+                              image_filenames));
 
       std::vector<std::unique_ptr<ElfWriter>> elf_writers;
       std::vector<std::unique_ptr<OatWriter>> oat_writers;
@@ -271,7 +259,7 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
         bool dex_files_ok = oat_writers[i]->WriteAndOpenDexFiles(
             out_helper.vdex_files[i].GetFile(),
             rodata.back(),
-            &key_value_store,
+            (i == 0u) ? &key_value_store : nullptr,
             /* verify */ false,           // Dex files may be dex-to-dex-ed, don't verify.
             /* update_input_vdex */ false,
             /* copy_dex_files */ CopyOption::kOnlyIfCompressed,
@@ -356,8 +344,8 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
     }
 
     bool success_image = writer->Write(kInvalidFd,
-                                       image_filename_vector,
-                                       oat_filename_vector);
+                                       image_filenames,
+                                       oat_filenames);
     ASSERT_TRUE(success_image);
 
     for (size_t i = 0, size = oat_filenames.size(); i != size; ++i) {

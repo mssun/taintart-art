@@ -683,7 +683,7 @@ class Dex2Oat final {
   }
 
   struct ParserOptions {
-    std::vector<const char*> oat_symbols;
+    std::vector<std::string> oat_symbols;
     std::string boot_image_filename;
     int64_t watch_dog_timeout_in_ms = -1;
     bool watch_dog_enabled = true;
@@ -833,9 +833,7 @@ class Dex2Oat final {
     }
 
     if (dex_locations_.empty()) {
-      for (const char* dex_file_name : dex_filenames_) {
-        dex_locations_.push_back(dex_file_name);
-      }
+      dex_locations_ = dex_filenames_;
     } else if (dex_locations_.size() != dex_filenames_.size()) {
       Usage("--dex-location arguments do not match --dex-file arguments");
     }
@@ -1254,8 +1252,8 @@ class Dex2Oat final {
     // OAT and VDEX file handling
     if (oat_fd_ == -1) {
       DCHECK(!oat_filenames_.empty());
-      for (const char* oat_filename : oat_filenames_) {
-        std::unique_ptr<File> oat_file(OS::CreateEmptyFile(oat_filename));
+      for (const std::string& oat_filename : oat_filenames_) {
+        std::unique_ptr<File> oat_file(OS::CreateEmptyFile(oat_filename.c_str()));
         if (oat_file == nullptr) {
           PLOG(ERROR) << "Failed to create oat file: " << oat_filename;
           return false;
@@ -1353,7 +1351,7 @@ class Dex2Oat final {
       }
       vdex_files_.push_back(std::move(vdex_file));
 
-      oat_filenames_.push_back(oat_location_.c_str());
+      oat_filenames_.push_back(oat_location_);
     }
 
     // If we're updating in place a vdex file, be defensive and put an invalid vdex magic in case
@@ -2127,12 +2125,12 @@ class Dex2Oat final {
     for (size_t i = 0; i < oat_unstripped_.size(); ++i) {
       // If we don't want to strip in place, copy from stripped location to unstripped location.
       // We need to strip after image creation because FixupElf needs to use .strtab.
-      if (strcmp(oat_unstripped_[i], oat_filenames_[i]) != 0) {
+      if (oat_unstripped_[i] != oat_filenames_[i]) {
         DCHECK(oat_files_[i].get() != nullptr && oat_files_[i]->IsOpened());
 
         TimingLogger::ScopedTiming t("dex2oat OatFile copy", timings_);
         std::unique_ptr<File>& in = oat_files_[i];
-        std::unique_ptr<File> out(OS::CreateEmptyFile(oat_unstripped_[i]));
+        std::unique_ptr<File> out(OS::CreateEmptyFile(oat_unstripped_[i].c_str()));
         int64_t in_length = in->GetLength();
         if (in_length < 0) {
           PLOG(ERROR) << "Failed to get the length of oat file: " << in->GetPath();
@@ -2361,11 +2359,13 @@ class Dex2Oat final {
     DCHECK_EQ(dex_filenames_.size(), dex_locations_.size());
     size_t kept = 0u;
     for (size_t i = 0, size = dex_filenames_.size(); i != size; ++i) {
-      if (!OS::FileExists(dex_filenames_[i])) {
+      if (!OS::FileExists(dex_filenames_[i].c_str())) {
         LOG(WARNING) << "Skipping non-existent dex file '" << dex_filenames_[i] << "'";
       } else {
-        dex_filenames_[kept] = dex_filenames_[i];
-        dex_locations_[kept] = dex_locations_[i];
+        if (kept != i) {
+          dex_filenames_[kept] = dex_filenames_[i];
+          dex_locations_[kept] = dex_locations_[i];
+        }
         ++kept;
       }
     }
@@ -2393,7 +2393,8 @@ class Dex2Oat final {
       DCHECK_EQ(oat_writers_.size(), dex_filenames_.size());
       DCHECK_EQ(oat_writers_.size(), dex_locations_.size());
       for (size_t i = 0, size = oat_writers_.size(); i != size; ++i) {
-        if (!oat_writers_[i]->AddDexFileSource(dex_filenames_[i], dex_locations_[i])) {
+        if (!oat_writers_[i]->AddDexFileSource(dex_filenames_[i].c_str(),
+                                               dex_locations_[i].c_str())) {
           return false;
         }
       }
@@ -2402,7 +2403,8 @@ class Dex2Oat final {
       DCHECK_EQ(dex_filenames_.size(), dex_locations_.size());
       DCHECK_NE(dex_filenames_.size(), 0u);
       for (size_t i = 0; i != dex_filenames_.size(); ++i) {
-        if (!oat_writers_[0]->AddDexFileSource(dex_filenames_[i], dex_locations_[i])) {
+        if (!oat_writers_[0]->AddDexFileSource(dex_filenames_[i].c_str(),
+                                               dex_locations_[i].c_str())) {
           return false;
         }
       }
@@ -2562,7 +2564,7 @@ class Dex2Oat final {
     CHECK(image_writer_ != nullptr);
     if (!IsBootImage()) {
       CHECK(image_filenames_.empty());
-      image_filenames_.push_back(app_image_file_name_.c_str());
+      image_filenames_.push_back(app_image_file_name_);
     }
     if (!image_writer_->Write(app_image_fd_,
                               image_filenames_,
@@ -2725,8 +2727,8 @@ class Dex2Oat final {
   std::vector<std::unique_ptr<File>> oat_files_;
   std::vector<std::unique_ptr<File>> vdex_files_;
   std::string oat_location_;
-  std::vector<const char*> oat_filenames_;
-  std::vector<const char*> oat_unstripped_;
+  std::vector<std::string> oat_filenames_;
+  std::vector<std::string> oat_unstripped_;
   bool strip_;
   int oat_fd_;
   int input_vdex_fd_;
@@ -2737,13 +2739,13 @@ class Dex2Oat final {
   int dm_fd_;
   std::string dm_file_location_;
   std::unique_ptr<ZipArchive> dm_file_;
-  std::vector<const char*> dex_filenames_;
-  std::vector<const char*> dex_locations_;
+  std::vector<std::string> dex_filenames_;
+  std::vector<std::string> dex_locations_;
   int zip_fd_;
   std::string zip_location_;
   std::string boot_image_filename_;
   std::vector<const char*> runtime_args_;
-  std::vector<const char*> image_filenames_;
+  std::vector<std::string> image_filenames_;
   uintptr_t image_base_;
   const char* image_classes_zip_filename_;
   const char* image_classes_filename_;
