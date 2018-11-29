@@ -413,9 +413,10 @@ f2l_maybeNaN:
      */
     mov     r3, rINST, lsr #12          @ r3<- B
     ubfx    r9, rINST, #8, #4           @ r9<- A
+    CLEAR_SHADOW_PAIR r9, ip, lr        @ Zero shadow regs
     VREG_INDEX_TO_ADDR r3, r3           @ r3<- &fp[B]
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[A]
-    vldr    d0, [r3]                    @ d0<- vAA
+    GET_VREG_DOUBLE_BY_ADDR d0, r3      @ d0<- vBB
     FETCH_ADVANCE_INST 1                @ advance rPC, load rINST
 
     vcvt.f64.s32    d1, s1              @ d1<- (double)(vAAh)
@@ -424,7 +425,7 @@ f2l_maybeNaN:
     vmla.f64        d2, d1, d3          @ d2<- vAAh*2^32 + vAAl
 
     GET_INST_OPCODE ip                  @ extract opcode from rINST
-    vstr.64 d2, [r9]                    @ vAA<- d2
+    SET_VREG_DOUBLE_BY_ADDR d2, r9      @ vAA<- d2
     GOTO_OPCODE ip                      @ jump to next instruction
 
     /* literal pool helper */
