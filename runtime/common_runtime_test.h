@@ -115,11 +115,14 @@ class CommonRuntimeTestImpl : public CommonArtTestImpl {
   jobject LoadMultiDex(const char* first_dex_name, const char* second_dex_name)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  jobject LoadDexInPathClassLoader(const std::string& dex_name, jobject parent_loader);
+  jobject LoadDexInPathClassLoader(const std::string& dex_name,
+                                   jobject parent_loader,
+                                   jobject shared_libraries = nullptr);
   jobject LoadDexInDelegateLastClassLoader(const std::string& dex_name, jobject parent_loader);
   jobject LoadDexInWellKnownClassLoader(const std::string& dex_name,
                                         jclass loader_class,
-                                        jobject parent_loader);
+                                        jobject parent_loader,
+                                        jobject shared_libraries = nullptr);
 
   std::unique_ptr<Runtime> runtime_;
 
