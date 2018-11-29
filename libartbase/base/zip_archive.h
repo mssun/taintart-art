@@ -59,7 +59,8 @@ class ZipEntry {
 
   MemMap MapDirectlyOrExtract(const char* zip_filename,
                               const char* entry_filename,
-                              std::string* error_msg);
+                              std::string* error_msg,
+                              size_t alignment);
 
   uint32_t GetUncompressedLength();
   uint32_t GetCrc32();

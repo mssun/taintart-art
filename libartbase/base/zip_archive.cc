@@ -189,8 +189,9 @@ MemMap ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* erro
 
 MemMap ZipEntry::MapDirectlyOrExtract(const char* zip_filename,
                                       const char* entry_filename,
-                                      std::string* error_msg) {
-  if (IsUncompressed() && GetFileDescriptor(handle_) >= 0) {
+                                      std::string* error_msg,
+                                      size_t alignment) {
+  if (IsUncompressed() && IsAlignedTo(alignment) && GetFileDescriptor(handle_) >= 0) {
     std::string local_error_msg;
     MemMap ret = MapDirectlyFromFile(zip_filename, &local_error_msg);
     if (ret.IsValid()) {
