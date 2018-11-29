@@ -187,7 +187,6 @@ bool DexDecompiler::Decompile() {
       LOG(FATAL) << "Failed to use all values in quickening info."
                  << " Actual: " << std::hex << quicken_index_
                  << " Expected: " << quicken_info_.NumIndices();
-      return false;
     }
   }
 
