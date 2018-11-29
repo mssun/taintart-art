@@ -44,6 +44,7 @@
 #include "dex/dex_file_loader.h"
 #include "dex/primitive.h"
 #include "gc/heap.h"
+#include "gc/space/image_space.h"
 #include "gc_root-inl.h"
 #include "gtest/gtest.h"
 #include "handle_scope-inl.h"
@@ -111,15 +112,14 @@ void CommonRuntimeTestImpl::SetUp() {
   std::string min_heap_string(StringPrintf("-Xms%zdm", gc::Heap::kDefaultInitialSize / MB));
   std::string max_heap_string(StringPrintf("-Xmx%zdm", gc::Heap::kDefaultMaximumSize / MB));
 
-
   RuntimeOptions options;
-  std::string boot_class_path_string = "-Xbootclasspath";
-  for (const std::string &core_dex_file_name : GetLibCoreDexFileNames()) {
-    boot_class_path_string += ":";
-    boot_class_path_string += core_dex_file_name;
-  }
+  std::string boot_class_path_string =
+      GetClassPathOption("-Xbootclasspath:", GetLibCoreDexFileNames());
+  std::string boot_class_path_locations_string =
+      GetClassPathOption("-Xbootclasspath-locations:", GetLibCoreDexLocations());
 
   options.push_back(std::make_pair(boot_class_path_string, nullptr));
+  options.push_back(std::make_pair(boot_class_path_locations_string, nullptr));
   options.push_back(std::make_pair("-Xcheck:jni", nullptr));
   options.push_back(std::make_pair(min_heap_string, nullptr));
   options.push_back(std::make_pair(max_heap_string, nullptr));
@@ -380,6 +380,38 @@ void CommonRuntimeTestImpl::SetUpRuntimeOptionsForFillHeap(RuntimeOptions *optio
   if (!found) {
     options->emplace_back("-Xmx4M", nullptr);
   }
+}
+
+bool CommonRuntimeTestImpl::StartDex2OatCommandLine(/*out*/std::vector<std::string>* argv,
+                                                    /*out*/std::string* error_msg) {
+  DCHECK(argv != nullptr);
+  DCHECK(argv->empty());
+
+  Runtime* runtime = Runtime::Current();
+  const std::vector<gc::space::ImageSpace*>& image_spaces =
+      runtime->GetHeap()->GetBootImageSpaces();
+  if (image_spaces.empty()) {
+    *error_msg = "No image location found for Dex2Oat.";
+    return false;
+  }
+  std::string image_location = image_spaces[0]->GetImageLocation();
+
+  argv->push_back(runtime->GetCompilerExecutable());
+  if (runtime->IsJavaDebuggable()) {
+    argv->push_back("--debuggable");
+  }
+  runtime->AddCurrentRuntimeFeaturesAsDex2OatArguments(argv);
+
+  argv->push_back("--runtime-arg");
+  argv->push_back(GetClassPathOption("-Xbootclasspath:", GetLibCoreDexFileNames()));
+  argv->push_back("--runtime-arg");
+  argv->push_back(GetClassPathOption("-Xbootclasspath-locations:", GetLibCoreDexLocations()));
+
+  argv->push_back("--boot-image=" + image_location);
+
+  std::vector<std::string> compiler_options = runtime->GetCompilerOptions();
+  argv->insert(argv->end(), compiler_options.begin(), compiler_options.end());
+  return true;
 }
 
 CheckJniAbortCatcher::CheckJniAbortCatcher() : vm_(Runtime::Current()->GetJavaVM()) {

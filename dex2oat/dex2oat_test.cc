@@ -192,24 +192,12 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
   }
 
   int Dex2Oat(const std::vector<std::string>& dex2oat_args, std::string* error_msg) {
-    Runtime* runtime = Runtime::Current();
-
-    const std::vector<gc::space::ImageSpace*>& image_spaces =
-        runtime->GetHeap()->GetBootImageSpaces();
-    if (image_spaces.empty()) {
-      *error_msg = "No image location found for Dex2Oat.";
+    std::vector<std::string> argv;
+    if (!CommonRuntimeTest::StartDex2OatCommandLine(&argv, error_msg)) {
       return false;
     }
-    std::string image_location = image_spaces[0]->GetImageLocation();
 
-    std::vector<std::string> argv;
-    argv.push_back(runtime->GetCompilerExecutable());
-
-    if (runtime->IsJavaDebuggable()) {
-      argv.push_back("--debuggable");
-    }
-    runtime->AddCurrentRuntimeFeaturesAsDex2OatArguments(&argv);
-
+    Runtime* runtime = Runtime::Current();
     if (!runtime->IsVerificationEnabled()) {
       argv.push_back("--compiler-filter=assume-verified");
     }
@@ -225,11 +213,6 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
     if (!kIsTargetBuild) {
       argv.push_back("--host");
     }
-
-    argv.push_back("--boot-image=" + image_location);
-
-    std::vector<std::string> compiler_options = runtime->GetCompilerOptions();
-    argv.insert(argv.end(), compiler_options.begin(), compiler_options.end());
 
     argv.insert(argv.end(), dex2oat_args.begin(), dex2oat_args.end());
 

@@ -96,6 +96,12 @@ class CommonArtTestImpl {
   // Gets the paths of the libcore dex files.
   static std::vector<std::string> GetLibCoreDexFileNames();
 
+  // Gets the locations of the libcore dex files.
+  static std::vector<std::string> GetLibCoreDexLocations();
+
+  static std::string GetClassPathOption(const char* option,
+                                        const std::vector<std::string>& class_path);
+
   // Returns bin directory which contains host's prebuild tools.
   static std::string GetAndroidHostToolsDir();
 

@@ -317,9 +317,52 @@ static std::string GetDexFileName(const std::string& jar_prefix, bool host) {
 }
 
 std::vector<std::string> CommonArtTestImpl::GetLibCoreDexFileNames() {
-  return std::vector<std::string>({GetDexFileName("core-oj", IsHost()),
-                                   GetDexFileName("core-libart", IsHost()),
-                                   GetDexFileName("core-simple", IsHost())});
+  // Note: This must match the TEST_CORE_JARS in Android.common_path.mk
+  // because that's what we use for compiling the core.art image.
+  static const char* const kLibcoreModules[] = {
+      "core-oj",
+      "core-libart",
+      "core-simple",
+  };
+
+  std::vector<std::string> result;
+  result.reserve(arraysize(kLibcoreModules));
+  for (const char* module : kLibcoreModules) {
+    result.push_back(GetDexFileName(module, IsHost()));
+  }
+  return result;
+}
+
+std::vector<std::string> CommonArtTestImpl::GetLibCoreDexLocations() {
+  std::vector<std::string> result = GetLibCoreDexFileNames();
+  if (IsHost()) {
+    // Strip the ANDROID_BUILD_TOP directory including the directory separator '/'.
+    const char* host_dir = getenv("ANDROID_BUILD_TOP");
+    CHECK(host_dir != nullptr);
+    std::string prefix = host_dir;
+    CHECK(!prefix.empty());
+    if (prefix.back() != '/') {
+      prefix += '/';
+    }
+    for (std::string& location : result) {
+      CHECK_GT(location.size(), prefix.size());
+      CHECK_EQ(location.compare(0u, prefix.size(), prefix), 0);
+      location.erase(0u, prefix.size());
+    }
+  }
+  return result;
+}
+
+std::string CommonArtTestImpl::GetClassPathOption(const char* option,
+                                                  const std::vector<std::string>& class_path) {
+  std::string option_string = option;
+  const char* separator = "";
+  for (const std::string& core_dex_file_name : class_path) {
+    option_string += separator;
+    option_string += core_dex_file_name;
+    separator = ":";
+  }
+  return option_string;
 }
 
 std::string CommonArtTestImpl::GetTestAndroidRoot() {

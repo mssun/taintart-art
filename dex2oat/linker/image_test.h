@@ -438,6 +438,9 @@ inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode) {
   MemMap::Init();
 
   RuntimeOptions options;
+  options.emplace_back(GetClassPathOption("-Xbootclasspath:", GetLibCoreDexFileNames()), nullptr);
+  options.emplace_back(
+      GetClassPathOption("-Xbootclasspath-locations:", GetLibCoreDexLocations()), nullptr);
   std::string image("-Ximage:");
   image.append(helper.image_locations[0].GetFilename());
   options.push_back(std::make_pair(image.c_str(), static_cast<void*>(nullptr)));
