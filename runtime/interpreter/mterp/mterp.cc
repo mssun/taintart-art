@@ -539,6 +539,11 @@ extern "C" size_t MterpHandleException(Thread* self, ShadowFrame* shadow_frame)
   return MoveToExceptionHandler(self, *shadow_frame, instrumentation);
 }
 
+struct MterpCheckHelper {
+  DECLARE_RUNTIME_DEBUG_FLAG(kSlowMode);
+};
+DEFINE_RUNTIME_DEBUG_FLAG(MterpCheckHelper, kSlowMode);
+
 extern "C" void MterpCheckBefore(Thread* self, ShadowFrame* shadow_frame, uint16_t* dex_pc_ptr)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // Check that we are using the right interpreter.
@@ -562,6 +567,9 @@ extern "C" void MterpCheckBefore(Thread* self, ShadowFrame* shadow_frame, uint16
   if (kTestExportPC) {
     // Save invalid dex pc to force segfault if improperly used.
     shadow_frame->SetDexPCPtr(reinterpret_cast<uint16_t*>(kExportPCPoison));
+  }
+  if (MterpCheckHelper::kSlowMode) {
+    shadow_frame->CheckConsistentVRegs();
   }
 }
 
