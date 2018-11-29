@@ -70,7 +70,7 @@ ArtMethod* ArtMethod::GetCanonicalMethod(PointerSize pointer_size) {
   } else {
     ObjPtr<mirror::Class> declaring_class = GetDeclaringClass();
     DCHECK(declaring_class->IsInterface());
-    ArtMethod* ret = declaring_class->FindInterfaceMethod(declaring_class->GetDexCache(),
+    ArtMethod* ret = declaring_class->FindInterfaceMethod(GetDexCache(),
                                                           GetDexMethodIndex(),
                                                           pointer_size);
     DCHECK(ret != nullptr);
@@ -79,10 +79,11 @@ ArtMethod* ArtMethod::GetCanonicalMethod(PointerSize pointer_size) {
 }
 
 ArtMethod* ArtMethod::GetNonObsoleteMethod() {
-  DCHECK_EQ(kRuntimePointerSize, Runtime::Current()->GetClassLinker()->GetImagePointerSize());
   if (LIKELY(!IsObsolete())) {
     return this;
-  } else if (IsDirect()) {
+  }
+  DCHECK_EQ(kRuntimePointerSize, Runtime::Current()->GetClassLinker()->GetImagePointerSize());
+  if (IsDirect()) {
     return &GetDeclaringClass()->GetDirectMethodsSlice(kRuntimePointerSize)[GetMethodIndex()];
   } else {
     return GetDeclaringClass()->GetVTableEntry(GetMethodIndex(), kRuntimePointerSize);
@@ -504,10 +505,10 @@ static const OatFile::OatMethod FindOatMethodFor(ArtMethod* method,
                          << method->PrettyMethod();
   }
   DCHECK_EQ(oat_method_index,
-            GetOatMethodIndexFromMethodIndex(*declaring_class->GetDexCache()->GetDexFile(),
+            GetOatMethodIndexFromMethodIndex(declaring_class->GetDexFile(),
                                              method->GetDeclaringClass()->GetDexClassDefIndex(),
                                              method->GetDexMethodIndex()));
-  OatFile::OatClass oat_class = OatFile::FindOatClass(*declaring_class->GetDexCache()->GetDexFile(),
+  OatFile::OatClass oat_class = OatFile::FindOatClass(declaring_class->GetDexFile(),
                                                       declaring_class->GetDexClassDefIndex(),
                                                       found);
   if (!(*found)) {
@@ -543,7 +544,7 @@ bool ArtMethod::EqualParameters(Handle<mirror::ObjectArray<mirror::Class>> param
 }
 
 ArrayRef<const uint8_t> ArtMethod::GetQuickenedInfo() {
-  const DexFile& dex_file = GetDeclaringClass()->GetDexFile();
+  const DexFile& dex_file = *GetDexFile();
   const OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   if (oat_dex_file == nullptr || (oat_dex_file->GetOatFile() == nullptr)) {
     return ArrayRef<const uint8_t>();

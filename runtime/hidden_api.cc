@@ -280,11 +280,15 @@ uint32_t GetDexFlags(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
   uint32_t flags = kInvalidDexFlags;
   DCHECK(!AreValidDexFlags(flags));
 
+  // Use the non-obsolete method to avoid DexFile mismatch between
+  // the method index and the declaring class.
+  uint32_t method_index = method->GetNonObsoleteMethod()->GetDexMethodIndex();
+
   ClassAccessor accessor(declaring_class->GetDexFile(),
                          *class_def,
                          /* parse_hiddenapi_class_data= */ true);
   auto fn_visit = [&](const ClassAccessor::Method& dex_method) {
-    if (dex_method.GetIndex() == method->GetDexMethodIndex()) {
+    if (dex_method.GetIndex() == method_index) {
       flags = dex_method.GetHiddenapiFlags();
     }
   };

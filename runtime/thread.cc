@@ -1952,8 +1952,7 @@ struct StackDumpVisitor : public MonitorObjectsStackVisitor {
       override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     m = m->GetInterfaceMethodIfProxy(kRuntimePointerSize);
-    ObjPtr<mirror::Class> c = m->GetDeclaringClass();
-    ObjPtr<mirror::DexCache> dex_cache = c->GetDexCache();
+    ObjPtr<mirror::DexCache> dex_cache = m->GetDexCache();
     int line_number = -1;
     if (dex_cache != nullptr) {  // be tolerant of bad input
       const DexFile* dex_file = dex_cache->GetDexFile();
