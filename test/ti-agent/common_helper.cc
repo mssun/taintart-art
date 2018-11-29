@@ -24,6 +24,7 @@
 #include "jvmti.h"
 
 #include "jvmti_helper.h"
+#include "ti_macros.h"
 
 namespace art {
 
@@ -87,7 +88,7 @@ jobject GetJavaValueByType(JNIEnv* env, char type, jvalue value) {
       break;
     default:
       LOG(FATAL) << "Unable to figure out type!";
-      return nullptr;
+      UNREACHABLE();
   }
   std::ostringstream oss;
   oss << "(" << type << ")L" << name << ";";

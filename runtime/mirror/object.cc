@@ -225,11 +225,10 @@ int32_t Object::IdentityHashCode() {
       }
       default: {
         LOG(FATAL) << "Invalid state during hashcode " << lw.GetState();
-        break;
+        UNREACHABLE();
       }
     }
   }
-  UNREACHABLE();
 }
 
 void Object::CheckFieldAssignmentImpl(MemberOffset field_offset, ObjPtr<Object> new_value) {

@@ -2425,7 +2425,7 @@ Location InvokeDexCallingConventionVisitorX86_64::GetNextLocation(DataType::Type
     case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unexpected parameter type " << type;
-      break;
+      UNREACHABLE();
   }
   return Location::NoLocation();
 }

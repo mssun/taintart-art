@@ -554,7 +554,7 @@ static bool ModsMatch(JdwpEvent* pEvent, const ModBasket& basket)
       break;
     default:
       LOG(FATAL) << "unknown mod kind " << pMod->modKind;
-      break;
+      UNREACHABLE();
     }
   }
   return true;

@@ -63,7 +63,7 @@ BumpPointerSpace* Space::AsBumpPointerSpace() {
 
 RegionSpace* Space::AsRegionSpace() {
   LOG(FATAL) << "Unreachable";
-  return nullptr;
+  UNREACHABLE();
 }
 
 AllocSpace* Space::AsAllocSpace() {

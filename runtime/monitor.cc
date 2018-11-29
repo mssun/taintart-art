@@ -168,11 +168,11 @@ bool Monitor::Install(Thread* self) {
     }
     case LockWord::kUnlocked: {
       LOG(FATAL) << "Inflating unlocked lock word";
-      break;
+      UNREACHABLE();
     }
     default: {
       LOG(FATAL) << "Invalid monitor state " << lw.GetState();
-      return false;
+      UNREACHABLE();
     }
   }
   LockWord fat(this, lw.GCState());
@@ -1236,7 +1236,7 @@ bool Monitor::MonitorExit(Thread* self, mirror::Object* obj) {
       }
       default: {
         LOG(FATAL) << "Invalid monitor state " << lock_word.GetState();
-        return false;
+        UNREACHABLE();
       }
     }
   }
@@ -1280,7 +1280,7 @@ void Monitor::Wait(Thread* self, mirror::Object *obj, int64_t ms, int32_t ns,
       case LockWord::kFatLocked:  // Unreachable given the loop condition above. Fall-through.
       default: {
         LOG(FATAL) << "Invalid monitor state " << lock_word.GetState();
-        return;
+        UNREACHABLE();
       }
     }
   }
@@ -1320,7 +1320,7 @@ void Monitor::DoNotify(Thread* self, mirror::Object* obj, bool notify_all) {
     }
     default: {
       LOG(FATAL) << "Invalid monitor state " << lock_word.GetState();
-      return;
+      UNREACHABLE();
     }
   }
 }

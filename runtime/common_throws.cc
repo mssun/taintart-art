@@ -717,7 +717,7 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
                  << instr.DumpString(dex_file)
                  << " in "
                  << method->PrettyMethod();
-      break;
+      UNREACHABLE();
     }
   }
 }

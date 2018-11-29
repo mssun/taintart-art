@@ -286,7 +286,7 @@ void* RosAlloc::AllocPages(Thread* self, size_t num_pages, uint8_t page_map_type
       break;
     default:
       LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(page_map_type);
-      break;
+      UNREACHABLE();
     }
     if (kIsDebugBuild) {
       // Clear the first page since it is not madvised due to the magic number.
@@ -325,7 +325,7 @@ size_t RosAlloc::FreePages(Thread* self, void* ptr, bool already_zero) {
     LOG(FATAL) << "Unreachable - " << __PRETTY_FUNCTION__ << " : " << "pm_idx=" << pm_idx << ", pm_type="
                << static_cast<int>(pm_type) << ", ptr=" << std::hex
                << reinterpret_cast<intptr_t>(ptr);
-    return 0;
+    UNREACHABLE();
   }
   // Update the page map and count the number of pages.
   size_t num_pages = 1;
@@ -514,7 +514,7 @@ size_t RosAlloc::FreeInternal(Thread* self, void* ptr) {
         return FreePages(self, ptr, false);
       case kPageMapLargeObjectPart:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(page_map_[pm_idx]);
-        return 0;
+        UNREACHABLE();
       case kPageMapRunPart: {
         // Find the beginning of the run.
         do {
@@ -529,11 +529,11 @@ size_t RosAlloc::FreeInternal(Thread* self, void* ptr) {
       case kPageMapReleased:
       case kPageMapEmpty:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(page_map_[pm_idx]);
-        return 0;
+        UNREACHABLE();
       }
       default:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(page_map_[pm_idx]);
-        return 0;
+        UNREACHABLE();
     }
   }
   DCHECK(run != nullptr);
@@ -1307,7 +1307,7 @@ size_t RosAlloc::UsableSize(const void* ptr) {
     case kPageMapEmpty:
       LOG(FATAL) << "Unreachable - " << __PRETTY_FUNCTION__ << ": pm_idx=" << pm_idx << ", ptr="
                  << std::hex << reinterpret_cast<intptr_t>(ptr);
-      break;
+      UNREACHABLE();
     case kPageMapLargeObject: {
       size_t num_pages = 1;
       size_t idx = pm_idx + 1;
@@ -1321,7 +1321,7 @@ size_t RosAlloc::UsableSize(const void* ptr) {
     case kPageMapLargeObjectPart:
       LOG(FATAL) << "Unreachable - " << __PRETTY_FUNCTION__ << ": pm_idx=" << pm_idx << ", ptr="
                  << std::hex << reinterpret_cast<intptr_t>(ptr);
-      break;
+      UNREACHABLE();
     case kPageMapRun:
     case kPageMapRunPart: {
       // Find the beginning of the run.
@@ -1340,10 +1340,9 @@ size_t RosAlloc::UsableSize(const void* ptr) {
     }
     default: {
       LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(page_map_[pm_idx]);
-      break;
+      UNREACHABLE();
     }
   }
-  return 0;
 }
 
 bool RosAlloc::Trim() {
@@ -1456,7 +1455,7 @@ void RosAlloc::InspectAll(void (*handler)(void* start, void* end, size_t used_by
       }
       case kPageMapLargeObjectPart:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(pm);
-        break;
+        UNREACHABLE();
       case kPageMapRun: {
         // The start of a run.
         Run* run = reinterpret_cast<Run*>(base_ + i * kPageSize);
@@ -1476,10 +1475,10 @@ void RosAlloc::InspectAll(void (*handler)(void* start, void* end, size_t used_by
       }
       case kPageMapRunPart:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(pm);
-        break;
+        UNREACHABLE();
       default:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(pm);
-        break;
+        UNREACHABLE();
     }
   }
 }
@@ -1809,7 +1808,7 @@ void RosAlloc::Verify() {
         }
         case kPageMapLargeObjectPart:
           LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(pm) << std::endl << DumpPageMap();
-          break;
+          UNREACHABLE();
         case kPageMapRun: {
           // The start of a run.
           Run* run = reinterpret_cast<Run*>(base_ + i * kPageSize);
@@ -1837,7 +1836,7 @@ void RosAlloc::Verify() {
           // Fall-through.
         default:
           LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(pm) << std::endl << DumpPageMap();
-          break;
+          UNREACHABLE();
       }
     }
   }
@@ -2030,7 +2029,7 @@ size_t RosAlloc::ReleasePages() {
         break;  // Skip.
       default:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(pm);
-        break;
+        UNREACHABLE();
     }
   }
   return reclaimed_bytes;
@@ -2138,7 +2137,7 @@ void RosAlloc::DumpStats(std::ostream& os) {
       case kPageMapLargeObjectPart:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(pm) << std::endl
                    << DumpPageMap();
-        break;
+        UNREACHABLE();
       case kPageMapRun: {
         Run* run = reinterpret_cast<Run*>(base_ + i * kPageSize);
         size_t idx = run->size_bracket_idx_;
@@ -2157,7 +2156,7 @@ void RosAlloc::DumpStats(std::ostream& os) {
       default:
         LOG(FATAL) << "Unreachable - page map type: " << static_cast<int>(pm) << std::endl
                    << DumpPageMap();
-        break;
+        UNREACHABLE();
     }
   }
   os << "RosAlloc stats:\n";

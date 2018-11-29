@@ -3046,7 +3046,7 @@ void InstructionCodeGeneratorARM64::VisitDivZeroCheck(HDivZeroCheck* instruction
 
   if (!DataType::IsIntegralType(type)) {
     LOG(FATAL) << "Unexpected type " << type << " for DivZeroCheck.";
-    return;
+    UNREACHABLE();
   }
 
   if (value.IsConstant()) {

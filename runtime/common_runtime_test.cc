@@ -139,7 +139,7 @@ void CommonRuntimeTestImpl::SetUp() {
   PreRuntimeCreate();
   if (!Runtime::Create(options, false)) {
     LOG(FATAL) << "Failed to create runtime";
-    return;
+    UNREACHABLE();
   }
   PostRuntimeCreate();
   runtime_.reset(Runtime::Current());

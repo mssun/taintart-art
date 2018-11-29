@@ -895,7 +895,7 @@ void ImageWriter::SetImageBinSlot(mirror::Object* object, BinSlot bin_slot) {
         oss << ". Lock owner:" << lw.ThinLockOwner();
       }
       LOG(FATAL) << oss.str();
-      break;
+      UNREACHABLE();
     }
     case LockWord::kUnlocked:
       // No hash, don't need to save it.

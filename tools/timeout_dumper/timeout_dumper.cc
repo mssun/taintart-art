@@ -432,7 +432,7 @@ void DumpThread(pid_t pid,
     LOG(ERROR) << prefix << "(failed to create Backtrace for thread " << tid << ")";
     return;
   }
-  backtrace->SetSkipFrames(0);
+  backtrace->SetSkipFrames(false);
   if (!backtrace->Unwind(0, nullptr)) {
     LOG(ERROR) << prefix << "(backtrace::Unwind failed for thread " << tid
                << ": " <<  backtrace->GetErrorString(backtrace->GetError()) << ")";

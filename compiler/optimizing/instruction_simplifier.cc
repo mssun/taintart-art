@@ -749,8 +749,8 @@ static HCondition* GetOppositeConditionSwapOps(ArenaAllocator* allocator, HInstr
       return new (allocator) HBelowOrEqual(rhs, lhs);
     default:
       LOG(FATAL) << "Unknown ConditionType " << cond->GetKind();
+      UNREACHABLE();
   }
-  return nullptr;
 }
 
 static bool CmpHasBoolType(HInstruction* input, HInstruction* cmp) {
