@@ -26,7 +26,7 @@
 #include "dex/dex_instruction_list.h"
 #include "experimental_flags.h"
 #include "interpreter_common.h"
-#include "jit/jit.h"
+#include "jit/jit-inl.h"
 #include "jvalue-inl.h"
 #include "mirror/string-alloc-inl.h"
 #include "nth_caller_visitor.h"
