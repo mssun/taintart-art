@@ -173,7 +173,7 @@ bool ArmManagedRuntimeCallingConvention::IsCurrentParamOnStack() {
 
 ManagedRegister ArmManagedRuntimeCallingConvention::CurrentParamRegister() {
   LOG(FATAL) << "Should not reach here";
-  return ManagedRegister::NoRegister();
+  UNREACHABLE();
 }
 
 FrameOffset ArmManagedRuntimeCallingConvention::CurrentParamStackOffset() {

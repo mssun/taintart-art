@@ -2169,7 +2169,7 @@ void Heap::TransitionCollector(CollectorType collector_type) {
       default: {
         LOG(FATAL) << "Attempted to transition to invalid collector type "
                    << static_cast<size_t>(collector_type);
-        break;
+        UNREACHABLE();
       }
     }
     ChangeCollector(collector_type);

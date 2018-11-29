@@ -1074,8 +1074,8 @@ bool HInductionVarAnalysis::IsTaken(InductionInfo* lower_expr,
           && lower_value >= upper_value;
     default:
       LOG(FATAL) << "CONDITION UNREACHABLE";
+      UNREACHABLE();
   }
-  return false;  // not certain, may be untaken
 }
 
 bool HInductionVarAnalysis::IsFinite(InductionInfo* upper_expr,
@@ -1099,8 +1099,8 @@ bool HInductionVarAnalysis::IsFinite(InductionInfo* upper_expr,
       return (IsAtLeast(upper_expr, &value) && value >= (min - stride_value));
     default:
       LOG(FATAL) << "CONDITION UNREACHABLE";
+      UNREACHABLE();
   }
-  return false;  // not certain, may be infinite
 }
 
 bool HInductionVarAnalysis::FitsNarrowerControl(InductionInfo* lower_expr,

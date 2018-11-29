@@ -257,7 +257,7 @@ bool X86JniCallingConvention::IsCurrentParamOnStack() {
 
 ManagedRegister X86JniCallingConvention::CurrentParamRegister() {
   LOG(FATAL) << "Should not reach here";
-  return ManagedRegister::NoRegister();
+  UNREACHABLE();
 }
 
 FrameOffset X86JniCallingConvention::CurrentParamStackOffset() {

@@ -297,7 +297,7 @@ class QuickArgumentVisitor {
       case 4: return (6 * GetBytesPerGprSpillLocation(kRuntimeISA));
       default:
       LOG(FATAL) << "Unexpected GPR index: " << gpr_index;
-      return 0;
+      UNREACHABLE();
     }
   }
 #else

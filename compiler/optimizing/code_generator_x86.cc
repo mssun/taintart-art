@@ -1228,7 +1228,7 @@ Location InvokeDexCallingConventionVisitorX86::GetNextLocation(DataType::Type ty
     case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unexpected parameter type " << type;
-      break;
+      UNREACHABLE();
   }
   return Location::NoLocation();
 }
@@ -2989,7 +2989,7 @@ void LocationsBuilderX86::VisitAdd(HAdd* add) {
 
     default:
       LOG(FATAL) << "Unexpected add type " << add->GetResultType();
-      break;
+      UNREACHABLE();
   }
 }
 

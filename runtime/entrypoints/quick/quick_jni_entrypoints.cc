@@ -252,7 +252,7 @@ extern uint64_t GenericJniMethodEnd(Thread* self,
         return 0;
       default:
         LOG(FATAL) << "Unexpected return shorty character " << return_shorty_char;
-        return 0;
+        UNREACHABLE();
     }
   }
 }

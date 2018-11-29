@@ -240,7 +240,7 @@ bool SkipAnnotationValue(const DexFile& dex_file, const uint8_t** annotation_ptr
       break;
     default:
       LOG(FATAL) << StringPrintf("Bad annotation element value byte 0x%02x", value_type);
-      return false;
+      UNREACHABLE();
   }
 
   annotation += width;

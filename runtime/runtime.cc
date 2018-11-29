@@ -1241,7 +1241,6 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     }
     case JdwpProvider::kUnset: {
       LOG(FATAL) << "Illegal jdwp provider " << jdwp_provider_ << " was not filtered out!";
-      break;
     }
   }
   callbacks_->AddThreadLifecycleCallback(Dbg::GetThreadLifecycleCallback());
@@ -1856,7 +1855,7 @@ int32_t Runtime::GetStat(int kind) {
     return 0;  // backward compatibility
   default:
     LOG(FATAL) << "Unknown statistic " << kind;
-    return -1;  // unreachable
+    UNREACHABLE();
   }
 }
 

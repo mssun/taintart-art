@@ -73,7 +73,7 @@ size_t CompiledCode::CodeDelta(InstructionSet instruction_set) {
     }
     default:
       LOG(FATAL) << "Unknown InstructionSet: " << instruction_set;
-      return 0;
+      UNREACHABLE();
   }
 }
 
@@ -94,7 +94,7 @@ const void* CompiledCode::CodePointer(const void* code_pointer, InstructionSet i
     }
     default:
       LOG(FATAL) << "Unknown InstructionSet: " << instruction_set;
-      return nullptr;
+      UNREACHABLE();
   }
 }
 
