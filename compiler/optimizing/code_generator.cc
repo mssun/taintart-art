@@ -1662,7 +1662,7 @@ QuickEntrypointEnum CodeGenerator::GetArrayAllocationEntrypoint(HNewArray* new_a
     case 3: return kQuickAllocArrayResolved64;
   }
   LOG(FATAL) << "Unreachable";
-  return kQuickAllocArrayResolved;
+  UNREACHABLE();
 }
 
 }  // namespace art

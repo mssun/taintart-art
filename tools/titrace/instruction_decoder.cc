@@ -456,9 +456,10 @@ class ClassInstructionDecoder : public InstructionDecoder {
         case kBreakpoint: return "breakpoint";
         case kImpdep1: return "impdep1";
         case kImpdep2: return "impdep2";
-        default: LOG(FATAL) << "Unknown opcode " << op;
+        default:
+          LOG(FATAL) << "Unknown opcode " << op;
+          __builtin_unreachable();
        }
-       return "";
      }
   };
 };
@@ -500,7 +501,7 @@ DEX_INSTRUCTION_LIST(MAKE_ENUM_DEFINITION)
 #undef MAKE_ENUM_DEFINITION
         default: LOG(FATAL) << "Unknown opcode " << op;
       }
-      return "";
+      __builtin_unreachable();
     }
   };
 };

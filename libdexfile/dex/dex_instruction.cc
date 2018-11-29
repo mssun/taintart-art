@@ -85,7 +85,7 @@ int32_t Instruction::GetTargetOffset() const {
     default: LOG(FATAL) << "Tried to access the branch offset of an instruction " << Name() <<
         " which does not have a target operand.";
   }
-  return 0;
+  UNREACHABLE();
 }
 
 bool Instruction::CanFlowThrough() const {

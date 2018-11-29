@@ -181,7 +181,7 @@ bool Arm64ManagedRuntimeCallingConvention::IsCurrentParamOnStack() {
 
 ManagedRegister Arm64ManagedRuntimeCallingConvention::CurrentParamRegister() {
   LOG(FATAL) << "Should not reach here";
-  return ManagedRegister::NoRegister();
+  UNREACHABLE();
 }
 
 FrameOffset Arm64ManagedRuntimeCallingConvention::CurrentParamStackOffset() {

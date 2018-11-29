@@ -276,7 +276,7 @@ ArtMethod* WellKnownClasses::StringInitToStringFactory(ArtMethod* string_init) {
       STRING_INIT_LIST(TO_STRING_FACTORY)
   #undef TO_STRING_FACTORY
   LOG(FATAL) << "Could not find StringFactory method for String.<init>";
-  return nullptr;
+  UNREACHABLE();
 }
 
 uint32_t WellKnownClasses::StringInitToEntryPoint(ArtMethod* string_init) {
@@ -288,7 +288,7 @@ uint32_t WellKnownClasses::StringInitToEntryPoint(ArtMethod* string_init) {
       STRING_INIT_LIST(TO_ENTRY_POINT)
   #undef TO_ENTRY_POINT
   LOG(FATAL) << "Could not find StringFactory method for String.<init>";
-  return 0;
+  UNREACHABLE();
 }
 #undef STRING_INIT_LIST
 

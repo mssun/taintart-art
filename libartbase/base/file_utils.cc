@@ -157,7 +157,7 @@ static const char* GetAndroidDir(const char* env_var, const char* default_dir) {
     return dir;
   } else {
     LOG(FATAL) << error_msg;
-    return nullptr;
+    UNREACHABLE();
   }
 }
 

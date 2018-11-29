@@ -1876,7 +1876,7 @@ void RecordArrayElementsInTransaction(ObjPtr<mirror::Array> array, int32_t count
     default:
       LOG(FATAL) << "Unsupported primitive type " << primitive_component_type
                  << " in fill-array-data";
-      break;
+      UNREACHABLE();
   }
 }
 

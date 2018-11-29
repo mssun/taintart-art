@@ -960,7 +960,7 @@ static uint32_t GetInstrumentationEventsFor(ArtJvmtiEvent event) {
       return art::instrumentation::Instrumentation::kExceptionHandled;
     default:
       LOG(FATAL) << "Unknown event ";
-      return 0;
+      UNREACHABLE();
   }
 }
 
