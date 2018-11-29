@@ -109,7 +109,7 @@ bool Mips64ManagedRuntimeCallingConvention::IsCurrentParamOnStack() {
 
 ManagedRegister Mips64ManagedRuntimeCallingConvention::CurrentParamRegister() {
   LOG(FATAL) << "Should not reach here";
-  return ManagedRegister::NoRegister();
+  UNREACHABLE();
 }
 
 FrameOffset Mips64ManagedRuntimeCallingConvention::CurrentParamStackOffset() {

@@ -70,7 +70,7 @@ uint64_t Request::ReadValue(size_t width) {
     case 2: value = Read2BE(); break;
     case 4: value = Read4BE(); break;
     case 8: value = Read8BE(); break;
-    default: LOG(FATAL) << width; break;
+    default: LOG(FATAL) << width;
   }
   return value;
 }

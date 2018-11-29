@@ -1228,7 +1228,7 @@ size_t Dbg::GetTagWidth(JDWP::JdwpTag tag) {
     return 8;
   default:
     LOG(FATAL) << "Unknown tag " << tag;
-    return -1;
+    UNREACHABLE();
   }
 }
 
@@ -2266,7 +2266,7 @@ JDWP::JdwpThreadStatus Dbg::ToJdwpThreadStatus(ThreadState state) {
       // Don't add a 'default' here so the compiler can spot incompatible enum changes.
   }
   LOG(FATAL) << "Unknown thread state: " << state;
-  return JDWP::TS_ZOMBIE;
+  UNREACHABLE();
 }
 
 JDWP::JdwpError Dbg::GetThreadStatus(JDWP::ObjectId thread_id, JDWP::JdwpThreadStatus* pThreadStatus,
@@ -3155,7 +3155,7 @@ void Dbg::ProcessDeoptimizationRequest(const DeoptimizationRequest& request) {
       break;
     default:
       LOG(FATAL) << "Unsupported deoptimization request kind " << request.GetKind();
-      break;
+      UNREACHABLE();
   }
 }
 
@@ -3233,7 +3233,7 @@ void Dbg::RequestDeoptimizationLocked(const DeoptimizationRequest& req) {
     }
     default: {
       LOG(FATAL) << "Unknown deoptimization request kind " << req.GetKind();
-      break;
+      UNREACHABLE();
     }
   }
 }

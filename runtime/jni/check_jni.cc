@@ -880,7 +880,7 @@ class ScopedCheck {
       break;
     case kDirectByteBuffer:
       UNIMPLEMENTED(FATAL);
-      break;
+      UNREACHABLE();
     case kString:
       okay = obj->GetClass()->IsStringClass();
       break;
@@ -2945,7 +2945,7 @@ class CheckJNI {
           break;
         case Primitive::kPrimVoid:
           LOG(FATAL) << "Unexpected type: " << type;
-          break;
+          UNREACHABLE();
       }
       if (sc.Check(soa, false, result_check, &result)) {
         return result;
@@ -3031,7 +3031,7 @@ class CheckJNI {
           break;
         case Primitive::kPrimVoid:
           LOG(FATAL) << "Unexpected type: " << type;
-          break;
+          UNREACHABLE();
       }
       JniValueType result;
       result.V = nullptr;

@@ -1561,7 +1561,7 @@ uint32_t ThreadList::AllocThreadId(Thread* self) {
     }
   }
   LOG(FATAL) << "Out of internal thread ids";
-  return 0;
+  UNREACHABLE();
 }
 
 void ThreadList::ReleaseThreadId(Thread* self, uint32_t id) {

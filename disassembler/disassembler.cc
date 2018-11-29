@@ -75,7 +75,7 @@ Disassembler* Disassembler::Create(InstructionSet instruction_set, DisassemblerO
 #endif
     default:
       UNIMPLEMENTED(FATAL) << static_cast<uint32_t>(instruction_set);
-      return nullptr;
+      UNREACHABLE();
   }
 }
 

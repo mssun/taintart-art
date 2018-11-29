@@ -1051,7 +1051,7 @@ void Hprof::MarkRootObject(const mirror::Object* obj, jobject jni_obj, HprofHeap
     case HPROF_ROOT_REFERENCE_CLEANUP:
     case HPROF_UNREACHABLE:
       LOG(FATAL) << "obsolete tag " << static_cast<int>(heap_tag);
-      break;
+      UNREACHABLE();
   }
 
   ++objects_in_segment_;

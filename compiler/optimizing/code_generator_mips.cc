@@ -147,7 +147,7 @@ Location InvokeDexCallingConventionVisitorMIPS::GetNextLocation(DataType::Type t
     case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unexpected parameter type " << type;
-      break;
+      UNREACHABLE();
   }
 
   // Space on the stack is reserved for all arguments.

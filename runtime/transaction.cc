@@ -531,7 +531,7 @@ void Transaction::ObjectLog::UndoFieldWrite(mirror::Object* obj,
       break;
     default:
       LOG(FATAL) << "Unknown value kind " << static_cast<int>(field_value.kind);
-      break;
+      UNREACHABLE();
   }
 }
 
@@ -558,7 +558,7 @@ void Transaction::InternStringLog::Undo(InternTable* intern_table) const {
           break;
         default:
           LOG(FATAL) << "Unknown interned string kind";
-          break;
+          UNREACHABLE();
       }
       break;
     }
@@ -572,13 +572,13 @@ void Transaction::InternStringLog::Undo(InternTable* intern_table) const {
           break;
         default:
           LOG(FATAL) << "Unknown interned string kind";
-          break;
+          UNREACHABLE();
       }
       break;
     }
     default:
       LOG(FATAL) << "Unknown interned string op";
-      break;
+      UNREACHABLE();
   }
 }
 
@@ -669,9 +669,10 @@ void Transaction::ArrayLog::UndoArrayWrite(mirror::Array* array,
       break;
     case Primitive::kPrimNot:
       LOG(FATAL) << "ObjectArray should be treated as Object";
-      break;
+      UNREACHABLE();
     default:
       LOG(FATAL) << "Unsupported type " << array_type;
+      UNREACHABLE();
   }
 }
 

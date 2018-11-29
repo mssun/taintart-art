@@ -1920,7 +1920,7 @@ OatFile::OatClass::OatClass(const OatFile* oat_file,
       }
       case kOatClassMax: {
         LOG(FATAL) << "Invalid OatClassType " << type_;
-        break;
+        UNREACHABLE();
       }
     }
 }

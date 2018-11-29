@@ -1037,26 +1037,26 @@ static uint32_t ComputeSRegisterListMask(const SRegisterList& regs) {
 size_t CodeGeneratorARMVIXL::SaveCoreRegister(size_t stack_index ATTRIBUTE_UNUSED,
                                               uint32_t reg_id ATTRIBUTE_UNUSED) {
   TODO_VIXL32(FATAL);
-  return 0;
+  UNREACHABLE();
 }
 
 // Restores the register from the stack. Returns the size taken on stack.
 size_t CodeGeneratorARMVIXL::RestoreCoreRegister(size_t stack_index ATTRIBUTE_UNUSED,
                                                  uint32_t reg_id ATTRIBUTE_UNUSED) {
   TODO_VIXL32(FATAL);
-  return 0;
+  UNREACHABLE();
 }
 
 size_t CodeGeneratorARMVIXL::SaveFloatingPointRegister(size_t stack_index ATTRIBUTE_UNUSED,
                                                        uint32_t reg_id ATTRIBUTE_UNUSED) {
   TODO_VIXL32(FATAL);
-  return 0;
+  UNREACHABLE();
 }
 
 size_t CodeGeneratorARMVIXL::RestoreFloatingPointRegister(size_t stack_index ATTRIBUTE_UNUSED,
                                                           uint32_t reg_id ATTRIBUTE_UNUSED) {
   TODO_VIXL32(FATAL);
-  return 0;
+  UNREACHABLE();
 }
 
 static void GenerateDataProcInstruction(HInstruction::InstructionKind kind,
@@ -2268,7 +2268,7 @@ Location InvokeDexCallingConventionVisitorARMVIXL::GetNextLocation(DataType::Typ
     case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unexpected parameter type " << type;
-      break;
+      UNREACHABLE();
   }
   return Location::NoLocation();
 }
