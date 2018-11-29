@@ -28,9 +28,13 @@
 #define ART_RUNTIME_BARRIER_H_
 
 #include <memory>
-#include "base/mutex.h"
+
+#include "base/locks.h"
 
 namespace art {
+
+class ConditionVariable;
+class LOCKABLE Mutex;
 
 // TODO: Maybe give this a better name.
 class Barrier {
@@ -44,10 +48,10 @@ class Barrier {
   virtual ~Barrier();
 
   // Pass through the barrier, decrement the count but do not block.
-  void Pass(Thread* self) REQUIRES(!lock_);
+  void Pass(Thread* self) REQUIRES(!GetLock());
 
   // Wait on the barrier, decrement the count.
-  void Wait(Thread* self) REQUIRES(!lock_);
+  void Wait(Thread* self) REQUIRES(!GetLock());
 
   // The following three calls are only safe if we somehow know that no other thread both
   // - has been woken up, and
@@ -58,26 +62,30 @@ class Barrier {
   // Increment the count by delta, wait on condition if count is non zero.  If LockHandling is
   // kAllowHoldingLocks we will not check that all locks are released when waiting.
   template <Barrier::LockHandling locks = kDisallowHoldingLocks>
-  void Increment(Thread* self, int delta) REQUIRES(!lock_);
+  void Increment(Thread* self, int delta) REQUIRES(!GetLock());
 
   // Increment the count by delta, wait on condition if count is non zero, with a timeout. Returns
   // true if time out occurred.
-  bool Increment(Thread* self, int delta, uint32_t timeout_ms) REQUIRES(!lock_);
+  bool Increment(Thread* self, int delta, uint32_t timeout_ms) REQUIRES(!GetLock());
 
   // Set the count to a new value.  This should only be used if there is no possibility that
   // another thread is still in Wait().  See above.
-  void Init(Thread* self, int count) REQUIRES(!lock_);
+  void Init(Thread* self, int count) REQUIRES(!GetLock());
 
-  int GetCount(Thread* self) REQUIRES(!lock_);
+  int GetCount(Thread* self) REQUIRES(!GetLock());
 
  private:
-  void SetCountLocked(Thread* self, int count) REQUIRES(lock_);
+  void SetCountLocked(Thread* self, int count) REQUIRES(GetLock());
+
+  Mutex* GetLock() {
+    return lock_.get();
+  }
 
   // Counter, when this reaches 0 all people blocked on the barrier are signalled.
-  int count_ GUARDED_BY(lock_);
+  int count_ GUARDED_BY(GetLock());
 
-  Mutex lock_ ACQUIRED_AFTER(Locks::abort_lock_);
-  ConditionVariable condition_ GUARDED_BY(lock_);
+  std::unique_ptr<Mutex> lock_ ACQUIRED_AFTER(Locks::abort_lock_);
+  std::unique_ptr<ConditionVariable> condition_ GUARDED_BY(GetLock());
 };
 
 }  // namespace art
