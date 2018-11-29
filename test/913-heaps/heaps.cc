@@ -43,6 +43,10 @@ using android::base::StringPrintf;
 
 #define UNREACHABLE  __builtin_unreachable
 
+// The tag value used on the Java side to tag the current thread.
+static constexpr jlong kThreadTag = 3000;
+static constexpr const char* kThreadReferree = "3000@0";
+
 extern "C" JNIEXPORT void JNICALL Java_art_Test913_forceGarbageCollection(
     JNIEnv* env, jclass klass ATTRIBUTE_UNUSED) {
   jvmtiError ret = jvmti_env->ForceGarbageCollection();
@@ -174,12 +178,12 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
       }
       // Ignore classes (1000 <= tag < 3000) for thread objects. These can be held by the JIT.
       if (reference_kind == JVMTI_HEAP_REFERENCE_THREAD && class_tag == 0 &&
-              (1000 <= *tag_ptr &&  *tag_ptr < 3000)) {
+              (1000 <= *tag_ptr &&  *tag_ptr < kThreadTag)) {
         return 0;
       }
       // Ignore stack-locals of untagged threads. That is the environment.
       if (reference_kind == JVMTI_HEAP_REFERENCE_STACK_LOCAL &&
-          reference_info->stack_local.thread_tag != 3000) {
+          reference_info->stack_local.thread_tag != kThreadTag) {
         return 0;
       }
       // Ignore array elements with an untagged source. These are from the environment.
@@ -422,7 +426,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
           jint index = reference_info->array.index;
           // Normalize if it's "0@0" -> "3000@1".
           // TODO: A pre-pass could probably give us this index to check explicitly.
-          if (referrer == "0@0" && referree == "3000@0") {
+          if (referrer == "0@0" && referree == kThreadReferree) {
             index = 0;
           }
           std::string tmp = StringPrintf("array-element@%d", index);
@@ -645,7 +649,10 @@ extern "C" JNIEXPORT jstring JNICALL Java_art_Test913_followReferencesPrimitiveA
                                            const void* elements,
                                            void* user_data) {
       FindArrayCallbacks* p = reinterpret_cast<FindArrayCallbacks*>(user_data);
-      if (*tag_ptr != 0) {
+      // The thread object may be reachable from the starting value because of setup in the
+      // framework (when this test runs as part of CTS). Ignore, we're not testing the thread
+      // here.)
+      if (*tag_ptr != 0 && *tag_ptr != kThreadTag) {
         std::ostringstream oss;
         oss << *tag_ptr
             << '@'
@@ -758,7 +765,10 @@ extern "C" JNIEXPORT jstring JNICALL Java_art_Test913_followReferencesPrimitiveF
                                                     jvmtiPrimitiveType value_type,
                                                     void* user_data) {
       FindFieldCallbacks* p = reinterpret_cast<FindFieldCallbacks*>(user_data);
-      if (*tag_ptr != 0) {
+      // The thread object may be reachable from the starting value because of setup in the
+      // framework (when this test runs as part of CTS). Ignore, we're not testing the thread
+      // here.)
+      if (*tag_ptr != 0 && *tag_ptr != kThreadTag) {
         std::ostringstream oss;
         oss << *tag_ptr
             << '@'
