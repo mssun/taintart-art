@@ -436,20 +436,15 @@ static void ThrowNullPointerExceptionForMethodAccessImpl(uint32_t method_idx,
   ThrowException("Ljava/lang/NullPointerException;", nullptr, msg.str().c_str());
 }
 
-void ThrowNullPointerExceptionForMethodAccess(uint32_t method_idx,
-                                              InvokeType type) {
-  ObjPtr<mirror::DexCache> dex_cache =
-      Thread::Current()->GetCurrentMethod(nullptr)->GetDeclaringClass()->GetDexCache();
-  const DexFile& dex_file = *dex_cache->GetDexFile();
+void ThrowNullPointerExceptionForMethodAccess(uint32_t method_idx, InvokeType type) {
+  const DexFile& dex_file = *Thread::Current()->GetCurrentMethod(nullptr)->GetDexFile();
   ThrowNullPointerExceptionForMethodAccessImpl(method_idx, dex_file, type);
 }
 
-void ThrowNullPointerExceptionForMethodAccess(ArtMethod* method,
-                                              InvokeType type) {
-  ObjPtr<mirror::DexCache> dex_cache = method->GetDeclaringClass()->GetDexCache();
-  const DexFile& dex_file = *dex_cache->GetDexFile();
+void ThrowNullPointerExceptionForMethodAccess(ArtMethod* method, InvokeType type) {
   ThrowNullPointerExceptionForMethodAccessImpl(method->GetDexMethodIndex(),
-                                               dex_file, type);
+                                               *method->GetDexFile(),
+                                               type);
 }
 
 static bool IsValidReadBarrierImplicitCheck(uintptr_t addr) {
@@ -577,7 +572,7 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
   CHECK_LT(throw_dex_pc, accessor.InsnsSizeInCodeUnits());
   const Instruction& instr = accessor.InstructionAt(throw_dex_pc);
   if (check_address && !IsValidImplicitCheck(addr, instr)) {
-    const DexFile* dex_file = method->GetDeclaringClass()->GetDexCache()->GetDexFile();
+    const DexFile* dex_file = method->GetDexFile();
     LOG(FATAL) << "Invalid address for an implicit NullPointerException check: "
                << "0x" << std::hex << addr << std::dec
                << ", at "
@@ -717,8 +712,7 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
       break;
     }
     default: {
-      const DexFile* dex_file =
-          method->GetDeclaringClass()->GetDexCache()->GetDexFile();
+      const DexFile* dex_file = method->GetDexFile();
       LOG(FATAL) << "NullPointerException at an unexpected instruction: "
                  << instr.DumpString(dex_file)
                  << " in "
