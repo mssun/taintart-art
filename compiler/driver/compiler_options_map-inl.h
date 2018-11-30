@@ -84,6 +84,7 @@ inline bool ReadCompilerOptions(Base& map, CompilerOptions* options, std::string
   if (map.Exists(Base::CheckProfiledMethods)) {
     options->check_profiled_methods_ = *map.Get(Base::CheckProfiledMethods);
   }
+  map.AssignIfExists(Base::MaxImageBlockSize, &options->max_image_block_size_);
 
   if (map.Exists(Base::DumpTimings)) {
     options->dump_timings_ = true;
@@ -201,7 +202,11 @@ inline void AddCompilerOptionsArgumentParserOptions(Builder& b) {
 
       .Define("--verbose-methods=_")
           .template WithType<ParseStringList<','>>()
-          .IntoKey(Map::VerboseMethods);
+          .IntoKey(Map::VerboseMethods)
+
+      .Define("--max-image-block-size=_")
+          .template WithType<unsigned int>()
+          .IntoKey(Map::MaxImageBlockSize);
 }
 
 #pragma GCC diagnostic pop

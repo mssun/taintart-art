@@ -20,15 +20,23 @@ namespace art {
 namespace linker {
 
 TEST_F(ImageTest, WriteReadUncompressed) {
-  TestWriteRead(ImageHeader::kStorageModeUncompressed);
+  TestWriteRead(ImageHeader::kStorageModeUncompressed,
+                /*max_image_block_size=*/std::numeric_limits<uint32_t>::max());
 }
 
 TEST_F(ImageTest, WriteReadLZ4) {
-  TestWriteRead(ImageHeader::kStorageModeLZ4);
+  TestWriteRead(ImageHeader::kStorageModeLZ4,
+                /*max_image_block_size=*/std::numeric_limits<uint32_t>::max());
 }
 
 TEST_F(ImageTest, WriteReadLZ4HC) {
-  TestWriteRead(ImageHeader::kStorageModeLZ4HC);
+  TestWriteRead(ImageHeader::kStorageModeLZ4HC,
+                /*max_image_block_size=*/std::numeric_limits<uint32_t>::max());
+}
+
+
+TEST_F(ImageTest, WriteReadLZ4HCKBBlock) {
+  TestWriteRead(ImageHeader::kStorageModeLZ4HC, /*max_image_block_size=*/KB);
 }
 
 }  // namespace linker
