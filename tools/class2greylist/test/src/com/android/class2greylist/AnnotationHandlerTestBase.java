@@ -36,14 +36,14 @@ public class AnnotationHandlerTestBase {
     public TestName mTestName = new TestName();
 
     protected Javac mJavac;
-    protected GreylistConsumer mConsumer;
+    protected AnnotationConsumer mConsumer;
     protected Status mStatus;
 
     @Before
     public void baseSetup() throws IOException {
         System.out.println(String.format("\n============== STARTING TEST: %s ==============\n",
                 mTestName.getMethodName()));
-        mConsumer = mock(GreylistConsumer.class);
+        mConsumer = mock(AnnotationConsumer.class);
         mStatus = mock(Status.class, withSettings().verboseLogging());
         mJavac = new Javac();
     }
