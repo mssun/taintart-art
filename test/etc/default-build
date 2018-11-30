@@ -92,7 +92,7 @@ else
   HAS_SRC_DEX2OAT_UNRESOLVED=false
 fi
 
-if [ -f api-light-greylist.txt -o -f api-dark-greylist.txt -o -f api-blacklist.txt ]; then
+if [ -f hiddenapi-flags.csv ]; then
   HAS_HIDDENAPI_SPEC=true
 else
   HAS_HIDDENAPI_SPEC=false
@@ -327,15 +327,8 @@ function make_hiddenapi() {
     args+=("--output-dex=$1")
     shift
   done
-  if [ -f api-light-greylist.txt ]; then
-    args+=("--light-greylist=api-light-greylist.txt")
-  fi
-  if [ -f api-dark-greylist.txt ]; then
-    args+=("--dark-greylist=api-dark-greylist.txt")
-  fi
-  if [ -f api-blacklist.txt ]; then
-    args+=("--blacklist=api-blacklist.txt")
-  fi
+  args+=("--api-flags=hiddenapi-flags.csv")
+  args+=("--no-force-assign-all")
   ${HIDDENAPI} "${args[@]}"
 }
 

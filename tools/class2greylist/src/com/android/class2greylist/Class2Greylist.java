@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -57,16 +58,27 @@ public class Class2Greylist {
                     "Ldalvik/annotation/compat/UnsupportedAppUsage;");
     private static final Set<String> WHITELIST_ANNOTATIONS = ImmutableSet.of();
 
+    public static final String FLAG_WHITELIST = "whitelist";
+    public static final String FLAG_GREYLIST = "greylist";
+    public static final String FLAG_BLACKLIST = "blacklist";
+    public static final String FLAG_GREYLIST_MAX_O = "greylist-max-o";
+
+    private static final Map<Integer, String> TARGET_SDK_TO_LIST_MAP;
+    static {
+        Map<Integer, String> map = new HashMap<>();
+        map.put(null, FLAG_GREYLIST);
+        map.put(26, FLAG_GREYLIST_MAX_O);
+        map.put(28, FLAG_GREYLIST);
+        TARGET_SDK_TO_LIST_MAP = Collections.unmodifiableMap(map);
+    }
+
     private final Status mStatus;
     private final String mPublicApiListFile;
-    private final String[] mPerSdkOutputFiles;
-    private final String mWhitelistFile;
+    private final String mCsvFlagsFile;
     private final String mCsvMetadataFile;
     private final String[] mJarFiles;
-    private final GreylistConsumer mOutput;
-    private final Predicate<Integer> mAllowedSdkVersions;
+    private final AnnotationConsumer mOutput;
     private final Set<String> mPublicApis;
-
 
     public static void main(String[] args) {
         Options options = new Options();
@@ -76,19 +88,9 @@ public class Class2Greylist {
                 .withDescription("Public API list file. Used to de-dupe bridge methods.")
                 .create("p"));
         options.addOption(OptionBuilder
-                .withLongOpt("write-greylist")
-                .hasArgs()
-                .withDescription(
-                        "Specify file to write greylist to. Can be specified multiple times. " +
-                        "Format is either just a filename, or \"int[,int,...]:filename\". If " +
-                        "integers are given, members with matching maxTargetSdk values are " +
-                        "written to the file; if no integer or \"none\" is given, members with " +
-                        "no maxTargetSdk are written.")
-                .create("g"));
-        options.addOption(OptionBuilder
-                .withLongOpt("write-whitelist")
+                .withLongOpt("write-flags-csv")
                 .hasArgs(1)
-                .withDescription("Specify file to write whitelist to.")
+                .withDescription("Specify file to write hiddenapi flags to.")
                 .create('w'));
         options.addOption(OptionBuilder
                 .withLongOpt("debug")
@@ -106,7 +108,7 @@ public class Class2Greylist {
                 .hasArgs(1)
                 .withDescription("Specify a file to write API metaadata to. This is a CSV file " +
                         "containing any annotation properties for all members. Do not use in " +
-                        "conjunction with --write-greylist or --write-whitelist.")
+                        "conjunction with --write-flags-csv.")
                 .create('c'));
         options.addOption(OptionBuilder
                 .withLongOpt("help")
@@ -144,7 +146,6 @@ public class Class2Greylist {
                 Class2Greylist c2gl = new Class2Greylist(
                         status,
                         cmd.getOptionValue('p', null),
-                        cmd.getOptionValues('g'),
                         cmd.getOptionValue('w', null),
                         cmd.getOptionValue('c', null),
                         jarFiles);
@@ -163,34 +164,18 @@ public class Class2Greylist {
     }
 
     @VisibleForTesting
-    Class2Greylist(Status status, String publicApiListFile, String[] perSdkLevelOutputFiles,
-            String whitelistOutputFile, String csvMetadataFile, String[] jarFiles)
+    Class2Greylist(Status status, String publicApiListFile, String csvFlagsFile,
+            String csvMetadataFile, String[] jarFiles)
             throws IOException {
         mStatus = status;
         mPublicApiListFile = publicApiListFile;
-        mPerSdkOutputFiles = perSdkLevelOutputFiles;
-        mWhitelistFile = whitelistOutputFile;
+        mCsvFlagsFile = csvFlagsFile;
         mCsvMetadataFile = csvMetadataFile;
         mJarFiles = jarFiles;
         if (mCsvMetadataFile != null) {
-            mOutput = new CsvGreylistConsumer(mStatus, mCsvMetadataFile);
-            mAllowedSdkVersions = x -> true;
+            mOutput = new AnnotationPropertyWriter(mCsvMetadataFile);
         } else {
-            Map<Integer, String> outputFiles = readGreylistMap(mStatus, mPerSdkOutputFiles);
-            mOutput = new FileWritingGreylistConsumer(mStatus, outputFiles, mWhitelistFile);
-            mAllowedSdkVersions = new Predicate<Integer>(){
-                @Override
-                public boolean test(Integer i) {
-                    return outputFiles.keySet().contains(i);
-                }
-
-                @Override
-                public String toString() {
-                    // we reply on this toString behaviour for readable error messages in
-                    // GreylistAnnotationHandler
-                    return Joiner.on(",").join(outputFiles.keySet());
-                }
-            };
+            mOutput = new HiddenapiFlagsWriter(mCsvFlagsFile);
         }
 
         if (mPublicApiListFile != null) {
@@ -203,14 +188,15 @@ public class Class2Greylist {
 
     private Map<String, AnnotationHandler> createAnnotationHandlers() {
         Builder<String, AnnotationHandler> builder = ImmutableMap.builder();
-        GreylistAnnotationHandler greylistAnnotationHandler = new GreylistAnnotationHandler(
-            mStatus, mOutput, mPublicApis, mAllowedSdkVersions);
+        UnsupportedAppUsageAnnotationHandler greylistAnnotationHandler =
+                new UnsupportedAppUsageAnnotationHandler(
+                    mStatus, mOutput, mPublicApis, TARGET_SDK_TO_LIST_MAP);
         GREYLIST_ANNOTATIONS.forEach(a -> builder.put(a, greylistAnnotationHandler));
         return builder
                 .put(CovariantReturnTypeHandler.ANNOTATION_NAME,
-                        new CovariantReturnTypeHandler(mOutput, mPublicApis))
+                        new CovariantReturnTypeHandler(mOutput, mPublicApis, FLAG_WHITELIST))
                 .put(CovariantReturnTypeMultiHandler.ANNOTATION_NAME,
-                        new CovariantReturnTypeMultiHandler(mOutput, mPublicApis))
+                        new CovariantReturnTypeMultiHandler(mOutput, mPublicApis, FLAG_WHITELIST))
                 .build();
     }
 
@@ -228,48 +214,6 @@ public class Class2Greylist {
             }
         }
         mOutput.close();
-    }
-
-    @VisibleForTesting
-    static Map<Integer, String> readGreylistMap(Status status, String[] argValues) {
-        Map<Integer, String> map = new HashMap<>();
-        for (String sdkFile : argValues) {
-            List<Integer> maxTargetSdks = new ArrayList<>();
-            String filename;
-            int colonPos = sdkFile.indexOf(':');
-            if (colonPos != -1) {
-                String[] targets = sdkFile.substring(0, colonPos).split(",");
-                for (String target : targets) {
-                    if ("none".equals(target)) {
-                        maxTargetSdks.add(null);
-                    } else {
-                        try {
-                            maxTargetSdks.add(Integer.valueOf(target));
-                        } catch (NumberFormatException nfe) {
-                            status.error("Not a valid integer: %s from argument value '%s'",
-                                    sdkFile.substring(0, colonPos), sdkFile);
-                        }
-                    }
-                }
-                filename = sdkFile.substring(colonPos + 1);
-                if (filename.length() == 0) {
-                    status.error("Not a valid file name: %s from argument value '%s'",
-                            filename, sdkFile);
-                }
-            } else {
-                maxTargetSdks.add(null);
-                filename = sdkFile;
-            }
-            for (Integer maxTargetSdk : maxTargetSdks) {
-                if (map.containsKey(maxTargetSdk)) {
-                    status.error("Multiple output files for maxTargetSdk %s",
-                            maxTargetSdk == null ? "none" : maxTargetSdk);
-                } else {
-                    map.put(maxTargetSdk, filename);
-                }
-            }
-        }
-        return map;
     }
 
     private static void dumpAllMembers(Status status, String[] jarFiles) {
