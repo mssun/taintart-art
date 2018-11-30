@@ -85,7 +85,9 @@ static bool LocationToFilename(const std::string& location, InstructionSet isa,
   }
 }
 
-static Runtime* StartRuntime(const char* boot_image_location, InstructionSet instruction_set) {
+static Runtime* StartRuntime(const char* boot_image_location,
+                             InstructionSet instruction_set,
+                             const std::vector<const char*>& runtime_args) {
   CHECK(boot_image_location != nullptr);
 
   RuntimeOptions options;
@@ -101,13 +103,19 @@ static Runtime* StartRuntime(const char* boot_image_location, InstructionSet ins
     std::string boot_image_option;
     boot_image_option += "-Ximage:";
     boot_image_option += boot_image_location;
-    options.push_back(std::make_pair(boot_image_option.c_str(), nullptr));
+    options.push_back(std::make_pair(boot_image_option, nullptr));
   }
 
   // Instruction set.
   options.push_back(
       std::make_pair("imageinstructionset",
                      reinterpret_cast<const void*>(GetInstructionSetString(instruction_set))));
+
+  // Explicit runtime args.
+  for (const char* runtime_arg : runtime_args) {
+    options.push_back(std::make_pair(runtime_arg, nullptr));
+  }
+
   // None of the command line tools need sig chain. If this changes we'll need
   // to upgrade this option to a proper parameter.
   options.push_back(std::make_pair("-Xno-sig-chain", nullptr));
@@ -154,6 +162,14 @@ struct CmdlineArgs {
           PrintUsage();
           return false;
         }
+      } else if (option == "--runtime-arg") {
+        if (i + 1 == argc) {
+          fprintf(stderr, "Missing argument for --runtime-arg\n");
+          PrintUsage();
+          return false;
+        }
+        ++i;
+        runtime_args_.push_back(argv[i]);
       } else if (option.starts_with("--output=")) {
         output_name_ = option.substr(strlen("--output=")).ToString();
         const char* filename = output_name_.c_str();
@@ -209,6 +225,12 @@ struct CmdlineArgs {
         "      Default: %s\n"
         "\n",
         GetInstructionSetString(kRuntimeISA));
+    usage +=
+        "  --runtime-arg <argument> used to specify various arguments for the runtime\n"
+        "      such as initial heap size, maximum heap size, and verbose output.\n"
+        "      Use a separate --runtime-arg switch for each argument.\n"
+        "      Example: --runtime-arg -Xms256m\n"
+        "\n";
     usage +=  // Optional.
         "  --output=<file> may be used to send the output to a file.\n"
         "      Example: --output=/tmp/oatdump.txt\n"
@@ -221,6 +243,8 @@ struct CmdlineArgs {
   const char* boot_image_location_ = nullptr;
   // Specified by --instruction-set.
   InstructionSet instruction_set_ = InstructionSet::kNone;
+  // Runtime arguments specified by --runtime-arg.
+  std::vector<const char*> runtime_args_;
   // Specified by --output.
   std::ostream* os_ = &std::cout;
   std::unique_ptr<std::ofstream> out_;  // If something besides cout is used
@@ -383,7 +407,7 @@ struct CmdlineMain {
   Runtime* CreateRuntime(CmdlineArgs* args) {
     CHECK(args != nullptr);
 
-    return StartRuntime(args->boot_image_location_, args->instruction_set_);
+    return StartRuntime(args->boot_image_location_, args->instruction_set_, args_->runtime_args_);
   }
 };
 }  // namespace art
