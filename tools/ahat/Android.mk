@@ -115,6 +115,7 @@ endif
 # Run ahat-test-dump.jar to generate test-dump.hprof and test-dump-base.hprof
 AHAT_TEST_DUMP_DEPENDENCIES := \
   $(AHAT_TEST_DALVIKVM_DEP) \
+  $(ART_HOST_SHARED_LIBRARY_DEPENDENCIES) \
   $(ART_HOST_SHARED_LIBRARY_DEBUG_DEPENDENCIES) \
   $(HOST_OUT_EXECUTABLES)/art \
   $(HOST_CORE_IMG_OUT_BASE)$(CORE_IMG_SUFFIX)
