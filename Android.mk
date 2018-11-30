@@ -474,7 +474,7 @@ endif
 define build-art-hiddenapi
 $(shell if [ ! -d frameworks/base ]; then \
   mkdir -p ${TARGET_OUT_COMMON_INTERMEDIATES}/PACKAGING; \
-	touch ${TARGET_OUT_COMMON_INTERMEDIATES}/PACKAGING/hiddenapi-{whitelist,blacklist,dark-greylist,light-greylist}.txt; \
+	touch ${TARGET_OUT_COMMON_INTERMEDIATES}/PACKAGING/hiddenapi-flags.csv; \
   fi;)
 endef
 
