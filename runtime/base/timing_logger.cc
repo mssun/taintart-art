@@ -21,6 +21,7 @@
 #include <android-base/logging.h>
 
 #include "base/histogram-inl.h"
+#include "base/mutex.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
@@ -40,7 +41,7 @@ constexpr size_t TimingLogger::kIndexNotFound;
 CumulativeLogger::CumulativeLogger(const std::string& name)
     : name_(name),
       lock_name_("CumulativeLoggerLock" + name),
-      lock_(lock_name_.c_str(), kDefaultMutexLevel, true) {
+      lock_(new Mutex(lock_name_.c_str(), kDefaultMutexLevel, true)) {
   Reset();
 }
 
@@ -49,7 +50,7 @@ CumulativeLogger::~CumulativeLogger() {
 }
 
 void CumulativeLogger::SetName(const std::string& name) {
-  MutexLock mu(Thread::Current(), lock_);
+  MutexLock mu(Thread::Current(), *GetLock());
   name_.assign(name);
 }
 
@@ -57,19 +58,19 @@ void CumulativeLogger::Start() {
 }
 
 void CumulativeLogger::End() {
-  MutexLock mu(Thread::Current(), lock_);
+  MutexLock mu(Thread::Current(), *GetLock());
   ++iterations_;
 }
 
 void CumulativeLogger::Reset() {
-  MutexLock mu(Thread::Current(), lock_);
+  MutexLock mu(Thread::Current(), *GetLock());
   iterations_ = 0;
   total_time_ = 0;
   STLDeleteElements(&histograms_);
 }
 
 void CumulativeLogger::AddLogger(const TimingLogger &logger) {
-  MutexLock mu(Thread::Current(), lock_);
+  MutexLock mu(Thread::Current(), *GetLock());
   TimingLogger::TimingData timing_data(logger.CalculateTimingData());
   const std::vector<TimingLogger::Timing>& timings = logger.GetTimings();
   for (size_t i = 0; i < timings.size(); ++i) {
@@ -81,12 +82,12 @@ void CumulativeLogger::AddLogger(const TimingLogger &logger) {
 }
 
 size_t CumulativeLogger::GetIterations() const {
-  MutexLock mu(Thread::Current(), lock_);
+  MutexLock mu(Thread::Current(), *GetLock());
   return iterations_;
 }
 
 void CumulativeLogger::Dump(std::ostream &os) const {
-  MutexLock mu(Thread::Current(), lock_);
+  MutexLock mu(Thread::Current(), *GetLock());
   DumpHistogram(os);
 }
 
