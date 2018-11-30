@@ -953,7 +953,7 @@ class HiddenApi final {
             auto it = api_list.find(boot_member.GetApiEntry());
             bool api_list_found = (it != api_list.end());
             // TODO: Fix ART buildbots and turn this into a CHECK.
-            if (force_assign_all && !api_list_found) {
+            if (force_assign_all_ && !api_list_found) {
               LOG(WARNING) << "Could not find hiddenapi flags for dex entry: "
                            << boot_member.GetApiEntry();
             }
