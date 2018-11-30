@@ -181,7 +181,6 @@ ArenaVector<HOptimization*> ConstructOptimizations(
     HGraph* graph,
     OptimizingCompilerStats* stats,
     CodeGenerator* codegen,
-    CompilerDriver* driver,
     const DexCompilationUnit& dex_compilation_unit,
     VariableSizedHandleScope* handles) {
   ArenaVector<HOptimization*> optimizations(allocator->Adapter());
@@ -258,7 +257,6 @@ ArenaVector<HOptimization*> ConstructOptimizations(
                                        codegen,
                                        dex_compilation_unit,    // outer_compilation_unit
                                        dex_compilation_unit,    // outermost_compilation_unit
-                                       driver,
                                        handles,
                                        stats,
                                        accessor.RegistersSize(),

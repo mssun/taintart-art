@@ -39,16 +39,15 @@ namespace art {
 class DexToDexDecompilerTest : public CommonCompilerTest {
  public:
   void CompileAll(jobject class_loader) REQUIRES(!Locks::mutator_lock_) {
-    TimingLogger timings("CompilerDriverTest::CompileAll", false, false);
-    TimingLogger::ScopedTiming t(__FUNCTION__, &timings);
+    TimingLogger timings("DexToDexDecompilerTest::CompileAll", false, false);
     compiler_options_->image_type_ = CompilerOptions::ImageType::kNone;
     compiler_options_->SetCompilerFilter(CompilerFilter::kQuicken);
     // Create the main VerifierDeps, here instead of in the compiler since we want to aggregate
     // the results for all the dex files, not just the results for the current dex file.
     down_cast<QuickCompilerCallbacks*>(Runtime::Current()->GetCompilerCallbacks())->SetVerifierDeps(
         new verifier::VerifierDeps(GetDexFiles(class_loader)));
-    SetDexFilesForOatFile(GetDexFiles(class_loader));
-    compiler_driver_->CompileAll(class_loader, GetDexFiles(class_loader), &timings);
+    std::vector<const DexFile*> dex_files = GetDexFiles(class_loader);
+    CommonCompilerTest::CompileAll(class_loader, dex_files, &timings);
   }
 
   void RunTest(const char* dex_name) {

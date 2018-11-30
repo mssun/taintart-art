@@ -321,7 +321,6 @@ class OptimizingCompiler final : public Compiler {
         graph,
         compilation_stats_.get(),
         codegen,
-        GetCompilerDriver(),
         dex_compilation_unit,
         handles);
     DCHECK_EQ(length, optimizations.size());
@@ -962,9 +961,9 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
       arena_stack,
       dex_file,
       method_idx,
-      compiler_driver->GetCompilerOptions().GetInstructionSet(),
+      compiler_options.GetInstructionSet(),
       kInvalidInvokeType,
-      compiler_driver->GetCompilerOptions().GetDebuggable(),
+      compiler_options.GetDebuggable(),
       /* osr */ false);
 
   DCHECK(Runtime::Current()->IsAotCompiler());
@@ -1043,12 +1042,13 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
                                             const DexFile& dex_file,
                                             Handle<mirror::DexCache> dex_cache) const {
   CompilerDriver* compiler_driver = GetCompilerDriver();
+  const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
   CompiledMethod* compiled_method = nullptr;
   Runtime* runtime = Runtime::Current();
   DCHECK(runtime->IsAotCompiler());
-  const VerifiedMethod* verified_method = compiler_driver->GetVerifiedMethod(&dex_file, method_idx);
+  const VerifiedMethod* verified_method = compiler_options.GetVerifiedMethod(&dex_file, method_idx);
   DCHECK(!verified_method->HasRuntimeThrow());
-  if (compiler_driver->IsMethodVerifiedWithoutFailures(method_idx, class_def_idx, dex_file) ||
+  if (compiler_options.IsMethodVerifiedWithoutFailures(method_idx, class_def_idx, dex_file) ||
       verifier::CanCompilerHandleVerificationFailure(
           verified_method->GetEncounteredVerificationFailures())) {
     ArenaAllocator allocator(runtime->GetArenaPool());
@@ -1080,7 +1080,7 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
       // Go to native so that we don't block GC during compilation.
       ScopedThreadSuspension sts(soa.Self(), kNative);
       if (method != nullptr && UNLIKELY(method->IsIntrinsic())) {
-        DCHECK(compiler_driver->GetCompilerOptions().IsBootImage());
+        DCHECK(compiler_options.IsBootImage());
         codegen.reset(
             TryCompileIntrinsic(&allocator,
                                 &arena_stack,
@@ -1099,7 +1099,7 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
                        &code_allocator,
                        dex_compilation_unit,
                        method,
-                       compiler_driver->GetCompilerOptions().IsBaseline(),
+                       compiler_options.IsBaseline(),
                        /* osr= */ false,
                        &handles));
       }
@@ -1128,7 +1128,7 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
     }
   } else {
     MethodCompilationStat method_stat;
-    if (compiler_driver->GetCompilerOptions().VerifyAtRuntime()) {
+    if (compiler_options.VerifyAtRuntime()) {
       method_stat = MethodCompilationStat::kNotCompiledVerifyAtRuntime;
     } else {
       method_stat = MethodCompilationStat::kNotCompiledVerificationError;
@@ -1137,8 +1137,8 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
   }
 
   if (kIsDebugBuild &&
-      compiler_driver->GetCompilerOptions().CompilingWithCoreImage() &&
-      IsInstructionSetSupported(compiler_driver->GetCompilerOptions().GetInstructionSet())) {
+      compiler_options.CompilingWithCoreImage() &&
+      IsInstructionSetSupported(compiler_options.GetInstructionSet())) {
     // For testing purposes, we put a special marker on method names
     // that should be compiled with this compiler (when the
     // instruction set is supported). This makes sure we're not

@@ -42,20 +42,18 @@ namespace art {
 
 class CompilerDriverTest : public CommonCompilerTest {
  protected:
-  void CompileAll(jobject class_loader) REQUIRES(!Locks::mutator_lock_) {
-    TimingLogger timings("CompilerDriverTest::CompileAll", false, false);
-    TimingLogger::ScopedTiming t(__FUNCTION__, &timings);
+  void CompileAllAndMakeExecutable(jobject class_loader) REQUIRES(!Locks::mutator_lock_) {
+    TimingLogger timings("CompilerDriverTest::CompileAllAndMakeExecutable", false, false);
     dex_files_ = GetDexFiles(class_loader);
-    SetDexFilesForOatFile(dex_files_);
-    compiler_driver_->CompileAll(class_loader, dex_files_, &timings);
-    t.NewTiming("MakeAllExecutable");
+    CompileAll(class_loader, dex_files_, &timings);
+    TimingLogger::ScopedTiming t("MakeAllExecutable", &timings);
     MakeAllExecutable(class_loader);
   }
 
   void EnsureCompiled(jobject class_loader, const char* class_name, const char* method,
                       const char* signature, bool is_virtual)
       REQUIRES(!Locks::mutator_lock_) {
-    CompileAll(class_loader);
+    CompileAllAndMakeExecutable(class_loader);
     Thread::Current()->TransitionFromSuspendedToRunnable();
     bool started = runtime_->Start();
     CHECK(started);
@@ -106,7 +104,7 @@ class CompilerDriverTest : public CommonCompilerTest {
 // Disabled due to 10 second runtime on host
 // TODO: Update the test for hash-based dex cache arrays. Bug: 30627598
 TEST_F(CompilerDriverTest, DISABLED_LARGE_CompileDexLibCore) {
-  CompileAll(nullptr);
+  CompileAllAndMakeExecutable(nullptr);
 
   // All libcore references should resolve
   ScopedObjectAccess soa(Thread::Current());
@@ -266,7 +264,7 @@ TEST_F(CompilerDriverProfileTest, ProfileGuidedCompilation) {
     ASSERT_TRUE(dex_file->EnableWrite());
   }
 
-  CompileAll(class_loader);
+  CompileAllAndMakeExecutable(class_loader);
 
   std::unordered_set<std::string> m = GetExpectedMethodsForClass("Main");
   std::unordered_set<std::string> s = GetExpectedMethodsForClass("Second");
@@ -310,7 +308,7 @@ TEST_F(CompilerDriverVerifyTest, VerifyCompilation) {
   }
   ASSERT_NE(class_loader, nullptr);
 
-  CompileAll(class_loader);
+  CompileAllAndMakeExecutable(class_loader);
 
   CheckVerifiedClass(class_loader, "LMain;");
   CheckVerifiedClass(class_loader, "LSecond;");

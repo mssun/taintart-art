@@ -218,11 +218,9 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
     {
       jobject class_loader = nullptr;
       TimingLogger timings("ImageTest::WriteRead", false, false);
-      TimingLogger::ScopedTiming t("CompileAll", &timings);
-      SetDexFilesForOatFile(class_path);
-      driver->CompileAll(class_loader, class_path, &timings);
+      CompileAll(class_loader, class_path, &timings);
 
-      t.NewTiming("WriteElf");
+      TimingLogger::ScopedTiming t("WriteElf", &timings);
       SafeMap<std::string, std::string> key_value_store;
       key_value_store.Put(OatHeader::kBootClassPathKey,
                           gc::space::ImageSpace::GetMultiImageBootClassPath(

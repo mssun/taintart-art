@@ -630,6 +630,7 @@ class Dex2Oat final {
       thread_count_(sysconf(_SC_NPROCESSORS_CONF)),
       start_ns_(NanoTime()),
       start_cputime_ns_(ProcessCpuNanoTime()),
+      strip_(false),
       oat_fd_(-1),
       input_vdex_fd_(-1),
       output_vdex_fd_(-1),
@@ -1788,9 +1789,7 @@ class Dex2Oat final {
     compiler_options_->profile_compilation_info_ = profile_compilation_info_.get();
 
     driver_.reset(new CompilerDriver(compiler_options_.get(),
-                                     verification_results_.get(),
                                      compiler_kind_,
-                                     &compiler_options_->image_classes_,
                                      thread_count_,
                                      swap_fd_));
     if (!IsBootImage()) {
@@ -1862,7 +1861,16 @@ class Dex2Oat final {
                    << soa.Self()->GetException()->Dump();
       }
     }
+    driver_->InitializeThreadPools();
+    driver_->PreCompile(class_loader,
+                        dex_files,
+                        timings_,
+                        &compiler_options_->image_classes_,
+                        verification_results_.get());
+    callbacks_->SetVerificationResults(nullptr);  // Should not be needed anymore.
+    compiler_options_->verification_results_ = verification_results_.get();
     driver_->CompileAll(class_loader, dex_files, timings_);
+    driver_->FreeThreadPools();
     return class_loader;
   }
 
