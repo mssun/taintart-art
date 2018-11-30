@@ -335,6 +335,14 @@ class CompilerOptions final {
     return check_profiled_methods_;
   }
 
+  uint32_t MaxImageBlockSize() const {
+    return max_image_block_size_;
+  }
+
+  void SetMaxImageBlockSize(uint32_t size) {
+    max_image_block_size_ = size;
+  }
+
  private:
   bool ParseDumpInitFailures(const std::string& option, std::string* error_msg);
   void ParseDumpCfgPasses(const StringPiece& option, UsageFn Usage);
@@ -423,6 +431,9 @@ class CompilerOptions final {
   // When running profile-guided compilation, check that methods intended to be compiled end
   // up compiled and are not punted.
   ProfileMethodsCheck check_profiled_methods_;
+
+  // Maximum solid block size in the generated image.
+  uint32_t max_image_block_size_;
 
   RegisterAllocator::Strategy register_allocation_strategy_;
 

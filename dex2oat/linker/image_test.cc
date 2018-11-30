@@ -32,7 +32,11 @@ TEST_F(ImageTest, TestImageLayout) {
   // Compile multi-image with ImageLayoutA being the last image.
   {
     CompilationHelper helper;
-    Compile(ImageHeader::kStorageModeUncompressed, helper, "ImageLayoutA", {"LMyClass;"});
+    Compile(ImageHeader::kStorageModeUncompressed,
+            /*max_image_block_size=*/std::numeric_limits<uint32_t>::max(),
+            helper,
+            "ImageLayoutA",
+            {"LMyClass;"});
     image_sizes = helper.GetImageObjectSectionSizes();
   }
   TearDown();
@@ -41,7 +45,11 @@ TEST_F(ImageTest, TestImageLayout) {
   // Compile multi-image with ImageLayoutB being the last image.
   {
     CompilationHelper helper;
-    Compile(ImageHeader::kStorageModeUncompressed, helper, "ImageLayoutB", {"LMyClass;"});
+    Compile(ImageHeader::kStorageModeUncompressed,
+            /*max_image_block_size=*/std::numeric_limits<uint32_t>::max(),
+            helper,
+            "ImageLayoutB",
+            {"LMyClass;"});
     image_sizes_extra = helper.GetImageObjectSectionSizes();
   }
   // Make sure that the new stuff in the clinit in ImageLayoutB is in the last image and not in the
@@ -76,9 +84,8 @@ TEST_F(ImageTest, ImageHeaderIsValid) {
                              oat_file_end,
                              /*boot_image_begin=*/ 0u,
                              /*boot_image_size=*/ 0u,
-                             sizeof(void*),
-                             ImageHeader::kDefaultStorageMode,
-                             /*data_size=*/ 0u);
+                             sizeof(void*));
+
     ASSERT_TRUE(image_header.IsValid());
     ASSERT_TRUE(!image_header.IsAppImage());
 
@@ -97,6 +104,7 @@ TEST_F(ImageTest, ImageHeaderIsValid) {
 TEST_F(ImageTest, TestDefaultMethods) {
   CompilationHelper helper;
   Compile(ImageHeader::kStorageModeUncompressed,
+          /*max_image_block_size=*/std::numeric_limits<uint32_t>::max(),
           helper,
           "DefaultMethods",
           {"LIface;", "LImpl;", "LIterableBase;"});
@@ -156,6 +164,7 @@ TEST_F(ImageTest, TestDefaultMethods) {
 TEST_F(ImageTest, TestSoftVerificationFailureDuringClassInitialization) {
   CompilationHelper helper;
   Compile(ImageHeader::kStorageModeUncompressed,
+          /*max_image_block_size=*/std::numeric_limits<uint32_t>::max(),
           helper,
           "VerifySoftFailDuringClinit",
           /*image_classes=*/ {"LClassToInitialize;"},

@@ -16,6 +16,9 @@
 
 #include "image.h"
 
+#include <lz4.h>
+#include <sstream>
+
 #include "base/bit_utils.h"
 #include "base/length_prefixed_array.h"
 #include "base/utils.h"
@@ -26,7 +29,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '7', '0', '\0' };  // Store ImtIndex.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '7', '1', '\0' };  // Add image blocks.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
@@ -39,9 +42,7 @@ ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t oat_file_end,
                          uint32_t boot_image_begin,
                          uint32_t boot_image_size,
-                         uint32_t pointer_size,
-                         StorageMode storage_mode,
-                         size_t data_size)
+                         uint32_t pointer_size)
   : image_begin_(image_begin),
     image_size_(image_size),
     image_checksum_(0u),
@@ -53,9 +54,7 @@ ImageHeader::ImageHeader(uint32_t image_begin,
     boot_image_begin_(boot_image_begin),
     boot_image_size_(boot_image_size),
     image_roots_(image_roots),
-    pointer_size_(pointer_size),
-    storage_mode_(storage_mode),
-    data_size_(data_size) {
+    pointer_size_(pointer_size) {
   CHECK_EQ(image_begin, RoundUp(image_begin, kPageSize));
   CHECK_EQ(oat_file_begin, RoundUp(oat_file_begin, kPageSize));
   CHECK_EQ(oat_data_begin, RoundUp(oat_data_begin, kPageSize));
@@ -142,6 +141,36 @@ void ImageHeader::VisitObjects(ObjectVisitor* visitor,
 
 PointerSize ImageHeader::GetPointerSize() const {
   return ConvertToPointerSize(pointer_size_);
+}
+
+bool ImageHeader::Block::Decompress(uint8_t* out_ptr,
+                                    const uint8_t* in_ptr,
+                                    std::string* error_msg) const {
+  switch (storage_mode_) {
+    case kStorageModeUncompressed: {
+      CHECK_EQ(image_size_, data_size_);
+      memcpy(out_ptr + image_offset_, in_ptr + data_offset_, data_size_);
+      break;
+    }
+    case kStorageModeLZ4:
+    case kStorageModeLZ4HC: {
+      // LZ4HC and LZ4 have same internal format, both use LZ4_decompress.
+      const size_t decompressed_size = LZ4_decompress_safe(
+          reinterpret_cast<const char*>(in_ptr) + data_offset_,
+          reinterpret_cast<char*>(out_ptr) + image_offset_,
+          data_size_,
+          image_size_);
+      CHECK_EQ(decompressed_size, image_size_);
+      break;
+    }
+    default: {
+      if (error_msg != nullptr) {
+        *error_msg = (std::ostringstream() << "Invalid image format " << storage_mode_).str();
+      }
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace art
