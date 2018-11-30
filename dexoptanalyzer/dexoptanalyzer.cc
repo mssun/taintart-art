@@ -97,6 +97,11 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("       oat file is up to date. Defaults to $ANDROID_ROOT/framework/boot.art.");
   UsageError("       Example: --image=/system/framework/boot.art");
   UsageError("");
+  UsageError("  --runtime-arg <argument>: used to specify various arguments for the runtime,");
+  UsageError("      such as initial heap size, maximum heap size, and verbose output.");
+  UsageError("      Use a separate --runtime-arg switch for each argument.");
+  UsageError("      Example: --runtime-arg -Xms256m");
+  UsageError("");
   UsageError("  --android-data=<directory>: optional, the directory which should be used as");
   UsageError("       android-data. By default ANDROID_DATA env variable is used.");
   UsageError("");
@@ -168,6 +173,12 @@ class DexoptAnalyzer final {
         }
       } else if (option.starts_with("--image=")) {
         image_ = option.substr(strlen("--image=")).ToString();
+      } else if (option == "--runtime-arg") {
+        if (i + 1 == argc) {
+          Usage("Missing argument for --runtime-arg\n");
+        }
+        ++i;
+        runtime_args_.push_back(argv[i]);
       } else if (option.starts_with("--android-data=")) {
         // Overwrite android-data if needed (oat file assistant relies on a valid directory to
         // compute dalvik-cache folder). This is mostly used in tests.
@@ -218,10 +229,14 @@ class DexoptAnalyzer final {
     RuntimeOptions options;
     // The image could be custom, so make sure we explicitly pass it.
     std::string img = "-Ximage:" + image_;
-    options.push_back(std::make_pair(img.c_str(), nullptr));
+    options.push_back(std::make_pair(img, nullptr));
     // The instruction set of the image should match the instruction set we will test.
     const void* isa_opt = reinterpret_cast<const void*>(GetInstructionSetString(isa_));
     options.push_back(std::make_pair("imageinstructionset", isa_opt));
+    // Explicit runtime args.
+    for (const char* runtime_arg : runtime_args_) {
+      options.push_back(std::make_pair(runtime_arg, nullptr));
+    }
      // Disable libsigchain. We don't don't need it to evaluate DexOptNeeded status.
     options.push_back(std::make_pair("-Xno-sig-chain", nullptr));
     // Pretend we are a compiler so that we can re-use the same infrastructure to load a different
@@ -289,6 +304,7 @@ class DexoptAnalyzer final {
   bool assume_profile_changed_;
   bool downgrade_;
   std::string image_;
+  std::vector<const char*> runtime_args_;
   int oat_fd_ = -1;
   int vdex_fd_ = -1;
   // File descriptor corresponding to apk, dex_file, or zip.
