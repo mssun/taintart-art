@@ -9116,8 +9116,8 @@ ObjPtr<mirror::ClassLoader> ClassLinker::CreateWellKnownClassLoader(
     Thread* self,
     const std::vector<const DexFile*>& dex_files,
     Handle<mirror::Class> loader_class,
-    Handle<mirror::ClassLoader> parent_loader,
-    Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries) {
+    Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries,
+    Handle<mirror::ClassLoader> parent_loader) {
 
   StackHandleScope<5> hs(self);
 
@@ -9246,8 +9246,7 @@ ObjPtr<mirror::ClassLoader> ClassLinker::CreateWellKnownClassLoader(
 jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
                                                 const std::vector<const DexFile*>& dex_files,
                                                 jclass loader_class,
-                                                jobject parent_loader,
-                                                jobject shared_libraries) {
+                                                jobject parent_loader) {
   CHECK(self->GetJniEnv()->IsSameObject(loader_class,
                                         WellKnownClasses::dalvik_system_PathClassLoader) ||
         self->GetJniEnv()->IsSameObject(loader_class,
@@ -9258,21 +9257,24 @@ jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
   ScopedObjectAccessUnchecked soa(self);
 
   // For now, create a libcore-level DexFile for each ART DexFile. This "explodes" multidex.
-  StackHandleScope<4> hs(self);
+  StackHandleScope<3> hs(self);
 
   Handle<mirror::Class> h_loader_class =
       hs.NewHandle<mirror::Class>(soa.Decode<mirror::Class>(loader_class));
-  Handle<mirror::ClassLoader> h_parent =
-      hs.NewHandle<mirror::ClassLoader>(soa.Decode<mirror::ClassLoader>(parent_loader));
-  Handle<mirror::ObjectArray<mirror::ClassLoader>> h_shared_libraries =
-      hs.NewHandle(soa.Decode<mirror::ObjectArray<mirror::ClassLoader>>(shared_libraries));
+  Handle<mirror::ClassLoader> parent =
+      hs.NewHandle<mirror::ClassLoader>(ObjPtr<mirror::ClassLoader>::DownCast(
+          (parent_loader != nullptr)
+              ? soa.Decode<mirror::ClassLoader>(parent_loader)
+              : nullptr));
+  Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries =
+      hs.NewHandle<mirror::ObjectArray<mirror::ClassLoader>>(nullptr);
 
   ObjPtr<mirror::ClassLoader> loader = CreateWellKnownClassLoader(
       self,
       dex_files,
       h_loader_class,
-      h_parent,
-      h_shared_libraries);
+      shared_libraries,
+      parent);
 
   // Make it a global ref and return.
   ScopedLocalRef<jobject> local_ref(

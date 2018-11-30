@@ -574,8 +574,7 @@ class ClassLinker {
   jobject CreateWellKnownClassLoader(Thread* self,
                                      const std::vector<const DexFile*>& dex_files,
                                      jclass loader_class,
-                                     jobject parent_loader,
-                                     jobject shared_libraries = nullptr)
+                                     jobject parent_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
 
@@ -592,8 +591,8 @@ class ClassLinker {
       Thread* self,
       const std::vector<const DexFile*>& dex_files,
       Handle<mirror::Class> loader_class,
-      Handle<mirror::ClassLoader> parent_loader,
-      Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries)
+      Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries,
+      Handle<mirror::ClassLoader> parent_loader)
           REQUIRES_SHARED(Locks::mutator_lock_)
           REQUIRES(!Locks::dex_lock_);
 
