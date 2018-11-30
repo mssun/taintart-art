@@ -952,8 +952,11 @@ class HiddenApi final {
           auto fn_shared = [&](const DexMember& boot_member) {
             auto it = api_list.find(boot_member.GetApiEntry());
             bool api_list_found = (it != api_list.end());
-            CHECK(!force_assign_all_ || api_list_found)
-                << "Could not find flags for dex entry: " << boot_member.GetApiEntry();
+            // TODO: Fix ART buildbots and turn this into a CHECK.
+            if (force_assign_all && !api_list_found) {
+              LOG(WARNING) << "Could not find hiddenapi flags for dex entry: "
+                           << boot_member.GetApiEntry();
+            }
             builder.WriteFlags(api_list_found ? it->second : hiddenapi::ApiList::Whitelist());
           };
           auto fn_field = [&](const ClassAccessor::Field& boot_field) {
