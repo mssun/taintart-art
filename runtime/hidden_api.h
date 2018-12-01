@@ -137,8 +137,13 @@ class MemberSignature {
  public:
   explicit MemberSignature(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_);
   explicit MemberSignature(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
+  explicit MemberSignature(const ClassAccessor::Field& field);
+  explicit MemberSignature(const ClassAccessor::Method& method);
 
   void Dump(std::ostream& os) const;
+
+  bool Equals(const MemberSignature& other);
+  bool MemberNameAndTypeMatch(const MemberSignature& other);
 
   // Performs prefix match on this member. Since the full member signature is
   // composed of several parts, we match each part in turn (rather than
@@ -160,11 +165,8 @@ class MemberSignature {
 
 // Locates hiddenapi flags for `field` in the corresponding dex file.
 // NB: This is an O(N) operation, linear with the number of members in the class def.
-uint32_t GetDexFlags(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_);
-
-// Locates hiddenapi flags for `method` in the corresponding dex file.
-// NB: This is an O(N) operation, linear with the number of members in the class def.
-uint32_t GetDexFlags(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
+template<typename T>
+uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_);
 
 template<typename T>
 bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod access_method)

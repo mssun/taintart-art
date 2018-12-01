@@ -119,5 +119,17 @@ void ClassExt::SetOriginalDexFile(ObjPtr<Object> bytes) {
   SetFieldObject<false>(OFFSET_OF_OBJECT_MEMBER(ClassExt, original_dex_file_), bytes);
 }
 
+void ClassExt::SetPreRedefineClassDefIndex(uint16_t index) {
+  DCHECK(!Runtime::Current()->IsActiveTransaction());
+  SetField32<false>(OFFSET_OF_OBJECT_MEMBER(ClassExt, pre_redefine_class_def_index_),
+      static_cast<int32_t>(index));
+}
+
+void ClassExt::SetPreRedefineDexFile(const DexFile* dex_file) {
+  DCHECK(!Runtime::Current()->IsActiveTransaction());
+  SetField64<false>(OFFSET_OF_OBJECT_MEMBER(ClassExt, pre_redefine_dex_file_ptr_),
+      static_cast<int64_t>(reinterpret_cast<uintptr_t>(dex_file)));
+}
+
 }  // namespace mirror
 }  // namespace art

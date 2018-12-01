@@ -31,53 +31,33 @@ public class Main {
 
     // Find the test class in boot class loader and verify that its members are hidden.
     Class<?> klass = Class.forName("art.Test999", true, BOOT_CLASS_LOADER);
-    assertMethodIsHidden(true, klass, "before redefinition");
-    assertFieldIsHidden(true, klass, "before redefinition");
+    assertFieldIsHidden(klass, "before redefinition");
+    assertMethodIsHidden(klass, "before redefinition");
 
     // Redefine the class using JVMTI. Use dex file without hiddenapi flags.
     art.Redefinition.setTestConfiguration(art.Redefinition.Config.COMMON_REDEFINE);
     art.Redefinition.doCommonClassRedefinition(klass, CLASS_BYTES, DEX_BYTES);
 
-    // Verify that the class members are not hidden anymore.
-    assertMethodIsHidden(false, klass, "after first redefinition");
-    assertFieldIsHidden(false, klass, "after first redefinition");
-
-    // Redefine the class using JVMTI, this time with a dex file with hiddenapi flags.
-    art.Redefinition.setTestConfiguration(art.Redefinition.Config.COMMON_REDEFINE);
-    art.Redefinition.doCommonClassRedefinition(klass, CLASS_BYTES, DEX_BYTES_HIDDEN);
-
-    // Verify that the class members are still accessible.
-    assertMethodIsHidden(false, klass, "after second redefinition");
-    assertFieldIsHidden(false, klass, "after second redefinition");
+    // Verify that the class members are still hidden.
+    assertFieldIsHidden(klass, "after first redefinition");
+    assertMethodIsHidden(klass, "after first redefinition");
   }
 
-  private static void assertMethodIsHidden(boolean expectedHidden, Class<?> klass, String msg) {
+  private static void assertMethodIsHidden(Class<?> klass, String msg) {
     try {
       klass.getDeclaredMethod("foo");
-      if (expectedHidden) {
-        // Unexpected. Should have thrown NoSuchMethodException.
-        throw new RuntimeException("Method should not be accessible " + msg);
-      }
+      // Unexpected. Should have thrown NoSuchMethodException.
+      throw new RuntimeException("Method should not be accessible " + msg);
     } catch (NoSuchMethodException ex) {
-      if (!expectedHidden) {
-        // Unexpected. Should not have thrown NoSuchMethodException.
-        throw new RuntimeException("Method should be accessible " + msg);
-      }
     }
   }
 
-  private static void assertFieldIsHidden(boolean expectedHidden, Class<?> klass, String msg) {
+  private static void assertFieldIsHidden(Class<?> klass, String msg) {
     try {
       klass.getDeclaredField("bar");
-      if (expectedHidden) {
-        // Unexpected. Should have thrown NoSuchFieldException.
-        throw new RuntimeException("Field should not be accessible " + msg);
-      }
+      // Unexpected. Should have thrown NoSuchFieldException.
+      throw new RuntimeException("Field should not be accessible " + msg);
     } catch (NoSuchFieldException ex) {
-      if (!expectedHidden) {
-        // Unexpected. Should not have thrown NoSuchFieldException.
-        throw new RuntimeException("Field should be accessible " + msg);
-      }
     }
   }
 
@@ -127,21 +107,4 @@ public class Main {
     "AAAABAAAAAIAAADkAAAABQAAAAQAAAD0AAAABgAAAAEAAAAUAQAAASAAAAIAAAA0AQAAAyAAAAIA" +
     "AAB0AQAAARAAAAEAAACAAQAAAiAAABAAAACGAQAAACAAAAEAAACgAgAAAxAAAAEAAACwAgAAABAA" +
     "AAEAAAC0AgAA");
-  private static final byte[] DEX_BYTES_HIDDEN = Base64.getDecoder().decode(
-    "ZGV4CjAzNQDsgG5ufKulToQpDF+P4dsgeOkgfzzH+5l4AwAAcAAAAHhWNBIAAAAAAAAAAMACAAAQ" +
-    "AAAAcAAAAAcAAACwAAAAAgAAAMwAAAACAAAA5AAAAAQAAAD0AAAAAQAAABQBAABEAgAANAEAAIYB" +
-    "AACOAQAAlwEAAJoBAACpAQAAwAEAANQBAADoAQAA/AEAAAoCAAANAgAAEQIAABYCAAAbAgAAIAIA" +
-    "ACkCAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAJAAAACQAAAAYAAAAAAAAACgAAAAYAAACAAQAA" +
-    "AQAAAAsAAAAFAAIADQAAAAEAAAAAAAAAAQAAAAwAAAACAAEADgAAAAMAAAAAAAAAAQAAAAEAAAAD" +
-    "AAAAAAAAAAgAAAAAAAAAoAIAAAAAAAACAAEAAQAAAHQBAAAIAAAAcBADAAEAEwBAAFkQAAAOAAMA" +
-    "AQACAAAAeQEAAAgAAABiAAEAGgEBAG4gAgAQAA4AEwAOQAAVAA54AAAAAQAAAAQABjxpbml0PgAH" +
-    "R29vZGJ5ZQABSQANTGFydC9UZXN0OTk5OwAVTGphdmEvaW8vUHJpbnRTdHJlYW07ABJMamF2YS9s" +
-    "YW5nL09iamVjdDsAEkxqYXZhL2xhbmcvU3RyaW5nOwASTGphdmEvbGFuZy9TeXN0ZW07AAxUZXN0" +
-    "OTk5LmphdmEAAVYAAlZMAANiYXIAA2ZvbwADb3V0AAdwcmludGxuAHV+fkQ4eyJjb21waWxhdGlv" +
-    "bi1tb2RlIjoiZGVidWciLCJtaW4tYXBpIjoxLCJzaGEtMSI6ImQyMmFiNGYxOWI3NTYxNDQ3NTI4" +
-    "NTdjYTg2YjJjZWU0ZGQ5Y2ExNjYiLCJ2ZXJzaW9uIjoiMS40LjktZGV2In0AAAEBAQABAIGABLQC" +
-    "AQHUAgAAAAALAAAACAAAAAIAAgAPAAAAAAAAAAEAAAAAAAAAAQAAABAAAABwAAAAAgAAAAcAAACw" +
-    "AAAAAwAAAAIAAADMAAAABAAAAAIAAADkAAAABQAAAAQAAAD0AAAABgAAAAEAAAAUAQAAASAAAAIA" +
-    "AAA0AQAAAyAAAAIAAAB0AQAAARAAAAEAAACAAQAAAiAAABAAAACGAQAAACAAAAEAAACgAgAAAxAA" +
-    "AAEAAACwAgAAAPAAAAEAAAC0AgAAABAAAAEAAADAAgAA");
 }
