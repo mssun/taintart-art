@@ -227,12 +227,14 @@ class ClassLoaderContext {
   // of the call.
   void CheckDexFilesOpened(const std::string& calling_method) const;
 
-  // Adds the `class_loader` info to the context.
+  // Creates the `ClassLoaderInfo` representing`class_loader` and attach it to `this`.
   // The dex file present in `dex_elements` array (if not null) will be added at the end of
   // the classpath.
-  bool AddInfoToContextFromClassLoader(ScopedObjectAccessAlreadyRunnable& soa,
-                                       Handle<mirror::ClassLoader> class_loader,
-                                       Handle<mirror::ObjectArray<mirror::Object>> dex_elements)
+  bool CreateInfoFromClassLoader(ScopedObjectAccessAlreadyRunnable& soa,
+                                 Handle<mirror::ClassLoader> class_loader,
+                                 Handle<mirror::ObjectArray<mirror::Object>> dex_elements,
+                                 ClassLoaderInfo* child_info,
+                                 bool is_shared_library)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Encodes the context as a string suitable to be passed to dex2oat or to be added to the
