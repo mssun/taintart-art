@@ -97,9 +97,6 @@ class CommonRuntimeTestImpl : public CommonArtTestImpl {
     return true;
   }
 
-  static bool StartDex2OatCommandLine(/*out*/std::vector<std::string>* argv,
-                                      /*out*/std::string* error_msg);
-
  protected:
   // Allow subclases such as CommonCompilerTest to add extra options.
   virtual void SetUpRuntimeOptions(RuntimeOptions* options ATTRIBUTE_UNUSED) {}
