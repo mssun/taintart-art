@@ -50,9 +50,6 @@ ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libopenjdkjvmti-target libopenjdkjvmtid
 ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/core-libart-testdex.jar
 ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar
 ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/core-simple-testdex.jar
-ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/okhttp-testdex.jar
-ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/bouncycastle-testdex.jar
-ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += $(TARGET_OUT_JAVA_LIBRARIES)/conscrypt-testdex.jar
 
 # All tests require the host executables. The tests also depend on the core images, but on
 # specific version depending on the compiler.
