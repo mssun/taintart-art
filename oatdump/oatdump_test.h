@@ -122,10 +122,6 @@ class OatDumpTest : public CommonRuntimeTest {
         "-Xmx512m",
         "--runtime-arg",
         "-Xnorelocate",
-        "--runtime-arg",
-        GetClassPathOption("-Xbootclasspath:", GetLibCoreDexFileNames()),
-        "--runtime-arg",
-        GetClassPathOption("-Xbootclasspath-locations:", GetLibCoreDexLocations()),
         "--boot-image=" + GetCoreArtLocation(),
         "--instruction-set=" + std::string(GetInstructionSetString(kRuntimeISA)),
         "--dex-file=" + GetTestDexFileName(GetAppBaseName().c_str()),
@@ -185,11 +181,6 @@ class OatDumpTest : public CommonRuntimeTest {
         expected_prefixes.push_back("IMAGE BEGIN:");
         expected_prefixes.push_back("kDexCaches:");
       } else if (mode == kModeOatWithBootImage) {
-        exec_argv.push_back("--runtime-arg");
-        exec_argv.push_back(GetClassPathOption("-Xbootclasspath:", GetLibCoreDexFileNames()));
-        exec_argv.push_back("--runtime-arg");
-        exec_argv.push_back(
-            GetClassPathOption("-Xbootclasspath-locations:", GetLibCoreDexLocations()));
         exec_argv.push_back("--boot-image=" + GetCoreArtLocation());
         exec_argv.push_back("--instruction-set=" + std::string(
             GetInstructionSetString(kRuntimeISA)));
