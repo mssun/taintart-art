@@ -234,12 +234,15 @@ void GarbageCollector::DumpPerformanceInfo(std::ostream& os) {
       pause_histogram_.PrintConfidenceIntervals(os, 0.99, cumulative_data);
     }
   }
+  double cpu_seconds = NsToMs(GetTotalCpuTime()) / 1000.0;
   os << GetName() << " total time: " << PrettyDuration(total_ns)
      << " mean time: " << PrettyDuration(total_ns / iterations) << "\n"
      << GetName() << " freed: " << freed_objects
      << " objects with total size " << PrettySize(freed_bytes) << "\n"
      << GetName() << " throughput: " << freed_objects / seconds << "/s / "
-     << PrettySize(freed_bytes / seconds) << "/s\n";
+     << PrettySize(freed_bytes / seconds) << "/s"
+     << "  per cpu-time: "
+     << PrettySize(freed_bytes / cpu_seconds) << "/s\n";
 }
 
 }  // namespace collector
