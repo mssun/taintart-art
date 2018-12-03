@@ -46,6 +46,10 @@ class DexoptAnalyzerTest : public DexoptTest {
     if (assume_profile_changed) {
       argv_str.push_back("--assume-profile-changed");
     }
+    argv_str.push_back("--runtime-arg");
+    argv_str.push_back(GetClassPathOption("-Xbootclasspath:", GetLibCoreDexFileNames()));
+    argv_str.push_back("--runtime-arg");
+    argv_str.push_back(GetClassPathOption("-Xbootclasspath-locations:", GetLibCoreDexLocations()));
     argv_str.push_back("--image=" + GetImageLocation());
     argv_str.push_back("--android-data=" + android_data_);
 
