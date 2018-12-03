@@ -46,26 +46,13 @@ void DexoptTest::PostRuntimeCreate() {
   ReserveImageSpace();
 }
 
-static std::string ImageLocation() {
-  Runtime* runtime = Runtime::Current();
-  const std::vector<gc::space::ImageSpace*>& image_spaces =
-      runtime->GetHeap()->GetBootImageSpaces();
-  if (image_spaces.empty()) {
-    return "";
-  }
-  return image_spaces[0]->GetImageLocation();
-}
-
 bool DexoptTest::Dex2Oat(const std::vector<std::string>& args, std::string* error_msg) {
-  Runtime* runtime = Runtime::Current();
-
   std::vector<std::string> argv;
-  argv.push_back(runtime->GetCompilerExecutable());
-  if (runtime->IsJavaDebuggable()) {
-    argv.push_back("--debuggable");
+  if (!CommonRuntimeTest::StartDex2OatCommandLine(&argv, error_msg)) {
+    return false;
   }
-  runtime->AddCurrentRuntimeFeaturesAsDex2OatArguments(&argv);
 
+  Runtime* runtime = Runtime::Current();
   if (runtime->GetHiddenApiEnforcementPolicy() != hiddenapi::EnforcementPolicy::kDisabled) {
     argv.push_back("--runtime-arg");
     argv.push_back("-Xhidden-api-checks");
@@ -74,11 +61,6 @@ bool DexoptTest::Dex2Oat(const std::vector<std::string>& args, std::string* erro
   if (!kIsTargetBuild) {
     argv.push_back("--host");
   }
-
-  argv.push_back("--boot-image=" + ImageLocation());
-
-  std::vector<std::string> compiler_options = runtime->GetCompilerOptions();
-  argv.insert(argv.end(), compiler_options.begin(), compiler_options.end());
 
   argv.insert(argv.end(), args.begin(), args.end());
 

@@ -54,7 +54,7 @@ done
 
 if [[ $mode == target ]]; then
   if [[ $core_jars_only == y ]]; then
-    selected_env_var=TARGET_CORE_JARS
+    selected_env_var=TARGET_TEST_CORE_JARS
   else
     selected_env_var=PRODUCT_BOOT_JARS
   fi
@@ -64,11 +64,31 @@ elif [[ $mode == host ]]; then
     echo "Error: --host does not have non-core boot jars, --core required" >&2
     exit 1
   fi
-  selected_env_var=HOST_CORE_JARS
+  selected_env_var=HOST_TEST_CORE_JARS
   intermediates_env_var=HOST_OUT_COMMON_INTERMEDIATES
 fi
 
-boot_jars_list=$(get_build_var "$selected_env_var")
+if [[ $core_jars_only == y ]]; then
+  # FIXME: The soong invocation we're using for getting the variables does not give us anything
+  # defined in Android.common_path.mk, otherwise we would just use HOST-/TARGET_TEST_CORE_JARS.
+
+  # The core_jars_list must match the TEST_CORE_JARS variable in the Android.common_path.mk .
+  core_jars_list="core-oj core-libart core-simple"
+  core_jars_suffix=
+  if [[ $mode == target ]]; then
+    core_jars_suffix=-testdex
+  elif [[ $mode == host ]]; then
+    core_jars_suffix=-hostdex
+  fi
+  boot_jars_list=""
+  boot_separator=""
+  for boot_module in ${core_jars_list}; do
+    boot_jars_list+="${boot_separator}${boot_module}${core_jars_suffix}"
+    boot_separator=" "
+  done
+else
+  boot_jars_list=$(get_build_var "$selected_env_var")
+fi
 
 # Print only the list of boot jars.
 if [[ $print_file_path == n ]]; then
