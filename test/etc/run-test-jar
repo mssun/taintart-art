@@ -539,23 +539,38 @@ if [ "$USE_JVM" = "y" ]; then
   exit
 fi
 
+bpath_modules="core-oj core-libart core-simple"
+if [ "${HOST}" = "y" ]; then
+    framework="${ANDROID_HOST_OUT}/framework"
+    if [ "${ANDROID_HOST_OUT:0:${#ANDROID_BUILD_TOP}+1}" = "${ANDROID_BUILD_TOP}/" ]; then
+      framework_location="${ANDROID_HOST_OUT:${#ANDROID_BUILD_TOP}+1}/framework"
+    else
+      echo "error: ANDROID_BUILD_TOP/ is not a prefix of ANDROID_HOST_OUT"
+      echo "ANDROID_BUILD_TOP=${ANDROID_BUILD_TOP}"
+      echo "ANDROID_HOST_OUT=${ANDROID_HOST_OUT}"
+      exit
+    fi
+    bpath_suffix="-hostdex"
+else
+    framework="${ANDROID_ROOT}/framework"
+    framework_location="${ANDROID_ROOT}/framework"
+    bpath_suffix="-testdex"
+fi
+bpath=""
+bpath_locations=""
+bpath_separator=""
+for bpath_module in ${bpath_modules}; do
+  bpath+="${bpath_separator}${framework}/${bpath_module}${bpath_suffix}.jar"
+  bpath_locations+="${bpath_separator}${framework_location}/${bpath_module}${bpath_suffix}.jar"
+  bpath_separator=":"
+done
+# Pass down the bootclasspath
+FLAGS="${FLAGS} -Xbootclasspath:${bpath}"
+FLAGS="${FLAGS} -Xbootclasspath-locations:${bpath_locations}"
+COMPILE_FLAGS="${COMPILE_FLAGS} --runtime-arg -Xbootclasspath:${bpath}"
+COMPILE_FLAGS="${COMPILE_FLAGS} --runtime-arg -Xbootclasspath-locations:${bpath_locations}"
 
 if [ "$HAVE_IMAGE" = "n" ]; then
-    if [ "${HOST}" = "y" ]; then
-        framework="${ANDROID_HOST_OUT}/framework"
-        bpath_suffix="-hostdex"
-    else
-        framework="${ANDROID_ROOT}/framework"
-        bpath_suffix="-testdex"
-    fi
-    bpath="${framework}/core-libart${bpath_suffix}.jar"
-    bpath="${bpath}:${framework}/core-oj${bpath_suffix}.jar"
-    bpath="${bpath}:${framework}/core-simple${bpath_suffix}.jar"
-    bpath="${bpath}:${framework}/conscrypt${bpath_suffix}.jar"
-    bpath="${bpath}:${framework}/okhttp${bpath_suffix}.jar"
-    bpath="${bpath}:${framework}/bouncycastle${bpath_suffix}.jar"
-    # Pass down the bootclasspath
-    FLAGS="${FLAGS} -Xbootclasspath:${bpath}"
     # Disable image dex2oat - this will forbid the runtime to patch or compile an image.
     FLAGS="${FLAGS} -Xnoimage-dex2oat"
 
