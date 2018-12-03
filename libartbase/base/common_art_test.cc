@@ -25,7 +25,6 @@
 
 #include "android-base/stringprintf.h"
 #include "android-base/unique_fd.h"
-#include <unicode/uvernum.h>
 
 #include "art_field-inl.h"
 #include "base/file_utils.h"
