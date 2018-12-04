@@ -21,7 +21,6 @@
 #include "android-base/stringprintf.h"
 
 #include "base/globals.h"
-#include "base/utils.h"
 #include "class-inl.h"
 #include "common_throws.h"
 #include "dex/utf.h"

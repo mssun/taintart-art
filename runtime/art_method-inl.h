@@ -21,7 +21,6 @@
 
 #include "art_field.h"
 #include "base/callee_save_type.h"
-#include "base/utils.h"
 #include "class_linker-inl.h"
 #include "common_throws.h"
 #include "dex/code_item_accessors-inl.h"

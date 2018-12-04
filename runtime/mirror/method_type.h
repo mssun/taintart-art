@@ -17,7 +17,6 @@
 #ifndef ART_RUNTIME_MIRROR_METHOD_TYPE_H_
 #define ART_RUNTIME_MIRROR_METHOD_TYPE_H_
 
-#include "base/utils.h"
 #include "object_array.h"
 #include "object.h"
 #include "string.h"
