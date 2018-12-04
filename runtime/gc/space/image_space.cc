@@ -28,6 +28,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/array_ref.h"
 #include "base/bit_memory_region.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
@@ -59,6 +60,7 @@ namespace art {
 namespace gc {
 namespace space {
 
+using android::base::StringAppendF;
 using android::base::StringPrintf;
 
 Atomic<uint32_t> ImageSpace::bitmap_index_(0);
@@ -1654,8 +1656,10 @@ class ImageSpace::BootImageLoader {
       *error_msg = StringPrintf("Cannot read header of %s", filename.c_str());
       return false;
     }
-    if (system_hdr.GetComponentCount() != boot_class_path_.size()) {
-      *error_msg = StringPrintf("Unexpected component count in %s, received %u, expected %zu",
+    if (system_hdr.GetComponentCount() == 0u ||
+        system_hdr.GetComponentCount() > boot_class_path_.size()) {
+      *error_msg = StringPrintf("Unexpected component count in %s, received %u, "
+                                    "expected non-zero and <= %zu",
                                 filename.c_str(),
                                 system_hdr.GetComponentCount(),
                                 boot_class_path_.size());
@@ -1672,10 +1676,12 @@ class ImageSpace::BootImageLoader {
       return false;
     }
 
+    ArrayRef<const std::string> provided_locations(boot_class_path_locations_.data(),
+                                                   system_hdr.GetComponentCount());
     std::vector<std::string> locations =
-        ExpandMultiImageLocations(boot_class_path_locations_, image_location_);
+        ExpandMultiImageLocations(provided_locations, image_location_);
     std::vector<std::string> filenames =
-        ExpandMultiImageLocations(boot_class_path_locations_, filename);
+        ExpandMultiImageLocations(provided_locations, filename);
     DCHECK_EQ(locations.size(), filenames.size());
     std::vector<std::unique_ptr<ImageSpace>> spaces;
     spaces.reserve(locations.size());
@@ -1694,7 +1700,7 @@ class ImageSpace::BootImageLoader {
     }
     for (size_t i = 0u, size = spaces.size(); i != size; ++i) {
       std::string expected_boot_class_path =
-          (i == 0u) ? android::base::Join(boot_class_path_locations_, ':') : std::string();
+          (i == 0u) ? android::base::Join(provided_locations, ':') : std::string();
       if (!OpenOatFile(spaces[i].get(),
                        boot_class_path_[i],
                        expected_boot_class_path,
@@ -2444,8 +2450,112 @@ bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg
   return true;
 }
 
+std::string ImageSpace::GetBootClassPathChecksums(const std::vector<std::string>& boot_class_path,
+                                                  const std::string& image_location,
+                                                  InstructionSet image_isa,
+                                                  /*out*/std::string* error_msg) {
+  std::string system_filename;
+  bool has_system = false;
+  std::string cache_filename;
+  bool has_cache = false;
+  bool dalvik_cache_exists = false;
+  bool is_global_cache = false;
+  if (!FindImageFilename(image_location.c_str(),
+                         image_isa,
+                         &system_filename,
+                         &has_system,
+                         &cache_filename,
+                         &dalvik_cache_exists,
+                         &has_cache,
+                         &is_global_cache)) {
+    *error_msg = StringPrintf("Unable to find image file for %s and %s",
+                              image_location.c_str(),
+                              GetInstructionSetString(image_isa));
+    return std::string();
+  }
+
+  DCHECK(has_system || has_cache);
+  const std::string& filename = has_system ? system_filename : cache_filename;
+  std::unique_ptr<ImageHeader> header = ReadSpecificImageHeader(filename.c_str(), error_msg);
+  if (header == nullptr) {
+    return std::string();
+  }
+  if (header->GetComponentCount() == 0u || header->GetComponentCount() > boot_class_path.size()) {
+    *error_msg = StringPrintf("Unexpected component count in %s, received %u, "
+                                  "expected non-zero and <= %zu",
+                              filename.c_str(),
+                              header->GetComponentCount(),
+                              boot_class_path.size());
+    return std::string();
+  }
+
+  std::string boot_image_checksum =
+      StringPrintf("i;%d/%08x", header->GetComponentCount(), header->GetImageChecksum());
+  ArrayRef<const std::string> boot_class_path_tail =
+      ArrayRef<const std::string>(boot_class_path).SubArray(header->GetComponentCount());
+  for (const std::string& bcp_filename : boot_class_path_tail) {
+    std::vector<std::unique_ptr<const DexFile>> dex_files;
+    const ArtDexFileLoader dex_file_loader;
+    if (!dex_file_loader.Open(bcp_filename.c_str(),
+                              bcp_filename,  // The location does not matter here.
+                              /*verify=*/ false,
+                              /*verify_checksum=*/ false,
+                              error_msg,
+                              &dex_files)) {
+      return std::string();
+    }
+    DCHECK(!dex_files.empty());
+    StringAppendF(&boot_image_checksum, ":d");
+    for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
+      StringAppendF(&boot_image_checksum, "/%08x", dex_file->GetLocationChecksum());
+    }
+  }
+  return boot_image_checksum;
+}
+
+std::string ImageSpace::GetBootClassPathChecksums(
+    const std::vector<ImageSpace*>& image_spaces,
+    const std::vector<const DexFile*>& boot_class_path) {
+  DCHECK(!image_spaces.empty());
+  const ImageHeader& primary_header = image_spaces.front()->GetImageHeader();
+  uint32_t component_count = primary_header.GetComponentCount();
+  DCHECK_EQ(component_count, image_spaces.size());
+  std::string boot_image_checksum =
+      StringPrintf("i;%d/%08x", component_count, primary_header.GetImageChecksum());
+  size_t pos = 0u;
+  for (const ImageSpace* space : image_spaces) {
+    size_t num_dex_files = space->oat_file_non_owned_->GetOatDexFiles().size();
+    if (kIsDebugBuild) {
+      CHECK_NE(num_dex_files, 0u);
+      CHECK_LE(space->oat_file_non_owned_->GetOatDexFiles().size(), boot_class_path.size() - pos);
+      for (size_t i = 0; i != num_dex_files; ++i) {
+        CHECK_EQ(space->oat_file_non_owned_->GetOatDexFiles()[i]->GetDexFileLocation(),
+                 boot_class_path[pos + i]->GetLocation());
+      }
+    }
+    pos += num_dex_files;
+  }
+  ArrayRef<const DexFile* const> boot_class_path_tail =
+      ArrayRef<const DexFile* const>(boot_class_path).SubArray(pos);
+  DCHECK(boot_class_path_tail.empty() ||
+         !DexFileLoader::IsMultiDexLocation(boot_class_path_tail.front()->GetLocation().c_str()));
+  for (const DexFile* dex_file : boot_class_path_tail) {
+    if (!DexFileLoader::IsMultiDexLocation(dex_file->GetLocation().c_str())) {
+      StringAppendF(&boot_image_checksum, ":d");
+    }
+    StringAppendF(&boot_image_checksum, "/%08x", dex_file->GetLocationChecksum());
+  }
+  return boot_image_checksum;
+}
+
 std::vector<std::string> ImageSpace::ExpandMultiImageLocations(
     const std::vector<std::string>& dex_locations,
+    const std::string& image_location) {
+  return ExpandMultiImageLocations(ArrayRef<const std::string>(dex_locations), image_location);
+}
+
+std::vector<std::string> ImageSpace::ExpandMultiImageLocations(
+    ArrayRef<const std::string> dex_locations,
     const std::string& image_location) {
   DCHECK(!dex_locations.empty());
 
