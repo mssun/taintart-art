@@ -39,6 +39,10 @@ namespace verifier {
 class VerifierDepsTest;
 }  // namespace verifier
 
+namespace linker {
+class Arm64RelativePatcherTest;
+}  // namespace linker
+
 class DexFile;
 enum class InstructionSet;
 class InstructionSetFeatures;
@@ -450,6 +454,7 @@ class CompilerOptions final {
   friend class CommonCompilerTest;
   friend class jit::JitCompiler;
   friend class verifier::VerifierDepsTest;
+  friend class linker::Arm64RelativePatcherTest;
 
   template <class Base>
   friend bool ReadCompilerOptions(Base& map, CompilerOptions* options, std::string* error_msg);
