@@ -134,7 +134,7 @@ static std::vector<uint8_t> MakeMiniDebugInfoInternal(
   CHECK(builder->Good());
   std::vector<uint8_t> compressed_buffer;
   compressed_buffer.reserve(buffer.size() / 4);
-  XzCompress(ArrayRef<uint8_t>(buffer), &compressed_buffer);
+  XzCompress(ArrayRef<const uint8_t>(buffer), &compressed_buffer);
   return compressed_buffer;
 }
 
