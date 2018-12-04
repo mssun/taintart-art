@@ -611,6 +611,10 @@ struct ClassExtOffsets : public CheckOffsets<mirror::ClassExt> {
     addOffset(OFFSETOF_MEMBER(mirror::ClassExt, obsolete_dex_caches_), "obsoleteDexCaches");
     addOffset(OFFSETOF_MEMBER(mirror::ClassExt, obsolete_methods_), "obsoleteMethods");
     addOffset(OFFSETOF_MEMBER(mirror::ClassExt, original_dex_file_), "originalDexFile");
+    addOffset(OFFSETOF_MEMBER(mirror::ClassExt, pre_redefine_class_def_index_),
+              "preRedefineClassDefIndex");
+    addOffset(OFFSETOF_MEMBER(mirror::ClassExt, pre_redefine_dex_file_ptr_),
+              "preRedefineDexFilePtr");
     addOffset(OFFSETOF_MEMBER(mirror::ClassExt, verify_error_), "verifyError");
   }
 };

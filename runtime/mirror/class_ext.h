@@ -64,6 +64,20 @@ class MANAGED ClassExt : public Object {
 
   void SetOriginalDexFile(ObjPtr<Object> bytes) REQUIRES_SHARED(Locks::mutator_lock_);
 
+  uint16_t GetPreRedefineClassDefIndex() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return static_cast<uint16_t>(
+        GetField32(OFFSET_OF_OBJECT_MEMBER(ClassExt, pre_redefine_class_def_index_)));
+  }
+
+  void SetPreRedefineClassDefIndex(uint16_t index) REQUIRES_SHARED(Locks::mutator_lock_);
+
+  const DexFile* GetPreRedefineDexFile() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return reinterpret_cast<const DexFile*>(static_cast<uintptr_t>(
+        GetField64(OFFSET_OF_OBJECT_MEMBER(ClassExt, pre_redefine_dex_file_ptr_))));
+  }
+
+  void SetPreRedefineDexFile(const DexFile* dex_file) REQUIRES_SHARED(Locks::mutator_lock_);
+
   void SetObsoleteArrays(ObjPtr<PointerArray> methods, ObjPtr<ObjectArray<DexCache>> dex_caches)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -87,6 +101,10 @@ class MANAGED ClassExt : public Object {
 
   // The saved verification error of this class.
   HeapReference<Object> verify_error_;
+
+  // Native pointer to DexFile and ClassDef index of this class before it was JVMTI-redefined.
+  int64_t pre_redefine_dex_file_ptr_;
+  int32_t pre_redefine_class_def_index_;
 
   friend struct art::ClassExtOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(ClassExt);
