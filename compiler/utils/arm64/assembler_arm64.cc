@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "arch/arm64/instruction_set_features_arm64.h"
 #include "assembler_arm64.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "heap_poisoning.h"
@@ -30,6 +31,37 @@ namespace arm64 {
 #else
 #define ___   vixl_masm_.
 #endif
+
+// Sets vixl::CPUFeatures according to ART instruction set features.
+static void SetVIXLCPUFeaturesFromART(vixl::aarch64::MacroAssembler* vixl_masm_,
+                                      const Arm64InstructionSetFeatures* art_features) {
+  // Retrieve already initialized default features of vixl.
+  vixl::CPUFeatures* features = vixl_masm_->GetCPUFeatures();
+
+  DCHECK(features->Has(vixl::CPUFeatures::kFP));
+  DCHECK(features->Has(vixl::CPUFeatures::kNEON));
+  DCHECK(art_features != nullptr);
+  if (art_features->HasCRC()) {
+    features->Combine(vixl::CPUFeatures::kCRC32);
+  }
+  if (art_features->HasDotProd()) {
+    features->Combine(vixl::CPUFeatures::kDotProduct);
+  }
+  if (art_features->HasFP16()) {
+    features->Combine(vixl::CPUFeatures::kFPHalf);
+  }
+  if (art_features->HasLSE()) {
+    features->Combine(vixl::CPUFeatures::kAtomics);
+  }
+}
+
+Arm64Assembler::Arm64Assembler(ArenaAllocator* allocator,
+                               const Arm64InstructionSetFeatures* art_features)
+    : Assembler(allocator) {
+  if (art_features != nullptr) {
+    SetVIXLCPUFeaturesFromART(&vixl_masm_, art_features);
+  }
+}
 
 void Arm64Assembler::FinalizeCode() {
   ___ FinalizeCode();
