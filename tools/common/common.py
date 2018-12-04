@@ -299,11 +299,13 @@ class HostTestEnv(ITestEnv):
       os.mkdir(arch_cache_path)
     lib = 'lib64' if x64 else 'lib'
     android_root = GetEnvVariableOrError('ANDROID_HOST_OUT')
+    android_runtime_root = android_root + '/com.android.runtime'
     library_path = android_root + '/' + lib
     path = android_root + '/bin'
     self._shell_env = os.environ.copy()
     self._shell_env['ANDROID_DATA'] = self._env_path
     self._shell_env['ANDROID_ROOT'] = android_root
+    self._shell_env['ANDROID_RUNTIME_ROOT'] = android_runtime_root
     self._shell_env['LD_LIBRARY_PATH'] = library_path
     self._shell_env['DYLD_LIBRARY_PATH'] = library_path
     self._shell_env['PATH'] = (path + ':' + self._shell_env['PATH'])

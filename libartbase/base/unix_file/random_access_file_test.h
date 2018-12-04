@@ -35,11 +35,11 @@ class RandomAccessFileTest : public testing::Test {
   virtual RandomAccessFile* MakeTestFile() = 0;
 
   virtual void SetUp() {
-    art::CommonArtTest::SetUpAndroidData(android_data_);
+    art::CommonArtTest::SetUpAndroidDataDir(android_data_);
   }
 
   virtual void TearDown() {
-    art::CommonArtTest::TearDownAndroidData(android_data_, true);
+    art::CommonArtTest::TearDownAndroidDataDir(android_data_, true);
   }
 
   std::string GetTmpPath(const std::string& name) {
