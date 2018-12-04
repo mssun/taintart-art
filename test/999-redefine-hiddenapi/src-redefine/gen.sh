@@ -23,16 +23,10 @@ CLASS="art/Test999"
 (cd "$TMP" && \
     javac -d "${TMP}" "$DIR/${CLASS}.java" && \
     d8 --output . "$TMP/${CLASS}.class" &&
-    hiddenapi encode --input-dex="$TMP/classes.dex" \
-                     --output-dex="$TMP/classes-hiddenapi.dex" \
-                     --api-flags="$DIR/../hiddenapi-flags.csv" \
-                     --no-force-assign-all)
 
 echo '  private static final byte[] CLASS_BYTES = Base64.getDecoder().decode('
 base64 "${TMP}/${CLASS}.class" | sed -E 's/^/    "/' | sed ':a;N;$!ba;s/\n/" +\n/g' | sed -E '$ s/$/");/'
 echo '  private static final byte[] DEX_BYTES = Base64.getDecoder().decode('
 base64 "${TMP}/classes.dex" | sed -E 's/^/    "/' | sed ':a;N;$!ba;s/\n/" +\n/g' | sed -E '$ s/$/");/'
-echo '  private static final byte[] DEX_BYTES_HIDDEN = Base64.getDecoder().decode('
-base64 "${TMP}/classes-hiddenapi.dex" | sed -E 's/^/    "/' | sed ':a;N;$!ba;s/\n/" +\n/g' | sed -E '$ s/$/");/'
 
 rm -rf "$TMP"

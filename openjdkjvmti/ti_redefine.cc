@@ -1427,11 +1427,6 @@ void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class>
     method.SetCodeItemOffset(dex_file_->FindCodeItemOffset(class_def, dex_method_idx));
     // Clear all the intrinsics related flags.
     method.SetNotIntrinsic();
-    // Disable hiddenapi checks when accessing this method.
-    // Redefining hiddenapi flags is unsupported for the same reasons as redefining
-    // access flags. Moreover, ArtMethod loses pointer to the old dex file, so just
-    // disable the checks completely for consistency.
-    method.SetAccessFlags(method.GetAccessFlags() | art::kAccPublicApi);
   }
 }
 
@@ -1450,11 +1445,6 @@ void Redefiner::ClassRedefinition::UpdateFields(art::ObjPtr<art::mirror::Class> 
       CHECK(new_field_id != nullptr);
       // We only need to update the index since the other data in the ArtField cannot be updated.
       field.SetDexFieldIndex(dex_file_->GetIndexForFieldId(*new_field_id));
-      // Disable hiddenapi checks when accessing this method.
-      // Redefining hiddenapi flags is unsupported for the same reasons as redefining
-      // access flags. Moreover, ArtField loses pointer to the old dex file, so just
-      // disable the checks completely for consistency.
-      field.SetAccessFlags(field.GetAccessFlags() | art::kAccPublicApi);
     }
   }
 }
@@ -1469,15 +1459,25 @@ void Redefiner::ClassRedefinition::UpdateClass(
   UpdateMethods(mclass, class_def);
   UpdateFields(mclass);
 
+  art::ObjPtr<art::mirror::ClassExt> ext(mclass->GetExtData());
+  CHECK(!ext.IsNull());
+  ext->SetOriginalDexFile(original_dex_file);
+
+  // If this is the first time the class is being redefined, store
+  // the native DexFile pointer and initial ClassDef index in ClassExt.
+  // This preserves the pointer for hiddenapi access checks which need
+  // to read access flags from the initial DexFile.
+  if (ext->GetPreRedefineDexFile() == nullptr) {
+    ext->SetPreRedefineDexFile(&mclass->GetDexFile());
+    ext->SetPreRedefineClassDefIndex(mclass->GetDexClassDefIndex());
+  }
+
   // Update the class fields.
   // Need to update class last since the ArtMethod gets its DexFile from the class (which is needed
   // to call GetReturnTypeDescriptor and GetParameterTypeList above).
   mclass->SetDexCache(new_dex_cache.Ptr());
   mclass->SetDexClassDefIndex(dex_file_->GetIndexForClassDef(class_def));
   mclass->SetDexTypeIndex(dex_file_->GetIndexForTypeId(*dex_file_->FindTypeId(class_sig_.c_str())));
-  art::ObjPtr<art::mirror::ClassExt> ext(mclass->GetExtData());
-  CHECK(!ext.IsNull());
-  ext->SetOriginalDexFile(original_dex_file);
 
   // Notify the jit that all the methods in this class were redefined. Need to do this last since
   // the jit relies on the dex_file_ being correct (for native methods at least) to find the method
