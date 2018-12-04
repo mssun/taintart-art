@@ -9,6 +9,7 @@ msg() {
 }
 
 ANDROID_ROOT="/system"
+ANDROID_RUNTIME_ROOT="/apex/com.android.runtime"
 ARCHITECTURES_32="(arm|x86|mips|none)"
 ARCHITECTURES_64="(arm64|x86_64|mips64|none)"
 ARCHITECTURES_PATTERN="${ARCHITECTURES_32}"
@@ -209,7 +210,8 @@ while true; do
         shift
     elif [ "x$1" = "x--host" ]; then
         HOST="y"
-        ANDROID_ROOT="$ANDROID_HOST_OUT"
+        ANDROID_ROOT="${ANDROID_HOST_OUT}"
+        ANDROID_RUNTIME_ROOT="${ANDROID_HOST_OUT}/com.android.runtime"
         shift
     elif [ "x$1" = "x--bionic" ]; then
         BIONIC="y"
@@ -902,6 +904,7 @@ if [ "$HOST" = "n" ]; then
              export ANDROID_ADDITIONAL_PUBLIC_LIBRARIES=$PUBLIC_LIBS && \
              export DEX_LOCATION=$DEX_LOCATION && \
              export ANDROID_ROOT=$ANDROID_ROOT && \
+             export ANDROID_RUNTIME_ROOT=$ANDROID_RUNTIME_ROOT && \
              export ANDROID_LOG_TAGS=$ANDROID_LOG_TAGS && \
              rm -rf ${DEX_LOCATION}/dalvik-cache/ && \
              mkdir -p ${mkdir_locations} && \
@@ -946,6 +949,7 @@ else
 
     export ANDROID_DATA="$DEX_LOCATION"
     export ANDROID_ROOT="${ANDROID_ROOT}"
+    export ANDROID_RUNTIME_ROOT="${ANDROID_RUNTIME_ROOT}"
     export LD_LIBRARY_PATH="${ANDROID_ROOT}/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
     export DYLD_LIBRARY_PATH="${ANDROID_ROOT}/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
     export PATH="$PATH:${ANDROID_ROOT}/bin"

@@ -110,49 +110,59 @@ void ScratchFile::Unlink() {
   CHECK_EQ(0, unlink_result);
 }
 
-void CommonArtTestImpl::SetUpAndroidRoot() {
+void CommonArtTestImpl::SetUpAndroidRootEnvVars() {
   if (IsHost()) {
-    // $ANDROID_ROOT is set on the device, but not necessarily on the host.
-    // But it needs to be set so that icu4c can find its locale data.
-    const char* android_root_from_env = getenv("ANDROID_ROOT");
-    if (android_root_from_env == nullptr) {
-      // Use ANDROID_HOST_OUT for ANDROID_ROOT if it is set.
-      const char* android_host_out = getenv("ANDROID_HOST_OUT");
-      if (android_host_out != nullptr) {
-        setenv("ANDROID_ROOT", android_host_out, 1);
-      } else {
-        // Build it from ANDROID_BUILD_TOP or cwd
-        std::string root;
-        const char* android_build_top = getenv("ANDROID_BUILD_TOP");
-        if (android_build_top != nullptr) {
-          root += android_build_top;
-        } else {
-          // Not set by build server, so default to current directory
-          char* cwd = getcwd(nullptr, 0);
-          setenv("ANDROID_BUILD_TOP", cwd, 1);
-          root += cwd;
-          free(cwd);
-        }
+    // Make sure that ANDROID_BUILD_TOP is set. If not, set it from CWD.
+    const char* android_build_top_from_env = getenv("ANDROID_BUILD_TOP");
+    if (android_build_top_from_env == nullptr) {
+      // Not set by build server, so default to current directory.
+      char* cwd = getcwd(nullptr, 0);
+      setenv("ANDROID_BUILD_TOP", cwd, 1);
+      free(cwd);
+      android_build_top_from_env = getenv("ANDROID_BUILD_TOP");
+    }
+
+    const char* android_host_out_from_env = getenv("ANDROID_HOST_OUT");
+    if (android_host_out_from_env == nullptr) {
+      // Not set by build server, so default to the usual value of
+      // ANDROID_HOST_OUT.
+      std::string android_host_out = android_build_top_from_env;
 #if defined(__linux__)
-        root += "/out/host/linux-x86";
+      android_host_out += "/out/host/linux-x86";
 #elif defined(__APPLE__)
-        root += "/out/host/darwin-x86";
+      android_host_out += "/out/host/darwin-x86";
 #else
 #error unsupported OS
 #endif
-        setenv("ANDROID_ROOT", root.c_str(), 1);
-      }
+      setenv("ANDROID_HOST_OUT", android_host_out.c_str(), 1);
+      android_host_out_from_env = getenv("ANDROID_HOST_OUT");
     }
-    setenv("LD_LIBRARY_PATH", ":", 0);  // Required by java.lang.System.<clinit>.
 
-    // Not set by build server, so default
-    if (getenv("ANDROID_HOST_OUT") == nullptr) {
-      setenv("ANDROID_HOST_OUT", getenv("ANDROID_ROOT"), 1);
+    // Environment variable ANDROID_ROOT is set on the device, but not
+    // necessarily on the host.
+    const char* android_root_from_env = getenv("ANDROID_ROOT");
+    if (android_root_from_env == nullptr) {
+      // Use ANDROID_HOST_OUT for ANDROID_ROOT.
+      setenv("ANDROID_ROOT", android_host_out_from_env, 1);
+      android_root_from_env = getenv("ANDROID_ROOT");
     }
+
+    // Environment variable ANDROID_RUNTIME_ROOT is set on the device, but not
+    // necessarily on the host. It needs to be set so that various libraries
+    // like icu4c can find their data files.
+    const char* android_runtime_root_from_env = getenv("ANDROID_RUNTIME_ROOT");
+    if (android_runtime_root_from_env == nullptr) {
+      // Use ${ANDROID_HOST_OUT}/com.android.runtime for ANDROID_RUNTIME_ROOT.
+      std::string android_runtime_root = android_host_out_from_env;
+      android_runtime_root += "/com.android.runtime";
+      setenv("ANDROID_RUNTIME_ROOT", android_runtime_root.c_str(), 1);
+    }
+
+    setenv("LD_LIBRARY_PATH", ":", 0);  // Required by java.lang.System.<clinit>.
   }
 }
 
-void CommonArtTestImpl::SetUpAndroidData(std::string& android_data) {
+void CommonArtTestImpl::SetUpAndroidDataDir(std::string& android_data) {
   // On target, Cannot use /mnt/sdcard because it is mounted noexec, so use subdir of dalvik-cache
   if (IsHost()) {
     const char* tmpdir = getenv("TMPDIR");
@@ -172,15 +182,16 @@ void CommonArtTestImpl::SetUpAndroidData(std::string& android_data) {
 }
 
 void CommonArtTestImpl::SetUp() {
-  SetUpAndroidRoot();
-  SetUpAndroidData(android_data_);
+  SetUpAndroidRootEnvVars();
+  SetUpAndroidDataDir(android_data_);
   dalvik_cache_.append(android_data_.c_str());
   dalvik_cache_.append("/dalvik-cache");
   int mkdir_result = mkdir(dalvik_cache_.c_str(), 0700);
   ASSERT_EQ(mkdir_result, 0);
 }
 
-void CommonArtTestImpl::TearDownAndroidData(const std::string& android_data, bool fail_on_error) {
+void CommonArtTestImpl::TearDownAndroidDataDir(const std::string& android_data,
+                                               bool fail_on_error) {
   if (fail_on_error) {
     ASSERT_EQ(rmdir(android_data.c_str()), 0);
   } else {
@@ -295,7 +306,7 @@ void CommonArtTestImpl::TearDown() {
   ClearDirectory(dalvik_cache_.c_str());
   int rmdir_cache_result = rmdir(dalvik_cache_.c_str());
   ASSERT_EQ(0, rmdir_cache_result);
-  TearDownAndroidData(android_data_, true);
+  TearDownAndroidDataDir(android_data_, true);
   dalvik_cache_.clear();
 }
 

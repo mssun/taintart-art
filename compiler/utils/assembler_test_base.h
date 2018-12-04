@@ -59,12 +59,12 @@ class AssemblerTestInfrastructure {
       disassembler_cmd_name_(disasm),
       disassembler_parameters_(disasm_params) {
     // Fake a runtime test for ScratchFile
-    CommonRuntimeTest::SetUpAndroidData(android_data_);
+    CommonRuntimeTest::SetUpAndroidDataDir(android_data_);
   }
 
   virtual ~AssemblerTestInfrastructure() {
     // We leave temporaries in case this failed so we can debug issues.
-    CommonRuntimeTest::TearDownAndroidData(android_data_, false);
+    CommonRuntimeTest::TearDownAndroidDataDir(android_data_, false);
     tmpnam_ = "";
   }
 
