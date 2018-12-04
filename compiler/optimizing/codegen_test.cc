@@ -823,6 +823,33 @@ TEST_F(CodegenTest, ARM64ParallelMoveResolverSIMD) {
   InternalCodeAllocator code_allocator;
   codegen.Finalize(&code_allocator);
 }
+
+// Check that ART ISA Features are propagated to VIXL for arm64 (using cortex-a75 as example).
+TEST_F(CodegenTest, ARM64IsaVIXLFeaturesA75) {
+  OverrideInstructionSetFeatures(InstructionSet::kArm64, "cortex-a75");
+  HGraph* graph = CreateGraph();
+  arm64::CodeGeneratorARM64 codegen(graph, *compiler_options_);
+  vixl::CPUFeatures* features = codegen.GetVIXLAssembler()->GetCPUFeatures();
+
+  EXPECT_TRUE(features->Has(vixl::CPUFeatures::kCRC32));
+  EXPECT_TRUE(features->Has(vixl::CPUFeatures::kDotProduct));
+  EXPECT_TRUE(features->Has(vixl::CPUFeatures::kFPHalf));
+  EXPECT_TRUE(features->Has(vixl::CPUFeatures::kAtomics));
+}
+
+// Check that ART ISA Features are propagated to VIXL for arm64 (using cortex-a53 as example).
+TEST_F(CodegenTest, ARM64IsaVIXLFeaturesA53) {
+  OverrideInstructionSetFeatures(InstructionSet::kArm64, "cortex-a53");
+  HGraph* graph = CreateGraph();
+  arm64::CodeGeneratorARM64 codegen(graph, *compiler_options_);
+  vixl::CPUFeatures* features = codegen.GetVIXLAssembler()->GetCPUFeatures();
+
+  EXPECT_TRUE(features->Has(vixl::CPUFeatures::kCRC32));
+  EXPECT_FALSE(features->Has(vixl::CPUFeatures::kDotProduct));
+  EXPECT_FALSE(features->Has(vixl::CPUFeatures::kFPHalf));
+  EXPECT_FALSE(features->Has(vixl::CPUFeatures::kAtomics));
+}
+
 #endif
 
 #ifdef ART_ENABLE_CODEGEN_mips
