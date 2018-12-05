@@ -74,18 +74,21 @@ HOST_CORE_IMG_LOCATION := $(HOST_OUT_JAVA_LIBRARIES)/core.art
 TARGET_CORE_IMG_LOCATION := $(ART_TARGET_TEST_OUT)/core.art
 
 # Jar files for core.art.
-HOST_CORE_DEX_LOCATIONS   := $(foreach jar,$(HOST_CORE_JARS),  $(HOST_OUT_JAVA_LIBRARIES)/$(jar).jar)
+TEST_CORE_JARS := core-oj core-libart core-simple conscrypt okhttp bouncycastle
+HOST_TEST_CORE_JARS   := $(addsuffix -hostdex,$(TEST_CORE_JARS))
+TARGET_TEST_CORE_JARS := $(addsuffix -testdex,$(TEST_CORE_JARS))
+HOST_CORE_DEX_LOCATIONS   := $(foreach jar,$(HOST_TEST_CORE_JARS),  $(HOST_OUT_JAVA_LIBRARIES)/$(jar).jar)
 ifeq ($(ART_TEST_ANDROID_ROOT),)
-TARGET_CORE_DEX_LOCATIONS := $(foreach jar,$(TARGET_CORE_JARS),/$(DEXPREOPT_BOOT_JAR_DIR)/$(jar).jar)
+TARGET_CORE_DEX_LOCATIONS := $(foreach jar,$(TARGET_TEST_CORE_JARS),/$(DEXPREOPT_BOOT_JAR_DIR)/$(jar).jar)
 else
-TARGET_CORE_DEX_LOCATIONS := $(foreach jar,$(TARGET_CORE_JARS),$(ART_TEST_ANDROID_ROOT)/framework/$(jar).jar)
+TARGET_CORE_DEX_LOCATIONS := $(foreach jar,$(TARGET_TEST_CORE_JARS),$(ART_TEST_ANDROID_ROOT)/framework/$(jar).jar)
 endif
 
-HOST_CORE_DEX_FILES   := $(foreach jar,$(HOST_CORE_JARS),  $(call intermediates-dir-for,JAVA_LIBRARIES,$(jar),t,COMMON)/javalib.jar)
-TARGET_CORE_DEX_FILES := $(foreach jar,$(TARGET_CORE_JARS),$(call intermediates-dir-for,JAVA_LIBRARIES,$(jar), ,COMMON)/javalib.jar)
+HOST_CORE_DEX_FILES   := $(foreach jar,$(HOST_TEST_CORE_JARS),  $(call intermediates-dir-for,JAVA_LIBRARIES,$(jar),t,COMMON)/javalib.jar)
+TARGET_CORE_DEX_FILES := $(foreach jar,$(TARGET_TEST_CORE_JARS),$(call intermediates-dir-for,JAVA_LIBRARIES,$(jar), ,COMMON)/javalib.jar)
 
-ART_HOST_DEX_DEPENDENCIES := $(foreach jar,$(HOST_CORE_JARS),$(HOST_OUT_JAVA_LIBRARIES)/$(jar).jar)
-ART_TARGET_DEX_DEPENDENCIES := $(foreach jar,$(TARGET_CORE_JARS),$(TARGET_OUT_JAVA_LIBRARIES)/$(jar).jar)
+ART_HOST_DEX_DEPENDENCIES := $(foreach jar,$(HOST_TEST_CORE_JARS),$(HOST_OUT_JAVA_LIBRARIES)/$(jar).jar)
+ART_TARGET_DEX_DEPENDENCIES := $(foreach jar,$(TARGET_TEST_CORE_JARS),$(TARGET_OUT_JAVA_LIBRARIES)/$(jar).jar)
 
 ART_CORE_SHARED_LIBRARIES := libjavacore libopenjdk libopenjdkjvm libopenjdkjvmti
 ART_CORE_SHARED_DEBUG_LIBRARIES := libopenjdkd libopenjdkjvmd libopenjdkjvmtid
