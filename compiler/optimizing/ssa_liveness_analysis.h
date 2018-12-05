@@ -1155,10 +1155,11 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
  *
  * (a) Non-environment uses of an instruction always make
  *     the instruction live.
- * (b) Environment uses of an instruction whose type is
- *     object (that is, non-primitive), make the instruction live.
- *     This is due to having to keep alive objects that have
- *     finalizers deleting native objects.
+ * (b) Environment uses of an instruction whose type is object (that is, non-primitive), make the
+ *     instruction live, unless the class has an @DeadReferenceSafe annotation.
+ *     This avoids unexpected premature reference enqueuing or finalization, which could
+ *     result in premature deletion of native objects.  In the presence of @DeadReferenceSafe,
+ *     object references are treated like primitive types.
  * (c) When the graph has the debuggable property, environment uses
  *     of an instruction that has a primitive type make the instruction live.
  *     If the graph does not have the debuggable property, the environment
@@ -1287,6 +1288,7 @@ class SsaLivenessAnalysis : public ValueObject {
     // When compiling in OSR mode, all loops in the compiled method may be entered
     // from the interpreter via SuspendCheck; thus we need to preserve the environment.
     if (env_holder->IsSuspendCheck() && graph->IsCompilingOsr()) return true;
+    if (graph -> IsDeadReferenceSafe()) return false;
     return instruction->GetType() == DataType::Type::kReference;
   }
 

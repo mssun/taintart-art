@@ -402,9 +402,9 @@ std::string Instruction::DumpString(const DexFile* file) const {
         case INVOKE_VIRTUAL_QUICK:
           if (file != nullptr) {
             os << opcode << " {";
-            uint32_t method_idx = VRegB_35c();
+            uint32_t vtable_offset = VRegB_35c();
             DumpArgs(VRegA_35c());
-            os << "},  // vtable@" << method_idx;
+            os << "},  // vtable@" << vtable_offset;
             break;
           }
           FALLTHROUGH_INTENDED;

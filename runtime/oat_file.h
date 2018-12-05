@@ -502,6 +502,9 @@ class OatDexFile final {
     return dex_file_pointer_;
   }
 
+  ArrayRef<const uint8_t> GetQuickenedInfoOf(const DexFile& dex_file,
+                                             uint32_t dex_method_idx) const;
+
   // Looks up a class definition by its class descriptor. Hash must be
   // ComputeModifiedUtf8Hash(descriptor).
   static const dex::ClassDef* FindClassDef(const DexFile& dex_file,
