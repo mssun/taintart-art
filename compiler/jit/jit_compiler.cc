@@ -146,7 +146,10 @@ extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t cou
     // (which would have been otherwise used as identifier to remove it later).
     AddNativeDebugInfoForJit(Thread::Current(),
                              /*code_ptr=*/ nullptr,
-                             elf_file);
+                             elf_file,
+                             debug::PackElfFileForJIT,
+                             compiler_options.GetInstructionSet(),
+                             compiler_options.GetInstructionSetFeatures());
   }
 }
 

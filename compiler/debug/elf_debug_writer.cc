@@ -21,12 +21,14 @@
 #include <vector>
 
 #include "base/array_ref.h"
+#include "base/stl_util.h"
 #include "debug/dwarf/dwarf_constants.h"
 #include "debug/elf_compilation_unit.h"
 #include "debug/elf_debug_frame_writer.h"
 #include "debug/elf_debug_info_writer.h"
 #include "debug/elf_debug_line_writer.h"
 #include "debug/elf_debug_loc_writer.h"
+#include "debug/elf_debug_reader.h"
 #include "debug/elf_symtab_writer.h"
 #include "debug/method_debug_info.h"
 #include "debug/xz_utils.h"
@@ -203,7 +205,145 @@ std::vector<uint8_t> MakeElfFileForJIT(
   }
   builder->End();
   CHECK(builder->Good());
+  // Verify the ELF file by reading it back using the trivial reader.
+  if (kIsDebugBuild) {
+    using Elf_Sym = typename ElfTypes::Sym;
+    using Elf_Addr = typename ElfTypes::Addr;
+    size_t num_syms = 0;
+    size_t num_cfis = 0;
+    ReadElfSymbols<ElfTypes>(
+        buffer.data(),
+        [&](Elf_Sym sym, const char*) {
+          DCHECK_EQ(sym.st_value, method_info.code_address + CompiledMethod::CodeDelta(isa));
+          DCHECK_EQ(sym.st_size, method_info.code_size);
+          num_syms++;
+        },
+        [&](Elf_Addr addr, Elf_Addr size, ArrayRef<const uint8_t> opcodes) {
+          DCHECK_EQ(addr, method_info.code_address);
+          DCHECK_EQ(size, method_info.code_size);
+          DCHECK_GE(opcodes.size(), method_info.cfi.size());
+          DCHECK_EQ(memcmp(opcodes.data(), method_info.cfi.data(), method_info.cfi.size()), 0);
+          num_cfis++;
+        });
+    DCHECK_EQ(num_syms, 1u);
+    DCHECK_EQ(num_cfis, 1u);
+  }
   return buffer;
+}
+
+// Combine several mini-debug-info ELF files into one, while filtering some symbols.
+std::vector<uint8_t> PackElfFileForJIT(
+    InstructionSet isa,
+    const InstructionSetFeatures* features,
+    std::vector<const uint8_t*>& added_elf_files,
+    std::vector<const void*>& removed_symbols,
+    /*out*/ size_t* num_symbols) {
+  using ElfTypes = ElfRuntimeTypes;
+  using Elf_Addr = typename ElfTypes::Addr;
+  using Elf_Sym = typename ElfTypes::Sym;
+  CHECK_EQ(sizeof(Elf_Addr), static_cast<size_t>(GetInstructionSetPointerSize(isa)));
+  const bool is64bit = Is64BitInstructionSet(isa);
+  auto is_removed_symbol = [&removed_symbols](Elf_Addr addr) {
+    const void* code_ptr = reinterpret_cast<const void*>(addr);
+    return std::binary_search(removed_symbols.begin(), removed_symbols.end(), code_ptr);
+  };
+  uint64_t min_address = std::numeric_limits<uint64_t>::max();
+  uint64_t max_address = 0;
+
+  // Produce the inner ELF file.
+  // It will contain the symbols (.symtab) and unwind information (.debug_frame).
+  std::vector<uint8_t> inner_elf_file;
+  {
+    inner_elf_file.reserve(1 * KB);  // Approximate size of ELF file with a single symbol.
+    linker::VectorOutputStream out("Mini-debug-info ELF file for JIT", &inner_elf_file);
+    std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
+        new linker::ElfBuilder<ElfTypes>(isa, features, &out));
+    builder->Start(/*write_program_headers=*/ false);
+    auto* text = builder->GetText();
+    auto* strtab = builder->GetStrTab();
+    auto* symtab = builder->GetSymTab();
+    auto* debug_frame = builder->GetDebugFrame();
+    std::deque<Elf_Sym> symbols;
+    std::vector<uint8_t> debug_frame_buffer;
+    WriteCIE(isa, dwarf::DW_DEBUG_FRAME_FORMAT, &debug_frame_buffer);
+
+    // Write symbols names. All other data is buffered.
+    strtab->Start();
+    strtab->Write("");  // strtab should start with empty string.
+    for (const uint8_t* added_elf_file : added_elf_files) {
+      ReadElfSymbols<ElfTypes>(
+          added_elf_file,
+          [&](Elf_Sym sym, const char* name) {
+              if (is_removed_symbol(sym.st_value)) {
+                return;
+              }
+              sym.st_name = strtab->Write(name);
+              symbols.push_back(sym);
+              min_address = std::min<uint64_t>(min_address, sym.st_value);
+              max_address = std::max<uint64_t>(max_address, sym.st_value + sym.st_size);
+          },
+          [&](Elf_Addr addr, Elf_Addr size, ArrayRef<const uint8_t> opcodes) {
+              if (is_removed_symbol(addr)) {
+                return;
+              }
+              WriteFDE(is64bit,
+                       /*section_address=*/ 0,
+                       /*cie_address=*/ 0,
+                       addr,
+                       size,
+                       opcodes,
+                       dwarf::DW_DEBUG_FRAME_FORMAT,
+                       debug_frame_buffer.size(),
+                       &debug_frame_buffer,
+                       /*patch_locations=*/ nullptr);
+          });
+    }
+    strtab->End();
+
+    // Create .text covering the code range. Needed for gdb to find the symbols.
+    if (max_address > min_address) {
+      text->AllocateVirtualMemory(min_address, max_address - min_address);
+    }
+
+    // Add the symbols.
+    *num_symbols = symbols.size();
+    for (; !symbols.empty(); symbols.pop_front()) {
+      symtab->Add(symbols.front(), text);
+    }
+    symtab->WriteCachedSection();
+
+    // Add the CFI/unwind section.
+    debug_frame->Start();
+    debug_frame->WriteFully(debug_frame_buffer.data(), debug_frame_buffer.size());
+    debug_frame->End();
+
+    builder->End();
+    CHECK(builder->Good());
+  }
+
+  // Produce the outer ELF file.
+  // It contains only the inner ELF file compressed as .gnu_debugdata section.
+  // This extra wrapping is not necessary but the compression saves space.
+  std::vector<uint8_t> outer_elf_file;
+  {
+    std::vector<uint8_t> gnu_debugdata;
+    gnu_debugdata.reserve(inner_elf_file.size() / 4);
+    XzCompress(ArrayRef<const uint8_t>(inner_elf_file), &gnu_debugdata);
+
+    outer_elf_file.reserve(KB + gnu_debugdata.size());
+    linker::VectorOutputStream out("Mini-debug-info ELF file for JIT", &outer_elf_file);
+    std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
+        new linker::ElfBuilder<ElfTypes>(isa, features, &out));
+    builder->Start(/*write_program_headers=*/ false);
+    if (max_address > min_address) {
+      builder->GetText()->AllocateVirtualMemory(min_address, max_address - min_address);
+    }
+    builder->WriteSection(".gnu_debugdata", &gnu_debugdata);
+    builder->End();
+    CHECK(builder->Good());
+  }
+
+  return outer_elf_file;
 }
 
 std::vector<uint8_t> WriteDebugElfFileForClasses(
