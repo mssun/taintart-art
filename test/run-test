@@ -164,6 +164,15 @@ suspend_timeout="500000"
 image_suffix=""
 run_optimizing="false"
 
+# To cause tests to fail fast, limit the file sizes created by dx, dex2oat and
+# ART output to approximately 128MB. This should be more than sufficient
+# for any test while still catching cases of runaway output.
+# Set a hard limit to encourage ART developers to increase the ulimit here if
+# needed to support a test case rather than resetting the limit in the run
+# script for the particular test in question. Adjust this if needed for
+# particular configurations.
+file_ulimit=128000
+
 while true; do
     if [ "x$1" = "x--host" ]; then
         target_mode="no"
@@ -394,6 +403,18 @@ while true; do
         target_mode="no"
         DEX_LOCATION=$tmp_dir
         host_lib_root=$OUT_DIR/soong/host/linux_bionic-x86
+        shift
+    elif [ "x$1" = "x--runtime-zipapex" ]; then
+        shift
+        # TODO Should we allow the java.library.path to search the zipapex too?
+        # Not needed at the moment and adding it will be complicated so for now
+        # we'll ignore this.
+        run_args="${run_args} --host --runtime-zipapex $1"
+        target_mode="no"
+        DEX_LOCATION=$tmp_dir
+        # apex_payload.zip is quite large we need a high enough ulimit to
+        # extract it. 512mb should be good enough.
+        file_ulimit=512000
         shift
     elif [ "x$1" = "x--trace" ]; then
         trace="true"
@@ -722,6 +743,8 @@ if [ "$usage" = "yes" ]; then
              "files."
         echo "    --64                  Run the test in 64-bit mode"
         echo "    --bionic              Use the (host, 64-bit only) linux_bionic libc runtime"
+        echo "    --runtime-zipapex [file]"
+        echo "                          Use the given zipapex file to provide runtime binaries"
         echo "    --trace               Run with method tracing"
         echo "    --strace              Run with syscall tracing from strace."
         echo "    --stream              Run method tracing in streaming mode (requires --trace)"
@@ -823,13 +846,7 @@ fi
 
 run_args="${run_args} --testlib ${testlib}"
 
-# To cause tests to fail fast, limit the file sizes created by dx, dex2oat and
-# ART output to approximately 128MB. This should be more than sufficient
-# for any test while still catching cases of runaway output.
-# Set a hard limit to encourage ART developers to increase the ulimit here if
-# needed to support a test case rather than resetting the limit in the run
-# script for the particular test in question.
-if ! ulimit -f 128000; then
+if ! ulimit -f ${file_ulimit}; then
   err_echo "ulimit file size setting failed"
 fi
 

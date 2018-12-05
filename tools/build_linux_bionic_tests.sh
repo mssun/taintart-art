@@ -81,6 +81,7 @@ bionic_targets=(
   $soong_out/bin/hiddenapi
   $soong_out/bin/hprof-conv
   $soong_out/bin/timeout_dumper
+  $(find $host_out/apex -type f | sed "s:$host_out:$soong_out:g")
   $(find $host_out/lib64 -type f | sed "s:$host_out:$soong_out:g")
   $(find $host_out/nativetest64 -type f | sed "s:$host_out:$soong_out:g"))
 
