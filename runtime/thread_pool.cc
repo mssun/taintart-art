@@ -123,7 +123,10 @@ void ThreadPool::RemoveAllTasks(Thread* self) {
   tasks_.clear();
 }
 
-ThreadPool::ThreadPool(const char* name, size_t num_threads, bool create_peers)
+ThreadPool::ThreadPool(const char* name,
+                       size_t num_threads,
+                       bool create_peers,
+                       size_t worker_stack_size)
   : name_(name),
     task_queue_lock_("task queue lock"),
     task_queue_condition_("task queue condition", task_queue_lock_),
@@ -137,15 +140,13 @@ ThreadPool::ThreadPool(const char* name, size_t num_threads, bool create_peers)
     creation_barier_(num_threads + 1),
     max_active_workers_(num_threads),
     create_peers_(create_peers) {
-  Thread* self = Thread::Current();
   while (GetThreadCount() < num_threads) {
     const std::string worker_name = StringPrintf("%s worker thread %zu", name_.c_str(),
                                                  GetThreadCount());
-    threads_.push_back(
-        new ThreadPoolWorker(this, worker_name, ThreadPoolWorker::kDefaultStackSize));
+    threads_.push_back(new ThreadPoolWorker(this, worker_name, worker_stack_size));
   }
   // Wait for all of the threads to attach.
-  creation_barier_.Wait(self);
+  creation_barier_.Wait(Thread::Current());
 }
 
 void ThreadPool::SetMaxActiveWorkers(size_t threads) {
