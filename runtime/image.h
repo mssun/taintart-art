@@ -116,6 +116,14 @@ class PACKED(8) ImageHeader {
       return storage_mode_;
     }
 
+    uint32_t GetDataSize() const {
+      return data_size_;
+    }
+
+    uint32_t GetImageSize() const {
+      return image_size_;
+    }
+
    private:
     // Storage method for the image, the image may be compressed.
     StorageMode storage_mode_ = kDefaultStorageMode;

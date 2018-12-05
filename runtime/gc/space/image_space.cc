@@ -627,15 +627,35 @@ class ImageSpace::Loader {
         return MemMap::Invalid();
       }
       memcpy(map.Begin(), &image_header, sizeof(ImageHeader));
+
       const uint64_t start = NanoTime();
+      ThreadPool* pool = Runtime::Current()->GetThreadPool();
+      Thread* const self = Thread::Current();
+      const size_t kMinBlocks = 2;
+      const bool use_parallel = pool != nullptr &&image_header.GetBlockCount() >= kMinBlocks;
       for (const ImageHeader::Block& block : image_header.GetBlocks(temp_map.Begin())) {
-        TimingLogger::ScopedTiming timing2("LZ4 decompress image", logger);
-        if (!block.Decompress(/*out_ptr=*/map.Begin(), /*in_ptr=*/temp_map.Begin(), error_msg)) {
-          if (error_msg != nullptr) {
-            *error_msg = "Failed to decompress image block " + *error_msg;
+        auto function = [&](Thread*) {
+          const uint64_t start2 = NanoTime();
+          ScopedTrace trace("LZ4 decompress block");
+          if (!block.Decompress(/*out_ptr=*/map.Begin(),
+                                /*in_ptr=*/temp_map.Begin(),
+                                error_msg)) {
+            if (error_msg != nullptr) {
+              *error_msg = "Failed to decompress image block " + *error_msg;
+            }
           }
-          return MemMap::Invalid();
+          VLOG(image) << "Decompress block " << block.GetDataSize() << " -> "
+                      << block.GetImageSize() << " in " << PrettyDuration(NanoTime() - start2);
+        };
+        if (use_parallel) {
+          pool->AddTask(self, new FunctionTask(std::move(function)));
+        } else {
+          function(self);
         }
+      }
+      if (use_parallel) {
+        ScopedTrace trace("Waiting for workers");
+        pool->Wait(self, true, false);
       }
       const uint64_t time = NanoTime() - start;
       // Add one 1 ns to prevent possible divide by 0.
