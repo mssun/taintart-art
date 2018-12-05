@@ -209,6 +209,15 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
   template <typename Visitor>
   ALWAYS_INLINE void WalkToSpace(Visitor&& visitor) REQUIRES(Locks::mutator_lock_);
 
+  // Scans regions and calls visitor for objects in unevac-space corresponding
+  // to the bits set in 'bitmap'.
+  // Cannot acquire region_lock_ as visitor may need to acquire it for allocation.
+  // Should not be called concurrently with functions (like SetFromSpace()) which
+  // change regions' type.
+  template <typename Visitor>
+  ALWAYS_INLINE void ScanUnevacFromSpace(accounting::ContinuousSpaceBitmap* bitmap,
+                                         Visitor&& visitor) NO_THREAD_SAFETY_ANALYSIS;
+
   accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() override {
     return nullptr;
   }
