@@ -90,6 +90,7 @@ void GarbageCollector::Run(GcCause gc_cause, bool clear_soft_references) {
   Thread* self = Thread::Current();
   uint64_t start_time = NanoTime();
   uint64_t thread_cpu_start_time = ThreadCpuNanoTime();
+  GetHeap()->CalculateWeightedAllocatedBytes();
   Iteration* current_iteration = GetCurrentIteration();
   current_iteration->Reset(gc_cause, clear_soft_references);
   // Note transaction mode is single-threaded and there's no asynchronous GC and this flag doesn't
