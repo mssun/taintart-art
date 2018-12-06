@@ -1469,7 +1469,7 @@ void OptimizingCompiler::GenerateJitDebugInfo(
       compiler_options.GetInstructionSet(),
       compiler_options.GetInstructionSetFeatures(),
       mini_debug_info,
-      ArrayRef<const debug::MethodDebugInfo>(&info, 1));
+      info);
   MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
   AddNativeDebugInfoForJit(reinterpret_cast<const void*>(info.code_address), elf_file);
 
