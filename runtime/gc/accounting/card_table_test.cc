@@ -60,7 +60,7 @@ class CardTableTest : public CommonRuntimeTest {
   uint8_t* HeapLimit() const {
     return HeapBegin() + heap_size_;
   }
-  // Return a pseudo random card for an address.
+  // Return a non-zero pseudo random card for an address.
   uint8_t PseudoRandomCard(const uint8_t* addr) const {
     size_t offset = RoundDown(addr - heap_begin_, CardTable::kCardSize);
     return 1 + offset % 254;
@@ -97,7 +97,8 @@ TEST_F(CardTableTest, TestMarkCard) {
 class UpdateVisitor {
  public:
   uint8_t operator()(uint8_t c) const {
-    return c * 93 + 123;
+    // Must map zero to zero. Never applied to zero.
+    return c == 0 ? 0 : c * 93 + 123;
   }
   void operator()(uint8_t* /*card*/, uint8_t /*expected_value*/, uint8_t /*new_value*/) const {
   }
