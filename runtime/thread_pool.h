@@ -123,7 +123,10 @@ class ThreadPool {
   // If create_peers is true, all worker threads will have a Java peer object. Note that if the
   // pool is asked to do work on the current thread (see Wait), a peer may not be available. Wait
   // will conservatively abort if create_peers and do_work are true.
-  ThreadPool(const char* name, size_t num_threads, bool create_peers = false);
+  ThreadPool(const char* name,
+             size_t num_threads,
+             bool create_peers = false,
+             size_t worker_stack_size = ThreadPoolWorker::kDefaultStackSize);
   virtual ~ThreadPool();
 
   // Wait for all tasks currently on queue to get completed. If the pool has been stopped, only
