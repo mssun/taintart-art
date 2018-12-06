@@ -242,15 +242,33 @@ inline bool ConcurrentCopying::IsMarkedInUnevacFromSpace(mirror::Object* from_re
   // Use load-acquire on the read barrier pointer to ensure that we never see a black (non-gray)
   // read barrier state with an unmarked bit due to reordering.
   DCHECK(region_space_->IsInUnevacFromSpace(from_ref));
-  if (kEnableGenerationalConcurrentCopyingCollection
-      && young_gen_
-      && !done_scanning_.load(std::memory_order_acquire)) {
-    return from_ref->GetReadBarrierStateAcquire() == ReadBarrier::GrayState();
-  }
   if (kUseBakerReadBarrier && from_ref->GetReadBarrierStateAcquire() == ReadBarrier::GrayState()) {
     return true;
+  } else if (!(kEnableGenerationalConcurrentCopyingCollection && young_gen_)
+             || done_scanning_.load(std::memory_order_acquire)) {
+    // If the card table scanning is not finished yet, then only read-barrier
+    // state should be checked. Checking the mark bitmap is unreliable as there
+    // may be some objects - whose corresponding card is dirty - which are
+    // marked in the mark bitmap, but cannot be considered marked unless their
+    // read-barrier state is set to Gray.
+    //
+    // Why read read-barrier state before checking done_scanning_?
+    // If the read-barrier state was read *after* done_scanning_, then there
+    // exists a concurrency race due to which even after the object is marked,
+    // read-barrier state is checked *after* that, this function will return
+    // false. The following scenario may cause the race:
+    //
+    // 1. Mutator thread reads done_scanning_ and upon finding it false, gets
+    // suspended before reading the object's read-barrier state.
+    // 2. GC thread finishes card-table scan and then sets done_scanning_ to
+    // true.
+    // 3. GC thread grays the object, scans it, marks in the bitmap, and then
+    // changes its read-barrier state back to non-gray.
+    // 4. Mutator thread resumes, reads the object's read-barrier state and
+    // returns false.
+    return region_space_bitmap_->Test(from_ref);
   }
-  return region_space_bitmap_->Test(from_ref);
+  return false;
 }
 
 }  // namespace collector
