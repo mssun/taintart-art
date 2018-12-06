@@ -59,10 +59,17 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "package annotation;",
                 "import static java.lang.annotation.RetentionPolicy.CLASS;",
                 "import java.lang.annotation.Retention;",
+                "import java.lang.annotation.Repeatable;",
                 "@Retention(CLASS)",
+                "@Repeatable(Anno.Container.class)",
                 "public @interface Anno {",
                 "  String expectedSignature() default \"\";",
                 "  int maxTargetSdk() default Integer.MAX_VALUE;",
+                "  String implicitMember() default \"\";",
+                "  @Retention(CLASS)",
+                "  public @interface Container {",
+                "    Anno[] value();",
+                "  }",
                 "}"));
     }
 
@@ -134,6 +141,70 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
         ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
         verify(mConsumer, times(1)).consume(greylist.capture(), any(), any());
         assertThat(greylist.getValue()).isEqualTo("La/b/Class;->i:I");
+    }
+
+    @Test
+    public void testGreylistImplicit() throws IOException {
+        mJavac.addSource("a.b.EnumClass", Joiner.on('\n').join(
+            "package a.b;",
+            "import annotation.Anno;",
+            "@Anno(implicitMember=\"values()[La/b/EnumClass;\")",
+            "public enum EnumClass {",
+            "  VALUE",
+            "}"));
+        mJavac.compile();
+
+        new AnnotationVisitor(mJavac.getCompiledClass("a.b.EnumClass"), mStatus,
+            ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
+        ).visit();
+
+        assertNoErrors();
+        ArgumentCaptor<String> greylist = ArgumentCaptor.forClass(String.class);
+        verify(mConsumer, times(1)).consume(greylist.capture(), any(), any());
+        assertThat(greylist.getValue()).isEqualTo("La/b/EnumClass;->values()[La/b/EnumClass;");
+    }
+
+    @Test
+    public void testGreylistImplicit_Invalid_MissingOnClass() throws IOException {
+        mJavac.addSource("a.b.EnumClass", Joiner.on('\n').join(
+            "package a.b;",
+            "import annotation.Anno;",
+            "@Anno",
+            "public enum EnumClass {",
+            "  VALUE",
+            "}"));
+        mJavac.compile();
+
+        new AnnotationVisitor(mJavac.getCompiledClass("a.b.EnumClass"), mStatus,
+            ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
+        ).visit();
+
+        ArgumentCaptor<String> format = ArgumentCaptor.forClass(String.class);
+        verify(mStatus, times(1)).error(format.capture(), any());
+        // Ensure that the correct error is reported.
+        assertThat(format.getValue())
+            .contains("Missing property implicitMember on annotation on class");
+    }
+
+    @Test
+    public void testGreylistImplicit_Invalid_PresentOnMember() throws IOException {
+        mJavac.addSource("a.b.EnumClass", Joiner.on('\n').join(
+            "package a.b;",
+            "import annotation.Anno;",
+            "public enum EnumClass {",
+            "  @Anno(implicitMember=\"values()[La/b/EnumClass;\")",
+            "  VALUE",
+            "}"));
+        mJavac.compile();
+
+        new AnnotationVisitor(mJavac.getCompiledClass("a.b.EnumClass"), mStatus,
+            ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
+        ).visit();
+
+        ArgumentCaptor<String> format = ArgumentCaptor.forClass(String.class);
+        verify(mStatus, times(1)).error(format.capture(), any());
+        assertThat(format.getValue())
+            .contains("Expected annotation with an implicitMember property to be on a class");
     }
 
     @Test
