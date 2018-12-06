@@ -67,7 +67,7 @@ public class CovariantReturnTypeHandlerTest extends AnnotationHandlerTestBase {
                 "  @Annotation(returnType=Integer.class)",
                 "  public String method() {return null;}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION,
@@ -91,7 +91,7 @@ public class CovariantReturnTypeHandlerTest extends AnnotationHandlerTestBase {
                 "  @Annotation(returnType=Integer.class)",
                 "  public String method() {return null;}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION,
@@ -113,7 +113,7 @@ public class CovariantReturnTypeHandlerTest extends AnnotationHandlerTestBase {
                 "  @Annotation(returnType=Integer.class)",
                 "  public String method() {return null;}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION,
@@ -138,7 +138,7 @@ public class CovariantReturnTypeHandlerTest extends AnnotationHandlerTestBase {
                 "  @Annotation(returnType=Integer.class)",
                 "  public String field;",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION,

@@ -74,7 +74,7 @@ public class CovariantReturnTypeMultiHandlerTest extends AnnotationHandlerTestBa
                 "  @Annotation(returnType=Long.class)",
                 "  public String method() {return null;}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of("Lannotation/Annotation$Multi;",
@@ -104,7 +104,7 @@ public class CovariantReturnTypeMultiHandlerTest extends AnnotationHandlerTestBa
                 "  @Annotation(returnType=Long.class)",
                 "  public String method() {return null;}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of("Lannotation/Annotation$Multi;",
