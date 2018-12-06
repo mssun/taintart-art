@@ -82,7 +82,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno",
                 "  public void method() {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
@@ -103,7 +103,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno",
                 "  public Class() {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
@@ -124,7 +124,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno",
                 "  public int i;",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
@@ -145,7 +145,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(expectedSignature=\"La/b/Class;->method()V\")",
                 "  public void method() {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
@@ -166,7 +166,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(expectedSignature=\"La/b/Class;->nomethod()V\")",
                 "  public void method() {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
@@ -186,7 +186,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "    public void method() {}",
                 "  }",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class$Inner"), mStatus,
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
@@ -205,7 +205,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "public class Class {",
                 "  public void method() {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
@@ -224,7 +224,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(expectedSignature=\"La/b/Class;->method(Ljava/lang/String;)V\")",
                 "  public void method(T arg) {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP))
@@ -252,7 +252,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(expectedSignature=\"La/b/Class;->method(Ljava/lang/String;)V\")",
                 "  public void method(T arg) {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP));
@@ -284,7 +284,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(expectedSignature=\"La/b/Class;->method(Ljava/lang/String;)V\")",
                 "  public void method(T arg) {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP));
@@ -320,7 +320,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "package a.b;",
                 "public class Class extends Base implements Interface {",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP));
@@ -354,7 +354,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno",
                 "  public void method(T arg) {}",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Set<String> publicApis = Sets.newHashSet(
                 "La/b/Base;->method(Ljava/lang/Object;)V",
@@ -385,7 +385,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(expectedSignature=\"La/b/Class;->field:I\")",
                 "  public volatile int field;",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(
@@ -407,7 +407,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(expectedSignature=\"La/b/Class;->wrong:I\")",
                 "  public volatile int field;",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(x -> true, NULL_SDK_MAP));
@@ -424,7 +424,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(maxTargetSdk=1)",
                 "  public int field;",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(
@@ -444,7 +444,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno",
                 "  public int field;",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(
@@ -464,7 +464,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno(maxTargetSdk=2)",
                 "  public int field;",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
 
         Map<String, AnnotationHandler> handlerMap =
                 ImmutableMap.of(ANNOTATION, createGreylistHandler(
@@ -493,7 +493,7 @@ public class UnsupportedAppUsageAnnotationHandlerTest extends AnnotationHandlerT
                 "  @Anno2(maxTargetSdk=2, trackingBug=123456789)",
                 "  public int field;",
                 "}"));
-        assertThat(mJavac.compile()).isTrue();
+        mJavac.compile();
         new AnnotationVisitor(mJavac.getCompiledClass("a.b.Class"), mStatus,
                 ImmutableMap.of("Lannotation/Anno2;", createGreylistHandler(x -> true,
                         ImmutableMap.of(2, "flag2")))

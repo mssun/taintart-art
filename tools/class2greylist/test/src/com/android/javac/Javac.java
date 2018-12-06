@@ -18,6 +18,7 @@ package com.android.javac;
 
 import com.google.common.io.Files;
 
+import java.util.stream.Collectors;
 import org.apache.bcel.classfile.ClassParser;
 import org.apache.bcel.classfile.JavaClass;
 
@@ -76,15 +77,24 @@ public class Javac {
         return this;
     }
 
-    public boolean compile() {
+    public void compile() {
+        DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<>();
         JavaCompiler.CompilationTask task = mJavac.getTask(
                 null,
                 mFileMan,
-                null,
+                diagnosticCollector,
                 null,
                 null,
                 mCompilationUnits);
-        return task.call();
+        boolean result = task.call();
+        if (!result) {
+            throw new IllegalStateException(
+                "Compilation failed:" +
+                    diagnosticCollector.getDiagnostics()
+                        .stream()
+                        .map(Object::toString)
+                        .collect(Collectors.joining("\n")));
+        }
     }
 
     public InputStream getClassFile(String classname) throws IOException {
