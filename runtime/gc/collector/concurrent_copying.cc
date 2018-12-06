@@ -2079,6 +2079,9 @@ void ConcurrentCopying::ReclaimPhase() {
       LOG(INFO) << "(after) num_bytes_allocated="
                 << heap_->num_bytes_allocated_.load();
     }
+
+    float reclaimed_bytes_ratio = static_cast<float>(freed_bytes) / num_bytes_allocated_before_gc_;
+    reclaimed_bytes_ratio_sum_ += reclaimed_bytes_ratio;
   }
 
   {
@@ -2093,11 +2096,6 @@ void ConcurrentCopying::ReclaimPhase() {
   }
 
   CheckEmptyMarkStack();
-
-  int64_t num_bytes_allocated_after_gc = static_cast<int64_t>(heap_->GetBytesAllocated());
-  int64_t diff = num_bytes_allocated_before_gc_ - num_bytes_allocated_after_gc;
-  auto ratio = static_cast<float>(diff) / num_bytes_allocated_before_gc_;
-  reclaimed_bytes_ratio_sum_ += ratio;
 
   if (kVerboseMode) {
     LOG(INFO) << "GC end of ReclaimPhase";
