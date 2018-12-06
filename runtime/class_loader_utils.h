@@ -29,7 +29,7 @@
 namespace art {
 
 // Returns true if the given class loader is either a PathClassLoader or a DexClassLoader.
-// (they both have the same behaviour with respect to class lockup order)
+// (they both have the same behaviour with respect to class lookup order)
 inline bool IsPathOrDexClassLoader(ScopedObjectAccessAlreadyRunnable& soa,
                                    Handle<mirror::ClassLoader> class_loader)
     REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -39,6 +39,15 @@ inline bool IsPathOrDexClassLoader(ScopedObjectAccessAlreadyRunnable& soa,
           soa.Decode<mirror::Class>(WellKnownClasses::dalvik_system_PathClassLoader)) ||
       (class_loader_class ==
           soa.Decode<mirror::Class>(WellKnownClasses::dalvik_system_DexClassLoader));
+}
+
+// Returns true if the given class loader is an InMemoryDexClassLoader.
+inline bool IsInMemoryDexClassLoader(ScopedObjectAccessAlreadyRunnable& soa,
+                                     Handle<mirror::ClassLoader> class_loader)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  mirror::Class* class_loader_class = class_loader->GetClass();
+  return (class_loader_class ==
+      soa.Decode<mirror::Class>(WellKnownClasses::dalvik_system_InMemoryDexClassLoader));
 }
 
 inline bool IsDelegateLastClassLoader(ScopedObjectAccessAlreadyRunnable& soa,

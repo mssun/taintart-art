@@ -2026,7 +2026,7 @@ bool ClassLinker::AddImageSpace(
     // Image class loader [A][B][C][image dex files]
     // Class loader = [???][dex_elements][image dex files]
     // Need to ensure that [???][dex_elements] == [A][B][C].
-    // For each class loader, PathClassLoader, the laoder checks the parent first. Also the logic
+    // For each class loader, PathClassLoader, the loader checks the parent first. Also the logic
     // for PathClassLoader does this by looping through the array of dex files. To ensure they
     // resolve the same way, simply flatten the hierarchy in the way the resolution order would be,
     // and check that the dex file names are the same.
@@ -2662,7 +2662,7 @@ bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnabl
     return true;
   }
 
-  if (IsPathOrDexClassLoader(soa, class_loader)) {
+  if (IsPathOrDexClassLoader(soa, class_loader) || IsInMemoryDexClassLoader(soa, class_loader)) {
     // For regular path or dex class loader the search order is:
     //    - parent
     //    - shared libraries
@@ -2756,7 +2756,9 @@ ObjPtr<mirror::Class> ClassLinker::FindClassInBaseDexClassLoaderClassPath(
     const char* descriptor,
     size_t hash,
     Handle<mirror::ClassLoader> class_loader) {
-  DCHECK(IsPathOrDexClassLoader(soa, class_loader) || IsDelegateLastClassLoader(soa, class_loader))
+  DCHECK(IsPathOrDexClassLoader(soa, class_loader) ||
+         IsInMemoryDexClassLoader(soa, class_loader) ||
+         IsDelegateLastClassLoader(soa, class_loader))
       << "Unexpected class loader for descriptor " << descriptor;
 
   ObjPtr<mirror::Class> ret;
