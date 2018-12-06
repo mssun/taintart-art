@@ -17,8 +17,8 @@
 #ifndef ART_RUNTIME_GC_COLLECTOR_IMMUNE_SPACES_H_
 #define ART_RUNTIME_GC_COLLECTOR_IMMUNE_SPACES_H_
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "gc/space/space.h"
 #include "immune_region.h"
 

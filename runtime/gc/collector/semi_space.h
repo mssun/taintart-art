@@ -20,8 +20,8 @@
 #include <memory>
 
 #include "base/atomic.h"
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "garbage_collector.h"
 #include "gc/accounting/heap_bitmap.h"
 #include "gc_root.h"

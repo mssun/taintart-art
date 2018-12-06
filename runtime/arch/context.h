@@ -21,7 +21,6 @@
 #include <stdint.h>
 
 #include "base/macros.h"
-#include "base/mutex.h"
 
 namespace art {
 

@@ -17,6 +17,7 @@
 #include "reference_queue.h"
 
 #include "accounting/card_table-inl.h"
+#include "base/mutex.h"
 #include "collector/concurrent_copying.h"
 #include "heap.h"
 #include "mirror/class-inl.h"

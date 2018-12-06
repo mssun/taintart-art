@@ -23,8 +23,8 @@
 
 #include "base/casts.h"
 #include "base/enums.h"
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 
 namespace art {
 

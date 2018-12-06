@@ -23,6 +23,7 @@
 #include "art_method.h"
 #include "base/callee_save_type.h"
 #include "base/casts.h"
+#include "base/mutex.h"
 #include "entrypoints/quick/callee_save_frame.h"
 #include "gc_root-inl.h"
 #include "interpreter/mterp/mterp.h"

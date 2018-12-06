@@ -21,8 +21,8 @@
 #include <stdint.h>
 
 #include "base/callee_save_type.h"
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "dex/dex_file_types.h"
 #include "dex/dex_instruction.h"
 #include "gc/allocator_type.h"

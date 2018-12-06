@@ -23,8 +23,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "jni.h"
 
 namespace art {

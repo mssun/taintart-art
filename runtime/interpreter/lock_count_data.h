@@ -20,7 +20,7 @@
 #include <memory>
 #include <vector>
 
-#include "base/mutex.h"
+#include "base/locks.h"
 
 namespace art {
 

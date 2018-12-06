@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "base/array_ref.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 
 namespace art {
 

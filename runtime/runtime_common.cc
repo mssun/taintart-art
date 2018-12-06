@@ -371,6 +371,11 @@ static bool IsTimeoutSignal(int signal_number) {
 #pragma GCC diagnostic ignored "-Wframe-larger-than="
 #endif
 
+std::string GetFaultMessageForAbortLogging() {
+  Runtime* runtime = Runtime::Current();
+  return  (runtime != nullptr) ? runtime->GetFaultMessage() : "";
+}
+
 static void HandleUnexpectedSignalCommonDump(int signal_number,
                                              siginfo_t* info,
                                              void* raw_context,
@@ -427,9 +432,9 @@ static void HandleUnexpectedSignalCommonDump(int signal_number,
     }
 
     if (dump_on_stderr) {
-      std::cerr << "Fault message: " << runtime->GetFaultMessage() << std::endl;
+      std::cerr << "Fault message: " << GetFaultMessageForAbortLogging() << std::endl;
     } else {
-      LOG(FATAL_WITHOUT_ABORT) << "Fault message: " << runtime->GetFaultMessage();
+      LOG(FATAL_WITHOUT_ABORT) << "Fault message: " << GetFaultMessageForAbortLogging();
     }
   }
 }

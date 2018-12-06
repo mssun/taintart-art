@@ -21,8 +21,8 @@
 #include <cstring>
 #include <string>
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "dex/dex_file.h"
 #include "lock_count_data.h"
 #include "read_barrier.h"

@@ -28,9 +28,9 @@
 #include <vector>
 
 #include "arch/instruction_set.h"
+#include "base/locks.h"
 #include "base/macros.h"
 #include "base/mem_map.h"
-#include "base/mutex.h"
 #include "deoptimization_kind.h"
 #include "dex/dex_file_types.h"
 #include "experimental_flags.h"
@@ -511,12 +511,7 @@ class Runtime {
   void RecordResolveString(ObjPtr<mirror::DexCache> dex_cache, dex::StringIndex string_idx) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void SetFaultMessage(const std::string& message) REQUIRES(!fault_message_lock_);
-  // Only read by the signal handler, NO_THREAD_SAFETY_ANALYSIS to prevent lock order violations
-  // with the unexpected_signal_lock_.
-  const std::string& GetFaultMessage() NO_THREAD_SAFETY_ANALYSIS {
-    return fault_message_;
-  }
+  void SetFaultMessage(const std::string& message);
 
   void AddCurrentRuntimeFeaturesAsDex2OatArguments(std::vector<std::string>* arg_vector) const;
 
@@ -824,6 +819,12 @@ class Runtime {
   void VisitConstantRoots(RootVisitor* visitor)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Note: To be lock-free, GetFaultMessage temporarily replaces the lock message with null.
+  //       As such, there is a window where a call will return an empty string. In general,
+  //       only aborting code should retrieve this data (via GetFaultMessageForAbortLogging
+  //       friend).
+  std::string GetFaultMessage();
+
   // A pointer to the active runtime or null.
   static Runtime* instance_;
 
@@ -909,9 +910,9 @@ class Runtime {
   std::unique_ptr<jit::JitCodeCache> jit_code_cache_;
   std::unique_ptr<jit::JitOptions> jit_options_;
 
-  // Fault message, printed when we get a SIGSEGV.
-  Mutex fault_message_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
-  std::string fault_message_ GUARDED_BY(fault_message_lock_);
+  // Fault message, printed when we get a SIGSEGV. Stored as a native-heap object and accessed
+  // lock-free, so needs to be atomic.
+  std::atomic<std::string*> fault_message_;
 
   // A non-zero value indicates that a thread has been created but not yet initialized. Guarded by
   // the shutdown lock so that threads aren't born while we're shutting down.
@@ -1110,6 +1111,9 @@ class Runtime {
   MemMap protected_fault_page_;
 
   uint32_t verifier_logging_threshold_ms_;
+
+  // Note: See comments on GetFaultMessage.
+  friend std::string GetFaultMessageForAbortLogging();
 
   DISALLOW_COPY_AND_ASSIGN(Runtime);
 };

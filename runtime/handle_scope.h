@@ -22,8 +22,8 @@
 #include <android-base/logging.h>
 
 #include "base/enums.h"
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "handle.h"
 #include "stack_reference.h"
 #include "verify_object.h"

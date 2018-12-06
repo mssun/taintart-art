@@ -20,7 +20,7 @@
 #include <android-base/logging.h>
 
 #include "art_method.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "monitor.h"
 #include "stack.h"
 #include "thread.h"

@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_ENTRYPOINTS_QUICK_QUICK_ALLOC_ENTRYPOINTS_H_
 #define ART_RUNTIME_ENTRYPOINTS_QUICK_QUICK_ALLOC_ENTRYPOINTS_H_
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "gc/allocator_type.h"
 #include "quick_entrypoints.h"
 

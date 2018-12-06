@@ -19,7 +19,7 @@
 
 #include "base/allocator.h"
 #include "base/globals.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "base/safe_map.h"
 
 #include <set>

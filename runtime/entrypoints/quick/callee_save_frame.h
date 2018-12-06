@@ -20,7 +20,7 @@
 #include "arch/instruction_set.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "quick/quick_method_frame_info.h"
 #include "thread-inl.h"
 
