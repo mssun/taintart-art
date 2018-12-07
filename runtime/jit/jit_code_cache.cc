@@ -436,6 +436,12 @@ void JitCodeCache::InitializeState(size_t initial_capacity, size_t max_capacity)
   initial_capacity = RoundDown(initial_capacity, 2 * kPageSize);
   max_capacity = RoundDown(max_capacity, 2 * kPageSize);
 
+  used_memory_for_data_ = 0;
+  used_memory_for_code_ = 0;
+  number_of_compilations_ = 0;
+  number_of_osr_compilations_ = 0;
+  number_of_collections_ = 0;
+
   data_pages_ = MemMap();
   exec_pages_ = MemMap();
   non_exec_pages_ = MemMap();
@@ -477,7 +483,7 @@ void JitCodeCache::InitializeSpaces() {
 JitCodeCache::~JitCodeCache() {}
 
 bool JitCodeCache::ContainsPc(const void* ptr) const {
-  return exec_pages_.Begin() <= ptr && ptr < exec_pages_.End();
+  return exec_pages_.HasAddress(ptr) || zygote_exec_pages_.HasAddress(ptr);
 }
 
 bool JitCodeCache::WillExecuteJitCode(ArtMethod* method) {
@@ -1321,7 +1327,7 @@ class MarkCodeClosure final : public Closure {
             return true;
           }
           const void* code = method_header->GetCode();
-          if (code_cache_->ContainsPc(code)) {
+          if (code_cache_->ContainsPc(code) && !code_cache_->IsInZygoteExecSpace(code)) {
             // Use the atomic set version, as multiple threads are executing this code.
             bitmap_->AtomicTestAndSet(FromCodeToAllocation(code));
           }
@@ -1493,7 +1499,7 @@ void JitCodeCache::GarbageCollectCache(Thread* self) {
         // interpreter will update its entry point to the compiled code and call it.
         for (ProfilingInfo* info : profiling_infos_) {
           const void* entry_point = info->GetMethod()->GetEntryPointFromQuickCompiledCode();
-          if (ContainsPc(entry_point)) {
+          if (!IsInZygoteDataSpace(info) && ContainsPc(entry_point)) {
             info->SetSavedEntryPoint(entry_point);
             // Don't call Instrumentation::UpdateMethodsCode(), as it can check the declaring
             // class of the method. We may be concurrently running a GC which makes accessing
@@ -1508,7 +1514,7 @@ void JitCodeCache::GarbageCollectCache(Thread* self) {
         // Change entry points of native methods back to the GenericJNI entrypoint.
         for (const auto& entry : jni_stubs_map_) {
           const JniStubData& data = entry.second;
-          if (!data.IsCompiled()) {
+          if (!data.IsCompiled() || IsInZygoteExecSpace(data.GetCode())) {
             continue;
           }
           // Make sure a single invocation of the GenericJNI trampoline tries to recompile.
@@ -1540,7 +1546,9 @@ void JitCodeCache::RemoveUnmarkedCode(Thread* self) {
     // Iterate over all compiled code and remove entries that are not marked.
     for (auto it = jni_stubs_map_.begin(); it != jni_stubs_map_.end();) {
       JniStubData* data = &it->second;
-      if (!data->IsCompiled() || GetLiveBitmap()->Test(FromCodeToAllocation(data->GetCode()))) {
+      if (IsInZygoteExecSpace(data->GetCode()) ||
+          !data->IsCompiled() ||
+          GetLiveBitmap()->Test(FromCodeToAllocation(data->GetCode()))) {
         ++it;
       } else {
         method_headers.insert(OatQuickMethodHeader::FromCodePointer(data->GetCode()));
@@ -1550,7 +1558,7 @@ void JitCodeCache::RemoveUnmarkedCode(Thread* self) {
     for (auto it = method_code_map_.begin(); it != method_code_map_.end();) {
       const void* code_ptr = it->first;
       uintptr_t allocation = FromCodeToAllocation(code_ptr);
-      if (GetLiveBitmap()->Test(allocation)) {
+      if (IsInZygoteExecSpace(code_ptr) || GetLiveBitmap()->Test(allocation)) {
         ++it;
       } else {
         OatQuickMethodHeader* header = OatQuickMethodHeader::FromCodePointer(code_ptr);
@@ -1571,7 +1579,7 @@ void JitCodeCache::DoCollection(Thread* self, bool collect_profiling_info) {
       // Also remove the saved entry point from the ProfilingInfo objects.
       for (ProfilingInfo* info : profiling_infos_) {
         const void* ptr = info->GetMethod()->GetEntryPointFromQuickCompiledCode();
-        if (!ContainsPc(ptr) && !info->IsInUseByCompiler()) {
+        if (!ContainsPc(ptr) && !info->IsInUseByCompiler() && !IsInZygoteDataSpace(info)) {
           info->GetMethod()->SetProfilingInfo(nullptr);
         }
 
@@ -1596,6 +1604,9 @@ void JitCodeCache::DoCollection(Thread* self, bool collect_profiling_info) {
     for (const auto& entry : jni_stubs_map_) {
       const JniStubData& data = entry.second;
       const void* code_ptr = data.GetCode();
+      if (IsInZygoteExecSpace(code_ptr)) {
+        continue;
+      }
       const OatQuickMethodHeader* method_header = OatQuickMethodHeader::FromCodePointer(code_ptr);
       for (ArtMethod* method : data.GetMethods()) {
         if (method_header->GetEntryPoint() == method->GetEntryPointFromQuickCompiledCode()) {
@@ -1607,6 +1618,9 @@ void JitCodeCache::DoCollection(Thread* self, bool collect_profiling_info) {
     for (const auto& it : method_code_map_) {
       ArtMethod* method = it.second;
       const void* code_ptr = it.first;
+      if (IsInZygoteExecSpace(code_ptr)) {
+        continue;
+      }
       const OatQuickMethodHeader* method_header = OatQuickMethodHeader::FromCodePointer(code_ptr);
       if (method_header->GetEntryPoint() == method->GetEntryPointFromQuickCompiledCode()) {
         GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(code_ptr));
@@ -1953,6 +1967,7 @@ bool JitCodeCache::NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr
         instrumentation->UpdateNativeMethodsCodeToJitCode(m, entrypoint);
       }
       if (collection_in_progress_) {
+        CHECK(!IsInZygoteExecSpace(data->GetCode()));
         GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(data->GetCode()));
       }
     }
@@ -2057,6 +2072,7 @@ uint8_t* JitCodeCache::AllocateCode(size_t code_size) {
 }
 
 void JitCodeCache::FreeCode(uint8_t* code) {
+  CHECK(!IsInZygoteExecSpace(code));
   used_memory_for_code_ -= mspace_usable_size(code);
   mspace_free(exec_mspace_, code);
 }
@@ -2068,6 +2084,7 @@ uint8_t* JitCodeCache::AllocateData(size_t data_size) {
 }
 
 void JitCodeCache::FreeData(uint8_t* data) {
+  CHECK(!IsInZygoteDataSpace(data));
   used_memory_for_data_ -= mspace_usable_size(data);
   mspace_free(data_mspace_, data);
 }
@@ -2091,13 +2108,11 @@ void JitCodeCache::Dump(std::ostream& os) {
 }
 
 void JitCodeCache::PostForkChildAction(bool is_system_server, bool is_zygote) {
+  if (is_zygote) {
+    // Don't transition if this is for a child zygote.
+    return;
+  }
   MutexLock mu(Thread::Current(), lock_);
-  // Currently, we don't expect any compilations from zygote.
-  CHECK_EQ(number_of_compilations_, 0u);
-  CHECK_EQ(number_of_osr_compilations_, 0u);
-  CHECK(jni_stubs_map_.empty());
-  CHECK(method_code_map_.empty());
-  CHECK(osr_code_map_.empty());
 
   zygote_data_pages_ = std::move(data_pages_);
   zygote_exec_pages_ = std::move(exec_pages_);

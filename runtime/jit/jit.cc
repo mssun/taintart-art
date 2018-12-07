@@ -291,22 +291,6 @@ bool Jit::CompileMethod(ArtMethod* method, Thread* self, bool osr) {
   return success;
 }
 
-void Jit::CreateThreadPool() {
-  if (Runtime::Current()->IsSafeMode()) {
-    // Never create the pool in safe mode.
-    return;
-  }
-  // There is a DCHECK in the 'AddSamples' method to ensure the thread pool
-  // is not null when we instrument.
-
-  // We need peers as we may report the JIT thread, e.g., in the debugger.
-  constexpr bool kJitPoolNeedsPeers = true;
-  thread_pool_.reset(new ThreadPool("Jit thread pool", 1, kJitPoolNeedsPeers));
-
-  thread_pool_->SetPthreadPriority(options_->GetThreadPoolPthreadPriority());
-  Start();
-}
-
 void Jit::DeleteThreadPool() {
   Thread* self = Thread::Current();
   DCHECK(Runtime::Current()->IsShuttingDown(self));
@@ -562,10 +546,10 @@ void Jit::AddMemoryUsage(ArtMethod* method, size_t bytes) {
 
 class JitCompileTask final : public Task {
  public:
-  enum TaskKind {
+  enum class TaskKind {
     kAllocateProfile,
     kCompile,
-    kCompileOsr
+    kCompileOsr,
   };
 
   JitCompileTask(ArtMethod* method, TaskKind kind) : method_(method), kind_(kind) {
@@ -582,14 +566,20 @@ class JitCompileTask final : public Task {
 
   void Run(Thread* self) override {
     ScopedObjectAccess soa(self);
-    if (kind_ == kCompile) {
-      Runtime::Current()->GetJit()->CompileMethod(method_, self, /* osr= */ false);
-    } else if (kind_ == kCompileOsr) {
-      Runtime::Current()->GetJit()->CompileMethod(method_, self, /* osr= */ true);
-    } else {
-      DCHECK(kind_ == kAllocateProfile);
-      if (ProfilingInfo::Create(self, method_, /* retry_allocation= */ true)) {
-        VLOG(jit) << "Start profiling " << ArtMethod::PrettyMethod(method_);
+    switch (kind_) {
+      case TaskKind::kCompile:
+      case TaskKind::kCompileOsr: {
+        Runtime::Current()->GetJit()->CompileMethod(
+            method_,
+            self,
+            /* osr= */ (kind_ == TaskKind::kCompileOsr));
+        break;
+      }
+      case TaskKind::kAllocateProfile: {
+        if (ProfilingInfo::Create(self, method_, /* retry_allocation= */ true)) {
+          VLOG(jit) << "Start profiling " << ArtMethod::PrettyMethod(method_);
+        }
+        break;
       }
     }
     ProfileSaver::NotifyJitActivity();
@@ -606,6 +596,18 @@ class JitCompileTask final : public Task {
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(JitCompileTask);
 };
+
+void Jit::CreateThreadPool() {
+  // There is a DCHECK in the 'AddSamples' method to ensure the tread pool
+  // is not null when we instrument.
+
+  // We need peers as we may report the JIT thread, e.g., in the debugger.
+  constexpr bool kJitPoolNeedsPeers = true;
+  thread_pool_.reset(new ThreadPool("Jit thread pool", 1, kJitPoolNeedsPeers));
+
+  thread_pool_->SetPthreadPriority(options_->GetThreadPoolPthreadPriority());
+  Start();
+}
 
 static bool IgnoreSamplesForMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
   if (method->IsClassInitializer() || !method->IsCompilable()) {
@@ -630,11 +632,10 @@ static bool IgnoreSamplesForMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mut
 
 void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_backedges) {
   if (thread_pool_ == nullptr) {
-    // Should only see this when shutting down, starting up, or in zygote, which doesn't
-    // have a thread pool.
+    // Should only see this when shutting down, starting up, or in safe mode.
     DCHECK(Runtime::Current()->IsShuttingDown(self) ||
            !Runtime::Current()->IsFinishedStarting() ||
-           Runtime::Current()->IsZygote());
+           Runtime::Current()->IsSafeMode());
     return;
   }
   if (IgnoreSamplesForMethod(method)) {
@@ -675,7 +676,8 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
       if (!success) {
         // We failed allocating. Instead of doing the collection on the Java thread, we push
         // an allocation to a compiler thread, that will do the collection.
-        thread_pool_->AddTask(self, new JitCompileTask(method, JitCompileTask::kAllocateProfile));
+        thread_pool_->AddTask(
+            self, new JitCompileTask(method, JitCompileTask::TaskKind::kAllocateProfile));
       }
     }
     // Avoid jumping more than one state at a time.
@@ -685,7 +687,7 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
       if ((new_count >= HotMethodThreshold()) &&
           !code_cache_->ContainsPc(method->GetEntryPointFromQuickCompiledCode())) {
         DCHECK(thread_pool_ != nullptr);
-        thread_pool_->AddTask(self, new JitCompileTask(method, JitCompileTask::kCompile));
+        thread_pool_->AddTask(self, new JitCompileTask(method, JitCompileTask::TaskKind::kCompile));
       }
       // Avoid jumping more than one state at a time.
       new_count = std::min(new_count, static_cast<uint32_t>(OSRMethodThreshold() - 1));
@@ -697,7 +699,8 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
       DCHECK(!method->IsNative());  // No back edges reported for native methods.
       if ((new_count >= OSRMethodThreshold()) &&  !code_cache_->IsOsrCompiled(method)) {
         DCHECK(thread_pool_ != nullptr);
-        thread_pool_->AddTask(self, new JitCompileTask(method, JitCompileTask::kCompileOsr));
+        thread_pool_->AddTask(
+            self, new JitCompileTask(method, JitCompileTask::TaskKind::kCompileOsr));
       }
     }
   }
@@ -730,7 +733,7 @@ void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
         // The compiler requires a ProfilingInfo object for non-native methods.
         ProfilingInfo::Create(thread, np_method, /* retry_allocation= */ true);
       }
-      JitCompileTask compile_task(method, JitCompileTask::kCompile);
+      JitCompileTask compile_task(method, JitCompileTask::TaskKind::kCompile);
       // Fake being in a runtime thread so that class-load behavior will be the same as normal jit.
       ScopedSetRuntimeThread ssrt(thread);
       compile_task.Run(thread);
@@ -798,7 +801,16 @@ ScopedJitSuspend::~ScopedJitSuspend() {
   }
 }
 
-void Jit::PostForkChildAction() {
+void Jit::PostForkChildAction(bool is_zygote) {
+  if (is_zygote) {
+    // Don't transition if this is for a child zygote.
+    return;
+  }
+  if (Runtime::Current()->IsSafeMode()) {
+    // Delete the thread pool, we are not going to JIT.
+    thread_pool_.reset(nullptr);
+    return;
+  }
   // At this point, the compiler options have been adjusted to the particular configuration
   // of the forked child. Parse them again.
   jit_update_options_(jit_compiler_handle_);
@@ -806,6 +818,28 @@ void Jit::PostForkChildAction() {
   // Adjust the status of code cache collection: the status from zygote was to not collect.
   code_cache_->SetGarbageCollectCode(!jit_generate_debug_info_(jit_compiler_handle_) &&
       !Runtime::Current()->GetInstrumentation()->AreExitStubsInstalled());
+
+  if (thread_pool_ != nullptr) {
+    // Remove potential tasks that have been inherited from the zygote.
+    thread_pool_->RemoveAllTasks(Thread::Current());
+
+    // Resume JIT compilation.
+    thread_pool_->CreateThreads();
+  }
+}
+
+void Jit::PreZygoteFork() {
+  if (thread_pool_ == nullptr) {
+    return;
+  }
+  thread_pool_->DeleteThreads();
+}
+
+void Jit::PostZygoteFork() {
+  if (thread_pool_ == nullptr) {
+    return;
+  }
+  thread_pool_->CreateThreads();
 }
 
 }  // namespace jit

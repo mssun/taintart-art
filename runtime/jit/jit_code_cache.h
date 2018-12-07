@@ -71,6 +71,7 @@ template<class T> class ObjectArray;
 
 namespace jit {
 
+class MarkCodeClosure;
 class ScopedCodeCacheWrite;
 
 // Alignment in bits that will suit all architectures.
@@ -387,6 +388,14 @@ class JitCodeCache {
 
   const MemMap* GetUpdatableCodeMapping() const;
 
+  bool IsInZygoteDataSpace(const void* ptr) const {
+    return zygote_data_pages_.HasAddress(ptr);
+  }
+
+  bool IsInZygoteExecSpace(const void* ptr) const {
+    return zygote_exec_pages_.HasAddress(ptr);
+  }
+
   bool IsWeakAccessEnabled(Thread* self) const;
   void WaitUntilInlineCacheAccessible(Thread* self)
       REQUIRES(!lock_)
@@ -487,6 +496,7 @@ class JitCodeCache {
 
   friend class art::JitJniStubTestHelper;
   friend class ScopedCodeCacheWrite;
+  friend class MarkCodeClosure;
 
   DISALLOW_COPY_AND_ASSIGN(JitCodeCache);
 };
