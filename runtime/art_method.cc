@@ -814,7 +814,12 @@ std::string ArtMethod::PrettyMethod(bool with_signature) {
   }
   ArtMethod* m =
       GetInterfaceMethodIfProxy(Runtime::Current()->GetClassLinker()->GetImagePointerSize());
-  return m->GetDexFile()->PrettyMethod(m->GetDexMethodIndex(), with_signature);
+  std::string res(m->GetDexFile()->PrettyMethod(m->GetDexMethodIndex(), with_signature));
+  if (with_signature && m->IsObsolete()) {
+    return "<OBSOLETE> " + res;
+  } else {
+    return res;
+  }
 }
 
 std::string ArtMethod::JniShortName() {
