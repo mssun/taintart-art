@@ -69,51 +69,6 @@ done
 work_dir=$(mktemp -d)
 mount_point="$work_dir/image"
 
-# Garbage collection.
-function finish {
-  # Don't fail early during cleanup.
-  set +e
-  guestunmount "$mount_point"
-  rm -rf "$work_dir"
-}
-
-trap finish EXIT
-
-# TODO: Also exercise the Release Runtime APEX (`com.android.runtime.release`).
-apex_module="com.android.runtime.debug"
-
-# Build the Android Runtime APEX package (optional).
-$build_apex_p && say "Building package" && make "$apex_module"
-
-system_apexdir="$ANDROID_PRODUCT_OUT/system/apex"
-apex_package="$system_apexdir/$apex_module.apex"
-
-say "Extracting and mounting image"
-
-# Extract the image from the Android Runtime APEX.
-image_filename="image.img"
-unzip -q "$apex_package" "$image_filename" -d "$work_dir"
-mkdir "$mount_point"
-image_file="$work_dir/$image_filename"
-
-# Check filesystems in the image.
-image_filesystems="$work_dir/image_filesystems"
-virt-filesystems -a "$image_file" >"$image_filesystems"
-# We expect a single partition (/dev/sda) in the image.
-partition="/dev/sda"
-echo "$partition" | cmp "$image_filesystems" -
-
-# Mount the image from the Android Runtime APEX.
-guestmount -a "$image_file" -m "$partition" "$mount_point"
-
-# List the contents of the mounted image (optional).
-$list_image_files_p && say "Listing image files" && ls -ld "$mount_point" && tree -ap "$mount_point"
-
-say "Running tests"
-
-# Check that the mounted image contains a manifest.
-[[ -f "$mount_point/manifest.json" ]]
-
 function check_binary {
   [[ -x "$mount_point/bin/$1" ]] || die "Cannot find binary '$1' in mounted image"
 }
@@ -136,65 +91,178 @@ function check_library {
     || die "Cannot find library '$1' in mounted image"
 }
 
-# Check that the mounted image contains ART base binaries.
-check_multilib_binary dalvikvm
-# TODO: Does not work yet.
-: check_binary_symlink dalvikvm
-check_binary dex2oat
-check_binary dexoptanalyzer
-check_binary profman
+function build_apex {
+  if $build_apex_p; then
+    say "Building package $1" && make "$1" || die "Cannot build $1"
+  fi
+}
 
-# Check that the mounted image contains ART tools binaries.
-check_binary dexdiag
-check_binary dexdump
-check_binary dexlist
+function check_contents {
+
+  # Check that the mounted image contains a manifest.
+  [[ -f "$mount_point/apex_manifest.json" ]] || die "no manifest"
+
+  # Check that the mounted image contains ART base binaries.
+  check_multilib_binary dalvikvm
+  # TODO: Does not work yet.
+  : check_binary_symlink dalvikvm
+  check_binary dex2oat
+  check_binary dexoptanalyzer
+  check_binary profman
+
+  # Check that the mounted image contains ART tools binaries.
+  check_binary dexdiag
+  check_binary dexdump
+  check_binary dexlist
+  # oatdump is only in device apex's due to build rules
+  # check_binary oatdump
+
+  # Check that the mounted image contains ART debug binaries.
+  check_binary dex2oatd
+  check_binary dexoptanalyzerd
+  check_binary profmand
+
+  # Check that the mounted image contains ART libraries.
+  check_library libart-compiler.so
+  check_library libart.so
+  check_library libopenjdkjvm.so
+  check_library libopenjdkjvmti.so
+  check_library libadbconnection.so
+  # TODO: Should we check for these libraries too, even if they are not explicitly
+  # listed as dependencies in the Android Runtime APEX module rule?
+  check_library libartbase.so
+  check_library libart-dexlayout.so
+  check_library libdexfile.so
+  check_library libprofile.so
+
+  # Check that the mounted image contains ART debug libraries.
+  check_library libartd-compiler.so
+  check_library libartd.so
+  check_library libopenjdkd.so
+  check_library libopenjdkjvmd.so
+  check_library libopenjdkjvmtid.so
+  check_library libadbconnectiond.so
+  # TODO: Should we check for these libraries too, even if they are not explicitly
+  # listed as dependencies in the Android Runtime APEX module rule?
+  check_library libdexfiled.so
+  check_library libartbased.so
+  check_library libartd-dexlayout.so
+  check_library libprofiled.so
+
+  # TODO: Should we check for other libraries, such as:
+  #
+  #   libbacktrace.so
+  #   libbase.so
+  #   liblog.so
+  #   libsigchain.so
+  #   libtombstoned_client.so
+  #   libunwindstack.so
+  #   libvixl.so
+  #   libvixld.so
+  #   ...
+  #
+  # ?
+}
+
+
+# *****************************************
+# * Testing for com.android.runtime.debug *
+# *****************************************
+
+# Garbage collection.
+function finish_device_debug {
+  # Don't fail early during cleanup.
+  set +e
+  guestunmount "$mount_point"
+  rm -rf "$work_dir"
+}
+
+trap finish_device_debug EXIT
+
+# TODO: Also exercise the Release Runtime APEX (`com.android.runtime.release`).
+apex_module="com.android.runtime.debug"
+
+# Build the Android Runtime APEX package (optional).
+build_apex $apex_module
+
+system_apexdir="$ANDROID_PRODUCT_OUT/system/apex"
+apex_package="$system_apexdir/$apex_module.apex"
+
+say "Extracting and mounting image"
+
+# Extract the payload from the Android Runtime APEX.
+image_filename="apex_payload.img"
+unzip -q "$apex_package" "$image_filename" -d "$work_dir"
+mkdir "$mount_point"
+image_file="$work_dir/$image_filename"
+
+# Check filesystems in the image.
+image_filesystems="$work_dir/image_filesystems"
+virt-filesystems -a "$image_file" >"$image_filesystems"
+# We expect a single partition (/dev/sda) in the image.
+partition="/dev/sda"
+echo "$partition" | cmp "$image_filesystems" -
+
+# Mount the image from the Android Runtime APEX.
+guestmount -a "$image_file" -m "$partition" "$mount_point"
+
+# List the contents of the mounted image (optional).
+$list_image_files_p && say "Listing image files" && ls -ld "$mount_point" && tree -ap "$mount_point"
+
+say "Running tests"
+
+check_contents
+
+# Check for files pulled in from device-only oatdump.
 check_binary oatdump
-
-# Check that the mounted image contains ART debug binaries.
-check_binary dex2oatd
-check_binary dexoptanalyzerd
-check_binary profmand
-
-# Check that the mounted image contains ART libraries.
-check_library libart-compiler.so
-check_library libart.so
-check_library libopenjdkjvm.so
-check_library libopenjdkjvmti.so
-check_library libadbconnection.so
-# TODO: Should we check for these libraries too, even if they are not explicitly
-# listed as dependencies in the Android Runtime APEX module rule?
-check_library libartbase.so
-check_library libart-dexlayout.so
 check_library libart-disassembler.so
-check_library libdexfile.so
-check_library libprofile.so
 
-# Check that the mounted image contains ART debug libraries.
-check_library libartd-compiler.so
-check_library libartd.so
-check_library libdexfiled.so
-check_library libopenjdkd.so
-check_library libopenjdkjvmd.so
-check_library libopenjdkjvmtid.so
-check_library libadbconnectiond.so
-# TODO: Should we check for these libraries too, even if they are not explicitly
-# listed as dependencies in the Android Runtime APEX module rule?
-check_library libartbased.so
-check_library libartd-dexlayout.so
-check_library libprofiled.so
+# Cleanup
+trap - EXIT
+guestunmount "$mount_point"
+rm -rf "$work_dir"
 
-# TODO: Should we check for other libraries, such as:
-#
-#   libbacktrace.so
-#   libbase.so
-#   liblog.so
-#   libsigchain.so
-#   libtombstoned_client.so
-#   libunwindstack.so
-#   libvixl.so
-#   libvixld.so
-#   ...
-#
-# ?
+say "$apex_module Tests passed"
+
+# ****************************************
+# * Testing for com.android.runtime.host *
+# ****************************************
+
+# Garbage collection.
+function finish_host {
+  # Don't fail early during cleanup.
+  set +e
+  rm -rf "$work_dir"
+}
+
+work_dir=$(mktemp -d)
+mount_point="$work_dir/zip"
+
+trap finish_host EXIT
+
+apex_module="com.android.runtime.host"
+
+# Build the Android Runtime APEX package (optional).
+build_apex $apex_module
+
+system_apexdir="$ANDROID_HOST_OUT/apex"
+apex_package="$system_apexdir/$apex_module.zipapex"
+
+say "Extracting payload"
+
+# Extract the payload from the Android Runtime APEX.
+image_filename="apex_payload.zip"
+unzip -q "$apex_package" "$image_filename" -d "$work_dir"
+mkdir "$mount_point"
+image_file="$work_dir/$image_filename"
+
+# Unzipping the payload
+unzip -q "$image_file" -d "$mount_point"
+
+say "Running tests"
+
+check_contents
+
+say "$apex_module Tests passed"
 
 say "Tests passed"
