@@ -336,8 +336,7 @@ Runtime::~Runtime() {
         << " out of process CPU time " << PrettyDuration(process_cpu_time)
         << " (" << ratio << ")"
         << "\n";
-    float weighted_allocated_bytes =
-      static_cast<float>(heap_->GetWeightedAllocatedBytes()) / process_cpu_time;
+    double weighted_allocated_bytes = heap_->GetWeightedAllocatedBytes() / process_cpu_time;
     LOG_STREAM(INFO) << "Weighted bytes allocated over CPU time: "
         << " (" <<  PrettySize(weighted_allocated_bytes)  << ")"
         << "\n";
