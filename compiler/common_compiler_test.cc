@@ -22,6 +22,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/callee_save_type.h"
+#include "base/casts.h"
 #include "base/enums.h"
 #include "base/utils.h"
 #include "class_linker.h"
@@ -152,6 +153,10 @@ void CommonCompilerTest::SetUp() {
 
     CreateCompilerDriver();
   }
+  // Note: We cannot use MemMap because some tests tear down the Runtime and destroy
+  // the gMaps, so when destroying the MemMap, the test would crash.
+  inaccessible_page_ = mmap(nullptr, kPageSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  CHECK(inaccessible_page_ != MAP_FAILED) << strerror(errno);
 }
 
 void CommonCompilerTest::ApplyInstructionSet() {
@@ -190,9 +195,7 @@ void CommonCompilerTest::CreateCompilerDriver() {
   compiler_options_->image_classes_.swap(*GetImageClasses());
   compiler_options_->profile_compilation_info_ = GetProfileCompilationInfo();
   compiler_driver_.reset(new CompilerDriver(compiler_options_.get(),
-                                            verification_results_.get(),
                                             compiler_kind_,
-                                            &compiler_options_->image_classes_,
                                             number_of_threads_,
                                             /* swap_fd */ -1));
 }
@@ -222,6 +225,10 @@ void CommonCompilerTest::TearDown() {
   verification_results_.reset();
   compiler_options_.reset();
   image_reservation_.Reset();
+  if (inaccessible_page_ != nullptr) {
+    munmap(inaccessible_page_, kPageSize);
+    inaccessible_page_ = nullptr;
+  }
 
   CommonRuntimeTest::TearDown();
 }
@@ -267,8 +274,16 @@ void CommonCompilerTest::CompileMethod(ArtMethod* method) {
 
     compiler_driver_->InitializeThreadPools();
 
-    compiler_driver_->PreCompile(class_loader, dex_files, &timings);
+    compiler_driver_->PreCompile(class_loader,
+                                 dex_files,
+                                 &timings,
+                                 &compiler_options_->image_classes_,
+                                 verification_results_.get());
 
+    // Verification results in the `callback_` should not be used during compilation.
+    down_cast<QuickCompilerCallbacks*>(callbacks_.get())->SetVerificationResults(
+        reinterpret_cast<VerificationResults*>(inaccessible_page_));
+    compiler_options_->verification_results_ = verification_results_.get();
     compiler_driver_->CompileOne(self,
                                  class_loader,
                                  *dex_file,
@@ -279,6 +294,9 @@ void CommonCompilerTest::CompileMethod(ArtMethod* method) {
                                  code_item,
                                  dex_cache,
                                  h_class_loader);
+    compiler_options_->verification_results_ = nullptr;
+    down_cast<QuickCompilerCallbacks*>(callbacks_.get())->SetVerificationResults(
+        verification_results_.get());
 
     compiler_driver_->FreeThreadPools();
 
@@ -332,6 +350,32 @@ void CommonCompilerTest::ReserveImageSpace() {
                                             /*reservation=*/ nullptr,
                                             &error_msg);
   CHECK(image_reservation_.IsValid()) << error_msg;
+}
+
+void CommonCompilerTest::CompileAll(jobject class_loader,
+                                    const std::vector<const DexFile*>& dex_files,
+                                    TimingLogger* timings) {
+  TimingLogger::ScopedTiming t(__FUNCTION__, timings);
+  SetDexFilesForOatFile(dex_files);
+
+  compiler_driver_->InitializeThreadPools();
+
+  compiler_driver_->PreCompile(class_loader,
+                               dex_files,
+                               timings,
+                               &compiler_options_->image_classes_,
+                               verification_results_.get());
+
+  // Verification results in the `callback_` should not be used during compilation.
+  down_cast<QuickCompilerCallbacks*>(callbacks_.get())->SetVerificationResults(
+      reinterpret_cast<VerificationResults*>(inaccessible_page_));
+  compiler_options_->verification_results_ = verification_results_.get();
+  compiler_driver_->CompileAll(class_loader, dex_files, timings);
+  compiler_options_->verification_results_ = nullptr;
+  down_cast<QuickCompilerCallbacks*>(callbacks_.get())->SetVerificationResults(
+      verification_results_.get());
+
+  compiler_driver_->FreeThreadPools();
 }
 
 void CommonCompilerTest::UnreserveImageSpace() {

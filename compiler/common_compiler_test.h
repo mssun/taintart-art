@@ -20,6 +20,8 @@
 #include <list>
 #include <vector>
 
+#include <jni.h>
+
 #include "arch/instruction_set.h"
 #include "arch/instruction_set_features.h"
 #include "base/hash_set.h"
@@ -37,6 +39,7 @@ class CompilerOptions;
 class CumulativeLogger;
 class DexFile;
 class ProfileCompilationInfo;
+class TimingLogger;
 class VerificationResults;
 
 template<class T> class Handle;
@@ -88,6 +91,10 @@ class CommonCompilerTest : public CommonRuntimeTest {
                             const char* method_name, const char* signature)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  void CompileAll(jobject class_loader,
+                  const std::vector<const DexFile*>& dex_files,
+                  TimingLogger* timings) REQUIRES(!Locks::mutator_lock_);
+
   void ApplyInstructionSet();
   void OverrideInstructionSetFeatures(InstructionSet instruction_set, const std::string& variant);
 
@@ -116,6 +123,7 @@ class CommonCompilerTest : public CommonRuntimeTest {
 
  private:
   MemMap image_reservation_;
+  void* inaccessible_page_;
 
   // Chunks must not move their storage after being created - use the node-based std::list.
   std::list<std::vector<uint8_t>> header_code_and_maps_chunks_;

@@ -167,9 +167,7 @@ JitCompiler::JitCompiler() {
 
   compiler_driver_.reset(new CompilerDriver(
       compiler_options_.get(),
-      /* verification_results */ nullptr,
       Compiler::kOptimizing,
-      /* image_classes */ nullptr,
       /* thread_count */ 1,
       /* swap_fd */ -1));
   // Disable dedupe so we can remove compiled methods.

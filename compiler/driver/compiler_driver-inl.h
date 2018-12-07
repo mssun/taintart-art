@@ -99,11 +99,6 @@ inline std::pair<bool, bool> CompilerDriver::IsFastInstanceField(
   return std::make_pair(fast_get, fast_put);
 }
 
-inline VerificationResults* CompilerDriver::GetVerificationResults() const {
-  DCHECK(Runtime::Current()->IsAotCompiler());
-  return verification_results_;
-}
-
 }  // namespace art
 
 #endif  // ART_COMPILER_DRIVER_COMPILER_DRIVER_INL_H_
