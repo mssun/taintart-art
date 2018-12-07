@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_INTERPRETER_INTERPRETER_H_
 #define ART_RUNTIME_INTERPRETER_INTERPRETER_H_
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "dex/dex_file.h"
 #include "obj_ptr.h"
 

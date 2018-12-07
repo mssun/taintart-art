@@ -30,8 +30,8 @@
 #include "base/atomic.h"
 #include "base/enums.h"
 #include "base/globals.h"
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "base/safe_map.h"
 #include "entrypoints/jni/jni_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints.h"
@@ -563,11 +563,11 @@ class Thread {
   bool Interrupted();
   // Implements java.lang.Thread.isInterrupted.
   bool IsInterrupted();
-  void Interrupt(Thread* self) REQUIRES(!*wait_mutex_);
+  void Interrupt(Thread* self) REQUIRES(!wait_mutex_);
   void SetInterrupted(bool i) {
     tls32_.interrupted.store(i, std::memory_order_seq_cst);
   }
-  void Notify() REQUIRES(!*wait_mutex_);
+  void Notify() REQUIRES(!wait_mutex_);
 
   ALWAYS_INLINE void PoisonObjectPointers() {
     ++poison_object_cookie_;

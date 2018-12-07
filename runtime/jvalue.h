@@ -17,8 +17,8 @@
 #ifndef ART_RUNTIME_JVALUE_H_
 #define ART_RUNTIME_JVALUE_H_
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 
 #include <stdint.h>
 

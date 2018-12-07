@@ -18,7 +18,7 @@
 #define ART_RUNTIME_CLASS_LOADER_UTILS_H_
 
 #include "art_field-inl.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "handle_scope.h"
 #include "jni/jni_internal.h"
 #include "mirror/class_loader.h"

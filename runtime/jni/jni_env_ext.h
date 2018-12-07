@@ -19,8 +19,8 @@
 
 #include <jni.h>
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "indirect_reference_table.h"
 #include "obj_ptr.h"
 #include "reference_table.h"

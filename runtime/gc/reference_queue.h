@@ -23,7 +23,7 @@
 
 #include "base/atomic.h"
 #include "base/globals.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "base/timing_logger.h"
 #include "jni.h"
 #include "obj_ptr.h"
@@ -31,6 +31,9 @@
 #include "thread_pool.h"
 
 namespace art {
+
+class Mutex;
+
 namespace mirror {
 class Reference;
 }  // namespace mirror

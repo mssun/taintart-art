@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_REFLECTION_H_
 #define ART_RUNTIME_REFLECTION_H_
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "dex/primitive.h"
 #include "jni.h"
 #include "obj_ptr.h"

@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "base/allocator.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "gc_root.h"
 #include "obj_ptr.h"
 

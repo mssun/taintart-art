@@ -23,7 +23,8 @@
 
 #include <vector>
 
-#include "base/mutex.h"  // For annotalysis.
+#include "base/globals.h"  // For CanDoImplicitNullCheckOn.
+#include "base/locks.h"  // For annotalysis.
 
 namespace art {
 

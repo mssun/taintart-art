@@ -25,8 +25,8 @@
 #include <vector>
 
 #include "base/enums.h"
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "dex/class_accessor.h"
 #include "dex/dex_cache_resolved_classes.h"
 #include "dex/dex_file.h"

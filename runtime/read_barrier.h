@@ -19,8 +19,8 @@
 
 #include <android-base/logging.h>
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "base/runtime_debug.h"
 #include "gc_root.h"
 #include "jni.h"

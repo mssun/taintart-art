@@ -20,8 +20,8 @@
 #include <memory>
 
 #include "base/globals.h"
+#include "base/locks.h"
 #include "base/mem_map.h"
-#include "base/mutex.h"
 
 namespace art {
 
