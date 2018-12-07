@@ -17,7 +17,6 @@
 package com.android.class2greylist;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.ImmutableSet;
@@ -35,16 +34,10 @@ import org.apache.commons.cli.ParseException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Set;
-import java.util.function.Predicate;
 
 /**
  * Build time tool for extracting a list of members from jar files that have the @UsedByApps
@@ -193,12 +186,31 @@ public class Class2Greylist {
                 new UnsupportedAppUsageAnnotationHandler(
                     mStatus, mOutput, mPublicApis, TARGET_SDK_TO_LIST_MAP);
         GREYLIST_ANNOTATIONS.forEach(a -> builder.put(a, greylistAnnotationHandler));
+
+        CovariantReturnTypeHandler covariantReturnTypeHandler = new CovariantReturnTypeHandler(
+            mOutput, mPublicApis, FLAG_WHITELIST);
+
+        return addRepeatedAnnotationHandlers(builder, CovariantReturnTypeHandler.ANNOTATION_NAME,
+            CovariantReturnTypeHandler.REPEATED_ANNOTATION_NAME, covariantReturnTypeHandler)
+            .build();
+    }
+
+    /**
+     * Add a handler for an annotation as well as an handler for the container annotation that is
+     * used when the annotation is repeated.
+     *
+     * @param builder the builder for the map to which the handlers will be added.
+     * @param annotationName the name of the annotation.
+     * @param containerAnnotationName the name of the annotation container.
+     * @param handler the handler for the annotation.
+     */
+    private static Builder<String, AnnotationHandler> addRepeatedAnnotationHandlers(
+        Builder<String, AnnotationHandler> builder,
+        String annotationName, String containerAnnotationName,
+        AnnotationHandler handler) {
         return builder
-                .put(CovariantReturnTypeHandler.ANNOTATION_NAME,
-                        new CovariantReturnTypeHandler(mOutput, mPublicApis, FLAG_WHITELIST))
-                .put(CovariantReturnTypeMultiHandler.ANNOTATION_NAME,
-                        new CovariantReturnTypeMultiHandler(mOutput, mPublicApis, FLAG_WHITELIST))
-                .build();
+            .put(annotationName, handler)
+            .put(containerAnnotationName, new RepeatedAnnotationHandler(annotationName, handler));
     }
 
     private void main() throws IOException {
