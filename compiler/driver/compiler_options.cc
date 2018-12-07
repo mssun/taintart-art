@@ -24,9 +24,14 @@
 #include "arch/instruction_set_features.h"
 #include "base/runtime_debug.h"
 #include "base/variant_map.h"
+#include "class_linker.h"
 #include "cmdline_parser.h"
 #include "compiler_options_map-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/verification_results.h"
+#include "dex/verified_method.h"
 #include "runtime.h"
+#include "scoped_thread_state_change-inl.h"
 #include "simple_compiler_options_map.h"
 
 namespace art {
@@ -44,6 +49,7 @@ CompilerOptions::CompilerOptions()
       no_inline_from_(),
       dex_files_for_oat_file_(),
       image_classes_(),
+      verification_results_(nullptr),
       image_type_(ImageType::kNone),
       compiling_with_core_image_(false),
       baseline_(false),
@@ -139,6 +145,42 @@ bool CompilerOptions::IsImageClass(const char* descriptor) const {
   // empty set and a null, null meaning to include all classes. However, the distiction has been
   // removed; if we don't have a profile, we treat it as an empty set of classes. b/77340429
   return image_classes_.find(StringPiece(descriptor)) != image_classes_.end();
+}
+
+const VerificationResults* CompilerOptions::GetVerificationResults() const {
+  DCHECK(Runtime::Current()->IsAotCompiler());
+  return verification_results_;
+}
+
+const VerifiedMethod* CompilerOptions::GetVerifiedMethod(const DexFile* dex_file,
+                                                         uint32_t method_idx) const {
+  MethodReference ref(dex_file, method_idx);
+  return verification_results_->GetVerifiedMethod(ref);
+}
+
+bool CompilerOptions::IsMethodVerifiedWithoutFailures(uint32_t method_idx,
+                                                      uint16_t class_def_idx,
+                                                      const DexFile& dex_file) const {
+  const VerifiedMethod* verified_method = GetVerifiedMethod(&dex_file, method_idx);
+  if (verified_method != nullptr) {
+    return !verified_method->HasVerificationFailures();
+  }
+
+  // If we can't find verification metadata, check if this is a system class (we trust that system
+  // classes have their methods verified). If it's not, be conservative and assume the method
+  // has not been verified successfully.
+
+  // TODO: When compiling the boot image it should be safe to assume that everything is verified,
+  // even if methods are not found in the verification cache.
+  const char* descriptor = dex_file.GetClassDescriptor(dex_file.GetClassDef(class_def_idx));
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  Thread* self = Thread::Current();
+  ScopedObjectAccess soa(self);
+  bool is_system_class = class_linker->FindSystemClass(self, descriptor) != nullptr;
+  if (!is_system_class) {
+    self->ClearException();
+  }
+  return is_system_class;
 }
 
 }  // namespace art

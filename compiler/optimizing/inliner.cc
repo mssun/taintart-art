@@ -28,7 +28,6 @@
 #include "dex/inline_method_analyser.h"
 #include "dex/verification_results.h"
 #include "dex/verified_method.h"
-#include "driver/compiler_driver-inl.h"
 #include "driver/compiler_options.h"
 #include "driver/dex_compilation_unit.h"
 #include "instruction_simplifier.h"
@@ -408,7 +407,7 @@ ArtMethod* HInliner::TryCHADevirtualization(ArtMethod* resolved_method) {
   return single_impl;
 }
 
-static bool IsMethodUnverified(CompilerDriver* const compiler_driver, ArtMethod* method)
+static bool IsMethodUnverified(const CompilerOptions& compiler_options, ArtMethod* method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (!method->GetDeclaringClass()->IsVerified()) {
     if (Runtime::Current()->UseJitCompilation()) {
@@ -417,8 +416,9 @@ static bool IsMethodUnverified(CompilerDriver* const compiler_driver, ArtMethod*
       return true;
     }
     uint16_t class_def_idx = method->GetDeclaringClass()->GetDexClassDefIndex();
-    if (!compiler_driver->IsMethodVerifiedWithoutFailures(
-        method->GetDexMethodIndex(), class_def_idx, *method->GetDexFile())) {
+    if (!compiler_options.IsMethodVerifiedWithoutFailures(method->GetDexMethodIndex(),
+                                                          class_def_idx,
+                                                          *method->GetDexFile())) {
       // Method has soft or hard failures, don't analyze.
       return true;
     }
@@ -426,11 +426,11 @@ static bool IsMethodUnverified(CompilerDriver* const compiler_driver, ArtMethod*
   return false;
 }
 
-static bool AlwaysThrows(CompilerDriver* const compiler_driver, ArtMethod* method)
+static bool AlwaysThrows(const CompilerOptions& compiler_options, ArtMethod* method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(method != nullptr);
   // Skip non-compilable and unverified methods.
-  if (!method->IsCompilable() || IsMethodUnverified(compiler_driver, method)) {
+  if (!method->IsCompilable() || IsMethodUnverified(compiler_options, method)) {
     return false;
   }
   // Skip native methods, methods with try blocks, and methods that are too large.
@@ -518,7 +518,7 @@ bool HInliner::TryInline(HInvoke* invoke_instruction) {
           MaybeRecordStat(stats_, MethodCompilationStat::kInlinedInvokeVirtualOrInterface);
         }
       }
-    } else if (!cha_devirtualize && AlwaysThrows(compiler_driver_, actual_method)) {
+    } else if (!cha_devirtualize && AlwaysThrows(codegen_->GetCompilerOptions(), actual_method)) {
       // Set always throws property for non-inlined method call with single target
       // (unless it was obtained through CHA, because that would imply we have
       // to add the CHA dependency, which seems not worth it).
@@ -1500,7 +1500,7 @@ bool HInliner::TryBuildAndInline(HInvoke* invoke_instruction,
     return false;
   }
 
-  if (IsMethodUnverified(compiler_driver_, method)) {
+  if (IsMethodUnverified(codegen_->GetCompilerOptions(), method)) {
     LOG_FAIL(stats_, MethodCompilationStat::kNotInlinedNotVerified)
         << "Method " << method->PrettyMethod()
         << " couldn't be verified, so it cannot be inlined";
@@ -2069,7 +2069,6 @@ void HInliner::RunOptimizations(HGraph* callee_graph,
                    codegen_,
                    outer_compilation_unit_,
                    dex_compilation_unit,
-                   compiler_driver_,
                    handles_,
                    inline_stats_,
                    total_number_of_dex_registers_ + accessor.RegistersSize(),

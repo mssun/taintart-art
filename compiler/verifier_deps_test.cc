@@ -93,12 +93,12 @@ class VerifierDepsTest : public CommonCompilerTest {
       verifier_deps_.reset(deps);
     }
     callbacks_->SetVerifierDeps(deps);
-    compiler_driver_->Verify(class_loader_, dex_files_, &timings);
+    compiler_driver_->Verify(class_loader_, dex_files_, &timings, verification_results_.get());
     callbacks_->SetVerifierDeps(nullptr);
     // Clear entries in the verification results to avoid hitting a DCHECK that
     // we always succeed inserting a new entry after verifying.
     AtomicDexRefMap<MethodReference, const VerifiedMethod*>* map =
-        &compiler_driver_->GetVerificationResults()->atomic_verified_methods_;
+        &verification_results_->atomic_verified_methods_;
     map->Visit([](const DexFileReference& ref ATTRIBUTE_UNUSED, const VerifiedMethod* method) {
       delete method;
     });
@@ -126,7 +126,7 @@ class VerifierDepsTest : public CommonCompilerTest {
       class_linker_->RegisterDexFile(*dex_file, loader.Get());
     }
     for (const DexFile* dex_file : dex_files_) {
-      compiler_driver_->GetVerificationResults()->AddDexFile(dex_file);
+      verification_results_->AddDexFile(dex_file);
     }
     SetDexFilesForOatFile(dex_files_);
   }

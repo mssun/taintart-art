@@ -528,7 +528,7 @@ CompiledMethod* DexToDexCompiler::CompileMethod(
       class_def_idx,
       method_idx,
       access_flags,
-      driver_->GetVerifiedMethod(&dex_file, method_idx),
+      driver_->GetCompilerOptions().GetVerifiedMethod(&dex_file, method_idx),
       hs.NewHandle(class_linker->FindDexCache(soa.Self(), dex_file)));
 
   std::vector<uint8_t> quicken_data;

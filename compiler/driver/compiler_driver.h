@@ -76,7 +76,6 @@ template <class Allocator> class SrcMap;
 class TimingLogger;
 class VdexFile;
 class VerificationResults;
-class VerifiedMethod;
 
 enum EntryPointCallingConvention {
   // ABI of invocations to a method's interpreter entry point.
@@ -95,9 +94,7 @@ class CompilerDriver {
   // can assume will be in the image, with null implying all available
   // classes.
   CompilerDriver(const CompilerOptions* compiler_options,
-                 VerificationResults* verification_results,
                  Compiler::Kind compiler_kind,
-                 HashSet<std::string>* image_classes,
                  size_t thread_count,
                  int swap_fd);
 
@@ -106,6 +103,17 @@ class CompilerDriver {
   // Set dex files classpath.
   void SetClasspathDexFiles(const std::vector<const DexFile*>& dex_files);
 
+  // Initialize and destroy thread pools. This is exposed because we do not want
+  // to do this twice, for PreCompile() and CompileAll().
+  void InitializeThreadPools();
+  void FreeThreadPools();
+
+  void PreCompile(jobject class_loader,
+                  const std::vector<const DexFile*>& dex_files,
+                  TimingLogger* timings,
+                  /*inout*/ HashSet<std::string>* image_classes,
+                  /*out*/ VerificationResults* verification_results)
+      REQUIRES(!Locks::mutator_lock_);
   void CompileAll(jobject class_loader,
                   const std::vector<const DexFile*>& dex_files,
                   TimingLogger* timings)
@@ -123,8 +131,6 @@ class CompilerDriver {
                   Handle<mirror::DexCache> dex_cache,
                   Handle<mirror::ClassLoader> h_class_loader)
       REQUIRES(!Locks::mutator_lock_);
-
-  VerificationResults* GetVerificationResults() const;
 
   const CompilerOptions& GetCompilerOptions() const {
     return *compiler_options_;
@@ -194,7 +200,6 @@ class CompilerDriver {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
 
-  const VerifiedMethod* GetVerifiedMethod(const DexFile* dex_file, uint32_t method_idx) const;
   bool IsSafeCast(const DexCompilationUnit* mUnit, uint32_t dex_pc);
 
   size_t GetThreadCount() const {
@@ -218,12 +223,6 @@ class CompilerDriver {
   bool ShouldVerifyClassBasedOnProfile(const DexFile& dex_file, uint16_t class_idx) const;
 
   void RecordClassStatus(const ClassReference& ref, ClassStatus status);
-
-  // Checks if the specified method has been verified without failures. Returns
-  // false if the method is not in the verification results (GetVerificationResults).
-  bool IsMethodVerifiedWithoutFailures(uint32_t method_idx,
-                                       uint16_t class_def_idx,
-                                       const DexFile& dex_file) const;
 
   // Get memory usage during compilation.
   std::string GetMemoryUsageString(bool extended) const;
@@ -265,12 +264,8 @@ class CompilerDriver {
   }
 
  private:
-  void PreCompile(jobject class_loader,
-                  const std::vector<const DexFile*>& dex_files,
-                  TimingLogger* timings)
+  void LoadImageClasses(TimingLogger* timings, /*inout*/ HashSet<std::string>* image_classes)
       REQUIRES(!Locks::mutator_lock_);
-
-  void LoadImageClasses(TimingLogger* timings) REQUIRES(!Locks::mutator_lock_);
 
   // Attempt to resolve all type, methods, fields, and strings
   // referenced from code in the dex file following PathClassLoader
@@ -291,11 +286,13 @@ class CompilerDriver {
   // verification was successful.
   bool FastVerify(jobject class_loader,
                   const std::vector<const DexFile*>& dex_files,
-                  TimingLogger* timings);
+                  TimingLogger* timings,
+                  /*out*/ VerificationResults* verification_results);
 
   void Verify(jobject class_loader,
               const std::vector<const DexFile*>& dex_files,
-              TimingLogger* timings);
+              TimingLogger* timings,
+              /*out*/ VerificationResults* verification_results);
 
   void VerifyDexFile(jobject class_loader,
                      const DexFile& dex_file,
@@ -326,14 +323,13 @@ class CompilerDriver {
                          TimingLogger* timings)
       REQUIRES(!Locks::mutator_lock_);
 
-  void UpdateImageClasses(TimingLogger* timings) REQUIRES(!Locks::mutator_lock_);
+  void UpdateImageClasses(TimingLogger* timings, /*inout*/ HashSet<std::string>* image_classes)
+      REQUIRES(!Locks::mutator_lock_);
 
   void Compile(jobject class_loader,
                const std::vector<const DexFile*>& dex_files,
                TimingLogger* timings);
 
-  void InitializeThreadPools();
-  void FreeThreadPools();
   void CheckThreadPools();
 
   // Resolve const string literals that are loaded from dex code. If only_startup_strings is
@@ -343,7 +339,6 @@ class CompilerDriver {
                            /*inout*/ TimingLogger* timings);
 
   const CompilerOptions* const compiler_options_;
-  VerificationResults* const verification_results_;
 
   std::unique_ptr<Compiler> compiler_;
   Compiler::Kind compiler_kind_;
@@ -358,12 +353,6 @@ class CompilerDriver {
 
   // All method references that this compiler has compiled.
   MethodTable compiled_methods_;
-
-  // Image classes to be updated by PreCompile().
-  // TODO: Remove this member which is a non-const pointer to the CompilerOptions' data.
-  //       Pass this explicitly to the PreCompile() which should be called directly from
-  //       Dex2Oat rather than implicitly by CompileAll().
-  HashSet<std::string>* image_classes_;
 
   std::atomic<uint32_t> number_of_soft_verifier_failures_;
 
