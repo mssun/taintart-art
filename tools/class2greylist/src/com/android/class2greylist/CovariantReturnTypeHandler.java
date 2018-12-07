@@ -30,6 +30,8 @@ public class CovariantReturnTypeHandler extends AnnotationHandler {
 
     private static final String SHORT_NAME = "CovariantReturnType";
     public static final String ANNOTATION_NAME = "Ldalvik/annotation/codegen/CovariantReturnType;";
+    public static final String REPEATED_ANNOTATION_NAME =
+        "Ldalvik/annotation/codegen/CovariantReturnType$CovariantReturnTypes;";
 
     private static final String RETURN_TYPE = "returnType";
 
