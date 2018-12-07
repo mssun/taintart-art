@@ -43,6 +43,22 @@ android_root=${ART_TEST_ANDROID_ROOT:-/system}
 java_lib_location="${ANDROID_HOST_OUT}/../common/obj/JAVA_LIBRARIES"
 make_target_name="apache-harmony-jdwp-tests-hostdex"
 
+function boot_classpath_arg {
+  local dir="$1"
+  local suffix="$2"
+  shift 2
+  local separator=""
+  for var
+  do
+    printf -- "${separator}${dir}/${var}${suffix}.jar";
+    separator=":"
+  done
+}
+
+# Note: This must match the TEST_CORE_JARS in Android.common_path.mk
+# because that's what we use for compiling the core.art image.
+BOOT_CLASSPATH_JARS="core-oj core-libart core-simple conscrypt okhttp bouncycastle"
+
 vm_args=""
 art="$android_root/bin/art"
 art_debugee="sh $android_root/bin/art"
@@ -59,6 +75,8 @@ debug="no"
 explicit_debug="no"
 verbose="no"
 image="-Ximage:/data/art-test/core.art"
+boot_classpath="$(boot_classpath_arg /system/framework -testdex $BOOT_CLASSPATH_JARS)"
+boot_classpath_locations=""
 with_jdwp_path=""
 agent_wrapper=""
 vm_args=""
@@ -90,6 +108,17 @@ while true; do
     art_debugee="bash ${OUT_DIR-out}/host/linux-x86/bin/art"
     # We force generation of a new image to avoid build-time and run-time classpath differences.
     image="-Ximage:/system/non/existent/vogar.art"
+    # Pass the host boot classpath.
+    if [ "${ANDROID_HOST_OUT:0:${#ANDROID_BUILD_TOP}+1}" = "${ANDROID_BUILD_TOP}/" ]; then
+      framework_location="${ANDROID_HOST_OUT:${#ANDROID_BUILD_TOP}+1}/framework"
+    else
+      echo "error: ANDROID_BUILD_TOP/ is not a prefix of ANDROID_HOST_OUT"
+      echo "ANDROID_BUILD_TOP=${ANDROID_BUILD_TOP}"
+      echo "ANDROID_HOST_OUT=${ANDROID_HOST_OUT}"
+      exit
+    fi
+    boot_classpath="$(boot_classpath_arg ${ANDROID_HOST_OUT}/framework -hostdex $BOOT_CLASSPATH_JARS)"
+    boot_classpath_locations="$(boot_classpath_arg ${framework_location} -hostdex $BOOT_CLASSPATH_JARS)"
     # We do not need a device directory on host.
     device_dir=""
     # Vogar knows which VM to use on host.
@@ -104,6 +133,8 @@ while true; do
     debuggee_args=""
     # No image. On the RI.
     image=""
+    boot_classpath=""
+    boot_classpath_locations=""
     # We do not need a device directory on RI.
     device_dir=""
     # Vogar knows which VM to use on RI.
@@ -305,6 +336,15 @@ fi
 
 if [[ "$image" != "" ]]; then
   vm_args="$vm_args --vm-arg $image"
+  debuggee_args="$debuggee_args $image"
+fi
+if [[ "$boot_classpath" != "" ]]; then
+  vm_args="$vm_args --vm-arg -Xbootclasspath:${boot_classpath}"
+  debuggee_args="$debuggee_args -Xbootclasspath:${boot_classpath}"
+fi
+if [[ "$boot_classpath_locations" != "" ]]; then
+  vm_args="$vm_args --vm-arg -Xbootclasspath-locations:${boot_classpath_locations}"
+  debuggee_args="$debuggee_args -Xbootclasspath-locations:${boot_classpath_locations}"
 fi
 
 if [[ "$plugin" != "" ]]; then
@@ -363,7 +403,7 @@ vogar $vm_command \
       --vm-arg -Djpda.settings.waitingTime=$jdwp_test_timeout \
       --vm-arg -Djpda.settings.transportAddress=127.0.0.1:55107 \
       --vm-arg -Djpda.settings.dumpProcess="$dump_command" \
-      --vm-arg -Djpda.settings.debuggeeJavaPath="$art_debugee $plugin $image $debuggee_args" \
+      --vm-arg -Djpda.settings.debuggeeJavaPath="$art_debugee $plugin $debuggee_args" \
       --classpath "$test_jar" \
       $toolchain_args \
       $test

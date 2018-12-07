@@ -46,6 +46,21 @@ function cparg {
   done
 }
 
+function boot_classpath_arg {
+  local dir="$1"
+  local suffix="$2"
+  shift 2
+  printf -- "--vm-arg -Xbootclasspath"
+  for var
+  do
+    printf -- ":${dir}/${var}${suffix}.jar";
+  done
+}
+
+# Note: This must match the TEST_CORE_JARS in Android.common_path.mk
+# because that's what we use for compiling the core.art image.
+BOOT_CLASSPATH_JARS="core-oj core-libart core-simple conscrypt okhttp bouncycastle"
+
 DEPS="core-tests jsr166-tests mockito-target"
 
 for lib in $DEPS
@@ -110,6 +125,7 @@ while true; do
   if [[ "$1" == "--mode=device" ]]; then
     device_mode=true
     vogar_args="$vogar_args --vm-arg -Ximage:/data/art-test/core.art"
+    vogar_args="$vogar_args $(boot_classpath_arg /system/framework -testdex $BOOT_CLASSPATH_JARS)"
     shift
   elif [[ "$1" == "--mode=host" ]]; then
     # We explicitly give a wrong path for the image, to ensure vogar
