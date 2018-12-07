@@ -2072,7 +2072,10 @@ uint8_t* JitCodeCache::AllocateCode(size_t code_size) {
 }
 
 void JitCodeCache::FreeCode(uint8_t* code) {
-  CHECK(!IsInZygoteExecSpace(code));
+  if (IsInZygoteExecSpace(code)) {
+    // No need to free, this is shared memory.
+    return;
+  }
   used_memory_for_code_ -= mspace_usable_size(code);
   mspace_free(exec_mspace_, code);
 }
@@ -2084,7 +2087,10 @@ uint8_t* JitCodeCache::AllocateData(size_t data_size) {
 }
 
 void JitCodeCache::FreeData(uint8_t* data) {
-  CHECK(!IsInZygoteDataSpace(data));
+  if (IsInZygoteDataSpace(data)) {
+    // No need to free, this is shared memory.
+    return;
+  }
   used_memory_for_data_ -= mspace_usable_size(data);
   mspace_free(data_mspace_, data);
 }
