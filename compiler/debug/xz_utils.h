@@ -24,7 +24,8 @@
 namespace art {
 namespace debug {
 
-void XzCompress(ArrayRef<uint8_t> src, std::vector<uint8_t>* dst);
+void XzCompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst);
+void XzDecompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst);
 
 }  // namespace debug
 }  // namespace art

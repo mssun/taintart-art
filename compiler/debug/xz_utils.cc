@@ -17,13 +17,16 @@
 #include "xz_utils.h"
 
 #include <vector>
+#include <mutex>
 
 #include "base/array_ref.h"
-#include "dwarf/writer.h"
+#include "base/bit_utils.h"
 #include "base/leb128.h"
+#include "dwarf/writer.h"
 
 // liblzma.
 #include "7zCrc.h"
+#include "Xz.h"
 #include "XzCrc64.h"
 #include "XzEnc.h"
 
@@ -32,10 +35,17 @@ namespace debug {
 
 constexpr size_t kChunkSize = kPageSize;
 
-static void XzCompressChunk(ArrayRef<uint8_t> src, std::vector<uint8_t>* dst) {
+static void XzInitCrc() {
+  static std::once_flag crc_initialized;
+  std::call_once(crc_initialized, []() {
+    CrcGenerateTable();
+    Crc64GenerateTable();
+  });
+}
+
+static void XzCompressChunk(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst) {
   // Configure the compression library.
-  CrcGenerateTable();
-  Crc64GenerateTable();
+  XzInitCrc();
   CLzma2EncProps lzma2Props;
   Lzma2EncProps_Init(&lzma2Props);
   lzma2Props.lzmaProps.level = 1;  // Fast compression.
@@ -62,7 +72,7 @@ static void XzCompressChunk(ArrayRef<uint8_t> src, std::vector<uint8_t>* dst) {
       return SZ_OK;
     }
     size_t src_pos_;
-    ArrayRef<uint8_t> src_;
+    ArrayRef<const uint8_t> src_;
     std::vector<uint8_t>* dst_;
   };
   XzCallbacks callbacks;
@@ -85,7 +95,7 @@ static void XzCompressChunk(ArrayRef<uint8_t> src, std::vector<uint8_t>* dst) {
 // In short, the file format is: [header] [compressed_block]* [index] [footer]
 // Where [index] is: [num_records] ([compressed_size] [uncompressed_size])* [crc32]
 //
-void XzCompress(ArrayRef<uint8_t> src, std::vector<uint8_t>* dst) {
+void XzCompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst) {
   uint8_t header[] = { 0xFD, '7', 'z', 'X', 'Z', 0, 0, 1, 0x69, 0x22, 0xDE, 0x36 };
   uint8_t footer[] = { 0, 1, 'Y', 'Z' };
   dst->insert(dst->end(), header, header + sizeof(header));
@@ -138,6 +148,47 @@ void XzCompress(ArrayRef<uint8_t> src, std::vector<uint8_t>* dst) {
     writer.UpdateUint32(0, CrcCalc(tmp.data() + 4, 6));
     dst->insert(dst->end(), tmp.begin(), tmp.end());
   }
+
+  // Decompress the data back and check that we get the original.
+  if (kIsDebugBuild) {
+    std::vector<uint8_t> decompressed;
+    XzDecompress(ArrayRef<const uint8_t>(*dst), &decompressed);
+    DCHECK_EQ(decompressed.size(), src.size());
+    DCHECK_EQ(memcmp(decompressed.data(), src.data(), src.size()), 0);
+  }
+}
+
+void XzDecompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst) {
+  XzInitCrc();
+  std::unique_ptr<CXzUnpacker> state(new CXzUnpacker());
+  ISzAlloc alloc;
+  alloc.Alloc = [](ISzAllocPtr, size_t size) { return malloc(size); };
+  alloc.Free = [](ISzAllocPtr, void* ptr) { return free(ptr); };
+  XzUnpacker_Construct(state.get(), &alloc);
+
+  size_t src_offset = 0;
+  size_t dst_offset = 0;
+  ECoderStatus status;
+  do {
+    dst->resize(RoundUp(dst_offset + kPageSize / 4, kPageSize));
+    size_t src_remaining = src.size() - src_offset;
+    size_t dst_remaining = dst->size() - dst_offset;
+    int return_val = XzUnpacker_Code(state.get(),
+                                     dst->data() + dst_offset,
+                                     &dst_remaining,
+                                     src.data() + src_offset,
+                                     &src_remaining,
+                                     true,
+                                     CODER_FINISH_ANY,
+                                     &status);
+    CHECK_EQ(return_val, SZ_OK);
+    src_offset += src_remaining;
+    dst_offset += dst_remaining;
+  } while (status == CODER_STATUS_NOT_FINISHED);
+  CHECK_EQ(src_offset, src.size());
+  CHECK(XzUnpacker_IsStreamWasFinished(state.get()));
+  XzUnpacker_Free(state.get());
+  dst->resize(dst_offset);
 }
 
 }  // namespace debug
