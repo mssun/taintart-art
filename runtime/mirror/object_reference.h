@@ -19,7 +19,7 @@
 
 #include "base/atomic.h"
 #include "base/globals.h"
-#include "base/mutex.h"  // For Locks::mutator_lock_.
+#include "base/locks.h"  // For Locks::mutator_lock_.
 #include "heap_poisoning.h"
 #include "obj_ptr.h"
 

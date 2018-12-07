@@ -19,6 +19,8 @@
 
 #include "space.h"
 
+#include "base/mutex.h"
+
 namespace art {
 
 namespace mirror {

@@ -21,8 +21,8 @@
 #include <type_traits>
 
 #include "base/globals.h"
+#include "base/locks.h"  // For Locks::mutator_lock_.
 #include "base/macros.h"
-#include "base/mutex.h"  // For Locks::mutator_lock_.
 
 // Always inline ObjPtr methods even in debug builds.
 #define OBJPTR_INLINE __attribute__ ((always_inline))

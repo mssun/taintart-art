@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_GC_SCOPED_GC_CRITICAL_SECTION_H_
 #define ART_RUNTIME_GC_SCOPED_GC_CRITICAL_SECTION_H_
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "collector_type.h"
 #include "gc_cause.h"
 

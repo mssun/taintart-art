@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include "base/bit_vector.h"
+#include "base/mutex.h"
 #include "dex/dex_file.h"
 #include "dex/invoke_type.h"
 #include "dex/method_reference.h"

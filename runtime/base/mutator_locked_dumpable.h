@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_BASE_MUTATOR_LOCKED_DUMPABLE_H_
 #define ART_RUNTIME_BASE_MUTATOR_LOCKED_DUMPABLE_H_
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "thread-current-inl.h"
 
 namespace art {

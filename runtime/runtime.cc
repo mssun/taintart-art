@@ -234,8 +234,7 @@ Runtime::Runtime()
       class_linker_(nullptr),
       signal_catcher_(nullptr),
       java_vm_(nullptr),
-      fault_message_lock_("Fault message lock"),
-      fault_message_(""),
+      fault_message_(nullptr),
       threads_being_born_(0),
       shutdown_cond_(new ConditionVariable("Runtime shutdown", *Locks::runtime_shutdown_lock_)),
       shutting_down_(false),
@@ -2367,8 +2366,27 @@ void Runtime::RecordResolveString(ObjPtr<mirror::DexCache> dex_cache,
 }
 
 void Runtime::SetFaultMessage(const std::string& message) {
-  MutexLock mu(Thread::Current(), fault_message_lock_);
-  fault_message_ = message;
+  std::string* new_msg = new std::string(message);
+  std::string* cur_msg = fault_message_.exchange(new_msg);
+  delete cur_msg;
+}
+
+std::string Runtime::GetFaultMessage() {
+  // Retrieve the message. Temporarily replace with null so that SetFaultMessage will not delete
+  // the string in parallel.
+  std::string* cur_msg = fault_message_.exchange(nullptr);
+
+  // Make a copy of the string.
+  std::string ret = cur_msg == nullptr ? "" : *cur_msg;
+
+  // Put the message back if it hasn't been updated.
+  std::string* null_str = nullptr;
+  if (!fault_message_.compare_exchange_strong(null_str, cur_msg)) {
+    // Already replaced.
+    delete cur_msg;
+  }
+
+  return ret;
 }
 
 void Runtime::AddCurrentRuntimeFeaturesAsDex2OatArguments(std::vector<std::string>* argv)

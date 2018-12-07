@@ -21,7 +21,7 @@
 #include <unordered_set>
 
 #include "base/enums.h"
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "handle.h"
 #include "mirror/class.h"
 #include "oat_quick_method_header.h"

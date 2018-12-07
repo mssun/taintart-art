@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "jni.h"
 
 namespace art {

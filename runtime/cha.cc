@@ -18,6 +18,7 @@
 
 #include "art_method-inl.h"
 #include "base/logging.h"  // For VLOG
+#include "base/mutex.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "linear_alloc.h"

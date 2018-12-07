@@ -17,6 +17,7 @@
 #include "reference_processor.h"
 
 #include "art_field-inl.h"
+#include "base/mutex.h"
 #include "base/time_utils.h"
 #include "base/utils.h"
 #include "class_root.h"

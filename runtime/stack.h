@@ -20,8 +20,8 @@
 #include <stdint.h>
 #include <string>
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "quick/quick_method_frame_info.h"
 #include "stack_map.h"
 

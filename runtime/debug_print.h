@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_DEBUG_PRINT_H_
 #define ART_RUNTIME_DEBUG_PRINT_H_
 
-#include "base/mutex.h"
+#include "base/locks.h"
 #include "mirror/object.h"
 
 // Helper functions for printing extra information for certain hard to diagnose bugs.

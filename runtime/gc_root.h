@@ -17,8 +17,8 @@
 #ifndef ART_RUNTIME_GC_ROOT_H_
 #define ART_RUNTIME_GC_ROOT_H_
 
+#include "base/locks.h"       // For Locks::mutator_lock_.
 #include "base/macros.h"
-#include "base/mutex.h"       // For Locks::mutator_lock_.
 #include "mirror/object_reference.h"
 #include "read_barrier_option.h"
 

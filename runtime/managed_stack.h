@@ -23,8 +23,8 @@
 
 #include <android-base/logging.h>
 
+#include "base/locks.h"
 #include "base/macros.h"
-#include "base/mutex.h"
 #include "base/bit_utils.h"
 
 namespace art {

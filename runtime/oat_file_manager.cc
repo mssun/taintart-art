@@ -27,6 +27,7 @@
 #include "base/bit_vector-inl.h"
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/mutex-inl.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "class_linker.h"
