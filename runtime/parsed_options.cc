@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include <android-base/logging.h>
+#include <android-base/strings.h>
 
 #include "base/file_utils.h"
 #include "base/macros.h"
@@ -78,7 +79,7 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
       .Define("-showversion")
           .IntoKey(M::ShowVersion)
       .Define("-Xbootclasspath:_")
-          .WithType<std::string>()
+          .WithType<ParseStringList<':'>>()  // std::vector<std::string>, split by :
           .IntoKey(M::BootClassPath)
       .Define("-Xbootclasspath-locations:_")
           .WithType<ParseStringList<':'>>()  // std::vector<std::string>, split by :
@@ -513,7 +514,7 @@ bool ParsedOptions::DoParse(const RuntimeOptions& options,
                  GetInstructionSetString(kRuntimeISA));
     Exit(0);
   } else if (args.Exists(M::BootClassPath)) {
-    LOG(INFO) << "setting boot class path to " << *args.Get(M::BootClassPath);
+    LOG(INFO) << "setting boot class path to " << args.Get(M::BootClassPath)->Join();
   }
 
   if (args.GetOrDefault(M::Interpret)) {
@@ -525,8 +526,9 @@ bool ParsedOptions::DoParse(const RuntimeOptions& options,
   }
 
   // Set a default boot class path if we didn't get an explicit one via command line.
-  if (getenv("BOOTCLASSPATH") != nullptr) {
-    args.SetIfMissing(M::BootClassPath, std::string(getenv("BOOTCLASSPATH")));
+  const char* env_bcp = getenv("BOOTCLASSPATH");
+  if (env_bcp != nullptr) {
+    args.SetIfMissing(M::BootClassPath, ParseStringList<':'>::Split(env_bcp));
   }
 
   // Set a default class path if we didn't get an explicit one via command line.
@@ -586,22 +588,20 @@ bool ParsedOptions::DoParse(const RuntimeOptions& options,
     args.Set(M::BackgroundGc, BackgroundGcOption { background_collector_type_ });
   }
 
-  auto boot_class_path_string = args.GetOrDefault(M::BootClassPath);
-  {
-    auto&& boot_class_path = args.GetOrDefault(M::BootClassPath);
-    auto&& boot_class_path_locations = args.GetOrDefault(M::BootClassPathLocations);
-    if (args.Exists(M::BootClassPathLocations)) {
-      size_t boot_class_path_count = ParseStringList<':'>::Split(boot_class_path).Size();
-
-      if (boot_class_path_count != boot_class_path_locations.Size()) {
-        Usage("The number of boot class path files does not match"
-            " the number of boot class path locations given\n"
-            "  boot class path files     (%zu): %s\n"
-            "  boot class path locations (%zu): %s\n",
-            boot_class_path.size(), boot_class_path_string.c_str(),
-            boot_class_path_locations.Size(), boot_class_path_locations.Join().c_str());
-        return false;
-      }
+  const ParseStringList<':'>* boot_class_path_locations = args.Get(M::BootClassPathLocations);
+  if (boot_class_path_locations != nullptr && boot_class_path_locations->Size() != 0u) {
+    const ParseStringList<':'>* boot_class_path = args.Get(M::BootClassPath);
+    if (boot_class_path == nullptr ||
+        boot_class_path_locations->Size() != boot_class_path->Size()) {
+      Usage("The number of boot class path files does not match"
+          " the number of boot class path locations given\n"
+          "  boot class path files     (%zu): %s\n"
+          "  boot class path locations (%zu): %s\n",
+          (boot_class_path != nullptr) ? boot_class_path->Size() : 0u,
+          (boot_class_path != nullptr) ? boot_class_path->Join().c_str() : "<nil>",
+          boot_class_path_locations->Size(),
+          boot_class_path_locations->Join().c_str());
+      return false;
     }
   }
 

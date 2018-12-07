@@ -1037,13 +1037,20 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   runtime->SetSentinel(heap->AllocNonMovableObject<true>(
       self, java_lang_Object, java_lang_Object->GetObjectSize(), VoidFunctor()));
 
-  for (gc::space::ImageSpace* image_space : spaces) {
+  const std::vector<std::string>& boot_class_path = runtime->GetBootClassPath();
+  if (boot_class_path.size() != spaces.size()) {
+    *error_msg = StringPrintf("Boot class path has %zu components but there are %zu image spaces.",
+                              boot_class_path.size(),
+                              spaces.size());
+    return false;
+  }
+  for (size_t i = 0u, size = spaces.size(); i != size; ++i) {
     // Boot class loader, use a null handle.
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    if (!AddImageSpace(image_space,
+    if (!AddImageSpace(spaces[i],
                        ScopedNullHandle<mirror::ClassLoader>(),
-                       /*dex_elements=*/nullptr,
-                       /*dex_location=*/nullptr,
+                       /*dex_elements=*/ nullptr,
+                       /*dex_location=*/ boot_class_path[i].c_str(),
                        /*out*/&dex_files,
                        error_msg)) {
       return false;
@@ -1981,13 +1988,7 @@ bool ClassLinker::AddImageSpace(
     std::string dex_file_location(dex_cache->GetLocation()->ToModifiedUtf8());
     // TODO: Only store qualified paths.
     // If non qualified, qualify it.
-    if (dex_file_location.find('/') == std::string::npos) {
-      std::string dex_location_path = dex_location;
-      const size_t pos = dex_location_path.find_last_of('/');
-      CHECK_NE(pos, std::string::npos);
-      dex_location_path = dex_location_path.substr(0, pos + 1);  // Keep trailing '/'
-      dex_file_location = dex_location_path + dex_file_location;
-    }
+    dex_file_location = OatFile::ResolveRelativeEncodedDexLocation(dex_location, dex_file_location);
     std::unique_ptr<const DexFile> dex_file = OpenOatDexFile(oat_file,
                                                              dex_file_location.c_str(),
                                                              error_msg);
