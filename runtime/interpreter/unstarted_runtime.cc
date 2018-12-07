@@ -571,12 +571,9 @@ static void GetResourceAsStream(Thread* self,
 
   Runtime* runtime = Runtime::Current();
 
-  std::vector<std::string> split;
-  Split(runtime->GetBootClassPathString(), ':', &split);
-  if (split.empty()) {
-    AbortTransactionOrFail(self,
-                           "Boot classpath not set or split error:: %s",
-                           runtime->GetBootClassPathString().c_str());
+  const std::vector<std::string>& boot_class_path = Runtime::Current()->GetBootClassPath();
+  if (boot_class_path.empty()) {
+    AbortTransactionOrFail(self, "Boot classpath not set");
     return;
   }
 
@@ -584,7 +581,7 @@ static void GetResourceAsStream(Thread* self,
   size_t map_size;
   std::string last_error_msg;  // Only store the last message (we could concatenate).
 
-  for (const std::string& jar_file : split) {
+  for (const std::string& jar_file : boot_class_path) {
     mem_map = FindAndExtractEntry(jar_file, resource_cstr, &map_size, &last_error_msg);
     if (mem_map.IsValid()) {
       break;
