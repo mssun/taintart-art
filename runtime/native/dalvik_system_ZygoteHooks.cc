@@ -249,6 +249,13 @@ static jlong ZygoteHooks_nativePreFork(JNIEnv* env, jclass) {
   return reinterpret_cast<jlong>(ThreadForEnv(env));
 }
 
+static void ZygoteHooks_nativePostZygoteFork(JNIEnv*, jclass) {
+  Runtime* runtime = Runtime::Current();
+  if (runtime->IsZygote()) {
+    runtime->PostZygoteFork();
+  }
+}
+
 static void ZygoteHooks_nativePostForkSystemServer(JNIEnv* env ATTRIBUTE_UNUSED,
                                                    jclass klass ATTRIBUTE_UNUSED) {
   // This JIT code cache for system server is created whilst the runtime is still single threaded.
@@ -305,7 +312,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
           /* is_system_server= */ false, is_zygote);
     }
     // This must be called after EnableDebugFeatures.
-    Runtime::Current()->GetJit()->PostForkChildAction();
+    Runtime::Current()->GetJit()->PostForkChildAction(is_zygote);
   }
 
   // Update tracing.
@@ -403,6 +410,7 @@ static void ZygoteHooks_stopZygoteNoThreadCreation(JNIEnv* env ATTRIBUTE_UNUSED,
 
 static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(ZygoteHooks, nativePreFork, "()J"),
+  NATIVE_METHOD(ZygoteHooks, nativePostZygoteFork, "()V"),
   NATIVE_METHOD(ZygoteHooks, nativePostForkSystemServer, "()V"),
   NATIVE_METHOD(ZygoteHooks, nativePostForkChild, "(JIZZLjava/lang/String;)V"),
   NATIVE_METHOD(ZygoteHooks, startZygoteNoThreadCreation, "()V"),
