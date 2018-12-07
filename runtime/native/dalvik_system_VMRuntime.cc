@@ -24,8 +24,7 @@ extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #include <limits.h>
 #include "nativehelper/scoped_utf_chars.h"
 
-#include <android-base/stringprintf.h>
-#include <android-base/strings.h>
+#include "android-base/stringprintf.h"
 
 #include "arch/instruction_set.h"
 #include "art_method-inl.h"
@@ -223,8 +222,7 @@ static const char* DefaultToDot(const std::string& class_path) {
 }
 
 static jstring VMRuntime_bootClassPath(JNIEnv* env, jobject) {
-  std::string boot_class_path = android::base::Join(Runtime::Current()->GetBootClassPath(), ':');
-  return env->NewStringUTF(DefaultToDot(boot_class_path));
+  return env->NewStringUTF(DefaultToDot(Runtime::Current()->GetBootClassPathString()));
 }
 
 static jstring VMRuntime_classPath(JNIEnv* env, jobject) {

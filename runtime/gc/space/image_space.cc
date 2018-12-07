@@ -103,8 +103,9 @@ static int32_t ChooseRelocationOffsetDelta() {
 static bool GenerateImage(const std::string& image_filename,
                           InstructionSet image_isa,
                           std::string* error_msg) {
-  Runtime* runtime = Runtime::Current();
-  const std::vector<std::string>& boot_class_path = runtime->GetBootClassPath();
+  const std::string boot_class_path_string(Runtime::Current()->GetBootClassPathString());
+  std::vector<std::string> boot_class_path;
+  Split(boot_class_path_string, ':', &boot_class_path);
   if (boot_class_path.empty()) {
     *error_msg = "Failed to generate image because no boot class path specified";
     return false;
@@ -124,11 +125,8 @@ static bool GenerateImage(const std::string& image_filename,
   image_option_string += image_filename;
   arg_vector.push_back(image_option_string);
 
-  const std::vector<std::string>& boot_class_path_locations = runtime->GetBootClassPathLocations();
-  DCHECK_EQ(boot_class_path.size(), boot_class_path_locations.size());
-  for (size_t i = 0u; i < boot_class_path.size(); i++) {
+  for (size_t i = 0; i < boot_class_path.size(); i++) {
     arg_vector.push_back(std::string("--dex-file=") + boot_class_path[i]);
-    arg_vector.push_back(std::string("--dex-location=") + boot_class_path_locations[i]);
   }
 
   std::string oat_file_option_string("--oat-file=");
@@ -1207,13 +1205,8 @@ class ImageSpace::Loader {
 
 class ImageSpace::BootImageLoader {
  public:
-  BootImageLoader(const std::vector<std::string>& boot_class_path,
-                  const std::vector<std::string>& boot_class_path_locations,
-                  const std::string& image_location,
-                  InstructionSet image_isa)
-      : boot_class_path_(boot_class_path),
-        boot_class_path_locations_(boot_class_path_locations),
-        image_location_(image_location),
+  BootImageLoader(const std::string& image_location, InstructionSet image_isa)
+      : image_location_(image_location),
         image_isa_(image_isa),
         is_zygote_(Runtime::Current()->IsZygote()),
         has_system_(false),
@@ -1261,8 +1254,10 @@ class ImageSpace::BootImageLoader {
                       /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
     TimingLogger logger(__PRETTY_FUNCTION__, /*precise=*/ true, VLOG_IS_ON(image));
     std::string filename = GetSystemImageFilename(image_location_.c_str(), image_isa_);
-    std::vector<std::string> locations =
-        ExpandMultiImageLocations(boot_class_path_locations_, image_location_);
+    std::vector<std::string> locations;
+    if (!GetBootClassPathImageLocations(image_location_, filename, &locations, error_msg)) {
+      return false;
+    }
     uint32_t image_start;
     uint32_t image_end;
     if (!GetBootImageAddressRange(filename, &image_start, &image_end, error_msg)) {
@@ -1295,16 +1290,9 @@ class ImageSpace::BootImageLoader {
         return false;
       }
     }
-    for (size_t i = 0u, size = spaces.size(); i != size; ++i) {
-      std::string expected_boot_class_path =
-          (i == 0u) ? android::base::Join(boot_class_path_locations_, ':') : std::string();
-      if (!OpenOatFile(spaces[i].get(),
-                       boot_class_path_[i],
-                       expected_boot_class_path,
-                       /*validate_oat_file=*/ false,
-                       &logger,
-                       &image_reservation,
-                       error_msg)) {
+    for (std::unique_ptr<ImageSpace>& space : spaces) {
+      static constexpr bool kValidateOatFile = false;
+      if (!OpenOatFile(space.get(), kValidateOatFile, &logger, &image_reservation, error_msg)) {
         return false;
       }
     }
@@ -1333,8 +1321,10 @@ class ImageSpace::BootImageLoader {
       /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
     TimingLogger logger(__PRETTY_FUNCTION__, /*precise=*/ true, VLOG_IS_ON(image));
     DCHECK(DalvikCacheExists());
-    std::vector<std::string> locations =
-        ExpandMultiImageLocations(boot_class_path_locations_, image_location_);
+    std::vector<std::string> locations;
+    if (!GetBootClassPathImageLocations(image_location_, cache_filename_, &locations, error_msg)) {
+      return false;
+    }
     uint32_t image_start;
     uint32_t image_end;
     if (!GetBootImageAddressRange(cache_filename_, &image_start, &image_end, error_msg)) {
@@ -1376,16 +1366,8 @@ class ImageSpace::BootImageLoader {
         return false;
       }
     }
-    for (size_t i = 0u, size = spaces.size(); i != size; ++i) {
-      std::string expected_boot_class_path =
-          (i == 0u) ? android::base::Join(boot_class_path_locations_, ':') : std::string();
-      if (!OpenOatFile(spaces[i].get(),
-                       boot_class_path_[i],
-                       expected_boot_class_path,
-                       validate_oat_file,
-                       &logger,
-                       &image_reservation,
-                       error_msg)) {
+    for (std::unique_ptr<ImageSpace>& space : spaces) {
+      if (!OpenOatFile(space.get(), validate_oat_file, &logger, &image_reservation, error_msg)) {
         return false;
       }
     }
@@ -1905,6 +1887,8 @@ class ImageSpace::BootImageLoader {
     DCHECK(!spaces.empty());
     ImageSpace* space = spaces[0].get();
     const ImageHeader& image_header = space->GetImageHeader();
+    // Use oat_file_non_owned_ from the `space` to set the runtime methods.
+    runtime->SetInstructionSet(space->oat_file_non_owned_->GetOatHeader().GetInstructionSet());
     runtime->SetResolutionMethod(image_header.GetImageMethod(ImageHeader::kResolutionMethod));
     runtime->SetImtConflictMethod(image_header.GetImageMethod(ImageHeader::kImtConflictMethod));
     runtime->SetImtUnimplementedMethod(
@@ -1968,8 +1952,6 @@ class ImageSpace::BootImageLoader {
   }
 
   bool OpenOatFile(ImageSpace* space,
-                   const std::string& dex_filename,
-                   const std::string& expected_boot_class_path,
                    bool validate_oat_file,
                    TimingLogger* logger,
                    /*inout*/MemMap* image_reservation,
@@ -1985,15 +1967,13 @@ class ImageSpace::BootImageLoader {
       TimingLogger::ScopedTiming timing("OpenOatFile", logger);
       std::string oat_filename =
           ImageHeader::GetOatLocationFromImageLocation(space->GetImageFilename());
-      std::string oat_location =
-          ImageHeader::GetOatLocationFromImageLocation(space->GetImageLocation());
 
       oat_file.reset(OatFile::Open(/*zip_fd=*/ -1,
                                    oat_filename,
-                                   oat_location,
+                                   oat_filename,
                                    !Runtime::Current()->IsAotCompiler(),
                                    /*low_4gb=*/ false,
-                                   /*abs_dex_location=*/ dex_filename.c_str(),
+                                   /*abs_dex_location=*/ nullptr,
                                    image_reservation,
                                    error_msg));
       if (oat_file == nullptr) {
@@ -2011,17 +1991,6 @@ class ImageSpace::BootImageLoader {
                                   " 0x%x in image %s",
                                   oat_checksum,
                                   image_oat_checksum,
-                                  space->GetName());
-        return false;
-      }
-      const char* oat_boot_class_path =
-          oat_file->GetOatHeader().GetStoreValueByKey(OatHeader::kBootClassPathKey);
-      oat_boot_class_path = (oat_boot_class_path != nullptr) ? oat_boot_class_path : "";
-      if (expected_boot_class_path != oat_boot_class_path) {
-        *error_msg = StringPrintf("Failed to match oat boot class path %s to expected "
-                                  "boot class path %s in image %s",
-                                  oat_boot_class_path,
-                                  expected_boot_class_path.c_str(),
                                   space->GetName());
         return false;
       }
@@ -2047,6 +2016,37 @@ class ImageSpace::BootImageLoader {
     }
     space->oat_file_ = std::move(oat_file);
     space->oat_file_non_owned_ = space->oat_file_.get();
+    return true;
+  }
+
+  // Extract boot class path from oat file associated with `image_filename`
+  // and list all associated image locations.
+  static bool GetBootClassPathImageLocations(const std::string& image_location,
+                                             const std::string& image_filename,
+                                             /*out*/ std::vector<std::string>* all_locations,
+                                             /*out*/ std::string* error_msg) {
+    std::string oat_filename = ImageHeader::GetOatLocationFromImageLocation(image_filename);
+    std::unique_ptr<OatFile> oat_file(OatFile::Open(/*zip_fd=*/ -1,
+                                                    oat_filename,
+                                                    oat_filename,
+                                                    /*executable=*/ false,
+                                                    /*low_4gb=*/ false,
+                                                    /*abs_dex_location=*/ nullptr,
+                                                    /*reservation=*/ nullptr,
+                                                    error_msg));
+    if (oat_file == nullptr) {
+      *error_msg = StringPrintf("Failed to open oat file '%s' for image file %s: %s",
+                                oat_filename.c_str(),
+                                image_filename.c_str(),
+                                error_msg->c_str());
+      return false;
+    }
+    const OatHeader& oat_header = oat_file->GetOatHeader();
+    const char* boot_classpath = oat_header.GetStoreValueByKey(OatHeader::kBootClassPathKey);
+    all_locations->push_back(image_location);
+    if (boot_classpath != nullptr && boot_classpath[0] != 0) {
+      ExtractMultiImageLocations(image_location, boot_classpath, all_locations);
+    }
     return true;
   }
 
@@ -2116,8 +2116,6 @@ class ImageSpace::BootImageLoader {
     return true;
   }
 
-  const std::vector<std::string>& boot_class_path_;
-  const std::vector<std::string>& boot_class_path_locations_;
   const std::string& image_location_;
   InstructionSet image_isa_;
   bool is_zygote_;
@@ -2165,8 +2163,6 @@ static bool CheckSpace(const std::string& cache_filename, std::string* error_msg
 }
 
 bool ImageSpace::LoadBootImage(
-    const std::vector<std::string>& boot_class_path,
-    const std::vector<std::string>& boot_class_path_locations,
     const std::string& image_location,
     const InstructionSet image_isa,
     size_t extra_reservation_size,
@@ -2184,7 +2180,7 @@ bool ImageSpace::LoadBootImage(
     return false;
   }
 
-  BootImageLoader loader(boot_class_path, boot_class_path_locations, image_location, image_isa);
+  BootImageLoader loader(image_location, image_isa);
 
   // Step 0: Extra zygote work.
 
@@ -2345,6 +2341,57 @@ void ImageSpace::Dump(std::ostream& os) const {
       << ",name=\"" << GetName() << "\"]";
 }
 
+std::string ImageSpace::GetMultiImageBootClassPath(
+    const std::vector<std::string>& dex_locations,
+    const std::vector<std::string>& oat_filenames,
+    const std::vector<std::string>& image_filenames) {
+  DCHECK_GT(oat_filenames.size(), 1u);
+  // If the image filename was adapted (e.g., for our tests), we need to change this here,
+  // too, but need to strip all path components (they will be re-established when loading).
+  // For example, dex location
+  //    /system/framework/core-libart.art
+  // with image name
+  //    out/target/product/taimen/dex_bootjars/system/framework/arm64/boot-core-libart.art
+  // yields boot class path component
+  //    /system/framework/boot-core-libart.art .
+  std::ostringstream bootcp_oss;
+  bool first_bootcp = true;
+  for (size_t i = 0; i < dex_locations.size(); ++i) {
+    if (!first_bootcp) {
+      bootcp_oss << ":";
+    }
+
+    std::string dex_loc = dex_locations[i];
+    std::string image_filename = image_filenames[i];
+
+    // Use the dex_loc path, but the image_filename name (without path elements).
+    size_t dex_last_slash = dex_loc.rfind('/');
+
+    // npos is max(size_t). That makes this a bit ugly.
+    size_t image_last_slash = image_filename.rfind('/');
+    size_t image_last_at = image_filename.rfind('@');
+    size_t image_last_sep = (image_last_slash == std::string::npos)
+                                ? image_last_at
+                                : (image_last_at == std::string::npos)
+                                      ? image_last_slash
+                                      : std::max(image_last_slash, image_last_at);
+    // Note: whenever image_last_sep == npos, +1 overflow means using the full string.
+
+    if (dex_last_slash == std::string::npos) {
+      dex_loc = image_filename.substr(image_last_sep + 1);
+    } else {
+      dex_loc = dex_loc.substr(0, dex_last_slash + 1) +
+          image_filename.substr(image_last_sep + 1);
+    }
+
+    // Image filenames already end with .art, no need to replace.
+
+    bootcp_oss << dex_loc;
+    first_bootcp = false;
+  }
+  return bootcp_oss.str();
+}
+
 bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg) {
   const ArtDexFileLoader dex_file_loader;
   for (const OatDexFile* oat_dex_file : oat_file.GetOatDexFiles()) {
@@ -2405,55 +2452,46 @@ bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg
   return true;
 }
 
-std::vector<std::string> ImageSpace::ExpandMultiImageLocations(
-    const std::vector<std::string>& dex_locations,
-    const std::string& image_location) {
-  DCHECK(!dex_locations.empty());
+void ImageSpace::ExtractMultiImageLocations(const std::string& input_image_file_name,
+                                            const std::string& boot_classpath,
+                                            std::vector<std::string>* image_file_names) {
+  DCHECK(image_file_names != nullptr);
 
-  // Find the path.
-  size_t last_slash = image_location.rfind('/');
-  CHECK_NE(last_slash, std::string::npos);
+  std::vector<std::string> images;
+  Split(boot_classpath, ':', &images);
 
-  // We also need to honor path components that were encoded through '@'. Otherwise the loading
-  // code won't be able to find the images.
-  if (image_location.find('@', last_slash) != std::string::npos) {
-    last_slash = image_location.rfind('@');
+  // Add the rest into the list. We have to adjust locations, possibly:
+  //
+  // For example, image_file_name is /a/b/c/d/e.art
+  //              images[0] is          f/c/d/e.art
+  // ----------------------------------------------
+  //              images[1] is          g/h/i/j.art  -> /a/b/h/i/j.art
+  const std::string& first_image = images[0];
+  // Length of common suffix.
+  size_t common = 0;
+  while (common < input_image_file_name.size() &&
+         common < first_image.size() &&
+         *(input_image_file_name.end() - common - 1) == *(first_image.end() - common - 1)) {
+    ++common;
   }
+  // We want to replace the prefix of the input image with the prefix of the boot class path.
+  // This handles the case where the image file contains @ separators.
+  // Example image_file_name is oats/system@framework@boot.art
+  // images[0] is .../arm/boot.art
+  // means that the image name prefix will be oats/system@framework@
+  // so that the other images are openable.
+  const size_t old_prefix_length = first_image.size() - common;
+  const std::string new_prefix = input_image_file_name.substr(
+      0,
+      input_image_file_name.size() - common);
 
-  // Find the dot separating the primary image name from the extension.
-  size_t last_dot = image_location.rfind('.');
-  // Extract the extension and base (the path and primary image name).
-  std::string extension;
-  std::string base = image_location;
-  if (last_dot != std::string::npos && last_dot > last_slash) {
-    extension = image_location.substr(last_dot);  // Including the dot.
-    base.resize(last_dot);
+  // Apply pattern to images[1] .. images[n].
+  for (size_t i = 1; i < images.size(); ++i) {
+    const std::string& image = images[i];
+    CHECK_GT(image.length(), old_prefix_length);
+    std::string suffix = image.substr(old_prefix_length);
+    image_file_names->push_back(new_prefix + suffix);
   }
-  // For non-empty primary image name, add '-' to the `base`.
-  if (last_slash + 1u != base.size()) {
-    base += '-';
-  }
-
-  std::vector<std::string> locations;
-  locations.reserve(dex_locations.size());
-  locations.push_back(image_location);
-
-  // Now create the other names. Use a counted loop to skip the first one.
-  for (size_t i = 1u; i < dex_locations.size(); ++i) {
-    // Replace path with `base` (i.e. image path and prefix) and replace the original
-    // extension (if any) with `extension`.
-    std::string name = dex_locations[i];
-    size_t last_dex_slash = name.rfind('/');
-    if (last_dex_slash != std::string::npos) {
-      name = name.substr(last_dex_slash + 1);
-    }
-    size_t last_dex_dot = name.rfind('.');
-    if (last_dex_dot != std::string::npos) {
-      name.resize(last_dex_dot);
-    }
-    locations.push_back(base + name + extension);
-  }
-  return locations;
 }
 
 void ImageSpace::DumpSections(std::ostream& os) const {

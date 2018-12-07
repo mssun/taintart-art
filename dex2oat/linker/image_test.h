@@ -169,11 +169,10 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
   {
     // Create a generic tmp file, to be the base of the .art and .oat temporary files.
     ScratchFile location;
-    std::vector<std::string> image_locations =
-        gc::space::ImageSpace::ExpandMultiImageLocations(out_helper.dex_file_locations,
-                                                         location.GetFilename() + ".art");
-    for (size_t i = 0u; i != class_path.size(); ++i) {
-      out_helper.image_locations.push_back(ScratchFile(image_locations[i]));
+    for (int i = 0; i < static_cast<int>(class_path.size()); ++i) {
+      std::string cur_location =
+          android::base::StringPrintf("%s-%d.art", location.GetFilename().c_str(), i);
+      out_helper.image_locations.push_back(ScratchFile(cur_location));
     }
   }
   std::vector<std::string> image_filenames;
@@ -224,7 +223,10 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
       TimingLogger::ScopedTiming t("WriteElf", &timings);
       SafeMap<std::string, std::string> key_value_store;
       key_value_store.Put(OatHeader::kBootClassPathKey,
-                          android::base::Join(out_helper.dex_file_locations, ':'));
+                          gc::space::ImageSpace::GetMultiImageBootClassPath(
+                              out_helper.dex_file_locations,
+                              oat_filenames,
+                              image_filenames));
 
       std::vector<std::unique_ptr<ElfWriter>> elf_writers;
       std::vector<std::unique_ptr<OatWriter>> oat_writers;

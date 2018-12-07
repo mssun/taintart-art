@@ -292,7 +292,8 @@ static JdwpError VM_ClassPaths(JdwpState*, Request*, ExpandBuf* pReply)
     expandBufAddUtf8String(pReply, str);
   }
 
-  std::vector<std::string> boot_class_path = Runtime::Current()->GetBootClassPath();
+  std::vector<std::string> boot_class_path;
+  Split(Runtime::Current()->GetBootClassPathString(), ':', &boot_class_path);
   expandBufAdd4BE(pReply, boot_class_path.size());
   for (const std::string& str : boot_class_path) {
     expandBufAddUtf8String(pReply, str);
