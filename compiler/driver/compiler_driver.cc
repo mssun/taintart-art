@@ -245,16 +245,12 @@ class CompilerDriver::AOTCompilationStats {
 
 CompilerDriver::CompilerDriver(
     const CompilerOptions* compiler_options,
-    VerificationResults* verification_results,
     Compiler::Kind compiler_kind,
-    HashSet<std::string>* image_classes,
     size_t thread_count,
     int swap_fd)
     : compiler_options_(compiler_options),
-      verification_results_(verification_results),
       compiler_(Compiler::Create(this, compiler_kind)),
       compiler_kind_(compiler_kind),
-      image_classes_(std::move(image_classes)),
       number_of_soft_verifier_failures_(0),
       had_hard_verifier_failure_(false),
       parallel_thread_count_(thread_count),
@@ -265,10 +261,6 @@ CompilerDriver::CompilerDriver(
   DCHECK(compiler_options_ != nullptr);
 
   compiler_->Init();
-
-  if (GetCompilerOptions().IsBootImage()) {
-    CHECK(image_classes_ != nullptr) << "Expected image classes for boot image";
-  }
 
   compiled_method_storage_.SetDedupeEnabled(compiler_options_->DeduplicateCode());
 }
@@ -325,9 +317,8 @@ void CompilerDriver::CompileAll(jobject class_loader,
                                 TimingLogger* timings) {
   DCHECK(!Runtime::Current()->IsStarted());
 
-  InitializeThreadPools();
+  CheckThreadPools();
 
-  PreCompile(class_loader, dex_files, timings);
   if (GetCompilerOptions().IsBootImage()) {
     // We don't need to setup the intrinsics for non boot image compilation, as
     // those compilations will pick up a boot image that have the ArtMethod already
@@ -343,8 +334,6 @@ void CompilerDriver::CompileAll(jobject class_loader,
   if (GetCompilerOptions().GetDumpStats()) {
     stats_->Dump();
   }
-
-  FreeThreadPools();
 }
 
 static optimizer::DexToDexCompiler::CompilationLevel GetDexToDexCompilationLevel(
@@ -496,7 +485,7 @@ static void CompileMethodDex2Dex(
     optimizer::DexToDexCompiler* const compiler = &driver->GetDexToDexCompiler();
 
     if (compiler->ShouldCompileMethod(method_ref)) {
-      VerificationResults* results = driver->GetVerificationResults();
+      const VerificationResults* results = driver->GetCompilerOptions().GetVerificationResults();
       DCHECK(results != nullptr);
       const VerifiedMethod* verified_method = results->GetVerifiedMethod(method_ref);
       // Do not optimize if a VerifiedMethod is missing. SafeCast elision,
@@ -574,7 +563,7 @@ static void CompileMethodQuick(
     } else if ((access_flags & kAccAbstract) != 0) {
       // Abstract methods don't have code.
     } else {
-      VerificationResults* results = driver->GetVerificationResults();
+      const VerificationResults* results = driver->GetCompilerOptions().GetVerificationResults();
       DCHECK(results != nullptr);
       const VerifiedMethod* verified_method = results->GetVerifiedMethod(method_ref);
       bool compile =
@@ -881,7 +870,9 @@ static void EnsureVerifiedOrVerifyAtRuntime(jobject jclass_loader,
 
 void CompilerDriver::PreCompile(jobject class_loader,
                                 const std::vector<const DexFile*>& dex_files,
-                                TimingLogger* timings) {
+                                TimingLogger* timings,
+                                /*inout*/ HashSet<std::string>* image_classes,
+                                /*out*/ VerificationResults* verification_results) {
   CheckThreadPools();
 
   VLOG(compiler) << "Before precompile " << GetMemoryUsageString(false);
@@ -898,7 +889,7 @@ void CompilerDriver::PreCompile(jobject class_loader,
   // 6) Update the set of image classes.
   // 7) For deterministic boot image, initialize bitstrings for type checking.
 
-  LoadImageClasses(timings);
+  LoadImageClasses(timings, image_classes);
   VLOG(compiler) << "LoadImageClasses: " << GetMemoryUsageString(false);
 
   if (compiler_options_->IsAnyCompilationEnabled()) {
@@ -932,7 +923,7 @@ void CompilerDriver::PreCompile(jobject class_loader,
     ResolveConstStrings(dex_files, /*only_startup_strings=*/ true, timings);
   }
 
-  Verify(class_loader, dex_files, timings);
+  Verify(class_loader, dex_files, timings, verification_results);
   VLOG(compiler) << "Verify: " << GetMemoryUsageString(false);
 
   if (had_hard_verifier_failure_ && GetCompilerOptions().AbortOnHardVerifierFailure()) {
@@ -957,7 +948,7 @@ void CompilerDriver::PreCompile(jobject class_loader,
     VLOG(compiler) << "InitializeClasses: " << GetMemoryUsageString(false);
   }
 
-  UpdateImageClasses(timings);
+  UpdateImageClasses(timings, image_classes);
   VLOG(compiler) << "UpdateImageClasses: " << GetMemoryUsageString(false);
 
   if (kBitstringSubtypeCheckEnabled &&
@@ -1071,7 +1062,8 @@ class RecordImageClassesVisitor : public ClassVisitor {
 };
 
 // Make a list of descriptors for classes to include in the image
-void CompilerDriver::LoadImageClasses(TimingLogger* timings) {
+void CompilerDriver::LoadImageClasses(TimingLogger* timings,
+                                      /*inout*/ HashSet<std::string>* image_classes) {
   CHECK(timings != nullptr);
   if (!GetCompilerOptions().IsBootImage()) {
     return;
@@ -1082,15 +1074,15 @@ void CompilerDriver::LoadImageClasses(TimingLogger* timings) {
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  CHECK(image_classes_ != nullptr);
-  for (auto it = image_classes_->begin(), end = image_classes_->end(); it != end;) {
+  CHECK(image_classes != nullptr);
+  for (auto it = image_classes->begin(), end = image_classes->end(); it != end;) {
     const std::string& descriptor(*it);
     StackHandleScope<1> hs(self);
     Handle<mirror::Class> klass(
         hs.NewHandle(class_linker->FindSystemClass(self, descriptor.c_str())));
     if (klass == nullptr) {
       VLOG(compiler) << "Failed to find class " << descriptor;
-      it = image_classes_->erase(it);
+      it = image_classes->erase(it);
       self->ClearException();
     } else {
       ++it;
@@ -1140,10 +1132,10 @@ void CompilerDriver::LoadImageClasses(TimingLogger* timings) {
   // We walk the roots looking for classes so that we'll pick up the
   // above classes plus any classes them depend on such super
   // classes, interfaces, and the required ClassLinker roots.
-  RecordImageClassesVisitor visitor(image_classes_);
+  RecordImageClassesVisitor visitor(image_classes);
   class_linker->VisitClasses(&visitor);
 
-  CHECK(!image_classes_->empty());
+  CHECK(!image_classes->empty());
 }
 
 static void MaybeAddToImageClasses(Thread* self,
@@ -1312,7 +1304,8 @@ class ClinitImageUpdate {
   DISALLOW_COPY_AND_ASSIGN(ClinitImageUpdate);
 };
 
-void CompilerDriver::UpdateImageClasses(TimingLogger* timings) {
+void CompilerDriver::UpdateImageClasses(TimingLogger* timings,
+                                        /*inout*/ HashSet<std::string>* image_classes) {
   if (GetCompilerOptions().IsBootImage()) {
     TimingLogger::ScopedTiming t("UpdateImageClasses", timings);
 
@@ -1324,7 +1317,7 @@ void CompilerDriver::UpdateImageClasses(TimingLogger* timings) {
     VariableSizedHandleScope hs(Thread::Current());
     std::string error_msg;
     std::unique_ptr<ClinitImageUpdate> update(ClinitImageUpdate::Create(hs,
-                                                                        image_classes_,
+                                                                        image_classes,
                                                                         Thread::Current(),
                                                                         runtime->GetClassLinker()));
 
@@ -1391,12 +1384,6 @@ bool CompilerDriver::ComputeInstanceFieldInfo(uint32_t field_idx, const DexCompi
     *field_offset = resolved_field->GetOffset();
     return true;
   }
-}
-
-const VerifiedMethod* CompilerDriver::GetVerifiedMethod(const DexFile* dex_file,
-                                                        uint32_t method_idx) const {
-  MethodReference ref(dex_file, method_idx);
-  return verification_results_->GetVerifiedMethod(ref);
 }
 
 bool CompilerDriver::IsSafeCast(const DexCompilationUnit* mUnit, uint32_t dex_pc) {
@@ -1764,7 +1751,8 @@ static void LoadAndUpdateStatus(const ClassAccessor& accessor,
 
 bool CompilerDriver::FastVerify(jobject jclass_loader,
                                 const std::vector<const DexFile*>& dex_files,
-                                TimingLogger* timings) {
+                                TimingLogger* timings,
+                                /*out*/ VerificationResults* verification_results) {
   verifier::VerifierDeps* verifier_deps =
       Runtime::Current()->GetCompilerCallbacks()->GetVerifierDeps();
   // If there exist VerifierDeps that aren't the ones we just created to output, use them to verify.
@@ -1812,7 +1800,7 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
           // - Quickening will not do checkcast ellision.
           // TODO(ngeoffray): Reconsider this once we refactor compiler filters.
           for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-            verification_results_->CreateVerifiedMethodFor(method.GetReference());
+            verification_results->CreateVerifiedMethodFor(method.GetReference());
           }
         }
       } else if (!compiler_only_verifies) {
@@ -1830,8 +1818,9 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
 
 void CompilerDriver::Verify(jobject jclass_loader,
                             const std::vector<const DexFile*>& dex_files,
-                            TimingLogger* timings) {
-  if (FastVerify(jclass_loader, dex_files, timings)) {
+                            TimingLogger* timings,
+                            /*out*/ VerificationResults* verification_results) {
+  if (FastVerify(jclass_loader, dex_files, timings, verification_results)) {
     return;
   }
 
@@ -2530,7 +2519,7 @@ void CompilerDriver::InitializeClasses(jobject class_loader,
     // SetVerificationAttempted so that the access flags are set. If we do not do this they get
     // changed at runtime resulting in more dirty image pages.
     // Also create conflict tables.
-    // Only useful if we are compiling an image (image_classes_ is not null).
+    // Only useful if we are compiling an image.
     ScopedObjectAccess soa(Thread::Current());
     VariableSizedHandleScope hs(soa.Self());
     InitializeArrayClassesAndCreateConflictTablesVisitor visitor(hs);
@@ -2569,8 +2558,9 @@ static void CompileDexFile(CompilerDriver* driver,
     ClassReference ref(&dex_file, class_def_index);
     const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
     ClassAccessor accessor(dex_file, class_def_index);
+    CompilerDriver* const driver = context.GetCompiler();
     // Skip compiling classes with generic verifier failures since they will still fail at runtime
-    if (context.GetCompiler()->GetVerificationResults()->IsClassRejected(ref)) {
+    if (driver->GetCompilerOptions().GetVerificationResults()->IsClassRejected(ref)) {
       return;
     }
     // Use a scoped object access to perform to the quick SkipClass check.
@@ -2601,8 +2591,6 @@ static void CompileDexFile(CompilerDriver* driver,
 
     // Go to native so that we don't block GC during compilation.
     ScopedThreadSuspension sts(soa.Self(), kNative);
-
-    CompilerDriver* const driver = context.GetCompiler();
 
     // Can we run DEX-to-DEX compiler on this class ?
     optimizer::DexToDexCompiler::CompilationLevel dex_to_dex_compilation_level =
@@ -2773,31 +2761,6 @@ CompiledMethod* CompilerDriver::GetCompiledMethod(MethodReference ref) const {
   CompiledMethod* compiled_method = nullptr;
   compiled_methods_.Get(ref, &compiled_method);
   return compiled_method;
-}
-
-bool CompilerDriver::IsMethodVerifiedWithoutFailures(uint32_t method_idx,
-                                                     uint16_t class_def_idx,
-                                                     const DexFile& dex_file) const {
-  const VerifiedMethod* verified_method = GetVerifiedMethod(&dex_file, method_idx);
-  if (verified_method != nullptr) {
-    return !verified_method->HasVerificationFailures();
-  }
-
-  // If we can't find verification metadata, check if this is a system class (we trust that system
-  // classes have their methods verified). If it's not, be conservative and assume the method
-  // has not been verified successfully.
-
-  // TODO: When compiling the boot image it should be safe to assume that everything is verified,
-  // even if methods are not found in the verification cache.
-  const char* descriptor = dex_file.GetClassDescriptor(dex_file.GetClassDef(class_def_idx));
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  Thread* self = Thread::Current();
-  ScopedObjectAccess soa(self);
-  bool is_system_class = class_linker->FindSystemClass(self, descriptor) != nullptr;
-  if (!is_system_class) {
-    self->ClearException();
-  }
-  return is_system_class;
 }
 
 std::string CompilerDriver::GetMemoryUsageString(bool extended) const {

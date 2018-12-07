@@ -147,7 +147,6 @@ ArenaVector<HOptimization*> ConstructOptimizations(
     HGraph* graph,
     OptimizingCompilerStats* stats,
     CodeGenerator* codegen,
-    CompilerDriver* driver,
     const DexCompilationUnit& dex_compilation_unit,
     VariableSizedHandleScope* handles);
 

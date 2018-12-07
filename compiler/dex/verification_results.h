@@ -51,13 +51,13 @@ class VerificationResults {
   void CreateVerifiedMethodFor(MethodReference ref)
       REQUIRES(!verified_methods_lock_);
 
-  const VerifiedMethod* GetVerifiedMethod(MethodReference ref)
+  const VerifiedMethod* GetVerifiedMethod(MethodReference ref) const
       REQUIRES(!verified_methods_lock_);
 
   void AddRejectedClass(ClassReference ref) REQUIRES(!rejected_classes_lock_);
-  bool IsClassRejected(ClassReference ref) REQUIRES(!rejected_classes_lock_);
+  bool IsClassRejected(ClassReference ref) const REQUIRES(!rejected_classes_lock_);
 
-  bool IsCandidateForCompilation(MethodReference& method_ref, const uint32_t access_flags);
+  bool IsCandidateForCompilation(MethodReference& method_ref, const uint32_t access_flags) const;
 
   // Add a dex file to enable using the atomic map.
   void AddDexFile(const DexFile* dex_file) REQUIRES(!verified_methods_lock_);
@@ -74,10 +74,12 @@ class VerificationResults {
   // GetVerifiedMethod.
   AtomicMap atomic_verified_methods_;
 
-  ReaderWriterMutex verified_methods_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
+  // TODO: External locking during CompilerDriver::PreCompile(), no locking during compilation.
+  mutable ReaderWriterMutex verified_methods_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
   // Rejected classes.
-  ReaderWriterMutex rejected_classes_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
+  // TODO: External locking during CompilerDriver::PreCompile(), no locking during compilation.
+  mutable ReaderWriterMutex rejected_classes_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
   std::set<ClassReference> rejected_classes_ GUARDED_BY(rejected_classes_lock_);
 
   friend class verifier::VerifierDepsTest;
