@@ -188,8 +188,14 @@ class ImageSpace : public MemMapSpace {
   friend class Space;
 
  private:
-  class Loader;
   class BootImageLoader;
+  class Loader;
+  template <typename PatchObjectVisitor>
+  class PatchArtFieldVisitor;
+  template <PointerSize kPointerSize, typename PatchObjectVisitor, typename PatchCodeVisitor>
+  class PatchArtMethodVisitor;
+  template <PointerSize kPointerSize, typename ReferenceVisitor>
+  class PatchObjectVisitor;
 
   DISALLOW_COPY_AND_ASSIGN(ImageSpace);
 };
