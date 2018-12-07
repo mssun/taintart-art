@@ -170,4 +170,9 @@ art_apex {
         }
     },
     key: "com.android.runtime.key",
+    target: {
+        darwin: {
+            enabled: false,
+        },
+    },
 }
