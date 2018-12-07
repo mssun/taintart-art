@@ -136,26 +136,33 @@ ThreadPool::ThreadPool(const char* name,
     waiting_count_(0),
     start_time_(0),
     total_wait_time_(0),
-    // Add one since the caller of constructor waits on the barrier too.
-    creation_barier_(num_threads + 1),
+    creation_barier_(0),
     max_active_workers_(num_threads),
-    create_peers_(create_peers) {
-  while (GetThreadCount() < num_threads) {
-    const std::string worker_name = StringPrintf("%s worker thread %zu", name_.c_str(),
-                                                 GetThreadCount());
-    threads_.push_back(new ThreadPoolWorker(this, worker_name, worker_stack_size));
+    create_peers_(create_peers),
+    worker_stack_size_(worker_stack_size) {
+  CreateThreads();
+}
+
+void ThreadPool::CreateThreads() {
+  CHECK(threads_.empty());
+  Thread* self = Thread::Current();
+  {
+    MutexLock mu(self, task_queue_lock_);
+    shutting_down_ = false;
+    // Add one since the caller of constructor waits on the barrier too.
+    creation_barier_.Init(self, max_active_workers_ + 1);
+    while (GetThreadCount() < max_active_workers_) {
+      const std::string worker_name = StringPrintf("%s worker thread %zu", name_.c_str(),
+                                                   GetThreadCount());
+      threads_.push_back(
+          new ThreadPoolWorker(this, worker_name, worker_stack_size_));
+    }
   }
   // Wait for all of the threads to attach.
   creation_barier_.Wait(Thread::Current());
 }
 
-void ThreadPool::SetMaxActiveWorkers(size_t threads) {
-  MutexLock mu(Thread::Current(), task_queue_lock_);
-  CHECK_LE(threads, GetThreadCount());
-  max_active_workers_ = threads;
-}
-
-ThreadPool::~ThreadPool() {
+void ThreadPool::DeleteThreads() {
   {
     Thread* self = Thread::Current();
     MutexLock mu(self, task_queue_lock_);
@@ -165,8 +172,20 @@ ThreadPool::~ThreadPool() {
     task_queue_condition_.Broadcast(self);
     completion_condition_.Broadcast(self);
   }
-  // Wait for the threads to finish.
+  // Wait for the threads to finish. We expect the user of the pool
+  // not to run multi-threaded calls to `CreateThreads` and `DeleteThreads`,
+  // so we don't guard the field here.
   STLDeleteElements(&threads_);
+}
+
+void ThreadPool::SetMaxActiveWorkers(size_t max_workers) {
+  MutexLock mu(Thread::Current(), task_queue_lock_);
+  CHECK_LE(max_workers, GetThreadCount());
+  max_active_workers_ = max_workers;
+}
+
+ThreadPool::~ThreadPool() {
+  DeleteThreads();
 }
 
 void ThreadPool::StartWorkers(Thread* self) {
