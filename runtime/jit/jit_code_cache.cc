@@ -758,6 +758,10 @@ void JitCodeCache::SweepRootTables(IsMarkedVisitor* visitor) {
 }
 
 void JitCodeCache::FreeCodeAndData(const void* code_ptr) {
+  if (IsInZygoteExecSpace(code_ptr)) {
+    // No need to free, this is shared memory.
+    return;
+  }
   uintptr_t allocation = FromCodeToAllocation(code_ptr);
   // Notify native debugger that we are about to remove the code.
   // It does nothing if we are not using native debugger.
