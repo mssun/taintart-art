@@ -95,12 +95,10 @@ class CardTable {
   }
 
   /*
-   * Visitor is expected to take in a card and return the new value. When a value is modified, the
-   * modify visitor is called.
-   * visitor: The visitor which modifies the cards. Returns the new value for a card given an old
-   * value.
-   * modified: Whenever the visitor modifies a card, this visitor is called on the card. Enables
-   * us to know which cards got cleared.
+   * Modify cards in the range from scan_begin (inclusive) to scan_end (exclusive). Each card
+   * value v is replaced by visitor(v). Visitor() should not have side-effects.
+   * Whenever a card value is changed, modified(card_address, old_value, new_value) is invoked.
+   * For opportunistic performance reasons, this assumes that visitor(kCardClean) is kCardClean!
    */
   template <typename Visitor, typename ModifiedVisitor>
   void ModifyCardsAtomic(uint8_t* scan_begin,
