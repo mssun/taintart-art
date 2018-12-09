@@ -792,10 +792,6 @@ class Runtime {
     return verifier_logging_threshold_ms_;
   }
 
-  ThreadPool* GetThreadPool() {
-    return thread_pool_.get();
-  }
-
  private:
   static void InitPlatformSignalHandlers();
 
@@ -895,9 +891,6 @@ class Runtime {
 
   // Shared linear alloc for now.
   std::unique_ptr<LinearAlloc> linear_alloc_;
-
-  // Thread pool
-  std::unique_ptr<ThreadPool> thread_pool_;
 
   // The number of spins that are done before thread suspension is used to forcibly inflate.
   size_t max_spins_before_thin_lock_inflation_;

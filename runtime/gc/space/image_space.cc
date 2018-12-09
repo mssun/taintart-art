@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <random>
+#include <thread>
 
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
@@ -389,12 +390,32 @@ class ImageSpace::Loader {
                                                   /*out*/std::string* error_msg)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     TimingLogger logger(__PRETTY_FUNCTION__, /*precise=*/ true, VLOG_IS_ON(image));
+
+    const bool create_thread_pool = true;
+    std::unique_ptr<ThreadPool> thread_pool;
+    if (create_thread_pool) {
+      TimingLogger::ScopedTiming timing("CreateThreadPool", &logger);
+      ScopedThreadStateChange stsc(Thread::Current(), kNative);
+      constexpr size_t kStackSize = 64 * KB;
+      constexpr size_t kMaxRuntimeWorkers = 4u;
+      const size_t num_workers =
+          std::min(static_cast<size_t>(std::thread::hardware_concurrency()), kMaxRuntimeWorkers);
+      thread_pool.reset(new ThreadPool("Runtime", num_workers, /*create_peers=*/false, kStackSize));
+      thread_pool->StartWorkers(Thread::Current());
+    }
+
     std::unique_ptr<ImageSpace> space = Init(image_filename,
                                              image_location,
                                              oat_file,
                                              &logger,
+                                             thread_pool.get(),
                                              image_reservation,
                                              error_msg);
+    if (thread_pool != nullptr) {
+      TimingLogger::ScopedTiming timing("CreateThreadPool", &logger);
+      ScopedThreadStateChange stsc(Thread::Current(), kNative);
+      thread_pool.reset();
+    }
     if (space != nullptr) {
       TimingLogger::ScopedTiming timing("RelocateImage", &logger);
       ImageHeader* image_header = reinterpret_cast<ImageHeader*>(space->GetMemMap()->Begin());
@@ -437,6 +458,7 @@ class ImageSpace::Loader {
                                           const char* image_location,
                                           const OatFile* oat_file,
                                           TimingLogger* logger,
+                                          ThreadPool* thread_pool,
                                           /*inout*/MemMap* image_reservation,
                                           /*out*/std::string* error_msg)
       REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -525,6 +547,7 @@ class ImageSpace::Loader {
         *image_header,
         file->Fd(),
         logger,
+        thread_pool,
         image_reservation,
         error_msg);
     if (!map.IsValid()) {
@@ -587,6 +610,7 @@ class ImageSpace::Loader {
                               const ImageHeader& image_header,
                               int fd,
                               TimingLogger* logger,
+                              ThreadPool* pool,
                               /*inout*/MemMap* image_reservation,
                               /*out*/std::string* error_msg) {
     TimingLogger::ScopedTiming timing("MapImageFile", logger);
@@ -631,10 +655,9 @@ class ImageSpace::Loader {
       memcpy(map.Begin(), &image_header, sizeof(ImageHeader));
 
       const uint64_t start = NanoTime();
-      ThreadPool* pool = Runtime::Current()->GetThreadPool();
       Thread* const self = Thread::Current();
       const size_t kMinBlocks = 2;
-      const bool use_parallel = pool != nullptr &&image_header.GetBlockCount() >= kMinBlocks;
+      const bool use_parallel = pool != nullptr && image_header.GetBlockCount() >= kMinBlocks;
       for (const ImageHeader::Block& block : image_header.GetBlocks(temp_map.Begin())) {
         auto function = [&](Thread*) {
           const uint64_t start2 = NanoTime();
@@ -1963,6 +1986,7 @@ class ImageSpace::BootImageLoader {
                         image_location.c_str(),
                         /*oat_file=*/ nullptr,
                         logger,
+                        /*thread_pool=*/ nullptr,
                         image_reservation,
                         error_msg);
   }

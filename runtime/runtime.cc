@@ -34,7 +34,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
-#include <thread>
 #include <vector>
 
 #include "android-base/strings.h"
@@ -391,11 +390,6 @@ Runtime::~Runtime() {
     // Delete thread pool before the thread list since we don't want to wait forever on the
     // JIT compiler threads.
     jit_->DeleteThreadPool();
-  }
-
-  // Thread pools must be deleted before the runtime shuts down to avoid hanging.
-  if (thread_pool_ != nullptr) {
-    thread_pool_.reset();
   }
 
   // Make sure our internal threads are dead before we start tearing down things they're using.
@@ -923,15 +917,6 @@ void Runtime::InitNonZygoteOrPostFork(
       jit_options_->SetWaitForJitNotificationsToSaveProfile(false);
       VLOG(profiler) << "Enabling system server profiles";
     }
-  }
-
-  if (thread_pool_ == nullptr) {
-    constexpr size_t kStackSize = 64 * KB;
-    constexpr size_t kMaxRuntimeWorkers = 4u;
-    const size_t num_workers =
-        std::min(static_cast<size_t>(std::thread::hardware_concurrency()), kMaxRuntimeWorkers);
-    thread_pool_.reset(new ThreadPool("Runtime", num_workers, /*create_peers=*/false, kStackSize));
-    thread_pool_->StartWorkers(Thread::Current());
   }
 
   // Create the thread pools.
