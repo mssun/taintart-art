@@ -378,4 +378,11 @@ TEST_F(UtfTest, ExhaustiveBidirectionalCodePointCheck) {
   }
 }
 
+TEST_F(UtfTest, NonAscii) {
+  const char kNonAsciiCharacter = '\x80';
+  const char input[] = { kNonAsciiCharacter, '\0' };
+  uint32_t hash = ComputeModifiedUtf8Hash(input);
+  EXPECT_EQ(static_cast<uint8_t>(kNonAsciiCharacter), hash);
+}
+
 }  // namespace art
