@@ -1,0 +1,9 @@
+Regression test for bug related to interaction between instrumentation
+installation and class redefinition.
+
+Redefining a class does not update the instrumentation stack of a thread.
+This is generally fine because the method pointer in the instrumentation
+stack is only used for some sanity-checks, logging and method-exit events
+(where it being the non-obsolete version is advantageous). Unfortunately some
+of the checks fail to account for obsolete methods and can fail sanity
+checks.
