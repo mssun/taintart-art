@@ -39,6 +39,7 @@
 #include <sstream>
 
 #include "android-base/stringprintf.h"
+#include "android-base/strings.h"
 
 #include "arch/context-inl.h"
 #include "arch/context.h"
@@ -1875,8 +1876,9 @@ void Thread::DumpState(std::ostream& os, const Thread* thread, pid_t tid) {
 
   // Grab the scheduler stats for this thread.
   std::string scheduler_stats;
-  if (ReadFileToString(StringPrintf("/proc/self/task/%d/schedstat", tid), &scheduler_stats)) {
-    scheduler_stats.resize(scheduler_stats.size() - 1);  // Lose the trailing '\n'.
+  if (ReadFileToString(StringPrintf("/proc/self/task/%d/schedstat", tid), &scheduler_stats)
+      && !scheduler_stats.empty()) {
+    scheduler_stats = android::base::Trim(scheduler_stats);  // Lose the trailing '\n'.
   } else {
     scheduler_stats = "0 0 0";
   }
