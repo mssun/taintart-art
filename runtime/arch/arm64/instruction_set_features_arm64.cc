@@ -126,7 +126,6 @@ Arm64FeaturesUniquePtr Arm64InstructionSetFeatures::FromVariant(
         "exynos-m1",
         "exynos-m2",
         "exynos-m3",
-        "denver64",
         "kryo",
         "kryo385",
     };
