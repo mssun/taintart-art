@@ -21,7 +21,6 @@
 
 #include "android-base/stringprintf.h"
 
-#include "base/utils.h"
 #include "common_throws.h"
 #include "dex/descriptors_names.h"
 #include "dex/primitive.h"

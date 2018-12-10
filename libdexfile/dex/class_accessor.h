@@ -17,7 +17,6 @@
 #ifndef ART_LIBDEXFILE_DEX_CLASS_ACCESSOR_H_
 #define ART_LIBDEXFILE_DEX_CLASS_ACCESSOR_H_
 
-#include "base/utils.h"
 #include "code_item_accessors.h"
 #include "dex_file.h"
 #include "invoke_type.h"
