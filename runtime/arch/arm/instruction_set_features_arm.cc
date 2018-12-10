@@ -53,7 +53,6 @@ ArmFeaturesUniquePtr ArmInstructionSetFeatures::FromVariant(
       "cortex-a75",
       "cortex-a76",
       "exynos-m1",
-      "denver",
       "kryo",
       "kryo385",
   };

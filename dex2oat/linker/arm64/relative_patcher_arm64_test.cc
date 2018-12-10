@@ -575,11 +575,6 @@ class Arm64RelativePatcherTestDefault : public Arm64RelativePatcherTest {
   Arm64RelativePatcherTestDefault() : Arm64RelativePatcherTest("default") { }
 };
 
-class Arm64RelativePatcherTestDenver64 : public Arm64RelativePatcherTest {
- public:
-  Arm64RelativePatcherTestDenver64() : Arm64RelativePatcherTest("denver64") { }
-};
-
 TEST_F(Arm64RelativePatcherTestDefault, CallSelf) {
   const LinkerPatch patches[] = {
       LinkerPatch::RelativeCodePatch(0u, nullptr, 1u),
@@ -834,18 +829,6 @@ TEST_F(Arm64RelativePatcherTestDefault, StringBssEntryLdur) {
       { 0x1234u, 0x1238u });
 }
 
-TEST_F(Arm64RelativePatcherTestDenver64, StringBssEntryLdur) {
-  TestForAdrpOffsets(
-      [&](uint32_t adrp_offset, uint32_t string_entry_offset) {
-        Reset();
-        TestAdrpLdurLdr(adrp_offset,
-                        /*has_thunk=*/ false,
-                        /*bss_begin=*/ 0x12345678u,
-                        string_entry_offset);
-      },
-      { 0x1234u, 0x1238u });
-}
-
 // LDR <Wt>, <label> is always aligned. We should never have to use a fixup.
 TEST_F(Arm64RelativePatcherTestDefault, StringBssEntryWPcRel) {
   TestForAdrpOffsets(
@@ -915,15 +898,6 @@ TEST_F(Arm64RelativePatcherTestDefault, StringReferenceLdur) {
         TestAdrpLdurAdd(adrp_offset, has_thunk, string_offset);
       },
       { 0x12345678u, 0xffffc840u });
-}
-
-TEST_F(Arm64RelativePatcherTestDenver64, StringReferenceLdur) {
-  TestForAdrpOffsets(
-      [&](uint32_t adrp_offset, uint32_t string_offset) {
-        Reset();
-        TestAdrpLdurAdd(adrp_offset, /*has_thunk=*/ false, string_offset);
-      },
-      { 0x12345678u, 0xffffc840U });
 }
 
 TEST_F(Arm64RelativePatcherTestDefault, StringReferenceSubX3X2) {
