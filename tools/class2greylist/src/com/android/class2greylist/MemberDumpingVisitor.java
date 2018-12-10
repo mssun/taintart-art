@@ -40,8 +40,9 @@ public class MemberDumpingVisitor extends EmptyVisitor {
     }
 
     private void visitMember(FieldOrMethod member, String signatureFormatString) {
-        AnnotationContext context = new AnnotationContext(mStatus, member,
-                (JavaClass) mDescendingVisitor.predecessor(), signatureFormatString);
+        AnnotationContext context = new AnnotatedMemberContext(mStatus,
+            (JavaClass) mDescendingVisitor.predecessor(), member,
+            signatureFormatString);
         System.out.println(context.getMemberDescriptor());
     }
 }

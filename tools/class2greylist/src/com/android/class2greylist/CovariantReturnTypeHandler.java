@@ -4,15 +4,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.bcel.classfile.AnnotationEntry;
-import org.apache.bcel.classfile.Constant;
-import org.apache.bcel.classfile.ConstantPool;
-import org.apache.bcel.classfile.ElementValue;
 import org.apache.bcel.classfile.ElementValuePair;
 import org.apache.bcel.classfile.Method;
 
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -48,6 +43,13 @@ public class CovariantReturnTypeHandler extends AnnotationHandler {
 
     @Override
     public void handleAnnotation(AnnotationEntry annotation, AnnotationContext context) {
+        if (context instanceof AnnotatedClassContext) {
+            return;
+        }
+        handleAnnotation(annotation, (AnnotatedMemberContext) context);
+    }
+
+    private void handleAnnotation(AnnotationEntry annotation, AnnotatedMemberContext context) {
         // Verify that the annotation has been applied to what we expect, and
         // has the right form. Note, this should not strictly be necessary, as
         // the annotation has a target of just 'method' and the property
