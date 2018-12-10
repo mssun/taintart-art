@@ -17,7 +17,6 @@
 #ifndef ART_RUNTIME_MIRROR_CALL_SITE_H_
 #define ART_RUNTIME_MIRROR_CALL_SITE_H_
 
-#include "base/utils.h"
 #include "mirror/method_handle_impl.h"
 
 namespace art {

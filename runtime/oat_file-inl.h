@@ -18,6 +18,8 @@
 #define ART_RUNTIME_OAT_FILE_INL_H_
 
 #include "oat_file.h"
+
+#include "base/utils.h"
 #include "oat_quick_method_header.h"
 
 namespace art {

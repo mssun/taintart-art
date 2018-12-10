@@ -24,7 +24,6 @@
 #include "android-base/stringprintf.h"
 
 #include "array-inl.h"
-#include "base/utils.h"
 #include "class.h"
 #include "obj_ptr-inl.h"
 #include "object-inl.h"
