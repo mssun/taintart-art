@@ -397,7 +397,7 @@ class Heap {
     REQUIRES(!Locks::heap_bitmap_lock_)
     REQUIRES(Locks::mutator_lock_);
 
-  uint64_t GetWeightedAllocatedBytes() const {
+  double GetWeightedAllocatedBytes() const {
     return weighted_allocated_bytes_;
   }
 
@@ -1179,7 +1179,7 @@ class Heap {
   uint64_t last_process_cpu_time_ns_;
 
   // allocated_bytes * (current_process_cpu_time - last_process_cpu_time)
-  uint64_t weighted_allocated_bytes_;
+  double weighted_allocated_bytes_;
 
   // If we ignore the max footprint it lets the heap grow until it hits the heap capacity, this is
   // useful for benchmarking since it reduces time spent in GC to a low %.
