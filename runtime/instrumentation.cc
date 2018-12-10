@@ -324,8 +324,9 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
 
         const InstrumentationStackFrame& frame =
             (*instrumentation_stack_)[instrumentation_stack_depth_];
-        CHECK_EQ(m, frame.method_) << "Expected " << ArtMethod::PrettyMethod(m)
-                                   << ", Found " << ArtMethod::PrettyMethod(frame.method_);
+        CHECK_EQ(m->GetNonObsoleteMethod(), frame.method_->GetNonObsoleteMethod())
+            << "Expected " << ArtMethod::PrettyMethod(m)
+            << ", Found " << ArtMethod::PrettyMethod(frame.method_);
         return_pc = frame.return_pc_;
         if (kVerboseInstrumentation) {
           LOG(INFO) << "Ignoring already instrumented " << frame.Dump();
@@ -471,7 +472,9 @@ static void InstrumentationRestoreStack(Thread* thread, void* arg)
           if (instrumentation_frame.interpreter_entry_) {
             CHECK(m == Runtime::Current()->GetCalleeSaveMethod(CalleeSaveType::kSaveRefsAndArgs));
           } else {
-            CHECK(m == instrumentation_frame.method_) << ArtMethod::PrettyMethod(m);
+            CHECK_EQ(m->GetNonObsoleteMethod(),
+                     instrumentation_frame.method_->GetNonObsoleteMethod())
+                << ArtMethod::PrettyMethod(m);
           }
           SetReturnPc(instrumentation_frame.return_pc_);
           if (instrumentation_->ShouldNotifyMethodEnterExitEvents() &&
