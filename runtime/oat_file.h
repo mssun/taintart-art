@@ -27,7 +27,6 @@
 #include "base/safe_map.h"
 #include "base/stringpiece.h"
 #include "base/tracking_safe_map.h"
-#include "base/utils.h"
 #include "class_status.h"
 #include "compiler_filter.h"
 #include "dex/dex_file.h"
