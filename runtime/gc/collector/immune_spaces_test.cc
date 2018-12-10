@@ -112,6 +112,8 @@ class ImmuneSpacesTest : public CommonRuntimeTest {
     // Create image header.
     ImageSection sections[ImageHeader::kSectionCount];
     new (image_map.Begin()) ImageHeader(
+        /*image_reservation_size=*/ image_size,
+        /*component_count=*/ 1u,
         /*image_begin=*/ PointerToLowMemUInt32(image_map.Begin()),
         /*image_size=*/ image_size,
         sections,
