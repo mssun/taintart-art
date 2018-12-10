@@ -2583,6 +2583,23 @@ void ImageWriter::CreateHeader(size_t oat_index) {
   const uint8_t* oat_file_end = oat_file_begin + image_info.oat_loaded_size_;
   const uint8_t* oat_data_end = image_info.oat_data_begin_ + image_info.oat_size_;
 
+  uint32_t image_reservation_size = image_info.image_size_;
+  DCHECK_ALIGNED(image_reservation_size, kPageSize);
+  uint32_t component_count = 1u;
+  if (!compiler_options_.IsAppImage()) {
+    if (oat_index == 0u) {
+      const ImageInfo& last_info = image_infos_.back();
+      const uint8_t* end = last_info.oat_file_begin_ + last_info.oat_loaded_size_;
+      DCHECK_ALIGNED(image_info.image_begin_, kPageSize);
+      image_reservation_size =
+          dchecked_integral_cast<uint32_t>(RoundUp(end - image_info.image_begin_, kPageSize));
+      component_count = image_infos_.size();
+    } else {
+      image_reservation_size = 0u;
+      component_count = 0u;
+    }
+  }
+
   // Create the image sections.
   auto section_info_pair = image_info.CreateImageSections();
   const size_t image_end = section_info_pair.first;
@@ -2619,6 +2636,8 @@ void ImageWriter::CreateHeader(size_t oat_index) {
   // Create the header, leave 0 for data size since we will fill this in as we are writing the
   // image.
   new (image_info.image_.Begin()) ImageHeader(
+      image_reservation_size,
+      component_count,
       PointerToLowMemUInt32(image_info.image_begin_),
       image_end,
       sections.data(),
