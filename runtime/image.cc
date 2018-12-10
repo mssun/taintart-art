@@ -29,9 +29,11 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '7', '2', '\0' };  // CRC32UpdateBytes intrinsic
+const uint8_t ImageHeader::kImageVersion[] = { '0', '7', '3', '\0' };  // Image reservation.
 
-ImageHeader::ImageHeader(uint32_t image_begin,
+ImageHeader::ImageHeader(uint32_t image_reservation_size,
+                         uint32_t component_count,
+                         uint32_t image_begin,
                          uint32_t image_size,
                          ImageSection* sections,
                          uint32_t image_roots,
@@ -43,7 +45,9 @@ ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t boot_image_begin,
                          uint32_t boot_image_size,
                          uint32_t pointer_size)
-  : image_begin_(image_begin),
+  : image_reservation_size_(image_reservation_size),
+    component_count_(component_count),
+    image_begin_(image_begin),
     image_size_(image_size),
     image_checksum_(0u),
     oat_checksum_(oat_checksum),
@@ -94,6 +98,9 @@ bool ImageHeader::IsValid() const {
     return false;
   }
   if (memcmp(version_, kImageVersion, sizeof(kImageVersion)) != 0) {
+    return false;
+  }
+  if (!IsAligned<kPageSize>(image_reservation_size_)) {
     return false;
   }
   // Unsigned so wraparound is well defined.

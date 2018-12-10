@@ -138,7 +138,9 @@ class PACKED(8) ImageHeader {
   };
 
   ImageHeader() {}
-  ImageHeader(uint32_t image_begin,
+  ImageHeader(uint32_t image_reservation_size,
+              uint32_t component_count,
+              uint32_t image_begin,
               uint32_t image_size,
               ImageSection* sections,
               uint32_t image_roots,
@@ -153,6 +155,14 @@ class PACKED(8) ImageHeader {
 
   bool IsValid() const;
   const char* GetMagic() const;
+
+  uint32_t GetImageReservationSize() const {
+    return image_reservation_size_;
+  }
+
+  uint32_t GetComponentCount() const {
+    return component_count_;
+  }
 
   uint8_t* GetImageBegin() const {
     return reinterpret_cast<uint8_t*>(image_begin_);
@@ -422,6 +432,19 @@ class PACKED(8) ImageHeader {
 
   uint8_t magic_[4];
   uint8_t version_[4];
+
+  // The total memory reservation size for the image.
+  // For boot image or boot image extension, the primary image includes the reservation
+  // for all image files and oat files, secondary images have the reservation set to 0.
+  // App images have reservation equal to `image_size_` rounded up to page size because
+  // their oat files are mmapped independently.
+  uint32_t image_reservation_size_ = 0u;
+
+  // The number of components.
+  // For boot image or boot image extension, the primary image stores the total number
+  // of images, secondary images have this set to 0.
+  // App images have 1 component.
+  uint32_t component_count_ = 0u;
 
   // Required base address for mapping the image.
   uint32_t image_begin_ = 0u;
