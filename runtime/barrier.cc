@@ -27,15 +27,15 @@ namespace art {
 
 Barrier::Barrier(int count)
     : count_(count),
-      lock_("GC barrier lock", kThreadSuspendCountLock),
-      condition_("GC barrier condition", lock_) {
+      lock_(new Mutex("GC barrier lock", kThreadSuspendCountLock)),
+      condition_(new ConditionVariable("GC barrier condition", *lock_)) {
 }
 
 template void Barrier::Increment<Barrier::kAllowHoldingLocks>(Thread* self, int delta);
 template void Barrier::Increment<Barrier::kDisallowHoldingLocks>(Thread* self, int delta);
 
 void Barrier::Pass(Thread* self) {
-  MutexLock mu(self, lock_);
+  MutexLock mu(self, *GetLock());
   SetCountLocked(self, count_ - 1);
 }
 
@@ -44,13 +44,13 @@ void Barrier::Wait(Thread* self) {
 }
 
 void Barrier::Init(Thread* self, int count) {
-  MutexLock mu(self, lock_);
+  MutexLock mu(self, *GetLock());
   SetCountLocked(self, count);
 }
 
 template <Barrier::LockHandling locks>
 void Barrier::Increment(Thread* self, int delta) {
-  MutexLock mu(self, lock_);
+  MutexLock mu(self, *GetLock());
   SetCountLocked(self, count_ + delta);
 
   // Increment the count.  If it becomes zero after the increment
@@ -62,22 +62,22 @@ void Barrier::Increment(Thread* self, int delta) {
   // condition variable, thus waking this up.
   while (count_ != 0) {
     if (locks == kAllowHoldingLocks) {
-      condition_.WaitHoldingLocks(self);
+      condition_->WaitHoldingLocks(self);
     } else {
-      condition_.Wait(self);
+      condition_->Wait(self);
     }
   }
 }
 
 bool Barrier::Increment(Thread* self, int delta, uint32_t timeout_ms) {
-  MutexLock mu(self, lock_);
+  MutexLock mu(self, *GetLock());
   SetCountLocked(self, count_ + delta);
   bool timed_out = false;
   if (count_ != 0) {
     uint32_t timeout_ns = 0;
     uint64_t abs_timeout = NanoTime() + MsToNs(timeout_ms);
     for (;;) {
-      timed_out = condition_.TimedWait(self, timeout_ms, timeout_ns);
+      timed_out = condition_->TimedWait(self, timeout_ms, timeout_ns);
       if (timed_out || count_ == 0) return timed_out;
       // Compute time remaining on timeout.
       uint64_t now = NanoTime();
@@ -91,14 +91,14 @@ bool Barrier::Increment(Thread* self, int delta, uint32_t timeout_ms) {
 }
 
 int Barrier::GetCount(Thread* self) {
-  MutexLock mu(self, lock_);
+  MutexLock mu(self, *GetLock());
   return count_;
 }
 
 void Barrier::SetCountLocked(Thread* self, int count) {
   count_ = count;
   if (count == 0) {
-    condition_.Broadcast(self);
+    condition_->Broadcast(self);
   }
 }
 
