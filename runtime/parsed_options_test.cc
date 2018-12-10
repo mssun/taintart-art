@@ -40,8 +40,7 @@ TEST_F(ParsedOptionsTest, ParsedOptions) {
   boot_class_path += "-Xbootclasspath:";
 
   bool first_dex_file = true;
-  for (const std::string &dex_file_name :
-           CommonRuntimeTest::GetLibCoreDexFileNames()) {
+  for (const std::string &dex_file_name : CommonRuntimeTest::GetLibCoreDexFileNames()) {
     if (!first_dex_file) {
       class_path += ":";
     } else {
@@ -50,6 +49,8 @@ TEST_F(ParsedOptionsTest, ParsedOptions) {
     class_path += dex_file_name;
   }
   boot_class_path += class_path;
+  std::vector<std::string> expected_boot_class_path;
+  Split(class_path, ':', &expected_boot_class_path);
 
   RuntimeOptions options;
   options.push_back(std::make_pair(boot_class_path.c_str(), nullptr));
@@ -78,9 +79,11 @@ TEST_F(ParsedOptionsTest, ParsedOptions) {
   using Opt = RuntimeArgumentMap;
 
 #define EXPECT_PARSED_EQ(expected, actual_key) EXPECT_EQ(expected, map.GetOrDefault(actual_key))
+#define EXPECT_PARSED_EQ_AS_STRING_VECTOR(expected, actual_key) \
+  EXPECT_EQ(expected, static_cast<std::vector<std::string>>(map.GetOrDefault(actual_key)))
 #define EXPECT_PARSED_EXISTS(actual_key) EXPECT_TRUE(map.Exists(actual_key))
 
-  EXPECT_PARSED_EQ(class_path, Opt::BootClassPath);
+  EXPECT_PARSED_EQ_AS_STRING_VECTOR(expected_boot_class_path, Opt::BootClassPath);
   EXPECT_PARSED_EQ(class_path, Opt::ClassPath);
   EXPECT_PARSED_EQ(std::string("boot_image"), Opt::Image);
   EXPECT_PARSED_EXISTS(Opt::CheckJni);
