@@ -1,7 +1,6 @@
 package com.android.class2greylist;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.bcel.Const;
@@ -20,11 +19,11 @@ import java.util.function.Predicate;
  * Processes {@code UnsupportedAppUsage} annotations to generate greylist
  * entries.
  *
- * Any annotations with a {@link #EXPECTED_SIGNATURE} property will have their
+ * Any annotations with a {@link #EXPECTED_SIGNATURE_PROPERTY} property will have their
  * generated signature verified against this, and an error will be reported if
  * it does not match. Exclusions are made for bridge methods.
  *
- * Any {@link #MAX_TARGET_SDK} properties will be validated against the given
+ * Any {@link #MAX_TARGET_SDK_PROPERTY} properties will be validated against the given
  * set of valid values, then passed through to the greylist consumer.
  */
 public class UnsupportedAppUsageAnnotationHandler extends AnnotationHandler {
@@ -32,6 +31,7 @@ public class UnsupportedAppUsageAnnotationHandler extends AnnotationHandler {
     // properties of greylist annotations:
     private static final String EXPECTED_SIGNATURE_PROPERTY = "expectedSignature";
     private static final String MAX_TARGET_SDK_PROPERTY = "maxTargetSdk";
+    private static final String IMPLICIT_MEMBER_PROPERTY = "implicitMember";
 
     private final Status mStatus;
     private final Predicate<ClassMember> mClassMemberFilter;
@@ -80,16 +80,20 @@ public class UnsupportedAppUsageAnnotationHandler extends AnnotationHandler {
 
     @Override
     public void handleAnnotation(AnnotationEntry annotation, AnnotationContext context) {
-        FieldOrMethod member = context.member;
-
-        boolean isBridgeMethod = (member instanceof Method) &&
+        boolean isBridgeMethod = false;
+        if (context instanceof AnnotatedMemberContext) {
+            AnnotatedMemberContext memberContext = (AnnotatedMemberContext) context;
+            FieldOrMethod member = memberContext.member;
+            isBridgeMethod = (member instanceof Method) &&
                 (member.getAccessFlags() & Const.ACC_BRIDGE) != 0;
-        if (isBridgeMethod) {
-            mStatus.debug("Member is a bridge method");
+            if (isBridgeMethod) {
+                mStatus.debug("Member is a bridge method");
+            }
         }
 
         String signature = context.getMemberDescriptor();
         Integer maxTargetSdk = null;
+        String implicitMemberSignature = null;
 
         for (ElementValuePair property : annotation.getElementValuePairs()) {
             switch (property.getNameString()) {
@@ -113,7 +117,28 @@ public class UnsupportedAppUsageAnnotationHandler extends AnnotationHandler {
 
                     maxTargetSdk = ((SimpleElementValue) property.getValue()).getValueInt();
                     break;
+                case IMPLICIT_MEMBER_PROPERTY:
+                    implicitMemberSignature = property.getValue().stringifyValue();
+                    if (context instanceof AnnotatedClassContext) {
+                        signature = String.format("L%s;->%s",
+                            context.getClassDescriptor(), implicitMemberSignature);
+                    } else {
+                        context.reportError(
+                            "Expected annotation with an %s property to be on a class but is on %s",
+                            IMPLICIT_MEMBER_PROPERTY,
+                            signature);
+                        return;
+                    }
+                    break;
             }
+        }
+
+        if (context instanceof AnnotatedClassContext && implicitMemberSignature == null) {
+            context.reportError(
+                "Missing property %s on annotation on class %s",
+                IMPLICIT_MEMBER_PROPERTY,
+                signature);
+            return;
         }
 
         // Verify that maxTargetSdk is valid.

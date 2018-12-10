@@ -47,8 +47,8 @@ public class Class2Greylist {
 
     private static final Set<String> GREYLIST_ANNOTATIONS =
             ImmutableSet.of(
-                    "Landroid/annotation/UnsupportedAppUsage;",
-                    "Ldalvik/annotation/compat/UnsupportedAppUsage;");
+                    "android.annotation.UnsupportedAppUsage",
+                    "dalvik.annotation.compat.UnsupportedAppUsage");
     private static final Set<String> WHITELIST_ANNOTATIONS = ImmutableSet.of();
 
     public static final String FLAG_WHITELIST = "whitelist";
@@ -185,7 +185,12 @@ public class Class2Greylist {
         UnsupportedAppUsageAnnotationHandler greylistAnnotationHandler =
                 new UnsupportedAppUsageAnnotationHandler(
                     mStatus, mOutput, mPublicApis, TARGET_SDK_TO_LIST_MAP);
-        GREYLIST_ANNOTATIONS.forEach(a -> builder.put(a, greylistAnnotationHandler));
+        GREYLIST_ANNOTATIONS
+            .forEach(a -> addRepeatedAnnotationHandlers(
+                builder,
+                classNameToSignature(a),
+                classNameToSignature(a + "$Container"),
+                greylistAnnotationHandler));
 
         CovariantReturnTypeHandler covariantReturnTypeHandler = new CovariantReturnTypeHandler(
             mOutput, mPublicApis, FLAG_WHITELIST);
@@ -193,6 +198,10 @@ public class Class2Greylist {
         return addRepeatedAnnotationHandlers(builder, CovariantReturnTypeHandler.ANNOTATION_NAME,
             CovariantReturnTypeHandler.REPEATED_ANNOTATION_NAME, covariantReturnTypeHandler)
             .build();
+    }
+
+    private String classNameToSignature(String a) {
+        return "L" + a.replace('.', '/') + ";";
     }
 
     /**
