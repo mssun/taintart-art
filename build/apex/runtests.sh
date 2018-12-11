@@ -66,8 +66,16 @@ Try '$0 --help' for more information.";;
   shift
 done
 
-work_dir=$(mktemp -d)
-mount_point="$work_dir/image"
+
+# build_apex APEX_MODULE
+# ----------------------
+# Build APEX package APEX_MODULE.
+function build_apex {
+  if $build_apex_p; then
+    local apex_module=$1
+    say "Building package $apex_module" && make "$apex_module" || die "Cannot build $apex_module"
+  fi
+}
 
 function check_binary {
   [[ -x "$mount_point/bin/$1" ]] || die "Cannot find binary '$1' in mounted image"
@@ -91,36 +99,22 @@ function check_library {
     || die "Cannot find library '$1' in mounted image"
 }
 
-function build_apex {
-  if $build_apex_p; then
-    say "Building package $1" && make "$1" || die "Cannot build $1"
-  fi
-}
-
-function check_contents {
-
+# Check contents of APEX payload located in `$mount_point`.
+function check_release_contents {
   # Check that the mounted image contains a manifest.
   [[ -f "$mount_point/apex_manifest.json" ]] || die "no manifest"
 
   # Check that the mounted image contains ART base binaries.
   check_multilib_binary dalvikvm
-  # TODO: Does not work yet.
+  # TODO: Does not work yet (b/119942078).
   : check_binary_symlink dalvikvm
   check_binary dex2oat
   check_binary dexoptanalyzer
   check_binary profman
 
-  # Check that the mounted image contains ART tools binaries.
-  check_binary dexdiag
-  check_binary dexdump
-  check_binary dexlist
   # oatdump is only in device apex's due to build rules
-  # check_binary oatdump
-
-  # Check that the mounted image contains ART debug binaries.
-  check_binary dex2oatd
-  check_binary dexoptanalyzerd
-  check_binary profmand
+  # TODO: Check for it when it is also built for host.
+  : check_binary oatdump
 
   # Check that the mounted image contains ART libraries.
   check_library libart-compiler.so
@@ -134,20 +128,6 @@ function check_contents {
   check_library libart-dexlayout.so
   check_library libdexfile.so
   check_library libprofile.so
-
-  # Check that the mounted image contains ART debug libraries.
-  check_library libartd-compiler.so
-  check_library libartd.so
-  check_library libopenjdkd.so
-  check_library libopenjdkjvmd.so
-  check_library libopenjdkjvmtid.so
-  check_library libadbconnectiond.so
-  # TODO: Should we check for these libraries too, even if they are not explicitly
-  # listed as dependencies in the Android Runtime APEX module rule?
-  check_library libdexfiled.so
-  check_library libartbased.so
-  check_library libartd-dexlayout.so
-  check_library libprofiled.so
 
   # TODO: Should we check for other libraries, such as:
   #
@@ -164,105 +144,197 @@ function check_contents {
   # ?
 }
 
+# Check debug contents of APEX payload located in `$mount_point`.
+function check_debug_contents {
+  # Check that the mounted image contains ART tools binaries.
+  check_binary dexdiag
+  check_binary dexdump
+  check_binary dexlist
 
-# *****************************************
-# * Testing for com.android.runtime.debug *
-# *****************************************
+  # Check that the mounted image contains ART debug binaries.
+  check_binary dex2oatd
+  check_binary dexoptanalyzerd
+  check_binary profmand
 
-# Garbage collection.
-function finish_device_debug {
-  # Don't fail early during cleanup.
-  set +e
+  # Check that the mounted image contains ART debug libraries.
+  check_library libartd-compiler.so
+  check_library libartd.so
+  check_library libopenjdkd.so
+  check_library libopenjdkjvmd.so
+  check_library libopenjdkjvmtid.so
+  check_library libadbconnectiond.so
+  # TODO: Should we check for these libraries too, even if they are not explicitly
+  # listed as dependencies in the Android Runtime APEX module rule?
+  check_library libdexfiled.so
+  check_library libartbased.so
+  check_library libartd-dexlayout.so
+  check_library libprofiled.so
+}
+
+# Testing target (device) APEX packages.
+# ======================================
+
+# Clean-up.
+function cleanup_target {
   guestunmount "$mount_point"
   rm -rf "$work_dir"
 }
 
-trap finish_device_debug EXIT
+# Garbage collection.
+function finish_target {
+  # Don't fail early during cleanup.
+  set +e
+  cleanup_target
+}
 
-# TODO: Also exercise the Release Runtime APEX (`com.android.runtime.release`).
+# setup_target_apex APEX_MODULE MOUNT_POINT
+# -----------------------------------------
+# Extract image from target APEX_MODULE and mount it in MOUNT_POINT.
+function setup_target_apex {
+  local apex_module=$1
+  local mount_point=$2
+  local system_apexdir="$ANDROID_PRODUCT_OUT/system/apex"
+  local apex_package="$system_apexdir/$apex_module.apex"
+
+  say "Extracting and mounting image"
+
+  # Extract the payload from the Android Runtime APEX.
+  local image_filename="apex_payload.img"
+  unzip -q "$apex_package" "$image_filename" -d "$work_dir"
+  mkdir "$mount_point"
+  local image_file="$work_dir/$image_filename"
+
+  # Check filesystems in the image.
+  local image_filesystems="$work_dir/image_filesystems"
+  virt-filesystems -a "$image_file" >"$image_filesystems"
+  # We expect a single partition (/dev/sda) in the image.
+  local partition="/dev/sda"
+  echo "$partition" | cmp "$image_filesystems" -
+
+  # Mount the image from the Android Runtime APEX.
+  guestmount -a "$image_file" -m "$partition" "$mount_point"
+
+  # List the contents of the mounted image (optional).
+  $list_image_files_p \
+    && say "Listing image files" && ls -ld "$mount_point" && tree -ap "$mount_point"
+}
+
+# Testing release APEX package (com.android.runtime.release).
+# -----------------------------------------------------------
+
+apex_module="com.android.runtime.release"
+
+work_dir=$(mktemp -d)
+mount_point="$work_dir/image"
+
+trap finish_target EXIT
+
+# Build the APEX package (optional).
+build_apex "$apex_module"
+
+# Set up APEX package.
+setup_target_apex "$apex_module" "$mount_point"
+
+# Run tests on APEX package.
+say "Checking APEX package $apex_module"
+check_release_contents
+
+# Clean up.
+trap - EXIT
+cleanup_target
+
+say "$apex_module tests passed"
+
+# Testing debug APEX package (com.android.runtime.debug).
+# -------------------------------------------------------
+
 apex_module="com.android.runtime.debug"
 
-# Build the Android Runtime APEX package (optional).
-build_apex $apex_module
+work_dir=$(mktemp -d)
+mount_point="$work_dir/image"
 
-system_apexdir="$ANDROID_PRODUCT_OUT/system/apex"
-apex_package="$system_apexdir/$apex_module.apex"
+trap finish_target EXIT
 
-say "Extracting and mounting image"
+# Build the APEX package (optional).
+build_apex "$apex_module"
 
-# Extract the payload from the Android Runtime APEX.
-image_filename="apex_payload.img"
-unzip -q "$apex_package" "$image_filename" -d "$work_dir"
-mkdir "$mount_point"
-image_file="$work_dir/$image_filename"
+# Set up APEX package.
+setup_target_apex "$apex_module" "$mount_point"
 
-# Check filesystems in the image.
-image_filesystems="$work_dir/image_filesystems"
-virt-filesystems -a "$image_file" >"$image_filesystems"
-# We expect a single partition (/dev/sda) in the image.
-partition="/dev/sda"
-echo "$partition" | cmp "$image_filesystems" -
-
-# Mount the image from the Android Runtime APEX.
-guestmount -a "$image_file" -m "$partition" "$mount_point"
-
-# List the contents of the mounted image (optional).
-$list_image_files_p && say "Listing image files" && ls -ld "$mount_point" && tree -ap "$mount_point"
-
-say "Running tests"
-
-check_contents
-
-# Check for files pulled in from device-only oatdump.
+# Run tests on APEX package.
+say "Checking APEX package $apex_module"
+check_release_contents
+check_debug_contents
+# Check for files pulled in from debug target-only oatdump.
 check_binary oatdump
 check_library libart-disassembler.so
 
-# Cleanup
+# Clean up.
 trap - EXIT
-guestunmount "$mount_point"
-rm -rf "$work_dir"
+cleanup_target
 
-say "$apex_module Tests passed"
+say "$apex_module tests passed"
 
-# ****************************************
-# * Testing for com.android.runtime.host *
-# ****************************************
+
+# Testing host APEX package (com.android.runtime.host).
+# =====================================================
+
+# Clean-up.
+function cleanup_host {
+  rm -rf "$work_dir"
+}
 
 # Garbage collection.
 function finish_host {
   # Don't fail early during cleanup.
   set +e
-  rm -rf "$work_dir"
+  cleanup_host
 }
+
+# setup_host_apex APEX_MODULE MOUNT_POINT
+# ---------------------------------------
+# Extract Zip file from host APEX_MODULE and extract it in MOUNT_POINT.
+function setup_host_apex {
+  local apex_module=$1
+  local mount_point=$2
+  local system_apexdir="$ANDROID_HOST_OUT/apex"
+  local apex_package="$system_apexdir/$apex_module.zipapex"
+
+  say "Extracting payload"
+
+  # Extract the payload from the Android Runtime APEX.
+  local image_filename="apex_payload.zip"
+  unzip -q "$apex_package" "$image_filename" -d "$work_dir"
+  mkdir "$mount_point"
+  local image_file="$work_dir/$image_filename"
+
+  # Unzipping the payload
+  unzip -q "$image_file" -d "$mount_point"
+}
+
+apex_module="com.android.runtime.host"
 
 work_dir=$(mktemp -d)
 mount_point="$work_dir/zip"
 
 trap finish_host EXIT
 
-apex_module="com.android.runtime.host"
+# Build the APEX package (optional).
+build_apex "$apex_module"
 
-# Build the Android Runtime APEX package (optional).
-build_apex $apex_module
+# Set up APEX package.
+setup_host_apex "$apex_module" "$mount_point"
 
-system_apexdir="$ANDROID_HOST_OUT/apex"
-apex_package="$system_apexdir/$apex_module.zipapex"
+# Run tests on APEX package.
+say "Checking APEX package $apex_module"
+check_release_contents
+check_debug_contents
 
-say "Extracting payload"
+# Clean up.
+trap - EXIT
+cleanup_host
 
-# Extract the payload from the Android Runtime APEX.
-image_filename="apex_payload.zip"
-unzip -q "$apex_package" "$image_filename" -d "$work_dir"
-mkdir "$mount_point"
-image_file="$work_dir/$image_filename"
+say "$apex_module tests passed"
 
-# Unzipping the payload
-unzip -q "$image_file" -d "$mount_point"
 
-say "Running tests"
-
-check_contents
-
-say "$apex_module Tests passed"
-
-say "Tests passed"
+say "All Android Runtime APEX tests passed"
