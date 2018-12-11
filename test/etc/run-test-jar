@@ -34,6 +34,8 @@ HAVE_IMAGE="y"
 HOST="n"
 BIONIC="n"
 CREATE_ANDROID_ROOT="n"
+USE_ZIPAPEX="n"
+ZIPAPEX_LOC=""
 INTERPRETER="n"
 JIT="n"
 INVOKE_WITH=""
@@ -219,6 +221,11 @@ while true; do
         # the frameworks/libcore with linux_bionic so we need to use the normal
         # host ones which are in a different location.
         CREATE_ANDROID_ROOT="y"
+        shift
+    elif [ "x$1" = "x--runtime-zipapex" ]; then
+        shift
+        USE_ZIPAPEX="y"
+        ZIPAPEX_LOC="$1"
         shift
     elif [ "x$1" = "x--no-prebuild" ]; then
         PREBUILD="n"
@@ -703,6 +710,8 @@ if [ ${#VDEX_NAME} -gt $max_filename_size ]; then
     exit 1
 fi
 
+BIN_DIR=$ANDROID_ROOT/bin
+
 profman_cmdline="true"
 dex2oat_cmdline="true"
 vdex_cmdline="true"
@@ -712,6 +721,8 @@ strip_cmdline="true"
 sync_cmdline="true"
 linkroot_cmdline="true"
 linkroot_overlay_cmdline="true"
+setupapex_cmdline="true"
+installapex_cmdline="true"
 
 linkdirs() {
   find "$1" -maxdepth 1 -mindepth 1 -type d | xargs -i ln -sf '{}' "$2"
@@ -726,10 +737,23 @@ if [ "$CREATE_ANDROID_ROOT" = "y" ]; then
   fi
 fi
 
+if [ "$USE_ZIPAPEX" = "y" ]; then
+  # TODO Currently this only works for linux_bionic zipapexes because those are
+  # stripped and so small enough that the ulimit doesn't kill us.
+  mkdir_locations="${mkdir_locations} $DEX_LOCATION/zipapex"
+  zip_options="-qq"
+  if [ "$DEV_MODE" = "y" ]; then
+    zip_options=""
+  fi
+  setupapex_cmdline="unzip -u ${zip_options} ${ZIPAPEX_LOC} apex_payload.zip -d ${DEX_LOCATION}"
+  installapex_cmdline="unzip -u ${zip_options} ${DEX_LOCATION}/apex_payload.zip -d ${DEX_LOCATION}/zipapex"
+  BIN_DIR=$DEX_LOCATION/zipapex/bin
+fi
+
 # PROFILE takes precedence over RANDOM_PROFILE, since PROFILE tests require a
 # specific profile to run properly.
 if [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
-  profman_cmdline="${ANDROID_ROOT}/bin/profman  \
+  profman_cmdline="$BIN_DIR/profman  \
     --apk=$DEX_LOCATION/$TEST_NAME.jar \
     --dex-location=$DEX_LOCATION/$TEST_NAME.jar"
   if [ -f $DEX_LOCATION/$TEST_NAME-ex.jar ]; then
@@ -759,7 +783,7 @@ if [ "$PREBUILD" = "y" ]; then
   if  [[ "$TEST_IS_NDEBUG" = "y" ]]; then
     dex2oat_binary=dex2oat
   fi
-  dex2oat_cmdline="$INVOKE_WITH $ANDROID_ROOT/bin/$dex2oat_binary \
+  dex2oat_cmdline="$INVOKE_WITH $BIN_DIR/$dex2oat_binary \
                       $COMPILE_FLAGS \
                       --boot-image=${BOOT_IMAGE} \
                       --dex-file=$DEX_LOCATION/$TEST_NAME.jar \
@@ -816,7 +840,7 @@ fi
 # We set DumpNativeStackOnSigQuit to false to avoid stressing libunwind.
 # b/27185632
 # b/24664297
-dalvikvm_cmdline="$INVOKE_WITH $GDB $ANDROID_ROOT/bin/$DALVIKVM \
+dalvikvm_cmdline="$INVOKE_WITH $GDB $BIN_DIR/$DALVIKVM \
                   $GDB_ARGS \
                   $FLAGS \
                   $DEX_VERIFY \
@@ -924,7 +948,7 @@ if [ "$HOST" = "n" ]; then
              rm -rf ${DEX_LOCATION}/dalvik-cache/ && \
              mkdir -p ${mkdir_locations} && \
              export LD_LIBRARY_PATH=$LD_LIBRARY_PATH && \
-             export PATH=$ANDROID_ROOT/bin:$PATH && \
+             export PATH=$BIN_DIR:$PATH && \
              $profman_cmdline && \
              $dex2oat_cmdline && \
              $dm_cmdline && \
@@ -966,8 +990,12 @@ else
     export ANDROID_ROOT="${ANDROID_ROOT}"
     export ANDROID_RUNTIME_ROOT="${ANDROID_RUNTIME_ROOT}"
     export LD_LIBRARY_PATH="${ANDROID_ROOT}/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
+    if [ "$USE_ZIPAPEX" = "y" ]; then
+      # Put the zipapex files in front of the ld-library-path
+      export LD_LIBRARY_PATH="${ANDROID_DATA}/zipapex/${LIBRARY_DIRECTORY}:${LD_LIBRARY_PATH}"
+    fi
     export DYLD_LIBRARY_PATH="${ANDROID_ROOT}/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
-    export PATH="$PATH:${ANDROID_ROOT}/bin"
+    export PATH="$PATH:$BIN_DIR"
 
     # Temporarily disable address space layout randomization (ASLR).
     # This is needed on the host so that the linker loads core.oat at the necessary address.
@@ -1006,7 +1034,7 @@ else
         echo EXPORT $var=${!var}
       done
       echo "$(declare -f linkdirs)"
-      echo "mkdir -p ${mkdir_locations} && $linkroot_cmdline && $linkroot_overlay_cmdline && $profman_cmdline && $dex2oat_cmdline && $dm_cmdline && $vdex_cmdline && $strip_cmdline && $sync_cmdline && $cmdline"
+      echo "mkdir -p ${mkdir_locations} && $setupapex_cmdline && $installapex_cmdline && $linkroot_cmdline && $linkroot_overlay_cmdline && $profman_cmdline && $dex2oat_cmdline && $dm_cmdline && $vdex_cmdline && $strip_cmdline && $sync_cmdline && $cmdline"
     fi
 
     cd $ANDROID_BUILD_TOP
@@ -1020,6 +1048,8 @@ else
     export ASAN_OPTIONS=$RUN_TEST_ASAN_OPTIONS
 
     mkdir -p ${mkdir_locations} || exit 1
+    $setupapex_cmdline || { echo "zipapex extraction failed." >&2 ; exit 2; }
+    $installapex_cmdline || { echo "zipapex install failed." >&2 ; exit 2; }
     $linkroot_cmdline || { echo "create symlink android-root failed." >&2 ; exit 2; }
     $linkroot_overlay_cmdline || { echo "overlay android-root failed." >&2 ; exit 2; }
     $profman_cmdline || { echo "Profman failed." >&2 ; exit 2; }
