@@ -33,6 +33,11 @@ can be installed with:
 
    sudo apt-get install libguestfs-tools
 "
+which tree > /dev/null || die "This script requires the 'tree' tool.
+On Debian-based systems, this can be installed with:
+
+   sudo apt-get install tree
+"
 [[ -n "$ANDROID_PRODUCT_OUT" ]] \
   || die "You need to source and lunch before you can use this script."
 
