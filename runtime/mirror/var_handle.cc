@@ -1947,7 +1947,7 @@ bool ByteBufferViewVarHandle::Access(AccessMode access_mode,
 
   // Determine offset and limit for accesses.
   int32_t byte_buffer_offset;
-  if (native_address == 0l) {
+  if (native_address == 0L) {
     // Accessing a heap allocated byte buffer.
     byte_buffer_offset = byte_buffer->GetField32(
         GetMemberOffset(WellKnownClasses::java_nio_ByteBuffer_offset));
