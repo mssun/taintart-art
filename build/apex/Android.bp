@@ -48,12 +48,11 @@ art_runtime_debug_native_shared_libs = [
     "libadbconnectiond",
 ]
 
-// Data files associated with bionic / managed core library APIs.
-art_runtime_data_file_prebuilts = [
+// Files associated with bionic / managed core library time zone APIs.
+art_runtime_time_zone_prebuilts = [
     "apex_tz_version",
     "apex_tzdata",
     "apex_tzlookup.xml",
-    "apex_icu.dat",
 ]
 
 // Modules listed in LOCAL_REQUIRED_MODULES for module art-tools in art/Android.mk.
@@ -117,7 +116,7 @@ apex {
             binaries: [],
         }
     },
-    prebuilts: art_runtime_data_file_prebuilts
+    prebuilts: art_runtime_time_zone_prebuilts
         + ["com.android.runtime.ld.config.txt"],
     key: "com.android.runtime.key",
 }
@@ -146,7 +145,7 @@ apex {
             binaries: art_tools_binaries,
         }
     },
-    prebuilts: art_runtime_data_file_prebuilts
+    prebuilts: art_runtime_time_zone_prebuilts
         + ["com.android.runtime.ld.config.txt"],
     key: "com.android.runtime.key",
 }
