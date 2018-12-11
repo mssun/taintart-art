@@ -379,6 +379,281 @@ std::ostream& operator<<(std::ostream& os, const RelocationRange& reloc) {
             << reinterpret_cast<const void*>(reloc.Dest() + reloc.Length()) << ")";
 }
 
+template <PointerSize kPointerSize, typename ReferenceVisitor>
+class ImageSpace::PatchObjectVisitor final {
+ public:
+  explicit PatchObjectVisitor(ReferenceVisitor reference_visitor)
+      : reference_visitor_(reference_visitor) {}
+
+  void VisitClass(mirror::Class* klass) REQUIRES_SHARED(Locks::mutator_lock_) {
+    // A mirror::Class object consists of
+    //  - instance fields inherited from j.l.Object,
+    //  - instance fields inherited from j.l.Class,
+    //  - embedded tables (vtable, interface method table),
+    //  - static fields of the class itself.
+    // The reference fields are at the start of each field section (this is how the
+    // ClassLinker orders fields; except when that would create a gap between superclass
+    // fields and the first reference of the subclass due to alignment, it can be filled
+    // with smaller fields - but that's not the case for j.l.Object and j.l.Class).
+
+    DCHECK_ALIGNED(klass, kObjectAlignment);
+    static_assert(IsAligned<kHeapReferenceSize>(kObjectAlignment), "Object alignment check.");
+    // First, patch the `klass->klass_`, known to be a reference to the j.l.Class.class.
+    // This should be the only reference field in j.l.Object and we assert that below.
+    PatchReferenceField</*kMayBeNull=*/ false>(klass, mirror::Object::ClassOffset());
+    // Then patch the reference instance fields described by j.l.Class.class.
+    // Use the sizeof(Object) to determine where these reference fields start;
+    // this is the same as `class_class->GetFirstReferenceInstanceFieldOffset()`
+    // after patching but the j.l.Class may not have been patched yet.
+    mirror::Class* class_class = klass->GetClass<kVerifyNone, kWithoutReadBarrier>();
+    size_t num_reference_instance_fields = class_class->NumReferenceInstanceFields<kVerifyNone>();
+    DCHECK_NE(num_reference_instance_fields, 0u);
+    static_assert(IsAligned<kHeapReferenceSize>(sizeof(mirror::Object)), "Size alignment check.");
+    MemberOffset instance_field_offset(sizeof(mirror::Object));
+    for (size_t i = 0; i != num_reference_instance_fields; ++i) {
+      PatchReferenceField(klass, instance_field_offset);
+      static_assert(sizeof(mirror::HeapReference<mirror::Object>) == kHeapReferenceSize,
+                    "Heap reference sizes equality check.");
+      instance_field_offset =
+          MemberOffset(instance_field_offset.Uint32Value() + kHeapReferenceSize);
+    }
+    // Now that we have patched the `super_class_`, if this is the j.l.Class.class,
+    // we can get a reference to j.l.Object.class and assert that it has only one
+    // reference instance field (the `klass_` patched above).
+    if (kIsDebugBuild && klass == class_class) {
+      ObjPtr<mirror::Class> object_class =
+          klass->GetSuperClass<kVerifyNone, kWithoutReadBarrier>();
+      CHECK_EQ(object_class->NumReferenceInstanceFields<kVerifyNone>(), 1u);
+    }
+    // Then patch static fields.
+    size_t num_reference_static_fields = klass->NumReferenceStaticFields<kVerifyNone>();
+    if (num_reference_static_fields != 0u) {
+      MemberOffset static_field_offset =
+          klass->GetFirstReferenceStaticFieldOffset<kVerifyNone>(kPointerSize);
+      for (size_t i = 0; i != num_reference_static_fields; ++i) {
+        PatchReferenceField(klass, static_field_offset);
+        static_assert(sizeof(mirror::HeapReference<mirror::Object>) == kHeapReferenceSize,
+                      "Heap reference sizes equality check.");
+        static_field_offset =
+            MemberOffset(static_field_offset.Uint32Value() + kHeapReferenceSize);
+      }
+    }
+    // Then patch native pointers.
+    klass->FixupNativePointers<kVerifyNone>(klass, kPointerSize, *this);
+  }
+
+  template <typename T>
+  T* operator()(T* ptr, void** dest_addr ATTRIBUTE_UNUSED) const
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    if (ptr != nullptr) {
+      ptr = reference_visitor_(ptr);
+    }
+    return ptr;
+  }
+
+  void VisitPointerArray(mirror::PointerArray* pointer_array)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    // Fully patch the pointer array, including the `klass_` field.
+    PatchReferenceField</*kMayBeNull=*/ false>(pointer_array, mirror::Object::ClassOffset());
+
+    int32_t length = pointer_array->GetLength<kVerifyNone>();
+    for (int32_t i = 0; i != length; ++i) {
+      ArtMethod** method_entry = reinterpret_cast<ArtMethod**>(
+          pointer_array->ElementAddress<kVerifyNone>(i, kPointerSize));
+      PatchNativePointer</*kMayBeNull=*/ false>(method_entry);
+    }
+  }
+
+  void VisitObject(mirror::Object* object) REQUIRES_SHARED(Locks::mutator_lock_) {
+    // Visit all reference fields.
+    object->VisitReferences</*kVisitNativeRoots=*/ false,
+                            kVerifyNone,
+                            kWithoutReadBarrier>(*this, *this);
+    // This function should not be called for classes.
+    DCHECK(!object->IsClass<kVerifyNone>());
+  }
+
+  // Visitor for VisitReferences().
+  ALWAYS_INLINE void operator()(mirror::Object* object, MemberOffset field_offset, bool is_static)
+      const REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK(!is_static);
+    PatchReferenceField(object, field_offset);
+  }
+  // Visitor for VisitReferences(), java.lang.ref.Reference case.
+  ALWAYS_INLINE void operator()(ObjPtr<mirror::Class> klass, mirror::Reference* ref) const
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK(klass->IsTypeOfReferenceClass());
+    this->operator()(ref, mirror::Reference::ReferentOffset(), /*is_static=*/ false);
+  }
+  // Ignore class native roots; not called from VisitReferences() for kVisitNativeRoots == false.
+  void VisitRootIfNonNull(mirror::CompressedReference<mirror::Object>* root ATTRIBUTE_UNUSED)
+      const {}
+  void VisitRoot(mirror::CompressedReference<mirror::Object>* root ATTRIBUTE_UNUSED) const {}
+
+  void VisitDexCacheArrays(mirror::DexCache* dex_cache) REQUIRES_SHARED(Locks::mutator_lock_) {
+    FixupDexCacheArray<mirror::StringDexCacheType>(dex_cache,
+                                                   mirror::DexCache::StringsOffset(),
+                                                   dex_cache->NumStrings<kVerifyNone>());
+    FixupDexCacheArray<mirror::TypeDexCacheType>(dex_cache,
+                                                 mirror::DexCache::ResolvedTypesOffset(),
+                                                 dex_cache->NumResolvedTypes<kVerifyNone>());
+    FixupDexCacheArray<mirror::MethodDexCacheType>(dex_cache,
+                                                   mirror::DexCache::ResolvedMethodsOffset(),
+                                                   dex_cache->NumResolvedMethods<kVerifyNone>());
+    FixupDexCacheArray<mirror::FieldDexCacheType>(dex_cache,
+                                                  mirror::DexCache::ResolvedFieldsOffset(),
+                                                  dex_cache->NumResolvedFields<kVerifyNone>());
+    FixupDexCacheArray<mirror::MethodTypeDexCacheType>(
+        dex_cache,
+        mirror::DexCache::ResolvedMethodTypesOffset(),
+        dex_cache->NumResolvedMethodTypes<kVerifyNone>());
+    FixupDexCacheArray<GcRoot<mirror::CallSite>>(
+        dex_cache,
+        mirror::DexCache::ResolvedCallSitesOffset(),
+        dex_cache->NumResolvedCallSites<kVerifyNone>());
+    FixupDexCacheArray<GcRoot<mirror::String>>(
+        dex_cache,
+        mirror::DexCache::PreResolvedStringsOffset(),
+        dex_cache->NumPreResolvedStrings<kVerifyNone>());
+  }
+
+  template <bool kMayBeNull = true, typename T>
+  ALWAYS_INLINE void PatchGcRoot(/*inout*/GcRoot<T>* root) const
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    static_assert(sizeof(GcRoot<mirror::Class*>) == sizeof(uint32_t), "GcRoot size check");
+    T* old_value = root->template Read<kWithoutReadBarrier>();
+    DCHECK(kMayBeNull || old_value != nullptr);
+    if (!kMayBeNull || old_value != nullptr) {
+      *root = GcRoot<T>(reference_visitor_(old_value));
+    }
+  }
+
+  template <bool kMayBeNull = true, typename T>
+  ALWAYS_INLINE void PatchNativePointer(/*inout*/T** entry) const {
+    if (kPointerSize == PointerSize::k64) {
+      uint64_t* raw_entry = reinterpret_cast<uint64_t*>(entry);
+      T* old_value = reinterpret_cast64<T*>(*raw_entry);
+      DCHECK(kMayBeNull || old_value != nullptr);
+      if (!kMayBeNull || old_value != nullptr) {
+        T* new_value = reference_visitor_(old_value);
+        *raw_entry = reinterpret_cast64<uint64_t>(new_value);
+      }
+    } else {
+      uint32_t* raw_entry = reinterpret_cast<uint32_t*>(entry);
+      T* old_value = reinterpret_cast32<T*>(*raw_entry);
+      DCHECK(kMayBeNull || old_value != nullptr);
+      if (!kMayBeNull || old_value != nullptr) {
+        T* new_value = reference_visitor_(old_value);
+        *raw_entry = reinterpret_cast32<uint32_t>(new_value);
+      }
+    }
+  }
+
+  template <bool kMayBeNull = true>
+  ALWAYS_INLINE void PatchReferenceField(mirror::Object* object, MemberOffset offset) const
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    mirror::Object* old_value =
+        object->GetFieldObject<mirror::Object, kVerifyNone, kWithoutReadBarrier>(offset);
+    DCHECK(kMayBeNull || old_value != nullptr);
+    if (!kMayBeNull || old_value != nullptr) {
+      mirror::Object* new_value = reference_visitor_(old_value);
+      object->SetFieldObjectWithoutWriteBarrier</*kTransactionActive=*/ false,
+                                                /*kCheckTransaction=*/ true,
+                                                kVerifyNone>(offset, new_value);
+    }
+  }
+
+  template <typename T>
+  void FixupDexCacheArrayEntry(std::atomic<mirror::DexCachePair<T>>* array, uint32_t index)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    static_assert(sizeof(std::atomic<mirror::DexCachePair<T>>) == sizeof(mirror::DexCachePair<T>),
+                  "Size check for removing std::atomic<>.");
+    PatchGcRoot(&(reinterpret_cast<mirror::DexCachePair<T>*>(array)[index].object));
+  }
+
+  template <typename T>
+  void FixupDexCacheArrayEntry(std::atomic<mirror::NativeDexCachePair<T>>* array, uint32_t index)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    static_assert(sizeof(std::atomic<mirror::NativeDexCachePair<T>>) ==
+                      sizeof(mirror::NativeDexCachePair<T>),
+                  "Size check for removing std::atomic<>.");
+    mirror::NativeDexCachePair<T> pair =
+        mirror::DexCache::GetNativePairPtrSize(array, index, kPointerSize);
+    if (pair.object != nullptr) {
+      pair.object = reference_visitor_(pair.object);
+      mirror::DexCache::SetNativePairPtrSize(array, index, pair, kPointerSize);
+    }
+  }
+
+  void FixupDexCacheArrayEntry(GcRoot<mirror::CallSite>* array, uint32_t index)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    PatchGcRoot(&array[index]);
+  }
+
+  void FixupDexCacheArrayEntry(GcRoot<mirror::String>* array, uint32_t index)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    PatchGcRoot(&array[index]);
+  }
+
+  template <typename EntryType>
+  void FixupDexCacheArray(mirror::DexCache* dex_cache,
+                          MemberOffset array_offset,
+                          uint32_t size) REQUIRES_SHARED(Locks::mutator_lock_) {
+    EntryType* old_array =
+        reinterpret_cast64<EntryType*>(dex_cache->GetField64<kVerifyNone>(array_offset));
+    DCHECK_EQ(old_array != nullptr, size != 0u);
+    if (old_array != nullptr) {
+      EntryType* new_array = reference_visitor_(old_array);
+      dex_cache->SetField64<kVerifyNone>(array_offset, reinterpret_cast64<uint64_t>(new_array));
+      for (uint32_t i = 0; i != size; ++i) {
+        FixupDexCacheArrayEntry(new_array, i);
+      }
+    }
+  }
+
+ private:
+  ReferenceVisitor reference_visitor_;
+};
+
+template <typename ObjectVisitor>
+class ImageSpace::PatchArtFieldVisitor final : public ArtFieldVisitor {
+ public:
+  explicit PatchArtFieldVisitor(const ObjectVisitor& visitor) : visitor_(visitor) {}
+
+  void Visit(ArtField* field) override REQUIRES_SHARED(Locks::mutator_lock_) {
+    visitor_.template PatchGcRoot</*kMayBeNull=*/ false>(&field->DeclaringClassRoot());
+  }
+
+ private:
+  const ObjectVisitor visitor_;
+};
+
+template <PointerSize kPointerSize, typename ObjectVisitor, typename CodeVisitor>
+class ImageSpace::PatchArtMethodVisitor final : public ArtMethodVisitor {
+ public:
+  explicit PatchArtMethodVisitor(const ObjectVisitor& object_visitor,
+                                 const CodeVisitor& code_visitor)
+      : object_visitor_(object_visitor),
+        code_visitor_(code_visitor) {}
+
+  void Visit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_) {
+    object_visitor_.PatchGcRoot(&method->DeclaringClassRoot());
+    void** data_address = PointerAddress(method, ArtMethod::DataOffset(kPointerSize));
+    object_visitor_.PatchNativePointer(data_address);
+    void** entrypoint_address =
+        PointerAddress(method, ArtMethod::EntryPointFromQuickCompiledCodeOffset(kPointerSize));
+    code_visitor_.PatchNativePointer(entrypoint_address);
+  }
+
+ private:
+  void** PointerAddress(ArtMethod* method, MemberOffset offset) {
+    return reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(method) + offset.Uint32Value());
+  }
+
+  const ObjectVisitor object_visitor_;
+  const CodeVisitor code_visitor_;
+};
+
 // Helper class encapsulating loading, so we can access private ImageSpace members (this is a
 // nested class), but not declare functions in the header.
 class ImageSpace::Loader {
@@ -1441,43 +1716,20 @@ class ImageSpace::BootImageLoader {
     return true;
   }
 
-  template <typename T>
-  ALWAYS_INLINE static T* RelocatedAddress(T* src, uint32_t diff) {
-    DCHECK(src != nullptr);
-    return reinterpret_cast32<T*>(reinterpret_cast32<uint32_t>(src) + diff);
-  }
+ private:
+  class RelocateVisitor {
+   public:
+    explicit RelocateVisitor(uint32_t diff) : diff_(diff) {}
 
-  template <bool kMayBeNull = true, typename T>
-  ALWAYS_INLINE static void PatchGcRoot(uint32_t diff, /*inout*/GcRoot<T>* root)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    static_assert(sizeof(GcRoot<mirror::Class*>) == sizeof(uint32_t), "GcRoot size check");
-    T* old_value = root->template Read<kWithoutReadBarrier>();
-    DCHECK(kMayBeNull || old_value != nullptr);
-    if (!kMayBeNull || old_value != nullptr) {
-      *root = GcRoot<T>(RelocatedAddress(old_value, diff));
+    template <typename T>
+    ALWAYS_INLINE T* operator()(T* src) const {
+      DCHECK(src != nullptr);
+      return reinterpret_cast32<T*>(reinterpret_cast32<uint32_t>(src) + diff_);
     }
-  }
 
-  template <PointerSize kPointerSize, bool kMayBeNull = true, typename T>
-  ALWAYS_INLINE static void PatchNativePointer(uint32_t diff, /*inout*/T** entry) {
-    if (kPointerSize == PointerSize::k64) {
-      uint64_t* raw_entry = reinterpret_cast<uint64_t*>(entry);
-      T* old_value = reinterpret_cast64<T*>(*raw_entry);
-      DCHECK(kMayBeNull || old_value != nullptr);
-      if (!kMayBeNull || old_value != nullptr) {
-        T* new_value = RelocatedAddress(old_value, diff);
-        *raw_entry = reinterpret_cast64<uint64_t>(new_value);
-      }
-    } else {
-      uint32_t* raw_entry = reinterpret_cast<uint32_t*>(entry);
-      T* old_value = reinterpret_cast32<T*>(*raw_entry);
-      DCHECK(kMayBeNull || old_value != nullptr);
-      if (!kMayBeNull || old_value != nullptr) {
-        T* new_value = RelocatedAddress(old_value, diff);
-        *raw_entry = reinterpret_cast32<uint32_t>(new_value);
-      }
-    }
-  }
+   private:
+    const uint32_t diff_;
+  };
 
   class PatchedObjectsMap {
    public:
@@ -1514,258 +1766,20 @@ class ImageSpace::BootImageLoader {
     BitMemoryRegion visited_objects_;
   };
 
-  class PatchArtFieldVisitor final : public ArtFieldVisitor {
-   public:
-    explicit PatchArtFieldVisitor(uint32_t diff)
-        : diff_(diff) {}
-
-    void Visit(ArtField* field) override REQUIRES_SHARED(Locks::mutator_lock_) {
-      PatchGcRoot</*kMayBeNull=*/ false>(diff_, &field->DeclaringClassRoot());
-    }
-
-   private:
-    const uint32_t diff_;
-  };
-
-  template <PointerSize kPointerSize>
-  class PatchArtMethodVisitor final : public ArtMethodVisitor {
-   public:
-    explicit PatchArtMethodVisitor(uint32_t diff)
-        : diff_(diff) {}
-
-    void Visit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_) {
-      PatchGcRoot(diff_, &method->DeclaringClassRoot());
-      void** data_address = PointerAddress(method, ArtMethod::DataOffset(kPointerSize));
-      PatchNativePointer<kPointerSize>(diff_, data_address);
-      void** entrypoint_address =
-          PointerAddress(method, ArtMethod::EntryPointFromQuickCompiledCodeOffset(kPointerSize));
-      PatchNativePointer<kPointerSize>(diff_, entrypoint_address);
-    }
-
-   private:
-    void** PointerAddress(ArtMethod* method, MemberOffset offset) {
-      return reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(method) + offset.Uint32Value());
-    }
-
-    const uint32_t diff_;
-  };
-
+  template <typename ReferenceVisitor>
   class ClassTableVisitor final {
    public:
-    explicit ClassTableVisitor(uint32_t diff) : diff_(diff) {}
+    explicit ClassTableVisitor(const ReferenceVisitor& reference_visitor)
+        : reference_visitor_(reference_visitor) {}
 
     void VisitRoot(mirror::CompressedReference<mirror::Object>* root) const
         REQUIRES_SHARED(Locks::mutator_lock_) {
       DCHECK(root->AsMirrorPtr() != nullptr);
-      root->Assign(RelocatedAddress(root->AsMirrorPtr(), diff_));
+      root->Assign(reference_visitor_(root->AsMirrorPtr()));
     }
 
    private:
-    const uint32_t diff_;
-  };
-
-  template <PointerSize kPointerSize>
-  class PatchObjectVisitor final {
-   public:
-    explicit PatchObjectVisitor(uint32_t diff)
-        : diff_(diff) {}
-
-    void VisitClass(mirror::Class* klass) REQUIRES_SHARED(Locks::mutator_lock_) {
-      // A mirror::Class object consists of
-      //  - instance fields inherited from j.l.Object,
-      //  - instance fields inherited from j.l.Class,
-      //  - embedded tables (vtable, interface method table),
-      //  - static fields of the class itself.
-      // The reference fields are at the start of each field section (this is how the
-      // ClassLinker orders fields; except when that would create a gap between superclass
-      // fields and the first reference of the subclass due to alignment, it can be filled
-      // with smaller fields - but that's not the case for j.l.Object and j.l.Class).
-
-      DCHECK_ALIGNED(klass, kObjectAlignment);
-      static_assert(IsAligned<kHeapReferenceSize>(kObjectAlignment), "Object alignment check.");
-      // First, patch the `klass->klass_`, known to be a reference to the j.l.Class.class.
-      // This should be the only reference field in j.l.Object and we assert that below.
-      PatchReferenceField</*kMayBeNull=*/ false>(klass, mirror::Object::ClassOffset());
-      // Then patch the reference instance fields described by j.l.Class.class.
-      // Use the sizeof(Object) to determine where these reference fields start;
-      // this is the same as `class_class->GetFirstReferenceInstanceFieldOffset()`
-      // after patching but the j.l.Class may not have been patched yet.
-      mirror::Class* class_class = klass->GetClass<kVerifyNone, kWithoutReadBarrier>();
-      size_t num_reference_instance_fields = class_class->NumReferenceInstanceFields<kVerifyNone>();
-      DCHECK_NE(num_reference_instance_fields, 0u);
-      static_assert(IsAligned<kHeapReferenceSize>(sizeof(mirror::Object)), "Size alignment check.");
-      MemberOffset instance_field_offset(sizeof(mirror::Object));
-      for (size_t i = 0; i != num_reference_instance_fields; ++i) {
-        PatchReferenceField(klass, instance_field_offset);
-        static_assert(sizeof(mirror::HeapReference<mirror::Object>) == kHeapReferenceSize,
-                      "Heap reference sizes equality check.");
-        instance_field_offset =
-            MemberOffset(instance_field_offset.Uint32Value() + kHeapReferenceSize);
-      }
-      // Now that we have patched the `super_class_`, if this is the j.l.Class.class,
-      // we can get a reference to j.l.Object.class and assert that it has only one
-      // reference instance field (the `klass_` patched above).
-      if (kIsDebugBuild && klass == class_class) {
-        ObjPtr<mirror::Class> object_class =
-            klass->GetSuperClass<kVerifyNone, kWithoutReadBarrier>();
-        CHECK_EQ(object_class->NumReferenceInstanceFields<kVerifyNone>(), 1u);
-      }
-      // Then patch static fields.
-      size_t num_reference_static_fields = klass->NumReferenceStaticFields<kVerifyNone>();
-      if (num_reference_static_fields != 0u) {
-        MemberOffset static_field_offset =
-            klass->GetFirstReferenceStaticFieldOffset<kVerifyNone>(kPointerSize);
-        for (size_t i = 0; i != num_reference_static_fields; ++i) {
-          PatchReferenceField(klass, static_field_offset);
-          static_assert(sizeof(mirror::HeapReference<mirror::Object>) == kHeapReferenceSize,
-                        "Heap reference sizes equality check.");
-          static_field_offset =
-              MemberOffset(static_field_offset.Uint32Value() + kHeapReferenceSize);
-        }
-      }
-      // Then patch native pointers.
-      klass->FixupNativePointers<kVerifyNone>(klass, kPointerSize, *this);
-    }
-
-    template <typename T>
-    T* operator()(T* ptr, void** dest_addr ATTRIBUTE_UNUSED) const
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      if (ptr != nullptr) {
-        ptr = RelocatedAddress(ptr, diff_);
-      }
-      return ptr;
-    }
-
-    void VisitPointerArray(mirror::PointerArray* pointer_array)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      // Fully patch the pointer array, including the `klass_` field.
-      PatchReferenceField</*kMayBeNull=*/ false>(pointer_array, mirror::Object::ClassOffset());
-
-      int32_t length = pointer_array->GetLength<kVerifyNone>();
-      for (int32_t i = 0; i != length; ++i) {
-        ArtMethod** method_entry = reinterpret_cast<ArtMethod**>(
-            pointer_array->ElementAddress<kVerifyNone>(i, kPointerSize));
-        PatchNativePointer<kPointerSize, /*kMayBeNull=*/ false>(diff_, method_entry);
-      }
-    }
-
-    void VisitObject(mirror::Object* object) REQUIRES_SHARED(Locks::mutator_lock_) {
-      // Visit all reference fields.
-      object->VisitReferences</*kVisitNativeRoots=*/ false,
-                              kVerifyNone,
-                              kWithoutReadBarrier>(*this, *this);
-      // This function should not be called for classes.
-      DCHECK(!object->IsClass<kVerifyNone>());
-    }
-
-    // Visitor for VisitReferences().
-    ALWAYS_INLINE void operator()(mirror::Object* object, MemberOffset field_offset, bool is_static)
-        const REQUIRES_SHARED(Locks::mutator_lock_) {
-      DCHECK(!is_static);
-      PatchReferenceField(object, field_offset);
-    }
-    // Visitor for VisitReferences(), java.lang.ref.Reference case.
-    ALWAYS_INLINE void operator()(ObjPtr<mirror::Class> klass, mirror::Reference* ref) const
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      DCHECK(klass->IsTypeOfReferenceClass());
-      this->operator()(ref, mirror::Reference::ReferentOffset(), /*is_static=*/ false);
-    }
-    // Ignore class native roots; not called from VisitReferences() for kVisitNativeRoots == false.
-    void VisitRootIfNonNull(mirror::CompressedReference<mirror::Object>* root ATTRIBUTE_UNUSED)
-        const {}
-    void VisitRoot(mirror::CompressedReference<mirror::Object>* root ATTRIBUTE_UNUSED) const {}
-
-    void VisitDexCacheArrays(mirror::DexCache* dex_cache) REQUIRES_SHARED(Locks::mutator_lock_) {
-      FixupDexCacheArray<mirror::StringDexCacheType>(dex_cache,
-                                                     mirror::DexCache::StringsOffset(),
-                                                     dex_cache->NumStrings<kVerifyNone>());
-      FixupDexCacheArray<mirror::TypeDexCacheType>(dex_cache,
-                                                   mirror::DexCache::ResolvedTypesOffset(),
-                                                   dex_cache->NumResolvedTypes<kVerifyNone>());
-      FixupDexCacheArray<mirror::MethodDexCacheType>(dex_cache,
-                                                     mirror::DexCache::ResolvedMethodsOffset(),
-                                                     dex_cache->NumResolvedMethods<kVerifyNone>());
-      FixupDexCacheArray<mirror::FieldDexCacheType>(dex_cache,
-                                                    mirror::DexCache::ResolvedFieldsOffset(),
-                                                    dex_cache->NumResolvedFields<kVerifyNone>());
-      FixupDexCacheArray<mirror::MethodTypeDexCacheType>(
-          dex_cache,
-          mirror::DexCache::ResolvedMethodTypesOffset(),
-          dex_cache->NumResolvedMethodTypes<kVerifyNone>());
-      FixupDexCacheArray<GcRoot<mirror::CallSite>>(
-          dex_cache,
-          mirror::DexCache::ResolvedCallSitesOffset(),
-          dex_cache->NumResolvedCallSites<kVerifyNone>());
-      FixupDexCacheArray<GcRoot<mirror::String>>(
-          dex_cache,
-          mirror::DexCache::PreResolvedStringsOffset(),
-          dex_cache->NumPreResolvedStrings<kVerifyNone>());
-    }
-
-   private:
-    template <bool kMayBeNull = true>
-    ALWAYS_INLINE void PatchReferenceField(mirror::Object* object, MemberOffset offset) const
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      mirror::Object* old_value =
-          object->GetFieldObject<mirror::Object, kVerifyNone, kWithoutReadBarrier>(offset);
-      DCHECK(kMayBeNull || old_value != nullptr);
-      if (!kMayBeNull || old_value != nullptr) {
-        mirror::Object* new_value = RelocatedAddress(old_value, diff_);
-        object->SetFieldObjectWithoutWriteBarrier</*kTransactionActive=*/ false,
-                                                  /*kCheckTransaction=*/ true,
-                                                  kVerifyNone>(offset, new_value);
-      }
-    }
-
-    template <typename T>
-    void FixupDexCacheArrayEntry(std::atomic<mirror::DexCachePair<T>>* array, uint32_t index)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      static_assert(sizeof(std::atomic<mirror::DexCachePair<T>>) == sizeof(mirror::DexCachePair<T>),
-                    "Size check for removing std::atomic<>.");
-      PatchGcRoot(diff_, &(reinterpret_cast<mirror::DexCachePair<T>*>(array)[index].object));
-    }
-
-    template <typename T>
-    void FixupDexCacheArrayEntry(std::atomic<mirror::NativeDexCachePair<T>>* array, uint32_t index)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      static_assert(sizeof(std::atomic<mirror::NativeDexCachePair<T>>) ==
-                        sizeof(mirror::NativeDexCachePair<T>),
-                    "Size check for removing std::atomic<>.");
-      mirror::NativeDexCachePair<T> pair =
-          mirror::DexCache::GetNativePairPtrSize(array, index, kPointerSize);
-      if (pair.object != nullptr) {
-        pair.object = RelocatedAddress(pair.object, diff_);
-        mirror::DexCache::SetNativePairPtrSize(array, index, pair, kPointerSize);
-      }
-    }
-
-    void FixupDexCacheArrayEntry(GcRoot<mirror::CallSite>* array, uint32_t index)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      PatchGcRoot(diff_, &array[index]);
-    }
-
-    void FixupDexCacheArrayEntry(GcRoot<mirror::String>* array, uint32_t index)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      PatchGcRoot(diff_, &array[index]);
-    }
-
-    template <typename EntryType>
-    void FixupDexCacheArray(mirror::DexCache* dex_cache,
-                            MemberOffset array_offset,
-                            uint32_t size) REQUIRES_SHARED(Locks::mutator_lock_) {
-      EntryType* old_array =
-          reinterpret_cast64<EntryType*>(dex_cache->GetField64<kVerifyNone>(array_offset));
-      DCHECK_EQ(old_array != nullptr, size != 0u);
-      if (old_array != nullptr) {
-        EntryType* new_array = RelocatedAddress(old_array, diff_);
-        dex_cache->SetField64<kVerifyNone>(array_offset, reinterpret_cast64<uint64_t>(new_array));
-        for (uint32_t i = 0; i != size; ++i) {
-          FixupDexCacheArrayEntry(new_array, i);
-        }
-      }
-    }
-
-    const uint32_t diff_;
+    ReferenceVisitor reference_visitor_;
   };
 
   template <PointerSize kPointerSize>
@@ -1773,7 +1787,9 @@ class ImageSpace::BootImageLoader {
                                uint32_t diff) REQUIRES_SHARED(Locks::mutator_lock_) {
     PatchedObjectsMap patched_objects(spaces.front()->Begin(),
                                       spaces.back()->End() - spaces.front()->Begin());
-    PatchObjectVisitor<kPointerSize> patch_object_visitor(diff);
+    using PatchRelocateVisitor = PatchObjectVisitor<kPointerSize, RelocateVisitor>;
+    RelocateVisitor relocate_visitor(diff);
+    PatchRelocateVisitor patch_object_visitor(relocate_visitor);
 
     mirror::Class* dcheck_class_class = nullptr;  // Used only for a DCHECK().
     for (size_t s = 0u, size = spaces.size(); s != size; ++s) {
@@ -1787,13 +1803,14 @@ class ImageSpace::BootImageLoader {
 
       // Patch fields and methods.
       const ImageHeader& image_header = space->GetImageHeader();
-      PatchArtFieldVisitor field_visitor(diff);
+      PatchArtFieldVisitor<PatchRelocateVisitor> field_visitor(patch_object_visitor);
       image_header.VisitPackedArtFields(&field_visitor, space->Begin());
-      PatchArtMethodVisitor<kPointerSize> method_visitor(diff);
+      PatchArtMethodVisitor<kPointerSize, PatchRelocateVisitor, PatchRelocateVisitor>
+          method_visitor(patch_object_visitor, patch_object_visitor);
       image_header.VisitPackedArtMethods(&method_visitor, space->Begin(), kPointerSize);
-      auto method_table_visitor = [diff](ArtMethod* method) {
+      auto method_table_visitor = [&](ArtMethod* method) {
         DCHECK(method != nullptr);
-        return RelocatedAddress(method, diff);
+        return relocate_visitor(method);
       };
       image_header.VisitPackedImTables(method_table_visitor, space->Begin(), kPointerSize);
       image_header.VisitPackedImtConflictTables(method_table_visitor, space->Begin(), kPointerSize);
@@ -1804,7 +1821,7 @@ class ImageSpace::BootImageLoader {
         size_t read_count;
         InternTable::UnorderedSet temp_set(data, /*make_copy_of_data=*/ false, &read_count);
         for (GcRoot<mirror::String>& slot : temp_set) {
-          PatchGcRoot</*kMayBeNull=*/ false>(diff, &slot);
+          patch_object_visitor.template PatchGcRoot</*kMayBeNull=*/ false>(&slot);
         }
       }
 
@@ -1815,7 +1832,7 @@ class ImageSpace::BootImageLoader {
         size_t read_count;
         ClassTable::ClassSet temp_set(data, /*make_copy_of_data=*/ false, &read_count);
         DCHECK(!temp_set.empty());
-        ClassTableVisitor class_table_visitor(diff);
+        ClassTableVisitor class_table_visitor(relocate_visitor);
         for (ClassTable::TableSlot& slot : temp_set) {
           slot.VisitRoot(class_table_visitor);
           mirror::Class* klass = slot.Read<kWithoutReadBarrier>();
@@ -1844,7 +1861,7 @@ class ImageSpace::BootImageLoader {
                   iftable->GetMethodArrayOrNull<kVerifyNone, kWithoutReadBarrier>(i);
               if (unpatched_ifarray != nullptr) {
                 // The iftable has not been patched, so we need to explicitly adjust the pointer.
-                mirror::PointerArray* ifarray = RelocatedAddress(unpatched_ifarray, diff);
+                mirror::PointerArray* ifarray = relocate_visitor(unpatched_ifarray);
                 if (!patched_objects.IsVisited(ifarray)) {
                   patched_objects.MarkVisited(ifarray);
                   patch_object_visitor.VisitPointerArray(ifarray);
@@ -1900,7 +1917,7 @@ class ImageSpace::BootImageLoader {
             ObjPtr<mirror::Executable> as_executable =
                 ObjPtr<mirror::Executable>::DownCast(MakeObjPtr(object));
             ArtMethod* unpatched_method = as_executable->GetArtMethod<kVerifyNone>();
-            ArtMethod* patched_method = RelocatedAddress(unpatched_method, diff);
+            ArtMethod* patched_method = relocate_visitor(unpatched_method);
             as_executable->SetArtMethod</*kTransactionActive=*/ false,
                                         /*kCheckTransaction=*/ true,
                                         kVerifyNone>(patched_method);
