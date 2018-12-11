@@ -100,7 +100,7 @@ static decltype(&sigprocmask64) linked_sigprocmask64;
 
 template<typename T>
 static void lookup_next_symbol(T* output, T wrapper, const char* name) {
-  void* sym = dlsym(RTLD_NEXT, name);
+  void* sym = dlsym(RTLD_NEXT, name);  // NOLINT glibc triggers cert-dcl16-c with RTLD_NEXT.
   if (sym == nullptr) {
     sym = dlsym(RTLD_DEFAULT, name);
     if (sym == wrapper || sym == sigaction) {
