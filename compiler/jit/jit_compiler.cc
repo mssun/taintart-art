@@ -142,10 +142,11 @@ extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t cou
     const ArrayRef<mirror::Class*> types_array(types, count);
     std::vector<uint8_t> elf_file = debug::WriteDebugElfFileForClasses(
         kRuntimeISA, compiler_options.GetInstructionSetFeatures(), types_array);
-    MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
     // We never free debug info for types, so we don't need to provide a handle
     // (which would have been otherwise used as identifier to remove it later).
-    AddNativeDebugInfoForJit(nullptr /* handle */, elf_file);
+    AddNativeDebugInfoForJit(Thread::Current(),
+                             /*code_ptr=*/ nullptr,
+                             elf_file);
   }
 }
 
