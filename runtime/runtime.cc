@@ -320,7 +320,8 @@ Runtime::~Runtime() {
   }
 
   if (dump_gc_performance_on_shutdown_) {
-    heap_->CalculateWeightedAllocatedBytes();
+    heap_->CalculatePreGcWeightedAllocatedBytes();
+    heap_->CalculatePostGcWeightedAllocatedBytes();
     uint64_t process_cpu_end_time = ProcessCpuNanoTime();
     ScopedLogSeverity sls(LogSeverity::INFO);
     // This can't be called from the Heap destructor below because it
@@ -335,9 +336,15 @@ Runtime::~Runtime() {
         << " out of process CPU time " << PrettyDuration(process_cpu_time)
         << " (" << ratio << ")"
         << "\n";
-    double weighted_allocated_bytes = heap_->GetWeightedAllocatedBytes() / process_cpu_time;
-    LOG_STREAM(INFO) << "Weighted bytes allocated over CPU time: "
-        << " (" <<  PrettySize(weighted_allocated_bytes)  << ")"
+    double pre_gc_weighted_allocated_bytes =
+        heap_->GetPreGcWeightedAllocatedBytes() / process_cpu_time;
+    double post_gc_weighted_allocated_bytes =
+        heap_->GetPostGcWeightedAllocatedBytes() / process_cpu_time;
+
+    LOG_STREAM(INFO) << "Pre GC weighted bytes allocated over CPU time: "
+        << " (" <<  PrettySize(pre_gc_weighted_allocated_bytes)  << ")";
+    LOG_STREAM(INFO) << "Post GC weighted bytes allocated over CPU time: "
+        << " (" <<  PrettySize(post_gc_weighted_allocated_bytes)  << ")"
         << "\n";
   }
 
