@@ -126,11 +126,11 @@ extern "C" void jit_unload(void* handle) {
 }
 
 extern "C" bool jit_compile_method(
-    void* handle, ArtMethod* method, Thread* self, bool osr)
+    void* handle, ArtMethod* method, Thread* self, bool baseline, bool osr)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   auto* jit_compiler = reinterpret_cast<JitCompiler*>(handle);
   DCHECK(jit_compiler != nullptr);
-  return jit_compiler->CompileMethod(self, method, osr);
+  return jit_compiler->CompileMethod(self, method, baseline, osr);
 }
 
 extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t count)
@@ -181,7 +181,7 @@ JitCompiler::~JitCompiler() {
   }
 }
 
-bool JitCompiler::CompileMethod(Thread* self, ArtMethod* method, bool osr) {
+bool JitCompiler::CompileMethod(Thread* self, ArtMethod* method, bool baseline, bool osr) {
   SCOPED_TRACE << "JIT compiling " << method->PrettyMethod();
 
   DCHECK(!method->IsProxyMethod());
@@ -198,7 +198,7 @@ bool JitCompiler::CompileMethod(Thread* self, ArtMethod* method, bool osr) {
     TimingLogger::ScopedTiming t2("Compiling", &logger);
     JitCodeCache* const code_cache = runtime->GetJit()->GetCodeCache();
     success = compiler_driver_->GetCompiler()->JitCompile(
-        self, code_cache, method, /* baseline= */ false, osr, jit_logger_.get());
+        self, code_cache, method, baseline, osr, jit_logger_.get());
   }
 
   // Trim maps to reduce memory usage.
