@@ -189,6 +189,8 @@ class ImageSpace : public MemMapSpace {
 
  private:
   class BootImageLoader;
+  template <typename ReferenceVisitor>
+  class ClassTableVisitor;
   class Loader;
   template <typename PatchObjectVisitor>
   class PatchArtFieldVisitor;
