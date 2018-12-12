@@ -90,13 +90,14 @@ void GarbageCollector::Run(GcCause gc_cause, bool clear_soft_references) {
   Thread* self = Thread::Current();
   uint64_t start_time = NanoTime();
   uint64_t thread_cpu_start_time = ThreadCpuNanoTime();
-  GetHeap()->CalculateWeightedAllocatedBytes();
+  GetHeap()->CalculatePreGcWeightedAllocatedBytes();
   Iteration* current_iteration = GetCurrentIteration();
   current_iteration->Reset(gc_cause, clear_soft_references);
   // Note transaction mode is single-threaded and there's no asynchronous GC and this flag doesn't
   // change in the middle of a GC.
   is_transaction_active_ = Runtime::Current()->IsActiveTransaction();
   RunPhases();  // Run all the GC phases.
+  GetHeap()->CalculatePostGcWeightedAllocatedBytes();
   // Add the current timings to the cumulative timings.
   cumulative_timings_.AddLogger(*GetTimings());
   // Update cumulative statistics with how many bytes the GC iteration freed.
