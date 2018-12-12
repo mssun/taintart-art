@@ -2927,7 +2927,7 @@ void IntrinsicLocationsBuilderARM64::VisitCRC32Update(HInvoke* invoke) {
 
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RequiresRegister());
-  locations->SetOut(Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
 }
 
 // Lower the invoke of CRC32.update(int crc, int b).
@@ -2945,9 +2945,13 @@ void IntrinsicCodeGeneratorARM64::VisitCRC32Update(HInvoke* invoke) {
   //   result = crc32_for_byte(crc, b)
   //   crc = ~result
   // It is directly lowered to three instructions.
-  __ Mvn(out, crc);
-  __ Crc32b(out, out, val);
-  __ Mvn(out, out);
+
+  UseScratchRegisterScope temps(masm);
+  Register tmp = temps.AcquireSameSizeAs(out);
+
+  __ Mvn(tmp, crc);
+  __ Crc32b(tmp, tmp, val);
+  __ Mvn(out, tmp);
 }
 
 // The threshold for sizes of arrays to use the library provided implementation
