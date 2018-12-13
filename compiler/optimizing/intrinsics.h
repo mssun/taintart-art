@@ -243,7 +243,8 @@ void IntrinsicCodeGenerator ## Arch::Visit ## Name(HInvoke* invoke ATTRIBUTE_UNU
 // compilation.
 #define UNREACHABLE_INTRINSIC(Arch, Name)                                \
 void IntrinsicLocationsBuilder ## Arch::Visit ## Name(HInvoke* invoke) { \
-  if (!codegen_->GetCompilerOptions().IsBaseline()) {                    \
+  if (Runtime::Current()->IsAotCompiler() &&                             \
+      !codegen_->GetCompilerOptions().IsBaseline()) {                    \
     LOG(FATAL) << "Unreachable: intrinsic " << invoke->GetIntrinsic()    \
                << " should have been converted to HIR";                  \
   }                                                                      \

@@ -128,7 +128,7 @@ extern "C" JNIEXPORT void JNICALL Java_Main_ensureHasOsrCode(JNIEnv* env,
           // Sleep to yield to the compiler thread.
           usleep(1000);
           // Will either ensure it's compiled or do the compilation itself.
-          jit->CompileMethod(m, Thread::Current(), /* osr */ true);
+          jit->CompileMethod(m, Thread::Current(), /*baseline=*/ false, /*osr=*/ true);
         }
       });
 }
