@@ -78,6 +78,8 @@ class ApiList {
   Value value_;
 
  public:
+  ApiList() : ApiList(Value::kInvalid) {}
+
   static ApiList Whitelist() { return ApiList(Value::kWhitelist); }
   static ApiList Greylist() { return ApiList(Value::kGreylist); }
   static ApiList Blacklist() { return ApiList(Value::kBlacklist); }
