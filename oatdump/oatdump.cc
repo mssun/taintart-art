@@ -473,9 +473,6 @@ class OatDumper {
                            GetQuickToInterpreterBridgeOffset);
 #undef DUMP_OAT_HEADER_OFFSET
 
-    os << "BOOT IMAGE CHECKSUM:\n";
-    os << StringPrintf("0x%08x\n\n", oat_header.GetBootImageChecksum());
-
     // Print the key-value store.
     {
       os << "KEY VALUE STORE:\n";
