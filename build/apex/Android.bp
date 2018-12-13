@@ -19,6 +19,11 @@ art_runtime_base_native_shared_libs = [
     "libopenjdkjvmti",
     "libadbconnection",
 ]
+bionic_native_shared_libs = [
+    "libc",
+    "libm",
+    "libdl",
+]
 // - Fake library that avoids namespace issues and gives some warnings for nosy apps.
 art_runtime_fake_native_shared_libs = [
      // FIXME: Does not work as-is, because `libart_fake` is defined in libart_fake/Android.mk,
@@ -102,7 +107,8 @@ apex {
     compile_multilib: "both",
     manifest: "manifest.json",
     native_shared_libs: art_runtime_base_native_shared_libs
-        + art_runtime_fake_native_shared_libs,
+        + art_runtime_fake_native_shared_libs
+        + bionic_native_shared_libs,
     multilib: {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
@@ -130,7 +136,8 @@ apex {
     manifest: "manifest.json",
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_fake_native_shared_libs
-        + art_runtime_debug_native_shared_libs,
+        + art_runtime_debug_native_shared_libs
+        + bionic_native_shared_libs,
     multilib: {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
