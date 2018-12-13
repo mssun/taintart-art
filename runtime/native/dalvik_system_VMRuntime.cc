@@ -271,7 +271,7 @@ static void VMRuntime_setTargetSdkVersionNative(JNIEnv*, jobject, jint target_sd
 #endif
 }
 
-static void VMRuntime_registerNativeAllocation(JNIEnv* env, jobject, jint bytes) {
+static void VMRuntime_registerNativeAllocationInternal(JNIEnv* env, jobject, jint bytes) {
   if (UNLIKELY(bytes < 0)) {
     ScopedObjectAccess soa(env);
     ThrowRuntimeException("allocation size negative %d", bytes);
@@ -280,17 +280,25 @@ static void VMRuntime_registerNativeAllocation(JNIEnv* env, jobject, jint bytes)
   Runtime::Current()->GetHeap()->RegisterNativeAllocation(env, static_cast<size_t>(bytes));
 }
 
-static void VMRuntime_registerSensitiveThread(JNIEnv*, jobject) {
-  Runtime::Current()->RegisterSensitiveThread();
-}
-
-static void VMRuntime_registerNativeFree(JNIEnv* env, jobject, jint bytes) {
+static void VMRuntime_registerNativeFreeInternal(JNIEnv* env, jobject, jint bytes) {
   if (UNLIKELY(bytes < 0)) {
     ScopedObjectAccess soa(env);
     ThrowRuntimeException("allocation size negative %d", bytes);
     return;
   }
   Runtime::Current()->GetHeap()->RegisterNativeFree(env, static_cast<size_t>(bytes));
+}
+
+static jint VMRuntime_getNotifyNativeInterval(JNIEnv*, jclass) {
+  return Runtime::Current()->GetHeap()->GetNotifyNativeInterval();
+}
+
+static void VMRuntime_notifyNativeAllocationsInternal(JNIEnv* env, jobject) {
+  Runtime::Current()->GetHeap()->NotifyNativeAllocations(env);
+}
+
+static void VMRuntime_registerSensitiveThread(JNIEnv*, jobject) {
+  Runtime::Current()->RegisterSensitiveThread();
 }
 
 static void VMRuntime_updateProcessState(JNIEnv*, jobject, jint process_state) {
@@ -710,9 +718,11 @@ static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(VMRuntime, newUnpaddedArray, "(Ljava/lang/Class;I)Ljava/lang/Object;"),
   NATIVE_METHOD(VMRuntime, properties, "()[Ljava/lang/String;"),
   NATIVE_METHOD(VMRuntime, setTargetSdkVersionNative, "(I)V"),
-  NATIVE_METHOD(VMRuntime, registerNativeAllocation, "(I)V"),
+  NATIVE_METHOD(VMRuntime, registerNativeAllocationInternal, "(I)V"),
+  NATIVE_METHOD(VMRuntime, registerNativeFreeInternal, "(I)V"),
+  NATIVE_METHOD(VMRuntime, getNotifyNativeInterval, "()I"),
+  NATIVE_METHOD(VMRuntime, notifyNativeAllocationsInternal, "()V"),
   NATIVE_METHOD(VMRuntime, registerSensitiveThread, "()V"),
-  NATIVE_METHOD(VMRuntime, registerNativeFree, "(I)V"),
   NATIVE_METHOD(VMRuntime, requestConcurrentGC, "()V"),
   NATIVE_METHOD(VMRuntime, requestHeapTrim, "()V"),
   NATIVE_METHOD(VMRuntime, runHeapTasks, "()V"),

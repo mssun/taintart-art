@@ -214,7 +214,7 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
   if (AllocatorMayHaveConcurrentGC(allocator) && IsGcConcurrent()) {
     // New_num_bytes_allocated is zero if we didn't update num_bytes_allocated_.
     // That's fine.
-    CheckConcurrentGC(self, new_num_bytes_allocated, &obj);
+    CheckConcurrentGCForJava(self, new_num_bytes_allocated, &obj);
   }
   VerifyObject(obj);
   self->VerifyStack();
@@ -254,8 +254,8 @@ inline mirror::Object* Heap::TryToAllocate(Thread* self,
                                            size_t* bytes_allocated,
                                            size_t* usable_size,
                                            size_t* bytes_tl_bulk_allocated) {
-  if (allocator_type != kAllocatorTypeTLAB &&
-      allocator_type != kAllocatorTypeRegionTLAB &&
+  if (allocator_type != kAllocatorTypeRegionTLAB &&
+      allocator_type != kAllocatorTypeTLAB &&
       allocator_type != kAllocatorTypeRosAlloc &&
       UNLIKELY(IsOutOfMemoryOnAllocation(allocator_type, alloc_size, kGrow))) {
     return nullptr;
@@ -396,30 +396,46 @@ inline bool Heap::ShouldAllocLargeObject(ObjPtr<mirror::Class> c, size_t byte_co
 inline bool Heap::IsOutOfMemoryOnAllocation(AllocatorType allocator_type,
                                             size_t alloc_size,
                                             bool grow) {
-  size_t new_footprint = num_bytes_allocated_.load(std::memory_order_relaxed) + alloc_size;
-  if (UNLIKELY(new_footprint > max_allowed_footprint_)) {
-    if (UNLIKELY(new_footprint > growth_limit_)) {
+  size_t old_target = target_footprint_.load(std::memory_order_relaxed);
+  while (true) {
+    size_t old_allocated = num_bytes_allocated_.load(std::memory_order_relaxed);
+    size_t new_footprint = old_allocated + alloc_size;
+    // Tests against heap limits are inherently approximate, since multiple allocations may
+    // race, and this is not atomic with the allocation.
+    if (UNLIKELY(new_footprint <= old_target)) {
+      return false;
+    } else if (UNLIKELY(new_footprint > growth_limit_)) {
       return true;
     }
-    if (!AllocatorMayHaveConcurrentGC(allocator_type) || !IsGcConcurrent()) {
-      if (!grow) {
+    // We are between target_footprint_ and growth_limit_ .
+    if (AllocatorMayHaveConcurrentGC(allocator_type) && IsGcConcurrent()) {
+      return false;
+    } else {
+      if (grow) {
+        if (target_footprint_.compare_exchange_weak(/*inout ref*/old_target, new_footprint,
+                                                    std::memory_order_relaxed)) {
+          VlogHeapGrowth(old_target, new_footprint, alloc_size);
+          return false;
+        }  // else try again.
+      } else {
         return true;
       }
-      // TODO: Grow for allocation is racy, fix it.
-      VlogHeapGrowth(max_allowed_footprint_, new_footprint, alloc_size);
-      max_allowed_footprint_ = new_footprint;
     }
   }
-  return false;
 }
 
-// Request a GC if new_num_bytes_allocated is sufficiently large.
-// A call with new_num_bytes_allocated == 0 is a fast no-op.
-inline void Heap::CheckConcurrentGC(Thread* self,
+inline bool Heap::ShouldConcurrentGCForJava(size_t new_num_bytes_allocated) {
+  // For a Java allocation, we only check whether the number of Java allocated bytes excceeds a
+  // threshold. By not considering native allocation here, we (a) ensure that Java heap bounds are
+  // maintained, and (b) reduce the cost of the check here.
+  return new_num_bytes_allocated >= concurrent_start_bytes_;
+}
+
+inline void Heap::CheckConcurrentGCForJava(Thread* self,
                                     size_t new_num_bytes_allocated,
                                     ObjPtr<mirror::Object>* obj) {
-  if (UNLIKELY(new_num_bytes_allocated >= concurrent_start_bytes_)) {
-    RequestConcurrentGCAndSaveObject(self, false, obj);
+  if (UNLIKELY(ShouldConcurrentGCForJava(new_num_bytes_allocated))) {
+    RequestConcurrentGCAndSaveObject(self, false /* force_full */, obj);
   }
 }
 
