@@ -326,7 +326,8 @@ inline void ImageTest::DoCompile(ImageHeader::StorageMode storage_mode,
           elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
         }
 
-        bool header_ok = oat_writer->WriteHeader(elf_writer->GetStream());
+        bool header_ok = oat_writer->WriteHeader(elf_writer->GetStream(),
+                                                 /*boot_image_checksum=*/ 0u);
         ASSERT_TRUE(header_ok);
 
         writer->UpdateOatFileHeader(i, oat_writer->GetOatHeader());

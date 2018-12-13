@@ -57,10 +57,9 @@ function boot_classpath_arg {
   done
 }
 
-# Note: This must start with the CORE_IMG_JARS in Android.common_path.mk
+# Note: This must match the TEST_CORE_JARS in Android.common_path.mk
 # because that's what we use for compiling the core.art image.
-# It may contain additional modules from TEST_CORE_JARS.
-BOOT_CLASSPATH_JARS="core-oj core-libart core-simple okhttp bouncycastle conscrypt"
+BOOT_CLASSPATH_JARS="core-oj core-libart core-simple conscrypt okhttp bouncycastle"
 
 DEPS="core-tests jsr166-tests mockito-target"
 
