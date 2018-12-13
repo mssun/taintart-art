@@ -543,7 +543,7 @@ else
 # under ASAN.
 $$(gtest_output): $$(gtest_exe) $$(gtest_deps)
 	$(hide) ($$(call ART_TEST_SKIP,$$(NAME)) && set -o pipefail && \
-		ASAN_OPTIONS=detect_leaks=1 timeout -k 120s -s SIGRTMIN+2 3600s
+		ASAN_OPTIONS=detect_leaks=1 timeout -k 120s -s SIGRTMIN+2 3600s \
 			$(HOST_OUT_EXECUTABLES)/timeout_dumper \
 				$$< --gtest_output=xml:$$@ 2>&1 | tee $$<.tmp.out >&2 && \
 		{ $$(call ART_TEST_PASSED,$$(NAME)) ; rm $$<.tmp.out ; }) || \
