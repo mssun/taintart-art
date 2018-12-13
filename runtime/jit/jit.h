@@ -174,6 +174,7 @@ class Jit {
 
   void CreateThreadPool();
   void DeleteThreadPool();
+  void WaitForWorkersToBeCreated();
 
   // Dump interesting info: #methods compiled, code vs data size, compile / verify cumulative
   // loggers.
