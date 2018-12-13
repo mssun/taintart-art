@@ -161,6 +161,13 @@ class ConcurrentCopying : public GarbageCollector {
   template <bool kNoUnEvac>
   void Scan(mirror::Object* to_ref) REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!mark_stack_lock_);
+  // Scan the reference fields of object 'obj' in the dirty cards during
+  // card-table scan. In addition to visiting the references, it also sets the
+  // read-barrier state to gray for Reference-type objects to ensure that
+  // GetReferent() called on these objects calls the read-barrier on the referent.
+  template <bool kNoUnEvac>
+  void ScanDirtyObject(mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!mark_stack_lock_);
   // Process a field.
   template <bool kNoUnEvac>
   void Process(mirror::Object* obj, MemberOffset offset)
