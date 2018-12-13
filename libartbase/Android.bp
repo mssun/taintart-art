@@ -177,9 +177,6 @@ art_cc_library {
     header_libs: [
         "libnativehelper_header_only",
     ],
-    include_dirs: [
-        "external/icu/icu4c/source/common",
-    ],
 }
 
 art_cc_test {
