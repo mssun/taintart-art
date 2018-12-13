@@ -47,19 +47,19 @@ extern "C" JNIEXPORT jlong JNICALL Java_art_Test1934_allocNativeMonitor(JNIEnv* 
                             jvmti_env,
                             jvmti_env->Allocate(sizeof(NativeMonitor),
                                                 reinterpret_cast<unsigned char**>(&mon)))) {
-    return -1l;
+    return -1L;
   }
   if (JvmtiErrorToException(env,
                             jvmti_env,
                             jvmti_env->CreateRawMonitor("test-1934 start",
                                                         &mon->start_monitor))) {
-    return -1l;
+    return -1L;
   }
   if (JvmtiErrorToException(env,
                             jvmti_env,
                             jvmti_env->CreateRawMonitor("test-1934 continue",
                                                         &mon->continue_monitor))) {
-    return -1l;
+    return -1L;
   }
   mon->should_continue = false;
   mon->should_start = false;
@@ -92,7 +92,7 @@ extern "C" JNIEXPORT void Java_art_Test1934_nativeWaitForOtherThread(JNIEnv* env
   while (!mon->should_continue) {
     if (JvmtiErrorToException(env,
                               jvmti_env,
-                              jvmti_env->RawMonitorWait(mon->continue_monitor, -1l))) {
+                              jvmti_env->RawMonitorWait(mon->continue_monitor, -1L))) {
       JvmtiErrorToException(env, jvmti_env, jvmti_env->RawMonitorExit(mon->continue_monitor));
       return;
     }
@@ -112,7 +112,7 @@ extern "C" JNIEXPORT void Java_art_Test1934_nativeDoInterleaved(JNIEnv* env,
   while (!mon->should_start) {
     if (JvmtiErrorToException(env,
                               jvmti_env,
-                              jvmti_env->RawMonitorWait(mon->start_monitor, -1l))) {
+                              jvmti_env->RawMonitorWait(mon->start_monitor, -1L))) {
       return;
     }
   }
