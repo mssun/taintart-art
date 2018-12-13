@@ -515,7 +515,8 @@ define define-art-gtest-rule-host
     $$($(3)ART_HOST_OUT_SHARED_LIBRARIES)/libopenjdkd$$(ART_HOST_SHLIB_EXTENSION) \
     $$(gtest_exe) \
     $$(ART_GTEST_$(1)_HOST_DEPS) \
-    $(foreach file,$(ART_GTEST_$(1)_DEX_DEPS),$(ART_TEST_HOST_GTEST_$(file)_DEX))
+    $(foreach file,$(ART_GTEST_$(1)_DEX_DEPS),$(ART_TEST_HOST_GTEST_$(file)_DEX)) \
+    $(HOST_OUT_EXECUTABLES)/timeout_dumper
 
   ART_TEST_HOST_GTEST_DEPENDENCIES += $$(gtest_deps)
 
@@ -528,7 +529,9 @@ $$(gtest_output): .KATI_IMPLICIT_OUTPUTS := $$(gtest_output)-nocache
 $$(gtest_output): NAME := $$(gtest_rule)
 ifeq (,$(SANITIZE_HOST))
 $$(gtest_output): $$(gtest_exe) $$(gtest_deps)
-	$(hide) ($$(call ART_TEST_SKIP,$$(NAME)) && $$< --gtest_output=xml:$$@ && \
+	$(hide) ($$(call ART_TEST_SKIP,$$(NAME)) && \
+		timeout -k 120s -s SIGRTMIN+2 2400s $(HOST_OUT_EXECUTABLES)/timeout_dumper \
+			$$< --gtest_output=xml:$$@ && \
 		$$(call ART_TEST_PASSED,$$(NAME))) || $$(call ART_TEST_FAILED,$$(NAME))
 else
 # Note: envsetup currently exports ASAN_OPTIONS=detect_leaks=0 to suppress leak detection, as some
@@ -540,7 +543,9 @@ else
 # under ASAN.
 $$(gtest_output): $$(gtest_exe) $$(gtest_deps)
 	$(hide) ($$(call ART_TEST_SKIP,$$(NAME)) && set -o pipefail && \
-		ASAN_OPTIONS=detect_leaks=1 $$< --gtest_output=xml:$$@ 2>&1 | tee $$<.tmp.out >&2 && \
+		ASAN_OPTIONS=detect_leaks=1 timeout -k 120s -s SIGRTMIN+2 3600s
+			$(HOST_OUT_EXECUTABLES)/timeout_dumper \
+				$$< --gtest_output=xml:$$@ 2>&1 | tee $$<.tmp.out >&2 && \
 		{ $$(call ART_TEST_PASSED,$$(NAME)) ; rm $$<.tmp.out ; }) || \
 		( grep -q AddressSanitizer $$<.tmp.out && export ANDROID_BUILD_TOP=`pwd` && \
 			{ echo "ABI: 'x86_64'" | cat - $$<.tmp.out | development/scripts/stack | tail -n 3000 ; } ; \
