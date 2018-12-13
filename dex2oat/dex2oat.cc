@@ -624,7 +624,6 @@ class Dex2Oat final {
   explicit Dex2Oat(TimingLogger* timings) :
       compiler_kind_(Compiler::kOptimizing),
       // Take the default set of instruction features from the build.
-      boot_image_checksum_(0),
       key_value_store_(nullptr),
       verification_results_(nullptr),
       runtime_(nullptr),
@@ -1437,17 +1436,22 @@ class Dex2Oat final {
 
     if (!IsBootImage()) {
       // When compiling an app, create the runtime early to retrieve
-      // the image location key needed for the oat header.
+      // the boot image checksums needed for the oat header.
       if (!CreateRuntime(std::move(runtime_options))) {
         return dex2oat::ReturnCode::kCreateRuntime;
       }
 
       if (CompilerFilter::DependsOnImageChecksum(compiler_options_->GetCompilerFilter())) {
         TimingLogger::ScopedTiming t3("Loading image checksum", timings_);
-        std::vector<ImageSpace*> image_spaces = Runtime::Current()->GetHeap()->GetBootImageSpaces();
-        boot_image_checksum_ = image_spaces[0]->GetImageHeader().GetImageChecksum();
-      } else {
-        boot_image_checksum_ = 0u;
+        Runtime* runtime = Runtime::Current();
+        key_value_store_->Put(OatHeader::kBootClassPathKey,
+                              android::base::Join(runtime->GetBootClassPathLocations(), ':'));
+        std::vector<ImageSpace*> image_spaces = runtime->GetHeap()->GetBootImageSpaces();
+        const std::vector<const DexFile*>& bcp_dex_files =
+            runtime->GetClassLinker()->GetBootClassPath();
+        key_value_store_->Put(
+            OatHeader::kBootClassPathChecksumsKey,
+            gc::space::ImageSpace::GetBootClassPathChecksums(image_spaces, bcp_dex_files));
       }
 
       // Open dex files for class path.
@@ -2015,7 +2019,7 @@ class Dex2Oat final {
           elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
         }
 
-        if (!oat_writer->WriteHeader(elf_writer->GetStream(), boot_image_checksum_)) {
+        if (!oat_writer->WriteHeader(elf_writer->GetStream())) {
           LOG(ERROR) << "Failed to write oat header to the ELF file " << oat_file->GetPath();
           return false;
         }
@@ -2646,7 +2650,6 @@ class Dex2Oat final {
   std::unique_ptr<CompilerOptions> compiler_options_;
   Compiler::Kind compiler_kind_;
 
-  uint32_t boot_image_checksum_;
   std::unique_ptr<SafeMap<std::string, std::string> > key_value_store_;
 
   std::unique_ptr<VerificationResults> verification_results_;
