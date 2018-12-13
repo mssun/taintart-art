@@ -1,0 +1,11 @@
+Allocate large numbers of huge BigIntegers in rapid succession. Most of the
+associated memory will be in the C++ heap. This makes sure that we trigger
+the garbage collector often enough to prevent us from running out of memory.
+
+The test allocates roughly 10GB of native memory, approximately 1MB of which
+will be live at any point. Basically all native memory deallocation is
+triggered by Java garbage collection.
+
+This test is a lot nastier than it looks. In particular, failure on target tends
+to exhaust device memory, and kill off all processes on the device, including the
+adb daemon :-( .

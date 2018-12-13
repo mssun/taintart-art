@@ -126,7 +126,6 @@ static constexpr bool kUseThreadLocalAllocationStack = true;
 
 class Heap {
  public:
-  // If true, measure the total allocation time.
   static constexpr size_t kDefaultStartingSize = kPageSize;
   static constexpr size_t kDefaultInitialSize = 2 * MB;
   static constexpr size_t kDefaultMaximumSize = 256 * MB;
@@ -154,6 +153,16 @@ class Heap {
 
   // Used so that we don't overflow the allocation time atomic integer.
   static constexpr size_t kTimeAdjust = 1024;
+
+  // Client should call NotifyNativeAllocation every kNotifyNativeInterval allocations.
+  // Should be chosen so that time_to_call_mallinfo / kNotifyNativeInterval is on the same order
+  // as object allocation time. time_to_call_mallinfo seems to be on the order of 1 usec.
+  static constexpr uint32_t kNotifyNativeInterval = 32;
+
+  // RegisterNativeAllocation checks immediately whether GC is needed if size exceeds the
+  // following. kCheckImmediatelyThreshold * kNotifyNativeInterval should be small enough to
+  // make it safe to allocate that many bytes between checks.
+  static constexpr size_t kCheckImmediatelyThreshold = 300000;
 
   // How often we allow heap trimming to happen (nanoseconds).
   static constexpr uint64_t kHeapTrimWait = MsToNs(5000);
@@ -187,7 +196,7 @@ class Heap {
        bool low_memory_mode,
        size_t long_pause_threshold,
        size_t long_gc_threshold,
-       bool ignore_max_footprint,
+       bool ignore_target_footprint,
        bool use_tlab,
        bool verify_pre_gc_heap,
        bool verify_pre_sweeping_heap,
@@ -269,9 +278,21 @@ class Heap {
   void CheckPreconditionsForAllocObject(ObjPtr<mirror::Class> c, size_t byte_count)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Inform the garbage collector of a non-malloc allocated native memory that might become
+  // reclaimable in the future as a result of Java garbage collection.
   void RegisterNativeAllocation(JNIEnv* env, size_t bytes)
       REQUIRES(!*gc_complete_lock_, !*pending_task_lock_);
   void RegisterNativeFree(JNIEnv* env, size_t bytes);
+
+  // Notify the garbage collector of malloc allocations that might be reclaimable
+  // as a result of Java garbage collection. Each such call represents approximately
+  // kNotifyNativeInterval such allocations.
+  void NotifyNativeAllocations(JNIEnv* env)
+      REQUIRES(!*gc_complete_lock_, !*pending_task_lock_);
+
+  uint32_t GetNotifyNativeInterval() {
+    return kNotifyNativeInterval;
+  }
 
   // Change the allocator, updates entrypoints.
   void ChangeAllocator(AllocatorType allocator)
@@ -536,21 +557,20 @@ class Heap {
 
   // Returns approximately how much free memory we have until the next GC happens.
   size_t GetFreeMemoryUntilGC() const {
-    return max_allowed_footprint_ - GetBytesAllocated();
+    return UnsignedDifference(target_footprint_.load(std::memory_order_relaxed),
+                              GetBytesAllocated());
   }
 
   // Returns approximately how much free memory we have until the next OOME happens.
   size_t GetFreeMemoryUntilOOME() const {
-    return growth_limit_ - GetBytesAllocated();
+    return UnsignedDifference(growth_limit_, GetBytesAllocated());
   }
 
   // Returns how much free memory we have until we need to grow the heap to perform an allocation.
   // Similar to GetFreeMemoryUntilGC. Implements java.lang.Runtime.freeMemory.
   size_t GetFreeMemory() const {
-    size_t byte_allocated = num_bytes_allocated_.load(std::memory_order_relaxed);
-    size_t total_memory = GetTotalMemory();
-    // Make sure we don't get a negative number.
-    return total_memory - std::min(total_memory, byte_allocated);
+    return UnsignedDifference(GetTotalMemory(),
+                              num_bytes_allocated_.load(std::memory_order_relaxed));
   }
 
   // Get the space that corresponds to an object's address. Current implementation searches all
@@ -877,12 +897,16 @@ class Heap {
     return main_space_backup_ != nullptr;
   }
 
+  static ALWAYS_INLINE size_t UnsignedDifference(size_t x, size_t y) {
+    return x > y ? x - y : 0;
+  }
+
   static ALWAYS_INLINE bool AllocatorHasAllocationStack(AllocatorType allocator_type) {
     return
+        allocator_type != kAllocatorTypeRegionTLAB &&
         allocator_type != kAllocatorTypeBumpPointer &&
         allocator_type != kAllocatorTypeTLAB &&
-        allocator_type != kAllocatorTypeRegion &&
-        allocator_type != kAllocatorTypeRegionTLAB;
+        allocator_type != kAllocatorTypeRegion;
   }
   static ALWAYS_INLINE bool AllocatorMayHaveConcurrentGC(AllocatorType allocator_type) {
     if (kUseReadBarrier) {
@@ -890,23 +914,29 @@ class Heap {
       return true;
     }
     return
-        allocator_type != kAllocatorTypeBumpPointer &&
-        allocator_type != kAllocatorTypeTLAB;
+        allocator_type != kAllocatorTypeTLAB &&
+        allocator_type != kAllocatorTypeBumpPointer;
   }
   static bool IsMovingGc(CollectorType collector_type) {
     return
+        collector_type == kCollectorTypeCC ||
         collector_type == kCollectorTypeSS ||
         collector_type == kCollectorTypeGSS ||
-        collector_type == kCollectorTypeCC ||
         collector_type == kCollectorTypeCCBackground ||
         collector_type == kCollectorTypeHomogeneousSpaceCompact;
   }
   bool ShouldAllocLargeObject(ObjPtr<mirror::Class> c, size_t byte_count) const
       REQUIRES_SHARED(Locks::mutator_lock_);
-  ALWAYS_INLINE void CheckConcurrentGC(Thread* self,
-                                       size_t new_num_bytes_allocated,
-                                       ObjPtr<mirror::Object>* obj)
+
+  // Checks whether we should garbage collect:
+  ALWAYS_INLINE bool ShouldConcurrentGCForJava(size_t new_num_bytes_allocated);
+  float NativeMemoryOverTarget(size_t current_native_bytes);
+  ALWAYS_INLINE void CheckConcurrentGCForJava(Thread* self,
+                                              size_t new_num_bytes_allocated,
+                                              ObjPtr<mirror::Object>* obj)
       REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!*pending_task_lock_, !*gc_complete_lock_);
+  void CheckConcurrentGCForNative(Thread* self)
       REQUIRES(!*pending_task_lock_, !*gc_complete_lock_);
 
   accounting::ObjectStack* GetMarkStack() {
@@ -968,6 +998,11 @@ class Heap {
   void ThrowOutOfMemoryError(Thread* self, size_t byte_count, AllocatorType allocator_type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Are we out of memory, and thus should force a GC or fail?
+  // For concurrent collectors, out of memory is defined by growth_limit_.
+  // For nonconcurrent collectors it is defined by target_footprint_ unless grow is
+  // set. If grow is set, the limit is growth_limit_ and we adjust target_footprint_
+  // to accomodate the allocation.
   ALWAYS_INLINE bool IsOutOfMemoryOnAllocation(AllocatorType allocator_type,
                                                size_t alloc_size,
                                                bool grow);
@@ -1031,7 +1066,7 @@ class Heap {
   // collection. bytes_allocated_before_gc is used to measure bytes / second for the period which
   // the GC was run.
   void GrowForUtilization(collector::GarbageCollector* collector_ran,
-                          uint64_t bytes_allocated_before_gc = 0);
+                          size_t bytes_allocated_before_gc = 0);
 
   size_t GetPercentFree();
 
@@ -1065,8 +1100,8 @@ class Heap {
   // What kind of concurrency behavior is the runtime after? Currently true for concurrent mark
   // sweep GC, false for other GC types.
   bool IsGcConcurrent() const ALWAYS_INLINE {
-    return collector_type_ == kCollectorTypeCMS ||
-        collector_type_ == kCollectorTypeCC ||
+    return collector_type_ == kCollectorTypeCC ||
+        collector_type_ == kCollectorTypeCMS ||
         collector_type_ == kCollectorTypeCCBackground;
   }
 
@@ -1095,15 +1130,19 @@ class Heap {
     return HasZygoteSpace() ? collector::kGcTypePartial : collector::kGcTypeFull;
   }
 
-  // How large new_native_bytes_allocated_ can grow before we trigger a new
-  // GC.
+  // Return the amount of space we allow for native memory when deciding whether to
+  // collect. We collect when a weighted sum of Java memory plus native memory exceeds
+  // the similarly weighted sum of the Java heap size target and this value.
   ALWAYS_INLINE size_t NativeAllocationGcWatermark() const {
-    // Reuse max_free_ for the native allocation gc watermark, so that the
-    // native heap is treated in the same way as the Java heap in the case
-    // where the gc watermark update would exceed max_free_. Using max_free_
-    // instead of the target utilization means the watermark doesn't depend on
-    // the current number of registered native allocations.
-    return max_free_;
+    // It probably makes most sense to use a constant multiple of target_footprint_ .
+    // This is a good indication of the live data size, together with the
+    // intended space-time trade-off, as expressed by SetTargetHeapUtilization.
+    // For a fixed target utilization, the amount of GC effort per native
+    // allocated byte remains roughly constant as the Java heap size changes.
+    // But we previously triggered on max_free_ native allocation which is often much
+    // smaller. To avoid unexpected growth, we partially keep that limit in place for now.
+    // TODO: Consider HeapGrowthMultiplier(). Maybe.
+    return std::min(target_footprint_.load(std::memory_order_relaxed), 2 * max_free_);
   }
 
   ALWAYS_INLINE void IncrementNumberOfBytesFreedRevoke(size_t freed_bytes_revoke);
@@ -1112,6 +1151,11 @@ class Heap {
 
   // Remove a vlog code from heap-inl.h which is transitively included in half the world.
   static void VlogHeapGrowth(size_t max_allowed_footprint, size_t new_footprint, size_t alloc_size);
+
+  // Return our best approximation of the number of bytes of native memory that
+  // are currently in use, and could possibly be reclaimed as an indirect result
+  // of a garbage collection.
+  size_t GetNativeBytes();
 
   // All-known continuous spaces, where objects lie within fixed bounds.
   std::vector<space::ContinuousSpace*> continuous_spaces_ GUARDED_BY(Locks::mutator_lock_);
@@ -1192,9 +1236,9 @@ class Heap {
   double pre_gc_weighted_allocated_bytes_;
   double post_gc_weighted_allocated_bytes_;
 
-  // If we ignore the max footprint it lets the heap grow until it hits the heap capacity, this is
-  // useful for benchmarking since it reduces time spent in GC to a low %.
-  const bool ignore_max_footprint_;
+  // If we ignore the target footprint it lets the heap grow until it hits the heap capacity, this
+  // is useful for benchmarking since it reduces time spent in GC to a low %.
+  const bool ignore_target_footprint_;
 
   // Lock which guards zygote space creation.
   Mutex zygote_creation_lock_;
@@ -1243,14 +1287,18 @@ class Heap {
 
   // The size the heap is limited to. This is initially smaller than capacity, but for largeHeap
   // programs it is "cleared" making it the same as capacity.
+  // Only weakly enforced for simultaneous allocations.
   size_t growth_limit_;
 
-  // When the number of bytes allocated exceeds the footprint TryAllocate returns null indicating
-  // a GC should be triggered.
-  size_t max_allowed_footprint_;
+  // Target size (as in maximum allocatable bytes) for the heap. Weakly enforced as a limit for
+  // non-concurrent GC. Used as a guideline for computing concurrent_start_bytes_ in the
+  // concurrent GC case.
+  Atomic<size_t> target_footprint_;
 
   // When num_bytes_allocated_ exceeds this amount then a concurrent GC should be requested so that
   // it completes ahead of an allocation failing.
+  // A multiple of this is also used to determine when to trigger a GC in response to native
+  // allocation.
   size_t concurrent_start_bytes_;
 
   // Since the heap was created, how many bytes have been freed.
@@ -1263,18 +1311,17 @@ class Heap {
   // TLABS in their entirety, even if they have not yet been parceled out.
   Atomic<size_t> num_bytes_allocated_;
 
-  // Number of registered native bytes allocated since the last time GC was
-  // triggered. Adjusted after each RegisterNativeAllocation and
-  // RegisterNativeFree. Used to determine when to trigger GC for native
-  // allocations.
-  // See the REDESIGN section of go/understanding-register-native-allocation.
-  Atomic<size_t> new_native_bytes_allocated_;
+  // Number of registered native bytes allocated. Adjusted after each RegisterNativeAllocation and
+  // RegisterNativeFree. Used to  help determine when to trigger GC for native allocations. Should
+  // not include bytes allocated through the system malloc, since those are implicitly included.
+  Atomic<size_t> native_bytes_registered_;
 
-  // Number of registered native bytes allocated prior to the last time GC was
-  // triggered, for debugging purposes. The current number of registered
-  // native bytes is determined by taking the sum of
-  // old_native_bytes_allocated_ and new_native_bytes_allocated_.
+  // Approximately the smallest value of GetNativeBytes() we've seen since the last GC.
   Atomic<size_t> old_native_bytes_allocated_;
+
+  // Total number of native objects of which we were notified since the beginning of time, mod 2^32.
+  // Allows us to check for GC only roughly every kNotifyNativeInterval allocations.
+  Atomic<uint32_t> native_objects_notified_;
 
   // Number of bytes freed by thread local buffer revokes. This will
   // cancel out the ahead-of-time bulk counting of bytes allocated in
@@ -1360,10 +1407,10 @@ class Heap {
 
   // Minimum free guarantees that you always have at least min_free_ free bytes after growing for
   // utilization, regardless of target utilization ratio.
-  size_t min_free_;
+  const size_t min_free_;
 
   // The ideal maximum free size, when we grow the heap for utilization.
-  size_t max_free_;
+  const size_t max_free_;
 
   // Target ideal heap utilization ratio.
   double target_utilization_;
