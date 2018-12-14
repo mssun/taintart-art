@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2012 The Android Open Source Project
  *
@@ -86,7 +87,7 @@ void ThreadPoolWorker::SetPthreadPriority(int priority) {
 void ThreadPoolWorker::Run() {
   Thread* self = Thread::Current();
   Task* task = nullptr;
-  thread_pool_->creation_barier_.Wait(self);
+  thread_pool_->creation_barier_.Pass(self);
   while ((task = thread_pool_->GetTask(self)) != nullptr) {
     task->Run(self);
     task->Finalize();
@@ -150,7 +151,7 @@ void ThreadPool::CreateThreads() {
     MutexLock mu(self, task_queue_lock_);
     shutting_down_ = false;
     // Add one since the caller of constructor waits on the barrier too.
-    creation_barier_.Init(self, max_active_workers_ + 1);
+    creation_barier_.Init(self, max_active_workers_);
     while (GetThreadCount() < max_active_workers_) {
       const std::string worker_name = StringPrintf("%s worker thread %zu", name_.c_str(),
                                                    GetThreadCount());
@@ -158,8 +159,16 @@ void ThreadPool::CreateThreads() {
           new ThreadPoolWorker(this, worker_name, worker_stack_size_));
     }
   }
-  // Wait for all of the threads to attach.
-  creation_barier_.Wait(Thread::Current());
+}
+
+void ThreadPool::WaitForWorkersToBeCreated() {
+  creation_barier_.Increment(Thread::Current(), 0);
+}
+
+const std::vector<ThreadPoolWorker*>& ThreadPool::GetWorkers() {
+  // Wait for all the workers to be created before returning them.
+  WaitForWorkersToBeCreated();
+  return threads_;
 }
 
 void ThreadPool::DeleteThreads() {

@@ -349,6 +349,9 @@ Runtime::~Runtime() {
   }
 
   if (jit_ != nullptr) {
+    // Wait for the workers to be created since there can't be any threads attaching during
+    // shutdown.
+    jit_->WaitForWorkersToBeCreated();
     // Stop the profile saver thread before marking the runtime as shutting down.
     // The saver will try to dump the profiles before being sopped and that
     // requires holding the mutator lock.
