@@ -31,8 +31,8 @@ class InstructionSetFeatures;
 class PACKED(4) OatHeader {
  public:
   static constexpr uint8_t kOatMagic[] = { 'o', 'a', 't', '\n' };
-  // Last oat version changed reason: Pass boot class path to LoadBootImage.
-  static constexpr uint8_t kOatVersion[] = { '1', '6', '5', '\0' };
+  // Last oat version changed reason: Partial boot image.
+  static constexpr uint8_t kOatVersion[] = { '1', '6', '6', '\0' };
 
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
   static constexpr const char* kDebuggableKey = "debuggable";
@@ -40,6 +40,7 @@ class PACKED(4) OatHeader {
   static constexpr const char* kCompilerFilter = "compiler-filter";
   static constexpr const char* kClassPathKey = "classpath";
   static constexpr const char* kBootClassPathKey = "bootclasspath";
+  static constexpr const char* kBootClassPathChecksumsKey = "bootclasspath-checksums";
   static constexpr const char* kConcurrentCopying = "concurrent-copying";
   static constexpr const char* kCompilationReasonKey = "compilation-reason";
 
@@ -93,9 +94,6 @@ class PACKED(4) OatHeader {
   InstructionSet GetInstructionSet() const;
   uint32_t GetInstructionSetFeaturesBitmap() const;
 
-  uint32_t GetBootImageChecksum() const;
-  void SetBootImageChecksum(uint32_t boot_image_checksum);
-
   uint32_t GetKeyValueStoreSize() const;
   const uint8_t* GetKeyValueStore() const;
   const char* GetStoreValueByKey(const char* key) const;
@@ -136,8 +134,6 @@ class PACKED(4) OatHeader {
   uint32_t quick_imt_conflict_trampoline_offset_;
   uint32_t quick_resolution_trampoline_offset_;
   uint32_t quick_to_interpreter_bridge_offset_;
-
-  uint32_t boot_image_checksum_;
 
   uint32_t key_value_store_size_;
   uint8_t key_value_store_[0];  // note variable width data at end

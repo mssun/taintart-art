@@ -328,15 +328,18 @@ static std::string GetDexFileName(const std::string& jar_prefix, bool host) {
 }
 
 std::vector<std::string> CommonArtTestImpl::GetLibCoreDexFileNames() {
-  // Note: This must match the TEST_CORE_JARS in Android.common_path.mk
+  // Note: This must start with the CORE_IMG_JARS in Android.common_path.mk
   // because that's what we use for compiling the core.art image.
+  // It may contain additional modules from TEST_CORE_JARS.
   static const char* const kLibcoreModules[] = {
+      // CORE_IMG_JARS modules.
       "core-oj",
       "core-libart",
       "core-simple",
-      "conscrypt",
       "okhttp",
       "bouncycastle",
+      // Additional modules.
+      "conscrypt",
   };
 
   std::vector<std::string> result;
