@@ -240,7 +240,7 @@ class OatTest : public CommonCompilerTest {
       elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
     }
 
-    if (!oat_writer.WriteHeader(elf_writer->GetStream(), /*boot_image_checksum=*/ 42u)) {
+    if (!oat_writer.WriteHeader(elf_writer->GetStream())) {
       return false;
     }
 
@@ -396,6 +396,7 @@ TEST_F(OatTest, WriteRead) {
 
   ScratchFile tmp_base, tmp_oat(tmp_base, ".oat"), tmp_vdex(tmp_base, ".vdex");
   SafeMap<std::string, std::string> key_value_store;
+  key_value_store.Put(OatHeader::kBootClassPathChecksumsKey, "testkey");
   bool success = WriteElf(tmp_vdex.GetFile(),
                           tmp_oat.GetFile(),
                           class_linker->GetBootClassPath(),
@@ -418,7 +419,8 @@ TEST_F(OatTest, WriteRead) {
   const OatHeader& oat_header = oat_file->GetOatHeader();
   ASSERT_TRUE(oat_header.IsValid());
   ASSERT_EQ(class_linker->GetBootClassPath().size(), oat_header.GetDexFileCount());  // core
-  ASSERT_EQ(42u, oat_header.GetBootImageChecksum());
+  ASSERT_TRUE(oat_header.GetStoreValueByKey(OatHeader::kBootClassPathChecksumsKey) != nullptr);
+  ASSERT_STREQ("testkey", oat_header.GetStoreValueByKey(OatHeader::kBootClassPathChecksumsKey));
 
   ASSERT_TRUE(java_lang_dex_file_ != nullptr);
   const DexFile& dex_file = *java_lang_dex_file_;
@@ -464,7 +466,7 @@ TEST_F(OatTest, WriteRead) {
 TEST_F(OatTest, OatHeaderSizeCheck) {
   // If this test is failing and you have to update these constants,
   // it is time to update OatHeader::kOatVersion
-  EXPECT_EQ(68U, sizeof(OatHeader));
+  EXPECT_EQ(64U, sizeof(OatHeader));
   EXPECT_EQ(4U, sizeof(OatMethodOffsets));
   EXPECT_EQ(8U, sizeof(OatQuickMethodHeader));
   EXPECT_EQ(166 * static_cast<size_t>(GetInstructionSetPointerSize(kRuntimeISA)),

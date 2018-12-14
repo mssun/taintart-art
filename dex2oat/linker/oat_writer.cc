@@ -2808,10 +2808,8 @@ bool OatWriter::CheckOatSize(OutputStream* out, size_t file_offset, size_t relat
   return true;
 }
 
-bool OatWriter::WriteHeader(OutputStream* out, uint32_t boot_image_checksum) {
+bool OatWriter::WriteHeader(OutputStream* out) {
   CHECK(write_state_ == WriteState::kWriteHeader);
-
-  oat_header_->SetBootImageChecksum(boot_image_checksum);
 
   // Update checksum with header data.
   DCHECK_EQ(oat_header_->GetChecksum(), 0u);  // For checksum calculation.
