@@ -17,7 +17,9 @@
 #include "heap.h"
 
 #include <limits>
+#if defined(__BIONIC__) || defined(__GLIBC__)
 #include <malloc.h>  // For mallinfo()
+#endif
 #include <memory>
 #include <vector>
 
