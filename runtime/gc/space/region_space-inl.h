@@ -205,9 +205,10 @@ inline void RegionSpace::WalkInternal(Visitor&& visitor) {
       continue;
     }
     if (r->IsLarge()) {
-      // Avoid visiting dead large objects since they may contain dangling pointers to the
-      // from-space.
-      DCHECK_GT(r->LiveBytes(), 0u) << "Visiting dead large object";
+      // We may visit a large object with live_bytes = 0 here. However, it is
+      // safe as it cannot contain dangling pointers because corresponding regions
+      // (and regions corresponding to dead referents) cannot be allocated for new
+      // allocations without first clearing regions' live_bytes and state.
       mirror::Object* obj = reinterpret_cast<mirror::Object*>(r->Begin());
       DCHECK(obj->GetClass() != nullptr);
       visitor(obj);
