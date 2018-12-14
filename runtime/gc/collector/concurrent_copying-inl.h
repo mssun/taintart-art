@@ -37,14 +37,15 @@ inline mirror::Object* ConcurrentCopying::MarkUnevacFromSpaceRegion(
     mirror::Object* ref,
     accounting::ContinuousSpaceBitmap* bitmap) {
   if (kEnableGenerationalConcurrentCopyingCollection
-      && young_gen_
       && !done_scanning_.load(std::memory_order_acquire)) {
-    // Everything in the unevac space should be marked for generational CC except for large objects.
-    DCHECK(region_space_bitmap_->Test(ref) || region_space_->IsLargeObject(ref)) << ref << " "
+    // Everything in the unevac space should be marked for young generation CC,
+    // except for large objects.
+    DCHECK(!young_gen_ || region_space_bitmap_->Test(ref) || region_space_->IsLargeObject(ref))
+        << ref << " "
         << ref->GetClass<kVerifyNone, kWithoutReadBarrier>()->PrettyClass();
-    // Since the mark bitmap is still filled in from last GC, we can not use that or else the
-    // mutator may see references to the from space. Instead, use the baker pointer itself as
-    // the mark bit.
+    // Since the mark bitmap is still filled in from last GC (or from marking phase of 2-phase CC,
+    // we can not use that or else the mutator may see references to the from space. Instead, use
+    // the baker pointer itself as the mark bit.
     if (ref->AtomicSetReadBarrierState(ReadBarrier::NonGrayState(), ReadBarrier::GrayState())) {
       // TODO: We don't actually need to scan this object later, we just need to clear the gray
       // bit.
@@ -244,7 +245,7 @@ inline bool ConcurrentCopying::IsMarkedInUnevacFromSpace(mirror::Object* from_re
   DCHECK(region_space_->IsInUnevacFromSpace(from_ref));
   if (kUseBakerReadBarrier && from_ref->GetReadBarrierStateAcquire() == ReadBarrier::GrayState()) {
     return true;
-  } else if (!(kEnableGenerationalConcurrentCopyingCollection && young_gen_)
+  } else if (!kEnableGenerationalConcurrentCopyingCollection
              || done_scanning_.load(std::memory_order_acquire)) {
     // If the card table scanning is not finished yet, then only read-barrier
     // state should be checked. Checking the mark bitmap is unreliable as there
