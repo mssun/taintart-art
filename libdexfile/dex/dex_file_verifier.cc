@@ -1630,7 +1630,7 @@ bool DexFileVerifier::CheckIntraHiddenapiClassData() {
         failure = true;
         return;
       }
-      if (!hiddenapi::AreValidDexFlags(decoded_flags)) {
+      if (!hiddenapi::ApiList(decoded_flags).IsValid()) {
         ErrorStringPrintf("Hiddenapi class data flags invalid (%u) for %s %i",
                           decoded_flags, member_type, member.GetIndex());
         failure = true;

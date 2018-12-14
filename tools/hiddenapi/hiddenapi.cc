@@ -85,6 +85,7 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  Command \"list\": dump lists of public and private API");
   UsageError("    --boot-dex=<filename>: dex file which belongs to boot class path");
   UsageError("    --public-stub-classpath=<filenames>:");
+  UsageError("    --core-platform-stub-classpath=<filenames>:");
   UsageError("        colon-separated list of dex/apk files which form API stubs of boot");
   UsageError("        classpath. Multiple classpaths can be specified");
   UsageError("");
@@ -619,10 +620,10 @@ class HiddenapiClassDataBuilder final {
   // Append flags at the end of the data struct. This should be called
   // between BeginClassDef and EndClassDef in the order of appearance of
   // fields/methods in the class data stream.
-  void WriteFlags(ApiList flags) {
-    uint32_t uint_flags = flags.GetIntValue();
-    EncodeUnsignedLeb128(&data_, uint_flags);
-    class_def_has_non_zero_flags_ |= (uint_flags != 0u);
+  void WriteFlags(const ApiList& flags) {
+    uint32_t dex_flags = flags.GetDexFlags();
+    EncodeUnsignedLeb128(&data_, dex_flags);
+    class_def_has_non_zero_flags_ |= (dex_flags != 0u);
   }
 
   // Return backing data, assuming that all flags have been written.
@@ -927,6 +928,10 @@ class HiddenApi final {
             stub_classpaths_.push_back(std::make_pair(
                 option.substr(strlen("--public-stub-classpath=")).ToString(),
                 ApiList::Whitelist()));
+          } else if (option.starts_with("--core-platform-stub-classpath=")) {
+            stub_classpaths_.push_back(std::make_pair(
+                option.substr(strlen("--core-platform-stub-classpath=")).ToString(),
+                ApiList::CorePlatformApi()));
           } else if (option.starts_with("--out-api-flags=")) {
             api_flags_path_ = option.substr(strlen("--out-api-flags=")).ToString();
           } else {
@@ -1000,27 +1005,22 @@ class HiddenApi final {
 
     std::map<std::string, ApiList> api_flag_map;
 
-    int line_number = 1;
+    size_t line_number = 1;
     for (std::string line; std::getline(api_file, line); line_number++) {
       std::vector<std::string> values = android::base::Split(line, ",");
-      CHECK_GT(values.size(), 1u) << path << ":" << line_number << ": No flags found"
-          << kErrorHelp;
+      CHECK_GT(values.size(), 1u) << path << ":" << line_number
+          << ": No flags found: " << line << kErrorHelp;
+
       const std::string& signature = values[0];
+      CHECK(api_flag_map.find(signature) == api_flag_map.end()) << path << ":" << line_number
+          << ": Duplicate entry: " << signature << kErrorHelp;
 
-      CHECK(api_flag_map.find(signature) == api_flag_map.end()) << "Duplicate entry in " << path
-          << ": " << signature << kErrorHelp;
-
-      int numFlags = values.size() - 1;
-
-      CHECK_EQ(numFlags, 1) << "\n" << path << ":" << line_number << "\n"
-          << signature << ": Expected one flag, found " << numFlags << ":\n"
-          << ::android::base::Join(std::vector<std::string>(values.begin() + 1, values.end()), ",")
-          << kErrorHelp;
-
-      const std::string& flag_str = values[1];
-      hiddenapi::ApiList membership = hiddenapi::ApiList::FromName(flag_str);
-      CHECK(membership.IsValid()) << path << ":" << line_number << ": Unknown ApiList name: "
-          << flag_str << kErrorHelp;
+      ApiList membership;
+      bool success = ApiList::FromNames(values.begin() + 1, values.end(), &membership);
+      CHECK(success) << path << ":" << line_number
+          << ": Some flags were not recognized: " << line << kErrorHelp;
+      CHECK(membership.IsValid()) << path << ":" << line_number
+          << ": Invalid combination of flags: " << line << kErrorHelp;
 
       api_flag_map.emplace(signature, membership);
     }
@@ -1051,7 +1051,7 @@ class HiddenApi final {
 
     // Mark all boot dex members private.
     boot_classpath.ForEachDexMember([&](const DexMember& boot_member) {
-      boot_members[boot_member.GetApiEntry()] = ApiList::Invalid();
+      boot_members[boot_member.GetApiEntry()] = ApiList();
     });
 
     // Resolve each SDK dex member against the framework and mark it white.
@@ -1073,11 +1073,10 @@ class HiddenApi final {
                   std::string entry = boot_member.GetApiEntry();
                   auto it = boot_members.find(entry);
                   CHECK(it != boot_members.end());
-                  if (it->second.IsValid()) {
-                    CHECK_EQ(it->second, stub_api_list);
+                  if (it->second.Contains(stub_api_list)) {
                     return false;  // has been marked before
                   } else {
-                    it->second = stub_api_list;
+                    it->second |= stub_api_list;
                     return true;  // marked for the first time
                   }
                 });
@@ -1095,10 +1094,10 @@ class HiddenApi final {
     // Write into public/private API files.
     std::ofstream file_flags(api_flags_path_.c_str());
     for (const auto& entry : boot_members) {
-      if (entry.second.IsValid()) {
-        file_flags << entry.first << "," << entry.second << std::endl;
-      } else {
+      if (entry.second.IsEmpty()) {
         file_flags << entry.first << std::endl;
+      } else {
+        file_flags << entry.first << "," << entry.second << std::endl;
       }
     }
     file_flags.close();

@@ -267,9 +267,6 @@ static ALWAYS_INLINE void MaybeWhitelistMember(Runtime* runtime, T* member)
   }
 }
 
-static constexpr uint32_t kNoDexFlags = 0u;
-static constexpr uint32_t kInvalidDexFlags = static_cast<uint32_t>(-1);
-
 static ALWAYS_INLINE uint32_t GetMemberDexIndex(ArtField* field) {
   return field->GetDexFieldIndex();
 }
@@ -302,12 +299,10 @@ uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
       ClassAccessor::Field, ClassAccessor::Method>::type;
 
   ObjPtr<mirror::Class> declaring_class = member->GetDeclaringClass();
-  if (declaring_class.IsNull()) {
-    return kNoDexFlags;
-  }
+  DCHECK(!declaring_class.IsNull()) << "Attempting to access a runtime method";
 
-  uint32_t flags = kInvalidDexFlags;
-  DCHECK(!AreValidDexFlags(flags));
+  ApiList flags;
+  DCHECK(!flags.IsValid());
 
   // Check if the declaring class has ClassExt allocated. If it does, check if
   // the pre-JVMTI redefine dex file has been set to determine if the declaring
@@ -318,17 +313,15 @@ uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
     // Class is not redefined. Find the class def, iterate over its members and
     // find the entry corresponding to this `member`.
     const dex::ClassDef* class_def = declaring_class->GetClassDef();
-    if (class_def == nullptr) {
-      flags = kNoDexFlags;
-    } else {
-      uint32_t member_index = GetMemberDexIndex(member);
-      auto fn_visit = [&](const AccessorType& dex_member) {
-        if (dex_member.GetIndex() == member_index) {
-          flags = dex_member.GetHiddenapiFlags();
-        }
-      };
-      VisitMembers(declaring_class->GetDexFile(), *class_def, fn_visit);
-    }
+    DCHECK(class_def != nullptr) << "Class def should always be set for initialized classes";
+
+    uint32_t member_index = GetMemberDexIndex(member);
+    auto fn_visit = [&](const AccessorType& dex_member) {
+      if (dex_member.GetIndex() == member_index) {
+        flags = ApiList(dex_member.GetHiddenapiFlags());
+      }
+    };
+    VisitMembers(declaring_class->GetDexFile(), *class_def, fn_visit);
   } else {
     // Class was redefined using JVMTI. We have a pointer to the original dex file
     // and the class def index of this class in that dex file, but the field/method
@@ -344,16 +337,15 @@ uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
       MemberSignature cur_signature(dex_member);
       if (member_signature.MemberNameAndTypeMatch(cur_signature)) {
         DCHECK(member_signature.Equals(cur_signature));
-        flags = dex_member.GetHiddenapiFlags();
+        flags = ApiList(dex_member.GetHiddenapiFlags());
       }
     };
     VisitMembers(*original_dex, original_class_def, fn_visit);
   }
 
-  CHECK_NE(flags, kInvalidDexFlags) << "Could not find hiddenapi flags for "
+  CHECK(flags.IsValid()) << "Could not find hiddenapi flags for "
       << Dumpable<MemberSignature>(MemberSignature(member));
-  DCHECK(AreValidDexFlags(flags));
-  return flags;
+  return flags.GetDexFlags();
 }
 
 template<typename T>

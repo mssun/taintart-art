@@ -138,7 +138,7 @@ class HiddenApiTest : public CommonRuntimeTest {
         const uint32_t actual_visibility = field.GetAccessFlags() & kAccVisibilityFlags;
         CHECK_EQ(actual_visibility, expected_visibility)
             << "Field " << name << " in class " << accessor.GetDescriptor();
-        return hiddenapi::ApiList::FromDexFlags(field.GetHiddenapiFlags());
+        return hiddenapi::ApiList(field.GetHiddenapiFlags());
       }
     }
 
@@ -167,7 +167,7 @@ class HiddenApiTest : public CommonRuntimeTest {
         const uint32_t actual_visibility = method.GetAccessFlags() & kAccVisibilityFlags;
         CHECK_EQ(actual_visibility, expected_visibility)
             << "Method " << name << " in class " << accessor.GetDescriptor();
-        return hiddenapi::ApiList::FromDexFlags(method.GetHiddenapiFlags());
+        return hiddenapi::ApiList(method.GetHiddenapiFlags());
       }
     }
 
