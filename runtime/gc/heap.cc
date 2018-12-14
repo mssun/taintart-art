@@ -2624,8 +2624,8 @@ void Heap::TraceHeapSize(size_t heap_size) {
 
 size_t Heap::GetNativeBytes() {
   size_t malloc_bytes;
-  size_t mmapped_bytes;
 #if defined(__BIONIC__) || defined(__GLIBC__)
+  size_t mmapped_bytes;
   struct mallinfo mi = mallinfo();
   // In spite of the documentation, the jemalloc version of this call seems to do what we want,
   // and it is thread-safe.
