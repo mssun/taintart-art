@@ -1742,6 +1742,9 @@ static void LoadAndUpdateStatus(const ClassAccessor& accessor,
     if (&cls->GetDexFile() == &accessor.GetDexFile()) {
       ObjectLock<mirror::Class> lock(self, cls);
       mirror::Class::SetStatus(cls, status, self);
+      if (status >= ClassStatus::kVerified) {
+        cls->SetVerificationAttempted();
+      }
     }
   } else {
     DCHECK(self->IsExceptionPending());
