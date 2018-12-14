@@ -291,6 +291,12 @@ bool Jit::CompileMethod(ArtMethod* method, Thread* self, bool osr) {
   return success;
 }
 
+void Jit::WaitForWorkersToBeCreated() {
+  if (thread_pool_ != nullptr) {
+    thread_pool_->WaitForWorkersToBeCreated();
+  }
+}
+
 void Jit::DeleteThreadPool() {
   Thread* self = Thread::Current();
   DCHECK(Runtime::Current()->IsShuttingDown(self));
