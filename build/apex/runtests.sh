@@ -33,11 +33,7 @@ can be installed with:
 
    sudo apt-get install libguestfs-tools
 "
-which tree > /dev/null || die "This script requires the 'tree' tool.
-On Debian-based systems, this can be installed with:
 
-   sudo apt-get install tree
-"
 [[ -n "$ANDROID_PRODUCT_OUT" ]] \
   || die "You need to source and lunch before you can use this script."
 
@@ -46,6 +42,7 @@ set -e
 
 build_apex_p=true
 list_image_files_p=false
+print_image_tree_p=false
 
 function usage {
   cat <<EOF
@@ -53,7 +50,8 @@ Usage: $0 [OPTION]
 Build (optional) and run tests on Android Runtime APEX package (on host).
 
   -s, --skip-build    skip the build step
-  -l, --list-files    list the contents of the ext4 image
+  -l, --list-files    list the contents of the ext4 image using `find`
+  -t, --print-tree    list the contents of the ext4 image using `tree`
   -h, --help          display this help and exit
 
 EOF
@@ -64,12 +62,21 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     (-s|--skip-build) build_apex_p=false;;
     (-l|--list-files) list_image_files_p=true;;
+    (-t|--print-tree) print_image_tree_p=true;;
     (-h|--help) usage;;
     (*) die "Unknown option: '$1'
 Try '$0 --help' for more information.";;
   esac
   shift
 done
+
+if $print_image_tree_p; then
+  which tree >/dev/null || die "This script requires the 'tree' tool.
+On Debian-based systems, this can be installed with:
+
+   sudo apt-get install tree
+"
+fi
 
 
 # build_apex APEX_MODULE
@@ -79,6 +86,24 @@ function build_apex {
   if $build_apex_p; then
     local apex_module=$1
     say "Building package $apex_module" && make "$apex_module" || die "Cannot build $apex_module"
+  fi
+}
+
+# maybe_list_apex_contents MOUNT_POINT
+# ------------------------------------
+# If any listing/printing option was used, honor them and display the contents
+# of the APEX payload at MOUNT_POINT.
+function maybe_list_apex_contents {
+  local mount_point=$1
+
+  # List the contents of the mounted image using `find` (optional).
+  if $list_image_files_p; then
+    say "Listing image files" && find "$mount_point"
+  fi
+
+  # List the contents of the mounted image using `tree` (optional).
+  if $print_image_tree_p; then
+    say "Printing image tree" && ls -ld "$mount_point" && tree -aph --du "$mount_point"
   fi
 }
 
@@ -218,16 +243,14 @@ function setup_target_apex {
 
   # Mount the image from the Android Runtime APEX.
   guestmount -a "$image_file" -m "$partition" "$mount_point"
-
-  # List the contents of the mounted image (optional).
-  $list_image_files_p \
-    && say "Listing image files" && ls -ld "$mount_point" && tree -ap "$mount_point"
 }
 
 # Testing release APEX package (com.android.runtime.release).
 # -----------------------------------------------------------
 
 apex_module="com.android.runtime.release"
+
+say "Processing APEX package $apex_module"
 
 work_dir=$(mktemp -d)
 mount_point="$work_dir/image"
@@ -239,6 +262,9 @@ build_apex "$apex_module"
 
 # Set up APEX package.
 setup_target_apex "$apex_module" "$mount_point"
+
+# List the contents of the APEX image (optional).
+maybe_list_apex_contents "$mount_point"
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
@@ -249,11 +275,14 @@ trap - EXIT
 cleanup_target
 
 say "$apex_module tests passed"
+echo
 
 # Testing debug APEX package (com.android.runtime.debug).
 # -------------------------------------------------------
 
 apex_module="com.android.runtime.debug"
+
+say "Processing APEX package $apex_module"
 
 work_dir=$(mktemp -d)
 mount_point="$work_dir/image"
@@ -265,6 +294,9 @@ build_apex "$apex_module"
 
 # Set up APEX package.
 setup_target_apex "$apex_module" "$mount_point"
+
+# List the contents of the APEX image (optional).
+maybe_list_apex_contents "$mount_point"
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
@@ -279,6 +311,7 @@ trap - EXIT
 cleanup_target
 
 say "$apex_module tests passed"
+echo
 
 
 # Testing host APEX package (com.android.runtime.host).
@@ -319,6 +352,8 @@ function setup_host_apex {
 
 apex_module="com.android.runtime.host"
 
+say "Processing APEX package $apex_module"
+
 work_dir=$(mktemp -d)
 mount_point="$work_dir/zip"
 
@@ -329,6 +364,9 @@ build_apex "$apex_module"
 
 # Set up APEX package.
 setup_host_apex "$apex_module" "$mount_point"
+
+# List the contents of the APEX image (optional).
+maybe_list_apex_contents "$mount_point"
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
