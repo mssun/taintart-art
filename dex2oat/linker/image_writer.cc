@@ -32,6 +32,7 @@
 #include "base/enums.h"
 #include "base/globals.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker-inl.h"
 #include "class_root.h"
@@ -151,6 +152,26 @@ ObjPtr<mirror::ClassLoader> ImageWriter::GetAppClassLoader() const
   return compiler_options_.IsAppImage()
       ? ObjPtr<mirror::ClassLoader>::DownCast(Thread::Current()->DecodeJObject(app_class_loader_))
       : nullptr;
+}
+
+bool ImageWriter::IsImageObject(ObjPtr<mirror::Object> obj) const {
+  // For boot image, we keep all objects remaining after the GC in PrepareImageAddressSpace().
+  if (compiler_options_.IsBootImage()) {
+    return true;
+  }
+  // Objects already in the boot image do not belong to the image being written.
+  if (IsInBootImage(obj.Ptr())) {
+    return false;
+  }
+  // DexCaches for the boot class path components that are not a part of the boot image
+  // cannot be garbage collected in PrepareImageAddressSpace() but we do not want to
+  // include them in the app image. So make sure we include only the app DexCaches.
+  if (obj->IsDexCache() &&
+      !ContainsElement(compiler_options_.GetDexFilesForOatFile(),
+                       obj->AsDexCache()->GetDexFile())) {
+    return false;
+  }
+  return true;
 }
 
 // Return true if an object is already in an image space.
@@ -437,7 +458,7 @@ std::vector<ImageWriter::HeapReferencePointerInfo> ImageWriter::CollectStringRef
    */
   heap->VisitObjects([this, &visitor](ObjPtr<mirror::Object> object)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (!IsInBootImage(object.Ptr())) {
+    if (IsImageObject(object)) {
       visitor.SetObject(object);
 
       if (object->IsDexCache()) {
@@ -680,7 +701,7 @@ bool ImageWriter::Write(int image_fd,
     ObjPtr<mirror::ClassLoader> class_loader = GetAppClassLoader();
     std::vector<ObjPtr<mirror::DexCache>> dex_caches = FindDexCaches(self);
     for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
-      if (IsInBootImage(dex_cache.Ptr())) {
+      if (!IsImageObject(dex_cache)) {
         continue;  // Boot image DexCache is not written to the app image.
       }
       PreloadDexCache(dex_cache, class_loader);
@@ -989,7 +1010,7 @@ void ImageWriter::PrepareDexCacheArraySlots() {
   for (const ClassLinker::DexCacheData& data : class_linker->GetDexCachesData()) {
     ObjPtr<mirror::DexCache> dex_cache =
         ObjPtr<mirror::DexCache>::DownCast(self->DecodeJObject(data.weak_root));
-    if (dex_cache == nullptr || IsInBootImage(dex_cache.Ptr())) {
+    if (dex_cache == nullptr || !IsImageObject(dex_cache)) {
       continue;
     }
     const DexFile* dex_file = dex_cache->GetDexFile();
@@ -1758,7 +1779,8 @@ void ImageWriter::PruneNonImageClasses() {
   for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
     // Pass the class loader associated with the DexCache. This can either be
     // the app's `class_loader` or `nullptr` if boot class loader.
-    PruneDexCache(dex_cache, IsInBootImage(dex_cache.Ptr()) ? nullptr : GetAppClassLoader());
+    bool is_app_image_dex_cache = compiler_options_.IsAppImage() && IsImageObject(dex_cache);
+    PruneDexCache(dex_cache, is_app_image_dex_cache ? GetAppClassLoader() : nullptr);
   }
 
   // Drop the array class cache in the ClassLinker, as these are roots holding those classes live.
@@ -1856,7 +1878,7 @@ ObjPtr<mirror::ObjectArray<mirror::Object>> ImageWriter::CollectDexCaches(Thread
         continue;
       }
       const DexFile* dex_file = dex_cache->GetDexFile();
-      if (!IsInBootImage(dex_cache.Ptr())) {
+      if (IsImageObject(dex_cache)) {
         dex_cache_count += image_dex_files.find(dex_file) != image_dex_files.end() ? 1u : 0u;
       }
     }
@@ -1875,7 +1897,7 @@ ObjPtr<mirror::ObjectArray<mirror::Object>> ImageWriter::CollectDexCaches(Thread
         continue;
       }
       const DexFile* dex_file = dex_cache->GetDexFile();
-      if (!IsInBootImage(dex_cache.Ptr())) {
+      if (IsImageObject(dex_cache)) {
         non_image_dex_caches += image_dex_files.find(dex_file) != image_dex_files.end() ? 1u : 0u;
       }
     }
@@ -1889,7 +1911,7 @@ ObjPtr<mirror::ObjectArray<mirror::Object>> ImageWriter::CollectDexCaches(Thread
         continue;
       }
       const DexFile* dex_file = dex_cache->GetDexFile();
-      if (!IsInBootImage(dex_cache.Ptr()) &&
+      if (IsImageObject(dex_cache) &&
           image_dex_files.find(dex_file) != image_dex_files.end()) {
         dex_caches->Set<false>(i, dex_cache.Ptr());
         ++i;
@@ -1942,7 +1964,7 @@ ObjPtr<ObjectArray<Object>> ImageWriter::CreateImageRoots(
 mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
                                               mirror::Object* obj,
                                               size_t oat_index) {
-  if (obj == nullptr || IsInBootImage(obj)) {
+  if (obj == nullptr || !IsImageObject(obj)) {
     // Object is null or already in the image, there is no work to do.
     return obj;
   }
@@ -2373,7 +2395,7 @@ void ImageWriter::CalculateNewObjectOffsets() {
   {
     auto ensure_bin_slots_assigned = [&](mirror::Object* obj)
         REQUIRES_SHARED(Locks::mutator_lock_) {
-      if (!Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(obj)) {
+      if (IsImageObject(obj)) {
         CHECK(IsImageBinSlotAssigned(obj)) << mirror::Object::PrettyTypeOf(obj) << " " << obj;
       }
     };
@@ -2444,7 +2466,7 @@ void ImageWriter::CalculateNewObjectOffsets() {
   {
     auto unbin_objects_into_offset = [&](mirror::Object* obj)
         REQUIRES_SHARED(Locks::mutator_lock_) {
-      if (!IsInBootImage(obj)) {
+      if (IsImageObject(obj)) {
         UnbinObjectsIntoOffset(obj);
       }
     };
@@ -2909,7 +2931,7 @@ void ImageWriter::FixupPointerArray(mirror::Object* dst,
 }
 
 void ImageWriter::CopyAndFixupObject(Object* obj) {
-  if (IsInBootImage(obj)) {
+  if (!IsImageObject(obj)) {
     return;
   }
   size_t offset = GetImageOffset(obj);

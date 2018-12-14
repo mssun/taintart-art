@@ -79,8 +79,7 @@ OatHeader::OatHeader(InstructionSet instruction_set,
       quick_generic_jni_trampoline_offset_(0),
       quick_imt_conflict_trampoline_offset_(0),
       quick_resolution_trampoline_offset_(0),
-      quick_to_interpreter_bridge_offset_(0),
-      boot_image_checksum_(0) {
+      quick_to_interpreter_bridge_offset_(0) {
   // Don't want asserts in header as they would be checked in each file that includes it. But the
   // fields are private, so we check inside a method.
   static_assert(sizeof(magic_) == sizeof(kOatMagic),
@@ -314,16 +313,6 @@ void OatHeader::SetQuickToInterpreterBridgeOffset(uint32_t offset) {
   DCHECK_EQ(quick_to_interpreter_bridge_offset_, 0U) << offset;
 
   quick_to_interpreter_bridge_offset_ = offset;
-}
-
-uint32_t OatHeader::GetBootImageChecksum() const {
-  CHECK(IsValid());
-  return boot_image_checksum_;
-}
-
-void OatHeader::SetBootImageChecksum(uint32_t boot_image_checksum) {
-  CHECK(IsValid());
-  boot_image_checksum_ = boot_image_checksum;
 }
 
 uint32_t OatHeader::GetKeyValueStoreSize() const {
