@@ -246,13 +246,13 @@ class JitCodeCache {
   void MoveObsoleteMethod(ArtMethod* old_method, ArtMethod* new_method)
       REQUIRES(!lock_) REQUIRES(Locks::mutator_lock_);
 
-  // Dynamically change whether we want to garbage collect code. Should only be used during JIT
-  // initialization or by tests.
-  void SetGarbageCollectCode(bool value) {
-    garbage_collect_code_ = value;
-  }
+  // Dynamically change whether we want to garbage collect code.
+  void SetGarbageCollectCode(bool value) REQUIRES(!lock_);
 
-  bool GetGarbageCollectCode() const {
+  bool GetGarbageCollectCode() REQUIRES(!lock_);
+
+  // Unsafe variant for debug checks.
+  bool GetGarbageCollectCodeUnsafe() const NO_THREAD_SAFETY_ANALYSIS {
     return garbage_collect_code_;
   }
 
@@ -263,6 +263,11 @@ class JitCodeCache {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void PostForkChildAction(bool is_system_server, bool is_zygote);
+
+  // Clear the entrypoints of JIT compiled methods that belong in the zygote space.
+  // This is used for removing non-debuggable JIT code at the point we realize the runtime
+  // is debuggable.
+  void ClearEntryPointsInZygoteExecSpace() REQUIRES(!lock_) REQUIRES(Locks::mutator_lock_);
 
  private:
   JitCodeCache();
@@ -451,7 +456,7 @@ class JitCodeCache {
   bool last_collection_increased_code_cache_ GUARDED_BY(lock_);
 
   // Whether we can do garbage collection. Not 'const' as tests may override this.
-  bool garbage_collect_code_;
+  bool garbage_collect_code_ GUARDED_BY(lock_);
 
   // The size in bytes of used memory for the data portion of the code cache.
   size_t used_memory_for_data_ GUARDED_BY(lock_);

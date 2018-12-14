@@ -38,6 +38,8 @@
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "instrumentation.h"
+#include "jit/jit.h"
+#include "jit/jit_code_cache.h"
 #include "mirror/class-inl.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
@@ -389,6 +391,15 @@ void Trace::Start(std::unique_ptr<File>&& trace_file_in,
 
   // Enable count of allocs if specified in the flags.
   bool enable_stats = false;
+
+  if (runtime->GetJit() != nullptr) {
+    // TODO b/110263880 It would be better if we didn't need to do this.
+    // Since we need to hold the method entrypoint across a suspend to ensure instrumentation
+    // hooks are called correctly we have to disable jit-gc to ensure that the entrypoint doesn't
+    // go away. Furthermore we need to leave this off permanently since one could get the same
+    // effect by causing this to be toggled on and off.
+    runtime->GetJit()->GetCodeCache()->SetGarbageCollectCode(false);
+  }
 
   // Create Trace object.
   {

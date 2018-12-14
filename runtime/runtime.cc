@@ -1452,6 +1452,8 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     if (IsJavaDebuggable()) {
       // Now that we have loaded the boot image, deoptimize its methods if we are running
       // debuggable, as the code may have been compiled non-debuggable.
+      ScopedThreadSuspension sts(self, ThreadState::kNative);
+      ScopedSuspendAll ssa(__FUNCTION__);
       DeoptimizeBootImage();
     }
   } else {
@@ -1551,10 +1553,14 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   // Runtime initialization is largely done now.
   // We load plugins first since that can modify the runtime state slightly.
   // Load all plugins
-  for (auto& plugin : plugins_) {
-    std::string err;
-    if (!plugin.Load(&err)) {
-      LOG(FATAL) << plugin << " failed to load: " << err;
+  {
+    // The init method of plugins expect the state of the thread to be non runnable.
+    ScopedThreadSuspension sts(self, ThreadState::kNative);
+    for (auto& plugin : plugins_) {
+      std::string err;
+      if (!plugin.Load(&err)) {
+        LOG(FATAL) << plugin << " failed to load: " << err;
+      }
     }
   }
 
@@ -2627,6 +2633,7 @@ class UpdateEntryPointsClassVisitor : public ClassVisitor {
       : instrumentation_(instrumentation) {}
 
   bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES(Locks::mutator_lock_) {
+    DCHECK(Locks::mutator_lock_->IsExclusiveHeld(Thread::Current()));
     auto pointer_size = Runtime::Current()->GetClassLinker()->GetImagePointerSize();
     for (auto& m : klass->GetMethods(pointer_size)) {
       const void* code = m.GetEntryPointFromQuickCompiledCode();
@@ -2653,9 +2660,13 @@ void Runtime::DeoptimizeBootImage() {
   // we patch entry points of methods in boot image to interpreter bridge, as
   // boot image code may be AOT compiled as not debuggable.
   if (!GetInstrumentation()->IsForcedInterpretOnly()) {
-    ScopedObjectAccess soa(Thread::Current());
     UpdateEntryPointsClassVisitor visitor(GetInstrumentation());
     GetClassLinker()->VisitClasses(&visitor);
+    jit::Jit* jit = GetJit();
+    if (jit != nullptr) {
+      // Code JITted by the zygote is not compiled debuggable.
+      jit->GetCodeCache()->ClearEntryPointsInZygoteExecSpace();
+    }
   }
 }
 }  // namespace art

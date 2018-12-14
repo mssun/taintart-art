@@ -1552,7 +1552,7 @@ extern "C" bool ArtPlugin_Initialize() {
 
   {
     // Make sure we can deopt anything we need to.
-    art::ScopedObjectAccess soa(art::Thread::Current());
+    art::ScopedSuspendAll ssa(__FUNCTION__);
     gDeoptManager->FinishSetup();
   }
 
