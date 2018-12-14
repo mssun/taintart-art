@@ -67,6 +67,19 @@ static inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
   return os;
 }
 
+static inline std::ostream& operator<<(std::ostream& os, const AccessContext& value)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (!value.GetClass().IsNull()) {
+    std::string tmp;
+    os << value.GetClass()->GetDescriptor(&tmp);
+  } else if (value.GetDexFile() != nullptr) {
+    os << value.GetDexFile()->GetLocation();
+  } else {
+    os << "<unknown_caller>";
+  }
+  return os;
+}
+
 namespace detail {
 
 // Do not change the values of items in this enum, as they are written to the
@@ -349,9 +362,18 @@ uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
 }
 
 template<typename T>
-bool ShouldDenyAccessToMemberImpl(T* member,
-                                  hiddenapi::ApiList api_list,
-                                  AccessMethod access_method) {
+void MaybeReportCorePlatformApiViolation(T* member,
+                                         const AccessContext& caller_context,
+                                         AccessMethod access_method) {
+  if (access_method != AccessMethod::kNone) {
+    MemberSignature sig(member);
+    LOG(ERROR) << "CorePlatformApi violation: " << Dumpable<MemberSignature>(sig)
+               << " from " << caller_context << " using " << access_method;
+  }
+}
+
+template<typename T>
+bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod access_method) {
   DCHECK(member != nullptr);
   Runtime* runtime = Runtime::Current();
 
@@ -406,14 +428,20 @@ bool ShouldDenyAccessToMemberImpl(T* member,
   return deny_access;
 }
 
-// Need to instantiate this.
+// Need to instantiate these.
 template uint32_t GetDexFlags<ArtField>(ArtField* member);
 template uint32_t GetDexFlags<ArtMethod>(ArtMethod* member);
+template void MaybeReportCorePlatformApiViolation(ArtField* member,
+                                                  const AccessContext& caller_context,
+                                                  AccessMethod access_method);
+template void MaybeReportCorePlatformApiViolation(ArtMethod* member,
+                                                  const AccessContext& caller_context,
+                                                  AccessMethod access_method);
 template bool ShouldDenyAccessToMemberImpl<ArtField>(ArtField* member,
-                                                     hiddenapi::ApiList api_list,
+                                                     ApiList api_list,
                                                      AccessMethod access_method);
 template bool ShouldDenyAccessToMemberImpl<ArtMethod>(ArtMethod* member,
-                                                      hiddenapi::ApiList api_list,
+                                                      ApiList api_list,
                                                       AccessMethod access_method);
 }  // namespace detail
 

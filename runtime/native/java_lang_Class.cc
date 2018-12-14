@@ -130,7 +130,7 @@ ALWAYS_INLINE static bool ShouldDenyAccessToMember(T* member, Thread* self)
 // callers (hiddenapi_context).
 template<typename T>
 ALWAYS_INLINE static bool IsDiscoverable(bool public_only,
-                                         hiddenapi::AccessContext access_context,
+                                         const hiddenapi::AccessContext& access_context,
                                          T* member)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (public_only && ((member->GetAccessFlags() & kAccPublic) == 0)) {
@@ -508,8 +508,9 @@ static jobject Class_getDeclaredConstructorInternal(
 }
 
 static ALWAYS_INLINE inline bool MethodMatchesConstructor(
-    ArtMethod* m, bool public_only, hiddenapi::AccessContext hiddenapi_context)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
+    ArtMethod* m,
+    bool public_only,
+    const hiddenapi::AccessContext& hiddenapi_context) REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(m != nullptr);
   return m->IsConstructor() &&
          !m->IsStatic() &&

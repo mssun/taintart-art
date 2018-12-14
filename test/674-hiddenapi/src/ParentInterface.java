@@ -20,22 +20,26 @@ public interface ParentInterface {
   static int fieldPublicStaticLightGreylist = 12;
   static int fieldPublicStaticDarkGreylist = 13;
   static int fieldPublicStaticBlacklist = 14;
+  static int fieldPublicStaticBlacklistAndCorePlatformApi = 15;
 
   // INSTANCE METHOD
   int methodPublicWhitelist();
   int methodPublicLightGreylist();
   int methodPublicDarkGreylist();
   int methodPublicBlacklist();
+  int methodPublicBlacklistAndCorePlatformApi();
 
   // STATIC METHOD
   static int methodPublicStaticWhitelist() { return 21; }
   static int methodPublicStaticLightGreylist() { return 22; }
   static int methodPublicStaticDarkGreylist() { return 23; }
   static int methodPublicStaticBlacklist() { return 24; }
+  static int methodPublicStaticBlacklistAndCorePlatformApi() { return 25; }
 
   // DEFAULT METHOD
   default int methodPublicDefaultWhitelist() { return 31; }
   default int methodPublicDefaultLightGreylist() { return 32; }
   default int methodPublicDefaultDarkGreylist() { return 33; }
   default int methodPublicDefaultBlacklist() { return 34; }
+  default int methodPublicDefaultBlacklistAndCorePlatformApi() { return 35; }
 }

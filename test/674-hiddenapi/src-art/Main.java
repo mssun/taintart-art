@@ -28,6 +28,13 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class Main {
+  // This needs to be kept in sync with DexDomain in ChildClass.
+  enum DexDomain {
+    CorePlatform,
+    Platform,
+    Application
+  }
+
   public static void main(String[] args) throws Exception {
     System.loadLibrary(args[0]);
     prepareNativeLibFileName(args[0]);
@@ -40,70 +47,88 @@ public class Main {
     // or test the wrong thing. We rely on not deduping hidden API warnings
     // here for the same reasons), meaning the code under test and production
     // code are running in different configurations. Each test should be run in
-    // a fresh process to ensure that they are working correcting and not
-    // accidentally interfering with eachother.
+    // a fresh process to ensure that they are working correctly and not
+    // accidentally interfering with each other.
+    // As a side effect, we also cannot test Platform->Platform and later
+    // Platform->CorePlatform as the former succeeds in verifying linkage usages
+    // that should fail in the latter.
 
     // Run test with both parent and child dex files loaded with class loaders.
     // The expectation is that hidden members in parent should be visible to
     // the child.
-    doTest(false, false, false);
+    doTest(DexDomain.Application, DexDomain.Application, false);
     doUnloading();
 
     // Now append parent dex file to boot class path and run again. This time
     // the child dex file should not be able to access private APIs of the
     // parent.
-    appendToBootClassLoader(DEX_PARENT_BOOT);
-    doTest(true, false, false);
+    int parentIdx = appendToBootClassLoader(DEX_PARENT_BOOT, /* isCorePlatform */ false);
+    doTest(DexDomain.Platform, DexDomain.Application, false);
     doUnloading();
 
     // Now run the same test again, but with the blacklist exmemptions list set
     // to "L" which matches everything.
-    doTest(true, false, true);
+    doTest(DexDomain.Platform, DexDomain.Application, true);
     doUnloading();
 
-    // And finally append to child to boot class path as well. With both in the
-    // boot class path, access should be granted.
-    appendToBootClassLoader(DEX_CHILD);
-    doTest(true, true, false);
+    // Repeat the two tests above, only with parent being a core-platform dex file.
+    setDexDomain(parentIdx, /* isCorePlatform */ true);
+    doTest(DexDomain.CorePlatform, DexDomain.Application, false);
+    doUnloading();
+    doTest(DexDomain.CorePlatform, DexDomain.Application, true);
+    doUnloading();
+
+    // Append child to boot class path, first as a platform dex file.
+    // It should not be allowed to access non-public, non-core platform API members.
+    int childIdx = appendToBootClassLoader(DEX_CHILD, /* isCorePlatform */ false);
+    doTest(DexDomain.CorePlatform, DexDomain.Platform, false);
+    doUnloading();
+
+    // And finally change child to core-platform dex. With both in the boot classpath
+    // and both core-platform, access should be granted.
+    setDexDomain(childIdx, /* isCorePlatform */ true);
+    doTest(DexDomain.CorePlatform, DexDomain.CorePlatform, false);
     doUnloading();
   }
 
-  private static void doTest(boolean parentInBoot, boolean childInBoot, boolean whitelistAllApis)
-      throws Exception {
+  private static void doTest(DexDomain parentDomain, DexDomain childDomain,
+      boolean whitelistAllApis) throws Exception {
     // Load parent dex if it is not in boot class path.
     ClassLoader parentLoader = null;
-    if (parentInBoot) {
-      parentLoader = BOOT_CLASS_LOADER;
-    } else {
+    if (parentDomain == DexDomain.Application) {
       parentLoader = new PathClassLoader(DEX_PARENT, ClassLoader.getSystemClassLoader());
+    } else {
+      parentLoader = BOOT_CLASS_LOADER;
     }
 
     // Load child dex if it is not in boot class path.
     ClassLoader childLoader = null;
-    if (childInBoot) {
+    if (childDomain == DexDomain.Application) {
+      childLoader = new InMemoryDexClassLoader(readDexFile(DEX_CHILD), parentLoader);
+    } else {
       if (parentLoader != BOOT_CLASS_LOADER) {
         throw new IllegalStateException(
             "DeclaringClass must be in parent class loader of CallingClass");
       }
       childLoader = BOOT_CLASS_LOADER;
-    } else {
-      childLoader = new InMemoryDexClassLoader(readDexFile(DEX_CHILD), parentLoader);
     }
 
     // Create a unique copy of the native library. Each shared library can only
     // be loaded once, but for some reason even classes from a class loader
     // cannot register their native methods against symbols in a shared library
     // loaded by their parent class loader.
-    String nativeLibCopy = createNativeLibCopy(parentInBoot, childInBoot, whitelistAllApis);
+    String nativeLibCopy = createNativeLibCopy(parentDomain, childDomain, whitelistAllApis);
 
     if (whitelistAllApis) {
       VMRuntime.getRuntime().setHiddenApiExemptions(new String[]{"L"});
     }
 
     // Invoke ChildClass.runTest
-    Class.forName("ChildClass", true, childLoader)
-        .getDeclaredMethod("runTest", String.class, Boolean.TYPE, Boolean.TYPE, Boolean.TYPE)
-            .invoke(null, nativeLibCopy, parentInBoot, childInBoot, whitelistAllApis);
+    Class<?> childClass = Class.forName("ChildClass", true, childLoader);
+    Method runTestMethod = childClass.getDeclaredMethod(
+        "runTest", String.class, Integer.TYPE, Integer.TYPE, Boolean.TYPE);
+    runTestMethod.invoke(null, nativeLibCopy, parentDomain.ordinal(), childDomain.ordinal(),
+        whitelistAllApis);
 
     VMRuntime.getRuntime().setHiddenApiExemptions(new String[0]);
   }
@@ -146,11 +171,11 @@ public class Main {
 
   // Copy native library to a new file with a unique name so it does not
   // conflict with other loaded instance of the same binary file.
-  private static String createNativeLibCopy(
-      boolean parentInBoot, boolean childInBoot, boolean whitelistAllApis) throws Exception {
+  private static String createNativeLibCopy(DexDomain parentDomain, DexDomain childDomain,
+      boolean whitelistAllApis) throws Exception {
     String tempFileName = System.mapLibraryName(
-        "hiddenapitest_" + (parentInBoot ? "1" : "0") + (childInBoot ? "1" : "0") +
-         (whitelistAllApis ? "1" : "0"));
+        "hiddenapitest_" + (parentDomain.ordinal()) + (childDomain.ordinal()) +
+        (whitelistAllApis ? "1" : "0"));
     File tempFile = new File(System.getenv("DEX_LOCATION"), tempFileName);
     Files.copy(new File(nativeLibFileName).toPath(), tempFile.toPath());
     return tempFile.getAbsolutePath();
@@ -175,6 +200,7 @@ public class Main {
 
   private static ClassLoader BOOT_CLASS_LOADER = Object.class.getClassLoader();
 
-  private static native void appendToBootClassLoader(String dexPath);
+  private static native int appendToBootClassLoader(String dexPath, boolean isCorePlatform);
+  private static native void setDexDomain(int index, boolean isCorePlatform);
   private static native void init();
 }
