@@ -29,6 +29,7 @@
 #include <thread>
 #include <memory>
 #include <set>
+#include <string>
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
@@ -103,9 +104,22 @@ std::unique_ptr<std::string> FindAddr2line() {
     }
   }
 
-  std::string path = std::string(".") + kAddr2linePath;
-  if (access(path.c_str(), X_OK) == 0) {
-    return std::make_unique<std::string>(path);
+  {
+    std::string path = std::string(".") + kAddr2linePath;
+    if (access(path.c_str(), X_OK) == 0) {
+      return std::make_unique<std::string>(path);
+    }
+  }
+
+  {
+    using android::base::Dirname;
+
+    std::string exec_dir = android::base::GetExecutableDirectory();
+    std::string derived_top = Dirname(Dirname(Dirname(Dirname(exec_dir))));
+    std::string path = derived_top + kAddr2linePath;
+    if (access(path.c_str(), X_OK) == 0) {
+      return std::make_unique<std::string>(path);
+    }
   }
 
   constexpr const char* kHostAddr2line = "/usr/bin/addr2line";
@@ -500,14 +514,13 @@ void DumpProcess(pid_t forked_pid, const std::atomic<bool>& saw_wif_stopped_for_
   tids.insert(forked_pid);
 
   // Check whether we have and should use addr2line.
-  std::unique_ptr<std::string> addr2line_path = addr2line::FindAddr2line();
-  if (addr2line_path != nullptr) {
-    LOG(ERROR) << "Found addr2line at " << *addr2line_path;
-  } else {
-    LOG(ERROR) << "Did not find usable addr2line";
+  std::unique_ptr<std::string> addr2line_path;
+  if (kUseAddr2line) {
+    addr2line_path = addr2line::FindAddr2line();
+    if (addr2line_path == nullptr) {
+      LOG(ERROR) << "Did not find usable addr2line";
+    }
   }
-  bool use_addr2line = kUseAddr2line && addr2line_path != nullptr;
-  LOG(ERROR) << (use_addr2line ? "U" : "Not u") << "sing addr2line";
 
   if (!WaitForMainSigStop(saw_wif_stopped_for_main)) {
     LOG(ERROR) << "Did not receive SIGSTOP for pid " << forked_pid;
@@ -520,11 +533,7 @@ void DumpProcess(pid_t forked_pid, const std::atomic<bool>& saw_wif_stopped_for_
   }
 
   for (pid_t tid : tids) {
-    DumpThread(forked_pid,
-               tid,
-               use_addr2line ? addr2line_path.get() : nullptr,
-               "  ",
-               backtrace_map.get());
+    DumpThread(forked_pid, tid, addr2line_path.get(), "  ", backtrace_map.get());
   }
 }
 
