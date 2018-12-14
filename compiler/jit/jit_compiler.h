@@ -37,7 +37,7 @@ class JitCompiler {
   virtual ~JitCompiler();
 
   // Compilation entrypoint. Returns whether the compilation succeeded.
-  bool CompileMethod(Thread* self, ArtMethod* method, bool osr)
+  bool CompileMethod(Thread* self, ArtMethod* method, bool baseline, bool osr)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   const CompilerOptions& GetCompilerOptions() const {
