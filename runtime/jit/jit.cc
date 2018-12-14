@@ -58,7 +58,7 @@ void* Jit::jit_library_handle_ = nullptr;
 void* Jit::jit_compiler_handle_ = nullptr;
 void* (*Jit::jit_load_)(void) = nullptr;
 void (*Jit::jit_unload_)(void*) = nullptr;
-bool (*Jit::jit_compile_method_)(void*, ArtMethod*, Thread*, bool) = nullptr;
+bool (*Jit::jit_compile_method_)(void*, ArtMethod*, Thread*, bool, bool) = nullptr;
 void (*Jit::jit_types_loaded_)(void*, mirror::Class**, size_t count) = nullptr;
 bool (*Jit::jit_generate_debug_info_)(void*) = nullptr;
 void (*Jit::jit_update_options_)(void*) = nullptr;
@@ -242,7 +242,7 @@ bool Jit::LoadCompilerLibrary(std::string* error_msg) {
   return true;
 }
 
-bool Jit::CompileMethod(ArtMethod* method, Thread* self, bool osr) {
+bool Jit::CompileMethod(ArtMethod* method, Thread* self, bool baseline, bool osr) {
   DCHECK(Runtime::Current()->UseJitCompilation());
   DCHECK(!method->IsRuntimeMethod());
 
@@ -272,7 +272,7 @@ bool Jit::CompileMethod(ArtMethod* method, Thread* self, bool osr) {
   VLOG(jit) << "Compiling method "
             << ArtMethod::PrettyMethod(method_to_compile)
             << " osr=" << std::boolalpha << osr;
-  bool success = jit_compile_method_(jit_compiler_handle_, method_to_compile, self, osr);
+  bool success = jit_compile_method_(jit_compiler_handle_, method_to_compile, self, baseline, osr);
   code_cache_->DoneCompiling(method_to_compile, self, osr);
   if (!success) {
     VLOG(jit) << "Failed to compile method "
@@ -549,6 +549,7 @@ class JitCompileTask final : public Task {
   enum class TaskKind {
     kAllocateProfile,
     kCompile,
+    kCompileBaseline,
     kCompileOsr,
   };
 
@@ -568,10 +569,12 @@ class JitCompileTask final : public Task {
     ScopedObjectAccess soa(self);
     switch (kind_) {
       case TaskKind::kCompile:
+      case TaskKind::kCompileBaseline:
       case TaskKind::kCompileOsr: {
         Runtime::Current()->GetJit()->CompileMethod(
             method_,
             self,
+            /* baseline= */ (kind_ == TaskKind::kCompileBaseline),
             /* osr= */ (kind_ == TaskKind::kCompileOsr));
         break;
       }

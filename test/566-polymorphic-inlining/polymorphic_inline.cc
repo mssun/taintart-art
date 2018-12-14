@@ -46,7 +46,7 @@ static void do_checks(jclass cls, const char* method_name) {
       usleep(1000);
     }
     // Will either ensure it's compiled or do the compilation itself.
-    jit->CompileMethod(method, soa.Self(), /* osr */ false);
+    jit->CompileMethod(method, soa.Self(), /*baseline=*/ false, /*osr=*/ false);
   }
 
   CodeInfo info(header);
