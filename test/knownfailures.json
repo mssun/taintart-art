@@ -569,6 +569,12 @@
         "env_vars": {"SANITIZE_HOST": "address"}
     },
     {
+        "tests": "175-alloc-big-bignums",
+        "description": "ASAN runs out of memory due to huge allocations.",
+        "variant": "host",
+        "env_vars": {"SANITIZE_HOST": "address"}
+    },
+    {
         "tests": "202-thread-oome",
         "description": "ASAN aborts when large thread stacks are requested.",
         "variant": "host",
