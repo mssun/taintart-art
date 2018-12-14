@@ -674,7 +674,12 @@ class ImageWriter final {
   template <typename T>
   T* NativeCopyLocation(T* obj) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Return true of obj is inside of the boot image space. This may only return true if we are
+  // Return true if `obj` belongs to the image we're writing.
+  // For a boot image, this is true for all objects.
+  // For an app image, boot image objects and boot class path dex caches are excluded.
+  bool IsImageObject(ObjPtr<mirror::Object> obj) const REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Return true if `obj` is inside of the boot image space. This may only return true if we are
   // compiling an app image.
   bool IsInBootImage(const void* obj) const;
 

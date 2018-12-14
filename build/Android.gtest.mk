@@ -452,12 +452,7 @@ define define-art-gtest-rule-target
     $$(gtest_exe) \
     $$($(3)TARGET_OUT_SHARED_LIBRARIES)/libjavacore.so \
     $$($(3)TARGET_OUT_SHARED_LIBRARIES)/libopenjdkd.so \
-    $$(TARGET_OUT_JAVA_LIBRARIES)/core-libart-testdex.jar \
-    $$(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar \
-    $$(TARGET_OUT_JAVA_LIBRARIES)/core-simple-testdex.jar \
-    $$(TARGET_OUT_JAVA_LIBRARIES)/conscrypt-testdex.jar \
-    $$(TARGET_OUT_JAVA_LIBRARIES)/okhttp-testdex.jar \
-    $$(TARGET_OUT_JAVA_LIBRARIES)/bouncycastle-testdex.jar
+    $$(foreach jar,$$(TARGET_TEST_CORE_JARS),$$(TARGET_OUT_JAVA_LIBRARIES)/$$(jar).jar)
 
   ART_TEST_TARGET_GTEST_DEPENDENCIES += $$(gtest_deps)
 

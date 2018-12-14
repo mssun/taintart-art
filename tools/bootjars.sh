@@ -72,8 +72,10 @@ if [[ $core_jars_only == y ]]; then
   # FIXME: The soong invocation we're using for getting the variables does not give us anything
   # defined in Android.common_path.mk, otherwise we would just use HOST-/TARGET_TEST_CORE_JARS.
 
-  # The core_jars_list must match the TEST_CORE_JARS variable in the Android.common_path.mk .
-  core_jars_list="core-oj core-libart core-simple conscrypt okhttp bouncycastle"
+  # Note: This must start with the CORE_IMG_JARS in Android.common_path.mk
+  # because that's what we use for compiling the core.art image.
+  # It may contain additional modules from TEST_CORE_JARS.
+  core_jars_list="core-oj core-libart core-simple"
   core_jars_suffix=
   if [[ $mode == target ]]; then
     core_jars_suffix=-testdex
