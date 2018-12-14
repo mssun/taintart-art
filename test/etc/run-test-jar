@@ -1032,7 +1032,8 @@ else
       # Note: We first send SIGRTMIN+2 (usually 36) to ART, which will induce a full thread dump
       #       before abort. However, dumping threads might deadlock, so we also use the "-k"
       #       option to definitely kill the child.
-      cmdline="timeout -k 120s -s SIGRTMIN+2 ${TIME_OUT_VALUE}s ${TIMEOUT_DUMPER} $cmdline"
+      # Note: Using "--foreground" to not propagate the signal to children, i.e., the runtime.
+      cmdline="timeout --foreground -k 120s -s SIGRTMIN+2 ${TIME_OUT_VALUE}s timeout_dumper $cmdline"
     fi
 
     if [ "$DEV_MODE" = "y" ]; then
