@@ -228,6 +228,11 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
     return false;
   }
 
+  bool IsRegionNewlyAllocated(size_t idx) const NO_THREAD_SAFETY_ANALYSIS {
+    DCHECK_LT(idx, num_regions_);
+    return regions_[idx].IsNewlyAllocated();
+  }
+
   bool IsInNewlyAllocatedRegion(mirror::Object* ref) {
     if (HasAddress(ref)) {
       Region* r = RefToRegionUnlocked(ref);
@@ -291,7 +296,9 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
   size_t FromSpaceSize() REQUIRES(!region_lock_);
   size_t UnevacFromSpaceSize() REQUIRES(!region_lock_);
   size_t ToSpaceSize() REQUIRES(!region_lock_);
-  void ClearFromSpace(/* out */ uint64_t* cleared_bytes, /* out */ uint64_t* cleared_objects)
+  void ClearFromSpace(/* out */ uint64_t* cleared_bytes,
+                      /* out */ uint64_t* cleared_objects,
+                      const bool clear_bitmap)
       REQUIRES(!region_lock_);
 
   void AddLiveBytes(mirror::Object* ref, size_t alloc_size) {
@@ -307,6 +314,40 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
         size_t live_bytes = r->LiveBytes();
         CHECK(live_bytes == 0U || live_bytes == static_cast<size_t>(-1)) << live_bytes;
       }
+    }
+  }
+
+  void SetAllRegionLiveBytesZero() REQUIRES(!region_lock_) {
+    MutexLock mu(Thread::Current(), region_lock_);
+    const size_t iter_limit = kUseTableLookupReadBarrier
+        ? num_regions_
+        : std::min(num_regions_, non_free_region_index_limit_);
+    for (size_t i = 0; i < iter_limit; ++i) {
+      Region* r = &regions_[i];
+      // Newly allocated regions don't need up-to-date live_bytes_ for deciding
+      // whether to be evacuated or not. See Region::ShouldBeEvacuated().
+      if (!r->IsFree() && !r->IsNewlyAllocated()) {
+        r->ZeroLiveBytes();
+      }
+    }
+  }
+
+  size_t RegionIdxForRefUnchecked(mirror::Object* ref) const NO_THREAD_SAFETY_ANALYSIS {
+    DCHECK(HasAddress(ref));
+    uintptr_t offset = reinterpret_cast<uintptr_t>(ref) - reinterpret_cast<uintptr_t>(Begin());
+    size_t reg_idx = offset / kRegionSize;
+    DCHECK_LT(reg_idx, num_regions_);
+    Region* reg = &regions_[reg_idx];
+    DCHECK_EQ(reg->Idx(), reg_idx);
+    DCHECK(reg->Contains(ref));
+    return reg_idx;
+  }
+  // Return -1 as region index for references outside this region space.
+  size_t RegionIdxForRef(mirror::Object* ref) const NO_THREAD_SAFETY_ANALYSIS {
+    if (HasAddress(ref)) {
+      return RegionIdxForRefUnchecked(ref);
+    } else {
+      return static_cast<size_t>(-1);
     }
   }
 
@@ -515,11 +556,10 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
     ALWAYS_INLINE bool ShouldBeEvacuated(EvacMode evac_mode);
 
     void AddLiveBytes(size_t live_bytes) {
-      DCHECK(IsInUnevacFromSpace());
+      DCHECK(kEnableGenerationalConcurrentCopyingCollection || IsInUnevacFromSpace());
       DCHECK(!IsLargeTail());
       DCHECK_NE(live_bytes_, static_cast<size_t>(-1));
-      // For large allocations, we always consider all bytes in the
-      // regions live.
+      // For large allocations, we always consider all bytes in the regions live.
       live_bytes_ += IsLarge() ? Top() - begin_ : live_bytes;
       DCHECK_LE(live_bytes_, BytesAllocated());
     }

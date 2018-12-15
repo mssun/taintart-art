@@ -319,6 +319,7 @@ void RegionSpace::SetFromSpace(accounting::ReadBarrierTable* rb_table,
                 state == RegionState::kRegionStateLarge) &&
                type == RegionType::kRegionTypeToSpace);
         bool should_evacuate = r->ShouldBeEvacuated(evac_mode);
+        bool is_newly_allocated = r->IsNewlyAllocated();
         if (should_evacuate) {
           r->SetAsFromSpace();
           DCHECK(r->IsInFromSpace());
@@ -329,6 +330,17 @@ void RegionSpace::SetFromSpace(accounting::ReadBarrierTable* rb_table,
         if (UNLIKELY(state == RegionState::kRegionStateLarge &&
                      type == RegionType::kRegionTypeToSpace)) {
           prev_large_evacuated = should_evacuate;
+          // In 2-phase full heap GC, this function is called after marking is
+          // done. So, it is possible that some newly allocated large object is
+          // marked but its live_bytes is still -1. We need to clear the
+          // mark-bit otherwise the live_bytes will not be updated in
+          // ConcurrentCopying::ProcessMarkStackRef() and hence will break the
+          // logic.
+          if (kEnableGenerationalConcurrentCopyingCollection
+              && !should_evacuate
+              && is_newly_allocated) {
+            GetMarkBitmap()->Clear(reinterpret_cast<mirror::Object*>(r->Begin()));
+          }
           num_expected_large_tails = RoundUp(r->BytesAllocated(), kRegionSize) / kRegionSize - 1;
           DCHECK_GT(num_expected_large_tails, 0U);
         }
@@ -367,7 +379,8 @@ static void ZeroAndProtectRegion(uint8_t* begin, uint8_t* end) {
 }
 
 void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
-                                 /* out */ uint64_t* cleared_objects) {
+                                 /* out */ uint64_t* cleared_objects,
+                                 const bool clear_bitmap) {
   DCHECK(cleared_bytes != nullptr);
   DCHECK(cleared_objects != nullptr);
   *cleared_bytes = 0;
@@ -395,13 +408,18 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
   // (see b/62194020).
   uint8_t* clear_block_begin = nullptr;
   uint8_t* clear_block_end = nullptr;
-  auto clear_region = [&clear_block_begin, &clear_block_end](Region* r) {
+  auto clear_region = [this, &clear_block_begin, &clear_block_end, clear_bitmap](Region* r) {
     r->Clear(/*zero_and_release_pages=*/false);
     if (clear_block_end != r->Begin()) {
       // Region `r` is not adjacent to the current clear block; zero and release
       // pages within the current block and restart a new clear block at the
       // beginning of region `r`.
       ZeroAndProtectRegion(clear_block_begin, clear_block_end);
+      if (clear_bitmap) {
+        GetLiveBitmap()->ClearRange(
+            reinterpret_cast<mirror::Object*>(clear_block_begin),
+            reinterpret_cast<mirror::Object*>(clear_block_end));
+      }
       clear_block_begin = r->Begin();
     }
     // Add region `r` to the clear block.
@@ -426,20 +444,23 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
         // It is also better to clear these regions now instead of at the end of the next GC to
         // save RAM. If we don't clear the regions here, they will be cleared next GC by the normal
         // live percent evacuation logic.
+        *cleared_bytes += r->BytesAllocated();
+        *cleared_objects += r->ObjectsAllocated();
+        clear_region(r);
         size_t free_regions = 1;
         // Also release RAM for large tails.
         while (i + free_regions < num_regions_ && regions_[i + free_regions].IsLargeTail()) {
-          DCHECK(r->IsLarge());
           clear_region(&regions_[i + free_regions]);
           ++free_regions;
         }
-        *cleared_bytes += r->BytesAllocated();
-        *cleared_objects += r->ObjectsAllocated();
         num_non_free_regions_ -= free_regions;
-        clear_region(r);
-        GetLiveBitmap()->ClearRange(
-            reinterpret_cast<mirror::Object*>(r->Begin()),
-            reinterpret_cast<mirror::Object*>(r->Begin() + free_regions * kRegionSize));
+        // When clear_bitmap is true, this clearing of bitmap is taken care in
+        // clear_region().
+        if (!clear_bitmap) {
+          GetLiveBitmap()->ClearRange(
+              reinterpret_cast<mirror::Object*>(r->Begin()),
+              reinterpret_cast<mirror::Object*>(r->Begin() + free_regions * kRegionSize));
+        }
         continue;
       }
       r->SetUnevacFromSpaceAsToSpace();
@@ -519,6 +540,11 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
   }
   // Clear pages for the last block since clearing happens when a new block opens.
   ZeroAndReleasePages(clear_block_begin, clear_block_end - clear_block_begin);
+  if (clear_bitmap) {
+    GetLiveBitmap()->ClearRange(
+        reinterpret_cast<mirror::Object*>(clear_block_begin),
+        reinterpret_cast<mirror::Object*>(clear_block_end));
+  }
   // Update non_free_region_index_limit_.
   SetNonFreeRegionLimit(new_non_free_region_index_limit);
   evac_region_ = nullptr;
