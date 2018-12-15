@@ -157,14 +157,12 @@ class ScopedClassInfo {
       : jvmtienv_(jvmtienv),
         class_(c),
         name_(nullptr),
-        generic_(nullptr),
         file_(nullptr),
         debug_ext_(nullptr) {}
 
   ~ScopedClassInfo() {
     if (class_ != nullptr) {
       jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(name_));
-      jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(generic_));
       jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(file_));
       jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(debug_ext_));
     }
@@ -173,12 +171,11 @@ class ScopedClassInfo {
   bool Init() {
     if (class_ == nullptr) {
       name_ = const_cast<char*>("<NONE>");
-      generic_ = const_cast<char*>("<NONE>");
       return true;
     } else {
       jvmtiError ret1 = jvmtienv_->GetSourceFileName(class_, &file_);
       jvmtiError ret2 = jvmtienv_->GetSourceDebugExtension(class_, &debug_ext_);
-      return jvmtienv_->GetClassSignature(class_, &name_, &generic_) == JVMTI_ERROR_NONE &&
+      return jvmtienv_->GetClassSignature(class_, &name_, nullptr) == JVMTI_ERROR_NONE &&
           ret1 != JVMTI_ERROR_MUST_POSSESS_CAPABILITY &&
           ret1 != JVMTI_ERROR_INVALID_CLASS &&
           ret2 != JVMTI_ERROR_MUST_POSSESS_CAPABILITY &&
@@ -191,9 +188,6 @@ class ScopedClassInfo {
   }
   const char* GetName() const {
     return name_;
-  }
-  const char* GetGeneric() const {
-    return generic_;
   }
   const char* GetSourceDebugExtension() const {
     if (debug_ext_ == nullptr) {
@@ -214,7 +208,6 @@ class ScopedClassInfo {
   jvmtiEnv* jvmtienv_;
   jclass class_;
   char* name_;
-  char* generic_;
   char* file_;
   char* debug_ext_;
 };
@@ -229,14 +222,12 @@ class ScopedMethodInfo {
         class_info_(nullptr),
         name_(nullptr),
         signature_(nullptr),
-        generic_(nullptr),
         first_line_(-1) {}
 
   ~ScopedMethodInfo() {
     DeleteLocalRef(env_, declaring_class_);
     jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(name_));
     jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(signature_));
-    jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(generic_));
   }
 
   bool Init() {
@@ -257,7 +248,7 @@ class ScopedMethodInfo {
       return false;
     }
     return class_info_->Init() &&
-        (jvmtienv_->GetMethodName(method_, &name_, &signature_, &generic_) == JVMTI_ERROR_NONE);
+        (jvmtienv_->GetMethodName(method_, &name_, &signature_, nullptr) == JVMTI_ERROR_NONE);
   }
 
   const ScopedClassInfo& GetDeclaringClassInfo() const {
@@ -276,10 +267,6 @@ class ScopedMethodInfo {
     return signature_;
   }
 
-  const char* GetGeneric() const {
-    return generic_;
-  }
-
   jint GetFirstLine() const {
     return first_line_;
   }
@@ -292,7 +279,6 @@ class ScopedMethodInfo {
   std::unique_ptr<ScopedClassInfo> class_info_;
   char* name_;
   char* signature_;
-  char* generic_;
   jint first_line_;
 
   friend std::ostream& operator<<(std::ostream &os, ScopedMethodInfo const& m);
@@ -306,20 +292,18 @@ class ScopedFieldInfo {
         field_(field),
         class_info_(nullptr),
         name_(nullptr),
-        type_(nullptr),
-        generic_(nullptr) {}
+        type_(nullptr) {}
 
   ~ScopedFieldInfo() {
     jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(name_));
     jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(type_));
-    jvmtienv_->Deallocate(reinterpret_cast<unsigned char*>(generic_));
   }
 
   bool Init() {
     class_info_.reset(new ScopedClassInfo(jvmtienv_, declaring_class_));
     return class_info_->Init() &&
         (jvmtienv_->GetFieldName(
-            declaring_class_, field_, &name_, &type_, &generic_) == JVMTI_ERROR_NONE);
+            declaring_class_, field_, &name_, &type_, nullptr) == JVMTI_ERROR_NONE);
   }
 
   const ScopedClassInfo& GetDeclaringClassInfo() const {
@@ -338,10 +322,6 @@ class ScopedFieldInfo {
     return type_;
   }
 
-  const char* GetGeneric() const {
-    return generic_;
-  }
-
  private:
   jvmtiEnv* jvmtienv_;
   jclass declaring_class_;
@@ -349,7 +329,6 @@ class ScopedFieldInfo {
   std::unique_ptr<ScopedClassInfo> class_info_;
   char* name_;
   char* type_;
-  char* generic_;
 
   friend std::ostream& operator<<(std::ostream &os, ScopedFieldInfo const& m);
 };

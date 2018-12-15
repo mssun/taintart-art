@@ -447,19 +447,63 @@
     },
     {
         "tests": [
-            "137-cfi",
-            "595-profile-saving",
-            "900-hello-plugin",
-            "909-attach-agent",
-            "981-dedup-original-dex",
-            "1900-track-alloc"
+            "004-ThreadStress",
+            "130-hprof",
+            "579-inline-infinite",
+            "1946-list-descriptors"
         ],
-        "description": ["Tests that require exact knowledge of the number of plugins and agents."],
+        "description": ["Too slow to finish in the timeout"],
         "variant": "jvmti-stress | redefine-stress | trace-stress | field-stress | step-stress"
     },
     {
         "tests": [
+            "911-get-stack-trace"
+        ],
+        "description": ["Tests that fail when run with step-stress for unknown reasons."],
+        "bug": "b/120995005",
+        "variant": "jvmti-stress | step-stress"
+    },
+    {
+        "tests": [
+            "004-SignalTest",
+            "004-StackWalk",
+            "064-field-access",
+            "083-compiler-regressions",
+            "098-ddmc",
+            "107-int-math2",
+            "129-ThreadGetId",
+            "135-MirandaDispatch",
             "132-daemon-locks-shutdown",
+            "163-app-image-methods",
+            "607-daemon-stress",
+            "674-hiddenapi",
+            "687-deopt",
+            "904-object-allocation"
+        ],
+        "description": ["Tests that sometimes fail when run with jvmti-stress for unknown reasons."],
+        "bug": "b/120995005",
+        "variant": "jvmti-stress | trace-stress | field-stress | step-stress"
+    },
+    {
+        "tests": [
+            "018-stack-overflow",
+            "137-cfi",
+            "595-profile-saving",
+            "597-deopt-busy-loop",
+            "597-deopt-new-string",
+            "660-clinit",
+            "900-hello-plugin",
+            "909-attach-agent",
+            "924-threads",
+            "981-dedup-original-dex",
+            "1900-track-alloc"
+        ],
+        "description": ["Tests that require exact knowledge of the deoptimization state, the ",
+                        "number of plugins and agents, or breaks other openjdkjvmti assumptions."],
+        "variant": "jvmti-stress | redefine-stress | trace-stress | field-stress | step-stress"
+    },
+    {
+        "tests": [
             "607-daemon-stress",
             "602-deoptimizeable",
             "121-simple-suspend-check",
