@@ -55,7 +55,6 @@ struct MethodCacheEntry {
   int32_t offset;  // Offset relative to the start of the dex file header.
   int32_t len;
   int32_t index;  // Method index.
-  std::string name;  // Method name. Not filled in for all cache entries.
 };
 
 class MappedFileContainer : public DexFileContainer {
@@ -133,8 +132,7 @@ class ExtDexFile {
         int32_t offset = reinterpret_cast<const uint8_t*>(code.Insns()) - dex_file_->Begin();
         int32_t len = code.InsnsSizeInBytes();
         int32_t index = method.GetIndex();
-        auto res =
-            method_cache_.emplace(offset + len, art::MethodCacheEntry{offset, len, index, ""});
+        auto res = method_cache_.emplace(offset + len, art::MethodCacheEntry{offset, len, index});
         if (offset <= dex_offset && dex_offset < offset + len) {
           return &res.first->second;
         }
@@ -142,13 +140,6 @@ class ExtDexFile {
     }
 
     return nullptr;
-  }
-
-  const std::string& GetMethodName(art::MethodCacheEntry& entry) {
-    if (entry.name.empty()) {
-      entry.name = dex_file_->PrettyMethod(entry.index, false);
-    }
-    return entry.name;
   }
 };
 
@@ -312,7 +303,8 @@ int ExtDexFileGetMethodInfoForOffset(ExtDexFile* ext_dex_file,
   if (entry != nullptr) {
     method_info->offset = entry->offset;
     method_info->len = entry->len;
-    method_info->name = new ExtDexFileString{ext_dex_file->GetMethodName(*entry)};
+    method_info->name =
+        new ExtDexFileString{ext_dex_file->dex_file_->PrettyMethod(entry->index, false)};
     return true;
   }
 
