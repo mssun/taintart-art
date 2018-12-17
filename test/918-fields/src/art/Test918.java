@@ -16,6 +16,7 @@
 
 package art;
 
+import java.io.InterruptedIOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
@@ -26,10 +27,11 @@ public class Test918 {
 
   public static void doTest() throws Exception {
     testField(Math.class, "PI");
-    testField(Integer.class, "value");
+    testField(InterruptedIOException.class, "bytesTransferred");
     testField(Foo.class, "this$0");
     testField(Bar.class, "VAL");
     testField(Generics.class, "generics");
+    testField(Generics.class, "privateValue");
   }
 
   private static void testField(Class<?> base, String fieldName)
@@ -71,5 +73,6 @@ public class Test918 {
 
   private static class Generics<T> {
     T generics;
+    private int privateValue = 42;
   }
 }

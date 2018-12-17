@@ -2,9 +2,9 @@
 class java.lang.Math
 25
 false
-[value, I, null]
-class java.lang.Integer
-18
+[bytesTransferred, I, null]
+class java.io.InterruptedIOException
+1
 false
 [this$0, Lart/Test918;, null]
 class art.Test918$Foo
@@ -17,4 +17,8 @@ false
 [generics, Ljava/lang/Object;, TT;]
 class art.Test918$Generics
 0
+false
+[privateValue, I, null]
+class art.Test918$Generics
+2
 false
