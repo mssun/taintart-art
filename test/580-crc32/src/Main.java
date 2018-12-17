@@ -16,6 +16,7 @@
 
 import java.util.zip.CRC32;
 import java.util.Random;
+import java.nio.ByteBuffer;
 
 /**
  * The ART compiler can use intrinsics for the java.util.zip.CRC32 methods:
@@ -343,8 +344,193 @@ public class Main {
                 CRC32ByteArray(bytes, off, len));
   }
 
+  private static long CRC32ByteBuffer(byte[] bytes, int off, int len) {
+    ByteBuffer buf = ByteBuffer.wrap(bytes, 0, off + len);
+    buf.position(off);
+    CRC32 crc32 = new CRC32();
+    crc32.update(buf);
+    return crc32.getValue();
+  }
+
+  private static void TestCRC32UpdateByteBuffer() {
+    assertEqual(0L, CRC32ByteBuffer(new byte[] {}, 0, 0));
+    assertEqual(0L, CRC32ByteBuffer(new byte[] {0}, 0, 0));
+    assertEqual(0L, CRC32ByteBuffer(new byte[] {0}, 1, 0));
+    assertEqual(0L, CRC32ByteBuffer(new byte[] {0, 0}, 1, 0));
+
+    assertEqual(CRC32Byte(0), CRC32ByteBuffer(new byte[] {0}, 0, 1));
+    assertEqual(CRC32Byte(1), CRC32ByteBuffer(new byte[] {1}, 0, 1));
+    assertEqual(CRC32Byte(0x0f), CRC32ByteBuffer(new byte[] {0x0f}, 0, 1));
+    assertEqual(CRC32Byte(0xff), CRC32ByteBuffer(new byte[] {-1}, 0, 1));
+    assertEqual(CRC32BytesUsingUpdateInt(0, 0, 0),
+                CRC32ByteBuffer(new byte[] {0, 0, 0}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 1, 1),
+                CRC32ByteBuffer(new byte[] {1, 1, 1}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f),
+                CRC32ByteBuffer(new byte[] {0x0f, 0x0f, 0x0f}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(0xff, 0xff, 0xff),
+                CRC32ByteBuffer(new byte[] {-1, -1, -1}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 2),
+                CRC32ByteBuffer(new byte[] {1, 2}, 0, 2));
+    assertEqual(
+        CRC32BytesUsingUpdateInt(0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE),
+        CRC32ByteBuffer(new byte[] {0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE}, 0, 4));
+
+    byte[] bytes = new byte[128 * 1024];
+    Random rnd = new Random(0);
+    rnd.nextBytes(bytes);
+
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, 8 * 1024),
+                CRC32ByteBuffer(bytes, 0, 8 * 1024));
+
+    int off = rnd.nextInt(bytes.length / 2);
+    for (int len = 0; len <= 16; ++len) {
+      assertEqual(CRC32BytesUsingUpdateInt(bytes, off, len),
+                  CRC32ByteBuffer(bytes, off, len));
+    }
+
+    // Check there are no issues with unaligned accesses.
+    for (int o = 1; o < 8; ++o) {
+      for (int l = 0; l <= 16; ++l) {
+        assertEqual(CRC32BytesUsingUpdateInt(bytes, o, l),
+                    CRC32ByteBuffer(bytes, o, l));
+      }
+    }
+
+    int len = bytes.length / 2;
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len - 1),
+                CRC32ByteBuffer(bytes, 0, len - 1));
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len),
+                CRC32ByteBuffer(bytes, 0, len));
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len + 1),
+                CRC32ByteBuffer(bytes, 0, len + 1));
+
+    len = rnd.nextInt(bytes.length + 1);
+    off = rnd.nextInt(bytes.length - len);
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, off, len),
+                CRC32ByteBuffer(bytes, off, len));
+  }
+
+  private static long CRC32DirectByteBuffer(byte[] bytes, int off, int len) {
+    final int total_len = off + len;
+    ByteBuffer buf = ByteBuffer.allocateDirect(total_len).put(bytes, 0, total_len);
+    buf.position(off);
+    CRC32 crc32 = new CRC32();
+    crc32.update(buf);
+    return crc32.getValue();
+  }
+
+  private static long CRC32ByteAndDirectByteBuffer(int value, byte[] bytes) {
+    ByteBuffer buf = ByteBuffer.allocateDirect(bytes.length).put(bytes);
+    buf.position(0);
+    CRC32 crc32 = new CRC32();
+    crc32.update(value);
+    crc32.update(buf);
+    return crc32.getValue();
+  }
+
+  private static long CRC32DirectByteBufferAndByte(byte[] bytes, int value) {
+    ByteBuffer buf = ByteBuffer.allocateDirect(bytes.length).put(bytes);
+    buf.position(0);
+    CRC32 crc32 = new CRC32();
+    crc32.update(buf);
+    crc32.update(value);
+    return crc32.getValue();
+  }
+
+  private static void TestCRC32UpdateDirectByteBuffer() {
+    assertEqual(0L, CRC32DirectByteBuffer(new byte[] {}, 0, 0));
+    assertEqual(0L, CRC32DirectByteBuffer(new byte[] {0}, 0, 0));
+    assertEqual(0L, CRC32DirectByteBuffer(new byte[] {0}, 1, 0));
+    assertEqual(0L, CRC32DirectByteBuffer(new byte[] {0, 0}, 1, 0));
+
+    assertEqual(CRC32Byte(0), CRC32DirectByteBuffer(new byte[] {0}, 0, 1));
+    assertEqual(CRC32Byte(1), CRC32DirectByteBuffer(new byte[] {1}, 0, 1));
+    assertEqual(CRC32Byte(0x0f), CRC32DirectByteBuffer(new byte[] {0x0f}, 0, 1));
+    assertEqual(CRC32Byte(0xff), CRC32DirectByteBuffer(new byte[] {-1}, 0, 1));
+    assertEqual(CRC32BytesUsingUpdateInt(0, 0, 0),
+                CRC32DirectByteBuffer(new byte[] {0, 0, 0}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 1, 1),
+                CRC32DirectByteBuffer(new byte[] {1, 1, 1}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f),
+                CRC32DirectByteBuffer(new byte[] {0x0f, 0x0f, 0x0f}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(0xff, 0xff, 0xff),
+                CRC32DirectByteBuffer(new byte[] {-1, -1, -1}, 0, 3));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 2),
+                CRC32DirectByteBuffer(new byte[] {1, 2}, 0, 2));
+    assertEqual(
+        CRC32BytesUsingUpdateInt(0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE),
+        CRC32DirectByteBuffer(new byte[] {0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE}, 0, 4));
+
+    assertEqual(CRC32BytesUsingUpdateInt(0, 0, 0),
+                CRC32ByteAndDirectByteBuffer(0, new byte[] {0, 0}));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 1, 1),
+                CRC32ByteAndDirectByteBuffer(1, new byte[] {1, 1}));
+    assertEqual(CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f),
+                CRC32ByteAndDirectByteBuffer(0x0f, new byte[] {0x0f, 0x0f}));
+    assertEqual(CRC32BytesUsingUpdateInt(0xff, 0xff, 0xff),
+                CRC32ByteAndDirectByteBuffer(-1, new byte[] {-1, -1}));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 2, 3),
+                CRC32ByteAndDirectByteBuffer(1, new byte[] {2, 3}));
+    assertEqual(
+        CRC32BytesUsingUpdateInt(0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE),
+        CRC32ByteAndDirectByteBuffer(0, new byte[] {-1, Byte.MIN_VALUE, Byte.MAX_VALUE}));
+
+    assertEqual(CRC32BytesUsingUpdateInt(0, 0, 0),
+                CRC32DirectByteBufferAndByte(new byte[] {0, 0}, 0));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 1, 1),
+                CRC32DirectByteBufferAndByte(new byte[] {1, 1}, 1));
+    assertEqual(CRC32BytesUsingUpdateInt(0x0f, 0x0f, 0x0f),
+                CRC32DirectByteBufferAndByte(new byte[] {0x0f, 0x0f}, 0x0f));
+    assertEqual(CRC32BytesUsingUpdateInt(0xff, 0xff, 0xff),
+                CRC32DirectByteBufferAndByte(new byte[] {-1, -1}, -1));
+    assertEqual(CRC32BytesUsingUpdateInt(1, 2, 3),
+                CRC32DirectByteBufferAndByte(new byte[] {1, 2}, 3));
+    assertEqual(
+        CRC32BytesUsingUpdateInt(0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE),
+        CRC32DirectByteBufferAndByte(new byte[] {0, -1, Byte.MIN_VALUE}, Byte.MAX_VALUE));
+
+    byte[] bytes = new byte[128 * 1024];
+    Random rnd = new Random(0);
+    rnd.nextBytes(bytes);
+
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, bytes.length),
+                CRC32DirectByteBuffer(bytes, 0, bytes.length));
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, 8 * 1024),
+                CRC32DirectByteBuffer(bytes, 0, 8 * 1024));
+
+    int off = rnd.nextInt(bytes.length / 2);
+    for (int len = 0; len <= 16; ++len) {
+      assertEqual(CRC32BytesUsingUpdateInt(bytes, off, len),
+                  CRC32DirectByteBuffer(bytes, off, len));
+    }
+
+    // Check there are no issues with unaligned accesses.
+    for (int o = 1; o < 8; ++o) {
+      for (int l = 0; l <= 16; ++l) {
+        assertEqual(CRC32BytesUsingUpdateInt(bytes, o, l),
+                    CRC32DirectByteBuffer(bytes, o, l));
+      }
+    }
+
+    int len = bytes.length / 2;
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len - 1),
+                CRC32DirectByteBuffer(bytes, 0, len - 1));
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len),
+                CRC32DirectByteBuffer(bytes, 0, len));
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, 0, len + 1),
+                CRC32DirectByteBuffer(bytes, 0, len + 1));
+
+    len = rnd.nextInt(bytes.length + 1);
+    off = rnd.nextInt(bytes.length - len);
+    assertEqual(CRC32BytesUsingUpdateInt(bytes, off, len),
+                CRC32DirectByteBuffer(bytes, off, len));
+  }
+
   public static void main(String args[]) {
     TestCRC32Update();
     TestCRC32UpdateBytes();
+    TestCRC32UpdateByteBuffer();
+    TestCRC32UpdateDirectByteBuffer();
   }
 }

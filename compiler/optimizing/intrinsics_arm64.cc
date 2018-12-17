@@ -2954,58 +2954,20 @@ void IntrinsicCodeGeneratorARM64::VisitCRC32Update(HInvoke* invoke) {
   __ Mvn(out, tmp);
 }
 
-// The threshold for sizes of arrays to use the library provided implementation
-// of CRC32.updateBytes instead of the intrinsic.
-static constexpr int32_t kCRC32UpdateBytesThreshold = 64 * 1024;
-
-void IntrinsicLocationsBuilderARM64::VisitCRC32UpdateBytes(HInvoke* invoke) {
-  if (!codegen_->GetInstructionSetFeatures().HasCRC()) {
-    return;
-  }
-
-  LocationSummary* locations
-      = new (allocator_) LocationSummary(invoke,
-                                         LocationSummary::kCallOnSlowPath,
-                                         kIntrinsified);
-
-  locations->SetInAt(0, Location::RequiresRegister());
-  locations->SetInAt(1, Location::RequiresRegister());
-  locations->SetInAt(2, Location::RegisterOrConstant(invoke->InputAt(2)));
-  locations->SetInAt(3, Location::RequiresRegister());
-  locations->AddTemp(Location::RequiresRegister());
-  locations->SetOut(Location::RequiresRegister());
-}
-
-// Lower the invoke of CRC32.updateBytes(int crc, byte[] b, int off, int len)
+// Generate code using CRC32 instructions which calculates
+// a CRC32 value of a byte.
 //
-// Note: The intrinsic is not used if len exceeds a threshold.
-void IntrinsicCodeGeneratorARM64::VisitCRC32UpdateBytes(HInvoke* invoke) {
-  DCHECK(codegen_->GetInstructionSetFeatures().HasCRC());
-
-  auto masm = GetVIXLAssembler();
-  auto locations = invoke->GetLocations();
-
-  auto slow_path =
-    new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
-  codegen_->AddSlowPath(slow_path);
-
-  Register length = WRegisterFrom(locations->InAt(3));
-  __ Cmp(length, kCRC32UpdateBytesThreshold);
-  __ B(slow_path->GetEntryLabel(), hi);
-
-  const uint32_t array_data_offset =
-      mirror::Array::DataOffset(Primitive::kPrimByte).Uint32Value();
-  Register ptr = XRegisterFrom(locations->GetTemp(0));
-  Register array = XRegisterFrom(locations->InAt(1));
-  auto offset = locations->InAt(2);
-  if (offset.IsConstant()) {
-    int32_t offset_value = offset.GetConstant()->AsIntConstant()->GetValue();
-    __ Add(ptr, array, array_data_offset + offset_value);
-  } else {
-    __ Add(ptr, array, array_data_offset);
-    __ Add(ptr, ptr, XRegisterFrom(offset));
-  }
-
+// Parameters:
+//   masm   - VIXL macro assembler
+//   crc    - a register holding an initial CRC value
+//   ptr    - a register holding a memory address of bytes
+//   length - a register holding a number of bytes to process
+//   out    - a register to put a result of calculation
+static void GenerateCodeForCalculationCRC32ValueOfBytes(MacroAssembler* masm,
+                                                        const Register& crc,
+                                                        const Register& ptr,
+                                                        const Register& length,
+                                                        const Register& out) {
   // The algorithm of CRC32 of bytes is:
   //   crc = ~crc
   //   process a few first bytes to make the array 8-byte aligned
@@ -3029,8 +2991,7 @@ void IntrinsicCodeGeneratorARM64::VisitCRC32UpdateBytes(HInvoke* invoke) {
   Register len = temps.AcquireW();
   Register array_elem = temps.AcquireW();
 
-  Register out = WRegisterFrom(locations->Out());
-  __ Mvn(out, WRegisterFrom(locations->InAt(0)));
+  __ Mvn(out, crc);
   __ Mov(len, length);
 
   __ Tbz(ptr, 0, &aligned2);
@@ -3095,8 +3056,109 @@ void IntrinsicCodeGeneratorARM64::VisitCRC32UpdateBytes(HInvoke* invoke) {
 
   __ Bind(&done);
   __ Mvn(out, out);
+}
+
+// The threshold for sizes of arrays to use the library provided implementation
+// of CRC32.updateBytes instead of the intrinsic.
+static constexpr int32_t kCRC32UpdateBytesThreshold = 64 * 1024;
+
+void IntrinsicLocationsBuilderARM64::VisitCRC32UpdateBytes(HInvoke* invoke) {
+  if (!codegen_->GetInstructionSetFeatures().HasCRC()) {
+    return;
+  }
+
+  LocationSummary* locations =
+      new (allocator_) LocationSummary(invoke,
+                                       LocationSummary::kCallOnSlowPath,
+                                       kIntrinsified);
+
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetInAt(1, Location::RequiresRegister());
+  locations->SetInAt(2, Location::RegisterOrConstant(invoke->InputAt(2)));
+  locations->SetInAt(3, Location::RequiresRegister());
+  locations->AddTemp(Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister());
+}
+
+// Lower the invoke of CRC32.updateBytes(int crc, byte[] b, int off, int len)
+//
+// Note: The intrinsic is not used if len exceeds a threshold.
+void IntrinsicCodeGeneratorARM64::VisitCRC32UpdateBytes(HInvoke* invoke) {
+  DCHECK(codegen_->GetInstructionSetFeatures().HasCRC());
+
+  auto masm = GetVIXLAssembler();
+  auto locations = invoke->GetLocations();
+
+  auto slow_path =
+    new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
+  codegen_->AddSlowPath(slow_path);
+
+  Register length = WRegisterFrom(locations->InAt(3));
+  __ Cmp(length, kCRC32UpdateBytesThreshold);
+  __ B(slow_path->GetEntryLabel(), hi);
+
+  const uint32_t array_data_offset =
+      mirror::Array::DataOffset(Primitive::kPrimByte).Uint32Value();
+  Register ptr = XRegisterFrom(locations->GetTemp(0));
+  Register array = XRegisterFrom(locations->InAt(1));
+  auto offset = locations->InAt(2);
+  if (offset.IsConstant()) {
+    int32_t offset_value = offset.GetConstant()->AsIntConstant()->GetValue();
+    __ Add(ptr, array, array_data_offset + offset_value);
+  } else {
+    __ Add(ptr, array, array_data_offset);
+    __ Add(ptr, ptr, XRegisterFrom(offset));
+  }
+
+  Register crc = WRegisterFrom(locations->InAt(0));
+  Register out = WRegisterFrom(locations->Out());
+
+  GenerateCodeForCalculationCRC32ValueOfBytes(masm, crc, ptr, length, out);
 
   __ Bind(slow_path->GetExitLabel());
+}
+
+void IntrinsicLocationsBuilderARM64::VisitCRC32UpdateByteBuffer(HInvoke* invoke) {
+  if (!codegen_->GetInstructionSetFeatures().HasCRC()) {
+    return;
+  }
+
+  LocationSummary* locations =
+      new (allocator_) LocationSummary(invoke,
+                                       LocationSummary::kNoCall,
+                                       kIntrinsified);
+
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetInAt(1, Location::RequiresRegister());
+  locations->SetInAt(2, Location::RequiresRegister());
+  locations->SetInAt(3, Location::RequiresRegister());
+  locations->AddTemp(Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister());
+}
+
+// Lower the invoke of CRC32.updateByteBuffer(int crc, long addr, int off, int len)
+//
+// There is no need to generate code checking if addr is 0.
+// The method updateByteBuffer is a private method of java.util.zip.CRC32.
+// This guarantees no calls outside of the CRC32 class.
+// An address of DirectBuffer is always passed to the call of updateByteBuffer.
+// It might be an implementation of an empty DirectBuffer which can use a zero
+// address but it must have the length to be zero. The current generated code
+// correctly works with the zero length.
+void IntrinsicCodeGeneratorARM64::VisitCRC32UpdateByteBuffer(HInvoke* invoke) {
+  DCHECK(codegen_->GetInstructionSetFeatures().HasCRC());
+
+  auto masm = GetVIXLAssembler();
+  auto locations = invoke->GetLocations();
+
+  Register addr = XRegisterFrom(locations->InAt(1));
+  Register ptr = XRegisterFrom(locations->GetTemp(0));
+  __ Add(ptr, addr, XRegisterFrom(locations->InAt(2)));
+
+  Register crc = WRegisterFrom(locations->InAt(0));
+  Register length = WRegisterFrom(locations->InAt(3));
+  Register out = WRegisterFrom(locations->Out());
+  GenerateCodeForCalculationCRC32ValueOfBytes(masm, crc, ptr, length, out);
 }
 
 UNIMPLEMENTED_INTRINSIC(ARM64, ReferenceGetReferent)
