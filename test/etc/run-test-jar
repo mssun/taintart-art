@@ -551,7 +551,7 @@ fi
 # Note: This must start with the CORE_IMG_JARS in Android.common_path.mk
 # because that's what we use for compiling the core.art image.
 # It may contain additional modules from TEST_CORE_JARS.
-bpath_modules="core-oj core-libart core-simple okhttp bouncycastle conscrypt"
+bpath_modules="core-oj core-libart core-simple okhttp bouncycastle apache-xml conscrypt"
 if [ "${HOST}" = "y" ]; then
     framework="${ANDROID_HOST_OUT}/framework"
     if [ "${ANDROID_HOST_OUT:0:${#ANDROID_BUILD_TOP}+1}" = "${ANDROID_BUILD_TOP}/" ]; then
