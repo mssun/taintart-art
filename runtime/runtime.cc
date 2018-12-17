@@ -34,6 +34,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
+#include <thread>
 #include <vector>
 
 #include "android-base/strings.h"
@@ -233,6 +234,7 @@ Runtime::Runtime()
       class_linker_(nullptr),
       signal_catcher_(nullptr),
       java_vm_(nullptr),
+      thread_pool_ref_count_(0u),
       fault_message_(nullptr),
       threads_being_born_(0),
       shutdown_cond_(new ConditionVariable("Runtime shutdown", *Locks::runtime_shutdown_lock_)),
@@ -348,6 +350,8 @@ Runtime::~Runtime() {
         << "\n";
   }
 
+  WaitForThreadPoolWorkersToStart();
+
   if (jit_ != nullptr) {
     // Wait for the workers to be created since there can't be any threads attaching during
     // shutdown.
@@ -400,6 +404,8 @@ Runtime::~Runtime() {
     // JIT compiler threads.
     jit_->DeleteThreadPool();
   }
+  DeleteThreadPool();
+  CHECK(thread_pool_ == nullptr);
 
   // Make sure our internal threads are dead before we start tearing down things they're using.
   GetRuntimeCallbacks()->StopDebugger();
@@ -930,6 +936,18 @@ void Runtime::InitNonZygoteOrPostFork(
 
   // Create the thread pools.
   heap_->CreateThreadPool();
+  {
+    ScopedTrace timing("CreateThreadPool");
+    constexpr size_t kStackSize = 64 * KB;
+    constexpr size_t kMaxRuntimeWorkers = 4u;
+    const size_t num_workers =
+        std::min(static_cast<size_t>(std::thread::hardware_concurrency()), kMaxRuntimeWorkers);
+    MutexLock mu(Thread::Current(), *Locks::runtime_thread_pool_lock_);
+    CHECK(thread_pool_ == nullptr);
+    thread_pool_.reset(new ThreadPool("Runtime", num_workers, /*create_peers=*/false, kStackSize));
+    thread_pool_->StartWorkers(Thread::Current());
+  }
+
   // Reset the gc performance data at zygote fork so that the GCs
   // before fork aren't attributed to an app.
   heap_->ResetGcPerformanceInfo();
@@ -2658,4 +2676,45 @@ void Runtime::DeoptimizeBootImage() {
     GetClassLinker()->VisitClasses(&visitor);
   }
 }
+
+Runtime::ScopedThreadPoolUsage::ScopedThreadPoolUsage()
+    : thread_pool_(Runtime::Current()->AcquireThreadPool()) {}
+
+Runtime::ScopedThreadPoolUsage::~ScopedThreadPoolUsage() {
+  Runtime::Current()->ReleaseThreadPool();
+}
+
+bool Runtime::DeleteThreadPool() {
+  // Make sure workers are started to prevent thread shutdown errors.
+  WaitForThreadPoolWorkersToStart();
+  std::unique_ptr<ThreadPool> thread_pool;
+  {
+    MutexLock mu(Thread::Current(), *Locks::runtime_thread_pool_lock_);
+    if (thread_pool_ref_count_ == 0) {
+      thread_pool = std::move(thread_pool_);
+    }
+  }
+  return thread_pool != nullptr;
+}
+
+ThreadPool* Runtime::AcquireThreadPool() {
+  MutexLock mu(Thread::Current(), *Locks::runtime_thread_pool_lock_);
+  ++thread_pool_ref_count_;
+  return thread_pool_.get();
+}
+
+void Runtime::ReleaseThreadPool() {
+  MutexLock mu(Thread::Current(), *Locks::runtime_thread_pool_lock_);
+  CHECK_GT(thread_pool_ref_count_, 0u);
+  --thread_pool_ref_count_;
+}
+
+void Runtime::WaitForThreadPoolWorkersToStart() {
+  // Need to make sure workers are created before deleting the pool.
+  ScopedThreadPoolUsage stpu;
+  if (stpu.GetThreadPool() != nullptr) {
+    stpu.GetThreadPool()->WaitForWorkersToBeCreated();
+  }
+}
+
 }  // namespace art

@@ -147,6 +147,8 @@ TEST_F(ThreadLifecycleCallbackRuntimeCallbacksTest, ThreadLifecycleCallbackJava)
   self->TransitionFromSuspendedToRunnable();
   bool started = runtime_->Start();
   ASSERT_TRUE(started);
+  // Make sure the workers are done starting so we don't get callbacks for them.
+  runtime_->WaitForThreadPoolWorkersToStart();
 
   cb_.state = CallbackState::kBase;  // Ignore main thread attach.
 
