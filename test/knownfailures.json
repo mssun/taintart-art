@@ -1161,5 +1161,11 @@
         "tests": ["454-get-vreg", "457-regs"],
         "variant": "baseline",
         "description": ["Tests are expected to fail with baseline."]
+    },
+    {
+        "tests": ["708-jit-cache-churn"],
+        "variant": "jit-on-first-use",
+        "bug": "b/120112467",
+        "description": [ "Fails on Android Build hosts with uncaught std::bad_alloc." ]
     }
 ]
