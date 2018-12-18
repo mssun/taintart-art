@@ -193,6 +193,40 @@ inline uint64_t RegionSpace::GetObjectsAllocatedInternal() {
   return bytes;
 }
 
+template <typename Visitor>
+inline void RegionSpace::ScanUnevacFromSpace(accounting::ContinuousSpaceBitmap* bitmap,
+                                             Visitor&& visitor) {
+  const size_t iter_limit = kUseTableLookupReadBarrier
+      ? num_regions_ : std::min(num_regions_, non_free_region_index_limit_);
+  // Instead of region-wise scan, find contiguous blocks of un-evac regions and then
+  // visit them. Everything before visit_block_begin has been processed, while
+  // [visit_block_begin, visit_block_end) still needs to be visited.
+  uint8_t* visit_block_begin = nullptr;
+  uint8_t* visit_block_end = nullptr;
+  for (size_t i = 0; i < iter_limit; ++i) {
+    Region* r = &regions_[i];
+    if (r->IsInUnevacFromSpace()) {
+      // visit_block_begin set to nullptr means a new visit block needs to be stated.
+      if (visit_block_begin == nullptr) {
+        visit_block_begin = r->Begin();
+      }
+      visit_block_end = r->End();
+    } else if (visit_block_begin != nullptr) {
+      // Visit the block range as r is not adjacent to current visit block.
+      bitmap->VisitMarkedRange(reinterpret_cast<uintptr_t>(visit_block_begin),
+                               reinterpret_cast<uintptr_t>(visit_block_end),
+                               visitor);
+      visit_block_begin = nullptr;
+    }
+  }
+  // Visit last block, if not processed yet.
+  if (visit_block_begin != nullptr) {
+    bitmap->VisitMarkedRange(reinterpret_cast<uintptr_t>(visit_block_begin),
+                             reinterpret_cast<uintptr_t>(visit_block_end),
+                             visitor);
+  }
+}
+
 template<bool kToSpaceOnly, typename Visitor>
 inline void RegionSpace::WalkInternal(Visitor&& visitor) {
   // TODO: MutexLock on region_lock_ won't work due to lock order
