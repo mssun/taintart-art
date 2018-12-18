@@ -229,6 +229,9 @@ static Parser CreateArgumentParser() {
                          {"false", linker::CopyOption::kNever},
                          {"always", linker::CopyOption::kAlways}})
           .IntoKey(M::CopyDexFiles)
+      .Define("--write-invocation-to=_")
+          .WithType<std::string>()
+          .IntoKey(M::InvocationFile)
       .Define("--classpath-dir=_")
           .WithType<std::string>()
           .IntoKey(M::ClasspathDir)
