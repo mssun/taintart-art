@@ -835,8 +835,14 @@ void RegionSpace::Region::Dump(std::ostream& os) const {
      << " type=" << type_
      << " objects_allocated=" << objects_allocated_
      << " alloc_time=" << alloc_time_
-     << " live_bytes=" << live_bytes_
-     << " is_newly_allocated=" << std::boolalpha << is_newly_allocated_ << std::noboolalpha
+     << " live_bytes=" << live_bytes_;
+
+  if (live_bytes_ != static_cast<size_t>(-1)) {
+    os << " ratio over allocated bytes="
+       << (static_cast<float>(live_bytes_) / RoundUp(BytesAllocated(), kRegionSize));
+  }
+
+  os << " is_newly_allocated=" << std::boolalpha << is_newly_allocated_ << std::noboolalpha
      << " is_a_tlab=" << std::boolalpha << is_a_tlab_ << std::noboolalpha
      << " thread=" << thread_ << '\n';
 }
