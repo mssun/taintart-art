@@ -206,7 +206,7 @@ struct CmdlineParser {
       };
       load_value_ = []() -> TArg& {
         assert(false && "Should not be appending values to ignored arguments");
-        return *reinterpret_cast<TArg*>(0);  // Blow up.
+        __builtin_trap();  // Blow up.
       };
 
       save_value_specified_ = true;
@@ -270,7 +270,7 @@ struct CmdlineParser {
 
       load_value_ = []() -> TArg& {
         assert(false && "No load value function defined");
-        return *reinterpret_cast<TArg*>(0);  // Blow up.
+        __builtin_trap();  // Blow up.
       };
     }
 
