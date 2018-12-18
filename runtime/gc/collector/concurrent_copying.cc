@@ -95,6 +95,7 @@ ConcurrentCopying::ConcurrentCopying(Heap* heap,
       weak_ref_access_enabled_(true),
       copied_live_bytes_ratio_sum_(0.f),
       gc_count_(0),
+      inter_region_bitmap_(nullptr),
       reclaimed_bytes_ratio_sum_(0.f),
       young_gen_(young_gen),
       skipped_blocks_lock_("concurrent copying bytes blocks lock", kMarkSweepMarkStackLock),
@@ -288,6 +289,9 @@ void ConcurrentCopying::ActivateReadBarrierEntrypoints() {
 void ConcurrentCopying::BindBitmaps() {
   Thread* self = Thread::Current();
   WriterMutexLock mu(self, *Locks::heap_bitmap_lock_);
+  uintptr_t continuous_spaces_begin = UINTPTR_MAX;
+  uintptr_t continuous_spaces_limit = 0;
+  DCHECK(inter_region_bitmap_ == nullptr);
   // Mark all of the spaces we never collect as immune.
   for (const auto& space : heap_->GetContinuousSpaces()) {
     if (space->GetGcRetentionPolicy() == space::kGcRetentionPolicyNeverCollect ||
@@ -319,6 +323,11 @@ void ConcurrentCopying::BindBitmaps() {
           // be captured after the thread-flip of this GC cycle, as that is when
           // the young-gen for the next GC cycle starts getting populated.
           heap_->GetCardTable()->ClearCardRange(space->Begin(), space->Limit());
+
+          continuous_spaces_begin =
+              std::min(continuous_spaces_begin, reinterpret_cast<uintptr_t>(space->Begin()));
+          continuous_spaces_limit =
+              std::max(continuous_spaces_limit, reinterpret_cast<uintptr_t>(space->Limit()));
         }
       } else {
         if (space == region_space_) {
@@ -330,10 +339,18 @@ void ConcurrentCopying::BindBitmaps() {
       }
     }
   }
-  if (kEnableGenerationalConcurrentCopyingCollection && young_gen_) {
-    for (const auto& space : GetHeap()->GetDiscontinuousSpaces()) {
-      CHECK(space->IsLargeObjectSpace());
-      space->AsLargeObjectSpace()->CopyLiveToMarked();
+  if (kEnableGenerationalConcurrentCopyingCollection) {
+    if (young_gen_) {
+      for (const auto& space : GetHeap()->GetDiscontinuousSpaces()) {
+        CHECK(space->IsLargeObjectSpace());
+        space->AsLargeObjectSpace()->CopyLiveToMarked();
+      }
+    } else {
+      inter_region_bitmap_.reset(accounting::ContinuousSpaceBitmap::Create(
+          "inter region ref bitmap",
+          reinterpret_cast<uint8_t*>(continuous_spaces_begin),
+          continuous_spaces_limit - continuous_spaces_begin));
+      CHECK(inter_region_bitmap_ != nullptr) << "Couldn't allocate inter region ref bitmap";
     }
   }
 }
@@ -1100,7 +1117,7 @@ void ConcurrentCopying::AddLiveBytesAndScanRef(mirror::Object* ref) {
   // Mark the corresponding card dirty if the object contains any
   // inter-region reference.
   if (visitor.ContainsInterRegionRefs()) {
-    heap_->GetCardTable()->MarkCard(ref);
+    inter_region_bitmap_->Set(ref);
   }
 }
 
@@ -1316,15 +1333,6 @@ void ConcurrentCopying::MarkingPhase() {
   // Process mark stack
   ProcessMarkStackForMarkingAndComputeLiveBytes();
 
-  // Age the cards.
-  for (space::ContinuousSpace* space : GetHeap()->GetContinuousSpaces()) {
-    if (space->IsImageSpace() || space->IsZygoteSpace()) {
-      // Image and zygote spaces are already handled since we gray the objects in the pause.
-      continue;
-    }
-    card_table->ModifyCardsAtomic(space->Begin(), space->End(), AgeCardVisitor(), VoidFunctor());
-  }
-
   if (kVerboseMode) {
     LOG(INFO) << "GC end of MarkingPhase";
   }
@@ -1420,10 +1428,28 @@ void ConcurrentCopying::CopyingPhase() {
               }
               ScanDirtyObject</*kNoUnEvac*/ true>(obj);
             } else if (space != region_space_ || region_space_->IsInUnevacFromSpace(obj)) {
+              // We need to process un-evac references as they may be unprocessed,
+              // if they skipped the marking phase due to heap mutation.
               ScanDirtyObject</*kNoUnEvac*/ false>(obj);
+              inter_region_bitmap_->Clear(obj);
             }
           },
-          accounting::CardTable::kCardDirty - 1);
+          accounting::CardTable::kCardAged);
+
+      if (!young_gen_) {
+        auto visitor = [this](mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
+                         // We don't need to process un-evac references as any unprocessed
+                         // ones will be taken care of in the card-table scan above.
+                         ScanDirtyObject</*kNoUnEvac*/ true>(obj);
+                       };
+        if (space == region_space_) {
+          region_space_->ScanUnevacFromSpace(inter_region_bitmap_.get(), visitor);
+        } else {
+          inter_region_bitmap_->VisitMarkedRange(reinterpret_cast<uintptr_t>(space->Begin()),
+                                                 reinterpret_cast<uintptr_t>(space->End()),
+                                                 visitor);
+        }
+      }
     }
     // Done scanning unevac space.
     done_scanning_.store(true, std::memory_order_release);
@@ -3495,6 +3521,8 @@ void ConcurrentCopying::FinishPhase() {
     TimingLogger::ScopedTiming split("ClearRegionSpaceCards", GetTimings());
     // We do not currently use the region space cards at all, madvise them away to save ram.
     heap_->GetCardTable()->ClearCardRange(region_space_->Begin(), region_space_->Limit());
+  } else if (kEnableGenerationalConcurrentCopyingCollection && !young_gen_) {
+    inter_region_bitmap_.reset();
   }
   {
     MutexLock mu(self, skipped_blocks_lock_);
