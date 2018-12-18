@@ -98,6 +98,9 @@ class ConcurrentCopying : public GarbageCollector {
     return kCollectorTypeCC;
   }
   void RevokeAllThreadLocalBuffers() override;
+  // Creates inter-region ref bitmaps for region-space and non-moving-space.
+  // Gets called in Heap construction after the two spaces are created.
+  void CreateInterRegionRefBitmaps();
   void SetRegionSpace(space::RegionSpace* region_space) {
     DCHECK(region_space != nullptr);
     region_space_ = region_space;
@@ -391,7 +394,8 @@ class ConcurrentCopying : public GarbageCollector {
   size_t gc_count_;
   // Bit is set if the corresponding object has inter-region references that
   // were found during the marking phase of two-phase full-heap GC cycle.
-  std::unique_ptr<accounting::ContinuousSpaceBitmap> inter_region_bitmap_;
+  accounting::ContinuousSpaceBitmap* region_space_inter_region_bitmap_;
+  accounting::ContinuousSpaceBitmap* non_moving_space_inter_region_bitmap_;
 
   // reclaimed_bytes_ratio = reclaimed_bytes/num_allocated_bytes per GC cycle
   float reclaimed_bytes_ratio_sum_;
