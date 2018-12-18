@@ -51,6 +51,7 @@ RELOCATE="n"
 STRIP_DEX="n"
 SECONDARY_DEX=""
 TIME_OUT="gdb"  # "n" (disabled), "timeout" (use timeout), "gdb" (use gdb)
+TIMEOUT_DUMPER=timeout_dumper
 # Value in seconds
 if [ "$ART_USE_READ_BARRIER" != "false" ]; then
   TIME_OUT_VALUE=2400  # 40 minutes.
@@ -691,6 +692,8 @@ if [ "$BIONIC" = "y" ]; then
     echo "linux_bionic-x86 target doesn't seem to have been built!" >&2
     exit 1
   fi
+  # Set timeout_dumper manually so it works even with apex's
+  TIMEOUT_DUMPER=$OUT_DIR/soong/host/linux_bionic-x86/bin/timeout_dumper
 fi
 
 # Prevent test from silently falling back to interpreter in no-prebuild mode. This happens
@@ -1029,7 +1032,7 @@ else
       # Note: We first send SIGRTMIN+2 (usually 36) to ART, which will induce a full thread dump
       #       before abort. However, dumping threads might deadlock, so we also use the "-k"
       #       option to definitely kill the child.
-      cmdline="timeout -k 120s -s SIGRTMIN+2 ${TIME_OUT_VALUE}s timeout_dumper $cmdline"
+      cmdline="timeout -k 120s -s SIGRTMIN+2 ${TIME_OUT_VALUE}s ${TIMEOUT_DUMPER} $cmdline"
     fi
 
     if [ "$DEV_MODE" = "y" ]; then
