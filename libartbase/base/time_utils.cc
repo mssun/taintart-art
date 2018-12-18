@@ -128,7 +128,7 @@ uint64_t MilliTime() {
   timespec now;
   clock_gettime(CLOCK_MONOTONIC, &now);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000) + now.tv_nsec / UINT64_C(1000000);
-#else  // __APPLE__
+#else
   timeval now;
   gettimeofday(&now, nullptr);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000) + now.tv_usec / UINT64_C(1000);
@@ -140,7 +140,7 @@ uint64_t MicroTime() {
   timespec now;
   clock_gettime(CLOCK_MONOTONIC, &now);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000) + now.tv_nsec / UINT64_C(1000);
-#else  // __APPLE__
+#else
   timeval now;
   gettimeofday(&now, nullptr);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000) + now.tv_usec;
@@ -152,7 +152,7 @@ uint64_t NanoTime() {
   timespec now;
   clock_gettime(CLOCK_MONOTONIC, &now);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000000) + now.tv_nsec;
-#else  // __APPLE__
+#else
   timeval now;
   gettimeofday(&now, nullptr);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000000) + now.tv_usec * UINT64_C(1000);
@@ -164,7 +164,7 @@ uint64_t ThreadCpuNanoTime() {
   timespec now;
   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &now);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000000) + now.tv_nsec;
-#else  // __APPLE__
+#else
   UNIMPLEMENTED(WARNING);
   return -1;
 #endif
@@ -176,8 +176,13 @@ uint64_t ProcessCpuNanoTime() {
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &now);
   return static_cast<uint64_t>(now.tv_sec) * UINT64_C(1000000000) + now.tv_nsec;
 #else
-  UNIMPLEMENTED(WARNING);
-  return -1;
+  // We cannot use clock_gettime() here. Return the process wall clock time
+  // (using art::NanoTime, which relies on gettimeofday()) as approximation of
+  // the process CPU time instead.
+  //
+  // Note: clock_gettime() is available from macOS 10.12 (Darwin 16), but we try
+  // to keep things simple here.
+  return NanoTime();
 #endif
 }
 
