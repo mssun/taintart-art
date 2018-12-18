@@ -29,6 +29,7 @@
 #include <thread>
 #include <memory>
 #include <set>
+#include <string>
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
@@ -103,9 +104,22 @@ std::unique_ptr<std::string> FindAddr2line() {
     }
   }
 
-  std::string path = std::string(".") + kAddr2linePath;
-  if (access(path.c_str(), X_OK) == 0) {
-    return std::make_unique<std::string>(path);
+  {
+    std::string path = std::string(".") + kAddr2linePath;
+    if (access(path.c_str(), X_OK) == 0) {
+      return std::make_unique<std::string>(path);
+    }
+  }
+
+  {
+    using android::base::Dirname;
+
+    std::string exec_dir = android::base::GetExecutableDirectory();
+    std::string derived_top = Dirname(Dirname(Dirname(Dirname(exec_dir))));
+    std::string path = derived_top + kAddr2linePath;
+    if (access(path.c_str(), X_OK) == 0) {
+      return std::make_unique<std::string>(path);
+    }
   }
 
   constexpr const char* kHostAddr2line = "/usr/bin/addr2line";
@@ -356,6 +370,91 @@ std::set<pid_t> PtraceSiblings(pid_t pid) {
   return ret;
 }
 
+void DumpABI(pid_t forked_pid) {
+  enum class ABI { kArm, kArm64, kMips, kMips64, kX86, kX86_64 };
+#if defined(__arm__)
+  constexpr ABI kDumperABI = ABI::kArm;
+#elif defined(__aarch64__)
+  constexpr ABI kDumperABI = ABI::kArm64;
+#elif defined(__mips__) && !defined(__LP64__)
+  constexpr ABI kDumperABI = ABI::kMips;
+#elif defined(__mips__) && defined(__LP64__)
+  constexpr ABI kDumperABI = ABI::kMips64;
+#elif defined(__i386__)
+  constexpr ABI kDumperABI = ABI::kX86;
+#elif defined(__x86_64__)
+  constexpr ABI kDumperABI = ABI::kX86_64;
+#else
+#error Unsupported architecture
+#endif
+
+  char data[1024];  // Should be more than enough.
+  struct iovec io_vec;
+  io_vec.iov_base = &data;
+  io_vec.iov_len = 1024;
+  ABI to_print;
+  if (0 != ::ptrace(PTRACE_GETREGSET, forked_pid, /* NT_PRSTATUS */ 1, &io_vec)) {
+    LOG(ERROR) << "Could not get registers to determine abi.";
+    // Use 64-bit as default.
+    switch (kDumperABI) {
+      case ABI::kArm:
+      case ABI::kArm64:
+        to_print = ABI::kArm64;
+        break;
+      case ABI::kMips:
+      case ABI::kMips64:
+        to_print = ABI::kMips64;
+        break;
+      case ABI::kX86:
+      case ABI::kX86_64:
+        to_print = ABI::kX86_64;
+        break;
+      default:
+        __builtin_unreachable();
+    }
+  } else {
+    // Check the length of the data. Assume that it's the same arch as the tool.
+    switch (kDumperABI) {
+      case ABI::kArm:
+      case ABI::kArm64:
+        to_print = io_vec.iov_len == 18 * sizeof(uint32_t) ? ABI::kArm : ABI::kArm64;
+        break;
+      case ABI::kMips:
+      case ABI::kMips64:
+        to_print = ABI::kMips64;  // TODO Figure out how this should work.
+        break;
+      case ABI::kX86:
+      case ABI::kX86_64:
+        to_print = io_vec.iov_len == 17 * sizeof(uint32_t) ? ABI::kX86 : ABI::kX86_64;
+        break;
+      default:
+        __builtin_unreachable();
+    }
+  }
+  std::string abi_str;
+  switch (to_print) {
+    case ABI::kArm:
+      abi_str = "arm";
+      break;
+    case ABI::kArm64:
+      abi_str = "arm64";
+      break;
+    case ABI::kMips:
+      abi_str = "mips";
+      break;
+    case ABI::kMips64:
+      abi_str = "mips64";
+      break;
+    case ABI::kX86:
+      abi_str = "x86";
+      break;
+    case ABI::kX86_64:
+      abi_str = "x86_64";
+      break;
+  }
+  std::cerr << "ABI: '" << abi_str << "'" << std::endl;
+}
+
 }  // namespace ptrace
 
 template <typename T>
@@ -495,19 +594,22 @@ void DumpThread(pid_t pid,
 }
 
 void DumpProcess(pid_t forked_pid, const std::atomic<bool>& saw_wif_stopped_for_main) {
+  LOG(ERROR) << "Timeout for process " << forked_pid;
+
   CHECK_EQ(0, ::ptrace(PTRACE_ATTACH, forked_pid, 0, 0));
   std::set<pid_t> tids = ptrace::PtraceSiblings(forked_pid);
   tids.insert(forked_pid);
 
+  ptrace::DumpABI(forked_pid);
+
   // Check whether we have and should use addr2line.
-  std::unique_ptr<std::string> addr2line_path = addr2line::FindAddr2line();
-  if (addr2line_path != nullptr) {
-    LOG(ERROR) << "Found addr2line at " << *addr2line_path;
-  } else {
-    LOG(ERROR) << "Did not find usable addr2line";
+  std::unique_ptr<std::string> addr2line_path;
+  if (kUseAddr2line) {
+    addr2line_path = addr2line::FindAddr2line();
+    if (addr2line_path == nullptr) {
+      LOG(ERROR) << "Did not find usable addr2line";
+    }
   }
-  bool use_addr2line = kUseAddr2line && addr2line_path != nullptr;
-  LOG(ERROR) << (use_addr2line ? "U" : "Not u") << "sing addr2line";
 
   if (!WaitForMainSigStop(saw_wif_stopped_for_main)) {
     LOG(ERROR) << "Did not receive SIGSTOP for pid " << forked_pid;
@@ -520,11 +622,7 @@ void DumpProcess(pid_t forked_pid, const std::atomic<bool>& saw_wif_stopped_for_
   }
 
   for (pid_t tid : tids) {
-    DumpThread(forked_pid,
-               tid,
-               use_addr2line ? addr2line_path.get() : nullptr,
-               "  ",
-               backtrace_map.get());
+    DumpThread(forked_pid, tid, addr2line_path.get(), "  ", backtrace_map.get());
   }
 }
 
