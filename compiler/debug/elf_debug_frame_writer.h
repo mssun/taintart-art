@@ -182,7 +182,7 @@ void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
   std::vector<const MethodDebugInfo*> sorted_method_infos;
   sorted_method_infos.reserve(method_infos.size());
   for (size_t i = 0; i < method_infos.size(); i++) {
-    if (!method_infos[i].cfi.empty() && !method_infos[i].deduped) {
+    if (!method_infos[i].deduped) {
       sorted_method_infos.push_back(&method_infos[i]);
     }
   }
@@ -222,7 +222,6 @@ void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
     buffer.clear();
     for (const MethodDebugInfo* mi : sorted_method_infos) {
       DCHECK(!mi->deduped);
-      DCHECK(!mi->cfi.empty());
       const Elf_Addr code_address = mi->code_address +
           (mi->is_code_address_text_relative ? builder->GetText()->GetAddress() : 0);
       if (format == dwarf::DW_EH_FRAME_FORMAT) {

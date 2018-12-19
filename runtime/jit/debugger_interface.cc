@@ -19,14 +19,17 @@
 #include <android-base/logging.h>
 
 #include "base/array_ref.h"
+#include "base/logging.h"
 #include "base/mutex.h"
 #include "base/time_utils.h"
+#include "base/utils.h"
 #include "dex/dex_file.h"
 #include "thread-current-inl.h"
 #include "thread.h"
 
 #include <atomic>
 #include <cstddef>
+#include <deque>
 #include <map>
 
 //
@@ -77,6 +80,10 @@
 //
 
 namespace art {
+
+static Mutex g_jit_debug_lock("JIT native debug entries", kNativeDebugInterfaceLock);
+static Mutex g_dex_debug_lock("DEX native debug entries", kNativeDebugInterfaceLock);
+
 extern "C" {
   enum JITAction {
     JIT_NOACTION = 0,
@@ -127,14 +134,14 @@ extern "C" {
   void (*__jit_debug_register_code_ptr)() = __jit_debug_register_code;
 
   // The root data structure describing of all JITed methods.
-  JITDescriptor __jit_debug_descriptor GUARDED_BY(*Locks::native_debug_interface_lock_) {};
+  JITDescriptor __jit_debug_descriptor GUARDED_BY(g_jit_debug_lock) {};
 
   // The following globals mirror the ones above, but are used to register dex files.
   void __attribute__((noinline)) __dex_debug_register_code() {
     __asm__("");
   }
   void (*__dex_debug_register_code_ptr)() = __dex_debug_register_code;
-  JITDescriptor __dex_debug_descriptor GUARDED_BY(*Locks::native_debug_interface_lock_) {};
+  JITDescriptor __dex_debug_descriptor GUARDED_BY(g_dex_debug_lock) {};
 }
 
 // Mark the descriptor as "locked", so native tools know the data is being modified.
@@ -157,8 +164,7 @@ static JITCodeEntry* CreateJITCodeEntryInternal(
     JITDescriptor& descriptor,
     void (*register_code_ptr)(),
     ArrayRef<const uint8_t> symfile,
-    bool copy_symfile)
-    REQUIRES(Locks::native_debug_interface_lock_) {
+    bool copy_symfile) {
   // Make a copy of the buffer to shrink it and to pass ownership to JITCodeEntry.
   if (copy_symfile) {
     uint8_t* copy = new uint8_t[symfile.size()];
@@ -199,8 +205,7 @@ static void DeleteJITCodeEntryInternal(
     JITDescriptor& descriptor,
     void (*register_code_ptr)(),
     JITCodeEntry* entry,
-    bool free_symfile)
-    REQUIRES(Locks::native_debug_interface_lock_) {
+    bool free_symfile) {
   CHECK(entry != nullptr);
   const uint8_t* symfile = entry->symfile_addr_;
 
@@ -238,11 +243,10 @@ static void DeleteJITCodeEntryInternal(
   }
 }
 
-static std::map<const DexFile*, JITCodeEntry*> g_dex_debug_entries
-    GUARDED_BY(*Locks::native_debug_interface_lock_);
+static std::map<const DexFile*, JITCodeEntry*> g_dex_debug_entries GUARDED_BY(g_dex_debug_lock);
 
 void AddNativeDebugInfoForDex(Thread* self, const DexFile* dexfile) {
-  MutexLock mu(self, *Locks::native_debug_interface_lock_);
+  MutexLock mu(self, g_dex_debug_lock);
   DCHECK(dexfile != nullptr);
   // This is just defensive check. The class linker should not register the dex file twice.
   if (g_dex_debug_entries.count(dexfile) == 0) {
@@ -256,7 +260,7 @@ void AddNativeDebugInfoForDex(Thread* self, const DexFile* dexfile) {
 }
 
 void RemoveNativeDebugInfoForDex(Thread* self, const DexFile* dexfile) {
-  MutexLock mu(self, *Locks::native_debug_interface_lock_);
+  MutexLock mu(self, g_dex_debug_lock);
   auto it = g_dex_debug_entries.find(dexfile);
   // We register dex files in the class linker and free them in DexFile_closeDexFile, but
   // there might be cases where we load the dex file without using it in the class linker.
@@ -270,14 +274,99 @@ void RemoveNativeDebugInfoForDex(Thread* self, const DexFile* dexfile) {
 }
 
 // Mapping from handle to entry. Used to manage life-time of the entries.
-static std::map<const void*, JITCodeEntry*> g_jit_debug_entries
-    GUARDED_BY(*Locks::native_debug_interface_lock_);
+static std::map<const void*, JITCodeEntry*> g_jit_debug_entries GUARDED_BY(g_jit_debug_lock);
+
+// Number of entries added since last packing.  Used to pack entries in bulk.
+static size_t g_jit_num_unpacked_entries GUARDED_BY(g_jit_debug_lock) = 0;
+
+// We postpone removal so that it is done in bulk.
+static std::deque<const void*> g_jit_removed_entries GUARDED_BY(g_jit_debug_lock);
+
+// Split the JIT code cache into groups of fixed size and create singe JITCodeEntry for each group.
+// The start address of method's code determines which group it belongs to.  The end is irrelevant.
+// As a consequnce, newly added mini debug infos will be merged and old ones (GCed) will be pruned.
+static void MaybePackJitMiniDebugInfo(PackElfFileForJITFunction pack,
+                                      InstructionSet isa,
+                                      const InstructionSetFeatures* features)
+    REQUIRES(g_jit_debug_lock) {
+  // Size of memory range covered by each JITCodeEntry.
+  // The number of methods per entry is variable (depending on how many fit in that range).
+  constexpr uint32_t kGroupSize = 64 * KB;
+  // Even if there are no removed entries, we want to pack new entries on regular basis.
+  constexpr uint32_t kPackFrequency = 64;
+
+  std::deque<const void*>& removed_entries = g_jit_removed_entries;
+  std::sort(removed_entries.begin(), removed_entries.end());
+  if (removed_entries.empty() && g_jit_num_unpacked_entries < kPackFrequency) {
+    return;  // Nothing to do.
+  }
+
+  std::vector<const uint8_t*> added_elf_files;
+  std::vector<const void*> removed_symbols;
+  auto added_it = g_jit_debug_entries.begin();
+  auto removed_it = removed_entries.begin();
+  while (added_it != g_jit_debug_entries.end()) {
+    // Collect all entries that have been added or removed within our memory range.
+    const void* group_ptr = AlignDown(added_it->first, kGroupSize);
+    added_elf_files.clear();
+    auto added_begin = added_it;
+    while (added_it != g_jit_debug_entries.end() &&
+           AlignDown(added_it->first, kGroupSize) == group_ptr) {
+      added_elf_files.push_back((added_it++)->second->symfile_addr_);
+    }
+    removed_symbols.clear();
+    while (removed_it != removed_entries.end() &&
+           AlignDown(*removed_it, kGroupSize) == group_ptr) {
+      removed_symbols.push_back(*(removed_it++));
+    }
+
+    // Create new singe JITCodeEntry that covers this memory range.
+    if (added_elf_files.size() == 1 && removed_symbols.size() == 0) {
+      continue;  // Nothing changed in this memory range.
+    }
+    uint64_t start_time = MilliTime();
+    size_t symbols;
+    std::vector<uint8_t> packed = pack(isa, features, added_elf_files, removed_symbols, &symbols);
+    VLOG(jit)
+        << "JIT mini-debug-info packed"
+        << " for " << group_ptr
+        << " in " << MilliTime() - start_time << "ms"
+        << " files=" << added_elf_files.size()
+        << " removed=" << removed_symbols.size()
+        << " symbols=" << symbols
+        << " size=" << PrettySize(packed.size());
+
+    // Replace the old entries with the new one (with their lifetime temporally overlapping).
+    JITCodeEntry* packed_entry = CreateJITCodeEntryInternal(
+        __jit_debug_descriptor,
+        __jit_debug_register_code_ptr,
+        ArrayRef<const uint8_t>(packed),
+        /*copy_symfile=*/ true);
+    for (auto it = added_begin; it != added_it; ++it) {
+      DeleteJITCodeEntryInternal(__jit_debug_descriptor,
+                                 __jit_debug_register_code_ptr,
+                                 /*entry=*/ it->second,
+                                 /*free_symfile=*/ true);
+    }
+    g_jit_debug_entries.erase(added_begin, added_it);
+    g_jit_debug_entries.emplace(group_ptr, packed_entry);
+  }
+  CHECK(added_it == g_jit_debug_entries.end());
+  CHECK(removed_it == removed_entries.end());
+  removed_entries.clear();
+  g_jit_num_unpacked_entries = 0;
+}
 
 void AddNativeDebugInfoForJit(Thread* self,
                               const void* code_ptr,
-                              const std::vector<uint8_t>& symfile) {
-  MutexLock mu(self, *Locks::native_debug_interface_lock_);
+                              const std::vector<uint8_t>& symfile,
+                              PackElfFileForJITFunction pack,
+                              InstructionSet isa,
+                              const InstructionSetFeatures* features) {
+  MutexLock mu(self, g_jit_debug_lock);
   DCHECK_NE(symfile.size(), 0u);
+
+  MaybePackJitMiniDebugInfo(pack, isa, features);
 
   JITCodeEntry* entry = CreateJITCodeEntryInternal(
       __jit_debug_descriptor,
@@ -285,31 +374,34 @@ void AddNativeDebugInfoForJit(Thread* self,
       ArrayRef<const uint8_t>(symfile),
       /*copy_symfile=*/ true);
 
+  VLOG(jit)
+      << "JIT mini-debug-info added"
+      << " for " << code_ptr
+      << " size=" << PrettySize(symfile.size());
+
   // We don't provide code_ptr for type debug info, which means we cannot free it later.
   // (this only happens when --generate-debug-info flag is enabled for the purpose
   // of being debugged with gdb; it does not happen for debuggable apps by default).
   if (code_ptr != nullptr) {
     bool ok = g_jit_debug_entries.emplace(code_ptr, entry).second;
     DCHECK(ok) << "Native debug entry already exists for " << std::hex << code_ptr;
+    // Count how many entries we have added since the last mini-debug-info packing.
+    // We avoid g_jit_debug_entries.size() here because it can shrink during packing.
+    g_jit_num_unpacked_entries++;
   }
 }
 
 void RemoveNativeDebugInfoForJit(Thread* self, const void* code_ptr) {
-  MutexLock mu(self, *Locks::native_debug_interface_lock_);
-  auto it = g_jit_debug_entries.find(code_ptr);
+  MutexLock mu(self, g_jit_debug_lock);
   // We generate JIT native debug info only if the right runtime flags are enabled,
   // but we try to remove it unconditionally whenever code is freed from JIT cache.
-  if (it != g_jit_debug_entries.end()) {
-    DeleteJITCodeEntryInternal(__jit_debug_descriptor,
-                               __jit_debug_register_code_ptr,
-                               it->second,
-                               /*free_symfile=*/ true);
-    g_jit_debug_entries.erase(it);
+  if (!g_jit_debug_entries.empty()) {
+    g_jit_removed_entries.push_back(code_ptr);
   }
 }
 
 size_t GetJitMiniDebugInfoMemUsage() {
-  MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
+  MutexLock mu(Thread::Current(), g_jit_debug_lock);
   size_t size = 0;
   for (auto entry : g_jit_debug_entries) {
     size += sizeof(JITCodeEntry) + entry.second->symfile_size_ + /*map entry*/ 4 * sizeof(void*);

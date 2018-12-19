@@ -56,6 +56,13 @@ std::vector<uint8_t> MakeElfFileForJIT(
     bool mini_debug_info,
     const MethodDebugInfo& method_info);
 
+std::vector<uint8_t> PackElfFileForJIT(
+    InstructionSet isa,
+    const InstructionSetFeatures* features,
+    std::vector<const uint8_t*>& added_elf_files,
+    std::vector<const void*>& removed_symbols,
+    /*out*/ size_t* num_symbols);
+
 std::vector<uint8_t> WriteDebugElfFileForClasses(
     InstructionSet isa,
     const InstructionSetFeatures* features,
