@@ -341,9 +341,11 @@ Runtime::~Runtime() {
     double post_gc_weighted_allocated_bytes =
         heap_->GetPostGcWeightedAllocatedBytes() / process_cpu_time;
 
-    LOG_STREAM(INFO) << "Pre GC weighted bytes allocated over CPU time: "
+    LOG_STREAM(INFO) << "Average bytes allocated at GC start, weighted by CPU time between GCs: "
+        << static_cast<uint64_t>(pre_gc_weighted_allocated_bytes)
         << " (" <<  PrettySize(pre_gc_weighted_allocated_bytes)  << ")";
-    LOG_STREAM(INFO) << "Post GC weighted bytes allocated over CPU time: "
+    LOG_STREAM(INFO) << "Average bytes allocated at GC end, weighted by CPU time between GCs: "
+        << static_cast<uint64_t>(post_gc_weighted_allocated_bytes)
         << " (" <<  PrettySize(post_gc_weighted_allocated_bytes)  << ")"
         << "\n";
   }
