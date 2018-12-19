@@ -126,6 +126,7 @@ class Veridex {
   static int Run(int argc, char** argv) {
     VeridexOptions options;
     ParseArgs(&options, argc, argv);
+    android::base::InitLogging(argv);
 
     if (!options.dex_file) {
       LOG(ERROR) << "Required argument '" << kDexFileOption << "' not provided.";
