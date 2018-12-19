@@ -240,11 +240,6 @@ static jlong ZygoteHooks_nativePreFork(JNIEnv* env, jclass) {
 
   runtime->PreZygoteFork();
 
-  if (Trace::GetMethodTracingMode() != TracingMode::kTracingInactive) {
-    // Tracing active, pause it.
-    Trace::Pause();
-  }
-
   // Grab thread before fork potentially makes Thread::pthread_key_self_ unusable.
   return reinterpret_cast<jlong>(ThreadForEnv(env));
 }
