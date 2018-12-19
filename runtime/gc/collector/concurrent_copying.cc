@@ -294,18 +294,18 @@ void ConcurrentCopying::CreateInterRegionRefBitmaps() {
   DCHECK(region_space_ != nullptr);
   DCHECK(heap_->non_moving_space_ != nullptr);
   // Region-space
-  region_space_inter_region_bitmap_ = accounting::ContinuousSpaceBitmap::Create(
+  region_space_inter_region_bitmap_.reset(accounting::ContinuousSpaceBitmap::Create(
       "region-space inter region ref bitmap",
       reinterpret_cast<uint8_t*>(region_space_->Begin()),
-      region_space_->Limit() - region_space_->Begin());
+      region_space_->Limit() - region_space_->Begin()));
   CHECK(region_space_inter_region_bitmap_ != nullptr)
       << "Couldn't allocate region-space inter region ref bitmap";
 
   // non-moving-space
-  non_moving_space_inter_region_bitmap_ = accounting::ContinuousSpaceBitmap::Create(
+  non_moving_space_inter_region_bitmap_.reset(accounting::ContinuousSpaceBitmap::Create(
       "non-moving-space inter region ref bitmap",
       reinterpret_cast<uint8_t*>(heap_->non_moving_space_->Begin()),
-      heap_->non_moving_space_->Limit() - heap_->non_moving_space_->Begin());
+      heap_->non_moving_space_->Limit() - heap_->non_moving_space_->Begin()));
   CHECK(non_moving_space_inter_region_bitmap_ != nullptr)
       << "Couldn't allocate non-moving-space inter region ref bitmap";
 }
@@ -1466,7 +1466,7 @@ void ConcurrentCopying::CopyingPhase() {
                          ScanDirtyObject</*kNoUnEvac*/ true>(obj);
                        };
         if (space == region_space_) {
-          region_space_->ScanUnevacFromSpace(region_space_inter_region_bitmap_, visitor);
+          region_space_->ScanUnevacFromSpace(region_space_inter_region_bitmap_.get(), visitor);
         } else {
           DCHECK(space == heap_->non_moving_space_);
           non_moving_space_inter_region_bitmap_->VisitMarkedRange(
