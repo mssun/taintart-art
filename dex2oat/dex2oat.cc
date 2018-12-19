@@ -601,8 +601,7 @@ class WatchDog {
         Fatal(StringPrintf("dex2oat did not finish after %" PRId64 " seconds",
                            timeout_in_milliseconds_/1000));
       } else if (rc != 0) {
-        std::string message(StringPrintf("pthread_cond_timedwait failed: %s",
-                                         strerror(errno)));
+        std::string message(StringPrintf("pthread_cond_timedwait failed: %s", strerror(rc)));
         Fatal(message.c_str());
       }
     }
