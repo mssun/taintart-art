@@ -24,7 +24,6 @@
 
 #include <inttypes.h>
 #include <stdio.h>
-#include <sys/mman.h>  // For the PROT_* and MAP_* constants.
 
 #include <iostream>
 #include <memory>
@@ -36,6 +35,7 @@
 #include "base/logging.h"  // For VLOG_IS_ON.
 #include "base/hiddenapi_flags.h"
 #include "base/mem_map.h"
+#include "base/mman.h"  // For the PROT_* and MAP_* constants.
 #include "base/os.h"
 #include "base/utils.h"
 #include "dex/art_dex_file_loader.h"

@@ -26,9 +26,33 @@ art_cc_defaults {
         "dex_writer.cc",
     ],
     export_include_dirs: ["."],
-    shared_libs: [
-        "libbase",
-    ],
+    target: {
+        android: {
+            shared_libs: [
+                "libdexfile",
+                "libartbase",
+                "libprofile",
+                "libbase",
+            ],
+        },
+        not_windows: {
+            shared_libs: [
+                "libdexfile",
+                "libartbase",
+                "libprofile",
+                "libbase",
+            ],
+        },
+        windows: {
+            cflags: ["-Wno-thread-safety"],
+            static_libs: [
+                "libdexfile",
+                "libartbase",
+                "libprofile",
+                "libbase",
+            ],
+        },
+    },
     static_libs: ["libz"],
 }
 
@@ -46,16 +70,16 @@ art_cc_library {
         "libart-dexlayout-defaults",
         "dex2oat-pgo-defaults",
     ],
-    shared_libs: [
-        "libdexfile",
-        "libartbase",
-        "libprofile",
-    ],
-
     target: {
         android: {
             lto: {
                  thin: true,
+            },
+        },
+        windows: {
+            enabled: true,
+            shared: {
+                enabled: false,
             },
         },
     },
@@ -115,6 +139,29 @@ art_cc_binary {
         "libartbase",
         "libart-dexlayout",
     ],
+}
+
+art_cc_binary {
+    name: "dexlayouts",
+    defaults: [
+        "dexlayout-defaults",
+        "libart-dexlayout_static_defaults",
+        "libprofile_static_defaults",
+        "libdexfile_static_defaults",
+        "libartbase_static_defaults",
+    ],
+    srcs: ["dexlayout_main.cc"],
+    host_supported: true,
+    device_supported: false,
+    target: {
+        darwin: {
+            enabled: false,
+        },
+        windows: {
+            enabled: true,
+            cflags: ["-Wno-thread-safety"],
+        },
+    },
 }
 
 art_cc_binary {

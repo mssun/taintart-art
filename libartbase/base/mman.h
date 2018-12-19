@@ -20,19 +20,18 @@
 #ifdef _WIN32
 
 // There is no sys/mman.h in mingw.
-// As these are just placeholders for the APIs, all values are stubbed out.
 
-#define PROT_READ      0        // 0x1
-#define PROT_WRITE     0        // 0x2
-#define PROT_EXEC      0        // 0x4
-#define PROT_NONE      0        // 0x0
+#define PROT_READ      0x1
+#define PROT_WRITE     0x2
+#define PROT_EXEC      0x4
+#define PROT_NONE      0x0
 
-#define MAP_SHARED     0        // 0x01
-#define MAP_PRIVATE    0        // 0x02
+#define MAP_SHARED     0x01
+#define MAP_PRIVATE    0x02
 
-#define MAP_FAILED     nullptr  // ((void*) -1)
-#define MAP_FIXED      0        // 0x10
-#define MAP_ANONYMOUS  0        // 0x20
+#define MAP_FAILED     ((void*) -1)
+#define MAP_FIXED      0x10
+#define MAP_ANONYMOUS  0x20
 
 #else
 
