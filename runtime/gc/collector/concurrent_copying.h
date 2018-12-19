@@ -394,8 +394,8 @@ class ConcurrentCopying : public GarbageCollector {
   size_t gc_count_;
   // Bit is set if the corresponding object has inter-region references that
   // were found during the marking phase of two-phase full-heap GC cycle.
-  accounting::ContinuousSpaceBitmap* region_space_inter_region_bitmap_;
-  accounting::ContinuousSpaceBitmap* non_moving_space_inter_region_bitmap_;
+  std::unique_ptr<accounting::ContinuousSpaceBitmap> region_space_inter_region_bitmap_;
+  std::unique_ptr<accounting::ContinuousSpaceBitmap> non_moving_space_inter_region_bitmap_;
 
   // reclaimed_bytes_ratio = reclaimed_bytes/num_allocated_bytes per GC cycle
   float reclaimed_bytes_ratio_sum_;
