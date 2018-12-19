@@ -198,5 +198,29 @@
   modes: [device],
   bug: 116446372,
   names: ["libcore.libcore.io.FdsanTest#testSocket"]
+},
+{
+  description: "Unexpected failures",
+  result: EXEC_FAILED,
+  bug: 121230364,
+  names: [
+    "libcore.libcore.net.InetAddressUtilsTest#parseNumericAddress[8]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_isNotNumericAddress[10]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_isNotNumericAddress[11]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_isNotNumericAddress[12]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_isNotNumericAddress[5]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_isNotNumericAddress[6]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_isNotNumericAddress[7]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_isNotNumericAddress[8]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_isNotNumericAddress[9]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_parseNonNumericAddress[10]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_parseNonNumericAddress[11]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_parseNonNumericAddress[12]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_parseNonNumericAddress[5]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_parseNonNumericAddress[6]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_parseNonNumericAddress[7]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_parseNonNumericAddress[8]",
+    "libcore.libcore.net.InetAddressUtilsTest#test_parseNonNumericAddress[9]"
+  ]
 }
 ]
