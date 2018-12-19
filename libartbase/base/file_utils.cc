@@ -19,11 +19,13 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 #include <unistd.h>
 
 // We need dladdr.
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(_WIN32)
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #define DEFINED_GNU_SOURCE
@@ -84,6 +86,10 @@ bool ReadFileToString(const std::string& file_name, std::string* result) {
 }
 
 std::string GetAndroidRootSafe(std::string* error_msg) {
+#ifdef _WIN32
+  *error_msg = "GetAndroidRootSafe unsupported for Windows.";
+  return "";
+#else
   // Prefer ANDROID_ROOT if it's set.
   const char* android_dir = getenv("ANDROID_ROOT");
   if (android_dir != nullptr) {
@@ -118,6 +124,7 @@ std::string GetAndroidRootSafe(std::string* error_msg) {
     return "";
   }
   return "/system";
+#endif
 }
 
 std::string GetAndroidRoot() {
@@ -179,6 +186,15 @@ std::string GetDefaultBootImageLocation(std::string* error_msg) {
 
 void GetDalvikCache(const char* subdir, const bool create_if_absent, std::string* dalvik_cache,
                     bool* have_android_data, bool* dalvik_cache_exists, bool* is_global_cache) {
+#ifdef _WIN32
+  UNUSED(subdir);
+  UNUSED(create_if_absent);
+  UNUSED(dalvik_cache);
+  UNUSED(have_android_data);
+  UNUSED(dalvik_cache_exists);
+  UNUSED(is_global_cache);
+  LOG(FATAL) << "GetDalvikCache unsupported on Windows.";
+#else
   CHECK(subdir != nullptr);
   std::string error_msg;
   const char* android_data = GetAndroidDataSafe(&error_msg);
@@ -199,6 +215,7 @@ void GetDalvikCache(const char* subdir, const bool create_if_absent, std::string
     *dalvik_cache_exists = ((mkdir(dalvik_cache_root.c_str(), 0700) == 0 || errno == EEXIST) &&
                             (mkdir(dalvik_cache->c_str(), 0700) == 0 || errno == EEXIST));
   }
+#endif
 }
 
 std::string GetDalvikCache(const char* subdir) {
@@ -262,9 +279,15 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
 }
 
 bool LocationIsOnSystem(const char* path) {
+#ifdef _WIN32
+  UNUSED(path);
+  LOG(FATAL) << "LocationIsOnSystem is unsupported on Windows.";
+  return false;
+#else
   UniqueCPtr<const char[]> full_path(realpath(path, nullptr));
   return full_path != nullptr &&
       android::base::StartsWith(full_path.get(), GetAndroidRoot().c_str());
+#endif
 }
 
 bool LocationIsOnSystemFramework(const char* full_path) {

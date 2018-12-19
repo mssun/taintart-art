@@ -18,8 +18,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
-#include <sys/mman.h>  // For the PROT_* and MAP_* constants.
-#if !defined(ANDROID_OS) && !defined(__Fuchsia__)
+#if !defined(ANDROID_OS) && !defined(__Fuchsia__) && !defined(_WIN32)
 #include <sys/resource.h>
 #endif
 
@@ -39,6 +38,7 @@
 #include "globals.h"
 #include "logging.h"  // For VLOG_IS_ON.
 #include "memory_tool.h"
+#include "mman.h"  // For the PROT_* and MAP_* constants.
 #include "utils.h"
 
 #ifndef MAP_ANONYMOUS
@@ -811,19 +811,30 @@ void MemMap::MadviseDontNeedAndZero() {
     if (!kMadviseZeroes) {
       memset(base_begin_, 0, base_size_);
     }
+#ifdef _WIN32
+    // It is benign not to madvise away the pages here.
+    PLOG(WARNING) << "MemMap::MadviseDontNeedAndZero does not madvise on Windows.";
+#else
     int result = madvise(base_begin_, base_size_, MADV_DONTNEED);
     if (result == -1) {
       PLOG(WARNING) << "madvise failed";
     }
+#endif
   }
 }
 
 bool MemMap::Sync() {
+#ifdef _WIN32
+  // TODO: add FlushViewOfFile support.
+  PLOG(ERROR) << "MemMap::Sync unsupported on Windows.";
+  return false;
+#else
   // Historical note: To avoid Valgrind errors, we temporarily lifted the lower-end noaccess
   // protection before passing it to msync() when `redzone_size_` was non-null, as Valgrind
   // only accepts page-aligned base address, and excludes the higher-end noaccess protection
   // from the msync range. b/27552451.
   return msync(BaseBegin(), BaseSize(), MS_SYNC) == 0;
+#endif
 }
 
 bool MemMap::Protect(int prot) {
@@ -832,10 +843,12 @@ bool MemMap::Protect(int prot) {
     return true;
   }
 
+#ifndef _WIN32
   if (mprotect(base_begin_, base_size_, prot) == 0) {
     prot_ = prot;
     return true;
   }
+#endif
 
   PLOG(ERROR) << "mprotect(" << reinterpret_cast<void*>(base_begin_) << ", " << base_size_ << ", "
               << prot << ") failed";
@@ -1206,7 +1219,11 @@ void ZeroAndReleasePages(void* address, size_t length) {
     DCHECK_LE(page_begin, page_end);
     DCHECK_LE(page_end, mem_end);
     std::fill(mem_begin, page_begin, 0);
+#ifdef _WIN32
+    LOG(WARNING) << "ZeroAndReleasePages does not madvise on Windows.";
+#else
     CHECK_NE(madvise(page_begin, page_end - page_begin, MADV_DONTNEED), -1) << "madvise failed";
+#endif
     std::fill(page_end, mem_end, 0);
   }
 }

@@ -16,7 +16,7 @@
 
 #include "mem_map.h"
 
-#include <sys/mman.h>
+#include "mman.h"
 
 namespace art {
 

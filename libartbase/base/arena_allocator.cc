@@ -16,7 +16,6 @@
 
 #include "arena_allocator-inl.h"
 
-#include <sys/mman.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -24,6 +23,8 @@
 #include <numeric>
 
 #include <android-base/logging.h>
+
+#include "mman.h"
 
 namespace art {
 

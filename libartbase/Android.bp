@@ -35,7 +35,6 @@ cc_defaults {
         "base/memory_region.cc",
         "base/mem_map.cc",
         // "base/mem_map_fuchsia.cc", put in target when fuchsia supported by soong
-        "base/mem_map_unix.cc",
         "base/os_linux.cc",
         "base/runtime_debug.cc",
         "base/safe_copy.cc",
@@ -50,20 +49,38 @@ cc_defaults {
     ],
     target: {
         android: {
+            srcs: [
+                "base/mem_map_unix.cc",
+            ],
             static_libs: [
                 // ZipArchive support, the order matters here to get all symbols.
                 "libziparchive",
                 "libz",
+            ],
+            shared_libs: [
+                "liblog",
+                // For ashmem.
+                "libcutils",
+                // For common macros.
+                "libbase",
             ],
             // Exclude the version script from Darwin host since it's not
             // supported by the linker there. That means ASan checks on Darwin
             // might trigger ODR violations.
             version_script: "libartbase.map",
         },
-        host: {
+        not_windows: {
+            srcs: [
+                "base/mem_map_unix.cc",
+            ],
             shared_libs: [
                 "libziparchive",
                 "libz",
+                "liblog",
+                // For ashmem.
+                "libcutils",
+                // For common macros.
+                "libbase",
             ],
         },
         linux_glibc: {
@@ -71,17 +88,20 @@ cc_defaults {
         },
         windows: {
             version_script: "libartbase.map",
+            static_libs: [
+                "libziparchive",
+                "libz",
+                "liblog",
+                // For ashmem.
+                "libcutils",
+                // For common macros.
+                "libbase",
+            ],
+            cflags: ["-Wno-thread-safety"],
         },
     },
     generated_sources: ["art_libartbase_operator_srcs"],
     cflags: ["-DBUILDING_LIBART=1"],
-    shared_libs: [
-        "liblog",
-        // For ashmem.
-        "libcutils",
-        // For common macros.
-        "libbase",
-    ],
 
     // Utilities used by various ART libs and tools are linked in statically
     // here to avoid shared lib dependencies outside the ART APEX. No target
@@ -147,6 +167,14 @@ art_cc_library {
         "libziparchive",
     ],
     export_shared_lib_headers: ["libbase"],
+    target: {
+        windows: {
+            enabled: true,
+            shared: {
+                enabled: false,
+            },
+        },
+    },
 }
 
 art_cc_library {
@@ -160,6 +188,14 @@ art_cc_library {
         "libziparchive",
     ],
     export_shared_lib_headers: ["libbase"],
+    target: {
+        windows: {
+            enabled: true,
+            shared: {
+                enabled: false,
+            },
+        },
+    },
 }
 
 art_cc_library {

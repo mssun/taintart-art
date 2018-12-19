@@ -16,8 +16,10 @@
 
 #include "safe_copy.h"
 
+#ifdef __linux__
 #include <sys/uio.h>
 #include <sys/user.h>
+#endif
 #include <unistd.h>
 
 #include <algorithm>

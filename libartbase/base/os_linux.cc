@@ -50,7 +50,12 @@ File* OS::CreateEmptyFile(const char* name) {
 }
 
 File* OS::CreateEmptyFileWriteOnly(const char* name) {
-  return art::CreateEmptyFile(name, O_WRONLY | O_TRUNC | O_NOFOLLOW | O_CLOEXEC);
+#ifdef _WIN32
+  int flags = O_WRONLY | O_TRUNC;
+#else
+  int flags = O_WRONLY | O_TRUNC | O_NOFOLLOW | O_CLOEXEC;
+#endif
+  return art::CreateEmptyFile(name, flags);
 }
 
 File* OS::OpenFileWithFlags(const char* name, int flags, bool auto_flush) {
