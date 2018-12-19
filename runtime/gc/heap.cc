@@ -3798,7 +3798,7 @@ void Heap::ConcurrentGC(Thread* self, GcCause cause, bool force_full) {
   if (!Runtime::Current()->IsShuttingDown(self)) {
     // Wait for any GCs currently running to finish.
     if (WaitForGcToComplete(cause, self) == collector::kGcTypeNone) {
-      // If the we can't run the GC type we wanted to run, find the next appropriate one and try
+      // If we can't run the GC type we wanted to run, find the next appropriate one and try
       // that instead. E.g. can't do partial, so do full instead.
       collector::GcType next_gc_type = next_gc_type_;
       // If forcing full and next gc type is sticky, override with a non-sticky type.
@@ -3977,8 +3977,13 @@ static constexpr size_t kNewNativeDiscountFactor = 2;
 // If weighted java + native memory use exceeds our target by kStopForNativeFactor, and
 // newly allocated memory exceeds kHugeNativeAlloc, we wait for GC to complete to avoid
 // running out of memory.
-static constexpr float kStopForNativeFactor = 2.0;
-static constexpr size_t kHugeNativeAllocs = 200*1024*1024;
+static constexpr float kStopForNativeFactor = 4.0;
+// TODO: Allow this to be tuned. We want this much smaller for some apps, like Calculator.
+// But making it too small can cause jank in apps like launcher that intentionally allocate
+// large amounts of memory in rapid succession. (b/122099093)
+// For now, we punt, and use a value that should be easily large enough to disable this in all
+// questionable setting, but that is clearly too large to be effective for small memory devices.
+static constexpr size_t kHugeNativeAllocs = 1 * GB;
 
 // Return the ratio of the weighted native + java allocated bytes to its target value.
 // A return value > 1.0 means we should collect. Significantly larger values mean we're falling
@@ -3998,8 +4003,9 @@ inline float Heap::NativeMemoryOverTarget(size_t current_native_bytes) {
     size_t new_native_bytes = UnsignedDifference(current_native_bytes, old_native_bytes);
     size_t weighted_native_bytes = new_native_bytes / kNewNativeDiscountFactor
         + old_native_bytes / kOldNativeDiscountFactor;
-    size_t adj_start_bytes = concurrent_start_bytes_
-        + NativeAllocationGcWatermark() / kNewNativeDiscountFactor;
+    size_t add_bytes_allowed = static_cast<size_t>(
+        NativeAllocationGcWatermark() * HeapGrowthMultiplier());
+    size_t adj_start_bytes = concurrent_start_bytes_ + add_bytes_allowed / kNewNativeDiscountFactor;
     return static_cast<float>(GetBytesAllocated() + weighted_native_bytes)
          / static_cast<float>(adj_start_bytes);
   }
@@ -4017,7 +4023,7 @@ inline void Heap::CheckConcurrentGCForNative(Thread* self) {
         if (VLOG_IS_ON(heap) || VLOG_IS_ON(startup)) {
           LOG(INFO) << "Stopping for native allocation, urgency: " << gc_urgency;
         }
-        WaitForGcToComplete(kGcCauseForAlloc, self);
+        WaitForGcToComplete(kGcCauseForNativeAlloc, self);
       }
     } else {
       CollectGarbageInternal(NonStickyGcType(), kGcCauseForNativeAlloc, false);
