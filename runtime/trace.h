@@ -156,9 +156,6 @@ class Trace final : public instrumentation::InstrumentationListener {
       REQUIRES(!Locks::mutator_lock_, !Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_,
                !Locks::trace_lock_);
 
-  static void Pause() REQUIRES(!Locks::trace_lock_, !Locks::thread_list_lock_);
-  static void Resume() REQUIRES(!Locks::trace_lock_);
-
   // Stop tracing. This will finish the trace and write it to file/send it via DDMS.
   static void Stop()
       REQUIRES(!Locks::mutator_lock_, !Locks::thread_list_lock_, !Locks::trace_lock_);
