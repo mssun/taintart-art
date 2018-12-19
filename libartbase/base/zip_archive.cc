@@ -18,7 +18,6 @@
 
 #include <fcntl.h>
 #include <stdio.h>
-#include <sys/mman.h>  // For the PROT_* and MAP_* constants.
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -27,6 +26,7 @@
 #include "android-base/stringprintf.h"
 #include "ziparchive/zip_archive.h"
 
+#include "base/mman.h"
 #include "bit_utils.h"
 #include "unix_file/fd_file.h"
 
@@ -203,6 +203,11 @@ MemMap ZipEntry::MapDirectlyOrExtract(const char* zip_filename,
 }
 
 static void SetCloseOnExec(int fd) {
+#ifdef _WIN32
+  // Exec is not supported on Windows.
+  UNUSED(fd);
+  PLOG(ERROR) << "SetCloseOnExec is not supported on Windows.";
+#else
   // This dance is more portable than Linux's O_CLOEXEC open(2) flag.
   int flags = fcntl(fd, F_GETFD);
   if (flags == -1) {
@@ -214,6 +219,7 @@ static void SetCloseOnExec(int fd) {
     PLOG(WARNING) << "fcntl(" << fd << ", F_SETFD, " << flags << ") failed";
     return;
   }
+#endif
 }
 
 ZipArchive* ZipArchive::Open(const char* filename, std::string* error_msg) {
