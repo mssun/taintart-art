@@ -43,30 +43,58 @@ cc_defaults {
                 "libziparchive",
                 "libz",
             ],
+            shared_libs: [
+                 // For MemMap.
+                 "libartbase",
+                 "liblog",
+                 // For atrace.
+                 "libcutils",
+                 // For common macros.
+                 "libbase",
+            ],
+            export_shared_lib_headers: [
+                "libartbase",
+                "libbase",
+            ],
         },
-        host: {
+        not_windows: {
             shared_libs: [
                 "libziparchive",
                 "libz",
+                 // For MemMap.
+                 "libartbase",
+                 "liblog",
+                 // For atrace.
+                 "libcutils",
+                 // For common macros.
+                 "libbase",
             ],
+            export_shared_lib_headers: [
+                "libartbase",
+                "libbase",
+            ],
+        },
+        windows: {
+            static_libs: [
+                "libziparchive",
+                "libz",
+                 // For MemMap.
+                 "libartbase",
+                 "liblog",
+                 // For atrace.
+                 "libcutils",
+                 // For common macros.
+                 "libbase",
+            ],
+            export_static_lib_headers: [
+                "libartbase",
+                "libbase",
+            ],
+            cflags: ["-Wno-thread-safety"],
         },
     },
     generated_sources: ["dexfile_operator_srcs"],
-    shared_libs: [
-        // For MemMap.
-        "libartbase",
-        "liblog",
-        // For atrace.
-        "libcutils",
-        // For common macros.
-        "libbase",
-        "libz",
-    ],
     export_include_dirs: ["."],
-    export_shared_lib_headers: [
-        "libartbase",
-        "libbase",
-    ],
 }
 
 cc_defaults {
@@ -121,6 +149,14 @@ art_cc_library {
     strip: {
         keep_symbols: true,
     },
+    target: {
+        windows: {
+            enabled: true,
+            shared: {
+                enabled: false,
+            },
+        },
+    },
 }
 
 art_cc_library {
@@ -129,6 +165,14 @@ art_cc_library {
         "art_debug_defaults",
         "libdexfile_defaults",
     ],
+    target: {
+        windows: {
+            enabled: true,
+            shared: {
+                enabled: false,
+            },
+        },
+    },
 }
 
 cc_library_headers {

@@ -15,8 +15,8 @@
  */
 
 #include "mem_map.h"
-#include <sys/mman.h>
 #include "logging.h"
+#include "mman.h"
 
 #include <zircon/process.h>
 #include <zircon/syscalls.h>

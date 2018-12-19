@@ -49,6 +49,9 @@ art_cc_binary {
         darwin: {
             enabled: false,
         },
+        windows: {
+            enabled: true,
+        },
     },
 }
 

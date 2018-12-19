@@ -19,9 +19,7 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #include <fstream>
@@ -47,6 +45,16 @@
 
 #if defined(__linux__)
 #include <linux/unistd.h>
+#include <sys/syscall.h>
+#endif
+
+#if defined(_WIN32)
+#include <windows.h>
+// This include needs to be here due to our coding conventions.  Unfortunately
+// it drags in the definition of the dread ERROR macro.
+#ifdef ERROR
+#undef ERROR
+#endif
 #endif
 
 namespace art {
@@ -61,6 +69,8 @@ pid_t GetTid() {
   return owner;
 #elif defined(__BIONIC__)
   return gettid();
+#elif defined(_WIN32)
+  return static_cast<pid_t>(::GetCurrentThreadId());
 #else
   return syscall(__NR_gettid);
 #endif
@@ -68,12 +78,17 @@ pid_t GetTid() {
 
 std::string GetThreadName(pid_t tid) {
   std::string result;
+#ifdef _WIN32
+  UNUSED(tid);
+  result = "<unknown>";
+#else
   // TODO: make this less Linux-specific.
   if (ReadFileToString(StringPrintf("/proc/self/task/%d/comm", tid), &result)) {
     result.resize(result.size() - 1);  // Lose the trailing '\n'.
   } else {
     result = "<unknown>";
   }
+#endif
   return result;
 }
 
@@ -137,7 +152,7 @@ void SetThreadName(const char* thread_name) {
   } else {
     s = thread_name + len - 15;
   }
-#if defined(__linux__)
+#if defined(__linux__) || defined(_WIN32)
   // pthread_setname_np fails rather than truncating long strings.
   char buf[16];       // MAX_TASK_COMM_LEN=16 is hard-coded in the kernel.
   strncpy(buf, s, sizeof(buf)-1);
@@ -153,6 +168,11 @@ void SetThreadName(const char* thread_name) {
 
 void GetTaskStats(pid_t tid, char* state, int* utime, int* stime, int* task_cpu) {
   *utime = *stime = *task_cpu = 0;
+#ifdef _WIN32
+  // TODO: implement this.
+  UNUSED(tid);
+  *state = 'S';
+#else
   std::string stats;
   // TODO: make this less Linux-specific.
   if (!ReadFileToString(StringPrintf("/proc/self/task/%d/stat", tid), &stats)) {
@@ -167,6 +187,7 @@ void GetTaskStats(pid_t tid, char* state, int* utime, int* stime, int* task_cpu)
   *utime = strtoull(fields[11].c_str(), nullptr, 10);
   *stime = strtoull(fields[12].c_str(), nullptr, 10);
   *task_cpu = strtoull(fields[36].c_str(), nullptr, 10);
+#endif
 }
 
 static void ParseStringAfterChar(const std::string& s,

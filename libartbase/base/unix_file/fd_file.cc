@@ -25,8 +25,13 @@
 #include <android/fdsan.h>
 #endif
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 #include <limits>
 
+#include <android-base/file.h>
 #include <android-base/logging.h>
 
 // Includes needed for FdFile::Copy().
@@ -39,6 +44,96 @@
 #endif
 
 namespace unix_file {
+
+#if defined(_WIN32)
+// RAII wrapper for an event object to allow asynchronous I/O to correctly signal completion.
+class ScopedEvent {
+ public:
+  ScopedEvent() {
+    handle_ = CreateEventA(/*lpEventAttributes*/ nullptr,
+                           /*bManualReset*/ true,
+                           /*bInitialState*/ false,
+                           /*lpName*/ nullptr);
+  }
+
+  ~ScopedEvent() { CloseHandle(handle_); }
+
+  HANDLE handle() { return handle_; }
+
+ private:
+  HANDLE handle_;
+  DISALLOW_COPY_AND_ASSIGN(ScopedEvent);
+};
+
+// Windows implementation of pread/pwrite. Note that these DO move the file descriptor's read/write
+// position, but do so atomically.
+static ssize_t pread(int fd, void* data, size_t byte_count, off64_t offset) {
+  ScopedEvent event;
+  if (event.handle() == INVALID_HANDLE_VALUE) {
+    PLOG(ERROR) << "Could not create event handle.";
+    errno = EIO;
+    return static_cast<ssize_t>(-1);
+  }
+
+  auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+  DWORD bytes_read = 0;
+  OVERLAPPED overlapped = {};
+  overlapped.Offset = static_cast<DWORD>(offset);
+  overlapped.OffsetHigh = static_cast<DWORD>(offset >> 32);
+  overlapped.hEvent = event.handle();
+  if (!ReadFile(handle, data, static_cast<DWORD>(byte_count), &bytes_read, &overlapped)) {
+    // If the read failed with other than ERROR_IO_PENDING, return an error.
+    // ERROR_IO_PENDING signals the write was begun asynchronously.
+    // Block until the asynchronous operation has finished or fails, and return
+    // result accordingly.
+    if (::GetLastError() != ERROR_IO_PENDING ||
+        !::GetOverlappedResult(handle, &overlapped, &bytes_read, TRUE)) {
+      // In case someone tries to read errno (since this is masquerading as a POSIX call).
+      errno = EIO;
+      return static_cast<ssize_t>(-1);
+    }
+  }
+  return static_cast<ssize_t>(bytes_read);
+}
+
+static ssize_t pwrite(int fd, const void* buf, size_t count, off64_t offset) {
+  ScopedEvent event;
+  if (event.handle() == INVALID_HANDLE_VALUE) {
+    PLOG(ERROR) << "Could not create event handle.";
+    errno = EIO;
+    return static_cast<ssize_t>(-1);
+  }
+
+  auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+  DWORD bytes_written = 0;
+  OVERLAPPED overlapped = {};
+  overlapped.Offset = static_cast<DWORD>(offset);
+  overlapped.OffsetHigh = static_cast<DWORD>(offset >> 32);
+  overlapped.hEvent = event.handle();
+  if (!::WriteFile(handle, buf, count, &bytes_written, &overlapped)) {
+    // If the write failed with other than ERROR_IO_PENDING, return an error.
+    // ERROR_IO_PENDING signals the write was begun asynchronously.
+    // Block until the asynchronous operation has finished or fails, and return
+    // result accordingly.
+    if (::GetLastError() != ERROR_IO_PENDING ||
+        !::GetOverlappedResult(handle, &overlapped, &bytes_written, TRUE)) {
+      // In case someone tries to read errno (since this is masquerading as a POSIX call).
+      errno = EIO;
+      return static_cast<ssize_t>(-1);
+    }
+  }
+  return static_cast<ssize_t>(bytes_written);
+}
+
+static int fsync(int fd) {
+  auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+  if (handle != INVALID_HANDLE_VALUE && ::FlushFileBuffers(handle)) {
+    return 0;
+  }
+  errno = EINVAL;
+  return -1;
+}
+#endif
 
 #if defined(__BIONIC__)
 static uint64_t GetFdFileOwnerTag(FdFile* fd_file) {

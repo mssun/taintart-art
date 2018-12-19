@@ -35,6 +35,14 @@ using android::base::StringPrintf;
 
 /* static */ ScopedFlock LockedFile::Open(const char* filename, int flags, bool block,
                                           std::string* error_msg) {
+#ifdef _WIN32
+  // TODO: implement file locking for Windows.
+  UNUSED(filename);
+  UNUSED(flags);
+  UNUSED(block);
+  *error_msg = "flock is unsupported on Windows";
+  return nullptr;
+#else
   while (true) {
     // NOTE: We don't check usage here because the ScopedFlock should *never* be
     // responsible for flushing its underlying FD. Its only purpose should be
@@ -89,10 +97,19 @@ using android::base::StringPrintf;
 
     return ScopedFlock(new LockedFile(std::move((*file.get()))));
   }
+#endif
 }
 
 ScopedFlock LockedFile::DupOf(const int fd, const std::string& path,
                               const bool read_only_mode, std::string* error_msg) {
+#ifdef _WIN32
+  // TODO: implement file locking for Windows.
+  UNUSED(fd);
+  UNUSED(path);
+  UNUSED(read_only_mode);
+  *error_msg = "flock is unsupported on Windows.";
+  return nullptr;
+#else
   // NOTE: We don't check usage here because the ScopedFlock should *never* be
   // responsible for flushing its underlying FD. Its only purpose should be
   // to acquire a lock, and the unlock / close in the corresponding
@@ -112,9 +129,11 @@ ScopedFlock LockedFile::DupOf(const int fd, const std::string& path,
   }
 
   return locked_file;
+#endif
 }
 
 void LockedFile::ReleaseLock() {
+#ifndef _WIN32
   if (this->Fd() != -1) {
     int flock_result = TEMP_FAILURE_RETRY(flock(this->Fd(), LOCK_UN));
     if (flock_result != 0) {
@@ -126,6 +145,7 @@ void LockedFile::ReleaseLock() {
       PLOG(WARNING) << "Unable to unlock file " << this->GetPath();
     }
   }
+#endif
 }
 
 }  // namespace art

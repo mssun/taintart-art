@@ -16,8 +16,6 @@
 
 #include "mem_map.h"
 
-#include <sys/mman.h>
-
 #include <memory>
 #include <random>
 
@@ -25,6 +23,7 @@
 #include "common_runtime_test.h"  // For TEST_DISABLED_FOR_MIPS
 #include "logging.h"
 #include "memory_tool.h"
+#include "mman.h"
 #include "unix_file/fd_file.h"
 
 namespace art {

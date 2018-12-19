@@ -18,9 +18,11 @@
 
 #include <errno.h>
 #include <stdio.h>
+#if !defined(_WIN32)
 #include <sys/syscall.h>
 #include <sys/utsname.h>
 #include <unistd.h>
+#endif
 
 #include "macros.h"
 

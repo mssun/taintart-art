@@ -16,7 +16,6 @@
 
 #include "art_dex_file_loader.h"
 
-#include <sys/mman.h>  // For the PROT_* and MAP_* constants.
 #include <sys/stat.h>
 
 #include "android-base/stringprintf.h"
@@ -24,6 +23,7 @@
 #include "base/file_magic.h"
 #include "base/file_utils.h"
 #include "base/mem_map.h"
+#include "base/mman.h"  // For the PROT_* and MAP_* constants.
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
