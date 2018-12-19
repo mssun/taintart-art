@@ -20,6 +20,7 @@
 #include <inttypes.h>
 #include <vector>
 
+#include "arch/instruction_set_features.h"
 #include "base/locks.h"
 
 namespace art {
@@ -27,28 +28,35 @@ namespace art {
 class DexFile;
 class Thread;
 
+// This method is declared in the compiler library.
+// We need to pass it by pointer to be able to call it from runtime.
+typedef std::vector<uint8_t> PackElfFileForJITFunction(
+    InstructionSet isa,
+    const InstructionSetFeatures* features,
+    std::vector<const uint8_t*>& added_elf_files,
+    std::vector<const void*>& removed_symbols,
+    /*out*/ size_t* num_symbols);
+
 // Notify native tools (e.g. libunwind) that DEX file has been opened.
-void AddNativeDebugInfoForDex(Thread* self, const DexFile* dexfile)
-    REQUIRES(!Locks::native_debug_interface_lock_);
+void AddNativeDebugInfoForDex(Thread* self, const DexFile* dexfile);
 
 // Notify native tools (e.g. libunwind) that DEX file has been closed.
-void RemoveNativeDebugInfoForDex(Thread* self, const DexFile* dexfile)
-    REQUIRES(!Locks::native_debug_interface_lock_);
+void RemoveNativeDebugInfoForDex(Thread* self, const DexFile* dexfile);
 
 // Notify native tools (e.g. libunwind) that JIT has compiled a new method.
 // The method will make copy of the passed ELF file (to shrink it to the minimum size).
 void AddNativeDebugInfoForJit(Thread* self,
                               const void* code_ptr,
-                              const std::vector<uint8_t>& symfile)
-    REQUIRES(!Locks::native_debug_interface_lock_);
+                              const std::vector<uint8_t>& symfile,
+                              PackElfFileForJITFunction pack,
+                              InstructionSet isa,
+                              const InstructionSetFeatures* features);
 
 // Notify native tools (e.g. libunwind) that JIT code has been garbage collected.
-void RemoveNativeDebugInfoForJit(Thread* self, const void* code_ptr)
-    REQUIRES(!Locks::native_debug_interface_lock_);
+void RemoveNativeDebugInfoForJit(Thread* self, const void* code_ptr);
 
 // Returns approximate memory used by debug info for JIT code.
-size_t GetJitMiniDebugInfoMemUsage()
-    REQUIRES(!Locks::native_debug_interface_lock_);
+size_t GetJitMiniDebugInfoMemUsage();
 
 }  // namespace art
 

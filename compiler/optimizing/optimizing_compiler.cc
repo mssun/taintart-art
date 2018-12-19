@@ -1456,8 +1456,8 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   return true;
 }
 
-void OptimizingCompiler::GenerateJitDebugInfo(
-    ArtMethod* method, const debug::MethodDebugInfo& info) {
+void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method ATTRIBUTE_UNUSED,
+                                              const debug::MethodDebugInfo& info) {
   const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
   DCHECK(compiler_options.GenerateAnyDebugInfo());
 
@@ -1472,12 +1472,10 @@ void OptimizingCompiler::GenerateJitDebugInfo(
       info);
   AddNativeDebugInfoForJit(Thread::Current(),
                            reinterpret_cast<const void*>(info.code_address),
-                           elf_file);
-
-  VLOG(jit)
-      << "JIT mini-debug-info added for " << ArtMethod::PrettyMethod(method)
-      << " size=" << PrettySize(elf_file.size())
-      << " total_size=" << PrettySize(GetJitMiniDebugInfoMemUsage());
+                           elf_file,
+                           debug::PackElfFileForJIT,
+                           compiler_options.GetInstructionSet(),
+                           compiler_options.GetInstructionSetFeatures());
 }
 
 }  // namespace art
