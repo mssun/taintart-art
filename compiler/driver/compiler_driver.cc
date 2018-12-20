@@ -1231,8 +1231,15 @@ class ClinitImageUpdate {
     bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
       std::string temp;
       StringPiece name(klass->GetDescriptor(&temp));
-      if (data_->image_class_descriptors_->find(name) != data_->image_class_descriptors_->end()) {
-        data_->image_classes_.push_back(hs_.NewHandle(klass));
+      auto it = data_->image_class_descriptors_->find(name);
+      if (it != data_->image_class_descriptors_->end()) {
+        if (LIKELY(klass->IsResolved())) {
+          data_->image_classes_.push_back(hs_.NewHandle(klass));
+        } else {
+          DCHECK(klass->IsErroneousUnresolved());
+          VLOG(compiler) << "Removing unresolved class from image classes: " << name;
+          data_->image_class_descriptors_->erase(it);
+        }
       } else {
         // Check whether it is initialized and has a clinit. They must be kept, too.
         if (klass->IsInitialized() && klass->FindClassInitializer(
