@@ -1141,4 +1141,180 @@ TEST_F(ProfileCompilationInfoTest, ClearDataAndSave) {
   ASSERT_TRUE(loaded_info.Equals(info));
 }
 
+TEST_F(ProfileCompilationInfoTest, PrepareForAggregationCounters) {
+  ProfileCompilationInfo info;
+  ASSERT_EQ(
+      memcmp(info.GetVersion(),
+             ProfileCompilationInfo::kProfileVersion,
+             ProfileCompilationInfo::kProfileVersionSize),
+      0);
+
+  info.PrepareForAggregationCounters();
+
+  ASSERT_EQ(
+      memcmp(info.GetVersion(),
+             ProfileCompilationInfo::kProfileVersionWithCounters,
+             ProfileCompilationInfo::kProfileVersionSize),
+      0);
+  ASSERT_TRUE(info.StoresAggregationCounters());
+  ASSERT_EQ(info.GetAggregationCounter(), 0);
+}
+
+TEST_F(ProfileCompilationInfoTest, MergeWithAggregationCounters) {
+  ProfileCompilationInfo info1;
+  info1.PrepareForAggregationCounters();
+
+  ProfileCompilationInfo info2;
+  ProfileCompilationInfo info3;
+
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("ManyMethods"));
+  std::string location = dex->GetLocation();
+  int checksum = dex->GetLocationChecksum();
+
+  AddMethod(location, checksum, /* method_idx= */ 1, &info1);
+
+  AddMethod(location, checksum, /* method_idx= */ 2, &info1);
+  AddMethod(location, checksum, /* method_idx= */ 2, &info2);
+
+  info1.AddMethodIndex(Hotness::kFlagStartup, location, checksum, 3, kMaxMethodIds);
+  info2.AddMethodIndex(Hotness::kFlagPostStartup, location, checksum, 3, kMaxMethodIds);
+  info3.AddMethodIndex(Hotness::kFlagStartup, location, checksum, 3, kMaxMethodIds);
+
+  AddMethod(location, checksum, /* method_idx= */ 6, &info2);
+  AddMethod(location, checksum, /* method_idx= */ 6, &info3);
+
+  AddClass(location, checksum, dex::TypeIndex(10), &info1);
+
+  AddClass(location, checksum, dex::TypeIndex(20), &info1);
+  AddClass(location, checksum, dex::TypeIndex(20), &info2);
+
+  AddClass(location, checksum, dex::TypeIndex(30), &info1);
+  AddClass(location, checksum, dex::TypeIndex(30), &info2);
+  AddClass(location, checksum, dex::TypeIndex(30), &info3);
+
+  ASSERT_EQ(info1.GetAggregationCounter(), 0);
+  info1.MergeWith(info2);
+  ASSERT_EQ(info1.GetAggregationCounter(), 1);
+  info1.MergeWith(info3);
+  ASSERT_EQ(info1.GetAggregationCounter(), 2);
+
+  ASSERT_EQ(0, info1.GetMethodAggregationCounter(MethodReference(dex.get(), 1)));
+  ASSERT_EQ(1, info1.GetMethodAggregationCounter(MethodReference(dex.get(), 2)));
+  ASSERT_EQ(2, info1.GetMethodAggregationCounter(MethodReference(dex.get(), 3)));
+  ASSERT_EQ(1, info1.GetMethodAggregationCounter(MethodReference(dex.get(), 6)));
+
+  ASSERT_EQ(0, info1.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(10))));
+  ASSERT_EQ(1, info1.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(20))));
+  ASSERT_EQ(2, info1.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(30))));
+
+  // Check methods that do not exists.
+  ASSERT_EQ(-1, info1.GetMethodAggregationCounter(MethodReference(dex.get(), 4)));
+  ASSERT_EQ(-1, info1.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(40))));
+}
+
+TEST_F(ProfileCompilationInfoTest, SaveAndLoadAggregationCounters) {
+  ProfileCompilationInfo info1;
+  info1.PrepareForAggregationCounters();
+
+  ProfileCompilationInfo info2;
+  ProfileCompilationInfo info3;
+
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("ManyMethods"));
+  std::string location = dex->GetLocation();
+  int checksum = dex->GetLocationChecksum();
+
+  AddMethod(location, checksum, /* method_idx= */ 1, &info1);
+
+  AddMethod(location, checksum, /* method_idx= */ 2, &info1);
+  AddMethod(location, checksum, /* method_idx= */ 2, &info2);
+
+  info1.AddMethodIndex(Hotness::kFlagStartup, location, checksum, 3, kMaxMethodIds);
+  info2.AddMethodIndex(Hotness::kFlagPostStartup, location, checksum, 3, kMaxMethodIds);
+  info3.AddMethodIndex(Hotness::kFlagStartup, location, checksum, 3, kMaxMethodIds);
+
+  AddMethod(location, checksum, /* method_idx= */ 6, &info2);
+  AddMethod(location, checksum, /* method_idx= */ 6, &info3);
+
+  AddClass(location, checksum, dex::TypeIndex(10), &info1);
+
+  AddClass(location, checksum, dex::TypeIndex(20), &info1);
+  AddClass(location, checksum, dex::TypeIndex(20), &info2);
+
+  AddClass(location, checksum, dex::TypeIndex(30), &info1);
+  AddClass(location, checksum, dex::TypeIndex(30), &info2);
+  AddClass(location, checksum, dex::TypeIndex(30), &info3);
+
+  info1.MergeWith(info2);
+  info1.MergeWith(info3);
+
+  ScratchFile profile;
+
+  ASSERT_TRUE(info1.Save(GetFd(profile)));
+  ASSERT_EQ(0, profile.GetFile()->Flush());
+
+  // Check that we get back what we saved.
+  ProfileCompilationInfo loaded_info;
+  loaded_info.PrepareForAggregationCounters();
+  ASSERT_TRUE(profile.GetFile()->ResetOffset());
+  ASSERT_TRUE(loaded_info.Load(GetFd(profile)));
+  ASSERT_TRUE(loaded_info.Equals(info1));
+
+  ASSERT_EQ(2, loaded_info.GetAggregationCounter());
+
+  ASSERT_EQ(0, loaded_info.GetMethodAggregationCounter(MethodReference(dex.get(), 1)));
+  ASSERT_EQ(1, loaded_info.GetMethodAggregationCounter(MethodReference(dex.get(), 2)));
+  ASSERT_EQ(2, loaded_info.GetMethodAggregationCounter(MethodReference(dex.get(), 3)));
+  ASSERT_EQ(1, loaded_info.GetMethodAggregationCounter(MethodReference(dex.get(), 6)));
+
+  ASSERT_EQ(0, loaded_info.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(10))));
+  ASSERT_EQ(1, loaded_info.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(20))));
+  ASSERT_EQ(2, loaded_info.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(30))));
+}
+
+TEST_F(ProfileCompilationInfoTest, MergeTwoWithAggregationCounters) {
+  ProfileCompilationInfo info1;
+  info1.PrepareForAggregationCounters();
+
+  ProfileCompilationInfo info2;
+
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("ManyMethods"));
+  std::string location = dex->GetLocation();
+  int checksum = dex->GetLocationChecksum();
+
+  AddMethod(location, checksum, /* method_idx= */ 1, &info1);
+
+  AddMethod(location, checksum, /* method_idx= */ 2, &info1);
+  AddMethod(location, checksum, /* method_idx= */ 2, &info2);
+
+  AddClass(location, checksum, dex::TypeIndex(20), &info1);
+
+  AddClass(location, checksum, dex::TypeIndex(10), &info1);
+  AddClass(location, checksum, dex::TypeIndex(10), &info2);
+
+  info1.MergeWith(info2);
+  info1.MergeWith(info2);
+  ASSERT_EQ(2, info1.GetAggregationCounter());
+
+  // Save and load the profile to create a copy of the data
+  ScratchFile profile;
+  info1.Save(GetFd(profile));
+  ASSERT_EQ(0, profile.GetFile()->Flush());
+
+  ProfileCompilationInfo loaded_info;
+  loaded_info.PrepareForAggregationCounters();
+  profile.GetFile()->ResetOffset();
+  loaded_info.Load(GetFd(profile));
+
+  // Merge the data
+  info1.MergeWith(loaded_info);
+
+  ASSERT_EQ(4, info1.GetAggregationCounter());
+
+  ASSERT_EQ(0, info1.GetMethodAggregationCounter(MethodReference(dex.get(), 1)));
+  ASSERT_EQ(4, info1.GetMethodAggregationCounter(MethodReference(dex.get(), 2)));
+
+  ASSERT_EQ(4, info1.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(10))));
+  ASSERT_EQ(0, info1.GetClassAggregationCounter(TypeReference(dex.get(), dex::TypeIndex(20))));
+}
+
 }  // namespace art
