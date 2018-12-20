@@ -21,10 +21,12 @@ public class Test1919 {
 
   public static void run() {
     for (Event e : getEvents()) {
-      if (PRINT_ALL_THREADS ||
-          e.thr.equals(Thread.currentThread()) ||
-          e.thr.getName().equals("JVMTI_THREAD-Test1919")) {
-        System.out.println(e.name + ": " + e.thr.getName());
+      if (e.thr != null) {
+        if (PRINT_ALL_THREADS ||
+            e.thr.equals(Thread.currentThread()) ||
+            e.thr.getName().equals("JVMTI_THREAD-Test1919")) {
+          System.out.println(e.name + ": " + e.thr.getName());
+        }
       }
     }
   }
