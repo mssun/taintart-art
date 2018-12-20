@@ -28,6 +28,7 @@
 #include "debugger.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "interpreter/interpreter.h"
+#include "jit-inl.h"
 #include "jit_code_cache.h"
 #include "jni/java_vm_ext.h"
 #include "mirror/method_handle_impl.h"
@@ -68,6 +69,14 @@ struct StressModeHelper {
 };
 DEFINE_RUNTIME_DEBUG_FLAG(StressModeHelper, kSlowMode);
 
+uint32_t JitOptions::RoundUpThreshold(uint32_t threshold) {
+  if (threshold > kJitSamplesBatchSize) {
+    threshold = RoundUp(threshold, kJitSamplesBatchSize);
+  }
+  CHECK_LE(threshold, std::numeric_limits<uint16_t>::max());
+  return threshold;
+}
+
 JitOptions* JitOptions::CreateFromRuntimeArguments(const RuntimeArgumentMap& options) {
   auto* jit_options = new JitOptions;
   jit_options->use_jit_compilation_ = options.GetOrDefault(RuntimeArgumentMap::UseJitCompilation);
@@ -93,30 +102,25 @@ JitOptions* JitOptions::CreateFromRuntimeArguments(const RuntimeArgumentMap& opt
                    : kJitStressDefaultCompileThreshold)
             : kJitDefaultCompileThreshold;
   }
-  if (jit_options->compile_threshold_ > std::numeric_limits<uint16_t>::max()) {
-    LOG(FATAL) << "Method compilation threshold is above its internal limit.";
-  }
+  jit_options->compile_threshold_ = RoundUpThreshold(jit_options->compile_threshold_);
 
   if (options.Exists(RuntimeArgumentMap::JITWarmupThreshold)) {
     jit_options->warmup_threshold_ = *options.Get(RuntimeArgumentMap::JITWarmupThreshold);
-    if (jit_options->warmup_threshold_ > std::numeric_limits<uint16_t>::max()) {
-      LOG(FATAL) << "Method warmup threshold is above its internal limit.";
-    }
   } else {
     jit_options->warmup_threshold_ = jit_options->compile_threshold_ / 2;
   }
+  jit_options->warmup_threshold_ = RoundUpThreshold(jit_options->warmup_threshold_);
 
   if (options.Exists(RuntimeArgumentMap::JITOsrThreshold)) {
     jit_options->osr_threshold_ = *options.Get(RuntimeArgumentMap::JITOsrThreshold);
-    if (jit_options->osr_threshold_ > std::numeric_limits<uint16_t>::max()) {
-      LOG(FATAL) << "Method on stack replacement threshold is above its internal limit.";
-    }
   } else {
     jit_options->osr_threshold_ = jit_options->compile_threshold_ * 2;
     if (jit_options->osr_threshold_ > std::numeric_limits<uint16_t>::max()) {
-      jit_options->osr_threshold_ = std::numeric_limits<uint16_t>::max();
+      jit_options->osr_threshold_ =
+          RoundDown(std::numeric_limits<uint16_t>::max(), kJitSamplesBatchSize);
     }
   }
+  jit_options->osr_threshold_ = RoundUpThreshold(jit_options->osr_threshold_);
 
   if (options.Exists(RuntimeArgumentMap::JITPriorityThreadWeight)) {
     jit_options->priority_thread_weight_ =
@@ -147,10 +151,6 @@ JitOptions* JitOptions::CreateFromRuntimeArguments(const RuntimeArgumentMap& opt
   }
 
   return jit_options;
-}
-
-bool Jit::ShouldUsePriorityThreadWeight(Thread* self) {
-  return self->IsJitSensitiveThread() && Runtime::Current()->InJankPerceptibleProcessState();
 }
 
 void Jit::DumpInfo(std::ostream& os) {
@@ -639,20 +639,24 @@ static bool IgnoreSamplesForMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mut
   return false;
 }
 
-void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_backedges) {
+bool Jit::MaybeCompileMethod(Thread* self,
+                             ArtMethod* method,
+                             uint32_t old_count,
+                             uint32_t new_count,
+                             bool with_backedges) {
   if (thread_pool_ == nullptr) {
     // Should only see this when shutting down, starting up, or in safe mode.
     DCHECK(Runtime::Current()->IsShuttingDown(self) ||
            !Runtime::Current()->IsFinishedStarting() ||
            Runtime::Current()->IsSafeMode());
-    return;
+    return false;
   }
   if (IgnoreSamplesForMethod(method)) {
-    return;
+    return false;
   }
   if (HotMethodThreshold() == 0) {
     // Tests might request JIT on first use (compiled synchronously in the interpreter).
-    return;
+    return false;
   }
   DCHECK(thread_pool_ != nullptr);
   DCHECK_GT(WarmMethodThreshold(), 0);
@@ -661,15 +665,9 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
   DCHECK_GE(PriorityThreadWeight(), 1);
   DCHECK_LE(PriorityThreadWeight(), HotMethodThreshold());
 
-  uint16_t starting_count = method->GetCounter();
-  if (Jit::ShouldUsePriorityThreadWeight(self)) {
-    count *= PriorityThreadWeight();
-  }
-  uint32_t new_count = starting_count + count;
-  // Note: Native method have no "warm" state or profiling info.
-  if (LIKELY(!method->IsNative()) && starting_count < WarmMethodThreshold()) {
-    if ((new_count >= WarmMethodThreshold()) &&
-        (method->GetProfilingInfo(kRuntimePointerSize) == nullptr)) {
+  if (old_count < WarmMethodThreshold() && new_count >= WarmMethodThreshold()) {
+    // Note: Native method have no "warm" state or profiling info.
+    if (!method->IsNative() && method->GetProfilingInfo(kRuntimePointerSize) == nullptr) {
       bool success = ProfilingInfo::Create(self, method, /* retry_allocation= */ false);
       if (success) {
         VLOG(jit) << "Start profiling " << method->PrettyMethod();
@@ -679,7 +677,7 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
         // Calling ProfilingInfo::Create might put us in a suspended state, which could
         // lead to the thread pool being deleted when we are shutting down.
         DCHECK(Runtime::Current()->IsShuttingDown(self));
-        return;
+        return false;
       }
 
       if (!success) {
@@ -689,32 +687,27 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
             self, new JitCompileTask(method, JitCompileTask::TaskKind::kAllocateProfile));
       }
     }
-    // Avoid jumping more than one state at a time.
-    new_count = std::min(new_count, static_cast<uint32_t>(HotMethodThreshold() - 1));
-  } else if (UseJitCompilation()) {
-    if (starting_count < HotMethodThreshold()) {
-      if ((new_count >= HotMethodThreshold()) &&
-          !code_cache_->ContainsPc(method->GetEntryPointFromQuickCompiledCode())) {
+  }
+  if (UseJitCompilation()) {
+    if (old_count < HotMethodThreshold() && new_count >= HotMethodThreshold()) {
+      if (!code_cache_->ContainsPc(method->GetEntryPointFromQuickCompiledCode())) {
         DCHECK(thread_pool_ != nullptr);
         thread_pool_->AddTask(self, new JitCompileTask(method, JitCompileTask::TaskKind::kCompile));
       }
-      // Avoid jumping more than one state at a time.
-      new_count = std::min(new_count, static_cast<uint32_t>(OSRMethodThreshold() - 1));
-    } else if (starting_count < OSRMethodThreshold()) {
+    }
+    if (old_count < OSRMethodThreshold() && new_count >= OSRMethodThreshold()) {
       if (!with_backedges) {
-        // If the samples don't contain any back edge, we don't increment the hotness.
-        return;
+        return false;
       }
       DCHECK(!method->IsNative());  // No back edges reported for native methods.
-      if ((new_count >= OSRMethodThreshold()) &&  !code_cache_->IsOsrCompiled(method)) {
+      if (!code_cache_->IsOsrCompiled(method)) {
         DCHECK(thread_pool_ != nullptr);
         thread_pool_->AddTask(
             self, new JitCompileTask(method, JitCompileTask::TaskKind::kCompileOsr));
       }
     }
   }
-  // Update hotness counter
-  method->SetCounter(new_count);
+  return true;
 }
 
 class ScopedSetRuntimeThread {

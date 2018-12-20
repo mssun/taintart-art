@@ -47,6 +47,7 @@ static constexpr int16_t kJitHotnessDisabled = -2;
 // At what priority to schedule jit threads. 9 is the lowest foreground priority on device.
 // See android/os/Process.java.
 static constexpr int kJitPoolThreadPthreadDefaultPriority = 9;
+static constexpr uint32_t kJitSamplesBatchSize = 32;  // Must be power of 2.
 
 class JitOptions {
  public:
@@ -122,12 +123,16 @@ class JitOptions {
   }
 
  private:
+  // We add the sample in batches of size kJitSamplesBatchSize.
+  // This method rounds the threshold so that it is multiple of the batch size.
+  static uint32_t RoundUpThreshold(uint32_t threshold);
+
   bool use_jit_compilation_;
   size_t code_cache_initial_capacity_;
   size_t code_cache_max_capacity_;
-  uint16_t compile_threshold_;
-  uint16_t warmup_threshold_;
-  uint16_t osr_threshold_;
+  uint32_t compile_threshold_;
+  uint32_t warmup_threshold_;
+  uint32_t osr_threshold_;
   uint16_t priority_thread_weight_;
   uint16_t invoke_transition_weight_;
   bool dump_info_on_shutdown_;
@@ -154,7 +159,7 @@ class Jit {
   static constexpr size_t kDefaultPriorityThreadWeightRatio = 1000;
   static constexpr size_t kDefaultInvokeTransitionWeightRatio = 500;
   // How frequently should the interpreter check to see if OSR compilation is ready.
-  static constexpr int16_t kJitRecheckOSRThreshold = 100;
+  static constexpr int16_t kJitRecheckOSRThreshold = 101;  // Prime number to avoid patterns.
 
   virtual ~Jit();
 
@@ -218,7 +223,10 @@ class Jit {
   void MethodEntered(Thread* thread, ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void AddSamples(Thread* self, ArtMethod* method, uint16_t samples, bool with_backedges)
+  ALWAYS_INLINE void AddSamples(Thread* self,
+                                ArtMethod* method,
+                                uint16_t samples,
+                                bool with_backedges)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void InvokeVirtualOrInterface(ObjPtr<mirror::Object> this_object,
@@ -297,6 +305,15 @@ class Jit {
 
  private:
   Jit(JitCodeCache* code_cache, JitOptions* options);
+
+  // Compile the method if the number of samples passes a threshold.
+  // Returns false if we can not compile now - don't increment the counter and retry later.
+  bool MaybeCompileMethod(Thread* self,
+                          ArtMethod* method,
+                          uint32_t old_count,
+                          uint32_t new_count,
+                          bool with_backedges)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   static bool BindCompilerMethods(std::string* error_msg);
 
