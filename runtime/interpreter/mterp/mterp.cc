@@ -546,12 +546,7 @@ DEFINE_RUNTIME_DEBUG_FLAG(MterpCheckHelper, kSlowMode);
 
 extern "C" void MterpCheckBefore(Thread* self, ShadowFrame* shadow_frame, uint16_t* dex_pc_ptr)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  // Check that we are using the right interpreter.
-  if (kIsDebugBuild && self->UseMterp() != CanUseMterp()) {
-    // The flag might be currently being updated on all threads. Retry with lock.
-    MutexLock tll_mu(self, *Locks::thread_list_lock_);
-    DCHECK_EQ(self->UseMterp(), CanUseMterp());
-  }
+  DCHECK(self->UseMterp());
   DCHECK(!Runtime::Current()->IsActiveTransaction());
   const Instruction* inst = Instruction::At(dex_pc_ptr);
   uint16_t inst_data = inst->Fetch16(0);
