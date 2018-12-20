@@ -102,7 +102,7 @@ class ProfileAssistantTest : public CommonRuntimeTest {
       }
     }
     for (uint16_t i = 0; i < number_of_classes; i++) {
-      ASSERT_TRUE(info->AddClassIndex(dex_location1,
+      ASSERT_TRUE(info->AddClassIndex(ProfileCompilationInfo::GetProfileDexFileKey(dex_location1),
                                       dex_location_checksum1,
                                       dex::TypeIndex(i),
                                       number_of_methods1));
@@ -1297,6 +1297,59 @@ TEST_F(ProfileAssistantTest, CopyAndUpdateProfileKey) {
 
       ASSERT_TRUE(result.GetMethod("fake-location1", d1.GetLocationChecksum(), i) == nullptr);
       ASSERT_TRUE(result.GetMethod("fake-location2", d2.GetLocationChecksum(), i) == nullptr);
+  }
+}
+
+TEST_F(ProfileAssistantTest, MergeProfilesWithCounters) {
+  ScratchFile profile1;
+  ScratchFile profile2;
+  ScratchFile reference_profile;
+
+  // The new profile info will contain methods with indices 0-100.
+  const uint16_t kNumberOfMethodsToEnableCompilation = 100;
+  const uint16_t kNumberOfClasses = 50;
+
+  std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("ProfileTestMultiDex");
+  const DexFile& d1 = *dex_files[0];
+  const DexFile& d2 = *dex_files[1];
+  ProfileCompilationInfo info1;
+  SetupProfile(
+      d1.GetLocation(), d1.GetLocationChecksum(),
+      d2.GetLocation(), d2.GetLocationChecksum(),
+      kNumberOfMethodsToEnableCompilation, kNumberOfClasses, profile1, &info1);
+  ProfileCompilationInfo info2;
+  SetupProfile(
+      d1.GetLocation(), d1.GetLocationChecksum(),
+      d2.GetLocation(), d2.GetLocationChecksum(),
+      kNumberOfMethodsToEnableCompilation, kNumberOfClasses, profile2, &info2);
+
+  std::string profman_cmd = GetProfmanCmd();
+  std::vector<std::string> argv_str;
+  argv_str.push_back(profman_cmd);
+  argv_str.push_back("--profile-file-fd=" + std::to_string(profile1.GetFd()));
+  argv_str.push_back("--profile-file-fd=" + std::to_string(profile2.GetFd()));
+  argv_str.push_back("--reference-profile-file-fd=" + std::to_string(reference_profile.GetFd()));
+  argv_str.push_back("--store-aggregation-counters");
+  std::string error;
+
+  EXPECT_EQ(ExecAndReturnCode(argv_str, &error), 0) << error;
+
+  // Verify that we can load the result and that the counters are in place.
+
+  ProfileCompilationInfo result;
+  result.PrepareForAggregationCounters();
+  ASSERT_TRUE(reference_profile.GetFile()->ResetOffset());
+  ASSERT_TRUE(result.Load(reference_profile.GetFd()));
+
+  ASSERT_TRUE(result.StoresAggregationCounters());
+  ASSERT_EQ(2, result.GetAggregationCounter());
+
+  for (uint16_t i = 0; i < kNumberOfMethodsToEnableCompilation; i++) {
+    ASSERT_EQ(1, result.GetMethodAggregationCounter(MethodReference(&d1, i)));
+    ASSERT_EQ(1, result.GetMethodAggregationCounter(MethodReference(&d2, i)));
+  }
+  for (uint16_t i = 0; i < kNumberOfClasses; i++) {
+    ASSERT_EQ(1, result.GetClassAggregationCounter(TypeReference(&d1, dex::TypeIndex(i))));
   }
 }
 
