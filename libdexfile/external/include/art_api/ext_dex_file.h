@@ -98,11 +98,11 @@ namespace dex {
 // Minimal std::string look-alike for a string returned from libdexfile.
 class DexString final {
  public:
-  DexString(DexString&& dex_str) { ReplaceExtString(std::move(dex_str)); }
+  DexString(DexString&& dex_str) noexcept { ReplaceExtString(std::move(dex_str)); }
   explicit DexString(const char* str = "") : ext_string_(ExtDexFileMakeString(str)) {}
   ~DexString() { ExtDexFileFreeString(ext_string_); }
 
-  DexString& operator=(DexString&& dex_str) {
+  DexString& operator=(DexString&& dex_str) noexcept {
     ReplaceExtString(std::move(dex_str));
     return *this;
   }
@@ -163,7 +163,7 @@ inline bool operator==(const MethodInfo& s1, const MethodInfo& s2) {
 // thread-safe.
 class DexFile {
  public:
-  DexFile(DexFile&& dex_file) {
+  DexFile(DexFile&& dex_file) noexcept {
     ext_dex_file_ = dex_file.ext_dex_file_;
     dex_file.ext_dex_file_ = nullptr;
   }
