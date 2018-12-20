@@ -674,7 +674,7 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
   // - the region containing `obj` is fully used; and
   // - `obj` is not the last object of that region;
   // the returned location is not guaranteed to be a valid object.
-  mirror::Object* GetNextObject(mirror::Object* obj)
+  static mirror::Object* GetNextObject(mirror::Object* obj)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void AdjustNonFreeRegionLimit(size_t new_non_free_region_index) REQUIRES(region_lock_) {
