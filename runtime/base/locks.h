@@ -117,6 +117,7 @@ enum LockLevel : uint8_t {
   kJdwpEventListLock,
   kJdwpAttachLock,
   kJdwpStartLock,
+  kRuntimeThreadPoolLock,
   kRuntimeShutdownLock,
   kTraceLock,
   kHeapBitmapLock,
@@ -224,8 +225,11 @@ class Locks {
   // Guards shutdown of the runtime.
   static Mutex* runtime_shutdown_lock_ ACQUIRED_AFTER(heap_bitmap_lock_);
 
+  // Runtime thread pool lock.
+  static Mutex* runtime_thread_pool_lock_ ACQUIRED_AFTER(runtime_shutdown_lock_);
+
   // Guards background profiler global state.
-  static Mutex* profiler_lock_ ACQUIRED_AFTER(runtime_shutdown_lock_);
+  static Mutex* profiler_lock_ ACQUIRED_AFTER(runtime_thread_pool_lock_);
 
   // Guards trace (ie traceview) requests.
   static Mutex* trace_lock_ ACQUIRED_AFTER(profiler_lock_);
