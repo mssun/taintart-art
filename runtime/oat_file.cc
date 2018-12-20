@@ -581,9 +581,9 @@ bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* e
     const char* dex_file_location_data = reinterpret_cast<const char*>(oat);
     oat += dex_file_location_size;
 
-    std::string dex_file_location = ResolveRelativeEncodedDexLocation(
-        abs_dex_location,
-        std::string(dex_file_location_data, dex_file_location_size));
+    std::string dex_file_location(dex_file_location_data, dex_file_location_size);
+    std::string dex_file_name =
+        ResolveRelativeEncodedDexLocation(abs_dex_location, dex_file_location);
 
     uint32_t dex_file_checksum;
     if (UNLIKELY(!ReadOatDexFileData(*this, &oat, &dex_file_checksum))) {
@@ -638,7 +638,7 @@ bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* e
                                            error_msg,
                                            uncompressed_dex_files_.get());
         } else {
-          loaded = dex_file_loader.Open(dex_file_location.c_str(),
+          loaded = dex_file_loader.Open(dex_file_name.c_str(),
                                         dex_file_location,
                                         /*verify=*/ false,
                                         /*verify_checksum=*/ false,
@@ -819,7 +819,7 @@ bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* e
         this, header->string_ids_size_, sizeof(GcRoot<mirror::String>), string_bss_mapping);
 
     std::string canonical_location =
-        DexFileLoader::GetDexCanonicalLocation(dex_file_location.c_str());
+        DexFileLoader::GetDexCanonicalLocation(dex_file_name.c_str());
 
     // Create the OatDexFile and add it to the owning container.
     OatDexFile* oat_dex_file = new OatDexFile(this,
