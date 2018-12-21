@@ -112,19 +112,7 @@ static void DumpStat(size_t x, size_t y, const char* str) {
 class CompilerDriver::AOTCompilationStats {
  public:
   AOTCompilationStats()
-      : stats_lock_("AOT compilation statistics lock"),
-        resolved_instance_fields_(0), unresolved_instance_fields_(0),
-        resolved_local_static_fields_(0), resolved_static_fields_(0), unresolved_static_fields_(0),
-        type_based_devirtualization_(0),
-        safe_casts_(0), not_safe_casts_(0) {
-    for (size_t i = 0; i <= kMaxInvokeType; i++) {
-      resolved_methods_[i] = 0;
-      unresolved_methods_[i] = 0;
-      virtual_made_direct_[i] = 0;
-      direct_calls_to_boot_[i] = 0;
-      direct_methods_to_boot_[i] = 0;
-    }
-  }
+      : stats_lock_("AOT compilation statistics lock") {}
 
   void Dump() {
     DumpStat(resolved_instance_fields_, unresolved_instance_fields_, "instance fields resolved");
@@ -140,6 +128,16 @@ class CompilerDriver::AOTCompilationStats {
              resolved_methods_[kInterface] + unresolved_methods_[kInterface] -
              type_based_devirtualization_,
              "virtual/interface calls made direct based on type information");
+
+    const size_t total = std::accumulate(
+        class_status_count_,
+        class_status_count_ + static_cast<size_t>(ClassStatus::kLast) + 1,
+        0u);
+    for (size_t i = 0; i <= static_cast<size_t>(ClassStatus::kLast); ++i) {
+      std::ostringstream oss;
+      oss << "classes with status " << static_cast<ClassStatus>(i);
+      DumpStat(class_status_count_[i], total - class_status_count_[i], oss.str().c_str());
+    }
 
     for (size_t i = 0; i <= kMaxInvokeType; i++) {
       std::ostringstream oss;
@@ -219,26 +217,34 @@ class CompilerDriver::AOTCompilationStats {
     not_safe_casts_++;
   }
 
+  // Register a class status.
+  void AddClassStatus(ClassStatus status) REQUIRES(!stats_lock_) {
+    STATS_LOCK();
+    ++class_status_count_[static_cast<size_t>(status)];
+  }
+
  private:
   Mutex stats_lock_;
 
-  size_t resolved_instance_fields_;
-  size_t unresolved_instance_fields_;
+  size_t resolved_instance_fields_ = 0u;
+  size_t unresolved_instance_fields_ = 0u;
 
-  size_t resolved_local_static_fields_;
-  size_t resolved_static_fields_;
-  size_t unresolved_static_fields_;
+  size_t resolved_local_static_fields_ = 0u;
+  size_t resolved_static_fields_ = 0u;
+  size_t unresolved_static_fields_ = 0u;
   // Type based devirtualization for invoke interface and virtual.
-  size_t type_based_devirtualization_;
+  size_t type_based_devirtualization_ = 0u;
 
-  size_t resolved_methods_[kMaxInvokeType + 1];
-  size_t unresolved_methods_[kMaxInvokeType + 1];
-  size_t virtual_made_direct_[kMaxInvokeType + 1];
-  size_t direct_calls_to_boot_[kMaxInvokeType + 1];
-  size_t direct_methods_to_boot_[kMaxInvokeType + 1];
+  size_t resolved_methods_[kMaxInvokeType + 1] = {};
+  size_t unresolved_methods_[kMaxInvokeType + 1] = {};
+  size_t virtual_made_direct_[kMaxInvokeType + 1] = {};
+  size_t direct_calls_to_boot_[kMaxInvokeType + 1] = {};
+  size_t direct_methods_to_boot_[kMaxInvokeType + 1] = {};
 
-  size_t safe_casts_;
-  size_t not_safe_casts_;
+  size_t safe_casts_ = 0u;
+  size_t not_safe_casts_ = 0u;
+
+  size_t class_status_count_[static_cast<size_t>(ClassStatus::kLast) + 1] = {};
 
   DISALLOW_COPY_AND_ASSIGN(AOTCompilationStats);
 };
@@ -2102,8 +2108,11 @@ class InitializeClassVisitor : public CompilationVisitor {
     Handle<mirror::Class> klass(
         hs.NewHandle(manager_->GetClassLinker()->FindClass(soa.Self(), descriptor, class_loader)));
 
-    if (klass != nullptr && !SkipClass(manager_->GetClassLoader(), dex_file, klass.Get())) {
-      TryInitializeClass(klass, class_loader);
+    if (klass != nullptr) {
+      if (!SkipClass(manager_->GetClassLoader(), dex_file, klass.Get())) {
+        TryInitializeClass(klass, class_loader);
+      }
+      manager_->GetCompiler()->stats_->AddClassStatus(klass->GetStatus());
     }
     // Clear any class not found or verification exceptions.
     soa.Self()->ClearException();
