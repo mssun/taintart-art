@@ -1,1 +1,27 @@
-# TODO: Write me.
+# Copyright (C) 2018 The Android Open Source Project
+#
+# Bionic loader config file for the Runtime APEX.
+#
+# There are no versioned APEX paths here - this APEX module does not support
+# having several versions mounted.
+
+dir.runtime = /apex/com.android.runtime/bin/
+
+[runtime]
+additional.namespaces = platform
+
+# Keep in sync with runtime namespace in /system/etc/ld.config.txt.
+namespace.default.isolated = true
+namespace.default.search.paths = /apex/com.android.runtime/${LIB}
+# odex files are in /system/framework. dalvikvm has to be able to dlopen the
+# files for CTS.
+namespace.default.permitted.paths = /system/framework
+namespace.default.links = platform
+# TODO(b/119867084): Restrict fallback to platform namespace to PALette library.
+namespace.default.link.platform.allow_all_shared_libs = true
+
+# Keep in sync with default namespace in /system/etc/ld.config.txt.
+namespace.platform.isolated = true
+namespace.platform.search.paths = /system/${LIB}
+namespace.platform.links = default
+namespace.platform.link.default.shared_libs = libc.so:libdl.so:libm.so
