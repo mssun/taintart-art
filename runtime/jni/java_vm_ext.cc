@@ -535,8 +535,6 @@ void JavaVMExt::JniAbort(const char* jni_function_name, const char* msg) {
   if (current_method != nullptr) {
     os << "\n    from " << current_method->PrettyMethod();
   }
-  os << "\n";
-  self->Dump(os);
 
   if (check_jni_abort_hook_ != nullptr) {
     check_jni_abort_hook_(check_jni_abort_hook_data_, os.str());
