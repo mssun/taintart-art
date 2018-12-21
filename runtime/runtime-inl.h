@@ -28,7 +28,6 @@
 #include "gc_root-inl.h"
 #include "interpreter/mterp/mterp.h"
 #include "obj_ptr-inl.h"
-#include "scoped_thread_state_change-inl.h"
 #include "thread_list.h"
 
 namespace art {
@@ -91,23 +90,12 @@ inline ArtMethod* Runtime::GetCalleeSaveMethodUnchecked(CalleeSaveType type)
 }
 
 template<typename Action>
-void Runtime::DoAndMaybeSwitchInterpreter(Action lambda) {
-  Thread* self = Thread::Current();
-  if (Runtime::Current()->IsShuttingDown(self) || Locks::mutator_lock_->IsExclusiveHeld(self)) {
-    MutexLock tll_mu(self, *Locks::thread_list_lock_);
-    lambda();
-    Runtime::Current()->GetThreadList()->ForEach([](Thread* thread, void*) {
-        thread->tls32_.use_mterp.store(interpreter::CanUseMterp());
-    }, nullptr);
-  } else {
-    ScopedThreadStateChange tsc(self, kSuspended);
-    ScopedSuspendAll ssa(__FUNCTION__);
-    MutexLock tll_mu(self, *Locks::thread_list_lock_);
-    lambda();
-    Runtime::Current()->GetThreadList()->ForEach([](Thread* thread, void*) {
-        thread->tls32_.use_mterp.store(interpreter::CanUseMterp());
-    }, nullptr);
-  }
+void Runtime::DoAndMaybeSwitchInterpreter(Action lamda) {
+  MutexLock tll_mu(Thread::Current(), *Locks::thread_list_lock_);
+  lamda();
+  Runtime::Current()->GetThreadList()->ForEach([](Thread* thread, void*) {
+      thread->tls32_.use_mterp.store(interpreter::CanUseMterp());
+  }, nullptr);
 }
 
 }  // namespace art
