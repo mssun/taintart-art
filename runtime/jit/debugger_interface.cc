@@ -274,7 +274,7 @@ void RemoveNativeDebugInfoForDex(Thread* self, const DexFile* dexfile) {
 }
 
 // Mapping from handle to entry. Used to manage life-time of the entries.
-static std::map<const void*, JITCodeEntry*> g_jit_debug_entries GUARDED_BY(g_jit_debug_lock);
+static std::multimap<const void*, JITCodeEntry*> g_jit_debug_entries GUARDED_BY(g_jit_debug_lock);
 
 // Number of entries added since last packing.  Used to pack entries in bulk.
 static size_t g_jit_num_unpacked_entries GUARDED_BY(g_jit_debug_lock) = 0;
@@ -383,8 +383,7 @@ void AddNativeDebugInfoForJit(Thread* self,
   // (this only happens when --generate-debug-info flag is enabled for the purpose
   // of being debugged with gdb; it does not happen for debuggable apps by default).
   if (code_ptr != nullptr) {
-    bool ok = g_jit_debug_entries.emplace(code_ptr, entry).second;
-    DCHECK(ok) << "Native debug entry already exists for " << std::hex << code_ptr;
+    g_jit_debug_entries.emplace(code_ptr, entry);
     // Count how many entries we have added since the last mini-debug-info packing.
     // We avoid g_jit_debug_entries.size() here because it can shrink during packing.
     g_jit_num_unpacked_entries++;
