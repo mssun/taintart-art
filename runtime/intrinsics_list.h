@@ -221,6 +221,7 @@
   V(ReachabilityFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/ref/Reference;", "reachabilityFence", "(Ljava/lang/Object;)V") \
   V(CRC32Update, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/util/zip/CRC32;", "update", "(II)I") \
   V(CRC32UpdateBytes, kStatic, kNeedsEnvironmentOrCache, kReadSideEffects, kCanThrow, "Ljava/util/zip/CRC32;", "updateBytes", "(I[BII)I") \
+  V(CRC32UpdateByteBuffer, kStatic, kNeedsEnvironmentOrCache, kReadSideEffects, kNoThrow, "Ljava/util/zip/CRC32;", "updateByteBuffer", "(IJII)I") \
   SIGNATURE_POLYMORPHIC_INTRINSICS_LIST(V)
 
 #endif  // ART_RUNTIME_INTRINSICS_LIST_H_
