@@ -1021,32 +1021,30 @@ class ImageSpace::Loader {
           app_oat_(app_oat) {}
 
     // Return the relocated address of a heap object.
+    // Null checks must be performed in the caller (for performance reasons).
     template <typename T>
     ALWAYS_INLINE T* ForwardObject(T* src) const {
+      DCHECK(src != nullptr);
       const uintptr_t uint_src = reinterpret_cast<uintptr_t>(src);
       if (boot_image_.InSource(uint_src)) {
         return reinterpret_cast<T*>(boot_image_.ToDest(uint_src));
       }
-      if (app_image_.InSource(uint_src)) {
-        return reinterpret_cast<T*>(app_image_.ToDest(uint_src));
-      }
       // Since we are fixing up the app image, there should only be pointers to the app image and
       // boot image.
-      DCHECK(src == nullptr) << reinterpret_cast<const void*>(src);
-      return src;
+      DCHECK(app_image_.InSource(uint_src)) << reinterpret_cast<const void*>(src);
+      return reinterpret_cast<T*>(app_image_.ToDest(uint_src));
     }
 
     // Return the relocated address of a code pointer (contained by an oat file).
+    // Null checks must be performed in the caller (for performance reasons).
     ALWAYS_INLINE const void* ForwardCode(const void* src) const {
+      DCHECK(src != nullptr);
       const uintptr_t uint_src = reinterpret_cast<uintptr_t>(src);
       if (boot_image_.InSource(uint_src)) {
         return reinterpret_cast<const void*>(boot_image_.ToDest(uint_src));
       }
-      if (app_oat_.InSource(uint_src)) {
-        return reinterpret_cast<const void*>(app_oat_.ToDest(uint_src));
-      }
-      DCHECK(src == nullptr) << src;
-      return src;
+      DCHECK(app_oat_.InSource(uint_src)) << src;
+      return reinterpret_cast<const void*>(app_oat_.ToDest(uint_src));
     }
 
     // Must be called on pointers that already have been relocated to the destination relocation.
@@ -1116,9 +1114,12 @@ class ImageSpace::Loader {
       // Space is not yet added to the heap, don't do a read barrier.
       mirror::Object* ref = obj->GetFieldObject<mirror::Object, kVerifyNone, kWithoutReadBarrier>(
           offset);
-      // Use SetFieldObjectWithoutWriteBarrier to avoid card marking since we are writing to the
-      // image.
-      obj->SetFieldObjectWithoutWriteBarrier<false, true, kVerifyNone>(offset, ForwardObject(ref));
+      if (ref != nullptr) {
+        // Use SetFieldObjectWithoutWriteBarrier to avoid card marking since we are writing to the
+        // image.
+        obj->SetFieldObjectWithoutWriteBarrier<false, true, kVerifyNone>(
+            offset, ForwardObject(ref));
+      }
     }
 
     // java.lang.ref.Reference visitor.
@@ -1126,9 +1127,11 @@ class ImageSpace::Loader {
                     ObjPtr<mirror::Reference> ref) const
         REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::heap_bitmap_lock_) {
       mirror::Object* obj = ref->GetReferent<kWithoutReadBarrier>();
-      ref->SetFieldObjectWithoutWriteBarrier<false, true, kVerifyNone>(
-          mirror::Reference::ReferentOffset(),
-          ForwardObject(obj));
+      if (obj != nullptr) {
+        ref->SetFieldObjectWithoutWriteBarrier<false, true, kVerifyNone>(
+            mirror::Reference::ReferentOffset(),
+            ForwardObject(obj));
+      }
     }
 
     void operator()(mirror::Object* obj) const
