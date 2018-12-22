@@ -42,6 +42,7 @@ fi
 
 out_dir=$(get_build_var OUT_DIR)
 host_out=$(get_build_var HOST_OUT)
+mk_product_out=$(get_build_var PRODUCT_OUT)
 
 # TODO(b/31559095) Figure out a better way to do this.
 #
@@ -52,6 +53,12 @@ tmp_soong_var=$(mktemp --tmpdir soong.variables.bak.XXXXXX)
 cat $out_dir/soong/soong.variables > ${tmp_soong_var}
 build/soong/soong_ui.bash --make-mode clean
 mkdir -p $out_dir/soong
+mkdir -p $mk_product_out
+
+# TODO(b/31559095) Soong will panic if this file isn't present. It contains
+# information from MAKE needed to let soong handle the invocation of dex2oat.
+# This would be great to have but for now isn't needed.
+echo "{}" > $mk_product_out/dexpreopt.config
 
 python3 <<END - ${tmp_soong_var} ${out_dir}/soong/soong.variables
 import json
