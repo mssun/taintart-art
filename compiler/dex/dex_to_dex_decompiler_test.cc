@@ -95,7 +95,7 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
         optimizer::ArtDecompileDEX(*updated_dex_file,
                                    *accessor.GetCodeItem(method),
                                    table,
-                                   /* decompile_return_instruction */ true);
+                                   /* decompile_return_instruction= */ true);
       }
     }
 

@@ -112,7 +112,7 @@ void VerificationResults::CreateVerifiedMethodFor(MethodReference ref) {
   // which have no verifier error, nor has methods that we know will throw
   // at runtime.
   std::unique_ptr<VerifiedMethod> verified_method = std::make_unique<VerifiedMethod>(
-      /* encountered_error_types */ 0, /* has_runtime_throw */ false);
+      /* encountered_error_types= */ 0, /* has_runtime_throw= */ false);
   if (atomic_verified_methods_.Insert(ref,
                                       /*expected*/ nullptr,
                                       verified_method.get()) ==

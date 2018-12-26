@@ -74,19 +74,19 @@ void InstructionCodeGeneratorMIPS::VisitVecReplicateScalar(HVecReplicateScalar* 
       __ InsertW(static_cast<VectorRegister>(FTMP),
                  locations->InAt(0).AsRegisterPairHigh<Register>(),
                  1);
-      __ ReplicateFPToVectorRegister(dst, FTMP, /* is_double */ true);
+      __ ReplicateFPToVectorRegister(dst, FTMP, /* is_double= */ true);
       break;
     case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ ReplicateFPToVectorRegister(dst,
                                      locations->InAt(0).AsFpuRegister<FRegister>(),
-                                     /* is_double */ false);
+                                     /* is_double= */ false);
       break;
     case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ ReplicateFPToVectorRegister(dst,
                                      locations->InAt(0).AsFpuRegister<FRegister>(),
-                                     /* is_double */ true);
+                                     /* is_double= */ true);
       break;
     default:
       LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
@@ -1344,7 +1344,7 @@ int32_t InstructionCodeGeneratorMIPS::VecAddress(LocationSummary* locations,
 }
 
 void LocationsBuilderMIPS::VisitVecLoad(HVecLoad* instruction) {
-  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load */ true);
+  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load= */ true);
 }
 
 void InstructionCodeGeneratorMIPS::VisitVecLoad(HVecLoad* instruction) {
@@ -1387,7 +1387,7 @@ void InstructionCodeGeneratorMIPS::VisitVecLoad(HVecLoad* instruction) {
 }
 
 void LocationsBuilderMIPS::VisitVecStore(HVecStore* instruction) {
-  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load */ false);
+  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load= */ false);
 }
 
 void InstructionCodeGeneratorMIPS::VisitVecStore(HVecStore* instruction) {

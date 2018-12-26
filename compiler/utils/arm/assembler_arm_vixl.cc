@@ -91,7 +91,7 @@ void ArmVIXLAssembler::GenerateMarkingRegisterCheck(vixl32::Register temp, int c
   ___ Ldr(temp, MemOperand(tr, Thread::IsGcMarkingOffset<kArmPointerSize>().Int32Value()));
   // Check that mr == self.tls32_.is.gc_marking.
   ___ Cmp(mr, temp);
-  ___ B(eq, &mr_is_ok, /* far_target */ false);
+  ___ B(eq, &mr_is_ok, /* is_far_target= */ false);
   ___ Bkpt(code);
   ___ Bind(&mr_is_ok);
 }

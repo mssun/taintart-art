@@ -348,7 +348,7 @@ class GlobalValueNumberer : public ValueObject {
         side_effects_(side_effects),
         sets_(graph->GetBlocks().size(), nullptr, allocator_.Adapter(kArenaAllocGvn)),
         visited_blocks_(
-            &allocator_, graph->GetBlocks().size(), /* expandable */ false, kArenaAllocGvn) {
+            &allocator_, graph->GetBlocks().size(), /* expandable= */ false, kArenaAllocGvn) {
     visited_blocks_.ClearAllBits();
   }
 
@@ -546,12 +546,12 @@ HBasicBlock* GlobalValueNumberer::FindVisitedBlockWithRecyclableSet(
     // that is larger, we return it if no perfectly-matching set is found.
     // Note that we defer testing WillBeReferencedAgain until all other criteria
     // have been satisfied because it might be expensive.
-    if (current_set->CanHoldCopyOf(reference_set, /* exact_match */ true)) {
+    if (current_set->CanHoldCopyOf(reference_set, /* exact_match= */ true)) {
       if (!WillBeReferencedAgain(current_block)) {
         return current_block;
       }
     } else if (secondary_match == nullptr &&
-               current_set->CanHoldCopyOf(reference_set, /* exact_match */ false)) {
+               current_set->CanHoldCopyOf(reference_set, /* exact_match= */ false)) {
       if (!WillBeReferencedAgain(current_block)) {
         secondary_match = current_block;
       }

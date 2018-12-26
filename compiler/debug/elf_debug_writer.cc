@@ -48,7 +48,7 @@ void WriteDebugInfo(linker::ElfBuilder<ElfTypes>* builder,
                     dwarf::CFIFormat cfi_format,
                     bool write_oat_patches) {
   // Write .strtab and .symtab.
-  WriteDebugSymbols(builder, false /* mini-debug-info */, debug_info);
+  WriteDebugSymbols(builder, /* mini-debug-info= */ false, debug_info);
 
   // Write .debug_frame.
   WriteCFISection(builder, debug_info.compiled_methods, cfi_format, write_oat_patches);
@@ -125,17 +125,17 @@ static std::vector<uint8_t> MakeMiniDebugInfoInternal(
   linker::VectorOutputStream out("Mini-debug-info ELF file", &buffer);
   std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
       new linker::ElfBuilder<ElfTypes>(isa, features, &out));
-  builder->Start(false /* write_program_headers */);
+  builder->Start(/* write_program_headers= */ false);
   // Mirror ELF sections as NOBITS since the added symbols will reference them.
   builder->GetText()->AllocateVirtualMemory(text_section_address, text_section_size);
   if (dex_section_size != 0) {
     builder->GetDex()->AllocateVirtualMemory(dex_section_address, dex_section_size);
   }
-  WriteDebugSymbols(builder.get(), true /* mini-debug-info */, debug_info);
+  WriteDebugSymbols(builder.get(), /* mini-debug-info= */ true, debug_info);
   WriteCFISection(builder.get(),
                   debug_info.compiled_methods,
                   dwarf::DW_DEBUG_FRAME_FORMAT,
-                  false /* write_oat_paches */);
+                  /* write_oat_patches= */ false);
   builder->End();
   CHECK(builder->Good());
   std::vector<uint8_t> compressed_buffer;
@@ -187,21 +187,21 @@ std::vector<uint8_t> MakeElfFileForJIT(
   std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
       new linker::ElfBuilder<ElfTypes>(isa, features, &out));
   // No program headers since the ELF file is not linked and has no allocated sections.
-  builder->Start(false /* write_program_headers */);
+  builder->Start(/* write_program_headers= */ false);
   builder->GetText()->AllocateVirtualMemory(method_info.code_address, method_info.code_size);
   if (mini_debug_info) {
     // The compression is great help for multiple methods but it is not worth it for a
     // single method due to the overheads so skip the compression here for performance.
-    WriteDebugSymbols(builder.get(), true /* mini-debug-info */, debug_info);
+    WriteDebugSymbols(builder.get(), /* mini-debug-info= */ true, debug_info);
     WriteCFISection(builder.get(),
                     debug_info.compiled_methods,
                     dwarf::DW_DEBUG_FRAME_FORMAT,
-                    false /* write_oat_paches */);
+                    /* write_oat_patches= */ false);
   } else {
     WriteDebugInfo(builder.get(),
                    debug_info,
                    dwarf::DW_DEBUG_FRAME_FORMAT,
-                   false /* write_oat_patches */);
+                   /* write_oat_patches= */ false);
   }
   builder->End();
   CHECK(builder->Good());
@@ -359,12 +359,12 @@ std::vector<uint8_t> WriteDebugElfFileForClasses(
   std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
       new linker::ElfBuilder<ElfTypes>(isa, features, &out));
   // No program headers since the ELF file is not linked and has no allocated sections.
-  builder->Start(false /* write_program_headers */);
+  builder->Start(/* write_program_headers= */ false);
   ElfDebugInfoWriter<ElfTypes> info_writer(builder.get());
   info_writer.Start();
   ElfCompilationUnitWriter<ElfTypes> cu_writer(&info_writer);
   cu_writer.Write(types);
-  info_writer.End(false /* write_oat_patches */);
+  info_writer.End(/* write_oat_patches= */ false);
 
   builder->End();
   CHECK(builder->Good());

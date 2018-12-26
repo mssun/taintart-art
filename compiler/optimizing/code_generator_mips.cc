@@ -587,7 +587,7 @@ class ReadBarrierMarkSlowPathMIPS : public SlowPathCodeMIPS {
       mips_codegen->InvokeRuntimeWithoutRecordingPcInfo(entry_point_offset,
                                                         instruction_,
                                                         this,
-                                                        /* direct */ false);
+                                                        /* direct= */ false);
     }
     __ B(GetExitLabel());
   }
@@ -681,7 +681,7 @@ class ReadBarrierMarkAndUpdateFieldSlowPathMIPS : public SlowPathCodeMIPS {
     mips_codegen->InvokeRuntimeWithoutRecordingPcInfo(entry_point_offset,
                                                       instruction_,
                                                       this,
-                                                      /* direct */ false);
+                                                      /* direct= */ false);
 
     // If the new reference is different from the old reference,
     // update the field in the holder (`*(obj_ + field_offset_)`).
@@ -1167,9 +1167,9 @@ void ParallelMoveResolverMIPS::EmitSwap(size_t index) {
     __ Move(r2_l, TMP);
     __ Move(r2_h, AT);
   } else if (loc1.IsStackSlot() && loc2.IsStackSlot()) {
-    Exchange(loc1.GetStackIndex(), loc2.GetStackIndex(), /* double_slot */ false);
+    Exchange(loc1.GetStackIndex(), loc2.GetStackIndex(), /* double_slot= */ false);
   } else if (loc1.IsDoubleStackSlot() && loc2.IsDoubleStackSlot()) {
-    Exchange(loc1.GetStackIndex(), loc2.GetStackIndex(), /* double_slot */ true);
+    Exchange(loc1.GetStackIndex(), loc2.GetStackIndex(), /* double_slot= */ true);
   } else if (loc1.IsSIMDStackSlot() && loc2.IsSIMDStackSlot()) {
     ExchangeQuadSlots(loc1.GetStackIndex(), loc2.GetStackIndex());
   } else if ((loc1.IsRegister() && loc2.IsStackSlot()) ||
@@ -1654,14 +1654,14 @@ CodeGeneratorMIPS::PcRelativePatchInfo* CodeGeneratorMIPS::NewBootImageIntrinsic
     uint32_t intrinsic_data,
     const PcRelativePatchInfo* info_high) {
   return NewPcRelativePatch(
-      /* dex_file */ nullptr, intrinsic_data, info_high, &boot_image_intrinsic_patches_);
+      /* dex_file= */ nullptr, intrinsic_data, info_high, &boot_image_intrinsic_patches_);
 }
 
 CodeGeneratorMIPS::PcRelativePatchInfo* CodeGeneratorMIPS::NewBootImageRelRoPatch(
     uint32_t boot_image_offset,
     const PcRelativePatchInfo* info_high) {
   return NewPcRelativePatch(
-      /* dex_file */ nullptr, boot_image_offset, info_high, &boot_image_method_patches_);
+      /* dex_file= */ nullptr, boot_image_offset, info_high, &boot_image_method_patches_);
 }
 
 CodeGeneratorMIPS::PcRelativePatchInfo* CodeGeneratorMIPS::NewBootImageMethodPatch(
@@ -1737,7 +1737,7 @@ void CodeGeneratorMIPS::EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchInfo
     __ Bind(&info_high->label);
     __ Bind(&info_high->pc_rel_label);
     // Add the high half of a 32-bit offset to PC.
-    __ Auipc(out, /* placeholder */ 0x1234);
+    __ Auipc(out, /* imm16= */ 0x1234);
     __ SetReorder(reordering);
   } else {
     // If base is ZERO, emit NAL to obtain the actual base.
@@ -1746,7 +1746,7 @@ void CodeGeneratorMIPS::EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchInfo
       __ Nal();
     }
     __ Bind(&info_high->label);
-    __ Lui(out, /* placeholder */ 0x1234);
+    __ Lui(out, /* imm16= */ 0x1234);
     // If we emitted the NAL, bind the pc_rel_label, otherwise base is a register holding
     // the HMipsComputeBaseMethodAddress which has its own label stored in MipsAssembler.
     if (base == ZERO) {
@@ -1764,13 +1764,13 @@ void CodeGeneratorMIPS::LoadBootImageAddress(Register reg, uint32_t boot_image_r
   if (GetCompilerOptions().IsBootImage()) {
     PcRelativePatchInfo* info_high = NewBootImageIntrinsicPatch(boot_image_reference);
     PcRelativePatchInfo* info_low = NewBootImageIntrinsicPatch(boot_image_reference, info_high);
-    EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, /* base */ ZERO);
-    __ Addiu(reg, TMP, /* placeholder */ 0x5678, &info_low->label);
+    EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, /* base= */ ZERO);
+    __ Addiu(reg, TMP, /* imm16= */ 0x5678, &info_low->label);
   } else if (GetCompilerOptions().GetCompilePic()) {
     PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_reference);
     PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_reference, info_high);
-    EmitPcRelativeAddressPlaceholderHigh(info_high, reg, /* base */ ZERO);
-    __ Lw(reg, reg, /* placeholder */ 0x5678, &info_low->label);
+    EmitPcRelativeAddressPlaceholderHigh(info_high, reg, /* base= */ ZERO);
+    __ Lw(reg, reg, /* imm16= */ 0x5678, &info_low->label);
   } else {
     DCHECK(Runtime::Current()->UseJitCompilation());
     gc::Heap* heap = Runtime::Current()->GetHeap();
@@ -1793,8 +1793,8 @@ void CodeGeneratorMIPS::AllocateInstanceForIntrinsic(HInvokeStaticOrDirect* invo
     PcRelativePatchInfo* info_high = NewBootImageTypePatch(*target_method.dex_file, type_idx);
     PcRelativePatchInfo* info_low =
         NewBootImageTypePatch(*target_method.dex_file, type_idx, info_high);
-    EmitPcRelativeAddressPlaceholderHigh(info_high, argument, /* base */ ZERO);
-    __ Addiu(argument, argument, /* placeholder */ 0x5678, &info_low->label);
+    EmitPcRelativeAddressPlaceholderHigh(info_high, argument, /* base= */ ZERO);
+    __ Addiu(argument, argument, /* imm16= */ 0x5678, &info_low->label);
   } else {
     LoadBootImageAddress(argument, boot_image_offset);
   }
@@ -2579,7 +2579,7 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
           __ Or(dst_high, dst_high, TMP);
           __ Andi(TMP, rhs_reg, kMipsBitsPerWord);
           if (isR6) {
-            __ Beqzc(TMP, &done, /* is_bare */ true);
+            __ Beqzc(TMP, &done, /* is_bare= */ true);
             __ Move(dst_high, dst_low);
             __ Move(dst_low, ZERO);
           } else {
@@ -2595,7 +2595,7 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
           __ Or(dst_low, dst_low, TMP);
           __ Andi(TMP, rhs_reg, kMipsBitsPerWord);
           if (isR6) {
-            __ Beqzc(TMP, &done, /* is_bare */ true);
+            __ Beqzc(TMP, &done, /* is_bare= */ true);
             __ Move(dst_low, dst_high);
             __ Sra(dst_high, dst_high, 31);
           } else {
@@ -2612,7 +2612,7 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
           __ Or(dst_low, dst_low, TMP);
           __ Andi(TMP, rhs_reg, kMipsBitsPerWord);
           if (isR6) {
-            __ Beqzc(TMP, &done, /* is_bare */ true);
+            __ Beqzc(TMP, &done, /* is_bare= */ true);
             __ Move(dst_low, dst_high);
             __ Move(dst_high, ZERO);
           } else {
@@ -2631,7 +2631,7 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
           __ Or(dst_high, dst_high, TMP);
           __ Andi(TMP, rhs_reg, kMipsBitsPerWord);
           if (isR6) {
-            __ Beqzc(TMP, &done, /* is_bare */ true);
+            __ Beqzc(TMP, &done, /* is_bare= */ true);
             __ Move(TMP, dst_high);
             __ Move(dst_high, dst_low);
             __ Move(dst_low, TMP);
@@ -2862,7 +2862,7 @@ void InstructionCodeGeneratorMIPS::VisitArrayGet(HArrayGet* instruction) {
                                                           obj,
                                                           offset,
                                                           temp,
-                                                          /* needs_null_check */ false);
+                                                          /* needs_null_check= */ false);
         } else {
           codegen_->GenerateArrayLoadWithBakerReadBarrier(instruction,
                                                           out_loc,
@@ -2870,7 +2870,7 @@ void InstructionCodeGeneratorMIPS::VisitArrayGet(HArrayGet* instruction) {
                                                           data_offset,
                                                           index,
                                                           temp,
-                                                          /* needs_null_check */ false);
+                                                          /* needs_null_check= */ false);
         }
       } else {
         Register out = out_loc.AsRegister<Register>();
@@ -4104,7 +4104,7 @@ void InstructionCodeGeneratorMIPS::GenerateDivRemWithAnyConstant(HBinaryOperatio
 
   int64_t magic;
   int shift;
-  CalculateMagicAndShiftForDivRem(imm, false /* is_long */, &magic, &shift);
+  CalculateMagicAndShiftForDivRem(imm, false /* is_long= */, &magic, &shift);
 
   bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
 
@@ -5948,7 +5948,7 @@ void InstructionCodeGeneratorMIPS::VisitIf(HIf* if_instr) {
       nullptr : codegen_->GetLabelOf(true_successor);
   MipsLabel* false_target = codegen_->GoesToNextBlock(if_instr->GetBlock(), false_successor) ?
       nullptr : codegen_->GetLabelOf(false_successor);
-  GenerateTestAndBranch(if_instr, /* condition_input_index */ 0, true_target, false_target);
+  GenerateTestAndBranch(if_instr, /* condition_input_index= */ 0, true_target, false_target);
 }
 
 void LocationsBuilderMIPS::VisitDeoptimize(HDeoptimize* deoptimize) {
@@ -5967,9 +5967,9 @@ void InstructionCodeGeneratorMIPS::VisitDeoptimize(HDeoptimize* deoptimize) {
   SlowPathCodeMIPS* slow_path =
       deopt_slow_paths_.NewSlowPath<DeoptimizationSlowPathMIPS>(deoptimize);
   GenerateTestAndBranch(deoptimize,
-                        /* condition_input_index */ 0,
+                        /* condition_input_index= */ 0,
                         slow_path->GetEntryLabel(),
-                        /* false_target */ nullptr);
+                        /* false_target= */ nullptr);
 }
 
 // This function returns true if a conditional move can be generated for HSelect.
@@ -5983,7 +5983,7 @@ void InstructionCodeGeneratorMIPS::VisitDeoptimize(HDeoptimize* deoptimize) {
 // of common logic.
 static bool CanMoveConditionally(HSelect* select, bool is_r6, LocationSummary* locations_to_set) {
   bool materialized = IsBooleanValueOrMaterializedCondition(select->GetCondition());
-  HInstruction* cond = select->InputAt(/* condition_input_index */ 2);
+  HInstruction* cond = select->InputAt(/* i= */ 2);
   HCondition* condition = cond->AsCondition();
 
   DataType::Type cond_type =
@@ -6216,7 +6216,7 @@ void InstructionCodeGeneratorMIPS::GenConditionalMoveR2(HSelect* select) {
   Location src = locations->InAt(1);
   Register src_reg = ZERO;
   Register src_reg_high = ZERO;
-  HInstruction* cond = select->InputAt(/* condition_input_index */ 2);
+  HInstruction* cond = select->InputAt(/* i= */ 2);
   Register cond_reg = TMP;
   int cond_cc = 0;
   DataType::Type cond_type = DataType::Type::kInt32;
@@ -6224,7 +6224,7 @@ void InstructionCodeGeneratorMIPS::GenConditionalMoveR2(HSelect* select) {
   DataType::Type dst_type = select->GetType();
 
   if (IsBooleanValueOrMaterializedCondition(cond)) {
-    cond_reg = locations->InAt(/* condition_input_index */ 2).AsRegister<Register>();
+    cond_reg = locations->InAt(/* at= */ 2).AsRegister<Register>();
   } else {
     HCondition* condition = cond->AsCondition();
     LocationSummary* cond_locations = cond->GetLocations();
@@ -6337,7 +6337,7 @@ void InstructionCodeGeneratorMIPS::GenConditionalMoveR6(HSelect* select) {
   Location dst = locations->Out();
   Location false_src = locations->InAt(0);
   Location true_src = locations->InAt(1);
-  HInstruction* cond = select->InputAt(/* condition_input_index */ 2);
+  HInstruction* cond = select->InputAt(/* i= */ 2);
   Register cond_reg = TMP;
   FRegister fcond_reg = FTMP;
   DataType::Type cond_type = DataType::Type::kInt32;
@@ -6345,7 +6345,7 @@ void InstructionCodeGeneratorMIPS::GenConditionalMoveR6(HSelect* select) {
   DataType::Type dst_type = select->GetType();
 
   if (IsBooleanValueOrMaterializedCondition(cond)) {
-    cond_reg = locations->InAt(/* condition_input_index */ 2).AsRegister<Register>();
+    cond_reg = locations->InAt(/* at= */ 2).AsRegister<Register>();
   } else {
     HCondition* condition = cond->AsCondition();
     LocationSummary* cond_locations = cond->GetLocations();
@@ -6526,7 +6526,7 @@ void LocationsBuilderMIPS::VisitSelect(HSelect* select) {
 
 void InstructionCodeGeneratorMIPS::VisitSelect(HSelect* select) {
   bool is_r6 = codegen_->GetInstructionSetFeatures().IsR6();
-  if (CanMoveConditionally(select, is_r6, /* locations_to_set */ nullptr)) {
+  if (CanMoveConditionally(select, is_r6, /* locations_to_set= */ nullptr)) {
     if (is_r6) {
       GenConditionalMoveR6(select);
     } else {
@@ -6536,8 +6536,8 @@ void InstructionCodeGeneratorMIPS::VisitSelect(HSelect* select) {
     LocationSummary* locations = select->GetLocations();
     MipsLabel false_target;
     GenerateTestAndBranch(select,
-                          /* condition_input_index */ 2,
-                          /* true_target */ nullptr,
+                          /* condition_input_index= */ 2,
+                          /* true_target= */ nullptr,
                           &false_target);
     codegen_->MoveLocation(locations->Out(), locations->InAt(1), select->GetType());
     __ Bind(&false_target);
@@ -6696,7 +6696,7 @@ void InstructionCodeGeneratorMIPS::HandleFieldGet(HInstruction* instruction,
                                                         obj,
                                                         offset,
                                                         temp_loc,
-                                                        /* needs_null_check */ true);
+                                                        /* needs_null_check= */ true);
         if (is_volatile) {
           GenerateMemoryBarrier(MemBarrierKind::kLoadAny);
         }
@@ -6929,7 +6929,7 @@ void InstructionCodeGeneratorMIPS::GenerateReferenceLoadOneRegister(
                                                       out_reg,
                                                       offset,
                                                       maybe_temp,
-                                                      /* needs_null_check */ false);
+                                                      /* needs_null_check= */ false);
     } else {
       // Load with slow path based read barrier.
       // Save the value of `out` into `maybe_temp` before overwriting it
@@ -6970,7 +6970,7 @@ void InstructionCodeGeneratorMIPS::GenerateReferenceLoadTwoRegisters(
                                                       obj_reg,
                                                       offset,
                                                       maybe_temp,
-                                                      /* needs_null_check */ false);
+                                                      /* needs_null_check= */ false);
     } else {
       // Load with slow path based read barrier.
       // /* HeapReference<Object> */ out = *(obj + offset)
@@ -7061,7 +7061,7 @@ void InstructionCodeGeneratorMIPS::GenerateGcRootFieldLoad(HInstruction* instruc
           __ AddUpper(base, obj, offset_high);
         }
         MipsLabel skip_call;
-        __ Beqz(T9, &skip_call, /* is_bare */ true);
+        __ Beqz(T9, &skip_call, /* is_bare= */ true);
         if (label_low != nullptr) {
           DCHECK(short_offset);
           __ Bind(label_low);
@@ -7216,11 +7216,11 @@ void CodeGeneratorMIPS::GenerateFieldLoadWithBakerReadBarrier(HInstruction* inst
     MipsLabel skip_call;
     if (short_offset) {
       if (isR6) {
-        __ Beqzc(T9, &skip_call, /* is_bare */ true);
+        __ Beqzc(T9, &skip_call, /* is_bare= */ true);
         __ Nop();  // In forbidden slot.
         __ Jialc(T9, thunk_disp);
       } else {
-        __ Beqz(T9, &skip_call, /* is_bare */ true);
+        __ Beqz(T9, &skip_call, /* is_bare= */ true);
         __ Addiu(T9, T9, thunk_disp);  // In delay slot.
         __ Jalr(T9);
         __ Nop();  // In delay slot.
@@ -7228,13 +7228,13 @@ void CodeGeneratorMIPS::GenerateFieldLoadWithBakerReadBarrier(HInstruction* inst
       __ Bind(&skip_call);
     } else {
       if (isR6) {
-        __ Beqz(T9, &skip_call, /* is_bare */ true);
+        __ Beqz(T9, &skip_call, /* is_bare= */ true);
         __ Aui(base, obj, offset_high);  // In delay slot.
         __ Jialc(T9, thunk_disp);
         __ Bind(&skip_call);
       } else {
         __ Lui(base, offset_high);
-        __ Beqz(T9, &skip_call, /* is_bare */ true);
+        __ Beqz(T9, &skip_call, /* is_bare= */ true);
         __ Addiu(T9, T9, thunk_disp);  // In delay slot.
         __ Jalr(T9);
         __ Bind(&skip_call);
@@ -7311,7 +7311,7 @@ void CodeGeneratorMIPS::GenerateArrayLoadWithBakerReadBarrier(HInstruction* inst
     // We will not do the explicit null check in the thunk as some form of a null check
     // must've been done earlier.
     DCHECK(!needs_null_check);
-    const int thunk_disp = GetBakerMarkFieldArrayThunkDisplacement(obj, /* short_offset */ false);
+    const int thunk_disp = GetBakerMarkFieldArrayThunkDisplacement(obj, /* short_offset= */ false);
     // Loading the entrypoint does not require a load acquire since it is only changed when
     // threads are suspended or running a checkpoint.
     __ LoadFromOffset(kLoadWord, T9, TR, entry_point_offset);
@@ -7321,13 +7321,13 @@ void CodeGeneratorMIPS::GenerateArrayLoadWithBakerReadBarrier(HInstruction* inst
         : index.AsRegister<Register>();
     MipsLabel skip_call;
     if (GetInstructionSetFeatures().IsR6()) {
-      __ Beqz(T9, &skip_call, /* is_bare */ true);
+      __ Beqz(T9, &skip_call, /* is_bare= */ true);
       __ Lsa(TMP, index_reg, obj, scale_factor);  // In delay slot.
       __ Jialc(T9, thunk_disp);
       __ Bind(&skip_call);
     } else {
       __ Sll(TMP, index_reg, scale_factor);
-      __ Beqz(T9, &skip_call, /* is_bare */ true);
+      __ Beqz(T9, &skip_call, /* is_bare= */ true);
       __ Addiu(T9, T9, thunk_disp);  // In delay slot.
       __ Jalr(T9);
       __ Bind(&skip_call);
@@ -7442,7 +7442,7 @@ void CodeGeneratorMIPS::GenerateReferenceLoadWithBakerReadBarrier(HInstruction* 
         ReadBarrierMarkAndUpdateFieldSlowPathMIPS(instruction,
                                                   ref,
                                                   obj,
-                                                  /* field_offset */ index,
+                                                  /* field_offset= */ index,
                                                   temp_reg);
   } else {
     slow_path = new (GetScopedAllocator()) ReadBarrierMarkSlowPathMIPS(instruction, ref);
@@ -7705,7 +7705,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
                                         kWithoutReadBarrier);
       DCHECK(locations->OnlyCallsOnSlowPath());
       slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathMIPS(
-          instruction, /* is_fatal */ false);
+          instruction, /* is_fatal= */ false);
       codegen_->AddSlowPath(slow_path);
       __ Bne(out, cls.AsRegister<Register>(), slow_path->GetEntryLabel());
       __ LoadConst32(out, 1);
@@ -7734,7 +7734,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
       // This should also be beneficial for the other cases above.
       DCHECK(locations->OnlyCallsOnSlowPath());
       slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathMIPS(
-          instruction, /* is_fatal */ false);
+          instruction, /* is_fatal= */ false);
       codegen_->AddSlowPath(slow_path);
       __ B(slow_path->GetEntryLabel());
       break;
@@ -8001,7 +8001,7 @@ void CodeGeneratorMIPS::GenerateStaticOrDirectCall(
           NewBootImageMethodPatch(invoke->GetTargetMethod(), info_high);
       Register temp_reg = temp.AsRegister<Register>();
       EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base_reg);
-      __ Addiu(temp_reg, TMP, /* placeholder */ 0x5678, &info_low->label);
+      __ Addiu(temp_reg, TMP, /* imm16= */ 0x5678, &info_low->label);
       break;
     }
     case HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo: {
@@ -8010,7 +8010,7 @@ void CodeGeneratorMIPS::GenerateStaticOrDirectCall(
       PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_offset, info_high);
       Register temp_reg = temp.AsRegister<Register>();
       EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base_reg);
-      __ Lw(temp_reg, TMP, /* placeholder */ 0x5678, &info_low->label);
+      __ Lw(temp_reg, TMP, /* imm16= */ 0x5678, &info_low->label);
       break;
     }
     case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry: {
@@ -8020,7 +8020,7 @@ void CodeGeneratorMIPS::GenerateStaticOrDirectCall(
           MethodReference(&GetGraph()->GetDexFile(), invoke->GetDexMethodIndex()), info_high);
       Register temp_reg = temp.AsRegister<Register>();
       EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base_reg);
-      __ Lw(temp_reg, TMP, /* placeholder */ 0x5678, &info_low->label);
+      __ Lw(temp_reg, TMP, /* imm16= */ 0x5678, &info_low->label);
       break;
     }
     case HInvokeStaticOrDirect::MethodLoadKind::kJitDirectAddress:
@@ -8226,7 +8226,7 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
       codegen_->EmitPcRelativeAddressPlaceholderHigh(info_high,
                                                      out,
                                                      base_or_current_method_reg);
-      __ Addiu(out, out, /* placeholder */ 0x5678, &info_low->label);
+      __ Addiu(out, out, /* imm16= */ 0x5678, &info_low->label);
       break;
     }
     case HLoadClass::LoadKind::kBootImageRelRo: {
@@ -8239,7 +8239,7 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
       codegen_->EmitPcRelativeAddressPlaceholderHigh(info_high,
                                                      out,
                                                      base_or_current_method_reg);
-      __ Lw(out, out, /* placeholder */ 0x5678, &info_low->label);
+      __ Lw(out, out, /* imm16= */ 0x5678, &info_low->label);
       break;
     }
     case HLoadClass::LoadKind::kBssEntry: {
@@ -8253,7 +8253,7 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
       GenerateGcRootFieldLoad(cls,
                               out_loc,
                               out,
-                              /* placeholder */ 0x5678,
+                              /* offset= */ 0x5678,
                               read_barrier_option,
                               &info_low->label);
       generate_null_check = true;
@@ -8278,12 +8278,12 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
                                                                              cls->GetClass());
       bool reordering = __ SetReorder(false);
       __ Bind(&info->high_label);
-      __ Lui(out, /* placeholder */ 0x1234);
+      __ Lui(out, /* imm16= */ 0x1234);
       __ SetReorder(reordering);
       GenerateGcRootFieldLoad(cls,
                               out_loc,
                               out,
-                              /* placeholder */ 0x5678,
+                              /* offset= */ 0x5678,
                               read_barrier_option,
                               &info->low_label);
       break;
@@ -8432,7 +8432,7 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
       codegen_->EmitPcRelativeAddressPlaceholderHigh(info_high,
                                                      out,
                                                      base_or_current_method_reg);
-      __ Addiu(out, out, /* placeholder */ 0x5678, &info_low->label);
+      __ Addiu(out, out, /* imm16= */ 0x5678, &info_low->label);
       return;
     }
     case HLoadString::LoadKind::kBootImageRelRo: {
@@ -8445,7 +8445,7 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
       codegen_->EmitPcRelativeAddressPlaceholderHigh(info_high,
                                                      out,
                                                      base_or_current_method_reg);
-      __ Lw(out, out, /* placeholder */ 0x5678, &info_low->label);
+      __ Lw(out, out, /* imm16= */ 0x5678, &info_low->label);
       return;
     }
     case HLoadString::LoadKind::kBssEntry: {
@@ -8460,7 +8460,7 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
       GenerateGcRootFieldLoad(load,
                               out_loc,
                               out,
-                              /* placeholder */ 0x5678,
+                              /* offset= */ 0x5678,
                               kCompilerReadBarrierOption,
                               &info_low->label);
       SlowPathCodeMIPS* slow_path =
@@ -8489,12 +8489,12 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
                                           load->GetString());
       bool reordering = __ SetReorder(false);
       __ Bind(&info->high_label);
-      __ Lui(out, /* placeholder */ 0x1234);
+      __ Lui(out, /* imm16= */ 0x1234);
       __ SetReorder(reordering);
       GenerateGcRootFieldLoad(load,
                               out_loc,
                               out,
-                              /* placeholder */ 0x5678,
+                              /* offset= */ 0x5678,
                               kCompilerReadBarrierOption,
                               &info->low_label);
       return;

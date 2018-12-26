@@ -30,7 +30,7 @@ static ObjPtr<mirror::ObjectArray<mirror::Object>> LookupIntegerCache(Thread* se
                                                                       ClassLinker* class_linker)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ObjPtr<mirror::Class> integer_cache_class = class_linker->LookupClass(
-      self, "Ljava/lang/Integer$IntegerCache;", /* class_linker */ nullptr);
+      self, "Ljava/lang/Integer$IntegerCache;", /* class_loader= */ nullptr);
   if (integer_cache_class == nullptr || !integer_cache_class->IsInitialized()) {
     return nullptr;
   }

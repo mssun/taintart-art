@@ -2196,7 +2196,7 @@ void Java_MyClassNatives_normalNative(JNIEnv*, jclass) {
 // Methods not annotated with anything are not considered "fast native"
 // -- Check that the annotation lookup does not find it.
 void JniCompilerTest::NormalNativeImpl() {
-  SetUpForTest(/* direct */ true,
+  SetUpForTest(/* direct= */ true,
                "normalNative",
                "()V",
                CURRENT_JNI_WRAPPER(Java_MyClassNatives_normalNative));
@@ -2218,7 +2218,7 @@ void Java_MyClassNatives_fastNative(JNIEnv*, jclass) {
 }
 
 void JniCompilerTest::FastNativeImpl() {
-  SetUpForTest(/* direct */ true,
+  SetUpForTest(/* direct= */ true,
                "fastNative",
                "()V",
                CURRENT_JNI_WRAPPER(Java_MyClassNatives_fastNative));
@@ -2241,7 +2241,7 @@ void Java_MyClassNatives_criticalNative() {
 }
 
 void JniCompilerTest::CriticalNativeImpl() {
-  SetUpForTest(/* direct */ true,
+  SetUpForTest(/* direct= */ true,
                // Important: Don't change the "current jni" yet to avoid a method name suffix.
                "criticalNative",
                "()V",

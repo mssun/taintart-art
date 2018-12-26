@@ -83,16 +83,16 @@ class VerifierDepsTest : public CommonCompilerTest {
     compiler_driver_->InitializeThreadPools();
   }
 
-  void VerifyWithCompilerDriver(verifier::VerifierDeps* deps) {
+  void VerifyWithCompilerDriver(verifier::VerifierDeps* verifier_deps) {
     TimingLogger timings("Verify", false, false);
     // The compiler driver handles the verifier deps in the callbacks, so
     // remove what this class did for unit testing.
-    if (deps == nullptr) {
+    if (verifier_deps == nullptr) {
       // Create some verifier deps by default if they are not already specified.
-      deps = new verifier::VerifierDeps(dex_files_);
-      verifier_deps_.reset(deps);
+      verifier_deps = new verifier::VerifierDeps(dex_files_);
+      verifier_deps_.reset(verifier_deps);
     }
-    callbacks_->SetVerifierDeps(deps);
+    callbacks_->SetVerifierDeps(verifier_deps);
     compiler_driver_->Verify(class_loader_, dex_files_, &timings, verification_results_.get());
     callbacks_->SetVerifierDeps(nullptr);
     // Clear entries in the verification results to avoid hitting a DCHECK that
@@ -159,7 +159,7 @@ class VerifierDepsTest : public CommonCompilerTest {
               method.GetIndex(),
               dex_cache_handle,
               class_loader_handle,
-              /* referrer */ nullptr,
+              /* referrer= */ nullptr,
               method.GetInvokeType(class_def->access_flags_));
       CHECK(resolved_method != nullptr);
       if (method_name == resolved_method->GetName()) {
@@ -173,12 +173,12 @@ class VerifierDepsTest : public CommonCompilerTest {
                                 method.GetIndex(),
                                 resolved_method,
                                 method.GetAccessFlags(),
-                                true /* can_load_classes */,
-                                true /* allow_soft_failures */,
-                                true /* need_precise_constants */,
-                                false /* verify to dump */,
-                                true /* allow_thread_suspension */,
-                                0 /* api_level */);
+                                /* can_load_classes= */ true,
+                                /* allow_soft_failures= */ true,
+                                /* need_precise_constants= */ true,
+                                /* verify to dump */ false,
+                                /* allow_thread_suspension= */ true,
+                                /* api_level= */ 0);
         verifier.Verify();
         soa.Self()->SetVerifierDeps(nullptr);
         has_failures = verifier.HasFailures();
@@ -195,7 +195,7 @@ class VerifierDepsTest : public CommonCompilerTest {
       LoadDexFile(soa, "VerifierDeps", multidex);
     }
     SetupCompilerDriver();
-    VerifyWithCompilerDriver(/* verifier_deps */ nullptr);
+    VerifyWithCompilerDriver(/* verifier_deps= */ nullptr);
   }
 
   bool TestAssignabilityRecording(const std::string& dst,
@@ -372,12 +372,12 @@ class VerifierDepsTest : public CommonCompilerTest {
   bool HasMethod(const std::string& expected_klass,
                  const std::string& expected_name,
                  const std::string& expected_signature,
-                 bool expected_resolved,
+                 bool expect_resolved,
                  const std::string& expected_access_flags = "",
                  const std::string& expected_decl_klass = "") {
     for (auto& dex_dep : verifier_deps_->dex_deps_) {
       for (const VerifierDeps::MethodResolution& entry : dex_dep.second->methods_) {
-        if (expected_resolved != entry.IsResolved()) {
+        if (expect_resolved != entry.IsResolved()) {
           continue;
         }
 
@@ -398,7 +398,7 @@ class VerifierDepsTest : public CommonCompilerTest {
           continue;
         }
 
-        if (expected_resolved) {
+        if (expect_resolved) {
           // Test access flags. Note that PrettyJavaAccessFlags always appends
           // a space after the modifiers. Add it to the expected access flags.
           std::string actual_access_flags = PrettyJavaAccessFlags(entry.GetAccessFlags());
@@ -482,42 +482,42 @@ TEST_F(VerifierDepsTest, StringToId) {
 }
 
 TEST_F(VerifierDepsTest, Assignable_BothInBoot) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "Ljava/util/TimeZone;",
-                                         /* src */ "Ljava/util/SimpleTimeZone;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ true));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "Ljava/util/TimeZone;",
+                                         /* src= */ "Ljava/util/SimpleTimeZone;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ true));
   ASSERT_TRUE(HasAssignable("Ljava/util/TimeZone;", "Ljava/util/SimpleTimeZone;", true));
 }
 
 TEST_F(VerifierDepsTest, Assignable_DestinationInBoot1) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "Ljava/net/Socket;",
-                                         /* src */ "LMySSLSocket;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ true));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "Ljava/net/Socket;",
+                                         /* src= */ "LMySSLSocket;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ true));
   ASSERT_TRUE(HasAssignable("Ljava/net/Socket;", "Ljavax/net/ssl/SSLSocket;", true));
 }
 
 TEST_F(VerifierDepsTest, Assignable_DestinationInBoot2) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "Ljava/util/TimeZone;",
-                                         /* src */ "LMySimpleTimeZone;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ true));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "Ljava/util/TimeZone;",
+                                         /* src= */ "LMySimpleTimeZone;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ true));
   ASSERT_TRUE(HasAssignable("Ljava/util/TimeZone;", "Ljava/util/SimpleTimeZone;", true));
 }
 
 TEST_F(VerifierDepsTest, Assignable_DestinationInBoot3) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "Ljava/util/Collection;",
-                                         /* src */ "LMyThreadSet;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ true));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "Ljava/util/Collection;",
+                                         /* src= */ "LMyThreadSet;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ true));
   ASSERT_TRUE(HasAssignable("Ljava/util/Collection;", "Ljava/util/Set;", true));
 }
 
 TEST_F(VerifierDepsTest, Assignable_BothArrays_Resolved) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "[[Ljava/util/TimeZone;",
-                                         /* src */ "[[Ljava/util/SimpleTimeZone;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ true));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "[[Ljava/util/TimeZone;",
+                                         /* src= */ "[[Ljava/util/SimpleTimeZone;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ true));
   // If the component types of both arrays are resolved, we optimize the list of
   // dependencies by recording a dependency on the component types.
   ASSERT_FALSE(HasAssignable("[[Ljava/util/TimeZone;", "[[Ljava/util/SimpleTimeZone;", true));
@@ -526,34 +526,34 @@ TEST_F(VerifierDepsTest, Assignable_BothArrays_Resolved) {
 }
 
 TEST_F(VerifierDepsTest, NotAssignable_BothInBoot) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "Ljava/lang/Exception;",
-                                         /* src */ "Ljava/util/SimpleTimeZone;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ false));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "Ljava/lang/Exception;",
+                                         /* src= */ "Ljava/util/SimpleTimeZone;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ false));
   ASSERT_TRUE(HasAssignable("Ljava/lang/Exception;", "Ljava/util/SimpleTimeZone;", false));
 }
 
 TEST_F(VerifierDepsTest, NotAssignable_DestinationInBoot1) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "Ljava/lang/Exception;",
-                                         /* src */ "LMySSLSocket;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ false));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "Ljava/lang/Exception;",
+                                         /* src= */ "LMySSLSocket;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ false));
   ASSERT_TRUE(HasAssignable("Ljava/lang/Exception;", "Ljavax/net/ssl/SSLSocket;", false));
 }
 
 TEST_F(VerifierDepsTest, NotAssignable_DestinationInBoot2) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "Ljava/lang/Exception;",
-                                         /* src */ "LMySimpleTimeZone;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ false));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "Ljava/lang/Exception;",
+                                         /* src= */ "LMySimpleTimeZone;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ false));
   ASSERT_TRUE(HasAssignable("Ljava/lang/Exception;", "Ljava/util/SimpleTimeZone;", false));
 }
 
 TEST_F(VerifierDepsTest, NotAssignable_BothArrays) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "[Ljava/lang/Exception;",
-                                         /* src */ "[Ljava/util/SimpleTimeZone;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ false));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "[Ljava/lang/Exception;",
+                                         /* src= */ "[Ljava/util/SimpleTimeZone;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ false));
   ASSERT_TRUE(HasAssignable("Ljava/lang/Exception;", "Ljava/util/SimpleTimeZone;", false));
 }
 
@@ -589,7 +589,7 @@ TEST_F(VerifierDepsTest, InvokeArgumentType) {
   ASSERT_TRUE(HasMethod("Ljava/text/SimpleDateFormat;",
                         "setTimeZone",
                         "(Ljava/util/TimeZone;)V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/text/DateFormat;"));
   ASSERT_TRUE(HasAssignable("Ljava/util/TimeZone;", "Ljava/util/SimpleTimeZone;", true));
@@ -824,7 +824,7 @@ TEST_F(VerifierDepsTest, InvokeStatic_Resolved_DeclaredInReferenced) {
   ASSERT_TRUE(HasMethod("Ljava/net/Socket;",
                         "setSocketImplFactory",
                         "(Ljava/net/SocketImplFactory;)V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public static",
                         "Ljava/net/Socket;"));
 }
@@ -835,7 +835,7 @@ TEST_F(VerifierDepsTest, InvokeStatic_Resolved_DeclaredInSuperclass1) {
   ASSERT_TRUE(HasMethod("Ljavax/net/ssl/SSLSocket;",
                         "setSocketImplFactory",
                         "(Ljava/net/SocketImplFactory;)V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public static",
                         "Ljava/net/Socket;"));
 }
@@ -845,7 +845,7 @@ TEST_F(VerifierDepsTest, InvokeStatic_Resolved_DeclaredInSuperclass2) {
   ASSERT_TRUE(HasMethod("LMySSLSocket;",
                         "setSocketImplFactory",
                         "(Ljava/net/SocketImplFactory;)V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public static",
                         "Ljava/net/Socket;"));
 }
@@ -856,7 +856,7 @@ TEST_F(VerifierDepsTest, InvokeStatic_DeclaredInInterface1) {
   ASSERT_TRUE(HasMethod("Ljava/util/Map$Entry;",
                         "comparingByKey",
                         "()Ljava/util/Comparator;",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public static",
                         "Ljava/util/Map$Entry;"));
 }
@@ -867,7 +867,7 @@ TEST_F(VerifierDepsTest, InvokeStatic_DeclaredInInterface2) {
   ASSERT_TRUE(HasMethod("Ljava/util/AbstractMap$SimpleEntry;",
                         "comparingByKey",
                         "()Ljava/util/Comparator;",
-                        /* expect_resolved */ false));
+                        /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeStatic_Unresolved1) {
@@ -876,7 +876,7 @@ TEST_F(VerifierDepsTest, InvokeStatic_Unresolved1) {
   ASSERT_TRUE(HasMethod("Ljavax/net/ssl/SSLSocket;",
                         "x",
                         "()V",
-                        /* expect_resolved */ false));
+                        /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeStatic_Unresolved2) {
@@ -884,7 +884,7 @@ TEST_F(VerifierDepsTest, InvokeStatic_Unresolved2) {
   ASSERT_TRUE(HasMethod("LMySSLSocket;",
                         "x",
                         "()V",
-                        /* expect_resolved */ false));
+                        /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeDirect_Resolved_DeclaredInReferenced) {
@@ -893,7 +893,7 @@ TEST_F(VerifierDepsTest, InvokeDirect_Resolved_DeclaredInReferenced) {
   ASSERT_TRUE(HasMethod("Ljava/net/Socket;",
                         "<init>",
                         "()V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/net/Socket;"));
 }
@@ -904,7 +904,7 @@ TEST_F(VerifierDepsTest, InvokeDirect_Resolved_DeclaredInSuperclass1) {
   ASSERT_TRUE(HasMethod("Ljavax/net/ssl/SSLSocket;",
                         "checkOldImpl",
                         "()V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "private",
                         "Ljava/net/Socket;"));
 }
@@ -914,7 +914,7 @@ TEST_F(VerifierDepsTest, InvokeDirect_Resolved_DeclaredInSuperclass2) {
   ASSERT_TRUE(HasMethod("LMySSLSocket;",
                         "checkOldImpl",
                         "()V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "private",
                         "Ljava/net/Socket;"));
 }
@@ -925,7 +925,7 @@ TEST_F(VerifierDepsTest, InvokeDirect_Unresolved1) {
   ASSERT_TRUE(HasMethod("Ljavax/net/ssl/SSLSocket;",
                         "x",
                         "()V",
-                        /* expect_resolved */ false));
+                        /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeDirect_Unresolved2) {
@@ -933,7 +933,7 @@ TEST_F(VerifierDepsTest, InvokeDirect_Unresolved2) {
   ASSERT_TRUE(HasMethod("LMySSLSocket;",
                         "x",
                         "()V",
-                        /* expect_resolved */ false));
+                        /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeVirtual_Resolved_DeclaredInReferenced) {
@@ -942,7 +942,7 @@ TEST_F(VerifierDepsTest, InvokeVirtual_Resolved_DeclaredInReferenced) {
   ASSERT_TRUE(HasMethod("Ljava/lang/Throwable;",
                         "getMessage",
                         "()Ljava/lang/String;",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/lang/Throwable;"));
   // Type dependency on `this` argument.
@@ -955,7 +955,7 @@ TEST_F(VerifierDepsTest, InvokeVirtual_Resolved_DeclaredInSuperclass1) {
   ASSERT_TRUE(HasMethod("Ljava/io/InterruptedIOException;",
                         "getMessage",
                         "()Ljava/lang/String;",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/lang/Throwable;"));
   // Type dependency on `this` argument.
@@ -967,7 +967,7 @@ TEST_F(VerifierDepsTest, InvokeVirtual_Resolved_DeclaredInSuperclass2) {
   ASSERT_TRUE(HasMethod("LMySocketTimeoutException;",
                         "getMessage",
                         "()Ljava/lang/String;",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/lang/Throwable;"));
 }
@@ -977,7 +977,7 @@ TEST_F(VerifierDepsTest, InvokeVirtual_Resolved_DeclaredInSuperinterface) {
   ASSERT_TRUE(HasMethod("LMyThreadSet;",
                         "size",
                         "()I",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/util/Set;"));
 }
@@ -988,7 +988,7 @@ TEST_F(VerifierDepsTest, InvokeVirtual_Unresolved1) {
   ASSERT_TRUE(HasMethod("Ljava/io/InterruptedIOException;",
                         "x",
                         "()V",
-                        /* expect_resolved */ false));
+                        /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeVirtual_Unresolved2) {
@@ -996,7 +996,7 @@ TEST_F(VerifierDepsTest, InvokeVirtual_Unresolved2) {
   ASSERT_TRUE(HasMethod("LMySocketTimeoutException;",
                         "x",
                         "()V",
-                        /* expect_resolved */ false));
+                        /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeInterface_Resolved_DeclaredInReferenced) {
@@ -1005,7 +1005,7 @@ TEST_F(VerifierDepsTest, InvokeInterface_Resolved_DeclaredInReferenced) {
   ASSERT_TRUE(HasMethod("Ljava/lang/Runnable;",
                         "run",
                         "()V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/lang/Runnable;"));
 }
@@ -1016,7 +1016,7 @@ TEST_F(VerifierDepsTest, InvokeInterface_Resolved_DeclaredInSuperclass) {
   ASSERT_TRUE(HasMethod("LMyThread;",
                         "join",
                         "()V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/lang/Thread;"));
 }
@@ -1027,7 +1027,7 @@ TEST_F(VerifierDepsTest, InvokeInterface_Resolved_DeclaredInSuperinterface1) {
   ASSERT_TRUE(HasMethod("LMyThreadSet;",
                         "run",
                         "()V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/lang/Thread;"));
 }
@@ -1037,7 +1037,7 @@ TEST_F(VerifierDepsTest, InvokeInterface_Resolved_DeclaredInSuperinterface2) {
   ASSERT_TRUE(HasMethod("LMyThreadSet;",
                         "isEmpty",
                         "()Z",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/util/Set;"));
 }
@@ -1048,12 +1048,12 @@ TEST_F(VerifierDepsTest, InvokeInterface_Unresolved1) {
   ASSERT_TRUE(HasMethod("Ljava/lang/Runnable;",
                         "x",
                         "()V",
-                        /* expect_resolved */ false));
+                        /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeInterface_Unresolved2) {
   ASSERT_FALSE(VerifyMethod("InvokeInterface_Unresolved2"));
-  ASSERT_TRUE(HasMethod("LMyThreadSet;", "x", "()V", /* expect_resolved */ false));
+  ASSERT_TRUE(HasMethod("LMyThreadSet;", "x", "()V", /* expect_resolved= */ false));
 }
 
 TEST_F(VerifierDepsTest, InvokeSuper_ThisAssignable) {
@@ -1063,7 +1063,7 @@ TEST_F(VerifierDepsTest, InvokeSuper_ThisAssignable) {
   ASSERT_TRUE(HasMethod("Ljava/lang/Runnable;",
                         "run",
                         "()V",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public",
                         "Ljava/lang/Runnable;"));
 }
@@ -1074,7 +1074,7 @@ TEST_F(VerifierDepsTest, InvokeSuper_ThisNotAssignable) {
   ASSERT_TRUE(HasAssignable("Ljava/lang/Integer;", "Ljava/lang/Thread;", false));
   ASSERT_TRUE(HasMethod("Ljava/lang/Integer;",
                         "intValue", "()I",
-                        /* expect_resolved */ true,
+                        /* expect_resolved= */ true,
                         "public", "Ljava/lang/Integer;"));
 }
 
@@ -1443,7 +1443,7 @@ TEST_F(VerifierDepsTest, CompilerDriver) {
         ScopedObjectAccess soa(Thread::Current());
         LoadDexFile(soa, "VerifierDeps", multi);
       }
-      VerifyWithCompilerDriver(/* verifier_deps */ nullptr);
+      VerifyWithCompilerDriver(/* verifier_deps= */ nullptr);
 
       std::vector<uint8_t> buffer;
       verifier_deps_->Encode(dex_files_, &buffer);
@@ -1493,22 +1493,22 @@ TEST_F(VerifierDepsTest, MultiDexVerification) {
 }
 
 TEST_F(VerifierDepsTest, NotAssignable_InterfaceWithClassInBoot) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "Ljava/lang/Exception;",
-                                         /* src */ "LIface;",
-                                         /* is_strict */ true,
-                                         /* is_assignable */ false));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "Ljava/lang/Exception;",
+                                         /* src= */ "LIface;",
+                                         /* is_strict= */ true,
+                                         /* is_assignable= */ false));
   ASSERT_TRUE(HasAssignable("Ljava/lang/Exception;", "LIface;", false));
 }
 
 TEST_F(VerifierDepsTest, Assignable_Arrays) {
-  ASSERT_TRUE(TestAssignabilityRecording(/* dst */ "[LIface;",
-                                         /* src */ "[LMyClassExtendingInterface;",
-                                         /* is_strict */ false,
-                                         /* is_assignable */ true));
+  ASSERT_TRUE(TestAssignabilityRecording(/* dst= */ "[LIface;",
+                                         /* src= */ "[LMyClassExtendingInterface;",
+                                         /* is_strict= */ false,
+                                         /* is_assignable= */ true));
   ASSERT_FALSE(HasAssignable(
-      "LIface;", "LMyClassExtendingInterface;", /* expected_is_assignable */ true));
+      "LIface;", "LMyClassExtendingInterface;", /* expected_is_assignable= */ true));
   ASSERT_FALSE(HasAssignable(
-      "LIface;", "LMyClassExtendingInterface;", /* expected_is_assignable */ false));
+      "LIface;", "LMyClassExtendingInterface;", /* expected_is_assignable= */ false));
 }
 
 }  // namespace verifier

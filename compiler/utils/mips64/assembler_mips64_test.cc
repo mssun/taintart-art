@@ -852,99 +852,99 @@ TEST_F(AssemblerMIPS64Test, Bc1nez) {
 }
 
 TEST_F(AssemblerMIPS64Test, BareBc) {
-  BranchHelper(&mips64::Mips64Assembler::Bc, "Bc", /* is_bare */ true);
+  BranchHelper(&mips64::Mips64Assembler::Bc, "Bc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBalc) {
-  BranchHelper(&mips64::Mips64Assembler::Balc, "Balc", /* is_bare */ true);
+  BranchHelper(&mips64::Mips64Assembler::Balc, "Balc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBeqzc) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Beqzc, "Beqzc", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Beqzc, "Beqzc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBnezc) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bnezc, "Bnezc", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bnezc, "Bnezc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBltzc) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bltzc, "Bltzc", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bltzc, "Bltzc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBgezc) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bgezc, "Bgezc", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bgezc, "Bgezc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBlezc) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Blezc, "Blezc", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Blezc, "Blezc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBgtzc) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bgtzc, "Bgtzc", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bgtzc, "Bgtzc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBeqc) {
-  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Beqc, "Beqc", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Beqc, "Beqc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBnec) {
-  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bnec, "Bnec", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bnec, "Bnec", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBltc) {
-  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bltc, "Bltc", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bltc, "Bltc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBgec) {
-  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bgec, "Bgec", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bgec, "Bgec", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBltuc) {
-  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bltuc, "Bltuc", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bltuc, "Bltuc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBgeuc) {
-  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bgeuc, "Bgeuc", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bgeuc, "Bgeuc", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBc1eqz) {
-  BranchFpuCondHelper(&mips64::Mips64Assembler::Bc1eqz, "Bc1eqz", /* is_bare */ true);
+  BranchFpuCondHelper(&mips64::Mips64Assembler::Bc1eqz, "Bc1eqz", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBc1nez) {
-  BranchFpuCondHelper(&mips64::Mips64Assembler::Bc1nez, "Bc1nez", /* is_bare */ true);
+  BranchFpuCondHelper(&mips64::Mips64Assembler::Bc1nez, "Bc1nez", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBeqz) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Beqz, "Beqz", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Beqz, "Beqz", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBnez) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bnez, "Bnez", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bnez, "Bnez", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBltz) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bltz, "Bltz", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bltz, "Bltz", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBgez) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bgez, "Bgez", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bgez, "Bgez", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBlez) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Blez, "Blez", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Blez, "Blez", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBgtz) {
-  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bgtz, "Bgtz", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips64::Mips64Assembler::Bgtz, "Bgtz", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBeq) {
-  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Beq, "Beq", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Beq, "Beq", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, BareBne) {
-  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bne, "Bne", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips64::Mips64Assembler::Bne, "Bne", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPS64Test, LongBeqc) {
@@ -1252,7 +1252,7 @@ TEST_F(AssemblerMIPS64Test, Daui) {
   std::vector<mips64::GpuRegister*> reg1_registers = GetRegisters();
   std::vector<mips64::GpuRegister*> reg2_registers = GetRegisters();
   reg2_registers.erase(reg2_registers.begin());  // reg2 can't be ZERO, remove it.
-  std::vector<int64_t> imms = CreateImmediateValuesBits(/* imm_bits */ 16, /* as_uint */ true);
+  std::vector<int64_t> imms = CreateImmediateValuesBits(/* imm_bits= */ 16, /* as_uint= */ true);
   WarnOnCombinations(reg1_registers.size() * reg2_registers.size() * imms.size());
   std::ostringstream expected;
   for (mips64::GpuRegister* reg1 : reg1_registers) {

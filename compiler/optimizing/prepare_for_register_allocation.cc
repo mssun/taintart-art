@@ -87,9 +87,9 @@ void PrepareForRegisterAllocation::VisitBoundsCheck(HBoundsCheck* check) {
     if (GetGraph()->GetArtMethod() != char_at_method) {
       ArenaAllocator* allocator = GetGraph()->GetAllocator();
       HEnvironment* environment = new (allocator) HEnvironment(allocator,
-                                                               /* number_of_vregs */ 0u,
+                                                               /* number_of_vregs= */ 0u,
                                                                char_at_method,
-                                                               /* dex_pc */ dex::kDexNoIndex,
+                                                               /* dex_pc= */ dex::kDexNoIndex,
                                                                check);
       check->InsertRawEnvironment(environment);
     }

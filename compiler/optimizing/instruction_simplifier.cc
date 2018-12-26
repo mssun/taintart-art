@@ -372,7 +372,7 @@ void InstructionSimplifierVisitor::VisitShift(HBinaryOperation* instruction) {
       // (as defined by shift semantics). This ensures other
       // optimizations do not need to special case for such situations.
       DCHECK_EQ(shift_amount->GetType(), DataType::Type::kInt32);
-      instruction->ReplaceInput(GetGraph()->GetIntConstant(masked_cst), /* index */ 1);
+      instruction->ReplaceInput(GetGraph()->GetIntConstant(masked_cst), /* index= */ 1);
       RecordSimplification();
       return;
     }
@@ -2361,17 +2361,17 @@ void InstructionSimplifierVisitor::SimplifyStringCharAt(HInvoke* invoke) {
   ArenaAllocator* allocator = GetGraph()->GetAllocator();
   // We treat String as an array to allow DCE and BCE to seamlessly work on strings,
   // so create the HArrayLength, HBoundsCheck and HArrayGet.
-  HArrayLength* length = new (allocator) HArrayLength(str, dex_pc, /* is_string_length */ true);
+  HArrayLength* length = new (allocator) HArrayLength(str, dex_pc, /* is_string_length= */ true);
   invoke->GetBlock()->InsertInstructionBefore(length, invoke);
   HBoundsCheck* bounds_check = new (allocator) HBoundsCheck(
-      index, length, dex_pc, /* is_string_char_at */ true);
+      index, length, dex_pc, /* is_string_char_at= */ true);
   invoke->GetBlock()->InsertInstructionBefore(bounds_check, invoke);
   HArrayGet* array_get = new (allocator) HArrayGet(str,
                                                    bounds_check,
                                                    DataType::Type::kUint16,
                                                    SideEffects::None(),  // Strings are immutable.
                                                    dex_pc,
-                                                   /* is_string_char_at */ true);
+                                                   /* is_string_char_at= */ true);
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, array_get);
   bounds_check->CopyEnvironmentFrom(invoke->GetEnvironment());
   GetGraph()->SetHasBoundsChecks(true);
@@ -2383,7 +2383,7 @@ void InstructionSimplifierVisitor::SimplifyStringIsEmptyOrLength(HInvoke* invoke
   // We treat String as an array to allow DCE and BCE to seamlessly work on strings,
   // so create the HArrayLength.
   HArrayLength* length =
-      new (GetGraph()->GetAllocator()) HArrayLength(str, dex_pc, /* is_string_length */ true);
+      new (GetGraph()->GetAllocator()) HArrayLength(str, dex_pc, /* is_string_length= */ true);
   HInstruction* replacement;
   if (invoke->GetIntrinsic() == Intrinsics::kStringIsEmpty) {
     // For String.isEmpty(), create the `HEqual` representing the `length == 0`.
@@ -2534,28 +2534,28 @@ void InstructionSimplifierVisitor::VisitInvoke(HInvoke* instruction) {
       SimplifySystemArrayCopy(instruction);
       break;
     case Intrinsics::kIntegerRotateRight:
-      SimplifyRotate(instruction, /* is_left */ false, DataType::Type::kInt32);
+      SimplifyRotate(instruction, /* is_left= */ false, DataType::Type::kInt32);
       break;
     case Intrinsics::kLongRotateRight:
-      SimplifyRotate(instruction, /* is_left */ false, DataType::Type::kInt64);
+      SimplifyRotate(instruction, /* is_left= */ false, DataType::Type::kInt64);
       break;
     case Intrinsics::kIntegerRotateLeft:
-      SimplifyRotate(instruction, /* is_left */ true, DataType::Type::kInt32);
+      SimplifyRotate(instruction, /* is_left= */ true, DataType::Type::kInt32);
       break;
     case Intrinsics::kLongRotateLeft:
-      SimplifyRotate(instruction, /* is_left */ true, DataType::Type::kInt64);
+      SimplifyRotate(instruction, /* is_left= */ true, DataType::Type::kInt64);
       break;
     case Intrinsics::kIntegerCompare:
-      SimplifyCompare(instruction, /* is_signum */ false, DataType::Type::kInt32);
+      SimplifyCompare(instruction, /* is_signum= */ false, DataType::Type::kInt32);
       break;
     case Intrinsics::kLongCompare:
-      SimplifyCompare(instruction, /* is_signum */ false, DataType::Type::kInt64);
+      SimplifyCompare(instruction, /* is_signum= */ false, DataType::Type::kInt64);
       break;
     case Intrinsics::kIntegerSignum:
-      SimplifyCompare(instruction, /* is_signum */ true, DataType::Type::kInt32);
+      SimplifyCompare(instruction, /* is_signum= */ true, DataType::Type::kInt32);
       break;
     case Intrinsics::kLongSignum:
-      SimplifyCompare(instruction, /* is_signum */ true, DataType::Type::kInt64);
+      SimplifyCompare(instruction, /* is_signum= */ true, DataType::Type::kInt64);
       break;
     case Intrinsics::kFloatIsNaN:
     case Intrinsics::kDoubleIsNaN:

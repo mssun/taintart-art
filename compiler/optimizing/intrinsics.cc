@@ -76,7 +76,7 @@ static ObjPtr<mirror::Class> LookupInitializedClass(Thread* self,
                                                     const char* descriptor)
         REQUIRES_SHARED(Locks::mutator_lock_) {
   ObjPtr<mirror::Class> klass =
-      class_linker->LookupClass(self, descriptor, /* class_loader */ nullptr);
+      class_linker->LookupClass(self, descriptor, /* class_loader= */ nullptr);
   DCHECK(klass != nullptr);
   DCHECK(klass->IsInitialized());
   return klass;
@@ -166,14 +166,14 @@ void IntrinsicVisitor::ComputeIntegerValueOfLocations(HInvoke* invoke,
     Thread* self = Thread::Current();
     ScopedObjectAccess soa(self);
     ObjPtr<mirror::Class> cache_class = class_linker->LookupClass(
-        self, kIntegerCacheDescriptor, /* class_loader */ nullptr);
+        self, kIntegerCacheDescriptor, /* class_loader= */ nullptr);
     DCHECK(cache_class != nullptr);
     if (UNLIKELY(!cache_class->IsInitialized())) {
       LOG(WARNING) << "Image class " << cache_class->PrettyDescriptor() << " is uninitialized.";
       return;
     }
     ObjPtr<mirror::Class> integer_class =
-        class_linker->LookupClass(self, kIntegerDescriptor, /* class_loader */ nullptr);
+        class_linker->LookupClass(self, kIntegerDescriptor, /* class_loader= */ nullptr);
     DCHECK(integer_class != nullptr);
     if (UNLIKELY(!integer_class->IsInitialized())) {
       LOG(WARNING) << "Image class " << integer_class->PrettyDescriptor() << " is uninitialized.";

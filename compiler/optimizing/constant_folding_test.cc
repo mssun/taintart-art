@@ -70,7 +70,7 @@ class ConstantFoldingTest : public OptimizingUnitTest {
 
     check_after_cf(graph_);
 
-    HDeadCodeElimination(graph_, nullptr /* stats */, "dead_code_elimination").Run();
+    HDeadCodeElimination(graph_, /* stats= */ nullptr, "dead_code_elimination").Run();
     GraphChecker graph_checker_dce(graph_);
     graph_checker_dce.Run();
     ASSERT_TRUE(graph_checker_dce.IsValid());

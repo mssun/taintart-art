@@ -82,7 +82,7 @@ void VerifiedMethod::GenerateSafeCastSet(verifier::MethodVerifier* method_verifi
           method_verifier->ResolveCheckedClass(dex::TypeIndex(inst.VRegB_21c()));
       // Pass null for the method verifier to not record the VerifierDeps dependency
       // if the types are not assignable.
-      if (cast_type.IsStrictlyAssignableFrom(reg_type, /* method_verifier */ nullptr)) {
+      if (cast_type.IsStrictlyAssignableFrom(reg_type, /* verifier= */ nullptr)) {
         // The types are assignable, we record that dependency in the VerifierDeps so
         // that if this changes after OTA, we will re-verify again.
         // We check if reg_type has a class, as the verifier may have inferred it's
@@ -92,8 +92,8 @@ void VerifiedMethod::GenerateSafeCastSet(verifier::MethodVerifier* method_verifi
           verifier::VerifierDeps::MaybeRecordAssignability(method_verifier->GetDexFile(),
                                                            cast_type.GetClass(),
                                                            reg_type.GetClass(),
-                                                           /* strict */ true,
-                                                           /* assignable */ true);
+                                                           /* is_strict= */ true,
+                                                           /* is_assignable= */ true);
         }
         if (safe_cast_set_ == nullptr) {
           safe_cast_set_.reset(new SafeCastSet());
