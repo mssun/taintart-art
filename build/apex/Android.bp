@@ -24,6 +24,9 @@ bionic_native_shared_libs = [
     "libm",
     "libdl",
 ]
+bionic_binaries_both = [
+    "linker",
+]
 // - Fake library that avoids namespace issues and gives some warnings for nosy apps.
 art_runtime_fake_native_shared_libs = [
      // FIXME: Does not work as-is, because `libart_fake` is defined in libart_fake/Android.mk,
@@ -113,7 +116,8 @@ apex {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
             // (see `symlink_preferred_arch` in art/dalvikvm/Android.bp).
-            binaries: art_runtime_base_binaries_both,
+            binaries: art_runtime_base_binaries_both
+                + bionic_binaries_both,
         },
         prefer32: {
             binaries: art_runtime_base_binaries_prefer32,
@@ -142,7 +146,8 @@ apex {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
             // (see `symlink_preferred_arch` in art/dalvikvm/Android.bp).
-            binaries: art_runtime_base_binaries_both,
+            binaries: art_runtime_base_binaries_both
+                + bionic_binaries_both,
         },
         prefer32: {
             binaries: art_runtime_base_binaries_prefer32
