@@ -378,6 +378,7 @@ class CompilerDriver {
   friend class CommonCompilerTest;
   friend class CompileClassVisitor;
   friend class DexToDexDecompilerTest;
+  friend class InitializeClassVisitor;
   friend class verifier::VerifierDepsTest;
   DISALLOW_COPY_AND_ASSIGN(CompilerDriver);
 };
