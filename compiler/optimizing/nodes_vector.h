@@ -207,7 +207,7 @@ class HVecUnaryOperation : public HVecOperation {
                       allocator,
                       packed_type,
                       SideEffects::None(),
-                      /* number_of_inputs */ 1,
+                      /* number_of_inputs= */ 1,
                       vector_length,
                       dex_pc) {
     SetRawInputAt(0, input);
@@ -235,7 +235,7 @@ class HVecBinaryOperation : public HVecOperation {
                       allocator,
                       packed_type,
                       SideEffects::None(),
-                      /* number_of_inputs */ 2,
+                      /* number_of_inputs= */ 2,
                       vector_length,
                       dex_pc) {
     SetRawInputAt(0, left);
@@ -948,7 +948,7 @@ class HVecMultiplyAccumulate final : public HVecOperation {
                       allocator,
                       packed_type,
                       SideEffects::None(),
-                      /* number_of_inputs */ 3,
+                      /* number_of_inputs= */ 3,
                       vector_length,
                       dex_pc),
         op_kind_(op) {
@@ -1002,7 +1002,7 @@ class HVecSADAccumulate final : public HVecOperation {
                       allocator,
                       packed_type,
                       SideEffects::None(),
-                      /* number_of_inputs */ 3,
+                      /* number_of_inputs= */ 3,
                       vector_length,
                       dex_pc) {
     DCHECK(HasConsistentPackedTypes(accumulator, packed_type));
@@ -1049,7 +1049,7 @@ class HVecDotProd final : public HVecOperation {
                     allocator,
                     packed_type,
                     SideEffects::None(),
-                    /* number_of_inputs */ 3,
+                    /* number_of_inputs= */ 3,
                     vector_length,
                     dex_pc) {
     DCHECK(HasConsistentPackedTypes(accumulator, packed_type));
@@ -1097,7 +1097,7 @@ class HVecLoad final : public HVecMemoryOperation {
                             allocator,
                             packed_type,
                             side_effects,
-                            /* number_of_inputs */ 2,
+                            /* number_of_inputs= */ 2,
                             vector_length,
                             dex_pc) {
     SetRawInputAt(0, base);
@@ -1143,7 +1143,7 @@ class HVecStore final : public HVecMemoryOperation {
                             allocator,
                             packed_type,
                             side_effects,
-                            /* number_of_inputs */ 3,
+                            /* number_of_inputs= */ 3,
                             vector_length,
                             dex_pc) {
     DCHECK(HasConsistentPackedTypes(value, packed_type));

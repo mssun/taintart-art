@@ -680,7 +680,7 @@ static void MoveAfterInBlock(HInstruction* instruction, HInstruction* cursor) {
   DCHECK_NE(cursor, cursor->GetBlock()->GetLastInstruction());
   DCHECK(!instruction->IsControlFlow());
   DCHECK(!cursor->IsControlFlow());
-  instruction->MoveBefore(cursor->GetNext(), /* do_checks */ false);
+  instruction->MoveBefore(cursor->GetNext(), /* do_checks= */ false);
 }
 
 void HScheduler::Schedule(HInstruction* instruction) {

@@ -43,7 +43,7 @@ void DeadCodeEliminationTest::TestCode(const std::vector<uint16_t>& data,
   std::string actual_before = printer_before.str();
   ASSERT_EQ(actual_before, expected_before);
 
-  HDeadCodeElimination(graph, nullptr /* stats */, "dead_code_elimination").Run();
+  HDeadCodeElimination(graph, /* stats= */ nullptr, "dead_code_elimination").Run();
   GraphChecker graph_checker(graph);
   graph_checker.Run();
   ASSERT_TRUE(graph_checker.IsValid());

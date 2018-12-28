@@ -44,7 +44,7 @@ void HGraph::InitializeInexactObjectRTI(VariableSizedHandleScope* handles) {
   // Create the inexact Object reference type and store it in the HGraph.
   inexact_object_rti_ = ReferenceTypeInfo::Create(
       handles->NewHandle(GetClassRoot<mirror::Object>()),
-      /* is_exact */ false);
+      /* is_exact= */ false);
 }
 
 void HGraph::AddBlock(HBasicBlock* block) {
@@ -60,7 +60,7 @@ void HGraph::FindBackEdges(ArenaBitVector* visited) {
   ScopedArenaAllocator allocator(GetArenaStack());
   // Nodes that we're currently visiting, indexed by block id.
   ArenaBitVector visiting(
-      &allocator, blocks_.size(), /* expandable */ false, kArenaAllocGraphBuilder);
+      &allocator, blocks_.size(), /* expandable= */ false, kArenaAllocGraphBuilder);
   visiting.ClearAllBits();
   // Number of successors visited from a given node, indexed by block id.
   ScopedArenaVector<size_t> successors_visited(blocks_.size(),
@@ -826,7 +826,7 @@ void HLoopInformation::Populate() {
     ScopedArenaAllocator allocator(graph->GetArenaStack());
     ArenaBitVector visited(&allocator,
                            graph->GetBlocks().size(),
-                           /* expandable */ false,
+                           /* expandable= */ false,
                            kArenaAllocGraphBuilder);
     visited.ClearAllBits();
     // Stop marking blocks at the loop header.
@@ -2527,7 +2527,7 @@ HInstruction* HGraph::InlineInto(HGraph* outer_graph, HInvoke* invoke) {
         current->SetGraph(outer_graph);
         outer_graph->AddBlock(current);
         outer_graph->reverse_post_order_[++index_of_at] = current;
-        UpdateLoopAndTryInformationOfNewBlock(current, at,  /* replace_if_back_edge */ false);
+        UpdateLoopAndTryInformationOfNewBlock(current, at,  /* replace_if_back_edge= */ false);
       }
     }
 
@@ -2537,7 +2537,7 @@ HInstruction* HGraph::InlineInto(HGraph* outer_graph, HInvoke* invoke) {
     outer_graph->reverse_post_order_[++index_of_at] = to;
     // Only `to` can become a back edge, as the inlined blocks
     // are predecessors of `to`.
-    UpdateLoopAndTryInformationOfNewBlock(to, at, /* replace_if_back_edge */ true);
+    UpdateLoopAndTryInformationOfNewBlock(to, at, /* replace_if_back_edge= */ true);
 
     // Update all predecessors of the exit block (now the `to` block)
     // to not `HReturn` but `HGoto` instead. Special case throwing blocks
@@ -2711,13 +2711,13 @@ void HGraph::TransformLoopHeaderForBCE(HBasicBlock* header) {
   DCHECK((old_pre_header->GetLoopInformation() == nullptr) ||
          !old_pre_header->GetLoopInformation()->IsBackEdge(*old_pre_header));
   UpdateLoopAndTryInformationOfNewBlock(
-      if_block, old_pre_header, /* replace_if_back_edge */ false);
+      if_block, old_pre_header, /* replace_if_back_edge= */ false);
   UpdateLoopAndTryInformationOfNewBlock(
-      true_block, old_pre_header, /* replace_if_back_edge */ false);
+      true_block, old_pre_header, /* replace_if_back_edge= */ false);
   UpdateLoopAndTryInformationOfNewBlock(
-      false_block, old_pre_header, /* replace_if_back_edge */ false);
+      false_block, old_pre_header, /* replace_if_back_edge= */ false);
   UpdateLoopAndTryInformationOfNewBlock(
-      new_pre_header, old_pre_header, /* replace_if_back_edge */ false);
+      new_pre_header, old_pre_header, /* replace_if_back_edge= */ false);
 }
 
 HBasicBlock* HGraph::TransformLoopForVectorization(HBasicBlock* header,

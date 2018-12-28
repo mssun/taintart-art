@@ -260,9 +260,9 @@ ArenaVector<HOptimization*> ConstructOptimizations(
                                        handles,
                                        stats,
                                        accessor.RegistersSize(),
-                                       /* total_number_of_instructions */ 0,
-                                       /* parent */ nullptr,
-                                       /* depth */ 0,
+                                       /* total_number_of_instructions= */ 0,
+                                       /* parent= */ nullptr,
+                                       /* depth= */ 0,
                                        pass_name);
         break;
       }

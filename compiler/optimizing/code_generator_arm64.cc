@@ -168,8 +168,8 @@ static void SaveRestoreLiveRegistersHelper(CodeGenerator* codegen,
                                            LocationSummary* locations,
                                            int64_t spill_offset,
                                            bool is_save) {
-  const uint32_t core_spills = codegen->GetSlowPathSpills(locations, /* core_registers */ true);
-  const uint32_t fp_spills = codegen->GetSlowPathSpills(locations, /* core_registers */ false);
+  const uint32_t core_spills = codegen->GetSlowPathSpills(locations, /* core_registers= */ true);
+  const uint32_t fp_spills = codegen->GetSlowPathSpills(locations, /* core_registers= */ false);
   DCHECK(ArtVixlRegCodeCoherentForRegSet(core_spills,
                                          codegen->GetNumberOfCoreRegisters(),
                                          fp_spills,
@@ -212,7 +212,7 @@ static void SaveRestoreLiveRegistersHelper(CodeGenerator* codegen,
 
 void SlowPathCodeARM64::SaveLiveRegisters(CodeGenerator* codegen, LocationSummary* locations) {
   size_t stack_offset = codegen->GetFirstRegisterSlotInSlowPath();
-  const uint32_t core_spills = codegen->GetSlowPathSpills(locations, /* core_registers */ true);
+  const uint32_t core_spills = codegen->GetSlowPathSpills(locations, /* core_registers= */ true);
   for (uint32_t i : LowToHighBits(core_spills)) {
     // If the register holds an object, update the stack mask.
     if (locations->RegisterContainsObject(i)) {
@@ -224,7 +224,7 @@ void SlowPathCodeARM64::SaveLiveRegisters(CodeGenerator* codegen, LocationSummar
     stack_offset += kXRegSizeInBytes;
   }
 
-  const uint32_t fp_spills = codegen->GetSlowPathSpills(locations, /* core_registers */ false);
+  const uint32_t fp_spills = codegen->GetSlowPathSpills(locations, /* core_registers= */ false);
   for (uint32_t i : LowToHighBits(fp_spills)) {
     DCHECK_LT(stack_offset, codegen->GetFrameSize() - codegen->FrameEntrySpillSize());
     DCHECK_LT(i, kMaximumNumberOfExpectedRegisters);
@@ -234,13 +234,13 @@ void SlowPathCodeARM64::SaveLiveRegisters(CodeGenerator* codegen, LocationSummar
 
   SaveRestoreLiveRegistersHelper(codegen,
                                  locations,
-                                 codegen->GetFirstRegisterSlotInSlowPath(), true /* is_save */);
+                                 codegen->GetFirstRegisterSlotInSlowPath(), /* is_save= */ true);
 }
 
 void SlowPathCodeARM64::RestoreLiveRegisters(CodeGenerator* codegen, LocationSummary* locations) {
   SaveRestoreLiveRegistersHelper(codegen,
                                  locations,
-                                 codegen->GetFirstRegisterSlotInSlowPath(), false /* is_save */);
+                                 codegen->GetFirstRegisterSlotInSlowPath(), /* is_save= */ false);
 }
 
 class BoundsCheckSlowPathARM64 : public SlowPathCodeARM64 {
@@ -926,7 +926,7 @@ void CodeGeneratorARM64::Finalize(CodeAllocator* allocator) {
     uint32_t encoded_data = entry.first;
     vixl::aarch64::Label* slow_path_entry = &entry.second.label;
     __ Bind(slow_path_entry);
-    CompileBakerReadBarrierThunk(*GetAssembler(), encoded_data, /* debug_name */ nullptr);
+    CompileBakerReadBarrierThunk(*GetAssembler(), encoded_data, /* debug_name= */ nullptr);
   }
 
   // Ensure we emit the literal pool.
@@ -1118,7 +1118,7 @@ void CodeGeneratorARM64::GenerateFrameEntry() {
     }
   }
 
-  MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void CodeGeneratorARM64::GenerateFrameExit() {
@@ -1888,7 +1888,7 @@ void InstructionCodeGeneratorARM64::HandleFieldGet(HInstruction* instruction,
         base,
         offset,
         maybe_temp,
-        /* needs_null_check */ true,
+        /* needs_null_check= */ true,
         field_info.IsVolatile());
   } else {
     // General case.
@@ -1897,7 +1897,7 @@ void InstructionCodeGeneratorARM64::HandleFieldGet(HInstruction* instruction,
       // CodeGeneratorARM64::LoadAcquire call.
       // NB: LoadAcquire will record the pc info if needed.
       codegen_->LoadAcquire(
-          instruction, OutputCPURegister(instruction), field, /* needs_null_check */ true);
+          instruction, OutputCPURegister(instruction), field, /* needs_null_check= */ true);
     } else {
       // Ensure that between load and MaybeRecordImplicitNullCheck there are no pools emitted.
       EmissionCheckScope guard(GetVIXLAssembler(), kMaxMacroInstructionSizeInBytes);
@@ -1952,7 +1952,7 @@ void InstructionCodeGeneratorARM64::HandleFieldSet(HInstruction* instruction,
 
     if (field_info.IsVolatile()) {
       codegen_->StoreRelease(
-          instruction, field_type, source, HeapOperand(obj, offset), /* needs_null_check */ true);
+          instruction, field_type, source, HeapOperand(obj, offset), /* needs_null_check= */ true);
     } else {
       // Ensure that between store and MaybeRecordImplicitNullCheck there are no pools emitted.
       EmissionCheckScope guard(GetVIXLAssembler(), kMaxMacroInstructionSizeInBytes);
@@ -2376,11 +2376,11 @@ void InstructionCodeGeneratorARM64::VisitArrayGet(HArrayGet* instruction) {
                                                       obj.W(),
                                                       offset,
                                                       maybe_temp,
-                                                      /* needs_null_check */ false,
-                                                      /* use_load_acquire */ false);
+                                                      /* needs_null_check= */ false,
+                                                      /* use_load_acquire= */ false);
     } else {
       codegen_->GenerateArrayLoadWithBakerReadBarrier(
-          instruction, out, obj.W(), offset, index, /* needs_null_check */ false);
+          instruction, out, obj.W(), offset, index, /* needs_null_check= */ false);
     }
   } else {
     // General case.
@@ -2925,7 +2925,7 @@ void InstructionCodeGeneratorARM64::GenerateDivRemWithAnyConstant(HBinaryOperati
   int64_t magic;
   int shift;
   CalculateMagicAndShiftForDivRem(
-      imm, type == DataType::Type::kInt64 /* is_long */, &magic, &shift);
+      imm, /* is_long= */ type == DataType::Type::kInt64, &magic, &shift);
 
   UseScratchRegisterScope temps(GetVIXLAssembler());
   Register temp = temps.AcquireSameSizeAs(out);
@@ -3116,7 +3116,7 @@ void InstructionCodeGeneratorARM64::HandleGoto(HInstruction* got, HBasicBlock* s
   }
   if (block->IsEntryBlock() && (previous != nullptr) && previous->IsSuspendCheck()) {
     GenerateSuspendCheck(previous->AsSuspendCheck(), nullptr);
-    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+    codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
   }
   if (!codegen_->GoesToNextBlock(block, successor)) {
     __ B(codegen_->GetLabelOf(successor));
@@ -3266,7 +3266,7 @@ void InstructionCodeGeneratorARM64::VisitIf(HIf* if_instr) {
   if (codegen_->GoesToNextBlock(if_instr->GetBlock(), false_successor)) {
     false_target = nullptr;
   }
-  GenerateTestAndBranch(if_instr, /* condition_input_index */ 0, true_target, false_target);
+  GenerateTestAndBranch(if_instr, /* condition_input_index= */ 0, true_target, false_target);
 }
 
 void LocationsBuilderARM64::VisitDeoptimize(HDeoptimize* deoptimize) {
@@ -3285,9 +3285,9 @@ void InstructionCodeGeneratorARM64::VisitDeoptimize(HDeoptimize* deoptimize) {
   SlowPathCodeARM64* slow_path =
       deopt_slow_paths_.NewSlowPath<DeoptimizationSlowPathARM64>(deoptimize);
   GenerateTestAndBranch(deoptimize,
-                        /* condition_input_index */ 0,
+                        /* condition_input_index= */ 0,
                         slow_path->GetEntryLabel(),
-                        /* false_target */ nullptr);
+                        /* false_target= */ nullptr);
 }
 
 void LocationsBuilderARM64::VisitShouldDeoptimizeFlag(HShouldDeoptimizeFlag* flag) {
@@ -3627,7 +3627,7 @@ void InstructionCodeGeneratorARM64::VisitInstanceOf(HInstanceOf* instruction) {
       __ Cmp(out, cls);
       DCHECK(locations->OnlyCallsOnSlowPath());
       slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathARM64(
-          instruction, /* is_fatal */ false);
+          instruction, /* is_fatal= */ false);
       codegen_->AddSlowPath(slow_path);
       __ B(ne, slow_path->GetEntryLabel());
       __ Mov(out, 1);
@@ -3659,7 +3659,7 @@ void InstructionCodeGeneratorARM64::VisitInstanceOf(HInstanceOf* instruction) {
       // This should also be beneficial for the other cases above.
       DCHECK(locations->OnlyCallsOnSlowPath());
       slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathARM64(
-          instruction, /* is_fatal */ false);
+          instruction, /* is_fatal= */ false);
       codegen_->AddSlowPath(slow_path);
       __ B(slow_path->GetEntryLabel());
       if (zero.IsLinked()) {
@@ -3952,7 +3952,7 @@ void LocationsBuilderARM64::VisitInvokeUnresolved(HInvokeUnresolved* invoke) {
 
 void InstructionCodeGeneratorARM64::VisitInvokeUnresolved(HInvokeUnresolved* invoke) {
   codegen_->GenerateInvokeUnresolvedRuntimeCall(invoke);
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void LocationsBuilderARM64::HandleInvoke(HInvoke* invoke) {
@@ -4022,7 +4022,7 @@ void InstructionCodeGeneratorARM64::VisitInvokeInterface(HInvokeInterface* invok
     codegen_->RecordPcInfo(invoke, invoke->GetDexPc());
   }
 
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void LocationsBuilderARM64::VisitInvokeVirtual(HInvokeVirtual* invoke) {
@@ -4201,7 +4201,7 @@ void LocationsBuilderARM64::VisitInvokePolymorphic(HInvokePolymorphic* invoke) {
 
 void InstructionCodeGeneratorARM64::VisitInvokePolymorphic(HInvokePolymorphic* invoke) {
   codegen_->GenerateInvokePolymorphicCall(invoke);
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void LocationsBuilderARM64::VisitInvokeCustom(HInvokeCustom* invoke) {
@@ -4210,21 +4210,21 @@ void LocationsBuilderARM64::VisitInvokeCustom(HInvokeCustom* invoke) {
 
 void InstructionCodeGeneratorARM64::VisitInvokeCustom(HInvokeCustom* invoke) {
   codegen_->GenerateInvokeCustomCall(invoke);
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageIntrinsicPatch(
     uint32_t intrinsic_data,
     vixl::aarch64::Label* adrp_label) {
   return NewPcRelativePatch(
-      /* dex_file */ nullptr, intrinsic_data, adrp_label, &boot_image_intrinsic_patches_);
+      /* dex_file= */ nullptr, intrinsic_data, adrp_label, &boot_image_intrinsic_patches_);
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageRelRoPatch(
     uint32_t boot_image_offset,
     vixl::aarch64::Label* adrp_label) {
   return NewPcRelativePatch(
-      /* dex_file */ nullptr, boot_image_offset, adrp_label, &boot_image_method_patches_);
+      /* dex_file= */ nullptr, boot_image_offset, adrp_label, &boot_image_method_patches_);
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageMethodPatch(
@@ -4308,7 +4308,7 @@ vixl::aarch64::Literal<uint32_t>* CodeGeneratorARM64::DeduplicateJitStringLitera
   ReserveJitStringRoot(StringReference(&dex_file, string_index), handle);
   return jit_string_patches_.GetOrCreate(
       StringReference(&dex_file, string_index),
-      [this]() { return __ CreateLiteralDestroyedWithPool<uint32_t>(/* placeholder */ 0u); });
+      [this]() { return __ CreateLiteralDestroyedWithPool<uint32_t>(/* value= */ 0u); });
 }
 
 vixl::aarch64::Literal<uint32_t>* CodeGeneratorARM64::DeduplicateJitClassLiteral(
@@ -4316,7 +4316,7 @@ vixl::aarch64::Literal<uint32_t>* CodeGeneratorARM64::DeduplicateJitClassLiteral
   ReserveJitClassRoot(TypeReference(&dex_file, type_index), handle);
   return jit_class_patches_.GetOrCreate(
       TypeReference(&dex_file, type_index),
-      [this]() { return __ CreateLiteralDestroyedWithPool<uint32_t>(/* placeholder */ 0u); });
+      [this]() { return __ CreateLiteralDestroyedWithPool<uint32_t>(/* value= */ 0u); });
 }
 
 void CodeGeneratorARM64::EmitAdrpPlaceholder(vixl::aarch64::Label* fixup_label,
@@ -4513,7 +4513,7 @@ void InstructionCodeGeneratorARM64::VisitInvokeStaticOrDirect(HInvokeStaticOrDir
   DCHECK(!invoke->IsStaticWithExplicitClinitCheck());
 
   if (TryGenerateIntrinsicCode(invoke, codegen_)) {
-    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+    codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
     return;
   }
 
@@ -4526,12 +4526,12 @@ void InstructionCodeGeneratorARM64::VisitInvokeStaticOrDirect(HInvokeStaticOrDir
         invoke, locations->HasTemps() ? locations->GetTemp(0) : Location::NoLocation());
   }
 
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void InstructionCodeGeneratorARM64::VisitInvokeVirtual(HInvokeVirtual* invoke) {
   if (TryGenerateIntrinsicCode(invoke, codegen_)) {
-    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+    codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
     return;
   }
 
@@ -4543,7 +4543,7 @@ void InstructionCodeGeneratorARM64::VisitInvokeVirtual(HInvokeVirtual* invoke) {
     DCHECK(!codegen_->IsLeafMethod());
   }
 
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 HLoadClass::LoadKind CodeGeneratorARM64::GetSupportedLoadClassKind(
@@ -4611,7 +4611,7 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
   HLoadClass::LoadKind load_kind = cls->GetLoadKind();
   if (load_kind == HLoadClass::LoadKind::kRuntimeCall) {
     codegen_->GenerateLoadClassRuntimeCall(cls);
-    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+    codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
     return;
   }
   DCHECK(!cls->NeedsAccessCheck());
@@ -4633,7 +4633,7 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
                                         out_loc,
                                         current_method,
                                         ArtMethod::DeclaringClassOffset().Int32Value(),
-                                        /* fixup_label */ nullptr,
+                                        /* fixup_label= */ nullptr,
                                         read_barrier_option);
       break;
     }
@@ -4696,8 +4696,8 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
       codegen_->GenerateGcRootFieldLoad(cls,
                                         out_loc,
                                         out.X(),
-                                        /* offset */ 0,
-                                        /* fixup_label */ nullptr,
+                                        /* offset= */ 0,
+                                        /* fixup_label= */ nullptr,
                                         read_barrier_option);
       break;
     }
@@ -4721,7 +4721,7 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
     } else {
       __ Bind(slow_path->GetExitLabel());
     }
-    codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+    codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
   }
 }
 
@@ -4859,7 +4859,7 @@ void InstructionCodeGeneratorARM64::VisitLoadString(HLoadString* load) NO_THREAD
       codegen_->AddSlowPath(slow_path);
       __ Cbz(out.X(), slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
-      codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+      codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
       return;
     }
     case HLoadString::LoadKind::kJitBootImageAddress: {
@@ -4875,8 +4875,8 @@ void InstructionCodeGeneratorARM64::VisitLoadString(HLoadString* load) NO_THREAD
       codegen_->GenerateGcRootFieldLoad(load,
                                         out_loc,
                                         out.X(),
-                                        /* offset */ 0,
-                                        /* fixup_label */ nullptr,
+                                        /* offset= */ 0,
+                                        /* fixup_label= */ nullptr,
                                         kCompilerReadBarrierOption);
       return;
     }
@@ -4890,7 +4890,7 @@ void InstructionCodeGeneratorARM64::VisitLoadString(HLoadString* load) NO_THREAD
   __ Mov(calling_convention.GetRegisterAt(0).W(), load->GetStringIndex().index_);
   codegen_->InvokeRuntime(kQuickResolveString, load, load->GetDexPc());
   CheckEntrypointTypes<kQuickResolveString, void*, uint32_t>();
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void LocationsBuilderARM64::VisitLongConstant(HLongConstant* constant) {
@@ -4918,7 +4918,7 @@ void InstructionCodeGeneratorARM64::VisitMonitorOperation(HMonitorOperation* ins
   } else {
     CheckEntrypointTypes<kQuickUnlockObject, void, mirror::Object*>();
   }
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void LocationsBuilderARM64::VisitMul(HMul* mul) {
@@ -5013,7 +5013,7 @@ void InstructionCodeGeneratorARM64::VisitNewArray(HNewArray* instruction) {
   QuickEntrypointEnum entrypoint = CodeGenerator::GetArrayAllocationEntrypoint(instruction);
   codegen_->InvokeRuntime(entrypoint, instruction, instruction->GetDexPc());
   CheckEntrypointTypes<kQuickAllocArrayResolved, void*, mirror::Class*, int32_t>();
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void LocationsBuilderARM64::VisitNewInstance(HNewInstance* instruction) {
@@ -5027,7 +5027,7 @@ void LocationsBuilderARM64::VisitNewInstance(HNewInstance* instruction) {
 void InstructionCodeGeneratorARM64::VisitNewInstance(HNewInstance* instruction) {
   codegen_->InvokeRuntime(instruction->GetEntrypoint(), instruction, instruction->GetDexPc());
   CheckEntrypointTypes<kQuickAllocObjectWithChecks, void*, mirror::Class*>();
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void LocationsBuilderARM64::VisitNot(HNot* instruction) {
@@ -5502,7 +5502,7 @@ void InstructionCodeGeneratorARM64::VisitSuspendCheck(HSuspendCheck* instruction
     return;
   }
   GenerateSuspendCheck(instruction, nullptr);
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void LocationsBuilderARM64::VisitThrow(HThrow* instruction) {
@@ -5715,8 +5715,8 @@ void InstructionCodeGeneratorARM64::GenerateReferenceLoadOneRegister(
                                                       out_reg,
                                                       offset,
                                                       maybe_temp,
-                                                      /* needs_null_check */ false,
-                                                      /* use_load_acquire */ false);
+                                                      /* needs_null_check= */ false,
+                                                      /* use_load_acquire= */ false);
     } else {
       // Load with slow path based read barrier.
       // Save the value of `out` into `maybe_temp` before overwriting it
@@ -5756,8 +5756,8 @@ void InstructionCodeGeneratorARM64::GenerateReferenceLoadTwoRegisters(
                                                       obj_reg,
                                                       offset,
                                                       maybe_temp,
-                                                      /* needs_null_check */ false,
-                                                      /* use_load_acquire */ false);
+                                                      /* needs_null_check= */ false,
+                                                      /* use_load_acquire= */ false);
     } else {
       // Load with slow path based read barrier.
       // /* HeapReference<Object> */ out = *(obj + offset)
@@ -5842,7 +5842,7 @@ void CodeGeneratorARM64::GenerateGcRootFieldLoad(
     // Note that GC roots are not affected by heap poisoning, thus we
     // do not have to unpoison `root_reg` here.
   }
-  MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__);
 }
 
 void CodeGeneratorARM64::GenerateUnsafeCasOldValueMovWithBakerReadBarrier(
@@ -5931,7 +5931,7 @@ void CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier(HInstruction* ins
     }
     __ bind(&return_address);
   }
-  MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__, /* temp_loc */ LocationFrom(ip1));
+  MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__, /* temp_loc= */ LocationFrom(ip1));
 }
 
 void CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
@@ -6039,7 +6039,7 @@ void CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier(HArrayGet* instru
     }
     __ bind(&return_address);
   }
-  MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__, /* temp_loc */ LocationFrom(ip1));
+  MaybeGenerateMarkingRegisterCheck(/* code= */ __LINE__, /* temp_loc= */ LocationFrom(ip1));
 }
 
 void CodeGeneratorARM64::MaybeGenerateMarkingRegisterCheck(int code, Location temp_loc) {

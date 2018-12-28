@@ -1058,7 +1058,7 @@ class Mips64Assembler final : public Assembler, public JNIMacroAssembler<Pointer
     // We permit `base` and `temp` to coincide (however, we check that neither is AT),
     // in which case the `base` register may be overwritten in the process.
     CHECK_NE(temp, AT);  // Must not use AT as temp, so as not to overwrite the adjusted base.
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ (type == kStoreDoubleword));
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ (type == kStoreDoubleword));
     GpuRegister reg;
     // If the adjustment left `base` unchanged and equal to `temp`, we can't use `temp`
     // to load and hold the value but we can use AT instead as AT hasn't been used yet.
@@ -1127,7 +1127,7 @@ class Mips64Assembler final : public Assembler, public JNIMacroAssembler<Pointer
                       GpuRegister base,
                       int32_t offset,
                       ImplicitNullChecker null_checker = NoImplicitNullChecker()) {
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ (type == kLoadDoubleword));
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ (type == kLoadDoubleword));
 
     switch (type) {
       case kLoadSignedByte:
@@ -1178,7 +1178,7 @@ class Mips64Assembler final : public Assembler, public JNIMacroAssembler<Pointer
                          ImplicitNullChecker null_checker = NoImplicitNullChecker()) {
     int element_size_shift = -1;
     if (type != kLoadQuadword) {
-      AdjustBaseAndOffset(base, offset, /* is_doubleword */ (type == kLoadDoubleword));
+      AdjustBaseAndOffset(base, offset, /* is_doubleword= */ (type == kLoadDoubleword));
     } else {
       AdjustBaseOffsetAndElementSizeShift(base, offset, element_size_shift);
     }
@@ -1226,7 +1226,7 @@ class Mips64Assembler final : public Assembler, public JNIMacroAssembler<Pointer
     // Must not use AT as `reg`, so as not to overwrite the value being stored
     // with the adjusted `base`.
     CHECK_NE(reg, AT);
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ (type == kStoreDoubleword));
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ (type == kStoreDoubleword));
 
     switch (type) {
       case kStoreByte:
@@ -1267,7 +1267,7 @@ class Mips64Assembler final : public Assembler, public JNIMacroAssembler<Pointer
                         ImplicitNullChecker null_checker = NoImplicitNullChecker()) {
     int element_size_shift = -1;
     if (type != kStoreQuadword) {
-      AdjustBaseAndOffset(base, offset, /* is_doubleword */ (type == kStoreDoubleword));
+      AdjustBaseAndOffset(base, offset, /* is_doubleword= */ (type == kStoreDoubleword));
     } else {
       AdjustBaseOffsetAndElementSizeShift(base, offset, element_size_shift);
     }

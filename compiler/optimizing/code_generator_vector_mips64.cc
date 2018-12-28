@@ -79,13 +79,13 @@ void InstructionCodeGeneratorMIPS64::VisitVecReplicateScalar(HVecReplicateScalar
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ ReplicateFPToVectorRegister(dst,
                                      locations->InAt(0).AsFpuRegister<FpuRegister>(),
-                                     /* is_double */ false);
+                                     /* is_double= */ false);
       break;
     case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ ReplicateFPToVectorRegister(dst,
                                      locations->InAt(0).AsFpuRegister<FpuRegister>(),
-                                     /* is_double */ true);
+                                     /* is_double= */ true);
       break;
     default:
       LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
@@ -1342,7 +1342,7 @@ int32_t InstructionCodeGeneratorMIPS64::VecAddress(LocationSummary* locations,
 }
 
 void LocationsBuilderMIPS64::VisitVecLoad(HVecLoad* instruction) {
-  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load */ true);
+  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load= */ true);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecLoad(HVecLoad* instruction) {
@@ -1385,7 +1385,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecLoad(HVecLoad* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecStore(HVecStore* instruction) {
-  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load */ false);
+  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load= */ false);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecStore(HVecStore* instruction) {

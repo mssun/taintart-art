@@ -180,7 +180,7 @@ static HInstruction* FindIdealPosition(HInstruction* instruction,
   DCHECK(!instruction->IsPhi());  // Makes no sense for Phi.
 
   // Find the target block.
-  CommonDominator finder(/* start_block */ nullptr);
+  CommonDominator finder(/* block= */ nullptr);
   for (const HUseListNode<HInstruction*>& use : instruction->GetUses()) {
     HInstruction* user = use.GetUser();
     if (!(filter && ShouldFilterUse(instruction, user, post_dominated))) {
@@ -259,12 +259,12 @@ void CodeSinking::SinkCodeToUncommonBranch(HBasicBlock* end_block) {
 
   size_t number_of_instructions = graph_->GetCurrentInstructionId();
   ScopedArenaVector<HInstruction*> worklist(allocator.Adapter(kArenaAllocMisc));
-  ArenaBitVector processed_instructions(&allocator, number_of_instructions, /* expandable */ false);
+  ArenaBitVector processed_instructions(&allocator, number_of_instructions, /* expandable= */ false);
   processed_instructions.ClearAllBits();
-  ArenaBitVector post_dominated(&allocator, graph_->GetBlocks().size(), /* expandable */ false);
+  ArenaBitVector post_dominated(&allocator, graph_->GetBlocks().size(), /* expandable= */ false);
   post_dominated.ClearAllBits();
   ArenaBitVector instructions_that_can_move(
-      &allocator, number_of_instructions, /* expandable */ false);
+      &allocator, number_of_instructions, /* expandable= */ false);
   instructions_that_can_move.ClearAllBits();
   ScopedArenaVector<HInstruction*> move_in_order(allocator.Adapter(kArenaAllocMisc));
 
@@ -414,7 +414,7 @@ void CodeSinking::SinkCodeToUncommonBranch(HBasicBlock* end_block) {
       }
       // Find the position of the instruction we're storing into, filtering out this
       // store and all other stores to that instruction.
-      position = FindIdealPosition(instruction->InputAt(0), post_dominated, /* filter */ true);
+      position = FindIdealPosition(instruction->InputAt(0), post_dominated, /* filter= */ true);
 
       // The position needs to be dominated by the store, in order for the store to move there.
       if (position == nullptr || !instruction->GetBlock()->Dominates(position->GetBlock())) {
@@ -434,7 +434,7 @@ void CodeSinking::SinkCodeToUncommonBranch(HBasicBlock* end_block) {
       continue;
     }
     MaybeRecordStat(stats_, MethodCompilationStat::kInstructionSunk);
-    instruction->MoveBefore(position, /* ensure_safety */ false);
+    instruction->MoveBefore(position, /* do_checks= */ false);
   }
 }
 

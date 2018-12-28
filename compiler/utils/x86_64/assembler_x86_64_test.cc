@@ -2094,7 +2094,7 @@ std::string removeframe_test_fn(JNIMacroAssemblerX86_64Test::Base* assembler_tes
   ArrayRef<const ManagedRegister> spill_regs(raw_spill_regs);
 
   size_t frame_size = 10 * kStackAlignment;
-  assembler->RemoveFrame(frame_size, spill_regs, /* may_suspend */ true);
+  assembler->RemoveFrame(frame_size, spill_regs, /* may_suspend= */ true);
 
   // Construct assembly text counterpart.
   std::ostringstream str;

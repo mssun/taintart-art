@@ -563,7 +563,7 @@ void SchedulingLatencyVisitorARM::HandleGenerateDataProc(HDataProcWithShifterOp*
     last_visited_internal_latency_ = kArmIntegerOpLatency;
     last_visited_latency_ = kArmIntegerOpLatency;
   } else {
-    HandleGenerateDataProcInstruction(/* internal_latency */ true);
+    HandleGenerateDataProcInstruction(/* internal_latency= */ true);
     HandleGenerateDataProcInstruction();
   }
 }
@@ -585,8 +585,8 @@ void SchedulingLatencyVisitorARM::HandleGenerateLongDataProc(HDataProcWithShifte
     DCHECK_LT(shift_value, 32U);
 
     if (kind == HInstruction::kOr || kind == HInstruction::kXor) {
-      HandleGenerateDataProcInstruction(/* internal_latency */ true);
-      HandleGenerateDataProcInstruction(/* internal_latency */ true);
+      HandleGenerateDataProcInstruction(/* internal_latency= */ true);
+      HandleGenerateDataProcInstruction(/* internal_latency= */ true);
       HandleGenerateDataProcInstruction();
     } else {
       last_visited_internal_latency_ += 2 * kArmIntegerOpLatency;

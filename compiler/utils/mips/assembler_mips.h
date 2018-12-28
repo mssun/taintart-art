@@ -862,7 +862,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
     // We permit `base` and `temp` to coincide (however, we check that neither is AT),
     // in which case the `base` register may be overwritten in the process.
     CHECK_NE(temp, AT);  // Must not use AT as temp, so as not to overwrite the adjusted base.
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ (type == kStoreDoubleword));
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ (type == kStoreDoubleword));
     uint32_t low = Low32Bits(value);
     uint32_t high = High32Bits(value);
     Register reg;
@@ -917,7 +917,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
                       Register base,
                       int32_t offset,
                       ImplicitNullChecker null_checker = NoImplicitNullChecker()) {
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ (type == kLoadDoubleword));
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ (type == kLoadDoubleword));
     switch (type) {
       case kLoadSignedByte:
         Lb(reg, base, offset);
@@ -960,7 +960,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
                        Register base,
                        int32_t offset,
                        ImplicitNullChecker null_checker = NoImplicitNullChecker()) {
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ false, /* is_float */ true);
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ false, /* is_float= */ true);
     Lwc1(reg, base, offset);
     null_checker();
   }
@@ -970,7 +970,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
                        Register base,
                        int32_t offset,
                        ImplicitNullChecker null_checker = NoImplicitNullChecker()) {
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ true, /* is_float */ true);
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ true, /* is_float= */ true);
     if (IsAligned<kMipsDoublewordSize>(offset)) {
       Ldc1(reg, base, offset);
       null_checker();
@@ -1016,7 +1016,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
     // Must not use AT as `reg`, so as not to overwrite the value being stored
     // with the adjusted `base`.
     CHECK_NE(reg, AT);
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ (type == kStoreDoubleword));
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ (type == kStoreDoubleword));
     switch (type) {
       case kStoreByte:
         Sb(reg, base, offset);
@@ -1047,7 +1047,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
                       Register base,
                       int32_t offset,
                       ImplicitNullChecker null_checker = NoImplicitNullChecker()) {
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ false, /* is_float */ true);
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ false, /* is_float= */ true);
     Swc1(reg, base, offset);
     null_checker();
   }
@@ -1057,7 +1057,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
                       Register base,
                       int32_t offset,
                       ImplicitNullChecker null_checker = NoImplicitNullChecker()) {
-    AdjustBaseAndOffset(base, offset, /* is_doubleword */ true, /* is_float */ true);
+    AdjustBaseAndOffset(base, offset, /* is_doubleword= */ true, /* is_float= */ true);
     if (IsAligned<kMipsDoublewordSize>(offset)) {
       Sdc1(reg, base, offset);
       null_checker();

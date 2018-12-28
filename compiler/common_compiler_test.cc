@@ -197,7 +197,7 @@ void CommonCompilerTest::CreateCompilerDriver() {
   compiler_driver_.reset(new CompilerDriver(compiler_options_.get(),
                                             compiler_kind_,
                                             number_of_threads_,
-                                            /* swap_fd */ -1));
+                                            /* swap_fd= */ -1));
 }
 
 void CommonCompilerTest::SetUpRuntimeOptions(RuntimeOptions* options) {

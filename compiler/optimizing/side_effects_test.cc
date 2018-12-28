@@ -141,13 +141,13 @@ TEST(SideEffectsTest, NoDependences) {
 
 TEST(SideEffectsTest, VolatileDependences) {
   SideEffects volatile_write =
-      SideEffects::FieldWriteOfType(DataType::Type::kInt32, /* is_volatile */ true);
+      SideEffects::FieldWriteOfType(DataType::Type::kInt32, /* is_volatile= */ true);
   SideEffects any_write =
-      SideEffects::FieldWriteOfType(DataType::Type::kInt32, /* is_volatile */ false);
+      SideEffects::FieldWriteOfType(DataType::Type::kInt32, /* is_volatile= */ false);
   SideEffects volatile_read =
-      SideEffects::FieldReadOfType(DataType::Type::kInt8, /* is_volatile */ true);
+      SideEffects::FieldReadOfType(DataType::Type::kInt8, /* is_volatile= */ true);
   SideEffects any_read =
-      SideEffects::FieldReadOfType(DataType::Type::kInt8, /* is_volatile */ false);
+      SideEffects::FieldReadOfType(DataType::Type::kInt8, /* is_volatile= */ false);
 
   EXPECT_FALSE(volatile_write.MayDependOn(any_read));
   EXPECT_TRUE(any_read.MayDependOn(volatile_write));
@@ -163,15 +163,15 @@ TEST(SideEffectsTest, VolatileDependences) {
 TEST(SideEffectsTest, SameWidthTypesNoAlias) {
   // Type I/F.
   testNoWriteAndReadDependence(
-      SideEffects::FieldWriteOfType(DataType::Type::kInt32, /* is_volatile */ false),
-      SideEffects::FieldReadOfType(DataType::Type::kFloat32, /* is_volatile */ false));
+      SideEffects::FieldWriteOfType(DataType::Type::kInt32, /* is_volatile= */ false),
+      SideEffects::FieldReadOfType(DataType::Type::kFloat32, /* is_volatile= */ false));
   testNoWriteAndReadDependence(
       SideEffects::ArrayWriteOfType(DataType::Type::kInt32),
       SideEffects::ArrayReadOfType(DataType::Type::kFloat32));
   // Type L/D.
   testNoWriteAndReadDependence(
-      SideEffects::FieldWriteOfType(DataType::Type::kInt64, /* is_volatile */ false),
-      SideEffects::FieldReadOfType(DataType::Type::kFloat64, /* is_volatile */ false));
+      SideEffects::FieldWriteOfType(DataType::Type::kInt64, /* is_volatile= */ false),
+      SideEffects::FieldReadOfType(DataType::Type::kFloat64, /* is_volatile= */ false));
   testNoWriteAndReadDependence(
       SideEffects::ArrayWriteOfType(DataType::Type::kInt64),
       SideEffects::ArrayReadOfType(DataType::Type::kFloat64));
@@ -181,9 +181,9 @@ TEST(SideEffectsTest, AllWritesAndReads) {
   SideEffects s = SideEffects::None();
   // Keep taking the union of different writes and reads.
   for (DataType::Type type : kTestTypes) {
-    s = s.Union(SideEffects::FieldWriteOfType(type, /* is_volatile */ false));
+    s = s.Union(SideEffects::FieldWriteOfType(type, /* is_volatile= */ false));
     s = s.Union(SideEffects::ArrayWriteOfType(type));
-    s = s.Union(SideEffects::FieldReadOfType(type, /* is_volatile */ false));
+    s = s.Union(SideEffects::FieldReadOfType(type, /* is_volatile= */ false));
     s = s.Union(SideEffects::ArrayReadOfType(type));
   }
   EXPECT_TRUE(s.DoesAllReadWrite());
@@ -254,10 +254,10 @@ TEST(SideEffectsTest, BitStrings) {
       "||I|||||",
       SideEffects::ArrayReadOfType(DataType::Type::kInt32).ToString().c_str());
   SideEffects s = SideEffects::None();
-  s = s.Union(SideEffects::FieldWriteOfType(DataType::Type::kUint16, /* is_volatile */ false));
-  s = s.Union(SideEffects::FieldWriteOfType(DataType::Type::kInt64, /* is_volatile */ false));
+  s = s.Union(SideEffects::FieldWriteOfType(DataType::Type::kUint16, /* is_volatile= */ false));
+  s = s.Union(SideEffects::FieldWriteOfType(DataType::Type::kInt64, /* is_volatile= */ false));
   s = s.Union(SideEffects::ArrayWriteOfType(DataType::Type::kInt16));
-  s = s.Union(SideEffects::FieldReadOfType(DataType::Type::kInt32, /* is_volatile */ false));
+  s = s.Union(SideEffects::FieldReadOfType(DataType::Type::kInt32, /* is_volatile= */ false));
   s = s.Union(SideEffects::ArrayReadOfType(DataType::Type::kFloat32));
   s = s.Union(SideEffects::ArrayReadOfType(DataType::Type::kFloat64));
   EXPECT_STREQ("||DF|I||S|JC|", s.ToString().c_str());
