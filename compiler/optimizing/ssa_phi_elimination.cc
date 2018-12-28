@@ -141,7 +141,7 @@ bool SsaRedundantPhiElimination::Run() {
 
   ArenaBitVector visited_phis_in_cycle(&allocator,
                                        graph_->GetCurrentInstructionId(),
-                                       /* expandable */ false,
+                                       /* expandable= */ false,
                                        kArenaAllocSsaPhiElimination);
   visited_phis_in_cycle.ClearAllBits();
   ScopedArenaVector<HPhi*> cycle_worklist(allocator.Adapter(kArenaAllocSsaPhiElimination));

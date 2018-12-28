@@ -68,11 +68,11 @@ class RegisterAllocatorTest : public OptimizingUnitTest {
   bool ValidateIntervals(const ScopedArenaVector<LiveInterval*>& intervals,
                          const CodeGenerator& codegen) {
     return RegisterAllocator::ValidateIntervals(ArrayRef<LiveInterval* const>(intervals),
-                                                /* number_of_spill_slots */ 0u,
-                                                /* number_of_out_slots */ 0u,
+                                                /* number_of_spill_slots= */ 0u,
+                                                /* number_of_out_slots= */ 0u,
                                                 codegen,
-                                                /* processing_core_registers */ true,
-                                                /* log_fatal_on_failure */ false);
+                                                /* processing_core_registers= */ true,
+                                                /* log_fatal_on_failure= */ false);
   }
 };
 

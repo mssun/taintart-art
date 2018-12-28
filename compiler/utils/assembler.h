@@ -295,7 +295,7 @@ class DebugFrameOpCodeWriterForAssembler final
   void ImplicitlyAdvancePC() final;
 
   explicit DebugFrameOpCodeWriterForAssembler(Assembler* buffer)
-      : dwarf::DebugFrameOpCodeWriter<>(false /* enabled */),
+      : dwarf::DebugFrameOpCodeWriter<>(/* enabled= */ false),
         assembler_(buffer),
         delay_emitting_advance_pc_(false),
         delayed_advance_pcs_() {

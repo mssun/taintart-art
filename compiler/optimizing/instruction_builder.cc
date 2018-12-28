@@ -434,7 +434,7 @@ void HInstructionBuilder::BuildIntrinsic(ArtMethod* method) {
   HInvokeStaticOrDirect::DispatchInfo dispatch_info = {
       HInvokeStaticOrDirect::MethodLoadKind::kRuntimeCall,
       HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod,
-      /* method_load_data */ 0u
+      /* method_load_data= */ 0u
   };
   InvokeType invoke_type = dex_compilation_unit_->IsStatic() ? kStatic : kDirect;
   HInvokeStaticOrDirect* invoke = new (allocator_) HInvokeStaticOrDirect(
@@ -449,7 +449,7 @@ void HInstructionBuilder::BuildIntrinsic(ArtMethod* method) {
       target_method,
       HInvokeStaticOrDirect::ClinitCheckRequirement::kNone);
   RangeInstructionOperands operands(graph_->GetNumberOfVRegs() - in_vregs, in_vregs);
-  HandleInvoke(invoke, operands, dex_file_->GetMethodShorty(method_idx), /* is_unresolved */ false);
+  HandleInvoke(invoke, operands, dex_file_->GetMethodShorty(method_idx), /* is_unresolved= */ false);
 
   // Add the return instruction.
   if (return_type_ == DataType::Type::kVoid) {
@@ -468,7 +468,7 @@ void HInstructionBuilder::BuildIntrinsic(ArtMethod* method) {
 ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
   ArenaBitVector* locations = ArenaBitVector::Create(local_allocator_,
                                                      code_item_accessor_.InsnsSizeInCodeUnits(),
-                                                     /* expandable */ false,
+                                                     /* expandable= */ false,
                                                      kArenaAllocGraphBuilder);
   locations->ClearAllBits();
   // The visitor gets called when the line number changes.
@@ -567,7 +567,7 @@ void HInstructionBuilder::InitializeParameters() {
                                                               referrer_method_id.class_idx_,
                                                               parameter_index++,
                                                               DataType::Type::kReference,
-                                                              /* is_this */ true);
+                                                              /* is_this= */ true);
     AppendInstruction(parameter);
     UpdateLocal(locals_index++, parameter);
     number_of_parameters--;
@@ -584,7 +584,7 @@ void HInstructionBuilder::InitializeParameters() {
         arg_types->GetTypeItem(shorty_pos - 1).type_idx_,
         parameter_index++,
         DataType::FromShorty(shorty[shorty_pos]),
-        /* is_this */ false);
+        /* is_this= */ false);
     ++shorty_pos;
     AppendInstruction(parameter);
     // Store the parameter value in the local that the dex code will use
@@ -926,7 +926,7 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                                          dex_pc,
                                                          method_idx,
                                                          invoke_type);
-    return HandleInvoke(invoke, operands, shorty, /* is_unresolved */ true);
+    return HandleInvoke(invoke, operands, shorty, /* is_unresolved= */ true);
   }
 
   // Replace calls to String.<init> with StringFactory.
@@ -945,10 +945,10 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
     HInvoke* invoke = new (allocator_) HInvokeStaticOrDirect(
         allocator_,
         number_of_arguments - 1,
-        DataType::Type::kReference /*return_type */,
+        /* return_type= */ DataType::Type::kReference,
         dex_pc,
         method_idx,
-        nullptr /* resolved_method */,
+        /* resolved_method= */ nullptr,
         dispatch_info,
         invoke_type,
         target_method,
@@ -1010,7 +1010,7 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                                resolved_method,
                                                ImTable::GetImtIndex(resolved_method));
   }
-  return HandleInvoke(invoke, operands, shorty, /* is_unresolved */ false, clinit_check);
+  return HandleInvoke(invoke, operands, shorty, /* is_unresolved= */ false, clinit_check);
 }
 
 bool HInstructionBuilder::BuildInvokePolymorphic(uint32_t dex_pc,
@@ -1026,7 +1026,7 @@ bool HInstructionBuilder::BuildInvokePolymorphic(uint32_t dex_pc,
                                                         return_type,
                                                         dex_pc,
                                                         method_idx);
-  return HandleInvoke(invoke, operands, shorty, /* is_unresolved */ false);
+  return HandleInvoke(invoke, operands, shorty, /* is_unresolved= */ false);
 }
 
 
@@ -1042,7 +1042,7 @@ bool HInstructionBuilder::BuildInvokeCustom(uint32_t dex_pc,
                                                    call_site_idx,
                                                    return_type,
                                                    dex_pc);
-  return HandleInvoke(invoke, operands, shorty, /* is_unresolved */ false);
+  return HandleInvoke(invoke, operands, shorty, /* is_unresolved= */ false);
 }
 
 HNewInstance* HInstructionBuilder::BuildNewInstance(dex::TypeIndex type_index, uint32_t dex_pc) {
@@ -1370,7 +1370,7 @@ HClinitCheck* HInstructionBuilder::ProcessClinitCheckForInvoke(
                                      klass->GetDexFile(),
                                      klass,
                                      dex_pc,
-                                     /* needs_access_check */ false);
+                                     /* needs_access_check= */ false);
     if (cls != nullptr) {
       *clinit_check_requirement = HInvokeStaticOrDirect::ClinitCheckRequirement::kExplicit;
       clinit_check = new (allocator_) HClinitCheck(cls, dex_pc);
@@ -1539,7 +1539,7 @@ bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instructio
   }
 
   ScopedObjectAccess soa(Thread::Current());
-  ArtField* resolved_field = ResolveField(field_index, /* is_static */ false, is_put);
+  ArtField* resolved_field = ResolveField(field_index, /* is_static= */ false, is_put);
 
   // Generate an explicit null check on the reference, unless the field access
   // is unresolved. In that case, we rely on the runtime to perform various
@@ -1673,7 +1673,7 @@ void HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
   uint16_t field_index = instruction.VRegB_21c();
 
   ScopedObjectAccess soa(Thread::Current());
-  ArtField* resolved_field = ResolveField(field_index, /* is_static */ true, is_put);
+  ArtField* resolved_field = ResolveField(field_index, /* is_static= */ true, is_put);
 
   if (resolved_field == nullptr) {
     MaybeRecordStat(compilation_stats_,
@@ -1690,7 +1690,7 @@ void HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
                                         klass->GetDexFile(),
                                         klass,
                                         dex_pc,
-                                        /* needs_access_check */ false);
+                                        /* needs_access_check= */ false);
 
   if (constant == nullptr) {
     // The class cannot be referenced from this compiled code. Generate
@@ -2946,7 +2946,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::IGET_CHAR_QUICK:
     case Instruction::IGET_SHORT:
     case Instruction::IGET_SHORT_QUICK: {
-      if (!BuildInstanceFieldAccess(instruction, dex_pc, /* is_put */ false, quicken_index)) {
+      if (!BuildInstanceFieldAccess(instruction, dex_pc, /* is_put= */ false, quicken_index)) {
         return false;
       }
       break;
@@ -2966,7 +2966,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::IPUT_CHAR_QUICK:
     case Instruction::IPUT_SHORT:
     case Instruction::IPUT_SHORT_QUICK: {
-      if (!BuildInstanceFieldAccess(instruction, dex_pc, /* is_put */ true, quicken_index)) {
+      if (!BuildInstanceFieldAccess(instruction, dex_pc, /* is_put= */ true, quicken_index)) {
         return false;
       }
       break;
@@ -2979,7 +2979,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::SGET_BYTE:
     case Instruction::SGET_CHAR:
     case Instruction::SGET_SHORT: {
-      BuildStaticFieldAccess(instruction, dex_pc, /* is_put */ false);
+      BuildStaticFieldAccess(instruction, dex_pc, /* is_put= */ false);
       break;
     }
 
@@ -2990,7 +2990,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::SPUT_BYTE:
     case Instruction::SPUT_CHAR:
     case Instruction::SPUT_SHORT: {
-      BuildStaticFieldAccess(instruction, dex_pc, /* is_put */ true);
+      BuildStaticFieldAccess(instruction, dex_pc, /* is_put= */ true);
       break;
     }
 

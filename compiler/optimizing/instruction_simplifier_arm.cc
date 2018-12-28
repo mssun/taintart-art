@@ -43,11 +43,11 @@ class InstructionSimplifierArmVisitor : public HGraphVisitor {
   bool TryMergeIntoUsersShifterOperand(HInstruction* instruction);
   bool TryMergeIntoShifterOperand(HInstruction* use, HInstruction* bitfield_op, bool do_merge);
   bool CanMergeIntoShifterOperand(HInstruction* use, HInstruction* bitfield_op) {
-    return TryMergeIntoShifterOperand(use, bitfield_op, /* do_merge */ false);
+    return TryMergeIntoShifterOperand(use, bitfield_op, /* do_merge= */ false);
   }
   bool MergeIntoShifterOperand(HInstruction* use, HInstruction* bitfield_op) {
     DCHECK(CanMergeIntoShifterOperand(use, bitfield_op));
-    return TryMergeIntoShifterOperand(use, bitfield_op, /* do_merge */ true);
+    return TryMergeIntoShifterOperand(use, bitfield_op, /* do_merge= */ true);
   }
 
   /**

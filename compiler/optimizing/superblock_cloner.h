@@ -372,8 +372,8 @@ class PeelUnrollHelper : public ValueObject {
   // Returns whether the loop can be peeled/unrolled.
   bool IsLoopClonable() const { return cloner_.IsSubgraphClonable(); }
 
-  HBasicBlock* DoPeeling() { return DoPeelUnrollImpl(/* to_unroll */ false); }
-  HBasicBlock* DoUnrolling() { return DoPeelUnrollImpl(/* to_unroll */ true); }
+  HBasicBlock* DoPeeling() { return DoPeelUnrollImpl(/* to_unroll= */ false); }
+  HBasicBlock* DoUnrolling() { return DoPeelUnrollImpl(/* to_unroll= */ true); }
   HLoopInformation* GetRegionToBeAdjusted() const { return cloner_.GetRegionToBeAdjusted(); }
 
  protected:

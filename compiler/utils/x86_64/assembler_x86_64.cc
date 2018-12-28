@@ -2391,7 +2391,7 @@ void X86_64Assembler::cmpw(const Address& address, const Immediate& imm) {
   CHECK(imm.is_int32());
   EmitOperandSizeOverride();
   EmitOptionalRex32(address);
-  EmitComplex(7, address, imm, /* is_16_op */ true);
+  EmitComplex(7, address, imm, /* is_16_op= */ true);
 }
 
 
@@ -2805,7 +2805,7 @@ void X86_64Assembler::addw(const Address& address, const Immediate& imm) {
   CHECK(imm.is_uint16() || imm.is_int16()) << imm.value();
   EmitUint8(0x66);
   EmitOptionalRex32(address);
-  EmitComplex(0, address, imm, /* is_16_op */ true);
+  EmitComplex(0, address, imm, /* is_16_op= */ true);
 }
 
 

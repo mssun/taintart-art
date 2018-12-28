@@ -252,24 +252,24 @@ class InductionVarRangeTest : public OptimizingUnitTest {
 
   Value GetMin(HInductionVarAnalysis::InductionInfo* info,
                HInductionVarAnalysis::InductionInfo* trip) {
-    return range_.GetVal(info, trip, /* in_body */ true, /* is_min */ true);
+    return range_.GetVal(info, trip, /* in_body= */ true, /* is_min= */ true);
   }
 
   Value GetMax(HInductionVarAnalysis::InductionInfo* info,
                HInductionVarAnalysis::InductionInfo* trip) {
-    return range_.GetVal(info, trip, /* in_body */ true, /* is_min */ false);
+    return range_.GetVal(info, trip, /* in_body= */ true, /* is_min= */ false);
   }
 
   Value GetMul(HInductionVarAnalysis::InductionInfo* info1,
                HInductionVarAnalysis::InductionInfo* info2,
                bool is_min) {
-    return range_.GetMul(info1, info2, nullptr, /* in_body */ true, is_min);
+    return range_.GetMul(info1, info2, nullptr, /* in_body= */ true, is_min);
   }
 
   Value GetDiv(HInductionVarAnalysis::InductionInfo* info1,
                HInductionVarAnalysis::InductionInfo* info2,
                bool is_min) {
-    return range_.GetDiv(info1, info2, nullptr, /* in_body */ true, is_min);
+    return range_.GetDiv(info1, info2, nullptr, /* in_body= */ true, is_min);
   }
 
   Value GetRem(HInductionVarAnalysis::InductionInfo* info1,

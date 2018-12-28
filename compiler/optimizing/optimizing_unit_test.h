@@ -165,13 +165,13 @@ class OptimizingUnitTestHelper {
       const DexCompilationUnit* dex_compilation_unit =
           new (graph->GetAllocator()) DexCompilationUnit(
               handles_->NewHandle<mirror::ClassLoader>(nullptr),
-              /* class_linker */ nullptr,
+              /* class_linker= */ nullptr,
               graph->GetDexFile(),
               code_item,
-              /* class_def_index */ DexFile::kDexNoIndex16,
-              /* method_idx */ dex::kDexNoIndex,
-              /* access_flags */ 0u,
-              /* verified_method */ nullptr,
+              /* class_def_index= */ DexFile::kDexNoIndex16,
+              /* method_idx= */ dex::kDexNoIndex,
+              /* access_flags= */ 0u,
+              /* verified_method= */ nullptr,
               handles_->NewHandle<mirror::DexCache>(nullptr));
       CodeItemDebugInfoAccessor accessor(graph->GetDexFile(), code_item, /*dex_method_idx*/ 0u);
       HGraphBuilder builder(graph, dex_compilation_unit, accessor, handles_.get(), return_type);

@@ -130,10 +130,10 @@ class HGraphVisualizerDisassembler {
     // been generated, so we can read data in literal pools.
     disassembler_ = std::unique_ptr<Disassembler>((*create_disassembler)(
             instruction_set,
-            new DisassemblerOptions(/* absolute_addresses */ false,
+            new DisassemblerOptions(/* absolute_addresses= */ false,
                                     base_address,
                                     end_address,
-                                    /* can_read_literals */ true,
+                                    /* can_read_literals= */ true,
                                     Is64BitInstructionSet(instruction_set)
                                         ? &Thread::DumpThreadOffset<PointerSize::k64>
                                         : &Thread::DumpThreadOffset<PointerSize::k32>)));
@@ -924,8 +924,8 @@ void HGraphVisualizer::DumpGraphWithDisassembly() const {
     HGraphVisualizerPrinter printer(graph_,
                                     *output_,
                                     "disassembly",
-                                    /* is_after_pass */ true,
-                                    /* graph_in_bad_state */ false,
+                                    /* is_after_pass= */ true,
+                                    /* graph_in_bad_state= */ false,
                                     codegen_,
                                     codegen_.GetDisassemblyInformation());
     printer.Run();

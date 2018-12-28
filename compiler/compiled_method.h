@@ -136,7 +136,7 @@ class CompiledMethod final : public CompiledCode {
   // This affects debug information generated at link time.
   void MarkAsIntrinsic() {
     DCHECK(!IsIntrinsic());
-    SetPackedField<IsIntrinsicField>(/* value */ true);
+    SetPackedField<IsIntrinsicField>(/* value= */ true);
   }
 
   ArrayRef<const uint8_t> GetVmapTable() const;

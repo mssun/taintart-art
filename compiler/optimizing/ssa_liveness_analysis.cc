@@ -120,7 +120,7 @@ void SsaLivenessAnalysis::RecursivelyProcessInputs(HInstruction* current,
       DCHECK(input->HasSsaIndex());
       // `input` generates a result used by `current`. Add use and update
       // the live-in set.
-      input->GetLiveInterval()->AddUse(current, /* environment */ nullptr, i, actual_user);
+      input->GetLiveInterval()->AddUse(current, /* environment= */ nullptr, i, actual_user);
       live_in->SetBit(input->GetSsaIndex());
     } else if (has_out_location) {
       // `input` generates a result but it is not used by `current`.

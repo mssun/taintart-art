@@ -239,7 +239,7 @@ TEST_F(ArmVIXLAssemblerTest, VixlJniHelpers) {
   __ Load(scratch_register, FrameOffset(4092), 4);
   __ Load(scratch_register, FrameOffset(4096), 4);
   __ LoadRawPtrFromThread(scratch_register, ThreadOffset32(512));
-  __ LoadRef(method_register, scratch_register, MemberOffset(128), /* unpoison_reference */ false);
+  __ LoadRef(method_register, scratch_register, MemberOffset(128), /* unpoison_reference= */ false);
 
   // Stores
   __ Store(FrameOffset(32), method_register, 4);
@@ -284,7 +284,7 @@ TEST_F(ArmVIXLAssemblerTest, VixlJniHelpers) {
 
   __ DecreaseFrameSize(4096);
   __ DecreaseFrameSize(32);
-  __ RemoveFrame(frame_size, callee_save_regs, /* may_suspend */ true);
+  __ RemoveFrame(frame_size, callee_save_regs, /* may_suspend= */ true);
 
   EmitAndCheck(&assembler, "VixlJniHelpers");
 }

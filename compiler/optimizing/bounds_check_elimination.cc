@@ -1634,7 +1634,7 @@ class BCEVisitor : public HGraphVisitor {
         HBasicBlock* block = GetPreHeader(loop, check);
         HInstruction* cond =
             new (GetGraph()->GetAllocator()) HEqual(array, GetGraph()->GetNullConstant());
-        InsertDeoptInLoop(loop, block, cond, /* is_null_check */ true);
+        InsertDeoptInLoop(loop, block, cond, /* is_null_check= */ true);
         ReplaceInstruction(check, array);
         return true;
       }

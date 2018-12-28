@@ -23,7 +23,7 @@
 namespace art {
 
 TEST(CompiledMethodStorage, Deduplicate) {
-  CompiledMethodStorage storage(/* swap_fd */ -1);
+  CompiledMethodStorage storage(/* swap_fd= */ -1);
 
   ASSERT_TRUE(storage.DedupeEnabled());  // The default.
 
