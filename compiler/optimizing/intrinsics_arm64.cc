@@ -272,10 +272,10 @@ void IntrinsicLocationsBuilderARM64::VisitDoubleLongBitsToDouble(HInvoke* invoke
 }
 
 void IntrinsicCodeGeneratorARM64::VisitDoubleDoubleToRawLongBits(HInvoke* invoke) {
-  MoveFPToInt(invoke->GetLocations(), /* is64bit */ true, GetVIXLAssembler());
+  MoveFPToInt(invoke->GetLocations(), /* is64bit= */ true, GetVIXLAssembler());
 }
 void IntrinsicCodeGeneratorARM64::VisitDoubleLongBitsToDouble(HInvoke* invoke) {
-  MoveIntToFP(invoke->GetLocations(), /* is64bit */ true, GetVIXLAssembler());
+  MoveIntToFP(invoke->GetLocations(), /* is64bit= */ true, GetVIXLAssembler());
 }
 
 void IntrinsicLocationsBuilderARM64::VisitFloatFloatToRawIntBits(HInvoke* invoke) {
@@ -286,10 +286,10 @@ void IntrinsicLocationsBuilderARM64::VisitFloatIntBitsToFloat(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitFloatFloatToRawIntBits(HInvoke* invoke) {
-  MoveFPToInt(invoke->GetLocations(), /* is64bit */ false, GetVIXLAssembler());
+  MoveFPToInt(invoke->GetLocations(), /* is64bit= */ false, GetVIXLAssembler());
 }
 void IntrinsicCodeGeneratorARM64::VisitFloatIntBitsToFloat(HInvoke* invoke) {
-  MoveIntToFP(invoke->GetLocations(), /* is64bit */ false, GetVIXLAssembler());
+  MoveIntToFP(invoke->GetLocations(), /* is64bit= */ false, GetVIXLAssembler());
 }
 
 static void CreateIntToIntLocations(ArenaAllocator* allocator, HInvoke* invoke) {
@@ -618,7 +618,7 @@ void IntrinsicLocationsBuilderARM64::VisitMathRoundDouble(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitMathRoundDouble(HInvoke* invoke) {
-  GenMathRound(invoke, /* is_double */ true, GetVIXLAssembler());
+  GenMathRound(invoke, /* is_double= */ true, GetVIXLAssembler());
 }
 
 void IntrinsicLocationsBuilderARM64::VisitMathRoundFloat(HInvoke* invoke) {
@@ -626,7 +626,7 @@ void IntrinsicLocationsBuilderARM64::VisitMathRoundFloat(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitMathRoundFloat(HInvoke* invoke) {
-  GenMathRound(invoke, /* is_double */ false, GetVIXLAssembler());
+  GenMathRound(invoke, /* is_double= */ false, GetVIXLAssembler());
 }
 
 void IntrinsicLocationsBuilderARM64::VisitMemoryPeekByte(HInvoke* invoke) {
@@ -752,13 +752,13 @@ static void GenUnsafeGet(HInvoke* invoke,
                                                    trg_loc,
                                                    base,
                                                    MemOperand(temp.X()),
-                                                   /* needs_null_check */ false,
+                                                   /* needs_null_check= */ false,
                                                    is_volatile);
   } else {
     // Other cases.
     MemOperand mem_op(base.X(), offset);
     if (is_volatile) {
-      codegen->LoadAcquire(invoke, trg, mem_op, /* needs_null_check */ true);
+      codegen->LoadAcquire(invoke, trg, mem_op, /* needs_null_check= */ true);
     } else {
       codegen->Load(type, trg, mem_op);
     }
@@ -813,22 +813,22 @@ void IntrinsicLocationsBuilderARM64::VisitUnsafeGetObjectVolatile(HInvoke* invok
 }
 
 void IntrinsicCodeGeneratorARM64::VisitUnsafeGet(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile */ false, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile= */ false, codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafeGetVolatile(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile */ true, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile= */ true, codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafeGetLong(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kInt64, /* is_volatile */ false, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt64, /* is_volatile= */ false, codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafeGetLongVolatile(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kInt64, /* is_volatile */ true, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt64, /* is_volatile= */ true, codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafeGetObject(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile */ false, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile= */ false, codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafeGetObjectVolatile(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile */ true, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile= */ true, codegen_);
 }
 
 static void CreateIntIntIntIntToVoid(ArenaAllocator* allocator, HInvoke* invoke) {
@@ -896,7 +896,7 @@ static void GenUnsafePut(HInvoke* invoke,
     }
 
     if (is_volatile || is_ordered) {
-      codegen->StoreRelease(invoke, type, source, mem_op, /* needs_null_check */ false);
+      codegen->StoreRelease(invoke, type, source, mem_op, /* needs_null_check= */ false);
     } else {
       codegen->Store(type, source, mem_op);
     }
@@ -911,64 +911,64 @@ static void GenUnsafePut(HInvoke* invoke,
 void IntrinsicCodeGeneratorARM64::VisitUnsafePut(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kInt32,
-               /* is_volatile */ false,
-               /* is_ordered */ false,
+               /* is_volatile= */ false,
+               /* is_ordered= */ false,
                codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafePutOrdered(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kInt32,
-               /* is_volatile */ false,
-               /* is_ordered */ true,
+               /* is_volatile= */ false,
+               /* is_ordered= */ true,
                codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafePutVolatile(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kInt32,
-               /* is_volatile */ true,
-               /* is_ordered */ false,
+               /* is_volatile= */ true,
+               /* is_ordered= */ false,
                codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafePutObject(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kReference,
-               /* is_volatile */ false,
-               /* is_ordered */ false,
+               /* is_volatile= */ false,
+               /* is_ordered= */ false,
                codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafePutObjectOrdered(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kReference,
-               /* is_volatile */ false,
-               /* is_ordered */ true,
+               /* is_volatile= */ false,
+               /* is_ordered= */ true,
                codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafePutObjectVolatile(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kReference,
-               /* is_volatile */ true,
-               /* is_ordered */ false,
+               /* is_volatile= */ true,
+               /* is_ordered= */ false,
                codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafePutLong(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kInt64,
-               /* is_volatile */ false,
-               /* is_ordered */ false,
+               /* is_volatile= */ false,
+               /* is_ordered= */ false,
                codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafePutLongOrdered(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kInt64,
-               /* is_volatile */ false,
-               /* is_ordered */ true,
+               /* is_volatile= */ false,
+               /* is_ordered= */ true,
                codegen_);
 }
 void IntrinsicCodeGeneratorARM64::VisitUnsafePutLongVolatile(HInvoke* invoke) {
   GenUnsafePut(invoke,
                DataType::Type::kInt64,
-               /* is_volatile */ true,
-               /* is_ordered */ false,
+               /* is_volatile= */ true,
+               /* is_ordered= */ false,
                codegen_);
 }
 
@@ -1638,7 +1638,7 @@ void IntrinsicLocationsBuilderARM64::VisitStringIndexOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitStringIndexOf(HInvoke* invoke) {
-  GenerateVisitStringIndexOf(invoke, GetVIXLAssembler(), codegen_, /* start_at_zero */ true);
+  GenerateVisitStringIndexOf(invoke, GetVIXLAssembler(), codegen_, /* start_at_zero= */ true);
 }
 
 void IntrinsicLocationsBuilderARM64::VisitStringIndexOfAfter(HInvoke* invoke) {
@@ -1654,7 +1654,7 @@ void IntrinsicLocationsBuilderARM64::VisitStringIndexOfAfter(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitStringIndexOfAfter(HInvoke* invoke) {
-  GenerateVisitStringIndexOf(invoke, GetVIXLAssembler(), codegen_, /* start_at_zero */ false);
+  GenerateVisitStringIndexOf(invoke, GetVIXLAssembler(), codegen_, /* start_at_zero= */ false);
 }
 
 void IntrinsicLocationsBuilderARM64::VisitStringNewStringFromBytes(HInvoke* invoke) {
@@ -2456,8 +2456,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
                                                           src.W(),
                                                           class_offset,
                                                           temp3_loc,
-                                                          /* needs_null_check */ false,
-                                                          /* use_load_acquire */ false);
+                                                          /* needs_null_check= */ false,
+                                                          /* use_load_acquire= */ false);
           // Bail out if the source is not a non primitive array.
           // /* HeapReference<Class> */ temp1 = temp1->component_type_
           codegen_->GenerateFieldLoadWithBakerReadBarrier(invoke,
@@ -2465,8 +2465,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
                                                           temp1,
                                                           component_offset,
                                                           temp3_loc,
-                                                          /* needs_null_check */ false,
-                                                          /* use_load_acquire */ false);
+                                                          /* needs_null_check= */ false,
+                                                          /* use_load_acquire= */ false);
           __ Cbz(temp1, intrinsic_slow_path->GetEntryLabel());
           // If heap poisoning is enabled, `temp1` has been unpoisoned
           // by the the previous call to GenerateFieldLoadWithBakerReadBarrier.
@@ -2482,8 +2482,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
                                                         dest.W(),
                                                         class_offset,
                                                         temp3_loc,
-                                                        /* needs_null_check */ false,
-                                                        /* use_load_acquire */ false);
+                                                        /* needs_null_check= */ false,
+                                                        /* use_load_acquire= */ false);
 
         if (!optimizations.GetDestinationIsNonPrimitiveArray()) {
           // Bail out if the destination is not a non primitive array.
@@ -2499,8 +2499,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
                                                           temp1,
                                                           component_offset,
                                                           temp3_loc,
-                                                          /* needs_null_check */ false,
-                                                          /* use_load_acquire */ false);
+                                                          /* needs_null_check= */ false,
+                                                          /* use_load_acquire= */ false);
           __ Cbz(temp2, intrinsic_slow_path->GetEntryLabel());
           // If heap poisoning is enabled, `temp2` has been unpoisoned
           // by the the previous call to GenerateFieldLoadWithBakerReadBarrier.
@@ -2518,8 +2518,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
                                                         src.W(),
                                                         class_offset,
                                                         temp3_loc,
-                                                        /* needs_null_check */ false,
-                                                        /* use_load_acquire */ false);
+                                                        /* needs_null_check= */ false,
+                                                        /* use_load_acquire= */ false);
         // Note: if heap poisoning is on, we are comparing two unpoisoned references here.
         __ Cmp(temp1, temp2);
 
@@ -2532,8 +2532,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
                                                           temp1,
                                                           component_offset,
                                                           temp3_loc,
-                                                          /* needs_null_check */ false,
-                                                          /* use_load_acquire */ false);
+                                                          /* needs_null_check= */ false,
+                                                          /* use_load_acquire= */ false);
           // /* HeapReference<Class> */ temp1 = temp1->super_class_
           // We do not need to emit a read barrier for the following
           // heap reference load, as `temp1` is only used in a
@@ -2616,16 +2616,16 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
                                                         src.W(),
                                                         class_offset,
                                                         temp3_loc,
-                                                        /* needs_null_check */ false,
-                                                        /* use_load_acquire */ false);
+                                                        /* needs_null_check= */ false,
+                                                        /* use_load_acquire= */ false);
         // /* HeapReference<Class> */ temp2 = temp1->component_type_
         codegen_->GenerateFieldLoadWithBakerReadBarrier(invoke,
                                                         temp2_loc,
                                                         temp1,
                                                         component_offset,
                                                         temp3_loc,
-                                                        /* needs_null_check */ false,
-                                                        /* use_load_acquire */ false);
+                                                        /* needs_null_check= */ false,
+                                                        /* use_load_acquire= */ false);
         __ Cbz(temp2, intrinsic_slow_path->GetEntryLabel());
         // If heap poisoning is enabled, `temp2` has been unpoisoned
         // by the the previous call to GenerateFieldLoadWithBakerReadBarrier.
@@ -2779,7 +2779,7 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
   }
 
   // We only need one card marking on the destination array.
-  codegen_->MarkGCCard(dest.W(), Register(), /* value_can_be_null */ false);
+  codegen_->MarkGCCard(dest.W(), Register(), /* value_can_be_null= */ false);
 
   __ Bind(intrinsic_slow_path->GetExitLabel());
 }
@@ -2812,7 +2812,7 @@ void IntrinsicLocationsBuilderARM64::VisitFloatIsInfinite(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitFloatIsInfinite(HInvoke* invoke) {
-  GenIsInfinite(invoke->GetLocations(), /* is64bit */ false, GetVIXLAssembler());
+  GenIsInfinite(invoke->GetLocations(), /* is64bit= */ false, GetVIXLAssembler());
 }
 
 void IntrinsicLocationsBuilderARM64::VisitDoubleIsInfinite(HInvoke* invoke) {
@@ -2820,7 +2820,7 @@ void IntrinsicLocationsBuilderARM64::VisitDoubleIsInfinite(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitDoubleIsInfinite(HInvoke* invoke) {
-  GenIsInfinite(invoke->GetLocations(), /* is64bit */ true, GetVIXLAssembler());
+  GenIsInfinite(invoke->GetLocations(), /* is64bit= */ true, GetVIXLAssembler());
 }
 
 void IntrinsicLocationsBuilderARM64::VisitIntegerValueOf(HInvoke* invoke) {

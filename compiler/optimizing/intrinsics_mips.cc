@@ -185,7 +185,7 @@ void IntrinsicLocationsBuilderMIPS::VisitDoubleDoubleToRawLongBits(HInvoke* invo
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitDoubleDoubleToRawLongBits(HInvoke* invoke) {
-  MoveFPToInt(invoke->GetLocations(), /* is64bit */ true, GetAssembler());
+  MoveFPToInt(invoke->GetLocations(), /* is64bit= */ true, GetAssembler());
 }
 
 // int java.lang.Float.floatToRawIntBits(float)
@@ -194,7 +194,7 @@ void IntrinsicLocationsBuilderMIPS::VisitFloatFloatToRawIntBits(HInvoke* invoke)
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitFloatFloatToRawIntBits(HInvoke* invoke) {
-  MoveFPToInt(invoke->GetLocations(), /* is64bit */ false, GetAssembler());
+  MoveFPToInt(invoke->GetLocations(), /* is64bit= */ false, GetAssembler());
 }
 
 static void CreateIntToFPLocations(ArenaAllocator* allocator, HInvoke* invoke) {
@@ -226,7 +226,7 @@ void IntrinsicLocationsBuilderMIPS::VisitDoubleLongBitsToDouble(HInvoke* invoke)
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitDoubleLongBitsToDouble(HInvoke* invoke) {
-  MoveIntToFP(invoke->GetLocations(), /* is64bit */ true, GetAssembler());
+  MoveIntToFP(invoke->GetLocations(), /* is64bit= */ true, GetAssembler());
 }
 
 // float java.lang.Float.intBitsToFloat(int)
@@ -235,7 +235,7 @@ void IntrinsicLocationsBuilderMIPS::VisitFloatIntBitsToFloat(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitFloatIntBitsToFloat(HInvoke* invoke) {
-  MoveIntToFP(invoke->GetLocations(), /* is64bit */ false, GetAssembler());
+  MoveIntToFP(invoke->GetLocations(), /* is64bit= */ false, GetAssembler());
 }
 
 static void CreateIntToIntLocations(ArenaAllocator* allocator,
@@ -411,7 +411,7 @@ void IntrinsicCodeGeneratorMIPS::VisitIntegerReverseBytes(HInvoke* invoke) {
              DataType::Type::kInt32,
              IsR2OrNewer(),
              IsR6(),
-             /* reverseBits */ false,
+             /* reverseBits= */ false,
              GetAssembler());
 }
 
@@ -425,7 +425,7 @@ void IntrinsicCodeGeneratorMIPS::VisitLongReverseBytes(HInvoke* invoke) {
              DataType::Type::kInt64,
              IsR2OrNewer(),
              IsR6(),
-             /* reverseBits */ false,
+             /* reverseBits= */ false,
              GetAssembler());
 }
 
@@ -439,7 +439,7 @@ void IntrinsicCodeGeneratorMIPS::VisitShortReverseBytes(HInvoke* invoke) {
              DataType::Type::kInt16,
              IsR2OrNewer(),
              IsR6(),
-             /* reverseBits */ false,
+             /* reverseBits= */ false,
              GetAssembler());
 }
 
@@ -479,7 +479,7 @@ void IntrinsicLocationsBuilderMIPS::VisitIntegerNumberOfLeadingZeros(HInvoke* in
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitIntegerNumberOfLeadingZeros(HInvoke* invoke) {
-  GenNumberOfLeadingZeroes(invoke->GetLocations(), /* is64bit */ false, IsR6(), GetAssembler());
+  GenNumberOfLeadingZeroes(invoke->GetLocations(), /* is64bit= */ false, IsR6(), GetAssembler());
 }
 
 // int java.lang.Long.numberOfLeadingZeros(long i)
@@ -488,7 +488,7 @@ void IntrinsicLocationsBuilderMIPS::VisitLongNumberOfLeadingZeros(HInvoke* invok
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitLongNumberOfLeadingZeros(HInvoke* invoke) {
-  GenNumberOfLeadingZeroes(invoke->GetLocations(), /* is64bit */ true, IsR6(), GetAssembler());
+  GenNumberOfLeadingZeroes(invoke->GetLocations(), /* is64bit= */ true, IsR6(), GetAssembler());
 }
 
 static void GenNumberOfTrailingZeroes(LocationSummary* locations,
@@ -566,7 +566,7 @@ void IntrinsicLocationsBuilderMIPS::VisitIntegerNumberOfTrailingZeros(HInvoke* i
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitIntegerNumberOfTrailingZeros(HInvoke* invoke) {
-  GenNumberOfTrailingZeroes(invoke->GetLocations(), /* is64bit */ false, IsR6(), GetAssembler());
+  GenNumberOfTrailingZeroes(invoke->GetLocations(), /* is64bit= */ false, IsR6(), GetAssembler());
 }
 
 // int java.lang.Long.numberOfTrailingZeros(long i)
@@ -575,7 +575,7 @@ void IntrinsicLocationsBuilderMIPS::VisitLongNumberOfTrailingZeros(HInvoke* invo
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitLongNumberOfTrailingZeros(HInvoke* invoke) {
-  GenNumberOfTrailingZeroes(invoke->GetLocations(), /* is64bit */ true, IsR6(), GetAssembler());
+  GenNumberOfTrailingZeroes(invoke->GetLocations(), /* is64bit= */ true, IsR6(), GetAssembler());
 }
 
 // int java.lang.Integer.reverse(int)
@@ -588,7 +588,7 @@ void IntrinsicCodeGeneratorMIPS::VisitIntegerReverse(HInvoke* invoke) {
              DataType::Type::kInt32,
              IsR2OrNewer(),
              IsR6(),
-             /* reverseBits */ true,
+             /* reverseBits= */ true,
              GetAssembler());
 }
 
@@ -602,7 +602,7 @@ void IntrinsicCodeGeneratorMIPS::VisitLongReverse(HInvoke* invoke) {
              DataType::Type::kInt64,
              IsR2OrNewer(),
              IsR6(),
-             /* reverseBits */ true,
+             /* reverseBits= */ true,
              GetAssembler());
 }
 
@@ -1055,11 +1055,11 @@ static void GenUnsafeGet(HInvoke* invoke,
           codegen->GenerateReferenceLoadWithBakerReadBarrier(invoke,
                                                              trg_loc,
                                                              base,
-                                                             /* offset */ 0U,
-                                                             /* index */ offset_loc,
+                                                             /* offset= */ 0U,
+                                                             /* index= */ offset_loc,
                                                              TIMES_1,
                                                              temp,
-                                                             /* needs_null_check */ false);
+                                                             /* needs_null_check= */ false);
           if (is_volatile) {
             __ Sync(0);
           }
@@ -1077,8 +1077,8 @@ static void GenUnsafeGet(HInvoke* invoke,
                                            trg_loc,
                                            trg_loc,
                                            base_loc,
-                                           /* offset */ 0U,
-                                           /* index */ offset_loc);
+                                           /* offset= */ 0U,
+                                           /* index= */ offset_loc);
         }
       } else {
         if (is_R6) {
@@ -1107,7 +1107,7 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafeGet(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitUnsafeGet(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile */ false, IsR6(), codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile= */ false, IsR6(), codegen_);
 }
 
 // int sun.misc.Unsafe.getIntVolatile(Object o, long offset)
@@ -1116,7 +1116,7 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafeGetVolatile(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitUnsafeGetVolatile(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile */ true, IsR6(), codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile= */ true, IsR6(), codegen_);
 }
 
 // long sun.misc.Unsafe.getLong(Object o, long offset)
@@ -1125,7 +1125,7 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafeGetLong(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitUnsafeGetLong(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kInt64, /* is_volatile */ false, IsR6(), codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt64, /* is_volatile= */ false, IsR6(), codegen_);
 }
 
 // Object sun.misc.Unsafe.getObject(Object o, long offset)
@@ -1134,7 +1134,7 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafeGetObject(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitUnsafeGetObject(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile */ false, IsR6(), codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile= */ false, IsR6(), codegen_);
 }
 
 // Object sun.misc.Unsafe.getObjectVolatile(Object o, long offset)
@@ -1143,7 +1143,7 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafeGetObjectVolatile(HInvoke* invoke
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitUnsafeGetObjectVolatile(HInvoke* invoke) {
-  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile */ true, IsR6(), codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile= */ true, IsR6(), codegen_);
 }
 
 static void CreateIntIntIntIntToVoidLocations(ArenaAllocator* allocator, HInvoke* invoke) {
@@ -1225,8 +1225,8 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafePut(HInvoke* invoke) {
 void IntrinsicCodeGeneratorMIPS::VisitUnsafePut(HInvoke* invoke) {
   GenUnsafePut(invoke->GetLocations(),
                DataType::Type::kInt32,
-               /* is_volatile */ false,
-               /* is_ordered */ false,
+               /* is_volatile= */ false,
+               /* is_ordered= */ false,
                IsR6(),
                codegen_);
 }
@@ -1239,8 +1239,8 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafePutOrdered(HInvoke* invoke) {
 void IntrinsicCodeGeneratorMIPS::VisitUnsafePutOrdered(HInvoke* invoke) {
   GenUnsafePut(invoke->GetLocations(),
                DataType::Type::kInt32,
-               /* is_volatile */ false,
-               /* is_ordered */ true,
+               /* is_volatile= */ false,
+               /* is_ordered= */ true,
                IsR6(),
                codegen_);
 }
@@ -1253,8 +1253,8 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafePutVolatile(HInvoke* invoke) {
 void IntrinsicCodeGeneratorMIPS::VisitUnsafePutVolatile(HInvoke* invoke) {
   GenUnsafePut(invoke->GetLocations(),
                DataType::Type::kInt32,
-               /* is_volatile */ true,
-               /* is_ordered */ false,
+               /* is_volatile= */ true,
+               /* is_ordered= */ false,
                IsR6(),
                codegen_);
 }
@@ -1267,8 +1267,8 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafePutObject(HInvoke* invoke) {
 void IntrinsicCodeGeneratorMIPS::VisitUnsafePutObject(HInvoke* invoke) {
   GenUnsafePut(invoke->GetLocations(),
                DataType::Type::kReference,
-               /* is_volatile */ false,
-               /* is_ordered */ false,
+               /* is_volatile= */ false,
+               /* is_ordered= */ false,
                IsR6(),
                codegen_);
 }
@@ -1281,8 +1281,8 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafePutObjectOrdered(HInvoke* invoke)
 void IntrinsicCodeGeneratorMIPS::VisitUnsafePutObjectOrdered(HInvoke* invoke) {
   GenUnsafePut(invoke->GetLocations(),
                DataType::Type::kReference,
-               /* is_volatile */ false,
-               /* is_ordered */ true,
+               /* is_volatile= */ false,
+               /* is_ordered= */ true,
                IsR6(),
                codegen_);
 }
@@ -1295,8 +1295,8 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafePutObjectVolatile(HInvoke* invoke
 void IntrinsicCodeGeneratorMIPS::VisitUnsafePutObjectVolatile(HInvoke* invoke) {
   GenUnsafePut(invoke->GetLocations(),
                DataType::Type::kReference,
-               /* is_volatile */ true,
-               /* is_ordered */ false,
+               /* is_volatile= */ true,
+               /* is_ordered= */ false,
                IsR6(),
                codegen_);
 }
@@ -1309,8 +1309,8 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafePutLong(HInvoke* invoke) {
 void IntrinsicCodeGeneratorMIPS::VisitUnsafePutLong(HInvoke* invoke) {
   GenUnsafePut(invoke->GetLocations(),
                DataType::Type::kInt64,
-               /* is_volatile */ false,
-               /* is_ordered */ false,
+               /* is_volatile= */ false,
+               /* is_ordered= */ false,
                IsR6(),
                codegen_);
 }
@@ -1323,8 +1323,8 @@ void IntrinsicLocationsBuilderMIPS::VisitUnsafePutLongOrdered(HInvoke* invoke) {
 void IntrinsicCodeGeneratorMIPS::VisitUnsafePutLongOrdered(HInvoke* invoke) {
   GenUnsafePut(invoke->GetLocations(),
                DataType::Type::kInt64,
-               /* is_volatile */ false,
-               /* is_ordered */ true,
+               /* is_volatile= */ false,
+               /* is_ordered= */ true,
                IsR6(),
                codegen_);
 }
@@ -1388,12 +1388,12 @@ static void GenCas(HInvoke* invoke, DataType::Type type, CodeGeneratorMIPS* code
           invoke,
           out_loc,  // Unused, used only as a "temporary" within the read barrier.
           base,
-          /* offset */ 0u,
-          /* index */ offset_loc,
+          /* offset= */ 0u,
+          /* index= */ offset_loc,
           ScaleFactor::TIMES_1,
           temp,
-          /* needs_null_check */ false,
-          /* always_update_field */ true);
+          /* needs_null_check= */ false,
+          /* always_update_field= */ true);
     }
   }
 
@@ -1706,7 +1706,7 @@ void IntrinsicLocationsBuilderMIPS::VisitStringIndexOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitStringIndexOf(HInvoke* invoke) {
-  GenerateStringIndexOf(invoke, /* start_at_zero */ true, GetAssembler(), codegen_);
+  GenerateStringIndexOf(invoke, /* start_at_zero= */ true, GetAssembler(), codegen_);
 }
 
 // int java.lang.String.indexOf(int ch, int fromIndex)
@@ -1727,7 +1727,7 @@ void IntrinsicLocationsBuilderMIPS::VisitStringIndexOfAfter(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitStringIndexOfAfter(HInvoke* invoke) {
-  GenerateStringIndexOf(invoke, /* start_at_zero */ false, GetAssembler(), codegen_);
+  GenerateStringIndexOf(invoke, /* start_at_zero= */ false, GetAssembler(), codegen_);
 }
 
 // java.lang.StringFactory.newStringFromBytes(byte[] data, int high, int offset, int byteCount)

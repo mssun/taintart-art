@@ -58,7 +58,7 @@ class LinkerPatch {
   static LinkerPatch IntrinsicReferencePatch(size_t literal_offset,
                                              uint32_t pc_insn_offset,
                                              uint32_t intrinsic_data) {
-    LinkerPatch patch(literal_offset, Type::kIntrinsicReference, /* target_dex_file */ nullptr);
+    LinkerPatch patch(literal_offset, Type::kIntrinsicReference, /* target_dex_file= */ nullptr);
     patch.intrinsic_data_ = intrinsic_data;
     patch.pc_insn_offset_ = pc_insn_offset;
     return patch;
@@ -67,7 +67,7 @@ class LinkerPatch {
   static LinkerPatch DataBimgRelRoPatch(size_t literal_offset,
                                         uint32_t pc_insn_offset,
                                         uint32_t boot_image_offset) {
-    LinkerPatch patch(literal_offset, Type::kDataBimgRelRo, /* target_dex_file */ nullptr);
+    LinkerPatch patch(literal_offset, Type::kDataBimgRelRo, /* target_dex_file= */ nullptr);
     patch.boot_image_offset_ = boot_image_offset;
     patch.pc_insn_offset_ = pc_insn_offset;
     return patch;
@@ -144,7 +144,9 @@ class LinkerPatch {
   static LinkerPatch BakerReadBarrierBranchPatch(size_t literal_offset,
                                                  uint32_t custom_value1 = 0u,
                                                  uint32_t custom_value2 = 0u) {
-    LinkerPatch patch(literal_offset, Type::kBakerReadBarrierBranch, /* target_dex_file */ nullptr);
+    LinkerPatch patch(literal_offset,
+                      Type::kBakerReadBarrierBranch,
+                      /* target_dex_file= */ nullptr);
     patch.baker_custom_value1_ = custom_value1;
     patch.baker_custom_value2_ = custom_value2;
     return patch;

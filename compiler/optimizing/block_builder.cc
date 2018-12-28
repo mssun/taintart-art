@@ -415,7 +415,7 @@ void HBasicBlockBuilder::BuildIntrinsic() {
   // Create blocks.
   HBasicBlock* entry_block = new (allocator_) HBasicBlock(graph_, kNoDexPc);
   HBasicBlock* exit_block = new (allocator_) HBasicBlock(graph_, kNoDexPc);
-  HBasicBlock* body = MaybeCreateBlockAt(/* semantic_dex_pc */ kNoDexPc, /* store_dex_pc */ 0u);
+  HBasicBlock* body = MaybeCreateBlockAt(/* semantic_dex_pc= */ kNoDexPc, /* store_dex_pc= */ 0u);
 
   // Add blocks to the graph.
   graph_->AddBlock(entry_block);

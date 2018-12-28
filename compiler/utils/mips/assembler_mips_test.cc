@@ -2241,67 +2241,67 @@ TEST_F(AssemblerMIPSTest, Bc1t) {
 }
 
 TEST_F(AssemblerMIPSTest, BareB) {
-  BranchHelper(&mips::MipsAssembler::B, "B", /* is_bare */ true);
+  BranchHelper(&mips::MipsAssembler::B, "B", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBal) {
-  BranchHelper(&mips::MipsAssembler::Bal, "Bal", /* is_bare */ true);
+  BranchHelper(&mips::MipsAssembler::Bal, "Bal", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBeq) {
-  BranchCondTwoRegsHelper(&mips::MipsAssembler::Beq, "Beq", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Beq, "Beq", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBne) {
-  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bne, "Bne", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bne, "Bne", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBeqz) {
-  BranchCondOneRegHelper(&mips::MipsAssembler::Beqz, "Beqz", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips::MipsAssembler::Beqz, "Beqz", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBnez) {
-  BranchCondOneRegHelper(&mips::MipsAssembler::Bnez, "Bnez", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bnez, "Bnez", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBltz) {
-  BranchCondOneRegHelper(&mips::MipsAssembler::Bltz, "Bltz", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bltz, "Bltz", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBgez) {
-  BranchCondOneRegHelper(&mips::MipsAssembler::Bgez, "Bgez", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bgez, "Bgez", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBlez) {
-  BranchCondOneRegHelper(&mips::MipsAssembler::Blez, "Blez", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips::MipsAssembler::Blez, "Blez", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBgtz) {
-  BranchCondOneRegHelper(&mips::MipsAssembler::Bgtz, "Bgtz", /* is_bare */ true);
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bgtz, "Bgtz", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBlt) {
-  BranchCondTwoRegsHelper(&mips::MipsAssembler::Blt, "Blt", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Blt, "Blt", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBge) {
-  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bge, "Bge", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bge, "Bge", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBltu) {
-  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bltu, "Bltu", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bltu, "Bltu", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBgeu) {
-  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bgeu, "Bgeu", /* is_bare */ true);
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bgeu, "Bgeu", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBc1f) {
-  BranchFpuCondCodeHelper(&mips::MipsAssembler::Bc1f, "Bc1f", /* is_bare */ true);
+  BranchFpuCondCodeHelper(&mips::MipsAssembler::Bc1f, "Bc1f", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, BareBc1t) {
-  BranchFpuCondCodeHelper(&mips::MipsAssembler::Bc1t, "Bc1t", /* is_bare */ true);
+  BranchFpuCondCodeHelper(&mips::MipsAssembler::Bc1t, "Bc1t", /* is_bare= */ true);
 }
 
 TEST_F(AssemblerMIPSTest, ImpossibleReordering) {

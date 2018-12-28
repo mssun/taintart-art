@@ -172,8 +172,8 @@ JitCompiler::JitCompiler() {
   compiler_driver_.reset(new CompilerDriver(
       compiler_options_.get(),
       Compiler::kOptimizing,
-      /* thread_count */ 1,
-      /* swap_fd */ -1));
+      /* thread_count= */ 1,
+      /* swap_fd= */ -1));
   // Disable dedupe so we can remove compiled methods.
   compiler_driver_->SetDedupeEnabled(false);
 }

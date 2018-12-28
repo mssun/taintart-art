@@ -635,8 +635,8 @@ void GraphChecker::HandleTypeCheckInstruction(HTypeCheckInstruction* check) {
       }
     }
     CheckTypeCheckBitstringInput(
-        check, /* input_pos */ 2, check_values, expected_path_to_root, "path_to_root");
-    CheckTypeCheckBitstringInput(check, /* input_pos */ 3, check_values, expected_mask, "mask");
+        check, /* input_pos= */ 2, check_values, expected_path_to_root, "path_to_root");
+    CheckTypeCheckBitstringInput(check, /* input_pos= */ 3, check_values, expected_mask, "mask");
   } else {
     if (!input->IsLoadClass()) {
       AddError(StringPrintf("%s:%d (classic) expects a HLoadClass as second input, not %s:%d.",
@@ -931,7 +931,7 @@ void GraphChecker::VisitPhi(HPhi* phi) {
           // because the BitVector reallocation strategy has very bad worst-case behavior.
           ArenaBitVector visited(&allocator,
                                  GetGraph()->GetCurrentInstructionId(),
-                                 /* expandable */ false,
+                                 /* expandable= */ false,
                                  kArenaAllocGraphChecker);
           visited.ClearAllBits();
           if (!IsConstantEquivalent(phi, other_phi, &visited)) {

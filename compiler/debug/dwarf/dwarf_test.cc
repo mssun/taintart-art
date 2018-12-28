@@ -334,7 +334,7 @@ TEST_F(DwarfTest, DebugInfo) {
 
   std::vector<uintptr_t> debug_info_patches;
   std::vector<uintptr_t> expected_patches = { 16, 20, 29, 33, 42, 46 };
-  dwarf::WriteDebugInfoCU(0 /* debug_abbrev_offset */, info,
+  dwarf::WriteDebugInfoCU(/* debug_abbrev_offset= */ 0, info,
                           0, &debug_info_data_, &debug_info_patches);
 
   EXPECT_EQ(expected_patches, debug_info_patches);

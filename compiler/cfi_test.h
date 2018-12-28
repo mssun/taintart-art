@@ -53,13 +53,13 @@ class CFITest : public dwarf::DwarfTest {
     dwarf::WriteCIE(is64bit, dwarf::Reg(8), initial_opcodes, kCFIFormat, &debug_frame_data_);
     std::vector<uintptr_t> debug_frame_patches;
     dwarf::WriteFDE(is64bit,
-                    /* section_address */ 0,
-                    /* cie_address */ 0,
-                    /* code_address */ 0,
+                    /* section_address= */ 0,
+                    /* cie_address= */ 0,
+                    /* code_address= */ 0,
                     actual_asm.size(),
                     actual_cfi,
                     kCFIFormat,
-                    /* buffer_address */ 0,
+                    /* buffer_address= */ 0,
                     &debug_frame_data_,
                     &debug_frame_patches);
     ReformatCfi(Objdump(false, "-W"), &lines);

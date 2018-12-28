@@ -94,25 +94,25 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
   HInstruction* null_check = new (GetAllocator()) HNullCheck(array, 0);
   block->AddInstruction(null_check);
   HEnvironment* null_check_env = new (GetAllocator()) HEnvironment(GetAllocator(),
-                                                                   /* number_of_vregs */ 5,
-                                                                   /* method */ nullptr,
-                                                                   /* dex_pc */ 0u,
+                                                                   /* number_of_vregs= */ 5,
+                                                                   /* method= */ nullptr,
+                                                                   /* dex_pc= */ 0u,
                                                                    null_check);
   null_check_env->CopyFrom(ArrayRef<HInstruction* const>(args));
   null_check->SetRawEnvironment(null_check_env);
   HInstruction* length = new (GetAllocator()) HArrayLength(array, 0);
   block->AddInstruction(length);
-  HInstruction* bounds_check = new (GetAllocator()) HBoundsCheck(index, length, /* dex_pc */ 0u);
+  HInstruction* bounds_check = new (GetAllocator()) HBoundsCheck(index, length, /* dex_pc= */ 0u);
   block->AddInstruction(bounds_check);
   HEnvironment* bounds_check_env = new (GetAllocator()) HEnvironment(GetAllocator(),
-                                                                     /* number_of_vregs */ 5,
-                                                                     /* method */ nullptr,
-                                                                     /* dex_pc */ 0u,
+                                                                     /* number_of_vregs= */ 5,
+                                                                     /* method= */ nullptr,
+                                                                     /* dex_pc= */ 0u,
                                                                      bounds_check);
   bounds_check_env->CopyFrom(ArrayRef<HInstruction* const>(args));
   bounds_check->SetRawEnvironment(bounds_check_env);
   HInstruction* array_set =
-      new (GetAllocator()) HArraySet(array, index, value, DataType::Type::kInt32, /* dex_pc */ 0);
+      new (GetAllocator()) HArraySet(array, index, value, DataType::Type::kInt32, /* dex_pc= */ 0);
   block->AddInstruction(array_set);
 
   graph_->BuildDominatorTree();
@@ -163,9 +163,9 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
   HInstruction* null_check = new (GetAllocator()) HNullCheck(array, 0);
   block->AddInstruction(null_check);
   HEnvironment* null_check_env = new (GetAllocator()) HEnvironment(GetAllocator(),
-                                                                   /* number_of_vregs */ 5,
-                                                                   /* method */ nullptr,
-                                                                   /* dex_pc */ 0u,
+                                                                   /* number_of_vregs= */ 5,
+                                                                   /* method= */ nullptr,
+                                                                   /* dex_pc= */ 0u,
                                                                    null_check);
   null_check_env->CopyFrom(ArrayRef<HInstruction* const>(args));
   null_check->SetRawEnvironment(null_check_env);
@@ -175,17 +175,17 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
   HInstruction* ae = new (GetAllocator()) HAboveOrEqual(index, length);
   block->AddInstruction(ae);
   HInstruction* deoptimize = new(GetAllocator()) HDeoptimize(
-      GetAllocator(), ae, DeoptimizationKind::kBlockBCE, /* dex_pc */ 0u);
+      GetAllocator(), ae, DeoptimizationKind::kBlockBCE, /* dex_pc= */ 0u);
   block->AddInstruction(deoptimize);
   HEnvironment* deoptimize_env = new (GetAllocator()) HEnvironment(GetAllocator(),
-                                                                   /* number_of_vregs */ 5,
-                                                                   /* method */ nullptr,
-                                                                   /* dex_pc */ 0u,
+                                                                   /* number_of_vregs= */ 5,
+                                                                   /* method= */ nullptr,
+                                                                   /* dex_pc= */ 0u,
                                                                    deoptimize);
   deoptimize_env->CopyFrom(ArrayRef<HInstruction* const>(args));
   deoptimize->SetRawEnvironment(deoptimize_env);
   HInstruction* array_set =
-      new (GetAllocator()) HArraySet(array, index, value, DataType::Type::kInt32, /* dex_pc */ 0);
+      new (GetAllocator()) HArraySet(array, index, value, DataType::Type::kInt32, /* dex_pc= */ 0);
   block->AddInstruction(array_set);
 
   graph_->BuildDominatorTree();

@@ -148,7 +148,7 @@ class SchedulerTest : public OptimizingUnitTest {
 
     SchedulingGraph scheduling_graph(scheduler,
                                      GetScopedAllocator(),
-                                     /* heap_location_collector */ nullptr);
+                                     /* heap_location_collector= */ nullptr);
     // Instructions must be inserted in reverse order into the scheduling graph.
     for (HInstruction* instr : ReverseRange(block_instructions)) {
       scheduling_graph.AddNode(instr);

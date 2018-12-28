@@ -473,7 +473,7 @@ void DexToDexCompiler::CompilationState::CompileInvokeVirtual(Instruction* inst,
           method_idx,
           unit_.GetDexCache(),
           unit_.GetClassLoader(),
-          /* referrer */ nullptr,
+          /* referrer= */ nullptr,
           kVirtual);
 
   if (UNLIKELY(resolved_method == nullptr)) {
