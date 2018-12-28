@@ -18,6 +18,7 @@ art_runtime_base_native_shared_libs = [
     "libopenjdkjvm",
     "libopenjdkjvmti",
     "libadbconnection",
+    "libjavacrypto",
 ]
 bionic_native_shared_libs = [
     "libc",
@@ -51,6 +52,7 @@ art_runtime_debug_native_shared_libs = [
     "libopenjdkjvmd",
     "libopenjdkjvmtid",
     "libadbconnectiond",
+    "libjavacrypto",
 ]
 
 // Files associated with bionic / managed core library time zone APIs.
