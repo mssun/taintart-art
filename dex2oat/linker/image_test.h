@@ -492,7 +492,7 @@ inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode,
       CHECK_EQ(kRequestedImageBase, reinterpret_cast<uintptr_t>(image_begin));
     }
     for (size_t j = 0; j < dex->NumClassDefs(); ++j) {
-      const DexFile::ClassDef& class_def = dex->GetClassDef(j);
+      const dex::ClassDef& class_def = dex->GetClassDef(j);
       const char* descriptor = dex->GetClassDescriptor(class_def);
       ObjPtr<mirror::Class> klass = class_linker_->FindSystemClass(soa.Self(), descriptor);
       EXPECT_TRUE(klass != nullptr) << descriptor;

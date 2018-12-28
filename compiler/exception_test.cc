@@ -135,8 +135,8 @@ TEST_F(ExceptionTest, FindCatchHandler) {
   ASSERT_EQ(2u, accessor.TriesSize());
   ASSERT_NE(0u, accessor.InsnsSizeInCodeUnits());
 
-  const DexFile::TryItem& t0 = accessor.TryItems().begin()[0];
-  const DexFile::TryItem& t1 = accessor.TryItems().begin()[1];
+  const dex::TryItem& t0 = accessor.TryItems().begin()[0];
+  const dex::TryItem& t1 = accessor.TryItems().begin()[1];
   EXPECT_LE(t0.start_addr_, t1.start_addr_);
   {
     CatchHandlerIterator iter(accessor, 4 /* Dex PC in the first try block */);

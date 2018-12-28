@@ -55,7 +55,7 @@ bool CompactDexFile::SupportsDefaultMethods() const {
       static_cast<uint32_t>(FeatureFlags::kDefaultMethods)) != 0;
 }
 
-uint32_t CompactDexFile::GetCodeItemSize(const DexFile::CodeItem& item) const {
+uint32_t CompactDexFile::GetCodeItemSize(const dex::CodeItem& item) const {
   DCHECK(IsInDataSection(&item));
   return reinterpret_cast<uintptr_t>(CodeItemDataAccessor(*this, &item).CodeItemDataEnd()) -
       reinterpret_cast<uintptr_t>(&item);

@@ -131,15 +131,15 @@ const RegisterValue& VeriFlowAnalysis::GetRegister(uint32_t dex_register) const 
 
 RegisterValue VeriFlowAnalysis::GetReturnType(uint32_t method_index) {
   const DexFile& dex_file = resolver_->GetDexFile();
-  const DexFile::MethodId& method_id = dex_file.GetMethodId(method_index);
-  const DexFile::ProtoId& proto_id = dex_file.GetMethodPrototype(method_id);
+  const dex::MethodId& method_id = dex_file.GetMethodId(method_index);
+  const dex::ProtoId& proto_id = dex_file.GetMethodPrototype(method_id);
   VeriClass* cls = resolver_->GetVeriClass(proto_id.return_type_idx_);
   return RegisterValue(RegisterSource::kMethod, DexFileReference(&dex_file, method_index), cls);
 }
 
 RegisterValue VeriFlowAnalysis::GetFieldType(uint32_t field_index) {
   const DexFile& dex_file = resolver_->GetDexFile();
-  const DexFile::FieldId& field_id = dex_file.GetFieldId(field_index);
+  const dex::FieldId& field_id = dex_file.GetFieldId(field_index);
   VeriClass* cls = resolver_->GetVeriClass(field_id.type_idx_);
   return RegisterValue(RegisterSource::kField, DexFileReference(&dex_file, field_index), cls);
 }
@@ -716,7 +716,7 @@ RegisterValue FlowAnalysisCollector::AnalyzeInvoke(const Instruction& instructio
     RegisterValue obj = GetRegister(GetParameterAt(instruction, is_range, args, 0));
     const VeriClass* cls = obj.GetType();
     if (cls != nullptr && cls->GetClassDef() != nullptr) {
-      const DexFile::ClassDef* def = cls->GetClassDef();
+      const dex::ClassDef* def = cls->GetClassDef();
       return RegisterValue(
           RegisterSource::kClass,
           DexFileReference(&resolver_->GetDexFileOf(*cls), def->class_idx_.index_),

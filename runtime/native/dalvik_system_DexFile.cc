@@ -383,7 +383,7 @@ static jclass DexFile_defineClassNative(JNIEnv* env,
   const std::string descriptor(DotToDescriptor(class_name.c_str()));
   const size_t hash(ComputeModifiedUtf8Hash(descriptor.c_str()));
   for (auto& dex_file : dex_files) {
-    const DexFile::ClassDef* dex_class_def =
+    const dex::ClassDef* dex_class_def =
         OatDexFile::FindClassDef(*dex_file, descriptor.c_str(), hash);
     if (dex_class_def != nullptr) {
       ScopedObjectAccess soa(env);
@@ -440,7 +440,7 @@ static jobjectArray DexFile_getClassNameList(JNIEnv* env, jclass, jobject cookie
   std::set<const char*, CharPointerComparator> descriptors;
   for (auto& dex_file : dex_files) {
     for (size_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
+      const dex::ClassDef& class_def = dex_file->GetClassDef(i);
       const char* descriptor = dex_file->GetClassDescriptor(class_def);
       descriptors.insert(descriptor);
     }

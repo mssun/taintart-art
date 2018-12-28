@@ -186,7 +186,7 @@ class TypeIndexInfo {
   static BitVector GenerateTypeIndexes(const DexFile* dex_file) {
     BitVector type_indexes(/*start_bits=*/0, /*expandable=*/true, Allocator::GetMallocAllocator());
     for (uint16_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
+      const dex::ClassDef& class_def = dex_file->GetClassDef(i);
       uint16_t type_idx = class_def.class_idx_.index_;
       type_indexes.SetBit(type_idx);
     }

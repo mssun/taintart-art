@@ -107,13 +107,13 @@ TEST_F(ArtDexFileLoaderTest, ClassDefs) {
   ASSERT_TRUE(raw.get() != nullptr);
   EXPECT_EQ(3U, raw->NumClassDefs());
 
-  const DexFile::ClassDef& c0 = raw->GetClassDef(0);
+  const dex::ClassDef& c0 = raw->GetClassDef(0);
   EXPECT_STREQ("LNested$1;", raw->GetClassDescriptor(c0));
 
-  const DexFile::ClassDef& c1 = raw->GetClassDef(1);
+  const dex::ClassDef& c1 = raw->GetClassDef(1);
   EXPECT_STREQ("LNested$Inner;", raw->GetClassDescriptor(c1));
 
-  const DexFile::ClassDef& c2 = raw->GetClassDef(2);
+  const dex::ClassDef& c2 = raw->GetClassDef(2);
   EXPECT_STREQ("LNested;", raw->GetClassDescriptor(c2));
 }
 
@@ -122,7 +122,7 @@ TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
   ASSERT_TRUE(raw.get() != nullptr);
   EXPECT_EQ(1U, raw->NumClassDefs());
 
-  const DexFile::ClassDef& class_def = raw->GetClassDef(0);
+  const dex::ClassDef& class_def = raw->GetClassDef(0);
   ASSERT_STREQ("LGetMethodSignature;", raw->GetClassDescriptor(class_def));
 
   ClassAccessor accessor(*raw, class_def);
@@ -133,7 +133,7 @@ TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
   // Check the signature for the static initializer.
   {
     ASSERT_EQ(1U, accessor.NumDirectMethods());
-    const DexFile::MethodId& method_id = raw->GetMethodId(cur_method->GetIndex());
+    const dex::MethodId& method_id = raw->GetMethodId(cur_method->GetIndex());
     const char* name = raw->StringDataByIdx(method_id.name_idx_);
     ASSERT_STREQ("<init>", name);
     std::string signature(raw->GetMethodSignature(method_id).ToString());
@@ -207,7 +207,7 @@ TEST_F(ArtDexFileLoaderTest, GetMethodSignature) {
   for (const Result& r : results) {
     ++cur_method;
     ASSERT_TRUE(cur_method != methods.end());
-    const DexFile::MethodId& method_id = raw->GetMethodId(cur_method->GetIndex());
+    const dex::MethodId& method_id = raw->GetMethodId(cur_method->GetIndex());
 
     const char* name = raw->StringDataByIdx(method_id.name_idx_);
     ASSERT_STREQ(r.name, name);
@@ -232,7 +232,7 @@ TEST_F(ArtDexFileLoaderTest, FindStringId) {
       "D", "I", "J", nullptr };
   for (size_t i = 0; strings[i] != nullptr; i++) {
     const char* str = strings[i];
-    const DexFile::StringId* str_id = raw->FindStringId(str);
+    const dex::StringId* str_id = raw->FindStringId(str);
     const char* dex_str = raw->GetStringData(*str_id);
     EXPECT_STREQ(dex_str, str);
   }
@@ -241,10 +241,10 @@ TEST_F(ArtDexFileLoaderTest, FindStringId) {
 TEST_F(ArtDexFileLoaderTest, FindTypeId) {
   for (size_t i = 0; i < java_lang_dex_file_->NumTypeIds(); i++) {
     const char* type_str = java_lang_dex_file_->StringByTypeIdx(dex::TypeIndex(i));
-    const DexFile::StringId* type_str_id = java_lang_dex_file_->FindStringId(type_str);
+    const dex::StringId* type_str_id = java_lang_dex_file_->FindStringId(type_str);
     ASSERT_TRUE(type_str_id != nullptr);
     dex::StringIndex type_str_idx = java_lang_dex_file_->GetIndexForStringId(*type_str_id);
-    const DexFile::TypeId* type_id = java_lang_dex_file_->FindTypeId(type_str_idx);
+    const dex::TypeId* type_id = java_lang_dex_file_->FindTypeId(type_str_idx);
     ASSERT_EQ(type_id, java_lang_dex_file_->FindTypeId(type_str));
     ASSERT_TRUE(type_id != nullptr);
     EXPECT_EQ(java_lang_dex_file_->GetIndexForTypeId(*type_id).index_, i);
@@ -253,15 +253,15 @@ TEST_F(ArtDexFileLoaderTest, FindTypeId) {
 
 TEST_F(ArtDexFileLoaderTest, FindProtoId) {
   for (size_t i = 0; i < java_lang_dex_file_->NumProtoIds(); i++) {
-    const DexFile::ProtoId& to_find = java_lang_dex_file_->GetProtoId(dex::ProtoIndex(i));
-    const DexFile::TypeList* to_find_tl = java_lang_dex_file_->GetProtoParameters(to_find);
+    const dex::ProtoId& to_find = java_lang_dex_file_->GetProtoId(dex::ProtoIndex(i));
+    const dex::TypeList* to_find_tl = java_lang_dex_file_->GetProtoParameters(to_find);
     std::vector<dex::TypeIndex> to_find_types;
     if (to_find_tl != nullptr) {
       for (size_t j = 0; j < to_find_tl->Size(); j++) {
         to_find_types.push_back(to_find_tl->GetTypeItem(j).type_idx_);
       }
     }
-    const DexFile::ProtoId* found =
+    const dex::ProtoId* found =
         java_lang_dex_file_->FindProtoId(to_find.return_type_idx_, to_find_types);
     ASSERT_TRUE(found != nullptr);
     EXPECT_EQ(java_lang_dex_file_->GetIndexForProtoId(*found), dex::ProtoIndex(i));
@@ -270,11 +270,11 @@ TEST_F(ArtDexFileLoaderTest, FindProtoId) {
 
 TEST_F(ArtDexFileLoaderTest, FindMethodId) {
   for (size_t i = 0; i < java_lang_dex_file_->NumMethodIds(); i++) {
-    const DexFile::MethodId& to_find = java_lang_dex_file_->GetMethodId(i);
-    const DexFile::TypeId& klass = java_lang_dex_file_->GetTypeId(to_find.class_idx_);
-    const DexFile::StringId& name = java_lang_dex_file_->GetStringId(to_find.name_idx_);
-    const DexFile::ProtoId& signature = java_lang_dex_file_->GetProtoId(to_find.proto_idx_);
-    const DexFile::MethodId* found = java_lang_dex_file_->FindMethodId(klass, name, signature);
+    const dex::MethodId& to_find = java_lang_dex_file_->GetMethodId(i);
+    const dex::TypeId& klass = java_lang_dex_file_->GetTypeId(to_find.class_idx_);
+    const dex::StringId& name = java_lang_dex_file_->GetStringId(to_find.name_idx_);
+    const dex::ProtoId& signature = java_lang_dex_file_->GetProtoId(to_find.proto_idx_);
+    const dex::MethodId* found = java_lang_dex_file_->FindMethodId(klass, name, signature);
     ASSERT_TRUE(found != nullptr) << "Didn't find method " << i << ": "
         << java_lang_dex_file_->StringByTypeIdx(to_find.class_idx_) << "."
         << java_lang_dex_file_->GetStringData(name)
@@ -285,11 +285,11 @@ TEST_F(ArtDexFileLoaderTest, FindMethodId) {
 
 TEST_F(ArtDexFileLoaderTest, FindFieldId) {
   for (size_t i = 0; i < java_lang_dex_file_->NumFieldIds(); i++) {
-    const DexFile::FieldId& to_find = java_lang_dex_file_->GetFieldId(i);
-    const DexFile::TypeId& klass = java_lang_dex_file_->GetTypeId(to_find.class_idx_);
-    const DexFile::StringId& name = java_lang_dex_file_->GetStringId(to_find.name_idx_);
-    const DexFile::TypeId& type = java_lang_dex_file_->GetTypeId(to_find.type_idx_);
-    const DexFile::FieldId* found = java_lang_dex_file_->FindFieldId(klass, name, type);
+    const dex::FieldId& to_find = java_lang_dex_file_->GetFieldId(i);
+    const dex::TypeId& klass = java_lang_dex_file_->GetTypeId(to_find.class_idx_);
+    const dex::StringId& name = java_lang_dex_file_->GetStringId(to_find.name_idx_);
+    const dex::TypeId& type = java_lang_dex_file_->GetTypeId(to_find.type_idx_);
+    const dex::FieldId* found = java_lang_dex_file_->FindFieldId(klass, name, type);
     ASSERT_TRUE(found != nullptr) << "Didn't find field " << i << ": "
         << java_lang_dex_file_->StringByTypeIdx(to_find.type_idx_) << " "
         << java_lang_dex_file_->StringByTypeIdx(to_find.class_idx_) << "."

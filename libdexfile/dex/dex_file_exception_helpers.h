@@ -17,9 +17,15 @@
 #ifndef ART_LIBDEXFILE_DEX_DEX_FILE_EXCEPTION_HELPERS_H_
 #define ART_LIBDEXFILE_DEX_DEX_FILE_EXCEPTION_HELPERS_H_
 
-#include "dex_file.h"
+#include <android-base/logging.h>
+
+#include "dex_file_types.h"
 
 namespace art {
+
+namespace dex {
+struct TryItem;
+}  // namespace dex
 
 class CodeItemDataAccessor;
 
@@ -27,7 +33,7 @@ class CatchHandlerIterator {
  public:
   CatchHandlerIterator(const CodeItemDataAccessor& accessor, uint32_t address);
 
-  CatchHandlerIterator(const CodeItemDataAccessor& accessor, const DexFile::TryItem& try_item);
+  CatchHandlerIterator(const CodeItemDataAccessor& accessor, const dex::TryItem& try_item);
 
   explicit CatchHandlerIterator(const uint8_t* handler_data) {
     Init(handler_data);

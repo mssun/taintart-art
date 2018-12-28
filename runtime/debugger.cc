@@ -3927,7 +3927,7 @@ JDWP::JdwpError Dbg::PrepareInvokeMethod(uint32_t request_id, JDWP::ObjectId thr
       StackHandleScope<2> hs(soa.Self());
       HandleWrapper<mirror::Object> h_obj(hs.NewHandleWrapper(&receiver));
       HandleWrapper<mirror::Class> h_klass(hs.NewHandleWrapper(&c));
-      const DexFile::TypeList* types = m->GetParameterTypeList();
+      const dex::TypeList* types = m->GetParameterTypeList();
       for (size_t i = 0; i < arg_count; ++i) {
         if (shorty[i + 1] != JdwpTagToShortyChar(arg_types[i])) {
           return JDWP::ERR_ILLEGAL_ARGUMENT;

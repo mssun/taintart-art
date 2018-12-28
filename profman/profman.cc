@@ -615,14 +615,14 @@ class ProfMan final {
                                             &startup_methods,
                                             &post_startup_methods)) {
         for (const dex::TypeIndex& type_index : class_types) {
-          const DexFile::TypeId& type_id = dex_file->GetTypeId(type_index);
+          const dex::TypeId& type_id = dex_file->GetTypeId(type_index);
           out_lines->insert(std::string(dex_file->GetTypeDescriptor(type_id)));
         }
         combined_methods = hot_methods;
         combined_methods.insert(startup_methods.begin(), startup_methods.end());
         combined_methods.insert(post_startup_methods.begin(), post_startup_methods.end());
         for (uint16_t dex_method_idx : combined_methods) {
-          const DexFile::MethodId& id = dex_file->GetMethodId(dex_method_idx);
+          const dex::MethodId& id = dex_file->GetMethodId(dex_method_idx);
           std::string signature_string(dex_file->GetMethodSignature(id).ToString());
           std::string type_string(dex_file->GetTypeDescriptor(dex_file->GetTypeId(id.class_idx_)));
           std::string method_name(dex_file->GetMethodName(id));
@@ -782,7 +782,7 @@ class ProfMan final {
         }
       }
 
-      const DexFile::TypeId* type_id = dex_file->FindTypeId(klass_descriptor.c_str());
+      const dex::TypeId* type_id = dex_file->FindTypeId(klass_descriptor.c_str());
       if (type_id == nullptr) {
         continue;
       }
@@ -818,7 +818,7 @@ class ProfMan final {
     const std::string& name = name_and_signature[0];
     const std::string& signature = kProfileParsingFirstCharInSignature + name_and_signature[1];
 
-    const DexFile::StringId* name_id = dex_file->FindStringId(name.c_str());
+    const dex::StringId* name_id = dex_file->FindStringId(name.c_str());
     if (name_id == nullptr) {
       LOG(WARNING) << "Could not find name: "  << name;
       return dex::kDexNoIndex;
@@ -829,12 +829,12 @@ class ProfMan final {
       LOG(WARNING) << "Could not create type list" << signature;
       return dex::kDexNoIndex;
     }
-    const DexFile::ProtoId* proto_id = dex_file->FindProtoId(return_type_idx, param_type_idxs);
+    const dex::ProtoId* proto_id = dex_file->FindProtoId(return_type_idx, param_type_idxs);
     if (proto_id == nullptr) {
       LOG(WARNING) << "Could not find proto_id: " << name;
       return dex::kDexNoIndex;
     }
-    const DexFile::MethodId* method_id = dex_file->FindMethodId(
+    const dex::MethodId* method_id = dex_file->FindMethodId(
         dex_file->GetTypeId(class_ref.TypeIndex()), *name_id, *proto_id);
     if (method_id == nullptr) {
       LOG(WARNING) << "Could not find method_id: " << name;
@@ -857,7 +857,7 @@ class ProfMan final {
     uint32_t offset = dex_file->FindCodeItemOffset(
         *dex_file->FindClassDef(class_ref.TypeIndex()),
         method_index);
-    const DexFile::CodeItem* code_item = dex_file->GetCodeItem(offset);
+    const dex::CodeItem* code_item = dex_file->GetCodeItem(offset);
 
     bool found_invoke = false;
     for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(*dex_file, code_item)) {

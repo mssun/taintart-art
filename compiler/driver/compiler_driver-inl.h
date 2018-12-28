@@ -57,7 +57,7 @@ inline ObjPtr<mirror::Class> CompilerDriver::ResolveCompilingMethodsClass(
     const DexCompilationUnit* mUnit) {
   DCHECK_EQ(dex_cache->GetDexFile(), mUnit->GetDexFile());
   DCHECK_EQ(class_loader.Get(), mUnit->GetClassLoader().Get());
-  const DexFile::MethodId& referrer_method_id =
+  const dex::MethodId& referrer_method_id =
       mUnit->GetDexFile()->GetMethodId(mUnit->GetDexMethodIndex());
   return ResolveClass(soa, dex_cache, class_loader, referrer_method_id.class_idx_, mUnit);
 }

@@ -224,11 +224,11 @@ inline const char* ArtMethod::GetName() {
 
 inline ObjPtr<mirror::String> ArtMethod::ResolveNameString() {
   DCHECK(!IsProxyMethod());
-  const DexFile::MethodId& method_id = GetDexFile()->GetMethodId(GetDexMethodIndex());
+  const dex::MethodId& method_id = GetDexFile()->GetMethodId(GetDexMethodIndex());
   return Runtime::Current()->GetClassLinker()->ResolveString(method_id.name_idx_, this);
 }
 
-inline const DexFile::CodeItem* ArtMethod::GetCodeItem() {
+inline const dex::CodeItem* ArtMethod::GetCodeItem() {
   return GetDexFile()->GetCodeItem(GetCodeItemOffset());
 }
 
@@ -245,16 +245,16 @@ inline int32_t ArtMethod::GetLineNumFromDexPC(uint32_t dex_pc) {
   return annotations::GetLineNumFromPC(GetDexFile(), this, dex_pc);
 }
 
-inline const DexFile::ProtoId& ArtMethod::GetPrototype() {
+inline const dex::ProtoId& ArtMethod::GetPrototype() {
   DCHECK(!IsProxyMethod());
   const DexFile* dex_file = GetDexFile();
   return dex_file->GetMethodPrototype(dex_file->GetMethodId(GetDexMethodIndex()));
 }
 
-inline const DexFile::TypeList* ArtMethod::GetParameterTypeList() {
+inline const dex::TypeList* ArtMethod::GetParameterTypeList() {
   DCHECK(!IsProxyMethod());
   const DexFile* dex_file = GetDexFile();
-  const DexFile::ProtoId& proto = dex_file->GetMethodPrototype(
+  const dex::ProtoId& proto = dex_file->GetMethodPrototype(
       dex_file->GetMethodId(GetDexMethodIndex()));
   return dex_file->GetProtoParameters(proto);
 }
@@ -273,7 +273,7 @@ inline uint16_t ArtMethod::GetClassDefIndex() {
   }
 }
 
-inline const DexFile::ClassDef& ArtMethod::GetClassDef() {
+inline const dex::ClassDef& ArtMethod::GetClassDef() {
   DCHECK(!IsProxyMethod());
   return GetDexFile()->GetClassDef(GetClassDefIndex());
 }
@@ -344,8 +344,8 @@ inline ArtMethod* ArtMethod::GetInterfaceMethodIfProxy(PointerSize pointer_size)
 inline dex::TypeIndex ArtMethod::GetReturnTypeIndex() {
   DCHECK(!IsProxyMethod());
   const DexFile* dex_file = GetDexFile();
-  const DexFile::MethodId& method_id = dex_file->GetMethodId(GetDexMethodIndex());
-  const DexFile::ProtoId& proto_id = dex_file->GetMethodPrototype(method_id);
+  const dex::MethodId& method_id = dex_file->GetMethodId(GetDexMethodIndex());
+  const dex::ProtoId& proto_id = dex_file->GetMethodPrototype(method_id);
   return proto_id.return_type_idx_;
 }
 

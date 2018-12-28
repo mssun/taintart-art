@@ -71,7 +71,7 @@ TEST(CodeItemAccessorsTest, TestDexInstructionsAccessor) {
   static constexpr size_t kInsnsSizeInCodeUnits = 5;
 
   auto verify_code_item = [&](const DexFile* dex,
-                              const DexFile::CodeItem* item,
+                              const dex::CodeItem* item,
                               const uint16_t* insns) {
     CodeItemInstructionAccessor insns_accessor(*dex, item);
     EXPECT_TRUE(insns_accessor.HasCodeItem());

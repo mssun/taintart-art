@@ -487,10 +487,9 @@ TEST_F(DexFileLoaderTest, OpenDexDebugInfoLocalNullType) {
                                                                  0xf25f2b38U,
                                                                  true,
                                                                  &dex_bytes);
-  const DexFile::ClassDef& class_def = raw->GetClassDef(0);
+  const dex::ClassDef& class_def = raw->GetClassDef(0);
   constexpr uint32_t kMethodIdx = 1;
-  const DexFile::CodeItem* code_item = raw->GetCodeItem(raw->FindCodeItemOffset(class_def,
-                                                                                kMethodIdx));
+  const dex::CodeItem* code_item = raw->GetCodeItem(raw->FindCodeItemOffset(class_def, kMethodIdx));
   CodeItemDebugInfoAccessor accessor(*raw, code_item, kMethodIdx);
   ASSERT_TRUE(accessor.DecodeDebugLocalInfo(true, 1, VoidFunctor()));
 }

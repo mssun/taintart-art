@@ -36,7 +36,6 @@
 #include "class_status.h"
 #include "compiler.h"
 #include "dex/class_reference.h"
-#include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
 #include "dex/dex_to_dex_compiler.h"
 #include "dex/method_reference.h"
@@ -46,6 +45,10 @@
 #include "utils/dex_cache_arrays_layout.h"
 
 namespace art {
+
+namespace dex {
+struct CodeItem;
+}  // namespace dex
 
 namespace mirror {
 class Class;
@@ -62,6 +65,7 @@ class BitVector;
 class CompiledMethod;
 class CompilerOptions;
 class DexCompilationUnit;
+class DexFile;
 template<class T> class Handle;
 struct InlineIGetIPutData;
 class InstructionSetFeatures;
@@ -127,7 +131,7 @@ class CompilerDriver {
                   uint32_t method_idx,
                   uint32_t access_flags,
                   InvokeType invoke_type,
-                  const DexFile::CodeItem* code_item,
+                  const dex::CodeItem* code_item,
                   Handle<mirror::DexCache> dex_cache,
                   Handle<mirror::ClassLoader> h_class_loader)
       REQUIRES(!Locks::mutator_lock_);

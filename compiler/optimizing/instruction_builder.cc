@@ -559,7 +559,7 @@ void HInstructionBuilder::InitializeParameters() {
   uint16_t locals_index = graph_->GetNumberOfLocalVRegs();
   uint16_t parameter_index = 0;
 
-  const DexFile::MethodId& referrer_method_id =
+  const dex::MethodId& referrer_method_id =
       dex_file_->GetMethodId(dex_compilation_unit_->GetDexMethodIndex());
   if (!dex_compilation_unit_->IsStatic()) {
     // Add the implicit 'this' argument, not expressed in the signature.
@@ -576,8 +576,8 @@ void HInstructionBuilder::InitializeParameters() {
     DCHECK(current_this_parameter_ == nullptr);
   }
 
-  const DexFile::ProtoId& proto = dex_file_->GetMethodPrototype(referrer_method_id);
-  const DexFile::TypeList* arg_types = dex_file_->GetProtoParameters(proto);
+  const dex::ProtoId& proto = dex_file_->GetMethodPrototype(referrer_method_id);
+  const dex::TypeList* arg_types = dex_file_->GetProtoParameters(proto);
   for (int i = 0, shorty_pos = 1; i < number_of_parameters; i++) {
     HParameterValue* parameter = new (allocator_) HParameterValue(
         *dex_file_,
@@ -1515,7 +1515,7 @@ bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
 }
 
 static DataType::Type GetFieldAccessType(const DexFile& dex_file, uint16_t field_index) {
-  const DexFile::FieldId& field_id = dex_file.GetFieldId(field_index);
+  const dex::FieldId& field_id = dex_file.GetFieldId(field_index);
   const char* type = dex_file.GetFieldTypeDescriptor(field_id);
   return DataType::FromShorty(type[0]);
 }
@@ -3143,7 +3143,7 @@ ObjPtr<mirror::Class> HInstructionBuilder::LookupResolvedType(
 
 ObjPtr<mirror::Class> HInstructionBuilder::LookupReferrerClass() const {
   // TODO: Cache the result in a Handle<mirror::Class>.
-  const DexFile::MethodId& method_id =
+  const dex::MethodId& method_id =
       dex_compilation_unit_->GetDexFile()->GetMethodId(dex_compilation_unit_->GetDexMethodIndex());
   return LookupResolvedType(method_id.class_idx_, *dex_compilation_unit_);
 }

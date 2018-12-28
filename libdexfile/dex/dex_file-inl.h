@@ -31,12 +31,12 @@
 
 namespace art {
 
-inline int32_t DexFile::GetStringLength(const StringId& string_id) const {
+inline int32_t DexFile::GetStringLength(const dex::StringId& string_id) const {
   const uint8_t* ptr = DataBegin() + string_id.string_data_off_;
   return DecodeUnsignedLeb128(&ptr);
 }
 
-inline const char* DexFile::GetStringDataAndUtf16Length(const StringId& string_id,
+inline const char* DexFile::GetStringDataAndUtf16Length(const dex::StringId& string_id,
                                                         uint32_t* utf16_length) const {
   DCHECK(utf16_length != nullptr) << GetLocation();
   const uint8_t* ptr = DataBegin() + string_id.string_data_off_;
@@ -44,7 +44,7 @@ inline const char* DexFile::GetStringDataAndUtf16Length(const StringId& string_i
   return reinterpret_cast<const char*>(ptr);
 }
 
-inline const char* DexFile::GetStringData(const StringId& string_id) const {
+inline const char* DexFile::GetStringData(const dex::StringId& string_id) const {
   uint32_t ignored;
   return GetStringDataAndUtf16Length(string_id, &ignored);
 }
@@ -55,7 +55,7 @@ inline const char* DexFile::StringDataAndUtf16LengthByIdx(dex::StringIndex idx,
     *utf16_length = 0;
     return nullptr;
   }
-  const StringId& string_id = GetStringId(idx);
+  const dex::StringId& string_id = GetStringId(idx);
   return GetStringDataAndUtf16Length(string_id, utf16_length);
 }
 
@@ -68,7 +68,7 @@ inline const char* DexFile::StringByTypeIdx(dex::TypeIndex idx, uint32_t* unicod
   if (!idx.IsValid()) {
     return nullptr;
   }
-  const TypeId& type_id = GetTypeId(idx);
+  const dex::TypeId& type_id = GetTypeId(idx);
   return StringDataAndUtf16LengthByIdx(type_id.descriptor_idx_, unicode_length);
 }
 
@@ -76,41 +76,43 @@ inline const char* DexFile::StringByTypeIdx(dex::TypeIndex idx) const {
   if (!idx.IsValid()) {
     return nullptr;
   }
-  const TypeId& type_id = GetTypeId(idx);
+  const dex::TypeId& type_id = GetTypeId(idx);
   return StringDataByIdx(type_id.descriptor_idx_);
 }
 
-inline const char* DexFile::GetTypeDescriptor(const TypeId& type_id) const {
+inline const char* DexFile::GetTypeDescriptor(const dex::TypeId& type_id) const {
   return StringDataByIdx(type_id.descriptor_idx_);
 }
 
-inline const char* DexFile::GetFieldTypeDescriptor(const FieldId& field_id) const {
-  const DexFile::TypeId& type_id = GetTypeId(field_id.type_idx_);
+inline const char* DexFile::GetFieldTypeDescriptor(const dex::FieldId& field_id) const {
+  const dex::TypeId& type_id = GetTypeId(field_id.type_idx_);
   return GetTypeDescriptor(type_id);
 }
 
-inline const char* DexFile::GetFieldName(const FieldId& field_id) const {
+inline const char* DexFile::GetFieldName(const dex::FieldId& field_id) const {
   return StringDataByIdx(field_id.name_idx_);
 }
 
-inline const char* DexFile::GetMethodDeclaringClassDescriptor(const MethodId& method_id) const {
-  const DexFile::TypeId& type_id = GetTypeId(method_id.class_idx_);
+inline const char* DexFile::GetMethodDeclaringClassDescriptor(const dex::MethodId& method_id)
+    const {
+  const dex::TypeId& type_id = GetTypeId(method_id.class_idx_);
   return GetTypeDescriptor(type_id);
 }
 
-inline const Signature DexFile::GetMethodSignature(const MethodId& method_id) const {
+inline const Signature DexFile::GetMethodSignature(const dex::MethodId& method_id) const {
   return Signature(this, GetProtoId(method_id.proto_idx_));
 }
 
-inline const Signature DexFile::GetProtoSignature(const ProtoId& proto_id) const {
+inline const Signature DexFile::GetProtoSignature(const dex::ProtoId& proto_id) const {
   return Signature(this, proto_id);
 }
 
-inline const char* DexFile::GetMethodName(const MethodId& method_id) const {
+inline const char* DexFile::GetMethodName(const dex::MethodId& method_id) const {
   return StringDataByIdx(method_id.name_idx_);
 }
 
-inline const char* DexFile::GetMethodName(const MethodId& method_id, uint32_t* utf_length) const {
+inline const char* DexFile::GetMethodName(const dex::MethodId& method_id, uint32_t* utf_length)
+    const {
   return StringDataAndUtf16LengthByIdx(method_id.name_idx_, utf_length);
 }
 
@@ -122,32 +124,34 @@ inline const char* DexFile::GetMethodShorty(uint32_t idx) const {
   return StringDataByIdx(GetProtoId(GetMethodId(idx).proto_idx_).shorty_idx_);
 }
 
-inline const char* DexFile::GetMethodShorty(const MethodId& method_id) const {
+inline const char* DexFile::GetMethodShorty(const dex::MethodId& method_id) const {
   return StringDataByIdx(GetProtoId(method_id.proto_idx_).shorty_idx_);
 }
 
-inline const char* DexFile::GetMethodShorty(const MethodId& method_id, uint32_t* length) const {
+inline const char* DexFile::GetMethodShorty(const dex::MethodId& method_id, uint32_t* length)
+    const {
   // Using the UTF16 length is safe here as shorties are guaranteed to be ASCII characters.
   return StringDataAndUtf16LengthByIdx(GetProtoId(method_id.proto_idx_).shorty_idx_, length);
 }
 
-inline const char* DexFile::GetClassDescriptor(const ClassDef& class_def) const {
+inline const char* DexFile::GetClassDescriptor(const dex::ClassDef& class_def) const {
   return StringByTypeIdx(class_def.class_idx_);
 }
 
-inline const char* DexFile::GetReturnTypeDescriptor(const ProtoId& proto_id) const {
+inline const char* DexFile::GetReturnTypeDescriptor(const dex::ProtoId& proto_id) const {
   return StringByTypeIdx(proto_id.return_type_idx_);
 }
 
 inline const char* DexFile::GetShorty(dex::ProtoIndex proto_idx) const {
-  const ProtoId& proto_id = GetProtoId(proto_idx);
+  const dex::ProtoId& proto_id = GetProtoId(proto_idx);
   return StringDataByIdx(proto_id.shorty_idx_);
 }
 
-inline const DexFile::TryItem* DexFile::GetTryItems(const DexInstructionIterator& code_item_end,
-                                                    uint32_t offset) {
-  return reinterpret_cast<const TryItem*>
-      (RoundUp(reinterpret_cast<uintptr_t>(&code_item_end.Inst()), TryItem::kAlignment)) + offset;
+inline const dex::TryItem* DexFile::GetTryItems(const DexInstructionIterator& code_item_end,
+                                                uint32_t offset) {
+  return reinterpret_cast<const dex::TryItem*>
+      (RoundUp(reinterpret_cast<uintptr_t>(&code_item_end.Inst()), dex::TryItem::kAlignment)) +
+          offset;
 }
 
 static inline bool DexFileStringEquals(const DexFile* df1, dex::StringIndex sidx1,
@@ -184,8 +188,8 @@ inline bool Signature::operator==(const Signature& rhs) const {
     }
   }
   if (lhs_shorty[0] == 'L') {
-    const DexFile::TypeId& return_type_id = dex_file_->GetTypeId(proto_id_->return_type_idx_);
-    const DexFile::TypeId& rhs_return_type_id =
+    const dex::TypeId& return_type_id = dex_file_->GetTypeId(proto_id_->return_type_idx_);
+    const dex::TypeId& rhs_return_type_id =
         rhs.dex_file_->GetTypeId(rhs.proto_id_->return_type_idx_);
     if (!DexFileStringEquals(dex_file_, return_type_id.descriptor_idx_,
                              rhs.dex_file_, rhs_return_type_id.descriptor_idx_)) {
@@ -193,16 +197,16 @@ inline bool Signature::operator==(const Signature& rhs) const {
     }
   }
   if (lhs_shorty.find('L', 1) != StringPiece::npos) {
-    const DexFile::TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
-    const DexFile::TypeList* rhs_params = rhs.dex_file_->GetProtoParameters(*rhs.proto_id_);
+    const dex::TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
+    const dex::TypeList* rhs_params = rhs.dex_file_->GetProtoParameters(*rhs.proto_id_);
     // We found a reference parameter in the matching shorty, so both lists must be non-empty.
     DCHECK(params != nullptr);
     DCHECK(rhs_params != nullptr);
     uint32_t params_size = params->Size();
     DCHECK_EQ(params_size, rhs_params->Size());  // Parameter list size must match.
     for (uint32_t i = 0; i < params_size; ++i) {
-      const DexFile::TypeId& param_id = dex_file_->GetTypeId(params->GetTypeItem(i).type_idx_);
-      const DexFile::TypeId& rhs_param_id =
+      const dex::TypeId& param_id = dex_file_->GetTypeId(params->GetTypeItem(i).type_idx_);
+      const dex::TypeId& rhs_param_id =
           rhs.dex_file_->GetTypeId(rhs_params->GetTypeItem(i).type_idx_);
       if (!DexFileStringEquals(dex_file_, param_id.descriptor_idx_,
                                rhs.dex_file_, rhs_param_id.descriptor_idx_)) {

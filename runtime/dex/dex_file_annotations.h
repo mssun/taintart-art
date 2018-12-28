@@ -18,7 +18,6 @@
 #define ART_RUNTIME_DEX_DEX_FILE_ANNOTATIONS_H_
 
 #include "dex/dex_file.h"
-
 #include "handle.h"
 #include "mirror/dex_cache.h"
 #include "mirror/object_array.h"
@@ -84,7 +83,7 @@ bool IsMethodAnnotationPresent(ArtMethod* method,
 // @dalvik.annotation.optimization.CriticalNative with build visibility.
 // If yes, return the associated access flags, i.e. kAccFastNative or kAccCriticalNative.
 uint32_t GetNativeMethodAnnotationAccessFlags(const DexFile& dex_file,
-                                              const DexFile::ClassDef& class_def,
+                                              const dex::ClassDef& class_def,
                                               uint32_t method_index);
 
 // Class annotations.
@@ -124,7 +123,7 @@ class RuntimeEncodedStaticFieldValueIterator : public EncodedStaticFieldValueIte
   RuntimeEncodedStaticFieldValueIterator(Handle<mirror::DexCache> dex_cache,
                                          Handle<mirror::ClassLoader> class_loader,
                                          ClassLinker* linker,
-                                         const DexFile::ClassDef& class_def)
+                                         const dex::ClassDef& class_def)
       REQUIRES_SHARED(Locks::mutator_lock_)
       : EncodedStaticFieldValueIterator(*dex_cache->GetDexFile(), class_def),
         dex_cache_(dex_cache),

@@ -39,12 +39,18 @@
 #include "art_jvmti.h"
 #include "base/array_ref.h"
 #include "base/globals.h"
-#include "dex/dex_file.h"
 #include "jni/jni_env_ext-inl.h"
 #include "jvmti.h"
 #include "mirror/array.h"
 #include "mirror/class.h"
 #include "obj_ptr.h"
+
+namespace art {
+namespace dex {
+struct ClassDef;
+}  // namespace dex
+class DexFile;
+}  // namespace art
 
 namespace openjdkjvmti {
 
@@ -172,7 +178,7 @@ class Redefiner {
         REQUIRES(art::Locks::mutator_lock_);
 
     void UpdateMethods(art::ObjPtr<art::mirror::Class> mclass,
-                       const art::DexFile::ClassDef& class_def)
+                       const art::dex::ClassDef& class_def)
         REQUIRES(art::Locks::mutator_lock_);
 
     void UpdateClass(art::ObjPtr<art::mirror::Class> mclass,

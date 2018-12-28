@@ -113,7 +113,7 @@ class DexClass : public ClassAccessor {
 
   std::set<std::string> GetInterfaceDescriptors() const {
     std::set<std::string> list;
-    const DexFile::TypeList* ifaces = dex_file_.GetInterfacesList(GetClassDef());
+    const dex::TypeList* ifaces = dex_file_.GetInterfacesList(GetClassDef());
     for (uint32_t i = 0; ifaces != nullptr && i < ifaces->Size(); ++i) {
       list.insert(dex_file_.StringByTypeIdx(ifaces->GetTypeItem(i).type_idx_));
     }
@@ -201,12 +201,12 @@ class DexMember {
     return down_cast<const ClassAccessor::Method&>(item_);
   }
 
-  inline const DexFile::MethodId& GetMethodId() const {
+  inline const dex::MethodId& GetMethodId() const {
     DCHECK(IsMethod());
     return item_.GetDexFile().GetMethodId(item_.GetIndex());
   }
 
-  inline const DexFile::FieldId& GetFieldId() const {
+  inline const dex::FieldId& GetFieldId() const {
     DCHECK(!IsMethod());
     return item_.GetDexFile().GetFieldId(item_.GetIndex());
   }
@@ -665,7 +665,7 @@ class DexFileEditor final {
     }
 
     // Find the old MapList, find its size.
-    const DexFile::MapList* old_map = old_dex_.GetMapList();
+    const dex::MapList* old_map = old_dex_.GetMapList();
     CHECK_LT(old_map->size_, std::numeric_limits<uint32_t>::max());
 
     // Compute the size of the new dex file. We append the HiddenapiClassData,
@@ -674,7 +674,7 @@ class DexFileEditor final {
         << "End of input dex file is not 4-byte aligned, possibly because its MapList is not "
         << "at the end of the file.";
     size_t size_delta =
-        RoundUp(hiddenapi_class_data_.size(), kMapListAlignment) + sizeof(DexFile::MapItem);
+        RoundUp(hiddenapi_class_data_.size(), kMapListAlignment) + sizeof(dex::MapItem);
     size_t new_size = old_dex_.Size() + size_delta;
     AllocateMemory(new_size);
 
@@ -742,7 +742,7 @@ class DexFileEditor final {
 
     // Load the location of header and map list before we start editing the file.
     loaded_dex_header_ = const_cast<DexFile::Header*>(&loaded_dex_->GetHeader());
-    loaded_dex_maplist_ = const_cast<DexFile::MapList*>(loaded_dex_->GetMapList());
+    loaded_dex_maplist_ = const_cast<dex::MapList*>(loaded_dex_->GetMapList());
   }
 
   DexFile::Header& GetHeader() const {
@@ -750,7 +750,7 @@ class DexFileEditor final {
     return *loaded_dex_header_;
   }
 
-  DexFile::MapList& GetMapList() const {
+  dex::MapList& GetMapList() const {
     CHECK(loaded_dex_maplist_ != nullptr);
     return *loaded_dex_maplist_;
   }
@@ -804,16 +804,16 @@ class DexFileEditor final {
     InsertPadding(/* alignment= */ kMapListAlignment);
 
     size_t new_map_offset = offset_;
-    DexFile::MapList* map = Append(old_dex_.GetMapList(), old_dex_.GetMapList()->Size());
+    dex::MapList* map = Append(old_dex_.GetMapList(), old_dex_.GetMapList()->Size());
 
     // Check last map entry is a pointer to itself.
-    DexFile::MapItem& old_item = map->list_[map->size_ - 1];
+    dex::MapItem& old_item = map->list_[map->size_ - 1];
     CHECK(old_item.type_ == DexFile::kDexTypeMapList);
     CHECK_EQ(old_item.size_, 1u);
     CHECK_EQ(old_item.offset_, GetHeader().map_off_);
 
     // Create a new MapItem entry with new MapList details.
-    DexFile::MapItem new_item;
+    dex::MapItem new_item;
     new_item.type_ = old_item.type_;
     new_item.unused_ = 0u;  // initialize to ensure dex output is deterministic (b/119308882)
     new_item.size_ = old_item.size_;
@@ -824,7 +824,7 @@ class DexFileEditor final {
 
     // Append a new MapItem and return its pointer.
     map->size_++;
-    Append(&new_item, sizeof(DexFile::MapItem));
+    Append(&new_item, sizeof(dex::MapItem));
 
     // Change penultimate entry to point to metadata.
     old_item.type_ = DexFile::kDexTypeHiddenapiClassData;
@@ -853,7 +853,7 @@ class DexFileEditor final {
 
   std::unique_ptr<const DexFile> loaded_dex_;
   DexFile::Header* loaded_dex_header_;
-  DexFile::MapList* loaded_dex_maplist_;
+  dex::MapList* loaded_dex_maplist_;
 };
 
 class HiddenApi final {

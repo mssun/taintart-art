@@ -182,7 +182,7 @@ class DexLayout {
                      std::string* error_msg);
 
   void DumpCFG(const DexFile* dex_file, int idx);
-  void DumpCFG(const DexFile* dex_file, uint32_t dex_method_idx, const DexFile::CodeItem* code);
+  void DumpCFG(const DexFile* dex_file, uint32_t dex_method_idx, const dex::CodeItem* code);
 
   Options& options_;
   ProfileCompilationInfo* info_;
