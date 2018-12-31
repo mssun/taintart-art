@@ -244,6 +244,7 @@ void GarbageCollector::DumpPerformanceInfo(std::ostream& os) {
      << GetName() << " throughput: " << freed_objects / seconds << "/s / "
      << PrettySize(freed_bytes / seconds) << "/s"
      << "  per cpu-time: "
+     << static_cast<uint64_t>(freed_bytes / cpu_seconds) << "/s / "
      << PrettySize(freed_bytes / cpu_seconds) << "/s\n";
 }
 
