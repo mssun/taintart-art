@@ -780,6 +780,9 @@ class DexFile {
   static uint32_t DecodeDebugInfoParameterNames(const uint8_t** debug_info,
                                                 const Visitor& visitor);
 
+  static inline bool StringEquals(const DexFile* df1, dex::StringIndex sidx1,
+                                  const DexFile* df2, dex::StringIndex sidx2);
+
  protected:
   // First Dex format version supporting default methods.
   static const uint32_t kDefaultMethodsVersion = 37;

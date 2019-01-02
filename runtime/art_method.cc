@@ -189,7 +189,7 @@ bool ArtMethod::HasSameNameAndSignature(ArtMethod* other) {
   }
   const DexFile* dex_file2 = other->GetDexFile();
   const dex::MethodId& mid2 = dex_file2->GetMethodId(other->GetDexMethodIndex());
-  if (!DexFileStringEquals(dex_file, mid.name_idx_, dex_file2, mid2.name_idx_)) {
+  if (!DexFile::StringEquals(dex_file, mid.name_idx_, dex_file2, mid2.name_idx_)) {
     return false;  // Name mismatch.
   }
   return dex_file->GetMethodSignature(mid) == dex_file2->GetMethodSignature(mid2);

@@ -154,8 +154,8 @@ inline const dex::TryItem* DexFile::GetTryItems(const DexInstructionIterator& co
           offset;
 }
 
-static inline bool DexFileStringEquals(const DexFile* df1, dex::StringIndex sidx1,
-                                       const DexFile* df2, dex::StringIndex sidx2) {
+inline bool DexFile::StringEquals(const DexFile* df1, dex::StringIndex sidx1,
+                                  const DexFile* df2, dex::StringIndex sidx2) {
   uint32_t s1_len;  // Note: utf16 length != mutf8 length.
   const char* s1_data = df1->StringDataAndUtf16LengthByIdx(sidx1, &s1_len);
   uint32_t s2_len;
@@ -191,8 +191,8 @@ inline bool Signature::operator==(const Signature& rhs) const {
     const dex::TypeId& return_type_id = dex_file_->GetTypeId(proto_id_->return_type_idx_);
     const dex::TypeId& rhs_return_type_id =
         rhs.dex_file_->GetTypeId(rhs.proto_id_->return_type_idx_);
-    if (!DexFileStringEquals(dex_file_, return_type_id.descriptor_idx_,
-                             rhs.dex_file_, rhs_return_type_id.descriptor_idx_)) {
+    if (!DexFile::StringEquals(dex_file_, return_type_id.descriptor_idx_,
+                               rhs.dex_file_, rhs_return_type_id.descriptor_idx_)) {
       return false;  // Return type mismatch.
     }
   }
@@ -208,8 +208,8 @@ inline bool Signature::operator==(const Signature& rhs) const {
       const dex::TypeId& param_id = dex_file_->GetTypeId(params->GetTypeItem(i).type_idx_);
       const dex::TypeId& rhs_param_id =
           rhs.dex_file_->GetTypeId(rhs_params->GetTypeItem(i).type_idx_);
-      if (!DexFileStringEquals(dex_file_, param_id.descriptor_idx_,
-                               rhs.dex_file_, rhs_param_id.descriptor_idx_)) {
+      if (!DexFile::StringEquals(dex_file_, param_id.descriptor_idx_,
+                                 rhs.dex_file_, rhs_param_id.descriptor_idx_)) {
         return false;  // Parameter type mismatch.
       }
     }
