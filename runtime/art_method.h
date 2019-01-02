@@ -20,6 +20,7 @@
 #include <cstddef>
 
 #include <android-base/logging.h>
+#include <jni.h>
 
 #include "base/array_ref.h"
 #include "base/bit_utils.h"
