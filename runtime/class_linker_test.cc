@@ -429,13 +429,13 @@ class ClassLinkerTest : public CommonRuntimeTest {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Verify all the classes defined in this file
     for (size_t i = 0; i < dex.NumClassDefs(); i++) {
-      const DexFile::ClassDef& class_def = dex.GetClassDef(i);
+      const dex::ClassDef& class_def = dex.GetClassDef(i);
       const char* descriptor = dex.GetClassDescriptor(class_def);
       AssertDexFileClass(class_loader, descriptor);
     }
     // Verify all the types referenced by this file
     for (size_t i = 0; i < dex.NumTypeIds(); i++) {
-      const DexFile::TypeId& type_id = dex.GetTypeId(dex::TypeIndex(i));
+      const dex::TypeId& type_id = dex.GetTypeId(dex::TypeIndex(i));
       const char* descriptor = dex.GetTypeDescriptor(type_id);
       AssertDexFileClass(class_loader, descriptor);
     }
@@ -997,7 +997,7 @@ TEST_F(ClassLinkerTest, LookupResolvedTypeArray) {
   Handle<mirror::DexCache> dex_cache = hs.NewHandle(all_fields_klass->GetDexCache());
   const DexFile& dex_file = *dex_cache->GetDexFile();
   // Get the index of the array class we want to test.
-  const DexFile::TypeId* array_id = dex_file.FindTypeId("[Ljava/lang/Object;");
+  const dex::TypeId* array_id = dex_file.FindTypeId("[Ljava/lang/Object;");
   ASSERT_TRUE(array_id != nullptr);
   dex::TypeIndex array_idx = dex_file.GetIndexForTypeId(*array_id);
   // Check that the array class wasn't resolved yet.
@@ -1323,7 +1323,7 @@ TEST_F(ClassLinkerTest, ResolveVerifyAndClinit) {
       klass->FindClassMethod("getS0", "()Ljava/lang/Object;", kRuntimePointerSize);
   ASSERT_TRUE(getS0 != nullptr);
   ASSERT_TRUE(getS0->IsStatic());
-  const DexFile::TypeId* type_id = dex_file->FindTypeId("LStaticsFromCode;");
+  const dex::TypeId* type_id = dex_file->FindTypeId("LStaticsFromCode;");
   ASSERT_TRUE(type_id != nullptr);
   dex::TypeIndex type_idx = dex_file->GetIndexForTypeId(*type_id);
   ObjPtr<mirror::Class> uninit = ResolveVerifyAndClinit(type_idx,
@@ -1564,7 +1564,7 @@ TEST_F(ClassLinkerMethodHandlesTest, TestResolveMethodTypes) {
   Handle<mirror::DexCache> dex_cache = hs.NewHandle(
       class_linker_->FindDexCache(soa.Self(), dex_file));
 
-  const DexFile::MethodId& method1_id = dex_file.GetMethodId(method1->GetDexMethodIndex());
+  const dex::MethodId& method1_id = dex_file.GetMethodId(method1->GetDexMethodIndex());
 
   // This is the MethodType corresponding to the prototype of
   // String MethodTypes# method1(String).
@@ -1596,7 +1596,7 @@ TEST_F(ClassLinkerMethodHandlesTest, TestResolveMethodTypes) {
       kRuntimePointerSize);
   ASSERT_TRUE(method2 != nullptr);
   ASSERT_FALSE(method2->IsDirect());
-  const DexFile::MethodId& method2_id = dex_file.GetMethodId(method2->GetDexMethodIndex());
+  const dex::MethodId& method2_id = dex_file.GetMethodId(method2->GetDexMethodIndex());
   Handle<mirror::MethodType> method2_type = hs.NewHandle(
       class_linker_->ResolveMethodType(soa.Self(), method2_id.proto_idx_, dex_cache, class_loader));
   ASSERT_OBJ_PTR_NE(method1_type.Get(), method2_type.Get());

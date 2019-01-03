@@ -344,7 +344,7 @@ void CompilerDriver::CompileAll(jobject class_loader,
 
 static optimizer::DexToDexCompiler::CompilationLevel GetDexToDexCompilationLevel(
     Thread* self, const CompilerDriver& driver, Handle<mirror::ClassLoader> class_loader,
-    const DexFile& dex_file, const DexFile::ClassDef& class_def)
+    const DexFile& dex_file, const dex::ClassDef& class_def)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // When the dex file is uncompressed in the APK, we do not generate a copy in the .vdex
   // file. As a result, dex2oat will map the dex file read-only, and we only need to check
@@ -389,7 +389,7 @@ static optimizer::DexToDexCompiler::CompilationLevel GetDexToDexCompilationLevel
     const CompilerDriver& driver,
     jobject jclass_loader,
     const DexFile& dex_file,
-    const DexFile::ClassDef& class_def) {
+    const dex::ClassDef& class_def) {
   ScopedObjectAccess soa(self);
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::ClassLoader> class_loader(
@@ -416,7 +416,7 @@ template <typename CompileFn>
 static void CompileMethodHarness(
     Thread* self,
     CompilerDriver* driver,
-    const DexFile::CodeItem* code_item,
+    const dex::CodeItem* code_item,
     uint32_t access_flags,
     InvokeType invoke_type,
     uint16_t class_def_idx,
@@ -465,7 +465,7 @@ static void CompileMethodHarness(
 static void CompileMethodDex2Dex(
     Thread* self,
     CompilerDriver* driver,
-    const DexFile::CodeItem* code_item,
+    const dex::CodeItem* code_item,
     uint32_t access_flags,
     InvokeType invoke_type,
     uint16_t class_def_idx,
@@ -476,7 +476,7 @@ static void CompileMethodDex2Dex(
     Handle<mirror::DexCache> dex_cache) {
   auto dex_2_dex_fn = [](Thread* self ATTRIBUTE_UNUSED,
       CompilerDriver* driver,
-      const DexFile::CodeItem* code_item,
+      const dex::CodeItem* code_item,
       uint32_t access_flags,
       InvokeType invoke_type,
       uint16_t class_def_idx,
@@ -527,7 +527,7 @@ static void CompileMethodDex2Dex(
 static void CompileMethodQuick(
     Thread* self,
     CompilerDriver* driver,
-    const DexFile::CodeItem* code_item,
+    const dex::CodeItem* code_item,
     uint32_t access_flags,
     InvokeType invoke_type,
     uint16_t class_def_idx,
@@ -539,7 +539,7 @@ static void CompileMethodQuick(
   auto quick_fn = [](
       Thread* self,
       CompilerDriver* driver,
-      const DexFile::CodeItem* code_item,
+      const dex::CodeItem* code_item,
       uint32_t access_flags,
       InvokeType invoke_type,
       uint16_t class_def_idx,
@@ -650,7 +650,7 @@ void CompilerDriver::CompileOne(Thread* self,
                                 uint32_t method_idx,
                                 uint32_t access_flags,
                                 InvokeType invoke_type,
-                                const DexFile::CodeItem* code_item,
+                                const dex::CodeItem* code_item,
                                 Handle<mirror::DexCache> dex_cache,
                                 Handle<mirror::ClassLoader> h_class_loader) {
   // Can we run DEX-to-DEX compiler on this class ?
@@ -1125,7 +1125,7 @@ void CompilerDriver::LoadImageClasses(TimingLogger* timings,
                                           ScopedNullHandle<mirror::ClassLoader>())
               : nullptr;
       if (klass == nullptr) {
-        const DexFile::TypeId& type_id = dex_file->GetTypeId(exception_type_idx);
+        const dex::TypeId& type_id = dex_file->GetTypeId(exception_type_idx);
         const char* descriptor = dex_file->GetTypeDescriptor(type_id);
         LOG(FATAL) << "Failed to resolve class " << descriptor;
       }
@@ -1596,7 +1596,7 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
     // needs it, here we try to resolve fields and methods used in class
     // definitions, since many of them many never be referenced by
     // generated code.
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
+    const dex::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
     ScopedObjectAccess soa(self);
     StackHandleScope<2> hs(soa.Self());
     Handle<mirror::ClassLoader> class_loader(
@@ -1898,7 +1898,7 @@ class VerifyClassVisitor : public CompilationVisitor {
     ScopedTrace trace(__FUNCTION__);
     ScopedObjectAccess soa(Thread::Current());
     const DexFile& dex_file = *manager_->GetDexFile();
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
+    const dex::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
     const char* descriptor = dex_file.GetClassDescriptor(class_def);
     ClassLinker* class_linker = manager_->GetClassLinker();
     jobject jclass_loader = manager_->GetClassLoader();
@@ -2032,7 +2032,7 @@ class SetVerifiedClassVisitor : public CompilationVisitor {
     ScopedTrace trace(__FUNCTION__);
     ScopedObjectAccess soa(Thread::Current());
     const DexFile& dex_file = *manager_->GetDexFile();
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
+    const dex::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
     const char* descriptor = dex_file.GetClassDescriptor(class_def);
     ClassLinker* class_linker = manager_->GetClassLinker();
     jobject jclass_loader = manager_->GetClassLoader();
@@ -2097,8 +2097,8 @@ class InitializeClassVisitor : public CompilationVisitor {
     ScopedTrace trace(__FUNCTION__);
     jobject jclass_loader = manager_->GetClassLoader();
     const DexFile& dex_file = *manager_->GetDexFile();
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
-    const DexFile::TypeId& class_type_id = dex_file.GetTypeId(class_def.class_idx_);
+    const dex::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
+    const dex::TypeId& class_type_id = dex_file.GetTypeId(class_def.class_idx_);
     const char* descriptor = dex_file.StringDataByIdx(class_type_id.descriptor_idx_);
 
     ScopedObjectAccess soa(Thread::Current());
@@ -2122,8 +2122,8 @@ class InitializeClassVisitor : public CompilationVisitor {
   void TryInitializeClass(Handle<mirror::Class> klass, Handle<mirror::ClassLoader>& class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     const DexFile& dex_file = klass->GetDexFile();
-    const DexFile::ClassDef* class_def = klass->GetClassDef();
-    const DexFile::TypeId& class_type_id = dex_file.GetTypeId(class_def->class_idx_);
+    const dex::ClassDef* class_def = klass->GetClassDef();
+    const dex::TypeId& class_type_id = dex_file.GetTypeId(class_def->class_idx_);
     const char* descriptor = dex_file.StringDataByIdx(class_type_id.descriptor_idx_);
     ScopedObjectAccessUnchecked soa(Thread::Current());
     StackHandleScope<3> hs(soa.Self());
@@ -2278,7 +2278,7 @@ class InitializeClassVisitor : public CompilationVisitor {
 
     StackHandleScope<1> hs(Thread::Current());
     Handle<mirror::DexCache> dex_cache = hs.NewHandle(klass->GetDexCache());
-    const DexFile::ClassDef* class_def = klass->GetClassDef();
+    const dex::ClassDef* class_def = klass->GetClassDef();
     ClassLinker* class_linker = manager_->GetClassLinker();
 
     // Check encoded final field values for strings and intern.
@@ -2320,7 +2320,7 @@ class InitializeClassVisitor : public CompilationVisitor {
       self->ClearException();
       return false;
     }
-    const DexFile::TypeList* types = m->GetParameterTypeList();
+    const dex::TypeList* types = m->GetParameterTypeList();
     if (types != nullptr) {
       for (uint32_t i = 0; i < types->Size(); ++i) {
         dex::TypeIndex param_type_idx = types->GetTypeItem(i).type_idx_;
@@ -2575,7 +2575,7 @@ static void CompileDexFile(CompilerDriver* driver,
     ClassLinker* class_linker = context.GetClassLinker();
     jobject jclass_loader = context.GetClassLoader();
     ClassReference ref(&dex_file, class_def_index);
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
+    const dex::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
     ClassAccessor accessor(dex_file, class_def_index);
     CompilerDriver* const driver = context.GetCompiler();
     // Skip compiling classes with generic verifier failures since they will still fail at runtime

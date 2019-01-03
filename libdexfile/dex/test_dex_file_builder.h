@@ -112,7 +112,7 @@ class TestDexFileBuilder {
     header->string_ids_size_ = strings_.size();
     header->string_ids_off_ = strings_.empty() ? 0u : string_ids_offset;
 
-    uint32_t type_ids_offset = string_ids_offset + strings_.size() * sizeof(DexFile::StringId);
+    uint32_t type_ids_offset = string_ids_offset + strings_.size() * sizeof(dex::StringId);
     uint32_t type_idx = 0u;
     for (auto& entry : types_) {
       entry.second = type_idx;
@@ -121,7 +121,7 @@ class TestDexFileBuilder {
     header->type_ids_size_ = types_.size();
     header->type_ids_off_ = types_.empty() ? 0u : type_ids_offset;
 
-    uint32_t proto_ids_offset = type_ids_offset + types_.size() * sizeof(DexFile::TypeId);
+    uint32_t proto_ids_offset = type_ids_offset + types_.size() * sizeof(dex::TypeId);
     uint32_t proto_idx = 0u;
     for (auto& entry : protos_) {
       entry.second.idx = proto_idx;
@@ -129,7 +129,7 @@ class TestDexFileBuilder {
       size_t num_args = entry.first.args.size();
       if (num_args != 0u) {
         entry.second.data_offset = RoundUp(data_section_size, 4u);
-        data_section_size = entry.second.data_offset + 4u + num_args * sizeof(DexFile::TypeItem);
+        data_section_size = entry.second.data_offset + 4u + num_args * sizeof(dex::TypeItem);
       } else {
         entry.second.data_offset = 0u;
       }
@@ -137,7 +137,7 @@ class TestDexFileBuilder {
     header->proto_ids_size_ = protos_.size();
     header->proto_ids_off_ = protos_.empty() ? 0u : proto_ids_offset;
 
-    uint32_t field_ids_offset = proto_ids_offset + protos_.size() * sizeof(DexFile::ProtoId);
+    uint32_t field_ids_offset = proto_ids_offset + protos_.size() * sizeof(dex::ProtoId);
     uint32_t field_idx = 0u;
     for (auto& entry : fields_) {
       entry.second = field_idx;
@@ -146,7 +146,7 @@ class TestDexFileBuilder {
     header->field_ids_size_ = fields_.size();
     header->field_ids_off_ = fields_.empty() ? 0u : field_ids_offset;
 
-    uint32_t method_ids_offset = field_ids_offset + fields_.size() * sizeof(DexFile::FieldId);
+    uint32_t method_ids_offset = field_ids_offset + fields_.size() * sizeof(dex::FieldId);
     uint32_t method_idx = 0u;
     for (auto& entry : methods_) {
       entry.second = method_idx;
@@ -159,7 +159,7 @@ class TestDexFileBuilder {
     header->class_defs_size_ = 0u;
     header->class_defs_off_ = 0u;
 
-    uint32_t data_section_offset = method_ids_offset + methods_.size() * sizeof(DexFile::MethodId);
+    uint32_t data_section_offset = method_ids_offset + methods_.size() * sizeof(dex::MethodId);
     header->data_size_ = data_section_size;
     header->data_off_ = (data_section_size != 0u) ? data_section_offset : 0u;
 
@@ -172,11 +172,11 @@ class TestDexFileBuilder {
       uint32_t raw_offset = data_section_offset + entry.second.data_offset;
       dex_file_data_[raw_offset] = static_cast<uint8_t>(entry.first.size());
       std::memcpy(&dex_file_data_[raw_offset + 1], entry.first.c_str(), entry.first.size() + 1);
-      Write32(string_ids_offset + entry.second.idx * sizeof(DexFile::StringId), raw_offset);
+      Write32(string_ids_offset + entry.second.idx * sizeof(dex::StringId), raw_offset);
     }
 
     for (const auto& entry : types_) {
-      Write32(type_ids_offset + entry.second * sizeof(DexFile::TypeId), GetStringIdx(entry.first));
+      Write32(type_ids_offset + entry.second * sizeof(dex::TypeId), GetStringIdx(entry.first));
       ++type_idx;
     }
 
@@ -184,7 +184,7 @@ class TestDexFileBuilder {
       size_t num_args = entry.first.args.size();
       uint32_t type_list_offset =
           (num_args != 0u) ? data_section_offset + entry.second.data_offset : 0u;
-      uint32_t raw_offset = proto_ids_offset + entry.second.idx * sizeof(DexFile::ProtoId);
+      uint32_t raw_offset = proto_ids_offset + entry.second.idx * sizeof(dex::ProtoId);
       Write32(raw_offset + 0u, GetStringIdx(entry.first.shorty));
       Write16(raw_offset + 4u, GetTypeIdx(entry.first.return_type));
       Write32(raw_offset + 8u, type_list_offset);
@@ -192,21 +192,21 @@ class TestDexFileBuilder {
         CHECK_NE(entry.second.data_offset, 0u);
         Write32(type_list_offset, num_args);
         for (size_t i = 0; i != num_args; ++i) {
-          Write16(type_list_offset + 4u + i * sizeof(DexFile::TypeItem),
+          Write16(type_list_offset + 4u + i * sizeof(dex::TypeItem),
                   GetTypeIdx(entry.first.args[i]));
         }
       }
     }
 
     for (const auto& entry : fields_) {
-      uint32_t raw_offset = field_ids_offset + entry.second * sizeof(DexFile::FieldId);
+      uint32_t raw_offset = field_ids_offset + entry.second * sizeof(dex::FieldId);
       Write16(raw_offset + 0u, GetTypeIdx(entry.first.class_descriptor));
       Write16(raw_offset + 2u, GetTypeIdx(entry.first.type));
       Write32(raw_offset + 4u, GetStringIdx(entry.first.name));
     }
 
     for (const auto& entry : methods_) {
-      uint32_t raw_offset = method_ids_offset + entry.second * sizeof(DexFile::MethodId);
+      uint32_t raw_offset = method_ids_offset + entry.second * sizeof(dex::MethodId);
       Write16(raw_offset + 0u, GetTypeIdx(entry.first.class_descriptor));
       auto it = protos_.find(*entry.first.proto);
       CHECK(it != protos_.end());

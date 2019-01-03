@@ -152,21 +152,21 @@ class BuilderMaps {
 
   void CreateCallSitesAndMethodHandles(const DexFile& dex_file);
 
-  TypeList* CreateTypeList(const DexFile::TypeList* type_list, uint32_t offset);
+  TypeList* CreateTypeList(const dex::TypeList* type_list, uint32_t offset);
   EncodedArrayItem* CreateEncodedArrayItem(const DexFile& dex_file,
                                            const uint8_t* static_data,
                                            uint32_t offset);
   AnnotationItem* CreateAnnotationItem(const DexFile& dex_file,
-                                       const DexFile::AnnotationItem* annotation);
+                                       const dex::AnnotationItem* annotation);
   AnnotationSetItem* CreateAnnotationSetItem(const DexFile& dex_file,
-      const DexFile::AnnotationSetItem* disk_annotations_item, uint32_t offset);
+      const dex::AnnotationSetItem* disk_annotations_item, uint32_t offset);
   AnnotationsDirectoryItem* CreateAnnotationsDirectoryItem(const DexFile& dex_file,
-      const DexFile::AnnotationsDirectoryItem* disk_annotations_item, uint32_t offset);
+      const dex::AnnotationsDirectoryItem* disk_annotations_item, uint32_t offset);
   CodeItem* DedupeOrCreateCodeItem(const DexFile& dex_file,
-                                   const DexFile::CodeItem* disk_code_item,
+                                   const dex::CodeItem* disk_code_item,
                                    uint32_t offset,
                                    uint32_t dex_method_index);
-  ClassData* CreateClassData(const DexFile& dex_file, const DexFile::ClassDef& class_def);
+  ClassData* CreateClassData(const DexFile& dex_file, const dex::ClassDef& class_def);
 
   void AddAnnotationsFromMapListSection(const DexFile& dex_file,
                                         uint32_t start_offset,
@@ -207,7 +207,7 @@ class BuilderMaps {
   ParameterAnnotation* GenerateParameterAnnotation(
       const DexFile& dex_file,
       MethodId* method_id,
-      const DexFile::AnnotationSetRefList* annotation_set_ref_list,
+      const dex::AnnotationSetRefList* annotation_set_ref_list,
       uint32_t offset);
 
   template <typename Type, class... Args>
@@ -300,7 +300,7 @@ Header* DexIrBuilder(const DexFile& dex_file,
     if (!options.class_filter_.empty()) {
       // If the filter is enabled (not empty), filter out classes that don't have a matching
       // descriptor.
-      const DexFile::ClassDef& class_def = dex_file.GetClassDef(i);
+      const dex::ClassDef& class_def = dex_file.GetClassDef(i);
       const char* descriptor = dex_file.GetClassDescriptor(class_def);
       if (options.class_filter_.find(descriptor) == options.class_filter_.end()) {
         continue;
@@ -331,10 +331,10 @@ Header* DexIrBuilder(const DexFile& dex_file,
 void BuilderMaps::CheckAndSetRemainingOffsets(const DexFile& dex_file, const Options& options) {
   const DexFile::Header& disk_header = dex_file.GetHeader();
   // Read MapItems and validate/set remaining offsets.
-  const DexFile::MapList* map = dex_file.GetMapList();
+  const dex::MapList* map = dex_file.GetMapList();
   const uint32_t count = map->size_;
   for (uint32_t i = 0; i < count; ++i) {
-    const DexFile::MapItem* item = map->list_ + i;
+    const dex::MapItem* item = map->list_ + i;
     switch (item->type_) {
       case DexFile::kDexTypeHeaderItem:
         CHECK_EQ(item->size_, 1u);
@@ -421,7 +421,7 @@ void BuilderMaps::CheckAndSetRemainingOffsets(const DexFile& dex_file, const Opt
 }
 
 void BuilderMaps::CreateStringId(const DexFile& dex_file, uint32_t i) {
-  const DexFile::StringId& disk_string_id = dex_file.GetStringId(dex::StringIndex(i));
+  const dex::StringId& disk_string_id = dex_file.GetStringId(dex::StringIndex(i));
   StringData* string_data =
       string_datas_map_.CreateAndAddItem(header_->StringDatas(),
                                          eagerly_assign_offsets_,
@@ -434,7 +434,7 @@ void BuilderMaps::CreateStringId(const DexFile& dex_file, uint32_t i) {
 }
 
 void BuilderMaps::CreateTypeId(const DexFile& dex_file, uint32_t i) {
-  const DexFile::TypeId& disk_type_id = dex_file.GetTypeId(dex::TypeIndex(i));
+  const dex::TypeId& disk_type_id = dex_file.GetTypeId(dex::TypeIndex(i));
   CreateAndAddIndexedItem(header_->TypeIds(),
                           header_->TypeIds().GetOffset() + i * TypeId::ItemSize(),
                           i,
@@ -442,8 +442,8 @@ void BuilderMaps::CreateTypeId(const DexFile& dex_file, uint32_t i) {
 }
 
 void BuilderMaps::CreateProtoId(const DexFile& dex_file, uint32_t i) {
-  const DexFile::ProtoId& disk_proto_id = dex_file.GetProtoId(dex::ProtoIndex(i));
-  const DexFile::TypeList* type_list = dex_file.GetProtoParameters(disk_proto_id);
+  const dex::ProtoId& disk_proto_id = dex_file.GetProtoId(dex::ProtoIndex(i));
+  const dex::TypeList* type_list = dex_file.GetProtoParameters(disk_proto_id);
   TypeList* parameter_type_list = CreateTypeList(type_list, disk_proto_id.parameters_off_);
 
   CreateAndAddIndexedItem(header_->ProtoIds(),
@@ -455,7 +455,7 @@ void BuilderMaps::CreateProtoId(const DexFile& dex_file, uint32_t i) {
 }
 
 void BuilderMaps::CreateFieldId(const DexFile& dex_file, uint32_t i) {
-  const DexFile::FieldId& disk_field_id = dex_file.GetFieldId(i);
+  const dex::FieldId& disk_field_id = dex_file.GetFieldId(i);
   CreateAndAddIndexedItem(header_->FieldIds(),
                           header_->FieldIds().GetOffset() + i * FieldId::ItemSize(),
                           i,
@@ -465,7 +465,7 @@ void BuilderMaps::CreateFieldId(const DexFile& dex_file, uint32_t i) {
 }
 
 void BuilderMaps::CreateMethodId(const DexFile& dex_file, uint32_t i) {
-  const DexFile::MethodId& disk_method_id = dex_file.GetMethodId(i);
+  const dex::MethodId& disk_method_id = dex_file.GetMethodId(i);
   CreateAndAddIndexedItem(header_->MethodIds(),
                           header_->MethodIds().GetOffset() + i * MethodId::ItemSize(),
                           i,
@@ -475,19 +475,19 @@ void BuilderMaps::CreateMethodId(const DexFile& dex_file, uint32_t i) {
 }
 
 void BuilderMaps::CreateClassDef(const DexFile& dex_file, uint32_t i) {
-  const DexFile::ClassDef& disk_class_def = dex_file.GetClassDef(i);
+  const dex::ClassDef& disk_class_def = dex_file.GetClassDef(i);
   const TypeId* class_type = header_->TypeIds()[disk_class_def.class_idx_.index_];
   uint32_t access_flags = disk_class_def.access_flags_;
   const TypeId* superclass = header_->GetTypeIdOrNullPtr(disk_class_def.superclass_idx_.index_);
 
-  const DexFile::TypeList* type_list = dex_file.GetInterfacesList(disk_class_def);
+  const dex::TypeList* type_list = dex_file.GetInterfacesList(disk_class_def);
   TypeList* interfaces_type_list = CreateTypeList(type_list, disk_class_def.interfaces_off_);
 
   const StringId* source_file =
       header_->GetStringIdOrNullPtr(disk_class_def.source_file_idx_.index_);
   // Annotations.
   AnnotationsDirectoryItem* annotations = nullptr;
-  const DexFile::AnnotationsDirectoryItem* disk_annotations_directory_item =
+  const dex::AnnotationsDirectoryItem* disk_annotations_directory_item =
       dex_file.GetAnnotationsDirectory(disk_class_def);
   if (disk_annotations_directory_item != nullptr) {
     annotations = CreateAnnotationsDirectoryItem(
@@ -512,7 +512,7 @@ void BuilderMaps::CreateClassDef(const DexFile& dex_file, uint32_t i) {
 }
 
 void BuilderMaps::CreateCallSiteId(const DexFile& dex_file, uint32_t i) {
-  const DexFile::CallSiteIdItem& disk_call_site_id = dex_file.GetCallSiteId(i);
+  const dex::CallSiteIdItem& disk_call_site_id = dex_file.GetCallSiteId(i);
   const uint8_t* disk_call_item_ptr = dex_file.DataBegin() + disk_call_site_id.data_off_;
   EncodedArrayItem* call_site_item =
       CreateEncodedArrayItem(dex_file, disk_call_item_ptr, disk_call_site_id.data_off_);
@@ -524,7 +524,7 @@ void BuilderMaps::CreateCallSiteId(const DexFile& dex_file, uint32_t i) {
 }
 
 void BuilderMaps::CreateMethodHandleItem(const DexFile& dex_file, uint32_t i) {
-  const DexFile::MethodHandleItem& disk_method_handle = dex_file.GetMethodHandle(i);
+  const dex::MethodHandleItem& disk_method_handle = dex_file.GetMethodHandle(i);
   uint16_t index = disk_method_handle.field_or_method_idx_;
   DexFile::MethodHandleType type =
       static_cast<DexFile::MethodHandleType>(disk_method_handle.method_handle_type_);
@@ -551,9 +551,9 @@ void BuilderMaps::CreateMethodHandleItem(const DexFile& dex_file, uint32_t i) {
 
 void BuilderMaps::CreateCallSitesAndMethodHandles(const DexFile& dex_file) {
   // Iterate through the map list and set the offset of the CallSiteIds and MethodHandleItems.
-  const DexFile::MapList* map = dex_file.GetMapList();
+  const dex::MapList* map = dex_file.GetMapList();
   for (uint32_t i = 0; i < map->size_; ++i) {
-    const DexFile::MapItem* item = map->list_ + i;
+    const dex::MapItem* item = map->list_ + i;
     switch (item->type_) {
       case DexFile::kDexTypeCallSiteIdItem:
         header_->CallSiteIds().SetOffset(item->offset_);
@@ -575,7 +575,7 @@ void BuilderMaps::CreateCallSitesAndMethodHandles(const DexFile& dex_file) {
   }
 }
 
-TypeList* BuilderMaps::CreateTypeList(const DexFile::TypeList* dex_type_list, uint32_t offset) {
+TypeList* BuilderMaps::CreateTypeList(const dex::TypeList* dex_type_list, uint32_t offset) {
   if (dex_type_list == nullptr) {
     return nullptr;
   }
@@ -623,7 +623,7 @@ void BuilderMaps::AddAnnotationsFromMapListSection(const DexFile& dex_file,
   uint32_t current_offset = start_offset;
   for (size_t i = 0; i < count; ++i) {
     // Annotation that we didn't process already, add it to the set.
-    const DexFile::AnnotationItem* annotation = dex_file.GetAnnotationItemAtOffset(current_offset);
+    const dex::AnnotationItem* annotation = dex_file.GetAnnotationItemAtOffset(current_offset);
     AnnotationItem* annotation_item = CreateAnnotationItem(dex_file, annotation);
     DCHECK(annotation_item != nullptr);
     current_offset += annotation_item->GetSize();
@@ -632,7 +632,7 @@ void BuilderMaps::AddAnnotationsFromMapListSection(const DexFile& dex_file,
 
 void BuilderMaps::AddHiddenapiClassDataFromMapListSection(const DexFile& dex_file,
                                                           uint32_t offset) {
-  const DexFile::HiddenapiClassData* hiddenapi_class_data =
+  const dex::HiddenapiClassData* hiddenapi_class_data =
       dex_file.GetHiddenapiClassDataAtOffset(offset);
   DCHECK(hiddenapi_class_data == dex_file.GetHiddenapiClassData());
 
@@ -669,7 +669,7 @@ void BuilderMaps::AddHiddenapiClassDataFromMapListSection(const DexFile& dex_fil
 }
 
 AnnotationItem* BuilderMaps::CreateAnnotationItem(const DexFile& dex_file,
-                                                  const DexFile::AnnotationItem* annotation) {
+                                                  const dex::AnnotationItem* annotation) {
   const uint8_t* const start_data = reinterpret_cast<const uint8_t*>(annotation);
   const uint32_t offset = start_data - dex_file.DataBegin();
   AnnotationItem* annotation_item = annotation_items_map_.GetExistingObject(offset);
@@ -691,7 +691,7 @@ AnnotationItem* BuilderMaps::CreateAnnotationItem(const DexFile& dex_file,
 
 
 AnnotationSetItem* BuilderMaps::CreateAnnotationSetItem(const DexFile& dex_file,
-    const DexFile::AnnotationSetItem* disk_annotations_item, uint32_t offset) {
+    const dex::AnnotationSetItem* disk_annotations_item, uint32_t offset) {
   if (disk_annotations_item == nullptr || (disk_annotations_item->size_ == 0 && offset == 0)) {
     return nullptr;
   }
@@ -699,7 +699,7 @@ AnnotationSetItem* BuilderMaps::CreateAnnotationSetItem(const DexFile& dex_file,
   if (annotation_set_item == nullptr) {
     std::vector<AnnotationItem*>* items = new std::vector<AnnotationItem*>();
     for (uint32_t i = 0; i < disk_annotations_item->size_; ++i) {
-      const DexFile::AnnotationItem* annotation =
+      const dex::AnnotationItem* annotation =
           dex_file.GetAnnotationItem(disk_annotations_item, i);
       if (annotation == nullptr) {
         continue;
@@ -717,27 +717,27 @@ AnnotationSetItem* BuilderMaps::CreateAnnotationSetItem(const DexFile& dex_file,
 }
 
 AnnotationsDirectoryItem* BuilderMaps::CreateAnnotationsDirectoryItem(const DexFile& dex_file,
-    const DexFile::AnnotationsDirectoryItem* disk_annotations_item, uint32_t offset) {
+    const dex::AnnotationsDirectoryItem* disk_annotations_item, uint32_t offset) {
   AnnotationsDirectoryItem* annotations_directory_item =
       annotations_directory_items_map_.GetExistingObject(offset);
   if (annotations_directory_item != nullptr) {
     return annotations_directory_item;
   }
-  const DexFile::AnnotationSetItem* class_set_item =
+  const dex::AnnotationSetItem* class_set_item =
       dex_file.GetClassAnnotationSet(disk_annotations_item);
   AnnotationSetItem* class_annotation = nullptr;
   if (class_set_item != nullptr) {
     uint32_t item_offset = disk_annotations_item->class_annotations_off_;
     class_annotation = CreateAnnotationSetItem(dex_file, class_set_item, item_offset);
   }
-  const DexFile::FieldAnnotationsItem* fields =
+  const dex::FieldAnnotationsItem* fields =
       dex_file.GetFieldAnnotations(disk_annotations_item);
   FieldAnnotationVector* field_annotations = nullptr;
   if (fields != nullptr) {
     field_annotations = new FieldAnnotationVector();
     for (uint32_t i = 0; i < disk_annotations_item->fields_size_; ++i) {
       FieldId* field_id = header_->FieldIds()[fields[i].field_idx_];
-      const DexFile::AnnotationSetItem* field_set_item =
+      const dex::AnnotationSetItem* field_set_item =
           dex_file.GetFieldAnnotationSetItem(fields[i]);
       uint32_t annotation_set_offset = fields[i].annotations_off_;
       AnnotationSetItem* annotation_set_item =
@@ -746,14 +746,14 @@ AnnotationsDirectoryItem* BuilderMaps::CreateAnnotationsDirectoryItem(const DexF
           field_id, annotation_set_item));
     }
   }
-  const DexFile::MethodAnnotationsItem* methods =
+  const dex::MethodAnnotationsItem* methods =
       dex_file.GetMethodAnnotations(disk_annotations_item);
   MethodAnnotationVector* method_annotations = nullptr;
   if (methods != nullptr) {
     method_annotations = new MethodAnnotationVector();
     for (uint32_t i = 0; i < disk_annotations_item->methods_size_; ++i) {
       MethodId* method_id = header_->MethodIds()[methods[i].method_idx_];
-      const DexFile::AnnotationSetItem* method_set_item =
+      const dex::AnnotationSetItem* method_set_item =
           dex_file.GetMethodAnnotationSetItem(methods[i]);
       uint32_t annotation_set_offset = methods[i].annotations_off_;
       AnnotationSetItem* annotation_set_item =
@@ -762,14 +762,14 @@ AnnotationsDirectoryItem* BuilderMaps::CreateAnnotationsDirectoryItem(const DexF
           method_id, annotation_set_item));
     }
   }
-  const DexFile::ParameterAnnotationsItem* parameters =
+  const dex::ParameterAnnotationsItem* parameters =
       dex_file.GetParameterAnnotations(disk_annotations_item);
   ParameterAnnotationVector* parameter_annotations = nullptr;
   if (parameters != nullptr) {
     parameter_annotations = new ParameterAnnotationVector();
     for (uint32_t i = 0; i < disk_annotations_item->parameters_size_; ++i) {
       MethodId* method_id = header_->MethodIds()[parameters[i].method_idx_];
-      const DexFile::AnnotationSetRefList* list =
+      const dex::AnnotationSetRefList* list =
           dex_file.GetParameterAnnotationSetRefList(&parameters[i]);
       parameter_annotations->push_back(std::unique_ptr<ParameterAnnotation>(
           GenerateParameterAnnotation(dex_file, method_id, list, parameters[i].annotations_off_)));
@@ -786,7 +786,7 @@ AnnotationsDirectoryItem* BuilderMaps::CreateAnnotationsDirectoryItem(const DexF
 }
 
 CodeItem* BuilderMaps::DedupeOrCreateCodeItem(const DexFile& dex_file,
-                                              const DexFile::CodeItem* disk_code_item,
+                                              const dex::CodeItem* disk_code_item,
                                               uint32_t offset,
                                               uint32_t dex_method_index) {
   if (disk_code_item == nullptr) {
@@ -827,7 +827,7 @@ CodeItem* BuilderMaps::DedupeOrCreateCodeItem(const DexFile& dex_file,
   if (accessor.TriesSize() > 0) {
     tries = new TryItemVector();
     handler_list = new CatchHandlerVector();
-    for (const DexFile::TryItem& disk_try_item : accessor.TryItems()) {
+    for (const dex::TryItem& disk_try_item : accessor.TryItems()) {
       uint32_t start_addr = disk_try_item.start_addr_;
       uint16_t insn_count = disk_try_item.insn_count_;
       uint16_t handler_off = disk_try_item.handler_off_;
@@ -941,7 +941,7 @@ CodeItem* BuilderMaps::DedupeOrCreateCodeItem(const DexFile& dex_file,
 }
 
 ClassData* BuilderMaps::CreateClassData(const DexFile& dex_file,
-                                        const DexFile::ClassDef& class_def) {
+                                        const dex::ClassDef& class_def) {
   // Read the fields and methods defined by the class, resolving the circular reference from those
   // to classes by setting class at the same time.
   const uint32_t offset = class_def.class_data_off_;
@@ -1225,7 +1225,7 @@ MethodItem BuilderMaps::GenerateMethodItem(const DexFile& dex_file,
                                            const ClassAccessor::Method& method) {
   MethodId* method_id = header_->MethodIds()[method.GetIndex()];
   uint32_t access_flags = method.GetAccessFlags();
-  const DexFile::CodeItem* disk_code_item = method.GetCodeItem();
+  const dex::CodeItem* disk_code_item = method.GetCodeItem();
   // Temporary hack to prevent incorrectly deduping code items if they have the same offset since
   // they may have different debug info streams.
   CodeItem* code_item = DedupeOrCreateCodeItem(dex_file,
@@ -1238,13 +1238,13 @@ MethodItem BuilderMaps::GenerateMethodItem(const DexFile& dex_file,
 ParameterAnnotation* BuilderMaps::GenerateParameterAnnotation(
     const DexFile& dex_file,
     MethodId* method_id,
-    const DexFile::AnnotationSetRefList* annotation_set_ref_list,
+    const dex::AnnotationSetRefList* annotation_set_ref_list,
     uint32_t offset) {
   AnnotationSetRefList* set_ref_list = annotation_set_ref_lists_map_.GetExistingObject(offset);
   if (set_ref_list == nullptr) {
     std::vector<AnnotationSetItem*>* annotations = new std::vector<AnnotationSetItem*>();
     for (uint32_t i = 0; i < annotation_set_ref_list->size_; ++i) {
-      const DexFile::AnnotationSetItem* annotation_set_item =
+      const dex::AnnotationSetItem* annotation_set_item =
           dex_file.GetSetRefItemItem(&annotation_set_ref_list->list_[i]);
       uint32_t set_offset = annotation_set_ref_list->list_[i].annotations_off_;
       annotations->push_back(CreateAnnotationSetItem(dex_file, annotation_set_item, set_offset));

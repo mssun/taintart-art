@@ -158,7 +158,7 @@ void DexFileTrackingRegistrar::SetDexFileRegistration(bool should_poison) {
 void DexFileTrackingRegistrar::SetAllCodeItemRegistration(bool should_poison) {
   for (ClassAccessor accessor : dex_file_->GetClasses()) {
     for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      const dex::CodeItem* code_item = method.GetCodeItem();
       if (code_item != nullptr) {
         const void* code_item_begin = reinterpret_cast<const void*>(code_item);
         size_t code_item_size = dex_file_->GetCodeItemSize(*code_item);
@@ -171,7 +171,7 @@ void DexFileTrackingRegistrar::SetAllCodeItemRegistration(bool should_poison) {
 void DexFileTrackingRegistrar::SetAllCodeItemStartRegistration(bool should_poison) {
   for (ClassAccessor class_accessor : dex_file_->GetClasses()) {
     for (const ClassAccessor::Method& method : class_accessor.GetMethods()) {
-      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      const dex::CodeItem* code_item = method.GetCodeItem();
       if (code_item != nullptr) {
         const void* code_item_begin = reinterpret_cast<const void*>(code_item);
         size_t code_item_start = reinterpret_cast<size_t>(code_item);
@@ -189,7 +189,7 @@ void DexFileTrackingRegistrar::SetAllCodeItemStartRegistration(bool should_poiso
 void DexFileTrackingRegistrar::SetAllInsnsRegistration(bool should_poison) {
   for (ClassAccessor class_accessor : dex_file_->GetClasses()) {
     for (const ClassAccessor::Method& method : class_accessor.GetMethods()) {
-      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      const dex::CodeItem* code_item = method.GetCodeItem();
       if (code_item != nullptr) {
         CodeItemInstructionAccessor accessor(*dex_file_, code_item);
         const void* insns_begin = reinterpret_cast<const void*>(accessor.Insns());
@@ -204,9 +204,9 @@ void DexFileTrackingRegistrar::SetAllInsnsRegistration(bool should_poison) {
 void DexFileTrackingRegistrar::SetCodeItemRegistration(const char* class_name, bool should_poison) {
   for (ClassAccessor accessor : dex_file_->GetClasses()) {
     for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-      const DexFile::MethodId& methodid_item = dex_file_->GetMethodId(method.GetIndex());
+      const dex::MethodId& methodid_item = dex_file_->GetMethodId(method.GetIndex());
       const char * methodid_name = dex_file_->GetMethodName(methodid_item);
-      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      const dex::CodeItem* code_item = method.GetCodeItem();
       if (code_item != nullptr && strcmp(methodid_name, class_name) == 0) {
         const void* code_item_begin = reinterpret_cast<const void*>(code_item);
         size_t code_item_size = dex_file_->GetCodeItemSize(*code_item);
@@ -218,7 +218,7 @@ void DexFileTrackingRegistrar::SetCodeItemRegistration(const char* class_name, b
 
 void DexFileTrackingRegistrar::SetAllStringDataStartRegistration(bool should_poison) {
   for (size_t stringid_ctr = 0; stringid_ctr < dex_file_->NumStringIds(); ++stringid_ctr) {
-    const DexFile::StringId & string_id = dex_file_->GetStringId(StringIndex(stringid_ctr));
+    const dex::StringId & string_id = dex_file_->GetStringId(StringIndex(stringid_ctr));
     const void* string_data_begin = reinterpret_cast<const void*>(dex_file_->Begin() + string_id.string_data_off_);
     // Data Section of String Data Item
     const void* string_data_data_begin = reinterpret_cast<const void*>(dex_file_->GetStringData(string_id));
@@ -229,11 +229,11 @@ void DexFileTrackingRegistrar::SetAllStringDataStartRegistration(bool should_poi
 
 void DexFileTrackingRegistrar::SetAllStringDataRegistration(bool should_poison) {
   size_t map_offset = dex_file_->GetHeader().map_off_;
-  auto map_list = reinterpret_cast<const DexFile::MapList*>(dex_file_->Begin() + map_offset);
+  auto map_list = reinterpret_cast<const dex::MapList*>(dex_file_->Begin() + map_offset);
   for (size_t map_ctr = 0; map_ctr < map_list->size_; ++map_ctr) {
-    const DexFile::MapItem& map_item = map_list->list_[map_ctr];
+    const dex::MapItem& map_item = map_list->list_[map_ctr];
     if (map_item.type_ == DexFile::kDexTypeStringDataItem) {
-      const DexFile::MapItem& next_map_item = map_list->list_[map_ctr + 1];
+      const dex::MapItem& next_map_item = map_list->list_[map_ctr + 1];
       const void* string_data_begin = reinterpret_cast<const void*>(dex_file_->Begin() + map_item.offset_);
       size_t string_data_size = next_map_item.offset_ - map_item.offset_;
       range_values_.push_back(std::make_tuple(string_data_begin, string_data_size, should_poison));

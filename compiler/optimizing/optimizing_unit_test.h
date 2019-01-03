@@ -155,7 +155,7 @@ class OptimizingUnitTestHelper {
     void* aligned_data = GetAllocator()->Alloc(code_item_size);
     memcpy(aligned_data, &data[0], code_item_size);
     CHECK_ALIGNED(aligned_data, StandardDexFile::CodeItem::kAlignment);
-    const DexFile::CodeItem* code_item = reinterpret_cast<const DexFile::CodeItem*>(aligned_data);
+    const dex::CodeItem* code_item = reinterpret_cast<const dex::CodeItem*>(aligned_data);
 
     {
       ScopedObjectAccess soa(Thread::Current());

@@ -68,7 +68,7 @@ bool HBasicBlockBuilder::CreateBranchTargets() {
     // places where the program might fall through into/out of the a block and
     // where TryBoundary instructions will be inserted later. Other edges which
     // enter/exit the try blocks are a result of branches/switches.
-    for (const DexFile::TryItem& try_item : code_item_accessor_.TryItems()) {
+    for (const dex::TryItem& try_item : code_item_accessor_.TryItems()) {
       uint32_t dex_pc_start = try_item.start_addr_;
       uint32_t dex_pc_end = dex_pc_start + try_item.insn_count_;
       MaybeCreateBlockAt(dex_pc_start);
@@ -222,9 +222,9 @@ void HBasicBlockBuilder::ConnectBasicBlocks() {
 }
 
 // Returns the TryItem stored for `block` or nullptr if there is no info for it.
-static const DexFile::TryItem* GetTryItem(
+static const dex::TryItem* GetTryItem(
     HBasicBlock* block,
-    const ScopedArenaSafeMap<uint32_t, const DexFile::TryItem*>& try_block_info) {
+    const ScopedArenaSafeMap<uint32_t, const dex::TryItem*>& try_block_info) {
   auto iterator = try_block_info.find(block->GetBlockId());
   return (iterator == try_block_info.end()) ? nullptr : iterator->second;
 }
@@ -235,7 +235,7 @@ static const DexFile::TryItem* GetTryItem(
 // for a handler.
 static void LinkToCatchBlocks(HTryBoundary* try_boundary,
                               const CodeItemDataAccessor& accessor,
-                              const DexFile::TryItem* try_item,
+                              const dex::TryItem* try_item,
                               const ScopedArenaSafeMap<uint32_t, HBasicBlock*>& catch_blocks) {
   for (CatchHandlerIterator it(accessor.GetCatchHandlerData(try_item->handler_off_));
       it.HasNext();
@@ -279,7 +279,7 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
 
   // Keep a map of all try blocks and their respective TryItems. We do not use
   // the block's pointer but rather its id to ensure deterministic iteration.
-  ScopedArenaSafeMap<uint32_t, const DexFile::TryItem*> try_block_info(
+  ScopedArenaSafeMap<uint32_t, const dex::TryItem*> try_block_info(
       std::less<uint32_t>(), local_allocator_->Adapter(kArenaAllocGraphBuilder));
 
   // Obtain TryItem information for blocks with throwing instructions, and split
@@ -295,7 +295,7 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
     // loop for synchronized blocks.
     if (ContainsElement(throwing_blocks_, block)) {
       // Try to find a TryItem covering the block.
-      const DexFile::TryItem* try_item = code_item_accessor_.FindTryItem(block->GetDexPc());
+      const dex::TryItem* try_item = code_item_accessor_.FindTryItem(block->GetDexPc());
       if (try_item != nullptr) {
         // Block throwing and in a TryItem. Store the try block information.
         try_block_info.Put(block->GetBlockId(), try_item);
@@ -348,7 +348,7 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
   // that all predecessors are relinked to. This preserves loop headers (b/23895756).
   for (const auto& entry : try_block_info) {
     uint32_t block_id = entry.first;
-    const DexFile::TryItem* try_item = entry.second;
+    const dex::TryItem* try_item = entry.second;
     HBasicBlock* try_block = graph_->GetBlocks()[block_id];
     for (HBasicBlock* predecessor : try_block->GetPredecessors()) {
       if (GetTryItem(predecessor, try_block_info) != try_item) {
@@ -367,7 +367,7 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
   // the successor is not in the same TryItem.
   for (const auto& entry : try_block_info) {
     uint32_t block_id = entry.first;
-    const DexFile::TryItem* try_item = entry.second;
+    const dex::TryItem* try_item = entry.second;
     HBasicBlock* try_block = graph_->GetBlocks()[block_id];
     // NOTE: Do not use iterators because SplitEdge would invalidate them.
     for (size_t i = 0, e = try_block->GetSuccessors().size(); i < e; ++i) {

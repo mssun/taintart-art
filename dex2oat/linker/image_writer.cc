@@ -1586,7 +1586,7 @@ void ImageWriter::PruneDexCache(ObjPtr<mirror::DexCache> dex_cache,
     // Check if the referenced class is in the image. Note that we want to check the referenced
     // class rather than the declaring class to preserve the semantics, i.e. using a MethodId
     // results in resolving the referenced class and that can for example throw OOME.
-    const DexFile::MethodId& method_id = dex_file.GetMethodId(stored_index);
+    const dex::MethodId& method_id = dex_file.GetMethodId(stored_index);
     if (method_id.class_idx_ != last_class_idx) {
       last_class_idx = method_id.class_idx_;
       last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);
@@ -1612,7 +1612,7 @@ void ImageWriter::PruneDexCache(ObjPtr<mirror::DexCache> dex_cache,
     // Check if the referenced class is in the image. Note that we want to check the referenced
     // class rather than the declaring class to preserve the semantics, i.e. using a FieldId
     // results in resolving the referenced class and that can for example throw OOME.
-    const DexFile::FieldId& field_id = dex_file.GetFieldId(stored_index);
+    const dex::FieldId& field_id = dex_file.GetFieldId(stored_index);
     if (field_id.class_idx_ != last_class_idx) {
       last_class_idx = field_id.class_idx_;
       last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);
@@ -1663,7 +1663,7 @@ void ImageWriter::PreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     // Check if the referenced class is in the image. Note that we want to check the referenced
     // class rather than the declaring class to preserve the semantics, i.e. using a MethodId
     // results in resolving the referenced class and that can for example throw OOME.
-    const DexFile::MethodId& method_id = dex_file.GetMethodId(i);
+    const dex::MethodId& method_id = dex_file.GetMethodId(i);
     if (method_id.class_idx_ != last_class_idx) {
       last_class_idx = method_id.class_idx_;
       last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);
@@ -1695,7 +1695,7 @@ void ImageWriter::PreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     // Check if the referenced class is in the image. Note that we want to check the referenced
     // class rather than the declaring class to preserve the semantics, i.e. using a FieldId
     // results in resolving the referenced class and that can for example throw OOME.
-    const DexFile::FieldId& field_id = dex_file.GetFieldId(i);
+    const dex::FieldId& field_id = dex_file.GetFieldId(i);
     if (field_id.class_idx_ != last_class_idx) {
       last_class_idx = field_id.class_idx_;
       last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);

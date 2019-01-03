@@ -41,6 +41,19 @@ namespace art {
 
 using android::base::StringPrintf;
 
+using dex::CallSiteIdItem;
+using dex::ClassDef;
+using dex::FieldId;
+using dex::MapList;
+using dex::MapItem;
+using dex::MethodHandleItem;
+using dex::MethodId;
+using dex::ProtoId;
+using dex::StringId;
+using dex::TryItem;
+using dex::TypeId;
+using dex::TypeList;
+
 static_assert(sizeof(dex::StringIndex) == sizeof(uint32_t), "StringIndex size is wrong");
 static_assert(std::is_trivially_copyable<dex::StringIndex>::value, "StringIndex not trivial");
 static_assert(sizeof(dex::TypeIndex) == sizeof(uint16_t), "TypeIndex size is wrong");
@@ -195,7 +208,7 @@ uint32_t DexFile::Header::GetVersion() const {
   return atoi(version);
 }
 
-const DexFile::ClassDef* DexFile::FindClassDef(dex::TypeIndex type_idx) const {
+const ClassDef* DexFile::FindClassDef(dex::TypeIndex type_idx) const {
   size_t num_class_defs = NumClassDefs();
   // Fast path for rare no class defs case.
   if (num_class_defs == 0) {
@@ -210,8 +223,7 @@ const DexFile::ClassDef* DexFile::FindClassDef(dex::TypeIndex type_idx) const {
   return nullptr;
 }
 
-uint32_t DexFile::FindCodeItemOffset(const DexFile::ClassDef& class_def,
-                                     uint32_t method_idx) const {
+uint32_t DexFile::FindCodeItemOffset(const ClassDef& class_def, uint32_t method_idx) const {
   ClassAccessor accessor(*this, class_def);
   CHECK(accessor.HasClassData());
   for (const ClassAccessor::Method& method : accessor.GetMethods()) {
@@ -223,9 +235,9 @@ uint32_t DexFile::FindCodeItemOffset(const DexFile::ClassDef& class_def,
   UNREACHABLE();
 }
 
-const DexFile::FieldId* DexFile::FindFieldId(const DexFile::TypeId& declaring_klass,
-                                             const DexFile::StringId& name,
-                                             const DexFile::TypeId& type) const {
+const FieldId* DexFile::FindFieldId(const TypeId& declaring_klass,
+                                    const StringId& name,
+                                    const TypeId& type) const {
   // Binary search MethodIds knowing that they are sorted by class_idx, name_idx then proto_idx
   const dex::TypeIndex class_idx = GetIndexForTypeId(declaring_klass);
   const dex::StringIndex name_idx = GetIndexForStringId(name);
@@ -234,7 +246,7 @@ const DexFile::FieldId* DexFile::FindFieldId(const DexFile::TypeId& declaring_kl
   int32_t hi = NumFieldIds() - 1;
   while (hi >= lo) {
     int32_t mid = (hi + lo) / 2;
-    const DexFile::FieldId& field = GetFieldId(mid);
+    const FieldId& field = GetFieldId(mid);
     if (class_idx > field.class_idx_) {
       lo = mid + 1;
     } else if (class_idx < field.class_idx_) {
@@ -258,9 +270,9 @@ const DexFile::FieldId* DexFile::FindFieldId(const DexFile::TypeId& declaring_kl
   return nullptr;
 }
 
-const DexFile::MethodId* DexFile::FindMethodId(const DexFile::TypeId& declaring_klass,
-                                               const DexFile::StringId& name,
-                                               const DexFile::ProtoId& signature) const {
+const MethodId* DexFile::FindMethodId(const TypeId& declaring_klass,
+                                      const StringId& name,
+                                      const ProtoId& signature) const {
   // Binary search MethodIds knowing that they are sorted by class_idx, name_idx then proto_idx
   const dex::TypeIndex class_idx = GetIndexForTypeId(declaring_klass);
   const dex::StringIndex name_idx = GetIndexForStringId(name);
@@ -269,7 +281,7 @@ const DexFile::MethodId* DexFile::FindMethodId(const DexFile::TypeId& declaring_
   int32_t hi = NumMethodIds() - 1;
   while (hi >= lo) {
     int32_t mid = (hi + lo) / 2;
-    const DexFile::MethodId& method = GetMethodId(mid);
+    const MethodId& method = GetMethodId(mid);
     if (class_idx > method.class_idx_) {
       lo = mid + 1;
     } else if (class_idx < method.class_idx_) {
@@ -293,12 +305,12 @@ const DexFile::MethodId* DexFile::FindMethodId(const DexFile::TypeId& declaring_
   return nullptr;
 }
 
-const DexFile::StringId* DexFile::FindStringId(const char* string) const {
+const StringId* DexFile::FindStringId(const char* string) const {
   int32_t lo = 0;
   int32_t hi = NumStringIds() - 1;
   while (hi >= lo) {
     int32_t mid = (hi + lo) / 2;
-    const DexFile::StringId& str_id = GetStringId(dex::StringIndex(mid));
+    const StringId& str_id = GetStringId(dex::StringIndex(mid));
     const char* str = GetStringData(str_id);
     int compare = CompareModifiedUtf8ToModifiedUtf8AsUtf16CodePointValues(string, str);
     if (compare > 0) {
@@ -312,13 +324,13 @@ const DexFile::StringId* DexFile::FindStringId(const char* string) const {
   return nullptr;
 }
 
-const DexFile::TypeId* DexFile::FindTypeId(const char* string) const {
+const TypeId* DexFile::FindTypeId(const char* string) const {
   int32_t lo = 0;
   int32_t hi = NumTypeIds() - 1;
   while (hi >= lo) {
     int32_t mid = (hi + lo) / 2;
     const TypeId& type_id = GetTypeId(dex::TypeIndex(mid));
-    const DexFile::StringId& str_id = GetStringId(type_id.descriptor_idx_);
+    const StringId& str_id = GetStringId(type_id.descriptor_idx_);
     const char* str = GetStringData(str_id);
     int compare = CompareModifiedUtf8ToModifiedUtf8AsUtf16CodePointValues(string, str);
     if (compare > 0) {
@@ -332,7 +344,7 @@ const DexFile::TypeId* DexFile::FindTypeId(const char* string) const {
   return nullptr;
 }
 
-const DexFile::TypeId* DexFile::FindTypeId(dex::StringIndex string_idx) const {
+const TypeId* DexFile::FindTypeId(dex::StringIndex string_idx) const {
   int32_t lo = 0;
   int32_t hi = NumTypeIds() - 1;
   while (hi >= lo) {
@@ -349,15 +361,15 @@ const DexFile::TypeId* DexFile::FindTypeId(dex::StringIndex string_idx) const {
   return nullptr;
 }
 
-const DexFile::ProtoId* DexFile::FindProtoId(dex::TypeIndex return_type_idx,
-                                             const dex::TypeIndex* signature_type_idxs,
-                                             uint32_t signature_length) const {
+const ProtoId* DexFile::FindProtoId(dex::TypeIndex return_type_idx,
+                                    const dex::TypeIndex* signature_type_idxs,
+                                    uint32_t signature_length) const {
   int32_t lo = 0;
   int32_t hi = NumProtoIds() - 1;
   while (hi >= lo) {
     int32_t mid = (hi + lo) / 2;
     const dex::ProtoIndex proto_idx = static_cast<dex::ProtoIndex>(mid);
-    const DexFile::ProtoId& proto = GetProtoId(proto_idx);
+    const ProtoId& proto = GetProtoId(proto_idx);
     int compare = return_type_idx.index_ - proto.return_type_idx_.index_;
     if (compare == 0) {
       DexFileParameterIterator it(*this, proto);
@@ -422,7 +434,7 @@ bool DexFile::CreateTypeList(const StringPiece& signature,
     }
     // TODO: avoid creating a std::string just to get a 0-terminated char array
     std::string descriptor(signature.data() + start_offset, offset - start_offset);
-    const DexFile::TypeId* type_id = FindTypeId(descriptor.c_str());
+    const TypeId* type_id = FindTypeId(descriptor.c_str());
     if (type_id == nullptr) {
       return false;
     }
@@ -457,7 +469,7 @@ int32_t DexFile::FindTryItem(const TryItem* try_items, uint32_t tries_size, uint
   while (min < max) {
     const uint32_t mid = (min + max) / 2;
 
-    const art::DexFile::TryItem& ti = try_items[mid];
+    const TryItem& ti = try_items[mid];
     const uint32_t start = ti.start_addr_;
     const uint32_t end = start + ti.insn_count_;
 
@@ -523,9 +535,9 @@ std::string DexFile::PrettyMethod(uint32_t method_idx, bool with_signature) cons
   if (method_idx >= NumMethodIds()) {
     return StringPrintf("<<invalid-method-idx-%d>>", method_idx);
   }
-  const DexFile::MethodId& method_id = GetMethodId(method_idx);
+  const MethodId& method_id = GetMethodId(method_idx);
   std::string result;
-  const DexFile::ProtoId* proto_id = with_signature ? &GetProtoId(method_id.proto_idx_) : nullptr;
+  const ProtoId* proto_id = with_signature ? &GetProtoId(method_id.proto_idx_) : nullptr;
   if (with_signature) {
     AppendPrettyDescriptor(StringByTypeIdx(proto_id->return_type_idx_), &result);
     result += ' ';
@@ -535,7 +547,7 @@ std::string DexFile::PrettyMethod(uint32_t method_idx, bool with_signature) cons
   result += GetMethodName(method_id);
   if (with_signature) {
     result += '(';
-    const DexFile::TypeList* params = GetProtoParameters(*proto_id);
+    const TypeList* params = GetProtoParameters(*proto_id);
     if (params != nullptr) {
       const char* separator = "";
       for (uint32_t i = 0u, size = params->Size(); i != size; ++i) {
@@ -553,7 +565,7 @@ std::string DexFile::PrettyField(uint32_t field_idx, bool with_type) const {
   if (field_idx >= NumFieldIds()) {
     return StringPrintf("<<invalid-field-idx-%d>>", field_idx);
   }
-  const DexFile::FieldId& field_id = GetFieldId(field_idx);
+  const FieldId& field_id = GetFieldId(field_idx);
   std::string result;
   if (with_type) {
     result += GetFieldTypeDescriptor(field_id);
@@ -569,12 +581,12 @@ std::string DexFile::PrettyType(dex::TypeIndex type_idx) const {
   if (type_idx.index_ >= NumTypeIds()) {
     return StringPrintf("<<invalid-type-idx-%d>>", type_idx.index_);
   }
-  const DexFile::TypeId& type_id = GetTypeId(type_idx);
+  const TypeId& type_id = GetTypeId(type_idx);
   return PrettyDescriptor(GetTypeDescriptor(type_id));
 }
 
 dex::ProtoIndex DexFile::GetProtoIndexForCallSite(uint32_t call_site_idx) const {
-  const DexFile::CallSiteIdItem& csi = GetCallSiteId(call_site_idx);
+  const CallSiteIdItem& csi = GetCallSiteId(call_site_idx);
   CallSiteArrayValueIterator it(*this, csi);
   it.Next();
   it.Next();
@@ -597,7 +609,7 @@ std::string Signature::ToString() const {
     CHECK(proto_id_ == nullptr);
     return "<no signature>";
   }
-  const DexFile::TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
+  const TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
   std::string result;
   if (params == nullptr) {
     result += "()";
@@ -613,7 +625,7 @@ std::string Signature::ToString() const {
 }
 
 uint32_t Signature::GetNumberOfParameters() const {
-  const DexFile::TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
+  const TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
   return (params != nullptr) ? params->Size() : 0;
 }
 
@@ -631,7 +643,7 @@ bool Signature::operator==(const StringPiece& rhs) const {
     return false;  // Invalid signature
   }
   tail.remove_prefix(1);  // "(";
-  const DexFile::TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
+  const TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
   if (params != nullptr) {
     for (uint32_t i = 0; i < params->Size(); ++i) {
       StringPiece param(dex_file_->StringByTypeIdx(params->GetTypeItem(i).type_idx_));

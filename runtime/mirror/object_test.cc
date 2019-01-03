@@ -364,16 +364,16 @@ TEST_F(ObjectTest, StaticFieldFromCode) {
   Handle<Class> klass =
       hs.NewHandle(class_linker_->FindClass(soa.Self(), "LStaticsFromCode;", loader));
   ArtMethod* clinit = klass->FindClassInitializer(kRuntimePointerSize);
-  const DexFile::TypeId* klass_type_id = dex_file->FindTypeId("LStaticsFromCode;");
+  const dex::TypeId* klass_type_id = dex_file->FindTypeId("LStaticsFromCode;");
   ASSERT_TRUE(klass_type_id != nullptr);
 
-  const DexFile::TypeId* type_type_id = dex_file->FindTypeId("Ljava/lang/Object;");
+  const dex::TypeId* type_type_id = dex_file->FindTypeId("Ljava/lang/Object;");
   ASSERT_TRUE(type_type_id != nullptr);
 
-  const DexFile::StringId* name_str_id = dex_file->FindStringId("s0");
+  const dex::StringId* name_str_id = dex_file->FindStringId("s0");
   ASSERT_TRUE(name_str_id != nullptr);
 
-  const DexFile::FieldId* field_id = dex_file->FindFieldId(
+  const dex::FieldId* field_id = dex_file->FindFieldId(
       *klass_type_id, *name_str_id, *type_type_id);
   ASSERT_TRUE(field_id != nullptr);
   uint32_t field_idx = dex_file->GetIndexForFieldId(*field_id);

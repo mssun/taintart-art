@@ -24,6 +24,7 @@
 #include "base/macros.h"
 #include "class_linker.h"
 #include "dex/code_item_accessors.h"
+#include "dex/dex_file_structs.h"
 #include "dex/primitive.h"
 #include "handle_scope-inl.h"
 #include "instrumentation.h"
@@ -42,7 +43,7 @@ namespace art {
 
 namespace interpreter {
   void ArtInterpreterToInterpreterBridge(Thread* self,
-                                        const DexFile::CodeItem* code_item,
+                                        const dex::CodeItem* code_item,
                                         ShadowFrame* shadow_frame,
                                         JValue* result)
      REQUIRES_SHARED(Locks::mutator_lock_);

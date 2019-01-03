@@ -113,17 +113,17 @@ class HiddenApiTest : public CommonRuntimeTest {
     return ofs;
   }
 
-  const DexFile::ClassDef& FindClass(const char* desc, const DexFile& dex_file) {
-    const DexFile::TypeId* type_id = dex_file.FindTypeId(desc);
+  const dex::ClassDef& FindClass(const char* desc, const DexFile& dex_file) {
+    const dex::TypeId* type_id = dex_file.FindTypeId(desc);
     CHECK(type_id != nullptr) << "Could not find class " << desc;
-    const DexFile::ClassDef* found = dex_file.FindClassDef(dex_file.GetIndexForTypeId(*type_id));
+    const dex::ClassDef* found = dex_file.FindClassDef(dex_file.GetIndexForTypeId(*type_id));
     CHECK(found != nullptr) << "Could not find class " << desc;
     return *found;
   }
 
   hiddenapi::ApiList GetFieldHiddenFlags(const char* name,
                                          uint32_t expected_visibility,
-                                         const DexFile::ClassDef& class_def,
+                                         const dex::ClassDef& class_def,
                                          const DexFile& dex_file) {
     ClassAccessor accessor(dex_file, class_def, /* parse hiddenapi flags */ true);
     CHECK(accessor.HasClassData()) << "Class " << accessor.GetDescriptor() << " has no data";
@@ -133,7 +133,7 @@ class HiddenApiTest : public CommonRuntimeTest {
     }
 
     for (const ClassAccessor::Field& field : accessor.GetFields()) {
-      const DexFile::FieldId& fid = dex_file.GetFieldId(field.GetIndex());
+      const dex::FieldId& fid = dex_file.GetFieldId(field.GetIndex());
       if (strcmp(name, dex_file.GetFieldName(fid)) == 0) {
         const uint32_t actual_visibility = field.GetAccessFlags() & kAccVisibilityFlags;
         CHECK_EQ(actual_visibility, expected_visibility)
@@ -150,7 +150,7 @@ class HiddenApiTest : public CommonRuntimeTest {
   hiddenapi::ApiList GetMethodHiddenFlags(const char* name,
                                           uint32_t expected_visibility,
                                           bool expected_native,
-                                          const DexFile::ClassDef& class_def,
+                                          const dex::ClassDef& class_def,
                                           const DexFile& dex_file) {
     ClassAccessor accessor(dex_file, class_def, /* parse hiddenapi flags */ true);
     CHECK(accessor.HasClassData()) << "Class " << accessor.GetDescriptor() << " has no data";
@@ -160,7 +160,7 @@ class HiddenApiTest : public CommonRuntimeTest {
     }
 
     for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-      const DexFile::MethodId& mid = dex_file.GetMethodId(method.GetIndex());
+      const dex::MethodId& mid = dex_file.GetMethodId(method.GetIndex());
       if (strcmp(name, dex_file.GetMethodName(mid)) == 0) {
         CHECK_EQ(expected_native, method.MemberIsNative())
             << "Method " << name << " in class " << accessor.GetDescriptor();

@@ -99,7 +99,7 @@ class HInliner : public HOptimization {
 
   // Run simple optimizations on `callee_graph`.
   void RunOptimizations(HGraph* callee_graph,
-                        const DexFile::CodeItem* code_item,
+                        const dex::CodeItem* code_item,
                         const DexCompilationUnit& dex_compilation_unit)
     REQUIRES_SHARED(Locks::mutator_lock_);
 

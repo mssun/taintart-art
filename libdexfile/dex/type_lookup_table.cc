@@ -47,9 +47,9 @@ TypeLookupTable TypeLookupTable::Create(const DexFile& dex_file) {
   // occupied then delay the insertion of the element to the second stage to reduce probing
   // distance.
   for (size_t class_def_idx = 0; class_def_idx < dex_file.NumClassDefs(); ++class_def_idx) {
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_idx);
-    const DexFile::TypeId& type_id = dex_file.GetTypeId(class_def.class_idx_);
-    const DexFile::StringId& str_id = dex_file.GetStringId(type_id.descriptor_idx_);
+    const dex::ClassDef& class_def = dex_file.GetClassDef(class_def_idx);
+    const dex::TypeId& type_id = dex_file.GetTypeId(class_def.class_idx_);
+    const dex::StringId& str_id = dex_file.GetStringId(type_id.descriptor_idx_);
     const uint32_t hash = ComputeModifiedUtf8Hash(dex_file.GetStringData(str_id));
     const uint32_t pos = hash & mask;
     if (entries[pos].IsEmpty()) {
@@ -62,9 +62,9 @@ TypeLookupTable TypeLookupTable::Create(const DexFile& dex_file) {
   // The second stage. The initial position of these elements had a collision. Put these elements
   // into the nearest free cells and link them together by updating next_pos_delta.
   for (uint16_t class_def_idx : conflict_class_defs) {
-    const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_idx);
-    const DexFile::TypeId& type_id = dex_file.GetTypeId(class_def.class_idx_);
-    const DexFile::StringId& str_id = dex_file.GetStringId(type_id.descriptor_idx_);
+    const dex::ClassDef& class_def = dex_file.GetClassDef(class_def_idx);
+    const dex::TypeId& type_id = dex_file.GetTypeId(class_def.class_idx_);
+    const dex::StringId& str_id = dex_file.GetStringId(type_id.descriptor_idx_);
     const uint32_t hash = ComputeModifiedUtf8Hash(dex_file.GetStringData(str_id));
     // Find the last entry in the chain.
     uint32_t tail_pos = hash & mask;

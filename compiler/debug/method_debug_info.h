@@ -32,7 +32,7 @@ struct MethodDebugInfo {
   size_t class_def_index;
   uint32_t dex_method_index;
   uint32_t access_flags;
-  const DexFile::CodeItem* code_item;
+  const dex::CodeItem* code_item;
   InstructionSet isa;
   bool deduped;
   bool is_native_debuggable;

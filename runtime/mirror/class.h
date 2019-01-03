@@ -24,7 +24,7 @@
 #include "base/stride_iterator.h"
 #include "class_flags.h"
 #include "class_status.h"
-#include "dex/dex_file.h"
+#include "dex/dex_file_structs.h"
 #include "dex/dex_file_types.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
@@ -40,6 +40,7 @@ namespace art {
 class ArtField;
 class ArtMethod;
 struct ClassOffsets;
+class DexFile;
 template<class T> class Handle;
 enum InvokeType : uint32_t;
 template<typename T> class LengthPrefixedArray;
@@ -1133,7 +1134,7 @@ class MANAGED Class final : public Object {
 
   bool DescriptorEquals(const char* match) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  const DexFile::ClassDef* GetClassDef() REQUIRES_SHARED(Locks::mutator_lock_);
+  const dex::ClassDef* GetClassDef() REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE uint32_t NumDirectInterfaces() REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -1156,7 +1157,7 @@ class MANAGED Class final : public Object {
 
   const DexFile& GetDexFile() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  const DexFile::TypeList* GetInterfaceTypeList() REQUIRES_SHARED(Locks::mutator_lock_);
+  const dex::TypeList* GetInterfaceTypeList() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Asserts we are initialized or initializing in the given thread.
   void AssertInitializedOrInitializingInThread(Thread* self)

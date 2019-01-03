@@ -54,7 +54,7 @@ void WriteDebugInfo(linker::ElfBuilder<ElfTypes>* builder,
   WriteCFISection(builder, debug_info.compiled_methods, cfi_format, write_oat_patches);
 
   // Group the methods into compilation units based on class.
-  std::unordered_map<const DexFile::ClassDef*, ElfCompilationUnit> class_to_compilation_unit;
+  std::unordered_map<const dex::ClassDef*, ElfCompilationUnit> class_to_compilation_unit;
   for (const MethodDebugInfo& mi : debug_info.compiled_methods) {
     if (mi.dex_file != nullptr) {
       auto& dex_class_def = mi.dex_file->GetClassDef(mi.class_def_index);

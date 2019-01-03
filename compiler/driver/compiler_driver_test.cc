@@ -80,7 +80,7 @@ class CompilerDriverTest : public CommonCompilerTest {
   void MakeDexFileExecutable(jobject class_loader, const DexFile& dex_file) {
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     for (size_t i = 0; i < dex_file.NumClassDefs(); i++) {
-      const DexFile::ClassDef& class_def = dex_file.GetClassDef(i);
+      const dex::ClassDef& class_def = dex_file.GetClassDef(i);
       const char* descriptor = dex_file.GetClassDescriptor(class_def);
       ScopedObjectAccess soa(Thread::Current());
       StackHandleScope<1> hs(soa.Self());
