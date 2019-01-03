@@ -26,7 +26,6 @@
 #include "base/bit_utils.h"
 #include "base/casts.h"
 #include "base/enums.h"
-#include "base/iteration_range.h"
 #include "base/macros.h"
 #include "base/runtime_debug.h"
 #include "dex/code_item_accessors.h"

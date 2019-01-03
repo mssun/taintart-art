@@ -20,7 +20,6 @@
 #include "base/bit_utils.h"
 #include "base/casts.h"
 #include "base/enums.h"
-#include "base/iteration_range.h"
 #include "base/stride_iterator.h"
 #include "class_flags.h"
 #include "class_status.h"
@@ -43,6 +42,7 @@ struct ClassOffsets;
 class DexFile;
 template<class T> class Handle;
 enum InvokeType : uint32_t;
+template <typename Iter> class IterationRange;
 template<typename T> class LengthPrefixedArray;
 template<typename T> class ArraySlice;
 class Signature;
