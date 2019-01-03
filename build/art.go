@@ -282,7 +282,7 @@ var artTestMutex sync.Mutex
 
 func init() {
 	android.RegisterModuleType("art_cc_library", artLibrary)
-	android.RegisterModuleType("art_cc_static_library", artStaticLibrary)
+	android.RegisterModuleType("art_cc_library_static", artStaticLibrary)
 	android.RegisterModuleType("art_cc_binary", artBinary)
 	android.RegisterModuleType("art_cc_test", artTest)
 	android.RegisterModuleType("art_cc_test_library", artTestLibrary)

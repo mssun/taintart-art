@@ -114,7 +114,7 @@ gensrcs {
     output_extension: "operator_out.cc",
 }
 
-art_cc_static_library {
+art_cc_library_static {
     name: "libart-dex2oat",
     defaults: ["libart-dex2oat-defaults"],
     shared_libs: [
@@ -139,7 +139,7 @@ cc_defaults {
     ],
 }
 
-art_cc_static_library {
+art_cc_library_static {
     name: "libartd-dex2oat",
     defaults: [
         "art_debug_defaults",
