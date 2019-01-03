@@ -20,6 +20,7 @@
 #include "dex_file.h"
 
 #include "base/casts.h"
+#include "base/iteration_range.h"
 #include "base/leb128.h"
 #include "base/stringpiece.h"
 #include "base/utils.h"

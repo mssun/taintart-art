@@ -22,6 +22,7 @@
 #include "art_field.h"
 #include "art_method.h"
 #include "base/array_slice.h"
+#include "base/iteration_range.h"
 #include "base/length_prefixed_array.h"
 #include "base/utils.h"
 #include "class_linker.h"

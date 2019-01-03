@@ -24,7 +24,6 @@
 #include <android-base/logging.h>
 
 #include "base/globals.h"
-#include "base/iteration_range.h"
 #include "base/macros.h"
 #include "base/value_object.h"
 #include "class_iterator.h"
@@ -40,6 +39,7 @@ class ClassDataItemIterator;
 class CompactDexFile;
 class DexInstructionIterator;
 enum InvokeType : uint32_t;
+template <typename Iter> class IterationRange;
 class MemMap;
 class OatDexFile;
 class StandardDexFile;
