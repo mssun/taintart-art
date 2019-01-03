@@ -23,6 +23,8 @@
 #include "art_method-inl.h"
 #include "base/mutex.h"
 #include "class_linker.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_structs.h"
 #include "gc_root-inl.h"
 #include "handle_scope-inl.h"
 #include "mirror/class_loader.h"
@@ -271,7 +273,7 @@ inline bool ClassLinker::CheckInvokeClassMismatch(ObjPtr<mirror::DexCache> dex_c
       dex_cache,
       type,
       [this, dex_cache, method_idx, class_loader]() REQUIRES_SHARED(Locks::mutator_lock_) {
-        const DexFile::MethodId& method_id = dex_cache->GetDexFile()->GetMethodId(method_idx);
+        const dex::MethodId& method_id = dex_cache->GetDexFile()->GetMethodId(method_idx);
         ObjPtr<mirror::Class> klass =
             LookupResolvedType(method_id.class_idx_, dex_cache, class_loader);
         DCHECK(klass != nullptr);
@@ -286,7 +288,7 @@ inline ArtMethod* ClassLinker::LookupResolvedMethod(uint32_t method_idx,
   ArtMethod* resolved = dex_cache->GetResolvedMethod(method_idx, pointer_size);
   if (resolved == nullptr) {
     const DexFile& dex_file = *dex_cache->GetDexFile();
-    const DexFile::MethodId& method_id = dex_file.GetMethodId(method_idx);
+    const dex::MethodId& method_id = dex_file.GetMethodId(method_idx);
     ObjPtr<mirror::Class> klass = LookupResolvedType(method_id.class_idx_, dex_cache, class_loader);
     if (klass != nullptr) {
       resolved = FindResolvedMethod(klass, dex_cache, class_loader, method_idx);

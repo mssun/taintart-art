@@ -99,7 +99,7 @@ class ClassAccessor {
     CodeItemInstructionAccessor GetInstructions() const;
     CodeItemDataAccessor GetInstructionsAndData() const;
 
-    const DexFile::CodeItem* GetCodeItem() const;
+    const dex::CodeItem* GetCodeItem() const;
 
     bool IsStaticOrDirect() const {
       return is_static_or_direct_;
@@ -266,7 +266,7 @@ class ClassAccessor {
   ALWAYS_INLINE ClassAccessor(const ClassIteratorData& data);  // NOLINT [runtime/explicit] [5]
 
   ALWAYS_INLINE ClassAccessor(const DexFile& dex_file,
-                              const DexFile::ClassDef& class_def,
+                              const dex::ClassDef& class_def,
                               bool parse_hiddenapi_class_data = false);
 
   ALWAYS_INLINE ClassAccessor(const DexFile& dex_file, uint32_t class_def_index);
@@ -277,7 +277,7 @@ class ClassAccessor {
                 bool parse_hiddenapi_class_data = false);
 
   // Return the code item for a method.
-  const DexFile::CodeItem* GetCodeItem(const Method& method) const;
+  const dex::CodeItem* GetCodeItem(const Method& method) const;
 
   // Iterator data is not very iterator friendly, use visitors to get around this.
   template <typename StaticFieldVisitor,
@@ -361,7 +361,7 @@ class ClassAccessor {
     return class_def_index_;
   }
 
-  const DexFile::ClassDef& GetClassDef() const {
+  const dex::ClassDef& GetClassDef() const {
     return dex_file_.GetClassDef(GetClassDefIndex());
   }
 

@@ -57,7 +57,7 @@ class MethodVerifierTest : public CommonRuntimeTest {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Verify all the classes defined in this file
     for (size_t i = 0; i < dex.NumClassDefs(); i++) {
-      const DexFile::ClassDef& class_def = dex.GetClassDef(i);
+      const dex::ClassDef& class_def = dex.GetClassDef(i);
       const char* descriptor = dex.GetClassDescriptor(class_def);
       VerifyClass(descriptor);
     }

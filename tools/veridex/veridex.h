@@ -19,10 +19,13 @@
 
 #include <map>
 
-#include "dex/dex_file.h"
 #include "dex/primitive.h"
 
 namespace art {
+
+namespace dex {
+struct ClassDef;
+}  // namespace dex
 
 static int gTargetSdkVersion = 1000;  // Will be initialized after parsing options.
 
@@ -45,7 +48,7 @@ using VeriMethod = const uint8_t*;
 class VeriClass {
  public:
   VeriClass() = default;
-  VeriClass(Primitive::Type k, uint8_t dims, const DexFile::ClassDef* cl)
+  VeriClass(Primitive::Type k, uint8_t dims, const dex::ClassDef* cl)
       : kind_(k), dimensions_(dims), class_def_(cl) {}
 
   bool IsUninitialized() const {
@@ -62,7 +65,7 @@ class VeriClass {
 
   Primitive::Type GetKind() const { return kind_; }
   uint8_t GetDimensions() const { return dimensions_; }
-  const DexFile::ClassDef* GetClassDef() const { return class_def_; }
+  const dex::ClassDef* GetClassDef() const { return class_def_; }
 
   static VeriClass* object_;
   static VeriClass* class_;
@@ -92,7 +95,7 @@ class VeriClass {
  private:
   Primitive::Type kind_;
   uint8_t dimensions_;
-  const DexFile::ClassDef* class_def_;
+  const dex::ClassDef* class_def_;
 };
 
 inline bool IsGetMethod(VeriMethod method) {

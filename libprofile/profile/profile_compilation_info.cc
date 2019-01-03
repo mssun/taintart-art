@@ -2198,7 +2198,7 @@ HashSet<std::string> ProfileCompilationInfo::GetClassDescriptors(
               << type_idx.index_ << " in dex " << dex_file->GetLocation();
           return HashSet<std::string>();
         }
-        const DexFile::TypeId& type_id = dex_file->GetTypeId(type_idx);
+        const dex::TypeId& type_id = dex_file->GetTypeId(type_idx);
         ret.insert(dex_file->GetTypeDescriptor(type_id));
       }
     } else {

@@ -19,21 +19,28 @@
 #ifndef ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_H_
 #define ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_H_
 
+#include <android-base/logging.h>
+
 #include "compact_dex_file.h"
-#include "dex_file.h"
 #include "dex_instruction_iterator.h"
 #include "standard_dex_file.h"
 
 namespace art {
 
+namespace dex {
+struct CodeItem;
+struct TryItem;
+}  // namespace dex
+
 class ArtMethod;
+class DexFile;
 
 // Abstracts accesses to the instruction fields of code items for CompactDexFile and
 // StandardDexFile.
 class CodeItemInstructionAccessor {
  public:
   ALWAYS_INLINE CodeItemInstructionAccessor(const DexFile& dex_file,
-                                            const DexFile::CodeItem* code_item);
+                                            const dex::CodeItem* code_item);
 
   ALWAYS_INLINE explicit CodeItemInstructionAccessor(ArtMethod* method);
 
@@ -73,7 +80,7 @@ class CodeItemInstructionAccessor {
   ALWAYS_INLINE void Init(uint32_t insns_size_in_code_units, const uint16_t* insns);
   ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
-  ALWAYS_INLINE void Init(const DexFile& dex_file, const DexFile::CodeItem* code_item);
+  ALWAYS_INLINE void Init(const DexFile& dex_file, const dex::CodeItem* code_item);
 
  private:
   // size of the insns array, in 2 byte code units. 0 if there is no code item.
@@ -87,7 +94,7 @@ class CodeItemInstructionAccessor {
 // StandardDexFile.
 class CodeItemDataAccessor : public CodeItemInstructionAccessor {
  public:
-  ALWAYS_INLINE CodeItemDataAccessor(const DexFile& dex_file, const DexFile::CodeItem* code_item);
+  ALWAYS_INLINE CodeItemDataAccessor(const DexFile& dex_file, const dex::CodeItem* code_item);
 
   uint16_t RegistersSize() const {
     return registers_size_;
@@ -105,11 +112,11 @@ class CodeItemDataAccessor : public CodeItemInstructionAccessor {
     return tries_size_;
   }
 
-  IterationRange<const DexFile::TryItem*> TryItems() const;
+  IterationRange<const dex::TryItem*> TryItems() const;
 
   const uint8_t* GetCatchHandlerData(size_t offset = 0) const;
 
-  const DexFile::TryItem* FindTryItem(uint32_t try_dex_pc) const;
+  const dex::TryItem* FindTryItem(uint32_t try_dex_pc) const;
 
   inline const void* CodeItemDataEnd() const;
 
@@ -118,7 +125,7 @@ class CodeItemDataAccessor : public CodeItemInstructionAccessor {
 
   ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
-  ALWAYS_INLINE void Init(const DexFile& dex_file, const DexFile::CodeItem* code_item);
+  ALWAYS_INLINE void Init(const DexFile& dex_file, const dex::CodeItem* code_item);
 
  private:
   // Fields mirrored from the dex/cdex code item.
@@ -136,13 +143,13 @@ class CodeItemDebugInfoAccessor : public CodeItemDataAccessor {
 
   // Initialize with an existing offset.
   ALWAYS_INLINE CodeItemDebugInfoAccessor(const DexFile& dex_file,
-                                          const DexFile::CodeItem* code_item,
+                                          const dex::CodeItem* code_item,
                                           uint32_t dex_method_index) {
     Init(dex_file, code_item, dex_method_index);
   }
 
   ALWAYS_INLINE void Init(const DexFile& dex_file,
-                          const DexFile::CodeItem* code_item,
+                          const dex::CodeItem* code_item,
                           uint32_t dex_method_index);
 
   ALWAYS_INLINE explicit CodeItemDebugInfoAccessor(ArtMethod* method);

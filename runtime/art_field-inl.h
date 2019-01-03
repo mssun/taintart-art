@@ -291,7 +291,7 @@ inline const char* ArtField::GetTypeDescriptor() REQUIRES_SHARED(Locks::mutator_
     return field_index == 0 ? "[Ljava/lang/Class;" : "[[Ljava/lang/Class;";
   }
   const DexFile* dex_file = GetDexFile();
-  const DexFile::FieldId& field_id = dex_file->GetFieldId(field_index);
+  const dex::FieldId& field_id = dex_file->GetFieldId(field_index);
   return dex_file->GetFieldTypeDescriptor(field_id);
 }
 
@@ -342,7 +342,7 @@ inline const DexFile* ArtField::GetDexFile() REQUIRES_SHARED(Locks::mutator_lock
 inline ObjPtr<mirror::String> ArtField::ResolveNameString() {
   uint32_t dex_field_index = GetDexFieldIndex();
   CHECK_NE(dex_field_index, dex::kDexNoIndex);
-  const DexFile::FieldId& field_id = GetDexFile()->GetFieldId(dex_field_index);
+  const dex::FieldId& field_id = GetDexFile()->GetFieldId(dex_field_index);
   return Runtime::Current()->GetClassLinker()->ResolveString(field_id.name_idx_, this);
 }
 

@@ -30,7 +30,7 @@ TEST_F(ClassAccessorTest, TestVisiting) {
     uint32_t class_def_idx = 0u;
     ASSERT_GT(dex_file->NumClassDefs(), 0u);
     for (ClassAccessor accessor : dex_file->GetClasses()) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(accessor.GetClassDefIndex());
+      const dex::ClassDef& class_def = dex_file->GetClassDef(accessor.GetClassDefIndex());
       EXPECT_EQ(accessor.GetDescriptor(), dex_file->StringByTypeIdx(class_def.class_idx_));
       EXPECT_EQ(class_def_idx, accessor.GetClassDefIndex());
       ++class_def_idx;

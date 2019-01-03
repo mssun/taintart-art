@@ -99,9 +99,9 @@ dex::StringIndex VerifierDeps::GetClassDescriptorStringId(const DexFile& dex_fil
     DCHECK(dex_cache != nullptr) << klass->PrettyClass();
     if (dex_cache->GetDexFile() == &dex_file) {
       // FindStringId is slow, try to go through the class def if we have one.
-      const DexFile::ClassDef* class_def = klass->GetClassDef();
+      const dex::ClassDef* class_def = klass->GetClassDef();
       DCHECK(class_def != nullptr) << klass->PrettyClass();
-      const DexFile::TypeId& type_id = dex_file.GetTypeId(class_def->class_idx_);
+      const dex::TypeId& type_id = dex_file.GetTypeId(class_def->class_idx_);
       if (kIsDebugBuild) {
         std::string temp;
         CHECK_EQ(GetIdFromString(dex_file, klass->GetDescriptor(&temp)), type_id.descriptor_idx_);
@@ -119,9 +119,9 @@ static dex::StringIndex TryGetClassDescriptorStringId(const DexFile& dex_file,
                                                       ObjPtr<mirror::Class> klass)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (!klass->IsArrayClass()) {
-    const DexFile::TypeId& type_id = dex_file.GetTypeId(type_idx);
+    const dex::TypeId& type_id = dex_file.GetTypeId(type_idx);
     const DexFile& klass_dex = klass->GetDexFile();
-    const DexFile::TypeId& klass_type_id = klass_dex.GetTypeId(klass->GetClassDef()->class_idx_);
+    const dex::TypeId& klass_type_id = klass_dex.GetTypeId(klass->GetClassDef()->class_idx_);
     if (strcmp(dex_file.GetTypeDescriptor(type_id),
                klass_dex.GetTypeDescriptor(klass_type_id)) == 0) {
       return type_id.descriptor_idx_;
@@ -201,7 +201,7 @@ static bool FindExistingStringId(const std::vector<std::string>& strings,
 }
 
 dex::StringIndex VerifierDeps::GetIdFromString(const DexFile& dex_file, const std::string& str) {
-  const DexFile::StringId* string_id = dex_file.FindStringId(str.c_str());
+  const dex::StringId* string_id = dex_file.FindStringId(str.c_str());
   if (string_id != nullptr) {
     // String is in the DEX file. Return its ID.
     return dex_file.GetIndexForStringId(*string_id);
@@ -805,7 +805,7 @@ void VerifierDeps::Dump(VariableIndentationOutputStream* vios) const {
     }
 
     for (const FieldResolution& entry : dep.second->fields_) {
-      const DexFile::FieldId& field_id = dex_file.GetFieldId(entry.GetDexFieldIndex());
+      const dex::FieldId& field_id = dex_file.GetFieldId(entry.GetDexFieldIndex());
       vios->Stream()
           << dex_file.GetFieldDeclaringClassDescriptor(field_id) << "->"
           << dex_file.GetFieldName(field_id) << ":"
@@ -823,7 +823,7 @@ void VerifierDeps::Dump(VariableIndentationOutputStream* vios) const {
     }
 
     for (const MethodResolution& method : dep.second->methods_) {
-      const DexFile::MethodId& method_id = dex_file.GetMethodId(method.GetDexMethodIndex());
+      const dex::MethodId& method_id = dex_file.GetMethodId(method.GetDexMethodIndex());
       vios->Stream()
           << dex_file.GetMethodDeclaringClassDescriptor(method_id) << "->"
           << dex_file.GetMethodName(method_id)
@@ -949,7 +949,7 @@ bool VerifierDeps::VerifyClasses(Handle<mirror::ClassLoader> class_loader,
 }
 
 static std::string GetFieldDescription(const DexFile& dex_file, uint32_t index) {
-  const DexFile::FieldId& field_id = dex_file.GetFieldId(index);
+  const dex::FieldId& field_id = dex_file.GetFieldId(index);
   return std::string(dex_file.GetFieldDeclaringClassDescriptor(field_id))
       + "->"
       + dex_file.GetFieldName(field_id)
@@ -965,7 +965,7 @@ bool VerifierDeps::VerifyFields(Handle<mirror::ClassLoader> class_loader,
   // and have the same recorded flags.
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   for (const auto& entry : fields) {
-    const DexFile::FieldId& field_id = dex_file.GetFieldId(entry.GetDexFieldIndex());
+    const dex::FieldId& field_id = dex_file.GetFieldId(entry.GetDexFieldIndex());
     StringPiece name(dex_file.StringDataByIdx(field_id.name_idx_));
     StringPiece type(dex_file.StringDataByIdx(dex_file.GetTypeId(field_id.type_idx_).descriptor_idx_));
     // Only use field_id.class_idx_ when the entry is unresolved, which is rare.
@@ -1011,7 +1011,7 @@ bool VerifierDeps::VerifyFields(Handle<mirror::ClassLoader> class_loader,
 }
 
 static std::string GetMethodDescription(const DexFile& dex_file, uint32_t index) {
-  const DexFile::MethodId& method_id = dex_file.GetMethodId(index);
+  const dex::MethodId& method_id = dex_file.GetMethodId(index);
   return std::string(dex_file.GetMethodDeclaringClassDescriptor(method_id))
       + "->"
       + dex_file.GetMethodName(method_id)
@@ -1026,7 +1026,7 @@ bool VerifierDeps::VerifyMethods(Handle<mirror::ClassLoader> class_loader,
   PointerSize pointer_size = class_linker->GetImagePointerSize();
 
   for (const auto& entry : methods) {
-    const DexFile::MethodId& method_id = dex_file.GetMethodId(entry.GetDexMethodIndex());
+    const dex::MethodId& method_id = dex_file.GetMethodId(entry.GetDexMethodIndex());
 
     const char* name = dex_file.GetMethodName(method_id);
     const Signature signature = dex_file.GetMethodSignature(method_id);

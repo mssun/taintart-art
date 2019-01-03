@@ -393,7 +393,7 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
   void VisitLoadMethodType(HLoadMethodType* load_method_type) override {
     StartAttributeStream("load_kind") << "RuntimeCall";
     const DexFile& dex_file = load_method_type->GetDexFile();
-    const DexFile::ProtoId& proto_id = dex_file.GetProtoId(load_method_type->GetProtoIndex());
+    const dex::ProtoId& proto_id = dex_file.GetProtoId(load_method_type->GetProtoIndex());
     StartAttributeStream("method_type") << dex_file.GetProtoSignature(proto_id);
   }
 

@@ -98,7 +98,7 @@ MemberSignature::MemberSignature(ArtMethod* method) {
 
 MemberSignature::MemberSignature(const ClassAccessor::Field& field) {
   const DexFile& dex_file = field.GetDexFile();
-  const DexFile::FieldId& field_id = dex_file.GetFieldId(field.GetIndex());
+  const dex::FieldId& field_id = dex_file.GetFieldId(field.GetIndex());
   class_name_ = dex_file.GetFieldDeclaringClassDescriptor(field_id);
   member_name_ = dex_file.GetFieldName(field_id);
   type_signature_ = dex_file.GetFieldTypeDescriptor(field_id);
@@ -107,7 +107,7 @@ MemberSignature::MemberSignature(const ClassAccessor::Field& field) {
 
 MemberSignature::MemberSignature(const ClassAccessor::Method& method) {
   const DexFile& dex_file = method.GetDexFile();
-  const DexFile::MethodId& method_id = dex_file.GetMethodId(method.GetIndex());
+  const dex::MethodId& method_id = dex_file.GetMethodId(method.GetIndex());
   class_name_ = dex_file.GetMethodDeclaringClassDescriptor(method_id);
   member_name_ = dex_file.GetMethodName(method_id);
   type_signature_ = dex_file.GetMethodSignature(method_id).ToString();
@@ -282,14 +282,14 @@ static ALWAYS_INLINE uint32_t GetMemberDexIndex(ArtMethod* method)
 }
 
 static void VisitMembers(const DexFile& dex_file,
-                         const DexFile::ClassDef& class_def,
+                         const dex::ClassDef& class_def,
                          const std::function<void(const ClassAccessor::Field&)>& fn_visit) {
   ClassAccessor accessor(dex_file, class_def, /* parse_hiddenapi_class_data= */ true);
   accessor.VisitFields(fn_visit, fn_visit);
 }
 
 static void VisitMembers(const DexFile& dex_file,
-                         const DexFile::ClassDef& class_def,
+                         const dex::ClassDef& class_def,
                          const std::function<void(const ClassAccessor::Method&)>& fn_visit) {
   ClassAccessor accessor(dex_file, class_def, /* parse_hiddenapi_class_data= */ true);
   accessor.VisitMethods(fn_visit, fn_visit);
@@ -317,7 +317,7 @@ uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
   if (LIKELY(original_dex == nullptr)) {
     // Class is not redefined. Find the class def, iterate over its members and
     // find the entry corresponding to this `member`.
-    const DexFile::ClassDef* class_def = declaring_class->GetClassDef();
+    const dex::ClassDef* class_def = declaring_class->GetClassDef();
     if (class_def == nullptr) {
       flags = kNoDexFlags;
     } else {
@@ -338,7 +338,7 @@ uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
     // to access a hidden member of a JVMTI-redefined class.
     uint16_t class_def_idx = ext->GetPreRedefineClassDefIndex();
     DCHECK_NE(class_def_idx, DexFile::kDexNoIndex16);
-    const DexFile::ClassDef& original_class_def = original_dex->GetClassDef(class_def_idx);
+    const dex::ClassDef& original_class_def = original_dex->GetClassDef(class_def_idx);
     MemberSignature member_signature(member);
     auto fn_visit = [&](const AccessorType& dex_member) {
       MemberSignature cur_signature(dex_member);

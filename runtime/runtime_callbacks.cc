@@ -205,14 +205,14 @@ void RuntimeCallbacks::ClassPreDefine(const char* descriptor,
                                       Handle<mirror::Class> temp_class,
                                       Handle<mirror::ClassLoader> loader,
                                       const DexFile& initial_dex_file,
-                                      const DexFile::ClassDef& initial_class_def,
+                                      const dex::ClassDef& initial_class_def,
                                       /*out*/DexFile const** final_dex_file,
-                                      /*out*/DexFile::ClassDef const** final_class_def) {
+                                      /*out*/dex::ClassDef const** final_class_def) {
   DexFile const* current_dex_file = &initial_dex_file;
-  DexFile::ClassDef const* current_class_def = &initial_class_def;
+  dex::ClassDef const* current_class_def = &initial_class_def;
   for (ClassLoadCallback* cb : class_callbacks_) {
     DexFile const* new_dex_file = nullptr;
-    DexFile::ClassDef const* new_class_def = nullptr;
+    dex::ClassDef const* new_class_def = nullptr;
     cb->ClassPreDefine(descriptor,
                        temp_class,
                        loader,

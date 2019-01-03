@@ -360,7 +360,7 @@ void NewRegisterInstructions::ProcessCodeItem(const DexFile& dex_file,
       case Instruction::INVOKE_INTERFACE:
       case Instruction::INVOKE_SUPER: {
         const uint32_t method_idx = DexMethodIndex(inst.Inst());
-        const DexFile::MethodId& method = dex_file.GetMethodId(method_idx);
+        const dex::MethodId& method = dex_file.GetMethodId(method_idx);
         const dex::TypeIndex receiver_type = method.class_idx_;
         if (Enabled(kExperimentInvoke)) {
           if (count_types) {

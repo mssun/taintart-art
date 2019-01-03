@@ -72,7 +72,7 @@ bool StandardDexFile::SupportsDefaultMethods() const {
   return GetDexVersion() >= DexFile::kDefaultMethodsVersion;
 }
 
-uint32_t StandardDexFile::GetCodeItemSize(const DexFile::CodeItem& item) const {
+uint32_t StandardDexFile::GetCodeItemSize(const dex::CodeItem& item) const {
   DCHECK(IsInDataSection(&item));
   return reinterpret_cast<uintptr_t>(CodeItemDataAccessor(*this, &item).CodeItemDataEnd()) -
       reinterpret_cast<uintptr_t>(&item);

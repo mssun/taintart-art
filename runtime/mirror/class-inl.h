@@ -825,7 +825,7 @@ inline bool Class::DescriptorEquals(const char* match) {
     return ProxyDescriptorEquals(match);
   } else {
     const DexFile& dex_file = GetDexFile();
-    const DexFile::TypeId& type_id = dex_file.GetTypeId(GetClassDef()->class_idx_);
+    const dex::TypeId& type_id = dex_file.GetTypeId(GetClassDef()->class_idx_);
     return strcmp(dex_file.GetTypeDescriptor(type_id), match) == 0;
   }
 }
@@ -899,7 +899,7 @@ inline uint32_t Class::NumDirectInterfaces() {
     ObjectArray<Class>* interfaces = GetProxyInterfaces();
     return interfaces != nullptr ? interfaces->GetLength() : 0;
   } else {
-    const DexFile::TypeList* interfaces = GetInterfaceTypeList();
+    const dex::TypeList* interfaces = GetInterfaceTypeList();
     if (interfaces == nullptr) {
       return 0;
     } else {

@@ -17,6 +17,7 @@
 #include "dex_file_exception_helpers.h"
 
 #include "code_item_accessors-inl.h"
+#include "dex_file_structs.h"
 
 namespace art {
 
@@ -29,7 +30,7 @@ CatchHandlerIterator::CatchHandlerIterator(const CodeItemDataAccessor& accessor,
     case 0:
       break;
     case 1: {
-      const DexFile::TryItem* tries = accessor.TryItems().begin();
+      const dex::TryItem* tries = accessor.TryItems().begin();
       uint32_t start = tries->start_addr_;
       if (address >= start) {
         uint32_t end = start + tries->insn_count_;
@@ -40,7 +41,7 @@ CatchHandlerIterator::CatchHandlerIterator(const CodeItemDataAccessor& accessor,
       break;
     }
     default: {
-      const DexFile::TryItem* try_item = accessor.FindTryItem(address);
+      const dex::TryItem* try_item = accessor.FindTryItem(address);
       offset = try_item != nullptr ? try_item->handler_off_ : -1;
       break;
     }
@@ -49,7 +50,7 @@ CatchHandlerIterator::CatchHandlerIterator(const CodeItemDataAccessor& accessor,
 }
 
 CatchHandlerIterator::CatchHandlerIterator(const CodeItemDataAccessor& accessor,
-                                           const DexFile::TryItem& try_item) {
+                                           const dex::TryItem& try_item) {
   handler_.address_ = -1;
   Init(accessor, try_item.handler_off_);
 }

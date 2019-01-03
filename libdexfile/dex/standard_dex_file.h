@@ -32,7 +32,7 @@ class StandardDexFile : public DexFile {
     // Same for now.
   };
 
-  struct CodeItem : public DexFile::CodeItem {
+  struct CodeItem : public dex::CodeItem {
     static constexpr size_t kAlignment = 4;
 
    private:
@@ -81,7 +81,7 @@ class StandardDexFile : public DexFile {
 
   bool SupportsDefaultMethods() const override;
 
-  uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const override;
+  uint32_t GetCodeItemSize(const dex::CodeItem& item) const override;
 
   size_t GetDequickenedSize() const override {
     return Size();

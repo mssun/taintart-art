@@ -296,7 +296,7 @@ class OatSymbolizer final {
                      const DexFile& dex_file,
                      uint32_t class_def_index,
                      uint32_t dex_method_index,
-                     const DexFile::CodeItem* code_item,
+                     const dex::CodeItem* code_item,
                      uint32_t method_access_flags) {
     if ((method_access_flags & kAccAbstract) != 0) {
       // Abstract method, no code.
@@ -723,7 +723,7 @@ class OatDumper {
             << "': " << error_msg;
       } else {
         const char* descriptor = m->GetDeclaringClassDescriptor();
-        const DexFile::ClassDef* class_def =
+        const dex::ClassDef* class_def =
             OatDexFile::FindClassDef(*dex_file, descriptor, ComputeModifiedUtf8Hash(descriptor));
         if (class_def != nullptr) {
           uint16_t class_def_index = dex_file->GetIndexForClassDef(*class_def);
@@ -1092,12 +1092,12 @@ class OatDumper {
   static constexpr uint32_t kMaxCodeSize = 100 * 1000;
 
   bool DumpOatMethod(VariableIndentationOutputStream* vios,
-                     const DexFile::ClassDef& class_def,
+                     const dex::ClassDef& class_def,
                      uint32_t class_method_index,
                      const OatFile::OatClass& oat_class,
                      const DexFile& dex_file,
                      uint32_t dex_method_idx,
-                     const DexFile::CodeItem* code_item,
+                     const dex::CodeItem* code_item,
                      uint32_t method_access_flags,
                      bool* addr_found) {
     bool success = true;
@@ -1490,8 +1490,8 @@ class OatDumper {
                                          StackHandleScope<1>* hs,
                                          uint32_t dex_method_idx,
                                          const DexFile* dex_file,
-                                         const DexFile::ClassDef& class_def,
-                                         const DexFile::CodeItem* code_item,
+                                         const dex::ClassDef& class_def,
+                                         const dex::CodeItem* code_item,
                                          uint32_t method_access_flags) {
     if ((method_access_flags & kAccNative) == 0) {
       ScopedObjectAccess soa(Thread::Current());
@@ -3007,7 +3007,7 @@ class IMTDumper {
       for (uint32_t class_def_index = 0;
            class_def_index != dex_file->NumClassDefs();
            ++class_def_index) {
-        const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
+        const dex::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
         const char* descriptor = dex_file->GetClassDescriptor(class_def);
         h_klass.Assign(class_linker->FindClass(self, descriptor, h_class_loader));
         if (h_klass == nullptr) {

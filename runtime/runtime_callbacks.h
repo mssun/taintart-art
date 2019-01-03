@@ -22,10 +22,13 @@
 #include "base/array_ref.h"
 #include "base/locks.h"
 #include "base/macros.h"
-#include "dex/dex_file.h"
 #include "handle.h"
 
 namespace art {
+
+namespace dex {
+struct ClassDef;
+}  // namespace dex
 
 namespace mirror {
 class Class;
@@ -35,6 +38,7 @@ class Object;
 
 class ArtMethod;
 class ClassLoadCallback;
+class DexFile;
 class Thread;
 class MethodCallback;
 class Monitor;
@@ -183,9 +187,9 @@ class RuntimeCallbacks {
                       Handle<mirror::Class> temp_class,
                       Handle<mirror::ClassLoader> loader,
                       const DexFile& initial_dex_file,
-                      const DexFile::ClassDef& initial_class_def,
+                      const dex::ClassDef& initial_class_def,
                       /*out*/DexFile const** final_dex_file,
-                      /*out*/DexFile::ClassDef const** final_class_def)
+                      /*out*/dex::ClassDef const** final_class_def)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void AddMethodCallback(MethodCallback* cb) REQUIRES(Locks::mutator_lock_);

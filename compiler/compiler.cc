@@ -21,6 +21,7 @@
 #include "base/macros.h"
 #include "base/utils.h"
 #include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file.h"
 #include "driver/compiler_driver.h"
 #include "optimizing/optimizing_compiler.h"
 
@@ -39,7 +40,7 @@ Compiler* Compiler::Create(CompilerDriver* driver, Compiler::Kind kind) {
   }
 }
 
-bool Compiler::IsPathologicalCase(const DexFile::CodeItem& code_item,
+bool Compiler::IsPathologicalCase(const dex::CodeItem& code_item,
                                   uint32_t method_idx,
                                   const DexFile& dex_file) {
   /*

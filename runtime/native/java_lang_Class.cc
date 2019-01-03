@@ -220,7 +220,7 @@ static jobjectArray Class_getInterfacesInternal(JNIEnv* env, jobject javaThis) {
     return soa.AddLocalReference<jobjectArray>(klass->GetProxyInterfaces()->Clone(soa.Self()));
   }
 
-  const DexFile::TypeList* iface_list = klass->GetInterfaceTypeList();
+  const dex::TypeList* iface_list = klass->GetInterfaceTypeList();
   if (iface_list == nullptr) {
     return nullptr;
   }

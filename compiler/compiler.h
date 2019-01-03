@@ -19,10 +19,13 @@
 
 #include "base/mutex.h"
 #include "base/os.h"
-#include "dex/dex_file.h"
+#include "dex/invoke_type.h"
 
 namespace art {
 
+namespace dex {
+struct CodeItem;
+}  // namespace dex
 namespace jit {
 class JitCodeCache;
 class JitLogger;
@@ -35,6 +38,7 @@ class DexCache;
 class ArtMethod;
 class CompilerDriver;
 class CompiledMethod;
+class DexFile;
 template<class T> class Handle;
 class OatWriter;
 class Thread;
@@ -54,7 +58,7 @@ class Compiler {
 
   virtual bool CanCompileMethod(uint32_t method_idx, const DexFile& dex_file) const = 0;
 
-  virtual CompiledMethod* Compile(const DexFile::CodeItem* code_item,
+  virtual CompiledMethod* Compile(const dex::CodeItem* code_item,
                                   uint32_t access_flags,
                                   InvokeType invoke_type,
                                   uint16_t class_def_idx,
@@ -102,7 +106,7 @@ class Compiler {
 
   // Returns whether the method to compile is such a pathological case that
   // it's not worth compiling.
-  static bool IsPathologicalCase(const DexFile::CodeItem& code_item,
+  static bool IsPathologicalCase(const dex::CodeItem& code_item,
                                  uint32_t method_idx,
                                  const DexFile& dex_file);
 
