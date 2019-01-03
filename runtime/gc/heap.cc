@@ -3531,7 +3531,7 @@ collector::GcType Heap::WaitForGcToCompleteLocked(GcCause cause, Thread* self) {
       running_collection_is_blocking_ = true;
       VLOG(gc) << "Waiting for a blocking GC " << cause;
     }
-    ScopedTrace trace("GC: Wait For Completion");
+    SCOPED_TRACE << "GC: Wait For Completion " << cause;
     // We must wait, change thread state then sleep on gc_complete_cond_;
     gc_complete_cond_->Wait(self);
     last_gc_type = last_gc_type_;
