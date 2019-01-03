@@ -24,6 +24,7 @@
 #include "base/safe_map.h"
 #include "dexanalyze_experiments.h"
 #include "dex/code_item_accessors.h"
+#include "dex/dex_file_types.h"
 
 namespace art {
 namespace dexanalyze {

@@ -21,9 +21,7 @@
 
 #include <android-base/logging.h>
 
-#include "compact_dex_file.h"
 #include "dex_instruction_iterator.h"
-#include "standard_dex_file.h"
 
 namespace art {
 
@@ -34,6 +32,8 @@ struct TryItem;
 
 class ArtMethod;
 class DexFile;
+template <typename Iter>
+class IterationRange;
 
 // Abstracts accesses to the instruction fields of code items for CompactDexFile and
 // StandardDexFile.
@@ -78,9 +78,10 @@ class CodeItemInstructionAccessor {
   CodeItemInstructionAccessor() = default;
 
   ALWAYS_INLINE void Init(uint32_t insns_size_in_code_units, const uint16_t* insns);
-  ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
-  ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const DexFile& dex_file, const dex::CodeItem* code_item);
+
+  template <typename DexFileCodeItemType>
+  ALWAYS_INLINE void Init(const DexFileCodeItemType& code_item);
 
  private:
   // size of the insns array, in 2 byte code units. 0 if there is no code item.
@@ -123,9 +124,10 @@ class CodeItemDataAccessor : public CodeItemInstructionAccessor {
  protected:
   CodeItemDataAccessor() = default;
 
-  ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
-  ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const DexFile& dex_file, const dex::CodeItem* code_item);
+
+  template <typename DexFileCodeItemType>
+  ALWAYS_INLINE void Init(const DexFileCodeItemType& code_item);
 
  private:
   // Fields mirrored from the dex/cdex code item.
@@ -174,8 +176,8 @@ class CodeItemDebugInfoAccessor : public CodeItemDataAccessor {
   bool GetLineNumForPc(const uint32_t pc, uint32_t* line_num) const;
 
  protected:
-  ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item, uint32_t dex_method_index);
-  ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
+  template <typename DexFileCodeItemType>
+  ALWAYS_INLINE void Init(const DexFileCodeItemType& code_item, uint32_t dex_method_index);
 
  private:
   const DexFile* dex_file_ = nullptr;

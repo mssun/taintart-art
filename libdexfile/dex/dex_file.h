@@ -32,6 +32,7 @@
 #include "dex_file_types.h"
 #include "jni.h"
 #include "modifiers.h"
+#include "signature.h"
 
 namespace art {
 
@@ -41,7 +42,6 @@ class DexInstructionIterator;
 enum InvokeType : uint32_t;
 class MemMap;
 class OatDexFile;
-class Signature;
 class StandardDexFile;
 class StringPiece;
 class ZipArchive;
@@ -910,38 +910,6 @@ class DexFileParameterIterator {
   uint32_t pos_ = 0;
   DISALLOW_IMPLICIT_CONSTRUCTORS(DexFileParameterIterator);
 };
-
-// Abstract the signature of a method.
-class Signature : public ValueObject {
- public:
-  std::string ToString() const;
-
-  static Signature NoSignature() {
-    return Signature();
-  }
-
-  bool IsVoid() const;
-  uint32_t GetNumberOfParameters() const;
-
-  bool operator==(const Signature& rhs) const;
-  bool operator!=(const Signature& rhs) const {
-    return !(*this == rhs);
-  }
-
-  bool operator==(const StringPiece& rhs) const;
-
- private:
-  Signature(const DexFile* dex, const dex::ProtoId& proto) : dex_file_(dex), proto_id_(&proto) {
-  }
-
-  Signature() = default;
-
-  friend class DexFile;
-
-  const DexFile* const dex_file_ = nullptr;
-  const dex::ProtoId* const proto_id_ = nullptr;
-};
-std::ostream& operator<<(std::ostream& os, const Signature& sig);
 
 class EncodedArrayValueIterator {
  public:

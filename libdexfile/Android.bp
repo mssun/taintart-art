@@ -32,6 +32,7 @@ cc_defaults {
         "dex/dex_instruction.cc",
         "dex/modifiers.cc",
         "dex/primitive.cc",
+        "dex/signature.cc",
         "dex/standard_dex_file.cc",
         "dex/type_lookup_table.cc",
         "dex/utf.cc",
