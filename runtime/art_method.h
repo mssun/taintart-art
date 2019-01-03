@@ -20,6 +20,7 @@
 #include <cstddef>
 
 #include <android-base/logging.h>
+#include <jni.h>
 
 #include "base/array_ref.h"
 #include "base/bit_utils.h"
@@ -33,6 +34,7 @@
 #include "dex/dex_instruction_iterator.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
+#include "dex/signature.h"
 #include "gc_root.h"
 #include "obj_ptr.h"
 #include "offsets.h"

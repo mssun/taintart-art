@@ -28,6 +28,7 @@
 #include "class_root.h"
 #include "common_runtime_test.h"
 #include "dex/dex_file_types.h"
+#include "dex/signature-inl.h"
 #include "dex/standard_dex_file.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "experimental_flags.h"

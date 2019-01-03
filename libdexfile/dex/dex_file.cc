@@ -604,66 +604,6 @@ std::ostream& operator<<(std::ostream& os, const DexFile& dex_file) {
   return os;
 }
 
-std::string Signature::ToString() const {
-  if (dex_file_ == nullptr) {
-    CHECK(proto_id_ == nullptr);
-    return "<no signature>";
-  }
-  const TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
-  std::string result;
-  if (params == nullptr) {
-    result += "()";
-  } else {
-    result += "(";
-    for (uint32_t i = 0; i < params->Size(); ++i) {
-      result += dex_file_->StringByTypeIdx(params->GetTypeItem(i).type_idx_);
-    }
-    result += ")";
-  }
-  result += dex_file_->StringByTypeIdx(proto_id_->return_type_idx_);
-  return result;
-}
-
-uint32_t Signature::GetNumberOfParameters() const {
-  const TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
-  return (params != nullptr) ? params->Size() : 0;
-}
-
-bool Signature::IsVoid() const {
-  const char* return_type = dex_file_->GetReturnTypeDescriptor(*proto_id_);
-  return strcmp(return_type, "V") == 0;
-}
-
-bool Signature::operator==(const StringPiece& rhs) const {
-  if (dex_file_ == nullptr) {
-    return false;
-  }
-  StringPiece tail(rhs);
-  if (!tail.starts_with("(")) {
-    return false;  // Invalid signature
-  }
-  tail.remove_prefix(1);  // "(";
-  const TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
-  if (params != nullptr) {
-    for (uint32_t i = 0; i < params->Size(); ++i) {
-      StringPiece param(dex_file_->StringByTypeIdx(params->GetTypeItem(i).type_idx_));
-      if (!tail.starts_with(param)) {
-        return false;
-      }
-      tail.remove_prefix(param.length());
-    }
-  }
-  if (!tail.starts_with(")")) {
-    return false;
-  }
-  tail.remove_prefix(1);  // ")";
-  return tail == dex_file_->StringByTypeIdx(proto_id_->return_type_idx_);
-}
-
-std::ostream& operator<<(std::ostream& os, const Signature& sig) {
-  return os << sig.ToString();
-}
-
 EncodedArrayValueIterator::EncodedArrayValueIterator(const DexFile& dex_file,
                                                      const uint8_t* array_data)
     : dex_file_(dex_file),

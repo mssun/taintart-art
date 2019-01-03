@@ -19,6 +19,7 @@
 #include "dex/class_accessor-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/primitive.h"
+#include "dex/signature-inl.h"
 #include "hidden_api.h"
 #include "veridex.h"
 
