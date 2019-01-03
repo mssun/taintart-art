@@ -1756,7 +1756,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
                                        HInstruction** return_replacement) {
   DCHECK(!(resolved_method->IsStatic() && receiver_type.IsValid()));
   ScopedObjectAccess soa(Thread::Current());
-  const DexFile::CodeItem* code_item = resolved_method->GetCodeItem();
+  const dex::CodeItem* code_item = resolved_method->GetCodeItem();
   const DexFile& callee_dex_file = *resolved_method->GetDexFile();
   uint32_t method_index = resolved_method->GetDexMethodIndex();
   CodeItemDebugInfoAccessor code_item_accessor(resolved_method->DexInstructionDebugInfo());
@@ -2027,7 +2027,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
 }
 
 void HInliner::RunOptimizations(HGraph* callee_graph,
-                                const DexFile::CodeItem* code_item,
+                                const dex::CodeItem* code_item,
                                 const DexCompilationUnit& dex_compilation_unit) {
   // Note: if the outermost_graph_ is being compiled OSR, we should not run any
   // optimization that could lead to a HDeoptimize. The following optimizations do not.
@@ -2112,7 +2112,7 @@ bool HInliner::ArgumentTypesMoreSpecific(HInvoke* invoke_instruction, ArtMethod*
   // Iterate over the list of parameter types and test whether any of the
   // actual inputs has a more specific reference type than the type declared in
   // the signature.
-  const DexFile::TypeList* param_list = resolved_method->GetParameterTypeList();
+  const dex::TypeList* param_list = resolved_method->GetParameterTypeList();
   for (size_t param_idx = 0,
               input_idx = resolved_method->IsStatic() ? 0 : 1,
               e = (param_list == nullptr ? 0 : param_list->Size());

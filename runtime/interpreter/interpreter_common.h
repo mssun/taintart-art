@@ -621,7 +621,7 @@ void ArtInterpreterToCompiledCodeBridge(Thread* self,
 
 static inline bool IsStringInit(const DexFile* dex_file, uint32_t method_idx)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  const DexFile::MethodId& method_id = dex_file->GetMethodId(method_idx);
+  const dex::MethodId& method_id = dex_file->GetMethodId(method_idx);
   const char* class_name = dex_file->StringByTypeIdx(method_id.class_idx_);
   const char* method_name = dex_file->GetMethodName(method_id);
   // Instead of calling ResolveMethod() which has suspend point and can trigger

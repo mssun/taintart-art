@@ -162,9 +162,9 @@ struct ClassCallback : public art::ClassLoadCallback {
                       art::Handle<art::mirror::Class> klass,
                       art::Handle<art::mirror::ClassLoader> class_loader,
                       const art::DexFile& initial_dex_file,
-                      const art::DexFile::ClassDef& initial_class_def ATTRIBUTE_UNUSED,
+                      const art::dex::ClassDef& initial_class_def ATTRIBUTE_UNUSED,
                       /*out*/art::DexFile const** final_dex_file,
-                      /*out*/art::DexFile::ClassDef const** final_class_def)
+                      /*out*/art::dex::ClassDef const** final_class_def)
       override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     bool is_enabled =
         event_handler->IsEventEnabledAnywhere(ArtJvmtiEvent::kClassFileLoadHookRetransformable) ||

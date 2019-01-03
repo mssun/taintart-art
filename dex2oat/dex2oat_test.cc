@@ -1331,7 +1331,7 @@ TEST_F(Dex2oatTest, LayoutSections) {
   // first.
   std::vector<uint16_t> methods;
   {
-    const DexFile::TypeId* type_id = dex->FindTypeId("LManyMethods;");
+    const dex::TypeId* type_id = dex->FindTypeId("LManyMethods;");
     dex::TypeIndex type_idx = dex->GetIndexForTypeId(*type_id);
     ClassAccessor accessor(*dex, *dex->FindClassDef(type_idx));
     std::set<size_t> code_item_offsets;
@@ -1431,10 +1431,10 @@ TEST_F(Dex2oatTest, LayoutSections) {
     // we expect.
     std::unique_ptr<const DexFile> dex_file(oat_dex->OpenDexFile(&error_msg));
     ASSERT_TRUE(dex_file != nullptr) << error_msg;
-    const DexFile::TypeId* type_id = dex_file->FindTypeId("LManyMethods;");
+    const dex::TypeId* type_id = dex_file->FindTypeId("LManyMethods;");
     ASSERT_TRUE(type_id != nullptr);
     dex::TypeIndex type_idx = dex_file->GetIndexForTypeId(*type_id);
-    const DexFile::ClassDef* class_def = dex_file->FindClassDef(type_idx);
+    const dex::ClassDef* class_def = dex_file->FindClassDef(type_idx);
     ASSERT_TRUE(class_def != nullptr);
 
     // Count how many code items are for each category, there should be at least one per category.

@@ -84,7 +84,7 @@ class CompactDexFile : public DexFile {
   // Like the standard code item except without a debug info offset. Each code item may have a
   // preheader to encode large methods. In 99% of cases, the preheader is not used. This enables
   // smaller size with a good fast path case in the accessors.
-  struct CodeItem : public DexFile::CodeItem {
+  struct CodeItem : public dex::CodeItem {
     static constexpr size_t kAlignment = sizeof(uint16_t);
     // Max preheader size in uint16_ts.
     static constexpr size_t kMaxPreHeaderSize = 6;
@@ -271,7 +271,7 @@ class CompactDexFile : public DexFile {
 
   bool SupportsDefaultMethods() const override;
 
-  uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const override;
+  uint32_t GetCodeItemSize(const dex::CodeItem& item) const override;
 
   uint32_t GetDebugInfoOffset(uint32_t dex_method_index) const {
     return debug_info_offsets_.GetOffset(dex_method_index);

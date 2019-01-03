@@ -84,7 +84,7 @@ static std::unique_ptr<char[]> descriptorToDot(const char* str) {
  */
 static void dumpMethod(const DexFile* pDexFile,
                        const char* fileName, u4 idx, u4 flags ATTRIBUTE_UNUSED,
-                       const DexFile::CodeItem* pCode, u4 codeOffset) {
+                       const dex::CodeItem* pCode, u4 codeOffset) {
   // Abstract and native methods don't get listed.
   if (pCode == nullptr || codeOffset == 0) {
     return;
@@ -92,7 +92,7 @@ static void dumpMethod(const DexFile* pDexFile,
   CodeItemDebugInfoAccessor accessor(*pDexFile, pCode, idx);
 
   // Method information.
-  const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(idx);
+  const dex::MethodId& pMethodId = pDexFile->GetMethodId(idx);
   const char* methodName = pDexFile->StringDataByIdx(pMethodId.name_idx_);
   const char* classDescriptor = pDexFile->StringByTypeIdx(pMethodId.class_idx_);
   std::unique_ptr<char[]> className(descriptorToDot(classDescriptor));
@@ -134,7 +134,7 @@ static void dumpMethod(const DexFile* pDexFile,
  * Runs through all direct and virtual methods in the class.
  */
 void dumpClass(const DexFile* pDexFile, u4 idx) {
-  const DexFile::ClassDef& class_def = pDexFile->GetClassDef(idx);
+  const dex::ClassDef& class_def = pDexFile->GetClassDef(idx);
 
   const char* fileName = nullptr;
   if (class_def.source_file_idx_.IsValid()) {

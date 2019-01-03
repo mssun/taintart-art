@@ -264,7 +264,7 @@ void CommonCompilerTest::CompileMethod(ArtMethod* method) {
     Handle<mirror::DexCache> dex_cache(hs.NewHandle(method->GetDexCache()));
     Handle<mirror::ClassLoader> h_class_loader = hs.NewHandle(
         self->DecodeJObject(class_loader)->AsClassLoader());
-    const DexFile::CodeItem* code_item = dex_file->GetCodeItem(method->GetCodeItemOffset());
+    const dex::CodeItem* code_item = dex_file->GetCodeItem(method->GetCodeItemOffset());
 
     std::vector<const DexFile*> dex_files;
     dex_files.push_back(dex_file);

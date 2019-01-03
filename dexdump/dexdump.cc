@@ -492,13 +492,13 @@ static void dumpEncodedValue(const DexFile* pDexFile, const u1** data, u1 type, 
     case DexFile::kDexAnnotationField:
     case DexFile::kDexAnnotationEnum: {
       const u4 field_idx = static_cast<u4>(readVarWidth(data, arg, false));
-      const DexFile::FieldId& pFieldId = pDexFile->GetFieldId(field_idx);
+      const dex::FieldId& pFieldId = pDexFile->GetFieldId(field_idx);
       fputs(pDexFile->StringDataByIdx(pFieldId.name_idx_), gOutFile);
       break;
     }
     case DexFile::kDexAnnotationMethod: {
       const u4 method_idx = static_cast<u4>(readVarWidth(data, arg, false));
-      const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(method_idx);
+      const dex::MethodId& pMethodId = pDexFile->GetMethodId(method_idx);
       fputs(pDexFile->StringDataByIdx(pMethodId.name_idx_), gOutFile);
       break;
     }
@@ -594,7 +594,7 @@ static void dumpFileHeader(const DexFile* pDexFile) {
  */
 static void dumpClassDef(const DexFile* pDexFile, int idx) {
   // General class information.
-  const DexFile::ClassDef& pClassDef = pDexFile->GetClassDef(idx);
+  const dex::ClassDef& pClassDef = pDexFile->GetClassDef(idx);
   fprintf(gOutFile, "Class #%d header:\n", idx);
   fprintf(gOutFile, "class_idx           : %d\n", pClassDef.class_idx_.index_);
   fprintf(gOutFile, "access_flags        : %d (0x%04x)\n",
@@ -620,13 +620,13 @@ static void dumpClassDef(const DexFile* pDexFile, int idx) {
 /**
  * Dumps an annotation set item.
  */
-static void dumpAnnotationSetItem(const DexFile* pDexFile, const DexFile::AnnotationSetItem* set_item) {
+static void dumpAnnotationSetItem(const DexFile* pDexFile, const dex::AnnotationSetItem* set_item) {
   if (set_item == nullptr || set_item->size_ == 0) {
     fputs("  empty-annotation-set\n", gOutFile);
     return;
   }
   for (u4 i = 0; i < set_item->size_; i++) {
-    const DexFile::AnnotationItem* annotation = pDexFile->GetAnnotationItem(set_item, i);
+    const dex::AnnotationItem* annotation = pDexFile->GetAnnotationItem(set_item, i);
     if (annotation == nullptr) {
       continue;
     }
@@ -648,18 +648,18 @@ static void dumpAnnotationSetItem(const DexFile* pDexFile, const DexFile::Annota
  * Dumps class annotations.
  */
 static void dumpClassAnnotations(const DexFile* pDexFile, int idx) {
-  const DexFile::ClassDef& pClassDef = pDexFile->GetClassDef(idx);
-  const DexFile::AnnotationsDirectoryItem* dir = pDexFile->GetAnnotationsDirectory(pClassDef);
+  const dex::ClassDef& pClassDef = pDexFile->GetClassDef(idx);
+  const dex::AnnotationsDirectoryItem* dir = pDexFile->GetAnnotationsDirectory(pClassDef);
   if (dir == nullptr) {
     return;  // none
   }
 
   fprintf(gOutFile, "Class #%d annotations:\n", idx);
 
-  const DexFile::AnnotationSetItem* class_set_item = pDexFile->GetClassAnnotationSet(dir);
-  const DexFile::FieldAnnotationsItem* fields = pDexFile->GetFieldAnnotations(dir);
-  const DexFile::MethodAnnotationsItem* methods = pDexFile->GetMethodAnnotations(dir);
-  const DexFile::ParameterAnnotationsItem* pars = pDexFile->GetParameterAnnotations(dir);
+  const dex::AnnotationSetItem* class_set_item = pDexFile->GetClassAnnotationSet(dir);
+  const dex::FieldAnnotationsItem* fields = pDexFile->GetFieldAnnotations(dir);
+  const dex::MethodAnnotationsItem* methods = pDexFile->GetMethodAnnotations(dir);
+  const dex::ParameterAnnotationsItem* pars = pDexFile->GetParameterAnnotations(dir);
 
   // Annotations on the class itself.
   if (class_set_item != nullptr) {
@@ -671,7 +671,7 @@ static void dumpClassAnnotations(const DexFile* pDexFile, int idx) {
   if (fields != nullptr) {
     for (u4 i = 0; i < dir->fields_size_; i++) {
       const u4 field_idx = fields[i].field_idx_;
-      const DexFile::FieldId& pFieldId = pDexFile->GetFieldId(field_idx);
+      const dex::FieldId& pFieldId = pDexFile->GetFieldId(field_idx);
       const char* field_name = pDexFile->StringDataByIdx(pFieldId.name_idx_);
       fprintf(gOutFile, "Annotations on field #%u '%s'\n", field_idx, field_name);
       dumpAnnotationSetItem(pDexFile, pDexFile->GetFieldAnnotationSetItem(fields[i]));
@@ -682,7 +682,7 @@ static void dumpClassAnnotations(const DexFile* pDexFile, int idx) {
   if (methods != nullptr) {
     for (u4 i = 0; i < dir->methods_size_; i++) {
       const u4 method_idx = methods[i].method_idx_;
-      const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(method_idx);
+      const dex::MethodId& pMethodId = pDexFile->GetMethodId(method_idx);
       const char* method_name = pDexFile->StringDataByIdx(pMethodId.name_idx_);
       fprintf(gOutFile, "Annotations on method #%u '%s'\n", method_idx, method_name);
       dumpAnnotationSetItem(pDexFile, pDexFile->GetMethodAnnotationSetItem(methods[i]));
@@ -693,10 +693,10 @@ static void dumpClassAnnotations(const DexFile* pDexFile, int idx) {
   if (pars != nullptr) {
     for (u4 i = 0; i < dir->parameters_size_; i++) {
       const u4 method_idx = pars[i].method_idx_;
-      const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(method_idx);
+      const dex::MethodId& pMethodId = pDexFile->GetMethodId(method_idx);
       const char* method_name = pDexFile->StringDataByIdx(pMethodId.name_idx_);
       fprintf(gOutFile, "Annotations on method #%u '%s' parameters\n", method_idx, method_name);
-      const DexFile::AnnotationSetRefList*
+      const dex::AnnotationSetRefList*
           list = pDexFile->GetParameterAnnotationSetRefList(&pars[i]);
       if (list != nullptr) {
         for (u4 j = 0; j < list->size_; j++) {
@@ -713,7 +713,7 @@ static void dumpClassAnnotations(const DexFile* pDexFile, int idx) {
 /*
  * Dumps an interface that a class declares to implement.
  */
-static void dumpInterface(const DexFile* pDexFile, const DexFile::TypeItem& pTypeItem, int i) {
+static void dumpInterface(const DexFile* pDexFile, const dex::TypeItem& pTypeItem, int i) {
   const char* interfaceName = pDexFile->StringByTypeIdx(pTypeItem.type_idx_);
   if (gOptions.outputFormat == OUTPUT_PLAIN) {
     fprintf(gOutFile, "    #%d              : '%s'\n", i, interfaceName);
@@ -726,7 +726,7 @@ static void dumpInterface(const DexFile* pDexFile, const DexFile::TypeItem& pTyp
 /*
  * Dumps the catches table associated with the code.
  */
-static void dumpCatches(const DexFile* pDexFile, const DexFile::CodeItem* pCode) {
+static void dumpCatches(const DexFile* pDexFile, const dex::CodeItem* pCode) {
   CodeItemDataAccessor accessor(*pDexFile, pCode);
   const u4 triesSize = accessor.TriesSize();
 
@@ -738,7 +738,7 @@ static void dumpCatches(const DexFile* pDexFile, const DexFile::CodeItem* pCode)
 
   // Dump all table entries.
   fprintf(gOutFile, "      catches       : %d\n", triesSize);
-  for (const DexFile::TryItem& try_item : accessor.TryItems()) {
+  for (const dex::TryItem& try_item : accessor.TryItems()) {
     const u4 start = try_item.start_addr_;
     const u4 end = start + try_item.insn_count_;
     fprintf(gOutFile, "        0x%04x - 0x%04x\n", start, end);
@@ -826,7 +826,7 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
       break;
     case Instruction::kIndexMethodRef:
       if (index < pDexFile->GetHeader().method_ids_size_) {
-        const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(index);
+        const dex::MethodId& pMethodId = pDexFile->GetMethodId(index);
         const char* name = pDexFile->StringDataByIdx(pMethodId.name_idx_);
         const Signature signature = pDexFile->GetMethodSignature(pMethodId);
         const char* backDescriptor = pDexFile->StringByTypeIdx(pMethodId.class_idx_);
@@ -838,7 +838,7 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
       break;
     case Instruction::kIndexFieldRef:
       if (index < pDexFile->GetHeader().field_ids_size_) {
-        const DexFile::FieldId& pFieldId = pDexFile->GetFieldId(index);
+        const dex::FieldId& pFieldId = pDexFile->GetFieldId(index);
         const char* name = pDexFile->StringDataByIdx(pFieldId.name_idx_);
         const char* typeDescriptor = pDexFile->StringByTypeIdx(pFieldId.type_idx_);
         const char* backDescriptor = pDexFile->StringByTypeIdx(pFieldId.class_idx_);
@@ -859,7 +859,7 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
       std::string method("<method?>");
       std::string proto("<proto?>");
       if (index < pDexFile->GetHeader().method_ids_size_) {
-        const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(index);
+        const dex::MethodId& pMethodId = pDexFile->GetMethodId(index);
         const char* name = pDexFile->StringDataByIdx(pMethodId.name_idx_);
         const Signature signature = pDexFile->GetMethodSignature(pMethodId);
         const char* backDescriptor = pDexFile->StringByTypeIdx(pMethodId.class_idx_);
@@ -869,7 +869,7 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
                                              signature.ToString().c_str());
       }
       if (secondary_index < pDexFile->GetHeader().proto_ids_size_) {
-        const DexFile::ProtoId& protoId = pDexFile->GetProtoId(dex::ProtoIndex(secondary_index));
+        const dex::ProtoId& protoId = pDexFile->GetProtoId(dex::ProtoIndex(secondary_index));
         const Signature signature = pDexFile->GetProtoSignature(protoId);
         proto = signature.ToString();
       }
@@ -887,7 +887,7 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
       break;
     case Instruction::kIndexProtoRef:
       if (index < pDexFile->GetHeader().proto_ids_size_) {
-        const DexFile::ProtoId& protoId = pDexFile->GetProtoId(dex::ProtoIndex(index));
+        const dex::ProtoId& protoId = pDexFile->GetProtoId(dex::ProtoIndex(index));
         const Signature signature = pDexFile->GetProtoSignature(protoId);
         const std::string& proto = signature.ToString();
         outSize = snprintf(buf.get(), bufSize, "%s // proto@%0*x", proto.c_str(), width, index);
@@ -916,7 +916,7 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
  * Dumps a single instruction.
  */
 static void dumpInstruction(const DexFile* pDexFile,
-                            const DexFile::CodeItem* pCode,
+                            const dex::CodeItem* pCode,
                             u4 codeOffset, u4 insnIdx, u4 insnWidth,
                             const Instruction* pDecInsn) {
   // Address of instruction (expressed as byte offset).
@@ -1129,8 +1129,8 @@ static void dumpInstruction(const DexFile* pDexFile,
  * Dumps a bytecode disassembly.
  */
 static void dumpBytecodes(const DexFile* pDexFile, u4 idx,
-                          const DexFile::CodeItem* pCode, u4 codeOffset) {
-  const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(idx);
+                          const dex::CodeItem* pCode, u4 codeOffset) {
+  const dex::MethodId& pMethodId = pDexFile->GetMethodId(idx);
   const char* name = pDexFile->StringDataByIdx(pMethodId.name_idx_);
   const Signature signature = pDexFile->GetMethodSignature(pMethodId);
   const char* backDescriptor = pDexFile->StringByTypeIdx(pMethodId.class_idx_);
@@ -1163,7 +1163,7 @@ static void dumpBytecodes(const DexFile* pDexFile, u4 idx,
  * Dumps code of a method.
  */
 static void dumpCode(const DexFile* pDexFile, u4 idx, u4 flags,
-                     const DexFile::CodeItem* pCode, u4 codeOffset) {
+                     const dex::CodeItem* pCode, u4 codeOffset) {
   CodeItemDebugInfoAccessor accessor(*pDexFile, pCode, idx);
 
   fprintf(gOutFile, "      registers     : %d\n", accessor.RegistersSize());
@@ -1214,7 +1214,7 @@ static void dumpMethod(const ClassAccessor::Method& method, int i) {
   }
 
   const DexFile& dex_file = method.GetDexFile();
-  const DexFile::MethodId& pMethodId = dex_file.GetMethodId(method.GetIndex());
+  const dex::MethodId& pMethodId = dex_file.GetMethodId(method.GetIndex());
   const char* name = dex_file.StringDataByIdx(pMethodId.name_idx_);
   const Signature signature = dex_file.GetMethodSignature(pMethodId);
   char* typeDescriptor = strdup(signature.ToString().c_str());
@@ -1325,7 +1325,7 @@ static void dumpField(const ClassAccessor::Field& field, int i, const u1** data 
   }
 
   const DexFile& dex_file = field.GetDexFile();
-  const DexFile::FieldId& field_id = dex_file.GetFieldId(field.GetIndex());
+  const dex::FieldId& field_id = dex_file.GetFieldId(field.GetIndex());
   const char* name = dex_file.StringDataByIdx(field_id.name_idx_);
   const char* typeDescriptor = dex_file.StringByTypeIdx(field_id.type_idx_);
   const char* backDescriptor = dex_file.StringByTypeIdx(field_id.class_idx_);
@@ -1386,7 +1386,7 @@ static void dumpCfg(const DexFile* dex_file, int idx) {
  * the value will be replaced with a newly-allocated string.
  */
 static void dumpClass(const DexFile* pDexFile, int idx, char** pLastPackage) {
-  const DexFile::ClassDef& pClassDef = pDexFile->GetClassDef(idx);
+  const dex::ClassDef& pClassDef = pDexFile->GetClassDef(idx);
 
   // Omitting non-public class.
   if (gOptions.exportsOnly && (pClassDef.access_flags_ & kAccPublic) == 0) {
@@ -1480,7 +1480,7 @@ static void dumpClass(const DexFile* pDexFile, int idx, char** pLastPackage) {
   }
 
   // Interfaces.
-  const DexFile::TypeList* pInterfaces = pDexFile->GetInterfacesList(pClassDef);
+  const dex::TypeList* pInterfaces = pDexFile->GetInterfacesList(pClassDef);
   if (pInterfaces != nullptr) {
     for (u4 i = 0; i < pInterfaces->Size(); i++) {
       dumpInterface(pDexFile, pInterfaces->GetTypeItem(i), i);
@@ -1552,7 +1552,7 @@ static void dumpClass(const DexFile* pDexFile, int idx, char** pLastPackage) {
 }
 
 static void dumpMethodHandle(const DexFile* pDexFile, u4 idx) {
-  const DexFile::MethodHandleItem& mh = pDexFile->GetMethodHandle(idx);
+  const dex::MethodHandleItem& mh = pDexFile->GetMethodHandle(idx);
   const char* type = nullptr;
   bool is_instance = false;
   bool is_invoke = false;
@@ -1609,12 +1609,12 @@ static void dumpMethodHandle(const DexFile* pDexFile, u4 idx) {
   std::string member_type;
   if (type != nullptr) {
     if (is_invoke) {
-      const DexFile::MethodId& method_id = pDexFile->GetMethodId(mh.field_or_method_idx_);
+      const dex::MethodId& method_id = pDexFile->GetMethodId(mh.field_or_method_idx_);
       declaring_class = pDexFile->GetMethodDeclaringClassDescriptor(method_id);
       member = pDexFile->GetMethodName(method_id);
       member_type = pDexFile->GetMethodSignature(method_id).ToString();
     } else {
-      const DexFile::FieldId& field_id = pDexFile->GetFieldId(mh.field_or_method_idx_);
+      const dex::FieldId& field_id = pDexFile->GetFieldId(mh.field_or_method_idx_);
       declaring_class = pDexFile->GetFieldDeclaringClassDescriptor(field_id);
       member = pDexFile->GetFieldName(field_id);
       member_type = pDexFile->GetFieldTypeDescriptor(field_id);
@@ -1646,7 +1646,7 @@ static void dumpMethodHandle(const DexFile* pDexFile, u4 idx) {
 }
 
 static void dumpCallSite(const DexFile* pDexFile, u4 idx) {
-  const DexFile::CallSiteIdItem& call_site_id = pDexFile->GetCallSiteId(idx);
+  const dex::CallSiteIdItem& call_site_id = pDexFile->GetCallSiteId(idx);
   CallSiteArrayValueIterator it(*pDexFile, call_site_id);
   if (it.Size() < 3) {
     LOG(ERROR) << "ERROR: Call site " << idx << " has too few values.";
@@ -1659,7 +1659,7 @@ static void dumpCallSite(const DexFile* pDexFile, u4 idx) {
   const char* method_name = pDexFile->StringDataByIdx(method_name_idx);
   it.Next();
   dex::ProtoIndex method_type_idx = static_cast<dex::ProtoIndex>(it.GetJavaValue().i);
-  const DexFile::ProtoId& method_type_id = pDexFile->GetProtoId(method_type_idx);
+  const dex::ProtoId& method_type_id = pDexFile->GetProtoId(method_type_idx);
   std::string method_type = pDexFile->GetProtoSignature(method_type_id).ToString();
   it.Next();
 
@@ -1717,7 +1717,7 @@ static void dumpCallSite(const DexFile* pDexFile, u4 idx) {
       case EncodedArrayValueIterator::ValueType::kMethodType: {
         type = "MethodType";
         dex::ProtoIndex proto_idx = static_cast<dex::ProtoIndex>(it.GetJavaValue().i);
-        const DexFile::ProtoId& proto_id = pDexFile->GetProtoId(proto_idx);
+        const dex::ProtoId& proto_id = pDexFile->GetProtoId(proto_idx);
         value = pDexFile->GetProtoSignature(proto_id).ToString();
         break;
       }
@@ -1734,7 +1734,7 @@ static void dumpCallSite(const DexFile* pDexFile, u4 idx) {
       case EncodedArrayValueIterator::ValueType::kType: {
         type = "Class";
         dex::TypeIndex type_idx = static_cast<dex::TypeIndex>(it.GetJavaValue().i);
-        const DexFile::TypeId& type_id = pDexFile->GetTypeId(type_idx);
+        const dex::TypeId& type_id = pDexFile->GetTypeId(type_idx);
         value = pDexFile->GetTypeDescriptor(type_id);
         break;
       }

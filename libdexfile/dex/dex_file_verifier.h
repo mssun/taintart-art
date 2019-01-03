@@ -79,7 +79,7 @@ class DexFileVerifier {
   bool CheckMap();
 
   uint32_t ReadUnsignedLittleEndian(uint32_t size);
-  bool CheckAndGetHandlerOffsets(const DexFile::CodeItem* code_item,
+  bool CheckAndGetHandlerOffsets(const dex::CodeItem* code_item,
                                  uint32_t* handler_offsets, uint32_t handlers_size);
   bool CheckClassDataItemField(uint32_t idx,
                                uint32_t access_flags,
@@ -95,7 +95,7 @@ class DexFileVerifier {
                                 size_t* remaining_directs);
   ALWAYS_INLINE
   bool CheckOrder(const char* type_descr, uint32_t curr_index, uint32_t prev_index);
-  bool CheckStaticFieldTypes(const DexFile::ClassDef* class_def);
+  bool CheckStaticFieldTypes(const dex::ClassDef* class_def);
 
   bool CheckPadding(size_t offset, uint32_t aligned_offset, DexFile::MapItemType type);
   bool CheckEncodedValue();
@@ -110,7 +110,7 @@ class DexFileVerifier {
                                      ClassAccessor::Field* field,
                                      bool* have_class,
                                      dex::TypeIndex* class_type_index,
-                                     const DexFile::ClassDef** class_def);
+                                     const dex::ClassDef** class_def);
   // Check all methods of the given type from the given iterator. Load the class data from the first
   // method, if necessary (and return it), or use the given values.
   bool CheckIntraClassDataItemMethods(ClassAccessor::Method* method,
@@ -119,7 +119,7 @@ class DexFileVerifier {
                                       size_t num_directs,
                                       bool* have_class,
                                       dex::TypeIndex* class_type_index,
-                                      const DexFile::ClassDef** class_def);
+                                      const dex::ClassDef** class_def);
 
   bool CheckIntraCodeItem();
   bool CheckIntraStringDataItem();
@@ -166,9 +166,9 @@ class DexFileVerifier {
 
   // Load a field/method/proto Id by index. Checks whether the index is in bounds, printing the
   // error if not. If there is an error, null is returned.
-  const DexFile::FieldId* CheckLoadFieldId(uint32_t idx, const char* error_fmt);
-  const DexFile::MethodId* CheckLoadMethodId(uint32_t idx, const char* error_fmt);
-  const DexFile::ProtoId* CheckLoadProtoId(dex::ProtoIndex idx, const char* error_fmt);
+  const dex::FieldId* CheckLoadFieldId(uint32_t idx, const char* error_fmt);
+  const dex::MethodId* CheckLoadMethodId(uint32_t idx, const char* error_fmt);
+  const dex::ProtoId* CheckLoadProtoId(dex::ProtoIndex idx, const char* error_fmt);
 
   void ErrorStringPrintf(const char* fmt, ...)
       __attribute__((__format__(__printf__, 2, 3))) COLD_ATTR;
@@ -182,7 +182,7 @@ class DexFileVerifier {
   bool FindClassIndexAndDef(uint32_t index,
                             bool is_field,
                             dex::TypeIndex* class_type_index,
-                            const DexFile::ClassDef** output_class_def);
+                            const dex::ClassDef** output_class_def);
 
   // Check validity of the given access flags, interpreted for a field in the context of a class
   // with the given second access flags.
@@ -247,7 +247,7 @@ class DexFileVerifier {
   std::string failure_reason_;
 
   // Set of type ids for which there are ClassDef elements in the dex file.
-  std::unordered_set<decltype(DexFile::ClassDef::class_idx_)> defined_classes_;
+  std::unordered_set<decltype(dex::ClassDef::class_idx_)> defined_classes_;
 
   // Cached string indices for "interesting" entries wrt/ method names. Will be populated by
   // FindStringRangesForMethodNames (which is automatically called before verifying the

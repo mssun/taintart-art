@@ -272,7 +272,7 @@ class OptimizingCompiler final : public Compiler {
 
   bool CanCompileMethod(uint32_t method_idx, const DexFile& dex_file) const override;
 
-  CompiledMethod* Compile(const DexFile::CodeItem* code_item,
+  CompiledMethod* Compile(const dex::CodeItem* code_item,
                           uint32_t access_flags,
                           InvokeType invoke_type,
                           uint16_t class_def_idx,
@@ -370,7 +370,7 @@ class OptimizingCompiler final : public Compiler {
   CompiledMethod* Emit(ArenaAllocator* allocator,
                        CodeVectorAllocator* code_allocator,
                        CodeGenerator* codegen,
-                       const DexFile::CodeItem* item) const;
+                       const dex::CodeItem* item) const;
 
   // Try compiling a method and return the code generator used for
   // compiling it.
@@ -760,7 +760,7 @@ static ArenaVector<linker::LinkerPatch> EmitAndSortLinkerPatches(CodeGenerator* 
 CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
                                          CodeVectorAllocator* code_allocator,
                                          CodeGenerator* codegen,
-                                         const DexFile::CodeItem* code_item_for_osr_check) const {
+                                         const dex::CodeItem* code_item_for_osr_check) const {
   ArenaVector<linker::LinkerPatch> linker_patches = EmitAndSortLinkerPatches(codegen);
   ScopedArenaVector<uint8_t> stack_map = codegen->BuildStackMaps(code_item_for_osr_check);
 
@@ -799,7 +799,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
   InstructionSet instruction_set = compiler_options.GetInstructionSet();
   const DexFile& dex_file = *dex_compilation_unit.GetDexFile();
   uint32_t method_idx = dex_compilation_unit.GetDexMethodIndex();
-  const DexFile::CodeItem* code_item = dex_compilation_unit.GetCodeItem();
+  const dex::CodeItem* code_item = dex_compilation_unit.GetCodeItem();
 
   // Always use the Thumb-2 assembler: some runtime functionality
   // (like implicit stack overflow checks) assume Thumb-2.
@@ -1033,7 +1033,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
   return codegen.release();
 }
 
-CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
+CompiledMethod* OptimizingCompiler::Compile(const dex::CodeItem* code_item,
                                             uint32_t access_flags,
                                             InvokeType invoke_type,
                                             uint16_t class_def_idx,
@@ -1254,7 +1254,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
 
   const DexFile* dex_file = method->GetDexFile();
   const uint16_t class_def_idx = method->GetClassDefIndex();
-  const DexFile::CodeItem* code_item = dex_file->GetCodeItem(method->GetCodeItemOffset());
+  const dex::CodeItem* code_item = dex_file->GetCodeItem(method->GetCodeItemOffset());
   const uint32_t method_idx = method->GetDexMethodIndex();
   const uint32_t access_flags = method->GetAccessFlags();
 

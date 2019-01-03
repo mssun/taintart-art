@@ -147,7 +147,7 @@ class VerifierDepsTest : public CommonCompilerTest {
         hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader_)));
     Handle<mirror::DexCache> dex_cache_handle(hs.NewHandle(klass_Main_->GetDexCache()));
 
-    const DexFile::ClassDef* class_def = klass_Main_->GetClassDef();
+    const dex::ClassDef* class_def = klass_Main_->GetClassDef();
     ClassAccessor accessor(*primary_dex_file_, *class_def);
 
     bool has_failures = true;
@@ -228,7 +228,7 @@ class VerifierDepsTest : public CommonCompilerTest {
     for (const DexFile* dex_file : dex_files_) {
       const std::set<dex::TypeIndex>& unverified_classes = deps.GetUnverifiedClasses(*dex_file);
       for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-        const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
+        const dex::ClassDef& class_def = dex_file->GetClassDef(i);
         const char* descriptor = dex_file->GetClassDescriptor(class_def);
         cls.Assign(class_linker_->FindClass(soa.Self(), descriptor, class_loader_handle));
         if (cls == nullptr) {
@@ -250,7 +250,7 @@ class VerifierDepsTest : public CommonCompilerTest {
   }
 
   bool HasUnverifiedClass(const std::string& cls, const DexFile& dex_file) {
-    const DexFile::TypeId* type_id = dex_file.FindTypeId(cls.c_str());
+    const dex::TypeId* type_id = dex_file.FindTypeId(cls.c_str());
     DCHECK(type_id != nullptr);
     dex::TypeIndex index = dex_file.GetIndexForTypeId(*type_id);
     for (const auto& dex_dep : verifier_deps_->dex_deps_) {
@@ -329,7 +329,7 @@ class VerifierDepsTest : public CommonCompilerTest {
           continue;
         }
 
-        const DexFile::FieldId& field_id = dex_dep.first->GetFieldId(entry.GetDexFieldIndex());
+        const dex::FieldId& field_id = dex_dep.first->GetFieldId(entry.GetDexFieldIndex());
 
         std::string actual_klass = dex_dep.first->StringByTypeIdx(field_id.class_idx_);
         if (expected_klass != actual_klass) {
@@ -381,7 +381,7 @@ class VerifierDepsTest : public CommonCompilerTest {
           continue;
         }
 
-        const DexFile::MethodId& method_id = dex_dep.first->GetMethodId(entry.GetDexMethodIndex());
+        const dex::MethodId& method_id = dex_dep.first->GetMethodId(entry.GetDexMethodIndex());
 
         std::string actual_klass = dex_dep.first->StringByTypeIdx(method_id.class_idx_);
         if (expected_klass != actual_klass) {

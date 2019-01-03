@@ -535,10 +535,10 @@ void DexWriter::WriteCodeItemPostInstructionData(Stream* stream,
                                                  dex_ir::CodeItem* code_item,
                                                  bool reserve_only) {
   if (code_item->TriesSize() != 0) {
-    stream->AlignTo(DexFile::TryItem::kAlignment);
+    stream->AlignTo(dex::TryItem::kAlignment);
     // Write try items.
     for (std::unique_ptr<const dex_ir::TryItem>& try_item : *code_item->Tries()) {
-      DexFile::TryItem disk_try_item;
+      dex::TryItem disk_try_item;
       if (!reserve_only) {
         disk_try_item.start_addr_ = try_item->StartAddr();
         disk_try_item.insn_count_ = try_item->InsnCount();
@@ -712,7 +712,7 @@ void DexWriter::WriteMapItems(Stream* stream, MapItemQueue* queue) {
   stream->Write(&map_list_size, sizeof(map_list_size));
   while (!queue->empty()) {
     const MapItem& item = queue->top();
-    DexFile::MapItem map_item;
+    dex::MapItem map_item;
     map_item.type_ = item.type_;
     map_item.size_ = item.size_;
     map_item.offset_ = item.offset_;

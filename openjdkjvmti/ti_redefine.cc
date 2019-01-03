@@ -629,7 +629,7 @@ bool Redefiner::ClassRedefinition::CheckSameMethods() {
   // and removals. We should have already checked the fields.
   for (const art::ClassAccessor::Method& method : accessor.GetMethods()) {
     // Get the data on the method we are searching for
-    const art::DexFile::MethodId& new_method_id = dex_file_->GetMethodId(method.GetIndex());
+    const art::dex::MethodId& new_method_id = dex_file_->GetMethodId(method.GetIndex());
     const char* new_method_name = dex_file_->GetMethodName(new_method_id);
     art::Signature new_method_signature = dex_file_->GetMethodSignature(new_method_id);
     art::ArtMethod* old_method = FindMethod(h_klass, new_method_name, new_method_signature);
@@ -672,7 +672,7 @@ bool Redefiner::ClassRedefinition::CheckSameFields() {
   auto old_iter = old_fields.begin();
   for (const art::ClassAccessor::Field& new_field : new_accessor.GetFields()) {
     // Get the data on the method we are searching for
-    const art::DexFile::FieldId& new_field_id = dex_file_->GetFieldId(new_field.GetIndex());
+    const art::dex::FieldId& new_field_id = dex_file_->GetFieldId(new_field.GetIndex());
     const char* new_field_name = dex_file_->GetFieldName(new_field_id);
     const char* new_field_type = dex_file_->GetFieldTypeDescriptor(new_field_id);
 
@@ -685,7 +685,7 @@ bool Redefiner::ClassRedefinition::CheckSameFields() {
       return false;
     }
 
-    const art::DexFile::FieldId& old_field_id = old_dex_file.GetFieldId(old_iter->GetIndex());
+    const art::dex::FieldId& old_field_id = old_dex_file.GetFieldId(old_iter->GetIndex());
     const char* old_field_name = old_dex_file.GetFieldName(old_field_id);
     const char* old_field_type = old_dex_file.GetFieldTypeDescriptor(old_field_id);
 
@@ -736,7 +736,7 @@ bool Redefiner::ClassRedefinition::CheckClass() {
   }
   // Get the ClassDef from the new DexFile.
   // Since the dex file has only a single class def the index is always 0.
-  const art::DexFile::ClassDef& def = dex_file_->GetClassDef(0);
+  const art::dex::ClassDef& def = dex_file_->GetClassDef(0);
   // Get the class as it is now.
   art::Handle<art::mirror::Class> current_class(hs.NewHandle(GetMirrorClass()));
 
@@ -773,7 +773,7 @@ bool Redefiner::ClassRedefinition::CheckClass() {
       return false;
     }
   }
-  const art::DexFile::TypeList* interfaces = dex_file_->GetInterfacesList(def);
+  const art::dex::TypeList* interfaces = dex_file_->GetInterfacesList(def);
   if (interfaces == nullptr) {
     if (current_class->NumDirectInterfaces() != 0) {
       RecordFailure(ERR(UNSUPPORTED_REDEFINITION_HIERARCHY_CHANGED), "Interfaces added");
@@ -781,7 +781,7 @@ bool Redefiner::ClassRedefinition::CheckClass() {
     }
   } else {
     DCHECK(!current_class->IsProxyClass());
-    const art::DexFile::TypeList* current_interfaces = current_class->GetInterfaceTypeList();
+    const art::dex::TypeList* current_interfaces = current_class->GetInterfaceTypeList();
     if (current_interfaces == nullptr || current_interfaces->Size() != interfaces->Size()) {
       RecordFailure(ERR(UNSUPPORTED_REDEFINITION_HIERARCHY_CHANGED), "Interfaces added or removed");
       return false;
@@ -1394,14 +1394,14 @@ jvmtiError Redefiner::Run() {
 }
 
 void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class> mclass,
-                                                 const art::DexFile::ClassDef& class_def) {
+                                                 const art::dex::ClassDef& class_def) {
   art::ClassLinker* linker = driver_->runtime_->GetClassLinker();
   art::PointerSize image_pointer_size = linker->GetImagePointerSize();
-  const art::DexFile::TypeId& declaring_class_id = dex_file_->GetTypeId(class_def.class_idx_);
+  const art::dex::TypeId& declaring_class_id = dex_file_->GetTypeId(class_def.class_idx_);
   const art::DexFile& old_dex_file = mclass->GetDexFile();
   // Update methods.
   for (art::ArtMethod& method : mclass->GetDeclaredMethods(image_pointer_size)) {
-    const art::DexFile::StringId* new_name_id = dex_file_->FindStringId(method.GetName());
+    const art::dex::StringId* new_name_id = dex_file_->FindStringId(method.GetName());
     art::dex::TypeIndex method_return_idx =
         dex_file_->GetIndexForTypeId(*dex_file_->FindTypeId(method.GetReturnTypeDescriptor()));
     const auto* old_type_list = method.GetParameterTypeList();
@@ -1414,12 +1414,11 @@ void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class>
                       old_dex_file.GetTypeId(
                           old_type_list->GetTypeItem(i).type_idx_)))));
     }
-    const art::DexFile::ProtoId* proto_id = dex_file_->FindProtoId(method_return_idx,
-                                                                   new_type_list);
+    const art::dex::ProtoId* proto_id = dex_file_->FindProtoId(method_return_idx, new_type_list);
     CHECK(proto_id != nullptr || old_type_list == nullptr);
-    const art::DexFile::MethodId* method_id = dex_file_->FindMethodId(declaring_class_id,
-                                                                      *new_name_id,
-                                                                      *proto_id);
+    const art::dex::MethodId* method_id = dex_file_->FindMethodId(declaring_class_id,
+                                                                  *new_name_id,
+                                                                  *proto_id);
     CHECK(method_id != nullptr);
     uint32_t dex_method_idx = dex_file_->GetIndexForMethodId(*method_id);
     method.SetDexMethodIndex(dex_method_idx);
@@ -1435,12 +1434,12 @@ void Redefiner::ClassRedefinition::UpdateFields(art::ObjPtr<art::mirror::Class> 
   for (auto fields_iter : {mclass->GetIFields(), mclass->GetSFields()}) {
     for (art::ArtField& field : fields_iter) {
       std::string declaring_class_name;
-      const art::DexFile::TypeId* new_declaring_id =
+      const art::dex::TypeId* new_declaring_id =
           dex_file_->FindTypeId(field.GetDeclaringClass()->GetDescriptor(&declaring_class_name));
-      const art::DexFile::StringId* new_name_id = dex_file_->FindStringId(field.GetName());
-      const art::DexFile::TypeId* new_type_id = dex_file_->FindTypeId(field.GetTypeDescriptor());
+      const art::dex::StringId* new_name_id = dex_file_->FindStringId(field.GetName());
+      const art::dex::TypeId* new_type_id = dex_file_->FindTypeId(field.GetTypeDescriptor());
       CHECK(new_name_id != nullptr && new_type_id != nullptr && new_declaring_id != nullptr);
-      const art::DexFile::FieldId* new_field_id =
+      const art::dex::FieldId* new_field_id =
           dex_file_->FindFieldId(*new_declaring_id, *new_name_id, *new_type_id);
       CHECK(new_field_id != nullptr);
       // We only need to update the index since the other data in the ArtField cannot be updated.
@@ -1455,7 +1454,7 @@ void Redefiner::ClassRedefinition::UpdateClass(
     art::ObjPtr<art::mirror::DexCache> new_dex_cache,
     art::ObjPtr<art::mirror::Object> original_dex_file) {
   DCHECK_EQ(dex_file_->NumClassDefs(), 1u);
-  const art::DexFile::ClassDef& class_def = dex_file_->GetClassDef(0);
+  const art::dex::ClassDef& class_def = dex_file_->GetClassDef(0);
   UpdateMethods(mclass, class_def);
   UpdateFields(mclass);
 

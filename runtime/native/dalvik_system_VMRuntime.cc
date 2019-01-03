@@ -413,7 +413,7 @@ static void PreloadDexCachesResolveField(ObjPtr<mirror::DexCache> dex_cache,
     return;  // The entry already contains some ArtField.
   }
   const DexFile* dex_file = dex_cache->GetDexFile();
-  const DexFile::FieldId& field_id = dex_file->GetFieldId(field_idx);
+  const dex::FieldId& field_id = dex_file->GetFieldId(field_idx);
   ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->LookupResolvedType(
       field_id.class_idx_, dex_cache, /* class_loader= */ nullptr);
   if (klass == nullptr) {
@@ -439,7 +439,7 @@ static void PreloadDexCachesResolveMethod(ObjPtr<mirror::DexCache> dex_cache, ui
     return;  // The entry already contains some ArtMethod.
   }
   const DexFile* dex_file = dex_cache->GetDexFile();
-  const DexFile::MethodId& method_id = dex_file->GetMethodId(method_idx);
+  const dex::MethodId& method_id = dex_file->GetMethodId(method_idx);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
 
   ObjPtr<mirror::Class> klass = class_linker->LookupResolvedType(

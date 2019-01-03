@@ -689,7 +689,7 @@ HCurrentMethod* HGraph::GetCurrentMethod() {
 }
 
 const char* HGraph::GetMethodName() const {
-  const DexFile::MethodId& method_id = dex_file_.GetMethodId(method_idx_);
+  const dex::MethodId& method_id = dex_file_.GetMethodId(method_idx_);
   return dex_file_.GetMethodName(method_id);
 }
 

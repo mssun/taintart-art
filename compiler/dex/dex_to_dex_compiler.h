@@ -23,7 +23,6 @@
 
 #include "base/bit_vector.h"
 #include "base/mutex.h"
-#include "dex/dex_file.h"
 #include "dex/invoke_type.h"
 #include "dex/method_reference.h"
 #include "handle.h"
@@ -34,6 +33,11 @@ namespace art {
 class CompiledMethod;
 class CompilerDriver;
 class DexCompilationUnit;
+class DexFile;
+
+namespace dex {
+struct CodeItem;
+}  // namespace dex
 
 namespace mirror {
 class ClassLoader;
@@ -50,7 +54,7 @@ class DexToDexCompiler {
 
   explicit DexToDexCompiler(CompilerDriver* driver);
 
-  CompiledMethod* CompileMethod(const DexFile::CodeItem* code_item,
+  CompiledMethod* CompileMethod(const dex::CodeItem* code_item,
                                 uint32_t access_flags,
                                 InvokeType invoke_type,
                                 uint16_t class_def_idx,
@@ -105,9 +109,9 @@ class DexToDexCompiler {
   std::unordered_map<const DexFile*, BitVector> should_quicken_;
   // Guarded by lock_ during writing, accessed without a lock during quickening.
   // This is safe because no thread is adding to the shared code items during the quickening phase.
-  std::unordered_set<const DexFile::CodeItem*> shared_code_items_;
+  std::unordered_set<const dex::CodeItem*> shared_code_items_;
   // Blacklisted code items are unquickened in UnquickenConflictingMethods.
-  std::unordered_map<const DexFile::CodeItem*, QuickenState> shared_code_item_quicken_info_
+  std::unordered_map<const dex::CodeItem*, QuickenState> shared_code_item_quicken_info_
       GUARDED_BY(lock_);
   // Number of added code items.
   size_t num_code_items_ GUARDED_BY(lock_) = 0u;

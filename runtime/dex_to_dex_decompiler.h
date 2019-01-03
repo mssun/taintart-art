@@ -18,9 +18,15 @@
 #define ART_RUNTIME_DEX_TO_DEX_DECOMPILER_H_
 
 #include "base/array_ref.h"
-#include "dex/dex_file.h"
 
 namespace art {
+
+class DexFile;
+
+namespace dex {
+struct CodeItem;
+}  // namespace dex
+
 namespace optimizer {
 
 // "Decompile", that is unquicken, the code item provided, given the
@@ -30,7 +36,7 @@ namespace optimizer {
 // consistent with DexToDexCompiler, but we should really change it to
 // DexFile::CodeItem*.
 bool ArtDecompileDEX(const DexFile& dex_file,
-                     const DexFile::CodeItem& code_item,
+                     const dex::CodeItem& code_item,
                      const ArrayRef<const uint8_t>& quickened_data,
                      bool decompile_return_instruction);
 

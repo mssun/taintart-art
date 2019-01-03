@@ -1168,7 +1168,7 @@ static ObjPtr<mirror::MethodType> BuildCallSiteForBootstrapMethod(Thread* self,
                                                                   const DexFile* dex_file,
                                                                   uint32_t call_site_idx)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  const DexFile::CallSiteIdItem& csi = dex_file->GetCallSiteId(call_site_idx);
+  const dex::CallSiteIdItem& csi = dex_file->GetCallSiteId(call_site_idx);
   CallSiteArrayValueIterator it(*dex_file, csi);
   DCHECK_GE(it.Size(), 1u);
 
@@ -1223,7 +1223,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   static constexpr size_t kMandatoryArgumentsCount = 3;
   ArtMethod* referrer = shadow_frame.GetMethod();
   const DexFile* dex_file = referrer->GetDexFile();
-  const DexFile::CallSiteIdItem& csi = dex_file->GetCallSiteId(call_site_idx);
+  const dex::CallSiteIdItem& csi = dex_file->GetCallSiteId(call_site_idx);
   CallSiteArrayValueIterator it(*dex_file, csi);
   if (it.Size() < kMandatoryArgumentsCount) {
     ThrowBootstrapMethodError("Truncated bootstrap arguments (%zu < %zu)",
@@ -1637,7 +1637,7 @@ static inline bool DoCallCommon(ArtMethod* called_method,
 
     // We need to do runtime check on reference assignment. We need to load the shorty
     // to get the exact type of each reference argument.
-    const DexFile::TypeList* params = method->GetParameterTypeList();
+    const dex::TypeList* params = method->GetParameterTypeList();
     uint32_t shorty_len = 0;
     const char* shorty = method->GetShorty(&shorty_len);
 

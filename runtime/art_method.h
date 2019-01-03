@@ -29,7 +29,7 @@
 #include "base/macros.h"
 #include "base/runtime_debug.h"
 #include "dex/code_item_accessors.h"
-#include "dex/dex_file.h"
+#include "dex/dex_file_structs.h"
 #include "dex/dex_instruction_iterator.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
@@ -40,6 +40,7 @@
 
 namespace art {
 
+class DexFile;
 template<class T> class Handle;
 class ImtConflictTable;
 enum InvokeType : uint32_t;
@@ -586,21 +587,21 @@ class ArtMethod final {
 
   ObjPtr<mirror::String> ResolveNameString() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  const DexFile::CodeItem* GetCodeItem() REQUIRES_SHARED(Locks::mutator_lock_);
+  const dex::CodeItem* GetCodeItem() REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool IsResolvedTypeIdx(dex::TypeIndex type_idx) REQUIRES_SHARED(Locks::mutator_lock_);
 
   int32_t GetLineNumFromDexPC(uint32_t dex_pc) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  const DexFile::ProtoId& GetPrototype() REQUIRES_SHARED(Locks::mutator_lock_);
+  const dex::ProtoId& GetPrototype() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  const DexFile::TypeList* GetParameterTypeList() REQUIRES_SHARED(Locks::mutator_lock_);
+  const dex::TypeList* GetParameterTypeList() REQUIRES_SHARED(Locks::mutator_lock_);
 
   const char* GetDeclaringClassSourceFile() REQUIRES_SHARED(Locks::mutator_lock_);
 
   uint16_t GetClassDefIndex() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  const DexFile::ClassDef& GetClassDef() REQUIRES_SHARED(Locks::mutator_lock_);
+  const dex::ClassDef& GetClassDef() REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE size_t GetNumberOfParameters() REQUIRES_SHARED(Locks::mutator_lock_);
 

@@ -281,12 +281,12 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
     return;
   }
   // Make sure to not unquicken the same code item multiple times.
-  std::unordered_set<const DexFile::CodeItem*> unquickened_code_item;
+  std::unordered_set<const dex::CodeItem*> unquickened_code_item;
   CompactOffsetTable::Accessor accessor(GetQuickenInfoOffsetTable(source_dex_begin,
                                                                   quickening_info));
   for (ClassAccessor class_accessor : target_dex_file.GetClasses()) {
     for (const ClassAccessor::Method& method : class_accessor.GetMethods()) {
-      const DexFile::CodeItem* code_item = method.GetCodeItem();
+      const dex::CodeItem* code_item = method.GetCodeItem();
       if (code_item != nullptr && unquickened_code_item.emplace(code_item).second) {
         const uint32_t offset = accessor.GetOffset(method.GetIndex());
         // Offset being 0 means not quickened.

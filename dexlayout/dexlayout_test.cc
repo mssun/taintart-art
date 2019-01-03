@@ -687,7 +687,7 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
     // Change the dex instructions to make an opcode that spans past the end of the code item.
     for (ClassAccessor accessor : dex->GetClasses()) {
       for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-        DexFile::CodeItem* item = const_cast<DexFile::CodeItem*>(method.GetCodeItem());
+        dex::CodeItem* item = const_cast<dex::CodeItem*>(method.GetCodeItem());
         if (item != nullptr) {
           CodeItemInstructionAccessor instructions(*dex, item);
           if (instructions.begin() != instructions.end()) {
@@ -793,7 +793,7 @@ TEST_F(DexLayoutTest, ClassFilter) {
   for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
     EXPECT_GT(dex_file->NumClassDefs(), 1u);
     for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
+      const dex::ClassDef& class_def = dex_file->GetClassDef(i);
       LOG(INFO) << dex_file->GetClassDescriptor(class_def);
     }
     Options options;
@@ -828,7 +828,7 @@ TEST_F(DexLayoutTest, ClassFilter) {
     ASSERT_EQ(output_dex_file->NumClassDefs(), options.class_filter_.size());
     for (uint32_t i = 0; i < output_dex_file->NumClassDefs(); ++i) {
       // Check that every class in the output dex file is in the filter.
-      const DexFile::ClassDef& class_def = output_dex_file->GetClassDef(i);
+      const dex::ClassDef& class_def = output_dex_file->GetClassDef(i);
       ASSERT_TRUE(options.class_filter_.find(output_dex_file->GetClassDescriptor(class_def)) !=
           options.class_filter_.end());
     }
