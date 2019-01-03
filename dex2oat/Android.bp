@@ -64,8 +64,6 @@ art_cc_defaults {
 
     target: {
         android: {
-            // For atrace.
-            shared_libs: ["libcutils"],
             static_libs: [
                 "libz",
             ],
@@ -93,11 +91,6 @@ art_cc_defaults {
 
 cc_defaults {
     name: "libart-dex2oat_static_base_defaults",
-    target: {
-        android: {
-            static_libs: ["libcutils"],
-        },
-    },
     static_libs: [
         "libbase",
         "libz",
