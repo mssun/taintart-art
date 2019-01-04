@@ -28,7 +28,7 @@
 
 #include "base/aborting.h"
 #include "base/atomic.h"
-#include "base/globals.h"
+#include "runtime_globals.h"
 #include "base/macros.h"
 #include "locks.h"
 

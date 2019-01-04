@@ -20,13 +20,13 @@
 #include <stdint.h>
 #include <memory>
 
-#include "base/globals.h"
 #include "common_runtime_test.h"
 #include "handle_scope-inl.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
+#include "runtime_globals.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread_list.h"
 #include "zygote_space.h"

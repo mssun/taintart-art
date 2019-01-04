@@ -26,7 +26,6 @@
 
 #include "arch/instruction_set.h"
 #include "base/common_art_test.h"
-#include "base/globals.h"
 #include "base/locks.h"
 #include "base/os.h"
 #include "base/unix_file/fd_file.h"
@@ -34,6 +33,7 @@
 #include "dex/compact_dex_level.h"
 // TODO: Add inl file and avoid including inl.
 #include "obj_ptr-inl.h"
+#include "runtime_globals.h"
 #include "scoped_thread_state_change-inl.h"
 
 namespace art {
