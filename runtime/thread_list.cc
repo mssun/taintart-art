@@ -766,15 +766,29 @@ void ThreadList::SuspendAllInternal(Thread* self,
 #if ART_USE_FUTEXES
       if (futex(pending_threads.Address(), FUTEX_WAIT_PRIVATE, cur_val, &wait_timeout, nullptr, 0)
           != 0) {
-        // EAGAIN and EINTR both indicate a spurious failure, try again from the beginning.
-        if ((errno != EAGAIN) && (errno != EINTR)) {
-          if (errno == ETIMEDOUT) {
-            LOG(kIsDebugBuild ? ::android::base::FATAL : ::android::base::ERROR)
-                << "Timed out waiting for threads to suspend, waited for "
-                << PrettyDuration(NanoTime() - start_time);
-          } else {
-            PLOG(FATAL) << "futex wait failed for SuspendAllInternal()";
+        if ((errno == EAGAIN) || (errno == EINTR)) {
+          // EAGAIN and EINTR both indicate a spurious failure, try again from the beginning.
+          continue;
+        }
+        if (errno == ETIMEDOUT) {
+          const uint64_t wait_time = NanoTime() - start_time;
+          MutexLock mu(self, *Locks::thread_list_lock_);
+          MutexLock mu2(self, *Locks::thread_suspend_count_lock_);
+          std::ostringstream oss;
+          for (const auto& thread : list_) {
+            if (thread == ignore1 || thread == ignore2) {
+              continue;
+            }
+            if (!thread->IsSuspended()) {
+              oss << std::endl << "Thread not suspended: " << *thread;
+            }
           }
+          LOG(kIsDebugBuild ? ::android::base::FATAL : ::android::base::ERROR)
+              << "Timed out waiting for threads to suspend, waited for "
+              << PrettyDuration(wait_time)
+              << oss.str();
+        } else {
+          PLOG(FATAL) << "futex wait failed for SuspendAllInternal()";
         }
       }  // else re-check pending_threads in the next iteration (this may be a spurious wake-up).
 #else
