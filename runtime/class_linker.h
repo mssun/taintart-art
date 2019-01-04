@@ -40,6 +40,7 @@ namespace art {
 
 namespace dex {
 struct ClassDef;
+struct MethodHandleItem;
 }  // namespace dex
 
 namespace gc {

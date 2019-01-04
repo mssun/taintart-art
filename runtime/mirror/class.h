@@ -23,12 +23,10 @@
 #include "base/stride_iterator.h"
 #include "class_flags.h"
 #include "class_status.h"
-#include "dex/dex_file_structs.h"
 #include "dex/dex_file_types.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
 #include "gc/allocator_type.h"
-#include "imtable.h"
 #include "object.h"
 #include "object_array.h"
 #include "read_barrier_option.h"
@@ -36,11 +34,17 @@
 
 namespace art {
 
+namespace dex {
+struct ClassDef;
+class TypeList;
+}  // namespace dex
+
 class ArtField;
 class ArtMethod;
 struct ClassOffsets;
 class DexFile;
 template<class T> class Handle;
+class ImTable;
 enum InvokeType : uint32_t;
 template <typename Iter> class IterationRange;
 template<typename T> class LengthPrefixedArray;

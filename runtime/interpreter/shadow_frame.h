@@ -23,7 +23,6 @@
 
 #include "base/locks.h"
 #include "base/macros.h"
-#include "dex/dex_file.h"
 #include "lock_count_data.h"
 #include "read_barrier.h"
 #include "stack_reference.h"

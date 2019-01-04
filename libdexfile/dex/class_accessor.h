@@ -18,14 +18,21 @@
 #define ART_LIBDEXFILE_DEX_CLASS_ACCESSOR_H_
 
 #include "code_item_accessors.h"
-#include "dex_file.h"
+#include "dex_file_types.h"
 #include "invoke_type.h"
-#include "method_reference.h"
 #include "modifiers.h"
 
 namespace art {
 
+namespace dex {
+struct ClassDef;
+struct CodeItem;
+}  // namespace dex
+
 class ClassIteratorData;
+class DexFile;
+template <typename Iter> class IterationRange;
+class MethodReference;
 
 // Classes to access Dex data.
 class ClassAccessor {
@@ -92,9 +99,7 @@ class ClassAccessor {
           : GetVirtualMethodInvokeType(class_access_flags);
     }
 
-    MethodReference GetReference() const {
-      return MethodReference(&dex_file_, GetIndex());
-    }
+    MethodReference GetReference() const;
 
     CodeItemInstructionAccessor GetInstructions() const;
     CodeItemDataAccessor GetInstructionsAndData() const;
@@ -273,7 +278,7 @@ class ClassAccessor {
 
   ClassAccessor(const DexFile& dex_file,
                 const uint8_t* class_data,
-                uint32_t class_def_index = DexFile::kDexNoIndex32,
+                uint32_t class_def_index = dex::kDexNoIndex,
                 bool parse_hiddenapi_class_data = false);
 
   // Return the code item for a method.
@@ -361,9 +366,7 @@ class ClassAccessor {
     return class_def_index_;
   }
 
-  const dex::ClassDef& GetClassDef() const {
-    return dex_file_.GetClassDef(GetClassDefIndex());
-  }
+  const dex::ClassDef& GetClassDef() const;
 
  protected:
   // Template visitor to reduce copy paste for visiting elements.
