@@ -388,7 +388,7 @@ Signal Catcher
 Test911
  getAllStackTraces (I)[[Ljava/lang/Object; -1 -2
  printAll (I)V 0 75
- doTest ()V 118 59
+ doTest ()V 120 59
  run ()V 24 37
 
 ---------
@@ -643,7 +643,7 @@ Signal Catcher
 Test911
  getAllStackTraces (I)[[Ljava/lang/Object; -1 -2
  printAll (I)V 0 75
- doTest ()V 123 61
+ doTest ()V 125 61
  run ()V 24 37
 
 ---------
@@ -675,7 +675,7 @@ ThreadListTraces Thread 8
 Test911
  getThreadListStackTraces ([Ljava/lang/Thread;I)[[Ljava/lang/Object; -1 -2
  printList ([Ljava/lang/Thread;I)V 0 68
- doTest ()V 108 54
+ doTest ()V 110 54
  run ()V 32 41
 
 ---------
@@ -732,7 +732,7 @@ ThreadListTraces Thread 8
 Test911
  getThreadListStackTraces ([Ljava/lang/Thread;I)[[Ljava/lang/Object; -1 -2
  printList ([Ljava/lang/Thread;I)V 0 68
- doTest ()V 113 56
+ doTest ()V 115 56
  run ()V 32 41
 
 ---------
