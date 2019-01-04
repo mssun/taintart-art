@@ -24,6 +24,8 @@
 #include "base/utils.h"
 #include "class_iterator.h"
 #include "code_item_accessors-inl.h"
+#include "dex_file.h"
+#include "method_reference.h"
 
 namespace art {
 
@@ -70,6 +72,11 @@ inline void ClassAccessor::Method::Read() {
     DCHECK(hiddenapi::AreValidDexFlags(hiddenapi_flags_));
   }
 }
+
+inline MethodReference ClassAccessor::Method::GetReference() const {
+  return MethodReference(&dex_file_, GetIndex());
+}
+
 
 inline void ClassAccessor::Field::Read() {
   index_ += DecodeUnsignedLeb128(&ptr_pos_);
@@ -229,6 +236,10 @@ inline IterationRange<ClassAccessor::DataIterator<ClassAccessor::Method>>
 
 inline dex::TypeIndex ClassAccessor::GetClassIdx() const {
   return dex_file_.GetClassDef(class_def_index_).class_idx_;
+}
+
+inline const dex::ClassDef& ClassAccessor::GetClassDef() const {
+  return dex_file_.GetClassDef(GetClassDefIndex());
 }
 
 }  // namespace art

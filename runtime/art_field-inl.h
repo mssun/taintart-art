@@ -29,7 +29,6 @@
 #include "jvalue.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
-#include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 
 namespace art {
