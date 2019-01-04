@@ -73,6 +73,7 @@
 #include "gc_root.h"
 #include "handle_scope-inl.h"
 #include "indirect_reference_table-inl.h"
+#include "instrumentation.h"
 #include "interpreter/interpreter.h"
 #include "interpreter/mterp/mterp.h"
 #include "interpreter/shadow_frame-inl.h"
