@@ -1339,7 +1339,7 @@ class ImageSpace::Loader {
 
       // Fixup objects may read fields in the boot image, use the mutator lock here for sanity.
       // Though its probably not required.
-      TimingLogger::ScopedTiming timing("Fixup cobjects", &logger);
+      TimingLogger::ScopedTiming timing("Fixup objects", &logger);
       ScopedObjectAccess soa(Thread::Current());
       // Need to update the image to be at the target base.
       const ImageSection& objects_section = image_header.GetObjectsSection();
@@ -1610,46 +1610,14 @@ class ImageSpace::BootImageLoader {
     const uint32_t diff_;
   };
 
-  class PatchedObjectsMap {
-   public:
-    PatchedObjectsMap(uint8_t* image_space_begin, size_t size)
-        : image_space_begin_(image_space_begin),
-          data_(new uint8_t[BitsToBytesRoundUp(NumLocations(size))]),
-          visited_objects_(data_.get(), /*bit_start=*/ 0u, NumLocations(size)) {
-      DCHECK_ALIGNED(image_space_begin_, kObjectAlignment);
-      std::memset(data_.get(), 0, BitsToBytesRoundUp(NumLocations(size)));
-    }
-
-    ALWAYS_INLINE bool IsVisited(mirror::Object* object) const {
-      return visited_objects_.LoadBit(GetIndex(object));
-    }
-
-    ALWAYS_INLINE void MarkVisited(mirror::Object* object) {
-      DCHECK(!IsVisited(object));
-      visited_objects_.StoreBit(GetIndex(object), /*value=*/ true);
-    }
-
-   private:
-    static size_t NumLocations(size_t size) {
-      DCHECK_ALIGNED(size, kObjectAlignment);
-      return size / kObjectAlignment;
-    }
-
-    size_t GetIndex(mirror::Object* object) const {
-      DCHECK_ALIGNED(object, kObjectAlignment);
-      return (reinterpret_cast<uint8_t*>(object) - image_space_begin_) / kObjectAlignment;
-    }
-
-    uint8_t* const image_space_begin_;
-    const std::unique_ptr<uint8_t[]> data_;
-    BitMemoryRegion visited_objects_;
-  };
-
   template <PointerSize kPointerSize>
   static void DoRelocateSpaces(const std::vector<std::unique_ptr<ImageSpace>>& spaces,
                                uint32_t diff) REQUIRES_SHARED(Locks::mutator_lock_) {
-    PatchedObjectsMap patched_objects(spaces.front()->Begin(),
-                                      spaces.back()->End() - spaces.front()->Begin());
+    std::unique_ptr<gc::accounting::ContinuousSpaceBitmap> patched_objects(
+        gc::accounting::ContinuousSpaceBitmap::Create(
+            "Marked objects",
+            spaces.front()->Begin(),
+            spaces.back()->End() - spaces.front()->Begin()));
     using PatchRelocateVisitor = PatchObjectVisitor<kPointerSize, RelocateVisitor>;
     RelocateVisitor relocate_visitor(diff);
     PatchRelocateVisitor patch_object_visitor(relocate_visitor);
@@ -1700,7 +1668,7 @@ class ImageSpace::BootImageLoader {
           slot.VisitRoot(class_table_visitor);
           mirror::Class* klass = slot.Read<kWithoutReadBarrier>();
           DCHECK(klass != nullptr);
-          patched_objects.MarkVisited(klass);
+          patched_objects->Set(klass);
           patch_object_visitor.VisitClass(klass);
           if (kIsDebugBuild) {
             mirror::Class* class_class = klass->GetClass<kVerifyNone, kWithoutReadBarrier>();
@@ -1712,8 +1680,7 @@ class ImageSpace::BootImageLoader {
           }
           // Then patch the non-embedded vtable and iftable.
           mirror::PointerArray* vtable = klass->GetVTable<kVerifyNone, kWithoutReadBarrier>();
-          if (vtable != nullptr && !patched_objects.IsVisited(vtable)) {
-            patched_objects.MarkVisited(vtable);
+          if (vtable != nullptr && !patched_objects->Set(vtable)) {
             patch_object_visitor.VisitPointerArray(vtable);
           }
           auto* iftable = klass->GetIfTable<kVerifyNone, kWithoutReadBarrier>();
@@ -1725,8 +1692,7 @@ class ImageSpace::BootImageLoader {
               if (unpatched_ifarray != nullptr) {
                 // The iftable has not been patched, so we need to explicitly adjust the pointer.
                 mirror::PointerArray* ifarray = relocate_visitor(unpatched_ifarray);
-                if (!patched_objects.IsVisited(ifarray)) {
-                  patched_objects.MarkVisited(ifarray);
+                if (!patched_objects->Set(ifarray)) {
                   patch_object_visitor.VisitPointerArray(ifarray);
                 }
               }
@@ -1745,13 +1711,13 @@ class ImageSpace::BootImageLoader {
 
       ObjPtr<mirror::ObjectArray<mirror::Object>> image_roots =
           image_header.GetImageRoots<kWithoutReadBarrier>();
-      patched_objects.MarkVisited(image_roots.Ptr());
+      patched_objects->Set(image_roots.Ptr());
       patch_object_visitor.VisitObject(image_roots.Ptr());
 
       ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
           ObjPtr<mirror::ObjectArray<mirror::Class>>::DownCast(MakeObjPtr(
               image_header.GetImageRoot<kWithoutReadBarrier>(ImageHeader::kClassRoots)));
-      patched_objects.MarkVisited(class_roots.Ptr());
+      patched_objects->Set(class_roots.Ptr());
       patch_object_visitor.VisitObject(class_roots.Ptr());
 
       method_class = GetClassRoot<mirror::Method, kWithoutReadBarrier>(class_roots);
@@ -1767,8 +1733,8 @@ class ImageSpace::BootImageLoader {
       DCHECK_ALIGNED(objects_end, kObjectAlignment);
       for (uint32_t pos = sizeof(ImageHeader); pos != objects_end; ) {
         mirror::Object* object = reinterpret_cast<mirror::Object*>(space->Begin() + pos);
-        if (!patched_objects.IsVisited(object)) {
-          // This is the last pass over objects, so we do not need to MarkVisited().
+        if (!patched_objects->Test(object)) {
+          // This is the last pass over objects, so we do not need to Set().
           patch_object_visitor.VisitObject(object);
           mirror::Class* klass = object->GetClass<kVerifyNone, kWithoutReadBarrier>();
           if (klass->IsDexCacheClass<kVerifyNone>()) {
