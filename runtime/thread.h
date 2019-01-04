@@ -36,7 +36,6 @@
 #include "entrypoints/jni/jni_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "handle_scope.h"
-#include "instrumentation.h"
 #include "interpreter/interpreter_cache.h"
 #include "jvalue.h"
 #include "managed_stack.h"
@@ -58,6 +57,10 @@ namespace collector {
 class SemiSpace;
 }  // namespace collector
 }  // namespace gc
+
+namespace instrumentation {
+struct InstrumentationStackFrame;
+}  // namespace instrumentation
 
 namespace mirror {
 class Array;
