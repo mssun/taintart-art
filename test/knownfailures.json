@@ -6,6 +6,12 @@
         "bug": "http://b/33389022"
     },
     {
+        "tests": "132-daemon-locks-shutdown",
+        "description": ["This test seems to fail occasionally on redefine-stress for unknown reasons without stack-traces"],
+        "variant": "redefine-stress",
+        "bug": "http://b/121302864"
+    },
+    {
         "tests": "579-inline-infinite",
         "description": ["This test seems to fail often on redefine-stress for unknown reasons"],
         "variant": "redefine-stress",
