@@ -431,11 +431,16 @@ void ProfileSaver::FetchAndCacheResolvedClassesAndMethods(bool startup) {
     ProfileCompilationInfo* cached_info = info_it->second;
 
     const std::set<std::string>& locations = it.second;
+    VLOG(profiler) << "Locations for " << it.first << " " << android::base::Join(locations, ':');
+
     for (const auto& pair : hot_methods.GetMap()) {
       const DexFile* const dex_file = pair.first;
       const std::string base_location = DexFileLoader::GetBaseLocation(dex_file->GetLocation());
+      const MethodReferenceCollection::IndexVector& indices = pair.second;
+      VLOG(profiler) << "Location " << dex_file->GetLocation()
+                     << " found=" << (locations.find(base_location) != locations.end())
+                     << " indices size=" << indices.size();
       if (locations.find(base_location) != locations.end()) {
-        const MethodReferenceCollection::IndexVector& indices = pair.second;
         uint8_t flags = Hotness::kFlagHot;
         flags |= startup ? Hotness::kFlagStartup : Hotness::kFlagPostStartup;
         cached_info->AddMethodsForDex(
@@ -448,8 +453,11 @@ void ProfileSaver::FetchAndCacheResolvedClassesAndMethods(bool startup) {
     for (const auto& pair : sampled_methods.GetMap()) {
       const DexFile* const dex_file = pair.first;
       const std::string base_location = DexFileLoader::GetBaseLocation(dex_file->GetLocation());
+      const MethodReferenceCollection::IndexVector& indices = pair.second;
+      VLOG(profiler) << "Location " << base_location
+                     << " found=" << (locations.find(base_location) != locations.end())
+                     << " indices size=" << indices.size();
       if (locations.find(base_location) != locations.end()) {
-        const MethodReferenceCollection::IndexVector& indices = pair.second;
         cached_info->AddMethodsForDex(startup ? Hotness::kFlagStartup : Hotness::kFlagPostStartup,
                                       dex_file,
                                       indices.begin(),
@@ -466,8 +474,7 @@ void ProfileSaver::FetchAndCacheResolvedClassesAndMethods(bool startup) {
                        << " (" << dex_file->GetLocation() << ")";
         cached_info->AddClassesForDex(dex_file, classes.begin(), classes.end());
       } else {
-        VLOG(profiler) << "Location not found " << base_location
-                       << " (" << dex_file->GetLocation() << ")";
+        VLOG(profiler) << "Location not found " << base_location;
       }
     }
     total_number_of_profile_entries_cached += resolved_classes_for_location.size();
@@ -513,6 +520,9 @@ bool ProfileSaver::ProcessProfilingInfo(bool force_save, /*out*/uint16_t* number
     }
     const std::string& filename = it.first;
     const std::set<std::string>& locations = it.second;
+    VLOG(profiler) << "Tracked filename " << filename << " locations "
+                   << android::base::Join(locations, ":");
+
     std::vector<ProfileMethodInfo> profile_methods;
     {
       ScopedObjectAccess soa(Thread::Current());
@@ -527,6 +537,9 @@ bool ProfileSaver::ProcessProfilingInfo(bool force_save, /*out*/uint16_t* number
       }
       uint64_t last_save_number_of_methods = info.GetNumberOfMethods();
       uint64_t last_save_number_of_classes = info.GetNumberOfResolvedClasses();
+      VLOG(profiler) << "last_save_number_of_methods=" << last_save_number_of_methods
+                     << " last_save_number_of_classes=" << last_save_number_of_classes
+                     << " number of profiled methods=" << profile_methods.size();
 
       // Try to add the method data. Note this may fail is the profile loaded from disk contains
       // outdated data (e.g. the previous profiled dex files might have been updated).
@@ -545,6 +558,11 @@ bool ProfileSaver::ProcessProfilingInfo(bool force_save, /*out*/uint16_t* number
           LOG(WARNING) << "Could not merge the profile. Clearing the profile data.";
           info.ClearData();
           force_save = true;
+        }
+      } else if (VLOG_IS_ON(profiler)) {
+        LOG(INFO) << "Failed to find cached profile for " << filename;
+        for (auto&& pair : profile_cache_) {
+          LOG(INFO) << "Cached profile " << pair.first;
         }
       }
 
@@ -662,6 +680,7 @@ void ProfileSaver::Start(const ProfileSaverOptions& options,
   std::vector<std::string> code_paths_to_profile;
   for (const std::string& location : code_paths) {
     if (ShouldProfileLocation(location, options.GetProfileAOTCode()))  {
+      VLOG(profiler) << "Code path to profile " << location;
       code_paths_to_profile.push_back(location);
     }
   }
