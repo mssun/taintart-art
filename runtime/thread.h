@@ -32,6 +32,7 @@
 #include "base/locks.h"
 #include "base/macros.h"
 #include "base/safe_map.h"
+#include "base/value_object.h"
 #include "entrypoints/jni/jni_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "handle_scope.h"
