@@ -226,7 +226,8 @@ std::vector<uint8_t> MakeElfFileForJIT(
           num_cfis++;
         });
     DCHECK_EQ(num_syms, 1u);
-    DCHECK_EQ(num_cfis, 1u);
+    // CFI might be missing. TODO: Ensure we have CFI for all methods.
+    DCHECK_LE(num_cfis, 1u);
   }
   return buffer;
 }
