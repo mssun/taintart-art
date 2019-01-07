@@ -370,9 +370,6 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
  private:
   RegionSpace(const std::string& name, MemMap&& mem_map);
 
-  template<bool kToSpaceOnly, typename Visitor>
-  ALWAYS_INLINE void WalkInternal(Visitor&& visitor) NO_THREAD_SAFETY_ANALYSIS;
-
   class Region {
    public:
     Region()
@@ -616,6 +613,8 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
       DCHECK_LE(Top(), end_);
     }
 
+    uint64_t GetLongestConsecutiveFreeBytes() const;
+
    private:
     size_t idx_;                        // The region's index in the region space.
     size_t live_bytes_;                 // The live bytes. Used to compute the live percent.
@@ -639,6 +638,14 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
 
     friend class RegionSpace;
   };
+
+  template<bool kToSpaceOnly, typename Visitor>
+  ALWAYS_INLINE void WalkInternal(Visitor&& visitor) NO_THREAD_SAFETY_ANALYSIS;
+
+  // Visitor will be iterating on objects in increasing address order.
+  template<typename Visitor>
+  ALWAYS_INLINE void WalkNonLargeRegion(Visitor&& visitor, const Region* r)
+      NO_THREAD_SAFETY_ANALYSIS;
 
   Region* RefToRegion(mirror::Object* ref) REQUIRES(!region_lock_) {
     MutexLock mu(Thread::Current(), region_lock_);
