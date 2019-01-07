@@ -462,6 +462,7 @@ gensrcs {
     cmd: "$(location generate_operator_out) art/runtime $(in) > $(out)",
     tools: ["generate_operator_out"],
     srcs: [
+        "base/callee_save_type.h",
         "base/locks.h",
         "class_loader_context.h",
         "class_status.h",

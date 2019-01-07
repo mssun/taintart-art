@@ -17,8 +17,8 @@
 #ifndef ART_RUNTIME_ARCH_INSTRUCTION_SET_FEATURES_H_
 #define ART_RUNTIME_ARCH_INSTRUCTION_SET_FEATURES_H_
 
+#include <iosfwd>
 #include <memory>
-#include <ostream>
 #include <vector>
 
 #include "arch/instruction_set.h"
