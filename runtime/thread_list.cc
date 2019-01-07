@@ -1476,24 +1476,26 @@ void ThreadList::Unregister(Thread* self) {
     // Remove and delete the Thread* while holding the thread_list_lock_ and
     // thread_suspend_count_lock_ so that the unregistering thread cannot be suspended.
     // Note: deliberately not using MutexLock that could hold a stale self pointer.
-    MutexLock mu(self, *Locks::thread_list_lock_);
-    if (!Contains(self)) {
-      std::string thread_name;
-      self->GetThreadName(thread_name);
-      std::ostringstream os;
-      DumpNativeStack(os, GetTid(), nullptr, "  native: ", nullptr);
-      LOG(ERROR) << "Request to unregister unattached thread " << thread_name << "\n" << os.str();
-      break;
-    } else {
-      MutexLock mu2(self, *Locks::thread_suspend_count_lock_);
-      if (!self->IsSuspended()) {
-        list_.remove(self);
+    {
+      MutexLock mu(self, *Locks::thread_list_lock_);
+      if (!Contains(self)) {
+        std::string thread_name;
+        self->GetThreadName(thread_name);
+        std::ostringstream os;
+        DumpNativeStack(os, GetTid(), nullptr, "  native: ", nullptr);
+        LOG(ERROR) << "Request to unregister unattached thread " << thread_name << "\n" << os.str();
         break;
+      } else {
+        MutexLock mu2(self, *Locks::thread_suspend_count_lock_);
+        if (!self->IsSuspended()) {
+          list_.remove(self);
+          break;
+        }
       }
-      // In the case where we are not suspended yet, sleep to leave other threads time to execute.
-      // This is important if there are realtime threads. b/111277984
-      usleep(1);
     }
+    // In the case where we are not suspended yet, sleep to leave other threads time to execute.
+    // This is important if there are realtime threads. b/111277984
+    usleep(1);
     // We failed to remove the thread due to a suspend request, loop and try again.
   }
   delete self;
