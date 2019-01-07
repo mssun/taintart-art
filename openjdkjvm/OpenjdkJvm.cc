@@ -77,6 +77,7 @@ JNIEXPORT jint JVM_Open(const char* fname, jint flags, jint mode) {
                    << fname << "')";
     }
 
+    flags |= O_CLOEXEC;
     int fd = TEMP_FAILURE_RETRY(open(fname, flags & ~JVM_O_DELETE, mode));
     if (fd < 0) {
         int err = errno;
