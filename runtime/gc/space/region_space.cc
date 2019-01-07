@@ -616,7 +616,7 @@ void RegionSpace::PoisonDeadObjectsInUnevacuatedRegion(Region* r) {
 
   // Functor poisoning the space between `obj` and the previously
   // visited (live) object (or the beginng of the region), if any.
-  auto maybe_poison = [this, &prev_obj_end](mirror::Object* obj) REQUIRES(Locks::mutator_lock_) {
+  auto maybe_poison = [&prev_obj_end](mirror::Object* obj) REQUIRES(Locks::mutator_lock_) {
     DCHECK_ALIGNED(obj, kAlignment);
     uint8_t* cur_obj_begin = reinterpret_cast<uint8_t*>(obj);
     if (cur_obj_begin != prev_obj_end) {
