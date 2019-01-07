@@ -382,6 +382,9 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --avoid-storing-invocation: Avoid storing the invocation args in the key value");
   UsageError("      store. Used to test determinism with different args.");
   UsageError("");
+  UsageError("  --write-invocation-to=<file>: Write the invocation commandline to the given file");
+  UsageError("      for later use. Used to test determinism with different host architectures.");
+  UsageError("");
   UsageError("  --runtime-arg <argument>: used to specify various arguments for the runtime,");
   UsageError("      such as initial heap size, maximum heap size, and verbose output.");
   UsageError("      Use a separate --runtime-arg switch for each argument.");
@@ -1001,6 +1004,21 @@ class Dex2Oat final {
         CompilerFilter::NameOfFilter(compiler_options_->GetCompilerFilter()));
     key_value_store_->Put(OatHeader::kConcurrentCopying,
                           kUseReadBarrier ? OatHeader::kTrueValue : OatHeader::kFalseValue);
+    if (invocation_file_.get() != -1) {
+      std::ostringstream oss;
+      for (int i = 0; i < argc; ++i) {
+        if (i > 0) {
+          oss << std::endl;
+        }
+        oss << argv[i];
+      }
+      std::string invocation(oss.str());
+      if (TEMP_FAILURE_RETRY(write(invocation_file_.get(),
+                                   invocation.c_str(),
+                                   invocation.size())) == -1) {
+        Usage("Unable to write invocation file");
+      }
+    }
   }
 
   // This simple forward is here so the string specializations below don't look out of place.
@@ -1116,6 +1134,16 @@ class Dex2Oat final {
 
     AssignTrueIfExists(args, M::Host, &is_host_);
     AssignTrueIfExists(args, M::AvoidStoringInvocation, &avoid_storing_invocation_);
+    if (args.Exists(M::InvocationFile)) {
+      invocation_file_.reset(open(args.Get(M::InvocationFile)->c_str(),
+                                  O_CREAT|O_WRONLY|O_TRUNC|O_CLOEXEC,
+                                  S_IRUSR|S_IWUSR));
+      if (invocation_file_.get() == -1) {
+        int err = errno;
+        Usage("Unable to open invocation file '%s' for writing due to %s.",
+              args.Get(M::InvocationFile)->c_str(), strerror(err));
+      }
+    }
     AssignIfExists(args, M::CopyDexFiles, &copy_dex_files_);
 
     if (args.Exists(M::ForceDeterminism)) {
@@ -2712,6 +2740,7 @@ class Dex2Oat final {
   std::vector<std::unique_ptr<const DexFile>> opened_dex_files_;
 
   bool avoid_storing_invocation_;
+  android::base::unique_fd invocation_file_;
   std::string swap_file_name_;
   int swap_fd_;
   size_t min_dex_files_for_swap_ = kDefaultMinDexFilesForSwap;
