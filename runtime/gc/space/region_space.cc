@@ -840,12 +840,39 @@ void RegionSpace::Region::Dump(std::ostream& os) const {
   if (live_bytes_ != static_cast<size_t>(-1)) {
     os << " ratio over allocated bytes="
        << (static_cast<float>(live_bytes_) / RoundUp(BytesAllocated(), kRegionSize));
+    uint64_t longest_consecutive_free_bytes = GetLongestConsecutiveFreeBytes();
+    os << " longest_consecutive_free_bytes=" << longest_consecutive_free_bytes
+       << " (" << PrettySize(longest_consecutive_free_bytes) << ")";
   }
 
   os << " is_newly_allocated=" << std::boolalpha << is_newly_allocated_ << std::noboolalpha
      << " is_a_tlab=" << std::boolalpha << is_a_tlab_ << std::noboolalpha
      << " thread=" << thread_ << '\n';
 }
+
+uint64_t RegionSpace::Region::GetLongestConsecutiveFreeBytes() const {
+  if (IsFree()) {
+    return kRegionSize;
+  }
+  if (IsLarge() || IsLargeTail()) {
+    return 0u;
+  }
+  uintptr_t max_gap = 0u;
+  uintptr_t prev_object_end = reinterpret_cast<uintptr_t>(Begin());
+  // Iterate through all live objects and find the largest free gap.
+  auto visitor = [&max_gap, &prev_object_end](mirror::Object* obj)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+    uintptr_t current = reinterpret_cast<uintptr_t>(obj);
+    uintptr_t diff = current - prev_object_end;
+    max_gap = std::max(diff, max_gap);
+    uintptr_t object_end = reinterpret_cast<uintptr_t>(obj) + obj->SizeOf();
+    prev_object_end = RoundUp(object_end, kAlignment);
+  };
+  space::RegionSpace* region_space = art::Runtime::Current()->GetHeap()->GetRegionSpace();
+  region_space->WalkNonLargeRegion(visitor, this);
+  return static_cast<uint64_t>(max_gap);
+}
+
 
 size_t RegionSpace::AllocationSizeNonvirtual(mirror::Object* obj, size_t* usable_size) {
   size_t num_bytes = obj->SizeOf();

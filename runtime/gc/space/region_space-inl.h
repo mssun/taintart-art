@@ -249,27 +249,47 @@ inline void RegionSpace::WalkInternal(Visitor&& visitor) {
     } else if (r->IsLargeTail()) {
       // Do nothing.
     } else {
-      // For newly allocated and evacuated regions, live bytes will be -1.
-      uint8_t* pos = r->Begin();
-      uint8_t* top = r->Top();
-      const bool need_bitmap =
-          r->LiveBytes() != static_cast<size_t>(-1) &&
-          r->LiveBytes() != static_cast<size_t>(top - pos);
-      if (need_bitmap) {
-        GetLiveBitmap()->VisitMarkedRange(
-            reinterpret_cast<uintptr_t>(pos),
-            reinterpret_cast<uintptr_t>(top),
-            visitor);
+      WalkNonLargeRegion(visitor, r);
+    }
+  }
+}
+
+template<typename Visitor>
+inline void RegionSpace::WalkNonLargeRegion(Visitor&& visitor, const Region* r) {
+  DCHECK(!r->IsLarge() && !r->IsLargeTail());
+  // For newly allocated and evacuated regions, live bytes will be -1.
+  uint8_t* pos = r->Begin();
+  uint8_t* top = r->Top();
+  // We need the region space bitmap to iterate over a region's objects
+  // if
+  // - its live bytes count is invalid (i.e. -1); or
+  // - its live bytes count is lower than the allocated bytes count.
+  //
+  // In both of the previous cases, we do not have the guarantee that
+  // all allocated objects are "alive" (i.e. valid), so we depend on
+  // the region space bitmap to identify which ones to visit.
+  //
+  // On the other hand, when all allocated bytes are known to be alive,
+  // we know that they form a range of consecutive objects (modulo
+  // object alignment constraints) that can be visited iteratively: we
+  // can compute the next object's location by using the current
+  // object's address and size (and object alignment constraints).
+  const bool need_bitmap =
+      r->LiveBytes() != static_cast<size_t>(-1) &&
+      r->LiveBytes() != static_cast<size_t>(top - pos);
+  if (need_bitmap) {
+    GetLiveBitmap()->VisitMarkedRange(
+        reinterpret_cast<uintptr_t>(pos),
+        reinterpret_cast<uintptr_t>(top),
+        visitor);
+  } else {
+    while (pos < top) {
+      mirror::Object* obj = reinterpret_cast<mirror::Object*>(pos);
+      if (obj->GetClass<kDefaultVerifyFlags, kWithoutReadBarrier>() != nullptr) {
+        visitor(obj);
+        pos = reinterpret_cast<uint8_t*>(GetNextObject(obj));
       } else {
-        while (pos < top) {
-          mirror::Object* obj = reinterpret_cast<mirror::Object*>(pos);
-          if (obj->GetClass<kDefaultVerifyFlags, kWithoutReadBarrier>() != nullptr) {
-            visitor(obj);
-            pos = reinterpret_cast<uint8_t*>(GetNextObject(obj));
-          } else {
-            break;
-          }
-        }
+        break;
       }
     }
   }
