@@ -28,18 +28,6 @@ bionic_native_shared_libs = [
 bionic_binaries_both = [
     "linker",
 ]
-// - Fake library that avoids namespace issues and gives some warnings for nosy apps.
-art_runtime_fake_native_shared_libs = [
-     // FIXME: Does not work as-is, because `libart_fake` is defined in libart_fake/Android.mk,
-     // and because a module defined in a Blueprint file cannot depend on a module defined in a
-     // Makefile. To support `libart_fake` as a dependency of this APEX module, we can either
-     // (probably in that order of preference):
-     // a. translate that logic into Blueprint; or
-     // b. write the whole Android Runtime APEX generation logic in Android.mk; or
-     // c. introduce an `art_apex` module type extending the `apex` module type and write the
-     //    corresponding Go logic to handle this extra dependency.
-     //"libart_fake",
-]
 // - Debug variants (binaries for which a 32-bit version is preferred).
 //   FIXME: These modules are optional (the built product can decide to include them or not).
 //   Should they be moved to another APEX file?
@@ -112,7 +100,6 @@ apex {
     compile_multilib: "both",
     manifest: "manifest.json",
     native_shared_libs: art_runtime_base_native_shared_libs
-        + art_runtime_fake_native_shared_libs
         + bionic_native_shared_libs,
     multilib: {
         both: {
@@ -141,7 +128,6 @@ apex {
     compile_multilib: "both",
     manifest: "manifest.json",
     native_shared_libs: art_runtime_base_native_shared_libs
-        + art_runtime_fake_native_shared_libs
         + art_runtime_debug_native_shared_libs
         + bionic_native_shared_libs,
     multilib: {
@@ -177,7 +163,6 @@ art_apex {
     device_supported: false,
     manifest: "manifest.json",
     native_shared_libs: art_runtime_base_native_shared_libs
-        + art_runtime_fake_native_shared_libs
         + art_runtime_debug_native_shared_libs,
     multilib: {
         both: {
