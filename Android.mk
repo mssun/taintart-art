@@ -31,13 +31,8 @@ clean-oat: clean-oat-host clean-oat-target
 .PHONY: clean-oat-host
 clean-oat-host:
 	find $(OUT_DIR) -name "*.oat" -o -name "*.odex" -o -name "*.art" -o -name '*.vdex' | xargs rm -f
-ifneq ($(TMPDIR),)
-	rm -rf $(TMPDIR)/$(USER)/test-*/dalvik-cache/*
+	rm -rf $(TMPDIR)/*/test-*/dalvik-cache/*
 	rm -rf $(TMPDIR)/android-data/dalvik-cache/*
-else
-	rm -rf /tmp/$(USER)/test-*/dalvik-cache/*
-	rm -rf /tmp/android-data/dalvik-cache/*
-endif
 
 .PHONY: clean-oat-target
 clean-oat-target:
