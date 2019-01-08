@@ -24,6 +24,26 @@ art_cc_binary {
     ],
 }
 
+art_cc_binary {
+    name: "dexlists",
+    defaults: [
+        "art_defaults",
+        "libartbase_static_defaults",
+        "libdexfile_static_defaults",
+    ],
+    host_supported: true,
+    srcs: ["dexlist.cc"],
+    device_supported: false,
+    target: {
+        darwin: {
+            enabled: false,
+        },
+        windows: {
+            enabled: true,
+        },
+    },
+}
+
 art_cc_test {
     name: "art_dexlist_tests",
     defaults: [
