@@ -20,12 +20,8 @@ ART_ANDROID_COMMON_TEST_MK = true
 include art/build/Android.common_path.mk
 
 # Directory used for temporary test files on the host.
-# Use a hash calculated from CWD and USER as one of the path
-# components for the test output. This should allow us to run tests from
-# multiple repositories at the same time.
-# We only take the first few characters to keep paths short.
-ART_TMPDIR := $(if $(TMPDIR),$(TMPDIR),/tmp)
-ART_HOST_TEST_DIR := $(ART_TMPDIR)/test-art-$(shell echo $$CWD-${USER} | $(MD5SUM) | cut -c-5)
+# TMPDIR is always provided by the build system as $OUT_DIR-unique temporary directory.
+ART_HOST_TEST_DIR := $(TMPDIR)/test-art
 
 # List of known broken tests that we won't attempt to execute. The test name must be the full
 # rule name such as test-art-host-oat-optimizing-HelloWorld64.
