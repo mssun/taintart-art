@@ -17,7 +17,6 @@
 #ifndef ART_RUNTIME_GC_SPACE_IMAGE_SPACE_H_
 #define ART_RUNTIME_GC_SPACE_IMAGE_SPACE_H_
 
-#include "arch/instruction_set.h"
 #include "gc/accounting/space_bitmap.h"
 #include "image.h"
 #include "space.h"
@@ -26,6 +25,7 @@ namespace art {
 
 template <typename T> class ArrayRef;
 class DexFile;
+enum class InstructionSet;
 class OatFile;
 
 namespace gc {

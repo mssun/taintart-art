@@ -17,6 +17,7 @@
 #include <sys/ucontext.h>
 #include "fault_handler.h"
 
+#include "arch/instruction_set.h"
 #include "arch/mips/callee_save_frame_mips.h"
 #include "art_method.h"
 #include "base/callee_save_type.h"

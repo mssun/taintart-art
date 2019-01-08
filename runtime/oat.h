@@ -19,13 +19,13 @@
 
 #include <vector>
 
-#include "arch/instruction_set.h"
 #include "base/macros.h"
 #include "base/safe_map.h"
 #include "compiler_filter.h"
 
 namespace art {
 
+enum class InstructionSet;
 class InstructionSetFeatures;
 
 class PACKED(4) OatHeader {
