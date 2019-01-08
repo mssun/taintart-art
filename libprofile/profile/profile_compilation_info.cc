@@ -19,7 +19,6 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/uio.h>
 #include <unistd.h>
 #include <zlib.h>
 
@@ -208,7 +207,11 @@ bool ProfileCompilationInfo::AddClasses(const std::set<DexCacheResolvedClasses>&
 
 bool ProfileCompilationInfo::MergeWith(const std::string& filename) {
   std::string error;
+#ifdef _WIN32
+  int flags = O_RDONLY;
+#else
   int flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
+#endif
   ScopedFlock profile_file =
       LockedFile::Open(filename.c_str(), flags, /*block=*/false, &error);
 
@@ -236,7 +239,11 @@ bool ProfileCompilationInfo::Load(const std::string& filename, bool clear_if_inv
     return kProfileLoadWouldOverwiteData;
   }
 
+#ifdef _WIN32
+  int flags = O_RDWR;
+#else
   int flags = O_RDWR | O_NOFOLLOW | O_CLOEXEC;
+#endif
   // There's no need to fsync profile data right away. We get many chances
   // to write it again in case something goes wrong. We can rely on a simple
   // close(), no sync, and let to the kernel decide when to write to disk.
@@ -274,7 +281,11 @@ bool ProfileCompilationInfo::Load(const std::string& filename, bool clear_if_inv
 bool ProfileCompilationInfo::Save(const std::string& filename, uint64_t* bytes_written) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   std::string error;
+#ifdef _WIN32
+  int flags = O_WRONLY;
+#else
   int flags = O_WRONLY | O_NOFOLLOW | O_CLOEXEC;
+#endif
   // There's no need to fsync profile data right away. We get many chances
   // to write it again in case something goes wrong. We can rely on a simple
   // close(), no sync, and let to the kernel decide when to write to disk.
