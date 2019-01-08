@@ -23,7 +23,6 @@
 #include "dex/code_item_accessors.h"
 #include "dex/dex_file.h"
 #include "handle.h"
-#include "jni.h"
 
 namespace art {
 namespace mirror {

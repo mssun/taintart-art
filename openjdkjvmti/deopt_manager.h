@@ -35,12 +35,8 @@
 #include <atomic>
 #include <unordered_map>
 
-#include "jni.h"
-#include "jvmti.h"
-
 #include "base/mutex.h"
 #include "runtime_callbacks.h"
-#include "ti_breakpoint.h"
 
 namespace art {
 class ArtMethod;
