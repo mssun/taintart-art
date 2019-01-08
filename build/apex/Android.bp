@@ -41,8 +41,6 @@ art_runtime_fake_native_shared_libs = [
      //"libart_fake",
 ]
 // - Debug variants (binaries for which a 32-bit version is preferred).
-//   FIXME: These modules are optional (the built product can decide to include them or not).
-//   Should they be moved to another APEX file?
 art_runtime_debug_binaries_prefer32 = [
     "dex2oatd",
     "dexoptanalyzerd",
@@ -72,13 +70,15 @@ art_tools_common_binaries = [
     "dexlist",
 ]
 
-art_tools_device_binaries = [
+// Device-only modules listed in LOCAL_REQUIRED_MODULES for module art-tools in art/Android.mk.
+art_tools_device_only_binaries = [
+    // oatdump cannot link with host linux_bionic due to not using clang lld;
+    // TODO: Make it work with clang lld.
     "oatdump",
 ]
 
 // Host-only modules listed in LOCAL_REQUIRED_MODULES for module art-tools in art/Android.mk.
-// TODO: Include these modules in the future "host APEX".
-art_tools_host_binaries = [
+art_tools_host_only_binaries = [
     // FIXME: Does not work as-is, because `ahat` is defined in tools/ahat/Android.mk
     // (same issue as for `libart_fake` above).
     //"ahat",
@@ -86,7 +86,8 @@ art_tools_host_binaries = [
     // ...
 ]
 
-art_tools_binaries = art_tools_common_binaries + art_tools_device_binaries
+art_tools_device_binaries = art_tools_common_binaries + art_tools_device_only_binaries
+art_tools_host_binaries = art_tools_common_binaries + art_tools_host_only_binaries
 
 apex_key {
     name: "com.android.runtime.key",
@@ -156,7 +157,7 @@ apex {
                 + art_runtime_debug_binaries_prefer32,
         },
         first: {
-            binaries: art_tools_binaries,
+            binaries: art_tools_device_binaries,
         }
     },
     prebuilts: art_runtime_time_zone_prebuilts
@@ -186,8 +187,7 @@ art_apex {
             binaries: art_runtime_base_binaries_both,
         },
         first: {
-            // TODO: oatdump cannot link with host linux_bionic due to not using clang ld
-            binaries: art_tools_common_binaries
+            binaries: art_tools_host_binaries
                 + art_runtime_base_binaries_prefer32
                 + art_runtime_debug_binaries_prefer32,
         }
