@@ -73,7 +73,7 @@ elif [[ $mode == "target" ]]; then
     exit 1
   fi
   make_command="make $j_arg $extra_args $showcommands build-art-target-tests $common_targets"
-  make_command+=" libjavacrypto-target libnetd_client-target linker toybox toolbox sh"
+  make_command+=" libjavacrypto-target libnetd_client-target linker toybox toolbox sh unzip"
   make_command+=" debuggerd su"
   make_command+=" libstdc++ "
   make_command+=" ${ANDROID_PRODUCT_OUT#"${ANDROID_BUILD_TOP}/"}/system/etc/public.libraries.txt"
@@ -81,8 +81,8 @@ elif [[ $mode == "target" ]]; then
     # These targets are needed for the chroot environment.
     make_command+=" crash_dump event-log-tags"
   fi
-  # Build the Runtime APEX.
-  make_command+=" com.android.runtime"
+  # Build the Debug Runtime APEX (which is a superset of the Release Runtime APEX).
+  make_command+=" com.android.runtime.debug"
   mode_suffix="-target"
 fi
 
