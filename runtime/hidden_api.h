@@ -311,6 +311,11 @@ inline bool ShouldDenyAccessToMember(T* member,
     return false;
   }
 
+  // Exit early if access checks are completely disabled.
+  if (Runtime::Current()->GetHiddenApiEnforcementPolicy() == EnforcementPolicy::kDisabled) {
+    return false;
+  }
+
   // Check if caller is exempted from access checks.
   // This can be *very* expensive. Save it for last.
   if (fn_get_access_context().IsTrusted()) {
