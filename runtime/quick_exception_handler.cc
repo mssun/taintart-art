@@ -20,6 +20,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/logging.h"  // For VLOG_IS_ON.
+#include "base/systrace.h"
 #include "dex/dex_file_types.h"
 #include "dex/dex_instruction.h"
 #include "entrypoints/entrypoint_utils.h"
@@ -592,6 +593,10 @@ void QuickExceptionHandler::DeoptimizeSingleFrame(DeoptimizationKind kind) {
 
   // Compiled code made an explicit deoptimization.
   ArtMethod* deopt_method = visitor.GetSingleFrameDeoptMethod();
+  SCOPED_TRACE << "Deoptimizing "
+               <<  deopt_method->PrettyMethod()
+               << ": " << GetDeoptimizationKindName(kind);
+
   DCHECK(deopt_method != nullptr);
   if (VLOG_IS_ON(deopt) || kDebugExceptionDelivery) {
     LOG(INFO) << "Single-frame deopting: "
