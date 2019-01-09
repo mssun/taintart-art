@@ -125,6 +125,9 @@ device_mode=false
 while true; do
   if [[ "$1" == "--mode=device" ]]; then
     device_mode=true
+    # Remove the --mode=device from the arguments and replace it with --mode=device_testdex
+    vogar_args=${vogar_args/$1}
+    vogar_args="$vogar_args --mode=device_testdex"
     vogar_args="$vogar_args --vm-arg -Ximage:/data/art-test/core.art"
     vogar_args="$vogar_args $(boot_classpath_arg /system/framework -testdex $BOOT_CLASSPATH_JARS)"
     shift
