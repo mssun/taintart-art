@@ -229,7 +229,9 @@ static void EnsureSkipAccessChecksMethods(Handle<mirror::Class> klass, PointerSi
   }
 }
 
-void ClassLinker::ThrowEarlierClassFailure(ObjPtr<mirror::Class> c, bool wrap_in_no_class_def) {
+void ClassLinker::ThrowEarlierClassFailure(ObjPtr<mirror::Class> c,
+                                           bool wrap_in_no_class_def,
+                                           bool log) {
   // The class failed to initialize on a previous attempt, so we want to throw
   // a NoClassDefFoundError (v2 2.17.5).  The exception to this rule is if we
   // failed in verification, in which case v2 5.4.1 says we need to re-throw
@@ -245,8 +247,10 @@ void ClassLinker::ThrowEarlierClassFailure(ObjPtr<mirror::Class> c, bool wrap_in
         extra = verify_error->AsThrowable()->Dump();
       }
     }
-    LOG(INFO) << "Rejecting re-init on previously-failed class " << c->PrettyClass()
-              << ": " << extra;
+    if (log) {
+      LOG(INFO) << "Rejecting re-init on previously-failed class " << c->PrettyClass()
+                << ": " << extra;
+    }
   }
 
   CHECK(c->IsErroneous()) << c->PrettyClass() << " " << c->GetStatus();
@@ -5044,7 +5048,7 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
 
     // Was the class already found to be erroneous? Done under the lock to match the JLS.
     if (klass->IsErroneous()) {
-      ThrowEarlierClassFailure(klass.Get(), true);
+      ThrowEarlierClassFailure(klass.Get(), true, /* log= */ true);
       VlogClassInitializationFailure(klass);
       return false;
     }
