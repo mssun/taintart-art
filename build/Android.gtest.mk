@@ -383,6 +383,7 @@ ART_TEST_MODULES := \
     art_hiddenapi_tests \
     art_imgdiag_tests \
     art_libartbase_tests \
+    art_libdexfile_external_tests \
     art_libdexfile_tests \
     art_libprofile_tests \
     art_oatdump_tests \

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "art_api/dex_file_external.h"
+
 #include <inttypes.h>
 #include <stdint.h>
 #include <sys/mman.h>
@@ -39,17 +41,8 @@
 #include <dex/dex_file-inl.h>
 #include <dex/dex_file_loader.h>
 
-#include "art_api/dex_file_support.h"
-
-extern "C" class ExtDexFileString {
- public:
-  const std::string str_;
-};
-
 namespace art {
 namespace {
-
-const ExtDexFileString empty_string{""};
 
 struct MethodCacheEntry {
   int32_t offset;  // Offset relative to the start of the dex file header.
@@ -77,9 +70,15 @@ class MappedFileContainer : public DexFileContainer {
 
 extern "C" {
 
+struct ExtDexFileString {
+  const std::string str_;
+};
+
+static const ExtDexFileString empty_string{""};
+
 const ExtDexFileString* ExtDexFileMakeString(const char* str) {
   if (str[0] == '\0') {
-    return &art::empty_string;
+    return &empty_string;
   }
   return new ExtDexFileString{str};
 }
@@ -92,14 +91,15 @@ const char* ExtDexFileGetString(const ExtDexFileString* ext_string, /*out*/ size
 
 void ExtDexFileFreeString(const ExtDexFileString* ext_string) {
   DCHECK(ext_string != nullptr);
-  if (ext_string != &art::empty_string) {
+  if (ext_string != &empty_string) {
     delete (ext_string);
   }
 }
 
 // Wraps DexFile to add the caching needed by the external interface. This is
 // what gets passed over as ExtDexFile*.
-class ExtDexFile {
+struct ExtDexFile {
+ private:
   // Method cache for GetMethodInfoForOffset. This is populated as we iterate
   // sequentially through the class defs. MethodCacheEntry.name is only set for
   // methods returned by GetMethodInfoForOffset.

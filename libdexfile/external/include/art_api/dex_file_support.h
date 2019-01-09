@@ -17,9 +17,7 @@
 #ifndef ART_LIBDEXFILE_EXTERNAL_INCLUDE_ART_API_DEX_FILE_SUPPORT_H_
 #define ART_LIBDEXFILE_EXTERNAL_INCLUDE_ART_API_DEX_FILE_SUPPORT_H_
 
-// Dex file external API
-
-#include <sys/types.h>
+// C++ wrapper for the dex file external API.
 
 #include <cstring>
 #include <memory>
@@ -29,69 +27,7 @@
 
 #include <android-base/macros.h>
 
-extern "C" {
-
-// This is the stable C ABI that backs art_api::dex below. Structs and functions
-// may only be added here.
-// TODO(b/120978655): Move this to a separate pure C header.
-//
-// Clients should use the C++ wrappers in art_api::dex instead.
-
-// Opaque wrapper for an std::string allocated in libdexfile which must be freed
-// using ExtDexFileFreeString.
-class ExtDexFileString;
-
-// Returns an ExtDexFileString initialized to the given string.
-const ExtDexFileString* ExtDexFileMakeString(const char* str);
-
-// Returns a pointer to the underlying null-terminated character array and its
-// size for the given ExtDexFileString.
-const char* ExtDexFileGetString(const ExtDexFileString* ext_string, /*out*/ size_t* size);
-
-// Frees an ExtDexFileString.
-void ExtDexFileFreeString(const ExtDexFileString* ext_string);
-
-struct ExtDexFileMethodInfo {
-  int32_t offset;
-  int32_t len;
-  const ExtDexFileString* name;
-};
-
-class ExtDexFile;
-
-// See art_api::dex::DexFile::OpenFromMemory. Returns true on success.
-int ExtDexFileOpenFromMemory(const void* addr,
-                             /*inout*/ size_t* size,
-                             const char* location,
-                             /*out*/ const ExtDexFileString** error_msg,
-                             /*out*/ ExtDexFile** ext_dex_file);
-
-// See art_api::dex::DexFile::OpenFromFd. Returns true on success.
-int ExtDexFileOpenFromFd(int fd,
-                         off_t offset,
-                         const char* location,
-                         /*out*/ const ExtDexFileString** error_msg,
-                         /*out*/ ExtDexFile** ext_dex_file);
-
-// See art_api::dex::DexFile::GetMethodInfoForOffset. Returns true on success.
-int ExtDexFileGetMethodInfoForOffset(ExtDexFile* ext_dex_file,
-                                     int64_t dex_offset,
-                                     int with_signature,
-                                     /*out*/ ExtDexFileMethodInfo* method_info);
-
-typedef void ExtDexFileMethodInfoCallback(const ExtDexFileMethodInfo* ext_method_info,
-                                          void* user_data);
-
-// See art_api::dex::DexFile::GetAllMethodInfos.
-void ExtDexFileGetAllMethodInfos(ExtDexFile* ext_dex_file,
-                                 int with_signature,
-                                 ExtDexFileMethodInfoCallback* method_info_cb,
-                                 void* user_data);
-
-// Frees an ExtDexFile.
-void ExtDexFileFree(ExtDexFile* ext_dex_file);
-
-}  // extern "C"
+#include "art_api/dex_file_external.h"
 
 namespace art_api {
 namespace dex {
