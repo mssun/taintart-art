@@ -125,6 +125,11 @@ while true; do
     # Vogar knows which VM to use on host.
     vm_command=""
     shift
+  elif [[ "$1" == "--mode=device" ]]; then
+    # Remove the --mode=device from the arguments and replace it with --mode=device_testdex
+    args=${args/$1}
+    args="$args --mode=device_testdex"
+    shift
   elif [[ "$1" == "--mode=jvm" ]]; then
     mode="ri"
     make_target_name="apache-harmony-jdwp-tests-host"
