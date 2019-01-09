@@ -100,13 +100,6 @@ class HiddenApiTest : public CommonRuntimeTest {
 TEST_F(HiddenApiTest, CheckGetActionFromRuntimeFlags) {
   ScopedObjectAccess soa(self_);
 
-  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kDisabled);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Whitelist()), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Greylist()), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::GreylistMaxP()), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::GreylistMaxO()), false);
-  ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Blacklist()), false);
-
   runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kJustWarn);
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Whitelist()), false);
   ASSERT_EQ(ShouldDenyAccess(hiddenapi::ApiList::Greylist()), false);
