@@ -895,7 +895,7 @@ class TryCatchInformation : public ArenaObject<kArenaAllocTryCatchInfo> {
   explicit TryCatchInformation(const HTryBoundary& try_entry)
       : try_entry_(&try_entry),
         catch_dex_file_(nullptr),
-        catch_type_index_(DexFile::kDexNoIndex16) {
+        catch_type_index_(dex::TypeIndex::Invalid()) {
     DCHECK(try_entry_ != nullptr);
   }
 
@@ -914,9 +914,9 @@ class TryCatchInformation : public ArenaObject<kArenaAllocTryCatchInfo> {
 
   bool IsCatchBlock() const { return catch_dex_file_ != nullptr; }
 
-  bool IsCatchAllTypeIndex() const {
+  bool IsValidTypeIndex() const {
     DCHECK(IsCatchBlock());
-    return !catch_type_index_.IsValid();
+    return catch_type_index_.IsValid();
   }
 
   dex::TypeIndex GetCatchTypeIndex() const {
@@ -929,6 +929,10 @@ class TryCatchInformation : public ArenaObject<kArenaAllocTryCatchInfo> {
     return *catch_dex_file_;
   }
 
+  void SetInvalidTypeIndex() {
+    catch_type_index_ = dex::TypeIndex::Invalid();
+  }
+
  private:
   // One of possibly several TryBoundary instructions entering the block's try.
   // Only set for try blocks.
@@ -936,7 +940,7 @@ class TryCatchInformation : public ArenaObject<kArenaAllocTryCatchInfo> {
 
   // Exception type information. Only set for catch blocks.
   const DexFile* catch_dex_file_;
-  const dex::TypeIndex catch_type_index_;
+  dex::TypeIndex catch_type_index_;
 };
 
 static constexpr size_t kNoLifetime = -1;
