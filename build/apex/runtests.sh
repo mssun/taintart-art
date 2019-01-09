@@ -146,18 +146,19 @@ function check_release_contents {
   # TODO: Check for it when it is also built for host.
   : check_binary oatdump
 
-  # Check that the mounted image contains ART libraries.
+  # Check that the mounted image contains Android Runtime libraries.
   check_library libart-compiler.so
+  check_library libart-dexlayout.so
   check_library libart.so
+  check_library libartbase.so
+  check_library libdexfile.so
   check_library libopenjdkjvm.so
   check_library libopenjdkjvmti.so
-  check_library libadbconnection.so
-  # TODO: Should we check for these libraries too, even if they are not explicitly
-  # listed as dependencies in the Android Runtime APEX module rule?
-  check_library libartbase.so
-  check_library libart-dexlayout.so
-  check_library libdexfile.so
   check_library libprofile.so
+  # Check that the mounted image contains Android Core libraries.
+  check_library libjavacrypto.so
+  # Check that the mounted image contains additional required libraries.
+  check_library libadbconnection.so
 
   # TODO: Should we check for other libraries, such as:
   #
@@ -186,19 +187,18 @@ function check_debug_contents {
   check_binary dexoptanalyzerd
   check_binary profmand
 
-  # Check that the mounted image contains ART debug libraries.
+  # Check that the mounted image contains Android Runtime debug libraries.
+  check_library libartbased.so
   check_library libartd-compiler.so
+  check_library libartd-dexlayout.so
   check_library libartd.so
+  check_library libdexfiled.so
   check_library libopenjdkd.so
   check_library libopenjdkjvmd.so
   check_library libopenjdkjvmtid.so
-  check_library libadbconnectiond.so
-  # TODO: Should we check for these libraries too, even if they are not explicitly
-  # listed as dependencies in the Android Runtime APEX module rule?
-  check_library libdexfiled.so
-  check_library libartbased.so
-  check_library libartd-dexlayout.so
   check_library libprofiled.so
+  # Check that the mounted image contains additional required libraries.
+  check_library libadbconnectiond.so
 }
 
 # Testing target (device) APEX packages.
