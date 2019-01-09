@@ -36,7 +36,10 @@ namespace dex {
 class DexString final {
  public:
   DexString(DexString&& dex_str) noexcept { ReplaceExtString(std::move(dex_str)); }
-  explicit DexString(const char* str = "") : ext_string_(ExtDexFileMakeString(str)) {}
+  explicit DexString(const char* str = "")
+      : ext_string_(ExtDexFileMakeString(str, std::strlen(str))) {}
+  explicit DexString(std::string_view str)
+      : ext_string_(ExtDexFileMakeString(str.data(), str.size())) {}
   ~DexString() { ExtDexFileFreeString(ext_string_); }
 
   DexString& operator=(DexString&& dex_str) noexcept {
@@ -71,7 +74,7 @@ class DexString final {
 
   void ReplaceExtString(DexString&& dex_str) {
     ext_string_ = dex_str.ext_string_;
-    dex_str.ext_string_ = ExtDexFileMakeString("");
+    dex_str.ext_string_ = ExtDexFileMakeString("", 0);
   }
 
   DISALLOW_COPY_AND_ASSIGN(DexString);

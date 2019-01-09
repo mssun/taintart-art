@@ -371,8 +371,8 @@ LOCAL_PATH := art
 
 ART_TEST_MODULES := \
     art_cmdline_tests \
-    art_compiler_tests \
     art_compiler_host_tests \
+    art_compiler_tests \
     art_dex2oat_tests \
     art_dexanalyze_tests \
     art_dexdiag_tests \
@@ -384,12 +384,13 @@ ART_TEST_MODULES := \
     art_imgdiag_tests \
     art_libartbase_tests \
     art_libdexfile_external_tests \
+    art_libdexfile_support_tests \
     art_libdexfile_tests \
     art_libprofile_tests \
     art_oatdump_tests \
     art_profman_tests \
-    art_runtime_tests \
     art_runtime_compiler_tests \
+    art_runtime_tests \
     art_sigchain_tests \
 
 ART_TARGET_GTEST_FILES := $(foreach m,$(ART_TEST_MODULES),\

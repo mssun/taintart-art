@@ -33,7 +33,7 @@ extern "C" {
 struct ExtDexFileString;
 
 // Returns an ExtDexFileString initialized to the given string.
-const struct ExtDexFileString* ExtDexFileMakeString(const char* str);
+const struct ExtDexFileString* ExtDexFileMakeString(const char* str, size_t size);
 
 // Returns a pointer to the underlying null-terminated character array and its
 // size for the given ExtDexFileString.

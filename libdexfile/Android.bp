@@ -280,3 +280,18 @@ cc_library {
     shared_libs: ["libdexfile_external"],
     export_header_lib_headers: ["libdexfile_external_headers"],
 }
+
+art_cc_test {
+    name: "art_libdexfile_support_tests",
+    host_supported: true,
+    test_per_src: true,  // For consistency with other ART gtests.
+    srcs: [
+        "external/dex_file_supp_test.cc",
+    ],
+    shared_libs: [
+        "libartbase",
+        "libbase",
+        "libdexfile_external",
+        "libdexfile_support",
+    ],
+}
