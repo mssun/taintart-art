@@ -39,7 +39,7 @@
 #include <dex/dex_file-inl.h>
 #include <dex/dex_file_loader.h>
 
-#include "art_api/ext_dex_file.h"
+#include "art_api/dex_file_support.h"
 
 extern "C" class ExtDexFileString {
  public:
