@@ -16,7 +16,6 @@
 
 #include "base/logging.h"  // For VLOG_IS_ON.
 #include "base/mutex.h"
-#include "base/systrace.h"
 #include "callee_save_frame.h"
 #include "interpreter/interpreter.h"
 #include "obj_ptr-inl.h"  // TODO: Find the other include that isn't complete, and clean this up.
@@ -41,13 +40,10 @@ NO_RETURN static void artDeoptimizeImpl(Thread* self, DeoptimizationKind kind, b
 
   self->AssertHasDeoptimizationContext();
   QuickExceptionHandler exception_handler(self, true);
-  {
-    ScopedTrace trace(std::string("Deoptimization ") + GetDeoptimizationKindName(kind));
-    if (single_frame) {
-      exception_handler.DeoptimizeSingleFrame(kind);
-    } else {
-      exception_handler.DeoptimizeStack();
-    }
+  if (single_frame) {
+    exception_handler.DeoptimizeSingleFrame(kind);
+  } else {
+    exception_handler.DeoptimizeStack();
   }
   uintptr_t return_pc = exception_handler.UpdateInstrumentationStack();
   if (exception_handler.IsFullFragmentDone()) {
