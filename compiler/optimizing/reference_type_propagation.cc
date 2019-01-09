@@ -699,14 +699,14 @@ void ReferenceTypePropagation::RTPVisitor::VisitLoadException(HLoadException* in
   DCHECK(instr->GetBlock()->IsCatchBlock());
   TryCatchInformation* catch_info = instr->GetBlock()->GetTryCatchInformation();
 
-  if (catch_info->IsCatchAllTypeIndex()) {
-    instr->SetReferenceTypeInfo(
-        ReferenceTypeInfo::Create(handle_cache_->GetThrowableClassHandle(), /* is_exact= */ false));
-  } else {
+  if (catch_info->IsValidTypeIndex()) {
     UpdateReferenceTypeInfo(instr,
                             catch_info->GetCatchTypeIndex(),
                             catch_info->GetCatchDexFile(),
                             /* is_exact= */ false);
+  } else {
+    instr->SetReferenceTypeInfo(
+        ReferenceTypeInfo::Create(handle_cache_->GetThrowableClassHandle(), /* is_exact= */ false));
   }
 }
 
