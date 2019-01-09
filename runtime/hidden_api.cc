@@ -361,9 +361,11 @@ bool ShouldDenyAccessToMemberImpl(T* member,
                                   hiddenapi::ApiList api_list,
                                   AccessMethod access_method) {
   DCHECK(member != nullptr);
-
   Runtime* runtime = Runtime::Current();
+
   EnforcementPolicy policy = runtime->GetHiddenApiEnforcementPolicy();
+  DCHECK(policy != EnforcementPolicy::kDisabled)
+      << "Should never enter this function when access checks are completely disabled";
 
   const bool deny_access =
       (policy == EnforcementPolicy::kEnabled) &&
