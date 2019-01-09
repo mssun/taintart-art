@@ -1011,6 +1011,10 @@ TEST_F(Dex2oatWatchdogTest, TestWatchdogOK) {
 }
 
 TEST_F(Dex2oatWatchdogTest, TestWatchdogTrigger) {
+  // This test is frequently interrupted by timeout_dumper on host (x86);
+  // disable it while we investigate (b/121352534).
+  TEST_DISABLED_FOR_X86();
+
   // The watchdog is independent of dex2oat and will not delete intermediates. It is possible
   // that the compilation succeeds and the file is completely written by the time the watchdog
   // kills dex2oat (but the dex2oat threads must have been scheduled pretty badly).
