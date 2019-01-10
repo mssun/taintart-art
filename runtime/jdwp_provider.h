@@ -19,7 +19,7 @@
 
 #include <ios>
 
-#include "base/globals.h"
+#include "runtime_globals.h"
 
 namespace art {
 

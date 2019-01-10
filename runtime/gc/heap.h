@@ -27,7 +27,6 @@
 #include "allocator_type.h"
 #include "arch/instruction_set.h"
 #include "base/atomic.h"
-#include "base/globals.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/runtime_debug.h"
@@ -43,6 +42,7 @@
 #include "offsets.h"
 #include "process_state.h"
 #include "read_barrier_config.h"
+#include "runtime_globals.h"
 #include "verify_object.h"
 
 namespace art {

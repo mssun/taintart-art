@@ -23,13 +23,13 @@
 #include "android-base/stringprintf.h"
 
 #include "base/file_utils.h"
-#include "base/globals.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
 #include "runtime.h"
+#include "runtime_globals.h"
 
 namespace art {
 namespace gc {

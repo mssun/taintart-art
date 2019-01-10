@@ -17,7 +17,6 @@
 #include "dex_cache-inl.h"
 
 #include "art_method-inl.h"
-#include "base/globals.h"
 #include "class_linker.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc/heap.h"
@@ -27,6 +26,7 @@
 #include "object.h"
 #include "object_array-inl.h"
 #include "runtime.h"
+#include "runtime_globals.h"
 #include "string.h"
 #include "thread.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
