@@ -33,6 +33,7 @@
 
 #include <type_traits>
 
+#include "arch/context.h"
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "base/enums.h"

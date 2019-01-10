@@ -42,6 +42,7 @@
 #include "aot_class_linker.h"
 #include "arch/arm/registers_arm.h"
 #include "arch/arm64/registers_arm64.h"
+#include "arch/context.h"
 #include "arch/instruction_set_features.h"
 #include "arch/mips/registers_mips.h"
 #include "arch/mips64/registers_mips64.h"

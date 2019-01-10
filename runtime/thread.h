@@ -25,7 +25,6 @@
 #include <memory>
 #include <string>
 
-#include "arch/context.h"
 #include "base/atomic.h"
 #include "base/enums.h"
 #include "base/locks.h"
@@ -471,16 +470,7 @@ class Thread {
   Context* GetLongJumpContext();
   void ReleaseLongJumpContext(Context* context) {
     if (tlsPtr_.long_jump_context != nullptr) {
-      // Each QuickExceptionHandler gets a long jump context and uses
-      // it for doing the long jump, after finding catch blocks/doing deoptimization.
-      // Both finding catch blocks and deoptimization can trigger another
-      // exception such as a result of class loading. So there can be nested
-      // cases of exception handling and multiple contexts being used.
-      // ReleaseLongJumpContext tries to save the context in tlsPtr_.long_jump_context
-      // for reuse so there is no need to always allocate a new one each time when
-      // getting a context. Since we only keep one context for reuse, delete the
-      // existing one since the passed in context is yet to be used for longjump.
-      delete tlsPtr_.long_jump_context;
+      ReleaseLongJumpContextInternal();
     }
     tlsPtr_.long_jump_context = context;
   }
@@ -1408,6 +1398,8 @@ class Thread {
   void VisitRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
 
   static bool IsAotCompiler();
+
+  void ReleaseLongJumpContextInternal();
 
   // 32 bits of atomically changed state and flags. Keeping as 32 bits allows and atomic CAS to
   // change from being Suspended to Runnable without a suspend request occurring.

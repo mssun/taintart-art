@@ -36,6 +36,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "arch/context.h"
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "art_jvmti.h"
