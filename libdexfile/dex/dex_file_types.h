@@ -17,8 +17,9 @@
 #ifndef ART_LIBDEXFILE_DEX_DEX_FILE_TYPES_H_
 #define ART_LIBDEXFILE_DEX_DEX_FILE_TYPES_H_
 
+#include <iosfwd>
 #include <limits>
-#include <ostream>
+#include <utility>
 
 namespace art {
 namespace dex {

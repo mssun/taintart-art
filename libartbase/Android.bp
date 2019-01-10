@@ -24,6 +24,7 @@ cc_defaults {
         "base/arena_allocator.cc",
         "base/arena_bit_vector.cc",
         "base/bit_vector.cc",
+        "base/enums.cc",
         "base/file_magic.cc",
         "base/file_utils.cc",
         "base/hex_dump.cc",
@@ -153,7 +154,6 @@ gensrcs {
     srcs: [
         "arch/instruction_set.h",
         "base/allocator.h",
-        "base/callee_save_type.h",
         "base/unix_file/fd_file.h",
     ],
     output_extension: "operator_out.cc",

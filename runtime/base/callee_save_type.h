@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef ART_LIBARTBASE_BASE_CALLEE_SAVE_TYPE_H_
-#define ART_LIBARTBASE_BASE_CALLEE_SAVE_TYPE_H_
+#ifndef ART_RUNTIME_BASE_CALLEE_SAVE_TYPE_H_
+#define ART_RUNTIME_BASE_CALLEE_SAVE_TYPE_H_
 
-#include <cstddef>
-#include <ostream>
+#include <cstdint>
+#include <iosfwd>
 
 namespace art {
 
@@ -44,4 +44,4 @@ static inline constexpr CalleeSaveType GetCanonicalCalleeSaveType(CalleeSaveType
 
 }  // namespace art
 
-#endif  // ART_LIBARTBASE_BASE_CALLEE_SAVE_TYPE_H_
+#endif  // ART_RUNTIME_BASE_CALLEE_SAVE_TYPE_H_

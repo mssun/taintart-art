@@ -16,6 +16,8 @@
 
 #include "malloc_space.h"
 
+#include <ostream>
+
 #include "android-base/stringprintf.h"
 
 #include "base/logging.h"  // For VLOG

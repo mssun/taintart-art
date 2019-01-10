@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_OBJ_PTR_H_
 #define ART_RUNTIME_OBJ_PTR_H_
 
-#include <ostream>
+#include <iosfwd>
 #include <type_traits>
 
 #include "base/locks.h"  // For Locks::mutator_lock_.

@@ -16,6 +16,9 @@
 
 #include "instruction_set_features.h"
 
+#include <algorithm>
+#include <ostream>
+
 #include "android-base/strings.h"
 
 #include "base/casts.h"

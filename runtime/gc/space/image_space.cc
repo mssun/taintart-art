@@ -25,6 +25,7 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
+#include "arch/instruction_set.h"
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/array_ref.h"

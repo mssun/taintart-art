@@ -18,6 +18,7 @@
 
 #include <android-base/logging.h>
 
+#include "arch/instruction_set.h"
 #include "base/macros.h"
 #include "handle_scope-inl.h"
 #include "utils/arm/managed_register_arm.h"

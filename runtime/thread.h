@@ -26,12 +26,12 @@
 #include <string>
 
 #include "arch/context.h"
-#include "arch/instruction_set.h"
 #include "base/atomic.h"
 #include "base/enums.h"
 #include "base/locks.h"
 #include "base/macros.h"
 #include "base/safe_map.h"
+#include "base/value_object.h"
 #include "entrypoints/jni/jni_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "handle_scope.h"
@@ -819,19 +819,7 @@ class Thread {
     return tlsPtr_.stack_size - (tlsPtr_.stack_end - tlsPtr_.stack_begin);
   }
 
-  uint8_t* GetStackEndForInterpreter(bool implicit_overflow_check) const {
-    uint8_t* end = tlsPtr_.stack_end + (implicit_overflow_check
-                                            ? GetStackOverflowReservedBytes(kRuntimeISA)
-                                            : 0);
-    if (kIsDebugBuild) {
-      // In a debuggable build, but especially under ASAN, the access-checks interpreter has a
-      // potentially humongous stack size. We don't want to take too much of the stack regularly,
-      // so do not increase the regular reserved size (for compiled code etc) and only report the
-      // virtually smaller stack to the interpreter here.
-      end += GetStackOverflowReservedBytes(kRuntimeISA);
-    }
-    return end;
-  }
+  ALWAYS_INLINE uint8_t* GetStackEndForInterpreter(bool implicit_overflow_check) const;
 
   uint8_t* GetStackEnd() const {
     return tlsPtr_.stack_end;
@@ -841,11 +829,7 @@ class Thread {
   void SetStackEndForStackOverflow() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Set the stack end to that to be used during regular execution
-  void ResetDefaultStackEnd() {
-    // Our stacks grow down, so we want stack_end_ to be near there, but reserving enough room
-    // to throw a StackOverflowError.
-    tlsPtr_.stack_end = tlsPtr_.stack_begin + GetStackOverflowReservedBytes(kRuntimeISA);
-  }
+  ALWAYS_INLINE void ResetDefaultStackEnd();
 
   bool IsHandlingStackOverflow() const {
     return tlsPtr_.stack_end == tlsPtr_.stack_begin;
