@@ -42,13 +42,15 @@ class DexoptTest : public Dex2oatEnvironmentTest {
                           const std::string& oat_location,
                           CompilerFilter::Filter filter,
                           bool with_alternate_image,
-                          const char* compilation_reason = nullptr);
+                          const char* compilation_reason = nullptr,
+                          const std::vector<std::string>& extra_args = {});
 
   // Generate an odex file for the purposes of test.
   void GenerateOdexForTest(const std::string& dex_location,
                            const std::string& odex_location,
                            CompilerFilter::Filter filter,
-                           const char* compilation_reason = nullptr);
+                           const char* compilation_reason = nullptr,
+                          const std::vector<std::string>& extra_args = {});
 
   // Generate an oat file for the given dex location in its oat location (under
   // the dalvik cache).
