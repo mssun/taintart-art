@@ -161,6 +161,19 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_isAotCompiled(JNIEnv* env,
   return !interpreter;
 }
 
+static ArtMethod* GetMethod(ScopedObjectAccess& soa, jclass cls, const ScopedUtfChars& chars)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  CHECK(chars.c_str() != nullptr);
+  ArtMethod* method = soa.Decode<mirror::Class>(cls)->FindDeclaredDirectMethodByName(
+        chars.c_str(), kRuntimePointerSize);
+  if (method == nullptr) {
+    method = soa.Decode<mirror::Class>(cls)->FindDeclaredVirtualMethodByName(
+        chars.c_str(), kRuntimePointerSize);
+  }
+  DCHECK(method != nullptr) << "Unable to find method called " << chars.c_str();
+  return method;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasJitCompiledEntrypoint(JNIEnv* env,
                                                                          jclass,
                                                                          jclass cls,
@@ -172,9 +185,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasJitCompiledEntrypoint(JNIEnv*
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
   ScopedUtfChars chars(env, method_name);
-  CHECK(chars.c_str() != nullptr);
-  ArtMethod* method = soa.Decode<mirror::Class>(cls)->FindDeclaredDirectMethodByName(
-        chars.c_str(), kRuntimePointerSize);
+  ArtMethod* method = GetMethod(soa, cls, chars);
   ScopedAssertNoThreadSuspension sants(__FUNCTION__);
   return jit->GetCodeCache()->ContainsPc(
       Runtime::Current()->GetInstrumentation()->GetCodeForInvoke(method));
@@ -191,9 +202,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasJitCompiledCode(JNIEnv* env,
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
   ScopedUtfChars chars(env, method_name);
-  CHECK(chars.c_str() != nullptr);
-  ArtMethod* method = soa.Decode<mirror::Class>(cls)->FindDeclaredDirectMethodByName(
-        chars.c_str(), kRuntimePointerSize);
+  ArtMethod* method = GetMethod(soa, cls, chars);
   return jit->GetCodeCache()->ContainsMethod(method);
 }
 
@@ -262,14 +271,7 @@ extern "C" JNIEXPORT void JNICALL Java_Main_ensureJitCompiled(JNIEnv* env,
     ScopedObjectAccess soa(self);
 
     ScopedUtfChars chars(env, method_name);
-    CHECK(chars.c_str() != nullptr);
-    method = soa.Decode<mirror::Class>(cls)->FindDeclaredDirectMethodByName(
-        chars.c_str(), kRuntimePointerSize);
-    if (method == nullptr) {
-      method = soa.Decode<mirror::Class>(cls)->FindDeclaredVirtualMethodByName(
-          chars.c_str(), kRuntimePointerSize);
-    }
-    DCHECK(method != nullptr) << "Unable to find method called " << chars.c_str();
+    method = GetMethod(soa, cls, chars);
   }
   ForceJitCompiled(self, method);
 }
@@ -351,6 +353,22 @@ extern "C" JNIEXPORT void JNICALL Java_Main_startJit(JNIEnv*, jclass) {
 extern "C" JNIEXPORT jint JNICALL Java_Main_getJitThreshold(JNIEnv*, jclass) {
   jit::Jit* jit = Runtime::Current()->GetJit();
   return (jit != nullptr) ? jit->HotMethodThreshold() : 0;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_Main_transitionJitFromZygote(JNIEnv*, jclass) {
+  jit::Jit* jit = Runtime::Current()->GetJit();
+  if (jit == nullptr) {
+    return;
+  }
+  // Mimic the transition behavior a zygote fork would have.
+  jit->PreZygoteFork();
+  jit->GetCodeCache()->PostForkChildAction(/*is_system_server=*/ false, /*is_zygote=*/ false);
+  jit->PostForkChildAction(/*is_zygote=*/ false);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_Main_deoptimizeBootImage(JNIEnv*, jclass) {
+  ScopedSuspendAll ssa(__FUNCTION__);
+  Runtime::Current()->DeoptimizeBootImage();
 }
 
 }  // namespace art

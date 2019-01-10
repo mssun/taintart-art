@@ -203,8 +203,11 @@ static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
     runtime->AddCompilerOption("--debuggable");
     runtime_flags |= DEBUG_GENERATE_MINI_DEBUG_INFO;
     runtime->SetJavaDebuggable(true);
-    // Deoptimize the boot image as it may be non-debuggable.
-    runtime->DeoptimizeBootImage();
+    {
+      // Deoptimize the boot image as it may be non-debuggable.
+      ScopedSuspendAll ssa(__FUNCTION__);
+      runtime->DeoptimizeBootImage();
+    }
     runtime_flags &= ~DEBUG_JAVA_DEBUGGABLE;
     needs_non_debuggable_classes = true;
   }
