@@ -438,6 +438,7 @@ void ProfileSaver::FetchAndCacheResolvedClassesAndMethods(bool startup) {
       const std::string base_location = DexFileLoader::GetBaseLocation(dex_file->GetLocation());
       const MethodReferenceCollection::IndexVector& indices = pair.second;
       VLOG(profiler) << "Location " << dex_file->GetLocation()
+                     << " base_location=" << base_location
                      << " found=" << (locations.find(base_location) != locations.end())
                      << " indices size=" << indices.size();
       if (locations.find(base_location) != locations.end()) {
@@ -799,11 +800,38 @@ bool ProfileSaver::IsStarted() {
 static void AddTrackedLocationsToMap(const std::string& output_filename,
                                      const std::vector<std::string>& code_paths,
                                      SafeMap<std::string, std::set<std::string>>* map) {
+  std::vector<std::string> code_paths_and_filenames;
+  // The dex locations are sometimes set to the filename instead of the full path.
+  // So make sure we have both "locations" when tracking what needs to be profiled.
+  //   - apps + system server have filenames
+  //   - boot classpath elements have full paths
+
+  // TODO(calin, ngeoffray, vmarko) This is an workaround for using filanames as
+  // dex locations - needed to prebuilt with a partial boot image
+  // (commit: c4a924d8c74241057d957d360bf31cd5cd0e4f9c).
+  // We should find a better way which allows us to do the tracking based on full paths.
+  for (const std::string& path : code_paths) {
+    size_t last_sep_index = path.find_last_of('/');
+    if (last_sep_index == path.size() - 1) {
+      // Should not happen, but anyone can register code paths so better be prepared and ignore
+      // such locations.
+      continue;
+    }
+    std::string filename = last_sep_index == std::string::npos
+        ? path
+        : path.substr(last_sep_index + 1);
+
+    code_paths_and_filenames.push_back(path);
+    code_paths_and_filenames.push_back(filename);
+  }
+
   auto it = map->find(output_filename);
   if (it == map->end()) {
-    map->Put(output_filename, std::set<std::string>(code_paths.begin(), code_paths.end()));
+    map->Put(
+        output_filename,
+        std::set<std::string>(code_paths_and_filenames.begin(), code_paths_and_filenames.end()));
   } else {
-    it->second.insert(code_paths.begin(), code_paths.end());
+    it->second.insert(code_paths_and_filenames.begin(), code_paths_and_filenames.end());
   }
 }
 
