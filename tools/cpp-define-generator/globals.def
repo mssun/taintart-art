@@ -26,6 +26,7 @@
 #include "jit/jit.h"
 #include "mirror/object.h"
 #include "mirror/object_reference.h"
+#include "runtime_globals.h"
 #include "stack.h"
 #endif
 

@@ -19,9 +19,9 @@
 #include <stdint.h>
 #include <memory>
 
-#include "base/globals.h"
 #include "base/mutex.h"
 #include "common_runtime_test.h"
+#include "runtime_globals.h"
 #include "space_bitmap-inl.h"
 
 namespace art {

@@ -20,9 +20,9 @@
 #include <string.h>
 
 #include "base/enums.h"
-#include "base/globals.h"
 #include "base/iteration_range.h"
 #include "mirror/object.h"
+#include "runtime_globals.h"
 
 namespace art {
 

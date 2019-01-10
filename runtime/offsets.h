@@ -20,7 +20,7 @@
 #include <ostream>
 
 #include "base/enums.h"
-#include "base/globals.h"
+#include "runtime_globals.h"
 
 namespace art {
 

@@ -20,13 +20,13 @@
 #include "base/atomic.h"
 #include "base/casts.h"
 #include "base/enums.h"
-#include "base/globals.h"
 #include "dex/primitive.h"
 #include "obj_ptr.h"
 #include "object_reference.h"
 #include "offsets.h"
 #include "read_barrier_config.h"
 #include "read_barrier_option.h"
+#include "runtime_globals.h"
 #include "verify_object.h"
 
 namespace art {
