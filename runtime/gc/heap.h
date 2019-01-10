@@ -25,7 +25,6 @@
 #include <android-base/logging.h>
 
 #include "allocator_type.h"
-#include "arch/instruction_set.h"
 #include "base/atomic.h"
 #include "base/macros.h"
 #include "base/mutex.h"
@@ -48,6 +47,7 @@
 namespace art {
 
 class ConditionVariable;
+enum class InstructionSet;
 class IsMarkedVisitor;
 class Mutex;
 class RootVisitor;

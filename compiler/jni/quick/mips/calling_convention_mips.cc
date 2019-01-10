@@ -18,6 +18,7 @@
 
 #include <android-base/logging.h>
 
+#include "arch/instruction_set.h"
 #include "handle_scope-inl.h"
 #include "utils/mips/managed_register_mips.h"
 

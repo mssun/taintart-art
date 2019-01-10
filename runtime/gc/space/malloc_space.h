@@ -19,7 +19,8 @@
 
 #include "space.h"
 
-#include <ostream>
+#include <iosfwd>
+
 #include "base/memory_tool.h"
 #include "base/mutex.h"
 

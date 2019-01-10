@@ -16,6 +16,8 @@
 
 #include "compiler_filter.h"
 
+#include <ostream>
+
 #include "base/utils.h"
 
 namespace art {

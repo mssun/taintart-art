@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_COMPILER_FILTER_H_
 #define ART_RUNTIME_COMPILER_FILTER_H_
 
-#include <ostream>
+#include <iosfwd>
 #include <string>
 #include <vector>
 

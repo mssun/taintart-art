@@ -14,25 +14,19 @@
  * limitations under the License.
  */
 
-#ifndef ART_LIBARTBASE_BASE_ENUMS_H_
-#define ART_LIBARTBASE_BASE_ENUMS_H_
+#include "enums.h"
 
-#include <cstddef>
-#include <iosfwd>
+#include <ostream>
 
 namespace art {
 
-enum class PointerSize : size_t {
-  k32 = 4,
-  k64 = 8
-};
-
-std::ostream& operator<<(std::ostream& os, const PointerSize& rhs);
-
-static constexpr PointerSize kRuntimePointerSize = sizeof(void*) == 8U
-                                                       ? PointerSize::k64
-                                                       : PointerSize::k32;
+std::ostream& operator<<(std::ostream& os, const PointerSize& rhs) {
+  switch (rhs) {
+    case PointerSize::k32: os << "k32"; break;
+    case PointerSize::k64: os << "k64"; break;
+    default: os << "PointerSize[" << static_cast<int>(rhs) << "]"; break;
+  }
+  return os;
+}
 
 }  // namespace art
-
-#endif  // ART_LIBARTBASE_BASE_ENUMS_H_
