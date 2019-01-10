@@ -21,12 +21,12 @@
 #include <string>
 
 #include "base/atomic.h"
-#include "base/globals.h"
 #include "base/locks.h"
 #include "base/macros.h"
 #include "base/mem_map.h"
 #include "gc/accounting/space_bitmap.h"
 #include "gc/collector/object_byte_pair.h"
+#include "runtime_globals.h"
 
 namespace art {
 namespace mirror {
