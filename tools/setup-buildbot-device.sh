@@ -165,4 +165,9 @@ if [[ -n "$ART_TEST_CHROOT" ]]; then
   adb shell mkdir -p "$ART_TEST_CHROOT/dev"
   adb shell mount | grep -q "^tmpfs on $ART_TEST_CHROOT/dev type tmpfs " \
     || adb shell mount -o bind /dev "$ART_TEST_CHROOT/dev"
+
+  # Create /apex tmpfs in chroot.
+  adb shell mkdir -p "$ART_TEST_CHROOT/apex"
+  adb shell mount | grep -q "^tmpfs on $ART_TEST_CHROOT/apex type tmpfs " \
+    || adb shell mount -t tmpfs -o nodev,noexec,nosuid tmpfs "$ART_TEST_CHROOT/apex"
 fi
