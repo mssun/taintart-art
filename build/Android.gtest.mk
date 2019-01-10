@@ -425,6 +425,9 @@ ifneq ($(ART_TEST_ANDROID_ROOT),)
 endif
 
 ART_GTEST_TARGET_ANDROID_RUNTIME_ROOT := '/apex/com.android.runtime'
+ifneq ($(ART_TEST_ANDROID_RUNTIME_ROOT),)
+  ART_GTEST_TARGET_ANDROID_RUNTIME_ROOT := $(ART_TEST_ANDROID_RUNTIME_ROOT)
+endif
 
 # Define a make rule for a target device gtest.
 # $(1): gtest name - the name of the test we're building such as leb128_test.
