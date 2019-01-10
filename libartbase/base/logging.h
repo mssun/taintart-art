@@ -17,9 +17,6 @@
 #ifndef ART_LIBARTBASE_BASE_LOGGING_H_
 #define ART_LIBARTBASE_BASE_LOGGING_H_
 
-#include <ostream>
-#include <sstream>
-
 #include "android-base/logging.h"
 #include "macros.h"
 

@@ -18,6 +18,7 @@
 
 #include <sys/ucontext.h>
 
+#include "arch/instruction_set.h"
 #include "arch/mips64/callee_save_frame_mips64.h"
 #include "art_method.h"
 #include "base/callee_save_type.h"

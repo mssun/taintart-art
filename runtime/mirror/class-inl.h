@@ -39,6 +39,7 @@
 #include "runtime.h"
 #include "string.h"
 #include "subtype_check.h"
+#include "thread-current-inl.h"
 
 namespace art {
 namespace mirror {
@@ -1115,6 +1116,18 @@ inline void Class::SetClassLoader(ObjPtr<ClassLoader> new_class_loader) {
     DCHECK(!Runtime::Current()->IsActiveTransaction());
     SetFieldObject<false>(OFFSET_OF_OBJECT_MEMBER(Class, class_loader_), new_class_loader);
   }
+}
+
+inline void Class::SetRecursivelyInitialized() {
+  DCHECK_EQ(GetLockOwnerThreadId(), Thread::Current()->GetThreadId());
+  uint32_t flags = GetField32(OFFSET_OF_OBJECT_MEMBER(Class, access_flags_));
+  SetAccessFlags(flags | kAccRecursivelyInitialized);
+}
+
+inline void Class::SetHasDefaultMethods() {
+  DCHECK_EQ(GetLockOwnerThreadId(), Thread::Current()->GetThreadId());
+  uint32_t flags = GetField32(OFFSET_OF_OBJECT_MEMBER(Class, access_flags_));
+  SetAccessFlags(flags | kAccHasDefaultMethod);
 }
 
 }  // namespace mirror

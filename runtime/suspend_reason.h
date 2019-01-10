@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_SUSPEND_REASON_H_
 #define ART_RUNTIME_SUSPEND_REASON_H_
 
-#include <ostream>
+#include <iosfwd>
 
 namespace art {
 

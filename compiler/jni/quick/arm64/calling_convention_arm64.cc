@@ -18,6 +18,7 @@
 
 #include <android-base/logging.h>
 
+#include "arch/instruction_set.h"
 #include "handle_scope-inl.h"
 #include "utils/arm64/managed_register_arm64.h"
 

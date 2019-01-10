@@ -27,6 +27,8 @@
 
 namespace art {
 
+enum class InstructionSet;
+
 // Top-level abstraction for different calling conventions.
 class CallingConvention : public DeletableArenaObject<kArenaAllocCallingConvention> {
  public:

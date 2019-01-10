@@ -24,13 +24,16 @@
 #include "base/enums.h"
 #include "base/locks.h"
 #include "base/macros.h"
-#include "handle.h"
 #include "stack_reference.h"
 #include "verify_object.h"
 
 namespace art {
 
+template<class T> class Handle;
 class HandleScope;
+template<class T> class HandleWrapper;
+template<class T> class HandleWrapperObjPtr;
+template<class T> class MutableHandle;
 template<class MirrorType> class ObjPtr;
 class Thread;
 class VariableSizedHandleScope;
@@ -144,13 +147,7 @@ class PACKED(4) HandleScope : public BaseHandleScope {
   }
 
   template <typename Visitor>
-  void VisitRoots(Visitor& visitor) REQUIRES_SHARED(Locks::mutator_lock_) {
-    for (size_t i = 0, count = NumberOfReferences(); i < count; ++i) {
-      // GetReference returns a pointer to the stack reference within the handle scope. If this
-      // needs to be updated, it will be done by the root visitor.
-      visitor.VisitRootIfNonNull(GetHandle(i).GetReference());
-    }
-  }
+  ALWAYS_INLINE void VisitRoots(Visitor& visitor) REQUIRES_SHARED(Locks::mutator_lock_);
 
  protected:
   // Return backing storage used for references.
@@ -170,44 +167,6 @@ class PACKED(4) HandleScope : public BaseHandleScope {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HandleScope);
-};
-
-// A wrapper which wraps around Object** and restores the pointer in the destructor.
-// TODO: Delete
-template<class T>
-class HandleWrapper : public MutableHandle<T> {
- public:
-  HandleWrapper(T** obj, const MutableHandle<T>& handle)
-     : MutableHandle<T>(handle), obj_(obj) {
-  }
-
-  HandleWrapper(const HandleWrapper&) = default;
-
-  ~HandleWrapper() {
-    *obj_ = MutableHandle<T>::Get();
-  }
-
- private:
-  T** const obj_;
-};
-
-
-// A wrapper which wraps around ObjPtr<Object>* and restores the pointer in the destructor.
-// TODO: Add more functionality.
-template<class T>
-class HandleWrapperObjPtr : public MutableHandle<T> {
- public:
-  HandleWrapperObjPtr(ObjPtr<T>* obj, const MutableHandle<T>& handle)
-      : MutableHandle<T>(handle), obj_(obj) {}
-
-  HandleWrapperObjPtr(const HandleWrapperObjPtr&) = default;
-
-  ~HandleWrapperObjPtr() {
-    *obj_ = ObjPtr<T>(MutableHandle<T>::Get());
-  }
-
- private:
-  ObjPtr<T>* const obj_;
 };
 
 // Fixed size handle scope that is not necessarily linked in the thread.
