@@ -681,13 +681,13 @@ void Dbg::GoActive() {
   //
   // The performance cost of this is non-negligible during native-debugging due to the
   // forced JIT, so we keep the AOT code in that case in exchange for limited native debugging.
+  ScopedSuspendAll ssa(__FUNCTION__);
   if (!runtime->IsJavaDebuggable() &&
       !runtime->GetInstrumentation()->IsForcedInterpretOnly() &&
       !runtime->IsNativeDebuggable()) {
     runtime->DeoptimizeBootImage();
   }
 
-  ScopedSuspendAll ssa(__FUNCTION__);
   if (RequiresDeoptimization()) {
     runtime->GetInstrumentation()->EnableDeoptimization();
   }

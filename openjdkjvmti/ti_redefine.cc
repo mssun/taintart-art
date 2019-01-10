@@ -188,7 +188,9 @@ class ObsoleteMethodStackVisitor : public art::StackVisitor {
     if (obsoleted_methods_.find(old_method) != obsoleted_methods_.end()) {
       // We cannot ensure that the right dex file is used in inlined frames so we don't support
       // redefining them.
-      DCHECK(!IsInInlinedFrame()) << "Inlined frames are not supported when using redefinition";
+      DCHECK(!IsInInlinedFrame()) << "Inlined frames are not supported when using redefinition: "
+                                  << old_method->PrettyMethod() << " is inlined into "
+                                  << GetOuterMethod()->PrettyMethod();
       art::ArtMethod* new_obsolete_method = obsolete_maps_->FindObsoleteVersion(old_method);
       if (new_obsolete_method == nullptr) {
         // Create a new Obsolete Method and put it in the list.

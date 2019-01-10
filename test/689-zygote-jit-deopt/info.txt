@@ -1,0 +1,2 @@
+Regression test for debuggable apps that need to deoptimize
+methods JIT-compiled by the zygote.
