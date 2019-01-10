@@ -48,6 +48,7 @@
 #include "base/atomic.h"
 #include "base/bit_utils.h"
 #include "base/casts.h"
+#include "arch/context.h"
 #include "base/file_utils.h"
 #include "base/memory_tool.h"
 #include "base/mutex.h"
@@ -4230,6 +4231,19 @@ void Thread::ClearAllInterpreterCaches() {
     }
   } closure;
   Runtime::Current()->GetThreadList()->RunCheckpoint(&closure);
+}
+
+void Thread::ReleaseLongJumpContextInternal() {
+  // Each QuickExceptionHandler gets a long jump context and uses
+  // it for doing the long jump, after finding catch blocks/doing deoptimization.
+  // Both finding catch blocks and deoptimization can trigger another
+  // exception such as a result of class loading. So there can be nested
+  // cases of exception handling and multiple contexts being used.
+  // ReleaseLongJumpContext tries to save the context in tlsPtr_.long_jump_context
+  // for reuse so there is no need to always allocate a new one each time when
+  // getting a context. Since we only keep one context for reuse, delete the
+  // existing one since the passed in context is yet to be used for longjump.
+  delete tlsPtr_.long_jump_context;
 }
 
 }  // namespace art

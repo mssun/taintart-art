@@ -18,6 +18,7 @@
 
 #include <android-base/logging.h>
 
+#include "arch/context.h"
 #include "base/mutex.h"
 #include "dex/dex_file-inl.h"
 #include "jni/jni_internal.h"
