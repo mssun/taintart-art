@@ -2654,6 +2654,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
             // See if instance-of was preceded by a move-object operation, common due to the small
             // register encoding space of instance-of, and propagate type information to the source
             // of the move-object.
+            // Note: this is only valid if the move source was not clobbered.
             uint32_t move_idx = instance_of_idx - 1;
             while (0 != move_idx && !GetInstructionFlags(move_idx).IsOpcode()) {
               move_idx--;
@@ -2663,28 +2664,25 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
                             work_insn_idx_)) {
               break;
             }
+            auto maybe_update_fn = [&instance_of_inst, update_line, this, &cast_type](
+                uint16_t move_src,
+                uint16_t move_trg)
+                REQUIRES_SHARED(Locks::mutator_lock_) {
+              if (move_trg == instance_of_inst.VRegB_22c() &&
+                  move_src != instance_of_inst.VRegA_22c()) {
+                update_line->SetRegisterType<LockOp::kKeep>(this, move_src, cast_type);
+              }
+            };
             const Instruction& move_inst = code_item_accessor_.InstructionAt(move_idx);
             switch (move_inst.Opcode()) {
               case Instruction::MOVE_OBJECT:
-                if (move_inst.VRegA_12x() == instance_of_inst.VRegB_22c()) {
-                  update_line->SetRegisterType<LockOp::kKeep>(this,
-                                                              move_inst.VRegB_12x(),
-                                                              cast_type);
-                }
+                maybe_update_fn(move_inst.VRegB_12x(), move_inst.VRegA_12x());
                 break;
               case Instruction::MOVE_OBJECT_FROM16:
-                if (move_inst.VRegA_22x() == instance_of_inst.VRegB_22c()) {
-                  update_line->SetRegisterType<LockOp::kKeep>(this,
-                                                              move_inst.VRegB_22x(),
-                                                              cast_type);
-                }
+                maybe_update_fn(move_inst.VRegB_22x(), move_inst.VRegA_22x());
                 break;
               case Instruction::MOVE_OBJECT_16:
-                if (move_inst.VRegA_32x() == instance_of_inst.VRegB_22c()) {
-                  update_line->SetRegisterType<LockOp::kKeep>(this,
-                                                              move_inst.VRegB_32x(),
-                                                              cast_type);
-                }
+                maybe_update_fn(move_inst.VRegB_32x(), move_inst.VRegA_32x());
                 break;
               default:
                 break;
