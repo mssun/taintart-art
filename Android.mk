@@ -63,7 +63,6 @@ include $(art_path)/tools/ahat/Android.mk
 include $(art_path)/tools/amm/Android.mk
 include $(art_path)/tools/dexfuzz/Android.mk
 include $(art_path)/tools/veridex/Android.mk
-include $(art_path)/libart_fake/Android.mk
 
 ART_HOST_DEPENDENCIES := \
   $(ART_HOST_EXECUTABLES) \
@@ -387,9 +386,6 @@ LOCAL_REQUIRED_MODULES := \
     libopenjdkjvmti \
     profman \
     libadbconnection \
-
-# For nosy apps, we provide a fake library that avoids namespace issues and gives some warnings.
-LOCAL_REQUIRED_MODULES += libart_fake
 
 # Potentially add in debug variants:
 #
