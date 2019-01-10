@@ -476,7 +476,7 @@ class ArtMethod final {
   }
 
   ProfilingInfo* GetProfilingInfo(PointerSize pointer_size) REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (UNLIKELY(IsNative()) || UNLIKELY(IsProxyMethod())) {
+    if (UNLIKELY(IsNative() || IsProxyMethod() || !IsInvokable())) {
       return nullptr;
     }
     return reinterpret_cast<ProfilingInfo*>(GetDataPtrSize(pointer_size));

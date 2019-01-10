@@ -848,7 +848,7 @@ void Instrumentation::UpdateMethodsCodeImpl(ArtMethod* method, const void* quick
         new_quick_code = GetQuickInstrumentationEntryPoint();
         if (!method->IsNative() && Runtime::Current()->GetJit() != nullptr) {
           // Native methods use trampoline entrypoints during interpreter tracing.
-          DCHECK(!Runtime::Current()->GetJit()->GetCodeCache()->GetGarbageCollectCode());
+          DCHECK(!Runtime::Current()->GetJit()->GetCodeCache()->GetGarbageCollectCodeUnsafe());
           ProfilingInfo* profiling_info = method->GetProfilingInfo(kRuntimePointerSize);
           // Tracing will look at the saved entry point in the profiling info to know the actual
           // entrypoint, so we store it here.
@@ -1050,14 +1050,6 @@ void Instrumentation::EnableMethodTracing(const char* key, bool needs_interprete
     level = InstrumentationLevel::kInstrumentWithInterpreter;
   } else {
     level = InstrumentationLevel::kInstrumentWithInstrumentationStubs;
-    if (Runtime::Current()->GetJit() != nullptr) {
-      // TODO b/110263880 It would be better if we didn't need to do this.
-      // Since we need to hold the method entrypoint across a suspend to ensure instrumentation
-      // hooks are called correctly we have to disable jit-gc to ensure that the entrypoint doesn't
-      // go away. Furthermore we need to leave this off permanently since one could get the same
-      // effect by causing this to be toggled on and off.
-      Runtime::Current()->GetJit()->GetCodeCache()->SetGarbageCollectCode(false);
-    }
   }
   ConfigureStubs(key, level);
 }

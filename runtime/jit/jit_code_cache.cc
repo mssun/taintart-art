@@ -390,7 +390,7 @@ JitCodeCache* JitCodeCache::Create(bool used_only_for_profile_data,
 
   // Zygote should never collect code to share the memory with the children.
   if (is_zygote) {
-    jit_code_cache->SetGarbageCollectCode(false);
+    jit_code_cache->garbage_collect_code_ = false;
   }
 
   if (!jit_code_cache->InitializeMappings(rwx_memory_allowed, is_zygote, error_msg)) {
@@ -1247,6 +1247,24 @@ void JitCodeCache::MoveObsoleteMethod(ArtMethod* old_method, ArtMethod* new_meth
   }
 }
 
+void JitCodeCache::ClearEntryPointsInZygoteExecSpace() {
+  MutexLock mu(Thread::Current(), lock_);
+  // Iterate over profiling infos to know which methods may have been JITted. Note that
+  // to be JITted, a method must have a profiling info.
+  for (ProfilingInfo* info : profiling_infos_) {
+    ArtMethod* method = info->GetMethod();
+    if (IsInZygoteExecSpace(method->GetEntryPointFromQuickCompiledCode())) {
+      method->SetEntryPointFromQuickCompiledCode(GetQuickToInterpreterBridge());
+    }
+    // If zygote does method tracing, or in some configuration where
+    // the JIT zygote does GC, we also need to clear the saved entry point
+    // in the profiling info.
+    if (IsInZygoteExecSpace(info->GetSavedEntryPoint())) {
+      info->SetSavedEntryPoint(nullptr);
+    }
+  }
+}
+
 size_t JitCodeCache::CodeCacheSizeLocked() {
   return used_memory_for_code_;
 }
@@ -1437,17 +1455,14 @@ bool JitCodeCache::ShouldDoFullCollection() {
 
 void JitCodeCache::GarbageCollectCache(Thread* self) {
   ScopedTrace trace(__FUNCTION__);
-  if (!garbage_collect_code_) {
-    MutexLock mu(self, lock_);
-    IncreaseCodeCacheCapacity();
-    return;
-  }
-
   // Wait for an existing collection, or let everyone know we are starting one.
   {
     ScopedThreadSuspension sts(self, kSuspended);
     MutexLock mu(self, lock_);
-    if (WaitForPotentialCollectionToComplete(self)) {
+    if (!garbage_collect_code_) {
+      IncreaseCodeCacheCapacity();
+      return;
+    } else if (WaitForPotentialCollectionToComplete(self)) {
       return;
     } else {
       number_of_collections_++;
@@ -1571,6 +1586,29 @@ void JitCodeCache::RemoveUnmarkedCode(Thread* self) {
     }
   }
   FreeAllMethodHeaders(method_headers);
+}
+
+bool JitCodeCache::GetGarbageCollectCode() {
+  MutexLock mu(Thread::Current(), lock_);
+  return garbage_collect_code_;
+}
+
+void JitCodeCache::SetGarbageCollectCode(bool value) {
+  Thread* self = Thread::Current();
+  MutexLock mu(self, lock_);
+  if (garbage_collect_code_ != value) {
+    if (garbage_collect_code_) {
+      // When dynamically disabling the garbage collection, we neee
+      // to make sure that a potential current collection is finished, and also
+      // clear the saved entry point in profiling infos to avoid dangling pointers.
+      WaitForPotentialCollectionToComplete(self);
+      for (ProfilingInfo* info : profiling_infos_) {
+        info->SetSavedEntryPoint(nullptr);
+      }
+    }
+    // Update the flag while holding the lock to ensure no thread will try to GC.
+    garbage_collect_code_ = value;
+  }
 }
 
 void JitCodeCache::DoCollection(Thread* self, bool collect_profiling_info) {
