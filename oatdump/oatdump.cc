@@ -114,7 +114,7 @@ const char* image_roots_descriptions_[] = {
   "kOomeWhenThrowingOome",
   "kOomeWhenHandlingStackOverflow",
   "kNoClassDefFoundError",
-  "kClassLoader",
+  "kSpecialRoots",
 };
 
 // Map is so that we don't allocate multiple dex files for the same OatDexFile.
