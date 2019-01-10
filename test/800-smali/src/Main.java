@@ -193,6 +193,8 @@ public class Main {
         testCases.add(new TestCase("b/31313170", "B31313170", "run", null, null, 0));
         testCases.add(new TestCase("ConstClassAliasing", "ConstClassAliasing", "run", null, null,
                 null, true));
+        testCases.add(new TestCase("b/121191566", "B121191566", "run", new Object[] { "a" }, null,
+                true, false));
     }
 
     public void runTests() {
