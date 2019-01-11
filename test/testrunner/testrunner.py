@@ -400,12 +400,15 @@ def run_tests(tests):
       elif target == 'jvm':
         options_test += ' --jvm'
 
-      # Honor ART_TEST_CHROOT and ART_TEST_ANDROID_ROOT, but only for target tests.
+      # Honor ART_TEST_CHROOT, ART_TEST_ANDROID_ROOT and ART_TEST_ANDROID_RUNTIME_ROOT,
+      # but only for target tests.
       if target == 'target':
         if env.ART_TEST_CHROOT:
           options_test += ' --chroot ' + env.ART_TEST_CHROOT
         if env.ART_TEST_ANDROID_ROOT:
           options_test += ' --android-root ' + env.ART_TEST_ANDROID_ROOT
+        if env.ART_TEST_ANDROID_RUNTIME_ROOT:
+          options_test += ' --android-runtime-root ' + env.ART_TEST_ANDROID_RUNTIME_ROOT
 
       if run == 'ndebug':
         options_test += ' -O'
