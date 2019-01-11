@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "art_api/ext_dex_file.h"
+#include "art_api/dex_file_support.h"
 
 namespace art_api {
 namespace dex {
