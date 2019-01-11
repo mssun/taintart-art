@@ -227,7 +227,7 @@
 {
   description: "Apex related",
   result: EXEC_FAILED,
-  modes: [device],
+  modes: [device_testdex],
   bug: 122642227,
   names: [
     "libcore.java.lang.SystemTest#testSystemProperties_mutable",
