@@ -2429,7 +2429,9 @@ void ImageWriter::CalculateNewObjectOffsets() {
     size_t bin_offset = image_objects_offset_begin_;
     // Need to visit the objects in bin order since alignment requirements might change the
     // section sizes.
-    using BinPair = std::pair<BinSlot, ObjPtr<mirror::Object>>;
+    // Avoid using ObjPtr since VisitObjects invalidates. This is safe since concurrent GC can not
+    // occur during image writing.
+    using BinPair = std::pair<BinSlot, mirror::Object*>;
     std::vector<BinPair> objects;
     heap->VisitObjects([&](mirror::Object* obj)
         REQUIRES_SHARED(Locks::mutator_lock_) {
