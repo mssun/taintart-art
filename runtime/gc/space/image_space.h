@@ -216,7 +216,7 @@ class ImageSpace : public MemMapSpace {
   class PatchArtFieldVisitor;
   template <PointerSize kPointerSize, typename PatchObjectVisitor, typename PatchCodeVisitor>
   class PatchArtMethodVisitor;
-  template <PointerSize kPointerSize, typename ReferenceVisitor>
+  template <PointerSize kPointerSize, typename HeapVisitor, typename NativeVisitor>
   class PatchObjectVisitor;
 
   DISALLOW_COPY_AND_ASSIGN(ImageSpace);
