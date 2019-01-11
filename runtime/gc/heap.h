@@ -441,6 +441,10 @@ class Heap {
     return process_cpu_start_time_ns_;
   }
 
+  uint64_t GetPostGCLastProcessCpuTime() const {
+    return post_gc_last_process_cpu_time_ns_;
+  }
+
   // Set target ideal heap utilization ratio, implements
   // dalvik.system.VMRuntime.setTargetHeapUtilization.
   void SetTargetHeapUtilization(float target);
