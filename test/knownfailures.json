@@ -81,11 +81,13 @@
         "variant": "no-prebuild"
     },
     {
-        "tests": ["118-noimage-dex2oat"],
+        "tests": ["118-noimage-dex2oat",
+                  "1001-app-image-regions"],
         "variant": "no-relocate",
         "description": ["118-noimage-dex2oat is not broken per-se it just ",
                         "doesn't work (and isn't meant to) without --prebuild ",
-                        "--relocate"]
+                        "--relocate. 1001-app-image-regions is disabled since it",
+                        "doesn't have the app image loaded for no-relocate"]
     },
     {
         "tests" : "629-vdex-speed",
@@ -1085,6 +1087,7 @@
                   "688-shared-library",
                   "999-redefine-hiddenapi",
                   "1000-non-moving-space-stress",
+                  "1001-app-image-regions",
                   "1951-monitor-enter-no-suspend",
                   "1957-error-ext"],
         "variant": "jvm",

@@ -49,6 +49,7 @@
 #include "gc/heap-visit-objects-inl.h"
 #include "gc/heap.h"
 #include "gc/space/large_object_space.h"
+#include "gc/space/region_space.h"
 #include "gc/space/space-inl.h"
 #include "gc/verification.h"
 #include "handle_scope-inl.h"
@@ -2423,10 +2424,31 @@ void ImageWriter::CalculateNewObjectOffsets() {
   }
 
   // Calculate bin slot offsets.
-  for (ImageInfo& image_info : image_infos_) {
+  for (size_t oat_index = 0; oat_index < image_infos_.size(); ++oat_index) {
+    ImageInfo& image_info = image_infos_[oat_index];
     size_t bin_offset = image_objects_offset_begin_;
+    // Need to visit the objects in bin order since alignment requirements might change the
+    // section sizes.
+    using BinPair = std::pair<BinSlot, ObjPtr<mirror::Object>>;
+    std::vector<BinPair> objects;
+    heap->VisitObjects([&](mirror::Object* obj)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      // Only visit the oat index for the current image.
+      if (IsImageObject(obj) && GetOatIndex(obj) == oat_index) {
+        objects.emplace_back(GetImageBinSlot(obj), obj);
+      }
+    });
+    std::sort(objects.begin(), objects.end(), [](const BinPair& a, const BinPair& b) -> bool {
+      if (a.first.GetBin() != b.first.GetBin()) {
+        return a.first.GetBin() < b.first.GetBin();
+      }
+      // Note that the index is really the relative offset in this case.
+      return a.first.GetIndex() < b.first.GetIndex();
+    });
+    auto it = objects.begin();
     for (size_t i = 0; i != kNumberOfBins; ++i) {
-      switch (static_cast<Bin>(i)) {
+      Bin bin = enum_cast<Bin>(i);
+      switch (bin) {
         case Bin::kArtMethodClean:
         case Bin::kArtMethodDirty: {
           bin_offset = RoundUp(bin_offset, method_alignment);
@@ -2445,12 +2467,48 @@ void ImageWriter::CalculateNewObjectOffsets() {
         }
       }
       image_info.bin_slot_offsets_[i] = bin_offset;
-      bin_offset += image_info.bin_slot_sizes_[i];
+
+      // If the bin is for mirror objects, assign the offsets since we may need to change sizes
+      // from alignment requirements.
+      if (i < static_cast<size_t>(Bin::kMirrorCount)) {
+        const size_t start_offset = bin_offset;
+        // Visit and assign offsets for all objects of the bin type.
+        while (it != objects.end() && it->first.GetBin() == bin) {
+          ObjPtr<mirror::Object> obj(it->second);
+          const size_t object_size = RoundUp(obj->SizeOf(), kObjectAlignment);
+          // If the object spans region bondaries, add padding objects between.
+          // TODO: Instead of adding padding, we should consider reordering the bins to reduce
+          // wasted space.
+          if (region_size_ != 0u) {
+            const size_t offset_after_header = bin_offset - sizeof(ImageHeader);
+            const size_t next_region = RoundUp(offset_after_header, region_size_);
+            if (offset_after_header != next_region &&
+                offset_after_header + object_size > next_region) {
+              // Add padding objects until aligned.
+              while (bin_offset - sizeof(ImageHeader) < next_region) {
+                image_info.padding_object_offsets_.push_back(bin_offset);
+                bin_offset += kObjectAlignment;
+                region_alignment_wasted_ += kObjectAlignment;
+                image_info.image_end_ += kObjectAlignment;
+              }
+              CHECK_EQ(bin_offset - sizeof(ImageHeader), next_region);
+            }
+          }
+          SetImageOffset(obj.Ptr(), bin_offset);
+          bin_offset = bin_offset + object_size;
+          ++it;
+        }
+        image_info.bin_slot_sizes_[i] = bin_offset - start_offset;
+      } else {
+        bin_offset += image_info.bin_slot_sizes_[i];
+      }
     }
     // NOTE: There may be additional padding between the bin slots and the intern table.
     DCHECK_EQ(image_info.image_end_,
               image_info.GetBinSizeSum(Bin::kMirrorCount) + image_objects_offset_begin_);
   }
+
+  VLOG(image) << "Space wasted for region alignment " << region_alignment_wasted_;
 
   // Calculate image offsets.
   size_t image_offset = 0;
@@ -2460,17 +2518,6 @@ void ImageWriter::CalculateNewObjectOffsets() {
     image_info.image_size_ = RoundUp(image_info.CreateImageSections().first, kPageSize);
     // There should be no gaps until the next image.
     image_offset += image_info.image_size_;
-  }
-
-  // Transform each object's bin slot into an offset which will be used to do the final copy.
-  {
-    auto unbin_objects_into_offset = [&](mirror::Object* obj)
-        REQUIRES_SHARED(Locks::mutator_lock_) {
-      if (IsImageObject(obj)) {
-        UnbinObjectsIntoOffset(obj);
-      }
-    };
-    heap->VisitObjects(unbin_objects_into_offset);
   }
 
   size_t i = 0;
@@ -2887,16 +2934,6 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
   }
 }
 
-void ImageWriter::CopyAndFixupObjects() {
-  auto visitor = [&](Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK(obj != nullptr);
-    CopyAndFixupObject(obj);
-  };
-  Runtime::Current()->GetHeap()->VisitObjects(visitor);
-  // We no longer need the hashcode map, values have already been copied to target objects.
-  saved_hashcode_map_.clear();
-}
-
 void ImageWriter::FixupPointerArray(mirror::Object* dst,
                                     mirror::PointerArray* arr,
                                     Bin array_type) {
@@ -2944,6 +2981,18 @@ void ImageWriter::CopyAndFixupObject(Object* obj) {
   image_info.image_bitmap_->Set(dst);  // Mark the obj as live.
 
   const size_t n = obj->SizeOf();
+
+  if (kIsDebugBuild && region_size_ != 0u) {
+    const size_t offset_after_header = offset - sizeof(ImageHeader);
+    const size_t next_region = RoundUp(offset_after_header, region_size_);
+    if (offset_after_header != next_region) {
+      // If the object is not on a region bondary, it must not be cross region.
+      CHECK_LT(offset_after_header, next_region)
+          << "offset_after_header=" << offset_after_header << " size=" << n;
+      CHECK_LE(offset_after_header + n, next_region)
+          << "offset_after_header=" << offset_after_header << " size=" << n;
+    }
+  }
   DCHECK_LE(offset + n, image_info.image_.Size());
   memcpy(dst, src, n);
 
@@ -2973,7 +3022,6 @@ class ImageWriter::FixupVisitor {
       const {}
   void VisitRoot(mirror::CompressedReference<mirror::Object>* root ATTRIBUTE_UNUSED) const {}
 
-
   void operator()(ObjPtr<Object> obj, MemberOffset offset, bool is_static ATTRIBUTE_UNUSED) const
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(Locks::heap_bitmap_lock_) {
     ObjPtr<Object> ref = obj->GetFieldObject<Object, kVerifyNone>(offset);
@@ -2993,6 +3041,25 @@ class ImageWriter::FixupVisitor {
   ImageWriter* const image_writer_;
   mirror::Object* const copy_;
 };
+
+void ImageWriter::CopyAndFixupObjects() {
+  auto visitor = [&](Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK(obj != nullptr);
+    CopyAndFixupObject(obj);
+  };
+  Runtime::Current()->GetHeap()->VisitObjects(visitor);
+  // Copy the padding objects since they are required for in order traversal of the image space.
+  for (const ImageInfo& image_info : image_infos_) {
+    for (const size_t offset : image_info.padding_object_offsets_) {
+      auto* dst = reinterpret_cast<Object*>(image_info.image_.Begin() + offset);
+      dst->SetClass<kVerifyNone>(GetImageAddress(GetClassRoot<mirror::Object>().Ptr()));
+      dst->SetLockWord<kVerifyNone>(LockWord::Default(), /*as_volatile=*/ false);
+      image_info.image_bitmap_->Set(dst);  // Mark the obj as live.
+    }
+  }
+  // We no longer need the hashcode map, values have already been copied to target objects.
+  saved_hashcode_map_.clear();
+}
 
 class ImageWriter::FixupClassVisitor final : public FixupVisitor {
  public:
@@ -3572,6 +3639,10 @@ ImageWriter::ImageWriter(
   CHECK_EQ(compiler_options.IsBootImage(),
            Runtime::Current()->GetHeap()->GetBootImageSpaces().empty())
       << "Compiling a boot image should occur iff there are no boot image spaces loaded";
+  if (compiler_options_.IsAppImage()) {
+    // Make sure objects are not crossing region boundaries for app images.
+    region_size_ = gc::space::RegionSpace::kRegionSize;
+  }
 }
 
 ImageWriter::ImageInfo::ImageInfo()
