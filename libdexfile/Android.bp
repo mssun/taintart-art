@@ -176,6 +176,36 @@ art_cc_library {
     },
 }
 
+art_cc_test {
+    name: "art_libdexfile_tests",
+    defaults: [
+        "art_gtest_defaults",
+    ],
+    srcs: [
+        "dex/art_dex_file_loader_test.cc",
+        "dex/class_accessor_test.cc",
+        "dex/code_item_accessors_test.cc",
+        "dex/compact_dex_file_test.cc",
+        "dex/compact_offset_table_test.cc",
+        "dex/descriptors_names_test.cc",
+        "dex/test_dex_file_builder_test.cc",
+        "dex/dex_file_loader_test.cc",
+        "dex/dex_file_verifier_test.cc",
+        "dex/dex_instruction_test.cc",
+        "dex/primitive_test.cc",
+        "dex/string_reference_test.cc",
+        "dex/type_lookup_table_test.cc",
+        "dex/utf_test.cc",
+    ],
+    shared_libs: [
+        "libbacktrace",
+        "libziparchive",
+    ],
+    include_dirs: [
+        "external/zlib",
+    ],
+}
+
 cc_library_headers {
     name: "libdexfile_external_headers",
     host_supported: true,
@@ -227,6 +257,16 @@ cc_library {
     },
 }
 
+art_cc_test {
+    name: "art_libdexfile_external_tests",
+    host_supported: true,
+    test_per_src: true,  // For consistency with other ART gtests.
+    srcs: [
+        "external/dex_file_ext_c_test.c",
+    ],
+    header_libs: ["libdexfile_external_headers"],
+}
+
 // Support library with a C++ API for accessing the libdexfile API for external
 // (non-ART) users. They should link to their own instance of this (either
 // statically or through linker namespaces).
@@ -242,31 +282,16 @@ cc_library {
 }
 
 art_cc_test {
-    name: "art_libdexfile_tests",
-    defaults: [
-        "art_gtest_defaults",
-    ],
+    name: "art_libdexfile_support_tests",
+    host_supported: true,
+    test_per_src: true,  // For consistency with other ART gtests.
     srcs: [
-        "dex/art_dex_file_loader_test.cc",
-        "dex/class_accessor_test.cc",
-        "dex/code_item_accessors_test.cc",
-        "dex/compact_dex_file_test.cc",
-        "dex/compact_offset_table_test.cc",
-        "dex/descriptors_names_test.cc",
-        "dex/test_dex_file_builder_test.cc",
-        "dex/dex_file_loader_test.cc",
-        "dex/dex_file_verifier_test.cc",
-        "dex/dex_instruction_test.cc",
-        "dex/primitive_test.cc",
-        "dex/string_reference_test.cc",
-        "dex/type_lookup_table_test.cc",
-        "dex/utf_test.cc",
+        "external/dex_file_supp_test.cc",
     ],
     shared_libs: [
-        "libbacktrace",
-        "libziparchive",
-    ],
-    include_dirs: [
-        "external/zlib",
+        "libartbase",
+        "libbase",
+        "libdexfile_external",
+        "libdexfile_support",
     ],
 }
