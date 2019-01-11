@@ -36,6 +36,7 @@ static int write_gtest_output_xml(char* gtest_output_path) {
   }
   if (fprintf(output_fd, gtest_output_xml) != sizeof(gtest_output_xml) - 1) {
     fprintf(stderr, "Failed to write %s: %s\n", gtest_output_path, strerror(errno));
+    fclose(output_fd);
     return 1;
   }
   if (fclose(output_fd) != 0) {
