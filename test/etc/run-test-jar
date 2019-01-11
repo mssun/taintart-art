@@ -319,6 +319,10 @@ while true; do
         shift
         ANDROID_ROOT="$1"
         shift
+    elif [ "x$1" = "x--android-runtime-root" ]; then
+        shift
+        ANDROID_RUNTIME_ROOT="$1"
+        shift
     elif [ "x$1" = "x--instruction-set-features" ]; then
         shift
         INSTRUCTION_SET_FEATURES="$1"

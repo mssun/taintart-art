@@ -386,6 +386,15 @@ while true; do
         android_root="$1"
         run_args="${run_args} --android-root $1"
         shift
+    elif [ "x$1" = "x--android-runtime-root" ]; then
+        shift
+        if [ "x$1" = "x" ]; then
+            echo "$0 missing argument to --android-runtime-root" 1>&2
+            usage="yes"
+            break
+        fi
+        run_args="${run_args} --android-runtime-root $1"
+        shift
     elif [ "x$1" = "x--update" ]; then
         update_mode="yes"
         shift
@@ -758,6 +767,9 @@ if [ "$usage" = "yes" ]; then
         echo "    --never-clean         Keep the test files even if the test succeeds."
         echo "    --chroot [newroot]    Run with root directory set to newroot."
         echo "    --android-root [path] The path on target for the android root. (/system by default)."
+        echo "    --android-runtime-root [path]"
+        echo "                          The path on target for the Android Runtime root."
+        echo "                          (/apex/com.android.runtime by default)."
         echo "    --dex2oat-swap        Use a dex2oat swap file."
         echo "    --instruction-set-features [string]"
         echo "                          Set instruction-set-features for compilation."
