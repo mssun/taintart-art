@@ -174,6 +174,7 @@ function check_release_contents {
   check_library libart.so
   check_library libartbase.so
   check_library libdexfile.so
+  check_library libdexfile_external.so
   check_library libopenjdkjvm.so
   check_library libopenjdkjvmti.so
   check_library libprofile.so
