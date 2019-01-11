@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_LIBDEXFILE_EXTERNAL_INCLUDE_ART_API_EXT_DEX_FILE_H_
-#define ART_LIBDEXFILE_EXTERNAL_INCLUDE_ART_API_EXT_DEX_FILE_H_
+#ifndef ART_LIBDEXFILE_EXTERNAL_INCLUDE_ART_API_DEX_FILE_SUPPORT_H_
+#define ART_LIBDEXFILE_EXTERNAL_INCLUDE_ART_API_DEX_FILE_SUPPORT_H_
 
 // Dex file external API
 
@@ -76,6 +76,7 @@ int ExtDexFileOpenFromFd(int fd,
 // See art_api::dex::DexFile::GetMethodInfoForOffset. Returns true on success.
 int ExtDexFileGetMethodInfoForOffset(ExtDexFile* ext_dex_file,
                                      int64_t dex_offset,
+                                     int with_signature,
                                      /*out*/ ExtDexFileMethodInfo* method_info);
 
 typedef void ExtDexFileMethodInfoCallback(const ExtDexFileMethodInfo* ext_method_info,
@@ -211,10 +212,15 @@ class DexFile {
 
   // Given an offset relative to the start of the dex file header, if there is a
   // method whose instruction range includes that offset then returns info about
-  // it, otherwise returns a struct with offset == 0.
-  MethodInfo GetMethodInfoForOffset(int64_t dex_offset) {
+  // it, otherwise returns a struct with offset == 0. MethodInfo.name receives
+  // the full function signature if with_signature is set, otherwise it gets the
+  // class and method name only.
+  MethodInfo GetMethodInfoForOffset(int64_t dex_offset, bool with_signature) {
     ExtDexFileMethodInfo ext_method_info;
-    if (ExtDexFileGetMethodInfoForOffset(ext_dex_file_, dex_offset, &ext_method_info)) {
+    if (ExtDexFileGetMethodInfoForOffset(ext_dex_file_,
+                                         dex_offset,
+                                         with_signature,
+                                         &ext_method_info)) {
       return AbsorbMethodInfo(ext_method_info);
     }
     return {/*offset=*/0, /*len=*/0, /*name=*/DexString()};
@@ -223,10 +229,12 @@ class DexFile {
   // Returns info structs about all methods in the dex file. MethodInfo.name
   // receives the full function signature if with_signature is set, otherwise it
   // gets the class and method name only.
-  std::vector<MethodInfo> GetAllMethodInfos(bool with_signature = true) {
+  std::vector<MethodInfo> GetAllMethodInfos(bool with_signature) {
     MethodInfoVector res;
-    ExtDexFileGetAllMethodInfos(
-        ext_dex_file_, with_signature, AddMethodInfoCallback, static_cast<void*>(&res));
+    ExtDexFileGetAllMethodInfos(ext_dex_file_,
+                                with_signature,
+                                AddMethodInfoCallback,
+                                static_cast<void*>(&res));
     return res;
   }
 
@@ -245,4 +253,4 @@ class DexFile {
 }  // namespace dex
 }  // namespace art_api
 
-#endif  // ART_LIBDEXFILE_EXTERNAL_INCLUDE_ART_API_EXT_DEX_FILE_H_
+#endif  // ART_LIBDEXFILE_EXTERNAL_INCLUDE_ART_API_DEX_FILE_SUPPORT_H_
