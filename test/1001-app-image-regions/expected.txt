@@ -1,0 +1,4 @@
+JNI_OnLoad called
+App image loaded true
+Region size 262144
+App image section size large enough true

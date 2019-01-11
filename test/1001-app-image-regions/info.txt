@@ -1,0 +1,1 @@
+Tests that an app image with many classes is generated and loaded correctly.
