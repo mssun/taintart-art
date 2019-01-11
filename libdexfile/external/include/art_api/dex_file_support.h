@@ -23,6 +23,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <android-base/macros.h>
@@ -35,7 +36,9 @@ namespace dex {
 // Minimal std::string look-alike for a string returned from libdexfile.
 class DexString final {
  public:
-  DexString(DexString&& dex_str) noexcept { ReplaceExtString(std::move(dex_str)); }
+  DexString(DexString&& dex_str) noexcept : ext_string_(dex_str.ext_string_) {
+    dex_str.ext_string_ = ExtDexFileMakeString("", 0);
+  }
   explicit DexString(const char* str = "")
       : ext_string_(ExtDexFileMakeString(str, std::strlen(str))) {}
   explicit DexString(std::string_view str)
@@ -43,7 +46,7 @@ class DexString final {
   ~DexString() { ExtDexFileFreeString(ext_string_); }
 
   DexString& operator=(DexString&& dex_str) noexcept {
-    ReplaceExtString(std::move(dex_str));
+    std::swap(ext_string_, dex_str.ext_string_);
     return *this;
   }
 
@@ -71,11 +74,6 @@ class DexString final {
   friend bool operator==(const DexString&, const DexString&);
   explicit DexString(const ExtDexFileString* ext_string) : ext_string_(ext_string) {}
   const ExtDexFileString* ext_string_;  // Owned instance. Never nullptr.
-
-  void ReplaceExtString(DexString&& dex_str) {
-    ext_string_ = dex_str.ext_string_;
-    dex_str.ext_string_ = ExtDexFileMakeString("", 0);
-  }
 
   DISALLOW_COPY_AND_ASSIGN(DexString);
 };
