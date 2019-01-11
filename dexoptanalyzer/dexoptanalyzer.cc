@@ -202,11 +202,7 @@ class DexoptAnalyzer final {
             Usage("Invalid --zip-fd %d", zip_fd_);
           }
       } else if (option.starts_with("--class-loader-context=")) {
-        std::string context_str = option.substr(strlen("--class-loader-context=")).ToString();
-        class_loader_context_ = ClassLoaderContext::Create(context_str);
-        if (class_loader_context_ == nullptr) {
-          Usage("Invalid --class-loader-context '%s'", context_str.c_str());
-        }
+        context_str_ = option.substr(strlen("--class-loader-context=")).ToString();
       } else {
         Usage("Unknown argument '%s'", option.data());
       }
@@ -264,6 +260,17 @@ class DexoptAnalyzer final {
     }
     std::unique_ptr<Runtime> runtime(Runtime::Current());
 
+    // Only when the runtime is created can we create the class loader context: the
+    // class loader context will open dex file and use the MemMap global lock that the
+    // runtime owns.
+    std::unique_ptr<ClassLoaderContext> class_loader_context;
+    if (!context_str_.empty()) {
+      class_loader_context = ClassLoaderContext::Create(context_str_);
+      if (class_loader_context == nullptr) {
+        Usage("Invalid --class-loader-context '%s'", context_str_.c_str());
+      }
+    }
+
     std::unique_ptr<OatFileAssistant> oat_file_assistant;
     oat_file_assistant = std::make_unique<OatFileAssistant>(dex_file_.c_str(),
                                                             isa_,
@@ -279,7 +286,7 @@ class DexoptAnalyzer final {
     }
 
     int dexoptNeeded = oat_file_assistant->GetDexOptNeeded(
-        compiler_filter_, assume_profile_changed_, downgrade_, class_loader_context_.get());
+        compiler_filter_, assume_profile_changed_, downgrade_, class_loader_context.get());
 
     // Convert OatFileAssitant codes to dexoptanalyzer codes.
     switch (dexoptNeeded) {
@@ -300,7 +307,7 @@ class DexoptAnalyzer final {
   std::string dex_file_;
   InstructionSet isa_;
   CompilerFilter::Filter compiler_filter_;
-  std::unique_ptr<ClassLoaderContext> class_loader_context_;
+  std::string context_str_;
   bool assume_profile_changed_;
   bool downgrade_;
   std::string image_;

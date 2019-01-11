@@ -72,7 +72,8 @@ void DexoptTest::GenerateOatForTest(const std::string& dex_location,
                                     const std::string& oat_location,
                                     CompilerFilter::Filter filter,
                                     bool with_alternate_image,
-                                    const char* compilation_reason) {
+                                    const char* compilation_reason,
+                                    const std::vector<std::string>& extra_args) {
   std::string dalvik_cache = GetDalvikCache(GetInstructionSetString(kRuntimeISA));
   std::string dalvik_cache_tmp = dalvik_cache + ".redirected";
 
@@ -100,6 +101,8 @@ void DexoptTest::GenerateOatForTest(const std::string& dex_location,
   if (compilation_reason != nullptr) {
     args.push_back("--compilation-reason=" + std::string(compilation_reason));
   }
+
+  args.insert(args.end(), extra_args.begin(), extra_args.end());
 
   std::string error_msg;
   ASSERT_TRUE(Dex2Oat(args, &error_msg)) << error_msg;
@@ -136,12 +139,14 @@ void DexoptTest::GenerateOatForTest(const std::string& dex_location,
 void DexoptTest::GenerateOdexForTest(const std::string& dex_location,
                                      const std::string& odex_location,
                                      CompilerFilter::Filter filter,
-                                     const char* compilation_reason) {
+                                     const char* compilation_reason,
+                                     const std::vector<std::string>& extra_args) {
   GenerateOatForTest(dex_location,
                      odex_location,
                      filter,
                      /*with_alternate_image=*/ false,
-                     compilation_reason);
+                     compilation_reason,
+                     extra_args);
 }
 
 void DexoptTest::GenerateOatForTest(const char* dex_location,

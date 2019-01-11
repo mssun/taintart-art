@@ -36,7 +36,8 @@ class DexoptAnalyzerTest : public DexoptTest {
 
   int Analyze(const std::string& dex_file,
               CompilerFilter::Filter compiler_filter,
-              bool assume_profile_changed) {
+              bool assume_profile_changed,
+              const std::string& class_loader_context) {
     std::string dexoptanalyzer_cmd = GetDexoptAnalyzerCmd();
     std::vector<std::string> argv_str;
     argv_str.push_back(dexoptanalyzer_cmd);
@@ -52,6 +53,9 @@ class DexoptAnalyzerTest : public DexoptTest {
     argv_str.push_back(GetClassPathOption("-Xbootclasspath-locations:", GetLibCoreDexLocations()));
     argv_str.push_back("--image=" + GetImageLocation());
     argv_str.push_back("--android-data=" + android_data_);
+    if (!class_loader_context.empty()) {
+      argv_str.push_back("--class-loader-context=" + class_loader_context);
+    }
 
     std::string error;
     return ExecAndReturnCode(argv_str, &error);
@@ -74,8 +78,10 @@ class DexoptAnalyzerTest : public DexoptTest {
   void Verify(const std::string& dex_file,
               CompilerFilter::Filter compiler_filter,
               bool assume_profile_changed = false,
-              bool downgrade = false) {
-    int dexoptanalyzerResult = Analyze(dex_file, compiler_filter, assume_profile_changed);
+              bool downgrade = false,
+              const std::string& class_loader_context = "") {
+    int dexoptanalyzerResult = Analyze(
+        dex_file, compiler_filter, assume_profile_changed, class_loader_context);
     dexoptanalyzerResult = DexoptanalyzerToOatFileAssistant(dexoptanalyzerResult);
     OatFileAssistant oat_file_assistant(dex_file.c_str(), kRuntimeISA, /*load_executable=*/ false);
     int assistantResult = oat_file_assistant.GetDexOptNeeded(
@@ -303,6 +309,24 @@ TEST_F(DexoptAnalyzerTest, ShortDexLocation) {
   std::string dex_location = "/xx";
 
   Verify(dex_location, CompilerFilter::kSpeed);
+}
+
+// Case: We have a DEX file and up-to-date OAT file for it, and we check with
+// a class loader context.
+TEST_F(DexoptAnalyzerTest, ClassLoaderContext) {
+  std::string dex_location1 = GetScratchDir() + "/DexToAnalyze.jar";
+  std::string odex_location1 = GetOdexDir() + "/DexToAnalyze.odex";
+  std::string dex_location2 = GetScratchDir() + "/DexInContext.jar";
+  Copy(GetDexSrc1(), dex_location1);
+  Copy(GetDexSrc2(), dex_location2);
+
+  std::string class_loader_context = "PCL[" + dex_location2 + "]";
+  std::string class_loader_context_option = "--class-loader-context=PCL[" + dex_location2 + "]";
+
+  // Generate the odex to get the class loader context also open the dex files.
+  GenerateOdexForTest(dex_location1, odex_location1, CompilerFilter::kSpeed, /* compilation_reason= */ nullptr, /* extra_args= */ { class_loader_context_option });
+
+  Verify(dex_location1, CompilerFilter::kSpeed, false, false, class_loader_context);
 }
 
 }  // namespace art
