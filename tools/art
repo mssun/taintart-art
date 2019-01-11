@@ -456,7 +456,7 @@ if [[ "$DEX2OAT_BCP" = "" && "$DEX2OAT_BCP_LOCS" != "" ]]; then
   exit 1
 fi
 
-if [[ "$DEX2OAT_BOOT_IMAGE" = *core.art && "$DEX2OAT_BCP" = "" ]]; then
+if [[ "$DEX2OAT_BOOT_IMAGE" = *core*.art && "$DEX2OAT_BCP" = "" ]]; then
   # Note: This must start with the CORE_IMG_JARS in Android.common_path.mk
   # because that's what we use for compiling the core.art image.
   # It may contain additional modules from TEST_CORE_JARS.
