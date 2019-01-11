@@ -75,6 +75,12 @@ TEST(DexStringTest, move_assign) {
   EXPECT_EQ(std::string_view(s2), "foo");
 }
 
+TEST(DexStringTest, reassign) {
+  auto s = DexString("foo");
+  s = DexString("bar");
+  EXPECT_EQ(std::string_view(s), "bar");
+}
+
 TEST(DexStringTest, data_access) {
   auto s = DexString("foo");
   EXPECT_STREQ(s.data(), "foo");
@@ -272,7 +278,7 @@ TEST(DexFileTest, move_construct) {
   std::unique_ptr<DexFile> dex_file = GetTestDexData();
   ASSERT_NE(dex_file, nullptr);
 
-  auto df1 = DexFile(std::move(*dex_file.release()));
+  auto df1 = DexFile(std::move(*dex_file));
   auto df2 = DexFile(std::move(df1));
 
   MethodInfo info = df2.GetMethodInfoForOffset(0x100, false);
