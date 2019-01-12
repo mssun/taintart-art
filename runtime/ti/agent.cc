@@ -118,7 +118,7 @@ std::unique_ptr<Agent> AgentSpec::DoDlOpen(JNIEnv* env,
                                            : JavaVMExt::GetLibrarySearchPath(env, class_loader));
 
   bool needs_native_bridge = false;
-  std::string nativeloader_error_msg;
+  char* nativeloader_error_msg = nullptr;
   void* dlopen_handle = android::OpenNativeLibrary(env,
                                                    Runtime::Current()->GetTargetSdkVersion(),
                                                    name_.c_str(),
@@ -129,7 +129,8 @@ std::unique_ptr<Agent> AgentSpec::DoDlOpen(JNIEnv* env,
   if (dlopen_handle == nullptr) {
     *error_msg = StringPrintf("Unable to dlopen %s: %s",
                               name_.c_str(),
-                              nativeloader_error_msg.c_str());
+                              nativeloader_error_msg);
+    android::NativeLoaderFreeErrorMessage(nativeloader_error_msg);
     *error = kLoadingError;
     return nullptr;
   }
@@ -137,7 +138,7 @@ std::unique_ptr<Agent> AgentSpec::DoDlOpen(JNIEnv* env,
     // TODO: Consider support?
     // The result of this call and error_msg is ignored because the most
     // relevant error is that native bridge is unsupported.
-    android::CloseNativeLibrary(dlopen_handle, needs_native_bridge, error_msg);
+    android::CloseNativeLibrary(dlopen_handle, needs_native_bridge, &nativeloader_error_msg);
     *error_msg = StringPrintf("Native-bridge agents unsupported: %s", name_.c_str());
     *error = kLoadingError;
     return nullptr;
