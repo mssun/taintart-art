@@ -488,6 +488,15 @@ build-art-target: $(TARGET_OUT_EXECUTABLES)/art $(ART_TARGET_DEPENDENCIES) $(TAR
 .PHONY: build-art-target-golem
 # Also include libartbenchmark, we always include it when running golem.
 # libstdc++ is needed when building for ART_TARGET_LINUX.
+#
+# Also include a copy of the ICU .dat prebuilt files in
+# /system/etc/icu on target (see module `icu-data-art-test`), so that
+# it can found even if the Runtime APEX is not available, by setting
+# the environment variable `ART_TEST_ANDROID_RUNTIME_ROOT` to
+# "/system" on device. This is a temporary change needed until both
+# the ART Buildbot and Golem fully support the Runtime APEX.
+# TODO(b/121117762): Remove this when the ART Buildbot and Golem have
+# full support for the Runtime APEX.
 ART_TARGET_SHARED_LIBRARY_BENCHMARK := $(TARGET_OUT_SHARED_LIBRARIES)/libartbenchmark.so
 build-art-target-golem: dex2oat dalvikvm linker libstdc++ \
                         $(TARGET_OUT_EXECUTABLES)/art \
@@ -496,7 +505,8 @@ build-art-target-golem: dex2oat dalvikvm linker libstdc++ \
                         $(ART_TARGET_SHARED_LIBRARY_DEPENDENCIES) \
                         $(ART_TARGET_SHARED_LIBRARY_BENCHMARK) \
                         $(TARGET_CORE_IMG_OUT_BASE).art \
-                        $(TARGET_CORE_IMG_OUT_BASE)-interpreter.art
+                        $(TARGET_CORE_IMG_OUT_BASE)-interpreter.art \
+                        icu-data-art-test
 	# remove debug libraries from public.libraries.txt because golem builds
 	# won't have it.
 	sed -i '/libartd.so/d' $(TARGET_OUT)/etc/public.libraries.txt
