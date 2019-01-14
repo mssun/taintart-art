@@ -324,7 +324,6 @@ Runtime::~Runtime() {
 
   if (dump_gc_performance_on_shutdown_) {
     heap_->CalculatePreGcWeightedAllocatedBytes();
-    heap_->CalculatePostGcWeightedAllocatedBytes();
     uint64_t process_cpu_end_time = ProcessCpuNanoTime();
     ScopedLogSeverity sls(LogSeverity::INFO);
     // This can't be called from the Heap destructor below because it
@@ -341,8 +340,12 @@ Runtime::~Runtime() {
         << "\n";
     double pre_gc_weighted_allocated_bytes =
         heap_->GetPreGcWeightedAllocatedBytes() / process_cpu_time;
+    // Here we don't use process_cpu_time for normalization, because VM shutdown is not a real
+    // GC. Both numerator and denominator take into account until the end of the last GC,
+    // instead of the whole process life time like pre_gc_weighted_allocated_bytes.
     double post_gc_weighted_allocated_bytes =
-        heap_->GetPostGcWeightedAllocatedBytes() / process_cpu_time;
+        heap_->GetPostGcWeightedAllocatedBytes() /
+          (heap_->GetPostGCLastProcessCpuTime() - heap_->GetProcessCpuStartTime());
 
     LOG_STREAM(INFO) << "Average bytes allocated at GC start, weighted by CPU time between GCs: "
         << static_cast<uint64_t>(pre_gc_weighted_allocated_bytes)
