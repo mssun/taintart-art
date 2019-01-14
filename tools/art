@@ -464,7 +464,7 @@ ISA=$(LD_LIBRARY_PATH=$LD_LIBRARY_PATH $ART_BINARY_PATH -showversion | (read art
 # Extract the dex2oat flags from the list of arguments.
 # -Xcompiler-options arguments are stored in DEX2OAT_FLAGS array
 # -cp argument is split by ':' and stored in DEX2OAT_CLASSPATH
-# -Ximage argument is stored in DEX2OAT_BOOTIMAGE
+# -Ximage argument is stored in DEX2OAT_BOOT_IMAGE
 extract_dex2oat_flags "$@"
 
 # If ANDROID_DATA is the system ANDROID_DATA or is not set, use our own,
