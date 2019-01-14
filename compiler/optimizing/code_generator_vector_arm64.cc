@@ -16,6 +16,7 @@
 
 #include "code_generator_arm64.h"
 
+#include "arch/arm64/instruction_set_features_arm64.h"
 #include "mirror/array-inl.h"
 #include "mirror/string.h"
 
@@ -36,6 +37,15 @@ using helpers::WRegisterFrom;
 using helpers::XRegisterFrom;
 
 #define __ GetVIXLAssembler()->
+
+// Build-time switch for Armv8.4-a dot product instructions.
+// TODO: Enable dot product when there is a device to test it on.
+static constexpr bool kArm64EmitDotProdInstructions = false;
+
+// Returns whether dot product instructions should be emitted.
+static bool ShouldEmitDotProductInstructions(const CodeGeneratorARM64* codegen_) {
+  return kArm64EmitDotProdInstructions && codegen_->GetInstructionSetFeatures().HasDotProd();
+}
 
 void LocationsBuilderARM64::VisitVecReplicateScalar(HVecReplicateScalar* instruction) {
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
@@ -1285,8 +1295,9 @@ void LocationsBuilderARM64::VisitVecDotProd(HVecDotProd* instruction) {
   locations->SetInAt(2, Location::RequiresFpuRegister());
   locations->SetOut(Location::SameAsFirstInput());
 
-  // For Int8 and Uint8 we need a temp register.
-  if (DataType::Size(instruction->InputAt(1)->AsVecOperation()->GetPackedType()) == 1) {
+  // For Int8 and Uint8 general case we need a temp register.
+  if ((DataType::Size(instruction->InputAt(1)->AsVecOperation()->GetPackedType()) == 1) &&
+      !ShouldEmitDotProductInstructions(codegen_)) {
     locations->AddTemp(Location::RequiresFpuRegister());
   }
 }
@@ -1308,25 +1319,32 @@ void InstructionCodeGeneratorARM64::VisitVecDotProd(HVecDotProd* instruction) {
   switch (inputs_data_size) {
     case 1u: {
       DCHECK_EQ(16u, a->GetVectorLength());
-      VRegister tmp = VRegisterFrom(locations->GetTemp(0));
       if (instruction->IsZeroExtending()) {
-        // TODO: Use Armv8.4-A UDOT instruction when it is available.
-        __ Umull(tmp.V8H(), left.V8B(), right.V8B());
-        __ Uaddw(acc.V4S(), acc.V4S(), tmp.V4H());
-        __ Uaddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+        if (ShouldEmitDotProductInstructions(codegen_)) {
+          __ Udot(acc.V4S(), left.V16B(), right.V16B());
+        } else {
+          VRegister tmp = VRegisterFrom(locations->GetTemp(0));
+          __ Umull(tmp.V8H(), left.V8B(), right.V8B());
+          __ Uaddw(acc.V4S(), acc.V4S(), tmp.V4H());
+          __ Uaddw2(acc.V4S(), acc.V4S(), tmp.V8H());
 
-        __ Umull2(tmp.V8H(), left.V16B(), right.V16B());
-        __ Uaddw(acc.V4S(), acc.V4S(), tmp.V4H());
-        __ Uaddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+          __ Umull2(tmp.V8H(), left.V16B(), right.V16B());
+          __ Uaddw(acc.V4S(), acc.V4S(), tmp.V4H());
+          __ Uaddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+        }
       } else {
-        // TODO: Use Armv8.4-A SDOT instruction when it is available.
-        __ Smull(tmp.V8H(), left.V8B(), right.V8B());
-        __ Saddw(acc.V4S(), acc.V4S(), tmp.V4H());
-        __ Saddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+        if (ShouldEmitDotProductInstructions(codegen_)) {
+          __ Sdot(acc.V4S(), left.V16B(), right.V16B());
+        } else {
+          VRegister tmp = VRegisterFrom(locations->GetTemp(0));
+          __ Smull(tmp.V8H(), left.V8B(), right.V8B());
+          __ Saddw(acc.V4S(), acc.V4S(), tmp.V4H());
+          __ Saddw2(acc.V4S(), acc.V4S(), tmp.V8H());
 
-        __ Smull2(tmp.V8H(), left.V16B(), right.V16B());
-        __ Saddw(acc.V4S(), acc.V4S(), tmp.V4H());
-        __ Saddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+          __ Smull2(tmp.V8H(), left.V16B(), right.V16B());
+          __ Saddw(acc.V4S(), acc.V4S(), tmp.V4H());
+          __ Saddw2(acc.V4S(), acc.V4S(), tmp.V8H());
+        }
       }
       break;
     }
