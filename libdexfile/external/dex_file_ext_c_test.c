@@ -47,7 +47,7 @@ static int write_gtest_output_xml(char* gtest_output_path) {
 }
 
 int main(int argc, char** argv) {
-  if (argc >= 1 && strncmp(argv[1], gtest_output_arg, sizeof(gtest_output_arg) - 1) == 0) {
+  if (argc >= 2 && strncmp(argv[1], gtest_output_arg, sizeof(gtest_output_arg) - 1) == 0) {
     /* The ART gtest framework expects all tests to understand --gtest_output. */
     return write_gtest_output_xml(argv[1] + sizeof(gtest_output_arg) - 1);
   }
