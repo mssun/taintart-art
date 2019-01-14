@@ -300,20 +300,17 @@ class VariableSizedHandleScope : public BaseHandleScope {
   void VisitRoots(Visitor& visitor) REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
-  static constexpr size_t kLocalScopeSize = 64u;
-  static constexpr size_t kSizeOfReferencesPerScope =
-      kLocalScopeSize
-          - /* BaseHandleScope::link_ */ sizeof(BaseHandleScope*)
-          - /* BaseHandleScope::number_of_references_ */ sizeof(int32_t)
-          - /* FixedSizeHandleScope<>::pos_ */ sizeof(uint32_t);
-  static constexpr size_t kNumReferencesPerScope =
-      kSizeOfReferencesPerScope / sizeof(StackReference<mirror::Object>);
+  static constexpr size_t kMaxLocalScopeSize = 64u;
+  // In order to have consistent compilation with both 32bit and 64bit dex2oat
+  // binaries we need this to be an actual constant. We picked this because it
+  // will ensure that we use <64bit internal scopes.
+  static constexpr size_t kNumReferencesPerScope = 12u;
 
   Thread* const self_;
 
   // Linked list of fixed size handle scopes.
   using LocalScopeType = FixedSizeHandleScope<kNumReferencesPerScope>;
-  static_assert(sizeof(LocalScopeType) == kLocalScopeSize, "Unexpected size of LocalScopeType");
+  static_assert(sizeof(LocalScopeType) <= kMaxLocalScopeSize, "Unexpected size of LocalScopeType");
   LocalScopeType* current_scope_;
 
   DISALLOW_COPY_AND_ASSIGN(VariableSizedHandleScope);
