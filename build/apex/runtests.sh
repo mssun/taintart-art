@@ -157,6 +157,7 @@ function check_release_contents {
   check_library libprofile.so
   # Check that the mounted image contains Android Core libraries.
   check_library libjavacrypto.so
+  check_library libopenjdk.so
   # Check that the mounted image contains additional required libraries.
   check_library libadbconnection.so
 
@@ -193,11 +194,12 @@ function check_debug_contents {
   check_library libartd-dexlayout.so
   check_library libartd.so
   check_library libdexfiled.so
-  check_library libopenjdkd.so
   check_library libopenjdkjvmd.so
   check_library libopenjdkjvmtid.so
   check_library libprofiled.so
-  # Check that the mounted image contains additional required libraries.
+  # Check that the mounted image contains Android Core debug libraries.
+  check_library libopenjdkd.so
+  # Check that the mounted image contains additional required debug libraries.
   check_library libadbconnectiond.so
 }
 
