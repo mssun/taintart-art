@@ -230,7 +230,6 @@
   modes: [device_testdex],
   bug: 122642227,
   names: [
-    "libcore.java.lang.SystemTest#testSystemProperties_mutable",
     "libcore.libcore.icu.TimeZoneIntegrationTest#testTimeZoneDataVersion",
     "libcore.libcore.icu.TimeZoneIntegrationTest#testTimeZoneDebugInfo",
     "libcore.libcore.icu.TimeZoneIntegrationTest#testTzDataSetVersions"
