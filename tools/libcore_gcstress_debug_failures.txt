@@ -7,7 +7,7 @@
 {
   description: "Timeouts on target with gcstress and debug.",
   result: EXEC_FAILED,
-  modes: [device],
+  modes: [device_testdex],
   names: ["jsr166.CompletableFutureTest#testCompleteOnTimeout_completed",
           "jsr166.CompletableFutureTest#testDelayedExecutor",
           "jsr166.ExecutorsTest#testTimedCallable",
