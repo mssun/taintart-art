@@ -400,34 +400,39 @@ done
 
 PROG_DIR="$(cd "${PROG_NAME%/*}" ; pwd -P)"
 ANDROID_ROOT="$(cd $PROG_DIR/..; pwd -P)"
-# This script is used on host and target (device). However, the (expected)
-# default value `ANDROID_RUNTIME_ROOT` is not the same on host and target:
-# - on host, `ANDROID_RUNTIME_ROOT` is expected to be "$ANDROID_ROOT/com.android.apex";
-# - on target, `ANDROID_RUNTIME_ROOT` is expected to be "$ANDROID_ROOT/../apex/com.android.apex".
-#
-# We use the presence/absence of the `$ANDROID_ROOT/../apex` directory to
-# determine whether we are on target or host (this is brittle, but simple).
-if [ -d "$ANDROID_ROOT/../apex" ]; then
-  # Target case.
+
+# If ANDROID_RUNTIME_ROOT is not set, try to detect whether we are running on
+# target or host and set that environment variable to the usual default value.
+if [ -z "$ANDROID_RUNTIME_ROOT" ]; then
+  # This script is used on host and target (device). However, the (expected)
+  # default value `ANDROID_RUNTIME_ROOT` is not the same on host and target:
+  # - on host, `ANDROID_RUNTIME_ROOT` is expected to be "$ANDROID_ROOT/com.android.apex";
+  # - on target, `ANDROID_RUNTIME_ROOT` is expected to be "$ANDROID_ROOT/../apex/com.android.apex".
   #
-  # We should be setting `ANDROID_RUNTIME_ROOT` to
-  # "$ANDROID_ROOT/../apex/com.android.runtime" here. However, the Runtime APEX
-  # is not (yet) supported by the ART Buildbot setup (see b/121117762); and yet
-  # ICU code depends on `ANDROID_RUNTIME_ROOT` to find ICU .dat files.
-  #
-  # As a temporary workaround, we:
-  # - make the ART Buildbot build script (art/tools/buildbot-build.sh) also
-  #   generate the ICU .dat files in `/system/etc/icu` on device (these files
-  #   are normally only put in the Runtime APEX on device);
-  # - set `ANDROID_RUNTIME_ROOT` to `$ANDROID_ROOT` (i.e. "/system") here.
-  #
-  # TODO(b/121117762): Set `ANDROID_RUNTIME_ROOT` to
-  # "$ANDROID_ROOT/../apex/com.android.runtime" when the Runtime APEX is fully
-  # supported on the ART Buildbot and Golem.
-  ANDROID_RUNTIME_ROOT=$ANDROID_ROOT
-else
-  # Host case.
-  ANDROID_RUNTIME_ROOT="$ANDROID_ROOT/com.android.runtime"
+  # We use the presence/absence of the `$ANDROID_ROOT/../apex` directory to
+  # determine whether we are on target or host (this is brittle, but simple).
+  if [ -d "$ANDROID_ROOT/../apex" ]; then
+    # Target case.
+    #
+    # We should be setting `ANDROID_RUNTIME_ROOT` to
+    # "$ANDROID_ROOT/../apex/com.android.runtime" here. However, the Runtime APEX
+    # is not (yet) supported by the ART Buildbot setup (see b/121117762); and yet
+    # ICU code depends on `ANDROID_RUNTIME_ROOT` to find ICU .dat files.
+    #
+    # As a temporary workaround, we:
+    # - make the ART Buildbot build script (art/tools/buildbot-build.sh) also
+    #   generate the ICU .dat files in `/system/etc/icu` on device (these files
+    #   are normally only put in the Runtime APEX on device);
+    # - set `ANDROID_RUNTIME_ROOT` to `$ANDROID_ROOT` (i.e. "/system") here.
+    #
+    # TODO(b/121117762): Set `ANDROID_RUNTIME_ROOT` to
+    # "$ANDROID_ROOT/../apex/com.android.runtime" when the Runtime APEX is fully
+    # supported on the ART Buildbot and Golem.
+    ANDROID_RUNTIME_ROOT=$ANDROID_ROOT
+  else
+    # Host case.
+    ANDROID_RUNTIME_ROOT="$ANDROID_ROOT/com.android.runtime"
+  fi
 fi
 
 ART_BINARY_PATH=$ANDROID_ROOT/bin/$ART_BINARY
