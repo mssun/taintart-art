@@ -7,7 +7,7 @@
 {
   description: "Timeouts on target with gcstress.",
   result: EXEC_FAILED,
-  modes: [device],
+  modes: [device_testdex],
   names: ["libcore.javax.crypto.CipherBasicsTest#testGcmEncryption"]
 },
 {
@@ -26,7 +26,7 @@
 {
   description: "Timeouts.",
   result: EXEC_FAILED,
-  modes: [device],
+  modes: [device_testdex],
   names: ["jsr166.TimeUnitTest#testConvert",
           "libcore.java.lang.StringTest#testFastPathString_wellFormedUtf8Sequence",
           "libcore.java.text.DecimalFormatTest#testCurrencySymbolSpacing",
