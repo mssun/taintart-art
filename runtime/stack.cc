@@ -816,13 +816,14 @@ void StackVisitor::WalkStack(bool include_transitions) {
             // JNI methods cannot have any inlined frames.
             && !method->IsNative()) {
           DCHECK_NE(cur_quick_frame_pc_, 0u);
-          CodeInfo code_info(cur_oat_quick_method_header_, CodeInfo::DecodeFlags::InlineInfoOnly);
+          current_code_info_ = CodeInfo(cur_oat_quick_method_header_,
+                                        CodeInfo::DecodeFlags::InlineInfoOnly);
           uint32_t native_pc_offset =
               cur_oat_quick_method_header_->NativeQuickPcOffset(cur_quick_frame_pc_);
-          StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset);
+          StackMap stack_map = current_code_info_.GetStackMapForNativePcOffset(native_pc_offset);
           if (stack_map.IsValid() && stack_map.HasInlineInfo()) {
             DCHECK_EQ(current_inline_frames_.size(), 0u);
-            for (current_inline_frames_ = code_info.GetInlineInfosOf(stack_map);
+            for (current_inline_frames_ = current_code_info_.GetInlineInfosOf(stack_map);
                  !current_inline_frames_.empty();
                  current_inline_frames_.pop_back()) {
               bool should_continue = VisitFrame();

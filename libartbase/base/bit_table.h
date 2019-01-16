@@ -100,8 +100,6 @@ class BitTableBase {
   BitMemoryRegion table_data_;
   size_t num_rows_ = 0;
   uint16_t column_offset_[kNumColumns + 1] = {};
-
-  DISALLOW_COPY_AND_ASSIGN(BitTableBase);
 };
 
 // Helper class which can be used to create BitTable accessors with named getters.

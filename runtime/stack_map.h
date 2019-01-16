@@ -301,6 +301,8 @@ class CodeInfo {
     InlineInfoOnly = 2,
   };
 
+  CodeInfo() {}
+
   explicit CodeInfo(const uint8_t* data, DecodeFlags flags = AllTables) {
     Decode(reinterpret_cast<const uint8_t*>(data), flags);
   }
@@ -445,8 +447,6 @@ class CodeInfo {
   }
 
  private:
-  CodeInfo() {}
-
   // Returns lower bound (fist stack map which has pc greater or equal than the desired one).
   // It ignores catch stack maps at the end (it is the same as if they had maximum pc value).
   BitTable<StackMap>::const_iterator BinarySearchNativePc(uint32_t packed_pc) const;
@@ -486,10 +486,10 @@ class CodeInfo {
     callback(&CodeInfo::dex_register_catalog_);
   }
 
-  uint32_t packed_frame_size_;  // Frame size in kStackAlignment units.
-  uint32_t core_spill_mask_;
-  uint32_t fp_spill_mask_;
-  uint32_t number_of_dex_registers_;
+  uint32_t packed_frame_size_ = 0;  // Frame size in kStackAlignment units.
+  uint32_t core_spill_mask_ = 0;
+  uint32_t fp_spill_mask_ = 0;
+  uint32_t number_of_dex_registers_ = 0;
   BitTable<StackMap> stack_maps_;
   BitTable<RegisterMask> register_masks_;
   BitTable<StackMask> stack_masks_;
