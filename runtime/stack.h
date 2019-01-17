@@ -342,6 +342,7 @@ class StackVisitor {
   size_t cur_depth_;
   // Current inlined frames of the method we are currently at.
   // We keep poping frames from the end as we visit the frames.
+  CodeInfo current_code_info_;
   BitTableRange<InlineInfo> current_inline_frames_;
 
  protected:
