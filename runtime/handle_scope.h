@@ -25,7 +25,6 @@
 #include "base/locks.h"
 #include "base/macros.h"
 #include "stack_reference.h"
-#include "verify_object.h"
 
 namespace art {
 

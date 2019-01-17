@@ -17,6 +17,7 @@
 #include "concurrent_copying.h"
 
 #include "art_field-inl.h"
+#include "barrier.h"
 #include "base/enums.h"
 #include "base/file_utils.h"
 #include "base/histogram-inl.h"
@@ -40,6 +41,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object-refvisitor-inl.h"
+#include "mirror/object_reference.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-inl.h"
 #include "thread_list.h"

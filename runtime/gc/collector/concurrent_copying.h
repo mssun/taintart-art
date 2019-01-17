@@ -17,22 +17,22 @@
 #ifndef ART_RUNTIME_GC_COLLECTOR_CONCURRENT_COPYING_H_
 #define ART_RUNTIME_GC_COLLECTOR_CONCURRENT_COPYING_H_
 
-#include "barrier.h"
-#include "base/safe_map.h"
 #include "garbage_collector.h"
 #include "immune_spaces.h"
-#include "jni.h"
-#include "mirror/object_reference.h"
 #include "offsets.h"
 
+#include <map>
 #include <memory>
 #include <vector>
 
 namespace art {
+class Barrier;
 class Closure;
 class RootInfo;
 
 namespace mirror {
+template<class MirrorType> class CompressedReference;
+template<class MirrorType> class HeapReference;
 class Object;
 }  // namespace mirror
 
