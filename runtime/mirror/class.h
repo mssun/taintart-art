@@ -19,7 +19,6 @@
 
 #include "base/bit_utils.h"
 #include "base/casts.h"
-#include "base/enums.h"
 #include "base/stride_iterator.h"
 #include "class_flags.h"
 #include "class_status.h"
@@ -38,6 +37,7 @@ struct ClassDef;
 class TypeList;
 }  // namespace dex
 
+template<typename T> class ArraySlice;
 class ArtField;
 class ArtMethod;
 struct ClassOffsets;
@@ -47,7 +47,7 @@ class ImTable;
 enum InvokeType : uint32_t;
 template <typename Iter> class IterationRange;
 template<typename T> class LengthPrefixedArray;
-template<typename T> class ArraySlice;
+enum class PointerSize : size_t;
 class Signature;
 class StringPiece;
 template<size_t kNumReferences> class PACKED(4) StackHandleScope;
