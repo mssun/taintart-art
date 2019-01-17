@@ -91,6 +91,7 @@ class LinearAlloc;
 class MonitorList;
 class MonitorPool;
 class NullPointerHandler;
+class OatFileAssistantTest;
 class OatFileManager;
 class Plugin;
 struct RuntimeArgumentMap;
@@ -1145,6 +1146,7 @@ class Runtime {
   // Note: See comments on GetFaultMessage.
   friend std::string GetFaultMessageForAbortLogging();
   friend class ScopedThreadPoolUsage;
+  friend class OatFileAssistantTest;
 
   DISALLOW_COPY_AND_ASSIGN(Runtime);
 };

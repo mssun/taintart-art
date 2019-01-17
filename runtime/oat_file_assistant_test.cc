@@ -61,6 +61,14 @@ class OatFileAssistantTest : public DexoptTest {
       VerifyOptimizationStatus(
           file, CompilerFilter::NameOfFilter(expected_filter), expected_reason);
   }
+  void InsertNewBootClasspathEntry() {
+    std::string extra_dex_filename = GetMultiDexSrc1();
+    Runtime* runtime = Runtime::Current();
+    runtime->boot_class_path_.push_back(extra_dex_filename);
+    if (!runtime->boot_class_path_locations_.empty()) {
+      runtime->boot_class_path_locations_.push_back(extra_dex_filename);
+    }
+  }
 };
 
 class ScopedNonWritable {
@@ -236,17 +244,50 @@ TEST_F(OatFileAssistantTest, OdexUpToDate) {
   Copy(GetDexSrc1(), dex_location);
   GenerateOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed, "install");
 
-  // For the use of oat location by making the dex parent not writable.
-  OatFileAssistant oat_file_assistant(dex_location.c_str(), kRuntimeISA, false);
+  // Force the use of oat location by making the dex parent not writable.
+  OatFileAssistant oat_file_assistant(
+      dex_location.c_str(), kRuntimeISA, /*load_executable=*/ false);
 
   EXPECT_EQ(-OatFileAssistant::kNoDexOptNeeded,
-      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
+            oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
   EXPECT_EQ(-OatFileAssistant::kNoDexOptNeeded,
-      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kQuicken));
+            oat_file_assistant.GetDexOptNeeded(CompilerFilter::kQuicken));
   EXPECT_EQ(-OatFileAssistant::kNoDexOptNeeded,
-      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kExtract));
+            oat_file_assistant.GetDexOptNeeded(CompilerFilter::kExtract));
   EXPECT_EQ(-OatFileAssistant::kDex2OatForFilter,
-      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kEverything));
+            oat_file_assistant.GetDexOptNeeded(CompilerFilter::kEverything));
+
+  EXPECT_FALSE(oat_file_assistant.IsInBootClassPath());
+  EXPECT_EQ(OatFileAssistant::kOatUpToDate, oat_file_assistant.OdexFileStatus());
+  EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OatFileStatus());
+  EXPECT_TRUE(oat_file_assistant.HasOriginalDexFiles());
+
+  VerifyOptimizationStatus(dex_location, CompilerFilter::kSpeed, "install");
+}
+
+// Case: We have an ODEX file compiled against partial boot image.
+// Expect: The status is kNoDexOptNeeded.
+TEST_F(OatFileAssistantTest, OdexUpToDatePartialBootImage) {
+  std::string dex_location = GetScratchDir() + "/OdexUpToDate.jar";
+  std::string odex_location = GetOdexDir() + "/OdexUpToDate.odex";
+  Copy(GetDexSrc1(), dex_location);
+  GenerateOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed, "install");
+
+  // Insert an extra dex file to the boot class path.
+  InsertNewBootClasspathEntry();
+
+  // Force the use of oat location by making the dex parent not writable.
+  OatFileAssistant oat_file_assistant(
+      dex_location.c_str(), kRuntimeISA, /*load_executable=*/ false);
+
+  EXPECT_EQ(-OatFileAssistant::kNoDexOptNeeded,
+            oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
+  EXPECT_EQ(-OatFileAssistant::kNoDexOptNeeded,
+            oat_file_assistant.GetDexOptNeeded(CompilerFilter::kQuicken));
+  EXPECT_EQ(-OatFileAssistant::kNoDexOptNeeded,
+            oat_file_assistant.GetDexOptNeeded(CompilerFilter::kExtract));
+  EXPECT_EQ(-OatFileAssistant::kDex2OatForFilter,
+            oat_file_assistant.GetDexOptNeeded(CompilerFilter::kEverything));
 
   EXPECT_FALSE(oat_file_assistant.IsInBootClassPath());
   EXPECT_EQ(OatFileAssistant::kOatUpToDate, oat_file_assistant.OdexFileStatus());
@@ -302,7 +343,7 @@ TEST_F(OatFileAssistantTest, OatUpToDate) {
   Copy(GetDexSrc1(), dex_location);
   GenerateOatForTest(dex_location.c_str(), CompilerFilter::kSpeed);
 
-  // For the use of oat location by making the dex parent not writable.
+  // Force the use of oat location by making the dex parent not writable.
   ScopedNonWritable scoped_non_writable(dex_location);
   ASSERT_TRUE(scoped_non_writable.IsSuccessful());
 
