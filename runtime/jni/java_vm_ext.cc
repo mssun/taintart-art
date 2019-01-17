@@ -963,7 +963,7 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
   Locks::mutator_lock_->AssertNotHeld(self);
   const char* path_str = path.empty() ? nullptr : path.c_str();
   bool needs_native_bridge = false;
-  char* nativeloader_error_msg;
+  char* nativeloader_error_msg = nullptr;
   void* handle = android::OpenNativeLibrary(env,
                                             runtime_->GetTargetSdkVersion(),
                                             path_str,
@@ -975,7 +975,7 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
 
   if (handle == nullptr) {
     *error_msg = nativeloader_error_msg;
-    free(nativeloader_error_msg);
+    android::NativeLoaderFreeErrorMessage(nativeloader_error_msg);
     VLOG(jni) << "dlopen(\"" << path << "\", RTLD_NOW) failed: " << *error_msg;
     return false;
   }
