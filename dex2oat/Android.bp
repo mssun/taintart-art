@@ -308,8 +308,20 @@ art_cc_binary {
             shared_libs: [
                 "libz",
             ],
+            compile_multilib: "both",
         },
     },
+
+    multilib: {
+        lib32: {
+            suffix: "32",
+        },
+        lib64: {
+            suffix: "64",
+        },
+    },
+
+    symlink_preferred_arch: true,
 }
 
 cc_defaults {
