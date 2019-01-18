@@ -128,9 +128,21 @@ class DexClass : public ClassAccessor {
     bool equals = strcmp(GetDescriptor(), other.GetDescriptor()) == 0;
     if (equals) {
       // TODO(dbrazdil): Check that methods/fields match as well once b/111116543 is fixed.
-      CHECK_EQ(GetAccessFlags(), other.GetAccessFlags());
-      CHECK_EQ(GetSuperclassDescriptor(), other.GetSuperclassDescriptor());
-      CHECK(GetInterfaceDescriptors() == other.GetInterfaceDescriptors());
+      CHECK_EQ(GetAccessFlags(), other.GetAccessFlags())
+          << "Inconsistent access flags of class " << GetDescriptor() << ": "
+          << "0x" << std::hex << GetAccessFlags() << std::dec << " (" << dex_file_.GetLocation()
+          << ") and 0x" << std::hex << other.GetAccessFlags() << std::dec << " ("
+          << other.dex_file_.GetLocation() << ")";
+      CHECK_EQ(GetSuperclassDescriptor(), other.GetSuperclassDescriptor())
+          << "Inconsistent superclass of class " << GetDescriptor() << ": "
+          << GetSuperclassDescriptor() << " (" << dex_file_.GetLocation()
+          << ") and " << other.GetSuperclassDescriptor() << " (" << other.dex_file_.GetLocation()
+          << ")";
+      CHECK(GetInterfaceDescriptors() == other.GetInterfaceDescriptors())
+          << "Inconsistent set of interfaces of class " << GetDescriptor() << ": "
+          << JoinStringSet(GetInterfaceDescriptors()) << " (" << dex_file_.GetLocation()
+          << ") and " << JoinStringSet(other.GetInterfaceDescriptors()) << " ("
+          << other.dex_file_.GetLocation() << ")";
     }
     return equals;
   }
@@ -138,6 +150,10 @@ class DexClass : public ClassAccessor {
  private:
   uint32_t GetAccessFlags() const { return GetClassDef().access_flags_; }
   bool HasAccessFlags(uint32_t mask) const { return (GetAccessFlags() & mask) == mask; }
+
+  static std::string JoinStringSet(const std::set<std::string>& s) {
+    return "{" + ::android::base::Join(std::vector<std::string>(s.begin(), s.end()), ",") + "}";
+  }
 };
 
 class DexMember {
