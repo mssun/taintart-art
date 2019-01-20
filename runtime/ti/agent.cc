@@ -123,6 +123,7 @@ std::unique_ptr<Agent> AgentSpec::DoDlOpen(JNIEnv* env,
                                                    Runtime::Current()->GetTargetSdkVersion(),
                                                    name_.c_str(),
                                                    class_loader,
+                                                   nullptr,
                                                    library_path.get(),
                                                    &needs_native_bridge,
                                                    &nativeloader_error_msg);

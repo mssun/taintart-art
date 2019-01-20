@@ -101,6 +101,7 @@ class JavaVMExt : public JavaVM {
   bool LoadNativeLibrary(JNIEnv* env,
                          const std::string& path,
                          jobject class_loader,
+                         jclass caller_class,
                          std::string* error_msg);
 
   // Unload native libraries with cleared class loaders.

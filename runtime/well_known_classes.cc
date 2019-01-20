@@ -426,7 +426,7 @@ void WellKnownClasses::LateInit(JNIEnv* env) {
   // to make sure these JNI methods are available.
   java_lang_Runtime_nativeLoad =
       CacheMethod(env, java_lang_Runtime.get(), true, "nativeLoad",
-                  "(Ljava/lang/String;Ljava/lang/ClassLoader;)"
+                  "(Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/Class;)"
                       "Ljava/lang/String;");
   java_lang_reflect_Proxy_init =
     CacheMethod(env, java_lang_reflect_Proxy, false, "<init>",
