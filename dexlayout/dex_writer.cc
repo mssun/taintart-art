@@ -469,6 +469,7 @@ void DexWriter::WriteHiddenapiClassData(Stream* stream) {
   DCHECK_EQ(header_->HiddenapiClassDatas().Size(), header_->ClassDefs().Size());
 
   stream->AlignTo(SectionAlignment(DexFile::kDexTypeHiddenapiClassData));
+  ProcessOffset(stream, &header_->HiddenapiClassDatas());
   const uint32_t start = stream->Tell();
 
   // Compute offsets for each class def and write the header.
@@ -981,6 +982,15 @@ void MapItemQueue::AddIfNotEmpty(const MapItem& item) {
 }
 
 void DexWriter::ProcessOffset(Stream* stream, dex_ir::Item* item) {
+  if (compute_offsets_) {
+    item->SetOffset(stream->Tell());
+  } else {
+    // Not computing offsets, just use the one in the item.
+    stream->Seek(item->GetOffset());
+  }
+}
+
+void DexWriter::ProcessOffset(Stream* stream, dex_ir::CollectionBase* item) {
   if (compute_offsets_) {
     item->SetOffset(stream->Tell());
   } else {
