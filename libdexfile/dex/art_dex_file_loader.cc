@@ -539,17 +539,17 @@ std::unique_ptr<DexFile> ArtDexFileLoader::OpenCommon(const uint8_t* base,
                                                                 error_msg,
                                                                 std::move(container),
                                                                 verify_result);
-
-  // Check if this dex file is located in the framework directory.
-  // If it is, set a flag on the dex file. This is used by hidden API
-  // policy decision logic.
-  // Location can contain multidex suffix, so fetch its canonical version. Note
-  // that this will call `realpath`.
-  std::string path = DexFileLoader::GetDexCanonicalLocation(location.c_str());
-  if (dex_file != nullptr && LocationIsOnSystemFramework(path.c_str())) {
-    dex_file->SetHiddenapiDomain(hiddenapi::Domain::kPlatform);
+  if (dex_file != nullptr) {
+    // Set hidden API domain based based on location.
+    // Location can contain multidex suffix, so fetch its canonical version. Note
+    // that this will call `realpath`.
+    std::string path = DexFileLoader::GetDexCanonicalLocation(location.c_str());
+    if (LocationIsOnSystemFramework(path.c_str())) {
+      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kPlatform);
+    } else if (LocationIsOnRuntimeModule(path.c_str())) {
+      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kCorePlatform);
+    }
   }
-
   return dex_file;
 }
 
