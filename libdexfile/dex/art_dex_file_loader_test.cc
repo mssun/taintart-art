@@ -340,7 +340,7 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_DataDir) {
 
   ASSERT_GE(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_FALSE(dex_file->IsPlatformDexFile());
+    ASSERT_NE(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
   }
 
   dex_files.clear();
@@ -368,7 +368,7 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemDir) {
 
   ASSERT_GE(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_FALSE(dex_file->IsPlatformDexFile());
+    ASSERT_NE(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
   }
 
   dex_files.clear();
@@ -396,7 +396,7 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemFrameworkDir) {
 
   ASSERT_GE(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_TRUE(dex_file->IsPlatformDexFile());
+    ASSERT_EQ(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
   }
 
   dex_files.clear();
@@ -424,7 +424,7 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_DataDir_MultiDex) {
 
   ASSERT_GT(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_FALSE(dex_file->IsPlatformDexFile());
+    ASSERT_NE(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
   }
 
   dex_files.clear();
@@ -453,7 +453,7 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemDir_MultiDex) {
 
   ASSERT_GT(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_FALSE(dex_file->IsPlatformDexFile());
+    ASSERT_NE(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
   }
 
   dex_files.clear();
@@ -482,7 +482,7 @@ TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemFrameworkDir_MultiDex) {
 
   ASSERT_GT(dex_files.size(), 1u);
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_TRUE(dex_file->IsPlatformDexFile());
+    ASSERT_EQ(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
   }
 
   dex_files.clear();

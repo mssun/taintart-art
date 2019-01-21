@@ -547,7 +547,7 @@ std::unique_ptr<DexFile> ArtDexFileLoader::OpenCommon(const uint8_t* base,
   // that this will call `realpath`.
   std::string path = DexFileLoader::GetDexCanonicalLocation(location.c_str());
   if (dex_file != nullptr && LocationIsOnSystemFramework(path.c_str())) {
-    dex_file->SetIsPlatformDexFile();
+    dex_file->SetHiddenapiDomain(hiddenapi::Domain::kPlatform);
   }
 
   return dex_file;

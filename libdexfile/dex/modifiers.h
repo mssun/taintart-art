@@ -85,7 +85,7 @@ static constexpr uint32_t kAccMustCountLocks =        0x04000000;  // method (ru
 static constexpr uint32_t kAccSingleImplementation =  0x08000000;  // method (runtime)
 
 static constexpr uint32_t kAccPublicApi =             0x10000000;  // field, method
-static constexpr uint32_t kAccHiddenapiBits =         0x30000000;  // field, method
+static constexpr uint32_t kAccCorePlatformApi =       0x20000000;  // field, method
 
 // Non-intrinsics: Caches whether we can use fast-path in the interpreter invokes.
 // Intrinsics: These bits are part of the intrinsic ordinal.
@@ -101,6 +101,8 @@ static constexpr uint32_t kAccRecursivelyInitialized    = 0x20000000;
 static constexpr uint32_t kAccHasDefaultMethod          = 0x40000000;
 // class/ancestor overrides finalize()
 static constexpr uint32_t kAccClassIsFinalizable        = 0x80000000;
+
+static constexpr uint32_t kAccHiddenapiBits = kAccPublicApi | kAccCorePlatformApi;
 
 // Continuous sequence of bits used to hold the ordinal of an intrinsic method. Flags
 // which overlap are not valid when kAccIntrinsic is set.

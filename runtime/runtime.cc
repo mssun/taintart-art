@@ -273,6 +273,7 @@ Runtime::Runtime()
       is_low_memory_mode_(false),
       safe_mode_(false),
       hidden_api_policy_(hiddenapi::EnforcementPolicy::kDisabled),
+      core_platform_api_policy_(hiddenapi::EnforcementPolicy::kJustWarn),
       dedupe_hidden_api_warnings_(true),
       hidden_api_access_event_log_rate_(0),
       dump_native_stack_on_sig_quit_(true),

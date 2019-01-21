@@ -224,7 +224,9 @@ static char* CreateAccessFlagStr(uint32_t flags, AccessFor for_what) {
 }
 
 static std::string GetHiddenapiFlagStr(uint32_t hiddenapi_flags) {
-  std::string api_list(hiddenapi::ApiList::FromDexFlags(hiddenapi_flags).GetName());
+  std::stringstream ss;
+  hiddenapi::ApiList(hiddenapi_flags).Dump(ss);
+  std::string api_list = ss.str();
   std::transform(api_list.begin(), api_list.end(), api_list.begin(), ::toupper);
   return api_list;
 }

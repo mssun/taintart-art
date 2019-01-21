@@ -45,7 +45,8 @@ public class ChildClass {
     Whitelist(PrimitiveType.TShort),
     LightGreylist(PrimitiveType.TBoolean),
     DarkGreylist(PrimitiveType.TByte),
-    Blacklist(PrimitiveType.TCharacter);
+    Blacklist(PrimitiveType.TCharacter),
+    BlacklistAndCorePlatformApi(PrimitiveType.TInteger);
 
     Hiddenness(PrimitiveType type) { mAssociatedType = type; }
     public PrimitiveType mAssociatedType;
@@ -67,19 +68,34 @@ public class ChildClass {
     Denied,
   }
 
+  // This needs to be kept in sync with DexDomain in Main.
+  enum DexDomain {
+    CorePlatform,
+    Platform,
+    Application
+  }
+
   private static final boolean booleanValues[] = new boolean[] { false, true };
 
-  public static void runTest(String libFileName, boolean expectedParentInBoot,
-      boolean expectedChildInBoot, boolean everythingWhitelisted) throws Exception {
+  public static void runTest(String libFileName, int parentDomainOrdinal,
+      int childDomainOrdinal, boolean everythingWhitelisted) throws Exception {
     System.load(libFileName);
 
+    parentDomain = DexDomain.values()[parentDomainOrdinal];
+    childDomain = DexDomain.values()[childDomainOrdinal];
+
+    configMessage = "parentDomain=" + parentDomain.name() + ", childDomain=" + childDomain.name()
+        + ", everythingWhitelisted=" + everythingWhitelisted;
+
     // Check expectations about loading into boot class path.
-    isParentInBoot = (ParentClass.class.getClassLoader().getParent() == null);
+    boolean isParentInBoot = (ParentClass.class.getClassLoader().getParent() == null);
+    boolean expectedParentInBoot = (parentDomain != DexDomain.Application);
     if (isParentInBoot != expectedParentInBoot) {
       throw new RuntimeException("Expected ParentClass " +
                                  (expectedParentInBoot ? "" : "not ") + "in boot class path");
     }
-    isChildInBoot = (ChildClass.class.getClassLoader().getParent() == null);
+    boolean isChildInBoot = (ChildClass.class.getClassLoader().getParent() == null);
+    boolean expectedChildInBoot = (childDomain != DexDomain.Application);
     if (isChildInBoot != expectedChildInBoot) {
       throw new RuntimeException("Expected ChildClass " + (expectedChildInBoot ? "" : "not ") +
                                  "in boot class path");
@@ -92,14 +108,26 @@ public class ChildClass {
     // Run meaningful combinations of access flags.
     for (Hiddenness hiddenness : Hiddenness.values()) {
       final Behaviour expected;
+      final boolean invokesMemberCallback;
       // Warnings are now disabled whenever access is granted, even for
       // greylisted APIs. This is the behaviour for release builds.
-      if (isSameBoot || everythingWhitelisted || hiddenness == Hiddenness.Whitelist) {
+      if (everythingWhitelisted || hiddenness == Hiddenness.Whitelist) {
         expected = Behaviour.Granted;
-      } else if (hiddenness == Hiddenness.Blacklist) {
+        invokesMemberCallback = false;
+      } else if (parentDomain == DexDomain.CorePlatform && childDomain == DexDomain.Platform) {
+        expected = (hiddenness == Hiddenness.BlacklistAndCorePlatformApi)
+            ? Behaviour.Granted : Behaviour.Denied;
+        invokesMemberCallback = false;
+      } else if (isSameBoot) {
+        expected = Behaviour.Granted;
+        invokesMemberCallback = false;
+      } else if (hiddenness == Hiddenness.Blacklist ||
+                 hiddenness == Hiddenness.BlacklistAndCorePlatformApi) {
         expected = Behaviour.Denied;
+        invokesMemberCallback = true;
       } else {
         expected = Behaviour.Warning;
+        invokesMemberCallback = true;
       }
 
       for (boolean isStatic : booleanValues) {
@@ -109,8 +137,10 @@ public class ChildClass {
           // Test reflection and JNI on methods and fields
           for (Class klass : new Class<?>[] { ParentClass.class, ParentInterface.class }) {
             String baseName = visibility.name() + suffix;
-            checkField(klass, "field" + baseName, isStatic, visibility, expected);
-            checkMethod(klass, "method" + baseName, isStatic, visibility, expected);
+            checkField(klass, "field" + baseName, isStatic, visibility, expected,
+                invokesMemberCallback);
+            checkMethod(klass, "method" + baseName, isStatic, visibility, expected,
+                invokesMemberCallback);
           }
 
           // Check whether one can use a class constructor.
@@ -118,7 +148,8 @@ public class ChildClass {
 
           // Check whether one can use an interface default method.
           String name = "method" + visibility.name() + "Default" + hiddenness.name();
-          checkMethod(ParentInterface.class, name, /*isStatic*/ false, visibility, expected);
+          checkMethod(ParentInterface.class, name, /*isStatic*/ false, visibility, expected,
+              invokesMemberCallback);
         }
 
         // Test whether static linking succeeds.
@@ -181,11 +212,10 @@ public class ChildClass {
   }
 
   private static void checkField(Class<?> klass, String name, boolean isStatic,
-      Visibility visibility, Behaviour behaviour) throws Exception {
+      Visibility visibility, Behaviour behaviour, boolean invokesMemberCallback) throws Exception {
 
     boolean isPublic = (visibility == Visibility.Public);
     boolean canDiscover = (behaviour != Behaviour.Denied);
-    boolean invokesMemberCallback = (behaviour != Behaviour.Granted);
 
     if (klass.isInterface() && (!isStatic || !isPublic)) {
       // Interfaces only have public static fields.
@@ -275,7 +305,7 @@ public class ChildClass {
   }
 
   private static void checkMethod(Class<?> klass, String name, boolean isStatic,
-      Visibility visibility, Behaviour behaviour) throws Exception {
+      Visibility visibility, Behaviour behaviour, boolean invokesMemberCallback) throws Exception {
 
     boolean isPublic = (visibility == Visibility.Public);
     if (klass.isInterface() && !isPublic) {
@@ -284,7 +314,6 @@ public class ChildClass {
     }
 
     boolean canDiscover = (behaviour != Behaviour.Denied);
-    boolean invokesMemberCallback = (behaviour != Behaviour.Granted);
 
     // Test discovery with reflection.
 
@@ -428,8 +457,7 @@ public class ChildClass {
 
     if (Reflection.canUseNewInstance(klass) != canAccess) {
       throw new RuntimeException("Expected to " + (canAccess ? "" : "not ") +
-          "be able to construct " + klass.getName() + ". " +
-          "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot);
+          "be able to construct " + klass.getName() + ". " + configMessage);
     }
   }
 
@@ -439,8 +467,7 @@ public class ChildClass {
 
     if (Linking.canAccess(className, takesParameter) != canAccess) {
       throw new RuntimeException("Expected to " + (canAccess ? "" : "not ") +
-          "be able to verify " + className + "." +
-          "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot);
+          "be able to verify " + className + "." + configMessage);
     }
   }
 
@@ -448,16 +475,13 @@ public class ChildClass {
       String fn, boolean canAccess) {
     throw new RuntimeException("Expected " + (isField ? "field " : "method ") + klass.getName() +
         "." + name + " to " + (canAccess ? "" : "not ") + "be discoverable with " + fn + ". " +
-        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot + ", " +
-        "everythingWhitelisted = " + everythingWhitelisted);
+        configMessage);
   }
 
   private static void throwAccessException(Class<?> klass, String name, boolean isField,
       String fn) {
     throw new RuntimeException("Expected to be able to access " + (isField ? "field " : "method ") +
-        klass.getName() + "." + name + " using " + fn + ". " +
-        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot + ", " +
-        "everythingWhitelisted = " + everythingWhitelisted);
+        klass.getName() + "." + name + " using " + fn + ". " + configMessage);
   }
 
   private static void throwModifiersException(Class<?> klass, String name, boolean isField) {
@@ -465,7 +489,9 @@ public class ChildClass {
         "." + name + " to not expose hidden modifiers");
   }
 
-  private static boolean isParentInBoot;
-  private static boolean isChildInBoot;
+  private static DexDomain parentDomain;
+  private static DexDomain childDomain;
   private static boolean everythingWhitelisted;
+
+  private static String configMessage;
 }

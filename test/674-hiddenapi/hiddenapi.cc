@@ -27,40 +27,59 @@
 namespace art {
 namespace Test674HiddenApi {
 
+std::vector<std::vector<std::unique_ptr<const DexFile>>> opened_dex_files;
+
 extern "C" JNIEXPORT void JNICALL Java_Main_init(JNIEnv*, jclass) {
   Runtime* runtime = Runtime::Current();
   runtime->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
+  runtime->SetCorePlatformApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kEnabled);
   runtime->SetTargetSdkVersion(
       static_cast<uint32_t>(hiddenapi::ApiList::GreylistMaxO().GetMaxAllowedSdkVersion()));
   runtime->SetDedupeHiddenApiWarnings(false);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_Main_appendToBootClassLoader(
-    JNIEnv* env, jclass, jstring jpath) {
+extern "C" JNIEXPORT void JNICALL Java_Main_setDexDomain(
+    JNIEnv*, jclass, jint int_index, jboolean is_core_platform) {
+  size_t index = static_cast<size_t>(int_index);
+  CHECK_LT(index, opened_dex_files.size());
+  for (std::unique_ptr<const DexFile>& dex_file : opened_dex_files[index]) {
+    const_cast<DexFile*>(dex_file.get())->SetHiddenapiDomain(
+        (is_core_platform == JNI_FALSE) ? hiddenapi::Domain::kPlatform
+                                        : hiddenapi::Domain::kCorePlatform);
+  }
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_Main_appendToBootClassLoader(
+    JNIEnv* env, jclass klass, jstring jpath, jboolean is_core_platform) {
   ScopedUtfChars utf(env, jpath);
   const char* path = utf.c_str();
-  if (path == nullptr) {
-    return;
-  }
+  CHECK(path != nullptr);
+
+  const size_t index = opened_dex_files.size();
+  const jint int_index = static_cast<jint>(index);
+  opened_dex_files.push_back(std::vector<std::unique_ptr<const DexFile>>());
 
   ArtDexFileLoader dex_loader;
   std::string error_msg;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
+
   if (!dex_loader.Open(path,
                        path,
                        /* verify */ false,
                        /* verify_checksum */ true,
                        &error_msg,
-                       &dex_files)) {
+                       &opened_dex_files[index])) {
     LOG(FATAL) << "Could not open " << path << " for boot classpath extension: " << error_msg;
     UNREACHABLE();
   }
 
+  Java_Main_setDexDomain(env, klass, int_index, is_core_platform);
+
   ScopedObjectAccess soa(Thread::Current());
-  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    Runtime::Current()->GetClassLinker()->AppendToBootClassPath(
-        Thread::Current(), *dex_file.release());
+  for (std::unique_ptr<const DexFile>& dex_file : opened_dex_files[index]) {
+    Runtime::Current()->GetClassLinker()->AppendToBootClassPath(Thread::Current(), *dex_file.get());
   }
+
+  return int_index;
 }
 
 static jobject NewInstance(JNIEnv* env, jclass klass) {

@@ -69,7 +69,7 @@ inline void ClassAccessor::Method::Read() {
   code_off_ = DecodeUnsignedLeb128(&ptr_pos_);
   if (hiddenapi_ptr_pos_ != nullptr) {
     hiddenapi_flags_ = DecodeUnsignedLeb128(&hiddenapi_ptr_pos_);
-    DCHECK(hiddenapi::AreValidDexFlags(hiddenapi_flags_));
+    DCHECK(hiddenapi::ApiList(hiddenapi_flags_).IsValid());
   }
 }
 
@@ -83,7 +83,7 @@ inline void ClassAccessor::Field::Read() {
   access_flags_ = DecodeUnsignedLeb128(&ptr_pos_);
   if (hiddenapi_ptr_pos_ != nullptr) {
     hiddenapi_flags_ = DecodeUnsignedLeb128(&hiddenapi_ptr_pos_);
-    DCHECK(hiddenapi::AreValidDexFlags(hiddenapi_flags_));
+    DCHECK(hiddenapi::ApiList(hiddenapi_flags_).IsValid());
   }
 }
 

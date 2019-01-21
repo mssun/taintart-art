@@ -37,11 +37,11 @@ class HiddenApi {
 
   hiddenapi::ApiList GetApiList(const std::string& name) const {
     auto it = api_list_.find(name);
-    return (it == api_list_.end()) ? hiddenapi::ApiList::Invalid() : it->second;
+    return (it == api_list_.end()) ? hiddenapi::ApiList() : it->second;
   }
 
   bool IsInAnyList(const std::string& name) const {
-    return GetApiList(name).IsValid();
+    return GetApiList(name).IsEmpty();
   }
 
   static std::string GetApiMethodName(const DexFile& dex_file, uint32_t method_index);

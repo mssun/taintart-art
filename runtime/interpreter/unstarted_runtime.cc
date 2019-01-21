@@ -185,13 +185,13 @@ template<typename T>
 static ALWAYS_INLINE bool ShouldDenyAccessToMember(T* member, ShadowFrame* frame)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // All uses in this file are from reflection
-  constexpr hiddenapi::AccessMethod access_method = hiddenapi::AccessMethod::kReflection;
+  constexpr hiddenapi::AccessMethod kAccessMethod = hiddenapi::AccessMethod::kReflection;
   return hiddenapi::ShouldDenyAccessToMember(
       member,
       [&]() REQUIRES_SHARED(Locks::mutator_lock_) {
         return hiddenapi::AccessContext(frame->GetMethod()->GetDeclaringClass());
       },
-      access_method);
+      kAccessMethod);
 }
 
 void UnstartedRuntime::UnstartedClassForNameCommon(Thread* self,
