@@ -141,14 +141,12 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
       /*verify_checksum=*/false,
       &error);
 
-  if (new_dex_file  == nullptr) {
+  if (new_dex_file == nullptr) {
     LOG(ERROR) << "Unable to open dex file from memory for unquickening! error: " << error;
     return nullptr;
   }
 
-  if (original.IsPlatformDexFile()) {
-    const_cast<art::DexFile*>(new_dex_file.get())->SetIsPlatformDexFile();
-  }
+  const_cast<art::DexFile*>(new_dex_file.get())->SetHiddenapiDomain(original.GetHiddenapiDomain());
 
   DoDexUnquicken(*new_dex_file, original);
 

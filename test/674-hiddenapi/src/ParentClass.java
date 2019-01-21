@@ -43,6 +43,12 @@ public class ParentClass {
   private int fieldPrivateBlacklist = 244;
   public int fieldPublicBlacklistB = 245;
 
+  public int fieldPublicBlacklistAndCorePlatformApi = 251;
+  int fieldPackageBlacklistAndCorePlatformApi = 252;
+  protected int fieldProtectedBlacklistAndCorePlatformApi = 253;
+  private int fieldPrivateBlacklistAndCorePlatformApi = 254;
+  public int fieldPublicBlacklistAndCorePlatformApiB = 255;
+
   // STATIC FIELD
 
   public static int fieldPublicStaticWhitelist = 111;
@@ -69,6 +75,12 @@ public class ParentClass {
   private static int fieldPrivateStaticBlacklist = 144;
   public static int fieldPublicStaticBlacklistB = 145;
 
+  public static int fieldPublicStaticBlacklistAndCorePlatformApi = 151;
+  static int fieldPackageStaticBlacklistAndCorePlatformApi = 152;
+  protected static int fieldProtectedStaticBlacklistAndCorePlatformApi = 153;
+  private static int fieldPrivateStaticBlacklistAndCorePlatformApi = 154;
+  public static int fieldPublicStaticBlacklistAndCorePlatformApiB = 155;
+
   // INSTANCE METHOD
 
   public int methodPublicWhitelist() { return 411; }
@@ -91,6 +103,11 @@ public class ParentClass {
   protected int methodProtectedBlacklist() { return 443; }
   private int methodPrivateBlacklist() { return 444; }
 
+  public int methodPublicBlacklistAndCorePlatformApi() { return 451; }
+  int methodPackageBlacklistAndCorePlatformApi() { return 452; }
+  protected int methodProtectedBlacklistAndCorePlatformApi() { return 453; }
+  private int methodPrivateBlacklistAndCorePlatformApi() { return 454; }
+
   // STATIC METHOD
 
   public static int methodPublicStaticWhitelist() { return 311; }
@@ -112,6 +129,11 @@ public class ParentClass {
   static int methodPackageStaticBlacklist() { return 342; }
   protected static int methodProtectedStaticBlacklist() { return 343; }
   private static int methodPrivateStaticBlacklist() { return 344; }
+
+  public static int methodPublicStaticBlacklistAndCorePlatformApi() { return 351; }
+  static int methodPackageStaticBlacklistAndCorePlatformApi() { return 352; }
+  protected static int methodProtectedStaticBlacklistAndCorePlatformApi() { return 353; }
+  private static int methodPrivateStaticBlacklistAndCorePlatformApi() { return 354; }
 
   // CONSTRUCTOR
 
@@ -139,6 +161,12 @@ public class ParentClass {
   protected ParentClass(long x, char y) {}
   private ParentClass(double x, char y) {}
 
+  // Blacklist and CorePlatformApi
+  public ParentClass(int x, int y) {}
+  ParentClass(float x, int y) {}
+  protected ParentClass(long x, int y) {}
+  private ParentClass(double x, int y) {}
+
   // HELPERS
 
   public int callMethodPublicWhitelist() { return methodPublicWhitelist(); }
@@ -157,4 +185,15 @@ public class ParentClass {
   public int callMethodPackageBlacklist() { return methodPackageBlacklist(); }
   public int callMethodProtectedBlacklist() { return methodProtectedBlacklist(); }
 
+  public int callMethodPublicBlacklistAndCorePlatformApi() {
+    return methodPublicBlacklistAndCorePlatformApi();
+  }
+
+  public int callMethodPackageBlacklistAndCorePlatformApi() {
+    return methodPackageBlacklistAndCorePlatformApi();
+  }
+
+  public int callMethodProtectedBlacklistAndCorePlatformApi() {
+    return methodProtectedBlacklistAndCorePlatformApi();
+  }
 }

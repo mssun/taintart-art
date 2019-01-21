@@ -539,6 +539,14 @@ class Runtime {
     return hidden_api_policy_;
   }
 
+  void SetCorePlatformApiEnforcementPolicy(hiddenapi::EnforcementPolicy policy) {
+    core_platform_api_policy_ = policy;
+  }
+
+  hiddenapi::EnforcementPolicy GetCorePlatformApiEnforcementPolicy() const {
+    return core_platform_api_policy_;
+  }
+
   void SetHiddenApiExemptions(const std::vector<std::string>& exemptions) {
     hidden_api_exemptions_ = exemptions;
   }
@@ -1075,22 +1083,16 @@ class Runtime {
   // Whether access checks on hidden API should be performed.
   hiddenapi::EnforcementPolicy hidden_api_policy_;
 
+  // Whether access checks on core platform API should be performed.
+  hiddenapi::EnforcementPolicy core_platform_api_policy_;
+
   // List of signature prefixes of methods that have been removed from the blacklist, and treated
   // as if whitelisted.
   std::vector<std::string> hidden_api_exemptions_;
 
-  // Whether the application has used an API which is not restricted but we
-  // should issue a warning about it.
-  bool pending_hidden_api_warning_;
-
   // Do not warn about the same hidden API access violation twice.
   // This is only used for testing.
   bool dedupe_hidden_api_warnings_;
-
-  // Hidden API can print warnings into the log and/or set a flag read by the
-  // framework to show a UI warning. If this flag is set, always set the flag
-  // when there is a warning. This is only used for testing.
-  bool always_set_hidden_api_warning_flag_;
 
   // How often to log hidden API access to the event log. An integer between 0
   // (never) and 0x10000 (always).

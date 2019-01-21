@@ -255,7 +255,7 @@ class Veridex {
          << stats.linking_count << " linked against, "
          << stats.reflection_count << " through reflection" << std::endl;
       for (size_t i = 0; i < hiddenapi::ApiList::kValueCount; ++i) {
-        hiddenapi::ApiList api_list = hiddenapi::ApiList::FromIntValue(i);
+        hiddenapi::ApiList api_list = hiddenapi::ApiList(i);
         if (api_list != hiddenapi::ApiList::Whitelist()) {
           os << kPrefix << stats.api_counts[i] << " in " << api_list << std::endl;
         }

@@ -27,7 +27,7 @@ public class Main {
     init();
 
     // Load the '-ex' APK and attach it to the boot class path.
-    appendToBootClassLoader(DEX_EXTRA);
+    appendToBootClassLoader(DEX_EXTRA, /* isCorePlatform */ false);
 
     // Find the test class in boot class loader and verify that its members are hidden.
     Class<?> klass = Class.forName("art.Test999", true, BOOT_CLASS_LOADER);
@@ -67,7 +67,7 @@ public class Main {
   private static ClassLoader BOOT_CLASS_LOADER = Object.class.getClassLoader();
 
   // Native functions. Note that these are implemented in 674-hiddenapi/hiddenapi.cc.
-  private static native void appendToBootClassLoader(String dexPath);
+  private static native void appendToBootClassLoader(String dexPath, boolean isCorePlatform);
   private static native void init();
 
   /**

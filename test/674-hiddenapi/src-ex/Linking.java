@@ -62,6 +62,12 @@ class LinkFieldGetBlacklist {
   }
 }
 
+class LinkFieldGetBlacklistAndCorePlatformApi {
+  public static int access() {
+    return new ParentClass().fieldPublicBlacklistAndCorePlatformApi;
+  }
+}
+
 // INSTANCE FIELD SET
 
 class LinkFieldSetWhitelist {
@@ -92,6 +98,13 @@ class LinkFieldSetBlacklist {
   }
 }
 
+class LinkFieldSetBlacklistAndCorePlatformApi {
+  public static void access(int x) {
+    // Need to use a different field from the getter to bypass DexCache.
+    new ParentClass().fieldPublicBlacklistAndCorePlatformApiB = x;
+  }
+}
+
 // STATIC FIELD GET
 
 class LinkFieldGetStaticWhitelist {
@@ -115,6 +128,12 @@ class LinkFieldGetStaticDarkGreylist {
 class LinkFieldGetStaticBlacklist {
   public static int access() {
     return ParentClass.fieldPublicStaticBlacklist;
+  }
+}
+
+class LinkFieldGetStaticBlacklistAndCorePlatformApi {
+  public static int access() {
+    return ParentClass.fieldPublicStaticBlacklistAndCorePlatformApi;
   }
 }
 
@@ -148,6 +167,13 @@ class LinkFieldSetStaticBlacklist {
   }
 }
 
+class LinkFieldSetStaticBlacklistAndCorePlatformApi {
+  public static void access(int x) {
+    // Need to use a different field from the getter to bypass DexCache.
+    ParentClass.fieldPublicStaticBlacklistAndCorePlatformApiB = x;
+  }
+}
+
 // INVOKE INSTANCE METHOD
 
 class LinkMethodWhitelist {
@@ -171,6 +197,12 @@ class LinkMethodDarkGreylist {
 class LinkMethodBlacklist {
   public static int access() {
     return new ParentClass().methodPublicBlacklist();
+  }
+}
+
+class LinkMethodBlacklistAndCorePlatformApi {
+  public static int access() {
+    return new ParentClass().methodPublicBlacklistAndCorePlatformApi();
   }
 }
 
@@ -200,6 +232,12 @@ class LinkMethodInterfaceBlacklist {
   }
 }
 
+class LinkMethodInterfaceBlacklistAndCorePlatformApi {
+  public static int access() {
+    return DummyClass.getInterfaceInstance().methodPublicBlacklistAndCorePlatformApi();
+  }
+}
+
 // INVOKE STATIC METHOD
 
 class LinkMethodStaticWhitelist {
@@ -226,6 +264,12 @@ class LinkMethodStaticBlacklist {
   }
 }
 
+class LinkMethodStaticBlacklistAndCorePlatformApi {
+  public static int access() {
+    return ParentClass.methodPublicStaticBlacklistAndCorePlatformApi();
+  }
+}
+
 // INVOKE INTERFACE STATIC METHOD
 
 class LinkMethodInterfaceStaticWhitelist {
@@ -249,5 +293,11 @@ class LinkMethodInterfaceStaticDarkGreylist {
 class LinkMethodInterfaceStaticBlacklist {
   public static int access() {
     return ParentInterface.methodPublicStaticBlacklist();
+  }
+}
+
+class LinkMethodInterfaceStaticBlacklistAndCorePlatformApi {
+  public static int access() {
+    return ParentInterface.methodPublicStaticBlacklistAndCorePlatformApi();
   }
 }
