@@ -212,6 +212,7 @@ class Heap {
        bool gc_stress_mode,
        bool measure_gc_performance,
        bool use_homogeneous_space_compaction,
+       bool use_generational_cc,
        uint64_t min_interval_homogeneous_space_compaction_by_oom,
        bool dump_region_info_before_gc,
        bool dump_region_info_after_gc);
@@ -532,6 +533,10 @@ class Heap {
     return num_bytes_allocated_.load(std::memory_order_relaxed);
   }
 
+  bool GetUseGenerationalCC() const {
+    return use_generational_cc_;
+  }
+
   // Returns the number of objects currently allocated.
   size_t GetObjectsAllocated() const
       REQUIRES(!Locks::heap_bitmap_lock_);
@@ -768,7 +773,7 @@ class Heap {
 
   // Returns the active concurrent copying collector.
   collector::ConcurrentCopying* ConcurrentCopyingCollector() {
-    if (kEnableGenerationalConcurrentCopyingCollection) {
+    if (use_generational_cc_) {
       DCHECK((active_concurrent_copying_collector_ == concurrent_copying_collector_) ||
              (active_concurrent_copying_collector_ == young_concurrent_copying_collector_));
     } else {
@@ -1476,6 +1481,11 @@ class Heap {
 
   // Whether or not we use homogeneous space compaction to avoid OOM errors.
   bool use_homogeneous_space_compaction_for_oom_;
+
+  // If true, enable generational collection when using the Concurrent Copying
+  // (CC) collector, i.e. use sticky-bit CC for minor collections and (full) CC
+  // for major collections. Set in Heap constructor.
+  const bool use_generational_cc_;
 
   // True if the currently running collection has made some thread wait.
   bool running_collection_is_blocking_ GUARDED_BY(gc_complete_lock_);

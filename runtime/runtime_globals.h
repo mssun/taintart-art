@@ -40,16 +40,24 @@ static constexpr bool kMovingCollector = true;
 static constexpr bool kMarkCompactSupport = false && kMovingCollector;
 // True if we allow moving classes.
 static constexpr bool kMovingClasses = !kMarkCompactSupport;
-// If true, enable generational collection when using the Concurrent Copying
-// (CC) collector, i.e. use sticky-bit CC for minor collections and (full) CC
-// for major collections.
+// When using the Concurrent Copying (CC) collector, if
+// `ART_USE_GENERATIONAL_CC` is true, enable generational collection by default,
+// i.e. use sticky-bit CC for minor collections and (full) CC for major
+// collections.
+// This default value can be overridden with the runtime option
+// `-Xgc:[no]generational_cc`.
 //
-// Generational CC collection is currently only compatible with Baker read
-// barriers.
-#if defined(ART_USE_GENERATIONAL_CC) && defined(ART_READ_BARRIER_TYPE_IS_BAKER)
-static constexpr bool kEnableGenerationalConcurrentCopyingCollection = true;
+// TODO(b/67628039): Consider either:
+// - renaming this to a better descriptive name (e.g.
+//   `ART_USE_GENERATIONAL_CC_BY_DEFAULT`); or
+// - removing `ART_USE_GENERATIONAL_CC` and having a fixed default value.
+// Any of these changes will require adjusting users of this preprocessor
+// directive and the corresponding build system environment variable (e.g. in
+// ART's continuous testing).
+#ifdef ART_USE_GENERATIONAL_CC
+static constexpr bool kEnableGenerationalCCByDefault = true;
 #else
-static constexpr bool kEnableGenerationalConcurrentCopyingCollection = false;
+static constexpr bool kEnableGenerationalCCByDefault = false;
 #endif
 
 // If true, enable the tlab allocator by default.
