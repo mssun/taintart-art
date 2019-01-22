@@ -130,6 +130,23 @@ TEST_F(ParsedOptionsTest, ParsedOptionsGc) {
   EXPECT_EQ(gc::kCollectorTypeSS, xgc.collector_type_);
 }
 
+TEST_F(ParsedOptionsTest, ParsedOptionsGenerationalCC) {
+  RuntimeOptions options;
+  options.push_back(std::make_pair("-Xgc:generational_cc", nullptr));
+
+  RuntimeArgumentMap map;
+  bool parsed = ParsedOptions::Parse(options, false, &map);
+  ASSERT_TRUE(parsed);
+  ASSERT_NE(0u, map.Size());
+
+  using Opt = RuntimeArgumentMap;
+
+  EXPECT_TRUE(map.Exists(Opt::GcOption));
+
+  XGcOption xgc = map.GetOrDefault(Opt::GcOption);
+  ASSERT_TRUE(xgc.generational_cc);
+}
+
 TEST_F(ParsedOptionsTest, ParsedOptionsInstructionSet) {
   using Opt = RuntimeArgumentMap;
 

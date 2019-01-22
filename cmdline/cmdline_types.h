@@ -427,6 +427,7 @@ struct XGcOption {
   gc::CollectorType collector_type_ = gc::kCollectorTypeDefault;
   bool verify_pre_gc_heap_ = false;
   bool verify_pre_sweeping_heap_ = kIsDebugBuild;
+  bool generational_cc = kEnableGenerationalCCByDefault;
   bool verify_post_gc_heap_ = false;
   bool verify_pre_gc_rosalloc_ = kIsDebugBuild;
   bool verify_pre_sweeping_rosalloc_ = false;
@@ -455,6 +456,10 @@ struct CmdlineType<XGcOption> : CmdlineTypeParser<XGcOption> {
         xgc.verify_pre_sweeping_heap_ = true;
       } else if (gc_option == "nopresweepingverify") {
         xgc.verify_pre_sweeping_heap_ = false;
+      } else if (gc_option == "generational_cc") {
+        xgc.generational_cc = true;
+      } else if (gc_option == "nogenerational_cc") {
+        xgc.generational_cc = false;
       } else if (gc_option == "postverify") {
         xgc.verify_post_gc_heap_ = true;
       } else if (gc_option == "nopostverify") {

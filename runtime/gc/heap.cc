@@ -107,8 +107,9 @@ static constexpr size_t kMaxConcurrentRemainingBytes = 512 * KB;
 // Sticky GC throughput adjustment, divided by 4. Increasing this causes sticky GC to occur more
 // relative to partial/full GC. This may be desirable since sticky GCs interfere less with mutator
 // threads (lower pauses, use less memory bandwidth).
-static constexpr double kStickyGcThroughputAdjustment =
-    kEnableGenerationalConcurrentCopyingCollection ? 0.5 : 1.0;
+static double GetStickyGcThroughputAdjustment(bool use_generational_cc) {
+  return use_generational_cc ? 0.5 : 1.0;
+}
 // Whether or not we compact the zygote in PreZygoteFork.
 static constexpr bool kCompactZygote = kMovingCollector;
 // How many reserve entries are at the end of the allocation stack, these are only needed if the
@@ -201,6 +202,7 @@ Heap::Heap(size_t initial_size,
            bool gc_stress_mode,
            bool measure_gc_performance,
            bool use_homogeneous_space_compaction_for_oom,
+           bool use_generational_cc,
            uint64_t min_interval_homogeneous_space_compaction_by_oom,
            bool dump_region_info_before_gc,
            bool dump_region_info_after_gc)
@@ -288,6 +290,7 @@ Heap::Heap(size_t initial_size,
       pending_collector_transition_(nullptr),
       pending_heap_trim_(nullptr),
       use_homogeneous_space_compaction_for_oom_(use_homogeneous_space_compaction_for_oom),
+      use_generational_cc_(use_generational_cc),
       running_collection_is_blocking_(false),
       blocking_gc_count_(0U),
       blocking_gc_time_(0U),
@@ -494,7 +497,8 @@ Heap::Heap(size_t initial_size,
     MemMap region_space_mem_map =
         space::RegionSpace::CreateMemMap(kRegionSpaceName, capacity_ * 2, request_begin);
     CHECK(region_space_mem_map.IsValid()) << "No region space mem map";
-    region_space_ = space::RegionSpace::Create(kRegionSpaceName, std::move(region_space_mem_map));
+    region_space_ = space::RegionSpace::Create(
+        kRegionSpaceName, std::move(region_space_mem_map), use_generational_cc_);
     AddSpace(region_space_);
   } else if (IsMovingGc(foreground_collector_type_) &&
       foreground_collector_type_ != kCollectorTypeGSS) {
@@ -652,26 +656,28 @@ Heap::Heap(size_t initial_size,
     if (MayUseCollector(kCollectorTypeCC)) {
       concurrent_copying_collector_ = new collector::ConcurrentCopying(this,
                                                                        /*young_gen=*/false,
+                                                                       use_generational_cc_,
                                                                        "",
                                                                        measure_gc_performance);
-      if (kEnableGenerationalConcurrentCopyingCollection) {
+      if (use_generational_cc_) {
         young_concurrent_copying_collector_ = new collector::ConcurrentCopying(
             this,
             /*young_gen=*/true,
+            use_generational_cc_,
             "young",
             measure_gc_performance);
       }
       active_concurrent_copying_collector_ = concurrent_copying_collector_;
       DCHECK(region_space_ != nullptr);
       concurrent_copying_collector_->SetRegionSpace(region_space_);
-      if (kEnableGenerationalConcurrentCopyingCollection) {
+      if (use_generational_cc_) {
         young_concurrent_copying_collector_->SetRegionSpace(region_space_);
         // At this point, non-moving space should be created.
         DCHECK(non_moving_space_ != nullptr);
         concurrent_copying_collector_->CreateInterRegionRefBitmaps();
       }
       garbage_collectors_.push_back(concurrent_copying_collector_);
-      if (kEnableGenerationalConcurrentCopyingCollection) {
+      if (use_generational_cc_) {
         garbage_collectors_.push_back(young_concurrent_copying_collector_);
       }
     }
@@ -2262,7 +2268,7 @@ void Heap::ChangeCollector(CollectorType collector_type) {
     gc_plan_.clear();
     switch (collector_type_) {
       case kCollectorTypeCC: {
-        if (kEnableGenerationalConcurrentCopyingCollection) {
+        if (use_generational_cc_) {
           gc_plan_.push_back(collector::kGcTypeSticky);
         }
         gc_plan_.push_back(collector::kGcTypeFull);
@@ -2739,7 +2745,7 @@ collector::GcType Heap::CollectGarbageInternal(collector::GcType gc_type,
         collector = semi_space_collector_;
         break;
       case kCollectorTypeCC:
-        if (kEnableGenerationalConcurrentCopyingCollection) {
+        if (use_generational_cc_) {
           // TODO: Other threads must do the flip checkpoint before they start poking at
           // active_concurrent_copying_collector_. So we should not concurrency here.
           active_concurrent_copying_collector_ = (gc_type == collector::kGcTypeSticky) ?
@@ -3637,19 +3643,21 @@ void Heap::GrowForUtilization(collector::GarbageCollector* collector_ran,
     collector::GcType non_sticky_gc_type = NonStickyGcType();
     // Find what the next non sticky collector will be.
     collector::GarbageCollector* non_sticky_collector = FindCollectorByGcType(non_sticky_gc_type);
-    if (kEnableGenerationalConcurrentCopyingCollection) {
+    if (use_generational_cc_) {
       if (non_sticky_collector == nullptr) {
         non_sticky_collector = FindCollectorByGcType(collector::kGcTypePartial);
       }
       CHECK(non_sticky_collector != nullptr);
     }
+    double sticky_gc_throughput_adjustment = GetStickyGcThroughputAdjustment(use_generational_cc_);
+
     // If the throughput of the current sticky GC >= throughput of the non sticky collector, then
     // do another sticky collection next.
     // We also check that the bytes allocated aren't over the footprint limit in order to prevent a
     // pathological case where dead objects which aren't reclaimed by sticky could get accumulated
     // if the sticky GC throughput always remained >= the full/partial throughput.
     size_t target_footprint = target_footprint_.load(std::memory_order_relaxed);
-    if (current_gc_iteration_.GetEstimatedThroughput() * kStickyGcThroughputAdjustment >=
+    if (current_gc_iteration_.GetEstimatedThroughput() * sticky_gc_throughput_adjustment >=
         non_sticky_collector->GetEstimatedMeanThroughput() &&
         non_sticky_collector->NumberOfIterations() > 0 &&
         bytes_allocated <= target_footprint) {
