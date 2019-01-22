@@ -1203,6 +1203,15 @@ static void dumpCode(const DexFile* pDexFile, u4 idx, u4 flags,
   });
 }
 
+static std::string GetHiddenapiFlagStr(uint32_t hiddenapi_flags) {
+  std::stringstream ss;
+  hiddenapi::ApiList api_list(hiddenapi_flags);
+  api_list.Dump(ss);
+  std::string str_api_list = ss.str();
+  std::transform(str_api_list.begin(), str_api_list.end(), str_api_list.begin(), ::toupper);
+  return str_api_list;
+}
+
 /*
  * Dumps a method.
  */
@@ -1220,12 +1229,19 @@ static void dumpMethod(const ClassAccessor::Method& method, int i) {
   char* typeDescriptor = strdup(signature.ToString().c_str());
   const char* backDescriptor = dex_file.StringByTypeIdx(pMethodId.class_idx_);
   char* accessStr = createAccessFlagStr(flags, kAccessForMethod);
+  const uint32_t hiddenapiFlags = method.GetHiddenapiFlags();
 
   if (gOptions.outputFormat == OUTPUT_PLAIN) {
     fprintf(gOutFile, "    #%d              : (in %s)\n", i, backDescriptor);
     fprintf(gOutFile, "      name          : '%s'\n", name);
     fprintf(gOutFile, "      type          : '%s'\n", typeDescriptor);
     fprintf(gOutFile, "      access        : 0x%04x (%s)\n", flags, accessStr);
+    if (hiddenapiFlags != 0u) {
+      fprintf(gOutFile,
+              "      hiddenapi     : 0x%04x (%s)\n",
+              hiddenapiFlags,
+              GetHiddenapiFlagStr(hiddenapiFlags).c_str());
+    }
     if (method.GetCodeItem() == nullptr) {
       fprintf(gOutFile, "      code          : (none)\n");
     } else {
@@ -1330,12 +1346,19 @@ static void dumpField(const ClassAccessor::Field& field, int i, const u1** data 
   const char* typeDescriptor = dex_file.StringByTypeIdx(field_id.type_idx_);
   const char* backDescriptor = dex_file.StringByTypeIdx(field_id.class_idx_);
   char* accessStr = createAccessFlagStr(flags, kAccessForField);
+  const uint32_t hiddenapiFlags = field.GetHiddenapiFlags();
 
   if (gOptions.outputFormat == OUTPUT_PLAIN) {
     fprintf(gOutFile, "    #%d              : (in %s)\n", i, backDescriptor);
     fprintf(gOutFile, "      name          : '%s'\n", name);
     fprintf(gOutFile, "      type          : '%s'\n", typeDescriptor);
     fprintf(gOutFile, "      access        : 0x%04x (%s)\n", flags, accessStr);
+    if (hiddenapiFlags != 0u) {
+      fprintf(gOutFile,
+              "      hiddenapi     : 0x%04x (%s)\n",
+              hiddenapiFlags,
+              GetHiddenapiFlagStr(hiddenapiFlags).c_str());
+    }
     if (data != nullptr) {
       fputs("      value         : ", gOutFile);
       dumpEncodedValue(&dex_file, data);
@@ -1488,7 +1511,7 @@ static void dumpClass(const DexFile* pDexFile, int idx, char** pLastPackage) {
   }
 
   // Fields and methods.
-  ClassAccessor accessor(*pDexFile, pClassDef);
+  ClassAccessor accessor(*pDexFile, pClassDef, /* parse_hiddenapi_class_data= */ true);
 
   // Prepare data for static fields.
   const u1* sData = pDexFile->GetEncodedStaticFieldValuesArray(pClassDef);
