@@ -21,7 +21,7 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 
-#include <cutils/sched_policy.h>
+#include <processgroup/sched_policy.h>
 #include <utils/threads.h>
 
 #include "base/macros.h"
