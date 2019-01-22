@@ -82,6 +82,14 @@ extern "C" JNIEXPORT jint JNICALL Java_Main_appendToBootClassLoader(
   return int_index;
 }
 
+extern "C" JNIEXPORT void JNICALL Java_Main_setWhitelistAll(JNIEnv*, jclass, jboolean value) {
+  std::vector<std::string> exemptions;
+  if (value != JNI_FALSE) {
+    exemptions.push_back("L");
+  }
+  Runtime::Current()->SetHiddenApiExemptions(exemptions);
+}
+
 static jobject NewInstance(JNIEnv* env, jclass klass) {
   jmethodID constructor = env->GetMethodID(klass, "<init>", "()V");
   if (constructor == nullptr) {
