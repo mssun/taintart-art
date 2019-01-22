@@ -8,7 +8,7 @@
   description: "Ignore failure of network-related tests on new devices running Android O",
   result: EXEC_FAILED,
   bug: 74725685,
-  modes: [device],
+  modes: [device_testdex],
   names: ["libcore.libcore.io.OsTest#test_byteBufferPositions_sendto_recvfrom_af_inet",
           "libcore.libcore.net.NetworkSecurityPolicyTest#testCleartextTrafficPolicyWithFtpURLConnection",
           "libcore.libcore.net.NetworkSecurityPolicyTest#testCleartextTrafficPolicyWithHttpURLConnection",
