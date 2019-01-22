@@ -8,7 +8,7 @@
 dir.runtime = /apex/com.android.runtime/bin/
 
 [runtime]
-additional.namespaces = platform
+additional.namespaces = platform,conscrypt
 
 # Keep in sync with runtime namespace in /system/etc/ld.config.txt.
 namespace.default.isolated = true
@@ -28,3 +28,17 @@ namespace.platform.link.default.shared_libs  = libart.so:libartd.so
 namespace.platform.link.default.shared_libs += libnativebridge.so
 namespace.platform.link.default.shared_libs += libnativehelper.so
 namespace.platform.link.default.shared_libs += libnativeloader.so
+
+###############################################################################
+# "conscrypt" APEX namespace
+#
+# This namespace is for libraries within the conscrypt APEX.
+###############################################################################
+namespace.conscrypt.isolated = true
+namespace.conscrypt.visible = true
+
+namespace.conscrypt.search.paths = /apex/com.android.conscrypt/${LIB}
+namespace.conscrypt.links = platform
+namespace.conscrypt.link.platform.shared_libs  = libc.so
+namespace.conscrypt.link.platform.shared_libs += libm.so
+namespace.conscrypt.link.platform.shared_libs += libdl.so
