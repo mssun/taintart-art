@@ -119,9 +119,8 @@ public class Main {
     // loaded by their parent class loader.
     String nativeLibCopy = createNativeLibCopy(parentDomain, childDomain, whitelistAllApis);
 
-    if (whitelistAllApis) {
-      VMRuntime.getRuntime().setHiddenApiExemptions(new String[]{"L"});
-    }
+    // Set exemptions to "L" (matches all classes) if we are testing whitelisting.
+    setWhitelistAll(whitelistAllApis);
 
     // Invoke ChildClass.runTest
     Class<?> childClass = Class.forName("ChildClass", true, childLoader);
@@ -129,8 +128,6 @@ public class Main {
         "runTest", String.class, Integer.TYPE, Integer.TYPE, Boolean.TYPE);
     runTestMethod.invoke(null, nativeLibCopy, parentDomain.ordinal(), childDomain.ordinal(),
         whitelistAllApis);
-
-    VMRuntime.getRuntime().setHiddenApiExemptions(new String[0]);
   }
 
   // Routine which tries to figure out the absolute path of our native library.
@@ -203,4 +200,5 @@ public class Main {
   private static native int appendToBootClassLoader(String dexPath, boolean isCorePlatform);
   private static native void setDexDomain(int index, boolean isCorePlatform);
   private static native void init();
+  private static native void setWhitelistAll(boolean value);
 }
