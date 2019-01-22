@@ -205,7 +205,7 @@ art_cc_binary {
     target: {
         android: {
             shared_libs: [
-                "libpagemap",
+                "libmeminfo",
             ],
         },
     },
