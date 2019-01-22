@@ -23,8 +23,8 @@ namespace art {
 class UtilsTest : public testing::Test {};
 
 TEST_F(UtilsTest, PrettySize) {
-  EXPECT_EQ("1GB", PrettySize(1 * GB));
-  EXPECT_EQ("2GB", PrettySize(2 * GB));
+  EXPECT_EQ("1024MB", PrettySize(1 * GB));
+  EXPECT_EQ("2048MB", PrettySize(2 * GB));
   if (sizeof(size_t) > sizeof(uint32_t)) {
     EXPECT_EQ("100GB", PrettySize(100 * GB));
   }
