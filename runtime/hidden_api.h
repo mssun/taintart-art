@@ -104,8 +104,8 @@ class AccessContext {
 
     Domain dex_domain = dex_file->GetHiddenapiDomain();
     if (class_loader.IsNull() && dex_domain == Domain::kApplication) {
-      LOG(WARNING) << "DexFile " << dex_file->GetLocation() << " is in boot classpath "
-                   << "but is assigned untrusted domain";
+      // LOG(WARNING) << "DexFile " << dex_file->GetLocation() << " is in boot classpath "
+      //              << "but is assigned untrusted domain";
       dex_domain = Domain::kPlatform;
     }
     return dex_domain;
@@ -415,7 +415,7 @@ inline bool ShouldDenyAccessToMember(T* member,
       }
 
       // Access checks are not disabled, report the violation.
-      detail::MaybeReportCorePlatformApiViolation(member, caller_context, access_method);
+      // detail::MaybeReportCorePlatformApiViolation(member, caller_context, access_method);
 
       // Deny access if the policy is enabled.
       return policy == EnforcementPolicy::kEnabled;
