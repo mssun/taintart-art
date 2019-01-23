@@ -72,6 +72,9 @@ std::string GetVdexFilename(const std::string& oat_filename);
 //          ReplaceFileExtension("foo", "abc") == "foo.abc"
 std::string ReplaceFileExtension(const std::string& filename, const std::string& new_extension);
 
+// Return whether the location is on apex/com.android.runtime
+bool LocationIsOnRuntimeModule(const char* location);
+
 // Return whether the location is on system (i.e. android root).
 bool LocationIsOnSystem(const char* location);
 

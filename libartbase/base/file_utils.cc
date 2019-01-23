@@ -278,6 +278,17 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
   }
 }
 
+bool LocationIsOnRuntimeModule(const char* full_path) {
+  std::string error_msg;
+  const char* runtime_path = GetAndroidDirSafe("ANDROID_RUNTIME_ROOT",
+                                               "/apex/com.android.runtime",
+                                               &error_msg);
+  if (runtime_path == nullptr) {
+    return false;
+  }
+  return android::base::StartsWith(full_path, runtime_path);
+}
+
 bool LocationIsOnSystem(const char* path) {
 #ifdef _WIN32
   UNUSED(path);
