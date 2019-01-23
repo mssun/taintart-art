@@ -29,11 +29,17 @@ namespace.platform.link.default.shared_libs += libnativebridge.so
 namespace.platform.link.default.shared_libs += libnativehelper.so
 namespace.platform.link.default.shared_libs += libnativeloader.so
 
+# Note that we don't need to link the default namespace with conscrypt:
+# the runtime Java code and binaries do not explicitly load native libraries
+# from it.
+
 ###############################################################################
 # "conscrypt" APEX namespace
 #
 # This namespace is for libraries within the conscrypt APEX.
 ###############################################################################
+
+# Keep in sync with conscrypt namespace in /system/etc/ld.config.txt.
 namespace.conscrypt.isolated = true
 namespace.conscrypt.visible = true
 
