@@ -1460,22 +1460,27 @@ void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method ATTRIBUTE_UNUSED
                                               const debug::MethodDebugInfo& info) {
   const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
   DCHECK(compiler_options.GenerateAnyDebugInfo());
+  TimingLogger logger("Generate JIT debug info logger", true, VLOG_IS_ON(jit));
+  {
+    TimingLogger::ScopedTiming st("Generate JIT debug info", &logger);
 
-  // If both flags are passed, generate full debug info.
-  const bool mini_debug_info = !compiler_options.GetGenerateDebugInfo();
+    // If both flags are passed, generate full debug info.
+    const bool mini_debug_info = !compiler_options.GetGenerateDebugInfo();
 
-  // Create entry for the single method that we just compiled.
-  std::vector<uint8_t> elf_file = debug::MakeElfFileForJIT(
-      compiler_options.GetInstructionSet(),
-      compiler_options.GetInstructionSetFeatures(),
-      mini_debug_info,
-      info);
-  AddNativeDebugInfoForJit(Thread::Current(),
-                           reinterpret_cast<const void*>(info.code_address),
-                           elf_file,
-                           debug::PackElfFileForJIT,
-                           compiler_options.GetInstructionSet(),
-                           compiler_options.GetInstructionSetFeatures());
+    // Create entry for the single method that we just compiled.
+    std::vector<uint8_t> elf_file = debug::MakeElfFileForJIT(
+        compiler_options.GetInstructionSet(),
+        compiler_options.GetInstructionSetFeatures(),
+        mini_debug_info,
+        info);
+    AddNativeDebugInfoForJit(Thread::Current(),
+                             reinterpret_cast<const void*>(info.code_address),
+                             elf_file,
+                             debug::PackElfFileForJIT,
+                             compiler_options.GetInstructionSet(),
+                             compiler_options.GetInstructionSetFeatures());
+  }
+  Runtime::Current()->GetJit()->AddTimingLogger(logger);
 }
 
 }  // namespace art
