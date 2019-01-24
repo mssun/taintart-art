@@ -1410,20 +1410,23 @@ bool ElfOatFile::ElfFileOpen(File* file,
 
 std::string OatFile::ResolveRelativeEncodedDexLocation(
       const char* abs_dex_location, const std::string& rel_dex_location) {
-  // For host, we still do resolution as the rel_dex_location might be absolute
-  // for a target dex (for example /system/foo/foo.apk).
-  if (abs_dex_location != nullptr && (rel_dex_location[0] != '/' || !kIsTargetBuild)) {
-    // Strip :classes<N>.dex used for secondary multidex files.
+  if (abs_dex_location != nullptr) {
     std::string base = DexFileLoader::GetBaseLocation(rel_dex_location);
+    // Strip :classes<N>.dex used for secondary multidex files.
     std::string multidex_suffix = DexFileLoader::GetMultiDexSuffix(rel_dex_location);
-
-    // Check if the base is a suffix of the provided abs_dex_location.
-    std::string target_suffix = ((rel_dex_location[0] != '/') ? "/" : "") + base;
-    std::string abs_location(abs_dex_location);
-    if (abs_location.size() > target_suffix.size()) {
-      size_t pos = abs_location.size() - target_suffix.size();
-      if (abs_location.compare(pos, std::string::npos, target_suffix) == 0) {
-        return abs_location + multidex_suffix;
+    if (!kIsTargetBuild) {
+      // For host, we still do resolution as the rel_dex_location might be absolute
+      // for a target dex (for example /system/foo/foo.apk).
+      return std::string(abs_dex_location) + multidex_suffix;
+    } else if (rel_dex_location[0] != '/') {
+      // Check if the base is a suffix of the provided abs_dex_location.
+      std::string target_suffix = ((rel_dex_location[0] != '/') ? "/" : "") + base;
+      std::string abs_location(abs_dex_location);
+      if (abs_location.size() > target_suffix.size()) {
+        size_t pos = abs_location.size() - target_suffix.size();
+        if (abs_location.compare(pos, std::string::npos, target_suffix) == 0) {
+          return abs_location + multidex_suffix;
+        }
       }
     }
   }
