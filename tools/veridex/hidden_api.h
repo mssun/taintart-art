@@ -41,7 +41,7 @@ class HiddenApi {
   }
 
   bool IsInAnyList(const std::string& name) const {
-    return GetApiList(name).IsEmpty();
+    return !GetApiList(name).IsEmpty();
   }
 
   static std::string GetApiMethodName(const DexFile& dex_file, uint32_t method_index);

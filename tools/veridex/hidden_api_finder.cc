@@ -180,6 +180,7 @@ void HiddenApiFinder::Dump(std::ostream& os,
   for (const std::pair<const std::string,
                        std::vector<MethodReference>>& pair : method_locations_) {
     hiddenapi::ApiList api_list = hidden_api_.GetApiList(pair.first);
+    CHECK(api_list.IsValid());
     stats->api_counts[api_list.GetIntValue()]++;
     os << "#" << ++stats->count << ": Linking " << api_list << " " << pair.first << " use(s):";
     os << std::endl;
@@ -191,6 +192,7 @@ void HiddenApiFinder::Dump(std::ostream& os,
   for (const std::pair<const std::string,
                        std::vector<MethodReference>>& pair : field_locations_) {
     hiddenapi::ApiList api_list = hidden_api_.GetApiList(pair.first);
+    CHECK(api_list.IsValid());
     stats->api_counts[api_list.GetIntValue()]++;
     os << "#" << ++stats->count << ": Linking " << api_list << " " << pair.first << " use(s):";
     os << std::endl;
