@@ -35,10 +35,6 @@ TEST_F(OatFileTest, ResolveRelativeEncodedDexLocation) {
       OatFile::ResolveRelativeEncodedDexLocation(
         nullptr, "/data/app/foo/base.apk"));
 
-  EXPECT_EQ(std::string("/system/framework/base.apk"),
-      OatFile::ResolveRelativeEncodedDexLocation(
-        "/data/app/foo/base.apk", "/system/framework/base.apk"));
-
   EXPECT_EQ(std::string("/data/app/foo/base.apk"),
       OatFile::ResolveRelativeEncodedDexLocation(
         "/data/app/foo/base.apk", "base.apk"));
@@ -55,13 +51,29 @@ TEST_F(OatFileTest, ResolveRelativeEncodedDexLocation) {
       OatFile::ResolveRelativeEncodedDexLocation(
         "/data/app/foo/base.apk", "base.apk!classes11.dex"));
 
-  EXPECT_EQ(std::string("base.apk"),
-      OatFile::ResolveRelativeEncodedDexLocation(
-        "/data/app/foo/sludge.apk", "base.apk"));
-
-  EXPECT_EQ(std::string("o/base.apk"),
-      OatFile::ResolveRelativeEncodedDexLocation(
-        "/data/app/foo/base.apk", "o/base.apk"));
+  // Host and target differ in their way of handling locations
+  // that are prefix of one another, due to boot image files.
+  if (kIsTargetBuild) {
+    EXPECT_EQ(std::string("/system/framework/base.apk"),
+        OatFile::ResolveRelativeEncodedDexLocation(
+          "/data/app/foo/base.apk", "/system/framework/base.apk"));
+    EXPECT_EQ(std::string("base.apk"),
+        OatFile::ResolveRelativeEncodedDexLocation(
+          "/data/app/foo/sludge.apk", "base.apk"));
+    EXPECT_EQ(std::string("o/base.apk"),
+        OatFile::ResolveRelativeEncodedDexLocation(
+          "/data/app/foo/base.apk", "o/base.apk"));
+  } else {
+    EXPECT_EQ(std::string("/data/app/foo/base.apk"),
+        OatFile::ResolveRelativeEncodedDexLocation(
+          "/data/app/foo/base.apk", "/system/framework/base.apk"));
+    EXPECT_EQ(std::string("/data/app/foo/sludge.apk"),
+        OatFile::ResolveRelativeEncodedDexLocation(
+          "/data/app/foo/sludge.apk", "base.apk"));
+    EXPECT_EQ(std::string("/data/app/foo/base.apk"),
+        OatFile::ResolveRelativeEncodedDexLocation(
+          "/data/app/foo/base.apk", "o/base.apk"));
+  }
 }
 
 TEST_F(OatFileTest, LoadOat) {
