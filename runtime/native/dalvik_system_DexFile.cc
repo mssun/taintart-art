@@ -244,7 +244,7 @@ static jobject DexFile_createCookieWithDirectBuffer(JNIEnv* env,
   }
 
   size_t length = static_cast<size_t>(end - start);
-  memcpy(dex_mem_map.Begin(), base_address, length);
+  memcpy(dex_mem_map.Begin(), base_address + start, length);
   return CreateSingleDexFileCookie(env, std::move(dex_mem_map));
 }
 
