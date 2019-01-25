@@ -84,6 +84,15 @@ libcore_native_shared_libs = [
     "libopenjdk",
 ]
 
+// Java libraries
+libcore_target_java_libs = [
+    "core-oj",
+    "core-libart",
+    "okhttp",
+    "bouncycastle",
+    "apache-xml",
+]
+
 apex_key {
     name: "com.android.runtime.key",
     public_key: "com.android.runtime.avbpubkey",
@@ -107,6 +116,7 @@ apex {
     name: "com.android.runtime.release",
     compile_multilib: "both",
     manifest: "manifest.json",
+    java_libs: libcore_target_java_libs,
     native_shared_libs: art_runtime_base_native_shared_libs
         + bionic_native_shared_libs
         + libcore_native_shared_libs,
@@ -136,6 +146,7 @@ apex {
     name: "com.android.runtime.debug",
     compile_multilib: "both",
     manifest: "manifest.json",
+    java_libs: libcore_target_java_libs,
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_debug_native_shared_libs
         + bionic_native_shared_libs

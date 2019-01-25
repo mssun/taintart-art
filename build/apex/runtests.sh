@@ -144,6 +144,10 @@ function check_library {
     || fail_check "Cannot find library '$1' in mounted image"
 }
 
+function check_java_library {
+  [[ -x "$mount_point/javalib/$1" ]] || fail_check "Cannot find java library '$1' in mounted image"
+}
+
 # Check contents of APEX payload located in `$mount_point`.
 function check_release_contents {
   # Check that the mounted image contains an APEX manifest.
@@ -188,6 +192,15 @@ function check_release_contents {
   #   ...
   #
   # ?
+
+  # TODO: Enable for host
+  if [ $1 != "com.android.runtime.host" ]; then
+    check_java_library core-oj.jar
+    check_java_library core-libart.jar
+    check_java_library okhttp.jar
+    check_java_library bouncycastle.jar
+    check_java_library apache-xml.jar
+  fi
 }
 
 # Check debug contents of APEX payload located in `$mount_point`.
@@ -285,7 +298,7 @@ maybe_list_apex_contents "$mount_point"
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
-check_release_contents
+check_release_contents "$apex_module"
 
 # Clean up.
 trap - EXIT
@@ -318,7 +331,7 @@ maybe_list_apex_contents "$mount_point"
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
-check_release_contents
+check_release_contents "$apex_module"
 check_debug_contents
 # Check for files pulled in from debug target-only oatdump.
 check_binary oatdump
@@ -389,7 +402,7 @@ maybe_list_apex_contents "$mount_point"
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
-check_release_contents
+check_release_contents "$apex_module"
 check_debug_contents
 
 # Clean up.
