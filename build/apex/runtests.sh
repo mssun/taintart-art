@@ -171,7 +171,6 @@ function check_release_contents {
   check_library libopenjdkjvmti.so
   check_library libprofile.so
   # Check that the mounted image contains Android Core libraries.
-  check_library libjavacrypto.so
   check_library libopenjdk.so
   # Check that the mounted image contains additional required libraries.
   check_library libadbconnection.so
