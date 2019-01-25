@@ -45,11 +45,13 @@ inline EnforcementPolicy EnforcementPolicyFromInt(int api_policy_int) {
   return static_cast<EnforcementPolicy>(api_policy_int);
 }
 
+// Hidden API access method
+// Thist must be kept in sync with VMRuntime.HiddenApiUsageLogger.ACCESS_METHOD_*
 enum class AccessMethod {
-  kNone,  // internal test that does not correspond to an actual access by app
-  kReflection,
-  kJNI,
-  kLinking,
+  kNone = 0,  // internal test that does not correspond to an actual access by app
+  kReflection = 1,
+  kJNI = 2,
+  kLinking = 3,
 };
 
 // Represents the API domain of a caller/callee.
