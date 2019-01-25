@@ -271,7 +271,7 @@ function setup_target_apex {
   echo "$partition" | cmp "$image_filesystems" -
 
   # Mount the image from the Android Runtime APEX.
-  guestmount -a "$image_file" -m "$partition" "$mount_point"
+  guestmount -a "$image_file" -m "$partition" --ro "$mount_point"
 }
 
 # Testing release APEX package (com.android.runtime.release).
