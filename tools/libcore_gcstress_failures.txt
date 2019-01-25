@@ -32,8 +32,9 @@
           "libcore.java.text.DecimalFormatTest#testCurrencySymbolSpacing",
           "libcore.java.text.SimpleDateFormatTest#testLocales",
           "org.apache.harmony.tests.java.lang.ref.ReferenceQueueTest#test_remove",
-          "org.apache.harmony.tests.java.text.DateFormatTest#test_getAvailableLocales",
+          "org.apache.harmony.tests.java.lang.ProcessManagerTest#testSleep",
           "org.apache.harmony.tests.java.lang.String2Test#test_getBytes",
+          "org.apache.harmony.tests.java.text.DateFormatTest#test_getAvailableLocales",
           "org.apache.harmony.tests.java.util.TimerTest#testOverdueTaskExecutesImmediately",
           "org.apache.harmony.tests.java.util.WeakHashMapTest#test_keySet_hasNext"]
 }
