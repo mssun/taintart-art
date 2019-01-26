@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <android-base/file.h>
+
 #include "oatdump_test.h"
 
 namespace art {
@@ -90,8 +92,11 @@ TEST_F(OatDumpTest, TestExportDex) {
   // Test is failing on target, b/77469384.
   TEST_DISABLED_FOR_TARGET();
   std::string error_msg;
+  ASSERT_TRUE(GenerateAppOdexFile(kDynamic, {}));
   ASSERT_TRUE(Exec(kDynamic, kModeOat, {"--export-dex-to=" + tmp_dir_}, kListOnly));
-  const std::string dex_location = tmp_dir_+ "/core-oj-hostdex.jar_export.dex";
+  const std::string dex_location =
+      tmp_dir_+ "/" + android::base::Basename(GetTestDexFileName(GetAppBaseName().c_str())) +
+      "_export.dex";
   const std::string dexdump2 = GetExecutableFilePath("dexdump2",
                                                      /*is_debug=*/false,
                                                      /*is_static=*/false);
@@ -104,6 +109,7 @@ TEST_F(OatDumpTest, TestExportDexStatic) {
   TEST_DISABLED_FOR_ARM_AND_MIPS();
   TEST_DISABLED_FOR_NON_STATIC_HOST_BUILDS();
   std::string error_msg;
+  ASSERT_TRUE(GenerateAppOdexFile(kDynamic, {}));
   ASSERT_TRUE(Exec(kStatic, kModeOat, {"--export-dex-to=" + tmp_dir_}, kListOnly));
 }
 
