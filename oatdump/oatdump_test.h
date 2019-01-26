@@ -201,7 +201,7 @@ class OatDumpTest : public CommonRuntimeTest {
         exec_argv.push_back("--oat-file=" + GetAppOdexName());
       } else {
         CHECK_EQ(static_cast<size_t>(mode), static_cast<size_t>(kModeOat));
-        exec_argv.push_back("--oat-file=" + core_oat_location_);
+        exec_argv.push_back("--oat-file=" + GetAppOdexName());
       }
     }
     exec_argv.insert(exec_argv.end(), args.begin(), args.end());
