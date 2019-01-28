@@ -8,7 +8,7 @@
 dir.runtime = /apex/com.android.runtime/bin/
 
 [runtime]
-additional.namespaces = platform,conscrypt
+additional.namespaces = platform,conscrypt,runtime
 
 # Keep in sync with the runtime namespace in /system/etc/ld.config.txt.
 namespace.default.isolated = true
@@ -54,3 +54,16 @@ namespace.conscrypt.links = platform
 namespace.conscrypt.link.platform.shared_libs  = libc.so
 namespace.conscrypt.link.platform.shared_libs += libm.so
 namespace.conscrypt.link.platform.shared_libs += libdl.so
+
+###############################################################################
+# "runtime" APEX namespace
+#
+# This namespace is an alias for the default namespace.
+###############################################################################
+namespace.runtime.isolated = true
+namespace.runtime.visible = true
+namespace.runtime.links = default
+namespace.runtime.link.default.allow_all_shared_libs = true
+namespace.runtime.links = platform
+# TODO(b/119867084): Restrict fallback to platform namespace to PALette library.
+namespace.runtime.link.platform.allow_all_shared_libs = true
