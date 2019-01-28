@@ -79,9 +79,13 @@ art_tools_host_only_binaries = [
 art_tools_device_binaries = art_tools_common_binaries + art_tools_device_only_binaries
 art_tools_host_binaries = art_tools_common_binaries + art_tools_host_only_binaries
 
-// (Some) Libcore native libraries.
+// Libcore native libraries.
 libcore_native_shared_libs = [
+    "libjavacore",
     "libopenjdk",
+    "libexpat",
+    "libz",
+    "libziparchive"
 ]
 
 // Java libraries
