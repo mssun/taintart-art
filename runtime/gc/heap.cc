@@ -2878,6 +2878,15 @@ void Heap::UpdateGcCountRateHistograms() {
   DCHECK_GE(now, last_update_time_gc_count_rate_histograms_);
   uint64_t time_since_last_update = now - last_update_time_gc_count_rate_histograms_;
   uint64_t num_of_windows = time_since_last_update / kGcCountRateHistogramWindowDuration;
+
+  // The computed number of windows can be incoherently high if NanoTime() is not monotonic.
+  // Setting a limit on its maximum value reduces the impact on CPU time in such cases.
+  if (num_of_windows > kGcCountRateHistogramMaxNumMissedWindows) {
+    LOG(WARNING) << "Reducing the number of considered missed Gc histogram windows from "
+                 << num_of_windows << " to " << kGcCountRateHistogramMaxNumMissedWindows;
+    num_of_windows = kGcCountRateHistogramMaxNumMissedWindows;
+  }
+
   if (time_since_last_update >= kGcCountRateHistogramWindowDuration) {
     // Record the first window.
     gc_count_rate_histogram_.AddValue(gc_count_last_window_ - 1);  // Exclude the current run.
