@@ -64,6 +64,6 @@ namespace.runtime.isolated = true
 namespace.runtime.visible = true
 namespace.runtime.links = default
 namespace.runtime.link.default.allow_all_shared_libs = true
-namespace.runtime.links = platform
+namespace.runtime.links += platform
 # TODO(b/119867084): Restrict fallback to platform namespace to PALette library.
 namespace.runtime.link.platform.allow_all_shared_libs = true
