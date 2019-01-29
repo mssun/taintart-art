@@ -1173,6 +1173,11 @@
         "description": ["Tests are expected to fail with baseline."]
     },
     {
+        "tests": ["1339-dead-reference-safe"],
+        "variant": "debuggable",
+        "description": [ "Fails to eliminate dead reference when debuggable." ]
+    },
+    {
         "tests": ["708-jit-cache-churn"],
         "variant": "jit-on-first-use",
         "bug": "b/120112467",
