@@ -93,7 +93,7 @@ class ExceptionTest : public CommonRuntimeTest {
       AlignUp(&fake_header_code_and_maps_[stack_maps_size + header_size], code_alignment);
 
     memcpy(&fake_header_code_and_maps_[0], stack_map.data(), stack_maps_size);
-    OatQuickMethodHeader method_header(code_ptr - fake_header_code_and_maps_.data(), code_size);
+    OatQuickMethodHeader method_header(code_ptr - fake_header_code_and_maps_.data());
     static_assert(std::is_trivially_copyable<OatQuickMethodHeader>::value, "Cannot use memcpy");
     memcpy(code_ptr - header_size, &method_header, header_size);
     memcpy(code_ptr, fake_code_.data(), fake_code_.size());
