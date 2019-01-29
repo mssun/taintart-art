@@ -87,7 +87,8 @@ static void DCheckVerifyDexFile(const art::DexFile& dex) {
   }
 }
 
-std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& original,
+std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(jobject class_loader,
+                                                       const art::DexFile& original,
                                                        const char* descriptor) {
   // Copy the data into mutable memory.
   std::vector<unsigned char> data;
@@ -100,9 +101,11 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
   // property from `original` to `new_dex_file`.
   const art::DexFileLoader dex_file_loader;
 
-  if (original.IsCompactDexFile()) {
+  if (original.IsCompactDexFile() || class_loader == nullptr) {
     // Since we are supposed to return a standard dex, convert back using dexlayout. It's OK to do
     // this before unquickening.
+    // We also do dex layout for boot classpath dex files, as they contain hidden API flags which
+    // we want to remove.
     art::Options options;
     options.compact_dex_level_ = art::CompactDexLevel::kCompactDexLevelNone;
     // Add a filter to only include the class that has the matching descriptor.
