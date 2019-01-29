@@ -99,8 +99,7 @@ class TargetApexProvider:
       def is_exec_bit(ch):
         return True if int(ch) & 1 == 1 else False
       is_exec = is_exec_bit(bits[3]) and is_exec_bit(bits[4]) and is_exec_bit(bits[5])
-      # TODO: Figure out how this is represented
-      is_symlink = False
+      is_symlink = True if bits[1] == '2' else False
       map[name] = FSObject(name, is_dir, is_exec, is_symlink)
     self._folder_cache[dir] = map
     return map
@@ -141,6 +140,7 @@ class Checker:
     res = self.check_binary('%s32' % (file))
     if self._is_multilib:
       res = self.check_binary('%s64' % (file)) and res
+    self.check_binary_symlink(file)
     return res
 
   def check_binary_symlink(self, file):
@@ -180,8 +180,6 @@ class ReleaseChecker(Checker):
 
     # Check that the mounted image contains ART base binaries.
     self.check_multilib_binary('dalvikvm')
-    # TODO: Does not work yet (b/119942078).
-    # self.check_binary_symlink('dalvikvm')
     self.check_binary('dex2oat')
     self.check_binary('dexoptanalyzer')
     self.check_binary('profman')
