@@ -29,10 +29,16 @@ bionic_binaries_both = [
 ]
 // - Debug variants (binaries for which a 32-bit version is preferred).
 art_runtime_debug_binaries_prefer32 = [
-    "dex2oatd",
     "dexoptanalyzerd",
     "profmand",
 ]
+art_runtime_debug_binaries_prefer32_device = [
+    "dex2oatd",
+]
+art_runtime_debug_binaries_both_host = [
+    "dex2oatd",
+]
+
 // - Debug variants (libraries).
 art_runtime_debug_native_shared_libs = [
     "libartd",
@@ -165,7 +171,8 @@ apex {
         },
         prefer32: {
             binaries: art_runtime_base_binaries_prefer32
-                + art_runtime_debug_binaries_prefer32,
+                + art_runtime_debug_binaries_prefer32
+                + art_runtime_debug_binaries_prefer32_device,
         },
         first: {
             binaries: art_tools_device_binaries,
@@ -196,7 +203,8 @@ art_apex {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
             // (see `symlink_preferred_arch` in art/dalvikvm/Android.bp).
-            binaries: art_runtime_base_binaries_both,
+            binaries: art_runtime_base_binaries_both
+                + art_runtime_debug_binaries_both_host,
         },
         first: {
             binaries: art_tools_host_binaries
