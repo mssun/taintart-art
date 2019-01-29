@@ -109,6 +109,7 @@ TEST_F(JavaVmExtTest, AttachCurrentThreadAsDaemon) {
 }
 
 TEST_F(JavaVmExtTest, AttachCurrentThread_SmallStack) {
+  TEST_DISABLED_FOR_MEMORY_TOOL();  // b/123500163
   pthread_t pthread;
   pthread_attr_t attr;
   const char* reason = __PRETTY_FUNCTION__;
