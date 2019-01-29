@@ -260,10 +260,66 @@ class DebugChecker(Checker):
     # Check that the mounted image contains additional required debug libraries.
     self.check_library('libadbconnectiond.so')
 
+def print_list(provider):
+    def print_list_impl(provider, path):
+      map = provider.read_dir(path)
+      if map is None:
+        return
+      map = dict(map)
+      if '.' in map:
+        del map['.']
+      if '..' in map:
+        del map['..']
+      for (_, val) in sorted(map.items()):
+        new_path = os.path.join(path, val.name)
+        print(new_path)
+        if val.is_dir:
+          print_list_impl(provider, new_path)
+    print_list_impl(provider, '.')
+
+def print_tree(provider, title):
+    def get_vertical(has_next_list):
+      str = ''
+      for v in has_next_list:
+        str += '%s   ' % ('│' if v else ' ')
+      return str
+    def get_last_vertical(last):
+      return '└── ' if last else '├── ';
+    def print_tree_impl(provider, path, has_next_list):
+      map = provider.read_dir(path)
+      if map is None:
+        return
+      map = dict(map)
+      if '.' in map:
+        del map['.']
+      if '..' in map:
+        del map['..']
+      key_list = list(sorted(map.keys()))
+      for i in range(0, len(key_list)):
+        val = map[key_list[i]]
+        prev = get_vertical(has_next_list)
+        last = get_last_vertical(i == len(key_list) - 1)
+        print('%s%s%s' % (prev, last, val.name))
+        if val.is_dir:
+          has_next_list.append(i < len(key_list) - 1)
+          print_tree_impl(provider, os.path.join(path, val.name), has_next_list)
+          has_next_list.pop()
+    print('%s' % (title))
+    print_tree_impl(provider, '.', [])
+
 # Note: do not sys.exit early, for __del__ cleanup.
 def artApexTestMain(args):
-  if not args.host and not args.target and not args.debug:
-    logging.error("None of --host, --target nor --debug set")
+  if not args.host and not args.target and not args.debug and not args.tree and not args.list:
+    logging.error("None of --host, --target, --debug, --tree nor --list set")
+    return 1
+  if args.tree and (args.host or args.debug):
+    logging.error("Both of --tree and --host|--debug set")
+    return 1
+  if args.list and (args.host or args.debug):
+    logging.error("Both of --list and --host|--debug set")
+    return 1
+  if args.list and args.tree:
+    logging.error("Both of --list and --tree set")
     return 1
   if args.host and (args.target or args.debug):
     logging.error("Both of --host and --target|--debug set")
@@ -282,6 +338,13 @@ def artApexTestMain(args):
   except:
     logging.error('Failed to create provider')
     return 1
+
+  if args.tree:
+    print_tree(apex_provider, args.apex)
+    return 0
+  if args.list:
+    print_list(apex_provider)
+    return 0
 
   checkers = []
   if args.host:
@@ -317,6 +380,8 @@ def artApexTestDefault(parser):
   args = parser.parse_args(['dummy'])  # For consistency.
   args.debugfs = '%s/bin/debugfs' % (host_out)
   args.tmpdir = '.'
+  args.tree = False
+  args.list = False
   failed = False
 
   if not os.path.exists(args.debugfs):
@@ -356,6 +421,9 @@ if __name__ == "__main__":
   parser.add_argument('--host', help='Check as host apex', action='store_true')
   parser.add_argument('--target', help='Check as target apex', action='store_true')
   parser.add_argument('--debug', help='Check as debug apex', action='store_true')
+
+  parser.add_argument('--list', help='List all files', action='store_true')
+  parser.add_argument('--tree', help='Print directory tree', action='store_true')
 
   parser.add_argument('--tmpdir', help='Directory for temp files')
   parser.add_argument('--debugfs', help='Path to debugfs')
