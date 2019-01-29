@@ -195,6 +195,7 @@ art_apex {
     host_supported: true,
     device_supported: false,
     manifest: "manifest.json",
+    java_libs: libcore_target_java_libs,
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_debug_native_shared_libs
         + libcore_native_shared_libs
