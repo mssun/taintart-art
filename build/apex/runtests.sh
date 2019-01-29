@@ -129,6 +129,9 @@ function check_binary {
 function check_multilib_binary {
   # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
   # the precision of this test?
+  if ! [[ -L "$mount_point/bin/${1}" ]]; then
+    fail_check "Cannot find symlink for multilib binary '$1' in mounted image"
+  fi
   [[ -x "$mount_point/bin/${1}32" ]] || [[ -x "$mount_point/bin/${1}64" ]] \
     || fail_check "Cannot find binary '$1' in mounted image"
 }
