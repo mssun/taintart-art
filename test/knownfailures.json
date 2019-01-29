@@ -1088,6 +1088,7 @@
                   "999-redefine-hiddenapi",
                   "1000-non-moving-space-stress",
                   "1001-app-image-regions",
+                  "1339-dead-reference-safe",
                   "1951-monitor-enter-no-suspend",
                   "1957-error-ext"],
         "variant": "jvm",

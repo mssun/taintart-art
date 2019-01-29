@@ -1,0 +1,6 @@
+JNI_OnLoad called
+DeadReferenceUnsafe count: 5
+DeadReferenceSafe count: N
+ReachabilitySensitive count: 5
+ReachabilitySensitiveFun count: 5
+ReachabilityFence count: 5

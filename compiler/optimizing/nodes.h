@@ -317,6 +317,7 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
          uint32_t method_idx,
          InstructionSet instruction_set,
          InvokeType invoke_type = kInvalidInvokeType,
+         bool dead_reference_safe = false,
          bool debuggable = false,
          bool osr = false,
          int start_instruction_id = 0)
@@ -336,6 +337,7 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
         has_simd_(false),
         has_loops_(false),
         has_irreducible_loops_(false),
+        dead_reference_safe_(dead_reference_safe),
         debuggable_(debuggable),
         current_instruction_id_(start_instruction_id),
         dex_file_(dex_file),
@@ -526,6 +528,12 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
     has_bounds_checks_ = value;
   }
 
+  // Is the code known to be robust against eliminating dead references
+  // and the effects of early finalization?
+  bool IsDeadReferenceSafe() const { return dead_reference_safe_; }
+
+  void MarkDeadReferenceUnsafe() { dead_reference_safe_ = false; }
+
   bool IsDebuggable() const { return debuggable_; }
 
   // Returns a constant of the given type and value. If it does not exist
@@ -703,6 +711,14 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
   // best effort to keep it up to date in the presence of code elimination
   // so there might be false positives.
   bool has_irreducible_loops_;
+
+  // Is the code known to be robust against eliminating dead references
+  // and the effects of early finalization? If false, dead reference variables
+  // are kept if they might be visible to the garbage collector.
+  // Currently this means that the class was declared to be dead-reference-safe,
+  // the method accesses no reachability-sensitive fields or data, and the same
+  // is true for any methods that were inlined into the current one.
+  bool dead_reference_safe_;
 
   // Indicates whether the graph should be compiled in a way that
   // ensures full debuggability. If false, we can apply more

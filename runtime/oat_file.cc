@@ -1836,6 +1836,16 @@ OatFile::OatClass OatDexFile::GetOatClass(uint16_t class_def_index) const {
                            reinterpret_cast<const OatMethodOffsets*>(methods_pointer));
 }
 
+ArrayRef<const uint8_t> OatDexFile::GetQuickenedInfoOf(const DexFile& dex_file,
+                                                       uint32_t dex_method_idx) const {
+  const OatFile* oat_file = GetOatFile();
+  if (oat_file == nullptr) {
+    return ArrayRef<const uint8_t>();
+  } else  {
+    return oat_file->GetVdexFile()->GetQuickenedInfoOf(dex_file, dex_method_idx);
+  }
+}
+
 const dex::ClassDef* OatDexFile::FindClassDef(const DexFile& dex_file,
                                               const char* descriptor,
                                               size_t hash) {
