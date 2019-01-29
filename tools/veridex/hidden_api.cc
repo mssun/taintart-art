@@ -37,7 +37,7 @@ HiddenApi::HiddenApi(const char* filename, bool sdk_uses_only) {
     CHECK(success) << "Unknown ApiList flag: " << str;
     CHECK(membership.IsValid()) << "Invalid ApiList: " << membership;
 
-    if (sdk_uses_only != (membership == hiddenapi::ApiList::Whitelist())) {
+    if (sdk_uses_only != membership.Contains(hiddenapi::ApiList::Whitelist())) {
       // Either we want only SDK uses and this is not a whitelist entry,
       // or we want only non-SDK uses and this is a whitelist entry.
       continue;
