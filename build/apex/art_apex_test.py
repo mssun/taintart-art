@@ -117,15 +117,19 @@ class Checker:
   def error_count(self):
     return self._errors
 
-  def check_file(self, file):
+  def is_file(self, file):
     fs_object = self._provider.get(file)
     if fs_object is None:
-      self.fail('Could not find %s', file)
-      return False
+      return (False, 'Could not find %s')
     if fs_object.is_dir:
-      self.fail('%s is a directory', file)
-      return False
-    return True
+      return (False, '%s is a directory')
+    return (True, '')
+
+  def check_file(self, file):
+    chk = self.is_file(file)
+    if not chk[0]:
+      self.fail(chk[1], file)
+    return chk[0]
 
   def check_binary(self, file):
     path = 'bin/%s' % (file)
@@ -164,6 +168,14 @@ class Checker:
     if self._is_multilib:
       res = self.check_file('lib64/%s' % (file)) and res
     return res
+
+  def check_single_library(self, file):
+    res1 = self.is_file('lib/%s' % (file))
+    res2 = self.is_file('lib64/%s' % (file))
+    if not res1[0] and not res2[0]:
+      self.fail('Library missing: %s', file)
+      return False
+    return True
 
   def check_java_library(self, file):
     return self.check_file('javalib/%s' % (file))
@@ -258,6 +270,17 @@ class DebugChecker(Checker):
     # Check that the mounted image contains additional required debug libraries.
     self.check_library('libadbconnectiond.so')
 
+class DebugTargetChecker(Checker):
+  def __init__(self, provider):
+    super().__init__(provider)
+  def __str__(self):
+    return 'Debug (Target) Checker'
+
+  def run(self):
+    # Check for files pulled in from debug target-only oatdump.
+    self.check_binary('oatdump')
+    self.check_single_library('libart-disassembler.so')
+
 def print_list(provider):
     def print_list_impl(provider, path):
       map = provider.read_dir(path)
@@ -333,8 +356,8 @@ def artApexTestMain(args):
 
   try:
     apex_provider = TargetApexProvider(args.apex, args.tmpdir, args.debugfs)
-  except:
-    logging.error('Failed to create provider')
+  except Exception as e:
+    logging.error('Failed to create provider: %s', e)
     return 1
 
   if args.tree:
@@ -352,6 +375,8 @@ def artApexTestMain(args):
   checkers.append(ReleaseChecker(apex_provider))
   if args.debug:
     checkers.append(DebugChecker(apex_provider))
+  if args.debug and args.target:
+    checkers.append(DebugTargetChecker(apex_provider))
 
   failed = False
   for checker in checkers:
