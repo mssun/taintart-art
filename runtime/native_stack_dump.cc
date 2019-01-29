@@ -50,7 +50,9 @@
 #include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
+#include "class_linker.h"
 #include "oat_quick_method_header.h"
+#include "runtime.h"
 #include "thread-current-inl.h"
 
 #endif
@@ -274,11 +276,17 @@ static bool RunCommand(const std::string& cmd) {
 }
 
 static bool PcIsWithinQuickCode(ArtMethod* method, uintptr_t pc) NO_THREAD_SAFETY_ANALYSIS {
-  uintptr_t code = reinterpret_cast<uintptr_t>(EntryPointToCodePointer(
-      method->GetEntryPointFromQuickCompiledCode()));
-  if (code == 0) {
+  const void* entry_point = method->GetEntryPointFromQuickCompiledCode();
+  if (entry_point == nullptr) {
     return pc == 0;
   }
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  if (class_linker->IsQuickGenericJniStub(entry_point) ||
+      class_linker->IsQuickResolutionStub(entry_point) ||
+      class_linker->IsQuickToInterpreterBridge(entry_point)) {
+    return false;
+  }
+  uintptr_t code = reinterpret_cast<uintptr_t>(EntryPointToCodePointer(entry_point));
   uintptr_t code_size = reinterpret_cast<const OatQuickMethodHeader*>(code)[-1].GetCodeSize();
   return code <= pc && pc <= (code + code_size);
 }
