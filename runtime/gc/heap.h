@@ -1495,6 +1495,8 @@ class Heap {
   uint64_t blocking_gc_time_;
   // The duration of the window for the GC count rate histograms.
   static constexpr uint64_t kGcCountRateHistogramWindowDuration = MsToNs(10 * 1000);  // 10s.
+  // Maximum number of missed histogram windows for which statistics will be collected.
+  static constexpr uint64_t kGcCountRateHistogramMaxNumMissedWindows = 100;
   // The last time when the GC count rate histograms were updated.
   // This is rounded by kGcCountRateHistogramWindowDuration (a multiple of 10s).
   uint64_t last_update_time_gc_count_rate_histograms_;
