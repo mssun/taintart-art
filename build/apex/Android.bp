@@ -197,6 +197,7 @@ art_apex {
     device_supported: false,
     manifest: "manifest.json",
     java_libs: libcore_target_java_libs,
+    ignore_system_library_special_case: true,
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_debug_native_shared_libs
         + libcore_native_shared_libs
@@ -218,6 +219,15 @@ art_apex {
     target: {
         darwin: {
             enabled: false,
+        },
+        linux_bionic: {
+            enabled: true,
+            multilib: {
+                both: {
+                    native_shared_libs: bionic_native_shared_libs,
+                    binaries: bionic_binaries_both,
+                }
+            }
         },
     },
 }
