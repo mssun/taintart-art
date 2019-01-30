@@ -761,8 +761,8 @@ if [ "$USE_ZIPAPEX" = "y" ]; then
   if [ "$DEV_MODE" = "y" ]; then
     zip_options=""
   fi
-  setupapex_cmdline="unzip -u ${zip_options} ${ZIPAPEX_LOC} apex_payload.zip -d ${DEX_LOCATION}"
-  installapex_cmdline="unzip -u ${zip_options} ${DEX_LOCATION}/apex_payload.zip -d ${DEX_LOCATION}/zipapex"
+  setupapex_cmdline="unzip -o -f -u ${zip_options} ${ZIPAPEX_LOC} apex_payload.zip -d ${DEX_LOCATION}"
+  installapex_cmdline="unzip -o -f -u ${zip_options} ${DEX_LOCATION}/apex_payload.zip -d ${DEX_LOCATION}/zipapex"
   BIN_DIR=$DEX_LOCATION/zipapex/bin
 fi
 
