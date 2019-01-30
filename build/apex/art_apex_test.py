@@ -183,6 +183,8 @@ class Checker:
 
   def error_count(self):
     return self._errors
+  def reset_errors(self):
+    self._errors = 0
 
   def is_file(self, file):
     fs_object = self._provider.get(file)
@@ -255,45 +257,45 @@ class Checker:
   def check_java_library(self, file):
     return self.check_file('javalib/%s' % (file))
 
-class ReleaseChecker(Checker):
-  def __init__(self, provider):
-    super().__init__(provider)
+class ReleaseChecker:
+  def __init__(self, checker):
+    self._checker = checker
   def __str__(self):
     return 'Release Checker'
 
   def run(self):
     # Check that the mounted image contains an APEX manifest.
-    self.check_file('apex_manifest.json')
+    self._checker.check_file('apex_manifest.json')
 
     # Check that the mounted image contains ART base binaries.
-    self.check_multilib_binary('dalvikvm')
-    self.check_binary('dex2oat')
-    self.check_binary('dexoptanalyzer')
-    self.check_binary('profman')
+    self._checker.check_multilib_binary('dalvikvm')
+    self._checker.check_binary('dex2oat')
+    self._checker.check_binary('dexoptanalyzer')
+    self._checker.check_binary('profman')
 
     # oatdump is only in device apex's due to build rules
     # TODO: Check for it when it is also built for host.
-    # self.check_binary('oatdump')
+    # self._checker.check_binary('oatdump')
 
     # Check that the mounted image contains Android Runtime libraries.
-    self.check_library('libart-compiler.so')
-    self.check_library('libart-dexlayout.so')
-    self.check_library('libart.so')
-    self.check_library('libartbase.so')
-    self.check_library('libartpalette.so')
-    self.check_no_library('libartpalette-system.so')
-    self.check_library('libdexfile.so')
-    self.check_library('libdexfile_external.so')
-    self.check_library('libopenjdkjvm.so')
-    self.check_library('libopenjdkjvmti.so')
-    self.check_library('libprofile.so')
+    self._checker.check_library('libart-compiler.so')
+    self._checker.check_library('libart-dexlayout.so')
+    self._checker.check_library('libart.so')
+    self._checker.check_library('libartbase.so')
+    self._checker.check_library('libartpalette.so')
+    self._checker.check_no_library('libartpalette-system.so')
+    self._checker.check_library('libdexfile.so')
+    self._checker.check_library('libdexfile_external.so')
+    self._checker.check_library('libopenjdkjvm.so')
+    self._checker.check_library('libopenjdkjvmti.so')
+    self._checker.check_library('libprofile.so')
     # Check that the mounted image contains Android Core libraries.
     # Note: host vs target libs are checked elsewhere.
-    self.check_library('libjavacore.so')
-    self.check_library('libopenjdk.so')
-    self.check_library('libziparchive.so')
+    self._checker.check_library('libjavacore.so')
+    self._checker.check_library('libopenjdk.so')
+    self._checker.check_library('libziparchive.so')
     # Check that the mounted image contains additional required libraries.
-    self.check_library('libadbconnection.so')
+    self._checker.check_library('libadbconnection.so')
 
     # TODO: Should we check for other libraries, such as:
     #
@@ -309,76 +311,76 @@ class ReleaseChecker(Checker):
     #
     # ?
 
-    self.check_java_library('core-oj.jar')
-    self.check_java_library('core-libart.jar')
-    self.check_java_library('okhttp.jar')
-    self.check_java_library('bouncycastle.jar')
-    self.check_java_library('apache-xml.jar')
+    self._checker.check_java_library('core-oj.jar')
+    self._checker.check_java_library('core-libart.jar')
+    self._checker.check_java_library('okhttp.jar')
+    self._checker.check_java_library('bouncycastle.jar')
+    self._checker.check_java_library('apache-xml.jar')
 
-class ReleaseTargetChecker(Checker):
-  def __init__(self, provider):
-    super().__init__(provider)
+class ReleaseTargetChecker:
+  def __init__(self, checker):
+    self._checker = checker
   def __str__(self):
     return 'Release (Target) Checker'
 
   def run(self):
     # Check that the mounted image contains Android Core libraries.
-    self.check_library('libexpat.so')
-    self.check_library('libz.so')
+    self._checker.check_library('libexpat.so')
+    self._checker.check_library('libz.so')
 
-class ReleaseHostChecker(Checker):
-  def __init__(self, provider):
-    super().__init__(provider)
+class ReleaseHostChecker:
+  def __init__(self, checker):
+    self._checker = checker;
   def __str__(self):
     return 'Release (Host) Checker'
 
   def run(self):
     # Check that the mounted image contains Android Core libraries.
-    self.check_library('libexpat-host.so')
-    self.check_library('libz-host.so')
+    self._checker.check_library('libexpat-host.so')
+    self._checker.check_library('libz-host.so')
 
-class DebugChecker(Checker):
-  def __init__(self, provider):
-    super().__init__(provider)
+class DebugChecker:
+  def __init__(self, checker):
+    self._checker = checker
   def __str__(self):
     return 'Debug Checker'
 
   def run(self):
     # Check that the mounted image contains ART tools binaries.
-    self.check_binary('dexdiag')
-    self.check_binary('dexdump')
-    self.check_binary('dexlist')
+    self._checker.check_binary('dexdiag')
+    self._checker.check_binary('dexdump')
+    self._checker.check_binary('dexlist')
 
     # Check that the mounted image contains ART debug binaries.
     # TODO(b/123427238): This should probably be dex2oatd, fix!
-    self.check_binary('dex2oatd32')
-    self.check_binary('dexoptanalyzerd')
-    self.check_binary('profmand')
+    self._checker.check_binary('dex2oatd32')
+    self._checker.check_binary('dexoptanalyzerd')
+    self._checker.check_binary('profmand')
 
     # Check that the mounted image contains Android Runtime debug libraries.
-    self.check_library('libartbased.so')
-    self.check_library('libartd-compiler.so')
-    self.check_library('libartd-dexlayout.so')
-    self.check_library('libartd.so')
-    self.check_library('libdexfiled.so')
-    self.check_library('libopenjdkjvmd.so')
-    self.check_library('libopenjdkjvmtid.so')
-    self.check_library('libprofiled.so')
+    self._checker.check_library('libartbased.so')
+    self._checker.check_library('libartd-compiler.so')
+    self._checker.check_library('libartd-dexlayout.so')
+    self._checker.check_library('libartd.so')
+    self._checker.check_library('libdexfiled.so')
+    self._checker.check_library('libopenjdkjvmd.so')
+    self._checker.check_library('libopenjdkjvmtid.so')
+    self._checker.check_library('libprofiled.so')
     # Check that the mounted image contains Android Core debug libraries.
-    self.check_library('libopenjdkd.so')
+    self._checker.check_library('libopenjdkd.so')
     # Check that the mounted image contains additional required debug libraries.
-    self.check_library('libadbconnectiond.so')
+    self._checker.check_library('libadbconnectiond.so')
 
-class DebugTargetChecker(Checker):
-  def __init__(self, provider):
-    super().__init__(provider)
+class DebugTargetChecker:
+  def __init__(self, checker):
+    self._checker = checker
   def __str__(self):
     return 'Debug (Target) Checker'
 
   def run(self):
     # Check for files pulled in from debug target-only oatdump.
-    self.check_binary('oatdump')
-    self.check_single_library('libart-disassembler.so')
+    self._checker.check_binary('oatdump')
+    self._checker.check_single_library('libart-disassembler.so')
 
 def print_list(provider):
     def print_list_impl(provider, path):
@@ -462,26 +464,28 @@ def artApexTestMain(args):
     return 0
 
   checkers = []
+  base_checker = Checker(apex_provider)
 
-  checkers.append(ReleaseChecker(apex_provider))
+  checkers.append(ReleaseChecker(base_checker))
   if args.host:
-    checkers.append(ReleaseHostChecker(apex_provider))
+    checkers.append(ReleaseHostChecker(base_checker))
   else:
-    checkers.append(ReleaseTargetChecker(apex_provider))
+    checkers.append(ReleaseTargetChecker(base_checker))
   if args.debug:
-    checkers.append(DebugChecker(apex_provider))
+    checkers.append(DebugChecker(base_checker))
   if args.debug and not args.host:
-    checkers.append(DebugTargetChecker(apex_provider))
+    checkers.append(DebugTargetChecker(base_checker))
 
   failed = False
   for checker in checkers:
     logging.info('%s...', checker)
     checker.run()
-    if checker.error_count() > 0:
+    if base_checker.error_count() > 0:
       logging.error('%s FAILED', checker)
       failed = True
     else:
       logging.info('%s SUCCEEDED', checker)
+    base_checker.reset_errors()
 
   return 1 if failed else 0
 
