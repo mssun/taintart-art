@@ -24,6 +24,11 @@ cc_defaults {
         "dexanalyze_experiments.cc",
         "dexanalyze_strings.cc",
     ],
+    target: {
+        android: {
+            shared_libs: ["libcutils"],
+        },
+    },
     header_libs: [
         "art_cmdlineparser_headers",
     ],
