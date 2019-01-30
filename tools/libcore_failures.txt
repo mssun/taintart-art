@@ -236,9 +236,8 @@
   ]
 },
 {
-  description: "Expected networking failure on host: we expect 97 (EAFNOSUPPORT), but we get 22 (EINVAL)",
+  description: "Expected networking failure on host / old systems: we expect 97 (EAFNOSUPPORT), but we get 22 (EINVAL)",
   result: EXEC_FAILED,
-  modes: [host],
   names: [
     "libcore.libcore.io.OsTest#testCrossFamilyBindConnectSendto"
   ]
