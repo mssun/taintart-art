@@ -148,7 +148,7 @@ function check_library {
 }
 
 function check_java_library {
-  [[ -x "$mount_point/javalib/$1" ]] || fail_check "Cannot find java library '$1' in mounted image"
+  [[ -f "$mount_point/javalib/$1" ]] || fail_check "Cannot find java library '$1' in mounted image"
 }
 
 # Check contents of APEX payload located in `$mount_point`.
@@ -180,7 +180,6 @@ function check_release_contents {
   # Check that the mounted image contains Android Core libraries.
   check_library "libexpat${host_suffix}.so"
   check_library libjavacore.so
-  check_library libjavacrypto.so
   check_library libopenjdk.so
   check_library "libz${host_suffix}.so"
   check_library libziparchive.so
