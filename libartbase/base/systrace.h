@@ -17,52 +17,33 @@
 #ifndef ART_LIBARTBASE_BASE_SYSTRACE_H_
 #define ART_LIBARTBASE_BASE_SYSTRACE_H_
 
+#define ATRACE_TAG ATRACE_TAG_DALVIK
+#include <cutils/trace.h>
+
 #include <sstream>
 #include <string>
 
 #include "android-base/stringprintf.h"
 #include "macros.h"
-#include "palette/palette.h"
 
 namespace art {
-
-inline bool ATraceEnabled() {
-  int enabled = 0;
-  if (UNLIKELY(PaletteTraceEnabled(&enabled) == PaletteStatus::kOkay && enabled != 0)) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-inline void ATraceBegin(const char* name) {
-  PaletteTraceBegin(name);
-}
-
-inline void ATraceEnd() {
-  PaletteTraceEnd();
-}
-
-inline void ATraceIntegerValue(const char* name, int32_t value) {
-  PaletteTraceIntegerValue(name, value);
-}
 
 class ScopedTrace {
  public:
   explicit ScopedTrace(const char* name) {
-    ATraceBegin(name);
+    ATRACE_BEGIN(name);
   }
   template <typename Fn>
   explicit ScopedTrace(Fn fn) {
-    if (UNLIKELY(ATraceEnabled())) {
-      ATraceBegin(fn().c_str());
+    if (ATRACE_ENABLED()) {
+      ATRACE_BEGIN(fn().c_str());
     }
   }
 
   explicit ScopedTrace(const std::string& name) : ScopedTrace(name.c_str()) {}
 
   ~ScopedTrace() {
-    ATraceEnd();
+    ATRACE_END();
   }
 };
 
@@ -73,7 +54,7 @@ class ScopedTraceNoStart {
   }
 
   ~ScopedTraceNoStart() {
-    ATraceEnd();
+    ATRACE_END();
   }
 
   // Message helper for the macro. Do not use directly.
@@ -82,7 +63,7 @@ class ScopedTraceNoStart {
     ScopedTraceMessageHelper() {
     }
     ~ScopedTraceMessageHelper() {
-      ATraceBegin(buffer_.str().c_str());
+      ATRACE_BEGIN(buffer_.str().c_str());
     }
 
     std::ostream& stream() {
@@ -96,7 +77,7 @@ class ScopedTraceNoStart {
 
 #define SCOPED_TRACE \
   ::art::ScopedTraceNoStart APPEND_TOKENS_AFTER_EVAL(trace, __LINE__) ; \
-  (ATraceEnabled()) && ::art::ScopedTraceNoStart::ScopedTraceMessageHelper().stream()
+  (ATRACE_ENABLED()) && ::art::ScopedTraceNoStart::ScopedTraceMessageHelper().stream()
 
 }  // namespace art
 

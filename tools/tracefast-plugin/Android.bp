@@ -30,6 +30,11 @@ cc_defaults {
         "libbase",
     ],
     target: {
+        android: {
+            shared_libs: [
+                "libcutils",
+            ],
+        },
         darwin: {
             enabled: false,
         },

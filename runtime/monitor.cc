@@ -280,7 +280,7 @@ void Monitor::SetObject(mirror::Object* object) {
 // This function is inlined and just helps to not have the VLOG and ATRACE check at all the
 // potential tracing points.
 void Monitor::AtraceMonitorLock(Thread* self, mirror::Object* obj, bool is_wait) {
-  if (UNLIKELY(VLOG_IS_ON(systrace_lock_logging) && ATraceEnabled())) {
+  if (UNLIKELY(VLOG_IS_ON(systrace_lock_logging) && ATRACE_ENABLED())) {
     AtraceMonitorLockImpl(self, obj, is_wait);
   }
 }
@@ -338,12 +338,12 @@ void Monitor::AtraceMonitorLockImpl(Thread* self, mirror::Object* obj, bool is_w
       (obj == nullptr ? -1 : static_cast<int32_t>(reinterpret_cast<uintptr_t>(obj))),
       (filename != nullptr ? filename : "null"),
       line_number);
-  ATraceBegin(tmp.c_str());
+  ATRACE_BEGIN(tmp.c_str());
 }
 
 void Monitor::AtraceMonitorUnlock() {
   if (UNLIKELY(VLOG_IS_ON(systrace_lock_logging))) {
-    ATraceEnd();
+    ATRACE_END();
   }
 }
 
@@ -431,7 +431,7 @@ void Monitor::Lock(Thread* self) {
     // If systrace logging is enabled, first look at the lock owner. Acquiring the monitor's
     // lock and then re-acquiring the mutator lock can deadlock.
     bool started_trace = false;
-    if (ATraceEnabled()) {
+    if (ATRACE_ENABLED()) {
       if (owner_ != nullptr) {  // Did the owner_ give the lock up?
         std::ostringstream oss;
         std::string name;
@@ -450,7 +450,7 @@ void Monitor::Lock(Thread* self) {
         oss << " blocking from "
             << ArtMethod::PrettyMethod(m) << "(" << (filename != nullptr ? filename : "null")
             << ":" << line_number << ")";
-        ATraceBegin(oss.str().c_str());
+        ATRACE_BEGIN(oss.str().c_str());
         started_trace = true;
       }
     }
@@ -581,7 +581,7 @@ void Monitor::Lock(Thread* self) {
       }
     }
     if (started_trace) {
-      ATraceEnd();
+      ATRACE_END();
     }
     self->SetMonitorEnterObject(nullptr);
     monitor_lock_.Lock(self);  // Reacquire locks in order.

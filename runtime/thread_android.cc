@@ -16,7 +16,83 @@
 
 #include "thread.h"
 
+#include <errno.h>
+#include <limits.h>
+#include <sys/resource.h>
+#include <sys/time.h>
+
+#include <processgroup/sched_policy.h>
+#include <utils/threads.h>
+
+#include "base/macros.h"
+
 namespace art {
+
+// Conversion map for "nice" values.
+//
+// We use Android thread priority constants to be consistent with the rest
+// of the system.  In some cases adjacent entries may overlap.
+//
+static const int kNiceValues[10] = {
+  ANDROID_PRIORITY_LOWEST,                // 1 (MIN_PRIORITY)
+  ANDROID_PRIORITY_BACKGROUND + 6,
+  ANDROID_PRIORITY_BACKGROUND + 3,
+  ANDROID_PRIORITY_BACKGROUND,
+  ANDROID_PRIORITY_NORMAL,                // 5 (NORM_PRIORITY)
+  ANDROID_PRIORITY_NORMAL - 2,
+  ANDROID_PRIORITY_NORMAL - 4,
+  ANDROID_PRIORITY_URGENT_DISPLAY + 3,
+  ANDROID_PRIORITY_URGENT_DISPLAY + 2,
+  ANDROID_PRIORITY_URGENT_DISPLAY         // 10 (MAX_PRIORITY)
+};
+
+void Thread::SetNativePriority(int newPriority) {
+  if (newPriority < 1 || newPriority > 10) {
+    LOG(WARNING) << "bad priority " << newPriority;
+    newPriority = 5;
+  }
+
+  int newNice = kNiceValues[newPriority-1];
+  pid_t tid = GetTid();
+
+  // TODO: b/18249098 The code below is broken. It uses getpriority() as a proxy for whether a
+  // thread is already in the SP_FOREGROUND cgroup. This is not necessarily true for background
+  // processes, where all threads are in the SP_BACKGROUND cgroup. This means that callers will
+  // have to call setPriority twice to do what they want :
+  //
+  //     Thread.setPriority(Thread.MIN_PRIORITY);  // no-op wrt to cgroups
+  //     Thread.setPriority(Thread.MAX_PRIORITY);  // will actually change cgroups.
+  if (newNice >= ANDROID_PRIORITY_BACKGROUND) {
+    set_sched_policy(tid, SP_BACKGROUND);
+  } else if (getpriority(PRIO_PROCESS, tid) >= ANDROID_PRIORITY_BACKGROUND) {
+    set_sched_policy(tid, SP_FOREGROUND);
+  }
+
+  if (setpriority(PRIO_PROCESS, tid, newNice) != 0) {
+    PLOG(INFO) << *this << " setPriority(PRIO_PROCESS, " << tid << ", " << newNice << ") failed";
+  }
+}
+
+int Thread::GetNativePriority() {
+  errno = 0;
+  int native_priority = getpriority(PRIO_PROCESS, 0);
+  if (native_priority == -1 && errno != 0) {
+    PLOG(WARNING) << "getpriority failed";
+    return kNormThreadPriority;
+  }
+
+  int managed_priority = kMinThreadPriority;
+  for (size_t i = 0; i < arraysize(kNiceValues); i++) {
+    if (native_priority >= kNiceValues[i]) {
+      break;
+    }
+    managed_priority++;
+  }
+  if (managed_priority > kMaxThreadPriority) {
+    managed_priority = kMaxThreadPriority;
+  }
+  return managed_priority;
+}
 
 void Thread::SetUpAlternateSignalStack() {
   // Bionic does this for us.

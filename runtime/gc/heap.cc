@@ -2637,7 +2637,7 @@ collector::GarbageCollector* Heap::Compact(space::ContinuousMemMapAllocSpace* ta
 }
 
 void Heap::TraceHeapSize(size_t heap_size) {
-  ATraceIntegerValue("Heap size (KB)", heap_size / KB);
+  ATRACE_INT("Heap size (KB)", heap_size / KB);
 }
 
 size_t Heap::GetNativeBytes() {
