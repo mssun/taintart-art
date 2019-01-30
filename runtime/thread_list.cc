@@ -683,7 +683,7 @@ void ThreadList::SuspendAll(const char* cause, bool long_suspend) {
       AssertThreadsAreSuspended(self, self);
     }
   }
-  ATRACE_BEGIN((std::string("Mutator threads suspended for ") + cause).c_str());
+  ATraceBegin((std::string("Mutator threads suspended for ") + cause).c_str());
 
   if (self != nullptr) {
     VLOG(threads) << *self << " SuspendAll complete";
@@ -811,7 +811,7 @@ void ThreadList::ResumeAll() {
     VLOG(threads) << "Thread[null] ResumeAll starting";
   }
 
-  ATRACE_END();
+  ATraceEnd();
 
   ScopedTrace trace("Resuming mutator threads");
 
@@ -855,8 +855,8 @@ void ThreadList::ResumeAll() {
 }
 
 bool ThreadList::Resume(Thread* thread, SuspendReason reason) {
-  // This assumes there was an ATRACE_BEGIN when we suspended the thread.
-  ATRACE_END();
+  // This assumes there was an ATraceBegin when we suspended the thread.
+  ATraceEnd();
 
   Thread* self = Thread::Current();
   DCHECK_NE(thread, self);
@@ -987,10 +987,10 @@ Thread* ThreadList::SuspendThreadByPeer(jobject peer,
         // done.
         if (thread->IsSuspended()) {
           VLOG(threads) << "SuspendThreadByPeer thread suspended: " << *thread;
-          if (ATRACE_ENABLED()) {
+          if (ATraceEnabled()) {
             std::string name;
             thread->GetThreadName(name);
-            ATRACE_BEGIN(StringPrintf("SuspendThreadByPeer suspended %s for peer=%p", name.c_str(),
+            ATraceBegin(StringPrintf("SuspendThreadByPeer suspended %s for peer=%p", name.c_str(),
                                       peer).c_str());
           }
           return thread;
@@ -1097,10 +1097,10 @@ Thread* ThreadList::SuspendThreadByThreadId(uint32_t thread_id,
         // count, or else we've waited and it has self suspended) or is the current thread, we're
         // done.
         if (thread->IsSuspended()) {
-          if (ATRACE_ENABLED()) {
+          if (ATraceEnabled()) {
             std::string name;
             thread->GetThreadName(name);
-            ATRACE_BEGIN(StringPrintf("SuspendThreadByThreadId suspended %s id=%d",
+            ATraceBegin(StringPrintf("SuspendThreadByThreadId suspended %s id=%d",
                                       name.c_str(), thread_id).c_str());
           }
           VLOG(threads) << "SuspendThreadByThreadId thread suspended: " << *thread;

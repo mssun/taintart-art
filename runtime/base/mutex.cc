@@ -107,15 +107,15 @@ class ScopedContentionRecorder final : public ValueObject {
         blocked_tid_(kLogLockContentions ? blocked_tid : 0),
         owner_tid_(kLogLockContentions ? owner_tid : 0),
         start_nano_time_(kLogLockContentions ? NanoTime() : 0) {
-    if (ATRACE_ENABLED()) {
+    if (ATraceEnabled()) {
       std::string msg = StringPrintf("Lock contention on %s (owner tid: %" PRIu64 ")",
                                      mutex->GetName(), owner_tid);
-      ATRACE_BEGIN(msg.c_str());
+      ATraceBegin(msg.c_str());
     }
   }
 
   ~ScopedContentionRecorder() {
-    ATRACE_END();
+    ATraceEnd();
     if (kLogLockContentions) {
       uint64_t end_nano_time = NanoTime();
       mutex_->RecordContention(blocked_tid_, owner_tid_, end_nano_time - start_nano_time_);

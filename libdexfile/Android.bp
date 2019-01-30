@@ -47,9 +47,8 @@ cc_defaults {
             shared_libs: [
                  // For MemMap.
                  "libartbase",
+                 "libartpalette",
                  "liblog",
-                 // For atrace.
-                 "libcutils",
                  // For common macros.
                  "libbase",
             ],
@@ -64,9 +63,8 @@ cc_defaults {
                 "libz",
                  // For MemMap.
                  "libartbase",
+                 "libartpalette",
                  "liblog",
-                 // For atrace.
-                 "libcutils",
                  // For common macros.
                  "libbase",
             ],
@@ -81,9 +79,8 @@ cc_defaults {
                 "libz",
                  // For MemMap.
                  "libartbase",
+                 "libartpalette",
                  "liblog",
-                 // For atrace.
-                 "libcutils",
                  // For common macros.
                  "libbase",
             ],
@@ -102,7 +99,6 @@ cc_defaults {
     name: "libdexfile_static_base_defaults",
     static_libs: [
         "libbase",
-        "libcutils",
         "liblog",
         "libz",
         "libziparchive",
