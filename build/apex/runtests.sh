@@ -77,15 +77,6 @@ Try '$0 --help' for more information.";;
   shift
 done
 
-if $print_image_tree_p; then
-  which tree >/dev/null || die "This script requires the 'tree' tool.
-On Debian-based systems, this can be installed with:
-
-   sudo apt-get install tree
-"
-fi
-
-
 # build_apex APEX_MODULE
 # ----------------------
 # Build APEX package APEX_MODULE.
@@ -93,24 +84,6 @@ function build_apex {
   if $build_apex_p; then
     local apex_module=$1
     say "Building package $apex_module" && make "$apex_module" || die "Cannot build $apex_module"
-  fi
-}
-
-# maybe_list_apex_contents MOUNT_POINT
-# ------------------------------------
-# If any listing/printing option was used, honor them and display the contents
-# of the APEX payload at MOUNT_POINT.
-function maybe_list_apex_contents {
-  local mount_point=$1
-
-  # List the contents of the mounted image using `find` (optional).
-  if $list_image_files_p; then
-    say "Listing image files" && find "$mount_point"
-  fi
-
-  # List the contents of the mounted image using `tree` (optional).
-  if $print_image_tree_p; then
-    say "Printing image tree" && ls -ld "$mount_point" && tree -aph --du "$mount_point"
   fi
 }
 
@@ -137,134 +110,6 @@ function fail_check {
   echo "$0: FAILED: $*"
   test_status=1
   exit_status=1
-}
-
-function check_file {
-  [[ -f "$mount_point/$1" ]] || fail_check "Cannot find file '$1' in mounted image"
-}
-
-function check_binary {
-  [[ -x "$mount_point/bin/$1" ]] || fail_check "Cannot find binary '$1' in mounted image"
-}
-
-function check_multilib_binary {
-  # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
-  # the precision of this test?
-  if ! [[ -L "$mount_point/bin/${1}" ]]; then
-    fail_check "Cannot find symlink for multilib binary '$1' in mounted image"
-  fi
-  [[ -x "$mount_point/bin/${1}32" ]] || [[ -x "$mount_point/bin/${1}64" ]] \
-    || fail_check "Cannot find binary '$1' in mounted image"
-}
-
-function check_binary_symlink {
-  [[ -h "$mount_point/bin/$1" ]] || fail_check "Cannot find symbolic link '$1' in mounted image"
-}
-
-function check_library {
-  # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
-  # the precision of this test?
-  [[ -f "$mount_point/lib/$1" ]] || [[ -f "$mount_point/lib64/$1" ]] \
-    || fail_check "Cannot find library '$1' in mounted image"
-}
-
-function check_no_library {
-  # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
-  # the precision of this test?
-  [[ ! -f "$mount_point/lib/$1" && ! -f "$mount_point/lib64/$1" ]] \
-    || die "Found unwanted library '$1' in mounted image"
-}
-
-function check_java_library {
-  [[ -f "$mount_point/javalib/$1" ]] || fail_check "Cannot find java library '$1' in mounted image"
-}
-
-# !!! NOTE: Please also update art_apex_test.py !!!
-
-# Check contents of APEX payload located in `$mount_point`.
-function check_release_contents {
-  # Check that the mounted image contains an APEX manifest.
-  check_file apex_manifest.json
-
-  # Check that the mounted image contains ART base binaries.
-  check_multilib_binary dalvikvm
-  # TODO: Does not work yet (b/119942078).
-  : check_binary_symlink dalvikvm
-  check_binary dex2oat
-  check_binary dexoptanalyzer
-  check_binary profman
-
-  # oatdump is only in device apex's due to build rules
-  # TODO: Check for it when it is also built for host.
-  : check_binary oatdump
-
-  # Check that the mounted image contains Android Runtime libraries.
-  check_library libart-compiler.so
-  check_library libart-dexlayout.so
-  check_library libart.so
-  check_library libartbase.so
-  check_library libartpalette.so
-  check_no_library libartpalette-system.so
-  check_library libdexfile.so
-  check_library libdexfile_external.so
-  check_library libopenjdkjvm.so
-  check_library libopenjdkjvmti.so
-  check_library libprofile.so
-  # Check that the mounted image contains Android Core libraries.
-  check_library "libexpat${host_suffix}.so"
-  check_library libjavacore.so
-  check_library libopenjdk.so
-  check_library "libz${host_suffix}.so"
-  check_library libziparchive.so
-  # Check that the mounted image contains additional required libraries.
-  check_library libadbconnection.so
-
-  # TODO: Should we check for other libraries, such as:
-  #
-  #   libbacktrace.so
-  #   libbase.so
-  #   liblog.so
-  #   libsigchain.so
-  #   libtombstoned_client.so
-  #   libunwindstack.so
-  #   libvixl.so
-  #   libvixld.so
-  #   ...
-  #
-  # ?
-
-  check_java_library core-oj.jar
-  check_java_library core-libart.jar
-  check_java_library okhttp.jar
-  check_java_library bouncycastle.jar
-  check_java_library apache-xml.jar
-}
-
-# Check debug contents of APEX payload located in `$mount_point`.
-function check_debug_contents {
-  # Check that the mounted image contains ART tools binaries.
-  check_binary dexdiag
-  check_binary dexdump
-  check_binary dexlist
-
-  # Check that the mounted image contains ART debug binaries.
-  check_binary dex2oatd
-  check_binary dexoptanalyzerd
-  check_binary profmand
-
-  # Check that the mounted image contains Android Runtime debug libraries.
-  check_library libartbased.so
-  check_library libartd-compiler.so
-  check_library libartd-dexlayout.so
-  check_library libartd.so
-  check_library libdexfiled.so
-  check_library libopenjdkjvmd.so
-  check_library libopenjdkjvmtid.so
-  check_library libprofiled.so
-  # Check that the mounted image contains Android Core debug libraries.
-  check_library libopenjdkd.so
-  # Check that the mounted image contains additional required debug libraries.
-  check_library libadbconnectiond.so
 }
 
 # Testing target (device) APEX packages.
@@ -299,14 +144,13 @@ build_apex "$apex_module"
 apex_path="$ANDROID_PRODUCT_OUT/system/apex/${apex_module}.apex"
 
 # List the contents of the APEX image (optional).
-maybe_list_apex_contents_apex $apex_path $work_dir --target --debugfs $ANDROID_HOST_OUT/bin/debugfs
+maybe_list_apex_contents_apex $apex_path $work_dir --debugfs $ANDROID_HOST_OUT/bin/debugfs
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
 $SCRIPT_DIR/art_apex_test.py \
   --tmpdir $work_dir \
   --debugfs $ANDROID_HOST_OUT/bin/debugfs \
-  --target \
   $apex_path \
     || fail_check "Release checks failed"
 
@@ -334,14 +178,13 @@ build_apex "$apex_module"
 apex_path="$ANDROID_PRODUCT_OUT/system/apex/${apex_module}.apex"
 
 # List the contents of the APEX image (optional).
-maybe_list_apex_contents_apex $apex_path $work_dir --target --debugfs $ANDROID_HOST_OUT/bin/debugfs
+maybe_list_apex_contents_apex $apex_path $work_dir --debugfs $ANDROID_HOST_OUT/bin/debugfs
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
 $SCRIPT_DIR/art_apex_test.py \
   --tmpdir $work_dir \
   --debugfs $ANDROID_HOST_OUT/bin/debugfs \
-  --target \
   --debug \
   $apex_path \
     || fail_check "Debug checks failed"
@@ -369,51 +212,30 @@ function finish_host {
   cleanup_host
 }
 
-# setup_host_apex APEX_MODULE MOUNT_POINT
-# ---------------------------------------
-# Extract Zip file from host APEX_MODULE and extract it in MOUNT_POINT.
-function setup_host_apex {
-  local apex_module=$1
-  local mount_point=$2
-  local system_apexdir="$ANDROID_HOST_OUT/apex"
-  local apex_package="$system_apexdir/$apex_module.zipapex"
-
-  say "Extracting payload"
-
-  # Extract the payload from the Android Runtime APEX.
-  local image_filename="apex_payload.zip"
-  unzip -q "$apex_package" "$image_filename" -d "$work_dir"
-  mkdir "$mount_point"
-  local image_file="$work_dir/$image_filename"
-
-  # Unzipping the payload
-  unzip -q "$image_file" -d "$mount_point"
-}
-
 apex_module="com.android.runtime.host"
 test_status=0
 
 say "Processing APEX package $apex_module"
 
 work_dir=$(mktemp -d)
-mount_point="$work_dir/zip"
-host_suffix="-host"
 
 trap finish_host EXIT
 
 # Build the APEX package (optional).
 build_apex "$apex_module"
-
-# Set up APEX package.
-setup_host_apex "$apex_module" "$mount_point"
+apex_path="$ANDROID_HOST_OUT/apex/${apex_module}.zipapex"
 
 # List the contents of the APEX image (optional).
-maybe_list_apex_contents "$mount_point"
+maybe_list_apex_contents_apex $apex_path $work_dir --host
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
-check_release_contents "$apex_module"
-check_debug_contents
+$SCRIPT_DIR/art_apex_test.py \
+  --tmpdir $work_dir \
+  --host \
+  --debug \
+  $apex_path \
+    || fail_check "Debug checks failed"
 
 # Clean up.
 trap - EXIT

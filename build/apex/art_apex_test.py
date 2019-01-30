@@ -51,7 +51,7 @@ class TargetApexProvider:
   def get(self, path):
     dir, name = os.path.split(path)
     if len(dir) == 0:
-      dir = '/'
+      dir = '.'
     map = self.read_dir(dir)
     return map[name] if name in map else None
 
@@ -103,6 +103,73 @@ class TargetApexProvider:
       map[name] = FSObject(name, is_dir, is_exec, is_symlink)
     self._folder_cache[dir] = map
     return map
+
+class HostApexProvider:
+  def __init__(self, apex, tmpdir):
+    self._tmpdir = tmpdir
+    self._folder_cache = {}
+    self._payload = os.path.join(self._tmpdir, 'apex_payload.zip')
+    # Extract payload to tmpdir.
+    zip = zipfile.ZipFile(apex)
+    zip.extract('apex_payload.zip', tmpdir)
+
+  def __del__(self):
+    # Delete temps.
+    if os.path.exists(self._payload):
+      os.remove(self._payload)
+
+  def get(self, path):
+    dir, name = os.path.split(path)
+    if len(dir) == 0:
+      dir = ''
+    map = self.read_dir(dir)
+    return map[name] if name in map else None
+
+  def read_dir(self, dir):
+    if dir in self._folder_cache:
+      return self._folder_cache[dir]
+    if not self._folder_cache:
+      self.parse_zip()
+    if dir in self._folder_cache:
+      return self._folder_cache[dir]
+    return {}
+
+  def parse_zip(self):
+    zip = zipfile.ZipFile(self._payload)
+    infos = zip.infolist()
+    for zipinfo in infos:
+      path = zipinfo.filename
+
+      # Assume no empty file is stored.
+      assert path
+
+      def get_octal(val, index):
+        return (val >> (index * 3)) & 0x7;
+      def bits_is_exec(val):
+        # TODO: Enforce group/other, too?
+        return get_octal(val, 2) & 1 == 1
+
+      is_zipinfo = True
+      while path:
+        dir, base = os.path.split(path)
+        # TODO: If directories are stored, base will be empty.
+
+        if not dir in self._folder_cache:
+          self._folder_cache[dir] = {}
+        dir_map = self._folder_cache[dir]
+        if not base in dir_map:
+          if is_zipinfo:
+            bits = (zipinfo.external_attr >> 16) & 0xFFFF
+            is_dir = get_octal(bits, 4) == 4
+            is_symlink = get_octal(bits, 4) == 2
+            is_exec = bits_is_exec(bits)
+          else:
+            is_exec = False  # Seems we can't get this easily?
+            is_symlink = False
+            is_dir = True
+          dir_map[base] = FSObject(base, is_dir, is_exec, is_symlink)
+        is_zipinfo = False
+        path = dir
 
 class Checker:
   def __init__(self, provider):
@@ -177,6 +244,14 @@ class Checker:
       return False
     return True
 
+  def check_no_library(self, file):
+    res1 = self.is_file('lib/%s' % (file))
+    res2 = self.is_file('lib64/%s' % (file))
+    if res1[0] or res2[0]:
+      self.fail('Library exists: %s', file)
+      return False
+    return True
+
   def check_java_library(self, file):
     return self.check_file('javalib/%s' % (file))
 
@@ -205,15 +280,17 @@ class ReleaseChecker(Checker):
     self.check_library('libart-dexlayout.so')
     self.check_library('libart.so')
     self.check_library('libartbase.so')
+    self.check_library('libartpalette.so')
+    self.check_no_library('libartpalette-system.so')
     self.check_library('libdexfile.so')
+    self.check_library('libdexfile_external.so')
     self.check_library('libopenjdkjvm.so')
     self.check_library('libopenjdkjvmti.so')
     self.check_library('libprofile.so')
     # Check that the mounted image contains Android Core libraries.
-    self.check_library('libexpat.so')
+    # Note: host vs target libs are checked elsewhere.
     self.check_library('libjavacore.so')
     self.check_library('libopenjdk.so')
-    self.check_library('libz.so')
     self.check_library('libziparchive.so')
     # Check that the mounted image contains additional required libraries.
     self.check_library('libadbconnection.so')
@@ -237,6 +314,28 @@ class ReleaseChecker(Checker):
     self.check_java_library('okhttp.jar')
     self.check_java_library('bouncycastle.jar')
     self.check_java_library('apache-xml.jar')
+
+class ReleaseTargetChecker(Checker):
+  def __init__(self, provider):
+    super().__init__(provider)
+  def __str__(self):
+    return 'Release (Target) Checker'
+
+  def run(self):
+    # Check that the mounted image contains Android Core libraries.
+    self.check_library('libexpat.so')
+    self.check_library('libz.so')
+
+class ReleaseHostChecker(Checker):
+  def __init__(self, provider):
+    super().__init__(provider)
+  def __str__(self):
+    return 'Release (Host) Checker'
+
+  def run(self):
+    # Check that the mounted image contains Android Core libraries.
+    self.check_library('libexpat-host.so')
+    self.check_library('libz-host.so')
 
 class DebugChecker(Checker):
   def __init__(self, provider):
@@ -296,7 +395,7 @@ def print_list(provider):
         print(new_path)
         if val.is_dir:
           print_list_impl(provider, new_path)
-    print_list_impl(provider, '.')
+    print_list_impl(provider, '')
 
 def print_tree(provider, title):
     def get_vertical(has_next_list):
@@ -326,36 +425,31 @@ def print_tree(provider, title):
           print_tree_impl(provider, os.path.join(path, val.name), has_next_list)
           has_next_list.pop()
     print('%s' % (title))
-    print_tree_impl(provider, '.', [])
+    print_tree_impl(provider, '', [])
 
 # Note: do not sys.exit early, for __del__ cleanup.
 def artApexTestMain(args):
-  if not args.host and not args.target and not args.debug and not args.tree and not args.list:
-    logging.error("None of --host, --target, --debug, --tree nor --list set")
+  if args.tree and args.debug:
+    logging.error("Both of --tree and --debug set")
     return 1
-  if args.tree and (args.host or args.debug):
-    logging.error("Both of --tree and --host|--debug set")
-    return 1
-  if args.list and (args.host or args.debug):
-    logging.error("Both of --list and --host|--debug set")
+  if args.list and args.debug:
+    logging.error("Both of --list and --debug set")
     return 1
   if args.list and args.tree:
     logging.error("Both of --list and --tree set")
     return 1
-  if args.host and (args.target or args.debug):
-    logging.error("Both of --host and --target|--debug set")
-    return 1
-  if args.debug and not args.target:
-    args.target = True
-  if args.target and not args.tmpdir:
+  if not args.tmpdir:
     logging.error("Need a tmpdir.")
     return 1
-  if args.target and not args.debugfs:
+  if not args.host and not args.debugfs:
     logging.error("Need debugfs.")
     return 1
 
   try:
-    apex_provider = TargetApexProvider(args.apex, args.tmpdir, args.debugfs)
+    if args.host:
+      apex_provider = HostApexProvider(args.apex, args.tmpdir)
+    else:
+      apex_provider = TargetApexProvider(args.apex, args.tmpdir, args.debugfs)
   except Exception as e:
     logging.error('Failed to create provider: %s', e)
     return 1
@@ -368,14 +462,15 @@ def artApexTestMain(args):
     return 0
 
   checkers = []
-  if args.host:
-    logging.error('host checking not yet supported')
-    return 1
 
   checkers.append(ReleaseChecker(apex_provider))
+  if args.host:
+    checkers.append(ReleaseHostChecker(apex_provider))
+  else:
+    checkers.append(ReleaseTargetChecker(apex_provider))
   if args.debug:
     checkers.append(DebugChecker(apex_provider))
-  if args.debug and args.target:
+  if args.debug and not args.host:
     checkers.append(DebugTargetChecker(apex_provider))
 
   failed = False
@@ -414,8 +509,8 @@ def artApexTestDefault(parser):
 
   # TODO: Add host support
   configs= [
-    {'name': 'com.android.runtime.release', 'target': True, 'debug': False, 'host': False},
-    {'name': 'com.android.runtime.debug', 'target': True, 'debug': True, 'host': False},
+    {'name': 'com.android.runtime.release', 'debug': False, 'host': False},
+    {'name': 'com.android.runtime.debug', 'debug': True, 'host': False},
   ]
 
   for config in configs:
@@ -426,7 +521,6 @@ def artApexTestDefault(parser):
       failed = True
       logging.error("Cannot find APEX %s. Please build it first.", args.apex)
       continue
-    args.target = config['target']
     args.debug = config['debug']
     args.host = config['host']
     exit_code = artApexTestMain(args)
@@ -442,7 +536,7 @@ if __name__ == "__main__":
   parser.add_argument('apex', help='apex file input')
 
   parser.add_argument('--host', help='Check as host apex', action='store_true')
-  parser.add_argument('--target', help='Check as target apex', action='store_true')
+
   parser.add_argument('--debug', help='Check as debug apex', action='store_true')
 
   parser.add_argument('--list', help='List all files', action='store_true')
