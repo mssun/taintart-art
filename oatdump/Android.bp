@@ -19,11 +19,6 @@ cc_defaults {
     defaults: ["art_defaults"],
     host_supported: true,
     srcs: ["oatdump.cc"],
-    target: {
-        android: {
-            shared_libs: ["libcutils"],
-        },
-    },
     // b/79417743, oatdump 32-bit tests failed with clang lld
     use_clang_lld: false,
     header_libs: [
@@ -102,6 +97,9 @@ art_cc_binary {
         "libart-disassembler",
         "libvixl",
     ],
+    // We need this to resolve libartpalette symbols
+    // correctly. Multiple source libraries depend on it.
+    group_static_libs: true,
 }
 
 art_cc_binary {
