@@ -35,14 +35,22 @@ source build/envsetup.sh >&/dev/null # for get_build_var
 # Soong needs a bunch of variables set and will not run if they are missing.
 # The default values of these variables is only contained in make, so use
 # nothing to create the variables then remove all the other artifacts.
-build/soong/soong_ui.bash --make-mode nothing
+
+# TODO(b/123645297) Move hiddenapi steps to soong.
+#
+# Currently hiddenapi relies on .mk to build some of it's configuration files.
+# This prevents us from just cleaning using soong and forces us to do this
+# hacky workaround where we build the targets without linux_bionic and delete
+# the build-config files before going around again. If we fix this issue we can
+# change to only building 'nothing' instead.
+build/soong/soong_ui.bash --make-mode "$@"
+
 if [ $? != 0 ]; then
   exit 1
 fi
 
 out_dir=$(get_build_var OUT_DIR)
 host_out=$(get_build_var HOST_OUT)
-mk_product_out=$(get_build_var PRODUCT_OUT)
 
 # TODO(b/31559095) Figure out a better way to do this.
 #
@@ -51,14 +59,17 @@ mk_product_out=$(get_build_var PRODUCT_OUT)
 tmp_soong_var=$(mktemp --tmpdir soong.variables.bak.XXXXXX)
 
 cat $out_dir/soong/soong.variables > ${tmp_soong_var}
-build/soong/soong_ui.bash --make-mode clean
-mkdir -p $out_dir/soong
-mkdir -p $mk_product_out
 
-# TODO(b/31559095) Soong will panic if this file isn't present. It contains
-# information from MAKE needed to let soong handle the invocation of dex2oat.
-# This would be great to have but for now isn't needed.
-echo "{}" > $mk_product_out/dexpreopt.config
+# See comment above about b/123645297 for why we cannot just do m clean. Clear
+# out all files except for intermediates and installed files.
+find $out_dir/ -maxdepth 1 -mindepth 1 \
+               -not -name soong        \
+               -not -name host         \
+               -not -name target | xargs -I '{}' rm -rf '{}'
+find $out_dir/soong/ -maxdepth 1 -mindepth 1   \
+                     -not -name .intermediates \
+                     -not -name host           \
+                     -not -name target | xargs -I '{}' rm -rf '{}'
 
 python3 <<END - ${tmp_soong_var} ${out_dir}/soong/soong.variables
 import json
