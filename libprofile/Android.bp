@@ -25,8 +25,10 @@ cc_defaults {
         android: {
             shared_libs: [
                 "libartbase",
-                "libartpalette",
                 "libdexfile",
+                "libartbase",
+	        // For atrace.
+                "libcutils",
                 "libbase",
             ],
             static_libs: [
@@ -39,8 +41,10 @@ cc_defaults {
         not_windows: {
             shared_libs: [
                 "libartbase",
-                "libartpalette",
                 "libdexfile",
+                "libartbase",
+	        // For atrace.
+                "libcutils",
                 "libziparchive",
                 "libz",
                 "libbase",
@@ -51,8 +55,10 @@ cc_defaults {
 	    cflags: ["-Wno-thread-safety"],
             static_libs: [
                 "libartbase",
-                "libartpalette",
                 "libdexfile",
+                "libartbase",
+	        // For atrace.
+                "libcutils",
                 "libziparchive",
                 "libz",
                 "libbase",
@@ -72,6 +78,7 @@ cc_defaults {
     name: "libprofile_static_base_defaults",
     static_libs: [
         "libbase",
+        "libcutils",
         "libz",
         "libziparchive",
     ],

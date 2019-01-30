@@ -144,12 +144,12 @@ void TimingLogger::Reset() {
 void TimingLogger::StartTiming(const char* label) {
   DCHECK(label != nullptr);
   timings_.push_back(Timing(kind_, label));
-  ATraceBegin(label);
+  ATRACE_BEGIN(label);
 }
 
 void TimingLogger::EndTiming() {
   timings_.push_back(Timing(kind_, nullptr));
-  ATraceEnd();
+  ATRACE_END();
 }
 
 uint64_t TimingLogger::GetTotalNs() const {

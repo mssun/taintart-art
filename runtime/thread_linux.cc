@@ -23,6 +23,14 @@
 
 namespace art {
 
+void Thread::SetNativePriority(int) {
+  // Do nothing.
+}
+
+int Thread::GetNativePriority() {
+  return kNormThreadPriority;
+}
+
 static void SigAltStack(stack_t* new_stack, stack_t* old_stack) {
   if (sigaltstack(new_stack, old_stack) == -1) {
     PLOG(FATAL) << "sigaltstack failed";
