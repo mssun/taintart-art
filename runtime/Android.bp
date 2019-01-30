@@ -392,14 +392,11 @@ libart_cc_defaults {
         "jni_platform_headers",
     ],
     shared_libs: [
+        "libartpalette",
         "libnativebridge",
         "libnativeloader",
         "libbacktrace",
         "liblog",
-        // For atrace, properties, ashmem.
-        "libcutils",
-        // For set_sched_policy.
-        "libprocessgroup",
         // For common macros.
         "libbase",
     ],
@@ -424,9 +421,9 @@ libart_static_cc_defaults {
         },
     },
     static_libs: [
+        "libartpalette",
         "libbacktrace",
         "libbase",
-        "libcutils",
         "libdexfile_external",  // libunwindstack dependency
         "libdexfile_support",  // libunwindstack dependency
         "liblog",
