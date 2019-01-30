@@ -17,6 +17,8 @@
 
 # Run Android Runtime APEX tests.
 
+SCRIPT_DIR=$(dirname $0)
+
 # Status of whole test script.
 exit_status=0
 # Status of current test suite.
@@ -31,16 +33,16 @@ function die {
   exit 1
 }
 
-which guestmount >/dev/null && which guestunmount >/dev/null && which virt-filesystems >/dev/null \
-  || die "This script requires 'guestmount', 'guestunmount',
-and 'virt-filesystems' from libguestfs. On Debian-based systems, these tools
-can be installed with:
-
-   sudo apt-get install libguestfs-tools
-"
-
 [[ -n "$ANDROID_PRODUCT_OUT" ]] \
   || die "You need to source and lunch before you can use this script."
+
+[[ -n "$ANDROID_HOST_OUT" ]] \
+  || die "You need to source and lunch before you can use this script."
+
+if [ ! -e "$ANDROID_HOST_OUT/bin/debugfs" ] ; then
+  say "Could not find debugfs, building now."
+  make debugfs-host || die "Cannot build debugfs"
+fi
 
 # Fail early.
 set -e
@@ -112,6 +114,25 @@ function maybe_list_apex_contents {
   fi
 }
 
+# maybe_list_apex_contents_apex APEX TMPDIR [other]
+function maybe_list_apex_contents_apex {
+  local apex=$1
+  local tmpdir=$2
+  shift 2
+
+  # List the contents of the apex in list form.
+  if $list_image_files_p; then
+    say "Listing image files"
+    $SCRIPT_DIR/art_apex_test.py --list --tmpdir "$tmpdir" $@ $apex
+  fi
+
+  # List the contents of the apex in tree form.
+  if $print_image_tree_p; then
+    say "Printing image tree"
+    $SCRIPT_DIR/art_apex_test.py --tree --tmpdir "$tmpdir" $@ $apex
+  fi
+}
+
 function fail_check {
   echo "$0: FAILED: $*"
   test_status=1
@@ -150,6 +171,8 @@ function check_library {
 function check_java_library {
   [[ -f "$mount_point/javalib/$1" ]] || fail_check "Cannot find java library '$1' in mounted image"
 }
+
+# !!! NOTE: Please also update art_apex_test.py !!!
 
 # Check contents of APEX payload located in `$mount_point`.
 function check_release_contents {
@@ -242,7 +265,6 @@ function check_debug_contents {
 
 # Clean-up.
 function cleanup_target {
-  guestunmount "$mount_point"
   rm -rf "$work_dir"
 }
 
@@ -251,34 +273,6 @@ function finish_target {
   # Don't fail early during cleanup.
   set +e
   cleanup_target
-}
-
-# setup_target_apex APEX_MODULE MOUNT_POINT
-# -----------------------------------------
-# Extract image from target APEX_MODULE and mount it in MOUNT_POINT.
-function setup_target_apex {
-  local apex_module=$1
-  local mount_point=$2
-  local system_apexdir="$ANDROID_PRODUCT_OUT/system/apex"
-  local apex_package="$system_apexdir/$apex_module.apex"
-
-  say "Extracting and mounting image"
-
-  # Extract the payload from the Android Runtime APEX.
-  local image_filename="apex_payload.img"
-  unzip -q "$apex_package" "$image_filename" -d "$work_dir"
-  mkdir "$mount_point"
-  local image_file="$work_dir/$image_filename"
-
-  # Check filesystems in the image.
-  local image_filesystems="$work_dir/image_filesystems"
-  virt-filesystems -a "$image_file" >"$image_filesystems"
-  # We expect a single partition (/dev/sda) in the image.
-  local partition="/dev/sda"
-  echo "$partition" | cmp "$image_filesystems" -
-
-  # Mount the image from the Android Runtime APEX.
-  guestmount -a "$image_file" -m "$partition" --ro "$mount_point"
 }
 
 # Testing release APEX package (com.android.runtime.release).
@@ -290,23 +284,24 @@ test_status=0
 say "Processing APEX package $apex_module"
 
 work_dir=$(mktemp -d)
-mount_point="$work_dir/image"
-host_suffix=""
 
 trap finish_target EXIT
 
 # Build the APEX package (optional).
 build_apex "$apex_module"
-
-# Set up APEX package.
-setup_target_apex "$apex_module" "$mount_point"
+apex_path="$ANDROID_PRODUCT_OUT/system/apex/${apex_module}.apex"
 
 # List the contents of the APEX image (optional).
-maybe_list_apex_contents "$mount_point"
+maybe_list_apex_contents_apex $apex_path $work_dir --target --debugfs $ANDROID_HOST_OUT/bin/debugfs
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
-check_release_contents "$apex_module"
+$SCRIPT_DIR/art_apex_test.py \
+  --tmpdir $work_dir \
+  --debugfs $ANDROID_HOST_OUT/bin/debugfs \
+  --target \
+  $apex_path \
+    || fail_check "Release checks failed"
 
 # Clean up.
 trap - EXIT
@@ -324,27 +319,25 @@ test_status=0
 say "Processing APEX package $apex_module"
 
 work_dir=$(mktemp -d)
-mount_point="$work_dir/image"
-host_suffix=""
 
 trap finish_target EXIT
 
 # Build the APEX package (optional).
 build_apex "$apex_module"
-
-# Set up APEX package.
-setup_target_apex "$apex_module" "$mount_point"
+apex_path="$ANDROID_PRODUCT_OUT/system/apex/${apex_module}.apex"
 
 # List the contents of the APEX image (optional).
-maybe_list_apex_contents "$mount_point"
+maybe_list_apex_contents_apex $apex_path $work_dir --target --debugfs $ANDROID_HOST_OUT/bin/debugfs
 
 # Run tests on APEX package.
 say "Checking APEX package $apex_module"
-check_release_contents "$apex_module"
-check_debug_contents
-# Check for files pulled in from debug target-only oatdump.
-check_binary oatdump
-check_library libart-disassembler.so
+$SCRIPT_DIR/art_apex_test.py \
+  --tmpdir $work_dir \
+  --debugfs $ANDROID_HOST_OUT/bin/debugfs \
+  --target \
+  --debug \
+  $apex_path \
+    || fail_check "Debug checks failed"
 
 # Clean up.
 trap - EXIT
