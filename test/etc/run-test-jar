@@ -1066,7 +1066,7 @@ else
 
     mkdir -p ${mkdir_locations} || exit 1
     $setupapex_cmdline || { echo "zipapex extraction failed." >&2 ; exit 2; }
-    $installapex_cmdline || { echo "zipapex install failed." >&2 ; exit 2; }
+    $installapex_cmdline || { echo "zipapex install failed. cmd was: ${installapex_cmdline}." >&2; find ${mkdir_locations} -type f >&2; exit 2; }
     $linkroot_cmdline || { echo "create symlink android-root failed." >&2 ; exit 2; }
     $linkroot_overlay_cmdline || { echo "overlay android-root failed." >&2 ; exit 2; }
     $profman_cmdline || { echo "Profman failed." >&2 ; exit 2; }
