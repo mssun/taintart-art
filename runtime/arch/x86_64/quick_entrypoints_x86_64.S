@@ -1654,7 +1654,7 @@ END_FUNCTION art_quick_proxy_invoke_handler
      * rdi is the conflict ArtMethod.
      * rax is a hidden argument that holds the target interface method's dex method index.
      *
-     * Note that this stub writes to r10 and rdi.
+     * Note that this stub writes to r10, r11, rax and rdi.
      */
 DEFINE_FUNCTION art_quick_imt_conflict_trampoline
 #if defined(__APPLE__)
@@ -1662,6 +1662,8 @@ DEFINE_FUNCTION art_quick_imt_conflict_trampoline
     int3
 #else
     movq __SIZEOF_POINTER__(%rsp), %r10 // Load referrer.
+    mov %eax, %r11d             // Remember method index in R11.
+    PUSH rdx                    // Preserve RDX as we need to clobber it by LOCK CMPXCHG16B.
     // If the method is obsolete, just go through the dex cache miss slow path.
     // The obsolete flag is set with suspended threads, so we do not need an acquire operation here.
     testl LITERAL(ACC_OBSOLETE_METHOD), ART_METHOD_ACCESS_FLAGS_OFFSET(%r10)
@@ -1670,11 +1672,9 @@ DEFINE_FUNCTION art_quick_imt_conflict_trampoline
     movl MIRROR_CLASS_DEX_CACHE_OFFSET(%r10), %r10d    // Load the DexCache (without read barrier).
     UNPOISON_HEAP_REF r10d
     movq MIRROR_DEX_CACHE_RESOLVED_METHODS_OFFSET(%r10), %r10  // Load the resolved methods.
-    mov %eax, %r11d  // Remember method index in R11.
     andl LITERAL(METHOD_DEX_CACHE_SIZE_MINUS_ONE), %eax  // Calculate DexCache method slot index.
     shll LITERAL(1), %eax       // Multiply by 2 as entries have size 2 * __SIZEOF_POINTER__.
     leaq 0(%r10, %rax, __SIZEOF_POINTER__), %r10 // Load DexCache method slot address.
-    PUSH rdx                    // Preserve RDX as we need to clobber it by LOCK CMPXCHG16B.
     mov %rcx, %rdx              // Make RDX:RAX == RCX:RBX so that LOCK CMPXCHG16B makes no changes.
     mov %rbx, %rax              // (The actual value does not matter.)
     lock cmpxchg16b (%r10)      // Relaxed atomic load RDX:RAX from the dex cache slot.
