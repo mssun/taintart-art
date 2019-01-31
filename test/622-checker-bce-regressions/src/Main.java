@@ -42,8 +42,22 @@ public class Main {
     return j;
   }
 
+  static public void $noinline$regressionTest123284765(String str) {
+    try {
+      int l = str.length();
+      if (l == 34) {
+        str.charAt(l);
+        fail();
+      }
+    } catch (StringIndexOutOfBoundsException expected) {
+      expectEquals(34, str.length());
+    }
+  }
+
   public static void main(String[] args) {
     expectEquals(8, doNotVisitAfterForwardBCE(array));
+    $noinline$regressionTest123284765("0123456789012345678901234567890123");
+    $noinline$regressionTest123284765("012345678901");
     System.out.println("passed");
   }
 
@@ -51,5 +65,9 @@ public class Main {
     if (expected != result) {
       throw new Error("Expected: " + expected + ", found: " + result);
     }
+  }
+
+  private static void fail() {
+    throw new Error("FAIL");
   }
 }
