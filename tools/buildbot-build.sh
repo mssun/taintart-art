@@ -77,6 +77,7 @@ elif [[ $mode == "target" ]]; then
   make_command+=" debuggerd su"
   make_command+=" libstdc++ "
   make_command+=" ${ANDROID_PRODUCT_OUT#"${ANDROID_BUILD_TOP}/"}/system/etc/public.libraries.txt"
+  make_command+=" art-bionic-files"
   if [[ -n "$ART_TEST_CHROOT" ]]; then
     # These targets are needed for the chroot environment.
     make_command+=" crash_dump event-log-tags"
