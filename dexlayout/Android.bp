@@ -29,16 +29,18 @@ art_cc_defaults {
     target: {
         android: {
             shared_libs: [
-                "libdexfile",
                 "libartbase",
+                "libartpalette",
+                "libdexfile",
                 "libprofile",
                 "libbase",
             ],
         },
         not_windows: {
             shared_libs: [
-                "libdexfile",
                 "libartbase",
+                "libartpalette",
+                "libdexfile",
                 "libprofile",
                 "libbase",
             ],
@@ -46,8 +48,9 @@ art_cc_defaults {
         windows: {
             cflags: ["-Wno-thread-safety"],
             static_libs: [
-                "libdexfile",
                 "libartbase",
+                "libartpalette",
+                "libdexfile",
                 "libprofile",
                 "libbase",
             ],

@@ -61,7 +61,7 @@ cc_defaults {
             shared_libs: [
                 "liblog",
                 // For ashmem.
-                "libcutils",
+                "libartpalette",
                 // For common macros.
                 "libbase",
             ],
@@ -80,7 +80,7 @@ cc_defaults {
                 "libz",
                 "liblog",
                 // For ashmem.
-                "libcutils",
+                "libartpalette",
                 // For common macros.
                 "libbase",
             ],
@@ -99,7 +99,7 @@ cc_defaults {
                 "libz",
                 "liblog",
                 // For ashmem.
-                "libcutils",
+                "libartpalette",
                 // For common macros.
                 "libbase",
             ],
@@ -128,7 +128,7 @@ cc_defaults {
     name: "libartbase_static_base_defaults",
     static_libs: [
         "libbase",
-        "libcutils",
+        "libartpalette",
         "liblog",
         "libz",
         "libziparchive",

@@ -16,10 +16,6 @@
 
 #include "thread.h"
 
-#if !defined(__APPLE__)
-#include <sched.h>
-#endif
-
 #include <pthread.h>
 #include <signal.h>
 #include <sys/resource.h>
@@ -95,6 +91,7 @@
 #include "oat_quick_method_header.h"
 #include "obj_ptr-inl.h"
 #include "object_lock.h"
+#include "palette/palette.h"
 #include "quick/quick_method_frame_info.h"
 #include "quick_exception_handler.h"
 #include "read_barrier-inl.h"
@@ -4233,6 +4230,7 @@ void Thread::ClearAllInterpreterCaches() {
   Runtime::Current()->GetThreadList()->RunCheckpoint(&closure);
 }
 
+
 void Thread::ReleaseLongJumpContextInternal() {
   // Each QuickExceptionHandler gets a long jump context and uses
   // it for doing the long jump, after finding catch blocks/doing deoptimization.
@@ -4244,6 +4242,20 @@ void Thread::ReleaseLongJumpContextInternal() {
   // getting a context. Since we only keep one context for reuse, delete the
   // existing one since the passed in context is yet to be used for longjump.
   delete tlsPtr_.long_jump_context;
+}
+
+void Thread::SetNativePriority(int new_priority) {
+  // ART tests on JVM can reach this code path, use tid = 0 as shorthand for current thread.
+  PaletteStatus status = PaletteSchedSetPriority(0, new_priority);
+  CHECK(status == PaletteStatus::kOkay || status == PaletteStatus::kCheckErrno);
+}
+
+int Thread::GetNativePriority() {
+  int priority = 0;
+  // ART tests on JVM can reach this code path, use tid = 0 as shorthand for current thread.
+  PaletteStatus status = PaletteSchedGetPriority(0, &priority);
+  CHECK(status == PaletteStatus::kOkay || status == PaletteStatus::kCheckErrno);
+  return priority;
 }
 
 }  // namespace art

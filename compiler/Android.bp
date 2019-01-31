@@ -182,7 +182,6 @@ art_cc_defaults {
     generated_sources: ["art_compiler_operator_srcs"],
     shared_libs: [
         "libbase",
-        "libcutils",  // for atrace.
     ],
     include_dirs: ["art/disassembler"],
     header_libs: [
@@ -197,7 +196,6 @@ cc_defaults {
     name: "libart-compiler_static_base_defaults",
     static_libs: [
         "libbase",
-        "libcutils",
     ],
 }
 
@@ -256,9 +254,10 @@ art_cc_library {
     },
     shared_libs: [
         "libart",
+        "libartbase",
+        "libartpalette",
         "libprofile",
         "libdexfile",
-        "libartbase",
     ],
 
     target: {
@@ -317,10 +316,11 @@ art_cc_library {
         },
     },
     shared_libs: [
+        "libartbased",
         "libartd",
+        "libartpalette",
         "libprofiled",
         "libdexfiled",
-        "libartbased",
     ],
 }
 
