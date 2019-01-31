@@ -33,6 +33,17 @@ namespace.platform.link.default.shared_libs  = libart.so:libartd.so
 namespace.platform.link.default.shared_libs += libnativebridge.so
 namespace.platform.link.default.shared_libs += libnativehelper.so
 namespace.platform.link.default.shared_libs += libnativeloader.so
+# /system/lib/libc.so, etc are symlinks to /bionic/lib/libc.so, etc.
+# Add /bionic/lib to the permitted paths because linker uses realpath(3)
+# to check the accessibility of the lib. We could add this to search.paths
+# instead but that makes the resolution of bionic libs be dependent on
+# the order of /system/lib and /bionic/lib in search.paths. If /bionic/lib
+# is after /system/lib, then /bionic/lib is never tried because libc.so
+# is always found in /system/lib but fails to pass the accessibility test
+# because of its realpath.  It's better to not depend on the ordering if
+# possible.
+namespace.platform.permitted.paths = /bionic/${LIB}
+namespace.platform.asan.permitted.paths = /bionic/${LIB}
 
 # Note that we don't need to link the default namespace with conscrypt:
 # the runtime Java code and binaries do not explicitly load native libraries
