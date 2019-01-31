@@ -93,7 +93,7 @@ int GetTimeoutSignal() {
 namespace addr2line {
 
 constexpr const char* kAddr2linePath =
-    "/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.15-4.8/bin/x86_64-linux-addr2line";
+    "/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/bin/x86_64-linux-addr2line";
 
 std::unique_ptr<std::string> FindAddr2line() {
   const char* env_value = getenv("ANDROID_BUILD_TOP");

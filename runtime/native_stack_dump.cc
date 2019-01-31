@@ -63,6 +63,18 @@ using android::base::StringPrintf;
 
 static constexpr bool kUseAddr2line = !kIsTargetBuild;
 
+std::string FindAddr2line() {
+  if (!kIsTargetBuild) {
+    constexpr const char* kAddr2linePrebuiltPath =
+      "/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/bin/x86_64-linux-addr2line";
+    const char* env_value = getenv("ANDROID_BUILD_TOP");
+    if (env_value != nullptr) {
+      return std::string(env_value) + kAddr2linePrebuiltPath;
+    }
+  }
+  return std::string("/usr/bin/addr2line");
+}
+
 ALWAYS_INLINE
 static inline void WritePrefix(std::ostream& os, const char* prefix, bool odd) {
   if (prefix != nullptr) {
@@ -232,8 +244,9 @@ static void Addr2line(const std::string& map_src,
     }
     pipe->reset();  // Close early.
 
+    std::string addr2linePath = FindAddr2line();
     const char* args[7] = {
-        "/usr/bin/addr2line",
+        addr2linePath.c_str(),
         "--functions",
         "--inlines",
         "--demangle",
@@ -314,7 +327,7 @@ void DumpNativeStack(std::ostream& os,
   if (kUseAddr2line) {
     // Try to run it to see whether we have it. Push an argument so that it doesn't assume a.out
     // and print to stderr.
-    use_addr2line = (gAborting > 0) && RunCommand("addr2line -h");
+    use_addr2line = (gAborting > 0) && RunCommand(FindAddr2line() + " -h");
   } else {
     use_addr2line = false;
   }
