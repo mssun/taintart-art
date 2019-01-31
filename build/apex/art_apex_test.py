@@ -171,11 +171,11 @@ class HostApexProvider:
         is_zipinfo = False
         path = dir
 
+# DO NOT USE DIRECTLY! This is an "abstract" base class.
 class Checker:
   def __init__(self, provider):
     self._provider = provider
     self._errors = 0
-    self._is_multilib = provider.get('lib64') is not None;
 
   def fail(self, msg, *args):
     self._errors += 1
@@ -199,6 +199,11 @@ class Checker:
     if not chk[0]:
       self.fail(chk[1], file)
     return chk[0]
+  def check_no_file(self, file):
+    chk = self.is_file(file)
+    if chk[0]:
+      self.fail('File %s does exist', file)
+    return not chk[0]
 
   def check_binary(self, file):
     path = 'bin/%s' % (file)
@@ -208,13 +213,6 @@ class Checker:
       self.fail('%s is not executable', path)
       return False
     return True
-
-  def check_multilib_binary(self, file):
-    res = self.check_binary('%s32' % (file))
-    if self._is_multilib:
-      res = self.check_binary('%s64' % (file)) and res
-    self.check_binary_symlink(file)
-    return res
 
   def check_binary_symlink(self, file):
     path = 'bin/%s' % (file)
@@ -229,14 +227,6 @@ class Checker:
       self.fail('%s is not a symlink', path)
       return False
     return True
-
-  def check_library(self, file):
-    # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
-    # the precision of this test?
-    res = self.check_file('lib/%s' % (file))
-    if self._is_multilib:
-      res = self.check_file('lib64/%s' % (file)) and res
-    return res
 
   def check_single_library(self, file):
     res1 = self.is_file('lib/%s' % (file))
@@ -256,6 +246,84 @@ class Checker:
 
   def check_java_library(self, file):
     return self.check_file('javalib/%s' % (file))
+
+  # Just here for docs purposes, even if it isn't good Python style.
+
+  def check_library(self, file):
+    raise NotImplementedError
+
+  def check_first_library(self, file):
+    raise NotImplementedError
+
+  def check_multilib_binary(self, file):
+    raise NotImplementedError
+
+  def check_prefer32_binary(self, file):
+    raise NotImplementedError
+
+
+class Arch32Checker(Checker):
+  def __init__(self, provider):
+    super().__init__(provider)
+
+  def check_multilib_binary(self, file):
+    return all([self.check_binary('%s32' % (file)),
+                self.check_no_file('bin/%s64' % (file)),
+                self.check_binary_symlink(file)])
+
+  def check_library(self, file):
+    # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
+    # the precision of this test?
+    return all([self.check_file('lib/%s' % (file)), self.check_no_file('lib64/%s' % (file))])
+
+  def check_first_library(self, file):
+    return self.check_library(file)
+
+  def check_prefer32_binary(self, file):
+    return self.check_binary('%s32' % (file))
+
+
+class Arch64Checker(Checker):
+  def __init__(self, provider):
+    super().__init__(provider)
+
+  def check_multilib_binary(self, file):
+    return all([self.check_no_file('bin/%s32' % (file)),
+                self.check_binary('%s64' % (file)),
+                self.check_binary_symlink(file)])
+
+  def check_library(self, file):
+    # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
+    # the precision of this test?
+    return all([self.check_no_file('lib/%s' % (file)), self.check_file('lib64/%s' % (file))])
+
+  def check_first_library(self, file):
+    return self.check_library(file)
+
+  def check_prefer32_binary(self, file):
+    return self.check_binary('%s64' % (file))
+
+
+class MultilibChecker(Checker):
+  def __init__(self, provider):
+    super().__init__(provider)
+
+  def check_multilib_binary(self, file):
+    return all([self.check_binary('%s32' % (file)),
+                self.check_binary('%s64' % (file)),
+                self.check_binary_symlink(file)])
+
+  def check_library(self, file):
+    # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
+    # the precision of this test?
+    return all([self.check_file('lib/%s' % (file)), self.check_file('lib64/%s' % (file))])
+
+  def check_first_library(self, file):
+    return all([self.check_no_file('lib/%s' % (file)), self.check_file('lib64/%s' % (file))])
+
+  def check_prefer32_binary(self, file):
+    return self.check_binary('%s32' % (file))
+
 
 class ReleaseChecker:
   def __init__(self, checker):
@@ -352,8 +420,7 @@ class DebugChecker:
     self._checker.check_binary('dexlist')
 
     # Check that the mounted image contains ART debug binaries.
-    # TODO(b/123427238): This should probably be dex2oatd, fix!
-    self._checker.check_binary('dex2oatd32')
+    self._checker.check_binary('dex2oatd')
     self._checker.check_binary('dexoptanalyzerd')
     self._checker.check_binary('profmand')
 
@@ -380,7 +447,7 @@ class DebugTargetChecker:
   def run(self):
     # Check for files pulled in from debug target-only oatdump.
     self._checker.check_binary('oatdump')
-    self._checker.check_single_library('libart-disassembler.so')
+    self._checker.check_first_library('libart-disassembler.so')
 
 def print_list(provider):
     def print_list_impl(provider, path):
@@ -446,6 +513,8 @@ def artApexTestMain(args):
   if not args.host and not args.debugfs:
     logging.error("Need debugfs.")
     return 1
+  if args.bitness not in ['32', '64', 'multilib', 'auto']:
+    logging.error('--bitness needs to be one of 32|64|multilib|auto')
 
   try:
     if args.host:
@@ -464,7 +533,31 @@ def artApexTestMain(args):
     return 0
 
   checkers = []
-  base_checker = Checker(apex_provider)
+  if args.bitness == 'auto':
+    logging.warn('--bitness=auto, trying to autodetect. This may be incorrect!')
+    has_32 = apex_provider.get('lib') is not None
+    has_64 = apex_provider.get('lib64') is not None
+    if has_32 and has_64:
+      logging.warn('  Detected multilib')
+      args.bitness = 'multilib'
+    elif has_32:
+      logging.warn('  Detected 32-only')
+      args.bitness = '32'
+    elif has_64:
+      logging.warn('  Detected 64-only')
+      args.bitness = '64'
+    else:
+      logging.error('  Could not detect bitness, neither lib nor lib64 contained.')
+      print('%s' % (apex_provider._folder_cache))
+      return 1
+
+  if args.bitness == '32':
+    base_checker = Arch32Checker(apex_provider)
+  elif args.bitness == '64':
+    base_checker = Arch64Checker(apex_provider)
+  else:
+    assert args.bitness == 'multilib'
+    base_checker = MultilibChecker(apex_provider)
 
   checkers.append(ReleaseChecker(base_checker))
   if args.host:
@@ -504,6 +597,7 @@ def artApexTestDefault(parser):
   args.tmpdir = '.'
   args.tree = False
   args.list = False
+  args.bitness = 'auto'
   failed = False
 
   if not os.path.exists(args.debugfs):
@@ -548,6 +642,8 @@ if __name__ == "__main__":
 
   parser.add_argument('--tmpdir', help='Directory for temp files')
   parser.add_argument('--debugfs', help='Path to debugfs')
+
+  parser.add_argument('--bitness', help='Bitness to check, 32|64|multilib|auto', default='auto')
 
   if len(sys.argv) == 1:
     artApexTestDefault(parser)
