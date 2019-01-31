@@ -845,8 +845,10 @@ class BCEVisitor : public HGraphVisitor {
           // make one more attempt to get a constant in the array range.
           ValueRange* existing_range = LookupValueRange(array_length, block);
           if (existing_range != nullptr &&
-              existing_range->IsConstantValueRange()) {
-            ValueRange constant_array_range(&allocator_, lower, existing_range->GetLower());
+              existing_range->IsConstantValueRange() &&
+              existing_range->GetLower().GetConstant() > 0) {
+            ValueBound constant_upper(nullptr, existing_range->GetLower().GetConstant() - 1);
+            ValueRange constant_array_range(&allocator_, lower, constant_upper);
             if (index_range->FitsIn(&constant_array_range)) {
               ReplaceInstruction(bounds_check, index);
               return;
