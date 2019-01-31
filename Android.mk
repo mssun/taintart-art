@@ -483,6 +483,28 @@ build-art-host:   $(HOST_OUT_EXECUTABLES)/art $(ART_HOST_DEPENDENCIES) $(HOST_CO
 build-art-target: $(TARGET_OUT_EXECUTABLES)/art $(ART_TARGET_DEPENDENCIES) $(TARGET_CORE_IMG_OUTS)
 
 ########################################################################
+# Workaround for not using symbolic links for linker and bionic libraries
+# in a minimal setup (eg buildbot or golem).
+########################################################################
+
+PRIVATE_BIONIC_FILES := \
+  bin/bootstrap/linker \
+  bin/bootstrap/linker64 \
+  lib/bootstrap/libc.so \
+  lib/bootstrap/libm.so \
+  lib/bootstrap/libdl.so \
+  lib64/bootstrap/libc.so \
+  lib64/bootstrap/libm.so \
+  lib64/bootstrap/libdl.so 
+
+.PHONY: art-bionic-files
+art-bionic-files: libc.bootstrap libdl.bootstrap libm.bootstrap linker
+	for f in $(PRIVATE_BIONIC_FILES); do \
+	  tf=$(TARGET_OUT)/$$f; \
+	  if [ -f $$tf ]; then cp -f $$tf $$(echo $$tf | sed 's,bootstrap/,,'); fi; \
+	done
+
+########################################################################
 # Phony target for only building what go/lem requires for pushing ART on /data.
 
 .PHONY: build-art-target-golem
@@ -514,7 +536,8 @@ build-art-target-golem: dex2oat dalvikvm linker libstdc++ \
                         $(TARGET_CORE_IMG_OUT_BASE).art \
                         $(TARGET_CORE_IMG_OUT_BASE)-interpreter.art \
                         libc.bootstrap libdl.bootstrap libm.bootstrap \
-                        icu-data-art-test
+                        icu-data-art-test \
+                        art-bionic-files
 	# remove debug libraries from public.libraries.txt because golem builds
 	# won't have it.
 	sed -i '/libartd.so/d' $(TARGET_OUT)/etc/public.libraries.txt
