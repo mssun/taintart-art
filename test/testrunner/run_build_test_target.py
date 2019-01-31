@@ -28,6 +28,7 @@ See target_config.py for the configuration syntax.
 
 import argparse
 import os
+import pathlib
 import subprocess
 import sys
 
@@ -108,7 +109,10 @@ if 'run-test' in target:
   run_test_command = [os.path.join(env.ANDROID_BUILD_TOP,
                                    'art/test/testrunner/testrunner.py')]
   test_flags = target.get('run-test', [])
-  run_test_command += list(map(lambda a: a.format(SOONG_OUT_DIR=env.SOONG_OUT_DIR), test_flags))
+  out_dir = pathlib.PurePath(env.SOONG_OUT_DIR)
+  if not out_dir.is_absolute():
+    out_dir = pathlib.PurePath(env.ANDROID_BUILD_TOP).joinpath(out_dir)
+  run_test_command += list(map(lambda a: a.format(SOONG_OUT_DIR=str(out_dir)), test_flags))
   # Let testrunner compute concurrency based on #cpus.
   # b/65822340
   # run_test_command += ['-j', str(n_threads)]
