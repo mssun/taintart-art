@@ -618,6 +618,10 @@ class DexFile {
     return hiddenapi_class_data_;
   }
 
+  ALWAYS_INLINE bool HasHiddenapiClassData() const {
+    return hiddenapi_class_data_ != nullptr;
+  }
+
   const dex::AnnotationItem* GetAnnotationItem(const dex::AnnotationSetItem* set_item,
                                                uint32_t index) const {
     DCHECK_LE(index, set_item->size_);

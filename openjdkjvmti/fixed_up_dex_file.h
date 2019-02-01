@@ -49,8 +49,7 @@ namespace openjdkjvmti {
 // are running on.
 class FixedUpDexFile {
  public:
-  static std::unique_ptr<FixedUpDexFile> Create(jobject class_loader,
-                                                const art::DexFile& original,
+  static std::unique_ptr<FixedUpDexFile> Create(const art::DexFile& original,
                                                 const char* descriptor);
 
   const art::DexFile& GetDexFile() {
