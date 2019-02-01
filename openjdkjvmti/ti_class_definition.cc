@@ -57,7 +57,7 @@ void ArtClassDefinition::InitializeMemory() const {
 
   std::string desc = std::string("L") + name_ + ";";
   std::unique_ptr<FixedUpDexFile>
-      fixed_dex_file(FixedUpDexFile::Create(loader_, *initial_dex_file_unquickened_, desc.c_str()));
+      fixed_dex_file(FixedUpDexFile::Create(*initial_dex_file_unquickened_, desc.c_str()));
   CHECK(fixed_dex_file.get() != nullptr);
   CHECK_LE(fixed_dex_file->Size(), temp_mmap_.Size());
   CHECK_EQ(temp_mmap_.Size(), dex_data_mmap_.Size());
@@ -132,20 +132,18 @@ jvmtiError ArtClassDefinition::InitCommon(art::Thread* self, jclass klass) {
   return OK;
 }
 
-static void DequickenDexFile(jobject class_loader,
-                             const art::DexFile* dex_file,
+static void DequickenDexFile(const art::DexFile* dex_file,
                              const char* descriptor,
                              /*out*/std::vector<unsigned char>* dex_data)
     REQUIRES_SHARED(art::Locks::mutator_lock_) {
   std::unique_ptr<FixedUpDexFile> fixed_dex_file(
-      FixedUpDexFile::Create(class_loader, *dex_file, descriptor));
+      FixedUpDexFile::Create(*dex_file, descriptor));
   dex_data->resize(fixed_dex_file->Size());
   memcpy(dex_data->data(), fixed_dex_file->Begin(), fixed_dex_file->Size());
 }
 
 // Gets the data surrounding the given class.
-static void GetDexDataForRetransformation(art::ScopedObjectAccess& soa,
-                                          art::Handle<art::mirror::Class> klass,
+static void GetDexDataForRetransformation(art::Handle<art::mirror::Class> klass,
                                           /*out*/std::vector<unsigned char>* dex_data)
     REQUIRES_SHARED(art::Locks::mutator_lock_) {
   art::StackHandleScope<3> hs(art::Thread::Current());
@@ -182,8 +180,7 @@ static void GetDexDataForRetransformation(art::ScopedObjectAccess& soa,
     dex_file = &klass->GetDexFile();
   }
   std::string storage;
-  jobject loader = soa.AddLocalReference<jobject>(klass->GetClassLoader());
-  DequickenDexFile(loader, dex_file, klass->GetDescriptor(&storage), dex_data);
+  DequickenDexFile(dex_file, klass->GetDescriptor(&storage), dex_data);
 }
 
 static bool DexNeedsDequickening(art::Handle<art::mirror::Class> klass,
@@ -336,7 +333,7 @@ jvmtiError ArtClassDefinition::Init(art::Thread* self, jclass klass) {
   const art::DexFile* quick_dex = GetQuickenedDexFile(m_klass);
   auto get_original = [&](/*out*/std::vector<unsigned char>* dex_data)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    GetDexDataForRetransformation(soa, m_klass, dex_data);
+    GetDexDataForRetransformation(m_klass, dex_data);
   };
   InitWithDex(get_original, quick_dex);
   return OK;
@@ -369,7 +366,7 @@ void ArtClassDefinition::InitFirstLoad(const char* descriptor,
   protection_domain_ = nullptr;
   auto get_original = [&](/*out*/std::vector<unsigned char>* dex_data)
       REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    DequickenDexFile(loader_, &dex_file, descriptor, dex_data);
+    DequickenDexFile(&dex_file, descriptor, dex_data);
   };
   InitWithDex(get_original, &dex_file);
 }
