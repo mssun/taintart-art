@@ -589,9 +589,12 @@ bool HInliner::TryInlineFromInlineCache(const DexFile& caller_dex_file,
 
   StackHandleScope<1> hs(Thread::Current());
   Handle<mirror::ObjectArray<mirror::Class>> inline_cache;
-  InlineCacheType inline_cache_type = Runtime::Current()->IsAotCompiler()
-      ? GetInlineCacheAOT(caller_dex_file, invoke_instruction, &hs, &inline_cache)
-      : GetInlineCacheJIT(invoke_instruction, &hs, &inline_cache);
+  // The Zygote JIT compiles based on a profile, so we shouldn't use runtime inline caches
+  // for it.
+  InlineCacheType inline_cache_type =
+      (Runtime::Current()->IsAotCompiler() || Runtime::Current()->IsZygote())
+          ? GetInlineCacheAOT(caller_dex_file, invoke_instruction, &hs, &inline_cache)
+          : GetInlineCacheJIT(invoke_instruction, &hs, &inline_cache);
 
   switch (inline_cache_type) {
     case kInlineCacheNoData: {

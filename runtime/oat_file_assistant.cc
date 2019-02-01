@@ -783,6 +783,7 @@ const OatFile* OatFileAssistant::OatFileInfo::GetFile() {
       if (executable && oat_file_assistant_->only_load_system_executable_) {
         executable = LocationIsOnSystem(filename_.c_str());
       }
+      VLOG(oat) << "Loading " << filename_ << " with executable: " << executable;
       std::string error_msg;
       if (use_fd_) {
         if (oat_fd_ >= 0 && vdex_fd_ >= 0) {
@@ -809,6 +810,8 @@ const OatFile* OatFileAssistant::OatFileInfo::GetFile() {
       if (file_.get() == nullptr) {
         VLOG(oat) << "OatFileAssistant test for existing oat file "
           << filename_ << ": " << error_msg;
+      } else {
+        VLOG(oat) << "Successfully loaded " << filename_ << " with executable: " << executable;
       }
     }
   }

@@ -176,12 +176,16 @@ const char* GetAndroidDataSafe(std::string* error_msg) {
   return GetAndroidDirSafe("ANDROID_DATA", "/data", error_msg);
 }
 
+std::string GetDefaultBootImageLocation(const std::string& android_root) {
+  return StringPrintf("%s/framework/boot.art", android_root.c_str());
+}
+
 std::string GetDefaultBootImageLocation(std::string* error_msg) {
   std::string android_root = GetAndroidRootSafe(error_msg);
   if (android_root.empty()) {
     return "";
   }
-  return StringPrintf("%s/framework/boot.art", android_root.c_str());
+  return GetDefaultBootImageLocation(android_root);
 }
 
 void GetDalvikCache(const char* subdir, const bool create_if_absent, std::string* dalvik_cache,
