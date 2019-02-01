@@ -2772,13 +2772,6 @@ collector::GcType Heap::CollectGarbageInternal(collector::GcType gc_type,
   } else {
     LOG(FATAL) << "Invalid current allocator " << current_allocator_;
   }
-  if (IsGcConcurrent()) {
-    // Disable concurrent GC check so that we don't have spammy JNI requests.
-    // This gets recalculated in GrowForUtilization. It is important that it is disabled /
-    // calculated in the same thread so that there aren't any races that can cause it to become
-    // permanantly disabled. b/17942071
-    concurrent_start_bytes_ = std::numeric_limits<size_t>::max();
-  }
 
   CHECK(collector != nullptr)
       << "Could not find garbage collector with collector_type="
@@ -3662,14 +3655,15 @@ void Heap::GrowForUtilization(collector::GarbageCollector* collector_ran,
 
     // If the throughput of the current sticky GC >= throughput of the non sticky collector, then
     // do another sticky collection next.
-    // We also check that the bytes allocated aren't over the footprint limit in order to prevent a
+    // We also check that the bytes allocated aren't over the target_footprint, or
+    // concurrent_start_bytes in case of concurrent GCs, in order to prevent a
     // pathological case where dead objects which aren't reclaimed by sticky could get accumulated
     // if the sticky GC throughput always remained >= the full/partial throughput.
     size_t target_footprint = target_footprint_.load(std::memory_order_relaxed);
     if (current_gc_iteration_.GetEstimatedThroughput() * sticky_gc_throughput_adjustment >=
         non_sticky_collector->GetEstimatedMeanThroughput() &&
         non_sticky_collector->NumberOfIterations() > 0 &&
-        bytes_allocated <= target_footprint) {
+        bytes_allocated <= (IsGcConcurrent() ? concurrent_start_bytes_ : target_footprint)) {
       next_gc_type_ = collector::kGcTypeSticky;
     } else {
       next_gc_type_ = non_sticky_gc_type;
