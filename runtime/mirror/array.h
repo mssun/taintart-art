@@ -32,6 +32,8 @@ namespace mirror {
 
 class MANAGED Array : public Object {
  public:
+  static constexpr size_t kFirstElementOffset = 12u;
+
   // The size of a java.lang.Class representing an array.
   static uint32_t ClassSize(PointerSize pointer_size);
 
@@ -79,6 +81,17 @@ class MANAGED Array : public Object {
         << "Array data offset isn't aligned with component size";
     return MemberOffset(data_offset);
   }
+  template <size_t kComponentSize>
+  static constexpr MemberOffset DataOffset() {
+    static_assert(IsPowerOfTwo(kComponentSize), "Invalid component size");
+    constexpr size_t data_offset = RoundUp(kFirstElementOffset, kComponentSize);
+    static_assert(RoundUp(data_offset, kComponentSize) == data_offset, "RoundUp fail");
+    return MemberOffset(data_offset);
+  }
+
+  static constexpr size_t FirstElementOffset() {
+    return OFFSETOF_MEMBER(Array, first_element_);
+  }
 
   void* GetRawData(size_t component_size, int32_t index)
       REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -86,10 +99,22 @@ class MANAGED Array : public Object {
         + (index * component_size);
     return reinterpret_cast<void*>(data);
   }
+  template <size_t kComponentSize>
+  void* GetRawData(int32_t index) REQUIRES_SHARED(Locks::mutator_lock_) {
+    intptr_t data = reinterpret_cast<intptr_t>(this) + DataOffset<kComponentSize>().Int32Value() +
+        + (index * kComponentSize);
+    return reinterpret_cast<void*>(data);
+  }
 
   const void* GetRawData(size_t component_size, int32_t index) const {
     intptr_t data = reinterpret_cast<intptr_t>(this) + DataOffset(component_size).Int32Value() +
         + (index * component_size);
+    return reinterpret_cast<void*>(data);
+  }
+  template <size_t kComponentSize>
+  const void* GetRawData(int32_t index) const {
+    intptr_t data = reinterpret_cast<intptr_t>(this) + DataOffset<kComponentSize>().Int32Value() +
+        + (index * kComponentSize);
     return reinterpret_cast<void*>(data);
   }
 
@@ -132,11 +157,11 @@ class MANAGED PrimitiveArray : public Array {
 
 
   const T* GetData() const ALWAYS_INLINE  REQUIRES_SHARED(Locks::mutator_lock_) {
-    return reinterpret_cast<const T*>(GetRawData(sizeof(T), 0));
+    return reinterpret_cast<const T*>(GetRawData<sizeof(T)>(0));
   }
 
   T* GetData() ALWAYS_INLINE REQUIRES_SHARED(Locks::mutator_lock_) {
-    return reinterpret_cast<T*>(GetRawData(sizeof(T), 0));
+    return reinterpret_cast<T*>(GetRawData<sizeof(T)>(0));
   }
 
   T Get(int32_t i) ALWAYS_INLINE REQUIRES_SHARED(Locks::mutator_lock_);
@@ -195,6 +220,9 @@ class PointerArray : public Array {
  public:
   template<typename T, VerifyObjectFlags kVerifyFlags = kVerifyNone>
   T GetElementPtrSize(uint32_t idx, PointerSize ptr_size)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+  template<typename T, PointerSize kPtrSize, VerifyObjectFlags kVerifyFlags = kVerifyNone>
+  T GetElementPtrSize(uint32_t idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kVerifyNone>
