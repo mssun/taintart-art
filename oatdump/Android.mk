@@ -66,7 +66,12 @@ endif
 .PHONY: dump-oat-boot-$(TARGET_ARCH)
 ifeq ($(ART_BUILD_TARGET_NDEBUG),true)
 dump-oat-boot-$(TARGET_ARCH): $(DEFAULT_DEX_PREOPT_BUILT_IMAGE_FILENAME) $(OATDUMP)
-	$(OATDUMP) $(addprefix --image=,$(DEFAULT_DEX_PREOPT_BUILT_IMAGE_LOCATION)) \
+	$(OATDUMP) \
+	  --runtime-arg \
+	  -Xbootclasspath:$(call normalize-path-list, $(DEXPREOPT_BOOTCLASSPATH_DEX_FILES)) \
+	  --runtime-arg \
+	  -Xbootclasspath-locations:$(call normalize-path-list, $(DEXPREOPT_BOOTCLASSPATH_DEX_LOCATIONS)) \
+	  $(addprefix --image=,$(DEFAULT_DEX_PREOPT_BUILT_IMAGE_LOCATION)) \
 	  --output=$(ART_DUMP_OAT_PATH)/boot.$(TARGET_ARCH).oatdump.txt --instruction-set=$(TARGET_ARCH)
 	@echo Output in $(ART_DUMP_OAT_PATH)/boot.$(TARGET_ARCH).oatdump.txt
 endif
@@ -74,7 +79,12 @@ endif
 ifdef TARGET_2ND_ARCH
 .PHONY: dump-oat-boot-$(TARGET_2ND_ARCH)
 dump-oat-boot-$(TARGET_2ND_ARCH): $(2ND_DEFAULT_DEX_PREOPT_BUILT_IMAGE_FILENAME) $(OATDUMP)
-	$(OATDUMP) $(addprefix --image=,$(2ND_DEFAULT_DEX_PREOPT_BUILT_IMAGE_LOCATION)) \
+	$(OATDUMP) \
+	  --runtime-arg \
+	  -Xbootclasspath:$(call normalize-path-list, $(DEXPREOPT_BOOTCLASSPATH_DEX_FILES)) \
+	  --runtime-arg \
+	  -Xbootclasspath-locations:$(call normalize-path-list, $(DEXPREOPT_BOOTCLASSPATH_DEX_LOCATIONS)) \
+	  $(addprefix --image=,$(2ND_DEFAULT_DEX_PREOPT_BUILT_IMAGE_LOCATION)) \
 	  --output=$(ART_DUMP_OAT_PATH)/boot.$(TARGET_2ND_ARCH).oatdump.txt --instruction-set=$(TARGET_2ND_ARCH)
 	@echo Output in $(ART_DUMP_OAT_PATH)/boot.$(TARGET_2ND_ARCH).oatdump.txt
 endif
