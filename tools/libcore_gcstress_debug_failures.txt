@@ -32,6 +32,12 @@
         ]
 },
 {
+  description: "Timeouts on host with gcstress and debug.",
+  result: EXEC_FAILED,
+  modes: [host],
+  names: ["jsr166.StampedLockTest#testWriteAfterReadLock"]
+},
+{
   description: "Sometimes times out with gcstress and debug.",
   result: EXEC_FAILED,
   bug: 78228743,
