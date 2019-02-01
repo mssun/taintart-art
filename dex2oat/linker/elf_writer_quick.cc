@@ -261,7 +261,7 @@ void ElfWriterQuick<ElfTypes>::WriteDynamicSection() {
 
 template <typename ElfTypes>
 void ElfWriterQuick<ElfTypes>::PrepareDebugInfo(const debug::DebugInfo& debug_info) {
-  if (!debug_info.Empty() && compiler_options_.GetGenerateMiniDebugInfo()) {
+  if (compiler_options_.GetGenerateMiniDebugInfo()) {
     // Prepare the mini-debug-info in background while we do other I/O.
     Thread* self = Thread::Current();
     debug_info_task_ = std::make_unique<DebugInfoTask>(
@@ -280,19 +280,17 @@ void ElfWriterQuick<ElfTypes>::PrepareDebugInfo(const debug::DebugInfo& debug_in
 
 template <typename ElfTypes>
 void ElfWriterQuick<ElfTypes>::WriteDebugInfo(const debug::DebugInfo& debug_info) {
-  if (!debug_info.Empty()) {
-    if (compiler_options_.GetGenerateMiniDebugInfo()) {
-      // Wait for the mini-debug-info generation to finish and write it to disk.
-      Thread* self = Thread::Current();
-      DCHECK(debug_info_thread_pool_ != nullptr);
-      debug_info_thread_pool_->Wait(self, true, false);
-      builder_->WriteSection(".gnu_debugdata", debug_info_task_->GetResult());
-    }
-    // The Strip method expects debug info to be last (mini-debug-info is not stripped).
-    if (compiler_options_.GetGenerateDebugInfo()) {
-      // Generate all the debug information we can.
-      debug::WriteDebugInfo(builder_.get(), debug_info, kCFIFormat, true /* write_oat_patches */);
-    }
+  if (compiler_options_.GetGenerateMiniDebugInfo()) {
+    // Wait for the mini-debug-info generation to finish and write it to disk.
+    Thread* self = Thread::Current();
+    DCHECK(debug_info_thread_pool_ != nullptr);
+    debug_info_thread_pool_->Wait(self, true, false);
+    builder_->WriteSection(".gnu_debugdata", debug_info_task_->GetResult());
+  }
+  // The Strip method expects debug info to be last (mini-debug-info is not stripped).
+  if (!debug_info.Empty() && compiler_options_.GetGenerateDebugInfo()) {
+    // Generate all the debug information we can.
+    debug::WriteDebugInfo(builder_.get(), debug_info, kCFIFormat, true /* write_oat_patches */);
   }
 }
 
