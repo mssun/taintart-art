@@ -16,7 +16,7 @@
 
 # Search for the redefinition line and remove unnecessary tags.
 sed -e 's/^dex2oat[d]\?\(\|32\|64\)\ W.*\] Found redefinition of boot classes\. Not doing fast verification\./Found redefinition of boot classes\. Not doing fast verification\./g' "$2" > "$2.tmp1"
-# Remove all other dex2oat log lines.
-grep -v dex2oat "$2.tmp1" >> "$2.tmp2"
+# Remove all other dex2oat/dalvikvm log lines.
+grep -v dex2oat "$2.tmp1" | grep -v dalvikvm >> "$2.tmp2"
 
 ./default-check "$1" "$2.tmp2"
