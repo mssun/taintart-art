@@ -76,7 +76,7 @@ PALETTE_METHOD_LIST(PALETTE_LOADER_METHOD_ACCESSOR)
 };
 
 void* PaletteLoader::OpenLibrary() {
-  void* handle = dlopen(kPaletteSystemLibrary, RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
+  void* handle = dlopen(kPaletteSystemLibrary, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
   if (handle == nullptr) {
     // dlerror message includes details of error and file being opened.
     __android_log_assert(nullptr, kLogTag, "%s", dlerror());
