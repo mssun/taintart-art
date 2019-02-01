@@ -1804,6 +1804,7 @@ DEFINE_FUNCTION art_quick_imt_conflict_trampoline
     PUSH ESI
     PUSH EDX
     movl 16(%esp), %edi         // Load referrer.
+    movd %xmm7, %esi            // Get target method index stored in xmm7, remember it in ESI.
     // If the method is obsolete, just go through the dex cache miss slow path.
     // The obsolete flag is set with suspended threads, so we do not need an acquire operation here.
     testl LITERAL(ACC_OBSOLETE_METHOD), ART_METHOD_ACCESS_FLAGS_OFFSET(%edi)
@@ -1814,8 +1815,7 @@ DEFINE_FUNCTION art_quick_imt_conflict_trampoline
     movl MIRROR_DEX_CACHE_RESOLVED_METHODS_OFFSET(%edi), %edi  // Load the resolved methods.
     pushl ART_METHOD_JNI_OFFSET_32(%eax)  // Push ImtConflictTable.
     CFI_ADJUST_CFA_OFFSET(4)
-    movd %xmm7, %eax            // Get target method index stored in xmm7.
-    movl %eax, %esi             // Remember method index in ESI.
+    movl %esi, %eax             // Copy the method index from ESI.
     andl LITERAL(METHOD_DEX_CACHE_SIZE_MINUS_ONE), %eax  // Calculate DexCache method slot index.
     leal 0(%edi, %eax, 2 * __SIZEOF_POINTER__), %edi  // Load DexCache method slot address.
     mov %ecx, %edx              // Make EDX:EAX == ECX:EBX so that LOCK CMPXCHG8B makes no changes.
