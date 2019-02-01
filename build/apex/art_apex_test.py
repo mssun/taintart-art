@@ -353,7 +353,6 @@ class ReleaseChecker:
     self._checker.check_library('libartpalette.so')
     self._checker.check_no_library('libartpalette-system.so')
     self._checker.check_library('libdexfile.so')
-    self._checker.check_library('libdexfile_external.so')
     self._checker.check_library('libopenjdkjvm.so')
     self._checker.check_library('libopenjdkjvmti.so')
     self._checker.check_library('libprofile.so')
