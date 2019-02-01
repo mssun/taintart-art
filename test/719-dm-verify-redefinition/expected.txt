@@ -1,0 +1,3 @@
+Found redefinition of boot classes. Not doing fast verification.
+Hello, world!
+Correct resolution of boot class.
