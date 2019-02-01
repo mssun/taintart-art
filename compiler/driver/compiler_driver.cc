@@ -1765,6 +1765,42 @@ static void LoadAndUpdateStatus(const ClassAccessor& accessor,
   }
 }
 
+// Returns true if any of the given dex files define a class from the boot classpath.
+static bool DexFilesRedefineBootClasses(
+    const std::vector<const DexFile*>& dex_files,
+    TimingLogger* timings) {
+  TimingLogger::ScopedTiming t("Fast Verify: Boot Class Redefinition Check", timings);
+
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  Thread* self = Thread::Current();
+  ScopedObjectAccess soa(self);
+
+  bool foundRedefinition = false;
+  for (const DexFile* dex_file : dex_files) {
+    for (ClassAccessor accessor : dex_file->GetClasses()) {
+      const char* descriptor = accessor.GetDescriptor();
+      StackHandleScope<1> hs_class(self);
+      Handle<mirror::Class> klass =
+          hs_class.NewHandle(class_linker->FindSystemClass(self, descriptor));
+      if (klass == nullptr) {
+        self->ClearException();
+      } else {
+        LOG(WARNING) << "Redefinition of boot class " << descriptor
+            << " App dex file: " <<  accessor.GetDexFile().GetLocation()
+            << " Boot dex file: " << klass->GetDexFile().GetLocation();
+        foundRedefinition = true;
+        if (!VLOG_IS_ON(verifier)) {
+          // If we are not in verbose mode, return early.
+          // Otherwise continue and log all the collisions for easier debugging.
+          return true;
+        }
+      }
+    }
+  }
+
+  return foundRedefinition;
+}
+
 bool CompilerDriver::FastVerify(jobject jclass_loader,
                                 const std::vector<const DexFile*>& dex_files,
                                 TimingLogger* timings,
@@ -1776,6 +1812,17 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
     return false;
   }
   TimingLogger::ScopedTiming t("Fast Verify", timings);
+
+  // We cannot do fast verification if the app redefines classes from the boot classpath.
+  // Vdex does not record resolution chains for boot classes and we might wrongfully
+  // resolve a class to the app when it should have been resolved to the boot classpath
+  // (e.g. if we verified against the SDK and the app redefines a boot class which is not
+  // in the SDK.)
+  if (DexFilesRedefineBootClasses(dex_files, timings)) {
+    LOG(WARNING) << "Found redefinition of boot classes. Not doing fast verification.";
+    return false;
+  }
+
   ScopedObjectAccess soa(Thread::Current());
   StackHandleScope<2> hs(soa.Self());
   Handle<mirror::ClassLoader> class_loader(
