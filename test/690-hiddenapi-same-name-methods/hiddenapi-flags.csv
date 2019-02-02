@@ -1,0 +1,9 @@
+LSpecificClass;->foo()Ljava/lang/Double;,blacklist
+LDirectMethods;->foo()Ljava/lang/Integer;,blacklist
+LDirectMethods;->foo()Ljava/lang/Boolean;,blacklist
+LVirtualMethods;->foo()Ljava/lang/Integer;,blacklist
+LVirtualMethods;->foo()Ljava/lang/Boolean;,blacklist
+LSyntheticMethods;->foo()Ljava/lang/Integer;,blacklist
+LSyntheticMethods;->foo()Ljava/lang/Boolean;,blacklist
+LNonSyntheticMethods;->foo()Ljava/lang/Integer;,blacklist
+LNonSyntheticMethods;->foo()Ljava/lang/Boolean;,blacklist

@@ -534,8 +534,9 @@
             "097-duplicate-method",
             "138-duplicate-classes-check2",
             "159-app-image-fields",
-            "674-hiddenapi",
             "649-vdex-duplicate-method",
+            "674-hiddenapi",
+            "690-hiddenapi-same-name-methods",
             "804-class-extends-itself",
             "921-hello-failure",
             "999-redefine-hiddenapi"
@@ -555,6 +556,7 @@
             "629-vdex-speed",
             "647-jni-get-field-id",
             "674-hiddenapi",
+            "690-hiddenapi-same-name-methods",
             "944-transform-classloaders",
             "999-redefine-hiddenapi"
         ],
@@ -1085,6 +1087,7 @@
                   "678-quickening",
                   "679-locks",
                   "688-shared-library",
+                  "690-hiddenapi-same-name-methods",
                   "999-redefine-hiddenapi",
                   "1000-non-moving-space-stress",
                   "1001-app-image-regions",

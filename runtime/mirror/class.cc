@@ -35,6 +35,7 @@
 #include "gc/accounting/card_table-inl.h"
 #include "gc/heap-inl.h"
 #include "handle_scope-inl.h"
+#include "hidden_api.h"
 #include "subtype_check.h"
 #include "method.h"
 #include "object-inl.h"
@@ -1252,18 +1253,50 @@ dex::TypeIndex Class::FindTypeIndexInOtherDexFile(const DexFile& dex_file) {
   return (type_id == nullptr) ? dex::TypeIndex() : dex_file.GetIndexForTypeId(*type_id);
 }
 
+ALWAYS_INLINE
+static bool IsMethodPreferredOver(ArtMethod* orig_method,
+                                  bool orig_method_hidden,
+                                  ArtMethod* new_method,
+                                  bool new_method_hidden) {
+  DCHECK(new_method != nullptr);
+
+  // Is this the first result?
+  if (orig_method == nullptr) {
+    return true;
+  }
+
+  // Original method is hidden, the new one is not?
+  if (orig_method_hidden && !new_method_hidden) {
+    return true;
+  }
+
+  // We iterate over virtual methods first and then over direct ones,
+  // so we can never be in situation where `orig_method` is direct and
+  // `new_method` is virtual.
+  DCHECK(!orig_method->IsDirect() || new_method->IsDirect());
+
+  // Original method is synthetic, the new one is not?
+  if (orig_method->IsSynthetic() && !new_method->IsSynthetic()) {
+    return true;
+  }
+
+  return false;
+}
+
 template <PointerSize kPointerSize, bool kTransactionActive>
 ObjPtr<Method> Class::GetDeclaredMethodInternal(
     Thread* self,
     ObjPtr<Class> klass,
     ObjPtr<String> name,
-    ObjPtr<ObjectArray<Class>> args) {
-  // Covariant return types permit the class to define multiple
-  // methods with the same name and parameter types. Prefer to
-  // return a non-synthetic method in such situations. We may
-  // still return a synthetic method to handle situations like
-  // escalated visibility. We never return miranda methods that
-  // were synthesized by the runtime.
+    ObjPtr<ObjectArray<Class>> args,
+    const std::function<hiddenapi::AccessContext()>& fn_get_access_context) {
+  // Covariant return types (or smali) permit the class to define
+  // multiple methods with the same name and parameter types.
+  // Prefer (in decreasing order of importance):
+  //  1) non-hidden method over hidden
+  //  2) virtual methods over direct
+  //  3) non-synthetic methods over synthetic
+  // We never return miranda methods that were synthesized by the runtime.
   StackHandleScope<3> hs(self);
   auto h_method_name = hs.NewHandle(name);
   if (UNLIKELY(h_method_name == nullptr)) {
@@ -1272,8 +1305,13 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal(
   }
   auto h_args = hs.NewHandle(args);
   Handle<Class> h_klass = hs.NewHandle(klass);
+  constexpr hiddenapi::AccessMethod access_method = hiddenapi::AccessMethod::kNone;
   ArtMethod* result = nullptr;
+  bool result_hidden = false;
   for (auto& m : h_klass->GetDeclaredVirtualMethods(kPointerSize)) {
+    if (m.IsMiranda()) {
+      continue;
+    }
     auto* np_method = m.GetInterfaceMethodIfProxy(kPointerSize);
     // May cause thread suspension.
     ObjPtr<String> np_name = np_method->ResolveNameString();
@@ -1283,14 +1321,24 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal(
       }
       continue;
     }
-    if (!m.IsMiranda()) {
-      if (!m.IsSynthetic()) {
-        return Method::CreateFromArtMethod<kPointerSize, kTransactionActive>(self, &m);
-      }
-      result = &m;  // Remember as potential result if it's not a miranda method.
+    bool m_hidden = hiddenapi::ShouldDenyAccessToMember(&m, fn_get_access_context, access_method);
+    if (!m_hidden && !m.IsSynthetic()) {
+      // Non-hidden, virtual, non-synthetic. Best possible result, exit early.
+      return Method::CreateFromArtMethod<kPointerSize, kTransactionActive>(self, &m);
+    } else if (IsMethodPreferredOver(result, result_hidden, &m, m_hidden)) {
+      // Remember as potential result.
+      result = &m;
+      result_hidden = m_hidden;
     }
   }
-  if (result == nullptr) {
+
+  if ((result != nullptr) && !result_hidden) {
+    // We have not found a non-hidden, virtual, non-synthetic method, but
+    // if we have found a non-hidden, virtual, synthetic method, we cannot
+    // do better than that later.
+    DCHECK(!result->IsDirect());
+    DCHECK(result->IsSynthetic());
+  } else {
     for (auto& m : h_klass->GetDirectMethods(kPointerSize)) {
       auto modifiers = m.GetAccessFlags();
       if ((modifiers & kAccConstructor) != 0) {
@@ -1310,12 +1358,20 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal(
         continue;
       }
       DCHECK(!m.IsMiranda());  // Direct methods cannot be miranda methods.
-      if ((modifiers & kAccSynthetic) == 0) {
+      bool m_hidden = hiddenapi::ShouldDenyAccessToMember(&m, fn_get_access_context, access_method);
+      if (!m_hidden && !m.IsSynthetic()) {
+        // Non-hidden, direct, non-synthetic. Any virtual result could only have been
+        // hidden, therefore this is the best possible match. Exit now.
+        DCHECK((result == nullptr) || result_hidden);
         return Method::CreateFromArtMethod<kPointerSize, kTransactionActive>(self, &m);
+      } else if (IsMethodPreferredOver(result, result_hidden, &m, m_hidden)) {
+        // Remember as potential result.
+        result = &m;
+        result_hidden = m_hidden;
       }
-      result = &m;  // Remember as potential result.
     }
   }
+
   return result != nullptr
       ? Method::CreateFromArtMethod<kPointerSize, kTransactionActive>(self, result)
       : nullptr;
@@ -1326,25 +1382,29 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal<PointerSize::k32, false>(
     Thread* self,
     ObjPtr<Class> klass,
     ObjPtr<String> name,
-    ObjPtr<ObjectArray<Class>> args);
+    ObjPtr<ObjectArray<Class>> args,
+    const std::function<hiddenapi::AccessContext()>& fn_get_access_context);
 template
 ObjPtr<Method> Class::GetDeclaredMethodInternal<PointerSize::k32, true>(
     Thread* self,
     ObjPtr<Class> klass,
     ObjPtr<String> name,
-    ObjPtr<ObjectArray<Class>> args);
+    ObjPtr<ObjectArray<Class>> args,
+    const std::function<hiddenapi::AccessContext()>& fn_get_access_context);
 template
 ObjPtr<Method> Class::GetDeclaredMethodInternal<PointerSize::k64, false>(
     Thread* self,
     ObjPtr<Class> klass,
     ObjPtr<String> name,
-    ObjPtr<ObjectArray<Class>> args);
+    ObjPtr<ObjectArray<Class>> args,
+    const std::function<hiddenapi::AccessContext()>& fn_get_access_context);
 template
 ObjPtr<Method> Class::GetDeclaredMethodInternal<PointerSize::k64, true>(
     Thread* self,
     ObjPtr<Class> klass,
     ObjPtr<String> name,
-    ObjPtr<ObjectArray<Class>> args);
+    ObjPtr<ObjectArray<Class>> args,
+    const std::function<hiddenapi::AccessContext()>& fn_get_access_context);
 
 template <PointerSize kPointerSize, bool kTransactionActive>
 ObjPtr<Constructor> Class::GetDeclaredConstructorInternal(
