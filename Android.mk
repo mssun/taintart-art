@@ -352,18 +352,13 @@ ifeq (true,$(art_target_include_debug_build))
   # Module with both release and debug variants, as well as
   # additional tools.
   TARGET_RUNTIME_APEX := com.android.runtime.debug
-  APEX_TEST_MODULE := art-check-debug-apex-gen-fakebin
 else
   # Release module (without debug variants nor tools).
   TARGET_RUNTIME_APEX := com.android.runtime.release
-  APEX_TEST_MODULE := art-check-release-apex-gen-fakebin
 endif
 
 LOCAL_MODULE := com.android.runtime
 LOCAL_REQUIRED_MODULES := $(TARGET_RUNTIME_APEX)
-ifneq ($(HOST_OS),darwin)
-  LOCAL_REQUIRED_MODULES += $(APEX_TEST_MODULE)
-endif
 
 # Clear locally used variable.
 art_target_include_debug_build :=
