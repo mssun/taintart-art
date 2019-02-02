@@ -124,6 +124,7 @@ class DexClass : public ClassAccessor {
   }
 
   inline bool IsPublic() const { return HasAccessFlags(kAccPublic); }
+  inline bool IsInterface() const { return HasAccessFlags(kAccInterface); }
 
   inline bool Equals(const DexClass& other) const {
     bool equals = strcmp(GetDescriptor(), other.GetDescriptor()) == 0;
@@ -344,13 +345,13 @@ class HierarchyClass final {
   // See comment on Hierarchy::ForEachResolvableMember.
   template<typename Fn>
   bool ForEachResolvableMember(const DexMember& other, Fn fn) {
-    return ForEachResolvableMember_Impl(other, fn) != ResolutionResult::kNotFound;
+    std::vector<HierarchyClass*> visited;
+    return ForEachResolvableMember_Impl(other, fn, true, true, visited);
   }
 
   // Returns true if this class contains at least one member matching `other`.
   bool HasMatchingMember(const DexMember& other) {
-    return ForEachMatchingMember(
-        other, [](const DexMember&) { return true; }) != ResolutionResult::kNotFound;
+    return ForEachMatchingMember(other, [](const DexMember&) { return true; });
   }
 
   // Recursively iterates over all subclasses of this class and invokes `fn`
@@ -366,62 +367,60 @@ class HierarchyClass final {
   }
 
  private:
-  // Result of resolution which takes into account whether the member was found
-  // for the first time or not. This is just a performance optimization to prevent
-  // re-visiting previously visited members.
-  // Note that order matters. When accumulating results, we always pick the maximum.
-  enum class ResolutionResult {
-    kNotFound,
-    kFoundOld,
-    kFoundNew,
-  };
-
-  inline ResolutionResult Accumulate(ResolutionResult a, ResolutionResult b) {
-    return static_cast<ResolutionResult>(
-        std::max(static_cast<unsigned>(a), static_cast<unsigned>(b)));
-  }
-
   template<typename Fn>
-  ResolutionResult ForEachResolvableMember_Impl(const DexMember& other, Fn fn) {
-    // First try to find a member matching `other` in this class.
-    ResolutionResult foundInClass = ForEachMatchingMember(other, fn);
-
-    switch (foundInClass) {
-      case ResolutionResult::kFoundOld:
-        // A matching member was found and previously explored. All subclasses
-        // must have been explored too.
-        break;
-
-      case ResolutionResult::kFoundNew:
-        // A matching member was found and this was the first time it was visited.
-        // If it is a virtual method, visit all methods overriding/implementing it too.
-        if (other.IsVirtualMethod()) {
-          for (HierarchyClass* subclass : extended_by_) {
-            subclass->ForEachOverridingMember(other, fn);
-          }
-        }
-        break;
-
-      case ResolutionResult::kNotFound:
-        // A matching member was not found in this class. Explore the superclasses
-        // and implemented interfaces.
-        for (HierarchyClass* superclass : extends_) {
-          foundInClass = Accumulate(
-              foundInClass, superclass->ForEachResolvableMember_Impl(other, fn));
-        }
-        break;
+  bool ForEachResolvableMember_Impl(const DexMember& other,
+                                    Fn fn,
+                                    bool allow_explore_up,
+                                    bool allow_explore_down,
+                                    std::vector<HierarchyClass*> visited) {
+    if (std::find(visited.begin(), visited.end(), this) == visited.end()) {
+      visited.push_back(this);
+    } else {
+      return false;
     }
 
-    return foundInClass;
+    // First try to find a member matching `other` in this class.
+    bool found = ForEachMatchingMember(other, fn);
+
+    // If not found, see if it is inherited from parents. Note that this will not
+    // revisit parents already in `visited`.
+    if (!found && allow_explore_up) {
+      for (HierarchyClass* superclass : extends_) {
+        found |= superclass->ForEachResolvableMember_Impl(
+            other,
+            fn,
+            /* allow_explore_up */ true,
+            /* allow_explore_down */ false,
+            visited);
+      }
+    }
+
+    // If this is a virtual method, continue exploring into subclasses so as to visit
+    // all overriding methods. Allow subclasses to explore their superclasses if this
+    // is an interface. This is needed to find implementations of this interface's
+    // methods inherited from superclasses (b/122551864).
+    if (allow_explore_down && other.IsVirtualMethod()) {
+      for (HierarchyClass* subclass : extended_by_) {
+        subclass->ForEachResolvableMember_Impl(
+            other,
+            fn,
+            /* allow_explore_up */ GetOneDexClass().IsInterface(),
+            /* allow_explore_down */ true,
+            visited);
+      }
+    }
+
+    return found;
   }
 
   template<typename Fn>
-  ResolutionResult ForEachMatchingMember(const DexMember& other, Fn fn) {
-    ResolutionResult found = ResolutionResult::kNotFound;
+  bool ForEachMatchingMember(const DexMember& other, Fn fn) {
+    bool found = false;
     auto compare_member = [&](const DexMember& member) {
+      // TODO(dbrazdil): Check whether class of `other` can access `member`.
       if (member == other) {
-        found = Accumulate(found, fn(member) ? ResolutionResult::kFoundNew
-                                             : ResolutionResult::kFoundOld);
+        found = true;
+        fn(member);
       }
     };
     for (const DexClass& dex_class : dex_classes_) {
@@ -433,20 +432,6 @@ class HierarchyClass final {
       }
     }
     return found;
-  }
-
-  template<typename Fn>
-  void ForEachOverridingMember(const DexMember& other, Fn fn) {
-    CHECK(other.IsVirtualMethod());
-    ResolutionResult found = ForEachMatchingMember(other, fn);
-    if (found == ResolutionResult::kFoundOld) {
-      // No need to explore further.
-      return;
-    } else {
-      for (HierarchyClass* subclass : extended_by_) {
-        subclass->ForEachOverridingMember(other, fn);
-      }
-    }
   }
 
   // DexClass entries of this class found across all the provided dex files.
@@ -1070,12 +1055,7 @@ class HiddenApi final {
                   std::string entry = boot_member.GetApiEntry();
                   auto it = boot_members.find(entry);
                   CHECK(it != boot_members.end());
-                  if (it->second.Contains(stub_api_list)) {
-                    return false;  // has been marked before
-                  } else {
-                    it->second |= stub_api_list;
-                    return true;  // marked for the first time
-                  }
+                  it->second |= stub_api_list;
                 });
             if (!resolved) {
               unresolved.insert(stub_member.GetApiEntry());
