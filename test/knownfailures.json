@@ -1185,7 +1185,7 @@
     },
     {
         "tests": ["719-dm-verify-redefinition"],
-        "variant": "jvm | speed-profile | interp-ac | target",
+        "variant": "jvm | speed-profile | interp-ac | target | no-prebuild",
         "description": ["Doesn't run on RI because of boot class redefintion.",
                         "Doesn't work with profiles because the run-test is not setup to",
                         "support both. It also needs full verification, so no interp-ac.",
