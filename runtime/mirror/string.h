@@ -27,7 +27,6 @@ namespace art {
 
 template<class T> class Handle;
 struct StringOffsets;
-class StringPiece;
 class StubTest_ReadBarrierForRoot_Test;
 
 namespace mirror {
@@ -154,26 +153,9 @@ class MANAGED String final : public Object {
   static String* AllocFromModifiedUtf8(Thread* self, int32_t utf16_length, const char* utf8_data_in)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  // TODO: This is only used in the interpreter to compare against
-  // entries from a dex files constant pool (ArtField names). Should
-  // we unify this with Equals(const StringPiece&); ?
   bool Equals(const char* modified_utf8) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // TODO: This is only used to compare DexCache.location with
-  // a dex_file's location (which is an std::string). Do we really
-  // need this in mirror::String just for that one usage ?
-  bool Equals(const StringPiece& modified_utf8)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   bool Equals(ObjPtr<String> that) REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // Compare UTF-16 code point values not in a locale-sensitive manner
-  int Compare(int32_t utf16_length, const char* utf8_data_in);
-
-  // TODO: do we need this overload? give it a more intention-revealing name.
-  bool Equals(const uint16_t* that_chars, int32_t that_offset,
-              int32_t that_length)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Create a modified UTF-8 encoded std::string from a java/lang/String object.
   std::string ToModifiedUtf8() REQUIRES_SHARED(Locks::mutator_lock_);
