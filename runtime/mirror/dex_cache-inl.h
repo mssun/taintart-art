@@ -110,8 +110,7 @@ inline void DexCache::SetResolvedString(dex::StringIndex string_idx, ObjPtr<Stri
   WriteBarrier::ForEveryFieldWrite(this);
 }
 
-inline void DexCache::SetPreResolvedString(dex::StringIndex string_idx,
-                                           ObjPtr<String> resolved) {
+inline void DexCache::SetPreResolvedString(dex::StringIndex string_idx, ObjPtr<String> resolved) {
   DCHECK(resolved != nullptr);
   DCHECK_LT(string_idx.index_, GetDexFile()->NumStringIds());
   GetPreResolvedStrings()[string_idx.index_] = GcRoot<mirror::String>(resolved);
@@ -120,6 +119,17 @@ inline void DexCache::SetPreResolvedString(dex::StringIndex string_idx,
   CHECK(!runtime->IsActiveTransaction());
   // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
   WriteBarrier::ForEveryFieldWrite(this);
+}
+
+inline void DexCache::ClearPreResolvedStrings() {
+  SetFieldPtr64</*kTransactionActive=*/false,
+                /*kCheckTransaction=*/false,
+                kVerifyNone,
+                GcRoot<mirror::String>*>(PreResolvedStringsOffset(), nullptr);
+  SetField32</*kTransactionActive=*/false,
+             /*bool kCheckTransaction=*/false,
+             kVerifyNone,
+             /*kIsVolatile=*/false>(NumPreResolvedStringsOffset(), 0);
 }
 
 inline void DexCache::ClearString(dex::StringIndex string_idx) {

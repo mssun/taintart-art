@@ -823,6 +823,14 @@ class Runtime {
     ThreadPool* const thread_pool_;
   };
 
+  bool LoadAppImageStartupCache() const {
+    return load_app_image_startup_cache_;
+  }
+
+  void SetLoadAppImageStartupCacheEnabled(bool enabled) {
+    load_app_image_startup_cache_ = enabled;
+  }
+
  private:
   static void InitPlatformSignalHandlers();
 
@@ -1144,6 +1152,8 @@ class Runtime {
   MemMap protected_fault_page_;
 
   uint32_t verifier_logging_threshold_ms_;
+
+  bool load_app_image_startup_cache_ = false;
 
   // Note: See comments on GetFaultMessage.
   friend std::string GetFaultMessageForAbortLogging();
