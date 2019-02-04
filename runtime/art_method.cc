@@ -22,7 +22,6 @@
 
 #include "arch/context.h"
 #include "art_method-inl.h"
-#include "base/stringpiece.h"
 #include "class_linker-inl.h"
 #include "class_root.h"
 #include "debugger.h"
@@ -166,12 +165,11 @@ InvokeType ArtMethod::GetInvokeType() {
   }
 }
 
-size_t ArtMethod::NumArgRegisters(const StringPiece& shorty) {
-  CHECK_LE(1U, shorty.length());
+size_t ArtMethod::NumArgRegisters(const char* shorty) {
+  CHECK_NE(shorty[0], '\0');
   uint32_t num_registers = 0;
-  for (size_t i = 1; i < shorty.length(); ++i) {
-    char ch = shorty[i];
-    if (ch == 'D' || ch == 'J') {
+  for (const char* s = shorty + 1; *s != '\0'; ++s) {
+    if (*s == 'D' || *s == 'J') {
       num_registers += 2;
     } else {
       num_registers += 1;
