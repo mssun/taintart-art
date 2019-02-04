@@ -37,6 +37,10 @@ struct ClassDef;
 class TypeList;
 }  // namespace dex
 
+namespace hiddenapi {
+class AccessContext;
+}  // namespace hiddenapi
+
 template<typename T> class ArraySlice;
 class ArtField;
 class ArtMethod;
@@ -702,10 +706,12 @@ class MANAGED Class final : public Object {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <PointerSize kPointerSize, bool kTransactionActive>
-  static ObjPtr<Method> GetDeclaredMethodInternal(Thread* self,
-                                                  ObjPtr<Class> klass,
-                                                  ObjPtr<String> name,
-                                                  ObjPtr<ObjectArray<Class>> args)
+  static ObjPtr<Method> GetDeclaredMethodInternal(
+      Thread* self,
+      ObjPtr<Class> klass,
+      ObjPtr<String> name,
+      ObjPtr<ObjectArray<Class>> args,
+      const std::function<hiddenapi::AccessContext()>& fn_get_access_context)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <PointerSize kPointerSize, bool kTransactionActive>

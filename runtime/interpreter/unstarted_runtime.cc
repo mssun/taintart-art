@@ -181,17 +181,21 @@ static mirror::String* GetClassName(Thread* self, ShadowFrame* shadow_frame, siz
   return param->AsString();
 }
 
+static std::function<hiddenapi::AccessContext()> GetHiddenapiAccessContextFunction(
+    ShadowFrame* frame) {
+  return [=]() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return hiddenapi::AccessContext(frame->GetMethod()->GetDeclaringClass());
+  };
+}
+
 template<typename T>
 static ALWAYS_INLINE bool ShouldDenyAccessToMember(T* member, ShadowFrame* frame)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // All uses in this file are from reflection
   constexpr hiddenapi::AccessMethod kAccessMethod = hiddenapi::AccessMethod::kReflection;
-  return hiddenapi::ShouldDenyAccessToMember(
-      member,
-      [&]() REQUIRES_SHARED(Locks::mutator_lock_) {
-        return hiddenapi::AccessContext(frame->GetMethod()->GetDeclaringClass());
-      },
-      kAccessMethod);
+  return hiddenapi::ShouldDenyAccessToMember(member,
+                                             GetHiddenapiAccessContextFunction(frame),
+                                             kAccessMethod);
 }
 
 void UnstartedRuntime::UnstartedClassForNameCommon(Thread* self,
@@ -390,22 +394,23 @@ void UnstartedRuntime::UnstartedClassGetDeclaredMethod(
   Runtime* runtime = Runtime::Current();
   bool transaction = runtime->IsActiveTransaction();
   PointerSize pointer_size = runtime->GetClassLinker()->GetImagePointerSize();
+  auto fn_hiddenapi_access_context = GetHiddenapiAccessContextFunction(shadow_frame);
   ObjPtr<mirror::Method> method;
   if (transaction) {
     if (pointer_size == PointerSize::k64) {
       method = mirror::Class::GetDeclaredMethodInternal<PointerSize::k64, true>(
-          self, klass, name, args);
+          self, klass, name, args, fn_hiddenapi_access_context);
     } else {
       method = mirror::Class::GetDeclaredMethodInternal<PointerSize::k32, true>(
-          self, klass, name, args);
+          self, klass, name, args, fn_hiddenapi_access_context);
     }
   } else {
     if (pointer_size == PointerSize::k64) {
       method = mirror::Class::GetDeclaredMethodInternal<PointerSize::k64, false>(
-          self, klass, name, args);
+          self, klass, name, args, fn_hiddenapi_access_context);
     } else {
       method = mirror::Class::GetDeclaredMethodInternal<PointerSize::k32, false>(
-          self, klass, name, args);
+          self, klass, name, args, fn_hiddenapi_access_context);
     }
   }
   if (method != nullptr && ShouldDenyAccessToMember(method->GetArtMethod(), shadow_frame)) {

@@ -113,15 +113,18 @@ static hiddenapi::AccessContext GetReflectionCaller(Thread* self)
                          : hiddenapi::AccessContext(caller);
 }
 
+static std::function<hiddenapi::AccessContext()> GetHiddenapiAccessContextFunction(Thread* self) {
+  return [=]() REQUIRES_SHARED(Locks::mutator_lock_) { return GetReflectionCaller(self); };
+}
+
 // Returns true if the first non-ClassClass caller up the stack should not be
 // allowed access to `member`.
 template<typename T>
 ALWAYS_INLINE static bool ShouldDenyAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::ShouldDenyAccessToMember(
-      member,
-      [&]() REQUIRES_SHARED(Locks::mutator_lock_) { return GetReflectionCaller(self); },
-      hiddenapi::AccessMethod::kReflection);
+  return hiddenapi::ShouldDenyAccessToMember(member,
+                                             GetHiddenapiAccessContextFunction(self),
+                                             hiddenapi::AccessMethod::kReflection);
 }
 
 // Returns true if a class member should be discoverable with reflection given
@@ -563,7 +566,8 @@ static jobject Class_getDeclaredMethodInternal(JNIEnv* env, jobject javaThis,
           soa.Self(),
           DecodeClass(soa, javaThis),
           soa.Decode<mirror::String>(name),
-          soa.Decode<mirror::ObjectArray<mirror::Class>>(args)));
+          soa.Decode<mirror::ObjectArray<mirror::Class>>(args),
+          GetHiddenapiAccessContextFunction(soa.Self())));
   if (result == nullptr || ShouldDenyAccessToMember(result->GetArtMethod(), soa.Self())) {
     return nullptr;
   }
