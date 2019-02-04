@@ -127,15 +127,21 @@ static std::vector<uint8_t> MakeMiniDebugInfoInternal(
       new linker::ElfBuilder<ElfTypes>(isa, features, &out));
   builder->Start(/* write_program_headers= */ false);
   // Mirror ELF sections as NOBITS since the added symbols will reference them.
-  builder->GetText()->AllocateVirtualMemory(text_section_address, text_section_size);
+  if (text_section_size != 0) {
+    builder->GetText()->AllocateVirtualMemory(text_section_address, text_section_size);
+  }
   if (dex_section_size != 0) {
     builder->GetDex()->AllocateVirtualMemory(dex_section_address, dex_section_size);
   }
-  WriteDebugSymbols(builder.get(), /* mini-debug-info= */ true, debug_info);
-  WriteCFISection(builder.get(),
-                  debug_info.compiled_methods,
-                  dwarf::DW_DEBUG_FRAME_FORMAT,
-                  /* write_oat_patches= */ false);
+  if (!debug_info.Empty()) {
+    WriteDebugSymbols(builder.get(), /* mini-debug-info= */ true, debug_info);
+  }
+  if (!debug_info.compiled_methods.empty()) {
+    WriteCFISection(builder.get(),
+                    debug_info.compiled_methods,
+                    dwarf::DW_DEBUG_FRAME_FORMAT,
+                    /* write_oat_patches= */ false);
+  }
   builder->End();
   CHECK(builder->Good());
   std::vector<uint8_t> compressed_buffer;
