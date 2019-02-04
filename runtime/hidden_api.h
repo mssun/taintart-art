@@ -354,7 +354,7 @@ ALWAYS_INLINE inline uint32_t GetRuntimeFlags(ArtMethod* method)
 // This function might print warnings into the log if the member is hidden.
 template<typename T>
 inline bool ShouldDenyAccessToMember(T* member,
-                                     std::function<AccessContext()> fn_get_access_context,
+                                     const std::function<AccessContext()>& fn_get_access_context,
                                      AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(member != nullptr);

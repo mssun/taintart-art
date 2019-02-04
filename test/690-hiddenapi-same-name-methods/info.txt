@@ -1,0 +1,1 @@
+Test that Class::GetDeclaredMethodInternal() takes hidden API into account.
