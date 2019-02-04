@@ -25,6 +25,7 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -7040,11 +7041,13 @@ static ArtMethod* FindSameNameAndSignature(MethodNameAndSignatureComparator& cmp
   return FindSameNameAndSignature(cmp, rest...);
 }
 
+namespace {
+
 // Check that all vtable entries are present in this class's virtuals or are the same as a
 // superclasses vtable entry.
-static void CheckClassOwnsVTableEntries(Thread* self,
-                                        Handle<mirror::Class> klass,
-                                        PointerSize pointer_size)
+void CheckClassOwnsVTableEntries(Thread* self,
+                                 Handle<mirror::Class> klass,
+                                 PointerSize pointer_size)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<2> hs(self);
   Handle<mirror::PointerArray> check_vtable(hs.NewHandle(klass->GetVTableDuringLinking()));
@@ -7075,43 +7078,165 @@ static void CheckClassOwnsVTableEntries(Thread* self,
 // Check to make sure the vtable does not have duplicates. Duplicates could cause problems when a
 // method is overridden in a subclass.
 template <PointerSize kPointerSize>
-static void CheckVTableHasNoDuplicates(Thread* self, Handle<mirror::Class> klass)
+void CheckVTableHasNoDuplicates(Thread* self, Handle<mirror::Class> klass)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
   Handle<mirror::PointerArray> vtable(hs.NewHandle(klass->GetVTableDuringLinking()));
   int32_t num_entries = vtable->GetLength();
-  for (int32_t i = 0; i < num_entries; i++) {
-    ArtMethod* vtable_entry = vtable->GetElementPtrSize<ArtMethod*, kPointerSize>(i);
-    // Don't bother if we cannot 'see' the vtable entry (i.e. it is a package-private member maybe).
+
+  // Observations:
+  //   * The older implementation was O(n^2) and got too expensive for apps with larger classes.
+  //   * Many classes do not override Object functions (e.g., equals/hashCode/toString). Thus,
+  //     for many classes outside of libcore a cross-dexfile check has to be run anyways.
+  //   * In the cross-dexfile case, with the O(n^2), in the best case O(n) cross checks would have
+  //     to be done. It is thus OK in a single-pass algorithm to read all data, anyways.
+  //   * The single-pass algorithm will trade memory for speed, but that is OK.
+
+  CHECK_GT(num_entries, 0);
+
+  auto log_fn = [&vtable, &klass](int32_t i, int32_t j) REQUIRES_SHARED(Locks::mutator_lock_) {
+    ArtMethod* m1 = vtable->GetElementPtrSize<ArtMethod*, kPointerSize>(i);
+    ArtMethod* m2 = vtable->GetElementPtrSize<ArtMethod*, kPointerSize>(j);
+    LOG(WARNING) << "vtable entries " << i << " and " << j << " are identical for "
+                 << klass->PrettyClass() << " in method " << m1->PrettyMethod()
+                << " (0x" << std::hex << reinterpret_cast<uintptr_t>(m2) << ") and "
+                << m2->PrettyMethod() << "  (0x" << std::hex
+                << reinterpret_cast<uintptr_t>(m2) << ")";
+  };
+  struct BaseHashType {
+    static size_t HashCombine(size_t seed, size_t val) {
+      return seed ^ (val + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    }
+  };
+
+  // Check assuming all entries come from the same dex file.
+  {
+    // Find the first interesting method and its dex file.
+    int32_t start = 0;
+    for (; start < num_entries; ++start) {
+      ArtMethod* vtable_entry = vtable->GetElementPtrSize<ArtMethod*, kPointerSize>(start);
+      // Don't bother if we cannot 'see' the vtable entry (i.e. it is a package-private member
+      // maybe).
+      if (!klass->CanAccessMember(vtable_entry->GetDeclaringClass(),
+                                  vtable_entry->GetAccessFlags())) {
+        continue;
+      }
+      break;
+    }
+    if (start == num_entries) {
+      return;
+    }
+    const DexFile* dex_file =
+        vtable->GetElementPtrSize<ArtMethod*, kPointerSize>(start)->
+            GetInterfaceMethodIfProxy(kPointerSize)->GetDexFile();
+
+    // Helper function to avoid logging if we have to run the cross-file checks.
+    auto check_fn = [&](bool log_warn) REQUIRES_SHARED(Locks::mutator_lock_) {
+      // Use a map to store seen entries, as the storage space is too large for a bitvector.
+      using PairType = std::pair<uint32_t, uint16_t>;
+      struct PairHash : BaseHashType {
+        size_t operator()(const PairType& key) const {
+          return BaseHashType::HashCombine(BaseHashType::HashCombine(0, key.first), key.second);
+        }
+      };
+      std::unordered_map<PairType, int32_t, PairHash> seen;
+      seen.reserve(2 * num_entries);
+      bool need_slow_path = false;
+      bool found_dup = false;
+      for (int i = start; i < num_entries; ++i) {
+        // Can use Unchecked here as the start loop already ensured that the arrays are correct
+        // wrt/ kPointerSize.
+        ArtMethod* vtable_entry = vtable->GetElementPtrSizeUnchecked<ArtMethod*, kPointerSize>(i);
+        if (!klass->CanAccessMember(vtable_entry->GetDeclaringClass(),
+                                    vtable_entry->GetAccessFlags())) {
+          continue;
+        }
+        ArtMethod* m = vtable_entry->GetInterfaceMethodIfProxy(kPointerSize);
+        if (dex_file != m->GetDexFile()) {
+          need_slow_path = true;
+          break;
+        }
+        const dex::MethodId* m_mid = &dex_file->GetMethodId(m->GetDexMethodIndex());
+        PairType pair = std::make_pair(m_mid->name_idx_.index_, m_mid->proto_idx_.index_);
+        auto it = seen.find(pair);
+        if (it != seen.end()) {
+          found_dup = true;
+          if (log_warn) {
+            log_fn(it->second, i);
+          }
+        } else {
+          seen.emplace(pair, i);
+        }
+      }
+      return std::make_pair(need_slow_path, found_dup);
+    };
+    std::pair<bool, bool> result = check_fn(/* log_warn= */ false);
+    if (!result.first) {
+      if (result.second) {
+        check_fn(/* log_warn= */ true);
+      }
+      return;
+    }
+  }
+
+  // Need to check across dex files.
+  struct Entry {
+    size_t cached_hash = 0;
+    const char* name = nullptr;
+    Signature signature = Signature::NoSignature();
+    uint32_t name_len = 0;
+
+    Entry(const DexFile* dex_file, const dex::MethodId& mid)
+        : name(dex_file->StringDataAndUtf16LengthByIdx(mid.name_idx_, &name_len)),
+          signature(dex_file->GetMethodSignature(mid)) {
+    }
+
+    bool operator==(const Entry& other) const {
+      if (name_len != other.name_len || strcmp(name, other.name) != 0) {
+        return false;
+      }
+      return signature == other.signature;
+    }
+  };
+  struct EntryHash {
+    size_t operator()(const Entry& key) const {
+      return key.cached_hash;
+    }
+  };
+  std::unordered_map<Entry, int32_t, EntryHash> map;
+  for (int32_t i = 0; i < num_entries; ++i) {
+    // Can use Unchecked here as the first loop already ensured that the arrays are correct
+    // wrt/ kPointerSize.
+    ArtMethod* vtable_entry = vtable->GetElementPtrSizeUnchecked<ArtMethod*, kPointerSize>(i);
+    // Don't bother if we cannot 'see' the vtable entry (i.e. it is a package-private member
+    // maybe).
     if (!klass->CanAccessMember(vtable_entry->GetDeclaringClass(),
                                 vtable_entry->GetAccessFlags())) {
       continue;
     }
-    MethodNameAndSignatureComparator name_comparator(
-        vtable_entry->GetInterfaceMethodIfProxy(kPointerSize));
-    for (int32_t j = i + 1; j < num_entries; j++) {
-      // Can use Unchecked here as the outer loop already ensured that the arrays are correct
-      // wrt/ kPointerSize.
-      ArtMethod* other_entry = vtable->GetElementPtrSizeUnchecked<ArtMethod*, kPointerSize>(j);
-      if (!klass->CanAccessMember(other_entry->GetDeclaringClass(),
-                                  other_entry->GetAccessFlags())) {
-        continue;
-      }
-      if (vtable_entry == other_entry ||
-          name_comparator.HasSameNameAndSignature(
-               other_entry->GetInterfaceMethodIfProxy(kPointerSize))) {
-        LOG(WARNING) << "vtable entries " << i << " and " << j << " are identical for "
-                     << klass->PrettyClass() << " in method " << vtable_entry->PrettyMethod()
-                     << " (0x" << std::hex << reinterpret_cast<uintptr_t>(vtable_entry) << ") and "
-                     << other_entry->PrettyMethod() << "  (0x" << std::hex
-                     << reinterpret_cast<uintptr_t>(other_entry) << ")";
-      }
+    ArtMethod* m = vtable_entry->GetInterfaceMethodIfProxy(kPointerSize);
+    const DexFile* dex_file = m->GetDexFile();
+    const dex::MethodId& mid = dex_file->GetMethodId(m->GetDexMethodIndex());
+
+    Entry e(dex_file, mid);
+
+    size_t string_hash = std::hash<std::string_view>()(std::string_view(e.name, e.name_len));
+    size_t sig_hash = std::hash<std::string>()(e.signature.ToString());
+    e.cached_hash = BaseHashType::HashCombine(BaseHashType::HashCombine(0u, string_hash),
+                                              sig_hash);
+
+    auto it = map.find(e);
+    if (it != map.end()) {
+      log_fn(it->second, i);
+    } else {
+      map.emplace(e, i);
     }
   }
 }
-static void CheckVTableHasNoDuplicates(Thread* self,
-                                       Handle<mirror::Class> klass,
-                                       PointerSize pointer_size)
+
+void CheckVTableHasNoDuplicates(Thread* self,
+                                Handle<mirror::Class> klass,
+                                PointerSize pointer_size)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   switch (pointer_size) {
     case PointerSize::k64:
@@ -7128,6 +7253,8 @@ static void SanityCheckVTable(Thread* self, Handle<mirror::Class> klass, Pointer
   CheckClassOwnsVTableEntries(self, klass, pointer_size);
   CheckVTableHasNoDuplicates(self, klass, pointer_size);
 }
+
+}  // namespace
 
 void ClassLinker::FillImtFromSuperClass(Handle<mirror::Class> klass,
                                         ArtMethod* unimplemented_method,
