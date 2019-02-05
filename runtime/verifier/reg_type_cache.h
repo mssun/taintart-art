@@ -18,6 +18,7 @@
 #define ART_RUNTIME_VERIFIER_REG_TYPE_CACHE_H_
 
 #include <stdint.h>
+#include <string_view>
 #include <vector>
 
 #include "base/casts.h"
@@ -32,7 +33,6 @@ class Class;
 class ClassLoader;
 }  // namespace mirror
 class ScopedArenaAllocator;
-class StringPiece;
 
 namespace verifier {
 
@@ -80,7 +80,7 @@ class RegTypeCache {
   const RegType* FindClass(ObjPtr<mirror::Class> klass, bool precise) const
       REQUIRES_SHARED(Locks::mutator_lock_);
   // Insert a new class with a specified descriptor, must not already be in the cache.
-  const RegType* InsertClass(const StringPiece& descriptor,
+  const RegType* InsertClass(const std::string_view& descriptor,
                              ObjPtr<mirror::Class> klass,
                              bool precise)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -164,7 +164,7 @@ class RegTypeCache {
   void FillPrimitiveAndSmallConstantTypes() REQUIRES_SHARED(Locks::mutator_lock_);
   ObjPtr<mirror::Class> ResolveClass(const char* descriptor, ObjPtr<mirror::ClassLoader> loader)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  bool MatchDescriptor(size_t idx, const StringPiece& descriptor, bool precise)
+  bool MatchDescriptor(size_t idx, const std::string_view& descriptor, bool precise)
       REQUIRES_SHARED(Locks::mutator_lock_);
   const ConstantType& FromCat1NonSmallConstant(int32_t value, bool precise)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -173,9 +173,9 @@ class RegTypeCache {
   template <class RegTypeType>
   RegTypeType& AddEntry(RegTypeType* new_entry) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Add a string piece to the arena allocator so that it stays live for the lifetime of the
-  // verifier.
-  StringPiece AddString(const StringPiece& string_piece);
+  // Add a string to the arena allocator so that it stays live for the lifetime of the
+  // verifier and return a string view.
+  std::string_view AddString(const std::string_view& str);
 
   static void CreatePrimitiveAndSmallConstantTypes() REQUIRES_SHARED(Locks::mutator_lock_);
 

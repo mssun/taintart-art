@@ -19,13 +19,13 @@
 
 #include <list>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "base/array_ref.h"
 #include "base/mutex.h"
 #include "base/os.h"
 #include "base/safe_map.h"
-#include "base/stringpiece.h"
 #include "base/tracking_safe_map.h"
 #include "class_status.h"
 #include "compiler_filter.h"
@@ -398,12 +398,13 @@ class OatFile {
   // Owning storage for the OatDexFile objects.
   std::vector<const OatDexFile*> oat_dex_files_storage_;
 
-  // NOTE: We use a StringPiece as the key type to avoid a memory allocation on every
-  // lookup with a const char* key. The StringPiece doesn't own its backing storage,
+  // NOTE: We use a std::string_view as the key type to avoid a memory allocation on every
+  // lookup with a const char* key. The std::string_view doesn't own its backing storage,
   // therefore we're using the OatDexFile::dex_file_location_ as the backing storage
   // for keys in oat_dex_files_ and the string_cache_ entries for the backing storage
   // of keys in secondary_oat_dex_files_ and oat_dex_files_by_canonical_location_.
-  typedef AllocationTrackingSafeMap<StringPiece, const OatDexFile*, kAllocatorTagOatFile> Table;
+  using Table =
+      AllocationTrackingSafeMap<std::string_view, const OatDexFile*, kAllocatorTagOatFile>;
 
   // Map each location and canonical location (if different) retrieved from the
   // oat file to its OatDexFile. This map doesn't change after it's constructed in Setup()
@@ -422,7 +423,7 @@ class OatFile {
 
   // Cache of strings. Contains the backing storage for keys in the secondary_oat_dex_files_
   // and the lazily initialized oat_dex_files_by_canonical_location_.
-  // NOTE: We're keeping references to contained strings in form of StringPiece and adding
+  // NOTE: We're keeping references to contained strings in form of std::string_view and adding
   // new strings to the end. The adding of a new element must not touch any previously stored
   // elements. std::list<> and std::deque<> satisfy this requirement, std::vector<> doesn't.
   mutable std::list<std::string> string_cache_ GUARDED_BY(secondary_lookup_lock_);

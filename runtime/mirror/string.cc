@@ -234,19 +234,6 @@ bool String::Equals(ObjPtr<String> that) {
   }
 }
 
-bool String::Equals(const uint16_t* that_chars, int32_t that_offset, int32_t that_length) {
-  if (this->GetLength() != that_length) {
-    return false;
-  } else {
-    for (int32_t i = 0; i < that_length; ++i) {
-      if (this->CharAt(i) != that_chars[that_offset + i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-}
-
 bool String::Equals(const char* modified_utf8) {
   const int32_t length = GetLength();
   int32_t i = 0;
@@ -272,30 +259,6 @@ bool String::Equals(const char* modified_utf8) {
     }
   }
   return *modified_utf8 == '\0';
-}
-
-bool String::Equals(const StringPiece& modified_utf8) {
-  const int32_t length = GetLength();
-  const char* p = modified_utf8.data();
-  for (int32_t i = 0; i < length; ++i) {
-    uint32_t ch = GetUtf16FromUtf8(&p);
-
-    if (GetLeadingUtf16Char(ch) != CharAt(i)) {
-      return false;
-    }
-
-    const uint16_t trailing = GetTrailingUtf16Char(ch);
-    if (trailing != 0) {
-      if (i == (length - 1)) {
-        return false;
-      }
-
-      if (CharAt(++i) != trailing) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 // Create a modified UTF-8 encoded std::string from a java/lang/String object.
