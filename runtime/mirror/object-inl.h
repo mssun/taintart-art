@@ -253,9 +253,13 @@ inline bool Object::IsIntArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
+inline IntArray* Object::AsIntArrayUnchecked() {
+  return down_cast<IntArray*>(this);
+}
+template<VerifyObjectFlags kVerifyFlags>
 inline IntArray* Object::AsIntArray() {
   DCHECK((IsIntArray<kVerifyFlags>()));
-  return down_cast<IntArray*>(this);
+  return AsIntArrayUnchecked<kVerifyFlags>();
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -264,9 +268,13 @@ inline bool Object::IsLongArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
+inline LongArray* Object::AsLongArrayUnchecked() {
+  return down_cast<LongArray*>(this);
+}
+template<VerifyObjectFlags kVerifyFlags>
 inline LongArray* Object::AsLongArray() {
   DCHECK((IsLongArray<kVerifyFlags>()));
-  return down_cast<LongArray*>(this);
+  return AsLongArrayUnchecked<kVerifyFlags>();
 }
 
 template<VerifyObjectFlags kVerifyFlags>
