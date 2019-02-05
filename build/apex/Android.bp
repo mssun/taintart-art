@@ -16,6 +16,7 @@ art_runtime_base_native_shared_libs = [
     "libadbconnection",
     "libart",
     "libart-compiler",
+    "libdexfile_external",
     "libnativebridge",
     "libnativehelper",
     "libnativeloader",
