@@ -796,13 +796,13 @@ void MemMap::ReleaseReservedMemory(size_t byte_count) {
     // Shrink the reservation MemMap and update its `gMaps` entry.
     std::lock_guard<std::mutex> mu(*mem_maps_lock_);
     auto it = GetGMapsEntry(*this);
-    // TODO: When C++17 becomes available, use std::map<>::extract(), modify, insert.
-    gMaps->erase(it);
+    auto node = gMaps->extract(it);
     begin_ += byte_count;
     size_ -= byte_count;
     base_begin_ = begin_;
     base_size_ = size_;
-    gMaps->emplace(base_begin_, this);
+    node.key() = base_begin_;
+    gMaps->insert(std::move(node));
   }
 }
 
@@ -1266,9 +1266,9 @@ void MemMap::AlignBy(size_t size) {
   std::lock_guard<std::mutex> mu(*mem_maps_lock_);
   if (base_begin < aligned_base_begin) {
     auto it = GetGMapsEntry(*this);
-    // TODO: When C++17 becomes available, use std::map<>::extract(), modify, insert.
-    gMaps->erase(it);
-    gMaps->insert(std::make_pair(aligned_base_begin, this));
+    auto node = gMaps->extract(it);
+    node.key() = aligned_base_begin;
+    gMaps->insert(std::move(node));
   }
   base_begin_ = aligned_base_begin;
   base_size_ = aligned_base_size;
