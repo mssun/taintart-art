@@ -109,4 +109,4 @@ Canonical:null Simple:
 
 Get annotation with missing class should not throw
 Got expected TypeNotPresentException
-Got expected NoSuchFieldError
+Got expected Error for renamed enum
