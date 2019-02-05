@@ -1173,8 +1173,8 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   compiler_executable_ = runtime_options.ReleaseOrDefault(Opt::Compiler);
   compiler_options_ = runtime_options.ReleaseOrDefault(Opt::CompilerOptions);
-  for (StringPiece option : Runtime::Current()->GetCompilerOptions()) {
-    if (option.starts_with("--debuggable")) {
+  for (const std::string& option : Runtime::Current()->GetCompilerOptions()) {
+    if (option == "--debuggable") {
       SetJavaDebuggable(true);
       break;
     }

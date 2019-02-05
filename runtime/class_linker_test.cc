@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "android-base/strings.h"
 
@@ -509,7 +510,7 @@ struct CheckOffsets {
 
     for (size_t i = 0; i < offsets.size(); i++) {
       ArtField* field = is_static ? klass->GetStaticField(i) : klass->GetInstanceField(i);
-      StringPiece field_name(field->GetName());
+      std::string_view field_name(field->GetName());
       if (field_name != offsets[i].java_name) {
         error = true;
       }
@@ -518,7 +519,7 @@ struct CheckOffsets {
       for (size_t i = 0; i < offsets.size(); i++) {
         CheckOffset& offset = offsets[i];
         ArtField* field = is_static ? klass->GetStaticField(i) : klass->GetInstanceField(i);
-        StringPiece field_name(field->GetName());
+        std::string_view field_name(field->GetName());
         if (field_name != offsets[i].java_name) {
           LOG(ERROR) << "JAVA FIELD ORDER MISMATCH NEXT LINE:";
         }
