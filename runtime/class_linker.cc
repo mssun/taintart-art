@@ -7090,7 +7090,9 @@ static void CheckVTableHasNoDuplicates(Thread* self, Handle<mirror::Class> klass
     MethodNameAndSignatureComparator name_comparator(
         vtable_entry->GetInterfaceMethodIfProxy(kPointerSize));
     for (int32_t j = i + 1; j < num_entries; j++) {
-      ArtMethod* other_entry = vtable->GetElementPtrSize<ArtMethod*, kPointerSize>(j);
+      // Can use Unchecked here as the outer loop already ensured that the arrays are correct
+      // wrt/ kPointerSize.
+      ArtMethod* other_entry = vtable->GetElementPtrSizeUnchecked<ArtMethod*, kPointerSize>(j);
       if (!klass->CanAccessMember(other_entry->GetDeclaringClass(),
                                   other_entry->GetAccessFlags())) {
         continue;
