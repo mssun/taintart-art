@@ -244,8 +244,6 @@ inline T PointerArray::GetElementPtrSizeUnchecked(uint32_t idx) {
 }
 template<typename T, VerifyObjectFlags kVerifyFlags>
 inline T PointerArray::GetElementPtrSize(uint32_t idx, PointerSize ptr_size) {
-  // C style casts here since we sometimes have T be a pointer, or sometimes an integer
-  // (for stack traces).
   if (ptr_size == PointerSize::k64) {
     return GetElementPtrSize<T, PointerSize::k64, kVerifyFlags>(idx);
   }
