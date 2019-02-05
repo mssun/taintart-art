@@ -114,8 +114,9 @@ std::unique_ptr<const InstructionSetFeatures>
 Mips64InstructionSetFeatures::AddFeaturesFromSplitString(
     const std::vector<std::string>& features, std::string* error_msg) const {
   bool msa = msa_;
-  for (auto i = features.begin(); i != features.end(); i++) {
-    std::string feature = android::base::Trim(*i);
+  for (const std::string& feature : features) {
+    DCHECK_EQ(android::base::Trim(feature), feature)
+        << "Feature name is not trimmed: '" << feature << "'";
     if (feature == "msa") {
       msa = true;
     } else if (feature == "-msa") {

@@ -315,8 +315,9 @@ Arm64InstructionSetFeatures::AddFeaturesFromSplitString(
   bool has_lse = has_lse_;
   bool has_fp16 = has_fp16_;
   bool has_dotprod = has_dotprod_;
-  for (auto i = features.begin(); i != features.end(); i++) {
-    std::string feature = android::base::Trim(*i);
+  for (const std::string& feature : features) {
+    DCHECK_EQ(android::base::Trim(feature), feature)
+        << "Feature name is not trimmed: '" << feature << "'";
     if (feature == "a53") {
       is_a53 = true;
     } else if (feature == "-a53") {
@@ -365,6 +366,19 @@ Arm64InstructionSetFeatures::AddFeaturesFromSplitString(
                                       has_lse,
                                       has_fp16,
                                       has_dotprod));
+}
+
+std::unique_ptr<const InstructionSetFeatures>
+Arm64InstructionSetFeatures::AddRuntimeDetectedFeatures(
+    const InstructionSetFeatures *features) const {
+  const Arm64InstructionSetFeatures *arm64_features = features->AsArm64InstructionSetFeatures();
+  return std::unique_ptr<const InstructionSetFeatures>(
+      new Arm64InstructionSetFeatures(fix_cortex_a53_835769_,
+                                      fix_cortex_a53_843419_,
+                                      arm64_features->has_crc_,
+                                      arm64_features->has_lse_,
+                                      arm64_features->has_fp16_,
+                                      arm64_features->has_dotprod_));
 }
 
 }  // namespace art

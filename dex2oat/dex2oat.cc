@@ -296,6 +296,10 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("      Default: arm");
   UsageError("");
   UsageError("  --instruction-set-features=...,: Specify instruction set features");
+  UsageError("      On target the value 'runtime' can be used to detect features at run time.");
+  UsageError("      If target does not support run-time detection the value 'runtime'");
+  UsageError("      has the same effect as the value 'default'.");
+  UsageError("      Note: the value 'runtime' has no effect if it is used on host.");
   UsageError("      Example: --instruction-set-features=div");
   UsageError("      Default: default");
   UsageError("");
@@ -875,9 +879,9 @@ class Dex2Oat final {
       oat_unstripped_ = std::move(parser_options->oat_symbols);
     }
 
-    // If no instruction set feature was given, use the default one for the target
-    // instruction set.
-    if (compiler_options_->instruction_set_features_.get() == nullptr) {
+    if (compiler_options_->instruction_set_features_ == nullptr) {
+      // '--instruction-set-features/--instruction-set-variant' were not used.
+      // Use features for the 'default' variant.
       compiler_options_->instruction_set_features_ = InstructionSetFeatures::FromVariant(
           compiler_options_->instruction_set_, "default", &parser_options->error_msg);
       if (compiler_options_->instruction_set_features_ == nullptr) {
@@ -890,9 +894,9 @@ class Dex2Oat final {
       std::unique_ptr<const InstructionSetFeatures> runtime_features(
           InstructionSetFeatures::FromCppDefines());
       if (!compiler_options_->GetInstructionSetFeatures()->Equals(runtime_features.get())) {
-        LOG(WARNING) << "Mismatch between dex2oat instruction set features ("
+        LOG(WARNING) << "Mismatch between dex2oat instruction set features to use ("
             << *compiler_options_->GetInstructionSetFeatures()
-            << ") and those of dex2oat executable (" << *runtime_features
+            << ") and those from CPP defines (" << *runtime_features
             << ") for the command line:\n" << CommandLine();
       }
     }

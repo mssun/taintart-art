@@ -48,6 +48,20 @@ class InstructionSetFeatures {
   // Turn C pre-processor #defines into the equivalent instruction set features for kRuntimeISA.
   static std::unique_ptr<const InstructionSetFeatures> FromCppDefines();
 
+  // Check if run-time detection of instruction set features is supported.
+  //
+  // Return: true - if run-time detection is supported on a target device.
+  //         false - otherwise
+  static bool IsRuntimeDetectionSupported() {
+    return FromRuntimeDetection() != nullptr;
+  }
+
+  // Use run-time detection to get instruction set features.
+  //
+  // Return: a set of detected features or nullptr if runtime detection is not
+  //         supported on a target.
+  static std::unique_ptr<const InstructionSetFeatures> FromRuntimeDetection();
+
   // Process /proc/cpuinfo and use kRuntimeISA to produce InstructionSetFeatures.
   static std::unique_ptr<const InstructionSetFeatures> FromCpuInfo();
 
@@ -125,6 +139,10 @@ class InstructionSetFeatures {
   virtual std::unique_ptr<const InstructionSetFeatures>
       AddFeaturesFromSplitString(const std::vector<std::string>& features,
                                  std::string* error_msg) const = 0;
+
+  // Add run-time detected architecture specific features in sub-classes.
+  virtual std::unique_ptr<const InstructionSetFeatures>
+      AddRuntimeDetectedFeatures(const InstructionSetFeatures *features ATTRIBUTE_UNUSED) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(InstructionSetFeatures);
