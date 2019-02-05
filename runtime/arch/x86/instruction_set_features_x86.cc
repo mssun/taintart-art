@@ -311,8 +311,9 @@ std::unique_ptr<const InstructionSetFeatures> X86InstructionSetFeatures::AddFeat
   bool has_AVX = has_AVX_;
   bool has_AVX2 = has_AVX2_;
   bool has_POPCNT = has_POPCNT_;
-  for (auto i = features.begin(); i != features.end(); i++) {
-    std::string feature = android::base::Trim(*i);
+  for (const std::string& feature : features) {
+    DCHECK_EQ(android::base::Trim(feature), feature)
+        << "Feature name is not trimmed: '" << feature << "'";
     if (feature == "ssse3") {
       has_SSSE3 = true;
     } else if (feature == "-ssse3") {

@@ -99,7 +99,10 @@ void JitCompiler::ParseCompilerOptions() {
       }
     }
   }
+
   if (instruction_set_features == nullptr) {
+    // '--instruction-set-features/--instruction-set-variant' were not used.
+    // Use build-time defined features.
     instruction_set_features = InstructionSetFeatures::FromCppDefines();
   }
   compiler_options_->instruction_set_features_ = std::move(instruction_set_features);

@@ -214,8 +214,9 @@ MipsInstructionSetFeatures::AddFeaturesFromSplitString(
   bool mips_isa_gte2 = mips_isa_gte2_;
   bool r6 = r6_;
   bool msa = msa_;
-  for (auto i = features.begin(); i != features.end(); i++) {
-    std::string feature = android::base::Trim(*i);
+  for (const std::string& feature : features) {
+    DCHECK_EQ(android::base::Trim(feature), feature)
+        << "Feature name is not trimmed: '" << feature << "'";
     if (feature == "fpu32") {
       fpu_32bit = true;
     } else if (feature == "-fpu32") {

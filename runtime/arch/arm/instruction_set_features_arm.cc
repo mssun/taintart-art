@@ -319,8 +319,9 @@ ArmInstructionSetFeatures::AddFeaturesFromSplitString(
   bool has_atomic_ldrd_strd = has_atomic_ldrd_strd_;
   bool has_div = has_div_;
   bool has_armv8a = has_armv8a_;
-  for (auto i = features.begin(); i != features.end(); i++) {
-    std::string feature = android::base::Trim(*i);
+  for (const std::string& feature : features) {
+    DCHECK_EQ(android::base::Trim(feature), feature)
+        << "Feature name is not trimmed: '" << feature << "'";
     if (feature == "div") {
       has_div = true;
     } else if (feature == "-div") {

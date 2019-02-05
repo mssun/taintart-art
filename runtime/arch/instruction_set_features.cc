@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <algorithm>
+
 #include "instruction_set_features.h"
 
 #include <algorithm>
@@ -113,6 +115,16 @@ std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromCppDef
   UNREACHABLE();
 }
 
+std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromRuntimeDetection() {
+  switch (kRuntimeISA) {
+#ifdef ART_TARGET_ANDROID
+    case InstructionSet::kArm64:
+      return Arm64InstructionSetFeatures::FromHwcap();
+#endif
+    default:
+      return nullptr;
+  }
+}
 
 std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromCpuInfo() {
   switch (kRuntimeISA) {
@@ -184,44 +196,57 @@ std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromAssemb
 }
 
 std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::AddFeaturesFromString(
-    const std::string& feature_list, std::string* error_msg) const {
-  if (feature_list.empty()) {
-    *error_msg = "No instruction set features specified";
-    return std::unique_ptr<const InstructionSetFeatures>();
-  }
+    const std::string& feature_list, /* out */ std::string* error_msg) const {
   std::vector<std::string> features;
   Split(feature_list, ',', &features);
-  bool use_default = false;  // Have we seen the 'default' feature?
-  bool first = false;  // Is this first feature?
-  for (auto it = features.begin(); it != features.end();) {
-    if (use_default) {
-      *error_msg = "Unexpected instruction set features after 'default'";
-      return std::unique_ptr<const InstructionSetFeatures>();
-    }
-    std::string feature = android::base::Trim(*it);
-    bool erase = false;
-    if (feature == "default") {
-      if (!first) {
-        use_default = true;
-        erase = true;
-      } else {
-        *error_msg = "Unexpected instruction set features before 'default'";
-        return std::unique_ptr<const InstructionSetFeatures>();
-      }
-    }
-    if (!erase) {
-      ++it;
-    } else {
-      it = features.erase(it);
-    }
-    first = true;
+  std::transform(std::begin(features), std::end(features), std::begin(features),
+                 [](const std::string &s) { return android::base::Trim(s); });
+  auto empty_strings_begin = std::copy_if(std::begin(features), std::end(features),
+                                          std::begin(features),
+                                          [](const std::string& s) { return !s.empty(); });
+  features.erase(empty_strings_begin, std::end(features));
+  if (features.empty()) {
+    *error_msg = "No instruction set features specified";
+    return nullptr;
   }
-  // Expectation: "default" is standalone, no other flags. But an empty features vector after
-  // processing can also come along if the handled flags are the only ones in the list. So
-  // logically, we check "default -> features.empty."
-  DCHECK(!use_default || features.empty());
 
-  return AddFeaturesFromSplitString(features, error_msg);
+  bool use_default = false;
+  bool use_runtime_detection = false;
+  for (const std::string& feature : features) {
+    if (feature == "default") {
+      if (features.size() > 1) {
+        *error_msg = "Specific instruction set feature(s) cannot be used when 'default' is used.";
+        return nullptr;
+      }
+      use_default = true;
+      features.pop_back();
+      break;
+    } else if (feature == "runtime") {
+      if (features.size() > 1) {
+        *error_msg = "Specific instruction set feature(s) cannot be used when 'runtime' is used.";
+        return nullptr;
+      }
+      use_runtime_detection = true;
+      features.pop_back();
+      break;
+    }
+  }
+  // Expectation: "default" and "runtime" are standalone, no other feature names.
+  // But an empty features vector after processing can also come along if the
+  // handled feature names  are the only ones in the list. So
+  // logically, we check "default or runtime => features.empty."
+  DCHECK((!use_default && !use_runtime_detection) || features.empty());
+
+  std::unique_ptr<const InstructionSetFeatures> runtime_detected_features;
+  if (use_runtime_detection) {
+    runtime_detected_features = FromRuntimeDetection();
+  }
+
+  if (runtime_detected_features != nullptr) {
+    return AddRuntimeDetectedFeatures(runtime_detected_features.get());
+  } else {
+    return AddFeaturesFromSplitString(features, error_msg);
+  }
 }
 
 const ArmInstructionSetFeatures* InstructionSetFeatures::AsArmInstructionSetFeatures() const {
@@ -260,6 +285,12 @@ bool InstructionSetFeatures::FindVariantInArray(const char* const variants[], si
   const char* const * begin = variants;
   const char* const * end = begin + num_variants;
   return std::find(begin, end, variant) != end;
+}
+
+std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::AddRuntimeDetectedFeatures(
+    const InstructionSetFeatures *features ATTRIBUTE_UNUSED) const {
+  UNIMPLEMENTED(FATAL) << kRuntimeISA;
+  UNREACHABLE();
 }
 
 std::ostream& operator<<(std::ostream& os, const InstructionSetFeatures& rhs) {
