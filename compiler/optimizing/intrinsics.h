@@ -142,6 +142,8 @@ class IntrinsicVisitor : public ValueObject {
  protected:
   IntrinsicVisitor() {}
 
+  static void AssertNonMovableStringClass();
+
  private:
   DISALLOW_COPY_AND_ASSIGN(IntrinsicVisitor);
 };
