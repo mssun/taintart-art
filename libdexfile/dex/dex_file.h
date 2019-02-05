@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <android-base/logging.h>
@@ -44,7 +45,6 @@ template <typename Iter> class IterationRange;
 class MemMap;
 class OatDexFile;
 class StandardDexFile;
-class StringPiece;
 class ZipArchive;
 
 // Some instances of DexFile own the storage referred to by DexFile.  Clients who create
@@ -479,13 +479,9 @@ class DexFile {
   }
 
   // Given a signature place the type ids into the given vector, returns true on success
-  bool CreateTypeList(const StringPiece& signature,
+  bool CreateTypeList(std::string_view signature,
                       dex::TypeIndex* return_type_idx,
                       std::vector<dex::TypeIndex>* param_type_idxs) const;
-
-  // Create a Signature from the given string signature or return Signature::NoSignature if not
-  // possible.
-  const Signature CreateSignature(const StringPiece& signature) const;
 
   // Returns the short form method descriptor for the given prototype.
   const char* GetShorty(dex::ProtoIndex proto_idx) const;

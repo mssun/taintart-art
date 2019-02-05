@@ -22,7 +22,6 @@
 #include "base/casts.h"
 #include "base/iteration_range.h"
 #include "base/leb128.h"
-#include "base/stringpiece.h"
 #include "base/utils.h"
 #include "class_iterator.h"
 #include "compact_dex_file.h"

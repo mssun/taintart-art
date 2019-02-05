@@ -1254,7 +1254,7 @@ TEST_F(ClassLinkerTest, Interfaces) {
   EXPECT_TRUE(K->IsAssignableFrom(B.Get()));
   EXPECT_TRUE(J->IsAssignableFrom(B.Get()));
 
-  const Signature void_sig = I->GetDexCache()->GetDexFile()->CreateSignature("()V");
+  const std::string_view void_sig("()V");
   ArtMethod* Ii = I->FindClassMethod("i", void_sig, kRuntimePointerSize);
   ArtMethod* Jj1 = J->FindClassMethod("j1", void_sig, kRuntimePointerSize);
   ArtMethod* Jj2 = J->FindClassMethod("j2", void_sig, kRuntimePointerSize);

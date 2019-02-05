@@ -21,7 +21,6 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/logging.h"  // For VLOG.
-#include "base/stringpiece.h"
 #include "base/utils.h"
 #include "class-inl.h"
 #include "class_ext.h"
@@ -482,9 +481,7 @@ static inline ArtMethod* FindInterfaceMethodWithSignature(ObjPtr<Class> klass,
 ArtMethod* Class::FindInterfaceMethod(std::string_view name,
                                       std::string_view signature,
                                       PointerSize pointer_size) {
-  // TODO: Change Signature::operator==() to accept std::string_view instead of StringPiece.
-  StringPiece sp_signature(signature.data(), signature.size());
-  return FindInterfaceMethodWithSignature(this, name, sp_signature, pointer_size);
+  return FindInterfaceMethodWithSignature(this, name, signature, pointer_size);
 }
 
 ArtMethod* Class::FindInterfaceMethod(std::string_view name,
@@ -597,9 +594,7 @@ static inline ArtMethod* FindClassMethodWithSignature(ObjPtr<Class> this_klass,
 ArtMethod* Class::FindClassMethod(std::string_view name,
                                   std::string_view signature,
                                   PointerSize pointer_size) {
-  // TODO: Change Signature::operator==() to accept std::string_view instead of StringPiece.
-  StringPiece sp_signature(signature.data(), signature.size());
-  return FindClassMethodWithSignature(this, name, sp_signature, pointer_size);
+  return FindClassMethodWithSignature(this, name, signature, pointer_size);
 }
 
 ArtMethod* Class::FindClassMethod(std::string_view name,
@@ -707,13 +702,11 @@ ArtMethod* Class::FindClassMethod(ObjPtr<DexCache> dex_cache,
 }
 
 ArtMethod* Class::FindConstructor(std::string_view signature, PointerSize pointer_size) {
-  // TODO: Change Signature::operator==() to accept std::string_view instead of StringPiece.
-  StringPiece sp_signature(signature.data(), signature.size());
   // Internal helper, never called on proxy classes. We can skip GetInterfaceMethodIfProxy().
   DCHECK(!IsProxyClass());
   std::string_view name("<init>");
   for (ArtMethod& method : GetDirectMethodsSliceUnchecked(pointer_size)) {
-    if (method.GetName() == name && method.GetSignature() == sp_signature) {
+    if (method.GetName() == name && method.GetSignature() == signature) {
       return &method;
     }
   }
