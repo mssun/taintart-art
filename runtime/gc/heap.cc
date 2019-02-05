@@ -4016,7 +4016,8 @@ inline float Heap::NativeMemoryOverTarget(size_t current_native_bytes) {
         + old_native_bytes / kOldNativeDiscountFactor;
     size_t add_bytes_allowed = static_cast<size_t>(
         NativeAllocationGcWatermark() * HeapGrowthMultiplier());
-    size_t adj_start_bytes = concurrent_start_bytes_ + add_bytes_allowed / kNewNativeDiscountFactor;
+    size_t adj_start_bytes = UnsignedSum(concurrent_start_bytes_,
+                                         add_bytes_allowed / kNewNativeDiscountFactor);
     return static_cast<float>(GetBytesAllocated() + weighted_native_bytes)
          / static_cast<float>(adj_start_bytes);
   }
