@@ -70,8 +70,6 @@ class ObjectTest : public CommonRuntimeTest {
     ASSERT_EQ(string->IsValueNull(), false);
     // strlen is necessary because the 1-character string "\x00\x00" is interpreted as ""
     ASSERT_TRUE(string->Equals(utf8_in) || (expected_utf16_length == 1 && strlen(utf8_in) == 0));
-    ASSERT_TRUE(string->Equals(StringPiece(utf8_in)) ||
-                (expected_utf16_length == 1 && strlen(utf8_in) == 0));
     for (int32_t i = 0; i < expected_utf16_length; i++) {
       EXPECT_EQ(utf16_expected[i], string->CharAt(i));
     }

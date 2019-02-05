@@ -135,7 +135,7 @@ const RegType& RegTypeCache::RegTypeFromPrimitiveType(Primitive::Type prim_type)
   }
 }
 
-bool RegTypeCache::MatchDescriptor(size_t idx, const StringPiece& descriptor, bool precise) {
+bool RegTypeCache::MatchDescriptor(size_t idx, const std::string_view& descriptor, bool precise) {
   const RegType* entry = entries_[idx];
   if (descriptor != entry->descriptor_) {
     return false;
@@ -170,20 +170,20 @@ ObjPtr<mirror::Class> RegTypeCache::ResolveClass(const char* descriptor,
   return klass;
 }
 
-StringPiece RegTypeCache::AddString(const StringPiece& string_piece) {
-  char* ptr = allocator_.AllocArray<char>(string_piece.length());
-  memcpy(ptr, string_piece.data(), string_piece.length());
-  return StringPiece(ptr, string_piece.length());
+std::string_view RegTypeCache::AddString(const std::string_view& str) {
+  char* ptr = allocator_.AllocArray<char>(str.length());
+  memcpy(ptr, str.data(), str.length());
+  return std::string_view(ptr, str.length());
 }
 
 const RegType& RegTypeCache::From(ObjPtr<mirror::ClassLoader> loader,
                                   const char* descriptor,
                                   bool precise) {
-  StringPiece sp_descriptor(descriptor);
-  // Try looking up the class in the cache first. We use a StringPiece to avoid continual strlen
-  // operations on the descriptor.
+  std::string_view sv_descriptor(descriptor);
+  // Try looking up the class in the cache first. We use a std::string_view to avoid
+  // repeated strlen operations on the descriptor.
   for (size_t i = primitive_count_; i < entries_.size(); i++) {
-    if (MatchDescriptor(i, sp_descriptor, precise)) {
+    if (MatchDescriptor(i, sv_descriptor, precise)) {
       return *(entries_[i]);
     }
   }
@@ -205,9 +205,9 @@ const RegType& RegTypeCache::From(ObjPtr<mirror::ClassLoader> loader,
       DCHECK(!(klass->IsAbstract()) || klass->IsArrayClass());
       DCHECK(!klass->IsInterface());
       entry =
-          new (&allocator_) PreciseReferenceType(klass, AddString(sp_descriptor), entries_.size());
+          new (&allocator_) PreciseReferenceType(klass, AddString(sv_descriptor), entries_.size());
     } else {
-      entry = new (&allocator_) ReferenceType(klass, AddString(sp_descriptor), entries_.size());
+      entry = new (&allocator_) ReferenceType(klass, AddString(sv_descriptor), entries_.size());
     }
     return AddEntry(entry);
   } else {  // Class not resolved.
@@ -221,7 +221,7 @@ const RegType& RegTypeCache::From(ObjPtr<mirror::ClassLoader> loader,
     }
     if (IsValidDescriptor(descriptor)) {
       return AddEntry(
-          new (&allocator_) UnresolvedReferenceType(AddString(sp_descriptor), entries_.size()));
+          new (&allocator_) UnresolvedReferenceType(AddString(sv_descriptor), entries_.size()));
     } else {
       // The descriptor is broken return the unknown type as there's nothing sensible that
       // could be done at runtime
@@ -254,7 +254,7 @@ const RegType* RegTypeCache::FindClass(ObjPtr<mirror::Class> klass, bool precise
   return nullptr;
 }
 
-const RegType* RegTypeCache::InsertClass(const StringPiece& descriptor,
+const RegType* RegTypeCache::InsertClass(const std::string_view& descriptor,
                                          ObjPtr<mirror::Class> klass,
                                          bool precise) {
   // No reference to the class was found, create new reference.
@@ -272,7 +272,7 @@ const RegType& RegTypeCache::FromClass(const char* descriptor,
   DCHECK(klass != nullptr);
   const RegType* reg_type = FindClass(klass, precise);
   if (reg_type == nullptr) {
-    reg_type = InsertClass(AddString(StringPiece(descriptor)), klass, precise);
+    reg_type = InsertClass(AddString(std::string_view(descriptor)), klass, precise);
   }
   return *reg_type;
 }
@@ -488,7 +488,7 @@ const RegType& RegTypeCache::FromUnresolvedSuperClass(const RegType& child) {
 
 const UninitializedType& RegTypeCache::Uninitialized(const RegType& type, uint32_t allocation_pc) {
   UninitializedType* entry = nullptr;
-  const StringPiece& descriptor(type.GetDescriptor());
+  const std::string_view& descriptor(type.GetDescriptor());
   if (type.IsUnresolvedTypes()) {
     for (size_t i = primitive_count_; i < entries_.size(); i++) {
       const RegType* cur_entry = entries_[i];
@@ -525,7 +525,7 @@ const RegType& RegTypeCache::FromUninitialized(const RegType& uninit_type) {
   RegType* entry;
 
   if (uninit_type.IsUnresolvedTypes()) {
-    const StringPiece& descriptor(uninit_type.GetDescriptor());
+    const std::string_view& descriptor(uninit_type.GetDescriptor());
     for (size_t i = primitive_count_; i < entries_.size(); i++) {
       const RegType* cur_entry = entries_[i];
       if (cur_entry->IsUnresolvedReference() &&
@@ -575,7 +575,7 @@ const RegType& RegTypeCache::FromUninitialized(const RegType& uninit_type) {
 
 const UninitializedType& RegTypeCache::UninitializedThisArgument(const RegType& type) {
   UninitializedType* entry;
-  const StringPiece& descriptor(type.GetDescriptor());
+  const std::string_view& descriptor(type.GetDescriptor());
   if (type.IsUnresolvedTypes()) {
     for (size_t i = primitive_count_; i < entries_.size(); i++) {
       const RegType* cur_entry = entries_[i];
@@ -656,7 +656,7 @@ const RegType& RegTypeCache::GetComponentType(const RegType& array,
     return Conflict();
   } else if (array.IsUnresolvedTypes()) {
     DCHECK(!array.IsUnresolvedMergedReference());  // Caller must make sure not to ask for this.
-    const std::string descriptor(array.GetDescriptor().as_string());
+    const std::string descriptor(array.GetDescriptor());
     return FromDescriptor(loader, descriptor.c_str() + 1, false);
   } else {
     ObjPtr<mirror::Class> klass = array.GetClass()->GetComponentType();

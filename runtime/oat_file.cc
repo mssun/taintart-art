@@ -838,10 +838,10 @@ bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* e
     oat_dex_files_storage_.push_back(oat_dex_file);
 
     // Add the location and canonical location (if different) to the oat_dex_files_ table.
-    StringPiece key(oat_dex_file->GetDexFileLocation());
+    std::string_view key(oat_dex_file->GetDexFileLocation());
     oat_dex_files_.Put(key, oat_dex_file);
     if (canonical_location != dex_file_location) {
-      StringPiece canonical_key(oat_dex_file->GetCanonicalDexFileLocation());
+      std::string_view canonical_key(oat_dex_file->GetCanonicalDexFileLocation());
       oat_dex_files_.Put(canonical_key, oat_dex_file);
     }
   }
@@ -1664,7 +1664,7 @@ const OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
   // without any performance loss, for example by not doing the first lock-free lookup.
 
   const OatDexFile* oat_dex_file = nullptr;
-  StringPiece key(dex_location);
+  std::string_view key(dex_location);
   // Try to find the key cheaply in the oat_dex_files_ map which holds dex locations
   // directly mentioned in the oat file and doesn't require locking.
   auto primary_it = oat_dex_files_.find(key);
@@ -1683,7 +1683,7 @@ const OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
       // We haven't seen this dex_location before, we must check the canonical location.
       std::string dex_canonical_location = DexFileLoader::GetDexCanonicalLocation(dex_location);
       if (dex_canonical_location != dex_location) {
-        StringPiece canonical_key(dex_canonical_location);
+        std::string_view canonical_key(dex_canonical_location);
         auto canonical_it = oat_dex_files_.find(canonical_key);
         if (canonical_it != oat_dex_files_.end()) {
           oat_dex_file = canonical_it->second;
@@ -1692,7 +1692,7 @@ const OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
 
       // Copy the key to the string_cache_ and store the result in secondary map.
       string_cache_.emplace_back(key.data(), key.length());
-      StringPiece key_copy(string_cache_.back());
+      std::string_view key_copy(string_cache_.back());
       secondary_oat_dex_files_.PutBefore(secondary_lb, key_copy, oat_dex_file);
     }
   }

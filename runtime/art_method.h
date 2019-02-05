@@ -49,7 +49,6 @@ union JValue;
 class OatQuickMethodHeader;
 class ProfilingInfo;
 class ScopedObjectAccessAlreadyRunnable;
-class StringPiece;
 class ShadowFrame;
 
 namespace mirror {
@@ -386,7 +385,7 @@ class ArtMethod final {
   }
 
   // Number of 32bit registers that would be required to hold all the arguments
-  static size_t NumArgRegisters(const StringPiece& shorty);
+  static size_t NumArgRegisters(const char* shorty);
 
   ALWAYS_INLINE uint32_t GetDexMethodIndex() {
     return dex_method_index_;
