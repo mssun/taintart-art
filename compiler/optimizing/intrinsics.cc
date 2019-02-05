@@ -20,6 +20,7 @@
 #include "art_method-inl.h"
 #include "base/utils.h"
 #include "class_linker.h"
+#include "class_root.h"
 #include "dex/invoke_type.h"
 #include "driver/compiler_options.h"
 #include "gc/space/image_space.h"
@@ -360,6 +361,15 @@ IntrinsicVisitor::IntegerValueOfInfo IntrinsicVisitor::ComputeIntegerValueOfInfo
   }
 
   return info;
+}
+
+void IntrinsicVisitor::AssertNonMovableStringClass() {
+  if (kIsDebugBuild) {
+    Thread* const self = Thread::Current();
+    ReaderMutexLock mu(self, *Locks::mutator_lock_);
+    ObjPtr<mirror::Class> string_class = GetClassRoot<art::mirror::String>();
+    CHECK(!art::Runtime::Current()->GetHeap()->IsMovableObject(string_class));
+  }
 }
 
 }  // namespace art
