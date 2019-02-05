@@ -7074,31 +7074,30 @@ static void CheckClassOwnsVTableEntries(Thread* self,
 
 // Check to make sure the vtable does not have duplicates. Duplicates could cause problems when a
 // method is overridden in a subclass.
-static void CheckVTableHasNoDuplicates(Thread* self,
-                                       Handle<mirror::Class> klass,
-                                       PointerSize pointer_size)
+template <PointerSize kPointerSize>
+static void CheckVTableHasNoDuplicates(Thread* self, Handle<mirror::Class> klass)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
   Handle<mirror::PointerArray> vtable(hs.NewHandle(klass->GetVTableDuringLinking()));
   int32_t num_entries = vtable->GetLength();
   for (int32_t i = 0; i < num_entries; i++) {
-    ArtMethod* vtable_entry = vtable->GetElementPtrSize<ArtMethod*>(i, pointer_size);
+    ArtMethod* vtable_entry = vtable->GetElementPtrSize<ArtMethod*, kPointerSize>(i);
     // Don't bother if we cannot 'see' the vtable entry (i.e. it is a package-private member maybe).
     if (!klass->CanAccessMember(vtable_entry->GetDeclaringClass(),
                                 vtable_entry->GetAccessFlags())) {
       continue;
     }
     MethodNameAndSignatureComparator name_comparator(
-        vtable_entry->GetInterfaceMethodIfProxy(pointer_size));
+        vtable_entry->GetInterfaceMethodIfProxy(kPointerSize));
     for (int32_t j = i + 1; j < num_entries; j++) {
-      ArtMethod* other_entry = vtable->GetElementPtrSize<ArtMethod*>(j, pointer_size);
+      ArtMethod* other_entry = vtable->GetElementPtrSize<ArtMethod*, kPointerSize>(j);
       if (!klass->CanAccessMember(other_entry->GetDeclaringClass(),
                                   other_entry->GetAccessFlags())) {
         continue;
       }
       if (vtable_entry == other_entry ||
           name_comparator.HasSameNameAndSignature(
-               other_entry->GetInterfaceMethodIfProxy(pointer_size))) {
+               other_entry->GetInterfaceMethodIfProxy(kPointerSize))) {
         LOG(WARNING) << "vtable entries " << i << " and " << j << " are identical for "
                      << klass->PrettyClass() << " in method " << vtable_entry->PrettyMethod()
                      << " (0x" << std::hex << reinterpret_cast<uintptr_t>(vtable_entry) << ") and "
@@ -7106,6 +7105,19 @@ static void CheckVTableHasNoDuplicates(Thread* self,
                      << reinterpret_cast<uintptr_t>(other_entry) << ")";
       }
     }
+  }
+}
+static void CheckVTableHasNoDuplicates(Thread* self,
+                                       Handle<mirror::Class> klass,
+                                       PointerSize pointer_size)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  switch (pointer_size) {
+    case PointerSize::k64:
+      CheckVTableHasNoDuplicates<PointerSize::k64>(self, klass);
+      break;
+    case PointerSize::k32:
+      CheckVTableHasNoDuplicates<PointerSize::k32>(self, klass);
+      break;
   }
 }
 
