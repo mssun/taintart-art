@@ -325,6 +325,9 @@ class OatFile {
   ArrayRef<ArtMethod*> GetBssMethods() const;
   ArrayRef<GcRoot<mirror::Object>> GetBssGcRoots() const;
 
+  // Initialize relocation sections (.data.bimg.rel.ro and .bss).
+  void InitializeRelocations() const;
+
   // Returns the absolute dex location for the encoded relative dex location.
   //
   // If not null, abs_dex_location is used to resolve the absolute dex
