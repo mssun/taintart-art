@@ -88,6 +88,9 @@ static void AddCapsForEvent(jvmtiEvent event, jvmtiCapabilities* caps) {
     fun(MonitorWaited, EVENT(MONITOR_WAITED), (jvmtiEnv* jvmti, JNIEnv* jni, jthread thread, jobject obj, jboolean b1), (jvmti, jni, jthreadContainer{.thread = thread}, obj, b1)) \
     fun(ResourceExhausted, EVENT(RESOURCE_EXHAUSTED), (jvmtiEnv* jvmti, JNIEnv* jni, jint i1, const void* cv, const char* cc), (jvmti, jni, i1, cv, cc)) \
     fun(VMObjectAlloc, EVENT(VM_OBJECT_ALLOC), (jvmtiEnv* jvmti, JNIEnv* jni, jthread thread, jobject obj, jclass klass, jlong l1), (jvmti, jni, jthreadContainer{.thread = thread}, obj, klass, jlongContainer{.val = l1})) \
+    fun(VMInit, EVENT(VM_INIT), (jvmtiEnv* jvmti, JNIEnv* jni, jthread thread), (jvmti, jni, jthreadContainer{.thread = thread})) \
+    fun(VMStart, EVENT(VM_START), (jvmtiEnv* jvmti, JNIEnv* jni), (jvmti, jni)) \
+    fun(VMDeath, EVENT(VM_DEATH), (jvmtiEnv* jvmti, JNIEnv* jni), (jvmti, jni)) \
 
 #define FOR_ALL_SUPPORTED_NO_JNI_EVENTS(fun) \
     fun(CompiledMethodLoad, EVENT(COMPILED_METHOD_LOAD), (jvmtiEnv* jvmti, jmethodID meth, jint i1, const void* cv1, jint i2, const jvmtiAddrLocationMap* alm, const void* cv2), (jvmti, meth, i1, cv1, i2, alm, cv2)) \
