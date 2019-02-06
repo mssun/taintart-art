@@ -917,8 +917,12 @@ class Heap {
     return main_space_backup_ != nullptr;
   }
 
+  // Size_t saturating arithmetic
   static ALWAYS_INLINE size_t UnsignedDifference(size_t x, size_t y) {
     return x > y ? x - y : 0;
+  }
+  static ALWAYS_INLINE size_t UnsignedSum(size_t x, size_t y) {
+    return x + y >= x ? x + y : std::numeric_limits<size_t>::max();
   }
 
   static ALWAYS_INLINE bool AllocatorHasAllocationStack(AllocatorType allocator_type) {
@@ -950,13 +954,13 @@ class Heap {
 
   // Checks whether we should garbage collect:
   ALWAYS_INLINE bool ShouldConcurrentGCForJava(size_t new_num_bytes_allocated);
-  float NativeMemoryOverTarget(size_t current_native_bytes);
+  float NativeMemoryOverTarget(size_t current_native_bytes, bool is_gc_concurrent);
   ALWAYS_INLINE void CheckConcurrentGCForJava(Thread* self,
                                               size_t new_num_bytes_allocated,
                                               ObjPtr<mirror::Object>* obj)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!*pending_task_lock_, !*gc_complete_lock_);
-  void CheckConcurrentGCForNative(Thread* self)
+  void CheckGCForNative(Thread* self)
       REQUIRES(!*pending_task_lock_, !*gc_complete_lock_);
 
   accounting::ObjectStack* GetMarkStack() {
