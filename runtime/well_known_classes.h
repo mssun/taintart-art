@@ -101,6 +101,7 @@ struct WellKnownClasses {
   static jmethodID java_lang_ClassNotFoundException_init;
   static jmethodID java_lang_Daemons_start;
   static jmethodID java_lang_Daemons_stop;
+  static jmethodID java_lang_Daemons_waitForDaemonStart;
   static jmethodID java_lang_Double_valueOf;
   static jmethodID java_lang_Float_valueOf;
   static jmethodID java_lang_Integer_valueOf;
@@ -141,6 +142,7 @@ struct WellKnownClasses {
   static jfieldID java_lang_Thread_name;
   static jfieldID java_lang_Thread_priority;
   static jfieldID java_lang_Thread_nativePeer;
+  static jfieldID java_lang_Thread_systemDaemon;
   static jfieldID java_lang_Thread_unparkedBeforeStart;
   static jfieldID java_lang_ThreadGroup_groups;
   static jfieldID java_lang_ThreadGroup_ngroups;
