@@ -115,12 +115,11 @@ void* SwapSpace::Alloc(size_t size) {
       ? free_by_size_.end()
       : free_by_size_.lower_bound(FreeBySizeEntry { size, free_by_start_.begin() });
   if (it != free_by_size_.end()) {
-    auto entry = it->free_by_start_entry;
-    SpaceChunk old_chunk = *entry;
+    SpaceChunk old_chunk = *it->free_by_start_entry;
     if (old_chunk.size == size) {
       RemoveChunk(it);
     } else {
-      // Try to avoid deallocating and allocating the std::set<> nodes.
+      // Avoid deallocating and allocating the std::set<> nodes.
       // This would be much simpler if we could use replace() from Boost.Bimap.
 
       // The free_by_start_ map contains disjoint intervals ordered by the `ptr`.
@@ -128,24 +127,9 @@ void* SwapSpace::Alloc(size_t size) {
       it->free_by_start_entry->ptr += size;
       it->free_by_start_entry->size -= size;
 
-      // The free_by_size_ map is ordered by the `size` and then `free_by_start_entry->ptr`.
-      // Adjusting the `ptr` above does not change that ordering but decreasing `size` can
-      // push the node before the previous node(s).
-      if (it == free_by_size_.begin()) {
-        it->size -= size;
-      } else {
-        auto prev = it;
-        --prev;
-        FreeBySizeEntry new_value(old_chunk.size - size, entry);
-        if (free_by_size_.key_comp()(*prev, new_value)) {
-          it->size -= size;
-        } else {
-          // Changing in place would break the std::set<> ordering, we need to remove and insert.
-          // TODO: When C++17 becomes available, use std::map<>::extract(), modify, insert.
-          free_by_size_.erase(it);
-          free_by_size_.insert(new_value);
-        }
-      }
+      auto node = free_by_size_.extract(it);
+      node.value().size -= size;
+      free_by_size_.insert(std::move(node));
     }
     return old_chunk.ptr;
   } else {
