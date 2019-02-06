@@ -3999,7 +3999,7 @@ static constexpr size_t kHugeNativeAllocs = 1 * GB;
 // Return the ratio of the weighted native + java allocated bytes to its target value.
 // A return value > 1.0 means we should collect. Significantly larger values mean we're falling
 // behind.
-inline float Heap::NativeMemoryOverTarget(size_t current_native_bytes) {
+inline float Heap::NativeMemoryOverTarget(size_t current_native_bytes, bool is_gc_concurrent) {
   // Collection check for native allocation. Does not enforce Java heap bounds.
   // With adj_start_bytes defined below, effectively checks
   // <java bytes allocd> + c1*<old native allocd> + c2*<new native allocd) >= adj_start_bytes,
@@ -4016,17 +4016,22 @@ inline float Heap::NativeMemoryOverTarget(size_t current_native_bytes) {
         + old_native_bytes / kOldNativeDiscountFactor;
     size_t add_bytes_allowed = static_cast<size_t>(
         NativeAllocationGcWatermark() * HeapGrowthMultiplier());
-    size_t adj_start_bytes = concurrent_start_bytes_ + add_bytes_allowed / kNewNativeDiscountFactor;
+    size_t java_gc_start_bytes = is_gc_concurrent
+        ? concurrent_start_bytes_
+        : target_footprint_.load(std::memory_order_relaxed);
+    size_t adj_start_bytes = UnsignedSum(java_gc_start_bytes,
+                                         add_bytes_allowed / kNewNativeDiscountFactor);
     return static_cast<float>(GetBytesAllocated() + weighted_native_bytes)
          / static_cast<float>(adj_start_bytes);
   }
 }
 
-inline void Heap::CheckConcurrentGCForNative(Thread* self) {
+inline void Heap::CheckGCForNative(Thread* self) {
+  bool is_gc_concurrent = IsGcConcurrent();
   size_t current_native_bytes = GetNativeBytes();
-  float gc_urgency = NativeMemoryOverTarget(current_native_bytes);
+  float gc_urgency = NativeMemoryOverTarget(current_native_bytes, is_gc_concurrent);
   if (UNLIKELY(gc_urgency >= 1.0)) {
-    if (IsGcConcurrent()) {
+    if (is_gc_concurrent) {
       RequestConcurrentGC(self, kGcCauseForNativeAlloc, /*force_full=*/true);
       if (gc_urgency > kStopForNativeFactor
           && current_native_bytes > kHugeNativeAllocs) {
@@ -4045,7 +4050,7 @@ inline void Heap::CheckConcurrentGCForNative(Thread* self) {
 // About kNotifyNativeInterval allocations have occurred. Check whether we should garbage collect.
 void Heap::NotifyNativeAllocations(JNIEnv* env) {
   native_objects_notified_.fetch_add(kNotifyNativeInterval, std::memory_order_relaxed);
-  CheckConcurrentGCForNative(ThreadForEnv(env));
+  CheckGCForNative(ThreadForEnv(env));
 }
 
 // Register a native allocation with an explicit size.
@@ -4057,7 +4062,7 @@ void Heap::RegisterNativeAllocation(JNIEnv* env, size_t bytes) {
       native_objects_notified_.fetch_add(1, std::memory_order_relaxed);
   if (objects_notified % kNotifyNativeInterval == kNotifyNativeInterval - 1
       || bytes > kCheckImmediatelyThreshold) {
-    CheckConcurrentGCForNative(ThreadForEnv(env));
+    CheckGCForNative(ThreadForEnv(env));
   }
 }
 
