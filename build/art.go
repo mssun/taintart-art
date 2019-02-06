@@ -253,8 +253,10 @@ func prefer32Bit(ctx android.LoadHookContext) {
 	ctx.AppendProperties(p)
 }
 
+var testMapKey = android.NewOnceKey("artTests")
+
 func testMap(config android.Config) map[string][]string {
-	return config.Once("artTests", func() interface{} {
+	return config.Once(testMapKey, func() interface{} {
 		return make(map[string][]string)
 	}).(map[string][]string)
 }
@@ -356,7 +358,7 @@ func libartDefaultsFactory() android.Module {
 func libartStaticDefaultsFactory() android.Module {
 	c := &codegenProperties{}
 	module := cc.DefaultsFactory(c)
-	android.AddLoadHook(module, func(ctx android.LoadHookContext) {	codegen(ctx, c, true) })
+	android.AddLoadHook(module, func(ctx android.LoadHookContext) { codegen(ctx, c, true) })
 
 	return module
 }
