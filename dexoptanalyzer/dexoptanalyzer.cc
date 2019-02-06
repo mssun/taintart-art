@@ -15,14 +15,16 @@
  */
 
 #include <string>
+#include <string_view>
 
-#include "base/logging.h"  // For InitLogging.
-#include "base/mutex.h"
-#include "base/os.h"
-#include "base/utils.h"
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 #include "base/file_utils.h"
+#include "base/logging.h"  // For InitLogging.
+#include "base/mutex.h"
+#include "base/os.h"
+#include "base/string_view_cpp20.h"
+#include "base/utils.h"
 #include "compiler_filter.h"
 #include "class_loader_context.h"
 #include "dex/dex_file.h"
@@ -155,56 +157,57 @@ class DexoptAnalyzer final {
     }
 
     for (int i = 0; i < argc; ++i) {
-      const StringPiece option(argv[i]);
+      const char* raw_option = argv[i];
+      const std::string_view option(raw_option);
       if (option == "--assume-profile-changed") {
         assume_profile_changed_ = true;
-      } else if (option.starts_with("--dex-file=")) {
-        dex_file_ = option.substr(strlen("--dex-file=")).ToString();
-      } else if (option.starts_with("--compiler-filter=")) {
-        std::string filter_str = option.substr(strlen("--compiler-filter=")).ToString();
-        if (!CompilerFilter::ParseCompilerFilter(filter_str.c_str(), &compiler_filter_)) {
-          Usage("Invalid compiler filter '%s'", option.data());
+      } else if (StartsWith(option, "--dex-file=")) {
+        dex_file_ = std::string(option.substr(strlen("--dex-file=")));
+      } else if (StartsWith(option, "--compiler-filter=")) {
+        const char* filter_str = raw_option + strlen("--compiler-filter=");
+        if (!CompilerFilter::ParseCompilerFilter(filter_str, &compiler_filter_)) {
+          Usage("Invalid compiler filter '%s'", raw_option);
         }
-      } else if (option.starts_with("--isa=")) {
-        std::string isa_str = option.substr(strlen("--isa=")).ToString();
-        isa_ = GetInstructionSetFromString(isa_str.c_str());
+      } else if (StartsWith(option, "--isa=")) {
+        const char* isa_str = raw_option + strlen("--isa=");
+        isa_ = GetInstructionSetFromString(isa_str);
         if (isa_ == InstructionSet::kNone) {
-          Usage("Invalid isa '%s'", option.data());
+          Usage("Invalid isa '%s'", raw_option);
         }
-      } else if (option.starts_with("--image=")) {
-        image_ = option.substr(strlen("--image=")).ToString();
+      } else if (StartsWith(option, "--image=")) {
+        image_ = std::string(option.substr(strlen("--image=")));
       } else if (option == "--runtime-arg") {
         if (i + 1 == argc) {
           Usage("Missing argument for --runtime-arg\n");
         }
         ++i;
         runtime_args_.push_back(argv[i]);
-      } else if (option.starts_with("--android-data=")) {
+      } else if (StartsWith(option, "--android-data=")) {
         // Overwrite android-data if needed (oat file assistant relies on a valid directory to
         // compute dalvik-cache folder). This is mostly used in tests.
-        std::string new_android_data = option.substr(strlen("--android-data=")).ToString();
-        setenv("ANDROID_DATA", new_android_data.c_str(), 1);
-      } else if (option.starts_with("--downgrade")) {
+        const char* new_android_data = raw_option + strlen("--android-data=");
+        setenv("ANDROID_DATA", new_android_data, 1);
+      } else if (option == "--downgrade") {
         downgrade_ = true;
-      } else if (option.starts_with("--oat-fd")) {
-        oat_fd_ = std::stoi(option.substr(strlen("--oat-fd=")).ToString(), nullptr, 0);
+      } else if (StartsWith(option, "--oat-fd=")) {
+        oat_fd_ = std::stoi(std::string(option.substr(strlen("--oat-fd="))), nullptr, 0);
         if (oat_fd_ < 0) {
           Usage("Invalid --oat-fd %d", oat_fd_);
         }
-      } else if (option.starts_with("--vdex-fd")) {
-        vdex_fd_ = std::stoi(option.substr(strlen("--vdex-fd=")).ToString(), nullptr, 0);
+      } else if (StartsWith(option, "--vdex-fd=")) {
+        vdex_fd_ = std::stoi(std::string(option.substr(strlen("--vdex-fd="))), nullptr, 0);
         if (vdex_fd_ < 0) {
           Usage("Invalid --vdex-fd %d", vdex_fd_);
         }
-      } else if (option.starts_with("--zip-fd")) {
-          zip_fd_ = std::stoi(option.substr(strlen("--zip-fd=")).ToString(), nullptr, 0);
-          if (zip_fd_ < 0) {
-            Usage("Invalid --zip-fd %d", zip_fd_);
-          }
-      } else if (option.starts_with("--class-loader-context=")) {
-        context_str_ = option.substr(strlen("--class-loader-context=")).ToString();
+      } else if (StartsWith(option, "--zip-fd=")) {
+        zip_fd_ = std::stoi(std::string(option.substr(strlen("--zip-fd="))), nullptr, 0);
+        if (zip_fd_ < 0) {
+          Usage("Invalid --zip-fd %d", zip_fd_);
+        }
+      } else if (StartsWith(option, "--class-loader-context=")) {
+        context_str_ = std::string(option.substr(strlen("--class-loader-context=")));
       } else {
-        Usage("Unknown argument '%s'", option.data());
+        Usage("Unknown argument '%s'", raw_option);
       }
     }
 
