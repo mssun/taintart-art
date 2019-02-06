@@ -84,10 +84,15 @@ The following events may be listened for with this agent
 
 * `GarbageCollectionFinish`
 
+* `VMStart`
+
+* `VMInit`
+
+* `VMDeath`
+
 All other events cannot be listened for by this agent. Most of these missing
 events either require the use of other functions in order to be called
-(`FramePop`, `ObjectFree`, etc) or are only called once (`VMInit`, `VMDeath`,
-etc).
+(`FramePop`, `ObjectFree`, etc).
 
 #### ART
 >    `art -Xplugin:$ANDROID_HOST_OUT/lib64/libopenjdkjvmti.so '-agentpath:libtifast.so=MethodEntry' -cp tmp/java/helloworld.dex -Xint helloworld`
