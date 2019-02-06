@@ -3728,32 +3728,7 @@ void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
     }
   }
   if (initialize_oat_file_data) {
-    // Initialize the .data.bimg.rel.ro section.
-    if (!oat_file->GetBootImageRelocations().empty()) {
-      uint8_t* reloc_begin = const_cast<uint8_t*>(oat_file->DataBimgRelRoBegin());
-      CheckedCall(mprotect,
-                  "un-protect boot image relocations",
-                  reloc_begin,
-                  oat_file->DataBimgRelRoSize(),
-                  PROT_READ | PROT_WRITE);
-      uint32_t boot_image_begin = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(
-          Runtime::Current()->GetHeap()->GetBootImageSpaces().front()->Begin()));
-      for (const uint32_t& relocation : oat_file->GetBootImageRelocations()) {
-        const_cast<uint32_t&>(relocation) += boot_image_begin;
-      }
-      CheckedCall(mprotect,
-                  "protect boot image relocations",
-                  reloc_begin,
-                  oat_file->DataBimgRelRoSize(),
-                  PROT_READ);
-    }
-
-    // Initialize the .bss section.
-    // TODO: Pre-initialize from boot/app image?
-    ArtMethod* resolution_method = Runtime::Current()->GetResolutionMethod();
-    for (ArtMethod*& entry : oat_file->GetBssMethods()) {
-      entry = resolution_method;
-    }
+    oat_file->InitializeRelocations();
   }
   jweak dex_cache_jweak = vm->AddWeakGlobalRef(self, dex_cache);
   dex_cache->SetDexFile(&dex_file);

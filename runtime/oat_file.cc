@@ -58,13 +58,14 @@
 #include "elf_file.h"
 #include "elf_utils.h"
 #include "gc_root.h"
+#include "gc/heap.h"
 #include "gc/space/image_space.h"
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
 #include "oat.h"
 #include "oat_file-inl.h"
 #include "oat_file_manager.h"
-#include "runtime.h"
+#include "runtime-inl.h"
 #include "vdex_file.h"
 
 namespace art {
@@ -447,34 +448,6 @@ static bool ReadIndexBssMapping(OatFile* oat_file,
   return true;
 }
 
-static void DCheckIndexToBssMapping(OatFile* oat_file,
-                                    uint32_t number_of_indexes,
-                                    size_t slot_size,
-                                    const IndexBssMapping* index_bss_mapping) {
-  if (kIsDebugBuild && index_bss_mapping != nullptr) {
-    size_t index_bits = IndexBssMappingEntry::IndexBits(number_of_indexes);
-    const IndexBssMappingEntry* prev_entry = nullptr;
-    for (const IndexBssMappingEntry& entry : *index_bss_mapping) {
-      CHECK_ALIGNED_PARAM(entry.bss_offset, slot_size);
-      // When loading a non-executable ElfOatFile, .bss symbols are not even
-      // looked up, so we cannot verify the offset against BssSize().
-      if (oat_file->IsExecutable()) {
-        CHECK_LT(entry.bss_offset, oat_file->BssSize());
-      }
-      uint32_t mask = entry.GetMask(index_bits);
-      CHECK_LE(POPCOUNT(mask) * slot_size, entry.bss_offset);
-      size_t index_mask_span = (mask != 0u) ? 32u - index_bits - CTZ(mask) : 0u;
-      CHECK_LE(index_mask_span, entry.GetIndex(index_bits));
-      if (prev_entry != nullptr) {
-        CHECK_LT(prev_entry->GetIndex(index_bits), entry.GetIndex(index_bits) - index_mask_span);
-      }
-      prev_entry = &entry;
-    }
-    CHECK(prev_entry != nullptr);
-    CHECK_LT(prev_entry->GetIndex(index_bits), number_of_indexes);
-  }
-}
-
 bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* error_msg) {
   if (!GetOatHeader().IsValid()) {
     std::string cause = GetOatHeader().GetValidationErrorMessage();
@@ -813,12 +786,6 @@ bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* e
             this, &oat, i, dex_file_location, "string", &string_bss_mapping, error_msg)) {
       return false;
     }
-    DCheckIndexToBssMapping(
-        this, header->method_ids_size_, static_cast<size_t>(pointer_size), method_bss_mapping);
-    DCheckIndexToBssMapping(
-        this, header->type_ids_size_, sizeof(GcRoot<mirror::Class>), type_bss_mapping);
-    DCheckIndexToBssMapping(
-        this, header->string_ids_size_, sizeof(GcRoot<mirror::String>), string_bss_mapping);
 
     std::string canonical_location =
         DexFileLoader::GetDexCanonicalLocation(dex_file_name.c_str());
@@ -2017,6 +1984,82 @@ OatFile::OatClass OatFile::FindOatClass(const DexFile& dex_file,
   }
   *found = true;
   return oat_dex_file->GetOatClass(class_def_idx);
+}
+
+static void DCheckIndexToBssMapping(const OatFile* oat_file,
+                                    uint32_t number_of_indexes,
+                                    size_t slot_size,
+                                    const IndexBssMapping* index_bss_mapping) {
+  if (kIsDebugBuild && index_bss_mapping != nullptr) {
+    size_t index_bits = IndexBssMappingEntry::IndexBits(number_of_indexes);
+    const IndexBssMappingEntry* prev_entry = nullptr;
+    for (const IndexBssMappingEntry& entry : *index_bss_mapping) {
+      CHECK_ALIGNED_PARAM(entry.bss_offset, slot_size);
+      CHECK_LT(entry.bss_offset, oat_file->BssSize());
+      uint32_t mask = entry.GetMask(index_bits);
+      CHECK_LE(POPCOUNT(mask) * slot_size, entry.bss_offset);
+      size_t index_mask_span = (mask != 0u) ? 32u - index_bits - CTZ(mask) : 0u;
+      CHECK_LE(index_mask_span, entry.GetIndex(index_bits));
+      if (prev_entry != nullptr) {
+        CHECK_LT(prev_entry->GetIndex(index_bits), entry.GetIndex(index_bits) - index_mask_span);
+      }
+      prev_entry = &entry;
+    }
+    CHECK(prev_entry != nullptr);
+    CHECK_LT(prev_entry->GetIndex(index_bits), number_of_indexes);
+  }
+}
+
+void OatFile::InitializeRelocations() const {
+  DCHECK(IsExecutable());
+
+  // Initialize the .data.bimg.rel.ro section.
+  if (!GetBootImageRelocations().empty()) {
+    uint8_t* reloc_begin = const_cast<uint8_t*>(DataBimgRelRoBegin());
+    CheckedCall(mprotect,
+                "un-protect boot image relocations",
+                reloc_begin,
+                DataBimgRelRoSize(),
+                PROT_READ | PROT_WRITE);
+    uint32_t boot_image_begin = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(
+        Runtime::Current()->GetHeap()->GetBootImageSpaces().front()->Begin()));
+    for (const uint32_t& relocation : GetBootImageRelocations()) {
+      const_cast<uint32_t&>(relocation) += boot_image_begin;
+    }
+    CheckedCall(mprotect,
+                "protect boot image relocations",
+                reloc_begin,
+                DataBimgRelRoSize(),
+                PROT_READ);
+  }
+
+  // Before initializing .bss, check the .bss mappings in debug mode.
+  if (kIsDebugBuild) {
+    PointerSize pointer_size = GetInstructionSetPointerSize(GetOatHeader().GetInstructionSet());
+    for (const OatDexFile* odf : GetOatDexFiles()) {
+      const DexFile::Header* header =
+          reinterpret_cast<const DexFile::Header*>(odf->GetDexFilePointer());
+      DCheckIndexToBssMapping(this,
+                              header->method_ids_size_,
+                              static_cast<size_t>(pointer_size),
+                              odf->GetMethodBssMapping());
+      DCheckIndexToBssMapping(this,
+                              header->type_ids_size_,
+                              sizeof(GcRoot<mirror::Class>),
+                              odf->GetTypeBssMapping());
+      DCheckIndexToBssMapping(this,
+                              header->string_ids_size_,
+                              sizeof(GcRoot<mirror::String>),
+                              odf->GetStringBssMapping());
+    }
+  }
+
+  // Initialize the .bss section.
+  // TODO: Pre-initialize from boot/app image?
+  ArtMethod* resolution_method = Runtime::Current()->GetResolutionMethod();
+  for (ArtMethod*& entry : GetBssMethods()) {
+    entry = resolution_method;
+  }
 }
 
 void OatDexFile::AssertAotCompiler() {
