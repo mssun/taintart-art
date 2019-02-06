@@ -19,6 +19,7 @@
 
 #include <iosfwd>
 #include <string>
+#include <string_view>
 
 #include <android-base/logging.h>
 
@@ -30,7 +31,6 @@ namespace dex {
 struct ProtoId;
 }  // namespace dex
 class DexFile;
-class StringPiece;
 
 // Abstract the signature of a method.
 class Signature : public ValueObject {
@@ -49,7 +49,7 @@ class Signature : public ValueObject {
     return !(*this == rhs);
   }
 
-  bool operator==(const StringPiece& rhs) const;
+  bool operator==(std::string_view rhs) const;
 
  private:
   Signature(const DexFile* dex, const dex::ProtoId& proto) : dex_file_(dex), proto_id_(&proto) {

@@ -390,8 +390,10 @@ void ThrowNegativeArraySizeException(const char* msg) {
 
 // NoSuchFieldError
 
-void ThrowNoSuchFieldError(const StringPiece& scope, ObjPtr<mirror::Class> c,
-                           const StringPiece& type, const StringPiece& name) {
+void ThrowNoSuchFieldError(std::string_view scope,
+                           ObjPtr<mirror::Class> c,
+                           std::string_view type,
+                           std::string_view name) {
   std::ostringstream msg;
   std::string temp;
   msg << "No " << scope << "field " << name << " of type " << type
@@ -399,7 +401,7 @@ void ThrowNoSuchFieldError(const StringPiece& scope, ObjPtr<mirror::Class> c,
   ThrowException("Ljava/lang/NoSuchFieldError;", c, msg.str().c_str());
 }
 
-void ThrowNoSuchFieldException(ObjPtr<mirror::Class> c, const StringPiece& name) {
+void ThrowNoSuchFieldException(ObjPtr<mirror::Class> c, std::string_view name) {
   std::ostringstream msg;
   std::string temp;
   msg << "No field " << name << " in class " << c->GetDescriptor(&temp);
@@ -408,7 +410,9 @@ void ThrowNoSuchFieldException(ObjPtr<mirror::Class> c, const StringPiece& name)
 
 // NoSuchMethodError
 
-void ThrowNoSuchMethodError(InvokeType type, ObjPtr<mirror::Class> c, const StringPiece& name,
+void ThrowNoSuchMethodError(InvokeType type,
+                            ObjPtr<mirror::Class> c,
+                            std::string_view name,
                             const Signature& signature) {
   std::ostringstream msg;
   std::string temp;

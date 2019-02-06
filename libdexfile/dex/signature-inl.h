@@ -19,7 +19,6 @@
 
 #include "signature.h"
 
-#include "base/stringpiece.h"
 #include "dex_file-inl.h"
 
 namespace art {
@@ -37,13 +36,13 @@ inline bool Signature::operator==(const Signature& rhs) const {
   uint32_t lhs_shorty_len;  // For a shorty utf16 length == mutf8 length.
   const char* lhs_shorty_data = dex_file_->StringDataAndUtf16LengthByIdx(proto_id_->shorty_idx_,
                                                                          &lhs_shorty_len);
-  StringPiece lhs_shorty(lhs_shorty_data, lhs_shorty_len);
+  std::string_view lhs_shorty(lhs_shorty_data, lhs_shorty_len);
   {
     uint32_t rhs_shorty_len;
     const char* rhs_shorty_data =
         rhs.dex_file_->StringDataAndUtf16LengthByIdx(rhs.proto_id_->shorty_idx_,
                                                      &rhs_shorty_len);
-    StringPiece rhs_shorty(rhs_shorty_data, rhs_shorty_len);
+    std::string_view rhs_shorty(rhs_shorty_data, rhs_shorty_len);
     if (lhs_shorty != rhs_shorty) {
       return false;  // Shorty mismatch.
     }
@@ -57,7 +56,7 @@ inline bool Signature::operator==(const Signature& rhs) const {
       return false;  // Return type mismatch.
     }
   }
-  if (lhs_shorty.find('L', 1) != StringPiece::npos) {
+  if (lhs_shorty.find('L', 1) != std::string_view::npos) {
     const dex::TypeList* params = dex_file_->GetProtoParameters(*proto_id_);
     const dex::TypeList* rhs_params = rhs.dex_file_->GetProtoParameters(*rhs.proto_id_);
     // We found a reference parameter in the matching shorty, so both lists must be non-empty.

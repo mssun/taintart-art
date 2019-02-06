@@ -400,7 +400,7 @@ const ProtoId* DexFile::FindProtoId(dex::TypeIndex return_type_idx,
 }
 
 // Given a signature place the type ids into the given vector
-bool DexFile::CreateTypeList(const StringPiece& signature,
+bool DexFile::CreateTypeList(std::string_view signature,
                              dex::TypeIndex* return_type_idx,
                              std::vector<dex::TypeIndex>* param_type_idxs) const {
   if (signature[0] != '(') {
@@ -448,20 +448,6 @@ bool DexFile::CreateTypeList(const StringPiece& signature,
     }
   }
   return false;  // failed to correctly parse return type
-}
-
-const Signature DexFile::CreateSignature(const StringPiece& signature) const {
-  dex::TypeIndex return_type_idx;
-  std::vector<dex::TypeIndex> param_type_indices;
-  bool success = CreateTypeList(signature, &return_type_idx, &param_type_indices);
-  if (!success) {
-    return Signature::NoSignature();
-  }
-  const ProtoId* proto_id = FindProtoId(return_type_idx, param_type_indices);
-  if (proto_id == nullptr) {
-    return Signature::NoSignature();
-  }
-  return Signature(this, *proto_id);
 }
 
 int32_t DexFile::FindTryItem(const TryItem* try_items, uint32_t tries_size, uint32_t address) {

@@ -139,7 +139,8 @@ using DefaultHashFn = typename std::conditional<std::is_same<T, std::string>::va
                                                 std::hash<T>>::type;
 
 struct DefaultStringEquals {
-  // Allow comparison with anything that can be compared to std::string, for example StringPiece.
+  // Allow comparison with anything that can be compared to std::string,
+  // for example std::string_view.
   template <typename T>
   bool operator()(const std::string& lhs, const T& rhs) const {
     return lhs == rhs;

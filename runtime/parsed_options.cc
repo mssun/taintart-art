@@ -24,7 +24,6 @@
 
 #include "base/file_utils.h"
 #include "base/macros.h"
-#include "base/stringpiece.h"
 #include "base/utils.h"
 #include "debugger.h"
 #include "gc/heap.h"

@@ -966,8 +966,9 @@ bool VerifierDeps::VerifyFields(Handle<mirror::ClassLoader> class_loader,
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   for (const auto& entry : fields) {
     const dex::FieldId& field_id = dex_file.GetFieldId(entry.GetDexFieldIndex());
-    StringPiece name(dex_file.StringDataByIdx(field_id.name_idx_));
-    StringPiece type(dex_file.StringDataByIdx(dex_file.GetTypeId(field_id.type_idx_).descriptor_idx_));
+    std::string_view name(dex_file.StringDataByIdx(field_id.name_idx_));
+    std::string_view type(
+        dex_file.StringDataByIdx(dex_file.GetTypeId(field_id.type_idx_).descriptor_idx_));
     // Only use field_id.class_idx_ when the entry is unresolved, which is rare.
     // Otherwise, we might end up resolving an application class, which is expensive.
     std::string expected_decl_klass = entry.IsResolved()

@@ -17,6 +17,8 @@
 #ifndef ART_RUNTIME_COMMON_THROWS_H_
 #define ART_RUNTIME_COMMON_THROWS_H_
 
+#include <string_view>
+
 #include "base/locks.h"
 #include "obj_ptr.h"
 
@@ -31,7 +33,6 @@ class ArtMethod;
 class DexFile;
 enum InvokeType : uint32_t;
 class Signature;
-class StringPiece;
 
 // AbstractMethodError
 
@@ -196,20 +197,20 @@ void ThrowNegativeArraySizeException(const char* msg)
 
 // NoSuchFieldError
 
-void ThrowNoSuchFieldError(const StringPiece& scope,
+void ThrowNoSuchFieldError(std::string_view scope,
                            ObjPtr<mirror::Class> c,
-                           const StringPiece& type,
-                           const StringPiece& name)
+                           std::string_view type,
+                           std::string_view name)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
-void ThrowNoSuchFieldException(ObjPtr<mirror::Class> c, const StringPiece& name)
+void ThrowNoSuchFieldException(ObjPtr<mirror::Class> c, std::string_view name)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
 // NoSuchMethodError
 
 void ThrowNoSuchMethodError(InvokeType type,
                             ObjPtr<mirror::Class> c,
-                            const StringPiece& name,
+                            std::string_view name,
                             const Signature& signature)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
