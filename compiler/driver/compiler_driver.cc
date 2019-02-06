@@ -17,12 +17,14 @@
 #include "compiler_driver.h"
 
 #include <unistd.h>
-#include <unordered_set>
-#include <vector>
 
 #ifndef __APPLE__
 #include <malloc.h>  // For mallinfo
 #endif
+
+#include <string_view>
+#include <unordered_set>
+#include <vector>
 
 #include "android-base/logging.h"
 #include "android-base/strings.h"
@@ -35,6 +37,7 @@
 #include "base/enums.h"
 #include "base/logging.h"  // For VLOG
 #include "base/stl_util.h"
+#include "base/string_view_cpp20.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "base/timing_logger.h"
@@ -1154,7 +1157,7 @@ static void MaybeAddToImageClasses(Thread* self,
   const PointerSize pointer_size = Runtime::Current()->GetClassLinker()->GetImagePointerSize();
   while (!klass->IsObjectClass()) {
     const char* descriptor = klass->GetDescriptor(&temp);
-    if (image_classes->find(StringPiece(descriptor)) != image_classes->end()) {
+    if (image_classes->find(std::string_view(descriptor)) != image_classes->end()) {
       break;  // Previously inserted.
     }
     image_classes->insert(descriptor);
@@ -1236,7 +1239,7 @@ class ClinitImageUpdate {
 
     bool operator()(ObjPtr<mirror::Class> klass) override REQUIRES_SHARED(Locks::mutator_lock_) {
       std::string temp;
-      StringPiece name(klass->GetDescriptor(&temp));
+      std::string_view name(klass->GetDescriptor(&temp));
       auto it = data_->image_class_descriptors_->find(name);
       if (it != data_->image_class_descriptors_->end()) {
         if (LIKELY(klass->IsResolved())) {
@@ -2226,7 +2229,7 @@ class InitializeClassVisitor : public CompilationVisitor {
             // We need to initialize static fields, we only do this for image classes that aren't
             // marked with the $NoPreloadHolder (which implies this should not be initialized
             // early).
-            can_init_static_fields = !StringPiece(descriptor).ends_with("$NoPreloadHolder;");
+            can_init_static_fields = !EndsWith(std::string_view(descriptor), "$NoPreloadHolder;");
           } else {
             CHECK(is_app_image);
             // The boot image case doesn't need to recursively initialize the dependencies with

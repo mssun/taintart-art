@@ -32,6 +32,7 @@
 #include "ti_redefine.h"
 
 #include <limits>
+#include <string_view>
 
 #include <android-base/logging.h>
 #include <android-base/stringprintf.h>
@@ -40,7 +41,6 @@
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "base/array_ref.h"
-#include "base/stringpiece.h"
 #include "class_linker-inl.h"
 #include "class_root.h"
 #include "debugger.h"
@@ -597,7 +597,7 @@ void Redefiner::ClassRedefinition::FindAndAllocateObsoleteMethods(
 // Try and get the declared method. First try to get a virtual method then a direct method if that's
 // not found.
 static art::ArtMethod* FindMethod(art::Handle<art::mirror::Class> klass,
-                                  art::StringPiece name,
+                                  std::string_view name,
                                   art::Signature sig) REQUIRES_SHARED(art::Locks::mutator_lock_) {
   DCHECK(!klass->IsProxyClass());
   for (art::ArtMethod& m : klass->GetDeclaredMethodsSlice(art::kRuntimePointerSize)) {

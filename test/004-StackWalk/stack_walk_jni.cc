@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <string_view>
+
 #include "art_method-inl.h"
 #include "check_reference_map_visitor.h"
 #include "jni.h"
@@ -38,7 +40,7 @@ class TestReferenceMapVisitor : public CheckReferenceMapVisitor {
       return true;
     }
     ArtMethod* m = GetMethod();
-    StringPiece m_name(m->GetName());
+    std::string_view m_name(m->GetName());
 
     // Given the method name and the number of times the method has been called,
     // we know the Dex registers with live reference values. Assert that what we

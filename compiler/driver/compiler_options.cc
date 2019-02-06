@@ -17,6 +17,7 @@
 #include "compiler_options.h"
 
 #include <fstream>
+#include <string_view>
 
 #include "android-base/stringprintf.h"
 
@@ -144,7 +145,7 @@ bool CompilerOptions::IsImageClass(const char* descriptor) const {
   // Historical note: We used to hold the set indirectly and there was a distinction between an
   // empty set and a null, null meaning to include all classes. However, the distiction has been
   // removed; if we don't have a profile, we treat it as an empty set of classes. b/77340429
-  return image_classes_.find(StringPiece(descriptor)) != image_classes_.end();
+  return image_classes_.find(std::string_view(descriptor)) != image_classes_.end();
 }
 
 const VerificationResults* CompilerOptions::GetVerificationResults() const {

@@ -20,12 +20,12 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
 #include <gtest/gtest.h>
 
-#include "base/stringpiece.h"
 #include "hash_map.h"
 
 namespace art {
@@ -365,11 +365,11 @@ TEST_F(HashSetTest, IteratorConversion) {
   ASSERT_EQ(*it, *cit);
 }
 
-TEST_F(HashSetTest, StringSearchyStringPiece) {
+TEST_F(HashSetTest, StringSearchyStringView) {
   const char* test_string = "dummy";
   HashSet<std::string> hash_set;
   HashSet<std::string>::iterator insert_pos = hash_set.insert(test_string);
-  HashSet<std::string>::iterator it = hash_set.find(StringPiece(test_string));
+  HashSet<std::string>::iterator it = hash_set.find(std::string_view(test_string));
   ASSERT_TRUE(it == insert_pos);
 }
 

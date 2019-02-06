@@ -17,6 +17,7 @@
 #include "interpreter.h"
 
 #include <limits>
+#include <string_view>
 
 #include "common_dex_operations.h"
 #include "common_throws.h"
@@ -46,7 +47,7 @@ ALWAYS_INLINE static ObjPtr<mirror::Object> ObjArg(uint32_t arg)
 
 static void InterpreterJni(Thread* self,
                            ArtMethod* method,
-                           const StringPiece& shorty,
+                           std::string_view shorty,
                            ObjPtr<mirror::Object> receiver,
                            uint32_t* args,
                            JValue* result)

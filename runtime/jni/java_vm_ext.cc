@@ -17,6 +17,7 @@
 #include "java_vm_ext.h"
 
 #include <dlfcn.h>
+#include <string_view>
 
 #include "android-base/stringprintf.h"
 
@@ -25,6 +26,7 @@
 #include "base/mutex-inl.h"
 #include "base/sdk_version.h"
 #include "base/stl_util.h"
+#include "base/string_view_cpp20.h"
 #include "base/systrace.h"
 #include "check_jni.h"
 #include "dex/dex_file-inl.h"
@@ -566,8 +568,8 @@ bool JavaVMExt::ShouldTrace(ArtMethod* method) {
     return false;
   }
   // Perform checks based on class name.
-  StringPiece class_name(method->GetDeclaringClassDescriptor());
-  if (!trace_.empty() && class_name.find(trace_) != std::string::npos) {
+  std::string_view class_name(method->GetDeclaringClassDescriptor());
+  if (!trace_.empty() && class_name.find(trace_) != std::string_view::npos) {
     return true;
   }
   if (!VLOG_IS_ON(third_party_jni)) {
@@ -575,7 +577,7 @@ bool JavaVMExt::ShouldTrace(ArtMethod* method) {
   }
   // Return true if we're trying to log all third-party JNI activity and 'method' doesn't look
   // like part of Android.
-  static const char* gBuiltInPrefixes[] = {
+  static const char* const gBuiltInPrefixes[] = {
       "Landroid/",
       "Lcom/android/",
       "Lcom/google/android/",
@@ -586,7 +588,7 @@ bool JavaVMExt::ShouldTrace(ArtMethod* method) {
       "Lorg/apache/harmony/",
   };
   for (size_t i = 0; i < arraysize(gBuiltInPrefixes); ++i) {
-    if (class_name.starts_with(gBuiltInPrefixes[i])) {
+    if (StartsWith(class_name, gBuiltInPrefixes[i])) {
       return false;
     }
   }

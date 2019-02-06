@@ -34,6 +34,7 @@
 #include "android-base/stringprintf.h"
 
 #include <mutex>
+#include <string_view>
 #include <unordered_set>
 
 #include "art_jvmti.h"
@@ -872,7 +873,7 @@ static jvmtiError CopyClassDescriptors(jvmtiEnv* env,
                                        /*out*/jint* count_ptr,
                                        /*out*/char*** classes) {
   jvmtiError res = OK;
-  std::set<art::StringPiece> unique_descriptors;
+  std::set<std::string_view> unique_descriptors;
   std::vector<const char*> descriptors;
   auto add_descriptor = [&](const char* desc) {
     // Don't add duplicates.

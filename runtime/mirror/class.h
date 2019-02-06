@@ -17,6 +17,8 @@
 #ifndef ART_RUNTIME_MIRROR_CLASS_H_
 #define ART_RUNTIME_MIRROR_CLASS_H_
 
+#include <string_view>
+
 #include "base/bit_utils.h"
 #include "base/casts.h"
 #include "base/stride_iterator.h"
@@ -53,7 +55,6 @@ template <typename Iter> class IterationRange;
 template<typename T> class LengthPrefixedArray;
 enum class PointerSize : size_t;
 class Signature;
-class StringPiece;
 template<size_t kNumReferences> class PACKED(4) StackHandleScope;
 class Thread;
 
@@ -556,7 +557,7 @@ class MANAGED Class final : public Object {
   // Returns true if this class is in the same packages as that class.
   bool IsInSamePackage(ObjPtr<Class> that) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static bool IsInSamePackage(const StringPiece& descriptor1, const StringPiece& descriptor2);
+  static bool IsInSamePackage(std::string_view descriptor1, std::string_view descriptor2);
 
   // Returns true if this class can access that class.
   bool CanAccess(ObjPtr<Class> that) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -861,12 +862,12 @@ class MANAGED Class final : public Object {
   // in an interface without superinterfaces, see JLS 9.2, can be inherited, see JLS 9.4.1).
   // TODO: Implement search for a unique maximally-specific non-abstract superinterface method.
 
-  ArtMethod* FindInterfaceMethod(const StringPiece& name,
-                                 const StringPiece& signature,
+  ArtMethod* FindInterfaceMethod(std::string_view name,
+                                 std::string_view signature,
                                  PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtMethod* FindInterfaceMethod(const StringPiece& name,
+  ArtMethod* FindInterfaceMethod(std::string_view name,
                                  const Signature& signature,
                                  PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -900,12 +901,12 @@ class MANAGED Class final : public Object {
   // does not satisfy the request. Special consideration should be given to the case where this
   // function returns a method that's not inherited (found in step 2, returned in step 4).
 
-  ArtMethod* FindClassMethod(const StringPiece& name,
-                             const StringPiece& signature,
+  ArtMethod* FindClassMethod(std::string_view name,
+                             std::string_view signature,
                              PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtMethod* FindClassMethod(const StringPiece& name,
+  ArtMethod* FindClassMethod(std::string_view name,
                              const Signature& signature,
                              PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -915,13 +916,13 @@ class MANAGED Class final : public Object {
                              PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtMethod* FindConstructor(const StringPiece& signature, PointerSize pointer_size)
+  ArtMethod* FindConstructor(std::string_view signature, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtMethod* FindDeclaredVirtualMethodByName(const StringPiece& name, PointerSize pointer_size)
+  ArtMethod* FindDeclaredVirtualMethodByName(std::string_view name, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtMethod* FindDeclaredDirectMethodByName(const StringPiece& name, PointerSize pointer_size)
+  ArtMethod* FindDeclaredDirectMethodByName(std::string_view name, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   ArtMethod* FindClassInitializer(PointerSize pointer_size) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -1036,12 +1037,12 @@ class MANAGED Class final : public Object {
   // Find a static or instance field using the JLS resolution order
   static ArtField* FindField(Thread* self,
                              ObjPtr<Class> klass,
-                             const StringPiece& name,
-                             const StringPiece& type)
+                             std::string_view name,
+                             std::string_view type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Finds the given instance field in this class or a superclass.
-  ArtField* FindInstanceField(const StringPiece& name, const StringPiece& type)
+  ArtField* FindInstanceField(std::string_view name, std::string_view type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Finds the given instance field in this class or a superclass, only searches classes that
@@ -1049,7 +1050,7 @@ class MANAGED Class final : public Object {
   ArtField* FindInstanceField(ObjPtr<DexCache> dex_cache, uint32_t dex_field_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtField* FindDeclaredInstanceField(const StringPiece& name, const StringPiece& type)
+  ArtField* FindDeclaredInstanceField(std::string_view name, std::string_view type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   ArtField* FindDeclaredInstanceField(ObjPtr<DexCache> dex_cache, uint32_t dex_field_idx)
@@ -1058,8 +1059,8 @@ class MANAGED Class final : public Object {
   // Finds the given static field in this class or a superclass.
   static ArtField* FindStaticField(Thread* self,
                                    ObjPtr<Class> klass,
-                                   const StringPiece& name,
-                                   const StringPiece& type)
+                                   std::string_view name,
+                                   std::string_view type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Finds the given static field in this class or superclass, only searches classes that
@@ -1070,7 +1071,7 @@ class MANAGED Class final : public Object {
                                    uint32_t dex_field_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArtField* FindDeclaredStaticField(const StringPiece& name, const StringPiece& type)
+  ArtField* FindDeclaredStaticField(std::string_view name, std::string_view type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   ArtField* FindDeclaredStaticField(ObjPtr<DexCache> dex_cache, uint32_t dex_field_idx)
