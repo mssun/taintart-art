@@ -22,12 +22,14 @@
 
 #include <iostream>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "android-base/stringprintf.h"
 
 #include "base/logging.h"  // For InitLogging.
-#include "base/stringpiece.h"
+#include "base/string_view_cpp20.h"
 
 #include "dexlayout.h"
 #include "dex/dex_file.h"
@@ -462,14 +464,14 @@ static int DexDiagMain(int argc, char* argv[]) {
   std::vector<std::string> name_filters;
   // TODO: add option to track usage by class name, etc.
   for (int i = 1; i < argc - 1; ++i) {
-    const StringPiece option(argv[i]);
+    const std::string_view option(argv[i]);
     if (option == "--help") {
       Usage(argv[0]);
       return EXIT_SUCCESS;
     } else if (option == "--verbose") {
       g_verbose = true;
-    } else if (option.starts_with("--contains=")) {
-      std::string contains(option.substr(strlen("--contains=")).data());
+    } else if (StartsWith(option, "--contains=")) {
+      std::string contains(option.substr(strlen("--contains=")));
       name_filters.push_back(contains);
     } else {
       Usage(argv[0]);

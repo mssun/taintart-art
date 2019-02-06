@@ -1674,23 +1674,27 @@ struct ImgDiagArgs : public CmdlineArgs {
  protected:
   using Base = CmdlineArgs;
 
-  ParseStatus ParseCustom(const StringPiece& option, std::string* error_msg) override {
+  ParseStatus ParseCustom(const char* raw_option,
+                          size_t raw_option_length,
+                          std::string* error_msg) override {
+    DCHECK_EQ(strlen(raw_option), raw_option_length);
     {
-      ParseStatus base_parse = Base::ParseCustom(option, error_msg);
+      ParseStatus base_parse = Base::ParseCustom(raw_option, raw_option_length, error_msg);
       if (base_parse != kParseUnknownArgument) {
         return base_parse;
       }
     }
 
-    if (option.starts_with("--image-diff-pid=")) {
-      const char* image_diff_pid = option.substr(strlen("--image-diff-pid=")).data();
+    std::string_view option(raw_option, raw_option_length);
+    if (StartsWith(option, "--image-diff-pid=")) {
+      const char* image_diff_pid = raw_option + strlen("--image-diff-pid=");
 
       if (!android::base::ParseInt(image_diff_pid, &image_diff_pid_)) {
         *error_msg = "Image diff pid out of range";
         return kParseError;
       }
-    } else if (option.starts_with("--zygote-diff-pid=")) {
-      const char* zygote_diff_pid = option.substr(strlen("--zygote-diff-pid=")).data();
+    } else if (StartsWith(option, "--zygote-diff-pid=")) {
+      const char* zygote_diff_pid = raw_option + strlen("--zygote-diff-pid=");
 
       if (!android::base::ParseInt(zygote_diff_pid, &zygote_diff_pid_)) {
         *error_msg = "Zygote diff pid out of range";

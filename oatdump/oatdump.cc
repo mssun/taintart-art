@@ -3358,20 +3358,24 @@ struct OatdumpArgs : public CmdlineArgs {
  protected:
   using Base = CmdlineArgs;
 
-  ParseStatus ParseCustom(const StringPiece& option, std::string* error_msg) override {
+  ParseStatus ParseCustom(const char* raw_option,
+                          size_t raw_option_length,
+                          std::string* error_msg) override {
+    DCHECK_EQ(strlen(raw_option), raw_option_length);
     {
-      ParseStatus base_parse = Base::ParseCustom(option, error_msg);
+      ParseStatus base_parse = Base::ParseCustom(raw_option, raw_option_length, error_msg);
       if (base_parse != kParseUnknownArgument) {
         return base_parse;
       }
     }
 
-    if (option.starts_with("--oat-file=")) {
-      oat_filename_ = option.substr(strlen("--oat-file=")).data();
-    } else if (option.starts_with("--dex-file=")) {
-      dex_filename_ = option.substr(strlen("--dex-file=")).data();
-    } else if (option.starts_with("--image=")) {
-      image_location_ = option.substr(strlen("--image=")).data();
+    std::string_view option(raw_option, raw_option_length);
+    if (StartsWith(option, "--oat-file=")) {
+      oat_filename_ = raw_option + strlen("--oat-file=");
+    } else if (StartsWith(option, "--dex-file=")) {
+      dex_filename_ = raw_option + strlen("--dex-file=");
+    } else if (StartsWith(option, "--image=")) {
+      image_location_ = raw_option + strlen("--image=");
     } else if (option == "--no-dump:vmap") {
       dump_vmap_ = false;
     } else if (option =="--dump:code_info_stack_maps") {
@@ -3380,32 +3384,32 @@ struct OatdumpArgs : public CmdlineArgs {
       disassemble_code_ = false;
     } else if (option =="--header-only") {
       dump_header_only_ = true;
-    } else if (option.starts_with("--symbolize=")) {
-      oat_filename_ = option.substr(strlen("--symbolize=")).data();
+    } else if (StartsWith(option, "--symbolize=")) {
+      oat_filename_ = raw_option + strlen("--symbolize=");
       symbolize_ = true;
-    } else if (option.starts_with("--only-keep-debug")) {
+    } else if (StartsWith(option, "--only-keep-debug")) {
       only_keep_debug_ = true;
-    } else if (option.starts_with("--class-filter=")) {
-      class_filter_ = option.substr(strlen("--class-filter=")).data();
-    } else if (option.starts_with("--method-filter=")) {
-      method_filter_ = option.substr(strlen("--method-filter=")).data();
-    } else if (option.starts_with("--list-classes")) {
+    } else if (StartsWith(option, "--class-filter=")) {
+      class_filter_ = raw_option + strlen("--class-filter=");
+    } else if (StartsWith(option, "--method-filter=")) {
+      method_filter_ = raw_option + strlen("--method-filter=");
+    } else if (StartsWith(option, "--list-classes")) {
       list_classes_ = true;
-    } else if (option.starts_with("--list-methods")) {
+    } else if (StartsWith(option, "--list-methods")) {
       list_methods_ = true;
-    } else if (option.starts_with("--export-dex-to=")) {
-      export_dex_location_ = option.substr(strlen("--export-dex-to=")).data();
-    } else if (option.starts_with("--addr2instr=")) {
-      if (!android::base::ParseUint(option.substr(strlen("--addr2instr=")).data(), &addr2instr_)) {
+    } else if (StartsWith(option, "--export-dex-to=")) {
+      export_dex_location_ = raw_option + strlen("--export-dex-to=");
+    } else if (StartsWith(option, "--addr2instr=")) {
+      if (!android::base::ParseUint(raw_option + strlen("--addr2instr="), &addr2instr_)) {
         *error_msg = "Address conversion failed";
         return kParseError;
       }
-    } else if (option.starts_with("--app-image=")) {
-      app_image_ = option.substr(strlen("--app-image=")).data();
-    } else if (option.starts_with("--app-oat=")) {
-      app_oat_ = option.substr(strlen("--app-oat=")).data();
-    } else if (option.starts_with("--dump-imt=")) {
-      imt_dump_ = option.substr(strlen("--dump-imt=")).data();
+    } else if (StartsWith(option, "--app-image=")) {
+      app_image_ = raw_option + strlen("--app-image=");
+    } else if (StartsWith(option, "--app-oat=")) {
+      app_oat_ = raw_option + strlen("--app-oat=");
+    } else if (StartsWith(option, "--dump-imt=")) {
+      imt_dump_ = std::string(option.substr(strlen("--dump-imt=")));
     } else if (option == "--dump-imt-stats") {
       imt_stat_dump_ = true;
     } else {
