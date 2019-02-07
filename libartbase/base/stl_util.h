@@ -18,7 +18,6 @@
 #define ART_LIBARTBASE_BASE_STL_UTIL_H_
 
 #include <algorithm>
-#include <set>
 #include <sstream>
 
 #include <android-base/logging.h>
@@ -135,12 +134,6 @@ struct FNVHash {
     return hash;
   }
 };
-
-// Merge `other` entries into `to_update`.
-template <typename T>
-static inline void MergeSets(std::set<T>& to_update, const std::set<T>& other) {
-  to_update.insert(other.begin(), other.end());
-}
 
 // Returns a copy of the passed vector that doesn't memory-own its entries.
 template <typename T>

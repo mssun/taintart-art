@@ -1928,10 +1928,10 @@ void CompilerDriver::Verify(jobject jclass_loader,
     // Merge all VerifierDeps into the main one.
     verifier::VerifierDeps* verifier_deps = Thread::Current()->GetVerifierDeps();
     for (ThreadPoolWorker* worker : parallel_thread_pool_->GetWorkers()) {
-      verifier::VerifierDeps* thread_deps = worker->GetThread()->GetVerifierDeps();
-      worker->GetThread()->SetVerifierDeps(nullptr);
-      verifier_deps->MergeWith(*thread_deps, GetCompilerOptions().GetDexFilesForOatFile());
-      delete thread_deps;
+      std::unique_ptr<verifier::VerifierDeps> thread_deps(worker->GetThread()->GetVerifierDeps());
+      worker->GetThread()->SetVerifierDeps(nullptr);  // We just took ownership.
+      verifier_deps->MergeWith(std::move(thread_deps),
+                               GetCompilerOptions().GetDexFilesForOatFile());
     }
     Thread::Current()->SetVerifierDeps(nullptr);
   }
