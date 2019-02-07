@@ -149,6 +149,7 @@ enum {
   HIDDEN_API_ENFORCEMENT_POLICY_MASK = (1 << 12)
                                      | (1 << 13),
   PROFILE_SYSTEM_SERVER              = 1 << 14,
+  USE_APP_IMAGE_STARTUP_CACHE        = 1 << 16,
 
   // bits to shift (flags & HIDDEN_API_ENFORCEMENT_POLICY_MASK) by to get a value
   // corresponding to hiddenapi::EnforcementPolicy
@@ -297,6 +298,10 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
 
   bool profile_system_server = (runtime_flags & PROFILE_SYSTEM_SERVER) == PROFILE_SYSTEM_SERVER;
   runtime_flags &= ~PROFILE_SYSTEM_SERVER;
+
+  Runtime::Current()->SetLoadAppImageStartupCacheEnabled(
+      (runtime_flags & USE_APP_IMAGE_STARTUP_CACHE) != 0u);
+  runtime_flags &= ~USE_APP_IMAGE_STARTUP_CACHE;
 
   if (runtime_flags != 0) {
     LOG(ERROR) << StringPrintf("Unknown bits set in runtime_flags: %#x", runtime_flags);
