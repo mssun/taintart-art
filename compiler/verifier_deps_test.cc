@@ -449,6 +449,28 @@ class VerifierDepsTest : public CommonCompilerTest {
            has_unverified_classes;
   }
 
+  // Load the dex file again with a new class loader, decode the VerifierDeps
+  // in `buffer`, allow the caller to modify the deps and then run validation.
+  template<typename Fn>
+  bool RunValidation(Fn fn, const std::vector<uint8_t>& buffer, std::string* error_msg) {
+    ScopedObjectAccess soa(Thread::Current());
+
+    jobject second_loader = LoadDex("VerifierDeps");
+    const auto& second_dex_files = GetDexFiles(second_loader);
+
+    VerifierDeps decoded_deps(second_dex_files, ArrayRef<const uint8_t>(buffer));
+    VerifierDeps::DexFileDeps* decoded_dex_deps =
+        decoded_deps.GetDexFileDeps(*second_dex_files.front());
+
+    // Let the test modify the dependencies.
+    fn(*decoded_dex_deps);
+
+    StackHandleScope<1> hs(soa.Self());
+    Handle<mirror::ClassLoader> new_class_loader =
+        hs.NewHandle<mirror::ClassLoader>(soa.Decode<mirror::ClassLoader>(second_loader));
+    return decoded_deps.ValidateDependencies(new_class_loader, soa.Self(), error_msg);
+  }
+
   std::unique_ptr<verifier::VerifierDeps> verifier_deps_;
   std::vector<const DexFile*> dex_files_;
   const DexFile* primary_dex_file_;
@@ -1177,8 +1199,9 @@ TEST_F(VerifierDepsTest, UnverifiedOrder) {
 }
 
 TEST_F(VerifierDepsTest, VerifyDeps) {
-  VerifyDexFile();
+  std::string error_msg;
 
+  VerifyDexFile();
   ASSERT_EQ(1u, NumberOfCompiledDexFiles());
   ASSERT_TRUE(HasEachKindOfRecord());
 
@@ -1186,249 +1209,166 @@ TEST_F(VerifierDepsTest, VerifyDeps) {
   // the existing `class_loader_` may contain erroneous classes,
   // that ClassLinker::FindClass won't return.
 
-  ScopedObjectAccess soa(Thread::Current());
-  StackHandleScope<1> hs(soa.Self());
-  MutableHandle<mirror::ClassLoader> new_class_loader(hs.NewHandle<mirror::ClassLoader>(nullptr));
-  {
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_TRUE(verifier_deps_->ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
   std::vector<uint8_t> buffer;
   verifier_deps_->Encode(dex_files_, &buffer);
   ASSERT_FALSE(buffer.empty());
 
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_TRUE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
+  // Check that dependencies are satisfied after decoding `buffer`.
+  ASSERT_TRUE(RunValidation([](VerifierDeps::DexFileDeps&) {}, buffer, &error_msg))
+      << error_msg;
 
-  // Fiddle with the dependencies to make sure we catch any change and fail to verify.
+  // Mess with the dependencies to make sure we catch any change and fail to verify.
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        deps.assignable_types_.insert(*deps.unassignable_types_.begin());
+      }, buffer, &error_msg));
 
-  {
-    // Mess up with the assignable_types.
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    deps->assignable_types_.insert(*deps->unassignable_types_.begin());
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
+  // Mess with the unassignable_types.
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        deps.unassignable_types_.insert(*deps.assignable_types_.begin());
+      }, buffer, &error_msg));
 
-  {
-    // Mess up with the unassignable_types.
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    deps->unassignable_types_.insert(*deps->assignable_types_.begin());
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
+  // Mess with classes.
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        for (const auto& entry : deps.classes_) {
+          if (entry.IsResolved()) {
+            deps.classes_.insert(VerifierDeps::ClassResolution(
+                entry.GetDexTypeIndex(), VerifierDeps::kUnresolvedMarker));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any resolved classes";
+        UNREACHABLE();
+      }, buffer, &error_msg));
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        for (const auto& entry : deps.classes_) {
+          if (!entry.IsResolved()) {
+            deps.classes_.insert(VerifierDeps::ClassResolution(
+                entry.GetDexTypeIndex(), VerifierDeps::kUnresolvedMarker - 1));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any unresolved classes";
+        UNREACHABLE();
+      }, buffer, &error_msg));
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        for (const auto& entry : deps.classes_) {
+          if (entry.IsResolved()) {
+            deps.classes_.insert(VerifierDeps::ClassResolution(
+                entry.GetDexTypeIndex(), entry.GetAccessFlags() - 1));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any resolved classes";
+        UNREACHABLE();
+      }, buffer, &error_msg));
 
-  // Mess up with classes.
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    for (const auto& entry : deps->classes_) {
-      if (entry.IsResolved()) {
-        deps->classes_.insert(VerifierDeps::ClassResolution(
-            entry.GetDexTypeIndex(), VerifierDeps::kUnresolvedMarker));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
+  // Mess with fields.
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        for (const auto& entry : deps.fields_) {
+          if (entry.IsResolved()) {
+            deps.fields_.insert(VerifierDeps::FieldResolution(entry.GetDexFieldIndex(),
+                                                              VerifierDeps::kUnresolvedMarker,
+                                                              entry.GetDeclaringClassIndex()));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any resolved fields";
+        UNREACHABLE();
+      }, buffer, &error_msg));
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        for (const auto& entry : deps.fields_) {
+          if (!entry.IsResolved()) {
+            constexpr dex::StringIndex kStringIndexZero(0);  // We know there is a class there.
+            deps.fields_.insert(VerifierDeps::FieldResolution(0 /* we know there is a field there */,
+                                                              VerifierDeps::kUnresolvedMarker - 1,
+                                                              kStringIndexZero));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any unresolved fields";
+        UNREACHABLE();
+      }, buffer, &error_msg));
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        for (const auto& entry : deps.fields_) {
+          if (entry.IsResolved()) {
+            deps.fields_.insert(VerifierDeps::FieldResolution(entry.GetDexFieldIndex(),
+                                                              entry.GetAccessFlags() - 1,
+                                                              entry.GetDeclaringClassIndex()));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any resolved fields";
+        UNREACHABLE();
+      }, buffer, &error_msg));
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        for (const auto& entry : deps.fields_) {
+          constexpr dex::StringIndex kNewTypeIndex(0);
+          if (entry.GetDeclaringClassIndex() != kNewTypeIndex) {
+            deps.fields_.insert(VerifierDeps::FieldResolution(entry.GetDexFieldIndex(),
+                                                              entry.GetAccessFlags(),
+                                                              kNewTypeIndex));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any suitable fields";
+        UNREACHABLE();
+      }, buffer, &error_msg));
 
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    for (const auto& entry : deps->classes_) {
-      if (!entry.IsResolved()) {
-        deps->classes_.insert(VerifierDeps::ClassResolution(
-            entry.GetDexTypeIndex(), VerifierDeps::kUnresolvedMarker - 1));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    for (const auto& entry : deps->classes_) {
-      if (entry.IsResolved()) {
-        deps->classes_.insert(VerifierDeps::ClassResolution(
-            entry.GetDexTypeIndex(), entry.GetAccessFlags() - 1));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  // Mess up with fields.
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    for (const auto& entry : deps->fields_) {
-      if (entry.IsResolved()) {
-        deps->fields_.insert(VerifierDeps::FieldResolution(entry.GetDexFieldIndex(),
-                                                           VerifierDeps::kUnresolvedMarker,
-                                                           entry.GetDeclaringClassIndex()));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    for (const auto& entry : deps->fields_) {
-      if (!entry.IsResolved()) {
-        constexpr dex::StringIndex kStringIndexZero(0);  // We know there is a class there.
-        deps->fields_.insert(VerifierDeps::FieldResolution(0 /* we know there is a field there */,
-                                                           VerifierDeps::kUnresolvedMarker - 1,
-                                                           kStringIndexZero));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    for (const auto& entry : deps->fields_) {
-      if (entry.IsResolved()) {
-        deps->fields_.insert(VerifierDeps::FieldResolution(entry.GetDexFieldIndex(),
-                                                           entry.GetAccessFlags() - 1,
-                                                           entry.GetDeclaringClassIndex()));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    for (const auto& entry : deps->fields_) {
-      constexpr dex::StringIndex kNewTypeIndex(0);
-      if (entry.GetDeclaringClassIndex() != kNewTypeIndex) {
-        deps->fields_.insert(VerifierDeps::FieldResolution(entry.GetDexFieldIndex(),
-                                                           entry.GetAccessFlags(),
-                                                           kNewTypeIndex));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  // Mess up with methods.
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    std::set<VerifierDeps::MethodResolution>* methods = &deps->methods_;
-    for (const auto& entry : *methods) {
-      if (entry.IsResolved()) {
-        methods->insert(VerifierDeps::MethodResolution(entry.GetDexMethodIndex(),
-                                                       VerifierDeps::kUnresolvedMarker,
-                                                       entry.GetDeclaringClassIndex()));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    std::set<VerifierDeps::MethodResolution>* methods = &deps->methods_;
-    for (const auto& entry : *methods) {
-      if (!entry.IsResolved()) {
-        constexpr dex::StringIndex kStringIndexZero(0);  // We know there is a class there.
-        methods->insert(VerifierDeps::MethodResolution(0 /* we know there is a method there */,
-                                                       VerifierDeps::kUnresolvedMarker - 1,
-                                                       kStringIndexZero));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    std::set<VerifierDeps::MethodResolution>* methods = &deps->methods_;
-    for (const auto& entry : *methods) {
-      if (entry.IsResolved()) {
-        methods->insert(VerifierDeps::MethodResolution(entry.GetDexMethodIndex(),
-                                                       entry.GetAccessFlags() - 1,
-                                                       entry.GetDeclaringClassIndex()));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
-
-  {
-    VerifierDeps decoded_deps(dex_files_, ArrayRef<const uint8_t>(buffer));
-    VerifierDeps::DexFileDeps* deps = decoded_deps.GetDexFileDeps(*primary_dex_file_);
-    bool found = false;
-    std::set<VerifierDeps::MethodResolution>* methods = &deps->methods_;
-    for (const auto& entry : *methods) {
-      constexpr dex::StringIndex kNewTypeIndex(0);
-      if (entry.IsResolved() && entry.GetDeclaringClassIndex() != kNewTypeIndex) {
-        methods->insert(VerifierDeps::MethodResolution(entry.GetDexMethodIndex(),
-                                                       entry.GetAccessFlags(),
-                                                       kNewTypeIndex));
-        found = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found);
-    new_class_loader.Assign(soa.Decode<mirror::ClassLoader>(LoadDex("VerifierDeps")));
-    ASSERT_FALSE(decoded_deps.ValidateDependencies(new_class_loader, soa.Self()));
-  }
+  // Mess with methods.
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        std::set<VerifierDeps::MethodResolution>* methods = &deps.methods_;
+        for (const auto& entry : *methods) {
+          if (entry.IsResolved()) {
+            methods->insert(VerifierDeps::MethodResolution(entry.GetDexMethodIndex(),
+                                                          VerifierDeps::kUnresolvedMarker,
+                                                          entry.GetDeclaringClassIndex()));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any resolved methods";
+        UNREACHABLE();
+      }, buffer, &error_msg));
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        std::set<VerifierDeps::MethodResolution>* methods = &deps.methods_;
+        for (const auto& entry : *methods) {
+          if (!entry.IsResolved()) {
+            constexpr dex::StringIndex kStringIndexZero(0);  // We know there is a class there.
+            methods->insert(VerifierDeps::MethodResolution(0 /* we know there is a method there */,
+                                                          VerifierDeps::kUnresolvedMarker - 1,
+                                                          kStringIndexZero));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any unresolved methods";
+        UNREACHABLE();
+      }, buffer, &error_msg));
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        std::set<VerifierDeps::MethodResolution>* methods = &deps.methods_;
+        for (const auto& entry : *methods) {
+          if (entry.IsResolved()) {
+            methods->insert(VerifierDeps::MethodResolution(entry.GetDexMethodIndex(),
+                                                          entry.GetAccessFlags() - 1,
+                                                          entry.GetDeclaringClassIndex()));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any resolved methods";
+        UNREACHABLE();
+      }, buffer, &error_msg));
+  ASSERT_FALSE(RunValidation([](VerifierDeps::DexFileDeps& deps) {
+        std::set<VerifierDeps::MethodResolution>* methods = &deps.methods_;
+        for (const auto& entry : *methods) {
+          constexpr dex::StringIndex kNewTypeIndex(0);
+          if (entry.IsResolved() && entry.GetDeclaringClassIndex() != kNewTypeIndex) {
+            methods->insert(VerifierDeps::MethodResolution(entry.GetDexMethodIndex(),
+                                                          entry.GetAccessFlags(),
+                                                          kNewTypeIndex));
+            return;
+          }
+        }
+        LOG(FATAL) << "Could not find any suitable methods";
+        UNREACHABLE();
+      }, buffer, &error_msg));
 }
 
 TEST_F(VerifierDepsTest, CompilerDriver) {
