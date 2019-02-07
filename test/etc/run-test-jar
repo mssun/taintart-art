@@ -1005,12 +1005,14 @@ else
     export ANDROID_DATA="$DEX_LOCATION"
     export ANDROID_ROOT="${ANDROID_ROOT}"
     export ANDROID_RUNTIME_ROOT="${ANDROID_RUNTIME_ROOT}"
-    export LD_LIBRARY_PATH="${ANDROID_ROOT}/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
     if [ "$USE_ZIPAPEX" = "y" ]; then
       # Put the zipapex files in front of the ld-library-path
-      export LD_LIBRARY_PATH="${ANDROID_DATA}/zipapex/${LIBRARY_DIRECTORY}:${LD_LIBRARY_PATH}"
+      export LD_LIBRARY_PATH="${ANDROID_DATA}/zipapex/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
+      export DYLD_LIBRARY_PATH="${ANDROID_DATA}/zipapex/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
+    else
+      export LD_LIBRARY_PATH="${ANDROID_ROOT}/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
+      export DYLD_LIBRARY_PATH="${ANDROID_ROOT}/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
     fi
-    export DYLD_LIBRARY_PATH="${ANDROID_ROOT}/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
     export PATH="$PATH:$BIN_DIR"
 
     # Temporarily disable address space layout randomization (ASLR).

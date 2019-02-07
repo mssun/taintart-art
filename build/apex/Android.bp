@@ -103,6 +103,14 @@ libcore_target_java_libs = [
     "apache-xml",
 ]
 
+// Temporary library includes for b/123591866 as all libraries are moved into the main art-apex.
+art_runtime_libraries_zipapex = [
+    "libnativebridge",
+    "libnativeloader",
+    "libnativehelper",
+    "libcutils",
+]
+
 apex_key {
     name: "com.android.runtime.key",
     public_key: "com.android.runtime.avbpubkey",
@@ -191,6 +199,7 @@ apex {
 art_apex {
     name: "com.android.runtime.host",
     compile_multilib: "both",
+    installable: false,
     payload_type: "zip",
     host_supported: true,
     device_supported: false,
@@ -200,7 +209,8 @@ art_apex {
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_debug_native_shared_libs
         + libcore_native_shared_libs
-        + libcore_debug_native_shared_libs,
+        + libcore_debug_native_shared_libs
+        + art_runtime_libraries_zipapex,
     multilib: {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
