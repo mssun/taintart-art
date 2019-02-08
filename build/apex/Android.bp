@@ -196,10 +196,9 @@ apex {
 // because binaries have different multilib classes and 'multilib: {}' isn't
 // supported by target: { ... }.
 // See b/120617876 for more information.
-art_apex {
+art_apex_test {
     name: "com.android.runtime.host",
     compile_multilib: "both",
-    installable: false,
     payload_type: "zip",
     host_supported: true,
     device_supported: false,
