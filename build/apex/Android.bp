@@ -85,6 +85,11 @@ art_tools_host_only_binaries = [
 art_tools_device_binaries = art_tools_common_binaries + art_tools_device_only_binaries
 art_tools_host_binaries = art_tools_common_binaries + art_tools_host_only_binaries
 
+// Libraries needed to use com.android.runtime.host for zipapex run-tests
+art_runtime_host_run_test_libs = [
+    "libartd-disassembler"
+]
+
 // Libcore native libraries.
 libcore_native_shared_libs = [
     "libjavacore",
@@ -209,7 +214,8 @@ art_apex_test {
         + art_runtime_debug_native_shared_libs
         + libcore_native_shared_libs
         + libcore_debug_native_shared_libs
-        + art_runtime_libraries_zipapex,
+        + art_runtime_libraries_zipapex
+        + art_runtime_host_run_test_libs,
     multilib: {
         both: {
             // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
