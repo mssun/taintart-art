@@ -2355,10 +2355,6 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   // 2) Their inputs are identical.
   bool Equals(const HInstruction* other) const;
 
-  // TODO: Remove this indirection when the [[pure]] attribute proposal (n3744)
-  // is adopted and implemented by our C++ compiler(s). Fow now, we need to hide
-  // the virtual function because the __attribute__((__pure__)) doesn't really
-  // apply the strong requirement for virtual functions, preventing optimizations.
   InstructionKind GetKind() const { return GetPackedField<InstructionKindField>(); }
 
   virtual size_t ComputeHashCode() const {
