@@ -25,6 +25,7 @@
 #include <iostream>
 #include <set>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -36,7 +37,7 @@
 #include "base/mem_map.h"
 #include "base/scoped_flock.h"
 #include "base/stl_util.h"
-#include "base/stringpiece.h"
+#include "base/string_view_cpp20.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
@@ -188,6 +189,33 @@ NO_RETURN static void Abort(const char* msg) {
   exit(1);
 }
 
+template <typename T>
+static void ParseUintOption(const char* raw_option,
+                            std::string_view option_prefix,
+                            T* out) {
+  DCHECK(EndsWith(option_prefix, "="));
+  DCHECK(StartsWith(raw_option, option_prefix)) << raw_option << " " << option_prefix;
+  const char* value_string = raw_option + option_prefix.size();
+  int64_t parsed_integer_value = 0;
+  if (!android::base::ParseInt(value_string, &parsed_integer_value)) {
+    std::string option_name(option_prefix.substr(option_prefix.size() - 1u));
+    Usage("Failed to parse %s '%s' as an integer", option_name.c_str(), value_string);
+  }
+  if (parsed_integer_value < 0) {
+    std::string option_name(option_prefix.substr(option_prefix.size() - 1u));
+    Usage("%s passed a negative value %" PRId64, option_name.c_str(), parsed_integer_value);
+  }
+  if (static_cast<uint64_t>(parsed_integer_value) >
+      static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::max())) {
+    std::string option_name(option_prefix.substr(option_prefix.size() - 1u));
+    Usage("%s passed a value %" PRIu64 " above max (%" PRIu64 ")",
+          option_name.c_str(),
+          static_cast<uint64_t>(parsed_integer_value),
+          static_cast<uint64_t>(std::numeric_limits<T>::max()));
+  }
+  *out = dchecked_integral_cast<T>(parsed_integer_value);
+}
+
 // TODO(calin): This class has grown too much from its initial design. Split the functionality
 // into smaller, more contained pieces.
 class ProfMan final {
@@ -226,7 +254,8 @@ class ProfMan final {
     }
 
     for (int i = 0; i < argc; ++i) {
-      const StringPiece option(argv[i]);
+      const char* raw_option = argv[i];
+      const std::string_view option(raw_option);
       const bool log_options = false;
       if (log_options) {
         LOG(INFO) << "profman: option[" << i << "]=" << argv[i];
@@ -235,66 +264,60 @@ class ProfMan final {
         dump_only_ = true;
       } else if (option == "--dump-classes-and-methods") {
         dump_classes_and_methods_ = true;
-      } else if (option.starts_with("--create-profile-from=")) {
-        create_profile_from_file_ = option.substr(strlen("--create-profile-from=")).ToString();
-      } else if (option.starts_with("--dump-output-to-fd=")) {
-        ParseUintOption(option, "--dump-output-to-fd", &dump_output_to_fd_, Usage);
+      } else if (StartsWith(option, "--create-profile-from=")) {
+        create_profile_from_file_ = std::string(option.substr(strlen("--create-profile-from=")));
+      } else if (StartsWith(option, "--dump-output-to-fd=")) {
+        ParseUintOption(raw_option, "--dump-output-to-fd=", &dump_output_to_fd_);
       } else if (option == "--generate-boot-image-profile") {
         generate_boot_image_profile_ = true;
-      } else if (option.starts_with("--boot-image-class-threshold=")) {
-        ParseUintOption(option,
-                        "--boot-image-class-threshold",
-                        &boot_image_options_.image_class_theshold,
-                        Usage);
-      } else if (option.starts_with("--boot-image-clean-class-threshold=")) {
-        ParseUintOption(option,
-                        "--boot-image-clean-class-threshold",
-                        &boot_image_options_.image_class_clean_theshold,
-                        Usage);
-      } else if (option.starts_with("--boot-image-sampled-method-threshold=")) {
-        ParseUintOption(option,
-                        "--boot-image-sampled-method-threshold",
-                        &boot_image_options_.compiled_method_threshold,
-                        Usage);
-      } else if (option.starts_with("--profile-file=")) {
-        profile_files_.push_back(option.substr(strlen("--profile-file=")).ToString());
-      } else if (option.starts_with("--profile-file-fd=")) {
-        ParseFdForCollection(option, "--profile-file-fd", &profile_files_fd_);
-      } else if (option.starts_with("--reference-profile-file=")) {
-        reference_profile_file_ = option.substr(strlen("--reference-profile-file=")).ToString();
-      } else if (option.starts_with("--reference-profile-file-fd=")) {
-        ParseUintOption(option, "--reference-profile-file-fd", &reference_profile_file_fd_, Usage);
-      } else if (option.starts_with("--dex-location=")) {
-        dex_locations_.push_back(option.substr(strlen("--dex-location=")).ToString());
-      } else if (option.starts_with("--apk-fd=")) {
-        ParseFdForCollection(option, "--apk-fd", &apks_fd_);
-      } else if (option.starts_with("--apk=")) {
-        apk_files_.push_back(option.substr(strlen("--apk=")).ToString());
-      } else if (option.starts_with("--generate-test-profile=")) {
-        test_profile_ = option.substr(strlen("--generate-test-profile=")).ToString();
-      } else if (option.starts_with("--generate-test-profile-num-dex=")) {
-        ParseUintOption(option,
-                        "--generate-test-profile-num-dex",
-                        &test_profile_num_dex_,
-                        Usage);
-      } else if (option.starts_with("--generate-test-profile-method-percentage")) {
-        ParseUintOption(option,
-                        "--generate-test-profile-method-percentage",
-                        &test_profile_method_percerntage_,
-                        Usage);
-      } else if (option.starts_with("--generate-test-profile-class-percentage")) {
-        ParseUintOption(option,
-                        "--generate-test-profile-class-percentage",
-                        &test_profile_class_percentage_,
-                        Usage);
-      } else if (option.starts_with("--generate-test-profile-seed=")) {
-        ParseUintOption(option, "--generate-test-profile-seed", &test_profile_seed_, Usage);
-      } else if (option.starts_with("--copy-and-update-profile-key")) {
+      } else if (StartsWith(option, "--boot-image-class-threshold=")) {
+        ParseUintOption(raw_option,
+                        "--boot-image-class-threshold=",
+                        &boot_image_options_.image_class_theshold);
+      } else if (StartsWith(option, "--boot-image-clean-class-threshold=")) {
+        ParseUintOption(raw_option,
+                        "--boot-image-clean-class-threshold=",
+                        &boot_image_options_.image_class_clean_theshold);
+      } else if (StartsWith(option, "--boot-image-sampled-method-threshold=")) {
+        ParseUintOption(raw_option,
+                        "--boot-image-sampled-method-threshold=",
+                        &boot_image_options_.compiled_method_threshold);
+      } else if (StartsWith(option, "--profile-file=")) {
+        profile_files_.push_back(std::string(option.substr(strlen("--profile-file="))));
+      } else if (StartsWith(option, "--profile-file-fd=")) {
+        ParseFdForCollection(raw_option, "--profile-file-fd=", &profile_files_fd_);
+      } else if (StartsWith(option, "--reference-profile-file=")) {
+        reference_profile_file_ = std::string(option.substr(strlen("--reference-profile-file=")));
+      } else if (StartsWith(option, "--reference-profile-file-fd=")) {
+        ParseUintOption(raw_option, "--reference-profile-file-fd=", &reference_profile_file_fd_);
+      } else if (StartsWith(option, "--dex-location=")) {
+        dex_locations_.push_back(std::string(option.substr(strlen("--dex-location="))));
+      } else if (StartsWith(option, "--apk-fd=")) {
+        ParseFdForCollection(raw_option, "--apk-fd=", &apks_fd_);
+      } else if (StartsWith(option, "--apk=")) {
+        apk_files_.push_back(std::string(option.substr(strlen("--apk="))));
+      } else if (StartsWith(option, "--generate-test-profile=")) {
+        test_profile_ = std::string(option.substr(strlen("--generate-test-profile=")));
+      } else if (StartsWith(option, "--generate-test-profile-num-dex=")) {
+        ParseUintOption(raw_option,
+                        "--generate-test-profile-num-dex=",
+                        &test_profile_num_dex_);
+      } else if (StartsWith(option, "--generate-test-profile-method-percentage=")) {
+        ParseUintOption(raw_option,
+                        "--generate-test-profile-method-percentage=",
+                        &test_profile_method_percerntage_);
+      } else if (StartsWith(option, "--generate-test-profile-class-percentage=")) {
+        ParseUintOption(raw_option,
+                        "--generate-test-profile-class-percentage=",
+                        &test_profile_class_percentage_);
+      } else if (StartsWith(option, "--generate-test-profile-seed=")) {
+        ParseUintOption(raw_option, "--generate-test-profile-seed=", &test_profile_seed_);
+      } else if (option == "--copy-and-update-profile-key") {
         copy_and_update_profile_key_ = true;
-      } else if (option.starts_with("--store-aggregation-counters")) {
+      } else if (option == "--store-aggregation-counters") {
         store_aggregation_counters_ = true;
       } else {
-        Usage("Unknown argument '%s'", option.data());
+        Usage("Unknown argument '%s'", raw_option);
       }
     }
 
@@ -1265,11 +1288,11 @@ class ProfMan final {
   }
 
  private:
-  static void ParseFdForCollection(const StringPiece& option,
-                                   const char* arg_name,
+  static void ParseFdForCollection(const char* raw_option,
+                                   std::string_view option_prefix,
                                    std::vector<int>* fds) {
     int fd;
-    ParseUintOption(option, arg_name, &fd, Usage);
+    ParseUintOption(raw_option, option_prefix, &fd);
     fds->push_back(fd);
   }
 

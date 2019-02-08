@@ -18,6 +18,8 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include <string>
+#include <string_view>
 
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
@@ -27,6 +29,7 @@
 #include "base/mem_map.h"
 #include "base/os.h"
 #include "base/stl_util.h"
+#include "base/string_view_cpp20.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/class_accessor-inl.h"
@@ -887,45 +890,48 @@ class HiddenApi final {
     argc--;
 
     if (argc > 0) {
-      const StringPiece command(argv[0]);
+      const char* raw_command = argv[0];
+      const std::string_view command(raw_command);
       if (command == "encode") {
         for (int i = 1; i < argc; ++i) {
-          const StringPiece option(argv[i]);
-          if (option.starts_with("--input-dex=")) {
-            boot_dex_paths_.push_back(option.substr(strlen("--input-dex=")).ToString());
-          } else if (option.starts_with("--output-dex=")) {
-            output_dex_paths_.push_back(option.substr(strlen("--output-dex=")).ToString());
-          } else if (option.starts_with("--api-flags=")) {
-            api_flags_path_ = option.substr(strlen("--api-flags=")).ToString();
+          const char* raw_option = argv[i];
+          const std::string_view option(raw_option);
+          if (StartsWith(option, "--input-dex=")) {
+            boot_dex_paths_.push_back(std::string(option.substr(strlen("--input-dex="))));
+          } else if (StartsWith(option, "--output-dex=")) {
+            output_dex_paths_.push_back(std::string(option.substr(strlen("--output-dex="))));
+          } else if (StartsWith(option, "--api-flags=")) {
+            api_flags_path_ = std::string(option.substr(strlen("--api-flags=")));
           } else if (option == "--no-force-assign-all") {
             force_assign_all_ = false;
           } else {
-            Usage("Unknown argument '%s'", option.data());
+            Usage("Unknown argument '%s'", raw_option);
           }
         }
         return Command::kEncode;
       } else if (command == "list") {
         for (int i = 1; i < argc; ++i) {
-          const StringPiece option(argv[i]);
-          if (option.starts_with("--boot-dex=")) {
-            boot_dex_paths_.push_back(option.substr(strlen("--boot-dex=")).ToString());
-          } else if (option.starts_with("--public-stub-classpath=")) {
+          const char* raw_option = argv[i];
+          const std::string_view option(raw_option);
+          if (StartsWith(option, "--boot-dex=")) {
+            boot_dex_paths_.push_back(std::string(option.substr(strlen("--boot-dex="))));
+          } else if (StartsWith(option, "--public-stub-classpath=")) {
             stub_classpaths_.push_back(std::make_pair(
-                option.substr(strlen("--public-stub-classpath=")).ToString(),
+                std::string(option.substr(strlen("--public-stub-classpath="))),
                 ApiList::Whitelist()));
-          } else if (option.starts_with("--core-platform-stub-classpath=")) {
+          } else if (StartsWith(option, "--core-platform-stub-classpath=")) {
             stub_classpaths_.push_back(std::make_pair(
-                option.substr(strlen("--core-platform-stub-classpath=")).ToString(),
+                std::string(option.substr(strlen("--core-platform-stub-classpath="))),
                 ApiList::CorePlatformApi()));
-          } else if (option.starts_with("--out-api-flags=")) {
-            api_flags_path_ = option.substr(strlen("--out-api-flags=")).ToString();
+          } else if (StartsWith(option, "--out-api-flags=")) {
+            api_flags_path_ = std::string(option.substr(strlen("--out-api-flags=")));
           } else {
-            Usage("Unknown argument '%s'", option.data());
+            Usage("Unknown argument '%s'", raw_option);
           }
         }
         return Command::kList;
       } else {
-        Usage("Unknown command '%s'", command.data());
+        Usage("Unknown command '%s'", raw_command);
       }
     } else {
       Usage("No command specified");
