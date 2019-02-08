@@ -17,6 +17,7 @@
 package android.test.anno;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.AnnotationFormatError;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -241,8 +242,8 @@ public class TestAnnotations {
                 Annotation[] annos = m.getDeclaredAnnotations();
                 System.out.println("  annotations on METH " + m + ":");
             }
-        } catch (NoSuchFieldError expected) {
-            System.out.println("Got expected NoSuchFieldError");
+        } catch (Error expected) {
+            System.out.println("Got expected Error for renamed enum");
         }
 
         // Test if annotations marked VISIBILITY_BUILD are visible to runtime in M and earlier.
