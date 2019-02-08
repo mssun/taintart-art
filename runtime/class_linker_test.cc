@@ -409,7 +409,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
 
   void AssertDexFileClass(ObjPtr<mirror::ClassLoader> class_loader, const std::string& descriptor)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    ASSERT_TRUE(descriptor != nullptr);
+    ASSERT_FALSE(descriptor.empty());
     Thread* self = Thread::Current();
     StackHandleScope<1> hs(self);
     Handle<mirror::Class> klass(

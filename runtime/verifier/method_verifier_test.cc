@@ -35,7 +35,7 @@ class MethodVerifierTest : public CommonRuntimeTest {
  protected:
   void VerifyClass(const std::string& descriptor)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    ASSERT_TRUE(descriptor != nullptr);
+    ASSERT_FALSE(descriptor.empty());
     Thread* self = Thread::Current();
     ObjPtr<mirror::Class> klass = class_linker_->FindSystemClass(self, descriptor.c_str());
 
