@@ -94,22 +94,22 @@ art_runtime_host_run_test_libs = [
     "libartd-disassembler"
 ]
 
-// Libcore native libraries.
+// Core Java libraries.
+libcore_java_libs = [
+    "core-oj",
+    "core-libart",
+    "okhttp",
+    "bouncycastle",
+    "apache-xml",
+]
+
+// Native libraries that support the core Java libraries.
 libcore_native_shared_libs = [
     "libjavacore",
     "libopenjdk",
     "libexpat",
     "libz",
     "libziparchive"
-]
-
-// Java libraries
-libcore_target_java_libs = [
-    "core-oj",
-    "core-libart",
-    "okhttp",
-    "bouncycastle",
-    "apache-xml",
 ]
 
 // Temporary library includes for b/123591866 as all libraries are moved into the main art-apex.
@@ -143,7 +143,7 @@ apex {
     name: "com.android.runtime.release",
     compile_multilib: "both",
     manifest: "manifest.json",
-    java_libs: libcore_target_java_libs,
+    java_libs: libcore_java_libs,
     native_shared_libs: art_runtime_base_native_shared_libs
         + bionic_native_shared_libs
         + libcore_native_shared_libs,
@@ -173,7 +173,7 @@ apex {
     name: "com.android.runtime.debug",
     compile_multilib: "both",
     manifest: "manifest.json",
-    java_libs: libcore_target_java_libs,
+    java_libs: libcore_java_libs,
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_debug_native_shared_libs
         + bionic_native_shared_libs
@@ -212,7 +212,7 @@ art_apex_test {
     host_supported: true,
     device_supported: false,
     manifest: "manifest.json",
-    java_libs: libcore_target_java_libs,
+    java_libs: libcore_java_libs,
     ignore_system_library_special_case: true,
     native_shared_libs: art_runtime_base_native_shared_libs
         + art_runtime_debug_native_shared_libs
