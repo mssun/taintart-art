@@ -41,14 +41,13 @@ template<typename Vector>
 void WriteCIE(bool is64bit,
               Reg return_address_register,
               const DebugFrameOpCodeWriter<Vector>& opcodes,
-              CFIFormat format,
               std::vector<uint8_t>* buffer) {
   static_assert(std::is_same<typename Vector::value_type, uint8_t>::value, "Invalid value type");
 
   Writer<> writer(buffer);
   size_t cie_header_start_ = writer.data()->size();
   writer.PushUint32(0);  // Length placeholder.
-  writer.PushUint32((format == DW_EH_FRAME_FORMAT) ? 0 : 0xFFFFFFFF);  // CIE id.
+  writer.PushUint32(0xFFFFFFFF);  // CIE id.
   writer.PushUint8(1);   // Version.
   writer.PushString("zR");
   writer.PushUleb128(DebugFrameOpCodeWriter<Vector>::kCodeAlignmentFactor);
@@ -56,19 +55,9 @@ void WriteCIE(bool is64bit,
   writer.PushUleb128(return_address_register.num());  // ubyte in DWARF2.
   writer.PushUleb128(1);  // z: Augmentation data size.
   if (is64bit) {
-    if (format == DW_EH_FRAME_FORMAT) {
-      writer.PushUint8(DW_EH_PE_pcrel | DW_EH_PE_sdata8);   // R: Pointer encoding.
-    } else {
-      DCHECK(format == DW_DEBUG_FRAME_FORMAT);
-      writer.PushUint8(DW_EH_PE_absptr | DW_EH_PE_udata8);  // R: Pointer encoding.
-    }
+    writer.PushUint8(DW_EH_PE_absptr | DW_EH_PE_udata8);  // R: Pointer encoding.
   } else {
-    if (format == DW_EH_FRAME_FORMAT) {
-      writer.PushUint8(DW_EH_PE_pcrel | DW_EH_PE_sdata4);   // R: Pointer encoding.
-    } else {
-      DCHECK(format == DW_DEBUG_FRAME_FORMAT);
-      writer.PushUint8(DW_EH_PE_absptr | DW_EH_PE_udata4);  // R: Pointer encoding.
-    }
+    writer.PushUint8(DW_EH_PE_absptr | DW_EH_PE_udata4);  // R: Pointer encoding.
   }
   writer.PushData(opcodes.data());
   writer.Pad(is64bit ? 8 : 4);
@@ -83,7 +72,6 @@ void WriteFDE(bool is64bit,
               uint64_t code_address,
               uint64_t code_size,
               const ArrayRef<const uint8_t>& opcodes,
-              CFIFormat format,
               uint64_t buffer_address,  // Address of buffer in linked application.
               std::vector<uint8_t>* buffer,
               std::vector<uintptr_t>* patch_locations) {
@@ -93,23 +81,11 @@ void WriteFDE(bool is64bit,
   Writer<> writer(buffer);
   size_t fde_header_start = writer.data()->size();
   writer.PushUint32(0);  // Length placeholder.
-  if (format == DW_EH_FRAME_FORMAT) {
-    uint32_t cie_pointer = (buffer_address + buffer->size()) - cie_address;
-    writer.PushUint32(cie_pointer);
-  } else {
-    DCHECK(format == DW_DEBUG_FRAME_FORMAT);
-    uint32_t cie_pointer = cie_address - section_address;
-    writer.PushUint32(cie_pointer);
-  }
-  if (format == DW_EH_FRAME_FORMAT) {
-    // .eh_frame encodes the location as relative address.
-    code_address -= buffer_address + buffer->size();
-  } else {
-    DCHECK(format == DW_DEBUG_FRAME_FORMAT);
-    // Relocate code_address if it has absolute value.
-    if (patch_locations != nullptr) {
-      patch_locations->push_back(buffer_address + buffer->size() - section_address);
-    }
+  uint32_t cie_pointer = cie_address - section_address;
+  writer.PushUint32(cie_pointer);
+  // Relocate code_address if it has absolute value.
+  if (patch_locations != nullptr) {
+    patch_locations->push_back(buffer_address + buffer->size() - section_address);
   }
   if (is64bit) {
     writer.PushUint64(code_address);

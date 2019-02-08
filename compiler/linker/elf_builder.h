@@ -50,8 +50,6 @@ namespace linker {
 //   .dynamic                    - Tags which let the linker locate .dynsym.
 //   .strtab                     - Names for .symtab.
 //   .symtab                     - Debug symbols.
-//   .eh_frame                   - Unwind information (CFI).
-//   .eh_frame_hdr               - Index of .eh_frame.
 //   .debug_frame                - Unwind information (CFI).
 //   .debug_frame.oat_patches    - Addresses for relocation.
 //   .debug_info                 - Debug information.
@@ -535,11 +533,11 @@ class ElfBuilder final {
         dynsym_(this, ".dynsym", SHT_DYNSYM, SHF_ALLOC, &dynstr_),
         hash_(this, ".hash", SHT_HASH, SHF_ALLOC, &dynsym_, 0, sizeof(Elf_Word), sizeof(Elf_Word)),
         dynamic_(this, ".dynamic", SHT_DYNAMIC, SHF_ALLOC, &dynstr_, 0, kPageSize, sizeof(Elf_Dyn)),
-        eh_frame_(this, ".eh_frame", SHT_PROGBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
-        eh_frame_hdr_(this, ".eh_frame_hdr", SHT_PROGBITS, SHF_ALLOC, nullptr, 0, 4, 0),
         strtab_(this, ".strtab", 0, 1),
         symtab_(this, ".symtab", SHT_SYMTAB, 0, &strtab_),
         debug_frame_(this, ".debug_frame", SHT_PROGBITS, 0, nullptr, 0, sizeof(Elf_Addr), 0),
+        debug_frame_hdr_(
+            this, ".debug_frame_hdr.android", SHT_PROGBITS, 0, nullptr, 0, sizeof(Elf_Addr), 0),
         debug_info_(this, ".debug_info", SHT_PROGBITS, 0, nullptr, 0, 1, 0),
         debug_line_(this, ".debug_line", SHT_PROGBITS, 0, nullptr, 0, 1, 0),
         shstrtab_(this, ".shstrtab", 0, 1),
@@ -558,7 +556,6 @@ class ElfBuilder final {
     dex_.phdr_flags_ = PF_R;
     dynamic_.phdr_flags_ = PF_R | PF_W;
     dynamic_.phdr_type_ = PT_DYNAMIC;
-    eh_frame_hdr_.phdr_type_ = PT_GNU_EH_FRAME;
     abiflags_.phdr_type_ = PT_MIPS_ABIFLAGS;
     build_id_.phdr_type_ = PT_NOTE;
   }
@@ -573,9 +570,8 @@ class ElfBuilder final {
   Section* GetDex() { return &dex_; }
   StringSection* GetStrTab() { return &strtab_; }
   SymbolSection* GetSymTab() { return &symtab_; }
-  Section* GetEhFrame() { return &eh_frame_; }
-  Section* GetEhFrameHdr() { return &eh_frame_hdr_; }
   Section* GetDebugFrame() { return &debug_frame_; }
+  Section* GetDebugFrameHdr() { return &debug_frame_hdr_; }
   Section* GetDebugInfo() { return &debug_info_; }
   Section* GetDebugLine() { return &debug_line_; }
 
@@ -633,9 +629,6 @@ class ElfBuilder final {
 
     // Note: loaded_size_ == 0 for tests that don't write .rodata, .text, .bss,
     // .dynstr, dynsym, .hash and .dynamic. These tests should not read loaded_size_.
-    // TODO: Either refactor the .eh_frame creation so that it counts towards loaded_size_,
-    // or remove all support for .eh_frame. (The currently unused .eh_frame counts towards
-    // the virtual_address_ but we don't consider it for loaded_size_.)
     CHECK(loaded_size_ == 0 || loaded_size_ == RoundUp(virtual_address_, kPageSize))
         << loaded_size_ << " " << virtual_address_;
 
@@ -1079,11 +1072,10 @@ class ElfBuilder final {
   SymbolSection dynsym_;
   CachedSection hash_;
   CachedSection dynamic_;
-  Section eh_frame_;
-  Section eh_frame_hdr_;
   StringSection strtab_;
   SymbolSection symtab_;
   Section debug_frame_;
+  Section debug_frame_hdr_;
   Section debug_info_;
   Section debug_line_;
   StringSection shstrtab_;

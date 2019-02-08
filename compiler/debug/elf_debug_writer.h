@@ -38,7 +38,6 @@ template <typename ElfTypes>
 void WriteDebugInfo(
     linker::ElfBuilder<ElfTypes>* builder,
     const DebugInfo& debug_info,
-    dwarf::CFIFormat cfi_format,
     bool write_oat_patches);
 
 std::vector<uint8_t> MakeMiniDebugInfo(
