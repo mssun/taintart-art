@@ -3078,6 +3078,18 @@ void InstructionCodeGeneratorARMVIXL::VisitSelect(HSelect* select) {
   const Location first = locations->InAt(0);
   const Location out = locations->Out();
   const Location second = locations->InAt(1);
+
+  // In the unlucky case the output of this instruction overlaps
+  // with an input of an "emitted-at-use-site" condition, and
+  // the output of this instruction is not one of its inputs, we'll
+  // need to fallback to branches instead of conditional ARM instructions.
+  bool output_overlaps_with_condition_inputs =
+      !IsBooleanValueOrMaterializedCondition(condition) &&
+      !out.Equals(first) &&
+      !out.Equals(second) &&
+      (condition->GetLocations()->InAt(0).Equals(out) ||
+       condition->GetLocations()->InAt(1).Equals(out));
+  DCHECK(!output_overlaps_with_condition_inputs || condition->IsCondition());
   Location src;
 
   if (condition->IsIntConstant()) {
@@ -3091,7 +3103,7 @@ void InstructionCodeGeneratorARMVIXL::VisitSelect(HSelect* select) {
     return;
   }
 
-  if (!DataType::IsFloatingPointType(type)) {
+  if (!DataType::IsFloatingPointType(type) && !output_overlaps_with_condition_inputs) {
     bool invert = false;
 
     if (out.Equals(second)) {
@@ -3163,6 +3175,7 @@ void InstructionCodeGeneratorARMVIXL::VisitSelect(HSelect* select) {
   vixl32::Label* false_target = nullptr;
   vixl32::Label* true_target = nullptr;
   vixl32::Label select_end;
+  vixl32::Label other_case;
   vixl32::Label* const target = codegen_->GetFinalLabel(select, &select_end);
 
   if (out.Equals(second)) {
@@ -3173,12 +3186,21 @@ void InstructionCodeGeneratorARMVIXL::VisitSelect(HSelect* select) {
     src = second;
 
     if (!out.Equals(first)) {
-      codegen_->MoveLocation(out, first, type);
+      if (output_overlaps_with_condition_inputs) {
+        false_target = &other_case;
+      } else {
+        codegen_->MoveLocation(out, first, type);
+      }
     }
   }
 
   GenerateTestAndBranch(select, 2, true_target, false_target, /* far_target */ false);
   codegen_->MoveLocation(out, src, type);
+  if (output_overlaps_with_condition_inputs) {
+    __ B(target);
+    __ Bind(&other_case);
+    codegen_->MoveLocation(out, first, type);
+  }
 
   if (select_end.IsReferenced()) {
     __ Bind(&select_end);
@@ -3277,31 +3299,16 @@ void CodeGeneratorARMVIXL::GenerateConditionWithZero(IfCondition condition,
 void LocationsBuilderARMVIXL::HandleCondition(HCondition* cond) {
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(cond, LocationSummary::kNoCall);
-  // Handle the long/FP comparisons made in instruction simplification.
-  switch (cond->InputAt(0)->GetType()) {
-    case DataType::Type::kInt64:
-      locations->SetInAt(0, Location::RequiresRegister());
-      locations->SetInAt(1, Location::RegisterOrConstant(cond->InputAt(1)));
-      if (!cond->IsEmittedAtUseSite()) {
-        locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
-      }
-      break;
-
-    case DataType::Type::kFloat32:
-    case DataType::Type::kFloat64:
-      locations->SetInAt(0, Location::RequiresFpuRegister());
-      locations->SetInAt(1, ArithmeticZeroOrFpuRegister(cond->InputAt(1)));
-      if (!cond->IsEmittedAtUseSite()) {
-        locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
-      }
-      break;
-
-    default:
-      locations->SetInAt(0, Location::RequiresRegister());
-      locations->SetInAt(1, Location::RegisterOrConstant(cond->InputAt(1)));
-      if (!cond->IsEmittedAtUseSite()) {
-        locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
-      }
+  const DataType::Type type = cond->InputAt(0)->GetType();
+  if (DataType::IsFloatingPointType(type)) {
+    locations->SetInAt(0, Location::RequiresFpuRegister());
+    locations->SetInAt(1, ArithmeticZeroOrFpuRegister(cond->InputAt(1)));
+  } else {
+    locations->SetInAt(0, Location::RequiresRegister());
+    locations->SetInAt(1, Location::RegisterOrConstant(cond->InputAt(1)));
+  }
+  if (!cond->IsEmittedAtUseSite()) {
+    locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
   }
 }
 

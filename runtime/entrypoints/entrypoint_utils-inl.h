@@ -91,15 +91,17 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
       // even going back from boot image methods to the same oat file. However, this is
       // not currently implemented in the compiler. Therefore crossing dex file boundary
       // indicates that the inlined definition is not the same as the one used at runtime.
-      LOG(FATAL) << "Inlined method resolution crossed dex file boundary: from "
-                 << method->PrettyMethod()
-                 << " in " << method->GetDexFile()->GetLocation() << "/"
-                 << static_cast<const void*>(method->GetDexFile())
-                 << " to " << inlined_method->PrettyMethod()
-                 << " in " << inlined_method->GetDexFile()->GetLocation() << "/"
-                 << static_cast<const void*>(inlined_method->GetDexFile()) << ". "
-                 << "This must be due to duplicate classes or playing wrongly with class loaders";
-      UNREACHABLE();
+      bool target_sdk_pre_p = Runtime::Current()->GetTargetSdkVersion() < 28;
+      LOG(target_sdk_pre_p ? WARNING : FATAL)
+          << "Inlined method resolution crossed dex file boundary: from "
+          << method->PrettyMethod()
+          << " in " << method->GetDexFile()->GetLocation() << "/"
+          << static_cast<const void*>(method->GetDexFile())
+          << " to " << inlined_method->PrettyMethod()
+          << " in " << inlined_method->GetDexFile()->GetLocation() << "/"
+          << static_cast<const void*>(inlined_method->GetDexFile()) << ". "
+          << "This must be due to duplicate classes or playing wrongly with class loaders. "
+          << "The runtime is in an unsafe state.";
     }
     method = inlined_method;
   }
