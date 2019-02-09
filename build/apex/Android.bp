@@ -13,11 +13,14 @@ art_runtime_base_binaries_prefer32 = [
 ]
 // - Base requirements (libraries).
 art_runtime_base_native_shared_libs = [
+    "libadbconnection",
     "libart",
     "libart-compiler",
+    "libnativebridge",
+    "libnativehelper",
+    "libnativeloader",
     "libopenjdkjvm",
     "libopenjdkjvmti",
-    "libadbconnection",
 ]
 bionic_native_shared_libs = [
     "libc",
@@ -41,11 +44,11 @@ art_runtime_debug_binaries_both_host = [
 
 // - Debug variants (libraries).
 art_runtime_debug_native_shared_libs = [
+    "libadbconnectiond",
     "libartd",
     "libartd-compiler",
     "libopenjdkjvmd",
     "libopenjdkjvmtid",
-    "libadbconnectiond",
 ]
 libcore_debug_native_shared_libs = [
     "libopenjdkd",
