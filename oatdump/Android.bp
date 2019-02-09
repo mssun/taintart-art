@@ -99,6 +99,8 @@ art_cc_binary {
     ],
     // We need this to resolve libartpalette symbols
     // correctly. Multiple source libraries depend on it.
+    // TODO(b/122885634): This is also necessary for the static lib ordering bug
+    // with APEX stubs.
     group_static_libs: true,
 }
 
