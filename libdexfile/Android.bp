@@ -228,28 +228,9 @@ cc_library {
         "libdexfile",
     ],
 
-    // TODO(b/120670568): Enable this when linking bug is fixed.
-    // stubs: {
-    //     symbol_file: "external/libdexfile_external.map.txt",
-    //     versions: ["1"],
-    // },
-
-    // Hide symbols using version scripts for targets that support it, i.e. all
-    // but Darwin.
-    // TODO(b/120670568): Clean this up when stubs above is enabled.
-    target: {
-        android: {
-            version_script: "external/libdexfile_external.map.txt",
-        },
-        linux_bionic: {
-            version_script: "external/libdexfile_external.map.txt",
-        },
-        linux_glibc: {
-            version_script: "external/libdexfile_external.map.txt",
-        },
-        windows: {
-            version_script: "external/libdexfile_external.map.txt",
-        },
+    stubs: {
+        symbol_file: "external/libdexfile_external.map.txt",
+        versions: ["1"],
     },
 }
 
