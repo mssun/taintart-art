@@ -92,28 +92,32 @@ struct MethodVerifierArgs : public CmdlineArgs {
  protected:
   using Base = CmdlineArgs;
 
-  ParseStatus ParseCustom(const StringPiece& option, std::string* error_msg) override {
+  ParseStatus ParseCustom(const char* raw_option,
+                          size_t raw_option_length,
+                          std::string* error_msg) override {
+    DCHECK_EQ(strlen(raw_option), raw_option_length);
     {
-      ParseStatus base_parse = Base::ParseCustom(option, error_msg);
+      ParseStatus base_parse = Base::ParseCustom(raw_option, raw_option_length, error_msg);
       if (base_parse != kParseUnknownArgument) {
         return base_parse;
       }
     }
 
-    if (option.starts_with("--dex-file=")) {
-      dex_filename_ = option.substr(strlen("--dex-file=")).data();
+    std::string_view option(raw_option, raw_option_length);
+    if (StartsWith(option, "--dex-file=")) {
+      dex_filename_ = raw_option + strlen("--dex-file=");
     } else if (option == "--dex-file-verifier") {
       dex_file_verifier_ = true;
     } else if (option == "--verbose") {
       method_verifier_verbose_ = true;
     } else if (option == "--verbose-debug") {
       method_verifier_verbose_debug_ = true;
-    } else if (option.starts_with("--repetitions=")) {
+    } else if (StartsWith(option, "--repetitions=")) {
       char* end;
-      repetitions_ = strtoul(option.substr(strlen("--repetitions=")).data(), &end, 10);
-    } else if (option.starts_with("--api-level=")) {
+      repetitions_ = strtoul(raw_option + strlen("--repetitions="), &end, 10);
+    } else if (StartsWith(option, "--api-level=")) {
       char* end;
-      api_level_ = strtoul(option.substr(strlen("--api-level=")).data(), &end, 10);
+      api_level_ = strtoul(raw_option + strlen("--api-level="), &end, 10);
     } else {
       return kParseUnknownArgument;
     }
