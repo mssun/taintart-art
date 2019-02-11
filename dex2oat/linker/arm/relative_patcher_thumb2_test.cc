@@ -140,50 +140,63 @@ class Thumb2RelativePatcherTest : public RelativePatcherTest {
                       | (((diff >> 20) & 1) << 26);     // S
   }
 
-  bool Create2MethodsWithGap(const ArrayRef<const uint8_t>& method1_code,
-                             const ArrayRef<const LinkerPatch>& method1_patches,
-                             const ArrayRef<const uint8_t>& method3_code,
-                             const ArrayRef<const LinkerPatch>& method3_patches,
-                             uint32_t distance_without_thunks) {
+  uint32_t Create2MethodsWithGap(const ArrayRef<const uint8_t>& method1_code,
+                                 const ArrayRef<const LinkerPatch>& method1_patches,
+                                 const ArrayRef<const uint8_t>& last_method_code,
+                                 const ArrayRef<const LinkerPatch>& last_method_patches,
+                                 uint32_t distance_without_thunks) {
     CHECK_EQ(distance_without_thunks % kArmAlignment, 0u);
     uint32_t method1_offset =
         kTrampolineSize + CodeAlignmentSize(kTrampolineSize) + sizeof(OatQuickMethodHeader);
     AddCompiledMethod(MethodRef(1u), method1_code, method1_patches);
+    const uint32_t gap_start = method1_offset + method1_code.size();
 
-    // We want to put the method3 at a very precise offset.
-    const uint32_t method3_offset = method1_offset + distance_without_thunks;
-    CHECK_ALIGNED(method3_offset, kArmAlignment);
+    // We want to put the last method at a very precise offset.
+    const uint32_t last_method_offset = method1_offset + distance_without_thunks;
+    CHECK_ALIGNED(last_method_offset, kArmAlignment);
+    const uint32_t gap_end = last_method_offset - sizeof(OatQuickMethodHeader);
 
-    // Calculate size of method2 so that we put method3 at the correct place.
-    const uint32_t method1_end = method1_offset + method1_code.size();
-    const uint32_t method2_offset =
-        method1_end + CodeAlignmentSize(method1_end) + sizeof(OatQuickMethodHeader);
-    const uint32_t method2_size = (method3_offset - sizeof(OatQuickMethodHeader) - method2_offset);
-    std::vector<uint8_t> method2_raw_code(method2_size);
-    ArrayRef<const uint8_t> method2_code(method2_raw_code);
-    AddCompiledMethod(MethodRef(2u), method2_code);
+    // Fill the gap with intermediate methods in chunks of 2MiB and the first in [2MiB, 4MiB).
+    // (This allows deduplicating the small chunks to avoid using 32MiB of memory for +-16MiB
+    // offsets by this test. Making the first chunk bigger makes it easy to give all intermediate
+    // methods the same alignment of the end, so the thunk insertion adds a predictable size as
+    // long as it's after the first chunk.)
+    uint32_t method_idx = 2u;
+    constexpr uint32_t kSmallChunkSize = 2 * MB;
+    std::vector<uint8_t> gap_code;
+    uint32_t gap_size = gap_end - gap_start;
+    uint32_t num_small_chunks = std::max(gap_size / kSmallChunkSize, 1u) - 1u;
+    uint32_t chunk_start = gap_start;
+    uint32_t chunk_size = gap_size - num_small_chunks * kSmallChunkSize;
+    for (uint32_t i = 0; i <= num_small_chunks; ++i) {  // num_small_chunks+1 iterations.
+      uint32_t chunk_code_size =
+          chunk_size - CodeAlignmentSize(chunk_start) - sizeof(OatQuickMethodHeader);
+      gap_code.resize(chunk_code_size, 0u);
+      AddCompiledMethod(MethodRef(method_idx), ArrayRef<const uint8_t>(gap_code));
+      method_idx += 1u;
+      chunk_start += chunk_size;
+      chunk_size = kSmallChunkSize;  // For all but the first chunk.
+      DCHECK_EQ(CodeAlignmentSize(gap_end), CodeAlignmentSize(chunk_start));
+    }
 
-    AddCompiledMethod(MethodRef(3u), method3_code, method3_patches);
-
+    // Add the last method and link
+    AddCompiledMethod(MethodRef(method_idx), last_method_code, last_method_patches);
     Link();
 
     // Check assumptions.
     CHECK_EQ(GetMethodOffset(1), method1_offset);
-    CHECK_EQ(GetMethodOffset(2), method2_offset);
-    auto result3 = method_offset_map_.FindMethodOffset(MethodRef(3));
-    CHECK(result3.first);
+    auto last_result = method_offset_map_.FindMethodOffset(MethodRef(method_idx));
+    CHECK(last_result.first);
     // There may be a thunk before method2.
-    if (result3.second == method3_offset + 1 /* thumb mode */) {
-      return false;  // No thunk.
-    } else {
+    if (last_result.second != last_method_offset + 1 /* thumb mode */) {
+      // Thunk present. Check that there's only one.
       uint32_t thunk_end =
-          CompiledCode::AlignCode(method3_offset - sizeof(OatQuickMethodHeader),
-                                  InstructionSet::kThumb2) +
-          MethodCallThunkSize();
+          CompiledCode::AlignCode(gap_end, InstructionSet::kThumb2) + MethodCallThunkSize();
       uint32_t header_offset = thunk_end + CodeAlignmentSize(thunk_end);
-      CHECK_EQ(result3.second, header_offset + sizeof(OatQuickMethodHeader) + 1 /* thumb mode */);
-      return true;   // Thunk present.
+      CHECK_EQ(last_result.second,
+               header_offset + sizeof(OatQuickMethodHeader) + 1 /* thumb mode */);
     }
+    return method_idx;
   }
 
   uint32_t GetMethodOffset(uint32_t method_idx) {
@@ -447,32 +460,37 @@ TEST_F(Thumb2RelativePatcherTest, CallTrampoline) {
 
 TEST_F(Thumb2RelativePatcherTest, CallTrampolineTooFar) {
   constexpr uint32_t missing_method_index = 1024u;
-  auto method3_raw_code = GenNopsAndBl(3u, kBlPlus0);
-  constexpr uint32_t bl_offset_in_method3 = 3u * 2u;  // After NOPs.
-  ArrayRef<const uint8_t> method3_code(method3_raw_code);
-  ASSERT_EQ(bl_offset_in_method3 + 4u, method3_code.size());
-  const LinkerPatch method3_patches[] = {
-      LinkerPatch::RelativeCodePatch(bl_offset_in_method3, nullptr, missing_method_index),
+  auto last_method_raw_code = GenNopsAndBl(3u, kBlPlus0);
+  constexpr uint32_t bl_offset_in_last_method = 3u * 2u;  // After NOPs.
+  ArrayRef<const uint8_t> last_method_code(last_method_raw_code);
+  ASSERT_EQ(bl_offset_in_last_method + 4u, last_method_code.size());
+  const LinkerPatch last_method_patches[] = {
+      LinkerPatch::RelativeCodePatch(bl_offset_in_last_method, nullptr, missing_method_index),
   };
 
   constexpr uint32_t just_over_max_negative_disp = 16 * MB + 2 - 4u /* PC adjustment */;
-  bool thunk_in_gap = Create2MethodsWithGap(kNopCode,
-                                            ArrayRef<const LinkerPatch>(),
-                                            method3_code,
-                                            ArrayRef<const LinkerPatch>(method3_patches),
-                                            just_over_max_negative_disp - bl_offset_in_method3);
-  ASSERT_FALSE(thunk_in_gap);  // There should be a thunk but it should be after the method2.
+  uint32_t last_method_idx = Create2MethodsWithGap(
+      kNopCode,
+      ArrayRef<const LinkerPatch>(),
+      last_method_code,
+      ArrayRef<const LinkerPatch>(last_method_patches),
+      just_over_max_negative_disp - bl_offset_in_last_method);
+  uint32_t method1_offset = GetMethodOffset(1u);
+  uint32_t last_method_offset = GetMethodOffset(last_method_idx);
+  ASSERT_EQ(method1_offset,
+            last_method_offset + bl_offset_in_last_method - just_over_max_negative_disp);
   ASSERT_FALSE(method_offset_map_.FindMethodOffset(MethodRef(missing_method_index)).first);
 
   // Check linked code.
-  uint32_t method3_offset = GetMethodOffset(3u);
-  uint32_t thunk_offset = CompiledCode::AlignCode(method3_offset + method3_code.size(),
-                                                  InstructionSet::kThumb2);
-  uint32_t diff = thunk_offset - (method3_offset + bl_offset_in_method3 + 4u /* PC adjustment */);
-  ASSERT_EQ(diff & 1u, 0u);
+  uint32_t thunk_offset = CompiledCode::AlignCode(
+      last_method_offset + last_method_code.size(), InstructionSet::kThumb2);
+  uint32_t diff =
+      thunk_offset - (last_method_offset + bl_offset_in_last_method + 4u /* PC adjustment */);
+  ASSERT_TRUE(IsAligned<2u>(diff));
   ASSERT_LT(diff >> 1, 1u << 8);  // Simple encoding, (diff >> 1) fits into 8 bits.
   auto expected_code = GenNopsAndBl(3u, kBlPlus0 | ((diff >> 1) & 0xffu));
-  EXPECT_TRUE(CheckLinkedMethod(MethodRef(3u), ArrayRef<const uint8_t>(expected_code)));
+  EXPECT_TRUE(CheckLinkedMethod(MethodRef(last_method_idx),
+                                ArrayRef<const uint8_t>(expected_code)));
   EXPECT_TRUE(CheckThunk(thunk_offset));
 }
 
@@ -481,17 +499,18 @@ TEST_F(Thumb2RelativePatcherTest, CallOtherAlmostTooFarAfter) {
   constexpr uint32_t bl_offset_in_method1 = 3u * 2u;  // After NOPs.
   ArrayRef<const uint8_t> method1_code(method1_raw_code);
   ASSERT_EQ(bl_offset_in_method1 + 4u, method1_code.size());
+  const uint32_t kExpectedLastMethodIdx = 9u;  // Based on 2MiB chunks in Create2MethodsWithGap().
   const LinkerPatch method1_patches[] = {
-      LinkerPatch::RelativeCodePatch(bl_offset_in_method1, nullptr, 3u),
+      LinkerPatch::RelativeCodePatch(bl_offset_in_method1, nullptr, kExpectedLastMethodIdx),
   };
 
   constexpr uint32_t max_positive_disp = 16 * MB - 2u + 4u /* PC adjustment */;
-  bool thunk_in_gap = Create2MethodsWithGap(method1_code,
-                                            ArrayRef<const LinkerPatch>(method1_patches),
-                                            kNopCode,
-                                            ArrayRef<const LinkerPatch>(),
-                                            bl_offset_in_method1 + max_positive_disp);
-  ASSERT_FALSE(thunk_in_gap);  // There should be no thunk.
+  uint32_t last_method_idx = Create2MethodsWithGap(method1_code,
+                                                   ArrayRef<const LinkerPatch>(method1_patches),
+                                                   kNopCode,
+                                                   ArrayRef<const LinkerPatch>(),
+                                                   bl_offset_in_method1 + max_positive_disp);
+  ASSERT_EQ(kExpectedLastMethodIdx, last_method_idx);
 
   // Check linked code.
   auto expected_code = GenNopsAndBl(3u, kBlPlusMax);
@@ -499,25 +518,28 @@ TEST_F(Thumb2RelativePatcherTest, CallOtherAlmostTooFarAfter) {
 }
 
 TEST_F(Thumb2RelativePatcherTest, CallOtherAlmostTooFarBefore) {
-  auto method3_raw_code = GenNopsAndBl(2u, kBlPlus0);
-  constexpr uint32_t bl_offset_in_method3 = 2u * 2u;  // After NOPs.
-  ArrayRef<const uint8_t> method3_code(method3_raw_code);
-  ASSERT_EQ(bl_offset_in_method3 + 4u, method3_code.size());
-  const LinkerPatch method3_patches[] = {
-      LinkerPatch::RelativeCodePatch(bl_offset_in_method3, nullptr, 1u),
+  auto last_method_raw_code = GenNopsAndBl(2u, kBlPlus0);
+  constexpr uint32_t bl_offset_in_last_method = 2u * 2u;  // After NOPs.
+  ArrayRef<const uint8_t> last_method_code(last_method_raw_code);
+  ASSERT_EQ(bl_offset_in_last_method + 4u, last_method_code.size());
+  const LinkerPatch last_method_patches[] = {
+      LinkerPatch::RelativeCodePatch(bl_offset_in_last_method, nullptr, 1u),
   };
 
-  constexpr uint32_t just_over_max_negative_disp = 16 * MB - 4u /* PC adjustment */;
-  bool thunk_in_gap = Create2MethodsWithGap(kNopCode,
-                                            ArrayRef<const LinkerPatch>(),
-                                            method3_code,
-                                            ArrayRef<const LinkerPatch>(method3_patches),
-                                            just_over_max_negative_disp - bl_offset_in_method3);
-  ASSERT_FALSE(thunk_in_gap);  // There should be no thunk.
+  constexpr uint32_t max_negative_disp = 16 * MB - 4u /* PC adjustment */;
+  uint32_t last_method_idx = Create2MethodsWithGap(kNopCode,
+                                                   ArrayRef<const LinkerPatch>(),
+                                                   last_method_code,
+                                                   ArrayRef<const LinkerPatch>(last_method_patches),
+                                                   max_negative_disp - bl_offset_in_last_method);
+  uint32_t method1_offset = GetMethodOffset(1u);
+  uint32_t last_method_offset = GetMethodOffset(last_method_idx);
+  ASSERT_EQ(method1_offset, last_method_offset + bl_offset_in_last_method - max_negative_disp);
 
   // Check linked code.
   auto expected_code = GenNopsAndBl(2u, kBlMinusMax);
-  EXPECT_TRUE(CheckLinkedMethod(MethodRef(3u), ArrayRef<const uint8_t>(expected_code)));
+  EXPECT_TRUE(CheckLinkedMethod(MethodRef(last_method_idx),
+                                ArrayRef<const uint8_t>(expected_code)));
 }
 
 TEST_F(Thumb2RelativePatcherTest, CallOtherJustTooFarAfter) {
@@ -525,61 +547,78 @@ TEST_F(Thumb2RelativePatcherTest, CallOtherJustTooFarAfter) {
   constexpr uint32_t bl_offset_in_method1 = 2u * 2u;  // After NOPs.
   ArrayRef<const uint8_t> method1_code(method1_raw_code);
   ASSERT_EQ(bl_offset_in_method1 + 4u, method1_code.size());
+  const uint32_t kExpectedLastMethodIdx = 9u;  // Based on 2MiB chunks in Create2MethodsWithGap().
   const LinkerPatch method1_patches[] = {
-      LinkerPatch::RelativeCodePatch(bl_offset_in_method1, nullptr, 3u),
+      LinkerPatch::RelativeCodePatch(bl_offset_in_method1, nullptr, kExpectedLastMethodIdx),
   };
 
   constexpr uint32_t just_over_max_positive_disp = 16 * MB + 4u /* PC adjustment */;
-  bool thunk_in_gap = Create2MethodsWithGap(method1_code,
-                                            ArrayRef<const LinkerPatch>(method1_patches),
-                                            kNopCode,
-                                            ArrayRef<const LinkerPatch>(),
-                                            bl_offset_in_method1 + just_over_max_positive_disp);
-  ASSERT_TRUE(thunk_in_gap);
+  uint32_t last_method_idx = Create2MethodsWithGap(
+      method1_code,
+      ArrayRef<const LinkerPatch>(method1_patches),
+      kNopCode,
+      ArrayRef<const LinkerPatch>(),
+      bl_offset_in_method1 + just_over_max_positive_disp);
+  ASSERT_EQ(kExpectedLastMethodIdx, last_method_idx);
+  uint32_t method_after_thunk_idx = last_method_idx;
+  if (sizeof(OatQuickMethodHeader) < kArmAlignment) {
+    // The thunk needs to start on a kArmAlignment-aligned address before the address where the
+    // last method would have been if there was no thunk. If the size of the OatQuickMethodHeader
+    // is at least kArmAlignment, the thunk start shall fit between the previous filler method
+    // and that address. Otherwise, it shall be inserted before that filler method.
+    method_after_thunk_idx -= 1u;
+  }
 
   uint32_t method1_offset = GetMethodOffset(1u);
-  uint32_t method3_offset = GetMethodOffset(3u);
-  ASSERT_TRUE(IsAligned<kArmAlignment>(method3_offset));
-  uint32_t method3_header_offset = method3_offset - sizeof(OatQuickMethodHeader);
+  uint32_t method_after_thunk_offset = GetMethodOffset(method_after_thunk_idx);
+  ASSERT_TRUE(IsAligned<kArmAlignment>(method_after_thunk_offset));
+  uint32_t method_after_thunk_header_offset =
+      method_after_thunk_offset - sizeof(OatQuickMethodHeader);
   uint32_t thunk_size = MethodCallThunkSize();
-  uint32_t thunk_offset = RoundDown(method3_header_offset - thunk_size, kArmAlignment);
+  uint32_t thunk_offset = RoundDown(method_after_thunk_header_offset - thunk_size, kArmAlignment);
   DCHECK_EQ(thunk_offset + thunk_size + CodeAlignmentSize(thunk_offset + thunk_size),
-            method3_header_offset);
+            method_after_thunk_header_offset);
   ASSERT_TRUE(IsAligned<kArmAlignment>(thunk_offset));
   uint32_t diff = thunk_offset - (method1_offset + bl_offset_in_method1 + 4u /* PC adjustment */);
-  ASSERT_EQ(diff & 1u, 0u);
-  ASSERT_GE(diff, 16 * MB - (1u << 9));  // Simple encoding, unknown bits fit into the low 8 bits.
-  auto expected_code = GenNopsAndBl(2u, 0xf3ffd700 | ((diff >> 1) & 0xffu));
+  ASSERT_TRUE(IsAligned<2u>(diff));
+  ASSERT_GE(diff, 16 * MB - (1u << 22));  // Simple encoding, unknown bits fit into imm10:imm11:0.
+  auto expected_code =
+      GenNopsAndBl(2u, 0xf000d000 | ((diff >> 1) & 0x7ffu) | (((diff >> 12) & 0x3ffu) << 16));
   EXPECT_TRUE(CheckLinkedMethod(MethodRef(1u), ArrayRef<const uint8_t>(expected_code)));
   CheckThunk(thunk_offset);
 }
 
 TEST_F(Thumb2RelativePatcherTest, CallOtherJustTooFarBefore) {
-  auto method3_raw_code = GenNopsAndBl(3u, kBlPlus0);
-  constexpr uint32_t bl_offset_in_method3 = 3u * 2u;  // After NOPs.
-  ArrayRef<const uint8_t> method3_code(method3_raw_code);
-  ASSERT_EQ(bl_offset_in_method3 + 4u, method3_code.size());
-  const LinkerPatch method3_patches[] = {
-      LinkerPatch::RelativeCodePatch(bl_offset_in_method3, nullptr, 1u),
+  auto last_method_raw_code = GenNopsAndBl(3u, kBlPlus0);
+  constexpr uint32_t bl_offset_in_last_method = 3u * 2u;  // After NOPs.
+  ArrayRef<const uint8_t> last_method_code(last_method_raw_code);
+  ASSERT_EQ(bl_offset_in_last_method + 4u, last_method_code.size());
+  const LinkerPatch last_method_patches[] = {
+      LinkerPatch::RelativeCodePatch(bl_offset_in_last_method, nullptr, 1u),
   };
 
   constexpr uint32_t just_over_max_negative_disp = 16 * MB + 2 - 4u /* PC adjustment */;
-  bool thunk_in_gap = Create2MethodsWithGap(kNopCode,
-                                            ArrayRef<const LinkerPatch>(),
-                                            method3_code,
-                                            ArrayRef<const LinkerPatch>(method3_patches),
-                                            just_over_max_negative_disp - bl_offset_in_method3);
-  ASSERT_FALSE(thunk_in_gap);  // There should be a thunk but it should be after the method2.
+  uint32_t last_method_idx = Create2MethodsWithGap(
+      kNopCode,
+      ArrayRef<const LinkerPatch>(),
+      last_method_code,
+      ArrayRef<const LinkerPatch>(last_method_patches),
+      just_over_max_negative_disp - bl_offset_in_last_method);
+  uint32_t method1_offset = GetMethodOffset(1u);
+  uint32_t last_method_offset = GetMethodOffset(last_method_idx);
+  ASSERT_EQ(method1_offset,
+            last_method_offset + bl_offset_in_last_method - just_over_max_negative_disp);
 
   // Check linked code.
-  uint32_t method3_offset = GetMethodOffset(3u);
-  uint32_t thunk_offset = CompiledCode::AlignCode(method3_offset + method3_code.size(),
-                                                  InstructionSet::kThumb2);
-  uint32_t diff = thunk_offset - (method3_offset + bl_offset_in_method3 + 4u /* PC adjustment */);
-  ASSERT_EQ(diff & 1u, 0u);
+  uint32_t thunk_offset = CompiledCode::AlignCode(
+      last_method_offset + last_method_code.size(), InstructionSet::kThumb2);
+  uint32_t diff =
+      thunk_offset - (last_method_offset + bl_offset_in_last_method + 4u /* PC adjustment */);
+  ASSERT_TRUE(IsAligned<2u>(diff));
   ASSERT_LT(diff >> 1, 1u << 8);  // Simple encoding, (diff >> 1) fits into 8 bits.
   auto expected_code = GenNopsAndBl(3u, kBlPlus0 | ((diff >> 1) & 0xffu));
-  EXPECT_TRUE(CheckLinkedMethod(MethodRef(3u), ArrayRef<const uint8_t>(expected_code)));
+  EXPECT_TRUE(CheckLinkedMethod(MethodRef(last_method_idx),
+                                ArrayRef<const uint8_t>(expected_code)));
   EXPECT_TRUE(CheckThunk(thunk_offset));
 }
 

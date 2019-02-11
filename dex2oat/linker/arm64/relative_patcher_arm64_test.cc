@@ -118,7 +118,7 @@ class Arm64RelativePatcherTest : public RelativePatcherTest {
     AddCompiledMethod(MethodRef(1u), method1_code, method1_patches);
     const uint32_t gap_start = method1_offset + method1_code.size();
 
-    // We want to put the method3 at a very precise offset.
+    // We want to put the last method at a very precise offset.
     const uint32_t last_method_offset = method1_offset + distance_without_thunks;
     CHECK_ALIGNED(last_method_offset, kArm64Alignment);
     const uint32_t gap_end = last_method_offset - sizeof(OatQuickMethodHeader);
@@ -638,7 +638,9 @@ TEST_F(Arm64RelativePatcherTestDefault, CallTrampolineTooFar) {
 
   constexpr uint32_t just_over_max_negative_disp = 128 * MB + 4;
   uint32_t last_method_idx = Create2MethodsWithGap(
-      kNopCode, ArrayRef<const LinkerPatch>(), last_method_code,
+      kNopCode,
+      ArrayRef<const LinkerPatch>(),
+      last_method_code,
       ArrayRef<const LinkerPatch>(last_method_patches),
       just_over_max_negative_disp - bl_offset_in_last_method);
   uint32_t method1_offset = GetMethodOffset(1u);
@@ -651,7 +653,7 @@ TEST_F(Arm64RelativePatcherTestDefault, CallTrampolineTooFar) {
   uint32_t thunk_offset =
       CompiledCode::AlignCode(last_method_offset + last_method_code.size(), InstructionSet::kArm64);
   uint32_t diff = thunk_offset - (last_method_offset + bl_offset_in_last_method);
-  CHECK_ALIGNED(diff, 4u);
+  ASSERT_TRUE(IsAligned<4u>(diff));
   ASSERT_LT(diff, 128 * MB);
   auto expected_code = GenNopsAndBl(1u, kBlPlus0 | (diff >> 2));
   EXPECT_TRUE(CheckLinkedMethod(MethodRef(last_method_idx),
@@ -664,9 +666,9 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherAlmostTooFarAfter) {
   constexpr uint32_t bl_offset_in_method1 = 1u * 4u;  // After NOPs.
   ArrayRef<const uint8_t> method1_code(method1_raw_code);
   ASSERT_EQ(bl_offset_in_method1 + 4u, method1_code.size());
-  uint32_t expected_last_method_idx = 65;  // Based on 2MiB chunks in Create2MethodsWithGap().
+  const uint32_t kExpectedLastMethodIdx = 65u;  // Based on 2MiB chunks in Create2MethodsWithGap().
   const LinkerPatch method1_patches[] = {
-      LinkerPatch::RelativeCodePatch(bl_offset_in_method1, nullptr, expected_last_method_idx),
+      LinkerPatch::RelativeCodePatch(bl_offset_in_method1, nullptr, kExpectedLastMethodIdx),
   };
 
   constexpr uint32_t max_positive_disp = 128 * MB - 4u;
@@ -675,7 +677,7 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherAlmostTooFarAfter) {
                                                    kNopCode,
                                                    ArrayRef<const LinkerPatch>(),
                                                    bl_offset_in_method1 + max_positive_disp);
-  ASSERT_EQ(expected_last_method_idx, last_method_idx);
+  ASSERT_EQ(kExpectedLastMethodIdx, last_method_idx);
 
   uint32_t method1_offset = GetMethodOffset(1u);
   uint32_t last_method_offset = GetMethodOffset(last_method_idx);
@@ -716,9 +718,9 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherJustTooFarAfter) {
   constexpr uint32_t bl_offset_in_method1 = 0u * 4u;  // After NOPs.
   ArrayRef<const uint8_t> method1_code(method1_raw_code);
   ASSERT_EQ(bl_offset_in_method1 + 4u, method1_code.size());
-  uint32_t expected_last_method_idx = 65;  // Based on 2MiB chunks in Create2MethodsWithGap().
+  const uint32_t kExpectedLastMethodIdx = 65u;  // Based on 2MiB chunks in Create2MethodsWithGap().
   const LinkerPatch method1_patches[] = {
-      LinkerPatch::RelativeCodePatch(bl_offset_in_method1, nullptr, expected_last_method_idx),
+      LinkerPatch::RelativeCodePatch(bl_offset_in_method1, nullptr, kExpectedLastMethodIdx),
   };
 
   constexpr uint32_t just_over_max_positive_disp = 128 * MB;
@@ -728,7 +730,7 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherJustTooFarAfter) {
       kNopCode,
       ArrayRef<const LinkerPatch>(),
       bl_offset_in_method1 + just_over_max_positive_disp);
-  ASSERT_EQ(expected_last_method_idx, last_method_idx);
+  ASSERT_EQ(kExpectedLastMethodIdx, last_method_idx);
   uint32_t method_after_thunk_idx = last_method_idx;
   if (sizeof(OatQuickMethodHeader) < kArm64Alignment) {
     // The thunk needs to start on a kArm64Alignment-aligned address before the address where the
@@ -747,8 +749,9 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherJustTooFarAfter) {
   uint32_t thunk_offset = RoundDown(method_after_thunk_header_offset - thunk_size, kArm64Alignment);
   DCHECK_EQ(thunk_offset + thunk_size + CodeAlignmentSize(thunk_offset + thunk_size),
             method_after_thunk_header_offset);
+  ASSERT_TRUE(IsAligned<kArm64Alignment>(thunk_offset));
   uint32_t diff = thunk_offset - (method1_offset + bl_offset_in_method1);
-  CHECK_ALIGNED(diff, 4u);
+  ASSERT_TRUE(IsAligned<4u>(diff));
   ASSERT_LT(diff, 128 * MB);
   auto expected_code = GenNopsAndBl(0u, kBlPlus0 | (diff >> 2));
   EXPECT_TRUE(CheckLinkedMethod(MethodRef(1u), ArrayRef<const uint8_t>(expected_code)));
@@ -778,7 +781,7 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherJustTooFarBefore) {
   uint32_t thunk_offset =
       CompiledCode::AlignCode(last_method_offset + last_method_code.size(), InstructionSet::kArm64);
   uint32_t diff = thunk_offset - (last_method_offset + bl_offset_in_last_method);
-  CHECK_ALIGNED(diff, 4u);
+  ASSERT_TRUE(IsAligned<4u>(diff));
   ASSERT_LT(diff, 128 * MB);
   auto expected_code = GenNopsAndBl(1u, kBlPlus0 | (diff >> 2));
   EXPECT_TRUE(CheckLinkedMethod(MethodRef(last_method_idx),
