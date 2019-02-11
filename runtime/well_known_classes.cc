@@ -92,6 +92,7 @@ jmethodID WellKnownClasses::java_lang_ClassLoader_loadClass;
 jmethodID WellKnownClasses::java_lang_ClassNotFoundException_init;
 jmethodID WellKnownClasses::java_lang_Daemons_start;
 jmethodID WellKnownClasses::java_lang_Daemons_stop;
+jmethodID WellKnownClasses::java_lang_Daemons_waitForDaemonStart;
 jmethodID WellKnownClasses::java_lang_Double_valueOf;
 jmethodID WellKnownClasses::java_lang_Float_valueOf;
 jmethodID WellKnownClasses::java_lang_Integer_valueOf;
@@ -132,6 +133,7 @@ jfieldID WellKnownClasses::java_lang_Thread_lock;
 jfieldID WellKnownClasses::java_lang_Thread_name;
 jfieldID WellKnownClasses::java_lang_Thread_priority;
 jfieldID WellKnownClasses::java_lang_Thread_nativePeer;
+jfieldID WellKnownClasses::java_lang_Thread_systemDaemon;
 jfieldID WellKnownClasses::java_lang_Thread_unparkedBeforeStart;
 jfieldID WellKnownClasses::java_lang_ThreadGroup_groups;
 jfieldID WellKnownClasses::java_lang_ThreadGroup_ngroups;
@@ -351,6 +353,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
 
   java_lang_Daemons_start = CacheMethod(env, java_lang_Daemons, true, "start", "()V");
   java_lang_Daemons_stop = CacheMethod(env, java_lang_Daemons, true, "stop", "()V");
+  java_lang_Daemons_waitForDaemonStart = CacheMethod(env, java_lang_Daemons, true, "waitForDaemonStart", "()V");
   java_lang_invoke_MethodHandles_lookup = CacheMethod(env, "java/lang/invoke/MethodHandles", true, "lookup", "()Ljava/lang/invoke/MethodHandles$Lookup;");
   java_lang_invoke_MethodHandles_Lookup_findConstructor = CacheMethod(env, "java/lang/invoke/MethodHandles$Lookup", false, "findConstructor", "(Ljava/lang/Class;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;");
 
@@ -385,6 +388,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_lang_Thread_name = CacheField(env, java_lang_Thread, false, "name", "Ljava/lang/String;");
   java_lang_Thread_priority = CacheField(env, java_lang_Thread, false, "priority", "I");
   java_lang_Thread_nativePeer = CacheField(env, java_lang_Thread, false, "nativePeer", "J");
+  java_lang_Thread_systemDaemon = CacheField(env, java_lang_Thread, false, "systemDaemon", "Z");
   java_lang_Thread_unparkedBeforeStart = CacheField(env, java_lang_Thread, false, "unparkedBeforeStart", "Z");
   java_lang_ThreadGroup_groups = CacheField(env, java_lang_ThreadGroup, false, "groups", "[Ljava/lang/ThreadGroup;");
   java_lang_ThreadGroup_ngroups = CacheField(env, java_lang_ThreadGroup, false, "ngroups", "I");

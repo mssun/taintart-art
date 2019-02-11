@@ -47,6 +47,7 @@
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
 #include "mirror/string.h"
+#include "mirror/throwable.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "nativehelper/scoped_utf_chars.h"
 #include "obj_ptr.h"
@@ -83,6 +84,17 @@ struct ThreadCallback : public art::ThreadLifecycleCallback {
   }
 
   void ThreadStart(art::Thread* self) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    // Needs to be checked first because we might start these threads before we actually send the
+    // VMInit event.
+    if (self->IsSystemDaemon()) {
+      // System daemon threads are things like the finalizer or gc thread. It would be dangerous to
+      // allow agents to get in the way of these threads starting up. These threads include things
+      // like the HeapTaskDaemon and the finalizer daemon.
+      //
+      // This event can happen during the time before VMInit or just after zygote fork. Since the
+      // second is hard to distinguish we unfortunately cannot really check the state here.
+      return;
+    }
     if (!started) {
       // Runtime isn't started. We only expect at most the signal handler or JIT threads to be
       // started here.
@@ -132,16 +144,35 @@ void ThreadUtil::VMInitEventSent() {
   gThreadCallback.Post<ArtJvmtiEvent::kThreadStart>(art::Thread::Current());
 }
 
+
+static void WaitForSystemDaemonStart(art::Thread* self) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  {
+    art::ScopedThreadStateChange strc(self, art::kNative);
+    JNIEnv* jni = self->GetJniEnv();
+    jni->CallStaticVoidMethod(art::WellKnownClasses::java_lang_Daemons,
+                              art::WellKnownClasses::java_lang_Daemons_waitForDaemonStart);
+  }
+  if (self->IsExceptionPending()) {
+    LOG(WARNING) << "Exception occured when waiting for system daemons to start: "
+                 << self->GetException()->Dump();
+    self->ClearException();
+  }
+}
+
 void ThreadUtil::CacheData() {
   // We must have started since it is now safe to cache our data;
   gThreadCallback.started = true;
-  art::ScopedObjectAccess soa(art::Thread::Current());
+  art::Thread* self = art::Thread::Current();
+  art::ScopedObjectAccess soa(self);
   art::ObjPtr<art::mirror::Class> thread_class =
       soa.Decode<art::mirror::Class>(art::WellKnownClasses::java_lang_Thread);
   CHECK(thread_class != nullptr);
   context_class_loader_ = thread_class->FindDeclaredInstanceField("contextClassLoader",
                                                                   "Ljava/lang/ClassLoader;");
   CHECK(context_class_loader_ != nullptr);
+  // Now wait for all required system threads to come up before allowing the rest of loading to
+  // continue.
+  WaitForSystemDaemonStart(self);
 }
 
 void ThreadUtil::Unregister() {

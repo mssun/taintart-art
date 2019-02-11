@@ -4258,4 +4258,12 @@ int Thread::GetNativePriority() {
   return priority;
 }
 
+bool Thread::IsSystemDaemon() const {
+  if (GetPeer() == nullptr) {
+    return false;
+  }
+  return jni::DecodeArtField(
+      WellKnownClasses::java_lang_Thread_systemDaemon)->GetBoolean(GetPeer());
+}
+
 }  // namespace art
