@@ -23,13 +23,14 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 #include "android-base/stringprintf.h"
 
 #include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/mutex.h"
-#include "base/stringpiece.h"
+#include "base/string_view_cpp20.h"
 #include "noop_compiler_callbacks.h"
 #include "runtime.h"
 
@@ -151,14 +152,15 @@ struct CmdlineArgs {
 
     std::string error_msg;
     for (int i = 0; i < argc; i++) {
-      const StringPiece option(argv[i]);
-      if (option.starts_with("--boot-image=")) {
-        boot_image_location_ = option.substr(strlen("--boot-image=")).data();
-      } else if (option.starts_with("--instruction-set=")) {
-        StringPiece instruction_set_str = option.substr(strlen("--instruction-set=")).data();
-        instruction_set_ = GetInstructionSetFromString(instruction_set_str.data());
+      const char* const raw_option = argv[i];
+      const std::string_view option(raw_option);
+      if (StartsWith(option, "--boot-image=")) {
+        boot_image_location_ = raw_option + strlen("--boot-image=");
+      } else if (StartsWith(option, "--instruction-set=")) {
+        const char* const instruction_set_str = raw_option + strlen("--instruction-set=");
+        instruction_set_ = GetInstructionSetFromString(instruction_set_str);
         if (instruction_set_ == InstructionSet::kNone) {
-          fprintf(stderr, "Unsupported instruction set %s\n", instruction_set_str.data());
+          fprintf(stderr, "Unsupported instruction set %s\n", instruction_set_str);
           PrintUsage();
           return false;
         }
@@ -170,8 +172,8 @@ struct CmdlineArgs {
         }
         ++i;
         runtime_args_.push_back(argv[i]);
-      } else if (option.starts_with("--output=")) {
-        output_name_ = option.substr(strlen("--output=")).ToString();
+      } else if (StartsWith(option, "--output=")) {
+        output_name_ = std::string(option.substr(strlen("--output=")));
         const char* filename = output_name_.c_str();
         out_.reset(new std::ofstream(filename));
         if (!out_->good()) {
@@ -181,7 +183,7 @@ struct CmdlineArgs {
         }
         os_ = out_.get();
       } else {
-        ParseStatus parse_status = ParseCustom(option, &error_msg);
+        ParseStatus parse_status = ParseCustom(raw_option, option.length(), &error_msg);
 
         if (parse_status == kParseUnknownArgument) {
           fprintf(stderr, "Unknown argument %s\n", option.data());
@@ -315,7 +317,8 @@ struct CmdlineArgs {
   }
 
  protected:
-  virtual ParseStatus ParseCustom(const StringPiece& option ATTRIBUTE_UNUSED,
+  virtual ParseStatus ParseCustom(const char* raw_option ATTRIBUTE_UNUSED,
+                                  size_t raw_option_length ATTRIBUTE_UNUSED,
                                   std::string* error_msg ATTRIBUTE_UNUSED) {
     return kParseUnknownArgument;
   }
