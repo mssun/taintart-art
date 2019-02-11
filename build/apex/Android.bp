@@ -126,6 +126,16 @@ apex_key {
     private_key: "com.android.runtime.pem",
 }
 
+android_app_certificate {
+    name: "com.android.runtime.debug.certificate",
+    certificate: "com.android.runtime.debug",
+}
+
+android_app_certificate {
+    name: "com.android.runtime.release.certificate",
+    certificate: "com.android.runtime.release",
+}
+
 prebuilt_etc {
     name: "com.android.runtime.ld.config.txt",
     src: "ld.config.txt",
@@ -164,6 +174,7 @@ apex {
     prebuilts: art_runtime_data_file_prebuilts
         + ["com.android.runtime.ld.config.txt"],
     key: "com.android.runtime.key",
+    certificate: ":com.android.runtime.release.certificate",
 }
 
 // "Debug" version of the Runtime APEX module (containing both release and
@@ -198,6 +209,7 @@ apex {
     prebuilts: art_runtime_data_file_prebuilts
         + ["com.android.runtime.ld.config.txt"],
     key: "com.android.runtime.key",
+    certificate: ":com.android.runtime.debug.certificate",
 }
 
 // TODO: Do this better. art_apex will disable host builds when
