@@ -23,7 +23,7 @@
 #include "base/macros.h"
 #include "base/os.h"
 // Explicitly include our own elf.h to avoid Linux and other dependencies.
-#include "./elf.h"
+#include "elf/elf.h"
 
 namespace art {
 

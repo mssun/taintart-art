@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_DEBUG_DWARF_WRITER_H_
-#define ART_COMPILER_DEBUG_DWARF_WRITER_H_
+#ifndef ART_LIBELFFILE_DWARF_WRITER_H_
+#define ART_LIBELFFILE_DWARF_WRITER_H_
 
 #include <type_traits>
 #include <vector>
@@ -181,4 +181,4 @@ class Writer {
 }  // namespace dwarf
 }  // namespace art
 
-#endif  // ART_COMPILER_DEBUG_DWARF_WRITER_H_
+#endif  // ART_LIBELFFILE_DWARF_WRITER_H_

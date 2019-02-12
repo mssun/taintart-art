@@ -23,10 +23,10 @@
 
 #include "arch/instruction_set.h"
 #include "base/enums.h"
-#include "debug/dwarf/dwarf_constants.h"
 #include "debug/dwarf/dwarf_test.h"
-#include "debug/dwarf/headers.h"
 #include "disassembler.h"
+#include "dwarf/dwarf_constants.h"
+#include "dwarf/headers.h"
 #include "gtest/gtest.h"
 #include "thread.h"
 

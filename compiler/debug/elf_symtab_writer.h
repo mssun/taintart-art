@@ -25,7 +25,7 @@
 #include "debug/method_debug_info.h"
 #include "dex/dex_file-inl.h"
 #include "dex/code_item_accessors.h"
-#include "linker/elf_builder.h"
+#include "elf/elf_builder.h"
 
 namespace art {
 namespace debug {
@@ -45,7 +45,7 @@ constexpr bool kGenerateArmMappingSymbol = true;
 constexpr const char* kDexFileSymbolName = "$dexfile";
 
 template <typename ElfTypes>
-static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
+static void WriteDebugSymbols(ElfBuilder<ElfTypes>* builder,
                               bool mini_debug_info,
                               const DebugInfo& debug_info) {
   uint64_t mapping_symbol_address = std::numeric_limits<uint64_t>::max();

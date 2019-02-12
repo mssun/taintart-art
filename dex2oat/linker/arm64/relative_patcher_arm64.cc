@@ -26,13 +26,13 @@
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "heap_poisoning.h"
 #include "linker/linker_patch.h"
-#include "linker/output_stream.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"
 #include "mirror/object.h"
 #include "oat.h"
 #include "oat_quick_method_header.h"
 #include "read_barrier.h"
+#include "stream/output_stream.h"
 #include "utils/arm64/assembler_arm64.h"
 
 namespace art {

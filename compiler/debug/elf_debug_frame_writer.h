@@ -20,11 +20,11 @@
 #include <vector>
 
 #include "arch/instruction_set.h"
-#include "debug/dwarf/debug_frame_opcode_writer.h"
-#include "debug/dwarf/dwarf_constants.h"
-#include "debug/dwarf/headers.h"
 #include "debug/method_debug_info.h"
-#include "linker/elf_builder.h"
+#include "dwarf/debug_frame_opcode_writer.h"
+#include "dwarf/dwarf_constants.h"
+#include "dwarf/headers.h"
+#include "elf/elf_builder.h"
 
 namespace art {
 namespace debug {
@@ -166,7 +166,7 @@ static void WriteCIE(InstructionSet isa, /*inout*/ std::vector<uint8_t>* buffer)
 }
 
 template<typename ElfTypes>
-void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
+void WriteCFISection(ElfBuilder<ElfTypes>* builder,
                      const ArrayRef<const MethodDebugInfo>& method_infos) {
   typedef typename ElfTypes::Addr Elf_Addr;
 

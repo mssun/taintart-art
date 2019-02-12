@@ -59,18 +59,15 @@
 #include "dex/type_lookup_table.h"
 #include "dexlayout.h"
 #include "disassembler.h"
+#include "elf/elf_builder.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/space/image_space.h"
 #include "gc/space/large_object_space.h"
 #include "gc/space/space-inl.h"
 #include "image-inl.h"
 #include "imtable-inl.h"
-#include "subtype_check.h"
 #include "index_bss_mapping.h"
 #include "interpreter/unstarted_runtime.h"
-#include "linker/buffered_output_stream.h"
-#include "linker/elf_builder.h"
-#include "linker/file_output_stream.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/dex_cache-inl.h"
@@ -82,6 +79,9 @@
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "stack_map.h"
+#include "stream/buffered_output_stream.h"
+#include "stream/file_output_stream.h"
+#include "subtype_check.h"
 #include "thread_list.h"
 #include "vdex_file.h"
 #include "verifier/method_verifier.h"
@@ -150,10 +150,10 @@ class OatSymbolizer final {
     if (elf_file == nullptr) {
       return false;
     }
-    std::unique_ptr<linker::BufferedOutputStream> output_stream =
-        std::make_unique<linker::BufferedOutputStream>(
-            std::make_unique<linker::FileOutputStream>(elf_file.get()));
-    builder_.reset(new linker::ElfBuilder<ElfTypes>(isa, features.get(), output_stream.get()));
+    std::unique_ptr<BufferedOutputStream> output_stream =
+        std::make_unique<BufferedOutputStream>(
+            std::make_unique<FileOutputStream>(elf_file.get()));
+    builder_.reset(new ElfBuilder<ElfTypes>(isa, output_stream.get()));
 
     builder_->Start();
 
@@ -176,9 +176,6 @@ class OatSymbolizer final {
       text->End();
     }
 
-    if (isa == InstructionSet::kMips || isa == InstructionSet::kMips64) {
-      builder_->WriteMIPSabiflagsSection();
-    }
     builder_->PrepareDynamicSection(elf_file->GetPath(),
                                     rodata_size,
                                     text_size,
@@ -330,7 +327,7 @@ class OatSymbolizer final {
 
  private:
   const OatFile* oat_file_;
-  std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder_;
+  std::unique_ptr<ElfBuilder<ElfTypes>> builder_;
   std::vector<debug::MethodDebugInfo> method_debug_infos_;
   std::unordered_set<uint32_t> seen_offsets_;
   const std::string output_name_;

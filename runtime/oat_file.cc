@@ -16,6 +16,9 @@
 
 #include "oat_file.h"
 
+// Our elf.h needs to be included before the system one is indirectly included.
+#include "elf/elf.h"
+
 #include <dlfcn.h>
 #ifndef __APPLE__
 #include <link.h>  // for dl_iterate_phdr.

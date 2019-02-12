@@ -14,23 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_BUFFERED_OUTPUT_STREAM_H_
-#define ART_COMPILER_LINKER_BUFFERED_OUTPUT_STREAM_H_
+#ifndef ART_LIBELFFILE_STREAM_FILE_OUTPUT_STREAM_H_
+#define ART_LIBELFFILE_STREAM_FILE_OUTPUT_STREAM_H_
 
-#include <memory>
+#include "base/os.h"
 
 #include "output_stream.h"
 
-#include "base/globals.h"
-
 namespace art {
-namespace linker {
 
-class BufferedOutputStream final : public OutputStream {
+class FileOutputStream final : public OutputStream {
  public:
-  explicit BufferedOutputStream(std::unique_ptr<OutputStream> out);
+  explicit FileOutputStream(File* file);
 
-  ~BufferedOutputStream() override;
+  ~FileOutputStream() override {}
 
   bool WriteFully(const void* buffer, size_t byte_count) override;
 
@@ -39,18 +36,11 @@ class BufferedOutputStream final : public OutputStream {
   bool Flush() override;
 
  private:
-  static const size_t kBufferSize = 8 * KB;
+  File* const file_;
 
-  bool FlushBuffer();
-
-  std::unique_ptr<OutputStream> const out_;
-  uint8_t buffer_[kBufferSize];
-  size_t used_;
-
-  DISALLOW_COPY_AND_ASSIGN(BufferedOutputStream);
+  DISALLOW_COPY_AND_ASSIGN(FileOutputStream);
 };
 
-}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_BUFFERED_OUTPUT_STREAM_H_
+#endif  // ART_LIBELFFILE_STREAM_FILE_OUTPUT_STREAM_H_

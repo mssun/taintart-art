@@ -19,7 +19,6 @@
 #include <android-base/logging.h>
 
 namespace art {
-namespace linker {
 
 VectorOutputStream::VectorOutputStream(const std::string& location, std::vector<uint8_t>* vector)
     : OutputStream(location), offset_(vector->size()), vector_(vector) {}
@@ -46,5 +45,4 @@ off_t VectorOutputStream::Seek(off_t offset, Whence whence) {
   return offset_;
 }
 
-}  // namespace linker
 }  // namespace art

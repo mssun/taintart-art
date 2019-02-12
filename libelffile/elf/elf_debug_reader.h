@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_DEBUG_ELF_DEBUG_READER_H_
-#define ART_COMPILER_DEBUG_ELF_DEBUG_READER_H_
+#ifndef ART_LIBELFFILE_ELF_ELF_DEBUG_READER_H_
+#define ART_LIBELFFILE_ELF_ELF_DEBUG_READER_H_
 
 #include "base/array_ref.h"
-#include "debug/dwarf/headers.h"
-#include "elf.h"
+#include "dwarf/headers.h"
+#include "elf/elf.h"
 #include "xz_utils.h"
 
 #include <map>
 #include <string_view>
 
 namespace art {
-namespace debug {
 
 // Trivial ELF file reader.
 //
@@ -168,6 +167,5 @@ class ElfDebugReader {
   DISALLOW_COPY_AND_ASSIGN(ElfDebugReader);
 };
 
-}  // namespace debug
 }  // namespace art
-#endif  // ART_COMPILER_DEBUG_ELF_DEBUG_READER_H_
+#endif  // ART_LIBELFFILE_ELF_ELF_DEBUG_READER_H_

@@ -30,7 +30,7 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/memory_region.h"
-#include "debug/dwarf/debug_frame_opcode_writer.h"
+#include "dwarf/debug_frame_opcode_writer.h"
 #include "label.h"
 #include "managed_register.h"
 #include "mips/constants_mips.h"
