@@ -47,3 +47,20 @@ function set_arches {
   ARCHES=`echo $ARCHES | uniq`
   return 0
 }
+
+function setup_fsverity {
+  local file=$1
+  local signature_file="/apex/com.android.runtime.signatures/etc/$file.sig"
+  # Setup.
+  log -t art_apex "fsverity setup for $file"
+  SETUP_MSG=`fsverity setup $file --signature=$signature_file --hash=sha256 2>&1` || \
+    { log_error "Setup failed: $SETUP_MSG" ; return 300 ; }
+  # Enable.
+  log -t art_apex "fsverity enable for $file"
+  ENABLE_MSG=`fsverity enable $file 2>&1` || \
+    { log_error "Enable failed: $ENABLE_MSG" ; return 301 ; }
+  # Test integrity.
+  INTEGRITY_MSG=`dd if=$file of=/dev/null bs=4k 2>&1` || \
+    { log_error "Integrity failed: $INTEGRITY_MSG" ; return 302 ; }
+  return 0
+}
