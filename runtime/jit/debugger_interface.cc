@@ -301,7 +301,7 @@ static void MaybePackJitMiniDebugInfo(PackElfFileForJITFunction pack,
     return;  // Nothing to do.
   }
 
-  std::vector<const uint8_t*> added_elf_files;
+  std::vector<ArrayRef<const uint8_t>> added_elf_files;
   std::vector<const void*> removed_symbols;
   auto added_it = g_jit_debug_entries.begin();
   auto removed_it = removed_entries.begin();
@@ -312,7 +312,8 @@ static void MaybePackJitMiniDebugInfo(PackElfFileForJITFunction pack,
     auto added_begin = added_it;
     while (added_it != g_jit_debug_entries.end() &&
            AlignDown(added_it->first, kGroupSize) == group_ptr) {
-      added_elf_files.push_back((added_it++)->second->symfile_addr_);
+      JITCodeEntry* entry = (added_it++)->second;
+      added_elf_files.emplace_back(entry->symfile_addr_, entry->symfile_size_);
     }
     removed_symbols.clear();
     while (removed_it != removed_entries.end() &&
