@@ -1171,8 +1171,7 @@ CompiledMethod* OptimizingCompiler::Compile(const dex::CodeItem* code_item,
 }
 
 static ScopedArenaVector<uint8_t> CreateJniStackMap(ScopedArenaAllocator* allocator,
-                                                    const JniCompiledMethod& jni_compiled_method,
-                                                    size_t code_size) {
+                                                    const JniCompiledMethod& jni_compiled_method) {
   // StackMapStream is quite large, so allocate it using the ScopedArenaAllocator
   // to stay clear of the frame size limit.
   std::unique_ptr<StackMapStream> stack_map_stream(
@@ -1182,7 +1181,7 @@ static ScopedArenaVector<uint8_t> CreateJniStackMap(ScopedArenaAllocator* alloca
       jni_compiled_method.GetCoreSpillMask(),
       jni_compiled_method.GetFpSpillMask(),
       /* num_dex_registers= */ 0);
-  stack_map_stream->EndMethod(code_size);
+  stack_map_stream->EndMethod();
   return stack_map_stream->Encode();
 }
 
@@ -1240,8 +1239,8 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiledNativeStub);
 
   ScopedArenaAllocator stack_map_allocator(&arena_stack);  // Will hold the stack map.
-  ScopedArenaVector<uint8_t> stack_map = CreateJniStackMap(
-      &stack_map_allocator, jni_compiled_method, jni_compiled_method.GetCode().size());
+  ScopedArenaVector<uint8_t> stack_map = CreateJniStackMap(&stack_map_allocator,
+                                                           jni_compiled_method);
   return CompiledMethod::SwapAllocCompiledMethod(
       GetCompilerDriver()->GetCompiledMethodStorage(),
       jni_compiled_method.GetInstructionSet(),
@@ -1291,8 +1290,8 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     ArenaStack arena_stack(runtime->GetJitArenaPool());
     // StackMapStream is large and it does not fit into this frame, so we need helper method.
     ScopedArenaAllocator stack_map_allocator(&arena_stack);  // Will hold the stack map.
-    ScopedArenaVector<uint8_t> stack_map = CreateJniStackMap(
-        &stack_map_allocator, jni_compiled_method, jni_compiled_method.GetCode().size());
+    ScopedArenaVector<uint8_t> stack_map = CreateJniStackMap(&stack_map_allocator,
+                                                             jni_compiled_method);
     uint8_t* stack_map_data = nullptr;
     uint8_t* roots_data = nullptr;
     uint32_t data_size = code_cache->ReserveData(self,
