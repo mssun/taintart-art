@@ -139,43 +139,5 @@ TEST_F(ElfWriterTest, CheckBuildIdPresent) {
   }
 }
 
-TEST_F(ElfWriterTest, EncodeDecodeOatPatches) {
-  const std::vector<std::vector<uintptr_t>> test_data {
-      { 0, 4, 8, 15, 128, 200 },
-      { 8, 8 + 127 },
-      { 8, 8 + 128 },
-      { },
-  };
-  for (const auto& patch_locations : test_data) {
-    constexpr int32_t delta = 0x11235813;
-
-    // Encode patch locations.
-    std::vector<uint8_t> oat_patches;
-    ElfBuilder<ElfTypes32>::EncodeOatPatches(ArrayRef<const uintptr_t>(patch_locations),
-                                             &oat_patches);
-
-    // Create buffer to be patched.
-    std::vector<uint8_t> initial_data(256);
-    for (size_t i = 0; i < initial_data.size(); i++) {
-      initial_data[i] = i;
-    }
-
-    // Patch manually.
-    std::vector<uint8_t> expected = initial_data;
-    for (uintptr_t location : patch_locations) {
-      using UnalignedAddress __attribute__((__aligned__(1))) = uint32_t;
-      *reinterpret_cast<UnalignedAddress*>(expected.data() + location) += delta;
-    }
-
-    // Decode and apply patch locations.
-    std::vector<uint8_t> actual = initial_data;
-    ElfFileImpl32::ApplyOatPatches(
-        oat_patches.data(), oat_patches.data() + oat_patches.size(), delta,
-        actual.data(), actual.data() + actual.size());
-
-    EXPECT_EQ(expected, actual);
-  }
-}
-
 }  // namespace linker
 }  // namespace art

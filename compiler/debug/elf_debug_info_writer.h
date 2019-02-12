@@ -68,12 +68,8 @@ class ElfDebugInfoWriter {
     builder_->GetDebugInfo()->Start();
   }
 
-  void End(bool write_oat_patches) {
+  void End() {
     builder_->GetDebugInfo()->End();
-    if (write_oat_patches) {
-      builder_->WritePatches(".debug_info.oat_patches",
-                             ArrayRef<const uintptr_t>(debug_info_patches_));
-    }
     builder_->WriteSection(".debug_abbrev", &debug_abbrev_buffer_);
     if (!debug_loc_.empty()) {
       builder_->WriteSection(".debug_loc", &debug_loc_);
@@ -85,7 +81,6 @@ class ElfDebugInfoWriter {
 
  private:
   linker::ElfBuilder<ElfTypes>* builder_;
-  std::vector<uintptr_t> debug_info_patches_;
   std::vector<uint8_t> debug_abbrev_buffer_;
   dwarf::DebugAbbrevWriter<> debug_abbrev_;
   std::vector<uint8_t> debug_loc_;
@@ -281,10 +276,9 @@ class ElfCompilationUnitWriter {
     CHECK_EQ(info_.Depth(), 0);
     std::vector<uint8_t> buffer;
     buffer.reserve(info_.data()->size() + KB);
-    const size_t offset = owner_->builder_->GetDebugInfo()->GetPosition();
     // All compilation units share single table which is at the start of .debug_abbrev.
     const size_t debug_abbrev_offset = 0;
-    WriteDebugInfoCU(debug_abbrev_offset, info_, offset, &buffer, &owner_->debug_info_patches_);
+    WriteDebugInfoCU(debug_abbrev_offset, info_, &buffer);
     owner_->builder_->GetDebugInfo()->WriteFully(buffer.data(), buffer.size());
   }
 
@@ -446,10 +440,9 @@ class ElfCompilationUnitWriter {
     CHECK_EQ(info_.Depth(), 0);
     std::vector<uint8_t> buffer;
     buffer.reserve(info_.data()->size() + KB);
-    const size_t offset = owner_->builder_->GetDebugInfo()->GetPosition();
     // All compilation units share single table which is at the start of .debug_abbrev.
     const size_t debug_abbrev_offset = 0;
-    WriteDebugInfoCU(debug_abbrev_offset, info_, offset, &buffer, &owner_->debug_info_patches_);
+    WriteDebugInfoCU(debug_abbrev_offset, info_, &buffer);
     owner_->builder_->GetDebugInfo()->WriteFully(buffer.data(), buffer.size());
   }
 
