@@ -61,7 +61,7 @@ TEST(StackMapTest, Test1) {
   stream.AddDexRegisterEntry(Kind::kConstant, -2);       // Short location.
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(64 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   CodeInfo code_info(memory.data());
@@ -147,7 +147,7 @@ TEST(StackMapTest, Test2) {
   stream.AddDexRegisterEntry(Kind::kInFpuRegisterHigh, 1);  // Short location.
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(256 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   CodeInfo code_info(memory.data());
@@ -317,7 +317,7 @@ TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
   stream.EndInlineInfoEntry();
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(64 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   CodeInfo code_info(memory.data());
@@ -372,7 +372,7 @@ TEST(StackMapTest, TestNonLiveDexRegisters) {
   stream.AddDexRegisterEntry(Kind::kConstant, -2);       // Large location.
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(64 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   CodeInfo code_info(memory.data());
@@ -431,7 +431,7 @@ TEST(StackMapTest, TestShareDexRegisterMap) {
   stream.AddDexRegisterEntry(Kind::kConstant, -2);   // Large location.
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(66 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   CodeInfo ci(memory.data());
@@ -479,7 +479,7 @@ TEST(StackMapTest, TestNoDexRegisterMap) {
   stream.AddDexRegisterEntry(Kind::kNone, 0);
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(68 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   CodeInfo code_info(memory.data());
@@ -578,7 +578,7 @@ TEST(StackMapTest, InlineTest) {
 
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(78 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   CodeInfo ci(memory.data());
@@ -722,7 +722,7 @@ TEST(StackMapTest, TestDeduplicateStackMask) {
   stream.BeginStackMapEntry(0, 8 * kPcAlign, 0x3, &sp_mask);
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(8 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   CodeInfo code_info(memory.data());
@@ -746,7 +746,7 @@ TEST(StackMapTest, TestDedupeBitTables) {
   stream.AddDexRegisterEntry(Kind::kConstant, -2);
   stream.EndStackMapEntry();
 
-  stream.EndMethod();
+  stream.EndMethod(64 * kPcAlign);
   ScopedArenaVector<uint8_t> memory = stream.Encode();
 
   std::vector<uint8_t> out;
