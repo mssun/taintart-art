@@ -44,6 +44,7 @@
 
 #include "arch/instruction_set.h"
 #include "base/aborting.h"
+#include "base/bit_utils.h"
 #include "base/file_utils.h"
 #include "base/memory_tool.h"
 #include "base/mutex.h"
@@ -51,6 +52,7 @@
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
 #include "class_linker.h"
+#include "entrypoints/runtime_asm_entrypoints.h"
 #include "oat_quick_method_header.h"
 #include "runtime.h"
 #include "thread-current-inl.h"
@@ -297,6 +299,12 @@ static bool PcIsWithinQuickCode(ArtMethod* method, uintptr_t pc) NO_THREAD_SAFET
   if (class_linker->IsQuickGenericJniStub(entry_point) ||
       class_linker->IsQuickResolutionStub(entry_point) ||
       class_linker->IsQuickToInterpreterBridge(entry_point)) {
+    return false;
+  }
+  // The backtrace library might have heuristically subracted 1 from the pc,
+  // to pretend the pc is at the calling instruction.
+  DCHECK_ALIGNED(GetQuickInstrumentationExitPc(), sizeof(void*));
+  if (AlignUp(reinterpret_cast<void*>(pc), sizeof(void*)) == GetQuickInstrumentationExitPc()) {
     return false;
   }
   uintptr_t code = reinterpret_cast<uintptr_t>(EntryPointToCodePointer(entry_point));
