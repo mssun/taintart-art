@@ -35,6 +35,8 @@ class PACKED(4) OatQuickMethodHeader {
                        uint32_t code_size)
       : vmap_table_offset_(vmap_table_offset),
         code_size_(code_size) {
+    DCHECK_NE(vmap_table_offset, 0u);
+    DCHECK_NE(code_size, 0u);
   }
 
   static OatQuickMethodHeader* FromCodePointer(const void* code_ptr) {
@@ -58,7 +60,7 @@ class PACKED(4) OatQuickMethodHeader {
   }
 
   bool IsOptimized() const {
-    return GetCodeSize() != 0 && vmap_table_offset_ != 0;
+    return (code_size_ & kCodeSizeMask) != 0 && vmap_table_offset_ != 0;
   }
 
   const uint8_t* GetOptimizedCodeInfoPtr() const {
@@ -76,7 +78,11 @@ class PACKED(4) OatQuickMethodHeader {
   }
 
   uint32_t GetCodeSize() const {
-    return code_size_ & kCodeSizeMask;
+    DCHECK(IsOptimized());
+    size_t code_size1 = code_size_ & kCodeSizeMask;
+    size_t code_size2 = CodeInfo::DecodeCodeSize(GetOptimizedCodeInfoPtr());
+    DCHECK_EQ(code_size1, code_size2);
+    return code_size2;
   }
 
   const uint32_t* GetCodeSizeAddr() const {
