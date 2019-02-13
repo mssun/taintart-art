@@ -45,13 +45,12 @@ using ElfRuntimeTypes = std::conditional<sizeof(void*) == 4, ElfTypes32, ElfType
 template <typename ElfTypes>
 void WriteDebugInfo(linker::ElfBuilder<ElfTypes>* builder,
                     const DebugInfo& debug_info,
-                    dwarf::CFIFormat cfi_format,
                     bool write_oat_patches) {
   // Write .strtab and .symtab.
   WriteDebugSymbols(builder, /* mini-debug-info= */ false, debug_info);
 
   // Write .debug_frame.
-  WriteCFISection(builder, debug_info.compiled_methods, cfi_format, write_oat_patches);
+  WriteCFISection(builder, debug_info.compiled_methods, write_oat_patches);
 
   // Group the methods into compilation units based on class.
   std::unordered_map<const dex::ClassDef*, ElfCompilationUnit> class_to_compilation_unit;
@@ -137,10 +136,7 @@ static std::vector<uint8_t> MakeMiniDebugInfoInternal(
     WriteDebugSymbols(builder.get(), /* mini-debug-info= */ true, debug_info);
   }
   if (!debug_info.compiled_methods.empty()) {
-    WriteCFISection(builder.get(),
-                    debug_info.compiled_methods,
-                    dwarf::DW_DEBUG_FRAME_FORMAT,
-                    /* write_oat_patches= */ false);
+    WriteCFISection(builder.get(), debug_info.compiled_methods, /* write_oat_patches= */ false);
   }
   builder->End();
   CHECK(builder->Good());
@@ -199,15 +195,9 @@ std::vector<uint8_t> MakeElfFileForJIT(
     // The compression is great help for multiple methods but it is not worth it for a
     // single method due to the overheads so skip the compression here for performance.
     WriteDebugSymbols(builder.get(), /* mini-debug-info= */ true, debug_info);
-    WriteCFISection(builder.get(),
-                    debug_info.compiled_methods,
-                    dwarf::DW_DEBUG_FRAME_FORMAT,
-                    /* write_oat_patches= */ false);
+    WriteCFISection(builder.get(), debug_info.compiled_methods, /* write_oat_patches= */ false);
   } else {
-    WriteDebugInfo(builder.get(),
-                   debug_info,
-                   dwarf::DW_DEBUG_FRAME_FORMAT,
-                   /* write_oat_patches= */ false);
+    WriteDebugInfo(builder.get(), debug_info, /* write_oat_patches= */ false);
   }
   builder->End();
   CHECK(builder->Good());
@@ -272,7 +262,7 @@ std::vector<uint8_t> PackElfFileForJIT(
     auto* debug_frame = builder->GetDebugFrame();
     std::deque<Elf_Sym> symbols;
     std::vector<uint8_t> debug_frame_buffer;
-    WriteCIE(isa, dwarf::DW_DEBUG_FRAME_FORMAT, &debug_frame_buffer);
+    WriteCIE(isa, &debug_frame_buffer);
 
     // Write symbols names. All other data is buffered.
     strtab->Start();
@@ -293,16 +283,15 @@ std::vector<uint8_t> PackElfFileForJIT(
               if (is_removed_symbol(addr)) {
                 return;
               }
-              WriteFDE(is64bit,
-                       /*section_address=*/ 0,
-                       /*cie_address=*/ 0,
-                       addr,
-                       size,
-                       opcodes,
-                       dwarf::DW_DEBUG_FRAME_FORMAT,
-                       debug_frame_buffer.size(),
-                       &debug_frame_buffer,
-                       /*patch_locations=*/ nullptr);
+              dwarf::WriteFDE(is64bit,
+                              /*section_address=*/ 0,
+                              /*cie_address=*/ 0,
+                              addr,
+                              size,
+                              opcodes,
+                              debug_frame_buffer.size(),
+                              &debug_frame_buffer,
+                              /*patch_locations=*/ nullptr);
           });
     }
     strtab->End();
@@ -382,12 +371,10 @@ std::vector<uint8_t> WriteDebugElfFileForClasses(
 template void WriteDebugInfo<ElfTypes32>(
     linker::ElfBuilder<ElfTypes32>* builder,
     const DebugInfo& debug_info,
-    dwarf::CFIFormat cfi_format,
     bool write_oat_patches);
 template void WriteDebugInfo<ElfTypes64>(
     linker::ElfBuilder<ElfTypes64>* builder,
     const DebugInfo& debug_info,
-    dwarf::CFIFormat cfi_format,
     bool write_oat_patches);
 
 }  // namespace debug

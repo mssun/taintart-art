@@ -42,15 +42,6 @@
 namespace art {
 namespace linker {
 
-// .eh_frame and .debug_frame are almost identical.
-// Except for some minor formatting differences, the main difference
-// is that .eh_frame is allocated within the running program because
-// it is used by C++ exception handling (which we do not use so we
-// can choose either).  C++ compilers generally tend to use .eh_frame
-// because if they need it sometimes, they might as well always use it.
-// Let's use .debug_frame because it is easier to strip or compress.
-constexpr dwarf::CFIFormat kCFIFormat = dwarf::DW_DEBUG_FRAME_FORMAT;
-
 class DebugInfoTask : public Task {
  public:
   DebugInfoTask(InstructionSet isa,
@@ -290,7 +281,7 @@ void ElfWriterQuick<ElfTypes>::WriteDebugInfo(const debug::DebugInfo& debug_info
   // The Strip method expects debug info to be last (mini-debug-info is not stripped).
   if (!debug_info.Empty() && compiler_options_.GetGenerateDebugInfo()) {
     // Generate all the debug information we can.
-    debug::WriteDebugInfo(builder_.get(), debug_info, kCFIFormat, true /* write_oat_patches */);
+    debug::WriteDebugInfo(builder_.get(), debug_info, true /* write_oat_patches */);
   }
 }
 

@@ -32,8 +32,6 @@
 
 namespace art {
 
-constexpr dwarf::CFIFormat kCFIFormat = dwarf::DW_DEBUG_FRAME_FORMAT;
-
 class CFITest : public dwarf::DwarfTest {
  public:
   void GenerateExpected(FILE* f, InstructionSet isa, const char* isa_str,
@@ -50,7 +48,7 @@ class CFITest : public dwarf::DwarfTest {
     // Pretty-print CFI opcodes.
     constexpr bool is64bit = false;
     dwarf::DebugFrameOpCodeWriter<> initial_opcodes;
-    dwarf::WriteCIE(is64bit, dwarf::Reg(8), initial_opcodes, kCFIFormat, &debug_frame_data_);
+    dwarf::WriteCIE(is64bit, dwarf::Reg(8), initial_opcodes, &debug_frame_data_);
     std::vector<uintptr_t> debug_frame_patches;
     dwarf::WriteFDE(is64bit,
                     /* section_address= */ 0,
@@ -58,7 +56,6 @@ class CFITest : public dwarf::DwarfTest {
                     /* code_address= */ 0,
                     actual_asm.size(),
                     actual_cfi,
-                    kCFIFormat,
                     /* buffer_address= */ 0,
                     &debug_frame_data_,
                     &debug_frame_patches);
