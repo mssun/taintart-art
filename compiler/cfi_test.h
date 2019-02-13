@@ -51,14 +51,11 @@ class CFITest : public dwarf::DwarfTest {
     dwarf::WriteCIE(is64bit, dwarf::Reg(8), initial_opcodes, &debug_frame_data_);
     std::vector<uintptr_t> debug_frame_patches;
     dwarf::WriteFDE(is64bit,
-                    /* section_address= */ 0,
-                    /* cie_address= */ 0,
+                    /* cie_pointer= */ 0,
                     /* code_address= */ 0,
                     actual_asm.size(),
                     actual_cfi,
-                    /* buffer_address= */ 0,
-                    &debug_frame_data_,
-                    &debug_frame_patches);
+                    &debug_frame_data_);
     ReformatCfi(Objdump(false, "-W"), &lines);
     // Pretty-print assembly.
     const uint8_t* asm_base = actual_asm.data();

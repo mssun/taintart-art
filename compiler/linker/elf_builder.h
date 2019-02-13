@@ -51,14 +51,10 @@ namespace linker {
 //   .strtab                     - Names for .symtab.
 //   .symtab                     - Debug symbols.
 //   .debug_frame                - Unwind information (CFI).
-//   .debug_frame.oat_patches    - Addresses for relocation.
 //   .debug_info                 - Debug information.
-//   .debug_info.oat_patches     - Addresses for relocation.
 //   .debug_abbrev               - Decoding information for .debug_info.
 //   .debug_str                  - Strings for .debug_info.
 //   .debug_line                 - Line number tables.
-//   .debug_line.oat_patches     - Addresses for relocation.
-//   .text.oat_patches           - Addresses for relocation.
 //   .shstrtab                   - Names of ELF sections.
 //   Elf_Shdr[]                  - Section headers.
 //
@@ -574,29 +570,6 @@ class ElfBuilder final {
   Section* GetDebugFrameHdr() { return &debug_frame_hdr_; }
   Section* GetDebugInfo() { return &debug_info_; }
   Section* GetDebugLine() { return &debug_line_; }
-
-  // Encode patch locations as LEB128 list of deltas between consecutive addresses.
-  // (exposed publicly for tests)
-  static void EncodeOatPatches(const ArrayRef<const uintptr_t>& locations,
-                               std::vector<uint8_t>* buffer) {
-    buffer->reserve(buffer->size() + locations.size() * 2);  // guess 2 bytes per ULEB128.
-    uintptr_t address = 0;  // relative to start of section.
-    for (uintptr_t location : locations) {
-      DCHECK_GE(location, address) << "Patch locations are not in sorted order";
-      EncodeUnsignedLeb128(buffer, dchecked_integral_cast<uint32_t>(location - address));
-      address = location;
-    }
-  }
-
-  void WritePatches(const char* name, const ArrayRef<const uintptr_t>& patch_locations) {
-    std::vector<uint8_t> buffer;
-    EncodeOatPatches(patch_locations, &buffer);
-    std::unique_ptr<Section> s(new Section(this, name, SHT_OAT_PATCH, 0, nullptr, 0, 1, 0));
-    s->Start();
-    s->WriteFully(buffer.data(), buffer.size());
-    s->End();
-    other_sections_.push_back(std::move(s));
-  }
 
   void WriteSection(const char* name, const std::vector<uint8_t>* buffer) {
     std::unique_ptr<Section> s(new Section(this, name, SHT_PROGBITS, 0, nullptr, 0, 1, 0));

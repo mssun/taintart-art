@@ -37,8 +37,7 @@ struct MethodDebugInfo;
 template <typename ElfTypes>
 void WriteDebugInfo(
     linker::ElfBuilder<ElfTypes>* builder,
-    const DebugInfo& debug_info,
-    bool write_oat_patches);
+    const DebugInfo& debug_info);
 
 std::vector<uint8_t> MakeMiniDebugInfo(
     InstructionSet isa,
