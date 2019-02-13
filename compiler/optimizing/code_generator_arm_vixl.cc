@@ -2093,6 +2093,8 @@ void CodeGeneratorARMVIXL::GenerateFrameEntry() {
   }
 
   if (HasEmptyFrame()) {
+    // Ensure that the CFI opcode list is not empty.
+    GetAssembler()->cfi().Nop();
     return;
   }
 
