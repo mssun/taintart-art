@@ -221,7 +221,7 @@ class OatSymbolizer final {
     debug::DebugInfo debug_info{};
     debug_info.compiled_methods = ArrayRef<const debug::MethodDebugInfo>(method_debug_infos_);
 
-    debug::WriteDebugInfo(builder_.get(), debug_info, /* write_oat_patches= */ true);
+    debug::WriteDebugInfo(builder_.get(), debug_info);
 
     builder_->End();
 

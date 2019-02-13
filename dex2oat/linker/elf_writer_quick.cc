@@ -281,7 +281,7 @@ void ElfWriterQuick<ElfTypes>::WriteDebugInfo(const debug::DebugInfo& debug_info
   // The Strip method expects debug info to be last (mini-debug-info is not stripped).
   if (!debug_info.Empty() && compiler_options_.GetGenerateDebugInfo()) {
     // Generate all the debug information we can.
-    debug::WriteDebugInfo(builder_.get(), debug_info, true /* write_oat_patches */);
+    debug::WriteDebugInfo(builder_.get(), debug_info);
   }
 }
 

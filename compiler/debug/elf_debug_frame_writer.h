@@ -169,8 +169,7 @@ static void WriteCIE(InstructionSet isa, /*inout*/ std::vector<uint8_t>* buffer)
 
 template<typename ElfTypes>
 void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
-                     const ArrayRef<const MethodDebugInfo>& method_infos,
-                     bool write_oat_patches) {
+                     const ArrayRef<const MethodDebugInfo>& method_infos) {
   typedef typename ElfTypes::Addr Elf_Addr;
 
   // The methods can be written in any order.
@@ -197,11 +196,8 @@ void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
       });
 
   std::vector<uint32_t> binary_search_table;
-  std::vector<uintptr_t> patch_locations;
   if (kWriteDebugFrameHdr) {
     binary_search_table.reserve(2 * sorted_method_infos.size());
-  } else {
-    patch_locations.reserve(sorted_method_infos.size());
   }
 
   // Write .debug_frame section.
@@ -209,11 +205,9 @@ void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
   {
     cfi_section->Start();
     const bool is64bit = Is64BitInstructionSet(builder->GetIsa());
-    Elf_Addr buffer_address = 0;
     std::vector<uint8_t> buffer;  // Small temporary buffer.
     WriteCIE(builder->GetIsa(), &buffer);
     cfi_section->WriteFully(buffer.data(), buffer.size());
-    buffer_address += buffer.size();
     buffer.clear();
     for (const MethodDebugInfo* mi : sorted_method_infos) {
       DCHECK(!mi->deduped);
@@ -222,19 +216,15 @@ void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
           (mi->is_code_address_text_relative ? builder->GetText()->GetAddress() : 0);
       if (kWriteDebugFrameHdr) {
         binary_search_table.push_back(dchecked_integral_cast<uint32_t>(code_address));
-        binary_search_table.push_back(dchecked_integral_cast<uint32_t>(buffer_address));
+        binary_search_table.push_back(cfi_section->GetPosition());
       }
       dwarf::WriteFDE(is64bit,
-                      0,
-                      0,
+                      /* cie_pointer= */ 0,
                       code_address,
                       mi->code_size,
                       mi->cfi,
-                      buffer_address,
-                      &buffer,
-                      &patch_locations);
+                      &buffer);
       cfi_section->WriteFully(buffer.data(), buffer.size());
-      buffer_address += buffer.size();
       buffer.clear();
     }
     cfi_section->End();
@@ -254,11 +244,6 @@ void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
     header_section->WriteFully(header_buffer.data(), header_buffer.size());
     header_section->WriteFully(binary_search_table.data(), binary_search_table.size());
     header_section->End();
-  } else {
-    if (write_oat_patches) {
-      builder->WritePatches(".debug_frame.oat_patches",
-                            ArrayRef<const uintptr_t>(patch_locations));
-    }
   }
 }
 
