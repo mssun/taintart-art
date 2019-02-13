@@ -30,7 +30,8 @@ FLAGS=""
 ANDROID_FLAGS=""
 GDB=""
 GDB_ARGS=""
-GDB_SERVER="gdbserver"
+GDBSERVER_DEVICE="gdbserver"
+GDBSERVER_HOST="gdbserver"
 HAVE_IMAGE="y"
 HOST="n"
 BIONIC="n"
@@ -60,6 +61,8 @@ else
   TIME_OUT_VALUE=1200  # 20 minutes.
 fi
 USE_GDB="n"
+USE_GDBSERVER="n"
+GDBSERVER_PORT=":5039"
 USE_JVM="n"
 USE_JVMTI="n"
 VERIFY="y" # y=yes,n=no,s=softfail
@@ -267,6 +270,23 @@ while true; do
         DEBUGGER="y"
         TIME_OUT="n"
         shift
+    elif [ "x$1" = "x--gdbserver-port" ]; then
+        shift
+        GDBSERVER_PORT=$1
+        shift
+    elif [ "x$1" = "x--gdbserver-bin" ]; then
+        shift
+        GDBSERVER_HOST=$1
+        GDBSERVER_DEVICE=$1
+        shift
+    elif [ "x$1" = "x--gdbserver" ]; then
+        USE_GDBSERVER="y"
+        DEV_MODE="y"
+        TIME_OUT="n"
+        HOST="y"
+        ANDROID_ROOT="${ANDROID_HOST_OUT}"
+        ANDROID_RUNTIME_ROOT="${ANDROID_HOST_OUT}/com.android.runtime"
+        shift
     elif [ "x$1" = "x--gdb" ]; then
         USE_GDB="y"
         DEV_MODE="y"
@@ -342,7 +362,7 @@ while true; do
         break
     elif [ "x$1" = "x--64" ]; then
         ISA="x86_64"
-        GDB_SERVER="gdbserver64"
+        GDBSERVER_DEVICE="gdbserver64"
         DALVIKVM="dalvikvm64"
         LIBRARY_DIRECTORY="lib64"
         TEST_DIRECTORY="nativetest64"
@@ -611,8 +631,11 @@ fi
 
 
 if [ "$USE_GDB" = "y" ]; then
-  if [ "$HOST" = "n" ]; then
-    GDB="$GDB_SERVER :5039"
+  if [ "$USE_GDBSERVER" = "y" ]; then
+    echo "Cannot pass both --gdb and --gdbserver at the same time!" >&2
+    exit 1
+  elif [ "$HOST" = "n" ]; then
+    GDB="$GDBSERVER_DEVICE $GDBSERVER_PORT"
   else
     if [ `uname` = "Darwin" ]; then
         GDB=lldb
@@ -625,6 +648,12 @@ if [ "$USE_GDB" = "y" ]; then
         # gdbargs="--annotate=3 $gdbargs"
     fi
   fi
+elif [ "$USE_GDBSERVER" = "y" ]; then
+  if [ "$HOST" = "n" ]; then
+    echo "Cannot use --gdbserver in non-host configs" >&2
+    exit 1
+  fi
+  GDB="$GDBSERVER_HOST $GDBSERVER_PORT"
 fi
 
 if [ "$INTERPRETER" = "y" ]; then
@@ -1084,7 +1113,10 @@ else
 
     if [ "$USE_GDB" = "y" ]; then
       # When running under gdb, we cannot do piping and grepping...
-      echo "Run 'gdbclient.py -p <pid printed below>' to debug."
+      $cmdline "$@"
+    elif [ "$USE_GDBSERVER" = "y" ]; then
+      echo "Connect to $GDBSERVER_PORT"
+      # When running under gdb, we cannot do piping and grepping...
       $cmdline "$@"
     else
       if [ "$TIME_OUT" != "gdb" ]; then
