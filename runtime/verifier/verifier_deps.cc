@@ -39,13 +39,25 @@ VerifierDeps::VerifierDeps(const std::vector<const DexFile*>& dex_files, bool ou
     : output_only_(output_only) {
   for (const DexFile* dex_file : dex_files) {
     DCHECK(GetDexFileDeps(*dex_file) == nullptr);
-    std::unique_ptr<DexFileDeps> deps(new DexFileDeps());
+    std::unique_ptr<DexFileDeps> deps(new DexFileDeps(dex_file->NumClassDefs()));
     dex_deps_.emplace(dex_file, std::move(deps));
   }
 }
 
 VerifierDeps::VerifierDeps(const std::vector<const DexFile*>& dex_files)
     : VerifierDeps(dex_files, /*output_only=*/ true) {}
+
+// Perform logical OR on two bit vectors and assign back to LHS, i.e. `to_update |= other`.
+// Size of the two vectors must be equal.
+// Size of `other` must be equal to size of `to_update`.
+static inline void BitVectorOr(std::vector<bool>& to_update, const std::vector<bool>& other) {
+  DCHECK_EQ(to_update.size(), other.size());
+  std::transform(other.begin(),
+                 other.end(),
+                 to_update.begin(),
+                 to_update.begin(),
+                 std::logical_or<bool>());
+}
 
 void VerifierDeps::MergeWith(std::unique_ptr<VerifierDeps> other,
                              const std::vector<const DexFile*>& dex_files) {
@@ -62,7 +74,8 @@ void VerifierDeps::MergeWith(std::unique_ptr<VerifierDeps> other,
     my_deps->classes_.merge(other_deps.classes_);
     my_deps->fields_.merge(other_deps.fields_);
     my_deps->methods_.merge(other_deps.methods_);
-    my_deps->unverified_classes_.merge(other_deps.unverified_classes_);
+    BitVectorOr(my_deps->verified_classes_, other_deps.verified_classes_);
+    BitVectorOr(my_deps->redefined_classes_, other_deps.redefined_classes_);
   }
 }
 
@@ -498,18 +511,30 @@ void VerifierDeps::AddAssignability(const DexFile& dex_file,
   }
 }
 
+void VerifierDeps::MaybeRecordClassRedefinition(const DexFile& dex_file,
+                                                const dex::ClassDef& class_def) {
+  VerifierDeps* thread_deps = GetThreadLocalVerifierDeps();
+  if (thread_deps != nullptr) {
+    DexFileDeps* dex_deps = thread_deps->GetDexFileDeps(dex_file);
+    DCHECK_EQ(dex_deps->redefined_classes_.size(), dex_file.NumClassDefs());
+    dex_deps->redefined_classes_[dex_file.GetIndexForClassDef(class_def)] = true;
+  }
+}
+
 void VerifierDeps::MaybeRecordVerificationStatus(const DexFile& dex_file,
-                                                 dex::TypeIndex type_idx,
+                                                 const dex::ClassDef& class_def,
                                                  FailureKind failure_kind) {
-  if (failure_kind == FailureKind::kNoFailure) {
-    // We only record classes that did not fully verify at compile time.
+  if (failure_kind != FailureKind::kNoFailure) {
+    // The `verified_classes_` bit vector is initialized to `false`.
+    // Only continue if we are about to write `true`.
     return;
   }
 
   VerifierDeps* thread_deps = GetThreadLocalVerifierDeps();
   if (thread_deps != nullptr) {
     DexFileDeps* dex_deps = thread_deps->GetDexFileDeps(dex_file);
-    dex_deps->unverified_classes_.insert(type_idx);
+    DCHECK_EQ(dex_deps->verified_classes_.size(), dex_file.NumClassDefs());
+    dex_deps->verified_classes_[dex_file.GetIndexForClassDef(class_def)] = true;
   }
 }
 
@@ -588,16 +613,6 @@ template<> inline dex::StringIndex Decode<dex::StringIndex>(uint32_t in) {
   return dex::StringIndex(in);
 }
 
-// TODO: Clean this up, if we use a template arg here it confuses the compiler.
-static inline void EncodeTuple(std::vector<uint8_t>* out, const dex::TypeIndex& t) {
-  EncodeUnsignedLeb128(out, Encode(t));
-}
-
-// TODO: Clean this up, if we use a template arg here it confuses the compiler.
-static inline void DecodeTuple(const uint8_t** in, const uint8_t* end, dex::TypeIndex* t) {
-  *t = Decode<dex::TypeIndex>(DecodeUint32WithOverflowCheck(in, end));
-}
-
 template<typename T1, typename T2>
 static inline void EncodeTuple(std::vector<uint8_t>* out, const std::tuple<T1, T2>& t) {
   EncodeUnsignedLeb128(out, Encode(std::get<0>(t)));
@@ -634,15 +649,6 @@ static inline void EncodeSet(std::vector<uint8_t>* out, const std::set<T>& set) 
   }
 }
 
-template <typename T>
-static inline void EncodeUint16Vector(std::vector<uint8_t>* out,
-                                      const std::vector<T>& vector) {
-  EncodeUnsignedLeb128(out, vector.size());
-  for (const T& entry : vector) {
-    EncodeUnsignedLeb128(out, Encode(entry));
-  }
-}
-
 template<typename T>
 static inline void DecodeSet(const uint8_t** in, const uint8_t* end, std::set<T>* set) {
   DCHECK(set->empty());
@@ -654,16 +660,29 @@ static inline void DecodeSet(const uint8_t** in, const uint8_t* end, std::set<T>
   }
 }
 
-template<typename T>
-static inline void DecodeUint16Vector(const uint8_t** in,
-                                      const uint8_t* end,
-                                      std::vector<T>* vector) {
-  DCHECK(vector->empty());
+static inline void EncodeUint16SparseBitVector(std::vector<uint8_t>* out,
+                                               const std::vector<bool>& vector,
+                                               bool sparse_value) {
+  DCHECK(IsUint<16>(vector.size()));
+  EncodeUnsignedLeb128(out, std::count(vector.begin(), vector.end(), sparse_value));
+  for (uint16_t idx = 0; idx < vector.size(); ++idx) {
+    if (vector[idx] == sparse_value) {
+      EncodeUnsignedLeb128(out, Encode(idx));
+    }
+  }
+}
+
+static inline void DecodeUint16SparseBitVector(const uint8_t** in,
+                                               const uint8_t* end,
+                                               std::vector<bool>* vector,
+                                               bool sparse_value) {
+  DCHECK(IsUint<16>(vector->size()));
+  std::fill(vector->begin(), vector->end(), !sparse_value);
   size_t num_entries = DecodeUint32WithOverflowCheck(in, end);
-  vector->reserve(num_entries);
   for (size_t i = 0; i < num_entries; ++i) {
-    vector->push_back(
-        Decode<T>(dchecked_integral_cast<uint16_t>(DecodeUint32WithOverflowCheck(in, end))));
+    uint16_t idx = Decode<uint16_t>(DecodeUint32WithOverflowCheck(in, end));
+    DCHECK_LT(idx, vector->size());
+    (*vector)[idx] = sparse_value;
   }
 }
 
@@ -710,7 +729,8 @@ void VerifierDeps::Encode(const std::vector<const DexFile*>& dex_files,
     EncodeSet(buffer, deps.classes_);
     EncodeSet(buffer, deps.fields_);
     EncodeSet(buffer, deps.methods_);
-    EncodeSet(buffer, deps.unverified_classes_);
+    EncodeUint16SparseBitVector(buffer, deps.verified_classes_, /* sparse_value= */ false);
+    EncodeUint16SparseBitVector(buffer, deps.redefined_classes_, /* sparse_value= */ true);
   }
 }
 
@@ -733,7 +753,14 @@ VerifierDeps::VerifierDeps(const std::vector<const DexFile*>& dex_files,
     DecodeSet(&data_start, data_end, &deps->classes_);
     DecodeSet(&data_start, data_end, &deps->fields_);
     DecodeSet(&data_start, data_end, &deps->methods_);
-    DecodeSet(&data_start, data_end, &deps->unverified_classes_);
+    DecodeUint16SparseBitVector(&data_start,
+                                data_end,
+                                &deps->verified_classes_,
+                                /* sparse_value= */ false);
+    DecodeUint16SparseBitVector(&data_start,
+                                data_end,
+                                &deps->redefined_classes_,
+                                /* sparse_value= */ true);
   }
   CHECK_LE(data_start, data_end);
 }
@@ -771,7 +798,7 @@ bool VerifierDeps::DexFileDeps::Equals(const VerifierDeps::DexFileDeps& rhs) con
          (classes_ == rhs.classes_) &&
          (fields_ == rhs.fields_) &&
          (methods_ == rhs.methods_) &&
-         (unverified_classes_ == rhs.unverified_classes_);
+         (verified_classes_ == rhs.verified_classes_);
 }
 
 void VerifierDeps::Dump(VariableIndentationOutputStream* vios) const {
@@ -848,10 +875,12 @@ void VerifierDeps::Dump(VariableIndentationOutputStream* vios) const {
       }
     }
 
-    for (dex::TypeIndex type_index : dep.second->unverified_classes_) {
-      vios->Stream()
-          << dex_file.StringByTypeIdx(type_index)
-          << " is expected to be verified at runtime\n";
+    for (size_t idx = 0; idx < dep.second->verified_classes_.size(); idx++) {
+      if (!dep.second->verified_classes_[idx]) {
+        vios->Stream()
+            << dex_file.GetClassDescriptor(dex_file.GetClassDef(idx))
+            << " will be verified at runtime\n";
+      }
     }
   }
 }
@@ -1086,22 +1115,35 @@ bool VerifierDeps::VerifyMethods(Handle<mirror::ClassLoader> class_loader,
 
 bool VerifierDeps::VerifyInternalClasses(Handle<mirror::ClassLoader> class_loader,
                                          const DexFile& dex_file,
-                                         const std::set<dex::TypeIndex>& unverified_classes,
+                                         const std::vector<bool>& verified_classes,
+                                         const std::vector<bool>& redefined_classes,
                                          Thread* self,
                                          /* out */ std::string* error_msg) const {
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
 
   for (ClassAccessor accessor : dex_file.GetClasses()) {
-    std::string descriptor = accessor.GetDescriptor();
-    ObjPtr<mirror::Class> cls = FindClassAndClearException(class_linker,
-                                                           self,
-                                                           descriptor,
-                                                           class_loader);
+    const std::string descriptor = accessor.GetDescriptor();
+    const uint16_t class_def_index = accessor.GetClassDefIndex();
+    const bool verified = verified_classes[class_def_index];
+    const bool redefined = redefined_classes[class_def_index];
+
+    if (redefined) {
+      if (verified) {
+        *error_msg = "Class " + descriptor + " marked both verified and redefined";
+        return false;
+      }
+
+      // Class was not verified under these dependencies. No need to check it further.
+      continue;
+    }
+
+    ObjPtr<mirror::Class> cls =
+        FindClassAndClearException(class_linker, self, descriptor, class_loader);
     if (UNLIKELY(cls == nullptr)) {
       // Could not resolve class from the currently verified dex file.
       // This can happen when the class fails to link. Check if this
-      // expected by looking in the `unverified_classes` set.
-      if (unverified_classes.find(accessor.GetClassDef().class_idx_) == unverified_classes.end()) {
+      // expected by looking in the `verified_classes` bit vector.
+      if (verified) {
         *error_msg = "Failed to resolve internal class " + descriptor;
         return false;
       }
@@ -1112,7 +1154,7 @@ bool VerifierDeps::VerifyInternalClasses(Handle<mirror::ClassLoader> class_loade
     // a different class with the same descriptor somewhere in one of the parent
     // class loaders.
     if (&cls->GetDexFile() != &dex_file) {
-      *error_msg = "Class " + descriptor + " redefines a class in a parent class loader "
+      *error_msg = "Class " + descriptor + " redefines a class in the classpath "
           + "(dexFile expected=" + accessor.GetDexFile().GetLocation()
           + ", actual=" + cls->GetDexFile().GetLocation() + ")";
       return false;
@@ -1129,7 +1171,8 @@ bool VerifierDeps::VerifyDexFile(Handle<mirror::ClassLoader> class_loader,
                                  /* out */ std::string* error_msg) const {
   return VerifyInternalClasses(class_loader,
                                dex_file,
-                               deps.unverified_classes_,
+                               deps.verified_classes_,
+                               deps.redefined_classes_,
                                self,
                                error_msg) &&
          VerifyAssignability(class_loader,

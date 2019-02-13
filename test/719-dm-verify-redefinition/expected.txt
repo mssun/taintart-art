@@ -1,3 +1,2 @@
-Fast verification failed: Class Ljava/util/BitSet; redefines a class in a parent class loader
+Fast verification failed: Class LRedefined; redefines a class in the classpath
 Hello, world!
-Correct resolution of boot class.

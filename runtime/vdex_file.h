@@ -92,8 +92,8 @@ class VdexFile {
     static constexpr uint8_t kVdexMagic[] = { 'v', 'd', 'e', 'x' };
 
     // The format version of the verifier deps header and the verifier deps.
-    // Last update: Add DexSectionHeader
-    static constexpr uint8_t kVerifierDepsVersion[] = { '0', '1', '9', '\0' };
+    // Last update: Add `redefined_classes_`.
+    static constexpr uint8_t kVerifierDepsVersion[] = { '0', '2', '0', '\0' };
 
     // The format version of the dex section header and the dex section, containing
     // both the dex code and the quickening data.

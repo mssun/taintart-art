@@ -14,7 +14,5 @@
  * limitations under the License.
  */
 
-package java.util;
-
-public class BitSet {
+public class Redefined {
 }

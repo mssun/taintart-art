@@ -1799,11 +1799,11 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
   // time. So instead we assume these classes still need to be verified at
   // runtime.
   for (const DexFile* dex_file : dex_files) {
-    // Fetch the list of unverified classes.
-    const std::set<dex::TypeIndex>& unverified_classes =
-        verifier_deps->GetUnverifiedClasses(*dex_file);
+    // Fetch the list of verified classes.
+    const std::vector<bool>& verified_classes = verifier_deps->GetVerifiedClasses(*dex_file);
+    DCHECK_EQ(verified_classes.size(), dex_file->NumClassDefs());
     for (ClassAccessor accessor : dex_file->GetClasses()) {
-      if (unverified_classes.find(accessor.GetClassIdx()) == unverified_classes.end()) {
+      if (verified_classes[accessor.GetClassDefIndex()]) {
         if (compiler_only_verifies) {
           // Just update the compiled_classes_ map. The compiler doesn't need to resolve
           // the type.
@@ -1953,6 +1953,16 @@ class VerifyClassVisitor : public CompilationVisitor {
       }
     } else if (&klass->GetDexFile() != &dex_file) {
       // Skip a duplicate class (as the resolved class is from another, earlier dex file).
+      // Record the information that we skipped this class in the vdex.
+      // If the class resolved to a dex file not covered by the vdex, e.g. boot class path,
+      // it is considered external, dependencies on it will be recorded and the vdex will
+      // remain usable regardless of whether the class remains redefined or not (in the
+      // latter case, this class will be verify-at-runtime).
+      // On the other hand, if the class resolved to a dex file covered by the vdex, i.e.
+      // a different dex file within the same APK, this class will always be eclipsed by it.
+      // Recording that it was redefined is not necessary but will save class resolution
+      // time during fast-verify.
+      verifier::VerifierDeps::MaybeRecordClassRedefinition(dex_file, class_def);
       return;  // Do not update state.
     } else if (!SkipClass(jclass_loader, dex_file, klass.Get())) {
       CHECK(klass->IsResolved()) << klass->PrettyClass();
@@ -2001,8 +2011,7 @@ class VerifyClassVisitor : public CompilationVisitor {
       // Make the skip a soft failure, essentially being considered as verify at runtime.
       failure_kind = verifier::FailureKind::kSoftFailure;
     }
-    verifier::VerifierDeps::MaybeRecordVerificationStatus(
-        dex_file, class_def.class_idx_, failure_kind);
+    verifier::VerifierDeps::MaybeRecordVerificationStatus(dex_file, class_def, failure_kind);
     soa.Self()->AssertNoPendingException();
   }
 
