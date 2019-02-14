@@ -301,10 +301,9 @@ static bool PcIsWithinQuickCode(ArtMethod* method, uintptr_t pc) NO_THREAD_SAFET
       class_linker->IsQuickToInterpreterBridge(entry_point)) {
     return false;
   }
-  // The backtrace library might have heuristically subracted 1 from the pc,
-  // to pretend the pc is at the calling instruction.
-  DCHECK_ALIGNED(GetQuickInstrumentationExitPc(), sizeof(void*));
-  if (AlignUp(reinterpret_cast<void*>(pc), sizeof(void*)) == GetQuickInstrumentationExitPc()) {
+  // The backtrace library might have heuristically subracted instruction
+  // size from the pc, to pretend the pc is at the calling instruction.
+  if (reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()) - pc <= 4) {
     return false;
   }
   uintptr_t code = reinterpret_cast<uintptr_t>(EntryPointToCodePointer(entry_point));
