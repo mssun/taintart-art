@@ -240,7 +240,7 @@ jvmtiError Redefiner::IsModifiableClass(jvmtiEnv* env ATTRIBUTE_UNUSED,
   art::ScopedObjectAccess soa(self);
   art::StackHandleScope<1> hs(self);
   art::ObjPtr<art::mirror::Object> obj(self->DecodeJObject(klass));
-  if (obj.IsNull()) {
+  if (obj.IsNull() || !obj->IsClass()) {
     return ERR(INVALID_CLASS);
   }
   art::Handle<art::mirror::Class> h_klass(hs.NewHandle(obj->AsClass()));
@@ -256,7 +256,7 @@ jvmtiError Redefiner::GetClassRedefinitionError(jclass klass, /*out*/std::string
   art::ScopedObjectAccess soa(self);
   art::StackHandleScope<1> hs(self);
   art::ObjPtr<art::mirror::Object> obj(self->DecodeJObject(klass));
-  if (obj.IsNull()) {
+  if (obj.IsNull() || !obj->IsClass()) {
     return ERR(INVALID_CLASS);
   }
   art::Handle<art::mirror::Class> h_klass(hs.NewHandle(obj->AsClass()));
