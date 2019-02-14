@@ -60,25 +60,25 @@ class JvmtiWeakTable : public art::gc::SystemWeakHolder {
 
   // Remove the mapping for the given object, returning whether such a mapping existed (and the old
   // value).
-  ALWAYS_INLINE bool Remove(art::mirror::Object* obj, /* out */ T* tag)
+  ALWAYS_INLINE bool Remove(art::ObjPtr<art::mirror::Object> obj, /* out */ T* tag)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_);
-  ALWAYS_INLINE bool RemoveLocked(art::mirror::Object* obj, /* out */ T* tag)
+  ALWAYS_INLINE bool RemoveLocked(art::ObjPtr<art::mirror::Object> obj, /* out */ T* tag)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_);
 
   // Set the mapping for the given object. Returns true if this overwrites an already existing
   // mapping.
-  ALWAYS_INLINE virtual bool Set(art::mirror::Object* obj, T tag)
+  ALWAYS_INLINE virtual bool Set(art::ObjPtr<art::mirror::Object> obj, T tag)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_);
-  ALWAYS_INLINE virtual bool SetLocked(art::mirror::Object* obj, T tag)
+  ALWAYS_INLINE virtual bool SetLocked(art::ObjPtr<art::mirror::Object> obj, T tag)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_);
 
   // Return the value associated with the given object. Returns true if the mapping exists, false
   // otherwise.
-  bool GetTag(art::mirror::Object* obj, /* out */ T* result)
+  bool GetTag(art::ObjPtr<art::mirror::Object> obj, /* out */ T* result)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_) {
     art::Thread* self = art::Thread::Current();
@@ -87,7 +87,7 @@ class JvmtiWeakTable : public art::gc::SystemWeakHolder {
 
     return GetTagLocked(self, obj, result);
   }
-  bool GetTagLocked(art::mirror::Object* obj, /* out */ T* result)
+  bool GetTagLocked(art::ObjPtr<art::mirror::Object> obj, /* out */ T* result)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_) {
     art::Thread* self = art::Thread::Current();
@@ -118,7 +118,7 @@ class JvmtiWeakTable : public art::gc::SystemWeakHolder {
   ALWAYS_INLINE void Unlock() RELEASE(allow_disallow_lock_);
   ALWAYS_INLINE void AssertLocked() ASSERT_CAPABILITY(allow_disallow_lock_);
 
-  ALWAYS_INLINE art::mirror::Object* Find(T tag)
+  ALWAYS_INLINE art::ObjPtr<art::mirror::Object> Find(T tag)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_);
 
@@ -132,16 +132,16 @@ class JvmtiWeakTable : public art::gc::SystemWeakHolder {
 
  private:
   ALWAYS_INLINE
-  bool SetLocked(art::Thread* self, art::mirror::Object* obj, T tag)
+  bool SetLocked(art::Thread* self, art::ObjPtr<art::mirror::Object> obj, T tag)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_);
 
   ALWAYS_INLINE
-  bool RemoveLocked(art::Thread* self, art::mirror::Object* obj, /* out */ T* tag)
+  bool RemoveLocked(art::Thread* self, art::ObjPtr<art::mirror::Object> obj, /* out */ T* tag)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_);
 
-  bool GetTagLocked(art::Thread* self, art::mirror::Object* obj, /* out */ T* result)
+  bool GetTagLocked(art::Thread* self, art::ObjPtr<art::mirror::Object> obj, /* out */ T* result)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_) {
     auto it = tagged_objects_.find(art::GcRoot<art::mirror::Object>(obj));
@@ -165,7 +165,7 @@ class JvmtiWeakTable : public art::gc::SystemWeakHolder {
   // Slow-path for GetTag. We didn't find the object, but we might be storing from-pointers and
   // are asked to retrieve with a to-pointer.
   ALWAYS_INLINE
-  bool GetTagSlowPath(art::Thread* self, art::mirror::Object* obj, /* out */ T* result)
+  bool GetTagSlowPath(art::Thread* self, art::ObjPtr<art::mirror::Object> obj, /* out */ T* result)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_);
 
