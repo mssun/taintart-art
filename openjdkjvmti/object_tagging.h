@@ -61,21 +61,21 @@ class ObjectTagTable final : public JvmtiWeakTable<jlong> {
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_);
 
-  bool Set(art::mirror::Object* obj, jlong tag) override
+  bool Set(art::ObjPtr<art::mirror::Object> obj, jlong tag) override
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_);
-  bool SetLocked(art::mirror::Object* obj, jlong tag) override
+  bool SetLocked(art::ObjPtr<art::mirror::Object> obj, jlong tag) override
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_);
 
-  jlong GetTagOrZero(art::mirror::Object* obj)
+  jlong GetTagOrZero(art::ObjPtr<art::mirror::Object> obj)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!allow_disallow_lock_) {
     jlong tmp = 0;
     GetTag(obj, &tmp);
     return tmp;
   }
-  jlong GetTagOrZeroLocked(art::mirror::Object* obj)
+  jlong GetTagOrZeroLocked(art::ObjPtr<art::mirror::Object> obj)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(allow_disallow_lock_) {
     jlong tmp = 0;
