@@ -22,6 +22,12 @@ art_runtime_base_native_shared_libs = [
     "libnativeloader",
     "libopenjdkjvm",
     "libopenjdkjvmti",
+    // TODO(b/124439236): Clean up the following libraries once "required"
+    // dependencies work with APEX libraries.
+    "libdt_fd_forward",
+    "libdt_socket",
+    "libjdwp",
+    "libnpt",
 ]
 bionic_native_shared_libs = [
     "libc",
