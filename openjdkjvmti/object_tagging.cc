@@ -71,7 +71,7 @@ void ObjectTagTable::SendSingleFreeEvent(jlong tag) {
       jvmti_env_, art::Thread::Current(), tag);
 }
 
-bool ObjectTagTable::Set(art::mirror::Object* obj, jlong new_tag) {
+bool ObjectTagTable::Set(art::ObjPtr<art::mirror::Object> obj, jlong new_tag) {
   if (new_tag == 0) {
     jlong tmp;
     return Remove(obj, &tmp);
@@ -79,7 +79,7 @@ bool ObjectTagTable::Set(art::mirror::Object* obj, jlong new_tag) {
   return JvmtiWeakTable<jlong>::Set(obj, new_tag);
 }
 
-bool ObjectTagTable::SetLocked(art::mirror::Object* obj, jlong new_tag) {
+bool ObjectTagTable::SetLocked(art::ObjPtr<art::mirror::Object> obj, jlong new_tag) {
   if (new_tag == 0) {
     jlong tmp;
     return RemoveLocked(obj, &tmp);

@@ -77,7 +77,7 @@ void JvmtiWeakTable<T>::UpdateTableWithReadBarrier() {
 }
 
 template <typename T>
-bool JvmtiWeakTable<T>::GetTagSlowPath(art::Thread* self, art::mirror::Object* obj, T* result) {
+bool JvmtiWeakTable<T>::GetTagSlowPath(art::Thread* self, art::ObjPtr<art::mirror::Object> obj, T* result) {
   // Under concurrent GC, there is a window between moving objects and sweeping of system
   // weaks in which mutators are active. We may receive a to-space object pointer in obj,
   // but still have from-space pointers in the table. Explicitly update the table once.
@@ -87,7 +87,7 @@ bool JvmtiWeakTable<T>::GetTagSlowPath(art::Thread* self, art::mirror::Object* o
 }
 
 template <typename T>
-bool JvmtiWeakTable<T>::Remove(art::mirror::Object* obj, /* out */ T* tag) {
+bool JvmtiWeakTable<T>::Remove(art::ObjPtr<art::mirror::Object> obj, /* out */ T* tag) {
   art::Thread* self = art::Thread::Current();
   art::MutexLock mu(self, allow_disallow_lock_);
   Wait(self);
@@ -95,7 +95,7 @@ bool JvmtiWeakTable<T>::Remove(art::mirror::Object* obj, /* out */ T* tag) {
   return RemoveLocked(self, obj, tag);
 }
 template <typename T>
-bool JvmtiWeakTable<T>::RemoveLocked(art::mirror::Object* obj, T* tag) {
+bool JvmtiWeakTable<T>::RemoveLocked(art::ObjPtr<art::mirror::Object> obj, T* tag) {
   art::Thread* self = art::Thread::Current();
   allow_disallow_lock_.AssertHeld(self);
   Wait(self);
@@ -104,7 +104,7 @@ bool JvmtiWeakTable<T>::RemoveLocked(art::mirror::Object* obj, T* tag) {
 }
 
 template <typename T>
-bool JvmtiWeakTable<T>::RemoveLocked(art::Thread* self, art::mirror::Object* obj, T* tag) {
+bool JvmtiWeakTable<T>::RemoveLocked(art::Thread* self, art::ObjPtr<art::mirror::Object> obj, T* tag) {
   auto it = tagged_objects_.find(art::GcRoot<art::mirror::Object>(obj));
   if (it != tagged_objects_.end()) {
     if (tag != nullptr) {
@@ -132,7 +132,7 @@ bool JvmtiWeakTable<T>::RemoveLocked(art::Thread* self, art::mirror::Object* obj
 }
 
 template <typename T>
-bool JvmtiWeakTable<T>::Set(art::mirror::Object* obj, T new_tag) {
+bool JvmtiWeakTable<T>::Set(art::ObjPtr<art::mirror::Object> obj, T new_tag) {
   art::Thread* self = art::Thread::Current();
   art::MutexLock mu(self, allow_disallow_lock_);
   Wait(self);
@@ -140,7 +140,7 @@ bool JvmtiWeakTable<T>::Set(art::mirror::Object* obj, T new_tag) {
   return SetLocked(self, obj, new_tag);
 }
 template <typename T>
-bool JvmtiWeakTable<T>::SetLocked(art::mirror::Object* obj, T new_tag) {
+bool JvmtiWeakTable<T>::SetLocked(art::ObjPtr<art::mirror::Object> obj, T new_tag) {
   art::Thread* self = art::Thread::Current();
   allow_disallow_lock_.AssertHeld(self);
   Wait(self);
@@ -149,7 +149,7 @@ bool JvmtiWeakTable<T>::SetLocked(art::mirror::Object* obj, T new_tag) {
 }
 
 template <typename T>
-bool JvmtiWeakTable<T>::SetLocked(art::Thread* self, art::mirror::Object* obj, T new_tag) {
+bool JvmtiWeakTable<T>::SetLocked(art::Thread* self, art::ObjPtr<art::mirror::Object> obj, T new_tag) {
   auto it = tagged_objects_.find(art::GcRoot<art::mirror::Object>(obj));
   if (it != tagged_objects_.end()) {
     it->second = new_tag;
@@ -362,7 +362,7 @@ jvmtiError JvmtiWeakTable<T>::GetTaggedObjects(jvmtiEnv* jvmti_env,
     }
 
     if (select) {
-      art::mirror::Object* obj = pair.first.template Read<art::kWithReadBarrier>();
+      art::ObjPtr<art::mirror::Object> obj = pair.first.template Read<art::kWithReadBarrier>();
       if (obj != nullptr) {
         count++;
         if (object_result_ptr != nullptr) {
@@ -386,14 +386,14 @@ jvmtiError JvmtiWeakTable<T>::GetTaggedObjects(jvmtiEnv* jvmti_env,
 }
 
 template <typename T>
-art::mirror::Object* JvmtiWeakTable<T>::Find(T tag) {
+art::ObjPtr<art::mirror::Object> JvmtiWeakTable<T>::Find(T tag) {
   art::Thread* self = art::Thread::Current();
   art::MutexLock mu(self, allow_disallow_lock_);
   Wait(self);
 
   for (auto& pair : tagged_objects_) {
     if (tag == pair.second) {
-      art::mirror::Object* obj = pair.first.template Read<art::kWithReadBarrier>();
+      art::ObjPtr<art::mirror::Object> obj = pair.first.template Read<art::kWithReadBarrier>();
       if (obj != nullptr) {
         return obj;
       }
