@@ -54,9 +54,10 @@ void StackMapStream::BeginMethod(size_t frame_size_in_bytes,
   num_dex_registers_ = num_dex_registers;
 }
 
-void StackMapStream::EndMethod() {
+void StackMapStream::EndMethod(size_t code_size) {
   DCHECK(in_method_) << "Mismatched Begin/End calls";
   in_method_ = false;
+  packed_code_size_ = StackMap::PackNativePc(code_size, instruction_set_);
 
   // Read the stack masks now. The compiler might have updated them.
   for (size_t i = 0; i < lazy_stack_masks_.size(); i++) {
@@ -65,6 +66,10 @@ void StackMapStream::EndMethod() {
       stack_maps_[i][StackMap::kStackMaskIndex] =
           stack_masks_.Dedup(stack_mask->GetRawStorage(), stack_mask->GetNumberOfBits());
     }
+  }
+
+  for (size_t i = 0; i < stack_maps_.size(); i++) {
+    DCHECK_LE(stack_maps_[i][StackMap::kPackedNativePc], packed_code_size_);
   }
 }
 
@@ -296,6 +301,7 @@ ScopedArenaVector<uint8_t> StackMapStream::Encode() {
 
   ScopedArenaVector<uint8_t> buffer(allocator_->Adapter(kArenaAllocStackMapStream));
   BitMemoryWriter<ScopedArenaVector<uint8_t>> out(&buffer);
+  out.WriteVarint(packed_code_size_);
   out.WriteVarint(packed_frame_size_);
   out.WriteVarint(core_spill_mask_);
   out.WriteVarint(fp_spill_mask_);
