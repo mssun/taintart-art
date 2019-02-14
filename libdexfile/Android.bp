@@ -205,6 +205,8 @@ art_cc_test {
 cc_library_headers {
     name: "libdexfile_external_headers",
     host_supported: true,
+    vendor_available: true,
+    recovery_available: true,
     header_libs: ["libbase_headers"],
     export_header_lib_headers: ["libbase_headers"],
     export_include_dirs: ["external/include"],
@@ -245,23 +247,37 @@ art_cc_test {
 }
 
 // Support library with a C++ API for accessing the libdexfile API for external
-// (non-ART) users. They should link to their own instance of this (either
-// statically or through linker namespaces).
+// (non-ART) users.
+//
+// This library dlopens libdexfile_external on first use, so there is no build
+// time dependency on dex file logic. It is therefore safe to use from binaries
+// compiled without dex file support, given they won't encounter any dex file
+// stack frames.
 cc_library {
     name: "libdexfile_support",
     host_supported: true,
+    vendor_available: true,
+    recovery_available: true,
     srcs: [
         "external/dex_file_supp.cc",
     ],
+    required: ["libdexfile_external"],
+    shared_libs: ["liblog"],
     header_libs: ["libdexfile_external_headers"],
-    shared_libs: ["libdexfile_external"],
     export_header_lib_headers: ["libdexfile_external_headers"],
+    target: {
+        recovery: {
+            cflags: ["-DNO_DEXFILE_SUPPORT"],
+        },
+        vendor: {
+            cflags: ["-DNO_DEXFILE_SUPPORT"],
+        },
+    },
 }
 
 art_cc_test {
     name: "art_libdexfile_support_tests",
     host_supported: true,
-    test_per_src: true,  // For consistency with other ART gtests.
     srcs: [
         "external/dex_file_supp_test.cc",
     ],
@@ -270,5 +286,38 @@ art_cc_test {
         "libbase",
         "libdexfile_external",
         "libdexfile_support",
+    ],
+}
+
+cc_library_static {
+    name: "libdexfile_support_static",
+    host_supported: true,
+    defaults: ["libdexfile_static_defaults"],
+    srcs: [
+        "external/dex_file_supp.cc",
+    ],
+    cflags: ["-DSTATIC_LIB"],
+    // Using whole_static_libs here only as a "poor man's transitivity" kludge.
+    whole_static_libs: [
+        "libbase",
+        "libdexfile",
+        "libdexfile_external",
+        "liblog",
+        "libz",
+        "libziparchive",
+    ],
+    header_libs: ["libdexfile_external_headers"],
+    export_header_lib_headers: ["libdexfile_external_headers"],
+}
+
+art_cc_test {
+    name: "art_libdexfile_support_static_tests",
+    host_supported: true,
+    srcs: [
+        "external/dex_file_supp_test.cc",
+    ],
+    static_libs: [
+        "libbase",
+        "libdexfile_support_static",
     ],
 }
