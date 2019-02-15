@@ -234,12 +234,5 @@
     "libcore.libcore.icu.TimeZoneIntegrationTest#testTimeZoneDebugInfo",
     "libcore.libcore.icu.TimeZoneIntegrationTest#testTzDataSetVersions"
   ]
-},
-{
-  description: "Expected networking failure on host / old systems: we expect 97 (EAFNOSUPPORT), but we get 22 (EINVAL)",
-  result: EXEC_FAILED,
-  names: [
-    "libcore.libcore.io.OsTest#testCrossFamilyBindConnectSendto"
-  ]
 }
 ]
