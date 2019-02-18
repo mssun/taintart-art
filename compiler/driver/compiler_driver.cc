@@ -1786,7 +1786,13 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
       hs.NewHandle(soa.Decode<mirror::ClassLoader>(jclass_loader)));
   std::string error_msg;
 
-  if (!verifier_deps->ValidateDependencies(class_loader, soa.Self(), &error_msg)) {
+  if (!verifier_deps->ValidateDependencies(
+      soa.Self(),
+      class_loader,
+      // This returns classpath dex files in no particular order but VerifierDeps
+      // does not care about the order.
+      classpath_classes_.GetDexFiles(),
+      &error_msg)) {
     LOG(WARNING) << "Fast verification failed: " << error_msg;
     return false;
   }

@@ -120,8 +120,9 @@ class VerifierDeps {
   void Dump(VariableIndentationOutputStream* vios) const;
 
   // Verify the encoded dependencies of this `VerifierDeps` are still valid.
-  bool ValidateDependencies(Handle<mirror::ClassLoader> class_loader,
-                            Thread* self,
+  bool ValidateDependencies(Thread* self,
+                            Handle<mirror::ClassLoader> class_loader,
+                            const std::vector<const DexFile*>& classpath,
                             /* out */ std::string* error_msg) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -310,9 +311,17 @@ class VerifierDeps {
   bool VerifyDexFile(Handle<mirror::ClassLoader> class_loader,
                      const DexFile& dex_file,
                      const DexFileDeps& deps,
+                     const std::vector<const DexFile*>& classpath,
                      Thread* self,
                      /* out */ std::string* error_msg) const
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Iterates over `dex_files` and tries to find a class def matching `descriptor`.
+  // Returns true if such class def is found.
+  bool IsInDexFiles(const char* descriptor,
+                    size_t hash,
+                    const std::vector<const DexFile*>& dex_files,
+                    /* out */ const DexFile** cp_dex_file) const;
 
   // Check that classes which are to be verified using these dependencies
   // are not eclipsed by classes in parent class loaders, e.g. when vdex was
@@ -321,11 +330,10 @@ class VerifierDeps {
   // dependencies do not include the dependencies on the presumed-internal class
   // and verification must fail unless the class was recorded to have been
   // redefined during dependencies' generation too.
-  bool VerifyInternalClasses(Handle<mirror::ClassLoader> class_loader,
-                             const DexFile& dex_file,
+  bool VerifyInternalClasses(const DexFile& dex_file,
+                             const std::vector<const DexFile*>& classpath,
                              const std::vector<bool>& verified_classes,
                              const std::vector<bool>& redefined_classes,
-                             Thread* self,
                              /* out */ std::string* error_msg) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 

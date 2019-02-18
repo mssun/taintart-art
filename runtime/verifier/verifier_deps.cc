@@ -29,6 +29,7 @@
 #include "dex/dex_file-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
+#include "oat_file.h"
 #include "obj_ptr-inl.h"
 #include "runtime.h"
 
@@ -885,11 +886,12 @@ void VerifierDeps::Dump(VariableIndentationOutputStream* vios) const {
   }
 }
 
-bool VerifierDeps::ValidateDependencies(Handle<mirror::ClassLoader> class_loader,
-                                        Thread* self,
+bool VerifierDeps::ValidateDependencies(Thread* self,
+                                        Handle<mirror::ClassLoader> class_loader,
+                                        const std::vector<const DexFile*>& classpath,
                                         /* out */ std::string* error_msg) const {
   for (const auto& entry : dex_deps_) {
-    if (!VerifyDexFile(class_loader, *entry.first, *entry.second, self, error_msg)) {
+    if (!VerifyDexFile(class_loader, *entry.first, *entry.second, classpath, self, error_msg)) {
       return false;
     }
   }
@@ -1113,23 +1115,34 @@ bool VerifierDeps::VerifyMethods(Handle<mirror::ClassLoader> class_loader,
   return true;
 }
 
-bool VerifierDeps::VerifyInternalClasses(Handle<mirror::ClassLoader> class_loader,
-                                         const DexFile& dex_file,
+bool VerifierDeps::IsInDexFiles(const char* descriptor,
+                                size_t hash,
+                                const std::vector<const DexFile*>& dex_files,
+                                /* out */ const DexFile** out_dex_file) const {
+  for (const DexFile* dex_file : dex_files) {
+    if (OatDexFile::FindClassDef(*dex_file, descriptor, hash) != nullptr) {
+      *out_dex_file = dex_file;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool VerifierDeps::VerifyInternalClasses(const DexFile& dex_file,
+                                         const std::vector<const DexFile*>& classpath,
                                          const std::vector<bool>& verified_classes,
                                          const std::vector<bool>& redefined_classes,
-                                         Thread* self,
                                          /* out */ std::string* error_msg) const {
-  ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
+  const std::vector<const DexFile*>& boot_classpath =
+      Runtime::Current()->GetClassLinker()->GetBootClassPath();
 
   for (ClassAccessor accessor : dex_file.GetClasses()) {
-    const std::string descriptor = accessor.GetDescriptor();
-    const uint16_t class_def_index = accessor.GetClassDefIndex();
-    const bool verified = verified_classes[class_def_index];
-    const bool redefined = redefined_classes[class_def_index];
+    const char* descriptor = accessor.GetDescriptor();
 
-    if (redefined) {
-      if (verified) {
-        *error_msg = "Class " + descriptor + " marked both verified and redefined";
+    const uint16_t class_def_index = accessor.GetClassDefIndex();
+    if (redefined_classes[class_def_index]) {
+      if (verified_classes[class_def_index]) {
+        *error_msg = std::string("Class ") + descriptor + " marked both verified and redefined";
         return false;
       }
 
@@ -1137,26 +1150,17 @@ bool VerifierDeps::VerifyInternalClasses(Handle<mirror::ClassLoader> class_loade
       continue;
     }
 
-    ObjPtr<mirror::Class> cls =
-        FindClassAndClearException(class_linker, self, descriptor, class_loader);
-    if (UNLIKELY(cls == nullptr)) {
-      // Could not resolve class from the currently verified dex file.
-      // This can happen when the class fails to link. Check if this
-      // expected by looking in the `verified_classes` bit vector.
-      if (verified) {
-        *error_msg = "Failed to resolve internal class " + descriptor;
-        return false;
-      }
-      continue;
-    }
-
     // Check that the class resolved into the same dex file. Otherwise there is
     // a different class with the same descriptor somewhere in one of the parent
     // class loaders.
-    if (&cls->GetDexFile() != &dex_file) {
-      *error_msg = "Class " + descriptor + " redefines a class in the classpath "
-          + "(dexFile expected=" + accessor.GetDexFile().GetLocation()
-          + ", actual=" + cls->GetDexFile().GetLocation() + ")";
+    const size_t hash = ComputeModifiedUtf8Hash(descriptor);
+    const DexFile* cp_dex_file = nullptr;
+    if (IsInDexFiles(descriptor, hash, boot_classpath, &cp_dex_file) ||
+        IsInDexFiles(descriptor, hash, classpath, &cp_dex_file)) {
+      *error_msg = std::string("Class ") + descriptor
+          + " redefines a class in the classpath "
+          + "(dexFile expected=" + dex_file.GetLocation()
+          + ", actual=" + cp_dex_file->GetLocation() + ")";
       return false;
     }
   }
@@ -1167,13 +1171,13 @@ bool VerifierDeps::VerifyInternalClasses(Handle<mirror::ClassLoader> class_loade
 bool VerifierDeps::VerifyDexFile(Handle<mirror::ClassLoader> class_loader,
                                  const DexFile& dex_file,
                                  const DexFileDeps& deps,
+                                 const std::vector<const DexFile*>& classpath,
                                  Thread* self,
                                  /* out */ std::string* error_msg) const {
-  return VerifyInternalClasses(class_loader,
-                               dex_file,
+  return VerifyInternalClasses(dex_file,
+                               classpath,
                                deps.verified_classes_,
                                deps.redefined_classes_,
-                               self,
                                error_msg) &&
          VerifyAssignability(class_loader,
                              dex_file,

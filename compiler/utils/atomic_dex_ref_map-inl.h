@@ -134,6 +134,17 @@ inline void AtomicDexRefMap<DexFileReferenceType, Value>::ClearEntries() {
   }
 }
 
+template <typename DexFileReferenceType, typename Value>
+inline std::vector<const DexFile*> AtomicDexRefMap<DexFileReferenceType, Value>::GetDexFiles()
+    const {
+  std::vector<const DexFile*> result;
+  result.reserve(arrays_.size());
+  for (auto& it : arrays_) {
+    result.push_back(it.first);
+  }
+  return result;
+}
+
 }  // namespace art
 
 #endif  // ART_COMPILER_UTILS_ATOMIC_DEX_REF_MAP_INL_H_

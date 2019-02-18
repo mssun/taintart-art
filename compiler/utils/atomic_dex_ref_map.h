@@ -54,6 +54,9 @@ class AtomicDexRefMap {
   void AddDexFile(const DexFile* dex_file);
   void AddDexFiles(const std::vector<const DexFile*>& dex_files);
 
+  // Return a vector of all dex files which were added to the map.
+  std::vector<const DexFile*> GetDexFiles() const;
+
   bool HaveDexFile(const DexFile* dex_file) const {
     return arrays_.find(dex_file) != arrays_.end();
   }
