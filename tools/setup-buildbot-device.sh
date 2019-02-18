@@ -20,6 +20,12 @@
 green='\033[0;32m'
 nc='\033[0m'
 
+if [ "$1" = --verbose ]; then
+  verbose=true
+else
+  verbose=false
+fi
+
 # Setup as root, as some actions performed here require it.
 adb root
 adb wait-for-device
@@ -53,11 +59,11 @@ fi
 
 echo -e "${green}Turn off selinux${nc}"
 adb shell setenforce 0
-adb shell getenforce
+$verbose && adb shell getenforce
 
 echo -e "${green}Setting local loopback${nc}"
 adb shell ifconfig lo up
-adb shell ifconfig
+$verbose && adb shell ifconfig
 
 # Ensure netd is running, as otherwise the logcat would be spammed
 # with the following messages on devices running Android O:
@@ -72,16 +78,18 @@ adb shell ifconfig
 # the following lines.
 echo -e "${green}Turning on netd${nc}"
 adb shell start netd
-adb shell getprop init.svc.netd
+$verbose && adb shell getprop init.svc.netd
 
-echo -e "${green}List properties${nc}"
-adb shell getprop
+if $verbose; then
+  echo -e "${green}List properties${nc}"
+  adb shell getprop
 
-echo -e "${green}Uptime${nc}"
-adb shell uptime
+  echo -e "${green}Uptime${nc}"
+  adb shell uptime
 
-echo -e "${green}Battery info${nc}"
-adb shell dumpsys battery
+  echo -e "${green}Battery info${nc}"
+  adb shell dumpsys battery
+fi
 
 # Fugu only handles buffer size up to 16MB.
 product_name=$(adb shell getprop ro.build.product)
@@ -94,15 +102,15 @@ fi
 
 echo -e "${green}Setting adb buffer size to ${buffer_size}${nc}"
 adb logcat -G ${buffer_size}
-adb logcat -g
+$verbose && adb logcat -g
 
 echo -e "${green}Removing adb spam filter${nc}"
 adb logcat -P ""
-adb logcat -p
+$verbose && adb logcat -p
 
 echo -e "${green}Kill stalled dalvikvm processes${nc}"
 # 'ps' on M can sometimes hang.
-timeout 2s adb shell "ps"
+timeout 2s adb shell "ps" >/dev/null
 if [ $? = 124 ]; then
   echo -e "${green}Rebooting device to fix 'ps'${nc}"
   adb reboot
