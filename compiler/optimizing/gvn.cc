@@ -43,7 +43,6 @@ class ValueSet : public ArenaObject<kArenaAllocGvn> {
         buckets_(allocator->AllocArray<Node*>(num_buckets_, kArenaAllocGvn)),
         buckets_owned_(allocator, num_buckets_, false, kArenaAllocGvn),
         num_entries_(0u) {
-    // ArenaAllocator returns zeroed memory, so no need to set buckets to null.
     DCHECK(IsPowerOfTwo(num_buckets_));
     std::fill_n(buckets_, num_buckets_, nullptr);
     buckets_owned_.SetInitialBits(num_buckets_);
@@ -57,8 +56,6 @@ class ValueSet : public ArenaObject<kArenaAllocGvn> {
         buckets_(allocator->AllocArray<Node*>(num_buckets_, kArenaAllocGvn)),
         buckets_owned_(allocator, num_buckets_, false, kArenaAllocGvn),
         num_entries_(0u) {
-    // ArenaAllocator returns zeroed memory, so entries of buckets_ and
-    // buckets_owned_ are initialized to null and false, respectively.
     DCHECK(IsPowerOfTwo(num_buckets_));
     PopulateFromInternal(other);
   }
