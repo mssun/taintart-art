@@ -57,6 +57,8 @@ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/apex/com.android.runtime.ape
 $(call add-clean-step, rm -f $(PRODUCT_OUT)/system/lib*/libandroidicu.so)
 $(call add-clean-step, rm -f $(PRODUCT_OUT)/system/lib*/libpac.so)
 
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/data/nativetest*/art_libdexfile_support_tests/dex_file_supp_test)
+
 # ************************************************
 # NEWER CLEAN STEPS MUST BE AT THE END OF THE LIST
 # ************************************************
