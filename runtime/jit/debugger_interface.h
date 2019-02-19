@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "arch/instruction_set_features.h"
+#include "base/array_ref.h"
 #include "base/locks.h"
 
 namespace art {
@@ -33,7 +34,7 @@ class Thread;
 typedef std::vector<uint8_t> PackElfFileForJITFunction(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    std::vector<const uint8_t*>& added_elf_files,
+    std::vector<ArrayRef<const uint8_t>>& added_elf_files,
     std::vector<const void*>& removed_symbols,
     /*out*/ size_t* num_symbols);
 

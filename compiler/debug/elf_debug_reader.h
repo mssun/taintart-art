@@ -22,6 +22,9 @@
 #include "elf.h"
 #include "xz_utils.h"
 
+#include <map>
+#include <string_view>
+
 namespace art {
 namespace debug {
 
@@ -29,75 +32,141 @@ namespace debug {
 //
 // It is the bare minimum needed to read mini-debug-info symbols for unwinding.
 // We use it to merge JIT mini-debug-infos together or to prune them after GC.
-// The consumed ELF file comes from ART JIT.
-template <typename ElfTypes, typename VisitSym, typename VisitFde>
-static void ReadElfSymbols(const uint8_t* elf, VisitSym visit_sym, VisitFde visit_fde) {
+template <typename ElfTypes>
+class ElfDebugReader {
+ public:
   // Note that the input buffer might be misaligned.
   typedef typename ElfTypes::Ehdr ALIGNED(1) Elf_Ehdr;
   typedef typename ElfTypes::Shdr ALIGNED(1) Elf_Shdr;
   typedef typename ElfTypes::Sym ALIGNED(1) Elf_Sym;
   typedef typename ElfTypes::Addr ALIGNED(1) Elf_Addr;
 
-  // Read and check the elf header.
-  const Elf_Ehdr* header = reinterpret_cast<const Elf_Ehdr*>(elf);
-  CHECK(header->checkMagic());
+  // Call Frame Information.
+  struct CFI {
+    uint32_t length;  // Length excluding the size of this field.
+    int32_t cie_pointer;  // Offset in the section or -1 for CIE.
 
-  // Find sections that we are interested in.
-  const Elf_Shdr* sections = reinterpret_cast<const Elf_Shdr*>(elf + header->e_shoff);
-  const Elf_Shdr* strtab = nullptr;
-  const Elf_Shdr* symtab = nullptr;
-  const Elf_Shdr* debug_frame = nullptr;
-  const Elf_Shdr* gnu_debugdata = nullptr;
-  for (size_t i = 1 /* skip null section */; i < header->e_shnum; i++) {
-    const Elf_Shdr* section = sections + i;
-    const char* name = reinterpret_cast<const char*>(
-        elf + sections[header->e_shstrndx].sh_offset + section->sh_name);
-    if (strcmp(name, ".strtab") == 0) {
-      strtab = section;
-    } else if (strcmp(name, ".symtab") == 0) {
-      symtab = section;
-    } else if (strcmp(name, ".debug_frame") == 0) {
-      debug_frame = section;
-    } else if (strcmp(name, ".gnu_debugdata") == 0) {
-      gnu_debugdata = section;
+    const uint8_t* data() const { return reinterpret_cast<const uint8_t*>(this); }
+    size_t size() const { return sizeof(uint32_t) + length; }
+  } PACKED(1);
+
+  // Common Information Entry.
+  struct CIE : public CFI {
+  } PACKED(1);
+
+  // Frame Description Entry.
+  struct FDE : public CFI {
+    Elf_Addr sym_addr;
+    Elf_Addr sym_size;
+  } PACKED(1);
+
+  explicit ElfDebugReader(ArrayRef<const uint8_t> file) : file_(file) {
+    header_ = Read<Elf_Ehdr>(/*offset=*/ 0);
+    CHECK(header_->checkMagic());
+    CHECK_EQ(header_->e_ehsize, sizeof(Elf_Ehdr));
+    CHECK_EQ(header_->e_shentsize, sizeof(Elf_Shdr));
+
+    // Find all ELF sections.
+    sections_ = Read<Elf_Shdr>(header_->e_shoff, header_->e_shnum);
+    for (const Elf_Shdr& section : sections_) {
+      const char* name = Read<char>(sections_[header_->e_shstrndx].sh_offset + section.sh_name);
+      section_map_[std::string_view(name)] = &section;
+    }
+
+    // Decompressed embedded debug symbols, if any.
+    const Elf_Shdr* gnu_debugdata = section_map_[".gnu_debugdata"];
+    if (gnu_debugdata != nullptr) {
+      auto compressed = Read<uint8_t>(gnu_debugdata->sh_offset, gnu_debugdata->sh_size);
+      XzDecompress(compressed, &decompressed_gnu_debugdata_);
+      gnu_debugdata_reader_.reset(new ElfDebugReader(decompressed_gnu_debugdata_));
     }
   }
 
-  // Visit symbols.
-  if (symtab != nullptr && strtab != nullptr) {
-    const Elf_Sym* symbols = reinterpret_cast<const Elf_Sym*>(elf + symtab->sh_offset);
-    DCHECK_EQ(symtab->sh_entsize, sizeof(Elf_Sym));
-    size_t count = symtab->sh_size / sizeof(Elf_Sym);
-    for (size_t i = 1 /* skip null symbol */; i < count; i++) {
-      Elf_Sym symbol = symbols[i];
-      if (symbol.getBinding() != STB_LOCAL) {  // Ignore local symbols (e.g. "$t").
-        const uint8_t* name = elf + strtab->sh_offset + symbol.st_name;
-        visit_sym(symbol, reinterpret_cast<const char*>(name));
+  explicit ElfDebugReader(std::vector<uint8_t>& file)
+      : ElfDebugReader(ArrayRef<const uint8_t>(file)) {
+  }
+
+  const Elf_Ehdr* GetHeader() { return header_; }
+
+  ArrayRef<Elf_Shdr> GetSections() { return sections_; }
+
+  const Elf_Shdr* GetSection(const char* name) { return section_map_[name]; }
+
+  template <typename VisitSym>
+  void VisitFunctionSymbols(VisitSym visit_sym) {
+    const Elf_Shdr* symtab = GetSection(".symtab");
+    const Elf_Shdr* strtab = GetSection(".strtab");
+    const Elf_Shdr* text = GetSection(".text");
+    if (symtab != nullptr && strtab != nullptr) {
+      CHECK_EQ(symtab->sh_entsize, sizeof(Elf_Sym));
+      size_t count = symtab->sh_size / sizeof(Elf_Sym);
+      for (const Elf_Sym& symbol : Read<Elf_Sym>(symtab->sh_offset, count)) {
+        if (symbol.getType() == STT_FUNC && &sections_[symbol.st_shndx] == text) {
+          visit_sym(symbol, Read<char>(strtab->sh_offset + symbol.st_name));
+        }
+      }
+    }
+    if (gnu_debugdata_reader_ != nullptr) {
+      gnu_debugdata_reader_->VisitFunctionSymbols(visit_sym);
+    }
+  }
+
+  template <typename VisitSym>
+  void VisitDynamicSymbols(VisitSym visit_sym) {
+    const Elf_Shdr* dynsym = GetSection(".dynsym");
+    const Elf_Shdr* dynstr = GetSection(".dynstr");
+    if (dynsym != nullptr && dynstr != nullptr) {
+      CHECK_EQ(dynsym->sh_entsize, sizeof(Elf_Sym));
+      size_t count = dynsym->sh_size / sizeof(Elf_Sym);
+      for (const Elf_Sym& symbol : Read<Elf_Sym>(dynsym->sh_offset, count)) {
+        visit_sym(symbol, Read<char>(dynstr->sh_offset + symbol.st_name));
       }
     }
   }
 
-  // Visit CFI (unwind) data.
-  if (debug_frame != nullptr) {
-    const uint8_t* data = elf + debug_frame->sh_offset;
-    const uint8_t* end = data + debug_frame->sh_size;
-    while (data < end) {
-      Elf_Addr addr, size;
-      ArrayRef<const uint8_t> opcodes;
-      if (dwarf::ReadFDE<Elf_Addr>(&data, &addr, &size, &opcodes)) {
-        visit_fde(addr, size, opcodes);
+  template <typename VisitCIE, typename VisitFDE>
+  void VisitDebugFrame(VisitCIE visit_cie, VisitFDE visit_fde) {
+    const Elf_Shdr* debug_frame = GetSection(".debug_frame");
+    if (debug_frame != nullptr) {
+      for (size_t offset = 0; offset < debug_frame->sh_size;) {
+        const CFI* entry = Read<CFI>(debug_frame->sh_offset + offset);
+        DCHECK_LE(entry->size(), debug_frame->sh_size - offset);
+        if (entry->cie_pointer == -1) {
+          visit_cie(Read<CIE>(debug_frame->sh_offset + offset));
+        } else {
+          const FDE* fde = Read<FDE>(debug_frame->sh_offset + offset);
+          visit_fde(fde, Read<CIE>(debug_frame->sh_offset + fde->cie_pointer));
+        }
+        offset += entry->size();
       }
+    }
+    if (gnu_debugdata_reader_ != nullptr) {
+      gnu_debugdata_reader_->VisitDebugFrame(visit_cie, visit_fde);
     }
   }
 
-  // Process embedded compressed ELF file.
-  if (gnu_debugdata != nullptr) {
-    ArrayRef<const uint8_t> compressed(elf + gnu_debugdata->sh_offset, gnu_debugdata->sh_size);
-    std::vector<uint8_t> decompressed;
-    XzDecompress(compressed, &decompressed);
-    ReadElfSymbols<ElfTypes>(decompressed.data(), visit_sym, visit_fde);
+ private:
+  template<typename T>
+  const T* Read(size_t offset) {
+    DCHECK_LE(offset + sizeof(T), file_.size());
+    return reinterpret_cast<const T*>(file_.data() + offset);
   }
-}
+
+  template<typename T>
+  ArrayRef<const T> Read(size_t offset, size_t count) {
+    DCHECK_LE(offset + count * sizeof(T), file_.size());
+    return ArrayRef<const T>(Read<T>(offset), count);
+  }
+
+  ArrayRef<const uint8_t> const file_;
+  const Elf_Ehdr* header_;
+  ArrayRef<const Elf_Shdr> sections_;
+  std::unordered_map<std::string_view, const Elf_Shdr*> section_map_;
+  std::vector<uint8_t> decompressed_gnu_debugdata_;
+  std::unique_ptr<ElfDebugReader> gnu_debugdata_reader_;
+
+  DISALLOW_COPY_AND_ASSIGN(ElfDebugReader);
+};
 
 }  // namespace debug
 }  // namespace art
