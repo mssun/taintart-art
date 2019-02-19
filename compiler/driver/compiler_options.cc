@@ -20,6 +20,7 @@
 #include <string_view>
 
 #include "android-base/stringprintf.h"
+#include "android-base/strings.h"
 
 #include "arch/instruction_set.h"
 #include "arch/instruction_set_features.h"
@@ -182,6 +183,21 @@ bool CompilerOptions::IsMethodVerifiedWithoutFailures(uint32_t method_idx,
     self->ClearException();
   }
   return is_system_class;
+}
+
+bool CompilerOptions::IsCoreImageFilename(const std::string& boot_image_filename) {
+  // Look for "core.art" or "core-*.art".
+  if (android::base::EndsWith(boot_image_filename, "core.art")) {
+    return true;
+  }
+  if (!android::base::EndsWith(boot_image_filename, ".art")) {
+    return false;
+  }
+  size_t slash_pos = boot_image_filename.rfind('/');
+  if (slash_pos == std::string::npos) {
+    return android::base::StartsWith(boot_image_filename, "core-");
+  }
+  return boot_image_filename.compare(slash_pos + 1, 5u, "core-") == 0;
 }
 
 }  // namespace art

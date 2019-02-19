@@ -24,7 +24,6 @@
 namespace art {
 
 class CodeGenerator;
-class CompilerDriver;
 class DexCompilationUnit;
 
 /**

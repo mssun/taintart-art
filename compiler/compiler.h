@@ -36,8 +36,9 @@ class DexCache;
 }  // namespace mirror
 
 class ArtMethod;
-class CompilerDriver;
 class CompiledMethod;
+class CompiledMethodStorage;
+class CompilerOptions;
 class DexFile;
 template<class T> class Handle;
 class OatWriter;
@@ -50,11 +51,9 @@ class Compiler {
     kOptimizing
   };
 
-  static Compiler* Create(CompilerDriver* driver, Kind kind);
-
-  virtual void Init() = 0;
-
-  virtual void UnInit() const = 0;
+  static Compiler* Create(const CompilerOptions& compiler_options,
+                          CompiledMethodStorage* storage,
+                          Kind kind);
 
   virtual bool CanCompileMethod(uint32_t method_idx, const DexFile& dex_file) const = 0;
 
@@ -91,19 +90,6 @@ class Compiler {
 
   virtual ~Compiler() {}
 
-  /*
-   * @brief Generate and return Dwarf CFI initialization, if supported by the
-   * backend.
-   * @param driver CompilerDriver for this compile.
-   * @returns nullptr if not supported by backend or a vector of bytes for CFI DWARF
-   * information.
-   * @note This is used for backtrace information in generated code.
-   */
-  virtual std::vector<uint8_t>* GetCallFrameInformationInitialization(
-      const CompilerDriver& driver ATTRIBUTE_UNUSED) const {
-    return nullptr;
-  }
-
   // Returns whether the method to compile is such a pathological case that
   // it's not worth compiling.
   static bool IsPathologicalCase(const dex::CodeItem& code_item,
@@ -111,16 +97,25 @@ class Compiler {
                                  const DexFile& dex_file);
 
  protected:
-  Compiler(CompilerDriver* driver, uint64_t warning) :
-      driver_(driver), maximum_compilation_time_before_warning_(warning) {
+  Compiler(const CompilerOptions& compiler_options,
+           CompiledMethodStorage* storage,
+           uint64_t warning) :
+      compiler_options_(compiler_options),
+      storage_(storage),
+      maximum_compilation_time_before_warning_(warning) {
   }
 
-  CompilerDriver* GetCompilerDriver() const {
-    return driver_;
+  const CompilerOptions& GetCompilerOptions() const {
+    return compiler_options_;
+  }
+
+  CompiledMethodStorage* GetCompiledMethodStorage() const {
+    return storage_;
   }
 
  private:
-  CompilerDriver* const driver_;
+  const CompilerOptions& compiler_options_;
+  CompiledMethodStorage* const storage_;
   const uint64_t maximum_compilation_time_before_warning_;
 
   DISALLOW_COPY_AND_ASSIGN(Compiler);

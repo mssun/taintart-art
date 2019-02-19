@@ -20,7 +20,6 @@
 #include "art_method-inl.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
-#include "driver/compiler_driver.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "oat_file-inl.h"
