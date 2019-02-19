@@ -43,12 +43,14 @@ static void XzInitCrc() {
   });
 }
 
-static void XzCompressChunk(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst) {
+void XzCompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst) {
   // Configure the compression library.
   XzInitCrc();
   CLzma2EncProps lzma2Props;
   Lzma2EncProps_Init(&lzma2Props);
   lzma2Props.lzmaProps.level = 1;  // Fast compression.
+  lzma2Props.lzmaProps.reduceSize = src.size();  // Size of data that will be compressed.
+  lzma2Props.blockSize = kChunkSize;
   Lzma2EncProps_Normalize(&lzma2Props);
   CXzProps props;
   XzProps_Init(&props);
@@ -85,69 +87,6 @@ static void XzCompressChunk(ArrayRef<const uint8_t> src, std::vector<uint8_t>* d
   // Compress.
   SRes res = Xz_Encode(&callbacks, &callbacks, &props, &callbacks);
   CHECK_EQ(res, SZ_OK);
-}
-
-// Compress data while splitting it to smaller chunks to enable random-access reads.
-// The XZ file format supports this well, but the compression library does not.
-// Therefore compress the chunks separately and then glue them together manually.
-//
-// The XZ file format is described here: https://tukaani.org/xz/xz-file-format.txt
-// In short, the file format is: [header] [compressed_block]* [index] [footer]
-// Where [index] is: [num_records] ([compressed_size] [uncompressed_size])* [crc32]
-//
-void XzCompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst) {
-  uint8_t header[] = { 0xFD, '7', 'z', 'X', 'Z', 0, 0, 1, 0x69, 0x22, 0xDE, 0x36 };
-  uint8_t footer[] = { 0, 1, 'Y', 'Z' };
-  dst->insert(dst->end(), header, header + sizeof(header));
-  std::vector<uint8_t> tmp;
-  std::vector<uint32_t> index;
-  for (size_t offset = 0; offset < src.size(); offset += kChunkSize) {
-    size_t size = std::min(src.size() - offset, kChunkSize);
-    tmp.clear();
-    XzCompressChunk(src.SubArray(offset, size), &tmp);
-    DCHECK_EQ(memcmp(tmp.data(), header, sizeof(header)), 0);
-    DCHECK_EQ(memcmp(tmp.data() + tmp.size() - sizeof(footer), footer, sizeof(footer)), 0);
-    uint32_t* index_size = reinterpret_cast<uint32_t*>(tmp.data() + tmp.size() - 8);
-    DCHECK_ALIGNED(index_size, sizeof(uint32_t));
-    size_t index_offset = tmp.size() - 16 - *index_size * 4;
-    const uint8_t* index_ptr = tmp.data() + index_offset;
-    uint8_t index_indicator = *(index_ptr++);
-    CHECK_EQ(index_indicator, 0);  // Mark the start of index (as opposed to compressed block).
-    uint32_t num_records = DecodeUnsignedLeb128(&index_ptr);
-    for (uint32_t i = 0; i < num_records; i++) {
-      index.push_back(DecodeUnsignedLeb128(&index_ptr));  // Compressed size.
-      index.push_back(DecodeUnsignedLeb128(&index_ptr));  // Uncompressed size.
-    }
-    // Copy the raw compressed block(s) located between the header and index.
-    dst->insert(dst->end(), tmp.data() + sizeof(header), tmp.data() + index_offset);
-  }
-
-  // Write the index.
-  uint32_t index_size_in_words;
-  {
-    tmp.clear();
-    dwarf::Writer<> writer(&tmp);
-    writer.PushUint8(0);  // Index indicator.
-    writer.PushUleb128(static_cast<uint32_t>(index.size()) / 2);  // Record count.
-    for (uint32_t i : index) {
-      writer.PushUleb128(i);
-    }
-    writer.Pad(4);
-    index_size_in_words = writer.size() / sizeof(uint32_t);
-    writer.PushUint32(CrcCalc(tmp.data(), tmp.size()));
-    dst->insert(dst->end(), tmp.begin(), tmp.end());
-  }
-
-  // Write the footer.
-  {
-    tmp.clear();
-    dwarf::Writer<> writer(&tmp);
-    writer.PushUint32(0);  // CRC placeholder.
-    writer.PushUint32(index_size_in_words);
-    writer.PushData(footer, sizeof(footer));
-    writer.UpdateUint32(0, CrcCalc(tmp.data() + 4, 6));
-    dst->insert(dst->end(), tmp.begin(), tmp.end());
-  }
 
   // Decompress the data back and check that we get the original.
   if (kIsDebugBuild) {
