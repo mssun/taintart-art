@@ -367,6 +367,10 @@ class ReleaseChecker:
     self._checker.check_library('libziparchive.so')
     # Check that the mounted image contains additional required libraries.
     self._checker.check_library('libadbconnection.so')
+    self._checker.check_library('libdt_fd_forward.so')
+    self._checker.check_library('libdt_socket.so')
+    self._checker.check_library('libjdwp.so')
+    self._checker.check_library('libnpt.so')
 
     # TODO: Should we check for other libraries, such as:
     #
