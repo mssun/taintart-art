@@ -57,7 +57,7 @@ std::vector<uint8_t> MakeElfFileForJIT(
 std::vector<uint8_t> PackElfFileForJIT(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    std::vector<const uint8_t*>& added_elf_files,
+    std::vector<ArrayRef<const uint8_t>>& added_elf_files,
     std::vector<const void*>& removed_symbols,
     /*out*/ size_t* num_symbols);
 

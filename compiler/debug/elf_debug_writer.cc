@@ -203,25 +203,26 @@ std::vector<uint8_t> MakeElfFileForJIT(
   // Verify the ELF file by reading it back using the trivial reader.
   if (kIsDebugBuild) {
     using Elf_Sym = typename ElfTypes::Sym;
-    using Elf_Addr = typename ElfTypes::Addr;
     size_t num_syms = 0;
-    size_t num_cfis = 0;
-    ReadElfSymbols<ElfTypes>(
-        buffer.data(),
-        [&](Elf_Sym sym, const char*) {
-          DCHECK_EQ(sym.st_value, method_info.code_address + CompiledMethod::CodeDelta(isa));
-          DCHECK_EQ(sym.st_size, method_info.code_size);
-          num_syms++;
-        },
-        [&](Elf_Addr addr, Elf_Addr size, ArrayRef<const uint8_t> opcodes) {
-          DCHECK_EQ(addr, method_info.code_address);
-          DCHECK_EQ(size, method_info.code_size);
-          DCHECK_GE(opcodes.size(), method_info.cfi.size());
-          DCHECK_EQ(memcmp(opcodes.data(), method_info.cfi.data(), method_info.cfi.size()), 0);
-          num_cfis++;
-        });
+    size_t num_cies = 0;
+    size_t num_fdes = 0;
+    using Reader = ElfDebugReader<ElfTypes>;
+    Reader reader(buffer);
+    reader.VisitFunctionSymbols([&](Elf_Sym sym, const char*) {
+      DCHECK_EQ(sym.st_value, method_info.code_address + CompiledMethod::CodeDelta(isa));
+      DCHECK_EQ(sym.st_size, method_info.code_size);
+      num_syms++;
+    });
+    reader.VisitDebugFrame([&](const Reader::CIE* cie ATTRIBUTE_UNUSED) {
+      num_cies++;
+    }, [&](const Reader::FDE* fde, const Reader::CIE* cie ATTRIBUTE_UNUSED) {
+      DCHECK_EQ(fde->sym_addr, method_info.code_address);
+      DCHECK_EQ(fde->sym_size, method_info.code_size);
+      num_fdes++;
+    });
     DCHECK_EQ(num_syms, 1u);
-    DCHECK_EQ(num_cfis, 1u);
+    DCHECK_LE(num_cies, 1u);
+    DCHECK_LE(num_fdes, 1u);
   }
   return buffer;
 }
@@ -230,14 +231,13 @@ std::vector<uint8_t> MakeElfFileForJIT(
 std::vector<uint8_t> PackElfFileForJIT(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    std::vector<const uint8_t*>& added_elf_files,
+    std::vector<ArrayRef<const uint8_t>>& added_elf_files,
     std::vector<const void*>& removed_symbols,
     /*out*/ size_t* num_symbols) {
   using ElfTypes = ElfRuntimeTypes;
   using Elf_Addr = typename ElfTypes::Addr;
   using Elf_Sym = typename ElfTypes::Sym;
   CHECK_EQ(sizeof(Elf_Addr), static_cast<size_t>(GetInstructionSetPointerSize(isa)));
-  const bool is64bit = Is64BitInstructionSet(isa);
   auto is_removed_symbol = [&removed_symbols](Elf_Addr addr) {
     const void* code_ptr = reinterpret_cast<const void*>(addr);
     return std::binary_search(removed_symbols.begin(), removed_symbols.end(), code_ptr);
@@ -259,35 +259,26 @@ std::vector<uint8_t> PackElfFileForJIT(
     auto* symtab = builder->GetSymTab();
     auto* debug_frame = builder->GetDebugFrame();
     std::deque<Elf_Sym> symbols;
-    std::vector<uint8_t> debug_frame_buffer;
-    WriteCIE(isa, &debug_frame_buffer);
+
+    using Reader = ElfDebugReader<ElfTypes>;
+    std::deque<Reader> readers;
+    for (ArrayRef<const uint8_t> added_elf_file : added_elf_files) {
+      readers.emplace_back(added_elf_file);
+    }
 
     // Write symbols names. All other data is buffered.
     strtab->Start();
     strtab->Write("");  // strtab should start with empty string.
-    for (const uint8_t* added_elf_file : added_elf_files) {
-      ReadElfSymbols<ElfTypes>(
-          added_elf_file,
-          [&](Elf_Sym sym, const char* name) {
-              if (is_removed_symbol(sym.st_value)) {
-                return;
-              }
-              sym.st_name = strtab->Write(name);
-              symbols.push_back(sym);
-              min_address = std::min<uint64_t>(min_address, sym.st_value);
-              max_address = std::max<uint64_t>(max_address, sym.st_value + sym.st_size);
-          },
-          [&](Elf_Addr addr, Elf_Addr size, ArrayRef<const uint8_t> opcodes) {
-              if (is_removed_symbol(addr)) {
-                return;
-              }
-              dwarf::WriteFDE(is64bit,
-                              /* cie_pointer= */ 0,
-                              addr,
-                              size,
-                              opcodes,
-                              &debug_frame_buffer);
-          });
+    for (Reader& reader : readers) {
+      reader.VisitFunctionSymbols([&](Elf_Sym sym, const char* name) {
+          if (is_removed_symbol(sym.st_value)) {
+            return;
+          }
+          sym.st_name = strtab->Write(name);
+          symbols.push_back(sym);
+          min_address = std::min<uint64_t>(min_address, sym.st_value);
+          max_address = std::max<uint64_t>(max_address, sym.st_value + sym.st_size);
+      });
     }
     strtab->End();
 
@@ -305,7 +296,22 @@ std::vector<uint8_t> PackElfFileForJIT(
 
     // Add the CFI/unwind section.
     debug_frame->Start();
-    debug_frame->WriteFully(debug_frame_buffer.data(), debug_frame_buffer.size());
+    // ART always produces the same CIE, so we copy the first one and ignore the rest.
+    bool copied_cie = false;
+    for (Reader& reader : readers) {
+      reader.VisitDebugFrame([&](const Reader::CIE* cie) {
+        if (!copied_cie) {
+          debug_frame->WriteFully(cie->data(), cie->size());
+          copied_cie = true;
+        }
+      }, [&](const Reader::FDE* fde, const Reader::CIE* cie ATTRIBUTE_UNUSED) {
+        DCHECK(copied_cie);
+        DCHECK_EQ(fde->cie_pointer, 0);
+        if (!is_removed_symbol(fde->sym_addr)) {
+          debug_frame->WriteFully(fde->data(), fde->size());
+        }
+      });
+    }
     debug_frame->End();
 
     builder->End();

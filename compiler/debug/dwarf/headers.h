@@ -90,30 +90,6 @@ void WriteFDE(bool is64bit,
   writer.UpdateUint32(fde_header_start, writer.data()->size() - fde_header_start - 4);
 }
 
-// Read singe FDE entry from 'data' (which is advanced).
-template<typename Addr>
-bool ReadFDE(const uint8_t** data, Addr* addr, Addr* size, ArrayRef<const uint8_t>* opcodes) {
-  struct Header {
-    uint32_t length;
-    int32_t cie_pointer;
-    Addr addr;
-    Addr size;
-    uint8_t augmentaion;
-    uint8_t opcodes[];
-  } PACKED(1);
-  const Header* header = reinterpret_cast<const Header*>(*data);
-  const size_t length = 4 + header->length;
-  *data += length;
-  if (header->cie_pointer == -1) {
-    return false;  // Not an FDE entry.
-  }
-  DCHECK_EQ(header->cie_pointer, 0);  // Expects single CIE. Assumes DW_DEBUG_FRAME_FORMAT.
-  *addr = header->addr;
-  *size = header->size;
-  *opcodes = ArrayRef<const uint8_t>(header->opcodes, length - offsetof(Header, opcodes));
-  return true;
-}
-
 // Write compilation unit (CU) to .debug_info section.
 template<typename Vector>
 void WriteDebugInfoCU(uint32_t debug_abbrev_offset,
