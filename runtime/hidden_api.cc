@@ -173,7 +173,9 @@ bool MemberSignature::MemberNameAndTypeMatch(const MemberSignature& other) {
   return member_name_ == other.member_name_ && type_signature_ == other.type_signature_;
 }
 
-void MemberSignature::LogAccessToEventLog(AccessMethod access_method, bool access_denied) {
+void MemberSignature::LogAccessToEventLog(uint32_t sampled_value,
+                                          AccessMethod access_method,
+                                          bool access_denied) {
 #ifdef ART_TARGET_ANDROID
   if (access_method == AccessMethod::kLinking || access_method == AccessMethod::kNone) {
     // Linking warnings come from static analysis/compilation of the bytecode
@@ -202,13 +204,18 @@ void MemberSignature::LogAccessToEventLog(AccessMethod access_method, bool acces
     LOG(ERROR) << "Unable to allocate string for hidden api method signature";
   }
   env->CallStaticVoidMethod(WellKnownClasses::dalvik_system_VMRuntime,
-      WellKnownClasses::dalvik_system_VMRuntime_hiddenApiUsed, package_str.get(),
-      signature_jstr.get(), static_cast<jint>(access_method), access_denied);
+      WellKnownClasses::dalvik_system_VMRuntime_hiddenApiUsed,
+      sampled_value,
+      package_str.get(),
+      signature_jstr.get(),
+      static_cast<jint>(access_method),
+      access_denied);
   if (env->ExceptionCheck()) {
     env->ExceptionClear();
     LOG(ERROR) << "Unable to report hidden api usage";
   }
 #else
+  UNUSED(sampled_value);
   UNUSED(access_method);
   UNUSED(access_denied);
 #endif
@@ -394,9 +401,11 @@ bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod acce
       uint32_t eventLogSampleRate = runtime->GetHiddenApiEventLogSampleRate();
       // Assert that RAND_MAX is big enough, to ensure sampling below works as expected.
       static_assert(RAND_MAX >= 0xffff, "RAND_MAX too small");
-      if (eventLogSampleRate != 0 &&
-          (static_cast<uint32_t>(std::rand()) & 0xffff) < eventLogSampleRate) {
-        member_signature.LogAccessToEventLog(access_method, deny_access);
+      if (eventLogSampleRate != 0) {
+        const uint32_t sampled_value = static_cast<uint32_t>(std::rand()) & 0xffff;
+        if (sampled_value < eventLogSampleRate) {
+          member_signature.LogAccessToEventLog(sampled_value, access_method, deny_access);
+        }
       }
     }
 
