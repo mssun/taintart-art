@@ -387,6 +387,7 @@ ART_TEST_MODULES := \
     art_libartbase_tests \
     art_libartpalette_tests \
     art_libdexfile_external_tests \
+    art_libdexfile_support_static_tests \
     art_libdexfile_support_tests \
     art_libdexfile_tests \
     art_libprofile_tests \

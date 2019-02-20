@@ -275,6 +275,9 @@ cc_library {
     },
 }
 
+// The same source file is used in two tests here, so unlike other ART gtests it
+// doesn't use test_per_src. Its test target is
+// test-art-{host,target}-gtest-art_libdexfile_support_tests.
 art_cc_test {
     name: "art_libdexfile_support_tests",
     host_supported: true,
@@ -310,6 +313,9 @@ cc_library_static {
     export_header_lib_headers: ["libdexfile_external_headers"],
 }
 
+// The same source file is used in two tests here, so unlike other ART gtests it
+// doesn't use test_per_src. Its test target is
+// test-art-{host,target}-gtest-art_libdexfile_support_static_tests.
 art_cc_test {
     name: "art_libdexfile_support_static_tests",
     host_supported: true,
