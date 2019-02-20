@@ -97,6 +97,9 @@ class CommonRuntimeTestImpl : public CommonArtTestImpl {
     return true;
   }
 
+  void MakeInterpreted(ObjPtr<mirror::Class> klass)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   static bool StartDex2OatCommandLine(/*out*/std::vector<std::string>* argv,
                                       /*out*/std::string* error_msg);
 
