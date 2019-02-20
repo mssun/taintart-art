@@ -26,8 +26,8 @@
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "base/timing_logger.h"
+#include "compiler.h"
 #include "debug/elf_debug_writer.h"
-#include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "jit/debugger_interface.h"
 #include "jit/jit.h"
@@ -107,7 +107,7 @@ void JitCompiler::ParseCompilerOptions() {
   }
   compiler_options_->instruction_set_features_ = std::move(instruction_set_features);
   compiler_options_->compiling_with_core_image_ =
-      CompilerDriver::IsCoreImageFilename(runtime->GetImageLocation());
+      CompilerOptions::IsCoreImageFilename(runtime->GetImageLocation());
 
   if (compiler_options_->GetGenerateDebugInfo()) {
     jit_logger_.reset(new JitLogger());
@@ -171,14 +171,8 @@ extern "C" bool jit_generate_debug_info(void* handle) {
 JitCompiler::JitCompiler() {
   compiler_options_.reset(new CompilerOptions());
   ParseCompilerOptions();
-
-  compiler_driver_.reset(new CompilerDriver(
-      compiler_options_.get(),
-      Compiler::kOptimizing,
-      /* thread_count= */ 1,
-      /* swap_fd= */ -1));
-  // Disable dedupe so we can remove compiled methods.
-  compiler_driver_->SetDedupeEnabled(false);
+  compiler_.reset(
+      Compiler::Create(*compiler_options_, /*storage=*/ nullptr, Compiler::kOptimizing));
 }
 
 JitCompiler::~JitCompiler() {
@@ -203,8 +197,7 @@ bool JitCompiler::CompileMethod(Thread* self, ArtMethod* method, bool baseline, 
   {
     TimingLogger::ScopedTiming t2("Compiling", &logger);
     JitCodeCache* const code_cache = runtime->GetJit()->GetCodeCache();
-    success = compiler_driver_->GetCompiler()->JitCompile(
-        self, code_cache, method, baseline, osr, jit_logger_.get());
+    success = compiler_->JitCompile(self, code_cache, method, baseline, osr, jit_logger_.get());
   }
 
   // Trim maps to reduce memory usage.

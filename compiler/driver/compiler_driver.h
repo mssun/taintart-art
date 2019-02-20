@@ -22,8 +22,6 @@
 #include <string>
 #include <vector>
 
-#include "android-base/strings.h"
-
 #include "arch/instruction_set.h"
 #include "base/array_ref.h"
 #include "base/bit_utils.h"
@@ -244,23 +242,6 @@ class CompilerDriver {
 
   CompiledMethodStorage* GetCompiledMethodStorage() {
     return &compiled_method_storage_;
-  }
-
-  // Is `boot_image_filename` the name of a core image (small boot
-  // image used for ART testing only)?
-  static bool IsCoreImageFilename(const std::string& boot_image_filename) {
-    // Look for "core.art" or "core-*.art".
-    if (android::base::EndsWith(boot_image_filename, "core.art")) {
-      return true;
-    }
-    if (!android::base::EndsWith(boot_image_filename, ".art")) {
-      return false;
-    }
-    size_t slash_pos = boot_image_filename.rfind('/');
-    if (slash_pos == std::string::npos) {
-      return android::base::StartsWith(boot_image_filename, "core-");
-    }
-    return boot_image_filename.compare(slash_pos + 1, 5u, "core-") == 0;
   }
 
   optimizer::DexToDexCompiler& GetDexToDexCompiler() {

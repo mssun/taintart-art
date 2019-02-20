@@ -41,7 +41,7 @@
 #include "dex/dex_file_types.h"
 #include "dex/verification_results.h"
 #include "dex/verified_method.h"
-#include "driver/compiler_driver-inl.h"
+#include "driver/compiled_method_storage.h"
 #include "driver/compiler_options.h"
 #include "driver/dex_compilation_unit.h"
 #include "graph_checker.h"
@@ -107,22 +107,22 @@ class PassObserver : public ValueObject {
   PassObserver(HGraph* graph,
                CodeGenerator* codegen,
                std::ostream* visualizer_output,
-               CompilerDriver* compiler_driver,
+               const CompilerOptions& compiler_options,
                Mutex& dump_mutex)
       : graph_(graph),
         last_seen_graph_size_(0),
         cached_method_name_(),
-        timing_logger_enabled_(compiler_driver->GetCompilerOptions().GetDumpPassTimings()),
+        timing_logger_enabled_(compiler_options.GetDumpPassTimings()),
         timing_logger_(timing_logger_enabled_ ? GetMethodName() : "", true, true),
         disasm_info_(graph->GetAllocator()),
         visualizer_oss_(),
         visualizer_output_(visualizer_output),
-        visualizer_enabled_(!compiler_driver->GetCompilerOptions().GetDumpCfgFileName().empty()),
+        visualizer_enabled_(!compiler_options.GetDumpCfgFileName().empty()),
         visualizer_(&visualizer_oss_, graph, *codegen),
         visualizer_dump_mutex_(dump_mutex),
         graph_in_bad_state_(false) {
     if (timing_logger_enabled_ || visualizer_enabled_) {
-      if (!IsVerboseMethod(compiler_driver, GetMethodName())) {
+      if (!IsVerboseMethod(compiler_options, GetMethodName())) {
         timing_logger_enabled_ = visualizer_enabled_ = false;
       }
       if (visualizer_enabled_) {
@@ -200,11 +200,11 @@ class PassObserver : public ValueObject {
     }
   }
 
-  static bool IsVerboseMethod(CompilerDriver* compiler_driver, const char* method_name) {
+  static bool IsVerboseMethod(const CompilerOptions& compiler_options, const char* method_name) {
     // Test an exact match to --verbose-methods. If verbose-methods is set, this overrides an
     // empty kStringFilter matching all methods.
-    if (compiler_driver->GetCompilerOptions().HasVerboseMethods()) {
-      return compiler_driver->GetCompilerOptions().IsVerboseMethod(method_name);
+    if (compiler_options.HasVerboseMethods()) {
+      return compiler_options.IsVerboseMethod(method_name);
     }
 
     // Test the kStringFilter sub-string. constexpr helper variable to silence unreachable-code
@@ -267,7 +267,8 @@ class PassScope : public ValueObject {
 
 class OptimizingCompiler final : public Compiler {
  public:
-  explicit OptimizingCompiler(CompilerDriver* driver);
+  explicit OptimizingCompiler(const CompilerOptions& compiler_options,
+                              CompiledMethodStorage* storage);
   ~OptimizingCompiler() override;
 
   bool CanCompileMethod(uint32_t method_idx, const DexFile& dex_file) const override;
@@ -289,12 +290,8 @@ class OptimizingCompiler final : public Compiler {
   uintptr_t GetEntryPointOf(ArtMethod* method) const override
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return reinterpret_cast<uintptr_t>(method->GetEntryPointFromQuickCompiledCodePtrSize(
-        InstructionSetPointerSize(GetCompilerDriver()->GetCompilerOptions().GetInstructionSet())));
+        InstructionSetPointerSize(GetCompilerOptions().GetInstructionSet())));
   }
-
-  void Init() override;
-
-  void UnInit() const override;
 
   bool JitCompile(Thread* self,
                   jit::JitCodeCache* code_cache,
@@ -422,26 +419,20 @@ class OptimizingCompiler final : public Compiler {
 
 static const int kMaximumCompilationTimeBeforeWarning = 100; /* ms */
 
-OptimizingCompiler::OptimizingCompiler(CompilerDriver* driver)
-    : Compiler(driver, kMaximumCompilationTimeBeforeWarning),
-      dump_mutex_("Visualizer dump lock") {}
-
-void OptimizingCompiler::Init() {
-  // Enable C1visualizer output. Must be done in Init() because the compiler
-  // driver is not fully initialized when passed to the compiler's constructor.
-  CompilerDriver* driver = GetCompilerDriver();
-  const std::string cfg_file_name = driver->GetCompilerOptions().GetDumpCfgFileName();
+OptimizingCompiler::OptimizingCompiler(const CompilerOptions& compiler_options,
+                                       CompiledMethodStorage* storage)
+    : Compiler(compiler_options, storage, kMaximumCompilationTimeBeforeWarning),
+      dump_mutex_("Visualizer dump lock") {
+  // Enable C1visualizer output.
+  const std::string& cfg_file_name = compiler_options.GetDumpCfgFileName();
   if (!cfg_file_name.empty()) {
     std::ios_base::openmode cfg_file_mode =
-        driver->GetCompilerOptions().GetDumpCfgAppend() ? std::ofstream::app : std::ofstream::out;
+        compiler_options.GetDumpCfgAppend() ? std::ofstream::app : std::ofstream::out;
     visualizer_output_.reset(new std::ofstream(cfg_file_name, cfg_file_mode));
   }
-  if (driver->GetCompilerOptions().GetDumpStats()) {
+  if (compiler_options.GetDumpStats()) {
     compilation_stats_.reset(new OptimizingCompilerStats());
   }
-}
-
-void OptimizingCompiler::UnInit() const {
 }
 
 OptimizingCompiler::~OptimizingCompiler() {
@@ -652,8 +643,7 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
                                           const DexCompilationUnit& dex_compilation_unit,
                                           PassObserver* pass_observer,
                                           VariableSizedHandleScope* handles) const {
-  const std::vector<std::string>* pass_names =
-      GetCompilerDriver()->GetCompilerOptions().GetPassesToRun();
+  const std::vector<std::string>* pass_names = GetCompilerOptions().GetPassesToRun();
   if (pass_names != nullptr) {
     // If passes were defined on command-line, build the optimization
     // passes and run these instead of the built-in optimizations.
@@ -764,15 +754,15 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
   ArenaVector<linker::LinkerPatch> linker_patches = EmitAndSortLinkerPatches(codegen);
   ScopedArenaVector<uint8_t> stack_map = codegen->BuildStackMaps(code_item_for_osr_check);
 
+  CompiledMethodStorage* storage = GetCompiledMethodStorage();
   CompiledMethod* compiled_method = CompiledMethod::SwapAllocCompiledMethod(
-      GetCompilerDriver()->GetCompiledMethodStorage(),
+      storage,
       codegen->GetInstructionSet(),
       code_allocator->GetMemory(),
       ArrayRef<const uint8_t>(stack_map),
       ArrayRef<const uint8_t>(*codegen->GetAssembler()->cfi().data()),
       ArrayRef<const linker::LinkerPatch>(linker_patches));
 
-  CompiledMethodStorage* storage = GetCompilerDriver()->GetCompiledMethodStorage();
   for (const linker::LinkerPatch& patch : linker_patches) {
     if (codegen->NeedsThunkCode(patch) && storage->GetThunkCode(patch).empty()) {
       ArenaVector<uint8_t> code(allocator->Adapter());
@@ -794,8 +784,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
                                               bool osr,
                                               VariableSizedHandleScope* handles) const {
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kAttemptBytecodeCompilation);
-  CompilerDriver* compiler_driver = GetCompilerDriver();
-  const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
+  const CompilerOptions& compiler_options = GetCompilerOptions();
   InstructionSet instruction_set = compiler_options.GetInstructionSet();
   const DexFile& dex_file = *dex_compilation_unit.GetDexFile();
   uint32_t method_idx = dex_compilation_unit.GetDexMethodIndex();
@@ -859,7 +848,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
       compiler_options.GetInstructionSet(),
       kInvalidInvokeType,
       dead_reference_safe,
-      compiler_driver->GetCompilerOptions().GetDebuggable(),
+      compiler_options.GetDebuggable(),
       /* osr= */ osr);
 
   if (method != nullptr) {
@@ -874,13 +863,12 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
     MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kNotCompiledNoCodegen);
     return nullptr;
   }
-  codegen->GetAssembler()->cfi().SetEnabled(
-      compiler_driver->GetCompilerOptions().GenerateAnyDebugInfo());
+  codegen->GetAssembler()->cfi().SetEnabled(compiler_options.GenerateAnyDebugInfo());
 
   PassObserver pass_observer(graph,
                              codegen.get(),
                              visualizer_output_.get(),
-                             compiler_driver,
+                             compiler_options,
                              dump_mutex_);
 
   {
@@ -959,8 +947,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
     ArtMethod* method,
     VariableSizedHandleScope* handles) const {
   MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kAttemptIntrinsicCompilation);
-  CompilerDriver* compiler_driver = GetCompilerDriver();
-  const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
+  const CompilerOptions& compiler_options = GetCompilerOptions();
   InstructionSet instruction_set = compiler_options.GetInstructionSet();
   const DexFile& dex_file = *dex_compilation_unit.GetDexFile();
   uint32_t method_idx = dex_compilation_unit.GetDexMethodIndex();
@@ -1001,7 +988,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
   PassObserver pass_observer(graph,
                              codegen.get(),
                              visualizer_output_.get(),
-                             compiler_driver,
+                             compiler_options,
                              dump_mutex_);
 
   {
@@ -1035,7 +1022,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
   AllocateRegisters(graph,
                     codegen.get(),
                     &pass_observer,
-                    compiler_driver->GetCompilerOptions().GetRegisterAllocationStrategy(),
+                    compiler_options.GetRegisterAllocationStrategy(),
                     compilation_stats_.get());
   if (!codegen->IsLeafMethod()) {
     VLOG(compiler) << "Intrinsic method is not leaf: " << method->GetIntrinsic()
@@ -1060,8 +1047,7 @@ CompiledMethod* OptimizingCompiler::Compile(const dex::CodeItem* code_item,
                                             Handle<mirror::ClassLoader> jclass_loader,
                                             const DexFile& dex_file,
                                             Handle<mirror::DexCache> dex_cache) const {
-  CompilerDriver* compiler_driver = GetCompilerDriver();
-  const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
+  const CompilerOptions& compiler_options = GetCompilerOptions();
   CompiledMethod* compiled_method = nullptr;
   Runtime* runtime = Runtime::Current();
   DCHECK(runtime->IsAotCompiler());
@@ -1194,7 +1180,7 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
   ArenaAllocator allocator(runtime->GetArenaPool());
   ArenaStack arena_stack(runtime->GetArenaPool());
 
-  const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
+  const CompilerOptions& compiler_options = GetCompilerOptions();
   if (compiler_options.IsBootImage()) {
     ScopedObjectAccess soa(Thread::Current());
     ArtMethod* method = runtime->GetClassLinker()->LookupResolvedMethod(
@@ -1243,7 +1229,7 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
   ScopedArenaVector<uint8_t> stack_map = CreateJniStackMap(
       &stack_map_allocator, jni_compiled_method, jni_compiled_method.GetCode().size());
   return CompiledMethod::SwapAllocCompiledMethod(
-      GetCompilerDriver()->GetCompiledMethodStorage(),
+      GetCompiledMethodStorage(),
       jni_compiled_method.GetInstructionSet(),
       jni_compiled_method.GetCode(),
       ArrayRef<const uint8_t>(stack_map),
@@ -1251,8 +1237,9 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
       /* patches= */ ArrayRef<const linker::LinkerPatch>());
 }
 
-Compiler* CreateOptimizingCompiler(CompilerDriver* driver) {
-  return new OptimizingCompiler(driver);
+Compiler* CreateOptimizingCompiler(const CompilerOptions& compiler_options,
+                                   CompiledMethodStorage* storage) {
+  return new OptimizingCompiler(compiler_options, storage);
 }
 
 bool EncodeArtMethodInInlineInfo(ArtMethod* method ATTRIBUTE_UNUSED) {
@@ -1282,7 +1269,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   ArenaAllocator allocator(runtime->GetJitArenaPool());
 
   if (UNLIKELY(method->IsNative())) {
-    const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
+    const CompilerOptions& compiler_options = GetCompilerOptions();
     JniCompiledMethod jni_compiled_method = ArtQuickJniCompileMethod(
         compiler_options, access_flags, method_idx, *dex_file);
     std::vector<Handle<mirror::Object>> roots;
@@ -1431,7 +1418,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     return false;
   }
 
-  const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
+  const CompilerOptions& compiler_options = GetCompilerOptions();
   if (compiler_options.GenerateAnyDebugInfo()) {
     const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
     const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
@@ -1478,7 +1465,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
 
 void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method ATTRIBUTE_UNUSED,
                                               const debug::MethodDebugInfo& info) {
-  const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
+  const CompilerOptions& compiler_options = GetCompilerOptions();
   DCHECK(compiler_options.GenerateAnyDebugInfo());
   TimingLogger logger("Generate JIT debug info logger", true, VLOG_IS_ON(jit));
   {

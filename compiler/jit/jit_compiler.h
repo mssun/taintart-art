@@ -23,7 +23,7 @@ namespace art {
 
 class ArtMethod;
 class CompiledMethod;
-class CompilerDriver;
+class Compiler;
 class CompilerOptions;
 class Thread;
 
@@ -44,15 +44,11 @@ class JitCompiler {
     return *compiler_options_.get();
   }
 
-  CompilerDriver* GetCompilerDriver() const {
-    return compiler_driver_.get();
-  }
-
   void ParseCompilerOptions();
 
  private:
   std::unique_ptr<CompilerOptions> compiler_options_;
-  std::unique_ptr<CompilerDriver> compiler_driver_;
+  std::unique_ptr<Compiler> compiler_;
   std::unique_ptr<JitLogger> jit_logger_;
 
   JitCompiler();

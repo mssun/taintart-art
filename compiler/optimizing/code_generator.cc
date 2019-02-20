@@ -49,7 +49,6 @@
 #include "dex/bytecode_utils.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/verified_method.h"
-#include "driver/compiler_driver.h"
 #include "graph_visualizer.h"
 #include "image.h"
 #include "gc/space/image_space.h"
