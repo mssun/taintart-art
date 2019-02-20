@@ -79,7 +79,7 @@ HOST_CORE_IMG_JARS   := $(addsuffix -hostdex,$(CORE_IMG_JARS))
 TARGET_CORE_IMG_JARS := $(addsuffix -testdex,$(CORE_IMG_JARS))
 HOST_CORE_IMG_DEX_LOCATIONS   := $(foreach jar,$(HOST_CORE_IMG_JARS),  $(HOST_OUT_JAVA_LIBRARIES)/$(jar).jar)
 ifeq ($(ART_TEST_ANDROID_ROOT),)
-TARGET_CORE_IMG_DEX_LOCATIONS := $(foreach jar,$(TARGET_CORE_IMG_JARS),/$(DEXPREOPT_BOOT_JAR_DIR)/$(jar).jar)
+TARGET_CORE_IMG_DEX_LOCATIONS := $(foreach jar,$(TARGET_CORE_IMG_JARS),/$(ART_DEXPREOPT_BOOT_JAR_DIR)/$(jar).jar)
 else
 TARGET_CORE_IMG_DEX_LOCATIONS := $(foreach jar,$(TARGET_CORE_IMG_JARS),$(ART_TEST_ANDROID_ROOT)/$(jar).jar)
 endif
@@ -92,7 +92,7 @@ HOST_TEST_CORE_JARS   := $(addsuffix -hostdex,$(TEST_CORE_JARS))
 TARGET_TEST_CORE_JARS := $(addsuffix -testdex,$(TEST_CORE_JARS))
 HOST_CORE_DEX_LOCATIONS   := $(foreach jar,$(HOST_TEST_CORE_JARS),  $(HOST_OUT_JAVA_LIBRARIES)/$(jar).jar)
 ifeq ($(ART_TEST_ANDROID_ROOT),)
-TARGET_CORE_DEX_LOCATIONS := $(foreach jar,$(TARGET_TEST_CORE_JARS),/$(DEXPREOPT_BOOT_JAR_DIR)/$(jar).jar)
+TARGET_CORE_DEX_LOCATIONS := $(foreach jar,$(TARGET_TEST_CORE_JARS),/$(ART_DEXPREOPT_BOOT_JAR_DIR)/$(jar).jar)
 else
 TARGET_CORE_DEX_LOCATIONS := $(foreach jar,$(TARGET_TEST_CORE_JARS),$(ART_TEST_ANDROID_ROOT)/framework/$(jar).jar)
 endif
