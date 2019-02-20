@@ -287,7 +287,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     runtime_flags &= ~DISABLE_VERIFIER;
   }
 
-  if ((runtime_flags & ONLY_USE_SYSTEM_OAT_FILES) != 0) {
+  if ((runtime_flags & ONLY_USE_SYSTEM_OAT_FILES) != 0 || is_system_server) {
     Runtime::Current()->GetOatFileManager().SetOnlyUseSystemOatFiles();
     runtime_flags &= ~ONLY_USE_SYSTEM_OAT_FILES;
   }
