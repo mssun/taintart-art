@@ -41,10 +41,10 @@ clean-oat-target:
 	$(ADB) shell rm -rf $(ART_TARGET_NATIVETEST_DIR)
 	$(ADB) shell rm -rf $(ART_TARGET_TEST_DIR)
 	$(ADB) shell rm -rf $(ART_TARGET_DALVIK_CACHE_DIR)/*/*
-	$(ADB) shell rm -rf $(DEXPREOPT_BOOT_JAR_DIR)/$(DEX2OAT_TARGET_ARCH)
+	$(ADB) shell rm -rf $(ART_DEXPREOPT_BOOT_JAR_DIR)/$(DEX2OAT_TARGET_ARCH)
 	$(ADB) shell rm -rf system/app/$(DEX2OAT_TARGET_ARCH)
 ifdef TARGET_2ND_ARCH
-	$(ADB) shell rm -rf $(DEXPREOPT_BOOT_JAR_DIR)/$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH)
+	$(ADB) shell rm -rf $(ART_DEXPREOPT_BOOT_JAR_DIR)/$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH)
 	$(ADB) shell rm -rf system/app/$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH)
 endif
 	$(ADB) shell rm -rf data/run-test/test-*/dalvik-cache/*
