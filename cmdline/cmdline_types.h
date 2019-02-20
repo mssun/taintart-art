@@ -457,8 +457,18 @@ struct CmdlineType<XGcOption> : CmdlineTypeParser<XGcOption> {
       } else if (gc_option == "nopresweepingverify") {
         xgc.verify_pre_sweeping_heap_ = false;
       } else if (gc_option == "generational_cc") {
+        // Note: Option "-Xgc:generational_cc" can be passed directly by
+        // app_process/zygote (see `android::AndroidRuntime::startVm`). If this
+        // option is ever deprecated, it should still be accepted (but ignored)
+        // for compatibility reasons (this should not prevent the runtime from
+        // starting up).
         xgc.generational_cc = true;
       } else if (gc_option == "nogenerational_cc") {
+        // Note: Option "-Xgc:nogenerational_cc" can be passed directly by
+        // app_process/zygote (see `android::AndroidRuntime::startVm`). If this
+        // option is ever deprecated, it should still be accepted (but ignored)
+        // for compatibility reasons (this should not prevent the runtime from
+        // starting up).
         xgc.generational_cc = false;
       } else if (gc_option == "postverify") {
         xgc.verify_post_gc_heap_ = true;
