@@ -27,6 +27,7 @@
 #include <memory>
 #include <vector>
 
+#include "base/file_utils.h"
 #include "base/locks.h"
 #include "base/macros.h"
 #include "base/mem_map.h"
@@ -182,6 +183,11 @@ class Runtime {
 
   const std::string& GetImageLocation() const {
     return image_location_;
+  }
+
+  bool IsUsingDefaultBootImageLocation() const {
+    std::string error_msg;
+    return GetImageLocation().compare(GetDefaultBootImageLocation(&error_msg)) == 0;
   }
 
   // Starts a runtime, which may cause threads to be started and code to run.

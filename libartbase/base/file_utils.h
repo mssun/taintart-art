@@ -43,6 +43,9 @@ const char* GetAndroidDataSafe(std::string* error_msg);
 // Returns an empty string if ANDROID_ROOT is not set.
 std::string GetDefaultBootImageLocation(std::string* error_msg);
 
+// Returns the default boot image location, based on the passed android root.
+std::string GetDefaultBootImageLocation(const std::string& android_root);
+
 // Returns the dalvik-cache location, with subdir appended. Returns the empty string if the cache
 // could not be found.
 std::string GetDalvikCache(const char* subdir);
