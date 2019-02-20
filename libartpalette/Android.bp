@@ -26,7 +26,7 @@ cc_defaults {
 art_cc_library {
     name: "libartpalette-system",
     defaults: ["libartpalette_defaults"],
-
+    compile_multilib: "both",
     target: {
         android: {
           srcs: ["system/palette_android.cc",],
