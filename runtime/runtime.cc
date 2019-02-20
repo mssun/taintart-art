@@ -1006,9 +1006,9 @@ void Runtime::StartDaemonThreads() {
   VLOG(startup) << "Runtime::StartDaemonThreads exiting";
 }
 
-static size_t OpenDexFiles(ArrayRef<const std::string> dex_filenames,
-                           ArrayRef<const std::string> dex_locations,
-                           std::vector<std::unique_ptr<const DexFile>>* dex_files) {
+static size_t OpenBootDexFiles(ArrayRef<const std::string> dex_filenames,
+                               ArrayRef<const std::string> dex_locations,
+                               std::vector<std::unique_ptr<const DexFile>>* dex_files) {
   DCHECK(dex_files != nullptr) << "OpenDexFiles: out-param is nullptr";
   size_t failure_count = 0;
   const ArtDexFileLoader dex_file_loader;
@@ -1021,9 +1021,15 @@ static size_t OpenDexFiles(ArrayRef<const std::string> dex_filenames,
       LOG(WARNING) << "Skipping non-existent dex file '" << dex_filename << "'";
       continue;
     }
+    // In the case we're not using the default boot image, we don't have support yet
+    // on reading vdex files of boot classpath. So just assume all boot classpath
+    // dex files have been verified (this should always be the case as the default boot
+    // image has been generated at build time).
+    bool verify = Runtime::Current()->IsVerificationEnabled() &&
+        (kIsDebugBuild || Runtime::Current()->IsUsingDefaultBootImageLocation());
     if (!dex_file_loader.Open(dex_filename,
                               dex_location,
-                              Runtime::Current()->IsVerificationEnabled(),
+                              verify,
                               kVerifyChecksum,
                               &error_msg,
                               dex_files)) {
@@ -1486,9 +1492,9 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
       if (runtime_options.Exists(Opt::BootClassPathDexList)) {
         extra_boot_class_path.swap(*runtime_options.GetOrDefault(Opt::BootClassPathDexList));
       } else {
-        OpenDexFiles(ArrayRef<const std::string>(GetBootClassPath()).SubArray(start),
-                     ArrayRef<const std::string>(GetBootClassPathLocations()).SubArray(start),
-                     &extra_boot_class_path);
+        OpenBootDexFiles(ArrayRef<const std::string>(GetBootClassPath()).SubArray(start),
+                         ArrayRef<const std::string>(GetBootClassPathLocations()).SubArray(start),
+                         &extra_boot_class_path);
       }
       class_linker_->AddExtraBootDexFiles(self, std::move(extra_boot_class_path));
     }
@@ -1504,9 +1510,9 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     if (runtime_options.Exists(Opt::BootClassPathDexList)) {
       boot_class_path.swap(*runtime_options.GetOrDefault(Opt::BootClassPathDexList));
     } else {
-      OpenDexFiles(ArrayRef<const std::string>(GetBootClassPath()),
-                   ArrayRef<const std::string>(GetBootClassPathLocations()),
-                   &boot_class_path);
+      OpenBootDexFiles(ArrayRef<const std::string>(GetBootClassPath()),
+                       ArrayRef<const std::string>(GetBootClassPathLocations()),
+                       &boot_class_path);
     }
     if (!class_linker_->InitWithoutImage(std::move(boot_class_path), &error_msg)) {
       LOG(ERROR) << "Could not initialize without image: " << error_msg;
