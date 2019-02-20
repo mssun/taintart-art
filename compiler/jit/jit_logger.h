@@ -17,10 +17,11 @@
 #ifndef ART_COMPILER_JIT_JIT_LOGGER_H_
 #define ART_COMPILER_JIT_JIT_LOGGER_H_
 
+#include <memory>
+
 #include "base/mutex.h"
+#include "base/os.h"
 #include "compiled_method.h"
-#include "driver/compiler_driver.h"
-#include "driver/compiler_options.h"
 
 namespace art {
 

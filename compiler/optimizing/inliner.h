@@ -25,7 +25,6 @@
 namespace art {
 
 class CodeGenerator;
-class CompilerDriver;
 class DexCompilationUnit;
 class HGraph;
 class HInvoke;

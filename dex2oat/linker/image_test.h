@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "android-base/stringprintf.h"
+#include "android-base/strings.h"
 
 #include "art_method-inl.h"
 #include "base/file_utils.h"
