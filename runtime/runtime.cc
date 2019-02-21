@@ -1131,6 +1131,12 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
                 runtime_options.GetOrDefault(Opt::StackDumpLockProfThreshold));
 
   image_location_ = runtime_options.GetOrDefault(Opt::Image);
+  {
+    std::string error_msg;
+    is_using_default_boot_image_location_ =
+        (image_location_.compare(GetDefaultBootImageLocation(&error_msg)) == 0);
+  }
+
   SetInstructionSet(runtime_options.GetOrDefault(Opt::ImageInstructionSet));
   boot_class_path_ = runtime_options.ReleaseOrDefault(Opt::BootClassPath);
   boot_class_path_locations_ = runtime_options.ReleaseOrDefault(Opt::BootClassPathLocations);
