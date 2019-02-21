@@ -41,6 +41,9 @@ TEST_F(AtomicDexRefMapTest, RunTests) {
   EXPECT_TRUE(map.Insert(MethodReference(dex.get(), 1), 0, 1) == Map::kInsertResultInvalidDexFile);
   map.AddDexFile(dex.get());
   EXPECT_TRUE(map.HaveDexFile(dex.get()));
+  std::vector<const DexFile*> registered_dex_files = map.GetDexFiles();
+  EXPECT_EQ(1u, registered_dex_files.size());
+  EXPECT_TRUE(registered_dex_files[0] == dex.get());
   EXPECT_GT(dex->NumMethodIds(), 10u);
   // After we have added the get should succeed but return the default value.
   EXPECT_TRUE(map.Get(MethodReference(dex.get(), 1), &value));

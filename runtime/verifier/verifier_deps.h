@@ -23,6 +23,7 @@
 
 #include "base/array_ref.h"
 #include "base/locks.h"
+#include "dex/dex_file_structs.h"
 #include "dex/dex_file_types.h"
 #include "handle.h"
 #include "obj_ptr.h"
@@ -65,10 +66,15 @@ class VerifierDeps {
   // same set of dex files.
   void MergeWith(std::unique_ptr<VerifierDeps> other, const std::vector<const DexFile*>& dex_files);
 
-  // Record the verification status of the class at `type_idx`.
+  // Record the verification status of the class defined in `class_def`.
   static void MaybeRecordVerificationStatus(const DexFile& dex_file,
-                                            dex::TypeIndex type_idx,
+                                            const dex::ClassDef& class_def,
                                             FailureKind failure_kind)
+      REQUIRES(!Locks::verifier_deps_lock_);
+
+  // Record that class defined in `class_def` was not verified because it redefines
+  // a class with the same descriptor which takes precedence in class resolution.
+  static void MaybeRecordClassRedefinition(const DexFile& dex_file, const dex::ClassDef& class_def)
       REQUIRES(!Locks::verifier_deps_lock_);
 
   // Record the outcome `klass` of resolving type `type_idx` from `dex_file`.
@@ -114,13 +120,18 @@ class VerifierDeps {
   void Dump(VariableIndentationOutputStream* vios) const;
 
   // Verify the encoded dependencies of this `VerifierDeps` are still valid.
-  bool ValidateDependencies(Handle<mirror::ClassLoader> class_loader,
-                            Thread* self,
+  bool ValidateDependencies(Thread* self,
+                            Handle<mirror::ClassLoader> class_loader,
+                            const std::vector<const DexFile*>& classpath,
                             /* out */ std::string* error_msg) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  const std::set<dex::TypeIndex>& GetUnverifiedClasses(const DexFile& dex_file) const {
-    return GetDexFileDeps(dex_file)->unverified_classes_;
+  const std::vector<bool>& GetVerifiedClasses(const DexFile& dex_file) const {
+    return GetDexFileDeps(dex_file)->verified_classes_;
+  }
+
+  const std::vector<bool>& GetRedefinedClasses(const DexFile& dex_file) const {
+    return GetDexFileDeps(dex_file)->redefined_classes_;
   }
 
   bool OutputOnly() const {
@@ -184,6 +195,10 @@ class VerifierDeps {
   // Data structure representing dependencies collected during verification of
   // methods inside one DexFile.
   struct DexFileDeps {
+    explicit DexFileDeps(size_t num_class_defs)
+        : verified_classes_(num_class_defs),
+          redefined_classes_(num_class_defs) {}
+
     // Vector of strings which are not present in the corresponding DEX file.
     // These are referred to with ids starting with `NumStringIds()` of that DexFile.
     std::vector<std::string> strings_;
@@ -198,8 +213,15 @@ class VerifierDeps {
     std::set<FieldResolution> fields_;
     std::set<MethodResolution> methods_;
 
-    // List of classes that were not fully verified in that dex file.
-    std::set<dex::TypeIndex> unverified_classes_;
+    // Bit vector indexed by class def indices indicating whether the corresponding
+    // class was successfully verified.
+    std::vector<bool> verified_classes_;
+
+    // Bit vector indexed by class def indices indicating whether the corresponding
+    // class resolved into a different class with the same descriptor (was eclipsed).
+    // The other class might have been both external (not covered by these VerifierDeps)
+    // and internal (same VerifierDeps, different DexFileDeps).
+    std::vector<bool> redefined_classes_;
 
     bool Equals(const DexFileDeps& rhs) const;
   };
@@ -289,22 +311,29 @@ class VerifierDeps {
   bool VerifyDexFile(Handle<mirror::ClassLoader> class_loader,
                      const DexFile& dex_file,
                      const DexFileDeps& deps,
+                     const std::vector<const DexFile*>& classpath,
                      Thread* self,
                      /* out */ std::string* error_msg) const
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Iterates over `dex_files` and tries to find a class def matching `descriptor`.
+  // Returns true if such class def is found.
+  bool IsInDexFiles(const char* descriptor,
+                    size_t hash,
+                    const std::vector<const DexFile*>& dex_files,
+                    /* out */ const DexFile** cp_dex_file) const;
 
   // Check that classes which are to be verified using these dependencies
   // are not eclipsed by classes in parent class loaders, e.g. when vdex was
   // created against SDK stubs and the app redefines a non-public class on
   // boot classpath, or simply if a class is added during an OTA. In such cases,
   // dependencies do not include the dependencies on the presumed-internal class
-  // and verification must fail.
-  // TODO(dbrazdil): Encode a set of redefined classes during full verification.
-  // If such class is found to be redefined at runtime, dependencies remain valid.
-  bool VerifyInternalClasses(Handle<mirror::ClassLoader> class_loader,
-                             const DexFile& dex_file,
-                             const std::set<dex::TypeIndex>& unverified_classes,
-                             Thread* self,
+  // and verification must fail unless the class was recorded to have been
+  // redefined during dependencies' generation too.
+  bool VerifyInternalClasses(const DexFile& dex_file,
+                             const std::vector<const DexFile*>& classpath,
+                             const std::vector<bool>& verified_classes,
+                             const std::vector<bool>& redefined_classes,
                              /* out */ std::string* error_msg) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 

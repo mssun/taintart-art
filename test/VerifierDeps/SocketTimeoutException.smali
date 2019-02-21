@@ -1,12 +1,10 @@
-#!/bin/bash
-#
 # Copyright (C) 2019 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,9 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Search for the redefinition line and remove unnecessary tags.
-sed -e 's/^dex2oat[d]\?\(\|32\|64\)\ W.*\] \(Fast verification failed: Class L[^;]*; redefines a class in the classpath\).*/\2/g' "$2" > "$2.tmp1"
-# Remove all other dex2oat/dalvikvm log lines.
-grep -v dex2oat "$2.tmp1" | grep -v dalvikvm >> "$2.tmp2"
-
-./default-check "$1" "$2.tmp2"
+.class public Ljava/net/SocketTimeoutException;
+.super Ljava/lang/Object;
