@@ -155,7 +155,6 @@ class OatFile {
 
     // Returns size of quick code.
     uint32_t GetQuickCodeSize() const;
-    uint32_t GetQuickCodeSizeOffset() const;
 
     // Returns OatQuickMethodHeader for debugging. Most callers should
     // use more specific methods such as GetQuickCodeSize.

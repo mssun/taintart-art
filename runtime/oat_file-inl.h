@@ -41,14 +41,6 @@ inline uint32_t OatFile::OatMethod::GetOatQuickMethodHeaderOffset() const {
   return reinterpret_cast<const uint8_t*>(method_header) - begin_;
 }
 
-inline uint32_t OatFile::OatMethod::GetQuickCodeSizeOffset() const {
-  const OatQuickMethodHeader* method_header = GetOatQuickMethodHeader();
-  if (method_header == nullptr) {
-    return 0u;
-  }
-  return reinterpret_cast<const uint8_t*>(method_header->GetCodeSizeAddr()) - begin_;
-}
-
 inline size_t OatFile::OatMethod::GetFrameSizeInBytes() const {
   const void* code = EntryPointToCodePointer(GetQuickCode());
   if (code == nullptr) {
