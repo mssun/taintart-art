@@ -385,6 +385,13 @@ void CommonRuntimeTestImpl::SetUpRuntimeOptionsForFillHeap(RuntimeOptions *optio
   }
 }
 
+void CommonRuntimeTestImpl::MakeInterpreted(ObjPtr<mirror::Class> klass) {
+  PointerSize pointer_size = class_linker_->GetImagePointerSize();
+  for (ArtMethod& method : klass->GetMethods(pointer_size)) {
+    class_linker_->SetEntryPointsToInterpreter(&method);
+  }
+}
+
 bool CommonRuntimeTestImpl::StartDex2OatCommandLine(/*out*/std::vector<std::string>* argv,
                                                     /*out*/std::string* error_msg) {
   DCHECK(argv != nullptr);

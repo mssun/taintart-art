@@ -19,7 +19,7 @@
 #include "android-base/stringprintf.h"
 
 #include "art_method-inl.h"
-#include "common_compiler_test.h"
+#include "common_runtime_test.h"
 #include "indirect_reference_table.h"
 #include "java_vm_ext.h"
 #include "jni_env_ext.h"
@@ -31,11 +31,10 @@ namespace art {
 
 using android::base::StringPrintf;
 
-// TODO: Convert to CommonRuntimeTest. Currently MakeExecutable is used.
-class JniInternalTest : public CommonCompilerTest {
+class JniInternalTest : public CommonRuntimeTest {
  protected:
   void SetUp() override {
-    CommonCompilerTest::SetUp();
+    CommonRuntimeTest::SetUp();
 
     vm_ = Runtime::Current()->GetJavaVM();
 
@@ -86,7 +85,7 @@ class JniInternalTest : public CommonCompilerTest {
 
   void TearDown() override {
     CleanUpJniEnv();
-    CommonCompilerTest::TearDown();
+    CommonRuntimeTest::TearDown();
   }
 
   jclass GetPrimitiveClass(char descriptor) {
@@ -2265,13 +2264,13 @@ TEST_F(JniInternalTest, NewDirectBuffer_GetDirectBufferAddress_GetDirectBufferCa
   // Start runtime.
   Thread* self = Thread::Current();
   self->TransitionFromSuspendedToRunnable();
-  MakeExecutable(nullptr, "java.lang.Class");
-  MakeExecutable(nullptr, "java.lang.Object");
-  MakeExecutable(nullptr, "java.nio.DirectByteBuffer");
-  MakeExecutable(nullptr, "java.nio.Bits");
-  MakeExecutable(nullptr, "java.nio.MappedByteBuffer");
-  MakeExecutable(nullptr, "java.nio.ByteBuffer");
-  MakeExecutable(nullptr, "java.nio.Buffer");
+  MakeInterpreted(class_linker_->FindSystemClass(self, "Ljava/lang/Class;"));
+  MakeInterpreted(class_linker_->FindSystemClass(self, "Ljava/lang/Object;"));
+  MakeInterpreted(class_linker_->FindSystemClass(self, "Ljava/nio/DirectByteBuffer;"));
+  MakeInterpreted(class_linker_->FindSystemClass(self, "Ljava/nio/Bits;"));
+  MakeInterpreted(class_linker_->FindSystemClass(self, "Ljava/nio/MappedByteBuffer;"));
+  MakeInterpreted(class_linker_->FindSystemClass(self, "Ljava/nio/ByteBuffer;"));
+  MakeInterpreted(class_linker_->FindSystemClass(self, "Ljava/nio/Buffer;"));
   // TODO: we only load a dex file here as starting the runtime relies upon it.
   const char* class_name = "StaticLeafMethods";
   LoadDex(class_name);
