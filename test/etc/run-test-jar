@@ -70,6 +70,7 @@ ZYGOTE=""
 DEX_VERIFY=""
 INSTRUCTION_SET_FEATURES=""
 ARGS=""
+VDEX_ARGS=""
 EXTERNAL_LOG_TAGS="n" # if y respect externally set ANDROID_LOG_TAGS.
 DRY_RUN="n" # if y prepare to run the test but don't run it.
 TEST_VDEX="n"
@@ -81,7 +82,6 @@ JVMTI_STEP_STRESS="n"
 JVMTI_FIELD_STRESS="n"
 JVMTI_TRACE_STRESS="n"
 JVMTI_REDEFINE_STRESS="n"
-VDEX_FILTER=""
 PROFILE="n"
 RANDOM_PROFILE="n"
 # The normal dex2oat timeout.
@@ -390,7 +390,11 @@ while true; do
     elif [ "x$1" = "x--vdex-filter" ]; then
         shift
         option="$1"
-        VDEX_FILTER="--compiler-filter=$option"
+        VDEX_ARGS="${VDEX_ARGS} --compiler-filter=$option"
+        shift
+    elif [ "x$1" = "x--vdex-arg" ]; then
+        shift
+        VDEX_ARGS="${VDEX_ARGS} $1"
         shift
     elif [ "x$1" = "x--sync" ]; then
         SYNC_BEFORE_RUN="y"
@@ -851,13 +855,13 @@ if [ "$PREBUILD" = "y" ]; then
     dex2oat_cmdline="timeout -k ${DEX2OAT_TIMEOUT}s -s SIGRTMIN+2 ${DEX2OAT_RT_TIMEOUT}s ${dex2oat_cmdline} --watchdog-timeout=${DEX2OAT_TIMEOUT}000"
   fi
   if [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
-    vdex_cmdline="${dex2oat_cmdline} ${VDEX_FILTER} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex --output-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
+    vdex_cmdline="${dex2oat_cmdline} ${VDEX_ARGS} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex --output-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
   elif [ "$TEST_VDEX" = "y" ]; then
-    vdex_cmdline="${dex2oat_cmdline} ${VDEX_FILTER} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
+    vdex_cmdline="${dex2oat_cmdline} ${VDEX_ARGS} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
   elif [ "$TEST_DM" = "y" ]; then
     dex2oat_cmdline="${dex2oat_cmdline} --output-vdex=$DEX_LOCATION/oat/$ISA/primary.vdex"
     dm_cmdline="zip -qj $DEX_LOCATION/oat/$ISA/$TEST_NAME.dm $DEX_LOCATION/oat/$ISA/primary.vdex"
-    vdex_cmdline="${dex2oat_cmdline} --dump-timings --dm-file=$DEX_LOCATION/oat/$ISA/$TEST_NAME.dm"
+    vdex_cmdline="${dex2oat_cmdline} ${VDEX_ARGS} --dump-timings --dm-file=$DEX_LOCATION/oat/$ISA/$TEST_NAME.dm"
   elif [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
     vdex_cmdline="${dex2oat_cmdline} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex --output-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
   fi

@@ -14,5 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This will compile just the primary jar and then compile again with vdex
+# and the secondary jar in classpath. The Redefined class in the secondary
+# jar should take precedence and fast-verify should fail.
 export ANDROID_LOG_TAGS='*:w'
-exec ${RUN} --external-log-tags --dm "${@}"
+exec ${RUN} \
+  --external-log-tags \
+  --dm \
+  --vdex-arg \
+  --class-loader-context=PCL[$DEX_LOCATION/719-dm-verify-redefinition-ex.jar] \
+  "${@}"
