@@ -618,6 +618,7 @@ art_cc_test {
         "jdwp/jdwp_options_test.cc",
         "jit/profiling_info_test.cc",
         "jni/java_vm_ext_test.cc",
+        "jni/jni_internal_test.cc",
         "method_handles_test.cc",
         "mirror/dex_cache_test.cc",
         "mirror/method_type_test.cc",
@@ -629,6 +630,7 @@ art_cc_test {
         "oat_file_assistant_test.cc",
         "parsed_options_test.cc",
         "prebuilt_tools_test.cc",
+        "proxy_test.cc",
         "reference_table_test.cc",
         "runtime_callbacks_test.cc",
         "subtype_check_info_test.cc",
@@ -656,8 +658,6 @@ art_cc_test {
         "art_gtest_defaults",
     ],
     srcs: [
-        "jni/jni_internal_test.cc",
-        "proxy_test.cc",
         "reflection_test.cc",
     ],
     shared_libs: [
