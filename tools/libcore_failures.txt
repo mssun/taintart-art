@@ -234,5 +234,13 @@
     "libcore.libcore.icu.TimeZoneIntegrationTest#testTimeZoneDebugInfo",
     "libcore.libcore.icu.TimeZoneIntegrationTest#testTzDataSetVersions"
   ]
+},
+{
+  description: "Timeout on walleye bots, currenlty on OPM1.171019.019. But test passes on Q, so just mark it fail here.",
+  result: EXEC_FAILED,
+  modes: [device_testdex],
+  names: [
+    "libcore.libcore.io.OsTest#testCrossFamilyBindConnectSendto"
+  ]
 }
 ]
