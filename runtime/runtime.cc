@@ -869,21 +869,14 @@ bool Runtime::Start() {
                             GetInstructionSetString(kRuntimeISA));
   }
 
-  StartDaemonThreads();
-
-  // Make sure the environment is still clean (no lingering local refs from starting daemon
-  // threads).
-  {
-    ScopedObjectAccess soa(self);
-    self->GetJniEnv()->AssertLocalsEmpty();
-  }
-
-  // Send the initialized phase event. Send it after starting the Daemon threads so that agents
-  // cannot delay the daemon threads from starting forever.
+  // Send the initialized phase event. Send it before starting daemons, as otherwise
+  // sending thread events becomes complicated.
   {
     ScopedObjectAccess soa(self);
     callbacks_->NextRuntimePhase(RuntimePhaseCallback::RuntimePhase::kInit);
   }
+
+  StartDaemonThreads();
 
   {
     ScopedObjectAccess soa(self);

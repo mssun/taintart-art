@@ -1230,8 +1230,6 @@ class Thread {
     return this == jit_sensitive_thread_;
   }
 
-  bool IsSystemDaemon() const REQUIRES_SHARED(Locks::mutator_lock_);
-
   // Returns true if StrictMode events are traced for the current thread.
   static bool IsSensitiveThread() {
     if (is_sensitive_thread_hook_ != nullptr) {
