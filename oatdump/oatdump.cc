@@ -1639,6 +1639,24 @@ class OatDumper {
     }
   }
 
+  std::pair<const uint8_t*, const uint8_t*> GetBootImageLiveObjectsDataRange(gc::Heap* heap) const
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    const std::vector<gc::space::ImageSpace*>& boot_image_spaces = heap->GetBootImageSpaces();
+    const ImageHeader& main_header = boot_image_spaces[0]->GetImageHeader();
+    ObjPtr<mirror::ObjectArray<mirror::Object>> boot_image_live_objects =
+        ObjPtr<mirror::ObjectArray<mirror::Object>>::DownCast(
+            main_header.GetImageRoot<kWithoutReadBarrier>(ImageHeader::kBootImageLiveObjects));
+    DCHECK(boot_image_live_objects != nullptr);
+    DCHECK(heap->ObjectIsInBootImageSpace(boot_image_live_objects));
+    const uint8_t* boot_image_live_objects_address =
+        reinterpret_cast<const uint8_t*>(boot_image_live_objects.Ptr());
+    uint32_t begin_offset = mirror::ObjectArray<mirror::Object>::OffsetOfElement(0).Uint32Value();
+    uint32_t end_offset = mirror::ObjectArray<mirror::Object>::OffsetOfElement(
+        boot_image_live_objects->GetLength()).Uint32Value();
+    return std::make_pair(boot_image_live_objects_address + begin_offset,
+                          boot_image_live_objects_address + end_offset);
+  }
+
   void DumpDataBimgRelRoEntries(std::ostream& os) {
     os << ".data.bimg.rel.ro: ";
     if (oat_file_.GetBootImageRelocations().empty()) {
@@ -1652,28 +1670,39 @@ class OatDumper {
       const std::vector<gc::space::ImageSpace*>& boot_image_spaces =
           runtime->GetHeap()->GetBootImageSpaces();
       ScopedObjectAccess soa(Thread::Current());
+      auto live_objects = GetBootImageLiveObjectsDataRange(runtime->GetHeap());
+      const uint8_t* live_objects_begin = live_objects.first;
+      const uint8_t* live_objects_end = live_objects.second;
       for (const uint32_t& object_offset : oat_file_.GetBootImageRelocations()) {
         uint32_t entry_index = &object_offset - oat_file_.GetBootImageRelocations().data();
         uint32_t entry_offset = entry_index * sizeof(oat_file_.GetBootImageRelocations()[0]);
         os << StringPrintf("  0x%x: 0x%08x", entry_offset, object_offset);
-        uint8_t* object = boot_image_spaces[0]->Begin() + object_offset;
+        uint8_t* address = boot_image_spaces[0]->Begin() + object_offset;
         bool found = false;
         for (gc::space::ImageSpace* space : boot_image_spaces) {
-          uint64_t local_offset = object - space->Begin();
+          uint64_t local_offset = address - space->Begin();
           if (local_offset < space->GetImageHeader().GetImageSize()) {
             if (space->GetImageHeader().GetObjectsSection().Contains(local_offset)) {
-              ObjPtr<mirror::Object> o = reinterpret_cast<mirror::Object*>(object);
-              if (o->IsString()) {
-                os << "   String: " << o->AsString()->ToModifiedUtf8();
-              } else if (o->IsClass()) {
-                os << "   Class: " << o->AsClass()->PrettyDescriptor();
-              } else {
-                os << StringPrintf("   0x%08x %s",
+              if (address >= live_objects_begin && address < live_objects_end) {
+                size_t index =
+                    (address - live_objects_begin) / sizeof(mirror::HeapReference<mirror::Object>);
+                os << StringPrintf("   0x%08x BootImageLiveObject[%zu]",
                                    object_offset,
-                                   o->GetClass()->PrettyDescriptor().c_str());
+                                   index);
+              } else {
+                ObjPtr<mirror::Object> o = reinterpret_cast<mirror::Object*>(address);
+                if (o->IsString()) {
+                  os << "   String: " << o->AsString()->ToModifiedUtf8();
+                } else if (o->IsClass()) {
+                  os << "   Class: " << o->AsClass()->PrettyDescriptor();
+                } else {
+                  os << StringPrintf("   0x%08x %s",
+                                     object_offset,
+                                     o->GetClass()->PrettyDescriptor().c_str());
+                }
               }
             } else if (space->GetImageHeader().GetMethodsSection().Contains(local_offset)) {
-              ArtMethod* m = reinterpret_cast<ArtMethod*>(object);
+              ArtMethod* m = reinterpret_cast<ArtMethod*>(address);
               os << "   ArtMethod: " << m->PrettyMethod();
             } else {
               os << StringPrintf("   0x%08x <unexpected section in %s>",
