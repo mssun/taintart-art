@@ -243,7 +243,7 @@ std::string CommonArtTestImpl::GetAndroidToolsDir(const std::string& subdir1,
 
 std::string CommonArtTestImpl::GetAndroidHostToolsDir() {
   return GetAndroidToolsDir("prebuilts/gcc/linux-x86/host",
-                            "x86_64-linux-glibc2.15",
+                            "x86_64-linux-glibc2.17",
                             "x86_64-linux");
 }
 
