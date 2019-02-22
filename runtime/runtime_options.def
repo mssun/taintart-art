@@ -88,7 +88,6 @@ RUNTIME_OPTIONS_KEY (MillisecondsToNanoseconds, \
 RUNTIME_OPTIONS_KEY (std::vector<std::string>, \
                                           PropertiesList)  // -D<whatever> -D<whatever> ...
 RUNTIME_OPTIONS_KEY (std::string,         JniTrace)
-RUNTIME_OPTIONS_KEY (std::string,         PatchOat)
 RUNTIME_OPTIONS_KEY (bool,                Relocate,                       kDefaultMustRelocate)
 RUNTIME_OPTIONS_KEY (bool,                ImageDex2Oat,                   true)
 RUNTIME_OPTIONS_KEY (bool,                Interpret,                      false) // -Xint
