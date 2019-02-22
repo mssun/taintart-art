@@ -304,18 +304,27 @@ void Thread::Park(bool is_absolute, int64_t time) {
   if (old_state == kNoPermit) {
     // no permit was available. block thread until later.
     Runtime::Current()->GetRuntimeCallbacks()->ThreadParkStart(is_absolute, time);
-    int result = 0;
     bool timed_out = false;
     if (!is_absolute && time == 0) {
       // Thread.getState() is documented to return waiting for untimed parks.
       ScopedThreadSuspension sts(this, ThreadState::kWaiting);
       DCHECK_EQ(NumberOfHeldMutexes(), 0u);
-      result = futex(tls32_.park_state_.Address(),
+      int result = futex(tls32_.park_state_.Address(),
                      FUTEX_WAIT_PRIVATE,
                      /* sleep if val = */ kNoPermitWaiterWaiting,
                      /* timeout */ nullptr,
                      nullptr,
                      0);
+      // This errno check must happen before the scope is closed, to ensure that
+      // no destructors (such as ScopedThreadSuspension) overwrite errno.
+      if (result == -1) {
+        switch (errno) {
+          case EAGAIN:
+            FALLTHROUGH_INTENDED;
+          case EINTR: break;  // park() is allowed to spuriously return
+          default: PLOG(FATAL) << "Failed to park";
+        }
+      }
     } else if (time > 0) {
       // Only actually suspend and futex_wait if we're going to wait for some
       // positive amount of time - the kernel will reject negative times with
@@ -325,6 +334,7 @@ void Thread::Park(bool is_absolute, int64_t time) {
       ScopedThreadSuspension sts(this, ThreadState::kTimedWaiting);
       DCHECK_EQ(NumberOfHeldMutexes(), 0u);
       timespec timespec;
+      int result = 0;
       if (is_absolute) {
         // Time is millis when scheduled for an absolute time
         timespec.tv_nsec = (time % 1000) * 1000000;
@@ -350,15 +360,17 @@ void Thread::Park(bool is_absolute, int64_t time) {
                        nullptr,
                        0);
       }
-    }
-    if (result == -1) {
-      switch (errno) {
-        case ETIMEDOUT:
-          timed_out = true;
-          FALLTHROUGH_INTENDED;
-        case EAGAIN:
-        case EINTR: break;  // park() is allowed to spuriously return
-        default: PLOG(FATAL) << "Failed to park";
+      // This errno check must happen before the scope is closed, to ensure that
+      // no destructors (such as ScopedThreadSuspension) overwrite errno.
+      if (result == -1) {
+        switch (errno) {
+          case ETIMEDOUT:
+            timed_out = true;
+            FALLTHROUGH_INTENDED;
+          case EAGAIN:
+          case EINTR: break;  // park() is allowed to spuriously return
+          default: PLOG(FATAL) << "Failed to park";
+        }
       }
     }
     // Mark as no longer waiting, and consume permit if there is one.
