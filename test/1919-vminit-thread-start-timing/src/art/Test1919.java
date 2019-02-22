@@ -19,12 +19,20 @@ package art;
 public class Test1919 {
   public static final boolean PRINT_ALL_THREADS = false;
 
-  public static void run() {
+  public static void run() throws Exception {
+    Thread testing_thread = getTestingThread();
+    // TODO(b/124284724): For unknown reasons the testing thread will sometimes SEGV after the test
+    // has otherwise completed successfully. This has only been observed on the release version of
+    // art (libart.so) and I haven't had any luck reproing it. I assume it has something to do with
+    // racing between the DetachCurrentThread and shutdown but I'm not sure. Since the runtime
+    // normally never shuts down anyway for now I'll just ensure everything gets cleaned up early to
+    // prevent the problem from showing up.
+    testing_thread.join();
     for (Event e : getEvents()) {
       if (e.thr != null) {
         if (PRINT_ALL_THREADS ||
             e.thr.equals(Thread.currentThread()) ||
-            e.thr.getName().equals("JVMTI_THREAD-Test1919")) {
+            e.thr.equals(testing_thread)) {
           System.out.println(e.name + ": " + e.thr.getName());
         }
       }
@@ -52,4 +60,6 @@ public class Test1919 {
 
   public static native String[] getEventNames();
   public static native Thread[] getEventThreads();
+
+  public static native Thread getTestingThread();
 }

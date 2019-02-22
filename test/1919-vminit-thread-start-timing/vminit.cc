@@ -45,6 +45,8 @@ struct EventList {
   std::vector<EventData> events;
 };
 
+// The thread we started for testing.
+static jthread the_thread;
 
 static void EnableEvent(jvmtiEnv* env, jvmtiEvent evt) {
   jvmtiError error = env->SetEventNotificationMode(JVMTI_ENABLE, evt, nullptr);
@@ -92,6 +94,9 @@ static void CreateAgentThread(jvmtiEnv* jvmti, JNIEnv* env) {
 
   env->CallNonvirtualVoidMethod(thread.get(), thread_klass.get(), initID, thread_name.get());
   CHECK(!env->ExceptionCheck());
+
+  // Set the_thread.
+  the_thread = static_cast<jthread>(env->NewGlobalRef(thread.get()));
 
   // Run agent thread.
   CheckJvmtiError(jvmti, jvmti->RunAgentThread(thread.get(),
@@ -186,6 +191,10 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test1919_getEventThreads(JNIE
     return nullptr;
   }
   return ret;
+}
+
+extern "C" JNIEXPORT jthread JNICALL Java_art_Test1919_getTestingThread(JNIEnv*, jclass) {
+  return the_thread;
 }
 
 }  // namespace Test1919VMInitThreadStart
