@@ -65,7 +65,7 @@ extra_args="SOONG_ALLOW_MISSING_DEPENDENCIES=true TEMPORARY_DISABLE_PATH_RESTRIC
 
 if [[ $mode == "host" ]]; then
   make_command="make $j_arg $extra_args $showcommands build-art-host-tests $common_targets"
-  make_command+=" dx-tests"
+  make_command+=" dx-tests junit-host"
   mode_suffix="-host"
 elif [[ $mode == "target" ]]; then
   if [[ -z "${ANDROID_PRODUCT_OUT}" ]]; then
