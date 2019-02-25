@@ -205,7 +205,8 @@ Heap::Heap(size_t initial_size,
            bool use_generational_cc,
            uint64_t min_interval_homogeneous_space_compaction_by_oom,
            bool dump_region_info_before_gc,
-           bool dump_region_info_after_gc)
+           bool dump_region_info_after_gc,
+           space::ImageSpaceLoadingOrder image_space_loading_order)
     : non_moving_space_(nullptr),
       rosalloc_space_(nullptr),
       dlmalloc_space_(nullptr),
@@ -370,6 +371,7 @@ Heap::Heap(size_t initial_size,
                                        boot_class_path_locations,
                                        image_file_name,
                                        image_instruction_set,
+                                       image_space_loading_order,
                                        heap_reservation_size,
                                        &boot_image_spaces,
                                        &heap_reservation)) {

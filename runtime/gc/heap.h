@@ -35,6 +35,7 @@
 #include "gc/collector/iteration.h"
 #include "gc/collector_type.h"
 #include "gc/gc_cause.h"
+#include "gc/space/image_space_loading_order.h"
 #include "gc/space/large_object_space.h"
 #include "handle.h"
 #include "obj_ptr.h"
@@ -215,7 +216,8 @@ class Heap {
        bool use_generational_cc,
        uint64_t min_interval_homogeneous_space_compaction_by_oom,
        bool dump_region_info_before_gc,
-       bool dump_region_info_after_gc);
+       bool dump_region_info_after_gc,
+       space::ImageSpaceLoadingOrder image_space_loading_order);
 
   ~Heap();
 

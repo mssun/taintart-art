@@ -155,4 +155,8 @@ RUNTIME_OPTIONS_KEY (Unit,                UseStderrLogger)
 RUNTIME_OPTIONS_KEY (Unit,                OnlyUseSystemOatFiles)
 RUNTIME_OPTIONS_KEY (unsigned int,        VerifierLoggingThreshold,       100)
 
+RUNTIME_OPTIONS_KEY (gc::space::ImageSpaceLoadingOrder, \
+                     ImageSpaceLoadingOrder, \
+                     gc::space::ImageSpaceLoadingOrder::kSystemFirst)
+
 #undef RUNTIME_OPTIONS_KEY

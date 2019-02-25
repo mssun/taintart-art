@@ -26,6 +26,7 @@
 #include "base/variant_map.h"
 #include "cmdline_types.h"  // TODO: don't need to include this file here
 #include "gc/collector_type.h"
+#include "gc/space/image_space_loading_order.h"
 #include "gc/space/large_object_space.h"
 #include "jdwp/jdwp.h"
 #include "jit/jit.h"

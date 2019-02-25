@@ -20,7 +20,8 @@
 #include <dirent.h>
 #include <dlfcn.h>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.

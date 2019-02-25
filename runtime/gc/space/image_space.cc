@@ -259,6 +259,7 @@ static std::unique_ptr<ImageHeader> ReadSpecificImageHeader(const char* filename
 
 std::unique_ptr<ImageHeader> ImageSpace::ReadImageHeader(const char* image_location,
                                                          const InstructionSet image_isa,
+                                                         ImageSpaceLoadingOrder order,
                                                          std::string* error_msg) {
   std::string system_filename;
   bool has_system = false;
@@ -274,10 +275,20 @@ std::unique_ptr<ImageHeader> ImageSpace::ReadImageHeader(const char* image_locat
                         &dalvik_cache_exists,
                         &has_cache,
                         &is_global_cache)) {
-    if (has_system) {
-      return ReadSpecificImageHeader(system_filename.c_str(), error_msg);
-    } else if (has_cache) {
-      return ReadSpecificImageHeader(cache_filename.c_str(), error_msg);
+    if (order == ImageSpaceLoadingOrder::kSystemFirst) {
+      if (has_system) {
+        return ReadSpecificImageHeader(system_filename.c_str(), error_msg);
+      }
+      if (has_cache) {
+        return ReadSpecificImageHeader(cache_filename.c_str(), error_msg);
+      }
+    } else {
+      if (has_cache) {
+        return ReadSpecificImageHeader(cache_filename.c_str(), error_msg);
+      }
+      if (has_system) {
+        return ReadSpecificImageHeader(system_filename.c_str(), error_msg);
+      }
     }
   }
 
@@ -1447,7 +1458,8 @@ class ImageSpace::BootImageLoader {
     return cache_filename_;
   }
 
-  bool LoadFromSystem(size_t extra_reservation_size,
+  bool LoadFromSystem(bool validate_oat_file,
+                      size_t extra_reservation_size,
                       /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
                       /*out*/MemMap* extra_reservation,
                       /*out*/std::string* error_msg) REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1455,7 +1467,7 @@ class ImageSpace::BootImageLoader {
     std::string filename = GetSystemImageFilename(image_location_.c_str(), image_isa_);
 
     if (!LoadFromFile(filename,
-                      /*validate_oat_file=*/ false,
+                      validate_oat_file,
                       extra_reservation_size,
                       &logger,
                       boot_image_spaces,
@@ -2020,6 +2032,7 @@ bool ImageSpace::LoadBootImage(
     const std::vector<std::string>& boot_class_path_locations,
     const std::string& image_location,
     const InstructionSet image_isa,
+    ImageSpaceLoadingOrder order,
     size_t extra_reservation_size,
     /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
     /*out*/MemMap* extra_reservation) {
@@ -2076,30 +2089,41 @@ bool ImageSpace::LoadBootImage(
   // Collect all the errors.
   std::vector<std::string> error_msgs;
 
-  // Step 1: Check if we have an existing image in /system.
+  auto try_load_from = [&](auto has_fn, auto load_fn, bool validate_oat_file) {
+    if ((loader.*has_fn)()) {
+      std::string local_error_msg;
+      if ((loader.*load_fn)(validate_oat_file,
+                            extra_reservation_size,
+                            boot_image_spaces,
+                            extra_reservation,
+                            &local_error_msg)) {
+        return true;
+      }
+      error_msgs.push_back(local_error_msg);
+    }
+    return false;
+  };
 
-  if (loader.HasSystem()) {
-    std::string local_error_msg;
-    if (loader.LoadFromSystem(extra_reservation_size,
-                              boot_image_spaces,
-                              extra_reservation,
-                              &local_error_msg)) {
+  auto try_load_from_system = [&]() {
+    return try_load_from(&BootImageLoader::HasSystem, &BootImageLoader::LoadFromSystem, false);
+  };
+  auto try_load_from_cache = [&]() {
+    return try_load_from(&BootImageLoader::HasCache, &BootImageLoader::LoadFromDalvikCache, true);
+  };
+
+  auto invoke_sequentially = [](auto first, auto second) {
+    return first() || second();
+  };
+
+  // Step 1+2: Check system and cache images in the asked-for order.
+  if (order == ImageSpaceLoadingOrder::kSystemFirst) {
+    if (invoke_sequentially(try_load_from_system, try_load_from_cache)) {
       return true;
     }
-    error_msgs.push_back(local_error_msg);
-  }
-
-  // Step 2: Check if we have an existing image in the dalvik cache.
-  if (loader.HasCache()) {
-    std::string local_error_msg;
-    if (loader.LoadFromDalvikCache(/*validate_oat_file=*/ true,
-                                   extra_reservation_size,
-                                   boot_image_spaces,
-                                   extra_reservation,
-                                   &local_error_msg)) {
+  } else {
+    if (invoke_sequentially(try_load_from_cache, try_load_from_system)) {
       return true;
     }
-    error_msgs.push_back(local_error_msg);
   }
 
   // Step 3: We do not have an existing image in /system,
@@ -2259,6 +2283,7 @@ bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg
 std::string ImageSpace::GetBootClassPathChecksums(const std::vector<std::string>& boot_class_path,
                                                   const std::string& image_location,
                                                   InstructionSet image_isa,
+                                                  ImageSpaceLoadingOrder order,
                                                   /*out*/std::string* error_msg) {
   std::string system_filename;
   bool has_system = false;
@@ -2281,7 +2306,9 @@ std::string ImageSpace::GetBootClassPathChecksums(const std::vector<std::string>
   }
 
   DCHECK(has_system || has_cache);
-  const std::string& filename = has_system ? system_filename : cache_filename;
+  const std::string& filename = (order == ImageSpaceLoadingOrder::kSystemFirst)
+      ? (has_system ? system_filename : cache_filename)
+      : (has_cache ? cache_filename : system_filename);
   std::unique_ptr<ImageHeader> header = ReadSpecificImageHeader(filename.c_str(), error_msg);
   if (header == nullptr) {
     return std::string();

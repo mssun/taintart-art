@@ -19,6 +19,7 @@
 
 #include "gc/accounting/space_bitmap.h"
 #include "image.h"
+#include "image_space_loading_order.h"
 #include "space.h"
 
 namespace art {
@@ -48,6 +49,7 @@ class ImageSpace : public MemMapSpace {
       const std::vector<std::string>& boot_class_path_locations,
       const std::string& image_location,
       const InstructionSet image_isa,
+      ImageSpaceLoadingOrder order,
       size_t extra_reservation_size,
       /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
       /*out*/MemMap* extra_reservation) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -63,6 +65,7 @@ class ImageSpace : public MemMapSpace {
   // reason in error_msg.
   static std::unique_ptr<ImageHeader> ReadImageHeader(const char* image_location,
                                                       InstructionSet image_isa,
+                                                      ImageSpaceLoadingOrder order,
                                                       std::string* error_msg);
 
   // Give access to the OatFile.
@@ -132,6 +135,7 @@ class ImageSpace : public MemMapSpace {
   static std::string GetBootClassPathChecksums(const std::vector<std::string>& boot_class_path,
                                                const std::string& image_location,
                                                InstructionSet image_isa,
+                                               ImageSpaceLoadingOrder order,
                                                /*out*/std::string* error_msg);
 
   // Returns the checksums for the boot image and extra boot class path dex files,
