@@ -606,7 +606,8 @@ bool ParsedOptions::DoParse(const RuntimeOptions& options,
   }
 
   if (!args.Exists(M::CompilerCallbacksPtr) && !args.Exists(M::Image)) {
-    std::string image = GetDefaultBootImageLocation(GetAndroidRoot());
+    std::string image = GetAndroidRoot();
+    image += "/framework/boot.art";
     args.Set(M::Image, image);
   }
 
