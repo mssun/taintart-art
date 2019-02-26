@@ -158,14 +158,8 @@ prebuilt_etc {
     installable: false,
 }
 
-// TODO: Introduce `apex_defaults` to factor common parts of `apex`
-// module definitions below?
-
-// Release version of the Runtime APEX module (not containing debug
-// variants nor tools), included in user builds. Also used for
-// storage-constrained devices in userdebug and eng builds.
-apex {
-    name: "com.android.runtime.release",
+apex_defaults {
+    name: "com.android.runtime-defaults",
     compile_multilib: "both",
     manifest: "manifest.json",
     java_libs: libcore_java_libs,
@@ -189,6 +183,14 @@ apex {
     prebuilts: art_runtime_data_file_prebuilts
         + ["com.android.runtime.ld.config.txt"],
     key: "com.android.runtime.key",
+}
+
+// Release version of the Runtime APEX module (not containing debug
+// variants nor tools), included in user builds. Also used for
+// storage-constrained devices in userdebug and eng builds.
+apex {
+    name: "com.android.runtime.release",
+    defaults: ["com.android.runtime-defaults"],
     certificate: ":com.android.runtime.release.certificate",
 }
 
@@ -197,33 +199,18 @@ apex {
 // eng build.
 apex {
     name: "com.android.runtime.debug",
-    compile_multilib: "both",
-    manifest: "manifest.json",
-    java_libs: libcore_java_libs,
-    native_shared_libs: art_runtime_base_native_shared_libs
-        + art_runtime_debug_native_shared_libs
-        + bionic_native_shared_libs
-        + libcore_native_device_only_shared_libs
+    defaults: ["com.android.runtime-defaults"],
+    native_shared_libs: art_runtime_debug_native_shared_libs
         + libcore_debug_native_shared_libs,
     multilib: {
-        both: {
-            // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
-            // (see `symlink_preferred_arch` in art/dalvikvm/Android.bp).
-            binaries: art_runtime_base_binaries_both
-                + bionic_binaries_both,
-        },
         prefer32: {
-            binaries: art_runtime_base_binaries_prefer32
-                + art_runtime_debug_binaries_prefer32
+            binaries: art_runtime_debug_binaries_prefer32
                 + art_runtime_debug_binaries_prefer32_device,
         },
         first: {
             binaries: art_tools_device_binaries,
         }
     },
-    prebuilts: art_runtime_data_file_prebuilts
-        + ["com.android.runtime.ld.config.txt"],
-    key: "com.android.runtime.key",
     certificate: ":com.android.runtime.debug.certificate",
 }
 
