@@ -4179,11 +4179,7 @@ void Thread::DeoptimizeWithDeoptimizationException(JValue* result) {
 
 void Thread::SetAsyncException(ObjPtr<mirror::Throwable> new_exception) {
   CHECK(new_exception != nullptr);
-  {
-    StackHandleScope<1> hs(Thread::Current());
-    auto h_exception = hs.NewHandleWrapper(&new_exception);
-    Runtime::Current()->SetAsyncExceptionsThrown();
-  }
+  Runtime::Current()->SetAsyncExceptionsThrown();
   if (kIsDebugBuild) {
     // Make sure we are in a checkpoint.
     MutexLock mu(Thread::Current(), *Locks::thread_suspend_count_lock_);

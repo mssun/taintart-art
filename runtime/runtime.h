@@ -683,7 +683,7 @@ class Runtime {
   // It ensures that two calls do not interfere with each other and
   // it makes it possible to DCHECK that thread local flag is correct.
   template<typename Action>
-  static void DoAndMaybeSwitchInterpreter(Action lambda);
+  static void DoAndMaybeSwitchInterpreter(Action lamda);
 
   // Returns the build fingerprint, if set. Otherwise an empty string is returned.
   std::string GetFingerprint() {
