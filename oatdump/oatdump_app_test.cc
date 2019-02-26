@@ -28,4 +28,18 @@ TEST_F(OatDumpTest, TestAppWithBootImageStatic) {
   ASSERT_TRUE(Exec(kStatic, kModeOatWithBootImage, {}, kListAndCode));
 }
 
+TEST_F(OatDumpTest, TestAppImageWithBootImage) {
+  TEST_DISABLED_WITHOUT_BAKER_READ_BARRIERS();  // GC bug, b/126305867
+  const std::string app_image_arg = "--app-image-file=" + GetAppImageName();
+  ASSERT_TRUE(GenerateAppOdexFile(kDynamic, {"--runtime-arg", "-Xmx64M", app_image_arg}));
+  ASSERT_TRUE(Exec(kDynamic, kModeAppImage, {}, kListAndCode));
+}
+TEST_F(OatDumpTest, TestAppImageWithBootImageStatic) {
+  TEST_DISABLED_WITHOUT_BAKER_READ_BARRIERS();  // GC bug, b/126305867
+  TEST_DISABLED_FOR_NON_STATIC_HOST_BUILDS();
+  const std::string app_image_arg = "--app-image-file=" + GetAppImageName();
+  ASSERT_TRUE(GenerateAppOdexFile(kStatic, {"--runtime-arg", "-Xmx64M", app_image_arg}));
+  ASSERT_TRUE(Exec(kStatic, kModeAppImage, {}, kListAndCode));
+}
+
 }  // namespace art
