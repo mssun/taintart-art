@@ -27,6 +27,7 @@
 #include <memory>
 #include <vector>
 
+#include "base/file_utils.h"
 #include "base/locks.h"
 #include "base/macros.h"
 #include "base/mem_map.h"

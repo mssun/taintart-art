@@ -303,6 +303,10 @@ class Jit {
   // Adjust state after forking.
   void PostZygoteFork();
 
+  // In case the boot classpath is not fully AOTed, add methods from the boot profile to the
+  // compilation queue.
+  void AddNonAotBootMethodsToQueue(Thread* self);
+
  private:
   Jit(JitCodeCache* code_cache, JitOptions* options);
 
