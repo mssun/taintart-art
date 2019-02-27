@@ -382,6 +382,11 @@ ArtMethod* HInliner::TryCHADevirtualization(ArtMethod* resolved_method) {
     // No CHA-based devirtulization for AOT compiler (yet).
     return nullptr;
   }
+  if (Runtime::Current()->IsZygote()) {
+    // No CHA-based devirtulization for Zygote, as it compiles with
+    // offline information.
+    return nullptr;
+  }
   if (outermost_graph_->IsCompilingOsr()) {
     // We do not support HDeoptimize in OSR methods.
     return nullptr;
