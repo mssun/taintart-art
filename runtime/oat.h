@@ -17,6 +17,7 @@
 #ifndef ART_RUNTIME_OAT_H_
 #define ART_RUNTIME_OAT_H_
 
+#include <array>
 #include <vector>
 
 #include "base/macros.h"
@@ -30,9 +31,9 @@ class InstructionSetFeatures;
 
 class PACKED(4) OatHeader {
  public:
-  static constexpr uint8_t kOatMagic[] = { 'o', 'a', 't', '\n' };
+  static constexpr std::array<uint8_t, 4> kOatMagic { { 'o', 'a', 't', '\n' } };
   // Last oat version changed reason: Remove unused trampoline entrypoints.
-  static constexpr uint8_t kOatVersion[] = { '1', '7', '0', '\0' };
+  static constexpr std::array<uint8_t, 4> kOatVersion { { '1', '7', '0', '\0' } };
 
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
   static constexpr const char* kDebuggableKey = "debuggable";
@@ -55,6 +56,7 @@ class PACKED(4) OatHeader {
 
   bool IsValid() const;
   std::string GetValidationErrorMessage() const;
+  static void CheckOatVersion(std::array<uint8_t, 4> version);
   const char* GetMagic() const;
   uint32_t GetChecksum() const;
   void SetChecksum(uint32_t checksum);
@@ -111,8 +113,8 @@ class PACKED(4) OatHeader {
 
   void Flatten(const SafeMap<std::string, std::string>* variable_data);
 
-  uint8_t magic_[4];
-  uint8_t version_[4];
+  std::array<uint8_t, 4> magic_;
+  std::array<uint8_t, 4> version_;
   uint32_t oat_checksum_;
 
   InstructionSet instruction_set_;

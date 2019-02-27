@@ -2011,6 +2011,10 @@ bool OatWriter::VisitDexMethods(DexMethodVisitor* visitor) {
 size_t OatWriter::InitOatHeader(uint32_t num_dex_files,
                                 SafeMap<std::string, std::string>* key_value_store) {
   TimingLogger::ScopedTiming split("InitOatHeader", timings_);
+  // Check that oat version when runtime was compiled matches the oat version
+  // when dex2oat was compiled. We have seen cases where they got out of sync.
+  constexpr std::array<uint8_t, 4> dex2oat_oat_version = OatHeader::kOatVersion;
+  OatHeader::CheckOatVersion(dex2oat_oat_version);
   oat_header_.reset(OatHeader::Create(GetCompilerOptions().GetInstructionSet(),
                                       GetCompilerOptions().GetInstructionSetFeatures(),
                                       num_dex_files,
