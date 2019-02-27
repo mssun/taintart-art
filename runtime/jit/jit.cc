@@ -563,14 +563,19 @@ class JitCompileTask final : public Task {
 
   JitCompileTask(ArtMethod* method, TaskKind kind) : method_(method), kind_(kind), klass_(nullptr) {
     ScopedObjectAccess soa(Thread::Current());
-    // Add a global ref to the class to prevent class unloading until compilation is done.
-    klass_ = soa.Vm()->AddGlobalRef(soa.Self(), method_->GetDeclaringClass());
-    CHECK(klass_ != nullptr);
+    // For a non-bootclasspath class, add a global ref to the class to prevent class unloading
+    // until compilation is done.
+    if (method->GetDeclaringClass()->GetClassLoader() != nullptr) {
+      klass_ = soa.Vm()->AddGlobalRef(soa.Self(), method_->GetDeclaringClass());
+      CHECK(klass_ != nullptr);
+    }
   }
 
   ~JitCompileTask() {
-    ScopedObjectAccess soa(Thread::Current());
-    soa.Vm()->DeleteGlobalRef(soa.Self(), klass_);
+    if (klass_ != nullptr) {
+      ScopedObjectAccess soa(Thread::Current());
+      soa.Vm()->DeleteGlobalRef(soa.Self(), klass_);
+    }
   }
 
   void Run(Thread* self) override {
@@ -679,21 +684,19 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
 
   for (const DexFile* dex_file : boot_class_path) {
     std::set<dex::TypeIndex> class_types;
-    std::set<uint16_t> hot_methods;
-    std::set<uint16_t> startup_methods;
-    std::set<uint16_t> post_startup_methods;
-    std::set<uint16_t> combined_methods;
+    std::set<uint16_t> all_methods;
     if (!profile_info.GetClassesAndMethods(*dex_file,
                                            &class_types,
-                                           &hot_methods,
-                                           &startup_methods,
-                                           &post_startup_methods)) {
+                                           &all_methods,
+                                           &all_methods,
+                                           &all_methods)) {
       LOG(ERROR) << "Unable to get classes and methods for " << dex_file->GetLocation();
       continue;
     }
     dex_cache.Assign(class_linker->FindDexCache(self, *dex_file));
     CHECK(dex_cache != nullptr) << "Could not find dex cache for " << dex_file->GetLocation();
-    for (uint16_t method_idx : startup_methods) {
+
+    for (uint16_t method_idx : all_methods) {
       ArtMethod* method = class_linker->ResolveMethodWithoutInvokeType(
           method_idx, dex_cache, null_handle);
       if (method == nullptr) {
