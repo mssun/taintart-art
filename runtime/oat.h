@@ -31,8 +31,8 @@ class InstructionSetFeatures;
 class PACKED(4) OatHeader {
  public:
   static constexpr uint8_t kOatMagic[] = { 'o', 'a', 't', '\n' };
-  // Last oat version changed reason: Remove code size from OatQuickMethodHeader.
-  static constexpr uint8_t kOatVersion[] = { '1', '6', '8', '\0' };
+  // Last oat version changed reason: Don't pack code size in CodeInfo.
+  static constexpr uint8_t kOatVersion[] = { '1', '6', '9', '\0' };
 
   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
   static constexpr const char* kDebuggableKey = "debuggable";
