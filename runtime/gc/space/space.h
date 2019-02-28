@@ -443,6 +443,10 @@ class ContinuousMemMapAllocSpace : public MemMapSpace, public AllocSpace {
     return mark_bitmap_.get();
   }
 
+  accounting::ContinuousSpaceBitmap* GetTempBitmap() const {
+    return temp_bitmap_.get();
+  }
+
   collector::ObjectBytePair Sweep(bool swap_bitmaps);
   virtual accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() = 0;
 

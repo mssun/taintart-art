@@ -15,6 +15,8 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 #include "garbage_collector.h"
 
@@ -65,6 +67,9 @@ GarbageCollector::GarbageCollector(Heap* heap, const std::string& name)
     : heap_(heap),
       name_(name),
       pause_histogram_((name_ + " paused").c_str(), kPauseBucketSize, kPauseBucketCount),
+      rss_histogram_((name_ + " peak-rss").c_str(),
+                     /*initial_bucket_width=*/ 10,
+                     /*max_buckets=*/ 20),
       cumulative_timings_(name),
       pause_histogram_lock_("pause histogram lock", kDefaultMutexLevel, true),
       is_transaction_active_(false) {
@@ -81,8 +86,59 @@ void GarbageCollector::ResetCumulativeStatistics() {
   total_time_ns_ = 0u;
   total_freed_objects_ = 0u;
   total_freed_bytes_ = 0;
+  rss_histogram_.Reset();
   MutexLock mu(Thread::Current(), pause_histogram_lock_);
   pause_histogram_.Reset();
+}
+
+uint64_t GarbageCollector::ExtractRssFromMincore(
+    std::list<std::pair<void*, void*>>* gc_ranges) {
+  using range_t = std::pair<void*, void*>;
+  if (gc_ranges->empty()) {
+    return 0;
+  }
+  // Sort gc_ranges
+  gc_ranges->sort([](const range_t& a, const range_t& b) {
+    return std::less()(a.first, b.first);
+  });
+  // Merge gc_ranges. It's necessary because the kernel may merge contiguous
+  // regions if their properties match. This is sufficient as kernel doesn't
+  // merge those adjoining ranges which differ only in name.
+  size_t vec_len = 0;
+  for (auto it = gc_ranges->begin(); it != gc_ranges->end(); it++) {
+    auto next_it = it;
+    next_it++;
+    while (next_it != gc_ranges->end()) {
+      if (it->second == next_it->first) {
+        it->second = next_it->second;
+        next_it = gc_ranges->erase(next_it);
+      } else {
+        break;
+      }
+    }
+    size_t length = static_cast<uint8_t*>(it->second) - static_cast<uint8_t*>(it->first);
+    // Compute max length for vector allocation later.
+    vec_len = std::max(vec_len, length / kPageSize);
+  }
+  unsigned char *vec = new unsigned char[vec_len];
+  uint64_t rss = 0;
+  for (const auto it : *gc_ranges) {
+    size_t length = static_cast<uint8_t*>(it.second) - static_cast<uint8_t*>(it.first);
+    if (mincore(it.first, length, vec) == 0) {
+      for (size_t i = 0; i < length / kPageSize; i++) {
+        // Least significant bit represents residency of a page. Other bits are
+        // reserved.
+        rss += vec[i] & 0x1;
+      }
+    } else {
+      LOG(WARNING) << "Call to mincore() on memory range [0x" << std::hex << it.first
+                   << ", 0x" << it.second << std::dec << ") failed: " << strerror(errno);
+    }
+  }
+  delete[] vec;
+  rss *= kPageSize;
+  rss_histogram_.AddValue(rss / KB);
+  return rss;
 }
 
 void GarbageCollector::Run(GcCause gc_cause, bool clear_soft_references) {
@@ -165,6 +221,7 @@ void GarbageCollector::ResetMeasurements() {
     pause_histogram_.Reset();
   }
   cumulative_timings_.Reset();
+  rss_histogram_.Reset();
   total_thread_cpu_time_ns_ = 0u;
   total_time_ns_ = 0u;
   total_freed_objects_ = 0u;
@@ -235,6 +292,15 @@ void GarbageCollector::DumpPerformanceInfo(std::ostream& os) {
       pause_histogram_.CreateHistogram(&cumulative_data);
       pause_histogram_.PrintConfidenceIntervals(os, 0.99, cumulative_data);
     }
+  }
+  if (rss_histogram_.SampleSize() > 0) {
+    os << rss_histogram_.Name()
+       << ": Avg: " << PrettySize(rss_histogram_.Mean() * KB)
+       << " Max: " << PrettySize(rss_histogram_.Max() * KB)
+       << " Min: " << PrettySize(rss_histogram_.Min() * KB) << "\n";
+    os << "Peak-rss Histogram: ";
+    rss_histogram_.DumpBins(os);
+    os << "\n";
   }
   double cpu_seconds = NsToMs(GetTotalCpuTime()) / 1000.0;
   os << GetName() << " total time: " << PrettyDuration(total_ns)
