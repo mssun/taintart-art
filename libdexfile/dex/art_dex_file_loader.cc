@@ -544,10 +544,12 @@ std::unique_ptr<DexFile> ArtDexFileLoader::OpenCommon(const uint8_t* base,
     // Location can contain multidex suffix, so fetch its canonical version. Note
     // that this will call `realpath`.
     std::string path = DexFileLoader::GetDexCanonicalLocation(location.c_str());
-    if (LocationIsOnSystemFramework(path.c_str())) {
-      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kPlatform);
-    } else if (LocationIsOnRuntimeModule(path.c_str())) {
+    if (LocationIsOnRuntimeModule(path.c_str())) {
       dex_file->SetHiddenapiDomain(hiddenapi::Domain::kCorePlatform);
+    } else if (LocationIsOnApex(path.c_str()) || LocationIsOnSystemFramework(path.c_str())) {
+      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kPlatform);
+    } else {
+      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kApplication);
     }
   }
   return dex_file;

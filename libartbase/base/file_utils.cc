@@ -65,6 +65,9 @@ namespace art {
 using android::base::StringPrintf;
 
 static constexpr const char* kClassesDex = "classes.dex";
+static constexpr const char* kApexDefaultPath = "/apex/";
+static constexpr const char* kRuntimeApexEnvVar = "ANDROID_RUNTIME_ROOT";
+static constexpr const char* kRuntimeApexDefaultPath = "/apex/com.android.runtime";
 
 bool ReadFileToString(const std::string& file_name, std::string* result) {
   File file(file_name, O_RDONLY, false);
@@ -284,13 +287,17 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
 
 bool LocationIsOnRuntimeModule(const char* full_path) {
   std::string error_msg;
-  const char* runtime_path = GetAndroidDirSafe("ANDROID_RUNTIME_ROOT",
-                                               "/apex/com.android.runtime",
+  const char* runtime_path = GetAndroidDirSafe(kRuntimeApexEnvVar,
+                                               kRuntimeApexDefaultPath,
                                                &error_msg);
   if (runtime_path == nullptr) {
     return false;
   }
   return android::base::StartsWith(full_path, runtime_path);
+}
+
+bool LocationIsOnApex(const char* full_path) {
+  return android::base::StartsWith(full_path, kApexDefaultPath);
 }
 
 bool LocationIsOnSystem(const char* path) {

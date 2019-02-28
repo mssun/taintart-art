@@ -106,8 +106,9 @@ class AccessContext {
 
     Domain dex_domain = dex_file->GetHiddenapiDomain();
     if (class_loader.IsNull() && dex_domain == Domain::kApplication) {
-      // LOG(WARNING) << "DexFile " << dex_file->GetLocation() << " is in boot classpath "
-      //              << "but is assigned untrusted domain";
+      LOG(WARNING) << "DexFile " << dex_file->GetLocation()
+          << " is in boot classpath but is assigned the application domain";
+      dex_file->SetHiddenapiDomain(Domain::kPlatform);
       dex_domain = Domain::kPlatform;
     }
     return dex_domain;
