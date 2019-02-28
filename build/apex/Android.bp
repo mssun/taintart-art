@@ -168,8 +168,6 @@ apex_defaults {
         + libcore_native_device_only_shared_libs,
     multilib: {
         both: {
-            // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
-            // (see `symlink_preferred_arch` in art/dalvikvm/Android.bp).
             binaries: art_runtime_base_binaries_both
                 + bionic_binaries_both,
         },
@@ -236,8 +234,6 @@ art_apex_test {
         + art_runtime_host_run_test_libs,
     multilib: {
         both: {
-            // TODO: Add logic to create a `dalvikvm` symlink to `dalvikvm32` or `dalvikvm64`
-            // (see `symlink_preferred_arch` in art/dalvikvm/Android.bp).
             binaries: art_runtime_base_binaries_both
                 + art_runtime_debug_binaries_both_host,
         },
