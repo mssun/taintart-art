@@ -90,10 +90,8 @@ MemberSignature::MemberSignature(ArtField* field) {
 }
 
 MemberSignature::MemberSignature(ArtMethod* method) {
-  // If this is a proxy method, print the signature of the interface method.
-  method = method->GetInterfaceMethodIfProxy(
-      Runtime::Current()->GetClassLinker()->GetImagePointerSize());
-
+  DCHECK(method == method->GetInterfaceMethodIfProxy(kRuntimePointerSize))
+      << "Caller should have replaced proxy method with interface method";
   class_name_ = method->GetDeclaringClass()->GetDescriptor(&tmp_);
   member_name_ = method->GetName();
   type_signature_ = method->GetSignature().ToString();
@@ -297,6 +295,7 @@ static void VisitMembers(const DexFile& dex_file,
 template<typename T>
 uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
   static_assert(std::is_same<T, ArtField>::value || std::is_same<T, ArtMethod>::value);
+  constexpr bool kMemberIsField = std::is_same<T, ArtField>::value;
   using AccessorType = typename std::conditional<std::is_same<T, ArtField>::value,
       ClassAccessor::Field, ClassAccessor::Method>::type;
 
@@ -315,15 +314,22 @@ uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
     // Class is not redefined. Find the class def, iterate over its members and
     // find the entry corresponding to this `member`.
     const dex::ClassDef* class_def = declaring_class->GetClassDef();
-    DCHECK(class_def != nullptr) << "Class def should always be set for initialized classes";
-
-    uint32_t member_index = GetMemberDexIndex(member);
-    auto fn_visit = [&](const AccessorType& dex_member) {
-      if (dex_member.GetIndex() == member_index) {
-        flags = ApiList(dex_member.GetHiddenapiFlags());
-      }
-    };
-    VisitMembers(declaring_class->GetDexFile(), *class_def, fn_visit);
+    if (class_def == nullptr) {
+      // ClassDef is not set for proxy classes. Only their fields can ever be inspected.
+      DCHECK(declaring_class->IsProxyClass())
+          << "Only proxy classes are expected not to have a class def";
+      DCHECK(kMemberIsField)
+          << "Interface methods should be inspected instead of proxy class methods";
+      flags = ApiList::Greylist();
+    } else {
+      uint32_t member_index = GetMemberDexIndex(member);
+      auto fn_visit = [&](const AccessorType& dex_member) {
+        if (dex_member.GetIndex() == member_index) {
+          flags = ApiList(dex_member.GetHiddenapiFlags());
+        }
+      };
+      VisitMembers(declaring_class->GetDexFile(), *class_def, fn_visit);
+    }
   } else {
     // Class was redefined using JVMTI. We have a pointer to the original dex file
     // and the class def index of this class in that dex file, but the field/method

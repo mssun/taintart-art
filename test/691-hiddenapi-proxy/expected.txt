@@ -1,0 +1,6 @@
+JNI_OnLoad called
+bar
+equals
+foo
+hashCode
+toString

@@ -1,0 +1,3 @@
+Tests that inspecting Proxy classes with reflection does not crash ART. Hidden API access checks
+would try to get their class def to find hiddenapi flags in the dex file, but class def if not
+set for proxies. b/124218696

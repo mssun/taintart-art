@@ -221,6 +221,13 @@ template<typename T>
 bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
+inline ArtField* GetInterfaceMemberIfProxy(ArtField* field) { return field; }
+
+inline ArtMethod* GetInterfaceMemberIfProxy(ArtMethod* method)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  return method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
+}
+
 }  // namespace detail
 
 // Returns access flags for the runtime representation of a class member (ArtField/ArtMember).
@@ -358,6 +365,10 @@ inline bool ShouldDenyAccessToMember(T* member,
                                      AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(member != nullptr);
+
+  // Get the runtime flags encoded in member's access flags.
+  // Note: this works for proxy methods because they inherit access flags from their
+  // respective interface methods.
   const uint32_t runtime_flags = GetRuntimeFlags(member);
 
   // Exit early if member is public API. This flag is also set for non-boot class
@@ -392,6 +403,9 @@ inline bool ShouldDenyAccessToMember(T* member,
         return false;
       }
 
+      // If this is a proxy method, look at the interface method instead.
+      member = detail::GetInterfaceMemberIfProxy(member);
+
       // Decode hidden API access flags from the dex file.
       // This is an O(N) operation scaling with the number of fields/methods
       // in the class. Only do this on slow path and only do it once.
@@ -415,6 +429,9 @@ inline bool ShouldDenyAccessToMember(T* member,
       if (policy == EnforcementPolicy::kDisabled) {
         return false;
       }
+
+      // If this is a proxy method, look at the interface method instead.
+      member = detail::GetInterfaceMemberIfProxy(member);
 
       // Access checks are not disabled, report the violation.
       // detail::MaybeReportCorePlatformApiViolation(member, caller_context, access_method);

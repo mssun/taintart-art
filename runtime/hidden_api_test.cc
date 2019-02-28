@@ -366,7 +366,7 @@ TEST_F(HiddenApiTest, CheckMemberSignatureForProxyClass) {
 
   // Test the signature. We expect the signature from the interface class.
   std::ostringstream ss_method;
-  MemberSignature(method).Dump(ss_method);
+  MemberSignature(method->GetInterfaceMethodIfProxy(kRuntimePointerSize)).Dump(ss_method);
   ASSERT_EQ("Lmypackage/packagea/Interface;->method()V", ss_method.str());
 
   // Test the signature. We expect the signature of the proxy class.
