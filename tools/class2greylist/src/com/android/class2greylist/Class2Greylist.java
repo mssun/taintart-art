@@ -60,6 +60,8 @@ public class Class2Greylist {
     public static final String FLAG_GREYLIST_MAX_O = "greylist-max-o";
     public static final String FLAG_GREYLIST_MAX_P = "greylist-max-p";
 
+    public static final String FLAG_PUBLIC_API = "public-api";
+
     private static final Map<Integer, String> TARGET_SDK_TO_LIST_MAP;
     static {
         Map<Integer, String> map = new HashMap<>();
@@ -178,7 +180,7 @@ public class Class2Greylist {
             mPublicApis =
                     Files.readLines(new File(stubApiFlagsFile), Charset.forName("UTF-8")).stream()
                         .map(s -> Splitter.on(",").splitToList(s))
-                        .filter(s -> s.contains(FLAG_WHITELIST))
+                        .filter(s -> s.contains(FLAG_PUBLIC_API))
                         .map(s -> s.get(0))
                         .collect(Collectors.toSet());
         } else {
@@ -199,7 +201,7 @@ public class Class2Greylist {
                 greylistAnnotationHandler));
 
         CovariantReturnTypeHandler covariantReturnTypeHandler = new CovariantReturnTypeHandler(
-            mOutput, mPublicApis, FLAG_WHITELIST);
+            mOutput, mPublicApis, FLAG_PUBLIC_API);
 
         return addRepeatedAnnotationHandlers(builder, CovariantReturnTypeHandler.ANNOTATION_NAME,
             CovariantReturnTypeHandler.REPEATED_ANNOTATION_NAME, covariantReturnTypeHandler)

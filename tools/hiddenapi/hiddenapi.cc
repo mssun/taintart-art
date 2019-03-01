@@ -88,6 +88,8 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  Command \"list\": dump lists of public and private API");
   UsageError("    --boot-dex=<filename>: dex file which belongs to boot class path");
   UsageError("    --public-stub-classpath=<filenames>:");
+  UsageError("    --system-stub-classpath=<filenames>:");
+  UsageError("    --test-stub-classpath=<filenames>:");
   UsageError("    --core-platform-stub-classpath=<filenames>:");
   UsageError("        colon-separated list of dex/apk files which form API stubs of boot");
   UsageError("        classpath. Multiple classpaths can be specified");
@@ -906,11 +908,19 @@ class HiddenApi final {
           } else if (StartsWith(option, "--public-stub-classpath=")) {
             stub_classpaths_.push_back(std::make_pair(
                 std::string(option.substr(strlen("--public-stub-classpath="))),
-                ApiList::Whitelist()));
+                ApiStubs::Kind::kPublicApi));
+          } else if (StartsWith(option, "--system-stub-classpath=")) {
+            stub_classpaths_.push_back(std::make_pair(
+                std::string(option.substr(strlen("--system-stub-classpath="))),
+                ApiStubs::Kind::kSystemApi));
+          } else if (StartsWith(option, "--test-stub-classpath=")) {
+            stub_classpaths_.push_back(std::make_pair(
+                std::string(option.substr(strlen("--test-stub-classpath="))),
+                ApiStubs::Kind::kTestApi));
           } else if (StartsWith(option, "--core-platform-stub-classpath=")) {
             stub_classpaths_.push_back(std::make_pair(
                 std::string(option.substr(strlen("--core-platform-stub-classpath="))),
-                ApiList::CorePlatformApi()));
+                ApiStubs::Kind::kCorePlatformApi));
           } else if (StartsWith(option, "--out-api-flags=")) {
             api_flags_path_ = std::string(option.substr(strlen("--out-api-flags=")));
           } else {
@@ -983,15 +993,19 @@ class HiddenApi final {
 
     size_t line_number = 1;
     for (std::string line; std::getline(api_file, line); line_number++) {
+      // Every line contains a comma separated list with the signature as the
+      // first element and the api flags as the rest
       std::vector<std::string> values = android::base::Split(line, ",");
       CHECK_GT(values.size(), 1u) << path << ":" << line_number
           << ": No flags found: " << line << kErrorHelp;
 
       const std::string& signature = values[0];
+
       CHECK(api_flag_map.find(signature) == api_flag_map.end()) << path << ":" << line_number
           << ": Duplicate entry: " << signature << kErrorHelp;
 
       ApiList membership;
+
       bool success = ApiList::FromNames(values.begin() + 1, values.end(), &membership);
       CHECK(success) << path << ":" << line_number
           << ": Some flags were not recognized: " << line << kErrorHelp;
@@ -1016,7 +1030,7 @@ class HiddenApi final {
 
     // Complete list of boot class path members. The associated boolean states
     // whether it is public (true) or private (false).
-    std::map<std::string, ApiList> boot_members;
+    std::map<std::string, std::set<std::string_view>> boot_members;
 
     // Deduplicate errors before printing them.
     std::set<std::string> unresolved;
@@ -1027,7 +1041,7 @@ class HiddenApi final {
 
     // Mark all boot dex members private.
     boot_classpath.ForEachDexMember([&](const DexMember& boot_member) {
-      boot_members[boot_member.GetApiEntry()] = ApiList();
+      boot_members[boot_member.GetApiEntry()] = {};
     });
 
     // Resolve each SDK dex member against the framework and mark it white.
@@ -1035,7 +1049,7 @@ class HiddenApi final {
       ClassPath stub_classpath(android::base::Split(cp_entry.first, ":"),
                                /* open_writable= */ false);
       Hierarchy stub_hierarchy(stub_classpath);
-      const ApiList stub_api_list = cp_entry.second;
+      const ApiStubs::Kind stub_api = cp_entry.second;
 
       stub_classpath.ForEachDexMember(
           [&](const DexMember& stub_member) {
@@ -1049,7 +1063,7 @@ class HiddenApi final {
                   std::string entry = boot_member.GetApiEntry();
                   auto it = boot_members.find(entry);
                   CHECK(it != boot_members.end());
-                  it->second |= stub_api_list;
+                  it->second.insert(ApiStubs::ToString(stub_api));
                 });
             if (!resolved) {
               unresolved.insert(stub_member.GetApiEntry());
@@ -1065,10 +1079,11 @@ class HiddenApi final {
     // Write into public/private API files.
     std::ofstream file_flags(api_flags_path_.c_str());
     for (const auto& entry : boot_members) {
-      if (entry.second.IsEmpty()) {
+      if (entry.second.empty()) {
         file_flags << entry.first << std::endl;
       } else {
-        file_flags << entry.first << "," << entry.second << std::endl;
+        file_flags << entry.first << ",";
+        file_flags << android::base::Join(entry.second, ",") << std::endl;
       }
     }
     file_flags.close();
@@ -1086,7 +1101,7 @@ class HiddenApi final {
 
   // Set of public API stub classpaths. Each classpath is formed by a list
   // of DEX/APK files in the order they appear on the classpath.
-  std::vector<std::pair<std::string, ApiList>> stub_classpaths_;
+  std::vector<std::pair<std::string, ApiStubs::Kind>> stub_classpaths_;
 
   // Path to CSV file containing the list of API members and their flags.
   // This could be both an input and output path.
