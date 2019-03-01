@@ -28,7 +28,7 @@
 #include "base/utils.h"
 #include "base/zip_archive.h"
 #include "class_linker.h"
-#include <class_loader_context.h>
+#include "class_loader_context.h"
 #include "common_throws.h"
 #include "compiler_filter.h"
 #include "dex/art_dex_file_loader.h"
@@ -214,54 +214,79 @@ static const DexFile* CreateDexFile(JNIEnv* env, MemMap&& dex_mem_map) {
   return dex_file.release();
 }
 
-static jobject CreateSingleDexFileCookie(JNIEnv* env, MemMap&& data) {
-  std::unique_ptr<const DexFile> dex_file(CreateDexFile(env, std::move(data)));
-  if (dex_file.get() == nullptr) {
-    DCHECK(env->ExceptionCheck());
-    return nullptr;
+struct ScopedIntArrayAccessor {
+ public:
+  ScopedIntArrayAccessor(JNIEnv* env, jintArray arr) : env_(env), array_(arr) {
+    elements_ = env_->GetIntArrayElements(array_, /* isCopy= */ nullptr);
+    CHECK(elements_ != nullptr);
   }
+
+  ~ScopedIntArrayAccessor() {
+    env_->ReleaseIntArrayElements(array_, elements_, JNI_ABORT);
+  }
+
+  jint Get(jsize index) const { return elements_[index]; }
+
+ private:
+  JNIEnv* env_;
+  jintArray array_;
+  jint* elements_;
+};
+
+static jobject DexFile_openInMemoryDexFilesNative(JNIEnv* env,
+                                                  jclass,
+                                                  jobjectArray buffers,
+                                                  jobjectArray arrays,
+                                                  jintArray jstarts,
+                                                  jintArray jends) {
+  jsize buffers_length = env->GetArrayLength(buffers);
+  CHECK_EQ(buffers_length, env->GetArrayLength(arrays));
+  CHECK_EQ(buffers_length, env->GetArrayLength(jstarts));
+  CHECK_EQ(buffers_length, env->GetArrayLength(jends));
+
+  ScopedIntArrayAccessor starts(env, jstarts);
+  ScopedIntArrayAccessor ends(env, jends);
+
+  // Allocate memory for dex files and copy data from ByteBuffers.
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  dex_files.push_back(std::move(dex_file));
-  return ConvertDexFilesToJavaArray(env, nullptr, dex_files);
-}
+  dex_files.reserve(buffers_length);
+  for (jsize i = 0; i < buffers_length; ++i) {
+    jobject buffer = env->GetObjectArrayElement(buffers, i);
+    jbyteArray array = reinterpret_cast<jbyteArray>(env->GetObjectArrayElement(arrays, i));
+    jint start = starts.Get(i);
+    jint end = ends.Get(i);
 
-static jobject DexFile_createCookieWithDirectBuffer(JNIEnv* env,
-                                                    jclass,
-                                                    jobject buffer,
-                                                    jint start,
-                                                    jint end) {
-  uint8_t* base_address = reinterpret_cast<uint8_t*>(env->GetDirectBufferAddress(buffer));
-  if (base_address == nullptr) {
-    ScopedObjectAccess soa(env);
-    ThrowWrappedIOException("dexFileBuffer not direct");
-    return nullptr;
+    MemMap dex_data = AllocateDexMemoryMap(env, start, end);
+    if (!dex_data.IsValid()) {
+      DCHECK(Thread::Current()->IsExceptionPending());
+      return nullptr;
+    }
+
+    if (array == nullptr) {
+      // Direct ByteBuffer
+      uint8_t* base_address = reinterpret_cast<uint8_t*>(env->GetDirectBufferAddress(buffer));
+      if (base_address == nullptr) {
+        ScopedObjectAccess soa(env);
+        ThrowWrappedIOException("dexFileBuffer not direct");
+        return nullptr;
+      }
+      size_t length = static_cast<size_t>(end - start);
+      memcpy(dex_data.Begin(), base_address + start, length);
+    } else {
+      // ByteBuffer backed by a byte array
+      jbyte* destination = reinterpret_cast<jbyte*>(dex_data.Begin());
+      env->GetByteArrayRegion(array, start, end - start, destination);
+    }
+
+    std::unique_ptr<const DexFile> dex_file(CreateDexFile(env, std::move(dex_data)));
+    if (dex_file == nullptr) {
+      DCHECK(env->ExceptionCheck());
+      return nullptr;
+    }
+    dex_files.push_back(std::move(dex_file));
   }
 
-  MemMap dex_mem_map = AllocateDexMemoryMap(env, start, end);
-  if (!dex_mem_map.IsValid()) {
-    DCHECK(Thread::Current()->IsExceptionPending());
-    return nullptr;
-  }
-
-  size_t length = static_cast<size_t>(end - start);
-  memcpy(dex_mem_map.Begin(), base_address + start, length);
-  return CreateSingleDexFileCookie(env, std::move(dex_mem_map));
-}
-
-static jobject DexFile_createCookieWithArray(JNIEnv* env,
-                                             jclass,
-                                             jbyteArray buffer,
-                                             jint start,
-                                             jint end) {
-  MemMap dex_mem_map = AllocateDexMemoryMap(env, start, end);
-  if (!dex_mem_map.IsValid()) {
-    DCHECK(Thread::Current()->IsExceptionPending());
-    return nullptr;
-  }
-
-  auto destination = reinterpret_cast<jbyte*>(dex_mem_map.Begin());
-  env->GetByteArrayRegion(buffer, start, end - start, destination);
-  return CreateSingleDexFileCookie(env, std::move(dex_mem_map));
+  return ConvertDexFilesToJavaArray(env, /* oat_file= */ nullptr, dex_files);
 }
 
 // TODO(calin): clean up the unused parameters (here and in libcore).
@@ -338,8 +363,8 @@ static jboolean DexFile_closeDexFile(JNIEnv* env, jclass, jobject cookie) {
     for (const DexFile* dex_file : dex_files) {
       if (dex_file != nullptr) {
         RemoveNativeDebugInfoForDex(soa.Self(), dex_file);
-        // Only delete the dex file if the dex cache is not found to prevent runtime crashes if there
-        // are calls to DexFile.close while the ART DexFile is still in use.
+        // Only delete the dex file if the dex cache is not found to prevent runtime crashes
+        // if there are calls to DexFile.close while the ART DexFile is still in use.
         if (!class_linker->IsDexFileRegistered(soa.Self(), *dex_file)) {
           // Clear the element in the array so that we can call close again.
           long_dex_files->Set(i, 0);
@@ -862,9 +887,12 @@ static JNINativeMethod gMethods[] = {
                 "Ljava/lang/ClassLoader;"
                 "[Ldalvik/system/DexPathList$Element;"
                 ")Ljava/lang/Object;"),
-  NATIVE_METHOD(DexFile, createCookieWithDirectBuffer,
-                "(Ljava/nio/ByteBuffer;II)Ljava/lang/Object;"),
-  NATIVE_METHOD(DexFile, createCookieWithArray, "([BII)Ljava/lang/Object;"),
+  NATIVE_METHOD(DexFile, openInMemoryDexFilesNative,
+                "([Ljava/nio/ByteBuffer;"
+                "[[B"
+                "[I"
+                "[I"
+                ")Ljava/lang/Object;"),
   NATIVE_METHOD(DexFile, isValidCompilerFilter, "(Ljava/lang/String;)Z"),
   NATIVE_METHOD(DexFile, isProfileGuidedCompilerFilter, "(Ljava/lang/String;)Z"),
   NATIVE_METHOD(DexFile,
