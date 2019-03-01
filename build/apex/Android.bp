@@ -179,6 +179,7 @@ apex_defaults {
         }
     },
     binaries: [
+        "art_postinstall_hook",
         "art_preinstall_hook",
         "art_preinstall_hook_boot",
         "art_prepostinstall_utils",
@@ -347,4 +348,8 @@ sh_binary {
 sh_binary {
     name: "art_prepostinstall_utils",
     src: "art_prepostinstall_utils.sh",
+}
+sh_binary {
+    name: "art_postinstall_hook",
+    src: "art_postinstall_hook.sh",
 }
