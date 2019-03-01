@@ -40,4 +40,10 @@ for ARCH in $ARCHES ; do
   `dirname $0`/art_preinstall_hook_boot $ARCH || exit 200
 done
 
-# TODO: System server.
+PRIMARY_ARCH=`echo $ARCHES | sed -e 's/ .*//'`
+`dirname $0`/art_preinstall_hook_system_server $PRIMARY_ARCH || exit 300
+
+FILES=`find /data/dalvik-cache -type f`
+for FILE in $FILES ; do
+  setup_fsverity $FILE || exit 400
+done

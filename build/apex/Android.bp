@@ -182,6 +182,7 @@ apex_defaults {
         "art_postinstall_hook",
         "art_preinstall_hook",
         "art_preinstall_hook_boot",
+        "art_preinstall_hook_system_server",
         "art_prepostinstall_utils",
     ],
     prebuilts: art_runtime_data_file_prebuilts
@@ -344,6 +345,10 @@ sh_binary {
 sh_binary {
     name: "art_preinstall_hook_boot",
     src: "art_preinstall_hook_boot.sh",
+}
+sh_binary {
+    name: "art_preinstall_hook_system_server",
+    src: "art_preinstall_hook_system_server.sh",
 }
 sh_binary {
     name: "art_prepostinstall_utils",

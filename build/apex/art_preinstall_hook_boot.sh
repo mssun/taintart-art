@@ -73,8 +73,3 @@ dex2oat \
   --no-inline-from=core-oj.jar \
   --abort-on-hard-verifier-error \
   --force-determinism || { log_error "Dex2oat failed" ; exit 102 ; }
-
-FILES=`find /data/dalvik-cache/$DEX2OAT_TARGET_ARCH -type f`
-for FILE in $FILES ; do
-  setup_fsverity $FILE || exit 103
-done
