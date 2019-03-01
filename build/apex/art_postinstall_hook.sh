@@ -25,6 +25,22 @@ if [ ! -d /data/ota/dalvik-cache ] ; then
   exit 101
 fi
 
+log_info "Checking fsverity"
+
+# Measure (and enable) fsverity to see if things are installed. Enable is not
+# idempotent, and we'd need to parse the error string to see whether it says
+# data was installed. Rather do a two-step.
+FILES=`find /data/ota/dalvik-cache -type f`
+for FILE in $FILES ; do
+  fsverity measure $FILE && continue
+  ENABLE_MSG=`fsverity enable $FILE 2>&1` && continue
+
+  # No installed data, can't enable. Clean up and fail.
+  log_error "Enable failed: $ENABLE_MSG"
+  rm -rf /data/ota/dalvik-cache
+  exit 200
+done
+
 log_info "Moving dalvik-cache"
 
 rm -rf /data/dalvik-cache/* || exit 102
