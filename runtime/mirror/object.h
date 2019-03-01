@@ -33,7 +33,6 @@ namespace art {
 
 class ArtField;
 class ArtMethod;
-class ImageWriter;
 class LockWord;
 class Monitor;
 struct ObjectOffsets;
@@ -782,7 +781,6 @@ class MANAGED LOCKABLE Object {
   uint32_t x_xpadding_;    // For 8-byte alignment. TODO: get rid of this.
 #endif
 
-  friend class art::ImageWriter;
   friend class art::Monitor;
   friend struct art::ObjectOffsets;  // for verifying offset information
   friend class CopyObjectVisitor;  // for CopyObject().
