@@ -39,6 +39,7 @@
 #include "gc/scoped_gc_critical_section.h"
 #include "gc/space/image_space.h"
 #include "handle_scope-inl.h"
+#include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
@@ -48,6 +49,7 @@
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 #include "thread_list.h"
+#include "thread_pool.h"
 #include "well_known_classes.h"
 
 namespace art {
@@ -640,6 +642,113 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
   }
 
   return dex_files;
+}
+
+class BackgroundVerificationTask final : public Task {
+ public:
+  BackgroundVerificationTask(const std::vector<const DexFile*>& dex_files, jobject class_loader)
+      : dex_files_(dex_files) {
+    Thread* const self = Thread::Current();
+    ScopedObjectAccess soa(self);
+    // Create a global ref for `class_loader` because it will be accessed from a different thread.
+    class_loader_ = soa.Vm()->AddGlobalRef(self, soa.Decode<mirror::ClassLoader>(class_loader));
+    CHECK(class_loader_ != nullptr);
+  }
+
+  ~BackgroundVerificationTask() {
+    Thread* const self = Thread::Current();
+    ScopedObjectAccess soa(self);
+    soa.Vm()->DeleteGlobalRef(self, class_loader_);
+  }
+
+  void Run(Thread* self) override {
+    ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
+
+    // Iterate over all classes and verify them.
+    for (const DexFile* dex_file : dex_files_) {
+      for (uint32_t cdef_idx = 0; cdef_idx < dex_file->NumClassDefs(); cdef_idx++) {
+        // Take handles inside the loop. The background verification is low priority
+        // and we want to minimize the risk of blocking anyone else.
+        ScopedObjectAccess soa(self);
+        StackHandleScope<2> hs(self);
+        Handle<mirror::ClassLoader> h_loader(hs.NewHandle(
+            soa.Decode<mirror::ClassLoader>(class_loader_)));
+        Handle<mirror::Class> h_class(hs.NewHandle<mirror::Class>(class_linker->FindClass(
+            self,
+            dex_file->GetClassDescriptor(dex_file->GetClassDef(cdef_idx)),
+            h_loader)));
+
+        if (h_class == nullptr) {
+          CHECK(self->IsExceptionPending());
+          self->ClearException();
+          continue;
+        }
+
+        if (&h_class->GetDexFile() != dex_file) {
+          // There is a different class in the class path or a parent class loader
+          // with the same descriptor. This `h_class` is not resolvable, skip it.
+          continue;
+        }
+
+        CHECK(h_class->IsResolved()) << h_class->PrettyDescriptor();
+        class_linker->VerifyClass(self, h_class);
+        if (h_class->IsErroneous()) {
+          // ClassLinker::VerifyClass throws, which isn't useful here.
+          CHECK(soa.Self()->IsExceptionPending());
+          soa.Self()->ClearException();
+        }
+
+        CHECK(h_class->IsVerified() || h_class->IsErroneous())
+            << h_class->PrettyDescriptor() << ": state=" << h_class->GetStatus();
+      }
+    }
+  }
+
+  void Finalize() override {
+    delete this;
+  }
+
+ private:
+  const std::vector<const DexFile*> dex_files_;
+  jobject class_loader_;
+
+  DISALLOW_COPY_AND_ASSIGN(BackgroundVerificationTask);
+};
+
+void OatFileManager::RunBackgroundVerification(const std::vector<const DexFile*>& dex_files,
+                                               jobject class_loader) {
+  Thread* const self = Thread::Current();
+  if (Runtime::Current()->IsShuttingDown(self)) {
+    // Not allowed to create new threads during runtime shutdown.
+    return;
+  }
+
+  if (verification_thread_pool_ == nullptr) {
+    verification_thread_pool_.reset(new ThreadPool("Verification thread pool",
+                                                   /* num_threads= */ 1));
+    verification_thread_pool_->StartWorkers(self);
+  }
+
+  verification_thread_pool_->AddTask(self, new BackgroundVerificationTask(dex_files, class_loader));
+}
+
+void OatFileManager::WaitForWorkersToBeCreated() {
+  DCHECK(!Runtime::Current()->IsShuttingDown(Thread::Current()))
+      << "Cannot create new threads during runtime shutdown";
+  if (verification_thread_pool_ != nullptr) {
+    verification_thread_pool_->WaitForWorkersToBeCreated();
+  }
+}
+
+void OatFileManager::DeleteThreadPool() {
+  verification_thread_pool_.reset(nullptr);
+}
+
+void OatFileManager::WaitForBackgroundVerificationTasks() {
+  Thread* const self = Thread::Current();
+  if (verification_thread_pool_ != nullptr) {
+    verification_thread_pool_->Wait(self, /* do_work= */ true, /* may_hold_locks= */ false);
+  }
 }
 
 void OatFileManager::SetOnlyUseSystemOatFiles(bool assert_no_files_loaded) {
