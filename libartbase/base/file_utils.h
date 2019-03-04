@@ -78,6 +78,9 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
 // Return whether the location is on /apex/com.android.runtime
 bool LocationIsOnRuntimeModule(const char* location);
 
+// Return whether the location is on /apex/com.android.conscrypt
+bool LocationIsOnConscryptModule(const char* location);
+
 // Return whether the location is on system (i.e. android root).
 bool LocationIsOnSystem(const char* location);
 
