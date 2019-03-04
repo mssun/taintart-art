@@ -24,7 +24,7 @@
 #include "art_method-inl.h"
 #include "base/casts.h"
 #include "class_linker-inl.h"
-#include "common_compiler_test.h"
+#include "common_compiler_driver_test.h"
 #include "compiler_callbacks.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
@@ -40,7 +40,7 @@
 
 namespace art {
 
-class CompilerDriverTest : public CommonCompilerTest {
+class CompilerDriverTest : public CommonCompilerDriverTest {
  protected:
   void CompileAllAndMakeExecutable(jobject class_loader) REQUIRES(!Locks::mutator_lock_) {
     TimingLogger timings("CompilerDriverTest::CompileAllAndMakeExecutable", false, false);
@@ -75,6 +75,20 @@ class CompilerDriverTest : public CommonCompilerTest {
       CHECK(dex_file != nullptr);
       MakeDexFileExecutable(class_loader, *dex_file);
     }
+  }
+
+  void MakeExecutable(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
+    CHECK(method != nullptr);
+
+    const CompiledMethod* compiled_method = nullptr;
+    if (!method->IsAbstract()) {
+      mirror::DexCache* dex_cache = method->GetDeclaringClass()->GetDexCache();
+      const DexFile& dex_file = *dex_cache->GetDexFile();
+      compiled_method =
+          compiler_driver_->GetCompiledMethod(MethodReference(&dex_file,
+                                                              method->GetDexMethodIndex()));
+    }
+    CommonCompilerTest::MakeExecutable(method, compiled_method);
   }
 
   void MakeDexFileExecutable(jobject class_loader, const DexFile& dex_file) {

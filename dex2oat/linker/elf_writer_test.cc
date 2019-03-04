@@ -22,7 +22,7 @@
 #include "base/mem_map.h"
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
-#include "common_compiler_test.h"
+#include "common_compiler_driver_test.h"
 #include "elf_file.h"
 #include "elf_file_impl.h"
 #include "elf_writer_quick.h"
@@ -32,7 +32,7 @@
 namespace art {
 namespace linker {
 
-class ElfWriterTest : public CommonCompilerTest {
+class ElfWriterTest : public CommonCompilerDriverTest {
  protected:
   void SetUp() override {
     ReserveImageSpace();
