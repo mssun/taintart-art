@@ -18,12 +18,22 @@
 #define ART_COMPILER_TRAMPOLINES_TRAMPOLINE_COMPILER_H_
 
 #include <stdint.h>
+#include <memory>
 #include <vector>
 
-#include "driver/compiler_driver.h"
+#include "arch/instruction_set.h"
 #include "offsets.h"
 
 namespace art {
+
+enum EntryPointCallingConvention {
+  // ABI of invocations to a method's interpreter entry point.
+  kInterpreterAbi,
+  // ABI of calls to a method's native code, only used for native methods.
+  kJniAbi,
+  // ABI of calls to a method's quick code entry point.
+  kQuickAbi
+};
 
 // Create code that will invoke the function held in thread local storage.
 std::unique_ptr<const std::vector<uint8_t>> CreateTrampoline32(InstructionSet isa,

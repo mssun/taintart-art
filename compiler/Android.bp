@@ -27,13 +27,10 @@ art_cc_defaults {
         "compiled_method.cc",
         "debug/elf_debug_writer.cc",
         "debug/xz_utils.cc",
-        "dex/dex_to_dex_compiler.cc",
         "dex/inline_method_analyser.cc",
         "dex/verified_method.cc",
         "dex/verification_results.cc",
-        "dex/quick_compiler_callbacks.cc",
         "driver/compiled_method_storage.cc",
-        "driver/compiler_driver.cc",
         "driver/compiler_options.cc",
         "driver/dex_compilation_unit.cc",
         "linker/buffered_output_stream.cc",
@@ -204,8 +201,6 @@ gensrcs {
     cmd: "$(location generate_operator_out) art/compiler $(in) > $(out)",
     tools: ["generate_operator_out"],
     srcs: [
-        "dex/dex_to_dex_compiler.h",
-        "driver/compiler_driver.h",
         "driver/compiler_options.h",
         "linker/linker_patch.h",
         "optimizing/locations.h",
@@ -340,7 +335,6 @@ art_cc_library {
     name: "libart-compiler-gtest",
     defaults: ["libart-gtest-defaults"],
     srcs: [
-        "common_compiler_driver_test.cc",
         "common_compiler_test.cc",
     ],
     shared_libs: [
@@ -359,9 +353,7 @@ art_cc_test {
     srcs: [
         "debug/dwarf/dwarf_test.cc",
         "debug/src_map_elem_test.cc",
-        "dex/dex_to_dex_decompiler_test.cc",
         "driver/compiled_method_storage_test.cc",
-        "driver/compiler_driver_test.cc",
         "exception_test.cc",
         "jni/jni_compiler_test.cc",
         "linker/linker_patch_test.cc",
@@ -394,7 +386,6 @@ art_cc_test {
         "utils/dedupe_set_test.cc",
         "utils/intrusive_forward_list_test.cc",
         "utils/swap_space_test.cc",
-        "verifier_deps_test.cc",
 
         "jni/jni_cfi_test.cc",
         "optimizing/codegen_test.cc",

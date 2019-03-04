@@ -60,6 +60,7 @@ $(call add-clean-step, rm -f $(PRODUCT_OUT)/system/lib*/libpac.so)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/data/nativetest*/art_libdexfile_support_tests/dex_file_supp_test)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/data/nativetest*/)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/data/nativetest*/)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/data/nativetest*/)
 
 # ************************************************
 # NEWER CLEAN STEPS MUST BE AT THE END OF THE LIST

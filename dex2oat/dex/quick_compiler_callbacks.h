@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_DEX_QUICK_COMPILER_CALLBACKS_H_
-#define ART_COMPILER_DEX_QUICK_COMPILER_CALLBACKS_H_
+#ifndef ART_DEX2OAT_DEX_QUICK_COMPILER_CALLBACKS_H_
+#define ART_DEX2OAT_DEX_QUICK_COMPILER_CALLBACKS_H_
 
 #include "compiler_callbacks.h"
 #include "verifier/verifier_deps.h"
@@ -78,4 +78,4 @@ class QuickCompilerCallbacks final : public CompilerCallbacks {
 
 }  // namespace art
 
-#endif  // ART_COMPILER_DEX_QUICK_COMPILER_CALLBACKS_H_
+#endif  // ART_DEX2OAT_DEX_QUICK_COMPILER_CALLBACKS_H_
