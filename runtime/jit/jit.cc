@@ -907,6 +907,9 @@ ScopedJitSuspend::~ScopedJitSuspend() {
 
 void Jit::PostForkChildAction(bool is_zygote) {
   if (is_zygote) {
+    // Remove potential tasks that have been inherited from the zygote. Child zygotes
+    // currently don't need the whole boot image compiled (ie webview_zygote).
+    thread_pool_->RemoveAllTasks(Thread::Current());
     // Don't transition if this is for a child zygote.
     return;
   }
