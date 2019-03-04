@@ -1,0 +1,2 @@
+Check that caching of verification results for InMemoryDexClassLoader obeys a cap on the number
+of vdex files in the data folder. Least recently used vdex files should be unlinked.

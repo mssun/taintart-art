@@ -25,11 +25,16 @@
 #include "base/mem_map.h"
 #include "base/os.h"
 #include "dex/compact_offset_table.h"
+#include "dex/dex_file.h"
 #include "quicken_info.h"
 
 namespace art {
 
-class DexFile;
+class ClassLoaderContext;
+
+namespace verifier {
+class VerifierDeps;
+}  // namespace verifier
 
 // VDEX files contain extracted DEX files. The VdexFile class maps the file to
 // memory and provides tools for accessing its individual sections.
@@ -58,11 +63,16 @@ class DexFile;
 
 class VdexFile {
  public:
+  using VdexChecksum = uint32_t;
+  using QuickeningTableOffsetType = uint32_t;
+
   struct VerifierDepsHeader {
    public:
     VerifierDepsHeader(uint32_t number_of_dex_files_,
                        uint32_t verifier_deps_size,
-                       bool has_dex_section);
+                       bool has_dex_section,
+                       uint32_t bootclasspath_checksums_size = 0,
+                       uint32_t class_loader_context_size = 0);
 
     const char* GetMagic() const { return reinterpret_cast<const char*>(magic_); }
     const char* GetVerifierDepsVersion() const {
@@ -81,9 +91,21 @@ class VdexFile {
 
     uint32_t GetVerifierDepsSize() const { return verifier_deps_size_; }
     uint32_t GetNumberOfDexFiles() const { return number_of_dex_files_; }
+    uint32_t GetBootClassPathChecksumStringSize() const { return bootclasspath_checksums_size_; }
+    uint32_t GetClassLoaderContextStringSize() const { return class_loader_context_size_; }
 
     size_t GetSizeOfChecksumsSection() const {
       return sizeof(VdexChecksum) * GetNumberOfDexFiles();
+    }
+
+    const VdexChecksum* GetDexChecksumsArray() const {
+      return reinterpret_cast<const VdexChecksum*>(
+          reinterpret_cast<const uint8_t*>(this) + sizeof(VerifierDepsHeader));
+    }
+
+    VdexChecksum GetDexChecksumAtOffset(size_t idx) const {
+      DCHECK_LT(idx, GetNumberOfDexFiles());
+      return GetDexChecksumsArray()[idx];
     }
 
     static constexpr uint8_t kVdexInvalidMagic[] = { 'w', 'd', 'e', 'x' };
@@ -92,8 +114,8 @@ class VdexFile {
     static constexpr uint8_t kVdexMagic[] = { 'v', 'd', 'e', 'x' };
 
     // The format version of the verifier deps header and the verifier deps.
-    // Last update: Add `redefined_classes_`.
-    static constexpr uint8_t kVerifierDepsVersion[] = { '0', '2', '0', '\0' };
+    // Last update: Add boot checksum, class loader context.
+    static constexpr uint8_t kVerifierDepsVersion[] = { '0', '2', '1', '\0' };
 
     // The format version of the dex section header and the dex section, containing
     // both the dex code and the quickening data.
@@ -109,6 +131,8 @@ class VdexFile {
     uint8_t dex_section_version_[4];
     uint32_t number_of_dex_files_;
     uint32_t verifier_deps_size_;
+    uint32_t bootclasspath_checksums_size_;
+    uint32_t class_loader_context_size_;
   };
 
   struct DexSectionHeader {
@@ -132,7 +156,7 @@ class VdexFile {
     uint32_t dex_shared_data_size_;
     uint32_t quickening_info_size_;
 
-    friend class VdexFile;  // For updatig quickening_info_size_.
+    friend class VdexFile;  // For updating quickening_info_size_.
   };
 
   size_t GetComputedFileSize() const {
@@ -144,14 +168,13 @@ class VdexFile {
       size += GetDexSectionHeader().GetDexSectionSize();
       size += GetDexSectionHeader().GetQuickeningInfoSize();
     }
+    size += header.GetBootClassPathChecksumStringSize();
+    size += header.GetClassLoaderContextStringSize();
     return size;
   }
 
   // Note: The file is called "primary" to match the naming with profiles.
   static const constexpr char* kVdexNameInDmFile = "primary.vdex";
-
-  typedef uint32_t VdexChecksum;
-  using QuickeningTableOffsetType = uint32_t;
 
   explicit VdexFile(MemMap&& mmap) : mmap_(std::move(mmap)) {}
 
@@ -250,13 +273,22 @@ class VdexFile {
   }
 
   ArrayRef<const uint8_t> GetQuickeningInfo() const {
-    if (GetVerifierDepsHeader().HasDexSection()) {
-      return ArrayRef<const uint8_t>(
-          GetVerifierDepsData().data() + GetVerifierDepsHeader().GetVerifierDepsSize(),
-          GetDexSectionHeader().GetQuickeningInfoSize());
-    } else {
-      return ArrayRef<const uint8_t>();
-    }
+    return ArrayRef<const uint8_t>(
+        GetVerifierDepsData().end(),
+        GetVerifierDepsHeader().HasDexSection()
+            ? GetDexSectionHeader().GetQuickeningInfoSize() : 0);
+  }
+
+  ArrayRef<const uint8_t> GetBootClassPathChecksumData() const {
+    return ArrayRef<const uint8_t>(
+        GetQuickeningInfo().end(),
+        GetVerifierDepsHeader().GetBootClassPathChecksumStringSize());
+  }
+
+  ArrayRef<const uint8_t> GetClassLoaderContextData() const {
+    return ArrayRef<const uint8_t>(
+        GetBootClassPathChecksumData().end(),
+        GetVerifierDepsHeader().GetClassLoaderContextStringSize());
   }
 
   bool IsValid() const {
@@ -299,6 +331,16 @@ class VdexFile {
   bool HasDexSection() const {
     return GetVerifierDepsHeader().HasDexSection();
   }
+
+  // Writes a vdex into `path` and returns true on success.
+  // The vdex will not contain a dex section but will store checksums of `dex_files`,
+  // encoded `verifier_deps`, as well as the current boot class path cheksum and
+  // encoded `class_loader_context`.
+  static bool WriteToDisk(const std::string& path,
+                          const std::vector<const DexFile*>& dex_files,
+                          const verifier::VerifierDeps& verifier_deps,
+                          const std::string& class_loader_context,
+                          std::string* error_msg);
 
  private:
   uint32_t GetQuickeningInfoTableOffset(const uint8_t* source_dex_begin) const;

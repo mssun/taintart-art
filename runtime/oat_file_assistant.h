@@ -245,6 +245,21 @@ class OatFileAssistant {
                                        std::string* oat_filename,
                                        std::string* error_msg);
 
+  // Computes the location checksum, dex location and vdex filename by combining
+  // the checksums of the individual dex files. If the data directory of the process
+  // is known, creates an absolute path in that directory and tries to infer path
+  // of a corresponding vdex file. Otherwise only creates a basename dex_location
+  // from the combined checksums. Returns true if all out-arguments have been set.
+  static bool AnonymousDexVdexLocation(const std::vector<const DexFile::Header*>& dex_headers,
+                                       InstructionSet isa,
+                                       /* out */ uint32_t* location_checksum,
+                                       /* out */ std::string* dex_location,
+                                       /* out */ std::string* vdex_filename);
+
+  // Returns true if a filename (given as basename) is a name of a vdex for
+  // anonymous dex file(s) created by AnonymousDexVdexLocation.
+  static bool IsAnonymousVdexBasename(const std::string& basename);
+
  private:
   class OatFileInfo {
    public:

@@ -17,6 +17,7 @@
 #include "vdex_file.h"
 
 #include <sys/mman.h>  // For the PROT_* and MAP_* constants.
+#include <sys/stat.h>  // for mkdir()
 
 #include <memory>
 #include <unordered_set>
@@ -27,12 +28,17 @@
 #include "base/leb128.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
+#include "class_linker.h"
+#include "class_loader_context.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/class_accessor-inl.h"
-#include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "dex_to_dex_decompiler.h"
+#include "gc/heap.h"
+#include "gc/space/image_space.h"
 #include "quicken_info.h"
+#include "runtime.h"
+#include "verifier/verifier_deps.h"
 
 namespace art {
 
@@ -61,9 +67,13 @@ bool VdexFile::VerifierDepsHeader::HasDexSection() const {
 
 VdexFile::VerifierDepsHeader::VerifierDepsHeader(uint32_t number_of_dex_files,
                                                  uint32_t verifier_deps_size,
-                                                 bool has_dex_section)
+                                                 bool has_dex_section,
+                                                 uint32_t bootclasspath_checksums_size,
+                                                 uint32_t class_loader_context_size)
     : number_of_dex_files_(number_of_dex_files),
-      verifier_deps_size_(verifier_deps_size) {
+      verifier_deps_size_(verifier_deps_size),
+      bootclasspath_checksums_size_(bootclasspath_checksums_size),
+      class_loader_context_size_(class_loader_context_size) {
   memcpy(magic_, kVdexMagic, sizeof(kVdexMagic));
   memcpy(verifier_deps_version_, kVerifierDepsVersion, sizeof(kVerifierDepsVersion));
   if (has_dex_section) {
@@ -315,6 +325,102 @@ ArrayRef<const uint8_t> VdexFile::GetQuickenedInfoOf(const DexFile& dex_file,
     return ArrayRef<const uint8_t>();
   }
   return GetQuickeningInfoAt(quickening_info, quickening_offset);
+}
+
+static std::string ComputeBootClassPathChecksumString() {
+  Runtime* const runtime = Runtime::Current();
+  return gc::space::ImageSpace::GetBootClassPathChecksums(
+          runtime->GetHeap()->GetBootImageSpaces(),
+          runtime->GetClassLinker()->GetBootClassPath());
+}
+
+static bool CreateDirectories(const std::string& child_path, /* out */ std::string* error_msg) {
+  size_t last_slash_pos = child_path.find_last_of('/');
+  CHECK_NE(last_slash_pos, std::string::npos) << "Invalid path: " << child_path;
+  std::string parent_path = child_path.substr(0, last_slash_pos);
+  if (OS::DirectoryExists(parent_path.c_str())) {
+    return true;
+  } else if (CreateDirectories(parent_path, error_msg)) {
+    if (mkdir(parent_path.c_str(), 0700) == 0) {
+      return true;
+    }
+    *error_msg = "Could not create directory " + parent_path;
+    return false;
+  } else {
+    return false;
+  }
+}
+
+bool VdexFile::WriteToDisk(const std::string& path,
+                           const std::vector<const DexFile*>& dex_files,
+                           const verifier::VerifierDeps& verifier_deps,
+                           const std::string& class_loader_context,
+                           std::string* error_msg) {
+  std::vector<uint8_t> verifier_deps_data;
+  verifier_deps.Encode(dex_files, &verifier_deps_data);
+
+  std::string boot_checksum = ComputeBootClassPathChecksumString();
+  DCHECK_NE(boot_checksum, "");
+
+  VdexFile::VerifierDepsHeader deps_header(dex_files.size(),
+                                           verifier_deps_data.size(),
+                                           /* has_dex_section= */ false,
+                                           boot_checksum.size(),
+                                           class_loader_context.size());
+
+  if (!CreateDirectories(path, error_msg)) {
+    return false;
+  }
+
+  std::unique_ptr<File> out(OS::CreateEmptyFileWriteOnly(path.c_str()));
+  if (out == nullptr) {
+    *error_msg = "Could not open " + path + " for writing";
+    return false;
+  }
+
+  if (!out->WriteFully(reinterpret_cast<const char*>(&deps_header), sizeof(deps_header))) {
+    *error_msg = "Could not write vdex header to " + path;
+    out->Unlink();
+    return false;
+  }
+
+  for (const DexFile* dex_file : dex_files) {
+    const uint32_t* checksum_ptr = &dex_file->GetHeader().checksum_;
+    static_assert(sizeof(*checksum_ptr) == sizeof(VdexFile::VdexChecksum));
+    if (!out->WriteFully(reinterpret_cast<const char*>(checksum_ptr),
+                         sizeof(VdexFile::VdexChecksum))) {
+      *error_msg = "Could not write dex checksums to " + path;
+      out->Unlink();
+    return false;
+    }
+  }
+
+  if (!out->WriteFully(reinterpret_cast<const char*>(verifier_deps_data.data()),
+                       verifier_deps_data.size())) {
+    *error_msg = "Could not write verifier deps to " + path;
+    out->Unlink();
+    return false;
+  }
+
+  if (!out->WriteFully(boot_checksum.c_str(), boot_checksum.size())) {
+    *error_msg = "Could not write boot classpath checksum to " + path;
+    out->Unlink();
+    return false;
+  }
+
+  if (!out->WriteFully(class_loader_context.c_str(), class_loader_context.size())) {
+    *error_msg = "Could not write class loader context to " + path;
+    out->Unlink();
+    return false;
+  }
+
+  if (out->FlushClose() != 0) {
+    *error_msg = "Could not flush and close " + path;
+    out->Unlink();
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace art

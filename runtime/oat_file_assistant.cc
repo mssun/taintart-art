@@ -19,6 +19,7 @@
 #include <sstream>
 
 #include <sys/stat.h>
+#include "zlib.h"
 
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
@@ -31,6 +32,7 @@
 #include "base/string_view_cpp20.h"
 #include "base/utils.h"
 #include "class_linker.h"
+#include "class_loader_context.h"
 #include "compiler_filter.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
@@ -42,11 +44,13 @@
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "vdex_file.h"
-#include "class_loader_context.h"
 
 namespace art {
 
 using android::base::StringPrintf;
+
+static constexpr const char* kAnonymousDexPrefix = "Anonymous-DexFile@";
+static constexpr const char* kVdexExtension = ".vdex";
 
 std::ostream& operator << (std::ostream& stream, const OatFileAssistant::OatStatus status) {
   switch (status) {
@@ -427,6 +431,54 @@ OatFileAssistant::OatStatus OatFileAssistant::GivenOatFileStatus(const OatFile& 
   }
 
   return kOatUpToDate;
+}
+
+bool OatFileAssistant::AnonymousDexVdexLocation(const std::vector<const DexFile::Header*>& headers,
+                                                InstructionSet isa,
+                                                /* out */ uint32_t* location_checksum,
+                                                /* out */ std::string* dex_location,
+                                                /* out */ std::string* vdex_filename) {
+  uint32_t checksum = adler32(0L, Z_NULL, 0);
+  for (const DexFile::Header* header : headers) {
+    checksum = adler32_combine(checksum,
+                               header->checksum_,
+                               header->file_size_ - DexFile::kNumNonChecksumBytes);
+  }
+  *location_checksum = checksum;
+
+  const std::string& data_dir = Runtime::Current()->GetProcessDataDirectory();
+  if (data_dir.empty() || Runtime::Current()->IsZygote()) {
+    *dex_location = StringPrintf("%s%u", kAnonymousDexPrefix, checksum);
+    return false;
+  }
+  *dex_location = StringPrintf("%s/%s%u.jar", data_dir.c_str(), kAnonymousDexPrefix, checksum);
+
+  std::string odex_filename;
+  std::string error_msg;
+  if (!DexLocationToOdexFilename(*dex_location, isa, &odex_filename, &error_msg)) {
+    LOG(WARNING) << "Could not get odex filename for " << *dex_location << ": " << error_msg;
+    return false;
+  }
+
+  *vdex_filename = GetVdexFilename(odex_filename);
+  return true;
+}
+
+bool OatFileAssistant::IsAnonymousVdexBasename(const std::string& basename) {
+  DCHECK(basename.find('/') == std::string::npos);
+  // `basename` must have format: <kAnonymousDexPrefix><checksum><kVdexExtension>
+  if (basename.size() < strlen(kAnonymousDexPrefix) + strlen(kVdexExtension) + 1 ||
+      !android::base::StartsWith(basename.c_str(), kAnonymousDexPrefix) ||
+      !android::base::EndsWith(basename, kVdexExtension)) {
+    return false;
+  }
+  // Check that all characters between the prefix and extension are decimal digits.
+  for (size_t i = strlen(kAnonymousDexPrefix); i < basename.size() - strlen(kVdexExtension); ++i) {
+    if (!std::isdigit(basename[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool DexLocationToOdexNames(const std::string& location,

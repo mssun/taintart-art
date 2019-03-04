@@ -340,10 +340,27 @@ static jobject DexFile_openDexFileNative(JNIEnv* env,
   }
 }
 
+static jstring DexFile_getClassLoaderContext(JNIEnv* env,
+                                            jclass,
+                                            jobject class_loader,
+                                            jobjectArray dex_elements) {
+  CHECK(class_loader != nullptr);
+  constexpr const char* kBaseDir = "";
+  std::unique_ptr<ClassLoaderContext> context =
+  ClassLoaderContext::CreateContextForClassLoader(class_loader, dex_elements);
+  if (context == nullptr || !context->OpenDexFiles(kRuntimeISA, kBaseDir)) {
+    LOG(WARNING) << "Could not establish class loader context";
+    return nullptr;
+  }
+  std::string str_context = context->EncodeContextForOatFile(kBaseDir);
+  return env->NewStringUTF(str_context.c_str());
+}
+
 static void DexFile_verifyInBackgroundNative(JNIEnv* env,
                                              jclass,
                                              jobject cookie,
-                                             jobject class_loader) {
+                                             jobject class_loader,
+                                             jstring class_loader_context) {
   CHECK(cookie != nullptr);
   CHECK(class_loader != nullptr);
 
@@ -356,8 +373,17 @@ static void DexFile_verifyInBackgroundNative(JNIEnv* env,
   }
   CHECK(oat_file == nullptr) << "Called verifyInBackground on a dex file backed by oat";
 
+  ScopedUtfChars class_loader_context_utf(env, class_loader_context);
+  if (env->ExceptionCheck()) {
+    LOG(ERROR) << "Failed to unwrap class loader context string";
+    return;
+  }
+
   // Hand over to OatFileManager to spawn a verification thread.
-  Runtime::Current()->GetOatFileManager().RunBackgroundVerification(dex_files, class_loader);
+  Runtime::Current()->GetOatFileManager().RunBackgroundVerification(
+      dex_files,
+      class_loader,
+      class_loader_context_utf.c_str());
 }
 
 static jboolean DexFile_closeDexFile(JNIEnv* env, jclass, jobject cookie) {
@@ -913,7 +939,15 @@ static JNINativeMethod gMethods[] = {
                 "[I"
                 "[I"
                 ")Ljava/lang/Object;"),
-  NATIVE_METHOD(DexFile, verifyInBackgroundNative, "(Ljava/lang/Object;Ljava/lang/ClassLoader;)V"),
+  NATIVE_METHOD(DexFile, getClassLoaderContext,
+                "(Ljava/lang/ClassLoader;"
+                "[Ldalvik/system/DexPathList$Element;"
+                ")Ljava/lang/String;"),
+  NATIVE_METHOD(DexFile, verifyInBackgroundNative,
+                "(Ljava/lang/Object;"
+                "Ljava/lang/ClassLoader;"
+                "Ljava/lang/String;"
+                ")V"),
   NATIVE_METHOD(DexFile, isValidCompilerFilter, "(Ljava/lang/String;)Z"),
   NATIVE_METHOD(DexFile, isProfileGuidedCompilerFilter, "(Ljava/lang/String;)Z"),
   NATIVE_METHOD(DexFile,
