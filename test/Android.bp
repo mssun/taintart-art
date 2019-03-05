@@ -326,7 +326,7 @@ art_cc_defaults {
     ],
     static_libs: [
         "libz",
-        "slicer",
+        "slicer_no_rtti",
     ],
 }
 
@@ -363,7 +363,7 @@ cc_library_static {
         "983-source-transform-verify/source_transform_slicer.cc",
     ],
     whole_static_libs: [
-        "slicer_ndk",
+        "slicer_ndk_no_rtti",
     ],
     static_libs: [
         "libbase_ndk",
@@ -399,7 +399,7 @@ art_cc_defaults {
     defaults: ["libtistress-srcs"],
     shared_libs: [
         "libbase",
-        "slicer",
+        "slicer_no_rtti",
     ],
 }
 
@@ -424,7 +424,7 @@ art_cc_defaults {
         "libtistress-srcs",
         "libart_static_defaults",
     ],
-    static_libs: ["slicer"],
+    static_libs: ["slicer_no_rtti"],
 }
 
 art_cc_test_library {
