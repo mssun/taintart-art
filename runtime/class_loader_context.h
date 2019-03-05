@@ -45,7 +45,8 @@ class ClassLoaderContext {
   enum ClassLoaderType {
     kInvalidClassLoader = 0,
     kPathClassLoader = 1,
-    kDelegateLastClassLoader = 2
+    kDelegateLastClassLoader = 2,
+    kInMemoryDexClassLoader = 3
   };
 
   ~ClassLoaderContext();
