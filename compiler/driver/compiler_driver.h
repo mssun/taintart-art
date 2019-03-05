@@ -121,19 +121,6 @@ class CompilerDriver {
                   TimingLogger* timings)
       REQUIRES(!Locks::mutator_lock_);
 
-  // Compile a single Method. (For testing only.)
-  void CompileOne(Thread* self,
-                  jobject class_loader,
-                  const DexFile& dex_file,
-                  uint16_t class_def_idx,
-                  uint32_t method_idx,
-                  uint32_t access_flags,
-                  InvokeType invoke_type,
-                  const dex::CodeItem* code_item,
-                  Handle<mirror::DexCache> dex_cache,
-                  Handle<mirror::ClassLoader> h_class_loader)
-      REQUIRES(!Locks::mutator_lock_);
-
   const CompilerOptions& GetCompilerOptions() const {
     return *compiler_options_;
   }
@@ -360,7 +347,7 @@ class CompilerDriver {
   // Compiler for dex to dex (quickening).
   optimizer::DexToDexCompiler dex_to_dex_compiler_;
 
-  friend class CommonCompilerTest;
+  friend class CommonCompilerDriverTest;
   friend class CompileClassVisitor;
   friend class DexToDexDecompilerTest;
   friend class InitializeClassVisitor;

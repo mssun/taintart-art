@@ -18,7 +18,7 @@
 
 #include "base/casts.h"
 #include "class_linker.h"
-#include "common_compiler_test.h"
+#include "common_compiler_driver_test.h"
 #include "compiled_method-inl.h"
 #include "compiler_callbacks.h"
 #include "dex/class_accessor-inl.h"
@@ -36,7 +36,7 @@
 
 namespace art {
 
-class DexToDexDecompilerTest : public CommonCompilerTest {
+class DexToDexDecompilerTest : public CommonCompilerDriverTest {
  public:
   void CompileAll(jobject class_loader) REQUIRES(!Locks::mutator_lock_) {
     TimingLogger timings("DexToDexDecompilerTest::CompileAll", false, false);
@@ -47,7 +47,7 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
     down_cast<QuickCompilerCallbacks*>(Runtime::Current()->GetCompilerCallbacks())->SetVerifierDeps(
         new verifier::VerifierDeps(GetDexFiles(class_loader)));
     std::vector<const DexFile*> dex_files = GetDexFiles(class_loader);
-    CommonCompilerTest::CompileAll(class_loader, dex_files, &timings);
+    CommonCompilerDriverTest::CompileAll(class_loader, dex_files, &timings);
   }
 
   void RunTest(const char* dex_name) {

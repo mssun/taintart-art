@@ -463,6 +463,7 @@ class CompilerOptions final {
 
   friend class Dex2Oat;
   friend class DexToDexDecompilerTest;
+  friend class CommonCompilerDriverTest;
   friend class CommonCompilerTest;
   friend class jit::JitCompiler;
   friend class verifier::VerifierDepsTest;

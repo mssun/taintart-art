@@ -34,7 +34,7 @@
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
 #include "class_linker-inl.h"
-#include "common_compiler_test.h"
+#include "common_compiler_driver_test.h"
 #include "compiler_callbacks.h"
 #include "debug/method_debug_info.h"
 #include "dex/quick_compiler_callbacks.h"
@@ -73,7 +73,7 @@ struct CompilationHelper {
   ~CompilationHelper();
 };
 
-class ImageTest : public CommonCompilerTest {
+class ImageTest : public CommonCompilerDriverTest {
  protected:
   virtual void SetUp() {
     ReserveImageSpace();

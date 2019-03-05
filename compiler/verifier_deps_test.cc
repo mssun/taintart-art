@@ -20,7 +20,7 @@
 #include "art_method-inl.h"
 #include "base/indenter.h"
 #include "class_linker.h"
-#include "common_compiler_test.h"
+#include "common_compiler_driver_test.h"
 #include "compiler_callbacks.h"
 #include "dex/class_accessor-inl.h"
 #include "dex/class_iterator.h"
@@ -57,7 +57,7 @@ class VerifierDepsCompilerCallbacks : public CompilerCallbacks {
   verifier::VerifierDeps* deps_;
 };
 
-class VerifierDepsTest : public CommonCompilerTest {
+class VerifierDepsTest : public CommonCompilerDriverTest {
  public:
   void SetUpRuntimeOptions(RuntimeOptions* options) override {
     CommonCompilerTest::SetUpRuntimeOptions(options);

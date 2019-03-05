@@ -24,7 +24,6 @@
 
 #include "arch/instruction_set.h"
 #include "arch/instruction_set_features.h"
-#include "base/hash_set.h"
 #include "common_runtime_test.h"
 #include "compiler.h"
 #include "oat_file.h"
@@ -34,11 +33,10 @@ namespace mirror {
 class ClassLoader;
 }  // namespace mirror
 
-class CompilerDriver;
+class CompiledMethod;
 class CompilerOptions;
 class CumulativeLogger;
 class DexFile;
-class ProfileCompilationInfo;
 class TimingLogger;
 class VerificationResults;
 
@@ -49,15 +47,10 @@ class CommonCompilerTest : public CommonRuntimeTest {
   CommonCompilerTest();
   ~CommonCompilerTest();
 
-  // Create an OatMethod based on pointers (for unit tests).
-  OatFile::OatMethod CreateOatMethod(const void* code);
-
-  void MakeExecutable(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
+  void MakeExecutable(ArtMethod* method, const CompiledMethod* compiled_method)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   static void MakeExecutable(const void* code_start, size_t code_length);
-
-  void MakeExecutable(ObjPtr<mirror::ClassLoader> class_loader, const char* class_name)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
  protected:
   void SetUp() override;
@@ -67,19 +60,11 @@ class CommonCompilerTest : public CommonRuntimeTest {
   Compiler::Kind GetCompilerKind() const;
   void SetCompilerKind(Compiler::Kind compiler_kind);
 
-  // Get the set of image classes given to the compiler-driver in SetUp.
-  virtual std::unique_ptr<HashSet<std::string>> GetImageClasses();
-
-  virtual ProfileCompilationInfo* GetProfileCompilationInfo();
-
   virtual CompilerFilter::Filter GetCompilerFilter() const {
     return CompilerFilter::kDefaultCompilerFilter;
   }
 
   void TearDown() override;
-
-  void CompileClass(mirror::ClassLoader* class_loader, const char* class_name)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
   void CompileMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -91,25 +76,12 @@ class CommonCompilerTest : public CommonRuntimeTest {
                             const char* method_name, const char* signature)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void CompileAll(jobject class_loader,
-                  const std::vector<const DexFile*>& dex_files,
-                  TimingLogger* timings) REQUIRES(!Locks::mutator_lock_);
-
   void ApplyInstructionSet();
   void OverrideInstructionSetFeatures(InstructionSet instruction_set, const std::string& variant);
-
-  void CreateCompilerDriver();
-
-  void ReserveImageSpace();
-
-  void UnreserveImageSpace();
-
-  void SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files);
 
   void ClearBootImageOption();
 
   Compiler::Kind compiler_kind_ = Compiler::kOptimizing;
-  size_t number_of_threads_ = 2u;
 
   InstructionSet instruction_set_ =
       (kRuntimeISA == InstructionSet::kArm) ? InstructionSet::kThumb2 : kRuntimeISA;
@@ -119,12 +91,8 @@ class CommonCompilerTest : public CommonRuntimeTest {
 
   std::unique_ptr<CompilerOptions> compiler_options_;
   std::unique_ptr<VerificationResults> verification_results_;
-  std::unique_ptr<CompilerDriver> compiler_driver_;
 
  private:
-  MemMap image_reservation_;
-  void* inaccessible_page_;
-
   // Chunks must not move their storage after being created - use the node-based std::list.
   std::list<std::vector<uint8_t>> header_code_and_maps_chunks_;
 };

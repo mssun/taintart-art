@@ -23,7 +23,7 @@
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
-#include "common_compiler_test.h"
+#include "common_compiler_driver_test.h"
 #include "compiled_method-inl.h"
 #include "compiler.h"
 #include "debug/method_debug_info.h"
@@ -53,7 +53,7 @@
 namespace art {
 namespace linker {
 
-class OatTest : public CommonCompilerTest {
+class OatTest : public CommonCompilerDriverTest {
  protected:
   static const bool kCompile = false;  // DISABLED_ due to the time to compile libcore
 
