@@ -260,10 +260,10 @@ static ALWAYS_INLINE bool CanUpdateRuntimeFlags(ArtMethod* method) {
 }
 
 template<typename T>
-static ALWAYS_INLINE void MaybeWhitelistMember(Runtime* runtime, T* member)
+static ALWAYS_INLINE void MaybeUpdateAccessFlags(Runtime* runtime, T* member, uint32_t flag)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (CanUpdateRuntimeFlags(member) && runtime->ShouldDedupeHiddenApiWarnings()) {
-    member->SetAccessFlags(member->GetAccessFlags() | kAccPublicApi);
+    member->SetAccessFlags(member->GetAccessFlags() | flag);
   }
 }
 
@@ -357,14 +357,27 @@ uint32_t GetDexFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
 }
 
 template<typename T>
-void MaybeReportCorePlatformApiViolation(T* member,
-                                         const AccessContext& caller_context,
-                                         AccessMethod access_method) {
+bool HandleCorePlatformApiViolation(T* member,
+                                    const AccessContext& caller_context,
+                                    AccessMethod access_method,
+                                    EnforcementPolicy policy) {
+  DCHECK(policy != EnforcementPolicy::kDisabled)
+      << "Should never enter this function when access checks are completely disabled";
+
   if (access_method != AccessMethod::kNone) {
-    MemberSignature sig(member);
-    LOG(ERROR) << "CorePlatformApi violation: " << Dumpable<MemberSignature>(sig)
-               << " from " << caller_context << " using " << access_method;
+    LOG(WARNING) << "Core platform API violation: "
+        << Dumpable<MemberSignature>(MemberSignature(member))
+        << " from " << caller_context << " using " << access_method;
+
+    // If policy is set to just warn, add kAccCorePlatformApi to access flags of
+    // `member` to avoid reporting the violation again next time.
+    if (policy == EnforcementPolicy::kJustWarn) {
+      MaybeUpdateAccessFlags(Runtime::Current(), member, kAccCorePlatformApi);
+    }
   }
+
+  // Deny access if enforcement is enabled.
+  return policy == EnforcementPolicy::kEnabled;
 }
 
 template<typename T>
@@ -388,7 +401,7 @@ bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod acce
     // Avoid re-examining the exemption list next time.
     // Note this results in no warning for the member, which seems like what one would expect.
     // Exemptions effectively adds new members to the whitelist.
-    MaybeWhitelistMember(runtime, member);
+    MaybeUpdateAccessFlags(runtime, member, kAccPublicApi);
     return false;
   }
 
@@ -418,7 +431,7 @@ bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod acce
     // If this access was not denied, move the member into whitelist and skip
     // the warning the next time the member is accessed.
     if (!deny_access) {
-      MaybeWhitelistMember(runtime, member);
+      MaybeUpdateAccessFlags(runtime, member, kAccPublicApi);
     }
   }
 
@@ -428,12 +441,14 @@ bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod acce
 // Need to instantiate these.
 template uint32_t GetDexFlags<ArtField>(ArtField* member);
 template uint32_t GetDexFlags<ArtMethod>(ArtMethod* member);
-template void MaybeReportCorePlatformApiViolation(ArtField* member,
-                                                  const AccessContext& caller_context,
-                                                  AccessMethod access_method);
-template void MaybeReportCorePlatformApiViolation(ArtMethod* member,
-                                                  const AccessContext& caller_context,
-                                                  AccessMethod access_method);
+template bool HandleCorePlatformApiViolation(ArtField* member,
+                                             const AccessContext& caller_context,
+                                             AccessMethod access_method,
+                                             EnforcementPolicy policy);
+template bool HandleCorePlatformApiViolation(ArtMethod* member,
+                                             const AccessContext& caller_context,
+                                             AccessMethod access_method,
+                                             EnforcementPolicy policy);
 template bool ShouldDenyAccessToMemberImpl<ArtField>(ArtField* member,
                                                      ApiList api_list,
                                                      AccessMethod access_method);
