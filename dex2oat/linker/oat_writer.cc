@@ -1319,16 +1319,18 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
     // Update quick method header.
     DCHECK_LT(method_offsets_index_, oat_class->method_headers_.size());
     OatQuickMethodHeader* method_header = &oat_class->method_headers_[method_offsets_index_];
-    uint32_t code_info_offset = method_header->GetVmapTableOffset();
+    uint32_t vmap_table_offset = method_header->GetVmapTableOffset();
+    // The code offset was 0 when the mapping/vmap table offset was set, so it's set
+    // to 0-offset and we need to adjust it by code_offset.
     uint32_t code_offset = quick_code_offset - thumb_offset;
     CHECK(!compiled_method->GetQuickCode().empty());
     // If the code is compiled, we write the offset of the stack map relative
-    // to the code. The offset was previously stored relative to start of file.
-    if (code_info_offset != 0u) {
-      DCHECK_LT(code_info_offset, code_offset);
-      code_info_offset = code_offset - code_info_offset;
+    // to the code.
+    if (vmap_table_offset != 0u) {
+      vmap_table_offset += code_offset;
+      DCHECK_LT(vmap_table_offset, code_offset);
     }
-    *method_header = OatQuickMethodHeader(code_info_offset);
+    *method_header = OatQuickMethodHeader(vmap_table_offset, code_size);
 
     if (!deduped) {
       // Update offsets. (Checksum is updated when writing.)
@@ -1460,9 +1462,9 @@ class OatWriter::InitMapMethodVisitor : public OatDexMethodVisitor {
           // Deduplicate the inner BitTable<>s within the CodeInfo.
           return offset_ + dedupe_bit_table_.Dedupe(map.data());
         });
-        // Code offset is not initialized yet, so set file offset for now.
+        // Code offset is not initialized yet, so set the map offset to 0u-offset.
         DCHECK_EQ(oat_class->method_offsets_[method_offsets_index_].code_offset_, 0u);
-        oat_class->method_headers_[method_offsets_index_].SetVmapTableOffset(offset);
+        oat_class->method_headers_[method_offsets_index_].SetVmapTableOffset(0u - offset);
       }
       ++method_offsets_index_;
     }

@@ -990,7 +990,8 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
     }
 
     new (method_header) OatQuickMethodHeader(
-        (stack_map != nullptr) ? code_ptr - stack_map : 0u);
+        (stack_map != nullptr) ? code_ptr - stack_map : 0u,
+        code_size);
 
     DCHECK(!Runtime::Current()->IsAotCompiler());
     if (has_should_deoptimize_flag) {

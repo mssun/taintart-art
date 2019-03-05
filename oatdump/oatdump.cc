@@ -1247,45 +1247,65 @@ class OatDumper {
     }
     {
       vios->Stream() << "CODE: ";
-      const void* code = oat_method.GetQuickCode();
-      uint32_t aligned_code_begin = AlignCodeOffset(code_offset);
-      uint64_t aligned_code_end = aligned_code_begin + code_size;
-      if (AddStatsObject(code)) {
-        stats_.Child("Code")->AddBytes(code_size);
-      }
-
-      if (options_.absolute_addresses_) {
-        vios->Stream() << StringPrintf("%p ", code);
-      }
-      vios->Stream() << StringPrintf("(code_offset=0x%08x size=%u)%s\n",
-                                     code_offset,
-                                     code_size,
-                                     code != nullptr ? "..." : "");
-
-      ScopedIndentation indent2(vios);
-      if (aligned_code_begin > oat_file_.Size()) {
+      uint32_t code_size_offset = oat_method.GetQuickCodeSizeOffset();
+      if (code_size_offset > oat_file_.Size()) {
+        ScopedIndentation indent2(vios);
         vios->Stream() << StringPrintf("WARNING: "
-                                       "start of code at 0x%08x is past end of file 0x%08zx.",
-                                       aligned_code_begin, oat_file_.Size());
+                                       "code size offset 0x%08x is past end of file 0x%08zx.",
+                                       code_size_offset, oat_file_.Size());
         success = false;
-      } else if (aligned_code_end > oat_file_.Size()) {
-        vios->Stream() << StringPrintf(
-            "WARNING: "
-            "end of code at 0x%08" PRIx64 " is past end of file 0x%08zx. "
-            "code size is 0x%08x.\n",
-            aligned_code_end, oat_file_.Size(),
-            code_size);
-        success = false;
-      } else if (code_size > kMaxCodeSize) {
-        vios->Stream() << StringPrintf(
-            "WARNING: "
-            "code size %d is bigger than max expected threshold of %d. "
-            "code size is 0x%08x.\n",
-            code_size, kMaxCodeSize,
-            code_size);
-        success = false;
-      } else if (options_.disassemble_code_) {
-        DumpCode(vios, oat_method, code_item_accessor, !success, 0);
+      } else {
+        const void* code = oat_method.GetQuickCode();
+        uint32_t aligned_code_begin = AlignCodeOffset(code_offset);
+        uint64_t aligned_code_end = aligned_code_begin + code_size;
+        if (AddStatsObject(code)) {
+          stats_.Child("Code")->AddBytes(code_size);
+        }
+
+        if (options_.absolute_addresses_) {
+          vios->Stream() << StringPrintf("%p ", code);
+        }
+        vios->Stream() << StringPrintf("(code_offset=0x%08x size_offset=0x%08x size=%u)%s\n",
+                                       code_offset,
+                                       code_size_offset,
+                                       code_size,
+                                       code != nullptr ? "..." : "");
+
+        ScopedIndentation indent2(vios);
+        if (aligned_code_begin > oat_file_.Size()) {
+          vios->Stream() << StringPrintf("WARNING: "
+                                         "start of code at 0x%08x is past end of file 0x%08zx.",
+                                         aligned_code_begin, oat_file_.Size());
+          success = false;
+        } else if (aligned_code_end > oat_file_.Size()) {
+          vios->Stream() << StringPrintf(
+              "WARNING: "
+              "end of code at 0x%08" PRIx64 " is past end of file 0x%08zx. "
+              "code size is 0x%08x loaded from offset 0x%08x.\n",
+              aligned_code_end, oat_file_.Size(),
+              code_size, code_size_offset);
+          success = false;
+          if (options_.disassemble_code_) {
+            if (code_size_offset + kPrologueBytes <= oat_file_.Size()) {
+              DumpCode(vios, oat_method, code_item_accessor, true, kPrologueBytes);
+            }
+          }
+        } else if (code_size > kMaxCodeSize) {
+          vios->Stream() << StringPrintf(
+              "WARNING: "
+              "code size %d is bigger than max expected threshold of %d. "
+              "code size is 0x%08x loaded from offset 0x%08x.\n",
+              code_size, kMaxCodeSize,
+              code_size, code_size_offset);
+          success = false;
+          if (options_.disassemble_code_) {
+            if (code_size_offset + kPrologueBytes <= oat_file_.Size()) {
+              DumpCode(vios, oat_method, code_item_accessor, true, kPrologueBytes);
+            }
+          }
+        } else if (options_.disassemble_code_) {
+          DumpCode(vios, oat_method, code_item_accessor, !success, 0);
+        }
       }
     }
     vios->Stream() << std::flush;
