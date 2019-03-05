@@ -75,7 +75,7 @@ std::string GetVdexFilename(const std::string& oat_filename);
 //          ReplaceFileExtension("foo", "abc") == "foo.abc"
 std::string ReplaceFileExtension(const std::string& filename, const std::string& new_extension);
 
-// Return whether the location is on apex/com.android.runtime
+// Return whether the location is on /apex/com.android.runtime
 bool LocationIsOnRuntimeModule(const char* location);
 
 // Return whether the location is on system (i.e. android root).
@@ -83,6 +83,9 @@ bool LocationIsOnSystem(const char* location);
 
 // Return whether the location is on system/framework (i.e. android_root/framework).
 bool LocationIsOnSystemFramework(const char* location);
+
+// Return whether the location is on /apex/.
+bool LocationIsOnApex(const char* location);
 
 // dup(2), except setting the O_CLOEXEC flag atomically, when possible.
 int DupCloexec(int fd);

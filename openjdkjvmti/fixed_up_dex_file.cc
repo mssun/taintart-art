@@ -148,7 +148,7 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
     return nullptr;
   }
 
-  const_cast<art::DexFile*>(new_dex_file.get())->SetHiddenapiDomain(original.GetHiddenapiDomain());
+  new_dex_file->SetHiddenapiDomain(original.GetHiddenapiDomain());
 
   DoDexUnquicken(*new_dex_file, original);
 
