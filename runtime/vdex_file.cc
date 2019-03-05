@@ -423,4 +423,48 @@ bool VdexFile::WriteToDisk(const std::string& path,
   return true;
 }
 
+bool VdexFile::MatchesDexFileChecksums(const std::vector<const DexFile::Header*>& dex_headers)
+    const {
+  const VerifierDepsHeader& header = GetVerifierDepsHeader();
+  if (dex_headers.size() != header.GetNumberOfDexFiles()) {
+    LOG(WARNING) << "Mismatch of number of dex files in vdex (expected="
+        << header.GetNumberOfDexFiles() << ", actual=" << dex_headers.size() << ")";
+    return false;
+  }
+  const VdexChecksum* checksums = header.GetDexChecksumsArray();
+  for (size_t i = 0; i < dex_headers.size(); ++i) {
+    if (checksums[i] != dex_headers[i]->checksum_) {
+      LOG(WARNING) << "Mismatch of dex file checksum in vdex (index=" << i << ")";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool VdexFile::MatchesBootClassPathChecksums() const {
+  ArrayRef<const uint8_t> data = GetBootClassPathChecksumData();
+  std::string vdex(reinterpret_cast<const char*>(data.data()), data.size());
+  std::string runtime = ComputeBootClassPathChecksumString();
+  if (vdex == runtime) {
+    return true;
+  } else {
+    LOG(WARNING) << "Mismatch of boot class path checksum in vdex (expected="
+        << vdex << ", actual=" << runtime << ")";
+    return false;
+  }
+}
+
+bool VdexFile::MatchesClassLoaderContext(const ClassLoaderContext& context) const {
+  ArrayRef<const uint8_t> data = GetClassLoaderContextData();
+  std::string spec(reinterpret_cast<const char*>(data.data()), data.size());
+  ClassLoaderContext::VerificationResult result = context.VerifyClassLoaderContextMatch(spec);
+  if (result != ClassLoaderContext::VerificationResult::kMismatch) {
+    return true;
+  } else {
+    LOG(WARNING) << "Mismatch of class loader context in vdex (expected="
+        << spec << ", actual=" << context.EncodeContextForOatFile("") << ")";
+    return false;
+  }
+}
+
 }  // namespace art

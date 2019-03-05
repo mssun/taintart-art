@@ -42,13 +42,18 @@ public class Main {
 
   private static void test(ClassLoader loader,
                            boolean expectedHasVdexFile,
+                           boolean expectedBackedByOat,
                            boolean invokeMethod) throws Exception {
     // If ART created a vdex file, it must have verified all the classes.
-    boolean expectedClassesVerified = expectedHasVdexFile;
+    // That happens if and only if we expect a vdex at the end of the test but
+    // do not expect it to have been loaded.
+    boolean expectedClassesVerified = expectedHasVdexFile && !expectedBackedByOat;
 
     waitForVerifier();
     check(expectedClassesVerified, areClassesVerified(loader), "areClassesVerified");
     check(expectedHasVdexFile, hasVdexFile(loader), "areClassesVerified");
+    check(expectedBackedByOat, isBackedByOatFile(loader), "isBackedByOatFile");
+    check(expectedBackedByOat, areClassesPreverified(loader), "areClassesPreverified");
 
     if (invokeMethod) {
       loader.loadClass("art.ClassB").getDeclaredMethod("printHello").invoke(null);
@@ -58,24 +63,47 @@ public class Main {
   public static void main(String[] args) throws Exception {
     System.loadLibrary(args[0]);
     ClassLoader[] loaders = null;
+
+    // Feature is disabled in debuggable mode because runtime threads are not
+    // allowed to load classes.
     boolean featureEnabled = !isDebuggable();
 
     // Data directory not set. Background verification job should not have run
     // and vdex should not have been created.
-    test(singleLoader(), /*hasVdex*/ false, /*invokeMethod*/ true);
+    test(singleLoader(), /*hasVdex*/ false, /*backedByOat*/ false, /*invokeMethod*/ true);
 
     // Set data directory for this process.
     setProcessDataDir(DEX_LOCATION);
 
     // Data directory is now set. Background verification job should have run,
     // should have verified classes and written results to a vdex.
-    test(singleLoader(), /*hasVdex*/ featureEnabled, /*invokeMethod*/ true);
+    test(singleLoader(), /*hasVdex*/ featureEnabled, /*backedByOat*/ false, /*invokeMethod*/ true);
+    test(singleLoader(), /*hasVdex*/ featureEnabled, /*backedByOat*/ true, /*invokeMethod*/ true);
 
     // Test loading the two dex files with separate class loaders.
     // Background verification task should still verify all classes.
     loaders = multiLoader();
-    test(loaders[0], /*hasVdex*/ featureEnabled, /*invokeMethod*/ false);
-    test(loaders[1], /*hasVdex*/ featureEnabled, /*invokeMethod*/ true);
+    test(loaders[0], /*hasVdex*/ featureEnabled, /*backedByOat*/ false, /*invokeMethod*/ false);
+    test(loaders[1], /*hasVdex*/ featureEnabled, /*backedByOat*/ false, /*invokeMethod*/ true);
+
+    loaders = multiLoader();
+    test(loaders[0], /*hasVdex*/ featureEnabled, /*backedByOat*/ featureEnabled,
+        /*invokeMethod*/ false);
+    test(loaders[1], /*hasVdex*/ featureEnabled, /*backedByOat*/ featureEnabled,
+        /*invokeMethod*/ true);
+
+    // Change boot classpath checksum.
+    appendToBootClassLoader(DEX_EXTRA, /*isCorePlatform*/ false);
+
+    loaders = multiLoader();
+    test(loaders[0], /*hasVdex*/ featureEnabled, /*backedByOat*/ false, /*invokeMethod*/ false);
+    test(loaders[1], /*hasVdex*/ featureEnabled, /*backedByOat*/ false, /*invokeMethod*/ true);
+
+    loaders = multiLoader();
+    test(loaders[0], /*hasVdex*/ featureEnabled, /*backedByOat*/ featureEnabled,
+        /*invokeMethod*/ false);
+    test(loaders[1], /*hasVdex*/ featureEnabled, /*backedByOat*/ featureEnabled,
+        /*invokeMethod*/ true);
   }
 
   private static native boolean isDebuggable();
@@ -83,6 +111,8 @@ public class Main {
   private static native void waitForVerifier();
   private static native boolean areClassesVerified(ClassLoader loader);
   private static native boolean hasVdexFile(ClassLoader loader);
+  private static native boolean isBackedByOatFile(ClassLoader loader);
+  private static native boolean areClassesPreverified(ClassLoader loader);
 
   // Defined in 674-hiddenapi.
   private static native void appendToBootClassLoader(String dexPath, boolean isCorePlatform);

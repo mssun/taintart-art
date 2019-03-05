@@ -737,6 +737,25 @@ void VerifierDeps::Encode(const std::vector<const DexFile*>& dex_files,
   }
 }
 
+void VerifierDeps::DecodeDexFileDeps(DexFileDeps& deps,
+                                     const uint8_t** data_start,
+                                     const uint8_t* data_end) {
+  DecodeStringVector(data_start, data_end, &deps.strings_);
+  DecodeSet(data_start, data_end, &deps.assignable_types_);
+  DecodeSet(data_start, data_end, &deps.unassignable_types_);
+  DecodeSet(data_start, data_end, &deps.classes_);
+  DecodeSet(data_start, data_end, &deps.fields_);
+  DecodeSet(data_start, data_end, &deps.methods_);
+  DecodeUint16SparseBitVector(data_start,
+                              data_end,
+                              &deps.verified_classes_,
+                              /* sparse_value= */ false);
+  DecodeUint16SparseBitVector(data_start,
+                              data_end,
+                              &deps.redefined_classes_,
+                              /* sparse_value= */ true);
+}
+
 VerifierDeps::VerifierDeps(const std::vector<const DexFile*>& dex_files,
                            ArrayRef<const uint8_t> data)
     : VerifierDeps(dex_files, /*output_only=*/ false) {
@@ -750,22 +769,28 @@ VerifierDeps::VerifierDeps(const std::vector<const DexFile*>& dex_files,
   const uint8_t* data_end = data_start + data.size();
   for (const DexFile* dex_file : dex_files) {
     DexFileDeps* deps = GetDexFileDeps(*dex_file);
-    DecodeStringVector(&data_start, data_end, &deps->strings_);
-    DecodeSet(&data_start, data_end, &deps->assignable_types_);
-    DecodeSet(&data_start, data_end, &deps->unassignable_types_);
-    DecodeSet(&data_start, data_end, &deps->classes_);
-    DecodeSet(&data_start, data_end, &deps->fields_);
-    DecodeSet(&data_start, data_end, &deps->methods_);
-    DecodeUint16SparseBitVector(&data_start,
-                                data_end,
-                                &deps->verified_classes_,
-                                /* sparse_value= */ false);
-    DecodeUint16SparseBitVector(&data_start,
-                                data_end,
-                                &deps->redefined_classes_,
-                                /* sparse_value= */ true);
+    DecodeDexFileDeps(*deps, &data_start, data_end);
   }
   CHECK_LE(data_start, data_end);
+}
+
+std::vector<std::vector<bool>> VerifierDeps::ParseVerifiedClasses(
+    const std::vector<const DexFile*>& dex_files,
+    ArrayRef<const uint8_t> data) {
+  DCHECK(!data.empty());
+  DCHECK(!dex_files.empty());
+
+  std::vector<std::vector<bool>> verified_classes_per_dex;
+  verified_classes_per_dex.reserve(dex_files.size());
+
+  const uint8_t* data_start = data.data();
+  const uint8_t* data_end = data_start + data.size();
+  for (const DexFile* dex_file : dex_files) {
+    DexFileDeps deps(dex_file->NumClassDefs());
+    DecodeDexFileDeps(deps, &data_start, data_end);
+    verified_classes_per_dex.push_back(std::move(deps.verified_classes_));
+  }
+  return verified_classes_per_dex;
 }
 
 bool VerifierDeps::Equals(const VerifierDeps& rhs) const {

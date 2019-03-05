@@ -124,6 +124,12 @@ class OatFile {
                                const char* abs_dex_location,
                                std::string* error_msg);
 
+  // Initialize OatFile instance from an already loaded VdexFile. This assumes
+  // the vdex does not have a dex section and accepts a vector of DexFiles separately.
+  static OatFile* OpenFromVdex(const std::vector<const DexFile*>& dex_files,
+                               std::unique_ptr<VdexFile>&& vdex_file,
+                               const std::string& location);
+
   virtual ~OatFile();
 
   bool IsExecutable() const {
@@ -544,6 +550,15 @@ class OatDexFile final {
              const IndexBssMapping* string_bss_mapping,
              const uint32_t* oat_class_offsets_pointer,
              const DexLayoutSections* dex_layout_sections);
+
+  // Create an OatDexFile wrapping an existing DexFile. Will set the OatDexFile
+  // pointer in the DexFile.
+  OatDexFile(const OatFile* oat_file,
+             const DexFile* dex_file,
+             const std::string& dex_file_location,
+             const std::string& canonical_dex_file_location);
+
+  bool IsBackedByVdexOnly() const;
 
   static void AssertAotCompiler();
 
