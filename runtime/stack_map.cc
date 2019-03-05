@@ -227,7 +227,7 @@ void CodeInfo::Dump(VariableIndentationOutputStream* vios,
                     bool verbose,
                     InstructionSet instruction_set) const {
   vios->Stream() << "CodeInfo BitSize=" << size_in_bits_
-    << " CodeSize:" << code_size_
+    << " CodeSize:" << StackMap::UnpackNativePc(packed_code_size_, instruction_set)
     << " FrameSize:" << packed_frame_size_ * kStackAlignment
     << " CoreSpillMask:" << std::hex << core_spill_mask_
     << " FpSpillMask:" << std::hex << fp_spill_mask_
