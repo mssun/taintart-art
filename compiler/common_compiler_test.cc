@@ -56,7 +56,7 @@ void CommonCompilerTest::MakeExecutable(ArtMethod* method, const CompiledMethod*
     ArrayRef<const uint8_t> vmap_table = compiled_method->GetVmapTable();
     const uint32_t vmap_table_offset = vmap_table.empty() ? 0u
         : sizeof(OatQuickMethodHeader) + vmap_table.size();
-    OatQuickMethodHeader method_header(vmap_table_offset);
+    OatQuickMethodHeader method_header(vmap_table_offset, code_size);
 
     header_code_and_maps_chunks_.push_back(std::vector<uint8_t>());
     std::vector<uint8_t>* chunk = &header_code_and_maps_chunks_.back();
