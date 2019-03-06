@@ -173,7 +173,7 @@ void CommonCompilerTest::CompileMethod(ArtMethod* method) {
   TimingLogger timings("CommonCompilerTest::CompileMethod", false, false);
   TimingLogger::ScopedTiming t(__FUNCTION__, &timings);
   CompiledMethodStorage storage(/*swap_fd=*/ -1);
-  const CompiledMethod* compiled_method = nullptr;
+  CompiledMethod* compiled_method = nullptr;
   {
     DCHECK(!Runtime::Current()->IsStarted());
     Thread* self = Thread::Current();
@@ -204,8 +204,12 @@ void CommonCompilerTest::CompileMethod(ArtMethod* method) {
     }
     compiler_options_->verification_results_ = nullptr;
   }
-  TimingLogger::ScopedTiming t2("MakeExecutable", &timings);
-  MakeExecutable(method, compiled_method);
+  CHECK(method != nullptr);
+  {
+    TimingLogger::ScopedTiming t2("MakeExecutable", &timings);
+    MakeExecutable(method, compiled_method);
+  }
+  CompiledMethod::ReleaseSwapAllocatedCompiledMethod(&storage, compiled_method);
 }
 
 void CommonCompilerTest::CompileDirectMethod(Handle<mirror::ClassLoader> class_loader,
