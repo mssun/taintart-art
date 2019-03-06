@@ -1115,7 +1115,6 @@ void CodeGeneratorX86_64::RecordBootImageStringPatch(HLoadString* load_string) {
 }
 
 Label* CodeGeneratorX86_64::NewStringBssEntryPatch(HLoadString* load_string) {
-  DCHECK(!GetCompilerOptions().IsBootImage());
   string_bss_entry_patches_.emplace_back(
       &load_string->GetDexFile(), load_string->GetStringIndex().index_);
   return &string_bss_entry_patches_.back().label;

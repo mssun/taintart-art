@@ -4840,7 +4840,6 @@ void InstructionCodeGeneratorARM64::VisitLoadString(HLoadString* load) NO_THREAD
       // Add ADRP with its PC-relative String .bss entry patch.
       const DexFile& dex_file = load->GetDexFile();
       const dex::StringIndex string_index = load->GetStringIndex();
-      DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
       Register temp = XRegisterFrom(out_loc);
       vixl::aarch64::Label* adrp_label = codegen_->NewStringBssEntryPatch(dex_file, string_index);
       codegen_->EmitAdrpPlaceholder(adrp_label, temp);

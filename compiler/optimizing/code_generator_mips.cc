@@ -8449,7 +8449,6 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
       return;
     }
     case HLoadString::LoadKind::kBssEntry: {
-      DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
       CodeGeneratorMIPS::PcRelativePatchInfo* info_high =
           codegen_->NewStringBssEntryPatch(load->GetDexFile(), load->GetStringIndex());
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
