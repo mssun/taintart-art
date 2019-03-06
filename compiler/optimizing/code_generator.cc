@@ -439,7 +439,7 @@ void CodeGenerator::Compile(CodeAllocator* allocator) {
   // Finalize instructions in assember;
   Finalize(allocator);
 
-  GetStackMapStream()->EndMethod(GetAssembler()->CodeSize());
+  GetStackMapStream()->EndMethod();
 }
 
 void CodeGenerator::Finalize(CodeAllocator* allocator) {
