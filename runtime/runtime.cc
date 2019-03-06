@@ -1824,6 +1824,10 @@ void Runtime::InitNativeMethods() {
   // Initialize well known classes that may invoke runtime native methods.
   WellKnownClasses::LateInit(env);
 
+  // Having loaded native libraries for Managed Core library, enable field and
+  // method resolution checks via JNI from native code.
+  JNIInitializeNativeCallerCheck();
+
   VLOG(startup) << "Runtime::InitNativeMethods exiting";
 }
 
