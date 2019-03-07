@@ -1574,7 +1574,8 @@ class ImgDiagDumper {
     // page_frame_number_clean must come from the *same* process
     // but a *different* mmap than page_frame_number
     if (flags_dirty) {
-      CHECK_NE(page_frame_number, page_frame_number_clean);
+      CHECK_NE(page_frame_number, page_frame_number_clean)
+          << " count: " << *page_count << " flags: 0x" << std::hex << kpage_flags_entry;
     }
 
     return page_frame_number != page_frame_number_clean;
