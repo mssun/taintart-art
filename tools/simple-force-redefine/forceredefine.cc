@@ -165,15 +165,51 @@ static void CbClassFileLoadHook(jvmtiEnv* jvmti,
   *newClassDataLen = new_size;
 }
 
+static jclass FindClass(jvmtiEnv* jvmti, JNIEnv* env, const std::string& name) {
+  jclass res = env->FindClass(name.c_str());
+  if (res != nullptr) {
+    return res;
+  }
+  ScopedLocalRef<jthrowable> exc(env, env->ExceptionOccurred());
+  env->ExceptionClear();
+  // Try to find it in other classloaders.
+  env->PushLocalFrame(1 << 18);
+  do {
+    jint cnt;
+    jclass* klasses;
+    if (jvmti->GetLoadedClasses(&cnt, &klasses) != JVMTI_ERROR_NONE) {
+      LOG(ERROR) << "Unable to get loaded classes!";
+      break;
+    }
+    for (jint i = 0; i < cnt; i++) {
+      char* sig;
+      if (jvmti->GetClassSignature(klasses[i], &sig, nullptr) != JVMTI_ERROR_NONE) {
+        continue;
+      }
+      if (sig[0] == 'L' && DescriptorToFQCN(sig) == name) {
+        res = klasses[i];
+        break;
+      }
+    }
+    jvmti->Deallocate(reinterpret_cast<unsigned char*>(klasses));
+  } while (false);
+  res = reinterpret_cast<jclass>(env->PopLocalFrame(res));
+  if (res == nullptr && exc.get() != nullptr) {
+    env->Throw(exc.get());
+  }
+  return res;
+}
+
 static void RedefineClass(jvmtiEnv* jvmti, JNIEnv* env, const std::string& klass_name) {
   jclass klass = nullptr;
-  if ((klass = env->FindClass(klass_name.c_str())) == nullptr || env->ExceptionCheck()) {
+  if ((klass = FindClass(jvmti, env, klass_name)) == nullptr) {
     LOG(WARNING) << "Failed to find class for " << klass_name;
     env->ExceptionDescribe();
     env->ExceptionClear();
     return;
   }
   jvmti->RetransformClasses(1, &klass);
+  env->DeleteLocalRef(klass);
 }
 
 static void AgentMain(jvmtiEnv* jvmti, JNIEnv* jni, void* arg ATTRIBUTE_UNUSED) {
