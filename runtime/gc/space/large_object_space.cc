@@ -231,6 +231,13 @@ void LargeObjectMapSpace::Walk(DlMallocSpace::WalkCallback callback, void* arg) 
   }
 }
 
+void LargeObjectMapSpace::ForEachMemMap(std::function<void(const MemMap&)> func) const {
+  MutexLock mu(Thread::Current(), lock_);
+  for (auto& pair : large_objects_) {
+    func(pair.second.mem_map);
+  }
+}
+
 bool LargeObjectMapSpace::Contains(const mirror::Object* obj) const {
   Thread* self = Thread::Current();
   if (lock_.IsExclusiveHeld(self)) {
@@ -396,6 +403,12 @@ void FreeListSpace::Walk(DlMallocSpace::WalkCallback callback, void* arg) {
     cur_info = cur_info->GetNextInfo();
   }
   CHECK_EQ(cur_info, end_info);
+}
+
+void FreeListSpace::ForEachMemMap(std::function<void(const MemMap&)> func) const {
+  MutexLock mu(Thread::Current(), lock_);
+  func(allocation_info_map_);
+  func(mem_map_);
 }
 
 void FreeListSpace::RemoveFreePrev(AllocationInfo* info) {

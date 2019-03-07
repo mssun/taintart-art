@@ -110,6 +110,7 @@ class LargeObjectSpace : public DiscontinuousSpace, public AllocSpace {
   // objects.
   virtual void SetAllLargeObjectsAsZygoteObjects(Thread* self) = 0;
 
+  virtual void ForEachMemMap(std::function<void(const MemMap&)> func) const = 0;
   // GetRangeAtomic returns Begin() and End() atomically, that is, it never returns Begin() and
   // End() from different allocations.
   virtual std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const = 0;
@@ -160,7 +161,7 @@ class LargeObjectMapSpace : public LargeObjectSpace {
   void Walk(DlMallocSpace::WalkCallback, void* arg) override REQUIRES(!lock_);
   // TODO: disabling thread safety analysis as this may be called when we already hold lock_.
   bool Contains(const mirror::Object* obj) const NO_THREAD_SAFETY_ANALYSIS;
-
+  void ForEachMemMap(std::function<void(const MemMap&)> func) const override REQUIRES(!lock_);
   std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const override REQUIRES(!lock_);
 
  protected:
@@ -193,7 +194,7 @@ class FreeListSpace final : public LargeObjectSpace {
   size_t Free(Thread* self, mirror::Object* obj) override REQUIRES(!lock_);
   void Walk(DlMallocSpace::WalkCallback callback, void* arg) override REQUIRES(!lock_);
   void Dump(std::ostream& os) const REQUIRES(!lock_);
-
+  void ForEachMemMap(std::function<void(const MemMap&)> func) const override REQUIRES(!lock_);
   std::pair<uint8_t*, uint8_t*> GetBeginEndAtomic() const override REQUIRES(!lock_);
 
  protected:
