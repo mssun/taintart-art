@@ -18,7 +18,7 @@
 #define ART_RUNTIME_GC_COLLECTOR_GARBAGE_COLLECTOR_H_
 
 #include <stdint.h>
-#include <vector>
+#include <list>
 
 #include "base/histogram.h"
 #include "base/mutex.h"
@@ -111,6 +111,9 @@ class GarbageCollector : public RootVisitor, public IsMarkedVisitor, public Mark
   void RecordFreeLOS(const ObjectBytePair& freed);
   virtual void DumpPerformanceInfo(std::ostream& os) REQUIRES(!pause_histogram_lock_);
 
+  // Extract RSS for GC-specific memory ranges using mincore().
+  uint64_t ExtractRssFromMincore(std::list<std::pair<void*, void*>>* gc_ranges);
+
   // Helper functions for querying if objects are marked. These are used for processing references,
   // and will be used for reading system weaks while the GC is running.
   virtual mirror::Object* IsMarked(mirror::Object* obj)
@@ -149,6 +152,7 @@ class GarbageCollector : public RootVisitor, public IsMarkedVisitor, public Mark
   std::string name_;
   // Cumulative statistics.
   Histogram<uint64_t> pause_histogram_ GUARDED_BY(pause_histogram_lock_);
+  Histogram<uint64_t> rss_histogram_;
   uint64_t total_thread_cpu_time_ns_;
   uint64_t total_time_ns_;
   uint64_t total_freed_objects_;

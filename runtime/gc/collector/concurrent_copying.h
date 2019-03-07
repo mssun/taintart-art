@@ -88,6 +88,7 @@ class ConcurrentCopying : public GarbageCollector {
                               !rb_slow_path_histogram_lock_,
                               !skipped_blocks_lock_);
 
+  void CaptureRssAtPeak() REQUIRES(!mark_stack_lock_);
   void BindBitmaps() REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::heap_bitmap_lock_);
   GcType GetGcType() const override {
