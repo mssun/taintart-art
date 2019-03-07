@@ -59,6 +59,9 @@ class ProfileSaver {
   // Just for testing purposes.
   static bool HasSeenMethod(const std::string& profile, bool hot, MethodReference ref);
 
+  // Notify that startup has completed.
+  static void NotifyStartupCompleted();
+
  private:
   ProfileSaver(const ProfileSaverOptions& options,
                const std::string& output_filename,

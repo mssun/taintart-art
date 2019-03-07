@@ -496,6 +496,7 @@ cc_defaults {
         "800-smali/jni.cc",
         "909-attach-agent/disallow_debugging.cc",
         "1001-app-image-regions/app_image_regions.cc",
+        "1002-notify-startup/startup_interface.cc",
         "1947-breakpoint-redefine-deopt/check_deopt.cc",
         "common/runtime_state.cc",
         "common/stack_inspect.cc",

@@ -836,6 +836,13 @@ class Runtime {
     load_app_image_startup_cache_ = enabled;
   }
 
+  // Notify the runtime that application startup is considered completed. Only has effect for the
+  // first call.
+  void NotifyStartupCompleted();
+
+  // Return true if startup is already completed.
+  bool GetStartupCompleted() const;
+
  private:
   static void InitPlatformSignalHandlers();
 
@@ -1160,6 +1167,9 @@ class Runtime {
   uint32_t verifier_logging_threshold_ms_;
 
   bool load_app_image_startup_cache_ = false;
+
+  // If startup has completed, must happen at most once.
+  std::atomic<bool> startup_completed_ = false;
 
   // Note: See comments on GetFaultMessage.
   friend std::string GetFaultMessageForAbortLogging();

@@ -306,6 +306,10 @@ static void VMRuntime_updateProcessState(JNIEnv*, jobject, jint process_state) {
   runtime->UpdateProcessState(static_cast<ProcessState>(process_state));
 }
 
+static void VMRuntime_notifyStartupCompleted(JNIEnv*, jobject) {
+  Runtime::Current()->NotifyStartupCompleted();
+}
+
 static void VMRuntime_trimHeap(JNIEnv* env, jobject) {
   Runtime::Current()->GetHeap()->Trim(ThreadForEnv(env));
 }
@@ -722,6 +726,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, registerNativeFreeInternal, "(I)V"),
   NATIVE_METHOD(VMRuntime, getNotifyNativeInterval, "()I"),
   NATIVE_METHOD(VMRuntime, notifyNativeAllocationsInternal, "()V"),
+  NATIVE_METHOD(VMRuntime, notifyStartupCompleted, "()V"),
   NATIVE_METHOD(VMRuntime, registerSensitiveThread, "()V"),
   NATIVE_METHOD(VMRuntime, requestConcurrentGC, "()V"),
   NATIVE_METHOD(VMRuntime, requestHeapTrim, "()V"),

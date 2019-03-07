@@ -109,6 +109,16 @@ ProfileSaver::~ProfileSaver() {
   }
 }
 
+void ProfileSaver::NotifyStartupCompleted() {
+  Thread* self = Thread::Current();
+  MutexLock mu(self, *Locks::profiler_lock_);
+  if (instance_ == nullptr || instance_->shutting_down_) {
+    return;
+  }
+  MutexLock mu2(self, instance_->wait_lock_);
+  instance_->period_condition_.Signal(self);
+}
+
 void ProfileSaver::Run() {
   Thread* self = Thread::Current();
 
@@ -120,7 +130,7 @@ void ProfileSaver::Run() {
   {
     MutexLock mu(self, wait_lock_);
     const uint64_t end_time = NanoTime() + MsToNs(options_.GetSaveResolvedClassesDelayMs());
-    while (true) {
+    while (!Runtime::Current()->GetStartupCompleted()) {
       const uint64_t current_time = NanoTime();
       if (current_time >= end_time) {
         break;
@@ -129,8 +139,11 @@ void ProfileSaver::Run() {
     }
     total_ms_of_sleep_ += options_.GetSaveResolvedClassesDelayMs();
   }
-  FetchAndCacheResolvedClassesAndMethods(/*startup=*/ true);
+  // Tell the runtime that startup is completed if it has not already been notified.
+  // TODO: We should use another thread to do this in case the profile saver is not running.
+  Runtime::Current()->NotifyStartupCompleted();
 
+  FetchAndCacheResolvedClassesAndMethods(/*startup=*/ true);
 
   // When we save without waiting for JIT notifications we use a simple
   // exponential back off policy bounded by max_wait_without_jit.

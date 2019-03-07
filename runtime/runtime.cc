@@ -2773,4 +2773,21 @@ void Runtime::WaitForThreadPoolWorkersToStart() {
   }
 }
 
+void Runtime::NotifyStartupCompleted() {
+  bool expected = false;
+  if (!startup_completed_.compare_exchange_strong(expected, true, std::memory_order_seq_cst)) {
+    // Right now NotifyStartupCompleted will be called up to twice, once from profiler and up to
+    // once externally. For this reason there are no asserts.
+    return;
+  }
+  VLOG(startup) << "Startup completed notified";
+
+  // Notify the profiler saver that startup is now completed.
+  ProfileSaver::NotifyStartupCompleted();
+}
+
+bool Runtime::GetStartupCompleted() const {
+  return startup_completed_.load(std::memory_order_seq_cst);
+}
+
 }  // namespace art
