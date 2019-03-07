@@ -775,10 +775,6 @@ class Runtime {
     dump_gc_performance_on_shutdown_ = value;
   }
 
-  bool GetDumpGCPerformanceOnShutdown() const {
-    return dump_gc_performance_on_shutdown_;
-  }
-
   void IncrementDeoptimizationCount(DeoptimizationKind kind) {
     DCHECK_LE(kind, DeoptimizationKind::kLast);
     deoptimization_counts_[static_cast<size_t>(kind)]++;
