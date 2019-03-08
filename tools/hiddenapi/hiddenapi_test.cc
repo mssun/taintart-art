@@ -112,7 +112,7 @@ class HiddenApiTest : public CommonRuntimeTest {
 
     File fd(file.GetFilename(), O_RDONLY, /* check_usage= */ false);
     if (fd.Fd() == -1) {
-      LOG(FATAL) << "Unable to open file '" << file.GetFilename() << "': " << strerror(errno);
+      PLOG(FATAL) << "Unable to open file '" << file.GetFilename() << "'";
       UNREACHABLE();
     }
 
@@ -133,7 +133,7 @@ class HiddenApiTest : public CommonRuntimeTest {
   std::ofstream OpenStream(const ScratchFile& file) {
     std::ofstream ofs(file.GetFilename(), std::ofstream::out);
     if (ofs.fail()) {
-      LOG(FATAL) << "Open failed for '" << file.GetFilename() << "' " << strerror(errno);
+      PLOG(FATAL) << "Open failed for '" << file.GetFilename() << "'";
       UNREACHABLE();
     }
     return ofs;
