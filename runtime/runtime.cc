@@ -2784,6 +2784,12 @@ void Runtime::NotifyStartupCompleted() {
 
   // Notify the profiler saver that startup is now completed.
   ProfileSaver::NotifyStartupCompleted();
+
+  {
+    // Delete the thread pool used for app image loading startup is completed.
+    ScopedTrace trace2("Delete thread pool");
+    DeleteThreadPool();
+  }
 }
 
 bool Runtime::GetStartupCompleted() const {
