@@ -21,6 +21,7 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -31,7 +32,9 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/array_ref.h"
 #include "base/os.h"
+#include "base/string_view_cpp20.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
 #include "gc/heap.h"
@@ -468,10 +471,12 @@ class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object
             Primitive::Type primitive_type = component_type->GetPrimitiveType();
             size_t component_size = Primitive::ComponentSize(primitive_type);
             size_t data_offset = mirror::Array::DataOffset(component_size).Uint32Value();
+            DCHECK_ALIGNED_PARAM(data_offset, component_size);
             if (i >= data_offset) {
               os_ << tabs << "Dirty array element " << (i - data_offset) / component_size << "\n";
-              // Skip to next element to prevent spam.
-              i += component_size - 1;
+              // Skip the remaining bytes of this element to prevent spam.
+              DCHECK(IsPowerOfTwo(component_size));
+              i |= component_size - 1;
               continue;
             }
           }
@@ -1109,14 +1114,10 @@ class RegionData : public RegionSpecializedBase<T> {
 class ImgDiagDumper {
  public:
   explicit ImgDiagDumper(std::ostream* os,
-                         const ImageHeader& image_header,
-                         const std::string& image_location,
                          pid_t image_diff_pid,
                          pid_t zygote_diff_pid,
                          bool dump_dirty_objects)
       : os_(os),
-        image_header_(image_header),
-        image_location_(image_location),
         image_diff_pid_(image_diff_pid),
         zygote_diff_pid_(zygote_diff_pid),
         dump_dirty_objects_(dump_dirty_objects),
@@ -1150,126 +1151,153 @@ class ImgDiagDumper {
       }
     }
 
-    // Open /proc/$pid/maps to view memory maps
-    auto tmp_proc_maps = std::unique_ptr<BacktraceMap>(BacktraceMap::Create(image_diff_pid_));
-    if (tmp_proc_maps == nullptr) {
-      os << "Could not read backtrace maps";
-      return false;
-    }
-
-    bool found_boot_map = false;
-    // Find the memory map only for boot.art
-    for (const backtrace_map_t* map : *tmp_proc_maps) {
-      if (EndsWith(map->name, GetImageLocationBaseName())) {
-        if ((map->flags & PROT_WRITE) != 0) {
-          boot_map_ = *map;
-          found_boot_map = true;
-          break;
-        }
-        // In actuality there's more than 1 map, but the second one is read-only.
-        // The one we care about is the write-able map.
-        // The readonly maps are guaranteed to be identical, so its not interesting to compare
-        // them.
+    auto open_proc_maps = [&os](pid_t pid, /*out*/ std::unique_ptr<BacktraceMap>* proc_maps) {
+      // Open /proc/<pid>/maps to view memory maps.
+      proc_maps->reset(BacktraceMap::Create(pid));
+      if (*proc_maps == nullptr) {
+        os << "Could not read backtrace maps for " << pid;
+        return false;
       }
-    }
+      return true;
+    };
+    auto open_file = [&os] (const char* file_name, /*out*/ std::unique_ptr<File>* file) {
+      file->reset(OS::OpenFileForReading(file_name));
+      if (*file == nullptr) {
+        os << "Failed to open " << file_name << " for reading";
+        return false;
+      }
+      return true;
+    };
+    auto open_mem_file = [&open_file](pid_t pid, /*out*/ std::unique_ptr<File>* mem_file) {
+      // Open /proc/<pid>/mem and for reading remote contents.
+      std::string mem_file_name =
+          StringPrintf("/proc/%ld/mem", static_cast<long>(pid));  // NOLINT [runtime/int]
+      return open_file(mem_file_name.c_str(), mem_file);
+    };
+    auto open_pagemap_file = [&open_file](pid_t pid, /*out*/ std::unique_ptr<File>* pagemap_file) {
+      // Open /proc/<pid>/pagemap.
+      std::string pagemap_file_name = StringPrintf(
+          "/proc/%ld/pagemap", static_cast<long>(pid));  // NOLINT [runtime/int]
+      return open_file(pagemap_file_name.c_str(), pagemap_file);
+    };
 
-    if (!found_boot_map) {
-      os << "Could not find map for " << GetImageLocationBaseName();
+    // Open files for inspecting image memory.
+    std::unique_ptr<BacktraceMap> image_proc_maps;
+    std::unique_ptr<File> image_mem_file;
+    std::unique_ptr<File> image_pagemap_file;
+    if (!open_proc_maps(image_diff_pid_, &image_proc_maps) ||
+        !open_mem_file(image_diff_pid_, &image_mem_file) ||
+        !open_pagemap_file(image_diff_pid_, &image_pagemap_file)) {
       return false;
     }
-    // Sanity check boot_map_.
-    CHECK(boot_map_.end >= boot_map_.start);
-    boot_map_size_ = boot_map_.end - boot_map_.start;
 
-    // Open /proc/<image_diff_pid_>/mem and read as remote_contents_.
-    std::string image_file_name =
-        StringPrintf("/proc/%ld/mem", static_cast<long>(image_diff_pid_));  // NOLINT [runtime/int]
-    auto image_map_file = std::unique_ptr<File>(OS::OpenFileForReading(image_file_name.c_str()));
-    if (image_map_file == nullptr) {
-      os << "Failed to open " << image_file_name << " for reading";
-      return false;
-    }
-    std::vector<uint8_t> tmp_remote_contents(boot_map_size_);
-    if (!image_map_file->PreadFully(&tmp_remote_contents[0], boot_map_size_, boot_map_.start)) {
-      os << "Could not fully read file " << image_file_name;
-      return false;
-    }
-
-    // If zygote_diff_pid_ != -1, open /proc/<zygote_diff_pid_>/mem and read as zygote_contents_.
-    std::vector<uint8_t> tmp_zygote_contents;
+    // If zygote_diff_pid_ != -1, open files for inspecting zygote memory.
+    std::unique_ptr<BacktraceMap> zygote_proc_maps;
+    std::unique_ptr<File> zygote_mem_file;
+    std::unique_ptr<File> zygote_pagemap_file;
     if (zygote_diff_pid_ != -1) {
-      std::string zygote_file_name =
-          StringPrintf("/proc/%ld/mem", static_cast<long>(zygote_diff_pid_));  // NOLINT [runtime/int]
-      std::unique_ptr<File> zygote_map_file(OS::OpenFileForReading(zygote_file_name.c_str()));
-      if (zygote_map_file == nullptr) {
-        os << "Failed to open " << zygote_file_name << " for reading";
-        return false;
-      }
-      // The boot map should be at the same address.
-      tmp_zygote_contents.resize(boot_map_size_);
-      if (!zygote_map_file->PreadFully(&tmp_zygote_contents[0], boot_map_size_, boot_map_.start)) {
-        LOG(WARNING) << "Could not fully read zygote file " << zygote_file_name;
+      if (!open_proc_maps(zygote_diff_pid_, &zygote_proc_maps) ||
+          !open_mem_file(zygote_diff_pid_, &zygote_mem_file) ||
+          !open_pagemap_file(zygote_diff_pid_, &zygote_pagemap_file)) {
         return false;
       }
     }
 
-    // Open /proc/<image_diff_pid_>/pagemap.
-    std::string pagemap_file_name = StringPrintf(
-        "/proc/%ld/pagemap", static_cast<long>(image_diff_pid_));  // NOLINT [runtime/int]
-    auto tmp_pagemap_file =
-        std::unique_ptr<File>(OS::OpenFileForReading(pagemap_file_name.c_str()));
-    if (tmp_pagemap_file == nullptr) {
-      os << "Failed to open " << pagemap_file_name << " for reading: " << strerror(errno);
+    std::unique_ptr<File> clean_pagemap_file;
+    std::unique_ptr<File> kpageflags_file;
+    std::unique_ptr<File> kpagecount_file;
+    if (!open_file("/proc/self/pagemap", &clean_pagemap_file) ||
+        !open_file("/proc/kpageflags", &kpageflags_file) ||
+        !open_file("/proc/kpagecount", &kpagecount_file)) {
       return false;
     }
 
-    // Not truly clean, mmap-ing boot.art again would be more pristine, but close enough
-    const char* clean_pagemap_file_name = "/proc/self/pagemap";
-    auto tmp_clean_pagemap_file = std::unique_ptr<File>(
-        OS::OpenFileForReading(clean_pagemap_file_name));
-    if (tmp_clean_pagemap_file == nullptr) {
-      os << "Failed to open " << clean_pagemap_file_name << " for reading: " << strerror(errno);
+    // Check that the loaded boot image is really clean.
+    Runtime* runtime = Runtime::Current();
+    CHECK(!runtime->ShouldRelocate());
+    size_t total_dirty_pages = 0u;
+    for (gc::space::ImageSpace* space : runtime->GetHeap()->GetBootImageSpaces()) {
+      const ImageHeader& image_header = space->GetImageHeader();
+      const uint8_t* image_begin = image_header.GetImageBegin();
+      const uint8_t* image_end = AlignUp(image_begin + image_header.GetImageSize(), kPageSize);
+      size_t virtual_page_idx_begin = reinterpret_cast<uintptr_t>(image_begin) / kPageSize;
+      size_t virtual_page_idx_end = reinterpret_cast<uintptr_t>(image_end) / kPageSize;
+      size_t num_virtual_pages = virtual_page_idx_end - virtual_page_idx_begin;
+
+      std::string error_msg;
+      std::vector<uint64_t> page_frame_numbers(num_virtual_pages);
+      if (!GetPageFrameNumbers(clean_pagemap_file.get(),
+                               virtual_page_idx_begin,
+                               ArrayRef<uint64_t>(page_frame_numbers),
+                               &error_msg)) {
+        os << "Failed to get page frame numbers for image space " << space->GetImageLocation()
+           << ", error: " << error_msg;
+        return false;
+      }
+
+      std::vector<uint64_t> page_flags(num_virtual_pages);
+      if (!GetPageFlagsOrCounts(kpageflags_file.get(),
+                                ArrayRef<const uint64_t>(page_frame_numbers),
+                                ArrayRef<uint64_t>(page_flags),
+                                &error_msg)) {
+        os << "Failed to get page flags for image space " << space->GetImageLocation()
+           << ", error: " << error_msg;
+        return false;
+      }
+
+      size_t num_dirty_pages = 0u;
+      std::optional<size_t> first_dirty_page;
+      for (size_t i = 0u, size = page_flags.size(); i != size; ++i) {
+        if (UNLIKELY((page_flags[i] & kPageFlagsDirtyMask) != 0u)) {
+          ++num_dirty_pages;
+          if (!first_dirty_page.has_value()) {
+            first_dirty_page = i;
+          }
+        }
+      }
+      if (num_dirty_pages != 0u) {
+        DCHECK(first_dirty_page.has_value());
+        os << "Found " << num_dirty_pages << " dirty pages for " << space->GetImageLocation()
+           << ", first dirty page: " << first_dirty_page.value_or(0u);
+        total_dirty_pages += num_dirty_pages;
+      }
+    }
+    if (total_dirty_pages != 0u) {
+      os << "Aborting: found dirty pages in boot image that should have been clean.";
       return false;
     }
 
-    auto tmp_kpageflags_file = std::unique_ptr<File>(OS::OpenFileForReading("/proc/kpageflags"));
-    if (tmp_kpageflags_file == nullptr) {
-      os << "Failed to open /proc/kpageflags for reading: " << strerror(errno);
-      return false;
+    // Commit the mappings and files.
+    image_proc_maps_ = std::move(image_proc_maps);
+    image_mem_file_ = std::move(*image_mem_file);
+    image_pagemap_file_ = std::move(*image_pagemap_file);
+    if (zygote_diff_pid_ != -1) {
+      zygote_proc_maps_ = std::move(zygote_proc_maps);
+      zygote_mem_file_ = std::move(*zygote_mem_file);
+      zygote_pagemap_file_ = std::move(*zygote_pagemap_file);
     }
-
-    auto tmp_kpagecount_file = std::unique_ptr<File>(OS::OpenFileForReading("/proc/kpagecount"));
-    if (tmp_kpagecount_file == nullptr) {
-      os << "Failed to open /proc/kpagecount for reading:" << strerror(errno);
-      return false;
-    }
-
-    // Commit the mappings, etc.
-    proc_maps_ = std::move(tmp_proc_maps);
-    remote_contents_ = std::move(tmp_remote_contents);
-    zygote_contents_ = std::move(tmp_zygote_contents);
-    pagemap_file_ = std::move(*tmp_pagemap_file.release());
-    clean_pagemap_file_ = std::move(*tmp_clean_pagemap_file.release());
-    kpageflags_file_ = std::move(*tmp_kpageflags_file.release());
-    kpagecount_file_ = std::move(*tmp_kpagecount_file.release());
+    clean_pagemap_file_ = std::move(*clean_pagemap_file);
+    kpageflags_file_ = std::move(*kpageflags_file);
+    kpagecount_file_ = std::move(*kpagecount_file);
 
     return true;
   }
 
-  bool Dump() REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool Dump(const ImageHeader& image_header, const std::string& image_location)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
     std::ostream& os = *os_;
-    os << "IMAGE LOCATION: " << image_location_ << "\n\n";
+    os << "IMAGE LOCATION: " << image_location << "\n\n";
 
-    os << "MAGIC: " << image_header_.GetMagic() << "\n\n";
+    os << "MAGIC: " << image_header.GetMagic() << "\n\n";
 
-    os << "IMAGE BEGIN: " << reinterpret_cast<void*>(image_header_.GetImageBegin()) << "\n\n";
+    os << "IMAGE BEGIN: " << reinterpret_cast<void*>(image_header.GetImageBegin()) << "\n\n";
 
     PrintPidLine("IMAGE", image_diff_pid_);
     os << "\n\n";
     PrintPidLine("ZYGOTE", zygote_diff_pid_);
     bool ret = true;
     if (image_diff_pid_ >= 0 || zygote_diff_pid_ >= 0) {
-      ret = DumpImageDiff();
+      ret = DumpImageDiff(image_header, image_location);
       os << "\n\n";
     }
 
@@ -1279,12 +1307,16 @@ class ImgDiagDumper {
   }
 
  private:
-  bool DumpImageDiff()
+  bool DumpImageDiff(const ImageHeader& image_header, const std::string& image_location)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    return DumpImageDiffMap();
+    return DumpImageDiffMap(image_header, image_location);
   }
 
-  bool ComputeDirtyBytes(const uint8_t* image_begin, MappingData* mapping_data /*out*/) {
+  bool ComputeDirtyBytes(const ImageHeader& image_header,
+                         const uint8_t* image_begin,
+                         const backtrace_map_t& boot_map,
+                         const std::vector<uint8_t>& remote_contents,
+                         MappingData* mapping_data /*out*/) {
     std::ostream& os = *os_;
 
     size_t virtual_page_idx = 0;   // Virtual page number (for an absolute memory address)
@@ -1293,21 +1325,21 @@ class ImgDiagDumper {
 
 
     // Iterate through one page at a time. Boot map begin/end already implicitly aligned.
-    for (uintptr_t begin = boot_map_.start; begin != boot_map_.end; begin += kPageSize) {
-      ptrdiff_t offset = begin - boot_map_.start;
+    for (uintptr_t begin = boot_map.start; begin != boot_map.end; begin += kPageSize) {
+      ptrdiff_t offset = begin - boot_map.start;
 
       // We treat the image header as part of the memory map for now
       // If we wanted to change this, we could pass base=start+sizeof(ImageHeader)
       // But it might still be interesting to see if any of the ImageHeader data mutated
-      const uint8_t* local_ptr = reinterpret_cast<const uint8_t*>(&image_header_) + offset;
-      uint8_t* remote_ptr = &remote_contents_[offset];
+      const uint8_t* local_ptr = reinterpret_cast<const uint8_t*>(&image_header) + offset;
+      const uint8_t* remote_ptr = &remote_contents[offset];
 
       if (memcmp(local_ptr, remote_ptr, kPageSize) != 0) {
         mapping_data->different_pages++;
 
         // Count the number of 32-bit integers that are different.
         for (size_t i = 0; i < kPageSize / sizeof(uint32_t); ++i) {
-          uint32_t* remote_ptr_int32 = reinterpret_cast<uint32_t*>(remote_ptr);
+          const uint32_t* remote_ptr_int32 = reinterpret_cast<const uint32_t*>(remote_ptr);
           const uint32_t* local_ptr_int32 = reinterpret_cast<const uint32_t*>(local_ptr);
 
           if (remote_ptr_int32[i] != local_ptr_int32[i]) {
@@ -1320,16 +1352,16 @@ class ImgDiagDumper {
     std::vector<size_t> private_dirty_pages_for_section(ImageHeader::kSectionCount, 0u);
 
     // Iterate through one byte at a time.
-    ptrdiff_t page_off_begin = image_header_.GetImageBegin() - image_begin;
-    for (uintptr_t begin = boot_map_.start; begin != boot_map_.end; ++begin) {
+    ptrdiff_t page_off_begin = image_header.GetImageBegin() - image_begin;
+    for (uintptr_t begin = boot_map.start; begin != boot_map.end; ++begin) {
       previous_page_idx = page_idx;
-      ptrdiff_t offset = begin - boot_map_.start;
+      ptrdiff_t offset = begin - boot_map.start;
 
       // We treat the image header as part of the memory map for now
       // If we wanted to change this, we could pass base=start+sizeof(ImageHeader)
       // But it might still be interesting to see if any of the ImageHeader data mutated
-      const uint8_t* local_ptr = reinterpret_cast<const uint8_t*>(&image_header_) + offset;
-      uint8_t* remote_ptr = &remote_contents_[offset];
+      const uint8_t* local_ptr = reinterpret_cast<const uint8_t*>(&image_header) + offset;
+      const uint8_t* remote_ptr = &remote_contents[offset];
 
       virtual_page_idx = reinterpret_cast<uintptr_t>(local_ptr) / kPageSize;
 
@@ -1346,7 +1378,7 @@ class ImgDiagDumper {
         uint64_t page_count = 0xC0FFEE;
         // TODO: virtual_page_idx needs to be from the same process
         std::string error_msg;
-        int dirtiness = (IsPageDirty(&pagemap_file_,           // Image-diff-pid procmap
+        int dirtiness = (IsPageDirty(&image_pagemap_file_,     // Image-diff-pid procmap
                                      &clean_pagemap_file_,     // Self procmap
                                      &kpageflags_file_,
                                      &kpagecount_file_,
@@ -1373,7 +1405,7 @@ class ImgDiagDumper {
           mapping_data->private_dirty_pages++;
           for (size_t i = 0; i < ImageHeader::kSectionCount; ++i) {
             const ImageHeader::ImageSections section = static_cast<ImageHeader::ImageSections>(i);
-            if (image_header_.GetImageSection(section).Contains(offset)) {
+            if (image_header.GetImageSection(section).Contains(offset)) {
               ++private_dirty_pages_for_section[i];
             }
           }
@@ -1397,7 +1429,7 @@ class ImgDiagDumper {
     os << "Image sections (total private dirty pages " << total_private_dirty_pages << ")\n";
     for (size_t i = 0; i < ImageHeader::kSectionCount; ++i) {
       const ImageHeader::ImageSections section = static_cast<ImageHeader::ImageSections>(i);
-      os << section << " " << image_header_.GetImageSection(section)
+      os << section << " " << image_header.GetImageSection(section)
          << " private dirty pages=" << private_dirty_pages_for_section[i] << "\n";
     }
     os << "\n";
@@ -1406,40 +1438,115 @@ class ImgDiagDumper {
   }
 
   // Look at /proc/$pid/mem and only diff the things from there
-  bool DumpImageDiffMap()
+  bool DumpImageDiffMap(const ImageHeader& image_header, const std::string& image_location)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     std::ostream& os = *os_;
     std::string error_msg;
 
+    std::string image_location_base_name = GetImageLocationBaseName(image_location);
+    // FIXME: BacktraceMap should provide a const_iterator so that we can take `maps` as const&.
+    auto find_boot_map = [&os, &image_location_base_name](BacktraceMap& maps, const char* tag)
+        -> std::optional<backtrace_map_t> {
+      // Find the memory map for the current boot image component.
+      for (const backtrace_map_t* map : maps) {
+        if (EndsWith(map->name, image_location_base_name)) {
+          if ((map->flags & PROT_WRITE) != 0) {
+            return *map;
+          }
+          // In actuality there's more than 1 map, but the second one is read-only.
+          // The one we care about is the write-able map.
+          // The readonly maps are guaranteed to be identical, so its not interesting to compare
+          // them.
+        }
+      }
+      os << "Could not find map for " << image_location_base_name << " in " << tag;
+      return std::nullopt;
+    };
+
+    // Find the current boot image mapping.
+    std::optional<backtrace_map_t> maybe_boot_map = find_boot_map(*image_proc_maps_, "image");
+    if (maybe_boot_map == std::nullopt) {
+      return false;
+    }
+    backtrace_map_t boot_map = maybe_boot_map.value_or(backtrace_map_t{});
+    // Sanity check boot_map_.
+    CHECK(boot_map.end >= boot_map.start);
+    // The size of the boot image mapping.
+    size_t boot_map_size = boot_map.end - boot_map.start;
+
+    // If zygote_diff_pid_ != -1, check that the zygote boot map is the same.
+    if (zygote_diff_pid_ != -1) {
+      std::optional<backtrace_map_t> maybe_zygote_boot_map =
+          find_boot_map(*zygote_proc_maps_, "zygote");
+      if (maybe_zygote_boot_map == std::nullopt) {
+        return false;
+      }
+      backtrace_map_t zygote_boot_map = maybe_zygote_boot_map.value_or(backtrace_map_t{});
+      if (zygote_boot_map.start != boot_map.start || zygote_boot_map.end != boot_map.end) {
+        os << "Zygote boot map does not match image boot map: "
+           << "zygote begin " << reinterpret_cast<const void*>(zygote_boot_map.start)
+           << ", zygote end " << reinterpret_cast<const void*>(zygote_boot_map.end)
+           << ", image begin " << reinterpret_cast<const void*>(boot_map.start)
+           << ", image end " << reinterpret_cast<const void*>(boot_map.end);
+        return false;
+      }
+    }
+
     // Walk the bytes and diff against our boot image
     os << "\nObserving boot image header at address "
-       << reinterpret_cast<const void*>(&image_header_)
+       << reinterpret_cast<const void*>(&image_header)
        << "\n\n";
 
-    const uint8_t* image_begin_unaligned = image_header_.GetImageBegin();
-    const uint8_t* image_end_unaligned = image_begin_unaligned + image_header_.GetImageSize();
+    const uint8_t* image_begin_unaligned = image_header.GetImageBegin();
+    const uint8_t* image_end_unaligned = image_begin_unaligned + image_header.GetImageSize();
 
     // Adjust range to nearest page
     const uint8_t* image_begin = AlignDown(image_begin_unaligned, kPageSize);
     const uint8_t* image_end = AlignUp(image_end_unaligned, kPageSize);
 
-    if (reinterpret_cast<uintptr_t>(image_begin) > boot_map_.start ||
-        reinterpret_cast<uintptr_t>(image_end) < boot_map_.end) {
+    size_t image_size = image_end - image_begin;
+    if (image_size != boot_map_size) {
+      os << "Remote boot map size does not match local boot map size: "
+         << "local size " << image_size
+         << ", remote size " << boot_map_size;
+      return false;
+    }
+
+    // The contents of /proc/<image_diff_pid_>/maps.
+    std::vector<uint8_t> remote_contents(boot_map_size);
+    if (!image_mem_file_.PreadFully(remote_contents.data(), boot_map_size, boot_map.start)) {
+      os << "Could not fully read file " << image_mem_file_.GetPath();
+      return false;
+    }
+    // The contents of /proc/<zygote_diff_pid_>/maps.
+    std::vector<uint8_t> zygote_contents;
+    if (zygote_diff_pid_ != -1) {
+      zygote_contents.resize(boot_map_size);
+      if (!zygote_mem_file_.PreadFully(zygote_contents.data(), boot_map_size, boot_map.start)) {
+        LOG(WARNING) << "Could not fully read zygote file " << zygote_mem_file_.GetPath();
+        return false;
+      }
+    }
+
+    // FIXME: Because of ASLR, this check shall fail for most processes.
+    // We need to update the entire diff to work with the ASLR. b/77856493
+    if (reinterpret_cast<uintptr_t>(image_begin) > boot_map.start ||
+        reinterpret_cast<uintptr_t>(image_end) < boot_map.end) {
       // Sanity check that we aren't trying to read a completely different boot image
       os << "Remote boot map is out of range of local boot map: " <<
         "local begin " << reinterpret_cast<const void*>(image_begin) <<
         ", local end " << reinterpret_cast<const void*>(image_end) <<
-        ", remote begin " << reinterpret_cast<const void*>(boot_map_.start) <<
-        ", remote end " << reinterpret_cast<const void*>(boot_map_.end);
+        ", remote begin " << reinterpret_cast<const void*>(boot_map.start) <<
+        ", remote end " << reinterpret_cast<const void*>(boot_map.end);
       return false;
       // If we wanted even more validation we could map the ImageHeader from the file
     }
 
     MappingData mapping_data;
 
-    os << "Mapping at [" << reinterpret_cast<void*>(boot_map_.start) << ", "
-       << reinterpret_cast<void*>(boot_map_.end) << ") had:\n  ";
-    if (!ComputeDirtyBytes(image_begin, &mapping_data)) {
+    os << "Mapping at [" << reinterpret_cast<void*>(boot_map.start) << ", "
+       << reinterpret_cast<void*>(boot_map.end) << ") had:\n  ";
+    if (!ComputeDirtyBytes(image_header, image_begin, boot_map, remote_contents, &mapping_data)) {
       return false;
     }
     RemoteProcesses remotes;
@@ -1453,10 +1560,10 @@ class ImgDiagDumper {
 
     // Check all the mirror::Object entries in the image.
     RegionData<mirror::Object> object_region_data(os_,
-                                                  &remote_contents_,
-                                                  &zygote_contents_,
-                                                  boot_map_,
-                                                  image_header_,
+                                                  &remote_contents,
+                                                  &zygote_contents,
+                                                  boot_map,
+                                                  image_header,
                                                   dump_dirty_objects_);
     object_region_data.ProcessRegion(mapping_data,
                                      remotes,
@@ -1464,10 +1571,10 @@ class ImgDiagDumper {
 
     // Check all the ArtMethod entries in the image.
     RegionData<ArtMethod> artmethod_region_data(os_,
-                                                &remote_contents_,
-                                                &zygote_contents_,
-                                                boot_map_,
-                                                image_header_,
+                                                &remote_contents,
+                                                &zygote_contents,
+                                                boot_map,
+                                                image_header,
                                                 dump_dirty_objects_);
     artmethod_region_data.ProcessRegion(mapping_data,
                                         remotes,
@@ -1475,36 +1582,77 @@ class ImgDiagDumper {
     return true;
   }
 
+  // Note: On failure, `*page_frame_number` shall be clobbered.
   static bool GetPageFrameNumber(File* page_map_file,
-                                size_t virtual_page_index,
-                                uint64_t* page_frame_number,
-                                std::string* error_msg) {
-    CHECK(page_map_file != nullptr);
+                                 size_t virtual_page_index,
+                                 /*out*/ uint64_t* page_frame_number,
+                                 /*out*/ std::string* error_msg) {
     CHECK(page_frame_number != nullptr);
+    return GetPageFrameNumbers(page_map_file,
+                               virtual_page_index,
+                               ArrayRef<uint64_t>(page_frame_number, 1u),
+                               error_msg);
+  }
+
+  // Note: On failure, `page_frame_numbers[.]` shall be clobbered.
+  static bool GetPageFrameNumbers(File* page_map_file,
+                                  size_t virtual_page_index,
+                                  /*out*/ ArrayRef<uint64_t> page_frame_numbers,
+                                  /*out*/ std::string* error_msg) {
+    CHECK(page_map_file != nullptr);
+    CHECK_NE(page_frame_numbers.size(), 0u);
+    CHECK(page_frame_numbers.data() != nullptr);
     CHECK(error_msg != nullptr);
 
-    constexpr size_t kPageMapEntrySize = sizeof(uint64_t);
-    constexpr uint64_t kPageFrameNumberMask = (1ULL << 55) - 1;  // bits 0-54 [in /proc/$pid/pagemap]
-    constexpr uint64_t kPageSoftDirtyMask = (1ULL << 55);  // bit 55 [in /proc/$pid/pagemap]
-
-    uint64_t page_map_entry = 0;
-
-    // Read 64-bit entry from /proc/$pid/pagemap to get the physical page frame number
-    if (!page_map_file->PreadFully(&page_map_entry, kPageMapEntrySize,
-                                  virtual_page_index * kPageMapEntrySize)) {
-      *error_msg = StringPrintf("Failed to read the virtual page index entry from %s",
-                                page_map_file->GetPath().c_str());
+    // Read 64-bit entries from /proc/$pid/pagemap to get the physical page frame numbers.
+    if (!page_map_file->PreadFully(page_frame_numbers.data(),
+                                   page_frame_numbers.size() * kPageMapEntrySize,
+                                   virtual_page_index * kPageMapEntrySize)) {
+      *error_msg = StringPrintf("Failed to read the virtual page index entries from %s, error: %s",
+                                page_map_file->GetPath().c_str(),
+                                strerror(errno));
       return false;
     }
 
-    // TODO: seems useless, remove this.
-    bool soft_dirty = (page_map_entry & kPageSoftDirtyMask) != 0;
-    if ((false)) {
-      LOG(VERBOSE) << soft_dirty;  // Suppress unused warning
-      UNREACHABLE();
+    // Extract page frame numbers from pagemap entries.
+    for (uint64_t& page_frame_number : page_frame_numbers) {
+      page_frame_number &= kPageFrameNumberMask;
     }
 
-    *page_frame_number = page_map_entry & kPageFrameNumberMask;
+    return true;
+  }
+
+  // Note: On failure, `page_flags_or_counts[.]` shall be clobbered.
+  static bool GetPageFlagsOrCounts(File* kpage_file,
+                                   ArrayRef<const uint64_t> page_frame_numbers,
+                                   /*out*/ ArrayRef<uint64_t> page_flags_or_counts,
+                                   /*out*/ std::string* error_msg) {
+    static_assert(kPageFlagsEntrySize == kPageCountEntrySize, "entry size check");
+    CHECK_NE(page_frame_numbers.size(), 0u);
+    CHECK_EQ(page_flags_or_counts.size(), page_frame_numbers.size());
+    CHECK(kpage_file != nullptr);
+    CHECK(page_frame_numbers.data() != nullptr);
+    CHECK(page_flags_or_counts.data() != nullptr);
+    CHECK(error_msg != nullptr);
+
+    size_t size = page_frame_numbers.size();
+    size_t i = 0;
+    while (i != size) {
+      size_t start = i;
+      ++i;
+      while (i != size && page_frame_numbers[i] - page_frame_numbers[start] == i - start) {
+        ++i;
+      }
+      // Read 64-bit entries from /proc/kpageflags or /proc/kpagecount.
+      if (!kpage_file->PreadFully(page_flags_or_counts.data() + start,
+                                  (i - start) * kPageMapEntrySize,
+                                  page_frame_numbers[start] * kPageFlagsEntrySize)) {
+        *error_msg = StringPrintf("Failed to read the page flags or counts from %s, error: %s",
+                                  kpage_file->GetPath().c_str(),
+                                  strerror(errno));
+        return false;
+      }
+    }
 
     return true;
   }
@@ -1526,12 +1674,6 @@ class ImgDiagDumper {
     CHECK(error_msg != nullptr);
 
     // Constants are from https://www.kernel.org/doc/Documentation/vm/pagemap.txt
-
-    constexpr size_t kPageFlagsEntrySize = sizeof(uint64_t);
-    constexpr size_t kPageCountEntrySize = sizeof(uint64_t);
-    constexpr uint64_t kPageFlagsDirtyMask = (1ULL << 4);  // in /proc/kpageflags
-    constexpr uint64_t kPageFlagsNoPageMask = (1ULL << 20);  // in /proc/kpageflags
-    constexpr uint64_t kPageFlagsMmapMask = (1ULL << 11);  // in /proc/kpageflags
 
     uint64_t page_frame_number = 0;
     if (!GetPageFrameNumber(page_map_file, virtual_page_idx, &page_frame_number, error_msg)) {
@@ -1589,11 +1731,6 @@ class ImgDiagDumper {
     }
   }
 
-  static bool EndsWith(const std::string& str, const std::string& suffix) {
-    return str.size() >= suffix.size() &&
-           str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
-  }
-
   // Return suffix of the file path after the last /. (e.g. /foo/bar -> bar, bar -> bar)
   static std::string BaseName(const std::string& str) {
     size_t idx = str.rfind('/');
@@ -1605,30 +1742,41 @@ class ImgDiagDumper {
   }
 
   // Return the image location, stripped of any directories, e.g. "boot.art" or "core.art"
-  std::string GetImageLocationBaseName() const {
-    return BaseName(std::string(image_location_));
+  static std::string GetImageLocationBaseName(const std::string& image_location) {
+    return BaseName(std::string(image_location));
   }
 
+  static constexpr size_t kPageMapEntrySize = sizeof(uint64_t);
+  // bits 0-54 [in /proc/$pid/pagemap]
+  static constexpr uint64_t kPageFrameNumberMask = (1ULL << 55) - 1;
+
+  static constexpr size_t kPageFlagsEntrySize = sizeof(uint64_t);
+  static constexpr size_t kPageCountEntrySize = sizeof(uint64_t);
+  static constexpr uint64_t kPageFlagsDirtyMask = (1ULL << 4);  // in /proc/kpageflags
+  static constexpr uint64_t kPageFlagsNoPageMask = (1ULL << 20);  // in /proc/kpageflags
+  static constexpr uint64_t kPageFlagsMmapMask = (1ULL << 11);  // in /proc/kpageflags
+
+
   std::ostream* os_;
-  const ImageHeader& image_header_;
-  const std::string image_location_;
   pid_t image_diff_pid_;  // Dump image diff against boot.art if pid is non-negative
   pid_t zygote_diff_pid_;  // Dump image diff against zygote boot.art if pid is non-negative
   bool dump_dirty_objects_;  // Adds dumping of objects that are dirty.
   bool zygote_pid_only_;  // The user only specified a pid for the zygote.
 
   // BacktraceMap used for finding the memory mapping of the image file.
-  std::unique_ptr<BacktraceMap> proc_maps_;
-  // Boot image mapping.
-  backtrace_map_t boot_map_{};
-  // The size of the boot image mapping.
-  size_t boot_map_size_;
-  // The contents of /proc/<image_diff_pid_>/maps.
-  std::vector<uint8_t> remote_contents_;
-  // The contents of /proc/<zygote_diff_pid_>/maps.
-  std::vector<uint8_t> zygote_contents_;
-  // A File for reading /proc/<zygote_diff_pid_>/maps.
-  File pagemap_file_;
+  std::unique_ptr<BacktraceMap> image_proc_maps_;
+  // A File for reading /proc/<image_diff_pid_>/mem.
+  File image_mem_file_;
+  // A File for reading /proc/<image_diff_pid_>/pagemap.
+  File image_pagemap_file_;
+
+  // BacktraceMap used for finding the memory mapping of the zygote image file.
+  std::unique_ptr<BacktraceMap> zygote_proc_maps_;
+  // A File for reading /proc/<zygote_diff_pid_>/mem.
+  File zygote_mem_file_;
+  // A File for reading /proc/<zygote_diff_pid_>/pagemap.
+  File zygote_pagemap_file_;
+
   // A File for reading /proc/self/pagemap.
   File clean_pagemap_file_;
   // A File for reading /proc/kpageflags.
@@ -1646,8 +1794,15 @@ static int DumpImage(Runtime* runtime,
                      bool dump_dirty_objects) {
   ScopedObjectAccess soa(Thread::Current());
   gc::Heap* heap = runtime->GetHeap();
-  std::vector<gc::space::ImageSpace*> image_spaces = heap->GetBootImageSpaces();
+  const std::vector<gc::space::ImageSpace*>& image_spaces = heap->GetBootImageSpaces();
   CHECK(!image_spaces.empty());
+  ImgDiagDumper img_diag_dumper(os,
+                                image_diff_pid,
+                                zygote_diff_pid,
+                                dump_dirty_objects);
+  if (!img_diag_dumper.Init()) {
+    return EXIT_FAILURE;
+  }
   for (gc::space::ImageSpace* image_space : image_spaces) {
     const ImageHeader& image_header = image_space->GetImageHeader();
     if (!image_header.IsValid()) {
@@ -1655,16 +1810,7 @@ static int DumpImage(Runtime* runtime,
       return EXIT_FAILURE;
     }
 
-    ImgDiagDumper img_diag_dumper(os,
-                                  image_header,
-                                  image_space->GetImageLocation(),
-                                  image_diff_pid,
-                                  zygote_diff_pid,
-                                  dump_dirty_objects);
-    if (!img_diag_dumper.Init()) {
-      return EXIT_FAILURE;
-    }
-    if (!img_diag_dumper.Dump()) {
+    if (!img_diag_dumper.Dump(image_header, image_space->GetImageLocation())) {
       return EXIT_FAILURE;
     }
   }
