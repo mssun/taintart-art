@@ -25,6 +25,7 @@
 #include "base/bit_utils.h"
 #include "base/dumpable.h"
 #include "base/macros.h"
+#include "base/hiddenapi_stubs.h"
 
 namespace art {
 namespace hiddenapi {
@@ -209,6 +210,12 @@ class ApiList {
     for (std::vector<std::string>::iterator it = begin; it != end; it++) {
       ApiList current = FromName(*it);
       if (current.IsEmpty() || !api_list.CanCombineWith(current)) {
+        if (ApiStubs::IsStubsFlag(*it)) {
+        // Ignore flags which correspond to the stubs from where the api
+        // originates (i.e. system-api, test-api, public-api), as they are not
+        // relevant at runtime
+          continue;
+        }
         return false;
       }
       api_list |= current;

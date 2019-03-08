@@ -706,7 +706,7 @@ TEST_F(HiddenApiTest, InterfaceMethodImplemented) {
   ScratchFile flags_csv;
   ASSERT_TRUE(RunHiddenapiList(flags_csv));
   auto flags = ReadFlagsCsvFile(flags_csv);
-  ASSERT_EQ(SafeMapGet("LPackageClass;->publicMethod1()V", flags), "whitelist");
+  ASSERT_EQ(SafeMapGet("LPackageClass;->publicMethod1()V", flags), "public-api");
 }
 
 // Test a method declared in PublicInterface, defined in AbstractPackageClass and
@@ -715,7 +715,7 @@ TEST_F(HiddenApiTest, InterfaceMethodImplementedInParent) {
   ScratchFile flags_csv;
   ASSERT_TRUE(RunHiddenapiList(flags_csv));
   auto flags = ReadFlagsCsvFile(flags_csv);
-  ASSERT_EQ(SafeMapGet("LAbstractPackageClass;->publicMethod2()V", flags), "whitelist");
+  ASSERT_EQ(SafeMapGet("LAbstractPackageClass;->publicMethod2()V", flags), "public-api");
 }
 
 }  // namespace art
