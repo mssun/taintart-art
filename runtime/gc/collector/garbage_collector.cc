@@ -67,12 +67,8 @@ GarbageCollector::GarbageCollector(Heap* heap, const std::string& name)
     : heap_(heap),
       name_(name),
       pause_histogram_((name_ + " paused").c_str(), kPauseBucketSize, kPauseBucketCount),
-      rss_histogram_((name_ + " peak-rss").c_str(),
-                     /*initial_bucket_width=*/ 10,
-                     /*max_buckets=*/ 20),
-      freed_bytes_histogram_((name_ + " freed-bytes").c_str(),
-                             /*initial_bucket_width=*/ 10,
-                             /*max_buckets=*/ 20),
+      rss_histogram_((name_ + " peak-rss").c_str(), kMemBucketSize, kMemBucketCount),
+      freed_bytes_histogram_((name_ + " freed-bytes").c_str(), kMemBucketSize, kMemBucketCount),
       cumulative_timings_(name),
       pause_histogram_lock_("pause histogram lock", kDefaultMutexLevel, true),
       is_transaction_active_(false) {
@@ -165,10 +161,11 @@ void GarbageCollector::Run(GcCause gc_cause, bool clear_soft_references) {
   // Update cumulative statistics with how many bytes the GC iteration freed.
   total_freed_objects_ += current_iteration->GetFreedObjects() +
       current_iteration->GetFreedLargeObjects();
-  total_freed_bytes_ += current_iteration->GetFreedBytes() +
+  int64_t freed_bytes = current_iteration->GetFreedBytes() +
       current_iteration->GetFreedLargeObjectBytes();
-  freed_bytes_histogram_.AddValue((current_iteration->GetFreedBytes() +
-                                   current_iteration->GetFreedLargeObjectBytes()) / KB);
+  total_freed_bytes_ += freed_bytes;
+  // Rounding negative freed bytes to 0 as we are not interested in such corner cases.
+  freed_bytes_histogram_.AddValue(std::max<int64_t>(freed_bytes / KB, 0));
   uint64_t end_time = NanoTime();
   uint64_t thread_cpu_end_time = ThreadCpuNanoTime();
   total_thread_cpu_time_ns_ += thread_cpu_end_time - thread_cpu_start_time;
