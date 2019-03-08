@@ -94,6 +94,14 @@ class CardTable {
     return biased_begin_;
   }
 
+  void* MemMapBegin() const {
+    return mem_map_.BaseBegin();
+  }
+
+  size_t MemMapSize() const {
+    return mem_map_.BaseSize();
+  }
+
   /*
    * Modify cards in the range from scan_begin (inclusive) to scan_end (exclusive). Each card
    * value v is replaced by visitor(v). Visitor() should not have side-effects.
