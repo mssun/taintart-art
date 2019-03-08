@@ -46,7 +46,7 @@ public class Main extends Base implements Comparator<Main> {
       }
 
       // Call test() via base class to test unwinding through multidex.
-      new Main().runTest();
+      new Main().$noinline$runTest();
   }
 
   public void test() {
