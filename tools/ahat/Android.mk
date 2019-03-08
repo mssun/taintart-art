@@ -18,50 +18,6 @@ LOCAL_PATH := $(call my-dir)
 
 include art/build/Android.common_path.mk
 
-# --- ahat.jar ----------------
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES := $(call all-java-files-under, src/main)
-LOCAL_JAR_MANIFEST := etc/ahat.mf
-LOCAL_JAVA_RESOURCE_FILES := $(LOCAL_PATH)/etc/style.css
-LOCAL_JAVACFLAGS := -Xdoclint:all/protected
-LOCAL_IS_HOST_MODULE := true
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE := ahat
-
-# Make this available on the classpath of the general-tests tradefed suite.
-# It is used by libcore tests that run there.
-LOCAL_COMPATIBILITY_SUITE := general-tests
-
-include $(BUILD_HOST_JAVA_LIBRARY)
-AHAT_JAR := $(LOCAL_BUILT_MODULE)
-
-# --- api check for ahat.jar ----------
-AHAT_API := $(INTERNAL_PLATFORM_AHAT_API_FILE)
-AHAT_REMOVED_API := $(INTERNAL_PLATFORM_AHAT_REMOVED_API_FILE)
-
-$(eval $(call check-api, \
-  ahat-check-api, \
-  $(LOCAL_PATH)/etc/ahat_api.txt, \
-  $(AHAT_API), \
-  $(LOCAL_PATH)/etc/ahat_removed_api.txt, \
-  $(AHAT_REMOVED_API), \
-  -error 2 -error 3 -error 4 -error 5 -error 6 -error 7 -error 8 -error 9 -error 10 -error 11 \
-    -error 12 -error 13 -error 14 -error 15 -error 16 -error 17 -error 18 -error 19 -error 20 \
-    -error 21 -error 23 -error 24 -error 25 -error 26 -error 27, \
-  cat $(LOCAL_PATH)/etc/ahat_api_msg.txt, \
-  $(AHAT_JAR),))
-
-.PHONY: ahat-update-api
-ahat-update-api: PRIVATE_AHAT_API := $(AHAT_API)
-ahat-update-api: PRIVATE_AHAT_REMOVED_API := $(AHAT_REMOVED_API)
-ahat-update-api: PRIVATE_AHAT_ETC_API := $(LOCAL_PATH)/etc/ahat_api.txt
-ahat-update-api: PRIVATE_AHAT_ETC_REMOVED_API := $(LOCAL_PATH)/etc/ahat_removed_api.txt
-ahat-update-api: ahat-docs
-	@echo Copying ahat_api.txt
-	cp $(PRIVATE_AHAT_API) $(PRIVATE_AHAT_ETC_API)
-	@echo Copying ahat_removed_api.txt
-	cp $(PRIVATE_AHAT_REMOVED_API) $(PRIVATE_AHAT_ETC_REMOVED_API)
-
 # --- ahat script ----------------
 include $(CLEAR_VARS)
 LOCAL_IS_HOST_MODULE := true
@@ -189,9 +145,6 @@ endif # EMMA_INSTRUMENT
 endif # linux
 
 # Clean up local variables.
-AHAT_JAR :=
-AHAT_API :=
-AHAT_REMOVED_API :=
 AHAT_TEST_JAR :=
 AHAT_TEST_DUMP_JAR :=
 AHAT_TEST_DUMP_HPROF :=

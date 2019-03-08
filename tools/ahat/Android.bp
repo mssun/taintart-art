@@ -22,4 +22,19 @@ droiddoc_host {
     api_tag_name: "AHAT",
     api_filename: "ahat_api.txt",
     removed_api_filename: "ahat_removed_api.txt",
+    check_api: {
+        current: {
+            api_file: "etc/ahat_api.txt",
+            removed_api_file: "etc/ahat_removed_api.txt",
+        },
+    },
+}
+
+// --- ahat.jar ----------------
+java_library_host {
+    name: "ahat",
+    srcs: ["src/main/**/*.java"],
+    manifest: "etc/ahat.mf",
+    java_resources: ["etc/style.css"],
+    javacflags: ["-Xdoclint:all/protected"],
 }
