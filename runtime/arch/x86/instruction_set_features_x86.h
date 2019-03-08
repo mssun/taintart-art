@@ -19,6 +19,26 @@
 
 #include "arch/instruction_set_features.h"
 
+#define GET_REX_R       0x04
+#define GET_REX_X       0x02
+#define GET_REX_B       0x01
+#define SET_VEX_R       0x80
+#define SET_VEX_X       0x40
+#define SET_VEX_B       0x20
+#define SET_VEX_M_0F    0x01
+#define SET_VEX_M_0F_38 0x02
+#define SET_VEX_M_0F_3A 0x03
+#define SET_VEX_W       0x80
+#define SET_VEX_L_128   0x00
+#define SET_VEL_L_256   0x04
+#define SET_VEX_PP_NONE 0x00
+#define SET_VEX_PP_66   0x01
+#define SET_VEX_PP_F3   0x02
+#define SET_VEX_PP_F2   0x03
+#define TWO_BYTE_VEX    0xC5
+#define THREE_BYTE_VEX  0xC4
+#define VEX_INIT        0x00
+
 namespace art {
 
 class X86InstructionSetFeatures;
@@ -68,6 +88,8 @@ class X86InstructionSetFeatures : public InstructionSetFeatures {
   bool HasPopCnt() const { return has_POPCNT_; }
 
   bool HasAVX2() const { return has_AVX2_; }
+
+  bool HasAVX() const { return has_AVX_; }
 
  protected:
   // Parse a string of the form "ssse3" adding these to a new InstructionSetFeatures.

@@ -19,6 +19,7 @@
 
 #include <vector>
 
+#include "arch/x86/instruction_set_features_x86.h"
 #include "base/arena_containers.h"
 #include "base/array_ref.h"
 #include "base/bit_utils.h"
@@ -308,8 +309,12 @@ class ConstantArea {
 
 class X86Assembler final : public Assembler {
  public:
-  explicit X86Assembler(ArenaAllocator* allocator)
-      : Assembler(allocator), constant_area_(allocator) {}
+  explicit X86Assembler(ArenaAllocator* allocator,
+                        const X86InstructionSetFeatures* instruction_set_features = nullptr)
+                : Assembler(allocator),
+                  constant_area_(allocator),
+                  has_AVX_(instruction_set_features != nullptr ? instruction_set_features->HasAVX() : false),
+                  has_AVX2_(instruction_set_features != nullptr ? instruction_set_features->HasAVX2() :false) {}
   virtual ~X86Assembler() {}
 
   /*
@@ -385,6 +390,12 @@ class X86Assembler final : public Assembler {
   void movaps(const Address& dst, XmmRegister src);  // store aligned
   void movups(const Address& dst, XmmRegister src);  // store unaligned
 
+  void vmovaps(XmmRegister dst, XmmRegister src);     // move
+  void vmovaps(XmmRegister dst, const Address& src);  // load aligned
+  void vmovups(XmmRegister dst, const Address& src);  // load unaligned
+  void vmovaps(const Address& dst, XmmRegister src);  // store aligned
+  void vmovups(const Address& dst, XmmRegister src);  // store unaligned
+
   void movss(XmmRegister dst, const Address& src);
   void movss(const Address& dst, XmmRegister src);
   void movss(XmmRegister dst, XmmRegister src);
@@ -412,6 +423,12 @@ class X86Assembler final : public Assembler {
   void movapd(const Address& dst, XmmRegister src);  // store aligned
   void movupd(const Address& dst, XmmRegister src);  // store unaligned
 
+  void vmovapd(XmmRegister dst, XmmRegister src);     // move
+  void vmovapd(XmmRegister dst, const Address& src);  // load aligned
+  void vmovupd(XmmRegister dst, const Address& src);  // load unaligned
+  void vmovapd(const Address& dst, XmmRegister src);  // store aligned
+  void vmovupd(const Address& dst, XmmRegister src);  // store unaligned
+
   void movsd(XmmRegister dst, const Address& src);
   void movsd(const Address& dst, XmmRegister src);
   void movsd(XmmRegister dst, XmmRegister src);
@@ -438,6 +455,12 @@ class X86Assembler final : public Assembler {
   void movdqu(XmmRegister dst, const Address& src);  // load unaligned
   void movdqa(const Address& dst, XmmRegister src);  // store aligned
   void movdqu(const Address& dst, XmmRegister src);  // store unaligned
+
+  void vmovdqa(XmmRegister dst, XmmRegister src);     // move
+  void vmovdqa(XmmRegister dst, const Address& src);  // load aligned
+  void vmovdqu(XmmRegister dst, const Address& src);  // load unaligned
+  void vmovdqa(const Address& dst, XmmRegister src);  // store aligned
+  void vmovdqu(const Address& dst, XmmRegister src);  // store unaligned
 
   void paddb(XmmRegister dst, XmmRegister src);  // no addr variant (for now)
   void psubb(XmmRegister dst, XmmRegister src);
@@ -823,6 +846,8 @@ class X86Assembler final : public Assembler {
   // Return the current size of the constant area.
   size_t ConstantAreaSize() const { return constant_area_.GetSize(); }
 
+  bool CpuHasAVXorAVX2FeatureFlag();
+
  private:
   inline void EmitUint8(uint8_t value);
   inline void EmitInt32(int32_t value);
@@ -842,12 +867,22 @@ class X86Assembler final : public Assembler {
   void EmitGenericShift(int rm, const Operand& operand, const Immediate& imm);
   void EmitGenericShift(int rm, const Operand& operand, Register shifter);
 
-  // Emit a 3 byte VEX Prefix
-  uint8_t EmitVexByteZero(bool is_two_byte);
-  uint8_t EmitVexByte1(bool r, bool x, bool b, int mmmmm);
-  uint8_t EmitVexByte2(bool w , int l , X86ManagedRegister operand, int pp);
-
+  uint8_t EmitVexPrefixByteZero(bool is_twobyte_form);
+  uint8_t EmitVexPrefixByteOne(bool R, bool X, bool B, int SET_VEX_M);
+  uint8_t EmitVexPrefixByteOne(bool R,
+                               X86ManagedRegister operand,
+                               int SET_VEX_L,
+                               int SET_VEX_PP);
+  uint8_t EmitVexPrefixByteTwo(bool W,
+                               X86ManagedRegister operand,
+                               int SET_VEX_L,
+                               int SET_VEX_PP);
+  uint8_t EmitVexPrefixByteTwo(bool W,
+                               int SET_VEX_L,
+                               int SET_VEX_PP);
   ConstantArea constant_area_;
+  bool has_AVX_;     // x86 256bit SIMD AVX.
+  bool has_AVX2_;    // x86 256bit SIMD AVX 2.0.
 
   DISALLOW_COPY_AND_ASSIGN(X86Assembler);
 };

@@ -148,6 +148,18 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler,
   std::vector<x86::XmmRegister*> fp_registers_;
 };
 
+class AssemblerX86AVXTest : public AssemblerX86Test {
+ public:
+  AssemblerX86AVXTest()
+      : instruction_set_features_(X86InstructionSetFeatures::FromVariant("kabylake", nullptr)) {}
+ protected:
+  x86::X86Assembler* CreateAssembler(ArenaAllocator* allocator) override {
+  return new (allocator) x86::X86Assembler(allocator, instruction_set_features_.get());
+  }
+ private:
+  std::unique_ptr<const X86InstructionSetFeatures> instruction_set_features_;
+};
+
 //
 // Test some repeat drivers used in the tests.
 //
@@ -485,60 +497,120 @@ TEST_F(AssemblerX86Test, Movaps) {
   DriverStr(RepeatFF(&x86::X86Assembler::movaps, "movaps %{reg2}, %{reg1}"), "movaps");
 }
 
+TEST_F(AssemblerX86AVXTest, VMovaps) {
+  DriverStr(RepeatFF(&x86::X86Assembler::vmovaps, "vmovaps %{reg2}, %{reg1}"), "vmovaps");
+}
+
 TEST_F(AssemblerX86Test, MovapsLoad) {
   DriverStr(RepeatFA(&x86::X86Assembler::movaps, "movaps {mem}, %{reg}"), "movaps_load");
+}
+
+TEST_F(AssemblerX86AVXTest, VMovapsLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::vmovaps, "vmovaps {mem}, %{reg}"), "vmovaps_load");
 }
 
 TEST_F(AssemblerX86Test, MovapsStore) {
   DriverStr(RepeatAF(&x86::X86Assembler::movaps, "movaps %{reg}, {mem}"), "movaps_store");
 }
 
+TEST_F(AssemblerX86AVXTest, VMovapsStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::vmovaps, "vmovaps %{reg}, {mem}"), "vmovaps_store");
+}
+
 TEST_F(AssemblerX86Test, MovupsLoad) {
   DriverStr(RepeatFA(&x86::X86Assembler::movups, "movups {mem}, %{reg}"), "movups_load");
+}
+
+TEST_F(AssemblerX86AVXTest, VMovupsLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::vmovups, "vmovups {mem}, %{reg}"), "vmovups_load");
 }
 
 TEST_F(AssemblerX86Test, MovupsStore) {
   DriverStr(RepeatAF(&x86::X86Assembler::movups, "movups %{reg}, {mem}"), "movups_store");
 }
 
+TEST_F(AssemblerX86AVXTest, VMovupsStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::vmovups, "vmovups %{reg}, {mem}"), "vmovups_store");
+}
+
 TEST_F(AssemblerX86Test, Movapd) {
   DriverStr(RepeatFF(&x86::X86Assembler::movapd, "movapd %{reg2}, %{reg1}"), "movapd");
+}
+
+TEST_F(AssemblerX86AVXTest, VMovapd) {
+  DriverStr(RepeatFF(&x86::X86Assembler::vmovapd, "vmovapd %{reg2}, %{reg1}"), "vmovapd");
 }
 
 TEST_F(AssemblerX86Test, MovapdLoad) {
   DriverStr(RepeatFA(&x86::X86Assembler::movapd, "movapd {mem}, %{reg}"), "movapd_load");
 }
 
+TEST_F(AssemblerX86AVXTest, VMovapdLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::vmovapd, "vmovapd {mem}, %{reg}"), "vmovapd_load");
+}
+
 TEST_F(AssemblerX86Test, MovapdStore) {
   DriverStr(RepeatAF(&x86::X86Assembler::movapd, "movapd %{reg}, {mem}"), "movapd_store");
+}
+
+TEST_F(AssemblerX86AVXTest, VMovapdStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::vmovapd, "vmovapd %{reg}, {mem}"), "vmovapd_store");
 }
 
 TEST_F(AssemblerX86Test, MovupdLoad) {
   DriverStr(RepeatFA(&x86::X86Assembler::movupd, "movupd {mem}, %{reg}"), "movupd_load");
 }
 
+TEST_F(AssemblerX86AVXTest, VMovupdLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::vmovupd, "vmovupd {mem}, %{reg}"), "vmovupd_load");
+}
+
 TEST_F(AssemblerX86Test, MovupdStore) {
   DriverStr(RepeatAF(&x86::X86Assembler::movupd, "movupd %{reg}, {mem}"), "movupd_store");
+}
+
+TEST_F(AssemblerX86AVXTest, VMovupdStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::vmovupd, "vmovupd %{reg}, {mem}"), "vmovupd_store");
 }
 
 TEST_F(AssemblerX86Test, Movdqa) {
   DriverStr(RepeatFF(&x86::X86Assembler::movdqa, "movdqa %{reg2}, %{reg1}"), "movdqa");
 }
 
+TEST_F(AssemblerX86AVXTest, VMovdqa) {
+  DriverStr(RepeatFF(&x86::X86Assembler::vmovdqa, "vmovdqa %{reg2}, %{reg1}"), "vmovdqa");
+}
+
 TEST_F(AssemblerX86Test, MovdqaLoad) {
   DriverStr(RepeatFA(&x86::X86Assembler::movdqa, "movdqa {mem}, %{reg}"), "movdqa_load");
+}
+
+TEST_F(AssemblerX86AVXTest, VMovdqaLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::vmovdqa, "vmovdqa {mem}, %{reg}"), "vmovdqa_load");
 }
 
 TEST_F(AssemblerX86Test, MovdqaStore) {
   DriverStr(RepeatAF(&x86::X86Assembler::movdqa, "movdqa %{reg}, {mem}"), "movdqa_store");
 }
 
+TEST_F(AssemblerX86AVXTest, VMovdqaStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::vmovdqa, "vmovdqa %{reg}, {mem}"), "vmovdqa_store");
+}
+
 TEST_F(AssemblerX86Test, MovdquLoad) {
   DriverStr(RepeatFA(&x86::X86Assembler::movdqu, "movdqu {mem}, %{reg}"), "movdqu_load");
 }
 
+TEST_F(AssemblerX86AVXTest, VMovdquLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::vmovdqu, "vmovdqu {mem}, %{reg}"), "vmovdqu_load");
+}
+
 TEST_F(AssemblerX86Test, MovdquStore) {
   DriverStr(RepeatAF(&x86::X86Assembler::movdqu, "movdqu %{reg}, {mem}"), "movdqu_store");
+}
+
+TEST_F(AssemblerX86AVXTest, VMovdquStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::vmovdqu, "vmovdqu %{reg}, {mem}"), "vmovdqu_store");
 }
 
 TEST_F(AssemblerX86Test, AddPS) {
