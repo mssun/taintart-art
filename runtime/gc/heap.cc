@@ -1422,11 +1422,6 @@ void Heap::Trim(Thread* self) {
   TrimSpaces(self);
   // Trim arenas that may have been used by JIT or verifier.
   runtime->GetArenaPool()->TrimMaps();
-  {
-    // TODO: Move this to a callback called when startup is finished (b/120671223).
-    ScopedTrace trace2("Delete thread pool");
-    runtime->DeleteThreadPool();
-  }
 }
 
 class TrimIndirectReferenceTableClosure : public Closure {
