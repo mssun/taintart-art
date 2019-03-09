@@ -147,6 +147,8 @@ class GarbageCollector : public RootVisitor, public IsMarkedVisitor, public Mark
 
   static constexpr size_t kPauseBucketSize = 500;
   static constexpr size_t kPauseBucketCount = 32;
+  static constexpr size_t kMemBucketSize = 10;
+  static constexpr size_t kMemBucketCount = 16;
 
   Heap* const heap_;
   std::string name_;
