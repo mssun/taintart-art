@@ -30,8 +30,6 @@
  */
 
 #include <functional>
-#include <iosfwd>
-#include <mutex>
 
 #include "deopt_manager.h"
 
@@ -109,53 +107,6 @@ void DeoptManager::Shutdown() {
   art::ScopedSuspendAll ssa("remove method Inspection Callback");
   art::RuntimeCallbacks* callbacks = art::Runtime::Current()->GetRuntimeCallbacks();
   callbacks->RemoveMethodInspectionCallback(&inspection_callback_);
-}
-
-void DeoptManager::DumpDeoptInfo(art::Thread* self, std::ostream& stream) {
-  art::ScopedObjectAccess soa(self);
-  art::MutexLock mutll(self, *art::Locks::thread_list_lock_);
-  art::MutexLock mudsl(self, deoptimization_status_lock_);
-  art::MutexLock mubsl(self, breakpoint_status_lock_);
-  stream << "Deoptimizer count: " << deopter_count_ << "\n";
-  stream << "Global deopt count: " << global_deopt_count_ << "\n";
-  stream << "Can perform OSR: " << !set_local_variable_called_.load() << "\n";
-  for (const auto& [bp, loc] : this->breakpoint_status_) {
-    stream << "Breakpoint: " << bp->PrettyMethod() << " @ 0x" << std::hex << loc << "\n";
-  }
-  struct DumpThreadDeoptCount : public art::Closure {
-   public:
-    DumpThreadDeoptCount(std::ostream& stream, std::mutex& mu)
-        : cnt_(0), stream_(stream), mu_(mu) {}
-    void Run(art::Thread* self) override {
-      {
-        std::lock_guard<std::mutex> lg(mu_);
-        std::string name;
-        self->GetThreadName(name);
-        stream_ << "Thread " << name << " (id: " << std::dec << self->GetThreadId()
-                << ") force interpreter count " << self->ForceInterpreterCount() << "\n";
-      }
-      // Increment this after unlocking the mutex so we won't race its destructor.
-      cnt_++;
-    }
-
-    void WaitForCount(size_t threads) {
-      while (cnt_.load() != threads) {
-        sched_yield();
-      }
-    }
-
-   private:
-    std::atomic<size_t> cnt_;
-    std::ostream& stream_;
-    std::mutex& mu_;
-  };
-
-  std::mutex mu;
-  DumpThreadDeoptCount dtdc(stream, mu);
-  auto func = [](art::Thread* thread, void* ctx) {
-    reinterpret_cast<DumpThreadDeoptCount*>(ctx)->Run(thread);
-  };
-  art::Runtime::Current()->GetThreadList()->ForEach(func, &dtdc);
 }
 
 void DeoptManager::FinishSetup() {
@@ -415,7 +366,8 @@ jvmtiError DeoptManager::AddDeoptimizeThreadMethods(art::ScopedObjectAccessUnche
     return err;
   }
   // We don't need additional locking here because we hold the Thread_list_lock_.
-  if (target->IncrementForceInterpreterCount() == 1) {
+  target->SetForceInterpreterCount(target->ForceInterpreterCount() + 1);
+  if (target->ForceInterpreterCount() == 1) {
     struct DeoptClosure : public art::Closure {
      public:
       explicit DeoptClosure(DeoptManager* man) : man_(man) {}
