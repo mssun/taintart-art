@@ -521,7 +521,7 @@ class ProfMan final {
 #endif
       fd = open(filename.c_str(), flags);
       if (fd < 0) {
-        LOG(ERROR) << "Cannot open " << filename << strerror(errno);
+        PLOG(ERROR) << "Cannot open " << filename;
         return nullptr;
       }
     }
@@ -690,7 +690,7 @@ class ProfMan final {
 #endif
     int fd = open(profile_file.c_str(), flags);
     if (!FdIsValid(fd)) {
-      LOG(ERROR) << "Cannot open " << profile_file << strerror(errno);
+      PLOG(ERROR) << "Cannot open " << profile_file;
       return false;
     }
     if (!GetClassNamesAndMethods(fd, dex_files, out_lines)) {
@@ -1076,7 +1076,7 @@ class ProfMan final {
 #endif
       fd = open(reference_profile_file_.c_str(), flags, 0644);
       if (fd < 0) {
-        LOG(ERROR) << "Cannot open " << reference_profile_file_ << strerror(errno);
+        PLOG(ERROR) << "Cannot open " << reference_profile_file_;
         return kInvalidFd;
       }
     }
@@ -1214,7 +1214,7 @@ class ProfMan final {
 #endif
     int profile_test_fd = open(test_profile_.c_str(), flags, 0644);
     if (profile_test_fd < 0) {
-      LOG(ERROR) << "Cannot open " << test_profile_ << strerror(errno);
+      PLOG(ERROR) << "Cannot open " << test_profile_;
       return -1;
     }
     bool result;
