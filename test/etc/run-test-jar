@@ -825,7 +825,7 @@ if [ "$PREBUILD" = "y" ]; then
   mkdir_locations="${mkdir_locations} ${DEX_LOCATION}/oat/$ISA"
   if [ "$APP_IMAGE" = "y" ]; then
     # Pick a base that will force the app image to get relocated.
-    app_image="--base=0x4000 --app-image-file=$DEX_LOCATION/oat/$ISA/$TEST_NAME.art"
+    app_image="--base=0x4000 --app-image-file=$DEX_LOCATION/oat/$ISA/$TEST_NAME.art --resolve-startup-const-strings=true"
   fi
 
   dex2oat_binary=${DEX2OAT_DEBUG_BINARY}

@@ -15,7 +15,7 @@
  */
 
 public abstract class Base {
-  public void runTest() throws Exception {
+  public void $noinline$runTest() throws Exception {
     // Conditionally throw exception to prevent the compiler from inlining the code.
     if (!this.getClass().getName().equals("Main")) {
       throw new Exception("Who is calling?");

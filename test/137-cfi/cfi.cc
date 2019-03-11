@@ -149,7 +149,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(JNIEnv*, jclass)
   std::vector<std::string> seq = {
       "Java_Main_unwindInProcess",       // This function.
       "java.util.Arrays.binarySearch0",  // Framework method.
-      "Base.runTest",                    // Method in other dex file.
+      "Base.$noinline$runTest",          // Method in other dex file.
       "Main.main"                        // The Java entry method.
   };
 
@@ -239,7 +239,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(JNIEnv*, jcla
     std::vector<std::string> seq = {
         "Java_Main_sigstop",                // The stop function in the other process.
         "java.util.Arrays.binarySearch0",   // Framework method.
-        "Base.runTest",                     // Method in other dex file.
+        "Base.$noinline$runTest",           // Method in other dex file.
         "Main.main"                         // The Java entry method.
     };
 
