@@ -289,7 +289,7 @@ static inline JValue Execute(
       }
     }
 
-    if (!stay_in_interpreter) {
+    if (!stay_in_interpreter && !self->IsForceInterpreter()) {
       jit::Jit* jit = Runtime::Current()->GetJit();
       if (jit != nullptr) {
         jit->MethodEntered(self, shadow_frame.GetMethod());

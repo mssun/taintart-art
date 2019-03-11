@@ -322,7 +322,9 @@ void ArtMethod::Invoke(Thread* self, uint32_t* args, uint32_t args_size, JValue*
   // If the runtime is not yet started or it is required by the debugger, then perform the
   // Invocation by the interpreter, explicitly forcing interpretation over JIT to prevent
   // cycling around the various JIT/Interpreter methods that handle method invocation.
-  if (UNLIKELY(!runtime->IsStarted() || Dbg::IsForcedInterpreterNeededForCalling(self, this))) {
+  if (UNLIKELY(!runtime->IsStarted() ||
+               (self->IsForceInterpreter() && !IsNative() && !IsProxyMethod() && IsInvokable()) ||
+               Dbg::IsForcedInterpreterNeededForCalling(self, this))) {
     if (IsStatic()) {
       art::interpreter::EnterInterpreterFromInvoke(
           self, this, nullptr, args, result, /*stay_in_interpreter=*/ true);

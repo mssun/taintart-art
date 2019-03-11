@@ -198,7 +198,7 @@ class EventHandler {
   }
 
   jvmtiError SetEvent(ArtJvmTiEnv* env,
-                      art::Thread* thread,
+                      jthread thread,
                       ArtJvmtiEvent event,
                       jvmtiEventMode mode)
       REQUIRES(!envs_lock_);
@@ -246,10 +246,13 @@ class EventHandler {
       REQUIRES(!envs_lock_);
 
  private:
-  void SetupTraceListener(JvmtiMethodTraceListener* listener, ArtJvmtiEvent event, bool enable);
+  jvmtiError SetupTraceListener(JvmtiMethodTraceListener* listener,
+                                ArtJvmtiEvent event,
+                                jthread thread,
+                                bool enable);
 
   // Specifically handle the FramePop event which it might not always be possible to turn off.
-  void SetupFramePopTraceListener(bool enable);
+  jvmtiError SetupFramePopTraceListener(jthread thread, bool enable);
 
   template <ArtJvmtiEvent kEvent, typename ...Args>
   ALWAYS_INLINE
@@ -309,7 +312,7 @@ class EventHandler {
                                                             jclass klass) const
       REQUIRES(!envs_lock_);
 
-  void HandleEventType(ArtJvmtiEvent event, bool enable);
+  jvmtiError HandleEventType(ArtJvmtiEvent event, jthread thread, bool enable);
   void HandleLocalAccessCapabilityAdded();
   void HandleBreakpointEventsChanged(bool enable);
 
