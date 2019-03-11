@@ -696,11 +696,12 @@ void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_
             (method.GetAccessFlags() & kAccStatic) != 0;
         const bool is_startup_clinit = is_startup_class && is_clinit;
 
-        if (only_startup_strings &&
-            profile_compilation_info != nullptr &&
-            (!profile_compilation_info->GetMethodHotness(method.GetReference()).IsStartup() &&
-             !is_startup_clinit)) {
-          continue;
+        if (profile_compilation_info != nullptr && !is_startup_clinit) {
+          ProfileCompilationInfo::MethodHotness hotness =
+              profile_compilation_info->GetMethodHotness(method.GetReference());
+          if (only_startup_strings ? !hotness.IsStartup() : !hotness.IsInProfile()) {
+            continue;
+          }
         }
 
         // Resolve const-strings in the code. Done to have deterministic allocation behavior. Right
