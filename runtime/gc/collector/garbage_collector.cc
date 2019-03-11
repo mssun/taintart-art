@@ -93,13 +93,13 @@ void GarbageCollector::ResetCumulativeStatistics() {
 
 uint64_t GarbageCollector::ExtractRssFromMincore(
     std::list<std::pair<void*, void*>>* gc_ranges) {
-  using range_t = std::pair<void*, void*>;
   uint64_t rss = 0;
   if (gc_ranges->empty()) {
     return 0;
   }
   // mincore() is linux-specific syscall.
 #if defined(__linux__)
+  using range_t = std::pair<void*, void*>;
   // Sort gc_ranges
   gc_ranges->sort([](const range_t& a, const range_t& b) {
     return std::less()(a.first, b.first);
