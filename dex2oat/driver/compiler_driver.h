@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_DRIVER_COMPILER_DRIVER_H_
-#define ART_COMPILER_DRIVER_COMPILER_DRIVER_H_
+#ifndef ART_DEX2OAT_DRIVER_COMPILER_DRIVER_H_
+#define ART_DEX2OAT_DRIVER_COMPILER_DRIVER_H_
 
 #include <atomic>
 #include <set>
@@ -78,15 +78,6 @@ template <class Allocator> class SrcMap;
 class TimingLogger;
 class VdexFile;
 class VerificationResults;
-
-enum EntryPointCallingConvention {
-  // ABI of invocations to a method's interpreter entry point.
-  kInterpreterAbi,
-  // ABI of calls to a method's native code, only used for native methods.
-  kJniAbi,
-  // ABI of calls to a method's quick code entry point.
-  kQuickAbi
-};
 
 class CompilerDriver {
  public:
@@ -357,4 +348,4 @@ class CompilerDriver {
 
 }  // namespace art
 
-#endif  // ART_COMPILER_DRIVER_COMPILER_DRIVER_H_
+#endif  // ART_DEX2OAT_DRIVER_COMPILER_DRIVER_H_

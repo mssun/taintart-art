@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_DRIVER_COMPILER_DRIVER_INL_H_
-#define ART_COMPILER_DRIVER_COMPILER_DRIVER_INL_H_
+#ifndef ART_DEX2OAT_DRIVER_COMPILER_DRIVER_INL_H_
+#define ART_DEX2OAT_DRIVER_COMPILER_DRIVER_INL_H_
 
 #include "compiler_driver.h"
 
@@ -23,7 +23,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "class_linker-inl.h"
-#include "dex_compilation_unit.h"
+#include "driver/dex_compilation_unit.h"
 #include "handle_scope-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache-inl.h"
@@ -101,4 +101,4 @@ inline std::pair<bool, bool> CompilerDriver::IsFastInstanceField(
 
 }  // namespace art
 
-#endif  // ART_COMPILER_DRIVER_COMPILER_DRIVER_INL_H_
+#endif  // ART_DEX2OAT_DRIVER_COMPILER_DRIVER_INL_H_

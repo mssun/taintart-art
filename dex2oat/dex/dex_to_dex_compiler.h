@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_DEX_DEX_TO_DEX_COMPILER_H_
-#define ART_COMPILER_DEX_DEX_TO_DEX_COMPILER_H_
+#ifndef ART_DEX2OAT_DEX_DEX_TO_DEX_COMPILER_H_
+#define ART_DEX2OAT_DEX_DEX_TO_DEX_COMPILER_H_
 
 #include <set>
 #include <unordered_map>
@@ -123,4 +123,4 @@ std::ostream& operator<<(std::ostream& os, const DexToDexCompiler::CompilationLe
 
 }  // namespace art
 
-#endif  // ART_COMPILER_DEX_DEX_TO_DEX_COMPILER_H_
+#endif  // ART_DEX2OAT_DEX_DEX_TO_DEX_COMPILER_H_

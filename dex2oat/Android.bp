@@ -19,6 +19,9 @@ art_cc_defaults {
     defaults: ["art_defaults"],
     host_supported: true,
     srcs: [
+        "dex/dex_to_dex_compiler.cc",
+        "dex/quick_compiler_callbacks.cc",
+        "driver/compiler_driver.cc",
         "linker/elf_writer.cc",
         "linker/elf_writer_quick.cc",
         "linker/image_writer.cc",
@@ -102,6 +105,8 @@ gensrcs {
     cmd: "$(location generate_operator_out) art/dex2oat $(in) > $(out)",
     tools: ["generate_operator_out"],
     srcs: [
+        "dex/dex_to_dex_compiler.h",
+        "driver/compiler_driver.h",
         "linker/image_writer.h",
     ],
     output_extension: "operator_out.cc",
@@ -114,6 +119,7 @@ art_cc_library_static {
         "libart-compiler",
         "libart-dexlayout",
         "libart",
+        "libartpalette",
         "libprofile",
     ],
 }
@@ -142,6 +148,7 @@ art_cc_library_static {
         "libartd-compiler",
         "libartd-dexlayout",
         "libartd",
+        "libartpalette",
         "libprofiled",
     ],
 }
@@ -240,6 +247,7 @@ art_cc_binary {
         "libart",
         "libdexfile",
         "libartbase",
+        "libartpalette",
         "libbase",
         "libsigchain",
     ],
@@ -285,6 +293,7 @@ art_cc_binary {
         "libartd",
         "libdexfiled",
         "libartbased",
+        "libartpalette",
         "libbase",
         "libsigchain",
     ],
@@ -380,6 +389,24 @@ art_cc_binary {
     use_clang_lld: false,
 }
 
+art_cc_library_static {
+    name: "libart-dex2oat-gtest",
+    defaults: ["libart-gtest-defaults"],
+    srcs: [
+        "common_compiler_driver_test.cc",
+    ],
+    shared_libs: [
+        "libartd-compiler",
+        "libartd-disassembler",
+        "libart-compiler-gtest",
+        "libart-runtime-gtest",
+        "libbase",
+    ],
+    static_libs: [
+        "libartd-dex2oat",
+    ],
+}
+
 art_cc_test {
     name: "art_dex2oat_tests",
     defaults: [
@@ -388,12 +415,15 @@ art_cc_test {
     srcs: [
         "dex2oat_test.cc",
         "dex2oat_image_test.cc",
+        "dex/dex_to_dex_decompiler_test.cc",
+        "driver/compiler_driver_test.cc",
         "linker/elf_writer_test.cc",
         "linker/image_test.cc",
         "linker/image_write_read_test.cc",
         "linker/index_bss_mapping_encoder_test.cc",
         "linker/multi_oat_relative_patcher_test.cc",
         "linker/oat_writer_test.cc",
+        "verifier_deps_test.cc",
     ],
 
     codegen: {
@@ -438,12 +468,14 @@ art_cc_test {
         "libartbased",
         "libartd-compiler",
         "libartd-dexlayout",
+        "libartpalette",
         "libbase",
         "libprofiled",
         "libsigchain",
         "libziparchive",
     ],
     static_libs: [
+        "libart-dex2oat-gtest",
         "libartd-dex2oat",
     ],
 }
