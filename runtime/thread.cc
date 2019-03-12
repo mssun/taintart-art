@@ -3571,7 +3571,7 @@ void Thread::QuickDeliverException() {
     }
     force_deopt = force_frame_pop || force_retry_instr;
   }
-  if (Dbg::IsForcedInterpreterNeededForException(this) || force_deopt || IsForceInterpreter()) {
+  if (Dbg::IsForcedInterpreterNeededForException(this) || force_deopt) {
     NthCallerVisitor visitor(this, 0, false);
     visitor.WalkStack();
     if (Runtime::Current()->IsAsyncDeoptimizeable(visitor.caller_pc)) {
