@@ -43,8 +43,6 @@ class DumpUtil {
  public:
   static void Register(EventHandler* event_handler);
   static void Unregister();
-
-  static jvmtiError DumpInternalState(jvmtiEnv* jvmti, char** data);
 };
 
 }  // namespace openjdkjvmti
