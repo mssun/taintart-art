@@ -1203,6 +1203,26 @@ class Thread {
     tls32_.is_transitioning_to_runnable = value;
   }
 
+  uint32_t DecrementForceInterpreterCount() REQUIRES(Locks::thread_list_lock_) {
+    return --tls32_.force_interpreter_count;
+  }
+
+  uint32_t IncrementForceInterpreterCount() REQUIRES(Locks::thread_list_lock_) {
+    return ++tls32_.force_interpreter_count;
+  }
+
+  void SetForceInterpreterCount(uint32_t value) REQUIRES(Locks::thread_list_lock_) {
+    tls32_.force_interpreter_count = value;
+  }
+
+  uint32_t ForceInterpreterCount() const {
+    return tls32_.force_interpreter_count;
+  }
+
+  bool IsForceInterpreter() const {
+    return tls32_.force_interpreter_count != 0;
+  }
+
   void PushVerifier(verifier::MethodVerifier* verifier);
   void PopVerifier(verifier::MethodVerifier* verifier);
 
@@ -1465,7 +1485,7 @@ class Thread {
       thread_exit_check_count(0), handling_signal_(false),
       is_transitioning_to_runnable(false), ready_for_debug_invoke(false),
       debug_method_entry_(false), is_gc_marking(false), weak_ref_access_enabled(true),
-      disable_thread_flip_count(0), user_code_suspend_count(0) {
+      disable_thread_flip_count(0), user_code_suspend_count(0), force_interpreter_count(0) {
     }
 
     union StateAndFlags state_and_flags;
@@ -1548,6 +1568,10 @@ class Thread {
     // This should have GUARDED_BY(Locks::user_code_suspension_lock_) but auto analysis cannot be
     // told that AssertHeld should be good enough.
     int user_code_suspend_count GUARDED_BY(Locks::thread_suspend_count_lock_);
+
+    // Count of how many times this thread has been forced to interpreter. If this is not 0 the
+    // thread must remain in interpreted code as much as possible.
+    uint32_t force_interpreter_count;
 
     // True if everything is in the ideal state for fast interpretation.
     // False if we need to switch to the C++ interpreter to handle special cases.

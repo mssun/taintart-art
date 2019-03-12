@@ -1491,6 +1491,7 @@ TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
   visitor.WalkStack(true);
   bool deoptimize = (visitor.caller != nullptr) &&
                     (interpreter_stubs_installed_ || IsDeoptimized(visitor.caller) ||
+                    self->IsForceInterpreter() ||
                     Dbg::IsForcedInterpreterNeededForUpcall(self, visitor.caller));
   if (is_ref) {
     // Restore the return value if it's a reference since it might have moved.

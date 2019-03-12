@@ -38,8 +38,11 @@
 #include "base/mutex.h"
 #include "runtime_callbacks.h"
 
+#include <jvmti.h>
+
 namespace art {
 class ArtMethod;
+class ScopedObjectAccessUnchecked;
 namespace mirror {
 class Class;
 }  // namespace mirror
@@ -95,6 +98,14 @@ class DeoptManager {
       REQUIRES_SHARED(art::Locks::mutator_lock_);
 
   void RemoveDeoptimizeAllMethods()
+      REQUIRES(!deoptimization_status_lock_, !art::Roles::uninterruptible_)
+      REQUIRES_SHARED(art::Locks::mutator_lock_);
+
+  jvmtiError AddDeoptimizeThreadMethods(art::ScopedObjectAccessUnchecked& soa, jthread thread)
+      REQUIRES(!deoptimization_status_lock_, !art::Roles::uninterruptible_)
+      REQUIRES_SHARED(art::Locks::mutator_lock_);
+
+  jvmtiError RemoveDeoptimizeThreadMethods(art::ScopedObjectAccessUnchecked& soa, jthread thread)
       REQUIRES(!deoptimization_status_lock_, !art::Roles::uninterruptible_)
       REQUIRES_SHARED(art::Locks::mutator_lock_);
 
