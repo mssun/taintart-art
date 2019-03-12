@@ -32,9 +32,11 @@
 #include "ti_dump.h"
 
 #include <limits>
+#include <sstream>
 
 #include "art_jvmti.h"
 #include "base/mutex.h"
+#include "deopt_manager.h"
 #include "events-inl.h"
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
@@ -68,6 +70,24 @@ void DumpUtil::Unregister() {
                                     art::ThreadState::kWaitingForDebuggerToAttach);
   art::ScopedSuspendAll ssa("Remove sigquit callback");
   art::Runtime::Current()->GetRuntimeCallbacks()->RemoveRuntimeSigQuitCallback(&gDumpCallback);
+}
+
+jvmtiError DumpUtil::DumpInternalState(jvmtiEnv *jvmti, char **data) {
+  art::Thread* self = art::Thread::Current();
+  if (jvmti == nullptr || self == nullptr) {
+    return ERR(INVALID_ENVIRONMENT);
+  } else if (data == nullptr) {
+    return ERR(NULL_POINTER);
+  }
+
+  std::stringstream ss;
+  // TODO Add more stuff on here.
+  DeoptManager::Get()->DumpDeoptInfo(self, ss);
+
+  jvmtiError err = OK;
+  JvmtiUniquePtr<char[]> res = CopyString(jvmti, ss.str().c_str(), &err);
+  *data = res.release();
+  return err;
 }
 
 }  // namespace openjdkjvmti
