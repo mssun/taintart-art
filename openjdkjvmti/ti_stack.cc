@@ -1061,8 +1061,14 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
     art::ShadowFrame* shadow_frame = visitor.GetOrCreateShadowFrame(&needs_instrument);
     {
       art::WriterMutexLock lk(self, tienv->event_info_mutex_);
-      // Mark shadow frame as needs_notify_pop_
-      shadow_frame->SetNotifyPop(true);
+      if (LIKELY(!shadow_frame->NeedsNotifyPop())) {
+        // Ensure we won't miss exceptions being thrown if we get jit-compiled. We only do this for
+        // the first NotifyPopFrame.
+        target->IncrementForceInterpreterCount();
+
+        // Mark shadow frame as needs_notify_pop_
+        shadow_frame->SetNotifyPop(true);
+      }
       tienv->notify_frames.insert(shadow_frame);
     }
     // Make sure can we will go to the interpreter and use the shadow frames.

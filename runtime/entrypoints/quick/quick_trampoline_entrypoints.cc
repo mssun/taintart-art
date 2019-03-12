@@ -799,9 +799,12 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
   ArtMethod* caller = QuickArgumentVisitor::GetCallingMethod(sp);
   uintptr_t caller_pc = QuickArgumentVisitor::GetCallingPc(sp);
   // If caller_pc is the instrumentation exit stub, the stub will check to see if deoptimization
-  // should be done and it knows the real return pc.
-  if (UNLIKELY(caller_pc != reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()) &&
-               Dbg::IsForcedInterpreterNeededForUpcall(self, caller))) {
+  // should be done and it knows the real return pc. NB If the upcall is null we don't need to do
+  // anything. This can happen during shutdown or early startup.
+  if (UNLIKELY(
+          caller != nullptr &&
+          caller_pc != reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()) &&
+          (self->IsForceInterpreter() || Dbg::IsForcedInterpreterNeededForUpcall(self, caller)))) {
     if (!Runtime::Current()->IsAsyncDeoptimizeable(caller_pc)) {
       LOG(WARNING) << "Got a deoptimization request on un-deoptimizable method "
                    << caller->PrettyMethod();
@@ -1453,8 +1456,10 @@ extern "C" const void* artQuickResolutionTrampoline(
     StackHandleScope<1> hs(soa.Self());
     Handle<mirror::Class> called_class(hs.NewHandle(called->GetDeclaringClass()));
     linker->EnsureInitialized(soa.Self(), called_class, true, true);
+    bool force_interpreter = self->IsForceInterpreter() && !called->IsNative();
     if (LIKELY(called_class->IsInitialized())) {
-      if (UNLIKELY(Dbg::IsForcedInterpreterNeededForResolution(self, called))) {
+      if (UNLIKELY(force_interpreter ||
+                   Dbg::IsForcedInterpreterNeededForResolution(self, called))) {
         // If we are single-stepping or the called method is deoptimized (by a
         // breakpoint, for example), then we have to execute the called method
         // with the interpreter.
@@ -1473,7 +1478,8 @@ extern "C" const void* artQuickResolutionTrampoline(
         code = called->GetEntryPointFromQuickCompiledCode();
       }
     } else if (called_class->IsInitializing()) {
-      if (UNLIKELY(Dbg::IsForcedInterpreterNeededForResolution(self, called))) {
+      if (UNLIKELY(force_interpreter ||
+                   Dbg::IsForcedInterpreterNeededForResolution(self, called))) {
         // If we are single-stepping or the called method is deoptimized (by a
         // breakpoint, for example), then we have to execute the called method
         // with the interpreter.
