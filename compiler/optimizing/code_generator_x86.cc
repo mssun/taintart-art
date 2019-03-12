@@ -4991,7 +4991,6 @@ void CodeGeneratorX86::RecordBootImageStringPatch(HLoadString* load_string) {
 }
 
 Label* CodeGeneratorX86::NewStringBssEntryPatch(HLoadString* load_string) {
-  DCHECK(!GetCompilerOptions().IsBootImage());
   HX86ComputeBaseMethodAddress* method_address =
       load_string->InputAt(0)->AsX86ComputeBaseMethodAddress();
   string_bss_entry_patches_.emplace_back(

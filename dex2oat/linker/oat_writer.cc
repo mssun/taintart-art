@@ -2309,9 +2309,6 @@ void OatWriter::InitBssLayout(InstructionSet instruction_set) {
   }
 
   DCHECK_EQ(bss_size_, 0u);
-  if (GetCompilerOptions().IsBootImage()) {
-    DCHECK(bss_string_entries_.empty());
-  }
   if (bss_method_entries_.empty() &&
       bss_type_entries_.empty() &&
       bss_string_entries_.empty()) {
