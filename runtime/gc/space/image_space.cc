@@ -2028,10 +2028,17 @@ bool ImageSpace::LoadBootImage(
   };
 
   auto try_load_from_system = [&]() {
-    return try_load_from(&BootImageLoader::HasSystem, &BootImageLoader::LoadFromSystem, false);
+    // Validate the oat files if the loading order checks data first. Otherwise assume system
+    // integrity.
+    return try_load_from(&BootImageLoader::HasSystem,
+                         &BootImageLoader::LoadFromSystem,
+                         /*validate_oat_file=*/ order != ImageSpaceLoadingOrder::kSystemFirst);
   };
   auto try_load_from_cache = [&]() {
-    return try_load_from(&BootImageLoader::HasCache, &BootImageLoader::LoadFromDalvikCache, true);
+    // Always validate oat files from the dalvik cache.
+    return try_load_from(&BootImageLoader::HasCache,
+                         &BootImageLoader::LoadFromDalvikCache,
+                         /*validate_oat_file=*/ true);
   };
 
   auto invoke_sequentially = [](auto first, auto second) {
