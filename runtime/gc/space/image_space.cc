@@ -308,6 +308,7 @@ static bool CanWriteToDalvikCache(const InstructionSet isa) {
 
 static bool ImageCreationAllowed(bool is_global_cache,
                                  const InstructionSet isa,
+                                 bool is_zygote,
                                  std::string* error_msg) {
   // Anyone can write into a "local" cache.
   if (!is_global_cache) {
@@ -317,7 +318,7 @@ static bool ImageCreationAllowed(bool is_global_cache,
   // Only the zygote running as root is allowed to create the global boot image.
   // If the zygote is running as non-root (and cannot write to the dalvik-cache),
   // then image creation is not allowed..
-  if (Runtime::Current()->IsZygote()) {
+  if (is_zygote) {
     return CanWriteToDalvikCache(isa);
   }
 
@@ -1413,12 +1414,17 @@ class ImageSpace::BootImageLoader {
   BootImageLoader(const std::vector<std::string>& boot_class_path,
                   const std::vector<std::string>& boot_class_path_locations,
                   const std::string& image_location,
-                  InstructionSet image_isa)
+                  InstructionSet image_isa,
+                  bool relocate,
+                  bool executable,
+                  bool is_zygote)
       : boot_class_path_(boot_class_path),
         boot_class_path_locations_(boot_class_path_locations),
         image_location_(image_location),
         image_isa_(image_isa),
-        is_zygote_(Runtime::Current()->IsZygote()),
+        relocate_(relocate),
+        executable_(executable),
+        is_zygote_(is_zygote),
         has_system_(false),
         has_cache_(false),
         is_global_cache_(true),
@@ -1585,7 +1591,6 @@ class ImageSpace::BootImageLoader {
     }
 
     MaybeRelocateSpaces(spaces, logger);
-    InitRuntimeMethods(spaces);
     boot_image_spaces->swap(spaces);
     *extra_reservation = std::move(local_extra_reservation);
     return true;
@@ -1753,15 +1758,15 @@ class ImageSpace::BootImageLoader {
     }
   }
 
-  static void MaybeRelocateSpaces(const std::vector<std::unique_ptr<ImageSpace>>& spaces,
-                                  TimingLogger* logger)
+  void MaybeRelocateSpaces(const std::vector<std::unique_ptr<ImageSpace>>& spaces,
+                           TimingLogger* logger)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     TimingLogger::ScopedTiming timing("MaybeRelocateSpaces", logger);
     ImageSpace* first_space = spaces.front().get();
     const ImageHeader& first_space_header = first_space->GetImageHeader();
     uint32_t diff =
         static_cast<uint32_t>(first_space->Begin() - first_space_header.GetImageBegin());
-    if (!Runtime::Current()->ShouldRelocate()) {
+    if (!relocate_) {
       DCHECK_EQ(diff, 0u);
       return;
     }
@@ -1772,37 +1777,6 @@ class ImageSpace::BootImageLoader {
     } else {
       DoRelocateSpaces<PointerSize::k32>(spaces, diff);
     }
-  }
-
-  static void InitRuntimeMethods(const std::vector<std::unique_ptr<ImageSpace>>& spaces)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    Runtime* runtime = Runtime::Current();
-    DCHECK(!runtime->HasResolutionMethod());
-    DCHECK(!spaces.empty());
-    ImageSpace* space = spaces[0].get();
-    const ImageHeader& image_header = space->GetImageHeader();
-    runtime->SetResolutionMethod(image_header.GetImageMethod(ImageHeader::kResolutionMethod));
-    runtime->SetImtConflictMethod(image_header.GetImageMethod(ImageHeader::kImtConflictMethod));
-    runtime->SetImtUnimplementedMethod(
-        image_header.GetImageMethod(ImageHeader::kImtUnimplementedMethod));
-    runtime->SetCalleeSaveMethod(
-        image_header.GetImageMethod(ImageHeader::kSaveAllCalleeSavesMethod),
-        CalleeSaveType::kSaveAllCalleeSaves);
-    runtime->SetCalleeSaveMethod(
-        image_header.GetImageMethod(ImageHeader::kSaveRefsOnlyMethod),
-        CalleeSaveType::kSaveRefsOnly);
-    runtime->SetCalleeSaveMethod(
-        image_header.GetImageMethod(ImageHeader::kSaveRefsAndArgsMethod),
-        CalleeSaveType::kSaveRefsAndArgs);
-    runtime->SetCalleeSaveMethod(
-        image_header.GetImageMethod(ImageHeader::kSaveEverythingMethod),
-        CalleeSaveType::kSaveEverything);
-    runtime->SetCalleeSaveMethod(
-        image_header.GetImageMethod(ImageHeader::kSaveEverythingMethodForClinit),
-        CalleeSaveType::kSaveEverythingForClinit);
-    runtime->SetCalleeSaveMethod(
-        image_header.GetImageMethod(ImageHeader::kSaveEverythingMethodForSuspendCheck),
-        CalleeSaveType::kSaveEverythingForSuspendCheck);
   }
 
   std::unique_ptr<ImageSpace> Load(const std::string& image_location,
@@ -1867,7 +1841,7 @@ class ImageSpace::BootImageLoader {
       oat_file.reset(OatFile::Open(/*zip_fd=*/ -1,
                                    oat_filename,
                                    oat_location,
-                                   !Runtime::Current()->IsAotCompiler(),
+                                   executable_,
                                    /*low_4gb=*/ false,
                                    /*abs_dex_location=*/ dex_filename.c_str(),
                                    image_reservation,
@@ -1937,9 +1911,8 @@ class ImageSpace::BootImageLoader {
     DCHECK(!image_reservation->IsValid());
     DCHECK_LT(extra_reservation_size, std::numeric_limits<uint32_t>::max() - reservation_size);
     size_t total_size = reservation_size + extra_reservation_size;
-    bool relocate = Runtime::Current()->ShouldRelocate();
     // If relocating, choose a random address for ALSR.
-    uint32_t addr = relocate ? ART_BASE_ADDRESS + ChooseRelocationOffsetDelta() : image_start;
+    uint32_t addr = relocate_ ? ART_BASE_ADDRESS + ChooseRelocationOffsetDelta() : image_start;
     *image_reservation =
         MemMap::MapAnonymous("Boot image reservation",
                              reinterpret_cast32<uint8_t*>(addr),
@@ -1983,6 +1956,8 @@ class ImageSpace::BootImageLoader {
   const std::vector<std::string>& boot_class_path_locations_;
   const std::string& image_location_;
   InstructionSet image_isa_;
+  bool relocate_;
+  bool executable_;
   bool is_zygote_;
   bool has_system_;
   bool has_cache_;
@@ -2033,6 +2008,9 @@ bool ImageSpace::LoadBootImage(
     const std::string& image_location,
     const InstructionSet image_isa,
     ImageSpaceLoadingOrder order,
+    bool relocate,
+    bool executable,
+    bool is_zygote,
     size_t extra_reservation_size,
     /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
     /*out*/MemMap* extra_reservation) {
@@ -2048,7 +2026,13 @@ bool ImageSpace::LoadBootImage(
     return false;
   }
 
-  BootImageLoader loader(boot_class_path, boot_class_path_locations, image_location, image_isa);
+  BootImageLoader loader(boot_class_path,
+                         boot_class_path_locations,
+                         image_location,
+                         image_isa,
+                         relocate,
+                         executable,
+                         is_zygote);
 
   // Step 0: Extra zygote work.
 
@@ -2065,8 +2049,7 @@ bool ImageSpace::LoadBootImage(
   //
   //           The advantage of doing this proactively is that the later steps are simplified,
   //           i.e., we do not need to code retries.
-  bool dex2oat_enabled = Runtime::Current()->IsImageDex2OatEnabled();
-
+  bool low_space = false;
   if (loader.IsZygote() && loader.DalvikCacheExists()) {
     // Extra checks for the zygote. These only apply when loading the first image, explained below.
     const std::string& dalvik_cache = loader.GetDalvikCache();
@@ -2079,10 +2062,9 @@ bool ImageSpace::LoadBootImage(
 
       // Re-evaluate the image.
       loader.FindImageFiles();
-    }
-    if (!check_space) {
+
       // Disable compilation/patching - we do not want to fill up the space again.
-      dex2oat_enabled = false;
+      low_space = true;
     }
   }
 
@@ -2130,9 +2112,12 @@ bool ImageSpace::LoadBootImage(
   //         so generate an image into the dalvik cache.
   if (!loader.HasSystem() && loader.DalvikCacheExists()) {
     std::string local_error_msg;
-    if (!dex2oat_enabled) {
+    if (low_space || !Runtime::Current()->IsImageDex2OatEnabled()) {
       local_error_msg = "Image compilation disabled.";
-    } else if (ImageCreationAllowed(loader.IsGlobalCache(), image_isa, &local_error_msg)) {
+    } else if (ImageCreationAllowed(loader.IsGlobalCache(),
+                                    image_isa,
+                                    is_zygote,
+                                    &local_error_msg)) {
       bool compilation_success =
           GenerateImage(loader.GetCacheFilename(), image_isa, &local_error_msg);
       if (compilation_success) {
@@ -2152,7 +2137,9 @@ bool ImageSpace::LoadBootImage(
 
   // We failed. Prune the cache the free up space, create a compound error message
   // and return false.
-  PruneDalvikCache(image_isa);
+  if (loader.DalvikCacheExists()) {
+    PruneDalvikCache(image_isa);
+  }
 
   std::ostringstream oss;
   bool first = true;
@@ -2170,26 +2157,7 @@ bool ImageSpace::LoadBootImage(
 }
 
 ImageSpace::~ImageSpace() {
-  Runtime* runtime = Runtime::Current();
-  if (runtime == nullptr) {
-    return;
-  }
-
-  if (GetImageHeader().IsAppImage()) {
-    // This image space did not modify resolution method then in Init.
-    return;
-  }
-
-  if (!runtime->HasResolutionMethod()) {
-    // Another image space has already unloaded the below methods.
-    return;
-  }
-
-  runtime->ClearInstructionSet();
-  runtime->ClearResolutionMethod();
-  runtime->ClearImtConflictMethod();
-  runtime->ClearImtUnimplementedMethod();
-  runtime->ClearCalleeSaveMethods();
+  // Everything done by member destructors. Classes forward-declared in header are now defined.
 }
 
 std::unique_ptr<ImageSpace> ImageSpace::CreateFromAppImage(const char* image,

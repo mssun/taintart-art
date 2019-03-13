@@ -973,7 +973,8 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
     *error_msg = StringPrintf("Invalid image pointer size: %u", pointer_size_unchecked);
     return false;
   }
-  image_pointer_size_ = spaces[0]->GetImageHeader().GetPointerSize();
+  const ImageHeader& image_header = spaces[0]->GetImageHeader();
+  image_pointer_size_ = image_header.GetPointerSize();
   if (!runtime->IsAotCompiler()) {
     // Only the Aot compiler supports having an image with a different pointer size than the
     // runtime. This happens on the host for compiling 32 bit tests since we use a 64 bit libart
@@ -985,6 +986,30 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
       return false;
     }
   }
+  DCHECK(!runtime->HasResolutionMethod());
+  runtime->SetResolutionMethod(image_header.GetImageMethod(ImageHeader::kResolutionMethod));
+  runtime->SetImtConflictMethod(image_header.GetImageMethod(ImageHeader::kImtConflictMethod));
+  runtime->SetImtUnimplementedMethod(
+      image_header.GetImageMethod(ImageHeader::kImtUnimplementedMethod));
+  runtime->SetCalleeSaveMethod(
+      image_header.GetImageMethod(ImageHeader::kSaveAllCalleeSavesMethod),
+      CalleeSaveType::kSaveAllCalleeSaves);
+  runtime->SetCalleeSaveMethod(
+      image_header.GetImageMethod(ImageHeader::kSaveRefsOnlyMethod),
+      CalleeSaveType::kSaveRefsOnly);
+  runtime->SetCalleeSaveMethod(
+      image_header.GetImageMethod(ImageHeader::kSaveRefsAndArgsMethod),
+      CalleeSaveType::kSaveRefsAndArgs);
+  runtime->SetCalleeSaveMethod(
+      image_header.GetImageMethod(ImageHeader::kSaveEverythingMethod),
+      CalleeSaveType::kSaveEverything);
+  runtime->SetCalleeSaveMethod(
+      image_header.GetImageMethod(ImageHeader::kSaveEverythingMethodForClinit),
+      CalleeSaveType::kSaveEverythingForClinit);
+  runtime->SetCalleeSaveMethod(
+      image_header.GetImageMethod(ImageHeader::kSaveEverythingMethodForSuspendCheck),
+      CalleeSaveType::kSaveEverythingForSuspendCheck);
+
   std::vector<const OatFile*> oat_files =
       runtime->GetOatFileManager().RegisterImageOatFiles(spaces);
   DCHECK(!oat_files.empty());
