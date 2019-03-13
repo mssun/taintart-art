@@ -234,8 +234,6 @@ class ImageWriter final {
   friend std::ostream& operator<<(std::ostream& stream, const NativeObjectRelocationType& type);
 
   enum class StubType {
-    kInterpreterToInterpreterBridge,
-    kInterpreterToCompiledCodeBridge,
     kJNIDlsymLookup,
     kQuickGenericJNITrampoline,
     kQuickIMTConflictTrampoline,
