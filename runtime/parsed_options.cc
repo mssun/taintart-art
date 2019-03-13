@@ -89,6 +89,11 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
       .Define("-Ximage:_")
           .WithType<std::string>()
           .IntoKey(M::Image)
+      .Define("-Ximage-load-order:_")
+          .WithType<gc::space::ImageSpaceLoadingOrder>()
+          .WithValueMap({{"system", gc::space::ImageSpaceLoadingOrder::kSystemFirst},
+                         {"data", gc::space::ImageSpaceLoadingOrder::kDataFirst}})
+          .IntoKey(M::ImageSpaceLoadingOrder)
       .Define("-Xcheck:jni")
           .IntoKey(M::CheckJni)
       .Define("-Xjniopts:forcecopy")

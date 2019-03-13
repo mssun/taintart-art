@@ -584,7 +584,11 @@ OatFileAssistant::ImageInfo::GetRuntimeImageInfo(InstructionSet isa, std::string
   std::unique_ptr<ImageInfo> info(new ImageInfo());
   info->location = runtime->GetImageLocation();
   info->boot_class_path_checksums = gc::space::ImageSpace::GetBootClassPathChecksums(
-      runtime->GetBootClassPath(), info->location, isa, error_msg);
+      runtime->GetBootClassPath(),
+      info->location,
+      isa,
+      runtime->GetImageSpaceLoadingOrder(),
+      error_msg);
   if (info->boot_class_path_checksums.empty()) {
     return nullptr;
   }
