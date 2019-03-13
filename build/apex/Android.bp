@@ -188,6 +188,7 @@ apex_defaults {
     prebuilts: art_runtime_data_file_prebuilts
         + ["com.android.runtime.ld.config.txt"],
     key: "com.android.runtime.key",
+    required: ["art_apex_boot_integrity"],
 }
 
 // Release version of the Runtime APEX module (not containing debug
@@ -357,4 +358,10 @@ sh_binary {
 sh_binary {
     name: "art_postinstall_hook",
     src: "art_postinstall_hook.sh",
+}
+
+sh_binary {
+    name: "art_apex_boot_integrity",
+    src: "art_apex_boot_integrity.sh",
+    init_rc: ["art_apex_boot_integrity.rc"],
 }

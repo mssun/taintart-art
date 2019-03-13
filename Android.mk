@@ -364,6 +364,7 @@ LOCAL_REQUIRED_MODULES := $(TARGET_RUNTIME_APEX)
 ifneq ($(HOST_OS),darwin)
   LOCAL_REQUIRED_MODULES += $(APEX_TEST_MODULE)
 endif
+LOCAL_REQUIRED_MODULES += art_apex_boot_integrity
 
 # Clear locally used variable.
 art_target_include_debug_build :=
