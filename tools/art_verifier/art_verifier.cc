@@ -30,7 +30,7 @@
 #include "mirror/dex_cache-inl.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
-#include "verifier/method_verifier.h"
+#include "verifier/class_verifier.h"
 #include "well_known_classes.h"
 
 #include <sys/stat.h>
@@ -246,13 +246,13 @@ struct MethodVerifierMain : public CmdlineMain<MethodVerifierArgs> {
           }
           std::string error_msg;
           verifier::FailureKind res =
-            verifier::MethodVerifier::VerifyClass(soa.Self(),
-                                                  h_klass.Get(),
-                                                  runtime->GetCompilerCallbacks(),
-                                                  true,
-                                                  verifier::HardFailLogMode::kLogWarning,
-                                                  args_->api_level_,
-                                                  &error_msg);
+            verifier::ClassVerifier::VerifyClass(soa.Self(),
+                                                 h_klass.Get(),
+                                                 runtime->GetCompilerCallbacks(),
+                                                 true,
+                                                 verifier::HardFailLogMode::kLogWarning,
+                                                 args_->api_level_,
+                                                 &error_msg);
           if (args_->repetitions_ == 0) {
             LOG(INFO) << descriptor << ": " << res << " " << error_msg;
           }

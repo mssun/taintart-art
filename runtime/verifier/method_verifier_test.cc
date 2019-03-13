@@ -23,6 +23,7 @@
 
 #include "base/utils.h"
 #include "class_linker-inl.h"
+#include "class_verifier.h"
 #include "common_runtime_test.h"
 #include "dex/dex_file-inl.h"
 #include "scoped_thread_state_change-inl.h"
@@ -41,7 +42,7 @@ class MethodVerifierTest : public CommonRuntimeTest {
 
     // Verify the class
     std::string error_msg;
-    FailureKind failure = MethodVerifier::VerifyClass(
+    FailureKind failure = ClassVerifier::VerifyClass(
         self, klass, nullptr, true, HardFailLogMode::kLogWarning, /* api_level= */ 0u, &error_msg);
 
     if (android::base::StartsWith(descriptor, "Ljava/lang/invoke")) {

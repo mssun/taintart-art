@@ -19,10 +19,6 @@
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"
 #include "mirror/class-inl.h"
-#include "mirror/object.h"
-#include "obj_ptr-inl.h"
-#include "thread-current-inl.h"
-#include "verifier/method_verifier-inl.h"
 
 namespace art {
 

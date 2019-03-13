@@ -85,8 +85,7 @@
 #include "utils/dex_cache_arrays_layout-inl.h"
 #include "utils/swap_space.h"
 #include "vdex_file.h"
-#include "verifier/method_verifier-inl.h"
-#include "verifier/method_verifier.h"
+#include "verifier/class_verifier.h"
 #include "verifier/verifier_deps.h"
 #include "verifier/verifier_enums.h"
 
@@ -1884,16 +1883,16 @@ class VerifyClassVisitor : public CompilationVisitor {
           soa.Self(), dex_file)));
       std::string error_msg;
       failure_kind =
-          verifier::MethodVerifier::VerifyClass(soa.Self(),
-                                                &dex_file,
-                                                dex_cache,
-                                                class_loader,
-                                                class_def,
-                                                Runtime::Current()->GetCompilerCallbacks(),
-                                                true /* allow soft failures */,
-                                                log_level_,
-                                                sdk_version_,
-                                                &error_msg);
+          verifier::ClassVerifier::VerifyClass(soa.Self(),
+                                               &dex_file,
+                                               dex_cache,
+                                               class_loader,
+                                               class_def,
+                                               Runtime::Current()->GetCompilerCallbacks(),
+                                               true /* allow soft failures */,
+                                               log_level_,
+                                               sdk_version_,
+                                               &error_msg);
       if (failure_kind == verifier::FailureKind::kHardFailure) {
         LOG(ERROR) << "Verification failed on class " << PrettyDescriptor(descriptor)
                    << " because: " << error_msg;
