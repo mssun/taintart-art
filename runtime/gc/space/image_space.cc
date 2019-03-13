@@ -1625,7 +1625,7 @@ class ImageSpace::BootImageLoader {
       // First patch the image header. The `diff` is OK for patching 32-bit fields but
       // the 64-bit method fields in the ImageHeader may need a negative `delta`.
       reinterpret_cast<ImageHeader*>(space->Begin())->RelocateImage(
-          (reinterpret_cast32<uint32_t>(space->Begin()) < diff)
+          (reinterpret_cast32<uint32_t>(space->Begin()) >= -diff)  // Would `begin+diff` overflow?
               ? -static_cast<int64_t>(-diff) : static_cast<int64_t>(diff));
 
       // Patch fields and methods.
