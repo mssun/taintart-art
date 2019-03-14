@@ -74,8 +74,6 @@ OatHeader::OatHeader(InstructionSet instruction_set,
       dex_file_count_(dex_file_count),
       oat_dex_files_offset_(0),
       executable_offset_(0),
-      interpreter_to_interpreter_bridge_offset_(0),
-      interpreter_to_compiled_code_bridge_offset_(0),
       jni_dlsym_lookup_offset_(0),
       quick_generic_jni_trampoline_offset_(0),
       quick_imt_conflict_trampoline_offset_(0),
@@ -189,55 +187,20 @@ void OatHeader::SetExecutableOffset(uint32_t executable_offset) {
   executable_offset_ = executable_offset;
 }
 
-const void* OatHeader::GetInterpreterToInterpreterBridge() const {
-  return reinterpret_cast<const uint8_t*>(this) + GetInterpreterToInterpreterBridgeOffset();
-}
-
-uint32_t OatHeader::GetInterpreterToInterpreterBridgeOffset() const {
-  DCHECK(IsValid());
-  CHECK(interpreter_to_interpreter_bridge_offset_ == 0 ||
-        interpreter_to_interpreter_bridge_offset_ >= executable_offset_);
-  return interpreter_to_interpreter_bridge_offset_;
-}
-
-void OatHeader::SetInterpreterToInterpreterBridgeOffset(uint32_t offset) {
-  CHECK(offset == 0 || offset >= executable_offset_);
-  DCHECK(IsValid());
-  DCHECK_EQ(interpreter_to_interpreter_bridge_offset_, 0U) << offset;
-
-  interpreter_to_interpreter_bridge_offset_ = offset;
-}
-
-const void* OatHeader::GetInterpreterToCompiledCodeBridge() const {
-  return reinterpret_cast<const uint8_t*>(this) + GetInterpreterToCompiledCodeBridgeOffset();
-}
-
-uint32_t OatHeader::GetInterpreterToCompiledCodeBridgeOffset() const {
-  DCHECK(IsValid());
-  CHECK_GE(interpreter_to_compiled_code_bridge_offset_, interpreter_to_interpreter_bridge_offset_);
-  return interpreter_to_compiled_code_bridge_offset_;
-}
-
-void OatHeader::SetInterpreterToCompiledCodeBridgeOffset(uint32_t offset) {
-  CHECK(offset == 0 || offset >= interpreter_to_interpreter_bridge_offset_);
-  DCHECK(IsValid());
-  DCHECK_EQ(interpreter_to_compiled_code_bridge_offset_, 0U) << offset;
-
-  interpreter_to_compiled_code_bridge_offset_ = offset;
+static const void* GetTrampoline(const OatHeader& header, uint32_t offset) {
+  return (offset != 0u) ? reinterpret_cast<const uint8_t*>(&header) + offset : nullptr;
 }
 
 const void* OatHeader::GetJniDlsymLookup() const {
-  return reinterpret_cast<const uint8_t*>(this) + GetJniDlsymLookupOffset();
+  return GetTrampoline(*this, GetJniDlsymLookupOffset());
 }
 
 uint32_t OatHeader::GetJniDlsymLookupOffset() const {
   DCHECK(IsValid());
-  CHECK_GE(jni_dlsym_lookup_offset_, interpreter_to_compiled_code_bridge_offset_);
   return jni_dlsym_lookup_offset_;
 }
 
 void OatHeader::SetJniDlsymLookupOffset(uint32_t offset) {
-  CHECK(offset == 0 || offset >= interpreter_to_compiled_code_bridge_offset_);
   DCHECK(IsValid());
   DCHECK_EQ(jni_dlsym_lookup_offset_, 0U) << offset;
 
@@ -245,7 +208,7 @@ void OatHeader::SetJniDlsymLookupOffset(uint32_t offset) {
 }
 
 const void* OatHeader::GetQuickGenericJniTrampoline() const {
-  return reinterpret_cast<const uint8_t*>(this) + GetQuickGenericJniTrampolineOffset();
+  return GetTrampoline(*this, GetQuickGenericJniTrampolineOffset());
 }
 
 uint32_t OatHeader::GetQuickGenericJniTrampolineOffset() const {
@@ -263,7 +226,7 @@ void OatHeader::SetQuickGenericJniTrampolineOffset(uint32_t offset) {
 }
 
 const void* OatHeader::GetQuickImtConflictTrampoline() const {
-  return reinterpret_cast<const uint8_t*>(this) + GetQuickImtConflictTrampolineOffset();
+  return GetTrampoline(*this, GetQuickImtConflictTrampolineOffset());
 }
 
 uint32_t OatHeader::GetQuickImtConflictTrampolineOffset() const {
@@ -281,7 +244,7 @@ void OatHeader::SetQuickImtConflictTrampolineOffset(uint32_t offset) {
 }
 
 const void* OatHeader::GetQuickResolutionTrampoline() const {
-  return reinterpret_cast<const uint8_t*>(this) + GetQuickResolutionTrampolineOffset();
+  return GetTrampoline(*this, GetQuickResolutionTrampolineOffset());
 }
 
 uint32_t OatHeader::GetQuickResolutionTrampolineOffset() const {
@@ -299,7 +262,7 @@ void OatHeader::SetQuickResolutionTrampolineOffset(uint32_t offset) {
 }
 
 const void* OatHeader::GetQuickToInterpreterBridge() const {
-  return reinterpret_cast<const uint8_t*>(this) + GetQuickToInterpreterBridgeOffset();
+  return GetTrampoline(*this, GetQuickToInterpreterBridgeOffset());
 }
 
 uint32_t OatHeader::GetQuickToInterpreterBridgeOffset() const {

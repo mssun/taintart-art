@@ -202,8 +202,6 @@ class OatSymbolizer final {
         info.code_size = 0;  /* The symbol lasts until the next symbol. */        \
         method_debug_infos_.push_back(std::move(info));                           \
       }
-    DO_TRAMPOLINE(InterpreterToInterpreterBridge)
-    DO_TRAMPOLINE(InterpreterToCompiledCodeBridge)
     DO_TRAMPOLINE(JniDlsymLookup);
     DO_TRAMPOLINE(QuickGenericJniTrampoline);
     DO_TRAMPOLINE(QuickImtConflictTrampoline);
@@ -454,10 +452,6 @@ class OatDumper {
     os << StringPrintf("\n\n");
 
     DUMP_OAT_HEADER_OFFSET("EXECUTABLE", GetExecutableOffset);
-    DUMP_OAT_HEADER_OFFSET("INTERPRETER TO INTERPRETER BRIDGE",
-                           GetInterpreterToInterpreterBridgeOffset);
-    DUMP_OAT_HEADER_OFFSET("INTERPRETER TO COMPILED CODE BRIDGE",
-                           GetInterpreterToCompiledCodeBridgeOffset);
     DUMP_OAT_HEADER_OFFSET("JNI DLSYM LOOKUP",
                            GetJniDlsymLookupOffset);
     DUMP_OAT_HEADER_OFFSET("QUICK GENERIC JNI TRAMPOLINE",

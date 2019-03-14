@@ -466,7 +466,7 @@ TEST_F(OatTest, WriteRead) {
 TEST_F(OatTest, OatHeaderSizeCheck) {
   // If this test is failing and you have to update these constants,
   // it is time to update OatHeader::kOatVersion
-  EXPECT_EQ(64U, sizeof(OatHeader));
+  EXPECT_EQ(56U, sizeof(OatHeader));
   EXPECT_EQ(4U, sizeof(OatMethodOffsets));
   EXPECT_EQ(8U, sizeof(OatQuickMethodHeader));
   EXPECT_EQ(166 * static_cast<size_t>(GetInstructionSetPointerSize(kRuntimeISA)),

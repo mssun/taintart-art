@@ -380,6 +380,7 @@ OatWriter::OatWriter(const CompilerOptions& compiler_options,
     image_writer_(nullptr),
     extract_dex_files_into_vdex_(true),
     dex_files_(nullptr),
+    primary_oat_file_(false),
     vdex_size_(0u),
     vdex_dex_files_offset_(0u),
     vdex_dex_shared_data_offset_(0u),
@@ -671,8 +672,8 @@ bool OatWriter::WriteAndOpenDexFiles(
      return false;
   }
 
-  std::vector<MemMap> dex_files_map;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
+  // Record whether this is the primary oat file.
+  primary_oat_file_ = (key_value_store != nullptr);
 
   // Initialize VDEX and OAT headers.
 
@@ -687,6 +688,8 @@ bool OatWriter::WriteAndOpenDexFiles(
   std::unique_ptr<BufferedOutputStream> vdex_out =
       std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
   // Write DEX files into VDEX, mmap and open them.
+  std::vector<MemMap> dex_files_map;
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
   if (!WriteDexFiles(vdex_out.get(), vdex_file, update_input_vdex, copy_dex_files) ||
       !OpenDexFiles(vdex_file, verify, &dex_files_map, &dex_files)) {
     return false;
@@ -2181,10 +2184,7 @@ size_t OatWriter::InitOatCode(size_t offset) {
   offset = RoundUp(offset, kPageSize);
   oat_header_->SetExecutableOffset(offset);
   size_executable_offset_alignment_ = offset - old_offset;
-  // TODO: Remove unused trampoline offsets from the OatHeader (requires oat version change).
-  oat_header_->SetInterpreterToInterpreterBridgeOffset(0);
-  oat_header_->SetInterpreterToCompiledCodeBridgeOffset(0);
-  if (GetCompilerOptions().IsBootImage()) {
+  if (GetCompilerOptions().IsBootImage() && primary_oat_file_) {
     InstructionSet instruction_set = compiler_options_.GetInstructionSet();
     const bool generate_debug_info = GetCompilerOptions().GenerateAnyDebugInfo();
     size_t adjusted_offset = offset;
@@ -3061,7 +3061,7 @@ size_t OatWriter::WriteOatDexFiles(OutputStream* out, size_t file_offset, size_t
 }
 
 size_t OatWriter::WriteCode(OutputStream* out, size_t file_offset, size_t relative_offset) {
-  if (GetCompilerOptions().IsBootImage()) {
+  if (GetCompilerOptions().IsBootImage() && primary_oat_file_) {
     InstructionSet instruction_set = compiler_options_.GetInstructionSet();
 
     #define DO_TRAMPOLINE(field) \

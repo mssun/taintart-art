@@ -846,14 +846,6 @@ class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
     std::vector<const OatFile*> boot_oat_files = oat_file_manager.GetBootOatFiles();
     for (const OatFile* oat_file : boot_oat_files) {
       const OatHeader& oat_header = oat_file->GetOatHeader();
-      const void* i2ib = oat_header.GetInterpreterToInterpreterBridge();
-      if (i2ib != nullptr) {
-        entry_point_names_[i2ib] = "InterpreterToInterpreterBridge (from boot oat file)";
-      }
-      const void* i2ccb = oat_header.GetInterpreterToCompiledCodeBridge();
-      if (i2ccb != nullptr) {
-        entry_point_names_[i2ccb] = "InterpreterToCompiledCodeBridge (from boot oat file)";
-      }
       const void* jdl = oat_header.GetJniDlsymLookup();
       if (jdl != nullptr) {
         entry_point_names_[jdl] = "JniDlsymLookup (from boot oat file)";

@@ -3339,10 +3339,6 @@ const uint8_t* ImageWriter::GetOatAddress(StubType type) const {
       // TODO: We could maybe clean this up if we stored them in an array in the oat header.
       case StubType::kQuickGenericJNITrampoline:
         return static_cast<const uint8_t*>(header.GetQuickGenericJniTrampoline());
-      case StubType::kInterpreterToInterpreterBridge:
-        return static_cast<const uint8_t*>(header.GetInterpreterToInterpreterBridge());
-      case StubType::kInterpreterToCompiledCodeBridge:
-        return static_cast<const uint8_t*>(header.GetInterpreterToCompiledCodeBridge());
       case StubType::kJNIDlsymLookup:
         return static_cast<const uint8_t*>(header.GetJniDlsymLookup());
       case StubType::kQuickIMTConflictTrampoline:
@@ -3599,10 +3595,6 @@ void ImageWriter::UpdateOatFileHeader(size_t oat_index, const OatHeader& oat_hea
 
   if (oat_index == GetDefaultOatIndex()) {
     // Primary oat file, read the trampolines.
-    cur_image_info.SetStubOffset(StubType::kInterpreterToInterpreterBridge,
-                                 oat_header.GetInterpreterToInterpreterBridgeOffset());
-    cur_image_info.SetStubOffset(StubType::kInterpreterToCompiledCodeBridge,
-                                 oat_header.GetInterpreterToCompiledCodeBridgeOffset());
     cur_image_info.SetStubOffset(StubType::kJNIDlsymLookup,
                                  oat_header.GetJniDlsymLookupOffset());
     cur_image_info.SetStubOffset(StubType::kQuickGenericJNITrampoline,
