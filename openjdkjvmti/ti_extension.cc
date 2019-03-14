@@ -38,6 +38,7 @@
 #include "ti_allocator.h"
 #include "ti_class.h"
 #include "ti_ddms.h"
+#include "ti_dump.h"
 #include "ti_heap.h"
 #include "ti_logging.h"
 #include "ti_monitor.h"
@@ -308,6 +309,20 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
       "Clears the error message returned by 'com.android.art.misc.get_last_error_message'.",
       { },
       { });
+  if (error != ERR(NONE)) {
+    return error;
+  }
+
+  // DumpInternalState
+  error = add_extension(
+      reinterpret_cast<jvmtiExtensionFunction>(DumpUtil::DumpInternalState),
+      "com.android.art.misc.get_plugin_internal_state",
+      "Gets internal state about the plugin and serializes it to the given msg. "
+      "There is no particular format to this message beyond being human readable.",
+      {
+          { "msg", JVMTI_KIND_ALLOC_BUF, JVMTI_TYPE_CCHAR, false },
+      },
+      { ERR(NULL_POINTER) });
   if (error != ERR(NONE)) {
     return error;
   }
