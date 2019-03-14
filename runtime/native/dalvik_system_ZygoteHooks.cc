@@ -282,13 +282,15 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   runtime_flags = EnableDebugFeatures(runtime_flags);
   hiddenapi::EnforcementPolicy api_enforcement_policy = hiddenapi::EnforcementPolicy::kDisabled;
 
+  Runtime* runtime = Runtime::Current();
+
   if ((runtime_flags & DISABLE_VERIFIER) != 0) {
-    Runtime::Current()->DisableVerifier();
+    runtime->DisableVerifier();
     runtime_flags &= ~DISABLE_VERIFIER;
   }
 
   if ((runtime_flags & ONLY_USE_SYSTEM_OAT_FILES) != 0 || is_system_server) {
-    Runtime::Current()->GetOatFileManager().SetOnlyUseSystemOatFiles();
+    runtime->GetOatFileManager().SetOnlyUseSystemOatFiles();
     runtime_flags &= ~ONLY_USE_SYSTEM_OAT_FILES;
   }
 
@@ -299,7 +301,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   bool profile_system_server = (runtime_flags & PROFILE_SYSTEM_SERVER) == PROFILE_SYSTEM_SERVER;
   runtime_flags &= ~PROFILE_SYSTEM_SERVER;
 
-  Runtime::Current()->SetLoadAppImageStartupCacheEnabled(
+  runtime->SetLoadAppImageStartupCacheEnabled(
       (runtime_flags & USE_APP_IMAGE_STARTUP_CACHE) != 0u);
   runtime_flags &= ~USE_APP_IMAGE_STARTUP_CACHE;
 
@@ -307,15 +309,15 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     LOG(ERROR) << StringPrintf("Unknown bits set in runtime_flags: %#x", runtime_flags);
   }
 
-  Runtime::Current()->GetHeap()->PostForkChildAction(thread);
-  if (Runtime::Current()->GetJit() != nullptr) {
+  runtime->GetHeap()->PostForkChildAction(thread);
+  if (runtime->GetJit() != nullptr) {
     if (!is_system_server) {
       // System server already called the JIT cache post fork action in `nativePostForkSystemServer`.
-      Runtime::Current()->GetJit()->GetCodeCache()->PostForkChildAction(
+      runtime->GetJit()->GetCodeCache()->PostForkChildAction(
           /* is_system_server= */ false, is_zygote);
     }
     // This must be called after EnableDebugFeatures.
-    Runtime::Current()->GetJit()->PostForkChildAction(is_zygote);
+    runtime->GetJit()->PostForkChildAction(is_zygote);
   }
 
   // Update tracing.
@@ -365,10 +367,10 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
       << "SystemServer should be forked with EnforcementPolicy::kDisable";
   DCHECK(!(is_zygote && do_hidden_api_checks))
       << "Child zygote processes should be forked with EnforcementPolicy::kDisable";
-  Runtime::Current()->SetHiddenApiEnforcementPolicy(api_enforcement_policy);
-  Runtime::Current()->SetDedupeHiddenApiWarnings(true);
+  runtime->SetHiddenApiEnforcementPolicy(api_enforcement_policy);
+  runtime->SetDedupeHiddenApiWarnings(true);
   if (api_enforcement_policy != hiddenapi::EnforcementPolicy::kDisabled &&
-      Runtime::Current()->GetHiddenApiEventLogSampleRate() != 0) {
+      runtime->GetHiddenApiEventLogSampleRate() != 0) {
     // Hidden API checks are enabled, and we are sampling access for the event log. Initialize the
     // random seed, to ensure the sampling is actually random. We do this post-fork, as doing it
     // pre-fork would result in the same sequence for every forked process.
@@ -389,10 +391,9 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     if (isa != InstructionSet::kNone && isa != kRuntimeISA) {
       action = Runtime::NativeBridgeAction::kInitialize;
     }
-    Runtime::Current()->InitNonZygoteOrPostFork(
-        env, is_system_server, action, isa_string.c_str());
+    runtime->InitNonZygoteOrPostFork(env, is_system_server, action, isa_string.c_str());
   } else {
-    Runtime::Current()->InitNonZygoteOrPostFork(
+    runtime->InitNonZygoteOrPostFork(
         env,
         is_system_server,
         Runtime::NativeBridgeAction::kUnload,
