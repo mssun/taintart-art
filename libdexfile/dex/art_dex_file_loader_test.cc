@@ -18,11 +18,9 @@
 
 #include <sys/mman.h>
 
-#include <fstream>
 #include <memory>
 
 #include "base/common_art_test.h"
-#include "base/file_utils.h"
 #include "base/mem_map.h"
 #include "base/os.h"
 #include "base/stl_util.h"
@@ -36,12 +34,6 @@
 #include "dex/dex_file_loader.h"
 
 namespace art {
-
-static void Copy(const std::string& src, const std::string& dst) {
-  std::ifstream  src_stream(src, std::ios::binary);
-  std::ofstream  dst_stream(dst, std::ios::binary);
-  dst_stream << src_stream.rdbuf();
-}
 
 class ArtDexFileLoaderTest : public CommonArtTest {
   void SetUp() override {
@@ -318,176 +310,6 @@ TEST_F(ArtDexFileLoaderTest, GetDexCanonicalLocation) {
             DexFileLoader::GetDexCanonicalLocation(multidex_location_sym.c_str()));
 
   ASSERT_EQ(0, unlink(dex_location_sym.c_str()));
-}
-
-TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_DataDir) {
-  // Load file from a non-system directory and check that it is not flagged as framework.
-  std::string data_location_path = android_data_ + "/foo.jar";
-  ASSERT_FALSE(LocationIsOnSystemFramework(data_location_path.c_str()));
-
-  Copy(GetTestDexFileName("Main"), data_location_path);
-
-  ArtDexFileLoader loader;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
-  std::string error_msg;
-  bool success = loader.Open(data_location_path.c_str(),
-                             data_location_path,
-                             /* verify= */ false,
-                             /* verify_checksum= */ false,
-                             &error_msg,
-                             &dex_files);
-  ASSERT_TRUE(success) << error_msg;
-
-  ASSERT_GE(dex_files.size(), 1u);
-  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_NE(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
-  }
-
-  dex_files.clear();
-
-  ASSERT_EQ(0, remove(data_location_path.c_str()));
-}
-
-TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemDir) {
-  // Load file from a system, non-framework directory and check that it is not flagged as framework.
-  std::string system_location_path = GetAndroidRoot() + "/foo.jar";
-  ASSERT_FALSE(LocationIsOnSystemFramework(system_location_path.c_str()));
-
-  Copy(GetTestDexFileName("Main"), system_location_path);
-
-  ArtDexFileLoader loader;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
-  std::string error_msg;
-  bool success = loader.Open(system_location_path.c_str(),
-                             system_location_path,
-                             /* verify= */ false,
-                             /* verify_checksum= */ false,
-                             &error_msg,
-                             &dex_files);
-  ASSERT_TRUE(success) << error_msg;
-
-  ASSERT_GE(dex_files.size(), 1u);
-  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_NE(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
-  }
-
-  dex_files.clear();
-
-  ASSERT_EQ(0, remove(system_location_path.c_str()));
-}
-
-TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemFrameworkDir) {
-  // Load file from a system/framework directory and check that it is flagged as a framework dex.
-  std::string system_framework_location_path = GetAndroidRoot() + "/framework/foo.jar";
-  ASSERT_TRUE(LocationIsOnSystemFramework(system_framework_location_path.c_str()));
-
-  Copy(GetTestDexFileName("Main"), system_framework_location_path);
-
-  ArtDexFileLoader loader;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
-  std::string error_msg;
-  bool success = loader.Open(system_framework_location_path.c_str(),
-                             system_framework_location_path,
-                             /* verify= */ false,
-                             /* verify_checksum= */ false,
-                             &error_msg,
-                             &dex_files);
-  ASSERT_TRUE(success) << error_msg;
-
-  ASSERT_GE(dex_files.size(), 1u);
-  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_EQ(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
-  }
-
-  dex_files.clear();
-
-  ASSERT_EQ(0, remove(system_framework_location_path.c_str()));
-}
-
-TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_DataDir_MultiDex) {
-  // Load multidex file from a non-system directory and check that it is not flagged as framework.
-  std::string data_multi_location_path = android_data_ + "/multifoo.jar";
-  ASSERT_FALSE(LocationIsOnSystemFramework(data_multi_location_path.c_str()));
-
-  Copy(GetTestDexFileName("MultiDex"), data_multi_location_path);
-
-  ArtDexFileLoader loader;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
-  std::string error_msg;
-  bool success = loader.Open(data_multi_location_path.c_str(),
-                             data_multi_location_path,
-                             /* verify= */ false,
-                             /* verify_checksum= */ false,
-                             &error_msg,
-                             &dex_files);
-  ASSERT_TRUE(success) << error_msg;
-
-  ASSERT_GT(dex_files.size(), 1u);
-  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_NE(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
-  }
-
-  dex_files.clear();
-
-  ASSERT_EQ(0, remove(data_multi_location_path.c_str()));
-}
-
-TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemDir_MultiDex) {
-  // Load multidex file from a system, non-framework directory and check that it is not flagged
-  // as framework.
-  std::string system_multi_location_path = GetAndroidRoot() + "/multifoo.jar";
-  ASSERT_FALSE(LocationIsOnSystemFramework(system_multi_location_path.c_str()));
-
-  Copy(GetTestDexFileName("MultiDex"), system_multi_location_path);
-
-  ArtDexFileLoader loader;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
-  std::string error_msg;
-  bool success = loader.Open(system_multi_location_path.c_str(),
-                             system_multi_location_path,
-                             /* verify= */ false,
-                             /* verify_checksum= */ false,
-                             &error_msg,
-                             &dex_files);
-  ASSERT_TRUE(success) << error_msg;
-
-  ASSERT_GT(dex_files.size(), 1u);
-  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_NE(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
-  }
-
-  dex_files.clear();
-
-  ASSERT_EQ(0, remove(system_multi_location_path.c_str()));
-}
-
-TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile_SystemFrameworkDir_MultiDex) {
-  // Load multidex file from a system/framework directory and check that it is flagged as a
-  // framework dex.
-  std::string system_framework_multi_location_path = GetAndroidRoot() + "/framework/multifoo.jar";
-  ASSERT_TRUE(LocationIsOnSystemFramework(system_framework_multi_location_path.c_str()));
-
-  Copy(GetTestDexFileName("MultiDex"), system_framework_multi_location_path);
-
-  ArtDexFileLoader loader;
-  std::vector<std::unique_ptr<const DexFile>> dex_files;
-  std::string error_msg;
-  bool success = loader.Open(system_framework_multi_location_path.c_str(),
-                             system_framework_multi_location_path,
-                             /* verify= */ false,
-                             /* verify_checksum= */ false,
-                             &error_msg,
-                             &dex_files);
-  ASSERT_TRUE(success) << error_msg;
-
-  ASSERT_GT(dex_files.size(), 1u);
-  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
-    ASSERT_EQ(dex_file->GetHiddenapiDomain(), hiddenapi::Domain::kPlatform);
-  }
-
-  dex_files.clear();
-
-  ASSERT_EQ(0, remove(system_framework_multi_location_path.c_str()));
 }
 
 }  // namespace art

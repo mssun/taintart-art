@@ -527,37 +527,18 @@ std::unique_ptr<DexFile> ArtDexFileLoader::OpenCommon(const uint8_t* base,
                                                       std::string* error_msg,
                                                       std::unique_ptr<DexFileContainer> container,
                                                       VerifyResult* verify_result) {
-  std::unique_ptr<DexFile> dex_file = DexFileLoader::OpenCommon(base,
-                                                                size,
-                                                                data_base,
-                                                                data_size,
-                                                                location,
-                                                                location_checksum,
-                                                                oat_dex_file,
-                                                                verify,
-                                                                verify_checksum,
-                                                                error_msg,
-                                                                std::move(container),
-                                                                verify_result);
-  if (dex_file != nullptr) {
-    // Set hidden API domain based based on location.
-    // Location can contain multidex suffix, so fetch its canonical version. Note
-    // that this will call `realpath`.
-    std::string path = DexFileLoader::GetDexCanonicalLocation(location.c_str());
-    // We check /system/framework before the runtime module location, because the
-    // runtime module location in a testing environment could be /system.
-    if (LocationIsOnSystemFramework(path.c_str())) {
-      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kPlatform);
-    } else if (LocationIsOnRuntimeModule(path.c_str()) ||
-               LocationIsOnConscryptModule(path.c_str())) {
-      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kCorePlatform);
-    } else if (LocationIsOnApex(path.c_str())) {
-      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kPlatform);
-    } else {
-      dex_file->SetHiddenapiDomain(hiddenapi::Domain::kApplication);
-    }
-  }
-  return dex_file;
+  return DexFileLoader::OpenCommon(base,
+                                   size,
+                                   data_base,
+                                   data_size,
+                                   location,
+                                   location_checksum,
+                                   oat_dex_file,
+                                   verify,
+                                   verify_checksum,
+                                   error_msg,
+                                   std::move(container),
+                                   verify_result);
 }
 
 }  // namespace art

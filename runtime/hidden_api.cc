@@ -21,10 +21,12 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/dumpable.h"
+#include "base/file_utils.h"
 #include "class_root.h"
 #include "dex/class_accessor-inl.h"
 #include "dex/dex_file_loader.h"
 #include "mirror/class_ext.h"
+#include "oat_file.h"
 #include "scoped_thread_state_change.h"
 #include "thread-inl.h"
 #include "well_known_classes.h"
@@ -69,6 +71,73 @@ static inline std::ostream& operator<<(std::ostream& os, const AccessContext& va
     os << "<unknown_caller>";
   }
   return os;
+}
+
+static Domain DetermineDomainFromPath_Impl(const std::string& path,
+                                           const std::string& dex_location,
+                                           ObjPtr<mirror::ClassLoader> class_loader) {
+  // We check /system/framework before the runtime module location, because the
+  // runtime module location in a testing environment could be /system.
+  if (LocationIsOnSystemFramework(path.c_str())) {
+    return Domain::kPlatform;
+  }
+
+  if (LocationIsOnRuntimeModule(path.c_str()) || LocationIsOnConscryptModule(path.c_str())) {
+    return Domain::kCorePlatform;
+  }
+
+  if (LocationIsOnApex(path.c_str())) {
+    return Domain::kPlatform;
+  }
+
+  if (class_loader.IsNull()) {
+    LOG(WARNING) << "DexFile " << dex_location
+        << " is in boot class path but its path " << path << " is not in a known location";
+    return Domain::kPlatform;
+  }
+
+  return Domain::kApplication;
+}
+
+static bool IsAbsoluteLocation(const std::string& str) {
+  return !str.empty() && str[0] == '/';
+}
+
+void InitializeDexFileDomain(const DexFile& dex_file, ObjPtr<mirror::ClassLoader> class_loader) {
+  // TODO(dbrazdil): Fix when preopting on host for target. In that case, the dex location
+  // is the target path and functions in file_utils.h check against host system paths.
+
+  const std::string& dex_location = dex_file.GetLocation();
+  const OatDexFile* const oat_dex_file = dex_file.GetOatDexFile();
+
+  Domain dex_domain = Domain::kApplication;
+  if (IsAbsoluteLocation(dex_location)) {
+    // Resolve realpath() of the dex location.
+    dex_domain = DetermineDomainFromPath_Impl(
+        DexFileLoader::GetDexCanonicalLocation(dex_location.c_str()),
+        dex_location,
+        class_loader);
+  } else if (oat_dex_file != nullptr && !oat_dex_file->GetCanonicalDexFileLocation().empty()) {
+    // If the path is relative, we might find the canonical path in the OatDexFile.
+    dex_domain = DetermineDomainFromPath_Impl(
+          oat_dex_file->GetCanonicalDexFileLocation(),
+          dex_location,
+          class_loader);
+  } else if (class_loader.IsNull()) {
+    LOG(WARNING) << "DexFile " << dex_location
+        << " is in boot class path but has no canonical location";
+    dex_domain = Domain::kPlatform;
+  } else {
+    // No canonical path available, not in boot class path. Conservatively
+    // assign application domain.
+    dex_domain = Domain::kApplication;
+  }
+
+  // Assign the domain unless a more permissive domain has already been assigned.
+  // This may happen when DexFile is initialized as trusted.
+  if (IsDomainMoreTrustedThan(dex_domain, dex_file.GetHiddenapiDomain())) {
+    dex_file.SetHiddenapiDomain(dex_domain);
+  }
 }
 
 namespace detail {
