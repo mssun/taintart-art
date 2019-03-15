@@ -518,14 +518,17 @@ class Tree:
     if '..' in apex_map:
       del apex_map['..']
     key_list = list(sorted(apex_map.keys()))
-    for i, val in enumerate(key_list):
+    for i, key in enumerate(key_list):
       prev = self.get_vertical(self._has_next_list)
       last = self.get_last_vertical(i == len(key_list) - 1)
+      val = apex_map[key]
       print('%s%s%s' % (prev, last, val.name))
       if val.is_dir:
         self._has_next_list.append(i < len(key_list) - 1)
+        saved_dir = self._path
         self._path = os.path.join(self._path, val.name)
         self.print_tree()
+        self._path = saved_dir
         self._has_next_list.pop()
 
 
