@@ -17,6 +17,7 @@
 #include "hidden_api.h"
 
 #include <fstream>
+#include <sstream>
 
 #include "base/file_utils.h"
 #include "base/sdk_version.h"
@@ -431,20 +432,25 @@ static bool LoadDexFiles(const std::string& path,
 
 static bool CheckAllDexFilesInDomain(ObjPtr<mirror::ClassLoader> loader,
                                      const std::vector<std::unique_ptr<const DexFile>>& dex_files,
-                                     hiddenapi::Domain expected_domain)
+                                     hiddenapi::Domain expected_domain,
+                                     /* out */ std::string* error_msg)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   for (const auto& dex_file : dex_files) {
     hiddenapi::AccessContext context(loader, dex_file.get());
     if (context.GetDomain() != expected_domain) {
-      LOG(ERROR) << dex_file->GetLocation() << ": access context domain does not match "
+      std::stringstream ss;
+      ss << dex_file->GetLocation() << ": access context domain does not match "
           << "(expected=" << static_cast<uint32_t>(expected_domain)
           << ", actual=" << static_cast<uint32_t>(context.GetDomain()) << ")";
+      *error_msg = ss.str();
       return false;
     }
     if (dex_file->GetHiddenapiDomain() != expected_domain) {
-      LOG(ERROR) << dex_file->GetLocation() << ": dex file domain does not match "
+      std::stringstream ss;
+      ss << dex_file->GetLocation() << ": dex file domain does not match "
           << "(expected=" << static_cast<uint32_t>(expected_domain)
           << ", actual=" << static_cast<uint32_t>(dex_file->GetHiddenapiDomain()) << ")";
+      *error_msg = ss.str();
       return false;
     }
   }
@@ -466,7 +472,10 @@ TEST_F(HiddenApiTest, DexDomain_DataDir) {
   ASSERT_TRUE(LoadDexFiles(data_location_path, soa, &dex_files, &class_loader, &error_msg))
       << error_msg;
   ASSERT_GE(dex_files.size(), 1u);
-  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader, dex_files, hiddenapi::Domain::kApplication));
+  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader,
+                                       dex_files,
+                                       hiddenapi::Domain::kApplication,
+                                       &error_msg)) << error_msg;
 
   dex_files.clear();
   ASSERT_EQ(0, remove(data_location_path.c_str()));
@@ -486,7 +495,10 @@ TEST_F(HiddenApiTest, DexDomain_SystemDir) {
   ASSERT_TRUE(LoadDexFiles(system_location_path, soa, &dex_files, &class_loader, &error_msg))
       << error_msg;
   ASSERT_GE(dex_files.size(), 1u);
-  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader, dex_files, hiddenapi::Domain::kApplication));
+  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader,
+                                       dex_files,
+                                       hiddenapi::Domain::kApplication,
+                                       &error_msg)) << error_msg;
 
   dex_files.clear();
   ASSERT_EQ(0, remove(system_location_path.c_str()));
@@ -510,7 +522,10 @@ TEST_F(HiddenApiTest, DexDomain_SystemFrameworkDir) {
                            &class_loader,
                            &error_msg)) << error_msg;
   ASSERT_GE(dex_files.size(), 1u);
-  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader, dex_files, hiddenapi::Domain::kPlatform));
+  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader,
+                                       dex_files,
+                                       hiddenapi::Domain::kPlatform,
+                                       &error_msg)) << error_msg;
 
   dex_files.clear();
   ASSERT_EQ(0, remove(system_framework_location_path.c_str()));
@@ -531,7 +546,10 @@ TEST_F(HiddenApiTest, DexDomain_DataDir_MultiDex) {
   ASSERT_TRUE(LoadDexFiles(data_multi_location_path, soa, &dex_files, &class_loader, &error_msg))
       << error_msg;
   ASSERT_GE(dex_files.size(), 1u);
-  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader, dex_files, hiddenapi::Domain::kApplication));
+  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader,
+                                       dex_files,
+                                       hiddenapi::Domain::kApplication,
+                                       &error_msg)) << error_msg;
 
   dex_files.clear();
   ASSERT_EQ(0, remove(data_multi_location_path.c_str()));
@@ -553,7 +571,10 @@ TEST_F(HiddenApiTest, DexDomain_SystemDir_MultiDex) {
   ASSERT_TRUE(LoadDexFiles(system_multi_location_path, soa, &dex_files, &class_loader, &error_msg))
       << error_msg;
   ASSERT_GT(dex_files.size(), 1u);
-  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader, dex_files, hiddenapi::Domain::kApplication));
+  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader,
+                                       dex_files,
+                                       hiddenapi::Domain::kApplication,
+                                       &error_msg)) << error_msg;
 
   dex_files.clear();
   ASSERT_EQ(0, remove(system_multi_location_path.c_str()));
@@ -579,7 +600,10 @@ TEST_F(HiddenApiTest, DexDomain_SystemFrameworkDir_MultiDex) {
                            &class_loader,
                            &error_msg)) << error_msg;
   ASSERT_GT(dex_files.size(), 1u);
-  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader, dex_files, hiddenapi::Domain::kPlatform));
+  ASSERT_TRUE(CheckAllDexFilesInDomain(class_loader,
+                                       dex_files,
+                                       hiddenapi::Domain::kPlatform,
+                                       &error_msg)) << error_msg;
 
   dex_files.clear();
   ASSERT_EQ(0, remove(system_framework_multi_location_path.c_str()));

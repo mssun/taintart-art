@@ -90,6 +90,10 @@ bool LocationIsOnSystemFramework(const char* location);
 // Return whether the location is on /apex/.
 bool LocationIsOnApex(const char* location);
 
+// Compare the runtime module root against android root. Returns true if they are
+// both known and distinct. This is meant to be a proxy for 'running with apex'.
+bool RuntimeModuleRootDistinctFromAndroidRoot();
+
 // dup(2), except setting the O_CLOEXEC flag atomically, when possible.
 int DupCloexec(int fd);
 

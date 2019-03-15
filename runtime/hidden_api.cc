@@ -76,17 +76,20 @@ static inline std::ostream& operator<<(std::ostream& os, const AccessContext& va
 static Domain DetermineDomainFromPath_Impl(const std::string& path,
                                            const std::string& dex_location,
                                            ObjPtr<mirror::ClassLoader> class_loader) {
-  // We check /system/framework before the runtime module location, because the
-  // runtime module location in a testing environment could be /system.
+  // If running with APEX, check `path` against known APEX locations.
+  // These checks will be skipped on target buildbots where ANDROID_RUNTIME_ROOT
+  // is set to "/system".
+  if (RuntimeModuleRootDistinctFromAndroidRoot()) {
+    if (LocationIsOnRuntimeModule(path.c_str()) || LocationIsOnConscryptModule(path.c_str())) {
+      return Domain::kCorePlatform;
+    }
+
+    if (LocationIsOnApex(path.c_str())) {
+      return Domain::kPlatform;
+    }
+  }
+
   if (LocationIsOnSystemFramework(path.c_str())) {
-    return Domain::kPlatform;
-  }
-
-  if (LocationIsOnRuntimeModule(path.c_str()) || LocationIsOnConscryptModule(path.c_str())) {
-    return Domain::kCorePlatform;
-  }
-
-  if (LocationIsOnApex(path.c_str())) {
     return Domain::kPlatform;
   }
 
