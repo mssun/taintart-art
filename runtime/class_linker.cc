@@ -133,7 +133,7 @@
 #include "thread_list.h"
 #include "trace.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
-#include "verifier/method_verifier.h"
+#include "verifier/class_verifier.h"
 #include "well_known_classes.h"
 
 namespace art {
@@ -900,7 +900,7 @@ void ClassLinker::FinishInit(Thread* self) {
   // initialize the StackOverflowError class (as it might require running the verifier). Instead,
   // ensure that the class will be initialized.
   if (kMemoryToolIsAvailable && !Runtime::Current()->IsAotCompiler()) {
-    verifier::MethodVerifier::Init();  // Need to prepare the verifier.
+    verifier::ClassVerifier::Init();  // Need to prepare the verifier.
 
     ObjPtr<mirror::Class> soe_klass = FindSystemClass(self, "Ljava/lang/StackOverflowError;");
     if (soe_klass == nullptr || !EnsureInitialized(self, hs.NewHandle(soe_klass), true, true)) {
@@ -4608,13 +4608,13 @@ verifier::FailureKind ClassLinker::PerformClassVerification(Thread* self,
                                                             verifier::HardFailLogMode log_level,
                                                             std::string* error_msg) {
   Runtime* const runtime = Runtime::Current();
-  return verifier::MethodVerifier::VerifyClass(self,
-                                               klass.Get(),
-                                               runtime->GetCompilerCallbacks(),
-                                               runtime->IsAotCompiler(),
-                                               log_level,
-                                               Runtime::Current()->GetTargetSdkVersion(),
-                                               error_msg);
+  return verifier::ClassVerifier::VerifyClass(self,
+                                              klass.Get(),
+                                              runtime->GetCompilerCallbacks(),
+                                              runtime->IsAotCompiler(),
+                                              log_level,
+                                              Runtime::Current()->GetTargetSdkVersion(),
+                                              error_msg);
 }
 
 bool ClassLinker::VerifyClassUsingOatFile(const DexFile& dex_file,

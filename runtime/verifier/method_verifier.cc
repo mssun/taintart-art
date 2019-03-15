@@ -73,10 +73,6 @@ static constexpr bool kTimeVerifyMethod = !kIsDebugBuild;
 // On VLOG(verifier), should we dump the whole state when we run into a hard failure?
 static constexpr bool kDumpRegLinesOnHardFailureIfVLOG = true;
 
-// We print a warning blurb about "dx --no-optimize" when we find monitor-locking issues. Make
-// sure we only print this once.
-static bool gPrintedDxMonitorText = false;
-
 PcToRegisterLineTable::PcToRegisterLineTable(ScopedArenaAllocator& allocator)
     : register_lines_(allocator.Adapter(kArenaAllocVerifier)) {}
 
@@ -145,55 +141,6 @@ static void SafelyMarkAllRegistersAsConflicts(MethodVerifier* verifier, Register
   reg_line->MarkAllRegistersAsConflicts(verifier);
 }
 
-FailureKind MethodVerifier::VerifyClass(Thread* self,
-                                        ObjPtr<mirror::Class> klass,
-                                        CompilerCallbacks* callbacks,
-                                        bool allow_soft_failures,
-                                        HardFailLogMode log_level,
-                                        uint32_t api_level,
-                                        std::string* error) {
-  if (klass->IsVerified()) {
-    return FailureKind::kNoFailure;
-  }
-  bool early_failure = false;
-  std::string failure_message;
-  const DexFile& dex_file = klass->GetDexFile();
-  const dex::ClassDef* class_def = klass->GetClassDef();
-  ObjPtr<mirror::Class> super = klass->GetSuperClass();
-  std::string temp;
-  if (super == nullptr && strcmp("Ljava/lang/Object;", klass->GetDescriptor(&temp)) != 0) {
-    early_failure = true;
-    failure_message = " that has no super class";
-  } else if (super != nullptr && super->IsFinal()) {
-    early_failure = true;
-    failure_message = " that attempts to sub-class final class " + super->PrettyDescriptor();
-  } else if (class_def == nullptr) {
-    early_failure = true;
-    failure_message = " that isn't present in dex file " + dex_file.GetLocation();
-  }
-  if (early_failure) {
-    *error = "Verifier rejected class " + klass->PrettyDescriptor() + failure_message;
-    if (callbacks != nullptr) {
-      ClassReference ref(&dex_file, klass->GetDexClassDefIndex());
-      callbacks->ClassRejected(ref);
-    }
-    return FailureKind::kHardFailure;
-  }
-  StackHandleScope<2> hs(self);
-  Handle<mirror::DexCache> dex_cache(hs.NewHandle(klass->GetDexCache()));
-  Handle<mirror::ClassLoader> class_loader(hs.NewHandle(klass->GetClassLoader()));
-  return VerifyClass(self,
-                     &dex_file,
-                     dex_cache,
-                     class_loader,
-                     *class_def,
-                     callbacks,
-                     allow_soft_failures,
-                     log_level,
-                     api_level,
-                     error);
-}
-
 static FailureKind FailureKindMax(FailureKind fk1, FailureKind fk2) {
   static_assert(FailureKind::kNoFailure < FailureKind::kSoftFailure
                     && FailureKind::kSoftFailure < FailureKind::kHardFailure,
@@ -204,103 +151,6 @@ static FailureKind FailureKindMax(FailureKind fk1, FailureKind fk2) {
 void MethodVerifier::FailureData::Merge(const MethodVerifier::FailureData& fd) {
   kind = FailureKindMax(kind, fd.kind);
   types |= fd.types;
-}
-
-FailureKind MethodVerifier::VerifyClass(Thread* self,
-                                        const DexFile* dex_file,
-                                        Handle<mirror::DexCache> dex_cache,
-                                        Handle<mirror::ClassLoader> class_loader,
-                                        const dex::ClassDef& class_def,
-                                        CompilerCallbacks* callbacks,
-                                        bool allow_soft_failures,
-                                        HardFailLogMode log_level,
-                                        uint32_t api_level,
-                                        std::string* error) {
-  // A class must not be abstract and final.
-  if ((class_def.access_flags_ & (kAccAbstract | kAccFinal)) == (kAccAbstract | kAccFinal)) {
-    *error = "Verifier rejected class ";
-    *error += PrettyDescriptor(dex_file->GetClassDescriptor(class_def));
-    *error += ": class is abstract and final.";
-    return FailureKind::kHardFailure;
-  }
-
-  ClassAccessor accessor(*dex_file, class_def);
-  SCOPED_TRACE << "VerifyClass " << PrettyDescriptor(accessor.GetDescriptor());
-
-  int64_t previous_method_idx[2] = { -1, -1 };
-  MethodVerifier::FailureData failure_data;
-  ClassLinker* const linker = Runtime::Current()->GetClassLinker();
-
-  for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-    int64_t* previous_idx = &previous_method_idx[method.IsStaticOrDirect() ? 0u : 1u];
-    self->AllowThreadSuspension();
-    const uint32_t method_idx = method.GetIndex();
-    if (method_idx == *previous_idx) {
-      // smali can create dex files with two encoded_methods sharing the same method_idx
-      // http://code.google.com/p/smali/issues/detail?id=119
-      continue;
-    }
-    *previous_idx = method_idx;
-    const InvokeType type = method.GetInvokeType(class_def.access_flags_);
-    ArtMethod* resolved_method = linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-        method_idx, dex_cache, class_loader, /* referrer= */ nullptr, type);
-    if (resolved_method == nullptr) {
-      DCHECK(self->IsExceptionPending());
-      // We couldn't resolve the method, but continue regardless.
-      self->ClearException();
-    } else {
-      DCHECK(resolved_method->GetDeclaringClassUnchecked() != nullptr) << type;
-    }
-    std::string hard_failure_msg;
-    MethodVerifier::FailureData result = VerifyMethod(self,
-                                                      method_idx,
-                                                      dex_file,
-                                                      dex_cache,
-                                                      class_loader,
-                                                      class_def,
-                                                      method.GetCodeItem(),
-                                                      resolved_method,
-                                                      method.GetAccessFlags(),
-                                                      callbacks,
-                                                      allow_soft_failures,
-                                                      log_level,
-                                                      /*need_precise_constants=*/ false,
-                                                      api_level,
-                                                      &hard_failure_msg);
-    if (result.kind == FailureKind::kHardFailure) {
-      if (failure_data.kind == FailureKind::kHardFailure) {
-        // If we logged an error before, we need a newline.
-        *error += "\n";
-      } else {
-        // If we didn't log a hard failure before, print the header of the message.
-        *error += "Verifier rejected class ";
-        *error += PrettyDescriptor(dex_file->GetClassDescriptor(class_def));
-        *error += ":";
-      }
-      *error += " ";
-      *error += hard_failure_msg;
-    }
-    failure_data.Merge(result);
-  }
-
-  if (failure_data.kind == FailureKind::kNoFailure) {
-    return FailureKind::kNoFailure;
-  } else {
-    if ((failure_data.types & VERIFY_ERROR_LOCKING) != 0) {
-      // Print a warning about expected slow-down. Use a string temporary to print one contiguous
-      // warning.
-      std::string tmp =
-          StringPrintf("Class %s failed lock verification and will run slower.",
-                       PrettyDescriptor(accessor.GetDescriptor()).c_str());
-      if (!gPrintedDxMonitorText) {
-        tmp = tmp + "\nCommon causes for lock verification issues are non-optimized dex code\n"
-                    "and incorrect proguard optimizations.";
-        gPrintedDxMonitorText = true;
-      }
-      LOG(WARNING) << tmp;
-    }
-    return failure_data.kind;
-  }
 }
 
 static bool IsLargeMethod(const CodeItemDataAccessor& accessor) {

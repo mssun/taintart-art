@@ -99,27 +99,6 @@ class PcToRegisterLineTable {
 // The verifier
 class MethodVerifier {
  public:
-  // Verify a class. Returns "kNoFailure" on success.
-  static FailureKind VerifyClass(Thread* self,
-                                 ObjPtr<mirror::Class> klass,
-                                 CompilerCallbacks* callbacks,
-                                 bool allow_soft_failures,
-                                 HardFailLogMode log_level,
-                                 uint32_t api_level,
-                                 std::string* error)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  static FailureKind VerifyClass(Thread* self,
-                                 const DexFile* dex_file,
-                                 Handle<mirror::DexCache> dex_cache,
-                                 Handle<mirror::ClassLoader> class_loader,
-                                 const dex::ClassDef& class_def,
-                                 CompilerCallbacks* callbacks,
-                                 bool allow_soft_failures,
-                                 HardFailLogMode log_level,
-                                 uint32_t api_level,
-                                 std::string* error)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   static MethodVerifier* VerifyMethodAndDump(Thread* self,
                                              VariableIndentationOutputStream* vios,
                                              uint32_t method_idx,
@@ -807,6 +786,7 @@ class MethodVerifier {
   const uint32_t api_level_;
 
   friend class art::Thread;
+  friend class ClassVerifier;
   friend class VerifierDepsTest;
 
   DISALLOW_COPY_AND_ASSIGN(MethodVerifier);

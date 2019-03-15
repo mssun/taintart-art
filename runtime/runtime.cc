@@ -162,7 +162,7 @@
 #include "trace.h"
 #include "transaction.h"
 #include "vdex_file.h"
-#include "verifier/method_verifier.h"
+#include "verifier/class_verifier.h"
 #include "well_known_classes.h"
 
 #ifdef ART_TARGET_ANDROID
@@ -464,7 +464,7 @@ Runtime::~Runtime() {
   delete oat_file_manager_;
   Thread::Shutdown();
   QuasiAtomic::Shutdown();
-  verifier::MethodVerifier::Shutdown();
+  verifier::ClassVerifier::Shutdown();
 
   // Destroy allocators before shutting down the MemMap because they may use it.
   java_vm_.reset();
@@ -1541,7 +1541,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   CHECK(class_linker_ != nullptr);
 
-  verifier::MethodVerifier::Init();
+  verifier::ClassVerifier::Init();
 
   if (runtime_options.Exists(Opt::MethodTrace)) {
     trace_config_.reset(new TraceConfig());
@@ -2096,7 +2096,7 @@ void Runtime::VisitNonThreadRoots(RootVisitor* visitor) {
       .VisitRootIfNonNull(visitor, RootInfo(kRootVMInternal));
   pre_allocated_NoClassDefFoundError_.VisitRootIfNonNull(visitor, RootInfo(kRootVMInternal));
   VisitImageRoots(visitor);
-  verifier::MethodVerifier::VisitStaticRoots(visitor);
+  verifier::ClassVerifier::VisitStaticRoots(visitor);
   VisitTransactionRoots(visitor);
 }
 

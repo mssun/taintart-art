@@ -31,7 +31,6 @@
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
-#include "verifier/method_verifier-inl.h"
 #include "verifier/verifier_deps.h"
 
 namespace art {
