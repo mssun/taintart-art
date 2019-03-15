@@ -139,8 +139,9 @@ inline bool Object::InstanceOf(ObjPtr<Class> klass) {
 
 template<VerifyObjectFlags kVerifyFlags>
 inline bool Object::IsClass() {
-  // OK to look at from-space copies since java.lang.Class.class is not movable.
-  // See b/114413743
+  // OK to look at from-space copies since java.lang.Class.class is non-moveable
+  // (even when running without boot image, see ClassLinker::InitWithoutImage())
+  // and we're reading constant references for comparison only. See ReadBarrierOption.
   ObjPtr<Class> klass = GetClass<kVerifyFlags, kWithoutReadBarrier>();
   ObjPtr<Class> java_lang_Class = klass->GetClass<kVerifyFlags, kWithoutReadBarrier>();
   return klass == java_lang_Class;
@@ -194,8 +195,8 @@ inline Array* Object::AsArray() {
 
 template<VerifyObjectFlags kVerifyFlags, Primitive::Type kType>
 ALWAYS_INLINE bool Object::IsSpecificPrimitiveArray() {
-  // We do not need a read barrier here as the primitive type is constant,
-  // both from-space and to-space component type classes shall yield the same result.
+  // We do not need a read barrier here as the primitive type is constant, both from-space
+  // and to-space component type classes shall yield the same result. See ReadBarrierOption.
   ObjPtr<Class> klass = GetClass<kVerifyFlags, kWithoutReadBarrier>();
   constexpr VerifyObjectFlags kNewFlags = RemoveThisFlags(kVerifyFlags);
   ObjPtr<Class> const component_type = klass->GetComponentType<kNewFlags, kWithoutReadBarrier>();
