@@ -39,17 +39,17 @@ namespace.platform.link.default.shared_libs += libandroidicu.so
 # TODO(b/122876336): Remove libpac.so once it's migrated to Webview
 namespace.platform.link.default.shared_libs += libpac.so
 
-# /system/lib/libc.so, etc are symlinks to /bionic/lib/libc.so, etc.
-# Add /bionic/lib to the permitted paths because linker uses realpath(3)
-# to check the accessibility of the lib. We could add this to search.paths
-# instead but that makes the resolution of bionic libs be dependent on
-# the order of /system/lib and /bionic/lib in search.paths. If /bionic/lib
-# is after /system/lib, then /bionic/lib is never tried because libc.so
-# is always found in /system/lib but fails to pass the accessibility test
-# because of its realpath.  It's better to not depend on the ordering if
-# possible.
-namespace.platform.permitted.paths = /bionic/${LIB}
-namespace.platform.asan.permitted.paths = /bionic/${LIB}
+# /system/lib/libc.so, etc are symlinks to
+# /apex/com.android.runtime/lib/bionic/libc.so, etc. Add the path to the
+# permitted paths because linker uses realpath(3) to check the accessibility
+# of the lib. We could add this to search.paths instead but that makes the
+# resolution of bionic libs be dependent on the order of /system/lib and
+# /apex/.../lib/bionic in search.paths. If the latter is after the former,
+# then the latter is never tried because libc.so is always found in
+# /system/lib but fails to pass the accessibility test because of its realpath.
+# It's better to not depend on the ordering if possible.
+namespace.platform.permitted.paths = /apex/com.android.runtime/${LIB}/bionic
+namespace.platform.asan.permitted.paths = /apex/com.android.runtime/${LIB}/bionic
 
 # Note that we don't need to link the default namespace with conscrypt:
 # the runtime Java code and binaries do not explicitly load native libraries
