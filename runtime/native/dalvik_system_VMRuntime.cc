@@ -21,6 +21,8 @@
 #include <sys/time.h>
 extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #endif
+#include <inttypes.h>
+#include <limits>
 #include <limits.h>
 #include "nativehelper/scoped_utf_chars.h"
 
@@ -271,22 +273,31 @@ static void VMRuntime_setTargetSdkVersionNative(JNIEnv*, jobject, jint target_sd
 #endif
 }
 
-static void VMRuntime_registerNativeAllocationInternal(JNIEnv* env, jobject, jint bytes) {
-  if (UNLIKELY(bytes < 0)) {
-    ScopedObjectAccess soa(env);
-    ThrowRuntimeException("allocation size negative %d", bytes);
-    return;
+static inline size_t clamp_to_size_t(jlong n) {
+  if (sizeof(jlong) > sizeof(size_t)
+      && UNLIKELY(n > static_cast<jlong>(std::numeric_limits<size_t>::max()))) {
+    return std::numeric_limits<size_t>::max();
+  } else {
+    return n;
   }
-  Runtime::Current()->GetHeap()->RegisterNativeAllocation(env, static_cast<size_t>(bytes));
 }
 
-static void VMRuntime_registerNativeFreeInternal(JNIEnv* env, jobject, jint bytes) {
+static void VMRuntime_registerNativeAllocation(JNIEnv* env, jobject, jlong bytes) {
   if (UNLIKELY(bytes < 0)) {
     ScopedObjectAccess soa(env);
-    ThrowRuntimeException("allocation size negative %d", bytes);
+    ThrowRuntimeException("allocation size negative %" PRId64, bytes);
     return;
   }
-  Runtime::Current()->GetHeap()->RegisterNativeFree(env, static_cast<size_t>(bytes));
+  Runtime::Current()->GetHeap()->RegisterNativeAllocation(env, clamp_to_size_t(bytes));
+}
+
+static void VMRuntime_registerNativeFree(JNIEnv* env, jobject, jlong bytes) {
+  if (UNLIKELY(bytes < 0)) {
+    ScopedObjectAccess soa(env);
+    ThrowRuntimeException("allocation size negative %" PRId64, bytes);
+    return;
+  }
+  Runtime::Current()->GetHeap()->RegisterNativeFree(env, clamp_to_size_t(bytes));
 }
 
 static jint VMRuntime_getNotifyNativeInterval(JNIEnv*, jclass) {
@@ -723,8 +734,8 @@ static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(VMRuntime, newUnpaddedArray, "(Ljava/lang/Class;I)Ljava/lang/Object;"),
   NATIVE_METHOD(VMRuntime, properties, "()[Ljava/lang/String;"),
   NATIVE_METHOD(VMRuntime, setTargetSdkVersionNative, "(I)V"),
-  NATIVE_METHOD(VMRuntime, registerNativeAllocationInternal, "(I)V"),
-  NATIVE_METHOD(VMRuntime, registerNativeFreeInternal, "(I)V"),
+  NATIVE_METHOD(VMRuntime, registerNativeAllocation, "(J)V"),
+  NATIVE_METHOD(VMRuntime, registerNativeFree, "(J)V"),
   NATIVE_METHOD(VMRuntime, getNotifyNativeInterval, "()I"),
   NATIVE_METHOD(VMRuntime, notifyNativeAllocationsInternal, "()V"),
   NATIVE_METHOD(VMRuntime, notifyStartupCompleted, "()V"),
