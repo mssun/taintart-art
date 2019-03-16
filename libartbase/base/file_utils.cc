@@ -334,6 +334,16 @@ bool LocationIsOnSystemFramework(const char* full_path) {
   return android::base::StartsWith(full_path, framework_path);
 }
 
+bool RuntimeModuleRootDistinctFromAndroidRoot() {
+  std::string error_msg;
+  std::string android_root = GetAndroidRootSafe(&error_msg);
+  const char* runtime_root =
+      GetAndroidDirSafe(kRuntimeApexEnvVar, kRuntimeApexDefaultPath, &error_msg);
+  return !android_root.empty()
+      && (runtime_root != nullptr)
+      && (android_root != std::string_view(runtime_root));
+}
+
 int DupCloexec(int fd) {
 #if defined(__linux__)
   return fcntl(fd, F_DUPFD_CLOEXEC, 0);
