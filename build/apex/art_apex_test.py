@@ -211,14 +211,14 @@ class Checker:
     self._expected_file_paths.add(path)
     return ok
 
-  def check_binary(self, filename):
+  def check_executable(self, filename):
     path = 'bin/%s' % filename
     if not self.check_file(path):
       return
     if not self._provider.get(path).is_exec:
       self.fail('%s is not executable', path)
 
-  def check_binary_symlink(self, filename):
+  def check_executable_symlink(self, filename):
     path = 'bin/%s' % filename
     fs_object = self._provider.get(path)
     if fs_object is None:
@@ -243,10 +243,10 @@ class Checker:
     if not lib_is_file and not lib64_is_file:
       self.fail('Library missing: %s', filename)
 
-  def check_java_library(self, filename):
-    return self.check_file('javalib/%s' % filename)
+  def check_java_library(self, basename):
+    return self.check_file('javalib/%s.jar' % basename)
 
-  def ignore_superfluous_path(self, path):
+  def ignore_path(self, path):
     self._expected_file_paths.add(path)
 
   def check_no_superfluous_files(self, dir_path):
@@ -263,99 +263,105 @@ class Checker:
 
   # Just here for docs purposes, even if it isn't good Python style.
 
-  def check_multilib_binary(self, filename):
+  def check_symlinked_multilib_executable(self, filename):
+    """Check bin/filename32, and/or bin/filename64, with symlink bin/filename."""
     raise NotImplementedError
 
-  def check_prefer32_binary(self, filename):
+  def check_symlinked_prefer32_executable(self, filename):
+    """Check bin/filename32, or bin/filename64 on 64 bit only, with symlink bin/filename."""
     raise NotImplementedError
 
-  def check_both_bitness_binary(self, filename):
+  def check_multilib_executable(self, filename):
+    """Check bin/filename for 32 bit, and/or bin/filename64."""
     raise NotImplementedError
 
-  def check_library(self, filename):
+  def check_native_library(self, basename):
+    """Check lib/basename.so, and/or lib64/basename.so."""
     raise NotImplementedError
 
-  def check_optional_library(self, filename):
+  def check_optional_native_library(self, basename):
+    """Allow lib/basename.so and/or lib64/basename.so to exist."""
     raise NotImplementedError
 
-  def check_first_library(self, filename):
+  def check_prefer64_library(self, basename):
+    """Check lib64/basename.so, or lib/basename.so on 32 bit only."""
     raise NotImplementedError
 
 
 class Arch32Checker(Checker):
-  def check_multilib_binary(self, filename):
-    self.check_binary('%s32' % filename)
-    self.check_binary_symlink(filename)
+  def check_symlinked_multilib_executable(self, filename):
+    self.check_executable('%s32' % filename)
+    self.check_executable_symlink(filename)
 
-  def check_prefer32_binary(self, filename):
-    self.check_binary('%s32' % filename)
-    self.check_binary_symlink(filename)
+  def check_symlinked_prefer32_executable(self, filename):
+    self.check_executable('%s32' % filename)
+    self.check_executable_symlink(filename)
 
-  def check_both_bitness_binary(self, filename):
-    self.check_binary(filename)
+  def check_multilib_executable(self, filename):
+    self.check_executable(filename)
 
-  def check_library(self, filename):
+  def check_native_library(self, basename):
     # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
     # the precision of this test?
-    self.check_file('lib/%s' % filename)
+    self.check_file('lib/%s.so' % basename)
 
-  def check_optional_library(self, filename):
-    self.ignore_superfluous_path('lib/%s' % filename)
+  def check_optional_native_library(self, basename):
+    self.ignore_path('lib/%s.so' % basename)
 
-  def check_first_library(self, filename):
-    self.check_library(filename)
+  def check_prefer64_library(self, basename):
+    self.check_native_library(basename)
 
 
 class Arch64Checker(Checker):
-  def check_multilib_binary(self, filename):
-    self.check_binary('%s64' % filename)
-    self.check_binary_symlink(filename)
+  def check_symlinked_multilib_executable(self, filename):
+    self.check_executable('%s64' % filename)
+    self.check_executable_symlink(filename)
 
-  def check_prefer32_binary(self, filename):
-    self.check_binary('%s64' % filename)
-    self.check_binary_symlink(filename)
+  def check_symlinked_prefer32_executable(self, filename):
+    self.check_executable('%s64' % filename)
+    self.check_executable_symlink(filename)
 
-  def check_both_bitness_binary(self, filename):
-    self.check_binary('%s64' % filename)
+  def check_multilib_executable(self, filename):
+    self.check_executable('%s64' % filename)
 
-  def check_library(self, filename):
+  def check_native_library(self, basename):
     # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
     # the precision of this test?
-    self.check_file('lib64/%s' % filename)
+    self.check_file('lib64/%s.so' % basename)
 
-  def check_optional_library(self, filename):
-    self.ignore_superfluous_path('lib64/%s' % filename)
+  def check_optional_native_library(self, basename):
+    self.ignore_path('lib64/%s.so' % basename)
 
-  def check_first_library(self, filename):
-    self.check_library(filename)
+  def check_prefer64_library(self, basename):
+    self.check_native_library(basename)
 
 
 class MultilibChecker(Checker):
-  def check_multilib_binary(self, filename):
-    self.check_binary('%s32' % filename)
-    self.check_binary('%s64' % filename)
-    self.check_binary_symlink(filename)
+  def check_symlinked_multilib_executable(self, filename):
+    self.check_executable('%s32' % filename)
+    self.check_executable('%s64' % filename)
+    self.check_executable_symlink(filename)
 
-  def check_prefer32_binary(self, filename):
-    self.check_binary('%s32' % filename)
-    self.check_binary_symlink(filename)
+  def check_symlinked_prefer32_executable(self, filename):
+    self.check_executable('%s32' % filename)
+    self.check_executable_symlink(filename)
 
-  def check_both_bitness_binary(self, filename):
-    self.check_binary('%s64' % filename)
-    self.check_binary(filename)
+  def check_multilib_executable(self, filename):
+    self.check_executable('%s64' % filename)
+    self.check_executable(filename)
 
-  def check_library(self, filename):
+  def check_native_library(self, basename):
     # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
     # the precision of this test?
-    self.check_file('lib/%s' % filename)
-    self.check_file('lib64/%s' % filename)
+    self.check_file('lib/%s.so' % basename)
+    self.check_file('lib64/%s.so' % basename)
 
-  def check_optional_library(self, filename):
-    self.ignore_superfluous_path('lib/%s' % filename)
-    self.ignore_superfluous_path('lib64/%s' % filename)
+  def check_optional_native_library(self, basename):
+    self.ignore_path('lib/%s.so' % basename)
+    self.ignore_path('lib64/%s.so' % basename)
 
-  def check_first_library(self, filename):
-    self.check_file('lib64/%s' % filename)
+  def check_prefer64_library(self, basename):
+    self.check_file('lib64/%s.so' % basename)
 
 
 class ReleaseChecker:
@@ -370,40 +376,40 @@ class ReleaseChecker:
     self._checker.check_file('apex_manifest.json')
 
     # Check that the mounted image contains ART base binaries.
-    self._checker.check_multilib_binary('dalvikvm')
-    self._checker.check_binary('dex2oat')
-    self._checker.check_binary('dexoptanalyzer')
-    self._checker.check_binary('profman')
+    self._checker.check_symlinked_multilib_executable('dalvikvm')
+    self._checker.check_executable('dex2oat')
+    self._checker.check_executable('dexoptanalyzer')
+    self._checker.check_executable('profman')
 
     # oatdump is only in device apex's due to build rules
     # TODO: Check for it when it is also built for host.
-    # self._checker.check_binary('oatdump')
+    # self._checker.check_executable('oatdump')
 
     # Check that the mounted image contains Android Runtime libraries.
-    self._checker.check_library('libart-compiler.so')
-    self._checker.check_library('libart-dexlayout.so')
-    self._checker.check_library('libart.so')
-    self._checker.check_library('libartbase.so')
-    self._checker.check_library('libartpalette.so')
-    self._checker.check_library('libdexfile.so')
-    self._checker.check_library('libdexfile_external.so')
-    self._checker.check_library('libnativebridge.so')
-    self._checker.check_library('libnativehelper.so')
-    self._checker.check_library('libnativeloader.so')
-    self._checker.check_library('libopenjdkjvm.so')
-    self._checker.check_library('libopenjdkjvmti.so')
-    self._checker.check_library('libprofile.so')
+    self._checker.check_native_library('libart-compiler')
+    self._checker.check_native_library('libart-dexlayout')
+    self._checker.check_native_library('libart')
+    self._checker.check_native_library('libartbase')
+    self._checker.check_native_library('libartpalette')
+    self._checker.check_native_library('libdexfile')
+    self._checker.check_native_library('libdexfile_external')
+    self._checker.check_native_library('libnativebridge')
+    self._checker.check_native_library('libnativehelper')
+    self._checker.check_native_library('libnativeloader')
+    self._checker.check_native_library('libopenjdkjvm')
+    self._checker.check_native_library('libopenjdkjvmti')
+    self._checker.check_native_library('libprofile')
     # Check that the mounted image contains Android Core libraries.
     # Note: host vs target libs are checked elsewhere.
-    self._checker.check_library('libjavacore.so')
-    self._checker.check_library('libopenjdk.so')
-    self._checker.check_library('libziparchive.so')
+    self._checker.check_native_library('libjavacore')
+    self._checker.check_native_library('libopenjdk')
+    self._checker.check_native_library('libziparchive')
     # Check that the mounted image contains additional required libraries.
-    self._checker.check_library('libadbconnection.so')
-    self._checker.check_library('libdt_fd_forward.so')
-    self._checker.check_library('libdt_socket.so')
-    self._checker.check_library('libjdwp.so')
-    self._checker.check_library('libnpt.so')
+    self._checker.check_native_library('libadbconnection')
+    self._checker.check_native_library('libdt_fd_forward')
+    self._checker.check_native_library('libdt_socket')
+    self._checker.check_native_library('libjdwp')
+    self._checker.check_native_library('libnpt')
 
     # Check internal native library dependencies.
     #
@@ -416,25 +422,25 @@ class ReleaseChecker:
     # catch invalid dependencies on /system or other APEXes that should go
     # through an exported library with stubs (b/128708192 tracks implementing a
     # better approach for that).
-    self._checker.check_library('libbacktrace.so')
-    self._checker.check_library('libbase.so')
-    self._checker.check_library('libc++.so')
-    self._checker.check_library('libdexfile_support.so')
-    self._checker.check_library('liblzma.so')
-    self._checker.check_library('libsigchain.so')
-    self._checker.check_library('libunwindstack.so')
-    self._checker.check_optional_library('libvixl.so')  # Only on ARM/ARM64
+    self._checker.check_native_library('libbacktrace')
+    self._checker.check_native_library('libbase')
+    self._checker.check_native_library('libc++')
+    self._checker.check_native_library('libdexfile_support')
+    self._checker.check_native_library('liblzma')
+    self._checker.check_native_library('libsigchain')
+    self._checker.check_native_library('libunwindstack')
+    self._checker.check_optional_native_library('libvixl')  # Only on ARM/ARM64
 
     # TODO(b/124293228): Figure out why we get these.
-    self._checker.check_library('libcutils.so')
-    self._checker.check_optional_library('libclang_rt.asan-i686-android.so')
-    self._checker.check_optional_library('libclang_rt.hwasan-aarch64-android.so')
+    self._checker.check_native_library('libcutils')
+    self._checker.check_optional_native_library('libclang_rt.asan-i686-android')
+    self._checker.check_optional_native_library('libclang_rt.hwasan-aarch64-android')
 
-    self._checker.check_java_library('core-oj.jar')
-    self._checker.check_java_library('core-libart.jar')
-    self._checker.check_java_library('okhttp.jar')
-    self._checker.check_java_library('bouncycastle.jar')
-    self._checker.check_java_library('apache-xml.jar')
+    self._checker.check_java_library('core-oj')
+    self._checker.check_java_library('core-libart')
+    self._checker.check_java_library('okhttp')
+    self._checker.check_java_library('bouncycastle')
+    self._checker.check_java_library('apache-xml')
 
 
 class ReleaseTargetChecker:
@@ -446,54 +452,54 @@ class ReleaseTargetChecker:
 
   def run(self):
     # Check that the mounted image contains ART tools binaries.
-    self._checker.check_binary('dexdiag')
-    self._checker.check_binary('dexdump')
-    self._checker.check_binary('dexlist')
+    self._checker.check_executable('dexdiag')
+    self._checker.check_executable('dexdump')
+    self._checker.check_executable('dexlist')
 
     # Check for files pulled in for target-only oatdump.
-    self._checker.check_binary('oatdump')
-    self._checker.check_first_library('libart-disassembler.so')
+    self._checker.check_executable('oatdump')
+    self._checker.check_prefer64_library('libart-disassembler')
 
     # Check the APEX package scripts.
-    self._checker.check_binary('art_postinstall_hook')
-    self._checker.check_binary('art_preinstall_hook')
-    self._checker.check_binary('art_preinstall_hook_boot')
-    self._checker.check_binary('art_preinstall_hook_system_server')
-    self._checker.check_binary('art_prepostinstall_utils')
+    self._checker.check_executable('art_postinstall_hook')
+    self._checker.check_executable('art_preinstall_hook')
+    self._checker.check_executable('art_preinstall_hook_boot')
+    self._checker.check_executable('art_preinstall_hook_system_server')
+    self._checker.check_executable('art_prepostinstall_utils')
 
     # Check Bionic binaries.
-    self._checker.check_both_bitness_binary('linker')
-    self._checker.check_both_bitness_binary('linker_asan')
+    self._checker.check_multilib_executable('linker')
+    self._checker.check_multilib_executable('linker_asan')
 
     # Check Bionic libraries.
-    self._checker.check_library('bionic/libc.so')
-    self._checker.check_library('bionic/libdl.so')
-    self._checker.check_library('bionic/libm.so')
+    self._checker.check_native_library('bionic/libc')
+    self._checker.check_native_library('bionic/libdl')
+    self._checker.check_native_library('bionic/libm')
 
     # Check that the mounted image contains Android Core libraries.
-    self._checker.check_library('libandroidicu.so')
-    self._checker.check_library('libandroidio.so')
-    self._checker.check_library('libexpat.so')
-    self._checker.check_library('libicui18n.so')
-    self._checker.check_library('libicuuc.so')
-    self._checker.check_library('libpac.so')
-    self._checker.check_library('libz.so')
+    self._checker.check_native_library('libandroidicu')
+    self._checker.check_native_library('libandroidio')
+    self._checker.check_native_library('libexpat')
+    self._checker.check_native_library('libicui18n')
+    self._checker.check_native_library('libicuuc')
+    self._checker.check_native_library('libpac')
+    self._checker.check_native_library('libz')
 
     # Check internal native library dependencies.
-    self._checker.check_library('libcrypto.so')
-    self._checker.check_library('libtombstoned_client.so')
+    self._checker.check_native_library('libcrypto')
+    self._checker.check_native_library('libtombstoned_client')
 
     # TODO(b/124293228): Figure out why we get these.
-    self._checker.check_first_library('libjsoncpp.so')
-    self._checker.check_first_library('libmeminfo.so')
-    self._checker.check_first_library('libprocessgroup.so')
-    self._checker.check_first_library('libprocinfo.so')
-    self._checker.check_first_library('libutils.so')
+    self._checker.check_prefer64_library('libjsoncpp')
+    self._checker.check_prefer64_library('libmeminfo')
+    self._checker.check_prefer64_library('libprocessgroup')
+    self._checker.check_prefer64_library('libprocinfo')
+    self._checker.check_prefer64_library('libutils')
 
     # TODO(b/124293228): Cuttlefish puts ARM libs in a lib/arm subdirectory.
     # Check that properly on that arch, but for now just ignore the directory.
-    self._checker.ignore_superfluous_path('lib/arm')
-    self._checker.ignore_superfluous_path('lib/arm64')
+    self._checker.ignore_path('lib/arm')
+    self._checker.ignore_path('lib/arm64')
 
 
 class ReleaseHostChecker:
@@ -505,12 +511,12 @@ class ReleaseHostChecker:
 
   def run(self):
     # Check that the mounted image contains Android Core libraries.
-    self._checker.check_library('libandroidicu-host.so')
-    self._checker.check_library('libandroidio.so')
-    self._checker.check_library('libexpat-host.so')
-    self._checker.check_library('libicui18n-host.so')
-    self._checker.check_library('libicuuc-host.so')
-    self._checker.check_library('libz-host.so')
+    self._checker.check_native_library('libandroidicu-host')
+    self._checker.check_native_library('libandroidio')
+    self._checker.check_native_library('libexpat-host')
+    self._checker.check_native_library('libicui18n-host')
+    self._checker.check_native_library('libicuuc-host')
+    self._checker.check_native_library('libz-host')
 
 
 class DebugChecker:
@@ -522,28 +528,28 @@ class DebugChecker:
 
   def run(self):
     # Check that the mounted image contains ART tools binaries.
-    self._checker.check_binary('dexdiag')
-    self._checker.check_binary('dexdump')
-    self._checker.check_binary('dexlist')
+    self._checker.check_executable('dexdiag')
+    self._checker.check_executable('dexdump')
+    self._checker.check_executable('dexlist')
 
     # Check that the mounted image contains ART debug binaries.
-    self._checker.check_prefer32_binary('dex2oatd')
-    self._checker.check_binary('dexoptanalyzerd')
-    self._checker.check_binary('profmand')
+    self._checker.check_symlinked_prefer32_executable('dex2oatd')
+    self._checker.check_executable('dexoptanalyzerd')
+    self._checker.check_executable('profmand')
 
     # Check that the mounted image contains Android Runtime debug libraries.
-    self._checker.check_library('libartbased.so')
-    self._checker.check_library('libartd-compiler.so')
-    self._checker.check_library('libartd-dexlayout.so')
-    self._checker.check_library('libartd.so')
-    self._checker.check_library('libdexfiled.so')
-    self._checker.check_library('libopenjdkjvmd.so')
-    self._checker.check_library('libopenjdkjvmtid.so')
-    self._checker.check_library('libprofiled.so')
+    self._checker.check_native_library('libartbased')
+    self._checker.check_native_library('libartd-compiler')
+    self._checker.check_native_library('libartd-dexlayout')
+    self._checker.check_native_library('libartd')
+    self._checker.check_native_library('libdexfiled')
+    self._checker.check_native_library('libopenjdkjvmd')
+    self._checker.check_native_library('libopenjdkjvmtid')
+    self._checker.check_native_library('libprofiled')
     # Check that the mounted image contains Android Core debug libraries.
-    self._checker.check_library('libopenjdkd.so')
+    self._checker.check_native_library('libopenjdkd')
     # Check that the mounted image contains additional required debug libraries.
-    self._checker.check_library('libadbconnectiond.so')
+    self._checker.check_native_library('libadbconnectiond')
 
 
 class DebugTargetChecker:
@@ -555,10 +561,10 @@ class DebugTargetChecker:
 
   def run(self):
     # Check for files pulled in for debug target-only oatdump.
-    self._checker.check_binary('oatdump')
-    self._checker.check_binary('oatdumpd')
-    self._checker.check_first_library('libart-disassembler.so')
-    self._checker.check_first_library('libartd-disassembler.so')
+    self._checker.check_executable('oatdump')
+    self._checker.check_executable('oatdumpd')
+    self._checker.check_prefer64_library('libart-disassembler')
+    self._checker.check_prefer64_library('libartd-disassembler')
 
     # Check internal native library dependencies.
     #
@@ -572,7 +578,7 @@ class DebugTargetChecker:
     # double_loadable:true, cf. go/double_loadable). Also, like in the release
     # package we need to look out for dependencies that should go through
     # exported library stubs (until b/128708192 is fixed).
-    self._checker.check_optional_library('libvixld.so')  # Only on ARM/ARM64
+    self._checker.check_optional_native_library('libvixld')  # Only on ARM/ARM64
 
 
 class NoSuperfluousBinariesChecker:
