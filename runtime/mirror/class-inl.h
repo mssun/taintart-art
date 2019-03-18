@@ -729,8 +729,11 @@ inline void Class::SetClinitThreadId(pid_t new_clinit_thread_id) {
   SetField32Transaction(OFFSET_OF_OBJECT_MEMBER(Class, clinit_thread_id_), new_clinit_thread_id);
 }
 
+template<VerifyObjectFlags kVerifyFlags,
+         ReadBarrierOption kReadBarrierOption>
 inline String* Class::GetName() {
-  return GetFieldObject<String>(OFFSET_OF_OBJECT_MEMBER(Class, name_));
+  return GetFieldObject<String, kVerifyFlags, kReadBarrierOption>(
+      OFFSET_OF_OBJECT_MEMBER(Class, name_));
 }
 
 inline void Class::SetName(ObjPtr<String> name) {
@@ -820,15 +823,21 @@ inline const DexFile& Class::GetDexFile() {
 }
 
 inline bool Class::DescriptorEquals(const char* match) {
-  if (IsArrayClass()) {
-    return match[0] == '[' && GetComponentType()->DescriptorEquals(match + 1);
-  } else if (IsPrimitive()) {
-    return strcmp(Primitive::Descriptor(GetPrimitiveType()), match) == 0;
-  } else if (IsProxyClass()) {
-    return ProxyDescriptorEquals(match);
+  ObjPtr<mirror::Class> klass = this;
+  while (klass->IsArrayClass()) {
+    if (match[0] != '[') {
+      return false;
+    }
+    ++match;
+    klass = klass->GetComponentType();
+  }
+  if (klass->IsPrimitive()) {
+    return strcmp(Primitive::Descriptor(klass->GetPrimitiveType()), match) == 0;
+  } else if (klass->IsProxyClass()) {
+    return klass->ProxyDescriptorEquals(match);
   } else {
-    const DexFile& dex_file = GetDexFile();
-    const dex::TypeId& type_id = dex_file.GetTypeId(GetClassDef()->class_idx_);
+    const DexFile& dex_file = klass->GetDexFile();
+    const dex::TypeId& type_id = dex_file.GetTypeId(klass->GetDexTypeIndex());
     return strcmp(dex_file.GetTypeDescriptor(type_id), match) == 0;
   }
 }

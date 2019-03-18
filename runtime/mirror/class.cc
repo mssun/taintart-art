@@ -999,25 +999,33 @@ void Class::SetSkipAccessChecksFlagOnAllMethods(PointerSize pointer_size) {
 }
 
 const char* Class::GetDescriptor(std::string* storage) {
-  if (IsPrimitive()) {
-    return Primitive::Descriptor(GetPrimitiveType());
-  } else if (IsArrayClass()) {
-    return GetArrayDescriptor(storage);
-  } else if (IsProxyClass()) {
-    *storage = Runtime::Current()->GetClassLinker()->GetDescriptorForProxy(this);
-    return storage->c_str();
-  } else {
-    const DexFile& dex_file = GetDexFile();
-    const dex::TypeId& type_id = dex_file.GetTypeId(GetClassDef()->class_idx_);
-    return dex_file.GetTypeDescriptor(type_id);
+  size_t dim = 0u;
+  ObjPtr<mirror::Class> klass = this;
+  while (klass->IsArrayClass()) {
+    ++dim;
+    klass = klass->GetComponentType();
   }
-}
-
-const char* Class::GetArrayDescriptor(std::string* storage) {
-  std::string temp;
-  const char* elem_desc = GetComponentType()->GetDescriptor(&temp);
-  *storage = "[";
-  *storage += elem_desc;
+  if (klass->IsProxyClass()) {
+    // No read barrier needed, the `name` field is constant for proxy classes and
+    // the contents of the String are also constant. See ReadBarrierOption.
+    ObjPtr<mirror::String> name = klass->GetName<kVerifyNone, kWithoutReadBarrier>();
+    DCHECK(name != nullptr);
+    *storage = DotToDescriptor(name->ToModifiedUtf8().c_str());
+  } else {
+    const char* descriptor;
+    if (klass->IsPrimitive()) {
+      descriptor = Primitive::Descriptor(klass->GetPrimitiveType());
+    } else {
+      const DexFile& dex_file = klass->GetDexFile();
+      const dex::TypeId& type_id = dex_file.GetTypeId(klass->GetDexTypeIndex());
+      descriptor = dex_file.GetTypeDescriptor(type_id);
+    }
+    if (dim == 0) {
+      return descriptor;
+    }
+    *storage = descriptor;
+  }
+  storage->insert(0u, dim, '[');
   return storage->c_str();
 }
 
@@ -1218,7 +1226,10 @@ Class* Class::CopyOf(Thread* self, int32_t new_length, ImTable* imt, PointerSize
 
 bool Class::ProxyDescriptorEquals(const char* match) {
   DCHECK(IsProxyClass());
-  return Runtime::Current()->GetClassLinker()->GetDescriptorForProxy(this) == match;
+  std::string storage;
+  const char* descriptor = GetDescriptor(&storage);
+  DCHECK(descriptor == storage.c_str());
+  return storage == match;
 }
 
 // TODO: Move this to java_lang_Class.cc?

@@ -338,6 +338,8 @@ class MANAGED Class final : public Object {
            ShouldHaveEmbeddedVTable<kVerifyFlags>();
   }
 
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
+           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   String* GetName() REQUIRES_SHARED(Locks::mutator_lock_);  // Returns the cached name.
   void SetName(ObjPtr<String> name) REQUIRES_SHARED(Locks::mutator_lock_);  // Sets the cached name.
   // Computes the name, then sets the cached value.
@@ -1132,8 +1134,6 @@ class MANAGED Class final : public Object {
   // always create one the storage argument is populated and its internal c_str() returned. We do
   // this to avoid memory allocation in the common case.
   const char* GetDescriptor(std::string* storage) REQUIRES_SHARED(Locks::mutator_lock_);
-
-  const char* GetArrayDescriptor(std::string* storage) REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool DescriptorEquals(const char* match) REQUIRES_SHARED(Locks::mutator_lock_);
 

@@ -4777,8 +4777,9 @@ ObjPtr<mirror::Class> ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRun
   // Object has an empty iftable, copy it for that reason.
   temp_klass->SetIfTable(GetClassRoot<mirror::Object>(this)->GetIfTable());
   mirror::Class::SetStatus(temp_klass, ClassStatus::kIdx, self);
-  std::string descriptor(GetDescriptorForProxy(temp_klass.Get()));
-  const size_t hash = ComputeModifiedUtf8Hash(descriptor.c_str());
+  std::string storage;
+  const char* descriptor = temp_klass->GetDescriptor(&storage);
+  const size_t hash = ComputeModifiedUtf8Hash(descriptor);
 
   // Needs to be before we insert the class so that the allocator field is set.
   LinearAlloc* const allocator = GetOrCreateAllocatorForClassLoader(temp_klass->GetClassLoader());
@@ -4787,7 +4788,7 @@ ObjPtr<mirror::Class> ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRun
   // (ArtField::declaring_class_) are only visited from the class
   // table. There can't be any suspend points between inserting the
   // class and setting the field arrays below.
-  ObjPtr<mirror::Class> existing = InsertClass(descriptor.c_str(), temp_klass.Get(), hash);
+  ObjPtr<mirror::Class> existing = InsertClass(descriptor, temp_klass.Get(), hash);
   CHECK(existing == nullptr);
 
   // Instance fields are inherited, but we add a couple of static fields...
@@ -4859,7 +4860,7 @@ ObjPtr<mirror::Class> ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRun
     // The new class will replace the old one in the class table.
     Handle<mirror::ObjectArray<mirror::Class>> h_interfaces(
         hs.NewHandle(soa.Decode<mirror::ObjectArray<mirror::Class>>(interfaces)));
-    if (!LinkClass(self, descriptor.c_str(), temp_klass, h_interfaces, &klass)) {
+    if (!LinkClass(self, descriptor, temp_klass, h_interfaces, &klass)) {
       mirror::Class::SetStatus(temp_klass, ClassStatus::kErrorUnresolved, self);
       return nullptr;
     }
@@ -4920,13 +4921,6 @@ ObjPtr<mirror::Class> ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRun
              soa.Decode<mirror::ObjectArray<mirror::ObjectArray<mirror::Class>>>(throws));
   }
   return klass.Get();
-}
-
-std::string ClassLinker::GetDescriptorForProxy(ObjPtr<mirror::Class> proxy_class) {
-  DCHECK(proxy_class->IsProxyClass());
-  ObjPtr<mirror::String> name = proxy_class->GetName();
-  DCHECK(name != nullptr);
-  return DotToDescriptor(name->ToModifiedUtf8().c_str());
 }
 
 void ClassLinker::CreateProxyConstructor(Handle<mirror::Class> klass, ArtMethod* out) {
