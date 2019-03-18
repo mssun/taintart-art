@@ -200,6 +200,7 @@ function run_dex2oat() {
     verbose_run ANDROID_DATA=$ANDROID_DATA                    \
           ANDROID_ROOT=$ANDROID_ROOT                          \
           ANDROID_RUNTIME_ROOT=$ANDROID_RUNTIME_ROOT          \
+          ANDROID_TZDATA_ROOT=$ANDROID_TZDATA_ROOT            \
           LD_LIBRARY_PATH=$LD_LIBRARY_PATH                    \
           PATH=$ANDROID_ROOT/bin:$PATH                        \
           LD_USE_LOAD_BIAS=1                                  \
@@ -275,6 +276,7 @@ function run_art() {
   verbose_run ANDROID_DATA="$ANDROID_DATA"                  \
               ANDROID_ROOT="$ANDROID_ROOT"                  \
               ANDROID_RUNTIME_ROOT="$ANDROID_RUNTIME_ROOT"  \
+              ANDROID_TZDATA_ROOT="$ANDROID_TZDATA_ROOT"    \
               LD_LIBRARY_PATH="$LD_LIBRARY_PATH"            \
               PATH="$ANDROID_ROOT/bin:$PATH"                \
               LD_USE_LOAD_BIAS=1                            \
@@ -433,6 +435,13 @@ if [ -z "$ANDROID_RUNTIME_ROOT" ]; then
     # Host case.
     ANDROID_RUNTIME_ROOT="$ANDROID_ROOT/com.android.runtime"
   fi
+fi
+
+# If ANDROID_TZDATA_ROOT is not set point it to somewhere safe. Android code
+# currently treats the module as optional so it does not require the path exists.
+if [ -z "$ANDROID_TZDATA_ROOT" ]; then
+  # Safe stubbed location that we don't need to exist.
+  ANDROID_TZDATA_ROOT="$ANDROID_ROOT/com.android.tzdata_doesnotexist"
 fi
 
 ART_BINARY_PATH=$ANDROID_ROOT/bin/$ART_BINARY

@@ -433,6 +433,11 @@ ifneq ($(ART_TEST_ANDROID_RUNTIME_ROOT),)
   ART_GTEST_TARGET_ANDROID_RUNTIME_ROOT := $(ART_TEST_ANDROID_RUNTIME_ROOT)
 endif
 
+ART_GTEST_TARGET_ANDROID_TZDATA_ROOT := '/apex/com.android.tzdata'
+ifneq ($(ART_TEST_ANDROID_TZDATA_ROOT),)
+  ART_GTEST_TARGET_ANDROID_TZDATA_ROOT := $(ART_TEST_ANDROID_TZDATA_ROOT)
+endif
+
 # Define a make rule for a target device gtest.
 # $(1): gtest name - the name of the test we're building such as leb128_test.
 # $(2): path relative to $OUT to the test binary
@@ -483,6 +488,7 @@ $$(gtest_rule): test-art-target-sync
 	  ($(ADB) shell "$$(PRIVATE_MAYBE_CHROOT_COMMAND) env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
 	       ANDROID_ROOT=$(ART_GTEST_TARGET_ANDROID_ROOT) \
 	       ANDROID_RUNTIME_ROOT=$(ART_GTEST_TARGET_ANDROID_RUNTIME_ROOT) \
+	       ANDROID_TZDATA_ROOT=$(ART_GTEST_TARGET_ANDROID_TZDATA_ROOT) \
 	       $$(PRIVATE_TARGET_EXE) \
 	     && touch $$(PRIVATE_GTEST_WITNESS)" \
 	   && ($(ADB) pull $$(PRIVATE_GTEST_WITNESS) /tmp/ && $$(call ART_TEST_PASSED,$$@)) \
@@ -734,6 +740,7 @@ ART_TEST_TARGET_GTEST$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)_RULES :=
 ART_TEST_TARGET_GTEST_RULES :=
 ART_GTEST_TARGET_ANDROID_ROOT :=
 ART_GTEST_TARGET_ANDROID_RUNTIME_ROOT :=
+ART_GTEST_TARGET_ANDROID_TZDATA_ROOT :=
 ART_GTEST_class_linker_test_DEX_DEPS :=
 ART_GTEST_class_table_test_DEX_DEPS :=
 ART_GTEST_compiler_driver_test_DEX_DEPS :=
