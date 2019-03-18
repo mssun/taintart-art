@@ -584,9 +584,12 @@ void Runtime::Abort(const char* msg) {
 #endif
   }
 
-  // Ensure that we don't have multiple threads trying to abort at once,
-  // which would result in significantly worse diagnostics.
-  MutexLock mu(Thread::Current(), *Locks::abort_lock_);
+  {
+    // Ensure that we don't have multiple threads trying to abort at once,
+    // which would result in significantly worse diagnostics.
+    ScopedThreadStateChange tsc(Thread::Current(), kNativeForAbort);
+    Locks::abort_lock_->ExclusiveLock(Thread::Current());
+  }
 
   // Get any pending output out of the way.
   fflush(nullptr);
