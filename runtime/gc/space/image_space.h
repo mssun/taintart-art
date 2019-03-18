@@ -50,6 +50,9 @@ class ImageSpace : public MemMapSpace {
       const std::string& image_location,
       const InstructionSet image_isa,
       ImageSpaceLoadingOrder order,
+      bool relocate,
+      bool executable,
+      bool is_zygote,
       size_t extra_reservation_size,
       /*out*/std::vector<std::unique_ptr<space::ImageSpace>>* boot_image_spaces,
       /*out*/MemMap* extra_reservation) REQUIRES_SHARED(Locks::mutator_lock_);
