@@ -146,9 +146,7 @@ class SchedulerTest : public OptimizingUnitTest {
     environment->SetRawEnvAt(1, mul);
     mul->AddEnvUseAt(div_check->GetEnvironment(), 1);
 
-    SchedulingGraph scheduling_graph(scheduler,
-                                     GetScopedAllocator(),
-                                     /* heap_location_collector= */ nullptr);
+    TestSchedulingGraph scheduling_graph(GetScopedAllocator());
     // Instructions must be inserted in reverse order into the scheduling graph.
     for (HInstruction* instr : ReverseRange(block_instructions)) {
       scheduling_graph.AddNode(instr);
@@ -283,7 +281,7 @@ class SchedulerTest : public OptimizingUnitTest {
     HeapLocationCollector heap_location_collector(graph_);
     heap_location_collector.VisitBasicBlock(entry);
     heap_location_collector.BuildAliasingMatrix();
-    SchedulingGraph scheduling_graph(scheduler, GetScopedAllocator(), &heap_location_collector);
+    TestSchedulingGraph scheduling_graph(GetScopedAllocator(), &heap_location_collector);
 
     for (HInstruction* instr : ReverseRange(block_instructions)) {
       // Build scheduling graph with memory access aliasing information
@@ -356,6 +354,41 @@ class SchedulerTest : public OptimizingUnitTest {
     // Exercise target specific scheduler and SchedulingLatencyVisitor.
     scheduler->Schedule(graph_);
   }
+
+  class TestSchedulingGraph : public SchedulingGraph {
+   public:
+    explicit TestSchedulingGraph(ScopedArenaAllocator* allocator,
+                                 const HeapLocationCollector *heap_location_collector = nullptr)
+        : SchedulingGraph(allocator, heap_location_collector) {}
+
+    bool HasImmediateDataDependency(const HInstruction* instruction,
+                                    const HInstruction* other_instruction) const {
+      const SchedulingNode* node = GetNode(instruction);
+      const SchedulingNode* other = GetNode(other_instruction);
+      if (node == nullptr || other == nullptr) {
+        // Both instructions must be in current basic block, i.e. the SchedulingGraph can see their
+        // corresponding SchedulingNode in the graph, and tell whether there is a dependency.
+        // Otherwise there is no dependency from SchedulingGraph's perspective, for example,
+        // instruction and other_instruction are in different basic blocks.
+        return false;
+      }
+      return node->HasDataDependency(other);
+    }
+
+    bool HasImmediateOtherDependency(const HInstruction* instruction,
+                                     const HInstruction* other_instruction) const {
+      const SchedulingNode* node = GetNode(instruction);
+      const SchedulingNode* other = GetNode(other_instruction);
+      if (node == nullptr || other == nullptr) {
+        // Both instructions must be in current basic block, i.e. the SchedulingGraph can see their
+        // corresponding SchedulingNode in the graph, and tell whether there is a dependency.
+        // Otherwise there is no dependency from SchedulingGraph's perspective, for example,
+        // instruction and other_instruction are in different basic blocks.
+        return false;
+      }
+      return node->HasOtherDependency(other);
+    }
+  };
 
   HGraph* graph_;
 };
