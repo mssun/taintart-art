@@ -1156,7 +1156,7 @@ jobject Thread::CreateCompileTimePeer(JNIEnv* env,
     CHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
   }
-  jint thread_priority = GetNativePriority();
+  jint thread_priority = kNormThreadPriority;  // Always normalize to NORM priority.
   jboolean thread_is_daemon = as_daemon;
 
   ScopedLocalRef<jobject> peer(env, env->AllocObject(WellKnownClasses::java_lang_Thread));
