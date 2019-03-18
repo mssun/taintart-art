@@ -1063,6 +1063,7 @@
           "989-method-trace-throw",
           "993-breakpoints",
           "1002-notify-startup",
+          "1003-metadata-section-strings",
           "1900-track-alloc",
           "1906-suspend-list-me-first",
           "1914-get-local-instance",

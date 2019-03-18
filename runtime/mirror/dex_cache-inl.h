@@ -86,11 +86,16 @@ inline uint32_t DexCache::StringSlotIndex(dex::StringIndex string_idx) {
 inline String* DexCache::GetResolvedString(dex::StringIndex string_idx) {
   const uint32_t num_preresolved_strings = NumPreResolvedStrings();
   if (num_preresolved_strings != 0u) {
-    DCHECK_LT(string_idx.index_, num_preresolved_strings);
-    DCHECK_EQ(num_preresolved_strings, GetDexFile()->NumStringIds());
-    mirror::String* string = GetPreResolvedStrings()[string_idx.index_].Read();
-    if (LIKELY(string != nullptr)) {
-      return string;
+    GcRoot<mirror::String>* preresolved_strings = GetPreResolvedStrings();
+    // num_preresolved_strings can become 0 and preresolved_strings can become null in any order
+    // when ClearPreResolvedStrings is called.
+    if (preresolved_strings != nullptr) {
+      DCHECK_LT(string_idx.index_, num_preresolved_strings);
+      DCHECK_EQ(num_preresolved_strings, GetDexFile()->NumStringIds());
+      mirror::String* string = preresolved_strings[string_idx.index_].Read();
+      if (LIKELY(string != nullptr)) {
+        return string;
+      }
     }
   }
   return GetStrings()[StringSlotIndex(string_idx)].load(

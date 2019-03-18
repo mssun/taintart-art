@@ -1,0 +1,1 @@
+Test that releasing the metadata cache doesn't break reference equality of string literals.

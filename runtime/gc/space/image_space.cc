@@ -2417,6 +2417,42 @@ void ImageSpace::DumpSections(std::ostream& os) const {
   }
 }
 
+void ImageSpace::DisablePreResolvedStrings() {
+  // Clear dex cache pointers.
+  ObjPtr<mirror::ObjectArray<mirror::DexCache>> dex_caches =
+      GetImageHeader().GetImageRoot(ImageHeader::kDexCaches)->AsObjectArray<mirror::DexCache>();
+  for (size_t len = dex_caches->GetLength(), i = 0; i < len; ++i) {
+    ObjPtr<mirror::DexCache> dex_cache = dex_caches->Get(i);
+    dex_cache->ClearPreResolvedStrings();
+  }
+}
+
+void ImageSpace::ReleaseMetadata() {
+  const ImageSection& metadata = GetImageHeader().GetMetadataSection();
+  VLOG(image) << "Releasing " << metadata.Size() << " image metadata bytes";
+  // In the case where new app images may have been added around the checkpoint, ensure that we
+  // don't madvise the cache for these.
+  ObjPtr<mirror::ObjectArray<mirror::DexCache>> dex_caches =
+      GetImageHeader().GetImageRoot(ImageHeader::kDexCaches)->AsObjectArray<mirror::DexCache>();
+  bool have_startup_cache = false;
+  for (size_t len = dex_caches->GetLength(), i = 0; i < len; ++i) {
+    ObjPtr<mirror::DexCache> dex_cache = dex_caches->Get(i);
+    if (dex_cache->NumPreResolvedStrings() != 0u) {
+      have_startup_cache = true;
+    }
+  }
+  // Only safe to do for images that have their preresolved strings caches disabled. This is because
+  // uncompressed images madvise to the original unrelocated image contents.
+  if (!have_startup_cache) {
+    // Avoid using ZeroAndReleasePages since the zero fill might not be word atomic.
+    uint8_t* const page_begin = AlignUp(Begin() + metadata.Offset(), kPageSize);
+    uint8_t* const page_end = AlignDown(Begin() + metadata.End(), kPageSize);
+    if (page_begin < page_end) {
+      CHECK_NE(madvise(page_begin, page_end - page_begin, MADV_DONTNEED), -1) << "madvise failed";
+    }
+  }
+}
+
 }  // namespace space
 }  // namespace gc
 }  // namespace art

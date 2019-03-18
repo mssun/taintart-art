@@ -2788,6 +2788,33 @@ void Runtime::NotifyStartupCompleted() {
   }
   VLOG(startup) << "Startup completed notified";
 
+  {
+    ScopedTrace trace("Releasing app image spaces metadata");
+    ScopedObjectAccess soa(Thread::Current());
+    for (gc::space::ContinuousSpace* space : GetHeap()->GetContinuousSpaces()) {
+      if (space->IsImageSpace()) {
+        gc::space::ImageSpace* image_space = space->AsImageSpace();
+        if (image_space->GetImageHeader().IsAppImage()) {
+          image_space->DisablePreResolvedStrings();
+        }
+      }
+    }
+    // Request empty checkpoint to make sure no threads are accessing the section when we madvise
+    // it.
+    {
+      ScopedThreadStateChange tsc(Thread::Current(), kSuspended);
+      GetThreadList()->RunEmptyCheckpoint();
+    }
+    for (gc::space::ContinuousSpace* space : GetHeap()->GetContinuousSpaces()) {
+      if (space->IsImageSpace()) {
+        gc::space::ImageSpace* image_space = space->AsImageSpace();
+        if (image_space->GetImageHeader().IsAppImage()) {
+          image_space->ReleaseMetadata();
+        }
+      }
+    }
+  }
+
   // Notify the profiler saver that startup is now completed.
   ProfileSaver::NotifyStartupCompleted();
 
