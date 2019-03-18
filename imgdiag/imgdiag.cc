@@ -1204,7 +1204,10 @@ class ImgDiagDumper {
       return false;
     }
 
-    // Check that the loaded boot image is really clean.
+    // Note: the boot image is not really clean but close enough.
+    // For now, log pages found to be dirty.
+    // TODO: Rewrite imgdiag to load boot image without creating a runtime.
+    // FIXME: The following does not reliably detect dirty pages.
     Runtime* runtime = Runtime::Current();
     CHECK(!runtime->ShouldRelocate());
     size_t total_dirty_pages = 0u;
@@ -1253,10 +1256,6 @@ class ImgDiagDumper {
            << ", first dirty page: " << first_dirty_page.value_or(0u);
         total_dirty_pages += num_dirty_pages;
       }
-    }
-    if (total_dirty_pages != 0u) {
-      os << "Aborting: found dirty pages in boot image that should have been clean.";
-      return false;
     }
 
     // Commit the mappings and files.
