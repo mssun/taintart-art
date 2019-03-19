@@ -101,7 +101,7 @@ class OatFileManager {
 
   void DumpForSigQuit(std::ostream& os);
 
-  void SetOnlyUseSystemOatFiles();
+  void SetOnlyUseSystemOatFiles(bool assert_no_files_loaded);
 
  private:
   enum class CheckCollisionResult {

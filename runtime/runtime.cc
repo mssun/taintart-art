@@ -1693,7 +1693,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   // Set OnlyUseSystemOatFiles only after boot classpath has been set up.
   if (runtime_options.Exists(Opt::OnlyUseSystemOatFiles)) {
-    oat_file_manager_->SetOnlyUseSystemOatFiles();
+    oat_file_manager_->SetOnlyUseSystemOatFiles(/*assert_no_files_loaded=*/ true);
   }
 
   return true;
