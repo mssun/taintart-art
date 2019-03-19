@@ -341,6 +341,7 @@ libart_cc_defaults {
                 "thread_android.cc",
             ],
             shared_libs: [
+                "libdl_android",
                 "libtombstoned_client",
             ],
             static_libs: [

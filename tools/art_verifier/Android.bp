@@ -35,6 +35,9 @@ art_cc_defaults {
             static_libs: [
                 "libtombstoned_client_static",
             ],
+            shared_libs: [
+                "libdl_android",
+            ],
         },
         darwin: {
             enabled: false,
