@@ -283,10 +283,10 @@ std::string PrintableChar(uint16_t ch) {
   return result;
 }
 
-std::string PrintableString(const char* utf) {
+std::string PrintableString(const char* utf8) {
   std::string result;
   result += '"';
-  const char* p = utf;
+  const char* p = utf8;
   size_t char_count = CountModifiedUtf8Chars(p);
   for (size_t i = 0; i < char_count; ++i) {
     uint32_t ch = GetUtf16FromUtf8(&p);
@@ -311,6 +311,9 @@ std::string PrintableString(const char* utf) {
       if (trailing != 0) {
         // All high surrogates will need escaping.
         StringAppendF(&result, "\\u%04x", trailing);
+        // Account for the surrogate pair.
+        ++i;
+        DCHECK_LT(i, char_count);
       }
     }
   }
