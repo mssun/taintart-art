@@ -385,8 +385,6 @@ art_cc_binary {
             use_clang_lld: true,
         },
     },
-    // b/79417743, oatdump 32-bit tests failed with clang lld
-    use_clang_lld: false,
 }
 
 art_cc_library_static {
