@@ -77,32 +77,27 @@ Try '$0 --help' for more information.";;
   shift
 done
 
-# build_apex APEX_MODULE
-# ----------------------
-# Build APEX package APEX_MODULE.
+# build_apex APEX_MODULES
+# -----------------------
+# Build APEX packages APEX_MODULES.
 function build_apex {
   if $build_apex_p; then
-    local apex_module=$1
-    say "Building package $apex_module" && make "$apex_module" || die "Cannot build $apex_module"
+    say "Building $@" && make "$@" || die "Cannot build $@"
   fi
 }
 
 # maybe_list_apex_contents_apex APEX TMPDIR [other]
 function maybe_list_apex_contents_apex {
-  local apex=$1
-  local tmpdir=$2
-  shift 2
-
   # List the contents of the apex in list form.
   if $list_image_files_p; then
     say "Listing image files"
-    $SCRIPT_DIR/art_apex_test.py --list --tmpdir "$tmpdir" $@ $apex
+    $SCRIPT_DIR/art_apex_test.py --list $@
   fi
 
   # List the contents of the apex in tree form.
   if $print_image_tree_p; then
     say "Printing image tree"
-    $SCRIPT_DIR/art_apex_test.py --tree --tmpdir "$tmpdir" $@ $apex
+    $SCRIPT_DIR/art_apex_test.py --tree $@
   fi
 }
 
@@ -112,136 +107,61 @@ function fail_check {
   exit_status=1
 }
 
-# Testing target (device) APEX packages.
-# ======================================
+# Test all modules
+
+apex_modules=(
+  "com.android.runtime.release"
+  "com.android.runtime.debug"
+  "com.android.runtime.host"
+)
+
+# Build the APEX packages (optional).
+build_apex ${apex_modules[@]}
 
 # Clean-up.
-function cleanup_target {
+function cleanup {
   rm -rf "$work_dir"
 }
 
 # Garbage collection.
-function finish_target {
+function finish {
   # Don't fail early during cleanup.
   set +e
-  cleanup_target
+  cleanup
 }
 
-# Testing release APEX package (com.android.runtime.release).
-# -----------------------------------------------------------
+for apex_module in ${apex_modules[@]}; do
+  test_status=0
+  say "Checking APEX package $apex_module"
+  work_dir=$(mktemp -d)
+  trap finish EXIT
 
-apex_module="com.android.runtime.release"
-test_status=0
+  art_apex_test_args="--tmpdir $work_dir"
+  test_only_args=""
+  if [[ $apex_module = *.host ]]; then
+    apex_path="$ANDROID_HOST_OUT/apex/${apex_module}.zipapex"
+    art_apex_test_args="$art_apex_test_args --host"
+    test_only_args="--debug"
+  else
+    apex_path="$ANDROID_PRODUCT_OUT/system/apex/${apex_module}.apex"
+    art_apex_test_args="$art_apex_test_args --debugfs $ANDROID_HOST_OUT/bin/debugfs"
+    [[ $apex_module = *.debug ]] && test_only_args="--debug"
+  fi
 
-say "Processing APEX package $apex_module"
+  # List the contents of the APEX image (optional).
+  maybe_list_apex_contents_apex $art_apex_test_args $apex_path
 
-work_dir=$(mktemp -d)
+  # Run tests on APEX package.
+  $SCRIPT_DIR/art_apex_test.py $art_apex_test_args $test_only_args $apex_path \
+    || fail_check "Checks failed on $apex_module"
 
-trap finish_target EXIT
+  # Clean up.
+  trap - EXIT
+  cleanup
 
-# Build the APEX package (optional).
-build_apex "$apex_module"
-apex_path="$ANDROID_PRODUCT_OUT/system/apex/${apex_module}.apex"
-
-# List the contents of the APEX image (optional).
-maybe_list_apex_contents_apex $apex_path $work_dir --debugfs $ANDROID_HOST_OUT/bin/debugfs
-
-# Run tests on APEX package.
-say "Checking APEX package $apex_module"
-$SCRIPT_DIR/art_apex_test.py \
-  --tmpdir $work_dir \
-  --debugfs $ANDROID_HOST_OUT/bin/debugfs \
-  $apex_path \
-    || fail_check "Release checks failed"
-
-# Clean up.
-trap - EXIT
-cleanup_target
-
-[[ "$test_status" = 0 ]] && say "$apex_module tests passed"
-echo
-
-# Testing debug APEX package (com.android.runtime.debug).
-# -------------------------------------------------------
-
-apex_module="com.android.runtime.debug"
-test_status=0
-
-say "Processing APEX package $apex_module"
-
-work_dir=$(mktemp -d)
-
-trap finish_target EXIT
-
-# Build the APEX package (optional).
-build_apex "$apex_module"
-apex_path="$ANDROID_PRODUCT_OUT/system/apex/${apex_module}.apex"
-
-# List the contents of the APEX image (optional).
-maybe_list_apex_contents_apex $apex_path $work_dir --debugfs $ANDROID_HOST_OUT/bin/debugfs
-
-# Run tests on APEX package.
-say "Checking APEX package $apex_module"
-$SCRIPT_DIR/art_apex_test.py \
-  --tmpdir $work_dir \
-  --debugfs $ANDROID_HOST_OUT/bin/debugfs \
-  --debug \
-  $apex_path \
-    || fail_check "Debug checks failed"
-
-# Clean up.
-trap - EXIT
-cleanup_target
-
-[[ "$test_status" = 0 ]] && say "$apex_module tests passed"
-echo
-
-
-# Testing host APEX package (com.android.runtime.host).
-# =====================================================
-
-# Clean-up.
-function cleanup_host {
-  rm -rf "$work_dir"
-}
-
-# Garbage collection.
-function finish_host {
-  # Don't fail early during cleanup.
-  set +e
-  cleanup_host
-}
-
-apex_module="com.android.runtime.host"
-test_status=0
-
-say "Processing APEX package $apex_module"
-
-work_dir=$(mktemp -d)
-
-trap finish_host EXIT
-
-# Build the APEX package (optional).
-build_apex "$apex_module"
-apex_path="$ANDROID_HOST_OUT/apex/${apex_module}.zipapex"
-
-# List the contents of the APEX image (optional).
-maybe_list_apex_contents_apex $apex_path $work_dir --host
-
-# Run tests on APEX package.
-say "Checking APEX package $apex_module"
-$SCRIPT_DIR/art_apex_test.py \
-  --tmpdir $work_dir \
-  --host \
-  --debug \
-  $apex_path \
-    || fail_check "Debug checks failed"
-
-# Clean up.
-trap - EXIT
-cleanup_host
-
-[[ "$test_status" = 0 ]] && say "$apex_module tests passed"
+  [[ "$test_status" = 0 ]] && say "$apex_module tests passed"
+  echo
+done
 
 [[ "$exit_status" = 0 ]] && say "All Android Runtime APEX tests passed"
 
