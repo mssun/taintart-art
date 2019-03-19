@@ -403,7 +403,6 @@ jvmtiError MonitorUtil::GetCurrentContendedMonitor(jvmtiEnv* env ATTRIBUTE_UNUSE
         case art::kWaitingForGetObjectsAllocated:
         case art::kWaitingWeakGcRootRead:
         case art::kWaitingForGcThreadFlip:
-        case art::kNativeForAbort:
         case art::kStarting:
         case art::kNative:
         case art::kSuspended: {

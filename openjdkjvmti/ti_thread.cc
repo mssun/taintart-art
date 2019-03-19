@@ -453,7 +453,6 @@ static jint GetJvmtiThreadStateFromInternal(const InternalThreadState& state) {
     case art::ThreadState::kWaitingForVisitObjects:
     case art::ThreadState::kWaitingForGetObjectsAllocated:
     case art::ThreadState::kWaitingForGcThreadFlip:
-    case art::ThreadState::kNativeForAbort:
       // All of these are causing the thread to wait for an indeterminate amount of time but isn't
       // caused by sleep, park, or object#wait.
       jvmti_state |= (JVMTI_THREAD_STATE_WAITING |
@@ -509,7 +508,6 @@ static jint GetJavaStateFromInternal(const InternalThreadState& state) {
     case art::ThreadState::kWaitingForMethodTracingStart:
     case art::ThreadState::kWaitingForVisitObjects:
     case art::ThreadState::kWaitingForGcThreadFlip:
-    case art::ThreadState::kNativeForAbort:
       return JVMTI_JAVA_LANG_THREAD_STATE_WAITING;
   }
   LOG(FATAL) << "Unreachable";
