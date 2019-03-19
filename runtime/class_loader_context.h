@@ -57,6 +57,10 @@ class ClassLoaderContext {
   // Returns true if all dex files where successfully opened.
   // It may be called only once per ClassLoaderContext. Subsequent calls will return the same
   // result without doing anything.
+  // If `context_fds` is an empty vector, files will be opened using the class path locations as
+  // filenames. Otherwise `context_fds` is expected to contain file descriptors to class path dex
+  // files, following the order of dex file locations in a flattened class loader context. If their
+  // number (size of `context_fds`) does not match the number of dex files, OpenDexFiles will fail.
   //
   // This will replace the class path locations with the locations of the opened dex files.
   // (Note that one dex file can contain multidexes. Each multidex will be added to the classpath
@@ -69,7 +73,9 @@ class ClassLoaderContext {
   // TODO(calin): we're forced to complicate the flow in this class with a different
   // OpenDexFiles step because the current dex2oat flow requires the dex files be opened before
   // the class loader is created. Consider reworking the dex2oat part.
-  bool OpenDexFiles(InstructionSet isa, const std::string& classpath_dir);
+  bool OpenDexFiles(InstructionSet isa,
+                    const std::string& classpath_dir,
+                    const std::vector<int>& context_fds = std::vector<int>());
 
   // Remove the specified compilation sources from all classpaths present in this context.
   // Should only be called before the first call to OpenDexFiles().
@@ -118,6 +124,10 @@ class ClassLoaderContext {
   // Should only be called if OpenDexFiles() returned true.
   std::vector<const DexFile*> FlattenOpenedDexFiles() const;
 
+  // Return a colon-separated list of dex file locations from this class loader
+  // context after flattening.
+  std::string FlattenDexPaths() const;
+
   // Verifies that the current context is identical to the context encoded as `context_spec`.
   // Identical means:
   //    - the number and type of the class loaders from the chain matches
@@ -127,8 +137,8 @@ class ClassLoaderContext {
   // Names are only verified if verify_names is true.
   // Checksums are only verified if verify_checksums is true.
   VerificationResult VerifyClassLoaderContextMatch(const std::string& context_spec,
-                                     bool verify_names = true,
-                                     bool verify_checksums = true) const;
+                                                   bool verify_names = true,
+                                                   bool verify_checksums = true) const;
 
   // Creates the class loader context from the given string.
   // The format: ClassLoaderType1[ClasspathElem1:ClasspathElem2...];ClassLoaderType2[...]...

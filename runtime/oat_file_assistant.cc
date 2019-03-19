@@ -181,12 +181,14 @@ bool OatFileAssistant::IsInBootClassPath() {
 int OatFileAssistant::GetDexOptNeeded(CompilerFilter::Filter target,
                                       bool profile_changed,
                                       bool downgrade,
-                                      ClassLoaderContext* class_loader_context) {
+                                      ClassLoaderContext* class_loader_context,
+                                      const std::vector<int>& context_fds) {
   OatFileInfo& info = GetBestInfo();
   DexOptNeeded dexopt_needed = info.GetDexOptNeeded(target,
                                                     profile_changed,
                                                     downgrade,
-                                                    class_loader_context);
+                                                    class_loader_context,
+                                                    context_fds);
   if (info.IsOatLocation() || dexopt_needed == kDex2OatFromScratch) {
     return dexopt_needed;
   }
@@ -748,10 +750,11 @@ OatFileAssistant::DexOptNeeded OatFileAssistant::OatFileInfo::GetDexOptNeeded(
     CompilerFilter::Filter target,
     bool profile_changed,
     bool downgrade,
-    ClassLoaderContext* context) {
+    ClassLoaderContext* context,
+    const std::vector<int>& context_fds) {
 
   bool filter_okay = CompilerFilterIsOkay(target, profile_changed, downgrade);
-  bool class_loader_context_okay = ClassLoaderContextIsOkay(context);
+  bool class_loader_context_okay = ClassLoaderContextIsOkay(context, context_fds);
 
   // Only check the filter and relocation if the class loader context is ok.
   // If it is not, we will return kDex2OatFromScratch as the compilation needs to be redone.
@@ -838,7 +841,8 @@ bool OatFileAssistant::OatFileInfo::CompilerFilterIsOkay(
     CompilerFilter::IsAsGoodAs(current, target);
 }
 
-bool OatFileAssistant::OatFileInfo::ClassLoaderContextIsOkay(ClassLoaderContext* context) {
+bool OatFileAssistant::OatFileInfo::ClassLoaderContextIsOkay(ClassLoaderContext* context,
+                                                             const std::vector<int>& context_fds) {
   if (context == nullptr) {
     VLOG(oat) << "ClassLoaderContext check ignored: null context";
     return true;
@@ -855,11 +859,10 @@ bool OatFileAssistant::OatFileInfo::ClassLoaderContextIsOkay(ClassLoaderContext*
       ? oat_file_assistant_->dex_location_.substr(0, dir_index)
       : "";
 
-  if (!context->OpenDexFiles(oat_file_assistant_->isa_, classpath_dir)) {
+  if (!context->OpenDexFiles(oat_file_assistant_->isa_, classpath_dir, context_fds)) {
     VLOG(oat) << "ClassLoaderContext check failed: dex files from the context could not be opened";
     return false;
   }
-
 
   const bool result = context->VerifyClassLoaderContextMatch(file->GetClassLoaderContext()) !=
       ClassLoaderContext::VerificationResult::kMismatch;
