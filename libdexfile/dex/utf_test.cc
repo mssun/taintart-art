@@ -19,6 +19,8 @@
 #include <map>
 #include <vector>
 
+#include <android-base/stringprintf.h>
+
 #include "gtest/gtest.h"
 #include "utf-inl.h"
 
@@ -383,6 +385,24 @@ TEST_F(UtfTest, NonAscii) {
   const char input[] = { kNonAsciiCharacter, '\0' };
   uint32_t hash = ComputeModifiedUtf8Hash(input);
   EXPECT_EQ(static_cast<uint8_t>(kNonAsciiCharacter), hash);
+}
+
+TEST_F(UtfTest, PrintableStringUtf8) {
+  // Note: This is UTF-8, not Modified-UTF-8.
+  const uint8_t kTestSequence[] = { 0xf0, 0x90, 0x80, 0x80, 0 };
+  const char* start = reinterpret_cast<const char*>(kTestSequence);
+  const char* ptr = start;
+  uint32_t pair = GetUtf16FromUtf8(&ptr);
+  ASSERT_EQ(*ptr, '\0');
+  uint16_t leading = GetLeadingUtf16Char(pair);
+  uint16_t trailing = GetTrailingUtf16Char(pair);
+  ASSERT_NE(0u, trailing);
+
+  std::string expected = android::base::StringPrintf("\"\\u%04x\\u%04x\"",
+                                                     static_cast<unsigned>(leading),
+                                                     static_cast<unsigned>(trailing));
+  std::string printable = PrintableString(start);
+  EXPECT_EQ(expected, printable);
 }
 
 }  // namespace art
