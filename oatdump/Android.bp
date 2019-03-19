@@ -19,8 +19,6 @@ cc_defaults {
     defaults: ["art_defaults"],
     host_supported: true,
     srcs: ["oatdump.cc"],
-    // b/79417743, oatdump 32-bit tests failed with clang lld
-    use_clang_lld: false,
     header_libs: [
         "art_cmdlineparser_headers",
     ],
