@@ -33,6 +33,13 @@ class StringLiterals {
         System.out.println("Loading " + resource);
     }
 
+    static class InnerClass {
+        void startUpMethod2() {
+            String resource = "ab11.apk";
+            System.out.println("Start up method 2");
+        }
+    }
+
     void otherMethod() {
         System.out.println("Unexpected error");
         System.out.println("Shutting down!");

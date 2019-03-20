@@ -2152,34 +2152,67 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
   using Hotness = ProfileCompilationInfo::MethodHotness;
   // Create a profile with the startup method marked.
   ScratchFile profile_file;
+  ScratchFile temp_dex;
+  const std::string& dex_location = temp_dex.GetFilename();
   std::vector<uint16_t> methods;
   std::vector<dex::TypeIndex> classes;
-  std::unique_ptr<const DexFile> dex(OpenTestDexFile("StringLiterals"));
   {
-    for (ClassAccessor accessor : dex->GetClasses()) {
-      if (accessor.GetDescriptor() == std::string("LStringLiterals$StartupClass;")) {
-        classes.push_back(accessor.GetClassIdx());
-      }
-      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-        std::string method_name(dex->GetMethodName(dex->GetMethodId(method.GetIndex())));
-        if (method_name == "startUpMethod") {
-          methods.push_back(method.GetIndex());
+    MutateDexFile(temp_dex.GetFile(), GetTestDexFileName("StringLiterals"), [&] (DexFile* dex) {
+      bool mutated_successfully = false;
+      // Change the dex instructions to make an opcode that spans past the end of the code item.
+      for (ClassAccessor accessor : dex->GetClasses()) {
+        if (accessor.GetDescriptor() == std::string("LStringLiterals$StartupClass;")) {
+          classes.push_back(accessor.GetClassIdx());
+        }
+        for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+          std::string method_name(dex->GetMethodName(dex->GetMethodId(method.GetIndex())));
+          CodeItemInstructionAccessor instructions = method.GetInstructions();
+          if (method_name == "startUpMethod2") {
+            // Make an instruction that runs past the end of the code item and verify that it
+            // doesn't cause dex2oat to crash.
+            ASSERT_TRUE(instructions.begin() != instructions.end());
+            DexInstructionIterator last_instruction = instructions.begin();
+            for (auto dex_it = instructions.begin(); dex_it != instructions.end(); ++dex_it) {
+              last_instruction = dex_it;
+            }
+            ASSERT_EQ(last_instruction->SizeInCodeUnits(), 1u);
+            // Set the opcode to something that will go past the end of the code item.
+            const_cast<Instruction&>(last_instruction.Inst()).SetOpcode(
+                Instruction::CONST_STRING_JUMBO);
+            mutated_successfully = true;
+            // Test that the safe iterator doesn't go past the end.
+            SafeDexInstructionIterator it2(instructions.begin(), instructions.end());
+            while (!it2.IsErrorState()) {
+              ++it2;
+            }
+            EXPECT_TRUE(it2 == last_instruction);
+            EXPECT_TRUE(it2 < instructions.end());
+            methods.push_back(method.GetIndex());
+            mutated_successfully = true;
+          } else if (method_name == "startUpMethod") {
+            methods.push_back(method.GetIndex());
+          }
         }
       }
-    }
+      CHECK(mutated_successfully)
+          << "Failed to find candidate code item with only one code unit in last instruction.";
+    });
+  }
+  std::unique_ptr<const DexFile> dex_file(OpenDexFile(temp_dex.GetFilename().c_str()));
+  {
     ASSERT_GT(classes.size(), 0u);
     ASSERT_GT(methods.size(), 0u);
     // Here, we build the profile from the method lists.
     ProfileCompilationInfo info;
-    info.AddClassesForDex(dex.get(), classes.begin(), classes.end());
-    info.AddMethodsForDex(Hotness::kFlagStartup, dex.get(), methods.begin(), methods.end());
+    info.AddClassesForDex(dex_file.get(), classes.begin(), classes.end());
+    info.AddMethodsForDex(Hotness::kFlagStartup, dex_file.get(), methods.begin(), methods.end());
     // Save the profile since we want to use it with dex2oat to produce an oat file.
     ASSERT_TRUE(info.Save(profile_file.GetFd()));
   }
   const std::string out_dir = GetScratchDir();
   const std::string odex_location = out_dir + "/base.odex";
   const std::string app_image_location = out_dir + "/base.art";
-  ASSERT_TRUE(GenerateOdexForTest(GetTestDexFileName("StringLiterals"),
+  ASSERT_TRUE(GenerateOdexForTest(dex_location,
                                   odex_location,
                                   CompilerFilter::Filter::kSpeedProfile,
                                   { "--app-image-file=" + app_image_location,
@@ -2223,7 +2256,7 @@ TEST_F(Dex2oatTest, AppImageResolveStrings) {
       if (obj->IsDexCache<kVerifyNone>()) {
         ObjPtr<mirror::DexCache> dex_cache = obj->AsDexCache();
         GcRoot<mirror::String>* preresolved_strings = dex_cache->GetPreResolvedStrings();
-        ASSERT_EQ(dex->NumStringIds(), dex_cache->NumPreResolvedStrings());
+        ASSERT_EQ(dex_file->NumStringIds(), dex_cache->NumPreResolvedStrings());
         for (size_t i = 0; i < dex_cache->NumPreResolvedStrings(); ++i) {
           ObjPtr<mirror::String> string = preresolved_strings[i].Read<kWithoutReadBarrier>();
           if (string != nullptr) {

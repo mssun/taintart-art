@@ -185,6 +185,10 @@ class CommonArtTestImpl {
 
   // Open a file (allows reading of framework jars).
   std::vector<std::unique_ptr<const DexFile>> OpenDexFiles(const char* filename);
+
+  // Open a single dex file (aborts if there are more than one).
+  std::unique_ptr<const DexFile> OpenDexFile(const char* filename);
+
   // Open a test file (art-gtest-*.jar).
   std::vector<std::unique_ptr<const DexFile>> OpenTestDexFiles(const char* name);
 
