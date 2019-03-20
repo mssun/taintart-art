@@ -361,6 +361,14 @@ endif
 
 LOCAL_MODULE := com.android.runtime
 LOCAL_REQUIRED_MODULES := $(TARGET_RUNTIME_APEX)
+# Create canonical name -> file name symlink in the symbol directory
+# The symbol files for the debug or release variant are installed to
+# $(TARGET_OUT_UNSTRIPPED)/$(TARGET_RUNTIME_APEX) directory. However,
+# since they are available via /apex/com.android.runtime at runtime
+# regardless of which variant is installed, create a symlink so that
+# $(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime is linked to
+# $(TARGET_OUT_UNSTRIPPED)/apex/$(TARGET_RUNTIME_APEX).
+LOCAL_POST_INSTALL_CMD := ln -sf $(TARGET_RUNTIME_APEX) $(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime
 ifneq ($(HOST_OS),darwin)
   LOCAL_REQUIRED_MODULES += $(APEX_TEST_MODULE)
 endif
