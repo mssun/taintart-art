@@ -394,6 +394,7 @@ Runtime::~Runtime() {
                                             WellKnownClasses::java_lang_Daemons_stop);
   }
 
+  // Shutdown any trace running.
   Trace::Shutdown();
 
   // Report death. Clients me require a working thread, still, so do it before GC completes and
@@ -430,6 +431,10 @@ Runtime::~Runtime() {
     ScopedTrace trace2("Delete thread list");
     thread_list_->ShutDown();
   }
+
+  // We can only unload boot classpath native libraries once all threads are terminated
+  // or suspended.
+  java_vm_->UnloadBootNativeLibraries();
 
   // TODO Maybe do some locking.
   for (auto& agent : agents_) {
