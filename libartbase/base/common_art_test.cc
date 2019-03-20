@@ -338,11 +338,11 @@ static std::string GetDexFileName(const std::string& jar_prefix, bool host) {
   return StringPrintf("%s/framework/%s%s.jar", path.c_str(), jar_prefix.c_str(), suffix.c_str());
 }
 
-std::vector<std::string> CommonArtTestImpl::GetLibCoreDexFileNames() {
+std::vector<std::string> CommonArtTestImpl::GetLibCoreModuleNames() const {
   // Note: This must start with the CORE_IMG_JARS in Android.common_path.mk
   // because that's what we use for compiling the core.art image.
   // It may contain additional modules from TEST_CORE_JARS.
-  static const char* const kLibcoreModules[] = {
+  return {
       // CORE_IMG_JARS modules.
       "core-oj",
       "core-libart",
@@ -352,17 +352,26 @@ std::vector<std::string> CommonArtTestImpl::GetLibCoreDexFileNames() {
       // Additional modules.
       "conscrypt",
   };
+}
 
+std::vector<std::string> CommonArtTestImpl::GetLibCoreDexFileNames(
+    const std::vector<std::string>& modules) const {
   std::vector<std::string> result;
-  result.reserve(arraysize(kLibcoreModules));
-  for (const char* module : kLibcoreModules) {
+  result.reserve(modules.size());
+  for (const std::string& module : modules) {
     result.push_back(GetDexFileName(module, IsHost()));
   }
   return result;
 }
 
-std::vector<std::string> CommonArtTestImpl::GetLibCoreDexLocations() {
-  std::vector<std::string> result = GetLibCoreDexFileNames();
+std::vector<std::string> CommonArtTestImpl::GetLibCoreDexFileNames() const {
+  std::vector<std::string> modules = GetLibCoreModuleNames();
+  return GetLibCoreDexFileNames(modules);
+}
+
+std::vector<std::string> CommonArtTestImpl::GetLibCoreDexLocations(
+    const std::vector<std::string>& modules) const {
+  std::vector<std::string> result = GetLibCoreDexFileNames(modules);
   if (IsHost()) {
     // Strip the ANDROID_BUILD_TOP directory including the directory separator '/'.
     const char* host_dir = getenv("ANDROID_BUILD_TOP");
@@ -379,6 +388,11 @@ std::vector<std::string> CommonArtTestImpl::GetLibCoreDexLocations() {
     }
   }
   return result;
+}
+
+std::vector<std::string> CommonArtTestImpl::GetLibCoreDexLocations() const {
+  std::vector<std::string> modules = GetLibCoreModuleNames();
+  return GetLibCoreDexLocations(modules);
 }
 
 std::string CommonArtTestImpl::GetClassPathOption(const char* option,

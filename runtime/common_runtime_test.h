@@ -100,8 +100,8 @@ class CommonRuntimeTestImpl : public CommonArtTestImpl {
   void MakeInterpreted(ObjPtr<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static bool StartDex2OatCommandLine(/*out*/std::vector<std::string>* argv,
-                                      /*out*/std::string* error_msg);
+  bool StartDex2OatCommandLine(/*out*/std::vector<std::string>* argv,
+                               /*out*/std::string* error_msg);
 
  protected:
   // Allow subclases such as CommonCompilerTest to add extra options.

@@ -662,6 +662,7 @@ art_cc_test {
     ],
     srcs: [
         "reflection_test.cc",
+        "module_exclusion_test.cc",
     ],
     shared_libs: [
         "libartd-compiler",

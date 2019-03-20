@@ -1179,10 +1179,12 @@ TEST_F(OatFileAssistantTest, LongDexExtension) {
 // A task to generate a dex location. Used by the RaceToGenerate test.
 class RaceGenerateTask : public Task {
  public:
-  RaceGenerateTask(const std::string& dex_location,
+  RaceGenerateTask(OatFileAssistantTest& test,
+                   const std::string& dex_location,
                    const std::string& oat_location,
                    Mutex* lock)
-      : dex_location_(dex_location),
+      : test_(test),
+        dex_location_(dex_location),
         oat_location_(oat_location),
         lock_(lock),
         loaded_oat_file_(nullptr)
@@ -1201,7 +1203,7 @@ class RaceGenerateTask : public Task {
       args.push_back("--dex-file=" + dex_location_);
       args.push_back("--oat-file=" + oat_location_);
       std::string error_msg;
-      ASSERT_TRUE(DexoptTest::Dex2Oat(args, &error_msg)) << error_msg;
+      ASSERT_TRUE(test_.Dex2Oat(args, &error_msg)) << error_msg;
     }
 
     dex_files = Runtime::Current()->GetOatFileManager().OpenDexFilesFromOat(
@@ -1222,6 +1224,7 @@ class RaceGenerateTask : public Task {
   }
 
  private:
+  OatFileAssistantTest& test_;
   std::string dex_location_;
   std::string oat_location_;
   Mutex* lock_;
@@ -1248,7 +1251,8 @@ TEST_F(OatFileAssistantTest, RaceToGenerate) {
   std::vector<std::unique_ptr<RaceGenerateTask>> tasks;
   Mutex lock("RaceToGenerate");
   for (size_t i = 0; i < kNumThreads; i++) {
-    std::unique_ptr<RaceGenerateTask> task(new RaceGenerateTask(dex_location, oat_location, &lock));
+    std::unique_ptr<RaceGenerateTask> task(
+        new RaceGenerateTask(*this, dex_location, oat_location, &lock));
     thread_pool.AddTask(self, task.get());
     tasks.push_back(std::move(task));
   }
