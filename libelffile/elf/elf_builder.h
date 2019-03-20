@@ -14,24 +14,22 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_ELF_BUILDER_H_
-#define ART_COMPILER_LINKER_ELF_BUILDER_H_
+#ifndef ART_LIBELFFILE_ELF_ELF_BUILDER_H_
+#define ART_LIBELFFILE_ELF_ELF_BUILDER_H_
 
 #include <vector>
 #include <deque>
 
 #include "arch/instruction_set.h"
-#include "arch/mips/instruction_set_features_mips.h"
 #include "base/array_ref.h"
 #include "base/bit_utils.h"
 #include "base/casts.h"
 #include "base/leb128.h"
 #include "base/unix_file/fd_file.h"
-#include "elf_utils.h"
-#include "linker/error_delaying_output_stream.h"
+#include "elf/elf.h"
+#include "stream/error_delaying_output_stream.h"
 
 namespace art {
-namespace linker {
 
 // Writes ELF file.
 //
@@ -43,7 +41,6 @@ namespace linker {
 //   .text                       - Compiled code.
 //   .bss                        - Zero-initialized writeable section.
 //   .dex                        - Reserved NOBITS space for dex-related data.
-//   .MIPS.abiflags              - MIPS specific section.
 //   .dynstr                     - Names for .dynsym.
 //   .dynsym                     - A few oat-specific dynamic symbols.
 //   .hash                       - Hash-table for .dynsym.
@@ -397,76 +394,6 @@ class ElfBuilder final {
     std::deque<Elf_Sym> syms_;  // Buffered/cached content of the whole section.
   };
 
-  class AbiflagsSection final : public Section {
-   public:
-    // Section with Mips abiflag info.
-    static constexpr uint8_t MIPS_AFL_REG_NONE =         0;  // no registers
-    static constexpr uint8_t MIPS_AFL_REG_32 =           1;  // 32-bit registers
-    static constexpr uint8_t MIPS_AFL_REG_64 =           2;  // 64-bit registers
-    static constexpr uint32_t MIPS_AFL_FLAGS1_ODDSPREG = 1;  // Uses odd single-prec fp regs
-    static constexpr uint8_t MIPS_ABI_FP_DOUBLE =        1;  // -mdouble-float
-    static constexpr uint8_t MIPS_ABI_FP_XX =            5;  // -mfpxx
-    static constexpr uint8_t MIPS_ABI_FP_64A =           7;  // -mips32r* -mfp64 -mno-odd-spreg
-
-    AbiflagsSection(ElfBuilder<ElfTypes>* owner,
-                    const std::string& name,
-                    Elf_Word type,
-                    Elf_Word flags,
-                    const Section* link,
-                    Elf_Word info,
-                    Elf_Word align,
-                    Elf_Word entsize,
-                    InstructionSet isa,
-                    const InstructionSetFeatures* features)
-        : Section(owner, name, type, flags, link, info, align, entsize) {
-      if (isa == InstructionSet::kMips || isa == InstructionSet::kMips64) {
-        bool fpu32 = false;    // assume mips64 values
-        uint8_t isa_rev = 6;   // assume mips64 values
-        if (isa == InstructionSet::kMips) {
-          // adjust for mips32 values
-          fpu32 = features->AsMipsInstructionSetFeatures()->Is32BitFloatingPoint();
-          isa_rev = features->AsMipsInstructionSetFeatures()->IsR6()
-              ? 6
-              : features->AsMipsInstructionSetFeatures()->IsMipsIsaRevGreaterThanEqual2()
-                  ? (fpu32 ? 2 : 5)
-                  : 1;
-        }
-        abiflags_.version = 0;  // version of flags structure
-        abiflags_.isa_level = (isa == InstructionSet::kMips) ? 32 : 64;
-        abiflags_.isa_rev = isa_rev;
-        abiflags_.gpr_size = (isa == InstructionSet::kMips) ? MIPS_AFL_REG_32 : MIPS_AFL_REG_64;
-        abiflags_.cpr1_size = fpu32 ? MIPS_AFL_REG_32 : MIPS_AFL_REG_64;
-        abiflags_.cpr2_size = MIPS_AFL_REG_NONE;
-        // Set the fp_abi to MIPS_ABI_FP_64A for mips32 with 64-bit FPUs (ie: mips32 R5 and R6).
-        // Otherwise set to MIPS_ABI_FP_DOUBLE.
-        abiflags_.fp_abi =
-            (isa == InstructionSet::kMips && !fpu32) ? MIPS_ABI_FP_64A : MIPS_ABI_FP_DOUBLE;
-        abiflags_.isa_ext = 0;
-        abiflags_.ases = 0;
-        // To keep the code simple, we are not using odd FP reg for single floats for both
-        // mips32 and mips64 ART. Therefore we are not setting the MIPS_AFL_FLAGS1_ODDSPREG bit.
-        abiflags_.flags1 = 0;
-        abiflags_.flags2 = 0;
-      }
-    }
-
-    Elf_Word GetSize() const {
-      return sizeof(abiflags_);
-    }
-
-    void Write() {
-      this->WriteFully(&abiflags_, sizeof(abiflags_));
-    }
-
-   private:
-    struct {
-      uint16_t version;  // version of this structure
-      uint8_t  isa_level, isa_rev, gpr_size, cpr1_size, cpr2_size;
-      uint8_t  fp_abi;
-      uint32_t isa_ext, ases, flags1, flags2;
-    } abiflags_;
-  };
-
   class BuildIdSection final : public Section {
    public:
     BuildIdSection(ElfBuilder<ElfTypes>* owner,
@@ -515,9 +442,8 @@ class ElfBuilder final {
     off_t digest_start_;
   };
 
-  ElfBuilder(InstructionSet isa, const InstructionSetFeatures* features, OutputStream* output)
+  ElfBuilder(InstructionSet isa, OutputStream* output)
       : isa_(isa),
-        features_(features),
         stream_(output),
         rodata_(this, ".rodata", SHT_PROGBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
         text_(this, ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, nullptr, 0, kPageSize, 0),
@@ -537,8 +463,6 @@ class ElfBuilder final {
         debug_info_(this, ".debug_info", SHT_PROGBITS, 0, nullptr, 0, 1, 0),
         debug_line_(this, ".debug_line", SHT_PROGBITS, 0, nullptr, 0, 1, 0),
         shstrtab_(this, ".shstrtab", 0, 1),
-        abiflags_(this, ".MIPS.abiflags", SHT_MIPS_ABIFLAGS, SHF_ALLOC, nullptr, 0, kPageSize, 0,
-                  isa, features),
         build_id_(this, ".note.gnu.build-id", SHT_NOTE, SHF_ALLOC, nullptr, 0, 4, 0),
         current_section_(nullptr),
         started_(false),
@@ -552,7 +476,6 @@ class ElfBuilder final {
     dex_.phdr_flags_ = PF_R;
     dynamic_.phdr_flags_ = PF_R | PF_W;
     dynamic_.phdr_type_ = PT_DYNAMIC;
-    abiflags_.phdr_type_ = PT_MIPS_ABIFLAGS;
     build_id_.phdr_type_ = PT_NOTE;
   }
   ~ElfBuilder() {}
@@ -637,7 +560,7 @@ class ElfBuilder final {
     stream_.Flush();
 
     // The main ELF header.
-    Elf_Ehdr elf_header = MakeElfHeader(isa_, features_);
+    Elf_Ehdr elf_header = MakeElfHeader(isa_);
     elf_header.e_shoff = section_headers_offset;
     elf_header.e_shnum = shdrs.size();
     elf_header.e_shstrndx = shstrtab_.GetSectionIndex();
@@ -721,9 +644,6 @@ class ElfBuilder final {
     }
     if (dex_size != 0) {
       dex_.AllocateVirtualMemory(dex_size);
-    }
-    if (isa_ == InstructionSet::kMips || isa_ == InstructionSet::kMips64) {
-      abiflags_.AllocateVirtualMemory(abiflags_.GetSize());
     }
 
     // Cache .dynstr, .dynsym and .hash data.
@@ -847,12 +767,6 @@ class ElfBuilder final {
     return loaded_size_;
   }
 
-  void WriteMIPSabiflagsSection() {
-    abiflags_.Start();
-    abiflags_.Write();
-    abiflags_.End();
-  }
-
   void WriteBuildIdSection() {
     build_id_.Start();
     build_id_.Write();
@@ -880,7 +794,7 @@ class ElfBuilder final {
   }
 
  private:
-  static Elf_Ehdr MakeElfHeader(InstructionSet isa, const InstructionSetFeatures* features) {
+  static Elf_Ehdr MakeElfHeader(InstructionSet isa) {
     Elf_Ehdr elf_header = Elf_Ehdr();
     switch (isa) {
       case InstructionSet::kArm:
@@ -903,25 +817,6 @@ class ElfBuilder final {
       case InstructionSet::kX86_64: {
         elf_header.e_machine = EM_X86_64;
         elf_header.e_flags = 0;
-        break;
-      }
-      case InstructionSet::kMips: {
-        elf_header.e_machine = EM_MIPS;
-        elf_header.e_flags = (EF_MIPS_NOREORDER |
-                              EF_MIPS_PIC       |
-                              EF_MIPS_CPIC      |
-                              EF_MIPS_ABI_O32   |
-                              (features->AsMipsInstructionSetFeatures()->IsR6()
-                                   ? EF_MIPS_ARCH_32R6
-                                   : EF_MIPS_ARCH_32R2));
-        break;
-      }
-      case InstructionSet::kMips64: {
-        elf_header.e_machine = EM_MIPS;
-        elf_header.e_flags = (EF_MIPS_NOREORDER |
-                              EF_MIPS_PIC       |
-                              EF_MIPS_CPIC      |
-                              EF_MIPS_ARCH_64R6);
         break;
       }
       case InstructionSet::kNone: {
@@ -1032,7 +927,6 @@ class ElfBuilder final {
   }
 
   InstructionSet isa_;
-  const InstructionSetFeatures* features_;
 
   ErrorDelayingOutputStream stream_;
 
@@ -1052,7 +946,6 @@ class ElfBuilder final {
   Section debug_info_;
   Section debug_line_;
   StringSection shstrtab_;
-  AbiflagsSection abiflags_;
   BuildIdSection build_id_;
   std::vector<std::unique_ptr<Section>> other_sections_;
 
@@ -1073,7 +966,6 @@ class ElfBuilder final {
   DISALLOW_COPY_AND_ASSIGN(ElfBuilder);
 };
 
-}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_ELF_BUILDER_H_
+#endif  // ART_LIBELFFILE_ELF_ELF_BUILDER_H_

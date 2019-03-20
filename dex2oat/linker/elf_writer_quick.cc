@@ -31,11 +31,11 @@
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
 #include "driver/compiler_options.h"
-#include "elf.h"
+#include "elf/elf.h"
+#include "elf/elf_builder.h"
 #include "elf_utils.h"
-#include "linker/buffered_output_stream.h"
-#include "linker/elf_builder.h"
-#include "linker/file_output_stream.h"
+#include "stream/buffered_output_stream.h"
+#include "stream/file_output_stream.h"
 #include "thread-current-inl.h"
 #include "thread_pool.h"
 
@@ -159,7 +159,6 @@ ElfWriterQuick<ElfTypes>::ElfWriterQuick(const CompilerOptions& compiler_options
       output_stream_(
           std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(elf_file))),
       builder_(new ElfBuilder<ElfTypes>(compiler_options_.GetInstructionSet(),
-                                        compiler_options_.GetInstructionSetFeatures(),
                                         output_stream_.get())) {}
 
 template <typename ElfTypes>
@@ -243,10 +242,6 @@ void ElfWriterQuick<ElfTypes>::EndDataBimgRelRo(OutputStream* data_bimg_rel_ro) 
 
 template <typename ElfTypes>
 void ElfWriterQuick<ElfTypes>::WriteDynamicSection() {
-  if (builder_->GetIsa() == InstructionSet::kMips ||
-      builder_->GetIsa() == InstructionSet::kMips64) {
-    builder_->WriteMIPSabiflagsSection();
-  }
   builder_->WriteDynamicSection();
 }
 

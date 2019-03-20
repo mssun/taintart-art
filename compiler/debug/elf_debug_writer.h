@@ -19,12 +19,13 @@
 
 #include <vector>
 
+#include "arch/instruction_set_features.h"
 #include "base/array_ref.h"
 #include "base/macros.h"
 #include "base/mutex.h"
-#include "debug/dwarf/dwarf_constants.h"
 #include "debug/debug_info.h"
-#include "linker/elf_builder.h"
+#include "dwarf/dwarf_constants.h"
+#include "elf/elf_builder.h"
 
 namespace art {
 class OatHeader;
@@ -36,7 +37,7 @@ struct MethodDebugInfo;
 
 template <typename ElfTypes>
 void WriteDebugInfo(
-    linker::ElfBuilder<ElfTypes>* builder,
+    ElfBuilder<ElfTypes>* builder,
     const DebugInfo& debug_info);
 
 std::vector<uint8_t> MakeMiniDebugInfo(

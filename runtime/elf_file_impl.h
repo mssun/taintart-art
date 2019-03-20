@@ -23,7 +23,7 @@
 #include <vector>
 
 // Explicitly include our own elf.h to avoid Linux and other dependencies.
-#include "./elf.h"
+#include "elf/elf.h"
 #include "base/mem_map.h"
 
 namespace art {

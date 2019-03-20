@@ -31,7 +31,6 @@
 #include "XzEnc.h"
 
 namespace art {
-namespace debug {
 
 constexpr size_t kChunkSize = kPageSize;
 
@@ -130,5 +129,4 @@ void XzDecompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst) {
   dst->resize(dst_offset);
 }
 
-}  // namespace debug
 }  // namespace art

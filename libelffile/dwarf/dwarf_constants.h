@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_DEBUG_DWARF_DWARF_CONSTANTS_H_
-#define ART_COMPILER_DEBUG_DWARF_DWARF_CONSTANTS_H_
+#ifndef ART_LIBELFFILE_DWARF_DWARF_CONSTANTS_H_
+#define ART_LIBELFFILE_DWARF_DWARF_CONSTANTS_H_
 
 namespace art {
 namespace dwarf {
@@ -683,4 +683,4 @@ enum ExceptionHeaderValueApplication : uint8_t {
 }  // namespace dwarf
 }  // namespace art
 
-#endif  // ART_COMPILER_DEBUG_DWARF_DWARF_CONSTANTS_H_
+#endif  // ART_LIBELFFILE_DWARF_DWARF_CONSTANTS_H_

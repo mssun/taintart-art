@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_OUTPUT_STREAM_H_
-#define ART_COMPILER_LINKER_OUTPUT_STREAM_H_
+#ifndef ART_LIBELFFILE_STREAM_OUTPUT_STREAM_H_
+#define ART_LIBELFFILE_STREAM_OUTPUT_STREAM_H_
 
 #include <ostream>
 #include <string>
@@ -23,7 +23,6 @@
 #include "base/macros.h"
 
 namespace art {
-namespace linker {
 
 enum Whence {
   kSeekSet = SEEK_SET,
@@ -60,7 +59,6 @@ class OutputStream {
   DISALLOW_COPY_AND_ASSIGN(OutputStream);
 };
 
-}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_OUTPUT_STREAM_H_
+#endif  // ART_LIBELFFILE_STREAM_OUTPUT_STREAM_H_

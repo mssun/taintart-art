@@ -26,17 +26,12 @@ art_cc_defaults {
     srcs: [
         "compiled_method.cc",
         "debug/elf_debug_writer.cc",
-        "debug/xz_utils.cc",
         "dex/inline_method_analyser.cc",
         "dex/verified_method.cc",
         "dex/verification_results.cc",
         "driver/compiled_method_storage.cc",
         "driver/compiler_options.cc",
         "driver/dex_compilation_unit.cc",
-        "linker/buffered_output_stream.cc",
-        "linker/file_output_stream.cc",
-        "linker/output_stream.cc",
-        "linker/vector_output_stream.cc",
         "jit/jit_compiler.cc",
         "jit/jit_logger.cc",
         "jni/quick/calling_convention.cc",
@@ -254,6 +249,7 @@ art_cc_library {
         "libprofile",
         "libdexfile",
     ],
+    whole_static_libs: ["libelffile"],
 
     target: {
         android: {
@@ -317,6 +313,7 @@ art_cc_library {
         "libprofiled",
         "libdexfiled",
     ],
+    whole_static_libs: ["libelffiled"],
 }
 
 cc_defaults {

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_ERROR_DELAYING_OUTPUT_STREAM_H_
-#define ART_COMPILER_LINKER_ERROR_DELAYING_OUTPUT_STREAM_H_
+#ifndef ART_LIBELFFILE_STREAM_ERROR_DELAYING_OUTPUT_STREAM_H_
+#define ART_LIBELFFILE_STREAM_ERROR_DELAYING_OUTPUT_STREAM_H_
 
 #include "output_stream.h"
 
@@ -24,7 +24,6 @@
 #include "base/macros.h"
 
 namespace art {
-namespace linker {
 
 // OutputStream wrapper that delays reporting an error until Flush().
 class ErrorDelayingOutputStream final : public OutputStream {
@@ -99,7 +98,6 @@ class ErrorDelayingOutputStream final : public OutputStream {
   off_t output_offset_;  // Keep track of the current position in the stream.
 };
 
-}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_ERROR_DELAYING_OUTPUT_STREAM_H_
+#endif  // ART_LIBELFFILE_STREAM_ERROR_DELAYING_OUTPUT_STREAM_H_

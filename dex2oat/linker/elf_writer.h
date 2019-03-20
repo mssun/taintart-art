@@ -31,14 +31,13 @@
 namespace art {
 
 class ElfFile;
+class OutputStream;
 
 namespace debug {
 struct MethodDebugInfo;
 }  // namespace debug
 
 namespace linker {
-
-class OutputStream;
 
 class ElfWriter {
  public:

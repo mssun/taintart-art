@@ -18,8 +18,11 @@
 //===----------------------------------------------------------------------===//
 
 // BEGIN android-changed
-#ifndef ART_RUNTIME_ELF_H_
-#define ART_RUNTIME_ELF_H_
+#ifndef ART_LIBELFFILE_ELF_ELF_H_
+#define ART_LIBELFFILE_ELF_ELF_H_
+// HACK: This file replaces the system elf.h header and defines everything needed.
+//   Avoid including the system header as that would lead to re-definition errors.
+#define _ELF_H
 // END android-changed
 
 // BEGIN android-changed
@@ -1892,5 +1895,5 @@ struct ElfTypes64 {
 };
 
 // BEGIN android-changed
-#endif  // ART_RUNTIME_ELF_H_
+#endif  // ART_LIBELFFILE_ELF_ELF_H_
 // END android-changed

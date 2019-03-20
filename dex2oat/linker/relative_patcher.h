@@ -28,6 +28,7 @@
 namespace art {
 
 class CompiledMethod;
+class OutputStream;
 
 namespace debug {
 struct MethodDebugInfo;
@@ -36,7 +37,6 @@ struct MethodDebugInfo;
 namespace linker {
 
 class LinkerPatch;
-class OutputStream;
 
 /**
  * @class RelativePatcherThunkProvider

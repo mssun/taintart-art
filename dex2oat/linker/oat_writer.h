@@ -44,6 +44,7 @@ class CompiledMethod;
 class CompilerDriver;
 class CompilerOptions;
 class DexContainer;
+class OutputStream;
 class ProfileCompilationInfo;
 class TimingLogger;
 class TypeLookupTable;
@@ -62,7 +63,6 @@ namespace linker {
 
 class ImageWriter;
 class MultiOatRelativePatcher;
-class OutputStream;
 
 enum class CopyOption {
   kNever,

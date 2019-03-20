@@ -35,12 +35,9 @@
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "entrypoints/quick/quick_entrypoints.h"
-#include "linker/buffered_output_stream.h"
 #include "linker/elf_writer.h"
 #include "linker/elf_writer_quick.h"
-#include "linker/file_output_stream.h"
 #include "linker/multi_oat_relative_patcher.h"
-#include "linker/vector_output_stream.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
@@ -48,6 +45,9 @@
 #include "oat_writer.h"
 #include "profile/profile_compilation_info.h"
 #include "scoped_thread_state_change-inl.h"
+#include "stream/buffered_output_stream.h"
+#include "stream/file_output_stream.h"
+#include "stream/vector_output_stream.h"
 #include "vdex_file.h"
 
 namespace art {
