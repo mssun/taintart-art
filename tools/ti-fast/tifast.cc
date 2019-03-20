@@ -21,6 +21,7 @@
 #include <iomanip>
 #include <jni.h>
 #include <jvmti.h>
+#include <limits>
 #include <memory>
 #include <string>
 #include <sstream>
@@ -461,9 +462,26 @@ void LogPrinter::PrintRest(jvmtiEnv* jvmti, JNIEnv* jni, const char* v, Args... 
   PrintRest(jvmti, jni, args...);
 }
 
-template<typename ...Args>
-void LogPrinter::PrintRest(jvmtiEnv* jvmti, JNIEnv* jni, jvalue v ATTRIBUTE_UNUSED, Args... args) {
-  stream << ", jvalue[<UNION>]";
+template<typename... Args>
+void LogPrinter::PrintRest(jvmtiEnv* jvmti, JNIEnv* jni, jvalue v, Args... args) {
+  std::ostringstream hex;
+  hex << std::hex << v.j;
+  std::ostringstream char_val;
+  if (std::isprint(v.c) && v.c < std::numeric_limits<unsigned char>::max()) {
+    char_val << "'" << static_cast<unsigned char>(v.c) << "'";
+  } else {
+    char_val << "0x" << std::hex << reinterpret_cast<uint16_t>(v.c);
+  }
+  stream << ", jvalue[{<hex: 0x" << hex.str() << ">"
+         << ", .z=" << (v.z ? "true" : "false")
+         << ", .b=" << static_cast<int32_t>(v.b)
+         << ", .c=" << char_val.str()
+         << ", .s=" << static_cast<int32_t>(v.s)
+         << ", .i=" << v.i
+         << ", .j=" << v.j
+         << ", .f=" << v.f
+         << ", .d=" << v.d
+         << ", .l=" << v.l << "}]";
   PrintRest(jvmti, jni, args...);
 }
 
