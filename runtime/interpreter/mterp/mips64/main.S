@@ -424,21 +424,20 @@ ExecuteMterpImpl:
 
     /* NOTE: no fallthrough */
 
-%def alt_stub():
-/*
- * Inter-instruction transfer stub.  Call out to MterpCheckBefore to handle
- * any interesting requests and then jump to the real instruction
- * handler.  Note that the call to MterpCheckBefore is done as a tail call.
- */
+%def dchecks_before_helper():
+    // Call C++ to do debug checks and return to the handler using tail call.
     .extern MterpCheckBefore
-    REFRESH_IBASE
-    dla     ra, artMterpAsmInstructionStart
     dla     t9, MterpCheckBefore
     move    a0, rSELF
     daddu   a1, rFP, OFF_FP_SHADOWFRAME
     move    a2, rPC
-    daddu   ra, ra, (${opnum} * 128)            # Addr of primary handler.
     jalr    zero, t9                            # (self, shadow_frame, dex_pc_ptr) Note: tail call.
+
+%def opcode_pre():
+%  add_helper(dchecks_before_helper, "Mterp_dchecks_before_helper")
+    #if !defined(NDEBUG)
+    jal    SYMBOL(Mterp_dchecks_before_helper)
+    #endif
 
 %def fallback():
 /* Transfer stub to alternate interpreter */
@@ -730,24 +729,17 @@ MterpProfileActive:
     .global artMterpAsmInstructionEnd
 artMterpAsmInstructionEnd:
 
-%def instruction_end_alt():
-
-    .global artMterpAsmAltInstructionEnd
-artMterpAsmAltInstructionEnd:
-
 %def instruction_start():
 
     .global artMterpAsmInstructionStart
 artMterpAsmInstructionStart = .L_op_nop
     .text
 
-%def instruction_start_alt():
-
-    .global artMterpAsmAltInstructionStart
-artMterpAsmAltInstructionStart = .L_ALT_op_nop
-    .text
-
 %def opcode_start():
 %  pass
 %def opcode_end():
 %  pass
+%def helper_start(name):
+    ENTRY ${name}
+%def helper_end(name):
+    END ${name}
