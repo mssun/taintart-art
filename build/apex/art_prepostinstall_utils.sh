@@ -49,14 +49,18 @@ function set_arches {
 }
 
 function setup_fsverity {
+  local full_shell_path=`readlink -f $0`
+  local bin_dir=`dirname $full_shell_path`
+  local apex_dir=`dirname $bin_dir`
+  local sig_dir="${apex_dir}.signatures"
   local file=$1
-  local signature_file="/apex/com.android.runtime.signatures/etc/$file.sig"
+  local signature_file="$sig_dir/$file.sig"
   # Setup.
-  log -t art_apex "fsverity setup for $file"
+  log_info "fsverity setup for $file"
   SETUP_MSG=`fsverity setup $file --signature=$signature_file --hash=sha256 2>&1` || \
     { log_error "Setup failed: $SETUP_MSG" ; return 300 ; }
   # Enable.
-  log -t art_apex "fsverity enable for $file"
+  log_info "fsverity enable for $file"
   ENABLE_MSG=`fsverity enable $file 2>&1` || \
     { log_error "Enable failed: $ENABLE_MSG" ; return 301 ; }
   # Test integrity.
