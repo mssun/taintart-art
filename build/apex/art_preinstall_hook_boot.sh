@@ -61,7 +61,7 @@ dex2oat \
   $PROFILING \
   $DEX_FILES \
   $DEX_LOCATIONS \
-  --generate-debug-info \
+  --generate-mini-debug-info \
   --strip \
   --oat-file=/data/dalvik-cache/$DEX2OAT_TARGET_ARCH/system@framework@boot.oat \
   --oat-location=/data/dalvik-cache/$DEX2OAT_TARGET_ARCH/system@framework@boot.oat \
