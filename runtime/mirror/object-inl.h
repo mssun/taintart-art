@@ -300,14 +300,16 @@ inline ObjPtr<DoubleArray> Object::AsDoubleArray() {
   return ObjPtr<DoubleArray>::DownCast(this);
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline bool Object::IsString() {
-  return GetClass<kVerifyFlags, kReadBarrierOption>()->IsStringClass();
+  // No read barrier is needed for reading a constant primitive field through
+  // constant reference field. See ReadBarrierOption.
+  return GetClass<kVerifyFlags, kWithoutReadBarrier>()->IsStringClass();
 }
 
-template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
+template<VerifyObjectFlags kVerifyFlags>
 inline ObjPtr<String> Object::AsString() {
-  DCHECK((IsString<kVerifyFlags, kReadBarrierOption>()));
+  DCHECK((IsString<kVerifyFlags>()));
   return ObjPtr<String>::DownCast(this);
 }
 
@@ -347,19 +349,24 @@ template<VerifyObjectFlags kVerifyFlags>
 inline size_t Object::SizeOf() {
   // Read barrier is never required for SizeOf since objects sizes are constant. Reading from-space
   // values is OK because of that.
-  static constexpr ReadBarrierOption kRBO = kWithoutReadBarrier;
   size_t result;
   constexpr VerifyObjectFlags kNewFlags = RemoveThisFlags(kVerifyFlags);
   if (IsArrayInstance<kVerifyFlags>()) {
-    result = AsArray<kNewFlags>()->template SizeOf<kNewFlags, kRBO>();
+    result = AsArray<kNewFlags>()->template SizeOf<kNewFlags>();
   } else if (IsClass<kNewFlags>()) {
-    result = AsClass<kNewFlags>()->template SizeOf<kNewFlags, kRBO>();
-  } else if (GetClass<kNewFlags, kRBO>()->IsStringClass()) {
-    result = AsString<kNewFlags, kRBO>()->template SizeOf<kNewFlags>();
+    result = AsClass<kNewFlags>()->template SizeOf<kNewFlags>();
+  } else if (IsString<kNewFlags>()) {
+    result = AsString<kNewFlags>()->template SizeOf<kNewFlags>();
   } else {
-    result = GetClass<kNewFlags, kRBO>()->template GetObjectSize<kNewFlags>();
+    result = GetClass<kNewFlags, kWithoutReadBarrier>()->template GetObjectSize<kNewFlags>();
   }
-  DCHECK_GE(result, sizeof(Object)) << " class=" << Class::PrettyClass(GetClass<kNewFlags, kRBO>());
+  DCHECK_GE(result, sizeof(Object)) << " class="
+      // Note: Class::PrettyClass() is reading constant reference fields to get to constant
+      // primitive fields and safely avoids read barriers, so it is safe to call on a Class
+      // reference read without read barrier from a constant reference field.
+      // See ReadBarrierOption. And, for correctness, we actually have to avoid the read
+      // barrier here if Object::SizeOf() is called on a from-space reference.
+      << GetClass<kNewFlags, kWithoutReadBarrier>()->PrettyClass();
   return result;
 }
 

@@ -446,10 +446,8 @@ class MANAGED Class final : public Object {
 
   void SetComponentType(ObjPtr<Class> new_component_type) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   size_t GetComponentSize() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   size_t GetComponentSizeShift() REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool IsObjectClass() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -478,8 +476,7 @@ class MANAGED Class final : public Object {
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   ALWAYS_INLINE bool IsVariableSize() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
-           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   uint32_t SizeOf() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetField32<kVerifyFlags>(OFFSET_OF_OBJECT_MEMBER(Class, class_size_));
   }

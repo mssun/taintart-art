@@ -1003,7 +1003,10 @@ const char* Class::GetDescriptor(std::string* storage) {
   ObjPtr<mirror::Class> klass = this;
   while (klass->IsArrayClass()) {
     ++dim;
-    klass = klass->GetComponentType();
+    // No read barrier needed, we're reading a chain of constant references for comparison
+    // with null. Then we follow up below with reading constant references to read constant
+    // primitive data in both proxy and non-proxy paths. See ReadBarrierOption.
+    klass = klass->GetComponentType<kDefaultVerifyFlags, kWithoutReadBarrier>();
   }
   if (klass->IsProxyClass()) {
     // No read barrier needed, the `name` field is constant for proxy classes and

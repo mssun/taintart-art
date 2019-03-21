@@ -1007,14 +1007,14 @@ inline void Class::SetComponentType(ObjPtr<Class> new_component_type) {
   SetFieldObject<false, false>(ComponentTypeOffset(), new_component_type);
 }
 
-template<ReadBarrierOption kReadBarrierOption>
 inline size_t Class::GetComponentSize() {
-  return 1U << GetComponentSizeShift<kReadBarrierOption>();
+  return 1U << GetComponentSizeShift();
 }
 
-template<ReadBarrierOption kReadBarrierOption>
 inline size_t Class::GetComponentSizeShift() {
-  return GetComponentType<kDefaultVerifyFlags, kReadBarrierOption>()->GetPrimitiveTypeSizeShift();
+  // No read barrier is needed for reading a constant primitive field through
+  // constant reference field. See ReadBarrierOption.
+  return GetComponentType<kDefaultVerifyFlags, kWithoutReadBarrier>()->GetPrimitiveTypeSizeShift();
 }
 
 inline bool Class::IsObjectClass() {
