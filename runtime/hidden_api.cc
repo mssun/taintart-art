@@ -81,7 +81,8 @@ static Domain DetermineDomainFromPath_Impl(const std::string& path,
   // is set to "/system".
   if (RuntimeModuleRootDistinctFromAndroidRoot()) {
     if (LocationIsOnRuntimeModule(path.c_str()) || LocationIsOnConscryptModule(path.c_str())) {
-      return Domain::kCorePlatform;
+      // Should be: return Domain::kCorePlatform; b/129008061
+      return Domain::kPlatform;
     }
 
     if (LocationIsOnApex(path.c_str())) {
