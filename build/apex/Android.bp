@@ -118,6 +118,7 @@ libcore_java_libs = [
 // Native libraries that support the core Java libraries.
 libcore_native_shared_libs = [
     "libandroidicu",
+    "libandroidio",
     "libexpat",
     "libicui18n",
     "libicuuc",
