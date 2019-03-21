@@ -45,7 +45,7 @@ void ArtField::SetOffset(MemberOffset num_bytes) {
 }
 
 ObjPtr<mirror::Class> ArtField::ProxyFindSystemClass(const char* descriptor) {
-  DCHECK(GetDeclaringClass()->IsProxyClass());
+  DCHECK(IsProxyField());
   ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->LookupClass(
       Thread::Current(), descriptor, /* class_loader= */ nullptr);
   DCHECK(klass != nullptr);
