@@ -34,6 +34,8 @@
 namespace art {
 
 inline bool ArtField::IsProxyField() {
+  // No read barrier needed, we're reading the constant declaring class only to read
+  // the constant proxy flag. See ReadBarrierOption.
   return GetDeclaringClass<kWithoutReadBarrier>()->IsProxyClass<kVerifyNone>();
 }
 
@@ -272,7 +274,7 @@ inline void ArtField::SetObject(ObjPtr<mirror::Object> object, ObjPtr<mirror::Ob
 
 inline const char* ArtField::GetName() REQUIRES_SHARED(Locks::mutator_lock_) {
   uint32_t field_index = GetDexFieldIndex();
-  if (UNLIKELY(GetDeclaringClass()->IsProxyClass())) {
+  if (UNLIKELY(IsProxyField())) {
     DCHECK(IsStatic());
     DCHECK_LT(field_index, 2U);
     return field_index == 0 ? "interfaces" : "throws";
@@ -283,7 +285,7 @@ inline const char* ArtField::GetName() REQUIRES_SHARED(Locks::mutator_lock_) {
 
 inline const char* ArtField::GetTypeDescriptor() REQUIRES_SHARED(Locks::mutator_lock_) {
   uint32_t field_index = GetDexFieldIndex();
-  if (UNLIKELY(GetDeclaringClass()->IsProxyClass())) {
+  if (UNLIKELY(IsProxyField())) {
     DCHECK(IsStatic());
     DCHECK_LT(field_index, 2U);
     // 0 == Class[] interfaces; 1 == Class[][] throws;

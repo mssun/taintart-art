@@ -316,8 +316,8 @@ inline mirror::DexCache* ArtMethod::GetDexCache() {
 
 inline bool ArtMethod::IsProxyMethod() {
   DCHECK(!IsRuntimeMethod()) << "ArtMethod::IsProxyMethod called on a runtime method";
-  // Avoid read barrier since the from-space version of the class will have the correct proxy class
-  // flags since they are constant for the lifetime of the class.
+  // No read barrier needed, we're reading the constant declaring class only to read
+  // the constant proxy flag. See ReadBarrierOption.
   return GetDeclaringClass<kWithoutReadBarrier>()->IsProxyClass();
 }
 
