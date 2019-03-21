@@ -441,15 +441,19 @@ std::vector<std::unique_ptr<const DexFile>> CommonArtTestImpl::OpenDexFiles(cons
   return dex_files;
 }
 
+std::unique_ptr<const DexFile> CommonArtTestImpl::OpenDexFile(const char* filename) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files(OpenDexFiles(filename));
+  CHECK_EQ(dex_files.size(), 1u) << "Expected only one dex file";
+  return std::move(dex_files[0]);
+}
+
 std::vector<std::unique_ptr<const DexFile>> CommonArtTestImpl::OpenTestDexFiles(
     const char* name) {
   return OpenDexFiles(GetTestDexFileName(name).c_str());
 }
 
 std::unique_ptr<const DexFile> CommonArtTestImpl::OpenTestDexFile(const char* name) {
-  std::vector<std::unique_ptr<const DexFile>> vector = OpenTestDexFiles(name);
-  EXPECT_EQ(1U, vector.size());
-  return std::move(vector[0]);
+  return OpenDexFile(GetTestDexFileName(name).c_str());
 }
 
 std::string CommonArtTestImpl::GetCoreFileLocation(const char* suffix) {
