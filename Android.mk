@@ -682,11 +682,11 @@ TEST_ART_TARGET_SYNC_DEPS :=
 # Can be used, for example, to dump initialization failures:
 #   m art-boot-image ART_BOOT_IMAGE_EXTRA_ARGS=--dump-init-failures=fails.txt
 .PHONY: art-boot-image
-art-boot-image: $(DEFAULT_DEX_PREOPT_BUILT_IMAGE_FILENAME)
+art-boot-image:  $(DEXPREOPT_IMAGE_boot_$(TARGET_ARCH))
 
 .PHONY: art-job-images
 art-job-images: \
-  $(DEFAULT_DEX_PREOPT_BUILT_IMAGE_FILENAME) \
+  art-boot-image \
   $(2ND_DEFAULT_DEX_PREOPT_BUILT_IMAGE_FILENAME) \
   $(HOST_OUT_EXECUTABLES)/dex2oats \
   $(HOST_OUT_EXECUTABLES)/dex2oatds \
