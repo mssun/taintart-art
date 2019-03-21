@@ -361,14 +361,6 @@ endif
 
 LOCAL_MODULE := com.android.runtime
 LOCAL_REQUIRED_MODULES := $(TARGET_RUNTIME_APEX)
-# Create canonical name -> file name symlink in the symbol directory
-# The symbol files for the debug or release variant are installed to
-# $(TARGET_OUT_UNSTRIPPED)/$(TARGET_RUNTIME_APEX) directory. However,
-# since they are available via /apex/com.android.runtime at runtime
-# regardless of which variant is installed, create a symlink so that
-# $(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime is linked to
-# $(TARGET_OUT_UNSTRIPPED)/apex/$(TARGET_RUNTIME_APEX).
-LOCAL_POST_INSTALL_CMD := ln -sf $(TARGET_RUNTIME_APEX) $(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime
 ifneq ($(HOST_OS),darwin)
   LOCAL_REQUIRED_MODULES += $(APEX_TEST_MODULE)
 endif
@@ -379,6 +371,27 @@ art_target_include_debug_build :=
 
 include $(BUILD_PHONY_PACKAGE)
 
+# Create canonical name -> file name symlink in the symbol directory
+# The symbol files for the debug or release variant are installed to
+# $(TARGET_OUT_UNSTRIPPED)/$(TARGET_RUNTIME_APEX) directory. However,
+# since they are available via /apex/com.android.runtime at runtime
+# regardless of which variant is installed, create a symlink so that
+# $(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime is linked to
+# $(TARGET_OUT_UNSTRIPPED)/apex/$(TARGET_RUNTIME_APEX).
+# Note that installation of the symlink is triggered by the apex_manifest.json
+# file which is the file that is guaranteed to be created regardless of the
+# value of TARGET_FLATTEN_APEX.
+ifeq ($(TARGET_FLATTEN_APEX),true)
+runtime_apex_manifest_file := $(PRODUCT_OUT)/system/apex/$(TARGET_RUNTIME_APEX)/apex_manifest.json
+else
+runtime_apex_manifest_file := $(PRODUCT_OUT)/apex/$(TARGET_RUNTIME_APEX)/apex_manifest.json
+endif
+
+$(runtime_apex_manifest_file): $(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime
+$(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime :
+	$(hide) ln -sf $(TARGET_RUNTIME_APEX) $@
+
+runtime_apex_manifest_file :=
 
 #######################
 # Fake packages for ART
