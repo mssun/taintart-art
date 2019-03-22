@@ -57,8 +57,8 @@ Usage: $0 [OPTION]
 Build (optional) and run tests on Android Runtime APEX package (on host).
 
   -s, --skip-build    skip the build step
-  -l, --list-files    list the contents of the ext4 image using `find`
-  -t, --print-tree    list the contents of the ext4 image using `tree`
+  -l, --list-files    list the contents of the ext4 image (\`find\`-like style)
+  -t, --print-tree    list the contents of the ext4 image (\`tree\`-like style)
   -h, --help          display this help and exit
 
 EOF
