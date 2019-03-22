@@ -125,6 +125,7 @@ class CommonRuntimeTestImpl : public CommonArtTestImpl {
                                    jobject parent_loader,
                                    jobject shared_libraries = nullptr);
   jobject LoadDexInDelegateLastClassLoader(const std::string& dex_name, jobject parent_loader);
+  jobject LoadDexInInMemoryDexClassLoader(const std::string& dex_name, jobject parent_loader);
   jobject LoadDexInWellKnownClassLoader(const std::string& dex_name,
                                         jclass loader_class,
                                         jobject parent_loader,
