@@ -398,6 +398,15 @@ class ReleaseTargetChecker:
     return 'Release (Target) Checker'
 
   def run(self):
+    # Check that the mounted image contains ART tools binaries.
+    self._checker.check_binary('dexdiag')
+    self._checker.check_binary('dexdump')
+    self._checker.check_binary('dexlist')
+
+    # Check for files pulled in for target-only oatdump.
+    self._checker.check_binary('oatdump')
+    self._checker.check_first_library('libart-disassembler.so')
+
     # Check that the mounted image contains Android Core libraries.
     self._checker.check_library('libandroidicu.so')
     self._checker.check_library('libexpat.so')
@@ -464,9 +473,11 @@ class DebugTargetChecker:
     return 'Debug (Target) Checker'
 
   def run(self):
-    # Check for files pulled in from debug target-only oatdump.
+    # Check for files pulled in for debug target-only oatdump.
     self._checker.check_binary('oatdump')
+    self._checker.check_binary('oatdumpd')
     self._checker.check_first_library('libart-disassembler.so')
+    self._checker.check_first_library('libartd-disassembler.so')
 
 
 class List:

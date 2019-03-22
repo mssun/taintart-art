@@ -82,6 +82,12 @@ art_tools_device_only_binaries = [
     // TODO: Make it work with clang lld.
     "oatdump",
 ]
+// Same, but for only for debug packages.
+art_tools_debug_device_only_binaries = [
+    // oatdumpd cannot link with host linux_bionic due to not using clang lld;
+    // TODO: Make it work with clang lld.
+    "oatdumpd",
+]
 
 // Host-only modules listed in LOCAL_REQUIRED_MODULES for module art-tools in art/Android.mk.
 art_tools_host_only_binaries = [
@@ -175,7 +181,7 @@ apex_defaults {
             binaries: art_runtime_base_binaries_prefer32,
         },
         first: {
-            binaries: [],
+            binaries: art_tools_device_binaries,
         }
     },
     binaries: [
@@ -214,7 +220,7 @@ apex {
                 + art_runtime_debug_binaries_prefer32_device,
         },
         first: {
-            binaries: art_tools_device_binaries,
+            binaries: art_tools_debug_device_only_binaries,
         }
     },
     certificate: ":com.android.runtime.debug.certificate",
