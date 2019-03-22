@@ -1933,10 +1933,13 @@ class ImageDumper {
       indent_os << "\n";
       // TODO: Dump fields.
       // Dump methods after.
-      DumpArtMethodVisitor visitor(this);
-      image_header_.VisitPackedArtMethods(&visitor,
-                                          image_space_.Begin(),
-                                          image_header_.GetPointerSize());
+      image_header_.VisitPackedArtMethods([&](ArtMethod& method)
+          REQUIRES_SHARED(Locks::mutator_lock_) {
+        std::ostream& indent_os = vios_.Stream();
+        indent_os << &method << " " << " ArtMethod: " << method.PrettyMethod() << "\n";
+        DumpMethod(&method, indent_os);
+        indent_os << "\n";
+      },  image_space_.Begin(), image_header_.GetPointerSize());
       // Dump the large objects separately.
       heap->GetLargeObjectsSpace()->GetLiveBitmap()->Walk(dump_visitor);
       indent_os << "\n";
@@ -2022,21 +2025,6 @@ class ImageDumper {
   }
 
  private:
-  class DumpArtMethodVisitor : public ArtMethodVisitor {
-   public:
-    explicit DumpArtMethodVisitor(ImageDumper* image_dumper) : image_dumper_(image_dumper) {}
-
-    void Visit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_) {
-      std::ostream& indent_os = image_dumper_->vios_.Stream();
-      indent_os << method << " " << " ArtMethod: " << ArtMethod::PrettyMethod(method) << "\n";
-      image_dumper_->DumpMethod(method, indent_os);
-      indent_os << "\n";
-    }
-
-   private:
-    ImageDumper* const image_dumper_;
-  };
-
   static void PrettyObjectValue(std::ostream& os,
                                 ObjPtr<mirror::Class> type,
                                 ObjPtr<mirror::Object> value)

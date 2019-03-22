@@ -927,28 +927,6 @@ void ClassLinker::RunRootClinits(Thread* self) {
   }
 }
 
-// Set image methods' entry point to interpreter.
-class SetInterpreterEntrypointArtMethodVisitor : public ArtMethodVisitor {
- public:
-  explicit SetInterpreterEntrypointArtMethodVisitor(PointerSize image_pointer_size)
-    : image_pointer_size_(image_pointer_size) {}
-
-  void Visit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (kIsDebugBuild && !method->IsRuntimeMethod()) {
-      CHECK(method->GetDeclaringClass() != nullptr);
-    }
-    if (!method->IsNative() && !method->IsRuntimeMethod() && !method->IsResolutionMethod()) {
-      method->SetEntryPointFromQuickCompiledCodePtrSize(GetQuickToInterpreterBridge(),
-                                                        image_pointer_size_);
-    }
-  }
-
- private:
-  const PointerSize image_pointer_size_;
-
-  DISALLOW_COPY_AND_ASSIGN(SetInterpreterEntrypointArtMethodVisitor);
-};
-
 struct TrampolineCheckData {
   const void* quick_resolution_trampoline;
   const void* quick_imt_conflict_trampoline;
@@ -1334,23 +1312,6 @@ class CHAOnDeleteUpdateClassVisitor {
   const Thread* self_;
 };
 
-class VerifyDeclaringClassVisitor : public ArtMethodVisitor {
- public:
-  VerifyDeclaringClassVisitor() REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_)
-      : live_bitmap_(Runtime::Current()->GetHeap()->GetLiveBitmap()) {}
-
-  void Visit(ArtMethod* method) override
-      REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_) {
-    ObjPtr<mirror::Class> klass = method->GetDeclaringClassUnchecked();
-    if (klass != nullptr) {
-      CHECK(live_bitmap_->Test(klass.Ptr())) << "Image method has unmarked declaring class";
-    }
-  }
-
- private:
-  gc::accounting::HeapBitmap* const live_bitmap_;
-};
-
 /*
  * A class used to ensure that all strings in an AppImage have been properly
  * interned, and is only ever run in debug mode.
@@ -1570,8 +1531,14 @@ void AppImageLoadingHelper::Update(
   if (kVerifyArtMethodDeclaringClasses) {
     ScopedTrace timing("AppImage:VerifyDeclaringClasses");
     ReaderMutexLock rmu(self, *Locks::heap_bitmap_lock_);
-    VerifyDeclaringClassVisitor visitor;
-    header.VisitPackedArtMethods(&visitor, space->Begin(), kRuntimePointerSize);
+    gc::accounting::HeapBitmap* live_bitmap = heap->GetLiveBitmap();
+    header.VisitPackedArtMethods([&](ArtMethod& method)
+        REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_) {
+      ObjPtr<mirror::Class> klass = method.GetDeclaringClassUnchecked();
+      if (klass != nullptr) {
+        CHECK(live_bitmap->Test(klass.Ptr())) << "Image method has unmarked declaring class";
+      }
+    }, space->Begin(), kRuntimePointerSize);
   }
 }
 
@@ -1954,25 +1921,13 @@ static void VerifyAppImage(const ImageHeader& header,
                            const Handle<mirror::ObjectArray<mirror::DexCache> >& dex_caches,
                            ClassTable* class_table, gc::space::ImageSpace* space)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  {
-    class VerifyClassInTableArtMethodVisitor : public ArtMethodVisitor {
-     public:
-      explicit VerifyClassInTableArtMethodVisitor(ClassTable* table) : table_(table) {}
-
-      void Visit(ArtMethod* method) override
-          REQUIRES_SHARED(Locks::mutator_lock_, Locks::classlinker_classes_lock_) {
-        ObjPtr<mirror::Class> klass = method->GetDeclaringClass();
-        if (klass != nullptr && !Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(klass)) {
-          CHECK_EQ(table_->LookupByDescriptor(klass), klass) << mirror::Class::PrettyClass(klass);
-        }
-      }
-
-     private:
-      ClassTable* const table_;
-    };
-    VerifyClassInTableArtMethodVisitor visitor(class_table);
-    header.VisitPackedArtMethods(&visitor, space->Begin(), kRuntimePointerSize);
-  }
+  header.VisitPackedArtMethods([&](ArtMethod& method) REQUIRES_SHARED(Locks::mutator_lock_) {
+    ObjPtr<mirror::Class> klass = method.GetDeclaringClass();
+    if (klass != nullptr && !Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(klass)) {
+      CHECK_EQ(class_table->LookupByDescriptor(klass), klass)
+          << mirror::Class::PrettyClass(klass);
+    }
+  }, space->Begin(), kRuntimePointerSize);
   {
     // Verify that all direct interfaces of classes in the class table are also resolved.
     std::vector<ObjPtr<mirror::Class>> classes;
@@ -2179,8 +2134,16 @@ bool ClassLinker::AddImageSpace(
 
   // Set entry point to interpreter if in InterpretOnly mode.
   if (!runtime->IsAotCompiler() && runtime->GetInstrumentation()->InterpretOnly()) {
-    SetInterpreterEntrypointArtMethodVisitor visitor(image_pointer_size_);
-    header.VisitPackedArtMethods(&visitor, space->Begin(), image_pointer_size_);
+    // Set image methods' entry point to interpreter.
+    header.VisitPackedArtMethods([&](ArtMethod& method) REQUIRES_SHARED(Locks::mutator_lock_) {
+      if (!method.IsRuntimeMethod()) {
+        DCHECK(method.GetDeclaringClass() != nullptr);
+        if (!method.IsNative() && !method.IsResolutionMethod()) {
+          method.SetEntryPointFromQuickCompiledCodePtrSize(GetQuickToInterpreterBridge(),
+                                                            image_pointer_size_);
+        }
+      }
+    }, space->Begin(), image_pointer_size_);
   }
 
   ClassTable* class_table = nullptr;

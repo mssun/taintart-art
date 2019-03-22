@@ -634,45 +634,6 @@ class ImageSpace::PatchObjectVisitor final {
   NativeVisitor native_visitor_;
 };
 
-template <typename ObjectVisitor>
-class ImageSpace::PatchArtFieldVisitor final : public ArtFieldVisitor {
- public:
-  explicit PatchArtFieldVisitor(const ObjectVisitor& visitor) : visitor_(visitor) {}
-
-  void Visit(ArtField* field) override REQUIRES_SHARED(Locks::mutator_lock_) {
-    visitor_.template PatchGcRoot</*kMayBeNull=*/ false>(&field->DeclaringClassRoot());
-  }
-
- private:
-  const ObjectVisitor visitor_;
-};
-
-template <PointerSize kPointerSize, typename ObjectVisitor, typename CodeVisitor>
-class ImageSpace::PatchArtMethodVisitor final : public ArtMethodVisitor {
- public:
-  explicit PatchArtMethodVisitor(const ObjectVisitor& object_visitor,
-                                 const CodeVisitor& code_visitor)
-      : object_visitor_(object_visitor),
-        code_visitor_(code_visitor) {}
-
-  void Visit(ArtMethod* method) override REQUIRES_SHARED(Locks::mutator_lock_) {
-    object_visitor_.PatchGcRoot(&method->DeclaringClassRoot());
-    void** data_address = PointerAddress(method, ArtMethod::DataOffset(kPointerSize));
-    object_visitor_.PatchNativePointer(data_address);
-    void** entrypoint_address =
-        PointerAddress(method, ArtMethod::EntryPointFromQuickCompiledCodeOffset(kPointerSize));
-    code_visitor_.PatchNativePointer(entrypoint_address);
-  }
-
- private:
-  void** PointerAddress(ArtMethod* method, MemberOffset offset) {
-    return reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(method) + offset.Uint32Value());
-  }
-
-  const ObjectVisitor object_visitor_;
-  const CodeVisitor code_visitor_;
-};
-
 template <typename ReferenceVisitor>
 class ImageSpace::ClassTableVisitor final {
  public:
@@ -1149,60 +1110,6 @@ class ImageSpace::Loader {
     Forward forward_;
   };
 
-  template <typename ForwardObject, typename ForwardNative, typename ForwardCode>
-  class FixupArtMethodVisitor : public ArtMethodVisitor {
-   public:
-    template<typename... Args>
-    explicit FixupArtMethodVisitor(PointerSize pointer_size,
-                                   const ForwardObject& forward_object,
-                                   const ForwardNative& forward_native,
-                                   const ForwardCode& forward_code)
-        : pointer_size_(pointer_size),
-          forward_object_(forward_object),
-          forward_native_(forward_native),
-          forward_code_(forward_code) {}
-
-    void Visit(ArtMethod* method) override NO_THREAD_SAFETY_ANALYSIS {
-      // TODO: Separate visitor for runtime vs normal methods.
-      if (UNLIKELY(method->IsRuntimeMethod())) {
-        ImtConflictTable* table = method->GetImtConflictTable(pointer_size_);
-        if (table != nullptr) {
-          ImtConflictTable* new_table = forward_native_(table);
-          if (table != new_table) {
-            method->SetImtConflictTable(new_table, pointer_size_);
-          }
-        }
-        const void* old_code = method->GetEntryPointFromQuickCompiledCodePtrSize(pointer_size_);
-        const void* new_code = forward_code_(old_code);
-        if (old_code != new_code) {
-          method->SetEntryPointFromQuickCompiledCodePtrSize(new_code, pointer_size_);
-        }
-      } else {
-        method->UpdateObjectsForImageRelocation(forward_object_);
-        method->UpdateEntrypoints(forward_code_, pointer_size_);
-      }
-    }
-
-   private:
-    const PointerSize pointer_size_;
-    const ForwardObject forward_object_;
-    const ForwardNative forward_native_;
-    const ForwardCode forward_code_;
-  };
-
-  template <typename Forward>
-  class FixupArtFieldVisitor : public ArtFieldVisitor {
-   public:
-    explicit FixupArtFieldVisitor(Forward forward) : forward_(forward) {}
-
-    void Visit(ArtField* field) override NO_THREAD_SAFETY_ANALYSIS {
-      field->UpdateObjects(forward_);
-    }
-
-   private:
-    Forward forward_;
-  };
-
   // Relocate an image space mapped at target_base which possibly used to be at a different base
   // address. In place means modifying a single ImageSpace in place rather than relocating from
   // one ImageSpace to another.
@@ -1361,18 +1268,34 @@ class ImageSpace::Loader {
     {
       // Only touches objects in the app image, no need for mutator lock.
       TimingLogger::ScopedTiming timing("Fixup methods", &logger);
-      FixupArtMethodVisitor method_visitor(kPointerSize,
-                                           forward_object,
-                                           forward_metadata,
-                                           forward_code);
-      image_header.VisitPackedArtMethods(&method_visitor, target_base, kPointerSize);
+      image_header.VisitPackedArtMethods([&](ArtMethod& method) NO_THREAD_SAFETY_ANALYSIS {
+        // TODO: Consider a separate visitor for runtime vs normal methods.
+        if (UNLIKELY(method.IsRuntimeMethod())) {
+          ImtConflictTable* table = method.GetImtConflictTable(kPointerSize);
+          if (table != nullptr) {
+            ImtConflictTable* new_table = forward_metadata(table);
+            if (table != new_table) {
+              method.SetImtConflictTable(new_table, kPointerSize);
+            }
+          }
+          const void* old_code = method.GetEntryPointFromQuickCompiledCodePtrSize(kPointerSize);
+          const void* new_code = forward_code(old_code);
+          if (old_code != new_code) {
+            method.SetEntryPointFromQuickCompiledCodePtrSize(new_code, kPointerSize);
+          }
+        } else {
+          method.UpdateObjectsForImageRelocation(forward_object);
+          method.UpdateEntrypoints(forward_code, kPointerSize);
+        }
+      }, target_base, kPointerSize);
     }
     if (fixup_image) {
       {
         // Only touches objects in the app image, no need for mutator lock.
         TimingLogger::ScopedTiming timing("Fixup fields", &logger);
-        FixupArtFieldVisitor field_visitor(forward_object);
-        image_header.VisitPackedArtFields(&field_visitor, target_base);
+        image_header.VisitPackedArtFields([&](ArtField& field) NO_THREAD_SAFETY_ANALYSIS {
+          field.UpdateObjects(forward_object);
+        }, target_base);
       }
       {
         TimingLogger::ScopedTiming timing("Fixup imt", &logger);
@@ -1611,6 +1534,10 @@ class ImageSpace::BootImageLoader {
     const uint32_t diff_;
   };
 
+  static void** PointerAddress(ArtMethod* method, MemberOffset offset) {
+    return reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(method) + offset.Uint32Value());
+  }
+
   template <PointerSize kPointerSize>
   static void DoRelocateSpaces(const std::vector<std::unique_ptr<ImageSpace>>& spaces,
                                uint32_t diff) REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1624,9 +1551,7 @@ class ImageSpace::BootImageLoader {
     PatchRelocateVisitor patch_object_visitor(relocate_visitor, relocate_visitor);
 
     mirror::Class* dcheck_class_class = nullptr;  // Used only for a DCHECK().
-    for (size_t s = 0u, size = spaces.size(); s != size; ++s) {
-      const ImageSpace* space = spaces[s].get();
-
+    for (const std::unique_ptr<ImageSpace>& space : spaces) {
       // First patch the image header. The `diff` is OK for patching 32-bit fields but
       // the 64-bit method fields in the ImageHeader may need a negative `delta`.
       reinterpret_cast<ImageHeader*>(space->Begin())->RelocateImage(
@@ -1635,11 +1560,19 @@ class ImageSpace::BootImageLoader {
 
       // Patch fields and methods.
       const ImageHeader& image_header = space->GetImageHeader();
-      PatchArtFieldVisitor<PatchRelocateVisitor> field_visitor(patch_object_visitor);
-      image_header.VisitPackedArtFields(&field_visitor, space->Begin());
-      PatchArtMethodVisitor<kPointerSize, PatchRelocateVisitor, PatchRelocateVisitor>
-          method_visitor(patch_object_visitor, patch_object_visitor);
-      image_header.VisitPackedArtMethods(&method_visitor, space->Begin(), kPointerSize);
+      image_header.VisitPackedArtFields([&](ArtField& field) REQUIRES_SHARED(Locks::mutator_lock_) {
+        patch_object_visitor.template PatchGcRoot</*kMayBeNull=*/ false>(
+            &field.DeclaringClassRoot());
+      }, space->Begin());
+      image_header.VisitPackedArtMethods([&](ArtMethod& method)
+          REQUIRES_SHARED(Locks::mutator_lock_) {
+        patch_object_visitor.PatchGcRoot(&method.DeclaringClassRoot());
+        void** data_address = PointerAddress(&method, ArtMethod::DataOffset(kPointerSize));
+        patch_object_visitor.PatchNativePointer(data_address);
+        void** entrypoint_address =
+            PointerAddress(&method, ArtMethod::EntryPointFromQuickCompiledCodeOffset(kPointerSize));
+        patch_object_visitor.PatchNativePointer(entrypoint_address);
+      }, space->Begin(), kPointerSize);
       auto method_table_visitor = [&](ArtMethod* method) {
         DCHECK(method != nullptr);
         return relocate_visitor(method);

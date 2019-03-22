@@ -41,20 +41,6 @@ class ObjectVisitor {
   virtual void Visit(mirror::Object* object) = 0;
 };
 
-class ArtMethodVisitor {
- public:
-  virtual ~ArtMethodVisitor() {}
-
-  virtual void Visit(ArtMethod* method) = 0;
-};
-
-class ArtFieldVisitor {
- public:
-  virtual ~ArtFieldVisitor() {}
-
-  virtual void Visit(ArtField* method) = 0;
-};
-
 class PACKED(4) ImageSection {
  public:
   ImageSection() : offset_(0), size_(0) { }
@@ -379,13 +365,17 @@ class PACKED(8) ImageHeader {
 
   // Visit ArtMethods in the section starting at base. Includes runtime methods.
   // TODO: Delete base parameter if it is always equal to GetImageBegin.
-  void VisitPackedArtMethods(ArtMethodVisitor* visitor,
+  // NO_THREAD_SAFETY_ANALYSIS for template visitor pattern.
+  template <typename Visitor>
+  void VisitPackedArtMethods(const Visitor& visitor,
                              uint8_t* base,
-                             PointerSize pointer_size) const;
+                             PointerSize pointer_size) const NO_THREAD_SAFETY_ANALYSIS;
 
   // Visit ArtMethods in the section starting at base.
   // TODO: Delete base parameter if it is always equal to GetImageBegin.
-  void VisitPackedArtFields(ArtFieldVisitor* visitor, uint8_t* base) const;
+  // NO_THREAD_SAFETY_ANALYSIS for template visitor pattern.
+  template <typename Visitor>
+  void VisitPackedArtFields(const Visitor& visitor, uint8_t* base) const NO_THREAD_SAFETY_ANALYSIS;
 
   template <typename Visitor>
   void VisitPackedImTables(const Visitor& visitor,
