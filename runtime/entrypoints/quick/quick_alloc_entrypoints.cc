@@ -60,11 +60,11 @@ static ALWAYS_INLINE inline mirror::Object* artAllocObjectFromCode(
     }
   }
   if (kInitialized) {
-    return AllocObjectFromCodeInitialized<kInstrumented>(klass, self, allocator_type);
+    return AllocObjectFromCodeInitialized<kInstrumented>(klass, self, allocator_type).Ptr();
   } else if (!kFinalize) {
-    return AllocObjectFromCodeResolved<kInstrumented>(klass, self, allocator_type);
+    return AllocObjectFromCodeResolved<kInstrumented>(klass, self, allocator_type).Ptr();
   } else {
-    return AllocObjectFromCode<kInstrumented>(klass, self, allocator_type);
+    return AllocObjectFromCode<kInstrumented>(klass, self, allocator_type).Ptr();
   }
 }
 
@@ -95,8 +95,8 @@ extern "C" mirror::Array* artAllocArrayFromCodeResolved##suffix##suffix2( \
     mirror::Class* klass, int32_t component_count, Thread* self) \
     REQUIRES_SHARED(Locks::mutator_lock_) { \
   ScopedQuickEntrypointChecks sqec(self); \
-  return AllocArrayFromCodeResolved<instrumented_bool>(klass, component_count, self, \
-                                                       allocator_type); \
+  return AllocArrayFromCodeResolved<instrumented_bool>( \
+      klass, component_count, self, allocator_type).Ptr(); \
 } \
 extern "C" mirror::String* artAllocStringFromBytesFromCode##suffix##suffix2( \
     mirror::ByteArray* byte_array, int32_t high, int32_t offset, int32_t byte_count, \

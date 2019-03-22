@@ -412,7 +412,7 @@ extern "C" size_t MterpCheckCast(uint32_t index,
     return true;
   }
   // Must load obj from vreg following ResolveVerifyAndClinit due to moving gc.
-  mirror::Object* obj = vreg_addr->AsMirrorPtr();
+  ObjPtr<mirror::Object> obj = vreg_addr->AsMirrorPtr();
   if (UNLIKELY(obj != nullptr && !obj->InstanceOf(c))) {
     ThrowClassCastException(c, obj->GetClass());
     return true;
@@ -434,11 +434,12 @@ extern "C" size_t MterpInstanceOf(uint32_t index,
     return false;  // Caller will check for pending exception.  Return value unimportant.
   }
   // Must load obj from vreg following ResolveVerifyAndClinit due to moving gc.
-  mirror::Object* obj = vreg_addr->AsMirrorPtr();
+  ObjPtr<mirror::Object> obj = vreg_addr->AsMirrorPtr();
   return (obj != nullptr) && obj->InstanceOf(c);
 }
 
-extern "C" size_t MterpFillArrayData(mirror::Object* obj, const Instruction::ArrayDataPayload* payload)
+extern "C" size_t MterpFillArrayData(mirror::Object* obj,
+                                     const Instruction::ArrayDataPayload* payload)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return FillArrayData(obj, payload);
 }
@@ -446,7 +447,7 @@ extern "C" size_t MterpFillArrayData(mirror::Object* obj, const Instruction::Arr
 extern "C" size_t MterpNewInstance(ShadowFrame* shadow_frame, Thread* self, uint32_t inst_data)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const Instruction* inst = Instruction::At(shadow_frame->GetDexPCPtr());
-  mirror::Object* obj = nullptr;
+  ObjPtr<mirror::Object> obj = nullptr;
   ObjPtr<mirror::Class> c = ResolveVerifyAndClinit(dex::TypeIndex(inst->VRegB_21c()),
                                                    shadow_frame->GetMethod(),
                                                    self,
@@ -457,7 +458,7 @@ extern "C" size_t MterpNewInstance(ShadowFrame* shadow_frame, Thread* self, uint
       gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
       obj = mirror::String::AllocEmptyString<true>(self, allocator_type);
     } else {
-      obj = AllocObjectFromCode<true>(c.Ptr(),
+      obj = AllocObjectFromCode<true>(c,
                                       self,
                                       Runtime::Current()->GetHeap()->GetCurrentAllocator());
     }
@@ -483,13 +484,13 @@ extern "C" size_t MterpAputObject(ShadowFrame* shadow_frame,
                                   uint32_t inst_data)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const Instruction* inst = Instruction::At(dex_pc_ptr);
-  mirror::Object* a = shadow_frame->GetVRegReference(inst->VRegB_23x());
+  ObjPtr<mirror::Object> a = shadow_frame->GetVRegReference(inst->VRegB_23x());
   if (UNLIKELY(a == nullptr)) {
     return false;
   }
   int32_t index = shadow_frame->GetVReg(inst->VRegC_23x());
-  mirror::Object* val = shadow_frame->GetVRegReference(inst->VRegA_23x(inst_data));
-  mirror::ObjectArray<mirror::Object>* array = a->AsObjectArray<mirror::Object>();
+  ObjPtr<mirror::Object> val = shadow_frame->GetVRegReference(inst->VRegA_23x(inst_data));
+  ObjPtr<mirror::ObjectArray<mirror::Object>> array = a->AsObjectArray<mirror::Object>();
   if (array->CheckIsValidIndex(index) && array->CheckAssignable(val)) {
     array->SetWithoutChecks<false>(index, val);
     return true;

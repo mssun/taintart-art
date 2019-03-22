@@ -50,35 +50,36 @@ class Thread;
 // Given the context of a calling Method, use its DexCache to resolve a type to a Class. If it
 // cannot be resolved, throw an error. If it can, use it to create an instance.
 template <bool kInstrumented>
-ALWAYS_INLINE inline mirror::Object* AllocObjectFromCode(mirror::Class* klass,
-                                                         Thread* self,
-                                                         gc::AllocatorType allocator_type)
+ALWAYS_INLINE inline ObjPtr<mirror::Object> AllocObjectFromCode(ObjPtr<mirror::Class> klass,
+                                                                Thread* self,
+                                                                gc::AllocatorType allocator_type)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 
 // Given the context of a calling Method and a resolved class, create an instance.
 template <bool kInstrumented>
-ALWAYS_INLINE inline mirror::Object* AllocObjectFromCodeResolved(mirror::Class* klass,
-                                                                 Thread* self,
-                                                                 gc::AllocatorType allocator_type)
+ALWAYS_INLINE
+inline ObjPtr<mirror::Object> AllocObjectFromCodeResolved(ObjPtr<mirror::Class> klass,
+                                                          Thread* self,
+                                                          gc::AllocatorType allocator_type)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 
 // Given the context of a calling Method and an initialized class, create an instance.
 template <bool kInstrumented>
-ALWAYS_INLINE inline mirror::Object* AllocObjectFromCodeInitialized(
-    mirror::Class* klass,
-    Thread* self,
-    gc::AllocatorType allocator_type)
+ALWAYS_INLINE
+inline ObjPtr<mirror::Object> AllocObjectFromCodeInitialized(ObjPtr<mirror::Class> klass,
+                                                             Thread* self,
+                                                             gc::AllocatorType allocator_type)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 
 
 template <bool kAccessCheck>
-ALWAYS_INLINE inline mirror::Class* CheckArrayAlloc(dex::TypeIndex type_idx,
-                                                    int32_t component_count,
-                                                    ArtMethod* method,
-                                                    bool* slow_path)
+ALWAYS_INLINE inline ObjPtr<mirror::Class> CheckArrayAlloc(dex::TypeIndex type_idx,
+                                                           int32_t component_count,
+                                                           ArtMethod* method,
+                                                           bool* slow_path)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 
@@ -96,10 +97,11 @@ ALWAYS_INLINE inline ObjPtr<mirror::Array> AllocArrayFromCode(dex::TypeIndex typ
     REQUIRES(!Roles::uninterruptible_);
 
 template <bool kInstrumented>
-ALWAYS_INLINE inline mirror::Array* AllocArrayFromCodeResolved(mirror::Class* klass,
-                                                               int32_t component_count,
-                                                               Thread* self,
-                                                               gc::AllocatorType allocator_type)
+ALWAYS_INLINE
+inline ObjPtr<mirror::Array> AllocArrayFromCodeResolved(ObjPtr<mirror::Class> klass,
+                                                        int32_t component_count,
+                                                        Thread* self,
+                                                        gc::AllocatorType allocator_type)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 
@@ -179,8 +181,10 @@ void CheckReferenceResult(Handle<mirror::Object> o, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 
-JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa, const char* shorty,
-                                    jobject rcvr_jobj, jobject interface_art_method_jobj,
+JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa,
+                                    const char* shorty,
+                                    jobject rcvr_jobj,
+                                    jobject interface_art_method_jobj,
                                     std::vector<jvalue>& args)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
