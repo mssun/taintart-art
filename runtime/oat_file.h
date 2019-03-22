@@ -403,7 +403,7 @@ class OatFile {
 
   // NOTE: We use a std::string_view as the key type to avoid a memory allocation on every
   // lookup with a const char* key. The std::string_view doesn't own its backing storage,
-  // therefore we're using the OatDexFile::dex_file_location_ as the backing storage
+  // therefore we're using the OatFile's stored dex location as the backing storage
   // for keys in oat_dex_files_ and the string_cache_ entries for the backing storage
   // of keys in secondary_oat_dex_files_ and oat_dex_files_by_canonical_location_.
   using Table =
