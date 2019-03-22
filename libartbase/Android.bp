@@ -106,6 +106,9 @@ cc_defaults {
             export_static_lib_headers: ["libbase"],
             cflags: ["-Wno-thread-safety"],
         },
+        darwin: {
+            enabled: true,  // for libdexfile.
+        },
     },
     generated_sources: ["art_libartbase_operator_srcs"],
     cflags: ["-DBUILDING_LIBART=1"],

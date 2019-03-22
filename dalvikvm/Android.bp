@@ -38,6 +38,9 @@ art_cc_binary {
         linux: {
             ldflags: ["-Wl,--export-dynamic"],
         },
+        darwin: {
+            enabled: false,
+        },
     },
 
     multilib: {

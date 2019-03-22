@@ -29,6 +29,9 @@ cc_defaults {
             // Use the 32-bit version of profman on devices.
             compile_multilib: "prefer32",
         },
+        darwin: {
+            enabled: true,
+        },
     },
 
     shared_libs: [
