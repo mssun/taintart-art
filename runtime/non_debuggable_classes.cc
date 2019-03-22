@@ -32,7 +32,7 @@ void NonDebuggableClasses::AddNonDebuggableClass(jclass klass) {
   JNIEnvExt* env = self->GetJniEnv();
   ObjPtr<mirror::Class> mirror_klass(self->DecodeJObject(klass)->AsClass());
   for (jclass c : non_debuggable_classes) {
-    if (self->DecodeJObject(c)->AsClass() == mirror_klass.Ptr()) {
+    if (self->DecodeJObject(c)->AsClass() == mirror_klass) {
       return;
     }
   }

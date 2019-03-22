@@ -731,7 +731,7 @@ inline void Class::SetClinitThreadId(pid_t new_clinit_thread_id) {
 
 template<VerifyObjectFlags kVerifyFlags,
          ReadBarrierOption kReadBarrierOption>
-inline String* Class::GetName() {
+inline ObjPtr<String> Class::GetName() {
   return GetFieldObject<String, kVerifyFlags, kReadBarrierOption>(
       OFFSET_OF_OBJECT_MEMBER(Class, name_));
 }

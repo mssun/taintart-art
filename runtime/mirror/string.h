@@ -26,6 +26,7 @@
 namespace art {
 
 template<class T> class Handle;
+template<class MirrorType> class ObjPtr;
 struct StringOffsets;
 class StubTest_ReadBarrierForRoot_Test;
 
@@ -114,43 +115,57 @@ class MANAGED String final : public Object {
   ObjPtr<String> Intern() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <bool kIsInstrumented>
-  ALWAYS_INLINE static String* AllocFromByteArray(Thread* self, int32_t byte_length,
-                                                  Handle<ByteArray> array, int32_t offset,
-                                                  int32_t high_byte,
-                                                  gc::AllocatorType allocator_type)
+  ALWAYS_INLINE static ObjPtr<String> AllocFromByteArray(Thread* self,
+                                                         int32_t byte_length,
+                                                         Handle<ByteArray> array,
+                                                         int32_t offset,
+                                                         int32_t high_byte,
+                                                         gc::AllocatorType allocator_type)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   template <bool kIsInstrumented>
-  ALWAYS_INLINE static String* AllocFromCharArray(Thread* self, int32_t count,
-                                                  Handle<CharArray> array, int32_t offset,
-                                                  gc::AllocatorType allocator_type)
+  ALWAYS_INLINE static ObjPtr<String> AllocFromCharArray(Thread* self,
+                                                         int32_t count,
+                                                         Handle<CharArray> array,
+                                                         int32_t offset,
+                                                         gc::AllocatorType allocator_type)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   template <bool kIsInstrumented>
-  ALWAYS_INLINE static String* AllocFromString(Thread* self, int32_t string_length,
-                                               Handle<String> string, int32_t offset,
-                                               gc::AllocatorType allocator_type)
+  ALWAYS_INLINE static ObjPtr<String> AllocFromString(Thread* self,
+                                                      int32_t string_length,
+                                                      Handle<String> string,
+                                                      int32_t offset,
+                                                      gc::AllocatorType allocator_type)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   template <bool kIsInstrumented>
-  ALWAYS_INLINE static String* AllocEmptyString(Thread* self,
-                                                gc::AllocatorType allocator_type)
+  ALWAYS_INLINE static ObjPtr<String> AllocEmptyString(Thread* self,
+                                                       gc::AllocatorType allocator_type)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static String* AllocFromStrings(Thread* self, Handle<String> string, Handle<String> string2)
+  static ObjPtr<String> AllocFromStrings(Thread* self,
+                                         Handle<String> string,
+                                         Handle<String> string2)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static String* AllocFromUtf16(Thread* self, int32_t utf16_length, const uint16_t* utf16_data_in)
+  static ObjPtr<String> AllocFromUtf16(Thread* self,
+                                       int32_t utf16_length,
+                                       const uint16_t* utf16_data_in)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static String* AllocFromModifiedUtf8(Thread* self, const char* utf)
+  static ObjPtr<String> AllocFromModifiedUtf8(Thread* self, const char* utf)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static String* AllocFromModifiedUtf8(Thread* self, int32_t utf16_length,
-                                       const char* utf8_data_in, int32_t utf8_length)
+  static ObjPtr<String> AllocFromModifiedUtf8(Thread* self,
+                                              int32_t utf16_length,
+                                              const char* utf8_data_in,
+                                              int32_t utf8_length)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static String* AllocFromModifiedUtf8(Thread* self, int32_t utf16_length, const char* utf8_data_in)
+  static ObjPtr<String> AllocFromModifiedUtf8(Thread* self,
+                                              int32_t utf16_length,
+                                              const char* utf8_data_in)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   bool Equals(const char* modified_utf8) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -168,7 +183,7 @@ class MANAGED String final : public Object {
 
   int32_t CompareTo(ObjPtr<String> other) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  CharArray* ToCharArray(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_)
+  ObjPtr<CharArray> ToCharArray(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
   void GetChars(int32_t start, int32_t end, Handle<CharArray> array, int32_t index)
@@ -234,9 +249,10 @@ class MANAGED String final : public Object {
   }
 
   template <bool kIsInstrumented, typename PreFenceVisitor>
-  ALWAYS_INLINE static String* Alloc(Thread* self, int32_t utf16_length_with_flag,
-                                     gc::AllocatorType allocator_type,
-                                     const PreFenceVisitor& pre_fence_visitor)
+  ALWAYS_INLINE static ObjPtr<String> Alloc(Thread* self,
+                                            int32_t utf16_length_with_flag,
+                                            gc::AllocatorType allocator_type,
+                                            const PreFenceVisitor& pre_fence_visitor)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   // Field order required by test "ValidateFieldOrderOfJavaCppUnionClasses".

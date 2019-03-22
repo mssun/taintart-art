@@ -1322,7 +1322,7 @@ jarray Java_MyClassNatives_GetSinkProperties(JNIEnv*, jobject thisObj, jstring s
 
   Thread* self = Thread::Current();
   ScopedObjectAccess soa(self);
-  EXPECT_TRUE(self->HoldsLock(soa.Decode<mirror::Object>(thisObj).Ptr()));
+  EXPECT_TRUE(self->HoldsLock(soa.Decode<mirror::Object>(thisObj)));
   return nullptr;
 }
 

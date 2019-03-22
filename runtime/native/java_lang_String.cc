@@ -44,8 +44,7 @@ static jint String_compareTo(JNIEnv* env, jobject java_this, jstring java_rhs) {
     ThrowNullPointerException("rhs == null");
     return -1;
   } else {
-    return soa.Decode<mirror::String>(java_this)->CompareTo(
-        soa.Decode<mirror::String>(java_rhs).Ptr());
+    return soa.Decode<mirror::String>(java_this)->CompareTo(soa.Decode<mirror::String>(java_rhs));
   }
 }
 

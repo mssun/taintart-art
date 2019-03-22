@@ -74,7 +74,8 @@ TEST_F(HeapTest, GarbageCollectClassLinkerInit) {
       Handle<mirror::ObjectArray<mirror::Object>> array(hs2.NewHandle(
           mirror::ObjectArray<mirror::Object>::Alloc(soa.Self(), c.Get(), 2048)));
       for (size_t j = 0; j < 2048; ++j) {
-        mirror::String* string = mirror::String::AllocFromModifiedUtf8(soa.Self(), "hello, world!");
+        ObjPtr<mirror::String> string =
+            mirror::String::AllocFromModifiedUtf8(soa.Self(), "hello, world!");
         // handle scope operator -> deferences the handle scope before running the method.
         array->Set<false>(j, string);
       }

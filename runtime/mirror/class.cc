@@ -252,8 +252,8 @@ void Class::SetClassSize(uint32_t new_class_size) {
 // Class.getName: keywords for primitive types, regular "[I" form for primitive arrays (so "int"
 // but "[I"), and arrays of reference types written between "L" and ";" but with dots rather than
 // slashes (so "java.lang.String" but "[Ljava.lang.String;"). Madness.
-String* Class::ComputeName(Handle<Class> h_this) {
-  String* name = h_this->GetName();
+ObjPtr<String> Class::ComputeName(Handle<Class> h_this) {
+  ObjPtr<String> name = h_this->GetName();
   if (name != nullptr) {
     return name;
   }

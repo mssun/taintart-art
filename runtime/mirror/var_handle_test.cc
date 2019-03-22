@@ -52,7 +52,7 @@ class VarHandleTest : public CommonRuntimeTest {
     if (art_field->IsStatic()) {
       InitializeVarHandle(fvh.Get(), var_type, access_modes_bit_mask);
     } else {
-      Handle<Class> declaring_type = hs.NewHandle(art_field->GetDeclaringClass().Ptr());
+      Handle<Class> declaring_type = hs.NewHandle(art_field->GetDeclaringClass());
       InitializeVarHandle(fvh.Get(),
                           var_type,
                           declaring_type,

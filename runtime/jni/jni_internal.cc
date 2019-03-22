@@ -1779,7 +1779,7 @@ class JNI {
       return nullptr;
     }
     ScopedObjectAccess soa(env);
-    mirror::String* result = mirror::String::AllocFromUtf16(soa.Self(), char_count, chars);
+    ObjPtr<mirror::String> result = mirror::String::AllocFromUtf16(soa.Self(), char_count, chars);
     return soa.AddLocalReference<jstring>(result);
   }
 
@@ -1788,7 +1788,7 @@ class JNI {
       return nullptr;
     }
     ScopedObjectAccess soa(env);
-    mirror::String* result = mirror::String::AllocFromModifiedUtf8(soa.Self(), utf);
+    ObjPtr<mirror::String> result = mirror::String::AllocFromModifiedUtf8(soa.Self(), utf);
     return soa.AddLocalReference<jstring>(result);
   }
 
