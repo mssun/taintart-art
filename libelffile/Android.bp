@@ -14,13 +14,6 @@
 // limitations under the License.
 //
 
-// Needed to import elf.h in the runtime.
-cc_library_headers {
-    name: "libelffile-headers",
-    host_supported: true,
-    export_include_dirs: ["."],
-}
-
 art_cc_defaults {
     name: "libelffile-defaults",
     host_supported: true,

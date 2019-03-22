@@ -391,7 +391,6 @@ libart_cc_defaults {
         "libicuuc_headers",
         "libnativehelper_header_only",
         "jni_platform_headers",
-        "libelffile-headers",
     ],
     shared_libs: [
         "libartpalette",
@@ -444,7 +443,10 @@ cc_defaults {
         "libdexfile_static_defaults",
         "libprofile_static_defaults",
     ],
-    static_libs: ["libart"],
+    static_libs: [
+        "libart",
+        "libelffile",
+    ],
 }
 
 cc_defaults {
@@ -455,7 +457,10 @@ cc_defaults {
         "libdexfiled_static_defaults",
         "libprofiled_static_defaults",
     ],
-    static_libs: ["libartd"],
+    static_libs: [
+        "libartd",
+        "libelffiled",
+    ],
 }
 
 gensrcs {
@@ -511,6 +516,9 @@ art_cc_library {
     },
     whole_static_libs: [
     ],
+    static_libs: [
+        "libelffile",
+    ],
     shared_libs: [
         "libartbase",
         "libdexfile",
@@ -535,6 +543,9 @@ art_cc_library {
         "libart_defaults",
     ],
     whole_static_libs: [
+    ],
+    static_libs: [
+        "libelffiled",
     ],
     shared_libs: [
         "libartbased",

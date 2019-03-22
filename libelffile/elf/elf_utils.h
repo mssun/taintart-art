@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_ELF_UTILS_H_
-#define ART_RUNTIME_ELF_UTILS_H_
+#ifndef ART_LIBELFFILE_ELF_ELF_UTILS_H_
+#define ART_LIBELFFILE_ELF_ELF_UTILS_H_
 
 #include <sys/cdefs.h>
 
@@ -25,6 +25,41 @@
 #include "elf/elf.h"
 
 namespace art {
+
+struct ElfTypes32 {
+  typedef Elf32_Addr Addr;
+  typedef Elf32_Off Off;
+  typedef Elf32_Half Half;
+  typedef Elf32_Word Word;
+  typedef Elf32_Sword Sword;
+  typedef Elf32_Ehdr Ehdr;
+  typedef Elf32_Shdr Shdr;
+  typedef Elf32_Sym Sym;
+  typedef Elf32_Rel Rel;
+  typedef Elf32_Rela Rela;
+  typedef Elf32_Phdr Phdr;
+  typedef Elf32_Dyn Dyn;
+};
+
+struct ElfTypes64 {
+  typedef Elf64_Addr Addr;
+  typedef Elf64_Off Off;
+  typedef Elf64_Half Half;
+  typedef Elf64_Word Word;
+  typedef Elf64_Sword Sword;
+  typedef Elf64_Xword Xword;
+  typedef Elf64_Sxword Sxword;
+  typedef Elf64_Ehdr Ehdr;
+  typedef Elf64_Shdr Shdr;
+  typedef Elf64_Sym Sym;
+  typedef Elf64_Rel Rel;
+  typedef Elf64_Rela Rela;
+  typedef Elf64_Phdr Phdr;
+  typedef Elf64_Dyn Dyn;
+};
+
+#define ELF_ST_BIND(x) ((x) >> 4)
+#define ELF_ST_TYPE(x) ((x) & 0xf)
 
 // Architecture dependent flags for the ELF header.
 #define EF_ARM_EABI_VER5 0x05000000
@@ -169,4 +204,4 @@ static inline bool IsDynamicSectionPointer(Elf32_Word d_tag, Elf32_Word e_machin
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_ELF_UTILS_H_
+#endif  // ART_LIBELFFILE_ELF_ELF_UTILS_H_

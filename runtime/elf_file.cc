@@ -29,8 +29,8 @@
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
+#include "elf/elf_utils.h"
 #include "elf_file_impl.h"
-#include "elf_utils.h"
 
 namespace art {
 

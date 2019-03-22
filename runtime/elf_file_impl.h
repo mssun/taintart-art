@@ -22,9 +22,8 @@
 #include <type_traits>
 #include <vector>
 
-// Explicitly include our own elf.h to avoid Linux and other dependencies.
-#include "elf/elf.h"
 #include "base/mem_map.h"
+#include "elf/elf_utils.h"
 
 namespace art {
 
