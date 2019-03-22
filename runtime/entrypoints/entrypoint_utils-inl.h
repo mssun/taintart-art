@@ -114,9 +114,9 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
   return method;
 }
 
-ALWAYS_INLINE inline mirror::Class* CheckObjectAlloc(mirror::Class* klass,
-                                                     Thread* self,
-                                                     bool* slow_path)
+ALWAYS_INLINE inline ObjPtr<mirror::Class> CheckObjectAlloc(ObjPtr<mirror::Class> klass,
+                                                            Thread* self,
+                                                            bool* slow_path)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_) {
   if (UNLIKELY(!klass->IsInstantiable())) {
@@ -154,9 +154,9 @@ ALWAYS_INLINE inline mirror::Class* CheckObjectAlloc(mirror::Class* klass,
 }
 
 ALWAYS_INLINE
-inline mirror::Class* CheckClassInitializedForObjectAlloc(mirror::Class* klass,
-                                                          Thread* self,
-                                                          bool* slow_path)
+inline ObjPtr<mirror::Class> CheckClassInitializedForObjectAlloc(ObjPtr<mirror::Class> klass,
+                                                                 Thread* self,
+                                                                 bool* slow_path)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_) {
   if (UNLIKELY(!klass->IsInitialized())) {
@@ -184,9 +184,9 @@ inline mirror::Class* CheckClassInitializedForObjectAlloc(mirror::Class* klass,
 // or IllegalAccessError if klass is j.l.Class. Performs a clinit check too.
 template <bool kInstrumented>
 ALWAYS_INLINE
-inline mirror::Object* AllocObjectFromCode(mirror::Class* klass,
-                                           Thread* self,
-                                           gc::AllocatorType allocator_type) {
+inline ObjPtr<mirror::Object> AllocObjectFromCode(ObjPtr<mirror::Class> klass,
+                                                  Thread* self,
+                                                  gc::AllocatorType allocator_type) {
   bool slow_path = false;
   klass = CheckObjectAlloc(klass, self, &slow_path);
   if (UNLIKELY(slow_path)) {
@@ -196,18 +196,18 @@ inline mirror::Object* AllocObjectFromCode(mirror::Class* klass,
     // CheckObjectAlloc can cause thread suspension which means we may now be instrumented.
     return klass->Alloc</*kInstrumented=*/true>(
         self,
-        Runtime::Current()->GetHeap()->GetCurrentAllocator()).Ptr();
+        Runtime::Current()->GetHeap()->GetCurrentAllocator());
   }
   DCHECK(klass != nullptr);
-  return klass->Alloc<kInstrumented>(self, allocator_type).Ptr();
+  return klass->Alloc<kInstrumented>(self, allocator_type);
 }
 
 // Given the context of a calling Method and a resolved class, create an instance.
 template <bool kInstrumented>
 ALWAYS_INLINE
-inline mirror::Object* AllocObjectFromCodeResolved(mirror::Class* klass,
-                                                   Thread* self,
-                                                   gc::AllocatorType allocator_type) {
+inline ObjPtr<mirror::Object> AllocObjectFromCodeResolved(ObjPtr<mirror::Class> klass,
+                                                          Thread* self,
+                                                          gc::AllocatorType allocator_type) {
   DCHECK(klass != nullptr);
   bool slow_path = false;
   klass = CheckClassInitializedForObjectAlloc(klass, self, &slow_path);
@@ -228,9 +228,9 @@ inline mirror::Object* AllocObjectFromCodeResolved(mirror::Class* klass,
 // Given the context of a calling Method and an initialized class, create an instance.
 template <bool kInstrumented>
 ALWAYS_INLINE
-inline mirror::Object* AllocObjectFromCodeInitialized(mirror::Class* klass,
-                                                      Thread* self,
-                                                      gc::AllocatorType allocator_type) {
+inline ObjPtr<mirror::Object> AllocObjectFromCodeInitialized(ObjPtr<mirror::Class> klass,
+                                                             Thread* self,
+                                                             gc::AllocatorType allocator_type) {
   DCHECK(klass != nullptr);
   // Pass in false since the object cannot be finalizable.
   return klass->Alloc<kInstrumented, false>(self, allocator_type).Ptr();
@@ -239,10 +239,10 @@ inline mirror::Object* AllocObjectFromCodeInitialized(mirror::Class* klass,
 
 template <bool kAccessCheck>
 ALWAYS_INLINE
-inline mirror::Class* CheckArrayAlloc(dex::TypeIndex type_idx,
-                                      int32_t component_count,
-                                      ArtMethod* method,
-                                      bool* slow_path) {
+inline ObjPtr<mirror::Class> CheckArrayAlloc(dex::TypeIndex type_idx,
+                                             int32_t component_count,
+                                             ArtMethod* method,
+                                             bool* slow_path) {
   if (UNLIKELY(component_count < 0)) {
     ThrowNegativeArraySizeException(component_count);
     *slow_path = true;
@@ -267,7 +267,7 @@ inline mirror::Class* CheckArrayAlloc(dex::TypeIndex type_idx,
       return nullptr;  // Failure
     }
   }
-  return klass.Ptr();
+  return klass;
 }
 
 // Given the context of a calling Method, use its DexCache to resolve a type to an array Class. If
@@ -302,10 +302,10 @@ inline ObjPtr<mirror::Array> AllocArrayFromCode(dex::TypeIndex type_idx,
 
 template <bool kInstrumented>
 ALWAYS_INLINE
-inline mirror::Array* AllocArrayFromCodeResolved(mirror::Class* klass,
-                                                 int32_t component_count,
-                                                 Thread* self,
-                                                 gc::AllocatorType allocator_type) {
+inline ObjPtr<mirror::Array> AllocArrayFromCodeResolved(ObjPtr<mirror::Class> klass,
+                                                        int32_t component_count,
+                                                        Thread* self,
+                                                        gc::AllocatorType allocator_type) {
   DCHECK(klass != nullptr);
   if (UNLIKELY(component_count < 0)) {
     ThrowNegativeArraySizeException(component_count);
@@ -743,7 +743,7 @@ inline ObjPtr<mirror::Class> ResolveVerifyAndClinit(dex::TypeIndex type_idx,
 
 inline void UnlockJniSynchronizedMethod(jobject locked, Thread* self) {
   // Save any pending exception over monitor exit call.
-  mirror::Throwable* saved_exception = nullptr;
+  ObjPtr<mirror::Throwable> saved_exception = nullptr;
   if (UNLIKELY(self->IsExceptionPending())) {
     saved_exception = self->GetException();
     self->ClearException();

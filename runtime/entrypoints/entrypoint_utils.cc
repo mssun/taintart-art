@@ -56,8 +56,10 @@ void CheckReferenceResult(Handle<mirror::Object> o, Thread* self) {
   }
 }
 
-JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa, const char* shorty,
-                                    jobject rcvr_jobj, jobject interface_method_jobj,
+JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa,
+                                    const char* shorty,
+                                    jobject rcvr_jobj,
+                                    jobject interface_method_jobj,
                                     std::vector<jvalue>& args) {
   DCHECK(soa.Env()->IsInstanceOf(rcvr_jobj, WellKnownClasses::java_lang_reflect_Proxy));
 
@@ -80,7 +82,7 @@ JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa, cons
       } else {
         JValue jv;
         jv.SetJ(args[i].j);
-        mirror::Object* val = BoxPrimitive(Primitive::GetType(shorty[i + 1]), jv).Ptr();
+        ObjPtr<mirror::Object> val = BoxPrimitive(Primitive::GetType(shorty[i + 1]), jv);
         if (val == nullptr) {
           CHECK(soa.Self()->IsExceptionPending());
           return zero;
@@ -112,7 +114,7 @@ JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa, cons
       ObjPtr<mirror::Class> result_type = interface_method->ResolveReturnType();
       ObjPtr<mirror::Object> result_ref = soa.Decode<mirror::Object>(result);
       JValue result_unboxed;
-      if (!UnboxPrimitiveForResult(result_ref.Ptr(), result_type, &result_unboxed)) {
+      if (!UnboxPrimitiveForResult(result_ref, result_type, &result_unboxed)) {
         DCHECK(soa.Self()->IsExceptionPending());
         return zero;
       }
