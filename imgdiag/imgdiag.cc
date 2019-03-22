@@ -653,7 +653,7 @@ class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object
 };
 
 // Region analysis for ArtMethods.
-class ImgArtMethodVisitor : public ArtMethodVisitor {
+class ImgArtMethodVisitor {
  public:
   using ComputeDirtyFunc = std::function<void(ArtMethod*,
                                               const uint8_t*,
@@ -664,9 +664,8 @@ class ImgArtMethodVisitor : public ArtMethodVisitor {
     dirty_func_(std::move(dirty_func)),
     begin_image_ptr_(begin_image_ptr),
     dirty_pages_(dirty_pages) { }
-  ~ImgArtMethodVisitor() override { }
-  void Visit(ArtMethod* method) override {
-    dirty_func_(method, begin_image_ptr_, dirty_pages_);
+  void operator()(ArtMethod& method) const {
+    dirty_func_(&method, begin_image_ptr_, dirty_pages_);
   }
 
  private:
@@ -725,7 +724,7 @@ class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
                     uint8_t* base,
                     PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    RegionCommon<ArtMethod>::image_header_.VisitPackedArtMethods(visitor, base, pointer_size);
+    RegionCommon<ArtMethod>::image_header_.VisitPackedArtMethods(*visitor, base, pointer_size);
   }
 
   void VisitEntry(ArtMethod* method ATTRIBUTE_UNUSED)
