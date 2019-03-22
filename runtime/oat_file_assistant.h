@@ -146,7 +146,8 @@ class OatFileAssistant {
   int GetDexOptNeeded(CompilerFilter::Filter target_compiler_filter,
                       bool profile_changed = false,
                       bool downgrade = false,
-                      ClassLoaderContext* context = nullptr);
+                      ClassLoaderContext* context = nullptr,
+                      const std::vector<int>& context_fds = std::vector<int>());
 
   // Returns true if there is up-to-date code for this dex location,
   // irrespective of the compiler filter of the up-to-date code.
@@ -288,7 +289,8 @@ class OatFileAssistant {
     DexOptNeeded GetDexOptNeeded(CompilerFilter::Filter target_compiler_filter,
                                  bool profile_changed,
                                  bool downgrade,
-                                 ClassLoaderContext* context);
+                                 ClassLoaderContext* context,
+                                 const std::vector<int>& context_fds);
 
     // Returns the loaded file.
     // Loads the file if needed. Returns null if the file failed to load.
@@ -329,7 +331,7 @@ class OatFileAssistant {
     // compiler filter.
     bool CompilerFilterIsOkay(CompilerFilter::Filter target, bool profile_changed, bool downgrade);
 
-    bool ClassLoaderContextIsOkay(ClassLoaderContext* context);
+    bool ClassLoaderContextIsOkay(ClassLoaderContext* context, const std::vector<int>& context_fds);
 
     // Release the loaded oat file.
     // Returns null if the oat file hasn't been loaded.

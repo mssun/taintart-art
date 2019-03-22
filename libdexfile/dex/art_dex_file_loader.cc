@@ -226,19 +226,44 @@ bool ArtDexFileLoader::Open(const char* filename,
                             bool verify_checksum,
                             std::string* error_msg,
                             std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
-  ScopedTrace trace(std::string("Open dex file ") + std::string(location));
-  DCHECK(dex_files != nullptr) << "DexFile::Open: out-param is nullptr";
   uint32_t magic;
   File fd = OpenAndReadMagic(filename, &magic, error_msg);
   if (fd.Fd() == -1) {
     DCHECK(!error_msg->empty());
     return false;
   }
+  return OpenWithMagic(
+      magic, fd.Release(), location, verify, verify_checksum, error_msg, dex_files);
+}
+
+bool ArtDexFileLoader::Open(int fd,
+                            const std::string& location,
+                            bool verify,
+                            bool verify_checksum,
+                            std::string* error_msg,
+                            std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
+  uint32_t magic;
+  if (!ReadMagicAndReset(fd, &magic, error_msg)) {
+    DCHECK(!error_msg->empty());
+    return false;
+  }
+  return OpenWithMagic(magic, fd, location, verify, verify_checksum, error_msg, dex_files);
+}
+
+bool ArtDexFileLoader::OpenWithMagic(uint32_t magic,
+                                     int fd,
+                                     const std::string& location,
+                                     bool verify,
+                                     bool verify_checksum,
+                                     std::string* error_msg,
+                                     std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
+  ScopedTrace trace(std::string("Open dex file ") + std::string(location));
+  DCHECK(dex_files != nullptr) << "DexFile::Open: out-param is nullptr";
   if (IsZipMagic(magic)) {
-    return OpenZip(fd.Release(), location, verify, verify_checksum, error_msg, dex_files);
+    return OpenZip(fd, location, verify, verify_checksum, error_msg, dex_files);
   }
   if (IsMagicValid(magic)) {
-    std::unique_ptr<const DexFile> dex_file(OpenFile(fd.Release(),
+    std::unique_ptr<const DexFile> dex_file(OpenFile(fd,
                                                      location,
                                                      verify,
                                                      verify_checksum,
@@ -251,7 +276,7 @@ bool ArtDexFileLoader::Open(const char* filename,
       return false;
     }
   }
-  *error_msg = StringPrintf("Expected valid zip or dex file: '%s'", filename);
+  *error_msg = StringPrintf("Expected valid zip or dex file: '%s'", location.c_str());
   return false;
 }
 

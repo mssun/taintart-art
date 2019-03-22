@@ -73,8 +73,14 @@ class ArtDexFileLoader : public DexFileLoader {
                                       bool verify_checksum,
                                       std::string* error_msg) const;
 
-  // Opens all .dex files found in the file, guessing the container format based on file extension.
+  // Opens all .dex files found in the file, guessing the container format based on file magic.
   bool Open(const char* filename,
+            const std::string& location,
+            bool verify,
+            bool verify_checksum,
+            std::string* error_msg,
+            std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
+  bool Open(int fd,
             const std::string& location,
             bool verify,
             bool verify_checksum,
@@ -98,6 +104,14 @@ class ArtDexFileLoader : public DexFileLoader {
                std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
 
  private:
+  bool OpenWithMagic(uint32_t magic,
+                     int fd,
+                     const std::string& location,
+                     bool verify,
+                     bool verify_checksum,
+                     std::string* error_msg,
+                     std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
+
   std::unique_ptr<const DexFile> OpenFile(int fd,
                                           const std::string& location,
                                           bool verify,

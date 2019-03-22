@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include <string>
 #include <string_view>
 
@@ -43,6 +44,11 @@ enum ReturnCodes {
   kDex2OatForFilterOat = 3,
   kDex2OatForBootImageOdex = 4,
   kDex2OatForFilterOdex = 5,
+
+  // Success return code when executed with --flatten-class-loader-context.
+  // Success is typically signalled with a zero but we use a non-colliding
+  // code to communicate that the flattening code path was taken.
+  kFlattenClassLoaderContextSuccess = 50,
 
   kErrorInvalidArguments = 101,
   kErrorCannotCreateRuntime = 102,
@@ -116,6 +122,17 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("  --downgrade: optional, if the purpose of dexopt is to downgrade the dex file");
   UsageError("       By default, dexopt considers upgrade case.");
   UsageError("");
+  UsageError("  --class-loader-context=<string spec>: a string specifying the intended");
+  UsageError("      runtime loading context for the compiled dex files.");
+  UsageError("");
+  UsageError("  --class-loader-context-fds=<fds>: a colon-separated list of file descriptors");
+  UsageError("      for dex files in --class-loader-context. Their order must be the same as");
+  UsageError("      dex files in flattened class loader context.");
+  UsageError("");
+  UsageError("  --flatten-class-loader-context: parse --class-loader-context, flatten it and");
+  UsageError("      print a colon-separated list of its dex files to standard output. Dexopt");
+  UsageError("      needed analysis is not performed when this option is set.");
+  UsageError("");
   UsageError("Return code:");
   UsageError("  To make it easier to integrate with the internal tools this command will make");
   UsageError("    available its result (dexoptNeeded) as the exit/return code. i.e. it will not");
@@ -139,6 +156,7 @@ NO_RETURN static void Usage(const char *fmt, ...) {
 class DexoptAnalyzer final {
  public:
   DexoptAnalyzer() :
+      only_flatten_context_(false),
       assume_profile_changed_(false),
       downgrade_(false) {}
 
@@ -206,6 +224,18 @@ class DexoptAnalyzer final {
         }
       } else if (StartsWith(option, "--class-loader-context=")) {
         context_str_ = std::string(option.substr(strlen("--class-loader-context=")));
+      } else if (StartsWith(option, "--class-loader-context-fds=")) {
+        std::string str_context_fds_arg =
+            std::string(option.substr(strlen("--class-loader-context-fds=")));
+        std::vector<std::string> str_fds = android::base::Split(str_context_fds_arg, ":");
+        for (const std::string& str_fd : str_fds) {
+          context_fds_.push_back(std::stoi(str_fd, nullptr, 0));
+          if (context_fds_.back() < 0) {
+            Usage("Invalid --class-loader-context-fds %s", str_context_fds_arg.c_str());
+          }
+        }
+      } else if (option == "--flatten-class-loader-context") {
+        only_flatten_context_ = true;
       } else {
         Usage("Unknown argument '%s'", raw_option);
       }
@@ -224,7 +254,7 @@ class DexoptAnalyzer final {
     }
   }
 
-  bool CreateRuntime() {
+  bool CreateRuntime() const {
     RuntimeOptions options;
     // The image could be custom, so make sure we explicitly pass it.
     std::string img = "-Ximage:" + image_;
@@ -257,7 +287,7 @@ class DexoptAnalyzer final {
     return true;
   }
 
-  int GetDexOptNeeded() {
+  int GetDexOptNeeded() const {
     if (!CreateRuntime()) {
       return kErrorCannotCreateRuntime;
     }
@@ -288,8 +318,11 @@ class DexoptAnalyzer final {
       return kNoDexOptNeeded;
     }
 
-    int dexoptNeeded = oat_file_assistant->GetDexOptNeeded(
-        compiler_filter_, assume_profile_changed_, downgrade_, class_loader_context.get());
+    int dexoptNeeded = oat_file_assistant->GetDexOptNeeded(compiler_filter_,
+                                                           assume_profile_changed_,
+                                                           downgrade_,
+                                                           class_loader_context.get(),
+                                                           context_fds_);
 
     // Convert OatFileAssitant codes to dexoptanalyzer codes.
     switch (dexoptNeeded) {
@@ -306,11 +339,35 @@ class DexoptAnalyzer final {
     }
   }
 
+  int FlattenClassLoaderContext() const {
+    DCHECK(only_flatten_context_);
+    if (context_str_.empty()) {
+      return kErrorInvalidArguments;
+    }
+
+    std::unique_ptr<ClassLoaderContext> context = ClassLoaderContext::Create(context_str_);
+    if (context == nullptr) {
+      Usage("Invalid --class-loader-context '%s'", context_str_.c_str());
+    }
+
+    std::cout << context->FlattenDexPaths() << std::flush;
+    return kFlattenClassLoaderContextSuccess;
+  }
+
+  int Run() const {
+    if (only_flatten_context_) {
+      return FlattenClassLoaderContext();
+    } else {
+      return GetDexOptNeeded();
+    }
+  }
+
  private:
   std::string dex_file_;
   InstructionSet isa_;
   CompilerFilter::Filter compiler_filter_;
   std::string context_str_;
+  bool only_flatten_context_;
   bool assume_profile_changed_;
   bool downgrade_;
   std::string image_;
@@ -319,6 +376,7 @@ class DexoptAnalyzer final {
   int vdex_fd_ = -1;
   // File descriptor corresponding to apk, dex_file, or zip.
   int zip_fd_ = -1;
+  std::vector<int> context_fds_;
 };
 
 static int dexoptAnalyze(int argc, char** argv) {
@@ -326,7 +384,7 @@ static int dexoptAnalyze(int argc, char** argv) {
 
   // Parse arguments. Argument mistakes will lead to exit(kErrorInvalidArguments) in UsageError.
   analyzer.ParseArgs(argc, argv);
-  return analyzer.GetDexOptNeeded();
+  return analyzer.Run();
 }
 
 }  // namespace art
