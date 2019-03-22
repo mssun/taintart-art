@@ -242,8 +242,13 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM* jvm,
   jvmtiEnv* jvmti = nullptr;
   {
     jint res = 0;
+    // Magic number that the agent can use to attach to non-debuggable apps on userdebug.
+    constexpr jint kArtTiVersion = JVMTI_VERSION_1_2 | 0x40000000;
     res = jvm->GetEnv(reinterpret_cast<void**>(&jvmti), JVMTI_VERSION_1_1);
 
+    if (res != JNI_OK || jvmti == nullptr) {
+      res = jvm->GetEnv(reinterpret_cast<void**>(&jvmti), kArtTiVersion);
+    }
     if (res != JNI_OK || jvmti == nullptr) {
       LOG(FATAL) << "Unable to access JVMTI, error code " << res;
     }
