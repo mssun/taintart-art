@@ -2181,7 +2181,7 @@ bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg
   return true;
 }
 
-std::string ImageSpace::GetBootClassPathChecksums(const std::vector<std::string>& boot_class_path,
+std::string ImageSpace::GetBootClassPathChecksums(ArrayRef<const std::string> boot_class_path,
                                                   const std::string& image_location,
                                                   InstructionSet image_isa,
                                                   ImageSpaceLoadingOrder order,

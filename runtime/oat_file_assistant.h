@@ -246,16 +246,6 @@ class OatFileAssistant {
                                        std::string* error_msg);
 
  private:
-  struct ImageInfo {
-    bool ValidateBootClassPathChecksums(const OatFile& oat_file) const;
-
-    std::string location;
-    std::string boot_class_path_checksums;
-
-    static std::unique_ptr<ImageInfo> GetRuntimeImageInfo(InstructionSet isa,
-                                                          std::string* error_msg);
-  };
-
   class OatFileInfo {
    public:
     // Initially the info is for no file in particular. It will treat the
@@ -395,11 +385,8 @@ class OatFileAssistant {
   // dex_location_ dex file.
   const std::vector<uint32_t>* GetRequiredDexChecksums();
 
-  // Returns the loaded image info.
-  // Loads the image info if needed. Returns null if the image info failed
-  // to load.
-  // The caller shouldn't clean up or free the returned pointer.
-  const ImageInfo* GetImageInfo();
+  // Validates the boot class path checksum of an OatFile.
+  bool ValidateBootClassPathChecksums(const OatFile& oat_file);
 
   // To implement Lock(), we lock a dummy file where the oat file would go
   // (adding ".flock" to the target file name) and retain the lock for the
@@ -437,12 +424,8 @@ class OatFileAssistant {
   // File descriptor corresponding to apk, dex file, or zip.
   int zip_fd_;
 
-  // Cached value of the image info.
-  // Use the GetImageInfo method rather than accessing these directly.
-  // TODO: The image info should probably be moved out of the oat file
-  // assistant to an image file manager.
-  bool image_info_load_attempted_ = false;
-  std::unique_ptr<ImageInfo> cached_image_info_;
+  size_t cached_boot_class_path_checksum_component_count_ = 0u;
+  std::string cached_boot_class_path_checksums_;
 
   friend class OatFileAssistantTest;
 
