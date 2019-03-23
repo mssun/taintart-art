@@ -118,9 +118,6 @@ class ThreadList {
   void RunEmptyCheckpoint()
       REQUIRES(!Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_);
 
-  size_t RunCheckpointOnRunnableThreads(Closure* checkpoint_function)
-      REQUIRES(!Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_);
-
   // Flip thread roots from from-space refs to to-space refs. Used by
   // the concurrent copying collector.
   size_t FlipThreadRoots(Closure* thread_flip_visitor,
