@@ -507,34 +507,6 @@ void ThreadList::RunEmptyCheckpoint() {
   }
 }
 
-// Request that a checkpoint function be run on all active (non-suspended)
-// threads.  Returns the number of successful requests.
-size_t ThreadList::RunCheckpointOnRunnableThreads(Closure* checkpoint_function) {
-  Thread* self = Thread::Current();
-  Locks::mutator_lock_->AssertNotExclusiveHeld(self);
-  Locks::thread_list_lock_->AssertNotHeld(self);
-  Locks::thread_suspend_count_lock_->AssertNotHeld(self);
-  CHECK_NE(self->GetState(), kRunnable);
-
-  size_t count = 0;
-  {
-    // Call a checkpoint function for each non-suspended thread.
-    MutexLock mu(self, *Locks::thread_list_lock_);
-    MutexLock mu2(self, *Locks::thread_suspend_count_lock_);
-    for (const auto& thread : list_) {
-      if (thread != self) {
-        if (thread->RequestCheckpoint(checkpoint_function)) {
-          // This thread will run its checkpoint some time in the near future.
-          count++;
-        }
-      }
-    }
-  }
-
-  // Return the number of threads that will run the checkpoint function.
-  return count;
-}
-
 // A checkpoint/suspend-all hybrid to switch thread roots from
 // from-space to to-space refs. Used to synchronize threads at a point
 // to mark the initiation of marking while maintaining the to-space
