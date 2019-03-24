@@ -65,7 +65,7 @@ class Indenter : public std::streambuf {
     return c;
   }
 
-  int sync() {
+  int sync() override {
     return out_sbuf_->pubsync();
   }
 

@@ -94,7 +94,7 @@ class RegisterAllocatorGraphColor : public RegisterAllocator {
 
   void AllocateRegisters() override;
 
-  bool Validate(bool log_fatal_on_failure);
+  bool Validate(bool log_fatal_on_failure) override;
 
  private:
   // Collect all intervals and prepare for register allocation.

@@ -287,7 +287,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
 
   size_t CodeSize() const override { return Assembler::CodeSize(); }
   size_t CodePosition() override;
-  DebugFrameOpCodeWriterForAssembler& cfi() { return Assembler::cfi(); }
+  DebugFrameOpCodeWriterForAssembler& cfi() override { return Assembler::cfi(); }
 
   virtual ~MipsAssembler() {
     for (auto& branch : branches_) {
@@ -1372,7 +1372,7 @@ class MipsAssembler final : public Assembler, public JNIMacroAssembler<PointerSi
   void FinalizeCode() override;
 
   // Emit branches and finalize all instructions.
-  void FinalizeInstructions(const MemoryRegion& region);
+  void FinalizeInstructions(const MemoryRegion& region) override;
 
   // Returns the (always-)current location of a label (can be used in class CodeGeneratorMIPS,
   // must be used instead of MipsLabel::GetPosition()).

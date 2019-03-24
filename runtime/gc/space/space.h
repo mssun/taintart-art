@@ -419,7 +419,7 @@ class ContinuousMemMapAllocSpace : public MemMapSpace, public AllocSpace {
   bool IsContinuousMemMapAllocSpace() const override {
     return true;
   }
-  ContinuousMemMapAllocSpace* AsContinuousMemMapAllocSpace() {
+  ContinuousMemMapAllocSpace* AsContinuousMemMapAllocSpace() override {
     return this;
   }
 

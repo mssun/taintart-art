@@ -58,7 +58,7 @@ static constexpr uint32_t kArm64SIMDTypeConversionInt2FPLatency = 10;
 class SchedulingLatencyVisitorARM64 : public SchedulingLatencyVisitor {
  public:
   // Default visitor for instructions not handled specifically below.
-  void VisitInstruction(HInstruction* ATTRIBUTE_UNUSED) {
+  void VisitInstruction(HInstruction* ATTRIBUTE_UNUSED) override {
     last_visited_latency_ = kArm64IntegerOpLatency;
   }
 

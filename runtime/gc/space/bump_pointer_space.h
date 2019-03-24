@@ -87,12 +87,12 @@ class BumpPointerSpace final : public ContinuousMemMapAllocSpace {
   }
 
   // Override capacity so that we only return the possibly limited capacity
-  size_t Capacity() const {
+  size_t Capacity() const override {
     return growth_end_ - begin_;
   }
 
   // The total amount of memory reserved for the space.
-  size_t NonGrowthLimitCapacity() const {
+  size_t NonGrowthLimitCapacity() const override {
     return GetMemMap()->Size();
   }
 
@@ -107,18 +107,18 @@ class BumpPointerSpace final : public ContinuousMemMapAllocSpace {
   // Reset the space to empty.
   void Clear() override REQUIRES(!block_lock_);
 
-  void Dump(std::ostream& os) const;
+  void Dump(std::ostream& os) const override;
 
-  size_t RevokeThreadLocalBuffers(Thread* thread) REQUIRES(!block_lock_);
-  size_t RevokeAllThreadLocalBuffers()
+  size_t RevokeThreadLocalBuffers(Thread* thread) override REQUIRES(!block_lock_);
+  size_t RevokeAllThreadLocalBuffers() override
       REQUIRES(!Locks::runtime_shutdown_lock_, !Locks::thread_list_lock_, !block_lock_);
   void AssertThreadLocalBuffersAreRevoked(Thread* thread) REQUIRES(!block_lock_);
   void AssertAllThreadLocalBuffersAreRevoked()
       REQUIRES(!Locks::runtime_shutdown_lock_, !Locks::thread_list_lock_, !block_lock_);
 
-  uint64_t GetBytesAllocated() REQUIRES_SHARED(Locks::mutator_lock_)
+  uint64_t GetBytesAllocated() override REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!*Locks::runtime_shutdown_lock_, !*Locks::thread_list_lock_, !block_lock_);
-  uint64_t GetObjectsAllocated() REQUIRES_SHARED(Locks::mutator_lock_)
+  uint64_t GetObjectsAllocated() override REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!*Locks::runtime_shutdown_lock_, !*Locks::thread_list_lock_, !block_lock_);
   bool IsEmpty() const {
     return Begin() == End();
@@ -128,7 +128,7 @@ class BumpPointerSpace final : public ContinuousMemMapAllocSpace {
     return true;
   }
 
-  bool Contains(const mirror::Object* obj) const {
+  bool Contains(const mirror::Object* obj) const override {
     const uint8_t* byte_obj = reinterpret_cast<const uint8_t*>(obj);
     return byte_obj >= Begin() && byte_obj < End();
   }

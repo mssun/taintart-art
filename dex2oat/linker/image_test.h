@@ -75,7 +75,7 @@ struct CompilationHelper {
 
 class ImageTest : public CommonCompilerDriverTest {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     ReserveImageSpace();
     CommonCompilerTest::SetUp();
   }

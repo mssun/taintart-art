@@ -28,7 +28,7 @@ class DexoptTest : public Dex2oatEnvironmentTest {
  public:
   void SetUp() override;
 
-  virtual void PreRuntimeCreate();
+  void PreRuntimeCreate() override;
 
   void PostRuntimeCreate() override;
 

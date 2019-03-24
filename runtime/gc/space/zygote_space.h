@@ -36,7 +36,7 @@ class ZygoteSpace final : public ContinuousMemMapAllocSpace {
                              accounting::ContinuousSpaceBitmap* mark_bitmap)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void Dump(std::ostream& os) const;
+  void Dump(std::ostream& os) const override;
 
   SpaceType GetType() const override {
     return kSpaceTypeZygoteSpace;
@@ -63,11 +63,11 @@ class ZygoteSpace final : public ContinuousMemMapAllocSpace {
     return 0U;
   }
 
-  uint64_t GetBytesAllocated() {
+  uint64_t GetBytesAllocated() override {
     return Size();
   }
 
-  uint64_t GetObjectsAllocated() {
+  uint64_t GetObjectsAllocated() override {
     return objects_allocated_.load();
   }
 
@@ -81,7 +81,7 @@ class ZygoteSpace final : public ContinuousMemMapAllocSpace {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  protected:
-  virtual accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() {
+  accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() override {
     return &SweepCallback;
   }
 

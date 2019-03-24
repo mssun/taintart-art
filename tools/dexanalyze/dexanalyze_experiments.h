@@ -94,7 +94,7 @@ class CountDexIndices : public Experiment {
   void ProcessDexFile(const DexFile& dex_file) override;
   void ProcessDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files) override;
 
-  void Dump(std::ostream& os, uint64_t total_size) const;
+  void Dump(std::ostream& os, uint64_t total_size) const override;
 
  private:
   // Total string ids loaded from dex code.

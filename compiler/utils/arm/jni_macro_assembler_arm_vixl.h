@@ -188,7 +188,7 @@ class ArmVIXLJNIMacroAssembler final
 
   // Generate code to check if Thread::Current()->exception_ is non-null
   // and branch to a ExceptionSlowPath if it is.
-  void ExceptionPoll(ManagedRegister scratch, size_t stack_adjust);
+  void ExceptionPoll(ManagedRegister scratch, size_t stack_adjust) override;
 
   // Create a new label that can be used with Jump/Bind calls.
   std::unique_ptr<JNIMacroLabel> CreateLabel() override;
