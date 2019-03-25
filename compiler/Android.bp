@@ -337,6 +337,7 @@ art_cc_library {
     shared_libs: [
         "libartd-compiler",
         "libartd-disassembler",
+        "libartbase-art-gtest",
         "libart-runtime-gtest",
         "libbase",
     ],

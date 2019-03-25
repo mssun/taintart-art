@@ -96,11 +96,20 @@ class CommonArtTestImpl {
 
   static void TearDownAndroidDataDir(const std::string& android_data, bool fail_on_error);
 
+  // Get the names of the libcore modules.
+  virtual std::vector<std::string> GetLibCoreModuleNames() const;
+
+  // Gets the paths of the libcore dex files for given modules.
+  std::vector<std::string> GetLibCoreDexFileNames(const std::vector<std::string>& modules) const;
+
   // Gets the paths of the libcore dex files.
-  static std::vector<std::string> GetLibCoreDexFileNames();
+  std::vector<std::string> GetLibCoreDexFileNames() const;
+
+  // Gets the locations of the libcore dex files for given modules.
+  std::vector<std::string> GetLibCoreDexLocations(const std::vector<std::string>& modules) const;
 
   // Gets the locations of the libcore dex files.
-  static std::vector<std::string> GetLibCoreDexLocations();
+  std::vector<std::string> GetLibCoreDexLocations() const;
 
   static std::string GetClassPathOption(const char* option,
                                         const std::vector<std::string>& class_path);

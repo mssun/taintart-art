@@ -44,6 +44,7 @@
 #include "base/scoped_arena_containers.h"
 #include "base/scoped_flock.h"
 #include "base/stl_util.h"
+#include "base/string_view_cpp20.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
@@ -3007,6 +3008,13 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
   return result_ptr;
 }
 
+static bool IsReservedBootClassPathDescriptor(const char* descriptor) {
+  std::string_view descriptor_sv(descriptor);
+  // Reserved conscrypt packages (includes sub-packages under these paths).
+  return StartsWith(descriptor_sv, "Landroid/net/ssl/") ||
+         StartsWith(descriptor_sv, "Lcom/android/org/conscrypt/");
+}
+
 ObjPtr<mirror::Class> ClassLinker::DefineClass(Thread* self,
                                                const char* descriptor,
                                                size_t hash,
@@ -3032,6 +3040,18 @@ ObjPtr<mirror::Class> ClassLinker::DefineClass(Thread* self,
     } else if (strcmp(descriptor, "Ldalvik/system/ClassExt;") == 0) {
       klass.Assign(GetClassRoot<mirror::ClassExt>(this));
     }
+  }
+
+  // For AOT-compilation of an app, we may use a shortened boot class path that excludes
+  // some runtime modules. Prevent definition of classes in app class loader that could clash
+  // with these modules as these classes could be resolved differently during execution.
+  if (class_loader != nullptr &&
+      Runtime::Current()->IsAotCompiler() &&
+      IsReservedBootClassPathDescriptor(descriptor)) {
+    ObjPtr<mirror::Throwable> pre_allocated =
+        Runtime::Current()->GetPreAllocatedNoClassDefFoundError();
+    self->SetException(pre_allocated);
+    return nullptr;
   }
 
   // This is to prevent the calls to ClassLoad and ClassPrepare which can cause java/user-supplied

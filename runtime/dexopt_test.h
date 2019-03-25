@@ -61,7 +61,7 @@ class DexoptTest : public Dex2oatEnvironmentTest {
   // Generate a standard oat file in the oat location.
   void GenerateOatForTest(const char* dex_location, CompilerFilter::Filter filter);
 
-  static bool Dex2Oat(const std::vector<std::string>& args, std::string* error_msg);
+  bool Dex2Oat(const std::vector<std::string>& args, std::string* error_msg);
 
  private:
   // Reserve memory around where the image will be loaded so other memory

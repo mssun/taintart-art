@@ -19,14 +19,14 @@
 #include <memory>
 
 #include "arch/instruction_set.h"
-#include "common_runtime_test.h"
+#include "base/common_art_test.h"
 
 namespace art {
 
-class ParsedOptionsTest : public ::testing::Test {
+class ParsedOptionsTest : public CommonArtTest {
  public:
   static void SetUpTestCase() {
-    CommonRuntimeTest::SetUpAndroidRootEnvVars();
+    CommonArtTest::SetUpAndroidRootEnvVars();
   }
 };
 
@@ -40,7 +40,7 @@ TEST_F(ParsedOptionsTest, ParsedOptions) {
   boot_class_path += "-Xbootclasspath:";
 
   bool first_dex_file = true;
-  for (const std::string &dex_file_name : CommonRuntimeTest::GetLibCoreDexFileNames()) {
+  for (const std::string& dex_file_name : GetLibCoreDexFileNames()) {
     if (!first_dex_file) {
       class_path += ":";
     } else {
