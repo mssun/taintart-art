@@ -120,7 +120,7 @@ void DexoptTest::GenerateOatForTest(const std::string& dex_location,
   EXPECT_EQ(filter, odex_file->GetCompilerFilter());
 
   std::string boot_image_checksums = gc::space::ImageSpace::GetBootClassPathChecksums(
-      Runtime::Current()->GetBootClassPath(),
+      ArrayRef<const std::string>(Runtime::Current()->GetBootClassPath()),
       image_location,
       kRuntimeISA,
       gc::space::ImageSpaceLoadingOrder::kSystemFirst,

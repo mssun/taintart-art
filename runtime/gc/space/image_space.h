@@ -135,7 +135,7 @@ class ImageSpace : public MemMapSpace {
   // Returns the checksums for the boot image and extra boot class path dex files,
   // based on the boot class path, image location and ISA (may differ from the ISA of an
   // initialized Runtime). The boot image and dex files do not need to be loaded in memory.
-  static std::string GetBootClassPathChecksums(const std::vector<std::string>& boot_class_path,
+  static std::string GetBootClassPathChecksums(ArrayRef<const std::string> boot_class_path,
                                                const std::string& image_location,
                                                InstructionSet image_isa,
                                                ImageSpaceLoadingOrder order,
