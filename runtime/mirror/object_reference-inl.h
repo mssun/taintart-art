@@ -24,6 +24,11 @@
 namespace art {
 namespace mirror {
 
+template<bool kPoisonReferences, class MirrorType>
+inline uint32_t PtrCompression<kPoisonReferences, MirrorType>::Compress(ObjPtr<MirrorType> ptr) {
+  return Compress(ptr.Ptr());
+}
+
 template <bool kPoisonReferences, class MirrorType>
 ALWAYS_INLINE
 void ObjectReference<kPoisonReferences, MirrorType>::Assign(ObjPtr<MirrorType> ptr) {

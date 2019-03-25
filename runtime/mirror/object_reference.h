@@ -48,9 +48,7 @@ class PtrCompression {
   }
 
   // Convert an ObjPtr to a compressed reference.
-  static uint32_t Compress(ObjPtr<MirrorType> ptr) REQUIRES_SHARED(Locks::mutator_lock_) {
-    return Compress(ptr.Ptr());
-  }
+  static uint32_t Compress(ObjPtr<MirrorType> ptr) REQUIRES_SHARED(Locks::mutator_lock_);
 };
 
 // Value type representing a reference to a mirror::Object of type MirrorType.

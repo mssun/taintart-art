@@ -59,85 +59,33 @@ class ObjPtr {
       : reference_(0u) {}
 
   template <typename Type,
-            typename = typename std::enable_if<std::is_base_of<MirrorType, Type>::value>::type>
-  OBJPTR_INLINE ObjPtr(Type* ptr)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : reference_(Encode(static_cast<MirrorType*>(ptr))) {
-  }
+            typename = typename std::enable_if_t<std::is_base_of_v<MirrorType, Type>>>
+  OBJPTR_INLINE ObjPtr(Type* ptr) REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <typename Type,
-            typename = typename std::enable_if<std::is_base_of<MirrorType, Type>::value>::type>
-  OBJPTR_INLINE ObjPtr(const ObjPtr<Type>& other)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      : reference_(kObjPtrPoisoningValidateOnCopy
-                       ? Encode(static_cast<MirrorType*>(other.Ptr()))
-                       : other.reference_) {
-  }
+            typename = typename std::enable_if_t<std::is_base_of_v<MirrorType, Type>>>
+  OBJPTR_INLINE ObjPtr(const ObjPtr<Type>& other) REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <typename Type,
-            typename = typename std::enable_if<std::is_base_of<MirrorType, Type>::value>::type>
-  OBJPTR_INLINE ObjPtr& operator=(const ObjPtr<Type>& other)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    reference_ = kObjPtrPoisoningValidateOnCopy
-                     ? Encode(static_cast<MirrorType*>(other.Ptr()))
-                     : other.reference_;
-    return *this;
-  }
+            typename = typename std::enable_if_t<std::is_base_of_v<MirrorType, Type>>>
+  OBJPTR_INLINE ObjPtr& operator=(const ObjPtr<Type>& other) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  OBJPTR_INLINE ObjPtr& operator=(MirrorType* ptr) REQUIRES_SHARED(Locks::mutator_lock_) {
-    Assign(ptr);
-    return *this;
-  }
+  OBJPTR_INLINE ObjPtr& operator=(MirrorType* ptr) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  OBJPTR_INLINE void Assign(MirrorType* ptr) REQUIRES_SHARED(Locks::mutator_lock_) {
-    reference_ = Encode(ptr);
-  }
+  OBJPTR_INLINE void Assign(MirrorType* ptr) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  OBJPTR_INLINE MirrorType* operator->() const REQUIRES_SHARED(Locks::mutator_lock_) {
-    return Ptr();
-  }
+  OBJPTR_INLINE MirrorType* operator->() const REQUIRES_SHARED(Locks::mutator_lock_);
 
   OBJPTR_INLINE bool IsNull() const {
     return reference_ == 0;
   }
 
   // Ptr makes sure that the object pointer is valid.
-  OBJPTR_INLINE MirrorType* Ptr() const REQUIRES_SHARED(Locks::mutator_lock_) {
-    AssertValid();
-    return PtrUnchecked();
-  }
+  OBJPTR_INLINE MirrorType* Ptr() const REQUIRES_SHARED(Locks::mutator_lock_);
 
   OBJPTR_INLINE bool IsValid() const REQUIRES_SHARED(Locks::mutator_lock_);
 
   OBJPTR_INLINE void AssertValid() const REQUIRES_SHARED(Locks::mutator_lock_);
-
-  OBJPTR_INLINE bool operator==(const ObjPtr& ptr) const REQUIRES_SHARED(Locks::mutator_lock_) {
-    return Ptr() == ptr.Ptr();
-  }
-
-  template <typename PointerType>
-  OBJPTR_INLINE bool operator==(const PointerType* ptr) const
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    return Ptr() == ptr;
-  }
-
-  OBJPTR_INLINE bool operator==(std::nullptr_t) const {
-    return IsNull();
-  }
-
-  OBJPTR_INLINE bool operator!=(const ObjPtr& ptr) const REQUIRES_SHARED(Locks::mutator_lock_) {
-    return Ptr() != ptr.Ptr();
-  }
-
-  template <typename PointerType>
-  OBJPTR_INLINE bool operator!=(const PointerType* ptr) const
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    return Ptr() != ptr;
-  }
-
-  OBJPTR_INLINE bool operator!=(std::nullptr_t) const {
-    return !IsNull();
-  }
 
   // Ptr unchecked does not check that object pointer is valid. Do not use if you can avoid it.
   OBJPTR_INLINE MirrorType* PtrUnchecked() const {
@@ -151,11 +99,7 @@ class ObjPtr {
 
   // Static function to be friendly with null pointers.
   template <typename SourceType>
-  static ObjPtr<MirrorType> DownCast(ObjPtr<SourceType> ptr) REQUIRES_SHARED(Locks::mutator_lock_) {
-    static_assert(std::is_base_of<SourceType, MirrorType>::value,
-                  "Target type must be a subtype of source type");
-    return static_cast<MirrorType*>(ptr.Ptr());
-  }
+  static ObjPtr<MirrorType> DownCast(ObjPtr<SourceType> ptr) REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   // Trim off high bits of thread local cookie.
@@ -179,42 +123,70 @@ static_assert(std::is_trivially_copyable<ObjPtr<void>>::value,
 class HashObjPtr {
  public:
   template<class MirrorType>
-  size_t operator()(const ObjPtr<MirrorType>& ptr) const NO_THREAD_SAFETY_ANALYSIS {
-    return std::hash<MirrorType*>()(ptr.Ptr());
-  }
+  size_t operator()(const ObjPtr<MirrorType>& ptr) const NO_THREAD_SAFETY_ANALYSIS;
 };
 
-template<class MirrorType, typename PointerType>
-OBJPTR_INLINE bool operator==(const PointerType* a, const ObjPtr<MirrorType>& b)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  return b == a;
+template<class MirrorType1, class MirrorType2>
+OBJPTR_INLINE std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
+                               std::is_base_of_v<MirrorType2, MirrorType1>, bool>
+operator==(ObjPtr<MirrorType1> lhs, ObjPtr<MirrorType2> rhs)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
+template<class MirrorType1, class MirrorType2>
+OBJPTR_INLINE std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
+                               std::is_base_of_v<MirrorType2, MirrorType1>, bool>
+operator==(const MirrorType1* lhs, ObjPtr<MirrorType2> rhs)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
+template<class MirrorType1, class MirrorType2>
+OBJPTR_INLINE std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
+                               std::is_base_of_v<MirrorType2, MirrorType1>, bool>
+operator==(ObjPtr<MirrorType1> lhs, const MirrorType2* rhs)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
+template<class MirrorType>
+OBJPTR_INLINE bool operator==(ObjPtr<MirrorType> ptr, std::nullptr_t) {
+  return ptr.IsNull();
 }
 
 template<class MirrorType>
-OBJPTR_INLINE bool operator==(std::nullptr_t, const ObjPtr<MirrorType>& b) {
-  return b == nullptr;
+OBJPTR_INLINE bool operator==(std::nullptr_t, ObjPtr<MirrorType> ptr) {
+  return ptr.IsNull();
 }
 
-template<typename MirrorType, typename PointerType>
-OBJPTR_INLINE bool operator!=(const PointerType* a, const ObjPtr<MirrorType>& b)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  return b != a;
+template<class MirrorType1, class MirrorType2>
+OBJPTR_INLINE std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
+                               std::is_base_of_v<MirrorType2, MirrorType1>, bool>
+operator!=(ObjPtr<MirrorType1> lhs, ObjPtr<MirrorType2> rhs)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
+template<class MirrorType1, class MirrorType2>
+OBJPTR_INLINE std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
+                               std::is_base_of_v<MirrorType2, MirrorType1>, bool>
+operator!=(const MirrorType1* lhs, ObjPtr<MirrorType2> rhs)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
+template<class MirrorType1, class MirrorType2>
+OBJPTR_INLINE std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
+                               std::is_base_of_v<MirrorType2, MirrorType1>, bool>
+operator!=(ObjPtr<MirrorType1> lhs, const MirrorType2* rhs)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
+template<class MirrorType>
+OBJPTR_INLINE bool operator!=(ObjPtr<MirrorType> ptr, std::nullptr_t) {
+  return !(ptr == nullptr);
 }
 
 template<class MirrorType>
-OBJPTR_INLINE bool operator!=(std::nullptr_t, const ObjPtr<MirrorType>& b) {
-  return b != nullptr;
+OBJPTR_INLINE bool operator!=(std::nullptr_t, ObjPtr<MirrorType> ptr) {
+  return !(nullptr == ptr);
 }
 
 template<class MirrorType>
-static inline ObjPtr<MirrorType> MakeObjPtr(MirrorType* ptr) {
-  return ObjPtr<MirrorType>(ptr);
-}
+static OBJPTR_INLINE ObjPtr<MirrorType> MakeObjPtr(MirrorType* ptr);
 
 template<class MirrorType>
-static inline ObjPtr<MirrorType> MakeObjPtr(ObjPtr<MirrorType> ptr) {
-  return ObjPtr<MirrorType>(ptr);
-}
+static OBJPTR_INLINE ObjPtr<MirrorType> MakeObjPtr(ObjPtr<MirrorType> ptr);
 
 template<class MirrorType>
 OBJPTR_INLINE std::ostream& operator<<(std::ostream& os, ObjPtr<MirrorType> ptr);
