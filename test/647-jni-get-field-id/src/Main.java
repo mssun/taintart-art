@@ -21,6 +21,7 @@ public class Main {
     public static void main(String[] args) {
         System.loadLibrary(args[0]);
 
+        testGetFieldId(TestClass.class, "intField", "");
         testGetFieldId(TestClass.class, "intField", "I");
         testGetFieldId(TestClass.class, "intField", "int");
         testGetFieldId(TestClass.class, "intField", "Lint;");
