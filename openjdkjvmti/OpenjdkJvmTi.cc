@@ -122,13 +122,21 @@ class JvmtiFunctions {
 
  public:
   static jvmtiError Allocate(jvmtiEnv* env, jlong size, unsigned char** mem_ptr) {
-    ENSURE_VALID_ENV(env);
+    jvmtiError err = getEnvironmentError(env);
+    // Allow UNATTACHED_THREAD since we don't really care about that for this function.
+    if (err != OK && err != ERR(UNATTACHED_THREAD)) {
+      return err;
+    }
     ENSURE_NON_NULL(mem_ptr);
     return AllocUtil::Allocate(env, size, mem_ptr);
   }
 
   static jvmtiError Deallocate(jvmtiEnv* env, unsigned char* mem) {
-    ENSURE_VALID_ENV(env);
+    jvmtiError err = getEnvironmentError(env);
+    // Allow UNATTACHED_THREAD since we don't really care about that for this function.
+    if (err != OK && err != ERR(UNATTACHED_THREAD)) {
+      return err;
+    }
     return AllocUtil::Deallocate(env, mem);
   }
 
