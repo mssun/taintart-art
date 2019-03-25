@@ -275,6 +275,9 @@ class Checker:
   def check_library(self, filename):
     raise NotImplementedError
 
+  def check_optional_library(self, filename):
+    raise NotImplementedError
+
   def check_first_library(self, filename):
     raise NotImplementedError
 
@@ -296,6 +299,9 @@ class Arch32Checker(Checker):
     # the precision of this test?
     self.check_file('lib/%s' % filename)
 
+  def check_optional_library(self, filename):
+    self.ignore_superfluous_path('lib/%s' % filename)
+
   def check_first_library(self, filename):
     self.check_library(filename)
 
@@ -316,6 +322,9 @@ class Arch64Checker(Checker):
     # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
     # the precision of this test?
     self.check_file('lib64/%s' % filename)
+
+  def check_optional_library(self, filename):
+    self.ignore_superfluous_path('lib64/%s' % filename)
 
   def check_first_library(self, filename):
     self.check_library(filename)
@@ -340,6 +349,10 @@ class MultilibChecker(Checker):
     # the precision of this test?
     self.check_file('lib/%s' % filename)
     self.check_file('lib64/%s' % filename)
+
+  def check_optional_library(self, filename):
+    self.ignore_superfluous_path('lib/%s' % filename)
+    self.ignore_superfluous_path('lib64/%s' % filename)
 
   def check_first_library(self, filename):
     self.check_file('lib64/%s' % filename)
@@ -410,7 +423,7 @@ class ReleaseChecker:
     self._checker.check_library('liblzma.so')
     self._checker.check_library('libsigchain.so')
     self._checker.check_library('libunwindstack.so')
-    self._checker.check_library('libvixl.so')
+    self._checker.check_optional_library('libvixl.so')  # Only on ARM/ARM64
 
     # TODO(b/124293228): Figure out why we get this.
     self._checker.check_library('libcutils.so')
@@ -555,7 +568,7 @@ class DebugTargetChecker:
     # double_loadable:true, cf. go/double_loadable). Also, like in the release
     # package we need to look out for dependencies that should go through
     # exported library stubs (until b/128708192 is fixed).
-    self._checker.check_library('libvixld.so')
+    self._checker.check_optional_library('libvixld.so')  # Only on ARM/ARM64
 
 
 class NoSuperfluousBinariesChecker:
